@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Tutor Dashboard — Private</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0b1626;--blue:#1a3a6b;--bright:#2255a4;--accent:#3b6cb6;
+  --bg:#f4f7fb;--card:#fff;--border:#d8e1ef;--soft:#eef4ff;
+  --text:#0f172a;--muted:#64748b;--danger:#b91c1c;--ok:#15803d
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Inter','Source Sans 3',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased
+}
+a{color:var(--bright);text-decoration:none}
+button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:700}
+
+/* Top bar */
+.topbar{
+  height:60px;background:var(--navy);color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 22px;position:sticky;top:0;z-index:30
+}
+.topbar .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px}
+.topbar .brand .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.topbar a.back{color:#cbd5e1;font-weight:600;font-size:13px}
+.topbar a.back:hover{color:#fff}
+
+/* Layout */
+.layout{
+  display:grid;grid-template-columns:320px 1fr;
+  gap:18px;max-width:1320px;margin:0 auto;padding:18px;
+  min-height:calc(100vh - 60px)
+}
+.sidebar,.detail{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.sidebar{padding:16px;display:flex;flex-direction:column;gap:12px;height:fit-content}
+.sb-head{display:flex;align-items:center;justify-content:space-between}
+.sb-head h2{margin:0;font-size:16px;font-weight:800}
+.btn{padding:8px 12px;font-size:13px;border-radius:10px;transition:transform .12s,background .12s}
+.btn:hover{transform:translateY(-1px)}
+.btn.primary{background:var(--bright);color:#fff}
+.btn.primary:hover{background:var(--blue)}
+.btn.soft{background:var(--soft);color:var(--bright)}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn.danger{background:#fee2e2;color:var(--danger)}
+.search{
+  width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;
+  font:inherit;background:#fff;color:var(--text)
+}
+.student-list{display:flex;flex-direction:column;gap:6px;max-height:70vh;overflow-y:auto}
+.student-row{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  cursor:pointer;transition:background .12s
+}
+.student-row:hover{background:var(--soft)}
+.student-row.active{background:var(--soft);box-shadow:inset 3px 0 0 var(--bright)}
+.student-row .avatar{
+  width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#94a3b8,#475569);
+  color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0
+}
+.student-row .meta{min-width:0;flex:1}
+.student-row .meta .nm{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.student-row .meta .sub{font-size:11px;color:var(--muted);margin-top:2px}
+.student-row .avg-pill{
+  flex-shrink:0;font-size:11px;font-weight:800;
+  background:#f1f5f9;color:var(--muted);padding:3px 8px;border-radius:999px;
+  font-variant-numeric:tabular-nums;min-width:32px;text-align:center
+}
+.student-row .avg-pill.weak       {background:#fee2e2;color:#dc2626}
+.student-row .avg-pill.developing {background:#fef3c7;color:#d97706}
+.student-row .avg-pill.solid      {background:#dbeafe;color:#1e40af}
+.student-row .avg-pill.strong     {background:#dcfce7;color:#166534}
+
+.detail{padding:24px;min-height:480px}
+.detail .empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;color:var(--muted);padding:80px 20px;height:100%
+}
+.detail .empty .icon{font-size:42px;margin-bottom:12px;opacity:.5}
+.detail .empty h3{margin:0 0 6px;color:var(--text);font-weight:700}
+.detail .empty p{margin:0;font-size:14px;line-height:1.6}
+
+.empty-mini{font-size:13px;color:var(--muted);text-align:center;padding:24px 8px;line-height:1.6}
+
+/* Empty detail panel — upcoming widget */
+.upcoming-widget{padding:8px 0 0;max-width:540px;margin:0 auto;width:100%}
+.upcoming-widget .uw-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)
+}
+.upcoming-widget .uw-head h3{margin:0;font-size:18px;font-weight:800}
+.upcoming-widget .uw-head .uw-sub{font-size:12px;color:var(--muted)}
+.upcoming-row{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  border:1px solid var(--border);border-radius:12px;margin-bottom:8px;
+  background:#fafbfd;cursor:pointer;transition:background .12s,border-color .12s
+}
+.upcoming-row:hover{background:var(--soft);border-color:#c7d7f0}
+.upcoming-row .uw-when{
+  flex-shrink:0;text-align:center;min-width:64px;
+  background:#fff;border:1px solid var(--border);border-radius:10px;padding:6px 8px
+}
+.upcoming-row .uw-when .uw-dow{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.upcoming-row .uw-when .uw-day{font-size:18px;font-weight:800;color:var(--blue);line-height:1}
+.upcoming-row .uw-when .uw-mon{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-top:2px}
+.upcoming-row .uw-info{flex:1;min-width:0}
+.upcoming-row .uw-info .nm{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upcoming-row .uw-info .meta{font-size:12px;color:var(--muted);margin-top:2px}
+.upcoming-row .uw-time{font-size:13px;font-weight:600;color:var(--bright);flex-shrink:0;font-variant-numeric:tabular-nums}
+
+/* Auth gate */
+.gate{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  z-index:100;padding:20px
+}
+.gate-card{
+  background:#fff;border:1px solid var(--border);border-radius:20px;
+  box-shadow:0 24px 60px rgba(15,23,42,.12);
+  max-width:420px;width:100%;padding:36px 32px;text-align:center
+}
+.gate-card .badge{
+  display:inline-block;padding:5px 12px;border-radius:999px;
+  background:var(--soft);color:var(--bright);
+  font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase
+}
+.gate-card h1{margin:14px 0 8px;font-size:22px;font-weight:800}
+.gate-card p{margin:0 0 22px;color:var(--muted);font-size:14px;line-height:1.7}
+.gate-card .who{
+  background:#f1f5f9;border-radius:10px;padding:10px 14px;
+  font-size:13px;color:var(--muted);margin:0 0 22px;word-break:break-all
+}
+.gate-card .who b{color:var(--text)}
+.gate-card .actions{display:flex;flex-direction:column;gap:10px}
+.gate-card .actions .btn{padding:11px 16px;font-size:14px;width:100%}
+.spinner{
+  width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:var(--bright);
+  border-radius:50%;animation:spin .9s linear infinite;margin:0 auto 14px
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (max-width:980px){
+  .layout{grid-template-columns:1fr;padding:14px;gap:14px}
+  .sidebar{height:auto}
+  .student-list{max-height:280px}
+  .detail{padding:18px}
+  .field-grid{grid-template-columns:1fr}
+  .profile-head{flex-wrap:wrap}
+  .profile-head .head-actions{width:100%;margin-top:8px}
+  .modal{border-radius:14px}
+  .modal-head,.modal-body,.modal-foot{padding-left:18px;padding-right:18px}
+  .topbar{padding:0 14px}
+  .topbar .brand{font-size:14px}
+  .upcoming-row{padding:10px 12px;gap:10px}
+}
+
+/* Sidebar tools */
+.sb-tools{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.sb-tools label{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.sb-tools input[type=checkbox]{accent-color:var(--bright)}
+
+/* Detail panel — profile */
+.profile-head{
+  display:flex;align-items:center;gap:14px;padding-bottom:18px;
+  border-bottom:1px solid var(--border);margin-bottom:18px
+}
+.profile-head .avatar-lg{
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--blue));
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:22px;flex-shrink:0
+}
+.profile-head .who-info{flex:1;min-width:0}
+.profile-head .who-info h2{margin:0;font-size:20px;font-weight:800}
+.profile-head .who-info .sub{font-size:13px;color:var(--muted);margin-top:4px}
+.profile-head .head-actions{display:flex;gap:8px;flex-shrink:0}
+
+.section-title{
+  font-size:11px;font-weight:800;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin:18px 0 10px
+}
+
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.full{grid-column:1 / -1}
+.field label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.field input,.field select,.field textarea{
+  width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;
+  background:#fff;font:inherit;color:var(--text);transition:border-color .15s
+}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:none;border-color:var(--bright);box-shadow:0 0 0 3px rgba(34,85,164,.12)
+}
+.field textarea{resize:vertical;min-height:80px;line-height:1.6}
+
+.profile-actions{
+  display:flex;gap:10px;justify-content:space-between;align-items:center;
+  margin-top:24px;padding-top:18px;border-top:1px solid var(--border)
+}
+.profile-actions .right{display:flex;gap:8px}
+
+/* Modal */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(15,23,42,.55);
+  display:flex;align-items:center;justify-content:center;
+  z-index:90;padding:20px;backdrop-filter:blur(4px)
+}
+.modal{
+  background:#fff;border-radius:18px;box-shadow:0 24px 60px rgba(15,23,42,.2);
+  max-width:520px;width:100%;max-height:90vh;overflow-y:auto
+}
+.modal-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-head h2{margin:0;font-size:18px;font-weight:800}
+.modal-close{
+  background:transparent;border:none;font-size:22px;color:var(--muted);
+  cursor:pointer;padding:4px 10px;border-radius:8px;line-height:1
+}
+.modal-close:hover{background:var(--soft);color:var(--text)}
+.modal-body{padding:20px 24px}
+.modal-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--navy);color:#fff;padding:11px 18px;border-radius:10px;
+  font-size:14px;font-weight:600;z-index:200;box-shadow:0 12px 30px rgba(15,23,42,.3);
+  opacity:0;transition:opacity .2s,transform .2s;pointer-events:none
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(-4px)}
+.toast.err{background:var(--danger)}
+.toast.ok{background:var(--ok)}
+
+/* Pill / level chip */
+.chip{
+  display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;
+  background:var(--soft);color:var(--bright);font-size:11px;font-weight:800;
+  letter-spacing:.04em
+}
+.chip.archived{background:#f1f5f9;color:var(--muted)}
+.chip.scheduled{background:#dbeafe;color:#1e40af}
+.chip.completed{background:#dcfce7;color:#166534}
+.chip.canceled{background:#fee2e2;color:#b91c1c}
+
+/* Lessons */
+.lessons-section{margin-top:28px;padding-top:22px;border-top:1px solid var(--border)}
+.lessons-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.lessons-head h3{margin:0;font-size:15px;font-weight:800}
+.lesson-group-title{
+  font-size:11px;font-weight:800;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin:18px 0 8px
+}
+.lesson-card{
+  background:#fafbfd;border:1px solid var(--border);border-radius:14px;
+  padding:14px 16px;margin-bottom:10px;transition:border-color .15s
+}
+.lesson-card:hover{border-color:#cbd5e1}
+.lesson-card .row1{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.lesson-card .when{font-size:14px;font-weight:700;color:var(--text)}
+.lesson-card .when .relative{font-size:12px;font-weight:500;color:var(--muted);margin-left:6px}
+.lesson-card .topic{font-size:14px;color:var(--text);margin:6px 0;line-height:1.5}
+.lesson-card .topic b{color:var(--blue)}
+.lesson-card .body{font-size:13px;color:var(--muted);line-height:1.6;margin:6px 0;white-space:pre-wrap}
+.lesson-card .label{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:8px}
+.lesson-card .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.lesson-card .actions .btn{padding:6px 10px;font-size:12px;border-radius:8px}
+.lesson-card.past{opacity:.95}
+.lesson-card.canceled{opacity:.6}
+.lesson-empty{font-size:13px;color:var(--muted);font-style:italic;padding:8px 0}
+
+/* AI feedback */
+.ai-block{
+  margin-top:12px;border:1px solid #c7d7f0;border-radius:12px;
+  background:linear-gradient(180deg,#f6f9ff,#fff);overflow:hidden
+}
+.ai-block .ai-head{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:10px 14px;background:#eef4ff;border-bottom:1px solid #c7d7f0
+}
+.ai-block .ai-head .ai-title{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--bright);letter-spacing:.04em;text-transform:uppercase}
+.ai-block .ai-head .ai-meta{font-size:11px;color:var(--muted);font-weight:500}
+.ai-block .ai-body{padding:14px 16px;font-size:13.5px;line-height:1.7;color:var(--text);white-space:pre-wrap}
+.ai-block .ai-body strong{color:var(--blue);font-weight:800}
+.ai-block .ai-actions{padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap}
+.ai-block.loading .ai-body{color:var(--muted);font-style:italic}
+.ai-pulse{
+  display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bright);
+  animation:pulse 1.2s ease-in-out infinite
+}
+@keyframes pulse{0%,100%{opacity:.3;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
+
+/* Skills */
+.skills-section{margin-top:24px;padding-top:18px;border-top:1px solid var(--border)}
+.skills-grid{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.skill-row{
+  display:grid;grid-template-columns:90px 36px 1fr 64px;
+  align-items:center;gap:14px;padding:8px 0
+}
+.skill-row .skill-label{font-size:13px;font-weight:700;color:var(--text)}
+.skill-row .skill-value{
+  font-size:14px;font-weight:800;color:var(--bright);
+  text-align:right;font-variant-numeric:tabular-nums
+}
+.skill-row .skill-status{font-size:11px;color:var(--muted);text-align:right;font-weight:600;min-height:14px}
+.skill-row .skill-status.saving{color:var(--bright)}
+.skill-row .skill-status.saved{color:var(--ok)}
+.skill-row .skill-status.failed{color:var(--danger)}
+.skill-row input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;
+  height:6px;border-radius:999px;background:#e2e8f0;
+  outline:none;cursor:pointer;transition:background .15s
+}
+.skill-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:18px;height:18px;border-radius:50%;background:var(--bright);
+  border:2px solid #fff;box-shadow:0 2px 6px rgba(34,85,164,.35);cursor:pointer
+}
+.skill-row input[type=range]::-moz-range-thumb{
+  width:18px;height:18px;border-radius:50%;background:var(--bright);
+  border:2px solid #fff;box-shadow:0 2px 6px rgba(34,85,164,.35);cursor:pointer
+}
+.skill-row input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:999px}
+.skill-row input[type=range]::-moz-range-track{height:6px;border-radius:999px}
+/* Color the value chip by tier (red/amber/blue/green) */
+.skill-row.tier-weak       .skill-value{color:#dc2626}
+.skill-row.tier-developing .skill-value{color:#d97706}
+.skill-row.tier-solid      .skill-value{color:var(--bright)}
+.skill-row.tier-strong     .skill-value{color:var(--ok)}
+
+.skill-overall{
+  display:flex;align-items:center;gap:10px;margin-top:14px;
+  padding:10px 14px;background:#f8fbff;border:1px dashed var(--border);border-radius:12px
+}
+.skill-overall .ov-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase}
+.skill-overall .ov-value{font-size:24px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums}
+.skill-overall .ov-sub{font-size:12px;color:var(--muted);margin-left:auto}
+
+@media (max-width:520px){
+  .skill-row{grid-template-columns:80px 32px 1fr 50px;gap:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- Auth gate (shown until access is determined) -->
+<div id="kh-tutor-gate" class="gate" role="dialog" aria-label="Access check">
+  <div class="gate-card" id="gate-card">
+    <div class="spinner"></div>
+    <h1>Checking access…</h1>
+    <p>One moment while we verify your account.</p>
+  </div>
+</div>
+
+<!-- Main app (revealed after gate passes) -->
+<div id="kh-tutor-app" style="display:none">
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span><span>Tutor Dashboard</span></div>
+    <a class="back" href="index.html">← Home</a>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="sb-head">
+        <h2>Students</h2>
+        <button class="btn primary" id="btn-new-student">+ New</button>
+      </div>
+      <input class="search" id="student-search" placeholder="Search students…">
+      <div class="sb-tools">
+        <label><input type="checkbox" id="show-archived"> Show archived</label>
+      </div>
+      <div class="student-list" id="student-list">
+        <div class="empty-mini">Loading…</div>
+      </div>
+    </aside>
+
+    <section class="detail" id="detail-panel">
+      <div class="empty">
+        <div class="icon">📘</div>
+        <h3>No student selected</h3>
+        <p>Add a student from the left panel,<br>then pick one to manage lessons, feedback, and progress.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- New / edit student modal -->
+<div id="student-modal" class="modal-bg" style="display:none" role="dialog" aria-label="Student form">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2 id="student-modal-title">New student</h2>
+      <button class="modal-close" id="student-modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field full">
+          <label>Name *</label>
+          <input id="m-name" placeholder="e.g. Mina Park">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input id="m-email" type="email" placeholder="optional">
+        </div>
+        <div class="field">
+          <label>Preply handle</label>
+          <input id="m-preply" placeholder="@username (optional)">
+        </div>
+        <div class="field">
+          <label>Level</label>
+          <select id="m-level">
+            <option value="">—</option>
+            <option>A1</option><option>A2</option>
+            <option>B1</option><option>B2</option>
+            <option>C1</option><option>C2</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Goal</label>
+          <input id="m-goal" placeholder="e.g. business English">
+        </div>
+        <div class="field full">
+          <label>Notes</label>
+          <textarea id="m-notes" placeholder="Background, learning style, anything to remember…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="student-modal-cancel">Cancel</button>
+      <button class="btn primary" id="student-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- New / edit lesson modal -->
+<div id="lesson-modal" class="modal-bg" style="display:none" role="dialog" aria-label="Lesson form">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2 id="lesson-modal-title">New lesson</h2>
+      <button class="modal-close" id="lesson-modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field">
+          <label>Date &amp; time</label>
+          <input id="l-when" type="datetime-local">
+        </div>
+        <div class="field">
+          <label>Duration (min)</label>
+          <input id="l-duration" type="number" min="15" max="240" step="5" value="60">
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="l-status">
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="canceled">Canceled</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Topic</label>
+          <input id="l-topic" placeholder="e.g. Past tense practice">
+        </div>
+        <div class="field full">
+          <label>Lesson notes (in-class)</label>
+          <textarea id="l-notes" placeholder="What you covered, mistakes, breakthroughs…" style="min-height:110px"></textarea>
+        </div>
+        <div class="field full">
+          <label>Next-lesson plan</label>
+          <textarea id="l-next" placeholder="What to focus on next time"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="lesson-modal-delete" style="margin-right:auto;display:none">Delete</button>
+      <button class="btn ghost" id="lesson-modal-cancel">Cancel</button>
+      <button class="btn primary" id="lesson-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="kh-toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js?v=20260428a-tutor"></script>
+<script>
+(function(){
+  'use strict';
+
+  // Mirror of korehan-shared.js TUTOR_EMAILS — kept here so the gate can run
+  // independently of any shared.js init ordering. Update both lists together.
+  var TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com'];
+
+  function setGate(html) {
+    var card = document.getElementById('gate-card');
+    if (card) card.innerHTML = html;
+  }
+  function hideGate() {
+    var gate = document.getElementById('kh-tutor-gate');
+    var app  = document.getElementById('kh-tutor-app');
+    if (gate) gate.style.display = 'none';
+    if (app)  app.style.display  = '';
+    if (!window._tutorAppBooted) {
+      window._tutorAppBooted = true;
+      try { initTutorApp(); } catch(e) { console.error('initTutorApp', e); }
+    }
+  }
+  function showGate() {
+    var gate = document.getElementById('kh-tutor-gate');
+    var app  = document.getElementById('kh-tutor-app');
+    if (gate) gate.style.display = '';
+    if (app)  app.style.display  = 'none';
+  }
+
+  function renderSignedOut() {
+    showGate();
+    setGate(
+      '<div class="badge">Restricted</div>'
+      + '<h1>Sign in to continue</h1>'
+      + '<p>This page is private. Sign in with an authorized account to view the tutor dashboard.</p>'
+      + '<div class="actions">'
+      +   '<button class="btn primary" id="gate-signin">Sign in</button>'
+      +   '<a class="btn ghost" href="index.html" style="display:inline-block;text-decoration:none;text-align:center">← Back to home</a>'
+      + '</div>'
+    );
+    var btn = document.getElementById('gate-signin');
+    if (btn) btn.onclick = function(){
+      if (typeof openAuthModal === 'function') openAuthModal('signin');
+      else location.href = 'index.html';
+    };
+  }
+
+  function renderDenied(email) {
+    showGate();
+    setGate(
+      '<div class="badge" style="background:#fee2e2;color:#b91c1c">Access denied</div>'
+      + '<h1>You do not have access</h1>'
+      + '<p>This page is restricted to authorized tutor accounts. If you believe this is a mistake, contact the site admin.</p>'
+      + '<div class="who">Signed in as <b>' + escapeHtmlSafe(email || '(unknown)') + '</b></div>'
+      + '<div class="actions">'
+      +   '<button class="btn ghost" id="gate-signout">Sign out</button>'
+      +   '<a class="btn ghost" href="index.html" style="display:inline-block;text-decoration:none;text-align:center">← Back to home</a>'
+      + '</div>'
+    );
+    var btn = document.getElementById('gate-signout');
+    if (btn) btn.onclick = function(){
+      if (typeof signOut === 'function') signOut();
+      else location.reload();
+    };
+  }
+
+  function escapeHtmlSafe(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // Wait until shared.js has finished its initial session check, then decide
+  // which gate state to render. Re-runs on auth state changes.
+  var _checking = false;
+  async function checkAccess() {
+    if (_checking) return;
+    _checking = true;
+    try {
+      // Wait for the supabase client to be available.
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      var tries = 0;
+      while (!sb && tries < 50) {
+        await new Promise(function(r){ setTimeout(r, 80); });
+        sb = (typeof getSupa === 'function') ? getSupa() : null;
+        tries++;
+      }
+      if (!sb) {
+        setGate('<div class="spinner"></div><h1>Network issue</h1><p>Could not reach Supabase. Refresh the page to retry.</p>');
+        return;
+      }
+
+      var sessRes = await sb.auth.getSession();
+      var user = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.user;
+      if (!user) { renderSignedOut(); return; }
+
+      var email = (user.email || '').toLowerCase();
+      if (TUTOR_EMAILS.indexOf(email) === -1) { renderDenied(user.email); return; }
+
+      // Authorized — reveal the app shell.
+      hideGate();
+    } finally {
+      _checking = false;
+    }
+  }
+
+  window.addEventListener('kh-auth-signed-in',  checkAccess);
+  window.addEventListener('kh-auth-signed-out', checkAccess);
+  document.addEventListener('DOMContentLoaded', checkAccess);
+
+  // ── App state ──────────────────────────────────────────────
+  var state = {
+    students: [],            // full list (active + archived) loaded from DB
+    selectedId: null,
+    showArchived: false,
+    search: '',
+    editingId: null,         // null = new, uuid = editing existing (for the student modal)
+    me: null,                // current auth user (for owner_id tagging)
+    lessons: [],             // lessons for the currently selected student
+    lessonsForId: null,      // student_id the lessons belong to (cache key)
+    editingLessonId: null,   // null = new, uuid = editing existing (for the lesson modal)
+    showPast: true           // toggle past lessons section
+  };
+
+  function toast(msg, kind) {
+    var el = document.getElementById('kh-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'toast on' + (kind ? ' ' + kind : '');
+    clearTimeout(el._t);
+    el._t = setTimeout(function(){ el.className = 'toast' + (kind ? ' ' + kind : ''); }, 2400);
+  }
+
+  function initials(name) {
+    var s = String(name || '').trim();
+    if (!s) return '?';
+    var parts = s.split(/\s+/);
+    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+  }
+
+  // ── Boot ───────────────────────────────────────────────────
+  async function initTutorApp() {
+    var sb = getSupa();
+    var sess = await sb.auth.getSession();
+    state.me = sess && sess.data && sess.data.session && sess.data.session.user;
+
+    // Wire UI events.
+    document.getElementById('btn-new-student').onclick = openNewStudentModal;
+    document.getElementById('student-search').oninput = function(e){
+      state.search = (e.target.value || '').toLowerCase().trim();
+      renderStudentList();
+    };
+    document.getElementById('show-archived').onchange = function(e){
+      state.showArchived = !!e.target.checked;
+      renderStudentList();
+    };
+    document.getElementById('student-modal-close').onclick  = closeStudentModal;
+    document.getElementById('student-modal-cancel').onclick = closeStudentModal;
+    document.getElementById('student-modal-save').onclick   = saveStudentFromModal;
+    document.getElementById('student-modal').onclick = function(e){
+      if (e.target.id === 'student-modal') closeStudentModal();
+    };
+
+    document.getElementById('lesson-modal-close').onclick  = closeLessonModal;
+    document.getElementById('lesson-modal-cancel').onclick = closeLessonModal;
+    document.getElementById('lesson-modal-save').onclick   = saveLessonFromModal;
+    document.getElementById('lesson-modal-delete').onclick = deleteLessonFromModal;
+    document.getElementById('lesson-modal').onclick = function(e){
+      if (e.target.id === 'lesson-modal') closeLessonModal();
+    };
+
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape') {
+        var sm = document.getElementById('student-modal');
+        var lm = document.getElementById('lesson-modal');
+        if (lm && lm.style.display !== 'none') closeLessonModal();
+        else if (sm && sm.style.display !== 'none') closeStudentModal();
+      }
+    });
+
+    await loadStudents();
+  }
+
+  // ── Data layer ─────────────────────────────────────────────
+  async function loadStudents() {
+    var sb = getSupa();
+    var listEl = document.getElementById('student-list');
+    listEl.innerHTML = '<div class="empty-mini">Loading…</div>';
+
+    var { data, error } = await sb
+      .from('tutor_students')
+      .select('*')
+      .order('archived', { ascending: true })
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error(error);
+      listEl.innerHTML = '<div class="empty-mini" style="color:var(--danger)">Failed to load students.<br>' + escapeHtmlSafe(error.message) + '</div>';
+      return;
+    }
+    state.students = data || [];
+    renderStudentList();
+
+    if (state.selectedId) {
+      var s = state.students.find(function(x){ return x.id === state.selectedId; });
+      if (s) renderDetail(s);
+      else { state.selectedId = null; renderEmptyDetail(); }
+    } else {
+      renderEmptyDetail();
+    }
+  }
+
+  async function insertStudent(payload) {
+    var sb = getSupa();
+    payload.owner_id = state.me ? state.me.id : null;
+    var { data, error } = await sb.from('tutor_students').insert(payload).select().single();
+    if (error) throw error;
+    return data;
+  }
+  async function updateStudent(id, payload) {
+    var sb = getSupa();
+    var { data, error } = await sb.from('tutor_students').update(payload).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  async function setArchived(id, archived) {
+    return updateStudent(id, { archived: !!archived });
+  }
+
+  // ── Sidebar render ─────────────────────────────────────────
+  function renderStudentList() {
+    var listEl = document.getElementById('student-list');
+    var rows = state.students.filter(function(s){
+      if (!state.showArchived && s.archived) return false;
+      if (state.search) {
+        var hay = (s.name + ' ' + (s.email || '') + ' ' + (s.preply_handle || '') + ' ' + (s.goal || '')).toLowerCase();
+        if (hay.indexOf(state.search) === -1) return false;
+      }
+      return true;
+    });
+
+    if (!rows.length) {
+      listEl.innerHTML = '<div class="empty-mini">'
+        + (state.students.length === 0
+            ? 'No students yet.<br>Click <b>+ New</b> to add one.'
+            : 'No matches.')
+        + '</div>';
+      return;
+    }
+
+    listEl.innerHTML = rows.map(function(s){
+      var active = s.id === state.selectedId ? ' active' : '';
+      var sub = [s.level || '', s.goal || ''].filter(Boolean).join(' · ');
+      if (s.archived) sub = (sub ? sub + ' · ' : '') + 'archived';
+      var avg = avgSkill(s);
+      var hasScores = SKILL_AXES.some(function(a){ return (s[a.key] || 0) > 0; });
+      var pill = hasScores
+        ? '<div class="avg-pill ' + skillTier(avg) + '" title="Overall skill score">' + avg + '</div>'
+        : '';
+      return '<div class="student-row' + active + '" data-id="' + s.id + '">'
+        +   '<div class="avatar">' + escapeHtmlSafe(initials(s.name)) + '</div>'
+        +   '<div class="meta">'
+        +     '<div class="nm">' + escapeHtmlSafe(s.name) + '</div>'
+        +     '<div class="sub">' + escapeHtmlSafe(sub || '—') + '</div>'
+        +   '</div>'
+        +   pill
+        + '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(listEl.querySelectorAll('.student-row'), function(el){
+      el.onclick = function(){
+        state.selectedId = el.getAttribute('data-id');
+        var s = state.students.find(function(x){ return x.id === state.selectedId; });
+        renderStudentList();
+        if (s) renderDetail(s);
+      };
+    });
+  }
+
+  // ── Detail panel ───────────────────────────────────────────
+  async function renderEmptyDetail() {
+    var panel = document.getElementById('detail-panel');
+    panel.innerHTML =
+      '<div class="upcoming-widget">'
+      + '<div class="uw-head"><h3>Upcoming lessons</h3><span class="uw-sub">across all students</span></div>'
+      + '<div id="uw-list"><div class="empty-mini">Loading…</div></div>'
+      + '</div>';
+
+    var sb = getSupa();
+    try {
+      var nowIso = new Date(Date.now() - 30*60*1000).toISOString();
+      var { data, error } = await sb
+        .from('tutor_lessons')
+        .select('id, scheduled_at, status, topic, duration_minutes, student_id, tutor_students(name, level, archived)')
+        .eq('status', 'scheduled')
+        .gte('scheduled_at', nowIso)
+        .order('scheduled_at', { ascending: true })
+        .limit(8);
+      if (error) throw error;
+      var rows = (data || []).filter(function(l){
+        return l.tutor_students && !l.tutor_students.archived;
+      });
+      renderUpcomingList(rows);
+    } catch (e) {
+      console.error(e);
+      var box = document.getElementById('uw-list');
+      if (box) box.innerHTML = '<div class="empty-mini" style="color:var(--danger)">Failed to load upcoming lessons.<br>' + escapeHtmlSafe(e.message || e) + '</div>';
+    }
+  }
+
+  function renderUpcomingList(rows) {
+    var box = document.getElementById('uw-list');
+    if (!box) return;
+    if (!rows.length) {
+      // Tailor the empty copy based on whether there are any students yet.
+      var html;
+      if (!state.students.length) {
+        html = '<div class="empty">'
+          + '<div class="icon">📘</div>'
+          + '<h3>Welcome to your tutor dashboard</h3>'
+          + '<p>Add your first student with the <b>+ New</b> button on the left,<br>then start scheduling lessons and tracking progress.</p>'
+          + '</div>';
+      } else {
+        html = '<div class="empty">'
+          + '<div class="icon">🗓️</div>'
+          + '<h3>No upcoming lessons</h3>'
+          + '<p>Pick a student on the left and click <b>+ New lesson</b> to schedule one.</p>'
+          + '</div>';
+      }
+      box.innerHTML = html;
+      return;
+    }
+
+    var dowFmt  = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+    var monFmt  = new Intl.DateTimeFormat(undefined, { month: 'short' });
+    var timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+
+    box.innerHTML = rows.map(function(l){
+      var d = new Date(l.scheduled_at);
+      var dow = dowFmt.format(d);
+      var day = d.getDate();
+      var mon = monFmt.format(d);
+      var time = timeFmt.format(d);
+      var s = l.tutor_students || {};
+      var meta = [
+        s.level || '',
+        l.topic || '',
+        relativeWhen(l.scheduled_at)
+      ].filter(Boolean).join(' · ');
+      return '<div class="upcoming-row" data-pick-student="' + l.student_id + '">'
+        + '<div class="uw-when">'
+        +   '<div class="uw-dow">' + escapeHtmlSafe(dow) + '</div>'
+        +   '<div class="uw-day">' + day + '</div>'
+        +   '<div class="uw-mon">' + escapeHtmlSafe(mon) + '</div>'
+        + '</div>'
+        + '<div class="uw-info">'
+        +   '<div class="nm">' + escapeHtmlSafe(s.name || '—') + '</div>'
+        +   '<div class="meta">' + escapeHtmlSafe(meta) + '</div>'
+        + '</div>'
+        + '<div class="uw-time">' + escapeHtmlSafe(time) + '</div>'
+        + '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(box.querySelectorAll('[data-pick-student]'), function(el){
+      el.onclick = function(){
+        var id = el.getAttribute('data-pick-student');
+        state.selectedId = id;
+        var s = state.students.find(function(x){ return x.id === id; });
+        renderStudentList();
+        if (s) renderDetail(s);
+      };
+    });
+  }
+
+  function renderDetail(s) {
+    var html =
+      '<div class="profile-head">'
+      +   '<div class="avatar-lg">' + escapeHtmlSafe(initials(s.name)) + '</div>'
+      +   '<div class="who-info">'
+      +     '<h2>' + escapeHtmlSafe(s.name) + '</h2>'
+      +     '<div class="sub">'
+      +       (s.level ? '<span class="chip">' + escapeHtmlSafe(s.level) + '</span> ' : '')
+      +       (s.archived ? '<span class="chip archived">Archived</span> ' : '')
+      +       escapeHtmlSafe(s.email || s.preply_handle || '')
+      +     '</div>'
+      +   '</div>'
+      +   '<div class="head-actions">'
+      +     '<button class="btn soft" id="btn-edit-student">Edit profile</button>'
+      +   '</div>'
+      + '</div>'
+
+      + '<div class="section-title">Profile</div>'
+      + '<div class="field-grid">'
+      +   field('Name',         escapeHtmlSafe(s.name))
+      +   field('Level',        escapeHtmlSafe(s.level || '—'))
+      +   field('Email',        escapeHtmlSafe(s.email || '—'))
+      +   field('Preply handle',escapeHtmlSafe(s.preply_handle || '—'))
+      +   field('Goal',         escapeHtmlSafe(s.goal || '—'), true)
+      +   field('Notes',        escapeHtmlSafe(s.notes || '—').replace(/\n/g, '<br>'), true)
+      + '</div>'
+
+      + '<div class="profile-actions">'
+      +   '<div class="left">'
+      +     (s.archived
+          ? '<button class="btn soft" id="btn-unarchive">Restore</button>'
+          : '<button class="btn ghost" id="btn-archive">Archive</button>')
+      +   '</div>'
+      +   '<div class="right"></div>'
+      + '</div>'
+
+      + skillsSectionHtml(s)
+
+      + '<div class="lessons-section">'
+      +   '<div class="lessons-head">'
+      +     '<h3>Lessons</h3>'
+      +     '<button class="btn primary" id="btn-new-lesson">+ New lesson</button>'
+      +   '</div>'
+      +   '<div id="lessons-body"><div class="empty-mini">Loading lessons…</div></div>'
+      + '</div>';
+
+    document.getElementById('detail-panel').innerHTML = html;
+    document.getElementById('btn-edit-student').onclick = function(){ openEditStudentModal(s); };
+    var arch = document.getElementById('btn-archive');
+    if (arch) arch.onclick = function(){ archiveStudent(s.id); };
+    var unarch = document.getElementById('btn-unarchive');
+    if (unarch) unarch.onclick = function(){ unarchiveStudent(s.id); };
+    document.getElementById('btn-new-lesson').onclick = openNewLessonModal;
+
+    setupSkillSliders(s);
+    loadLessons(s.id);
+  }
+
+  function field(label, value, full) {
+    return '<div class="field' + (full ? ' full' : '') + '">'
+      + '<label>' + escapeHtmlSafe(label) + '</label>'
+      + '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fafbfd;font-size:14px;color:var(--text);min-height:40px;line-height:1.5">' + (value || '—') + '</div>'
+      + '</div>';
+  }
+
+  // ── Skills ─────────────────────────────────────────────────
+  var SKILL_AXES = [
+    { key: 'skill_speaking',  label: 'Speaking'  },
+    { key: 'skill_listening', label: 'Listening' },
+    { key: 'skill_reading',   label: 'Reading'   },
+    { key: 'skill_writing',   label: 'Writing'   },
+    { key: 'skill_grammar',   label: 'Grammar'   }
+  ];
+  function skillTier(v) {
+    v = v|0;
+    if (v < 30) return 'weak';
+    if (v < 60) return 'developing';
+    if (v < 80) return 'solid';
+    return 'strong';
+  }
+  function avgSkill(s) {
+    var sum = 0;
+    SKILL_AXES.forEach(function(a){ sum += (s[a.key] || 0); });
+    return Math.round(sum / SKILL_AXES.length);
+  }
+  function skillsSectionHtml(s) {
+    var rows = SKILL_AXES.map(function(a){
+      var v = s[a.key] || 0;
+      var tier = skillTier(v);
+      return '<div class="skill-row tier-' + tier + '" data-skill="' + a.key + '">'
+        + '<div class="skill-label">' + escapeHtmlSafe(a.label) + '</div>'
+        + '<div class="skill-value" data-skill-value>' + v + '</div>'
+        + '<input type="range" min="0" max="100" value="' + v + '" data-skill-input aria-label="' + escapeHtmlSafe(a.label) + ' score">'
+        + '<div class="skill-status" data-skill-status></div>'
+        + '</div>';
+    }).join('');
+    var avg = avgSkill(s);
+    return '<div class="skills-section">'
+      + '<div class="section-title">Skill progress</div>'
+      + '<div class="skills-grid">' + rows + '</div>'
+      + '<div class="skill-overall">'
+      +   '<span class="ov-label">Overall</span>'
+      +   '<span class="ov-value" id="skill-overall-value">' + avg + '</span>'
+      +   '<span class="ov-sub">average across 5 axes (0–100)</span>'
+      + '</div>'
+      + '</div>';
+  }
+  function setupSkillSliders(s) {
+    var rows = document.querySelectorAll('.skill-row[data-skill]');
+    rows.forEach(function(row){
+      var key      = row.getAttribute('data-skill');
+      var slider   = row.querySelector('[data-skill-input]');
+      var valueEl  = row.querySelector('[data-skill-value]');
+      var statusEl = row.querySelector('[data-skill-status]');
+      if (!slider) return;
+      var debounce;
+      slider.addEventListener('input', function(){
+        var v = parseInt(slider.value, 10) || 0;
+        valueEl.textContent = v;
+        row.className = 'skill-row tier-' + skillTier(v);
+        recomputeOverall(s);
+        statusEl.textContent = '';
+        statusEl.className = 'skill-status';
+        clearTimeout(debounce);
+        debounce = setTimeout(function(){ saveSkill(s.id, key, v, statusEl); }, 350);
+      });
+    });
+  }
+  function recomputeOverall(s) {
+    // Pull current slider values directly from the DOM so we don't have to
+    // wait for state.students to update — keeps the average snappy.
+    var sum = 0, count = 0;
+    SKILL_AXES.forEach(function(a){
+      var row = document.querySelector('.skill-row[data-skill="' + a.key + '"] [data-skill-input]');
+      if (!row) return;
+      sum += parseInt(row.value, 10) || 0; count++;
+    });
+    var ov = document.getElementById('skill-overall-value');
+    if (ov && count) ov.textContent = Math.round(sum / count);
+  }
+  async function saveSkill(studentId, key, value, statusEl) {
+    statusEl.textContent = 'Saving…';
+    statusEl.className = 'skill-status saving';
+    var sb = getSupa();
+    var patch = {};
+    patch[key] = value;
+    try {
+      var { error } = await sb.from('tutor_students').update(patch).eq('id', studentId);
+      if (error) throw error;
+      // Mirror to local state so the next renderDetail / renderStudentList shows the new value.
+      var s = state.students.find(function(x){ return x.id === studentId; });
+      if (s) s[key] = value;
+      statusEl.textContent = 'Saved ✓';
+      statusEl.className = 'skill-status saved';
+      setTimeout(function(){
+        if (statusEl.classList.contains('saved')) {
+          statusEl.textContent = '';
+          statusEl.className = 'skill-status';
+        }
+      }, 1400);
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = 'Failed';
+      statusEl.className = 'skill-status failed';
+      toast('Skill save failed: ' + (e.message || e), 'err');
+    }
+  }
+
+  // ── Modal ──────────────────────────────────────────────────
+  function openNewStudentModal() {
+    state.editingId = null;
+    document.getElementById('student-modal-title').textContent = 'New student';
+    setModalValues({ name:'', email:'', preply_handle:'', level:'', goal:'', notes:'' });
+    showModal();
+  }
+  function openEditStudentModal(s) {
+    state.editingId = s.id;
+    document.getElementById('student-modal-title').textContent = 'Edit student';
+    setModalValues(s);
+    showModal();
+  }
+  function setModalValues(s) {
+    document.getElementById('m-name').value   = s.name || '';
+    document.getElementById('m-email').value  = s.email || '';
+    document.getElementById('m-preply').value = s.preply_handle || '';
+    document.getElementById('m-level').value  = s.level || '';
+    document.getElementById('m-goal').value   = s.goal || '';
+    document.getElementById('m-notes').value  = s.notes || '';
+  }
+  function showModal() {
+    document.getElementById('student-modal').style.display = '';
+    setTimeout(function(){ document.getElementById('m-name').focus(); }, 50);
+  }
+  function closeStudentModal() {
+    document.getElementById('student-modal').style.display = 'none';
+    state.editingId = null;
+  }
+  async function saveStudentFromModal() {
+    var name = document.getElementById('m-name').value.trim();
+    if (!name) { toast('Name is required', 'err'); return; }
+    var payload = {
+      name: name,
+      email: document.getElementById('m-email').value.trim() || null,
+      preply_handle: document.getElementById('m-preply').value.trim() || null,
+      level: document.getElementById('m-level').value || null,
+      goal: document.getElementById('m-goal').value.trim() || null,
+      notes: document.getElementById('m-notes').value.trim() || null
+    };
+    var saveBtn = document.getElementById('student-modal-save');
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    try {
+      var saved;
+      if (state.editingId) {
+        saved = await updateStudent(state.editingId, payload);
+        toast('Saved', 'ok');
+      } else {
+        saved = await insertStudent(payload);
+        state.selectedId = saved.id;
+        toast('Student added', 'ok');
+      }
+      closeStudentModal();
+      await loadStudents();
+    } catch (e) {
+      console.error(e);
+      toast('Save failed: ' + (e.message || e), 'err');
+    } finally {
+      saveBtn.disabled = false; saveBtn.textContent = 'Save';
+    }
+  }
+
+  async function archiveStudent(id) {
+    if (!confirm('Archive this student? They\'ll be hidden from the list (you can restore them later).')) return;
+    try {
+      await setArchived(id, true);
+      toast('Archived', 'ok');
+      await loadStudents();
+    } catch (e) {
+      toast('Failed: ' + (e.message || e), 'err');
+    }
+  }
+  async function unarchiveStudent(id) {
+    try {
+      await setArchived(id, false);
+      toast('Restored', 'ok');
+      await loadStudents();
+    } catch (e) {
+      toast('Failed: ' + (e.message || e), 'err');
+    }
+  }
+
+  // ── Lessons ────────────────────────────────────────────────
+  // Convert a timestamptz string to a value usable by <input type="datetime-local">,
+  // expressed in the browser's local timezone (the input has no tz awareness).
+  function toLocalInputValue(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    var pad = function(n){ return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+      + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  // datetime-local has no timezone — interpret it in the user's local zone
+  // and serialize as ISO so Postgres stores it as a real instant.
+  function fromLocalInputValue(v) {
+    if (!v) return null;
+    var d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  function formatWhen(ts) {
+    if (!ts) return 'No date set';
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return ts;
+    return d.toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
+  }
+  function relativeWhen(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    var diffMs = d.getTime() - Date.now();
+    var abs = Math.abs(diffMs);
+    var mins = Math.round(abs / 60000);
+    var hours = Math.round(abs / 3600000);
+    var days = Math.round(abs / 86400000);
+    var future = diffMs > 0;
+    var s;
+    if (mins < 60) s = mins + 'm';
+    else if (hours < 36) s = hours + 'h';
+    else s = days + 'd';
+    return future ? ('in ' + s) : (s + ' ago');
+  }
+
+  async function loadLessons(studentId) {
+    state.lessonsForId = studentId;
+    var sb = getSupa();
+    var { data, error } = await sb
+      .from('tutor_lessons')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('scheduled_at', { ascending: false, nullsFirst: false });
+
+    // Bail out if the user switched students mid-flight.
+    if (state.lessonsForId !== studentId) return;
+
+    if (error) {
+      console.error(error);
+      var box = document.getElementById('lessons-body');
+      if (box) box.innerHTML = '<div class="empty-mini" style="color:var(--danger)">Failed to load lessons.<br>' + escapeHtmlSafe(error.message) + '</div>';
+      return;
+    }
+    state.lessons = data || [];
+    renderLessons();
+  }
+
+  function renderLessons() {
+    var box = document.getElementById('lessons-body');
+    if (!box) return;
+    if (!state.lessons.length) {
+      box.innerHTML = '<div class="empty-mini">No lessons yet. Click <b>+ New lesson</b> to schedule the first one.</div>';
+      return;
+    }
+
+    var now = Date.now();
+    var upcoming = [], past = [];
+    state.lessons.forEach(function(l){
+      var t = l.scheduled_at ? new Date(l.scheduled_at).getTime() : null;
+      var isUpcoming = (l.status === 'scheduled') && (t === null || t >= now - 30*60*1000);
+      (isUpcoming ? upcoming : past).push(l);
+    });
+    // upcoming oldest-first so the next class is at top
+    upcoming.sort(function(a,b){
+      var ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : Infinity;
+      var tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : Infinity;
+      return ta - tb;
+    });
+
+    var html = '';
+    html += '<div class="lesson-group-title">Upcoming &amp; in-progress (' + upcoming.length + ')</div>';
+    html += upcoming.length
+      ? upcoming.map(lessonCardHtml).join('')
+      : '<div class="lesson-empty">No upcoming lessons.</div>';
+    html += '<div class="lesson-group-title">Past (' + past.length + ')</div>';
+    html += past.length
+      ? past.map(function(l){ return lessonCardHtml(l, true); }).join('')
+      : '<div class="lesson-empty">No past lessons recorded.</div>';
+
+    box.innerHTML = html;
+
+    // Wire actions on each card.
+    Array.prototype.forEach.call(box.querySelectorAll('[data-edit-lesson]'), function(el){
+      el.onclick = function(){
+        var id = el.getAttribute('data-edit-lesson');
+        var l = state.lessons.find(function(x){ return x.id === id; });
+        if (l) openEditLessonModal(l);
+      };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-complete-lesson]'), function(el){
+      el.onclick = function(){
+        setLessonStatus(el.getAttribute('data-complete-lesson'), 'completed');
+      };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-cancel-lesson]'), function(el){
+      el.onclick = function(){
+        setLessonStatus(el.getAttribute('data-cancel-lesson'), 'canceled');
+      };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-reopen-lesson]'), function(el){
+      el.onclick = function(){
+        setLessonStatus(el.getAttribute('data-reopen-lesson'), 'scheduled');
+      };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-gen-feedback], [data-regen-feedback]'), function(el){
+      el.onclick = function(){
+        var id = el.getAttribute('data-gen-feedback') || el.getAttribute('data-regen-feedback');
+        var l = state.lessons.find(function(x){ return x.id === id; });
+        if (l) generateLessonFeedback(l, el);
+      };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-clear-feedback]'), function(el){
+      el.onclick = function(){
+        clearLessonFeedback(el.getAttribute('data-clear-feedback'));
+      };
+    });
+  }
+
+  function lessonCardHtml(l, isPast) {
+    var statusCls = 'chip ' + (l.status || 'scheduled');
+    var actions = [];
+    if (l.status === 'scheduled') {
+      actions.push('<button class="btn soft" data-complete-lesson="' + l.id + '">Mark completed</button>');
+      actions.push('<button class="btn ghost" data-cancel-lesson="' + l.id + '">Cancel</button>');
+    } else {
+      actions.push('<button class="btn ghost" data-reopen-lesson="' + l.id + '">Reopen</button>');
+    }
+    actions.push('<button class="btn soft" data-edit-lesson="' + l.id + '">Edit</button>');
+
+    var notes = (l.lesson_notes || '').trim();
+    var nextPlan = (l.next_plan || '').trim();
+    var topic = (l.topic || '').trim();
+    var hasNotes = !!notes;
+
+    return '<div class="lesson-card ' + (isPast ? 'past ' : '') + (l.status === 'canceled' ? 'canceled' : '') + '">'
+      + '<div class="row1">'
+      +   '<div class="when">' + escapeHtmlSafe(formatWhen(l.scheduled_at))
+      +     '<span class="relative">' + escapeHtmlSafe(relativeWhen(l.scheduled_at)) + '</span>'
+      +   '</div>'
+      +   '<span class="' + statusCls + '">' + escapeHtmlSafe(l.status || 'scheduled') + '</span>'
+      +   (l.duration_minutes ? '<span style="font-size:12px;color:var(--muted)">· ' + l.duration_minutes + ' min</span>' : '')
+      + '</div>'
+      + (topic
+          ? '<div class="topic"><b>Topic:</b> ' + escapeHtmlSafe(topic) + '</div>'
+          : '')
+      + (notes
+          ? '<div class="label">Lesson notes</div><div class="body">' + escapeHtmlSafe(notes) + '</div>'
+          : '')
+      + (nextPlan
+          ? '<div class="label">Next plan</div><div class="body">' + escapeHtmlSafe(nextPlan) + '</div>'
+          : '')
+      + aiFeedbackBlockHtml(l, hasNotes)
+      + '<div class="actions">' + actions.join('') + '</div>'
+      + '</div>';
+  }
+
+  function aiFeedbackBlockHtml(l, hasNotes) {
+    if (l.ai_feedback) {
+      var when = l.ai_feedback_generated_at
+        ? 'Generated ' + escapeHtmlSafe(formatWhen(l.ai_feedback_generated_at))
+        : '';
+      return '<div class="ai-block" id="ai-block-' + l.id + '">'
+        + '<div class="ai-head">'
+        +   '<div class="ai-title">🤖 AI feedback</div>'
+        +   '<div class="ai-meta">' + when + '</div>'
+        + '</div>'
+        + '<div class="ai-body">' + renderFeedbackMarkdown(l.ai_feedback) + '</div>'
+        + '<div class="ai-actions">'
+        +   '<button class="btn soft" data-regen-feedback="' + l.id + '">Regenerate</button>'
+        +   '<button class="btn ghost" data-clear-feedback="' + l.id + '">Clear</button>'
+        + '</div>'
+        + '</div>';
+    }
+    if (!hasNotes) {
+      return '<div class="ai-block" style="border-style:dashed">'
+        + '<div class="ai-body" style="padding:12px 16px;font-size:12.5px;color:var(--muted)">'
+        +   '🤖 Add lesson notes above, then you can generate AI feedback for this lesson.'
+        + '</div></div>';
+    }
+    return '<div class="ai-block">'
+      + '<div class="ai-actions" style="padding:12px 14px">'
+      +   '<button class="btn primary" data-gen-feedback="' + l.id + '">🤖 Generate AI feedback</button>'
+      +   '<span style="font-size:11px;color:var(--muted);align-self:center">Uses Claude · ~5–10 sec</span>'
+      + '</div></div>';
+  }
+
+  // Lightweight markdown for AI output: only **bold** and newlines. Everything
+  // else is HTML-escaped first so model output can't inject markup.
+  function renderFeedbackMarkdown(s) {
+    var safe = escapeHtmlSafe(String(s || ''));
+    return safe.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+  }
+
+  // Lesson modal
+  function openNewLessonModal() {
+    if (!state.selectedId) { toast('Pick a student first', 'err'); return; }
+    state.editingLessonId = null;
+    document.getElementById('lesson-modal-title').textContent = 'New lesson';
+    document.getElementById('lesson-modal-delete').style.display = 'none';
+    // Default: tomorrow at the same time, 60 min, scheduled.
+    var d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setMinutes(0); d.setSeconds(0);
+    setLessonModalValues({
+      scheduled_at: d.toISOString(),
+      duration_minutes: 60,
+      status: 'scheduled',
+      topic: '',
+      lesson_notes: '',
+      next_plan: ''
+    });
+    showLessonModal();
+  }
+  function openEditLessonModal(l) {
+    state.editingLessonId = l.id;
+    document.getElementById('lesson-modal-title').textContent = 'Edit lesson';
+    document.getElementById('lesson-modal-delete').style.display = '';
+    setLessonModalValues(l);
+    showLessonModal();
+  }
+  function setLessonModalValues(l) {
+    document.getElementById('l-when').value     = toLocalInputValue(l.scheduled_at);
+    document.getElementById('l-duration').value = l.duration_minutes || 60;
+    document.getElementById('l-status').value   = l.status || 'scheduled';
+    document.getElementById('l-topic').value    = l.topic || '';
+    document.getElementById('l-notes').value    = l.lesson_notes || '';
+    document.getElementById('l-next').value     = l.next_plan || '';
+  }
+  function showLessonModal() {
+    document.getElementById('lesson-modal').style.display = '';
+    setTimeout(function(){ document.getElementById('l-when').focus(); }, 50);
+  }
+  function closeLessonModal() {
+    document.getElementById('lesson-modal').style.display = 'none';
+    state.editingLessonId = null;
+  }
+  async function saveLessonFromModal() {
+    if (!state.selectedId) return;
+    var payload = {
+      student_id: state.selectedId,
+      scheduled_at: fromLocalInputValue(document.getElementById('l-when').value),
+      duration_minutes: parseInt(document.getElementById('l-duration').value, 10) || 60,
+      status: document.getElementById('l-status').value || 'scheduled',
+      topic: document.getElementById('l-topic').value.trim() || null,
+      lesson_notes: document.getElementById('l-notes').value.trim() || null,
+      next_plan: document.getElementById('l-next').value.trim() || null
+    };
+    var sb = getSupa();
+    var btn = document.getElementById('lesson-modal-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      if (state.editingLessonId) {
+        var { error: upErr } = await sb.from('tutor_lessons').update(payload).eq('id', state.editingLessonId);
+        if (upErr) throw upErr;
+        toast('Lesson saved', 'ok');
+      } else {
+        payload.owner_id = state.me ? state.me.id : null;
+        var { error: insErr } = await sb.from('tutor_lessons').insert(payload);
+        if (insErr) throw insErr;
+        toast('Lesson added', 'ok');
+      }
+      closeLessonModal();
+      await loadLessons(state.selectedId);
+    } catch (e) {
+      console.error(e);
+      toast('Save failed: ' + (e.message || e), 'err');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save';
+    }
+  }
+  async function deleteLessonFromModal() {
+    if (!state.editingLessonId) return;
+    if (!confirm('Delete this lesson? This cannot be undone.')) return;
+    var sb = getSupa();
+    try {
+      var { error } = await sb.from('tutor_lessons').delete().eq('id', state.editingLessonId);
+      if (error) throw error;
+      toast('Lesson deleted', 'ok');
+      closeLessonModal();
+      await loadLessons(state.selectedId);
+    } catch (e) {
+      toast('Delete failed: ' + (e.message || e), 'err');
+    }
+  }
+  async function setLessonStatus(id, status) {
+    var sb = getSupa();
+    try {
+      var { error } = await sb.from('tutor_lessons').update({ status: status }).eq('id', id);
+      if (error) throw error;
+      toast(status.charAt(0).toUpperCase() + status.slice(1), 'ok');
+      await loadLessons(state.selectedId);
+    } catch (e) {
+      toast('Failed: ' + (e.message || e), 'err');
+    }
+  }
+
+  // ── AI feedback ────────────────────────────────────────────
+  function buildFeedbackPrompt(student, lesson) {
+    var parts = [];
+    parts.push('You are an experienced English tutor writing concise post-lesson feedback for the tutor\'s own records (not for the student to read).');
+    parts.push('');
+    parts.push('STUDENT PROFILE');
+    parts.push('- Name: ' + (student.name || 'Student'));
+    if (student.level) parts.push('- CEFR level: ' + student.level);
+    if (student.goal)  parts.push('- Learning goal: ' + student.goal);
+    if (student.notes) parts.push('- Background: ' + student.notes);
+    parts.push('');
+    parts.push('LESSON');
+    if (lesson.scheduled_at) parts.push('- Date: ' + new Date(lesson.scheduled_at).toString());
+    if (lesson.topic)        parts.push('- Topic: ' + lesson.topic);
+    parts.push('- Tutor\'s in-class notes:');
+    parts.push((lesson.lesson_notes || '(none)').trim());
+    if (lesson.next_plan) {
+      parts.push('- Tutor\'s tentative next-lesson plan: ' + lesson.next_plan);
+    }
+    parts.push('');
+    parts.push('Write structured feedback in clear English with these four short sections, using **bold** markers around each heading exactly as shown:');
+    parts.push('');
+    parts.push('**Strengths**');
+    parts.push('2–3 specific things the student did well, grounded in the notes above. Use the student\'s first name.');
+    parts.push('');
+    parts.push('**Areas to improve**');
+    parts.push('2–3 concrete weaknesses or recurring mistakes. Be candid.');
+    parts.push('');
+    parts.push('**Focus for next lesson**');
+    parts.push('One clear priority + 1–2 supporting drills/topics matched to the student\'s level and goal.');
+    parts.push('');
+    parts.push('**Quick exercise idea**');
+    parts.push('A single specific homework or in-class drill the tutor can use next time (1–2 sentences).');
+    parts.push('');
+    parts.push('Keep total length under 250 words. Plain text only — no extra headings, no bullet symbols, just short paragraphs under each bold heading. Do not pad with generic praise.');
+    return parts.join('\n');
+  }
+
+  async function generateLessonFeedback(lesson, btnEl) {
+    var student = state.students.find(function(x){ return x.id === state.selectedId; });
+    if (!student) { toast('Pick a student first', 'err'); return; }
+    if (!(lesson.lesson_notes || '').trim()) {
+      toast('Add lesson notes first — AI needs context', 'err');
+      return;
+    }
+    if (typeof callClaude !== 'function') {
+      toast('AI proxy unavailable. Refresh the page.', 'err');
+      return;
+    }
+
+    // Inline loading state so the user sees something happen immediately.
+    var block = document.getElementById('ai-block-' + lesson.id) || (btnEl && btnEl.closest('.ai-block'));
+    if (block) {
+      block.className = 'ai-block loading';
+      block.innerHTML = '<div class="ai-head"><div class="ai-title"><span class="ai-pulse"></span>&nbsp;Generating…</div><div class="ai-meta">Talking to Claude</div></div>'
+        + '<div class="ai-body">Drafting feedback based on the lesson notes…</div>';
+    }
+
+    try {
+      var prompt = buildFeedbackPrompt(student, lesson);
+      var res = await callClaude({
+        feature: 'tutor-feedback',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      var text = '';
+      if (res && res.content && res.content[0] && res.content[0].text) text = res.content[0].text;
+      else if (res && res.text) text = res.text;
+      text = String(text || '').trim();
+      if (!text) throw new Error('Empty response from AI');
+
+      var sb = getSupa();
+      var nowIso = new Date().toISOString();
+      var { error } = await sb.from('tutor_lessons')
+        .update({ ai_feedback: text, ai_feedback_generated_at: nowIso })
+        .eq('id', lesson.id);
+      if (error) throw error;
+
+      toast('Feedback ready', 'ok');
+      await loadLessons(state.selectedId);
+    } catch (e) {
+      console.error('AI feedback error', e);
+      toast('AI failed: ' + (e.message || e), 'err');
+      // Restore the card so the user can retry.
+      await loadLessons(state.selectedId);
+    }
+  }
+
+  async function clearLessonFeedback(id) {
+    if (!confirm('Remove the AI feedback for this lesson?')) return;
+    var sb = getSupa();
+    try {
+      var { error } = await sb.from('tutor_lessons')
+        .update({ ai_feedback: null, ai_feedback_generated_at: null })
+        .eq('id', id);
+      if (error) throw error;
+      toast('Cleared', 'ok');
+      await loadLessons(state.selectedId);
+    } catch (e) {
+      toast('Failed: ' + (e.message || e), 'err');
+    }
+  }
+
+  // Expose for inline handlers / future phases.
+  window.tutorApp = {
+    state: state,
+    reload: loadStudents,
+    reloadLessons: function(){ return loadLessons(state.selectedId); },
+    toast: toast
+  };
+})();
+</script>
+</body>
+</html>

@@ -1459,6 +1459,7 @@ async function checkSession() {
       supaUser = null;
       _savedWordsSet = null;
       window._isAdmin = false;
+      window._isTutor = false;
       updateAuthUI();
       updateCommentForm();
       window.dispatchEvent(new Event('kh-auth-signed-out'));
@@ -1583,6 +1584,12 @@ function updateAuthUI() {
   var isAdmin = supaUser && ADMIN_EMAILS.includes(supaUser.email);
   window._isAdmin = isAdmin; // 다른 파일에서 참조용
 
+  // Tutor dashboard allowlist — admin + Alicia (Preply tutor).
+  // Mirror this list in supabase/migrations/20260428_tutor_dashboard.sql is_tutor_user().
+  var TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com'];
+  var isTutor = supaUser && TUTOR_EMAILS.includes((supaUser.email || '').toLowerCase());
+  window._isTutor = isTutor;
+
   if (supaUser) {
     // 로그인 상태
     if (signinBtn) {
@@ -1607,6 +1614,7 @@ function updateAuthUI() {
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
         + '<a href="korehan-notes.html" class="kh-user-dropdown-link">' + khIcon('bookmark', 'My Notes', 'kh-ui-icon-sm') + '</a>'
         + (isAdmin ? '<a href="korehan-x9f4k2m7.html" class="kh-user-dropdown-link">' + khIcon('settings', 'Admin CMS', 'kh-ui-icon-sm') + '</a>' : '')
+        + (isTutor ? '<a href="korehan-tutor-7v3ca.html" class="kh-user-dropdown-link">' + khIcon('graduation-cap', 'Tutor Dashboard', 'kh-ui-icon-sm') + '</a>' : '')
         + '<button type="button" class="kh-user-dropdown-link kh-user-dropdown-btn" onclick="signOut();closeTopbarUserMenu()">' + khIcon('log-out', 'Sign Out', 'kh-ui-icon-sm') + '</button>';
       (function loadDropdownStats(){
         var sb = getSupa && getSupa();
