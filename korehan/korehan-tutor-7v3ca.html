@@ -417,6 +417,40 @@ body{padding-bottom:0 !important}
   display:flex;align-items:center;justify-content:center
 }
 
+/* Multi-image thumbs strip */
+.import-thumbs{
+  display:flex;flex-wrap:wrap;gap:8px;
+  margin-top:12px;padding:10px;background:#fafbfd;
+  border:1px solid var(--border);border-radius:12px;align-content:flex-start
+}
+.import-thumbs .it-summary{
+  width:100%;font-size:12px;color:var(--muted);font-weight:600;
+  display:flex;justify-content:space-between;align-items:center;margin-bottom:2px
+}
+.import-thumbs .it-summary button{
+  font-size:11px;color:var(--danger);background:transparent;
+  border:none;padding:0;cursor:pointer;font-weight:700
+}
+.import-thumb{
+  position:relative;width:64px;height:64px;border-radius:8px;
+  overflow:hidden;background:#000;flex-shrink:0;
+  border:1px solid var(--border)
+}
+.import-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.import-thumb .it-remove{
+  position:absolute;top:2px;right:2px;
+  width:20px;height:20px;border-radius:50%;
+  background:rgba(15,23,42,.85);color:#fff;
+  border:none;cursor:pointer;font-size:14px;line-height:1;
+  display:flex;align-items:center;justify-content:center;padding:0
+}
+.import-thumb .it-num{
+  position:absolute;bottom:2px;left:3px;
+  font-size:9px;font-weight:800;color:#fff;
+  background:rgba(15,23,42,.7);padding:1px 5px;border-radius:6px;
+  font-variant-numeric:tabular-nums
+}
+
 .import-results{margin-top:14px}
 .import-results .ir-head{
   display:flex;align-items:center;justify-content:space-between;
@@ -765,25 +799,21 @@ body{padding-bottom:0 !important}
         <button type="button" data-import-type="lessons" role="tab">Lessons · 수업</button>
       </div>
       <p style="margin:0 0 12px;font-size:12px;color:var(--muted);line-height:1.6">
-        Paste (Ctrl/⌘+V) or upload a screenshot from your Preply dashboard.
-        AI will extract <span data-import-hint>students</span> for you to review before saving.
+        Paste (Ctrl/⌘+V), drop, or upload one or more screenshots from your Preply dashboard.
+        Multiple screenshots of the same student (different tabs) will be merged.
+        AI extracts <span data-import-hint>students</span> for you to review before saving.
       </p>
 
       <label class="drop-zone" id="drop-zone">
-        <input type="file" id="import-file" accept="image/*">
+        <input type="file" id="import-file" accept="image/*" multiple>
         <div class="dz-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </div>
-        <div class="dz-title">Drop image, click to upload, or paste</div>
-        <div class="dz-sub">PNG / JPG · max ~5 MB after auto-resize</div>
+        <div class="dz-title">Drop images, click to upload, or paste</div>
+        <div class="dz-sub">PNG / JPG · multiple OK · auto-resized to ≤1600 px</div>
       </label>
 
-      <div id="import-preview" style="display:none">
-        <div class="import-preview-img">
-          <img id="import-preview-img-el" alt="Uploaded screenshot">
-          <button type="button" class="ip-clear" id="import-clear" aria-label="Clear image">×</button>
-        </div>
-      </div>
+      <div id="import-thumbs" class="import-thumbs" style="display:none"></div>
 
       <div id="import-status" style="display:none"></div>
       <div id="import-results" style="display:none"></div>
@@ -1988,12 +2018,15 @@ body{padding-bottom:0 !important}
   // Claude vision extracts the visible students or lessons into a
   // preview list of checkboxes that the tutor reviews before saving.
   // We never store the image — only the parsed text the tutor confirms.
+  // Up to ~12 images per request — well below Anthropic's hard limit, but
+  // enough to let a tutor paste profile + lessons + interests for a couple
+  // of students at once without overshooting the per-call cost.
+  var IMPORT_MAX_IMAGES = 12;
+
   var importState = {
     type: 'students',     // 'students' | 'lessons'
-    imageDataUrl: null,   // resized data: URL for preview + Claude
-    imageMime: null,      // 'image/jpeg' or 'image/png'
-    imageBase64: null,    // raw base64 (data URL stripped) for the API
-    extracted: [],        // raw items from AI, each with a `.include` flag
+    images: [],           // [{dataUrl, mime, base64}]  — ordered as added
+    extracted: [],        // raw items from AI, each with a `._include` flag
     busy: false
   };
 
@@ -2025,23 +2058,20 @@ body{padding-bottom:0 !important}
 
     var dz = document.getElementById('drop-zone');
     var fi = document.getElementById('import-file');
-    if (fi) fi.onchange = function(e){
-      var f = e.target.files && e.target.files[0];
-      if (f) handleImportFile(f);
+    if (fi) fi.onchange = async function(e){
+      var files = Array.prototype.slice.call(e.target.files || []);
+      for (var i = 0; i < files.length; i++) await handleImportFile(files[i]);
       e.target.value = '';
     };
     if (dz) {
       dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('dragover'); });
       dz.addEventListener('dragleave', function(){ dz.classList.remove('dragover'); });
-      dz.addEventListener('drop', function(e){
+      dz.addEventListener('drop', async function(e){
         e.preventDefault(); dz.classList.remove('dragover');
-        var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-        if (f) handleImportFile(f);
+        var files = Array.prototype.slice.call((e.dataTransfer && e.dataTransfer.files) || []);
+        for (var i = 0; i < files.length; i++) await handleImportFile(files[i]);
       });
     }
-
-    var clearBtn = document.getElementById('import-clear');
-    if (clearBtn) clearBtn.onclick = function(e){ e.stopPropagation(); clearImportImage(); };
 
     var extractBtn = document.getElementById('import-extract');
     if (extractBtn) extractBtn.onclick = runExtraction;
@@ -2049,16 +2079,22 @@ body{padding-bottom:0 !important}
     var saveBtn = document.getElementById('import-save');
     if (saveBtn) saveBtn.onclick = saveImportSelected;
 
-    // Paste handler: only active while the import modal is open.
-    document.addEventListener('paste', function(e){
+    // Paste handler — accumulates: each ⌘V/Ctrl+V adds the clipboard image
+    // to the current set, supporting multiple consecutive pastes.
+    document.addEventListener('paste', async function(e){
       var modal = document.getElementById('import-modal');
       if (!modal || modal.style.display === 'none') return;
       var items = (e.clipboardData || {}).items || [];
+      var files = [];
       for (var i = 0; i < items.length; i++) {
         if (items[i].type && items[i].type.indexOf('image/') === 0) {
           var f = items[i].getAsFile();
-          if (f) { e.preventDefault(); handleImportFile(f); break; }
+          if (f) files.push(f);
         }
+      }
+      if (files.length) {
+        e.preventDefault();
+        for (var j = 0; j < files.length; j++) await handleImportFile(files[j]);
       }
     });
   }
@@ -2069,19 +2105,55 @@ body{padding-bottom:0 !important}
   function closeImportModal() {
     if (importState.busy) return;
     document.getElementById('import-modal').style.display = 'none';
-    clearImportImage();
+    clearImportImages();
     clearImportResults();
   }
 
-  function clearImportImage() {
-    importState.imageDataUrl = null;
-    importState.imageMime = null;
-    importState.imageBase64 = null;
-    var prev = document.getElementById('import-preview');
-    var img  = document.getElementById('import-preview-img-el');
-    if (prev) prev.style.display = 'none';
-    if (img)  img.src = '';
-    document.getElementById('import-extract').disabled = true;
+  function clearImportImages() {
+    importState.images = [];
+    renderImportThumbs();
+  }
+
+  function renderImportThumbs() {
+    var box = document.getElementById('import-thumbs');
+    var extractBtn = document.getElementById('import-extract');
+    if (!box) return;
+    if (!importState.images.length) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      if (extractBtn) extractBtn.disabled = true;
+      return;
+    }
+    box.style.display = 'flex';
+    var thumbs = importState.images.map(function(img, i){
+      return '<div class="import-thumb">'
+        + '<img src="' + img.dataUrl + '" alt="screenshot ' + (i+1) + '">'
+        + '<span class="it-num">' + (i+1) + '</span>'
+        + '<button type="button" class="it-remove" data-thumb-remove="' + i + '" aria-label="Remove">×</button>'
+        + '</div>';
+    }).join('');
+    box.innerHTML =
+      '<div class="it-summary">'
+      +   '<span>' + importState.images.length + ' image' + (importState.images.length === 1 ? '' : 's') + ' ready</span>'
+      +   '<button type="button" id="it-clear-all">Clear all</button>'
+      + '</div>'
+      + thumbs;
+
+    Array.prototype.forEach.call(box.querySelectorAll('[data-thumb-remove]'), function(b){
+      b.onclick = function(e){
+        e.stopPropagation();
+        var i = parseInt(b.getAttribute('data-thumb-remove'), 10);
+        importState.images.splice(i, 1);
+        renderImportThumbs();
+        clearImportResults();
+      };
+    });
+    var clr = document.getElementById('it-clear-all');
+    if (clr) clr.onclick = function(){
+      clearImportImages();
+      clearImportResults();
+    };
+    if (extractBtn) extractBtn.disabled = false;
   }
   function clearImportResults() {
     importState.extracted = [];
@@ -2121,20 +2193,22 @@ body{padding-bottom:0 !important}
   }
 
   async function handleImportFile(file) {
-    if (!file.type || file.type.indexOf('image/') !== 0) {
+    if (!file || !file.type || file.type.indexOf('image/') !== 0) {
       toast('Please select an image file', 'err');
+      return;
+    }
+    if (importState.images.length >= IMPORT_MAX_IMAGES) {
+      toast('Max ' + IMPORT_MAX_IMAGES + ' images per import', 'err');
       return;
     }
     try {
       var resized = await resizeImageFile(file, 1600);
-      importState.imageDataUrl = resized.dataUrl;
-      importState.imageMime    = resized.mime;
-      importState.imageBase64  = resized.dataUrl.split(',')[1] || '';
-      var prev = document.getElementById('import-preview');
-      var img  = document.getElementById('import-preview-img-el');
-      img.src = resized.dataUrl;
-      prev.style.display = '';
-      document.getElementById('import-extract').disabled = false;
+      importState.images.push({
+        dataUrl: resized.dataUrl,
+        mime:    resized.mime,
+        base64:  resized.dataUrl.split(',')[1] || ''
+      });
+      renderImportThumbs();
       clearImportResults();
     } catch (e) {
       toast('Could not load image: ' + (e.message || e), 'err');
@@ -2147,25 +2221,28 @@ body{padding-bottom:0 !important}
     var todayIso = now.toISOString().slice(0, 10);
 
     if (type === 'lessons') {
-      return 'You are a data-extraction assistant. The image is a screenshot of the Preply tutor dashboard "Lessons" tab for ONE student. The student name is shown at the top of the panel (e.g. "Theddy A.").\n\n'
-        + 'Extract every CONCRETELY DATED lesson visible. SKIP recurring patterns like "Every Monday 09:30 - 10:20 / Weekly lesson" — those are templates, not actual lessons. Only extract rows that show a specific date (e.g. "MAY 20 Wednesday 09:00 - 09:50").\n\n'
+      return 'You are a data-extraction assistant. You will receive ONE OR MORE screenshots of the Preply tutor dashboard "Lessons" panel. The student name is shown at the top of each panel (e.g. "Theddy A."). Multiple images may show the SAME student\'s lessons scrolled to different rows, OR they may show DIFFERENT students.\n\n'
+        + 'Extract every CONCRETELY DATED lesson visible across all images. SKIP recurring "Every Monday/Tuesday/etc. · Weekly lesson" templates — those are not actual lessons.\n\n'
         + 'Return ONLY valid JSON in this exact shape (no markdown, no commentary):\n'
         + '{"lessons":[{"student_name":"string","date":"YYYY-MM-DD","time":"HH:MM 24h","duration_minutes":number,"topic":"string or null","status":"scheduled|completed|canceled"}]}\n\n'
         + 'Rules:\n'
-        + '- student_name = exact name shown at the top of the profile panel. Preserve format like "Theddy A." (don\'t expand initials).\n'
+        + '- student_name = the name at the top of whichever panel that lesson belongs to. Preserve format like "Theddy A." — do NOT expand initials.\n'
+        + '- DEDUPLICATE: if the same (student_name + date + time) appears in more than one image (the tutor scrolled), include it only ONCE.\n'
         + '- For "MAY 20 Wednesday" (no year shown): assume year ' + thisYear + '. If that date is already > 60 days in the past relative to today (' + todayIso + '), use ' + (thisYear + 1) + ' instead.\n'
         + '- Use 24h time. From a range like "09:00 - 09:50": time="09:00", duration_minutes=50.\n'
-        + '- status: if the row chip says "Scheduled" use "scheduled"; "Completed" → "completed"; "Cancelled"/"Canceled" → "canceled". Default "scheduled".\n'
-        + '- topic: only fill if the row actually shows a topic/title; otherwise null.\n'
-        + '- Do NOT invent lessons. SKIP recurring "Every Monday/Tuesday/etc. · Weekly lesson" rows entirely.\n'
+        + '- status: "Scheduled" → "scheduled"; "Completed" → "completed"; "Cancelled"/"Canceled" → "canceled". Default "scheduled".\n'
+        + '- topic: only if the row actually shows a topic; otherwise null.\n'
+        + '- Do NOT invent. SKIP "Every Monday · Weekly lesson" rows entirely.\n'
         + '- If nothing concrete is found, return {"lessons":[]}.';
     }
 
-    return 'You are a data-extraction assistant. The image is a screenshot of the Preply tutor dashboard "Student profile" panel — usually the "Learning needs" tab. Extract the ONE student shown.\n\n'
-      + 'Return ONLY valid JSON in this exact shape (no markdown, no commentary):\n'
+    return 'You are a data-extraction assistant. You will receive ONE OR MORE screenshots of the Preply tutor dashboard "Student profile" panel. Each image may show a DIFFERENT TAB of the SAME student (Lessons / Learning needs / Overview), OR DIFFERENT students.\n\n'
+      + 'CRITICAL — MERGING:\n'
+      + 'If multiple images show the SAME student name at the top (e.g. all show "Theddy A."), they are the SAME person across tabs. Combine fields visible in any of the images into ONE student entry. If different names appear, return one entry per distinct student.\n\n'
+      + 'Return ONLY valid JSON (no markdown, no commentary):\n'
       + '{"students":[{"name":"string","level":"A1|A2|B1|B2|C1|C2 or null","goal":"string or null","notes":"string or null"}]}\n\n'
       + 'Field rules:\n'
-      + '- name: exact name at the top of "Student profile" (e.g. "Theddy A."). Preserve initials — do NOT expand.\n'
+      + '- name: exact name at the top of the panel. Preserve initials — do NOT expand "A." into a full last name.\n'
       + '- level: map Preply\'s self-assessed labels to CEFR:\n'
       + '    "I\'m just starting" / "Beginner"           → A1\n'
       + '    "I know the basics" / "Pre-intermediate"   → A2\n'
@@ -2173,20 +2250,20 @@ body{padding-bottom:0 !important}
       + '    "I\'m above average" / "Upper-intermediate" → B2\n'
       + '    "I\'m advanced" / "Advanced"                → C1\n'
       + '    "I\'m fluent" / "Proficient"                → C2\n'
-      + '  If no level shown, use null.\n'
-      + '- goal: combine "My English goal" + "How I\'ll use English" into a single short phrase, e.g. "Success at work · Negotiations". If only one is shown, use it alone.\n'
-      + '- notes: a multi-line string compiling these (only include fields that are actually visible — skip the rest):\n'
+      + '  If no level shown across any image, use null.\n'
+      + '- goal: combine "My English goal" + "How I\'ll use English" into one phrase, e.g. "Success at work · Negotiations". If only one is visible, use it alone.\n'
+      + '- notes: a multi-line string compiling these (only include fields actually visible across the images — skip the rest):\n'
       + '    Native language: <value>\n'
       + '    Timezone: <value, e.g. America/Chicago>\n'
       + '    Preferred times: <value, e.g. Evening (18-21)>\n'
       + '    Focus on: <comma-separated, e.g. Fluency, Confidence, Accuracy, Pronunciation>\n'
       + '    Industry-specific knowledge needed: <Yes/No>\n'
       + '    Interests: <comma-separated, e.g. Reading, TV/Movies, Travel, Sports>\n'
-      + '  If none of these fields are visible, set notes to null.\n\n'
+      + '  If none of these fields appear anywhere, set notes to null.\n\n'
       + 'Rules:\n'
-      + '- Only extract students that actually appear in the screenshot. If the panel shows just one student, return one item.\n'
-      + '- Do NOT invent missing fields.\n'
-      + '- If you find no student, return {"students":[]}.';
+      + '- DO NOT invent fields. Only include data actually visible in some image.\n'
+      + '- Return one entry per distinct student name; merge tabs of the same name.\n'
+      + '- If you find no student at all, return {"students":[]}.';
   }
 
   function setImportStatus(msg, kind) {
@@ -2202,28 +2279,31 @@ body{padding-bottom:0 !important}
   }
 
   async function runExtraction() {
-    if (!importState.imageBase64) { toast('Add an image first', 'err'); return; }
+    if (!importState.images.length) { toast('Add at least one image', 'err'); return; }
     if (typeof callClaude !== 'function') { toast('AI proxy unavailable', 'err'); return; }
     importState.busy = true;
     var btn = document.getElementById('import-extract');
     btn.disabled = true; btn.innerHTML = '<span class="ai-pulse"></span><span>Extracting…</span>';
-    setImportStatus('Reading the screenshot…');
+    var n = importState.images.length;
+    setImportStatus('Reading ' + n + ' screenshot' + (n === 1 ? '' : 's') + '…');
     clearImportResults();
-    setImportStatus('Reading the screenshot…');
+    setImportStatus('Reading ' + n + ' screenshot' + (n === 1 ? '' : 's') + '…');
 
     try {
       var prompt = buildExtractPrompt(importState.type);
+      // Build the multimodal content: every image first, then the prompt
+      // text. Claude reads images in the order presented, so the tutor's
+      // sequence of pastes/uploads is preserved.
+      var content = importState.images.map(function(img){
+        return { type: 'image', source: { type: 'base64', media_type: img.mime, data: img.base64 } };
+      });
+      content.push({ type: 'text', text: prompt });
+
       var res = await callClaude({
         feature: 'tutor-import-' + importState.type,
         model: 'claude-sonnet-4-6',
-        max_tokens: 2400,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: importState.imageMime, data: importState.imageBase64 } },
-            { type: 'text',  text: prompt }
-          ]
-        }]
+        max_tokens: 3000,
+        messages: [{ role: 'user', content: content }]
       });
       var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
       raw = String(raw || '').trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
