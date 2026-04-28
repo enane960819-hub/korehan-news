@@ -400,18 +400,26 @@ async function adminAPI(body) {
   return resp.json();
 }
 
-// Proxy all REST calls through Edge Function — NO service key in client
+// Proxy all REST calls through Edge Function — NO service key in client.
+// admin-api requires the path to start with /rest/v1/, so callers can pass
+// either the full path or just the table-relative tail (`articles?...`)
+// and we normalise here.
+function _restPath(p) {
+  if (!p) return '';
+  if (p.charAt(0) === '/') return p.indexOf('/rest/v1/') === 0 ? p : ('/rest/v1' + p);
+  return '/rest/v1/' + p;
+}
 function supaAdminGet(path){
-  return adminAPI({ action: 'rest', path: path, method: 'GET' });
+  return adminAPI({ action: 'rest', path: _restPath(path), method: 'GET' });
 }
 function supaAdminPost(path, body){
-  return adminAPI({ action: 'rest', path: path, method: 'POST', restBody: body });
+  return adminAPI({ action: 'rest', path: _restPath(path), method: 'POST', restBody: body });
 }
 function supaAdminPatch(path, body){
-  return adminAPI({ action: 'rest', path: path, method: 'PATCH', restBody: body });
+  return adminAPI({ action: 'rest', path: _restPath(path), method: 'PATCH', restBody: body });
 }
 function supaAdminDelete(path){
-  return adminAPI({ action: 'rest', path: path, method: 'DELETE' });
+  return adminAPI({ action: 'rest', path: _restPath(path), method: 'DELETE' });
 }
 function supaAdminAuthUsers(perPage){
   return adminAPI({ action: 'auth_users', per_page: perPage || 500 });
