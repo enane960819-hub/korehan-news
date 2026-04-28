@@ -250,6 +250,56 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
   animation:pulse 1.2s ease-in-out infinite
 }
 @keyframes pulse{0%,100%{opacity:.3;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
+
+/* Skills */
+.skills-section{margin-top:24px;padding-top:18px;border-top:1px solid var(--border)}
+.skills-grid{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.skill-row{
+  display:grid;grid-template-columns:90px 36px 1fr 64px;
+  align-items:center;gap:14px;padding:8px 0
+}
+.skill-row .skill-label{font-size:13px;font-weight:700;color:var(--text)}
+.skill-row .skill-value{
+  font-size:14px;font-weight:800;color:var(--bright);
+  text-align:right;font-variant-numeric:tabular-nums
+}
+.skill-row .skill-status{font-size:11px;color:var(--muted);text-align:right;font-weight:600;min-height:14px}
+.skill-row .skill-status.saving{color:var(--bright)}
+.skill-row .skill-status.saved{color:var(--ok)}
+.skill-row .skill-status.failed{color:var(--danger)}
+.skill-row input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;
+  height:6px;border-radius:999px;background:#e2e8f0;
+  outline:none;cursor:pointer;transition:background .15s
+}
+.skill-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:18px;height:18px;border-radius:50%;background:var(--bright);
+  border:2px solid #fff;box-shadow:0 2px 6px rgba(34,85,164,.35);cursor:pointer
+}
+.skill-row input[type=range]::-moz-range-thumb{
+  width:18px;height:18px;border-radius:50%;background:var(--bright);
+  border:2px solid #fff;box-shadow:0 2px 6px rgba(34,85,164,.35);cursor:pointer
+}
+.skill-row input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:999px}
+.skill-row input[type=range]::-moz-range-track{height:6px;border-radius:999px}
+/* Color the value chip by tier (red/amber/blue/green) */
+.skill-row.tier-weak       .skill-value{color:#dc2626}
+.skill-row.tier-developing .skill-value{color:#d97706}
+.skill-row.tier-solid      .skill-value{color:var(--bright)}
+.skill-row.tier-strong     .skill-value{color:var(--ok)}
+
+.skill-overall{
+  display:flex;align-items:center;gap:10px;margin-top:14px;
+  padding:10px 14px;background:#f8fbff;border:1px dashed var(--border);border-radius:12px
+}
+.skill-overall .ov-label{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase}
+.skill-overall .ov-value{font-size:24px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums}
+.skill-overall .ov-sub{font-size:12px;color:var(--muted);margin-left:auto}
+
+@media (max-width:520px){
+  .skill-row{grid-template-columns:80px 32px 1fr 50px;gap:10px}
+}
 </style>
 </head>
 <body>
@@ -707,10 +757,10 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
           ? '<button class="btn soft" id="btn-unarchive">Restore</button>'
           : '<button class="btn ghost" id="btn-archive">Archive</button>')
       +   '</div>'
-      +   '<div class="right">'
-      +     '<span style="font-size:11px;color:var(--muted)">Skill progress lands in phase 6</span>'
-      +   '</div>'
+      +   '<div class="right"></div>'
       + '</div>'
+
+      + skillsSectionHtml(s)
 
       + '<div class="lessons-section">'
       +   '<div class="lessons-head">'
@@ -728,6 +778,7 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
     if (unarch) unarch.onclick = function(){ unarchiveStudent(s.id); };
     document.getElementById('btn-new-lesson').onclick = openNewLessonModal;
 
+    setupSkillSliders(s);
     loadLessons(s.id);
   }
 
@@ -736,6 +787,109 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
       + '<label>' + escapeHtmlSafe(label) + '</label>'
       + '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fafbfd;font-size:14px;color:var(--text);min-height:40px;line-height:1.5">' + (value || '—') + '</div>'
       + '</div>';
+  }
+
+  // ── Skills ─────────────────────────────────────────────────
+  var SKILL_AXES = [
+    { key: 'skill_speaking',  label: 'Speaking'  },
+    { key: 'skill_listening', label: 'Listening' },
+    { key: 'skill_reading',   label: 'Reading'   },
+    { key: 'skill_writing',   label: 'Writing'   },
+    { key: 'skill_grammar',   label: 'Grammar'   }
+  ];
+  function skillTier(v) {
+    v = v|0;
+    if (v < 30) return 'weak';
+    if (v < 60) return 'developing';
+    if (v < 80) return 'solid';
+    return 'strong';
+  }
+  function avgSkill(s) {
+    var sum = 0;
+    SKILL_AXES.forEach(function(a){ sum += (s[a.key] || 0); });
+    return Math.round(sum / SKILL_AXES.length);
+  }
+  function skillsSectionHtml(s) {
+    var rows = SKILL_AXES.map(function(a){
+      var v = s[a.key] || 0;
+      var tier = skillTier(v);
+      return '<div class="skill-row tier-' + tier + '" data-skill="' + a.key + '">'
+        + '<div class="skill-label">' + escapeHtmlSafe(a.label) + '</div>'
+        + '<div class="skill-value" data-skill-value>' + v + '</div>'
+        + '<input type="range" min="0" max="100" value="' + v + '" data-skill-input aria-label="' + escapeHtmlSafe(a.label) + ' score">'
+        + '<div class="skill-status" data-skill-status></div>'
+        + '</div>';
+    }).join('');
+    var avg = avgSkill(s);
+    return '<div class="skills-section">'
+      + '<div class="section-title">Skill progress</div>'
+      + '<div class="skills-grid">' + rows + '</div>'
+      + '<div class="skill-overall">'
+      +   '<span class="ov-label">Overall</span>'
+      +   '<span class="ov-value" id="skill-overall-value">' + avg + '</span>'
+      +   '<span class="ov-sub">average across 5 axes (0–100)</span>'
+      + '</div>'
+      + '</div>';
+  }
+  function setupSkillSliders(s) {
+    var rows = document.querySelectorAll('.skill-row[data-skill]');
+    rows.forEach(function(row){
+      var key      = row.getAttribute('data-skill');
+      var slider   = row.querySelector('[data-skill-input]');
+      var valueEl  = row.querySelector('[data-skill-value]');
+      var statusEl = row.querySelector('[data-skill-status]');
+      if (!slider) return;
+      var debounce;
+      slider.addEventListener('input', function(){
+        var v = parseInt(slider.value, 10) || 0;
+        valueEl.textContent = v;
+        row.className = 'skill-row tier-' + skillTier(v);
+        recomputeOverall(s);
+        statusEl.textContent = '';
+        statusEl.className = 'skill-status';
+        clearTimeout(debounce);
+        debounce = setTimeout(function(){ saveSkill(s.id, key, v, statusEl); }, 350);
+      });
+    });
+  }
+  function recomputeOverall(s) {
+    // Pull current slider values directly from the DOM so we don't have to
+    // wait for state.students to update — keeps the average snappy.
+    var sum = 0, count = 0;
+    SKILL_AXES.forEach(function(a){
+      var row = document.querySelector('.skill-row[data-skill="' + a.key + '"] [data-skill-input]');
+      if (!row) return;
+      sum += parseInt(row.value, 10) || 0; count++;
+    });
+    var ov = document.getElementById('skill-overall-value');
+    if (ov && count) ov.textContent = Math.round(sum / count);
+  }
+  async function saveSkill(studentId, key, value, statusEl) {
+    statusEl.textContent = 'Saving…';
+    statusEl.className = 'skill-status saving';
+    var sb = getSupa();
+    var patch = {};
+    patch[key] = value;
+    try {
+      var { error } = await sb.from('tutor_students').update(patch).eq('id', studentId);
+      if (error) throw error;
+      // Mirror to local state so the next renderDetail / renderStudentList shows the new value.
+      var s = state.students.find(function(x){ return x.id === studentId; });
+      if (s) s[key] = value;
+      statusEl.textContent = 'Saved ✓';
+      statusEl.className = 'skill-status saved';
+      setTimeout(function(){
+        if (statusEl.classList.contains('saved')) {
+          statusEl.textContent = '';
+          statusEl.className = 'skill-status';
+        }
+      }, 1400);
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = 'Failed';
+      statusEl.className = 'skill-status failed';
+      toast('Skill save failed: ' + (e.message || e), 'err');
+    }
   }
 
   // ── Modal ──────────────────────────────────────────────────
