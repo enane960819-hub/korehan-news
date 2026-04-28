@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Tutor Dashboard — Private</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0b1626;--blue:#1a3a6b;--bright:#2255a4;--accent:#3b6cb6;
+  --bg:#f4f7fb;--card:#fff;--border:#d8e1ef;--soft:#eef4ff;
+  --text:#0f172a;--muted:#64748b;--danger:#b91c1c;--ok:#15803d
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Inter','Source Sans 3',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased
+}
+a{color:var(--bright);text-decoration:none}
+button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:700}
+
+/* Top bar */
+.topbar{
+  height:60px;background:var(--navy);color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 22px;position:sticky;top:0;z-index:30
+}
+.topbar .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px}
+.topbar .brand .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.topbar a.back{color:#cbd5e1;font-weight:600;font-size:13px}
+.topbar a.back:hover{color:#fff}
+
+/* Layout */
+.layout{
+  display:grid;grid-template-columns:320px 1fr;
+  gap:18px;max-width:1320px;margin:0 auto;padding:18px;
+  min-height:calc(100vh - 60px)
+}
+.sidebar,.detail{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.sidebar{padding:16px;display:flex;flex-direction:column;gap:12px;height:fit-content}
+.sb-head{display:flex;align-items:center;justify-content:space-between}
+.sb-head h2{margin:0;font-size:16px;font-weight:800}
+.btn{padding:8px 12px;font-size:13px;border-radius:10px;transition:transform .12s,background .12s}
+.btn:hover{transform:translateY(-1px)}
+.btn.primary{background:var(--bright);color:#fff}
+.btn.primary:hover{background:var(--blue)}
+.btn.soft{background:var(--soft);color:var(--bright)}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn.danger{background:#fee2e2;color:var(--danger)}
+.search{
+  width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;
+  font:inherit;background:#fff;color:var(--text)
+}
+.student-list{display:flex;flex-direction:column;gap:6px;max-height:70vh;overflow-y:auto}
+.student-row{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  cursor:pointer;transition:background .12s
+}
+.student-row:hover{background:var(--soft)}
+.student-row.active{background:var(--soft);box-shadow:inset 3px 0 0 var(--bright)}
+.student-row .avatar{
+  width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#94a3b8,#475569);
+  color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0
+}
+.student-row .meta{min-width:0;flex:1}
+.student-row .meta .nm{font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.student-row .meta .sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+.detail{padding:24px;min-height:480px}
+.detail .empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;color:var(--muted);padding:80px 20px;height:100%
+}
+.detail .empty .icon{font-size:42px;margin-bottom:12px;opacity:.5}
+.detail .empty h3{margin:0 0 6px;color:var(--text);font-weight:700}
+.detail .empty p{margin:0;font-size:14px;line-height:1.6}
+
+.empty-mini{font-size:13px;color:var(--muted);text-align:center;padding:24px 8px;line-height:1.6}
+
+/* Auth gate */
+.gate{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  z-index:100;padding:20px
+}
+.gate-card{
+  background:#fff;border:1px solid var(--border);border-radius:20px;
+  box-shadow:0 24px 60px rgba(15,23,42,.12);
+  max-width:420px;width:100%;padding:36px 32px;text-align:center
+}
+.gate-card .badge{
+  display:inline-block;padding:5px 12px;border-radius:999px;
+  background:var(--soft);color:var(--bright);
+  font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase
+}
+.gate-card h1{margin:14px 0 8px;font-size:22px;font-weight:800}
+.gate-card p{margin:0 0 22px;color:var(--muted);font-size:14px;line-height:1.7}
+.gate-card .who{
+  background:#f1f5f9;border-radius:10px;padding:10px 14px;
+  font-size:13px;color:var(--muted);margin:0 0 22px;word-break:break-all
+}
+.gate-card .who b{color:var(--text)}
+.gate-card .actions{display:flex;flex-direction:column;gap:10px}
+.gate-card .actions .btn{padding:11px 16px;font-size:14px;width:100%}
+.spinner{
+  width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:var(--bright);
+  border-radius:50%;animation:spin .9s linear infinite;margin:0 auto 14px
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (max-width:980px){
+  .layout{grid-template-columns:1fr;padding:14px;gap:14px}
+  .sidebar{height:auto}
+  .student-list{max-height:280px}
+}
+</style>
+</head>
+<body>
+
+<!-- Auth gate (shown until access is determined) -->
+<div id="kh-tutor-gate" class="gate" role="dialog" aria-label="Access check">
+  <div class="gate-card" id="gate-card">
+    <div class="spinner"></div>
+    <h1>Checking access…</h1>
+    <p>One moment while we verify your account.</p>
+  </div>
+</div>
+
+<!-- Main app (revealed after gate passes) -->
+<div id="kh-tutor-app" style="display:none">
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span><span>Tutor Dashboard</span></div>
+    <a class="back" href="index.html">← Home</a>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="sb-head">
+        <h2>Students</h2>
+        <button class="btn primary" id="btn-new-student" disabled title="Coming in phase 3">+ New</button>
+      </div>
+      <input class="search" id="student-search" placeholder="Search students…" disabled>
+      <div class="student-list" id="student-list">
+        <div class="empty-mini">
+          Student list will appear here.<br>
+          <span style="opacity:.7">(CRUD lands in phase&nbsp;3.)</span>
+        </div>
+      </div>
+    </aside>
+
+    <section class="detail" id="detail-panel">
+      <div class="empty">
+        <div class="icon">📘</div>
+        <h3>No student selected</h3>
+        <p>Add a student from the left panel,<br>then pick one to manage lessons, feedback, and progress.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js?v=20260428a-tutor"></script>
+<script>
+(function(){
+  'use strict';
+
+  // Mirror of korehan-shared.js TUTOR_EMAILS — kept here so the gate can run
+  // independently of any shared.js init ordering. Update both lists together.
+  var TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com'];
+
+  function setGate(html) {
+    var card = document.getElementById('gate-card');
+    if (card) card.innerHTML = html;
+  }
+  function hideGate() {
+    var gate = document.getElementById('kh-tutor-gate');
+    var app  = document.getElementById('kh-tutor-app');
+    if (gate) gate.style.display = 'none';
+    if (app)  app.style.display  = '';
+  }
+  function showGate() {
+    var gate = document.getElementById('kh-tutor-gate');
+    var app  = document.getElementById('kh-tutor-app');
+    if (gate) gate.style.display = '';
+    if (app)  app.style.display  = 'none';
+  }
+
+  function renderSignedOut() {
+    showGate();
+    setGate(
+      '<div class="badge">Restricted</div>'
+      + '<h1>Sign in to continue</h1>'
+      + '<p>This page is private. Sign in with an authorized account to view the tutor dashboard.</p>'
+      + '<div class="actions">'
+      +   '<button class="btn primary" id="gate-signin">Sign in</button>'
+      +   '<a class="btn ghost" href="index.html" style="display:inline-block;text-decoration:none;text-align:center">← Back to home</a>'
+      + '</div>'
+    );
+    var btn = document.getElementById('gate-signin');
+    if (btn) btn.onclick = function(){
+      if (typeof openAuthModal === 'function') openAuthModal('signin');
+      else location.href = 'index.html';
+    };
+  }
+
+  function renderDenied(email) {
+    showGate();
+    setGate(
+      '<div class="badge" style="background:#fee2e2;color:#b91c1c">Access denied</div>'
+      + '<h1>You do not have access</h1>'
+      + '<p>This page is restricted to authorized tutor accounts. If you believe this is a mistake, contact the site admin.</p>'
+      + '<div class="who">Signed in as <b>' + escapeHtmlSafe(email || '(unknown)') + '</b></div>'
+      + '<div class="actions">'
+      +   '<button class="btn ghost" id="gate-signout">Sign out</button>'
+      +   '<a class="btn ghost" href="index.html" style="display:inline-block;text-decoration:none;text-align:center">← Back to home</a>'
+      + '</div>'
+    );
+    var btn = document.getElementById('gate-signout');
+    if (btn) btn.onclick = function(){
+      if (typeof signOut === 'function') signOut();
+      else location.reload();
+    };
+  }
+
+  function escapeHtmlSafe(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // Wait until shared.js has finished its initial session check, then decide
+  // which gate state to render. Re-runs on auth state changes.
+  var _checking = false;
+  async function checkAccess() {
+    if (_checking) return;
+    _checking = true;
+    try {
+      // Wait for the supabase client to be available.
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      var tries = 0;
+      while (!sb && tries < 50) {
+        await new Promise(function(r){ setTimeout(r, 80); });
+        sb = (typeof getSupa === 'function') ? getSupa() : null;
+        tries++;
+      }
+      if (!sb) {
+        setGate('<div class="spinner"></div><h1>Network issue</h1><p>Could not reach Supabase. Refresh the page to retry.</p>');
+        return;
+      }
+
+      var sessRes = await sb.auth.getSession();
+      var user = sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.user;
+      if (!user) { renderSignedOut(); return; }
+
+      var email = (user.email || '').toLowerCase();
+      if (TUTOR_EMAILS.indexOf(email) === -1) { renderDenied(user.email); return; }
+
+      // Authorized — reveal the app shell.
+      hideGate();
+    } finally {
+      _checking = false;
+    }
+  }
+
+  window.addEventListener('kh-auth-signed-in',  checkAccess);
+  window.addEventListener('kh-auth-signed-out', checkAccess);
+  document.addEventListener('DOMContentLoaded', checkAccess);
+})();
+</script>
+</body>
+</html>
