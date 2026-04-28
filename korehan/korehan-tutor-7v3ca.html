@@ -23,6 +23,22 @@ a{color:var(--bright);text-decoration:none}
 button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:700}
 svg{display:inline-block;vertical-align:middle}
 
+/* Site-wide chrome auto-injected by korehan-shared.js (mobile bottom nav,
+   daily-mission FAB, signup nudge, immersive-reading toggle, side bar,
+   bottom CTA). The tutor dashboard is intentionally a private tool that
+   lives at korehannews.com but is unrelated to the news site, so we hide
+   any of those if shared.js manages to mount them. */
+.mobile-bottom-nav,
+#kh-daily-mission,
+#kh-signup-nudge,
+#kh-mobile-account-menu,
+#kh-immersive-reading-toggle,
+.kh-reading-toggle,
+.kh-bottom-cta,
+.kh-side-bar,
+.kh-side-bar-toggle{display:none !important}
+body{padding-bottom:0 !important}
+
 /* Top bar */
 .topbar{
   height:64px;
