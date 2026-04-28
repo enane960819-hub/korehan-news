@@ -422,7 +422,9 @@
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-/* Conv card — chat bubble preview on top, news-style meta strip at bottom */
+/* Conv card — mirror the conversations page cc2 layout (header + chat
+   bubbles + Study footer). Same shape, same vibe — just sized for the
+   home rail and rendered in English. */
 .home-conv-grid-wrap .hconv-card {
   position: relative;
   border-radius: 18px;
@@ -439,6 +441,41 @@
   transform: translateY(-3px);
   box-shadow: 0 18px 40px rgba(13,27,46,.18);
 }
+.home-conv-grid-wrap .hconv-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #f0f4fa;
+}
+.home-conv-grid-wrap .hconv-head-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.home-conv-grid-wrap .hconv-title {
+  font-family: 'Playfair Display', 'Noto Serif KR', serif;
+  font-size: 13px; font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.home-conv-grid-wrap .hconv-cat {
+  font-size: 9px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: #64748b;
+}
+.home-conv-grid-wrap .hconv-lvl {
+  font-size: 9px; font-weight: 800;
+  padding: 3px 8px; border-radius: 999px;
+  flex-shrink: 0;
+}
+.home-conv-grid-wrap .hconv-lvl.lvl-s { background: #ccfbf1; color: #115e59; }
+.home-conv-grid-wrap .hconv-lvl.lvl-b { background: #dcfce7; color: #15803d; }
+.home-conv-grid-wrap .hconv-lvl.lvl-i { background: #fef9c3; color: #92400e; }
+.home-conv-grid-wrap .hconv-lvl.lvl-a { background: #fee2e2; color: #b91c1c; }
 .home-conv-grid-wrap .hconv-chat {
   flex: 1;
   padding: 12px 14px;
@@ -447,7 +484,6 @@
   gap: 6px;
   min-height: 0;
   overflow: hidden;
-  background: linear-gradient(180deg, var(--conv-bg, #eff6ff) 0%, #ffffff 100%);
 }
 .home-conv-grid-wrap .hcb {
   font-size: 12px;
@@ -475,38 +511,21 @@
   align-self: flex-end;
 }
 .home-conv-grid-wrap .hconv-foot {
-  padding: 10px 14px 12px;
+  padding: 10px 14px;
   border-top: 1px solid #f0f4fa;
-  background: #fff;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+  background: #fff;
 }
-.home-conv-grid-wrap .hconv-meta {
-  display: flex; gap: 6px; align-items: center;
-}
-.home-conv-grid-wrap .hconv-cat,
-.home-conv-grid-wrap .hconv-lvl {
-  font-size: 10px; font-weight: 800;
-  letter-spacing: .04em; text-transform: uppercase;
-  padding: 3px 8px; border-radius: 6px;
-  color: #fff;
-}
-.home-conv-grid-wrap .hconv-cat            { background: #1e293b; }
-.home-conv-grid-wrap .hconv-cat.everyday   { background: #1e3a8a; }
-.home-conv-grid-wrap .hconv-cat.workplace  { background: #475569; }
-.home-conv-grid-wrap .hconv-cat.friends    { background: #047857; }
-.home-conv-grid-wrap .hconv-cat.family     { background: #be185d; }
-.home-conv-grid-wrap .hconv-lvl.lvl-s { background: #0d9488; }
-.home-conv-grid-wrap .hconv-lvl.lvl-b { background: #15803d; }
-.home-conv-grid-wrap .hconv-lvl.lvl-i { background: #b45309; }
-.home-conv-grid-wrap .hconv-lvl.lvl-a { background: #b91c1c; }
-.home-conv-grid-wrap .hconv-title {
-  font-family: 'Playfair Display', 'Noto Serif KR', serif;
-  font-size: 13px; font-weight: 800;
-  color: #0f172a;
-  line-height: 1.3;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+.home-conv-grid-wrap .hconv-study {
+  font-size: 11px; font-weight: 800;
+  color: #2563eb;
+  background: none;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-family: inherit;
 }
 
 /* Mobile daily strip */
@@ -1338,40 +1357,25 @@ function renderHomeConvs() {
   var grid = document.getElementById('home-conv-grid');
   if (!grid) return;
   var list = HOME_CONVS.filter(function(c){ return _activeHomeCat === 'all' || c.cat === _activeHomeCat; });
-  // Hybrid card: chat-bubble preview on top (the "look at the
-  // conversation" affordance) + News-style meta strip at the bottom
-  // (category + level chips + English title) so it matches the rest
-  // of the home grid visually.
+  // Mirror the conversations page cc2 layout — English context as the
+  // title, level chip top-right, chat bubble preview, "Study →" pill
+  // at the bottom. Just translated and shrunk for the home rail.
   var CAT_LABEL = { everyday:'Everyday', workplace:'Workplace', friends:'Friends', family:'Family' };
-  // Soft category-tinted background for the chat area — picks up the
-  // same hue family as the bottom-strip chip without being loud.
-  var CAT_TINT = {
-    everyday:  '#eff6ff',
-    workplace: '#f1f5f9',
-    friends:   '#ecfdf5',
-    family:    '#fdf2f8',
-  };
   var LVL_LBL = { s:'Seed', b:'Sprout', i:'Tree', a:'Forest' };
   var LVL_CLS = { s:'lvl-s', b:'lvl-b', i:'lvl-i', a:'lvl-a' };
   var esc = function(s){ return String(s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
 
-  // Reuse the conversation page's translation cache if it's been
-  // populated — richer English titles for free without burning
-  // Claude calls on home load.
+  // Reuse the conversation page's translation cache when populated —
+  // gives richer English titles without burning Claude calls on home.
   var _ctxCache = {};
   try { _ctxCache = JSON.parse(localStorage.getItem('kh_conv_ctx_en_v1') || '{}') || {}; } catch(_) {}
 
   grid.innerHTML = list.slice(0,4).map(function(c) {
     var catKey = (c.cat || 'everyday').toLowerCase();
     var catLabel = CAT_LABEL[catKey] || (c.cat ? (c.cat.charAt(0).toUpperCase() + c.cat.slice(1)) : 'Conversation');
-    var tint = CAT_TINT[catKey] || CAT_TINT.everyday;
     var lvlKey = c.lvl || 'b';
-    // Title in English. Lookup order:
-    //   1. cached translation of raw ctx (populated when the
-    //      conversations page renders this conv)
-    //   2. admin-supplied English fields if any
-    //   3. ctx itself if it's already in English (no Hangul)
-    //   4. category-based fallback like "Everyday Conversation"
+    // Title resolution: cached translation → admin English fields →
+    // ctx itself if no Hangul → "{Category} Conversation" fallback.
     var rawCtx = (c.ctx || '').trim();
     var titleEn = '';
     if (rawCtx && _ctxCache[rawCtx]) titleEn = _ctxCache[rawCtx];
@@ -1379,9 +1383,8 @@ function renderHomeConvs() {
     else if (rawCtx && !/[가-힣]/.test(rawCtx)) titleEn = rawCtx;
     else titleEn = catLabel + ' Conversation';
 
-    // Up to 3 chat bubbles, alternating sides like the conversation
-    // page itself. Empty rows fall back to the ctx text in a single
-    // bubble so the preview area is never blank.
+    // Up to 3 chat bubbles, alternating sides like the conversations
+    // page. If msgs is empty, drop in the raw ctx as a single bubble.
     var msgs = (c.msgs || []).slice(0, 3);
     var bubblesHtml = '';
     if (msgs.length) {
@@ -1395,14 +1398,17 @@ function renderHomeConvs() {
       bubblesHtml = '<div class="hcb left" style="color:#94a3b8">No preview available.</div>';
     }
 
-    return '<div class="hconv-card" onclick="location.href=\'korehan-conversations.html?id=' + esc(c._id || '') + '\'" style="--conv-bg:' + tint + '">'
+    return '<div class="hconv-card" onclick="location.href=\'korehan-conversations.html?id=' + esc(c._id || '') + '\'">'
+      + '<div class="hconv-head">'
+        + '<div class="hconv-head-info">'
+          + '<div class="hconv-cat">' + esc(catLabel) + '</div>'
+          + '<div class="hconv-title">' + esc(titleEn) + '</div>'
+        + '</div>'
+        + '<span class="hconv-lvl ' + (LVL_CLS[lvlKey]||'lvl-b') + '">' + (LVL_LBL[lvlKey]||'Sprout') + '</span>'
+      + '</div>'
       + '<div class="hconv-chat">' + bubblesHtml + '</div>'
       + '<div class="hconv-foot">'
-        + '<div class="hconv-meta">'
-          + '<span class="hconv-cat ' + esc(catKey) + '">' + esc(catLabel) + '</span>'
-          + '<span class="hconv-lvl ' + (LVL_CLS[lvlKey]||'lvl-b') + '">' + (LVL_LBL[lvlKey]||'Sprout') + '</span>'
-        + '</div>'
-        + '<div class="hconv-title">' + esc(titleEn) + '</div>'
+        + '<span class="hconv-study">Study →</span>'
       + '</div>'
       + '</div>';
   }).join('');
