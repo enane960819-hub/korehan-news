@@ -3101,6 +3101,14 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <div>
         <div class="plabel">🧾 Today’s Topic Content</div>
         <div id="wm-topic-content" style="font-size:12px;color:#475569;line-height:1.7;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px 12px;margin-bottom:10px">Loading topic content…</div>
+        <!-- Phase 2: Common Mistakes panel — AI-generated per topic+
+             level, cached 24h in localStorage. khLoadCommonMistakes()
+             populates this on writing-modal open. Stays empty if AI
+             fails or topic isn't loaded yet. -->
+        <details id="wm-common-mistakes" hidden style="margin-bottom:10px;border:1px dashed #fcd34d;background:#fffbeb;border-radius:10px;padding:0">
+          <summary style="cursor:pointer;list-style:none;padding:10px 12px;font-size:11px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:.06em">⚠️ 자주 틀리는 부분 <span id="wm-cm-count" style="opacity:.6;font-weight:700"></span></summary>
+          <div id="wm-cm-body" style="padding:0 12px 10px;font-size:12px;color:#78350f;line-height:1.6"></div>
+        </details>
         <div class="plabel">✏️ Your Writing</div>
         <!-- Tracker Rings (Canvas) -->
         <div class="kh-tracker-row" id="wm-tracker-row">
@@ -5492,6 +5500,75 @@ function renderModalContent() {
 // ═══════════════════════════════════════════════════════════════
 // WRITING MODAL
 // ═══════════════════════════════════════════════════════════════
+// ── Phase 2: Topic-Writing common mistakes panel ────────────────
+// AI generates 4-6 common errors learners make on the current topic
+// at the current level. Cached 24h in localStorage so we don't burn
+// a Claude call every time the writing modal opens. Renders into
+// the #wm-common-mistakes details inside the writing modal.
+async function khLoadCommonMistakes() {
+  var details = document.getElementById('wm-common-mistakes');
+  var body    = document.getElementById('wm-cm-body');
+  var countEl = document.getElementById('wm-cm-count');
+  if (!details || !body) return;
+  var topicKo = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '';
+  if (!topicKo) { details.hidden = true; return; }
+  var level   = _currentLevel || 'Beginner';
+  var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+  var cacheKey = 'kh_topic_common_mistakes_' + encodeURIComponent(topicKo) + '_' + level + '_' + dateKey;
+  function paint(items) {
+    if (!Array.isArray(items) || !items.length) { details.hidden = true; return; }
+    body.innerHTML = items.map(function (it) {
+      var wrong = (it.wrong || '').replace(/</g, '&lt;');
+      var right = (it.right || '').replace(/</g, '&lt;');
+      var note  = (it.why   || it.note || '').replace(/</g, '&lt;');
+      return '<div style="margin:8px 0;padding:8px 10px;background:#fff;border:1px solid #fcd34d;border-radius:8px">'
+        + '<div style="font-weight:800;color:#b45309;margin-bottom:3px">' + (it.label || it.title || 'Common mistake') + '</div>'
+        + (wrong ? '<div style="font-family:Noto Serif KR,serif"><span style="color:#dc2626;text-decoration:line-through;margin-right:6px">' + wrong + '</span><span style="color:#15803d;font-weight:700">' + right + '</span></div>' : '')
+        + (note  ? '<div style="margin-top:4px;font-size:11px;color:#92400e">' + note + '</div>' : '')
+        + '</div>';
+    }).join('');
+    if (countEl) countEl.textContent = '(' + items.length + ')';
+    details.hidden = false;
+  }
+  // Try localStorage cache first (today only — date is in the key).
+  try {
+    var raw = localStorage.getItem(cacheKey);
+    if (raw) { var parsed = JSON.parse(raw); if (Array.isArray(parsed)) { paint(parsed); return; } }
+  } catch (_) {}
+  // Cache miss → call Claude Haiku for 4-6 short error patterns.
+  if (typeof callClaude !== 'function') { details.hidden = true; return; }
+  details.hidden = false;
+  body.innerHTML = '<div style="padding:6px 0;color:#92400e;font-size:11px">⏳ AI 분석 중...</div>';
+  if (countEl) countEl.textContent = '';
+  try {
+    var res = await callClaude({
+      feature: 'topic-common-mistakes',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role: 'user', content:
+        'Korean learning topic: "' + topicKo + '"\n'
+        + 'Learner level: ' + level + '\n\n'
+        + 'List 4-6 common mistakes Korean learners make when writing about this topic. For each mistake, return: a short label (Korean OR English), a wrong sentence example (Korean), the corrected version (Korean), and one short reason (English, max 12 words).\n\n'
+        + 'Return ONLY a JSON array — no markdown, no commentary.\n'
+        + 'Format: [{"label":"...","wrong":"...","right":"...","why":"..."}]'
+      }]
+    });
+    var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+    txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+    var s = txt.indexOf('['), e = txt.lastIndexOf(']');
+    if (s >= 0 && e > s) txt = txt.slice(s, e + 1);
+    var items = JSON.parse(txt);
+    if (Array.isArray(items) && items.length) {
+      try { localStorage.setItem(cacheKey, JSON.stringify(items)); } catch (_) {}
+      paint(items);
+    } else {
+      details.hidden = true;
+    }
+  } catch (err) {
+    body.innerHTML = '<div style="padding:6px 0;color:#92400e;font-size:11px">분석 실패 — 그냥 토픽으로 진행하세요.</div>';
+  }
+}
+
 function openWritingModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
@@ -5507,6 +5584,8 @@ function openWritingModal() {
   document.body.style.overflow = 'hidden';
   if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
   renderModalContent();
+  // Phase 2: load common-mistakes panel for the current topic.
+  if (typeof khLoadCommonMistakes === 'function') khLoadCommonMistakes();
   // Canvas tracker rings 초기화
   setTimeout(function() { _initWritingTrackerRings(); _resetWritingTrackerRings(); }, 100);
   // 모바일 탭 초기화
@@ -6004,6 +6083,106 @@ function openKeyExpressionsModal() {
   });
 }
 
+// ── Phase 2: Key Expression "When to use" situation quiz ───────
+// AI generates a single multiple-choice question per expression.
+// 24h localStorage cache so the same expression doesn't burn a
+// Claude call on each tap.
+async function keOpenSituationQuiz(idx) {
+  var exps = window._keExpressions || [];
+  var exp = exps[idx];
+  if (!exp || !exp.ko) return;
+  var modal = document.getElementById('ke-quiz-modal');
+  var body  = document.getElementById('ke-quiz-body');
+  if (!modal || !body) return;
+  modal.classList.remove('hidden');
+  body.innerHTML = '<div style="text-align:center;padding:18px;color:rgba(255,255,255,.5);font-size:13px">⏳ Loading quiz…</div>';
+
+  var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+  var cacheKey = 'kh_ke_situation_quiz_' + encodeURIComponent(exp.ko) + '_' + dateKey;
+  var quiz = null;
+  try {
+    var raw = localStorage.getItem(cacheKey);
+    if (raw) quiz = JSON.parse(raw);
+  } catch (_) {}
+  if (!quiz) {
+    if (typeof callClaude !== 'function') {
+      body.innerHTML = '<div style="text-align:center;padding:18px;color:#fca5a5;font-size:13px">AI 호출 불가 — 로그인 후 다시 시도하세요.</div>';
+      return;
+    }
+    try {
+      var res = await callClaude({
+        feature: 'key-expr-situation-quiz',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        messages: [{ role: 'user', content:
+          'Korean expression: "' + exp.ko + '" (' + (exp.en || '') + ')\n\n'
+          + 'Create ONE multiple-choice question: "When is the most natural situation to use this expression?"\n'
+          + 'One option must be the correct situation; three must be plausible but wrong (different context, wrong formality, etc).\n\n'
+          + 'Return ONLY valid JSON, no markdown. Keep each option under 14 English words.\n'
+          + '{ "options": ["...","...","...","..."], "correct": 0, "explanation": "Short reason why the correct option is right (1 sentence)" }'
+        }]
+      });
+      var txt = (res && res.content && res.content[0] && res.content[0].text) || '{}';
+      txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+      var s = txt.indexOf('{'), e = txt.lastIndexOf('}');
+      if (s >= 0 && e > s) txt = txt.slice(s, e + 1);
+      quiz = JSON.parse(txt);
+      if (!quiz || !Array.isArray(quiz.options) || quiz.options.length < 2) throw new Error('bad quiz');
+      try { localStorage.setItem(cacheKey, JSON.stringify(quiz)); } catch (_) {}
+    } catch (err) {
+      body.innerHTML = '<div style="text-align:center;padding:18px;color:#fca5a5;font-size:13px">퀴즈 생성 실패 — 잠시 후 다시.</div>';
+      return;
+    }
+  }
+  // Render question.
+  body.innerHTML =
+    '<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.24);border-radius:12px;padding:14px;margin-bottom:14px">'
+    +   '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#fde68a;margin-bottom:6px">Expression</div>'
+    +   '<div style="font-size:18px;font-weight:900;font-family:Noto Serif KR,serif">' + (exp.ko||'') + '</div>'
+    +   '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px">' + (exp.en||'') + '</div>'
+    + '</div>'
+    + '<div id="ke-quiz-options" style="display:flex;flex-direction:column;gap:8px"></div>'
+    + '<div id="ke-quiz-result" style="margin-top:14px"></div>';
+  var opts = document.getElementById('ke-quiz-options');
+  quiz.options.forEach(function (opt, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.style.cssText = 'padding:11px 14px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.05);color:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit';
+    b.textContent = String.fromCharCode(65 + i) + '. ' + opt;
+    b.onclick = function () { _keQuizAnswer(quiz, i); };
+    opts.appendChild(b);
+  });
+}
+function _keQuizAnswer(quiz, picked) {
+  var opts = document.getElementById('ke-quiz-options');
+  var result = document.getElementById('ke-quiz-result');
+  if (!opts || !result) return;
+  Array.prototype.forEach.call(opts.children, function (b, i) {
+    b.disabled = true;
+    if (i === quiz.correct) {
+      b.style.borderColor = '#34d399';
+      b.style.background  = 'rgba(52,211,153,.18)';
+      b.style.color       = '#a7f3d0';
+    } else if (i === picked) {
+      b.style.borderColor = '#f87171';
+      b.style.background  = 'rgba(248,113,113,.16)';
+      b.style.color       = '#fecaca';
+    } else {
+      b.style.opacity = '.55';
+    }
+  });
+  var right = picked === quiz.correct;
+  result.innerHTML =
+    '<div style="padding:12px;border-radius:10px;background:' + (right ? 'rgba(52,211,153,.12)' : 'rgba(248,113,113,.10)') + ';border:1px solid ' + (right ? 'rgba(52,211,153,.32)' : 'rgba(248,113,113,.32)') + ';color:#fff;font-size:13px">'
+    +   '<div style="font-weight:800;color:' + (right ? '#a7f3d0' : '#fca5a5') + ';margin-bottom:4px">' + (right ? '✅ 정답!' : '❌ 다시 생각해봐요.') + '</div>'
+    +   '<div style="color:rgba(255,255,255,.7);line-height:1.55">' + (quiz.explanation || '') + '</div>'
+    + '</div>';
+}
+function keCloseSituationQuiz() {
+  var modal = document.getElementById('ke-quiz-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
 function _renderKeyExpressions(list, expressions) {
   // Phase 1: Study the expressions first
   window._keExpressions = expressions;
@@ -6034,6 +6213,7 @@ function _keRenderStudyPhase(list) {
     + '</div>'
     + '<button onclick="ttsSpeak(\'' + (exp.ko||'').replace(/'/g,"\\'") + '\')" style="padding:8px 16px;border:1px solid rgba(125,211,252,.3);border-radius:8px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔊 Listen</button>'
     + ' ' + renderSaveWordBtn(exp.ko, exp.en, exp.rom, 'key_expression')
+    + ' <button onclick="keOpenSituationQuiz(' + idx + ')" style="padding:8px 16px;border:1px solid rgba(251,191,36,.35);border-radius:8px;background:rgba(251,191,36,.12);color:#fde68a;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:6px">💡 Situation Quiz</button>'
     + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center">'
     + (idx > 0 ? '<button onclick="window._keStudyIdx--;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&larr; Prev</button>' : '')
@@ -8772,6 +8952,8 @@ function lsStartWriting() {
   document.body.style.overflow = 'hidden';
   if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
   renderModalContent();
+  // Phase 2: load common-mistakes panel for the current topic.
+  if (typeof khLoadCommonMistakes === 'function') khLoadCommonMistakes();
   wmMobileInit();
 }
 
@@ -17961,6 +18143,22 @@ function openUniverseView() {
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading expressions...</div>
     </div>
     <button onclick="markStageDone('expressions');returnToActivities(closeKeyExpressionsModal)" style="display:block;width:100%;margin-top:18px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer">완료 ✓</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     KEY EXPRESSION SITUATION QUIZ (Phase 2)
+     Pops over the Key Expressions modal. AI-generated multiple
+     choice: "When can you use this expression?" with one correct
+     situation and three plausible-but-wrong distractors.
+═════════════════════════════════════════════════════════════ -->
+<div class="woverlay hidden" id="ke-quiz-modal" onclick="if(event.target===this)keCloseSituationQuiz()">
+  <div style="background:#0d1b2e;border-radius:18px;max-width:480px;width:95%;margin:auto;padding:24px 22px;color:#fff;max-height:85vh;overflow-y:auto;position:relative">
+    <button onclick="keCloseSituationQuiz()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);font-size:20px;cursor:pointer">✕</button>
+    <div style="font-size:24px;margin-bottom:6px">💡</div>
+    <h2 style="margin:0 0 4px;font-size:17px;font-weight:900">Situation Quiz</h2>
+    <p style="margin:0 0 14px;font-size:12px;color:rgba(255,255,255,.45)">When can you use this expression?</p>
+    <div id="ke-quiz-body" style="margin-top:6px"></div>
   </div>
 </div>
 
