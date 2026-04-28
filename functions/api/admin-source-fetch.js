@@ -283,12 +283,32 @@ function extractRedditImage(d) {
 //   2. YouTube cross-post — our own privacy-friendly youtube-nocookie
 //      embed (d.url is the youtube.com / youtu.be link).
 // Returns {url, kind, fallback} where kind is:
-//   'reddit-embed' | 'youtube' | '' (nothing usable)
+//   'reddit-hls' | 'youtube' | '' (nothing usable)
+//
+// For Reddit-hosted videos we save the HLS playlist URL (audio + video
+// muxed) and the silent MP4 as fallback. The renderer plays via hls.js
+// (or native HLS on Safari) inside a bare <video> element — no Reddit
+// iframe / branding ever appears. Signed URLs do expire, but the
+// playback path falls back to /api/reddit-video-resolve to refresh
+// them at view time using the article's permalink.
 function extractRedditVideo(d) {
-  if (d?.is_video && d?.permalink) {
-    const embed = 'https://www.redditmedia.com' + d.permalink
-      + '?ref_source=embed&ref=share&embed=true'
-    return { url: embed, kind: 'reddit-embed', fallback: '' }
+  if (d?.is_video) {
+    const rv =
+      d?.media?.reddit_video ||
+      d?.secure_media?.reddit_video ||
+      d?.crosspost_parent_list?.[0]?.media?.reddit_video ||
+      d?.preview?.reddit_video_preview ||
+      null
+    const hls = rv?.hls_url || ''
+    const mp4 = rv?.fallback_url || ''
+    if (hls || mp4) {
+      return {
+        url: hls || mp4,
+        kind: 'reddit-hls',
+        fallback: hls ? mp4 : '',
+      }
+    }
+    // is_video=true but no reddit_video metadata — fall through to image
   }
   const url = d?.url_overridden_by_dest || d?.url || ''
   const ytId = extractYoutubeId(url)

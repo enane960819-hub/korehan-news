@@ -7813,7 +7813,7 @@ async function goVideoUpgrade() {
   var main = document.getElementById('main');
   main.innerHTML = '<div style="max-width:960px">'
     + '<h2 style="font-size:22px;font-weight:800;margin:0 0 6px">🔄 Reddit Video Upgrade</h2>'
-    + '<p style="color:#64748b;font-size:13px;margin:0 0 16px">기존 <code>reddit</code> / <code>reddit-hls</code> 기사를 <code>reddit-embed</code>로 일괄 전환 → 모바일에서 오디오 같이 재생.</p>'
+    + '<p style="color:#64748b;font-size:13px;margin:0 0 16px">기존 <code>reddit</code> / <code>reddit-embed</code> 기사를 <code>reddit-hls</code> 직접 추출 방식으로 일괄 전환 → Reddit iframe 없이 비디오 + 오디오 직접 재생.</p>'
     + '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
     + '<button class="btn btn-g" onclick="runVideoUpgrade(false)">🔍 Dry Run (변경 없음, 미리보기만)</button>'
     + '<button class="btn" style="background:#16a34a;color:#fff" onclick="runVideoUpgrade(true)">✅ 실제 업그레이드 실행</button>'
@@ -7915,74 +7915,73 @@ async function runVideoUpgrade(commit) {
   if (log) log.innerHTML = '';
   _vuLog('[start] ' + (commit ? 'LIVE' : 'DRY RUN') + ' @ ' + new Date().toISOString(), '#60a5fa');
 
-  // 1) Pull the full article set via admin API (reads video_* fields).
+  // 1) Pull legacy reddit / reddit-embed articles. reddit-hls is the
+  // target shape so we leave those alone.
   var targets;
   try {
-    var all = await supaAdminGet('articles?select=id,title,source_url,video_url,video_kind,video_fallback_url,use_video&video_kind=in.(reddit,reddit-hls)');
+    var all = await supaAdminGet('articles?select=id,title,source_url,video_url,video_kind,video_fallback_url,use_video&video_kind=in.(reddit,reddit-embed)');
     targets = Array.isArray(all) ? all : [];
   } catch (e) {
     _vuLog('[error] fetch failed: ' + (e && e.message || e), '#f87171');
     return;
   }
   _vuLog('[scan] legacy kind 기사 ' + targets.length + '건 발견');
+  if (!targets.length) { _vuLog('[done] 할 일 없음', '#60a5fa'); return; }
 
-  // 2) Split into "source_url is a permalink" (easy) vs "v.redd.it only" (needs lookup).
-  var easy = [];
-  var needLookup = [];
-  targets.forEach(function(a){
-    var embed = _rvEmbedFromPermalink(a.source_url || '');
-    if (embed) { easy.push({ article: a, embed: embed }); return; }
-    var vid = _rvVideoIdFromUrl(a.video_url || a.video_fallback_url || a.source_url || '');
-    if (vid) { needLookup.push({ article: a, video_id: vid }); return; }
-    _vuLog('[skip] id=' + a.id + ' — source_url도 v.redd.it ID도 없음', '#fbbf24');
-  });
-  _vuLog('[plan] 직접 변환 ' + easy.length + '건 / Reddit 조회 ' + needLookup.length + '건');
+  // 2) Resolve fresh hls_url + fallback_url for each via permalink
+  // (or v.redd.it id when permalink is missing). One call per article —
+  // serialised to keep us under any per-host concurrency limit.
+  var session = await getSupa().auth.getSession();
+  var token = session?.data?.session?.access_token || '';
+  var ok = 0, fail = 0, skip = 0;
+  for (var i = 0; i < targets.length; i++) {
+    var a = targets[i];
+    var permalink = '';
+    var m = String(a.source_url || '').match(/^https?:\/\/(?:www\.)?reddit\.com(\/r\/[^?#]+\/comments\/[^?#]+)/i);
+    if (m) permalink = 'https://www.reddit.com' + (m[1].endsWith('/') ? m[1] : m[1] + '/');
+    var videoId = _rvVideoIdFromUrl(a.video_url || a.video_fallback_url || a.source_url || '');
 
-  // 3) Resolve v.redd.it IDs via our Edge Function (batch).
-  if (needLookup.length) {
-    _vuLog('[lookup] /api/reddit-permalink-lookup 호출 중…');
+    var label = a.id + ' — ' + (a.title || '').slice(0, 60);
+    _vuLog((commit ? '[update] ' : '[dryrun] ') + label);
+
+    if (!permalink && !videoId) {
+      _vuLog('         ✗ permalink / video_id 없음 — skip', '#fbbf24');
+      skip++; continue;
+    }
+
+    var resolved = null;
     try {
-      var session = await getSupa().auth.getSession();
-      var token = session?.data?.session?.access_token || '';
-      var ids = needLookup.map(function(x){ return x.video_id; });
-      var r = await fetch('/api/reddit-permalink-lookup', {
+      var resp = await fetch('/api/reddit-video-resolve', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'authorization': token ? ('Bearer ' + token) : '' },
-        body: JSON.stringify({ video_ids: ids }),
+        body: JSON.stringify(permalink ? { permalink: permalink } : { video_id: videoId }),
       });
-      var j = await r.json();
-      if (!j || !j.ok) throw new Error(j && j.message || 'lookup failed');
-      needLookup.forEach(function(entry){
-        var hit = j.map && j.map[entry.video_id];
-        if (hit && hit.permalink) {
-          var embed = _rvEmbedFromPermalink(hit.permalink);
-          if (embed) easy.push({ article: entry.article, embed: embed, resolved: hit.permalink });
-          else _vuLog('[skip] id=' + entry.article.id + ' — permalink 형식 불일치', '#fbbf24');
-        } else {
-          _vuLog('[miss] id=' + entry.article.id + ' (v.redd.it/' + entry.video_id + ') — Reddit에 매치 없음', '#fbbf24');
-        }
-      });
+      resolved = await resp.json();
     } catch (e) {
-      _vuLog('[error] lookup failed: ' + (e && e.message || e), '#f87171');
+      _vuLog('         ✗ resolve failed: ' + (e && e.message || e), '#f87171');
+      fail++; continue;
     }
-  }
+    if (!resolved || resolved.ok === false) {
+      _vuLog('         ✗ resolver returned: ' + (resolved && resolved.message || 'no data'), '#f87171');
+      fail++; continue;
+    }
+    var hls = resolved.hls_url || '';
+    var mp4 = resolved.video_url || '';
+    if (!hls && !mp4) {
+      _vuLog('         ✗ hls_url / fallback_url 둘 다 없음', '#fbbf24');
+      fail++; continue;
+    }
+    var newUrl = hls || mp4;
+    var newFb  = hls ? mp4 : '';
+    _vuLog('         → kind=reddit-hls');
+    _vuLog('           url=' + (newUrl.slice(0, 80) + (newUrl.length > 80 ? '…' : '')));
 
-  _vuLog('[ready] 업그레이드 대상 최종 ' + easy.length + '건');
-  if (!easy.length) { _vuLog('[done] 할 일 없음', '#60a5fa'); return; }
-
-  // 4) Apply updates.
-  var ok = 0, fail = 0;
-  for (var i = 0; i < easy.length; i++) {
-    var t = easy[i];
-    var a = t.article;
-    _vuLog((commit ? '[update] ' : '[dryrun] ') + a.id + ' — ' + (a.title || '').slice(0, 60));
-    _vuLog('         → ' + t.embed);
     if (!commit) { ok++; continue; }
     try {
       await supaAdminPatch('articles?id=eq.' + encodeURIComponent(a.id), {
-        video_url: t.embed,
-        video_kind: 'reddit-embed',
-        video_fallback_url: '',
+        video_url: newUrl,
+        video_kind: 'reddit-hls',
+        video_fallback_url: newFb,
         use_video: true,
       });
       ok++;
@@ -7991,7 +7990,7 @@ async function runVideoUpgrade(commit) {
       _vuLog('         ✗ ' + (e && e.message || e), '#f87171');
     }
   }
-  _vuLog('[done] ' + (commit ? 'updated' : 'would-update') + ' ' + ok + ' / failed ' + fail, '#34d399');
+  _vuLog('[done] ' + (commit ? 'updated' : 'would-update') + ' ' + ok + ' / skipped ' + skip + ' / failed ' + fail, '#34d399');
   if (commit && ok) _vuLog('로컬 DB 캐시 새로고침하려면 Article List 페이지로 이동하세요.', '#60a5fa');
 }
 
