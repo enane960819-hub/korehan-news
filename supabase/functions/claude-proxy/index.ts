@@ -55,8 +55,9 @@ const DEFAULT_PRICING = { input: 3.00, output: 15.00 }
 
 // Per-call max output. A buggy/hostile client can't request a 200K
 // completion in one shot — saves more than the per-month cap by
-// itself in the worst case.
-const MAX_TOKENS_PER_CALL = 4096
+// itself in the worst case. Fast Track scenario generation needs
+// ~10-12K tokens for 25-node JSON, so the cap sits at 16K.
+const MAX_TOKENS_PER_CALL = 16384
 
 // Anthropic call timeout. Above this we abort the connection so the
 // client doesn't hang on a stalled upstream and we don't keep the
