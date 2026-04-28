@@ -135,6 +135,20 @@
 .st-close:hover{background:rgba(0,0,0,.68);}
 .st-back{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:6px;padding:8px 14px 8px 10px;border-radius:999px;background:rgba(0,0,0,.5);border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;z-index:5;font-family:inherit;}
 .st-back:hover{background:rgba(0,0,0,.68);}
+
+/* Favorite (heart) button — sits next to the close X. Empty heart by
+   default, fills + glows when the story is saved. The ♡ character
+   swaps to ♥ via JS to avoid a CSS background image. */
+.st-fav-btn{position:absolute;top:12px;right:58px;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.5);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;font-family:inherit;line-height:1;transition:background .15s,transform .15s,color .15s;}
+.st-fav-btn:hover{background:rgba(0,0,0,.68);transform:scale(1.08);}
+.st-fav-btn.is-saved{background:rgba(244,63,94,.85);color:#fff;text-shadow:0 0 12px rgba(244,63,94,.7);}
+.st-fav-btn.is-saved:hover{background:rgba(225,29,72,.95);}
+
+/* Heart marker on each list-page card thumbnail. Filled = saved. */
+.sc-fav-mark{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;background:rgba(15,23,42,.55);backdrop-filter:blur(4px);color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;line-height:1;transition:background .15s,color .15s,transform .15s;}
+.sc-fav-mark:hover{background:rgba(15,23,42,.78);transform:scale(1.08);}
+.sc-fav-mark.is-saved{background:rgba(244,63,94,.92);color:#fff;}
+.sc-thumb{position:relative;}
 /* right study panel */
 .st-right{background:#f8fafc;border-left:1px solid #e8eef7;overflow-y:auto;}
 .st-right-head{padding:20px 22px 14px;border-bottom:1px solid #e8eef7;background:#fff;}
@@ -268,6 +282,152 @@
 <script src="korehan-shared.js?v=20260426o-video"></script>
 <script src="korehan-hover-tooltips.js?v=20260418"></script>
 <script>
+// ── Story progress + favorites helpers (Phase 2) ────────────────
+// Both backed by Supabase tables created in the Phase 2 migration.
+// Anonymous users (no supaUser) silently no-op so the feature
+// degrades cleanly in incognito / signed-out states.
+//
+//   user_story_progress  — one row per (user, story). Keeps the
+//   last_position as a 0-100 percent (resilient to font-size /
+//   line-height changes that would invalidate raw scrollTop) and
+//   last_read_at for the "Continue reading" surface.
+//
+//   user_saved_stories   — one row per (user, story) — composite
+//   PK so the upsert acts as toggle: insert = save, delete = unsave.
+var _khStorySavedSet = null;        // cached set of saved story_ids
+var _khStoryProgressTimer = null;   // debounce handle for scroll save
+
+function _khStorySupa() {
+  return (typeof getSupa === 'function') ? getSupa() : null;
+}
+
+async function khStoryProgressLoad(storyId) {
+  if (typeof supaUser === 'undefined' || !supaUser || !storyId) return null;
+  var sb = _khStorySupa();
+  if (!sb) return null;
+  try {
+    var r = await sb.from('user_story_progress')
+      .select('last_position')
+      .eq('user_id', supaUser.id)
+      .eq('story_id', String(storyId))
+      .maybeSingle();
+    return (r && r.data && typeof r.data.last_position === 'number') ? r.data.last_position : null;
+  } catch (_) { return null; }
+}
+
+async function khStoryProgressSave(storyId, percent) {
+  if (typeof supaUser === 'undefined' || !supaUser || !storyId) return;
+  var sb = _khStorySupa();
+  if (!sb) return;
+  var pos = Math.max(0, Math.min(100, Math.round(percent)));
+  try {
+    await sb.from('user_story_progress').upsert({
+      user_id:       supaUser.id,
+      story_id:      String(storyId),
+      last_position: pos,
+      last_read_at:  new Date().toISOString(),
+    }, { onConflict: 'user_id,story_id' });
+  } catch (_) {}
+}
+
+// Convert scroll element offsets → 0-100 percent and back.
+function khStoryScrollPercent(scrollEl) {
+  if (!scrollEl) return 0;
+  var max = scrollEl.scrollHeight - scrollEl.clientHeight;
+  if (max <= 0) return 0;
+  return (scrollEl.scrollTop / max) * 100;
+}
+function khStoryScrollSetPercent(scrollEl, pct) {
+  if (!scrollEl) return;
+  var max = scrollEl.scrollHeight - scrollEl.clientHeight;
+  if (max <= 0) return;
+  scrollEl.scrollTop = (Math.max(0, Math.min(100, pct)) / 100) * max;
+}
+
+// Saves on every scroll, throttled to ~800ms — picks the value at
+// the trailing edge so the persisted position matches where the
+// user actually stopped, not where they swept past.
+function khStoryProgressAttachScroll(scrollEl, storyId) {
+  if (!scrollEl || !storyId) return;
+  if (_khStoryProgressTimer) { clearTimeout(_khStoryProgressTimer); _khStoryProgressTimer = null; }
+  scrollEl.addEventListener('scroll', function () {
+    if (_khStoryProgressTimer) clearTimeout(_khStoryProgressTimer);
+    _khStoryProgressTimer = setTimeout(function () {
+      khStoryProgressSave(storyId, khStoryScrollPercent(scrollEl));
+    }, 800);
+  });
+}
+
+// ── Favorites cache: load once per session so the list page can
+// show ♥ markers without N round-trips. Refreshed when the user
+// toggles a save.
+async function khStoryFavLoadAll() {
+  if (typeof supaUser === 'undefined' || !supaUser) { _khStorySavedSet = new Set(); return _khStorySavedSet; }
+  var sb = _khStorySupa();
+  if (!sb) { _khStorySavedSet = new Set(); return _khStorySavedSet; }
+  try {
+    var r = await sb.from('user_saved_stories').select('story_id').eq('user_id', supaUser.id);
+    _khStorySavedSet = new Set((r && r.data || []).map(function (x) { return String(x.story_id); }));
+  } catch (_) { _khStorySavedSet = new Set(); }
+  return _khStorySavedSet;
+}
+function khStoryIsSaved(storyId) {
+  return _khStorySavedSet ? _khStorySavedSet.has(String(storyId)) : false;
+}
+
+async function khStoryFavToggle(storyId) {
+  if (typeof supaUser === 'undefined' || !supaUser) {
+    if (typeof openAuthModal === 'function') openAuthModal('signin');
+    return;
+  }
+  var sb = _khStorySupa();
+  if (!sb) return;
+  if (!_khStorySavedSet) await khStoryFavLoadAll();
+  var sid = String(storyId);
+  var willSave = !_khStorySavedSet.has(sid);
+  try {
+    if (willSave) {
+      await sb.from('user_saved_stories').insert({ user_id: supaUser.id, story_id: sid });
+      _khStorySavedSet.add(sid);
+    } else {
+      await sb.from('user_saved_stories').delete()
+        .eq('user_id', supaUser.id).eq('story_id', sid);
+      _khStorySavedSet.delete(sid);
+    }
+  } catch (_) {}
+  // Sync the in-overlay button state.
+  var btn = document.getElementById('st-fav-btn');
+  if (btn) {
+    btn.classList.toggle('is-saved', willSave);
+    btn.textContent = willSave ? '♥' : '♡';
+    btn.setAttribute('aria-label', willSave ? 'Remove from saved' : 'Save story');
+    btn.title = willSave ? 'Remove from saved' : 'Save story';
+  }
+  // Sync any list-page heart marker for this card.
+  document.querySelectorAll('.sc[data-story-id="' + sid + '"] .sc-fav-mark')
+    .forEach(function (el) {
+      el.classList.toggle('is-saved', willSave);
+      el.textContent = willSave ? '♥' : '♡';
+    });
+}
+
+// Recently-in-progress stories (last_position < 95). Used by the
+// "Continue reading" surface on the list page.
+async function khStoryProgressRecent(limit) {
+  if (typeof supaUser === 'undefined' || !supaUser) return [];
+  var sb = _khStorySupa();
+  if (!sb) return [];
+  try {
+    var r = await sb.from('user_story_progress')
+      .select('story_id,last_position,last_read_at')
+      .eq('user_id', supaUser.id)
+      .lt('last_position', 95)
+      .order('last_read_at', { ascending: false })
+      .limit(limit || 6);
+    return (r && r.data) || [];
+  } catch (_) { return []; }
+}
+
 const STORIES = [
   {
     id:1, mood:'fun', lvl:'b', readTime:'3 min',
@@ -877,6 +1037,35 @@ function renderStories() {
     grid.className = 'st-rails';
     grid.style.display = 'block';
 
+    // 0a) 📖 Continue Reading — only when the signed-in user has
+    // in-progress stories (last_position < 95) cached from
+    // khStoryProgressRecent. Does NOT remove items from other rails.
+    var contHTML = '';
+    var contRecent = window._khStoryProgressRecent || [];
+    if (contRecent.length) {
+      var byId = {};
+      list.forEach(function (s) { byId[String(s.id)] = s; });
+      var contStories = contRecent
+        .map(function (r) { return byId[String(r.story_id)]; })
+        .filter(Boolean)
+        .slice(0, 8);
+      if (contStories.length) {
+        contHTML = '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title">📖 Continue Reading</div></div>'
+          + '<div class="st-rail-scroll">' + contStories.map(renderStoryCard).join('') + '</div></div>';
+      }
+    }
+
+    // 0b) ❤️ Saved — user's bookmarked stories. Skipped when empty
+    // or when the user isn't signed in.
+    var savedHTML = '';
+    if (_khStorySavedSet && _khStorySavedSet.size) {
+      var savedStories = list.filter(function (s) { return _khStorySavedSet.has(String(s.id)); }).slice(0, 12);
+      if (savedStories.length) {
+        savedHTML = '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title">❤️ Saved</div></div>'
+          + '<div class="st-rail-scroll">' + savedStories.map(renderStoryCard).join('') + '</div></div>';
+      }
+    }
+
     // 0) ✨ New Stories — spotlight rail, does NOT remove items from genre rails below
     var byCreatedDesc = list.slice().sort(function(a, b) {
       var ad = a.created_at || a.createdAt || '';
@@ -925,7 +1114,7 @@ function renderStories() {
       + '</div>';
     }).join('');
 
-    grid.innerHTML = newHTML + quickHTML + genreRailsHTML;
+    grid.innerHTML = contHTML + savedHTML + newHTML + quickHTML + genreRailsHTML;
     if (window.renderKhLucideIcons) renderKhLucideIcons();
     return;
   }
@@ -984,9 +1173,16 @@ function renderStoryCard(s) {
   var thumbInner = '<img src="' + escapeHtml(finalThumb) + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/kh-story/600/800\'">'
     + '<span class="sc-mood-badge" style="background:' + genreColor + '">' + genreLabel + '</span>';
 
-  return '<div class="sc" data-hover-skip="1" onclick="openStory(\'' + s.id + '\')">'
+  // Saved-state mark — sits on the thumbnail so it's visible even
+  // before opening the story. The heart character flips ♡ → ♥ via
+  // khStoryFavToggle without needing a re-render.
+  var savedOn = (typeof khStoryIsSaved === 'function' && khStoryIsSaved(s.id));
+  var savedMarkHtml = '<span class="sc-fav-mark' + (savedOn ? ' is-saved' : '') + '" onclick="event.stopPropagation();khStoryFavToggle(\'' + String(s.id).replace(/'/g,"\\'") + '\')" aria-label="Toggle save" title="Save / unsave">' + (savedOn ? '♥' : '♡') + '</span>';
+
+  return '<div class="sc" data-hover-skip="1" data-story-id="' + String(s.id) + '" onclick="openStory(\'' + s.id + '\')">'
     + '<div class="sc-thumb">'
       + thumbInner
+      + savedMarkHtml
     + '</div>'
     + '<div class="sc-body">'
       + '<div class="sc-title">' + escapeHtml(s.title_en || s.title || '') + seriesBadge + '</div>'
@@ -1198,6 +1394,7 @@ function openStory(id) {
         + '<div class="st-head-banner ' + headBannerClass + '"' + (storyThumb ? ' style="background:#0f172a;background-image:url(\'' + String(storyThumb).replace(/'/g, '%27') + '\');background-size:cover;background-position:center"' : '') + '>'
           + '<button class="st-back" onclick="closeSt()" aria-label="Back to stories">← Back</button>'
           + '<button class="st-close" onclick="closeSt()" aria-label="Close">✕</button>'
+          + '<button id="st-fav-btn" class="st-fav-btn" onclick="khStoryFavToggle(\'' + String(s.id).replace(/'/g,"\\'") + '\')" aria-label="Save story" title="Save story">♡</button>'
           + (storyThumb ? '<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.1),rgba(15,23,42,.45))"></div>' : '')
           + (storyThumb ? '' : '<span class="st-head-icon"><i data-lucide="' + (s.banner_icon || MOOD_ICONS[s.mood] || 'book-open') + '" style="width:44px;height:44px;color:#fff;opacity:.92" aria-hidden="true"></i></span>')
         + '</div>'
@@ -1271,6 +1468,35 @@ function openStory(id) {
   // Apply persisted reader settings (font size / line height / theme)
   // before vocab hover scan so any layout shift settles first.
   stApplySettings();
+
+  // ── Phase 2: progress + favorites wiring ───────────────────────
+  // Sync the heart button to the cached saved-set; if the cache
+  // hasn't loaded yet, fire-and-forget a load + reapply.
+  (function _stApplyFavBtn() {
+    var btn = document.getElementById('st-fav-btn');
+    if (!btn) return;
+    function paint() {
+      var on = khStoryIsSaved(s.id);
+      btn.classList.toggle('is-saved', on);
+      btn.textContent = on ? '♥' : '♡';
+      btn.setAttribute('aria-label', on ? 'Remove from saved' : 'Save story');
+      btn.title = on ? 'Remove from saved' : 'Save story';
+    }
+    if (_khStorySavedSet) paint();
+    else khStoryFavLoadAll().then(paint);
+  })();
+
+  // Attach scroll listener + restore last position (if any). Wait
+  // a tick for layout so scrollHeight is accurate, then jump.
+  setTimeout(function () {
+    var scrollEl = document.querySelector('#st-panel .st-body-scroll');
+    if (!scrollEl) return;
+    khStoryProgressAttachScroll(scrollEl, s.id);
+    khStoryProgressLoad(s.id).then(function (pct) {
+      if (pct == null || pct < 2) return;     // ignore noise
+      khStoryScrollSetPercent(scrollEl, pct);
+    });
+  }, 60);
   // Jump to the top of the freshly-rendered story. Critical for
   // feed-style swipe nav: without this the user lands wherever
   // they released their finger on the previous story (usually the
@@ -1496,6 +1722,17 @@ function startStoryListeningQuiz() {
 }
 
 function closeSt(fromPop) {
+  // Phase 2: capture current scroll position before tear-down so the
+  // user lands where they left off next time. Throttled saves may have
+  // a pending value queued; flush it now.
+  try {
+    var _curS = window._currentStory;
+    var scrollEl = document.querySelector('#st-panel .st-body-scroll');
+    if (_curS && _curS.id != null && scrollEl) {
+      khStoryProgressSave(_curS.id, khStoryScrollPercent(scrollEl));
+    }
+  } catch (_) {}
+
   document.getElementById('st-overlay').classList.add('hidden');
   var q = document.getElementById('st-quiz-overlay'); if (q) q.style.display='none';
   var panel = document.getElementById('st-panel'); if (panel) panel.style.filter='';
@@ -1780,6 +2017,15 @@ async function loadStoriesFromDB() {
       STORIES.length = 0;
       dbStories.forEach(function(s){ STORIES.push(s); });
     }
+    // Phase 2: kick off favorites + in-progress fetches before render
+    // so the rails show on first paint instead of popping in.
+    try {
+      var _stPhase2Loads = [khStoryFavLoadAll(), khStoryProgressRecent(8)];
+      Promise.all(_stPhase2Loads).then(function (results) {
+        window._khStoryProgressRecent = results[1] || [];
+        renderStories();
+      }).catch(function () { renderStories(); });
+    } catch (_) { /* fall through to normal render below */ }
     renderStories();
     // Load series
     _loadSeries();
