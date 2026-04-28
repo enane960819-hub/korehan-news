@@ -11136,88 +11136,106 @@ async function srBulkSearch() {
   if (!startStr) { statusEl.textContent = '시작 날짜를 선택하세요.'; return; }
   if (!levels.length) { statusEl.textContent = '레벨을 1개 이상 선택하세요.'; return; }
 
-  statusEl.textContent = '⏳ 토픽 조회 중...';
+  try {
+    statusEl.textContent = '⏳ 토픽 조회 중...';
 
-  // Pre-fetch writing_topics per level.
-  var topicsByLevel = {};
-  for (var li = 0; li < levels.length; li++) {
-    var lvl = levels[li];
-    var tr = await sb.from('writing_topics')
-      .select('topic_ko,topic_en,category')
-      .eq('level', lvl).eq('active', true)
-      .order('sort_order').order('created_at');
-    topicsByLevel[lvl] = (tr.data || []);
-  }
-
-  // Build cells.
-  var epoch = new Date(_srpbBulkEpoch).getTime();
-  var cells = [];
-  for (var d = 0; d < days; d++) {
-    var dt = new Date(startStr + 'T00:00:00+09:00');
-    dt.setDate(dt.getDate() + d);
-    var dateStr = dt.toISOString().slice(0, 10);
-    for (var lj = 0; lj < levels.length; lj++) {
-      var lv = levels[lj];
-      var topics = topicsByLevel[lv];
-      if (!topics || !topics.length) continue;
-      var selMs = new Date(dateStr + 'T00:00:00+09:00').getTime();
-      var daysSince = Math.max(0, Math.floor((selMs - epoch) / 86400000));
-      var topic = topics[daysSince % topics.length];
-      cells.push({
-        date: dateStr, level: lv,
-        topic_ko: topic.topic_ko || '', topic_en: topic.topic_en || '',
-        category: topic.category || '',
-        candidates: [], pickedIdx: -1, existing: null, error: null,
-      });
+    // Pre-fetch writing_topics per level.
+    var topicsByLevel = {};
+    for (var li = 0; li < levels.length; li++) {
+      var lvl = levels[li];
+      console.log('[bulk] fetching topics for', lvl);
+      var tr = await sb.from('writing_topics')
+        .select('topic_ko,topic_en,category')
+        .eq('level', lvl).eq('active', true)
+        .order('sort_order').order('created_at');
+      if (tr.error) throw new Error('writing_topics ' + lvl + ': ' + (tr.error.message || tr.error));
+      topicsByLevel[lvl] = (tr.data || []);
+      console.log('[bulk]', lvl, 'topics:', topicsByLevel[lvl].length);
     }
-  }
 
-  // Check existing study_picture_prompts to avoid silent overwrites.
-  var dates = Array.from(new Set(cells.map(function(c){ return c.date; })));
-  if (dates.length) {
-    var ex = await sb.from('study_picture_prompts')
-      .select('id,scheduled_date,level,image_url')
-      .in('scheduled_date', dates);
-    if (!ex.error && ex.data) {
-      var byKey = {};
-      ex.data.forEach(function(r){ byKey[r.scheduled_date + '|' + (r.level||'')] = r; });
-      cells.forEach(function(c){
-        var hit = byKey[c.date + '|' + c.level];
-        if (hit) c.existing = hit;
-      });
-    }
-  }
-
-  _srpbCells = cells;
-  srBulkRender();
-
-  // Sequential search per cell — Pexels free tier is 200/hr so 30 cells is fine,
-  // but spacing avoids burst-rate flags.
-  statusEl.textContent = '🔎 후보 사진 검색 중... (0/' + cells.length + ')';
-  for (var i = 0; i < cells.length; i++) {
-    var c = cells[i];
-    try {
-      var q = srBuildSearchQuery(c.topic_en, c.topic_ko, c.category);
-      var res = await srImageSearchCall(q, 8);
-      // Fallback: if filtered candidates < 3, retry with first keyword only.
-      if ((!res.candidates || res.candidates.length < 3) && c.topic_en) {
-        var keyword = (c.topic_en.split(/[\s/?!.,]+/).filter(Boolean).slice(-2).join(' ')) || c.category || 'korean lifestyle';
-        var res2 = await srImageSearchCall(keyword, 8);
-        if (res2.candidates && res2.candidates.length > (res.candidates ? res.candidates.length : 0)) {
-          res = res2;
-          c.fallback_query = keyword;
-        }
+    // Build cells.
+    var epoch = new Date(_srpbBulkEpoch).getTime();
+    var cells = [];
+    for (var d = 0; d < days; d++) {
+      var dt = new Date(startStr + 'T00:00:00+09:00');
+      dt.setDate(dt.getDate() + d);
+      var dateStr = dt.toISOString().slice(0, 10);
+      for (var lj = 0; lj < levels.length; lj++) {
+        var lv = levels[lj];
+        var topics = topicsByLevel[lv];
+        if (!topics || !topics.length) continue;
+        var selMs = new Date(dateStr + 'T00:00:00+09:00').getTime();
+        var daysSince = Math.max(0, Math.floor((selMs - epoch) / 86400000));
+        var topic = topics[daysSince % topics.length];
+        cells.push({
+          date: dateStr, level: lv,
+          topic_ko: topic.topic_ko || '', topic_en: topic.topic_en || '',
+          category: topic.category || '',
+          candidates: [], pickedIdx: -1, existing: null, error: null,
+        });
       }
-      c.candidates = (res.candidates || []).slice(0, 6);
-      c.search_query = res.query || q;
-    } catch(e) {
-      c.error = (e.message || String(e));
     }
-    statusEl.textContent = '🔎 후보 사진 검색 중... (' + (i+1) + '/' + cells.length + ')';
+    console.log('[bulk] built cells:', cells.length);
+
+    if (!cells.length) {
+      statusEl.textContent = '❌ 선택한 레벨에 등록된 writing_topics 가 없습니다.';
+      return;
+    }
+
+    // Check existing study_picture_prompts to avoid silent overwrites.
+    var dates = Array.from(new Set(cells.map(function(c){ return c.date; })));
+    if (dates.length) {
+      try {
+        var ex = await sb.from('study_picture_prompts')
+          .select('id,scheduled_date,image_url')
+          .in('scheduled_date', dates);
+        if (!ex.error && ex.data) {
+          var byKey = {};
+          ex.data.forEach(function(r){ byKey[r.scheduled_date + '|'] = r; });
+          cells.forEach(function(c){
+            var hit = byKey[c.date + '|'];
+            if (hit) c.existing = hit;
+          });
+        }
+      } catch(eEx) {
+        console.warn('[bulk] existing check failed (non-fatal):', eEx);
+      }
+    }
+
+    _srpbCells = cells;
     srBulkRender();
+
+    // Sequential search per cell — Pexels free tier is 200/hr so 30 cells is fine,
+    // but spacing avoids burst-rate flags.
+    statusEl.textContent = '🔎 후보 사진 검색 중... (0/' + cells.length + ')';
+    for (var i = 0; i < cells.length; i++) {
+      var c = cells[i];
+      try {
+        var q = srBuildSearchQuery(c.topic_en, c.topic_ko, c.category);
+        var res = await srImageSearchCall(q, 8);
+        if ((!res.candidates || res.candidates.length < 3) && c.topic_en) {
+          var keyword = (c.topic_en.split(/[\s/?!.,]+/).filter(Boolean).slice(-2).join(' ')) || c.category || 'korean lifestyle';
+          var res2 = await srImageSearchCall(keyword, 8);
+          if (res2.candidates && res2.candidates.length > (res.candidates ? res.candidates.length : 0)) {
+            res = res2;
+            c.fallback_query = keyword;
+          }
+        }
+        c.candidates = (res.candidates || []).slice(0, 6);
+        c.search_query = res.query || q;
+      } catch(eImg) {
+        c.error = (eImg.message || String(eImg));
+        console.error('[bulk] image-search failed for', c.date, c.level, eImg);
+      }
+      statusEl.textContent = '🔎 후보 사진 검색 중... (' + (i+1) + '/' + cells.length + ')';
+      srBulkRender();
+    }
+    statusEl.textContent = '✅ 검색 완료. 셀당 1장 클릭해서 선택 후 💾 선택 저장 누르세요.';
+    if (saveBtn) saveBtn.style.display = '';
+  } catch(e) {
+    console.error('[bulk] srBulkSearch failed:', e);
+    statusEl.textContent = '❌ 에러: ' + (e && e.message ? e.message : String(e)) + ' (콘솔 확인)';
   }
-  statusEl.textContent = '✅ 검색 완료. 셀당 1장 클릭해서 선택 후 💾 선택 저장 누르세요.';
-  if (saveBtn) saveBtn.style.display = '';
 }
 
 function srBuildSearchQuery(topicEn, topicKo, category) {
