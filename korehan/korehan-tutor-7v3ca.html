@@ -2142,26 +2142,51 @@ body{padding-bottom:0 !important}
   }
 
   function buildExtractPrompt(type) {
+    var now = new Date();
+    var thisYear = now.getFullYear();
+    var todayIso = now.toISOString().slice(0, 10);
+
     if (type === 'lessons') {
-      return 'You are a data-extraction assistant. The image is a screenshot of a Preply tutor dashboard showing scheduled lessons.\n'
-        + 'Extract every distinct lesson visible.\n\n'
+      return 'You are a data-extraction assistant. The image is a screenshot of the Preply tutor dashboard "Lessons" tab for ONE student. The student name is shown at the top of the panel (e.g. "Theddy A.").\n\n'
+        + 'Extract every CONCRETELY DATED lesson visible. SKIP recurring patterns like "Every Monday 09:30 - 10:20 / Weekly lesson" — those are templates, not actual lessons. Only extract rows that show a specific date (e.g. "MAY 20 Wednesday 09:00 - 09:50").\n\n'
         + 'Return ONLY valid JSON in this exact shape (no markdown, no commentary):\n'
-        + '{"lessons":[{"student_name":"string","date":"YYYY-MM-DD or null","time":"HH:MM 24h or null","duration_minutes":number or null,"topic":"string or null"}]}\n\n'
+        + '{"lessons":[{"student_name":"string","date":"YYYY-MM-DD","time":"HH:MM 24h","duration_minutes":number,"topic":"string or null","status":"scheduled|completed|canceled"}]}\n\n'
         + 'Rules:\n'
-        + '- student_name is required; everything else may be null if not visible.\n'
-        + '- Use 24h time. If only a relative time is shown ("Tomorrow 3 PM"), translate to absolute YYYY-MM-DD using today as the reference, in the same timezone the screenshot uses.\n'
-        + '- Do not invent lessons that are not actually rendered.\n'
-        + '- If you find none, return {"lessons":[]}.';
+        + '- student_name = exact name shown at the top of the profile panel. Preserve format like "Theddy A." (don\'t expand initials).\n'
+        + '- For "MAY 20 Wednesday" (no year shown): assume year ' + thisYear + '. If that date is already > 60 days in the past relative to today (' + todayIso + '), use ' + (thisYear + 1) + ' instead.\n'
+        + '- Use 24h time. From a range like "09:00 - 09:50": time="09:00", duration_minutes=50.\n'
+        + '- status: if the row chip says "Scheduled" use "scheduled"; "Completed" → "completed"; "Cancelled"/"Canceled" → "canceled". Default "scheduled".\n'
+        + '- topic: only fill if the row actually shows a topic/title; otherwise null.\n'
+        + '- Do NOT invent lessons. SKIP recurring "Every Monday/Tuesday/etc. · Weekly lesson" rows entirely.\n'
+        + '- If nothing concrete is found, return {"lessons":[]}.';
     }
-    return 'You are a data-extraction assistant. The image is a screenshot of a Preply tutor dashboard showing a student list / student profiles.\n'
-      + 'Extract every distinct student visible.\n\n'
+
+    return 'You are a data-extraction assistant. The image is a screenshot of the Preply tutor dashboard "Student profile" panel — usually the "Learning needs" tab. Extract the ONE student shown.\n\n'
       + 'Return ONLY valid JSON in this exact shape (no markdown, no commentary):\n'
-      + '{"students":[{"name":"string","level":"A1|A2|B1|B2|C1|C2 or null","country":"string or null","goal":"string or null","notes":"string or null"}]}\n\n'
+      + '{"students":[{"name":"string","level":"A1|A2|B1|B2|C1|C2 or null","goal":"string or null","notes":"string or null"}]}\n\n'
+      + 'Field rules:\n'
+      + '- name: exact name at the top of "Student profile" (e.g. "Theddy A."). Preserve initials — do NOT expand.\n'
+      + '- level: map Preply\'s self-assessed labels to CEFR:\n'
+      + '    "I\'m just starting" / "Beginner"           → A1\n'
+      + '    "I know the basics" / "Pre-intermediate"   → A2\n'
+      + '    "I\'m conversational" / "Intermediate"      → B1\n'
+      + '    "I\'m above average" / "Upper-intermediate" → B2\n'
+      + '    "I\'m advanced" / "Advanced"                → C1\n'
+      + '    "I\'m fluent" / "Proficient"                → C2\n'
+      + '  If no level shown, use null.\n'
+      + '- goal: combine "My English goal" + "How I\'ll use English" into a single short phrase, e.g. "Success at work · Negotiations". If only one is shown, use it alone.\n'
+      + '- notes: a multi-line string compiling these (only include fields that are actually visible — skip the rest):\n'
+      + '    Native language: <value>\n'
+      + '    Timezone: <value, e.g. America/Chicago>\n'
+      + '    Preferred times: <value, e.g. Evening (18-21)>\n'
+      + '    Focus on: <comma-separated, e.g. Fluency, Confidence, Accuracy, Pronunciation>\n'
+      + '    Industry-specific knowledge needed: <Yes/No>\n'
+      + '    Interests: <comma-separated, e.g. Reading, TV/Movies, Travel, Sports>\n'
+      + '  If none of these fields are visible, set notes to null.\n\n'
       + 'Rules:\n'
-      + '- name is required; map any "Beginner" to A1, "Pre-Intermediate" to A2, "Intermediate" to B1, "Upper-Intermediate" to B2, "Advanced" to C1, "Proficient" to C2.\n'
-      + '- Put country / nationality in the country field. Put learning goal/topic in goal.\n'
-      + '- Do not invent students.\n'
-      + '- If you find none, return {"students":[]}.';
+      + '- Only extract students that actually appear in the screenshot. If the panel shows just one student, return one item.\n'
+      + '- Do NOT invent missing fields.\n'
+      + '- If you find no student, return {"students":[]}.';
   }
 
   function setImportStatus(msg, kind) {
@@ -2252,9 +2277,12 @@ body{padding-bottom:0 !important}
       } else {
         title = it.name || 'Unnamed student';
         var bits = [];
-        if (it.level)   bits.push('<span class="ir-chip">' + escapeHtmlSafe(it.level) + '</span>');
-        if (it.country) bits.push(escapeHtmlSafe(it.country));
-        if (it.goal)    bits.push(escapeHtmlSafe(it.goal));
+        if (it.level) bits.push('<span class="ir-chip">' + escapeHtmlSafe(it.level) + '</span>');
+        if (it.goal)  bits.push(escapeHtmlSafe(it.goal));
+        // Show only the first non-empty line of notes as a peek; full content
+        // gets saved verbatim.
+        var notesPeek = (it.notes || '').split('\n').map(function(s){ return s.trim(); }).filter(Boolean)[0] || '';
+        if (notesPeek) bits.push('<span style="color:#94a3b8">' + escapeHtmlSafe(notesPeek) + '</span>');
         info = '<div class="ir-meta">' + (bits.join(' · ') || '—') + '</div>';
         if (existingByName[(it.name || '').toLowerCase().trim()]) {
           warn = '<div class="ir-warn">⚠ A student with this name already exists — will be skipped.</div>';
@@ -2332,7 +2360,7 @@ body{padding-bottom:0 !important}
             name: p.name,
             level: p.level || null,
             goal: p.goal || null,
-            notes: [p.country ? 'Country: ' + p.country : '', p.notes || ''].filter(Boolean).join('\n').trim() || null,
+            notes: (p.notes || '').trim() || null,
             owner_id: state.me ? state.me.id : null
           };
         });
@@ -2354,12 +2382,13 @@ body{padding-bottom:0 !important}
               if (!isNaN(dt.getTime())) iso = dt.toISOString();
             } catch(_){}
           }
+          var status = (p.status === 'completed' || p.status === 'canceled') ? p.status : 'scheduled';
           lessonRows.push({
             student_id: s.id,
             owner_id: state.me ? state.me.id : null,
             scheduled_at: iso,
             duration_minutes: p.duration_minutes || 60,
-            status: 'scheduled',
+            status: status,
             topic: p.topic || null
           });
         });
