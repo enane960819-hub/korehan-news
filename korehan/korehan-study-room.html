@@ -12061,9 +12061,25 @@ function _pdRenderStep3(item) {
     Intermediate: '이 사진의 상황을 묘사하고, 이 장면에서 어떤 느낌이 드는지 써보세요.',
     Advanced: '이 사진을 보고 상황을 자세히 묘사한 후, 이 장면이 일어나게 된 배경을 상상해서 써보세요.'
   };
+  // Vocab scaffolding — keep the Step 1 vocab visible during writing
+  // so learners can reach for the words instead of switching tabs or
+  // giving up. Collapsed by default to keep the textarea prominent.
+  var vocab = item.vocab_items || [];
+  var vocabHtml = '';
+  if (vocab.length) {
+    var chips = vocab.map(function(v) {
+      return '<span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:rgba(122,184,245,.14);border:1px solid rgba(122,184,245,.28);color:#bcdcff;font-size:12px;font-family:\'Noto Sans KR\',sans-serif"><b style="font-weight:700">' + (v.ko || '') + '</b><span style="opacity:.6;font-size:11px">— ' + (v.en || '') + '</span></span>';
+    }).join('');
+    vocabHtml =
+      '<details style="margin-bottom:10px;border:1px dashed rgba(122,184,245,.35);border-radius:10px;padding:8px 10px;background:rgba(122,184,245,.06)" open>'
+      + '<summary style="cursor:pointer;font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.6px;list-style:none">📚 어휘 참고 (' + vocab.length + ')</summary>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' + chips + '</div>'
+      + '</details>';
+  }
   body.innerHTML =
     '<div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✏️ 사진 묘사 글쓰기</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">' + (guidedPrompts[level] || guidedPrompts.Beginner) + '</div>'
+    + vocabHtml
     + '<textarea id="pd-input" style="width:100%;min-height:100px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;padding:12px;font-size:14px;font-family:\'Noto Sans KR\',sans-serif;background:rgba(255,255,255,.06);color:#fff;resize:vertical;outline:none;box-sizing:border-box" placeholder="한국어로 써보세요..."></textarea>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">'
     + '<span id="pd-char-count" style="font-size:11px;color:rgba(255,255,255,.4)">0 chars</span>'
@@ -14479,6 +14495,66 @@ function selectGFPattern(idx) {
   switchGFTab('learn', document.getElementById('gft-learn'));
 }
 
+// ── Korean sentence-structure heuristic parser used by Grammar
+//    Focus example tree visualisation. Tags each token with one of
+//    five roles based on suffix:
+//      subject  — ends in 이/가/은/는
+//      object   — ends in 을/를
+//      modifier — ends in 의 / 와/과 / 에/에서/로/으로 / 에게 / 께
+//      verb     — ends in 다/요/까/지/네/어/아/여/세요/ㅂ니다/습니다
+//      misc     — anything else (often nouns / adverbs)
+//    Heuristic, not strict NLP — intentionally simple so it runs
+//    instantly and gives learners a useful colour-coding hint.
+function gfParseKorean(ko) {
+  if (!ko) return [];
+  var tokens = String(ko).trim().replace(/[.,!?。]/g, ' ').split(/\s+/).filter(Boolean);
+  var SUBJECT = /(이|가|은|는)$/;
+  var OBJECT  = /(을|를)$/;
+  var MODIFIER = /(의|와|과|에서|에게|에|로|으로|께|부터|까지|보다|마다|처럼|만)$/;
+  var VERB_END = /(요|다|까|지|네|어|아|여|세요|ㅂ니다|습니다|냐|군|구나|네요|을게요|을까요|어요|아요|여요|었어요|았어요)$/;
+  return tokens.map(function (t) {
+    var role = 'misc';
+    if (SUBJECT.test(t))        role = 'subject';
+    else if (OBJECT.test(t))    role = 'object';
+    else if (MODIFIER.test(t))  role = 'modifier';
+    else if (VERB_END.test(t))  role = 'verb';
+    return { token: t, role: role };
+  });
+}
+
+function gfRenderSentenceTree(ko) {
+  var ROLE_BG    = { subject:'#fef3c7', object:'#dcfce7', modifier:'#dbeafe', verb:'#ede9fe', misc:'#f1f5f9' };
+  var ROLE_COLOR = { subject:'#92400e', object:'#15803d', modifier:'#1e40af', verb:'#6d28d9', misc:'#475569' };
+  var ROLE_LABEL = { subject:'주어',    object:'목적어', modifier:'수식',     verb:'서술어', misc:'기타' };
+  var parsed = gfParseKorean(ko);
+  if (!parsed.length) return '';
+  // Each token: chip with role label below.
+  var chips = parsed.map(function (t) {
+    return '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;margin:0 4px 8px 0">'
+      + '<span style="padding:4px 10px;border-radius:8px;background:' + ROLE_BG[t.role] + ';color:' + ROLE_COLOR[t.role] + ';font-family:Noto Serif KR,serif;font-size:15px;font-weight:800">' + escapeHTML(t.token) + '</span>'
+      + '<span style="font-size:9px;font-weight:800;letter-spacing:.04em;color:' + ROLE_COLOR[t.role] + ';opacity:.85">' + ROLE_LABEL[t.role] + '</span>'
+      + '</span>';
+  }).join('');
+  // Legend so learners know what each colour means without hunting.
+  var legend = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">'
+    + ['subject','object','modifier','verb'].map(function (r) {
+        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:' + ROLE_BG[r] + ';color:' + ROLE_COLOR[r] + ';font-size:9px;font-weight:800;letter-spacing:.04em">●  ' + ROLE_LABEL[r] + '</span>';
+      }).join('')
+    + '</div>';
+  return '<div style="background:#fafbfd;border:1px dashed #cbd5e1;border-radius:10px;padding:12px 14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:8px">구조 Structure (heuristic)</div>'
+    + legend
+    + '<div style="display:flex;flex-wrap:wrap;align-items:flex-end">' + chips + '</div>'
+    + '</div>';
+}
+
+function gfToggleTree(id, btn) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var hidden = el.toggleAttribute('hidden');
+  if (btn) btn.textContent = hidden ? '▼ Show structure' : '▲ Hide structure';
+}
+
 function renderGFLearn(p) {
   var levelColors = { Starter:'#7c3aed', Beginner:'#16a34a', Intermediate:'#d97706', Advanced:'#dc2626' };
   var levelBgs    = { Starter:'#f5f3ff', Beginner:'#f0fdf4', Intermediate:'#fffbeb', Advanced:'#fff1f2' };
@@ -14524,7 +14600,7 @@ function renderGFLearn(p) {
     tipsHtml += '</div>';
   }
 
-  // Examples with grammar highlighted
+  // Examples with grammar highlighted + (collapsible) sentence-structure tree
   var examples = p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }];
   var exHtml = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">예문 Examples</div>'
     + examples.map(function(ex, i) {
@@ -14536,10 +14612,16 @@ function renderGFLearn(p) {
             koText = koText.split(clean).join('<mark style="background:#dbeafe;color:#2255a4;border-radius:4px;padding:1px 3px;font-style:normal">' + clean + '</mark>');
           }
         });
+        var treeId = 'gf-tree-' + i;
+        var treeBtn = ex.ko
+          ? '<button type="button" onclick="gfToggleTree(\'' + treeId + '\',this)" style="margin-top:8px;padding:4px 10px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">▼ Show structure</button>'
+          + '<div id="' + treeId + '" hidden style="margin-top:10px">' + gfRenderSentenceTree(ex.ko) + '</div>'
+          : '';
         return '<div style="background:#f8faff;border:1px solid #dbeafe;border-radius:12px;padding:14px 16px;margin-bottom:10px">'
           + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:7px">예문 ' + (i+1) + '</div>'
           + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#0f172a;line-height:1.7;margin:0 0 8px">' + koText + '</p>'
           + '<p style="font-size:13px;color:#64748b;margin:0;padding-top:8px;border-top:1px solid #e8eef8">' + (ex.en||'') + '</p>'
+          + treeBtn
           + '</div>';
       }).join('');
 
@@ -16284,6 +16366,8 @@ function _dctRenderFillBlank() {
   }
   if (!_dctFbState || _dctFbState.sentIdx !== _dctFbIdx) _dctFbState = _buildFbState(_dctFbIdx, pool);
   var st = _dctFbState;
+  if (!('eliminated' in st)) st.eliminated = [];   // indices of choices the hint button has dimmed
+  if (!('hintsUsed' in st))  st.hintsUsed = 0;
   var s = pool[_dctFbIdx];
   var sentHTML = st.words.map(function(w, i){
     if (i === st.blankIdx) {
@@ -16296,17 +16380,33 @@ function _dctRenderFillBlank() {
     return '<span style="margin:0 2px">' + escapeHTML(w) + '</span>';
   }).join(' ');
   var choicesHTML = st.choices.map(function(c, ci){
-    var disabled = st.answered ? 'disabled' : '';
+    var isEliminated = st.eliminated.indexOf(ci) !== -1;
+    var disabled = (st.answered || isEliminated) ? 'disabled' : '';
     var bg = '#fff', color = '#0f172a', border = '#e2e8f0';
     if (st.answered) {
       if (c === st.answer) { bg = '#dcfce7'; color = '#15803d'; border = '#22c55e'; }
       else if (st.picked === c) { bg = '#fee2e2'; color = '#dc2626'; border = '#f87171'; }
+    } else if (isEliminated) {
+      // Hint dimmed this choice — keep visible but visually struck-through
+      bg = '#f1f5f9'; color = '#94a3b8'; border = '#e2e8f0';
     }
-    return '<button ' + disabled + ' onclick="_dctFbPick(' + ci + ')" style="padding:12px 18px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif">' + escapeHTML(c) + '</button>';
+    var extraStyle = isEliminated ? 'text-decoration:line-through;opacity:.55;cursor:not-allowed' : 'cursor:pointer';
+    return '<button ' + disabled + ' onclick="_dctFbPick(' + ci + ')" style="padding:12px 18px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:10px;font-size:15px;font-weight:700;font-family:\'Noto Serif KR\',serif;' + extraStyle + '">' + escapeHTML(c) + '</button>';
   }).join('');
   var hintEn = s.en ? '<div style="text-align:center;margin:0 0 12px;padding:8px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:12px;color:#78350f;font-style:italic">💡 ' + escapeHTML(s.en) + '</div>' : '';
+  // Hint affordance: max 2 hints per question (eliminates wrong
+  // answers one at a time). Disabled once 2 wrong are out, since
+  // any further hint would just point at the answer.
+  var maxHints = Math.min(2, Math.max(0, st.choices.length - 2));
+  var hintsLeft = maxHints - st.hintsUsed;
+  var hintBtn = !st.answered && hintsLeft > 0
+    ? '<button onclick="_dctFbHint()" style="padding:6px 14px;border-radius:999px;border:1.5px solid #fcd34d;background:#fef3c7;color:#92400e;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">💡 Hint (-' + hintsLeft + ')</button>'
+    : '';
   body.innerHTML =
-      '<div style="font-size:13px;color:#64748b;margin-bottom:12px">듣고 빈칸에 알맞은 단어를 고르세요. (' + (_dctFbIdx + 1) + '/' + pool.length + ')</div>'
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px">'
+    +   '<div style="font-size:13px;color:#64748b">듣고 빈칸에 알맞은 단어를 고르세요. (' + (_dctFbIdx + 1) + '/' + pool.length + ')</div>'
+    +   hintBtn
+    + '</div>'
     + '<div style="text-align:center;margin-bottom:14px">'
     + '<button onclick="_dctFbSpeak()" style="width:66px;height:66px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;font-size:28px;cursor:pointer">🔊</button>'
     + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">클릭해서 듣기</div>'
@@ -16318,6 +16418,25 @@ function _dctRenderFillBlank() {
     ? '<button class="btn btn-g" onclick="_dctFbNext()">다음 →</button>'
     : '<div style="font-size:12px;color:#94a3b8;padding:6px 0">단어를 골라주세요</div>';
   if (!st.answered) setTimeout(_dctFbSpeak, 300);
+}
+
+// Eliminate one wrong choice. Picks among non-eliminated wrong
+// answers — the correct answer is always preserved.
+function _dctFbHint() {
+  if (!_dctFbState || _dctFbState.answered) return;
+  var st = _dctFbState;
+  var maxHints = Math.min(2, Math.max(0, st.choices.length - 2));
+  if (st.hintsUsed >= maxHints) return;
+  var wrongIdxs = [];
+  for (var i = 0; i < st.choices.length; i++) {
+    if (st.choices[i] === st.answer) continue;
+    if (st.eliminated.indexOf(i) !== -1) continue;
+    wrongIdxs.push(i);
+  }
+  if (!wrongIdxs.length) return;
+  st.eliminated.push(wrongIdxs[Math.floor(Math.random() * wrongIdxs.length)]);
+  st.hintsUsed++;
+  _dctRenderFillBlank();
 }
 
 function _dctFbSpeak() {
