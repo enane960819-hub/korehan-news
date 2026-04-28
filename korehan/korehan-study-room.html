@@ -23,6 +23,22 @@
 /* ─── LAYOUT ─────────────────────────────── */
 :root { --accent:#1a3a6b;--bright:#2255a4;--dark:#0d1b2e;--gray:#445566;--border:#d4dce8;--bg:#f0f2f7;--white:#fff;--shadow:0 4px 18px rgba(0,0,0,0.07); }
 
+/* Study Room body — deep space backdrop. Multiple radial gradients
+   stack to fake nebula clouds at the corners, with the existing
+   navy-blue tone underneath so brand colour stays recognisable.
+   Fixed attachment so scrolling doesn't drag the gradient with the
+   content. */
+html, body {
+  background:
+    radial-gradient(ellipse 60% 50% at 18% 8%,  rgba(124, 58, 237, .28) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 55% at 82% 12%, rgba(56, 189, 248, .18) 0%, transparent 65%),
+    radial-gradient(ellipse 65% 50% at 12% 92%, rgba(244, 114, 182, .14) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 60% at 88% 88%, rgba(45,  64, 204, .22) 0%, transparent 65%),
+    linear-gradient(160deg, #050714 0%, #0a0f24 45%, #0d1933 100%) !important;
+  background-attachment: fixed !important;
+  background-color: #050714 !important;
+}
+
 .sr-hero {
   background: linear-gradient(140deg,#0d1b2e 0%,#1a3a6b 65%,#2255a4 100%);
   padding: 36px 24px 28px; position:relative; overflow:hidden;
@@ -64,8 +80,9 @@
 
 /* ── MOBILE OVERRIDES (phone only) ───────────────────────── */
 @media(max-width:640px){
-  /* study room 전체 배경 유지 */
-  body { background: linear-gradient(140deg,#0d1b2e 0%,#1a3a6b 65%,#2255a4 100%) !important; min-height:100vh; }
+  /* mobile keeps the same deep-space backdrop, just guarantees full
+     viewport so short-content pages don't show a hard cut. */
+  body { min-height: 100vh; }
 
   /* 카드 간격 */
   .sr-grid { gap: 14px !important; padding: 0 12px !important; }
@@ -2661,6 +2678,12 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   z-index: 6;
 }
 </style>
+
+<!-- es-module-shims polyfills the importmap below for browsers that
+     don't yet ship native importmap support (older Samsung Internet,
+     iOS < 16.4, etc). Loaded async; the type=importmap tag is read
+     either by the browser natively or by the shim — whichever wins. -->
+<script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 
 <!-- Three.js (importmap so the constellation module can pull
      UnrealBloomPass + EffectComposer from the same versioned bundle).
@@ -19920,20 +19943,35 @@ const _ls = { ready: false, NODES, get scene(){return scene;}, get camera(){retu
               get stars(){return starsMesh;} };
 window._lsCosmos = _ls;
 
-function hasWebGL2() {
+function hasWebGL() {
   try {
     const c = document.createElement('canvas');
-    return !!(c.getContext && c.getContext('webgl2'));
+    return !!(c.getContext && (c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl')));
   } catch (_) { return false; }
+}
+
+// Surface the failure reason as a tiny dim string at the bottom of
+// the cosmos slot. Helps when the user can't open devtools to read
+// the console. The fallback START button stays usable above it.
+function showCosmosError(msg) {
+  if (!mount) return;
+  let el = document.getElementById('ls-cosmos-err');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'ls-cosmos-err';
+    el.style.cssText = 'position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:10px;font-weight:700;color:rgba(248,113,113,.85);z-index:10;letter-spacing:.04em;pointer-events:none;font-family:ui-monospace,monospace';
+    mount.appendChild(el);
+  }
+  el.textContent = '⚠ ' + msg;
 }
 
 function lsCosmosBoot() {
   mount  = document.getElementById('ls-cosmos-mount');
   canvas = document.getElementById('ls-cosmos-canvas');
   if (!mount || !canvas) return;
-  if (!hasWebGL2()) {
-    // Leave fallback button. No is-ready class.
-    console.warn('[ls-cosmos] WebGL2 missing — using fallback START button');
+  if (!hasWebGL()) {
+    console.warn('[ls-cosmos] WebGL missing — using fallback START button');
+    showCosmosError('WebGL unavailable on this device — START button shown instead.');
     return;
   }
 
@@ -19959,8 +19997,10 @@ function lsCosmosBoot() {
     window.addEventListener('resize', layoutAndRender);
   } catch (err) {
     console.error('[ls-cosmos] init failed', err);
+    showCosmosError('Cosmos init: ' + (err && err.message ? err.message : err));
   }
 }
+
 
 function buildRenderer() {
   const rect = mount.getBoundingClientRect();
@@ -20286,6 +20326,26 @@ if (document.readyState === 'loading') {
 } else {
   lsCosmosBoot();
 }
+</script>
+
+<!-- External watchdog — non-module so it runs even if the module
+     script above never executes (importmap unsupported, CDN refused,
+     CSP block, etc). Surfaces a visible diagnostic so the user knows
+     why the constellation didn't appear. -->
+<script>
+setTimeout(function () {
+  var m = document.getElementById('ls-cosmos-mount');
+  if (!m) return;
+  if (m.classList.contains('is-ready')) return;
+  if (window._lsCosmos && window._lsCosmos.ready) return;
+  if (document.getElementById('ls-cosmos-err')) return;
+  var err = document.createElement('div');
+  err.id = 'ls-cosmos-err';
+  err.style.cssText = 'position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:10px;font-weight:700;color:rgba(248,113,113,.85);z-index:10;letter-spacing:.04em;pointer-events:none;font-family:ui-monospace,monospace';
+  err.textContent = '⚠ Cosmos timed out — module may not have loaded. START button still works.';
+  m.appendChild(err);
+  console.warn('[ls-cosmos] external watchdog triggered — module never reached ready state');
+}, 8000);
 </script>
 </body>
 </html>
