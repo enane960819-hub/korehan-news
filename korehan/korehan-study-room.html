@@ -23,20 +23,19 @@
 /* ─── LAYOUT ─────────────────────────────── */
 :root { --accent:#1a3a6b;--bright:#2255a4;--dark:#0d1b2e;--gray:#445566;--border:#d4dce8;--bg:#f0f2f7;--white:#fff;--shadow:0 4px 18px rgba(0,0,0,0.07); }
 
-/* Study Room body — deep space backdrop. Multiple radial gradients
-   stack to fake nebula clouds at the corners, with the existing
-   navy-blue tone underneath so brand colour stays recognisable.
-   Fixed attachment so scrolling doesn't drag the gradient with the
-   content. */
+/* Study Room body — Interstellar-grade deep space. Mostly black
+   void with very faint cool nebula whispers; warmth strictly held
+   back so the page reads as cinema, not a poster. Fixed attachment
+   so scrolling doesn't drag the gradient with the content. */
 html, body {
   background:
-    radial-gradient(ellipse 60% 50% at 18% 8%,  rgba(124, 58, 237, .28) 0%, transparent 60%),
-    radial-gradient(ellipse 70% 55% at 82% 12%, rgba(56, 189, 248, .18) 0%, transparent 65%),
-    radial-gradient(ellipse 65% 50% at 12% 92%, rgba(244, 114, 182, .14) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 60% at 88% 88%, rgba(45,  64, 204, .22) 0%, transparent 65%),
-    linear-gradient(160deg, #050714 0%, #0a0f24 45%, #0d1933 100%) !important;
+    radial-gradient(ellipse 70% 50% at 22% 12%, rgba(54,  78, 144, .12) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 55% at 80% 18%, rgba(80,  90, 170, .08) 0%, transparent 70%),
+    radial-gradient(ellipse 65% 55% at 18% 88%, rgba(38,  52, 100, .10) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 60% at 86% 84%, rgba(20,  40,  90, .14) 0%, transparent 70%),
+    linear-gradient(170deg, #02030a 0%, #04060f 50%, #060a18 100%) !important;
   background-attachment: fixed !important;
-  background-color: #050714 !important;
+  background-color: #02030a !important;
 }
 
 .sr-hero {
@@ -1138,10 +1137,13 @@ body { background: #0b1626 !important; }
 
 /* ── TOPIC CARD ── */
 .sr-topic-card2 {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.13);
-  border-radius: 14px;
-  padding: 20px 22px 18px;
+  /* Card chrome dropped — the cosmos canvas now sits directly on the
+     body's deep-space backdrop, so the boxed-in feel goes away.
+     Padding shrunk too so the topic header reads as a label sitting
+     above the cosmos rather than as a separate panel. */
+  background: transparent;
+  border: none;
+  padding: 4px 4px 8px;
   position: relative;
 }
 /* vertical split: content on top / start button below */
@@ -2537,8 +2539,10 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 /* ── Inline Cosmos (study room landing constellation) ────────────
    Container holds the WebGL canvas + DOM overlays for taps and
-   labels. The fallback START button is shown until the 3D scene
-   reports it's ready (or shown permanently when WebGL/reduced-motion
+   labels. The canvas itself renders with alpha:true so the body's
+   deep-space backdrop bleeds straight through — no boxed-in look.
+   The fallback START button is shown until the 3D scene reports
+   it's ready (or shown permanently when WebGL/reduced-motion
    conditions don't allow it). */
 .ls-cosmos {
   position: relative;
@@ -2547,10 +2551,9 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   max-height: 560px;
   border-radius: 18px;
   overflow: hidden;
-  background: #050814;
-  /* Soft outer glow keeps the cosmos visually anchored against the
-     surrounding card chrome. */
-  box-shadow: 0 12px 40px rgba(80, 40, 200, .14), inset 0 0 0 1px rgba(124, 58, 237, .15);
+  /* No box-shadow / no inset border / no solid bg — the WebGL scene
+     renders transparently over whatever the parent shows. */
+  background: transparent;
 }
 @media (max-width: 480px) {
   .ls-cosmos { aspect-ratio: 1 / 1.05; max-height: 520px; }
@@ -20012,7 +20015,10 @@ function lsCosmosBoot() {
   try {
     buildRenderer();
     buildBloom();
-    buildNebula();
+    // Nebula plane intentionally not built — the body's CSS radial-
+    // gradient backdrop already supplies the purple/blue cloud
+    // feeling. Adding a second nebula on top fights with it visually
+    // and locks the cosmos slot inside its own box.
     buildStars();
     buildOrb();
     buildNodes();
@@ -20038,12 +20044,13 @@ function buildRenderer() {
   renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
-    alpha: false,
+    alpha: true,                  // transparent canvas — body bg shows through
+    premultipliedAlpha: false,
     powerPreference: 'high-performance',
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(rect.width, rect.height, false);
-  renderer.setClearColor(0x05070d, 1);
+  renderer.setClearColor(0x000000, 0); // fully transparent clear
   // colour pipeline that plays well with bloom + emissive materials
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -20060,12 +20067,14 @@ function buildBloom() {
   composer = new EffectComposer(renderer);
   composer.setSize(rect.width, rect.height);
   composer.addPass(new RenderPass(scene, camera));
-  // strength / radius / threshold — moderate "everything glows" look
-  // without crushing the nebula. Threshold 0.7 keeps the dim nebula
-  // from also blooming.
+  // Cinematic bloom — cooler, lower strength so only the brightest
+  // bodies (orb + node cores + a handful of stars) bleed light.
+  // Higher threshold prevents dim stars from washing into haze.
   bloomPass = new UnrealBloomPass(
     new THREE.Vector2(rect.width, rect.height),
-    1.15, 0.42, 0.72
+    0.55,  // strength
+    0.55,  // radius (wider, softer falloff)
+    0.92   // threshold (only the very brightest blooms)
   );
   composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
@@ -20121,11 +20130,13 @@ function buildNebula() {
   scene.add(nebulaMesh);
 }
 
-// ── Starfield: 2400 points distributed on a spherical shell behind
-//    everything else. Custom shader for size attenuation + twinkle.
-//    BufferAttributes are reused across renders.
+// ── Starfield: ~1400 points distributed on a spherical shell behind
+//    everything else. Cinematic distribution: mostly cool whites,
+//    far fewer "punchy" warm stars so the field reads as deep space
+//    rather than glitter. Custom shader for size attenuation +
+//    twinkle. BufferAttributes are reused across renders.
 function buildStars() {
-  const N = 2400;
+  const N = 1400;
   const positions = new Float32Array(N * 3);
   const colors    = new Float32Array(N * 3);
   const sizes     = new Float32Array(N);
@@ -20137,14 +20148,13 @@ function buildStars() {
     positions[i*3+0] = r * Math.sin(phi) * Math.cos(theta);
     positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
     positions[i*3+2] = r * Math.cos(phi) - 6;
-    sizes[i]  = 0.8 + Math.random() * 2.6;
+    sizes[i]  = 0.5 + Math.random() * 1.8;
     phases[i] = Math.random() * Math.PI * 2;
-    // mostly white, occasional warm or cool tints
+    // overwhelmingly cool-white. 1.5% warm hero stars, 8% cool blue.
     const roll = Math.random();
-    if (roll < 0.05)        { colors[i*3]=1.00; colors[i*3+1]=0.85; colors[i*3+2]=0.55; }
-    else if (roll < 0.13)   { colors[i*3]=0.85; colors[i*3+1]=0.85; colors[i*3+2]=1.00; }
-    else if (roll < 0.21)   { colors[i*3]=0.95; colors[i*3+1]=0.75; colors[i*3+2]=1.00; }
-    else                    { colors[i*3]=1.00; colors[i*3+1]=1.00; colors[i*3+2]=1.00; }
+    if (roll < 0.015)       { colors[i*3]=0.95; colors[i*3+1]=0.78; colors[i*3+2]=0.50; } // warm hero
+    else if (roll < 0.10)   { colors[i*3]=0.72; colors[i*3+1]=0.78; colors[i*3+2]=1.00; } // cool blue
+    else                    { colors[i*3]=0.85; colors[i*3+1]=0.88; colors[i*3+2]=1.00; } // cool white
   }
   const geom = new THREE.BufferGeometry();
   geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -20179,7 +20189,10 @@ function buildStars() {
         vec2 uv = gl_PointCoord - 0.5;
         float r = length(uv);
         if (r > 0.5) discard;
-        float a = smoothstep(0.5, 0.0, r) * vTwinkle;
+        // Soft falloff + dimmed amplitude so most stars sit near
+        // threshold-of-visibility, only twinkle peaks become bright
+        // enough for bloom to catch.
+        float a = smoothstep(0.5, 0.0, r) * vTwinkle * 0.65;
         gl_FragColor = vec4(vColor, a);
       }
     `,
@@ -20192,34 +20205,36 @@ function buildStars() {
   scene.add(starsMesh);
 }
 
-// ── Center orb: emissive sphere + soft additive halo + ambient/point
-//    lighting so node spheres pick up a kiss of purple light.
+// ── Center orb: muted, mysterious — a distant celestial body more
+//    than a UI button. Cooler indigo emissive, low intensity, soft
+//    additive halo. Ambient light kept dim so nodes show their own
+//    character rather than getting flushed in purple.
 function buildOrb() {
   const geom = new THREE.SphereGeometry(1.4, 64, 64);
   const mat = new THREE.MeshStandardMaterial({
-    color:             0x4c1d95,
-    emissive:          0xa855f7,
-    emissiveIntensity: 1.6,
-    roughness:         0.35,
-    metalness:         0.05,
+    color:             0x1e1b4b,        // dark indigo body
+    emissive:          0x6366f1,        // muted indigo glow
+    emissiveIntensity: 0.55,
+    roughness:         0.55,
+    metalness:         0.10,
   });
   orbMesh = new THREE.Mesh(geom, mat);
   orbMesh.userData.kind = 'orb';
   scene.add(orbMesh);
 
   orbHalo = new THREE.Mesh(
-    new THREE.SphereGeometry(1.85, 32, 32),
+    new THREE.SphereGeometry(1.95, 32, 32),
     new THREE.MeshBasicMaterial({
-      color:       0xc4b5fd,
-      transparent: true, opacity: 0.20,
+      color:       0x818cf8,
+      transparent: true, opacity: 0.10,
       blending:    THREE.AdditiveBlending,
       depthWrite:  false,
     })
   );
   scene.add(orbHalo);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.18));
-  const pl = new THREE.PointLight(0xa855f7, 1.8, 30, 1.2);
+  scene.add(new THREE.AmbientLight(0xb0b8ff, 0.10));
+  const pl = new THREE.PointLight(0x6366f1, 0.65, 30, 1.6);
   pl.position.set(0, 0, 0);
   scene.add(pl);
 }
@@ -20234,11 +20249,11 @@ function buildNodes() {
     const y   = Math.sin(rad) * NODE_RADIUS_3D;
 
     const mat = new THREE.MeshStandardMaterial({
-      color:             new THREE.Color(n.color).multiplyScalar(0.35),
+      color:             new THREE.Color(n.color).multiplyScalar(0.18),
       emissive:          new THREE.Color(n.color),
-      emissiveIntensity: 1.4,
-      roughness:         0.4,
-      metalness:         0.10,
+      emissiveIntensity: 0.65,                 // far dimmer — distant beacons
+      roughness:         0.55,
+      metalness:         0.12,
     });
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.78, 36, 36), mat);
     mesh.position.set(x, y, 0);
@@ -20249,7 +20264,7 @@ function buildNodes() {
       new THREE.SphereGeometry(1.10, 24, 24),
       new THREE.MeshBasicMaterial({
         color:       n.color,
-        transparent: true, opacity: 0.14,
+        transparent: true, opacity: 0.07,    // halo barely there
         blending:    THREE.AdditiveBlending,
         depthWrite:  false,
       })
@@ -20262,8 +20277,8 @@ function buildNodes() {
   });
 }
 
-// ── Subtle additive lines from orb to each node. Bloom picks them up
-//    so they read as energy beams rather than wireframe.
+// ── Whisper-thin lines from orb to each node — almost invisible
+//    until bloom catches them, like dust trails between worlds.
 function buildLines() {
   const positions = new Float32Array(NODES.length * 6);
   for (let i = 0; i < NODES.length; i++) {
@@ -20275,8 +20290,8 @@ function buildLines() {
   const geom = new THREE.BufferGeometry();
   geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   const mat = new THREE.LineBasicMaterial({
-    color:       0xa78bfa,
-    transparent: true, opacity: 0.28,
+    color:       0x6366f1,
+    transparent: true, opacity: 0.12,
     blending:    THREE.AdditiveBlending,
     depthWrite:  false,
   });
