@@ -380,43 +380,110 @@
 }
 .story-cover > img {
   width:100%; height:100%; object-fit:cover; display:block;
-  filter: brightness(1.22) contrast(1.04) saturate(1.12);
+  /* Slightly darken so the bottom-left title + chips stay legible
+     even on already-dark moody photos. */
+  filter: brightness(.85) contrast(1.05) saturate(1.05);
 }
 .story-cover::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, rgba(5,15,35,0) 0%, rgba(5,15,35,0) 48%, rgba(5,15,35,.52) 72%, rgba(5,15,35,.88) 100%);
+  /* Stronger bottom gradient — the title and chips need solid contrast
+     against arbitrary photo backgrounds. */
+  background: linear-gradient(180deg, rgba(5,15,35,0) 0%, rgba(5,15,35,0) 38%, rgba(5,15,35,.62) 65%, rgba(5,15,35,.94) 100%);
 }
-.story-mood-tag {
-  position: absolute;
-  top: 10px; left: 12px;
+.story-overlay-body {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 12px 14px;
+  color: #fff; z-index: 2;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.story-meta {
+  display: flex; gap: 6px; align-items: center;
+}
+.story-cat, .story-lvl {
   font-size: 10px; font-weight: 800;
-  letter-spacing: .08em; text-transform: uppercase;
-  padding: 3px 9px; border-radius: 6px;
-  color: #fff; background: rgba(15,23,42,.55); backdrop-filter: blur(4px);
-  z-index: 2;
+  letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 6px;
+  color: #fff;
 }
-.story-mood-tag.fun      { background: rgba(146,64,14,.85); }
-.story-mood-tag.touching { background: rgba(157,23,77,.85); }
-.story-mood-tag.scary    { background: rgba(51,65,85,.85); }
-.story-mood-tag.shocking { background: rgba(30,64,175,.85); }
-.story-body { position: absolute; left: 0; right: 0; bottom: 34px; padding: 14px 16px 10px; color: #fff; z-index: 2; }
+.story-cat { background: rgba(15,23,42,.7); backdrop-filter: blur(4px); }
+.story-cat.fun      { background: rgba(180,83,9,.9); }
+.story-cat.touching { background: rgba(157,23,77,.9); }
+.story-cat.scary    { background: rgba(51,65,85,.9); }
+.story-cat.shocking { background: rgba(30,64,175,.9); }
+.story-lvl.lvl-s { background: rgba(13,148,136,.9); }
+.story-lvl.lvl-b { background: rgba(21,128,61,.9); }
+.story-lvl.lvl-i { background: rgba(180,83,9,.9); }
+.story-lvl.lvl-a { background: rgba(185,28,28,.9); }
 .story-title {
-  font-family: 'Noto Serif KR', serif;
+  font-family: 'Playfair Display', 'Noto Serif KR', serif;
   font-size: 15px; font-weight: 800;
-  color: #fff; line-height: 1.35;
-  margin-bottom: 5px;
+  color: #fff; line-height: 1.3;
+  text-shadow: 0 2px 6px rgba(0,0,0,.6);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.story-preview {
-  font-size: 12px; color: rgba(255,255,255,.78); line-height: 1.5;
+
+/* Conv card — full-image / gradient overlay card matching news layout */
+.home-conv-grid-wrap .hconv-card {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #0b1626;
+  box-shadow: 0 8px 24px rgba(13,27,46,.1);
+  transition: transform .18s, box-shadow .18s;
+  aspect-ratio: 1/1;
+  display: block; /* override the earlier flex column declaration */
+}
+.home-conv-grid-wrap .hconv-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(13,27,46,.18);
+}
+.home-conv-grid-wrap .hconv-bg {
+  position: absolute; inset: 0;
+  /* Per-card gradient set inline via --conv-bg / --conv-bg2 */
+  background: linear-gradient(135deg, var(--conv-bg, #2563eb) 0%, var(--conv-bg2, #1e3a8a) 100%);
+}
+.home-conv-grid-wrap .hconv-bg::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(5,15,35,0) 0%, rgba(5,15,35,0) 38%, rgba(5,15,35,.55) 68%, rgba(5,15,35,.92) 100%);
+}
+.home-conv-grid-wrap .hconv-deco {
+  position: absolute; top: 14px; right: 14px;
+  font-family: 'Playfair Display', serif;
+  font-size: 56px; font-weight: 900;
+  color: rgba(255,255,255,.18);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 1;
+}
+.home-conv-grid-wrap .hconv-overlay-body {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 12px 14px;
+  color: #fff; z-index: 2;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.home-conv-grid-wrap .hconv-meta {
+  display: flex; gap: 6px; align-items: center;
+}
+.home-conv-grid-wrap .hconv-cat,
+.home-conv-grid-wrap .hconv-lvl {
+  font-size: 10px; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 6px;
+  color: #fff;
+}
+.home-conv-grid-wrap .hconv-cat { background: rgba(15,23,42,.7); backdrop-filter: blur(4px); }
+.home-conv-grid-wrap .hconv-lvl.lvl-s { background: rgba(13,148,136,.9); }
+.home-conv-grid-wrap .hconv-lvl.lvl-b { background: rgba(21,128,61,.9); }
+.home-conv-grid-wrap .hconv-lvl.lvl-i { background: rgba(180,83,9,.9); }
+.home-conv-grid-wrap .hconv-lvl.lvl-a { background: rgba(185,28,28,.9); }
+.home-conv-grid-wrap .hconv-title {
+  font-family: 'Playfair Display', 'Noto Serif KR', serif;
+  font-size: 15px; font-weight: 800;
+  color: #fff; line-height: 1.3;
+  text-shadow: 0 2px 6px rgba(0,0,0,.6);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.story-foot { display: flex; align-items: center; gap: 8px; padding: 0 16px 10px; position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; justify-content: flex-end; }
-.story-lvl { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 99px; }
-.story-lvl.lvl-b { background:rgba(21,128,61,.85); color:#fff; }
-.story-lvl.lvl-i { background:rgba(180,83,9,.85); color:#fff; }
-.story-lvl.lvl-a { background:rgba(185,28,28,.85); color:#fff; }
-.story-time { font-size: 11px; color: rgba(255,255,255,.8); font-weight: 600; }
 
 /* Mobile daily strip */
 @media (max-width: 860px) {
@@ -1247,42 +1314,53 @@ function renderHomeConvs() {
   var grid = document.getElementById('home-conv-grid');
   if (!grid) return;
   var list = HOME_CONVS.filter(function(c){ return _activeHomeCat === 'all' || c.cat === _activeHomeCat; });
-  grid.innerHTML = '';
-  var BADGE_CLS = {b:'background:#dcfce7;color:#15803d',i:'background:#fef9c3;color:#92400e',a:'background:#fee2e2;color:#b91c1c'};
-  var LVL_LBL = {b:'Sprout',i:'Tree',a:'Forest'};
-  var _PALETTE = ['#2563eb','#7c3aed','#059669','#db2777','#dc2626','#0891b2','#ea580c','#0d9488','#4f46e5','#c026d3'];
-  function _iniColor(n){var h=0;for(var i=0;i<(n||'').length;i++)h=n.charCodeAt(i)+((h<<5)-h);return _PALETTE[Math.abs(h)%_PALETTE.length];}
+  // News-style overlay card: per-category gradient background, big
+  // decorative letter, category + level chips bottom-left, English
+  // title underneath.
+  var CAT_LABEL = { everyday:'Everyday', workplace:'Workplace', friends:'Friends', family:'Family' };
+  var CAT_BG = {
+    everyday:  ['#2563eb', '#1e3a8a'],
+    workplace: ['#475569', '#1e293b'],
+    friends:   ['#059669', '#064e3b'],
+    family:    ['#db2777', '#831843'],
+  };
+  var LVL_LBL = { s:'Seed', b:'Sprout', i:'Tree', a:'Forest' };
+  var LVL_CLS = { s:'lvl-s', b:'lvl-b', i:'lvl-i', a:'lvl-a' };
+  var esc = function(s){ return String(s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+
+  // Reuse the conversation page's translation cache if it's been
+  // populated — gives us richer English titles for free without
+  // burning Claude calls on home load.
+  var _ctxCache = {};
+  try { _ctxCache = JSON.parse(localStorage.getItem('kh_conv_ctx_en_v1') || '{}') || {}; } catch(_) {}
 
   grid.innerHTML = list.slice(0,4).map(function(c) {
-    var leftName = c.name || 'Conversation';
-    var leftIni = leftName.charAt(0);
-    var leftColor = _iniColor(leftName);
-    var ctx = c.ctx || '';
-    // Chat bubble previews
-    var msgs = c.msgs ? c.msgs.slice(0,3) : [];
-    var bubblesHtml = '';
-    if (msgs.length) {
-      bubblesHtml = '<div style="padding:12px 16px 14px;flex:1;display:flex;flex-direction:column;gap:8px">';
-      msgs.forEach(function(m){
-        var isL = m.s === 'l';
-        bubblesHtml += '<div style="padding:8px 12px;border-radius:14px;font-size:13px;font-family:Noto Sans KR,sans-serif;line-height:1.5;max-width:85%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
-          + (isL ? 'background:#f1f5f9;color:#334155;border-bottom-left-radius:4px;align-self:flex-start' : 'background:#2563eb;color:#fff;border-bottom-right-radius:4px;align-self:flex-end')
-          + '">'+(m.txt||'')+'</div>';
-      });
-      bubblesHtml += '</div>';
-    }
-    return '<div class="hconv-card" onclick="location.href=\'korehan-conversations.html?id='+(c._id||'')+'\'" style="border-radius:18px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);transition:transform .18s,box-shadow .18s">'
-      + '<div style="padding:16px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f0f4fa">'
-      + '<div style="width:36px;height:36px;border-radius:50%;background:'+leftColor+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0">'+leftIni+'</div>'
-      + '<div style="flex:1;min-width:0">'
-      + '<div style="font-size:15px;font-weight:900;color:#0f172a;line-height:1.25;font-family:Noto Sans KR,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+leftName+'</div>'
-      + (ctx ? '<div style="font-size:11px;color:#64748b;margin-top:3px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+ctx+'</div>' : '')
-      + '</div>'
-      + '<span style="font-size:9px;font-weight:800;padding:3px 8px;border-radius:20px;flex-shrink:0;'+(BADGE_CLS[c.lvl]||BADGE_CLS.b)+'">'+(LVL_LBL[c.lvl]||'Sprout')+'</span>'
-      + '</div>'
-      + (bubblesHtml || '<div style="padding:16px;flex:1;font-size:13px;color:#64748b;line-height:1.5">'+(ctx||leftName)+'</div>')
-      + '<div style="padding:10px 16px;display:flex;align-items:center;justify-content:flex-end;border-top:1px solid #f0f4fa">'
-      + '<span style="font-size:11px;font-weight:800;color:#2563eb;border:1.5px solid #bfdbfe;border-radius:20px;padding:4px 14px">Study →</span>'
+    var catKey = (c.cat || 'everyday').toLowerCase();
+    var catLabel = CAT_LABEL[catKey] || (c.cat ? (c.cat.charAt(0).toUpperCase() + c.cat.slice(1)) : 'Conversation');
+    var bg = CAT_BG[catKey] || CAT_BG.everyday;
+    var lvlKey = c.lvl || 'b';
+    // Title in English. Lookup order:
+    //   1. cached translation of raw ctx (built when admin/user opened
+    //      that conversation on the conversations page)
+    //   2. admin-supplied English fields if any
+    //   3. ctx itself if it's already in English (no Hangul)
+    //   4. category-based fallback like "Everyday Conversation"
+    var rawCtx = (c.ctx || '').trim();
+    var titleEn = '';
+    if (rawCtx && _ctxCache[rawCtx]) titleEn = _ctxCache[rawCtx];
+    else if (c.ctx_en || c.name_en || c.title_en) titleEn = c.ctx_en || c.name_en || c.title_en;
+    else if (rawCtx && !/[가-힣]/.test(rawCtx)) titleEn = rawCtx;
+    else titleEn = catLabel + ' Conversation';
+    var bigLetter = (catLabel.charAt(0) || 'A').toUpperCase();
+    return '<div class="hconv-card" onclick="location.href=\'korehan-conversations.html?id=' + esc(c._id || '') + '\'" style="--conv-bg:' + bg[0] + ';--conv-bg2:' + bg[1] + '">'
+      + '<div class="hconv-bg"></div>'
+      + '<div class="hconv-deco">' + esc(bigLetter) + '</div>'
+      + '<div class="hconv-overlay-body">'
+        + '<div class="hconv-meta">'
+          + '<span class="hconv-cat">' + esc(catLabel) + '</span>'
+          + '<span class="hconv-lvl ' + (LVL_CLS[lvlKey]||'lvl-b') + '">' + (LVL_LBL[lvlKey]||'Sprout') + '</span>'
+        + '</div>'
+        + '<div class="hconv-title">' + esc(titleEn) + '</div>'
       + '</div>'
       + '</div>';
   }).join('');
@@ -1458,27 +1536,27 @@ document.addEventListener('DOMContentLoaded', async function() {
     var esc = function(s){ return String(s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
 
     function renderHomeStory(s) {
-      var d   = s.data || s;
+      var d    = s.data || s;
       var mood = s.mood || d.mood || s.genre || d.genre || 'slice_of_life';
       var moodClass = MOOD_CLASS[mood] || 'fun';
-      var iconName  = MOOD_ICON[mood] || 'book-open';
-      var lvl       = s.lvl || d.lvl || 'b';
-      var title     = d.title_en || s.title_en || d.title || s.title || '';
-      var preview   = d.preview_en || s.preview_en || d.preview || s.preview || '';
-      var readTime  = d.read_time || d.readTime || s.read_time || '3 min';
-      var thumbUrl  = d.thumbnail_url || d.thumbnail || d.image_url || '';
-      // Always supply an image — picsum fallback keyed to story id so the
-      // full-image overlay card always has something behind the gradient.
+      var lvl  = s.lvl || d.lvl || 'b';
+      // English title only — fall back to the genre label rather than
+      // the Korean title so the home grid stays consistent with News.
+      var genreLabel = GENRE_LABEL[mood] || mood;
+      var title = d.title_en || s.title_en || (genreLabel + ' Story');
+      var thumbUrl = d.thumbnail_url || d.thumbnail || d.image_url || '';
       var finalThumb = thumbUrl || ('https://picsum.photos/seed/' + encodeURIComponent('story-' + (s.id || title || Math.random())) + '/600/800');
-      var coverInner = '<img src="' + esc(finalThumb) + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/kh-story/600/800\'">'
-        + '<span class="story-mood-tag ' + moodClass + '">' + (GENRE_LABEL[mood] || mood) + '</span>';
       return '<div class="story-card" onclick="location.href=\'korehan-stories.html?id=' + encodeURIComponent(s.id) + '\'">'
-        + '<div class="story-cover ' + moodClass + '">' + coverInner + '</div>'
-        + '<div class="story-body">'
-          + '<div class="story-title">' + esc(title) + '</div>'
-          + '<div class="story-preview">' + esc(preview) + '</div>'
+        + '<div class="story-cover ' + moodClass + '">'
+          + '<img src="' + esc(finalThumb) + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/kh-story/600/800\'">'
         + '</div>'
-        + '<div class="story-foot"><span class="story-lvl ' + (LVL_CLASS[lvl]||'lvl-b') + '">' + (LVL_LABEL[lvl]||'Sprout') + '</span><span class="story-time">' + esc(readTime) + '</span></div>'
+        + '<div class="story-overlay-body">'
+          + '<div class="story-meta">'
+            + '<span class="story-cat ' + moodClass + '">' + esc(genreLabel) + '</span>'
+            + '<span class="story-lvl ' + (LVL_CLASS[lvl]||'lvl-b') + '">' + (LVL_LABEL[lvl]||'Sprout') + '</span>'
+          + '</div>'
+          + '<div class="story-title">' + esc(title) + '</div>'
+        + '</div>'
         + '</div>';
     }
 
