@@ -200,6 +200,35 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
   letter-spacing:.04em
 }
 .chip.archived{background:#f1f5f9;color:var(--muted)}
+.chip.scheduled{background:#dbeafe;color:#1e40af}
+.chip.completed{background:#dcfce7;color:#166534}
+.chip.canceled{background:#fee2e2;color:#b91c1c}
+
+/* Lessons */
+.lessons-section{margin-top:28px;padding-top:22px;border-top:1px solid var(--border)}
+.lessons-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.lessons-head h3{margin:0;font-size:15px;font-weight:800}
+.lesson-group-title{
+  font-size:11px;font-weight:800;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin:18px 0 8px
+}
+.lesson-card{
+  background:#fafbfd;border:1px solid var(--border);border-radius:14px;
+  padding:14px 16px;margin-bottom:10px;transition:border-color .15s
+}
+.lesson-card:hover{border-color:#cbd5e1}
+.lesson-card .row1{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.lesson-card .when{font-size:14px;font-weight:700;color:var(--text)}
+.lesson-card .when .relative{font-size:12px;font-weight:500;color:var(--muted);margin-left:6px}
+.lesson-card .topic{font-size:14px;color:var(--text);margin:6px 0;line-height:1.5}
+.lesson-card .topic b{color:var(--blue)}
+.lesson-card .body{font-size:13px;color:var(--muted);line-height:1.6;margin:6px 0;white-space:pre-wrap}
+.lesson-card .label{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:8px}
+.lesson-card .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.lesson-card .actions .btn{padding:6px 10px;font-size:12px;border-radius:8px}
+.lesson-card.past{opacity:.95}
+.lesson-card.canceled{opacity:.6}
+.lesson-empty{font-size:13px;color:var(--muted);font-style:italic;padding:8px 0}
 </style>
 </head>
 <body>
@@ -288,6 +317,53 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
     <div class="modal-foot">
       <button class="btn ghost" id="student-modal-cancel">Cancel</button>
       <button class="btn primary" id="student-modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- New / edit lesson modal -->
+<div id="lesson-modal" class="modal-bg" style="display:none" role="dialog" aria-label="Lesson form">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2 id="lesson-modal-title">New lesson</h2>
+      <button class="modal-close" id="lesson-modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field">
+          <label>Date &amp; time</label>
+          <input id="l-when" type="datetime-local">
+        </div>
+        <div class="field">
+          <label>Duration (min)</label>
+          <input id="l-duration" type="number" min="15" max="240" step="5" value="60">
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="l-status">
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="canceled">Canceled</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Topic</label>
+          <input id="l-topic" placeholder="e.g. Past tense practice">
+        </div>
+        <div class="field full">
+          <label>Lesson notes (in-class)</label>
+          <textarea id="l-notes" placeholder="What you covered, mistakes, breakthroughs…" style="min-height:110px"></textarea>
+        </div>
+        <div class="field full">
+          <label>Next-lesson plan</label>
+          <textarea id="l-next" placeholder="What to focus on next time"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger" id="lesson-modal-delete" style="margin-right:auto;display:none">Delete</button>
+      <button class="btn ghost" id="lesson-modal-cancel">Cancel</button>
+      <button class="btn primary" id="lesson-modal-save">Save</button>
     </div>
   </div>
 </div>
@@ -412,8 +488,12 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
     selectedId: null,
     showArchived: false,
     search: '',
-    editingId: null,         // null = new, uuid = editing existing (for the modal)
-    me: null                 // current auth user (for owner_id tagging)
+    editingId: null,         // null = new, uuid = editing existing (for the student modal)
+    me: null,                // current auth user (for owner_id tagging)
+    lessons: [],             // lessons for the currently selected student
+    lessonsForId: null,      // student_id the lessons belong to (cache key)
+    editingLessonId: null,   // null = new, uuid = editing existing (for the lesson modal)
+    showPast: true           // toggle past lessons section
   };
 
   function toast(msg, kind) {
@@ -454,10 +534,21 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
     document.getElementById('student-modal').onclick = function(e){
       if (e.target.id === 'student-modal') closeStudentModal();
     };
+
+    document.getElementById('lesson-modal-close').onclick  = closeLessonModal;
+    document.getElementById('lesson-modal-cancel').onclick = closeLessonModal;
+    document.getElementById('lesson-modal-save').onclick   = saveLessonFromModal;
+    document.getElementById('lesson-modal-delete').onclick = deleteLessonFromModal;
+    document.getElementById('lesson-modal').onclick = function(e){
+      if (e.target.id === 'lesson-modal') closeLessonModal();
+    };
+
     document.addEventListener('keydown', function(e){
       if (e.key === 'Escape') {
-        var m = document.getElementById('student-modal');
-        if (m && m.style.display !== 'none') closeStudentModal();
+        var sm = document.getElementById('student-modal');
+        var lm = document.getElementById('lesson-modal');
+        if (lm && lm.style.display !== 'none') closeLessonModal();
+        else if (sm && sm.style.display !== 'none') closeStudentModal();
       }
     });
 
@@ -596,8 +687,16 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
           : '<button class="btn ghost" id="btn-archive">Archive</button>')
       +   '</div>'
       +   '<div class="right">'
-      +     '<span style="font-size:11px;color:var(--muted)">Lessons & progress in phase 4–6</span>'
+      +     '<span style="font-size:11px;color:var(--muted)">Skill progress lands in phase 6</span>'
       +   '</div>'
+      + '</div>'
+
+      + '<div class="lessons-section">'
+      +   '<div class="lessons-head">'
+      +     '<h3>Lessons</h3>'
+      +     '<button class="btn primary" id="btn-new-lesson">+ New lesson</button>'
+      +   '</div>'
+      +   '<div id="lessons-body"><div class="empty-mini">Loading lessons…</div></div>'
       + '</div>';
 
     document.getElementById('detail-panel').innerHTML = html;
@@ -606,6 +705,9 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
     if (arch) arch.onclick = function(){ archiveStudent(s.id); };
     var unarch = document.getElementById('btn-unarchive');
     if (unarch) unarch.onclick = function(){ unarchiveStudent(s.id); };
+    document.getElementById('btn-new-lesson').onclick = openNewLessonModal;
+
+    loadLessons(s.id);
   }
 
   function field(label, value, full) {
@@ -697,10 +799,275 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
     }
   }
 
+  // ── Lessons ────────────────────────────────────────────────
+  // Convert a timestamptz string to a value usable by <input type="datetime-local">,
+  // expressed in the browser's local timezone (the input has no tz awareness).
+  function toLocalInputValue(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    var pad = function(n){ return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+      + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  // datetime-local has no timezone — interpret it in the user's local zone
+  // and serialize as ISO so Postgres stores it as a real instant.
+  function fromLocalInputValue(v) {
+    if (!v) return null;
+    var d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  function formatWhen(ts) {
+    if (!ts) return 'No date set';
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return ts;
+    return d.toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
+  }
+  function relativeWhen(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    var diffMs = d.getTime() - Date.now();
+    var abs = Math.abs(diffMs);
+    var mins = Math.round(abs / 60000);
+    var hours = Math.round(abs / 3600000);
+    var days = Math.round(abs / 86400000);
+    var future = diffMs > 0;
+    var s;
+    if (mins < 60) s = mins + 'm';
+    else if (hours < 36) s = hours + 'h';
+    else s = days + 'd';
+    return future ? ('in ' + s) : (s + ' ago');
+  }
+
+  async function loadLessons(studentId) {
+    state.lessonsForId = studentId;
+    var sb = getSupa();
+    var { data, error } = await sb
+      .from('tutor_lessons')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('scheduled_at', { ascending: false, nullsFirst: false });
+
+    // Bail out if the user switched students mid-flight.
+    if (state.lessonsForId !== studentId) return;
+
+    if (error) {
+      console.error(error);
+      var box = document.getElementById('lessons-body');
+      if (box) box.innerHTML = '<div class="empty-mini" style="color:var(--danger)">Failed to load lessons.<br>' + escapeHtmlSafe(error.message) + '</div>';
+      return;
+    }
+    state.lessons = data || [];
+    renderLessons();
+  }
+
+  function renderLessons() {
+    var box = document.getElementById('lessons-body');
+    if (!box) return;
+    if (!state.lessons.length) {
+      box.innerHTML = '<div class="empty-mini">No lessons yet. Click <b>+ New lesson</b> to schedule the first one.</div>';
+      return;
+    }
+
+    var now = Date.now();
+    var upcoming = [], past = [];
+    state.lessons.forEach(function(l){
+      var t = l.scheduled_at ? new Date(l.scheduled_at).getTime() : null;
+      var isUpcoming = (l.status === 'scheduled') && (t === null || t >= now - 30*60*1000);
+      (isUpcoming ? upcoming : past).push(l);
+    });
+    // upcoming oldest-first so the next class is at top
+    upcoming.sort(function(a,b){
+      var ta = a.scheduled_at ? new Date(a.scheduled_at).getTime() : Infinity;
+      var tb = b.scheduled_at ? new Date(b.scheduled_at).getTime() : Infinity;
+      return ta - tb;
+    });
+
+    var html = '';
+    html += '<div class="lesson-group-title">Upcoming &amp; in-progress (' + upcoming.length + ')</div>';
+    html += upcoming.length
+      ? upcoming.map(lessonCardHtml).join('')
+      : '<div class="lesson-empty">No upcoming lessons.</div>';
+    html += '<div class="lesson-group-title">Past (' + past.length + ')</div>';
+    html += past.length
+      ? past.map(function(l){ return lessonCardHtml(l, true); }).join('')
+      : '<div class="lesson-empty">No past lessons recorded.</div>';
+
+    box.innerHTML = html;
+
+    // Wire actions on each card.
+    Array.prototype.forEach.call(box.querySelectorAll('[data-edit-lesson]'), function(el){
+      el.onclick = function(){
+        var id = el.getAttribute('data-edit-lesson');
+        var l = state.lessons.find(function(x){ return x.id === id; });
+        if (l) openEditLessonModal(l);
+      };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-complete-lesson]'), function(el){
+      el.onclick = function(){
+        setLessonStatus(el.getAttribute('data-complete-lesson'), 'completed');
+      };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-cancel-lesson]'), function(el){
+      el.onclick = function(){
+        setLessonStatus(el.getAttribute('data-cancel-lesson'), 'canceled');
+      };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-reopen-lesson]'), function(el){
+      el.onclick = function(){
+        setLessonStatus(el.getAttribute('data-reopen-lesson'), 'scheduled');
+      };
+    });
+  }
+
+  function lessonCardHtml(l, isPast) {
+    var statusCls = 'chip ' + (l.status || 'scheduled');
+    var actions = [];
+    if (l.status === 'scheduled') {
+      actions.push('<button class="btn soft" data-complete-lesson="' + l.id + '">Mark completed</button>');
+      actions.push('<button class="btn ghost" data-cancel-lesson="' + l.id + '">Cancel</button>');
+    } else {
+      actions.push('<button class="btn ghost" data-reopen-lesson="' + l.id + '">Reopen</button>');
+    }
+    actions.push('<button class="btn soft" data-edit-lesson="' + l.id + '">Edit</button>');
+
+    var notes = (l.lesson_notes || '').trim();
+    var nextPlan = (l.next_plan || '').trim();
+    var topic = (l.topic || '').trim();
+
+    return '<div class="lesson-card ' + (isPast ? 'past ' : '') + (l.status === 'canceled' ? 'canceled' : '') + '">'
+      + '<div class="row1">'
+      +   '<div class="when">' + escapeHtmlSafe(formatWhen(l.scheduled_at))
+      +     '<span class="relative">' + escapeHtmlSafe(relativeWhen(l.scheduled_at)) + '</span>'
+      +   '</div>'
+      +   '<span class="' + statusCls + '">' + escapeHtmlSafe(l.status || 'scheduled') + '</span>'
+      +   (l.duration_minutes ? '<span style="font-size:12px;color:var(--muted)">· ' + l.duration_minutes + ' min</span>' : '')
+      + '</div>'
+      + (topic
+          ? '<div class="topic"><b>Topic:</b> ' + escapeHtmlSafe(topic) + '</div>'
+          : '')
+      + (notes
+          ? '<div class="label">Lesson notes</div><div class="body">' + escapeHtmlSafe(notes) + '</div>'
+          : '')
+      + (nextPlan
+          ? '<div class="label">Next plan</div><div class="body">' + escapeHtmlSafe(nextPlan) + '</div>'
+          : '')
+      + '<div class="actions">' + actions.join('') + '</div>'
+      + '</div>';
+  }
+
+  // Lesson modal
+  function openNewLessonModal() {
+    if (!state.selectedId) { toast('Pick a student first', 'err'); return; }
+    state.editingLessonId = null;
+    document.getElementById('lesson-modal-title').textContent = 'New lesson';
+    document.getElementById('lesson-modal-delete').style.display = 'none';
+    // Default: tomorrow at the same time, 60 min, scheduled.
+    var d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setMinutes(0); d.setSeconds(0);
+    setLessonModalValues({
+      scheduled_at: d.toISOString(),
+      duration_minutes: 60,
+      status: 'scheduled',
+      topic: '',
+      lesson_notes: '',
+      next_plan: ''
+    });
+    showLessonModal();
+  }
+  function openEditLessonModal(l) {
+    state.editingLessonId = l.id;
+    document.getElementById('lesson-modal-title').textContent = 'Edit lesson';
+    document.getElementById('lesson-modal-delete').style.display = '';
+    setLessonModalValues(l);
+    showLessonModal();
+  }
+  function setLessonModalValues(l) {
+    document.getElementById('l-when').value     = toLocalInputValue(l.scheduled_at);
+    document.getElementById('l-duration').value = l.duration_minutes || 60;
+    document.getElementById('l-status').value   = l.status || 'scheduled';
+    document.getElementById('l-topic').value    = l.topic || '';
+    document.getElementById('l-notes').value    = l.lesson_notes || '';
+    document.getElementById('l-next').value     = l.next_plan || '';
+  }
+  function showLessonModal() {
+    document.getElementById('lesson-modal').style.display = '';
+    setTimeout(function(){ document.getElementById('l-when').focus(); }, 50);
+  }
+  function closeLessonModal() {
+    document.getElementById('lesson-modal').style.display = 'none';
+    state.editingLessonId = null;
+  }
+  async function saveLessonFromModal() {
+    if (!state.selectedId) return;
+    var payload = {
+      student_id: state.selectedId,
+      scheduled_at: fromLocalInputValue(document.getElementById('l-when').value),
+      duration_minutes: parseInt(document.getElementById('l-duration').value, 10) || 60,
+      status: document.getElementById('l-status').value || 'scheduled',
+      topic: document.getElementById('l-topic').value.trim() || null,
+      lesson_notes: document.getElementById('l-notes').value.trim() || null,
+      next_plan: document.getElementById('l-next').value.trim() || null
+    };
+    var sb = getSupa();
+    var btn = document.getElementById('lesson-modal-save');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      if (state.editingLessonId) {
+        var { error: upErr } = await sb.from('tutor_lessons').update(payload).eq('id', state.editingLessonId);
+        if (upErr) throw upErr;
+        toast('Lesson saved', 'ok');
+      } else {
+        payload.owner_id = state.me ? state.me.id : null;
+        var { error: insErr } = await sb.from('tutor_lessons').insert(payload);
+        if (insErr) throw insErr;
+        toast('Lesson added', 'ok');
+      }
+      closeLessonModal();
+      await loadLessons(state.selectedId);
+    } catch (e) {
+      console.error(e);
+      toast('Save failed: ' + (e.message || e), 'err');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save';
+    }
+  }
+  async function deleteLessonFromModal() {
+    if (!state.editingLessonId) return;
+    if (!confirm('Delete this lesson? This cannot be undone.')) return;
+    var sb = getSupa();
+    try {
+      var { error } = await sb.from('tutor_lessons').delete().eq('id', state.editingLessonId);
+      if (error) throw error;
+      toast('Lesson deleted', 'ok');
+      closeLessonModal();
+      await loadLessons(state.selectedId);
+    } catch (e) {
+      toast('Delete failed: ' + (e.message || e), 'err');
+    }
+  }
+  async function setLessonStatus(id, status) {
+    var sb = getSupa();
+    try {
+      var { error } = await sb.from('tutor_lessons').update({ status: status }).eq('id', id);
+      if (error) throw error;
+      toast(status.charAt(0).toUpperCase() + status.slice(1), 'ok');
+      await loadLessons(state.selectedId);
+    } catch (e) {
+      toast('Failed: ' + (e.message || e), 'err');
+    }
+  }
+
   // Expose for inline handlers / future phases.
   window.tutorApp = {
     state: state,
     reload: loadStudents,
+    reloadLessons: function(){ return loadLessons(state.selectedId); },
     toast: toast
   };
 })();
