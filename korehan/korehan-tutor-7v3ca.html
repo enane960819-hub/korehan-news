@@ -1179,7 +1179,7 @@ body{padding-bottom:0 !important}
           +   '</button>'
           +   '<button class="qa-card" data-qa="ai-info">'
           +     '<span class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></span>'
-          +     '<span class="qa-text"><span class="qa-title">AI post-lesson feedback</span><span class="qa-sub">Auto-generate strengths + next focus from notes</span></span>'
+          +     '<span class="qa-text"><span class="qa-title">AI polishes your lesson notes</span><span class="qa-sub">Jot rough notes, get a clean structured summary</span></span>'
           +   '</button>'
           +   '<button class="qa-card" data-qa="skill-info">'
           +     '<span class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg></span>'
@@ -1736,16 +1736,16 @@ body{padding-bottom:0 !important}
   function aiFeedbackBlockHtml(l, hasNotes) {
     if (l.ai_feedback) {
       var when = l.ai_feedback_generated_at
-        ? 'Generated ' + escapeHtmlSafe(formatWhen(l.ai_feedback_generated_at))
+        ? 'Polished ' + escapeHtmlSafe(formatWhen(l.ai_feedback_generated_at))
         : '';
       return '<div class="ai-block" id="ai-block-' + l.id + '">'
         + '<div class="ai-head">'
-        +   '<div class="ai-title">🤖 AI feedback</div>'
+        +   '<div class="ai-title">✨ Polished summary · 다듬은 기록</div>'
         +   '<div class="ai-meta">' + when + '</div>'
         + '</div>'
         + '<div class="ai-body">' + renderFeedbackMarkdown(l.ai_feedback) + '</div>'
         + '<div class="ai-actions">'
-        +   '<button class="btn soft" data-regen-feedback="' + l.id + '">Regenerate</button>'
+        +   '<button class="btn soft" data-regen-feedback="' + l.id + '">Re-polish</button>'
         +   '<button class="btn ghost" data-clear-feedback="' + l.id + '">Clear</button>'
         + '</div>'
         + '</div>';
@@ -1753,13 +1753,13 @@ body{padding-bottom:0 !important}
     if (!hasNotes) {
       return '<div class="ai-block" style="border-style:dashed">'
         + '<div class="ai-body" style="padding:12px 16px;font-size:12.5px;color:var(--muted)">'
-        +   '🤖 Add lesson notes above, then you can generate AI feedback for this lesson.'
+        +   '✨ Jot quick notes above, then AI will polish them into a clean lesson summary.'
         + '</div></div>';
     }
     return '<div class="ai-block">'
       + '<div class="ai-actions" style="padding:12px 14px">'
-      +   '<button class="btn primary" data-gen-feedback="' + l.id + '">🤖 Generate AI feedback</button>'
-      +   '<span style="font-size:11px;color:var(--muted);align-self:center">Uses Claude · ~5–10 sec</span>'
+      +   '<button class="btn primary" data-gen-feedback="' + l.id + '">✨ Polish my notes</button>'
+      +   '<span style="font-size:11px;color:var(--muted);align-self:center">AI cleans up your jotted notes · ~5–10 sec</span>'
       + '</div></div>';
   }
 
@@ -1876,9 +1876,11 @@ body{padding-bottom:0 !important}
   // ── AI feedback ────────────────────────────────────────────
   function buildFeedbackPrompt(student, lesson) {
     var parts = [];
-    parts.push('You are an experienced English tutor writing concise post-lesson feedback for the tutor\'s own records (not for the student to read).');
+    parts.push('You are an English tutor\'s writing assistant. The tutor jots quick, rough notes during/after a lesson and you turn those notes into a polished, professional lesson summary the tutor can keep as a record (or paste into Preply later).');
     parts.push('');
-    parts.push('STUDENT PROFILE');
+    parts.push('Your job is to POLISH and STRUCTURE the tutor\'s notes — not to invent observations the tutor didn\'t make. Treat the notes as your source material. Expand shorthand into full sentences, fix grammar, group related points, and adopt a calm professional tone. Do NOT add strengths or weaknesses that aren\'t supported by what the tutor actually wrote.');
+    parts.push('');
+    parts.push('STUDENT');
     parts.push('- Name: ' + (student.name || 'Student'));
     if (student.level) parts.push('- CEFR level: ' + student.level);
     if (student.goal)  parts.push('- Learning goal: ' + student.goal);
@@ -1887,27 +1889,31 @@ body{padding-bottom:0 !important}
     parts.push('LESSON');
     if (lesson.scheduled_at) parts.push('- Date: ' + new Date(lesson.scheduled_at).toString());
     if (lesson.topic)        parts.push('- Topic: ' + lesson.topic);
-    parts.push('- Tutor\'s in-class notes:');
+    parts.push('- Tutor\'s raw notes (THIS IS YOUR SOURCE MATERIAL):');
     parts.push((lesson.lesson_notes || '(none)').trim());
     if (lesson.next_plan) {
       parts.push('- Tutor\'s tentative next-lesson plan: ' + lesson.next_plan);
     }
     parts.push('');
-    parts.push('Write structured feedback in clear English with these four short sections, using **bold** markers around each heading exactly as shown:');
+    parts.push('Output a polished summary in clear English with these four bilingual section headings. Wrap each heading in **bold** markers exactly as shown:');
     parts.push('');
-    parts.push('**Strengths**');
-    parts.push('2–3 specific things the student did well, grounded in the notes above. Use the student\'s first name.');
+    parts.push('**잘한 점 · Strengths**');
+    parts.push('Polish the positive observations from the notes into 2–3 specific sentences. Use the student\'s first name.');
     parts.push('');
-    parts.push('**Areas to improve**');
-    parts.push('2–3 concrete weaknesses or recurring mistakes. Be candid.');
+    parts.push('**보완할 점 · Areas to improve**');
+    parts.push('Polish the weaknesses / recurring mistakes from the notes into 2–3 concrete sentences. Don\'t soften — keep the candor of the original.');
     parts.push('');
-    parts.push('**Focus for next lesson**');
-    parts.push('One clear priority + 1–2 supporting drills/topics matched to the student\'s level and goal.');
+    parts.push('**다음 수업 포커스 · Focus for next lesson**');
+    parts.push('Take the tutor\'s next-plan note (if any) plus the improvement areas, and frame one clear priority + 1–2 supporting drills matched to the student\'s level and goal. If the tutor wrote no plan, propose one anchored in the notes.');
     parts.push('');
-    parts.push('**Quick exercise idea**');
-    parts.push('A single specific homework or in-class drill the tutor can use next time (1–2 sentences).');
+    parts.push('**연습 아이디어 · Quick exercise idea**');
+    parts.push('A specific homework or drill that builds on this lesson\'s actual content (1–2 sentences).');
     parts.push('');
-    parts.push('Keep total length under 250 words. Plain text only — no extra headings, no bullet symbols, just short paragraphs under each bold heading. Do not pad with generic praise.');
+    parts.push('Rules:');
+    parts.push('- STAY GROUNDED in the tutor\'s notes. Polish the language, but don\'t fabricate strengths/weaknesses the notes don\'t mention.');
+    parts.push('- If a section truly has nothing in the notes to polish, write "(노트에 언급 없음 · not covered in notes)" rather than inventing content.');
+    parts.push('- Total length under 280 words.');
+    parts.push('- Plain text only. No bullet symbols, no extra headings.');
     return parts.join('\n');
   }
 
