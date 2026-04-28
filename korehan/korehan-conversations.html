@@ -141,6 +141,16 @@
 .dp-bubble-en{font-size:12px;color:#64748b;padding:4px 15px 0;line-height:1.5;display:none;}
 .dp-msg-row.right .dp-bubble-en{text-align:right;color:#64748b;}
 .dp-bubble-en.show{display:block;}
+
+/* Phase 2: per-bubble save-phrase star. Sits beside the bubble so
+   the tap target doesn't conflict with the existing
+   tap-to-reveal-EN behaviour on the bubble itself. */
+.dp-bubble-row{display:flex;align-items:center;gap:6px;}
+.dp-bubble-row-right{justify-content:flex-end;}
+.dp-bubble-save{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:1px solid #e2e8f0;background:#fff;color:#94a3b8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;font-family:inherit;transition:background .12s,color .12s,transform .12s,border-color .12s;padding:0;}
+.dp-bubble-save:hover{background:#fff7ed;color:#f59e0b;border-color:#fcd34d;transform:scale(1.08);}
+.dp-bubble-save.is-saved{background:#fef3c7;color:#b45309;border-color:#fcd34d;}
+.dp-bubble-save.is-saved:hover{background:#fde68a;}
 .dp-time{font-size:10px;color:#94a3b8;margin-top:4px;padding:0 3px;}
 .dp-msg-row.right .dp-time{text-align:right;}
 .dp-cast-bar{display:flex;flex-wrap:wrap;gap:10px;padding:14px 24px;border-bottom:1px solid #f0f4fa;background:#fff;}
@@ -490,6 +500,101 @@ var _IC = {
 
 var CONVS = [];  // DB에서 로드
 
+// ── Phase 2: saved phrases (per-message ★ button) ──────────────
+// Backed by the user_saved_phrases table from the Phase 2 schema
+// migration. Cached per-conv so re-renders + star toggles don't
+// re-query, and so first paint shows the correct ★/☆ state.
+//
+//   _khPhraseSavedByConv[convId] = Set of saved msg_idx integers
+//   _khPhraseSavedRowByKey[convId+'|'+msgIdx] = row.id (for delete)
+var _khPhraseSavedByConv     = Object.create(null);
+var _khPhraseSavedRowByKey   = Object.create(null);
+
+function _khPhraseSupa() {
+  return (typeof getSupa === 'function') ? getSupa() : null;
+}
+
+async function khPhraseLoadForConv(convId) {
+  var key = String(convId == null ? '' : convId);
+  _khPhraseSavedByConv[key] = _khPhraseSavedByConv[key] || new Set();
+  if (typeof supaUser === 'undefined' || !supaUser || !key) return;
+  var sb = _khPhraseSupa();
+  if (!sb) return;
+  try {
+    var r = await sb.from('user_saved_phrases')
+      .select('id,msg_idx')
+      .eq('user_id', supaUser.id)
+      .eq('source_type', 'conversation')
+      .eq('source_id', key);
+    var set = new Set();
+    (r && r.data || []).forEach(function (row) {
+      if (typeof row.msg_idx === 'number') {
+        set.add(row.msg_idx);
+        _khPhraseSavedRowByKey[key + '|' + row.msg_idx] = row.id;
+      }
+    });
+    _khPhraseSavedByConv[key] = set;
+  } catch (_) {}
+}
+
+function khPhraseIsSaved(convId, msgIdx) {
+  var key = String(convId == null ? '' : convId);
+  var set = _khPhraseSavedByConv[key];
+  return !!(set && set.has(msgIdx));
+}
+
+async function khPhraseSaveToggle(convId, msgIdx, btn) {
+  if (typeof supaUser === 'undefined' || !supaUser) {
+    if (typeof openAuthModal === 'function') openAuthModal('signin');
+    return;
+  }
+  var sb = _khPhraseSupa();
+  if (!sb) return;
+  var key = String(convId == null ? '' : convId);
+  if (!_khPhraseSavedByConv[key]) await khPhraseLoadForConv(key);
+  var set = _khPhraseSavedByConv[key] || new Set();
+  var willSave = !set.has(msgIdx);
+  // Need the actual ko text — read from the current conv's msgs.
+  var conv = (typeof CONVS !== 'undefined' && CONVS) ? CONVS.find(function (x) { return String(x._id) === key || String(x.id) === key; }) : null;
+  var msg  = conv && conv.msgs ? conv.msgs[msgIdx] : null;
+  var ko   = msg ? (msg.txt || '') : '';
+  var en   = msg ? (msg.en || msg.note || '') : '';
+  if (!ko) return;
+  try {
+    if (willSave) {
+      var insertR = await sb.from('user_saved_phrases').insert({
+        user_id:     supaUser.id,
+        source_type: 'conversation',
+        source_id:   key,
+        msg_idx:     msgIdx,
+        ko:          ko,
+        en:          en,
+      }).select('id').single();
+      if (insertR && insertR.data && insertR.data.id) {
+        _khPhraseSavedRowByKey[key + '|' + msgIdx] = insertR.data.id;
+      }
+      set.add(msgIdx);
+    } else {
+      // Prefer composite-key delete so the upsert/delete behaves the
+      // same regardless of whether the cache has the row id.
+      await sb.from('user_saved_phrases').delete()
+        .eq('user_id',     supaUser.id)
+        .eq('source_type', 'conversation')
+        .eq('source_id',   key)
+        .eq('msg_idx',     msgIdx);
+      set.delete(msgIdx);
+      delete _khPhraseSavedRowByKey[key + '|' + msgIdx];
+    }
+    _khPhraseSavedByConv[key] = set;
+  } catch (_) { return; }
+  // Sync the button visual state without re-rendering the whole
+  // conversation (avoids losing scroll position).
+  if (btn) {
+    btn.classList.toggle('is-saved', willSave);
+    btn.textContent = willSave ? '★' : '☆';
+  }
+}
+
 // Starter ('s') was missing from LVL_LABEL, so Seed-level
 // conversations rendered their level pill as literally "undefined".
 // Also wrap lookups below in a safe getter so any future level code
@@ -801,6 +906,12 @@ async function openDetail(idx) {
     } catch(e) { console.warn('conv detail load failed:', e); }
   }
 
+  // Phase 2: pre-load saved-phrase indices for this conv so star
+  // states paint correctly on first render. Awaited (not a fire-
+  // and-forget) so the very first paint already has the right
+  // ★/☆ markers.
+  await khPhraseLoadForConv(c._id);
+
   if (!c.msgs || !c.msgs.length) {
     // Show a friendly message instead of alert
     panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:15px;font-weight:700;color:#334155;margin-bottom:6px">Conversation not available yet</div><div style="font-size:13px;color:#64748b;margin-bottom:16px">This conversation hasn\'t been fully set up. Try another one from the list.</div><button onclick="closeDetail()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">← Back to list</button></div></div>';
@@ -864,20 +975,25 @@ async function openDetail(idx) {
     }
     var enNote = msg.en || msg.note || '';
     var _keyExprs = c.key_expressions || [];
+    // Phase 2: per-bubble "save phrase" star. Pulls from the
+    // _khPhraseSavedSet cache (loaded in openDetail) so re-renders
+    // get the right ★/☆ state without re-querying.
+    var saveOn = (typeof khPhraseIsSaved === 'function' && c._id != null) && khPhraseIsSaved(c._id, i);
+    var saveBtn = '<button class="dp-bubble-save' + (saveOn ? ' is-saved' : '') + '" onclick="event.stopPropagation();khPhraseSaveToggle(\'' + String(c._id || '').replace(/'/g,"\\'") + '\', ' + i + ', this)" aria-label="Save phrase" title="Save phrase">' + (saveOn ? '★' : '☆') + '</button>';
     if (msg.s === 'l') {
-      return '<div class="dp-msg-row left">'
+      return '<div class="dp-msg-row left" data-msg-idx="'+i+'">'
         + renderCharacterAvatar(cast.left, '', 36)
         +'<div class="dp-bubble-group">'
           +'<div class="dp-who">'+escapeHtml(msg.who || cast.left.name_ko || cast.left.name || '')+'</div>'
-          +'<div class="dp-bubble" onclick="toggleBubbleEn(this)">'+highlightKeyExprs(msg.txt || '', _keyExprs)+'</div>'
+          +'<div class="dp-bubble-row"><div class="dp-bubble" onclick="toggleBubbleEn(this)">'+highlightKeyExprs(msg.txt || '', _keyExprs)+'</div>'+saveBtn+'</div>'
           +(enNote ? '<div class="dp-bubble-en">'+escapeHtml(enNote)+'</div>' : '')
           +'<div class="dp-time">'+time+'</div>'
         +'</div></div>';
     } else {
-      return '<div class="dp-msg-row right">'
+      return '<div class="dp-msg-row right" data-msg-idx="'+i+'">'
         +'<div class="dp-bubble-group">'
           +'<div class="dp-who">'+escapeHtml(msg.who || cast.right.name_ko || cast.right.name || '')+'</div>'
-          +'<div class="dp-bubble" onclick="toggleBubbleEn(this)">'+highlightKeyExprs(msg.txt || '', _keyExprs)+'</div>'
+          +'<div class="dp-bubble-row dp-bubble-row-right">'+saveBtn+'<div class="dp-bubble" onclick="toggleBubbleEn(this)">'+highlightKeyExprs(msg.txt || '', _keyExprs)+'</div></div>'
           +(enNote ? '<div class="dp-bubble-en">'+escapeHtml(enNote)+'</div>' : '')
           +'<div class="dp-time">'+time+'</div>'
         +'</div>'
