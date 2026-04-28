@@ -2718,27 +2718,6 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 }
 </style>
 
-<!-- es-module-shims polyfills the importmap below for browsers that
-     don't yet ship native importmap support (older Samsung Internet,
-     iOS < 16.4, etc). Loaded synchronously (no async/defer) so the
-     polyfill is fully parsed before the type=importmap tag is read
-     and before any later <script type="module"> tag runs. -->
-<script src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
-
-<!-- Three.js (importmap so the constellation module can pull
-     UnrealBloomPass + EffectComposer from the same versioned bundle).
-     GSAP loaded as a global UMD so CSS-style timeline calls don't need
-     extra import boilerplate at every callsite. Both stay deferred
-     enough that the page renders before they kick in. -->
-<script type="importmap">
-{
-  "imports": {
-    "three":           "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
-    "three/addons/":   "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
-  }
-}
-</script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
 </head>
 <body>
 <div id="kh-header"></div>
