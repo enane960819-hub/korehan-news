@@ -2517,7 +2517,165 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .pc-empty { text-align:center;padding:40px 20px; }
 .pc-empty-icon { font-size:48px;margin-bottom:12px; }
 .pc-empty-title { font-size:16px;font-weight:700;color:#fff;margin-bottom:8px; }
+
+/* ── Inline Cosmos (study room landing constellation) ────────────
+   Container holds the WebGL canvas + DOM overlays for taps and
+   labels. The fallback START button is shown until the 3D scene
+   reports it's ready (or shown permanently when WebGL/reduced-motion
+   conditions don't allow it). */
+.ls-cosmos {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 560px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #050814;
+  /* Soft outer glow keeps the cosmos visually anchored against the
+     surrounding card chrome. */
+  box-shadow: 0 12px 40px rgba(80, 40, 200, .14), inset 0 0 0 1px rgba(124, 58, 237, .15);
+}
+@media (max-width: 480px) {
+  .ls-cosmos { aspect-ratio: 1 / 1.05; max-height: 520px; }
+}
+.ls-cosmos.is-ready .ls-cosmos-fallback { display: none; }
+.ls-cosmos-canvas,
+.ls-cosmos #ls-cosmos-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+  touch-action: manipulation;
+}
+
+/* Tap targets — invisible buttons positioned over each node by JS. */
+.ls-cosmos-overlay {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.ls-cosmos-hit {
+  position: absolute;
+  width: 84px; height: 84px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  /* Slight haptic-style press feel without disturbing the WebGL
+     glow. JS adds ls-cosmos-hit-press for the instant response. */
+  transition: transform .12s ease;
+}
+.ls-cosmos-hit:active { transform: translate(-50%, -50%) scale(.92); }
+.ls-cosmos-hit.is-locked { cursor: not-allowed; }
+.ls-cosmos-hit:focus-visible {
+  outline: 2px solid rgba(196, 181, 253, .85);
+  outline-offset: 2px;
+}
+.ls-cosmos-hit-orb {
+  width: 140px; height: 140px;
+}
+
+/* Center orb DOM label (counts + pts). The orb itself is rendered
+   by Three.js underneath; we just float the text on top. */
+.ls-cosmos-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  pointer-events: none;
+  z-index: 4;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .9), 0 0 24px rgba(168, 139, 250, .35);
+}
+.ls-cosmos-count {
+  font-size: 32px; font-weight: 900;
+  color: #fff; line-height: 1;
+  letter-spacing: -.5px;
+  font-family: 'Playfair Display', serif;
+}
+.ls-cosmos-total {
+  font-size: 11px;
+  color: rgba(255, 255, 255, .58);
+  margin-top: 4px; letter-spacing: .3px;
+}
+.ls-cosmos-pts {
+  font-size: 10px; font-weight: 900;
+  color: #fde68a; margin-top: 8px;
+  background: linear-gradient(135deg, rgba(251,191,36,.28), rgba(245,158,11,.18));
+  border: 1px solid rgba(251,191,36,.4);
+  padding: 3px 10px; border-radius: 999px;
+  letter-spacing: .3px;
+}
+
+/* Floating node labels. JS sets per-label translate/opacity each
+   frame so they ride along with the rendered 3D node positions. */
+.ls-cosmos-labels {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.ls-cosmos-label {
+  position: absolute;
+  transform: translate(-50%, 0);
+  font-size: 11px; font-weight: 800;
+  color: rgba(255, 255, 255, .92);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .85), 0 0 16px var(--ls-glow, rgba(168, 139, 250, .55));
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: .2px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.ls-cosmos-label .ls-cosmos-coin {
+  font-size: 9px; font-weight: 900;
+  color: #78350f;
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+  border: 1px solid rgba(15, 23, 42, .35);
+  padding: 1px 7px; border-radius: 9px;
+  text-shadow: none;
+  letter-spacing: .2px;
+}
+.ls-cosmos-label.is-done {
+  color: rgba(167, 243, 208, .9);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .85), 0 0 16px rgba(52, 211, 153, .5);
+}
+.ls-cosmos-label.is-done .ls-cosmos-coin {
+  color: #064e3b;
+  background: linear-gradient(135deg, #a7f3d0, #10b981);
+}
+
+/* Reduced-motion: the JS keeps the WebGL scene running but freezes
+   the camera + node float. The fallback button stays visible too so
+   keyboard / screen-reader users always have a non-spatial path. */
+@media (prefers-reduced-motion: reduce) {
+  .ls-cosmos.is-ready .ls-cosmos-fallback { display: flex; margin-top: 12px; }
+  .ls-cosmos { max-height: 360px; aspect-ratio: 1 / .65; }
+}
+
+/* Fallback button keeps its existing sr-start-btn styling but stacks
+   on top of the canvas slot when the WebGL pipeline isn't usable. */
+.ls-cosmos-fallback {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100% - 32px);
+  z-index: 6;
+}
 </style>
+
+<!-- Three.js (importmap so the constellation module can pull
+     UnrealBloomPass + EffectComposer from the same versioned bundle).
+     GSAP loaded as a global UMD so CSS-style timeline calls don't need
+     extra import boilerplate at every callsite. Both stay deferred
+     enough that the page renders before they kick in. -->
+<script type="importmap">
+{
+  "imports": {
+    "three":           "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+    "three/addons/":   "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+  }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
 </head>
 <body>
 <div id="kh-header"></div>
@@ -2657,13 +2815,43 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
           <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
         </div>
 
-        <!-- START button with ripple canvas -->
+        <!-- ── Inline Cosmos (replaces the START button + Learning
+             Selector modal). Rendered with Three.js + UnrealBloomPass,
+             populated from window.lsCosmosInit() defined below.
+             Falls back to a plain START button if WebGL2 is missing
+             or prefers-reduced-motion is set. -->
         <div class="sr-topic-right" style="width:100%;margin-top:8px">
-          <button class="sr-start-btn" onclick="_startBtnRipple(event);openLearningSelector()">
-            <canvas id="sr-start-ripple" style="position:absolute;inset:0;width:100%;height:100%;border-radius:12px;pointer-events:none;z-index:0"></canvas>
-            <span class="sr-start-btn-label" style="position:relative;z-index:1">START</span>
-            <span class="sr-start-btn-sub" style="position:relative;z-index:1">Start today's lesson →</span>
-          </button>
+          <div id="ls-cosmos-mount" class="ls-cosmos">
+            <canvas id="ls-cosmos-canvas"></canvas>
+            <!-- Tap-target overlays (DOM elements positioned over each
+                 3D node) so click events go through the normal HTML
+                 click pipeline instead of needing a raycaster on every
+                 input. The 3D scene drives their position. -->
+            <div class="ls-cosmos-overlay" id="ls-cosmos-overlay">
+              <button type="button" class="ls-cosmos-hit ls-cosmos-hit-orb" data-ls="orb"  aria-label="Start today's writing"></button>
+              <button type="button" class="ls-cosmos-hit" data-ls="topic"        aria-label="Open Topic Writing"></button>
+              <button type="button" class="ls-cosmos-hit" data-ls="grammar"      aria-label="Open Grammar Focus"></button>
+              <button type="button" class="ls-cosmos-hit" data-ls="picture"      aria-label="Open Photo Description"></button>
+              <button type="button" class="ls-cosmos-hit" data-ls="sentence"     aria-label="Open Dictation"></button>
+              <button type="button" class="ls-cosmos-hit" data-ls="expressions"  aria-label="Open Key Expressions"></button>
+            </div>
+            <!-- Center label sitting over the orb. Updated as topic
+                 writing completion progresses. -->
+            <div class="ls-cosmos-center" id="ls-cosmos-center">
+              <div class="ls-cosmos-count" id="ls-cosmos-count">0</div>
+              <div class="ls-cosmos-total">/ 5 완료</div>
+              <div class="ls-cosmos-pts" id="ls-cosmos-pts">0 냥</div>
+            </div>
+            <!-- Floating labels for each node — positioned by JS in the
+                 RAF tick so they track the 3D node positions. -->
+            <div class="ls-cosmos-labels" id="ls-cosmos-labels"></div>
+            <!-- Plain-text fallback. JS hides this once the WebGL
+                 scene is up. -->
+            <button class="sr-start-btn ls-cosmos-fallback" onclick="_startBtnRipple(event);lsStartWriting()">
+              <span class="sr-start-btn-label" style="position:relative;z-index:1">START</span>
+              <span class="sr-start-btn-sub" style="position:relative;z-index:1">Start today's lesson →</span>
+            </button>
+          </div>
         </div>
 
       </div>
