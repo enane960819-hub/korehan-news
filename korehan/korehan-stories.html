@@ -126,6 +126,23 @@
 .st-theme-sepia .st-body-text{color:#5b4636;}
 .st-theme-sepia .st-para-en{color:#7a6240;border-top-color:#d6c89c;}
 .st-cta-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 24px 20px;border-top:1px solid #f0f4fa;}
+
+/* Series nav strip — rendered at the bottom of the story body when
+   the current story belongs to a series. Two large prev/next pills
+   under a small header showing series title + episode position. */
+.st-series-nav-wrap{margin:18px 0 4px;padding:14px 16px;background:rgba(124,58,237,.07);border:1px solid rgba(124,58,237,.18);border-radius:14px;}
+.st-series-nav-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.st-series-nav-eyebrow{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7c3aed;}
+.st-series-nav-title-strong{font-size:13px;font-weight:800;color:#1e1b4b;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.st-series-nav-count{font-size:10px;font-weight:700;color:#64748b;background:#fff;border:1px solid #e2e8f0;border-radius:999px;padding:2px 8px;letter-spacing:.04em;}
+.st-series-nav-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.st-series-nav-pill{display:flex;align-items:center;gap:8px;padding:11px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;cursor:pointer;text-align:left;font-family:inherit;transition:border-color .12s,background .12s,transform .12s;min-width:0;}
+.st-series-nav-pill:hover{border-color:#c4b5fd;background:#faf5ff;transform:translateY(-1px);}
+.st-series-nav-arrow{font-size:18px;color:#7c3aed;flex:0 0 auto;}
+.st-series-nav-meta{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}
+.st-series-nav-meta .st-series-nav-eyebrow{font-size:9px;color:#7c3aed;}
+.st-series-nav-meta .st-series-nav-title{font-size:13px;font-weight:700;color:#0f172a;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;}
+@media(max-width:520px){.st-series-nav-row{grid-template-columns:1fr;}}
 .st-cta-btn{padding:12px;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:all .15s;}
 .st-cta-pri{background:#7c3aed;color:#fff;}
 .st-cta-pri:hover{background:#6d28d9;}
@@ -1224,6 +1241,54 @@ function filterBySeries(seriesId) {
   if (window.renderKhLucideIcons) renderKhLucideIcons();
 }
 
+// ── Series navigation strip rendered at the foot of a story body.
+//    If the story belongs to a series, show prev/next episode pills
+//    + a small "more episodes" list. Falls back to empty string for
+//    stand-alones so the body just ends like before.
+function stRenderSeriesNav(s) {
+  if (!s || !s.series_id) return '';
+  var siblings = STORIES
+    .filter(function (x) { return x && x.series_id === s.series_id; })
+    .sort(function (a, b) {
+      // Prefer series_order if both have it; fall back to episode #.
+      var ao = (a.series_order != null) ? a.series_order : (a.episode || 0);
+      var bo = (b.series_order != null) ? b.series_order : (b.episode || 0);
+      return ao - bo;
+    });
+  if (siblings.length < 2) return '';
+  var idx = siblings.findIndex(function (x) { return String(x.id) === String(s.id); });
+  if (idx < 0) return '';
+  var prev = idx > 0 ? siblings[idx - 1] : null;
+  var next = idx < siblings.length - 1 ? siblings[idx + 1] : null;
+  var seriesMeta = (typeof _storySeries !== 'undefined' ? _storySeries : []).find(function (sr) { return sr && sr.id === s.series_id; });
+  var seriesTitle = (seriesMeta && (seriesMeta.title_en || seriesMeta.title)) || s.series_id;
+
+  // Pill button factory.
+  function pill(ep, label, dir) {
+    if (!ep) return '<span style="flex:1"></span>';
+    var arrow = dir === 'prev' ? '←' : '→';
+    var epNum = (ep.series_order != null) ? ep.series_order : (ep.episode || '');
+    var epLabel = epNum ? 'EP ' + epNum : 'Episode';
+    var title = ep.title_en || ep.title || ep.episode_title || '';
+    return '<button class="st-series-nav-pill" onclick="closeSt();setTimeout(function(){openStory(\'' + String(ep.id).replace(/'/g,"\\'") + '\')},80)">'
+      + (dir === 'prev' ? '<span class="st-series-nav-arrow">' + arrow + '</span>' : '')
+      +   '<span class="st-series-nav-meta"><span class="st-series-nav-eyebrow">' + (dir === 'prev' ? 'Previous · ' : 'Next · ') + epLabel + '</span><span class="st-series-nav-title">' + escapeHtml(title) + '</span></span>'
+      + (dir === 'next' ? '<span class="st-series-nav-arrow">' + arrow + '</span>' : '')
+      + '</button>';
+  }
+
+  var navHTML =
+    '<div class="st-series-nav-wrap">'
+    +   '<div class="st-series-nav-header">'
+    +     '<span class="st-series-nav-eyebrow">📚 Series</span>'
+    +     '<span class="st-series-nav-title-strong">' + escapeHtml(seriesTitle) + '</span>'
+    +     '<span class="st-series-nav-count">EP ' + (idx + 1) + ' / ' + siblings.length + '</span>'
+    +   '</div>'
+    +   '<div class="st-series-nav-row">' + pill(prev, '', 'prev') + pill(next, '', 'next') + '</div>'
+    + '</div>';
+  return navHTML;
+}
+
 var _stOverlayOpen = false;
 function _storyAiCacheKey(id) { return 'kh_story_ai_v1_' + id; }
 function _hydrateStoryAiFromCache(s) {
@@ -1445,6 +1510,7 @@ function openStory(id) {
         + '</div>'
         + '<div class="st-body-text st-paras" id="st-body-ko" data-hover-scan="1">' + stRenderParagraphCards(s.body || '', enBody, hasEnBody) + '</div>'
         + (hasEnBody ? '<div class="st-body-text" id="st-body-en" style="display:none;white-space:pre-line;color:#334155">' + escapeHtml(enBody) + '</div>' : '')
+        + stRenderSeriesNav(s)
       + '</div>'
       + '<div class="st-cta-row">'
         + '<button class="st-cta-btn st-cta-sec" onclick="closeSt()">← All Stories</button>'
