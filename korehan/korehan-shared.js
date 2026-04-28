@@ -8874,6 +8874,12 @@ function getCurrentStreak() {
     var d = log[k];
     if ((d.articles||0) + (d.words||0) + (d.quiz||0) > 0) allDays[k] = true;
   });
+  // Phase 2 streak insurance: a day the user spent their weekly
+  // freeze on counts as active even without real activity. The day
+  // string lives in localStorage (mirrored from profiles.streak_
+  // freeze_used_week at sign-in) so the walk stays sync.
+  var freezeDay = lsGet('kh_streak_freeze_day', '');
+  if (freezeDay) allDays[freezeDay] = true;
   var streak = 0;
   var d = new Date();
   for (var i = 0; i < 400; i++) {
@@ -8883,6 +8889,58 @@ function getCurrentStreak() {
     else break;
   }
   return Math.max(streak, lsGet('kh_synced_activity_streak', 0));
+}
+
+// ── Phase 2: streak freeze (1 use / 7 days) ──────────────────────
+// State lives in profiles.streak_freeze_used_week (the timestamp
+// the freeze was redeemed). Mirror to localStorage so the streak
+// walker stays sync. Two helpers: status check + redeem.
+async function khFreezeStatus() {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || typeof supaUser === 'undefined' || !supaUser) {
+    return { used_at: null, can_use: false, signed_in: false };
+  }
+  try {
+    var r = await sb.from('profiles')
+      .select('streak_freeze_used_week')
+      .eq('id', supaUser.id)
+      .maybeSingle();
+    var used = r && r.data && r.data.streak_freeze_used_week
+      ? new Date(r.data.streak_freeze_used_week) : null;
+    var weekAgoMs = Date.now() - 7 * 86400000;
+    var canUse = !used || used.getTime() < weekAgoMs;
+    return { used_at: used, can_use: canUse, signed_in: true };
+  } catch (_) {
+    return { used_at: null, can_use: false, signed_in: true };
+  }
+}
+
+async function khFreezeUse(forDate) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || typeof supaUser === 'undefined' || !supaUser) return false;
+  var d = forDate || new Date();
+  var iso = d.toISOString();
+  try {
+    await sb.from('profiles').upsert({
+      id:                      supaUser.id,
+      streak_freeze_used_week: iso,
+      updated_at:              iso,
+    }, { onConflict: 'id' });
+  } catch (_) { return false; }
+  // Mirror to localStorage so getCurrentStreak() honours the freeze
+  // immediately without a round-trip.
+  try { lsSet('kh_streak_freeze_day', d.toISOString().slice(0, 10)); } catch (_) {}
+  return true;
+}
+
+// Sync the localStorage mirror from profiles on sign-in / page load.
+// Called from page-init code that already has the user available.
+async function khFreezeSync() {
+  var st = await khFreezeStatus();
+  if (st.used_at) {
+    try { lsSet('kh_streak_freeze_day', st.used_at.toISOString().slice(0, 10)); } catch (_) {}
+  }
+  return st;
 }
 
 function getSectionReadCounts() {

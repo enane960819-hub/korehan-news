@@ -575,9 +575,12 @@
         <div style="font-size:10px;font-weight:500;color:var(--muted)">Read today</div>
         <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-articles">0</div>
       </div>
-      <div title="Consecutive days you've studied. Breaks if you skip a day." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
+      <div title="Consecutive days you've studied. Breaks if you skip a day." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help;position:relative">
         <div style="font-size:10px;font-weight:500;color:var(--muted)">Streak</div>
         <div style="font-size:22px;font-weight:800;color:#ea580c" id="stat-streak">0</div>
+        <button id="freeze-btn" type="button" onclick="khOpenFreezeDialog()" hidden
+          style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:linear-gradient(135deg,#bae6fd,#7dd3fc);color:#0c4a6e;font-size:12px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(14,165,233,.35)"
+          title="Use streak freeze (once per week)">🧊</button>
       </div>
       <div title="Active time spent in the app today. Counts minutes while the tab is visible and you've interacted within the last minute." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
         <div style="font-size:10px;font-weight:500;color:var(--muted)">Time today</div>
@@ -2306,8 +2309,45 @@
     // (단어는 위에서 이미 loadAndRenderInterests 또는 renderWords로 처리됨)
   }
 
+  // ── Phase 2: streak freeze trigger ───────────────────────────
+  // Sync the freeze status from profiles + localStorage on page
+  // load. If the user is signed in AND has a freeze available
+  // (i.e. > 7 days since last use), show the 🧊 button next to the
+  // streak count.
+  async function refreshFreezeBtn() {
+    var btn = document.getElementById('freeze-btn');
+    if (!btn || typeof khFreezeSync !== 'function') return;
+    try {
+      var st = await khFreezeSync();
+      btn.hidden = !(st.signed_in && st.can_use);
+    } catch (_) { /* leave hidden */ }
+  }
+  window.khOpenFreezeDialog = async function () {
+    if (typeof supaUser === 'undefined' || !supaUser) {
+      if (typeof openAuthModal === 'function') openAuthModal('signin');
+      return;
+    }
+    var ok = window.confirm('Use this week\'s streak freeze?\n\nToday will count as active even if you don\'t complete an activity. The freeze recharges 7 days from now.');
+    if (!ok) return;
+    var done = await khFreezeUse(new Date());
+    if (done) {
+      var btn = document.getElementById('freeze-btn');
+      if (btn) btn.hidden = true;
+      // Re-render the streak number — getCurrentStreak now picks up
+      // today via the localStorage mirror set by khFreezeUse().
+      try {
+        var streak = typeof getCurrentStreak === 'function' ? getCurrentStreak() : 0;
+        setText('stat-streak', streak);
+      } catch (_) {}
+      if (typeof showToast === 'function') showToast('🧊 Streak protected for today');
+    } else {
+      if (typeof showToast === 'function') showToast('Could not use freeze. Please retry.', true);
+    }
+  };
+
   // fallback: RPC 없을 때 localStorage에서 가능한 것만 표시
   function loadHubFallback() {
+    refreshFreezeBtn();
     var streak = typeof getCurrentStreak === 'function' ? getCurrentStreak() : 0;
     var xp     = typeof getXP === 'function' ? getXP() : 0;
     setText('stat-xp', xp);
