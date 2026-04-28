@@ -229,6 +229,27 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
 .lesson-card.past{opacity:.95}
 .lesson-card.canceled{opacity:.6}
 .lesson-empty{font-size:13px;color:var(--muted);font-style:italic;padding:8px 0}
+
+/* AI feedback */
+.ai-block{
+  margin-top:12px;border:1px solid #c7d7f0;border-radius:12px;
+  background:linear-gradient(180deg,#f6f9ff,#fff);overflow:hidden
+}
+.ai-block .ai-head{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:10px 14px;background:#eef4ff;border-bottom:1px solid #c7d7f0
+}
+.ai-block .ai-head .ai-title{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--bright);letter-spacing:.04em;text-transform:uppercase}
+.ai-block .ai-head .ai-meta{font-size:11px;color:var(--muted);font-weight:500}
+.ai-block .ai-body{padding:14px 16px;font-size:13.5px;line-height:1.7;color:var(--text);white-space:pre-wrap}
+.ai-block .ai-body strong{color:var(--blue);font-weight:800}
+.ai-block .ai-actions{padding:8px 14px 12px;display:flex;gap:6px;flex-wrap:wrap}
+.ai-block.loading .ai-body{color:var(--muted);font-style:italic}
+.ai-pulse{
+  display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bright);
+  animation:pulse 1.2s ease-in-out infinite
+}
+@keyframes pulse{0%,100%{opacity:.3;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
 </style>
 </head>
 <body>
@@ -922,6 +943,18 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
         setLessonStatus(el.getAttribute('data-reopen-lesson'), 'scheduled');
       };
     });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-gen-feedback], [data-regen-feedback]'), function(el){
+      el.onclick = function(){
+        var id = el.getAttribute('data-gen-feedback') || el.getAttribute('data-regen-feedback');
+        var l = state.lessons.find(function(x){ return x.id === id; });
+        if (l) generateLessonFeedback(l, el);
+      };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-clear-feedback]'), function(el){
+      el.onclick = function(){
+        clearLessonFeedback(el.getAttribute('data-clear-feedback'));
+      };
+    });
   }
 
   function lessonCardHtml(l, isPast) {
@@ -938,6 +971,7 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
     var notes = (l.lesson_notes || '').trim();
     var nextPlan = (l.next_plan || '').trim();
     var topic = (l.topic || '').trim();
+    var hasNotes = !!notes;
 
     return '<div class="lesson-card ' + (isPast ? 'past ' : '') + (l.status === 'canceled' ? 'canceled' : '') + '">'
       + '<div class="row1">'
@@ -956,8 +990,46 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
       + (nextPlan
           ? '<div class="label">Next plan</div><div class="body">' + escapeHtmlSafe(nextPlan) + '</div>'
           : '')
+      + aiFeedbackBlockHtml(l, hasNotes)
       + '<div class="actions">' + actions.join('') + '</div>'
       + '</div>';
+  }
+
+  function aiFeedbackBlockHtml(l, hasNotes) {
+    if (l.ai_feedback) {
+      var when = l.ai_feedback_generated_at
+        ? 'Generated ' + escapeHtmlSafe(formatWhen(l.ai_feedback_generated_at))
+        : '';
+      return '<div class="ai-block" id="ai-block-' + l.id + '">'
+        + '<div class="ai-head">'
+        +   '<div class="ai-title">🤖 AI feedback</div>'
+        +   '<div class="ai-meta">' + when + '</div>'
+        + '</div>'
+        + '<div class="ai-body">' + renderFeedbackMarkdown(l.ai_feedback) + '</div>'
+        + '<div class="ai-actions">'
+        +   '<button class="btn soft" data-regen-feedback="' + l.id + '">Regenerate</button>'
+        +   '<button class="btn ghost" data-clear-feedback="' + l.id + '">Clear</button>'
+        + '</div>'
+        + '</div>';
+    }
+    if (!hasNotes) {
+      return '<div class="ai-block" style="border-style:dashed">'
+        + '<div class="ai-body" style="padding:12px 16px;font-size:12.5px;color:var(--muted)">'
+        +   '🤖 Add lesson notes above, then you can generate AI feedback for this lesson.'
+        + '</div></div>';
+    }
+    return '<div class="ai-block">'
+      + '<div class="ai-actions" style="padding:12px 14px">'
+      +   '<button class="btn primary" data-gen-feedback="' + l.id + '">🤖 Generate AI feedback</button>'
+      +   '<span style="font-size:11px;color:var(--muted);align-self:center">Uses Claude · ~5–10 sec</span>'
+      + '</div></div>';
+  }
+
+  // Lightweight markdown for AI output: only **bold** and newlines. Everything
+  // else is HTML-escaped first so model output can't inject markup.
+  function renderFeedbackMarkdown(s) {
+    var safe = escapeHtmlSafe(String(s || ''));
+    return safe.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
   }
 
   // Lesson modal
@@ -1057,6 +1129,110 @@ button{font:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:70
       var { error } = await sb.from('tutor_lessons').update({ status: status }).eq('id', id);
       if (error) throw error;
       toast(status.charAt(0).toUpperCase() + status.slice(1), 'ok');
+      await loadLessons(state.selectedId);
+    } catch (e) {
+      toast('Failed: ' + (e.message || e), 'err');
+    }
+  }
+
+  // ── AI feedback ────────────────────────────────────────────
+  function buildFeedbackPrompt(student, lesson) {
+    var parts = [];
+    parts.push('You are an experienced English tutor writing concise post-lesson feedback for the tutor\'s own records (not for the student to read).');
+    parts.push('');
+    parts.push('STUDENT PROFILE');
+    parts.push('- Name: ' + (student.name || 'Student'));
+    if (student.level) parts.push('- CEFR level: ' + student.level);
+    if (student.goal)  parts.push('- Learning goal: ' + student.goal);
+    if (student.notes) parts.push('- Background: ' + student.notes);
+    parts.push('');
+    parts.push('LESSON');
+    if (lesson.scheduled_at) parts.push('- Date: ' + new Date(lesson.scheduled_at).toString());
+    if (lesson.topic)        parts.push('- Topic: ' + lesson.topic);
+    parts.push('- Tutor\'s in-class notes:');
+    parts.push((lesson.lesson_notes || '(none)').trim());
+    if (lesson.next_plan) {
+      parts.push('- Tutor\'s tentative next-lesson plan: ' + lesson.next_plan);
+    }
+    parts.push('');
+    parts.push('Write structured feedback in clear English with these four short sections, using **bold** markers around each heading exactly as shown:');
+    parts.push('');
+    parts.push('**Strengths**');
+    parts.push('2–3 specific things the student did well, grounded in the notes above. Use the student\'s first name.');
+    parts.push('');
+    parts.push('**Areas to improve**');
+    parts.push('2–3 concrete weaknesses or recurring mistakes. Be candid.');
+    parts.push('');
+    parts.push('**Focus for next lesson**');
+    parts.push('One clear priority + 1–2 supporting drills/topics matched to the student\'s level and goal.');
+    parts.push('');
+    parts.push('**Quick exercise idea**');
+    parts.push('A single specific homework or in-class drill the tutor can use next time (1–2 sentences).');
+    parts.push('');
+    parts.push('Keep total length under 250 words. Plain text only — no extra headings, no bullet symbols, just short paragraphs under each bold heading. Do not pad with generic praise.');
+    return parts.join('\n');
+  }
+
+  async function generateLessonFeedback(lesson, btnEl) {
+    var student = state.students.find(function(x){ return x.id === state.selectedId; });
+    if (!student) { toast('Pick a student first', 'err'); return; }
+    if (!(lesson.lesson_notes || '').trim()) {
+      toast('Add lesson notes first — AI needs context', 'err');
+      return;
+    }
+    if (typeof callClaude !== 'function') {
+      toast('AI proxy unavailable. Refresh the page.', 'err');
+      return;
+    }
+
+    // Inline loading state so the user sees something happen immediately.
+    var block = document.getElementById('ai-block-' + lesson.id) || (btnEl && btnEl.closest('.ai-block'));
+    if (block) {
+      block.className = 'ai-block loading';
+      block.innerHTML = '<div class="ai-head"><div class="ai-title"><span class="ai-pulse"></span>&nbsp;Generating…</div><div class="ai-meta">Talking to Claude</div></div>'
+        + '<div class="ai-body">Drafting feedback based on the lesson notes…</div>';
+    }
+
+    try {
+      var prompt = buildFeedbackPrompt(student, lesson);
+      var res = await callClaude({
+        feature: 'tutor-feedback',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      var text = '';
+      if (res && res.content && res.content[0] && res.content[0].text) text = res.content[0].text;
+      else if (res && res.text) text = res.text;
+      text = String(text || '').trim();
+      if (!text) throw new Error('Empty response from AI');
+
+      var sb = getSupa();
+      var nowIso = new Date().toISOString();
+      var { error } = await sb.from('tutor_lessons')
+        .update({ ai_feedback: text, ai_feedback_generated_at: nowIso })
+        .eq('id', lesson.id);
+      if (error) throw error;
+
+      toast('Feedback ready', 'ok');
+      await loadLessons(state.selectedId);
+    } catch (e) {
+      console.error('AI feedback error', e);
+      toast('AI failed: ' + (e.message || e), 'err');
+      // Restore the card so the user can retry.
+      await loadLessons(state.selectedId);
+    }
+  }
+
+  async function clearLessonFeedback(id) {
+    if (!confirm('Remove the AI feedback for this lesson?')) return;
+    var sb = getSupa();
+    try {
+      var { error } = await sb.from('tutor_lessons')
+        .update({ ai_feedback: null, ai_feedback_generated_at: null })
+        .eq('id', id);
+      if (error) throw error;
+      toast('Cleared', 'ok');
       await loadLessons(state.selectedId);
     } catch (e) {
       toast('Failed: ' + (e.message || e), 'err');
