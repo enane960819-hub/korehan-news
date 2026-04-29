@@ -3922,8 +3922,8 @@
           var preview = (item.writing_text||'').slice(0,60);
           if ((item.writing_text||'').length > 60) preview += '…';
 
-          var idJson = JSON.stringify(String(item.id));
-          html += '<div onclick="_glOpenFbModal(' + idJson + ')" style="border:1px solid #e2e8f0;border-radius:10px;margin-bottom:6px;overflow:hidden;cursor:pointer;transition:background .12s,border-color .12s,transform .12s" onmouseover="this.style.background=\'#f0f4ff\';this.style.borderColor=\'#bfdbfe\'" onmouseout="this.style.background=\'\';this.style.borderColor=\'#e2e8f0\'">';
+          var safeId = String(item.id).replace(/'/g, "\\'");
+          html += '<div onclick="_glOpenFbModal(\'' + safeId + '\')" style="border:1px solid #e2e8f0;border-radius:10px;margin-bottom:6px;overflow:hidden;cursor:pointer;transition:background .12s,border-color .12s,transform .12s" onmouseover="this.style.background=\'#f0f4ff\';this.style.borderColor=\'#bfdbfe\'" onmouseout="this.style.background=\'\';this.style.borderColor=\'#e2e8f0\'">';
           html += '<div style="padding:10px 12px;display:flex;align-items:center;gap:8px;background:#fafbfc">';
           html += '<div style="width:30px;height:30px;border-radius:8px;background:' + t.color + '15;color:' + t.color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="' + t.icon + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>';
           html += '<div style="flex:1;min-width:0">';
