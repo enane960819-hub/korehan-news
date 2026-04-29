@@ -1104,16 +1104,21 @@
       </div>
     </section>
 
-    <!-- ═══ MONTHLY REPORT ═══ -->
-    <section class="card" id="mr-section" style="margin-bottom:14px;padding:0;overflow:hidden;border:none;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 60%,#3b1d6b 100%);color:#fff">
-      <div style="padding:18px 20px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.08)">
-        <div>
-          <div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.8)">Monthly Report</div>
-          <div id="mr-title" style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;letter-spacing:-.01em;line-height:1.15;margin-top:2px">Loading…</div>
+    <!-- ═══ MONTHLY REPORT ═══
+         Moved out of Growth Lab — delivered as a monthly email instead.
+         Keeping a small placeholder card so the user knows where it
+         went and can update their email preferences if they want. -->
+    <section class="card" id="mr-section" style="margin-bottom:14px;padding:18px 22px;overflow:hidden;border:none;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 60%,#3b1d6b 100%);color:#fff">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="display:inline-flex;width:42px;height:42px;align-items:center;justify-content:center;border-radius:12px;background:rgba(167,139,250,.18);color:#c4b5fd;flex-shrink:0">
+          <i data-lucide="mail" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i>
         </div>
-        <div id="mr-month-pick" style="display:flex;gap:6px"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.8)">Monthly Report</div>
+          <div style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:18px;font-weight:900;letter-spacing:-.01em;line-height:1.2;margin-top:2px">Now delivered to your inbox</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:6px;line-height:1.55">매월 첫째 주에 한 달 학습 요약 + 다음 달 맞춤 계획을 이메일로 보내드려요. 받으실 주소는 <a href="korehan-mypage.html" style="color:#c4b5fd;font-weight:700;text-decoration:underline">My Page</a>에서 확인하세요.</div>
+        </div>
       </div>
-      <div id="mr-body" style="padding:18px 20px"></div>
     </section>
 
     <!-- ═══ WRITING FEEDBACK HISTORY (moved to top) ═══ -->
@@ -4351,7 +4356,9 @@
   function loadNewHubSections() {
     if (_hubNewSectionsLoaded) return;
     _hubNewSectionsLoaded = true;
-    loadMonthlyReport();
+    // Monthly report is now an email; no in-page loader call. The
+    // backend email job can still call _mrAggregate / write to
+    // user_monthly_reports if it's wired up server-side.
     loadWeeklyComparison();
     loadWeeklyGoals();
     loadCalendarData();
