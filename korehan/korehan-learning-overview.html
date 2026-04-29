@@ -3590,10 +3590,12 @@
 
     // Admin overlay note FIRST — this is the human reviewer's voice.
     if (adminText) {
-      html += '<div style="padding:10px 12px;background:#eff6ff;border-left:3px solid #2563eb;border-radius:0 8px 8px 0;margin-bottom:10px">'
-        + '<div style="font-size:9px;font-weight:800;color:#1d4ed8;margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase">📝 Admin note</div>'
-        + '<div style="font-size:12px;color:#1e293b;line-height:1.65;white-space:pre-wrap">' + _glEsc(adminText) + '</div>'
-        + '</div>';
+      html += _glAcc({
+        title:'Tutor note', iconName:'pen-line', iconColor:'#1d4ed8',
+        badgeStyle:'background:#eff6ff;color:#1d4ed8',
+        body:'<div style="white-space:pre-wrap;color:#1e293b">' + _glEsc(adminText) + '</div>',
+        open:true
+      });
     }
 
     if (!ai) {
@@ -3619,17 +3621,20 @@
     // Single submission (flat schema)
     var score = (ai.score != null) ? ai.score : row.score;
     if (ai.overall || score != null) {
-      html += '<div style="padding:10px 12px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 8px 8px 0;margin-bottom:8px">'
-        + '<div style="font-size:9px;font-weight:800;color:#16a34a;margin-bottom:3px;letter-spacing:.06em;text-transform:uppercase">Overall</div>'
-        + (score != null ? '<div style="font-size:12px;font-weight:800;color:#16a34a;margin-bottom:4px">Score: ' + score + '/100</div>' : '')
-        + (ai.overall ? '<div style="font-size:12px;color:#1e293b;line-height:1.6;white-space:pre-wrap">' + _glEsc(ai.overall) + '</div>' : '')
-        + '</div>';
+      var scoreBadge = score != null ? (score + '/100') : '';
+      var overallBody = ai.overall ? '<div style="white-space:pre-wrap;color:#1e293b">' + _glEsc(ai.overall) + '</div>' : '<div style="color:#64748b">Score recorded.</div>';
+      html += _glAcc({
+        title:'Overall', iconName:'check-circle-2', iconColor:'#16a34a',
+        badge:scoreBadge, badgeStyle:'background:#f0fdf4;color:#16a34a',
+        body:overallBody, open:true
+      });
     }
     if (ai.corrected_full) {
-      html += '<div style="padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:8px">'
-        + '<div style="font-size:9px;font-weight:800;color:#15803d;margin-bottom:3px;letter-spacing:.06em;text-transform:uppercase">✅ Corrected version</div>'
-        + '<div style="font-size:13px;color:#166534;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _glEsc(ai.corrected_full) + '</div>'
-        + '</div>';
+      html += _glAcc({
+        title:'Corrected version', iconName:'check', iconColor:'#15803d',
+        body:'<div style="font-size:13px;color:#166534;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _glEsc(ai.corrected_full) + '</div>',
+        open:true
+      });
     }
     if (ai.corrections && ai.corrections.length) {
       html += _glRenderCorrections(ai.corrections);
@@ -3645,19 +3650,27 @@
   function _glRenderDailySummary(ai) {
     var html = '';
     if (ai.overall_assessment) {
-      html += '<div style="padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;margin-bottom:8px">'
-        + '<div style="font-size:10px;font-weight:800;color:#1d4ed8;margin-bottom:3px">📊 Day overview</div>'
-        + '<div style="font-size:12px;color:#1e293b;line-height:1.6">' + _glEsc(ai.overall_assessment) + '</div></div>';
+      html += _glAcc({
+        title:'Day overview', iconName:'bar-chart-3', iconColor:'#1d4ed8',
+        body:'<div style="white-space:pre-wrap;color:#1e293b">' + _glEsc(ai.overall_assessment) + '</div>',
+        open:true
+      });
     }
     if (ai.common_patterns && ai.common_patterns.length) {
-      html += '<div style="padding:8px 12px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;margin-bottom:8px">'
-        + '<div style="font-size:10px;font-weight:800;color:#92400e;margin-bottom:3px">🔁 Recurring patterns</div>'
-        + '<ul style="margin:0;padding-left:18px;font-size:11px;color:#78350f">'
+      var listBody = '<ul style="margin:0;padding-left:18px;color:#78350f">'
         + ai.common_patterns.map(function(p){ return '<li>' + _glEsc(p) + '</li>'; }).join('')
-        + '</ul></div>';
+        + '</ul>';
+      html += _glAcc({
+        title:'Recurring patterns', iconName:'repeat', iconColor:'#92400e',
+        badge:String(ai.common_patterns.length), badgeStyle:'background:#fef3c7;color:#92400e',
+        body:listBody
+      });
     }
     if (ai.daily_tip) {
-      html += '<div style="font-size:12px;color:#475569;margin:6px 2px 12px;line-height:1.6">💡 <b>Tomorrow:</b> ' + _glEsc(ai.daily_tip) + '</div>';
+      html += _glAcc({
+        title:'Tomorrow', iconName:'lightbulb', iconColor:'#0369a1',
+        body:'<div style="color:#475569;white-space:pre-wrap">' + _glEsc(ai.daily_tip) + '</div>'
+      });
     }
     return html;
   }
@@ -3667,88 +3680,193 @@
     return ai.activities.map(function(a, idx) {
       var sc = (a.score != null) ? Number(a.score) : null;
       var sCol = sc !== null ? (sc >= 80 ? '#15803d' : sc >= 60 ? '#a16207' : '#dc2626') : '#64748b';
-      var sBg = sc !== null ? (sc >= 80 ? '#f0fdf4' : sc >= 60 ? '#fefce8' : '#fef2f2') : '#f8fafc';
       var label = a.activity_name || ('Activity ' + (idx+1));
       var topic = a.topic || '';
-      var html = '<div style="padding:12px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:10px">'
-        + '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">'
-        +   '<div style="flex:1;min-width:0">'
-        +     '<div style="font-size:13px;font-weight:800;color:#0f172a">' + _glEsc(label) + '</div>'
-        +     (topic ? '<div style="font-size:11px;color:#64748b;margin-top:2px">' + _glEsc(topic) + '</div>' : '')
-        +   '</div>'
-        +   (sc !== null ? '<div style="text-align:center;flex-shrink:0"><div style="font-size:9px;color:' + sCol + ';font-weight:700">Score</div><div style="font-size:18px;font-weight:900;color:' + sCol + '">' + sc + '</div></div>' : '')
-        + '</div>';
 
+      var inner = '';
       if (a.student_text) {
-        html += '<div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">My writing</div>'
-          + '<div style="font-size:12px;color:#1e293b;line-height:1.7;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px">' + _glEsc(a.student_text) + '</div></div>';
+        inner += _glAcc({
+          title:'My writing', iconName:'pencil', iconColor:'#94a3b8',
+          body:'<div style="font-size:12px;color:#1e293b;line-height:1.7;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px">' + _glEsc(a.student_text) + '</div>'
+        });
       }
       if (a.corrected_full) {
-        html += '<div style="padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:8px">'
-          + '<div style="font-size:9px;font-weight:800;color:#15803d;margin-bottom:3px">✅ Corrected version</div>'
-          + '<div style="font-size:12px;color:#166534;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _glEsc(a.corrected_full) + '</div></div>';
+        inner += _glAcc({
+          title:'Corrected version', iconName:'check', iconColor:'#15803d',
+          body:'<div style="font-size:13px;color:#166534;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _glEsc(a.corrected_full) + '</div>',
+          open:true
+        });
       }
       if (a.overall) {
-        html += '<div style="padding:8px 10px;background:' + sBg + ';border:1px solid ' + sCol + '33;border-radius:8px;margin-bottom:8px">'
-          + '<div style="font-size:9px;font-weight:700;color:#64748b;margin-bottom:3px">Overall</div>'
-          + '<div style="font-size:12px;color:#1e293b;line-height:1.55;white-space:pre-wrap">' + _glEsc(a.overall) + '</div></div>';
+        inner += _glAcc({
+          title:'Overall', iconName:'check-circle-2', iconColor:sCol,
+          body:'<div style="white-space:pre-wrap;color:#1e293b">' + _glEsc(a.overall) + '</div>',
+          open:true
+        });
       }
-      if (a.corrections && a.corrections.length)    html += _glRenderCorrections(a.corrections);
-      if (a.spelling && a.spelling.length)          html += _glRenderSpelling(a.spelling);
-      if (a.naturalness && a.naturalness.comment)   html += _glRenderNaturalness(a.naturalness);
-      if (a.structure && a.structure.comment)       html += _glRenderStructure(a.structure);
-      if (a.extra_content)                          html += _glRenderExtra(a.extra_content);
-      html += '</div>';
-      return html;
+      if (a.corrections && a.corrections.length)    inner += _glRenderCorrections(a.corrections);
+      if (a.spelling && a.spelling.length)          inner += _glRenderSpelling(a.spelling);
+      if (a.naturalness && a.naturalness.comment)   inner += _glRenderNaturalness(a.naturalness);
+      if (a.structure && a.structure.comment)       inner += _glRenderStructure(a.structure);
+      if (a.extra_content)                          inner += _glRenderExtra(a.extra_content);
+
+      // Activity itself is its own outer accordion (open by default, score in badge)
+      var actSummary = '<div style="font-size:12px;font-weight:800;color:#0f172a">' + _glEsc(label) + '</div>'
+        + (topic ? '<div style="font-size:10px;font-weight:600;color:#64748b;margin-top:2px">' + _glEsc(topic) + '</div>' : '');
+      var scoreBadge = sc !== null ? (sc + '/100') : '';
+      var scoreBadgeStyle = sc !== null
+        ? (sc >= 80 ? 'background:#f0fdf4;color:#15803d' : sc >= 60 ? 'background:#fefce8;color:#a16207' : 'background:#fef2f2;color:#dc2626')
+        : 'background:#e2e8f0;color:#475569';
+      return '<details class="gl-acc gl-acc-activity"' + (idx === 0 ? ' open' : '') + ' style="border-left:3px solid ' + sCol + '">'
+        + '<summary>'
+        + '<span class="gl-acc-icon" style="color:' + sCol + '"><i data-lucide="play-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></span>'
+        + '<span class="gl-acc-title">' + actSummary + '</span>'
+        + (scoreBadge ? '<span class="gl-acc-badge" style="' + scoreBadgeStyle + '">' + scoreBadge + '</span>' : '')
+        + '<span class="gl-acc-arrow">' + _glAccArrow + '</span>'
+        + '</summary>'
+        + '<div class="gl-acc-body">' + inner + '</div>'
+        + '</details>';
     }).join('');
   }
 
+  // Lucide arrow used inside accordion summaries.
+  var _glAccArrow = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+
+  // Module-level TYPE_LABELS so both the list renderer and the modal
+  // opener can read from the same map. Icons are Lucide names.
+  var TYPE_LABELS = {
+    daily_package: { icon: 'package', label: 'Package', color: '#2563eb' },
+    topic:         { icon: 'pencil',  label: 'Writing', color: '#7c3aed' },
+    writing:       { icon: 'pencil',  label: 'Writing', color: '#7c3aed' },
+    diary:         { icon: 'notebook', label: 'Diary', color: '#ec4899' },
+    reading:       { icon: 'book-open', label: 'Reading', color: '#10b981' },
+    article:       { icon: 'newspaper', label: 'Article', color: '#f59e0b' },
+    article_study: { icon: 'newspaper', label: 'Article', color: '#f59e0b' },
+    conversation:  { icon: 'message-circle', label: 'Convo', color: '#0ea5e9' },
+    story:         { icon: 'library', label: 'Story', color: '#a855f7' }
+  };
+
+  // Cached map of feedback rows so card clicks can rebuild the modal body
+  // without re-parsing the rendered DOM. Populated by loadFeedbackHistory.
+  var _glFbItemMap = Object.create(null);
+
+  function _glOpenFbModal(itemId) {
+    var item = _glFbItemMap[itemId];
+    if (!item) return;
+    var t = TYPE_LABELS[item.content_type] || TYPE_LABELS.writing;
+    var iconEl = document.getElementById('gl-fb-modal-icon');
+    var titleEl = document.getElementById('gl-fb-modal-title');
+    var subEl = document.getElementById('gl-fb-modal-sub');
+    var bodyEl = document.getElementById('gl-fb-modal-body');
+    if (iconEl) {
+      iconEl.style.background = (t.color || '#2563eb') + '15';
+      iconEl.style.color = t.color || '#2563eb';
+      iconEl.innerHTML = '<i data-lucide="' + (t.icon || 'pen-line') + '" class="kh-ui-icon" aria-hidden="true"></i>';
+    }
+    if (titleEl) titleEl.textContent = t.label || 'Feedback';
+    if (subEl) {
+      var date = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+      var bits = [];
+      if (date) bits.push(date);
+      if (item.score != null) bits.push(item.score + '점');
+      if (item.topic_ko) bits.push(item.topic_ko);
+      subEl.textContent = bits.join(' · ');
+    }
+    if (bodyEl) {
+      var fbAi = _glParseFbObject(item.ai_feedback);
+      var fbAdminText = _glAdminText(item.admin_feedback);
+      var html = '';
+      if (item.writing_text) {
+        html += _glAcc({
+          title:'My writing', iconName:'pencil', iconColor:'#94a3b8',
+          body:'<div style="font-size:12px;color:#1e293b;line-height:1.7;white-space:pre-wrap;font-family:\'Noto Sans KR\',sans-serif;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px">' + _glEsc(item.writing_text) + '</div>'
+        });
+      }
+      if (fbAi || fbAdminText) {
+        html += _glRenderFeedbackBody({ ai:fbAi, adminText:fbAdminText, row:item });
+      } else {
+        html += '<div style="text-align:center;padding:18px;font-size:12px;color:#94a3b8">' + (item.status === 'ai_reviewed' ? 'Under review — feedback within 24h' : 'Submitted — processing...') + '</div>';
+      }
+      bodyEl.innerHTML = html;
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    }
+    var overlay = document.getElementById('gl-fb-overlay');
+    if (overlay) overlay.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+  window.closeGlFbModal = function() {
+    var overlay = document.getElementById('gl-fb-overlay');
+    if (overlay) overlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+  };
+  // Close modal on Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var overlay = document.getElementById('gl-fb-overlay');
+      if (overlay && overlay.classList.contains('is-open')) closeGlFbModal();
+    }
+  });
+  window._glOpenFbModal = _glOpenFbModal;
+  function _glAcc(opts) {
+    // opts: { title, iconName, iconColor, badge, badgeStyle, body, open }
+    if (!opts || !opts.body) return '';
+    var iconHtml = opts.iconName
+      ? '<span class="gl-acc-icon" style="color:' + (opts.iconColor || '#64748b') + '"><i data-lucide="' + opts.iconName + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></span>'
+      : '';
+    var badge = opts.badge
+      ? '<span class="gl-acc-badge" style="' + (opts.badgeStyle || 'background:#e2e8f0;color:#475569') + '">' + opts.badge + '</span>'
+      : '';
+    return '<details class="gl-acc"' + (opts.open ? ' open' : '') + '>'
+      + '<summary>'
+      + iconHtml
+      + '<span class="gl-acc-title">' + opts.title + '</span>'
+      + badge
+      + '<span class="gl-acc-arrow">' + _glAccArrow + '</span>'
+      + '</summary>'
+      + '<div class="gl-acc-body">' + opts.body + '</div>'
+      + '</details>';
+  }
+
   function _glRenderCorrections(arr) {
-    var h = '<div style="padding:9px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:8px">'
-      + '<div style="font-size:10px;font-weight:800;color:#dc2626;margin-bottom:6px">🔴 Corrections (' + arr.length + ')</div>';
+    if (!arr || !arr.length) return '';
+    var body = '';
     arr.forEach(function(c) {
-      h += '<div style="display:flex;gap:6px;padding:5px 7px;background:#fff;border:1px solid #fde2e2;border-radius:6px;margin-bottom:3px;font-size:11px">'
+      body += '<div style="display:flex;gap:6px;padding:6px 8px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;margin-bottom:4px">'
         + '<div style="flex:1;min-width:0">'
-        + (c.pattern ? '<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fef2f2;color:#dc2626;margin-right:5px">' + _glEsc(c.pattern) + '</span>' : '')
+        + (c.pattern ? '<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#fff;color:#dc2626;margin-right:5px">' + _glEsc(c.pattern) + '</span>' : '')
         + '<s style="color:#dc2626">' + _glEsc(c.original||'') + '</s> → <b style="color:#15803d">' + _glEsc(c.corrected||'') + '</b>'
         + (c.reason ? '<div style="color:#64748b;font-size:11px;margin-top:2px">' + _glEsc(c.reason) + '</div>' : '')
         + '</div></div>';
     });
-    h += '</div>';
-    return h;
+    return _glAcc({ title:'Corrections', iconName:'circle-alert', iconColor:'#dc2626', badge:String(arr.length), badgeStyle:'background:#fef2f2;color:#dc2626', body:body, open:true });
   }
   function _glRenderSpelling(arr) {
-    var h = '<div style="padding:8px 10px;background:#fefce8;border:1px solid #fde68a;border-radius:8px;margin-bottom:8px">'
-      + '<div style="font-size:10px;font-weight:800;color:#a16207;margin-bottom:4px">✏️ Spelling</div>';
+    if (!arr || !arr.length) return '';
+    var body = '';
     arr.forEach(function(s) {
-      h += '<div style="font-size:11px;margin-bottom:2px"><s style="color:#dc2626">' + _glEsc(s.wrong||'') + '</s> → <b style="color:#15803d">' + _glEsc(s.correct||'') + '</b>'
+      body += '<div style="font-size:11px;margin-bottom:3px"><s style="color:#dc2626">' + _glEsc(s.wrong||'') + '</s> → <b style="color:#15803d">' + _glEsc(s.correct||'') + '</b>'
         + (s.tip ? ' <span style="color:#94a3b8">(' + _glEsc(s.tip) + ')</span>' : '') + '</div>';
     });
-    h += '</div>';
-    return h;
+    return _glAcc({ title:'Spelling', iconName:'pen-line', iconColor:'#a16207', badge:String(arr.length), badgeStyle:'background:#fefce8;color:#a16207', body:body });
   }
   function _glRenderNaturalness(n) {
-    var h = '<div style="padding:8px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:8px">'
-      + '<div style="font-size:10px;font-weight:800;color:#1d4ed8;margin-bottom:3px">🗣️ Naturalness' + (n.score != null ? ' ' + n.score + '/10' : '') + '</div>'
-      + '<div style="font-size:11px;color:#1e293b;line-height:1.55">' + _glEsc(n.comment||'') + '</div>';
+    if (!n || !n.comment) return '';
+    var body = '<div style="color:#1e293b">' + _glEsc(n.comment||'') + '</div>';
     if (n.suggestions && n.suggestions.length) {
-      n.suggestions.forEach(function(s){ h += '<div style="font-size:11px;color:#1d4ed8;margin-top:3px">💡 ' + _glEsc(s) + '</div>'; });
+      n.suggestions.forEach(function(s){ body += '<div style="color:#1d4ed8;margin-top:4px;display:flex;align-items:flex-start;gap:5px"><i data-lucide="lightbulb" class="kh-ui-icon kh-ui-icon-sm" style="color:#fbbf24;flex-shrink:0;margin-top:2px" aria-hidden="true"></i><span>' + _glEsc(s) + '</span></div>'; });
     }
-    h += '</div>';
-    return h;
+    var badge = n.score != null ? (n.score + '/10') : '';
+    return _glAcc({ title:'Naturalness', iconName:'message-circle', iconColor:'#1d4ed8', badge:badge, badgeStyle:'background:#eff6ff;color:#1d4ed8', body:body });
   }
   function _glRenderStructure(s) {
-    return '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">'
-      + '<div style="font-size:10px;font-weight:800;color:#475569;margin-bottom:3px">🏗️ Sentence structure</div>'
-      + '<div style="font-size:11px;color:#475569;line-height:1.55">' + _glEsc(s.comment||'') + '</div>'
-      + (s.tip ? '<div style="font-size:11px;color:#a16207;margin-top:3px">💡 ' + _glEsc(s.tip) + '</div>' : '')
-      + '</div>';
+    if (!s || !s.comment) return '';
+    var body = '<div style="color:#475569">' + _glEsc(s.comment||'') + '</div>'
+      + (s.tip ? '<div style="color:#a16207;margin-top:4px;display:flex;align-items:flex-start;gap:5px"><i data-lucide="lightbulb" class="kh-ui-icon kh-ui-icon-sm" style="color:#fbbf24;flex-shrink:0;margin-top:2px" aria-hidden="true"></i><span>' + _glEsc(s.tip) + '</span></div>' : '');
+    return _glAcc({ title:'Sentence structure', iconName:'ruler', iconColor:'#475569', body:body });
   }
   function _glRenderExtra(text) {
-    return '<div style="padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px">'
-      + '<div style="font-size:10px;font-weight:800;color:#475569;margin-bottom:3px">💡 Additional ideas</div>'
-      + '<div style="font-size:11px;color:#64748b;line-height:1.55;white-space:pre-wrap">' + _glEsc(text) + '</div>'
-      + '</div>';
+    if (!text) return '';
+    return _glAcc({ title:'Additional ideas', iconName:'lightbulb', iconColor:'#0369a1', body:'<div style="color:#475569;white-space:pre-wrap">' + _glEsc(text) + '</div>' });
   }
 
   async function loadFeedbackHistory() {
@@ -3771,17 +3889,10 @@
         return;
       }
 
-      var TYPE_LABELS = {
-        daily_package: { icon: '📦', label: 'Package', color: '#2563eb' },
-        topic: { icon: '✍️', label: 'Writing', color: '#7c3aed' },
-        writing: { icon: '✍️', label: 'Writing', color: '#7c3aed' },
-        diary: { icon: '📓', label: 'Diary', color: '#ec4899' },
-        reading: { icon: '📖', label: 'Reading', color: '#10b981' },
-        article: { icon: '📰', label: 'Article', color: '#f59e0b' },
-        article_study: { icon: '📰', label: 'Article', color: '#f59e0b' },
-        conversation: { icon: '💬', label: 'Convo', color: '#0ea5e9' },
-        story: { icon: '📚', label: 'Story', color: '#a855f7' }
-      };
+      // Reset cache, repopulate as we render so click→modal lookups
+      // always see the freshest item.
+      _glFbItemMap = Object.create(null);
+      items.forEach(function(item) { if (item && item.id != null) _glFbItemMap[item.id] = item; });
 
       // Group by date
       var grouped = {};
@@ -3805,60 +3916,33 @@
         dayItems.forEach(function(item) {
           var t = TYPE_LABELS[item.content_type] || TYPE_LABELS.writing;
           var isReviewed = item.status === 'admin_approved' || item.status === 'sent';
-          var statusText = isReviewed ? '✅ 피드백 도착' : item.status === 'ai_reviewed' ? '⏳ 검토 중' : '📨 제출됨';
+          var statusText = isReviewed ? '피드백 도착' : item.status === 'ai_reviewed' ? '검토 중' : '제출됨';
+          var statusIcon = isReviewed ? 'check-circle-2' : item.status === 'ai_reviewed' ? 'hourglass' : 'send';
           var statusColor = isReviewed ? '#16a34a' : '#94a3b8';
           var preview = (item.writing_text||'').slice(0,60);
           if ((item.writing_text||'').length > 60) preview += '…';
 
-          html += '<div style="border:1px solid #e2e8f0;border-radius:10px;margin-bottom:6px;overflow:hidden">';
-          // Header
-          html += '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\'none\';var a=this.querySelector(\'.gl-fb-arrow\');if(a)a.textContent=this.nextElementSibling.style.display===\'none\'?\'▼\':\'▲\'" style="padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;background:#fafbfc;transition:background .1s" onmouseover="this.style.background=\'#f0f4ff\'" onmouseout="this.style.background=\'#fafbfc\'">';
-          html += '<div style="width:30px;height:30px;border-radius:8px;background:' + t.color + '15;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">' + t.icon + '</div>';
+          var idJson = JSON.stringify(String(item.id));
+          html += '<div onclick="_glOpenFbModal(' + idJson + ')" style="border:1px solid #e2e8f0;border-radius:10px;margin-bottom:6px;overflow:hidden;cursor:pointer;transition:background .12s,border-color .12s,transform .12s" onmouseover="this.style.background=\'#f0f4ff\';this.style.borderColor=\'#bfdbfe\'" onmouseout="this.style.background=\'\';this.style.borderColor=\'#e2e8f0\'">';
+          html += '<div style="padding:10px 12px;display:flex;align-items:center;gap:8px;background:#fafbfc">';
+          html += '<div style="width:30px;height:30px;border-radius:8px;background:' + t.color + '15;color:' + t.color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="' + t.icon + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>';
           html += '<div style="flex:1;min-width:0">';
-          html += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">';
+          html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
           html += '<span style="font-size:11px;font-weight:800;color:' + t.color + '">' + t.label + '</span>';
-          html += '<span style="font-size:10px;color:' + statusColor + ';font-weight:700">' + statusText + '</span>';
+          html += '<span style="font-size:10px;color:' + statusColor + ';font-weight:700;display:inline-flex;align-items:center;gap:3px"><i data-lucide="' + statusIcon + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>' + statusText + '</span></span>';
           if (item.score != null) html += '<span style="font-size:10px;font-weight:800;color:#2563eb">' + item.score + '점</span>';
           html += '</div>';
           if (item.topic_ko) html += '<div style="font-size:10px;color:#64748b;margin-top:1px">' + item.topic_ko + '</div>';
           if (preview) html += '<div style="font-size:10px;color:#94a3b8;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + preview + '</div>';
           html += '</div>';
-          html += '<span class="gl-fb-arrow" style="font-size:10px;color:#cbd5e1">▼</span>';
-          html += '</div>';
-
-          // Detail body
-          html += '<div style="display:none;padding:12px;border-top:1px solid #e2e8f0">';
-          if (item.writing_text) {
-            html += '<div style="margin-bottom:10px"><div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">My Writing</div>';
-            html += '<div style="font-size:12px;color:#334155;line-height:1.7;padding:8px 10px;background:#f8fafc;border-radius:6px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + item.writing_text + '</div></div>';
-          }
-          // Feedback — mirror the admin Feedback Detail modal exactly.
-          // ai_feedback is the rich Claude object (activities, overall_
-          // assessment, common_patterns, daily_tip; per-activity:
-          // corrections, spelling, naturalness, structure). admin_feedback
-          // is plain text the admin typed as an overlay note. Render
-          // BOTH so the user sees the full AI breakdown plus the admin
-          // overlay — previously we collapsed both into a flat one-line
-          // overall and lost almost all of the admin's actual feedback.
-          var fbAi = _glParseFbObject(item.ai_feedback);
-          var fbAdminText = _glAdminText(item.admin_feedback);
-          if (isReviewed && (fbAi || fbAdminText)) {
-            html += _glRenderFeedbackBody({
-              ai: fbAi,
-              adminText: fbAdminText,
-              row: item
-            });
-          } else if (!isReviewed) {
-            html += '<div style="text-align:center;padding:12px;font-size:12px;color:#94a3b8">' + (item.status === 'ai_reviewed' ? '⏳ 검토 중 — 24시간 내 피드백 도착' : '📨 제출 완료 — 처리 중') + '</div>';
-          } else {
-            html += '<div style="text-align:center;padding:12px;font-size:12px;color:#94a3b8">피드백이 곧 도착해요.</div>';
-          }
+          html += '<i data-lucide="chevron-right" class="kh-ui-icon kh-ui-icon-sm" style="color:#cbd5e1;flex-shrink:0" aria-hidden="true"></i>';
           html += '</div></div>';
         });
         html += '</div>';
       });
 
       el.innerHTML = html;
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
     } catch(e) { el.innerHTML = '<div style="color:#e53e3e;font-size:12px">오류: ' + (e.message||e) + '</div>'; }
   }
 
@@ -4303,7 +4387,50 @@
   .selector-save-btn { margin-top:8px; padding:9px 18px; background:#0f172a; color:#fff; border:none; border-radius:999px; font-size:13px; font-weight:800; cursor:pointer; }
   .level.level { background:#eef4ff; color:#2563eb; }
   .level.interest { background:#f3e8ff; color:#7c3aed; }
+
+  /* Feedback modal + accordion */
+  .gl-fb-overlay { position:fixed; inset:0; background:rgba(8,16,30,.55); backdrop-filter:blur(4px); z-index:5000; display:none; align-items:center; justify-content:center; padding:16px; animation:glFbFade .18s ease-out; }
+  .gl-fb-overlay.is-open { display:flex; }
+  .gl-fb-modal { background:#fff; border-radius:18px; width:100%; max-width:640px; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 30px 70px rgba(8,16,30,.4); overflow:hidden; animation:glFbPop .22s cubic-bezier(.22,1.1,.36,1); }
+  .gl-fb-modal-head { display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid #e2e8f0; flex-shrink:0; }
+  .gl-fb-modal-icon { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .gl-fb-modal-title { flex:1; min-width:0; font-size:14px; font-weight:900; color:#0f172a; overflow:hidden; }
+  .gl-fb-modal-title-sub { font-size:11px; font-weight:600; color:#64748b; margin-top:2px; }
+  .gl-fb-modal-close { width:30px; height:30px; border-radius:8px; background:#f1f5f9; border:none; color:#475569; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .gl-fb-modal-close:hover { background:#e2e8f0; }
+  .gl-fb-modal-body { flex:1; overflow-y:auto; padding:14px 18px 18px; background:#f8fafc; }
+  @keyframes glFbFade { from { opacity:0; } to { opacity:1; } }
+  @keyframes glFbPop { from { opacity:0; transform:translateY(8px) scale(.98); } to { opacity:1; transform:none; } }
+  .gl-acc { background:#fff; border:1px solid #e2e8f0; border-radius:10px; margin-bottom:8px; overflow:hidden; }
+  .gl-acc[open] { box-shadow:0 2px 8px rgba(15,23,42,.05); }
+  .gl-acc > summary { list-style:none; cursor:pointer; padding:11px 14px; display:flex; align-items:center; gap:10px; user-select:none; transition:background .12s; }
+  .gl-acc > summary::-webkit-details-marker { display:none; }
+  .gl-acc > summary:hover { background:#f8fafc; }
+  .gl-acc-icon { width:18px; height:18px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; }
+  .gl-acc-title { flex:1; min-width:0; font-size:12px; font-weight:800; color:#0f172a; }
+  .gl-acc-badge { font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; flex-shrink:0; }
+  .gl-acc-arrow { width:16px; height:16px; color:#94a3b8; transition:transform .18s; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; }
+  .gl-acc[open] > summary .gl-acc-arrow { transform:rotate(180deg); color:#475569; }
+  .gl-acc-body { padding:0 14px 12px; font-size:11px; color:#1e293b; line-height:1.6; }
+  .gl-acc-body p { margin:0 0 6px; }
+  .gl-acc-body ul { margin:6px 0; padding-left:18px; }
   </style>
+
+  <!-- Feedback detail modal (opened from feedback history cards) -->
+  <div id="gl-fb-overlay" class="gl-fb-overlay" onclick="if(event.target===this)closeGlFbModal()">
+    <div class="gl-fb-modal" role="dialog" aria-labelledby="gl-fb-modal-title">
+      <div class="gl-fb-modal-head">
+        <div class="gl-fb-modal-icon" id="gl-fb-modal-icon" style="background:#f1f5f9"></div>
+        <div style="flex:1;min-width:0">
+          <div class="gl-fb-modal-title" id="gl-fb-modal-title">Feedback</div>
+          <div class="gl-fb-modal-title-sub" id="gl-fb-modal-sub"></div>
+        </div>
+        <button class="gl-fb-modal-close" onclick="closeGlFbModal()" aria-label="Close"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
+      </div>
+      <div class="gl-fb-modal-body" id="gl-fb-modal-body"></div>
+    </div>
+  </div>
+
   <div id="kh-footer"></div>
 </body>
 </html>
