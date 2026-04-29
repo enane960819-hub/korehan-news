@@ -1033,7 +1033,7 @@ body.kh-neon-on .hero-dot {
     var DISMISS_KEY = 'kh_welcome_banner_dismissed_v1';
     if (localStorage.getItem(DISMISS_KEY) === '1') { el.style.display = 'none'; return; }
     var glowStyle = 'display:flex;align-items:center;gap:16px;margin:0 0 18px;padding:18px 22px;padding-right:46px;border-radius:16px;text-decoration:none;transition:box-shadow .3s,background .2s,transform .2s;position:relative;overflow:hidden;';
-    var closeBtn = '<button type="button" class="kh-banner-close" aria-label="Dismiss" onclick="event.preventDefault();event.stopPropagation();localStorage.setItem(\'' + DISMISS_KEY + '\',\'1\');var b=document.getElementById(\'kh-welcome-action-banner\');if(b)b.style.display=\'none\';">✕</button>';
+    var closeBtn = '<button type="button" class="kh-banner-close" aria-label="Dismiss" onclick="event.preventDefault();event.stopPropagation();localStorage.setItem(\'' + DISMISS_KEY + '\',\'1\');var b=document.getElementById(\'kh-welcome-action-banner\');if(b)b.style.display=\'none\';"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>';
     function renderBanner() {
       if (window.supaUser) {
         el.innerHTML = '<a href="beginner-guide.html" style="' + glowStyle + 'background:linear-gradient(135deg,#1e3a5f,#1a3a6b);border:1.5px solid rgba(96,165,250,.3);box-shadow:0 8px 24px rgba(15,23,42,.18)">'
@@ -1071,14 +1071,14 @@ body.kh-neon-on .hero-dot {
     // Weekly
     if(day === 0 && !localStorage.getItem('kh_weekly_review_done_'+now.toISOString().slice(0,10))){
       html += '<a href="korehan-study-room.html" style="flex:1;min-width:220px;padding:10px 14px;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border:1px solid rgba(96,165,250,.3);text-decoration:none;display:flex;align-items:center;gap:10px">'
-        + '<span style="font-size:16px">📊</span>'
+        + '<i data-lucide="bar-chart-3" class="kh-ui-icon" style="width:16px;height:16px" aria-hidden="true"></i>'
         + '<div><div style="font-size:12px;font-weight:800;color:#60a5fa">Weekly Review</div><div style="font-size:11px;color:rgba(255,255,255,.5)">일요일 한정 · 20문제</div></div>'
         + '<span style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.3)">→</span></a>';
     }
     // Monthly
     if(date>=1 && date<=3 && !localStorage.getItem('kh_monthly_review_done_'+now.toISOString().slice(0,7))){
       html += '<a href="korehan-study-room.html" style="flex:1;min-width:220px;padding:10px 14px;border-radius:10px;background:linear-gradient(135deg,#312e81,#7c3aed);border:1px solid rgba(139,92,246,.3);text-decoration:none;display:flex;align-items:center;gap:10px">'
-        + '<span style="font-size:16px">🏆</span>'
+        + '<i data-lucide="trophy" class="kh-ui-icon" style="width:16px;height:16px;color:#fbbf24" aria-hidden="true"></i>'
         + '<div><div style="font-size:12px;font-weight:800;color:#c4b5fd">Monthly Review</div><div style="font-size:11px;color:rgba(255,255,255,.5)">'+(4-date)+'일 남음 · 25문제</div></div>'
         + '<span style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.3)">→</span></a>';
     }
@@ -1713,10 +1713,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span></div>'
         + '<div class="nc-title">' + (a.title_en || a.title || '') + '</div>'
         + '<div class="nc-foot"><span class="nc-date">' + (a.published_at ? new Date(a.published_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '') + '</span>'
-        + '<button class="nc-study" onclick="event.stopPropagation();openStudyModal && openStudyModal(\'' + a.id + '\')">📚 Study</button></div>'
+        + '<button class="nc-study" onclick="event.stopPropagation();openStudyModal && openStudyModal(\'' + a.id + '\')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Study</span></button></div>'
         + '</div>'
         + '</div>';
     }).join('');
+    if (window.renderKhLucideIcons) renderKhLucideIcons();
   }
   renderNewsGrid();
   document.addEventListener('khArticlesLoaded', function() {

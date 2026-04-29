@@ -1287,19 +1287,19 @@ function _convPracticeCardsHTML(c) {
 
   return ''
     + '<div class="dp-study-card" data-study="practice">'
-    +   '<div class="dp-study-card-title">🔗 Expression Match</div>'
+    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="link-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Expression Match</span></div>'
     +   '<div class="dp-pr-sub">Match each Korean expression to its English meaning.</div>'
     +   '<div id="dp-pr-em">' + (hasExpr ? startBtn('Start matching', 'startExpressionMatch') : emptyMsg('No key expressions for this conversation.')) + '</div>'
     + '</div>'
 
     + '<div class="dp-study-card" data-study="practice">'
-    +   '<div class="dp-study-card-title">📚 Vocab in Context</div>'
+    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Vocab in Context</span></div>'
     +   '<div class="dp-pr-sub">Read the dialogue line, pick what the highlighted word means.</div>'
     +   '<div id="dp-pr-vic">' + (hasVocab ? startBtn('Start drill', 'startVocabInContext') : emptyMsg('No vocabulary for this conversation.')) + '</div>'
     + '</div>'
 
     + '<div class="dp-study-card" data-study="practice">'
-    +   '<div class="dp-study-card-title">💬 Reply Check</div>'
+    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Reply Check</span></div>'
     +   '<div class="dp-pr-sub">Choose the natural reply to each line.</div>'
     +   '<div id="dp-pr-rc">' + (hasReply ? startBtn('Start drill', 'startReplyCheck') : emptyMsg('Not enough dialogue lines for this drill.')) + '</div>'
     + '</div>'
@@ -1364,7 +1364,7 @@ function _emRender() {
   var done = Object.keys(s.locked).length;
   var total = s.pairs.length;
   var doneBanner = (done === total)
-    ? '<div class="dp-pr-done">All matched! 🎉</div>'
+    ? '<div class="dp-pr-done" style="display:inline-flex;align-items:center;gap:6px"><span>All matched!</span><i data-lucide="party-popper" class="kh-ui-icon kh-ui-icon-sm" style="color:#a78bfa" aria-hidden="true"></i></div>'
     : '<div class="dp-pr-progress">' + done + ' / ' + total + ' matched</div>';
   document.getElementById('dp-pr-em').innerHTML =
       doneBanner
@@ -1743,7 +1743,7 @@ async function toggleSave(btn) {
     if (typeof dbSaveWord === 'function') await dbSaveWord(ko, rom, en);
     // dmTrackWord() is already called inside dbSaveWord → trackActivityOnWordSave chain
     btn.classList.add('saved');
-    btn.textContent = '✓ Saved';
+    btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Saved</span></span>';
   }
 }
 
@@ -2004,7 +2004,7 @@ function renderQuizQuestion() {
     + '<div style="font-size:11px;font-weight:700;opacity:.8;letter-spacing:.08em;text-transform:uppercase;">' + (_quizMode==='blank'?'Blank Fill':'Word Order') + '</div>'
     + '<div style="font-size:15px;font-weight:700;margin-top:2px">' + (_quizCurrent+1) + ' / ' + _quizTotal + '</div>'
     + '</div>'
-    + '<button onclick="closeQuiz()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:22px;cursor:pointer;line-height:1;">✕</button>'
+    + '<button onclick="closeQuiz()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
     + '</div>'
     + '<div style="height:4px;background:#e2e8f0;"><div style="height:4px;background:#3b82f6;width:'+progress+'%;transition:width .3s"></div></div>';
 
@@ -2027,7 +2027,7 @@ function renderBlankQ(q) {
   var choices = [q.word].concat(wrongs).sort(function(){ return Math.random()-.5; });
 
   return '<div style="padding:24px 22px;">'
-    + (q.who ? '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;">💬 ' + q.who + '</div>' : '')
+    + (q.who ? '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;display:inline-flex;align-items:center;gap:5px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>' + q.who + '</span></div>' : '')
     + '<div style="font-size:16px;line-height:1.8;background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:18px;font-family:\'Noto Sans KR\',sans-serif;">' + displayed + '</div>'
     + '<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">( ' + q.en + ' )  ← hint</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
@@ -2128,7 +2128,7 @@ function showFeedback(correct, answer, next) {
   if (!inner) return;
   var fb = document.createElement('div');
   fb.style.cssText = 'padding:20px 22px;background:' + (correct?'#f0fdf4':'#fef2f2') + ';border-top:1px solid ' + (correct?'#bbf7d0':'#fecaca') + ';text-align:center;';
-  fb.innerHTML = '<div style="font-size:28px;">' + (correct?'🎉':'😅') + '</div>'
+  fb.innerHTML = '<div style="display:inline-flex;width:32px;height:32px;color:'+(correct?'#a78bfa':'#fbbf24')+'"><i data-lucide="' + (correct?'party-popper':'frown') + '" class="kh-ui-icon" style="width:32px;height:32px" aria-hidden="true"></i></div>'
     + '<div style="font-size:16px;font-weight:700;color:' + (correct?'#15803d':'#b91c1c') + ';margin:6px 0">' + (correct?'Correct!':'Not quite') + '</div>'
     + (answer && !correct ? '<div style="font-size:14px;color:#64748b;">Answer: <b>' + answer + '</b></div>' : '')
     + '<button onclick="nextQuizQuestion()" style="margin-top:14px;padding:10px 24px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Next →</button>';
@@ -2150,7 +2150,9 @@ function nextQuizQuestion() {
 function showQuizResult() {
   var overlay = document.getElementById('quiz-overlay');
   var pct = Math.round(_quizScore / _quizTotal * 100);
-  var emoji = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚';
+  var iconName = pct >= 80 ? 'trophy' : pct >= 60 ? 'thumbs-up' : 'library';
+  var iconColor = pct >= 80 ? '#fde68a' : pct >= 60 ? '#22c55e' : '#a78bfa';
+  var emoji = '<i data-lucide="' + iconName + '" class="kh-ui-icon" style="width:48px;height:48px;color:' + iconColor + '" aria-hidden="true"></i>';
 
   // 데일리 미션 퀴즈 카운트
   if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
@@ -2264,8 +2266,8 @@ function openInlineEditModal(c) {
 
   overlay.innerHTML = '<div style="background:#fff;border-radius:18px;width:100%;max-width:700px;padding:26px 28px;max-height:90vh;overflow-y:auto">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    + '<h3 style="font-size:17px;font-weight:800;margin:0">✏️ Edit Conversation</h3>'
-    + '<button onclick="closeInlineEdit()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b">✕</button>'
+    + '<h3 style="font-size:17px;font-weight:800;margin:0;display:inline-flex;align-items:center;gap:6px"><i data-lucide="pencil" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Edit Conversation</span></h3>'
+    + '<button onclick="closeInlineEdit()" style="background:none;border:none;cursor:pointer;color:#64748b;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
     + '</div>'
     + inpField('ie-name', 'Title', c.name || '')
     + inpField('ie-ctx',  'Context', c.ctx  || '')
@@ -2534,7 +2536,7 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
     var inner = overlay.querySelector('div'); if (!inner) return;
     var fb = document.createElement('div');
     fb.style.cssText = 'padding:20px 22px;background:' + (correct?'#f0fdf4':'#fef2f2') + ';border-top:1px solid ' + (correct?'#bbf7d0':'#fecaca') + ';text-align:center;';
-    fb.innerHTML = '<div style="font-size:28px;">' + (correct?'🎉':'😅') + '</div>'
+    fb.innerHTML = '<div style="display:inline-flex;width:32px;height:32px;color:'+(correct?'#a78bfa':'#fbbf24')+'"><i data-lucide="' + (correct?'party-popper':'frown') + '" class="kh-ui-icon" style="width:32px;height:32px" aria-hidden="true"></i></div>'
       + '<div style="font-size:16px;font-weight:800;color:' + (correct?'#15803d':'#b91c1c') + ';margin:6px 0">' + (correct?'Correct!':'Not quite.') + '</div>'
       + (answer && !correct ? '<div style="font-size:14px;color:#64748b;">Answer: <b>' + answer + '</b></div>' : '')
       + (correctSentence && !correct ? '<div style="font-size:14px;color:#475569;margin-top:6px;">Correct order: <b>' + correctSentence + '</b></div>' : '')
@@ -2547,7 +2549,9 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
   window.showQuizResult = function() {
     var overlay = document.getElementById('quiz-overlay');
     var pct = Math.round(_quizScore / _quizTotal * 100);
-    var emoji = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : '📚';
+    var iconName = pct >= 80 ? 'trophy' : pct >= 60 ? 'thumbs-up' : 'library';
+  var iconColor = pct >= 80 ? '#fde68a' : pct >= 60 ? '#22c55e' : '#a78bfa';
+  var emoji = '<i data-lucide="' + iconName + '" class="kh-ui-icon" style="width:48px;height:48px;color:' + iconColor + '" aria-hidden="true"></i>';
 
     // 데일리 미션 퀴즈 카운트
     if (typeof dmTrackQuiz === 'function') dmTrackQuiz();

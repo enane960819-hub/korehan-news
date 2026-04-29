@@ -306,7 +306,7 @@
 <div id="kh-header"></div>
 
 <div class="learn-hero">
-  <div class="badge">✏️ Korean Learning Center</div>
+  <div class="badge" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Korean Learning Center</span></div>
   <h1>Learn Korean with KoreHani</h1>
   <p>Study essential Korean vocabulary.<br>Click flashcards to reveal meanings, then test yourself with quizzes!</p>
 </div>
@@ -315,29 +315,29 @@
 
   <!-- SRS REVIEW BANNER -->
   <div class="srs-banner" id="srs-banner" style="display:none">
-    <div class="srs-banner-icon">🗂️</div>
+    <div class="srs-banner-icon" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="folder-open" class="kh-ui-icon" style="width:36px;height:36px" aria-hidden="true"></i></div>
     <div class="srs-banner-text">
       <h3>Words to review! <span class="srs-due-badge" id="srs-due-count">0</span></h3>
       <p>Review saved words with spaced repetition (SRS) to remember them longer.</p>
     </div>
-    <button class="srs-start-btn" id="srs-start-btn" onclick="srsStartReview()">📚 Start Review</button>
+    <button class="srs-start-btn" id="srs-start-btn" onclick="srsStartReview()" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Start Review</span></button>
   </div>
 
   <!-- PHRASE OF DAY -->
   <div class="pod-section">
-    <div class="pod-title">🌟 Today's Phrase</div>
+    <div class="pod-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today's Phrase</span></div>
     <div class="pod-grid" id="pod-grid"></div>
   </div>
 
   <!-- LEARN TABS -->
   <div class="learn-tabs" id="learn-main-tabs" style="margin-bottom:24px">
-    <button class="tab-btn" onclick="showLearnSection('hangul',this)">🌱 Hangul</button>
-    <button class="tab-btn on" onclick="showLearnSection('vocab-section',this)">📇 Vocabulary</button>
+    <button class="tab-btn" onclick="showLearnSection('hangul',this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="leaf" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Hangul</span></button>
+    <button class="tab-btn on" onclick="showLearnSection('vocab-section',this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="layers" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Vocabulary</span></button>
   </div>
 
   <!-- HANGUL SECTION -->
   <div id="learn-sec-hangul" style="display:none">
-    <div class="learn-section-title">🌱 Hangul — Korean Alphabet</div>
+    <div class="learn-section-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="leaf" class="kh-ui-icon" style="width:22px;height:22px;color:#22c55e" aria-hidden="true"></i><span>Hangul — Korean Alphabet</span></div>
     <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Click a card to reveal the sound and example word</p>
 
     <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gray);margin-bottom:10px">Consonants</div>
@@ -347,7 +347,7 @@
     <div class="hangul-grid" id="hangul-vowels"></div>
 
     <div style="margin-top:32px;padding-top:20px;border-top:2px solid var(--border)">
-      <div style="font-size:16px;font-weight:900;margin-bottom:12px">🧠 Hangul Quiz</div>
+      <div style="font-size:16px;font-weight:900;margin-bottom:12px;display:inline-flex;align-items:center;gap:6px"><i data-lucide="brain" class="kh-ui-icon" style="width:18px;height:18px;color:#a78bfa" aria-hidden="true"></i><span>Hangul Quiz</span></div>
       <p style="color:var(--gray);font-size:13px;margin-bottom:14px">What sound does this character make?</p>
       <div id="hangul-quiz-area"></div>
     </div>
@@ -355,7 +355,7 @@
 
   <!-- FLASHCARDS -->
   <div id="learn-sec-vocab-section">
-  <div class="learn-section-title">📇 Vocabulary Flashcards — 단어 카드</div>
+  <div class="learn-section-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="layers" class="kh-ui-icon" style="width:22px;height:22px;color:#7dd3fc" aria-hidden="true"></i><span>Vocabulary Flashcards — 단어 카드</span></div>
   <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Click a card to reveal the meaning the meaning</p>
 
   <div class="learn-tabs" id="vocab-tabs"></div>
@@ -363,21 +363,21 @@
   <div style="text-align:center;margin-top:18px"><button id="vocab-more-btn" onclick="loadMoreCards()" class="quiz-next" style="display:none">Load more</button></div>
 
   <!-- EXAMPLE SENTENCES -->
-  <div class="learn-section-title" style="margin-top:36px">💬 Example Sentences — 예문</div>
+  <div class="learn-section-title" style="margin-top:36px;display:inline-flex;align-items:center;gap:8px"><i data-lucide="message-circle" class="kh-ui-icon" style="width:22px;height:22px;color:#86efac" aria-hidden="true"></i><span>Example Sentences — 예문</span></div>
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
     <button class="sentence-filter-btn on" onclick="filterSentences('All',this)">All</button>
-    <button class="sentence-filter-btn" onclick="filterSentences('Starter',this)">🌰 Seed</button>
-    <button class="sentence-filter-btn" onclick="filterSentences('Beginner',this)">🌱 Sprout</button>
-    <button class="sentence-filter-btn" onclick="filterSentences('Intermediate',this)">🌳 Tree</button>
-    <button class="sentence-filter-btn" onclick="filterSentences('Advanced',this)">🌲 Forest</button>
-    <button onclick="generateAISentences(this)" style="margin-left:auto;background:linear-gradient(135deg,#0b1626,#1a3a6b);color:#fff;border:none;border-radius:999px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">✨ Generate from Articles</button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Starter',this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="sprout" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Seed</span></button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Beginner',this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="leaf" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Sprout</span></button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Intermediate',this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="tree-deciduous" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Tree</span></button>
+    <button class="sentence-filter-btn" onclick="filterSentences('Advanced',this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="trees" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Forest</span></button>
+    <button onclick="generateAISentences(this)" style="margin-left:auto;background:linear-gradient(135deg,#0b1626,#1a3a6b);color:#fff;border:none;border-radius:999px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Generate from Articles</span></button>
   </div>
   <div id="sentences-list"></div>
 
 
 
 <!-- WORD QUIZ -->
-<div class="learn-section-title" style="margin-top:40px">🧠 Word Quiz</div>
+<div class="learn-section-title" style="margin-top:40px;display:inline-flex;align-items:center;gap:8px"><i data-lucide="brain" class="kh-ui-icon" style="width:22px;height:22px;color:#a78bfa" aria-hidden="true"></i><span>Word Quiz</span></div>
 <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Review saved and article-based vocabulary in a cleaner quiz format.</p>
 
 <div class="wq-wrap">
@@ -399,28 +399,28 @@
   <div id="wq-feedback"></div>
 
   <div class="wq-actions">
-    <button class="wq-refresh" onclick="regenWordQuiz()">🔄 New set</button>
+    <button class="wq-refresh" onclick="regenWordQuiz()" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="rotate-ccw" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>New set</span></button>
     <button class="wq-next" id="wq-next-btn" onclick="nextWordQuiz()" style="display:none">Next question</button>
   </div>
 </div>
 
 
   <!-- LISTENING QUIZ -->
-  <div class="learn-section-title" style="margin-top:40px">🎧 Listening Quiz</div>
+  <div class="learn-section-title" style="margin-top:40px;display:inline-flex;align-items:center;gap:8px"><i data-lucide="headphones" class="kh-ui-icon" style="width:22px;height:22px;color:#fde68a" aria-hidden="true"></i><span>Listening Quiz</span></div>
   <p style="color:var(--gray);font-size:13px;margin:-8px 0 14px">Listen to Korean sentences and choose what you heard</p>
 
   <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-    <button class="lq-mode-btn on" onclick="setLQMode('hear',this)">🔊 What did you hear?</button>
-    <button class="lq-mode-btn" onclick="setLQMode('mean',this)">💬 What does it mean?</button>
-    <button onclick="startListeningQuiz()" style="margin-left:auto;background:linear-gradient(135deg,#0b1626,#1a3a6b);color:#fff;border:none;border-radius:999px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer">✨ Generate with AI</button>
+    <button class="lq-mode-btn on" onclick="setLQMode('hear',this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>What did you hear?</span></button>
+    <button class="lq-mode-btn" onclick="setLQMode('mean',this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>What does it mean?</span></button>
+    <button onclick="startListeningQuiz()" style="margin-left:auto;background:linear-gradient(135deg,#0b1626,#1a3a6b);color:#fff;border:none;border-radius:999px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Generate with AI</span></button>
   </div>
 
   <div id="lq-container">
     <div style="text-align:center;padding:48px 20px;color:var(--gray)">
-      <div style="font-size:48px;margin-bottom:12px">🎧</div>
+      <i data-lucide="headphones" class="kh-ui-icon" style="width:54px;height:54px;margin-bottom:12px;color:#fde68a" aria-hidden="true"></i>
       <div style="font-weight:700;font-size:15px;margin-bottom:6px">Ready to practice listening?</div>
       <div style="font-size:13px;margin-bottom:20px">AI generates questions from Korean vocabulary</div>
-      <button onclick="startListeningQuiz()" style="padding:12px 28px;background:#2255a4;color:#fff;border:none;border-radius:99px;font-size:14px;font-weight:900;cursor:pointer">🎧 Start Listening Quiz</button>
+      <button onclick="startListeningQuiz()" style="padding:12px 28px;background:#2255a4;color:#fff;border:none;border-radius:99px;font-size:14px;font-weight:900;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i data-lucide="headphones" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Start Listening Quiz</span></button>
     </div>
   </div>
 
@@ -506,8 +506,8 @@ function renderSentences(list) {
       + '<div class="sent-ko vocab-zone" id="sent-ko-' + idx + '">' + s.ko + '</div>'
       + '<div class="sent-en" id="sent-en-' + idx + '">' + s.en + '</div>'
       + '<div class="sent-tools">'
-      +   '<button class="sent-tool-btn" onclick="speakSentence(' + idx + ')">🔊 Listen</button>'
-      +   '<button class="sent-tool-btn" onclick="toggleSentenceEnglish(' + idx + ', this)">🙈 Hide English</button>'
+      +   '<button class="sent-tool-btn" onclick="speakSentence(' + idx + ')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Listen</span></button>'
+      +   '<button class="sent-tool-btn" onclick="toggleSentenceEnglish(' + idx + ', this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="eye-off" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Hide English</span></button>'
       +   '<button class="sent-tool-btn" onclick="copySentence(' + idx + ')">📋 Copy</button>'
       + '</div>'
       + '<div class="sent-note"><b>Study note:</b> ' + note + '</div>'

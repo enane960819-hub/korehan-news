@@ -1016,9 +1016,9 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
       <div id="room-light-switch" class="room-light-switch" onclick="toggleRoomLights()"
            style="background-image:url(assets/file_000000000f1c720bbe419c8601e6fb5e-removebg-preview.png)"
            title="Toggle lights"></div>
-      <button type="button" id="room-bgm-btn" class="room-bgm-btn" onclick="toggleRoomBGMDrawer(event)" aria-label="Background music" title="Background music">🎵</button>
+      <button type="button" id="room-bgm-btn" class="room-bgm-btn" onclick="toggleRoomBGMDrawer(event)" aria-label="Background music" title="Background music"><i data-lucide="music" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
       <div id="room-bgm-drawer" class="room-bgm-drawer" role="menu" aria-label="Background music tracks"></div>
-      <button type="button" id="room-theme-btn" class="room-theme-btn" onclick="toggleRoomThemeDrawer(event)" aria-label="Wallpaper and floor" title="Wallpaper &amp; floor">🖼</button>
+      <button type="button" id="room-theme-btn" class="room-theme-btn" onclick="toggleRoomThemeDrawer(event)" aria-label="Wallpaper and floor" title="Wallpaper &amp; floor"><i data-lucide="image" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
       <div id="room-theme-drawer" class="room-theme-drawer" role="menu" aria-label="Wallpaper and floor"></div>
     </div>
     <!-- Controls -->
@@ -1255,7 +1255,7 @@ function renderXPCard(xp) {
     + '<div style="text-align:right"><span class="xp-tier-badge ' + tier.cls + '">' + dotHtml + tier.label + '</span>'
     + (tier.next
       ? '<div style="font-size:12px;color:#94a3b8;margin-top:8px;font-weight:600">' + (tier.to - xp).toLocaleString() + ' XP to ' + tier.next + '</div>'
-      : '<div style="font-size:12px;color:#16a34a;margin-top:8px;font-weight:700">Maximum tier ✓</div>')
+      : '<div style="font-size:12px;color:#16a34a;margin-top:8px;font-weight:700;display:inline-flex;align-items:center;gap:5px"><span>Maximum tier</span><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>')
     + '</div></div>'
     + '<div class="xp-track"><div class="xp-fill" style="width:' + pct + '%"></div></div>'
     + '<div class="xp-meta"><span>' + tier.label + ' (' + tier.from.toLocaleString() + ')</span>'
@@ -1361,7 +1361,7 @@ function renderTierGrid(xp) {
     +   '</div>'
     +   (tier.next
           ? '<div class="tier-journey-next">Next · <b>' + Math.max(0, tier.to - xp).toLocaleString() + ' XP</b> to ' + tier.next + '</div>'
-          : '<div class="tier-journey-next">최고 등급 달성 🎉</div>')
+          : '<div class="tier-journey-next" style="display:inline-flex;align-items:center;gap:5px"><span>최고 등급 달성</span><i data-lucide="party-popper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>')
     + '</div>'
     + '<div class="tier-journey-canvas-wrap">'
     +   '<canvas id="tier-path-canvas"></canvas>'
@@ -1770,14 +1770,14 @@ function openNicknameModal() {
     + '<h3>Change Nickname</h3>'
     + '<p>Changing your nickname costs <strong>' + NICKNAME_COST + ' nyang</strong>. You have: <strong>' + _userCoin.toLocaleString() + ' nyang</strong>.</p>'
     + (canAfford
-      ? '<div class="nn-cost-badge">✨ ' + NICKNAME_COST + ' nyang deducted</div>'
+      ? '<div class="nn-cost-badge" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>' + NICKNAME_COST + ' nyang deducted</span></div>'
         + '<input class="nn-input" id="nn-input" type="text" maxlength="30" placeholder="New nickname" value="' + currentName + '">'
         + '<div class="nn-actions">'
         + '<button class="nn-btn-cancel" onclick="closeNicknameModal()">Cancel</button>'
         + '<button class="nn-btn-confirm" id="nn-confirm-btn" onclick="confirmNicknameChange()">Change — ' + NICKNAME_COST + ' nyang</button>'
         + '</div>'
       : '<div style="text-align:center;padding:16px 0">'
-        + '<div style="font-size:36px;margin-bottom:10px">🔒</div>'
+        + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:10px;color:#94a3b8"><i data-lucide="lock" class="kh-ui-icon" style="width:42px;height:42px" aria-hidden="true"></i></div>'
         + '<div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:6px">Not enough nyang</div>'
         + '<div style="font-size:13px;color:#64748b">You need ' + (NICKNAME_COST - _userCoin) + ' more nyang.</div>'
         + '<button class="nn-btn-cancel" style="margin-top:18px;width:100%" onclick="closeNicknameModal()">OK</button>'
@@ -1845,7 +1845,7 @@ async function confirmNicknameChange() {
     renderProfileFields(_userXP, _userCoin);
 
     closeNicknameModal();
-    if (typeof toast === 'function') toast('Nickname updated ✓');
+    if (typeof toast === 'function') toast('Nickname updated');
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Change — ' + NICKNAME_COST + ' nyang'; }
     toast('Error: ' + e.message, 'error');
@@ -1960,7 +1960,7 @@ async function handleAvatarUpload(input) {
   // Update avatar in hero
   _setAvatarDisplay(avatarUrl);
   if (wrap) wrap.style.opacity = '1';
-  if (typeof toast === 'function') toast('Profile photo updated ✓');
+  if (typeof toast === 'function') toast('Profile photo updated');
   // Reset file input so same file can be re-selected
   input.value = '';
 }
@@ -2069,7 +2069,7 @@ function renderOwnedAndGiftSections(coin, data) {
           var applyBtn = '';
           if (it.item_type === 'profile_frame' || (it.name && it.name.toLowerCase().indexOf('frame') !== -1)) {
             var isActive = document.body.classList.contains('kh-neon-on') || localStorage.getItem('kh_profile_frame') === o.item_id;
-            applyBtn = '<button onclick="applyProfileFrame(\'' + o.item_id + '\',this)" style="margin-top:8px;padding:6px 14px;border:none;border-radius:8px;background:' + (isActive ? '#dcfce7;color:#166534' : '#2563eb;color:#fff') + ';font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">' + (isActive ? '✓ Applied' : 'Apply') + '</button>';
+            applyBtn = '<button onclick="applyProfileFrame(\'' + o.item_id + '\',this)" style="margin-top:8px;padding:6px 14px;border:none;border-radius:8px;background:' + (isActive ? '#dcfce7;color:#166534' : '#2563eb;color:#fff') + ';font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px">' + (isActive ? '<i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Applied</span>' : 'Apply') + '</button>';
           } else if (it.item_type === 'theme' || (it.name && it.name.toLowerCase().indexOf('theme') !== -1)) {
             applyBtn = '<button onclick="applyThemeItem(\'' + o.item_id + '\',this)" style="margin-top:8px;padding:6px 14px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">Apply</button>';
           }
@@ -2103,7 +2103,7 @@ function applyProfileFrame(itemId, btn) {
     localStorage.setItem('kh_profile_frame', itemId);
     document.body.classList.add('kh-neon-on');
     localStorage.setItem('kh_neon', '1');
-    btn.textContent = '✓ Applied';
+    btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Applied</span></span>';
     btn.style.background = '#dcfce7'; btn.style.color = '#166534';
     if (typeof toast === 'function') toast('Neon Profile Frame applied!');
   }
@@ -2486,7 +2486,7 @@ function _updateRoomEmptyState(isEmpty) {
         + 'font-family:inherit;z-index:5;'
       );
       overlay.innerHTML =
-        '<div style="font-size:42px;line-height:1">🪑</div>'
+        '<div style="display:inline-flex;width:48px;height:48px;color:#94a3b8"><i data-lucide="armchair" class="kh-ui-icon" style="width:48px;height:48px" aria-hidden="true"></i></div>'
         + '<div style="font-size:14px;font-weight:800">Your room is empty</div>'
         + '<div style="font-size:12px;opacity:.7;max-width:260px;line-height:1.55">'
         + 'Tap <b>My Items</b> below to place things you already own, or earn 냥 and visit the Shop.'
@@ -3147,7 +3147,7 @@ function _bgmRenderDrawer() {
       + '<span>' + t.label + '</span>'
       + '</div>';
   }).join('')
-  + '<div class="room-bgm-vol"><span style="font-size:14px">🔉</span>'
+  + '<div class="room-bgm-vol"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
   + '<input type="range" min="0" max="1" step="0.05" value="' + vol + '">'
   + '</div>';
   d.querySelectorAll('.room-bgm-track').forEach(function(el) {
@@ -3744,7 +3744,7 @@ async function openRoomShop(ownedOnly) {
     var s = 60;
     var cat = item.category || 'deco';
     var isBadge = !!item.isBadge;
-    var priceLabel = isBadge ? '🏆 Earned' : (isOwned ? 'Owned' : item.price + ' nyang');
+    var priceLabel = isBadge ? 'Earned' : (isOwned ? 'Owned' : item.price + ' nyang');
 
     html += '<div class="room-shop-card" data-item-id="' + item.id + '" data-cat="' + cat + '">'
       + '<div class="room-shop-sprite" style="width:' + s + 'px;height:' + s + 'px;' + roomItemThumbBgStyle(item) + (isBadge ? ';image-rendering:pixelated' : '') + '"></div>'
@@ -4024,7 +4024,7 @@ async function openSavedWordsModal() {
   if (!words.length) {
     modal.innerHTML = '<h3>Saved Words</h3>'
       + '<div style="text-align:center;padding:28px 0">'
-      + '<div style="font-size:32px;margin-bottom:10px">📚</div>'
+      + '<div style="display:inline-flex;width:38px;height:38px;margin-bottom:10px;color:#a78bfa"><i data-lucide="library" class="kh-ui-icon" style="width:38px;height:38px" aria-hidden="true"></i></div>'
       + '<div style="font-size:14px;color:#0f172a;font-weight:700;margin-bottom:6px">No saved words yet</div>'
       + '<div style="font-size:12px;color:#64748b;line-height:1.6;max-width:240px;margin:0 auto">Tap or hover any Korean word while reading an article — it saves to your Word Book and shows up here for review.</div>'
       + '</div>'
@@ -4280,7 +4280,7 @@ function renderFriendsList() {
   var el = document.getElementById('mp-friends-content');
   if (!el) return;
   el.innerHTML = '<div class="friends-empty">'
-    + '<div class="friends-empty-icon">👥</div>'
+    + '<div class="friends-empty-icon" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="users" class="kh-ui-icon" style="width:48px;height:48px;color:#94a3b8" aria-hidden="true"></i></div>'
     + '<div class="friends-empty-title">Coming Soon!</div>'
     + '<div class="friends-empty-desc">친구 기능이 곧 추가됩니다.<br>서로의 마이페이지를 방문하고 선물을 보낼 수 있어요!</div>'
     + '</div>';
