@@ -6510,30 +6510,31 @@ async function toggleTranslate() {
   var DELIM_OPEN  = '⟦SEG ';
   var DELIM_CLOSE = '⟧';
   var END_MARKER  = '⟦/SEG⟧';
-  var joined = texts.map(function(t, i) {
-    return DELIM_OPEN + (i+1) + DELIM_CLOSE + '\n' + t + '\n' + END_MARKER;
-  }).join('\n\n');
 
-  var prompt =
-      'You are a Korean-to-English translator for a language learning site.\n'
-    + 'Below are ' + texts.length + ' text segment(s), each wrapped with ⟦SEG n⟧ ... ⟦/SEG⟧ markers.\n'
-    + 'Translate EVERY segment COMPLETELY into natural, fluent English. Do NOT summarize, do NOT skip any sentence.\n'
-    + 'Preserve paragraph breaks (blank lines) inside each segment.\n'
-    + 'Return the translations using the SAME marker format: ⟦SEG 1⟧\\n<translation>\\n⟦/SEG⟧, one block per segment, in the same order.\n'
-    + 'No preamble, no commentary, no code fences — just the marked blocks.\n\n'
-    + joined;
+  // Send a chunk of segments to Claude and parse the marker-delimited
+  // response. Long articles with many paragraphs were silently truncating
+  // at the previous 4096-token cap — bumping to 8192 covers almost
+  // everything; for the rare giant article the chunked path below
+  // retries in halves so each request stays well under the cap.
+  async function _khAttemptTranslate(chunkTexts, baseIdx) {
+    var localBase = baseIdx || 0;
+    var localJoined = chunkTexts.map(function(t, i) {
+      return DELIM_OPEN + (localBase + i + 1) + DELIM_CLOSE + '\n' + t + '\n' + END_MARKER;
+    }).join('\n\n');
+    var localPrompt =
+        'You are a Korean-to-English translator for a language learning site.\n'
+      + 'Below are ' + chunkTexts.length + ' text segment(s), each wrapped with ⟦SEG n⟧ ... ⟦/SEG⟧ markers.\n'
+      + 'Translate EVERY segment COMPLETELY into natural, fluent English. Do NOT summarize, do NOT skip any sentence.\n'
+      + 'Preserve paragraph breaks (blank lines) inside each segment.\n'
+      + 'Return the translations using the SAME marker format: ⟦SEG n⟧\\n<translation>\\n⟦/SEG⟧, one block per segment, in the same order.\n'
+      + 'No preamble, no commentary, no code fences — just the marked blocks.\n\n'
+      + localJoined;
 
-  // One automatic retry on failure or partial parse. Most translate
-  // failures on mobile are transient (LTE timeout, half-baked response
-  // mid-stream). Two retries with growing backoff (2s → 4s) catches
-  // the vast majority. max_tokens trimmed from 8192 → 4096 so Claude
-  // streams faster on bad LTE — full articles still fit.
-  async function _khAttemptTranslate() {
     var res = await callClaude({
       feature: 'translate',
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }]
+      max_tokens: 8192,
+      messages: [{ role: 'user', content: localPrompt }]
     });
     var data = res;
 
@@ -6546,21 +6547,37 @@ async function toggleTranslate() {
     // Parse the marker-delimited response. Regex uses /s (dotAll) so the
     // translation body can contain its own newlines.
     var segRe = /⟦SEG\s*(\d+)\s*⟧\s*([\s\S]*?)\s*⟦\/SEG⟧/g;
-    var allSegs = [];
+    var localSegs = [];
     var mSeg;
     while ((mSeg = segRe.exec(raw)) !== null) {
-      var idx = parseInt(mSeg[1], 10) - 1;
+      var idx = parseInt(mSeg[1], 10) - 1 - localBase;
       var body = (mSeg[2] || '').trim();
-      if (idx >= 0 && body) allSegs[idx] = body;
+      if (idx >= 0 && body) localSegs[idx] = body;
     }
-    if (!allSegs.length) throw new Error('no segments in response');
-    // Detect a partial response. Threshold loosened from 70% → 50%
-    // so a short article that only had 2–3 segments isn't constantly
-    // marked partial. Anything below 50% is genuinely truncated.
-    if (allSegs.filter(Boolean).length < Math.ceil(texts.length * 0.5)) {
+    if (!localSegs.length) throw new Error('no segments in response');
+    if (localSegs.filter(Boolean).length < Math.ceil(chunkTexts.length * 0.5)) {
       throw new Error('partial response');
     }
-    return allSegs;
+    return localSegs;
+  }
+
+  // Split-and-conquer fallback. If a single request comes back partial
+  // even after retries, recurse on halves so each call stays small. We
+  // bottom out at one segment — if that still fails we surface the
+  // error to the user instead of looping forever.
+  async function _khTranslateChunked(chunkTexts, baseIdx) {
+    try {
+      return await _khAttemptTranslate(chunkTexts, baseIdx);
+    } catch (err) {
+      var partial = err && /partial|empty|no segments/i.test(err.message || '');
+      if (chunkTexts.length <= 1 || !partial) throw err;
+      var mid = Math.floor(chunkTexts.length / 2);
+      var leftP  = _khTranslateChunked(chunkTexts.slice(0, mid), baseIdx);
+      var rightP = _khTranslateChunked(chunkTexts.slice(mid),    baseIdx + mid);
+      var leftSegs  = await leftP;
+      var rightSegs = await rightP;
+      return leftSegs.concat(rightSegs);
+    }
   }
 
   try {
@@ -6571,7 +6588,7 @@ async function toggleTranslate() {
     while (attempts < 3) {
       try {
         if (backoffs[attempts]) await new Promise(function(r){ setTimeout(r, backoffs[attempts]); });
-        allSegs = await _khAttemptTranslate();
+        allSegs = await _khTranslateChunked(texts, 0);
         lastErr = null;
         break;
       } catch (err) {
@@ -7262,6 +7279,37 @@ function openVocabEditModal(word) {
       document.querySelectorAll('.kh-word[data-word="' + word + '"]').forEach(function(s) {
         s.replaceWith(document.createTextNode(s.textContent));
       });
+      // Also drop the word from the article's Key Vocabulary panel.
+      // The hover spans get unwrapped above, but the Vocab tab list is
+      // rendered from a separate source (article.vocab + article_cache.
+      // ai_analysis.vocab + global VOCAB filtered by body presence) and
+      // would otherwise keep showing the deleted word until reload —
+      // exactly the user-reported "hover gone but Vocab tab still has
+      // it" mismatch.
+      var _art = window._currentArticle;
+      if (_art) {
+        if (Array.isArray(_art.vocab)) {
+          _art.vocab = _art.vocab.filter(function(v) {
+            return v && (v.ko || v.word_ko || v.word) !== word;
+          });
+        }
+        if (_art._cache && _art._cache.ai_analysis && Array.isArray(_art._cache.ai_analysis.vocab)) {
+          _art._cache.ai_analysis.vocab = _art._cache.ai_analysis.vocab.filter(function(v) {
+            return v && (v.ko || v.word_ko || v.word) !== word;
+          });
+        }
+      }
+      // Direct DOM strip handles the case where Vocab tab is already
+      // open and rendered; the in-memory cleanup above handles the
+      // case where the user closes and reopens the tab.
+      document.querySelectorAll('.art-vocab-item[data-avi-ko="' + word + '"]').forEach(function(item) {
+        item.remove();
+      });
+      // If a re-render helper is exposed, run it so any other surfaces
+      // (e.g. quick-vocab pills) catch up too.
+      if (typeof renderArticleVocab === 'function' && _art) {
+        try { renderArticleVocab(_art); } catch(_) {}
+      }
       modal.remove();
       showToast(word + ' deleted');
     };

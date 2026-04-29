@@ -1,27 +1,67 @@
+// Headline sources. Copyright posture: only public RSS feeds explicitly
+// designed for syndication (publisher provides them) and Reddit's public
+// JSON API. We pull HEADLINES + short summaries only — never the full
+// article body — and the Claude rewriter paraphrases everything into a
+// fresh Korean adaptation, so no verbatim copy of any source ends up in
+// our DB. Attribution stays on each article via source_url.
 const SOURCE_CATALOG = [
+  // ── Korean news (RSS provided by the publisher) ─────────────────
   { id:'yonhap', label:'연합뉴스', kind:'rss', category:'사회', url:'https://www.yna.co.kr/rss/news.xml' },
+  { id:'kbs-world', label:'KBS World 뉴스', kind:'rss', category:'사회', url:'https://world.kbs.co.kr/rss/rss_news.htm?lang=k' },
+
+  // ── International news (publisher-provided RSS) ─────────────────
   { id:'bbc-world', label:'BBC World', kind:'rss', category:'국제', url:'https://feeds.bbci.co.uk/news/world/rss.xml' },
   { id:'bbc-tech', label:'BBC Tech', kind:'rss', category:'문화', url:'https://feeds.bbci.co.uk/news/technology/rss.xml' },
+  { id:'bbc-sport', label:'BBC Sport', kind:'rss', category:'스포츠', url:'https://feeds.bbci.co.uk/sport/rss.xml' },
+  { id:'npr-news', label:'NPR News', kind:'rss', category:'국제', url:'https://feeds.npr.org/1001/rss.xml' },
+  { id:'reuters-world', label:'Reuters World', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:reuters.com+world&hl=en-US&gl=US&ceid=US:en' },
+  { id:'ap-top', label:'AP Top News', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:apnews.com&hl=en-US&gl=US&ceid=US:en' },
+
+  // ── Tech / Trends (RSS) ─────────────────────────────────────────
   { id:'techcrunch', label:'TechCrunch', kind:'rss', category:'문화', url:'https://techcrunch.com/feed/' },
+  { id:'theverge', label:'The Verge', kind:'rss', category:'문화', url:'https://www.theverge.com/rss/index.xml' },
   { id:'gtrends-us', label:'Google Trends US', kind:'rss', category:'국제', url:'https://trends.google.com/trending/rss?geo=US' },
+
+  // ── Lifestyle / Travel / Beauty / Food ──────────────────────────
   { id:'gn-viral', label:'Google News Viral', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=viral+trend+OR+"most+watched"&hl=en-US&gl=US&ceid=US:en' },
   { id:'gn-beauty', label:'Beauty Trends', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=beauty+trend+OR+skincare+OR+makeup&hl=en-US&gl=US&ceid=US:en' },
   { id:'gn-travel', label:'Travel Trends', kind:'rss', category:'travel', url:'https://news.google.com/rss/search?q=travel+trend+OR+destination+viral+OR+tourism&hl=en-US&gl=US&ceid=US:en' },
+  { id:'gn-food', label:'Food Trends', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=food+trend+OR+recipe+OR+restaurant+viral&hl=en-US&gl=US&ceid=US:en' },
   { id:'allure', label:'Allure Beauty', kind:'rss', category:'beauty', url:'https://www.allure.com/feed/rss' },
   { id:'cnet-travel', label:'CNET Travel', kind:'rss', category:'travel', url:'https://www.cnet.com/rss/news/' },
+
+  // ── Entertainment / K-content ───────────────────────────────────
+  { id:'gn-kdrama', label:'K-drama News', kind:'rss', category:'K-pop', url:'https://news.google.com/rss/search?q=kdrama+OR+"korean+drama"+OR+"k-pop"&hl=en-US&gl=US&ceid=US:en' },
+  { id:'gn-movies', label:'Movies & TV', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=movie+OR+film+OR+"netflix+series"+trending&hl=en-US&gl=US&ceid=US:en' },
+
+  // ── Hacker News ─────────────────────────────────────────────────
   { id:'hn', label:'Hacker News', kind:'hn', category:'문화' },
+
+  // ── Reddit (public hot.json) ────────────────────────────────────
   { id:'reddit-world', label:'r/worldnews', kind:'reddit', category:'국제', subreddit:'worldnews' },
   { id:'reddit-korea', label:'r/korea', kind:'reddit', category:'K-pop', subreddit:'korea' },
   { id:'reddit-kpop', label:'r/kpop', kind:'reddit', category:'K-pop', subreddit:'kpop' },
-  // Clickbait / Viral
+  { id:'reddit-kdrama', label:'r/KDRAMA', kind:'reddit', category:'K-pop', subreddit:'KDRAMA' },
+  { id:'reddit-koreanfood', label:'r/KoreanFood', kind:'reddit', category:'문화', subreddit:'KoreanFood' },
   { id:'reddit-til', label:'r/todayilearned', kind:'reddit', category:'문화', subreddit:'todayilearned' },
   { id:'reddit-interesting', label:'r/interestingasfuck', kind:'reddit', category:'문화', subreddit:'interestingasfuck' },
   { id:'reddit-oddly', label:'r/oddlysatisfying', kind:'reddit', category:'문화', subreddit:'oddlysatisfying' },
   { id:'reddit-noway', label:'r/Damnthatsinteresting', kind:'reddit', category:'문화', subreddit:'Damnthatsinteresting' },
+  { id:'reddit-mildly', label:'r/mildlyinteresting', kind:'reddit', category:'문화', subreddit:'mildlyinteresting' },
+  // GIF-rich subs — user requested more silent-loop hero clips for
+  // learning articles. These post short reddit_video.is_gif content,
+  // which the picker now bumps to the top.
+  { id:'reddit-edugif', label:'r/educationalgifs', kind:'reddit', category:'문화', subreddit:'educationalgifs' },
+  { id:'reddit-aww', label:'r/aww', kind:'reddit', category:'문화', subreddit:'aww' },
+  { id:'reddit-awwduc', label:'r/Awwducational', kind:'reddit', category:'문화', subreddit:'Awwducational' },
+  { id:'reddit-mademesmile', label:'r/MadeMeSmile', kind:'reddit', category:'문화', subreddit:'MadeMeSmile' },
+  { id:'reddit-bros', label:'r/HumansBeingBros', kind:'reddit', category:'문화', subreddit:'HumansBeingBros' },
+  { id:'reddit-magic', label:'r/blackmagicfuckery', kind:'reddit', category:'문화', subreddit:'blackmagicfuckery' },
+  { id:'reddit-sports', label:'r/sports', kind:'reddit', category:'스포츠', subreddit:'sports' },
+  // Clickbait / Viral RSS
   { id:'gn-clickbait', label:'Viral Clickbait', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q="you+won\'t+believe"+OR+"shocking"+OR+"mind-blowing"+OR+"goes+viral"&hl=en-US&gl=US&ceid=US:en' },
   { id:'gn-listicle', label:'Listicles', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q="top+10"+OR+"best+of"+OR+"things+you+didn\'t+know"+OR+"reasons+why"&hl=en-US&gl=US&ceid=US:en' },
   { id:'boredpanda', label:'BoredPanda', kind:'rss', category:'문화', url:'https://www.boredpanda.com/feed/' },
-  { id:'reddit-mildly', label:'r/mildlyinteresting', kind:'reddit', category:'문화', subreddit:'mildlyinteresting' },
 ]
 
 function cors(extra={}) {
@@ -241,6 +281,11 @@ async function fetchReddit(source) {
       video_url: video.url,
       video_kind: video.kind,
       video_fallback_url: video.fallback || '',
+      // Hints for the admin headline picker — surfaces a "GIF" badge and
+      // lets the picker rank GIFs higher (silent short loops make great
+      // learning-article heroes and the user wants more of them).
+      is_gif: video.is_gif === true,
+      video_duration: video.duration || 0,
     }
   })
 }
@@ -282,20 +327,13 @@ function extractRedditImage(d) {
 //      frame; upside is it Just Works on every device we care about.
 //   2. YouTube cross-post — our own privacy-friendly youtube-nocookie
 //      embed (d.url is the youtube.com / youtu.be link).
-// Returns {url, kind, fallback} where kind is:
+// Returns {url, kind, fallback, is_gif, duration} where kind is:
 //   'reddit-hls' | 'youtube' | '' (nothing usable)
 //
-// For Reddit-hosted videos we save the HLS playlist URL (audio + video
-// muxed) and the silent MP4 as fallback. The renderer plays via hls.js
-// (or native HLS on Safari) inside a bare <video> element — no Reddit
-// iframe / branding ever appears. Signed URLs do expire, but the
-// playback path falls back to /api/reddit-video-resolve to refresh
-// them at view time using the article's permalink.
-//
-// Duration cap: short-form video only. Anything longer than
-// MAX_VIDEO_SECONDS gets rejected at ingest so the picker never even
-// surfaces it. Learners drop off fast on multi-minute videos and the
-// muxed HLS download balloons the page weight.
+// Duration cap: short-form video only (MAX_VIDEO_SECONDS = 90). Anything
+// longer is rejected during ingest. is_gif comes through as a hint —
+// silent looping clips are great hero media for a learning article and
+// the picker uses it to bubble those headlines higher.
 const MAX_VIDEO_SECONDS = 90
 function extractRedditVideo(d) {
   if (d?.is_video) {
@@ -305,12 +343,9 @@ function extractRedditVideo(d) {
       d?.crosspost_parent_list?.[0]?.media?.reddit_video ||
       d?.preview?.reddit_video_preview ||
       null
-    // Reddit exposes duration as an integer (seconds) on reddit_video.
-    // Reject anything past the cap so we don't even propose long videos
-    // to the admin during ingestion.
     const duration = Number(rv?.duration || 0)
     if (rv && duration > MAX_VIDEO_SECONDS) {
-      return { url: '', kind: '', fallback: '' }
+      return { url: '', kind: '', fallback: '', is_gif: false, duration: 0 }
     }
     const hls = rv?.hls_url || ''
     const mp4 = rv?.fallback_url || ''
@@ -319,22 +354,21 @@ function extractRedditVideo(d) {
         url: hls || mp4,
         kind: 'reddit-hls',
         fallback: hls ? mp4 : '',
+        is_gif: rv?.is_gif === true,
+        duration: duration,
       }
     }
-    // is_video=true but no reddit_video metadata — fall through to image
   }
   const url = d?.url_overridden_by_dest || d?.url || ''
   const ytId = extractYoutubeId(url)
-  if (ytId) return { url: 'https://www.youtube-nocookie.com/embed/' + ytId, kind: 'youtube', fallback: '' }
-  // secure_media.oembed.html sometimes carries a YouTube iframe for link posts
-  // that point at non-youtube domains but embed youtube (rare but cheap to try).
+  if (ytId) return { url: 'https://www.youtube-nocookie.com/embed/' + ytId, kind: 'youtube', fallback: '', is_gif: false, duration: 0 }
   const oembedHtml = d?.secure_media?.oembed?.html || d?.media?.oembed?.html || ''
   if (oembedHtml) {
     const srcMatch = oembedHtml.match(/src="([^"]+)"/i)
     const ytId2 = srcMatch ? extractYoutubeId(srcMatch[1]) : ''
-    if (ytId2) return { url: 'https://www.youtube-nocookie.com/embed/' + ytId2, kind: 'youtube', fallback: '' }
+    if (ytId2) return { url: 'https://www.youtube-nocookie.com/embed/' + ytId2, kind: 'youtube', fallback: '', is_gif: false, duration: 0 }
   }
-  return { url: '', kind: '', fallback: '' }
+  return { url: '', kind: '', fallback: '', is_gif: false, duration: 0 }
 }
 
 function extractYoutubeId(url) {
@@ -379,7 +413,19 @@ function normalizeAndFilter(rows, seenDb) {
     seen.add(uKey)
     out.push(item)
   }
-  out.sort((a, b) => new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime())
+  // Order: GIF posts first (great short hero clips for learning articles),
+  // then other video posts, then plain image/text posts. Within each
+  // tier, newest-first by published_at.
+  function tier(it) {
+    if (it.is_gif) return 0
+    if (it.video_url) return 1
+    return 2
+  }
+  out.sort((a, b) => {
+    const ta = tier(a), tb = tier(b)
+    if (ta !== tb) return ta - tb
+    return new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime()
+  })
   return out
 }
 
