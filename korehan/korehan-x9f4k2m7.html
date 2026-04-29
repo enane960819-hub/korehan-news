@@ -11492,7 +11492,10 @@ async function srBulkSave() {
       // level 컬럼이 study_picture_prompts 에 있을 때만 같이 저장 (없으면 자동 fallback).
       row.level = c.level;
       var up = await sb.from('study_picture_prompts').upsert(row, { onConflict: 'id' });
-      if (up && up.error && /column .*level.* does not exist/i.test(up.error.message || '')) {
+      // Supabase emits two different messages depending on whether PostgREST
+      // checks the live schema or its cached one. Match both so the retry
+      // fallback actually fires.
+      if (up && up.error && /column .*level.* does not exist|find the 'level' column.*in the schema cache/i.test(up.error.message || '')) {
         console.warn('[srBulkSave] level column missing — retrying without it');
         delete row.level;
         up = await sb.from('study_picture_prompts').upsert(row, { onConflict: 'id' });
