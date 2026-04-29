@@ -1067,7 +1067,7 @@ function renderStories() {
         .filter(Boolean)
         .slice(0, 8);
       if (contStories.length) {
-        contHTML = '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title">📖 Continue Reading</div></div>'
+        contHTML = '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="book-open" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Continue Reading</span></div></div>'
           + '<div class="st-rail-scroll">' + contStories.map(renderStoryCard).join('') + '</div></div>';
       }
     }
@@ -1078,7 +1078,7 @@ function renderStories() {
     if (_khStorySavedSet && _khStorySavedSet.size) {
       var savedStories = list.filter(function (s) { return _khStorySavedSet.has(String(s.id)); }).slice(0, 12);
       if (savedStories.length) {
-        savedHTML = '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title">❤️ Saved</div></div>'
+        savedHTML = '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="heart" class="kh-ui-icon" style="width:18px;height:18px;color:#ef4444;fill:#ef4444" aria-hidden="true"></i><span>Saved</span></div></div>'
           + '<div class="st-rail-scroll">' + savedStories.map(renderStoryCard).join('') + '</div></div>';
       }
     }
@@ -1092,7 +1092,7 @@ function renderStories() {
     });
     var newStories = byCreatedDesc.slice(0, 6);
     var newHTML = newStories.length
-      ? '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title">✨ New Stories</div></div>'
+      ? '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="sparkles" class="kh-ui-icon" style="width:18px;height:18px;color:#fbbf24" aria-hidden="true"></i><span>New Stories</span></div></div>'
         + '<div class="st-rail-scroll">' + newStories.map(renderStoryCard).join('') + '</div></div>'
       : '';
 
@@ -1102,7 +1102,7 @@ function renderStories() {
       return m && parseInt(m[0], 10) <= 3;
     }).slice(0, 12);
     var quickHTML = quickReads.length
-      ? '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title">⚡ Quick Reads</div></div>'
+      ? '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="zap" class="kh-ui-icon" style="width:18px;height:18px;color:#fbbf24" aria-hidden="true"></i><span>Quick Reads</span></div></div>'
         + '<div class="st-rail-scroll">' + quickReads.map(renderStoryCard).join('') + '</div></div>'
       : '';
 
@@ -1458,7 +1458,7 @@ function openStory(id) {
       + '<div class="st-left-head">'
         + '<div class="st-head-banner ' + headBannerClass + '"' + (storyThumb ? ' style="background:#0f172a;background-image:url(\'' + String(storyThumb).replace(/'/g, '%27') + '\');background-size:cover;background-position:center"' : '') + '>'
           + '<button class="st-back" onclick="closeSt()" aria-label="Back to stories">← Back</button>'
-          + '<button class="st-close" onclick="closeSt()" aria-label="Close">✕</button>'
+          + '<button class="st-close" onclick="closeSt()" aria-label="Close" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
           + '<button id="st-fav-btn" class="st-fav-btn" onclick="khStoryFavToggle(\'' + String(s.id).replace(/'/g,"\\'") + '\')" aria-label="Save story" title="Save story">♡</button>'
           + (storyThumb ? '<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,23,42,.1),rgba(15,23,42,.45))"></div>' : '')
           + (storyThumb ? '' : '<span class="st-head-icon"><i data-lucide="' + (s.banner_icon || MOOD_ICONS[s.mood] || 'book-open') + '" style="width:44px;height:44px;color:#fff;opacity:.92" aria-hidden="true"></i></span>')
@@ -1476,15 +1476,15 @@ function openStory(id) {
         + '</div>'
       + '</div>'
       + '<div class="st-tab-strip" role="tablist" aria-label="Story sections">'
-        + '<button class="st-tab-btn on" data-tab="read" onclick="stSwitchTab(\'read\')">📖 Read</button>'
-        + '<button class="st-tab-btn" data-tab="learn" onclick="stSwitchTab(\'learn\')">📚 Learn</button>'
+        + '<button class="st-tab-btn on" data-tab="read" onclick="stSwitchTab(\'read\')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Read</span></button>'
+        + '<button class="st-tab-btn" data-tab="learn" onclick="stSwitchTab(\'learn\')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Learn</span></button>'
       + '</div>'
       + '<div class="st-body-scroll st-container">'
         + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
           + '<div style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:.04em">Tap any paragraph to reveal English ↓</div>'
           + '<div class="st-settings-wrap">'
             + (hasEnBody ? '<button id="st-body-lang-ko" onclick="stToggleBodyLang(\'ko\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid #2255a4;background:#2255a4;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇰🇷 KO</button><button id="st-body-lang-en" onclick="stToggleBodyLang(\'en\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇺🇸 EN</button>' : '')
-            + '<button class="st-settings-btn" onclick="stToggleSettings(event)" aria-label="Reading settings">⚙️</button>'
+            + '<button class="st-settings-btn" onclick="stToggleSettings(event)" aria-label="Reading settings" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="settings" class="kh-ui-icon" aria-hidden="true"></i></button>'
             + '<div class="st-settings-pop" id="st-settings-pop" hidden>'
               + '<h4>Font size</h4>'
               + '<div class="st-settings-group" id="st-set-fs">'
@@ -1514,18 +1514,18 @@ function openStory(id) {
       + '</div>'
       + '<div class="st-cta-row">'
         + '<button class="st-cta-btn st-cta-sec" onclick="closeSt()">← All Stories</button>'
-        + '<button class="st-cta-btn st-cta-sec" onclick="startStoryBlank()">✏️ Fill in the Blank</button>'
-        + '<button class="st-cta-btn st-cta-pri" onclick="startStoryOrder()">🔀 Reorder</button>'
+        + '<button class="st-cta-btn st-cta-sec" onclick="startStoryBlank()" style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Fill in the Blank</span></button>'
+        + '<button class="st-cta-btn st-cta-pri" onclick="startStoryOrder()" style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="shuffle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Reorder</span></button>'
       + '</div>'
     + '</div>'
     + '<div class="st-right">'
       + '<div class="st-right-head"><div class="st-right-label">Study Notes</div><div class="st-right-title">Story Breakdown</div></div>'
       + '<div class="st-sections">'
         + vocabCard
-        + (keyExpressions ? '<div class="st-card"><div class="st-card-title"><span>💡</span> Key Expressions</div><div class="st-keyexp-list">' + keyExpressions + '</div></div>' : '')
-        + (grammar ? '<div class="st-card"><div class="st-card-title"><span>✏️</span> Grammar Points</div><div class="st-grammar-list">' + grammar + '</div></div>' : '')
-        + (comprehension ? '<div class="st-card"><div class="st-card-title"><span>🎯</span> Comprehension</div><div class="st-q-list">' + comprehension + '</div></div>' : '')
-        + '<div class="st-card"><div class="st-card-title"><span>🎧</span> Listening Quiz</div><div id="st-listening-quiz"><button onclick="startStoryListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
+        + (keyExpressions ? '<div class="st-card"><div class="st-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="lightbulb" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Key Expressions</span></div><div class="st-keyexp-list">' + keyExpressions + '</div></div>' : '')
+        + (grammar ? '<div class="st-card"><div class="st-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Grammar Points</span></div><div class="st-grammar-list">' + grammar + '</div></div>' : '')
+        + (comprehension ? '<div class="st-card"><div class="st-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="target" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Comprehension</span></div><div class="st-q-list">' + comprehension + '</div></div>' : '')
+        + '<div class="st-card"><div class="st-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="headphones" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Listening Quiz</span></div><div id="st-listening-quiz"><button onclick="startStoryListeningQuiz()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Start Listening Quiz</button></div></div>'
       + '</div>'
     + '</div>';
 
@@ -1774,7 +1774,7 @@ function startStoryListeningQuiz() {
     var opts = items.map(function(x){return x.en;}).sort(function(){return Math.random()-.5;}).slice(0,3);
     if (opts.indexOf(v.en)<0) opts[Math.floor(Math.random()*3)] = v.en;
     el.innerHTML='<div style="text-align:center;margin-bottom:12px"><div style="font-size:12px;color:#64748b;margin-bottom:8px">Listen and pick the meaning ('+(qi+1)+'/'+items.length+')</div>'
-      +'<button onclick="stPlayAudio(\''+v.ko.replace(/'/g,"\\'")+'\')" style="padding:12px 24px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;font-size:16px;cursor:pointer;font-family:inherit">🔊 Play</button></div>'
+      +'<button onclick="stPlayAudio(\''+v.ko.replace(/'/g,"\\'")+'\')" style="padding:12px 24px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;font-size:16px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Play</span></button></div>'
       +'<div style="display:flex;flex-direction:column;gap:6px">'+opts.map(function(o){
         return '<button onclick="stListenPick(this,\''+o.replace(/'/g,"\\'")+'\',\''+v.en.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left">'+o+'</button>';
       }).join('')+'</div>';
@@ -2044,7 +2044,7 @@ async function toggleStorySave(btn, ko, rom, en) {
     if (typeof dbSaveWord === 'function') await dbSaveWord(ko, rom, en);
     // dmTrackWord() is already called inside dbSaveWord → trackActivityOnWordSave chain
     btn.classList.add('saved');
-    btn.textContent = '✓ Saved';
+    btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Saved</span></span>';
   }
 }
 
@@ -2218,7 +2218,7 @@ function showStoryQuiz(mode, questions, title) {
   overlay.style.display = 'flex';
   var panel = document.getElementById('st-panel'); if (panel) panel.style.filter='blur(10px)';
   var html = '<div style="background:#fff;border-radius:24px;max-width:520px;width:100%;padding:32px;box-shadow:0 32px 80px rgba(15,23,42,.25);text-align:center;">';
-  html += '<div style="font-size:32px;margin-bottom:12px">' + (mode==='blank'?'✏️':'🔀') + '</div>';
+  html += '<div style="display:inline-flex;width:38px;height:38px;margin-bottom:12px;color:#a78bfa"><i data-lucide="' + (mode==='blank'?'pencil':'shuffle') + '" class="kh-ui-icon" style="width:38px;height:38px" aria-hidden="true"></i></div>';
   html += '<div style="font-size:18px;font-weight:700;margin-bottom:8px">' + title + '</div>';
   if (mode === 'blank') {
     html += '<div style="font-size:14px;color:#64748b;margin-bottom:20px">Fill in the missing word.</div>'; 
