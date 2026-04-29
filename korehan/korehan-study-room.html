@@ -629,8 +629,11 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .bm-btn-back { padding: 12px 18px; border-radius: 14px;
   border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.07);
   color: rgba(255,255,255,.65); font-size: 14px; font-weight: 700;
-  cursor: pointer; font-family: inherit; transition: background .15s; flex-shrink: 0; }
+  cursor: pointer; font-family: inherit; transition: background .15s; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 6px; }
 .bm-btn-back:hover { background: rgba(255,255,255,.13); }
+.bm-btn-icon { display: inline-flex; align-items: center; }
+.bm-btn-icon svg { width: 14px; height: 14px; }
 
 /* Step header */
 .bm-step-label { font-size: 11px; font-weight: 800; text-transform: uppercase;
@@ -670,9 +673,12 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   flex: 1; background: rgba(255,255,255,.09); border: none; border-radius: 10px;
   padding: 9px 14px; color: rgba(255,255,255,.85); font-size: 13px; font-weight: 700;
   text-align: left; cursor: pointer; font-family: inherit; transition: background .15s;
+  display: inline-flex; align-items: center; gap: 8px;
 }
 .bm-listen-tts:hover { background: rgba(255,255,255,.15); }
 .bm-listen-tts.played { background: rgba(20,203,176,.18); color: #14cbb0; }
+.bm-listen-tts-icon { display: inline-flex; align-items: center; }
+.bm-listen-tts-icon svg { width: 14px; height: 14px; }
 .bm-listen-ko {
   font-family: 'Noto Sans KR', sans-serif; font-size: 18px; font-weight: 700;
   color: #fff; line-height: 1.6;
@@ -799,12 +805,21 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .bm-feedback.correct { background: rgba(20,203,176,.1);  border: 1px solid rgba(20,203,176,.3); }
 .bm-feedback.wrong   { background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.25); }
 .bm-feedback.partial { background: rgba(251,191,36,.07); border: 1px solid rgba(251,191,36,.25); }
-.bm-feedback-emoji { font-size: 28px; margin-bottom: 6px; }
+.bm-feedback-emoji { font-size: 28px; margin-bottom: 6px; line-height: 0; }
+.bm-feedback-emoji svg { width: 36px; height: 36px; }
+.bm-feedback.correct .bm-feedback-emoji svg { color: #14cbb0; filter: drop-shadow(0 0 10px rgba(20,203,176,.55)); }
+.bm-feedback.partial .bm-feedback-emoji svg { color: #fbbf24; filter: drop-shadow(0 0 10px rgba(251,191,36,.5)); }
+.bm-feedback.wrong   .bm-feedback-emoji svg { color: #f87171; filter: drop-shadow(0 0 10px rgba(248,113,113,.5)); }
 .bm-feedback-msg   { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
 
 /* Result */
 .bm-result { text-align: center; padding: 14px 0; }
-.bm-result-emoji { font-size: 58px; margin-bottom: 14px; }
+.bm-result-emoji { font-size: 58px; margin-bottom: 14px; line-height: 0; }
+.bm-result-emoji svg { width: 64px; height: 64px; }
+.bm-result-emoji.tier-top svg    { color: #fbbf24; filter: drop-shadow(0 0 16px rgba(251,191,36,.7)); }
+.bm-result-emoji.tier-high svg   { color: #fde68a; filter: drop-shadow(0 0 14px rgba(253,230,138,.6)); }
+.bm-result-emoji.tier-mid svg    { color: #a78bfa; filter: drop-shadow(0 0 12px rgba(167,139,250,.55)); }
+.bm-result-emoji.tier-low svg    { color: #14cbb0; filter: drop-shadow(0 0 12px rgba(20,203,176,.5)); }
 .bm-result-score { font-size: 44px; font-weight: 900; color: #fff; margin-bottom: 6px; letter-spacing: -.03em; }
 .bm-result-msg   { font-size: 14px; color: rgba(255,255,255,.55); margin-bottom: 22px; line-height: 1.6; }
 .bm-result-stat  {
@@ -13122,6 +13137,15 @@ var BM_ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 var BM_ICON_BULB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6.5 6.5 0 0 0-4 11.6c.7.6 1 1.2 1 2V16h6v-.4c0-.8.3-1.4 1-2A6.5 6.5 0 0 0 12 3z"/></svg>';
 var BM_ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v5l3 4H6l3-4z"/><path d="M12 13v8"/></svg>';
 var BM_ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 12 10 17 19 7"/></svg>';
+var BM_ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5l13 7-13 7z"/></svg>';
+var BM_ICON_SPARKLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>';
+var BM_ICON_TROPHY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a2 2 0 0 0 3 3.5"/><path d="M17 6h3a2 2 0 0 1-3 3.5"/><path d="M9 14h6l-1 4h-4z"/><path d="M8 21h8"/></svg>';
+var BM_ICON_STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.95-4.78 4.65 1.13 6.6L12 17.6l-5.85 3.1 1.13-6.6L2.5 9.45 9.1 8.5z"/></svg>';
+var BM_ICON_FLAME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.7-2.5 1.5-3.5C10.5 7 11 5 12 3z"/><path d="M10.5 14c.4 1 1 1.6 1.5 1.6s1.1-.6 1.5-1.6"/></svg>';
+var BM_ICON_PARTY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l4-12 8 8z"/><path d="M14 4c0 2 2 2 2 4"/><path d="M18 7c0 2 2 2 2 4"/><path d="M11 3l1 1"/><path d="M20 14l1 1"/><path d="M16 13l1 1"/></svg>';
+var BM_ICON_WARNING = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>';
+var BM_ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg>';
+var BM_ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 4v4h-4"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 20v-4h4"/></svg>';
 
 function updateBMHeader() {
   var pills = document.getElementById('bm-step-pills');
@@ -13278,7 +13302,7 @@ function renderBMStep1Loading() {
     '<div class="bm-step-label">Step 1 of 4</div>'
     + '<div class="bm-step-title">' + BM_ICON_HEADPHONES + '<span>Listen & Read</span></div>'
     + '<div class="bm-step-desc">Generating your sentences...</div>'
-    + '<div style="text-align:center;padding:48px 0;font-size:38px;opacity:.6">⏳</div>';
+    + '<div style="text-align:center;padding:48px 0;opacity:.7;color:#14cbb0"><span style="display:inline-flex;width:38px;height:38px;animation:spin 1.4s linear infinite">' + BM_ICON_SPARKLE + '</span></div>';
   document.getElementById('bm-footer').innerHTML =
     '<button class="bm-btn-next" disabled>Build It →</button>';
 }
@@ -13309,7 +13333,8 @@ function renderBMStep1() {
       + '<div class="bm-listen-card-top">'
       + '<div class="bm-listen-num' + (listened ? ' done' : '') + '" id="bm-num-' + i + '">' + (i+1) + '</div>'
       + '<button class="bm-listen-tts' + (listened ? ' played' : '') + '" id="bm-tts-' + i + '" onclick="bmListenSentence(' + i + ')">'
-      + (listened ? '✓ Listened' : '▶ Tap to Listen')
+      + '<span class="bm-listen-tts-icon">' + (listened ? BM_ICON_CHECK : BM_ICON_PLAY) + '</span>'
+      + '<span>' + (listened ? 'Listened' : 'Tap to Listen') + '</span>'
       + '</button>'
       + '</div>'
       + '<div class="bm-listen-ko">' + s.ko + '</div>'
@@ -13335,7 +13360,10 @@ function bmListenSentence(idx) {
   _bm.listened[idx] = true;
 
   var ttsBtn = document.getElementById('bm-tts-' + idx);
-  if (ttsBtn) { ttsBtn.textContent = '✓ Listened'; ttsBtn.classList.add('played'); }
+  if (ttsBtn) {
+    ttsBtn.innerHTML = '<span class="bm-listen-tts-icon">' + BM_ICON_CHECK + '</span><span>Listened</span>';
+    ttsBtn.classList.add('played');
+  }
   var numEl = document.getElementById('bm-num-' + idx);
   if (numEl) numEl.classList.add('done');
   var card = document.getElementById('bm-lc-' + idx);
@@ -13437,7 +13465,7 @@ function renderBMStep2() {
   var allSelected = wo.selected.length === wo.original.length;
   document.getElementById('bm-footer').innerHTML =
     '<button class="bm-btn-back" onclick="goToBMStep1Back()">← Listen</button>'
-    + '<button class="bm-btn-back" onclick="bmClearAnswer(' + idx + ')" style="margin-right:auto">🔄 Reset</button>'
+    + '<button class="bm-btn-back" onclick="bmClearAnswer(' + idx + ')" style="margin-right:auto"><span class="bm-btn-icon">' + BM_ICON_REFRESH + '</span><span>Reset</span></button>'
     + '<button class="bm-btn-next" ' + (allSelected ? '' : 'disabled') + ' onclick="checkBMWordOrder()">Check ✓</button>';
 }
 
@@ -13504,12 +13532,12 @@ function checkBMWordOrder() {
   var fb = document.createElement('div');
   fb.className = 'bm-feedback ' + wo.result;
   if (isCorrect) {
-    fb.innerHTML = '<div class="bm-feedback-emoji">🎉</div>'
+    fb.innerHTML = '<div class="bm-feedback-emoji">' + BM_ICON_PARTY + '</div>'
       + '<div class="bm-feedback-msg" style="color:#14cbb0">Perfect!</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.6);margin-top:4px">Great — the word order is exactly right.</div>';
   } else if (isPartial) {
     var customExp = (s && s.explanation) || '';
-    fb.innerHTML = '<div class="bm-feedback-emoji">🔶</div>'
+    fb.innerHTML = '<div class="bm-feedback-emoji">' + BM_ICON_WARNING + '</div>'
       + '<div class="bm-feedback-msg" style="color:#fbbf24">Acceptable — but a more natural order exists</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:4px;line-height:1.6">' + (customExp || 'This order works, but the standard order below sounds more natural in Korean.') + '</div>'
       + '<div style="font-size:12px;font-weight:700;color:#fbbf24;margin-top:6px">Most natural: <span style="font-family:\'Noto Sans KR\',sans-serif">' + wo.original.join(' ') + '</span></div>';
@@ -13530,7 +13558,7 @@ function checkBMWordOrder() {
       if (firstWrong >= 0) hint = 'First ' + firstWrong + ' word' + (firstWrong===1?'':'s') + ' correct — order breaks at position ' + (firstWrong+1) + '. Time expressions and adverbs come before the verb.';
     }
     if (!hint) hint = 'Korean order: Subject → Object → Verb. Particles stay attached to their word.';
-    fb.innerHTML = '<div class="bm-feedback-emoji">🔍</div>'
+    fb.innerHTML = '<div class="bm-feedback-emoji">' + BM_ICON_SEARCH + '</div>'
       + '<div class="bm-feedback-msg" style="color:#f87171">Not quite</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin:6px 0 4px;line-height:1.6">' + hint + '</div>'
       + '<div style="font-size:12px;font-weight:700;color:#f87171;margin-top:6px">Correct order: <span style="font-family:\'Noto Sans KR\',sans-serif">' + orig.join(' ') + '</span></div>';
@@ -13738,7 +13766,7 @@ function renderBMWordSnap() {
   // showed just the Korean word because en was an empty string).
   var needsTranslation = vocab.some(function(v){ return !v.en; });
   if (needsTranslation) {
-    document.getElementById('bm-body').innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.6);font-size:14px">✨ Preparing word cards…</div>';
+    document.getElementById('bm-body').innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.6);font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px"><span style="display:inline-flex;width:18px;height:18px;color:#14cbb0;animation:spin 1.4s linear infinite">' + BM_ICON_SPARKLE + '</span><span>Preparing word cards…</span></div>';
     var words = vocab.map(function(v){ return v.ko; });
     callClaude({
       feature: 'word-snap-translate',
@@ -13879,24 +13907,24 @@ function finishBeginner() {
 
   var totalScore = Math.round((_bm.score.order + _bm.score.blank) / 2);
   var savedCount = (_bm.snapSaved || []).length;
-  var emoji, headline, sub;
+  var icon, tier, headline, sub;
   if (totalScore >= 90) {
-    emoji = '🌟'; headline = 'Excellent work!';
+    icon = BM_ICON_SPARKLE; tier = 'tier-top'; headline = 'Excellent work!';
     sub = 'Your accuracy is outstanding — you really nailed it.';
   } else if (totalScore >= 80) {
-    emoji = '🏆'; headline = 'Well done!';
+    icon = BM_ICON_TROPHY; tier = 'tier-high'; headline = 'Well done!';
     sub = 'Strong performance. Keep practicing to ace it every time.';
   } else if (totalScore >= 50) {
-    emoji = '⭐'; headline = 'Not bad!';
+    icon = BM_ICON_STAR; tier = 'tier-mid'; headline = 'Not bad!';
     sub = 'Solid effort — more than half right. Keep going!';
   } else {
-    emoji = '💪'; headline = 'Keep at it!';
+    icon = BM_ICON_FLAME; tier = 'tier-low'; headline = 'Keep at it!';
     sub = 'Every attempt makes you stronger. Try again to improve.';
   }
 
   document.getElementById('bm-body').innerHTML =
     '<div class="bm-result">'
-    + '<div class="bm-result-emoji">' + emoji + '</div>'
+    + '<div class="bm-result-emoji ' + tier + '">' + icon + '</div>'
     + '<div class="bm-result-score">' + totalScore + '%</div>'
     + '<div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:8px">' + headline + '</div>'
     + '<div class="bm-result-msg">' + sub + '</div>'
@@ -13910,7 +13938,7 @@ function finishBeginner() {
     + '</div>';
 
   document.getElementById('bm-footer').innerHTML =
-    '<button class="bm-btn-back" onclick="retryBeginner()">🔄 Try Again</button>'
+    '<button class="bm-btn-back" onclick="retryBeginner()"><span class="bm-btn-icon">' + BM_ICON_REFRESH + '</span><span>Try Again</span></button>'
     + '<button class="bm-btn-next" onclick="returnToActivities(closeBModal)">Next Activity</button>';
 
   bmFireConfetti();
