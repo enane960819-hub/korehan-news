@@ -1,14 +1,25 @@
-// Headline sources. Copyright posture: only public RSS feeds explicitly
-// designed for syndication (publisher provides them) and Reddit's public
-// JSON API. We pull HEADLINES + short summaries only — never the full
-// article body — and the Claude rewriter paraphrases everything into a
-// fresh Korean adaptation, so no verbatim copy of any source ends up in
-// our DB. Attribution stays on each article via source_url.
+// Headline sources.
+//
+// Copyright posture (honest version): the *real* exposure isn't the
+// rewritten headline text — the AI rewriter handles that — it's the
+// images / videos / GIFs we hotlink from the source. Korean major
+// news outlets (연합뉴스, KBS, etc.) are the most aggressive about
+// hero-image rights so they're deliberately NOT in this list. For the
+// remaining sources we lean on:
+//   - Reddit's public JSON, where OP-supplied media is the norm and
+//     the platform's terms allow API access for non-commercial reuse.
+//   - Aggregator-style RSS (Google News searches, BoredPanda) that
+//     surface headlines pointing to many origins.
+//   - Tech / lifestyle publisher RSS that ship with explicit RSS
+//     feeds (these are syndication-friendly by design, but image
+//     hotlinking is still a soft-edge case — mitigated because the
+//     hero render falls through `khArticleThumb` which downsizes /
+//     re-hosts when needed).
+// If a future user-facing surface needs stronger guarantees we should
+// switch hero images to stock (Unsplash / Pexels) rather than reuse
+// publisher photos. For now: no Korean press, attribution always
+// preserved on source_url.
 const SOURCE_CATALOG = [
-  // ── Korean news (RSS provided by the publisher) ─────────────────
-  { id:'yonhap', label:'연합뉴스', kind:'rss', category:'사회', url:'https://www.yna.co.kr/rss/news.xml' },
-  { id:'kbs-world', label:'KBS World 뉴스', kind:'rss', category:'사회', url:'https://world.kbs.co.kr/rss/rss_news.htm?lang=k' },
-
   // ── International news (publisher-provided RSS) ─────────────────
   { id:'bbc-world', label:'BBC World', kind:'rss', category:'국제', url:'https://feeds.bbci.co.uk/news/world/rss.xml' },
   { id:'bbc-tech', label:'BBC Tech', kind:'rss', category:'문화', url:'https://feeds.bbci.co.uk/news/technology/rss.xml' },
@@ -30,14 +41,14 @@ const SOURCE_CATALOG = [
   { id:'allure', label:'Allure Beauty', kind:'rss', category:'beauty', url:'https://www.allure.com/feed/rss' },
   { id:'cnet-travel', label:'CNET Travel', kind:'rss', category:'travel', url:'https://www.cnet.com/rss/news/' },
 
-  // ── Entertainment / K-content ───────────────────────────────────
+  // ── Entertainment / K-content (English-language only) ──────────
   { id:'gn-kdrama', label:'K-drama News', kind:'rss', category:'K-pop', url:'https://news.google.com/rss/search?q=kdrama+OR+"korean+drama"+OR+"k-pop"&hl=en-US&gl=US&ceid=US:en' },
   { id:'gn-movies', label:'Movies & TV', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=movie+OR+film+OR+"netflix+series"+trending&hl=en-US&gl=US&ceid=US:en' },
 
-  // ── Hacker News ─────────────────────────────────────────────────
+  // ── Hacker News (link aggregator, no hotlinked imagery) ─────────
   { id:'hn', label:'Hacker News', kind:'hn', category:'문화' },
 
-  // ── Reddit (public hot.json) ────────────────────────────────────
+  // ── Reddit (public hot.json — OP-supplied media) ────────────────
   { id:'reddit-world', label:'r/worldnews', kind:'reddit', category:'국제', subreddit:'worldnews' },
   { id:'reddit-korea', label:'r/korea', kind:'reddit', category:'K-pop', subreddit:'korea' },
   { id:'reddit-kpop', label:'r/kpop', kind:'reddit', category:'K-pop', subreddit:'kpop' },
@@ -48,9 +59,8 @@ const SOURCE_CATALOG = [
   { id:'reddit-oddly', label:'r/oddlysatisfying', kind:'reddit', category:'문화', subreddit:'oddlysatisfying' },
   { id:'reddit-noway', label:'r/Damnthatsinteresting', kind:'reddit', category:'문화', subreddit:'Damnthatsinteresting' },
   { id:'reddit-mildly', label:'r/mildlyinteresting', kind:'reddit', category:'문화', subreddit:'mildlyinteresting' },
-  // GIF-rich subs — user requested more silent-loop hero clips for
-  // learning articles. These post short reddit_video.is_gif content,
-  // which the picker now bumps to the top.
+  // GIF-rich subs — silent looping clips make great learning-article
+  // hero media; the picker bumps these to the top.
   { id:'reddit-edugif', label:'r/educationalgifs', kind:'reddit', category:'문화', subreddit:'educationalgifs' },
   { id:'reddit-aww', label:'r/aww', kind:'reddit', category:'문화', subreddit:'aww' },
   { id:'reddit-awwduc', label:'r/Awwducational', kind:'reddit', category:'문화', subreddit:'Awwducational' },
@@ -58,7 +68,7 @@ const SOURCE_CATALOG = [
   { id:'reddit-bros', label:'r/HumansBeingBros', kind:'reddit', category:'문화', subreddit:'HumansBeingBros' },
   { id:'reddit-magic', label:'r/blackmagicfuckery', kind:'reddit', category:'문화', subreddit:'blackmagicfuckery' },
   { id:'reddit-sports', label:'r/sports', kind:'reddit', category:'스포츠', subreddit:'sports' },
-  // Clickbait / Viral RSS
+  // Clickbait / Viral RSS aggregators
   { id:'gn-clickbait', label:'Viral Clickbait', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q="you+won\'t+believe"+OR+"shocking"+OR+"mind-blowing"+OR+"goes+viral"&hl=en-US&gl=US&ceid=US:en' },
   { id:'gn-listicle', label:'Listicles', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q="top+10"+OR+"best+of"+OR+"things+you+didn\'t+know"+OR+"reasons+why"&hl=en-US&gl=US&ceid=US:en' },
   { id:'boredpanda', label:'BoredPanda', kind:'rss', category:'문화', url:'https://www.boredpanda.com/feed/' },
