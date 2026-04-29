@@ -1460,18 +1460,18 @@ body { background: #0b1626 !important; }
 .ls-wp-text { flex: 1; text-align: left; }
 .ls-wp-name { font-size: 13px; font-weight: 900; }
 .ls-wp-sub { font-size: 10px; opacity: .7; margin-top: 2px; }
-/* ── Picture Description 3-step UI ── */
-.pd-step-pip { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.15); transition:background .2s; }
-.pd-step-pip.pd-step-done   { background:rgba(34,197,94,.65); }
-.pd-step-pip.pd-step-active { background:#7ab8f5; }
-.pd-img-square { width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:12px; display:block; max-height:280px; max-width:280px; margin:0 auto; background:rgba(255,255,255,.05); }
-.pd-vocab-card { display:inline-block; min-width:80px; padding:10px 16px; background:rgba(255,255,255,.08); border:1.5px solid rgba(122,184,245,.25); border-radius:12px; cursor:pointer; font-size:15px; font-weight:700; color:#fff; text-align:center; transition:all .15s; user-select:none; margin:0; box-shadow:0 2px 6px rgba(122,184,245,.08); }
-.pd-vocab-card .pd-vocab-back { display:none; font-size:12px; color:#7ab8f5; font-weight:600; margin-top:2px; }
-.pd-vocab-card.flipped { background:rgba(122,184,245,.14); border-color:rgba(122,184,245,.55); }
+/* ── Picture Description 3-step UI — unified mint accent ── */
+.pd-step-pip { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.1); transition:background .2s; }
+.pd-step-pip.pd-step-done   { background:rgba(20,203,176,.55); }
+.pd-step-pip.pd-step-active { background:#14cbb0; }
+.pd-img-square { width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:14px; display:block; max-height:280px; max-width:280px; margin:0 auto; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); }
+.pd-vocab-card { display:inline-block; min-width:80px; padding:10px 16px; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.18); border-radius:12px; cursor:pointer; font-size:15px; font-weight:700; color:#fff; text-align:center; transition:all .15s; user-select:none; margin:0; box-shadow:0 2px 6px rgba(20,203,176,.06); }
+.pd-vocab-card .pd-vocab-back { display:none; font-size:12px; color:#14cbb0; font-weight:600; margin-top:2px; }
+.pd-vocab-card.flipped { background:rgba(20,203,176,.14); border-color:rgba(20,203,176,.55); }
 .pd-vocab-card.flipped .pd-vocab-front { display:none; }
 .pd-vocab-card.flipped .pd-vocab-back  { display:block; }
-.pd-sent-btn { width:100%; text-align:left; padding:13px 16px; margin-bottom:8px; background:rgba(255,255,255,.07); border:1.5px solid rgba(255,255,255,.12); border-radius:12px; color:#fff; font-family:inherit; font-size:15px; line-height:1.5; cursor:pointer; transition:all .15s; }
-.pd-sent-btn:hover:not(:disabled) { background:rgba(122,184,245,.12); border-color:rgba(122,184,245,.3); }
+.pd-sent-btn { width:100%; text-align:left; padding:13px 16px; margin-bottom:8px; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.1); border-radius:14px; color:#fff; font-family:inherit; font-size:15px; line-height:1.5; cursor:pointer; transition:all .15s; }
+.pd-sent-btn:hover:not(:disabled) { background:rgba(20,203,176,.1); border-color:rgba(20,203,176,.4); color:#14cbb0; }
 .pd-sent-btn:disabled { cursor:default; opacity:.85; }
 
 .sr-topic-lbl {
@@ -2110,46 +2110,45 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
 .as-chunk.used    { opacity:.38; cursor:default; pointer-events:none; background:#f1f5f9; }
 /* Vocab match cards — no romanization, better visual */
 .as-match-item .asmko { font-size:14px; }
-/* Dictation modal */
-.dct-panel { width:100%; max-width:620px; background:#fff; border-radius:18px; overflow:hidden; animation:wm-in .2s ease; max-height:88vh; display:flex; flex-direction:column; }
-.dct-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:#fff; color:#0f172a; flex-shrink:0; border-bottom:1px solid #f1f5f9; }
-.dct-header div:first-child div:first-child { color:#7c3aed !important; }
-.dct-step-pips { display:flex; gap:6px; padding:10px 20px; background:#faf5ff; border-bottom:1px solid #ede9fe; flex-shrink:0; }
+/* Dictation modal — unified navy + mint design system */
+.dct-panel { width:100%; max-width:620px; background:#0d1b35; border-radius:18px; overflow:hidden; animation:wm-in .2s ease; max-height:88vh; display:flex; flex-direction:column; color:#fff; }
+.dct-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:linear-gradient(135deg,#0f2040,#152d5a); color:#fff; flex-shrink:0; border-bottom:1px solid rgba(255,255,255,.06); }
+.dct-header div:first-child div:first-child { color:#fff !important; }
+.dct-step-pips { display:flex; gap:6px; padding:10px 20px; background:rgba(255,255,255,.03); border-bottom:1px solid rgba(255,255,255,.06); flex-shrink:0; }
 /* Phase 5 — mode switcher tabs */
 .dct-mode-tab {
   font-family:inherit; font-size:12px; font-weight:700; letter-spacing:.01em;
   padding:7px 13px; border-radius:999px;
-  border:1.5px solid #e2e8f0; background:#fff; color:#64748b;
+  border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); color:rgba(255,255,255,.7);
   cursor:pointer; transition:all .18s ease;
 }
-.dct-mode-tab:hover { border-color:#c4b5fd; color:#7c3aed; background:#faf5ff; }
+.dct-mode-tab:hover { border-color:rgba(20,203,176,.5); color:#14cbb0; background:rgba(20,203,176,.08); }
 .dct-mode-tab.on {
-  background:linear-gradient(135deg,#7c3aed,#6d28d9);
-  border-color:#6d28d9; color:#fff;
-  box-shadow:0 6px 16px -6px rgba(124,58,237,.6);
+  background:linear-gradient(135deg,#14cbb0,#0ea88f);
+  border-color:transparent; color:#fff;
+  box-shadow:0 6px 16px -6px rgba(20,203,176,.5);
 }
-body.kh-dark .dct-mode-tab { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); color:rgba(255,255,255,.7); }
-body.kh-dark .dct-mode-tab:hover { background:rgba(124,58,237,.15); color:#fff; }
-.dct-pip.active { background:#7c3aed !important; }
+body.kh-dark .dct-mode-tab { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.12); color:rgba(255,255,255,.7); }
+body.kh-dark .dct-mode-tab:hover { background:rgba(20,203,176,.1); color:#14cbb0; }
+.dct-pip { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.1); transition:background .2s; }
+.dct-pip.done   { background:rgba(20,203,176,.55); }
+.dct-pip.active { background:#14cbb0; }
 body.kh-dark .dct-header { background:linear-gradient(135deg,#0f2040,#152d5a); color:#fff; border-bottom-color:rgba(255,255,255,.06); }
 body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important; }
-.dct-pip { flex:1; height:6px; border-radius:3px; background:#e2e8f0; transition:background .2s; }
-.dct-pip.done   { background:rgba(34,197,94,.7); }
-.dct-pip.active { background:#7ab8f5; }
 .dct-body { flex:1; overflow-y:auto; padding:20px; }
-.dct-foot { padding:14px 20px calc(14px + env(safe-area-inset-bottom)); border-top:1px solid #f1f5f9; background:#fff; display:flex; align-items:center; gap:10px; flex-shrink:0; }
-.dct-foot .btn { font-family:inherit; font-size:14px; font-weight:700; padding:12px 18px; border-radius:12px; border:1.5px solid #e2e8f0; background:#fff; color:#475569; cursor:pointer; transition:all .15s; min-height:46px; white-space:nowrap; }
-.dct-foot .btn:hover:not(:disabled) { background:#f8fafc; border-color:#cbd5e1; color:#0f172a; }
+.dct-foot { padding:14px 20px calc(14px + env(safe-area-inset-bottom)); border-top:1px solid rgba(255,255,255,.06); background:rgba(0,0,0,.18); display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.dct-foot .btn { font-family:inherit; font-size:14px; font-weight:700; padding:12px 18px; border-radius:12px; border:1.5px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); color:rgba(255,255,255,.75); cursor:pointer; transition:all .15s; min-height:46px; white-space:nowrap; }
+.dct-foot .btn:hover:not(:disabled) { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.25); color:#fff; }
 .dct-foot .btn:disabled { opacity:.4; cursor:not-allowed; }
-.dct-foot .btn-g { flex:1; border:none; background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; font-size:15px; font-weight:800; box-shadow:0 6px 18px rgba(124,58,237,.28); letter-spacing:.3px; }
-.dct-foot .btn-g:hover:not(:disabled) { background:linear-gradient(135deg,#6d28d9,#5b21b6); color:#fff; box-shadow:0 8px 22px rgba(124,58,237,.36); }
-.dct-foot .btn-g:disabled { background:#e2e8f0; color:#94a3b8; box-shadow:none; }
-.dct-sent-card { background:#f8faff; border:1.5px solid #dbeafe; border-radius:12px; padding:16px 18px; margin-bottom:12px; }
-.dct-sent-ko { font-family:'Noto Serif KR',serif; font-size:18px; font-weight:700; color:#0f172a; margin-bottom:6px; line-height:1.6; }
-.dct-sent-en { font-size:13px; color:#64748b; }
-.dct-listen-btn { background:none; border:1.5px solid #bfdbfe; border-radius:10px; padding:8px 14px; cursor:pointer; font-size:16px; color:#2255a4; float:right; transition:all .15s; }
-.dct-listen-btn:hover { background:#eff6ff; border-color:#7ab8f5; }
-.dct-wo-zone { background:#f0f7ff; border:1.5px solid #bfdbfe; border-radius:12px; padding:16px; margin-bottom:14px; font-family:'Noto Serif KR',serif; font-size:16px; line-height:2.4; min-height:56px; }
+.dct-foot .btn-g { flex:1; border:none; background:linear-gradient(135deg,#14cbb0,#0ea88f); color:#fff; font-size:15px; font-weight:800; box-shadow:0 6px 18px rgba(20,203,176,.28); letter-spacing:.3px; }
+.dct-foot .btn-g:hover:not(:disabled) { background:linear-gradient(135deg,#0ea88f,#0a8a73); color:#fff; box-shadow:0 8px 22px rgba(20,203,176,.4); }
+.dct-foot .btn-g:disabled { background:rgba(255,255,255,.08); color:rgba(255,255,255,.35); box-shadow:none; }
+.dct-sent-card { background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.1); border-radius:14px; padding:16px 18px; margin-bottom:12px; }
+.dct-sent-ko { font-family:'Noto Serif KR',serif; font-size:18px; font-weight:700; color:#fff; margin-bottom:6px; line-height:1.6; }
+.dct-sent-en { font-size:13px; color:rgba(255,255,255,.5); }
+.dct-listen-btn { background:rgba(20,203,176,.1); border:1.5px solid rgba(20,203,176,.3); border-radius:10px; padding:8px 14px; cursor:pointer; font-size:16px; color:#14cbb0; float:right; transition:all .15s; }
+.dct-listen-btn:hover { background:rgba(20,203,176,.18); border-color:rgba(20,203,176,.5); }
+.dct-wo-zone { background:rgba(20,203,176,.06); border:1.5px solid rgba(20,203,176,.25); border-radius:14px; padding:16px; margin-bottom:14px; font-family:'Noto Serif KR',serif; font-size:16px; line-height:2.4; min-height:56px; color:#fff; }
 @media(max-width:640px) { #dct-modal, #nq-modal { padding:0 !important; align-items:stretch !important; } #dct-modal .dct-panel, #nq-modal .dct-panel { max-height:100dvh; height:100dvh; max-width:100%; width:100%; border-radius:0; } }
 
 /* ── Mobile fixes ─────────────────────────────────────── */
@@ -3350,11 +3349,11 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <!-- ═══ GRAMMAR FOCUS MODAL ══════════════════════════════════════ -->
 <div class="woverlay hidden" id="gf-modal" onclick="if(event.target===this)closeGrammarFocusModal()">
-  <div class="gf-modal-panel" style="background:#fff;border-radius:22px;width:min(680px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.25);display:flex;flex-direction:column">
+  <div class="gf-modal-panel" style="background:#0d1b35;border-radius:22px;width:min(680px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.5);display:flex;flex-direction:column;color:#fff;border:1px solid rgba(255,255,255,.06)">
     <!-- Header -->
-    <div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);padding:20px 24px 16px;border-radius:22px 22px 0 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0">
+    <div style="background:linear-gradient(135deg,#0f2040,#152d5a);padding:20px 24px 16px;border-radius:22px 22px 0 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)">
       <div>
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.5);margin-bottom:5px">Grammar Focus</div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#14cbb0;margin-bottom:5px">Grammar Focus</div>
         <div id="gf-title" style="font-size:19px;font-weight:900;color:#fff;line-height:1.3">Grammar Practice</div>
         <div id="gf-subtitle" style="font-size:12px;color:rgba(255,255,255,.55);margin-top:3px">Today's focused grammar study</div>
       </div>
@@ -3367,12 +3366,12 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
     </div>
 
     <!-- Tab bar -->
-    <div class="gf-tab-bar" style="display:flex;gap:0;border-bottom:1px solid #f1f5f9;padding:0 24px;flex-shrink:0">
-      <button class="gf-tab active" onclick="switchGFTab('learn',this)" id="gft-learn" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#2255a4;border-bottom:2px solid #2255a4;cursor:pointer;font-family:inherit">① Learn</button>
-      <button class="gf-tab" onclick="switchGFTab('spotit',this)" id="gft-spotit" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">② Spot It</button>
-      <button class="gf-tab" onclick="switchGFTab('fill',this)" id="gft-fill" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">③ Practice</button>
-      <button class="gf-tab" onclick="switchGFTab('translate',this)" id="gft-translate" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">④ Translate</button>
-      <button class="gf-tab" onclick="switchGFTab('build',this)" id="gft-build" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#94a3b8;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">⑤ Judge It</button>
+    <div class="gf-tab-bar" style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px;flex-shrink:0">
+      <button class="gf-tab active" onclick="switchGFTab('learn',this)" id="gft-learn" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#14cbb0;border-bottom:2px solid #14cbb0;cursor:pointer;font-family:inherit">① Learn</button>
+      <button class="gf-tab" onclick="switchGFTab('spotit',this)" id="gft-spotit" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">② Spot It</button>
+      <button class="gf-tab" onclick="switchGFTab('fill',this)" id="gft-fill" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">③ Practice</button>
+      <button class="gf-tab" onclick="switchGFTab('translate',this)" id="gft-translate" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">④ Translate</button>
+      <button class="gf-tab" onclick="switchGFTab('build',this)" id="gft-build" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">⑤ Judge It</button>
     </div>
 
     <!-- Content -->
@@ -3380,35 +3379,35 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <!-- Learn tab (was Examples) -->
       <div id="gf-tab-learn">
         <div id="gf-examples-content">
-          <div style="text-align:center;padding:40px;color:#94a3b8;display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#a78bfa;animation:spin 1.4s linear infinite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span><span>Loading grammar…</span></div>
+          <div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#14cbb0;animation:spin 1.4s linear infinite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span><span>Loading grammar…</span></div>
         </div>
       </div>
 
       <!-- Spot It tab (NEW — pattern recognition) -->
       <div id="gf-tab-spotit" style="display:none">
         <div id="gf-spotit-content">
-          <div style="text-align:center;padding:40px;color:#94a3b8">Complete Learn first</div>
+          <div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Complete Learn first</div>
         </div>
       </div>
 
       <!-- Practice tab (was Fill-in-blank) -->
       <div id="gf-tab-fill" style="display:none">
         <div id="gf-fill-content">
-          <div style="text-align:center;padding:40px;color:#94a3b8">Choose a grammar pattern first</div>
+          <div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Choose a grammar pattern first</div>
         </div>
       </div>
 
       <!-- Translate tab -->
       <div id="gf-tab-translate" style="display:none">
         <div id="gf-translate-content">
-          <div style="text-align:center;padding:40px;color:#94a3b8">Choose a grammar pattern first</div>
+          <div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Choose a grammar pattern first</div>
         </div>
       </div>
 
       <!-- Build tab -->
       <div id="gf-tab-build" style="display:none">
         <div id="gf-build-content">
-          <div style="text-align:center;padding:40px;color:#94a3b8">Choose a grammar pattern first</div>
+          <div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Choose a grammar pattern first</div>
         </div>
       </div>
     </div>
@@ -6275,7 +6274,7 @@ function _keRenderStudyPhase(list) {
     + '<div style="display:flex;gap:8px;justify-content:center">'
     + (idx > 0 ? '<button onclick="window._keStudyIdx--;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&larr; Prev</button>' : '')
     + (idx < exps.length - 1
-      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &rarr;</button>'
+      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &rarr;</button>'
       : '<button onclick="_keStartQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Start Quiz &rarr;</button>')
     + '</div>';
 }
@@ -6368,26 +6367,26 @@ function _keRenderFillQuiz() {
   var exampleKo = exp.example_ko || exp.ko;
   var blankedDisplay = exampleKo;
   if (exp.ko && exampleKo.indexOf(exp.ko) !== -1) {
-    blankedDisplay = exampleKo.replace(exp.ko, '<span style="display:inline-block;min-width:80px;border-bottom:2px solid #a78bfa;padding:0 4px;color:#a78bfa;font-weight:800">___</span>');
+    blankedDisplay = exampleKo.replace(exp.ko, '<span style="display:inline-block;min-width:80px;border-bottom:2px solid #14cbb0;padding:0 4px;color:#14cbb0;font-weight:800">___</span>');
   }
 
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">STEP 3: Production \u2014 Fill in the Blank</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#14cbb0;margin-bottom:4px">STEP 3: Production \u2014 Fill in the Blank</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
     + '</div>'
-    + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="background:rgba(20,203,176,.07);border:1px solid rgba(20,203,176,.2);border-radius:12px;padding:16px;margin-bottom:14px">'
     + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Type the missing Korean expression:</div>'
     + '<div style="font-size:15px;color:#e0f2fe;line-height:1.7;margin-bottom:6px">' + blankedDisplay + '</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.35)">' + (exp.example_en||exp.en||'') + '</div>'
     + '</div>'
     + '<div style="margin-bottom:12px">'
     + '<input type="text" id="ke-fill-input" placeholder="Type the expression in Korean..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
-    + ' style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(167,139,250,.35);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box"'
+    + ' style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(20,203,176,.35);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box"'
     + ' onkeydown="if(event.key===\'Enter\')_keCheckFillAnswer()">'
     + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center">'
-    + '<button onclick="_keCheckFillAnswer()" style="padding:11px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Check &#10003;</button>'
+    + '<button onclick="_keCheckFillAnswer()" style="padding:11px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Check &#10003;</button>'
     + '</div>'
     + '<div id="ke-fill-fb" style="margin-top:12px;min-height:28px"></div>';
 
@@ -6432,7 +6431,7 @@ function _keCheckFillAnswer() {
     inp.style.background = 'rgba(239,68,68,.08)';
     fb.innerHTML = '<div style="padding:10px 12px;background:rgba(239,68,68,.1);border-radius:8px;font-size:13px">'
       + '<div style="color:#fca5a5;font-weight:800;margin-bottom:4px">&#10060; Not quite</div>'
-      + '<div style="color:rgba(255,255,255,.6)">Correct: <span style="color:#a78bfa;font-weight:800;font-size:15px">' + correct + '</span></div>'
+      + '<div style="color:rgba(255,255,255,.6)">Correct: <span style="color:#14cbb0;font-weight:800;font-size:15px">' + correct + '</span></div>'
       + '</div>';
   }
 
@@ -6579,9 +6578,9 @@ function _keShowFinalScore() {
     + '<div><div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:.5px">Recognition (MCQ)</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Pick the right expression</div></div>'
     + '<div style="font-size:18px;font-weight:900;color:#fbbf24">' + recogScore + '/' + recogTotal + '</div>'
     + '</div>'
-    + '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
-    + '<div><div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.5px">Production Score</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Fill in the blank</div></div>'
-    + '<div style="font-size:18px;font-weight:900;color:#a78bfa">' + fillScore + '/' + fillTotal + '</div>'
+    + '<div style="background:rgba(20,203,176,.08);border:1px solid rgba(20,203,176,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + '<div><div style="font-size:11px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.5px">Production Score</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Fill in the blank</div></div>'
+    + '<div style="font-size:18px;font-weight:900;color:#14cbb0">' + fillScore + '/' + fillTotal + '</div>'
     + '</div>'
     + '<div style="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
     + '<div><div style="font-size:11px;font-weight:800;color:#fb923c;text-transform:uppercase;letter-spacing:.5px">Situational Mapping</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Match expression to context</div></div>'
@@ -12260,7 +12259,7 @@ function _pdRenderStep1(item) {
   var vocab = item.vocab_items || [];
   if (!vocab.length) { _pdGoStep(2); return; }   // skip if admin left blank
   body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📚 이미지 관련 어휘</div>'
+    '<div style="font-size:11px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📚 이미지 관련 어휘</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:12px">단어를 탭해서 뜻을 확인하세요</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
     + vocab.map(function(v) {
@@ -12279,7 +12278,7 @@ function _pdRenderStep2(item) {
   var words = item.word_order_words || [];
   if (!words.length) { _pdGoStep(3); return; }   // skip if admin left blank
   body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 어절 순서맞추기</div>'
+    '<div style="font-size:11px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 어절 순서맞추기</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">단어를 클릭해서 올바른 순서로 배치하세요</div>'
     + '<div id="pd-word-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.07);border-radius:10px;margin-bottom:8px;align-items:center"></div>'
     + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">내 답:</div>'
@@ -12308,16 +12307,16 @@ function _pdRenderStep3(item) {
   var vocabHtml = '';
   if (vocab.length) {
     var chips = vocab.map(function(v) {
-      return '<span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:rgba(122,184,245,.14);border:1px solid rgba(122,184,245,.28);color:#bcdcff;font-size:12px;font-family:\'Noto Sans KR\',sans-serif"><b style="font-weight:700">' + (v.ko || '') + '</b><span style="opacity:.6;font-size:11px">— ' + (v.en || '') + '</span></span>';
+      return '<span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:rgba(20,203,176,.14);border:1px solid rgba(20,203,176,.28);color:#fff;font-size:12px;font-family:\'Noto Sans KR\',sans-serif"><b style="font-weight:700">' + (v.ko || '') + '</b><span style="opacity:.6;font-size:11px">— ' + (v.en || '') + '</span></span>';
     }).join('');
     vocabHtml =
-      '<details style="margin-bottom:10px;border:1px dashed rgba(122,184,245,.35);border-radius:10px;padding:8px 10px;background:rgba(122,184,245,.06)" open>'
-      + '<summary style="cursor:pointer;font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.6px;list-style:none">📚 어휘 참고 (' + vocab.length + ')</summary>'
+      '<details style="margin-bottom:10px;border:1px dashed rgba(20,203,176,.35);border-radius:10px;padding:8px 10px;background:rgba(20,203,176,.06)" open>'
+      + '<summary style="cursor:pointer;font-size:11px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.6px;list-style:none">📚 어휘 참고 (' + vocab.length + ')</summary>'
       + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' + chips + '</div>'
       + '</details>';
   }
   body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#7ab8f5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✏️ 사진 묘사 글쓰기</div>'
+    '<div style="font-size:11px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✏️ 사진 묘사 글쓰기</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">' + (guidedPrompts[level] || guidedPrompts.Beginner) + '</div>'
     + vocabHtml
     + '<textarea id="pd-input" style="width:100%;min-height:100px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;padding:12px;font-size:14px;font-family:\'Noto Sans KR\',sans-serif;background:rgba(255,255,255,.06);color:#fff;resize:vertical;outline:none;box-sizing:border-box" placeholder="한국어로 써보세요..."></textarea>'
@@ -14593,7 +14592,7 @@ function openGrammarFocusForCurriculum() {
   switchGFTab('learn', document.getElementById('gft-learn'));
 
   var el = document.getElementById('gf-examples-content');
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">&#10024; Loading grammar…</div>';
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">&#10024; Loading grammar…</div>';
 
   // Remember which curriculum pattern we are studying
   window._gcCurrentPattern = next.pattern;
@@ -14702,8 +14701,8 @@ function switchGFTab(tabId, btn) {
     if (pane) pane.style.display = t === tabId ? 'block' : 'none';
     var tb = document.getElementById('gft-' + t);
     if (tb) {
-      tb.style.color            = t === tabId ? '#2255a4' : '#94a3b8';
-      tb.style.borderBottomColor = t === tabId ? '#2255a4' : 'transparent';
+      tb.style.color            = t === tabId ? '#14cbb0' : '#94a3b8';
+      tb.style.borderBottomColor = t === tabId ? '#14cbb0' : 'transparent';
       tb.style.fontWeight        = t === tabId ? '800' : '700';
     }
   });
@@ -14738,8 +14737,8 @@ function loadGFPatterns(patterns) {
           return '<button onclick="selectGFPattern(' + i + ')" '
             + 'class="gf-pattern-chip' + (i===0?' gf-chip-on':'') + '" '
             + 'style="padding:5px 12px;border-radius:999px;border:1.5px solid '
-            + (i===0?'#2255a4':'#e2e8f2') + ';background:' + (i===0?'#eff6ff':'#fff')
-            + ';color:' + (i===0?'#2255a4':'#475569')
+            + (i===0?'#14cbb0':'rgba(255,255,255,.15)') + ';background:' + (i===0?'#eff6ff':'#fff')
+            + ';color:' + (i===0?'#14cbb0':'#475569')
             + ';font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'
             + (p.name || 'Pattern ' + (i+1)) + '</button>';
         }).join('')
@@ -14762,9 +14761,9 @@ function selectGFPattern(idx) {
   _gfPattern = p;
   document.querySelectorAll('.gf-pattern-chip').forEach(function(b, i) {
     var on = i === idx;
-    b.style.borderColor = on ? '#2255a4' : '#e2e8f2';
+    b.style.borderColor = on ? '#14cbb0' : 'rgba(255,255,255,.15)';
     b.style.background  = on ? '#eff6ff' : '#fff';
-    b.style.color       = on ? '#2255a4' : '#475569';
+    b.style.color       = on ? '#14cbb0' : '#475569';
   });
   var titleEl = document.getElementById('gf-title');
   if (titleEl) titleEl.textContent = p.name || '';
@@ -14805,8 +14804,8 @@ function gfParseKorean(ko) {
 }
 
 function gfRenderSentenceTree(ko) {
-  var ROLE_BG    = { subject:'#fef3c7', object:'#dcfce7', modifier:'#dbeafe', verb:'#ede9fe', misc:'#f1f5f9' };
-  var ROLE_COLOR = { subject:'#92400e', object:'#15803d', modifier:'#1e40af', verb:'#6d28d9', misc:'#475569' };
+  var ROLE_BG    = { subject:'#fef3c7', object:'#dcfce7', modifier:'rgba(20,203,176,.25)', verb:'#ede9fe', misc:'#f1f5f9' };
+  var ROLE_COLOR = { subject:'#92400e', object:'#15803d', modifier:'#1e40af', verb:'#0ea88f', misc:'#475569' };
   var ROLE_LABEL = { subject:'주어',    object:'목적어', modifier:'수식',     verb:'서술어', misc:'기타' };
   var parsed = gfParseKorean(ko);
   if (!parsed.length) return '';
@@ -14823,8 +14822,8 @@ function gfRenderSentenceTree(ko) {
         return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:' + ROLE_BG[r] + ';color:' + ROLE_COLOR[r] + ';font-size:9px;font-weight:800;letter-spacing:.04em">●  ' + ROLE_LABEL[r] + '</span>';
       }).join('')
     + '</div>';
-  return '<div style="background:#fafbfd;border:1px dashed #cbd5e1;border-radius:10px;padding:12px 14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:8px">구조 Structure (heuristic)</div>'
+  return '<div style="background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.18);border-radius:10px;padding:12px 14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.45);margin-bottom:8px">구조 Structure (heuristic)</div>'
     + legend
     + '<div style="display:flex;flex-wrap:wrap;align-items:flex-end">' + chips + '</div>'
     + '</div>';
@@ -14838,10 +14837,10 @@ function gfToggleTree(id, btn) {
 }
 
 function renderGFLearn(p) {
-  var levelColors = { Starter:'#7c3aed', Beginner:'#16a34a', Intermediate:'#d97706', Advanced:'#dc2626' };
+  var levelColors = { Starter:'#14cbb0', Beginner:'#16a34a', Intermediate:'#d97706', Advanced:'#dc2626' };
   var levelBgs    = { Starter:'#f5f3ff', Beginner:'#f0fdf4', Intermediate:'#fffbeb', Advanced:'#fff1f2' };
   var lv = p.level || 'Intermediate';
-  var lc = levelColors[lv] || '#2255a4';
+  var lc = levelColors[lv] || '#14cbb0';
   var lb = levelBgs[lv]    || '#f0f4ff';
 
   // Extract Korean characters from pattern name for highlighting in examples
@@ -14854,12 +14853,12 @@ function renderGFLearn(p) {
   var structureHtml = structure
     ? '<div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
       + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:6px">공식 Structure</div>'
-      + '<p style="font-size:15px;font-weight:800;color:#2255a4;margin:0;font-family:Noto Serif KR,serif">' + structure + '</p>'
+      + '<p style="font-size:15px;font-weight:800;color:#14cbb0;margin:0;font-family:Noto Serif KR,serif">' + structure + '</p>'
       + '</div>'
     : '';
 
   // Explanation
-  var expHtml = '<div style="background:#f8fafc;border-left:3px solid #7ab8f5;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px">'
+  var expHtml = '<div style="background:rgba(255,255,255,.05);border-left:3px solid #14cbb0;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px">'
     + '<p style="font-size:14px;color:#334155;line-height:1.8;margin:0">' + (p.exp || '') + '</p>'
     + '</div>';
 
@@ -14884,32 +14883,32 @@ function renderGFLearn(p) {
 
   // Examples with grammar highlighted + (collapsible) sentence-structure tree
   var examples = p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }];
-  var exHtml = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">예문 Examples</div>'
+  var exHtml = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">예문 Examples</div>'
     + examples.map(function(ex, i) {
         var koText = ex.ko || '';
         // Highlight any token from the pattern name inside the sentence
         koChars.forEach(function(kc) {
           var clean = kc.replace(/~/g,'');
           if (clean && koText.indexOf(clean) !== -1) {
-            koText = koText.split(clean).join('<mark style="background:#dbeafe;color:#2255a4;border-radius:4px;padding:1px 3px;font-style:normal">' + clean + '</mark>');
+            koText = koText.split(clean).join('<mark style="background:rgba(20,203,176,.15);color:#14cbb0;border-radius:4px;padding:1px 3px;font-style:normal">' + clean + '</mark>');
           }
         });
         var treeId = 'gf-tree-' + i;
         var treeBtn = ex.ko
-          ? '<button type="button" onclick="gfToggleTree(\'' + treeId + '\',this)" style="margin-top:8px;padding:4px 10px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">▼ Show structure</button>'
+          ? '<button type="button" onclick="gfToggleTree(\'' + treeId + '\',this)" style="margin-top:8px;padding:4px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">▼ Show structure</button>'
           + '<div id="' + treeId + '" hidden style="margin-top:10px">' + gfRenderSentenceTree(ex.ko) + '</div>'
           : '';
-        return '<div style="background:#f8faff;border:1px solid #dbeafe;border-radius:12px;padding:14px 16px;margin-bottom:10px">'
-          + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:7px">예문 ' + (i+1) + '</div>'
-          + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#0f172a;line-height:1.7;margin:0 0 8px">' + koText + '</p>'
-          + '<p style="font-size:13px;color:#64748b;margin:0;padding-top:8px;border-top:1px solid #e8eef8">' + (ex.en||'') + '</p>'
+        return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(20,203,176,.2);border-radius:12px;padding:14px 16px;margin-bottom:10px">'
+          + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:7px">예문 ' + (i+1) + '</div>'
+          + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#fff;line-height:1.7;margin:0 0 8px">' + koText + '</p>'
+          + '<p style="font-size:13px;color:rgba(255,255,255,.55);margin:0;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">' + (ex.en||'') + '</p>'
           + treeBtn
           + '</div>';
       }).join('');
 
   // "Got it" advance button
   var advBtn = '<div style="margin-top:20px;text-align:center">'
-    + '<button onclick="gfAdvanceTo(\'spotit\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.3px">Got it → Spot It</button>'
+    + '<button onclick="gfAdvanceTo(\'spotit\')" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.3px">Got it → Spot It</button>'
     + '</div>';
 
   return '<div style="margin-bottom:14px">'
@@ -14922,11 +14921,11 @@ function renderGFLearn(p) {
 
 async function generateGFPatterns() {
   var el = document.getElementById('gf-examples-content');
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</span><span>Generating grammar patterns…</span></div>';
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#14cbb0;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</span><span>Generating grammar patterns…</span></div>';
 
   var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
   if (!topic || topic === 'Loading…') {
-    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Please load today\'s topic first.</div>';
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Please load today\'s topic first.</div>';
     return;
   }
 
@@ -14989,7 +14988,7 @@ function openWeakGrammarDrill(grammarName) {
   if (title) title.textContent = grammarName;
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  body.innerHTML = '<div style="text-align:center;padding:40px"><div style="display:inline-flex;width:32px;height:32px;margin-bottom:10px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</div><div style="font-size:14px;color:#64748b">Generating 5 drill questions for <b>' + grammarName + '</b>…</div></div>';
+  body.innerHTML = '<div style="text-align:center;padding:40px"><div style="display:inline-flex;width:32px;height:32px;margin-bottom:10px;color:#14cbb0;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</div><div style="font-size:14px;color:rgba(255,255,255,.55)">Generating 5 drill questions for <b>' + grammarName + '</b>…</div></div>';
   generateWGDrillQuestions(grammarName);
 }
 
@@ -15038,12 +15037,12 @@ function renderWGDrillIntro() {
   if (!body) return;
   var st = _wgDrillState;
   body.innerHTML =
-    '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+    '<div style="background:rgba(251,191,36,.08);border:1px solid #fde68a;border-radius:12px;padding:14px 16px;margin-bottom:16px">'
     + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#92400e;margin-bottom:4px">About this grammar</div>'
     + '<div style="font-size:14px;color:#78350f;line-height:1.6">' + (st.explanation || st.grammar) + '</div>'
     + '</div>'
     + '<div style="text-align:center">'
-    + '<div style="font-size:14px;color:#64748b;margin-bottom:12px">' + st.questions.length + ' questions · Fill-in, correction, completion</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-bottom:12px">' + st.questions.length + ' questions · Fill-in, correction, completion</div>'
     + '<button onclick="renderWGDrillQuestion()" style="padding:12px 28px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Start Drill →</button>'
     + '</div>';
 }
@@ -15057,13 +15056,13 @@ function renderWGDrillQuestion() {
   var shuffled = (q.choices || []).map(function(c, i){ return { text:c, origIdx:i }; }).sort(function(){ return Math.random()-.5; });
   body.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
-    + '<span style="font-size:11px;font-weight:800;color:#94a3b8">QUESTION ' + (st.idx+1) + ' / ' + st.questions.length + '</span>'
+    + '<span style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45)">QUESTION ' + (st.idx+1) + ' / ' + st.questions.length + '</span>'
     + '<span style="font-size:11px;font-weight:700;color:#b45309">' + st.score + ' correct</span>'
     + '</div>'
-    + '<div style="font-size:16px;font-weight:700;color:#0f172a;line-height:1.6;margin-bottom:16px;font-family:\'Noto Sans KR\',sans-serif">' + (q.q||'') + '</div>'
+    + '<div style="font-size:16px;font-weight:700;color:#fff;line-height:1.6;margin-bottom:16px;font-family:\'Noto Sans KR\',sans-serif">' + (q.q||'') + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px" id="wg-choices">'
     + shuffled.map(function(c) {
-      return '<button class="wg-choice-btn" onclick="pickWGDrillAnswer(this,' + c.origIdx + ',' + (q.correct||0) + ')" style="padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;color:#0f172a;font-size:14px;font-weight:600;cursor:pointer;text-align:left;font-family:\'Noto Sans KR\',sans-serif;transition:.15s">' + c.text + '</button>';
+      return '<button class="wg-choice-btn" onclick="pickWGDrillAnswer(this,' + c.origIdx + ',' + (q.correct||0) + ')" style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:14px;font-weight:600;cursor:pointer;text-align:left;font-family:\'Noto Sans KR\',sans-serif;transition:.15s">' + c.text + '</button>';
     }).join('')
     + '</div>'
     + '<div id="wg-feedback" style="margin-top:12px"></div>';
@@ -15104,11 +15103,11 @@ function renderWGDrillResult() {
   body.innerHTML =
     '<div style="text-align:center;padding:20px">'
     + '<div style="display:inline-flex;width:48px;height:48px;margin-bottom:8px;color:' + iconColor + ';filter:drop-shadow(0 0 12px ' + iconColor + 'aa)">' + icon + '</div>'
-    + '<div style="font-size:32px;font-weight:900;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
-    + '<div style="font-size:14px;color:#64748b;margin-bottom:4px">' + st.score + ' / ' + st.questions.length + ' correct</div>'
+    + '<div style="font-size:32px;font-weight:900;color:#fff;margin-bottom:4px">' + pct + '%</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-bottom:4px">' + st.score + ' / ' + st.questions.length + ' correct</div>'
     + '<div style="font-size:13px;color:#78350f;background:#fffbeb;border-radius:8px;padding:8px 12px;display:inline-block;margin-bottom:16px">' + msg + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
-    + '<button onclick="_wgDrillState.idx=0;_wgDrillState.score=0;renderWGDrillIntro()" style="padding:10px 18px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try Again</button>'
+    + '<button onclick="_wgDrillState.idx=0;_wgDrillState.score=0;renderWGDrillIntro()" style="padding:10px 18px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try Again</button>'
     + '<button onclick="closeWGDrill()" style="padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>Done</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
     + '</div></div>';
   // Track result
@@ -15128,7 +15127,7 @@ function renderWGDrillResult() {
 */
 async function generateGFPatternsForFocus(focusName) {
   var el = document.getElementById('gf-examples-content');
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Loading grammar patterns…</div>';
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Loading grammar patterns…</div>';
 
   var sb = getSupa();
 
@@ -15211,7 +15210,7 @@ async function generateGFPatternsForFocus(focusName) {
   }
 
   // 3) DB miss → AI generate
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns for <b>' + focusName + '</b>…</div>';
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">✨ Generating grammar patterns for <b>' + focusName + '</b>…</div>';
 
   try {
     var res = await callClaude({
@@ -15266,7 +15265,7 @@ function loadGFSpotIt(p) {
   if (!el || !p) return;
   var examples = (p.examples || []).filter(function(e){ return e.ko; });
   if (!examples.length) {
-    el.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">No examples available.</div>';
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.45)">No examples available.</div>';
     return;
   }
   _gfSpotState = { idx:0, total:examples.length, correct:0, p:p, examples:examples };
@@ -15313,24 +15312,24 @@ function _renderSpotItSentence() {
         var done = i < st.idx;
         var active = i === st.idx;
         return '<div style="flex:1;height:4px;border-radius:2px;background:'
-          + (done ? 'rgba(34,197,94,.7)' : active ? '#7ab8f5' : '#e2e8f0') + '"></div>';
+          + (done ? 'rgba(34,197,94,.7)' : active ? '#14cbb0' : 'rgba(255,255,255,.15)') + '"></div>';
       }).join('')
     + '</div>';
 
   var wordChips = words.map(function(w, wi) {
     return '<button onclick="checkGFSpotIt(' + wi + ',\'' + w.replace(/'/g,"\\'") + '\',\'' + targetWord.replace(/'/g,"\\'") + '\')" '
       + 'id="gfsi-w-' + wi + '" '
-      + 'style="padding:8px 14px;margin:4px;border-radius:8px;border:1.5px solid #dbeafe;background:#fff;font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#0f172a;cursor:pointer;transition:all .15s;font-family:inherit">'
+      + 'style="padding:8px 14px;margin:4px;border-radius:8px;border:1.5px solid rgba(20,203,176,.25);background:rgba(255,255,255,.06);font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;font-family:inherit">'
       + w + '</button>';
   }).join('');
 
   el.innerHTML = progressHtml
-    + '<div style="margin-bottom:12px;font-size:13px;color:#475569;line-height:1.6">'
-    + '문법 패턴 <strong style="color:#2255a4">' + (st.p.name||'') + '</strong> 이 사용된 단어를 찾아 탭하세요.'
+    + '<div style="margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.65);line-height:1.6">'
+    + '문법 패턴 <strong style="color:#14cbb0">' + (st.p.name||'') + '</strong> 이 사용된 단어를 찾아 탭하세요.'
     + '</div>'
-    + '<div style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:14px;padding:18px;margin-bottom:16px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">예문 ' + (st.idx+1) + ' / ' + st.total + '</div>'
-    + '<div style="font-size:13px;color:#64748b;margin-bottom:14px">' + (ex.en||'') + '</div>'
+    + '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(20,203,176,.25);border-radius:14px;padding:18px;margin-bottom:16px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">예문 ' + (st.idx+1) + ' / ' + st.total + '</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:14px">' + (ex.en||'') + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:0">' + wordChips + '</div>'
     + '</div>'
     + '<div id="gfsi-feedback" style="min-height:24px;font-size:13px;font-weight:700;text-align:center"></div>';
@@ -15355,7 +15354,7 @@ function checkGFSpotIt(wordIdx, word, target) {
       document.querySelectorAll('[id^="gfsi-w-"]').forEach(function(b) {
         b.style.pointerEvents = '';
         b.style.background = '#fff';
-        b.style.borderColor = '#dbeafe';
+        b.style.borderColor = 'rgba(20,203,176,.25)';
         b.style.color = '#0f172a';
       });
       if (fb) fb.innerHTML = '';
@@ -15402,16 +15401,16 @@ function _loadSpotItBonus() {
 
   el.innerHTML = '<div style="padding:20px">'
     + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#d97706;margin-bottom:8px">Bonus: Find the Error</div>'
-    + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:4px">Which sentence has a grammar mistake?</div>'
-    + '<div style="font-size:12px;color:#64748b;margin-bottom:16px">Tap the sentence that uses <strong>' + (p.name||'') + '</strong> incorrectly.</div>'
+    + '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:4px">Which sentence has a grammar mistake?</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:16px">Tap the sentence that uses <strong>' + (p.name||'') + '</strong> incorrectly.</div>'
     + '<div id="gf-error-options">' + options.map(function(o, oi) {
       return '<button onclick="_checkErrorOption(this,' + (o.correct ? 'false' : 'true') + ',' + oi + ')" '
         + 'data-correction="' + (o.correction||'').replace(/"/g,'&quot;') + '" '
         + 'data-error-type="' + (o.error_type||'') + '" '
         + 'style="display:block;width:100%;text-align:left;padding:14px 16px;margin-bottom:8px;'
-        + 'background:#f8faff;border:1.5px solid #dbeafe;border-radius:10px;font-size:15px;'
-        + 'font-family:Noto Serif KR,serif;color:#0f172a;cursor:pointer;transition:all .15s;line-height:1.7"'
-        + ' onmouseover="this.style.borderColor=\'#93c5fd\'" onmouseout="this.style.borderColor=\'#dbeafe\'">'
+        + 'background:rgba(255,255,255,.06);border:1.5px solid rgba(20,203,176,.25);border-radius:10px;font-size:15px;'
+        + 'font-family:Noto Serif KR,serif;color:#fff;cursor:pointer;transition:all .15s;line-height:1.7"'
+        + ' onmouseover="this.style.borderColor=\'rgba(20,203,176,.5)\'" onmouseout="this.style.borderColor=\'rgba(20,203,176,.25)\'">'
         + o.ko + '</button>';
     }).join('') + '</div>'
     + '<div id="gf-error-fb" style="margin-top:12px;font-size:13px;font-weight:700"></div>'
@@ -15426,28 +15425,28 @@ function _checkErrorOption(btn, isWrong, idx) {
   if (isWrong) {
     btn.style.borderColor = '#22c55e';
     btn.style.background = '#f0fdf4';
-    var detail = '<div style="margin-top:10px;padding:12px;background:#f8faff;border:1px solid #dbeafe;border-radius:8px;font-size:12px;line-height:1.7">'
+    var detail = '<div style="margin-top:10px;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(20,203,176,.2);border-radius:8px;font-size:12px;line-height:1.7">'
       + (w.error_type ? '<div style="font-weight:800;color:#d97706;margin-bottom:4px">Error type: ' + w.error_type + '</div>' : '')
       + '<div><span style="color:#dc2626;text-decoration:line-through">' + (w.ko||'') + '</span></div>'
       + '<div style="color:#16a34a;font-weight:700">→ ' + (w.correction||'') + '</div>'
       + '</div>';
     if (fb) fb.innerHTML = '<span style="color:#16a34a">✓ Correct! You found the grammar error.</span>' + detail
-      + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
+      + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
   } else {
     btn.style.borderColor = '#ef4444';
     btn.style.background = '#fef2f2';
     if (fb) fb.innerHTML = '<span style="color:#dc2626">✗ That sentence is correct. Look more carefully at the grammar endings!</span>'
-      + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
+      + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
   }
 }
 
 function _showSpotItComplete() {
   var el = document.getElementById('gf-spotit-content');
   if (el) el.innerHTML = '<div style="text-align:center;padding:30px 20px">'
-    + '<div style="display:inline-flex;width:38px;height:38px;margin-bottom:12px;color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></div>'
-    + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:6px">Pattern recognition complete!</div>'
-    + '<div style="font-size:13px;color:#64748b;margin-bottom:22px">' + (_gfSpotState ? _gfSpotState.correct + ' / ' + _gfSpotState.total : '') + ' correct</div>'
-    + '<button onclick="gfAdvanceTo(\'fill\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Fill in the Blank →</button>'
+    + '<div style="display:inline-flex;width:38px;height:38px;margin-bottom:12px;color:#14cbb0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></div>'
+    + '<div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:6px">Pattern recognition complete!</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:22px">' + (_gfSpotState ? _gfSpotState.correct + ' / ' + _gfSpotState.total : '') + ' correct</div>'
+    + '<button onclick="gfAdvanceTo(\'fill\')" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Fill in the Blank →</button>'
     + '</div>';
 }
 
@@ -15485,7 +15484,7 @@ function loadGFFill(p) {
   var qs = examples.map(function(ex, i) {
     var koText = ex.ko;
     var blank = allBlanks[i];
-    var blanked = koText.replace(blank, '<span style="display:inline-block;min-width:70px;border-bottom:2.5px solid #2255a4;color:#94a3b8;text-align:center">______</span>');
+    var blanked = koText.replace(blank, '<span style="display:inline-block;min-width:70px;border-bottom:2.5px solid #14cbb0;color:rgba(255,255,255,.45);text-align:center">______</span>');
 
     // Build 4 choices: correct + 3 distractors
     var distractors = [];
@@ -15503,17 +15502,17 @@ function loadGFFill(p) {
       var ct = choices[ci]; choices[ci] = choices[cj]; choices[cj] = ct;
     }
 
-    return '<div style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gff-card-' + i + '">'
-      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">Question ' + (i+1) + ' / ' + total + '</div>'
-      + '<p style="font-size:14px;font-weight:600;color:#334155;margin:0 0 10px;line-height:1.65;background:#fffbeb;border-radius:8px;padding:8px 12px">' + ex.en + '</p>'
-      + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#0f172a;margin:0 0 14px;line-height:1.8">' + blanked + '</p>'
+    return '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(20,203,176,.25);border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gff-card-' + i + '">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">Question ' + (i+1) + ' / ' + total + '</div>'
+      + '<p style="font-size:14px;font-weight:600;color:#334155;margin:0 0 10px;line-height:1.65;background:rgba(251,191,36,.08);border-radius:8px;padding:8px 12px">' + ex.en + '</p>'
+      + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#fff;margin:0 0 14px;line-height:1.8">' + blanked + '</p>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
       + choices.map(function(c) {
           return '<button onclick="checkGFFillMCQ(this,' + i + ',\'' + c.replace(/'/g,"\\'") + '\',\'' + blank.replace(/'/g,"\\'") + '\',' + total + ')" '
-            + 'style="padding:12px 14px;border:1.5px solid #e2e8f2;border-radius:10px;background:#fff;font-size:15px;font-weight:700;'
-            + 'font-family:Noto Serif KR,serif;cursor:pointer;transition:all .15s;color:#0f172a"'
-            + ' onmouseover="this.style.borderColor=\'#93c5fd\';this.style.background=\'#f0f7ff\'"'
-            + ' onmouseout="this.style.borderColor=\'#e2e8f2\';this.style.background=\'#fff\'"'
+            + 'style="padding:12px 14px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);font-size:15px;font-weight:700;'
+            + 'font-family:Noto Serif KR,serif;cursor:pointer;transition:all .15s;color:#fff"'
+            + ' onmouseover="this.style.borderColor=\'rgba(20,203,176,.5)\';this.style.background=\'#f0f7ff\'"'
+            + ' onmouseout="this.style.borderColor=\'rgba(255,255,255,.15)\';this.style.background=\'#fff\'"'
             + '>' + c + '</button>';
         }).join('')
       + '</div>'
@@ -15521,13 +15520,13 @@ function loadGFFill(p) {
       + '</div>';
   }).join('');
 
-  el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:#475569;line-height:1.7">'
+  el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:rgba(255,255,255,.65);line-height:1.7">'
     + 'Choose the correct word to fill in the blank. '
-    + '<span style="font-size:12px;background:#eff6ff;color:#2255a4;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
+    + '<span style="font-size:12px;background:rgba(20,203,176,.1);color:#14cbb0;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
     + '</div>'
     + qs
     + '<div id="gff-next-wrap" style="display:none;text-align:center;margin-top:8px">'
-    + '<button onclick="gfAdvanceTo(\'translate\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">번역 연습 →</button>'
+    + '<button onclick="gfAdvanceTo(\'translate\')" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">번역 연습 →</button>'
     + '</div>';
 
   window._gffAnswered = {};
@@ -15594,15 +15593,15 @@ function loadGFTranslate(p) {
       var ct = choices[ci]; choices[ci] = choices[cj]; choices[cj] = ct;
     }
 
-    return '<div style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gft-card-' + i + '">'
-      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:10px">문장 ' + (i+1) + ' / ' + total + '</div>'
-      + '<p style="font-size:15px;font-weight:700;color:#0f172a;margin:0 0 14px;line-height:1.7;background:#fffbeb;border-radius:8px;padding:10px 12px">' + ex.en + '</p>'
+    return '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(20,203,176,.25);border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gft-card-' + i + '">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">문장 ' + (i+1) + ' / ' + total + '</div>'
+      + '<p style="font-size:15px;font-weight:700;color:#fff;margin:0 0 14px;line-height:1.7;background:rgba(251,191,36,.08);border-radius:8px;padding:10px 12px">' + ex.en + '</p>'
       + '<div style="display:flex;flex-direction:column;gap:8px">'
       + choices.map(function(c) {
           return '<button onclick="checkGFTranslateMCQ(this,' + i + ',\'' + c.replace(/'/g,"\\'") + '\',\'' + correct.replace(/'/g,"\\'") + '\',' + total + ')" '
-            + 'style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f2;border-radius:10px;background:#fff;font-size:14px;font-weight:700;'
-            + 'font-family:Noto Serif KR,serif;cursor:pointer;text-align:left;transition:all .15s;color:#0f172a"'
-            + ' onmouseover="this.style.borderColor=\'#93c5fd\'" onmouseout="this.style.borderColor=\'#e2e8f2\'"'
+            + 'style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);font-size:14px;font-weight:700;'
+            + 'font-family:Noto Serif KR,serif;cursor:pointer;text-align:left;transition:all .15s;color:#fff"'
+            + ' onmouseover="this.style.borderColor=\'rgba(20,203,176,.5)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.15)\'"'
             + '>' + c + '</button>';
         }).join('')
       + '</div>'
@@ -15610,12 +15609,12 @@ function loadGFTranslate(p) {
       + '</div>';
   }).join('');
 
-  el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:#475569;line-height:1.7">'
-    + 'Choose the correct Korean translation. <span style="background:#eff6ff;color:#2255a4;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
+  el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:rgba(255,255,255,.65);line-height:1.7">'
+    + 'Choose the correct Korean translation. <span style="background:rgba(20,203,176,.1);color:#14cbb0;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
     + '</div>'
     + qs
     + '<div id="gft-next-wrap" style="display:none;text-align:center;margin-top:8px">'
-    + '<button onclick="gfAdvanceTo(\'build\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Judge It →</button>'
+    + '<button onclick="gfAdvanceTo(\'build\')" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Judge It →</button>'
     + '</div>';
 }
 
@@ -15650,7 +15649,7 @@ function loadGFBuild(p) {
 
   if (!incorrect.length) {
     // No incorrect examples yet — show "Generating…" and call Claude on-the-fly
-    el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">Generating judge exercises…</div>';
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">Generating judge exercises…</div>';
     var exList = correct.map(function(e){ return e.ko; }).join('\n');
     callClaude({
       feature: 'gf-judge-gen',
@@ -15685,14 +15684,14 @@ function loadGFBuild(p) {
 
   window._gfJudgeState = { items:items, answered:{}, total:items.length, score:0, pattern:p };
 
-  el.innerHTML = '<div style="font-size:13px;color:#475569;margin-bottom:14px;line-height:1.7">'
-    + '각 문장이 <span style="background:#eff6ff;color:#2255a4;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span> 패턴을 올바르게 사용하고 있나요?'
+  el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.65);margin-bottom:14px;line-height:1.7">'
+    + '각 문장이 <span style="background:rgba(20,203,176,.1);color:#14cbb0;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span> 패턴을 올바르게 사용하고 있나요?'
     + '</div>'
     + items.map(function(item, i) {
-        return '<div id="gfj-card-' + i + '" style="background:#f8faff;border:1.5px solid #dbeafe;border-radius:12px;padding:16px 18px;margin-bottom:12px">'
-          + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:8px">' + (i+1) + ' / ' + items.length + '</div>'
-          + '<p style="font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px;line-height:1.7">' + item.ko + '</p>'
-          + '<p style="font-size:12px;color:#64748b;margin:0 0 12px">' + (item.en||'') + '</p>'
+        return '<div id="gfj-card-' + i + '" style="background:rgba(255,255,255,.06);border:1.5px solid rgba(20,203,176,.25);border-radius:12px;padding:16px 18px;margin-bottom:12px">'
+          + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:8px">' + (i+1) + ' / ' + items.length + '</div>'
+          + '<p style="font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#fff;margin:0 0 6px;line-height:1.7">' + item.ko + '</p>'
+          + '<p style="font-size:12px;color:rgba(255,255,255,.55);margin:0 0 12px">' + (item.en||'') + '</p>'
           + '<div style="display:flex;gap:8px">'
           + '<button onclick="_gfJudgeAnswer(' + i + ',true)" id="gfj-yes-' + i + '" style="flex:1;padding:10px;border:1.5px solid #86efac;border-radius:10px;background:#f0fdf4;color:#166534;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정문</span></button>'
           + '<button onclick="_gfJudgeAnswer(' + i + ',false)" id="gfj-no-' + i + '" style="flex:1;padding:10px;border:1.5px solid #fca5a5;border-radius:10px;background:#fef2f2;color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>오문</span></button>'
@@ -15701,7 +15700,7 @@ function loadGFBuild(p) {
           + '</div>';
       }).join('')
     + '<div id="gfj-done" style="display:none;text-align:center;margin-top:16px">'
-    + '<button onclick="_gfJudgeFinish()" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">결과 보기 →</button>'
+    + '<button onclick="_gfJudgeFinish()" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">결과 보기 →</button>'
     + '</div>';
 }
 
@@ -15728,8 +15727,8 @@ function _gfJudgeAnswer(idx, judgement) {
   if (fb) {
     var msg = isRight ? '<span style="color:#16a34a;font-size:12px;font-weight:700">✓ 정답!</span>' : '<span style="color:#dc2626;font-size:12px;font-weight:700">✗ 오답</span>';
     if (!item.isCorrect && item.correction) {
-      msg += '<div style="font-size:12px;color:#475569;margin-top:4px">수정: <span style="color:#1d4ed8;font-weight:700;font-family:Noto Serif KR,serif">' + item.correction + '</span>'
-        + (item.error_type ? ' <span style="font-size:10px;background:#eff6ff;color:#2255a4;padding:1px 6px;border-radius:4px;margin-left:4px">' + item.error_type + '</span>' : '')
+      msg += '<div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:4px">수정: <span style="color:#0ea88f;font-weight:700;font-family:Noto Serif KR,serif">' + item.correction + '</span>'
+        + (item.error_type ? ' <span style="font-size:10px;background:rgba(20,203,176,.1);color:#14cbb0;padding:1px 6px;border-radius:4px;margin-left:4px">' + item.error_type + '</span>' : '')
         + '</div>';
     }
     fb.innerHTML = msg;
@@ -15751,11 +15750,11 @@ function _gfJudgeFinish() {
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:20px 0">'
     + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:8px;color:' + iconColor + ';filter:drop-shadow(0 0 12px ' + iconColor + 'aa)">' + icon + '</div>'
-    + '<div style="font-size:22px;font-weight:900;color:#0f172a">' + st.score + ' / ' + st.total + '</div>'
-    + '<div style="font-size:14px;color:#64748b;margin-top:4px">Grammar Detection · ' + pct + '%</div>'
+    + '<div style="font-size:22px;font-weight:900;color:#fff">' + st.score + ' / ' + st.total + '</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-top:4px">Grammar Detection · ' + pct + '%</div>'
     + '</div>'
     + '<div style="display:flex;gap:10px;justify-content:center;margin-top:20px">'
-    + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#2255a4,#1e4fa3);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>완료</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
+    + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>완료</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
     + '</div>';
   var patternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
   if (patternName) updateGrammarMastery(patternName, st.score > 0);
@@ -15926,7 +15925,7 @@ function _dctRenderListen() {
       // Skip helpers as fallback — they are response templates like
       // "저는 [topic]에 대해 이야기하고 싶어요" which produce mangled
       // dictation prompts. Go straight to Claude for natural sentences.
-      body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">Preparing listening sentences…</div>';
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">Preparing listening sentences…</div>';
       foot.innerHTML = '';
       callClaude({
         feature: 'dictation-gen',
@@ -15951,16 +15950,16 @@ function _dctRenderListen() {
           var gen = JSON.parse(txt);
           if (Array.isArray(gen) && gen.length) { _dailyDictationSentences = gen; _dctRender(); return; }
         } catch(e) {}
-        body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Could not load sentences. Try again later.</div>';
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Could not load sentences. Try again later.</div>';
         foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
       }).catch(function() {
-        body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">Could not load sentences. Try again later.</div>';
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Could not load sentences. Try again later.</div>';
         foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
       });
       return;
     }
     var artBtn = _dctGetArticleBtnHTML();
-    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">No listening sentences available today.<br><span style="font-size:12px">Content will appear once today\'s topic is generated.</span></div>'
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">No listening sentences available today.<br><span style="font-size:12px">Content will appear once today\'s topic is generated.</span></div>'
       + artBtn;
     foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
     return;
@@ -15968,10 +15967,10 @@ function _dctRenderListen() {
   // Speed control bar
   var speeds = [{v:0.7,label:'Slow'},{v:1.0,label:'Normal'},{v:1.2,label:'Fast'}];
   var speedHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
-    + '<span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;white-space:nowrap">Speed:</span>';
+    + '<span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px;white-space:nowrap">Speed:</span>';
   speeds.forEach(function(sp) {
     var active = Math.abs(_dctSpeed - sp.v) < 0.05;
-    speedHTML += '<button id="dct-speed-'+sp.v+'" onclick="_dctSetSpeed('+sp.v+')" style="padding:4px 12px;font-size:12px;font-weight:700;border-radius:20px;cursor:pointer;transition:all .15s;border:1.5px solid '+(active?'#7c3aed':'#e2e8f0')+';background:'+(active?'#7c3aed':'#fff')+';color:'+(active?'#fff':'#64748b')+'">'+sp.label+'</button>';
+    speedHTML += '<button id="dct-speed-'+sp.v+'" onclick="_dctSetSpeed('+sp.v+')" style="padding:4px 12px;font-size:12px;font-weight:700;border-radius:20px;cursor:pointer;transition:all .15s;border:1.5px solid '+(active?'#14cbb0':'#e2e8f0')+';background:'+(active?'#14cbb0':'#fff')+';color:'+(active?'#fff':'#64748b')+'">'+sp.label+'</button>';
   });
   speedHTML += '</div>';
 
@@ -15986,16 +15985,16 @@ function _dctRenderListen() {
     ? '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:20px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:12px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_NEWSPAPER+'</span><span>Article Dictation</span></div>'
     : '';
   var progress = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
-    + '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px">문장 '+(curIdx+1)+' / '+sents.length+'</div>'
-    + '<div style="font-size:11px;font-weight:700;color:#7c3aed;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>탭해서 듣기</span></div>'
+    + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px">문장 '+(curIdx+1)+' / '+sents.length+'</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#14cbb0;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>탭해서 듣기</span></div>'
     + '</div>';
   var html = modeLabel + speedHTML + progress
     + '<div class="dct-sent-card" style="padding:26px 22px;cursor:pointer" onclick="_dctSpeakSentence(\''+safeKo+'\')">'
-      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:12px">Sentence '+(curIdx+1)+'</div>'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:12px">Sentence '+(curIdx+1)+'</div>'
       + '<div class="dct-sent-ko" style="font-size:22px;line-height:1.55;margin-bottom:10px">'+escapeHTML(s.ko||'')+'</div>'
       + '<div class="dct-sent-en" style="font-size:14px;margin-bottom:18px">'+escapeHTML(s.en||'')+'</div>'
       + '<div style="display:flex;align-items:center;justify-content:center">'
-        + '<button class="dct-listen-btn" onclick="event.stopPropagation();_dctSpeakSentence(\''+safeKo+'\')" style="padding:14px 28px;border-radius:999px;background:#eff6ff;float:none;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px;color:#3b82f6">'+BM_ICON_VOLUME+'</span><span style="font-size:13px;font-weight:800">Play</span></button>'
+        + '<button class="dct-listen-btn" onclick="event.stopPropagation();_dctSpeakSentence(\''+safeKo+'\')" style="padding:14px 28px;border-radius:999px;background:rgba(20,203,176,.1);float:none;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px;color:#14cbb0">'+BM_ICON_VOLUME+'</span><span style="font-size:13px;font-weight:800">Play</span></button>'
       + '</div>'
     + '</div>';
   if (!_dctArticleMode && curIdx === sents.length - 1) {
@@ -16027,8 +16026,8 @@ function _dctSetSpeed(rate) {
     var btn = document.getElementById('dct-speed-' + sp);
     if (!btn) return;
     var active = Math.abs(_dctSpeed - sp) < 0.05;
-    btn.style.borderColor = active ? '#7c3aed' : '#e2e8f0';
-    btn.style.background  = active ? '#7c3aed' : '#fff';
+    btn.style.borderColor = active ? '#14cbb0' : '#e2e8f0';
+    btn.style.background  = active ? '#14cbb0' : '#fff';
     btn.style.color       = active ? '#fff'    : '#64748b';
   });
 }
@@ -16126,7 +16125,7 @@ function _dctRenderArrange() {
   // Dictation modal uses a LIGHT theme; the shared .bm-word-chip class is
   // dark-themed (white text on transparent white bg) so chips rendered
   // invisible on the white dictation background. Inline light-theme styles:
-  var poolChipBase = 'padding:10px 16px;border-radius:12px;border:1.5px solid #cbd5e1;background:#fff;color:#0f172a;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s';
+  var poolChipBase = 'padding:10px 16px;border-radius:12px;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s';
   var poolChipUsed = poolChipBase + ';opacity:.25;cursor:not-allowed';
   var selChip      = 'padding:10px 16px;border-radius:12px;border:none;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(14,168,143,.3)';
 
@@ -16138,13 +16137,13 @@ function _dctRenderArrange() {
   }).join('');
   var ansHTML = wo.selected.length
     ? wo.selected.map(function(w,si){return '<button onclick="dctWORemove('+si+')" style="'+selChip+'">'+escapeHTML(w)+' ×</button>';}).join('')
-    : '<span style="font-size:12px;color:#94a3b8">단어를 선택해서 문장을 만드세요</span>';
+    : '<span style="font-size:12px;color:rgba(255,255,255,.45)">단어를 선택해서 문장을 만드세요</span>';
   var allSel = wo.selected.length === wo.original.length;
-  body.innerHTML = '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">문장 '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
-    + '<div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#1e3a5f;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+BM_ICON_BULB+'</span><span>'+escapeHTML(s.en||'')+'</span></div>'
-    + '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px">내 답</div>'
-    + '<div id="dct-answer-zone" style="min-height:48px;border:2px dashed #bfdbfe;border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f8fbff;">'+ansHTML+'</div></div>'
-    + '<div><div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px">단어 목록</div>'
+  body.innerHTML = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">문장 '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
+    + '<div style="background:#f0f7ff;border:1px solid rgba(20,203,176,.3);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#1e3a5f;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+BM_ICON_BULB+'</span><span>'+escapeHTML(s.en||'')+'</span></div>'
+    + '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:8px">내 답</div>'
+    + '<div id="dct-answer-zone" style="min-height:48px;border:2px dashed rgba(20,203,176,.3);border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f8fbff;">'+ansHTML+'</div></div>'
+    + '<div><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:8px">단어 목록</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'+poolHTML+'</div></div>'
     + '<div id="dct-wo-msg" style="margin-top:12px;font-size:13px;font-weight:700"></div>';
   foot.innerHTML = '<button class="btn" onclick="dctWOClear()" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시</span></button>'
@@ -16195,7 +16194,7 @@ function _dctPool() {
 }
 
 function _dctEmptyState(body, foot) {
-  body.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">No dictation content available.</div>';
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.45)">No dictation content available.</div>';
   foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done</button>';
 }
 
@@ -16230,7 +16229,7 @@ var PHONEME_PAIRS = [
       { a: '거기 (there)',   b: '고기 (meat)' },
       { a: '서 (stand)',     b: '소 (cow)' }
     ] },
-  { a: 'ㅡ', b: 'ㅜ', colorA: '#a78bfa', colorB: '#34d399',
+  { a: 'ㅡ', b: 'ㅜ', colorA: 'rgba(20,203,176,.55)', colorB: '#34d399',
     words: [
       { a: '드 (particle)',  b: '두 (two)' },
       { a: '금 (gold)',      b: '굼 (cave)' },
@@ -16295,8 +16294,8 @@ function _dctPhRender() {
   var dotsHTML = '';
   for (var i = 0; i < st.rounds.length; i++) {
     var state = i < st.idx ? (st.picks[i] ? 'ok' : 'no') : (i === st.idx ? 'cur' : 'up');
-    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#7c3aed' : '#e2e8f0';
-    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(124,58,237,.2);' : '';
+    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#14cbb0' : '#e2e8f0';
+    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(20,203,176,.2);' : '';
     dotsHTML += '<div style="width:8px;height:8px;border-radius:50%;background:' + bg + ';' + ring + 'transition:all .2s"></div>';
   }
 
@@ -16304,29 +16303,29 @@ function _dctPhRender() {
     '<style>@keyframes kh-ph-chip-in{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}</style>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
       + '<div>'
-        + '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Round ' + (st.idx+1) + ' / ' + st.rounds.length + '</div>'
-        + '<div style="font-size:12px;color:#64748b;margin-top:2px">Which one did you hear?</div>'
+        + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em">Round ' + (st.idx+1) + ' / ' + st.rounds.length + '</div>'
+        + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">Which one did you hear?</div>'
       + '</div>'
       + '<div style="display:flex;gap:5px;align-items:center">' + dotsHTML + '</div>'
     + '</div>'
     // Phoneme contrast visual — two big chars with vs.
     + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:10px 0 18px">'
       + '<div style="font-family:\'Noto Serif KR\',serif;font-size:56px;font-weight:900;color:' + r.pair.colorA + ';line-height:1;animation:kh-ph-chip-in .25s ease-out">' + r.pair.a + '</div>'
-      + '<div style="font-size:13px;font-weight:700;color:#94a3b8;letter-spacing:.2em">VS</div>'
+      + '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.2em">VS</div>'
       + '<div style="font-family:\'Noto Serif KR\',serif;font-size:56px;font-weight:900;color:' + r.pair.colorB + ';line-height:1;animation:kh-ph-chip-in .35s ease-out">' + r.pair.b + '</div>'
     + '</div>'
     // Big Play button
     + '<div style="display:flex;justify-content:center;margin-bottom:22px">'
-      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 12px 28px -8px rgba(124,58,237,.55);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'scale(1)\'">'
+      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:999px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;border:none;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 12px 28px -8px rgba(20,203,176,.55);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'scale(1)\'">'
         + '<span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_VOLUME+'</span><span>Play</span>'
       + '</button>'
     + '</div>'
     // Two choice cards
     + '<div id="dct-ph-choices" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-      + '<button id="dct-ph-a" onclick="_dctPhPick(true)" style="padding:16px 14px;border-radius:14px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-family:\'Noto Serif KR\',serif;font-size:18px;font-weight:800;color:#0f172a;transition:all .18s;text-align:center">'
+      + '<button id="dct-ph-a" onclick="_dctPhPick(true)" style="padding:16px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);cursor:pointer;font-family:\'Noto Serif KR\',serif;font-size:18px;font-weight:800;color:#fff;transition:all .18s;text-align:center">'
         + r.word.a
       + '</button>'
-      + '<button id="dct-ph-b" onclick="_dctPhPick(false)" style="padding:16px 14px;border-radius:14px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-family:\'Noto Serif KR\',serif;font-size:18px;font-weight:800;color:#0f172a;transition:all .18s;text-align:center">'
+      + '<button id="dct-ph-b" onclick="_dctPhPick(false)" style="padding:16px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);cursor:pointer;font-family:\'Noto Serif KR\',serif;font-size:18px;font-weight:800;color:#fff;transition:all .18s;text-align:center">'
         + r.word.b
       + '</button>'
     + '</div>';
@@ -16383,8 +16382,8 @@ function _dctPhFinish() {
     '<div style="text-align:center;padding:24px 12px">'
       + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:10px;color:'+(pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171')+'aa)">' + (pct >= 80 ? BM_ICON_PARTY : pct >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
       + '<div style="font-family:\'DM Sans\',sans-serif;font-size:56px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:6px">' + pct + '</div>'
-      + '<div style="font-size:13px;color:#64748b;font-weight:700;margin-bottom:18px">Phoneme accuracy · ' + st.correct + ' / ' + st.rounds.length + '</div>'
-      + '<div style="font-size:13px;color:#475569;line-height:1.6;max-width:340px;margin:0 auto">'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:18px">Phoneme accuracy · ' + st.correct + ' / ' + st.rounds.length + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.6;max-width:340px;margin:0 auto">'
         + (pct >= 80 ? 'Great ear! You caught the subtle contrasts.'
          : pct >= 60 ? 'Solid — keep practicing the tricky pairs.'
          : 'These phoneme contrasts are hard. Try slowing down and playing each pair a few times.')
@@ -16455,38 +16454,38 @@ function _dctCsRender() {
   var dotsHTML = '';
   for (var i = 0; i < st.rounds.length; i++) {
     var state = i < st.idx ? (st.picks[i] >= 60 ? 'ok' : 'no') : (i === st.idx ? 'cur' : 'up');
-    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#7c3aed' : '#e2e8f0';
-    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(124,58,237,.2);' : '';
+    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#14cbb0' : '#e2e8f0';
+    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(20,203,176,.2);' : '';
     dotsHTML += '<div style="width:8px;height:8px;border-radius:50%;background:' + bg + ';' + ring + 'transition:all .2s"></div>';
   }
 
   body.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
       + '<div>'
-        + '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Sentence ' + (st.idx+1) + ' / ' + st.rounds.length + '</div>'
-        + '<div style="font-size:12px;color:#64748b;margin-top:2px">Type what you hear (casual / contracted form)</div>'
+        + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em">Sentence ' + (st.idx+1) + ' / ' + st.rounds.length + '</div>'
+        + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">Type what you hear (casual / contracted form)</div>'
       + '</div>'
       + '<div style="display:flex;gap:5px;align-items:center">' + dotsHTML + '</div>'
     + '</div>'
     // Big play button + waveform accent
     + '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin:10px 0 18px;padding:22px 16px;border-radius:18px;background:linear-gradient(145deg,#f8fafc,#eef2ff);border:1px solid #e0e7ff">'
       + '<div style="display:flex;align-items:center;gap:6px">'
-        + '<div style="width:3px;height:12px;background:#7c3aed;border-radius:2px;opacity:.4"></div>'
-        + '<div style="width:3px;height:20px;background:#7c3aed;border-radius:2px;opacity:.6"></div>'
-        + '<div style="width:3px;height:28px;background:#7c3aed;border-radius:2px;opacity:.85"></div>'
-        + '<div style="width:3px;height:18px;background:#7c3aed;border-radius:2px;opacity:.55"></div>'
-        + '<div style="width:3px;height:24px;background:#7c3aed;border-radius:2px;opacity:.75"></div>'
-        + '<div style="width:3px;height:14px;background:#7c3aed;border-radius:2px;opacity:.45"></div>'
-        + '<div style="width:3px;height:22px;background:#7c3aed;border-radius:2px;opacity:.7"></div>'
+        + '<div style="width:3px;height:12px;background:#14cbb0;border-radius:2px;opacity:.4"></div>'
+        + '<div style="width:3px;height:20px;background:#14cbb0;border-radius:2px;opacity:.6"></div>'
+        + '<div style="width:3px;height:28px;background:#14cbb0;border-radius:2px;opacity:.85"></div>'
+        + '<div style="width:3px;height:18px;background:#14cbb0;border-radius:2px;opacity:.55"></div>'
+        + '<div style="width:3px;height:24px;background:#14cbb0;border-radius:2px;opacity:.75"></div>'
+        + '<div style="width:3px;height:14px;background:#14cbb0;border-radius:2px;opacity:.45"></div>'
+        + '<div style="width:3px;height:22px;background:#14cbb0;border-radius:2px;opacity:.7"></div>'
       + '</div>'
-      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 10px 24px -8px rgba(124,58,237,.5);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">'
+      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 10px 24px -8px rgba(20,203,176,.5);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">'
         + '<span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_VOLUME+'</span><span>Play</span><span style="font-size:10px;opacity:.7;font-weight:700">· normal speed</span>'
       + '</button>'
     + '</div>'
     // Input
     + '<input type="text" id="dct-cs-input" placeholder="여기에 받아쓰기…" autocomplete="off"'
-      + ' style="width:100%;padding:14px 16px;border:1.5px solid #e2e8f0;border-radius:14px;font-family:\'Noto Sans KR\',sans-serif;font-size:16px;font-weight:600;color:#0f172a;box-sizing:border-box;outline:none;transition:border-color .15s"'
-      + ' onfocus="this.style.borderColor=\'#7c3aed\'" onblur="this.style.borderColor=\'#e2e8f0\'"'
+      + ' style="width:100%;padding:14px 16px;border:1.5px solid rgba(255,255,255,.15);border-radius:14px;font-family:\'Noto Sans KR\',sans-serif;font-size:16px;font-weight:600;color:#fff;box-sizing:border-box;outline:none;transition:border-color .15s"'
+      + ' onfocus="this.style.borderColor=\'#14cbb0\'" onblur="this.style.borderColor=\'#e2e8f0\'"'
       + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();_dctCsCheck()}">'
     + '<div id="dct-cs-result" style="margin-top:14px"></div>';
 
@@ -16549,11 +16548,11 @@ function _dctCsCheck() {
       + '</div>'
       + '<div style="display:grid;gap:8px">'
         + '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.06)">'
-          + '<div style="font-size:10px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M16 8c2 1 2 7 0 8"/></svg></span><span>Spoken (what you heard)</span></div>'
-          + '<div style="font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;color:#0f172a">' + r.spoken + '</div>'
+          + '<div style="font-size:10px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M16 8c2 1 2 7 0 8"/></svg></span><span>Spoken (what you heard)</span></div>'
+          + '<div style="font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;color:#fff">' + r.spoken + '</div>'
         + '</div>'
         + '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.06)">'
-          + '<div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BOOK+'</span><span>Textbook (full form)</span></div>'
+          + '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BOOK+'</span><span>Textbook (full form)</span></div>'
           + '<div style="font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;color:#334155">' + r.textbook + '</div>'
         + '</div>'
         + (r.hint ? '<div style="padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.12);font-size:11px;color:#92400e;font-weight:600;display:flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BULB+'</span><span>' + r.hint + '</span></div>' : '')
@@ -16584,8 +16583,8 @@ function _dctCsFinish() {
     '<div style="text-align:center;padding:24px 12px">'
       + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:10px;color:'+(avg >= 80 ? '#a78bfa' : avg >= 60 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(avg >= 80 ? '#a78bfa' : avg >= 60 ? '#22c55e' : '#f87171')+'aa)">' + (avg >= 80 ? BM_ICON_PARTY : avg >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
       + '<div style="font-family:\'DM Sans\',sans-serif;font-size:56px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:6px">' + avg + '</div>'
-      + '<div style="font-size:13px;color:#64748b;font-weight:700;margin-bottom:18px">Connected-speech accuracy · avg over ' + st.picks.length + ' sentences</div>'
-      + '<div style="font-size:13px;color:#475569;line-height:1.6;max-width:360px;margin:0 auto">'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:18px">Connected-speech accuracy · avg over ' + st.picks.length + ' sentences</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.6;max-width:360px;margin:0 auto">'
         + (avg >= 80 ? 'Impressive! Your ear is tuned to natural Korean speed.'
          : avg >= 60 ? 'Good progress. Contractions are half of natural Korean.'
          : 'Contractions take reps. Try the same sentences again slowly.')
@@ -16656,7 +16655,7 @@ function _dctRenderFillBlank() {
   var s = pool[_dctFbIdx];
   var sentHTML = st.words.map(function(w, i){
     if (i === st.blankIdx) {
-      var blankBg = '#faf5ff', blankColor = '#7c3aed', blankText = '___';
+      var blankBg = 'rgba(20,203,176,.08)', blankColor = '#14cbb0', blankText = '___';
       if (st.answered) {
         blankBg = '#dcfce7'; blankColor = '#15803d'; blankText = st.answer;
       }
@@ -16689,19 +16688,19 @@ function _dctRenderFillBlank() {
     : '';
   body.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px">'
-    +   '<div style="font-size:13px;color:#64748b">듣고 빈칸에 알맞은 단어를 고르세요. (' + (_dctFbIdx + 1) + '/' + pool.length + ')</div>'
+    +   '<div style="font-size:13px;color:rgba(255,255,255,.55)">듣고 빈칸에 알맞은 단어를 고르세요. (' + (_dctFbIdx + 1) + '/' + pool.length + ')</div>'
     +   hintBtn
     + '</div>'
     + '<div style="text-align:center;margin-bottom:14px">'
-    + '<button onclick="_dctFbSpeak()" style="width:66px;height:66px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:30px;height:30px;color:#3b82f6">'+BM_ICON_VOLUME+'</span></button>'
-    + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">클릭해서 듣기</div>'
+    + '<button onclick="_dctFbSpeak()" style="width:66px;height:66px;border-radius:50%;background:rgba(20,203,176,.1);border:2px solid rgba(20,203,176,.3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:30px;height:30px;color:#14cbb0">'+BM_ICON_VOLUME+'</span></button>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">클릭해서 듣기</div>'
     + '</div>'
     + hintEn
-    + '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:16px;font-family:\'Noto Serif KR\',serif;font-size:17px;text-align:center;line-height:2;word-break:keep-all">' + sentHTML + '</div>'
+    + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px;margin-bottom:16px;font-family:\'Noto Serif KR\',serif;font-size:17px;text-align:center;line-height:2;word-break:keep-all">' + sentHTML + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">' + choicesHTML + '</div>';
   foot.innerHTML = st.answered
     ? '<button class="btn btn-g" onclick="_dctFbNext()">다음 →</button>'
-    : '<div style="font-size:12px;color:#94a3b8;padding:6px 0">단어를 골라주세요</div>';
+    : '<div style="font-size:12px;color:rgba(255,255,255,.45);padding:6px 0">단어를 골라주세요</div>';
   if (!st.answered) setTimeout(_dctFbSpeak, 300);
 }
 
@@ -16768,10 +16767,10 @@ function _dctRenderListenPick() {
     var modeTag = _dctArticleMode ? '<div style="font-size:11px;color:#d97706;margin-bottom:8px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_NEWSPAPER+'</span><span>Article Dictation</span></div>' : '';
     body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
       + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:12px;color:'+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+'aa)">' + (pct >= 80 ? BM_ICON_TROPHY : pct >= 50 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
-      + '<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
-      + '<div style="font-size:13px;color:#64748b;margin-bottom:6px">빈칸 ' + _dctFbScore + '/' + pool.length + ' · 문장 ' + _dctLpScore + '/' + pool.length + '</div>'
+      + '<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:4px">' + pct + '%</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:6px">빈칸 ' + _dctFbScore + '/' + pool.length + ' · 문장 ' + _dctLpScore + '/' + pool.length + '</div>'
       + modeTag
-      + '<div style="font-size:12px;color:#94a3b8">받아쓰기 완료!</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.45)">받아쓰기 완료!</div>'
       + '</div>';
     foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done ✓ Next Activity</button>';
     if (!_dctArticleMode && typeof logQuizResult === 'function' && supaUser) {
@@ -16799,15 +16798,15 @@ function _dctRenderListenPick() {
     return '<button ' + disabled + ' onclick="_dctLpPick(' + ci + ')" style="width:100%;text-align:left;padding:14px 16px;margin-bottom:10px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:\'Noto Serif KR\',serif;line-height:1.5">' + escapeHTML(c.ko || '') + '</button>';
   }).join('');
   body.innerHTML =
-      '<div style="font-size:13px;color:#64748b;margin-bottom:16px">듣고 맞는 문장을 고르세요. (' + (_dctLpIdx + 1) + '/' + pool.length + ')</div>'
+      '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:16px">듣고 맞는 문장을 고르세요. (' + (_dctLpIdx + 1) + '/' + pool.length + ')</div>'
     + '<div style="text-align:center;margin-bottom:18px">'
-    + '<button onclick="_dctLpSpeak()" style="width:80px;height:80px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:36px;height:36px;color:#3b82f6">'+BM_ICON_VOLUME+'</span></button>'
-    + '<div style="font-size:11px;color:#94a3b8;margin-top:6px">클릭해서 듣기</div>'
+    + '<button onclick="_dctLpSpeak()" style="width:80px;height:80px;border-radius:50%;background:rgba(20,203,176,.1);border:2px solid rgba(20,203,176,.3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:36px;height:36px;color:#14cbb0">'+BM_ICON_VOLUME+'</span></button>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px">클릭해서 듣기</div>'
     + '</div>'
     + choicesHTML;
   foot.innerHTML = st.answered
     ? '<button class="btn btn-g" onclick="_dctLpNext()">다음 →</button>'
-    : '<div style="font-size:12px;color:#94a3b8;padding:6px 0">소리를 듣고 맞는 문장을 고르세요</div>';
+    : '<div style="font-size:12px;color:rgba(255,255,255,.45);padding:6px 0">소리를 듣고 맞는 문장을 고르세요</div>';
   if (!st.answered) setTimeout(_dctLpSpeak, 300);
 }
 
@@ -18289,7 +18288,7 @@ function openUniverseView() {
     <div id="ke-expressions-list" style="display:flex;flex-direction:column;gap:10px">
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading expressions...</div>
     </div>
-    <button onclick="markStageDone('expressions');returnToActivities(closeKeyExpressionsModal)" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:18px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer"><span>완료</span><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
+    <button onclick="markStageDone('expressions');returnToActivities(closeKeyExpressionsModal)" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:18px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:14px;font-weight:800;cursor:pointer"><span>완료</span><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
   </div>
 </div>
 
@@ -18335,13 +18334,13 @@ function openUniverseView() {
   <div class="dct-panel">
     <div class="dct-header">
       <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
-        <button onclick="dctGoBack()" aria-label="Back" style="background:#f1f5f9;border:none;color:#0f172a;border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">←</button>
+        <button onclick="dctGoBack()" aria-label="Back" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">←</button>
         <div style="min-width:0">
           <div style="font-size:13px;font-weight:800;letter-spacing:.5px;display:inline-flex;align-items:center;gap:6px"><i data-lucide="headphones" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Dictation</span></div>
           <div style="font-size:11px;opacity:.65;margin-top:2px" id="dct-step-sub">Step 1 of 4 — Listen</div>
         </div>
       </div>
-      <button onclick="closeDictationModal()" aria-label="Close" style="background:#f1f5f9;border:none;color:#0f172a;border-radius:10px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
+      <button onclick="closeDictationModal()" aria-label="Close" style="background:rgba(255,255,255,.06);border:none;color:#fff;border-radius:10px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
     </div>
     <div class="dct-step-pips" id="dct-pips">
       <div class="dct-pip active" id="dct-pip-1"></div>
