@@ -14794,19 +14794,54 @@ function selectGFPattern(idx) {
 //      misc     — anything else (often nouns / adverbs)
 //    Heuristic, not strict NLP — intentionally simple so it runs
 //    instantly and gives learners a useful colour-coding hint.
+// The previous version checked the SUBJECT particle regex first, which
+// caused two well-known mislabelings:
+//   "많이"   → ends in '이' → flagged subject (it's actually an adverb)
+//   "맑지만" → ends in '만' → flagged modifier (it's a predicate joined
+//             to the next clause via the connective -지만)
+// The fix is (a) consult a small adverb dictionary first so 많이 / 같이 /
+// 천천히 land on 수식, and (b) check connective + final verb endings
+// before the particle suffixes so 맑지만 / 가서 / 먹고 land on 서술어.
+// Particles that mark subject are now the LAST resort.
 function gfParseKorean(ko) {
   if (!ko) return [];
   var tokens = String(ko).trim().replace(/[.,!?。]/g, ' ').split(/\s+/).filter(Boolean);
-  var SUBJECT = /(이|가|은|는)$/;
-  var OBJECT  = /(을|를)$/;
-  var MODIFIER = /(의|와|과|에서|에게|에|로|으로|께|부터|까지|보다|마다|처럼|만)$/;
-  var VERB_END = /(요|다|까|지|네|어|아|여|세요|ㅂ니다|습니다|냐|군|구나|네요|을게요|을까요|어요|아요|여요|었어요|았어요)$/;
+
+  // Common Korean adverbs / time nouns that act adverbially. The plain
+  // suffix regex would otherwise mis-tag many of these as subject (이/히
+  // endings) or modifier (만 endings).
+  var ADVERBS = {
+    '많이':1,'잘':1,'못':1,'안':1,'아주':1,'정말':1,'진짜':1,'너무':1,'매우':1,
+    '조금':1,'좀':1,'거의':1,'자주':1,'가끔':1,'항상':1,'언제나':1,'늘':1,'더':1,
+    '빨리':1,'천천히':1,'늦게':1,'일찍':1,'먼저':1,'다시':1,'또':1,'바로':1,
+    '같이':1,'함께':1,'혼자':1,'다':1,'모두':1,'전부':1,
+    '벌써':1,'아직':1,'이미':1,'곧':1,'금방':1,'잠깐':1,'잠시':1,
+    '오늘':1,'내일':1,'어제':1,'지금':1,'아까':1,'나중에':1,'요즘':1,'매일':1,'매주':1,'매월':1,
+    '가까이':1,'멀리':1,'높이':1,'쉽게':1,'어렵게':1,'좋게':1,'예쁘게':1,'간단히':1,'분명히':1,
+    '특히':1,'그냥':1,'역시':1,'드디어':1,'결국':1,'아마':1,'혹시':1
+  };
+
+  // Connective verb/adjective endings — these mark the word as the
+  // predicate (서술어) of a clause that joins to the next clause.
+  var CONNECTIVE_END = /(지마는|지만|는데|으니까|니까|으면서|면서|아서|어서|여서|아도|어도|여도|아야|어야|여야|거든|거나|든지|다가|고서|기에|길래|려고|으려고|려면|으면|면|고)$/;
+
+  // Sentence-final verb/adjective endings.
+  var VERB_END = /(세요|ㅂ니다|습니다|네요|을게요|을까요|어요|아요|여요|었어요|았어요|였어요|었다|았다|였다|는다|ㄴ다|구나|군요|네|냐|까|요|다)$/;
+
+  // Particles marking grammatical role — checked LAST so adverbs ending
+  // in 이 (많이) and connective forms (맑지만) don't get swept up first.
+  var OBJECT   = /(을|를)$/;
+  var MODIFIER = /(의|와|과|에서|에게|에|으로|로|께|부터|까지|보다|마다|처럼|만)$/;
+  var SUBJECT  = /(이|가|은|는|께서)$/;
+
   return tokens.map(function (t) {
     var role = 'misc';
-    if (SUBJECT.test(t))        role = 'subject';
-    else if (OBJECT.test(t))    role = 'object';
-    else if (MODIFIER.test(t))  role = 'modifier';
-    else if (VERB_END.test(t))  role = 'verb';
+    if (ADVERBS[t])                                   role = 'modifier';
+    else if (t.length >= 2 && CONNECTIVE_END.test(t)) role = 'verb';
+    else if (t.length >= 2 && VERB_END.test(t))       role = 'verb';
+    else if (t.length >= 2 && OBJECT.test(t))         role = 'object';
+    else if (t.length >= 2 && MODIFIER.test(t))       role = 'modifier';
+    else if (t.length >= 2 && SUBJECT.test(t))        role = 'subject';
     return { token: t, role: role };
   });
 }
