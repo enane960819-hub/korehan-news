@@ -9997,15 +9997,15 @@ function _showSubmitReview(limit) {
 
       var header = '<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid rgba(255,255,255,.08)">'
         + '<div>'
-        +   '<div style="font-size:16px;font-weight:900;color:#fff">📩 Submit today\'s work</div>'
+        +   '<div style="font-size:16px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_NEWSPAPER+'</span><span>Submit today\'s work</span></div>'
         +   '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">' + ready + ' / ' + drafts.length + ' ready · once per day · feedback within 24h</div>'
         + '</div>'
-        + '<button data-act="cancel" aria-label="Close" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.7);width:32px;height:32px;border-radius:50%;cursor:pointer;font-family:inherit">✕</button>'
+        + '<button data-act="cancel" aria-label="Close" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.7);width:32px;height:32px;border-radius:50%;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span></button>'
         + '</div>';
 
       var body = drafts.length
         ? '<div style="overflow-y:auto;flex:1;padding:14px 18px">' + rowsHtml + '</div>'
-        : '<div style="padding:40px 20px;text-align:center;color:rgba(255,255,255,.55)"><div style="font-size:32px;margin-bottom:8px">📭</div><div style="font-size:14px;font-weight:700">No drafts saved yet.</div><div style="font-size:12px;margin-top:4px">Complete a writing activity first.</div></div>';
+        : '<div style="padding:40px 20px;text-align:center;color:rgba(255,255,255,.55)"><div style="display:inline-flex;width:38px;height:38px;margin-bottom:8px;color:#94a3b8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 13a8 8 0 0 0-16 0"/><polyline points="22 13 17 13 15 16 9 16 7 13 2 13"/><path d="M2 13v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6"/><path d="M5.4 9L2 13"/><path d="M18.6 9L22 13"/></svg></div><div style="font-size:14px;font-weight:700">No drafts saved yet.</div><div style="font-size:12px;margin-top:4px">Complete a writing activity first.</div></div>';
 
       var blocked = tooShort.length > 0 || drafts.length === 0;
       var footer = '<div style="display:flex;gap:10px;padding:14px 18px 18px;border-top:1px solid rgba(255,255,255,.08)">'
@@ -10190,7 +10190,7 @@ async function submitAllWritingsToday() {
     localStorage.setItem(submitKey, 'true');
     localStorage.removeItem(_writingDraftKey());
     refreshSubmitBanner();
-    showToast('✅ Daily package submitted! (' + packageItems.length + ' items) Feedback within 24 hours.');
+    showToast('Daily package submitted! (' + packageItems.length + ' items) Feedback within 24 hours.');
     if (typeof awardXP === 'function') awardXP('writing_submit');
   } catch(e) {
     showToast('Submit error: ' + (e.message||e));
@@ -10418,16 +10418,16 @@ async function submitWriting() {
 
     var doneEl = document.getElementById('hero-topic-done');
     if (doneEl) doneEl.style.display = 'flex';
-    showToast('✅ Submitted! Feedback will be ready within 24 hours.');
+    showToast('Submitted! Feedback will be ready within 24 hours.');
     returnToActivities(closeWritingModal);
 
   } catch(e) {
     if (e && e.code === '23505') {
-      showToast('✅ You already submitted today!', true);
+      showToast('You already submitted today!', true);
       closeWritingModal();
     } else {
-      showToast('❌ Submit error:' + (e.message || e), true);
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '📩 Submit for Feedback'; }
+      showToast('Submit error: ' + (e.message || e), true);
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit for Feedback'; }
     }
   }
 }
@@ -10600,8 +10600,8 @@ function openFeedbackInbox() {
   overlay.innerHTML =
     '<div style="background:#0d1b2e;border:1px solid rgba(255,255,255,.1);border-radius:16px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.4);color:#fff">'
     + '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#0d1b2e;z-index:1;border-radius:16px 16px 0 0">'
-    + '<div style="font-size:16px;font-weight:800">📝 Writing Feedback</div>'
-    + '<button onclick="document.getElementById(\'feedback-inbox-overlay\').remove()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px">✕</button>'
+    + '<div style="font-size:16px;font-weight:800;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_PENCIL+'</span><span>Writing Feedback</span></div>'
+    + '<button onclick="document.getElementById(\'feedback-inbox-overlay\').remove()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span></button>'
     + '</div>'
     + '<div id="feedback-inbox-content" style="padding:16px 20px;">'
     + '<div style="text-align:center;color:rgba(255,255,255,.4);padding:24px">Loading...</div>'
@@ -10690,13 +10690,13 @@ function renderDetailedFeedback(fb, writingText) {
         + '</div>'
         + (metList.length
             ? '<div style="margin-bottom:' + (missingList.length ? '8px' : '0') + '">'
-                + '<div style="font-size:10px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">✓ Met</div>'
+                + '<div style="font-size:10px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:inline-flex;align-items:center;gap:4px"><span style="display:inline-flex;width:10px;height:10px">'+BM_ICON_CHECK+'</span><span>Met</span></div>'
                 + metList.map(function(m){ return '<div style="font-size:12px;color:rgba(255,255,255,.72);padding:2px 0">• ' + m + '</div>'; }).join('')
               + '</div>'
             : '')
         + (missingList.length
             ? '<div>'
-                + '<div style="font-size:10px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">⚠ Missing</div>'
+                + '<div style="font-size:10px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:inline-flex;align-items:center;gap:4px"><span style="display:inline-flex;width:10px;height:10px">'+BM_ICON_WARNING+'</span><span>Missing</span></div>'
                 + missingList.map(function(m){ return '<div style="font-size:12px;color:rgba(255,255,255,.72);padding:2px 0">• ' + m + '</div>'; }).join('')
               + '</div>'
             : '')
@@ -10979,10 +10979,10 @@ function renderFlashcardFilters() {
   if (!el) return;
   el.innerHTML =
     '<button class="tpill on" onclick="loadFlashcards(\'all\',this)">All</button>'
-    + '<button class="tpill" onclick="loadFlashcards(\'review\',this)">🔁 Review Due</button>'
-    + '<button class="tpill" onclick="loadFlashcards(\'news\',this)">📚 Vocab Bank</button>'
-    + '<button class="tpill" onclick="loadFlashcards(\'conv\',this)">💬 Conv</button>'
-    + '<button class="tpill" onclick="loadFlashcards(\'story\',this)">📖 Story</button>';
+    + '<button class="tpill" onclick="loadFlashcards(\'review\',this)" style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+BM_ICON_REFRESH+'</span><span>Review Due</span></button>'
+    + '<button class="tpill" onclick="loadFlashcards(\'news\',this)" style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+BM_ICON_LIBRARY+'</span><span>Vocab Bank</span></button>'
+    + '<button class="tpill" onclick="loadFlashcards(\'conv\',this)" style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span><span>Conv</span></button>'
+    + '<button class="tpill" onclick="loadFlashcards(\'story\',this)" style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+BM_ICON_BOOK+'</span><span>Story</span></button>';
 }
 
 function loadFlashcards(cat, btn) {
@@ -11022,7 +11022,7 @@ function loadFlashcards(cat, btn) {
 
   var cards = pool.slice().sort(function(){ return Math.random() - .5; }).slice(0, 6);
   fcGridEl.innerHTML = cards.map(function(w) {
-    var srcBadge = w.src === 'conv' ? '💬' : w.src === 'story' ? '📖' : '📰';
+    var srcBadge = w.src === 'conv' ? '<span style="display:inline-flex;width:11px;height:11px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span>' : w.src === 'story' ? '<span style="display:inline-flex;width:11px;height:11px">'+BM_ICON_BOOK+'</span>' : '<span style="display:inline-flex;width:11px;height:11px">'+BM_ICON_NEWSPAPER+'</span>';
     return '<div class="mcard" onclick="this.classList.toggle(\'flipped\')">'
       + '<div class="mcko">' + w.ko + '<span style="font-size:10px;margin-left:6px;opacity:.5">' + srcBadge + '</span></div>'
       + '<div class="mcen">' + (w.rom ? '<em style="font-size:11px;color:#7ab8f5;display:block">' + w.rom + '</em>' : '') + (w.en||'')
@@ -11069,7 +11069,7 @@ async function _loadSRSReviewCards() {
 
     if (!_srsReviewQueue.length) {
       fcGridEl.innerHTML = '<div style="text-align:center;padding:24px">'
-        + '<div style="font-size:28px;margin-bottom:8px">✅</div>'
+        + '<div style="display:inline-flex;width:36px;height:36px;margin-bottom:8px;color:#22c55e">'+BM_ICON_CHECK+'</div>'
         + '<div style="font-size:13px;font-weight:700;color:#4ade80">All caught up!</div>'
         + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">No words due for review today</div>'
         + '</div>';
@@ -11088,7 +11088,7 @@ function _renderSRSCard() {
   var w = _srsReviewQueue[_srsReviewIdx];
   if (!w) {
     fcGridEl.innerHTML = '<div style="text-align:center;padding:24px">'
-      + '<div style="font-size:28px;margin-bottom:8px">🎉</div>'
+      + '<div style="display:inline-flex;width:36px;height:36px;margin-bottom:8px;color:#a78bfa">'+BM_ICON_PARTY+'</div>'
       + '<div style="font-size:13px;font-weight:700;color:#4ade80">Review complete!</div>'
       + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">' + _srsReviewIdx + ' words reviewed</div>'
       + '</div>';
@@ -11169,7 +11169,7 @@ function setLQMode(mode, btn) {
 async function startLQ() {
   if (!requirePlan('listening_quiz')) return;
   var box = document.getElementById('lq-mini');
-  if (box) box.innerHTML = '<div class="ai-loading"><div class="spin">✨</div><div style="margin-top:8px;font-size:12px">Loading quiz…</div></div>';
+  if (box) box.innerHTML = '<div class="ai-loading"><div class="spin" style="display:inline-flex;width:28px;height:28px;color:#a78bfa">'+BM_ICON_SPARKLE+'</div><div style="margin-top:8px;font-size:12px">Loading quiz…</div></div>';
 
   _lqIdx = 0; _lqScore = 0; _lqQ = [];
 
@@ -11261,7 +11261,7 @@ function renderLQQ() {
     '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray);margin-bottom:8px">'
     + '<span>' + (_lqIdx+1) + ' / ' + _lqQ.length + '</span><span>Score: ' + _lqScore + '</span></div>'
     + '<div style="text-align:center;margin-bottom:10px">'
-    + '<button style="width:60px;height:60px;border-radius:50%;background:#f0f6ff;border:none;font-size:28px;cursor:pointer;" id="lq-spk" onclick="lqSpk()">🔊</button>'
+    + '<button style="width:60px;height:60px;border-radius:50%;background:#f0f6ff;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#3b82f6" id="lq-spk" onclick="lqSpk()"><span style="display:inline-flex;width:28px;height:28px">'+BM_ICON_VOLUME+'</span></button>'
     + '<div style="font-size:11px;color:var(--gray);margin-top:4px">tap to listen</div></div>'
     + '<div style="display:flex;flex-direction:column;gap:6px">'
     + q.choices.map(function(c){ return '<button style="padding:9px 12px;border:2px solid var(--border);border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit" class="lq-ch" data-ans="' + c.replace(/"/g,'&quot;') + '" onclick="lqAns(this)">' + c + '</button>'; }).join('')
@@ -11302,8 +11302,8 @@ function lqAns(btn) {
   }
   document.getElementById('lq-fb').innerHTML =
     '<div style="margin-top:8px;padding:9px 11px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;font-size:11px;color:#445566;line-height:1.5">'
-    + '<strong style="color:#d97706">' + (ok?'✅ Correct!':'❌ Not quite') + '</strong><br>' + q.explanation + '</div>'
-    + '<button style="width:100%;margin-top:8px;padding:9px;background:#2255a4;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer" onclick="lqNext()">' + (_lqIdx<_lqQ.length-1?'Next →':'See Results 🏁') + '</button>';
+    + '<strong style="color:#d97706;display:inline-flex;align-items:center;gap:5px">' + (ok?'<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span>':'<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Not quite</span>') + '</strong><br>' + q.explanation + '</div>'
+    + '<button style="width:100%;margin-top:8px;padding:9px;background:#2255a4;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer" onclick="lqNext()">' + (_lqIdx<_lqQ.length-1?'Next →':'See Results') + '</button>';
 }
 
 function lqNext() {
@@ -11312,7 +11312,7 @@ function lqNext() {
     var pct = Math.round(_lqScore/_lqQ.length*100);
     var box = document.getElementById('lq-mini');
     box.innerHTML = '<div style="text-align:center;padding:16px 0">'
-      + '<div style="font-size:36px;margin-bottom:6px">' + (pct>=80?'🏆':pct>=60?'👍':'💪') + '</div>'
+      + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:6px;color:'+(pct>=80?'#fde68a':pct>=60?'#22c55e':'#f87171')+';filter:drop-shadow(0 0 12px '+(pct>=80?'#fde68a':pct>=60?'#22c55e':'#f87171')+'aa)">' + (pct>=80?BM_ICON_TROPHY:pct>=60?BM_ICON_THUMBS_UP:BM_ICON_FLAME) + '</div>'
       + '<div style="font-size:18px;font-weight:900;color:var(--dark)">' + pct + '%</div>'
       + '<div style="font-size:12px;color:var(--gray);margin-bottom:12px">' + _lqScore + ' / ' + _lqQ.length + ' correct</div>'
       + '<button class="lqbtn" onclick="startLQ()">🔄 New Quiz</button>'
