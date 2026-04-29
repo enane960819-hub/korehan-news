@@ -29,6 +29,8 @@
     stars: null,           // THREE.Group of word sprites
     satellites: null,      // THREE.Group of related-word satellite sprites (per selection)
     categories: null,      // THREE.Group of category label pills + weakness hints
+    constellation: null,   // THREE.Group of category-highlight lines (per active category)
+    activeCategory: null,  // currently highlighted category tag, or null
     nebula: null,          // background points
     corpus: null,          // THREE.Points of vocabulary_bank entries not saved by user
     corpusMeta: null,      // parallel array of { ko, rom, en, cat, x, y, z } per corpus point
@@ -157,7 +159,7 @@
       '  <button class="khu-zoom-btn" aria-label="Zoom out" onclick="KHUniverse._zoom(1.25)">−</button>',
       '  <button class="khu-zoom-btn khu-zoom-reset" aria-label="Reset view" onclick="KHUniverse._resetView()">⤾</button>',
       '</div>',
-      '<div class="khu-hint" id="khu-hint">Drag to orbit · Pan with two fingers / Shift-drag · Pinch / scroll to zoom · Zoom in to reveal more words</div>',
+      '<div class="khu-hint" id="khu-hint">Drag to orbit · Tap a category to light up its constellation · Pinch / scroll to zoom</div>',
       '<div class="khu-card" id="khu-card" aria-hidden="true">',
       '  <button class="khu-card-close" aria-label="Close" onclick="KHUniverse._clearSelection()">✕</button>',
       '  <div class="khu-card-badge" id="khu-card-badge">—</div>',
@@ -584,6 +586,13 @@
     starsGroup.add(catGroup);
     state.categories = catGroup;
 
+    // Constellation group — lines connecting same-category stars when a
+    // category label is tapped. Parented to starsGroup so the lines rotate
+    // with the rest of the galaxy.
+    var conGroup = new three.Group();
+    starsGroup.add(conGroup);
+    state.constellation = conGroup;
+
     // Corpus on-demand labels — filled lazily as the camera zooms in
     // so we never build 2000+ text sprites at once.
     var corpusLabelsGroup = new three.Group();
@@ -835,13 +844,190 @@
     });
   }
 
+  // ── Category highlight: shine same-cat words and connect them ─────
+  // Tapping a category pill (EVERYDAY · 8 etc.) toggles a constellation
+  // mode for that tag: in-cat stars get brighter + bigger, out-of-cat
+  // stars dim, and we draw thin lines between same-cat stars so the
+  // group reads as a constellation. Tap the same pill again or tap
+  // empty space to clear.
+  function _onCategoryTap(sprite) {
+    if (!sprite || !sprite.userData) return;
+    var cat = sprite.userData.category;
+    if (!cat) return;
+    if (state.activeCategory === cat) {
+      _clearCategoryHighlight();
+      return;
+    }
+    _highlightCategory(cat);
+  }
+
+  function _clearConstellationLines() {
+    if (!state.constellation) return;
+    while (state.constellation.children.length) {
+      var c = state.constellation.children.pop();
+      if (c.material) c.material.dispose();
+      if (c.geometry) c.geometry.dispose();
+    }
+  }
+
+  // Restore opacity / scale that _highlightCategory captured.
+  function _clearCategoryHighlight() {
+    state.activeCategory = null;
+    if (state.stars) {
+      state.stars.children.forEach(function(c) {
+        if (!c.userData) return;
+        if (c.userData._origOpacity !== undefined && c.material) {
+          c.material.opacity = c.userData._origOpacity;
+          delete c.userData._origOpacity;
+        }
+        if (c.userData._origScale !== undefined) {
+          var s = c.userData._origScale;
+          c.scale.set(s, s, 1);
+          delete c.userData._origScale;
+        }
+      });
+    }
+    if (state.categories) {
+      state.categories.children.forEach(function(c) {
+        if (!c.userData) return;
+        if (c.userData._origOpacity !== undefined && c.material) {
+          c.material.opacity = c.userData._origOpacity;
+          delete c.userData._origOpacity;
+        }
+        if (c.userData._origScale !== undefined) {
+          var s = c.userData._origScale;
+          c.scale.set(s * (c.userData._aspect || 1), s, 1);
+          delete c.userData._origScale;
+        }
+      });
+    }
+    if (state.corpus && state.corpus.material && state.corpus.userData && state.corpus.userData._origOpacity !== undefined) {
+      state.corpus.material.opacity = state.corpus.userData._origOpacity;
+      delete state.corpus.userData._origOpacity;
+    }
+    _clearConstellationLines();
+  }
+
+  function _highlightCategory(cat) {
+    if (!state.stars || !THREE) return;
+    if (state.activeCategory) _clearCategoryHighlight();
+    state.activeCategory = cat;
+
+    // First pass: collect category star sprites
+    var catStars = [];
+    var catStarIdx = {};
+    state.stars.children.forEach(function(c) {
+      if (!c.userData) return;
+      if (c.userData.isStar && c.userData.category === cat) {
+        catStars.push(c);
+        if (typeof c.userData.idx === 'number') catStarIdx[c.userData.idx] = true;
+      }
+    });
+
+    // Second pass: apply effects to stars, auras, labels
+    var DIM_OPACITY = 0.18;
+    state.stars.children.forEach(function(c) {
+      if (!c.userData || !c.material) return;
+      if (c.userData.isStar && c.userData.category === cat) {
+        c.userData._origOpacity = c.material.opacity;
+        c.userData._origScale = c.scale.x;
+        c.material.opacity = 1;
+        var s = c.scale.x * 1.45;
+        c.scale.set(s, s, 1);
+      } else if (c.userData.isStar) {
+        c.userData._origOpacity = c.material.opacity;
+        c.material.opacity = DIM_OPACITY;
+      } else if (c.userData.isAura) {
+        c.userData._origOpacity = c.material.opacity;
+        var inCat = catStarIdx[c.userData.forStarIdx];
+        c.material.opacity = inCat ? Math.min(1, c.userData._origOpacity * 1.6) : 0.06;
+      } else if (c.userData.isLabel) {
+        c.userData._origOpacity = c.material.opacity;
+        var labelInCat = catStarIdx[c.userData.forStarIdx];
+        c.material.opacity = labelInCat ? 1 : 0.18;
+      }
+    });
+
+    // Dim the unsaved-corpus point cloud so the chosen cluster pops
+    if (state.corpus && state.corpus.material) {
+      state.corpus.userData = state.corpus.userData || {};
+      state.corpus.userData._origOpacity = state.corpus.material.opacity;
+      state.corpus.material.opacity = 0.12;
+    }
+
+    // Highlight active category pill, dim the rest
+    if (state.categories) {
+      state.categories.children.forEach(function(c) {
+        if (!c.material) return;
+        c.userData._origOpacity = c.material.opacity;
+        if (c.userData.category === cat) {
+          c.material.opacity = 1;
+          c.userData._origScale = c.scale.y;
+          c.userData._aspect = c.scale.x / c.scale.y;
+          var ns = c.scale.y * 1.12;
+          c.scale.set(ns * c.userData._aspect, ns, 1);
+        } else {
+          c.material.opacity = 0.28;
+        }
+      });
+    }
+
+    // Draw the constellation lines
+    _buildConstellation(catStars, catColor(cat));
+
+    // Move orbit target onto the cluster center so subsequent pinches zoom
+    // into the highlighted group, not the galaxy origin.
+    var center = state.clusterCenters && state.clusterCenters[cat];
+    if (center) animateTarget(center.x, center.y, center.z);
+  }
+
+  // For each in-cat star, link it to its 2 nearest in-cat neighbors with a
+  // thin tinted line. De-dup with i<j so each pair is drawn once.
+  function _buildConstellation(stars, tint) {
+    if (!THREE || !state.constellation) return;
+    _clearConstellationLines();
+    if (!stars || stars.length < 2) return;
+    var hex = (Math.round(tint.r * 255) << 16) | (Math.round(tint.g * 255) << 8) | Math.round(tint.b * 255);
+    var maxLinks = stars.length <= 4 ? stars.length - 1 : 2;
+    for (var i = 0; i < stars.length; i++) {
+      var dists = [];
+      for (var j = 0; j < stars.length; j++) {
+        if (i === j) continue;
+        var dx = stars[i].position.x - stars[j].position.x;
+        var dy = stars[i].position.y - stars[j].position.y;
+        var dz = stars[i].position.z - stars[j].position.z;
+        dists.push({ j: j, d: dx * dx + dy * dy + dz * dz });
+      }
+      dists.sort(function(a, b) { return a.d - b.d; });
+      var nLinks = Math.min(maxLinks, dists.length);
+      for (var k = 0; k < nLinks; k++) {
+        var jIdx = dists[k].j;
+        if (jIdx <= i) continue; // de-dup pairs
+        var lineGeo = new THREE.BufferGeometry();
+        lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+          stars[i].position.x, stars[i].position.y, stars[i].position.z,
+          stars[jIdx].position.x, stars[jIdx].position.y, stars[jIdx].position.z
+        ]), 3));
+        var lineMat = new THREE.LineBasicMaterial({
+          color: hex, transparent: true, opacity: 0.5, depthWrite: false
+        });
+        var line = new THREE.Line(lineGeo, lineMat);
+        line.userData = { isConstellation: true };
+        state.constellation.add(line);
+      }
+    }
+  }
+
   function rebuildWordStars(three, group) {
+    // A rebuild blows away the stars whose userData drives the highlight,
+    // so drop any active category highlight first (lines, opacity overrides).
+    if (state.activeCategory) _clearCategoryHighlight();
     // Clear word-star group — dispose label textures too. Preserve sub-groups
-    // (satellites, categories) by reparenting them back after the wipe.
+    // (satellites, categories, constellation) by reparenting them back after the wipe.
     var preserved = [];
     var kids = group.children.slice();
     kids.forEach(function(c) {
-      if (c === state.satellites || c === state.categories) {
+      if (c === state.satellites || c === state.categories || c === state.constellation) {
         preserved.push(c);
         group.remove(c);
         return;
@@ -1265,6 +1451,9 @@
     if (state.satellites && state.satellites.children.length) {
       pool = pool.concat(state.satellites.children);
     }
+    if (state.categories && state.categories.children.length) {
+      pool = pool.concat(state.categories.children);
+    }
     if (state.corpusLabels && state.corpusLabels.children.length) {
       pool = pool.concat(state.corpusLabels.children);
     }
@@ -1276,6 +1465,10 @@
         if (!obj || !obj.userData) continue;
         if (obj.userData.isSatellite && obj.userData.isStar) {
           _onSatelliteTap(obj);
+          return;
+        }
+        if (obj.userData.isCategoryLabel) {
+          _onCategoryTap(obj);
           return;
         }
         if (obj.userData.isCorpusLabel) {
@@ -1295,7 +1488,8 @@
     var threshold = 48; // px
     var v = new THREE.Vector3();
     function checkChild(child) {
-      if (!child.userData || !child.userData.isStar) return;
+      if (!child.userData) return;
+      if (!child.userData.isStar && !child.userData.isCategoryLabel) return;
       child.getWorldPosition(v);
       v.project(state.camera);
       if (v.z > 1) return; // behind camera
@@ -1310,14 +1504,17 @@
       }
     }
     if (state.satellites) state.satellites.children.forEach(checkChild);
+    if (state.categories) state.categories.children.forEach(checkChild);
     if (state.corpusLabels) state.corpusLabels.children.forEach(checkChild);
     state.stars.children.forEach(checkChild);
     if (nearest) {
       if (nearest.userData.isSatellite) _onSatelliteTap(nearest);
+      else if (nearest.userData.isCategoryLabel) _onCategoryTap(nearest);
       else if (nearest.userData.isCorpusLabel) _onCorpusLabelTap(nearest);
       else selectStar(nearest);
       return;
     }
+    if (state.activeCategory) _clearCategoryHighlight();
     clearSelection();
   }
 
@@ -1717,6 +1914,13 @@
         var scale = base * (1 + 0.06 * Math.sin(now * 1.4 + phase));
         child.scale.set(scale, scale, 1);
       }
+      // Twinkle the constellation lines so the connection feels alive
+      if (state.constellation && state.constellation.children.length) {
+        var twinkle = 0.42 + 0.18 * Math.sin(now * 1.3);
+        state.constellation.children.forEach(function(line) {
+          if (line.material) line.material.opacity = twinkle;
+        });
+      }
     }
     // Satellites orbit around the selected star — spin the group gently,
     // pivoted on the parent position.
@@ -1762,6 +1966,7 @@
     if (!state.open) return;
     if (e.key === 'Escape' || e.key === 'Esc') {
       if (state.selected) clearSelection();
+      else if (state.activeCategory) _clearCategoryHighlight();
       else KHUniverse.close();
     }
   }
@@ -1821,6 +2026,7 @@
     if (overlay) overlay.classList.remove('open');
     if (state.animId) { cancelAnimationFrame(state.animId); state.animId = null; }
     if (state.renderer) unbindControls(state.renderer.domElement);
+    if (state.activeCategory) _clearCategoryHighlight();
     clearSelection();
     document.removeEventListener('keydown', onKeydown);
     document.body.style.overflow = '';
@@ -1842,6 +2048,7 @@
     state.cam.phi = Math.PI * 0.42;
     state.cam.target.x = state.cam.target.y = state.cam.target.z = 0;
     state.autoRotate = true;
+    if (state.activeCategory) _clearCategoryHighlight();
     clearSelection();
     updateCameraFromOrbit(state.camera);
   };
