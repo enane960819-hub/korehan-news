@@ -2304,6 +2304,12 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .aw-btn-reset:hover { background:rgba(255,255,255,.14); }
 .aw-btn-skip { background:linear-gradient(135deg,#0369a1,#4f46e5);color:#fff; }
 .aw-btn-skip:hover { filter:brightness(1.12); }
+.aw-btn-known {
+  background:rgba(34,197,94,.12);
+  color:#86efac;
+  border:1px solid rgba(34,197,94,.28);
+}
+.aw-btn-known:hover { background:rgba(34,197,94,.22);border-color:rgba(34,197,94,.5); }
 @keyframes awShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
 .aw-shake { animation:awShake .35s ease; }
 @keyframes awPop { 0%{transform:scale(1)} 50%{transform:scale(1.18)} 100%{transform:scale(1)} }
@@ -7034,10 +7040,10 @@ var _AW_WORD_POOL = [
 ];
 
 // Word Builder state
-var _awWords = [];       // 5 words picked for this round
+var _awWords = [];       // 8 words picked for this round
 var _awIdx = 0;          // index of current word inside _awWords
 var _awScore = 0;        // words completed correctly this round
-var _awRoundTotal = 5;
+var _awRoundTotal = 8;
 var _awPool = [];        // [{syl, placed}] scrambled tiles for current word
 var _awPlaced = [];      // tile indices in the order they were tapped
 var _awPhase = 'idle';   // idle | playing | round-complete
@@ -7046,6 +7052,30 @@ var _awMode = 'syllable'; // 'syllable' (default) | 'jamo'
 var _awJamoPool = [];    // [{jamo, originalIdx, placed}] in jamo mode
 var _awJamoPlaced = [];  // pool indices in tap order
 var _awJamoTarget = [];  // expected jamo sequence for current word
+
+// Local "I already know this word" list — words the user has marked as
+// known are filtered out of subsequent rounds so the deck shrinks to the
+// vocabulary they actually need to practise. localStorage scope is the
+// browser, not the user account, which is fine for a self-paced drill.
+var _AW_KNOWN_KEY = 'kh_aw_known_words_v1';
+function _awGetKnown() {
+  try { return JSON.parse(localStorage.getItem(_AW_KNOWN_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function _awSaveKnown(arr) {
+  try { localStorage.setItem(_AW_KNOWN_KEY, JSON.stringify(arr || [])); } catch(e) {}
+}
+function _awAddKnown(word) {
+  if (!word) return;
+  var arr = _awGetKnown();
+  if (arr.indexOf(word) === -1) { arr.push(word); _awSaveKnown(arr); }
+}
+function _awKnownSet() {
+  var arr = _awGetKnown();
+  var s = Object.create(null);
+  for (var i = 0; i < arr.length; i++) s[arr[i]] = 1;
+  return s;
+}
 
 // ── Hangul jamo helpers ──────────────────────────────────────────
 // Decompose a complete Hangul word into the ordered jamo sequence that
@@ -7153,7 +7183,16 @@ function startAlphaWordRound() {
   _awScore = 0;
   _awIdx = 0;
   _awLockInput = false;
-  _awWords = _awShuffle(_AW_WORD_POOL).slice(0, Math.min(_awRoundTotal, _AW_WORD_POOL.length));
+  // Filter out words the user has already marked as "I know this".
+  // If they marked everything, clear the list and start fresh — better
+  // UX than showing an empty round.
+  var known = _awKnownSet();
+  var available = _AW_WORD_POOL.filter(function(w){ return !known[w.word]; });
+  if (!available.length) {
+    _awSaveKnown([]);
+    available = _AW_WORD_POOL.slice();
+  }
+  _awWords = _awShuffle(available).slice(0, Math.min(_awRoundTotal, available.length));
   if (!_awWords.length) return;
   _renderAwWord();
 }
@@ -7398,6 +7437,24 @@ function awSkip() {
   else _renderAwWord();
 }
 
+function awKnowIt() {
+  if (_awPhase !== 'playing') return;
+  if (_awLockInput) return;
+  var w = _awWords[_awIdx];
+  if (!w) return;
+  _awAddKnown(w.word);
+  _awIdx++;
+  if (_awIdx >= _awRoundTotal || _awIdx >= _awWords.length) { _awPhase = 'round-complete'; _renderAwRoundComplete(); }
+  else _renderAwWord();
+}
+
+function awResetKnown() {
+  _awSaveKnown([]);
+  // If we're sitting on the round-complete screen, kick off a new round
+  // so the freshly-restored words can show up immediately.
+  if (_awPhase === 'round-complete') startAlphaWordRound();
+}
+
 function awSpeakTarget() {
   var w = _awWords[_awIdx];
   if (w && typeof speakHangul === 'function') speakHangul(w.word);
@@ -7412,7 +7469,15 @@ function _renderAwRoundComplete() {
   if (meaning) meaning.textContent = 'Round complete!';
   if (rom) rom.textContent = _awScore + ' / ' + _awRoundTotal + ' 정답';
   if (slots) slots.innerHTML = '';
-  if (pool) pool.innerHTML = '<button class="aw-btn aw-btn-skip" onclick="startAlphaWordRound()" type="button">새 라운드 ↺</button>';
+  var knownCount = _awGetKnown().length;
+  if (pool) {
+    pool.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;align-items:center">'
+      + '<button class="aw-btn aw-btn-skip" onclick="startAlphaWordRound()" type="button">새 라운드 ↺</button>'
+      + (knownCount > 0
+          ? '<button class="aw-btn aw-btn-reset" onclick="awResetKnown()" type="button" style="font-size:11px">아는 단어 목록 초기화 (' + knownCount + ')</button>'
+          : '')
+      + '</div>';
+  }
   if (fb) { fb.innerHTML = _awScore === _awRoundTotal ? '<span style="display:inline-flex;align-items:center;gap:6px"><span>완벽합니다!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span></span>' : '좋아요! 다시 도전해보세요.'; fb.className = 'aw-fb ok'; }
   var fill = document.getElementById('aw-progress-fill');
   if (fill) fill.style.width = '100%';
@@ -20421,6 +20486,7 @@ function closeReviewModal() {
   <div class="aw-tile-pool" id="aw-tile-pool"></div>
   <div class="aw-btn-row" id="aw-btn-row">
     <button class="aw-btn aw-btn-reset" onclick="awResetRound()" type="button">리셋</button>
+    <button class="aw-btn aw-btn-known" onclick="awKnowIt()" type="button" title="이 단어는 이미 알아요. 다음에는 표시하지 않습니다.">이미 알아요</button>
     <button class="aw-btn aw-btn-skip" onclick="awSkip()" type="button">Skip →</button>
   </div>
 </div>

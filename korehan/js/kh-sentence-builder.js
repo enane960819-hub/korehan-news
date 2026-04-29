@@ -102,6 +102,25 @@
       });
       px += bw + BLOCK_GAP;
     });
+
+    // Pre-place the first word so the user has an unambiguous anchor for
+    // the intended order. Korean often allows multiple grammatically valid
+    // orderings — pinning the start removes the guesswork.
+    if (_answer.length && _slots.length) {
+      var firstWord = _answer[0];
+      for (var bi = 0; bi < _blocks.length; bi++) {
+        if (_blocks[bi].text === firstWord && !_blocks[bi].placed) {
+          var b = _blocks[bi];
+          var s0 = _slots[0];
+          b.x = s0.x + (s0.w - b.w) / 2;
+          b.y = s0.y;
+          b.placed = true;
+          b.slotIdx = 0;
+          s0.filled = true;
+          break;
+        }
+      }
+    }
   }
 
   // ── Draw ──
@@ -219,13 +238,18 @@
     return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
+  // Tap-vs-drag is decided at touchend: any pointer movement past a small
+  // threshold flips _dragMoved to true. A tap that never moves still has
+  // to do something useful, so we route those to the first empty slot.
+  var _dragMoved = false;
+
   function _onDown(e) {
     e.preventDefault();
     var pos = _getPos(e);
     var block = _hitBlock(pos.x, pos.y);
     if (!block) return;
 
-    // If block is placed in a slot, remove it
+    // If block is placed in a slot, remove it (also unblocks tap-to-undo)
     if (block.placed && block.slotIdx >= 0) {
       _slots[block.slotIdx].filled = false;
       block.placed = false;
@@ -233,6 +257,7 @@
     }
 
     _draggingBlock = block;
+    _dragMoved = false;
     block.dragOffsetX = pos.x - block.x;
     block.dragOffsetY = pos.y - block.y;
     _draw();
@@ -242,8 +267,13 @@
     if (!_draggingBlock) return;
     e.preventDefault();
     var pos = _getPos(e);
-    _draggingBlock.x = pos.x - _draggingBlock.dragOffsetX;
-    _draggingBlock.y = pos.y - _draggingBlock.dragOffsetY;
+    var newX = pos.x - _draggingBlock.dragOffsetX;
+    var newY = pos.y - _draggingBlock.dragOffsetY;
+    if (Math.abs(newX - _draggingBlock.x) > 3 || Math.abs(newY - _draggingBlock.y) > 3) {
+      _dragMoved = true;
+    }
+    _draggingBlock.x = newX;
+    _draggingBlock.y = newY;
     _draw();
   }
 
@@ -251,20 +281,40 @@
     if (!_draggingBlock) return;
     var block = _draggingBlock;
     _draggingBlock = null;
+    var wasTap = !_dragMoved;
+    _dragMoved = false;
 
-    // Try to snap to nearest slot
-    var slot = _findNearestSlot(block);
-    if (slot) {
-      // Snap animation
-      block.x = slot.x + (slot.w - block.w) / 2;
-      block.y = slot.y;
-      block.placed = true;
-      block.slotIdx = slot.idx;
-      slot.filled = true;
+    if (wasTap) {
+      // Tap-to-place: drop into the first empty slot regardless of distance.
+      // Without this, tapping a pool tile always returned the block home
+      // because the pool sits well outside the 80px snap radius.
+      var firstEmpty = null;
+      for (var i = 0; i < _slots.length; i++) {
+        if (!_slots[i].filled) { firstEmpty = _slots[i]; break; }
+      }
+      if (firstEmpty) {
+        block.x = firstEmpty.x + (firstEmpty.w - block.w) / 2;
+        block.y = firstEmpty.y;
+        block.placed = true;
+        block.slotIdx = firstEmpty.idx;
+        firstEmpty.filled = true;
+      } else {
+        block.x = block.homeX;
+        block.y = block.homeY;
+      }
     } else {
-      // Return to home position
-      block.x = block.homeX;
-      block.y = block.homeY;
+      // Drag: snap to nearest slot or return home
+      var slot = _findNearestSlot(block);
+      if (slot) {
+        block.x = slot.x + (slot.w - block.w) / 2;
+        block.y = slot.y;
+        block.placed = true;
+        block.slotIdx = slot.idx;
+        slot.filled = true;
+      } else {
+        block.x = block.homeX;
+        block.y = block.homeY;
+      }
     }
 
     _draw();
