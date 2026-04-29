@@ -601,7 +601,9 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   box-shadow: 0 0 0 4px rgba(255,255,255,.2), 0 8px 20px rgba(255,255,255,.12); }
 .bm-pill.todo   { background: rgba(255,255,255,.1); color: rgba(255,255,255,.3); }
 .bm-topic { flex: 1; font-size: 13px; font-weight: 700; color: rgba(255,255,255,.7); min-width: 0;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 6px; }
+.bm-topic span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .bm-close { background: none; border: none; color: rgba(255,255,255,.45);
   font-size: 20px; cursor: pointer; padding: 4px 8px; line-height: 1; flex-shrink: 0;
   transition: color .15s; }
@@ -634,8 +636,17 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .bm-step-label { font-size: 11px; font-weight: 800; text-transform: uppercase;
   letter-spacing: .1em; color: #14cbb0; margin-bottom: 8px; }
 .bm-step-title { font-size: 22px; font-weight: 900; color: #fff;
-  margin-bottom: 6px; line-height: 1.3; letter-spacing: -.02em; }
+  margin-bottom: 6px; line-height: 1.3; letter-spacing: -.02em;
+  display: flex; align-items: center; gap: 10px; }
+.bm-step-title svg { width: 26px; height: 26px; flex-shrink: 0; color: #14cbb0;
+  filter: drop-shadow(0 0 6px rgba(20,203,176,.45)); }
 .bm-step-desc { font-size: 13px; color: rgba(255,255,255,.48); margin-bottom: 20px; line-height: 1.6; }
+.bm-pill svg { width: 18px; height: 18px; }
+.bm-pill.todo svg { opacity: .55; }
+.bm-topic svg { width: 14px; height: 14px; color: #f59e0b; flex-shrink: 0; }
+.bm-build-hint-icon { display: inline-flex; align-items: center; vertical-align: -3px;
+  margin-right: 6px; color: #fbbf24; }
+.bm-build-hint-icon svg { width: 14px; height: 14px; }
 
 /* Step 1 — Listen & Read */
 .bm-listen-progress { font-size: 12px; color: rgba(255,255,255,.5); margin-bottom: 16px;
@@ -3885,6 +3896,17 @@ function renderWordOrderActivity(words) {
   }
   _wordOrderState.pool = shuffled;
   _wordOrderState.answer = [];
+  // Pre-select the first word of the intended order — anchors the start so
+  // alternative valid orderings don't leave the user guessing.
+  if (_wordOrderState.pool.length && _wordOrderState.correct.length) {
+    var firstWord = _wordOrderState.correct[0];
+    for (var k = 0; k < _wordOrderState.pool.length; k++) {
+      if (_wordOrderState.pool[k].word === firstWord) {
+        _wordOrderState.answer.push(_wordOrderState.pool.splice(k, 1)[0]);
+        break;
+      }
+    }
+  }
   _renderWordOrderUI();
 }
 
@@ -13092,20 +13114,32 @@ function closeBModal() {
   document.body.style.overflow = '';
 }
 
+// Inline SVG icons used across the beginner modal (replaces the prior emojis
+// so glyphs render consistently and pick up the theme color).
+var BM_ICON_HEADPHONES = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13a8 8 0 0 1 16 0"/><rect x="3" y="13" width="4.5" height="7" rx="1.4"/><rect x="16.5" y="13" width="4.5" height="7" rx="1.4"/></svg>';
+var BM_ICON_SHUFFLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h4a4 4 0 0 1 3.2 1.6"/><path d="M3 17h4a4 4 0 0 0 3.2-1.6"/><path d="M14 7h7"/><path d="M14 17h7"/><path d="M18 4l3 3-3 3"/><path d="M18 14l3 3-3 3"/></svg>';
+var BM_ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5l5 5L8 21H3v-5z"/><path d="M13 6l5 5"/></svg>';
+var BM_ICON_BULB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6.5 6.5 0 0 0-4 11.6c.7.6 1 1.2 1 2V16h6v-.4c0-.8.3-1.4 1-2A6.5 6.5 0 0 0 12 3z"/></svg>';
+var BM_ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v5l3 4H6l3-4z"/><path d="M12 13v8"/></svg>';
+var BM_ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 12 10 17 19 7"/></svg>';
+
 function updateBMHeader() {
   var pills = document.getElementById('bm-step-pills');
-  var steps = ['🎧','🔀','✏️','💡'];
+  var steps = [BM_ICON_HEADPHONES, BM_ICON_SHUFFLE, BM_ICON_PENCIL, BM_ICON_BULB];
   var labels = ['Listen','Build','Fill','Snap'];
   pills.innerHTML = steps.map(function(icon, i) {
     var stepNum = i + 1;
     var cls = stepNum < _bm.step ? 'done' : stepNum === _bm.step ? 'active' : 'todo';
     return '<div class="bm-pill ' + cls + '" title="' + labels[i] + '">' +
-      (stepNum < _bm.step ? '✓' : icon) + '</div>';
+      (stepNum < _bm.step ? BM_ICON_CHECK : icon) + '</div>';
   }).join('');
 
   var topicEl = document.getElementById('bm-topic-label');
   if (topicEl && _todayTopic) {
-    topicEl.textContent = '📌 ' + (_todayTopic.topic_ko || _todayTopic.topic_en || 'Today\'s Topic');
+    var topicText = _todayTopic.topic_ko || _todayTopic.topic_en || 'Today\'s Topic';
+    topicEl.innerHTML = BM_ICON_PIN + '<span></span>';
+    var topicSpan = topicEl.querySelector('span');
+    if (topicSpan) topicSpan.textContent = topicText;
   }
 
   var bar = document.getElementById('bm-progress-bar');
@@ -13242,7 +13276,7 @@ function getFallbackSentences() {
 function renderBMStep1Loading() {
   document.getElementById('bm-body').innerHTML =
     '<div class="bm-step-label">Step 1 of 4</div>'
-    + '<div class="bm-step-title">🎧 Listen & Read</div>'
+    + '<div class="bm-step-title">' + BM_ICON_HEADPHONES + '<span>Listen & Read</span></div>'
     + '<div class="bm-step-desc">Generating your sentences...</div>'
     + '<div style="text-align:center;padding:48px 0;font-size:38px;opacity:.6">⏳</div>';
   document.getElementById('bm-footer').innerHTML =
@@ -13260,7 +13294,7 @@ function renderBMStep1() {
 
   var bodyHTML =
     '<div class="bm-step-label">Step 1 of 4</div>'
-    + '<div class="bm-step-title">🎧 Listen & Read</div>'
+    + '<div class="bm-step-title">' + BM_ICON_HEADPHONES + '<span>Listen & Read</span></div>'
     + '<div class="bm-step-desc">Tap each sentence to hear it. Follow along and read the Korean aloud.</div>'
     + '<div class="bm-listen-progress">'
     + '<span id="bm-listen-prog-text">' + listenedCount + ' / ' + sents.length + ' listened</span>'
@@ -13351,7 +13385,12 @@ function goToBMStep2() {
     if (words.length > 1 && shuffled.every(function(w, i){ return w === words[i]; })) {
       var t = shuffled[0]; shuffled[0] = shuffled[shuffled.length-1]; shuffled[shuffled.length-1] = t;
     }
-    return { original: words, shuffled: shuffled, selected: [] };
+    // Pre-select the first word of the intended order so the user knows where
+    // to start. Korean often allows multiple grammatical orderings of the same
+    // sentence (e.g. "친구들이 제 사진을 좋아해요" vs "제 사진을 친구들이
+    // 좋아해요"); anchoring the start eliminates that ambiguity.
+    var preselected = words.length ? [words[0]] : [];
+    return { original: words, shuffled: shuffled, selected: preselected };
   });
   _bm.wordOrderIdx = 0;  // 현재 문장 인덱스
   renderBMStep2();
@@ -13367,10 +13406,10 @@ function renderBMStep2() {
 
   var bodyHTML =
     '<div class="bm-step-label">Step 2 of 4 · Sentence ' + (idx+1) + ' / ' + total + '</div>'
-    + '<div class="bm-step-title">🔀 Build the Sentence</div>'
+    + '<div class="bm-step-title">' + BM_ICON_SHUFFLE + '<span>Build the Sentence</span></div>'
     + '<div class="bm-step-desc">Tap words in the correct Korean order. Subject → Object → Verb.</div>'
 
-    + '<div class="bm-build-hint">💡 ' + s.en + '</div>'
+    + '<div class="bm-build-hint"><span class="bm-build-hint-icon">' + BM_ICON_BULB + '</span>' + s.en + '</div>'
 
     + '<div style="margin-bottom:16px">'
     + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Your Answer</div>'
@@ -13419,7 +13458,9 @@ function bmDeselectWord(sentIdx, selIdx) {
 }
 
 function bmClearAnswer(sentIdx) {
-  _bm.wordOrders[sentIdx].selected = [];
+  var wo = _bm.wordOrders[sentIdx];
+  // Reset back to the first-word-anchored state, not fully empty.
+  wo.selected = wo.original && wo.original.length ? [wo.original[0]] : [];
   renderBMStep2();
 }
 
@@ -13576,7 +13617,7 @@ function buildBMBlanks() {
 function renderBMStep3() {
   var bodyHTML =
     '<div class="bm-step-label">Step 3 of 4</div>'
-    + '<div class="bm-step-title">✏️ Fill in the Blanks</div>'
+    + '<div class="bm-step-title">' + BM_ICON_PENCIL + '<span>Fill in the Blanks</span></div>'
     + '<div class="bm-step-desc">Choose the correct word to complete each sentence.</div>'
     + '<div class="bm-blank-list" id="bm-blank-list">';
 
@@ -13754,7 +13795,7 @@ function bmRenderSnapCard() {
 
   var bodyHTML =
     '<div class="bm-step-label">Step 4 of 4 · ' + (idx+1) + ' / ' + cards.length + '</div>'
-    + '<div class="bm-step-title">💡 Word Snap</div>'
+    + '<div class="bm-step-title">' + BM_ICON_BULB + '<span>Word Snap</span></div>'
     + '<div class="bm-step-desc">Tap each card to reveal the meaning. Save the ones you want to remember.</div>'
 
     + '<div class="bm-snap-card" onclick="bmFlipSnapCard(' + idx + ')">'
