@@ -212,10 +212,10 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
       <h3>You land with a plan, not a blank screen.</h3>
       <p>Pick more than one goal, choose your study time, set your level directly or take a fresh placement test, then jump into the main page with a highlighted Beginner Guide.</p>
       <div class="ob-feature-grid">
-        <div class="ob-mini"><b>📰</b><span>Read real beginner-friendly news with hover vocab.</span></div>
-        <div class="ob-mini"><b>📘</b><span>Use Study Room for deeper review and active practice.</span></div>
-        <div class="ob-mini"><b>📊</b><span>Track streaks and progress inside Growth Lab.</span></div>
-        <div class="ob-mini"><b>💬</b><span>Mix in Conversations and Stories for natural input.</span></div>
+        <div class="ob-mini"><b><i data-lucide="newspaper" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Read real beginner-friendly news with hover vocab.</span></div>
+        <div class="ob-mini"><b><i data-lucide="book-open" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Use Study Room for deeper review and active practice.</span></div>
+        <div class="ob-mini"><b><i data-lucide="bar-chart-3" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Track streaks and progress inside Growth Lab.</span></div>
+        <div class="ob-mini"><b><i data-lucide="message-circle" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Mix in Conversations and Stories for natural input.</span></div>
       </div>
     </div>
     <div class="ob-side-stack">
@@ -790,7 +790,7 @@ function renderTestQuestion() {
     var safeKo = (q.sentence || '').replace(/'/g, "&#39;");
     sentenceHTML = '<div style="margin-top:10px;padding:14px 16px;border-radius:14px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);text-align:center">'
       + '<div style="font-size:11px;font-weight:700;color:#a78bfa;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em">Listen carefully</div>'
-      + '<button onclick="_obPlayListening(\'' + safeKo + '\')" style="padding:12px 22px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit">🔊 Play</button>'
+      + '<button onclick="_obPlayListening(\'' + safeKo + '\')" style="padding:12px 22px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Play</span></button>'
       + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:8px">Tap Play as many times as you need</div>'
       + '</div>';
   } else if (q.sentence) {
@@ -836,7 +836,7 @@ function answerTest(idx) {
   if (!correct && opts[q.answer]) opts[q.answer].classList.add('reveal');
   var fb = document.getElementById('test-fb');
   fb.className = 'test-feedback show ' + (correct ? 'ok' : 'no');
-  fb.innerHTML = (correct ? '✅ Correct. ' : '❌ Not quite. ') + q.exp;
+  fb.innerHTML = (correct ? '<span style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" style="color:#22c55e" aria-hidden="true"></i><span>Correct.</span></span> ' : '<span style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" style="color:#dc2626" aria-hidden="true"></i><span>Not quite.</span></span> ') + q.exp;
   document.getElementById('test-next-btn').style.display = 'inline-flex';
 }
 
