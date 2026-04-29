@@ -3279,7 +3279,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         <div class="wmh-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="image" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Picture Description</span></div>
         <div class="wmh-sub" id="pd-step-label">Step 1 / 3 — Key Vocabulary</div>
       </div>
-      <button class="wmh-close" onclick="closePictureDescription()">✕</button>
+      <button class="wmh-close" onclick="closePictureDescription()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
     <!-- Step progress pips -->
     <div style="display:flex;gap:6px;padding:0 16px 14px;flex-shrink:0">
@@ -3309,7 +3309,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         <div class="wmh-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="pen-line" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Sentence Writing from Articles</span></div>
         <div class="wmh-sub">Article-window style drills: word order, fill-in-the-blank, and writing with English support.</div>
       </div>
-      <button class="wmh-close" onclick="closeSentenceWriting()">✕</button>
+      <button class="wmh-close" onclick="closeSentenceWriting()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
     <div class="wm-center" style="padding:16px;gap:12px;">
       <div class="sr-practice-box">
@@ -3380,7 +3380,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <!-- Learn tab (was Examples) -->
       <div id="gf-tab-learn">
         <div id="gf-examples-content">
-          <div style="text-align:center;padding:40px;color:#94a3b8">✨ Loading grammar…</div>
+          <div style="text-align:center;padding:40px;color:#94a3b8;display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#a78bfa;animation:spin 1.4s linear infinite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span><span>Loading grammar…</span></div>
         </div>
       </div>
 
@@ -3861,7 +3861,7 @@ async function loadDBHelpers(level) {
     if (r.error || !r.data || !r.data.length) return false;
     var hhtml = r.data.map(function(h) {
       return '<div class="hrow">'
-        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)">🔊</button></div>'
+        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
         + '<div class="hen">' + h.en + '</div>'
         + '</div>';
     }).join('');
@@ -3974,7 +3974,7 @@ function checkWordOrder() {
   }
   var isCorrect = ans.join(' ') === correct.join(' ');
   if (isCorrect) {
-    res.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ Correct!<br><span style="font-size:12px;opacity:.8">' + correct.join(' ') + '</span></div>';
+    res.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac;display:flex;align-items:center;flex-wrap:wrap;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span><br><span style="font-size:12px;opacity:.8;width:100%">' + correct.join(' ') + '</span></div>';
     // Determine next step based on available data
     var item = _picturePrompts.length ? _picturePrompts[_pictureIndex % _picturePrompts.length] : null;
     var hasSents = item && item.incorrect_sentences && item.incorrect_sentences.length;
@@ -3989,7 +3989,7 @@ function checkWordOrder() {
       }
     }
   } else {
-    res.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ Incorrect. Try again!</div>';
+    res.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Incorrect. Try again!</span></div>';
   }
 }
 
@@ -4019,14 +4019,14 @@ function renderStudyChecklist() {
   var doneCnt = items.filter(function(i){ return !!_studyDone[i.k]; }).length;
   var pd = document.getElementById('sr-done-picture');
   var sd = document.getElementById('sr-done-sentence');
-  if (pd) pd.textContent = _studyDone.picture ? '✅' : '';
-  if (sd) sd.textContent = _studyDone.sentence ? '✅' : '';
+  if (pd) pd.innerHTML = _studyDone.picture ? '<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span>' : '';
+  if (sd) sd.innerHTML = _studyDone.sentence ? '<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span>' : '';
   box.innerHTML = items.map(function(i){
     var done = !!_studyDone[i.k];
     var nameStyle = done ? 'text-decoration:line-through;opacity:.5' : '';
     return '<div class="sr-mission-item" style="' + (done ? 'opacity:.7' : '') + '">'
       + '<div class="sr-mission-item-left">'
-      + '<span class="sr-mission-item-name" style="' + nameStyle + '">' + (done ? '✅ ' : '') + i.label + '</span>'
+      + '<span class="sr-mission-item-name" style="' + nameStyle + '">' + (done ? '<span style="display:inline-flex;width:12px;height:12px;color:#22c55e;vertical-align:-1px;margin-right:4px">'+BM_ICON_CHECK+'</span>' : '') + i.label + '</span>'
       + '<span class="sr-mission-item-sub" style="' + nameStyle + '">' + i.sub + '</span>'
       + '</div>'
       + '<div class="sr-mission-right">'
@@ -4634,9 +4634,9 @@ function _applyFallbackTopic(date) {
 function _setTopicLoadError(msg) {
   hideAILoading();
   var subEl = document.getElementById('wm-topic-sub');
-  if (subEl) subEl.textContent = msg || '⚠ Topic unavailable — please refresh';
+  if (subEl) subEl.textContent = msg || 'Topic unavailable — please refresh';
   var heroKo = document.getElementById('hero-topic-ko');
-  if (heroKo) heroKo.textContent = '⚠ Loading Error';
+  if (heroKo) heroKo.textContent = 'Loading Error';
   var heroEn = document.getElementById('hero-topic-en');
   if (heroEn) heroEn.textContent = msg || 'Loading failed — please refresh the page';
 }
@@ -4871,7 +4871,7 @@ async function _generateAndSaveDailyContent(date, opts) {
       });
     } catch(fb_err) {
       console.error('[_generateAndSaveDailyContent] fallback also failed:', fb_err);
-      _setTopicLoadError('⚠ Loading failed — please refresh');
+      _setTopicLoadError('Loading failed — please refresh');
     }
   }
 }
@@ -5458,7 +5458,7 @@ function renderAIContent() {
     var hhtml = '';
     (_aiContent.helpers || []).forEach(function(h) {
       hhtml += '<div class="hrow">'
-        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)">🔊</button></div>'
+        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
         + '<div class="hen">' + h.en + '</div>'
         + '</div>';
     });
@@ -5523,7 +5523,7 @@ function renderModalContent() {
       return '<div class="mhrow">'
         + '<div style="display:flex;align-items:flex-start;gap:6px">'
         + '<div style="flex:1"><div class="mhko">' + h.ko + '</div><div class="mhen">' + h.en + '</div></div>'
-        + '<button onclick="speakKorean(\'' + safeKo + '\')" title="Listen" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:14px;flex-shrink:0;color:#64748b" aria-label="Read aloud">🔊</button>'
+        + '<button onclick="speakKorean(\'' + safeKo + '\')" title="Listen" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:4px 7px;cursor:pointer;flex-shrink:0;color:#64748b;display:inline-flex;align-items:center" aria-label="Read aloud"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button>'
         + '</div>'
         + '<button class="mhbtn" data-ko="' + h.ko.replace(/"/g,'&quot;') + '" onclick="copyHelper(this)">+ copy to writing</button>'
         + '</div>';
@@ -5544,10 +5544,10 @@ function renderModalContent() {
   if (topicContentEl) {
     var ref = [];
     if (_todayTopic) ref.push('<b>Topic:</b> ' + (_todayTopic.topic_ko || ''));
-    if (_studyDone.topic) ref.push('✅ Topic study completed');
-    if (_studyDone.grammar) ref.push('✅ Grammar Focus completed');
-    if (_studyDone.picture) ref.push('✅ Picture Description completed');
-    if (_studyDone.sentence) ref.push('✅ Sentence Writing completed');
+    if (_studyDone.topic) ref.push('Topic study completed');
+    if (_studyDone.grammar) ref.push('Grammar Focus completed');
+    if (_studyDone.picture) ref.push('Picture Description completed');
+    if (_studyDone.sentence) ref.push('Sentence Writing completed');
     topicContentEl.innerHTML = ref.join('<br>');
   }
 }
@@ -6231,7 +6231,7 @@ function _keQuizAnswer(quiz, picked) {
   var right = picked === quiz.correct;
   result.innerHTML =
     '<div style="padding:12px;border-radius:10px;background:' + (right ? 'rgba(52,211,153,.12)' : 'rgba(248,113,113,.10)') + ';border:1px solid ' + (right ? 'rgba(52,211,153,.32)' : 'rgba(248,113,113,.32)') + ';color:#fff;font-size:13px">'
-    +   '<div style="font-weight:800;color:' + (right ? '#a7f3d0' : '#fca5a5') + ';margin-bottom:4px">' + (right ? '✅ 정답!' : '❌ 다시 생각해봐요.') + '</div>'
+    +   '<div style="font-weight:800;color:' + (right ? '#a7f3d0' : '#fca5a5') + ';margin-bottom:4px;display:inline-flex;align-items:center;gap:5px">' + (right ? '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정답!</span>' : '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>다시 생각해봐요.</span>') + '</div>'
     +   '<div style="color:rgba(255,255,255,.7);line-height:1.55">' + (quiz.explanation || '') + '</div>'
     + '</div>';
 }
@@ -6268,9 +6268,9 @@ function _keRenderStudyPhase(list) {
     + '<div>' + (exp.example_ko||'') + '</div>'
     + '<div style="color:rgba(255,255,255,.35);margin-top:2px">' + (exp.example_en||'') + '</div>'
     + '</div>'
-    + '<button onclick="ttsSpeak(\'' + (exp.ko||'').replace(/'/g,"\\'") + '\')" style="padding:8px 16px;border:1px solid rgba(125,211,252,.3);border-radius:8px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔊 Listen</button>'
+    + '<button onclick="ttsSpeak(\'' + (exp.ko||'').replace(/'/g,"\\'") + '\')" style="padding:8px 16px;border:1px solid rgba(125,211,252,.3);border-radius:8px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
     + ' ' + renderSaveWordBtn(exp.ko, exp.en, exp.rom, 'key_expression')
-    + ' <button onclick="keOpenSituationQuiz(' + idx + ')" style="padding:8px 16px;border:1px solid rgba(251,191,36,.35);border-radius:8px;background:rgba(251,191,36,.12);color:#fde68a;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:6px">💡 Situation Quiz</button>'
+    + ' <button onclick="keOpenSituationQuiz(' + idx + ')" style="padding:8px 16px;border:1px solid rgba(251,191,36,.35);border-radius:8px;background:rgba(251,191,36,.12);color:#fde68a;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:6px;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_BULB+'</span><span>Situation Quiz</span></button>'
     + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center">'
     + (idx > 0 ? '<button onclick="window._keStudyIdx--;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&larr; Prev</button>' : '')
@@ -6340,7 +6340,7 @@ function _keQuizAnswer(btn, correctKo, chosenKo) {
     });
   }
   var fb = document.getElementById('ke-quiz-fb');
-  if (fb) fb.innerHTML = '<div style="font-size:12px;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';font-weight:700">' + (isCorrect ? '✅ 정답!' : '❌ 오답 — 정답: ' + correctKo) + '</div>';
+  if (fb) fb.innerHTML = '<div style="font-size:12px;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';font-weight:700;display:flex;align-items:center;gap:5px">' + (isCorrect ? '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정답!</span>' : '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>오답 — 정답: ' + correctKo + '</span>') + '</div>';
   setTimeout(function(){ window._keQuizIdx = (window._keQuizIdx||0) + 1; _keRenderQuiz(); }, 1300);
 }
 
@@ -13146,6 +13146,16 @@ var BM_ICON_PARTY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 var BM_ICON_WARNING = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>';
 var BM_ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg>';
 var BM_ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 4v4h-4"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 20v-4h4"/></svg>';
+var BM_ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>';
+var BM_ICON_THUMBS_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7c1.5 0 2.5 1 2.5 2.5V11h5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 21H7"/></svg>';
+var BM_ICON_NEWSPAPER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5a2 2 0 0 1 2-2h12v18H5a2 2 0 0 1-2-2z"/><path d="M17 7h4v12a2 2 0 0 1-2 2"/><path d="M7 7h6M7 11h6M7 15h6"/></svg>';
+var BM_ICON_BOOK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 0-2 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H19"/></svg>';
+var BM_ICON_LIBRARY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4v16M9 4v16"/><path d="M13 4l5 1.3L15.5 19l-5-1.3z"/></svg>';
+var BM_ICON_VOLUME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M16 8a4 4 0 0 1 0 8"/><path d="M19 5a8 8 0 0 1 0 14"/></svg>';
+var BM_ICON_NOTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5l5 5L8 21H3v-5z"/><path d="M13 6l5 5"/></svg>';
+var BM_ICON_LIST = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>';
+var BM_ICON_CLIPBOARD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 10h6M9 14h6"/></svg>';
+var BM_ICON_DOC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 13h6M9 17h4"/></svg>';
 
 function updateBMHeader() {
   var pills = document.getElementById('bm-step-pills');
@@ -14540,7 +14550,7 @@ function renderGrammarPathBanner() {
 
   if (allDone) {
     banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px">'
-      + '<span style="font-size:18px">🏆</span>'
+      + '<span style="display:inline-flex;width:22px;height:22px;color:#fbbf24">' + BM_ICON_TROPHY + '</span>'
       + '<div><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#15803d">Grammar Path</div>'
       + '<div style="font-size:12px;font-weight:700;color:#166534">All 45 patterns mastered!</div>'
       + '</div></div>';
@@ -14553,7 +14563,7 @@ function renderGrammarPathBanner() {
   var lc = levelColors[levelTag] || '#7ab8f5';
 
   banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openGrammarFocusForCurriculum()">'
-    + '<span style="font-size:18px">📐</span>'
+    + '<span style="display:inline-flex;width:20px;height:20px;color:rgba(255,255,255,.7)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3H3v18h7"/><path d="M3 8h18"/><path d="M16 14l-4 8 8-4z"/></svg></span>'
     + '<div style="flex:1;min-width:0;overflow:hidden">'
     + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:1px">Grammar Path</div>'
     + '<div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
@@ -14678,7 +14688,7 @@ function switchGFTab(tabId, btn) {
       if (!_GF_STEP_DONE[_GF_TABS[gi]]) {
         var bar = document.getElementById('gf-step-bar');
         var msg = document.createElement('div');
-        msg.textContent = '🔒 Complete Step ' + (gi+1) + ' first';
+        msg.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#9ca3af;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span>Complete Step ' + (gi+1) + ' first';
         msg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:700;z-index:10000;box-shadow:0 8px 24px rgba(0,0,0,.25)';
         document.body.appendChild(msg);
         setTimeout(function(){ if(msg.parentNode) msg.parentNode.removeChild(msg); }, 1400);
@@ -14858,13 +14868,13 @@ function renderGFLearn(p) {
     tipsHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">';
     if (p.when_to_use) {
       tipsHtml += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px">'
-        + '<div style="font-size:10px;font-weight:800;color:#16a34a;margin-bottom:4px">✅ WHEN TO USE</div>'
+        + '<div style="font-size:10px;font-weight:800;color:#16a34a;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">' + BM_ICON_CHECK + '</span><span>WHEN TO USE</span></div>'
         + '<p style="font-size:12px;color:#166534;margin:0;line-height:1.6">' + p.when_to_use + '</p>'
         + '</div>';
     }
     if (p.watch_out) {
       tipsHtml += '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px">'
-        + '<div style="font-size:10px;font-weight:800;color:#ea580c;margin-bottom:4px">⚠️ WATCH OUT</div>'
+        + '<div style="font-size:10px;font-weight:800;color:#ea580c;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">' + BM_ICON_WARNING + '</span><span>WATCH OUT</span></div>'
         + '<p style="font-size:12px;color:#9a3412;margin:0;line-height:1.6">' + p.watch_out + '</p>'
         + '</div>';
     }
@@ -14911,7 +14921,7 @@ function renderGFLearn(p) {
 
 async function generateGFPatterns() {
   var el = document.getElementById('gf-examples-content');
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8">✨ Generating grammar patterns…</div>';
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</span><span>Generating grammar patterns…</span></div>';
 
   var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
   if (!topic || topic === 'Loading…') {
@@ -14978,7 +14988,7 @@ function openWeakGrammarDrill(grammarName) {
   if (title) title.textContent = grammarName;
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:28px;margin-bottom:10px">✨</div><div style="font-size:14px;color:#64748b">Generating 5 drill questions for <b>' + grammarName + '</b>…</div></div>';
+  body.innerHTML = '<div style="text-align:center;padding:40px"><div style="display:inline-flex;width:32px;height:32px;margin-bottom:10px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</div><div style="font-size:14px;color:#64748b">Generating 5 drill questions for <b>' + grammarName + '</b>…</div></div>';
   generateWGDrillQuestions(grammarName);
 }
 
@@ -15076,7 +15086,7 @@ function pickWGDrillAnswer(btn, chosenIdx, correctIdx) {
   var q = _wgDrillState.questions[_wgDrillState.idx];
   if (fb) fb.innerHTML =
     '<div style="padding:10px 14px;border-radius:10px;background:' + (isCorrect ? '#f0fdf4;border:1px solid #bbf7d0' : '#fff1f2;border:1px solid #fecaca') + ';font-size:13px;color:' + (isCorrect ? '#166534' : '#991b1b') + '">'
-    + (isCorrect ? '✅ Correct!' : '❌ Incorrect') + (q.hint ? ' — ' + q.hint : '')
+    + (isCorrect ? '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span></span>' : '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Incorrect</span></span>') + (q.hint ? ' — ' + q.hint : '')
     + '</div>';
   _wgDrillState.idx++;
   setTimeout(renderWGDrillQuestion, 1500);
@@ -15087,17 +15097,18 @@ function renderWGDrillResult() {
   if (!body) return;
   var st = _wgDrillState;
   var pct = st.questions.length > 0 ? Math.round(st.score / st.questions.length * 100) : 0;
-  var emoji = pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '💪';
+  var icon = pct >= 80 ? BM_ICON_PARTY : pct >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME;
+  var iconColor = pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171';
   var msg = pct >= 80 ? 'Great job! This grammar is getting solid.' : pct >= 60 ? 'Good effort! A bit more practice will help.' : 'Keep practicing — you\'ll get there!';
   body.innerHTML =
     '<div style="text-align:center;padding:20px">'
-    + '<div style="font-size:40px;margin-bottom:8px">' + emoji + '</div>'
+    + '<div style="display:inline-flex;width:48px;height:48px;margin-bottom:8px;color:' + iconColor + ';filter:drop-shadow(0 0 12px ' + iconColor + 'aa)">' + icon + '</div>'
     + '<div style="font-size:32px;font-weight:900;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
     + '<div style="font-size:14px;color:#64748b;margin-bottom:4px">' + st.score + ' / ' + st.questions.length + ' correct</div>'
     + '<div style="font-size:13px;color:#78350f;background:#fffbeb;border-radius:8px;padding:8px 12px;display:inline-block;margin-bottom:16px">' + msg + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
     + '<button onclick="_wgDrillState.idx=0;_wgDrillState.score=0;renderWGDrillIntro()" style="padding:10px 18px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;color:#475569;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try Again</button>'
-    + '<button onclick="closeWGDrill()" style="padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Done ✓</button>'
+    + '<button onclick="closeWGDrill()" style="padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>Done</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
     + '</div></div>';
   // Track result
   if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
@@ -15432,7 +15443,7 @@ function _checkErrorOption(btn, isWrong, idx) {
 function _showSpotItComplete() {
   var el = document.getElementById('gf-spotit-content');
   if (el) el.innerHTML = '<div style="text-align:center;padding:30px 20px">'
-    + '<div style="font-size:32px;margin-bottom:12px">🎯</div>'
+    + '<div style="display:inline-flex;width:38px;height:38px;margin-bottom:12px;color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></div>'
     + '<div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:6px">Pattern recognition complete!</div>'
     + '<div style="font-size:13px;color:#64748b;margin-bottom:22px">' + (_gfSpotState ? _gfSpotState.correct + ' / ' + _gfSpotState.total : '') + ' correct</div>'
     + '<button onclick="gfAdvanceTo(\'fill\')" style="padding:12px 32px;background:linear-gradient(135deg,#2255a4,#1e4fa3);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Fill in the Blank →</button>'
@@ -15682,8 +15693,8 @@ function loadGFBuild(p) {
           + '<p style="font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px;line-height:1.7">' + item.ko + '</p>'
           + '<p style="font-size:12px;color:#64748b;margin:0 0 12px">' + (item.en||'') + '</p>'
           + '<div style="display:flex;gap:8px">'
-          + '<button onclick="_gfJudgeAnswer(' + i + ',true)" id="gfj-yes-' + i + '" style="flex:1;padding:10px;border:1.5px solid #86efac;border-radius:10px;background:#f0fdf4;color:#166534;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">✅ 정문</button>'
-          + '<button onclick="_gfJudgeAnswer(' + i + ',false)" id="gfj-no-' + i + '" style="flex:1;padding:10px;border:1.5px solid #fca5a5;border-radius:10px;background:#fef2f2;color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">❌ 오문</button>'
+          + '<button onclick="_gfJudgeAnswer(' + i + ',true)" id="gfj-yes-' + i + '" style="flex:1;padding:10px;border:1.5px solid #86efac;border-radius:10px;background:#f0fdf4;color:#166534;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정문</span></button>'
+          + '<button onclick="_gfJudgeAnswer(' + i + ',false)" id="gfj-no-' + i + '" style="flex:1;padding:10px;border:1.5px solid #fca5a5;border-radius:10px;background:#fef2f2;color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>오문</span></button>'
           + '</div>'
           + '<div id="gfj-fb-' + i + '" style="margin-top:8px;min-height:0"></div>'
           + '</div>';
@@ -15733,16 +15744,17 @@ function _gfJudgeFinish() {
   var st = window._gfJudgeState;
   if (!st) return;
   var pct = Math.round(st.score / st.total * 100);
-  var emoji = pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '💪';
+  var icon = pct >= 80 ? BM_ICON_PARTY : pct >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME;
+  var iconColor = pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171';
   var el = document.getElementById('gf-build-content');
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:20px 0">'
-    + '<div style="font-size:36px;margin-bottom:8px">' + emoji + '</div>'
+    + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:8px;color:' + iconColor + ';filter:drop-shadow(0 0 12px ' + iconColor + 'aa)">' + icon + '</div>'
     + '<div style="font-size:22px;font-weight:900;color:#0f172a">' + st.score + ' / ' + st.total + '</div>'
     + '<div style="font-size:14px;color:#64748b;margin-top:4px">Grammar Detection · ' + pct + '%</div>'
     + '</div>'
     + '<div style="display:flex;gap:10px;justify-content:center;margin-top:20px">'
-    + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#2255a4,#1e4fa3);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">완료 ✓</button>'
+    + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#2255a4,#1e4fa3);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>완료</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
     + '</div>';
   var patternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
   if (patternName) updateGrammarMastery(patternName, st.score > 0);
@@ -15953,7 +15965,7 @@ function _dctRenderListen() {
     return;
   }
   // Speed control bar
-  var speeds = [{v:0.7,label:'🐢 Slow'},{v:1.0,label:'🚶 Normal'},{v:1.2,label:'🏃 Fast'}];
+  var speeds = [{v:0.7,label:'Slow'},{v:1.0,label:'Normal'},{v:1.2,label:'Fast'}];
   var speedHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
     + '<span style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;white-space:nowrap">Speed:</span>';
   speeds.forEach(function(sp) {
@@ -15970,11 +15982,11 @@ function _dctRenderListen() {
   var safeKo = (s.ko||'').replace(/'/g,"&#39;");
 
   var modeLabel = _dctArticleMode
-    ? '<div style="display:inline-block;padding:3px 10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:20px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:12px">📰 Article Dictation</div>'
+    ? '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:20px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:12px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_NEWSPAPER+'</span><span>Article Dictation</span></div>'
     : '';
   var progress = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
     + '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px">문장 '+(curIdx+1)+' / '+sents.length+'</div>'
-    + '<div style="font-size:11px;font-weight:700;color:#7c3aed">🔊 탭해서 듣기</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#7c3aed;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>탭해서 듣기</span></div>'
     + '</div>';
   var html = modeLabel + speedHTML + progress
     + '<div class="dct-sent-card" style="padding:26px 22px;cursor:pointer" onclick="_dctSpeakSentence(\''+safeKo+'\')">'
@@ -15982,7 +15994,7 @@ function _dctRenderListen() {
       + '<div class="dct-sent-ko" style="font-size:22px;line-height:1.55;margin-bottom:10px">'+escapeHTML(s.ko||'')+'</div>'
       + '<div class="dct-sent-en" style="font-size:14px;margin-bottom:18px">'+escapeHTML(s.en||'')+'</div>'
       + '<div style="display:flex;align-items:center;justify-content:center">'
-        + '<button class="dct-listen-btn" onclick="event.stopPropagation();_dctSpeakSentence(\''+safeKo+'\')" style="font-size:22px;padding:14px 28px;border-radius:999px;background:#eff6ff;float:none;display:inline-flex;align-items:center;gap:8px"><span>🔊</span><span style="font-size:13px;font-weight:800">Play</span></button>'
+        + '<button class="dct-listen-btn" onclick="event.stopPropagation();_dctSpeakSentence(\''+safeKo+'\')" style="padding:14px 28px;border-radius:999px;background:#eff6ff;float:none;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px;color:#3b82f6">'+BM_ICON_VOLUME+'</span><span style="font-size:13px;font-weight:800">Play</span></button>'
       + '</div>'
     + '</div>';
   if (!_dctArticleMode && curIdx === sents.length - 1) {
@@ -16037,7 +16049,7 @@ function _dctSpeakSentence(text) {
 function _dctGetArticleBtnHTML() {
   if (!_asCurrentArt || !_asCurrentArt.body) return '';
   return '<div style="margin-top:20px;padding:14px 16px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px">'
-    + '<div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:6px">📰 Article Dictation Available</div>'
+    + '<div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:6px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_NEWSPAPER+'</span><span>Article Dictation Available</span></div>'
     + '<div style="font-size:12px;color:#78350f;margin-bottom:10px">Practice dictation using sentences from: <b>' + escapeHTML(_asCurrentArt.title||'') + '</b></div>'
     + '<button onclick="startArticleDictation()" style="padding:6px 16px;background:#d97706;color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Try Article Dictation →</button>'
     + '</div>';
@@ -16128,13 +16140,13 @@ function _dctRenderArrange() {
     : '<span style="font-size:12px;color:#94a3b8">단어를 선택해서 문장을 만드세요</span>';
   var allSel = wo.selected.length === wo.original.length;
   body.innerHTML = '<div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">문장 '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
-    + '<div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#1e3a5f">💡 '+escapeHTML(s.en||'')+'</div>'
+    + '<div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#1e3a5f;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+BM_ICON_BULB+'</span><span>'+escapeHTML(s.en||'')+'</span></div>'
     + '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px">내 답</div>'
     + '<div id="dct-answer-zone" style="min-height:48px;border:2px dashed #bfdbfe;border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f8fbff;">'+ansHTML+'</div></div>'
     + '<div><div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:8px">단어 목록</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'+poolHTML+'</div></div>'
     + '<div id="dct-wo-msg" style="margin-top:12px;font-size:13px;font-weight:700"></div>';
-  foot.innerHTML = '<button class="btn" onclick="dctWOClear()" style="margin-right:auto">🔄 다시</button>'
+  foot.innerHTML = '<button class="btn" onclick="dctWOClear()" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시</span></button>'
     + '<button class="btn btn-g" '+(allSel?'':'disabled')+' onclick="dctWOCheck()">확인 ✓</button>';
 }
 function dctWOPick(pi) {
@@ -16153,12 +16165,12 @@ function dctWOCheck() {
   var msg=document.getElementById('dct-wo-msg');
   var zone=document.getElementById('dct-answer-zone');
   if(ok){
-    if(msg) msg.innerHTML='<span style="color:#16a34a">✅ 정답! 잘 했어요.</span>';
+    if(msg) msg.innerHTML='<span style="color:#16a34a;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정답! 잘 했어요.</span></span>';
     if(zone){zone.style.border='2px solid #22c55e';zone.style.background='#f0fdf4';}
     var foot=document.getElementById('dct-foot');
     if(foot){ foot.innerHTML='<button class="btn btn-g" onclick="_dctWONext()">다음 →</button>'; }
   } else {
-    if(msg) msg.innerHTML='<span style="color:#dc2626">❌ 다시 해보세요. 정답: <span style="font-family:\'Noto Serif KR\',serif;font-weight:700">'
+    if(msg) msg.innerHTML='<span style="color:#dc2626;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>다시 해보세요. 정답: <span style="font-family:\'Noto Serif KR\',serif;font-weight:700">'
       +escapeHTML(_dctWOState.original.join(' '))+'</span></span>';
     if(zone){zone.style.border='2px solid #f87171';zone.style.background='#fff5f5';}
   }
@@ -16305,7 +16317,7 @@ function _dctPhRender() {
     // Big Play button
     + '<div style="display:flex;justify-content:center;margin-bottom:22px">'
       + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 12px 28px -8px rgba(124,58,237,.55);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'scale(1)\'">'
-        + '<span style="font-size:18px">🔊</span><span>Play</span>'
+        + '<span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_VOLUME+'</span><span>Play</span>'
       + '</button>'
     + '</div>'
     // Two choice cards
@@ -16318,7 +16330,7 @@ function _dctPhRender() {
       + '</button>'
     + '</div>';
 
-  foot.innerHTML = '<button class="btn" style="margin-right:auto" onclick="_dctPhRender()">🔄 다시 듣기</button>';
+  foot.innerHTML = '<button class="btn" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px" onclick="_dctPhRender()"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시 듣기</span></button>';
 
   // Auto-play once on landing
   setTimeout(function(){ _dctSpeakSentence(currentWordKo); }, 300);
@@ -16368,7 +16380,7 @@ function _dctPhFinish() {
   var foot = document.getElementById('dct-foot');
   body.innerHTML =
     '<div style="text-align:center;padding:24px 12px">'
-      + '<div style="font-size:48px;margin-bottom:10px">' + (pct >= 80 ? '🎉' : pct >= 60 ? '👏' : '💪') + '</div>'
+      + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:10px;color:'+(pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171')+'aa)">' + (pct >= 80 ? BM_ICON_PARTY : pct >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
       + '<div style="font-family:\'DM Sans\',sans-serif;font-size:56px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:6px">' + pct + '</div>'
       + '<div style="font-size:13px;color:#64748b;font-weight:700;margin-bottom:18px">Phoneme accuracy · ' + st.correct + ' / ' + st.rounds.length + '</div>'
       + '<div style="font-size:13px;color:#475569;line-height:1.6;max-width:340px;margin:0 auto">'
@@ -16378,7 +16390,7 @@ function _dctPhFinish() {
       + '</div>'
     + '</div>';
   foot.innerHTML = '<button class="btn" onclick="_dctSwitchMode(\'topic\')">← Topic drill</button>'
-    + '<button class="btn btn-g" onclick="_dctPhonemeStart()">🔁 Try again</button>';
+    + '<button class="btn btn-g" onclick="_dctPhonemeStart()" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Try again</span></button>';
 
   // Persist for Listening axis (reuses existing quiz_results table)
   if (typeof supaUser !== 'undefined' && supaUser) {
@@ -16467,7 +16479,7 @@ function _dctCsRender() {
         + '<div style="width:3px;height:22px;background:#7c3aed;border-radius:2px;opacity:.7"></div>'
       + '</div>'
       + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 10px 24px -8px rgba(124,58,237,.5);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">'
-        + '<span>🔊</span><span>Play</span><span style="font-size:10px;opacity:.7;font-weight:700">· normal speed</span>'
+        + '<span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_VOLUME+'</span><span>Play</span><span style="font-size:10px;opacity:.7;font-weight:700">· normal speed</span>'
       + '</button>'
     + '</div>'
     // Input
@@ -16477,7 +16489,7 @@ function _dctCsRender() {
       + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();_dctCsCheck()}">'
     + '<div id="dct-cs-result" style="margin-top:14px"></div>';
 
-  foot.innerHTML = '<button class="btn" style="margin-right:auto" onclick="_dctSpeakSentence(\'' + safeKo + '\')">🔄 다시 듣기</button>'
+  foot.innerHTML = '<button class="btn" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px" onclick="_dctSpeakSentence(\'' + safeKo + '\')"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시 듣기</span></button>'
     + '<button class="btn btn-g" style="min-width:120px" onclick="_dctCsCheck()">Check ✓</button>';
 
   // Auto-play + focus input
@@ -16522,7 +16534,8 @@ function _dctCsCheck() {
   st.picks.push(sim);
   if (sim >= 60) st.correct++;
 
-  var icon = sim >= 90 ? '🎯' : sim >= 60 ? '✅' : '❌';
+  var iconHtml = sim >= 90 ? '<span style="display:inline-flex;width:18px;height:18px;color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></span>' : sim >= 60 ? '<span style="display:inline-flex;width:18px;height:18px;color:#22c55e">'+BM_ICON_CHECK+'</span>' : '<span style="display:inline-flex;width:18px;height:18px;color:#dc2626">'+BM_ICON_X+'</span>';
+  var icon = iconHtml;
   var banner = sim >= 90 ? 'Near-perfect!' : sim >= 60 ? 'Got the gist.' : 'Close — listen for these parts.';
   var bannerColor = sim >= 90 ? '#16a34a' : sim >= 60 ? '#2563eb' : '#dc2626';
 
@@ -16535,14 +16548,14 @@ function _dctCsCheck() {
       + '</div>'
       + '<div style="display:grid;gap:8px">'
         + '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.06)">'
-          + '<div style="font-size:10px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">🗣️ Spoken (what you heard)</div>'
+          + '<div style="font-size:10px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M16 8c2 1 2 7 0 8"/></svg></span><span>Spoken (what you heard)</span></div>'
           + '<div style="font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;color:#0f172a">' + r.spoken + '</div>'
         + '</div>'
         + '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.06)">'
-          + '<div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">📖 Textbook (full form)</div>'
+          + '<div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BOOK+'</span><span>Textbook (full form)</span></div>'
           + '<div style="font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;color:#334155">' + r.textbook + '</div>'
         + '</div>'
-        + (r.hint ? '<div style="padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.12);font-size:11px;color:#92400e;font-weight:600">💡 ' + r.hint + '</div>' : '')
+        + (r.hint ? '<div style="padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.12);font-size:11px;color:#92400e;font-weight:600;display:flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BULB+'</span><span>' + r.hint + '</span></div>' : '')
       + '</div>'
     + '</div>';
 
@@ -16568,7 +16581,7 @@ function _dctCsFinish() {
   var foot = document.getElementById('dct-foot');
   body.innerHTML =
     '<div style="text-align:center;padding:24px 12px">'
-      + '<div style="font-size:48px;margin-bottom:10px">' + (avg >= 80 ? '🎉' : avg >= 60 ? '👏' : '💪') + '</div>'
+      + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:10px;color:'+(avg >= 80 ? '#a78bfa' : avg >= 60 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(avg >= 80 ? '#a78bfa' : avg >= 60 ? '#22c55e' : '#f87171')+'aa)">' + (avg >= 80 ? BM_ICON_PARTY : avg >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
       + '<div style="font-family:\'DM Sans\',sans-serif;font-size:56px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:6px">' + avg + '</div>'
       + '<div style="font-size:13px;color:#64748b;font-weight:700;margin-bottom:18px">Connected-speech accuracy · avg over ' + st.picks.length + ' sentences</div>'
       + '<div style="font-size:13px;color:#475569;line-height:1.6;max-width:360px;margin:0 auto">'
@@ -16578,7 +16591,7 @@ function _dctCsFinish() {
       + '</div>'
     + '</div>';
   foot.innerHTML = '<button class="btn" onclick="_dctSwitchMode(\'topic\')">← Topic drill</button>'
-    + '<button class="btn btn-g" onclick="_dctConnectedStart()">🔁 Try again</button>';
+    + '<button class="btn btn-g" onclick="_dctConnectedStart()" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Try again</span></button>';
 
   // Persist
   if (typeof supaUser !== 'undefined' && supaUser) {
@@ -16664,14 +16677,14 @@ function _dctRenderFillBlank() {
     var extraStyle = isEliminated ? 'text-decoration:line-through;opacity:.55;cursor:not-allowed' : 'cursor:pointer';
     return '<button ' + disabled + ' onclick="_dctFbPick(' + ci + ')" style="padding:12px 18px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:10px;font-size:15px;font-weight:700;font-family:\'Noto Serif KR\',serif;' + extraStyle + '">' + escapeHTML(c) + '</button>';
   }).join('');
-  var hintEn = s.en ? '<div style="text-align:center;margin:0 0 12px;padding:8px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:12px;color:#78350f;font-style:italic">💡 ' + escapeHTML(s.en) + '</div>' : '';
+  var hintEn = s.en ? '<div style="text-align:center;margin:0 0 12px;padding:8px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:12px;color:#78350f;font-style:italic;display:flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BULB+'</span><span>' + escapeHTML(s.en) + '</span></div>' : '';
   // Hint affordance: max 2 hints per question (eliminates wrong
   // answers one at a time). Disabled once 2 wrong are out, since
   // any further hint would just point at the answer.
   var maxHints = Math.min(2, Math.max(0, st.choices.length - 2));
   var hintsLeft = maxHints - st.hintsUsed;
   var hintBtn = !st.answered && hintsLeft > 0
-    ? '<button onclick="_dctFbHint()" style="padding:6px 14px;border-radius:999px;border:1.5px solid #fcd34d;background:#fef3c7;color:#92400e;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">💡 Hint (-' + hintsLeft + ')</button>'
+    ? '<button onclick="_dctFbHint()" style="padding:6px 14px;border-radius:999px;border:1.5px solid #fcd34d;background:#fef3c7;color:#92400e;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BULB+'</span><span>Hint (-' + hintsLeft + ')</span></button>'
     : '';
   body.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px">'
@@ -16679,7 +16692,7 @@ function _dctRenderFillBlank() {
     +   hintBtn
     + '</div>'
     + '<div style="text-align:center;margin-bottom:14px">'
-    + '<button onclick="_dctFbSpeak()" style="width:66px;height:66px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;font-size:28px;cursor:pointer">🔊</button>'
+    + '<button onclick="_dctFbSpeak()" style="width:66px;height:66px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:30px;height:30px;color:#3b82f6">'+BM_ICON_VOLUME+'</span></button>'
     + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">클릭해서 듣기</div>'
     + '</div>'
     + hintEn
@@ -16751,9 +16764,9 @@ function _dctRenderListenPick() {
     var score = _dctFbScore + _dctLpScore;
     var pct = total > 0 ? Math.round(score / total * 100) : 0;
     _dctSaveScore(pct, total);
-    var modeTag = _dctArticleMode ? '<div style="font-size:11px;color:#d97706;margin-bottom:8px">📰 Article Dictation</div>' : '';
+    var modeTag = _dctArticleMode ? '<div style="font-size:11px;color:#d97706;margin-bottom:8px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_NEWSPAPER+'</span><span>Article Dictation</span></div>' : '';
     body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
-      + '<div style="font-size:36px;margin-bottom:12px">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪') + '</div>'
+      + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:12px;color:'+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+'aa)">' + (pct >= 80 ? BM_ICON_TROPHY : pct >= 50 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
       + '<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
       + '<div style="font-size:13px;color:#64748b;margin-bottom:6px">빈칸 ' + _dctFbScore + '/' + pool.length + ' · 문장 ' + _dctLpScore + '/' + pool.length + '</div>'
       + modeTag
@@ -16787,7 +16800,7 @@ function _dctRenderListenPick() {
   body.innerHTML =
       '<div style="font-size:13px;color:#64748b;margin-bottom:16px">듣고 맞는 문장을 고르세요. (' + (_dctLpIdx + 1) + '/' + pool.length + ')</div>'
     + '<div style="text-align:center;margin-bottom:18px">'
-    + '<button onclick="_dctLpSpeak()" style="width:80px;height:80px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;font-size:34px;cursor:pointer">🔊</button>'
+    + '<button onclick="_dctLpSpeak()" style="width:80px;height:80px;border-radius:50%;background:#eff6ff;border:2px solid #bfdbfe;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:36px;height:36px;color:#3b82f6">'+BM_ICON_VOLUME+'</span></button>'
     + '<div style="font-size:11px;color:#94a3b8;margin-top:6px">클릭해서 듣기</div>'
     + '</div>'
     + choicesHTML;
@@ -16914,7 +16927,7 @@ function _nqRender() {
   if (_nqIdx >= _nqQuestions.length) {
     var pct = _nqQuestions.length > 0 ? Math.round(_nqScore / _nqQuestions.length * 100) : 0;
     body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
-      + '<div style="font-size:36px;margin-bottom:12px">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪') + '</div>'
+      + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:12px;color:'+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+'aa)">' + (pct >= 80 ? BM_ICON_TROPHY : pct >= 50 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
       + '<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
       + '<div style="font-size:13px;color:#64748b;margin-bottom:6px">' + _nqScore + ' / ' + _nqQuestions.length + ' correct</div>'
       + '<div style="font-size:12px;color:#94a3b8">Nuance Quiz 완료!</div>'
@@ -16938,7 +16951,7 @@ function _nqRender() {
   var q = _nqQuestions[_nqIdx] || {};
   var rawSent = (q.sentence_ko || '').replace(/_+/g, '_____');
   var sentenceHTML = escapeHTML(rawSent).replace(/_____/g, '<span style="display:inline-block;padding:2px 14px;margin:0 3px;border:2px dashed #7c3aed;border-radius:8px;background:#faf5ff;color:#7c3aed;font-weight:800">___</span>');
-  var enHTML = q.sentence_en ? '<div style="text-align:center;margin:0 0 12px;padding:8px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:12px;color:#78350f;font-style:italic">💡 ' + escapeHTML(q.sentence_en) + '</div>' : '';
+  var enHTML = q.sentence_en ? '<div style="text-align:center;margin:0 0 12px;padding:8px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:12px;color:#78350f;font-style:italic;display:flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BULB+'</span><span>' + escapeHTML(q.sentence_en) + '</span></div>' : '';
   var choicesHTML = (q.choices || []).map(function(c, ci){
     var disabled = _nqState.answered ? 'disabled' : '';
     var bg = '#fff', color = '#0f172a', border = '#e2e8f0';
@@ -16949,7 +16962,7 @@ function _nqRender() {
     return '<button ' + disabled + ' onclick="_nqPick(' + ci + ')" style="padding:12px 18px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif;min-width:110px">' + escapeHTML(c) + '</button>';
   }).join('');
   var explHTML = (_nqState.answered && q.explanation_ko)
-    ? '<div style="margin-top:14px;padding:12px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;font-size:13px;color:#0c4a6e;line-height:1.6">📘 ' + escapeHTML(q.explanation_ko) + '</div>'
+    ? '<div style="margin-top:14px;padding:12px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;font-size:13px;color:#0c4a6e;line-height:1.6;display:flex;align-items:flex-start;gap:6px"><span style="display:inline-flex;width:14px;height:14px;flex-shrink:0;margin-top:3px">'+BM_ICON_BOOK+'</span><span>' + escapeHTML(q.explanation_ko) + '</span></div>'
     : '';
   body.innerHTML =
       '<div style="font-size:13px;color:#64748b;margin-bottom:12px">문맥에 가장 어울리는 단어를 고르세요. (' + (_nqIdx + 1) + '/' + _nqQuestions.length + ')</div>'
@@ -17042,7 +17055,7 @@ function _asRenderGrid() {
   g.innerHTML = _asArticles.map(function(a) {
     var imgHtml = a.image
       ? '<img src="' + a.image + '" alt="" onerror="this.style.display=\'none\'">'
-      : '<div class="asc-img-ph">📰</div>';
+      : '<div class="asc-img-ph"><span style="display:inline-flex;width:24px;height:24px">' + BM_ICON_NEWSPAPER + '</span></div>';
     return '<div class="as-article-card" onclick="asSelectArticle(\'' + String(a.id).replace(/'/g,"\\'") + '\')">'
       + imgHtml
       + '<div class="asc-body">'
@@ -17067,7 +17080,7 @@ async function asSelectArticle(id) {
   document.getElementById('as-article-title').textContent = art.title || 'Article Study';
   _asRenderPips();
   document.getElementById('as-article-content').innerHTML =
-    '<p class="as-section-label">📖 기사 읽기</p><div class="as-article-text">' + _asFormatBody(art.body||'') + '</div>';
+    '<p class="as-section-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_BOOK + '</span><span>기사 읽기</span></p><div class="as-article-text">' + _asFormatBody(art.body||'') + '</div>';
   document.getElementById('as-activity-area').innerHTML =
     '<div class="su-loading"><div class="su-spinner"></div><div id="as-loading-msg">Preparing your study session…</div></div>';
   _asSetNav('none','none','none');
@@ -17206,7 +17219,7 @@ function _asStep1(art,act) {
   hlWords.forEach(function(w){ if(w) body=body.replace(new RegExp(_asEsc(w),'g'),'<mark>'+w+'</mark>'); });
   // Article card (reference style)
   var imgHtml = _asCurrentArt.image
-    ? '<img class="su-article-img" src="' + _asCurrentArt.image + '" alt="" onerror="this.className=\'su-article-img-ph\';this.innerHTML=\'📰\';this.removeAttribute(\'src\')">'
+    ? '<img class="su-article-img" src="' + _asCurrentArt.image + '" alt="" onerror="this.className=\'su-article-img-ph\';this.innerHTML=window.BM_ICON_NEWSPAPER||\'\';this.removeAttribute(\'src\')">'
     : '<div class="su-article-img-ph">📰</div>';
   art.innerHTML = '<div class="su-instruction">Select the meaning of highlighted words</div>'
     + '<div class="su-article-card" id="as-article-passage">'
@@ -17217,8 +17230,8 @@ function _asStep1(art,act) {
     + '<div class="su-article-text">' + body + '</div>'
     + '</div></div>'
     + '<div class="su-article-footer">'
-    + '<button onclick="speakHangul(_asCurrentArt.body.slice(0,200),\'female\')">🔊 Listen</button>'
-    + '<button onclick="asToggleTranslation()">📋 Translation</button>'
+    + '<button onclick="speakHangul(_asCurrentArt.body.slice(0,200),\'female\')" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_VOLUME + '</span><span>Listen</span></button>'
+    + '<button onclick="asToggleTranslation()" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_CLIPBOARD + '</span><span>Translation</span></button>'
     + '</div>'
     + '<div id="as-translation" style="display:none;padding:12px 16px;font-size:13px;color:#475569;line-height:1.7;border-top:1px solid #f1f5f9;font-family:\'DM Sans\',sans-serif"></div>'
     + '<button class="su-article-toggle" onclick="asTogglePassage()" type="button"><span class="su-art-tog-arrow">▲</span><span id="as-art-tog-label">접기</span></button>'
@@ -17285,7 +17298,7 @@ function _asCheckMatchPair() {
     m.matched.push(m.sel.l); m.sel={l:null,r:null};
     var msg=document.getElementById('as-mm');
     if(msg){
-      msg.innerHTML='<span style="color:#16a34a;font-weight:800;font-size:13px">✓ Matched! '+m.matched.length+'/'+m.pairs.length+'</span>'
+      msg.innerHTML='<span style="color:#16a34a;font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Matched! '+m.matched.length+'/'+m.pairs.length+'</span></span>'
         +(m.matched.length===m.pairs.length?' <span style="color:#7c3aed;font-weight:800">All done!</span>':'');
     }
     setTimeout(_asRenderMatch, 80);
@@ -17408,7 +17421,7 @@ function _asRenderBlankUI() {
     return '<div class="su-pool-word'+(isUsed?' used':'')+'" '+(isUsed?'':'onclick="asBlankFillWord(\''+item.text.replace(/'/g,"\\'")+'\')"')+'>'+item.text+'</div>';
   }).join('');
   act.innerHTML='<div class="su-pool">'+poolHTML+'</div>'
-    +'<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8">'+(sel!==null?'✅ 빈칸 #'+(sel+1)+' 선택됨 — 아래에서 단어를 고르세요':'👆 위 문장에서 빈칸을 먼저 클릭하세요')+'</div>';
+    +'<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px">'+(sel!==null?'<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>빈칸 #'+(sel+1)+' 선택됨 — 아래에서 단어를 고르세요</span>':'<span>👆 위 문장에서 빈칸을 먼저 클릭하세요</span>')+'</div>';
   // Auto-check
   var allFilled=bw.every(function(w,bi){return fb[bi]!==undefined&&fb[bi]!==null;});
   if(allFilled) {
@@ -17448,7 +17461,7 @@ function asBlankFillWord(text) {
     var allCorrect=bw.every(function(w,i){return _asWOState.filledBlanks[i]===w;});
     var msg=document.getElementById('as-wo-msg');
     if(msg) msg.innerHTML=allCorrect
-      ?'<span style="color:#059669;font-weight:700">모두 정답! 잘했어요 🎉</span>'
+      ?'<span style="color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:6px"><span>모두 정답! 잘했어요</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_PARTY+'</span></span>'
       :'<span style="color:#dc2626;font-weight:700">틀린 단어가 있어요. 빨간색을 터치해서 다시 시도하세요.</span>';
     if(allCorrect) { _asStepDone[2]=true; }
     // Next always visible when all filled (correct or not)
@@ -17469,7 +17482,7 @@ function asWOAns(i) {}
 function _asStep4(art,act) {
   var bodyHtml=_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'';
   art.innerHTML='<div class="su-instruction">Test your comprehension</div>'
-    +'<details style="margin:0 20px 16px"><summary style="cursor:pointer;font-size:13px;color:#7c3aed;font-weight:700;padding:8px 0;user-select:none">📖 Review article</summary>'
+    +'<details style="margin:0 20px 16px"><summary style="cursor:pointer;font-size:13px;color:#7c3aed;font-weight:700;padding:8px 0;user-select:none;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_BOOK+'</span><span>Review article</span></summary>'
     +'<div class="su-article-card" style="margin:8px 0 0"><div class="su-article-body"><div class="su-article-text">'+bodyHtml+'</div></div></div></details>';
   var qs=(_asStudyContent&&_asStudyContent.questions)||[];
   if (!qs.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No questions available.</div>'; _asSetNav('none',''); return; }
@@ -17494,7 +17507,7 @@ function _asRenderQuiz() {
   });
   html+='</div>';
   if(_asQState.ans[qi]!==null){
-    html+='<div class="su-explain"><div class="su-explain-icon">💡</div><div class="su-explain-body">'
+    html+='<div class="su-explain"><div class="su-explain-icon" style="display:inline-flex;width:18px;height:18px;color:#fbbf24">'+BM_ICON_BULB+'</div><div class="su-explain-body">'
       +'<div class="su-explain-title">Answer</div>'
       +'<div class="su-explain-text"><b>'+(q.options[q.correct]||'')+'</b></div></div></div>';
   }
@@ -17548,8 +17561,8 @@ function _asShowSentenceQuiz() {
   // counter helps the user understand the goal ("find ALL of them") instead
   // of stopping after the first ✅.
   var headline = correct.length > 1
-    ? '🔍 Bonus: 맞는 문장을 <b>모두</b> 골라보세요 (' + correct.length + '개)'
-    : '🔍 Bonus: 맞는 문장을 골라보세요';
+    ? '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_SEARCH + '</span><span>Bonus: 맞는 문장을 <b>모두</b> 골라보세요 (' + correct.length + '개)</span></span>'
+    : '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_SEARCH + '</span><span>Bonus: 맞는 문장을 골라보세요</span></span>';
   act.innerHTML = '<div class="su-instruction" style="font-size:14px;padding:16px 20px 8px">' + headline + '</div>'
     + '<div id="as-sent-progress" style="padding:0 20px 8px;font-size:12px;color:#64748b;font-weight:700">0 / ' + correct.length + ' correct</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;padding:0 20px">'
@@ -17574,11 +17587,11 @@ function _asCheckSentence(btn) {
   var isCorrect = btn.getAttribute('data-correct') === '1';
   if (isCorrect) {
     btn.style.borderColor = '#86efac'; btn.style.background = '#f0fdf4'; btn.style.color = '#166534';
-    btn.innerHTML = '✅ ' + btn.innerHTML;
+    btn.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#16a34a;vertical-align:-2px;margin-right:6px">' + BM_ICON_CHECK + '</span>' + btn.innerHTML;
     if (window._asSentState) window._asSentState.correctPicked++;
   } else {
     btn.style.borderColor = '#fca5a5'; btn.style.background = '#fef2f2'; btn.style.color = '#991b1b';
-    btn.innerHTML = '❌ ' + btn.innerHTML;
+    btn.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#dc2626;vertical-align:-2px;margin-right:6px">' + BM_ICON_X + '</span>' + btn.innerHTML;
   }
   if (window._asSentState) window._asSentState.picked++;
   var st = window._asSentState;
@@ -17595,7 +17608,7 @@ function _asCheckSentence(btn) {
       b.disabled = true;
       if (b.getAttribute('data-correct') === '1') {
         b.style.borderColor = '#fbbf24'; b.style.background = '#fffbeb'; b.style.color = '#92400e';
-        b.innerHTML = '⚠️ ' + b.innerHTML + ' <span style="font-size:10px;font-weight:700">(also correct)</span>';
+        b.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#d97706;vertical-align:-2px;margin-right:6px">' + BM_ICON_WARNING + '</span>' + b.innerHTML + ' <span style="font-size:10px;font-weight:700">(also correct)</span>';
         missed++;
       } else {
         b.style.opacity = '0.5';
@@ -17605,7 +17618,7 @@ function _asCheckSentence(btn) {
     if (fb) {
       var allFound = st && st.correctPicked === st.correctTotal && missed === 0;
       fb.innerHTML = '<div style="text-align:center;padding:12px;border-radius:8px;font-weight:700;font-size:13px;'
-        + (allFound ? 'background:#f0fdf4;color:#166534">🎉 Bonus complete — perfect!' : 'background:#fffbeb;color:#92400e">Bonus done — ' + (st ? st.correctPicked : 0) + ' of ' + (st ? st.correctTotal : 0) + ' correct found.')
+        + (allFound ? 'background:#f0fdf4;color:#166534;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">' + BM_ICON_PARTY + '</span><span>Bonus complete — perfect!</span>' : 'background:#fffbeb;color:#92400e">Bonus done — ' + (st ? st.correctPicked : 0) + ' of ' + (st ? st.correctTotal : 0) + ' correct found.')
         + '</div>';
     }
     _asSetNav('none','');
@@ -17615,24 +17628,24 @@ function _asCheckSentence(btn) {
 // ── Step 5: Free writing (optional) ──
 function _asStep5(art,act) {
   var bodyHtml=_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'';
-  art.innerHTML='<details class="as-article-toggle"><summary style="cursor:pointer;font-size:12px;color:var(--gray);font-weight:700;padding:8px 0;user-select:none">📖 기사 다시 보기 (클릭해서 펼치기)</summary><div class="as-article-text" style="margin-top:8px">'+bodyHtml+'</div></details>';
+  art.innerHTML='<details class="as-article-toggle"><summary style="cursor:pointer;font-size:12px;color:var(--gray);font-weight:700;padding:8px 0;user-select:none;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_BOOK+'</span><span>기사 다시 보기 (클릭해서 펼치기)</span></summary><div class="as-article-text" style="margin-top:8px">'+bodyHtml+'</div></details>';
   var saved=_asGetTmp(); var txt=(saved&&saved.step5_text)||'';
   var vocabHints = '';
   if (_asCurrentArt && _asCurrentArt._vocab && _asCurrentArt._vocab.length) {
     var hints = _asCurrentArt._vocab.slice(0,6);
     vocabHints = '<div style="margin-bottom:10px;padding:10px 12px;background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px">'
-      + '<div style="font-size:10px;font-weight:800;color:#2563eb;margin-bottom:6px">💡 이 단어들을 사용해보세요:</div>'
+      + '<div style="font-size:10px;font-weight:800;color:#2563eb;margin-bottom:6px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">' + BM_ICON_BULB + '</span><span>이 단어들을 사용해보세요:</span></div>'
       + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
       + hints.map(function(v) { return '<span style="font-size:12px;padding:3px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:20px;color:#1d4ed8;font-weight:700">' + (v.ko||v) + '</span>'; }).join('')
       + '</div></div>';
   }
   act.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-    +'<p class="as-section-label" style="margin:0">✍️ 자유 글쓰기</p>'
+    +'<p class="as-section-label" style="margin:0;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_PENCIL+'</span><span>자유 글쓰기</span></p>'
     +'<span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:999px;font-weight:700">선택사항</span></div>'
     +'<p style="font-size:12px;color:var(--gray);margin-bottom:10px">이 기사를 읽고 느낀 점이나 비슷한 경험을 한국어로 써보세요.</p>'
     + vocabHints
     +'<textarea id="as-write-ta" style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box" placeholder="예: 이 기사가 흥미로웠어요. 저도 비슷한 경험이 있어요..." oninput="_asTmpStep5(this.value)">'+txt+'</textarea>'
-    +'<div style="margin-top:6px;font-size:11px;color:var(--gray)">💾 자동 저장됩니다.</div>';
+    +'<div style="margin-top:6px;font-size:11px;color:var(--gray);display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_CHECK+'</span><span>자동 저장됩니다.</span></div>';
   _asSetNav('none','none','');
 }
 
@@ -17684,10 +17697,10 @@ function asMarkDone() {
   document.getElementById('as-article-content').innerHTML='';
   document.getElementById('as-activity-area').innerHTML=
     '<div class="su-complete">'
-    +'<div class="su-complete-icon">🎉</div>'
+    +'<div class="su-complete-icon" style="display:inline-flex;width:48px;height:48px;color:#a78bfa">'+BM_ICON_PARTY+'</div>'
     +'<div class="su-complete-title">Article Study Complete!</div>'
     +'<div class="su-complete-sub">You\'ve completed all learning steps for this article.</div>'
-    +'<div class="su-complete-stars"><div class="su-complete-stars-label">✨ Words you just reviewed</div><canvas id="as-complete-canvas" class="su-complete-canvas"></canvas></div>'
+    +'<div class="su-complete-stars"><div class="su-complete-stars-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+BM_ICON_SPARKLE+'</span><span>Words you just reviewed</span></div><canvas id="as-complete-canvas" class="su-complete-canvas"></canvas></div>'
     +'<button class="su-nav-next" onclick="asSubmitWork()" style="margin:0 auto 10px;display:flex">Save Progress</button>'
     +'<button class="su-nav-prev" onclick="returnToActivities(closeArticleStudy)" style="margin:0 auto;display:flex">Next Activity</button>'
     +'</div>';
@@ -17912,13 +17925,13 @@ async function asSubmitWork() {
     if(step5.trim().length>10 && r.data && r.data[0] && r.data[0].id){
       triggerArticleAIFeedback(r.data[0].id, step5, _asCurrentArt.title||'');
     }
-    showToast('Submitted! ✓');
+    showToast('Submitted!');
     _asUpdateTmp({submitted:true});
     document.getElementById('as-activity-area').innerHTML=
-      '<div class="as-done-banner"><div style="font-size:28px;margin-bottom:8px">✅</div>'
+      '<div class="as-done-banner"><div style="display:inline-flex;width:36px;height:36px;margin-bottom:8px;color:#22c55e">' + BM_ICON_CHECK + '</div>'
       +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">Submitted!</div>'
       +'<div style="font-size:13px;color:rgba(255,255,255,.75)">Today\'s study has been submitted successfully.</div>'
-      +'<button onclick="returnToActivities(closeArticleStudy)" style="margin-top:14px;padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">완료 ✓</button></div>';
+      +'<button onclick="returnToActivities(closeArticleStudy)" style="margin-top:14px;padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>완료</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button></div>';
     _asRefreshSubmitBanner();
   } catch(err) {
     if(saveBtn){ saveBtn.disabled=false; saveBtn.style.opacity='1'; saveBtn.textContent='Save Progress'; }
@@ -17946,7 +17959,7 @@ async function asSubmitTodayAll() {
       if(!r.error){item.submitted=true;submitted++;}
     }
     localStorage.setItem(key,JSON.stringify(d));
-    if(submitted) showToast(submitted+'개 Submitted! ✓');
+    if(submitted) showToast(submitted+'개 Submitted!');
     _asRefreshSubmitBanner();
   } catch(e){ showToast('Submit failed'); }
 }
@@ -18041,12 +18054,12 @@ function renderCompletedStudies() {
   items.sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
   section.style.display = '';
   list.innerHTML = items.slice(0,10).map(function(it) {
-    var icon = it.type === 'article' ? '📰' : '💬';
+    var icon = it.type === 'article' ? '<span style="display:inline-flex;width:18px;height:18px">' + BM_ICON_NEWSPAPER + '</span>' : '<span style="display:inline-flex;width:18px;height:18px">' + BM_ICON_LIBRARY + '</span>';
     var ago = it.date ? timeSince(new Date(it.date)) : '';
     return '<div style="flex-shrink:0;min-width:140px;padding:10px 12px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;cursor:pointer" onclick="'+(it.type==='article'?'openArticleStudy()':'openConvStudy()')+'">'
       + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
-      + '<span style="font-size:14px">'+icon+'</span>'
-      + '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(34,197,94,.2);color:#4ade80">✓ Done</span>'
+      + icon
+      + '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(34,197,94,.2);color:#4ade80;display:inline-flex;align-items:center;gap:4px"><span style="display:inline-flex;width:11px;height:11px">'+BM_ICON_CHECK+'</span><span>Done</span></span>'
       + '</div>'
       + '<div style="font-size:11px;font-weight:700;color:#fff;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (it.title||'').slice(0,25) + '</div>'
       + '<div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">' + ago + '</div>'
@@ -18077,7 +18090,7 @@ setTimeout(renderCompletedStudies, 500);
     <div class="bm-header">
       <div class="bm-step-pills" id="bm-step-pills"></div>
       <div class="bm-topic" id="bm-topic-label">Today's Topic</div>
-      <button class="bm-close" onclick="closeBModal()">✕</button>
+      <button class="bm-close" onclick="closeBModal()" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
     </div>
     <!-- PROGRESS BAR -->
     <div class="bm-progress-track"><div class="bm-progress-bar" id="bm-progress-bar"></div></div>
@@ -18438,7 +18451,7 @@ async function _csLoadConversations() {
       var lvlColors = {b:'#dcfce7',i:'#fef9c3',a:'#fee2e2'};
       var lvlNames = {b:'Beginner',i:'Intermediate',a:'Advanced'};
       return '<div class="as-article-card" onclick="_csStartConv('+i+')">'
-        +'<div class="asc-img-ph" style="height:60px;font-size:20px">💬</div>'
+        +'<div class="asc-img-ph" style="height:60px;display:flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:24px;height:24px">'+BM_ICON_LIBRARY+'</span></div>'
         +'<div class="asc-body"><div class="asc-cat">'+escapeHtml(c.cat||'')+'</div>'
         +'<div class="asc-title">'+escapeHtml(c.name)+'</div>'
         +'<div class="asc-meta">'+escapeHtml(c.ctx)+'</div></div></div>';
@@ -18597,7 +18610,7 @@ function _csRenderTransQ() {
   if (st.quizIdx >= st.quizPool.length) {
     var nb = document.getElementById('cs-next-btn');
     if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3)'; }
-    act.innerHTML = '<div style="text-align:center;padding:20px;animation:srFadeIn .25s"><div style="font-size:28px;margin-bottom:6px">'+(st.score>=2?'🎉':'💪')+'</div><div style="font-size:16px;font-weight:800;color:var(--dark)">'+st.score+'/'+st.quizPool.length+' translations correct</div></div>';
+    act.innerHTML = '<div style="text-align:center;padding:20px;animation:srFadeIn .25s"><div style="display:inline-flex;width:36px;height:36px;margin-bottom:6px;color:'+(st.score>=2?'#a78bfa':'#f87171')+'">'+(st.score>=2?BM_ICON_PARTY:BM_ICON_FLAME)+'</div><div style="font-size:16px;font-weight:800;color:var(--dark)">'+st.score+'/'+st.quizPool.length+' translations correct</div></div>';
     return;
   }
   var q = st.quizPool[st.quizIdx];
@@ -18639,7 +18652,7 @@ function _csRenderFlash(act) {
     var nb = document.getElementById('cs-next-btn');
     if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3)'; }
     act.innerHTML = '<div style="text-align:center;padding:24px;animation:srFadeIn .25s">'
-      +'<div style="font-size:28px;margin-bottom:8px">📖</div>'
+      +'<div style="display:inline-flex;width:32px;height:32px;margin-bottom:8px;color:#7dd3fc">'+BM_ICON_BOOK+'</div>'
       +'<div style="font-size:18px;font-weight:800;color:var(--dark);margin-bottom:8px">Vocabulary Review Done</div>'
       +'<div style="display:flex;gap:16px;justify-content:center;margin-top:12px">'
       +'<div style="text-align:center"><div style="font-size:24px;font-weight:900;color:#22c55e">'+st.known+'</div><div style="font-size:11px;color:#94a3b8">I know this</div></div>'
@@ -18733,7 +18746,7 @@ function _csRenderQ(act) {
     var nb = document.getElementById('cs-next-btn');
     if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3)'; }
     act.innerHTML = '<div style="text-align:center;padding:24px;animation:srFadeIn .25s">'
-      +'<div style="font-size:32px;margin-bottom:8px">' + (st.score >= st.questions.length * 0.7 ? '🎉' : '💪') + '</div>'
+      +'<div style="display:inline-flex;width:38px;height:38px;margin-bottom:8px;color:'+(st.score >= st.questions.length * 0.7 ? '#a78bfa' : '#f87171')+'">' + (st.score >= st.questions.length * 0.7 ? BM_ICON_PARTY : BM_ICON_FLAME) + '</div>'
       +'<div style="font-size:18px;font-weight:800;color:var(--dark)">' + st.score + ' / ' + st.questions.length + ' correct</div>'
       +'<div style="font-size:13px;color:var(--gray);margin-top:6px">' + (st.score >= st.questions.length * 0.7 ? 'Great conversation skills!' : 'Keep practicing!') + '</div></div>';
     return;
@@ -18792,7 +18805,7 @@ function _csShowSentenceQuiz() {
   if (items.filter(function(i){return !i.isCorrect;}).length === 0) { _csStep4(); return; }
   items = items.sort(function(){return Math.random()-.5;});
 
-  act.innerHTML = '<div style="text-align:center;padding:16px 20px 8px;font-size:14px;font-weight:700;color:var(--dark)">🔍 대화에서 맞는 문장을 찾아보세요</div>'
+  act.innerHTML = '<div style="text-align:center;padding:16px 20px 8px;font-size:14px;font-weight:700;color:var(--dark);display:flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">'+BM_ICON_SEARCH+'</span><span>대화에서 맞는 문장을 찾아보세요</span></div>'
     + '<div style="font-size:12px;color:var(--gray);text-align:center;margin-bottom:12px">대화에 나온 올바른 문장을 클릭하세요</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;padding:0 20px">'
     + items.map(function(s){
@@ -18805,15 +18818,15 @@ function _csCheckSent(btn, isCorrect) {
   btn.disabled = true;
   if (isCorrect) {
     btn.style.borderColor = '#86efac'; btn.style.background = '#f0fdf4'; btn.style.color = '#166534';
-    btn.innerHTML = '✅ ' + btn.textContent;
+    btn.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#16a34a;vertical-align:-2px;margin-right:6px">' + BM_ICON_CHECK + '</span>' + btn.textContent;
   } else {
     btn.style.borderColor = '#fca5a5'; btn.style.background = '#fef2f2'; btn.style.color = '#991b1b';
-    btn.innerHTML = '❌ ' + btn.textContent;
+    btn.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#dc2626;vertical-align:-2px;margin-right:6px">' + BM_ICON_X + '</span>' + btn.textContent;
   }
   var remaining = document.querySelectorAll('.cs-sent-btn:not([disabled])');
   if (!remaining.length) {
     var fb = document.getElementById('cs-sent-fb');
-    if (fb) fb.innerHTML = '<div style="text-align:center;padding:12px;background:#f0fdf4;border-radius:8px;color:#166534;font-weight:700;font-size:13px;margin-bottom:8px">🎉 잘했어요!</div>';
+    if (fb) fb.innerHTML = '<div style="text-align:center;padding:12px;background:#f0fdf4;border-radius:8px;color:#166534;font-weight:700;font-size:13px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">'+BM_ICON_PARTY+'</span><span>잘했어요!</span></div>';
     setTimeout(function(){ _csStep4(); }, 1000);
   }
 }
@@ -18825,7 +18838,7 @@ function _csStep4() {
   var msgs = (c.msgs||[]).filter(function(m){ return m.s!=='n' && m.txt && m.txt.trim().split(/\s+/).length >= 3 && m.txt.trim().split(/\s+/).length <= 8; });
   if (msgs.length < 2) {
     // Fallback: completion screen
-    act.innerHTML = '<div style="text-align:center;padding:30px;animation:srFadeIn .25s"><div style="font-size:32px;margin-bottom:8px">✅</div><div style="font-size:18px;font-weight:800;color:var(--dark)">Conversation Study Complete!</div><div style="font-size:13px;color:var(--gray);margin-top:6px">Great job!</div><button onclick="returnToActivities(closeConvStudy)" style="margin-top:16px;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(5,150,105,.3)">Next Activity</button></div>';
+    act.innerHTML = '<div style="text-align:center;padding:30px;animation:srFadeIn .25s"><div style="display:inline-flex;width:40px;height:40px;margin-bottom:8px;color:#22c55e">'+BM_ICON_CHECK+'</div><div style="font-size:18px;font-weight:800;color:var(--dark)">Conversation Study Complete!</div><div style="font-size:13px;color:var(--gray);margin-top:6px">Great job!</div><button onclick="returnToActivities(closeConvStudy)" style="margin-top:16px;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(5,150,105,.3)">Next Activity</button></div>';
     return;
   }
   var selected = msgs.sort(function(){return Math.random()-.5;}).slice(0,3);
@@ -18835,7 +18848,7 @@ function _csStep4() {
 function _csRenderBuild(act) {
   var st = window._csBuildState;
   if (st.idx >= st.sentences.length) {
-    act.innerHTML = '<div style="text-align:center;padding:30px;animation:srFadeIn .25s"><div style="font-size:32px;margin-bottom:8px">' + (st.score >= 2 ? '🎉' : '💪') + '</div>'
+    act.innerHTML = '<div style="text-align:center;padding:30px;animation:srFadeIn .25s"><div style="display:inline-flex;width:40px;height:40px;margin-bottom:8px;color:'+(st.score >= 2 ? '#a78bfa' : '#f87171')+'">' + (st.score >= 2 ? BM_ICON_PARTY : BM_ICON_FLAME) + '</div>'
       +'<div style="font-size:18px;font-weight:800;color:var(--dark)">' + st.score + ' / ' + st.sentences.length + ' correct</div>'
       +'<div style="font-size:13px;color:var(--gray);margin-top:6px">Conversation Study Complete!</div>'
       +'<button onclick="returnToActivities(closeConvStudy)" style="margin-top:16px;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(5,150,105,.3)">Next Activity</button></div>';
@@ -18916,7 +18929,7 @@ function _csBuildCheck() {
   var isCorrect = st.placed.join(' ') === st._correct.join(' ');
   if (isCorrect) {
     playCorrectSound(); st.score++;
-    if (fb) fb.innerHTML = '<div style="color:#16a34a;font-size:14px;font-weight:700;padding:10px;background:#f0fdf4;border-radius:10px">✅ Correct!</div>';
+    if (fb) fb.innerHTML = '<div style="color:#16a34a;font-size:14px;font-weight:700;padding:10px;background:#f0fdf4;border-radius:10px;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span></div>';
   } else {
     playWrongSound();
     if (fb) fb.innerHTML = '<div style="color:#dc2626;font-size:13px;padding:10px;background:#fef2f2;border-radius:10px">Answer: <b style="color:#0f172a">' + escapeHtml(st._correct.join(' ')) + '</b></div>';
@@ -19168,7 +19181,7 @@ async function drGenerateQuestions() {
   if (vocabPool.length < 4) {
     document.getElementById('dr-body').innerHTML =
       '<div style="text-align:center;padding:30px">'
-      + '<div style="font-size:32px;margin-bottom:10px">📚</div>'
+      + '<div style="display:inline-flex;width:38px;height:38px;margin-bottom:10px;color:#a78bfa">' + BM_ICON_LIBRARY + '</div>'
       + '<div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px">Not enough review data yet</div>'
       + '<div style="font-size:13px;color:#8b8b8b;line-height:1.6">Read articles and save words to<br>generate personalized review questions.</div>'
       + '</div>';
@@ -19332,9 +19345,10 @@ function drNext(){_drIndex++;drShowQuestion();}
 
 function drShowScore(){
   var total=_drQuestions.length, correct=_drScores.reduce(function(a,b){return a+b;},0), pct=total>0?Math.round(correct/total*100):0;
-  var emoji=pct>=90?'🌟':pct>=75?'🏆':pct>=50?'⭐':'💪';
+  var icon=pct>=90?BM_ICON_SPARKLE:pct>=75?BM_ICON_TROPHY:pct>=50?BM_ICON_STAR:BM_ICON_FLAME;
+  var iconColor=pct>=90?'#fbbf24':pct>=75?'#fde68a':pct>=50?'#a78bfa':'#14cbb0';
   var body=document.getElementById('dr-body');
-  if(body) body.innerHTML='<div style="text-align:center;padding:20px 0"><div style="font-size:40px;margin-bottom:8px">'+emoji+'</div>'
+  if(body) body.innerHTML='<div style="text-align:center;padding:20px 0"><div style="display:inline-flex;width:48px;height:48px;margin-bottom:8px;color:'+iconColor+';filter:drop-shadow(0 0 12px '+iconColor+'88)">'+icon+'</div>'
     +'<div style="font-size:36px;font-weight:800;color:#1a1a1a;margin-bottom:4px">'+pct+'%</div>'
     +'<div style="font-size:14px;color:#8b8b8b">'+correct+' / '+total+' correct</div></div>';
   var nextBtn=document.getElementById('dr-next-btn');
@@ -19717,8 +19731,8 @@ function rvCheckTyped() {
   _rv.scores.push(correct ? 1 : 0);
   inp.disabled = true;
   fb.innerHTML = correct
-    ? '<span style="color:#4ade80;font-weight:700">✅ Correct!</span>'
-    : '<span style="color:#f87171;font-weight:700">❌ ' + q.answer + '</span>';
+    ? '<span style="color:#4ade80;font-weight:700;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_CHECK + '</span><span>Correct!</span></span>'
+    : '<span style="color:#f87171;font-weight:700;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_X + '</span><span>' + q.answer + '</span></span>';
   clearInterval(_rv.timer);
   setTimeout(function() { _rv.current++; renderReviewQuestion(); }, 1500);
 }
@@ -19785,18 +19799,19 @@ function finishReview() {
   else if (pct >= 80 && rewards[80]) xpEarned = rewards[80];
   else if (pct >= 70 && rewards[70]) xpEarned = rewards[70];
 
-  var emoji = pct >= 90 ? '🌟' : pct >= 80 ? '🏆' : pct >= 70 ? '⭐' : '💪';
+  var icon = pct >= 90 ? BM_ICON_SPARKLE : pct >= 80 ? BM_ICON_TROPHY : pct >= 70 ? BM_ICON_STAR : BM_ICON_FLAME;
+  var iconColor = pct >= 90 ? '#fbbf24' : pct >= 80 ? '#fde68a' : pct >= 70 ? '#a78bfa' : '#14cbb0';
 
   var body = document.getElementById('rv-body');
   body.innerHTML = '<div style="text-align:center;padding:20px 0;position:relative;overflow:visible">'
     + '<canvas id="rv-ribbon-canvas" style="position:absolute;left:0;right:0;top:-10px;height:200px;width:100%;pointer-events:none;z-index:0"></canvas>'
     + '<div style="position:relative;z-index:1">'
-    +   '<div style="font-size:48px;margin-bottom:12px;animation:rvPop .55s cubic-bezier(.22,1.4,.36,1) both">' + emoji + '</div>'
+    +   '<div style="display:inline-flex;width:56px;height:56px;margin-bottom:12px;animation:rvPop .55s cubic-bezier(.22,1.4,.36,1) both;color:' + iconColor + ';filter:drop-shadow(0 0 14px ' + iconColor + 'aa)">' + icon + '</div>'
     +   '<div id="rv-pct-display" style="font-size:36px;font-weight:800;color:#fff;margin-bottom:4px" data-target="' + pct + '">0%</div>'
     +   '<div style="font-size:14px;color:rgba(255,255,255,.5);margin-bottom:16px">' + correct + ' / ' + total + ' correct</div>'
     +   (xpEarned > 0
         ? '<div id="rv-xp-box" style="padding:12px 22px;background:linear-gradient(135deg,rgba(251,191,36,.18),rgba(34,197,94,.14));border:1px solid rgba(244,209,132,.45);border-radius:10px;display:inline-flex;align-items:center;gap:12px;box-shadow:0 10px 28px rgba(251,191,36,.25),inset 0 1px 0 rgba(255,255,255,.12)">'
-          + '<span style="font-size:22px;filter:drop-shadow(0 0 8px rgba(251,191,36,.7))">✨</span>'
+          + '<span style="display:inline-flex;width:22px;height:22px;color:#fbbf24;filter:drop-shadow(0 0 8px rgba(251,191,36,.7))">' + BM_ICON_SPARKLE + '</span>'
           + '<span id="rv-xp-count" data-target="' + xpEarned + '" style="font-size:18px;font-weight:900;color:#ffd089;font-family:\'Playfair Display\',serif;letter-spacing:.02em">+0 XP</span>'
           + '<span style="font-size:12px;font-weight:800;color:rgba(255,231,176,.75)">· +' + xpEarned + ' 냥</span>'
           + '</div>'
