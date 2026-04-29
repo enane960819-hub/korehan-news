@@ -17450,7 +17450,7 @@ async function _asLoadArticles() {
         _asArticles = [];
         return;
       }
-      var r2 = await sb.from('articles').select('id,title,section,level,image,body').in('id', ids).limit(60);
+      var r2 = await sb.from('articles').select('id,title,title_en,section,level,image,body').in('id', ids).limit(200);
       if (r2.error) throw r2.error;
       var bmOrder = {}; ids.forEach(function(id, i){ bmOrder[String(id)] = i; });
       _asArticles = (r2.data||[])
@@ -17459,8 +17459,8 @@ async function _asLoadArticles() {
       _asRenderGrid();
       return;
     }
-    var r = await sb.from('articles').select('id,title,section,level,image,body')
-      .eq('status','published').order('date',{ascending:false}).limit(24);
+    var r = await sb.from('articles').select('id,title,title_en,section,level,image,body')
+      .eq('status','published').order('date',{ascending:false}).limit(500);
     if (r.error) throw r.error;
     _asArticles = (r.data||[]).filter(function(a){ return a.title; });
     _asRenderGrid();
@@ -17470,16 +17470,22 @@ async function _asLoadArticles() {
 }
 function _asRenderGrid() {
   var g = document.getElementById('as-article-grid'); if (!g) return;
-  if (!_asArticles.length) { g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">등록된 기사가 없습니다.</div>'; return; }
+  if (!_asArticles.length) { g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">No articles available.</div>'; return; }
+  // sectionLabel() (from korehan-shared.js) maps Korean section keys
+  // (국제 / 문화 / 사회 / …) to their English labels (World / Culture
+  // / Society / …) so the picker stays English-first.
+  var labelOf = (typeof sectionLabel === 'function') ? sectionLabel : function(k){ return k || 'Article'; };
   g.innerHTML = _asArticles.map(function(a) {
     var imgHtml = a.image
       ? '<img src="' + a.image + '" alt="" onerror="this.style.display=\'none\'">'
       : '<div class="asc-img-ph"><span style="display:inline-flex;width:24px;height:24px">' + BM_ICON_NEWSPAPER + '</span></div>';
+    var displayTitle = a.title_en || a.title || '';
+    var displaySection = labelOf(a.section) || 'Article';
     return '<div class="as-article-card" onclick="asSelectArticle(\'' + String(a.id).replace(/'/g,"\\'") + '\')">'
       + imgHtml
       + '<div class="asc-body">'
-      + '<div class="asc-cat">' + (a.section||'Article') + '</div>'
-      + '<div class="asc-title">' + (a.title||'') + '</div>'
+      + '<div class="asc-cat">' + displaySection + '</div>'
+      + '<div class="asc-title">' + displayTitle + '</div>'
       + (a.level ? '<div class="asc-meta">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</div>' : '')
       + '</div></div>';
   }).join('');
@@ -19379,7 +19385,7 @@ function _csBuildCheck() {
              preserved when the user hasn't picked anything. -->
         <div id="as-filter-row" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
           <button class="as-filter-pill active" data-as-filter="latest" onclick="_asSetFilter('latest')" style="padding:6px 14px;border-radius:999px;border:1px solid #cbd5e1;background:#0b1626;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em;display:inline-flex;align-items:center;gap:5px"><i data-lucide="newspaper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Latest</span></button>
-          <button class="as-filter-pill" data-as-filter="saved" onclick="_asSetFilter('saved')" style="padding:6px 14px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em">⭐ Saved</button>
+          <button class="as-filter-pill" data-as-filter="saved" onclick="_asSetFilter('saved')" style="padding:6px 14px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em;display:inline-flex;align-items:center;gap:5px"><i data-lucide="bookmark" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Saved</span></button>
         </div>
         <div id="as-article-grid" class="as-article-grid">
           <div class="as-loading"><div class="as-spinner"></div><div>Loading article…</div></div>
