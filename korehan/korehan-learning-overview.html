@@ -379,7 +379,7 @@
           <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(220,210,255,.55)">stars</div>
           <button type="button" id="gl-uh-btn" onclick="glOpenUniverse()" disabled
             style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;border:1px solid rgba(167,139,250,.48);background:linear-gradient(135deg,rgba(124,58,237,.38),rgba(56,189,248,.26));color:#fff;font-size:12px;font-weight:900;letter-spacing:.04em;cursor:pointer;font-family:inherit;box-shadow:0 8px 22px rgba(124,58,237,.28),inset 0 1px 0 rgba(255,255,255,.12);transition:transform .14s,box-shadow .14s,opacity .2s;opacity:.55">
-            <span style="font-size:14px;filter:drop-shadow(0 0 5px rgba(196,181,253,.7))">🌌</span>
+            <i data-lucide="telescope" class="kh-ui-icon" style="width:14px;height:14px;filter:drop-shadow(0 0 5px rgba(196,181,253,.7))" aria-hidden="true"></i>
             Explore
           </button>
         </div>
@@ -580,7 +580,7 @@
         <div style="font-size:22px;font-weight:800;color:#ea580c" id="stat-streak">0</div>
         <button id="freeze-btn" type="button" onclick="khOpenFreezeDialog()" hidden
           style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:linear-gradient(135deg,#bae6fd,#7dd3fc);color:#0c4a6e;font-size:12px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(14,165,233,.35)"
-          title="Use streak freeze (once per week)">🧊</button>
+          title="Use streak freeze (once per week)" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="snowflake" class="kh-ui-icon" style="color:#7dd3fc" aria-hidden="true"></i></button>
       </div>
       <div title="Active time spent in the app today. Counts minutes while the tab is visible and you've interacted within the last minute." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
         <div style="font-size:10px;font-weight:500;color:var(--muted)">Time today</div>
@@ -778,7 +778,7 @@
           +         '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:20px;font-weight:900;line-height:1.15;margin-top:2px">' + _netEsc(line.name_ko) + '</div>'
           +         '<div style="font-size:11px;color:rgba(220,210,255,.6);margin-top:5px;line-height:1.45">' + _netEsc(line.description || '') + '</div>'
           +       '</div>'
-          +       '<button onclick="document.getElementById(\'net-line-modal\').remove()" style="background:rgba(255,255,255,.08);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;flex-shrink:0">✕</button>'
+          +       '<button onclick="document.getElementById(\'net-line-modal\').remove()" style="background:rgba(255,255,255,.08);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>'
           +     '</div>'
           +     '<div style="display:flex;gap:10px;align-items:center;margin-top:12px">'
           +       '<div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,' + line.color + ',' + line.color + 'cc)"></div></div>'
@@ -1022,10 +1022,10 @@
         +     '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.75)">K-Express</div>'
         +     '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:26px;font-weight:900">한국어 노선도 (전체 ' + all.length + '개 역)</div>'
         +   '</div>'
-        +   '<button onclick="this.parentElement.parentElement.parentElement.style.display=\'none\';" style="width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(20,24,48,.8);color:#fff;font-size:16px;cursor:pointer">✕</button>'
+        +   '<button onclick="this.parentElement.parentElement.parentElement.style.display=\'none\';" style="width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(20,24,48,.8);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
         + '</div>'
         + '<div id="gl-fullmap-body" style="color:rgba(220,210,255,.8);font-size:14px;line-height:1.6;padding:32px 12px;text-align:center">'
-        +   '<div style="font-size:40px;margin-bottom:10px">🚧</div>'
+        +   '<div style="display:inline-flex;width:46px;height:46px;margin-bottom:10px;color:#fbbf24"><i data-lucide="construction" class="kh-ui-icon" style="width:46px;height:46px" aria-hidden="true"></i></div>'
         +   '<div style="font-weight:800;color:#fff;font-size:16px;margin-bottom:4px">Full map coming in the next build</div>'
         +   '<div>Next iteration will render every station (starter → fluency) with per-station can-do statements, grammar points, and content unlocks.</div>'
         + '</div></div>';
@@ -1077,7 +1077,7 @@
       <!-- Tab: Goals -->
       <div id="htab-body-goals" style="display:none">
         <div id="weekly-goals-bars" style="display:grid;gap:8px"></div>
-        <div style="text-align:right;margin-top:8px"><button onclick="openGoalSettings()" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-weight:700;color:var(--muted)">⚙️ 목표 설정</button></div>
+        <div style="text-align:right;margin-top:8px"><button onclick="openGoalSettings()" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-weight:700;color:var(--muted);display:inline-flex;align-items:center;gap:4px"><i data-lucide="settings" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>목표 설정</span></button></div>
         <div id="goal-settings-modal" style="display:none;margin-top:10px;padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0">
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px">
             <div><label style="font-size:10px;font-weight:700;color:#64748b">기사</label><input id="goal-articles" type="number" value="5" min="1" max="50" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
@@ -1143,7 +1143,7 @@
     <!-- Weak Grammar Practice Banner -->
     <section class="card" id="weak-grammar-banner" style="margin-bottom:14px;padding:16px;display:none">
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📝</div>
+        <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#92400e"><i data-lucide="pen-line" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
         <div style="flex:1;min-width:160px">
           <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:3px">Weak Grammar Practice</div>
           <div style="font-size:12px;color:var(--muted);line-height:1.5">퀴즈에서 자주 틀린 문법을 집중 연습하세요</div>
@@ -1226,8 +1226,8 @@
           <div class="wp-rom" id="wp-rom"></div>
           <div class="wp-en" id="wp-en"></div>
           <div style="margin-top:10px;display:flex;gap:8px">
-            <button onclick="speakWord(document.getElementById('wp-ko').textContent)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">🔊 Listen</button>
-            <button id="wp-save-btn" onclick="saveCurrentWord()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">📌 Save Word</button>
+            <button onclick="speakWord(document.getElementById('wp-ko').textContent)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Listen</span></button>
+            <button id="wp-save-btn" onclick="saveCurrentWord()" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i data-lucide="pin" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save Word</span></button>
           </div>
         </div>
         <div class="wp-body">
@@ -1512,7 +1512,7 @@
       container.innerHTML = `<div class="skill-lock" style="position:relative">
         <div style="opacity:.35;pointer-events:none">${skillsHtml}</div>
         <div class="skill-lock-overlay">
-          <div class="skill-lock-icon">🔒</div>
+          <div class="skill-lock-icon" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="lock" class="kh-ui-icon" aria-hidden="true"></i></div>
           <div class="skill-lock-msg">Skill Balance unlocks after 10 active days</div>
           <div class="skill-lock-sub">You have ${activityDays} day${activityDays===1?'':'s'} so far — keep studying daily!</div>
         </div>
@@ -1540,8 +1540,8 @@
       + '</div>'
       + badge
       + '<div class="word-row-actions" onclick="event.stopPropagation()">'
-      +   '<button class="wra-btn" title="Listen" onclick="speakWord(\'' + koSafe + '\')">🔊</button>'
-      +   '<button class="wra-btn' + (isSaved ? ' saved' : '') + '" title="' + (isSaved ? 'Saved' : 'Save word') + '" onclick="saveWordFromRow(this,\'' + koSafe + '\',\'' + enSafe + '\',\'' + romSafe + '\')">' + (isSaved ? '✓' : '📌') + '</button>'
+      +   '<button class="wra-btn" title="Listen" onclick="speakWord(\'' + koSafe + '\')" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>'
+      +   '<button class="wra-btn' + (isSaved ? ' saved' : '') + '" title="' + (isSaved ? 'Saved' : 'Save word') + '" onclick="saveWordFromRow(this,\'' + koSafe + '\',\'' + enSafe + '\',\'' + romSafe + '\')" style="display:inline-flex;align-items:center;justify-content:center">' + (isSaved ? '<i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>' : '<i data-lucide="pin" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>') + '</button>'
       + '</div>'
       + '</div>';
   }
@@ -1923,7 +1923,7 @@
               { user_id: supaUser.id, tags: selected, updated_at: new Date().toISOString() },
               { onConflict: 'user_id' }
             );
-            if (typeof toast === 'function') toast('Interests saved ✓');
+            if (typeof toast === 'function') toast('Interests saved');
           } catch(e) {
             if (typeof toast === 'function') toast('Save failed: ' + e.message, true);
           }
@@ -2339,7 +2339,7 @@
         var streak = typeof getCurrentStreak === 'function' ? getCurrentStreak() : 0;
         setText('stat-streak', streak);
       } catch (_) {}
-      if (typeof showToast === 'function') showToast('🧊 Streak protected for today');
+      if (typeof showToast === 'function') showToast('Streak protected for today');
     } else {
       if (typeof showToast === 'function') showToast('Could not use freeze. Please retry.', true);
     }
@@ -2418,7 +2418,7 @@
     ov.onclick = function(e){ if (e.target === ov) ov.remove(); };
     ov.innerHTML =
       '<div style="background:#fff;border-radius:24px;width:min(420px,94vw);padding:32px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.35);animation:mIn .2s ease">'
-      + '<div style="font-size:52px;margin-bottom:16px">🔒</div>'
+      + '<div style="display:inline-flex;width:60px;height:60px;margin-bottom:16px;color:#94a3b8"><i data-lucide="lock" class="kh-ui-icon" style="width:60px;height:60px" aria-hidden="true"></i></div>'
       + '<div style="font-size:22px;font-weight:900;color:#0f172a;margin-bottom:10px;font-family:\'Playfair Display\',serif">Daily Review Locked</div>'
       + '<div style="font-size:15px;color:#64748b;line-height:1.6;margin-bottom:8px">Complete quizzes for at least <strong style="color:#0f172a">3 articles</strong> to unlock Daily Review.</div>'
       + '<div style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:#f1f5f9;border-radius:999px;font-size:14px;font-weight:800;color:#0f172a;margin-bottom:24px">'
@@ -2650,7 +2650,7 @@
     if (!fb) return;
     fb.style.display = 'block';
     fb.className = 'dr-feedback-box ' + (correct ? 'correct' : 'wrong');
-    fb.textContent = correct ? '✓ Correct!' : '✗ Correct answer: ' + correctAnswer;
+    fb.innerHTML = correct ? '<span style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Correct!</span></span>' : '<span style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Correct answer: ' + correctAnswer + '</span></span>';
   }
 
   function drEnableNext() {
@@ -2670,7 +2670,8 @@
     var total   = _drQuestions.length;
     var correct = _drScores.reduce(function(a,b){return a+b;},0);
     var score   = total > 0 ? Math.round(correct / total * 100) : 0;
-    var emoji   = score >= 90 ? '🌟' : score >= 75 ? '🏆' : score >= 50 ? '⭐' : '💪';
+    var iconName = score >= 90 ? 'sparkles' : score >= 75 ? 'trophy' : score >= 50 ? 'star' : 'flame';
+    var emoji = '<i data-lucide="' + iconName + '" class="kh-ui-icon" style="width:48px;height:48px" aria-hidden="true"></i>';
     var headline= score >= 90 ? 'Excellent work!' : score >= 75 ? 'Well done!' : score >= 50 ? 'Good effort!' : 'Keep practicing!';
     var body = document.getElementById('dr-body');
     if (body) body.innerHTML = '<div class="dr-score-screen">'
