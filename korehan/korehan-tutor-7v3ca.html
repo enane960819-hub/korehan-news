@@ -2340,6 +2340,7 @@ body{padding-bottom:0 !important}
 
     var rows = items.map(function(it, idx){
       var warn = '';
+      var disabled = false;
       var info, title;
       if (importState.type === 'lessons') {
         title = it.student_name || 'Unknown student';
@@ -2352,7 +2353,10 @@ body{padding-bottom:0 !important}
         ].filter(Boolean).join(' · ');
         info = '<div class="ir-meta">' + escapeHtmlSafe(meta || '—') + '</div>';
         if (!match) {
+          // No matching student — can't import a lesson without a student_id,
+          // so this one is hard-disabled.
           warn = '<div class="ir-warn">⚠ No matching student in your list — will be skipped. Add the student first.</div>';
+          disabled = true;
         }
       } else {
         title = it.name || 'Unnamed student';
@@ -2365,10 +2369,19 @@ body{padding-bottom:0 !important}
         if (notesPeek) bits.push('<span style="color:#94a3b8">' + escapeHtmlSafe(notesPeek) + '</span>');
         info = '<div class="ir-meta">' + (bits.join(' · ') || '—') + '</div>';
         if (existingByName[(it.name || '').toLowerCase().trim()]) {
-          warn = '<div class="ir-warn">⚠ A student with this name already exists — will be skipped.</div>';
+          if (it._allowDup) {
+            // User explicitly opted to add as a separate record (동명이인).
+            warn = '<div class="ir-warn" style="color:var(--ok)">✓ Adding as new student · 동명이인으로 추가됨</div>';
+            disabled = false;
+          } else {
+            warn = '<div class="ir-warn">⚠ A student with this name already exists.'
+              + ' <button type="button" class="ir-allow-dup" data-allow-dup="' + idx + '" '
+              + 'style="background:transparent;border:none;color:var(--bright);font-weight:700;cursor:pointer;padding:0 0 0 4px;text-decoration:underline">'
+              + 'Add anyway · 동명이인으로 추가</button></div>';
+            disabled = true;
+          }
         }
       }
-      var disabled = !!warn;
       if (disabled) it._include = false;
       return '<label class="import-row' + (disabled ? ' skip' : '') + '">'
         + '<input type="checkbox" data-import-idx="' + idx + '" ' + (it._include ? 'checked' : '') + (disabled ? ' disabled' : '') + '>'
@@ -2400,6 +2413,18 @@ body{padding-bottom:0 !important}
           importState.extracted[i]._include = !!cb.checked;
           updateImportCount();
         }
+      };
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-allow-dup]'), function(b){
+      b.onclick = function(e){
+        e.preventDefault();
+        var i = parseInt(b.getAttribute('data-allow-dup'), 10);
+        if (importState.extracted[i]) {
+          importState.extracted[i]._allowDup = true;
+          importState.extracted[i]._include = true;
+        }
+        renderImportResults();
+        updateImportCount();
       };
     });
     document.getElementById('ir-all').onclick = function(){
