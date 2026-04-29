@@ -5478,7 +5478,18 @@ function renderAIContent() {
 }
 
 function renderModalContent() {
-  if (!_aiContent || !_todayTopic) return;
+  // Provide a clear placeholder instead of leaving the side panels truly
+  // empty — without this, mobile users who tap VOCAB / GRAMMAR / AI see a
+  // blank screen and can't tell whether the page is broken or still
+  // loading.
+  var emptyPlaceholder = '<div style="padding:14px 12px;font-size:11px;color:#94a3b8;font-style:italic;text-align:center">Loading today\'s content…</div>';
+  if (!_aiContent || !_todayTopic) {
+    ['wm-grammar','wm-vocab-chips','wm-vocab-chips-mobile','wm-grammar-chips','wm-helpers'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && !el.innerHTML.trim()) el.innerHTML = emptyPlaceholder;
+    });
+    return;
+  }
 
   // grammar in modal
   var mgh = '';
@@ -15061,18 +15072,33 @@ async function generateWGDrillQuestions(grammarName) {
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || '';
     var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    if (oi < 0 || ei < 0) {
+      console.warn('[WGDrill] No JSON object in Claude response:', raw.slice(0, 200));
+      throw new Error('AI response was not valid JSON.');
+    }
     var parsed = JSON.parse(raw.slice(oi, ei + 1));
-    if (parsed.questions && parsed.questions.length) {
-      _wgDrillState.questions = parsed.questions;
+    // Filter questions that actually have content — Claude sometimes
+    // returns a partial array with empty stub objects when the prompt
+    // gets truncated. Without this guard the modal silently renders
+    // an empty header + zero choice buttons.
+    var validQuestions = (parsed.questions || []).filter(function(q) {
+      return q && typeof q.q === 'string' && q.q.trim()
+        && Array.isArray(q.choices) && q.choices.length >= 2
+        && typeof q.correct === 'number';
+    });
+    if (validQuestions.length) {
+      _wgDrillState.questions = validQuestions;
       _wgDrillState.explanation = parsed.explanation || '';
       _wgDrillState.idx = 0;
       _wgDrillState.score = 0;
       renderWGDrillIntro();
     } else {
-      body.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Failed to generate. Please try again.</div>';
+      console.warn('[WGDrill] Got payload but no valid questions:', parsed);
+      body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">No drill questions generated. The AI response was empty or malformed.</div><button onclick="generateWGDrillQuestions(\'' + grammarName.replace(/'/g, "\\'") + '\')" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
     }
   } catch(e) {
-    body.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Error: ' + (e.message||'unknown') + '</div>';
+    console.error('[WGDrill] generateWGDrillQuestions error:', e);
+    body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">Error: ' + (e.message||'unknown') + '</div><button onclick="generateWGDrillQuestions(\'' + grammarName.replace(/'/g, "\\'") + '\')" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
   }
 }
 
@@ -15097,6 +15123,15 @@ function renderWGDrillQuestion() {
   var st = _wgDrillState;
   if (st.idx >= st.questions.length) { renderWGDrillResult(); return; }
   var q = st.questions[st.idx];
+  // Guard against malformed question objects so we never silently render
+  // an empty modal body. Skip stub questions and try the next one.
+  if (!q || !q.q || !Array.isArray(q.choices) || q.choices.length < 2) {
+    console.warn('[WGDrill] Skipping malformed question at index', st.idx, q);
+    st.idx++;
+    if (st.idx < st.questions.length) { renderWGDrillQuestion(); return; }
+    body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">All drill questions returned empty. Please try regenerating.</div><button onclick="generateWGDrillQuestions(' + JSON.stringify(st.grammar || '') + ')" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
+    return;
+  }
   var shuffled = (q.choices || []).map(function(c, i){ return { text:c, origIdx:i }; }).sort(function(){ return Math.random()-.5; });
   body.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
