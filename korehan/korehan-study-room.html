@@ -2370,7 +2370,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .sr-top-tab.on { color:#fff;background:rgba(122,184,245,.12);border-color:rgba(122,184,245,.2); }
 /* Level sub-bar */
 .sr-level-bar { display:flex;gap:8px;padding:6px 0 14px;max-width:1160px;margin:0 auto; }
-.lv-pill { flex:1;padding:10px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:rgba(255,255,255,.4);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;text-align:center; }
+.lv-pill { flex:1;padding:10px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:rgba(255,255,255,.4);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:6px; }
 .lv-pill:hover { color:rgba(255,255,255,.65);background:rgba(255,255,255,.07); }
 .lv-pill.on { color:#fff;border-color:transparent; }
 .lv-pill.lv-s.on { background:#6b21a8; }
@@ -2578,10 +2578,10 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <!-- Level bar (always visible, top of page) -->
 <div class="sr-level-bar" id="sr-level-bar">
-  <button class="lv-pill lv-s"    onclick="setLevel('Starter',this)">🌰 Seed</button>
-  <button class="lv-pill lv-b on" onclick="setLevel('Beginner',this)">🌱 Sprout</button>
-  <button class="lv-pill lv-i"    onclick="setLevel('Intermediate',this)">🌳 Tree</button>
-  <button class="lv-pill lv-a"    onclick="setLevel('Advanced',this)">🌲 Forest</button>
+  <button class="lv-pill lv-s"    onclick="setLevel('Starter',this)"><i data-lucide="sprout" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Seed</span></button>
+  <button class="lv-pill lv-b on" onclick="setLevel('Beginner',this)"><i data-lucide="leaf" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Sprout</span></button>
+  <button class="lv-pill lv-i"    onclick="setLevel('Intermediate',this)"><i data-lucide="tree-deciduous" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Tree</span></button>
+  <button class="lv-pill lv-a"    onclick="setLevel('Advanced',this)"><i data-lucide="trees" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Forest</span></button>
 </div>
 
 <!-- TAB BAR (mobile/tablet only — outside all panels so it persists) -->
@@ -2603,7 +2603,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   <!-- 단어장 (클릭 시 단어장 탭 열기) -->
   <div class="sr-sb-panel" style="padding:14px 16px;cursor:pointer;background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(124,58,237,.04));border:1px solid rgba(124,58,237,.15)" onclick="switchSrTab('wordbook')">
     <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:22px">📖</span>
+      <i data-lucide="book-open" class="kh-ui-icon" style="width:22px;height:22px;color:#c4b5fd" aria-hidden="true"></i>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:800;color:#c4b5fd">My Word Book</div>
       </div>
@@ -2613,7 +2613,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   <!-- Must-know Vocab -->
   <div class="sr-sb-panel" style="padding:0;overflow:hidden">
     <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-      <div class="ct" style="color:rgba(255,255,255,.45)">📌 Must-know Vocab</div>
+      <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="pin" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Must-know Vocab</span></div>
     </div>
     <div class="cb" id="vocab-box-left" style="padding:12px 14px"></div>
   </div>
@@ -2702,7 +2702,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
           </div>
           <div class="sr-topic-q" id="hero-topic-ko">Loading…</div>
           <div class="sr-topic-en2" id="hero-topic-en"></div>
-          <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:8px">✅ Done today</div>
+          <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:8px;align-items:center;gap:6px"><i data-lucide="check-circle-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Done today</span></div>
           <!-- vocab + grammar chips (desktop only) -->
           <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
         </div>
@@ -2724,13 +2724,13 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
     <div id="wcf-mode-text"  style="display:none">Open Express Practice</div>
     <!-- hidden mode tabs for JS state tracking -->
     <div class="wc-mode-tabs" id="wc-mode-tabs" style="display:none">
-      <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')">📝 Topic Writing</button>
+      <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Topic Writing</span></button>
     </div>
 
     <!-- Feedback inbox — redirect to Growth Lab -->
     <div id="feedback-inbox-btn" style="display:none;margin-top:14px;">
       <a href="korehan-learning-overview.html" style="display:flex;width:100%;padding:11px 16px;background:rgba(14,165,233,0.12);border:1.5px solid rgba(14,165,233,0.25);border-radius:10px;font-size:13px;font-weight:800;color:#7dd3fc;cursor:pointer;font-family:inherit;align-items:center;gap:8px;justify-content:center;text-decoration:none">
-        <span>📬</span><span id="feedback-inbox-label">Growth Lab에서 피드백 확인 →</span>
+        <i data-lucide="inbox" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span id="feedback-inbox-label">Growth Lab에서 피드백 확인 →</span>
       </a>
     </div>
   </div>
@@ -2741,12 +2741,12 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
   <!-- Unified submit-today banner (shows when there's unsaved writing work) -->
   <div class="as-submit-today" id="submit-today-banner">
-    <span style="font-size:18px">📤</span>
+    <i data-lucide="upload" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i>
     <div style="flex:1">
       <div style="font-size:12px;font-weight:800;color:#22c55e;margin-bottom:2px">Today's writing is ready!</div>
       <div id="submit-today-count" style="font-size:11px;color:rgba(255,255,255,.6)">Submit to receive feedback within 24 hours</div>
     </div>
-    <button class="btn btn-g" onclick="submitAllWritingsToday()" style="font-size:12px;padding:8px 16px;font-weight:800">📩 Submit All</button>
+    <button class="btn btn-g" onclick="submitAllWritingsToday()" style="font-size:12px;padding:8px 16px;font-weight:800;display:inline-flex;align-items:center;gap:6px"><i data-lucide="send" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Submit All</span></button>
   </div>
 
   <!-- ACTIVITY CARDS -->
@@ -2799,7 +2799,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
     <div class="master-card" style="padding:0" data-gate="diary" onclick="openDiaryDirect()">
       <div class="mc-banner" style="background:linear-gradient(135deg,#1e1b4b,#312e81);display:flex;align-items:center;justify-content:center;height:100%;min-height:160px;border-radius:14px">
         <div style="text-align:center;color:#fff">
-          <div style="font-size:36px;margin-bottom:8px">📓</div>
+          <i data-lucide="notebook" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:8px;color:#94a3b8" aria-hidden="true"></i>
           <div style="font-size:22px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 2px 12px rgba(139,92,246,.5)">KOREAN DIARY</div>
           <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px">Write your day in Korean</div>
         </div>
@@ -2870,7 +2870,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   <div class="sr-sb-panel" style="padding:12px 14px">
     <div id="grammar-path-banner">
       <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openGrammarFocusForCurriculum()">
-        <span style="font-size:18px">📐</span>
+        <i data-lucide="ruler" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i>
         <div style="flex:1;min-width:0;overflow:hidden">
           <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:1px">Grammar Path</div>
           <div style="font-size:12px;font-weight:700;color:#fff">0/45 mastered</div>
@@ -2878,7 +2878,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         </div>
         <span style="font-size:12px;color:rgba(255,255,255,.3);flex-shrink:0">&#8250;</span>
       </div>
-      <button onclick="event.stopPropagation();KHGrammarTree&&KHGrammarTree.open()" style="margin-top:8px;width:100%;padding:7px;border-radius:8px;border:1px solid rgba(96,165,250,.2);background:rgba(96,165,250,.08);color:#60a5fa;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">🌳 Open Skill Tree</button>
+      <button onclick="event.stopPropagation();KHGrammarTree&&KHGrammarTree.open()" style="margin-top:8px;width:100%;padding:7px;border-radius:8px;border:1px solid rgba(96,165,250,.2);background:rgba(96,165,250,.08);color:#60a5fa;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="git-branch" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Open Skill Tree</span></button>
     </div>
   </div>
 
@@ -2886,7 +2886,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   <div class="sr-sb-panel" style="padding:0;overflow:hidden">
     <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
+        <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="layers" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Flashcards</span></div>
         <button onclick="KHFlashcards&&KHFlashcards.open({title:'Flashcards'})" style="font-size:10px;font-weight:800;color:#60a5fa;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.2);border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit">3D Mode →</button>
       </div>
     </div>
@@ -2901,15 +2901,15 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   <!-- LISTENING QUIZ -->
   <div class="sr-sb-panel" style="padding:0;overflow:hidden">
     <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-      <div class="ct" style="color:rgba(255,255,255,.45)">🎧 Listening Quiz</div>
+      <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="headphones" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Listening Quiz</span></div>
     </div>
     <div id="lq-mini" style="padding:12px 14px">
       <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-        <button class="tpill on" onclick="setLQMode('hear',this)">🔊 Hear?</button>
-        <button class="tpill"    onclick="setLQMode('mean',this)">💬 Meaning?</button>
+        <button class="tpill on" onclick="setLQMode('hear',this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Hear?</span></button>
+        <button class="tpill"    onclick="setLQMode('mean',this)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Meaning?</span></button>
       </div>
       <div style="text-align:center;padding:10px 0">
-        <div style="font-size:36px;margin-bottom:6px">🎧</div>
+        <i data-lucide="headphones" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:6px;color:#94a3b8" aria-hidden="true"></i>
         <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.8);margin-bottom:3px">Test your listening</div>
         <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px">AI generates from today's vocab</div>
         <button class="lqbtn" onclick="startLQ()">Start Quiz</button>
@@ -2938,8 +2938,8 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <div style="font-size:15px;font-weight:900;color:#7dd3fc;margin-bottom:4px">Korean Alphabet</div>
       <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px">쉬운 한국어 단어로 한글 배우기</div>
       <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
-        <span style="padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.12);color:#7dd3fc;font-size:10px;font-weight:700">📝 학습</span>
-        <span style="padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.12);color:#7dd3fc;font-size:10px;font-weight:700">🔄 복습</span>
+        <span style="padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.12);color:#7dd3fc;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:4px"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>학습</span></span>
+        <span style="padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.12);color:#7dd3fc;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:4px"><i data-lucide="rotate-ccw" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>복습</span></span>
         <span style="padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.12);color:#7dd3fc;font-size:10px;font-weight:700">최대 20단어</span>
       </div>
     </div>
@@ -2954,12 +2954,12 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <div class="sr-tab-panel" id="sr-panel-help">
   <div style="max-width:600px;margin:0 auto;padding:16px">
     <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden;margin-bottom:12px">
-      <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4)">🌟 Today's Phrase</div></div>
+      <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4);display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today's Phrase</span></div></div>
       <div class="cb" id="phrase-box-help" style="padding:12px 14px"></div>
     </div>
     <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
       <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-        <div class="ct" style="color:rgba(255,255,255,.45)">📌 Must-know Vocab</div>
+        <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="pin" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Must-know Vocab</span></div>
       </div>
       <div class="cb" id="vocab-box-help" style="padding:12px 14px"></div>
     </div>
@@ -2977,7 +2977,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
     <!-- Flashcards -->
     <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
       <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-        <div class="ct" style="color:rgba(255,255,255,.45)">📇 Flashcards</div>
+        <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="layers" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Flashcards</span></div>
       </div>
       <div style="padding:10px 14px 14px">
         <div class="mgrid" id="fc-grid-help"></div>
@@ -2990,7 +2990,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <div class="sr-tab-panel" id="sr-panel-master">
   <div style="max-width:1160px;margin:0 auto;padding:24px">
     <div style="margin-bottom:20px">
-      <div style="font-size:20px;font-weight:900;color:#fff">🎯 Exercise</div>
+      <div style="font-size:20px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px"><i data-lucide="target" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i><span>Exercise</span></div>
       <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Interactive tools to practice Korean</div>
     </div>
     <div class="master-grid">
@@ -3001,33 +3001,33 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
     <!-- ═══ INTERACTIVE TOOLS ═══ -->
     <div style="margin-top:28px">
-      <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">🎮 Interactive Tools</div>
+      <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px;display:inline-flex;align-items:center;gap:8px"><i data-lucide="gamepad-2" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Interactive Tools</span></div>
       <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:14px">Canvas 2.0 — immersive learning with visual effects</div>
       <div class="master-grid">
         <div class="master-card" onclick="KHFlashcards&&KHFlashcards.open({title:'3D Flashcards'})" style="cursor:pointer">
           <div style="text-align:center;padding:20px">
-            <div style="font-size:36px;margin-bottom:10px">📇</div>
+            <i data-lucide="layers" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#7dd3fc" aria-hidden="true"></i>
             <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">3D Flashcards</div>
             <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">Swipe cards to review vocabulary<br>with mastery tracking</div>
           </div>
         </div>
         <div class="master-card" onclick="KHGrammarTree&&KHGrammarTree.open()" style="cursor:pointer">
           <div style="text-align:center;padding:20px">
-            <div style="font-size:36px;margin-bottom:10px">🌳</div>
+            <i data-lucide="git-branch" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#86efac" aria-hidden="true"></i>
             <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">Grammar Skill Tree</div>
             <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">45 grammar patterns<br>across 3 levels</div>
           </div>
         </div>
         <div class="master-card" onclick="KHSentenceBuilder&&KHSentenceBuilder.open()" style="cursor:pointer">
           <div style="text-align:center;padding:20px">
-            <div style="font-size:36px;margin-bottom:10px">🧩</div>
+            <i data-lucide="puzzle" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#c4b5fd" aria-hidden="true"></i>
             <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">Sentence Builder</div>
             <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">Drag color-coded blocks<br>to build Korean sentences</div>
           </div>
         </div>
         <div class="master-card" onclick="startLQ()" style="cursor:pointer">
           <div style="text-align:center;padding:20px">
-            <div style="font-size:36px;margin-bottom:10px">🎧</div>
+            <i data-lucide="headphones" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#fde68a" aria-hidden="true"></i>
             <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">Listening Quiz</div>
             <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">AI-generated audio quiz<br>with waveform visualization</div>
           </div>
@@ -3047,7 +3047,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
           <button onclick="openUniverseView()" type="button" id="wb-universe-trigger"
             style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px 7px 12px;border-radius:10px;border:1px solid rgba(167,139,250,.5);background:linear-gradient(135deg,rgba(124,58,237,.32),rgba(56,189,248,.2));color:#fff;font-size:12px;font-weight:900;letter-spacing:.02em;cursor:pointer;font-family:inherit;box-shadow:0 6px 16px rgba(124,58,237,.28),inset 0 1px 0 rgba(255,255,255,.1);transition:transform .12s,box-shadow .12s">
-            <span style="font-size:14px;filter:drop-shadow(0 0 5px rgba(196,181,253,.7))">🌌</span>Universe View
+            <i data-lucide="telescope" class="kh-ui-icon" style="width:14px;height:14px;filter:drop-shadow(0 0 5px rgba(196,181,253,.7))" aria-hidden="true"></i>Universe View
           </button>
           <button onclick="toggleWbHide()" id="wb-hide-btn" style="padding:7px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">Hide Meanings</button>
           <button onclick="startWbQuiz()" style="padding:7px 16px;border-radius:10px;border:1px solid rgba(139,92,246,.3);background:rgba(139,92,246,.15);color:#c4b5fd;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">Quiz Mode</button>
@@ -3086,32 +3086,32 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
     <div class="wm-header">
       <div class="wmh-topic">
         <div>
-          <div class="wmh-title" id="wm-mode-label">✍️ Express Practice</div>
+          <div class="wmh-title" id="wm-mode-label" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="pencil" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Express Practice</span></div>
           <div class="wmh-sub" id="wm-topic-sub">Today's topic loading…</div>
         </div>
         <!-- 모달 내 모드 탭 -->
         <div class="wm-mode-toggle" id="wm-mode-toggle">
-          <button class="wm-mode-btn active" id="mbtab-topic" onclick="switchModalMode('topic')">📝 Topic</button>
-          <button class="wm-mode-btn" id="mbtab-diary" onclick="switchModalMode('diary')">📓 Diary</button>
+          <button class="wm-mode-btn active" id="mbtab-topic" onclick="switchModalMode('topic')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Topic</span></button>
+          <button class="wm-mode-btn" id="mbtab-diary" onclick="switchModalMode('diary')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="notebook" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Diary</span></button>
         </div>
       </div>
-      <button class="wmh-close" onclick="closeWritingModal()">✕</button>
+      <button class="wmh-close" onclick="closeWritingModal()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
 
     <!-- 모바일 탭 (JS가 .wmodal에 추가하거나 HTML에 포함) -->
     <div class="wm-mobile-tabs" id="wm-mobile-tabs" style="display:none">
-      <button class="wm-mobile-tab active" id="wmtab-write" onclick="wmMobileTab('write')">✏️ Write</button>
-      <button class="wm-mobile-tab" id="wmtab-vocab" onclick="wmMobileTab('vocab')">📚 Vocab</button>
-      <button class="wm-mobile-tab" id="wmtab-grammar" onclick="wmMobileTab('grammar')">📝 Grammar</button>
-      <button class="wm-mobile-tab" id="wmtab-feedback" onclick="wmMobileTab('feedback')">🤖 AI</button>
+      <button class="wm-mobile-tab active" id="wmtab-write" onclick="wmMobileTab('write')" style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Write</span></button>
+      <button class="wm-mobile-tab" id="wmtab-vocab" onclick="wmMobileTab('vocab')" style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Vocab</span></button>
+      <button class="wm-mobile-tab" id="wmtab-grammar" onclick="wmMobileTab('grammar')" style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Grammar</span></button>
+      <button class="wm-mobile-tab" id="wmtab-feedback" onclick="wmMobileTab('feedback')" style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="bot" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>AI</span></button>
     </div>
 
     <!-- Reading 소스 선택 바 (Reading 모드일 때만 표시) -->
     <div id="wm-source-bar" style="display:none;grid-column:1/-1;background:#0d1b2e;border-bottom:1px solid rgba(255,255,255,.1);padding:10px 20px;gap:10px;align-items:center;flex-wrap:wrap">
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="wm-src-tab active" id="wsrc-article" onclick="switchModalSource('article',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.3);border-radius:20px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📰 Article</button>
-        <button class="wm-src-tab" id="wsrc-conv" onclick="switchModalSource('conv',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">💬 Conversation</button>
-        <button class="wm-src-tab" id="wsrc-story" onclick="switchModalSource('story',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📖 Story</button>
+        <button class="wm-src-tab active" id="wsrc-article" onclick="switchModalSource('article',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.3);border-radius:20px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><i data-lucide="newspaper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Article</span></button>
+        <button class="wm-src-tab" id="wsrc-conv" onclick="switchModalSource('conv',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Conversation</span></button>
+        <button class="wm-src-tab" id="wsrc-story" onclick="switchModalSource('story',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Story</span></button>
       </div>
       <select id="wm-src-select" onchange="onModalSourceSelect(this)" style="flex:1;min-width:200px;padding:6px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit">
         <option value="">Select...</option>
@@ -9592,7 +9592,7 @@ async function _refreshSpeakingCoinBadge() {
     badge.style.display = 'inline-block';
     badge.style.cursor = 'pointer';
     badge.onclick = _showForestTutoringModal;
-    badge.textContent = '🌲 Forest · 1:1 튜터링';
+    badge.textContent = 'Forest · 1:1 튜터링';
     return;
   }
   try {
