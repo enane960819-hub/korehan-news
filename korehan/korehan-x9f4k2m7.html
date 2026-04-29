@@ -3717,9 +3717,12 @@ function _renderHeadlinePanel() {
         if (h.published_at) metaBits.push(_fmtPubDate(h.published_at));
         var hasVideo = !!(h.video_url && h.video_kind);
         var hasImage = !!(h.image);
-        var videoBadge = hasVideo
-          ? '<span title="Video available (' + esc(h.video_kind) + ')" style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fef2f2;color:#b91c1c;font-size:10px;font-weight:800;vertical-align:middle">🎬 ' + esc(h.video_kind) + '</span>'
-          : '';
+        var isGif = !!h.is_gif;
+        var videoBadge = isGif
+          ? '<span title="Silent looping GIF (' + (h.video_duration || '?') + 's) — great short hero" style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:10px;font-weight:800;vertical-align:middle">🎞️ GIF</span>'
+          : hasVideo
+            ? '<span title="Video available (' + esc(h.video_kind) + (h.video_duration ? ', ' + h.video_duration + 's' : '') + ')" style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fef2f2;color:#b91c1c;font-size:10px;font-weight:800;vertical-align:middle">🎬 ' + esc(h.video_kind) + '</span>'
+            : '';
         var videoToggle = hasVideo
           ? '<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#7c3aed;font-weight:700;margin-top:4px;cursor:pointer">'
               + '<input type="checkbox" class="hl-vid" data-idx="'+i+'" checked style="width:13px;height:13px"> Use video instead of image'
@@ -3891,11 +3894,13 @@ async function runAutoGenerate(){
         + '- 정중체 (~했어요, ~입니다, ~예요)\n'
         + '- 어려운 용어는 괄호로 설명: 기준금리(돈을 빌릴 때 기본이 되는 이자율)\n'
         + '- 영어 단어는 원어 병기: 인공지능(AI)\n'
+        + '- **한자 절대 금지**: 괄호 안에든 본문에든 한자(漢字, 中文, etc.) 한 글자도 쓰지 마세요. 학습자가 읽을 수 없습니다. 完全變態 같은 표기 X — 그냥 "완전변태"만.\n'
         + '- 4~6개 단락, 단락당 2~3문장\n'
         + '- 제목: 15~25자\n\n'
         + '[금지]\n'
         + '- 실존 인물 비방, 미검증 주장 금지\n'
-        + '- 원본에 없는 사실 추가 금지\n\n'
+        + '- 원본에 없는 사실 추가 금지\n'
+        + '- 한자 표기 금지 (한글만 사용)\n\n'
         + '[중요표현 / Key Expressions]\n'
         + '- 본문에서 학습자가 외울 만한 표현을 **3~5개** 추출 (필수, 비우지 말 것)\n'
         + '- 우선순위: 관용 표현 / 자주 쓰이는 굳어진 구 / 유용한 문법 패턴 / 의미 단위로 묶이는 명사구·동사구\n'
@@ -5857,11 +5862,13 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     + '- 정중체 (~했어요, ~입니다, ~예요)\n'
     + '- 어려운 용어는 괄호로 설명\n'
     + '- 영어 단어는 원어 병기: 인공지능(AI)\n'
+    + '- **한자 절대 금지**: 괄호 안에든 본문에든 한자(漢字) 쓰지 마세요. 학습자가 못 읽습니다. 한글만 사용.\n'
     + '- 4~6개 단락, 단락당 2~3문장\n'
     + '- 제목: 15~25자\n\n'
     + '[금지]\n'
     + '- 실존 인물 비방, 미검증 주장 금지\n'
-    + '- 원본에 없는 사실 추가 금지\n\n'
+    + '- 원본에 없는 사실 추가 금지\n'
+    + '- 한자 표기 금지\n\n'
     + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)"}';
 
   var res = await callClaude({
