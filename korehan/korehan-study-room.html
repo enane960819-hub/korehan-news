@@ -10834,38 +10834,6 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
   }
 }
 
-// AI 1차 첨삭 — Article Study용 (백그라운드)
-async function triggerArticleAIFeedback(submissionId, text, articleTitle) {
-  try {
-    var prompt = '당신은 한국어 작문 첨삭 선생님입니다.\n\n'
-      + '학생이 기사 "' + articleTitle + '"를 읽고 작성한 글:\n"""\n' + text + '\n"""\n\n'
-      + '다음 형식으로 첨삭해주세요 (JSON):\n'
-      + '{\n'
-      + '  "overall": "전반적인 평가 1-2문장",\n'
-      + '  "corrections": [{"original":"원문","corrected":"수정문","reason":"이유","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],\n'
-      + '  "encouragement": "격려 한마디"\n'
-      + '}\nJSON만 반환하세요.';
-    var data = await callClaude({
-      feature: 'article_study_feedback',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
-      messages: [{ role:'user', content: prompt }]
-    });
-    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
-    var clean = raw.replace(/```json|```/g,'').trim();
-    var parsed = JSON.parse(clean);
-    var sb = getSupa();
-    if (sb) {
-      await sb.from('user_submissions').update({
-        ai_feedback: parsed,
-        ai_feedback_at: new Date().toISOString(),
-        ai_model: 'claude-haiku-4-5-20251001',
-        status: 'ai_reviewed'
-      }).eq('id', submissionId);
-    }
-  } catch(e) { console.warn('Article AI feedback failed:', e); }
-}
-
 // ── 피드백 인박스 ─────────────────────────────────────────────
 async function loadFeedbackInbox() {
   if (!supaUser) return;
@@ -16251,7 +16219,7 @@ var _asArticles      = [];
 var _asCurrentArt    = null;
 var _asStudyContent  = null;
 var _asStep          = 1;
-var _asStepDone      = [false,false,false,false,false];
+var _asStepDone      = [false,false,false,false];
 var _asMatchState    = null;
 var _asWOState       = null;
 var _asQState        = null;
@@ -17555,7 +17523,7 @@ function _asRenderGrid() {
 async function asSelectArticle(id) {
   var art = _asArticles.find(function(a){ return String(a.id)===String(id); });
   if (!art) return;
-  _asCurrentArt = art; _asStep = 1; _asStepDone = [false,false,false,false,false];
+  _asCurrentArt = art; _asStep = 1; _asStepDone = [false,false,false,false];
   _asStudyContent = null; _asMatchState = null; _asWOState = null; _asQState = null;
   // Restore progress: localStorage first, then DB
   if (!_asRestoreProgress()) {
@@ -17662,8 +17630,8 @@ async function _asSaveContentToDB(articleId, content) {
   } catch(e) { console.warn('[ArticleStudy] DB save failed', e); }
 }
 
-var _asStepLabels = ['Step 1 / 5 — Vocabulary','Step 2 / 5 — Phrases','Step 3 / 5 — Reading','Step 4 / 5 — Quiz','Step 5 / 5 — Writing'];
-var _asStepTabLabels = ['Vocab','Phrases','Reading','Quiz','Writing'];
+var _asStepLabels = ['Step 1 / 4 — Vocabulary','Step 2 / 4 — Phrases','Step 3 / 4 — Reading','Step 4 / 4 — Quiz'];
+var _asStepTabLabels = ['Vocab','Phrases','Reading','Quiz'];
 function _asRenderPips() {
   // Update step tabs
   var tabs = document.querySelectorAll('#as-step-tabs .su-step');
@@ -17676,7 +17644,7 @@ function _asRenderPips() {
   var lbl = document.getElementById('as-step-label');
   if (lbl) lbl.textContent = _asStepLabels[_asStep-1] || '';
   // Update progress bar
-  var pct = Math.round(((_asStep - 1) / 5) * 100);
+  var pct = Math.round(((_asStep - 1) / 4) * 100);
   var fill = document.getElementById('as-progress-fill');
   if (fill) fill.style.width = pct + '%';
   // Update nav
@@ -17691,7 +17659,6 @@ function _asRenderStep() {
   switch(_asStep) {
     case 1: _asStep1(art,act); break; case 2: _asStep2(art,act); break;
     case 3: _asStep3(art,act); break; case 4: _asStep4(art,act); break;
-    case 5: _asStep5(art,act); break;
   }
 }
 
@@ -17971,7 +17938,7 @@ function _asStep4(art,act) {
     +'<details style="margin:0 20px 16px"><summary style="cursor:pointer;font-size:13px;color:#7c3aed;font-weight:700;padding:8px 0;user-select:none;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_BOOK+'</span><span>Review article</span></summary>'
     +'<div class="su-article-card" style="margin:8px 0 0"><div class="su-article-body"><div class="su-article-text">'+bodyHtml+'</div></div></div></details>';
   var qs=(_asStudyContent&&_asStudyContent.questions)||[];
-  if (!qs.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No questions available.</div>'; _asSetNav('none',''); return; }
+  if (!qs.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No questions available.</div>'; _asSetNav('none','none',''); return; }
   _asQState={qs:qs,ans:new Array(qs.length).fill(null),current:0};
   _asRenderQuiz();
 }
@@ -18021,7 +17988,7 @@ function _asShowSentenceQuiz() {
   var vocab = (_asStudyContent && _asStudyContent.vocab) || [];
   var phrases = (_asStudyContent && _asStudyContent.phrases) || [];
   var wrongPhrases = (_asStudyContent && _asStudyContent.wrong_phrases) || [];
-  if (!phrases.length && !vocab.length) { _asSetNav('none',''); return; }
+  if (!phrases.length && !vocab.length) { _asSetNav('none','none',''); return; }
 
   // Use actual phrases from article content as correct sentences
   var correct = phrases.slice(0,2).map(function(p){ return { text: p.ko || p, isCorrect: true }; });
@@ -18036,7 +18003,7 @@ function _asShowSentenceQuiz() {
   // garbage — admins can fill them in via the Article Study Editor.
   var incorrect = wrongPhrases.slice(0, 2).map(function(p){ return { text: p.ko || p, isCorrect: false }; });
   if (!incorrect.length) {
-    _asSetNav('none','');
+    _asSetNav('none','none','');
     return;
   }
 
@@ -18107,32 +18074,8 @@ function _asCheckSentence(btn) {
         + (allFound ? 'background:#f0fdf4;color:#166534;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">' + BM_ICON_PARTY + '</span><span>Bonus complete — perfect!</span>' : 'background:#fffbeb;color:#92400e">Bonus done — ' + (st ? st.correctPicked : 0) + ' of ' + (st ? st.correctTotal : 0) + ' correct found.')
         + '</div>';
     }
-    _asSetNav('none','');
+    _asSetNav('none','none','');
   }
-}
-
-// ── Step 5: Free writing (optional) ──
-function _asStep5(art,act) {
-  var bodyHtml=_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'';
-  art.innerHTML='<details class="as-article-toggle"><summary style="cursor:pointer;font-size:12px;color:var(--gray);font-weight:700;padding:8px 0;user-select:none;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_BOOK+'</span><span>기사 다시 보기 (클릭해서 펼치기)</span></summary><div class="as-article-text" style="margin-top:8px">'+bodyHtml+'</div></details>';
-  var saved=_asGetTmp(); var txt=(saved&&saved.step5_text)||'';
-  var vocabHints = '';
-  if (_asCurrentArt && _asCurrentArt._vocab && _asCurrentArt._vocab.length) {
-    var hints = _asCurrentArt._vocab.slice(0,6);
-    vocabHints = '<div style="margin-bottom:10px;padding:10px 12px;background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px">'
-      + '<div style="font-size:10px;font-weight:800;color:#2563eb;margin-bottom:6px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">' + BM_ICON_BULB + '</span><span>이 단어들을 사용해보세요:</span></div>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
-      + hints.map(function(v) { return '<span style="font-size:12px;padding:3px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:20px;color:#1d4ed8;font-weight:700">' + (v.ko||v) + '</span>'; }).join('')
-      + '</div></div>';
-  }
-  act.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-    +'<p class="as-section-label" style="margin:0;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_PENCIL+'</span><span>자유 글쓰기</span></p>'
-    +'<span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:999px;font-weight:700">선택사항</span></div>'
-    +'<p style="font-size:12px;color:var(--gray);margin-bottom:10px">이 기사를 읽고 느낀 점이나 비슷한 경험을 한국어로 써보세요.</p>'
-    + vocabHints
-    +'<textarea id="as-write-ta" style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box" placeholder="예: 이 기사가 흥미로웠어요. 저도 비슷한 경험이 있어요..." oninput="_asTmpStep5(this.value)">'+txt+'</textarea>'
-    +'<div style="margin-top:6px;font-size:11px;color:var(--gray);display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_CHECK+'</span><span>자동 저장됩니다.</span></div>';
-  _asSetNav('none','none','');
 }
 
 // ── Nav actions ──
@@ -18144,7 +18087,7 @@ function _asCheckWO() {
   // Step 3 now auto-checks in asBlankFill3 — this is a no-op for compat
   if(!_asWOState) return;
 }
-function asNextStep() { _asStepDone[_asStep-1]=true; _asStep=Math.min(_asStep+1,5); _asSaveProgress(); _asRenderStep(); }
+function asNextStep() { _asStepDone[_asStep-1]=true; _asStep=Math.min(_asStep+1,4); _asSaveProgress(); _asRenderStep(); }
 
 // ── Translation toggle (loads from article_cache DB) ──
 var _asTranslationCache = null;
@@ -18178,7 +18121,6 @@ async function asToggleTranslation() {
 function asMarkDone() {
   try {
   _asStepDone[_asStep-1]=true; _asSaveProgress(); _asTmpCompletion();
-  _asTmpStep5((document.getElementById('as-write-ta')||{}).value||'');
   } catch(e) { console.warn('asMarkDone save error:', e); }
   document.getElementById('as-article-content').innerHTML='';
   document.getElementById('as-activity-area').innerHTML=
@@ -18305,19 +18247,6 @@ function _asUpdateTmp(patch) {
   } catch(e){}
 }
 function _asTmpStep4(a) { _asUpdateTmp({step4_answers:a}); }
-function _asTmpStep5(t) {
-  _asUpdateTmp({step5_text:t});
-  // Also save to unified drafts if there's actual writing
-  if (t && t.trim().length > 5 && _asCurrentArt) {
-    saveDraft('article_study', {
-      text: t.trim(),
-      content_id: String(_asCurrentArt.id),
-      content_title: _asCurrentArt.title || '',
-      writing_mode: 'article_study',
-      context_key: 'article_' + _asCurrentArt.id
-    });
-  }
-}
 function _asTmpCompletion() { _asUpdateTmp({completed:true,completedAt:new Date().toISOString()}); }
 function _asSaveProgress() {
   var patch = {step:_asStep, stepDone:_asStepDone.slice()};
@@ -18333,7 +18262,7 @@ function _asRestoreProgress() {
   var saved = _asGetTmp();
   if (saved && saved.step && !saved.completed) {
     _asStep = saved.step;
-    _asStepDone = saved.stepDone || [false,false,false,false,false];
+    _asStepDone = saved.stepDone || [false,false,false,false];
     if (saved.wo_filledBlanks && saved.wo_idx !== undefined) {
       _asWOState = _asWOState || {};
       _asWOState.idx = saved.wo_idx;
@@ -18376,7 +18305,7 @@ async function _asLoadProgressFromDB() {
       var saved = typeof data.progress_data === 'string' ? JSON.parse(data.progress_data) : data.progress_data;
       if (saved && saved.step && !saved.completed) {
         _asStep = saved.step;
-        _asStepDone = saved.stepDone || [false,false,false,false,false];
+        _asStepDone = saved.stepDone || [false,false,false,false];
         // Also cache locally
         _asUpdateTmp(saved);
         return true;
@@ -18398,19 +18327,14 @@ async function asSubmitWork() {
   if(saveBtn){ saveBtn.disabled=true; saveBtn.style.opacity='.6'; saveBtn.textContent='Saving…'; }
   var saved=_asGetTmp()||{};
   try {
-    var step5 = saved.step5_text||'';
     var r=await sb.from('user_submissions').upsert({
       user_id:supaUser.id, content_type:'article_study',
       content_id:String(_asCurrentArt.id), content_title:_asCurrentArt.title||'',
-      study_date:kstDateKey(), writing_text:step5, word_count:step5.length,
+      study_date:kstDateKey(), writing_text:'', word_count:0,
       context_data:JSON.stringify({step4_answers:saved.step4_answers||[]}),
       level:_currentLevel||'', status:'submitted'
     },{onConflict:'user_id,content_type,study_date,content_id'}).select();
     if(r.error) throw r.error;
-    // Trigger AI feedback if there's writing
-    if(step5.trim().length>10 && r.data && r.data[0] && r.data[0].id){
-      triggerArticleAIFeedback(r.data[0].id, step5, _asCurrentArt.title||'');
-    }
     showToast('Submitted!');
     _asUpdateTmp({submitted:true});
     document.getElementById('as-activity-area').innerHTML=
@@ -18434,11 +18358,10 @@ async function asSubmitTodayAll() {
     var ids=Object.keys(d); var submitted=0;
     for(var i=0;i<ids.length;i++){
       var item=d[ids[i]]; if(!item||item.submitted) continue;
-      var s5=item.step5_text||'';
       var r=await sb.from('user_submissions').upsert({
         user_id:supaUser.id, content_type:'article_study',
         content_id:String(ids[i]), content_title:item.article_title||'',
-        study_date:today, writing_text:s5, word_count:s5.length,
+        study_date:today, writing_text:'', word_count:0,
         context_data:JSON.stringify({step4_answers:item.step4_answers||[]}),
         status:'submitted'
       },{onConflict:'user_id,content_type,study_date,content_id'});
@@ -18461,11 +18384,10 @@ async function asAutoSubmitOldWork() {
     var ids=Object.keys(d); var changed=false;
     for(var ai=0;ai<ids.length;ai++){
       var item=d[ids[ai]]; if(!item||item.submitted) continue;
-      var s5a=item.step5_text||'';
       var r=await sb.from('user_submissions').upsert({
         user_id:supaUser.id, content_type:'article_study',
         content_id:String(ids[ai]), content_title:item.article_title||'',
-        study_date:date, writing_text:s5a, word_count:s5a.length,
+        study_date:date, writing_text:'', word_count:0,
         context_data:JSON.stringify({step4_answers:item.step4_answers||[]}),
         status:'submitted'
       },{onConflict:'user_id,content_type,study_date,content_id'});
@@ -19460,7 +19382,7 @@ function _csBuildCheck() {
       <div class="su-header">
         <button class="su-back" onclick="asBackToList()">&#8592;</button>
         <div class="su-header-info">
-          <div class="su-header-eyebrow" id="as-step-label">Step 1 / 5 — Vocabulary</div>
+          <div class="su-header-eyebrow" id="as-step-label">Step 1 / 4 — Vocabulary</div>
           <div class="su-header-title" id="as-article-title">Article Study</div>
         </div>
         <button class="su-close" onclick="closeArticleStudy()">&#10005;</button>
@@ -19471,7 +19393,6 @@ function _csBuildCheck() {
         <div class="su-step" onclick="asGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Phrases</span></div>
         <div class="su-step" onclick="asGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Reading</span></div>
         <div class="su-step" onclick="asGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Quiz</span></div>
-        <div class="su-step" onclick="asGoToStep(5)"><span class="su-step-num">5</span><span class="su-step-label">Writing</span></div>
       </div>
       <!-- Progress bar -->
       <div class="su-progress">
