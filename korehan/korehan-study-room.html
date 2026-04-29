@@ -10221,7 +10221,15 @@ async function _triggerPackageFeedback(submissionId, items) {
       + '"corrected_full" and the "original" / "corrected" sides of each correction (those quote / fix the actual Korean text).\n\n'
       + 'The student completed ' + items.length + ' separate activit' + (items.length > 1 ? 'ies' : 'y') + '. Review them INDEPENDENTLY — '
       + 'do not mix content across activities. If activity A is about food and activity B is about a news article, do NOT tell '
-      + 'the student to "remove the news content" from activity A — they are separate prompts.\n\n';
+      + 'the student to "remove the news content" from activity A — they are separate prompts.\n\n'
+      + 'BE CONCISE. The user is reading this on a phone. Keep ALL feedback short and actionable:\n'
+      + '- "overall_assessment", "overall", "naturalness.comment", "structure.comment", "extra_content": each ONE sentence (≤15 words).\n'
+      + '- "daily_tip" / "encouragement": ONE short sentence each. No fluff, no preamble.\n'
+      + '- "common_patterns": include ONLY when the SAME mistake repeats across multiple activities; for a single short submission set this to [].\n'
+      + '- "naturalness", "structure", "extra_content": OMIT (set to null / empty) when the student\'s text is under ~30 Korean characters or there is nothing meaningful to add. Do NOT pad with generic advice.\n'
+      + '- "naturalness.suggestions": at most 2 items. Skip if the comment already says enough.\n'
+      + '- "corrections" should focus on the most important 2-3 issues, not exhaustive.\n'
+      + 'Quality over quantity. If a section would be filler, leave it out.\n\n';
 
     // Map mode strings (including 'express_practice:essay') back to a
     // human-readable activity type for the AI prompt.
@@ -10254,9 +10262,9 @@ async function _triggerPackageFeedback(submissionId, items) {
 
     var schema = '\n\nReturn ONLY valid JSON (no markdown, no commentary) with this EXACT shape:\n'
       + '{\n'
-      + '  "overall_assessment": "2-3 sentence English summary of today\'s overall performance across all activities",\n'
-      + '  "common_patterns": ["pattern repeated across the day, in English", ...],\n'
-      + '  "daily_tip": "one actionable English tip for tomorrow",\n'
+      + '  "overall_assessment": "ONE concise English sentence (≤15 words) summarizing today",\n'
+      + '  "common_patterns": ["pattern repeating ACROSS activities — leave [] if not truly recurring"],\n'
+      + '  "daily_tip": "ONE short actionable English tip for tomorrow",\n'
       + '  "encouragement": "short motivating closing message in English",\n'
       + '  "activities": [\n'
       + '    {\n'
@@ -10265,17 +10273,17 @@ async function _triggerPackageFeedback(submissionId, items) {
       + '      "topic": "the topic / title shown to the student",\n'
       + '      "student_text": "the student\'s original Korean text, copied",\n'
       + '      "score": 0-100,\n'
-      + '      "overall": "1-2 sentence English assessment of THIS activity only",\n'
+      + '      "overall": "ONE short English sentence about THIS activity",\n'
       + '      "corrected_full": "the full Korean text rewritten correctly (Korean OK here)",\n'
       + '      "corrections": [{"original":"Korean snippet","corrected":"Korean snippet","reason":"English explanation","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|REGISTER|NUANCE"}],\n'
-      + '      "structure": {"comment":"English note about sentence structure","tip":"English tip"},\n'
-      + '      "extra_content": "English ideas for additional content / things to add",\n'
-      + '      "spelling": [{"wrong":"Korean","correct":"Korean","tip":"English tip"}],\n'
-      + '      "naturalness": {"score":0-10,"comment":"English","suggestions":["English","English"]}\n'
+      + '      "structure": {"comment":"ONE-sentence English note","tip":"short English tip"} or null,\n'
+      + '      "extra_content": "short English ideas for what to add" or null,\n'
+      + '      "spelling": [{"wrong":"Korean","correct":"Korean","tip":"short English tip"}],\n'
+      + '      "naturalness": {"score":0-10,"comment":"ONE-sentence English","suggestions":["short English (max 2)"]} or null\n'
       + '    }\n'
       + '  ]\n'
       + '}\n'
-      + 'Reminder: every English-language field above MUST be in English. Korean only inside "corrected_full" and the "original" / "corrected" / "wrong" / "correct" sides of corrections / spelling.';
+      + 'Set "structure", "extra_content", and "naturalness" to null when the writing is too short or there is no meaningful note to add. Do NOT pad with generic advice. Reminder: every English-language field above MUST be in English. Korean only inside "corrected_full" and the "original" / "corrected" / "wrong" / "correct" sides of corrections / spelling.';
 
     var prompt = head + blocks + schema;
 
