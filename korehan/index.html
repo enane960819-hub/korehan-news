@@ -380,15 +380,18 @@
 }
 .story-cover > img {
   width:100%; height:100%; object-fit:cover; display:block;
-  /* Slightly darken so the bottom-left title + chips stay legible
-     even on already-dark moody photos. */
-  filter: brightness(.85) contrast(1.05) saturate(1.05);
+  /* No extra dimming filter — many story photos are intentionally
+     moody/dark (thrillers, slice-of-life night scenes). Doubling up
+     darkness on top of those was making titles unreadable. The bottom
+     gradient (::after) handles overlay contrast. */
+  filter: contrast(1.05) saturate(1.05);
 }
 .story-cover::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  /* Stronger bottom gradient — the title and chips need solid contrast
-     against arbitrary photo backgrounds. */
-  background: linear-gradient(180deg, rgba(5,15,35,0) 0%, rgba(5,15,35,0) 38%, rgba(5,15,35,.62) 65%, rgba(5,15,35,.94) 100%);
+  /* Stronger bottom gradient so title + chips stay readable on
+     already-dark photos. Reaches higher up the card and is more
+     opaque at the bottom than before. */
+  background: linear-gradient(180deg, rgba(5,15,35,0) 0%, rgba(5,15,35,.05) 32%, rgba(5,15,35,.55) 58%, rgba(5,15,35,.88) 82%, rgba(5,15,35,.98) 100%);
 }
 .story-overlay-body {
   position: absolute; left: 0; right: 0; bottom: 0;
@@ -478,10 +481,10 @@
 .home-conv-grid-wrap .hconv-lvl.lvl-a { background: #fee2e2; color: #b91c1c; }
 .home-conv-grid-wrap .hconv-chat {
   flex: 1;
-  padding: 12px 14px;
+  padding: 10px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   min-height: 0;
   overflow: hidden;
 }
@@ -1383,9 +1386,11 @@ function renderHomeConvs() {
     else if (rawCtx && !/[가-힣]/.test(rawCtx)) titleEn = rawCtx;
     else titleEn = catLabel + ' Conversation';
 
-    // Up to 3 chat bubbles, alternating sides like the conversations
-    // page. If msgs is empty, drop in the raw ctx as a single bubble.
-    var msgs = (c.msgs || []).slice(0, 3);
+    // 2 chat bubbles max — on the home rail the cards are aspect-1/1
+    // squares, so a third bubble was getting vertically clipped and the
+    // sliced text on top looked corrupted to the user. Two bubbles fit
+    // cleanly in the available height.
+    var msgs = (c.msgs || []).slice(0, 2);
     var bubblesHtml = '';
     if (msgs.length) {
       bubblesHtml = msgs.map(function(m){
@@ -1595,10 +1600,12 @@ document.addEventListener('DOMContentLoaded', async function() {
       var mood = s.mood || d.mood || s.genre || d.genre || 'slice_of_life';
       var moodClass = MOOD_CLASS[mood] || 'fun';
       var lvl  = s.lvl || d.lvl || 'b';
-      // English title only — fall back to the genre label rather than
-      // the Korean title so the home grid stays consistent with News.
+      // Title resolution: English admin title → Korean title → genre
+      // fallback. The previous fallback ("Life Story" / "Fun Story") was
+      // showing on every card with a missing title_en, so the home rail
+      // looked like the same story repeated.
       var genreLabel = GENRE_LABEL[mood] || mood;
-      var title = d.title_en || s.title_en || (genreLabel + ' Story');
+      var title = d.title_en || s.title_en || d.title || s.title || (genreLabel + ' Story');
       var thumbUrl = d.thumbnail_url || d.thumbnail || d.image_url || '';
       var finalThumb = thumbUrl || ('https://picsum.photos/seed/' + encodeURIComponent('story-' + (s.id || title || Math.random())) + '/600/800');
       return '<div class="story-card" onclick="location.href=\'korehan-stories.html?id=' + encodeURIComponent(s.id) + '\'">'
