@@ -2273,6 +2273,31 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .aw-tile:hover { transform:translateY(-2px);border-color:#38bdf8; }
 .aw-tile:active { transform:translateY(1px); }
 .aw-tile.used { opacity:.15;pointer-events:none;transform:scale(.9); }
+/* Jamo mode */
+.aw-tile-jamo { font-family:'Noto Serif KR',serif;font-weight:900;min-width:48px;padding:10px 14px; }
+.aw-jamo-build {
+  font-family:'Noto Serif KR',serif;
+  font-size:42px;font-weight:800;color:#fff;
+  letter-spacing:.04em;line-height:1.15;
+  min-height:60px;display:flex;align-items:center;justify-content:center;
+  padding:6px 14px;border-radius:14px;
+  border:2px dashed rgba(125,211,252,.35);
+  background:rgba(15,23,42,.4);cursor:pointer;
+  transition:all .18s;
+}
+.aw-jamo-build:hover { border-color:rgba(125,211,252,.6);background:rgba(15,23,42,.55); }
+.aw-jamo-build.correct { border-color:#34d399;background:rgba(52,211,153,.18);color:#d1fae5;border-style:solid; }
+.aw-jamo-build.wrong   { border-color:#ef4444;background:rgba(239,68,68,.14);color:#fecaca;border-style:solid; }
+.aw-jamo-hint { font-size:11px;color:rgba(125,211,252,.5);text-align:center;margin-top:6px;letter-spacing:.02em; }
+.aw-mode-tabs { display:flex;gap:6px;justify-content:center;padding:0 20px 8px; }
+.aw-mode-tab  {
+  padding:5px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.05);color:rgba(255,255,255,.55);
+  font-size:11px;font-weight:800;letter-spacing:.04em;cursor:pointer;font-family:inherit;
+  transition:all .15s;
+}
+.aw-mode-tab:hover { color:#fff;border-color:rgba(125,211,252,.45); }
+.aw-mode-tab.on    { background:linear-gradient(135deg,#0369a1,#4f46e5);color:#fff;border-color:transparent; }
 /* Buttons */
 .aw-btn-row { display:flex;gap:10px;justify-content:center;padding:0 20px 20px; }
 .aw-btn { padding:10px 22px;border-radius:12px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s; }
@@ -7018,6 +7043,88 @@ var _awPool = [];        // [{syl, placed}] scrambled tiles for current word
 var _awPlaced = [];      // tile indices in the order they were tapped
 var _awPhase = 'idle';   // idle | playing | round-complete
 var _awLockInput = false;
+var _awMode = 'syllable'; // 'syllable' (default) | 'jamo'
+var _awJamoPool = [];    // [{jamo, originalIdx, placed}] in jamo mode
+var _awJamoPlaced = [];  // pool indices in tap order
+var _awJamoTarget = [];  // expected jamo sequence for current word
+
+// ── Hangul jamo helpers ──────────────────────────────────────────
+// Decompose a complete Hangul word into the ordered jamo sequence that
+// would have been typed on a Korean keyboard. 'word' must be Hangul
+// syllables only — non-syllable chars are skipped.
+var _AW_INIT = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+var _AW_VOW  = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+var _AW_FIN  = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+var _AW_INIT_MAP = {'ㄱ':0,'ㄲ':1,'ㄴ':2,'ㄷ':3,'ㄸ':4,'ㄹ':5,'ㅁ':6,'ㅂ':7,'ㅃ':8,'ㅅ':9,'ㅆ':10,'ㅇ':11,'ㅈ':12,'ㅉ':13,'ㅊ':14,'ㅋ':15,'ㅌ':16,'ㅍ':17,'ㅎ':18};
+var _AW_VOW_MAP  = {'ㅏ':0,'ㅐ':1,'ㅑ':2,'ㅒ':3,'ㅓ':4,'ㅔ':5,'ㅕ':6,'ㅖ':7,'ㅗ':8,'ㅘ':9,'ㅙ':10,'ㅚ':11,'ㅛ':12,'ㅜ':13,'ㅝ':14,'ㅞ':15,'ㅟ':16,'ㅠ':17,'ㅡ':18,'ㅢ':19,'ㅣ':20};
+var _AW_FIN_MAP  = {'ㄱ':1,'ㄲ':2,'ㄳ':3,'ㄴ':4,'ㄵ':5,'ㄶ':6,'ㄷ':7,'ㄹ':8,'ㄺ':9,'ㄻ':10,'ㄼ':11,'ㄽ':12,'ㄾ':13,'ㄿ':14,'ㅀ':15,'ㅁ':16,'ㅂ':17,'ㅄ':18,'ㅅ':19,'ㅆ':20,'ㅇ':21,'ㅈ':22,'ㅊ':23,'ㅋ':24,'ㅌ':25,'ㅍ':26,'ㅎ':27};
+
+function _awDecomposeJamo(word) {
+  var jamo = [];
+  for (var i = 0; i < word.length; i++) {
+    var code = word.charCodeAt(i) - 0xAC00;
+    if (code < 0 || code > 0x2BA3) continue;
+    jamo.push(_AW_INIT[Math.floor(code / 588)]);
+    jamo.push(_AW_VOW[Math.floor((code % 588) / 28)]);
+    var fIdx = code % 28;
+    if (fIdx) jamo.push(_AW_FIN[fIdx]);
+  }
+  return jamo;
+}
+
+// Compose an ordered jamo array greedily into Hangul syllables, mirroring
+// Korean IME behaviour: a consonant after a complete CV pair becomes the
+// final (batchim); a vowel that follows a final causes a split (the final
+// becomes the initial of a new syllable).
+function _awComposeJamo(arr) {
+  var result = '';
+  var state = []; // [init] | [init, vowel] | [init, vowel, final]
+
+  function flush() {
+    if (state.length >= 2) {
+      var i = _AW_INIT_MAP[state[0]];
+      var v = _AW_VOW_MAP[state[1]];
+      var f = state.length === 3 ? (_AW_FIN_MAP[state[2]] || 0) : 0;
+      if (i != null && v != null) {
+        result += String.fromCharCode(0xAC00 + (i * 21 + v) * 28 + f);
+      } else if (i != null) {
+        result += state[0];
+      }
+    } else if (state.length === 1) {
+      result += state[0]; // standalone consonant preview
+    }
+    state = [];
+  }
+  function isCons(j) { return _AW_INIT_MAP[j] != null; }
+  function isVow(j)  { return _AW_VOW_MAP[j]  != null; }
+
+  for (var k = 0; k < arr.length; k++) {
+    var j = arr[k];
+    if (isCons(j)) {
+      if (state.length === 0)        state.push(j);
+      else if (state.length === 1) { flush(); state.push(j); }
+      else if (state.length === 2) {
+        if (_AW_FIN_MAP[j] != null)  state.push(j); // becomes batchim
+        else                       { flush(); state.push(j); }
+      }
+      else if (state.length === 3) { flush(); state.push(j); }
+    } else if (isVow(j)) {
+      if (state.length === 0)        result += j;
+      else if (state.length === 1)   state.push(j);
+      else if (state.length === 2) { flush(); result += j; }
+      else if (state.length === 3) {
+        // Split: the just-typed batchim is actually the initial of the
+        // syllable being started by this vowel.
+        var batchim = state[2];
+        state = state.slice(0, 2);
+        flush();
+        state = [batchim, j];
+      }
+    }
+  }
+  flush();
+  return result;
+}
 
 function _awShuffle(arr) {
   var a = arr.slice();
@@ -7062,12 +7169,7 @@ function _renderAwWord() {
   if (!w) { _awPhase = 'round-complete'; _renderAwRoundComplete(); return; }
   _awLockInput = false;
   _awPlaced = [];
-  // Shuffle syllables; ensure not already in order when possible
-  var tiles = w.syllables.map(function(s, i){ return { syl: s, originalIdx: i, placed: false }; });
-  _awPool = _awShuffle(tiles);
-  if (_awPool.length > 1 && _awPool.every(function(t,i){ return t.originalIdx === i; })) {
-    var tmp = _awPool[0]; _awPool[0] = _awPool[_awPool.length-1]; _awPool[_awPool.length-1] = tmp;
-  }
+  _awJamoPlaced = [];
   // Score + progress
   var scoreEl = document.getElementById('aw-score-txt');
   if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
@@ -7078,16 +7180,68 @@ function _renderAwWord() {
   if (meaning) meaning.textContent = w.en || '';
   var rom = document.getElementById('aw-word-rom');
   if (rom) rom.textContent = w.rom || '';
-  // Empty slots (one per target syllable)
+  if (stage) stage.classList.remove('aw-shake');
+
+  if (_awMode === 'jamo') {
+    _renderAwWordJamoMode(w);
+  } else {
+    _renderAwWordSyllableMode(w);
+  }
+}
+
+function _renderAwWordSyllableMode(w) {
+  // Shuffle syllables; ensure not already in order when possible
+  var tiles = w.syllables.map(function(s, i){ return { syl: s, originalIdx: i, placed: false }; });
+  _awPool = _awShuffle(tiles);
+  if (_awPool.length > 1 && _awPool.every(function(t,i){ return t.originalIdx === i; })) {
+    var tmp = _awPool[0]; _awPool[0] = _awPool[_awPool.length-1]; _awPool[_awPool.length-1] = tmp;
+  }
   var slots = document.getElementById('aw-slots');
   if (slots) {
     slots.innerHTML = w.syllables.map(function(_, i){
       return '<div class="aw-slot" data-slot="' + i + '" onclick="awUnplace(' + i + ')"></div>';
     }).join('');
   }
-  // Pool tiles
   _renderAwPool();
-  if (stage) { stage.classList.remove('aw-shake'); }
+}
+
+function _renderAwWordJamoMode(w) {
+  _awJamoTarget = _awDecomposeJamo(w.word);
+  var tiles = _awJamoTarget.map(function(j, i){ return { jamo: j, originalIdx: i, placed: false }; });
+  _awJamoPool = _awShuffle(tiles);
+  // Avoid identical-to-target ordering when possible (small chance for short words).
+  if (_awJamoPool.length > 1 && _awJamoPool.every(function(t,i){ return t.originalIdx === i; })) {
+    var tmp = _awJamoPool[0]; _awJamoPool[0] = _awJamoPool[_awJamoPool.length-1]; _awJamoPool[_awJamoPool.length-1] = tmp;
+  }
+  var slots = document.getElementById('aw-slots');
+  if (slots) {
+    // Single growing display of the in-progress composition. Tap to undo
+    // the last jamo.
+    slots.innerHTML = '<div class="aw-jamo-build" id="aw-jamo-build" onclick="awJamoUndo()" title="Tap to undo">·</div>'
+      + '<div class="aw-jamo-hint">자모를 순서대로 탭하면 단어가 만들어져요</div>';
+  }
+  _renderAwJamoPool();
+}
+
+function awSwitchMode(mode) {
+  if (mode !== 'syllable' && mode !== 'jamo') return;
+  if (_awMode === mode) return;
+  _awMode = mode;
+  // Update tab UI
+  var tabs = document.querySelectorAll('.aw-mode-tab');
+  tabs.forEach(function(el){
+    el.classList.toggle('on', el.getAttribute('data-mode') === mode);
+  });
+  // Hint text in the modal header
+  var hint = document.getElementById('aw-mode-hint');
+  if (hint) hint.textContent = mode === 'jamo'
+    ? '자음·모음을 순서대로 탭해서 단어를 완성하세요'
+    : '음절을 순서대로 탭해서 단어를 완성하세요';
+  // Reset state for the current word so the new mode renders cleanly.
+  _awLockInput = false;
+  _awPlaced = [];
+  _awJamoPlaced = [];
+  if (_awPhase === 'playing') _renderAwWord();
 }
 
 function _renderAwPool() {
@@ -7160,6 +7314,76 @@ function _awCheckAnswer() {
       // Auto-reset so user can try again
       awResetRound();
     }, 1500);
+  }
+}
+
+// ── Jamo mode ────────────────────────────────────────────────────
+function _renderAwJamoPool() {
+  var pool = document.getElementById('aw-tile-pool');
+  if (!pool) return;
+  pool.innerHTML = _awJamoPool.map(function(t, i){
+    return '<button class="aw-tile aw-tile-jamo' + (t.placed ? ' used' : '') + '" onclick="awTapJamo(' + i + ')" type="button">'
+      + t.jamo + '</button>';
+  }).join('');
+}
+
+function _awUpdateJamoBuild() {
+  var jamoArr = _awJamoPlaced.map(function(pi){ return _awJamoPool[pi].jamo; });
+  var current = _awComposeJamo(jamoArr);
+  var buildEl = document.getElementById('aw-jamo-build');
+  if (buildEl) buildEl.textContent = current || '·';
+}
+
+function awTapJamo(poolIdx) {
+  if (_awLockInput) return;
+  if (_awMode !== 'jamo') return;
+  var t = _awJamoPool[poolIdx];
+  if (!t || t.placed) return;
+  if (_awJamoPlaced.length >= _awJamoTarget.length) return;
+  t.placed = true;
+  _awJamoPlaced.push(poolIdx);
+  _awUpdateJamoBuild();
+  _renderAwJamoPool();
+  if (_awJamoPlaced.length === _awJamoTarget.length) _awCheckJamoAnswer();
+}
+
+function awJamoUndo() {
+  if (_awLockInput) return;
+  if (_awMode !== 'jamo') return;
+  if (!_awJamoPlaced.length) return;
+  var poolIdx = _awJamoPlaced.pop();
+  if (typeof poolIdx === 'number' && _awJamoPool[poolIdx]) _awJamoPool[poolIdx].placed = false;
+  _awUpdateJamoBuild();
+  _renderAwJamoPool();
+}
+
+function _awCheckJamoAnswer() {
+  var w = _awWords[_awIdx];
+  if (!w) return;
+  var jamoArr = _awJamoPlaced.map(function(pi){ return _awJamoPool[pi].jamo; });
+  var composed = _awComposeJamo(jamoArr);
+  var fb = document.getElementById('aw-fb');
+  var stage = document.getElementById('aw-word-stage');
+  _awLockInput = true;
+  if (composed === w.word) {
+    _awScore++;
+    var buildEl = document.getElementById('aw-jamo-build');
+    if (buildEl) buildEl.classList.add('correct');
+    if (fb) { fb.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span>완벽해요!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span><span>' + w.word + ' = ' + w.en + '</span></span>'; fb.className = 'aw-fb ok'; }
+    if (typeof speakHangul === 'function') speakHangul(w.word);
+    var scoreEl = document.getElementById('aw-score-txt');
+    if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
+    setTimeout(function(){
+      _awIdx++;
+      if (_awIdx >= _awRoundTotal || _awIdx >= _awWords.length) { _awPhase = 'round-complete'; _renderAwRoundComplete(); }
+      else _renderAwWord();
+    }, 1400);
+  } else {
+    var buildEl2 = document.getElementById('aw-jamo-build');
+    if (buildEl2) buildEl2.classList.add('wrong');
+    if (stage) stage.classList.add('aw-shake');
+    if (fb) { fb.textContent = '틀렸어요. 다시 시도하세요 — 정답: ' + w.word; fb.className = 'aw-fb no'; }
+    setTimeout(function(){ awResetRound(); }, 1500);
   }
 }
 
@@ -20120,7 +20344,7 @@ function closeReviewModal() {
   <div style="padding:20px 20px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
     <div>
       <div style="font-size:20px;font-weight:900;color:#fff">단어 만들기</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:3px">음절을 순서대로 탭해서 단어를 완성하세요</div>
+      <div id="aw-mode-hint" style="font-size:11px;color:rgba(255,255,255,.4);margin-top:3px">음절을 순서대로 탭해서 단어를 완성하세요</div>
     </div>
     <div class="aw-score-row" style="padding:0;gap:10px">
       <span class="aw-score-txt" id="aw-score-txt"></span>
@@ -20128,6 +20352,10 @@ function closeReviewModal() {
         <div class="aw-progress-fill" id="aw-progress-fill" style="width:0%"></div>
       </div>
     </div>
+  </div>
+  <div class="aw-mode-tabs">
+    <button type="button" class="aw-mode-tab on" data-mode="syllable" onclick="awSwitchMode('syllable')">음절 (Syllable)</button>
+    <button type="button" class="aw-mode-tab"    data-mode="jamo"     onclick="awSwitchMode('jamo')">자모 (Jamo)</button>
   </div>
   <div class="aw-word-stage" id="aw-word-stage">
     <div class="aw-word-meaning" id="aw-word-meaning">—</div>
