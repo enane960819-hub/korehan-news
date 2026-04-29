@@ -111,6 +111,7 @@ function extractMedia(post) {
     video_url: rv.fallback_url || '',  // silent MP4
     audio_url: hasAudio ? deriveAudioUrl(rv.hls_url || rv.dash_url || rv.fallback_url) : '',
     has_audio: hasAudio,
+    duration: Number(rv.duration || 0),
   }
 }
 

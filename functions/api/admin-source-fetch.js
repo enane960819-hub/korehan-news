@@ -291,6 +291,12 @@ function extractRedditImage(d) {
 // iframe / branding ever appears. Signed URLs do expire, but the
 // playback path falls back to /api/reddit-video-resolve to refresh
 // them at view time using the article's permalink.
+//
+// Duration cap: short-form video only. Anything longer than
+// MAX_VIDEO_SECONDS gets rejected at ingest so the picker never even
+// surfaces it. Learners drop off fast on multi-minute videos and the
+// muxed HLS download balloons the page weight.
+const MAX_VIDEO_SECONDS = 90
 function extractRedditVideo(d) {
   if (d?.is_video) {
     const rv =
@@ -299,6 +305,13 @@ function extractRedditVideo(d) {
       d?.crosspost_parent_list?.[0]?.media?.reddit_video ||
       d?.preview?.reddit_video_preview ||
       null
+    // Reddit exposes duration as an integer (seconds) on reddit_video.
+    // Reject anything past the cap so we don't even propose long videos
+    // to the admin during ingestion.
+    const duration = Number(rv?.duration || 0)
+    if (rv && duration > MAX_VIDEO_SECONDS) {
+      return { url: '', kind: '', fallback: '' }
+    }
     const hls = rv?.hls_url || ''
     const mp4 = rv?.fallback_url || ''
     if (hls || mp4) {
