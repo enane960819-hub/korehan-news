@@ -13572,6 +13572,20 @@ async function generateBeginnerSentences() {
     return;
   }
 
+  // ── Priority 2.5: shared DB cache across users ──
+  // Same daily topic → same beginner sentences. Without this, every
+  // signed-in user pays the AI cost on first open even though the topic
+  // is identical.
+  var dbCacheKey = 'beg::' + (topic.id || topic.topic_en || topic.topic_ko || '').toString().slice(0, 80);
+  var dbCached = await _aiCacheGet(dbCacheKey);
+  if (dbCached && Array.isArray(dbCached) && dbCached.length >= 3) {
+    _bm.sentences = dbCached;
+    sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
+    _bm.generating = false;
+    renderBMStep1();
+    return;
+  }
+
   // ── Priority 3: AI generation (no pre-generated content in DB) ──
   khLog('[generateBeginnerSentences] no pre-generated sentences in DB — generating live');
   try {
@@ -13593,8 +13607,11 @@ async function generateBeginnerSentences() {
     var parsed = JSON.parse(clean);
     _bm.sentences = parsed.sentences || getFallbackSentences();
 
-    // ── 생성 결과 캐시 저장 ──
+    // Cache locally (this session) and globally (all users on this topic).
     sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
+    if (Array.isArray(_bm.sentences) && _bm.sentences.length >= 3) {
+      _aiCacheSet(dbCacheKey, _bm.sentences);
+    }
   } catch(e) {
     console.warn('Beginner sentence gen failed:', e);
     _bm.sentences = getFallbackSentences();
@@ -15319,6 +15336,39 @@ async function generateGFPatterns() {
   }
 }
 
+// ─── Generic AI cache helpers ───────────────────────────────
+// Reuses the existing grammar_examples_cache table as a key/value store.
+// Prefix the pattern_name to keep different feature kinds apart, e.g.:
+//   'drill::<grammar>'  → weak-grammar-drill questions
+//   'judge::<grammar>'  → grammar focus "Judge It" incorrect examples
+//   'beg::<topic>'      → beginner-sentences for a daily topic
+// DB hit = free. DB miss = AI generate + fire-and-forget upsert.
+async function _aiCacheGet(key) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !key) return null;
+  try {
+    var r = await sb.from('grammar_examples_cache')
+      .select('patterns_json')
+      .eq('pattern_name', key)
+      .maybeSingle();
+    if (r && r.data && r.data.patterns_json) return JSON.parse(r.data.patterns_json);
+  } catch(e) { console.warn('[aiCache] get error', key, e && e.message); }
+  return null;
+}
+function _aiCacheSet(key, payload) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !key) return;
+  // Don't await — UI shouldn't block on cache writes, and a save
+  // failure (RLS misconfig, etc.) shouldn't break the user flow.
+  sb.from('grammar_examples_cache').upsert({
+    pattern_name:  key,
+    patterns_json: JSON.stringify(payload),
+    updated_at:    new Date().toISOString()
+  }, { onConflict: 'pattern_name' }).then(function(r) {
+    if (r && r.error) console.warn('[aiCache] set failed', key, r.error.message);
+  });
+}
+
 // ─── Weak Grammar Drill (separate from Grammar Focus) ───────
 var _wgDrillState = { questions:[], idx:0, score:0, grammar:'' };
 
@@ -16067,29 +16117,40 @@ function loadGFBuild(p) {
   var incorrect = (p.incorrect_examples || []).filter(function(e){ return e.ko; }).slice(0, 2);
 
   if (!incorrect.length) {
-    // No incorrect examples yet — show "Generating…" and call Claude on-the-fly
+    // Same grammar pattern → same incorrect-example list every time.
+    // Look up cache first; only call Claude on a miss.
     el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">Generating judge exercises…</div>';
     var exList = correct.map(function(e){ return e.ko; }).join('\n');
-    callClaude({
-      feature: 'gf-judge-gen',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 500,
-      messages: [{ role: 'user', content:
-        'Korean grammar pattern: "' + (p.name||'') + '"\n'
-        + 'These sentences use the pattern CORRECTLY:\n' + exList + '\n\n'
-        + 'Generate exactly 2 sentences that use this pattern INCORRECTLY — realistic errors a learner would make.\n'
-        + 'Return ONLY a JSON array: [{"ko":"incorrect sentence","en":"English translation","error_type":"CONJUGATION|PARTICLE|TENSE|FORMALITY|WORD_ORDER","correction":"correct Korean sentence"}]'
-      }]
-    }).then(function(res) {
-      try {
-        var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
-        txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
-        var si = txt.indexOf('['), ei = txt.lastIndexOf(']');
-        if (si >= 0 && ei > si) txt = txt.slice(si, ei+1);
-        p.incorrect_examples = JSON.parse(txt);
-      } catch(e) { p.incorrect_examples = []; }
-      loadGFBuild(p);
-    }).catch(function() { loadGFBuild(p); });
+    var judgeKey = 'judge::' + (p.name || '');
+    _aiCacheGet(judgeKey).then(function(cached) {
+      if (cached && Array.isArray(cached) && cached.length) {
+        p.incorrect_examples = cached;
+        loadGFBuild(p);
+        return;
+      }
+      callClaude({
+        feature: 'gf-judge-gen',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        messages: [{ role: 'user', content:
+          'Korean grammar pattern: "' + (p.name||'') + '"\n'
+          + 'These sentences use the pattern CORRECTLY:\n' + exList + '\n\n'
+          + 'Generate exactly 2 sentences that use this pattern INCORRECTLY — realistic errors a learner would make.\n'
+          + 'Return ONLY a JSON array: [{"ko":"incorrect sentence","en":"English translation","error_type":"CONJUGATION|PARTICLE|TENSE|FORMALITY|WORD_ORDER","correction":"correct Korean sentence"}]'
+        }]
+      }).then(function(res) {
+        try {
+          var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+          txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+          var si = txt.indexOf('['), ei = txt.lastIndexOf(']');
+          if (si >= 0 && ei > si) txt = txt.slice(si, ei+1);
+          var parsed = JSON.parse(txt);
+          p.incorrect_examples = Array.isArray(parsed) ? parsed : [];
+          if (p.incorrect_examples.length) _aiCacheSet(judgeKey, p.incorrect_examples);
+        } catch(e) { p.incorrect_examples = []; }
+        loadGFBuild(p);
+      }).catch(function() { loadGFBuild(p); });
+    });
     return;
   }
 
