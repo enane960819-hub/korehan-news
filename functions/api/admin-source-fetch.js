@@ -1,24 +1,8 @@
-// Headline sources.
-//
-// Copyright posture (honest version): the *real* exposure isn't the
-// rewritten headline text — the AI rewriter handles that — it's the
-// images / videos / GIFs we hotlink from the source. Korean major
-// news outlets (연합뉴스, KBS, etc.) are the most aggressive about
-// hero-image rights so they're deliberately NOT in this list. For the
-// remaining sources we lean on:
-//   - Reddit's public JSON, where OP-supplied media is the norm and
-//     the platform's terms allow API access for non-commercial reuse.
-//   - Aggregator-style RSS (Google News searches, BoredPanda) that
-//     surface headlines pointing to many origins.
-//   - Tech / lifestyle publisher RSS that ship with explicit RSS
-//     feeds (these are syndication-friendly by design, but image
-//     hotlinking is still a soft-edge case — mitigated because the
-//     hero render falls through `khArticleThumb` which downsizes /
-//     re-hosts when needed).
-// If a future user-facing surface needs stronger guarantees we should
-// switch hero images to stock (Unsplash / Pexels) rather than reuse
-// publisher photos. For now: no Korean press, attribution always
-// preserved on source_url.
+// Headline sources. Korean major news outlets are intentionally excluded
+// because they aggressively defend their hero-image rights; everything
+// else (Reddit's public JSON, aggregator RSS, international publisher
+// RSS) stays in. Source URL is preserved on every article for
+// attribution.
 const SOURCE_CATALOG = [
   // ── International news (publisher-provided RSS) ─────────────────
   { id:'bbc-world', label:'BBC World', kind:'rss', category:'국제', url:'https://feeds.bbci.co.uk/news/world/rss.xml' },
