@@ -2501,6 +2501,20 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .rv-card.rv-open .rv-badge-live { display:inline-block; }
 .rv-card.rv-open.rv-weekly .rv-badge-live { background:rgba(96,165,250,.15);color:#60a5fa;border:1px solid rgba(96,165,250,.3); }
 .rv-card.rv-open.rv-monthly .rv-badge-live { background:rgba(196,181,253,.15);color:#c4b5fd;border:1px solid rgba(196,181,253,.3); }
+.rv-icon-zoom { background:rgba(244,114,182,.12);border:1px solid rgba(244,114,182,.2); }
+.rv-icon-zoom .kh-ui-icon { stroke:#f472b6; }
+.rv-card.rv-zoom { flex-direction:column;align-items:stretch;gap:10px;cursor:default; }
+.rv-card.rv-zoom:hover { transform:none;border-color:rgba(244,114,182,.25); }
+.zoom-badge { padding:3px 9px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase; }
+.zoom-badge-on   { background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3); }
+.zoom-badge-open { background:rgba(96,165,250,.15);color:#60a5fa;border:1px solid rgba(96,165,250,.3); }
+.zoom-badge-full { background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.3); }
+.zoom-btn { padding:8px 14px;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;border:none;display:inline-flex;align-items:center;gap:6px;text-decoration:none;transition:all .15s; }
+.zoom-btn-primary { background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff; }
+.zoom-btn-primary:hover { transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3); }
+.zoom-btn-ghost { background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.12); }
+.zoom-btn-ghost:hover { background:rgba(255,255,255,.1);color:#fff; }
+.zoom-note { font-size:11px;color:rgba(255,255,255,.55);line-height:1.5; }
 @keyframes rvPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.3)} }
 @keyframes rvGlow { 0%,100%{box-shadow:0 0 0 0 currentColor} 50%{box-shadow:0 0 8px 0 currentColor} }
 
@@ -2875,6 +2889,14 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         </div>
         <div class="rv-status"><span class="rv-pulse"></span> <span class="rv-badge-live">OPEN</span></div>
       </button>
+    </div>
+  </div>
+
+  <!-- ═══ ZOOM REVIEW CLASS (Pro members) ═══ -->
+  <div id="sr-zoom-section" style="margin-top:14px;display:none">
+    <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Live Class</div>
+    <div id="sr-zoom-card" class="rv-card rv-zoom">
+      <div style="font-size:12px;color:rgba(255,255,255,.5)">Loading…</div>
     </div>
   </div>
 
@@ -3644,6 +3666,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         _applyFallbackTopic(kstDateKey());
       });
       loadFeedbackInbox();
+      loadZoomClass();
       asAutoSubmitOldWork();
       _asRefreshSubmitBanner();
       setTimeout(function() {
@@ -10831,6 +10854,130 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
     }
   } catch(e) {
     console.warn('AI feedback failed:', e);
+  }
+}
+
+// ── Zoom Review Class (Pro members) ─────────────────────────
+function _zoomFmtSchedule(iso) {
+  try {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso || '';
+    return d.toLocaleString('ko-KR', {
+      month: 'short', day: 'numeric', weekday: 'short',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+  } catch(e) { return iso || ''; }
+}
+
+async function loadZoomClass() {
+  var section = document.getElementById('sr-zoom-section');
+  if (!section) return;
+  if (!supaUser) { section.style.display = 'none'; return; }
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var res = await sb.rpc('get_upcoming_zoom_class');
+    if (res.error || !res.data || !res.data.ok || !res.data.class) {
+      section.style.display = 'none';
+      return;
+    }
+    renderZoomClassCard(res.data);
+    section.style.display = '';
+  } catch(e) {
+    console.warn('[zoom] load failed', e);
+    section.style.display = 'none';
+  }
+}
+
+function renderZoomClassCard(payload) {
+  var card = document.getElementById('sr-zoom-card');
+  if (!card) return;
+  var c = payload.class || {};
+  var me = payload.me || {};
+  var when = _zoomFmtSchedule(c.scheduled_at);
+  var capacity = (c.current_count || 0) + ' / ' + (c.max_participants || 0);
+  var registered = me.signup_status === 'registered';
+
+  var badge = '';
+  if (registered) badge = '<span class="zoom-badge zoom-badge-on">Enrolled</span>';
+  else if (c.is_full) badge = '<span class="zoom-badge zoom-badge-full">Full</span>';
+  else if (me.eligible) badge = '<span class="zoom-badge zoom-badge-open">Open</span>';
+
+  var action;
+  if (registered) {
+    var url = c.zoom_url || '';
+    var join = url
+      ? '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="zoom-btn zoom-btn-primary"><i data-lucide="video" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Join Zoom</span></a>'
+      : '<div class="zoom-note">Zoom link will appear here closer to the class.</div>';
+    action = join
+      + '<button class="zoom-btn zoom-btn-ghost" onclick="cancelZoomClassSignup(\'' + c.id + '\')">Cancel signup</button>';
+  } else if (c.is_full) {
+    action = '<div class="zoom-note">This week\'s class is full — see you next week!</div>';
+  } else if (me.eligibility_reason === 'plan_required') {
+    action = '<div class="zoom-note">Pro 플랜 회원 전용 무료 수업이에요.</div>'
+      + '<button class="zoom-btn zoom-btn-primary" onclick="if(typeof showUpgradeModal===\'function\')showUpgradeModal(\'zoom_review_class\',\'pro\')"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Upgrade to Pro</span></button>';
+  } else if (me.eligibility_reason === 'writing_count_required') {
+    var have = me.writing_count || 0;
+    var need = c.required_writing_count || 3;
+    var win  = c.required_window_days || 7;
+    var left = Math.max(0, need - have);
+    action = '<div class="zoom-note">최근 ' + win + '일 동안 Topic Writing을 ' + need + '회 이상 제출하면 신청할 수 있어요. (현재 ' + have + ' / ' + need + (left ? ' · ' + left + '회 남음)' : ')') + '</div>'
+      + '<button class="zoom-btn zoom-btn-primary" onclick="openWritingModal()"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Write today</span></button>';
+  } else {
+    action = '<button class="zoom-btn zoom-btn-primary" onclick="signupZoomClass(\'' + c.id + '\')"><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Sign up</span></button>';
+  }
+
+  card.innerHTML = ''
+    + '<div style="display:flex;align-items:center;gap:12px">'
+    +   '<div class="rv-icon rv-icon-zoom"><i data-lucide="video" class="kh-ui-icon" style="width:20px;height:20px" aria-hidden="true"></i></div>'
+    +   '<div style="flex:1;min-width:0">'
+    +     '<div class="rv-title">' + escapeHtml(c.title || 'Zoom Review Class') + '</div>'
+    +     '<div class="rv-sub">' + escapeHtml(when) + ' · ' + (c.duration_minutes || 60) + 'min · ' + escapeHtml(capacity) + ' enrolled</div>'
+    +   '</div>'
+    +   (badge ? '<div class="rv-status">' + badge + '</div>' : '')
+    + '</div>'
+    + (c.description ? '<div style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.5">' + escapeHtml(c.description) + '</div>' : '')
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">' + action + '</div>';
+
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+}
+
+async function signupZoomClass(classId) {
+  if (!supaUser) { if (typeof openAuthModal === 'function') openAuthModal('signin'); return; }
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var res = await sb.rpc('signup_zoom_class', { p_class_id: classId });
+    var d = res.data || {};
+    if (res.error || !d.ok) {
+      var err = d.error || (res.error && res.error.message) || 'failed';
+      var msg = '신청에 실패했어요.';
+      if (err === 'class_full') msg = '신청이 마감되었어요. 다음 주에 만나요!';
+      else if (err === 'plan_required') msg = 'Pro 플랜에서만 신청할 수 있어요.';
+      else if (err === 'writing_count_required') msg = '이번 주 Topic Writing을 ' + (d.required || 3) + '회 이상 제출해야 해요. (현재 ' + (d.have || 0) + '회)';
+      else if (err === 'class_closed') msg = '신청 가능한 시간이 지났어요.';
+      else if (err === 'not_signed_in') msg = '먼저 로그인해주세요.';
+      showToast(msg);
+      return;
+    }
+    showToast(d.already_registered ? '이미 신청되어 있어요.' : '신청 완료! 곧 만나요 🎉');
+    loadZoomClass();
+  } catch(e) {
+    console.warn('[zoom] signup error', e);
+    showToast('신청에 실패했어요.');
+  }
+}
+
+async function cancelZoomClassSignup(classId) {
+  if (!supaUser) return;
+  if (!confirm('수업 신청을 취소할까요?')) return;
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var res = await sb.rpc('cancel_zoom_class_signup', { p_class_id: classId });
+    if (res.error) { showToast('취소에 실패했어요.'); return; }
+    showToast('신청이 취소됐어요.');
+    loadZoomClass();
+  } catch(e) {
+    console.warn('[zoom] cancel error', e);
+    showToast('취소에 실패했어요.');
   }
 }
 
