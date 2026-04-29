@@ -7979,6 +7979,24 @@ async function runVideoUpgrade(commit) {
       _vuLog('         ✗ hls_url / fallback_url 둘 다 없음', '#fbbf24');
       fail++; continue;
     }
+    // Same 90s cap the ingestor enforces. If a video re-fetched here is
+    // longer than that we wipe it instead of upgrading — keeps existing
+    // long videos from sticking around just because they were ingested
+    // before the cap existed.
+    var dur = Number(resolved.duration || 0);
+    if (dur > 90) {
+      _vuLog('         ✗ duration ' + dur + 's > 90s — clearing video', '#fbbf24');
+      if (commit) {
+        try {
+          await supaAdminPatch('articles?id=eq.' + encodeURIComponent(a.id), {
+            video_url: '', video_kind: '', video_fallback_url: '', use_video: false,
+          });
+        } catch (e) {
+          _vuLog('         ✗ clear failed: ' + (e && e.message || e), '#f87171');
+        }
+      }
+      skip++; continue;
+    }
     var newUrl = hls || mp4;
     var newFb  = hls ? mp4 : '';
     _vuLog('         → kind=reddit-hls');
