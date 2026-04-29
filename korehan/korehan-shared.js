@@ -364,7 +364,7 @@ function _updatePlanBadges() {
       el.style.position = 'relative';
       var badge = document.createElement('div');
       badge.className = 'kh-lock-badge';
-      badge.innerHTML = '🔒';
+      badge.innerHTML = '<span style="display:inline-flex;width:14px;height:14px">' + KH_ICON_LOCK + '</span>';
       badge.style.cssText = 'position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:12px;z-index:2;backdrop-filter:blur(4px)';
       el.appendChild(badge);
     }
@@ -403,7 +403,7 @@ function showUpgradeModal(feature, minPlan) {
   ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
 
   ov.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:400px;width:100%;padding:32px 28px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.2)">'
-    + '<div style="width:56px;height:56px;border-radius:16px;background:#faf5ff;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px">🔒</div>'
+    + '<div style="width:56px;height:56px;border-radius:16px;background:#faf5ff;display:flex;align-items:center;justify-content:center;color:#7c3aed;margin:0 auto 16px"><span style="display:inline-flex;width:30px;height:30px">' + KH_ICON_LOCK + '</span></div>'
     + '<div style="font-size:20px;font-weight:900;color:#0f172a;margin-bottom:6px">' + planInfo.name + ' Plan Required</div>'
     + '<div style="font-size:14px;color:#64748b;margin-bottom:20px;line-height:1.5"><b>' + fName + '</b> is available on the ' + planInfo.name + ' plan and above.</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">'
@@ -502,6 +502,32 @@ function khIcon(name, label, extraClass) {
   if (!label) return html;
   return html + '<span>' + label + '</span>';
 }
+
+// Inline SVG icons for use inside dynamically-injected innerHTML where calling
+// lucide.createIcons() afterwards isn't practical. Sized via the wrapping
+// element's width/height; color comes from currentColor.
+var KH_ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 12 10 17 19 7"/></svg>';
+var KH_ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>';
+var KH_ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
+var KH_ICON_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+var KH_ICON_SPARKLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>';
+var KH_ICON_PAW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="14" r="2"/><circle cx="4" cy="14" r="2"/><circle cx="6" cy="8" r="2"/><path d="M8 16c0-3 2-4 4-4s4 1 4 4-2 6-4 6-4-3-4-6z"/></svg>';
+var KH_ICON_LIBRARY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4v16M9 4v16"/><path d="M13 4l5 1.3L15.5 19l-5-1.3z"/></svg>';
+var KH_ICON_NEWSPAPER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5a2 2 0 0 1 2-2h12v18H5a2 2 0 0 1-2-2z"/><path d="M17 7h4v12a2 2 0 0 1-2 2"/><path d="M7 7h6M7 11h6M7 15h6"/></svg>';
+var KH_ICON_BOOK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 0-2 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H19"/></svg>';
+var KH_ICON_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg>';
+var KH_ICON_VOLUME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M16 8a4 4 0 0 1 0 8"/><path d="M19 5a8 8 0 0 1 0 14"/></svg>';
+var KH_ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 4v4h-4"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 20v-4h4"/></svg>';
+var KH_ICON_PARTY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l4-12 8 8z"/><path d="M14 4c0 2 2 2 2 4"/><path d="M18 7c0 2 2 2 2 4"/><path d="M11 3l1 1"/><path d="M20 14l1 1"/><path d="M16 13l1 1"/></svg>';
+var KH_ICON_TROPHY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a2 2 0 0 0 3 3.5"/><path d="M17 6h3a2 2 0 0 1-3 3.5"/><path d="M9 14h6l-1 4h-4z"/><path d="M8 21h8"/></svg>';
+var KH_ICON_FLAME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.7-2.5 1.5-3.5C10.5 7 11 5 12 3z"/><path d="M10.5 14c.4 1 1 1.6 1.5 1.6s1.1-.6 1.5-1.6"/></svg>';
+var KH_ICON_THUMBS_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7c1.5 0 2.5 1 2.5 2.5V11h5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 21H7"/></svg>';
+var KH_ICON_TARGET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg>';
+var KH_ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5l5 5L8 21H3v-5z"/><path d="M13 6l5 5"/></svg>';
+var KH_ICON_RULER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3H3v18h7"/><path d="M3 8h18"/><path d="M16 14l-4 8 8-4z"/></svg>';
+var KH_ICON_BULB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6.5 6.5 0 0 0-4 11.6c.7.6 1 1.2 1 2V16h6v-.4c0-.8.3-1.4 1-2A6.5 6.5 0 0 0 12 3z"/></svg>';
+var KH_ICON_WARNING = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>';
+var KH_ICON_HAND_WAVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 5l-1 4M9 4l1 5M6 11s.5-3.5 3-5M5 17s-2-3 0-7"/><path d="M9 20s3-1 4.5-3.5S15 13 16 13c.6 0 1.5.5 1 1.5"/><path d="M11 14s1.5-2 3-2 1.5 1.5 1.5 1.5"/></svg>';
 
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
@@ -1110,7 +1136,7 @@ async function authSignIn() {
     window.dispatchEvent(new Event('kh-auth-signed-in'));
   }
   closeAuthModal();
-  toast('Welcome back! 👋');
+  toast('Welcome back!');
 }
 
 // Disposable / throwaway email domains. The list is curated rather
@@ -1250,7 +1276,7 @@ async function authResetPassword() {
   _authSetLoading(btn, false);
 
   if (error) { _authShowError(error.message); return; }
-  _authShowOk('✅ Password reset link sent! Check your email.');
+  _authShowOk('Password reset link sent! Check your email.');
 }
 
 // ── 모달 HTML 주입 ────────────────────────────────────────────
@@ -1262,7 +1288,7 @@ function _injectAuthModal() {
 
     <!-- 헤더 -->
     <div style="background:linear-gradient(135deg,#07122a,#0e2554);padding:26px 28px 22px;position:relative">
-      <button onclick="closeAuthModal()" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+      <button onclick="closeAuthModal()" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">${KH_ICON_X}</span></button>
       <div style="font-family:'DM Serif Display',Georgia,serif;font-size:20px;color:#fff;margin-bottom:3px">Kore<span style="color:#7ab8f5;font-style:italic">Han</span></div>
       <div style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.8px;text-transform:uppercase">Your Korean learning journey</div>
     </div>
@@ -1291,7 +1317,7 @@ function _injectAuthModal() {
           <input id="kh-auth-pw" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSignIn()"
             style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
-          <button onclick="var i=document.getElementById('kh-auth-pw');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;font-size:16px">👁</button>
+          <button onclick="var i=document.getElementById('kh-auth-pw');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
         </div>
       </div>
       <div style="text-align:right;margin-bottom:18px">
@@ -1333,7 +1359,7 @@ function _injectAuthModal() {
           <input id="kh-auth-pw2" type="password" placeholder="••••••••" oninput="_authCheckPwStrength(this.value)" onkeydown="if(event.key==='Enter')document.getElementById('kh-auth-pw3').focus()"
             style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
-          <button onclick="var i=document.getElementById('kh-auth-pw2');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;font-size:16px">👁</button>
+          <button onclick="var i=document.getElementById('kh-auth-pw2');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
         </div>
         <!-- 비밀번호 강도 표시 -->
         <div id="kh-pw-strength" style="margin-top:6px;display:none">
@@ -1609,7 +1635,7 @@ function updateAuthUI() {
         '<div class="kh-user-dropdown-head">'
         + '<div class="kh-user-dropdown-name">' + escapeHtml(name || 'User') + '</div>'
         + '<div class="kh-user-dropdown-email">' + escapeHtml(supaUser.email || '') + '</div>'
-        + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b">✨ XP 0 · 🐾 냥 0</div>'
+        + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP 0 · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>냥 0</span></div>'
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
         + '<a href="korehan-notes.html" class="kh-user-dropdown-link">' + khIcon('bookmark', 'My Notes', 'kh-ui-icon-sm') + '</a>'
@@ -1625,7 +1651,7 @@ function updateAuthUI() {
             if (!statsEl) return;
             var xp = Number(r && r.data && r.data.xp || 0);
             var coin = Number(r && r.data && r.data.coin_balance || 0);
-            statsEl.textContent = '✨ XP ' + xp.toLocaleString() + ' · 🐾 냥 ' + coin.toLocaleString();
+            statsEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP ' + xp.toLocaleString() + ' · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>냥 ' + coin.toLocaleString() + '</span></span>';
           })
           .catch(function(){});
       })();
@@ -1700,7 +1726,7 @@ function showSignupNudge() {
   if (window.innerWidth <= 860) el.style.bottom = '88px';
 
   el.innerHTML = ''
-    + '<div style="font-size:22px;flex-shrink:0">📚</div>'
+    + '<div style="display:inline-flex;width:24px;height:24px;flex-shrink:0;color:#a78bfa">'+KH_ICON_LIBRARY+'</div>'
     + '<div style="flex:1;min-width:0">'
     + '<div style="font-size:13px;font-weight:800;line-height:1.3;color:#fff;margin-bottom:2px">Save your progress for free</div>'
     + '<div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.4">Sign up to track streaks, save words, and get personalized lessons.</div>'
@@ -2541,7 +2567,7 @@ async function restoreSaveButtons(containerId) {
       if (!btn) return;
       if (set.has(ko)) {
         btn.classList.add('saved');
-        btn.textContent = '✓ Saved';
+        btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_CHECK+'</span><span>Saved</span></span>';
       } else {
         btn.classList.remove('saved');
         btn.textContent = '+ Save';
@@ -2555,7 +2581,7 @@ async function restoreSaveButtons(containerId) {
       if (!btn) return;
       if (set.has(ko)) {
         btn.classList.add('saved');
-        btn.textContent = '✓ Saved';
+        btn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_CHECK+'</span><span>Saved</span></span>';
       }
     });
   }
@@ -3761,9 +3787,9 @@ function renderHeroSlide(heroEl) {
           var url = articleUrl(item.id);
           // Level chip (Korean reading-level meta)
           var LVL_LBL = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
-          var LVL_ICON = {Starter:'🌰',Beginner:'🌱',Intermediate:'🌳',Advanced:'🌲'};
+          var LVL_ICON = {Starter:'sprout',Beginner:'leaf',Intermediate:'tree-deciduous',Advanced:'trees'};
           var lvlChip = item.level
-            ? '<span class="kh-hero-chip kh-hero-chip-lvl-' + item.level + '">' + (LVL_ICON[item.level]||'') + ' ' + (LVL_LBL[item.level]||item.level) + '</span>'
+            ? '<span class="kh-hero-chip kh-hero-chip-lvl-' + item.level + '" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="' + (LVL_ICON[item.level]||'leaf') + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>' + (LVL_LBL[item.level]||item.level) + '</span></span>'
             : '';
           var bodyPlain = (item.body || '').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
           var catChip = '<span class="kh-hero-chip kh-hero-chip-cat">' + item.section + '</span>';
@@ -4393,7 +4419,7 @@ function renderArticlePage() {
 
     // 댓글 섹션
     + '<section class="art-comments" id="art-comments">'
-    + '<h3 class="art-comments-title">💬 Comments <span id="comment-count" style="font-size:16px;color:var(--gray)"></span></h3>'
+    + '<h3 class="art-comments-title" style="display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px">'+KH_ICON_CHAT+'</span><span>Comments</span> <span id="comment-count" style="font-size:16px;color:var(--gray)"></span></h3>'
     + '<div id="comment-form-wrap">'
     + '<div class="comment-login-notice" id="comment-login-notice" style="display:none">'
     + '<p>Sign in to leave a comment — <a href="#" onclick="event.preventDefault();openAuthModal(&apos;signin&apos;)">Sign in</a></p>'
@@ -4418,7 +4444,7 @@ function renderArticlePage() {
         if (!related.length) related = all.slice(0,3);
         if (!related.length) return '';
         return '<div class="art-related">'
-          + '<div class="art-related-title">📰 Related Articles</div>'
+          + '<div class="art-related-title" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">'+KH_ICON_NEWSPAPER+'</span><span>Related Articles</span></div>'
           + '<div class="art-related-grid">'
           + related.map(function(r){
               var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
@@ -4786,7 +4812,7 @@ function _rvVocabQuizPick(btn) {
   if (correct) s.correct++;
   var fb = document.getElementById('rv-vq-feedback');
   if (fb) {
-    fb.textContent = correct ? '✓ Correct' : '✗ Not quite';
+    fb.innerHTML = correct ? '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+KH_ICON_CHECK+'</span><span>Correct</span></span>' : '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px;color:#dc2626">'+KH_ICON_X+'</span><span>Not quite</span></span>';
     fb.className = 'rv-vq-feedback ' + (correct ? 'ok' : 'no');
   }
   setTimeout(_rvVocabQuizNext, 650);
@@ -5032,7 +5058,7 @@ function startArticleListeningQuiz() {
     var opts = items.map(function(x){return x.en;}).sort(function(){return Math.random()-.5;}).slice(0,3);
     if (opts.indexOf(v.en)<0) opts[Math.floor(Math.random()*3)] = v.en;
     el.innerHTML='<div style="text-align:center;margin-bottom:12px"><div style="font-size:12px;color:var(--gray);margin-bottom:8px">Listen and pick the meaning ('+(qi+1)+'/'+items.length+')</div>'
-      +'<button onclick="ttsSpeak(\''+v.ko.replace(/'/g,"\\'")+'\')" style="padding:12px 24px;background:var(--light);border:1.5px solid var(--border);border-radius:12px;font-size:16px;cursor:pointer;font-family:inherit">🔊 Play</button></div>'
+      +'<button onclick="ttsSpeak(\''+v.ko.replace(/'/g,"\\'")+'\')" style="padding:12px 24px;background:var(--light);border:1.5px solid var(--border);border-radius:12px;font-size:16px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:18px;height:18px;color:#3b82f6">'+KH_ICON_VOLUME+'</span><span>Play</span></button></div>'
       +'<div style="display:flex;flex-direction:column;gap:6px">'+opts.map(function(o){
         return '<button onclick="artListenPick(this,\''+o.replace(/'/g,"\\'")+'\',\''+v.en.replace(/'/g,"\\'")+'\')" style="padding:10px 14px;background:#fff;border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left">'+o+'</button>';
       }).join('')+'</div>';
@@ -5153,7 +5179,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
     if (e && (e.message === 'unauthorized' || e.message === 'Not signed in')) {
       if (supaUser) {
         // User is logged in but got a token error — don't sign them out, just ask to retry
-        el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e">⚠️ Session error. Please reload the page and try again.<br><button onclick="window.location.reload()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">Reload</button></div>';
+        el.innerHTML = '<div style="padding:24px;text-align:center;color:#e53e3e;display:flex;flex-direction:column;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">'+KH_ICON_WARNING+'</span><span>Session error. Please reload the page and try again.</span></span><button onclick="window.location.reload()" style="margin-top:12px;padding:8px 20px;background:#2255a4;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700">Reload</button></div>';
         if (typeof toast === 'function') toast('Session error — please reload and try again.', true);
       } else {
         el.innerHTML = renderFillNoKey();
@@ -5203,12 +5229,12 @@ function renderFillQuestions(container, questions, article) {
     // 헤더
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">'
     + '<div>'
-    + '<div style="font-size:17px;font-weight:900;color:#0b1626;margin-bottom:3px">✏️ Fill in the Blank</div>'
+    + '<div style="font-size:17px;font-weight:900;color:#0b1626;margin-bottom:3px;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px">'+KH_ICON_PENCIL+'</span><span>Fill in the Blank</span></div>'
     + '<div style="font-size:12px;color:#94a3b8">' + questions.length + ' key expressions from this article</div>'
     + '</div>'
     + '<div style="display:flex;gap:8px;align-items:center">'
     + '<span style="font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:#f0f4ff;color:' + levelColor + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level) + '</span>'
-    + '<button onclick="resetFill()" style="font-size:11px;font-weight:700;padding:5px 14px;border:2px solid #e2e8f0;border-radius:999px;background:#fff;cursor:pointer;color:#64748b">🔄 Reset</button>'
+    + '<button onclick="resetFill()" style="font-size:11px;font-weight:700;padding:5px 14px;border:2px solid #e2e8f0;border-radius:999px;background:#fff;cursor:pointer;color:#64748b;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+KH_ICON_REFRESH+'</span><span>Reset</span></button>'
     + '</div>'
     + '</div>'
 
@@ -5226,7 +5252,7 @@ function renderFillQuestions(container, questions, article) {
       // 타입 배지
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'
       + '<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:999px;background:' + (q.type==='grammar'?'#f3e8ff;color:#9333ea':'#e8f0fb;color:#2255a4') + '">'
-      + (q.type === 'grammar' ? '📐 Grammar' : '📖 Vocabulary') + '</span>'
+      + (q.type === 'grammar' ? '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+KH_ICON_RULER+'</span><span>Grammar</span></span>' : '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+KH_ICON_BOOK+'</span><span>Vocabulary</span></span>') + '</span>'
       + '<span style="font-size:11px;color:#94a3b8;font-weight:600">' + (i+1) + ' / ' + questions.length + '</span>'
       + '</div>'
 
@@ -5239,11 +5265,11 @@ function renderFillQuestions(container, questions, article) {
       + '</div>'
 
       // 힌트
-      + '<div style="font-size:11px;color:#60a5fa;margin-bottom:16px;font-weight:600">💡 ' + q.hint + '</div>'
+      + '<div style="font-size:11px;color:#60a5fa;margin-bottom:16px;font-weight:600;display:flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+KH_ICON_BULB+'</span><span>' + q.hint + '</span></div>'
 
       // 모드 토글 버튼
       + '<div style="display:flex;gap:6px;margin-bottom:12px">'
-      + '<button onclick="setFillMode(' + i + ',\'choice\')" id="fill-mode-choice-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #2255a4;background:#2255a4;color:#fff;cursor:pointer">🎯 Multiple Choice</button>'
+      + '<button onclick="setFillMode(' + i + ',\'choice\')" id="fill-mode-choice-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #2255a4;background:#2255a4;color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+KH_ICON_TARGET+'</span><span>Multiple Choice</span></button>'
       + '<button onclick="setFillMode(' + i + ',\'type\')" id="fill-mode-type-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer">⌨️ Type Answer</button>'
       + '</div>'
 
@@ -5384,13 +5410,13 @@ function checkFillAnswer(qIdx, selected, isTyped) {
     resultEl.style.display = 'block';
     resultEl.innerHTML = (isCorrect
       ? '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">'
-        + '<span style="font-size:18px">✅</span>'
+        + '<span style="display:inline-flex;width:18px;height:18px;color:#22c55e">'+KH_ICON_CHECK+'</span>'
         + '<div><div style="font-size:13px;font-weight:800;color:#16a34a;margin-bottom:2px">Correct!</div>'
         + '<div style="font-size:12px;color:#166534"><strong>' + correct + '</strong> = ' + q.blank_en + '</div></div>'
         + ttsBtn(correct)
         + '</div>'
       : '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">'
-        + '<span style="font-size:18px">❌</span>'
+        + '<span style="display:inline-flex;width:18px;height:18px;color:#dc2626">'+KH_ICON_X+'</span>'
         + '<div><div style="font-size:13px;font-weight:800;color:#dc2626;margin-bottom:2px">'
         + (isTyped ? 'Incorrect (your answer: ' + selected + ')' : 'Incorrect')
         + '</div>'
@@ -5421,7 +5447,8 @@ async function showFillResult() {
   var correct = Object.values(_fillState).filter(function(s){ return s.correct; }).length;
   var total = _fillQuestions.length;
   var pct = Math.round(correct / total * 100);
-  var emoji = pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '💪';
+  var icon = pct >= 80 ? KH_ICON_PARTY : pct >= 60 ? KH_ICON_THUMBS_UP : KH_ICON_FLAME;
+  var iconColor = pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171';
   var color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
 
   var finalEl = document.getElementById('fill-final');
@@ -5429,15 +5456,15 @@ async function showFillResult() {
   finalEl.style.display = 'block';
   finalEl.innerHTML =
     '<div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:16px;padding:28px;text-align:center;margin-top:8px">'
-    + '<div style="font-size:48px;margin-bottom:10px">' + emoji + '</div>'
+    + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:10px;color:' + iconColor + ';filter:drop-shadow(0 0 12px ' + iconColor + 'aa)">' + icon + '</div>'
     + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:4px">Exercise Complete!</div>'
     + '<div style="font-size:36px;font-weight:900;color:' + color + ';margin:12px 0">' + correct + ' / ' + total + '</div>'
     + '<div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:20px">' + pct + '% correct</div>'
     + '<div style="height:6px;background:rgba(255,255,255,.15);border-radius:999px;margin:0 auto 20px;max-width:200px;overflow:hidden">'
     + '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:999px;transition:width .8s"></div>'
     + '</div>'
-    + '<button onclick="resetFill()" style="padding:11px 28px;background:#fff;color:#0b1626;border:none;border-radius:999px;font-size:13px;font-weight:900;cursor:pointer;margin-right:8px">🔄 Try Again</button>'
-    + '<button onclick="switchArtTab(\'article\',document.querySelectorAll(\'.art-tab\')[0])" style="padding:11px 28px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer">📰 Back to Article</button>'
+    + '<button onclick="resetFill()" style="padding:11px 28px;background:#fff;color:#0b1626;border:none;border-radius:999px;font-size:13px;font-weight:900;cursor:pointer;margin-right:8px;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_REFRESH+'</span><span>Try Again</span></button>'
+    + '<button onclick="switchArtTab(\'article\',document.querySelectorAll(\'.art-tab\')[0])" style="padding:11px 28px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_NEWSPAPER+'</span><span>Back to Article</span></button>'
     + '</div>';
 
   // 퀴즈 완료 뱃지/XP
@@ -5471,7 +5498,7 @@ async function loadGrammarGuide() {
   var a = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
 
-  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar...</div>';
+  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#a78bfa;animation:spin 1.4s linear infinite">'+KH_ICON_SPARKLE+'</span><span>Analyzing grammar...</span></div>';
 
   // ── DB 캐시 확인 ──────────────────────────────────────────
   try {
@@ -5484,7 +5511,7 @@ async function loadGrammarGuide() {
   } catch(e) {}
   if (!a) { el.innerHTML = '<p style="color:#aaa;padding:20px 0;text-align:center">Article not found.</p>'; return; }
 
-  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center">✨ Analyzing grammar with AI...</div>';
+  el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#a78bfa;animation:spin 1.4s linear infinite">'+KH_ICON_SPARKLE+'</span><span>Analyzing grammar with AI...</span></div>';
 
   var text = (a.title || '') + '\n\n' + (a.body || '') + '\n\n' + (a.full || '');
   var level = a.level || 'Intermediate';
@@ -5872,7 +5899,7 @@ function openArticleVocabAddModal(article) {
         return;
       }
       modal.remove();
-      if (typeof showToast === 'function') showToast('📚 "' + ko + '" added');
+      if (typeof showToast === 'function') showToast('"' + ko + '" added');
       // Re-render the Vocab tab so the new word appears immediately
       try { renderArticleVocab(article); } catch(_) {}
     } catch (e) {
@@ -6069,14 +6096,14 @@ function _phrasesAdminRender(el) {
       + '<input class="pa-phrase" value="'+(p.phrase||'').replace(/"/g,'&quot;')+'" placeholder="표현" style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-family:\'Noto Sans KR\',sans-serif">'
       + '<input class="pa-note" value="'+(p.note||'').replace(/"/g,'&quot;')+'" placeholder="설명 (영어)" style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">'
       + '<select class="pa-color" style="padding:5px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px">'+colorOpts+'</select>'
-      + '<button onclick="_phraseAdminDel('+i+')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:4px;cursor:pointer;font-size:12px">✕</button>'
+      + '<button onclick="_phraseAdminDel('+i+')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:4px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:12px;height:12px">'+KH_ICON_X+'</span></button>'
       + '</div>';
   }).join('');
 
   var headerRow = '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px">'
     + '<button onclick="_phraseAdminToggle()" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:#92400e;font-size:13px;font-weight:800;cursor:pointer;padding:0;font-family:inherit">'
     +   '<span style="display:inline-block;transform:rotate(' + (_phrasesAdminExpanded ? '90deg' : '0deg') + ');transition:transform .15s">▶</span>'
-    +   '<span>✏️ 중요표현 관리 (Admin)</span>'
+    +   '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_PENCIL+'</span><span>중요표현 관리 (Admin)</span></span>'
     +   '<span style="font-size:11px;font-weight:600;color:#a16207;margin-left:4px">' + _phrasesAdminData.length + '개</span>'
     + '</button>'
     + (_phrasesAdminExpanded
@@ -6128,7 +6155,7 @@ async function _phraseAdminSave() {
   _phrasesAdminData = valid;
   try {
     await upsertArticleCacheRow(_phrasesAdminArtId, { expressions: valid });
-    toast('✅ 중요표현 저장 완료');
+    toast('중요표현 저장 완료');
     // 하이라이트 재적용
     var articleEl = document.getElementById('art-tab-article');
     if (articleEl) {
@@ -6137,7 +6164,7 @@ async function _phraseAdminSave() {
     }
     _phrasesAdminRender();
   } catch(e) {
-    toast('❌ 저장 실패: ' + e.message);
+    toast('저장 실패: ' + e.message);
   }
 }
 
@@ -6426,7 +6453,7 @@ async function toggleTranslate() {
   var titleEn = titleEl ? titleEl.getAttribute('data-kh-title-en') : '';
   if (titleEl && titleEn) {
     var ttsSafe = (titleEn || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    titleEl.innerHTML = titleEn + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe + '\',this)">🔊</button>';
+    titleEl.innerHTML = titleEn + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe + '\',this)" style="display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_VOLUME+'</span></button>';
   }
 
   var params = new URLSearchParams(window.location.search);
@@ -6563,7 +6590,7 @@ async function toggleTranslate() {
       bodyTranslations = allSegs.slice(1);
       if (titleEl && titleTrans) {
         var ttsSafe2 = titleTrans.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        titleEl.innerHTML = titleTrans + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe2 + '\',this)">🔊</button>';
+        titleEl.innerHTML = titleTrans + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe2 + '\',this)" style="display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_VOLUME+'</span></button>';
       }
     } else {
       bodyTranslations = allSegs;
@@ -6632,7 +6659,7 @@ function shareArticle() {
     navigator.share({ title: document.title, url: window.location.href });
   } else {
     navigator.clipboard.writeText(window.location.href).then(function() {
-      toast('Link copied ✓');
+      toast('Link copied');
     });
   }
 }
@@ -6660,7 +6687,7 @@ async function toggleBookmark(articleId, btn) {
     if (ins.error) { toast('Could not save bookmark'); return; }
     btn.classList.add('active');
     btn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 0-2-2h10a2 2 0 0 0 2 2z"/></svg>';
-    toast('Bookmarked ✓');
+    toast('Bookmarked');
   }
 }
 
@@ -6737,9 +6764,9 @@ async function loadComments(articleId) {
     var timeStr = c.created_at ? new Date(c.created_at).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     var actions = '';
     if (isOwn || isAdmin) {
-      actions = '<button class="comment-del" onclick="deleteComment(\'' + escapeAttr(c.id) + '\')" title="Delete">✕</button>';
+      actions = '<button class="comment-del" onclick="deleteComment(\'' + escapeAttr(c.id) + '\')" title="Delete" style="display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:12px;height:12px">'+KH_ICON_X+'</span></button>';
     } else if (supaUser) {
-      actions = '<button class="comment-del" onclick="reportComment(\'' + escapeAttr(c.id) + '\')" title="Report and hide">⚑</button>';
+      actions = '<button class="comment-del" onclick="reportComment(\'' + escapeAttr(c.id) + '\')" title="Report and hide" style="display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:12px;height:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="22" x2="4" y2="15"/><path d="M4 15s1-2 5-2 5 2 9 2V3s-1 2-5 2-5-2-9-2"/></svg></span></button>';
     }
     return '<div class="comment-row" id="comment-' + c.id + '">'
       + '<div class="comment-top">'
@@ -6850,7 +6877,7 @@ async function submitComment(articleId) {
   if (error) { toast('Error posting comment: ' + error.message, true); return; }
   _commentLastTime[supaUser.id] = Date.now();
   input.value = '';
-  toast('Comment posted ✓');
+  toast('Comment posted');
   loadComments(articleId);
 }
 
@@ -6956,7 +6983,7 @@ function initTooltips() {
     // sidebar (Save / Talk / Study) on the article reader. Bottom offset
     // matches the right-side stack so they balance visually.
     adminBar.style.cssText = 'position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 92px);left:16px;z-index:8000;background:#0b1626;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);display:none;';
-    adminBar.textContent = '✏️ Vocab Edit Mode';
+    adminBar.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_PENCIL+'</span><span>Vocab Edit Mode</span></span>';
     adminBar.onclick = function() { toggleVocabEditMode(); };
     document.body.appendChild(adminBar);
     _setupVocabFabVisibility();
@@ -6980,7 +7007,7 @@ function initTooltips() {
     var word = w.dataset.word;
     var d = VOCAB[word];
     if (window._vocabEditMode && window._isAdmin) {
-      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700">✏️ Click to edit</span><br>'
+      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+KH_ICON_PENCIL+'</span><span>Click to edit</span></span><br>'
         + '<span style="color:#7ab8f5;font-weight:700">' + word + '</span>'
         + (d ? '<br><span style="color:#94a3b8;font-size:11px">' + d.en + '</span>' : '<br><span style="color:#f87171;font-size:11px">No definition</span>');
       tip.style.opacity = '1';
@@ -7025,7 +7052,7 @@ function toggleVocabEditMode() {
   var bar = document.getElementById('vocab-admin-bar');
   if (bar) {
     if (window._vocabEditMode) {
-      bar.innerHTML = '<span>✅ Edit ON</span>'
+      bar.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+KH_ICON_CHECK+'</span><span>Edit ON</span></span>'
         + '<button id="vocab-add-new-btn" onclick="event.stopPropagation();openVocabEditModal(\'\')" '
         + 'style="margin-left:8px;background:#2255a4;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ New Word</button>';
       bar.style.background = '#16a34a';
@@ -7131,7 +7158,7 @@ function openVocabEditModal(word) {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
   modal.innerHTML =
     '<div style="background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);">'
-    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;">✏️ ' + (isNew ? 'Add New Word' : 'Edit Word: <span style="color:#2255a4">' + word + '</span>') + '</div>'
+    + '<div style="font-size:16px;font-weight:900;color:#0f172a;margin-bottom:16px;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">'+KH_ICON_PENCIL+'</span><span>' + (isNew ? 'Add New Word' : 'Edit Word: <span style="color:#2255a4">' + word + '</span>') + '</span></div>'
     + (isNew
       ? '<label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px;">Korean Word <span style="color:#e53e3e">*</span></label>'
         + '<input id="ve-word" placeholder="e.g. 환경" style="width:100%;padding:8px 12px;border:2px solid #2255a4;border-radius:8px;font-size:16px;font-family:\'Noto Serif KR\',serif;margin-bottom:12px;box-sizing:border-box;" autofocus>'
@@ -7236,7 +7263,7 @@ function openVocabEditModal(word) {
         s.replaceWith(document.createTextNode(s.textContent));
       });
       modal.remove();
-      showToast('🗑 ' + word + ' deleted');
+      showToast(word + ' deleted');
     };
   }
 
@@ -7275,7 +7302,7 @@ function openVocabEditModal(word) {
       _addWordToKeyVocabList(word, rom, en);
 
       modal.remove();
-      showToast('✅ ' + word + ' saved');
+      showToast(word + ' saved');
     } catch(e) {
       err.textContent = 'Save failed:' + e.message;
       err.style.display = 'block';
@@ -7539,7 +7566,7 @@ async function awardXP(actionKey, meta) {
     });
     if (res.data && res.data.ok) {
       if (res.data.leveled_up) {
-        showToast('🎉 Level Up! Lv.' + res.data.level + ' ' + res.data.level_name);
+        showToast('Level Up! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
       var gained = res.data.xp_gained || amount;
       showXPToast(gained);
@@ -7644,7 +7671,7 @@ function showCoinToast(coin) {
       + 'border:1px solid rgba(94,234,212,.3);z-index:9999;transition:opacity .3s;pointer-events:none;font-family:inherit';
     document.body.appendChild(el);
   }
-  el.textContent = '+' + _coinToastTotal + '냥 🐾';
+  el.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span>+' + _coinToastTotal + '냥</span><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+KH_ICON_PAW+'</span></span>';
   el.style.opacity = '1';
   _coinToastTimer = setTimeout(function(){
     el.style.opacity = '0';
