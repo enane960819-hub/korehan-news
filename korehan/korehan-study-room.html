@@ -15276,8 +15276,44 @@ function closeWGDrill() {
   document.body.style.overflow = '';
 }
 
-async function generateWGDrillQuestions(grammarName) {
+async function generateWGDrillQuestions(grammarName, opts) {
   var body = document.getElementById('wg-drill-body');
+  var force = !!(opts && opts.force);
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  // Cache reuses the existing grammar_examples_cache table; the
+  // 'drill::' prefix keeps it in its own namespace so it doesn't
+  // collide with the Grammar Focus patterns saved under the bare
+  // pattern_name. DB hit = free. DB miss = AI generate + save.
+  var cacheKey = 'drill::' + grammarName;
+
+  // 1) Try cache first (unless caller asked for a fresh set)
+  if (!force && sb) {
+    try {
+      var cached = await sb.from('grammar_examples_cache')
+        .select('patterns_json')
+        .eq('pattern_name', cacheKey)
+        .maybeSingle();
+      if (cached && cached.data && cached.data.patterns_json) {
+        var pkt = JSON.parse(cached.data.patterns_json);
+        var validQ0 = (pkt && pkt.questions || []).filter(function(q) {
+          return q && typeof q.q === 'string' && q.q.trim()
+            && Array.isArray(q.choices) && q.choices.length >= 2
+            && typeof q.correct === 'number';
+        });
+        if (validQ0.length) {
+          _wgDrillState.questions = validQ0;
+          _wgDrillState.explanation = (pkt && pkt.explanation) || '';
+          _wgDrillState.idx = 0;
+          _wgDrillState.score = 0;
+          _wgDrillState.fromCache = true;
+          renderWGDrillIntro();
+          return;
+        }
+      }
+    } catch(e) { console.warn('[WGDrill] cache read miss/error:', e && e.message); }
+  }
+
+  // 2) Cache miss (or forced) → call Claude
   try {
     var res = await callClaude({
       feature: 'weak-grammar-drill',
@@ -15300,10 +15336,6 @@ async function generateWGDrillQuestions(grammarName) {
       throw new Error('AI response was not valid JSON.');
     }
     var parsed = JSON.parse(raw.slice(oi, ei + 1));
-    // Filter questions that actually have content — Claude sometimes
-    // returns a partial array with empty stub objects when the prompt
-    // gets truncated. Without this guard the modal silently renders
-    // an empty header + zero choice buttons.
     var validQuestions = (parsed.questions || []).filter(function(q) {
       return q && typeof q.q === 'string' && q.q.trim()
         && Array.isArray(q.choices) && q.choices.length >= 2
@@ -15314,14 +15346,29 @@ async function generateWGDrillQuestions(grammarName) {
       _wgDrillState.explanation = parsed.explanation || '';
       _wgDrillState.idx = 0;
       _wgDrillState.score = 0;
+      _wgDrillState.fromCache = false;
+      // Fire-and-forget upsert. Don't await — UI shouldn't block on the
+      // cache write, and a save failure (e.g. RLS misconfig) shouldn't
+      // break the user's drill session.
+      if (sb) {
+        sb.from('grammar_examples_cache').upsert({
+          pattern_name: cacheKey,
+          patterns_json: JSON.stringify({ explanation: parsed.explanation || '', questions: validQuestions }),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'pattern_name' }).then(function(r) {
+          if (r && r.error) console.warn('[WGDrill] cache save failed:', r.error.message);
+        });
+      }
       renderWGDrillIntro();
     } else {
       console.warn('[WGDrill] Got payload but no valid questions:', parsed);
-      body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">No drill questions generated. The AI response was empty or malformed.</div><button onclick="generateWGDrillQuestions(\'' + grammarName.replace(/'/g, "\\'") + '\')" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
+      var safeNameA = String(grammarName).replace(/'/g, "\\'");
+      body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">No drill questions generated. The AI response was empty or malformed.</div><button onclick="generateWGDrillQuestions(\'' + safeNameA + '\', {force:true})" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
     }
   } catch(e) {
     console.error('[WGDrill] generateWGDrillQuestions error:', e);
-    body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">Error: ' + (e.message||'unknown') + '</div><button onclick="generateWGDrillQuestions(\'' + grammarName.replace(/'/g, "\\'") + '\')" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
+    var safeNameB = String(grammarName).replace(/'/g, "\\'");
+    body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">Error: ' + (e.message||'unknown') + '</div><button onclick="generateWGDrillQuestions(\'' + safeNameB + '\', {force:true})" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
   }
 }
 
@@ -15352,7 +15399,8 @@ function renderWGDrillQuestion() {
     console.warn('[WGDrill] Skipping malformed question at index', st.idx, q);
     st.idx++;
     if (st.idx < st.questions.length) { renderWGDrillQuestion(); return; }
-    body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">All drill questions returned empty. Please try regenerating.</div><button onclick="generateWGDrillQuestions(' + JSON.stringify(st.grammar || '') + ')" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
+    var safeGrammar = String(st.grammar || '').replace(/'/g, "\\'");
+    body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">All drill questions returned empty. Please try regenerating.</div><button onclick="generateWGDrillQuestions(\'' + safeGrammar + '\', {force:true})" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
     return;
   }
   var shuffled = (q.choices || []).map(function(c, i){ return { text:c, origIdx:i }; }).sort(function(){ return Math.random()-.5; });
@@ -15402,6 +15450,7 @@ function renderWGDrillResult() {
   var icon = pct >= 80 ? BM_ICON_PARTY : pct >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME;
   var iconColor = pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171';
   var msg = pct >= 80 ? 'Great job! This grammar is getting solid.' : pct >= 60 ? 'Good effort! A bit more practice will help.' : 'Keep practicing — you\'ll get there!';
+  var safeGrammarName = String(st.grammar || '').replace(/'/g, "\\'");
   body.innerHTML =
     '<div style="text-align:center;padding:20px">'
     + '<div style="display:inline-flex;width:48px;height:48px;margin-bottom:8px;color:' + iconColor + ';filter:drop-shadow(0 0 12px ' + iconColor + 'aa)">' + icon + '</div>'
@@ -15410,6 +15459,9 @@ function renderWGDrillResult() {
     + '<div style="font-size:13px;color:#78350f;background:#fffbeb;border-radius:8px;padding:8px 12px;display:inline-block;margin-bottom:16px">' + msg + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
     + '<button onclick="_wgDrillState.idx=0;_wgDrillState.score=0;renderWGDrillIntro()" style="padding:10px 18px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try Again</button>'
+    + (st.grammar
+        ? '<button onclick="generateWGDrillQuestions(\'' + safeGrammarName + '\', {force:true})" title="Generate fresh AI questions instead of cached ones" style="padding:10px 18px;border:1px solid rgba(253,230,138,.35);border-radius:10px;background:rgba(180,83,9,.18);color:#fde68a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+BM_ICON_SPARKLE+'</span><span>새 문제 생성</span></button>'
+        : '')
     + '<button onclick="closeWGDrill()" style="padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>Done</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
     + '</div></div>';
   // Track result
