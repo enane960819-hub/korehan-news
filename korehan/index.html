@@ -341,10 +341,12 @@
 .home-conv-grid-wrap .hconv-foot { min-width: 0; }
 .home-conv-grid-wrap .hconv-chat { flex: 1; min-height: 110px; }
 .home-conv-grid-wrap .hcb {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  /* Show full bubble text. The -webkit-line-clamp:2 + overflow:hidden
+     was truncating every message at 2 lines with an ellipsis, which
+     read as "the conversation is cut off" — exactly what the user
+     keeps reporting. The home rail is a preview, not a list view; if
+     a bubble is long the card just grows to fit. */
+  word-break: break-word;
 }
 .home-conv-grid-wrap .hconv-foot { margin-top: auto; }
 
@@ -487,7 +489,9 @@
   flex-direction: column;
   gap: 6px;
   min-height: 0;
-  overflow: hidden;
+  /* No overflow clipping — the card grows to whatever the 3 bubbles
+     need. Clipping here was hiding the bottom of bubbles whenever the
+     line-clamp didn't catch them in time. */
 }
 .home-conv-grid-wrap .hcb {
   font-size: 12px;
@@ -496,10 +500,6 @@
   padding: 7px 11px;
   border-radius: 14px;
   max-width: 82%;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
   word-break: break-word;
 }
 .home-conv-grid-wrap .hcb.left {
