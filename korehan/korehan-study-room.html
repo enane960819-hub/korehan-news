@@ -2712,7 +2712,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
           <div style="width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#c4b5fd"><i data-lucide="trophy" class="kh-ui-icon" style="width:16px;height:16px" aria-hidden="true"></i></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;font-weight:800;color:#c4b5fd">Monthly Review 오픈!</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-notif-monthly-deadline">25문제 · 3일까지 · 임시저장 1회 가능</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)" id="sr-notif-monthly-deadline">30문제 · 3일까지 · 임시저장 1회 가능</div>
           </div>
           <span style="font-size:12px;color:rgba(255,255,255,.3)">시작 →</span>
         </div>
@@ -9235,7 +9235,7 @@ function showReviewNotifications() {
       var mDeadline = document.getElementById('sr-notif-monthly-deadline');
       if (mDeadline) {
         var d = kstNow().getDate();
-        mDeadline.textContent = '25문제 · ' + (3 - d + 1) + '일 남음 · 임시저장 1회 가능';
+        mDeadline.textContent = '30문제 · ' + (3 - d + 1) + '일 남음 · 임시저장 1회 가능';
       }
       if (rvLoadSaved('monthly')) {
         monthlyEl.querySelector('div > div > div:nth-child(2) > div:first-child').textContent = 'Monthly Review Continue!';
@@ -20055,12 +20055,22 @@ function openMonthlyReview() {
     document.getElementById('rv-timer').style.display = '';
     renderReviewQuestion();
   } else {
-    startReview('Monthly Review', 30);
+    startReview('Monthly Review', 30, 'monthly');
   }
 }
 
-function startReview(title, count) {
-  _rv.questions = generateReviewQuestions(count);
+async function startReview(title, count, mode) {
+  // Monthly review pulls from 5 different data sources (saved words,
+  // article grammar caches, article cloze quizzes, key expressions,
+  // conversations) so the user gets a real assessment of what they
+  // studied this month, not a random-vocab pop quiz. Weekly/daily stay
+  // on the synchronous vocab-only path.
+  if (mode === 'monthly') {
+    try { _rv.questions = await _buildMonthlyReviewQuestions(count); }
+    catch(e) { console.warn('monthly review build failed, falling back', e); _rv.questions = generateReviewQuestions(count); }
+  } else {
+    _rv.questions = generateReviewQuestions(count);
+  }
   _rv.current = 0;
   _rv.scores = [];
 
@@ -20071,16 +20081,18 @@ function startReview(title, count) {
     // Adapt here so the arena renders the prompt + scores answers correctly.
     var arenaQuestions = _rv.questions.map(function(q) {
       if (q.type === 'mcq') {
-        // Korean prompt → English answer (MCQ)
-        return { type: 'meaning', word_ko: q.prompt, word_rom: q.rom || '', choices: q.choices || [], correct: q.answer };
+        // Korean prompt → English answer (MCQ). label overrides the
+        // arena's default "What does this mean?" — important for cloze
+        // and grammar questions where that label is misleading.
+        return { type: 'meaning', word_ko: q.prompt, word_rom: q.rom || '', choices: q.choices || [], correct: q.answer, label: q.label, slot: q.slot };
       }
       if (q.type === 'mcq_reverse') {
         // English prompt → Korean answer (MCQ)
-        return { type: 'typed', word_en: q.prompt, word_rom: q.rom || '', choices: q.choices || [], correct: q.answer };
+        return { type: 'typed', word_en: q.prompt, word_rom: q.rom || '', choices: q.choices || [], correct: q.answer, label: q.label, slot: q.slot };
       }
       if (q.type === 'typed') {
         // English prompt → Korean answer (typed; arena converts to MCQ with auto-distractors)
-        return { type: 'typed', word_en: q.prompt, word_rom: q.rom || '', correct: q.answer };
+        return { type: 'typed', word_en: q.prompt, word_rom: q.rom || '', correct: q.answer, label: q.label, slot: q.slot };
       }
       return q;
     });
@@ -20166,6 +20178,252 @@ function generateReviewQuestions(count) {
 
   if (questions.length < 4) return questions;
   return questions.sort(function() { return Math.random() - .5; });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Monthly Review — comprehensive 30-question assessment that pulls
+// from every learning surface the user touched in the last 30 days,
+// not just their saved-word flashcards. Five slots:
+//   · 10 Vocab Recall      (user_saved_words, low accuracy first)
+//   · 6  Grammar Pattern   (article_cache.grammar for articles read)
+//   · 6  Reading Cloze     (article_cache.quiz, content-word blanks)
+//   · 4  Particle/Tense    (article_cache.quiz, particle blanks)
+//   · 4  Key Expressions   (article_cache + conversation expressions)
+// Slots fall back through to vocab if the underlying data is sparse,
+// so the user always gets exactly `targetCount` questions.
+// ─────────────────────────────────────────────────────────────────
+
+var _MR_PARTICLES = {
+  '을':1,'를':1,'이':1,'가':1,'은':1,'는':1,'의':1,'에':1,'에서':1,'에게':1,
+  '한테':1,'와':1,'과':1,'도':1,'만':1,'까지':1,'부터':1,'(이)나':1,'(이)랑':1,
+  '으로':1,'로':1,'요':1,'서':1,'마저':1,'조차':1,'밖에':1,'처럼':1,'같이':1,
+  '보다':1,'에게서':1,'한테서':1,'(이)며':1,'든지':1,
+};
+
+function _mrSafeParse(v) {
+  if (!v) return null;
+  if (typeof v === 'object') return v;
+  try { return JSON.parse(v); } catch(_) { return null; }
+}
+
+function _mrShuffle(arr) {
+  return arr.slice().sort(function() { return Math.random() - 0.5; });
+}
+
+function _mrSlotVocab(n, savedWords, alreadyUsedAnswers) {
+  var used = alreadyUsedAnswers || {};
+  var pool = savedWords.filter(function(w){ return !used[w.ko] && !used[w.en]; });
+  if (pool.length < 4) return [];
+  var qs = [];
+  for (var i = 0; i < pool.length && qs.length < n; i++) {
+    var w = pool[i];
+    var distractors = _mrShuffle(pool.filter(function(o){ return o.ko !== w.ko; })).slice(0, 3);
+    if (distractors.length < 3) continue;
+    var rand = Math.random();
+    if (rand < 0.6) {
+      var ch = _mrShuffle([w.en].concat(distractors.map(function(d){ return d.en; })));
+      qs.push({ type:'mcq', prompt:w.ko, answer:w.en, choices:ch, rom:w.rom||'', slot:'vocab', label:'What does this mean?' });
+    } else if (rand < 0.9) {
+      var chK = _mrShuffle([w.ko].concat(distractors.map(function(d){ return d.ko; })));
+      qs.push({ type:'mcq_reverse', prompt:w.en, answer:w.ko, choices:chK, rom:w.rom||'', slot:'vocab', label:'Pick the Korean word' });
+    } else {
+      qs.push({ type:'typed', prompt:w.en, answer:w.ko, rom:w.rom||'', slot:'vocab', label:'Type the Korean word' });
+    }
+  }
+  return qs;
+}
+
+function _mrSlotGrammar(n, articleCacheMap) {
+  var pool = [];
+  Object.keys(articleCacheMap).forEach(function(aid) {
+    var grammar = articleCacheMap[aid].grammar;
+    var arr = (grammar && grammar.patterns) || (Array.isArray(grammar) ? grammar : []);
+    arr.forEach(function(g) { if (g && g.name && g.ex_ko) pool.push(g); });
+  });
+  if (pool.length < 4) return [];
+  var allNames = pool.map(function(g){ return g.name; });
+  // De-dupe by pattern name first so a popular pattern doesn't dominate.
+  var seenName = {};
+  var uniqueByName = pool.filter(function(g) {
+    if (seenName[g.name]) return false;
+    seenName[g.name] = true; return true;
+  });
+  var qs = [];
+  _mrShuffle(uniqueByName).forEach(function(g) {
+    if (qs.length >= n) return;
+    var distractors = _mrShuffle(allNames.filter(function(nm){ return nm !== g.name; })).slice(0, 3);
+    if (distractors.length < 3) return;
+    var ch = _mrShuffle([g.name].concat(distractors));
+    var sentence = g.ex_ko.replace(/<strong>([^<]+)<\/strong>/g, '_____');
+    var label = (sentence !== g.ex_ko)
+      ? 'Which pattern fills the blank?'
+      : 'Which grammar pattern is in this sentence?';
+    qs.push({ type:'mcq', prompt:sentence, answer:g.name, choices:ch, slot:'grammar', label:label });
+  });
+  return qs;
+}
+
+function _mrSlotReadingCloze(n, articleCacheMap, particleOnly) {
+  var pool = [];
+  Object.keys(articleCacheMap).forEach(function(aid) {
+    var quiz = articleCacheMap[aid].quiz;
+    var arr = (quiz && quiz.questions) || (Array.isArray(quiz) ? quiz : []);
+    arr.forEach(function(q) {
+      if (!q || !q.sentence || !q.blank || !Array.isArray(q.choices) || q.choices.length < 4) return;
+      var isParticle = !!_MR_PARTICLES[q.blank];
+      if (particleOnly === isParticle) pool.push(q);
+    });
+  });
+  if (!pool.length) return [];
+  var qs = [];
+  _mrShuffle(pool).forEach(function(q) {
+    if (qs.length >= n) return;
+    qs.push({
+      type:'mcq',
+      prompt:q.sentence,
+      answer:q.blank,
+      choices:_mrShuffle(q.choices.slice(0, 4)),
+      slot:(particleOnly ? 'particle' : 'reading'),
+      label:(particleOnly ? 'Pick the right particle' : 'Fill in the blank'),
+    });
+  });
+  return qs;
+}
+
+function _mrSlotKeyExpressions(n, articleCacheMap, convExpressions) {
+  var pool = (convExpressions || []).slice();
+  Object.keys(articleCacheMap).forEach(function(aid) {
+    var arr = articleCacheMap[aid].key_expressions || [];
+    arr.forEach(function(e) { if (e && e.ko && e.en) pool.push(e); });
+  });
+  if (pool.length < 4) return [];
+  var seenKo = {};
+  pool = pool.filter(function(e){ if (seenKo[e.ko]) return false; seenKo[e.ko] = true; return true; });
+  if (pool.length < 4) return [];
+  var qs = [];
+  _mrShuffle(pool).forEach(function(e) {
+    if (qs.length >= n) return;
+    var distractors = _mrShuffle(pool.filter(function(o){ return o.ko !== e.ko; })).slice(0, 3);
+    if (distractors.length < 3) return;
+    var ch = _mrShuffle([e.en].concat(distractors.map(function(d){ return d.en; })));
+    qs.push({ type:'mcq', prompt:e.ko, answer:e.en, choices:ch, slot:'expression', label:'What does this expression mean?' });
+  });
+  return qs;
+}
+
+async function _buildMonthlyReviewQuestions(targetCount) {
+  if (targetCount == null) targetCount = 30;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  var userId = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : null;
+  if (!sb || !userId) return generateReviewQuestions(targetCount);
+
+  var monthStart = new Date(); monthStart.setDate(monthStart.getDate() - 30);
+  var monthStartIso = monthStart.toISOString();
+
+  // Saved words — _wbData is already loaded on page mount, but it's
+  // sorted by created_at not by accuracy. Re-sort here so weak words
+  // surface first; fall back to a fresh fetch if memory is empty.
+  var savedWords = (typeof _wbData !== 'undefined' && Array.isArray(_wbData) && _wbData.length)
+    ? _wbData.slice()
+    : [];
+  if (!savedWords.length) {
+    try {
+      var swRes = await sb.from('user_saved_words')
+        .select('word_ko, word_rom, word_en, correct_count, wrong_count, review_count')
+        .eq('user_id', userId).order('created_at', { ascending: false }).limit(300);
+      (swRes.data || []).forEach(function(w) {
+        var en = (w.word_en || '').replace(/^\[(슬랭|표현)\]\s*/, '');
+        var total = (w.correct_count||0) + (w.wrong_count||0);
+        savedWords.push({ ko:w.word_ko, en:en, rom:w.word_rom||'',
+          accuracy: total > 0 ? Math.round((w.correct_count||0) / total * 100) : -1,
+          reviewCount: w.review_count||0 });
+      });
+    } catch(e) {}
+  }
+  savedWords = savedWords.filter(function(w){ return w.ko && w.en; });
+  // Weak words first (low accuracy, then never-reviewed, then random tail).
+  savedWords.sort(function(a, b) {
+    var aA = a.accuracy >= 0 ? a.accuracy : 50;
+    var bA = b.accuracy >= 0 ? b.accuracy : 50;
+    return aA - bA;
+  });
+
+  // Read history — articles studied in the last 30 days.
+  var articleIds = [];
+  try {
+    var rhRes = await sb.from('user_read_history')
+      .select('content_id, content_type, created_at')
+      .eq('user_id', userId)
+      .eq('content_type', 'article')
+      .gte('created_at', monthStartIso)
+      .limit(80);
+    var seenAid = {};
+    (rhRes.data || []).forEach(function(r) {
+      if (r.content_id && !seenAid[r.content_id]) { seenAid[r.content_id] = 1; articleIds.push(r.content_id); }
+    });
+  } catch(e) {}
+
+  // Article cache for those articles (grammar / quiz / key_expressions).
+  var articleCacheMap = {};
+  if (articleIds.length) {
+    try {
+      var acRes = await sb.from('article_cache')
+        .select('article_id, grammar, quiz, key_expressions')
+        .in('article_id', articleIds.map(String));
+      (acRes.data || []).forEach(function(r) {
+        articleCacheMap[r.article_id] = {
+          grammar: _mrSafeParse(r.grammar),
+          quiz: _mrSafeParse(r.quiz),
+          key_expressions: _mrSafeParse(r.key_expressions),
+        };
+      });
+    } catch(e) {}
+  }
+
+  // Conversation key_expressions for convos studied this month.
+  var convExpressions = [];
+  try {
+    var convRdRes = await sb.from('user_read_history')
+      .select('content_id')
+      .eq('user_id', userId)
+      .eq('content_type', 'conversation')
+      .gte('created_at', monthStartIso)
+      .limit(40);
+    var convIds = Array.from(new Set((convRdRes.data || []).map(function(r){ return r.content_id; })));
+    if (convIds.length) {
+      var cdRes = await sb.from('conversations_data').select('id, data').in('id', convIds);
+      (cdRes.data || []).forEach(function(c) {
+        var d = c.data || {};
+        var ke = d.key_expressions || [];
+        ke.forEach(function(e){ if (e && e.ko && e.en) convExpressions.push(e); });
+      });
+    }
+  } catch(e) {}
+
+  // Build each slot.
+  var vocabQs    = _mrSlotVocab(10, savedWords);
+  var grammarQs  = _mrSlotGrammar(6, articleCacheMap);
+  var readingQs  = _mrSlotReadingCloze(6, articleCacheMap, false);
+  var particleQs = _mrSlotReadingCloze(4, articleCacheMap, true);
+  var exprQs     = _mrSlotKeyExpressions(4, articleCacheMap, convExpressions);
+
+  var all = vocabQs.concat(grammarQs).concat(readingQs).concat(particleQs).concat(exprQs);
+
+  // Pad to targetCount with extra vocab questions when other slots
+  // were sparse (new user / hasn't read many articles yet).
+  if (all.length < targetCount && savedWords.length >= 4) {
+    var usedAnswers = {};
+    all.forEach(function(q){ if (q.answer) usedAnswers[q.answer] = 1; });
+    var extra = _mrSlotVocab(targetCount - all.length, savedWords, usedAnswers);
+    all = all.concat(extra);
+  }
+
+  // Final fallback — if we still don't have 4+ questions (brand new
+  // account, no saved words, no articles read), reuse the legacy
+  // synchronous generator so the user at least sees something.
+  if (all.length < 4) return generateReviewQuestions(targetCount);
+
+  return _mrShuffle(all).slice(0, targetCount);
 }
 
 function renderReviewQuestion() {
