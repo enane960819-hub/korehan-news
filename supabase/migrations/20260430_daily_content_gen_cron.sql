@@ -51,7 +51,7 @@ select cron.schedule(
   '0 17 * * *',  -- 17:00 UTC daily = 02:00 KST next day
   $cron$
   select net.http_post(
-    url := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/daily-content-gen',
+    url := 'https://samghztrdvtxmrmawneu.supabase.co/functions/v1/daily-content-gen',
     headers := jsonb_build_object(
       'Content-Type',  'application/json',
       'Authorization', 'Bearer ' || (
@@ -75,7 +75,7 @@ select cron.schedule(
 -- And to fire it once on demand without waiting for 02:00 KST:
 --
 --   select net.http_post(
---     url := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/daily-content-gen',
+--     url := 'https://samghztrdvtxmrmawneu.supabase.co/functions/v1/daily-content-gen',
 --     headers := jsonb_build_object('Content-Type','application/json','Authorization','Bearer YOUR_CRON_SECRET'),
 --     body := '{}'::jsonb
 --   );
