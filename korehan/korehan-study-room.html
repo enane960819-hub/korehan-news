@@ -1457,13 +1457,21 @@ body { background: #0b1626 !important; }
 
 /* ── Solar System mode (mobile only) ──
    Nodes are JS-positioned (transform updated each frame in
-   _lsStartSolarOrbits) so we only need to override the static
-   pentagon placement and add a starfield-style background. */
+   _lsStartSolarOrbits). Container expands to the full panel width
+   via negative margins so the outermost orbit (radius=1.0) still
+   has room to breathe. Orbit rings are drawn into the canvas, not
+   pseudo-elements. */
 @media (max-width: 768px) {
   .ls-mindmap.ls-mode-solar {
-    /* Make the orbit container square so radii hit the same distance
-       in both axes. Pentagon used 1:1.05 — solar wants pure 1:1. */
     aspect-ratio: 1 / 1;
+    /* Cancel the ls-panel horizontal padding so the orbit container
+       can reach the modal edges. Outer planets need real space. */
+    margin-left: -18px;
+    margin-right: -18px;
+    max-width: none;
+    /* The outermost orbit sits at the container edge but the planet
+       circles extend past it slightly — keep them visible. */
+    overflow: visible;
   }
   .ls-mindmap.ls-mode-solar .ls-node[data-pos] {
     /* JS will inject left/top/transform per frame. Reset the static
@@ -1471,44 +1479,51 @@ body { background: #0b1626 !important; }
     top: auto; bottom: auto; left: auto; right: auto;
     transform: none;
   }
-  /* Faint orbit ring outlines drawn behind the nodes, using radial
-     gradient halos that approximate elliptical paths. Tiny — they
-     just hint at the orbit, the moving nodes carry the motion. */
-  .ls-mindmap.ls-mode-solar::before {
-    content: '';
-    position: absolute; inset: 8%;
-    border-radius: 50%;
-    border: 1px dashed rgba(168,139,250,.12);
-    pointer-events: none;
+  /* Smaller "planet" circles so 5 of them at distinct radii stay
+     legible without overlapping. The orb-wrap halo carries the
+     visual weight in the centre; planets just need to be tappable. */
+  .ls-mindmap.ls-mode-solar .ls-node {
+    width: 40px;
   }
-  .ls-mindmap.ls-mode-solar::after {
-    content: '';
-    position: absolute; inset: 22%;
-    border-radius: 50%;
-    border: 1px dashed rgba(168,139,250,.08);
-    pointer-events: none;
-  }
-  /* Each node becomes a small "planet" — slightly smaller circle so
-     more breathing room around the orb. Names tucked under the
-     planet, semi-transparent so they don't fight with the orb. */
   .ls-mindmap.ls-mode-solar .ls-node-circle {
-    width: 56px; height: 56px;
+    width: 40px; height: 40px;
+  }
+  .ls-mindmap.ls-mode-solar .ls-node-icon {
+    width: 18px; height: 18px;
   }
   .ls-mindmap.ls-mode-solar .ls-node-name {
-    font-size: 10px;
-    color: rgba(255,255,255,.7);
-    margin-top: 4px;
+    font-size: 9px;
+    color: rgba(255,255,255,.6);
+    margin-top: 3px;
     white-space: nowrap;
+    text-align: center;
   }
   .ls-mindmap.ls-mode-solar .ls-node-coin {
-    font-size: 9px;
-    padding: 2px 5px;
+    font-size: 8px;
+    padding: 1px 4px;
+    top: -8px; right: -6px;
   }
-  /* The centre orb is the "sun" — bump its glow a touch. */
+  /* Shrink the centre orb on mobile so the inner orbit (radius 0.32)
+     actually clears the orb's edge. Default orb is 140px which on a
+     324px-wide pentagon container fills nearly half the diameter. */
+  .ls-mindmap.ls-mode-solar .ls-orb {
+    width: 96px; height: 96px;
+  }
+  .ls-mindmap.ls-mode-solar .ls-orb-count {
+    font-size: 26px;
+  }
+  .ls-mindmap.ls-mode-solar .ls-orb-total {
+    font-size: 9px;
+    margin-top: 2px;
+  }
+  .ls-mindmap.ls-mode-solar .ls-orb-pts {
+    font-size: 9px;
+  }
+  /* Stronger sun glow on the centre to anchor the system visually. */
   .ls-mindmap.ls-mode-solar .ls-orb-wrap::before {
     box-shadow:
       inset 0 0 60px rgba(168,85,247,.22),
-      0 0 36px rgba(168,85,247,.18);
+      0 0 42px rgba(168,85,247,.22);
   }
 }
 
@@ -6130,6 +6145,30 @@ function _lsInitLinesCanvas() {
         ctx.fillStyle = 'rgba(220,230,255,' + alpha + ')';
         ctx.fill();
       }
+      // Orbit rings — one ellipse per planet so the user can see
+      // which track each one is on. Faint stroke so the moving
+      // planets stay the focal point. The canvas viewBox is 380×399
+      // so the orbits are anchored to the centre of that virtual box.
+      var cxV = 190, cyV = 199.5;
+      var refV = Math.min(cxV, cyV);
+      var orbitKeys = ['topic','grammar','picture','sentence','expressions'];
+      ctx.save();
+      for (var oi = 0; oi < orbitKeys.length; oi++) {
+        var oo = (typeof _LS_ORBITS !== 'undefined') ? _LS_ORBITS[orbitKeys[oi]] : null;
+        if (!oo) continue;
+        var rxV = refV * oo.radius;
+        var ryV = refV * oo.radius * 0.82;
+        ctx.beginPath();
+        ctx.ellipse(cxV, cyV, rxV, ryV, 0, 0, Math.PI * 2);
+        // Outer orbits get fainter strokes — depth cue.
+        var fade = 0.06 + 0.10 * (1 - oo.radius);
+        ctx.strokeStyle = _lsLineDone[orbitKeys[oi]]
+          ? 'rgba(120,255,200,' + (fade + 0.12) + ')'
+          : 'rgba(168,139,250,' + fade + ')';
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     Object.keys(_lsNodeCoords).forEach(function(key) {
@@ -6245,12 +6284,17 @@ function _lsApplyMobileMode() {
 // elliptical paths. Node DOM transforms are updated each frame so the
 // lines/particles canvas can keep tracking them via _lsNodeCoords.
 // Stops itself when mode flips away from solar — no zombie loop.
+// Five planets at five distinctly different orbital radii so no two
+// nodes share a track. Innermost (0.32) just clears the centre orb;
+// outermost (1.00) hugs the container edge. Phase offsets are chosen
+// so adjacent orbits start on opposite sides of the system — keeps
+// the layout from clumping together right after the modal opens.
 var _LS_ORBITS = {
-  topic:       { radius: 0.42, period: 32, offset:   0 },
-  grammar:     { radius: 0.36, period: 28, offset:  72 },
-  picture:     { radius: 0.44, period: 36, offset: 144 },
-  sentence:    { radius: 0.38, period: 30, offset: 216 },
-  expressions: { radius: 0.40, period: 34, offset: 288 },
+  topic:       { radius: 0.32, period: 22, offset:   0 },
+  grammar:     { radius: 0.52, period: 30, offset: 144 },
+  picture:     { radius: 0.72, period: 40, offset:  72 },
+  sentence:    { radius: 0.86, period: 50, offset: 216 },
+  expressions: { radius: 1.00, period: 62, offset: 288 },
 };
 var _lsSolarStart = 0;
 var _lsSolarRafId = null;
@@ -6278,7 +6322,9 @@ function _lsStartSolarOrbits() {
       var theta = (o.offset * Math.PI / 180) + (elapsed / o.period) * Math.PI * 2;
       var R = refRadius * o.radius;
       var nx = R * Math.cos(theta);
-      var ny = R * Math.sin(theta) * 0.85; // slight ellipse — orbits look 3D
+      // y-squish 0.82 — outer orbits stay safely inside vertical
+      // bounds while still reading as 3D rather than flat circles.
+      var ny = R * Math.sin(theta) * 0.82;
       var el = document.getElementById('ls-card-' + key);
       if (el) {
         // Anchor each orbiting node to the wrap centre and translate
