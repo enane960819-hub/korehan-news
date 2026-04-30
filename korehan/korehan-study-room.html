@@ -18214,7 +18214,7 @@ async function _asLoadArticles() {
         _asArticles = [];
         return;
       }
-      var r2 = await sb.from('articles').select('id,title,title_en,section,level,image,body').in('id', ids).limit(200);
+      var r2 = await sb.from('articles').select('id,title,title_en,section,level,image').in('id', ids).limit(200);
       if (r2.error) throw r2.error;
       var bmOrder = {}; ids.forEach(function(id, i){ bmOrder[String(id)] = i; });
       _asArticles = (r2.data||[])
@@ -18223,7 +18223,13 @@ async function _asLoadArticles() {
       _asRenderGrid();
       return;
     }
-    var r = await sb.from('articles').select('id,title,title_en,section,level,image,body')
+    // Drop the heavy `body` column from the list query — pulling 500
+    // article bodies (~3KB each = ~1.5 MB payload) was hitting either
+    // PostgREST's row size cap or the mobile network's timeout, which
+    // landed in the catch block as the user-visible "Could not load
+    // the article" toast. Body is only needed AFTER the user picks a
+    // specific article, so we fetch it on-demand inside asSelectArticle.
+    var r = await sb.from('articles').select('id,title,title_en,section,level,image')
       .eq('status','published').order('date',{ascending:false}).limit(500);
     if (r.error) throw r.error;
     _asArticles = (r.data||[]).filter(function(a){ return a.title; });
@@ -18258,6 +18264,18 @@ function _asRenderGrid() {
 async function asSelectArticle(id) {
   var art = _asArticles.find(function(a){ return String(a.id)===String(id); });
   if (!art) return;
+  // Body isn't in the list query (size cap) — fetch it now for the
+  // one article the user actually opened, then mutate art.body so
+  // the rest of the flow reads it like before.
+  if (!art.body) {
+    try {
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      if (sb) {
+        var bodyRes = await sb.from('articles').select('body').eq('id', art.id).maybeSingle();
+        if (bodyRes && bodyRes.data && bodyRes.data.body) art.body = bodyRes.data.body;
+      }
+    } catch(_) {}
+  }
   _asCurrentArt = art; _asStep = 1; _asStepDone = [false,false,false,false,false];
   _asStudyContent = null; _asMatchState = null; _asWOState = null; _asQState = null;
   // Restore progress: localStorage first, then DB
