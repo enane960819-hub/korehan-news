@@ -442,8 +442,10 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
       }
     }
 
-    // Log results
-    if (_onFinish) _onFinish(correct, total, pct);
+    // Log results. Pass `scores` (per-question 0/1 array) so the
+    // caller can attribute each wrong answer back to its question slot
+    // and build wrong_patterns for the growth-lab analytics.
+    if (_onFinish) _onFinish(correct, total, pct, _scores.slice());
   }
 
   // ── Public API ──

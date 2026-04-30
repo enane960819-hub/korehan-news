@@ -19737,8 +19737,13 @@ async function drGenerateQuestions() {
       title: 'Daily Review',
       timer: 0,
       mode: 'daily',
-      onFinish: function(correct, total, pct) {
-        if (typeof logQuizResult === 'function') logQuizResult('daily_review', { score: correct, max_score: total, accuracy_pct: pct });
+      onFinish: function(correct, total, pct, scores) {
+        // Daily review questions all come from user_saved_words, so any
+        // wrong answer counts as a VOCAB mistake. Logging the count
+        // (instead of leaving wrong_patterns null) is what unblocks
+        // growth-lab's "weak skills" panel.
+        var wrong_patterns = _classifyReviewMistakes(_drQuestions, scores, 'daily');
+        if (typeof logQuizResult === 'function') logQuizResult('daily_review', { score: correct, max_score: total, accuracy_pct: pct, wrong_patterns: wrong_patterns });
         if (typeof logActivity === 'function') logActivity('quiz', { content_type: 'daily_review', score: correct, max_score: total });
         try { localStorage.setItem('kh_daily_review_done_' + kstNow().toISOString().slice(0, 10), '1'); } catch(e) {}
         // Hide Daily Review banner after completion
@@ -19841,7 +19846,10 @@ function drShowScore(){
   if(nextBtn){nextBtn.disabled=false;nextBtn.textContent='Close';nextBtn.onclick=closeDailyReview;}
   document.getElementById('dr-progress').style.width='100%';
   if(typeof awardXP==='function') awardXP('quiz_complete');
-  if(typeof logQuizResult==='function') logQuizResult('daily_review',{score:correct,max_score:total,accuracy_pct:pct});
+  if(typeof logQuizResult==='function') {
+    var _drWp = _classifyReviewMistakes(_drQuestions, _drScores, 'daily');
+    logQuizResult('daily_review',{score:correct,max_score:total,accuracy_pct:pct, wrong_patterns:_drWp});
+  }
   if(typeof logActivity==='function') logActivity('quiz',{content_type:'daily_review',score:correct,max_score:total});
   // Mark daily review completed
   if(typeof kstNow==='function'){
@@ -20101,8 +20109,20 @@ async function startReview(title, count, mode) {
       title: title,
       timer: _rv.timeLimit || 15,
       mode: _rv.type || 'weekly',
-      onFinish: function(correct, total, pct) {
-        if (typeof logQuizResult === 'function') logQuizResult(_rv.type + '_review', { score: correct, max_score: total, accuracy_pct: pct });
+      onFinish: function(correct, total, pct, scores) {
+        // Build wrong_patterns from the per-question slot. Without this
+        // the column stays null for daily/weekly/monthly reviews and
+        // the growth-lab "weak skills" panel renders "데이터 부족" even
+        // when the user has done 30 reviews. Maps each wrong question
+        // to one of the labels growth-lab expects (PARTICLE / TENSE /
+        // VOCAB / SPELLING / OTHER).
+        var wrong_patterns = _classifyReviewMistakes(arenaQuestions, scores, _rv.type);
+        if (typeof logQuizResult === 'function') {
+          logQuizResult(_rv.type + '_review', {
+            score: correct, max_score: total, accuracy_pct: pct,
+            wrong_patterns: wrong_patterns,
+          });
+        }
         if (typeof logActivity === 'function') logActivity('quiz', { content_type: _rv.type + '_review', score: correct, max_score: total });
         try { localStorage.setItem('kh_' + _rv.type + '_review_done_' + kstNow().toISOString().slice(0, 10), '1'); } catch(e) {}
         // Hide review banner after completion
@@ -20199,6 +20219,50 @@ var _MR_PARTICLES = {
   '으로':1,'로':1,'요':1,'서':1,'마저':1,'조차':1,'밖에':1,'처럼':1,'같이':1,
   '보다':1,'에게서':1,'한테서':1,'(이)며':1,'든지':1,
 };
+
+// Map a single wrong arena question → growth-lab pattern label.
+// Tries the new monthly-review slot first, then particle answer
+// detection, then verb-ending heuristics, then quiz_type fallback.
+// The set of labels (PARTICLE / TENSE / WORD_ORDER / SPELLING /
+// VOCAB / OTHER) matches what korehan-learning-overview.html reads
+// at line 3479.
+function _classifyOneMistake(q, quizType) {
+  if (!q) return 'OTHER';
+  var slot = q.slot;
+  if (slot === 'particle') return 'PARTICLE';
+  if (slot === 'expression') return 'VOCAB';
+  if (slot === 'reading') return 'VOCAB';
+  if (slot === 'vocab') return 'VOCAB';
+  // The grammar slot answer is a pattern name like "~았/었어요". Look at
+  // the answer to pick a more useful label than a generic "GRAMMAR".
+  var ans = String(q.correct || q.answer || '').trim();
+  if (slot === 'grammar') {
+    if (/[을를이가은는의에서에게한테와과도만까지부터로으로]$/.test(ans)) return 'PARTICLE';
+    if (/(았|었|겠|을게|어요|아요|예요|이에요|입니다|습니다|할|했|는다|ㄴ다)/.test(ans)) return 'TENSE';
+    if (/(어순|word|순서)/i.test(ans)) return 'WORD_ORDER';
+    return 'TENSE';
+  }
+  // No slot info — daily/weekly review on legacy code paths or
+  // standalone vocab/grammar/dictation quizzes.
+  if (quizType === 'daily' || quizType === 'weekly') return 'VOCAB';
+  if (quizType === 'vocab') return 'VOCAB';
+  if (quizType === 'dictation') return 'SPELLING';
+  if (quizType === 'grammar') return 'TENSE';
+  // Particle answer in any non-grammar slot still counts as PARTICLE.
+  if (_MR_PARTICLES[ans]) return 'PARTICLE';
+  return 'OTHER';
+}
+
+function _classifyReviewMistakes(arenaQuestions, scores, quizType) {
+  var out = {};
+  if (!Array.isArray(arenaQuestions) || !Array.isArray(scores)) return out;
+  for (var i = 0; i < scores.length; i++) {
+    if (scores[i]) continue; // correct
+    var pat = _classifyOneMistake(arenaQuestions[i], quizType);
+    out[pat] = (out[pat] || 0) + 1;
+  }
+  return out;
+}
 
 function _mrSafeParse(v) {
   if (!v) return null;
@@ -20574,7 +20638,10 @@ function finishReview() {
     awardXP(_rv.type + '_review_complete', { score: pct });
   }
   if (typeof logQuizResult === 'function') {
-    logQuizResult(_rv.type + '_review', { score: correct, max_score: total, accuracy_pct: pct });
+    // Same wrong-pattern attribution as the arena path so legacy
+    // (non-arena) review flows also feed growth-lab analytics.
+    var _rvWp = _classifyReviewMistakes(_rv.questions, _rv.scores, _rv.type);
+    logQuizResult(_rv.type + '_review', { score: correct, max_score: total, accuracy_pct: pct, wrong_patterns: _rvWp });
   }
   if (typeof logActivity === 'function') {
     logActivity('quiz', { content_type: _rv.type + '_review', score: correct, max_score: total, metadata: { accuracy_pct: pct, xp_earned: xpEarned } });
