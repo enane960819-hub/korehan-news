@@ -584,6 +584,15 @@
   .home-hero-skeleton-side { display: none !important; }
 }
 
+/* The mobile-light theme in korehan-shared.css forces .story-title to
+   dark navy (#0d1b2e) because the original story-card layout had a
+   white card background. The home rail uses photo-overlay cards where
+   the title sits on the dark gradient at the bottom of an image —
+   dark navy on dark navy is invisible. Win the specificity battle so
+   the home cards always render the title in white. */
+body.mobile-light .home-story-grid .story-title { color: #fff !important; }
+body.mobile-light .home-story-grid .story-card { background: #0b1626 !important; }
+
 /* Beginner's Guide banner — dismiss button */
 #kh-welcome-action-banner > a { position: relative; }
 #kh-welcome-action-banner .kh-banner-close {
