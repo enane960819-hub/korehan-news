@@ -3992,10 +3992,18 @@ async function runAutoGenerate(){
 
       try {
         document.getElementById(rowId+'-status').innerHTML = '🧠 (1/4) 번역 중…';
-        const t = await _call('Translate each paragraph into English. Return ONLY a JSON array of strings, one string per paragraph. No other text.', 800);
-        const ta = _json(t);
-        _row.translation = JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] });
-        _ok++;
+        const _trans = await _khTranslateArticleForCache(_level, _title, _body);
+        if (_trans.bodyTexts && _trans.bodyTexts.length) {
+          _row.translation = JSON.stringify({ texts: _trans.bodyTexts });
+          _ok++;
+        }
+        // Backfill title_en when the source headline (h.title) was empty
+        // or Korean — without this, the translate button at read time has
+        // nothing to swap the Korean title to and leaves it as-is.
+        if (_trans.titleEn && _khTitleEnNeedsBackfill(newArticle.title_en)) {
+          newArticle.title_en = _trans.titleEn;
+          try { await dbSaveArticle(newArticle); } catch(e) { console.warn('title_en update failed', e.message); }
+        }
       } catch(e) { console.warn('translation failed', e.message); }
 
       try {
@@ -4324,6 +4332,67 @@ async function saveExpressions(articleId) {
   }
 }
 
+// Translate the article title + every body paragraph in a single Claude
+// call, using the same marker-delimited prompt that toggleTranslate uses
+// at read time. Replaces the previous "JSON array of strings" prompt at
+// max_tokens=800 — that capped output at ~1 paragraph for any moderately
+// long article, which is why users saw the translate button render only
+// the first paragraph in English with the rest still Korean. The cached
+// row is what the read-time button reads, so a bad cache here means
+// every reader sees the same broken translation forever.
+//
+// Returns { titleEn, bodyTexts }. titleEn lets callers backfill the
+// articles.title_en column when the source headline was empty or Korean
+// — that's the second half of the same user-reported bug ("title 그대로").
+async function _khTranslateArticleForCache(level, koTitle, koBody) {
+  var paragraphs = String(koBody || '').split(/\n\n+/)
+    .map(function(s){ return s.trim(); })
+    .filter(Boolean);
+  if (!paragraphs.length) return { titleEn: '', bodyTexts: [] };
+  var inputs = [String(koTitle || '').trim()].concat(paragraphs);
+  var DELIM_OPEN = '⟦SEG ', DELIM_CLOSE = '⟧', END_MARKER = '⟦/SEG⟧';
+  var joined = inputs.map(function(t, i){
+    return DELIM_OPEN + (i + 1) + DELIM_CLOSE + '\n' + t + '\n' + END_MARKER;
+  }).join('\n\n');
+  var prompt =
+      'You are a Korean-to-English translator for a language learning site.\n'
+    + 'Below are ' + inputs.length + ' segments wrapped with ⟦SEG n⟧ ... ⟦/SEG⟧.\n'
+    + 'Segment 1 is the article TITLE — translate to a natural, concise English news headline (≤80 chars, no surrounding quotes).\n'
+    + 'Segments 2..N are body PARAGRAPHS — translate every segment completely into natural fluent English. Do NOT summarize, do NOT skip any sentence. Preserve any internal line breaks.\n'
+    + 'Return ⟦SEG n⟧\\n<translation>\\n⟦/SEG⟧ for every segment in the same order. No preamble, no commentary, no fences.\n\n'
+    + joined;
+  var res = await callClaude({
+    feature: 'translate',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 8192,
+    messages: [{ role: 'user', content: prompt }]
+  });
+  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+  if (!raw) throw new Error('empty translation response');
+  var segs = [];
+  var re = /⟦SEG\s*(\d+)\s*⟧\s*([\s\S]*?)\s*⟦\/SEG⟧/g;
+  var m;
+  while ((m = re.exec(raw)) !== null) {
+    var idx = parseInt(m[1], 10) - 1;
+    var body = (m[2] || '').trim();
+    if (idx >= 0 && body) segs[idx] = body;
+  }
+  var got = segs.filter(Boolean).length;
+  if (got < Math.ceil(inputs.length * 0.7)) {
+    throw new Error('partial translation: ' + got + '/' + inputs.length);
+  }
+  return { titleEn: segs[0] || '', bodyTexts: segs.slice(1) };
+}
+
+// True when the existing title_en is unusable as an English headline:
+// empty, or still contains Hangul (Korean source headline copied straight
+// in, or AI-generated Korean title left as the fallback).
+function _khTitleEnNeedsBackfill(currentTitleEn) {
+  var t = String(currentTitleEn || '').trim();
+  if (!t) return true;
+  return /[ㄱ-힝]/.test(t);
+}
+
 // Fire-and-forget logger for each step of the cache-generation pipeline.
 // Writes go through supaAdminPost (admin-api Edge Function) so the
 // admin-panel user's JWT does the auth — no stale service-role key
@@ -4412,11 +4481,35 @@ async function genCache(articleId, schema, opts) {
   }
 
   if (st) st.textContent = '(1/4) 번역 중…';
-  const tOut = await _runStep('translation',
-    'Translate each paragraph into English. Return ONLY a JSON array of strings, one per paragraph. No other text.',
-    800,
-    function(ta){ return JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] }); });
-  if (tOut) { _row.translation = tOut; _ok++; }
+  // Title + body in one Claude call via the marker-delimited helper so
+  // long articles don't truncate at the previous max_tokens=800 cap.
+  // Logs into article_cache_generation_log under step='translation' the
+  // same way _runStep does so the admin's success/failure dashboard
+  // still reflects this step.
+  {
+    const _t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    try {
+      const _trans = await _khTranslateArticleForCache(_level, _title, _body);
+      if (_trans.bodyTexts && _trans.bodyTexts.length) {
+        _row.translation = JSON.stringify({ texts: _trans.bodyTexts });
+        _ok++;
+        await _logCacheGen(articleId, 'translation', 'ok', null, (typeof performance !== 'undefined' ? performance.now() : Date.now()) - _t0);
+      } else {
+        await _logCacheGen(articleId, 'translation', 'empty', 'no body texts', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - _t0);
+      }
+      // Backfill title_en on the article row when missing or Korean.
+      // The translate button reads a.title_en for the title swap and
+      // silently leaves it Korean otherwise.
+      if (_trans.titleEn && _khTitleEnNeedsBackfill(a.title_en)) {
+        try {
+          await supaAdminPatch('articles?id=eq.' + encodeURIComponent(articleId), { title_en: _trans.titleEn });
+          a.title_en = _trans.titleEn;
+        } catch(e) { console.warn('title_en patch failed', e && e.message); }
+      }
+    } catch(e) {
+      await _logCacheGen(articleId, 'translation', 'error', (e && e.message) || '', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - _t0);
+    }
+  }
 
   if (st) st.textContent = '(2/4) 단어 중…';
   const vOut = await _runStep('vocab',
@@ -5987,10 +6080,22 @@ async function _bulkGenerateArticleCache(articleId, title, body, levelKey) {
   }
 
   try {
-    var t = await _call('Translate each paragraph into English. Return ONLY a JSON array of strings, one per paragraph. No other text.', 800);
-    var ta = _json(t);
-    row.translation = JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] });
-    ok++;
+    // Marker-delimited title+body translation. The previous JSON-array
+    // prompt at max_tokens=800 truncated long articles to 1-2 paragraphs,
+    // and that bad cache then served every reader.
+    var _trans = await _khTranslateArticleForCache(levelKey, title, body);
+    if (_trans.bodyTexts && _trans.bodyTexts.length) {
+      row.translation = JSON.stringify({ texts: _trans.bodyTexts });
+      ok++;
+    }
+    if (_trans.titleEn) {
+      try {
+        var _cur = await sb.from('articles').select('title_en').eq('id', articleId).maybeSingle();
+        if (!_cur.error && _khTitleEnNeedsBackfill(_cur.data && _cur.data.title_en)) {
+          await sb.from('articles').update({ title_en: _trans.titleEn }).eq('id', articleId);
+        }
+      } catch(e) { bulkLog('title_en backfill failed: ' + (e && e.message || ''), 'warn'); }
+    }
   } catch(e) {}
   try {
     var v = await _call(window.KH_VOCAB.promptText(levelKey, body), 1600);
