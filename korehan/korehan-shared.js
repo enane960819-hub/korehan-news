@@ -6462,7 +6462,22 @@ async function toggleTranslate() {
 
   try {
     var sharedCached = await getFromCache('article', id, 'translation_en');
-    if (sharedCached && sharedCached.translations && sharedCached.translations.length) {
+    // Only trust the cache when:
+    //   1) it covers every body zone we need to render (older articles
+    //      were generated under max_tokens=800, which truncated AI output
+    //      to ~1 paragraph — so the cache has a partial translation that
+    //      we don't want to keep serving forever), AND
+    //   2) the title is already in English OR there's no title element to
+    //      swap (so we don't render English body + Korean title).
+    // If either check fails we fall through to the live Claude path below
+    // which regenerates the full translation (and includes the title when
+    // title_en is missing).
+    var titleNeedsTranslate = !!(titleEl && !titleEn);
+    if (
+      sharedCached && sharedCached.translations &&
+      sharedCached.translations.length >= zones.length &&
+      !titleNeedsTranslate
+    ) {
       translateCache[cacheKey] = sharedCached.translations;
       applyTranslation(zones, sharedCached.translations);
       _translateMarkActive(btn);
