@@ -1702,28 +1702,34 @@ body { background: #0b1626 !important; }
   .ls-mindmap.ls-mode-orb #ls-card-sentence    { bottom: 8%; left: 12%;                            animation-delay: -2.1s; }
   .ls-mindmap.ls-mode-orb #ls-card-expressions { top: 32%; left: 4%;                               animation-delay: -2.8s; }
 
-  /* Each satellite is a smaller orb-like circle with strong glow.
-     Distinguishes from Solar's flat planet circles. */
+  /* Each satellite is a chunky tappable orb sphere with strong glow.
+     80px (up from 60) so the satellites read as substantial planets
+     in their own right on mobile, not tiny pinpricks next to the
+     parent orb. */
   .ls-mindmap.ls-mode-orb .ls-node-circle {
-    width: 60px; height: 60px;
+    width: 80px; height: 80px;
     background: radial-gradient(circle at 30% 30%,
       rgba(168,139,250,.4) 0%,
       rgba(99,102,241,.3) 40%,
       rgba(30,41,59,.6) 100%);
     box-shadow:
-      0 0 16px rgba(168,139,250,.4),
-      inset 0 0 12px rgba(168,139,250,.25),
-      inset 0 -8px 16px rgba(0,0,0,.3);
-    border: 1px solid rgba(168,139,250,.45);
+      0 0 22px rgba(168,139,250,.45),
+      inset 0 0 16px rgba(168,139,250,.28),
+      inset 0 -10px 20px rgba(0,0,0,.35);
+    border: 1px solid rgba(168,139,250,.5);
   }
   .ls-mindmap.ls-mode-orb .ls-node-icon {
-    width: 22px; height: 22px;
+    width: 30px; height: 30px;
     color: rgba(220,210,255,.95);
   }
   .ls-mindmap.ls-mode-orb .ls-node-name {
+    font-size: 10px;
+    color: rgba(220,210,255,.78);
+    margin-top: 6px;
+  }
+  .ls-mindmap.ls-mode-orb .ls-node-coin {
     font-size: 9px;
-    color: rgba(220,210,255,.7);
-    margin-top: 4px;
+    padding: 1px 5px;
   }
   .ls-mindmap.ls-mode-orb .ls-node.ls-node-done .ls-node-circle {
     background: radial-gradient(circle at 30% 30%,
@@ -3082,7 +3088,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
     <div id="wcf-mode-text"  style="display:none">Open Express Practice</div>
     <!-- hidden mode tabs for JS state tracking -->
     <div class="wc-mode-tabs" id="wc-mode-tabs" style="display:none">
-      <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Topic Writing</span></button>
+      <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Topic Yum Yum</span></button>
     </div>
 
     <!-- Feedback inbox — redirect to Growth Lab -->
@@ -6026,7 +6032,7 @@ function canEnterWritingRoom() {
   if (hasDoneStep) return true;
   khAlert(
     'Finish one step first',
-    'Complete at least one learning step (Topic Writing, Grammar Focus, Picture Description, Dictation, or Key Expressions) before entering Express Practice.'
+    'Complete at least one learning step (Topic Yum Yum, Grammar Focus, Picture Description, Dictation, or Key Expressions) before entering Express Practice.'
   );
   return false;
 }
@@ -6487,7 +6493,7 @@ function _lsGetMobileMode() {
     var m = localStorage.getItem(_LS_MODE_KEY);
     if (m && _LS_MODES.indexOf(m) >= 0) return m;
   } catch(_) {}
-  return 'solar';
+  return 'orb';
 }
 function _lsSetMobileMode(mode) {
   if (_LS_MODES.indexOf(mode) < 0) return;
@@ -10663,7 +10669,7 @@ function refreshSubmitBanner() {
 // Friendly metadata so the review modal can show icons/labels and route
 // "Continue editing" back to the right activity opener.
 var _SUBMIT_TYPE_INFO = {
-  'topic_writing':       { label: 'Topic Writing',     icon: 'pen-line', open: 'openWritingModal' },
+  'topic_writing':       { label: 'Topic Yum Yum',     icon: 'pen-line', open: 'openWritingModal' },
   'writing':             { label: 'Writing',           icon: 'pencil', open: 'openWritingModal' },
   'diary':               { label: 'Diary',             icon: 'notebook', open: 'openWritingModal' },
   'reading':             { label: 'Reading & Writing', icon: 'book-open', open: 'openWritingModal' },
@@ -11045,9 +11051,9 @@ async function _triggerPackageFeedback(submissionId, items) {
     function _activityLabel(item) {
       var t = String(item.type || item.writing_mode || '').split(':')[0];
       var labels = {
-        express_practice: 'Express Practice (Topic Writing)',
-        topic_writing: 'Topic Writing',
-        writing: 'Topic Writing',
+        express_practice: 'Express Practice (Topic Yum Yum)',
+        topic_writing: 'Topic Yum Yum',
+        writing: 'Topic Yum Yum',
         diary: 'Diary',
         reading: 'Reading & Writing',
         article_study: 'Article Study',
@@ -11636,7 +11642,7 @@ async function renderFeedbackInboxContent() {
 
     var TYPE_LABELS = {
       daily_package: { icon: '📦', label: 'Daily Package', color: '#60a5fa' },
-      topic: { icon: '✍️', label: 'Topic Writing', color: '#a78bfa' },
+      topic: { icon: '✍️', label: 'Topic Yum Yum', color: '#a78bfa' },
       diary: { icon: '📓', label: 'Diary', color: '#f472b6' },
       reading: { icon: '📖', label: 'Reading Response', color: '#34d399' },
       article: { icon: '📰', label: 'Article Writing', color: '#fbbf24' },
@@ -19152,7 +19158,7 @@ setTimeout(renderCompletedStudies, 500);
           </svg>
           <span class="ls-node-coin">+20 냥</span><span class="ls-node-check">✓</span>
         </div>
-        <div class="ls-node-name">Topic Writing</div>
+        <div class="ls-node-name">Topic Yum Yum</div>
       </div>
       <div class="ls-node" id="ls-card-grammar" data-pos="tr" onclick="lsStart('grammar')">
         <div class="ls-node-circle">
