@@ -6448,9 +6448,14 @@ async function toggleTranslate() {
   zones.forEach(function(z) { if (!z.dataset.original) z.dataset.original = z.innerHTML; });
 
   // Swap the title to English up-front — doesn't require the Claude call
-  // since title_en is stored per-article. If it's missing we leave the
-  // Korean title in place.
-  var titleEn = titleEl ? titleEl.getAttribute('data-kh-title-en') : '';
+  // since title_en is stored per-article. Treat title_en as "missing"
+  // when it still contains Hangul: legacy articles created while Korean
+  // wire-service sources were in the source list copied the Korean
+  // headline straight into title_en, so a naive swap would replace
+  // Korean with Korean. Forcing the empty-fallback path makes those
+  // articles flow through Claude which produces a real English headline.
+  var titleEnAttr = titleEl ? titleEl.getAttribute('data-kh-title-en') : '';
+  var titleEn = (titleEnAttr && !/[ㄱ-힝]/.test(titleEnAttr)) ? titleEnAttr : '';
   if (titleEl && titleEn) {
     var ttsSafe = (titleEn || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     titleEl.innerHTML = titleEn + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe + '\',this)" style="display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_VOLUME+'</span></button>';
