@@ -6624,7 +6624,12 @@ function lsStart(type) {
   if (type === 'topic') {
     openWritingModalForLearning();
   } else if (type === 'grammar') {
-    if (typeof openGrammarFocusModal === 'function') openGrammarFocusModal();
+    // Slot key stays `grammar` for storage compat (_studyDone.grammar,
+    // localStorage, line-done flags), but the activity is now
+    // Translation Sprint — Grammar Focus moved to the Skill Tree
+    // because daily topics rarely surfaced challenging grammar and
+    // the same beginner patterns kept recycling.
+    if (typeof openTranslationSprint === 'function') openTranslationSprint();
   } else if (type === 'picture') {
     if (_currentLevel === 'Advanced') {
       if (typeof openNuanceQuiz === 'function') openNuanceQuiz();
@@ -6636,6 +6641,137 @@ function lsStart(type) {
   } else if (type === 'expressions') {
     openKeyExpressionsModal();
   }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Translation Sprint — replaces Grammar Focus in the learning selector.
+// Grammar focus moved to the Skill Tree because daily topics rarely
+// hit interesting grammar, and the topic-derived 3-pattern lesson
+// kept regenerating the same beginner forms.
+//
+// The sprint pulls 5 ko/en pairs from data the system already has
+// — no AI call, no caching — and runs them through the existing
+// Quiz Arena as MCQ:
+//   · 3 from today's _aiContent.helpers (shared per-topic, all users
+//     see the same 3 if their topic matches)
+//   · 2 from articles the user actually read in the last 14 days
+//     (article_cache.expressions, normalised to {ko, en})
+// If either source is sparse, the other fills in. Final fallback is
+// user_saved_words for users who haven't read articles yet.
+// ──────────────────────────────────────────────────────────────────
+async function openTranslationSprint() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  var pairs = await _tsBuildPairs();
+  if (!pairs || pairs.length < 4) {
+    showToast('Need a topic or some saved words to start a Sprint. Try reading an article first!');
+    return;
+  }
+  var picked = _mrShuffle(pairs).slice(0, 5);
+  // Build MCQ questions: KR prompt, 4 EN choices. Distractors are
+  // other EN strings from the same pool — keeps the difficulty
+  // calibrated to the user's level (their data, their distractors).
+  var enPool = pairs.map(function(p){ return p.en; });
+  var questions = picked.map(function(p) {
+    var distractors = _mrShuffle(enPool.filter(function(en){ return en !== p.en; })).slice(0, 3);
+    while (distractors.length < 3) distractors.push('—');
+    var choices = _mrShuffle([p.en].concat(distractors));
+    return {
+      type: 'meaning',
+      word_ko: p.ko,
+      word_rom: '',
+      choices: choices,
+      correct: p.en,
+      label: 'Translate this sentence',
+      slot: 'translate',
+    };
+  });
+  if (!window.KHQuizArena) {
+    showToast('Quiz arena unavailable. Reload and try again.');
+    return;
+  }
+  KHQuizArena.open({
+    questions: questions,
+    title: 'Translation Sprint',
+    timer: 12,
+    mode: 'translate',
+    onFinish: function(correct, total, pct) {
+      // Mark the `grammar` slot done so the orb counter ticks up
+      // — same internal key the modal expects.
+      try { markStageDone('grammar'); } catch(_) {}
+      if (typeof logQuizResult === 'function') {
+        logQuizResult('translation_sprint', { score: correct, max_score: total, accuracy_pct: pct });
+      }
+      if (typeof logActivity === 'function') {
+        logActivity('quiz', { content_type: 'translation_sprint', score: correct, max_score: total });
+      }
+    }
+  });
+}
+
+// Collect ko/en pairs from helpers + article expressions + saved words.
+// Each layer is fired independently so a partial failure still gives
+// us enough material to run a 5-question sprint.
+async function _tsBuildPairs() {
+  var pairs = [];
+  // 1) Today's topic helpers — already loaded into _aiContent.
+  try {
+    if (typeof _aiContent !== 'undefined' && _aiContent && Array.isArray(_aiContent.helpers)) {
+      _aiContent.helpers.forEach(function(h) {
+        if (h && h.ko && h.en && h.ko.length >= 4) pairs.push({ ko: h.ko.trim(), en: h.en.trim() });
+      });
+    }
+  } catch(_) {}
+
+  // 2) Article expressions for articles the user actually read in the
+  // last 14 days — keyed off user_read_history → article_cache.expressions.
+  try {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (sb && supaUser && supaUser.id) {
+      var since = new Date(); since.setDate(since.getDate() - 14);
+      var rh = await sb.from('user_read_history')
+        .select('content_id, content_type')
+        .eq('user_id', supaUser.id)
+        .eq('content_type', 'article')
+        .gte('created_at', since.toISOString())
+        .limit(20);
+      var ids = Array.from(new Set((rh.data || []).map(function(r){ return r.content_id; }))).filter(Boolean);
+      if (ids.length) {
+        var ac = await sb.from('article_cache')
+          .select('article_id, expressions')
+          .in('article_id', ids.map(String));
+        (ac.data || []).forEach(function(r) {
+          var arr = r.expressions;
+          if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch(_) { arr = []; } }
+          if (!Array.isArray(arr)) return;
+          arr.forEach(function(e) {
+            // Stored shape is {phrase, note, color}. Normalise to
+            // {ko, en} for the question builder.
+            var ko = e && (e.phrase || e.ko);
+            var en = e && (e.note   || e.en);
+            if (ko && en) pairs.push({ ko: String(ko).trim(), en: String(en).trim() });
+          });
+        });
+      }
+    }
+  } catch(_) {}
+
+  // 3) Saved words fallback — only if we still don't have enough,
+  //    so a brand-new account on day 1 still gets *something*. Single
+  //    words are easier than full-sentence translations, but they at
+  //    least keep the sprint runnable.
+  if (pairs.length < 5 && typeof _wbData !== 'undefined' && Array.isArray(_wbData)) {
+    _wbData.forEach(function(w) {
+      if (w && w.ko && w.en) pairs.push({ ko: w.ko, en: w.en });
+    });
+  }
+
+  // Dedupe by ko so the same expression doesn't fill multiple slots.
+  var seen = {};
+  return pairs.filter(function(p) {
+    if (seen[p.ko]) return false;
+    seen[p.ko] = true; return true;
+  });
 }
 
 // ── Key Expressions Modal ──
@@ -19204,16 +19340,23 @@ setTimeout(renderCompletedStudies, 500);
         </div>
         <div class="ls-node-name">Topic Yum Yum</div>
       </div>
+      <!-- Slot id stays `ls-card-grammar` for storage / state-tracking
+           compat — _studyDone.grammar, line-done flags, localStorage
+           keys all reference it. The activity itself is now Translation
+           Sprint; grammar lessons live in the Skill Tree now. -->
       <div class="ls-node" id="ls-card-grammar" data-pos="tr" onclick="lsStart('grammar')">
         <div class="ls-node-circle">
           <svg class="ls-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/>
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H19v4H6.5A2.5 2.5 0 0 1 4 18.5z"/>
-            <path d="M8 7h7M8 10h7"/>
+            <path d="m5 8 6 6"/>
+            <path d="m4 14 6-6 2-3"/>
+            <path d="M2 5h12"/>
+            <path d="M7 2h1"/>
+            <path d="m22 22-5-10-5 10"/>
+            <path d="M14 18h6"/>
           </svg>
           <span class="ls-node-coin">+10 냥</span><span class="ls-node-check">✓</span>
         </div>
-        <div class="ls-node-name">Grammar</div>
+        <div class="ls-node-name">Translate</div>
       </div>
       <div class="ls-node" id="ls-card-picture" data-pos="br" onclick="lsStart('picture')">
         <div class="ls-node-circle">
@@ -21026,18 +21169,37 @@ async function _buildComprehensiveReview(targetCount, lookbackDays) {
     });
   } catch(e) {}
 
-  // Article cache for those articles (grammar / quiz / key_expressions).
+  // Article cache for those articles. The column is `expressions`
+  // (singular), NOT `key_expressions` — the admin generator reshapes
+  // the AI's `key_expressions:[{ko,en}]` into `[{phrase, note, color}]`
+  // before save, and that's what's stored. The original code asked
+  // for the wrong column and got nothing back, so the expressions
+  // slot was always empty (vocab pool padded the gap). Pull `expressions`
+  // and map to the {ko, en} shape downstream consumers expect.
   var articleCacheMap = {};
   if (articleIds.length) {
     try {
       var acRes = await sb.from('article_cache')
-        .select('article_id, grammar, quiz, key_expressions')
+        .select('article_id, grammar, quiz, expressions')
         .in('article_id', articleIds.map(String));
       (acRes.data || []).forEach(function(r) {
+        var rawExprs = _mrSafeParse(r.expressions);
+        var normExprs = [];
+        if (Array.isArray(rawExprs)) {
+          rawExprs.forEach(function(e) {
+            if (!e) return;
+            // Stored shape: {phrase, note, color}. Normalize to
+            // {ko, en} so the slot builder reads it the same way it
+            // reads conversation expressions.
+            var ko = e.phrase || e.ko;
+            var en = e.note   || e.en;
+            if (ko && en) normExprs.push({ ko: ko, en: en });
+          });
+        }
         articleCacheMap[r.article_id] = {
           grammar: _mrSafeParse(r.grammar),
           quiz: _mrSafeParse(r.quiz),
-          key_expressions: _mrSafeParse(r.key_expressions),
+          key_expressions: normExprs,
         };
       });
     } catch(e) {}
