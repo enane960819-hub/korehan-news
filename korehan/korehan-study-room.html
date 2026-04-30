@@ -1527,6 +1527,232 @@ body { background: #0b1626 !important; }
   }
 }
 
+/* ── Tarot mode (mobile only) ──
+   The pentagon mind-map is replaced by a horizontal fan of 5 cards.
+   Centre card (Topic Writing) sits upright and tallest, the four
+   others fan out left/right at progressively larger angles like
+   tarot cards on a table. Tap a card → activity opens.
+   Centre orb + canvas + orbit rings are hidden — Tarot uses a
+   compact progress bar at the top to convey 1/5 완료.
+*/
+@media (max-width: 768px) {
+  .ls-mindmap.ls-mode-tarot {
+    /* Cards live at the bottom of a tall container so the fan has
+       space to spread without colliding with the modal header. */
+    aspect-ratio: 0.95 / 1;
+    max-width: none;
+    margin-left: -4px;
+    margin-right: -4px;
+    overflow: visible;
+    /* Subtle radial backdrop so the cards stand out — Tarot reading
+       table vibe rather than a starfield. */
+    background: radial-gradient(ellipse at 50% 75%,
+      rgba(124,58,237,.12) 0%,
+      rgba(124,58,237,.04) 40%,
+      transparent 70%);
+    border-radius: 14px;
+  }
+  /* Hide everything that's not a card — orb, canvas, all the
+     pentagon dressing — so Tarot reads as a totally different
+     surface, not a tweak of Solar. */
+  .ls-mindmap.ls-mode-tarot .ls-orb-wrap,
+  .ls-mindmap.ls-mode-tarot #ls-lines-canvas { display: none; }
+
+  /* Compact progress strip at the very top of the Tarot container —
+     5 dots that fill in as activities are completed. */
+  .ls-mindmap.ls-mode-tarot::before {
+    content: '';
+    position: absolute; top: 12px; left: 50%;
+    transform: translateX(-50%);
+    width: 60%; height: 2px;
+    background: rgba(255,255,255,.06);
+    border-radius: 2px;
+  }
+  .ls-mindmap.ls-mode-tarot::after {
+    content: '';
+    position: absolute; top: 11px; left: 20%;
+    width: calc(60% * var(--ls-progress, 0) / 100);
+    height: 4px;
+    background: linear-gradient(90deg, #34d399, #a78bfa);
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(167,139,250,.5);
+    transition: width .4s ease;
+  }
+
+  .ls-mindmap.ls-mode-tarot .ls-node[data-pos] {
+    /* Reset pentagon coords so the fan transforms below win. */
+    top: auto; left: 50%; right: auto; bottom: 8%;
+    width: 80px;
+    transform: none;
+    /* Slide-in animation on modal open: cards cascade outward from
+       the centre, like a dealer fanning the deck. */
+    animation: lsTarotDeal .55s cubic-bezier(.34,1.56,.64,1) backwards;
+  }
+  /* Fan positions — bottom-anchored arc */
+  .ls-mindmap.ls-mode-tarot #ls-card-topic {
+    transform: translate(-50%, 0) rotate(0deg) translateY(-12px);
+    z-index: 5;
+    animation-delay: .25s;
+  }
+  .ls-mindmap.ls-mode-tarot #ls-card-grammar {
+    transform: translate(-130%, 0) rotate(-12deg) scale(.94);
+    z-index: 4;
+    animation-delay: .15s;
+  }
+  .ls-mindmap.ls-mode-tarot #ls-card-picture {
+    transform: translate(30%, 0) rotate(12deg) scale(.94);
+    z-index: 4;
+    animation-delay: .2s;
+  }
+  .ls-mindmap.ls-mode-tarot #ls-card-sentence {
+    transform: translate(-235%, 0) rotate(-26deg) scale(.86);
+    z-index: 3;
+    animation-delay: .05s;
+  }
+  .ls-mindmap.ls-mode-tarot #ls-card-expressions {
+    transform: translate(135%, 0) rotate(26deg) scale(.86);
+    z-index: 3;
+    animation-delay: .1s;
+  }
+
+  /* The "circle" becomes a tall tarot card. Override the round shape
+     entirely and give it a deck-card look — gradient back, gold
+     edge, icon + name + reward stacked. */
+  .ls-mindmap.ls-mode-tarot .ls-node-circle {
+    width: 80px; height: 116px;
+    border-radius: 12px;
+    background: linear-gradient(160deg, #1f2a4f 0%, #0d1628 100%);
+    border: 1px solid rgba(212,175,55,.35);
+    box-shadow:
+      0 8px 22px rgba(0,0,0,.45),
+      inset 0 0 0 1px rgba(255,255,255,.04),
+      inset 0 1px 0 rgba(212,175,55,.18);
+    flex-direction: column;
+    justify-content: flex-start;
+    padding-top: 14px;
+  }
+  .ls-mindmap.ls-mode-tarot .ls-node-icon {
+    width: 30px; height: 30px;
+    color: #fbbf24;
+    margin-bottom: 6px;
+  }
+  .ls-mindmap.ls-mode-tarot .ls-node-name {
+    font-size: 9px;
+    font-weight: 800;
+    color: rgba(255,231,176,.85);
+    margin: 4px 4px 0;
+    white-space: normal;
+    text-align: center;
+    letter-spacing: .03em;
+  }
+  .ls-mindmap.ls-mode-tarot .ls-node-coin {
+    top: 4px; right: 4px;
+    font-size: 8px;
+    padding: 1px 5px;
+  }
+  .ls-mindmap.ls-mode-tarot .ls-node.ls-node-done .ls-node-circle {
+    background: linear-gradient(160deg, #14532d 0%, #052e16 100%);
+    border-color: rgba(34,197,94,.6);
+  }
+  .ls-mindmap.ls-mode-tarot .ls-node.ls-node-done .ls-node-icon {
+    color: #4ade80;
+  }
+  /* Centre card hover/active — lift slightly so it's clearly the
+     "selected" pick. Sides stay tucked. */
+  .ls-mindmap.ls-mode-tarot #ls-card-topic:active .ls-node-circle {
+    transform: translateY(-4px);
+  }
+}
+@keyframes lsTarotDeal {
+  /* Opacity-only fade-in. The static transform on each card handles
+     the final rotation/scale; mixing transforms between rule and
+     keyframe interpolates poorly in browsers, so we keep the slide
+     dramatic via the cubic-bezier spring on the staggered delays
+     instead of additional transform math here. */
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Orb mode (mobile only) ──
+   A single sun-orb at the centre with 5 small "satellite" orbs
+   floating in fixed positions around it. Each satellite gently
+   bobs (no orbits), more like jellyfish in formation than planets
+   in a system. Clearly a different metaphor than Solar.
+*/
+@media (max-width: 768px) {
+  .ls-mindmap.ls-mode-orb {
+    aspect-ratio: 1 / 1;
+    max-width: none;
+    margin-left: -4px;
+    margin-right: -4px;
+    overflow: visible;
+    /* Stronger central glow to anchor the satellite formation. */
+  }
+  /* Satellites in a tight pentagon formation — closer than the
+     pentagon mind-map default so they read as orbiting one big
+     parent orb. */
+  .ls-mindmap.ls-mode-orb .ls-node[data-pos] {
+    top: auto; left: auto; right: auto; bottom: auto;
+    transform: none;
+    animation: lsOrbBob 4.2s ease-in-out infinite;
+  }
+  .ls-mindmap.ls-mode-orb #ls-card-topic       { top: 8%;  left: 50%; transform: translateX(-50%); animation-delay: 0s; }
+  .ls-mindmap.ls-mode-orb #ls-card-grammar     { top: 32%; right: 4%;                              animation-delay: -.7s; }
+  .ls-mindmap.ls-mode-orb #ls-card-picture     { bottom: 8%; right: 12%;                           animation-delay: -1.4s; }
+  .ls-mindmap.ls-mode-orb #ls-card-sentence    { bottom: 8%; left: 12%;                            animation-delay: -2.1s; }
+  .ls-mindmap.ls-mode-orb #ls-card-expressions { top: 32%; left: 4%;                               animation-delay: -2.8s; }
+
+  /* Each satellite is a smaller orb-like circle with strong glow.
+     Distinguishes from Solar's flat planet circles. */
+  .ls-mindmap.ls-mode-orb .ls-node-circle {
+    width: 60px; height: 60px;
+    background: radial-gradient(circle at 30% 30%,
+      rgba(168,139,250,.4) 0%,
+      rgba(99,102,241,.3) 40%,
+      rgba(30,41,59,.6) 100%);
+    box-shadow:
+      0 0 16px rgba(168,139,250,.4),
+      inset 0 0 12px rgba(168,139,250,.25),
+      inset 0 -8px 16px rgba(0,0,0,.3);
+    border: 1px solid rgba(168,139,250,.45);
+  }
+  .ls-mindmap.ls-mode-orb .ls-node-icon {
+    width: 22px; height: 22px;
+    color: rgba(220,210,255,.95);
+  }
+  .ls-mindmap.ls-mode-orb .ls-node-name {
+    font-size: 9px;
+    color: rgba(220,210,255,.7);
+    margin-top: 4px;
+  }
+  .ls-mindmap.ls-mode-orb .ls-node.ls-node-done .ls-node-circle {
+    background: radial-gradient(circle at 30% 30%,
+      rgba(74,222,128,.45) 0%,
+      rgba(34,197,94,.3) 40%,
+      rgba(6,78,59,.6) 100%);
+    box-shadow:
+      0 0 22px rgba(74,222,128,.5),
+      inset 0 0 12px rgba(74,222,128,.3);
+    border-color: rgba(74,222,128,.6);
+  }
+  /* The centre orb stays — but bigger and more dominant since it's
+     the "parent" the satellites hover around. */
+  .ls-mindmap.ls-mode-orb .ls-orb {
+    width: 120px; height: 120px;
+  }
+  .ls-mindmap.ls-mode-orb .ls-orb-wrap::before {
+    box-shadow:
+      inset 0 0 80px rgba(168,85,247,.28),
+      0 0 56px rgba(168,85,247,.32);
+  }
+  /* Hide the lines canvas — orb mode doesn't draw connections. */
+  .ls-mindmap.ls-mode-orb #ls-lines-canvas { display: none; }
+}
+@keyframes lsOrbBob {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -6px; }
+}
+
 /* ── Divider & Writing Practice ── */
 .ls-divider { border: none; border-top: 1px solid rgba(255,255,255,.08); margin: 8px 0 10px; }
 .ls-wp-btn {
@@ -5854,9 +6080,14 @@ function _updateLSSelectorBadges() {
   var orbPts   = document.getElementById('ls-orb-pts');
   if (orbCount) orbCount.textContent = doneCount;
   if (orbPts)   orbPts.textContent = totalPts + ' 냥';
-  // Update CSS progress variable for the orb halo ring
+  // Update CSS progress variable for the orb halo ring + Tarot top
+  // bar (Tarot reads --ls-progress off the .ls-mindmap, not the
+  // orb-wrap, so set it on both).
   var orbWrap = document.querySelector('.ls-orb-wrap');
-  if (orbWrap) orbWrap.style.setProperty('--ls-progress', String((doneCount / 5) * 100));
+  var pctVar = String((doneCount / 5) * 100);
+  if (orbWrap) orbWrap.style.setProperty('--ls-progress', pctVar);
+  var mmEl = document.getElementById('ls-mindmap');
+  if (mmEl) mmEl.style.setProperty('--ls-progress', pctVar);
   // Set target fill for canvas orb
   if (typeof _lsOrbTargetFill !== 'undefined') _lsOrbTargetFill = Math.max(0.12, doneCount / 5);
   // Update line done states for canvas
@@ -6285,13 +6516,12 @@ function _lsApplyMobileMode() {
 // lines/particles canvas can keep tracking them via _lsNodeCoords.
 // Stops itself when mode flips away from solar — no zombie loop.
 // Five planets at five distinctly different orbital radii so no two
-// nodes share a track. Innermost (0.32) just clears the centre orb;
-// outermost (1.00) hugs the container edge. Phase offsets are chosen
-// so adjacent orbits start on opposite sides of the system — keeps
-// the layout from clumping together right after the modal opens.
+// nodes share a track. Innermost (0.42) clears the centre orb's edge
+// by ~12px after y-squish — the previous 0.32 was visually inside the
+// orb's halo. Outermost (1.00) hugs the container edge.
 var _LS_ORBITS = {
-  topic:       { radius: 0.32, period: 22, offset:   0 },
-  grammar:     { radius: 0.52, period: 30, offset: 144 },
+  topic:       { radius: 0.42, period: 22, offset:   0 },
+  grammar:     { radius: 0.58, period: 30, offset: 144 },
   picture:     { radius: 0.72, period: 40, offset:  72 },
   sentence:    { radius: 0.86, period: 50, offset: 216 },
   expressions: { radius: 1.00, period: 62, offset: 288 },
