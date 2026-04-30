@@ -18879,9 +18879,10 @@ function openUniverseView() {
       </div>
       <div class="su-steps" id="cs-step-tabs">
         <div class="su-step active" onclick="csGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Dialogue</span></div>
-        <div class="su-step" onclick="csGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Cards</span></div>
-        <div class="su-step" onclick="csGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Response</span></div>
-        <div class="su-step" onclick="csGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Build</span></div>
+        <div class="su-step" onclick="csGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Fill</span></div>
+        <div class="su-step" onclick="csGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Cards</span></div>
+        <div class="su-step" onclick="csGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Response</span></div>
+        <div class="su-step" onclick="csGoToStep(5)"><span class="su-step-num">5</span><span class="su-step-label">Build</span></div>
       </div>
       <div class="su-progress"><div class="su-progress-fill" id="cs-progress-fill" style="width:0%"></div></div>
       <div class="su-body">
@@ -18901,8 +18902,8 @@ function openUniverseView() {
 // ═══════════════════════════════════════════════════════════════
 // CONVERSATION STUDY — 4-step learning flow
 // ═══════════════════════════════════════════════════════════════
-var _csConvs = [], _csCurrentConv = null, _csStep = 1, _csStepDone = [false,false,false,false];
-var _csStepLabels = ['Dialogue + Quiz','Flashcards','Choose Response','Build Sentence'];
+var _csConvs = [], _csCurrentConv = null, _csStep = 1, _csStepDone = [false,false,false,false,false];
+var _csStepLabels = ['Dialogue','Fill in the Blanks','Flashcards','Choose Response','Build Sentence'];
 
 window.openConvStudy = function() {
   if (!supaUser) { openAuthModal('signin'); return; }
@@ -18948,7 +18949,7 @@ async function _csLoadConversations() {
 }
 async function _csStartConv(idx) {
   _csCurrentConv = _csConvs[idx]; if (!_csCurrentConv) return;
-  _csStep = 1; _csStepDone = [false,false,false,false];
+  _csStep = 1; _csStepDone = [false,false,false,false,false]; window._csSentQuizDone = false;
   // Restore progress from DB
   await _csLoadProgressFromDB();
   document.getElementById('cs-list-view').style.display = 'none';
@@ -18970,7 +18971,9 @@ async function _csLoadProgressFromDB() {
       var saved = typeof data.progress_data === 'string' ? JSON.parse(data.progress_data) : data.progress_data;
       if (saved && saved.step) {
         _csStep = saved.step;
-        _csStepDone = saved.stepDone || [false,false,false,false];
+        _csStepDone = saved.stepDone || [false,false,false,false,false];
+        // Pad legacy 4-element arrays to 5 so progress logic stays sane
+        while (_csStepDone.length < 5) _csStepDone.push(false);
       }
     }
   } catch(e) {}
@@ -18986,7 +18989,7 @@ function csGoToStep(step) {
 function csPrevStep() { if (_csStep > 1) { _csStep--; _csRenderStep(); } }
 function csNextStep() {
   _csStepDone[_csStep-1] = true;
-  _csStep = Math.min(_csStep+1, 4);
+  _csStep = Math.min(_csStep+1, 5);
   _csRenderStep();
   // Save progress to DB
   _csSaveProgressToDB();
@@ -19007,7 +19010,10 @@ function _csSaveProgressToDB() {
 }
 function _csRenderStep() {
   var c = _csCurrentConv; if (!c) return;
-  document.getElementById('cs-step-label').textContent = 'Step '+_csStep+' / 4 — '+_csStepLabels[_csStep-1];
+  document.getElementById('cs-step-label').textContent = 'Step '+_csStep+' / 5 — '+_csStepLabels[_csStep-1];
+  // Reset bottom nav counter — each step writes its own value, so clear stale text from prior steps
+  var cnt = document.getElementById('cs-nav-counter');
+  if (cnt) cnt.textContent = '';
   // Step tabs
   var tabs = document.querySelectorAll('#cs-step-tabs .su-step');
   tabs.forEach(function(tab, i) {
@@ -19016,7 +19022,7 @@ function _csRenderStep() {
     else if (i + 1 === _csStep) tab.classList.add('active');
   });
   // Progress
-  var pct = Math.round(((_csStep - 1) / 4) * 100);
+  var pct = Math.round(((_csStep - 1) / 5) * 100);
   var fill = document.getElementById('cs-progress-fill');
   if (fill) fill.style.width = pct + '%';
   // Prev button
@@ -19026,105 +19032,241 @@ function _csRenderStep() {
   if (_csStep===1) _csStep1();
   else if (_csStep===2) _csStep2();
   else if (_csStep===3) _csStep3();
-  else if (_csStep===4 && !window._csSentQuizDone) { window._csSentQuizDone = true; _csShowSentenceQuiz(); }
-  else _csStep4();
+  else if (_csStep===4) _csStep4();
+  else if (_csStep===5 && !window._csSentQuizDone) { window._csSentQuizDone = true; _csShowSentenceQuiz(); }
+  else _csStep5();
 }
 
-// STEP 1: Interactive Dialogue — reveal line by line, translate quiz
+// STEP 1: Read-through dialogue — all bubbles rendered up-front. Tap a bubble
+// to toggle its English translation and replay TTS; tap the speaker icon to
+// just replay audio. No quiz here — comprehension is checked in Step 2.
 function _csStep1() {
   var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
   area.style.display = '';
   var msgs = (c.msgs||[]).filter(function(m){return m.s!=='n';});
   if (!msgs.length) { csNextStep(); return; }
-  window._csDialogState = { msgs: msgs, revealed: 0, quizIdx: 0, score: 0 };
-  area.innerHTML = '';
-  act.innerHTML = '';
-  _csRevealNext();
-}
-function _csRevealNext() {
-  var st = window._csDialogState;
-  if (st.revealed >= st.msgs.length) {
-    // All revealed — show translation quiz
-    _csTranslationQuiz();
-    return;
-  }
-  var m = st.msgs[st.revealed];
-  var isLeft = m.s === 'l';
-  var who = m.who || m.name || (isLeft ? 'A' : 'B');
-  var area = document.getElementById('cs-chat-area');
-  var bubble = '<div style="display:flex;margin-bottom:12px;animation:srFadeIn .3s;'+(isLeft?'':'justify-content:flex-end')+'">'
-    +'<div style="max-width:78%">'
-    +'<div style="font-size:10px;font-weight:800;color:'+(isLeft?'#64748b':'#93c5fd')+';margin-bottom:4px;'+(isLeft?'':'text-align:right')+'">'+escapeHtml(who)+'</div>'
-    +'<div style="padding:12px 16px;border-radius:18px;font-size:15px;line-height:1.65;font-family:\'Noto Sans KR\',sans-serif;'
-    +(isLeft?'background:#fff;color:#0f172a;border:1.5px solid #e2e8f0;border-bottom-left-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.04)':'background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;border-bottom-right-radius:4px;box-shadow:0 2px 8px rgba(37,99,235,.2)')+'">'+escapeHtml(m.txt||'')+'</div>'
-    +'</div></div>';
-  area.insertAdjacentHTML('beforeend', bubble);
-  area.scrollTop = area.scrollHeight;
-  st.revealed++;
+  window._csDialogState = { msgs: msgs };
 
-  var act = document.getElementById('cs-activity-area');
-  // Update nav counter
+  area.innerHTML = msgs.map(function(m, i) {
+    var isLeft = m.s === 'l';
+    var who = m.who || m.name || (isLeft ? 'A' : 'B');
+    var hasEn = !!(m.en && m.en.trim());
+    var iconColor = isLeft ? '#64748b' : '#dbeafe';
+    var trBorder = isLeft ? 'rgba(0,0,0,.08)' : 'rgba(255,255,255,.18)';
+    var trColor  = isLeft ? '#64748b' : '#dbeafe';
+    return '<div style="display:flex;margin-bottom:12px;animation:srFadeIn .25s '+(Math.min(i*0.06,0.6))+'s both;'+(isLeft?'':'justify-content:flex-end')+'">'
+      +'<div style="max-width:84%">'
+      +'<div style="font-size:10px;font-weight:800;color:'+(isLeft?'#64748b':'#93c5fd')+';margin-bottom:4px;'+(isLeft?'':'text-align:right')+'">'+escapeHtml(who)+'</div>'
+      +'<div onclick="_csBubbleTap('+i+')" style="cursor:pointer;padding:12px 16px;border-radius:18px;font-size:15px;line-height:1.65;font-family:\'Noto Sans KR\',sans-serif;'
+      +(isLeft?'background:#fff;color:#0f172a;border:1.5px solid #e2e8f0;border-bottom-left-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.04)':'background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;border-bottom-right-radius:4px;box-shadow:0 2px 8px rgba(37,99,235,.2)')+'">'
+      +'<div style="display:flex;align-items:flex-start;gap:10px">'
+      +'<div style="flex:1;min-width:0">'+escapeHtml(m.txt||'')+'</div>'
+      +'<button onclick="event.stopPropagation();_csPlayMsgTTS('+i+')" aria-label="Listen" title="Listen" style="flex-shrink:0;background:none;border:none;cursor:pointer;color:'+iconColor+';padding:2px;display:inline-flex;align-items:center;opacity:.85"><span style="display:inline-flex;width:16px;height:16px">'+BM_ICON_VOLUME+'</span></button>'
+      +'</div>'
+      +(hasEn?'<div id="cs-tr-'+i+'" hidden style="margin-top:8px;padding-top:8px;border-top:1px solid '+trBorder+';font-size:13px;font-style:italic;color:'+trColor+';line-height:1.5">'+escapeHtml(m.en)+'</div>':'')
+      +'</div></div></div>';
+  }).join('');
+
+  act.innerHTML = '<div style="text-align:center;padding:14px 16px;font-size:12.5px;color:#94a3b8;line-height:1.6">'
+    +'Tap any bubble to toggle the translation and replay the audio.'
+    +'</div>';
+
   var cnt = document.getElementById('cs-nav-counter');
-  if (cnt) cnt.textContent = st.revealed + ' / ' + st.msgs.length;
-  if (st.revealed < st.msgs.length) {
-    act.innerHTML = '<div style="text-align:center;padding:16px;animation:srFadeIn .2s">'
-      +'<button onclick="_csRevealNext()" class="su-nav-next" style="margin:0 auto">Next Message &#8594;</button>'
-      +'</div>';
-  } else {
-    // Last message revealed — start translation quiz
-    setTimeout(_csTranslationQuiz, 600);
-  }
+  if (cnt) cnt.textContent = msgs.length + ' messages';
+
+  var nb = document.getElementById('cs-next-btn');
+  if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3)'; }
+
+  // Auto-play the first line so the learner immediately knows audio is available.
+  setTimeout(function(){ if (msgs[0] && msgs[0].txt) try { speakKorean(msgs[0].txt); } catch(e){} }, 350);
+  setTimeout(function(){ try { area.scrollTop = 0; } catch(e){} }, 50);
 }
-function _csTranslationQuiz() {
+
+function _csPlayMsgTTS(i) {
   var st = window._csDialogState;
-  // Pick messages that have English translations
-  var withEn = st.msgs.filter(function(m){ return m.en && m.en.trim(); });
-  if (withEn.length < 3) {
-    // Not enough translations — just show Next button
-    var nb = document.getElementById('cs-next-btn');
-    if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3)'; }
-    var act = document.getElementById('cs-activity-area');
-    act.innerHTML = '<div style="text-align:center;padding:16px;font-size:13px;color:#94a3b8">Dialogue complete! Tap Next Step to continue.</div>';
-    return;
-  }
-  st.quizPool = withEn.sort(function(){return Math.random()-.5;}).slice(0,3);
-  st.quizIdx = 0; st.score = 0;
-  _csRenderTransQ();
+  if (!st || !st.msgs || !st.msgs[i]) return;
+  if (typeof speakKorean === 'function') { try { speakKorean(st.msgs[i].txt); } catch(e){} }
 }
-function _csRenderTransQ() {
-  var st = window._csDialogState, act = document.getElementById('cs-activity-area');
-  if (st.quizIdx >= st.quizPool.length) {
+
+function _csBubbleTap(i) {
+  var st = window._csDialogState;
+  if (!st || !st.msgs || !st.msgs[i]) return;
+  var tr = document.getElementById('cs-tr-' + i);
+  if (tr) {
+    if (tr.hasAttribute('hidden')) tr.removeAttribute('hidden');
+    else tr.setAttribute('hidden', '');
+  }
+  if (typeof speakKorean === 'function') { try { speakKorean(st.msgs[i].txt); } catch(e){} }
+}
+
+// STEP 2: Fill-in-the-Blank — same chat bubble UI as Step 1, but key vocab
+// words are blanked out. Learner picks the missing word from a 4-choice grid.
+function _csStep2() {
+  var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
+  area.style.display = '';
+  var msgs = (c.msgs||[]).filter(function(m){ return m.s!=='n' && m.txt; });
+  var vocab = (c.vocab||[]).filter(function(v){ return v && v.ko; });
+
+  // Build candidate blanks: each entry is one (msg, vocab-word) pair where
+  // the word actually appears in the message text. We then dedupe so each
+  // message has at most one blank, and cap the total at 5 to keep the
+  // exercise short.
+  var seenMsg = {}, blanks = [];
+  for (var ci = 0; ci < msgs.length && blanks.length < 5; ci++) {
+    var mi = msgs[ci];
+    if (seenMsg[ci]) continue;
+    for (var vi = 0; vi < vocab.length; vi++) {
+      var v = vocab[vi];
+      if (mi.txt.indexOf(v.ko) !== -1) {
+        blanks.push({ msgIdx: ci, word: v.ko, en: v.en || '' });
+        seenMsg[ci] = 1;
+        break;
+      }
+    }
+  }
+
+  if (blanks.length < 2) { csNextStep(); return; }
+
+  var distractors = vocab.map(function(v){return v.ko;}).filter(Boolean);
+
+  window._csBlankState = { msgs: msgs, blanks: blanks, distractors: distractors, idx: 0, score: 0 };
+  _csRenderBlankBubbles();
+  _csShowNextBlank();
+
+  var cnt = document.getElementById('cs-nav-counter');
+  if (cnt) cnt.textContent = '';
+}
+
+function _csRenderBlankBubbles() {
+  var st = window._csBlankState;
+  var area = document.getElementById('cs-chat-area');
+  if (!st || !area) return;
+  area.innerHTML = st.msgs.map(function(m, mi) {
+    var isLeft = m.s === 'l';
+    var who = m.who || m.name || (isLeft ? 'A' : 'B');
+    var blank = null;
+    for (var bi = 0; bi < st.blanks.length; bi++) {
+      if (st.blanks[bi].msgIdx === mi) { blank = st.blanks[bi]; blank._bi = bi; break; }
+    }
+    var bodyHtml;
+    if (blank) {
+      var splitAt = m.txt.indexOf(blank.word);
+      var pre = m.txt.slice(0, splitAt);
+      var post = m.txt.slice(splitAt + blank.word.length);
+      var slotColor = isLeft ? '#94a3b8' : '#e0e7ff';
+      bodyHtml = escapeHtml(pre)
+        + '<span id="cs-blank-' + blank._bi + '" data-bi="' + blank._bi + '" style="display:inline-block;min-width:64px;padding:2px 12px;margin:0 2px;border-bottom:2px dashed '+slotColor+';color:'+slotColor+';font-style:italic;text-align:center;letter-spacing:.5px">____</span>'
+        + escapeHtml(post);
+    } else {
+      bodyHtml = escapeHtml(m.txt);
+    }
+    return '<div style="display:flex;margin-bottom:12px;'+(isLeft?'':'justify-content:flex-end')+'">'
+      +'<div style="max-width:84%">'
+      +'<div style="font-size:10px;font-weight:800;color:'+(isLeft?'#64748b':'#93c5fd')+';margin-bottom:4px;'+(isLeft?'':'text-align:right')+'">'+escapeHtml(who)+'</div>'
+      +'<div style="padding:12px 16px;border-radius:18px;font-size:15px;line-height:1.85;font-family:\'Noto Sans KR\',sans-serif;'
+      +(isLeft?'background:#fff;color:#0f172a;border:1.5px solid #e2e8f0;border-bottom-left-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.04)':'background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;border-bottom-right-radius:4px;box-shadow:0 2px 8px rgba(37,99,235,.2)')+'">'+bodyHtml+'</div></div></div>';
+  }).join('');
+}
+
+function _csShowNextBlank() {
+  var st = window._csBlankState;
+  var act = document.getElementById('cs-activity-area');
+  if (!st || !act) return;
+  if (st.idx >= st.blanks.length) {
     var nb = document.getElementById('cs-next-btn');
     if (nb) { nb.style.display = ''; nb.textContent = 'Next Step →'; nb.style.cssText = 'display:block;padding:14px 32px;border-radius:14px;border:none;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(37,99,235,.3)'; }
-    act.innerHTML = '<div style="text-align:center;padding:20px;animation:srFadeIn .25s"><div style="display:inline-flex;width:36px;height:36px;margin-bottom:6px;color:'+(st.score>=2?'#a78bfa':'#f87171')+'">'+(st.score>=2?BM_ICON_PARTY:BM_ICON_FLAME)+'</div><div style="font-size:16px;font-weight:800;color:var(--dark)">'+st.score+'/'+st.quizPool.length+' translations correct</div></div>';
+    var passed = st.score >= Math.ceil(st.blanks.length * 0.7);
+    act.innerHTML = '<div style="text-align:center;padding:20px;animation:srFadeIn .25s">'
+      +'<div style="display:inline-flex;width:36px;height:36px;margin-bottom:6px;color:'+(passed?'#a78bfa':'#f87171')+'">'+(passed?BM_ICON_PARTY:BM_ICON_FLAME)+'</div>'
+      +'<div style="font-size:16px;font-weight:800;color:var(--dark)">'+st.score+' / '+st.blanks.length+' correct</div>'
+      +'<div style="font-size:13px;color:var(--gray);margin-top:6px">'+(passed?'Great reading comprehension!':'Keep practicing!')+'</div></div>';
     return;
   }
-  var q = st.quizPool[st.quizIdx];
-  var wrongPool = st.msgs.filter(function(m){return m.en && m.en!==q.en;}).map(function(m){return m.en;});
-  if (wrongPool.length < 3) wrongPool = wrongPool.concat(['Nice to meet you','I understand','Thank you very much']);
-  var choices = wrongPool.sort(function(){return Math.random()-.5;}).slice(0,3).concat([q.en]).sort(function(){return Math.random()-.5;});
-  act.innerHTML = '<div style="padding:4px 0;animation:srFadeIn .25s">'
-    +'<div style="font-size:11px;font-weight:800;color:var(--accent);margin-bottom:12px">'+(st.quizIdx+1)+'/'+st.quizPool.length+' — What does this mean?</div>'
-    +'<div style="padding:16px 20px;background:#f0f4ff;border:1.5px solid #dbeafe;border-radius:16px;margin-bottom:16px;font-size:18px;font-weight:800;color:#0f172a;font-family:\'Noto Sans KR\',sans-serif;line-height:1.6;text-align:center">'+escapeHtml(q.txt)+'</div>'
-    +'<div style="display:flex;flex-direction:column;gap:10px">'
-    +choices.map(function(ch){
-      return '<button onclick="_csCheckTrans(this)" data-ans="'+ch.replace(/"/g,'&quot;')+'" data-correct="'+q.en.replace(/"/g,'&quot;')+'" style="padding:13px 18px;border-radius:14px;border:2px solid #e2e8f0;background:#fff;color:#0f172a;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s;line-height:1.4" onmouseover="this.style.borderColor=\'#93c5fd\';this.style.background=\'#f0f7ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#fff\'">'+escapeHtml(ch)+'</button>';
+
+  var b = st.blanks[st.idx];
+  // Highlight the current blank slot
+  var slot = document.getElementById('cs-blank-' + st.idx);
+  if (slot) {
+    slot.style.background = '#fef3c7';
+    slot.style.color = '#92400e';
+    slot.style.borderBottomColor = '#f59e0b';
+  }
+
+  // Build 3 distractors + 1 correct, shuffled
+  var pool = (st.distractors || []).filter(function(w){ return w && w !== b.word; });
+  pool.sort(function(){ return Math.random() - 0.5; });
+  var wrongs = pool.slice(0, 3);
+  while (wrongs.length < 3) wrongs.push('—');
+  var choices = wrongs.concat([b.word]).sort(function(){ return Math.random() - 0.5; });
+
+  act.innerHTML = '<div style="padding:8px 4px;animation:srFadeIn .2s">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:0 4px">'
+    +'<span style="font-size:11px;font-weight:800;color:var(--accent);background:rgba(37,99,235,.1);padding:4px 10px;border-radius:8px">'+(st.idx+1)+' / '+st.blanks.length+'</span>'
+    +'<span style="font-size:13px;font-weight:700;color:var(--dark)">Pick the missing word</span></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 4px">'
+    + choices.map(function(ch){
+      return '<button onclick="_csPickBlank(this,\''+String(ch).replace(/'/g,"\\'").replace(/"/g,'&quot;')+'\')" style="padding:14px 12px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;color:#0f172a;font-size:16px;font-weight:800;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;transition:all .15s" onmouseover="this.style.borderColor=\'#93c5fd\';this.style.background=\'#f0f7ff\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.background=\'#fff\'">'+escapeHtml(ch)+'</button>';
     }).join('')
     +'</div></div>';
-}
-function _csCheckTrans(btn) {
-  var st = window._csDialogState;
-  var picked = btn.dataset.ans, correct = btn.dataset.correct;
-  var btns = btn.parentElement.querySelectorAll('button');
-  btns.forEach(function(b){b.disabled=true;b.style.pointerEvents='none';b.style.opacity='.5';
-    if(b.dataset.ans===correct){b.style.borderColor='#22c55e';b.style.background='#f0fdf4';b.style.color='#166534';b.style.opacity='1';}});
-  if (picked===correct) { playCorrectSound(); st.score++; btn.style.opacity='1'; }
-  else { playWrongSound(); btn.style.borderColor='#ef4444';btn.style.background='#fef2f2';btn.style.color='#991b1b';btn.style.opacity='1'; }
-  setTimeout(function(){ st.quizIdx++; _csRenderTransQ(); },1200);
+
+  // Auto-scroll the chat area so the active blank is visible
+  setTimeout(function(){
+    var area = document.getElementById('cs-chat-area');
+    if (slot && area) {
+      try {
+        var top = slot.getBoundingClientRect().top - area.getBoundingClientRect().top + area.scrollTop - 60;
+        area.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      } catch(e) {}
+    }
+  }, 30);
 }
 
-// STEP 2: Flashcard Vocabulary — flip cards with self-assessment
-function _csStep2() {
+function _csPickBlank(btn, picked) {
+  var st = window._csBlankState; if (!st) return;
+  var b = st.blanks[st.idx]; if (!b) return;
+  var btns = btn.parentElement.querySelectorAll('button');
+  btns.forEach(function(el){
+    el.disabled = true;
+    el.style.pointerEvents = 'none';
+    el.style.opacity = '.5';
+    if (el.textContent.trim() === b.word) {
+      el.style.borderColor = '#22c55e';
+      el.style.background = '#f0fdf4';
+      el.style.color = '#166534';
+      el.style.opacity = '1';
+    }
+  });
+  var slot = document.getElementById('cs-blank-' + st.idx);
+  if (picked === b.word) {
+    if (typeof playCorrectSound === 'function') playCorrectSound();
+    st.score++;
+    btn.style.opacity = '1';
+    if (slot) {
+      slot.style.background = '#dcfce7';
+      slot.style.color = '#166534';
+      slot.style.borderBottomColor = '#16a34a';
+      slot.style.fontStyle = 'normal';
+      slot.textContent = b.word;
+    }
+  } else {
+    if (typeof playWrongSound === 'function') playWrongSound();
+    btn.style.borderColor = '#ef4444';
+    btn.style.background = '#fef2f2';
+    btn.style.color = '#991b1b';
+    btn.style.opacity = '1';
+    if (slot) {
+      slot.style.background = '#fee2e2';
+      slot.style.color = '#991b1b';
+      slot.style.borderBottomColor = '#dc2626';
+      slot.style.fontStyle = 'normal';
+      slot.textContent = b.word;
+    }
+  }
+  setTimeout(function(){ st.idx++; _csShowNextBlank(); }, 1200);
+}
+
+// STEP 3: Flashcard Vocabulary — flip cards with self-assessment
+function _csStep3() {
   var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
   area.style.display = 'none';
   var vocab = (c.vocab||[]).slice(0,8);
@@ -19202,8 +19344,8 @@ function _csFlashRate(known) {
   _csRenderFlash(document.getElementById('cs-activity-area'));
 }
 
-// STEP 3: Choose the Response — given context, pick the correct reply
-function _csStep3() {
+// STEP 4: Choose the Response — given context, pick the correct reply
+function _csStep4() {
   var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
   area.style.display = 'none';
   var msgs = (c.msgs||[]).filter(function(m){return m.s!=='n';});
@@ -19275,7 +19417,7 @@ function _csShowSentenceQuiz() {
   var c = _csCurrentConv;
   var act = document.getElementById('cs-activity-area'); if (!act) return;
   var msgs = (c.msgs||[]).filter(function(m){ return m.s!=='n' && m.txt && m.txt.length > 5; });
-  if (msgs.length < 3) { _csStep4(); return; }
+  if (msgs.length < 3) { _csStep5(); return; }
 
   // Take 2 correct sentences from dialogue
   var correctMsgs = msgs.sort(function(){return Math.random()-.5;}).slice(0,2);
@@ -19288,7 +19430,7 @@ function _csShowSentenceQuiz() {
     if (wrong !== m.txt) items.push({ text: wrong, isCorrect: false });
   });
 
-  if (items.filter(function(i){return !i.isCorrect;}).length === 0) { _csStep4(); return; }
+  if (items.filter(function(i){return !i.isCorrect;}).length === 0) { _csStep5(); return; }
   items = items.sort(function(){return Math.random()-.5;});
 
   act.innerHTML = '<div style="text-align:center;padding:16px 20px 8px;font-size:14px;font-weight:700;color:var(--dark);display:flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">'+BM_ICON_SEARCH+'</span><span>대화에서 맞는 문장을 찾아보세요</span></div>'
@@ -19313,12 +19455,12 @@ function _csCheckSent(btn, isCorrect) {
   if (!remaining.length) {
     var fb = document.getElementById('cs-sent-fb');
     if (fb) fb.innerHTML = '<div style="text-align:center;padding:12px;background:#f0fdf4;border-radius:8px;color:#166534;font-weight:700;font-size:13px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">'+BM_ICON_PARTY+'</span><span>잘했어요!</span></div>';
-    setTimeout(function(){ _csStep4(); }, 1000);
+    setTimeout(function(){ _csStep5(); }, 1000);
   }
 }
 
-// STEP 4: Sentence Builder — arrange words from dialogue sentences
-function _csStep4() {
+// STEP 5: Sentence Builder — arrange words from dialogue sentences
+function _csStep5() {
   var c = _csCurrentConv, area = document.getElementById('cs-chat-area'), act = document.getElementById('cs-activity-area');
   area.style.display = 'none';
   var msgs = (c.msgs||[]).filter(function(m){ return m.s!=='n' && m.txt && m.txt.trim().split(/\s+/).length >= 3 && m.txt.trim().split(/\s+/).length <= 8; });
