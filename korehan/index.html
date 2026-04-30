@@ -380,15 +380,17 @@
 }
 .story-cover > img {
   width:100%; height:100%; object-fit:cover; display:block;
-  /* Slightly darken so the bottom-left title + chips stay legible
-     even on already-dark moody photos. */
-  filter: brightness(.85) contrast(1.05) saturate(1.05);
+  /* No darkening filter — most story thumbnails are already moody/dark
+     (thrillers, slice-of-life night scenes). The bottom gradient
+     (::after) is what carries the chip + title contrast; an extra
+     brightness multiplier on top was making whole cards look black. */
+  filter: contrast(1.03) saturate(1.05);
 }
 .story-cover::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  /* Stronger bottom gradient — the title and chips need solid contrast
-     against arbitrary photo backgrounds. */
-  background: linear-gradient(180deg, rgba(5,15,35,0) 0%, rgba(5,15,35,0) 38%, rgba(5,15,35,.62) 65%, rgba(5,15,35,.94) 100%);
+  /* Tight bottom-only gradient: clear at the top so the photo reads
+     properly, opaque only at the bottom where the title sits. */
+  background: linear-gradient(180deg, rgba(5,15,35,0) 0%, rgba(5,15,35,0) 50%, rgba(5,15,35,.55) 75%, rgba(5,15,35,.92) 100%);
 }
 .story-overlay-body {
   position: absolute; left: 0; right: 0; bottom: 0;
@@ -433,7 +435,9 @@
   background: #fff;
   box-shadow: 0 8px 24px rgba(13,27,46,.1);
   transition: transform .18s, box-shadow .18s;
-  aspect-ratio: 1/1;
+  /* No fixed aspect ratio — the card needs to grow to fit the header
+     + 3 chat bubbles + Study footer. Forcing 1:1 was clipping the
+     third bubble and leaving fragments of garbled-looking text. */
   display: flex;
   flex-direction: column;
 }
@@ -1593,18 +1597,29 @@ document.addEventListener('DOMContentLoaded', async function() {
     var MOOD_CLASS = { fun:'fun', touching:'touching', scary:'scary', shocking:'shocking', slice_of_life:'fun', romance:'touching', mystery:'scary', adventure:'fun', thriller:'scary', essay:'touching', workplace:'fun' };
     var esc = function(s){ return String(s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
 
+    function _storyTitleEnCacheGet(id) {
+      try { return localStorage.getItem('kh_story_title_en_' + id) || ''; } catch(_) { return ''; }
+    }
+    function _storyTitleEnCacheSet(id, t) {
+      try { localStorage.setItem('kh_story_title_en_' + id, t); } catch(_) {}
+    }
     function renderHomeStory(s) {
       var d    = s.data || s;
       var mood = s.mood || d.mood || s.genre || d.genre || 'slice_of_life';
       var moodClass = MOOD_CLASS[mood] || 'fun';
       var lvl  = s.lvl || d.lvl || 'b';
-      // English title only — fall back to the genre label rather than
-      // the Korean title so the home grid stays consistent with News.
+      // Title resolution: DB English → localStorage backfill cache →
+      // Korean title (Hangul is better than "Life Story" repeated 8x) →
+      // genre label as last resort. The localStorage-cached English
+      // titles get filled by _khBackfillStoryTitlesEn after first paint
+      // so the second visit shows English everywhere without re-paying
+      // the AI cost.
       var genreLabel = GENRE_LABEL[mood] || mood;
-      var title = d.title_en || s.title_en || (genreLabel + ' Story');
+      var cachedEn = s.id ? _storyTitleEnCacheGet(s.id) : '';
+      var title = d.title_en || s.title_en || cachedEn || d.title || s.title || (genreLabel + ' Story');
       var thumbUrl = d.thumbnail_url || d.thumbnail || d.image_url || '';
       var finalThumb = thumbUrl || ('https://picsum.photos/seed/' + encodeURIComponent('story-' + (s.id || title || Math.random())) + '/600/800');
-      return '<div class="story-card" onclick="location.href=\'korehan-stories.html?id=' + encodeURIComponent(s.id) + '\'">'
+      return '<div class="story-card" data-kh-story-title-id="' + esc(s.id || '') + '" onclick="location.href=\'korehan-stories.html?id=' + encodeURIComponent(s.id) + '\'">'
         + '<div class="story-cover ' + moodClass + '">'
           + '<img src="' + esc(finalThumb) + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/kh-story/600/800\'">'
         + '</div>'
@@ -1616,6 +1631,49 @@ document.addEventListener('DOMContentLoaded', async function() {
           + '<div class="story-title">' + esc(title) + '</div>'
         + '</div>'
         + '</div>';
+    }
+    // Backfill Korean → English titles for stories that have no title_en
+    // in the DB. Caches into localStorage so the second visit doesn't
+    // re-translate. Replaces the visible Korean title (or "Life Story"
+    // fallback) in-place once the AI returns. Fire-and-forget — failures
+    // just leave the Korean title visible, which is better than "Life
+    // Story" repeated.
+    async function _khBackfillStoryTitlesEn(rows) {
+      if (!Array.isArray(rows) || !rows.length) return;
+      if (typeof callClaude !== 'function') return;
+      var needed = rows.filter(function(r) {
+        var d = r.data || r;
+        if ((d && d.title_en) || r.title_en) return false;
+        if (r.id && _storyTitleEnCacheGet(r.id)) return false;
+        var ko = (d && d.title) || r.title || '';
+        return ko && /[ㄱ-힝]/.test(ko);
+      });
+      if (!needed.length) return;
+      var prompt = 'Translate each Korean story title into a natural, concise English title (≤60 chars, no surrounding quotes, no period). Return ONLY a JSON array of strings in input order.\n\nTitles:\n'
+        + needed.map(function(r, i){
+            var d = r.data || r;
+            return (i+1) + '. ' + ((d && d.title) || r.title || '');
+          }).join('\n');
+      try {
+        var res = await callClaude({
+          feature: 'story-title-en',
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 600,
+          messages: [{ role:'user', content: prompt }]
+        });
+        var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+        var ai = text.indexOf('['), bi = text.lastIndexOf(']');
+        if (ai >= 0 && bi > ai) text = text.slice(ai, bi + 1);
+        var arr = JSON.parse(text);
+        if (!Array.isArray(arr)) return;
+        needed.forEach(function(r, i) {
+          var t = (typeof arr[i] === 'string' ? arr[i] : '').trim();
+          if (!t || !r.id) return;
+          _storyTitleEnCacheSet(r.id, t);
+          var card = document.querySelector('[data-kh-story-title-id="' + r.id + '"] .story-title');
+          if (card) card.textContent = t;
+        });
+      } catch(_) {}
     }
 
     try {
@@ -1629,6 +1687,11 @@ document.addEventListener('DOMContentLoaded', async function() {
       grid.innerHTML = rows.map(renderHomeStory).join('');
       if (window.renderKhLucideIcons) renderKhLucideIcons();
       else if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+      // Background-translate any Korean-only story titles to English so
+      // the rail doesn't show "Life Story" repeated 8 times. The first
+      // paint already used Korean as the visible fallback; this
+      // upgrades to English in-place once Claude returns.
+      try { _khBackfillStoryTitlesEn(rows); } catch(_) {}
     } catch(e) {
       console.warn('home stories load failed:', e.message || e);
       grid.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:16px">Unable to load stories.</div>';
