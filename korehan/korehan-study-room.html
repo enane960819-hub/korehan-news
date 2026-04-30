@@ -1425,6 +1425,93 @@ body { background: #0b1626 !important; }
 .ls-node[data-pos="bl"]     { bottom: 8%; left: 4%; }
 .ls-node[data-pos="tl"]     { top: 24%; left: 0%; }
 
+/* ── Mobile mode toggle (Solar / Tarot / Orb). Hidden on desktop. ── */
+.ls-mode-toggle {
+  display: none; /* desktop default */
+  gap: 6px;
+  justify-content: center;
+  margin: 4px 0 10px;
+}
+@media (max-width: 768px) {
+  .ls-mode-toggle { display: flex; }
+}
+.ls-mode-chip {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 11px; font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+  color: rgba(255,255,255,.55);
+  cursor: pointer;
+  transition: all .15s;
+}
+.ls-mode-chip:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.85); }
+.ls-mode-chip.on {
+  background: linear-gradient(135deg, rgba(124,58,237,.35), rgba(37,99,235,.35));
+  border-color: rgba(168,85,247,.5);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(168,85,247,.35);
+}
+
+/* ── Solar System mode (mobile only) ──
+   Nodes are JS-positioned (transform updated each frame in
+   _lsStartSolarOrbits) so we only need to override the static
+   pentagon placement and add a starfield-style background. */
+@media (max-width: 768px) {
+  .ls-mindmap.ls-mode-solar {
+    /* Make the orbit container square so radii hit the same distance
+       in both axes. Pentagon used 1:1.05 — solar wants pure 1:1. */
+    aspect-ratio: 1 / 1;
+  }
+  .ls-mindmap.ls-mode-solar .ls-node[data-pos] {
+    /* JS will inject left/top/transform per frame. Reset the static
+       pentagon coords so the inline styles win cleanly. */
+    top: auto; bottom: auto; left: auto; right: auto;
+    transform: none;
+  }
+  /* Faint orbit ring outlines drawn behind the nodes, using radial
+     gradient halos that approximate elliptical paths. Tiny — they
+     just hint at the orbit, the moving nodes carry the motion. */
+  .ls-mindmap.ls-mode-solar::before {
+    content: '';
+    position: absolute; inset: 8%;
+    border-radius: 50%;
+    border: 1px dashed rgba(168,139,250,.12);
+    pointer-events: none;
+  }
+  .ls-mindmap.ls-mode-solar::after {
+    content: '';
+    position: absolute; inset: 22%;
+    border-radius: 50%;
+    border: 1px dashed rgba(168,139,250,.08);
+    pointer-events: none;
+  }
+  /* Each node becomes a small "planet" — slightly smaller circle so
+     more breathing room around the orb. Names tucked under the
+     planet, semi-transparent so they don't fight with the orb. */
+  .ls-mindmap.ls-mode-solar .ls-node-circle {
+    width: 56px; height: 56px;
+  }
+  .ls-mindmap.ls-mode-solar .ls-node-name {
+    font-size: 10px;
+    color: rgba(255,255,255,.7);
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+  .ls-mindmap.ls-mode-solar .ls-node-coin {
+    font-size: 9px;
+    padding: 2px 5px;
+  }
+  /* The centre orb is the "sun" — bump its glow a touch. */
+  .ls-mindmap.ls-mode-solar .ls-orb-wrap::before {
+    box-shadow:
+      inset 0 0 60px rgba(168,85,247,.22),
+      0 0 36px rgba(168,85,247,.18);
+  }
+}
+
 /* ── Divider & Writing Practice ── */
 .ls-divider { border: none; border-top: 1px solid rgba(255,255,255,.08); margin: 8px 0 10px; }
 .ls-wp-btn {
@@ -5711,11 +5798,19 @@ function openLearningSelector() {
   if (!ensureStudyUnlocked()) return;
   var modal = document.getElementById('ls-modal');
   if (!modal) return;
+  // Apply the user's chosen mobile layout (solar / tarot / orb) so
+  // the panel switches to the right renderer before paint. Desktop
+  // (≥768px) keeps the original pentagon regardless via media query.
+  _lsApplyMobileMode();
   _updateLSSelectorBadges();
   modal.classList.remove('hidden');
   // Recalc line coordinates after modal is visible
   setTimeout(_lsRecalcCoords, 150);
   setTimeout(_lsRecalcCoords, 400);
+  // Start the solar-system orbit loop if that's the active mobile mode.
+  // Idempotent — if already running it's a no-op.
+  if (_lsGetMobileMode() === 'solar') _lsStartSolarOrbits();
+  else _lsStopSolarOrbits();
 }
 
 function closeLearningSelector() {
@@ -6001,9 +6096,41 @@ function _lsInitLinesCanvas() {
   setTimeout(resizeCanvas, 500);
   window.addEventListener('resize', resizeCanvas);
 
+  // Starfield buffer — fixed points so stars don't strobe between
+  // frames. Computed once on first solar-mode draw, then twinkled by
+  // animating only the alpha each frame.
+  var _stars = null;
+  function _ensureStars() {
+    if (_stars) return _stars;
+    _stars = [];
+    var seed = 42; // deterministic so the same star pattern shows every open
+    function rng() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    for (var i = 0; i < 50; i++) {
+      _stars.push({ x: rng() * 380, y: rng() * 399, r: 0.4 + rng() * 0.9, phase: rng() * Math.PI * 2 });
+    }
+    return _stars;
+  }
+
   function drawLines() {
     t += 0.02;
     ctx.clearRect(0, 0, 380, 399);
+
+    var inSolar = (typeof _lsGetMobileMode === 'function')
+      && _lsGetMobileMode() === 'solar'
+      && wrap.classList.contains('ls-mode-solar');
+
+    if (inSolar) {
+      // Starfield — twinkle each star independently via its phase.
+      var stars = _ensureStars();
+      for (var si = 0; si < stars.length; si++) {
+        var st = stars[si];
+        var alpha = 0.3 + 0.4 * (0.5 + 0.5 * Math.sin(t * 1.2 + st.phase));
+        ctx.beginPath();
+        ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(220,230,255,' + alpha + ')';
+        ctx.fill();
+      }
+    }
 
     Object.keys(_lsNodeCoords).forEach(function(key) {
       var n = _lsNodeCoords[key];
@@ -6077,6 +6204,113 @@ function _lsInitLinesCanvas() {
 function _lsStartCanvasRendering() {
   _lsInitOrbCanvas();
   _lsInitLinesCanvas();
+}
+
+// ─── Mobile layout mode (solar / tarot / orb) — toggle UI inside the
+// modal lets the user flip between three experimental layouts so we
+// can pick the winner. Desktop (≥768px) ignores this entirely and
+// always shows the pentagon, scoped via media query in the CSS.
+var _LS_MODE_KEY = 'kh_ls_mobile_mode_v1';
+var _LS_MODES = ['solar', 'tarot', 'orb'];
+function _lsGetMobileMode() {
+  try {
+    var m = localStorage.getItem(_LS_MODE_KEY);
+    if (m && _LS_MODES.indexOf(m) >= 0) return m;
+  } catch(_) {}
+  return 'solar';
+}
+function _lsSetMobileMode(mode) {
+  if (_LS_MODES.indexOf(mode) < 0) return;
+  try { localStorage.setItem(_LS_MODE_KEY, mode); } catch(_) {}
+  _lsApplyMobileMode();
+  if (mode === 'solar') _lsStartSolarOrbits();
+  else _lsStopSolarOrbits();
+}
+function _lsApplyMobileMode() {
+  var mode = _lsGetMobileMode();
+  var mindmap = document.getElementById('ls-mindmap');
+  if (mindmap) {
+    mindmap.classList.remove('ls-mode-solar', 'ls-mode-tarot', 'ls-mode-orb');
+    mindmap.classList.add('ls-mode-' + mode);
+  }
+  var toggleRow = document.getElementById('ls-mode-toggle');
+  if (toggleRow) {
+    toggleRow.querySelectorAll('[data-ls-mode]').forEach(function(b) {
+      b.classList.toggle('on', b.getAttribute('data-ls-mode') === mode);
+    });
+  }
+}
+
+// ─── Solar System mode: 5 nodes orbit the centre orb on staggered
+// elliptical paths. Node DOM transforms are updated each frame so the
+// lines/particles canvas can keep tracking them via _lsNodeCoords.
+// Stops itself when mode flips away from solar — no zombie loop.
+var _LS_ORBITS = {
+  topic:       { radius: 0.42, period: 32, offset:   0 },
+  grammar:     { radius: 0.36, period: 28, offset:  72 },
+  picture:     { radius: 0.44, period: 36, offset: 144 },
+  sentence:    { radius: 0.38, period: 30, offset: 216 },
+  expressions: { radius: 0.40, period: 34, offset: 288 },
+};
+var _lsSolarStart = 0;
+var _lsSolarRafId = null;
+function _lsStartSolarOrbits() {
+  if (_lsSolarRafId) return; // already running
+  _lsSolarStart = performance.now();
+  var loop = function() {
+    if (_lsGetMobileMode() !== 'solar') { _lsSolarRafId = null; return; }
+    var modal = document.getElementById('ls-modal');
+    if (!modal || modal.classList.contains('hidden')) {
+      // Modal closed — pause the loop so we don't spin forever.
+      _lsSolarRafId = null; return;
+    }
+    var wrap = document.getElementById('ls-mindmap');
+    if (!wrap) { _lsSolarRafId = requestAnimationFrame(loop); return; }
+    var rect = wrap.getBoundingClientRect();
+    var cx = rect.width / 2;
+    var cy = rect.height / 2;
+    // Use the smaller dimension as the orbit reference so a portrait
+    // container doesn't shoot nodes past the right edge.
+    var refRadius = Math.min(rect.width, rect.height) / 2;
+    var elapsed = (performance.now() - _lsSolarStart) / 1000;
+    Object.keys(_LS_ORBITS).forEach(function(key) {
+      var o = _LS_ORBITS[key];
+      var theta = (o.offset * Math.PI / 180) + (elapsed / o.period) * Math.PI * 2;
+      var R = refRadius * o.radius;
+      var nx = R * Math.cos(theta);
+      var ny = R * Math.sin(theta) * 0.85; // slight ellipse — orbits look 3D
+      var el = document.getElementById('ls-card-' + key);
+      if (el) {
+        // Anchor each orbiting node to the wrap centre and translate
+        // by the orbit offset. The inline transform overrides the
+        // pentagon-positioning rules from the desktop CSS.
+        el.style.left = cx + 'px';
+        el.style.top  = cy + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+        el.style.transform = 'translate(calc(-50% + ' + nx.toFixed(1) + 'px), calc(-50% + ' + ny.toFixed(1) + 'px))';
+      }
+    });
+    _lsRecalcCoords(); // keep canvas line endpoints in sync with moved DOM
+    _lsSolarRafId = requestAnimationFrame(loop);
+  };
+  _lsSolarRafId = requestAnimationFrame(loop);
+}
+function _lsStopSolarOrbits() {
+  if (_lsSolarRafId) {
+    cancelAnimationFrame(_lsSolarRafId);
+    _lsSolarRafId = null;
+  }
+  // Clear inline transforms so pentagon CSS positions take over again
+  // when the user flips back.
+  ['topic','grammar','picture','sentence','expressions'].forEach(function(key) {
+    var el = document.getElementById('ls-card-' + key);
+    if (el) {
+      el.style.left = ''; el.style.top = '';
+      el.style.right = ''; el.style.bottom = '';
+      el.style.transform = '';
+    }
+  });
 }
 
 // Start canvas when modal opens
@@ -18691,6 +18925,16 @@ setTimeout(renderCompletedStudies, 500);
     </div>
 
     <hr class="ls-divider">
+
+    <!-- Mobile-only mode toggle. Lets the user flip between three
+         experimental layouts (Solar / Tarot / Orb) so we can pick a
+         winner from real usage. Hidden on desktop via CSS. -->
+    <div id="ls-mode-toggle" class="ls-mode-toggle">
+      <button type="button" class="ls-mode-chip" data-ls-mode="solar"  onclick="_lsSetMobileMode('solar')">Solar</button>
+      <button type="button" class="ls-mode-chip" data-ls-mode="tarot"  onclick="_lsSetMobileMode('tarot')">Tarot</button>
+      <button type="button" class="ls-mode-chip" data-ls-mode="orb"    onclick="_lsSetMobileMode('orb')">Orb</button>
+    </div>
+
     <!-- Writing Practice button (locked/unlocked) -->
     <button class="ls-wp-btn" id="ls-wp-btn" onclick="lsStartWriting()" disabled>
       <span class="ls-wp-icon" aria-hidden="true">
