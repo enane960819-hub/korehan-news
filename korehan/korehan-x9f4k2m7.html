@@ -13773,7 +13773,12 @@ async function ftAdminAIGenerate() {
         if (existingTitles.has((sc.title||'').toLowerCase())) { errors++; continue; }
 
         try {
-          await sb.from('fast_track_scenarios').insert({
+          // supabase-js returns errors via the result object — it doesn't
+          // throw — so the prior `try/catch` silently swallowed every
+          // PostgREST failure (RLS, schema mismatch, unique-violation).
+          // Surface the message in the status bar so the admin actually
+          // sees why "Generate" failed.
+          var ins = await sb.from('fast_track_scenarios').insert({
             id: sc.id, title: sc.title, sub: sc.sub, title_ko: sc.titleKo || sc.title_ko,
             difficulty: sc.difficulty || diff, icon: sc.icon || '📍',
             category: sc.category || cat || sc.id,
@@ -13781,10 +13786,20 @@ async function ftAdminAIGenerate() {
             is_active: true, locked: false,
             data: { nodes: sc.nodes, edges: sc.edges || [] }
           });
+          if (ins && ins.error) {
+            console.error('[FT gen] insert failed:', ins.error);
+            status.innerHTML = '⚠️ Insert failed for "' + (sc.title || sc.id) + '": ' + (ins.error.message || ins.error.code || 'unknown') + ' — continuing...';
+            errors++;
+            continue;
+          }
           added++;
           existingIds.add(sc.id);
           existingTitles.add((sc.title||'').toLowerCase());
-        } catch(e) { errors++; }
+        } catch(e) {
+          console.error('[FT gen] insert threw:', e);
+          status.innerHTML = '⚠️ Insert threw: ' + (e && e.message ? e.message : 'unknown') + ' — continuing...';
+          errors++;
+        }
       }
     } catch(e) {
       errors++;

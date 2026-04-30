@@ -17996,6 +17996,39 @@ async function _asLoadArticles() {
   var sb = getSupa(); if (!sb) return;
   var g = document.getElementById('as-article-grid'); if (!g) return;
   g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading article…</div></div>';
+  // Column-list fallback. Production sometimes lags behind the codebase
+  // (e.g. an older deploy didn't have title_en / level yet) and a single
+  // unknown column makes PostgREST return an error for the whole query —
+  // which is what surfaces to mobile users as "Could not load the
+  // article." Try the rich list first, then fall back to a minimal one.
+  var SELECT_LISTS = [
+    'id,title,title_en,section,level,image,body',
+    'id,title,section,image,body',
+    '*'
+  ];
+  async function _selectArticlesByIds(ids) {
+    var lastErr = null;
+    for (var i = 0; i < SELECT_LISTS.length; i++) {
+      var res = await sb.from('articles').select(SELECT_LISTS[i]).in('id', ids).limit(200);
+      if (!res.error) return res.data || [];
+      lastErr = res.error;
+      if (!/column|does not exist|could not find/i.test(res.error.message || '')) break;
+      console.warn('[ArticleStudy] saved-list select retry —', res.error.message);
+    }
+    throw lastErr || new Error('articles select failed');
+  }
+  async function _selectLatestPublished() {
+    var lastErr = null;
+    for (var i = 0; i < SELECT_LISTS.length; i++) {
+      var res = await sb.from('articles').select(SELECT_LISTS[i])
+        .eq('status','published').order('date',{ascending:false}).limit(500);
+      if (!res.error) return res.data || [];
+      lastErr = res.error;
+      if (!/column|does not exist|could not find/i.test(res.error.message || '')) break;
+      console.warn('[ArticleStudy] latest select retry —', res.error.message);
+    }
+    throw lastErr || new Error('articles select failed');
+  }
   try {
     if (_asFilter === 'saved') {
       // Saved mode: pull the user's bookmarks first, then fetch the
@@ -18021,22 +18054,24 @@ async function _asLoadArticles() {
         _asArticles = [];
         return;
       }
-      var r2 = await sb.from('articles').select('id,title,title_en,section,level,image,body').in('id', ids).limit(200);
-      if (r2.error) throw r2.error;
+      var rows = await _selectArticlesByIds(ids);
       var bmOrder = {}; ids.forEach(function(id, i){ bmOrder[String(id)] = i; });
-      _asArticles = (r2.data||[])
+      _asArticles = rows
         .filter(function(a){ return a.title; })
         .sort(function(a, b){ return (bmOrder[String(a.id)] || 0) - (bmOrder[String(b.id)] || 0); });
       _asRenderGrid();
       return;
     }
-    var r = await sb.from('articles').select('id,title,title_en,section,level,image,body')
-      .eq('status','published').order('date',{ascending:false}).limit(500);
-    if (r.error) throw r.error;
-    _asArticles = (r.data||[]).filter(function(a){ return a.title; });
+    var latest = await _selectLatestPublished();
+    _asArticles = latest.filter(function(a){ return a.title; });
     _asRenderGrid();
   } catch(e) {
-    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">Could not load the article.</div>';
+    console.error('[ArticleStudy] _asLoadArticles failed:', e);
+    var detail = (e && (e.message || e.hint || e.code)) ? String(e.message || e.hint || e.code) : '';
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center;line-height:1.6">Could not load the article.'
+      + (detail ? '<div style="margin-top:6px;font-size:11px;color:#cbd5e1">' + detail.replace(/[<>]/g,'') + '</div>' : '')
+      + '<button onclick="_asLoadArticles()" style="margin-top:12px;padding:8px 16px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#0b1626;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Retry</button>'
+      + '</div>';
   }
 }
 function _asRenderGrid() {
