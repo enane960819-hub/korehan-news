@@ -19677,11 +19677,13 @@ async function drGenerateQuestions() {
   var pool = _drShuffle(vocabPool);
   var questions = [];
 
-  // 5 vocab meaning MCQ (from saved_words + article vocab)
+  // 5 vocab meaning MCQ (from saved_words + article vocab). Tagging
+  // with slot='vocab' so the wrong_patterns classifier attributes
+  // misses to VOCAB instead of falling back to the OTHER bucket.
   pool.slice(0, Math.min(5, pool.length)).forEach(function(w) {
     var wrongs = _drShuffle(pool.filter(function(x){ return x.word_ko !== w.word_ko; })).slice(0, 3).map(function(x){ return x.word_en; });
     if (wrongs.length < 3) return;
-    questions.push({ type:'meaning', word_ko: w.word_ko, word_rom: w.word_rom, correct: w.word_en, choices: _drShuffle([w.word_en].concat(wrongs)) });
+    questions.push({ type:'meaning', word_ko: w.word_ko, word_rom: w.word_rom, correct: w.word_en, choices: _drShuffle([w.word_en].concat(wrongs)), slot: 'vocab' });
   });
 
   // 2 grammar fill-in (from today's topic grammar or article grammar)
@@ -19695,7 +19697,7 @@ async function drGenerateQuestions() {
         var wrongGrammars = _drShuffle(grammarPool.filter(function(x){ return x.pattern !== pattern; })).slice(0, 3);
         var choices = [explanation].concat(wrongGrammars.map(function(x){ return x.explanation || ''; })).filter(Boolean);
         if (choices.length >= 4) {
-          questions.push({ type:'meaning', word_ko: pattern, word_rom: exKo, correct: explanation, choices: _drShuffle(choices.slice(0, 4)) });
+          questions.push({ type:'meaning', word_ko: pattern, word_rom: exKo, correct: explanation, choices: _drShuffle(choices.slice(0, 4)), slot: 'grammar' });
         }
       }
     });
@@ -19716,14 +19718,14 @@ async function drGenerateQuestions() {
     var ko = (s.ko||'').replace(/[.!?]/g,'').trim();
     var words = ko.split(/\s+/);
     if (words.length >= 3) {
-      questions.push({ type:'order', words: _drShuffle(words.slice()), correct: words, en: s.en||'' });
+      questions.push({ type:'order', words: _drShuffle(words.slice()), correct: words, en: s.en||'', slot: 'word_order' });
     }
   });
 
-  // 1 typed (from saved words)
+  // 1 typed (from saved words) — vocab recall
   if (pool.length > 8) {
     var tw = pool[8];
-    questions.push({ type:'typed', word_en: tw.word_en, word_rom: tw.word_rom, correct: tw.word_ko });
+    questions.push({ type:'typed', word_en: tw.word_en, word_rom: tw.word_rom, correct: tw.word_ko, slot: 'vocab' });
   }
 
   _drQuestions = _drShuffle(questions);
@@ -20040,7 +20042,7 @@ function openWeeklyReview() {
     document.getElementById('rv-timer').style.display = '';
     renderReviewQuestion();
   } else {
-    startReview('Weekly Review', 20);
+    startReview('Weekly Review', 20, 'weekly');
   }
 }
 
@@ -20073,9 +20075,10 @@ async function startReview(title, count, mode) {
   // conversations) so the user gets a real assessment of what they
   // studied this month, not a random-vocab pop quiz. Weekly/daily stay
   // on the synchronous vocab-only path.
-  if (mode === 'monthly') {
-    try { _rv.questions = await _buildMonthlyReviewQuestions(count); }
-    catch(e) { console.warn('monthly review build failed, falling back', e); _rv.questions = generateReviewQuestions(count); }
+  if (mode === 'monthly' || mode === 'weekly') {
+    var lookback = mode === 'monthly' ? 30 : 7;
+    try { _rv.questions = await _buildComprehensiveReview(count, lookback); }
+    catch(e) { console.warn(mode + ' review build failed, falling back', e); _rv.questions = generateReviewQuestions(count); }
   } else {
     _rv.questions = generateReviewQuestions(count);
   }
@@ -20230,6 +20233,7 @@ function _classifyOneMistake(q, quizType) {
   if (!q) return 'OTHER';
   var slot = q.slot;
   if (slot === 'particle') return 'PARTICLE';
+  if (slot === 'word_order') return 'WORD_ORDER';
   if (slot === 'expression') return 'VOCAB';
   if (slot === 'reading') return 'VOCAB';
   if (slot === 'vocab') return 'VOCAB';
@@ -20375,14 +20379,39 @@ function _mrSlotKeyExpressions(n, articleCacheMap, convExpressions) {
   return qs;
 }
 
+// Allocate the targetCount across the 5 slots in fixed proportions so
+// the same builder can drive both monthly (30) and weekly (20). Floor
+// each slot, then push the remainder onto vocab so the totals always
+// sum to targetCount.
+function _mrSlotSizes(total) {
+  // Proportions: vocab 33%, grammar 20%, reading 20%, particle 14%, expressions 13%
+  var vocab    = Math.floor(total * 0.34);
+  var grammar  = Math.floor(total * 0.20);
+  var reading  = Math.floor(total * 0.20);
+  var particle = Math.floor(total * 0.14);
+  var expr     = Math.floor(total * 0.13);
+  var sum = vocab + grammar + reading + particle + expr;
+  // Push leftover onto vocab — the most reliably-fillable slot.
+  vocab += (total - sum);
+  return { vocab: vocab, grammar: grammar, reading: reading, particle: particle, expr: expr };
+}
+
+// Backwards-compat alias — the saved-progress flow stores a function
+// name, and earlier monthly invocations might still reference this.
 async function _buildMonthlyReviewQuestions(targetCount) {
+  return _buildComprehensiveReview(targetCount == null ? 30 : targetCount, 30);
+}
+
+async function _buildComprehensiveReview(targetCount, lookbackDays) {
   if (targetCount == null) targetCount = 30;
+  if (lookbackDays == null) lookbackDays = 30;
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   var userId = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : null;
   if (!sb || !userId) return generateReviewQuestions(targetCount);
 
-  var monthStart = new Date(); monthStart.setDate(monthStart.getDate() - 30);
+  var monthStart = new Date(); monthStart.setDate(monthStart.getDate() - lookbackDays);
   var monthStartIso = monthStart.toISOString();
+  var sizes = _mrSlotSizes(targetCount);
 
   // Saved words — _wbData is already loaded on page mount, but it's
   // sorted by created_at not by accuracy. Re-sort here so weak words
@@ -20464,12 +20493,13 @@ async function _buildMonthlyReviewQuestions(targetCount) {
     }
   } catch(e) {}
 
-  // Build each slot.
-  var vocabQs    = _mrSlotVocab(10, savedWords);
-  var grammarQs  = _mrSlotGrammar(6, articleCacheMap);
-  var readingQs  = _mrSlotReadingCloze(6, articleCacheMap, false);
-  var particleQs = _mrSlotReadingCloze(4, articleCacheMap, true);
-  var exprQs     = _mrSlotKeyExpressions(4, articleCacheMap, convExpressions);
+  // Build each slot in proportions set by sizes (so weekly=20 and
+  // monthly=30 both use the same builder, just with different counts).
+  var vocabQs    = _mrSlotVocab(sizes.vocab, savedWords);
+  var grammarQs  = _mrSlotGrammar(sizes.grammar, articleCacheMap);
+  var readingQs  = _mrSlotReadingCloze(sizes.reading, articleCacheMap, false);
+  var particleQs = _mrSlotReadingCloze(sizes.particle, articleCacheMap, true);
+  var exprQs     = _mrSlotKeyExpressions(sizes.expr, articleCacheMap, convExpressions);
 
   var all = vocabQs.concat(grammarQs).concat(readingQs).concat(particleQs).concat(exprQs);
 
