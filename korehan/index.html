@@ -1414,7 +1414,7 @@ function renderHomeConvs() {
       bubblesHtml = '<div class="hcb left" style="color:#94a3b8">No preview available.</div>';
     }
 
-    return '<div class="hconv-card" onclick="location.href=\'korehan-conversations.html?id=' + esc(c._id || '') + '\'">'
+    return '<div class="hconv-card" data-kh-conv-id="' + esc(c._id || '') + '" onclick="location.href=\'korehan-conversations.html?id=' + esc(c._id || '') + '\'">'
       + '<div class="hconv-head">'
         + '<div class="hconv-head-info">'
           + '<div class="hconv-cat">' + esc(catLabel) + '</div>'
@@ -1429,6 +1429,68 @@ function renderHomeConvs() {
       + '</div>';
   }).join('');
   if (window.renderKhLucideIcons) renderKhLucideIcons();
+  // After first paint, translate any Korean ctx values to concise
+  // English topic titles so the cards say what the conversation is
+  // actually about ("Damaged Package Complaint") instead of the
+  // category fallback ("Everyday Conversation"). Cached to
+  // localStorage so the second visit is instant and free.
+  try { _khBackfillConvCtxEn(list); } catch(_) {}
+}
+
+// Translate Korean conversation ctx values to short English topic
+// titles. Batches in one Claude haiku call. Caches into the same
+// kh_conv_ctx_en_v1 store renderHomeConvs reads so the next render
+// (and the conversations page) gets the English titles for free.
+async function _khBackfillConvCtxEn(rows) {
+  if (!Array.isArray(rows) || !rows.length) return;
+  if (typeof callClaude !== 'function') return;
+  var cache = {};
+  try { cache = JSON.parse(localStorage.getItem('kh_conv_ctx_en_v1') || '{}') || {}; } catch(_) {}
+  var needed = rows.filter(function(c) {
+    var ctx = (c.ctx || '').trim();
+    if (!ctx) return false;
+    if (cache[ctx]) return false;
+    if (c.ctx_en || c.name_en || c.title_en) return false;
+    return /[ㄱ-힝]/.test(ctx);
+  });
+  if (!needed.length) return;
+  // De-dupe by ctx so identical conversations don't burn extra tokens.
+  var unique = [];
+  var seen = {};
+  needed.forEach(function(c) {
+    var ctx = (c.ctx || '').trim();
+    if (!seen[ctx]) { seen[ctx] = true; unique.push(ctx); }
+  });
+  var prompt = 'Translate each Korean conversation topic into a short, descriptive English title (≤45 chars, Title Case, no surrounding quotes, no period). Capture what the conversation is ABOUT — e.g. "택배 박스 손상 신고" → "Damaged Package Complaint", not "Daily Conversation". Return ONLY a JSON array of strings in input order.\n\nTopics:\n'
+    + unique.map(function(t, i){ return (i+1) + '. ' + t; }).join('\n');
+  try {
+    var res = await callClaude({
+      feature: 'conv-ctx-en',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 700,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+    var ai = text.indexOf('['), bi = text.lastIndexOf(']');
+    if (ai >= 0 && bi > ai) text = text.slice(ai, bi + 1);
+    var arr = JSON.parse(text);
+    if (!Array.isArray(arr)) return;
+    unique.forEach(function(ctx, i) {
+      var t = (typeof arr[i] === 'string' ? arr[i] : '').trim();
+      if (t) cache[ctx] = t;
+    });
+    try { localStorage.setItem('kh_conv_ctx_en_v1', JSON.stringify(cache)); } catch(_) {}
+    // Replace visible titles in-place. Matches by data-kh-conv-id, then
+    // looks up the row's ctx → cached translation. Skips cards whose
+    // ctx didn't get translated this round.
+    rows.forEach(function(c) {
+      var ctx = (c.ctx || '').trim();
+      var t = cache[ctx];
+      if (!t || !c._id) return;
+      var card = document.querySelector('[data-kh-conv-id="' + c._id + '"] .hconv-title');
+      if (card) card.textContent = t;
+    });
+  } catch(_) {}
 }
 
 // Welcome banner for first-time users coming from onboarding
