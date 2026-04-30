@@ -24,7 +24,7 @@
 :root { --accent:#1a3a6b;--bright:#2255a4;--dark:#0d1b2e;--gray:#445566;--border:#d4dce8;--bg:#f0f2f7;--white:#fff;--shadow:0 4px 18px rgba(0,0,0,0.07); }
 
 .sr-hero {
-  background: linear-gradient(140deg,#0d1b2e 0%,#1a3a6b 65%,#2255a4 100%);
+  background: linear-gradient(140deg,#1a2c5a 0%,#28508f 60%,#3565b8 100%);
   padding: 36px 24px 28px; position:relative; overflow:hidden;
 }
 .sr-hero::after { content:'STUDY'; position:absolute; right:3%; top:50%; transform:translateY(-50%); font-family:'Noto Serif KR',serif; font-size:110px; font-weight:900; color:rgba(255,255,255,0.03); pointer-events:none; }
@@ -64,8 +64,8 @@
 
 /* ── MOBILE OVERRIDES (phone only) ───────────────────────── */
 @media(max-width:640px){
-  /* study room 전체 배경 유지 */
-  body { background: linear-gradient(140deg,#0d1b2e 0%,#1a3a6b 65%,#2255a4 100%) !important; min-height:100vh; }
+  /* study room 전체 배경 유지 (살짝 밝게) */
+  body { background: linear-gradient(140deg,#1a2c5a 0%,#28508f 60%,#3565b8 100%) !important; min-height:100vh; }
 
   /* 카드 간격 */
   .sr-grid { gap: 14px !important; padding: 0 12px !important; }
@@ -474,8 +474,8 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
    WRITING MODAL — dark theme override (Int/Adv unified design)
 ══════════════════════════════════════════════════════════ */
 .wmodal {
-  background: linear-gradient(160deg, #0d1f4a 0%, #152d6e 100%);
-  box-shadow: 0 40px 100px rgba(5,12,28,.65), 0 0 0 1px rgba(255,255,255,.08);
+  background: linear-gradient(160deg, #1a2e5e 0%, #243f82 100%);
+  box-shadow: 0 40px 100px rgba(5,12,28,.55), 0 0 0 1px rgba(255,255,255,.10);
 }
 .wmodal .wm-header {
   background: transparent;
@@ -1095,12 +1095,13 @@ body.kh-neon-on .ls-panel { background:rgba(9,18,33,.96) !important; color:#e4f9
    STUDY ROOM v2 — DARK LAYOUT REDESIGN
 ═══════════════════════════════════════════════════════════════ */
 
-/* Page wrapper — full dark background */
+/* Page wrapper — slightly lifted dark navy so the room reads less
+   "midnight" and more "evening." Same family, ~15% brighter. */
 .sr-page {
-  background: linear-gradient(180deg, #0b1626 0%, #0d1b2e 100%);
+  background: linear-gradient(180deg, #14253f 0%, #1a3057 100%);
   min-height: 100vh;
 }
-body { background: #0b1626 !important; }
+body { background: #14253f !important; }
 
 /* Content wrapper */
 .sr-wrap2 {
