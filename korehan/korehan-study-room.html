@@ -1681,26 +1681,34 @@ body { background: #0b1626 !important; }
 */
 @media (max-width: 768px) {
   .ls-mindmap.ls-mode-orb {
-    aspect-ratio: 1 / 1;
+    /* Slightly portrait so the top + bottom rows have room for
+       the satellite + name + coin chip without colliding with each
+       other vertically. The 80px satellites + 10px name + ~6px
+       chip = ~96px of stacked content per node — five of those
+       can't share a square container without overlapping. */
+    aspect-ratio: 0.92 / 1;
     max-width: none;
-    margin-left: -4px;
-    margin-right: -4px;
+    /* Pull the layout out to the panel's edge so the side
+       satellites have horizontal room. */
+    margin-left: -10px;
+    margin-right: -10px;
     overflow: visible;
-    /* Stronger central glow to anchor the satellite formation. */
   }
-  /* Satellites in a tight pentagon formation — closer than the
-     pentagon mind-map default so they read as orbiting one big
-     parent orb. */
+  /* Satellites positioned with extra breathing room on every axis
+     so a node's coin chip doesn't crash into the next node's name
+     (the user's screenshot showed Dictation's "+10 냥" landing on
+     Key Expr's label). Top/bottom rows pushed to the very edge
+     vertically, side nodes pushed to the horizontal edge. */
   .ls-mindmap.ls-mode-orb .ls-node[data-pos] {
     top: auto; left: auto; right: auto; bottom: auto;
     transform: none;
     animation: lsOrbBob 4.2s ease-in-out infinite;
   }
-  .ls-mindmap.ls-mode-orb #ls-card-topic       { top: 8%;  left: 50%; transform: translateX(-50%); animation-delay: 0s; }
-  .ls-mindmap.ls-mode-orb #ls-card-grammar     { top: 32%; right: 4%;                              animation-delay: -.7s; }
-  .ls-mindmap.ls-mode-orb #ls-card-picture     { bottom: 8%; right: 12%;                           animation-delay: -1.4s; }
-  .ls-mindmap.ls-mode-orb #ls-card-sentence    { bottom: 8%; left: 12%;                            animation-delay: -2.1s; }
-  .ls-mindmap.ls-mode-orb #ls-card-expressions { top: 32%; left: 4%;                               animation-delay: -2.8s; }
+  .ls-mindmap.ls-mode-orb #ls-card-topic       { top: 2%;  left: 50%; transform: translateX(-50%); animation-delay: 0s; }
+  .ls-mindmap.ls-mode-orb #ls-card-grammar     { top: 30%; right: 0%;                              animation-delay: -.7s; }
+  .ls-mindmap.ls-mode-orb #ls-card-picture     { bottom: 2%; right: 8%;                            animation-delay: -1.4s; }
+  .ls-mindmap.ls-mode-orb #ls-card-sentence    { bottom: 2%; left: 8%;                             animation-delay: -2.1s; }
+  .ls-mindmap.ls-mode-orb #ls-card-expressions { top: 30%; left: 0%;                               animation-delay: -2.8s; }
 
   /* Each satellite is a chunky tappable orb sphere with strong glow.
      80px (up from 60) so the satellites read as substantial planets
@@ -1728,8 +1736,14 @@ body { background: #0b1626 !important; }
     margin-top: 6px;
   }
   .ls-mindmap.ls-mode-orb .ls-node-coin {
+    /* Centre the chip on the top edge of the orb itself instead of
+       hanging off the corner — corner-positioned chips were sticking
+       sideways into the next satellite's name underneath it. */
     font-size: 9px;
     padding: 1px 5px;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
   }
   .ls-mindmap.ls-mode-orb .ls-node.ls-node-done .ls-node-circle {
     background: radial-gradient(circle at 30% 30%,
