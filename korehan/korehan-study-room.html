@@ -15443,6 +15443,19 @@ function openGrammarFocusForCurriculum() {
 
 async function _generateGrammarForCurriculumPattern(item) {
   var el = document.getElementById('gf-examples-content');
+  // Cache by pattern name — every user studying "은/는 vs 이/가" gets
+  // the same Claude lesson, so we save it once and serve from DB
+  // forever instead of re-billing for the same pattern on every open.
+  var cacheKey = 'gf-curr::' + (item.pattern || '');
+  if (cacheKey !== 'gf-curr::') {
+    try {
+      var dbHit = await _aiCacheGet(cacheKey);
+      if (dbHit && dbHit.patterns && dbHit.patterns.length) {
+        loadGFPatterns(dbHit.patterns);
+        return;
+      }
+    } catch(_) {}
+  }
   try {
     var res = await callClaude({
       feature: 'grammar-curriculum',
@@ -15471,6 +15484,7 @@ async function _generateGrammarForCurriculumPattern(item) {
     var parsed = JSON.parse(raw.slice(oi, ei + 1));
     if (parsed.patterns && parsed.patterns.length) {
       loadGFPatterns(parsed.patterns);
+      if (cacheKey !== 'gf-curr::') _aiCacheSet(cacheKey, { patterns: parsed.patterns });
     } else {
       if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
     }
@@ -15805,6 +15819,20 @@ async function generateGFPatterns() {
     return;
   }
 
+  // Cache the topic-based 3-pattern lesson too. The topic itself is
+  // shared across all users on a given day, so the first user's
+  // generation seeds the cache and everyone else hits DB. Stale-OK:
+  // if the topic gets re-generated for any reason, the cache key
+  // changes naturally because it's keyed off the topic string.
+  var cacheKey = 'gf-topic::' + topic.trim();
+  try {
+    var dbHit = await _aiCacheGet(cacheKey);
+    if (dbHit && dbHit.patterns && dbHit.patterns.length) {
+      loadGFPatterns(dbHit.patterns);
+      return;
+    }
+  } catch(_) {}
+
   // Growth Lab integration: include user's weak grammar points
   var weakHint = '';
   try {
@@ -15844,6 +15872,8 @@ async function generateGFPatterns() {
     var parsed = JSON.parse(raw.slice(oi, ei+1));
     if (parsed.patterns && parsed.patterns.length) {
       loadGFPatterns(parsed.patterns);
+      // Persist so the next user on the same daily topic hits DB.
+      _aiCacheSet(cacheKey, { patterns: parsed.patterns });
     } else {
       if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
     }
