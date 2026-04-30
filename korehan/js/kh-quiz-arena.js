@@ -4,6 +4,15 @@
    Depends on: kh-canvas-engine.js (KHCanvas.Gauge, Ring, ParticleSystem)
    ============================================================ */
 
+// Lucide-shaped inline SVGs for the result screen. Inlined because
+// the result body is built via innerHTML and we don't want to depend
+// on a post-paint hydrate pass to swap <i data-lucide> tags — by then
+// the user has already seen the emoji flash.
+var KH_QA_ICON_TROPHY = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>';
+var KH_QA_ICON_TARGET = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>';
+var KH_QA_ICON_BOOKOPEN = '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>';
+var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>';
+
 (function() {
   'use strict';
 
@@ -106,8 +115,16 @@
     var html = '';
 
     if (q.type === 'meaning') {
-      html = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">What does this mean?</div>'
-        + '<div style="font-family:\'Noto Serif KR\',serif;font-size:28px;font-weight:900;color:#fff;text-align:center;margin:16px 0">' + _esc(q.word_ko) + '</div>'
+      // Cloze-style prompts (fill the blank, grammar pattern, key
+      // expression) come in here too and are usually full sentences.
+      // Drop the prompt font-size when the text is sentence-length so
+      // it doesn't wrap to 4 lines.
+      var koLen = (q.word_ko || '').length;
+      var promptFs = koLen > 26 ? '17px' : koLen > 14 ? '20px' : '28px';
+      var ta = koLen > 14 ? 'left' : 'center';
+      var label = q.label || 'What does this mean?';
+      html = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">' + _esc(label) + '</div>'
+        + '<div style="font-family:\'Noto Serif KR\',serif;font-size:' + promptFs + ';font-weight:900;color:#fff;text-align:' + ta + ';margin:16px 0;line-height:1.5">' + _esc(q.word_ko) + '</div>'
         + (q.word_rom ? '<div style="font-size:13px;color:rgba(255,255,255,.45);text-align:center;margin-bottom:16px">' + _esc(q.word_rom) + '</div>' : '')
         + '<div style="display:flex;flex-direction:column;gap:8px" id="qa-choices">'
         + q.choices.map(function(c, i) {
@@ -142,7 +159,8 @@
           var tt = typedChoices[ti]; typedChoices[ti] = typedChoices[tj]; typedChoices[tj] = tt;
         }
       }
-      html = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Choose the Korean word</div>'
+      var typedLabel = q.label || 'Choose the Korean word';
+      html = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">' + _esc(typedLabel) + '</div>'
         + '<div style="font-size:22px;font-weight:800;color:#fff;text-align:center;margin:16px 0">' + _esc(q.word_en) + '</div>'
         + (q.word_rom ? '<div style="font-size:13px;color:rgba(255,255,255,.35);text-align:center;margin-bottom:16px">Hint: ' + _esc(q.word_rom) + '</div>' : '')
         + '<div style="display:flex;flex-direction:column;gap:8px" id="qa-choices">'
@@ -380,12 +398,13 @@
     var timerCanvas = document.getElementById('qa-timer-canvas');
     if (timerCanvas) timerCanvas.style.display = 'none';
 
+    var resultIcon = pct >= 80 ? KH_QA_ICON_TROPHY : pct >= 50 ? KH_QA_ICON_TARGET : KH_QA_ICON_BOOKOPEN;
     body.innerHTML =
       '<div style="text-align:center;padding:20px 0">'
-      + '<div style="font-size:48px;margin-bottom:12px">' + (pct >= 80 ? '🎉' : pct >= 50 ? '💪' : '📚') + '</div>'
+      + '<div style="margin-bottom:12px;line-height:0">' + resultIcon + '</div>'
       + '<div style="font-size:28px;font-weight:900;color:#fff;margin-bottom:4px">' + correct + ' / ' + total + '</div>'
       + '<div style="font-size:14px;color:rgba(255,255,255,.5);margin-bottom:8px">' + pct + '% correct</div>'
-      + (_maxCombo >= 3 ? '<div style="font-size:13px;color:#f97316;font-weight:700;margin-bottom:8px">🔥 Max combo: ' + _maxCombo + 'x</div>' : '')
+      + (_maxCombo >= 3 ? '<div style="font-size:13px;color:#f97316;font-weight:700;margin-bottom:8px">' + KH_QA_ICON_FLAME + 'Max combo: ' + _maxCombo + 'x</div>' : '')
       + '<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:16px">'
       + _scores.map(function(s, i) {
           return '<div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;'
