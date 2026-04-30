@@ -3331,10 +3331,6 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <!-- ═══ TAB: Help (mobile only — shows sidebar content) ═══ -->
 <div class="sr-tab-panel" id="sr-panel-help">
   <div style="max-width:600px;margin:0 auto;padding:16px">
-    <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden;margin-bottom:12px">
-      <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4);display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today's Phrase</span></div></div>
-      <div class="cb" id="phrase-box-help" style="padding:12px 14px"></div>
-    </div>
     <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
       <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
         <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="pin" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Must-know Vocab</span></div>
@@ -3352,15 +3348,6 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <div class="sr-sb-phd"><span class="sr-sb-ptitle">Grammar at a Glance</span></div>
       <div id="grammar-box-help"></div>
     </div>
-    <!-- Flashcards -->
-    <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
-      <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-        <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="layers" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Flashcards</span></div>
-      </div>
-      <div style="padding:10px 14px 14px">
-        <div class="mgrid" id="fc-grid-help"></div>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -3371,6 +3358,26 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <div style="font-size:20px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px"><i data-lucide="target" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i><span>Exercise</span></div>
       <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Interactive tools to practice Korean</div>
     </div>
+
+    <!-- Today's Phrase + Flashcards moved here from the Help tab —
+         these are practice material, not reference material. IDs
+         (`phrase-box-help`, `fc-grid-help`) preserved so the
+         existing renderers keep targeting the right containers. -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:20px">
+      <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden">
+        <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4);display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today's Phrase</span></div></div>
+        <div class="cb" id="phrase-box-help" style="padding:12px 14px"></div>
+      </div>
+      <div class="sr-sb-panel" style="padding:0;overflow:hidden">
+        <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
+          <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="layers" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Flashcards</span></div>
+        </div>
+        <div style="padding:10px 14px 14px">
+          <div class="mgrid" id="fc-grid-help"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="master-grid">
       <div class="master-card" style="padding:0" onclick="openAlphaModal()">
         <div class="mc-banner" style="height:160px"><img src="assets/file_000000004d1c72098736e9b8d1ef65eb.png" alt="Korean Alphabet" onerror="this.parentNode.style.background='linear-gradient(135deg,#0c4a6e,#0369a1)';this.style.display='none'"></div>
