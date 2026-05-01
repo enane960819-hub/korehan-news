@@ -2488,9 +2488,13 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
 .as-chunk.used    { opacity:.38; cursor:default; pointer-events:none; background:#f1f5f9; }
 /* Vocab match cards — no romanization, better visual */
 .as-match-item .asmko { font-size:14px; }
-/* Dictation modal — unified navy + mint design system */
-.dct-panel { width:100%; max-width:620px; background:#0d1b35; border-radius:18px; overflow:hidden; animation:wm-in .2s ease; max-height:88vh; display:flex; flex-direction:column; color:#fff; }
-.dct-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:linear-gradient(135deg,#0f2040,#152d5a); color:#fff; flex-shrink:0; border-bottom:1px solid rgba(255,255,255,.06); }
+/* Dictation modal — aligned with Phrase Munch's design language so
+   the two activities feel like siblings: same gradient panel, same
+   step-pip rhythm, same header padding. The mint accent stays
+   because dictation is "listening" and the green/mint TTS button is
+   the established affordance. */
+.dct-panel { width:100%; max-width:560px; background:linear-gradient(180deg,#0f1d3a 0%,#0a1428 100%); border-radius:22px; overflow:hidden; animation:wm-in .2s ease; max-height:90vh; display:flex; flex-direction:column; color:#fff; box-shadow:0 32px 80px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06); }
+.dct-header { display:flex; align-items:center; justify-content:space-between; padding:18px 22px 14px; background:transparent; color:#fff; flex-shrink:0; border-bottom:1px solid rgba(255,255,255,.06); }
 .dct-header div:first-child div:first-child { color:#fff !important; }
 .dct-step-pips { display:flex; gap:6px; padding:10px 20px; background:rgba(255,255,255,.03); border-bottom:1px solid rgba(255,255,255,.06); flex-shrink:0; }
 /* Phase 5 — mode switcher tabs */
@@ -6815,9 +6819,11 @@ function lsStart(type) {
 var _pm = {
   lessons: null,   // [{example, practice}, ...]
   idx: 0,          // current lesson index (0..N-1)
-  phase: 'learn',  // 'learn' or 'practice'
+  phase: 'vocab',  // 'vocab' | 'learn' | 'assemble' | 'practice'
   scores: [],      // per-lesson 1/0 (correct/wrong)
   selected: null,  // user's choice during practice phase
+  vocabRevealed: {},  // { lessonIdx: { partIdx: true } } — tap-to-reveal cards
+  asmState: null,     // { pool: [...], picked: [...], result: 'right'|'wrong'|null }
 };
 
 async function openPhraseMunch() {
@@ -6861,9 +6867,11 @@ async function openPhraseMunch() {
 
   _pm.lessons = lessons.slice(0, 3);
   _pm.idx = 0;
-  _pm.phase = 'learn';
+  _pm.phase = 'vocab';
   _pm.scores = [];
   _pm.selected = null;
+  _pm.vocabRevealed = {};
+  _pm.asmState = null;
   _pmRender();
 }
 
@@ -6929,8 +6937,84 @@ function _pmRender() {
     return '<span class="pm-pip" style="background:' + bg + '"></span>';
   }).join('');
 
-  if (_pm.phase === 'learn') _pmRenderLearn(body, lesson, pipsHtml);
-  else                       _pmRenderPractice(body, lesson, pipsHtml);
+  if      (_pm.phase === 'vocab')    _pmRenderVocab(body, lesson, pipsHtml);
+  else if (_pm.phase === 'learn')    _pmRenderLearn(body, lesson, pipsHtml);
+  else if (_pm.phase === 'assemble') _pmRenderAssemble(body, lesson, pipsHtml);
+  else                               _pmRenderPractice(body, lesson, pipsHtml);
+}
+
+// Phase 1 — Vocab preview. The user complained that Phrase Munch
+// dropped them straight into a full sentence breakdown with no warm-up.
+// This phase pulls the 2-3 most "content-heavy" parts (skip pure
+// particles/punctuation, prefer ≥2-char chunks) and shows them as
+// tap-to-reveal cards. Goal: meet the building blocks BEFORE seeing
+// the whole sentence.
+function _pmPickVocabParts(parts) {
+  if (!Array.isArray(parts)) return [];
+  var PARTICLE_ONLY = /^[은는이가을를의에서와과도만으로부터까지에게한테로써]+[.,!?]?$/;
+  var picks = [];
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i];
+    if (!p || !p.ko) continue;
+    var ko = String(p.ko).trim();
+    if (!ko || ko.length < 2) continue;
+    if (PARTICLE_ONLY.test(ko)) continue;
+    picks.push({ ko: ko, en: p.en || '', srcIdx: i });
+  }
+  // Cap at 3 — more is too much before the sentence breakdown.
+  return picks.slice(0, 3);
+}
+
+function _pmRenderVocab(body, lesson, pipsHtml) {
+  var ex = lesson.example || {};
+  var vocab = _pmPickVocabParts(ex.parts);
+  // Fallback: if the breakdown didn't yield usable vocab cards (e.g.
+  // a very short sentence) skip straight to the breakdown so the
+  // learner isn't stuck on an empty preview screen.
+  if (!vocab.length) {
+    _pm.phase = 'learn';
+    _pmRender();
+    return;
+  }
+  var revealed = _pm.vocabRevealed[_pm.idx] || {};
+  var allRevealed = vocab.every(function(_, vi) { return revealed[vi]; });
+  var cardsHtml = vocab.map(function(v, vi) {
+    var open = !!revealed[vi];
+    return '<button type="button" class="pm-vocab-card' + (open ? ' pm-vocab-open' : '') + '"'
+      + ' onclick="_pmRevealVocab(' + vi + ')"'
+      + ' style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 16px;border-radius:14px;'
+      + 'border:1px solid ' + (open ? 'rgba(167,139,250,.45)' : 'rgba(255,255,255,.12)') + ';'
+      + 'background:' + (open ? 'rgba(167,139,250,.14)' : 'rgba(255,255,255,.04)') + ';'
+      + 'color:#fff;cursor:pointer;font-family:inherit;text-align:left;width:100%;transition:all .2s">'
+      + '<span style="font-family:\'Noto Serif KR\',serif;font-size:20px;font-weight:900;color:#fff">' + _esc(v.ko) + '</span>'
+      + (open
+          ? '<span style="font-size:13px;color:#e0d7ff;line-height:1.5">' + _esc(v.en) + '</span>'
+          : '<span style="font-size:11px;color:rgba(255,255,255,.45);font-weight:600;letter-spacing:.04em">TAP TO REVEAL MEANING</span>')
+      + '</button>';
+  }).join('');
+  body.innerHTML =
+      '<div class="pm-pips">' + pipsHtml + '</div>'
+    + '<div class="pm-step-label">VOCAB · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
+    + '<div class="pm-prompt-hint">Meet today\'s building blocks. Tap each card to reveal what it means.</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">' + cardsHtml + '</div>'
+    + '<div class="pm-actions">'
+    +   '<button class="pm-btn pm-btn-primary" '
+    +     (allRevealed ? '' : 'disabled style="opacity:.4;cursor:not-allowed"')
+    +     ' onclick="_pmAdvanceFromVocab()">'
+    +     (allRevealed ? 'See the full sentence →' : 'Reveal all cards first')
+    +   '</button>'
+    + '</div>';
+}
+
+function _pmRevealVocab(vi) {
+  if (!_pm.vocabRevealed[_pm.idx]) _pm.vocabRevealed[_pm.idx] = {};
+  _pm.vocabRevealed[_pm.idx][vi] = true;
+  _pmRender();
+}
+
+function _pmAdvanceFromVocab() {
+  _pm.phase = 'learn';
+  _pmRender();
 }
 
 function _pmRenderLearn(body, lesson, pipsHtml) {
@@ -7028,6 +7112,113 @@ function _pmRenderResult() {
 }
 
 function _pmAdvanceToPractice() {
+  // Insert the Assemble phase between Learn and Practice so the
+  // learner physically rebuilds the example sentence before being
+  // asked to translate a parallel one. Forces active recall instead
+  // of "I read it once → I'll guess the next translation."
+  _pm.phase = 'assemble';
+  _pm.selected = null;
+  _pm.asmState = null;
+  _pmRender();
+}
+
+function _pmRenderAssemble(body, lesson, pipsHtml) {
+  var ex = lesson.example || {};
+  var ko = String(ex.ko || '').trim();
+  // Fallback: tap-to-arrange needs ≥3 tokens. Shorter sentences
+  // would just be a 1-tap puzzle, so skip to practice.
+  var tokens = ko.replace(/[.!?。！？]/g, '').split(/\s+/).filter(Boolean);
+  if (tokens.length < 3) {
+    _pm.phase = 'practice';
+    _pmRender();
+    return;
+  }
+  if (!_pm.asmState) {
+    var shuffled = tokens.slice();
+    for (var i = shuffled.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = t;
+    }
+    // Ensure the shuffle isn't accidentally identical to the original.
+    if (shuffled.every(function(w, i){ return w === tokens[i]; })) {
+      var s0 = shuffled[0]; shuffled[0] = shuffled[shuffled.length - 1]; shuffled[shuffled.length - 1] = s0;
+    }
+    _pm.asmState = { target: tokens, pool: shuffled, picked: [], result: null };
+  }
+  var st = _pm.asmState;
+  var poolHtml = st.pool.map(function(w, pi) {
+    var usedCount = st.picked.filter(function(x){ return x === w; }).length;
+    var totalCount = st.pool.filter(function(x){ return x === w; }).length;
+    var isUsed = usedCount >= totalCount;
+    return '<button type="button" ' + (isUsed ? 'disabled' : '') + ' onclick="_pmAsmPick(' + pi + ')" '
+      + 'style="padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.18);'
+      + 'background:rgba(255,255,255,.06);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;'
+      + 'cursor:' + (isUsed ? 'not-allowed' : 'pointer') + ';opacity:' + (isUsed ? '.25' : '1') + ';transition:all .15s">'
+      + _esc(w) + '</button>';
+  }).join('');
+  var pickedHtml = st.picked.length
+    ? st.picked.map(function(w, si) {
+        return '<button type="button" onclick="_pmAsmRemove(' + si + ')" '
+          + 'style="padding:10px 14px;border-radius:12px;border:none;'
+          + 'background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;'
+          + 'cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.3)">' + _esc(w) + ' ×</button>';
+      }).join('')
+    : '<span style="font-size:12px;color:rgba(255,255,255,.45)">단어를 선택해서 문장을 만드세요</span>';
+  var allPicked = st.picked.length === st.target.length;
+  var resultLine = '';
+  if (st.result === 'right') {
+    resultLine = '<div class="pm-feedback pm-feedback-win" style="margin-top:14px"><span>완벽! 같은 패턴으로 다음 문제를 풀어볼까요?</span></div>';
+  } else if (st.result === 'wrong') {
+    resultLine = '<div class="pm-feedback pm-feedback-lose" style="margin-top:14px"><span>아쉬워요. 정답: <strong>' + _esc(ko) + '</strong></span></div>';
+  }
+  body.innerHTML =
+      '<div class="pm-pips">' + pipsHtml + '</div>'
+    + '<div class="pm-step-label">ASSEMBLE · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
+    + '<div class="pm-prompt-hint">Rebuild the example sentence — tap the words in order.</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.65);font-style:italic;margin-bottom:14px;line-height:1.5">' + _esc(ex.en || '') + '</div>'
+    + '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Your sentence</div>'
+    + '<div style="min-height:54px;border:2px dashed rgba(167,139,250,.35);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:rgba(167,139,250,.05)">' + pickedHtml + '</div></div>'
+    + '<div><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Word bank</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">' + poolHtml + '</div></div>'
+    + resultLine
+    + '<div class="pm-actions" style="margin-top:18px;display:flex;gap:10px;justify-content:flex-end">'
+    +   (st.result === null
+          ? '<button type="button" onclick="_pmAsmClear()" style="padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.7);font-weight:700;cursor:pointer;font-family:inherit">다시</button>'
+          + '<button class="pm-btn pm-btn-primary" ' + (allPicked ? '' : 'disabled style="opacity:.4;cursor:not-allowed"') + ' onclick="_pmAsmCheck()">확인 ✓</button>'
+          : '<button class="pm-btn pm-btn-primary" onclick="_pmAdvanceToTranslate()">Translate a new one →</button>')
+    + '</div>';
+}
+
+function _pmAsmPick(pi) {
+  if (!_pm.asmState || _pm.asmState.result !== null) return;
+  var st = _pm.asmState;
+  var w = st.pool[pi];
+  var used = st.picked.filter(function(x){ return x === w; }).length;
+  var total = st.pool.filter(function(x){ return x === w; }).length;
+  if (used >= total) return;
+  st.picked.push(w);
+  _pmRender();
+}
+function _pmAsmRemove(si) {
+  if (!_pm.asmState || _pm.asmState.result !== null) return;
+  _pm.asmState.picked.splice(si, 1);
+  _pmRender();
+}
+function _pmAsmClear() {
+  if (!_pm.asmState || _pm.asmState.result !== null) return;
+  _pm.asmState.picked = [];
+  _pmRender();
+}
+function _pmAsmCheck() {
+  if (!_pm.asmState) return;
+  var st = _pm.asmState;
+  var ok = st.picked.length === st.target.length
+    && st.picked.every(function(w, i){ return w === st.target[i]; });
+  st.result = ok ? 'right' : 'wrong';
+  _pmRender();
+}
+
+function _pmAdvanceToTranslate() {
   _pm.phase = 'practice';
   _pm.selected = null;
   _pmRender();
@@ -7044,8 +7235,9 @@ function _pmPickChoice(choice) {
 
 function _pmAdvanceLesson() {
   _pm.idx += 1;
-  _pm.phase = 'learn';
+  _pm.phase = 'vocab';
   _pm.selected = null;
+  _pm.asmState = null;
   _pmRender();
 }
 
@@ -17405,6 +17597,11 @@ function openDictationModal() {
   _dctLpIdx = 0; _dctLpState = null; _dctLpScore = 0;
   _dctArticleMode = false; _dctArticleSentences = [];
   _dctListenIdx = 0;
+  // Force a fresh shuffle of the master pool. Without this the user
+  // sees the exact same dictation deck every visit; clearing the
+  // memo means each open re-pulls from currently-loaded daily
+  // content (helpers/grammar can shift across days).
+  _dctMasterPool = null;
   _dctMode = 'topic';
   _dctSwitchMode('topic');
 }
@@ -17484,7 +17681,12 @@ function _dctRenderListen() {
     }
   }
 
-  var sents = _dctArticleMode ? _dctArticleSentences : _dailyDictationSentences;
+  // Step 1 (listen) — pull its own slice so the same sentences don't
+  // bleed into steps 2/3/4. Falls back to raw _dailyDictationSentences
+  // only if the master pool is empty (e.g. content not loaded yet) so
+  // the AI fetch path below still has something to compare against.
+  var sents = _dctSliceForStep(1);
+  if (!sents.length && !_dctArticleMode) sents = _dailyDictationSentences || [];
   if (!sents || !sents.length) {
     var topicText = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '';
     if (topicText) {
@@ -17576,7 +17778,8 @@ function _dctRenderListen() {
 }
 
 function _dctListenNext() {
-  var sents = _dctArticleMode ? _dctArticleSentences : _dailyDictationSentences;
+  var sents = _dctSliceForStep(1);
+  if (!sents.length && !_dctArticleMode) sents = _dailyDictationSentences || [];
   if (!sents || !sents.length) return;
   if (_dctListenIdx < sents.length - 1) { _dctListenIdx++; _dctRender(); }
 }
@@ -17667,7 +17870,11 @@ function startArticleDictation() {
   _dctRender();
 }
 function _dctRenderArrange() {
-  var sents = _dctArticleMode ? _dctArticleSentences : _dailyDictationSentences;
+  // Step 2 (arrange) — its own master-pool slice so we're not asking
+  // the learner to rebuild the same 3 sentences they just heard in
+  // step 1.
+  var sents = _dctSliceForStep(2);
+  if (!sents.length && !_dctArticleMode) sents = _dailyDictationSentences || [];
   var body = document.getElementById('dct-body');
   var foot = document.getElementById('dct-foot');
   if (!body || !foot || !sents || !sents.length) return;
@@ -17705,13 +17912,18 @@ function _dctRenderArrange() {
     ? wo.selected.map(function(w,si){return '<button onclick="dctWORemove('+si+')" style="'+selChip+'">'+escapeHTML(w)+' ×</button>';}).join('')
     : '<span style="font-size:12px;color:rgba(255,255,255,.45)">단어를 선택해서 문장을 만드세요</span>';
   var allSel = wo.selected.length === wo.original.length;
-  body.innerHTML = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">문장 '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
-    + '<div style="background:#f0f7ff;border:1px solid rgba(20,203,176,.3);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#1e3a5f;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+BM_ICON_BULB+'</span><span>'+escapeHTML(s.en||'')+'</span></div>'
-    + '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:8px">내 답</div>'
-    + '<div id="dct-answer-zone" style="min-height:48px;border:2px dashed rgba(20,203,176,.3);border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#f8fbff;">'+ansHTML+'</div></div>'
-    + '<div><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:8px">단어 목록</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'+poolHTML+'</div></div>'
-    + '<div id="dct-wo-msg" style="margin-top:12px;font-size:13px;font-weight:700"></div>';
+  body.innerHTML = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">문장 '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
+    // English hint card — replace the cheap light-blue/dark-text panel
+    // with a mint-accented dark surface so it sits inside the dark
+    // dictation modal instead of fighting it.
+    + '<div style="background:rgba(20,203,176,.08);border:1px solid rgba(20,203,176,.25);border-radius:12px;padding:11px 14px;margin-bottom:18px;font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:8px;line-height:1.5"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24;flex-shrink:0">'+BM_ICON_BULB+'</span><span>'+escapeHTML(s.en||'')+'</span></div>'
+    + '<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">내 답</div>'
+    // Answer zone — dark transparent so chips read clearly against it
+    // (was a near-white panel that broke the dark theme).
+    + '<div id="dct-answer-zone" style="min-height:54px;border:2px dashed rgba(20,203,176,.35);border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:rgba(20,203,176,.05)">'+ansHTML+'</div></div>'
+    + '<div><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">단어 목록</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">'+poolHTML+'</div></div>'
+    + '<div id="dct-wo-msg" style="margin-top:14px;font-size:13px;font-weight:700"></div>';
   foot.innerHTML = '<button class="btn" onclick="dctWOClear()" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시</span></button>'
     + '<button class="btn btn-g" '+(allSel?'':'disabled')+' onclick="dctWOCheck()">확인 ✓</button>';
 }
@@ -17750,13 +17962,82 @@ function dctNext() {
 var _dctFbIdx = 0, _dctFbScore = 0, _dctFbState = null;
 var _dctLpIdx = 0, _dctLpScore = 0, _dctLpState = null;
 
-function _dctPool() {
+// Master pool memo — built once per dictation session so all four
+// steps draw from the same shuffled deck without overlap. Reset by
+// openDictationModal() so re-opening the modal in a new session
+// rebuilds with whatever fresh daily content is loaded.
+var _dctMasterPool = null;
+
+function _dctBuildMasterPool() {
   if (_dctArticleMode) return _dctArticleSentences || [];
-  var questions = _dailyDictationQuestions || [];
-  var sentences = _dailyDictationSentences || [];
-  return questions.length >= 3
-    ? questions.map(function(q){ return { ko: q.question_ko || q.ko || '', en: q.hint_en || q.en || '' }; })
-    : (sentences || []);
+  var seen = {};                // dedupe by ko text
+  var out  = [];
+  function add(ko, en) {
+    if (!ko) return;
+    var k = String(ko).trim();
+    if (!k || seen[k]) return;
+    seen[k] = 1;
+    out.push({ ko: k, en: String(en || '').trim() });
+  }
+  // Sources, in priority order. Front of the pool gets used first
+  // (Step 1 listen), so put the most "listenable" content first.
+  (_dailyDictationSentences || []).forEach(function(s){ add(s.ko, s.en); });
+  // Helper sentences — natural conversational bridges, perfect for
+  // listening + word arrangement.
+  if (_aiContent && Array.isArray(_aiContent.helpers)) {
+    _aiContent.helpers.forEach(function(h){ add(h.ko, h.en); });
+  }
+  // Grammar example sentences — used for fill-in-the-blank and
+  // listen-pick because they're pattern-rich.
+  if (_aiContent && Array.isArray(_aiContent.grammar)) {
+    _aiContent.grammar.forEach(function(g){ add(g.example_ko, g.example_en); });
+  }
+  // Topic writing sentences (advanced levels) — bonus variety.
+  if (_aiContent && Array.isArray(_aiContent.topic_writing_sentences)) {
+    _aiContent.topic_writing_sentences.forEach(function(t){ add(t.ko, t.en); });
+  }
+  // Daily dictation questions — convert to {ko,en} shape.
+  (_dailyDictationQuestions || []).forEach(function(q){
+    add(q.question_ko || q.ko, q.hint_en || q.en);
+  });
+  return out;
+}
+
+function _dctEnsureMasterPool() {
+  if (_dctArticleMode) return _dctArticleSentences || [];
+  if (!_dctMasterPool || !_dctMasterPool.length) {
+    _dctMasterPool = _dctBuildMasterPool();
+  }
+  return _dctMasterPool;
+}
+
+// Per-step slice. Each step gets its own distinct window into the
+// master pool so the learner doesn't see the same sentence reused
+// across listen → arrange → fill → pick.
+function _dctSliceForStep(step) {
+  if (_dctArticleMode) return _dctArticleSentences || [];
+  var master = _dctEnsureMasterPool();
+  if (!master.length) return [];
+  var perStep = 3;
+  var start = (Math.max(1, step) - 1) * perStep;
+  // If the master pool is smaller than 4×3=12, fall back to wrap-around
+  // slicing so every step still gets `perStep` items, but offset so
+  // they land on different sentences when possible.
+  if (start + perStep > master.length) {
+    var slice = [];
+    for (var i = 0; i < perStep; i++) {
+      slice.push(master[(start + i) % master.length]);
+    }
+    return slice;
+  }
+  return master.slice(start, start + perStep);
+}
+
+function _dctPool() {
+  // Backwards-compat shim: fill-blank and listen-pick already call
+  // this without args. Resolve the current step from _dctStep so they
+  // get the right slice automatically.
+  return _dctSliceForStep(_dctStep || 1);
 }
 
 function _dctEmptyState(body, foot) {
