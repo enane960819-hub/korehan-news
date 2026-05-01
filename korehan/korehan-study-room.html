@@ -24,7 +24,7 @@
 :root { --accent:#1a3a6b;--bright:#2255a4;--dark:#0d1b2e;--gray:#445566;--border:#d4dce8;--bg:#f0f2f7;--white:#fff;--shadow:0 4px 18px rgba(0,0,0,0.07); }
 
 .sr-hero {
-  background: linear-gradient(140deg,#0d1b2e 0%,#1a3a6b 65%,#2255a4 100%);
+  background: linear-gradient(140deg,#1a2c5a 0%,#28508f 60%,#3565b8 100%);
   padding: 36px 24px 28px; position:relative; overflow:hidden;
 }
 .sr-hero::after { content:'STUDY'; position:absolute; right:3%; top:50%; transform:translateY(-50%); font-family:'Noto Serif KR',serif; font-size:110px; font-weight:900; color:rgba(255,255,255,0.03); pointer-events:none; }
@@ -64,8 +64,8 @@
 
 /* ── MOBILE OVERRIDES (phone only) ───────────────────────── */
 @media(max-width:640px){
-  /* study room 전체 배경 유지 */
-  body { background: linear-gradient(140deg,#0d1b2e 0%,#1a3a6b 65%,#2255a4 100%) !important; min-height:100vh; }
+  /* study room 전체 배경 유지 (살짝 밝게) */
+  body { background: linear-gradient(140deg,#1a2c5a 0%,#28508f 60%,#3565b8 100%) !important; min-height:100vh; }
 
   /* 카드 간격 */
   .sr-grid { gap: 14px !important; padding: 0 12px !important; }
@@ -166,6 +166,26 @@
 
   /* 데스크탑 mode toggle 숨김 */
   .wmodal .wm-mode-toggle { display: none !important; }
+
+  /* Mobile overlay panels are forced to white background, but the
+     dark-theme text colors above paint everything white-on-white →
+     "백지" symptom. Override colors to dark-on-white inside the
+     overlay so the panels are actually readable. */
+  .wmodal .wm-left.mob-on .plabel,
+  .wmodal .wm-right.mob-on .plabel { color: #475569 !important; font-size: 11px !important; }
+  .wmodal .wm-left.mob-on .mgrname,
+  .wmodal .wm-right.mob-on .mhko    { color: #0b1626 !important; font-size: 14px !important; }
+  .wmodal .wm-left.mob-on .mgrexp,
+  .wmodal .wm-right.mob-on .mhen    { color: #475569 !important; font-size: 12px !important; }
+  .wmodal .wm-left.mob-on .mgrex   { background: #f1f5f9 !important; }
+  .wmodal .wm-left.mob-on .mgrko   { color: #0d6e5a !important; }
+  .wmodal .wm-left.mob-on .mgr-en  { color: #64748b !important; }
+  .wmodal .wm-left.mob-on .mgrb    { background: #fff !important; border: 1px solid #e2e8f0 !important; }
+  .wmodal .wm-left.mob-on .chip    { background: #f1f5f9 !important; border-color: #cbd5e1 !important; color: #0b1626 !important; }
+  .wmodal .wm-left.mob-on .chip.gc { background: rgba(245,158,11,.14) !important; border-color: rgba(245,158,11,.45) !important; color: #b45309 !important; }
+  .wmodal .wm-right.mob-on .mhbtn  { color: #0d6e5a !important; }
+  .wmodal .wm-right.mob-on .mhrow  { border-bottom-color: #e2e8f0 !important; }
+  .wmodal .wm-right.mob-on .mh-cloze-blank { background: #fef3c7 !important; color: #92400e !important; }
 }
 
 /* card */
@@ -454,8 +474,8 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
    WRITING MODAL — dark theme override (Int/Adv unified design)
 ══════════════════════════════════════════════════════════ */
 .wmodal {
-  background: linear-gradient(160deg, #0d1f4a 0%, #152d6e 100%);
-  box-shadow: 0 40px 100px rgba(5,12,28,.65), 0 0 0 1px rgba(255,255,255,.08);
+  background: linear-gradient(160deg, #1a2e5e 0%, #243f82 100%);
+  box-shadow: 0 40px 100px rgba(5,12,28,.55), 0 0 0 1px rgba(255,255,255,.10);
 }
 .wmodal .wm-header {
   background: transparent;
@@ -547,9 +567,18 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 
 /* Helper sentences in right panel */
 .wmodal .mhrow { border-bottom-color: rgba(255,255,255,.08); }
-.wmodal .mhko  { color: #fff; }
-.wmodal .mhen  { color: rgba(255,255,255,.5); }
-.wmodal .mhbtn { color: #14cbb0; }
+.wmodal .mhko  { color: #fff; font-size: 14px; }
+.wmodal .mhen  { color: rgba(255,255,255,.62); font-size: 12px; }
+.wmodal .mhbtn { color: #14cbb0; font-size: 12px; }
+/* Density pass: bigger panel labels and helper rows so the
+   Express Practice screen is readable without leaning in. The
+   learner mostly reads .plabel / .mhko / .mhen, so those are the
+   bumps that matter. */
+.wmodal .plabel  { font-size: 11px; color: rgba(255,255,255,.6); }
+.wmodal .mgrname { font-size: 14px; }
+.wmodal .mgrexp  { font-size: 12px; color: rgba(255,255,255,.62); line-height: 1.55; }
+.wmodal .mgrko   { font-size: 13px; }
+.wmodal .mgr-en  { font-size: 12px; color: rgba(255,255,255,.6); }
 
 /* AI loading state inside modal */
 .wmodal .ai-loading { color: rgba(255,255,255,.55); }
@@ -1066,12 +1095,13 @@ body.kh-neon-on .ls-panel { background:rgba(9,18,33,.96) !important; color:#e4f9
    STUDY ROOM v2 — DARK LAYOUT REDESIGN
 ═══════════════════════════════════════════════════════════════ */
 
-/* Page wrapper — full dark background */
+/* Page wrapper — slightly lifted dark navy so the room reads less
+   "midnight" and more "evening." Same family, ~15% brighter. */
 .sr-page {
-  background: linear-gradient(180deg, #0b1626 0%, #0d1b2e 100%);
+  background: linear-gradient(180deg, #14253f 0%, #1a3057 100%);
   min-height: 100vh;
 }
-body { background: #0b1626 !important; }
+body { background: #14253f !important; }
 
 /* Content wrapper */
 .sr-wrap2 {
@@ -5993,17 +6023,39 @@ function renderModalContent() {
   var gcEl = document.getElementById('wm-grammar-chips');
   if (gcEl) gcEl.innerHTML = (_aiContent.grammar || []).map(function(g){ return '<div class="chip gc">' + g.pattern + '</div>'; }).join('');
 
-  // helpers in modal
+  // helpers in modal — rendered as fill-in-the-blank cloze prompts
+  // instead of full copy-paste sentences. The learner sees a blanked
+  // template, has to think of the missing word themselves, and can
+  // tap "정답 보기" to reveal. The "+ insert" button inserts the
+  // BLANKED template into the writing area so they finish it on
+  // their own — no more lazy copy/paste of the whole sentence.
   var whEl = document.getElementById('wm-helpers');
   if (whEl) {
-    whEl.innerHTML = (_aiContent.helpers || []).map(function(h) {
-      var safeKo = h.ko.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-      return '<div class="mhrow">'
+    whEl.innerHTML = (_aiContent.helpers || []).map(function(h, idx) {
+      var safeKo  = h.ko.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      var cloze   = _buildHelperCloze(h.ko);          // {display, template, answer} or null
+      var hasBlank = !!(cloze && cloze.answer);
+      var clozeKo = hasBlank ? cloze.display : h.ko;
+      var dataTpl = hasBlank
+        ? cloze.template.replace(/"/g,'&quot;')
+        : h.ko.replace(/"/g,'&quot;');
+      return '<div class="mhrow" data-helper-idx="' + idx + '">'
         + '<div style="display:flex;align-items:flex-start;gap:6px">'
-        + '<div style="flex:1"><div class="mhko">' + h.ko + '</div><div class="mhen">' + h.en + '</div></div>'
+        + '<div style="flex:1">'
+        +   '<div class="mhko" data-helper-cloze="' + (hasBlank ? '1' : '0') + '">' + clozeKo + '</div>'
+        +   (hasBlank
+              ? '<div class="mhen" style="margin-bottom:4px">' + h.en + '</div>'
+                + '<div class="mh-answer" data-answer="' + h.ko.replace(/"/g,'&quot;') + '" style="display:none;font-size:12px;color:#0d6e5a;font-weight:600;margin-bottom:2px"></div>'
+              : '<div class="mhen">' + h.en + '</div>')
+        + '</div>'
         + '<button onclick="speakKorean(\'' + safeKo + '\')" title="Listen" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:4px 7px;cursor:pointer;flex-shrink:0;color:#64748b;display:inline-flex;align-items:center" aria-label="Read aloud"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button>'
         + '</div>'
-        + '<button class="mhbtn" data-ko="' + h.ko.replace(/"/g,'&quot;') + '" onclick="copyHelper(this)">+ copy to writing</button>'
+        + (hasBlank
+            ? '<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">'
+              + '<button class="mhbtn" onclick="revealHelperAnswer(this)" type="button">👁 정답 보기</button>'
+              + '<button class="mhbtn" data-ko="' + dataTpl + '" onclick="copyHelper(this)" type="button">+ 빈칸 템플릿 넣기</button>'
+              + '</div>'
+            : '<button class="mhbtn" data-ko="' + dataTpl + '" onclick="copyHelper(this)">+ copy to writing</button>')
         + '</div>';
     }).join('');
   }
@@ -10975,7 +11027,82 @@ function copyHelper(btn) {
   if (!ta) return;
   ta.value += (ta.value ? '\n' : '') + ko;
   document.getElementById('wc').textContent = ta.value.length + ' chars';
-  showToast('Copied!');
+  // Heuristic: a blank template ("___") was inserted, not a full
+  // sentence — nudge the learner to fill it in themselves.
+  showToast(/_{2,}/.test(ko) ? '빈칸 템플릿을 넣었어요. 직접 채워보세요!' : 'Copied!');
+}
+
+// Pick a "good" eojeol to hide for fill-in-the-blank helpers. Skips
+// pure particles and punctuation-only tokens, prefers a meaningful
+// content word (≥2 syllables) somewhere in the middle. Returns
+// { display, template, answer } where:
+//   - display  = HTML to show in the panel (blank rendered as a chip)
+//   - template = plain-text version with "___" — safe to drop into
+//                the textarea so the learner finishes the sentence
+//   - answer   = the original word, for the reveal button
+// Returns null if the sentence is too short / no suitable target.
+function _buildHelperCloze(ko) {
+  if (!ko || typeof ko !== 'string') return null;
+  var tokens = ko.trim().split(/\s+/);
+  if (tokens.length < 2) return null;
+  var PARTICLE_ONLY = /^[은는이가을를의에서와과도만으로부터까지에게한테로써]+[.,!?]?$/;
+  var candidates = [];
+  for (var i = 0; i < tokens.length; i++) {
+    var t = tokens[i];
+    var coreLen = t.replace(/[.,!?]+$/,'').length;
+    if (coreLen < 2) continue;
+    if (PARTICLE_ONLY.test(t)) continue;
+    candidates.push({ t: t, i: i });
+  }
+  if (!candidates.length) return null;
+  // Prefer a middle word over edges; tie-break by longer.
+  candidates.sort(function(a, b) {
+    var lastIdx = tokens.length - 1;
+    var aMid = (a.i > 0 && a.i < lastIdx) ? 1 : 0;
+    var bMid = (b.i > 0 && b.i < lastIdx) ? 1 : 0;
+    if (aMid !== bMid) return bMid - aMid;
+    return b.t.length - a.t.length;
+  });
+  var pick = candidates[0];
+  var word = pick.t;
+  var trail = (word.match(/[.,!?]+$/) || [''])[0];
+  var displayTokens = tokens.slice();
+  var templateTokens = tokens.slice();
+  displayTokens[pick.i]  = '<span class="mh-cloze-blank" style="display:inline-block;min-width:46px;text-align:center;background:rgba(20,203,176,.14);border:1px dashed rgba(20,203,176,.55);border-radius:6px;padding:1px 8px;color:#14cbb0;font-weight:700">___</span>' + trail;
+  templateTokens[pick.i] = '___' + trail;
+  return {
+    display:  displayTokens.join(' '),
+    template: templateTokens.join(' '),
+    answer:   word,
+  };
+}
+
+function revealHelperAnswer(btn) {
+  var row = btn.closest('.mhrow');
+  if (!row) return;
+  var ans = row.querySelector('.mh-answer');
+  var ko  = row.querySelector('.mhko');
+  if (!ans) return;
+  if (ans.style.display === 'none') {
+    var word = ans.getAttribute('data-answer') || '';
+    // Show the full original sentence as the answer line so the
+    // learner sees the missing word in context.
+    ans.textContent = '✓ ' + word;
+    ans.style.display = 'block';
+    // Reveal in the cloze line too for instant feedback.
+    if (ko) {
+      var blank = ko.querySelector('.mh-cloze-blank');
+      if (blank) {
+        blank.outerHTML = '<span style="color:#0d6e5a;font-weight:700">' + (word || '___') + '</span>';
+      }
+    }
+    btn.textContent = '🙈 다시 가리기';
+  } else {
+    ans.style.display = 'none';
+    btn.textContent = '👁 정답 보기';
+    // Re-render to put the blank back; cheaper than diffing.
+    if (typeof renderModalContent === 'function') renderModalContent();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
