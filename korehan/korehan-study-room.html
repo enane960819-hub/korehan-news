@@ -7342,9 +7342,11 @@ async function openKeyExpressionsModal() {
   if (_todayTopic) topicLabel.textContent = (_todayTopic.topic_ko || _todayTopic.topic_en || 'Key expressions for today\'s topic');
   var list = document.getElementById('ke-expressions-list');
 
-  // Scope cache by topic + level + date so stale data is never reused
-  var topicKey = ((_todayTopic && (_todayTopic.id || _todayTopic.topic_ko)) || 'default')
-    + '_' + (_currentLevel || 'Beginner') + '_' + kstDateKey();
+  // topicKoKey is the stable text identifier (topic_ko is consistent across days).
+  // topicKey includes date for in-memory / localStorage invalidation only.
+  var topicKoKey = (_todayTopic && _todayTopic.topic_ko) || 'default';
+  var levelKey   = _currentLevel || 'Beginner';
+  var topicKey   = topicKoKey + '_' + levelKey + '_' + kstDateKey();
   if (_keCacheKey !== topicKey) { _keCache = null; _keCacheKey = topicKey; }
 
   // 1) In-memory cache (same session, same topic/level/date)
@@ -7366,10 +7368,10 @@ async function openKeyExpressionsModal() {
     }
   } catch(e) {}
 
-  // 3) Cross-user DB cache. Same topic + level + date = same lesson
-  //    set for every user, so the FIRST learner to open the panel
-  //    pays the AI bill and everyone after them gets it free.
-  var dbCacheKey = 'kex::' + topicKey;
+  // 3) Cross-user DB cache. Key is topic_ko + level only — no date —
+  //    so any user opening the same topic on any day gets it for free
+  //    after the first generation. Admin pre-generates this on save.
+  var dbCacheKey = 'kex::' + topicKoKey + '_' + levelKey;
   try {
     if (typeof _aiCacheGet === 'function') {
       var hit = await _aiCacheGet(dbCacheKey);

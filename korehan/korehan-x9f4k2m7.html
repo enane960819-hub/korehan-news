@@ -3285,8 +3285,64 @@ async function saveTopic() {
     body.sort_order = maxS + 1;
     res = await sb.from('writing_topics').insert(body);
   }
-  if (!res.error) { toast('✅ 저장됨'); closeTopicModal(); loadTopics(); }
-  else { toast('⚠️ 저장 실패: ' + res.error.message, true); }
+  if (!res.error) {
+    toast('✅ 저장됨');
+    closeTopicModal();
+    loadTopics();
+    // Pre-generate Key Expressions for this topic so users never trigger AI generation.
+    // Fire-and-forget — no await so the UI is already unblocked.
+    _pregenKeyExpressions(body.topic_ko, body.topic_en, body.level);
+  } else { toast('⚠️ 저장 실패: ' + res.error.message, true); }
+}
+
+async function _pregenKeyExpressions(topicKo, topicEn, level) {
+  if (!topicKo || !level) return;
+  var dbCacheKey = 'kex::' + topicKo + '_' + level;
+  var sb = getSb();
+  // Check if already cached — skip if so
+  try {
+    var existing = await sb.from('grammar_examples_cache')
+      .select('pattern_name')
+      .eq('pattern_name', dbCacheKey)
+      .maybeSingle();
+    if (existing && existing.data) return; // already cached
+  } catch(e) {}
+  try {
+    var res = await callClaude({
+      feature: 'key-expressions-pregen',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content:
+        'You are a Korean language teacher. Generate EXACTLY 6 key Korean EXPRESSIONS (multi-word phrases, collocations, or fixed sentence patterns) that a student would naturally USE when speaking or writing about the topic: "' + topicKo + '" (' + (topicEn || topicKo) + '). Level: ' + level + '.\n\n'
+        + 'STRICT RULES:\n'
+        + '1. Each "ko" MUST be a multi-word phrase of at least 2 words — NOT a single word.\n'
+        + '2. DO NOT return single nouns or single verbs.\n'
+        + '3. Each expression must be directly usable when talking about this specific topic.\n'
+        + '4. Mix grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다), collocations, and common phrasal verbs.\n\n'
+        + 'Return ONLY a JSON array of 6 items, no markdown:\n'
+        + '[{"ko":"multi-word Korean phrase","rom":"romanization","en":"English meaning","examples":[{"ko":"natural Korean sentence 1","en":"English translation 1"},{"ko":"natural Korean sentence 2","en":"English translation 2"}]}]'
+      }]
+    });
+    var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+    text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+    var s = text.indexOf('['), e = text.lastIndexOf(']');
+    if (s >= 0 && e > s) text = text.slice(s, e+1);
+    var expressions = JSON.parse(text);
+    expressions = (expressions || []).filter(function(x) {
+      if (!x || !x.ko) return false;
+      var ko = String(x.ko).trim();
+      return ko.indexOf(' ') !== -1 || ko.length >= 4;
+    });
+    if (!expressions.length) throw new Error('empty');
+    await sb.from('grammar_examples_cache').upsert({
+      pattern_name:  dbCacheKey,
+      patterns_json: JSON.stringify({ expressions: expressions }),
+      updated_at:    new Date().toISOString()
+    }, { onConflict: 'pattern_name' });
+    toast('✅ Key Expressions 사전 생성 완료 (' + level + ')', false);
+  } catch(e) {
+    console.warn('[pregen] Key Expressions failed for', topicKo, level, e && e.message);
+  }
 }
 
 async function deleteTopic(id) {
