@@ -18401,30 +18401,12 @@ function _asSetFilter(mode) {
   _asLoadArticles();
 }
 
-// localStorage key for the last-good article list. The home page
-// already caches articles via getCachedArticles(); reusing that
-// cache here means the picker can still show *something* when the
-// live query fails (mobile network blip, schema cache, etc).
-var _AS_CACHE_KEY = 'kh_as_articles_v1';
-
 async function _asLoadArticles() {
   var sb = getSupa();
   var g = document.getElementById('as-article-grid'); if (!g) return;
   g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading articles…</div></div>';
-
-  // 0) If we have a cached list from a previous successful load, paint
-  //    it immediately. The live query below either confirms it or
-  //    leaves the cached list in place if it errors.
-  var cached = null;
-  try { cached = JSON.parse(localStorage.getItem(_AS_CACHE_KEY) || 'null'); } catch(_) {}
-
   if (!sb) {
-    if (cached && cached.articles && cached.articles.length) {
-      _asArticles = cached.articles;
-      _asRenderGrid();
-    } else {
-      g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">Cannot connect — please reload the page.</div>';
-    }
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">Cannot connect — please reload the page.</div>';
     return;
   }
   try {
@@ -18445,62 +18427,72 @@ async function _asLoadArticles() {
         _asArticles = [];
         return;
       }
-      var r2 = await sb.from('articles').select('id,title,title_en,section,level,image').in('id', ids).limit(200);
-      if (r2.error) throw r2.error;
+      var savedRows = await _asFetchArticles({ ids: ids });
       var bmOrder = {}; ids.forEach(function(id, i){ bmOrder[String(id)] = i; });
-      _asArticles = (r2.data||[])
+      _asArticles = savedRows
         .filter(function(a){ return a.title; })
         .sort(function(a, b){ return (bmOrder[String(a.id)] || 0) - (bmOrder[String(b.id)] || 0); });
       _asRenderGrid();
       return;
     }
 
-    // Live query — try the strict published-only filter first; if
-    // PostgREST chokes on `status` (older db / migration drift / RLS
-    // quirk) retry without that filter so we still surface articles.
-    var rows = null;
-    var lastErr = null;
-
-    var attempts = [
-      { f: function() { return sb.from('articles').select('id,title,title_en,section,level,image,status').eq('status','published').order('date',{ascending:false}).limit(300); } },
-      { f: function() { return sb.from('articles').select('id,title,title_en,section,level,image').order('date',{ascending:false}).limit(300); } },
-      { f: function() { return sb.from('articles').select('id,title,title_en,section,level,image').order('created_at',{ascending:false}).limit(300); } },
-      { f: function() { return sb.from('articles').select('id,title,title_en,section,level,image').limit(300); } },
-    ];
-    for (var i = 0; i < attempts.length; i++) {
-      try {
-        var r = await attempts[i].f();
-        if (r.error) { lastErr = r.error; continue; }
-        rows = r.data || [];
-        break;
-      } catch(err) { lastErr = err; }
-    }
-    if (rows == null) throw (lastErr || new Error('all article queries failed'));
-
+    // Replicate the home page's proven query pattern instead of the
+    // ad-hoc one that was failing here:
+    //   · order by `created_at` (matches loadArticlesFromDB) — `date`
+    //     can be null on rows where the admin didn't backfill it,
+    //     and a NULL-sorted column drops those rows behind a long
+    //     tail that the limit cuts off.
+    //   · NO `.eq('status','published')` server-side — instead filter
+    //     in JS after the fetch. Letting the WHERE clause hit the
+    //     status column triggered a PostgREST schema-cache miss for
+    //     some article rows, which surfaced as the "Could not load
+    //     the article" error.
+    //   · Try the lite column list first; on column-missing error,
+    //     fall back to '*' (same shape as home page's loader).
+    var rows = await _asFetchArticles({});
     _asArticles = rows.filter(function(a){
-      // If status came back, hide drafts; otherwise keep everything.
+      // Apply status filter client-side: hide drafts but keep rows
+      // where status came back null/missing (production has been
+      // through enough migrations that some rows lack the column).
       if (a.status && a.status !== 'published') return false;
       return !!a.title;
     });
     _asRenderGrid();
-    // Persist the latest-good list so a future cold open with a
-    // flaky network still shows the picker.
-    try {
-      localStorage.setItem(_AS_CACHE_KEY, JSON.stringify({
-        articles: _asArticles.slice(0, 200),
-        savedAt: Date.now(),
-      }));
-    } catch(_) {}
   } catch(e) {
     console.error('[Article Study] picker load failed:', e);
-    if (cached && cached.articles && cached.articles.length) {
-      _asArticles = cached.articles;
-      _asRenderGrid();
-      return;
-    }
-    var msg = (e && e.message) ? String(e.message).slice(0, 120) : 'unknown error';
+    var msg = (e && e.message) ? String(e.message).slice(0, 160) : 'unknown error';
     g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;line-height:1.5">Could not load articles.<br><span style="font-size:11px;color:#cbd5e1">' + msg.replace(/[<&]/g, '') + '</span><br><button onclick="_asLoadArticles()" style="margin-top:10px;padding:6px 14px;font-size:12px;font-weight:700;background:#0b1626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit">Retry</button></div>';
   }
+}
+
+// Fetch articles using the same lite-then-* column pattern that the
+// home page's loadArticlesFromDB uses. Returns an array of rows
+// (possibly empty) on success; throws on hard failures so the
+// caller's catch can surface a real error message.
+async function _asFetchArticles(opts) {
+  opts = opts || {};
+  var sb = getSupa();
+  var lite = 'id,title,title_en,section,level,image,status,date,created_at';
+  var selects = [lite, '*'];
+  var lastErr = null;
+  for (var i = 0; i < selects.length; i++) {
+    var q = sb.from('articles').select(selects[i]);
+    if (opts.ids) q = q.in('id', opts.ids).limit(200);
+    else q = q.order('created_at', { ascending: false }).limit(500);
+    var res;
+    try { res = await q; }
+    catch(err) { lastErr = err; continue; }
+    if (res.error) {
+      lastErr = res.error;
+      var m = String((res.error && res.error.message) || '');
+      // Drop to '*' if PostgREST complains about a missing column —
+      // production schema has drifted from the codebase a few times.
+      if (i < selects.length - 1 && /column|does not exist|could not find/i.test(m)) continue;
+      throw res.error;
+    }
+    return res.data || [];
+  }
+  throw (lastErr || new Error('article fetch failed'));
 }
 function _asRenderGrid() {
   var g = document.getElementById('as-article-grid'); if (!g) return;
