@@ -1711,49 +1711,69 @@ body { background: #14253f !important; }
 */
 @media (max-width: 768px) {
   .ls-mindmap.ls-mode-orb {
-    aspect-ratio: 1 / 1;
+    /* Slightly portrait so the top + bottom rows have room for
+       the satellite + name + coin chip without colliding with each
+       other vertically. The 80px satellites + 10px name + ~6px
+       chip = ~96px of stacked content per node — five of those
+       can't share a square container without overlapping. */
+    aspect-ratio: 0.92 / 1;
     max-width: none;
-    margin-left: -4px;
-    margin-right: -4px;
+    /* Pull the layout out to the panel's edge so the side
+       satellites have horizontal room. */
+    margin-left: -10px;
+    margin-right: -10px;
     overflow: visible;
-    /* Stronger central glow to anchor the satellite formation. */
   }
-  /* Satellites in a tight pentagon formation — closer than the
-     pentagon mind-map default so they read as orbiting one big
-     parent orb. */
+  /* Satellites positioned with extra breathing room on every axis
+     so a node's coin chip doesn't crash into the next node's name
+     (the user's screenshot showed Dictation's "+10 냥" landing on
+     Key Expr's label). Top/bottom rows pushed to the very edge
+     vertically, side nodes pushed to the horizontal edge. */
   .ls-mindmap.ls-mode-orb .ls-node[data-pos] {
     top: auto; left: auto; right: auto; bottom: auto;
     transform: none;
     animation: lsOrbBob 4.2s ease-in-out infinite;
   }
-  .ls-mindmap.ls-mode-orb #ls-card-topic       { top: 8%;  left: 50%; transform: translateX(-50%); animation-delay: 0s; }
-  .ls-mindmap.ls-mode-orb #ls-card-grammar     { top: 32%; right: 4%;                              animation-delay: -.7s; }
-  .ls-mindmap.ls-mode-orb #ls-card-picture     { bottom: 8%; right: 12%;                           animation-delay: -1.4s; }
-  .ls-mindmap.ls-mode-orb #ls-card-sentence    { bottom: 8%; left: 12%;                            animation-delay: -2.1s; }
-  .ls-mindmap.ls-mode-orb #ls-card-expressions { top: 32%; left: 4%;                               animation-delay: -2.8s; }
+  .ls-mindmap.ls-mode-orb #ls-card-topic       { top: 2%;  left: 50%; transform: translateX(-50%); animation-delay: 0s; }
+  .ls-mindmap.ls-mode-orb #ls-card-grammar     { top: 30%; right: 0%;                              animation-delay: -.7s; }
+  .ls-mindmap.ls-mode-orb #ls-card-picture     { bottom: 2%; right: 8%;                            animation-delay: -1.4s; }
+  .ls-mindmap.ls-mode-orb #ls-card-sentence    { bottom: 2%; left: 8%;                             animation-delay: -2.1s; }
+  .ls-mindmap.ls-mode-orb #ls-card-expressions { top: 30%; left: 0%;                               animation-delay: -2.8s; }
 
-  /* Each satellite is a smaller orb-like circle with strong glow.
-     Distinguishes from Solar's flat planet circles. */
+  /* Each satellite is a chunky tappable orb sphere with strong glow.
+     80px (up from 60) so the satellites read as substantial planets
+     in their own right on mobile, not tiny pinpricks next to the
+     parent orb. */
   .ls-mindmap.ls-mode-orb .ls-node-circle {
-    width: 60px; height: 60px;
+    width: 80px; height: 80px;
     background: radial-gradient(circle at 30% 30%,
       rgba(168,139,250,.4) 0%,
       rgba(99,102,241,.3) 40%,
       rgba(30,41,59,.6) 100%);
     box-shadow:
-      0 0 16px rgba(168,139,250,.4),
-      inset 0 0 12px rgba(168,139,250,.25),
-      inset 0 -8px 16px rgba(0,0,0,.3);
-    border: 1px solid rgba(168,139,250,.45);
+      0 0 22px rgba(168,139,250,.45),
+      inset 0 0 16px rgba(168,139,250,.28),
+      inset 0 -10px 20px rgba(0,0,0,.35);
+    border: 1px solid rgba(168,139,250,.5);
   }
   .ls-mindmap.ls-mode-orb .ls-node-icon {
-    width: 22px; height: 22px;
+    width: 30px; height: 30px;
     color: rgba(220,210,255,.95);
   }
   .ls-mindmap.ls-mode-orb .ls-node-name {
+    font-size: 10px;
+    color: rgba(220,210,255,.78);
+    margin-top: 6px;
+  }
+  .ls-mindmap.ls-mode-orb .ls-node-coin {
+    /* Centre the chip on the top edge of the orb itself instead of
+       hanging off the corner — corner-positioned chips were sticking
+       sideways into the next satellite's name underneath it. */
     font-size: 9px;
-    color: rgba(220,210,255,.7);
-    margin-top: 4px;
+    padding: 1px 5px;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
   }
   .ls-mindmap.ls-mode-orb .ls-node.ls-node-done .ls-node-circle {
     background: radial-gradient(circle at 30% 30%,
@@ -2509,6 +2529,69 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .dct-wo-zone { background:rgba(20,203,176,.06); border:1.5px solid rgba(20,203,176,.25); border-radius:14px; padding:16px; margin-bottom:14px; font-family:'Noto Serif KR',serif; font-size:16px; line-height:2.4; min-height:56px; color:#fff; }
 @media(max-width:640px) { #dct-modal, #nq-modal { padding:0 !important; align-items:stretch !important; } #dct-modal .dct-panel, #nq-modal .dct-panel { max-height:100dvh; height:100dvh; max-width:100%; width:100%; border-radius:0; } }
 
+/* ── Phrase Munch modal styling ─────────────────────────────────── */
+.pm-pips { display:flex; gap:6px; margin-bottom:14px; }
+.pm-pip { flex:0 0 auto; width:24px; height:4px; border-radius:2px; transition:background .25s; }
+.pm-step-label { font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:rgba(167,139,250,.85); margin-bottom:10px; }
+.pm-prompt-hint { font-size:12px; color:rgba(255,255,255,.5); margin-bottom:14px; }
+.pm-example-ko { font-family:'Noto Serif KR',serif; font-size:26px; font-weight:900; color:#fff; line-height:1.45; margin-bottom:8px; }
+.pm-example-en { font-size:13px; color:rgba(255,255,255,.6); margin-bottom:18px; font-style:italic; }
+.pm-parts {
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  padding:12px 14px;
+  margin-bottom:16px;
+}
+.pm-part { display:flex; align-items:baseline; gap:14px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.pm-part:last-child { border-bottom:none; }
+.pm-part-ko { font-family:'Noto Serif KR',serif; font-size:16px; font-weight:800; color:#fff; min-width:64px; }
+.pm-part-en { font-size:12px; color:rgba(255,255,255,.65); flex:1; line-height:1.4; }
+.pm-grammar-note {
+  display:flex; gap:10px; align-items:flex-start;
+  background:linear-gradient(135deg,rgba(167,139,250,.18),rgba(99,102,241,.12));
+  border:1px solid rgba(167,139,250,.3);
+  border-radius:12px; padding:11px 14px;
+  font-size:13px; color:#e0d7ff; line-height:1.5; margin-bottom:18px;
+}
+.pm-gn-label { flex:0 0 auto; font-size:10px; font-weight:900; letter-spacing:.1em; color:#c4b5fd; padding:2px 8px; background:rgba(167,139,250,.2); border-radius:6px; align-self:flex-start; margin-top:1px; }
+.pm-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
+.pm-btn { font:inherit; font-size:14px; font-weight:800; padding:10px 22px; border-radius:10px; border:none; cursor:pointer; transition:all .15s; letter-spacing:.02em; }
+.pm-btn-primary { background:linear-gradient(135deg,#7c3aed,#2563eb); color:#fff; box-shadow:0 6px 18px rgba(124,58,237,.35); }
+.pm-btn-primary:hover { transform:translateY(-1px); box-shadow:0 10px 24px rgba(124,58,237,.45); }
+.pm-choices { display:flex; flex-direction:column; gap:8px; margin-top:14px; margin-bottom:14px; }
+.pm-choice {
+  font:inherit; font-size:14px; font-weight:600;
+  text-align:left; padding:13px 16px;
+  border-radius:11px;
+  border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.04);
+  color:#fff;
+  cursor:pointer; transition:all .15s;
+  line-height:1.4;
+}
+.pm-choice:hover:not(:disabled) { border-color:rgba(167,139,250,.4); background:rgba(167,139,250,.08); }
+.pm-choice:disabled { cursor:default; }
+.pm-choice-correct { background:rgba(34,197,94,.18) !important; border-color:rgba(34,197,94,.6) !important; color:#bbf7d0; }
+.pm-choice-wrong   { background:rgba(239,68,68,.18) !important; border-color:rgba(239,68,68,.6) !important; color:#fecaca; }
+.pm-choice-dim     { opacity:.45; }
+.pm-feedback { padding:11px 14px; border-radius:10px; font-size:13px; line-height:1.5; margin-top:6px; margin-bottom:10px; }
+.pm-feedback-win  { background:rgba(34,197,94,.12);  border:1px solid rgba(34,197,94,.3);  color:#bbf7d0; }
+.pm-feedback-lose { background:rgba(239,68,68,.12);  border:1px solid rgba(239,68,68,.3);  color:#fecaca; }
+.pm-result { text-align:center; padding:30px 10px 14px; }
+.pm-result-icon { margin-bottom:10px; }
+.pm-result-score { font-size:34px; font-weight:900; color:#fff; line-height:1; }
+.pm-result-pct { font-size:14px; color:rgba(255,255,255,.55); margin-top:6px; margin-bottom:24px; }
+@media (max-width:640px) {
+  #pm-modal { align-items:flex-end !important; padding:0 !important; }
+  #pm-modal > div { border-radius:22px 22px 0 0 !important; width:100% !important; max-height:95dvh !important; }
+  .pm-example-ko { font-size:23px; }
+  .pm-part-ko { min-width:56px; font-size:15px; }
+}
+
 /* ── Mobile fixes ─────────────────────────────────────── */
 @media(max-width:640px) {
   /* Grammar Focus modal — bottom sheet */
@@ -3112,7 +3195,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
     <div id="wcf-mode-text"  style="display:none">Open Express Practice</div>
     <!-- hidden mode tabs for JS state tracking -->
     <div class="wc-mode-tabs" id="wc-mode-tabs" style="display:none">
-      <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Topic Writing</span></button>
+      <button class="wc-mode-tab active" id="tab-topic" onclick="setWritingMode('topic')"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Topic Yum Yum</span></button>
     </div>
 
     <!-- Feedback inbox — redirect to Growth Lab -->
@@ -3341,10 +3424,6 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <!-- ═══ TAB: Help (mobile only — shows sidebar content) ═══ -->
 <div class="sr-tab-panel" id="sr-panel-help">
   <div style="max-width:600px;margin:0 auto;padding:16px">
-    <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden;margin-bottom:12px">
-      <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4);display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today's Phrase</span></div></div>
-      <div class="cb" id="phrase-box-help" style="padding:12px 14px"></div>
-    </div>
     <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
       <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
         <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="pin" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Must-know Vocab</span></div>
@@ -3362,15 +3441,6 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <div class="sr-sb-phd"><span class="sr-sb-ptitle">Grammar at a Glance</span></div>
       <div id="grammar-box-help"></div>
     </div>
-    <!-- Flashcards -->
-    <div class="sr-sb-panel" style="padding:0;overflow:hidden;margin-bottom:12px">
-      <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-        <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="layers" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Flashcards</span></div>
-      </div>
-      <div style="padding:10px 14px 14px">
-        <div class="mgrid" id="fc-grid-help"></div>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -3381,6 +3451,26 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <div style="font-size:20px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px"><i data-lucide="target" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i><span>Exercise</span></div>
       <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Interactive tools to practice Korean</div>
     </div>
+
+    <!-- Today's Phrase + Flashcards moved here from the Help tab —
+         these are practice material, not reference material. IDs
+         (`phrase-box-help`, `fc-grid-help`) preserved so the
+         existing renderers keep targeting the right containers. -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:20px">
+      <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden">
+        <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4);display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today's Phrase</span></div></div>
+        <div class="cb" id="phrase-box-help" style="padding:12px 14px"></div>
+      </div>
+      <div class="sr-sb-panel" style="padding:0;overflow:hidden">
+        <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
+          <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="layers" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Flashcards</span></div>
+        </div>
+        <div style="padding:10px 14px 14px">
+          <div class="mgrid" id="fc-grid-help"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="master-grid">
       <div class="master-card" style="padding:0" onclick="openAlphaModal()">
         <div class="mc-banner" style="height:160px"><img src="assets/file_000000004d1c72098736e9b8d1ef65eb.png" alt="Korean Alphabet" onerror="this.parentNode.style.background='linear-gradient(135deg,#0c4a6e,#0369a1)';this.style.display='none'"></div>
@@ -3733,6 +3823,25 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <button onclick="closeWGDrill()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">&times;</button>
     </div>
     <div id="wg-drill-body" style="padding:20px 24px"></div>
+  </div>
+</div>
+
+<!-- ═══ PHRASE MUNCH MODAL ════════════════════════════════════════
+     Daily 3-lesson "learn the breakdown, then translate a parallel
+     sentence" flow. Replaces the old cold-start translation sprint.
+     Slot key in the learning selector is still `grammar` (storage
+     compat); only the visible activity changed. -->
+<div class="woverlay hidden" id="pm-modal" onclick="if(event.target===this)closePhraseMunch()">
+  <div style="background:linear-gradient(180deg,#0f1d3a 0%,#0a1428 100%);border-radius:22px;width:min(560px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.55);display:flex;flex-direction:column;color:#fff;border:1px solid rgba(255,255,255,.06)">
+    <div style="padding:18px 22px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#a78bfa;margin-bottom:4px">Phrase Munch</div>
+        <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25">Munch on today's phrases</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:3px">Learn the breakdown, then translate a similar sentence</div>
+      </div>
+      <button onclick="closePhraseMunch()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+    </div>
+    <div id="pm-body" style="padding:20px 22px 24px;flex:1;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -6078,7 +6187,7 @@ function canEnterWritingRoom() {
   if (hasDoneStep) return true;
   khAlert(
     'Finish one step first',
-    'Complete at least one learning step (Topic Writing, Grammar Focus, Picture Description, Dictation, or Key Expressions) before entering Express Practice.'
+    'Complete at least one learning step (Topic Yum Yum, Grammar Focus, Picture Description, Dictation, or Key Expressions) before entering Express Practice.'
   );
   return false;
 }
@@ -6539,7 +6648,7 @@ function _lsGetMobileMode() {
     var m = localStorage.getItem(_LS_MODE_KEY);
     if (m && _LS_MODES.indexOf(m) >= 0) return m;
   } catch(_) {}
-  return 'solar';
+  return 'orb';
 }
 function _lsSetMobileMode(mode) {
   if (_LS_MODES.indexOf(mode) < 0) return;
@@ -6656,7 +6765,12 @@ function lsStart(type) {
   if (type === 'topic') {
     openWritingModalForLearning();
   } else if (type === 'grammar') {
-    if (typeof openGrammarFocusModal === 'function') openGrammarFocusModal();
+    // Slot key stays `grammar` for storage compat (_studyDone.grammar,
+    // localStorage, line-done flags), but the activity is now
+    // Phrase Munch — Grammar Focus moved to the Skill Tree because
+    // daily topics rarely surfaced challenging grammar and the same
+    // beginner patterns kept recycling.
+    if (typeof openPhraseMunch === 'function') openPhraseMunch();
   } else if (type === 'picture') {
     if (_currentLevel === 'Advanced') {
       if (typeof openNuanceQuiz === 'function') openNuanceQuiz();
@@ -6668,6 +6782,271 @@ function lsStart(type) {
   } else if (type === 'expressions') {
     openKeyExpressionsModal();
   }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Phrase Munch — replaces Grammar Focus in the learning selector.
+// Grammar Focus moved to the Skill Tree because daily topics rarely
+// hit interesting grammar, and the topic-derived 3-pattern lesson
+// kept regenerating the same beginner forms.
+//
+// Each session = 3 mini-lessons. Each lesson = Learn step (annotated
+// breakdown of one example sentence) → Practice step (a parallel
+// sentence using the SAME grammar pattern but different vocab,
+// answered as 4-choice EN MCQ). The user sees WHAT each piece does
+// before being asked to translate, so they're not guessing cold —
+// the user's previous "translation 처음부터 불친절하게 던져주는게
+// 아니고 스텝별로 설명해줘야지" feedback drove this redesign.
+//
+// One Claude call per daily topic, cached in grammar_examples_cache
+// under 'phmunch::<topic>' so all users on the same daily topic
+// share the lesson set. DB hit = free.
+// ──────────────────────────────────────────────────────────────────
+var _pm = {
+  lessons: null,   // [{example, practice}, ...]
+  idx: 0,          // current lesson index (0..N-1)
+  phase: 'learn',  // 'learn' or 'practice'
+  scores: [],      // per-lesson 1/0 (correct/wrong)
+  selected: null,  // user's choice during practice phase
+};
+
+async function openPhraseMunch() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+
+  var modal = document.getElementById('pm-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  var body = document.getElementById('pm-body');
+  if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,.55);display:flex;flex-direction:column;align-items:center;gap:12px"><span style="display:inline-flex;width:24px;height:24px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</span><span>Loading today\'s phrases…</span></div>';
+
+  var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
+  if (!topic || topic === 'Loading…') {
+    if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,.5)">Please load today\'s topic first.</div>';
+    return;
+  }
+
+  var cacheKey = 'phmunch::' + topic.trim();
+  var lessons = null;
+  try {
+    var hit = await _aiCacheGet(cacheKey);
+    if (hit && Array.isArray(hit.lessons) && hit.lessons.length >= 2) lessons = hit.lessons;
+  } catch(_) {}
+
+  if (!lessons) {
+    try {
+      lessons = await _pmGenerateLessons(topic);
+      if (lessons && lessons.length >= 2) _aiCacheSet(cacheKey, { lessons: lessons });
+    } catch(e) {
+      if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#ef4444">Could not load lessons. Try again later.</div>';
+      return;
+    }
+  }
+  if (!lessons || !lessons.length) {
+    if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#ef4444">No lessons available right now.</div>';
+    return;
+  }
+
+  _pm.lessons = lessons.slice(0, 3);
+  _pm.idx = 0;
+  _pm.phase = 'learn';
+  _pm.scores = [];
+  _pm.selected = null;
+  _pmRender();
+}
+
+function closePhraseMunch() {
+  var modal = document.getElementById('pm-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function _pmGenerateLessons(topic) {
+  var prompt =
+      'You are a Korean language teacher creating bite-sized phrase lessons for a learner.\n'
+    + 'Today\'s topic: "' + topic + '"\n\n'
+    + 'Create exactly 3 micro-lessons. Each lesson teaches ONE distinct Korean grammar pattern through:\n'
+    + '  1) A natural example sentence connected to today\'s topic.\n'
+    + '  2) A word-by-word breakdown showing the role of each morpheme/particle.\n'
+    + '  3) A practice sentence using the SAME grammar pattern but with DIFFERENT vocabulary,\n'
+    + '     plus 3 plausible-but-wrong English translation choices.\n\n'
+    + 'Pick 3 different beginner-to-intermediate patterns (e.g. ~도, ~을/를, ~았/었어요, ~고 싶어요, ~ㄴ/는데, ~(으)면 etc.) — do not repeat patterns across lessons.\n\n'
+    + 'Return ONLY valid JSON:\n'
+    + '{"lessons":[{\n'
+    + '  "example":{\n'
+    + '    "ko":"Korean sentence",\n'
+    + '    "en":"natural English translation",\n'
+    + '    "parts":[{"ko":"morpheme/word","en":"meaning + grammatical role"}],\n'
+    + '    "grammar_note":"one-line explanation of the grammar pattern"\n'
+    + '  },\n'
+    + '  "practice":{\n'
+    + '    "ko":"Korean sentence using the same grammar but different vocabulary",\n'
+    + '    "en":"correct English translation",\n'
+    + '    "choices":["correct","wrong1","wrong2","wrong3"]\n'
+    + '  }\n'
+    + '}]}\n\n'
+    + 'Rules:\n'
+    + '- 4-7 morpheme parts per breakdown.\n'
+    + '- Wrong choices must be plausible (different particles, different verbs, different subjects) but clearly wrong.\n'
+    + '- The first item in choices is the correct answer; the frontend will shuffle.\n';
+
+  var res = await callClaude({
+    feature: 'phrase-munch',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2400,
+    messages: [{ role: 'user', content: prompt }]
+  });
+  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+  var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+  if (oi < 0 || ei <= oi) throw new Error('no JSON in response');
+  var parsed = JSON.parse(raw.slice(oi, ei + 1));
+  return Array.isArray(parsed.lessons) ? parsed.lessons : [];
+}
+
+function _pmRender() {
+  var body = document.getElementById('pm-body');
+  if (!body || !_pm.lessons) return;
+  var lesson = _pm.lessons[_pm.idx];
+  if (!lesson) { _pmRenderResult(); return; }
+
+  // Step pips
+  var pipsHtml = _pm.lessons.map(function(_, i) {
+    var done = _pm.scores[i] != null;
+    var current = i === _pm.idx;
+    var bg = done ? (_pm.scores[i] ? '#22c55e' : '#ef4444') : (current ? '#a78bfa' : 'rgba(255,255,255,.15)');
+    return '<span class="pm-pip" style="background:' + bg + '"></span>';
+  }).join('');
+
+  if (_pm.phase === 'learn') _pmRenderLearn(body, lesson, pipsHtml);
+  else                       _pmRenderPractice(body, lesson, pipsHtml);
+}
+
+function _pmRenderLearn(body, lesson, pipsHtml) {
+  var ex = lesson.example || {};
+  var partsHtml = (Array.isArray(ex.parts) ? ex.parts : []).map(function(p) {
+    return '<div class="pm-part">'
+      +   '<div class="pm-part-ko">' + _esc(p.ko || '') + '</div>'
+      +   '<div class="pm-part-en">' + _esc(p.en || '') + '</div>'
+      + '</div>';
+  }).join('');
+  body.innerHTML =
+      '<div class="pm-pips">' + pipsHtml + '</div>'
+    + '<div class="pm-step-label">LEARN · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
+    + '<div class="pm-example-ko">' + _esc(ex.ko || '') + '</div>'
+    + '<div class="pm-example-en">' + _esc(ex.en || '') + '</div>'
+    + (partsHtml ? '<div class="pm-parts">' + partsHtml + '</div>' : '')
+    + (ex.grammar_note ? '<div class="pm-grammar-note"><span class="pm-gn-label">Grammar</span><span>' + _esc(ex.grammar_note) + '</span></div>' : '')
+    + '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="_pmAdvanceToPractice()">Got it →</button></div>';
+}
+
+function _pmRenderPractice(body, lesson, pipsHtml) {
+  var pr = lesson.practice || {};
+  var rawChoices = Array.isArray(pr.choices) ? pr.choices.slice() : [];
+  // Shuffle once and remember the result for this lesson so we don't
+  // reshuffle when the user re-enters the practice screen.
+  var shuffleKey = '_pm_shuffle_' + _pm.idx;
+  if (!_pm[shuffleKey]) {
+    var shuffled = rawChoices.slice().sort(function(){ return Math.random() - 0.5; });
+    _pm[shuffleKey] = shuffled;
+  }
+  var choices = _pm[shuffleKey];
+  var correct = pr.en || rawChoices[0] || '';
+
+  var choicesHtml = choices.map(function(c) {
+    var isPicked = (_pm.selected === c);
+    var isCorrect = (c === correct);
+    var stateCls = '';
+    if (_pm.selected != null) {
+      if (isCorrect)              stateCls = ' pm-choice-correct';
+      else if (isPicked)          stateCls = ' pm-choice-wrong';
+      else                        stateCls = ' pm-choice-dim';
+    }
+    var safe = (c || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    return '<button class="pm-choice' + stateCls + '"'
+      + (_pm.selected != null ? ' disabled' : '')
+      + ' onclick="_pmPickChoice(\'' + safe + '\')">' + _esc(c) + '</button>';
+  }).join('');
+
+  var feedback = '';
+  if (_pm.selected != null) {
+    var won = _pm.selected === correct;
+    feedback = '<div class="pm-feedback ' + (won ? 'pm-feedback-win' : 'pm-feedback-lose') + '">'
+      + (won ? '<span>Nice — that\'s the same pattern you just learned.</span>'
+             : '<span>Close. The answer is: <strong>' + _esc(correct) + '</strong></span>')
+      + '</div>';
+  }
+
+  var nextLabel = (_pm.idx + 1 < _pm.lessons.length) ? 'Next lesson →' : 'See results →';
+  var actions = (_pm.selected != null)
+    ? '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="_pmAdvanceLesson()">' + nextLabel + '</button></div>'
+    : '';
+
+  body.innerHTML =
+      '<div class="pm-pips">' + pipsHtml + '</div>'
+    + '<div class="pm-step-label">PRACTICE · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
+    + '<div class="pm-prompt-hint">Same pattern, new sentence — pick the English meaning.</div>'
+    + '<div class="pm-example-ko" style="font-size:24px">' + _esc(pr.ko || '') + '</div>'
+    + '<div class="pm-choices">' + choicesHtml + '</div>'
+    + feedback
+    + actions;
+}
+
+function _pmRenderResult() {
+  var body = document.getElementById('pm-body');
+  if (!body) return;
+  var correct = _pm.scores.filter(function(s){ return s; }).length;
+  var total = _pm.scores.length;
+  var pct = total ? Math.round(correct / total * 100) : 0;
+  body.innerHTML =
+      '<div class="pm-result">'
+    +   '<div class="pm-result-icon"><span style="display:inline-flex;width:48px;height:48px;color:#fbbf24">'+BM_ICON_SPARKLE+'</span></div>'
+    +   '<div class="pm-result-score">' + correct + ' / ' + total + '</div>'
+    +   '<div class="pm-result-pct">' + pct + '% correct</div>'
+    +   '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="closePhraseMunch()">Done</button></div>'
+    + '</div>';
+  // Mark the slot done in the learning selector — uses the existing
+  // `grammar` key for storage compat (renamed visible label only).
+  try { markStageDone('grammar'); } catch(_) {}
+  if (typeof logQuizResult === 'function') {
+    logQuizResult('phrase_munch', { score: correct, max_score: total, accuracy_pct: pct });
+  }
+  if (typeof logActivity === 'function') {
+    logActivity('quiz', { content_type: 'phrase_munch', score: correct, max_score: total });
+  }
+}
+
+function _pmAdvanceToPractice() {
+  _pm.phase = 'practice';
+  _pm.selected = null;
+  _pmRender();
+}
+
+function _pmPickChoice(choice) {
+  if (_pm.selected != null) return;
+  _pm.selected = choice;
+  var lesson = _pm.lessons[_pm.idx];
+  var correct = (lesson && lesson.practice && lesson.practice.en) || '';
+  _pm.scores[_pm.idx] = (choice === correct) ? 1 : 0;
+  _pmRender();
+}
+
+function _pmAdvanceLesson() {
+  _pm.idx += 1;
+  _pm.phase = 'learn';
+  _pm.selected = null;
+  _pmRender();
+}
+
+// Local escape helper so Phrase Munch doesn't depend on the article
+// renderer's globals being loaded yet.
+function _esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ── Key Expressions Modal ──
@@ -10790,7 +11169,7 @@ function refreshSubmitBanner() {
 // Friendly metadata so the review modal can show icons/labels and route
 // "Continue editing" back to the right activity opener.
 var _SUBMIT_TYPE_INFO = {
-  'topic_writing':       { label: 'Topic Writing',     icon: 'pen-line', open: 'openWritingModal' },
+  'topic_writing':       { label: 'Topic Yum Yum',     icon: 'pen-line', open: 'openWritingModal' },
   'writing':             { label: 'Writing',           icon: 'pencil', open: 'openWritingModal' },
   'diary':               { label: 'Diary',             icon: 'notebook', open: 'openWritingModal' },
   'reading':             { label: 'Reading & Writing', icon: 'book-open', open: 'openWritingModal' },
@@ -11172,9 +11551,9 @@ async function _triggerPackageFeedback(submissionId, items) {
     function _activityLabel(item) {
       var t = String(item.type || item.writing_mode || '').split(':')[0];
       var labels = {
-        express_practice: 'Express Practice (Topic Writing)',
-        topic_writing: 'Topic Writing',
-        writing: 'Topic Writing',
+        express_practice: 'Express Practice (Topic Yum Yum)',
+        topic_writing: 'Topic Yum Yum',
+        writing: 'Topic Yum Yum',
         diary: 'Diary',
         reading: 'Reading & Writing',
         article_study: 'Article Study',
@@ -11763,7 +12142,7 @@ async function renderFeedbackInboxContent() {
 
     var TYPE_LABELS = {
       daily_package: { icon: '📦', label: 'Daily Package', color: '#60a5fa' },
-      topic: { icon: '✍️', label: 'Topic Writing', color: '#a78bfa' },
+      topic: { icon: '✍️', label: 'Topic Yum Yum', color: '#a78bfa' },
       diary: { icon: '📓', label: 'Diary', color: '#f472b6' },
       reading: { icon: '📖', label: 'Reading Response', color: '#34d399' },
       article: { icon: '📰', label: 'Article Writing', color: '#fbbf24' },
@@ -15564,6 +15943,19 @@ function openGrammarFocusForCurriculum() {
 
 async function _generateGrammarForCurriculumPattern(item) {
   var el = document.getElementById('gf-examples-content');
+  // Cache by pattern name — every user studying "은/는 vs 이/가" gets
+  // the same Claude lesson, so we save it once and serve from DB
+  // forever instead of re-billing for the same pattern on every open.
+  var cacheKey = 'gf-curr::' + (item.pattern || '');
+  if (cacheKey !== 'gf-curr::') {
+    try {
+      var dbHit = await _aiCacheGet(cacheKey);
+      if (dbHit && dbHit.patterns && dbHit.patterns.length) {
+        loadGFPatterns(dbHit.patterns);
+        return;
+      }
+    } catch(_) {}
+  }
   try {
     var res = await callClaude({
       feature: 'grammar-curriculum',
@@ -15592,6 +15984,7 @@ async function _generateGrammarForCurriculumPattern(item) {
     var parsed = JSON.parse(raw.slice(oi, ei + 1));
     if (parsed.patterns && parsed.patterns.length) {
       loadGFPatterns(parsed.patterns);
+      if (cacheKey !== 'gf-curr::') _aiCacheSet(cacheKey, { patterns: parsed.patterns });
     } else {
       if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
     }
@@ -15926,6 +16319,20 @@ async function generateGFPatterns() {
     return;
   }
 
+  // Cache the topic-based 3-pattern lesson too. The topic itself is
+  // shared across all users on a given day, so the first user's
+  // generation seeds the cache and everyone else hits DB. Stale-OK:
+  // if the topic gets re-generated for any reason, the cache key
+  // changes naturally because it's keyed off the topic string.
+  var cacheKey = 'gf-topic::' + topic.trim();
+  try {
+    var dbHit = await _aiCacheGet(cacheKey);
+    if (dbHit && dbHit.patterns && dbHit.patterns.length) {
+      loadGFPatterns(dbHit.patterns);
+      return;
+    }
+  } catch(_) {}
+
   // Growth Lab integration: include user's weak grammar points
   var weakHint = '';
   try {
@@ -15965,6 +16372,8 @@ async function generateGFPatterns() {
     var parsed = JSON.parse(raw.slice(oi, ei+1));
     if (parsed.patterns && parsed.patterns.length) {
       loadGFPatterns(parsed.patterns);
+      // Persist so the next user on the same daily topic hits DB.
+      _aiCacheSet(cacheKey, { patterns: parsed.patterns });
     } else {
       if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
     }
@@ -18120,56 +18529,20 @@ function _asSetFilter(mode) {
 }
 
 async function _asLoadArticles() {
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSupa();
   var g = document.getElementById('as-article-grid'); if (!g) return;
-  g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading article…</div></div>';
-  // Column-list fallback. Production sometimes lags behind the codebase
-  // (e.g. an older deploy didn't have title_en / level yet) and a single
-  // unknown column makes PostgREST return an error for the whole query —
-  // which is what surfaces to mobile users as "Could not load the
-  // article." Try the rich list first, then fall back to a minimal one.
-  var SELECT_LISTS = [
-    'id,title,title_en,section,level,image,body',
-    'id,title,section,image,body',
-    '*'
-  ];
-  async function _selectArticlesByIds(ids) {
-    var lastErr = null;
-    for (var i = 0; i < SELECT_LISTS.length; i++) {
-      var res = await sb.from('articles').select(SELECT_LISTS[i]).in('id', ids).limit(200);
-      if (!res.error) return res.data || [];
-      lastErr = res.error;
-      if (!/column|does not exist|could not find/i.test(res.error.message || '')) break;
-      console.warn('[ArticleStudy] saved-list select retry —', res.error.message);
-    }
-    throw lastErr || new Error('articles select failed');
-  }
-  async function _selectLatestPublished() {
-    var lastErr = null;
-    for (var i = 0; i < SELECT_LISTS.length; i++) {
-      var res = await sb.from('articles').select(SELECT_LISTS[i])
-        .eq('status','published').order('date',{ascending:false}).limit(500);
-      if (!res.error) return res.data || [];
-      lastErr = res.error;
-      if (!/column|does not exist|could not find/i.test(res.error.message || '')) break;
-      console.warn('[ArticleStudy] latest select retry —', res.error.message);
-    }
-    throw lastErr || new Error('articles select failed');
+  g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading articles…</div></div>';
+  if (!sb) {
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">Cannot connect — please reload the page.</div>';
+    return;
   }
   try {
     if (_asFilter === 'saved') {
-      // Saved mode: pull the user's bookmarks first, then fetch the
-      // articles for those ids. If the user has none yet we show a
-      // friendly empty state instead of the spinner forever.
       if (!supaUser) {
         g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center">Sign in to see your saved articles.</div>';
         _asArticles = [];
         return;
       }
-      // Pull bookmarks newest-first so the picker shows recently saved
-      // articles at the top. .in() doesn't preserve order, so we re-sort
-      // the fetched articles using a position map keyed off the bookmark
-      // ids array. Same pattern as korehan-notes.html._loadBookmarks.
       var bm = await sb.from('bookmarks')
         .select('article_id, created_at')
         .eq('user_id', supaUser.id)
@@ -18181,25 +18554,72 @@ async function _asLoadArticles() {
         _asArticles = [];
         return;
       }
-      var rows = await _selectArticlesByIds(ids);
+      var savedRows = await _asFetchArticles({ ids: ids });
       var bmOrder = {}; ids.forEach(function(id, i){ bmOrder[String(id)] = i; });
-      _asArticles = rows
+      _asArticles = savedRows
         .filter(function(a){ return a.title; })
         .sort(function(a, b){ return (bmOrder[String(a.id)] || 0) - (bmOrder[String(b.id)] || 0); });
       _asRenderGrid();
       return;
     }
-    var latest = await _selectLatestPublished();
-    _asArticles = latest.filter(function(a){ return a.title; });
+
+    // Replicate the home page's proven query pattern instead of the
+    // ad-hoc one that was failing here:
+    //   · order by `created_at` (matches loadArticlesFromDB) — `date`
+    //     can be null on rows where the admin didn't backfill it,
+    //     and a NULL-sorted column drops those rows behind a long
+    //     tail that the limit cuts off.
+    //   · NO `.eq('status','published')` server-side — instead filter
+    //     in JS after the fetch. Letting the WHERE clause hit the
+    //     status column triggered a PostgREST schema-cache miss for
+    //     some article rows, which surfaced as the "Could not load
+    //     the article" error.
+    //   · Try the lite column list first; on column-missing error,
+    //     fall back to '*' (same shape as home page's loader).
+    var rows = await _asFetchArticles({});
+    _asArticles = rows.filter(function(a){
+      // Apply status filter client-side: hide drafts but keep rows
+      // where status came back null/missing (production has been
+      // through enough migrations that some rows lack the column).
+      if (a.status && a.status !== 'published') return false;
+      return !!a.title;
+    });
     _asRenderGrid();
   } catch(e) {
-    console.error('[ArticleStudy] _asLoadArticles failed:', e);
-    var detail = (e && (e.message || e.hint || e.code)) ? String(e.message || e.hint || e.code) : '';
-    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center;line-height:1.6">Could not load the article.'
-      + (detail ? '<div style="margin-top:6px;font-size:11px;color:#cbd5e1">' + detail.replace(/[<>]/g,'') + '</div>' : '')
-      + '<button onclick="_asLoadArticles()" style="margin-top:12px;padding:8px 16px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#0b1626;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Retry</button>'
-      + '</div>';
+    console.error('[Article Study] picker load failed:', e);
+    var msg = (e && e.message) ? String(e.message).slice(0, 160) : 'unknown error';
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;line-height:1.5">Could not load articles.<br><span style="font-size:11px;color:#cbd5e1">' + msg.replace(/[<&]/g, '') + '</span><br><button onclick="_asLoadArticles()" style="margin-top:10px;padding:6px 14px;font-size:12px;font-weight:700;background:#0b1626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit">Retry</button></div>';
   }
+}
+
+// Fetch articles using the same lite-then-* column pattern that the
+// home page's loadArticlesFromDB uses. Returns an array of rows
+// (possibly empty) on success; throws on hard failures so the
+// caller's catch can surface a real error message.
+async function _asFetchArticles(opts) {
+  opts = opts || {};
+  var sb = getSupa();
+  var lite = 'id,title,title_en,section,level,image,status,date,created_at';
+  var selects = [lite, '*'];
+  var lastErr = null;
+  for (var i = 0; i < selects.length; i++) {
+    var q = sb.from('articles').select(selects[i]);
+    if (opts.ids) q = q.in('id', opts.ids).limit(200);
+    else q = q.order('created_at', { ascending: false }).limit(500);
+    var res;
+    try { res = await q; }
+    catch(err) { lastErr = err; continue; }
+    if (res.error) {
+      lastErr = res.error;
+      var m = String((res.error && res.error.message) || '');
+      // Drop to '*' if PostgREST complains about a missing column —
+      // production schema has drifted from the codebase a few times.
+      if (i < selects.length - 1 && /column|does not exist|could not find/i.test(m)) continue;
+      throw res.error;
+    }
+    return res.data || [];
+  }
+  throw (lastErr || new Error('article fetch failed'));
 }
 function _asRenderGrid() {
   var g = document.getElementById('as-article-grid'); if (!g) return;
@@ -18227,6 +18647,18 @@ function _asRenderGrid() {
 async function asSelectArticle(id) {
   var art = _asArticles.find(function(a){ return String(a.id)===String(id); });
   if (!art) return;
+  // Body isn't in the list query (size cap) — fetch it now for the
+  // one article the user actually opened, then mutate art.body so
+  // the rest of the flow reads it like before.
+  if (!art.body) {
+    try {
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      if (sb) {
+        var bodyRes = await sb.from('articles').select('body').eq('id', art.id).maybeSingle();
+        if (bodyRes && bodyRes.data && bodyRes.data.body) art.body = bodyRes.data.body;
+      }
+    } catch(_) {}
+  }
   _asCurrentArt = art; _asStep = 1; _asStepDone = [false,false,false,false,false];
   _asStudyContent = null; _asMatchState = null; _asWOState = null; _asQState = null;
   // Restore progress: localStorage first, then DB
@@ -19314,18 +19746,25 @@ setTimeout(renderCompletedStudies, 500);
           </svg>
           <span class="ls-node-coin">+20 냥</span><span class="ls-node-check">✓</span>
         </div>
-        <div class="ls-node-name">Topic Writing</div>
+        <div class="ls-node-name">Topic Yum Yum</div>
       </div>
+      <!-- Slot id stays `ls-card-grammar` for storage / state-tracking
+           compat — _studyDone.grammar, line-done flags, localStorage
+           keys all reference it. The activity itself is now Translation
+           Sprint; grammar lessons live in the Skill Tree now. -->
       <div class="ls-node" id="ls-card-grammar" data-pos="tr" onclick="lsStart('grammar')">
         <div class="ls-node-circle">
           <svg class="ls-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/>
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H19v4H6.5A2.5 2.5 0 0 1 4 18.5z"/>
-            <path d="M8 7h7M8 10h7"/>
+            <path d="m5 8 6 6"/>
+            <path d="m4 14 6-6 2-3"/>
+            <path d="M2 5h12"/>
+            <path d="M7 2h1"/>
+            <path d="m22 22-5-10-5 10"/>
+            <path d="M14 18h6"/>
           </svg>
           <span class="ls-node-coin">+10 냥</span><span class="ls-node-check">✓</span>
         </div>
-        <div class="ls-node-name">Grammar</div>
+        <div class="ls-node-name">Phrase Munch</div>
       </div>
       <div class="ls-node" id="ls-card-picture" data-pos="br" onclick="lsStart('picture')">
         <div class="ls-node-circle">
@@ -21138,18 +21577,37 @@ async function _buildComprehensiveReview(targetCount, lookbackDays) {
     });
   } catch(e) {}
 
-  // Article cache for those articles (grammar / quiz / key_expressions).
+  // Article cache for those articles. The column is `expressions`
+  // (singular), NOT `key_expressions` — the admin generator reshapes
+  // the AI's `key_expressions:[{ko,en}]` into `[{phrase, note, color}]`
+  // before save, and that's what's stored. The original code asked
+  // for the wrong column and got nothing back, so the expressions
+  // slot was always empty (vocab pool padded the gap). Pull `expressions`
+  // and map to the {ko, en} shape downstream consumers expect.
   var articleCacheMap = {};
   if (articleIds.length) {
     try {
       var acRes = await sb.from('article_cache')
-        .select('article_id, grammar, quiz, key_expressions')
+        .select('article_id, grammar, quiz, expressions')
         .in('article_id', articleIds.map(String));
       (acRes.data || []).forEach(function(r) {
+        var rawExprs = _mrSafeParse(r.expressions);
+        var normExprs = [];
+        if (Array.isArray(rawExprs)) {
+          rawExprs.forEach(function(e) {
+            if (!e) return;
+            // Stored shape: {phrase, note, color}. Normalize to
+            // {ko, en} so the slot builder reads it the same way it
+            // reads conversation expressions.
+            var ko = e.phrase || e.ko;
+            var en = e.note   || e.en;
+            if (ko && en) normExprs.push({ ko: ko, en: en });
+          });
+        }
         articleCacheMap[r.article_id] = {
           grammar: _mrSafeParse(r.grammar),
           quiz: _mrSafeParse(r.quiz),
-          key_expressions: _mrSafeParse(r.key_expressions),
+          key_expressions: normExprs,
         };
       });
     } catch(e) {}
