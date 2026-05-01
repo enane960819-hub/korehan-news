@@ -474,8 +474,13 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
    WRITING MODAL — dark theme override (Int/Adv unified design)
 ══════════════════════════════════════════════════════════ */
 .wmodal {
-  background: linear-gradient(160deg, #1a2e5e 0%, #243f82 100%);
-  box-shadow: 0 40px 100px rgba(5,12,28,.55), 0 0 0 1px rgba(255,255,255,.10);
+  /* Topic Yum Yum / Express Practice — adopt Phrase Munch's panel
+     gradient so it reads as part of the same study-modal family.
+     Earlier we'd lifted this brighter to soften the "midnight" feel
+     of the page, but design unification beats brightness for this
+     one surface. */
+  background: linear-gradient(180deg, #0f1d3a 0%, #0a1428 100%);
+  box-shadow: 0 32px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06);
 }
 .wmodal .wm-header {
   background: transparent;
@@ -7515,30 +7520,47 @@ function _keRenderStudyPhase(list) {
   var idx = window._keStudyIdx || 0;
   var exp = exps[idx];
 
+  // Card refactor — the previous version crammed expression + romanization +
+  // English + Example + 3 action buttons all into one bordered block, which
+  // read as "난잡" on mobile. Split into:
+  //   1) Headline card: just expression / romanization / meaning. Big.
+  //   2) Example block: muted, no border, sits below the headline as a
+  //      separate visual chunk.
+  //   3) Actions row: Listen / Save / Situation Quiz on their own line so
+  //      they don't fight the example text for attention.
+  var safeKo = (exp.ko||'').replace(/'/g,"\\'");
   list.innerHTML =
-    '<div style="text-align:center;margin-bottom:12px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:4px">STEP 1: Study</div>'
+    '<div style="text-align:center;margin-bottom:14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:4px">Step 1 · Study</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
     + '</div>'
-    + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px;text-align:center;margin-bottom:12px">'
-    + '<div style="font-size:24px;font-weight:900;margin-bottom:6px">' + (exp.ko||'') + '</div>'
-    + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:8px">' + (exp.rom||'') + '</div>'
-    + '<div style="font-size:15px;color:#7dd3fc;font-weight:700;margin-bottom:12px">' + (exp.en||'') + '</div>'
-    + '<div style="font-size:13px;color:rgba(255,255,255,.55);border-top:1px solid rgba(255,255,255,.08);padding-top:10px;text-align:left">'
-    + '<div style="font-weight:700;margin-bottom:4px">Example:</div>'
-    + '<div>' + (exp.example_ko||'') + '</div>'
-    + '<div style="color:rgba(255,255,255,.35);margin-top:2px">' + (exp.example_en||'') + '</div>'
+    // Headline card — clean and uncrowded
+    + '<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:22px 18px;text-align:center;margin-bottom:14px">'
+    +   '<div style="font-family:\'Noto Serif KR\',serif;font-size:26px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:6px">' + (exp.ko||'') + '</div>'
+    +   '<div style="font-size:12px;color:rgba(255,255,255,.4);font-style:italic;margin-bottom:10px">' + (exp.rom||'') + '</div>'
+    +   '<div style="font-size:15px;color:#7dd3fc;font-weight:700">' + (exp.en||'') + '</div>'
     + '</div>'
-    + '<button onclick="ttsSpeak(\'' + (exp.ko||'').replace(/'/g,"\\'") + '\')" style="padding:8px 16px;border:1px solid rgba(125,211,252,.3);border-radius:8px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
-    + ' ' + renderSaveWordBtn(exp.ko, exp.en, exp.rom, 'key_expression')
-    + ' <button onclick="keOpenSituationQuiz(' + idx + ')" style="padding:8px 16px;border:1px solid rgba(251,191,36,.35);border-radius:8px;background:rgba(251,191,36,.12);color:#fde68a;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:6px;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_BULB+'</span><span>Situation Quiz</span></button>'
+    // Example block — subdued, not a competing card
+    + (exp.example_ko ? '<div style="padding:0 4px 16px;font-size:13px;color:rgba(255,255,255,.7);line-height:1.6">'
+        +   '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);margin-bottom:6px">Example</div>'
+        +   '<div style="margin-bottom:2px">' + (exp.example_ko||'') + '</div>'
+        +   '<div style="color:rgba(255,255,255,.42)">' + (exp.example_en||'') + '</div>'
+        + '</div>' : '')
+    // Actions row — its own line, three equal-weight buttons
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">'
+    +   '<button onclick="ttsSpeak(\'' + safeKo + '\')" style="flex:1;min-width:96px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
+    +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\')" style="flex:1;min-width:96px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
+    +   '<button onclick="keOpenSituationQuiz(' + idx + ')" style="flex:1;min-width:96px;padding:9px 12px;border:1px solid rgba(251,191,36,.35);border-radius:10px;background:rgba(251,191,36,.12);color:#fde68a;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_BULB+'</span><span>Quiz</span></button>'
     + '</div>'
+    // Navigation row
     + '<div style="display:flex;gap:8px;justify-content:center">'
     + (idx > 0 ? '<button onclick="window._keStudyIdx--;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&larr; Prev</button>' : '')
     + (idx < exps.length - 1
       ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &rarr;</button>'
       : '<button onclick="_keStartQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Start Quiz &rarr;</button>')
     + '</div>';
+  // Re-render lucide icons that were just injected (Save button).
+  if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
 }
 
 function _keStartQuiz() {
@@ -7829,10 +7851,14 @@ function _keShowFinalScore() {
   var totalMax = recogTotal + fillTotal + sitTotal;
   var totalPct = totalMax > 0 ? Math.round(totalScore / totalMax * 100) : 0;
 
+  // No emoji on the celebration line per design feedback. The score
+  // ring + percentage already tell the same story.
+  var headlineColor = totalPct >= 80 ? '#34d399' : totalPct >= 60 ? '#7dd3fc' : '#fbbf24';
+  var headlineLabel = totalPct >= 80 ? 'Excellent' : totalPct >= 60 ? 'Nice work' : 'Keep going';
   list.innerHTML =
     '<div style="text-align:center;padding:20px 0 8px">'
-    + '<div style="font-size:36px;margin-bottom:8px">' + (totalPct >= 80 ? '\ud83c\udf89' : totalPct >= 60 ? '\ud83d\udc4d' : '\ud83d\udcaa') + '</div>'
-    + '<div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:2px">Session Complete!</div>'
+    + '<div style="font-size:11px;font-weight:800;color:' + headlineColor + ';text-transform:uppercase;letter-spacing:.18em;margin-bottom:8px">' + headlineLabel + '</div>'
+    + '<div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:2px">Session Complete</div>'
     + '<div style="font-size:13px;color:#94a3b8;margin-bottom:18px">Here\'s how you did:</div>'
     + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">'
@@ -12967,9 +12993,12 @@ function renderSaveWordBtn(ko, en, rom, source) {
   var safeKo = (ko||'').replace(/'/g, "\\'");
   var safeEn = (en||'').replace(/'/g, "\\'");
   var safeRom = (rom||'').replace(/'/g, "\\'");
+  // No emoji per design feedback — use a lucide bookmark-plus icon
+  // and a label so the button reads as a real control instead of a
+  // throwaway chip.
   return '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + safeEn + '\',\'' + safeRom + '\',\'' + (source||'study') + '\')" '
-    + 'style="padding:2px 6px;border:1px solid #dbeafe;border-radius:4px;background:#eff6ff;color:#2563eb;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:4px" '
-    + 'title="Save to wordbank">+📚</button>';
+    + 'style="padding:6px 12px;border:1px solid #dbeafe;border-radius:8px;background:#eff6ff;color:#2563eb;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px" '
+    + 'title="Save to wordbank"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>';
 }
 
 function showAILoading() {
@@ -20263,7 +20292,13 @@ function openUniverseView() {
     <div id="ke-expressions-list" style="display:flex;flex-direction:column;gap:10px">
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading expressions...</div>
     </div>
-    <button onclick="markStageDone('expressions');returnToActivities(closeKeyExpressionsModal)" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:18px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:14px;font-weight:800;cursor:pointer"><span>완료</span><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
+    <!-- The bottom 완료 button used to live here, visible from the
+         very first study card. That confused the flow: a learner
+         could "complete" the activity before seeing a single
+         expression. The final score screen (_keShowFinalScore)
+         already provides its own 완료 ✓ button at the right
+         moment, so the duplicate is just gone. Close button (×) at
+         the top still lets the learner bail out at any step. -->
   </div>
 </div>
 
