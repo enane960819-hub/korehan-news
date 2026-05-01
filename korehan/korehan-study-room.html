@@ -7512,6 +7512,14 @@ function _renderKeyExpressions(list, expressions) {
   window._kePhase = 'study';
   window._keStudyIdx = 0;
   _keRenderStudyPhase(list);
+  // Background pre-gen: kick off the situation quiz fetch as soon
+  // as expressions render, so by the time the learner finishes
+  // Study and reaches the quiz step, the situations are already
+  // cached in DB. First learner pays the AI bill; subsequent ones
+  // load instantly.
+  if (typeof _kePrefetchSituations === 'function') {
+    _kePrefetchSituations(expressions);
+  }
 }
 
 function _keRenderStudyPhase(list) {
@@ -7546,11 +7554,13 @@ function _keRenderStudyPhase(list) {
         +   '<div style="margin-bottom:2px">' + (exp.example_ko||'') + '</div>'
         +   '<div style="color:rgba(255,255,255,.42)">' + (exp.example_en||'') + '</div>'
         + '</div>' : '')
-    // Actions row — its own line, three equal-weight buttons
+    // Actions row — Listen / Save only. The per-card "Quiz" button
+    // used to live here, but the user wanted the quiz to be its own
+    // step at the end of Study (cleaner mental model: study all 6
+    // → then quiz on all 6, not study-quiz-study-quiz).
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">'
-    +   '<button onclick="ttsSpeak(\'' + safeKo + '\')" style="flex:1;min-width:96px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
-    +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\')" style="flex:1;min-width:96px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
-    +   '<button onclick="keOpenSituationQuiz(' + idx + ')" style="flex:1;min-width:96px;padding:9px 12px;border:1px solid rgba(251,191,36,.35);border-radius:10px;background:rgba(251,191,36,.12);color:#fde68a;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_BULB+'</span><span>Quiz</span></button>'
+    +   '<button onclick="ttsSpeak(\'' + safeKo + '\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
+    +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
     + '</div>'
     // Navigation row
     + '<div style="display:flex;gap:8px;justify-content:center">'
@@ -7725,6 +7735,46 @@ function _keCheckFillAnswer() {
 // ── Phase 3: Situational Mapping ──
 var _keSituations = null;
 
+// Cross-user DB cache key for the situation set, scoped by topic +
+// level + date so the situation Quiz step doesn't burn a Claude
+// call on every visit. Same daily topic for everyone = same Q's
+// for everyone, so the first learner pays the bill and all later
+// learners read from DB.
+function _keSitCacheKey() {
+  var topicId = (_todayTopic && (_todayTopic.id || _todayTopic.topic_ko)) || 'default';
+  var level   = _currentLevel || 'Beginner';
+  var date    = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+  return 'kex_sit::' + topicId + '_' + level + '_' + date;
+}
+
+// Background pre-gen — called as soon as expressions render so the
+// situation step is instant by the time the learner reaches it.
+// Skips the AI call if the DB already has a cached set.
+function _kePrefetchSituations(expressions) {
+  if (!Array.isArray(expressions) || !expressions.length) return;
+  if (typeof _aiCacheGet !== 'function' || typeof callClaude !== 'function') return;
+  var key = _keSitCacheKey();
+  _aiCacheGet(key).then(function(hit) {
+    if (hit && Array.isArray(hit.situations) && hit.situations.length) return;
+    var expList = expressions.map(function(e, i) { return (i+1) + '. ' + e.ko + ' — ' + e.en; }).join('\n');
+    callClaude({
+      feature: 'ke-situations-prefetch',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: 'Given these Korean expressions:\n' + expList + '\n\nCreate exactly 3 real-life situational questions. For each, return JSON with: situation (1-2 sentence English description of a real-life moment), correct_index (0-based index from the list above of the best expression), why (brief English reason). Return a JSON array only, no markdown.' }]
+    }).then(function(res) {
+      try {
+        var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+        text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+        var sits = JSON.parse(text);
+        if (Array.isArray(sits) && sits.length && typeof _aiCacheSet === 'function') {
+          _aiCacheSet(key, { situations: sits });
+        }
+      } catch(_) {}
+    }).catch(function(){});
+  });
+}
+
 function _keStartSituationQuiz() {
   window._kePhase = 'situation';
   window._keSitIdx = 0;
@@ -7732,37 +7782,57 @@ function _keStartSituationQuiz() {
   _keSituations = null;
 
   var list = document.getElementById('ke-expressions-list'); if (!list) return;
-  list.innerHTML = '<div style="text-align:center;padding:24px;color:rgba(255,255,255,.4)">Generating situational exercises...</div>';
+  list.innerHTML = '<div style="text-align:center;padding:24px;color:rgba(255,255,255,.4)">Loading situational exercises...</div>';
+  var sitCacheKey = _keSitCacheKey();
 
   var exps = window._keExpressions || [];
   var expList = exps.map(function(e, i) { return (i+1) + '. ' + e.ko + ' \u2014 ' + e.en; }).join('\n');
 
-  callClaude({
-    feature: 'ke-situations',
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 800,
-    messages: [{ role: 'user', content: 'Given these Korean expressions:\n' + expList + '\n\nCreate exactly 3 real-life situational questions. For each, return JSON with: situation (1-2 sentence English description of a real-life moment), correct_index (0-based index from the list above of the best expression), why (brief English reason). Return a JSON array only, no markdown.' }]
-  }).then(function(res) {
-    try {
-      var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
-      text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
-      var situations = JSON.parse(text);
-      if (!Array.isArray(situations) || !situations.length) throw new Error('empty');
-      _keSituations = situations;
-    } catch(e) {
-      // Fallback: generate situations from expression meanings
-      _keSituations = exps.slice(0, 3).map(function(exp, i) {
+  // 1) Cross-user DB cache lookup. If the situation set already
+  //    exists for this topic/level/date the quiz step is instant
+  //    and we don't burn a Claude call.
+  function _afterLoad(situations) {
+    _keSituations = situations;
+    _keRenderSituationQuiz();
+  }
+  function _generate() {
+    callClaude({
+      feature: 'ke-situations',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: 'Given these Korean expressions:\n' + expList + '\n\nCreate exactly 3 real-life situational questions. For each, return JSON with: situation (1-2 sentence English description of a real-life moment), correct_index (0-based index from the list above of the best expression), why (brief English reason). Return a JSON array only, no markdown.' }]
+    }).then(function(res) {
+      try {
+        var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+        text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+        var situations = JSON.parse(text);
+        if (!Array.isArray(situations) || !situations.length) throw new Error('empty');
+        // Save to DB so the next learner on the same topic/level
+        // hits the cache instead of regenerating.
+        if (typeof _aiCacheSet === 'function') _aiCacheSet(sitCacheKey, { situations: situations });
+        _afterLoad(situations);
+      } catch(e) {
+        _afterLoad(exps.slice(0, 3).map(function(exp, i) {
+          return { situation: 'You want to say: "' + exp.en + '"', correct_index: i, why: 'This expression means: ' + exp.en };
+        }));
+      }
+    }).catch(function() {
+      _afterLoad(exps.slice(0, 3).map(function(exp, i) {
         return { situation: 'You want to say: "' + exp.en + '"', correct_index: i, why: 'This expression means: ' + exp.en };
-      });
-    }
-    _keRenderSituationQuiz();
-  }).catch(function() {
-    // Fallback on network error
-    _keSituations = exps.slice(0, 3).map(function(exp, i) {
-      return { situation: 'You want to say: "' + exp.en + '"', correct_index: i, why: 'This expression means: ' + exp.en };
+      }));
     });
-    _keRenderSituationQuiz();
-  });
+  }
+  if (typeof _aiCacheGet === 'function') {
+    _aiCacheGet(sitCacheKey).then(function(hit) {
+      if (hit && Array.isArray(hit.situations) && hit.situations.length) {
+        _afterLoad(hit.situations);
+        return;
+      }
+      _generate();
+    }).catch(_generate);
+  } else {
+    _generate();
+  }
 }
 
 function _keRenderSituationQuiz() {
