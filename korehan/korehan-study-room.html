@@ -2587,7 +2587,17 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .pm-result-pct { font-size:14px; color:rgba(255,255,255,.55); margin-top:6px; margin-bottom:24px; }
 @media (max-width:640px) {
   #pm-modal { align-items:flex-end !important; padding:0 !important; }
-  #pm-modal > div { border-radius:22px 22px 0 0 !important; width:100% !important; max-height:95dvh !important; }
+  /* Bottom-sheet layout: pin to the full height of the viewport so the
+     modal doesn't render as a stunted half-screen tile when the lesson
+     content is short. height: 100dvh keeps the practice flow framed
+     like its own screen. */
+  #pm-modal > div {
+    border-radius:22px 22px 0 0 !important;
+    width:100% !important;
+    height:100dvh !important;
+    max-height:100dvh !important;
+    min-height:100dvh !important;
+  }
   .pm-example-ko { font-size:23px; }
   .pm-part-ko { min-width:56px; font-size:15px; }
 }
@@ -7052,7 +7062,7 @@ function _esc(s) {
 // ── Key Expressions Modal ──
 var _keCache = null;
 var _keCacheKey = null; // topic+level+date — invalidate when any changes
-function openKeyExpressionsModal() {
+async function openKeyExpressionsModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
   var modal = document.getElementById('ke-modal');
@@ -7070,14 +7080,39 @@ function openKeyExpressionsModal() {
   // 1) In-memory cache (same session, same topic/level/date)
   if (_keCache) { _renderKeyExpressions(list, _keCache); return; }
 
-  // 2) sessionStorage cache (survives reload within same day)
+  // 2) localStorage cache (survives full reload + tab close).
+  //    sessionStorage was clearing on tab close, which is why mobile
+  //    users felt every visit re-generated.
   var cacheKey = 'ke_' + topicKey;
   try {
-    var cached = sessionStorage.getItem(cacheKey);
-    if (cached) { var parsed = JSON.parse(cached); _keCache = parsed; _renderKeyExpressions(list, parsed); return; }
+    var cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      var parsed = JSON.parse(cached);
+      if (parsed && Array.isArray(parsed) && parsed.length) {
+        _keCache = parsed;
+        _renderKeyExpressions(list, parsed);
+        return;
+      }
+    }
   } catch(e) {}
 
-  // 3) Generate via Claude — expressions must be directly usable for today's topic
+  // 3) Cross-user DB cache. Same topic + level + date = same lesson
+  //    set for every user, so the FIRST learner to open the panel
+  //    pays the AI bill and everyone after them gets it free.
+  var dbCacheKey = 'kex::' + topicKey;
+  try {
+    if (typeof _aiCacheGet === 'function') {
+      var hit = await _aiCacheGet(dbCacheKey);
+      if (hit && Array.isArray(hit.expressions) && hit.expressions.length) {
+        _keCache = hit.expressions;
+        try { localStorage.setItem(cacheKey, JSON.stringify(hit.expressions)); } catch(_){}
+        _renderKeyExpressions(list, hit.expressions);
+        return;
+      }
+    }
+  } catch(_) {}
+
+  // 4) Generate via Claude — expressions must be directly usable for today's topic
   list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Generating key expressions...</div>';
   var topicText = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || 'daily life';
   var topicEn   = (_todayTopic && _todayTopic.topic_en) || topicText;
@@ -7112,7 +7147,12 @@ function openKeyExpressionsModal() {
       });
       if (!expressions.length) throw new Error('no valid expressions');
       _keCache = expressions;
-      try { sessionStorage.setItem(cacheKey, JSON.stringify(expressions)); } catch(e) {}
+      try { localStorage.setItem(cacheKey, JSON.stringify(expressions)); } catch(e) {}
+      // Promote to the cross-user DB cache so the next learner on the
+      // same daily topic gets it instantly without burning AI credits.
+      try {
+        if (typeof _aiCacheSet === 'function') _aiCacheSet(dbCacheKey, { expressions: expressions });
+      } catch(_) {}
       _renderKeyExpressions(list, expressions);
     } catch(e) {
       list.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px 0">Failed to generate. Please try again.</div>';
