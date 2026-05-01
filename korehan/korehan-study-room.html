@@ -18401,24 +18401,39 @@ function _asSetFilter(mode) {
   _asLoadArticles();
 }
 
+// localStorage key for the last-good article list. The home page
+// already caches articles via getCachedArticles(); reusing that
+// cache here means the picker can still show *something* when the
+// live query fails (mobile network blip, schema cache, etc).
+var _AS_CACHE_KEY = 'kh_as_articles_v1';
+
 async function _asLoadArticles() {
-  var sb = getSupa(); if (!sb) return;
+  var sb = getSupa();
   var g = document.getElementById('as-article-grid'); if (!g) return;
-  g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading article…</div></div>';
+  g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading articles…</div></div>';
+
+  // 0) If we have a cached list from a previous successful load, paint
+  //    it immediately. The live query below either confirms it or
+  //    leaves the cached list in place if it errors.
+  var cached = null;
+  try { cached = JSON.parse(localStorage.getItem(_AS_CACHE_KEY) || 'null'); } catch(_) {}
+
+  if (!sb) {
+    if (cached && cached.articles && cached.articles.length) {
+      _asArticles = cached.articles;
+      _asRenderGrid();
+    } else {
+      g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">Cannot connect — please reload the page.</div>';
+    }
+    return;
+  }
   try {
     if (_asFilter === 'saved') {
-      // Saved mode: pull the user's bookmarks first, then fetch the
-      // articles for those ids. If the user has none yet we show a
-      // friendly empty state instead of the spinner forever.
       if (!supaUser) {
         g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center">Sign in to see your saved articles.</div>';
         _asArticles = [];
         return;
       }
-      // Pull bookmarks newest-first so the picker shows recently saved
-      // articles at the top. .in() doesn't preserve order, so we re-sort
-      // the fetched articles using a position map keyed off the bookmark
-      // ids array. Same pattern as korehan-notes.html._loadBookmarks.
       var bm = await sb.from('bookmarks')
         .select('article_id, created_at')
         .eq('user_id', supaUser.id)
@@ -18439,19 +18454,52 @@ async function _asLoadArticles() {
       _asRenderGrid();
       return;
     }
-    // Drop the heavy `body` column from the list query — pulling 500
-    // article bodies (~3KB each = ~1.5 MB payload) was hitting either
-    // PostgREST's row size cap or the mobile network's timeout, which
-    // landed in the catch block as the user-visible "Could not load
-    // the article" toast. Body is only needed AFTER the user picks a
-    // specific article, so we fetch it on-demand inside asSelectArticle.
-    var r = await sb.from('articles').select('id,title,title_en,section,level,image')
-      .eq('status','published').order('date',{ascending:false}).limit(500);
-    if (r.error) throw r.error;
-    _asArticles = (r.data||[]).filter(function(a){ return a.title; });
+
+    // Live query — try the strict published-only filter first; if
+    // PostgREST chokes on `status` (older db / migration drift / RLS
+    // quirk) retry without that filter so we still surface articles.
+    var rows = null;
+    var lastErr = null;
+
+    var attempts = [
+      { f: function() { return sb.from('articles').select('id,title,title_en,section,level,image,status').eq('status','published').order('date',{ascending:false}).limit(300); } },
+      { f: function() { return sb.from('articles').select('id,title,title_en,section,level,image').order('date',{ascending:false}).limit(300); } },
+      { f: function() { return sb.from('articles').select('id,title,title_en,section,level,image').order('created_at',{ascending:false}).limit(300); } },
+      { f: function() { return sb.from('articles').select('id,title,title_en,section,level,image').limit(300); } },
+    ];
+    for (var i = 0; i < attempts.length; i++) {
+      try {
+        var r = await attempts[i].f();
+        if (r.error) { lastErr = r.error; continue; }
+        rows = r.data || [];
+        break;
+      } catch(err) { lastErr = err; }
+    }
+    if (rows == null) throw (lastErr || new Error('all article queries failed'));
+
+    _asArticles = rows.filter(function(a){
+      // If status came back, hide drafts; otherwise keep everything.
+      if (a.status && a.status !== 'published') return false;
+      return !!a.title;
+    });
     _asRenderGrid();
+    // Persist the latest-good list so a future cold open with a
+    // flaky network still shows the picker.
+    try {
+      localStorage.setItem(_AS_CACHE_KEY, JSON.stringify({
+        articles: _asArticles.slice(0, 200),
+        savedAt: Date.now(),
+      }));
+    } catch(_) {}
   } catch(e) {
-    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">Could not load the article.</div>';
+    console.error('[Article Study] picker load failed:', e);
+    if (cached && cached.articles && cached.articles.length) {
+      _asArticles = cached.articles;
+      _asRenderGrid();
+      return;
+    }
+    var msg = (e && e.message) ? String(e.message).slice(0, 120) : 'unknown error';
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;line-height:1.5">Could not load articles.<br><span style="font-size:11px;color:#cbd5e1">' + msg.replace(/[<&]/g, '') + '</span><br><button onclick="_asLoadArticles()" style="margin-top:10px;padding:6px 14px;font-size:12px;font-weight:700;background:#0b1626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit">Retry</button></div>';
   }
 }
 function _asRenderGrid() {
