@@ -2499,6 +2499,69 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .dct-wo-zone { background:rgba(20,203,176,.06); border:1.5px solid rgba(20,203,176,.25); border-radius:14px; padding:16px; margin-bottom:14px; font-family:'Noto Serif KR',serif; font-size:16px; line-height:2.4; min-height:56px; color:#fff; }
 @media(max-width:640px) { #dct-modal, #nq-modal { padding:0 !important; align-items:stretch !important; } #dct-modal .dct-panel, #nq-modal .dct-panel { max-height:100dvh; height:100dvh; max-width:100%; width:100%; border-radius:0; } }
 
+/* ── Phrase Munch modal styling ─────────────────────────────────── */
+.pm-pips { display:flex; gap:6px; margin-bottom:14px; }
+.pm-pip { flex:0 0 auto; width:24px; height:4px; border-radius:2px; transition:background .25s; }
+.pm-step-label { font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:rgba(167,139,250,.85); margin-bottom:10px; }
+.pm-prompt-hint { font-size:12px; color:rgba(255,255,255,.5); margin-bottom:14px; }
+.pm-example-ko { font-family:'Noto Serif KR',serif; font-size:26px; font-weight:900; color:#fff; line-height:1.45; margin-bottom:8px; }
+.pm-example-en { font-size:13px; color:rgba(255,255,255,.6); margin-bottom:18px; font-style:italic; }
+.pm-parts {
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  padding:12px 14px;
+  margin-bottom:16px;
+}
+.pm-part { display:flex; align-items:baseline; gap:14px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.pm-part:last-child { border-bottom:none; }
+.pm-part-ko { font-family:'Noto Serif KR',serif; font-size:16px; font-weight:800; color:#fff; min-width:64px; }
+.pm-part-en { font-size:12px; color:rgba(255,255,255,.65); flex:1; line-height:1.4; }
+.pm-grammar-note {
+  display:flex; gap:10px; align-items:flex-start;
+  background:linear-gradient(135deg,rgba(167,139,250,.18),rgba(99,102,241,.12));
+  border:1px solid rgba(167,139,250,.3);
+  border-radius:12px; padding:11px 14px;
+  font-size:13px; color:#e0d7ff; line-height:1.5; margin-bottom:18px;
+}
+.pm-gn-label { flex:0 0 auto; font-size:10px; font-weight:900; letter-spacing:.1em; color:#c4b5fd; padding:2px 8px; background:rgba(167,139,250,.2); border-radius:6px; align-self:flex-start; margin-top:1px; }
+.pm-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
+.pm-btn { font:inherit; font-size:14px; font-weight:800; padding:10px 22px; border-radius:10px; border:none; cursor:pointer; transition:all .15s; letter-spacing:.02em; }
+.pm-btn-primary { background:linear-gradient(135deg,#7c3aed,#2563eb); color:#fff; box-shadow:0 6px 18px rgba(124,58,237,.35); }
+.pm-btn-primary:hover { transform:translateY(-1px); box-shadow:0 10px 24px rgba(124,58,237,.45); }
+.pm-choices { display:flex; flex-direction:column; gap:8px; margin-top:14px; margin-bottom:14px; }
+.pm-choice {
+  font:inherit; font-size:14px; font-weight:600;
+  text-align:left; padding:13px 16px;
+  border-radius:11px;
+  border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.04);
+  color:#fff;
+  cursor:pointer; transition:all .15s;
+  line-height:1.4;
+}
+.pm-choice:hover:not(:disabled) { border-color:rgba(167,139,250,.4); background:rgba(167,139,250,.08); }
+.pm-choice:disabled { cursor:default; }
+.pm-choice-correct { background:rgba(34,197,94,.18) !important; border-color:rgba(34,197,94,.6) !important; color:#bbf7d0; }
+.pm-choice-wrong   { background:rgba(239,68,68,.18) !important; border-color:rgba(239,68,68,.6) !important; color:#fecaca; }
+.pm-choice-dim     { opacity:.45; }
+.pm-feedback { padding:11px 14px; border-radius:10px; font-size:13px; line-height:1.5; margin-top:6px; margin-bottom:10px; }
+.pm-feedback-win  { background:rgba(34,197,94,.12);  border:1px solid rgba(34,197,94,.3);  color:#bbf7d0; }
+.pm-feedback-lose { background:rgba(239,68,68,.12);  border:1px solid rgba(239,68,68,.3);  color:#fecaca; }
+.pm-result { text-align:center; padding:30px 10px 14px; }
+.pm-result-icon { margin-bottom:10px; }
+.pm-result-score { font-size:34px; font-weight:900; color:#fff; line-height:1; }
+.pm-result-pct { font-size:14px; color:rgba(255,255,255,.55); margin-top:6px; margin-bottom:24px; }
+@media (max-width:640px) {
+  #pm-modal { align-items:flex-end !important; padding:0 !important; }
+  #pm-modal > div { border-radius:22px 22px 0 0 !important; width:100% !important; max-height:95dvh !important; }
+  .pm-example-ko { font-size:23px; }
+  .pm-part-ko { min-width:56px; font-size:15px; }
+}
+
 /* ── Mobile fixes ─────────────────────────────────────── */
 @media(max-width:640px) {
   /* Grammar Focus modal — bottom sheet */
@@ -3730,6 +3793,25 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <button onclick="closeWGDrill()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">&times;</button>
     </div>
     <div id="wg-drill-body" style="padding:20px 24px"></div>
+  </div>
+</div>
+
+<!-- ═══ PHRASE MUNCH MODAL ════════════════════════════════════════
+     Daily 3-lesson "learn the breakdown, then translate a parallel
+     sentence" flow. Replaces the old cold-start translation sprint.
+     Slot key in the learning selector is still `grammar` (storage
+     compat); only the visible activity changed. -->
+<div class="woverlay hidden" id="pm-modal" onclick="if(event.target===this)closePhraseMunch()">
+  <div style="background:linear-gradient(180deg,#0f1d3a 0%,#0a1428 100%);border-radius:22px;width:min(560px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.55);display:flex;flex-direction:column;color:#fff;border:1px solid rgba(255,255,255,.06)">
+    <div style="padding:18px 22px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#a78bfa;margin-bottom:4px">Phrase Munch</div>
+        <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25">Munch on today's phrases</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:3px">Learn the breakdown, then translate a similar sentence</div>
+      </div>
+      <button onclick="closePhraseMunch()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+    </div>
+    <div id="pm-body" style="padding:20px 22px 24px;flex:1;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -6633,10 +6715,10 @@ function lsStart(type) {
   } else if (type === 'grammar') {
     // Slot key stays `grammar` for storage compat (_studyDone.grammar,
     // localStorage, line-done flags), but the activity is now
-    // Translation Sprint — Grammar Focus moved to the Skill Tree
-    // because daily topics rarely surfaced challenging grammar and
-    // the same beginner patterns kept recycling.
-    if (typeof openTranslationSprint === 'function') openTranslationSprint();
+    // Phrase Munch — Grammar Focus moved to the Skill Tree because
+    // daily topics rarely surfaced challenging grammar and the same
+    // beginner patterns kept recycling.
+    if (typeof openPhraseMunch === 'function') openPhraseMunch();
   } else if (type === 'picture') {
     if (_currentLevel === 'Advanced') {
       if (typeof openNuanceQuiz === 'function') openNuanceQuiz();
@@ -6651,134 +6733,268 @@ function lsStart(type) {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// Translation Sprint — replaces Grammar Focus in the learning selector.
-// Grammar focus moved to the Skill Tree because daily topics rarely
+// Phrase Munch — replaces Grammar Focus in the learning selector.
+// Grammar Focus moved to the Skill Tree because daily topics rarely
 // hit interesting grammar, and the topic-derived 3-pattern lesson
 // kept regenerating the same beginner forms.
 //
-// The sprint pulls 5 ko/en pairs from data the system already has
-// — no AI call, no caching — and runs them through the existing
-// Quiz Arena as MCQ:
-//   · 3 from today's _aiContent.helpers (shared per-topic, all users
-//     see the same 3 if their topic matches)
-//   · 2 from articles the user actually read in the last 14 days
-//     (article_cache.expressions, normalised to {ko, en})
-// If either source is sparse, the other fills in. Final fallback is
-// user_saved_words for users who haven't read articles yet.
+// Each session = 3 mini-lessons. Each lesson = Learn step (annotated
+// breakdown of one example sentence) → Practice step (a parallel
+// sentence using the SAME grammar pattern but different vocab,
+// answered as 4-choice EN MCQ). The user sees WHAT each piece does
+// before being asked to translate, so they're not guessing cold —
+// the user's previous "translation 처음부터 불친절하게 던져주는게
+// 아니고 스텝별로 설명해줘야지" feedback drove this redesign.
+//
+// One Claude call per daily topic, cached in grammar_examples_cache
+// under 'phmunch::<topic>' so all users on the same daily topic
+// share the lesson set. DB hit = free.
 // ──────────────────────────────────────────────────────────────────
-async function openTranslationSprint() {
+var _pm = {
+  lessons: null,   // [{example, practice}, ...]
+  idx: 0,          // current lesson index (0..N-1)
+  phase: 'learn',  // 'learn' or 'practice'
+  scores: [],      // per-lesson 1/0 (correct/wrong)
+  selected: null,  // user's choice during practice phase
+};
+
+async function openPhraseMunch() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
-  var pairs = await _tsBuildPairs();
-  if (!pairs || pairs.length < 4) {
-    showToast('Need a topic or some saved words to start a Sprint. Try reading an article first!');
+
+  var modal = document.getElementById('pm-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  var body = document.getElementById('pm-body');
+  if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,.55);display:flex;flex-direction:column;align-items:center;gap:12px"><span style="display:inline-flex;width:24px;height:24px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</span><span>Loading today\'s phrases…</span></div>';
+
+  var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
+  if (!topic || topic === 'Loading…') {
+    if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,.5)">Please load today\'s topic first.</div>';
     return;
   }
-  var picked = _mrShuffle(pairs).slice(0, 5);
-  // Build MCQ questions: KR prompt, 4 EN choices. Distractors are
-  // other EN strings from the same pool — keeps the difficulty
-  // calibrated to the user's level (their data, their distractors).
-  var enPool = pairs.map(function(p){ return p.en; });
-  var questions = picked.map(function(p) {
-    var distractors = _mrShuffle(enPool.filter(function(en){ return en !== p.en; })).slice(0, 3);
-    while (distractors.length < 3) distractors.push('—');
-    var choices = _mrShuffle([p.en].concat(distractors));
-    return {
-      type: 'meaning',
-      word_ko: p.ko,
-      word_rom: '',
-      choices: choices,
-      correct: p.en,
-      label: 'Translate this sentence',
-      slot: 'translate',
-    };
-  });
-  if (!window.KHQuizArena) {
-    showToast('Quiz arena unavailable. Reload and try again.');
-    return;
-  }
-  KHQuizArena.open({
-    questions: questions,
-    title: 'Translation Sprint',
-    timer: 12,
-    mode: 'translate',
-    onFinish: function(correct, total, pct) {
-      // Mark the `grammar` slot done so the orb counter ticks up
-      // — same internal key the modal expects.
-      try { markStageDone('grammar'); } catch(_) {}
-      if (typeof logQuizResult === 'function') {
-        logQuizResult('translation_sprint', { score: correct, max_score: total, accuracy_pct: pct });
-      }
-      if (typeof logActivity === 'function') {
-        logActivity('quiz', { content_type: 'translation_sprint', score: correct, max_score: total });
-      }
+
+  var cacheKey = 'phmunch::' + topic.trim();
+  var lessons = null;
+  try {
+    var hit = await _aiCacheGet(cacheKey);
+    if (hit && Array.isArray(hit.lessons) && hit.lessons.length >= 2) lessons = hit.lessons;
+  } catch(_) {}
+
+  if (!lessons) {
+    try {
+      lessons = await _pmGenerateLessons(topic);
+      if (lessons && lessons.length >= 2) _aiCacheSet(cacheKey, { lessons: lessons });
+    } catch(e) {
+      if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#ef4444">Could not load lessons. Try again later.</div>';
+      return;
     }
-  });
+  }
+  if (!lessons || !lessons.length) {
+    if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#ef4444">No lessons available right now.</div>';
+    return;
+  }
+
+  _pm.lessons = lessons.slice(0, 3);
+  _pm.idx = 0;
+  _pm.phase = 'learn';
+  _pm.scores = [];
+  _pm.selected = null;
+  _pmRender();
 }
 
-// Collect ko/en pairs from helpers + article expressions + saved words.
-// Each layer is fired independently so a partial failure still gives
-// us enough material to run a 5-question sprint.
-async function _tsBuildPairs() {
-  var pairs = [];
-  // 1) Today's topic helpers — already loaded into _aiContent.
-  try {
-    if (typeof _aiContent !== 'undefined' && _aiContent && Array.isArray(_aiContent.helpers)) {
-      _aiContent.helpers.forEach(function(h) {
-        if (h && h.ko && h.en && h.ko.length >= 4) pairs.push({ ko: h.ko.trim(), en: h.en.trim() });
-      });
-    }
-  } catch(_) {}
+function closePhraseMunch() {
+  var modal = document.getElementById('pm-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
 
-  // 2) Article expressions for articles the user actually read in the
-  // last 14 days — keyed off user_read_history → article_cache.expressions.
-  try {
-    var sb = (typeof getSupa === 'function') ? getSupa() : null;
-    if (sb && supaUser && supaUser.id) {
-      var since = new Date(); since.setDate(since.getDate() - 14);
-      var rh = await sb.from('user_read_history')
-        .select('content_id, content_type')
-        .eq('user_id', supaUser.id)
-        .eq('content_type', 'article')
-        .gte('created_at', since.toISOString())
-        .limit(20);
-      var ids = Array.from(new Set((rh.data || []).map(function(r){ return r.content_id; }))).filter(Boolean);
-      if (ids.length) {
-        var ac = await sb.from('article_cache')
-          .select('article_id, expressions')
-          .in('article_id', ids.map(String));
-        (ac.data || []).forEach(function(r) {
-          var arr = r.expressions;
-          if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch(_) { arr = []; } }
-          if (!Array.isArray(arr)) return;
-          arr.forEach(function(e) {
-            // Stored shape is {phrase, note, color}. Normalise to
-            // {ko, en} for the question builder.
-            var ko = e && (e.phrase || e.ko);
-            var en = e && (e.note   || e.en);
-            if (ko && en) pairs.push({ ko: String(ko).trim(), en: String(en).trim() });
-          });
-        });
-      }
-    }
-  } catch(_) {}
+async function _pmGenerateLessons(topic) {
+  var prompt =
+      'You are a Korean language teacher creating bite-sized phrase lessons for a learner.\n'
+    + 'Today\'s topic: "' + topic + '"\n\n'
+    + 'Create exactly 3 micro-lessons. Each lesson teaches ONE distinct Korean grammar pattern through:\n'
+    + '  1) A natural example sentence connected to today\'s topic.\n'
+    + '  2) A word-by-word breakdown showing the role of each morpheme/particle.\n'
+    + '  3) A practice sentence using the SAME grammar pattern but with DIFFERENT vocabulary,\n'
+    + '     plus 3 plausible-but-wrong English translation choices.\n\n'
+    + 'Pick 3 different beginner-to-intermediate patterns (e.g. ~도, ~을/를, ~았/었어요, ~고 싶어요, ~ㄴ/는데, ~(으)면 etc.) — do not repeat patterns across lessons.\n\n'
+    + 'Return ONLY valid JSON:\n'
+    + '{"lessons":[{\n'
+    + '  "example":{\n'
+    + '    "ko":"Korean sentence",\n'
+    + '    "en":"natural English translation",\n'
+    + '    "parts":[{"ko":"morpheme/word","en":"meaning + grammatical role"}],\n'
+    + '    "grammar_note":"one-line explanation of the grammar pattern"\n'
+    + '  },\n'
+    + '  "practice":{\n'
+    + '    "ko":"Korean sentence using the same grammar but different vocabulary",\n'
+    + '    "en":"correct English translation",\n'
+    + '    "choices":["correct","wrong1","wrong2","wrong3"]\n'
+    + '  }\n'
+    + '}]}\n\n'
+    + 'Rules:\n'
+    + '- 4-7 morpheme parts per breakdown.\n'
+    + '- Wrong choices must be plausible (different particles, different verbs, different subjects) but clearly wrong.\n'
+    + '- The first item in choices is the correct answer; the frontend will shuffle.\n';
 
-  // 3) Saved words fallback — only if we still don't have enough,
-  //    so a brand-new account on day 1 still gets *something*. Single
-  //    words are easier than full-sentence translations, but they at
-  //    least keep the sprint runnable.
-  if (pairs.length < 5 && typeof _wbData !== 'undefined' && Array.isArray(_wbData)) {
-    _wbData.forEach(function(w) {
-      if (w && w.ko && w.en) pairs.push({ ko: w.ko, en: w.en });
-    });
+  var res = await callClaude({
+    feature: 'phrase-munch',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2400,
+    messages: [{ role: 'user', content: prompt }]
+  });
+  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+  var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+  if (oi < 0 || ei <= oi) throw new Error('no JSON in response');
+  var parsed = JSON.parse(raw.slice(oi, ei + 1));
+  return Array.isArray(parsed.lessons) ? parsed.lessons : [];
+}
+
+function _pmRender() {
+  var body = document.getElementById('pm-body');
+  if (!body || !_pm.lessons) return;
+  var lesson = _pm.lessons[_pm.idx];
+  if (!lesson) { _pmRenderResult(); return; }
+
+  // Step pips
+  var pipsHtml = _pm.lessons.map(function(_, i) {
+    var done = _pm.scores[i] != null;
+    var current = i === _pm.idx;
+    var bg = done ? (_pm.scores[i] ? '#22c55e' : '#ef4444') : (current ? '#a78bfa' : 'rgba(255,255,255,.15)');
+    return '<span class="pm-pip" style="background:' + bg + '"></span>';
+  }).join('');
+
+  if (_pm.phase === 'learn') _pmRenderLearn(body, lesson, pipsHtml);
+  else                       _pmRenderPractice(body, lesson, pipsHtml);
+}
+
+function _pmRenderLearn(body, lesson, pipsHtml) {
+  var ex = lesson.example || {};
+  var partsHtml = (Array.isArray(ex.parts) ? ex.parts : []).map(function(p) {
+    return '<div class="pm-part">'
+      +   '<div class="pm-part-ko">' + _esc(p.ko || '') + '</div>'
+      +   '<div class="pm-part-en">' + _esc(p.en || '') + '</div>'
+      + '</div>';
+  }).join('');
+  body.innerHTML =
+      '<div class="pm-pips">' + pipsHtml + '</div>'
+    + '<div class="pm-step-label">LEARN · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
+    + '<div class="pm-example-ko">' + _esc(ex.ko || '') + '</div>'
+    + '<div class="pm-example-en">' + _esc(ex.en || '') + '</div>'
+    + (partsHtml ? '<div class="pm-parts">' + partsHtml + '</div>' : '')
+    + (ex.grammar_note ? '<div class="pm-grammar-note"><span class="pm-gn-label">Grammar</span><span>' + _esc(ex.grammar_note) + '</span></div>' : '')
+    + '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="_pmAdvanceToPractice()">Got it →</button></div>';
+}
+
+function _pmRenderPractice(body, lesson, pipsHtml) {
+  var pr = lesson.practice || {};
+  var rawChoices = Array.isArray(pr.choices) ? pr.choices.slice() : [];
+  // Shuffle once and remember the result for this lesson so we don't
+  // reshuffle when the user re-enters the practice screen.
+  var shuffleKey = '_pm_shuffle_' + _pm.idx;
+  if (!_pm[shuffleKey]) {
+    var shuffled = rawChoices.slice().sort(function(){ return Math.random() - 0.5; });
+    _pm[shuffleKey] = shuffled;
+  }
+  var choices = _pm[shuffleKey];
+  var correct = pr.en || rawChoices[0] || '';
+
+  var choicesHtml = choices.map(function(c) {
+    var isPicked = (_pm.selected === c);
+    var isCorrect = (c === correct);
+    var stateCls = '';
+    if (_pm.selected != null) {
+      if (isCorrect)              stateCls = ' pm-choice-correct';
+      else if (isPicked)          stateCls = ' pm-choice-wrong';
+      else                        stateCls = ' pm-choice-dim';
+    }
+    var safe = (c || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    return '<button class="pm-choice' + stateCls + '"'
+      + (_pm.selected != null ? ' disabled' : '')
+      + ' onclick="_pmPickChoice(\'' + safe + '\')">' + _esc(c) + '</button>';
+  }).join('');
+
+  var feedback = '';
+  if (_pm.selected != null) {
+    var won = _pm.selected === correct;
+    feedback = '<div class="pm-feedback ' + (won ? 'pm-feedback-win' : 'pm-feedback-lose') + '">'
+      + (won ? '<span>Nice — that\'s the same pattern you just learned.</span>'
+             : '<span>Close. The answer is: <strong>' + _esc(correct) + '</strong></span>')
+      + '</div>';
   }
 
-  // Dedupe by ko so the same expression doesn't fill multiple slots.
-  var seen = {};
-  return pairs.filter(function(p) {
-    if (seen[p.ko]) return false;
-    seen[p.ko] = true; return true;
-  });
+  var nextLabel = (_pm.idx + 1 < _pm.lessons.length) ? 'Next lesson →' : 'See results →';
+  var actions = (_pm.selected != null)
+    ? '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="_pmAdvanceLesson()">' + nextLabel + '</button></div>'
+    : '';
+
+  body.innerHTML =
+      '<div class="pm-pips">' + pipsHtml + '</div>'
+    + '<div class="pm-step-label">PRACTICE · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
+    + '<div class="pm-prompt-hint">Same pattern, new sentence — pick the English meaning.</div>'
+    + '<div class="pm-example-ko" style="font-size:24px">' + _esc(pr.ko || '') + '</div>'
+    + '<div class="pm-choices">' + choicesHtml + '</div>'
+    + feedback
+    + actions;
+}
+
+function _pmRenderResult() {
+  var body = document.getElementById('pm-body');
+  if (!body) return;
+  var correct = _pm.scores.filter(function(s){ return s; }).length;
+  var total = _pm.scores.length;
+  var pct = total ? Math.round(correct / total * 100) : 0;
+  body.innerHTML =
+      '<div class="pm-result">'
+    +   '<div class="pm-result-icon"><span style="display:inline-flex;width:48px;height:48px;color:#fbbf24">'+BM_ICON_SPARKLE+'</span></div>'
+    +   '<div class="pm-result-score">' + correct + ' / ' + total + '</div>'
+    +   '<div class="pm-result-pct">' + pct + '% correct</div>'
+    +   '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="closePhraseMunch()">Done</button></div>'
+    + '</div>';
+  // Mark the slot done in the learning selector — uses the existing
+  // `grammar` key for storage compat (renamed visible label only).
+  try { markStageDone('grammar'); } catch(_) {}
+  if (typeof logQuizResult === 'function') {
+    logQuizResult('phrase_munch', { score: correct, max_score: total, accuracy_pct: pct });
+  }
+  if (typeof logActivity === 'function') {
+    logActivity('quiz', { content_type: 'phrase_munch', score: correct, max_score: total });
+  }
+}
+
+function _pmAdvanceToPractice() {
+  _pm.phase = 'practice';
+  _pm.selected = null;
+  _pmRender();
+}
+
+function _pmPickChoice(choice) {
+  if (_pm.selected != null) return;
+  _pm.selected = choice;
+  var lesson = _pm.lessons[_pm.idx];
+  var correct = (lesson && lesson.practice && lesson.practice.en) || '';
+  _pm.scores[_pm.idx] = (choice === correct) ? 1 : 0;
+  _pmRender();
+}
+
+function _pmAdvanceLesson() {
+  _pm.idx += 1;
+  _pm.phase = 'learn';
+  _pm.selected = null;
+  _pmRender();
+}
+
+// Local escape helper so Phrase Munch doesn't depend on the article
+// renderer's globals being loaded yet.
+function _esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ── Key Expressions Modal ──
@@ -19381,7 +19597,7 @@ setTimeout(renderCompletedStudies, 500);
           </svg>
           <span class="ls-node-coin">+10 냥</span><span class="ls-node-check">✓</span>
         </div>
-        <div class="ls-node-name">Translate</div>
+        <div class="ls-node-name">Phrase Munch</div>
       </div>
       <div class="ls-node" id="ls-card-picture" data-pos="br" onclick="lsStart('picture')">
         <div class="ls-node-circle">
