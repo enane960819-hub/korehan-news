@@ -614,10 +614,14 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 }
 .bmodal-overlay.hidden { display: none !important; }
 .bmodal {
-  background: linear-gradient(160deg, #0d1f4a 0%, #152d6e 100%);
-  border-radius: 28px; width: 100%; max-width: 620px;
-  max-height: 92vh; display: flex; flex-direction: column; position: relative;
-  box-shadow: 0 40px 100px rgba(5,12,28,.65), 0 0 0 1px rgba(255,255,255,.08);
+  /* Topic Yum Yum (Beginner) — match the Phrase Munch panel
+     gradient + radius + shadow so the activity reads as part of
+     the same study family. The previous gradient was a brighter,
+     bluer family that visibly broke the design unification pass. */
+  background: linear-gradient(180deg, #0f1d3a 0%, #0a1428 100%);
+  border-radius: 22px; width: 100%; max-width: 560px;
+  max-height: 90vh; display: flex; flex-direction: column; position: relative;
+  box-shadow: 0 32px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06);
   overflow: hidden;
 }
 .bm-header {
@@ -15512,6 +15516,33 @@ function renderBMWordSnap() {
   _bm.snapSeen  = [];
   _bm.snapSaved = [];
 
+  // Attach an example sentence per card by scanning _bm.sentences
+  // (already loaded for Steps 1-3) for the first one that contains
+  // the card's word. Without context the back of the card was just
+  // a translation; with a real sentence the learner sees how the
+  // word actually behaves — which the user pointed out was the
+  // missing piece for "real learning."
+  function _bmAttachExamples(cards) {
+    var sents = _bm.sentences || [];
+    cards.forEach(function(c) {
+      if (!c || !c.ko) return;
+      var stem = trimParticle(c.ko);
+      var hit = null;
+      for (var i = 0; i < sents.length; i++) {
+        var sko = (sents[i].ko || '');
+        if (sko.indexOf(c.ko) !== -1 || (stem && sko.indexOf(stem) !== -1)) {
+          hit = sents[i];
+          break;
+        }
+      }
+      if (hit) {
+        c.example_ko = hit.ko || '';
+        c.example_en = hit.en || '';
+      }
+    });
+  }
+  _bmAttachExamples(_bm.snapCards);
+
   // Any card missing EN meaning? Batch-translate via Claude so the back of
   // the card never matches the front (the original bug: front & back both
   // showed just the Korean word because en was an empty string).
@@ -15546,6 +15577,7 @@ function renderBMWordSnap() {
               en:  v.en  || (hit && hit.en)  || ''
             };
           }).filter(function(v){ return v.en; });
+          _bmAttachExamples(_bm.snapCards);
         }
       } catch(e){}
       bmRenderSnapCard();
@@ -15587,6 +15619,19 @@ function bmRenderSnapCard() {
     + '<div class="bm-snap-back">'
     + '<div class="bm-snap-en">' + (card.en || card.ko) + '</div>'
     + (card.rom ? '<div class="bm-snap-rom" style="color:rgba(20,203,176,.55);margin-top:6px">' + card.rom + '</div>' : '')
+    // Real-world context — show the word in a sentence the learner
+    // already saw earlier in this session, with the headword
+    // highlighted. Without this the back of the card was just a
+    // translation, which the user pointed out wasn't actually
+    // learning. The Listen button reads the FULL sentence so the
+    // word is heard in context.
+    + (card.example_ko
+        ? '<div style="margin-top:14px;padding:10px 12px;background:rgba(20,203,176,.08);border:1px solid rgba(20,203,176,.22);border-radius:10px;text-align:left;font-family:\'Noto Serif KR\',serif;font-size:14px;line-height:1.55;color:#e2e8f0">'
+          +   _bmHighlightWord(card.example_ko, card.ko)
+          +   (card.example_en ? '<div style="margin-top:6px;font-family:inherit;font-size:11px;color:rgba(255,255,255,.45);line-height:1.5;font-style:italic">' + (card.example_en||'').replace(/</g,'&lt;') + '</div>' : '')
+          +   '<button onclick="event.stopPropagation();speakKorean(\'' + (card.example_ko||'').replace(/\\/g,'\\\\').replace(/\'/g,"\\'") + '\')" style="margin-top:8px;padding:5px 12px;border:1px solid rgba(20,203,176,.45);border-radius:999px;background:rgba(20,203,176,.12);color:#7dd3fc;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_VOLUME+'</span><span>Listen in context</span></button>'
+          + '</div>'
+        : '')
     + '<button class="bm-snap-save' + (isSaved ? ' saved' : '') + '" onclick="event.stopPropagation();bmSnapSave(' + idx + ')">'
     + (isSaved ? '✓ Saved' : '+ Save to Word Book')
     + '</button>'
@@ -15606,6 +15651,31 @@ function bmRenderSnapCard() {
     + (allSeen ? '✓ All words revealed!' : 'Flip all cards to finish')
     + '</span>'
     + '<button class="bm-btn-next" ' + (allSeen ? '' : 'disabled') + ' onclick="finishBeginner()">Complete →</button>';
+}
+
+// Render an example sentence with the headword (and its naturally-
+// conjugated forms) wrapped in a mint highlight. We try the exact
+// word first, then the particle-stripped stem so 좋아하다 still
+// matches 좋아해요 / 좋아합니다 in the example. HTML-escapes the
+// surrounding text to avoid XSS — Korean has no markup risk but
+// the AI-generated example_ko could in theory include angle
+// brackets.
+function _bmHighlightWord(sentence, headword) {
+  var safe = String(sentence || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  var hw = String(headword || '').trim();
+  if (!hw) return safe;
+  var stripped = hw.replace(/(은|는|이|가|을|를|의|에|도|만|과|와|나|께|부터|까지|로|으로|라고|이라고)$/g, '');
+  function esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  var hl = '<mark style="background:rgba(20,203,176,.22);color:#14cbb0;padding:0 3px;border-radius:4px;font-weight:800">$1</mark>';
+  // Prefer the exact word; otherwise highlight the stem with up to
+  // 4 trailing Korean syllables (covers most conjugations).
+  if (safe.indexOf(hw) !== -1) {
+    return safe.replace(new RegExp('(' + esc(hw) + ')', 'g'), hl);
+  }
+  if (stripped && stripped.length >= 2 && safe.indexOf(stripped) !== -1) {
+    return safe.replace(new RegExp('(' + esc(stripped) + '[가-힣]{0,4})', 'g'), hl);
+  }
+  return safe;
 }
 
 function bmFlipSnapCard(idx) {
