@@ -2606,6 +2606,52 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   .pm-part-ko { min-width:56px; font-size:15px; }
 }
 
+/* ── Shared "study shell" — adopt Phrase Munch's panel surface + header
+   rhythm across the other study activities so they read as siblings.
+   Applied via id selectors so we don't have to retouch each modal's
+   markup. The inline background/box-shadow on KE / GF / KE-quiz still
+   loses the cascade race because it's a `style` attribute — but that's
+   a single property, so we override the rest (border-radius, padding,
+   border, shadow refinement) and use !important on the gradient to
+   beat the inline. */
+#ke-modal > div,
+#ke-quiz-modal > div,
+#gf-modal > .gf-modal-panel {
+  background: linear-gradient(180deg,#0f1d3a 0%,#0a1428 100%) !important;
+  border: 1px solid rgba(255,255,255,.06);
+  box-shadow: 0 32px 80px rgba(0,0,0,.55);
+  border-radius: 22px;
+}
+#ke-modal > div   { padding: 22px 22px 24px; }
+#ke-quiz-modal > div { padding: 22px 22px 24px; }
+/* Picture Description leaves its .wmodal class alone (already dark
+   gradient) but we tighten the radius to match. */
+#pd-modal > .wmodal { border-radius: 22px; box-shadow: 0 32px 80px rgba(0,0,0,.55); }
+
+/* Section label — the small uppercase tag that introduces each
+   activity ("PHRASE MUNCH", "KEY EXPRESSIONS", "GRAMMAR FOCUS").
+   Reuse this on KE/GF/PD by adding `kh-shell-eyebrow` next to the
+   activity title. Keeps the type rhythm identical to Phrase Munch. */
+.kh-shell-eyebrow {
+  font-size:10px; font-weight:800; text-transform:uppercase;
+  letter-spacing:1.5px; color:#a78bfa; margin-bottom:5px;
+}
+
+/* Mobile bottom-sheet treatment for KE / GF / KE-quiz — same rule
+   Phrase Munch uses, so all study modals slide up to full height
+   on phones. */
+@media (max-width:640px) {
+  #ke-modal, #ke-quiz-modal, #gf-modal { align-items:flex-end !important; padding:0 !important; }
+  #ke-modal > div, #ke-quiz-modal > div,
+  #gf-modal > .gf-modal-panel {
+    border-radius: 22px 22px 0 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
+}
+
 /* ── Mobile fixes ─────────────────────────────────────── */
 @media(max-width:640px) {
   /* Grammar Focus modal — bottom sheet */
@@ -3862,10 +3908,11 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <!-- ═══ GRAMMAR FOCUS MODAL ══════════════════════════════════════ -->
 <div class="woverlay hidden" id="gf-modal" onclick="if(event.target===this)closeGrammarFocusModal()">
   <div class="gf-modal-panel" style="background:#0d1b35;border-radius:22px;width:min(680px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.5);display:flex;flex-direction:column;color:#fff;border:1px solid rgba(255,255,255,.06)">
-    <!-- Header -->
-    <div style="background:linear-gradient(135deg,#0f2040,#152d5a);padding:20px 24px 16px;border-radius:22px 22px 0 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)">
+    <!-- Header — transparent over the panel gradient so the modal
+         reads as a single surface (Phrase Munch parity). -->
+    <div style="background:transparent;padding:18px 22px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)">
       <div>
-        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#14cbb0;margin-bottom:5px">Grammar Focus</div>
+        <div class="kh-shell-eyebrow">Grammar Focus</div>
         <div id="gf-title" style="font-size:19px;font-weight:900;color:#fff;line-height:1.3">Grammar Practice</div>
         <div id="gf-subtitle" style="font-size:12px;color:rgba(255,255,255,.55);margin-top:3px">Today's focused grammar study</div>
       </div>
@@ -20208,11 +20255,11 @@ function openUniverseView() {
      KEY EXPRESSIONS MODAL
 ═══════════════════════════════════════════ -->
 <div class="woverlay hidden" id="ke-modal" onclick="if(event.target===this)closeKeyExpressionsModal()">
-  <div style="background:#0d1b2e;border-radius:18px;max-width:560px;width:95%;margin:auto;padding:28px 24px;color:#fff;max-height:85vh;overflow-y:auto;position:relative">
-    <button onclick="closeKeyExpressionsModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;display:inline-flex;align-items:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
-    <i data-lucide="lightbulb" class="kh-ui-icon" style="width:24px;height:24px;margin-bottom:6px;color:#fde68a" aria-hidden="true"></i>
-    <h2 style="margin:0 0 4px;font-size:18px;font-weight:900">Key Expressions</h2>
-    <p style="margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.5)" id="ke-topic-label">Key expressions for today's topic</p>
+  <div style="max-width:560px;width:95%;margin:auto;color:#fff;max-height:90vh;overflow-y:auto;position:relative;display:flex;flex-direction:column">
+    <button onclick="closeKeyExpressionsModal()" aria-label="Close" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;z-index:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+    <div class="kh-shell-eyebrow">Key Expressions</div>
+    <h2 style="margin:0 0 4px;font-size:18px;font-weight:900;color:#fff;line-height:1.25;display:inline-flex;align-items:center;gap:8px"><i data-lucide="lightbulb" class="kh-ui-icon" style="width:18px;height:18px;color:#fde68a" aria-hidden="true"></i><span>Useful phrases for today</span></h2>
+    <p style="margin:3px 0 18px;font-size:12px;color:rgba(255,255,255,.5)" id="ke-topic-label">Key expressions for today's topic</p>
     <div id="ke-expressions-list" style="display:flex;flex-direction:column;gap:10px">
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading expressions...</div>
     </div>
@@ -20227,11 +20274,11 @@ function openUniverseView() {
      situation and three plausible-but-wrong distractors.
 ═════════════════════════════════════════════════════════════ -->
 <div class="woverlay hidden" id="ke-quiz-modal" onclick="if(event.target===this)keCloseSituationQuiz()">
-  <div style="background:#0d1b2e;border-radius:18px;max-width:480px;width:95%;margin:auto;padding:24px 22px;color:#fff;max-height:85vh;overflow-y:auto;position:relative">
-    <button onclick="keCloseSituationQuiz()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;display:inline-flex;align-items:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
-    <i data-lucide="lightbulb" class="kh-ui-icon" style="width:24px;height:24px;margin-bottom:6px;color:#fde68a" aria-hidden="true"></i>
-    <h2 style="margin:0 0 4px;font-size:17px;font-weight:900">Situation Quiz</h2>
-    <p style="margin:0 0 14px;font-size:12px;color:rgba(255,255,255,.45)">When can you use this expression?</p>
+  <div style="max-width:480px;width:95%;margin:auto;color:#fff;max-height:90vh;overflow-y:auto;position:relative">
+    <button onclick="keCloseSituationQuiz()" aria-label="Close" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;z-index:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+    <div class="kh-shell-eyebrow">Situation Quiz</div>
+    <h2 style="margin:0 0 4px;font-size:17px;font-weight:900;color:#fff;line-height:1.25;display:inline-flex;align-items:center;gap:8px"><i data-lucide="lightbulb" class="kh-ui-icon" style="width:18px;height:18px;color:#fde68a" aria-hidden="true"></i><span>When can you use it?</span></h2>
+    <p style="margin:3px 0 14px;font-size:12px;color:rgba(255,255,255,.45)">Pick the situation that matches the expression.</p>
     <div id="ke-quiz-body" style="margin-top:6px"></div>
   </div>
 </div>
