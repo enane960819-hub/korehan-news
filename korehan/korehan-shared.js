@@ -4114,7 +4114,8 @@ function renderAllList(listEl, articles, opts) {
   if (useRails) {
     var bySection = {};
     articles.forEach(function(a) {
-      var key = a.section || 'Other';
+      var key = (typeof getSectionKey === 'function') ? getSectionKey(a.section) : (a.section || 'Other');
+      if (!key) key = 'Other';
       if (!bySection[key]) bySection[key] = [];
       bySection[key].push(a);
     });
