@@ -7599,6 +7599,57 @@ function _keRenderStudyPhase(list) {
   if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
 }
 
+// Smart cloze blanker for KE example sentences. The previous
+// implementation did a literal `replace(correct.ko, ___)` which
+// failed when correct.ko was the dictionary form ("음악을 듣다")
+// and the example sentence used a conjugation ("음악을 들어요").
+// Result: the whole sentence rendered with no blank and the
+// answer was visually obvious — the user called this out as
+// "이딴게 무슨 학습이냐고."
+//
+// Strategy:
+//   1. Direct substring match → replace.
+//   2. Anchor on the first token of the expression. From there,
+//      find the LAST token's stem (drop the trailing "다") and
+//      allow up to 4 trailing Korean syllables to absorb the
+//      conjugation. Blank from the first token's start to the
+//      end of the conjugated tail.
+//   3. Fallback: blank just the first token (still better than
+//      showing the full sentence).
+function _keBlankExpression(sentence, expr) {
+  var BLANK = '<span style="display:inline-block;min-width:80px;border-bottom:2px solid #7dd3fc;padding:0 6px;color:#7dd3fc;font-weight:800">______</span>';
+  var safe = String(sentence || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  var phrase = String(expr || '').trim();
+  if (!safe || !phrase) return safe;
+  if (safe.indexOf(phrase) !== -1) {
+    return safe.split(phrase).join(BLANK);
+  }
+  var tokens = phrase.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return safe;
+  var first = tokens[0];
+  var firstIdx = safe.indexOf(first);
+  if (firstIdx === -1) return safe;
+  var last = tokens[tokens.length - 1];
+  var stem = last.replace(/다$/, '');
+  // Strip a trailing particle if present so 음악을 → 음악 etc.
+  stem = stem.replace(/(은|는|이|가|을|를|의|에|도|만|과|와|로|으로)$/, '');
+  if (!stem) {
+    return safe.slice(0, firstIdx) + BLANK + safe.slice(firstIdx + first.length);
+  }
+  // Look for the stem + up to 4 trailing Korean syllables AFTER
+  // the first-token anchor. Limits over-eating the rest of the
+  // sentence.
+  var escStem = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  var afterFirst = safe.slice(firstIdx);
+  var m = afterFirst.match(new RegExp(escStem + '[가-힣]{0,4}'));
+  if (!m) {
+    return safe.slice(0, firstIdx) + BLANK + safe.slice(firstIdx + first.length);
+  }
+  var stemRel = afterFirst.indexOf(m[0]);
+  var endAbs  = firstIdx + stemRel + m[0].length;
+  return safe.slice(0, firstIdx) + BLANK + safe.slice(endAbs);
+}
+
 function _keStartQuiz() {
   window._kePhase = 'quiz';
   window._keQuizIdx = 0;
@@ -7618,27 +7669,40 @@ function _keRenderQuiz() {
   }
 
   var correct = exps[idx];
-  // Build wrong choices from other expressions
-  var wrongs = exps.filter(function(_, i){ return i !== idx; }).sort(function(){ return Math.random() - .5; }).slice(0, 2);
+  // 4-way MCQ — 1 correct + 3 distractors from the same deck so
+  // the wrong answers are plausibly thematic, not random fluff.
+  var wrongs = exps.filter(function(_, i){ return i !== idx; }).sort(function(){ return Math.random() - .5; }).slice(0, 3);
   var choices = [correct].concat(wrongs).sort(function(){ return Math.random() - .5; });
 
-  // Show example context sentence with the expression blanked out
-  var contextSentence = correct.example_ko || (correct.ko + '을/를 사용하세요');
-  var blanked = contextSentence.replace(correct.ko, '<span style="display:inline-block;min-width:60px;border-bottom:2px solid #7dd3fc;padding:0 4px;color:#7dd3fc;font-weight:800">______</span>');
+  // Lead with the ENGLISH meaning. The previous version led with
+  // the Korean sentence and gave Korean choices, which let the
+  // learner solve the question by matching the verb root in the
+  // sentence to the verb root in the option list — pure pattern
+  // matching, not recall. Reversing the direction (English → which
+  // Korean form?) makes it an actual recognition test, plus the
+  // blanked context sentence below stays as a usage hint.
+  var englishPrompt = (correct.en || '').trim() || '(no meaning)';
+  var contextSentence = correct.example_ko || '';
+  var blanked = contextSentence ? _keBlankExpression(contextSentence, correct.ko || '') : '';
 
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:12px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fbbf24;margin-bottom:4px">STEP 2: Context Quiz</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fbbf24;margin-bottom:4px">STEP 2: Recognition</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
     + '</div>'
-    + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:12px">'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Which expression fits this context?</div>'
-    + '<div style="font-size:14px;color:#e0f2fe;line-height:1.6">' + blanked + '</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,.3);margin-top:4px">' + (correct.example_en||correct.en||'') + '</div>'
+    + '<div style="background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.22);border-radius:12px;padding:16px;margin-bottom:12px">'
+    + '<div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Which expression means…</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fff;line-height:1.4">' + englishPrompt + '</div>'
+    + (blanked
+        ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);font-size:13px;color:rgba(255,255,255,.55);font-family:\'Noto Serif KR\',serif;line-height:1.55">'
+          + '<span style="font-size:10px;font-weight:800;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;font-family:inherit">Used in context</span>'
+          + blanked
+          + '</div>'
+        : '')
     + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px">'
     + choices.map(function(c) {
-      return '<button class="ke-quiz-btn" onclick="_keQuizAnswer(this,\'' + (correct.ko||'').replace(/'/g,"\\'") + '\',\'' + (c.ko||'').replace(/'/g,"\\'") + '\')" style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;transition:.15s">'
+      return '<button class="ke-quiz-btn" onclick="_keQuizAnswer(this,\'' + (correct.ko||'').replace(/'/g,"\\'") + '\',\'' + (c.ko||'').replace(/'/g,"\\'") + '\')" style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif;text-align:left;transition:.15s">'
         + (c.ko||'') + '</button>';
     }).join('')
     + '</div>'
