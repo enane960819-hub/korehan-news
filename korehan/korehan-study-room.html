@@ -3740,11 +3740,12 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         </div>
       </div>
 
-      <!-- 모바일 탭 이동 빠른 버튼 -->
-      <div id="wm-mobile-quick-btns" style="display:none;gap:8px;margin-top:4px">
-        <button onclick="wmMobileTab('vocab')" style="flex:1;padding:10px;background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;color:#2255a4;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Vocab & Grammar</span></button>
-        <button onclick="wmMobileTab('feedback')" style="flex:1;padding:10px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bot" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>AI Feedback</span></button>
-      </div>
+      <!-- The "Vocab & Grammar" / "AI Feedback" mobile quick-jump
+           buttons used to live here. They duplicated the tab nav
+           at the top of the modal (VOCAB / GRAMMAR / AI / WRITE)
+           and the user pointed out they were just eating writing
+           space without adding navigation that wasn't already
+           reachable in one tap. Removed entirely. -->
 
       <!-- Speaking practice section -->
       <div id="wm-speak-section" style="margin-bottom:12px;padding:14px;border-radius:12px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.12)">
@@ -6077,12 +6078,10 @@ function renderModalContent() {
   if (vcMobile) vcMobile.innerHTML = (_aiContent.vocab || []).slice(0, 6).map(function(w){
     return '<div class="chip" onclick="insertVocabChip(\'' + w.ko.replace(/'/g,"\\'") + '\')">' + w.ko + '</div>';
   }).join('');
-  // 모바일 힌트바 / 빠른 버튼 보이기
+  // 모바일 힌트바 보이기 (quick-btns은 제거됨 — tab nav 중복이라 사용자 요청으로 삭제)
   var hintBar = document.getElementById('wm-mobile-hint-bar');
-  var quickBtns = document.getElementById('wm-mobile-quick-btns');
   if (window.innerWidth <= 640) {
     if (hintBar) hintBar.style.display = 'block';
-    if (quickBtns) quickBtns.style.display = 'flex';
   }
 
   // grammar chips
@@ -6138,13 +6137,17 @@ function renderModalContent() {
     }
   }
   if (topicContentEl) {
-    var ref = [];
-    if (_todayTopic) ref.push('<b>Topic:</b> ' + (_todayTopic.topic_ko || ''));
-    if (_studyDone.topic) ref.push('Topic study completed');
-    if (_studyDone.grammar) ref.push('Grammar Focus completed');
-    if (_studyDone.picture) ref.push('Picture Description completed');
-    if (_studyDone.sentence) ref.push('Sentence Writing completed');
-    topicContentEl.innerHTML = ref.join('<br>');
+    // Just the topic — the "X completed" rows used to live here as a
+    // status checklist, but the user pointed out they ate space for
+    // info that's already implicit (the learner literally just did
+    // those steps to get here). Keeping the panel to a single line
+    // gives the writing area more room.
+    if (_todayTopic && _todayTopic.topic_ko) {
+      topicContentEl.innerHTML = '<b>Topic:</b> ' + _todayTopic.topic_ko
+        + (_todayTopic.topic_en ? ' <span style="color:#94a3b8">— ' + _todayTopic.topic_en + '</span>' : '');
+    } else {
+      topicContentEl.innerHTML = '';
+    }
   }
 }
 
@@ -6165,7 +6168,13 @@ async function khLoadCommonMistakes() {
   if (!topicKo) { details.hidden = true; return; }
   var level   = _currentLevel || 'Beginner';
   var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
-  var cacheKey = 'kh_topic_common_mistakes_' + encodeURIComponent(topicKo) + '_' + level + '_' + dateKey;
+  // Cache key bumped to v2 — the v1 prompt was too loose and was
+  // labelling formality choices (-ㅂ니다 vs -어요), vocabulary
+  // alternatives (싶어요 vs 좋아해요), subject omission, and
+  // spacing as "mistakes." User pushed back; new prompt limits
+  // results to actual grammar errors only. Old v1 cache entries
+  // would still display the BS so we invalidate by namespace.
+  var cacheKey = 'kh_topic_common_mistakes_v2_' + encodeURIComponent(topicKo) + '_' + level + '_' + dateKey;
   function paint(items) {
     if (!Array.isArray(items) || !items.length) { details.hidden = true; return; }
     body.innerHTML = items.map(function (it) {
@@ -6199,7 +6208,20 @@ async function khLoadCommonMistakes() {
       messages: [{ role: 'user', content:
         'Korean learning topic: "' + topicKo + '"\n'
         + 'Learner level: ' + level + '\n\n'
-        + 'List 4-6 common mistakes Korean learners make when writing about this topic. For each mistake, return: a short label (Korean OR English), a wrong sentence example (Korean), the corrected version (Korean), and one short reason (English, max 12 words).\n\n'
+        + 'List 3-5 GRAMMAR errors Korean learners commonly make when writing about this topic.\n\n'
+        + 'STRICT INCLUDE — only items that are objectively grammatically WRONG:\n'
+        + '  • Wrong particle (e.g. 음악에 좋아해요 instead of 음악을 좋아해요).\n'
+        + '  • Wrong conjugation form for the chosen ending (e.g. 좋아하어요 instead of 좋아해요).\n'
+        + '  • Missing or extra required morpheme (e.g. dropping the 을/를 object marker entirely on a transitive verb).\n'
+        + '  • Wrong word order that breaks Korean syntax (e.g. SVO when Korean requires SOV).\n'
+        + '  • Honorific concord errors when a subject demands honorific verbs.\n\n'
+        + 'STRICT EXCLUDE — these are NOT mistakes, do NOT list them:\n'
+        + '  • Formality choice (~어요/~아요 vs ~ㅂ니다/~습니다 — both are correct, just different register).\n'
+        + '  • Vocabulary alternatives (싶어요 vs 좋아해요, 듣다 vs 즐기다 — different verbs with different meanings, not "wrong").\n'
+        + '  • Subject omission (Korean naturally drops subjects when context is clear; including or omitting 저는 is NOT a grammar error).\n'
+        + '  • Spacing or punctuation differences.\n'
+        + '  • Stylistic awkwardness, length, or naturalness — only mark hard grammar errors.\n\n'
+        + 'For each error, return: a short label (Korean OR English), a wrong sentence example (Korean), the corrected version (Korean), and one short reason (English, max 12 words). The reason MUST point to the grammatical rule being broken.\n\n'
         + 'Return ONLY a JSON array — no markdown, no commentary.\n'
         + 'Format: [{"label":"...","wrong":"...","right":"...","why":"..."}]'
       }]
