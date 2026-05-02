@@ -60,20 +60,8 @@ create policy "wls_public_read"
 drop policy if exists "wls_admin_write" on weekly_live_sessions;
 create policy "wls_admin_write"
   on weekly_live_sessions for all
-  using (
-    exists (
-      select 1 from app_settings
-      where key = 'admin_user_ids'
-        and value::jsonb ? auth.uid()::text
-    )
-  )
-  with check (
-    exists (
-      select 1 from app_settings
-      where key = 'admin_user_ids'
-        and value::jsonb ? auth.uid()::text
-    )
-  );
+  using (public.is_admin_email())
+  with check (public.is_admin_email());
 
 -- Registrations: each user owns their own row. Reading other users'
 -- registrations is exposed only as a count via the courses page (which

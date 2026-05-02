@@ -68,20 +68,8 @@ create policy "gacha_items_public_read"
 drop policy if exists "gacha_items_admin_write" on public.gacha_items;
 create policy "gacha_items_admin_write"
   on public.gacha_items for all
-  using (
-    exists (
-      select 1 from app_settings
-      where key = 'admin_user_ids'
-        and value::jsonb ? auth.uid()::text
-    )
-  )
-  with check (
-    exists (
-      select 1 from app_settings
-      where key = 'admin_user_ids'
-        and value::jsonb ? auth.uid()::text
-    )
-  );
+  using (public.is_admin_email())
+  with check (public.is_admin_email());
 
 drop policy if exists "gacha_owned_self_read" on public.gacha_owned_items;
 create policy "gacha_owned_self_read"
