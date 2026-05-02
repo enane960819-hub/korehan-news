@@ -3910,14 +3910,26 @@ function buildArticleRowHTML(a) {
   var aImg = khArticleThumb(a, 440, 280);
   var fallback = KH_IMG_PLACEHOLDER;
   var aBody = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 90);
+  // Cleaned-up structure:
+  //   • No inline width/height on the <img> — CSS now drives the
+  //     dimensions consistently across desktop / mobile-redesign /
+  //     mobile-light, and `align-items:stretch` on the row makes
+  //     the image span the full card height instead of leaving a
+  //     dead column under a 72px thumbnail.
+  //   • TAG and relative time share a top "meta" row, so the
+  //     time isn't orphaned at the bottom-right of the card.
+  var levelLabel = a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : (a.section || '');
+  var timeStr = relTime(a.date);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;margin-bottom:20px;">'
     + '<div class="article-row">'
-    + '<img src="' + aImg + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.src=\'' + fallback + '\'" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
+    + '<img src="' + aImg + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.src=\'' + fallback + '\'">'
     + '<div class="article-info">'
-    + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : (a.section || '')) + '</span>'
-    + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h2>'
-    + '<p class="article-excerpt vocab-zone" style="font-size:14px;color:#64748b;line-height:1.6">' + aBody + '</p>'
-    + '<div style="font-size:12px;color:#94a3b8;margin-top:6px">' + relTime(a.date) + '</div>'
+    +   '<div class="article-meta-top">'
+    +     '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + levelLabel + '</span>'
+    +     (timeStr ? '<span class="article-meta-time">' + timeStr + '</span>' : '')
+    +   '</div>'
+    +   '<h2 class="article-title vocab-zone" style="margin:6px 0 4px;font-size:18px;" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h2>'
+    +   '<p class="article-excerpt vocab-zone" style="font-size:14px;color:#64748b;line-height:1.6;margin:0">' + aBody + '</p>'
     + '</div></div></a>';
 }
 
