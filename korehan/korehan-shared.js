@@ -2,6 +2,24 @@
    KoreHani — Shared JS
    ============================================================ */
 
+// Auto-load the Grammar / Conjugation tooltip module on every page
+// that already pulls korehan-shared.js. This keeps the per-page
+// markup untouched while delivering the site-wide hover behaviour
+// the user asked for. Guarded with __khGrammarTooltipsInit inside
+// the module itself so a duplicate include is harmless.
+(function(){
+  if (window.__khGrammarTooltipsLoaded) return;
+  window.__khGrammarTooltipsLoaded = true;
+  // Compute a sibling URL so this works regardless of how
+  // korehan-shared.js was referenced (relative path, absolute, etc.).
+  var here = document.currentScript && document.currentScript.src;
+  var base = here ? here.replace(/[^/]+$/, '') : '';
+  var s = document.createElement('script');
+  s.src   = base + 'korehan-grammar-tooltips.js?v=20260501a';
+  s.async = true;
+  document.head.appendChild(s);
+})();
+
 // ── Analytics + error monitoring ─────────────────────────────────
 // Loads Plausible Analytics (cookieless by design — Plausible itself
 // doesn't need a consent banner) and Sentry error monitoring. Both
