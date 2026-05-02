@@ -388,7 +388,15 @@
 
   function installObserver() {
     if (observer) observer.disconnect();
-    observer = new MutationObserver(function(){
+    observer = new MutationObserver(function(mutations) {
+      // Immediately wrap any newly-added element nodes so there's no
+      // visible delay when articles / cards load asynchronously.
+      mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(node) {
+          if (node.nodeType === 1) wrapAllIn(node);
+        });
+      });
+      // Debounce a full re-scan as a safety net for text-only mutations.
       debounceApply();
     });
     observer.observe(document.body, { childList: true, subtree: true });
