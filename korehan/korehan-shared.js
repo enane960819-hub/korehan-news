@@ -4117,7 +4117,7 @@ function _buildNewsCardHTML(a) {
     + img
     + '<div class="nc-overlay-grad"></div>'
     + '<div class="nc-overlay-body">'
-    + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
+    + ''
     + '<div class="nc-title" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + escapeHtml(a.title_en || a.title || '') + '</div>'
     + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
     + '</div>'
