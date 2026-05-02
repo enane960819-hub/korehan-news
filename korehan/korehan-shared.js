@@ -4069,7 +4069,7 @@ function renderAllPage() {
       + (searchQ ? '<div class="all-search-result-label">Results for <strong>\u201c' + escapeHtml(searchQ) + '\u201d</strong></div>' : '')
       + '</div>'
       + '<div class="all-level-filter" id="all-level-filter">'
-      + '<button class="alf-btn on" data-level="All" onclick="filterAllLevel(\'All\',this)">All Levels</button>'
+      + '<button class="alf-btn on" data-level="All" onclick="filterAllLevel(\'All\',this)">All</button>'
       + '<button class="alf-btn starter" data-level="Starter" onclick="filterAllLevel(\'Starter\',this)"><span class="alf-dot"></span>Seed</button>'
       + '<button class="alf-btn beginner" data-level="Beginner" onclick="filterAllLevel(\'Beginner\',this)"><span class="alf-dot"></span>Sprout</button>'
       + '<button class="alf-btn intermediate" data-level="Intermediate" onclick="filterAllLevel(\'Intermediate\',this)"><span class="alf-dot"></span>Tree</button>'
