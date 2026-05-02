@@ -1788,6 +1788,9 @@ function scheduleSignupNudge() {
 function showSignupNudge() {
   if (supaUser) return;
   if (document.getElementById('kh-signup-nudge')) return;
+  // The article/story content gate already shows a sign-up CTA inline,
+  // so the floating nudge would be redundant. Skip it on those pages.
+  if (document.querySelector('.kh-gate-cta[data-kh-gate="1"]')) return;
   try { if (sessionStorage.getItem('kh_signup_nudge_dismissed') === '1') return; } catch(_) {}
 
   var el = document.createElement('div');
