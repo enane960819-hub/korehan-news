@@ -706,6 +706,16 @@ body.kh-neon-on .kh-neon-toggle:hover { transform: translateY(-2px); box-shadow:
 .alf-btn.beginner:hover { border-color: #22c55e; color: #22c55e; }
 .alf-btn.intermediate:hover { border-color: #f59e0b; color: #f59e0b; }
 .alf-btn.advanced:hover { border-color: #ef4444; color: #ef4444; }
+/* Mobile: shrink the level filter so all 5 pills (All / Seed /
+   Sprout / Tree / Forest) sit on a single row instead of Forest
+   wrapping below. The "All Levels" label was also renamed to
+   "All" in the JS so the row stays single-line on phones. */
+@media (max-width: 640px) {
+  .all-level-filter { gap: 5px; margin: 8px 0 12px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .all-level-filter::-webkit-scrollbar { display: none; }
+  .alf-btn { padding: 5px 10px; font-size: 11px; gap: 4px; flex-shrink: 0; }
+  .alf-dot { width: 6px; height: 6px; }
+}
 
 /* Article card grid */
 /* Article card grid — 3 per row */
@@ -2287,9 +2297,13 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   .wm-header { padding: 14px 16px !important; }
   .wmh-title { font-size: 16px !important; }
 
-  /* page-banner 모바일 */
-  .page-banner { padding: 20px 0 14px; }
-  .page-banner h1 { font-size: 22px !important; }
+  /* page-banner 모바일 — title + sub on tight stack so the
+     "All News" head doesn't eat half the viewport before the
+     search bar even appears. */
+  .page-banner { padding: 10px 0 6px; }
+  .page-banner-inner { padding: 8px 16px 4px; }
+  .page-banner h1 { font-size: 22px !important; margin-bottom: 2px; }
+  .page-banner p { font-size: 12px !important; margin-top: 2px !important; }
 
   /* section page hero 모바일 */
   #dyn-hero { grid-template-columns: 1fr !important; }
