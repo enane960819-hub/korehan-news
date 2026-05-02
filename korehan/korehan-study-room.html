@@ -10976,6 +10976,54 @@ function _scoreSpeaking(targetText, transcript, durationMs) {
   };
 }
 
+// ── Azure Pronunciation Assessment via speech-proxy Edge Function ──
+async function _speakAnalyzeAzure(blob, referenceText, durationMs) {
+  try {
+    var sb = getSupa();
+    if (!sb || !supaUser) return null;
+    var session = await sb.auth.getSession();
+    var token = session && session.data && session.data.session && session.data.session.access_token;
+    if (!token) return null;
+
+    var funcUrl = (typeof SUPA_URL !== 'undefined' ? SUPA_URL : '') + '/functions/v1/speech-proxy';
+    var fd = new FormData();
+    fd.append('audio', blob, 'audio.webm');
+    fd.append('referenceText', referenceText);
+    fd.append('contentType', blob.type || 'audio/webm');
+    fd.append('language', 'ko-KR');
+
+    var res = await fetch(funcUrl, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: fd,
+    });
+    if (!res.ok) return null;
+    var data = await res.json();
+    if (!data || data.error || data.pronunciationScore == null) return null;
+
+    var wordsInTranscript = String(data.transcript || '').trim().split(/\s+/).filter(Boolean).length;
+    var minutes = Math.max(durationMs, 1) / 60000;
+    var wpm = wordsInTranscript > 0 ? Math.round(wordsInTranscript / minutes) : 0;
+
+    return {
+      pronunciation:     Math.round(data.accuracyScore || 0),
+      fluency_score:     Math.round(data.fluencyScore || 0),
+      fluency_wpm:       wpm,
+      completeness:      Math.round(data.completenessScore || 0),
+      overall:           Math.round(data.pronunciationScore || 0),
+      transcript:        data.transcript || '',
+      target:            referenceText,
+      duration_ms:       Math.round(durationMs),
+      filler_count:      0,
+      words:             data.words || [],
+      model:             'azure',
+    };
+  } catch(e) {
+    console.warn('[speaking] Azure analyze failed:', e);
+    return null;
+  }
+}
+
 // Reusable SVG radial gauge — animates 0 → value on mount.
 // Use via innerHTML; call _khActivateGauges(scope) afterwards (or rely on
 // the MutationObserver below to auto-activate).
@@ -11049,40 +11097,18 @@ function _khActivateGauges(scope) {
   mo.observe(document.documentElement, { childList: true, subtree: true });
 })();
 
+function _scoreColor(v) {
+  return v >= 80 ? '#16a34a' : v >= 60 ? '#2563eb' : v >= 40 ? '#d97706' : '#dc2626';
+}
+
 function _renderSpeakingScoreCard(s) {
   var el = document.getElementById('wm-speak-score-card');
   if (!el) return;
   if (!s) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
-  var pron = s.pronunciation;
-  var fluS = s.fluency_score;
-  var pronColor = pron >= 80 ? '#16a34a' : pron >= 60 ? '#2563eb' : pron >= 40 ? '#d97706' : '#dc2626';
-  var fluColor  = fluS >= 80 ? '#16a34a' : fluS >= 60 ? '#2563eb' : fluS >= 40 ? '#d97706' : '#dc2626';
-  var overall   = Math.round((pron + fluS) / 2);
-
-  // Word-by-word diff chips — styled as soft pills with subtle color
-  var targetWords = (s.target || '').trim().split(/\s+/).filter(Boolean);
-  var saidNorm    = _normalizeForScore(s.transcript || '');
-  var hitCount = 0;
-  var diffHTML = targetWords.map(function(w, i) {
-    var n = _normalizeForScore(w);
-    var hit = n && saidNorm.indexOf(n) !== -1;
-    if (hit) hitCount++;
-    var bg  = hit ? 'linear-gradient(135deg,#dcfce7,#bbf7d0)' : 'linear-gradient(135deg,#fee2e2,#fecaca)';
-    var fg  = hit ? '#166534' : '#991b1b';
-    var border = hit ? 'rgba(34,197,94,.3)' : 'rgba(239,68,68,.3)';
-    return '<span style="display:inline-block;padding:5px 11px;margin:3px;border-radius:999px;background:' + bg + ';color:' + fg + ';font-size:13px;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;border:1px solid ' + border + ';opacity:0;transform:translateY(4px);animation:kh-speak-chip-in .35s ease-out ' + (80 + i * 40) + 'ms forwards">' + w.replace(/[<>]/g, '') + '</span>';
-  }).join('');
-
   var duration = (s.duration_ms / 1000).toFixed(1);
   var wordCount = s.transcript ? s.transcript.split(/\s+/).filter(Boolean).length : 0;
 
-  var sttUnsupported = !_SpeechRecognitionCtor();
-  var unsupported = sttUnsupported
-    ? '<div style="margin-top:12px;padding:10px 14px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);color:#92400e;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;flex-shrink:0">'+BM_ICON_WARNING+'</span><span>Pronunciation scoring needs Chrome / Edge / Safari. Audio still recorded for coach review.</span></div>'
-    : '';
-
-  // Header with overall score, motion via keyframe
   el.style.display = 'block';
   el.style.padding = '18px 18px 16px';
   el.style.border = 'none';
@@ -11090,43 +11116,123 @@ function _renderSpeakingScoreCard(s) {
   el.style.borderRadius = '16px';
   el.style.boxShadow = '0 10px 28px -12px rgba(124,58,237,.22), 0 0 0 1px rgba(124,58,237,.12)';
 
-  el.innerHTML =
+  var header =
     '<style>@keyframes kh-speak-chip-in{to{opacity:1;transform:translateY(0)}}@keyframes kh-speak-card-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}</style>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
       + '<div style="display:flex;align-items:center;gap:8px">'
         + '<div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#6d28d9);display:flex;align-items:center;justify-content:center;color:#fff"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span></div>'
         + '<div>'
           + '<div style="font-size:12px;font-weight:800;color:#0f172a;letter-spacing:-.01em">Speaking Analysis</div>'
-          + '<div style="font-size:10px;color:#94a3b8;font-weight:500">AI auto-scored from your recording</div>'
+          + '<div style="font-size:10px;color:' + (s.model === 'azure' ? '#7c3aed' : '#94a3b8') + ';font-weight:600">'
+            + (s.model === 'azure' ? '✦ Azure AI 발음 평가' : 'AI auto-scored from your recording')
+          + '</div>'
         + '</div>'
       + '</div>'
       + '<div style="font-size:10px;color:#94a3b8;font-weight:700;text-align:right">'
         + duration + 's · ' + wordCount + ' word' + (wordCount === 1 ? '' : 's')
       + '</div>'
-    + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;animation:kh-speak-card-in .4s ease-out">'
-      // Pronunciation gauge
-      + '<div style="padding:14px 12px;background:rgba(255,255,255,.7);border:1px solid rgba(124,58,237,.08);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:6px">'
-        + _khRadialGauge({ value: pron, accent: pronColor, label: 'Pronunciation', sub: 'vs target', size: 88, stroke: 8 })
-      + '</div>'
-      // Fluency gauge
-      + '<div style="padding:14px 12px;background:rgba(255,255,255,.7);border:1px solid rgba(124,58,237,.08);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:6px">'
-        + _khRadialGauge({ value: fluS, accent: fluColor, label: 'Fluency', sub: s.fluency_wpm + ' WPM', size: 88, stroke: 8 })
-      + '</div>'
-    + '</div>'
-    + (s.filler_count
-        ? '<div style="margin-top:10px;padding:7px 11px;border-radius:10px;background:rgba(251,191,36,.12);color:#92400e;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:13px;height:13px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span><span>' + s.filler_count + ' filler word' + (s.filler_count > 1 ? 's' : '') + ' (어·음·그·저)</span></div>'
-        : '')
-    + (targetWords.length
-        ? '<div style="margin-top:14px">'
-          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
-            + '<div style="font-size:10px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.06em">Word match</div>'
-            + '<div style="font-size:11px;font-weight:700;color:#64748b">' + hitCount + ' / ' + targetWords.length + ' hit</div>'
-          + '</div>'
-          + '<div style="line-height:1.7">' + diffHTML + '</div>'
+    + '</div>';
+
+  var gaugesHtml = '';
+  var wordHtml = '';
+
+  if (s.model === 'azure') {
+    // 4-metric grid: Accuracy, Fluency, Completeness, Overall
+    var metrics = [
+      { v: s.pronunciation,  label: '정확도',    sub: 'Accuracy' },
+      { v: s.fluency_score,  label: '유창성',    sub: 'Fluency' },
+      { v: s.completeness,   label: '완성도',    sub: 'Completeness' },
+      { v: s.overall,        label: '종합',      sub: 'Overall' },
+    ];
+    gaugesHtml = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;animation:kh-speak-card-in .4s ease-out">'
+      + metrics.map(function(m) {
+          var c = _scoreColor(m.v);
+          return '<div style="padding:10px 6px;background:rgba(255,255,255,.7);border:1px solid rgba(124,58,237,.08);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px">'
+            + _khRadialGauge({ value: m.v, accent: c, label: m.label, sub: m.sub, size: 70, stroke: 7 })
+            + '</div>';
+        }).join('')
+      + '</div>';
+
+    // Word-level chips from Azure — color by accuracy score + errorType
+    if (s.words && s.words.length) {
+      var azureWordChips = s.words.map(function(w, i) {
+        var score = w.accuracyScore != null ? Math.round(w.accuracyScore) : null;
+        var err = w.errorType || 'None';
+        var isBad = err !== 'None' || (score != null && score < 60);
+        var bg, fg, border;
+        if (err === 'Omission') {
+          bg = 'linear-gradient(135deg,#f1f5f9,#e2e8f0)'; fg = '#475569'; border = 'rgba(100,116,139,.25)';
+        } else if (score == null) {
+          bg = 'linear-gradient(135deg,#f1f5f9,#e2e8f0)'; fg = '#64748b'; border = 'rgba(100,116,139,.2)';
+        } else if (score >= 80) {
+          bg = 'linear-gradient(135deg,#dcfce7,#bbf7d0)'; fg = '#166534'; border = 'rgba(34,197,94,.3)';
+        } else if (score >= 60) {
+          bg = 'linear-gradient(135deg,#fef9c3,#fef08a)'; fg = '#854d0e'; border = 'rgba(202,138,4,.3)';
+        } else {
+          bg = 'linear-gradient(135deg,#fee2e2,#fecaca)'; fg = '#991b1b'; border = 'rgba(239,68,68,.3)';
+        }
+        var scoreTag = score != null ? '<sup style="font-size:9px;font-weight:800;opacity:.7">' + score + '</sup>' : '';
+        var errTag = (err !== 'None' && err !== 'None') ? '<span style="font-size:9px;opacity:.65;margin-left:2px">' + (err === 'Mispronunciation' ? '⚠' : err === 'Omission' ? '—' : err === 'Insertion' ? '+' : '') + '</span>' : '';
+        return '<span style="display:inline-block;padding:5px 11px;margin:3px;border-radius:999px;background:' + bg + ';color:' + fg + ';font-size:13px;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;border:1px solid ' + border + ';opacity:0;transform:translateY(4px);animation:kh-speak-chip-in .35s ease-out ' + (80 + i * 40) + 'ms forwards">' + w.word.replace(/[<>]/g,'') + scoreTag + errTag + '</span>';
+      }).join('');
+      wordHtml = '<div style="margin-top:14px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+          + '<div style="font-size:10px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.06em">단어별 발음 점수</div>'
+          + '<div style="display:flex;gap:6px;font-size:10px;color:#64748b"><span style="color:#16a34a">■ 80+</span><span style="color:#ca8a04">■ 60-79</span><span style="color:#dc2626">■ ~59</span></div>'
         + '</div>'
-        : '')
-    + unsupported;
+        + '<div style="line-height:1.7">' + azureWordChips + '</div>'
+        + '</div>';
+    }
+
+  } else {
+    // Existing 2-gauge layout for web-speech-api fallback
+    var pron = s.pronunciation;
+    var fluS = s.fluency_score;
+    gaugesHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;animation:kh-speak-card-in .4s ease-out">'
+      + '<div style="padding:14px 12px;background:rgba(255,255,255,.7);border:1px solid rgba(124,58,237,.08);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:6px">'
+        + _khRadialGauge({ value: pron, accent: _scoreColor(pron), label: 'Pronunciation', sub: 'vs target', size: 88, stroke: 8 })
+      + '</div>'
+      + '<div style="padding:14px 12px;background:rgba(255,255,255,.7);border:1px solid rgba(124,58,237,.08);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:6px">'
+        + _khRadialGauge({ value: fluS, accent: _scoreColor(fluS), label: 'Fluency', sub: s.fluency_wpm + ' WPM', size: 88, stroke: 8 })
+      + '</div>'
+      + '</div>';
+
+    var targetWords = (s.target || '').trim().split(/\s+/).filter(Boolean);
+    var saidNorm = _normalizeForScore(s.transcript || '');
+    var hitCount = 0;
+    var diffHTML = targetWords.map(function(w, i) {
+      var n = _normalizeForScore(w);
+      var hit = n && saidNorm.indexOf(n) !== -1;
+      if (hit) hitCount++;
+      var bg = hit ? 'linear-gradient(135deg,#dcfce7,#bbf7d0)' : 'linear-gradient(135deg,#fee2e2,#fecaca)';
+      var fg = hit ? '#166534' : '#991b1b';
+      var border = hit ? 'rgba(34,197,94,.3)' : 'rgba(239,68,68,.3)';
+      return '<span style="display:inline-block;padding:5px 11px;margin:3px;border-radius:999px;background:' + bg + ';color:' + fg + ';font-size:13px;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;border:1px solid ' + border + ';opacity:0;transform:translateY(4px);animation:kh-speak-chip-in .35s ease-out ' + (80 + i * 40) + 'ms forwards">' + w.replace(/[<>]/g,'') + '</span>';
+    }).join('');
+
+    var fillerHtml = s.filler_count
+      ? '<div style="margin-top:10px;padding:7px 11px;border-radius:10px;background:rgba(251,191,36,.12);color:#92400e;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:13px;height:13px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span><span>' + s.filler_count + ' filler word' + (s.filler_count > 1 ? 's' : '') + ' (어·음·그·저)</span></div>'
+      : '';
+
+    var sttUnsupported = !_SpeechRecognitionCtor();
+    var unsupported = sttUnsupported
+      ? '<div style="margin-top:12px;padding:10px 14px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);color:#92400e;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;flex-shrink:0">'+BM_ICON_WARNING+'</span><span>Pronunciation scoring needs Chrome / Edge / Safari. Audio still recorded for coach review.</span></div>'
+      : '';
+
+    wordHtml = fillerHtml
+      + (targetWords.length
+          ? '<div style="margin-top:14px">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+              + '<div style="font-size:10px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.06em">Word match</div>'
+              + '<div style="font-size:11px;font-weight:700;color:#64748b">' + hitCount + ' / ' + targetWords.length + ' hit</div>'
+            + '</div>'
+            + '<div style="line-height:1.7">' + diffHTML + '</div>'
+          + '</div>'
+          : '')
+      + unsupported;
+  }
+
+  el.innerHTML = header + gaugesHtml + wordHtml;
 }
 
 function speakMyWriting() {
@@ -11161,16 +11267,25 @@ function toggleSpeakRecord() {
       document.getElementById('wm-speak-status').textContent = 'Recording done! Listen and submit.';
       _refreshSpeakingCoinBadge();
 
-      // Compute and render speaking scores. STT may finish slightly
-      // after onstop on some engines — give it 500ms.
-      setTimeout(function() {
+      // Try Azure pronunciation assessment; fall back to client-side scoring.
+      (async function() {
         var ta = document.getElementById('write-area');
         var target = ta ? (ta.value || '').trim() : '';
-        var transcript = (_speakSttTranscript || '').trim();
         if (!target) return;
-        _speakScores = _scoreSpeaking(target, transcript, Date.now() - _speakStartedAt);
+        var elapsed = Date.now() - _speakStartedAt;
+        document.getElementById('wm-speak-status').textContent = '발음 분석 중...';
+        var azureResult = await _speakAnalyzeAzure(_speakBlob, target, elapsed);
+        if (azureResult) {
+          _speakScores = azureResult;
+        } else {
+          // Azure unavailable — wait briefly for Web Speech API to finish
+          await new Promise(function(r){ setTimeout(r, 300); });
+          var transcript = (_speakSttTranscript || '').trim();
+          _speakScores = _scoreSpeaking(target, transcript, elapsed);
+        }
         _renderSpeakingScoreCard(_speakScores);
-      }, 500);
+        document.getElementById('wm-speak-status').textContent = 'Recording done! Listen and submit.';
+      })();
     };
     _speakRecorder.start();
     document.getElementById('wm-speak-record').innerHTML = '⏹️ 녹음 중... (누르면 정지)';
