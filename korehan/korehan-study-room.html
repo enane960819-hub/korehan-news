@@ -19179,9 +19179,9 @@ async function _asLoadArticles() {
         return;
       }
       var bm = await sb.from('bookmarks')
-        .select('article_id, created_at')
+        .select('article_id')
         .eq('user_id', supaUser.id)
-        .order('created_at', { ascending:false });
+        .order('id', { ascending:false });
       if (bm.error) throw bm.error;
       var ids = (bm.data || []).map(function(b){ return b.article_id; }).filter(Boolean);
       if (!ids.length) {
@@ -19927,11 +19927,23 @@ function asMarkDone() {
     +'<div class="su-complete-sub">You\'ve completed all learning steps for this article.</div>'
     +'<div class="su-complete-stars"><div class="su-complete-stars-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+BM_ICON_SPARKLE+'</span><span>Words you just reviewed</span></div><canvas id="as-complete-canvas" class="su-complete-canvas"></canvas></div>'
     +'<button class="su-nav-next" onclick="asSubmitWork()" style="margin:0 auto 10px;display:flex">Save Progress</button>'
+    +'<button class="su-nav-next" onclick="asStudyNextArticle()" style="margin:0 auto 10px;display:flex;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3)">Study Next Article →</button>'
     +'<button class="su-nav-prev" onclick="returnToActivities(closeArticleStudy)" style="margin:0 auto;display:flex">Next Activity</button>'
     +'</div>';
   _asSetNav('none','none','none');
   _asRefreshSubmitBanner();
   setTimeout(_asDrawCompleteConstellation, 50);
+}
+
+function asStudyNextArticle() {
+  var curIdx = _asArticles.findIndex(function(a){ return _asCurrentArt && String(a.id) === String(_asCurrentArt.id); });
+  var nextIdx = (curIdx >= 0 && curIdx + 1 < _asArticles.length) ? curIdx + 1 : -1;
+  if (nextIdx >= 0) {
+    asSelectArticle(String(_asArticles[nextIdx].id));
+  } else {
+    // Reached the end — go back to list so user can pick another article
+    asBackToList();
+  }
 }
 
 // ── Mini vocab constellation on completion screen ──
