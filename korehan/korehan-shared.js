@@ -503,32 +503,6 @@ function khIcon(name, label, extraClass) {
   return html + '<span>' + label + '</span>';
 }
 
-// Inline SVG icons for use inside dynamically-injected innerHTML where calling
-// lucide.createIcons() afterwards isn't practical. Sized via the wrapping
-// element's width/height; color comes from currentColor.
-var KH_ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 12 10 17 19 7"/></svg>';
-var KH_ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>';
-var KH_ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
-var KH_ICON_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
-var KH_ICON_SPARKLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>';
-var KH_ICON_PAW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="14" r="2"/><circle cx="4" cy="14" r="2"/><circle cx="6" cy="8" r="2"/><path d="M8 16c0-3 2-4 4-4s4 1 4 4-2 6-4 6-4-3-4-6z"/></svg>';
-var KH_ICON_LIBRARY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4v16M9 4v16"/><path d="M13 4l5 1.3L15.5 19l-5-1.3z"/></svg>';
-var KH_ICON_NEWSPAPER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5a2 2 0 0 1 2-2h12v18H5a2 2 0 0 1-2-2z"/><path d="M17 7h4v12a2 2 0 0 1-2 2"/><path d="M7 7h6M7 11h6M7 15h6"/></svg>';
-var KH_ICON_BOOK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 0-2 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H19"/></svg>';
-var KH_ICON_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg>';
-var KH_ICON_VOLUME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M16 8a4 4 0 0 1 0 8"/><path d="M19 5a8 8 0 0 1 0 14"/></svg>';
-var KH_ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 4v4h-4"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 20v-4h4"/></svg>';
-var KH_ICON_PARTY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l4-12 8 8z"/><path d="M14 4c0 2 2 2 2 4"/><path d="M18 7c0 2 2 2 2 4"/><path d="M11 3l1 1"/><path d="M20 14l1 1"/><path d="M16 13l1 1"/></svg>';
-var KH_ICON_TROPHY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a2 2 0 0 0 3 3.5"/><path d="M17 6h3a2 2 0 0 1-3 3.5"/><path d="M9 14h6l-1 4h-4z"/><path d="M8 21h8"/></svg>';
-var KH_ICON_FLAME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.7-2.5 1.5-3.5C10.5 7 11 5 12 3z"/><path d="M10.5 14c.4 1 1 1.6 1.5 1.6s1.1-.6 1.5-1.6"/></svg>';
-var KH_ICON_THUMBS_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7c1.5 0 2.5 1 2.5 2.5V11h5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 21H7"/></svg>';
-var KH_ICON_TARGET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg>';
-var KH_ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5l5 5L8 21H3v-5z"/><path d="M13 6l5 5"/></svg>';
-var KH_ICON_RULER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3H3v18h7"/><path d="M3 8h18"/><path d="M16 14l-4 8 8-4z"/></svg>';
-var KH_ICON_BULB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6.5 6.5 0 0 0-4 11.6c.7.6 1 1.2 1 2V16h6v-.4c0-.8.3-1.4 1-2A6.5 6.5 0 0 0 12 3z"/></svg>';
-var KH_ICON_WARNING = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>';
-var KH_ICON_HAND_WAVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 5l-1 4M9 4l1 5M6 11s.5-3.5 3-5M5 17s-2-3 0-7"/><path d="M9 20s3-1 4.5-3.5S15 13 16 13c.6 0 1.5.5 1 1.5"/><path d="M11 14s1.5-2 3-2 1.5 1.5 1.5 1.5"/></svg>';
-
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
 // → API 키가 브라우저에 절대 노출되지 않음
@@ -1997,42 +1971,6 @@ const DEF_SENTENCES = [
   {id:'e15', level:'Advanced',      ko:'탄소중립 목표 달성을 위해 재생에너지 투자를 확대해야 한다.',   en:'Investment in renewable energy must be expanded to achieve carbon neutrality goals.'},
 ];
 
-// ── Security helpers ─────────────────────────────────────────
-function escapeHTML(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-function escapeAttr(str) {
-  return escapeHTML(str).replace(/\\/g,'\\\\');
-}
-// Strip dangerous HTML (scripts, event handlers, iframes) but keep safe tags
-function sanitizeHTML(html) {
-  if (!html) return '';
-  return String(html)
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
-    .replace(/<object[\s\S]*?<\/object>/gi, '')
-    .replace(/<embed[\s\S]*?>/gi, '')
-    .replace(/<link[\s\S]*?>/gi, '')
-    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/\bon\w+\s*=\s*[^\s>]+/gi, '')
-    .replace(/javascript\s*:/gi, 'blocked:')
-    .replace(/data\s*:\s*text\/html/gi, 'blocked:');
-}
-function isValidImageURL(url) {
-  if (!url || typeof url !== 'string') return false;
-  try { var u = new URL(url); return u.protocol === 'https:' || u.protocol === 'http:'; }
-  catch(e) { return false; }
-}
-
-// ── localStorage ──────────────────────────────────────────────
-function lsGet(key, def) {
-  try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch(e) { return def; }
-}
-function lsSet(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
-}
-
 function normalizePhrase(row) {
   row = row || {};
   var examples = Array.isArray(row.examples) ? row.examples : [];
@@ -2113,155 +2051,6 @@ function toast(msg, typeOrBool) {
   setTimeout(function(){ d.style.opacity='0'; setTimeout(function(){ d.remove(); },200); }, 3500);
 }
 
-// ── Branded modal dialogs ──────────────────────────────────────
-// Drop-in replacements for the browser's native alert / confirm /
-// prompt. Each returns a Promise that resolves when the user makes
-// a choice. Rationale: native dialogs are clunky on mobile (some
-// browsers mute them, some show them only on the top of the page,
-// iOS blocks the OK/Cancel labels from being translated), look
-// unbranded, and can't be styled. For a paid product the jarring
-// shift to a Chrome chrome dialog undercuts the polish we build
-// everywhere else.
-//
-// Accessibility: focus moves to the primary button on open, ESC
-// cancels, Enter confirms, backdrop click cancels. The modal traps
-// scroll on <body> while open.
-//
-// Usage:
-//   await khAlert('Saved', 'Your word was saved to Word Book.');
-//   var ok = await khConfirm('Delete this item?', 'You can\'t undo this.');
-//   var name = await khPrompt('Your name', '', { placeholder: 'Jane' });
-function _khBuildModal(opts) {
-  opts = opts || {};
-  var wrap = document.createElement('div');
-  wrap.className = 'kh-modal-backdrop';
-  wrap.setAttribute('role', 'dialog');
-  wrap.setAttribute('aria-modal', 'true');
-  wrap.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(9,15,27,.55);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);opacity:0;transition:opacity .15s;';
-
-  var panel = document.createElement('div');
-  panel.className = 'kh-modal-panel';
-  panel.style.cssText = 'background:#fff;border-radius:16px;max-width:420px;width:100%;padding:22px 22px 18px;box-shadow:0 18px 56px rgba(5,12,24,.35);transform:translateY(8px);transition:transform .18s cubic-bezier(.22,1,.36,1);font-family:inherit;';
-
-  var title = document.createElement('div');
-  title.style.cssText = 'font-size:17px;font-weight:900;color:#0f172a;margin-bottom:6px;letter-spacing:-.01em;';
-  title.textContent = opts.title || '';
-  panel.appendChild(title);
-
-  if (opts.message) {
-    var msg = document.createElement('div');
-    msg.style.cssText = 'font-size:14px;color:#475569;line-height:1.55;margin-bottom:' + (opts.input ? '14px' : '18px') + ';';
-    msg.textContent = opts.message;
-    panel.appendChild(msg);
-  }
-
-  var input = null;
-  if (opts.input) {
-    input = document.createElement('input');
-    input.type = 'text';
-    input.value = opts.input.defaultValue || '';
-    input.placeholder = opts.input.placeholder || '';
-    input.style.cssText = 'width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:18px;outline:none;color:#0f172a;';
-    input.addEventListener('focus', function(){ input.style.borderColor = '#2563eb'; });
-    input.addEventListener('blur',  function(){ input.style.borderColor = '#e2e8f0'; });
-    panel.appendChild(input);
-  }
-
-  var btnRow = document.createElement('div');
-  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;';
-
-  var cancelBtn = null;
-  if (opts.showCancel !== false) {
-    cancelBtn = document.createElement('button');
-    cancelBtn.type = 'button';
-    cancelBtn.textContent = opts.cancelLabel || 'Cancel';
-    cancelBtn.style.cssText = 'padding:9px 18px;border:1.5px solid #e2e8f0;background:#fff;color:#475569;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;';
-    btnRow.appendChild(cancelBtn);
-  }
-
-  var okBtn = document.createElement('button');
-  okBtn.type = 'button';
-  okBtn.textContent = opts.okLabel || 'OK';
-  okBtn.style.cssText = 'padding:9px 20px;border:0;background:' + (opts.destructive ? '#dc2626' : '#0f172a') + ';color:#fff;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;';
-  btnRow.appendChild(okBtn);
-
-  panel.appendChild(btnRow);
-  wrap.appendChild(panel);
-  return { wrap: wrap, panel: panel, okBtn: okBtn, cancelBtn: cancelBtn, input: input };
-}
-
-function _khShowModal(opts) {
-  return new Promise(function(resolve) {
-    var el = _khBuildModal(opts);
-    document.body.appendChild(el.wrap);
-    var priorOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    // Animate in next frame so the initial opacity:0 applies.
-    requestAnimationFrame(function() {
-      el.wrap.style.opacity = '1';
-      el.panel.style.transform = 'none';
-    });
-    // Focus management: input first if present, else primary button.
-    setTimeout(function() { (el.input || el.okBtn).focus(); }, 40);
-
-    function close(result) {
-      el.wrap.style.opacity = '0';
-      el.panel.style.transform = 'translateY(8px)';
-      document.body.style.overflow = priorOverflow;
-      document.removeEventListener('keydown', onKey, true);
-      setTimeout(function(){ el.wrap.remove(); resolve(result); }, 150);
-    }
-    function onKey(e) {
-      if (e.key === 'Escape') { e.preventDefault(); close(opts.input ? null : false); }
-      else if (e.key === 'Enter' && (!el.input || document.activeElement === el.input)) {
-        e.preventDefault();
-        close(opts.input ? el.input.value : true);
-      }
-    }
-    document.addEventListener('keydown', onKey, true);
-    el.wrap.addEventListener('click', function(e) {
-      if (e.target === el.wrap) close(opts.input ? null : false);
-    });
-    if (el.cancelBtn) el.cancelBtn.addEventListener('click', function(){ close(opts.input ? null : false); });
-    el.okBtn.addEventListener('click', function(){ close(opts.input ? el.input.value : true); });
-  });
-}
-
-function khAlert(title, message, opts) {
-  opts = opts || {};
-  return _khShowModal({
-    title: title,
-    message: message,
-    showCancel: false,
-    okLabel: opts.okLabel || 'OK',
-  }).then(function(){ /* void */ });
-}
-
-function khConfirm(title, message, opts) {
-  opts = opts || {};
-  return _khShowModal({
-    title: title,
-    message: message,
-    okLabel: opts.okLabel || 'Confirm',
-    cancelLabel: opts.cancelLabel || 'Cancel',
-    destructive: !!opts.destructive,
-  });
-}
-
-function khPrompt(title, message, opts) {
-  opts = opts || {};
-  return _khShowModal({
-    title: title,
-    message: message,
-    input: {
-      defaultValue: opts.defaultValue || '',
-      placeholder: opts.placeholder || '',
-    },
-    okLabel: opts.okLabel || 'OK',
-    cancelLabel: opts.cancelLabel || 'Cancel',
-  });
-}
-
 // ── Shared loading / empty / error state HTML builders ─────────
 // Call-sites used to scatter ad-hoc "Loading..." markup everywhere
 // which meant bare gray text when an API stalled and no retry path
@@ -2269,28 +2058,6 @@ function khPrompt(title, message, opts) {
 // so a skeleton here looks like a skeleton there, and the error
 // state always offers the user an explicit retry instead of asking
 // them to refresh the whole page.
-
-function khLoadingHTML(label, sub) {
-  return '<div class="kh-loading">'
-    +   '<div class="kh-loading-spinner" aria-hidden="true"></div>'
-    +   '<div class="kh-loading-text">' + _khEsc(label || 'Loading…') + '</div>'
-    +   (sub ? '<div class="kh-loading-sub">' + _khEsc(sub) + '</div>' : '')
-    + '</div>';
-}
-
-function khSkeletonHTML(opts) {
-  opts = opts || {};
-  var rows = opts.rows || 3;
-  var gap = opts.gap || 10;
-  var h = opts.lineHeight || 14;
-  var parts = ['<div style="padding:' + (opts.padding || '12px 4px') + '">'];
-  for (var i = 0; i < rows; i++) {
-    var w = i === rows - 1 ? '60%' : '100%';
-    parts.push('<div class="kh-skeleton" style="height:' + h + 'px;width:' + w + ';margin-bottom:' + gap + 'px"></div>');
-  }
-  parts.push('</div>');
-  return parts.join('');
-}
 
 // Render an empty-or-error state. Usage:
 //   el.innerHTML = khEmptyState({
@@ -2488,26 +2255,6 @@ function _khShareClipboard(payload) {
     toast('Copy not available', 'warn');
   }
   return Promise.resolve();
-}
-
-function khEmptyState(opts) {
-  opts = opts || {};
-  var html = '<div class="kh-empty' + (opts.error ? ' error' : '') + '">';
-  if (opts.title) html += '<div class="kh-empty-title">' + _khEsc(opts.title) + '</div>';
-  if (opts.sub)   html += '<div class="kh-empty-sub">'   + _khEsc(opts.sub)   + '</div>';
-  if (opts.action) {
-    var cls = opts.action.variant === 'secondary' ? 'kh-empty-action secondary' : 'kh-empty-action';
-    html += '<button class="' + cls + '" onclick="' + _khEsc(opts.action.onClick || '') + '">'
-         + _khEsc(opts.action.label || 'Try again')
-         + '</button>';
-  }
-  if (opts.secondaryAction) {
-    html += '<button class="kh-empty-action secondary" style="margin-top:4px" onclick="' + _khEsc(opts.secondaryAction.onClick || '') + '">'
-         + _khEsc(opts.secondaryAction.label || '')
-         + '</button>';
-  }
-  html += '</div>';
-  return html;
 }
 
 // ── 저장 단어 ─────────────────────────────────────────────────
