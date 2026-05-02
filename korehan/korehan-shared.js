@@ -4093,7 +4093,6 @@ function _buildNewsCardHTML(a) {
     + img
     + '<div class="nc-overlay-grad"></div>'
     + '<div class="nc-overlay-body">'
-    + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
     + '<div class="nc-title" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + escapeHtml(a.title_en || a.title || '') + '</div>'
     + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
     + '</div>'
@@ -10482,7 +10481,7 @@ function injectStreakStyles() {
   if (typeof window === 'undefined' || !window.matchMedia) return;
   if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
-  var TILT_SELECTOR = '.story-card, .sc, .hconv-card';
+  var TILT_SELECTOR = '.story-card, .sc, .hconv-card, .cc2';
   var MAX_DEG = 6;          // edge-of-card tilt in either axis
   var LIFT = 4;              // px translateZ lift on hover
   var TRANS_DUR = '.18s';
@@ -10495,10 +10494,10 @@ function injectStreakStyles() {
       /* Parent rails need perspective so children tilt in 3D */
       '.home-story-grid,.home-conv-grid-wrap,.st-grid,.st-rail-scroll{perspective:1100px;}',
       '.story-card,.sc,.hconv-card{transform-style:preserve-3d;will-change:transform;}',
-      '.story-card.kh-tilt,.sc.kh-tilt,.hconv-card.kh-tilt{transition:transform ' + TRANS_DUR + ' cubic-bezier(.22,1,.36,1),box-shadow ' + TRANS_DUR + ';}',
+      '.story-card.kh-tilt,.sc.kh-tilt,.hconv-card.kh-tilt,.cc2.kh-tilt{transition:transform ' + TRANS_DUR + ' cubic-bezier(.22,1,.36,1),box-shadow ' + TRANS_DUR + ';}',
       /* Subtle specular highlight follows cursor via --kh-tx / --kh-ty */
-      '.story-card.kh-tilt::before,.sc.kh-tilt::before,.hconv-card.kh-tilt::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at var(--kh-tx,50%) var(--kh-ty,50%),rgba(255,255,255,.18),rgba(255,255,255,0) 42%);opacity:0;transition:opacity ' + TRANS_DUR + ';pointer-events:none;z-index:3;mix-blend-mode:soft-light;}',
-      '.story-card.kh-tilting::before,.sc.kh-tilting::before,.hconv-card.kh-tilting::before{opacity:1;}'
+      '.story-card.kh-tilt::before,.sc.kh-tilt::before,.hconv-card.kh-tilt::before,.cc2.kh-tilt::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at var(--kh-tx,50%) var(--kh-ty,50%),rgba(255,255,255,.18),rgba(255,255,255,0) 42%);opacity:0;transition:opacity ' + TRANS_DUR + ';pointer-events:none;z-index:3;mix-blend-mode:soft-light;}',
+      '.story-card.kh-tilting::before,.sc.kh-tilting::before,.hconv-card.kh-tilting::before,.cc2.kh-tilting::before{opacity:1;}'
     ].join('');
     document.head.appendChild(s);
   }

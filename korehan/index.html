@@ -328,27 +328,12 @@
   scroll-snap-align: start;
 }
 
-/* Conv card — match news width exactly */
-.home-conv-grid-wrap .hconv-card {
+/* Conv card — fixed-width cc2 cards in the home rail */
+.home-conv-grid-wrap .cc2 {
   flex: 0 0 280px;
-  min-width: 280px;
+  min-width: 0;
   scroll-snap-align: start;
-  display: flex;
-  flex-direction: column;
 }
-.home-conv-grid-wrap .hconv-head,
-.home-conv-grid-wrap .hconv-chat,
-.home-conv-grid-wrap .hconv-foot { min-width: 0; }
-.home-conv-grid-wrap .hconv-chat { flex: 1; min-height: 110px; }
-.home-conv-grid-wrap .hcb {
-  /* Show full bubble text. The -webkit-line-clamp:2 + overflow:hidden
-     was truncating every message at 2 lines with an ellipsis, which
-     read as "the conversation is cut off" — exactly what the user
-     keeps reporting. The home rail is a preview, not a list view; if
-     a bubble is long the card just grows to fit. */
-  word-break: break-word;
-}
-.home-conv-grid-wrap .hconv-foot { margin-top: auto; }
 
 /* Story card — match news width exactly */
 .home-story-grid .story-card {
@@ -360,7 +345,7 @@
 /* Slightly larger cards on desktop — keep all three identical */
 @media (min-width: 1100px) {
   .home-news-grid .nc { flex: 0 0 300px; min-width: 300px; }
-  .home-conv-grid-wrap .hconv-card { flex: 0 0 300px; min-width: 300px; }
+  .home-conv-grid-wrap .cc2 { flex: 0 0 300px; }
   .home-story-grid .story-card { flex: 0 0 300px; min-width: 300px; }
 }
 
@@ -426,101 +411,19 @@
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-/* Conv card — mirror the conversations page cc2 layout (header + chat
-   bubbles + Study footer). Same shape, same vibe — just sized for the
-   home rail and rendered in English. */
-.home-conv-grid-wrap .hconv-card {
-  position: relative;
-  border-radius: 18px;
-  overflow: hidden;
-  cursor: pointer;
-  background: #fff;
-  box-shadow: 0 8px 24px rgba(13,27,46,.1);
-  transition: transform .18s, box-shadow .18s;
-  /* No fixed aspect ratio — the card needs to grow to fit the header
-     + 3 chat bubbles + Study footer. Forcing 1:1 was clipping the
-     third bubble and leaving fragments of garbled-looking text. */
-  display: flex;
-  flex-direction: column;
-}
-.home-conv-grid-wrap .hconv-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 18px 40px rgba(13,27,46,.18);
-}
-.home-conv-grid-wrap .hconv-head {
-  padding: 14px 14px 10px;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  border-bottom: 1px solid #f0f4fa;
-}
-.home-conv-grid-wrap .hconv-title {
-  flex: 1;
-  font-family: 'Playfair Display', 'Noto Serif KR', serif;
-  font-size: 14px; font-weight: 800;
-  color: #0f172a;
-  line-height: 1.25;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-.home-conv-grid-wrap .hconv-cat {
-  font-size: 9px; font-weight: 800;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: #64748b;
-}
-.home-conv-grid-wrap .hconv-lvl {
-  font-size: 9px; font-weight: 800;
-  padding: 3px 8px; border-radius: 999px;
-  flex-shrink: 0;
-}
-.home-conv-grid-wrap .hconv-lvl.lvl-s { background: #ccfbf1; color: #115e59; }
-.home-conv-grid-wrap .hconv-lvl.lvl-b { background: #dcfce7; color: #15803d; }
-.home-conv-grid-wrap .hconv-lvl.lvl-i { background: #fef9c3; color: #92400e; }
-.home-conv-grid-wrap .hconv-lvl.lvl-a { background: #fee2e2; color: #b91c1c; }
-.home-conv-grid-wrap .hconv-chat {
-  flex: 1;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 0;
-}
-.home-conv-grid-wrap .hcb {
-  font-size: 12px;
-  font-family: 'Noto Sans KR', sans-serif;
-  line-height: 1.45;
-  padding: 7px 11px;
-  border-radius: 14px;
-  max-width: 82%;
-  word-break: break-word;
-}
-.home-conv-grid-wrap .hcb.left {
-  background: #f1f5f9;
-  color: #334155;
-  border-bottom-left-radius: 4px;
-  align-self: flex-start;
-}
-.home-conv-grid-wrap .hcb.right {
-  background: #2563eb;
-  color: #fff;
-  border-bottom-right-radius: 4px;
-  align-self: flex-end;
-}
-.home-conv-grid-wrap .hconv-foot {
-  padding: 10px 14px 12px;
-  border-top: 1px solid #f0f4fa;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #fff;
-}
-.home-conv-grid-wrap .hconv-study {
-  font-size: 11px; font-weight: 800;
-  color: #2563eb;
-  border: 1.5px solid #bfdbfe;
-  border-radius: 20px;
-  padding: 4px 14px;
-  flex-shrink: 0;
-}
+/* Conv cards — identical cc2 styles from conversations page */
+.cc2{border-radius:18px;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;border:none;display:flex;flex-direction:column;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);}
+.cc2:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.15);}
+.cc2-head{padding:16px 16px 12px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid #f0f4fa;}
+.cc2-head-info{flex:1;min-width:0;}
+.cc2-ctx{font-size:14px;color:#0f172a;font-weight:700;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.cc2-bubbles{padding:12px 16px 14px;flex:1;display:flex;flex-direction:column;gap:8px;}
+.cc2-bub{padding:8px 12px;border-radius:14px;font-size:13px;font-family:'Noto Sans KR',sans-serif;line-height:1.5;max-width:85%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cc2-bub-l{background:#f1f5f9;color:#334155;border-bottom-left-radius:4px;align-self:flex-start;}
+.cc2-bub-r{background:#2563eb;color:#fff;border-bottom-right-radius:4px;align-self:flex-end;}
+.cc2-footer{padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #f0f4fa;}
+.cc2-vocab-count{font-size:11px;color:#64748b;font-weight:600;}
+.cc2-study-btn{font-size:11px;font-weight:800;color:#2563eb;background:none;border:1.5px solid #bfdbfe;border-radius:20px;padding:4px 14px;cursor:pointer;font-family:inherit;transition:all .12s;}
 
 /* Mobile daily strip */
 @media (max-width: 860px) {
@@ -567,7 +470,7 @@
   /* News and stories are aspect-1/1 squares on mobile, but conversations
      show 3 chat bubbles + header — forcing 1:1 clips the third bubble.
      Let the card size to its content and just match the rail width. */
-  .home-conv-grid-wrap .hconv-card { flex: 0 0 210px; min-width: 210px; }
+  .home-conv-grid-wrap .cc2 { flex: 0 0 220px; }
   .home-story-grid .story-card { flex: 0 0 210px; min-width: 210px; }
   .home-hero-loading { min-height: 300px !important; grid-template-columns: 1fr !important; }
   .home-hero-skeleton-main { min-height: 300px !important; }
@@ -732,7 +635,7 @@ body.kh-neon-on #dyn-hero,
 body.kh-neon-on .daily-strip,
 body.kh-neon-on .story-card,
 body.kh-neon-on .home-news-grid .nc,
-body.kh-neon-on .home-conv-grid-wrap .hconv-card,
+body.kh-neon-on .home-conv-grid-wrap .cc2,
 body.kh-neon-on .home-pills .sp,
 body.kh-neon-on .home-sec,
 body.kh-neon-on .home-neon-toggle {
@@ -743,7 +646,7 @@ body.kh-neon-on #dyn-hero,
 body.kh-neon-on .daily-strip,
 body.kh-neon-on .story-card,
 body.kh-neon-on .home-news-grid .nc,
-body.kh-neon-on .home-conv-grid-wrap .hconv-card,
+body.kh-neon-on .home-conv-grid-wrap .cc2,
 body.kh-neon-on .home-pills .sp {
   box-shadow: 0 0 0 1px rgba(0,255,214,.16), 0 0 20px rgba(0,255,214,.12), 0 0 40px rgba(123,92,255,.10) !important;
 }
@@ -754,7 +657,7 @@ body.kh-neon-on #dyn-hero {
 body.kh-neon-on .daily-strip,
 body.kh-neon-on .story-card,
 body.kh-neon-on .home-news-grid .nc,
-body.kh-neon-on .home-conv-grid-wrap .hconv-card,
+body.kh-neon-on .home-conv-grid-wrap .cc2,
 body.kh-neon-on #dyn-hero {
   border-color: rgba(0,255,214,.34) !important;
   background: linear-gradient(180deg, rgba(6,12,24,.92), rgba(10,17,34,.94)) !important;
@@ -772,7 +675,7 @@ body.kh-neon-on .home-neon-toggle::before {
 }
 body.kh-neon-on .daily-strip::after,
 body.kh-neon-on .home-news-grid .nc::after,
-body.kh-neon-on .home-conv-grid-wrap .hconv-card::after,
+body.kh-neon-on .home-conv-grid-wrap .cc2::after,
 body.kh-neon-on .story-card::after {
   content:'';
   position:absolute;
@@ -811,23 +714,20 @@ body.kh-neon-on .story-preview {
 }
 body.kh-neon-on .home-news-grid .nc-title,
 body.kh-neon-on .home-news-grid .nc-date,
-body.kh-neon-on .home-conv-grid-wrap .hconv-name,
-body.kh-neon-on .home-conv-grid-wrap .hconv-ctx,
-body.kh-neon-on .home-conv-grid-wrap .hconv-arrow {
+body.kh-neon-on .home-conv-grid-wrap .cc2-ctx {
   color:#f6ffff !important;
 }
-body.kh-neon-on .home-conv-grid-wrap .hconv-head,
-body.kh-neon-on .home-conv-grid-wrap .hconv-chat,
-body.kh-neon-on .home-conv-grid-wrap .hconv-foot {
+body.kh-neon-on .home-conv-grid-wrap .cc2-head,
+body.kh-neon-on .home-conv-grid-wrap .cc2-bubbles,
+body.kh-neon-on .home-conv-grid-wrap .cc2-footer {
   background: linear-gradient(180deg, rgba(8,17,31,.96), rgba(12,22,40,.96)) !important;
   border-color: rgba(0,255,214,.14) !important;
 }
-body.kh-neon-on .home-conv-grid-wrap .hcb.l {
+body.kh-neon-on .home-conv-grid-wrap .cc2-bub-l {
   background: rgba(255,255,255,.08) !important;
-  border-color: rgba(255,255,255,.12) !important;
   color:#effdff !important;
 }
-body.kh-neon-on .home-conv-grid-wrap .hcb.r {
+body.kh-neon-on .home-conv-grid-wrap .cc2-bub-r {
   background: linear-gradient(135deg,#0ea5e9,#2563eb) !important;
   color:#fff !important;
 }
@@ -876,7 +776,7 @@ body.kh-neon-on .ds-btn,
 body.kh-neon-on .sp,
 body.kh-neon-on .story-card,
 body.kh-neon-on .home-news-grid .nc,
-body.kh-neon-on .home-conv-grid-wrap .hconv-card,
+body.kh-neon-on .home-conv-grid-wrap .cc2,
 body.kh-neon-on .kh-home-hero-main-shell,
 body.kh-neon-on .kh-hero-nav {
   transition: transform .22s ease, box-shadow .24s ease, border-color .24s ease, background .24s ease, filter .24s ease;
@@ -890,7 +790,7 @@ body.kh-neon-on .kh-hero-nav {
 }
 body.kh-neon-on .sp,
 body.kh-neon-on .home-news-grid .nc,
-body.kh-neon-on .home-conv-grid-wrap .hconv-card,
+body.kh-neon-on .home-conv-grid-wrap .cc2,
 body.kh-neon-on .story-card {
   will-change: auto;
 }
@@ -898,7 +798,7 @@ body.kh-neon-on .ds-btn:hover,
 body.kh-neon-on .sp:hover,
 body.kh-neon-on .story-card:hover,
 body.kh-neon-on .home-news-grid .nc:hover,
-body.kh-neon-on .home-conv-grid-wrap .hconv-card:hover,
+body.kh-neon-on .home-conv-grid-wrap .cc2:hover,
 body.kh-neon-on .kh-home-hero-main-shell:hover,
 body.kh-neon-on .kh-hero-nav:hover {
   transform: translateY(-3px) scale(1.01);
@@ -909,7 +809,7 @@ body.kh-neon-on .ds-btn:active,
 body.kh-neon-on .sp:active,
 body.kh-neon-on .story-card:active,
 body.kh-neon-on .home-news-grid .nc:active,
-body.kh-neon-on .home-conv-grid-wrap .hconv-card:active,
+body.kh-neon-on .home-conv-grid-wrap .cc2:active,
 body.kh-neon-on .kh-hero-nav:active,
 body.kh-neon-on .home-neon-toggle:active {
   transform: scale(.985);
@@ -1367,8 +1267,6 @@ function renderHomeConvs() {
   // title, level chip top-right, chat bubble preview, "Study →" pill
   // at the bottom. Just translated and shrunk for the home rail.
   var CAT_LABEL = { everyday:'Everyday', workplace:'Workplace', friends:'Friends', family:'Family' };
-  var LVL_LBL = { s:'Seed', b:'Sprout', i:'Tree', a:'Forest' };
-  var LVL_CLS = { s:'lvl-s', b:'lvl-b', i:'lvl-i', a:'lvl-a' };
   var esc = function(s){ return String(s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
 
   // Reuse the conversation page's translation cache when populated —
@@ -1379,7 +1277,6 @@ function renderHomeConvs() {
   grid.innerHTML = list.slice(0,4).map(function(c) {
     var catKey = (c.cat || 'everyday').toLowerCase();
     var catLabel = CAT_LABEL[catKey] || (c.cat ? (c.cat.charAt(0).toUpperCase() + c.cat.slice(1)) : 'Conversation');
-    var lvlKey = c.lvl || 'b';
     // Title resolution: cached translation → admin English fields →
     // ctx itself if no Hangul → "{Category} Conversation" fallback.
     var rawCtx = (c.ctx || '').trim();
@@ -1389,30 +1286,28 @@ function renderHomeConvs() {
     else if (rawCtx && !/[가-힣]/.test(rawCtx)) titleEn = rawCtx;
     else titleEn = catLabel + ' Conversation';
 
-    // Up to 3 chat bubbles, alternating sides like the conversations
-    // page. If msgs is empty, drop in the raw ctx as a single bubble.
+    // Up to 3 chat bubbles — same structure as conversations page cc2 cards
     var msgs = (c.msgs || []).slice(0, 3);
     var bubblesHtml = '';
     if (msgs.length) {
       bubblesHtml = msgs.map(function(m){
-        var side = m.s === 'r' ? 'right' : 'left';
-        return '<div class="hcb ' + side + '">' + esc(m.txt || '') + '</div>';
+        var side = m.s === 'r' ? 'cc2-bub-r' : 'cc2-bub-l';
+        return '<div class="cc2-bub ' + side + '">' + esc(m.txt || '') + '</div>';
       }).join('');
     } else if (rawCtx) {
-      bubblesHtml = '<div class="hcb left">' + esc(rawCtx) + '</div>';
+      bubblesHtml = '<div class="cc2-bub cc2-bub-l">' + esc(rawCtx) + '</div>';
     } else {
-      bubblesHtml = '<div class="hcb left" style="color:#94a3b8">No preview available.</div>';
+      bubblesHtml = '<div class="cc2-bub cc2-bub-l" style="color:#94a3b8">No preview available.</div>';
     }
 
-    return '<div class="hconv-card" data-kh-conv-id="' + esc(c._id || '') + '" onclick="location.href=\'korehan-conversations.html?id=' + esc(c._id || '') + '\'">'
-      + '<div class="hconv-head">'
-        + '<div class="hconv-title">' + esc(titleEn) + '</div>'
-        + '<span class="hconv-lvl ' + (LVL_CLS[lvlKey]||'lvl-b') + '">' + (LVL_LBL[lvlKey]||'Sprout') + '</span>'
+    return '<div class="cc2" data-kh-conv-id="' + esc(c._id || '') + '" onclick="location.href=\'korehan-conversations.html?id=' + esc(c._id || '') + '\'">'
+      + '<div class="cc2-head">'
+        + '<div class="cc2-head-info"><div class="cc2-ctx">' + esc(titleEn) + '</div></div>'
       + '</div>'
-      + '<div class="hconv-chat">' + bubblesHtml + '</div>'
-      + '<div class="hconv-foot">'
-        + '<span class="hconv-cat">' + esc(catLabel) + '</span>'
-        + '<span class="hconv-study">Study →</span>'
+      + '<div class="cc2-bubbles">' + bubblesHtml + '</div>'
+      + '<div class="cc2-footer">'
+        + '<span class="cc2-vocab-count">' + esc(catLabel) + '</span>'
+        + '<span class="cc2-study-btn">Study →</span>'
       + '</div>'
       + '</div>';
   }).join('');
@@ -1475,7 +1370,7 @@ async function _khBackfillConvCtxEn(rows) {
       var ctx = (c.ctx || '').trim();
       var t = cache[ctx];
       if (!t || !c._id) return;
-      var card = document.querySelector('[data-kh-conv-id="' + c._id + '"] .hconv-title');
+      var card = document.querySelector('[data-kh-conv-id="' + c._id + '"] .cc2-ctx');
       if (card) card.textContent = t;
     });
   } catch(_) {}
