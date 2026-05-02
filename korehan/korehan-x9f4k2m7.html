@@ -4248,6 +4248,9 @@ async function goAICache() {
     + (failedArticleIds.length
         ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#ef4444;color:#fff;border:none" onclick="retryFailedCaches(\'' + (_schema||'') + '\')">🔁 실패 재시도 (' + failedArticleIds.length + ')</button>'
         : '')
+    + (cacheComplete < articles.length && _schema
+        ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#2563eb;color:#fff;border:none" onclick="generateAllMissingCaches(\'' + (_schema||'') + '\')">⚡ 누락 캐시 일괄 생성 (' + (articles.length - cacheComplete) + '건)</button>'
+        : '')
     + '</div>';
 
   articles.forEach(function(a) {
@@ -4306,6 +4309,26 @@ async function retryFailedCaches(schema) {
     if (i % 5 === 4) toast('진행 중… ' + (i + 1) + '/' + ids.length);
   }
   toast('✅ 재시도 완료 (' + ids.length + '건) — 페이지 새로고침해서 결과 확인', false);
+  setTimeout(function(){ goAICache(); }, 1500);
+}
+
+// 누락 캐시 일괄 생성 — "🧠 Generate" 버튼이 있는 기사(=캐시 미완성) 전체 처리
+// Weekly/monthly review grammar·reading 슬롯이 article_cache에 의존하므로
+// 이 버튼 실행 후 review가 vocab-only → 종합 평가로 변환됨
+async function generateAllMissingCaches(schema) {
+  if (!schema) { toast('스키마 미감지 — 페이지 새로고침 후 재시도', true); return; }
+  var btns = Array.from(document.querySelectorAll('[id^="cbtn-"]')).filter(function(b){
+    return b.textContent.trim().indexOf('Generate') !== -1;
+  });
+  if (!btns.length) { toast('모든 기사 캐시 완료 — 추가 작업 불필요', false); return; }
+  if (!confirm(btns.length + '개 기사 누락 캐시 생성.\n기사당 약 3~5초 소요 (총 ' + Math.ceil(btns.length * 4 / 60) + '분 예상). 진행?')) return;
+  toast('캐시 생성 시작 (' + btns.length + '건)…');
+  var ids = btns.map(function(b){ return b.id.replace('cbtn-', ''); });
+  for (var i = 0; i < ids.length; i++) {
+    try { await genCache(ids[i], schema, { silent: true }); } catch(e) { console.warn('cache gen failed', ids[i], e); }
+    if (i % 5 === 4) toast('진행 중… ' + (i + 1) + '/' + ids.length + '건 완료');
+  }
+  toast('✅ ' + ids.length + '건 완료. Weekly/Monthly Review가 이제 종합 평가로 작동합니다.');
   setTimeout(function(){ goAICache(); }, 1500);
 }
 
@@ -5488,7 +5511,7 @@ async function generateConvs() {
   if (genBtn) { genBtn.disabled = true; genBtn.textContent = '⏳ Generating…'; }
   res.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;background:#fff;border-radius:16px;border:1px solid #e2e8f0"><div style="font-size:32px;margin-bottom:10px">⏳</div><div style="font-size:14px;font-weight:600">Generating ' + count + ' conversation' + (count>1?'s':'') + '…</div><div style="font-size:12px;margin-top:6px;color:#94a3b8">This may take 10–30 seconds</div></div>';
 
-  var prompt = 'You are creating Korean language learning content for KoreHani.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"key_expressions":[{"ko":"multi-word phrase","en":"natural English meaning"}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3-5 key_expressions, 3 missions. EVERY msg MUST have "en" field with natural English translation. key_expressions MUST be multi-word phrases or idioms (2+ words with a space) that actually appear in the dialogue (conjugated form ok). They should NOT overlap with vocab. ' + lvlMap[lvl] + ' level Korean.';
+  var prompt = 'You are creating Korean language learning content for KoreHani.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"key_expressions":[{"ko":"multi-word phrase","en":"natural English meaning"}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3-5 key_expressions, 3 missions. EVERY msg MUST have "en" field with natural English translation. key_expressions MUST be multi-word phrases or idioms (2+ words with a space) that actually appear in the dialogue (conjugated form ok). They should NOT overlap with vocab. ' + lvlMap[lvl] + ' level Korean.\n\nCRITICAL REALISM RULES (violations will be rejected):\n- Every situation must be 100% realistic and logically consistent. If the setting is a pharmacy, people buy medicine — not hats or groceries.\n- ALL vocab words in the vocab list MUST appear naturally in the dialogue messages. Never add vocab that is not in the text.\n- The conversation topic and location must match real Korean daily life — do not mix unrelated settings or objects.\n- Vocab distractors should come from words actually used; do not include unrelated meanings.';
 
   try {
     var resp = await callClaude({
@@ -6523,7 +6546,8 @@ async function _bulkGenerateOneConv(seed, levelKey) {
     + '- Realistic spoken Korean — slang/abbreviations okay if level allows.\n'
     + '- Avoid textbook phrases like "오늘 날씨가 좋아요".\n'
     + '- EVERY msg MUST have an "en" field with a natural English translation.\n'
-    + '- 5–7 vocab, 2–3 grammar, 3 missions.\n\n'
+    + '- 5–7 vocab, 2–3 grammar, 3 missions.\n'
+    + '- CRITICAL: The situation must be 100% realistic and logically consistent. If the setting is a pharmacy, people buy medicine — not hats. Each vocab word MUST actually appear in the dialogue text. Never add vocab not present in msgs.\n\n'
     + 'Return ONLY a single valid JSON object (no markdown, no array wrapper):\n'
     + '{"name":"두 사람 이름","ctx":"한 줄 상황 설명","cat":"' + seed.cat + '","lvl":"' + lvlCode + '","catLabel":"' + (BULK_CONV_CAT_LABELS[seed.cat] || seed.cat) + '","topic":"' + seed.topic.replace(/"/g,'\\"') + '","avi":"💬","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"mission":["","",""]}';
 

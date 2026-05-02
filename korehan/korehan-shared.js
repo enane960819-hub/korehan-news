@@ -3242,7 +3242,8 @@ async function loadArticlesFromDB(options) {
   if (!shouldForceRefresh && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
     return _articlesCache;
   }
-  var lim = useHomeOptimizedQuery ? 30 : 80;
+  var useAllArticles = !!options.all;
+  var lim = useHomeOptimizedQuery ? 30 : useAllArticles ? 500 : 80;
   // Try the lite column list first; fall back to '*' if PostgREST
   // rejects an unknown column (production schemas can lag behind the
   // codebase). Without this fallback any missing column on the lite
@@ -4116,7 +4117,7 @@ function _buildNewsCardHTML(a) {
     + img
     + '<div class="nc-overlay-grad"></div>'
     + '<div class="nc-overlay-body">'
-    + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
+    + ''
     + '<div class="nc-title" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + escapeHtml(a.title_en || a.title || '') + '</div>'
     + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
     + '</div>'
@@ -8838,7 +8839,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
       });
     } else {
-      await Promise.all([loadArticlesFromDB({ force: _isArticleReader }), sectionsPromise, settingsPromise]);
+      // korehan-all fetches all 500 articles (limit) so every section rail
+      // is populated — avoids the 80-row window missing older sections.
+      var _isAllPage = (pageBase === 'korehan-all');
+      var _forceRefresh = _isArticleReader || _isAllPage;
+      await Promise.all([loadArticlesFromDB({ force: _forceRefresh, all: _isAllPage }), sectionsPromise, settingsPromise]);
       if (window._khLoaderClearAuto) window._khLoaderClearAuto();
       _ldr(100);
     }

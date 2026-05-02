@@ -22144,7 +22144,12 @@ function _mrShuffle(arr) {
 
 function _mrSlotVocab(n, savedWords, alreadyUsedAnswers) {
   var used = alreadyUsedAnswers || {};
-  var pool = savedWords.filter(function(w){ return !used[w.ko] && !used[w.en]; });
+  var pool = savedWords.filter(function(w){
+    if (used[w.ko] || used[w.en]) return false;
+    // Exclude metadata labels that leak from Fast Track scenarios
+    if (!w.en || /^fast\s*track/i.test(w.en)) return false;
+    return true;
+  });
   if (pool.length < 4) return [];
   var qs = [];
   for (var i = 0; i < pool.length && qs.length < n; i++) {
@@ -22153,7 +22158,10 @@ function _mrSlotVocab(n, savedWords, alreadyUsedAnswers) {
     if (distractors.length < 3) continue;
     var rand = Math.random();
     if (rand < 0.6) {
-      var ch = _mrShuffle([w.en].concat(distractors.map(function(d){ return d.en; })));
+      // Deduplicate choices — duplicate meanings cause two identical buttons
+      var seenEn = {}; var ch = [];
+      _mrShuffle([w.en].concat(distractors.map(function(d){ return d.en; }))).forEach(function(e){ if (!seenEn[e]) { seenEn[e]=1; ch.push(e); } });
+      if (ch.length < 2) continue;
       qs.push({ type:'mcq', prompt:w.ko, answer:w.en, choices:ch, rom:w.rom||'', slot:'vocab', label:'What does this mean?' });
     } else if (rand < 0.9) {
       var chK = _mrShuffle([w.ko].concat(distractors.map(function(d){ return d.ko; })));
@@ -22223,10 +22231,11 @@ function _mrSlotReadingCloze(n, articleCacheMap, particleOnly) {
 }
 
 function _mrSlotKeyExpressions(n, articleCacheMap, convExpressions) {
-  var pool = (convExpressions || []).slice();
+  var _isMetaLabel = function(en){ return !en || /^fast\s*track/i.test(en); };
+  var pool = (convExpressions || []).filter(function(e){ return e && e.ko && e.en && !_isMetaLabel(e.en); });
   Object.keys(articleCacheMap).forEach(function(aid) {
     var arr = articleCacheMap[aid].key_expressions || [];
-    arr.forEach(function(e) { if (e && e.ko && e.en) pool.push(e); });
+    arr.forEach(function(e) { if (e && e.ko && e.en && !_isMetaLabel(e.en)) pool.push(e); });
   });
   if (pool.length < 4) return [];
   var seenKo = {};

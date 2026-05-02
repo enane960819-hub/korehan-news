@@ -1408,7 +1408,7 @@ function renderHomeConvs() {
     return '<div class="hconv-card" data-kh-conv-id="' + esc(c._id || '') + '" onclick="location.href=\'korehan-conversations.html?id=' + esc(c._id || '') + '\'">'
       + '<div class="hconv-head">'
         + '<div class="hconv-title">' + esc(titleEn) + '</div>'
-        + '<span class="hconv-lvl ' + (LVL_CLS[lvlKey]||'lvl-b') + '">' + (LVL_LBL[lvlKey]||'Sprout') + '</span>'
+        + ''
       + '</div>'
       + '<div class="hconv-chat">' + bubblesHtml + '</div>'
       + '<div class="hconv-foot">'
