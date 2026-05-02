@@ -4263,6 +4263,22 @@ document.addEventListener('DOMContentLoaded', async function() {
     setTimeout(waitAndOpenGFModal, 400);
   }
 
+  // Daily/Weekly/Monthly Review auto-open from home (?review=daily|weekly|monthly)
+  var _reviewParam = _urlParams.get('review');
+  if (_reviewParam === 'daily' || _reviewParam === 'weekly' || _reviewParam === 'monthly') {
+    var _rvWaited = 0;
+    function waitAndOpenReview() {
+      if (window._sessionChecked || _rvWaited >= 40) {
+        setTimeout(function() {
+          if (_reviewParam === 'daily' && typeof openDailyReview === 'function') openDailyReview();
+          else if (_reviewParam === 'weekly' && typeof openWeeklyReview === 'function') openWeeklyReview();
+          else if (_reviewParam === 'monthly' && typeof openMonthlyReview === 'function') openMonthlyReview();
+        }, 600);
+      } else { _rvWaited++; setTimeout(waitAndOpenReview, 150); }
+    }
+    setTimeout(waitAndOpenReview, 400);
+  }
+
   // Weak Grammar Drill from homepage or Growth Lab
   if (_urlParams.get('focus') && _focusSource === 'home-weak-grammar') {
     var _wgFocusName = decodeURIComponent(_urlParams.get('focus') || '');

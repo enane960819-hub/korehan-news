@@ -1570,6 +1570,26 @@ function openStory(id) {
   _stPanelScrollReset();
 
   if (window.renderKhLucideIcons) renderKhLucideIcons();
+  // Guest gate — non-signed-in readers see the first chunk of the story
+  // body with a fade and a sign-up CTA. Idempotent + auth-reactive.
+  if (typeof khApplyGuestGate === 'function' && !window._isAdmin) {
+    function _gateStory() {
+      khApplyGuestGate({
+        bodySel:   '#st-body-ko',
+        anchorSel: '#st-body-ko',
+        ctaTitle:  'Want to finish this story? — sign up free',
+        ctaSub:    'Create a free account to read the rest, save vocabulary, and unlock listening quizzes.'
+      });
+    }
+    _gateStory();
+    if (!window._sessionChecked) {
+      var _stGateTries = 0;
+      (function _stWait(){
+        if (window._sessionChecked || _stGateTries >= 60) { _gateStory(); return; }
+        _stGateTries++; setTimeout(_stWait, 100);
+      })();
+    }
+  }
   // 저장된 단어 상태 복원
   if (typeof restoreSaveButtons === 'function') restoreSaveButtons('st-overlay');
   // Inject this story's own vocab + key expressions into the hover tooltip

@@ -998,6 +998,83 @@ async function signInWithGoogle() {
   if (error) toast('Sign-in error: ' + error.message, true);
 }
 
+// ── Guest content gate ────────────────────────────────────────
+// Wraps a content scope so non-signed-in readers see only the first
+// chunk with a fade and a sign-up CTA. Idempotent — safe to call
+// multiple times. Re-runs on auth changes via the listener below so
+// gates lift the moment a user signs in without a page reload.
+function khApplyGuestGate(opts) {
+  opts = opts || {};
+  var bodyClass = opts.bodyClass || 'kh-guest-gated';
+  var bodySel   = opts.bodySel;            // e.g. '.art-lead, .art-full' or '#st-body-ko'
+  var anchorSel = opts.anchorSel || bodySel; // where to insert the CTA after
+  var ctaTitle  = opts.ctaTitle || 'Read the rest — free with a quick sign-up';
+  var ctaSub    = opts.ctaSub   || 'Create a free account to keep reading, save vocabulary, and unlock daily review.';
+  var rootEl    = opts.root || document;
+
+  // Already signed in / admin / session not yet known? Don't gate.
+  if (window.supaUser) {
+    _khRemoveGuestGate(rootEl, bodyClass);
+    return;
+  }
+  // Don't gate while we're still checking the session — a flicker is worse
+  // than a delayed render.
+  if (!window._sessionChecked) return;
+
+  var bodies = bodySel ? rootEl.querySelectorAll(bodySel) : [];
+  if (!bodies.length) return;
+
+  // Already gated?
+  if (rootEl.querySelector('.kh-gate-cta[data-kh-gate="1"]')) return;
+
+  // Apply clip + fade overlay to each body element.
+  Array.prototype.forEach.call(bodies, function(el) {
+    el.classList.add('kh-gate-clip');
+    if (!el.querySelector(':scope > .kh-gate-blur')) {
+      var blur = document.createElement('div');
+      blur.className = 'kh-gate-blur';
+      el.appendChild(blur);
+    }
+  });
+
+  // Mark a parent scope so CSS can hide deeper UI (tabs, comments, etc).
+  var scope = opts.scopeEl || (bodies[0] && bodies[0].closest('.art-card-body, .st-panel, body')) || document.body;
+  if (scope) scope.classList.add(bodyClass);
+
+  // Build CTA banner.
+  var cta = document.createElement('div');
+  cta.className = 'kh-gate-cta';
+  cta.setAttribute('data-kh-gate', '1');
+  cta.innerHTML =
+      '<div class="kh-gate-cta-eyebrow">Continue Reading</div>'
+    + '<div class="kh-gate-cta-title">' + ctaTitle + '</div>'
+    + '<div class="kh-gate-cta-sub">' + ctaSub + '</div>'
+    + '<div class="kh-gate-cta-actions">'
+    +   '<button type="button" class="kh-gate-cta-btn primary" onclick="openAuthModal(\'signup\')">Join Free →</button>'
+    +   '<button type="button" class="kh-gate-cta-btn ghost" onclick="openAuthModal(\'signin\')">Sign In</button>'
+    + '</div>';
+  var anchor = anchorSel ? rootEl.querySelector(anchorSel) : bodies[bodies.length - 1];
+  if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(cta, anchor.nextSibling);
+}
+
+function _khRemoveGuestGate(rootEl, bodyClass) {
+  rootEl = rootEl || document;
+  var clipped = rootEl.querySelectorAll('.kh-gate-clip');
+  Array.prototype.forEach.call(clipped, function(el) {
+    el.classList.remove('kh-gate-clip');
+    var b = el.querySelector(':scope > .kh-gate-blur');
+    if (b) b.remove();
+  });
+  var ctas = rootEl.querySelectorAll('.kh-gate-cta[data-kh-gate="1"]');
+  Array.prototype.forEach.call(ctas, function(el) { el.remove(); });
+  var scope = rootEl.querySelector('.' + (bodyClass || 'kh-guest-gated'));
+  if (scope) scope.classList.remove(bodyClass || 'kh-guest-gated');
+}
+
+window.addEventListener('kh-auth-signed-in', function() {
+  _khRemoveGuestGate(document, 'kh-guest-gated');
+});
+
 // ── Auth Modal (이메일/비밀번호 + Google) ─────────────────────
 
 function openAuthModal(defaultTab) {
@@ -4496,6 +4573,29 @@ function renderArticlePage() {
 
   // Highlighted expressions
   applyHighlightedExpressions(a.id);
+
+  // Guest gate: non-signed-in readers get half the article + a sign-up CTA.
+  // Prefer clipping .art-full (the long body) so the lede stays readable;
+  // fall back to clipping .art-lead when the article ships only a short body.
+  function _gateArticle() {
+    if (window._isAdmin) return;
+    var hasFull = !!document.querySelector('.art-card-body .art-full');
+    var sel = hasFull ? '.art-card-body .art-full' : '.art-card-body .art-lead';
+    khApplyGuestGate({
+      bodySel:   sel,
+      anchorSel: sel,
+      ctaTitle:  'Keep reading — free with sign-up',
+      ctaSub:    'Create a free account to finish this article, save vocabulary you tap, and unlock daily review.'
+    });
+  }
+  _gateArticle();
+  if (!window._sessionChecked) {
+    var _gateTries = 0;
+    (function _waitGate(){
+      if (window._sessionChecked || _gateTries >= 60) { _gateArticle(); return; }
+      _gateTries++; setTimeout(_waitGate, 100);
+    })();
+  }
 
   // 어드민이면 중요표현 관리 패널 표시
   if (window._isAdmin) _renderPhrasesAdmin(a.id);

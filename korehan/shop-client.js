@@ -496,6 +496,17 @@
     var shopGrid = document.getElementById('shop-grid');
     var roomGrid = document.getElementById('room-shop-grid');
     var invSection = document.getElementById('shop-inventory-section');
+    var gachaPane = document.getElementById('gacha-pane');
+    if (tab === 'gacha') {
+      // Gacha owns the pane; hide everything else so the page doesn't
+      // double-scroll past the regular grids.
+      if (shopGrid)   shopGrid.style.display = 'none';
+      if (roomGrid)   roomGrid.style.display = 'none';
+      if (invSection) invSection.style.display = 'none';
+      if (gachaPane)  gachaPane.style.display = '';
+      return;
+    }
+    if (gachaPane) gachaPane.style.display = 'none';
     if (tab === 'room') {
       shopGrid.style.display = 'none';
       roomGrid.style.display = '';
