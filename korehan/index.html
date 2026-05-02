@@ -389,20 +389,22 @@
   display: flex; gap: 6px; align-items: center;
 }
 .story-cat, .story-lvl {
-  font-size: 10px; font-weight: 800;
-  letter-spacing: .04em; text-transform: uppercase;
+  font-size: 10px; font-weight: 900;
+  letter-spacing: .06em; text-transform: uppercase;
   padding: 3px 8px; border-radius: 6px;
   color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
 }
-.story-cat { background: rgba(15,23,42,.7); backdrop-filter: blur(4px); }
-.story-cat.fun      { background: rgba(180,83,9,.9); }
-.story-cat.touching { background: rgba(157,23,77,.9); }
-.story-cat.scary    { background: rgba(51,65,85,.9); }
-.story-cat.shocking { background: rgba(30,64,175,.9); }
-.story-lvl.lvl-s { background: rgba(13,148,136,.9); }
-.story-lvl.lvl-b { background: rgba(21,128,61,.9); }
-.story-lvl.lvl-i { background: rgba(180,83,9,.9); }
-.story-lvl.lvl-a { background: rgba(185,28,28,.9); }
+.story-cat { background: rgba(15,23,42,.85); backdrop-filter: blur(4px); }
+.story-cat.fun      { background: rgba(217,119,6,.98); }
+.story-cat.touching { background: rgba(190,24,93,.98); }
+.story-cat.scary    { background: rgba(71,85,105,.98); }
+.story-cat.shocking { background: rgba(37,99,235,.98); }
+.story-lvl.lvl-s { background: rgba(20,184,166,.98); }
+.story-lvl.lvl-b { background: rgba(34,197,94,.98); }
+.story-lvl.lvl-i { background: rgba(217,119,6,.98); }
+.story-lvl.lvl-a { background: rgba(220,38,38,.98); }
 .story-title {
   font-family: 'Playfair Display', 'Noto Serif KR', serif;
   font-size: 15px; font-weight: 800;
@@ -985,7 +987,7 @@ body.kh-neon-on .hero-dot {
     if(date>=1 && date<=3 && !localStorage.getItem('kh_monthly_review_done_'+now.toISOString().slice(0,7))){
       html += '<a href="korehan-study-room.html" style="flex:1;min-width:220px;padding:10px 14px;border-radius:10px;background:linear-gradient(135deg,#312e81,#7c3aed);border:1px solid rgba(139,92,246,.3);text-decoration:none;display:flex;align-items:center;gap:10px">'
         + '<i data-lucide="trophy" class="kh-ui-icon" style="width:16px;height:16px;color:#fbbf24" aria-hidden="true"></i>'
-        + '<div><div style="font-size:12px;font-weight:800;color:#c4b5fd">Monthly Review</div><div style="font-size:11px;color:rgba(255,255,255,.5)">'+(4-date)+'일 남음 · 25문제</div></div>'
+        + '<div><div style="font-size:12px;font-weight:800;color:#c4b5fd">Monthly Review</div><div style="font-size:11px;color:rgba(255,255,255,.5)">'+(4-date)+'일 남음 · 30문제</div></div>'
         + '<span style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.3)">→</span></a>';
     }
     if(html) wrap.innerHTML = html; else wrap.style.display = 'none';
@@ -1009,7 +1011,7 @@ body.kh-neon-on .hero-dot {
 
     <div class="ds-actions">
       <div id="ds-review-hint" class="ds-review-hint" style="display:none">Read at least one article to unlock today’s review.</div>
-      <a href="korehan-learning-overview.html#daily-review" class="ds-btn ds-btn-main" id="ds-review-btn"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Start today’s review</span></a>
+      <a href="korehan-study-room.html?review=daily" class="ds-btn ds-btn-main" id="ds-review-btn"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Start today’s review</span></a>
       <div class="ds-quick-grid">
         <a href="korehan-study-room.html" class="ds-btn ds-btn-sub"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Study Room</span></a>
         <a href="korehan-learning-overview.html" class="ds-btn ds-btn-sub"><i data-lucide="chart-column" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Growth Lab</span></a>

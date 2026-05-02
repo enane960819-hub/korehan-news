@@ -4123,3 +4123,92 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
 }
 .kh-empty-action.secondary:hover { background: #f8fafc; }
 .kh-empty.error .kh-empty-title { color: #b91c1c; }
+
+/* ──────────────────────────────────────────────────────────
+   Guest content gate — non-signed-in users see ~50% of the
+   content with a fade and a sign-up CTA. Activated by adding
+   the .kh-guest-gated class to a content scope element.
+   ────────────────────────────────────────────────────────── */
+.kh-guest-gated { position: relative; }
+.kh-gate-clip {
+  position: relative;
+  max-height: 360px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, rgba(0,0,0,.35) 85%, transparent 100%);
+          mask-image: linear-gradient(180deg, #000 0%, #000 55%, rgba(0,0,0,.35) 85%, transparent 100%);
+}
+.kh-gate-blur {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 140px;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,.85) 60%, #fff 100%);
+  backdrop-filter: blur(2px);
+}
+.kh-gate-cta {
+  margin: 16px 0 0;
+  padding: 22px 22px 24px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 60%, #0ea5e9 100%);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 14px 36px rgba(29,78,216,.22), 0 2px 6px rgba(15,23,42,.08);
+  position: relative;
+  overflow: hidden;
+}
+.kh-gate-cta::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 60% 60% at 80% 20%, rgba(255,255,255,.18), transparent 60%),
+              radial-gradient(ellipse 50% 50% at 10% 90%, rgba(255,255,255,.12), transparent 60%);
+  pointer-events: none;
+}
+.kh-gate-cta-eyebrow {
+  font-size: 10px; font-weight: 800;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(255,255,255,.78);
+  margin-bottom: 6px;
+  position: relative;
+}
+.kh-gate-cta-title {
+  font-size: 18px; font-weight: 900;
+  margin-bottom: 6px;
+  font-family: 'Playfair Display','Noto Serif KR',serif;
+  position: relative;
+}
+.kh-gate-cta-sub {
+  font-size: 13px; line-height: 1.55;
+  color: rgba(255,255,255,.85);
+  max-width: 360px; margin: 0 auto 14px;
+  position: relative;
+}
+.kh-gate-cta-actions {
+  display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  position: relative;
+}
+.kh-gate-cta-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 11px 22px; border-radius: 999px;
+  font-size: 13px; font-weight: 900;
+  text-decoration: none; cursor: pointer;
+  border: 1.5px solid transparent;
+  font-family: inherit;
+  transition: transform .15s, box-shadow .15s, background .15s;
+}
+.kh-gate-cta-btn.primary {
+  background: #fff; color: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+.kh-gate-cta-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,.18); }
+.kh-gate-cta-btn.ghost {
+  background: transparent; color: #fff;
+  border-color: rgba(255,255,255,.45);
+}
+.kh-gate-cta-btn.ghost:hover { background: rgba(255,255,255,.1); }
+
+/* Hide deeper-study tabs for guests so they can't tap into Grammar/Vocab/Review */
+.kh-guest-gated .art-tabs,
+.kh-guest-gated .art-actions-inline,
+.kh-guest-gated .art-comments,
+.kh-guest-gated .art-related { display: none !important; }
+.kh-guest-gated .st-body-text.kh-gate-clip { max-height: 240px; }

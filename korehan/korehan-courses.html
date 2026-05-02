@@ -199,10 +199,79 @@
   .billing-toggle{flex-wrap:wrap;justify-content:center;}
 }
 @media(max-width:480px){.features-grid{grid-template-columns:1fr;}}
+
+/* PAGE TABS — Pricing vs Live Review */
+.cp-tabs{max-width:780px;margin:0 auto 28px;display:flex;gap:6px;background:rgba(11,22,38,.06);border:1px solid rgba(11,22,38,.1);border-radius:14px;padding:5px;}
+.cp-tab{flex:1;padding:11px 18px;border:none;background:transparent;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:800;color:#64748b;transition:.15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
+.cp-tab:hover{color:#0b1626;}
+.cp-tab.active{background:#fff;color:#0b1626;box-shadow:0 2px 8px rgba(11,22,38,.1);}
+.cp-tab .cp-tab-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;}
+.cp-pane{display:none;}
+.cp-pane.active{display:block;}
+
+/* LIVE REVIEW SECTION */
+.live-hero{background:linear-gradient(160deg,#eff6ff 0%,#dbeafe 55%,#bfdbfe 100%);padding:56px 24px 48px;text-align:center;border-bottom:1px solid rgba(11,22,38,.06);}
+.live-hero h1{font-family:'Playfair Display','Noto Serif KR',serif;font-size:clamp(28px,5vw,48px);font-weight:900;color:#0b1626;margin:14px 0 10px;line-height:1.15;}
+.live-hero h1 em{font-style:italic;color:#1d4ed8;}
+.live-hero p{font-size:15px;color:#475569;line-height:1.65;max-width:560px;margin:0 auto 8px;}
+.live-pill{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #2563eb;border-radius:999px;padding:5px 14px;font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:#1d4ed8;}
+.live-pill .live-dot{width:7px;height:7px;border-radius:50%;background:#dc2626;animation:pulse 1.6s ease-in-out infinite;}
+.live-section{max-width:920px;margin:0 auto;padding:48px 24px;}
+.live-list{display:flex;flex-direction:column;gap:16px;}
+.live-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:16px;padding:24px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center;transition:border-color .18s,box-shadow .18s,transform .15s;}
+.live-card:hover{border-color:#bcd0f4;box-shadow:0 12px 28px rgba(34,85,164,.1);transform:translateY(-2px);}
+.live-card.is-closed{opacity:.7;}
+.live-card-head{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:6px;}
+.live-card-status{padding:3px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.6px;}
+.live-card-status.open{background:#dcfce7;color:#15803d;}
+.live-card-status.closed{background:#f1f5f9;color:#64748b;}
+.live-card-status.full{background:#fef3c7;color:#a16207;}
+.live-card-status.live{background:#fee2e2;color:#b91c1c;}
+.live-card-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:#0b1626;margin-bottom:6px;}
+.live-card-meta{display:flex;flex-wrap:wrap;gap:10px 18px;font-size:13px;color:#475569;}
+.live-card-meta-item{display:inline-flex;align-items:center;gap:6px;}
+.live-card-meta-item svg{width:14px;height:14px;color:#64748b;}
+.live-card-desc{font-size:13px;color:#475569;line-height:1.6;margin-top:8px;}
+.live-card-cta{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.live-btn{padding:11px 22px;border-radius:999px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:800;white-space:nowrap;}
+.live-btn.primary{background:#1d4ed8;color:#fff;box-shadow:0 6px 18px rgba(29,78,216,.25);}
+.live-btn.primary:hover{background:#1e40af;}
+.live-btn.success{background:#16a34a;color:#fff;}
+.live-btn.disabled,.live-btn:disabled{background:#e2e8f0;color:#94a3b8;cursor:not-allowed;box-shadow:none;}
+.live-btn.zoom{background:#2D8CFF;color:#fff;display:inline-flex;align-items:center;gap:6px;}
+.live-btn.zoom:hover{background:#2470d3;}
+.live-card-count{font-size:11px;color:#94a3b8;font-weight:600;}
+.live-empty{text-align:center;padding:48px 24px;color:#64748b;font-size:14px;}
+.live-info{background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:14px;padding:20px;margin-bottom:24px;display:flex;gap:14px;align-items:flex-start;}
+.live-info-ico{flex-shrink:0;width:36px;height:36px;border-radius:10px;background:#0284c7;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;}
+.live-info-title{font-size:14px;font-weight:800;color:#0c4a6e;margin-bottom:4px;}
+.live-info-text{font-size:13px;color:#075985;line-height:1.6;}
+@media(max-width:680px){
+  .live-card{grid-template-columns:1fr;}
+  .live-card-cta{align-items:stretch;}
+  .live-btn{width:100%;}
+}
 </style>
 </head>
 <body>
 <div id="kh-header"></div>
+
+<!-- COURSE PAGE TABS -->
+<div style="padding:24px 24px 0">
+  <div class="cp-tabs" role="tablist">
+    <button type="button" class="cp-tab active" role="tab" data-cp-tab="pricing" onclick="cpSwitchTab('pricing',this)">
+      <i data-lucide="credit-card" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>
+      <span>Pricing</span>
+    </button>
+    <button type="button" class="cp-tab" role="tab" data-cp-tab="live" onclick="cpSwitchTab('live',this)">
+      <span class="cp-tab-dot"></span>
+      <span>Weekly Live Review</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ PRICING TAB ═══ -->
+<div class="cp-pane active" id="cp-pane-pricing">
 
 <!-- HERO -->
 <div class="course-hero">
@@ -526,6 +595,50 @@
   <div class="cta-note">Payment setup coming soon &middot; Questions? han@korehannews.com</div>
 </div>
 
+</div><!-- /#cp-pane-pricing -->
+
+<!-- ═══ WEEKLY LIVE REVIEW TAB ═══ -->
+<div class="cp-pane" id="cp-pane-live">
+  <div class="live-hero">
+    <span class="live-pill"><span class="live-dot"></span> Live on Zoom</span>
+    <h1>Weekly <em>Live Review</em></h1>
+    <p>Join Han for a 60-minute live class on Zoom — go through this week's articles, hot vocabulary, and tricky grammar live, with Q&amp;A.</p>
+  </div>
+
+  <div class="live-section">
+    <div class="live-info">
+      <div class="live-info-ico">i</div>
+      <div>
+        <div class="live-info-title">How it works</div>
+        <div class="live-info-text">
+          1. Pick an upcoming session and tap <b>Register</b>.<br>
+          2. Once registration closes, the Zoom link appears here for registered learners. We'll also email it to your account email.<br>
+          3. Show up on Zoom at the scheduled time. Sessions are recorded for registered learners.
+        </div>
+      </div>
+    </div>
+
+    <div class="live-list" id="live-list">
+      <div class="live-empty">Loading upcoming sessions…</div>
+    </div>
+
+    <!-- Admin-only: create new session -->
+    <div id="live-admin-panel" style="display:none;margin-top:32px;padding:24px;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:14px">
+      <div style="font-size:12px;font-weight:800;color:#9a3412;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Admin · Create Session</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <label style="font-size:12px;color:#7c2d12">Title<br><input id="live-admin-title" type="text" placeholder="Weekly Live Review · May 9" style="width:100%;padding:9px 11px;border:1.5px solid #fed7aa;border-radius:8px;font-family:inherit;font-size:13px;margin-top:4px"></label>
+        <label style="font-size:12px;color:#7c2d12">Scheduled at (KST)<br><input id="live-admin-date" type="datetime-local" style="width:100%;padding:9px 11px;border:1.5px solid #fed7aa;border-radius:8px;font-family:inherit;font-size:13px;margin-top:4px"></label>
+        <label style="font-size:12px;color:#7c2d12">Registration closes<br><input id="live-admin-deadline" type="datetime-local" style="width:100%;padding:9px 11px;border:1.5px solid #fed7aa;border-radius:8px;font-family:inherit;font-size:13px;margin-top:4px"></label>
+        <label style="font-size:12px;color:#7c2d12">Max attendees (optional)<br><input id="live-admin-max" type="number" min="1" placeholder="(no limit)" style="width:100%;padding:9px 11px;border:1.5px solid #fed7aa;border-radius:8px;font-family:inherit;font-size:13px;margin-top:4px"></label>
+        <label style="font-size:12px;color:#7c2d12;grid-column:1/-1">Zoom link<br><input id="live-admin-zoom" type="url" placeholder="https://us02web.zoom.us/j/…" style="width:100%;padding:9px 11px;border:1.5px solid #fed7aa;border-radius:8px;font-family:inherit;font-size:13px;margin-top:4px"></label>
+        <label style="font-size:12px;color:#7c2d12;grid-column:1/-1">Description<br><textarea id="live-admin-desc" rows="2" placeholder="What we'll cover this week…" style="width:100%;padding:9px 11px;border:1.5px solid #fed7aa;border-radius:8px;font-family:inherit;font-size:13px;margin-top:4px;resize:vertical"></textarea></label>
+      </div>
+      <button onclick="cpAdminCreateSession()" style="background:#9a3412;color:#fff;border:none;padding:10px 22px;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Create session</button>
+      <span id="live-admin-msg" style="margin-left:12px;font-size:12px;color:#7c2d12"></span>
+    </div>
+  </div>
+</div><!-- /#cp-pane-live -->
+
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js?v=20260502a"></script>
@@ -585,6 +698,252 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 2000);
 });
+
+// ── Course-page tab switcher ──
+function cpSwitchTab(tab, btn) {
+  document.querySelectorAll('.cp-tab').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-cp-tab') === tab); });
+  document.querySelectorAll('.cp-pane').forEach(function(p){ p.classList.toggle('active', p.id === 'cp-pane-' + tab); });
+  if (tab === 'live') {
+    cpLoadLiveSessions();
+    if (window._isAdmin) {
+      var ap = document.getElementById('live-admin-panel');
+      if (ap) ap.style.display = '';
+    }
+  }
+  // Persist + URL hash so refresh keeps the tab
+  try { history.replaceState(null, '', window.location.pathname + (tab === 'live' ? '#live' : '')); } catch(e){}
+}
+
+// Honor #live in URL on first load
+(function(){
+  if (window.location.hash === '#live') {
+    document.addEventListener('DOMContentLoaded', function(){
+      var btn = document.querySelector('.cp-tab[data-cp-tab="live"]');
+      if (btn) cpSwitchTab('live', btn);
+    });
+  }
+})();
+
+// ── Weekly Live Review: data layer + UI ──
+// Data lives in the `weekly_live_sessions` and `weekly_live_registrations`
+// tables in Supabase. Admin (window._isAdmin) creates rows; regular users
+// register. Zoom link is hidden until either the user is registered OR
+// the registration deadline has passed (so the link doesn't leak through
+// the public schema before the session goes live).
+async function cpLoadLiveSessions() {
+  var listEl = document.getElementById('live-list');
+  if (!listEl) return;
+  if (typeof getSupa !== 'function') {
+    listEl.innerHTML = '<div class="live-empty">Sign-in service not loaded yet — refresh in a moment.</div>';
+    return;
+  }
+  var sb = getSupa();
+  if (!sb) {
+    listEl.innerHTML = '<div class="live-empty">Could not connect to the schedule. Please try again later.</div>';
+    return;
+  }
+  try {
+    var nowIso = new Date().toISOString();
+    // Show all upcoming + last 14 days of past sessions so learners can
+    // see the session that just ran (and still grab the recording link).
+    var fromIso = new Date(Date.now() - 14 * 86400 * 1000).toISOString();
+    var res = await sb.from('weekly_live_sessions')
+      .select('id, title, description, scheduled_at, registration_deadline, zoom_link, max_attendees, is_cancelled')
+      .gte('scheduled_at', fromIso)
+      .order('scheduled_at', { ascending: true });
+    if (res.error) {
+      // Table may not exist yet — show a friendly message and the SQL hint
+      // for the admin so they know how to provision it.
+      var msg = String(res.error.message || '');
+      if (/relation .* does not exist|Could not find the table/i.test(msg)) {
+        listEl.innerHTML = '<div class="live-empty">No sessions yet. The <code>weekly_live_sessions</code> table needs to be created in Supabase. Ask the admin to run the migration.</div>';
+        return;
+      }
+      throw res.error;
+    }
+    var rows = (res.data || []).filter(function(r){ return !r.is_cancelled; });
+    if (!rows.length) {
+      listEl.innerHTML = '<div class="live-empty">No live sessions scheduled yet. Check back soon — Han posts the next session every Monday.</div>';
+      return;
+    }
+    // Pull the user's existing registrations + per-session counts so we can
+    // render Register / Registered / Full / Closed states accurately.
+    var myRegs = {};
+    var counts = {};
+    if (window.supaUser) {
+      try {
+        var regs = await sb.from('weekly_live_registrations')
+          .select('session_id')
+          .eq('user_id', window.supaUser.id);
+        (regs.data || []).forEach(function(r){ myRegs[r.session_id] = true; });
+      } catch(e) {}
+    }
+    try {
+      // Count registrations per session — naive client-side group, fine
+      // for low volume. Move to a SQL view if registrations explode.
+      var allRegs = await sb.from('weekly_live_registrations')
+        .select('session_id', { count: 'exact', head: false });
+      (allRegs.data || []).forEach(function(r){ counts[r.session_id] = (counts[r.session_id] || 0) + 1; });
+    } catch(e) {}
+
+    listEl.innerHTML = rows.map(function(s){ return cpRenderLiveCard(s, myRegs[s.id], counts[s.id] || 0); }).join('');
+    if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  } catch(e) {
+    console.error('[live-sessions]', e);
+    listEl.innerHTML = '<div class="live-empty">Couldn\'t load sessions. ' + (e.message || '') + '</div>';
+  }
+}
+
+function _cpFmtDate(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d)) return '';
+  // Render in the viewer's local TZ so a US learner sees their own clock
+  return d.toLocaleString(undefined, { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+}
+
+function cpRenderLiveCard(s, isRegistered, count) {
+  var now = Date.now();
+  var startMs    = new Date(s.scheduled_at).getTime();
+  var deadlineMs = s.registration_deadline ? new Date(s.registration_deadline).getTime() : startMs;
+  var isFull     = !!(s.max_attendees && count >= Number(s.max_attendees));
+  var isLive     = now >= startMs && now < startMs + 90 * 60 * 1000; // 90-min live window
+  var isPast     = now >= startMs + 90 * 60 * 1000;
+  var regClosed  = now >= deadlineMs || isLive || isPast;
+
+  var statusLbl, statusCls;
+  if (isPast)            { statusLbl = 'Past'; statusCls = 'closed'; }
+  else if (isLive)       { statusLbl = 'Live now'; statusCls = 'live'; }
+  else if (regClosed)    { statusLbl = 'Closed'; statusCls = 'closed'; }
+  else if (isFull)       { statusLbl = 'Full'; statusCls = 'full'; }
+  else                   { statusLbl = 'Open'; statusCls = 'open'; }
+
+  // Zoom link visibility: registered users see it once registration closes,
+  // OR when the session is live. Past sessions keep it visible for the
+  // recording. Guests / unregistered users never see the raw link.
+  var canSeeZoom = !!(isRegistered && (regClosed || isLive)) || (isRegistered && isPast);
+  var zoomBtn = '';
+  if (s.zoom_link && canSeeZoom) {
+    zoomBtn = '<a class="live-btn zoom" href="' + s.zoom_link + '" target="_blank" rel="noopener">'
+      + '<i data-lucide="video" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
+      + (isLive ? 'Join Now' : (isPast ? 'Recording' : 'Open Zoom')) + '</a>';
+  }
+
+  var actionBtn = '';
+  if (isPast) {
+    actionBtn = isRegistered ? zoomBtn : '<button class="live-btn disabled" disabled>Session ended</button>';
+  } else if (isLive) {
+    actionBtn = isRegistered ? zoomBtn : '<button class="live-btn disabled" disabled>Live · regs closed</button>';
+  } else if (regClosed) {
+    actionBtn = isRegistered ? zoomBtn : '<button class="live-btn disabled" disabled>Registration closed</button>';
+  } else if (isFull) {
+    actionBtn = isRegistered ? '<button class="live-btn success" disabled>Registered ✓</button>' : '<button class="live-btn disabled" disabled>Full</button>';
+  } else {
+    actionBtn = isRegistered
+      ? '<button class="live-btn success" onclick="cpCancelRegistration(\'' + s.id + '\')">Registered ✓ · Cancel</button>'
+      : '<button class="live-btn primary" onclick="cpRegister(\'' + s.id + '\')">Register</button>';
+  }
+
+  var maxLbl = s.max_attendees ? (count + ' / ' + s.max_attendees + ' registered') : (count + ' registered');
+
+  return '<article class="live-card ' + (regClosed ? 'is-closed' : '') + '">'
+    +   '<div>'
+    +     '<div class="live-card-head">'
+    +       '<span class="live-card-status ' + statusCls + '">' + statusLbl + '</span>'
+    +     '</div>'
+    +     '<div class="live-card-title">' + (s.title || 'Weekly Live Review') + '</div>'
+    +     '<div class="live-card-meta">'
+    +       '<span class="live-card-meta-item"><i data-lucide="calendar" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>' + _cpFmtDate(s.scheduled_at) + '</span>'
+    +       (s.registration_deadline ? '<span class="live-card-meta-item"><i data-lucide="clock" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>Reg closes ' + _cpFmtDate(s.registration_deadline) + '</span>' : '')
+    +     '</div>'
+    +     (s.description ? '<div class="live-card-desc">' + s.description + '</div>' : '')
+    +   '</div>'
+    +   '<div class="live-card-cta">'
+    +     actionBtn
+    +     '<div class="live-card-count">' + maxLbl + '</div>'
+    +   '</div>'
+    + '</article>';
+}
+
+window.cpRegister = async function(sessionId) {
+  if (!window.supaUser) {
+    if (typeof openAuthModal === 'function') openAuthModal('signup');
+    else if (typeof khAlert === 'function') khAlert('Sign in', 'Sign in or create a free account to register.', { okLabel: 'OK' });
+    return;
+  }
+  var sb = getSupa(); if (!sb) return;
+  var res = await sb.from('weekly_live_registrations').insert({
+    session_id: sessionId,
+    user_id: window.supaUser.id,
+    email: window.supaUser.email || null
+  });
+  if (res.error) {
+    var msg = String(res.error.message || '');
+    if (/duplicate key|unique constraint/i.test(msg)) {
+      if (typeof toast === 'function') toast('Already registered', 'info');
+    } else {
+      if (typeof toast === 'function') toast('Couldn\'t register: ' + msg, 'error');
+    }
+  } else {
+    if (typeof toast === 'function') toast('Registered! We\'ll send the Zoom link once registration closes.', 'success');
+  }
+  cpLoadLiveSessions();
+};
+
+window.cpCancelRegistration = async function(sessionId) {
+  if (!window.supaUser) return;
+  var sb = getSupa(); if (!sb) return;
+  if (typeof khConfirm === 'function') {
+    var ok = await khConfirm('Cancel registration?', 'You can register again later if there\'s still room.', { okLabel:'Cancel registration', cancelLabel:'Keep it' });
+    if (!ok) return;
+  } else if (!confirm('Cancel registration?')) return;
+  await sb.from('weekly_live_registrations')
+    .delete()
+    .eq('session_id', sessionId)
+    .eq('user_id', window.supaUser.id);
+  if (typeof toast === 'function') toast('Registration cancelled', 'info');
+  cpLoadLiveSessions();
+};
+
+window.cpAdminCreateSession = async function() {
+  if (!window._isAdmin) return;
+  var sb = getSupa(); if (!sb) return;
+  var title    = (document.getElementById('live-admin-title').value || '').trim();
+  var schedRaw = document.getElementById('live-admin-date').value;
+  var deadRaw  = document.getElementById('live-admin-deadline').value;
+  var maxRaw   = document.getElementById('live-admin-max').value;
+  var zoom     = (document.getElementById('live-admin-zoom').value || '').trim();
+  var desc     = (document.getElementById('live-admin-desc').value || '').trim();
+  var msgEl    = document.getElementById('live-admin-msg');
+  msgEl.style.color = '#7c2d12';
+  msgEl.textContent = '';
+  if (!title || !schedRaw) { msgEl.textContent = 'Title and Scheduled at are required.'; return; }
+  // datetime-local values are timezone-naive; treat them as the user's
+  // local time and convert to ISO so Supabase stores a stable timestamp.
+  var schedIso = new Date(schedRaw).toISOString();
+  var deadIso  = deadRaw ? new Date(deadRaw).toISOString() : schedIso;
+  var payload = {
+    title: title,
+    description: desc || null,
+    scheduled_at: schedIso,
+    registration_deadline: deadIso,
+    zoom_link: zoom || null,
+    max_attendees: maxRaw ? Number(maxRaw) : null,
+    created_by: window.supaUser ? window.supaUser.id : null
+  };
+  var res = await sb.from('weekly_live_sessions').insert(payload);
+  if (res.error) {
+    msgEl.textContent = 'Failed: ' + res.error.message;
+    msgEl.style.color = '#b91c1c';
+    return;
+  }
+  msgEl.textContent = 'Session created.';
+  msgEl.style.color = '#15803d';
+  document.getElementById('live-admin-title').value = '';
+  document.getElementById('live-admin-zoom').value = '';
+  document.getElementById('live-admin-desc').value = '';
+  cpLoadLiveSessions();
+};
 </script>
 </body>
 </html>

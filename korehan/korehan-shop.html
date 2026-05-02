@@ -32,6 +32,76 @@ body{margin:0;background:#f8fafc;font-family:'Happy Monkey','Jua','DM Sans',Inte
 .thumb{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#f8fafc,#f0f4fa);border-radius:10px;margin-bottom:10px;padding:10px}
 .thumb img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
 .body{display:flex;flex-direction:column;gap:5px;flex:1}
+/* ── Gacha pane ── */
+#gacha-pane{margin-top:20px}
+.gc-hero{background:linear-gradient(160deg,#fef3c7 0%,#fde68a 50%,#fbbf24 100%);border-radius:18px;padding:28px 24px;display:grid;grid-template-columns:1fr auto;gap:22px;align-items:center;box-shadow:0 8px 28px rgba(245,158,11,.18);position:relative;overflow:hidden}
+.gc-hero::before{content:'';position:absolute;top:-30px;right:-30px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.2)}
+.gc-hero-left{position:relative;z-index:1}
+.gc-eyebrow{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#9a3412;margin-bottom:6px}
+.gc-title{font-family:'Playfair Display','Noto Serif KR',serif;font-size:24px;font-weight:900;color:#451a03;margin-bottom:6px}
+.gc-subtitle{font-size:13px;color:#7c2d12;line-height:1.55;max-width:340px}
+.gc-rates{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;position:relative;z-index:1}
+.gc-rate{font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.7);color:#451a03;border:1px solid rgba(0,0,0,.08)}
+.gc-actions{display:flex;flex-direction:column;gap:8px;position:relative;z-index:1}
+.gc-draw-btn{display:flex;align-items:center;gap:10px;padding:12px 18px;border:none;border-radius:14px;cursor:pointer;font-family:inherit;font-weight:800;font-size:14px;background:#fff;color:#9a3412;box-shadow:0 4px 14px rgba(0,0,0,.08);transition:transform .15s,box-shadow .15s}
+.gc-draw-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 22px rgba(0,0,0,.15)}
+.gc-draw-btn.gc-best{background:#0b1626;color:#fbbf24}
+.gc-draw-btn:disabled{opacity:.5;cursor:not-allowed}
+.gc-draw-cost{font-size:12px;font-weight:900;color:#0b1626;background:#fde68a;border-radius:999px;padding:3px 10px;margin-left:auto;display:inline-flex;align-items:center;gap:4px}
+.gc-best .gc-draw-cost{background:#fbbf24;color:#0b1626}
+.gc-grid-head{display:flex;align-items:baseline;justify-content:space-between;margin:24px 0 10px}
+.gc-grid-head h3{font-size:16px;font-weight:900;margin:0}
+.gc-grid-head .gc-grid-count{font-size:12px;color:#64748b}
+.gc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.gc-card{position:relative;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px;text-align:center;transition:transform .12s,box-shadow .12s}
+.gc-card:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(15,23,42,.08)}
+.gc-card.is-locked{background:#f8fafc;border-style:dashed}
+.gc-card.is-locked .gc-thumb img{filter:grayscale(1) brightness(.75) contrast(1.4);opacity:.5}
+.gc-thumb{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f8fafc;border-radius:8px;margin-bottom:8px;padding:8px}
+.gc-thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.gc-rar{font-size:9px;font-weight:900;letter-spacing:.5px;padding:2px 6px;border-radius:4px;display:inline-block;margin-bottom:4px}
+.gc-card.gc-rar-c   .gc-rar{background:#dbeafe;color:#1e40af}
+.gc-card.gc-rar-r   .gc-rar{background:#dcfce7;color:#166534}
+.gc-card.gc-rar-sr  .gc-rar{background:#fce7f3;color:#9d174d}
+.gc-card.gc-rar-ssr .gc-rar{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#7c2d12}
+.gc-card.gc-rar-ssr{border-color:#fbbf24;box-shadow:0 0 0 1px rgba(251,191,36,.3),0 4px 14px rgba(245,158,11,.18)}
+.gc-card.gc-rar-sr{border-color:#f9a8d4}
+.gc-name{font-size:11px;font-weight:700;color:#0f172a;line-height:1.3}
+.gc-qty{position:absolute;top:6px;right:6px;background:#0b1626;color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:999px}
+.gc-rate.gc-rar-c   {background:#dbeafe;color:#1e40af}
+.gc-rate.gc-rar-r   {background:#dcfce7;color:#166534}
+.gc-rate.gc-rar-sr  {background:#fce7f3;color:#9d174d}
+.gc-rate.gc-rar-ssr {background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#7c2d12}
+/* Draw result modal */
+.gc-modal{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;animation:gc-fade-in .2s ease-out}
+@keyframes gc-fade-in{from{opacity:0}to{opacity:1}}
+.gc-modal-card{background:#fff;border-radius:20px;padding:24px;max-width:520px;width:100%;text-align:center;box-shadow:0 24px 48px rgba(0,0,0,.4);animation:gc-pop .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes gc-pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.gc-modal-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:#0b1626;margin-bottom:6px}
+.gc-modal-sub{font-size:12px;color:#16a34a;font-weight:800;margin-bottom:14px}
+.gc-result-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-bottom:18px}
+.gc-result-card{background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px;text-align:center;position:relative}
+.gc-result-card.gc-rar-c   {border-color:#bfdbfe}
+.gc-result-card.gc-rar-r   {border-color:#86efac}
+.gc-result-card.gc-rar-sr  {border-color:#f9a8d4}
+.gc-result-card.gc-rar-ssr {border-color:#fbbf24;box-shadow:0 0 0 2px rgba(251,191,36,.4)}
+.gc-result-card.is-dupe{opacity:.85}
+.gc-result-thumb{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:8px;margin-bottom:8px;padding:8px}
+.gc-result-thumb img{max-width:100%;max-height:100%;object-fit:contain}
+.gc-result-rar{font-size:9px;font-weight:900;padding:2px 6px;border-radius:4px;display:inline-block;margin-bottom:4px}
+.gc-result-card.gc-rar-c   .gc-result-rar{background:#dbeafe;color:#1e40af}
+.gc-result-card.gc-rar-r   .gc-result-rar{background:#dcfce7;color:#166534}
+.gc-result-card.gc-rar-sr  .gc-result-rar{background:#fce7f3;color:#9d174d}
+.gc-result-card.gc-rar-ssr .gc-result-rar{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#7c2d12}
+.gc-result-name{font-size:11px;font-weight:700;color:#0f172a;line-height:1.3;margin-bottom:4px}
+.gc-result-new{font-size:10px;font-weight:900;color:#16a34a;letter-spacing:.5px}
+.gc-result-dupe{font-size:10px;font-weight:700;color:#a16207}
+.gc-modal-btn{padding:11px 28px;border:none;border-radius:999px;background:#0b1626;color:#fff;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.gc-modal-btn:hover{background:#1e293b}
+@media(max-width:600px){
+  .gc-hero{grid-template-columns:1fr}
+  .gc-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+}
 .title{font-size:13px;font-weight:800}.desc{font-size:11px;color:#64748b;line-height:1.4}
 .price{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:11px;font-weight:800;border-radius:999px;padding:3px 8px}
 .coin{background:#ecfeff;color:#0f766e}.cash{background:#f5f3ff;color:#6d28d9}
@@ -76,14 +146,50 @@ body{margin:0;background:#f8fafc;font-family:'Happy Monkey','Jua','DM Sans',Inte
     <button class="shop-tab" data-tab="room" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="home" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Room</span></button>
     <button class="shop-tab" data-tab="profile" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="user" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Profile</span></button>
     <button class="shop-tab" data-tab="cash" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="gem" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Cash</span></button>
+    <button class="shop-tab" data-tab="gacha" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="dice-5" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Gacha</span></button>
   </nav>
   <section class="grid" id="shop-grid"></section>
   <section class="grid" id="room-shop-grid"></section>
   <section class="inv" id="shop-inventory-section"><h3>Your Inventory</h3><div id="shop-inventory">Loading…</div></section>
+
+  <!-- ═══ GACHA PANE ═══ Hidden by default; shown when the Gacha tab is clicked. -->
+  <section id="gacha-pane" style="display:none">
+    <div class="gc-hero">
+      <div class="gc-hero-left">
+        <div class="gc-eyebrow">위티즈 가챠샵</div>
+        <div class="gc-title">Random Draw Shop</div>
+        <div class="gc-subtitle">Spend nyang for a random cosmetic. Items here are gacha-only — they don't appear in the regular shop. Duplicates refund nyang.</div>
+        <div class="gc-rates" id="gacha-rates">
+          <span class="gc-rate gc-rar-ssr">SSR —</span>
+          <span class="gc-rate gc-rar-sr">SR —</span>
+          <span class="gc-rate gc-rar-r">R —</span>
+          <span class="gc-rate gc-rar-c">C —</span>
+        </div>
+      </div>
+      <div class="gc-actions">
+        <button class="gc-draw-btn" id="gc-btn-1" onclick="gachaDraw(1)">
+          <i data-lucide="dice-5" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>
+          <span>Draw 1</span>
+          <span class="gc-draw-cost">🐾 100</span>
+        </button>
+        <button class="gc-draw-btn gc-best" id="gc-btn-5" onclick="gachaDraw(5)">
+          <i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>
+          <span>Draw 5 · BEST</span>
+          <span class="gc-draw-cost">🐾 450</span>
+        </button>
+      </div>
+    </div>
+    <div class="gc-grid-head">
+      <h3>Item Pool</h3>
+      <span class="gc-grid-count">Locked items show as silhouettes — pull to unlock.</span>
+    </div>
+    <div class="gc-grid" id="gacha-grid"></div>
+  </section>
 </main>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="korehan-shared.js?v=20260502a"></script>
 <script src="shop-client.js"></script>
+<script src="gacha-client.js"></script>
 </body>
 </html>
