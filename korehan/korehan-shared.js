@@ -5795,23 +5795,29 @@ function renderArticleVocab(a) {
     // Surface the vocab list into the body hover system so the same words
     // are clickable / underlined in the article. We extend the global VOCAB
     // (used by wrapVocab → .kh-word) and re-wrap the article body.
+    //
+    // The `added > 0` guard that USED to wrap this re-render in an
+    // if-block was a bug: when the user navigates between articles,
+    // the body is re-rendered fresh (no .kh-word spans), but if the
+    // new article's vocab happens to fully overlap with VOCAB
+    // (because we already pushed those words on a previous article),
+    // `added` stays 0 and the new body never gets wrapped. Result:
+    // some articles showed underlines and some didn't. wrapVocab is
+    // idempotent — it skips text already wrapped — so always
+    // re-running it is safe and fixes the missing-underline cases.
     if (typeof VOCAB !== 'object' || !VOCAB) return;
-    var added = 0;
     items.forEach(function(it) {
       if (!it || !it.ko) return;
       if (!VOCAB[it.ko] || !VOCAB[it.ko].en) {
         VOCAB[it.ko] = { rom: it.rom || '', en: it.en || '' };
-        added++;
       }
     });
-    if (added > 0) {
-      try {
-        var artEl = document.getElementById('art-tab-article');
-        if (artEl) {
-          artEl.querySelectorAll('.vocab-zone').forEach(function(z){ wrapVocab(z); });
-        }
-      } catch(e) {}
-    }
+    try {
+      var artEl = document.getElementById('art-tab-article');
+      if (artEl) {
+        artEl.querySelectorAll('.vocab-zone').forEach(function(z){ wrapVocab(z); });
+      }
+    } catch(e) {}
   }
 
   function finalize(items) {
@@ -5836,6 +5842,18 @@ function renderArticleVocab(a) {
     if (!merged.length) {
       el.innerHTML = '<div style="padding:20px;color:#94a3b8;font-size:13px;text-align:center">No vocabulary available for this article yet.</div>';
       _appendAdminAddVocabButton(el, a);
+      // Empty Vocab tab doesn't mean the body has nothing to
+      // underline — sitewide VOCAB (loaded from vocabulary_bank
+      // via loadVocabFromDB) may still contain words that match
+      // in the body via wrapVocab's stem regex. Re-run the
+      // wrapper so those matches still get the .kh-word
+      // underlines even when the per-article cache is empty.
+      try {
+        var artElEmpty = document.getElementById('art-tab-article');
+        if (artElEmpty) {
+          artElEmpty.querySelectorAll('.vocab-zone').forEach(function(z){ wrapVocab(z); });
+        }
+      } catch(e) {}
       return;
     }
     _renderArticleVocabItems(el, merged);
