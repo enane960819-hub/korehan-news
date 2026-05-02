@@ -283,11 +283,9 @@
    learner focuses on one thing at a time. "read" → chat + cta;
    the other tabs → just their study card. */
 .detail-panel.dp-mobile-tab-read     .dp-right{display:none!important;}
-.detail-panel.dp-mobile-tab-vocab    .dp-left,
-.detail-panel.dp-mobile-tab-grammar  .dp-left,
+.detail-panel.dp-mobile-tab-analysis .dp-left,
 .detail-panel.dp-mobile-tab-practice .dp-left{display:none!important;}
-.detail-panel.dp-mobile-tab-vocab    .dp-right [data-study]:not([data-study="vocab"]):not([data-study="keyexpr"]){display:none!important;}
-.detail-panel.dp-mobile-tab-grammar  .dp-right [data-study]:not([data-study="grammar"]){display:none!important;}
+.detail-panel.dp-mobile-tab-analysis .dp-right [data-study="practice"]{display:none!important;}
 .detail-panel.dp-mobile-tab-practice .dp-right [data-study]:not([data-study="practice"]){display:none!important;}
 
 /* ── Mobile ≤900px ── */
@@ -1046,8 +1044,7 @@ async function openDetail(idx) {
     // single-column at all sizes after the article-style refactor).
     '<div class="dp-mobile-tabs" role="tablist" aria-label="Conversation sections">'
       +'<button class="dp-mobile-tab on" data-tab="read" onclick="switchConvMobileTab(\'read\')">Read</button>'
-      +'<button class="dp-mobile-tab" data-tab="vocab" onclick="switchConvMobileTab(\'vocab\')">Vocab</button>'
-      +'<button class="dp-mobile-tab" data-tab="grammar" onclick="switchConvMobileTab(\'grammar\')">Grammar</button>'
+      +'<button class="dp-mobile-tab" data-tab="analysis" onclick="switchConvMobileTab(\'analysis\')">Analysis</button>'
       +'<button class="dp-mobile-tab" data-tab="practice" onclick="switchConvMobileTab(\'practice\')">Practice</button>'
     +'</div>'
     +'<div class="dp-left">'
@@ -1094,7 +1091,7 @@ async function openDetail(idx) {
       +'<div class="dp-study-sections" id="dp-study-sections">'
         +(initKeyExprCard ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">Key Expressions</div>'+initKeyExprs+'</div>' : '')
         +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
-        +(grammar ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Grammar</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
+        +(grammar ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Expressions</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
         // Practice tab — three lightweight comprehension drills focused
         // on expressions, vocab-in-context, and dialogue flow. Speaking
         // drills + the deeper 4-step flow live in the Study Room.
@@ -1106,7 +1103,7 @@ async function openDetail(idx) {
   // visible — see the per-tab visibility CSS rules above.
   // _restoreConvMobileTab() swaps to the user's preferred tab if
   // they'd picked one earlier.
-  panelEl.classList.remove('dp-mobile-tab-vocab', 'dp-mobile-tab-grammar', 'dp-mobile-tab-practice');
+  panelEl.classList.remove('dp-mobile-tab-analysis', 'dp-mobile-tab-practice');
   panelEl.classList.add('dp-mobile-tab-read');
   if (typeof _restoreConvMobileTab === 'function') _restoreConvMobileTab();
 
@@ -1155,26 +1152,16 @@ function renderStudyNotes(c) {
   el.innerHTML =
     (keyExprHtml ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">Key Expressions</div>'+keyExprHtml+'</div>' : '')
     +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
-    +(grammar||isAdm ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Grammar'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
+    +(grammar||isAdm ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Expressions'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
     + _convPracticeCardsHTML(c)
     +'<div style="height:80px"></div>';
 }
 
-// Mobile-only tab switcher. Toggles dp-mobile-tab-* on the panel so
-// CSS can show the right chunk. Keeps behaviour a no-op on desktop
-// (CSS hides the tab strip above 900px so this button is never
-// tappable there, and the class on the panel has no effect).
-// Remember the learner's preferred tab across conversations so
-// someone using this app for Grammar review doesn't have to click
-// Grammar every time they open a conversation. Stored globally
-// (not per-conversation) because the audit flagged it as a quality-
-// of-life miss — we chose the global scope over per-conversation
-// so the setting sticks across sessions without bloating storage.
 var _CONV_TAB_KEY = 'kh_conv_mobile_tab';
 function switchConvMobileTab(tab, opts) {
   var panel = document.getElementById('detail-panel');
   if (!panel) return;
-  panel.classList.remove('dp-mobile-tab-read', 'dp-mobile-tab-vocab', 'dp-mobile-tab-grammar', 'dp-mobile-tab-practice');
+  panel.classList.remove('dp-mobile-tab-read', 'dp-mobile-tab-analysis', 'dp-mobile-tab-practice');
   panel.classList.add('dp-mobile-tab-' + tab);
   var strip = panel.querySelector('.dp-mobile-tabs');
   if (strip) strip.querySelectorAll('.dp-mobile-tab').forEach(function(b){
@@ -1183,8 +1170,6 @@ function switchConvMobileTab(tab, opts) {
   if (!opts || !opts.skipPersist) {
     try { localStorage.setItem(_CONV_TAB_KEY, tab); } catch(_) {}
   }
-  // Tab change = fresh starting point. Reset the modal scroll so the
-  // learner isn't dropped into the middle of (say) a vocab list.
   var overlay = document.getElementById('detail-overlay');
   if (overlay) overlay.scrollTop = 0;
   panel.scrollTop = 0;
@@ -1193,9 +1178,10 @@ function switchConvMobileTab(tab, opts) {
 function _restoreConvMobileTab() {
   var saved = null;
   try { saved = localStorage.getItem(_CONV_TAB_KEY); } catch(_) {}
-  if (!saved || ['read','vocab','grammar','practice'].indexOf(saved) === -1) return;
-  if (saved === 'read') return; // default — no switch needed
-  // skipPersist to avoid re-writing the same value during restore.
+  // Migrate old tab values from before the Vocab+Grammar→Analysis merge
+  if (saved === 'vocab' || saved === 'grammar') saved = 'analysis';
+  if (!saved || ['read','analysis','practice'].indexOf(saved) === -1) return;
+  if (saved === 'read') return;
   switchConvMobileTab(saved, { skipPersist: true });
 }
 

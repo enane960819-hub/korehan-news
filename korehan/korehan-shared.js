@@ -3925,6 +3925,35 @@ function buildHeroHTML(featured, rest) {
     + '<div class="hero-side">' + rest.slice(0, 4).map(heroSideItemHTML).join('') + '</div>';
 }
 
+var SECTION_ALIASES = {
+  '사회':    ['사회','Society','society','Social','social'],
+  '국제':    ['국제','World','world','International','international','Global','global'],
+  '문화':    ['문화','Culture','culture','Entertainment','entertainment'],
+  '정치':    ['정치','Politics','politics'],
+  '경제':    ['경제','Economy','economy','Business','business'],
+  'Korea':   ['Korea','korea','한국','Korean','korean'],
+  '오피니언':['오피니언','Opinion','opinion'],
+  'K-pop':   ['K-pop','Kpop','케이팝','kpop','k-pop'],
+  '스포츠':  ['스포츠','Sports','sports'],
+  'beauty':  ['beauty','Beauty','뷰티','미용','라이프스타일','IT과학','tech','Tech'],
+  'travel':  ['travel','Travel','여행','관광','trip'],
+};
+
+function getSectionKey(rawSection) {
+  var val = String(rawSection || '').trim();
+  if (!val) return '';
+  if (SECTION_ALIASES[val]) return val;
+  var low = val.toLowerCase();
+  var keys = Object.keys(SECTION_ALIASES);
+  for (var i = 0; i < keys.length; i++) {
+    var aliases = SECTION_ALIASES[keys[i]];
+    for (var j = 0; j < aliases.length; j++) {
+      if (aliases[j].toLowerCase() === low) return keys[i];
+    }
+  }
+  return low;
+}
+
 async function renderSectionPage(section) {
   // 페이지 타이틀/배너
   var secInfo = getSections().find(function(s){ return s.key === section; });
@@ -3944,19 +3973,6 @@ async function renderSectionPage(section) {
   if (heroEl) heroEl.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;grid-column:1/-1">⏳ Loading...</div>';
 
   // 1차: 캐시에서 먼저 시도
-  var SECTION_ALIASES = {
-    '사회': ['사회','Society','society','Social'],
-    '국제': ['국제','World','world','International','international','Global'],
-    '문화': ['문화','Culture','culture','Entertainment'],
-    '정치': ['정치','Politics','politics'],
-    '경제': ['경제','Economy','economy','Business','business'],
-    'Korea': ['Korea','한국','korea','Korean'],
-    '오피니언': ['오피니언','Opinion','opinion'],
-    'K-pop': ['K-pop','Kpop','케이팝','kpop','k-pop'],
-    '스포츠': ['스포츠','Sports','sports'],
-    'beauty': ['beauty','Beauty','뷰티','미용','라이프스타일','IT과학','tech','Tech'],
-    'travel': ['travel','Travel','여행','관광','trip'],
-  };
   var aliases = SECTION_ALIASES[section] || [section];
 
   var articles = getCachedArticles().filter(function(a){
@@ -4067,7 +4083,7 @@ function renderAllPage() {
 function _buildNewsCardHTML(a) {
   var lvl = a.level || '';
   var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
-  var cat = (a.section || '').toLowerCase();
+  var cat = getSectionKey(a.section);
   var thumbSrc = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 400, 260) : (a.image || '');
   var img = thumbSrc
     ? '<img class="nc-img" src="' + thumbSrc + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/\'+encodeURIComponent(this.dataset.fb||\'kh\')+\'/400/260\'" data-fb="' + escapeHtml(a.id || 'kh') + '">'
@@ -4098,7 +4114,8 @@ function renderAllList(listEl, articles, opts) {
   if (useRails) {
     var bySection = {};
     articles.forEach(function(a) {
-      var key = a.section || 'Other';
+      var key = (typeof getSectionKey === 'function') ? getSectionKey(a.section) : (a.section || 'Other');
+      if (!key) key = 'Other';
       if (!bySection[key]) bySection[key] = [];
       bySection[key].push(a);
     });

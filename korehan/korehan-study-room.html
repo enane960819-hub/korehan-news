@@ -3884,7 +3884,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <!-- ═══ WEAK GRAMMAR DRILL MODAL ═══════════════════════════════ -->
 <div class="woverlay hidden" id="wg-drill-modal" onclick="if(event.target===this)closeWGDrill()">
-  <div style="background:#fff;border-radius:22px;width:min(560px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.25)">
+  <div style="background:#1a1040;border-radius:22px;width:min(560px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.55)">
     <div style="background:linear-gradient(135deg,#92400e,#b45309);padding:20px 24px;border-radius:22px 22px 0 0;display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.5);margin-bottom:4px">WEAK GRAMMAR DRILL</div>
@@ -7342,9 +7342,11 @@ async function openKeyExpressionsModal() {
   if (_todayTopic) topicLabel.textContent = (_todayTopic.topic_ko || _todayTopic.topic_en || 'Key expressions for today\'s topic');
   var list = document.getElementById('ke-expressions-list');
 
-  // Scope cache by topic + level + date so stale data is never reused
-  var topicKey = ((_todayTopic && (_todayTopic.id || _todayTopic.topic_ko)) || 'default')
-    + '_' + (_currentLevel || 'Beginner') + '_' + kstDateKey();
+  // topicKoKey is the stable text identifier (topic_ko is consistent across days).
+  // topicKey includes date for in-memory / localStorage invalidation only.
+  var topicKoKey = (_todayTopic && _todayTopic.topic_ko) || 'default';
+  var levelKey   = _currentLevel || 'Beginner';
+  var topicKey   = topicKoKey + '_' + levelKey + '_' + kstDateKey();
   if (_keCacheKey !== topicKey) { _keCache = null; _keCacheKey = topicKey; }
 
   // 1) In-memory cache (same session, same topic/level/date)
@@ -7366,10 +7368,10 @@ async function openKeyExpressionsModal() {
     }
   } catch(e) {}
 
-  // 3) Cross-user DB cache. Same topic + level + date = same lesson
-  //    set for every user, so the FIRST learner to open the panel
-  //    pays the AI bill and everyone after them gets it free.
-  var dbCacheKey = 'kex::' + topicKey;
+  // 3) Cross-user DB cache. Key is topic_ko + level only — no date —
+  //    so any user opening the same topic on any day gets it for free
+  //    after the first generation. Admin pre-generates this on save.
+  var dbCacheKey = 'kex::' + topicKoKey + '_' + levelKey;
   try {
     if (typeof _aiCacheGet === 'function') {
       var hit = await _aiCacheGet(dbCacheKey);
@@ -7399,7 +7401,7 @@ async function openKeyExpressionsModal() {
       + '3. Each expression must be directly usable when talking about this specific topic — not generic filler.\n'
       + '4. Mix grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다), collocations (손이 크다, 발이 넓다), and common phrasal verbs.\n\n'
       + 'Return ONLY a JSON array of 6 items, no markdown:\n'
-      + '[{"ko":"multi-word Korean phrase","rom":"romanization","en":"English meaning","example_ko":"natural Korean sentence about the topic using this exact phrase","example_en":"English translation of the example"}]'
+      + '[{"ko":"multi-word Korean phrase","rom":"romanization","en":"English meaning","examples":[{"ko":"natural Korean sentence 1","en":"English translation 1"},{"ko":"natural Korean sentence 2","en":"English translation 2"}]}]'
     }]
   }).then(function(res) {
     try {
@@ -7563,6 +7565,20 @@ function _keRenderStudyPhase(list) {
   //   3) Actions row: Listen / Save / Situation Quiz on their own line so
   //      they don't fight the example text for attention.
   var safeKo = (exp.ko||'').replace(/'/g,"\\'");
+  // Collect all examples: new multi-example format OR legacy single example
+  var allExamples = [];
+  if (Array.isArray(exp.examples) && exp.examples.length) {
+    allExamples = exp.examples;
+  } else if (exp.example_ko) {
+    allExamples = [{ ko: exp.example_ko, en: exp.example_en || '' }];
+  }
+  var examplesHtml = allExamples.map(function(ex) {
+    var safeExKo = (ex.ko||'').replace(/'/g,"\\'");
+    return '<div onclick="var el=this;el.style.opacity=\'.5\';setTimeout(function(){el.style.opacity=\'1\'},400);ttsSpeak(\'' + safeExKo + '\')" style="cursor:pointer;padding:10px 12px;border-radius:10px;transition:opacity .2s;margin-bottom:6px">'
+      + '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:2px;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:13px;height:13px;opacity:.55">' + BM_ICON_VOLUME + '</span>' + (ex.ko||'') + '</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.42)">' + (ex.en||'') + '</div>'
+      + '</div>';
+  }).join('');
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
     + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:4px">Step 1 · Study</div>'
@@ -7574,23 +7590,19 @@ function _keRenderStudyPhase(list) {
     +   '<div style="font-size:12px;color:rgba(255,255,255,.4);font-style:italic;margin-bottom:10px">' + (exp.rom||'') + '</div>'
     +   '<div style="font-size:15px;color:#7dd3fc;font-weight:700">' + (exp.en||'') + '</div>'
     + '</div>'
-    // Example block — subdued, not a competing card
-    + (exp.example_ko ? '<div style="padding:0 4px 16px;font-size:13px;color:rgba(255,255,255,.7);line-height:1.6">'
-        +   '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);margin-bottom:6px">Example</div>'
-        +   '<div style="margin-bottom:2px">' + (exp.example_ko||'') + '</div>'
-        +   '<div style="color:rgba(255,255,255,.42)">' + (exp.example_en||'') + '</div>'
+    // Examples block — each clickable for TTS
+    + (examplesHtml ? '<div style="padding:0 4px 14px">'
+        + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);margin-bottom:8px">Examples <span style="opacity:.6;font-weight:600">(tap to listen)</span></div>'
+        + examplesHtml
         + '</div>' : '')
-    // Actions row — Listen / Save only. The per-card "Quiz" button
-    // used to live here, but the user wanted the quiz to be its own
-    // step at the end of Study (cleaner mental model: study all 6
-    // → then quiz on all 6, not study-quiz-study-quiz).
-    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">'
+    // Actions row — Listen expression / Save
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
     +   '<button onclick="ttsSpeak(\'' + safeKo + '\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
     +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
     + '</div>'
-    // Navigation row
-    + '<div style="display:flex;gap:8px;justify-content:center">'
-    + (idx > 0 ? '<button onclick="window._keStudyIdx--;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&larr; Prev</button>' : '')
+    // Navigation row — fixed layout: Prev always present (hidden on first card) + Next/Quiz
+    + '<div style="display:flex;gap:8px;justify-content:center;align-items:center">'
+    + '<button onclick="window._keStudyIdx--;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;visibility:' + (idx > 0 ? 'visible' : 'hidden') + '">&larr; Prev</button>'
     + (idx < exps.length - 1
       ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &rarr;</button>'
       : '<button onclick="_keStartQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Start Quiz &rarr;</button>')
@@ -17072,9 +17084,9 @@ function renderWGDrillIntro() {
   if (!body) return;
   var st = _wgDrillState;
   body.innerHTML =
-    '<div style="background:rgba(251,191,36,.08);border:1px solid #fde68a;border-radius:12px;padding:14px 16px;margin-bottom:16px">'
-    + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#92400e;margin-bottom:4px">About this grammar</div>'
-    + '<div style="font-size:14px;color:#78350f;line-height:1.6">' + (st.explanation || st.grammar) + '</div>'
+    '<div style="background:rgba(251,191,36,.1);border:1px solid rgba(253,230,138,.4);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+    + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#fde68a;margin-bottom:4px">About this grammar</div>'
+    + '<div style="font-size:14px;color:#fef3c7;line-height:1.6">' + (st.explanation || st.grammar) + '</div>'
     + '</div>'
     + '<div style="text-align:center">'
     + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-bottom:12px">' + st.questions.length + ' questions · Fill-in, correction, completion</div>'
