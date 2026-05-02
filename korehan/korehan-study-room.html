@@ -21867,10 +21867,27 @@ async function startReview(title, count, mode) {
         // English prompt → Korean answer (typed; arena converts to MCQ with auto-distractors)
         return { type: 'typed', word_en: q.prompt, word_rom: q.rom || '', correct: q.answer, label: q.label, slot: q.slot };
       }
+      if (q.type === 'listening') {
+        return { type: 'listening', word_ko: q.word_ko, choices: q.choices || [], correct: q.correct, label: q.label, slot: 'listening', skippable: true };
+      }
       return q;
     });
+    // Build a reserve pool of vocab questions to replace skipped listening
+    // questions. Drawn from the word bank, excluding answers already in use.
+    var _arenaReserve = [];
+    var _listenCount = arenaQuestions.filter(function(q){ return q.type === 'listening'; }).length;
+    if (_listenCount > 0) {
+      var _usedAnswers = {};
+      arenaQuestions.forEach(function(q){ if (q.correct) _usedAnswers[q.correct] = 1; });
+      var _reserveWords = (typeof _wbData !== 'undefined' && Array.isArray(_wbData) && _wbData.length) ? _wbData : [];
+      var _reserveVocab = _mrSlotVocab(Math.max(_listenCount + 3, 5), _reserveWords, _usedAnswers);
+      _arenaReserve = _reserveVocab.map(function(q) {
+        return { type: 'meaning', word_ko: q.prompt, word_rom: q.rom || '', choices: q.choices || [], correct: q.answer, label: q.label, slot: 'vocab' };
+      });
+    }
     KHQuizArena.open({
       questions: arenaQuestions,
+      reserve: _arenaReserve,
       title: title,
       timer: _rv.timeLimit || 15,
       mode: _rv.type || 'weekly',
@@ -21999,6 +22016,7 @@ function _classifyOneMistake(q, quizType) {
   if (slot === 'expression') return 'VOCAB';
   if (slot === 'reading') return 'VOCAB';
   if (slot === 'vocab') return 'VOCAB';
+  if (slot === 'listening') return 'VOCAB';
   // The grammar slot answer is a pattern name like "~았/었어요". Look at
   // the answer to pick a more useful label than a generic "GRAMMAR".
   var ans = String(q.correct || q.answer || '').trim();
@@ -22146,16 +22164,46 @@ function _mrSlotKeyExpressions(n, articleCacheMap, convExpressions) {
 // each slot, then push the remainder onto vocab so the totals always
 // sum to targetCount.
 function _mrSlotSizes(total) {
-  // Proportions: vocab 33%, grammar 20%, reading 20%, particle 14%, expressions 13%
-  var vocab    = Math.floor(total * 0.34);
-  var grammar  = Math.floor(total * 0.20);
-  var reading  = Math.floor(total * 0.20);
-  var particle = Math.floor(total * 0.14);
-  var expr     = Math.floor(total * 0.13);
-  var sum = vocab + grammar + reading + particle + expr;
-  // Push leftover onto vocab — the most reliably-fillable slot.
+  // Proportions: vocab 28%, grammar 18%, reading 18%, particle 12%, expressions 12%, listening 12%
+  var vocab     = Math.floor(total * 0.28);
+  var grammar   = Math.floor(total * 0.18);
+  var reading   = Math.floor(total * 0.18);
+  var particle  = Math.floor(total * 0.12);
+  var expr      = Math.floor(total * 0.12);
+  var listening = Math.floor(total * 0.12);
+  var sum = vocab + grammar + reading + particle + expr + listening;
   vocab += (total - sum);
-  return { vocab: vocab, grammar: grammar, reading: reading, particle: particle, expr: expr };
+  return { vocab: vocab, grammar: grammar, reading: reading, particle: particle, expr: expr, listening: listening };
+}
+
+// Listening slot — play Korean sentence via TTS, pick English meaning.
+// Skippable: KHQuizArena replaces a skipped listening question from the
+// reserve pool built alongside the main question set.
+function _mrSlotListening(n, convExpressions, articleCacheMap) {
+  var pool = [];
+  (convExpressions || []).forEach(function(e) {
+    if (e && e.ko && e.en && !/^fast\s*track/i.test(e.en)) pool.push({ ko: e.ko, en: e.en });
+  });
+  Object.keys(articleCacheMap || {}).forEach(function(aid) {
+    (articleCacheMap[aid].key_expressions || []).forEach(function(e) {
+      if (e && e.ko && e.en && !/^fast\s*track/i.test(e.en)) pool.push({ ko: e.ko, en: e.en });
+    });
+  });
+  if (pool.length < 4) return [];
+  var seenKo = {};
+  pool = pool.filter(function(e){ if (seenKo[e.ko]) return false; seenKo[e.ko] = true; return true; });
+  if (pool.length < 4) return [];
+  var qs = [];
+  _mrShuffle(pool).forEach(function(item) {
+    if (qs.length >= n) return;
+    var distractors = _mrShuffle(pool.filter(function(o){ return o.ko !== item.ko; })).slice(0, 3);
+    if (distractors.length < 3) return;
+    var seenEn = {}; var ch = [];
+    _mrShuffle([item.en].concat(distractors.map(function(d){ return d.en; }))).forEach(function(e){ if (!seenEn[e]) { seenEn[e] = 1; ch.push(e); } });
+    if (ch.length < 2) return;
+    qs.push({ type: 'listening', word_ko: item.ko, correct: item.en, choices: ch, slot: 'listening', label: 'Listen and choose the meaning', skippable: true });
+  });
+  return qs;
 }
 
 // Backwards-compat alias — the saved-progress flow stores a function
@@ -22276,13 +22324,14 @@ async function _buildComprehensiveReview(targetCount, lookbackDays) {
 
   // Build each slot in proportions set by sizes (so weekly=20 and
   // monthly=30 both use the same builder, just with different counts).
-  var vocabQs    = _mrSlotVocab(sizes.vocab, savedWords);
-  var grammarQs  = _mrSlotGrammar(sizes.grammar, articleCacheMap);
-  var readingQs  = _mrSlotReadingCloze(sizes.reading, articleCacheMap, false);
-  var particleQs = _mrSlotReadingCloze(sizes.particle, articleCacheMap, true);
-  var exprQs     = _mrSlotKeyExpressions(sizes.expr, articleCacheMap, convExpressions);
+  var vocabQs     = _mrSlotVocab(sizes.vocab, savedWords);
+  var grammarQs   = _mrSlotGrammar(sizes.grammar, articleCacheMap);
+  var readingQs   = _mrSlotReadingCloze(sizes.reading, articleCacheMap, false);
+  var particleQs  = _mrSlotReadingCloze(sizes.particle, articleCacheMap, true);
+  var exprQs      = _mrSlotKeyExpressions(sizes.expr, articleCacheMap, convExpressions);
+  var listeningQs = _mrSlotListening(sizes.listening, convExpressions, articleCacheMap);
 
-  var all = vocabQs.concat(grammarQs).concat(readingQs).concat(particleQs).concat(exprQs);
+  var all = vocabQs.concat(grammarQs).concat(readingQs).concat(particleQs).concat(exprQs).concat(listeningQs);
 
   // Pad to targetCount with extra vocab questions when other slots
   // were sparse (new user / hasn't read many articles yet).
