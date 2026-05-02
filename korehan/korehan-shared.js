@@ -2,23 +2,16 @@
    KoreHani — Shared JS
    ============================================================ */
 
-// Auto-load the Grammar / Conjugation tooltip module on every page
-// that already pulls korehan-shared.js. This keeps the per-page
-// markup untouched while delivering the site-wide hover behaviour
-// the user asked for. Guarded with __khGrammarTooltipsInit inside
-// the module itself so a duplicate include is harmless.
-(function(){
-  if (window.__khGrammarTooltipsLoaded) return;
-  window.__khGrammarTooltipsLoaded = true;
-  // Compute a sibling URL so this works regardless of how
-  // korehan-shared.js was referenced (relative path, absolute, etc.).
-  var here = document.currentScript && document.currentScript.src;
-  var base = here ? here.replace(/[^/]+$/, '') : '';
-  var s = document.createElement('script');
-  s.src   = base + 'korehan-grammar-tooltips.js?v=20260501a';
-  s.async = true;
-  document.head.appendChild(s);
-})();
+// NOTE: the grammar/conjugation tooltip used to be auto-loaded
+// from here for every page that pulls shared.js. That was a
+// mistake — it leaked into the article / news / stories / convo
+// readers, where each page already runs its OWN word-hover system
+// (`.kh-word` via dyn-article wrap). The grammar tooltip
+// fragmented those text nodes BEFORE the reader's vocab system
+// could wrap them, so the original word-hover popups silently
+// disappeared. The grammar tooltip is now opted-in per page via
+// an explicit <script src="korehan-grammar-tooltips.js"> tag —
+// today only the study room loads it.
 
 // ── Analytics + error monitoring ─────────────────────────────────
 // Loads Plausible Analytics (cookieless by design — Plausible itself
