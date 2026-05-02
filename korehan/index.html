@@ -1095,7 +1095,7 @@ body.kh-neon-on .hero-dot {
   <!-- DAILY STRIP -->
   <div class="daily-strip">
     <a id="pb-phrase-block" href="korehan-phrase.html" class="ds-phrase">
-      <div class="ds-label">Today’s Phrase</div>
+      <div class="ds-label">Today's Phrase</div>
       <div class="ds-ko" id="pb-ko"></div>
       <div class="ds-en" id="pb-en" style="margin-top:4px"></div>
       <div id="pb-rom" style="display:none"></div>
@@ -1108,8 +1108,8 @@ body.kh-neon-on .hero-dot {
     </div>
 
     <div class="ds-actions">
-      <div id="ds-review-hint" class="ds-review-hint" style="display:none">Read at least one article to unlock today’s review.</div>
-      <a href="korehan-learning-overview.html#daily-review" class="ds-btn ds-btn-main" id="ds-review-btn"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Start today’s review</span></a>
+      <div id="ds-review-hint" class="ds-review-hint" style="display:none">Read at least one article to unlock today's review.</div>
+      <a href="korehan-learning-overview.html#daily-review" class="ds-btn ds-btn-main" id="ds-review-btn"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Start today's review</span></a>
       <div class="ds-quick-grid">
         <a href="korehan-study-room.html" class="ds-btn ds-btn-sub"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Study Room</span></a>
         <a href="korehan-learning-overview.html" class="ds-btn ds-btn-sub"><i data-lucide="chart-column" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Growth Lab</span></a>
@@ -1814,63 +1814,63 @@ document.addEventListener('DOMContentLoaded', async function() {
   });
 
   // News grid
-  var _activeNewsSection = ‘all’;
+  var _activeNewsSection = 'all';
   function renderNewsGrid() {
-    var allArts = getCachedArticles().filter(function(a){ return a.status === ‘published’; });
+    var allArts = getCachedArticles().filter(function(a){ return a.status === 'published'; });
     var arts;
-    if (_activeNewsSection === ‘all’) {
+    if (_activeNewsSection === 'all') {
       arts = allArts.slice(0, 12);
     } else {
-      // Filter by canonical section key so English DB values (‘Society’) match Korean filter keys (‘사회’)
+      // Filter by canonical section key so English DB values ('Society') match Korean filter keys ('사회')
       arts = allArts.filter(function(a) {
-        var key = (typeof getSectionKey === ‘function’) ? getSectionKey(a.section) : (a.section || ‘’).toLowerCase();
+        var key = (typeof getSectionKey === 'function') ? getSectionKey(a.section) : (a.section || '').toLowerCase();
         return key === _activeNewsSection;
       }).slice(0, 12);
     }
-    var grid = document.getElementById(‘dyn-news-grid’);
+    var grid = document.getElementById('dyn-news-grid');
     if (!grid) return;
     if (!arts.length) {
       grid.innerHTML = _homeNewsReady
-        ? ‘<p style="color:var(--gray);font-size:13px">No published articles are ready yet. Check back after the next sync.</p>’
-        : ‘<p style="color:var(--gray);font-size:13px">Loading today’s articles…</p>’;
+        ? '<p style="color:var(--gray);font-size:13px">No published articles are ready yet. Check back after the next sync.</p>'
+        : '<p style="color:var(--gray);font-size:13px">Loading today\'s articles…</p>';
       return;
     }
     grid.innerHTML = arts.map(function(a) {
-      var lvl = a.level || ‘Beginner’;
-      var lvlCls = lvl === ‘Advanced’ ? ‘lvl-a’ : lvl === ‘Intermediate’ ? ‘lvl-i’ : ‘lvl-b’;
-      var thumbUrl = (typeof khArticleThumb === ‘function’) ? khArticleThumb(a, 600, 400) : (a.image || ‘’);
+      var lvl = a.level || 'Beginner';
+      var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : 'lvl-b';
+      var thumbUrl = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 600, 400) : (a.image || '');
       var img = thumbUrl
-        ? ‘<img class="nc-img" src="’ + thumbUrl + ‘" alt="" onerror="this.onerror=null;this.src=\’https://picsum.photos/seed/kh-fallback/600/400\’">’
-        : ‘<div class="nc-img nc-img-fallback"></div>’;
-      return ‘<div class="nc nc-overlay" data-level="’ + lvl + ‘" onclick="location.href=\’korehan-article.html?id=’ + a.id + ‘\’">’
+        ? '<img class="nc-img" src="' + thumbUrl + '" alt="" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/kh-fallback/600/400\'">'
+        : '<div class="nc-img nc-img-fallback"></div>';
+      return '<div class="nc nc-overlay" data-level="' + lvl + '" onclick="location.href=\'korehan-article.html?id=' + a.id + '\'">'
         + img
-        + ‘<div class="nc-overlay-grad"></div>’
-        + ‘<div class="nc-overlay-body">’
-        + ‘<div class="nc-meta"><span class="nc-cat">’ + (a.section || ‘’) + ‘</span><span class="nc-lvl ‘ + lvlCls + ‘">’ + ({Starter:’Seed’,Beginner:’Sprout’,Intermediate:’Tree’,Advanced:’Forest’}[lvl]||lvl) + ‘</span></div>’
-        + ‘<div class="nc-title">’ + (a.title_en || a.title || ‘’) + ‘</div>’
-        + ‘<div class="nc-foot"><span class="nc-date">’ + (a.published_at ? new Date(a.published_at).toLocaleDateString(‘en-US’,{month:’short’,day:’numeric’}) : ‘’) + ‘</span>’
-        + ‘<button class="nc-study" onclick="event.stopPropagation();openStudyModal && openStudyModal(\’’ + a.id + ‘\’)" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Study</span></button></div>’
-        + ‘</div>’
-        + ‘</div>’;
-    }).join(‘’);
+        + '<div class="nc-overlay-grad"></div>'
+        + '<div class="nc-overlay-body">'
+        + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span></div>'
+        + '<div class="nc-title">' + (a.title_en || a.title || '') + '</div>'
+        + '<div class="nc-foot"><span class="nc-date">' + (a.published_at ? new Date(a.published_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '') + '</span>'
+        + '<button class="nc-study" onclick="event.stopPropagation();openStudyModal && openStudyModal(\'' + a.id + '\')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Study</span></button></div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
     if (window.renderKhLucideIcons) renderKhLucideIcons();
   }
   renderNewsGrid();
-  document.addEventListener(‘khArticlesLoaded’, function() {
+  document.addEventListener('khArticlesLoaded', function() {
     _homeNewsReady = true;
     renderNewsGrid();
     applyGlobalDiffFilter();
   });
 
   // Dynamically populate news pills from getSections()
-  var newsPills = document.getElementById(‘news-pills’);
-  if (newsPills && typeof getSections === ‘function’) {
+  var newsPills = document.getElementById('news-pills');
+  if (newsPills && typeof getSections === 'function') {
     var secs = getSections();
     secs.forEach(function(s) {
-      var btn = document.createElement(‘button’);
-      btn.className = ‘sp’;
+      var btn = document.createElement('button');
+      btn.className = 'sp';
       // Normalize key to canonical form so it matches getSectionKey output on articles
-      btn.dataset.filter = (typeof getSectionKey === ‘function’) ? getSectionKey(s.key) : s.key;
+      btn.dataset.filter = (typeof getSectionKey === 'function') ? getSectionKey(s.key) : s.key;
       btn.textContent = s.label;
       newsPills.appendChild(btn);
     });
@@ -1878,10 +1878,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // News pills filter: re-render grid data for the selected section
   if (newsPills) {
-    newsPills.querySelectorAll(‘.sp’).forEach(function(btn) {
-      btn.addEventListener(‘click’, function() {
-        newsPills.querySelectorAll(‘.sp’).forEach(function(b){ b.classList.remove(‘on’); });
-        btn.classList.add(‘on’);
+    newsPills.querySelectorAll('.sp').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        newsPills.querySelectorAll('.sp').forEach(function(b){ b.classList.remove('on'); });
+        btn.classList.add('on');
         _activeNewsSection = btn.dataset.filter;
         renderNewsGrid();
         applyGlobalDiffFilter();
