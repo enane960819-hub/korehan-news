@@ -23,11 +23,12 @@
 // changes. Install event will build a fresh cache under the new name
 // and the activate event will delete stale caches.
 
-// Bump when shipping JS/CSS that older clients have cached. v2 was
-// chosen when the grammar-tooltip module shipped — staleWhileRevalidate
-// was serving the old korehan-shared.js without the auto-loader, so
-// users who'd visited before never picked up the new module.
-const CACHE_VERSION = 'kh-v2';
+// Bumped to v3 to evict the v2 caches that captured the
+// over-zealous grammar-tooltip rollout (it had been auto-loaded
+// site-wide, breaking the article reader's own .kh-word vocab
+// hover). v3 ships with grammar-tooltip scoped to the study room
+// only, so reader pages get their vocab hover back.
+const CACHE_VERSION = 'kh-v3';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 

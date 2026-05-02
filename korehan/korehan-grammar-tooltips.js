@@ -306,6 +306,20 @@
     if (p.closest('.kh-hover-word')) return true;
     if (p.closest('.kh-gram-token')) return true;
     if (p.closest('[data-gram-skip="1"]')) return true;
+    // Defense-in-depth: stay out of any context where another
+    // hover system is wrapping its own spans. The article reader
+    // uses .kh-word, and Stories / Conversations / News reader
+    // containers each run word-tap systems we'd fragment if we
+    // wrapped first. The page-level <script> tag is already gated
+    // to study-room only — these checks just guarantee that even
+    // if the module is included somewhere unexpected, it won't
+    // ruin the reader's own tooltip.
+    if (p.closest('.kh-word')) return true;
+    if (p.closest('#dyn-article')) return true;
+    if (p.closest('#sentences-list')) return true;
+    if (p.closest('#st-panel')) return true;
+    if (p.closest('.conv-page-container')) return true;
+    if (p.closest('.st-container')) return true;
     return false;
   }
 
@@ -359,15 +373,23 @@
     nodes.forEach(function(n){ if (!shouldSkipNode(n)) wrapTextNode(n); });
   }
 
-  // Same scope footprint as the vocab tooltip, plus the
-  // study-room modal bodies and the picker grids so dynamic
-  // KE / Phrase Munch / Express Practice content gets covered.
+  // Scope: STUDY-ROOM modals only. The grammar tooltip is
+  // intentionally kept out of reader contexts — article body,
+  // story modal, conversation view, news list — because those
+  // pages run their own word-tap / vocab tooltip systems and
+  // the grammar wrapper would fragment text nodes before they
+  // could match. Pages that DO want the grammar tooltip (today
+  // only korehan-study-room.html) still need to include the
+  // <script> tag explicitly.
   function getTargets() {
-    var byId = ['dyn-article', 'sentences-list', 'dyn-article-list', 'st-panel',
-                'pm-body', 'dct-body', 'gf-tab-learn', 'gf-tab-spotit', 'gf-tab-fill', 'gf-tab-translate', 'gf-tab-build',
-                'ke-expressions-list', 'ke-quiz-body', 'wm-helpers', 'wm-grammar', 'wm-context'];
-    var bySelector = ['.conv-page-container', '.st-container', '.sr-body', '.learn-body',
-                      '.bm-body', '.pm-body', '.dct-body', '.wm-center', '.gf-modal-body',
+    var byId = ['pm-body', 'dct-body',
+                'gf-tab-learn', 'gf-tab-spotit', 'gf-tab-fill', 'gf-tab-translate', 'gf-tab-build',
+                'ke-expressions-list', 'ke-quiz-body',
+                'wm-helpers', 'wm-grammar', 'wm-context',
+                'wg-drill-body'];
+    var bySelector = ['.bm-body', '.pm-body', '.dct-body',
+                      '.wm-center', '.gf-modal-body',
+                      '.sr-body', '.learn-body',
                       '[data-gram-scan="1"]'];
     var list = byId.map(function(id){ return document.getElementById(id); });
     bySelector.forEach(function(sel){
