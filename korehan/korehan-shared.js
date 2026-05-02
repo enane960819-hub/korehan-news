@@ -8797,7 +8797,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
       });
     } else {
-      await Promise.all([loadArticlesFromDB({ force: _isArticleReader }), sectionsPromise, settingsPromise]);
+      // korehan-all always force-refreshes so it never reuses the 30-row
+      // homeOptimized cache the home page may have seeded — we need all 80
+      // rows to populate every section rail.
+      var _forceRefresh = _isArticleReader || (pageBase === 'korehan-all');
+      await Promise.all([loadArticlesFromDB({ force: _forceRefresh }), sectionsPromise, settingsPromise]);
       if (window._khLoaderClearAuto) window._khLoaderClearAuto();
       _ldr(100);
     }
