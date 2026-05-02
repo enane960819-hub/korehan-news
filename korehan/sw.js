@@ -23,7 +23,11 @@
 // changes. Install event will build a fresh cache under the new name
 // and the activate event will delete stale caches.
 
-const CACHE_VERSION = 'kh-v1';
+// Bump when shipping JS/CSS that older clients have cached. v2 was
+// chosen when the grammar-tooltip module shipped — staleWhileRevalidate
+// was serving the old korehan-shared.js without the auto-loader, so
+// users who'd visited before never picked up the new module.
+const CACHE_VERSION = 'kh-v2';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
