@@ -3242,7 +3242,8 @@ async function loadArticlesFromDB(options) {
   if (!shouldForceRefresh && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
     return _articlesCache;
   }
-  var lim = useHomeOptimizedQuery ? 30 : 80;
+  var useAllArticles = !!options.all;
+  var lim = useHomeOptimizedQuery ? 30 : useAllArticles ? 500 : 80;
   // Try the lite column list first; fall back to '*' if PostgREST
   // rejects an unknown column (production schemas can lag behind the
   // codebase). Without this fallback any missing column on the lite
@@ -8826,11 +8827,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
       });
     } else {
-      // korehan-all always force-refreshes so it never reuses the 30-row
-      // homeOptimized cache the home page may have seeded — we need all 80
-      // rows to populate every section rail.
-      var _forceRefresh = _isArticleReader || (pageBase === 'korehan-all');
-      await Promise.all([loadArticlesFromDB({ force: _forceRefresh }), sectionsPromise, settingsPromise]);
+      // korehan-all fetches all 500 articles (limit) so every section rail
+      // is populated — avoids the 80-row window missing older sections.
+      var _isAllPage = (pageBase === 'korehan-all');
+      var _forceRefresh = _isArticleReader || _isAllPage;
+      await Promise.all([loadArticlesFromDB({ force: _forceRefresh, all: _isAllPage }), sectionsPromise, settingsPromise]);
       if (window._khLoaderClearAuto) window._khLoaderClearAuto();
       _ldr(100);
     }
