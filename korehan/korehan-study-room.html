@@ -3691,14 +3691,10 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
       <div>
         <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="receipt" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today’s Topic Content</span></div>
-        <div id="wm-topic-content" style="font-size:12px;color:#475569;line-height:1.7;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px 12px;margin-bottom:10px">Loading topic content…</div>
-        <!-- Phase 2: Common Mistakes panel — AI-generated per topic+
-             level, cached 24h in localStorage. khLoadCommonMistakes()
-             populates this on writing-modal open. Stays empty if AI
-             fails or topic isn't loaded yet. -->
-        <details id="wm-common-mistakes" hidden style="margin-bottom:10px;border:1px dashed #fcd34d;background:#fffbeb;border-radius:10px;padding:0">
-          <summary style="cursor:pointer;list-style:none;padding:10px 12px;font-size:11px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px"><i data-lucide="alert-triangle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>자주 틀리는 부분</span> <span id="wm-cm-count" style="opacity:.6;font-weight:700"></span></summary>
-          <div id="wm-cm-body" style="padding:0 12px 10px;font-size:12px;color:#78350f;line-height:1.6"></div>
+        <div id="wm-topic-content" style="font-size:12px;color:#cbd5e1;line-height:1.7;background:rgba(124,58,237,.05);border:1px solid rgba(139,92,246,.18);border-radius:10px;padding:11px 12px;margin-bottom:10px">Loading topic content…</div>
+        <details id="wm-common-mistakes" hidden style="margin-bottom:10px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.04);border-radius:10px;padding:0">
+          <summary style="cursor:pointer;list-style:none;padding:10px 12px;font-size:11px;font-weight:800;color:#fca5a5;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px"><i data-lucide="alert-triangle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>자주 틀리는 부분</span> <span id="wm-cm-count" style="opacity:.6;font-weight:700"></span></summary>
+          <div id="wm-cm-body" style="padding:0 12px 10px;font-size:12px;color:#fecaca;line-height:1.6"></div>
         </details>
         <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Your Writing</span></div>
         <!-- Tracker Rings (Canvas) -->
@@ -6159,16 +6155,79 @@ function renderModalContent() {
   if (topicContentEl) {
     // Just the topic — the "X completed" rows used to live here as a
     // status checklist, but the user pointed out they ate space for
-    // info that's already implicit (the learner literally just did
-    // those steps to get here). Keeping the panel to a single line
-    // gives the writing area more room.
-    if (_todayTopic && _todayTopic.topic_ko) {
-      topicContentEl.innerHTML = '<b>Topic:</b> ' + _todayTopic.topic_ko
-        + (_todayTopic.topic_en ? ' <span style="color:#94a3b8">— ' + _todayTopic.topic_en + '</span>' : '');
-    } else {
-      topicContentEl.innerHTML = '';
-    }
+    // Show sentences & vocab learned in Phrase Munch so Express Practice
+    // truly builds on everything the user just studied.
+    _wmRenderTopicContent(topicContentEl);
   }
+}
+
+function _wmEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Click a sentence chip → append to write area
+function wmCopySentence(el) {
+  var ko = el && el.dataset.ko;
+  if (!ko) return;
+  var ta = document.getElementById('write-area');
+  if (!ta) return;
+  var cur = ta.value.trim();
+  ta.value = cur ? cur + ' ' + ko : ko;
+  ta.dispatchEvent(new Event('input'));
+  var orig = el.style.background;
+  el.style.background = 'rgba(124,58,237,.35)';
+  el.style.borderColor = 'rgba(139,92,246,.6)';
+  setTimeout(function() { el.style.background = orig; el.style.borderColor = ''; }, 500);
+}
+
+function _wmRenderTopicContent(el) {
+  if (!el) return;
+  var html = '';
+
+  // ── 1. Sentences from Phrase Munch (Step 1) ──
+  var sentences = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.sentences)) ? _bm.sentences : [];
+  if (sentences.length) {
+    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">오늘 배운 문장 — 탭하면 복사</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">';
+    sentences.forEach(function(s) {
+      if (!s || !s.ko) return;
+      html += '<div onclick="wmCopySentence(this)" data-ko="' + _wmEsc(s.ko) + '" '
+        + 'style="cursor:pointer;padding:8px 11px;background:rgba(124,58,237,.07);border:1px solid rgba(139,92,246,.18);border-radius:9px;transition:background .15s,border-color .15s">'
+        + '<div style="font-family:\'Noto Sans KR\',sans-serif;font-size:13px;font-weight:700;color:#e2e8f0;line-height:1.5">' + _wmEsc(s.ko) + '</div>'
+        + (s.en ? '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;font-style:italic">' + _wmEsc(s.en) + '</div>' : '')
+        + '</div>';
+    });
+    html += '</div>';
+  }
+
+  // ── 2. Vocab from Word Snap ──
+  var snapVocab = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.snapCards)) ? _bm.snapCards : [];
+  if (snapVocab.length) {
+    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">오늘 배운 단어</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">';
+    snapVocab.forEach(function(v) {
+      if (!v || !v.ko) return;
+      html += '<span style="display:inline-flex;flex-direction:column;padding:5px 10px;background:rgba(124,58,237,.1);border:1px solid rgba(139,92,246,.2);border-radius:8px">'
+        + '<span style="font-family:\'Noto Sans KR\',sans-serif;font-size:13px;font-weight:800;color:#e2e8f0">' + _wmEsc(v.ko) + '</span>'
+        + (v.en ? '<span style="font-size:10px;color:rgba(255,255,255,.45)">' + _wmEsc(v.en) + '</span>' : '')
+        + '</span>';
+    });
+    html += '</div>';
+  }
+
+  // ── 3. Example answer built from the sentences ──
+  if (sentences.length >= 2) {
+    var exampleSents = sentences.slice(0, 3).map(function(s){ return s.ko; }).join(' ');
+    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">예시 답안</div>';
+    html += '<div onclick="wmCopySentence(this)" data-ko="' + _wmEsc(exampleSents) + '" '
+      + 'style="cursor:pointer;padding:10px 12px;background:rgba(124,58,237,.1);border:1px solid rgba(139,92,246,.25);border-radius:10px;transition:background .15s">'
+      + '<div style="font-family:\'Noto Sans KR\',sans-serif;font-size:13px;font-weight:700;color:#e2e8f0;line-height:1.7">' + _wmEsc(exampleSents) + '</div>'
+      + '<div style="font-size:10px;color:rgba(167,139,250,.6);margin-top:4px;font-weight:700">탭하면 전체 복사</div>'
+      + '</div>';
+  } else if (_todayTopic && _todayTopic.topic_ko) {
+    html += '<div style="color:rgba(255,255,255,.5);font-size:12px">Topic: ' + _wmEsc(_todayTopic.topic_ko)
+      + (_todayTopic.topic_en ? ' — ' + _wmEsc(_todayTopic.topic_en) : '') + '</div>';
+  }
+
+  el.innerHTML = html || '<div style="color:rgba(255,255,255,.4);font-size:12px">Phrase Munch를 먼저 완료하면 오늘 배운 내용이 여기 표시됩니다.</div>';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -6201,10 +6260,10 @@ async function khLoadCommonMistakes() {
       var wrong = (it.wrong || '').replace(/</g, '&lt;');
       var right = (it.right || '').replace(/</g, '&lt;');
       var note  = (it.why   || it.note || '').replace(/</g, '&lt;');
-      return '<div style="margin:8px 0;padding:8px 10px;background:#fff;border:1px solid #fcd34d;border-radius:8px">'
-        + '<div style="font-weight:800;color:#b45309;margin-bottom:3px">' + (it.label || it.title || 'Common mistake') + '</div>'
-        + (wrong ? '<div style="font-family:Noto Serif KR,serif"><span style="color:#dc2626;text-decoration:line-through;margin-right:6px">' + wrong + '</span><span style="color:#15803d;font-weight:700">' + right + '</span></div>' : '')
-        + (note  ? '<div style="margin-top:4px;font-size:11px;color:#92400e">' + note + '</div>' : '')
+      return '<div style="margin:8px 0;padding:8px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(239,68,68,.2);border-radius:8px">'
+        + '<div style="font-weight:800;color:#fca5a5;margin-bottom:3px">' + (it.label || it.title || 'Common mistake') + '</div>'
+        + (wrong ? '<div style="font-family:Noto Serif KR,serif"><span style="color:#f87171;text-decoration:line-through;margin-right:6px">' + wrong + '</span><span style="color:#86efac;font-weight:700">' + right + '</span></div>' : '')
+        + (note  ? '<div style="margin-top:4px;font-size:11px;color:rgba(255,255,255,.5)">' + note + '</div>' : '')
         + '</div>';
     }).join('');
     if (countEl) countEl.textContent = '(' + items.length + ')';
