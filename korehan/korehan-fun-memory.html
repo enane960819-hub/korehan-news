@@ -26,10 +26,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .mm-streak.on{display:inline-flex;animation:streakPulse .6s ease}
 @keyframes streakPulse{0%{transform:scale(.9)}50%{transform:scale(1.1)}100%{transform:scale(1)}}
 
-/* ── Card Grid ──
-   The desktop layout shows wider grids and the mobile layout drops
-   one column at every difficulty so the catch-22 of "fixed aspect-
-   ratio cards in a 360px viewport" doesn't blow up the card height. */
+/* ── Card Grid ── */
 .mm-grid{display:grid;gap:10px;justify-content:center;margin:0 auto;padding:8px 0}
 .mm-grid.easy{grid-template-columns:repeat(4,1fr);max-width:480px}
 .mm-grid.normal{grid-template-columns:repeat(5,1fr);max-width:600px}
@@ -41,7 +38,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .mm-card.flipped .mm-card-inner{transform:rotateY(180deg);-webkit-transform:rotateY(180deg)}
 .mm-card-front,.mm-card-back{backface-visibility:hidden;-webkit-backface-visibility:hidden;position:absolute;inset:0;border-radius:14px;display:flex;align-items:center;justify-content:center;padding:6px;text-align:center;font-weight:700;border:2px solid transparent;overflow:hidden}
 
-/* face-down front — subtle pattern + numbered icon */
+/* face-down front */
 .mm-card-front{background:linear-gradient(145deg,#0f1e3a 0%,#162040 100%);border-color:rgba(125,211,252,.18);font-size:24px;color:rgba(125,211,252,.4)}
 .mm-card-front::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(125,211,252,.04) 10px,rgba(125,211,252,.04) 20px);pointer-events:none}
 .mm-card-front::after{content:'';position:absolute;inset:6px;border-radius:10px;border:1px dashed rgba(125,211,252,.15);pointer-events:none}
@@ -65,11 +62,27 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .mm-card.match-flash .mm-card-back{animation:mmGlow .55s ease}
 @keyframes mmGlow{0%{box-shadow:0 0 0 rgba(34,197,94,0)}50%{box-shadow:0 0 36px rgba(34,197,94,.7)}100%{box-shadow:0 0 22px rgba(34,197,94,.3)}}
 
+/* Memorize shake — applied to whole card during last 2s of peek */
+.mm-card.mm-peek-shake{animation:mmPeekShake .35s ease infinite}
+@keyframes mmPeekShake{0%,100%{transform:rotate(0deg)}25%{transform:rotate(-2.5deg)}75%{transform:rotate(2.5deg)}}
+
 /* Hover */
 .mm-card:not(.flipped):not(.matched):hover .mm-card-front{border-color:rgba(125,211,252,.4);background:linear-gradient(145deg,#132744,#1c2d55)}
 
+/* ── Memorize countdown overlay ── */
+.mm-countdown-wrap{position:relative}
+.mm-countdown-bar{position:sticky;top:0;z-index:10;display:none;align-items:center;justify-content:center;gap:12px;padding:10px 16px;background:rgba(5,11,21,.85);backdrop-filter:blur(4px);border-bottom:1px solid rgba(125,211,252,.15);margin:-8px -16px 8px}
+.mm-countdown-bar.visible{display:flex}
+.mm-countdown-label{font-size:14px;color:#94a3b8;font-weight:700}
+.mm-countdown-num{font-size:28px;font-weight:900;color:#7dd3fc;min-width:28px;text-align:center;transition:color .3s}
+.mm-countdown-num.urgent{color:#ef4444;animation:countUrgent .5s ease infinite alternate}
+@keyframes countUrgent{0%{transform:scale(1)}100%{transform:scale(1.15)}}
+.mm-countdown-track{flex:1;max-width:200px;height:6px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden}
+.mm-countdown-fill{height:100%;background:linear-gradient(90deg,#2563eb,#7dd3fc);border-radius:999px;transition:width .5s linear}
+.mm-countdown-fill.urgent{background:linear-gradient(90deg,#dc2626,#f59e0b)}
+
 /* ── Screens ── */
-.mm-overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.94);z-index:50;padding:20px;opacity:0;transition:opacity .35s ease;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.mm-overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.94);z-index:50;padding:20px;opacity:0;transition:opacity .35s ease;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);overflow-y:auto}
 .mm-overlay.visible{opacity:1}
 .mm-overlay.hidden{pointer-events:none;opacity:0}
 
@@ -77,12 +90,12 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .mm-screen-title{font-size:28px;font-weight:900;margin-bottom:8px;color:#fff}
 .mm-screen-sub{font-size:14px;color:#94a3b8;max-width:360px;text-align:center;line-height:1.6;margin-bottom:24px}
 
+/* Difficulty buttons */
 .mm-diff-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px}
 .mm-diff-btn{border:none;border-radius:14px;padding:18px 20px;cursor:pointer;font-family:inherit;text-align:left;transition:transform .15s,box-shadow .15s}
 .mm-diff-btn:hover{transform:translateY(-2px)}
 .mm-diff-btn .mm-db-label{font-size:16px;font-weight:800;margin-bottom:4px}
 .mm-diff-btn .mm-db-desc{font-size:12px;opacity:.75;line-height:1.4}
-
 .mm-diff-btn.easy{background:linear-gradient(135deg,#065f46,#047857);color:#a7f3d0;box-shadow:0 8px 24px rgba(4,120,87,.32)}
 .mm-diff-btn.easy:hover{box-shadow:0 12px 32px rgba(4,120,87,.45)}
 .mm-diff-btn.normal{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#bfdbfe;box-shadow:0 8px 24px rgba(37,99,235,.32)}
@@ -90,22 +103,61 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .mm-diff-btn.hard{background:linear-gradient(135deg,#581c87,#7c3aed);color:#ddd6fe;box-shadow:0 8px 24px rgba(124,58,237,.32)}
 .mm-diff-btn.hard:hover{box-shadow:0 12px 32px rgba(124,58,237,.45)}
 
+/* Mode selection buttons */
+.mm-mode-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px}
+.mm-mode-btn{border:2px solid transparent;border-radius:16px;padding:20px 22px;cursor:pointer;font-family:inherit;text-align:left;transition:transform .15s,box-shadow .15s,border-color .15s;display:flex;align-items:flex-start;gap:14px}
+.mm-mode-btn:hover{transform:translateY(-2px)}
+.mm-mode-btn .mm-mb-icon{font-size:30px;flex-shrink:0;margin-top:2px}
+.mm-mode-btn .mm-mb-label{font-size:16px;font-weight:800;margin-bottom:4px}
+.mm-mode-btn .mm-mb-desc{font-size:12px;opacity:.75;line-height:1.4}
+.mm-mode-btn.play{background:linear-gradient(135deg,#1e3a8a22,#2563eb22);border-color:rgba(37,99,235,.5);color:#bfdbfe}
+.mm-mode-btn.play:hover{border-color:rgba(37,99,235,.9);box-shadow:0 8px 24px rgba(37,99,235,.25)}
+.mm-mode-btn.study{background:linear-gradient(135deg,#3b0764aa,#7c3aed22);border-color:rgba(124,58,237,.5);color:#ddd6fe}
+.mm-mode-btn.study:hover{border-color:rgba(124,58,237,.9);box-shadow:0 8px 24px rgba(124,58,237,.25)}
+
+/* Practice screen word list */
+.mm-practice-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:400px;max-height:55vh;overflow-y:auto;padding:2px 4px;margin-bottom:20px}
+.mm-practice-list::-webkit-scrollbar{width:4px}
+.mm-practice-list::-webkit-scrollbar-track{background:rgba(255,255,255,.04)}
+.mm-practice-list::-webkit-scrollbar-thumb{background:rgba(125,211,252,.25);border-radius:999px}
+.mm-practice-pair{display:contents}
+.mm-practice-ko{background:linear-gradient(135deg,#0c2461,#1a3a7a);border:1px solid rgba(59,130,246,.4);border-radius:10px;padding:10px 12px;font-family:'Noto Sans KR',sans-serif;font-size:16px;font-weight:800;color:#dbeafe;text-align:center}
+.mm-practice-en{background:linear-gradient(135deg,#2d1066,#4c1d95);border:1px solid rgba(139,92,246,.4);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:700;color:#ede9fe;text-align:center;display:flex;align-items:center;justify-content:center}
+
 /* End screen */
 .mm-end-stars{font-size:48px;margin:12px 0 8px;letter-spacing:6px}
 .mm-end-stat{font-size:15px;color:#94a3b8;margin:4px 0}
 .mm-end-stat strong{color:#7dd3fc}
 .mm-end-best{font-size:12px;color:#64748b;margin-top:8px}
-.mm-play-btn{padding:16px 40px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:24px;box-shadow:0 8px 32px rgba(37,99,235,.4);transition:transform .15s}
+.mm-play-btn{padding:16px 40px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:16px;box-shadow:0 8px 32px rgba(37,99,235,.4);transition:transform .15s}
 .mm-play-btn:hover{transform:scale(1.05)}
+
+/* End screen word list */
+.mm-end-words{width:100%;max-width:400px;margin-top:20px;border-top:1px solid rgba(255,255,255,.08);padding-top:16px}
+.mm-end-words-title{font-size:13px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.mm-end-words-sel{font-size:11px;font-weight:700;color:#7dd3fc;cursor:pointer;padding:2px 8px;border-radius:999px;border:1px solid rgba(125,211,252,.3);background:rgba(125,211,252,.08)}
+.mm-end-words-sel:hover{background:rgba(125,211,252,.16)}
+.mm-word-rows{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;padding:2px 4px}
+.mm-word-rows::-webkit-scrollbar{width:4px}
+.mm-word-rows::-webkit-scrollbar-thumb{background:rgba(125,211,252,.2);border-radius:999px}
+.mm-word-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);cursor:pointer;transition:background .12s}
+.mm-word-row:hover{background:rgba(255,255,255,.08)}
+.mm-word-row.checked{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.3)}
+.mm-word-chk{width:18px;height:18px;border-radius:5px;border:2px solid rgba(255,255,255,.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;transition:background .12s,border-color .12s}
+.mm-word-row.checked .mm-word-chk{background:#22c55e;border-color:#22c55e}
+.mm-word-ko{font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:800;color:#dbeafe;flex:1}
+.mm-word-en{font-size:12px;color:#94a3b8}
+.mm-save-row{margin-top:10px;display:flex;gap:8px;align-items:center}
+.mm-save-btn{flex:1;padding:11px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#065f46,#047857);color:#a7f3d0;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.mm-save-btn:hover{opacity:.85}
+.mm-save-btn:disabled{opacity:.45;cursor:not-allowed}
+.mm-save-note{font-size:11px;color:#64748b;text-align:center;margin-top:6px}
 
 /* Combo flash */
 .mm-combo-flash{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;color:#fbbf24;text-shadow:0 0 40px rgba(251,191,36,.5);pointer-events:none;animation:mmCombo .8s ease forwards;z-index:60}
 @keyframes mmCombo{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-65%) scale(1)}}
 
-/* ── Responsive ──
-   Mobile drops one column per difficulty so cards stay roughly
-   square-ish (aspect-ratio 3/4 in a narrow 1-col grid would make each
-   card taller than the viewport — that's what the screenshot showed). */
+/* ── Responsive ── */
 @media(max-width:600px){
   .mm-grid{gap:8px}
   .mm-grid.easy{grid-template-columns:repeat(3,1fr);max-width:100%}
@@ -118,6 +170,8 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   .mm-stat{font-size:11px;padding:3px 8px}
   .mm-screen-title{font-size:24px}
   .mm-combo-flash{font-size:32px}
+  .mm-practice-list{max-height:48vh}
+  .mm-word-rows{max-height:180px}
 }
 @media(max-width:380px){
   .mm-grid{gap:6px}
@@ -144,29 +198,68 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
       <div class="mm-stat">⏱ <span class="mm-stat-val" id="mm-timer">0:00</span></div>
     </div>
   </div>
+  <!-- Countdown bar shown during memorize phase -->
+  <div class="mm-countdown-bar" id="mm-cdown-bar">
+    <span class="mm-countdown-label">외울 시간</span>
+    <span class="mm-countdown-num" id="mm-cdown-num">5</span>
+    <div class="mm-countdown-track"><div class="mm-countdown-fill" id="mm-cdown-fill" style="width:100%"></div></div>
+  </div>
   <div class="mm-grid" id="mm-grid"></div>
 </div>
 
-<!-- Start Screen -->
+<!-- Start Screen: Difficulty -->
 <div class="mm-overlay visible" id="mm-start-screen">
   <a href="korehan-fun.html" class="mm-back" style="position:absolute;top:16px;left:16px">&larr; Playground</a>
   <div class="mm-icon">🃏</div>
   <div class="mm-screen-title">Memory Match</div>
   <div class="mm-screen-sub">Match Korean words with their English meanings. Flip two cards at a time and find all pairs!</div>
   <div class="mm-diff-btns">
-    <button class="mm-diff-btn easy" onclick="MEM.start('easy')">
+    <button class="mm-diff-btn easy" onclick="MEM.pickMode('easy')">
       <div class="mm-db-label">Easy — 6 Pairs</div>
       <div class="mm-db-desc">12 cards · Great for beginners</div>
     </button>
-    <button class="mm-diff-btn normal" onclick="MEM.start('normal')">
+    <button class="mm-diff-btn normal" onclick="MEM.pickMode('normal')">
       <div class="mm-db-label">Normal — 10 Pairs</div>
       <div class="mm-db-desc">20 cards · A solid challenge</div>
     </button>
-    <button class="mm-diff-btn hard" onclick="MEM.start('hard')">
+    <button class="mm-diff-btn hard" onclick="MEM.pickMode('hard')">
       <div class="mm-db-label">Hard — 15 Pairs</div>
       <div class="mm-db-desc">30 cards · Test your memory!</div>
     </button>
   </div>
+</div>
+
+<!-- Mode Screen: Play Now vs Study First -->
+<div class="mm-overlay hidden" id="mm-mode-screen">
+  <div class="mm-icon">🤔</div>
+  <div class="mm-screen-title">어떻게 할까요?</div>
+  <div class="mm-screen-sub">단어를 먼저 보고 시작할 수도 있어요</div>
+  <div class="mm-mode-btns">
+    <button class="mm-mode-btn play" onclick="MEM.goPlay()">
+      <div class="mm-mb-icon">🎮</div>
+      <div>
+        <div class="mm-mb-label">바로 시작</div>
+        <div class="mm-mb-desc">카드 5초 공개 후 게임 시작</div>
+      </div>
+    </button>
+    <button class="mm-mode-btn study" onclick="MEM.goStudy()">
+      <div class="mm-mb-icon">📖</div>
+      <div>
+        <div class="mm-mb-label">단어 먼저 보기</div>
+        <div class="mm-mb-desc">이번 라운드 단어쌍을 미리 확인</div>
+      </div>
+    </button>
+  </div>
+  <button class="mm-back" style="margin-top:20px" onclick="MEM.showStart()">← 난이도 선택으로</button>
+</div>
+
+<!-- Practice Screen: Word List -->
+<div class="mm-overlay hidden" id="mm-practice-screen">
+  <div class="mm-screen-title" style="margin-bottom:6px">이번 라운드 단어</div>
+  <div class="mm-screen-sub" style="margin-bottom:16px">잘 외웠으면 게임 시작!</div>
+  <div class="mm-practice-list" id="mm-practice-list"></div>
+  <button class="mm-play-btn" style="margin-top:0" onclick="MEM.goPlay()">게임 시작! 🎮</button>
+  <button class="mm-back" style="margin-top:12px" onclick="MEM.showMode()">← 뒤로</button>
 </div>
 
 <!-- End Screen -->
@@ -178,6 +271,20 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   <div class="mm-end-stat">Time: <strong id="mm-end-time">0:00</strong></div>
   <div class="mm-end-stat">Pairs: <strong id="mm-end-pairs">0</strong></div>
   <div class="mm-end-best" id="mm-end-best"></div>
+
+  <!-- Word list + save -->
+  <div class="mm-end-words" id="mm-end-words-section">
+    <div class="mm-end-words-title">
+      <span>이번 라운드 단어</span>
+      <span class="mm-end-words-sel" id="mm-sel-all-btn" onclick="MEM.toggleSelectAll()">전체 선택</span>
+    </div>
+    <div class="mm-word-rows" id="mm-word-rows"></div>
+    <div class="mm-save-row">
+      <button class="mm-save-btn" id="mm-save-btn" onclick="MEM.saveSelectedWords()">선택 단어 저장</button>
+    </div>
+    <div class="mm-save-note" id="mm-save-note"></div>
+  </div>
+
   <button class="mm-play-btn" onclick="MEM.showStart()">PLAY AGAIN</button>
 </div>
 
@@ -202,10 +309,6 @@ var MEM = (function(){
   ];
   var WORDS = _FALLBACK_WORDS.slice();
 
-  // Load live vocabulary from DB; silently fall back to hardcoded if unavailable.
-  // Pulls a much larger window (was 60) so 'hard' difficulty (15 pairs) still
-  // has variety after dedupe + per-game shuffle, and dedupes by word_ko so the
-  // same Korean word can't show up twice in one board.
   (async function loadVocabFromDB() {
     try {
       var sb = typeof getSupa === 'function' ? getSupa() : null;
@@ -223,12 +326,12 @@ var MEM = (function(){
         var ko = String(r.word_ko).trim();
         var en = String(r.word_en).trim().toLowerCase();
         if (!ko || !en) return;
-        if (seenKo[ko] || seenEn[en]) return; // skip duplicates either side
+        if (seenKo[ko] || seenEn[en]) return;
         seenKo[ko] = 1; seenEn[en] = 1;
         mapped.push({ ko: ko, en: r.word_en.trim() });
       });
       if (mapped.length >= 15) WORDS = mapped;
-    } catch(e) { /* silently fall back to hardcoded */ }
+    } catch(e) {}
   })();
 
   var DIFFICULTY = {
@@ -243,8 +346,11 @@ var MEM = (function(){
     hard:   [40, 55]
   };
 
+  var MEMORIZE_SECS = 5;
+
   // ── State ──
   var cards = [];
+  var currentWords = [];  // words in this round
   var firstCard = null;
   var secondCard = null;
   var lockBoard = false;
@@ -252,20 +358,28 @@ var MEM = (function(){
   var matchedPairs = 0;
   var totalPairs = 0;
   var difficulty = 'easy';
+  var pendingDiff = 'easy';  // chosen but not yet started
   var timerInterval = null;
   var startTime = 0;
   var elapsed = 0;
   var streak = 0;
+  var memorizeTimer = null;
+  var allSelected = false;
 
   // ── DOM refs ──
   var grid = document.getElementById('mm-grid');
   var startScreen = document.getElementById('mm-start-screen');
+  var modeScreen = document.getElementById('mm-mode-screen');
+  var practiceScreen = document.getElementById('mm-practice-screen');
   var endScreen = document.getElementById('mm-end-screen');
   var elFlips = document.getElementById('mm-flips');
   var elPairs = document.getElementById('mm-pairs');
   var elTimer = document.getElementById('mm-timer');
   var elStreak = document.getElementById('mm-streak');
   var elStreakVal = document.getElementById('mm-streak-val');
+  var cdownBar = document.getElementById('mm-cdown-bar');
+  var cdownNum = document.getElementById('mm-cdown-num');
+  var cdownFill = document.getElementById('mm-cdown-fill');
 
   // ── Helpers ──
   function shuffle(arr) {
@@ -291,7 +405,6 @@ var MEM = (function(){
     if (streak >= 2) {
       elStreak.classList.add('on');
       elStreakVal.textContent = streak;
-      // Re-trigger animation
       elStreak.style.animation = 'none';
       void elStreak.offsetWidth;
       elStreak.style.animation = '';
@@ -320,10 +433,7 @@ var MEM = (function(){
   }
 
   function stopTimer() {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   }
 
   function getStars(diff, f) {
@@ -344,8 +454,7 @@ var MEM = (function(){
     try {
       var raw = localStorage.getItem('kh_memory_best');
       if (!raw) return null;
-      var obj = JSON.parse(raw);
-      return obj[diff] || null;
+      return (JSON.parse(raw))[diff] || null;
     } catch(e) { return null; }
   }
 
@@ -362,9 +471,19 @@ var MEM = (function(){
     } catch(e) { return false; }
   }
 
+  // ── Screen Management ──
+  function showOverlay(el) {
+    el.classList.remove('hidden');
+    void el.offsetWidth;
+    el.classList.add('visible');
+  }
+
+  function hideOverlay(el) {
+    el.classList.remove('visible');
+    setTimeout(function() { el.classList.add('hidden'); }, 350);
+  }
+
   // ── Build Cards ──
-  // Defensive dedupe at draw time too — if WORDS still has dupes (older
-  // hardcoded fallback or pathological DB row), pick unique ko+en pairs.
   function buildCards(diff) {
     var cfg = DIFFICULTY[diff];
     var shuffled = shuffle(WORDS.slice());
@@ -379,6 +498,7 @@ var MEM = (function(){
       seenKo[k] = 1; seenEn[e] = 1;
       pool.push(w);
     }
+    currentWords = pool.slice();
     var deck = [];
     pool.forEach(function(w, i) {
       deck.push({ id: i, type: 'ko', text: w.ko, pairId: i });
@@ -393,24 +513,55 @@ var MEM = (function(){
     card.dataset.idx = idx;
     card.dataset.pairId = data.pairId;
     card.dataset.type = data.type;
-
     var inner = document.createElement('div');
     inner.className = 'mm-card-inner';
-
     var front = document.createElement('div');
     front.className = 'mm-card-front';
     front.textContent = '?';
-
     var back = document.createElement('div');
     back.className = 'mm-card-back ' + data.type;
     back.textContent = data.text;
-
     inner.appendChild(front);
     inner.appendChild(back);
     card.appendChild(inner);
-
     card.addEventListener('click', function() { onCardClick(card); });
     return card;
+  }
+
+  // ── Memorize Phase (5-second countdown) ──
+  function runMemorizePhase(allCards, onDone) {
+    var remaining = MEMORIZE_SECS;
+    lockBoard = true;
+    cdownBar.classList.add('visible');
+    cdownNum.textContent = remaining;
+    cdownNum.classList.remove('urgent');
+    cdownFill.classList.remove('urgent');
+    cdownFill.style.width = '100%';
+
+    memorizeTimer = setInterval(function() {
+      remaining--;
+      cdownNum.textContent = remaining;
+      cdownFill.style.width = Math.max(0, (remaining / MEMORIZE_SECS) * 100) + '%';
+
+      if (remaining <= 2) {
+        cdownNum.classList.add('urgent');
+        cdownFill.classList.add('urgent');
+        // shake all cards
+        allCards.forEach(function(c) { c.classList.add('mm-peek-shake'); });
+      }
+
+      if (remaining <= 0) {
+        clearInterval(memorizeTimer);
+        memorizeTimer = null;
+        // flip all cards face-down
+        allCards.forEach(function(c) {
+          c.classList.remove('flipped', 'mm-peek-shake');
+        });
+        cdownBar.classList.remove('visible');
+        lockBoard = false;
+        if (onDone) onDone();
+      }
+    }, 1000);
   }
 
   // ── Card Click Logic ──
@@ -434,9 +585,7 @@ var MEM = (function(){
   }
 
   function checkForMatch() {
-    var isMatch = firstCard.dataset.pairId === secondCard.dataset.pairId;
-
-    if (isMatch) {
+    if (firstCard.dataset.pairId === secondCard.dataset.pairId) {
       handleMatch();
     } else {
       handleNoMatch();
@@ -451,17 +600,12 @@ var MEM = (function(){
     updateStats();
     updateStreakUI();
     if (streak >= 3) showCombo('🔥 ' + streak + ' streak!');
-
     setTimeout(function() {
       firstCard.classList.remove('match-flash');
       secondCard.classList.remove('match-flash');
     }, 500);
-
     resetTurn();
-
-    if (matchedPairs === totalPairs) {
-      setTimeout(endGame, 400);
-    }
+    if (matchedPairs === totalPairs) setTimeout(endGame, 400);
   }
 
   function handleNoMatch() {
@@ -469,7 +613,6 @@ var MEM = (function(){
     secondCard.classList.add('no-match');
     streak = 0;
     updateStreakUI();
-
     setTimeout(function() {
       firstCard.classList.remove('flipped', 'no-match');
       secondCard.classList.remove('flipped', 'no-match');
@@ -481,19 +624,6 @@ var MEM = (function(){
     firstCard = null;
     secondCard = null;
     lockBoard = false;
-  }
-
-  // ── Screen Management ──
-  function showOverlay(el) {
-    el.classList.remove('hidden');
-    // force reflow for transition
-    void el.offsetWidth;
-    el.classList.add('visible');
-  }
-
-  function hideOverlay(el) {
-    el.classList.remove('visible');
-    setTimeout(function() { el.classList.add('hidden'); }, 350);
   }
 
   // ── Start Game ──
@@ -511,28 +641,25 @@ var MEM = (function(){
     updateStats();
     updateStreakUI();
     hideOverlay(startScreen);
+    hideOverlay(modeScreen);
+    hideOverlay(practiceScreen);
     hideOverlay(endScreen);
 
-    // Build grid
     grid.innerHTML = '';
     grid.className = 'mm-grid ' + cfg.cols;
     cards = buildCards(diff);
-
     cards.forEach(function(data, idx) {
       var el = createCardEl(data, idx);
       grid.appendChild(el);
     });
 
-    // Brief peek: show all cards for a quick moment then hide
     var allCards = grid.querySelectorAll('.mm-card');
+    // Show cards face-up for memorize phase
     allCards.forEach(function(c) { c.classList.add('flipped'); });
-    lockBoard = true;
 
-    setTimeout(function() {
-      allCards.forEach(function(c) { c.classList.remove('flipped'); });
-      lockBoard = false;
+    runMemorizePhase(allCards, function() {
       startTimer();
-    }, 1200);
+    });
   }
 
   // ── End Game ──
@@ -561,13 +688,143 @@ var MEM = (function(){
       bestEl.textContent = '';
     }
 
+    renderWordList();
     showOverlay(endScreen);
+  }
+
+  // ── Word List ──
+  function renderWordList() {
+    var rows = document.getElementById('mm-word-rows');
+    rows.innerHTML = '';
+    allSelected = false;
+    document.getElementById('mm-sel-all-btn').textContent = '전체 선택';
+    document.getElementById('mm-save-note').textContent = '';
+    document.getElementById('mm-save-btn').disabled = false;
+
+    currentWords.forEach(function(w, i) {
+      var row = document.createElement('div');
+      row.className = 'mm-word-row';
+      row.dataset.idx = i;
+      row.innerHTML =
+        '<div class="mm-word-chk"></div>'
+        + '<span class="mm-word-ko">' + esc(w.ko) + '</span>'
+        + '<span class="mm-word-en">' + esc(w.en) + '</span>';
+      row.addEventListener('click', function() { toggleWordRow(row); });
+      rows.appendChild(row);
+    });
+
+    // hide save section if not logged in
+    var loggedIn = (typeof supaUser !== 'undefined' && supaUser);
+    document.getElementById('mm-save-btn').style.display = loggedIn ? '' : 'none';
+    document.getElementById('mm-end-words-section').querySelector('.mm-save-row').style.display = loggedIn ? '' : 'none';
+    if (!loggedIn) {
+      document.getElementById('mm-save-note').textContent = '로그인하면 단어를 저장할 수 있어요';
+    }
+  }
+
+  function toggleWordRow(row) {
+    row.classList.toggle('checked');
+    row.querySelector('.mm-word-chk').textContent = row.classList.contains('checked') ? '✓' : '';
+    var checked = document.querySelectorAll('#mm-word-rows .mm-word-row.checked');
+    document.getElementById('mm-sel-all-btn').textContent =
+      checked.length === currentWords.length ? '전체 해제' : '전체 선택';
+  }
+
+  function toggleSelectAll() {
+    allSelected = !allSelected;
+    document.getElementById('mm-word-rows').querySelectorAll('.mm-word-row').forEach(function(row) {
+      if (allSelected) {
+        row.classList.add('checked');
+        row.querySelector('.mm-word-chk').textContent = '✓';
+      } else {
+        row.classList.remove('checked');
+        row.querySelector('.mm-word-chk').textContent = '';
+      }
+    });
+    document.getElementById('mm-sel-all-btn').textContent = allSelected ? '전체 해제' : '전체 선택';
+  }
+
+  async function saveSelectedWords() {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb || !(typeof supaUser !== 'undefined' && supaUser)) return;
+
+    var checkedRows = document.querySelectorAll('#mm-word-rows .mm-word-row.checked');
+    if (!checkedRows.length) {
+      document.getElementById('mm-save-note').textContent = '저장할 단어를 선택해주세요';
+      return;
+    }
+
+    var btn = document.getElementById('mm-save-btn');
+    btn.disabled = true;
+    btn.textContent = '저장 중...';
+    document.getElementById('mm-save-note').textContent = '';
+
+    var toSave = [];
+    checkedRows.forEach(function(row) {
+      var idx = parseInt(row.dataset.idx, 10);
+      if (!isNaN(idx) && currentWords[idx]) toSave.push(currentWords[idx]);
+    });
+
+    var errors = 0;
+    for (var i = 0; i < toSave.length; i++) {
+      var w = toSave[i];
+      try {
+        var r = await sb.rpc('save_or_update_word', {
+          p_word_key: w.ko,
+          p_word_ko: w.ko,
+          p_word_en: w.en || null,
+          p_word_rom: null,
+          p_source_kind: 'memory_game',
+          p_review_delta: 1,
+          p_correct_delta: 1,
+          p_wrong_delta: 0
+        });
+        if (r && r.error) errors++;
+      } catch(e) { errors++; }
+    }
+
+    btn.textContent = '선택 단어 저장';
+    btn.disabled = false;
+    if (errors === 0) {
+      document.getElementById('mm-save-note').textContent = toSave.length + '개 단어가 내 단어장에 저장됐어요 ✓';
+      // Mark rows as saved
+      checkedRows.forEach(function(row) {
+        row.style.opacity = '.5';
+        row.style.pointerEvents = 'none';
+      });
+    } else {
+      document.getElementById('mm-save-note').textContent = '저장 중 오류가 발생했어요 (' + errors + '개 실패)';
+    }
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Practice Screen ──
+  function renderPracticeList() {
+    var list = document.getElementById('mm-practice-list');
+    list.innerHTML = '';
+    currentWords.forEach(function(w) {
+      var ko = document.createElement('div');
+      ko.className = 'mm-practice-ko';
+      ko.textContent = w.ko;
+      var en = document.createElement('div');
+      en.className = 'mm-practice-en';
+      en.textContent = w.en;
+      list.appendChild(ko);
+      list.appendChild(en);
+    });
   }
 
   // ── Show Start ──
   function showStart() {
     stopTimer();
+    if (memorizeTimer) { clearInterval(memorizeTimer); memorizeTimer = null; }
+    cdownBar.classList.remove('visible');
     hideOverlay(endScreen);
+    hideOverlay(modeScreen);
+    hideOverlay(practiceScreen);
     grid.innerHTML = '';
     elFlips.textContent = '0';
     elPairs.textContent = '0/0';
@@ -577,10 +834,45 @@ var MEM = (function(){
     setTimeout(function() { showOverlay(startScreen); }, 100);
   }
 
-  // Public API
+  function showMode() {
+    hideOverlay(practiceScreen);
+    showOverlay(modeScreen);
+  }
+
+  // ── Public ──
   return {
-    start: startGame,
-    showStart: showStart
+    pickMode: function(diff) {
+      pendingDiff = diff;
+      // Pre-build cards so practice screen can show them
+      var cfg = DIFFICULTY[diff];
+      var shuffled = shuffle(WORDS.slice());
+      var pool = [];
+      var seenKo = {}, seenEn = {};
+      for (var i = 0; i < shuffled.length && pool.length < cfg.pairs; i++) {
+        var w = shuffled[i];
+        if (!w || !w.ko || !w.en) continue;
+        var k = String(w.ko).trim();
+        var e = String(w.en).trim().toLowerCase();
+        if (seenKo[k] || seenEn[e]) continue;
+        seenKo[k] = 1; seenEn[e] = 1;
+        pool.push(w);
+      }
+      currentWords = pool.slice();
+      hideOverlay(startScreen);
+      setTimeout(function() { showOverlay(modeScreen); }, 100);
+    },
+    goPlay: function() {
+      startGame(pendingDiff);
+    },
+    goStudy: function() {
+      renderPracticeList();
+      hideOverlay(modeScreen);
+      setTimeout(function() { showOverlay(practiceScreen); }, 100);
+    },
+    showStart: showStart,
+    showMode: showMode,
+    toggleSelectAll: toggleSelectAll,
+    saveSelectedWords: saveSelectedWords
   };
 })();
 </script>
