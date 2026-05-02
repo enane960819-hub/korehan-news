@@ -1196,23 +1196,12 @@ body.kh-neon-on .hero-dot {
     <div class="home-sec-title"><i data-lucide="newspaper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>News</span></div>
     <a href="korehan-all.html" class="home-sec-more">All news →</a>
   </div>
-  <div class="home-pills" id="news-pills">
-    <button class="sp on" data-filter="all">All</button>
-  </div>
   <div class="home-news-grid" id="dyn-news-grid"></div>
 
   <!-- CONVERSATIONS -->
   <div class="home-sec" style="border-bottom-color:#2563eb;">
     <div class="home-sec-title"><i data-lucide="messages-square" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Conversations</span></div>
     <a href="korehan-conversations.html" class="home-sec-more" style="color:#2563eb;">All conversations →</a>
-  </div>
-  <div class="home-pills" id="conv-pills">
-    <button class="sp on" data-cat="all">All</button>
-    <button class="sp" data-cat="everyday">Everyday</button>
-    <button class="sp" data-cat="work">Workplace</button>
-    <button class="sp" data-cat="friends">Friends</button>
-    <button class="sp" data-cat="family">Family</button>
-    <button class="sp" data-cat="dating">Dating</button>
   </div>
   <div class="home-conv-grid-wrap" id="home-conv-grid"></div>
 
@@ -1720,7 +1709,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     grid.innerHTML = arts.map(function(a) {
       var lvl = a.level || 'Beginner';
-      var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : 'lvl-b';
       var cat = (typeof getSectionKey === 'function') ? getSectionKey(a.section) : (a.section || '').toLowerCase();
       var thumbUrl = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 600, 400) : (a.image || '');
       var img = thumbUrl
@@ -1730,7 +1718,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         + img
         + '<div class="nc-overlay-grad"></div>'
         + '<div class="nc-overlay-body">'
-        + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span></div>'
         + '<div class="nc-title">' + (a.title_en || a.title || '') + '</div>'
         + '<div class="nc-foot"><span class="nc-date">' + (a.published_at ? new Date(a.published_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '') + '</span>'
         + '<button class="nc-study" onclick="event.stopPropagation();openStudyModal && openStudyModal(\'' + a.id + '\')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Study</span></button></div>'
