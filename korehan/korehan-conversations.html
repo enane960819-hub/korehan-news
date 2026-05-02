@@ -373,8 +373,7 @@
 </div>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260426o-video"></script>
-<script src="korehan-grammar-tooltips.js?v=20260501a" defer></script>
+<script src="korehan-shared.js?v=20260502a"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -754,7 +753,7 @@ function _renderOneCard(c) {
       +'<div class="cc2-head-info">'
         + ctxHtml
       +'</div>'
-      +''
+      +'<span class="cc2-tag '+LVL_CLS[c.lvl]+'">'+lvlLabel(c.lvl)+'</span>'
     +'</div>'
     +bubblesHtml
     +'<div class="cc2-footer">'
@@ -856,17 +855,8 @@ function highlightKeyExprs(text, keyExprs) {
 async function openDetail(idx) {
   var c = CONVS[idx];
   if (!c) return;
-  // Manage history so the system back button closes the panel.
-  // First open pushes a new entry; subsequent swipe-navigations just
-  // replace it so the back stack doesn't grow with every swipe.
-  var _alreadyOpen = _convDetailIdx >= 0;
   // Remember which conversation is active for feed-style swipe nav.
   _convDetailIdx = idx;
-  if (!_alreadyOpen) {
-    history.pushState({ convOpen: true, idx: idx }, '');
-  } else {
-    history.replaceState({ convOpen: true, idx: idx }, '');
-  }
   // Reuse the article reader's immersive chrome (header/footer/bottom
   // nav hide) — shared.js CSS rules on body.kh-reading-page cover the
   // whole page, not just the article route.
@@ -1102,7 +1092,7 @@ async function openDetail(idx) {
       +'<div class="dp-study-sections" id="dp-study-sections">'
         +(initKeyExprCard ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">Key Expressions</div>'+initKeyExprs+'</div>' : '')
         +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' Vocabulary</div><div class="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
-        +(grammar ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Grammar</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
+        +(grammar ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Expressions</div><div class="dp-grammar-list">'+grammar+'</div></div>' : '')
         // Practice tab — three lightweight comprehension drills focused
         // on expressions, vocab-in-context, and dialogue flow. Speaking
         // drills + the deeper 4-step flow live in the Study Room.
@@ -1163,7 +1153,7 @@ function renderStudyNotes(c) {
   el.innerHTML =
     (keyExprHtml ? '<div class="dp-keyexpr-card" data-study="keyexpr"><div class="dp-study-card-title" style="color:#92400e">Key Expressions</div>'+keyExprHtml+'</div>' : '')
     +'<div class="dp-study-card" data-study="vocab"><div class="dp-study-card-title">'+_IC.book+' Vocabulary'+addVocabBtn+'</div><div class="dp-vocab-list" id="dp-vocab-list">'+(vocab||'<span style="color:#94a3b8;font-size:13px">Loading vocabulary...</span>')+'</div></div>'
-    +(grammar||isAdm ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Grammar'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
+    +(grammar||isAdm ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Expressions'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
     + _convPracticeCardsHTML(c)
     +'<div style="height:80px"></div>';
 }
@@ -1547,16 +1537,12 @@ window._rcPick = function(btn, isCorrect) {
 };
 
 function closeDetail() {
-  if (_convDetailIdx < 0) return; // already closed
   document.getElementById('detail-overlay').classList.add('hidden');
   document.body.style.overflow = '';
   document.documentElement.style.overflow = '';
   document.body.classList.remove('kh-reading-page');
   document.body.classList.remove('kh-feed-pill-on');
   _convDetailIdx = -1;
-  // If the in-app close button was tapped (not the system back button),
-  // pop the history entry we pushed in openDetail so back navigates away.
-  if (history.state && history.state.convOpen) history.back();
 }
 
 // Animated hand-off between conversations — mirrors _khSpaLoadArticle
@@ -1888,12 +1874,6 @@ function _convRowToObj(row) {
   if (cp) { var t = pills.querySelector('[data-cat="'+cp+'"]'); if(t) t.click(); }
 })();
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDetail(); });
-// System back button (Android / browser back) closes the detail panel
-// instead of navigating away. openDetail() pushes a history entry so
-// this popstate fires when the user taps back while the panel is open.
-window.addEventListener('popstate', function() {
-  if (_convDetailIdx >= 0) closeDetail();
-});
 
 // ── Conversations 사이드바 (Most Read + Weather + Word Bank) ──
 (function() {

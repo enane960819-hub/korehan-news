@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehannews.com/og-default.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260420x">
+<link rel="stylesheet" href="korehan-shared.css?v=20260502a">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
 <style>
 /* ─── LAYOUT ─────────────────────────────── */
@@ -3985,10 +3985,9 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="korehan-shared.js?v=20260426o-video"></script>
-<script src="korehan-grammar-tooltips.js?v=20260501a" defer></script>
+<script src="korehan-shared.js?v=20260502a"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
-<script src="js/kh-quiz-arena.js?v=20260416"></script>
+<script src="js/kh-quiz-arena.js?v=20260502a"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
 <script src="js/kh-listening.js?v=20260416"></script>
 <script src="js/kh-grammar-tree.js?v=20260416"></script>
@@ -16989,39 +16988,10 @@ async function generateWGDrillQuestions(grammarName, opts) {
   var force = !!(opts && opts.force);
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   // Cache reuses the existing grammar_examples_cache table; the
-  // 'drill_v2::' prefix invalidates the v1 cache that was producing
-  // malformed questions ("걸지도 않" with no verb ending, sentences
-  // that already had a verb at the cloze position so the right
-  // answer made the sentence ungrammatical, etc.). v2 ALSO carries
-  // worked examples for a proper Learn step.
-  var cacheKey = 'drill_v2::' + grammarName;
-
-  // ── Helpers ────────────────────────────────────────────────
-  // A choice is a "stub" when it ends on a connector / negator
-  // that needs MORE conjugation to be grammatical (안/않/았/었/면/
-  // 고/지/며). Drop the question entirely if any of its choices
-  // look like a stub — those are the ones the user complained
-  // about ("걸지도 않 / 걸지도 안 / 걸도 않").
-  var STUBS = ['안','않','았','었','면','고','지','며','는','니','며'];
-  function _isStubChoice(s) {
-    if (!s) return true;
-    var t = String(s).trim().replace(/[.?!\s]+$/, '');
-    if (t.length < 2) return true;
-    var last = t.charAt(t.length - 1);
-    return STUBS.indexOf(last) !== -1;
-  }
-  function _isValidQuestion(q) {
-    if (!q || typeof q.q !== 'string' || !q.q.trim()) return false;
-    if (!Array.isArray(q.choices) || q.choices.length < 2) return false;
-    if (typeof q.correct !== 'number') return false;
-    // q must contain a blank — without it the cloze isn't a cloze.
-    if (q.q.indexOf('___') === -1 && q.q.indexOf('_____') === -1) return false;
-    // No choice may be a dangling stub.
-    for (var i = 0; i < q.choices.length; i++) {
-      if (_isStubChoice(q.choices[i])) return false;
-    }
-    return true;
-  }
+  // 'drill::' prefix keeps it in its own namespace so it doesn't
+  // collide with the Grammar Focus patterns saved under the bare
+  // pattern_name. DB hit = free. DB miss = AI generate + save.
+  var cacheKey = 'drill::' + grammarName;
 
   // 1) Try cache first (unless caller asked for a fresh set)
   if (!force && sb) {
@@ -17032,50 +17002,38 @@ async function generateWGDrillQuestions(grammarName, opts) {
         .maybeSingle();
       if (cached && cached.data && cached.data.patterns_json) {
         var pkt = JSON.parse(cached.data.patterns_json);
-        var validQ0 = (pkt && pkt.questions || []).filter(_isValidQuestion);
+        var validQ0 = (pkt && pkt.questions || []).filter(function(q) {
+          return q && typeof q.q === 'string' && q.q.trim()
+            && Array.isArray(q.choices) && q.choices.length >= 2
+            && typeof q.correct === 'number';
+        });
         if (validQ0.length) {
-          _wgDrillState.questions   = validQ0;
+          _wgDrillState.questions = validQ0;
           _wgDrillState.explanation = (pkt && pkt.explanation) || '';
-          _wgDrillState.examples    = Array.isArray(pkt && pkt.examples) ? pkt.examples : [];
-          _wgDrillState.meaning     = (pkt && pkt.meaning) || '';
-          _wgDrillState.idx       = 0;
-          _wgDrillState.score     = 0;
+          _wgDrillState.idx = 0;
+          _wgDrillState.score = 0;
           _wgDrillState.fromCache = true;
-          renderWGDrillLearn(0);
+          renderWGDrillIntro();
           return;
         }
       }
     } catch(e) { console.warn('[WGDrill] cache read miss/error:', e && e.message); }
   }
 
-  // 2) Cache miss (or forced) → call Claude with a tighter prompt.
+  // 2) Cache miss (or forced) → call Claude
   try {
     var res = await callClaude({
       feature: 'weak-grammar-drill',
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2000,
+      max_tokens: 1500,
       messages: [{ role: 'user', content:
         'Korean grammar drill generator.\n'
         + 'Grammar point: "' + grammarName + '"\n\n'
-        + 'Return ONLY valid JSON in this exact shape:\n'
-        + '{\n'
-        + '  "meaning": "1-line Korean meaning gloss (e.g. \\"doesn\'t even / not even\\")",\n'
-        + '  "explanation": "2-3 sentence English explanation of what this pattern means and the typical contexts where it appears",\n'
-        + '  "examples": [\n'
-        + '    {"ko":"Full natural Korean sentence using the pattern","en":"English translation","highlight":"the exact substring of ko that shows the pattern"}\n'
-        + '    // EXACTLY 3 examples, varied subject + tense\n'
-        + '  ],\n'
-        + '  "questions": [\n'
-        + '    {"q":"Korean sentence with ___ marking the missing piece","choices":["correct","wrong1","wrong2"],"correct":0,"hint":"1-sentence English hint"}\n'
-        + '    // EXACTLY 5 questions\n'
-        + '  ]\n'
-        + '}\n\n'
-        + 'CRITICAL question rules — questions that violate these will be rejected client-side:\n'
-        + '1. Each choice must be a COMPLETE grammatical chunk. Never end a choice on 안 / 않 / 았 / 었 / 면 / 고 / 지 / 며 / 는 alone — those need further conjugation. Use the full form: "-지도 않다" / "-지도 않았어요" / "-지도 않습니다", not "-지도 않" or "-지도 안".\n'
-        + '2. The sentence in "q" must be grammatically complete WHEN the correct choice is filled in. Read it aloud — if "그녀는 전화 ___ 없었다." already has 없었다 at the end, do NOT also test a verb-pattern there; that produces "그녀는 전화 걸지도 않 없었다" which is gibberish.\n'
-        + '3. The blank position must be the ONLY missing piece. Do not put parts of the answer outside the blank.\n'
-        + '4. Wrong choices should be plausibly close (wrong particle, wrong tense, wrong politeness) but clearly incorrect — not unrelated noise.\n'
-        + '5. Each "q" MUST contain "___" as the blank marker.\n'
+        + 'Create exactly 5 multiple-choice questions testing this grammar point.\n'
+        + 'Mix question types: fill-in-blank, error correction, sentence completion, choose correct usage.\n'
+        + 'Each question must have 1 correct answer and 2 wrong answers.\n\n'
+        + 'Return ONLY valid JSON:\n'
+        + '{"explanation":"Brief English explanation of this grammar (2 sentences max)","questions":[{"q":"question text (use ___ for blanks)","choices":["A","B","C"],"correct":0,"hint":"short English hint why correct"}]}'
       }]
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || '';
@@ -17085,14 +17043,16 @@ async function generateWGDrillQuestions(grammarName, opts) {
       throw new Error('AI response was not valid JSON.');
     }
     var parsed = JSON.parse(raw.slice(oi, ei + 1));
-    var validQuestions = (parsed.questions || []).filter(_isValidQuestion);
+    var validQuestions = (parsed.questions || []).filter(function(q) {
+      return q && typeof q.q === 'string' && q.q.trim()
+        && Array.isArray(q.choices) && q.choices.length >= 2
+        && typeof q.correct === 'number';
+    });
     if (validQuestions.length) {
-      _wgDrillState.questions   = validQuestions;
+      _wgDrillState.questions = validQuestions;
       _wgDrillState.explanation = parsed.explanation || '';
-      _wgDrillState.examples    = Array.isArray(parsed.examples) ? parsed.examples : [];
-      _wgDrillState.meaning     = parsed.meaning || '';
-      _wgDrillState.idx       = 0;
-      _wgDrillState.score     = 0;
+      _wgDrillState.idx = 0;
+      _wgDrillState.score = 0;
       _wgDrillState.fromCache = false;
       // Fire-and-forget upsert. Don't await — UI shouldn't block on the
       // cache write, and a save failure (e.g. RLS misconfig) shouldn't
@@ -17100,18 +17060,13 @@ async function generateWGDrillQuestions(grammarName, opts) {
       if (sb) {
         sb.from('grammar_examples_cache').upsert({
           pattern_name: cacheKey,
-          patterns_json: JSON.stringify({
-            meaning:     parsed.meaning || '',
-            explanation: parsed.explanation || '',
-            examples:    _wgDrillState.examples,
-            questions:   validQuestions
-          }),
+          patterns_json: JSON.stringify({ explanation: parsed.explanation || '', questions: validQuestions }),
           updated_at: new Date().toISOString()
         }, { onConflict: 'pattern_name' }).then(function(r) {
           if (r && r.error) console.warn('[WGDrill] cache save failed:', r.error.message);
         });
       }
-      renderWGDrillLearn(0);
+      renderWGDrillIntro();
     } else {
       console.warn('[WGDrill] Got payload but no valid questions:', parsed);
       var safeNameA = String(grammarName).replace(/'/g, "\\'");
@@ -17125,75 +17080,18 @@ async function generateWGDrillQuestions(grammarName, opts) {
 }
 
 function renderWGDrillIntro() {
-  // Back-compat alias — older call sites still call this. Routes
-  // straight into the new step-by-step Learn flow.
-  renderWGDrillLearn(0);
-}
-
-function renderWGDrillLearn(pageIdx) {
   var body = document.getElementById('wg-drill-body');
   if (!body) return;
   var st = _wgDrillState;
-  var examples = Array.isArray(st.examples) ? st.examples : [];
-  // Pages: 0 = pattern + explanation; 1..N = one worked example each.
-  // After the last example, "Start Quiz" advances into the questions.
-  var totalPages = 1 + examples.length;
-  var idx = Math.max(0, Math.min(pageIdx | 0, totalPages - 1));
-
-  var dotsHTML = '';
-  for (var i = 0; i < totalPages; i++) {
-    dotsHTML += '<span style="width:8px;height:8px;border-radius:50%;background:' + (i === idx ? '#fbbf24' : 'rgba(255,255,255,.18)') + '"></span>';
-  }
-  var pipsHTML = '<div style="display:flex;gap:6px;justify-content:center;margin-bottom:18px">' + dotsHTML + '</div>';
-
-  function _highlight(ko, hl) {
-    var safe = String(ko || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    var key = String(hl || '').trim();
-    if (!key) return safe;
-    var escKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return safe.replace(new RegExp(escKey, 'g'),
-      '<mark style="background:rgba(251,191,36,.22);color:#fde68a;padding:0 4px;border-radius:4px;font-weight:800">$&</mark>');
-  }
-
-  var content = '';
-  if (idx === 0) {
-    // Page 0 — pattern + meaning + explanation
-    content =
-        '<div style="background:rgba(251,191,36,.1);border:1px solid rgba(253,230,138,.4);border-radius:14px;padding:18px;margin-bottom:18px">'
-      +   '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#fde68a;margin-bottom:6px">Pattern</div>'
-      +   '<div style="font-size:22px;font-weight:900;color:#fff;font-family:\'Noto Serif KR\',serif;margin-bottom:8px">' + (st.grammar || '') + '</div>'
-      +   (st.meaning ? '<div style="font-size:13px;color:#fef3c7;font-weight:700;margin-bottom:10px">' + st.meaning + '</div>' : '')
-      +   (st.explanation ? '<div style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.6">' + st.explanation + '</div>' : '')
-      + '</div>';
-  } else {
-    // Pages 1..N — worked examples, one per page
-    var ex = examples[idx - 1] || {};
-    content =
-        '<div style="background:rgba(20,203,176,.08);border:1px solid rgba(20,203,176,.28);border-radius:14px;padding:18px;margin-bottom:18px">'
-      +   '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#14cbb0;margin-bottom:8px">Example ' + idx + ' / ' + examples.length + '</div>'
-      +   '<div style="font-size:18px;font-weight:800;color:#fff;font-family:\'Noto Serif KR\',serif;line-height:1.5;margin-bottom:8px">' + _highlight(ex.ko || '', ex.highlight) + '</div>'
-      +   (ex.en ? '<div style="font-size:13px;color:rgba(255,255,255,.6);font-style:italic;line-height:1.5">' + String(ex.en).replace(/</g,'&lt;') + '</div>' : '')
-      + '</div>';
-  }
-
-  var prevBtn = idx > 0
-    ? '<button onclick="renderWGDrillLearn(' + (idx - 1) + ')" style="padding:10px 18px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:transparent;color:rgba(255,255,255,.75);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">← Back</button>'
-    : '<span></span>';
-  var nextLabel, nextOnclick;
-  if (idx < totalPages - 1) {
-    nextLabel   = 'Next →';
-    nextOnclick = 'renderWGDrillLearn(' + (idx + 1) + ')';
-  } else {
-    nextLabel   = 'Start Quiz →';
-    nextOnclick = 'renderWGDrillQuestion()';
-  }
-  var nextBtn = '<button onclick="' + nextOnclick + '" style="padding:11px 22px;border:none;border-radius:10px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">' + nextLabel + '</button>';
-
   body.innerHTML =
-      pipsHTML
-    + content
-    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' + prevBtn + nextBtn + '</div>'
-    + (idx === totalPages - 1 ? '<div style="text-align:center;font-size:11px;color:rgba(255,255,255,.4);margin-top:10px">' + (st.questions || []).length + ' questions to go</div>' : '');
+    '<div style="background:rgba(251,191,36,.1);border:1px solid rgba(253,230,138,.4);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+    + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#fde68a;margin-bottom:4px">About this grammar</div>'
+    + '<div style="font-size:14px;color:#fef3c7;line-height:1.6">' + (st.explanation || st.grammar) + '</div>'
+    + '</div>'
+    + '<div style="text-align:center">'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-bottom:12px">' + st.questions.length + ' questions · Fill-in, correction, completion</div>'
+    + '<button onclick="renderWGDrillQuestion()" style="padding:12px 28px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Start Drill →</button>'
+    + '</div>';
 }
 
 function renderWGDrillQuestion() {
@@ -21969,10 +21867,27 @@ async function startReview(title, count, mode) {
         // English prompt → Korean answer (typed; arena converts to MCQ with auto-distractors)
         return { type: 'typed', word_en: q.prompt, word_rom: q.rom || '', correct: q.answer, label: q.label, slot: q.slot };
       }
+      if (q.type === 'listening') {
+        return { type: 'listening', word_ko: q.word_ko, choices: q.choices || [], correct: q.correct, label: q.label, slot: 'listening', skippable: true };
+      }
       return q;
     });
+    // Build a reserve pool of vocab questions to replace skipped listening
+    // questions. Drawn from the word bank, excluding answers already in use.
+    var _arenaReserve = [];
+    var _listenCount = arenaQuestions.filter(function(q){ return q.type === 'listening'; }).length;
+    if (_listenCount > 0) {
+      var _usedAnswers = {};
+      arenaQuestions.forEach(function(q){ if (q.correct) _usedAnswers[q.correct] = 1; });
+      var _reserveWords = (typeof _wbData !== 'undefined' && Array.isArray(_wbData) && _wbData.length) ? _wbData : [];
+      var _reserveVocab = _mrSlotVocab(Math.max(_listenCount + 3, 5), _reserveWords, _usedAnswers);
+      _arenaReserve = _reserveVocab.map(function(q) {
+        return { type: 'meaning', word_ko: q.prompt, word_rom: q.rom || '', choices: q.choices || [], correct: q.answer, label: q.label, slot: 'vocab' };
+      });
+    }
     KHQuizArena.open({
       questions: arenaQuestions,
+      reserve: _arenaReserve,
       title: title,
       timer: _rv.timeLimit || 15,
       mode: _rv.type || 'weekly',
@@ -22101,6 +22016,7 @@ function _classifyOneMistake(q, quizType) {
   if (slot === 'expression') return 'VOCAB';
   if (slot === 'reading') return 'VOCAB';
   if (slot === 'vocab') return 'VOCAB';
+  if (slot === 'listening') return 'VOCAB';
   // The grammar slot answer is a pattern name like "~았/었어요". Look at
   // the answer to pick a more useful label than a generic "GRAMMAR".
   var ans = String(q.correct || q.answer || '').trim();
@@ -22144,12 +22060,7 @@ function _mrShuffle(arr) {
 
 function _mrSlotVocab(n, savedWords, alreadyUsedAnswers) {
   var used = alreadyUsedAnswers || {};
-  var pool = savedWords.filter(function(w){
-    if (used[w.ko] || used[w.en]) return false;
-    // Exclude metadata labels that leak from Fast Track scenarios
-    if (!w.en || /^fast\s*track/i.test(w.en)) return false;
-    return true;
-  });
+  var pool = savedWords.filter(function(w){ return !used[w.ko] && !used[w.en]; });
   if (pool.length < 4) return [];
   var qs = [];
   for (var i = 0; i < pool.length && qs.length < n; i++) {
@@ -22158,10 +22069,7 @@ function _mrSlotVocab(n, savedWords, alreadyUsedAnswers) {
     if (distractors.length < 3) continue;
     var rand = Math.random();
     if (rand < 0.6) {
-      // Deduplicate choices — duplicate meanings cause two identical buttons
-      var seenEn = {}; var ch = [];
-      _mrShuffle([w.en].concat(distractors.map(function(d){ return d.en; }))).forEach(function(e){ if (!seenEn[e]) { seenEn[e]=1; ch.push(e); } });
-      if (ch.length < 2) continue;
+      var ch = _mrShuffle([w.en].concat(distractors.map(function(d){ return d.en; })));
       qs.push({ type:'mcq', prompt:w.ko, answer:w.en, choices:ch, rom:w.rom||'', slot:'vocab', label:'What does this mean?' });
     } else if (rand < 0.9) {
       var chK = _mrShuffle([w.ko].concat(distractors.map(function(d){ return d.ko; })));
@@ -22231,11 +22139,10 @@ function _mrSlotReadingCloze(n, articleCacheMap, particleOnly) {
 }
 
 function _mrSlotKeyExpressions(n, articleCacheMap, convExpressions) {
-  var _isMetaLabel = function(en){ return !en || /^fast\s*track/i.test(en); };
-  var pool = (convExpressions || []).filter(function(e){ return e && e.ko && e.en && !_isMetaLabel(e.en); });
+  var pool = (convExpressions || []).slice();
   Object.keys(articleCacheMap).forEach(function(aid) {
     var arr = articleCacheMap[aid].key_expressions || [];
-    arr.forEach(function(e) { if (e && e.ko && e.en && !_isMetaLabel(e.en)) pool.push(e); });
+    arr.forEach(function(e) { if (e && e.ko && e.en) pool.push(e); });
   });
   if (pool.length < 4) return [];
   var seenKo = {};
@@ -22257,16 +22164,46 @@ function _mrSlotKeyExpressions(n, articleCacheMap, convExpressions) {
 // each slot, then push the remainder onto vocab so the totals always
 // sum to targetCount.
 function _mrSlotSizes(total) {
-  // Proportions: vocab 33%, grammar 20%, reading 20%, particle 14%, expressions 13%
-  var vocab    = Math.floor(total * 0.34);
-  var grammar  = Math.floor(total * 0.20);
-  var reading  = Math.floor(total * 0.20);
-  var particle = Math.floor(total * 0.14);
-  var expr     = Math.floor(total * 0.13);
-  var sum = vocab + grammar + reading + particle + expr;
-  // Push leftover onto vocab — the most reliably-fillable slot.
+  // Proportions: vocab 28%, grammar 18%, reading 18%, particle 12%, expressions 12%, listening 12%
+  var vocab     = Math.floor(total * 0.28);
+  var grammar   = Math.floor(total * 0.18);
+  var reading   = Math.floor(total * 0.18);
+  var particle  = Math.floor(total * 0.12);
+  var expr      = Math.floor(total * 0.12);
+  var listening = Math.floor(total * 0.12);
+  var sum = vocab + grammar + reading + particle + expr + listening;
   vocab += (total - sum);
-  return { vocab: vocab, grammar: grammar, reading: reading, particle: particle, expr: expr };
+  return { vocab: vocab, grammar: grammar, reading: reading, particle: particle, expr: expr, listening: listening };
+}
+
+// Listening slot — play Korean sentence via TTS, pick English meaning.
+// Skippable: KHQuizArena replaces a skipped listening question from the
+// reserve pool built alongside the main question set.
+function _mrSlotListening(n, convExpressions, articleCacheMap) {
+  var pool = [];
+  (convExpressions || []).forEach(function(e) {
+    if (e && e.ko && e.en && !/^fast\s*track/i.test(e.en)) pool.push({ ko: e.ko, en: e.en });
+  });
+  Object.keys(articleCacheMap || {}).forEach(function(aid) {
+    (articleCacheMap[aid].key_expressions || []).forEach(function(e) {
+      if (e && e.ko && e.en && !/^fast\s*track/i.test(e.en)) pool.push({ ko: e.ko, en: e.en });
+    });
+  });
+  if (pool.length < 4) return [];
+  var seenKo = {};
+  pool = pool.filter(function(e){ if (seenKo[e.ko]) return false; seenKo[e.ko] = true; return true; });
+  if (pool.length < 4) return [];
+  var qs = [];
+  _mrShuffle(pool).forEach(function(item) {
+    if (qs.length >= n) return;
+    var distractors = _mrShuffle(pool.filter(function(o){ return o.ko !== item.ko; })).slice(0, 3);
+    if (distractors.length < 3) return;
+    var seenEn = {}; var ch = [];
+    _mrShuffle([item.en].concat(distractors.map(function(d){ return d.en; }))).forEach(function(e){ if (!seenEn[e]) { seenEn[e] = 1; ch.push(e); } });
+    if (ch.length < 2) return;
+    qs.push({ type: 'listening', word_ko: item.ko, correct: item.en, choices: ch, slot: 'listening', label: 'Listen and choose the meaning', skippable: true });
+  });
+  return qs;
 }
 
 // Backwards-compat alias — the saved-progress flow stores a function
@@ -22387,13 +22324,14 @@ async function _buildComprehensiveReview(targetCount, lookbackDays) {
 
   // Build each slot in proportions set by sizes (so weekly=20 and
   // monthly=30 both use the same builder, just with different counts).
-  var vocabQs    = _mrSlotVocab(sizes.vocab, savedWords);
-  var grammarQs  = _mrSlotGrammar(sizes.grammar, articleCacheMap);
-  var readingQs  = _mrSlotReadingCloze(sizes.reading, articleCacheMap, false);
-  var particleQs = _mrSlotReadingCloze(sizes.particle, articleCacheMap, true);
-  var exprQs     = _mrSlotKeyExpressions(sizes.expr, articleCacheMap, convExpressions);
+  var vocabQs     = _mrSlotVocab(sizes.vocab, savedWords);
+  var grammarQs   = _mrSlotGrammar(sizes.grammar, articleCacheMap);
+  var readingQs   = _mrSlotReadingCloze(sizes.reading, articleCacheMap, false);
+  var particleQs  = _mrSlotReadingCloze(sizes.particle, articleCacheMap, true);
+  var exprQs      = _mrSlotKeyExpressions(sizes.expr, articleCacheMap, convExpressions);
+  var listeningQs = _mrSlotListening(sizes.listening, convExpressions, articleCacheMap);
 
-  var all = vocabQs.concat(grammarQs).concat(readingQs).concat(particleQs).concat(exprQs);
+  var all = vocabQs.concat(grammarQs).concat(readingQs).concat(particleQs).concat(exprQs).concat(listeningQs);
 
   // Pad to targetCount with extra vocab questions when other slots
   // were sparse (new user / hasn't read many articles yet).

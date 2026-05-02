@@ -31,6 +31,7 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
   var _particleOverlay = null;
   var _onFinish = null;
   var _orderSelected = [];
+  var _reservePool = []; // replacement questions for skipped listening
 
   // ── DOM IDs ──
   var OVERLAY_ID = 'qa-overlay';
@@ -170,6 +171,29 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
         + '</div>';
     }
 
+    } else if (q.type === 'listening') {
+      var safeKo = q.word_ko ? q.word_ko.replace(/'/g, "\\'") : '';
+      html = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">' + _esc(q.label || 'Listen and choose the meaning') + '</div>'
+        + '<div style="display:flex;flex-direction:column;align-items:center;gap:16px;margin:20px 0">'
+        +   '<button onclick="KHQuizArena._playListening(this)" style="width:80px;height:80px;border-radius:50%;border:none;background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:transform .15s;box-shadow:0 6px 20px rgba(37,99,235,.4)" id="qa-listen-btn">'
+        +     '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'
+        +     '<span style="font-size:10px;font-weight:800;letter-spacing:.04em">PLAY</span>'
+        +   '</button>'
+        +   '<div style="font-size:12px;color:rgba(255,255,255,.35)">Tap to hear the Korean sentence</div>'
+        + '</div>'
+        + '<div style="display:flex;flex-direction:column;gap:8px" id="qa-choices">'
+        + q.choices.map(function(c) {
+            return '<button class="qa-choice-btn" onclick="KHQuizArena._selectMC(this,\'' + _escAttr(c) + '\')" style="width:100%;padding:14px 16px;border-radius:12px;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s">' + _esc(c) + '</button>';
+          }).join('')
+        + '</div>'
+        + (q.skippable !== false ? '<div style="text-align:center;margin-top:14px"><button onclick="KHQuizArena._skipListening()" style="background:none;border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.4);font-size:12px;font-weight:700;padding:6px 16px;cursor:pointer;font-family:inherit">Skip (replace with another question)</button></div>' : '');
+      // Auto-play after a short delay so the card animation settles first
+      setTimeout(function() {
+        var btn = document.getElementById('qa-listen-btn');
+        if (btn && !_answered) btn.click();
+      }, 500);
+    }
+
     html += '<div id="qa-feedback" style="margin-top:14px;display:none"></div>';
     front.innerHTML = html;
 
@@ -190,6 +214,40 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
       if (inp) setTimeout(function() { inp.focus(); }, 200);
     }
   }
+
+  // ── Listening helpers ──
+
+  QA._playListening = function(btn) {
+    var q = _questions[_index];
+    if (!q || q.type !== 'listening') return;
+    var text = q.word_ko || '';
+    if (!text) return;
+    if (btn) { btn.style.transform = 'scale(.92)'; setTimeout(function(){ btn.style.transform = ''; }, 200); }
+    // Prefer Edge TTS (speakHangul), fall back to Web Speech API
+    if (typeof speakHangul === 'function') { speakHangul(text); return; }
+    if (typeof speakKorean === 'function') { speakKorean(text); return; }
+    if (window.speechSynthesis) {
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ko-KR'; u.rate = 0.9;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    }
+  };
+
+  QA._skipListening = function() {
+    if (_answered) return;
+    // Replace current question with one from reserve, or just remove it
+    if (_reservePool.length) {
+      _questions[_index] = _reservePool.shift();
+    } else {
+      // No reserve — silently remove and shorten the quiz
+      _questions.splice(_index, 1);
+      if (_index >= _questions.length) { _index = _questions.length - 1; }
+      if (!_questions.length) { QA.close(); return; }
+    }
+    _renderQuestion();
+    _renderProgressPath();
+  };
 
   // ── Answer handlers ──
 
@@ -464,6 +522,7 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
     _ensureOverlay();
 
     _questions = opts.questions || [];
+    _reservePool = (opts.reserve || []).slice();
     _index = 0;
     _scores = [];
     _combo = 0;

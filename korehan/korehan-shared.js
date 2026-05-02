@@ -2,17 +2,6 @@
    KoreHani — Shared JS
    ============================================================ */
 
-// NOTE: the grammar/conjugation tooltip used to be auto-loaded
-// from here for every page that pulls shared.js. That was a
-// mistake — it leaked into the article / news / stories / convo
-// readers, where each page already runs its OWN word-hover system
-// (`.kh-word` via dyn-article wrap). The grammar tooltip
-// fragmented those text nodes BEFORE the reader's vocab system
-// could wrap them, so the original word-hover popups silently
-// disappeared. The grammar tooltip is now opted-in per page via
-// an explicit <script src="korehan-grammar-tooltips.js"> tag —
-// today only the study room loads it.
-
 // ── Analytics + error monitoring ─────────────────────────────────
 // Loads Plausible Analytics (cookieless by design — Plausible itself
 // doesn't need a consent banner) and Sentry error monitoring. Both
@@ -3242,8 +3231,7 @@ async function loadArticlesFromDB(options) {
   if (!shouldForceRefresh && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
     return _articlesCache;
   }
-  var useAllArticles = !!options.all;
-  var lim = useHomeOptimizedQuery ? 30 : useAllArticles ? 500 : 80;
+  var lim = useHomeOptimizedQuery ? 30 : 80;
   // Try the lite column list first; fall back to '*' if PostgREST
   // rejects an unknown column (production schemas can lag behind the
   // codebase). Without this fallback any missing column on the lite
@@ -3911,26 +3899,14 @@ function buildArticleRowHTML(a) {
   var aImg = khArticleThumb(a, 440, 280);
   var fallback = KH_IMG_PLACEHOLDER;
   var aBody = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 90);
-  // Cleaned-up structure:
-  //   • No inline width/height on the <img> — CSS now drives the
-  //     dimensions consistently across desktop / mobile-redesign /
-  //     mobile-light, and `align-items:stretch` on the row makes
-  //     the image span the full card height instead of leaving a
-  //     dead column under a 72px thumbnail.
-  //   • TAG and relative time share a top "meta" row, so the
-  //     time isn't orphaned at the bottom-right of the card.
-  var levelLabel = a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : (a.section || '');
-  var timeStr = relTime(a.date);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;margin-bottom:20px;">'
     + '<div class="article-row">'
-    + '<img src="' + aImg + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.src=\'' + fallback + '\'">'
+    + '<img src="' + aImg + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.src=\'' + fallback + '\'" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
     + '<div class="article-info">'
-    +   '<div class="article-meta-top">'
-    +     '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + levelLabel + '</span>'
-    +     (timeStr ? '<span class="article-meta-time">' + timeStr + '</span>' : '')
-    +   '</div>'
-    +   '<h2 class="article-title vocab-zone" style="margin:6px 0 4px;font-size:18px;" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h2>'
-    +   '<p class="article-excerpt vocab-zone" style="font-size:14px;color:#64748b;line-height:1.6;margin:0">' + aBody + '</p>'
+    + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : (a.section || '')) + '</span>'
+    + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h2>'
+    + '<p class="article-excerpt vocab-zone" style="font-size:14px;color:#64748b;line-height:1.6">' + aBody + '</p>'
+    + '<div style="font-size:12px;color:#94a3b8;margin-top:6px">' + relTime(a.date) + '</div>'
     + '</div></div></a>';
 }
 
@@ -4082,7 +4058,7 @@ function renderAllPage() {
       + (searchQ ? '<div class="all-search-result-label">Results for <strong>\u201c' + escapeHtml(searchQ) + '\u201d</strong></div>' : '')
       + '</div>'
       + '<div class="all-level-filter" id="all-level-filter">'
-      + '<button class="alf-btn on" data-level="All" onclick="filterAllLevel(\'All\',this)">All</button>'
+      + '<button class="alf-btn on" data-level="All" onclick="filterAllLevel(\'All\',this)">All Levels</button>'
       + '<button class="alf-btn starter" data-level="Starter" onclick="filterAllLevel(\'Starter\',this)"><span class="alf-dot"></span>Seed</button>'
       + '<button class="alf-btn beginner" data-level="Beginner" onclick="filterAllLevel(\'Beginner\',this)"><span class="alf-dot"></span>Sprout</button>'
       + '<button class="alf-btn intermediate" data-level="Intermediate" onclick="filterAllLevel(\'Intermediate\',this)"><span class="alf-dot"></span>Tree</button>'
@@ -4117,7 +4093,7 @@ function _buildNewsCardHTML(a) {
     + img
     + '<div class="nc-overlay-grad"></div>'
     + '<div class="nc-overlay-body">'
-    + ''
+    + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
     + '<div class="nc-title" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + escapeHtml(a.title_en || a.title || '') + '</div>'
     + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
     + '</div>'
@@ -5808,29 +5784,23 @@ function renderArticleVocab(a) {
     // Surface the vocab list into the body hover system so the same words
     // are clickable / underlined in the article. We extend the global VOCAB
     // (used by wrapVocab → .kh-word) and re-wrap the article body.
-    //
-    // The `added > 0` guard that USED to wrap this re-render in an
-    // if-block was a bug: when the user navigates between articles,
-    // the body is re-rendered fresh (no .kh-word spans), but if the
-    // new article's vocab happens to fully overlap with VOCAB
-    // (because we already pushed those words on a previous article),
-    // `added` stays 0 and the new body never gets wrapped. Result:
-    // some articles showed underlines and some didn't. wrapVocab is
-    // idempotent — it skips text already wrapped — so always
-    // re-running it is safe and fixes the missing-underline cases.
     if (typeof VOCAB !== 'object' || !VOCAB) return;
+    var added = 0;
     items.forEach(function(it) {
       if (!it || !it.ko) return;
       if (!VOCAB[it.ko] || !VOCAB[it.ko].en) {
         VOCAB[it.ko] = { rom: it.rom || '', en: it.en || '' };
+        added++;
       }
     });
-    try {
-      var artEl = document.getElementById('art-tab-article');
-      if (artEl) {
-        artEl.querySelectorAll('.vocab-zone').forEach(function(z){ wrapVocab(z); });
-      }
-    } catch(e) {}
+    if (added > 0) {
+      try {
+        var artEl = document.getElementById('art-tab-article');
+        if (artEl) {
+          artEl.querySelectorAll('.vocab-zone').forEach(function(z){ wrapVocab(z); });
+        }
+      } catch(e) {}
+    }
   }
 
   function finalize(items) {
@@ -5855,18 +5825,6 @@ function renderArticleVocab(a) {
     if (!merged.length) {
       el.innerHTML = '<div style="padding:20px;color:#94a3b8;font-size:13px;text-align:center">No vocabulary available for this article yet.</div>';
       _appendAdminAddVocabButton(el, a);
-      // Empty Vocab tab doesn't mean the body has nothing to
-      // underline — sitewide VOCAB (loaded from vocabulary_bank
-      // via loadVocabFromDB) may still contain words that match
-      // in the body via wrapVocab's stem regex. Re-run the
-      // wrapper so those matches still get the .kh-word
-      // underlines even when the per-article cache is empty.
-      try {
-        var artElEmpty = document.getElementById('art-tab-article');
-        if (artElEmpty) {
-          artElEmpty.querySelectorAll('.vocab-zone').forEach(function(z){ wrapVocab(z); });
-        }
-      } catch(e) {}
       return;
     }
     _renderArticleVocabItems(el, merged);
@@ -8839,11 +8797,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
       });
     } else {
-      // korehan-all fetches all 500 articles (limit) so every section rail
-      // is populated — avoids the 80-row window missing older sections.
-      var _isAllPage = (pageBase === 'korehan-all');
-      var _forceRefresh = _isArticleReader || _isAllPage;
-      await Promise.all([loadArticlesFromDB({ force: _forceRefresh, all: _isAllPage }), sectionsPromise, settingsPromise]);
+      // korehan-all always force-refreshes so it never reuses the 30-row
+      // homeOptimized cache the home page may have seeded — we need all 80
+      // rows to populate every section rail.
+      var _forceRefresh = _isArticleReader || (pageBase === 'korehan-all');
+      await Promise.all([loadArticlesFromDB({ force: _forceRefresh }), sectionsPromise, settingsPromise]);
       if (window._khLoaderClearAuto) window._khLoaderClearAuto();
       _ldr(100);
     }
@@ -10524,7 +10482,7 @@ function injectStreakStyles() {
   if (typeof window === 'undefined' || !window.matchMedia) return;
   if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
-  var TILT_SELECTOR = '.story-card, .sc, .hconv-card';
+  var TILT_SELECTOR = '.story-card, .sc, .hconv-card, .cc2';
   var MAX_DEG = 6;          // edge-of-card tilt in either axis
   var LIFT = 4;              // px translateZ lift on hover
   var TRANS_DUR = '.18s';
@@ -10537,10 +10495,10 @@ function injectStreakStyles() {
       /* Parent rails need perspective so children tilt in 3D */
       '.home-story-grid,.home-conv-grid-wrap,.st-grid,.st-rail-scroll{perspective:1100px;}',
       '.story-card,.sc,.hconv-card{transform-style:preserve-3d;will-change:transform;}',
-      '.story-card.kh-tilt,.sc.kh-tilt,.hconv-card.kh-tilt{transition:transform ' + TRANS_DUR + ' cubic-bezier(.22,1,.36,1),box-shadow ' + TRANS_DUR + ';}',
+      '.story-card.kh-tilt,.sc.kh-tilt,.hconv-card.kh-tilt,.cc2.kh-tilt{transition:transform ' + TRANS_DUR + ' cubic-bezier(.22,1,.36,1),box-shadow ' + TRANS_DUR + ';}',
       /* Subtle specular highlight follows cursor via --kh-tx / --kh-ty */
-      '.story-card.kh-tilt::before,.sc.kh-tilt::before,.hconv-card.kh-tilt::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at var(--kh-tx,50%) var(--kh-ty,50%),rgba(255,255,255,.18),rgba(255,255,255,0) 42%);opacity:0;transition:opacity ' + TRANS_DUR + ';pointer-events:none;z-index:3;mix-blend-mode:soft-light;}',
-      '.story-card.kh-tilting::before,.sc.kh-tilting::before,.hconv-card.kh-tilting::before{opacity:1;}'
+      '.story-card.kh-tilt::before,.sc.kh-tilt::before,.hconv-card.kh-tilt::before,.cc2.kh-tilt::before{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle at var(--kh-tx,50%) var(--kh-ty,50%),rgba(255,255,255,.18),rgba(255,255,255,0) 42%);opacity:0;transition:opacity ' + TRANS_DUR + ';pointer-events:none;z-index:3;mix-blend-mode:soft-light;}',
+      '.story-card.kh-tilting::before,.sc.kh-tilting::before,.hconv-card.kh-tilting::before,.cc2.kh-tilting::before{opacity:1;}'
     ].join('');
     document.head.appendChild(s);
   }
