@@ -1832,7 +1832,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (!arts.length) {
       grid.innerHTML = _homeNewsReady
         ? ‘<p style="color:var(--gray);font-size:13px">No published articles are ready yet. Check back after the next sync.</p>’
-        : ‘<p style="color:var(--gray);font-size:13px">Loading today’s articles…</p>’;
+        : '<p style="color:var(--gray);font-size:13px">Loading today’s articles…</p>';
       return;
     }
     grid.innerHTML = arts.map(function(a) {
