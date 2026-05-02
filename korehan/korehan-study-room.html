@@ -6253,20 +6253,29 @@ async function khLoadCommonMistakes() {
   // spacing as "mistakes." User pushed back; new prompt limits
   // results to actual grammar errors only. Old v1 cache entries
   // would still display the BS so we invalidate by namespace.
-  var cacheKey = 'kh_topic_common_mistakes_v2_' + encodeURIComponent(topicKo) + '_' + level + '_' + dateKey;
+  var cacheKey = 'kh_topic_common_mistakes_v3_' + encodeURIComponent(topicKo) + '_' + level + '_' + dateKey;
   function paint(items) {
     if (!Array.isArray(items) || !items.length) { details.hidden = true; return; }
-    body.innerHTML = items.map(function (it) {
+    var valid = items.filter(function(it) {
+      var w = (it.wrong || '').trim().replace(/\s+/g,' ');
+      var r = (it.right || '').trim().replace(/\s+/g,' ');
+      return w && r && w !== r;
+    });
+    if (!valid.length) { details.hidden = true; return; }
+    body.innerHTML = valid.map(function (it) {
       var wrong = (it.wrong || '').replace(/</g, '&lt;');
       var right = (it.right || '').replace(/</g, '&lt;');
       var note  = (it.why   || it.note || '').replace(/</g, '&lt;');
       return '<div style="margin:8px 0;padding:8px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(239,68,68,.2);border-radius:8px">'
         + '<div style="font-weight:800;color:#fca5a5;margin-bottom:3px">' + (it.label || it.title || 'Common mistake') + '</div>'
-        + (wrong ? '<div style="font-family:Noto Serif KR,serif"><span style="color:#f87171;text-decoration:line-through;margin-right:6px">' + wrong + '</span><span style="color:#86efac;font-weight:700">' + right + '</span></div>' : '')
-        + (note  ? '<div style="margin-top:4px;font-size:11px;color:rgba(255,255,255,.5)">' + note + '</div>' : '')
+        + '<div style="font-family:\'Noto Sans KR\',sans-serif;font-size:13px;line-height:1.6;margin-bottom:4px">'
+          + '<div style="color:#f87171;text-decoration:line-through;margin-bottom:2px">✗ ' + wrong + '</div>'
+          + '<div style="color:#86efac;font-weight:700">✓ ' + right + '</div>'
+        + '</div>'
+        + (note  ? '<div style="font-size:11px;color:rgba(255,255,255,.5);border-top:1px solid rgba(255,255,255,.06);padding-top:4px;margin-top:4px">' + note + '</div>' : '')
         + '</div>';
     }).join('');
-    if (countEl) countEl.textContent = '(' + items.length + ')';
+    if (countEl) countEl.textContent = '(' + valid.length + ')';
     details.hidden = false;
   }
   // Try localStorage cache first (today only — date is in the key).
@@ -6300,7 +6309,12 @@ async function khLoadCommonMistakes() {
         + '  • Subject omission (Korean naturally drops subjects when context is clear; including or omitting 저는 is NOT a grammar error).\n'
         + '  • Spacing or punctuation differences.\n'
         + '  • Stylistic awkwardness, length, or naturalness — only mark hard grammar errors.\n\n'
-        + 'For each error, return: a short label (Korean OR English), a wrong sentence example (Korean), the corrected version (Korean), and one short reason (English, max 12 words). The reason MUST point to the grammatical rule being broken.\n\n'
+        + 'For each error:\n'
+        + '  - "label": short name of the mistake type (e.g. "Wrong particle")\n'
+        + '  - "wrong": a Korean sentence with the grammar ERROR clearly present (e.g. wrong particle used)\n'
+        + '  - "right": the SAME sentence with the error FIXED — must be different from "wrong"\n'
+        + '  - "why": one short English reason (max 12 words) naming the rule\n\n'
+        + 'CRITICAL: "wrong" and "right" MUST differ. The "wrong" version must contain the actual error (e.g. the wrong particle). Do NOT return the same sentence for both.\n\n'
         + 'Return ONLY a JSON array — no markdown, no commentary.\n'
         + 'Format: [{"label":"...","wrong":"...","right":"...","why":"..."}]'
       }]
