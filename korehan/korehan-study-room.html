@@ -3345,6 +3345,15 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         </div>
       </div>
     </div>
+    <div class="master-card" style="padding:0" onclick="openPictureDescription()">
+      <div class="mc-banner" style="background:linear-gradient(135deg,#0c4a6e,#0369a1);display:flex;align-items:center;justify-content:center;height:100%;min-height:160px;border-radius:14px">
+        <div style="text-align:center;color:#fff">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:36px;height:36px;margin-bottom:8px;color:#7dd3fc" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.7"/><path d="M3.5 17l5-5 4.5 4.5L16 14l4.5 4.5"/></svg>
+          <div style="font-size:22px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 2px 12px rgba(125,211,252,.4)">PHOTO DESC.</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px">Describe the image in Korean</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Word bank moved to left sidebar -->
@@ -3841,6 +3850,50 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <div id="pd-step3-body" style="margin-top:14px;display:none"></div>
       <!-- Navigation button area -->
       <div id="pd-nav" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Speaking Practice modal -->
+<div class="woverlay hidden" id="sp-modal" onclick="if(event.target===this)closeSpeakingPractice()">
+  <div class="wmodal" style="max-width:480px;grid-template-columns:1fr;height:auto;max-height:calc(100vh - 32px);">
+    <div class="wm-header">
+      <div class="wm-title">
+        <span style="display:inline-flex;width:20px;height:20px;color:#a78bfa;vertical-align:-4px;margin-right:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span>
+        스피킹 연습
+      </div>
+      <button class="wmh-close" onclick="closeSpeakingPractice()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+    </div>
+    <div class="wm-body" style="padding:18px 20px 20px;overflow-y:auto">
+      <!-- Reference text box -->
+      <div style="padding:16px;border-radius:14px;background:rgba(124,58,237,.06);border:1px solid rgba(139,92,246,.2);margin-bottom:16px">
+        <div style="font-size:10px;font-weight:800;color:#a78bfa;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">오늘의 연습 문장</div>
+        <div id="sp-ref-ko" style="font-size:18px;font-weight:700;color:#f1f5f9;line-height:1.6;min-height:28px;font-family:'Noto Serif KR',serif"></div>
+        <div id="sp-ref-rom" style="font-size:12px;color:rgba(255,255,255,.38);margin-top:4px;font-style:italic"></div>
+        <div id="sp-ref-en" style="font-size:12px;color:rgba(255,255,255,.3);margin-top:2px"></div>
+        <!-- Sentence nav dots -->
+        <div id="sp-nav-dots" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"></div>
+      </div>
+      <!-- Listen button -->
+      <button onclick="_spListenRef()" style="width:100%;padding:9px;border-radius:10px;border:1px solid rgba(139,92,246,.25);background:rgba(124,58,237,.08);color:#c4b5fd;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:12px">
+        <i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> AI 발음 듣기
+      </button>
+      <!-- Record button -->
+      <button id="sp-record-btn" onclick="toggleSpRecord()" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(139,92,246,.3);background:rgba(124,58,237,.1);color:#a78bfa;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s">
+        <span id="sp-rec-icon" style="display:inline-flex;width:16px;height:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span>
+        <span id="sp-rec-label">녹음 시작</span>
+      </button>
+      <div id="sp-status" style="font-size:11px;color:#6b7280;margin-top:8px;min-height:18px;text-align:center"></div>
+      <audio id="sp-playback" style="width:100%;margin-top:8px;display:none" controls></audio>
+      <!-- Score card -->
+      <div id="sp-score-card" style="display:none;margin-top:14px;padding:18px;border-radius:16px;background:linear-gradient(145deg,#ffffff,#faf7ff 60%,#f3f1ff);box-shadow:0 10px 28px -12px rgba(124,58,237,.22),0 0 0 1px rgba(124,58,237,.12)"></div>
+      <!-- Done button -->
+      <div id="sp-done-row" style="display:none;margin-top:12px">
+        <button onclick="completeSpeakingPractice()" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span style="display:inline-flex;width:16px;height:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+          완료 (+15 냥)
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -4591,9 +4644,7 @@ function renderStudyChecklist() {
   var items = [
     { k:'topic',    label:'Express Practice',  sub:'Write & speak on today\'s topic',     pts:'+20 냥' },
     { k:'grammar',  label:'Review grammar points',     sub:'Quick, light review',       pts:'+10 냥' },
-    isAdvanced
-      ? { k:'picture',  label:'Nuance Quiz',              sub:'유의어 구별 (고급)',        pts:'+15 냥' }
-      : { k:'picture',  label:'Picture description',      sub:'Just 1-2 minutes',          pts:'+15 냥' },
+    { k:'picture',  label:'Speaking Practice',  sub:'발음 & 유창성 평가',  pts:'+15 냥' },
     { k:'sentence', label:'Dictation practice',         sub:'Accuracy training',         pts:'+10 냥' }
   ];
   var doneCnt = items.filter(function(i){ return !!_studyDone[i.k]; }).length;
@@ -6216,6 +6267,7 @@ function _wmRenderTopicContent(el) {
   // ── 3. Example answer built from the sentences ──
   if (sentences.length >= 2) {
     var exampleSents = sentences.slice(0, 3).map(function(s){ return s.ko; }).join(' ');
+    _wmExampleAnswer = exampleSents;
     html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">예시 답안</div>';
     html += '<div onclick="wmCopySentence(this)" data-ko="' + _wmEsc(exampleSents) + '" '
       + 'style="cursor:pointer;padding:10px 12px;background:rgba(124,58,237,.1);border:1px solid rgba(139,92,246,.25);border-radius:10px;transition:background .15s">'
@@ -6953,11 +7005,7 @@ function lsStart(type) {
     // beginner patterns kept recycling.
     if (typeof openPhraseMunch === 'function') openPhraseMunch();
   } else if (type === 'picture') {
-    if (_currentLevel === 'Advanced') {
-      if (typeof openNuanceQuiz === 'function') openNuanceQuiz();
-    } else if (typeof openPictureDescription === 'function') {
-      openPictureDescription();
-    }
+    if (typeof openSpeakingPractice === 'function') openSpeakingPractice();
   } else if (type === 'sentence') {
     openDictationModal();
   } else if (type === 'expressions') {
@@ -10934,6 +10982,7 @@ function speakKorean(text) {
 }
 
 // ── Express Practice: Speaking ──
+var _wmExampleAnswer = '';    // example answer text from Phrase Munch; used as speaking reference
 var _speakRecorder = null, _speakChunks = [], _speakBlob = null;
 var _speakRecognition = null;     // Web Speech API SpeechRecognition instance
 var _speakSttTranscript = '';     // accumulated final transcript
@@ -11174,8 +11223,8 @@ function _scoreColor(v) {
   return v >= 80 ? '#16a34a' : v >= 60 ? '#2563eb' : v >= 40 ? '#d97706' : '#dc2626';
 }
 
-function _renderSpeakingScoreCard(s) {
-  var el = document.getElementById('wm-speak-score-card');
+function _renderSpeakingScoreCard(s, targetEl) {
+  var el = targetEl || document.getElementById('wm-speak-score-card');
   if (!el) return;
   if (!s) { el.style.display = 'none'; el.innerHTML = ''; return; }
 
@@ -11343,7 +11392,9 @@ function toggleSpeakRecord() {
       // Try Azure pronunciation assessment; fall back to client-side scoring.
       (async function() {
         var ta = document.getElementById('write-area');
-        var target = ta ? (ta.value || '').trim() : '';
+        var written = ta ? (ta.value || '').trim() : '';
+        // Use written text if it has enough substance; otherwise use today's example answer
+        var target = written.length >= 15 ? written : (_wmExampleAnswer || written);
         if (!target) return;
         var elapsed = Date.now() - _speakStartedAt;
         document.getElementById('wm-speak-status').textContent = '발음 분석 중...';
@@ -11365,9 +11416,17 @@ function toggleSpeakRecord() {
     document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.2)';
     document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>';
   }).catch(function(err) {
-    showToast('마이크 권한이 필요합니다');
+    _showMicPermError('wm-speak-status');
     console.warn('[Speaking] mic error:', err);
   });
+}
+function _showMicPermError(statusElId) {
+  var msg = '마이크 접근 실패. 브라우저 주소창의 🔒 아이콘 → 마이크 → 허용 후 새로고침';
+  if (statusElId) {
+    var el = document.getElementById(statusElId);
+    if (el) { el.innerHTML = '<span style="color:#f87171;font-size:11px">' + msg + '</span>'; return; }
+  }
+  showToast(msg);
 }
 async function submitSpeaking() {
   if (!_speakBlob || !supaUser) { showToast('녹음이 없거나 로그인이 필요합니다'); return; }
@@ -14226,6 +14285,163 @@ function closePictureDescription() {
   document.body.style.overflow = '';
   _pdStep = 1;
 }
+
+// ═══════════════════════════════════════════════════════════
+// SPEAKING PRACTICE — standalone pronunciation modal
+// Pulls sentences from Phrase Munch (_bm.sentences) when
+// available; otherwise falls back to today's topic name.
+// ═══════════════════════════════════════════════════════════
+var _spSentences = [];
+var _spIdx = 0;
+var _spMediaRec = null;
+var _spChunks = [];
+var _spBlob = null;
+var _spRecStartedAt = 0;
+
+function openSpeakingPractice() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  _spIdx = 0; _spChunks = []; _spBlob = null;
+
+  // Build sentence list
+  var bmSents = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.sentences)) ? _bm.sentences : [];
+  if (bmSents.length) {
+    _spSentences = bmSents.filter(function(s){ return s && s.ko; }).map(function(s){
+      return { ko: s.ko, en: s.en || '', rom: s.rom || '' };
+    });
+  }
+  if (!_spSentences.length && _wmExampleAnswer) {
+    _spSentences = [{ ko: _wmExampleAnswer, en: '', rom: '' }];
+  }
+  if (!_spSentences.length) {
+    var topicName = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '오늘의 주제';
+    _spSentences = [{ ko: topicName + '에 대해 이야기해 보세요.', en: '', rom: '' }];
+  }
+
+  _spResetUI();
+  _spRenderSentence();
+  document.getElementById('sp-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeSpeakingPractice() {
+  document.getElementById('sp-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+  if (_spMediaRec && _spMediaRec.state === 'recording') { try { _spMediaRec.stop(); } catch(e){} }
+}
+
+function _spResetUI() {
+  var sc = document.getElementById('sp-score-card');
+  var dr = document.getElementById('sp-done-row');
+  var st = document.getElementById('sp-status');
+  var pb = document.getElementById('sp-playback');
+  if (sc) { sc.style.display = 'none'; sc.innerHTML = ''; }
+  if (dr) dr.style.display = 'none';
+  if (st) st.textContent = '';
+  if (pb) { pb.style.display = 'none'; pb.src = ''; }
+  _spSetRecBtn(false);
+}
+
+function _spRenderSentence() {
+  var s = _spSentences[_spIdx] || {};
+  var koEl = document.getElementById('sp-ref-ko');
+  var romEl = document.getElementById('sp-ref-rom');
+  var enEl = document.getElementById('sp-ref-en');
+  var dotsEl = document.getElementById('sp-nav-dots');
+  if (koEl) koEl.textContent = s.ko || '';
+  if (romEl) romEl.textContent = s.rom || '';
+  if (enEl) enEl.textContent = s.en || '';
+  if (dotsEl) {
+    if (_spSentences.length > 1) {
+      dotsEl.innerHTML = _spSentences.map(function(_, i) {
+        return '<button onclick="spGoSentence(' + i + ')" style="width:8px;height:8px;border-radius:50%;border:none;cursor:pointer;padding:0;background:' + (i === _spIdx ? '#a78bfa' : 'rgba(139,92,246,.25)') + '"></button>';
+      }).join('');
+    } else {
+      dotsEl.innerHTML = '';
+    }
+  }
+  _spResetUI();
+}
+
+function spGoSentence(idx) {
+  _spIdx = idx; _spBlob = null; _spChunks = [];
+  _spRenderSentence();
+}
+
+function _spSetRecBtn(recording) {
+  var btn = document.getElementById('sp-record-btn');
+  var lbl = document.getElementById('sp-rec-label');
+  if (!btn) return;
+  if (recording) {
+    btn.style.background = 'rgba(239,68,68,.2)';
+    btn.style.borderColor = 'rgba(239,68,68,.35)';
+    btn.style.color = '#f87171';
+    if (lbl) lbl.textContent = '녹음 중... (누르면 정지)';
+  } else {
+    btn.style.background = 'rgba(124,58,237,.1)';
+    btn.style.borderColor = 'rgba(139,92,246,.3)';
+    btn.style.color = '#a78bfa';
+    if (lbl) lbl.textContent = '녹음 시작';
+  }
+}
+
+function _spListenRef() {
+  var s = _spSentences[_spIdx] || {};
+  if (s.ko) speakHangul(s.ko, 'female');
+}
+
+async function toggleSpRecord() {
+  if (_spMediaRec && _spMediaRec.state === 'recording') {
+    _spMediaRec.stop();
+    return;
+  }
+  var stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e) {
+    _showMicPermError('sp-status');
+    return;
+  }
+  _spChunks = []; _spBlob = null;
+  _spMediaRec = new MediaRecorder(stream);
+  _spMediaRec.ondataavailable = function(e) { if (e.data.size > 0) _spChunks.push(e.data); };
+  _spMediaRec.onstop = async function() {
+    stream.getTracks().forEach(function(t){ t.stop(); });
+    _spBlob = new Blob(_spChunks, { type: 'audio/webm' });
+    var pb = document.getElementById('sp-playback');
+    if (pb) { pb.src = URL.createObjectURL(_spBlob); pb.style.display = ''; }
+    var refText = (_spSentences[_spIdx] || {}).ko || '';
+    var elapsed = Date.now() - _spRecStartedAt;
+    _spSetRecBtn(false);
+    var st = document.getElementById('sp-status');
+    if (st) st.textContent = '발음 분석 중...';
+    var result = await _speakAnalyzeAzure(_spBlob, refText, elapsed);
+    if (!result) {
+      await new Promise(function(r){ setTimeout(r, 300); });
+      result = _scoreSpeaking(refText, '', elapsed);
+    }
+    if (st) st.textContent = '';
+    var sc = document.getElementById('sp-score-card');
+    if (sc) {
+      sc.style.display = '';
+      _renderSpeakingScoreCard(result, sc);
+    }
+    var dr = document.getElementById('sp-done-row');
+    if (dr) dr.style.display = '';
+  };
+  _spRecStartedAt = Date.now();
+  _spMediaRec.start();
+  _spSetRecBtn(true);
+  var st = document.getElementById('sp-status');
+  if (st) st.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>';
+}
+
+function completeSpeakingPractice() {
+  markStageDone('picture');
+  returnToActivities(closeSpeakingPractice);
+}
+
 function renderPicturePrompt() {
   var img = document.getElementById('pd-image');
   if (!_picturePrompts.length) {
@@ -20621,13 +20837,13 @@ setTimeout(renderCompletedStudies, 500);
       <div class="ls-node" id="ls-card-picture" data-pos="br" onclick="lsStart('picture')">
         <div class="ls-node-circle">
           <svg class="ls-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="16" rx="2.5"/>
-            <circle cx="8.5" cy="9.5" r="1.7"/>
-            <path d="M3.5 17l5-5 4.5 4.5L16 14l4.5 4.5"/>
+            <rect x="9" y="3" width="6" height="12" rx="3"/>
+            <path d="M5 11a7 7 0 0 0 14 0"/>
+            <line x1="12" y1="18" x2="12" y2="22"/>
           </svg>
           <span class="ls-node-coin">+15 냥</span><span class="ls-node-check">✓</span>
         </div>
-        <div class="ls-node-name">Photo Desc.</div>
+        <div class="ls-node-name">Speaking</div>
       </div>
       <div class="ls-node" id="ls-card-sentence" data-pos="bl" onclick="lsStart('sentence')">
         <div class="ls-node-circle">
