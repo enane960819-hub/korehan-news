@@ -19918,6 +19918,7 @@ function asMarkDone() {
   try {
   _asStepDone[_asStep-1]=true; _asSaveProgress(); _asTmpCompletion();
   _asTmpStep5((document.getElementById('as-write-ta')||{}).value||'');
+  if (typeof _khMarkArticleStudied === 'function' && _asCurrentArt) _khMarkArticleStudied(_asCurrentArt.id);
   } catch(e) { console.warn('asMarkDone save error:', e); }
   document.getElementById('as-article-content').innerHTML='';
   document.getElementById('as-activity-area').innerHTML=

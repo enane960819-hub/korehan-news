@@ -7048,6 +7048,7 @@ function initTooltips() {
   // bar at that point. kh-auth-signed-in is fired from updateAuthUI
   // every time a session is established.
   window.addEventListener('kh-auth-signed-in', _mountVocabAdminBarIfEligible);
+  window.addEventListener('kh-auth-signed-in', function() { _khSyncStudiedFromDB(); });
   // Tear the bar down on sign-out so a non-admin landing in the same
   // tab right after doesn't see a leftover admin button.
   window.addEventListener('kh-auth-signed-out', function() {
@@ -11160,6 +11161,48 @@ var _khFeedRecentKey = 'kh_feed_recent_seen';
 // (80) more closely while still letting articles eventually re-surface.
 var _khFeedRecentMax = 60;
 
+// ── Studied-article exclusion ─────────────────────────────────────
+// IDs of articles fully completed in Article Study. Cached in
+// localStorage (instant sync) and refreshed from DB on login.
+// pickNextFeedArticle skips these so the user never swipes back to
+// an article they've already studied in depth.
+var _KH_STUDIED_KEY = 'kh_studied_arts_v1';
+var _khStudiedArtIds = null;
+
+function _khGetStudiedIds() {
+  if (_khStudiedArtIds) return _khStudiedArtIds;
+  var uid = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : 'guest';
+  try {
+    var raw = JSON.parse(localStorage.getItem(_KH_STUDIED_KEY + '_' + uid) || '[]');
+    _khStudiedArtIds = new Set(raw.map(String));
+  } catch(e) { _khStudiedArtIds = new Set(); }
+  return _khStudiedArtIds;
+}
+
+function _khMarkArticleStudied(articleId) {
+  var uid = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : '';
+  if (!uid || !articleId) return;
+  var set = _khGetStudiedIds();
+  set.add(String(articleId));
+  try { localStorage.setItem(_KH_STUDIED_KEY + '_' + uid, JSON.stringify(Array.from(set))); } catch(e) {}
+}
+
+async function _khSyncStudiedFromDB() {
+  var uid = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : '';
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!uid || !sb) return;
+  try {
+    var res = await sb.from('user_read_history')
+      .select('content_id').eq('user_id', uid).eq('content_type', 'article_study').limit(500);
+    if (res.data && res.data.length) {
+      _khStudiedArtIds = null;
+      var set = _khGetStudiedIds();
+      res.data.forEach(function(r){ if (r.content_id) set.add(String(r.content_id)); });
+      localStorage.setItem(_KH_STUDIED_KEY + '_' + uid, JSON.stringify(Array.from(set)));
+    }
+  } catch(e) {}
+}
+
 // ── Per-session navigation stack ─────────────────────────────────
 // Holds the ordered list of articles the user has visited via
 // next/prev (or by direct URL), plus the current index inside it.
@@ -11226,14 +11269,15 @@ function pickNextFeedArticle(currentId) {
   if (!pool.length) return null;
   var recent = _khFeedRecentSet();
   recent.add(String(currentId));
-  // Also avoid anything already in the stack so a fresh pick doesn't
-  // accidentally repeat a recent visit.
   var s = _khFeedStack();
   s.ids.forEach(function(id){ recent.add(String(id)); });
-  var fresh = pool.filter(function(a){ return !recent.has(String(a.id)); });
-  // If everything's been seen recently, fall back to the full pool
-  // rather than getting stuck.
-  var from = fresh.length ? fresh : pool;
+  // Exclude articles the user has already fully studied — they've seen
+  // enough of those. Fall back to the full pool if everything is studied.
+  var studied = _khGetStudiedIds();
+  var unstudied = pool.filter(function(a){ return !studied.has(String(a.id)); });
+  var candidates = unstudied.length ? unstudied : pool;
+  var fresh = candidates.filter(function(a){ return !recent.has(String(a.id)); });
+  var from = fresh.length ? fresh : candidates;
   return from[Math.floor(Math.random() * from.length)];
 }
 
