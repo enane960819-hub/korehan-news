@@ -7512,10 +7512,11 @@ async function openKeyExpressionsModal() {
   // 1) In-memory cache (same session, same topic/level/date)
   if (_keCache) { _renderKeyExpressions(list, _keCache); return; }
 
-  // 2) localStorage cache (survives full reload + tab close).
-  //    sessionStorage was clearing on tab close, which is why mobile
-  //    users felt every visit re-generated.
-  var cacheKey = 'ke_' + topicKey;
+  // 2) localStorage cache. Bumped to ke_v2_ when the AI prompt was
+  //    reworked to require pattern notation + parts breakdown + diverse
+  //    examples. Older ke_ entries cached fact-style sentences and
+  //    redundant Korean ("독서 읽는 것") and need to be regenerated.
+  var cacheKey = 'ke_v2_' + topicKey;
   try {
     var cached = localStorage.getItem(cacheKey);
     if (cached) {
@@ -7528,10 +7529,9 @@ async function openKeyExpressionsModal() {
     }
   } catch(e) {}
 
-  // 3) Cross-user DB cache. Key is topic_ko + level only — no date —
-  //    so any user opening the same topic on any day gets it for free
-  //    after the first generation. Admin pre-generates this on save.
-  var dbCacheKey = 'kex::' + topicKoKey + '_' + levelKey;
+  // 3) Cross-user DB cache. Same v2 bump as the localStorage key —
+  //    DB rows seeded under the old prompt are stale.
+  var dbCacheKey = 'kex2::' + topicKoKey + '_' + levelKey;
   try {
     if (typeof _aiCacheGet === 'function') {
       var hit = await _aiCacheGet(dbCacheKey);
@@ -7552,16 +7552,32 @@ async function openKeyExpressionsModal() {
   callClaude({
     feature: 'key-expressions',
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1200,
+    max_tokens: 1800,
     messages: [{ role: 'user', content:
-      'You are a Korean language teacher. Generate EXACTLY 6 key Korean EXPRESSIONS (multi-word phrases, collocations, or fixed sentence patterns) that a student would naturally USE when speaking or writing about the topic: "' + topicText + '" (' + topicEn + '). Level: ' + level + '.\n\n'
+      'You are a Korean language teacher. Generate EXACTLY 6 reusable Korean EXPRESSIONS (sentence patterns / collocations / set phrases) for a learner studying the topic: "' + topicText + '" (' + topicEn + '). Level: ' + level + '.\n\n'
+      + 'You MUST teach each expression as a PATTERN with explicit breakdown — not a one-off sentence.\n\n'
+      + 'OUTPUT FORMAT — return ONLY a JSON array of 6 items, no markdown, no commentary:\n'
+      + '[{\n'
+      + '  "ko": "the expression in PATTERN form (use ~ for variable slots, e.g. \\"~하는 것이 취미다\\", \\"~을/를 자주 V\\", \\"~에 시간이 날 때마다\\")",\n'
+      + '  "rom": "romanization of the pattern",\n'
+      + '  "en": "natural English meaning of the pattern",\n'
+      + '  "parts": [\n'
+      + '    {"ko":"~하는", "en":"V + 는 (present-tense modifier)"},\n'
+      + '    {"ko":"것이",  "en":"the act of (nominalizer + subject)"},\n'
+      + '    {"ko":"취미다","en":"is a hobby"}\n'
+      + '  ],\n'
+      + '  "examples": [\n'
+      + '    {"ko":"NATURAL Korean sentence using the pattern with one specific content word","en":"English translation"},\n'
+      + '    {"ko":"NATURAL Korean sentence using the pattern with a DIFFERENT content word in the slot","en":"English translation"}\n'
+      + '  ]\n'
+      + '}]\n\n'
       + 'STRICT RULES:\n'
-      + '1. Each "ko" MUST be a multi-word phrase of at least 2 words — NOT a single word. Examples of GOOD expressions: "오랜만에 만나다", "기분이 좋아지다", "~에 대해 이야기하다", "시간 가는 줄 모르다".\n'
-      + '2. DO NOT return single nouns or single verbs (e.g., "배우", "음식", "좋아해요" alone is NOT acceptable).\n'
-      + '3. Each expression must be directly usable when talking about this specific topic — not generic filler.\n'
-      + '4. Mix grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다), collocations (손이 크다, 발이 넓다), and common phrasal verbs.\n\n'
-      + 'Return ONLY a JSON array of 6 items, no markdown:\n'
-      + '[{"ko":"multi-word Korean phrase","rom":"romanization","en":"English meaning","examples":[{"ko":"natural Korean sentence 1","en":"English translation 1"},{"ko":"natural Korean sentence 2","en":"English translation 2"}]}]'
+      + '1. ko: pattern form with ~ marking the variable slot. NEVER a fully-instantiated single sentence. Good: "~하는 것이 취미다". Bad: "책 읽는 것이 취미다" (no variable slot — that\'s an example, not the pattern).\n'
+      + '2. parts: 2-4 items breaking the pattern into its grammatical pieces, each with a SHORT plain-English explanation of what that piece does. The most important "new" word/grammar must appear here (e.g. for "~을/를 자주 V" the parts MUST include 자주 = "often, frequently", since that\'s what defines the pattern).\n'
+      + '3. examples: 2 sentences that REUSE the pattern with DIFFERENT content words in the slot. They must demonstrate variability — e.g. for "~하는 것이 취미다" use "운동하는 것이 취미예요" + "영화 보는 것이 취미예요", NOT two sentences both about reading books.\n'
+      + '4. NEVER generate redundant Korean. Specifically forbidden: "독서 읽는 것을 좋아하다" (독서 already means "reading"; can\'t pair it with 읽다). "음식 먹는 것" same issue. Use either the noun form (독서를 좋아하다) OR the verbal form (책 읽는 것을 좋아하다), never both.\n'
+      + '5. Mix expression types across the 6: grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다, ~ㄹ 때마다), collocations (시간이 나다, 손이 크다, 기분이 좋아지다), set phrases (오랜만이에요, 시간 가는 줄 모르다).\n'
+      + '6. Each expression must be naturally usable when talking about today\'s topic — not generic filler.'
     }]
   }).then(function(res) {
     try {
@@ -7570,12 +7586,17 @@ async function openKeyExpressionsModal() {
       var s = text.indexOf('['), e = text.lastIndexOf(']');
       if (s >= 0 && e > s) text = text.slice(s, e+1);
       var expressions = JSON.parse(text);
-      // Filter out single-word items — require at least 2 characters AND a space/connective
+      // Quality filter: reject items missing required fields and items
+      // that flag the redundancy bug ("독서 읽는 것", "음식 먹는 것" etc.).
+      var REDUNDANT = /(독서[\s가-힣]*읽|음식[\s가-힣]*먹|영화[\s가-힣]*보는 것을 보)/;
       expressions = (expressions || []).filter(function(x) {
         if (!x || !x.ko) return false;
         var ko = String(x.ko).trim();
-        // Reject single word: must contain space OR be at least 4 chars AND end with a grammar marker
-        return ko.indexOf(' ') !== -1 || ko.length >= 4;
+        if (ko.indexOf(' ') === -1 && ko.length < 4) return false;
+        // Reject any expression or example containing the redundancy patterns
+        if (REDUNDANT.test(ko)) return false;
+        if (Array.isArray(x.examples) && x.examples.some(function(ex){ return ex && ex.ko && REDUNDANT.test(ex.ko); })) return false;
+        return true;
       });
       if (!expressions.length) throw new Error('no valid expressions');
       _keCache = expressions;
@@ -7695,135 +7716,27 @@ function keCloseSituationQuiz() {
 }
 
 function _renderKeyExpressions(list, expressions) {
-  // 4-phase flow (was 5):
-  //   1) VOCAB     — pre-teach the 2-3 content words from each example
-  //                  sentence as tap-to-reveal cards. Was missing entirely
-  //                  — the old flow dumped fully-formed sentences on the
-  //                  learner without warming up the vocabulary inside.
-  //   2) STUDY     — the expression card with examples (now familiar).
-  //   3) FILL      — type the missing expression in a sentence (production).
-  //   4) SITUATION — "When can you use it?" multiple choice (application).
-  //   5) FINAL     — score + complete.
-  // The old Recognition MCQ ("Which expression means…") was redundant
-  // with the Situation quiz and got cut.
-  window._keExpressions   = expressions;
-  window._kePhase         = 'vocab';
-  window._keVocabIdx      = 0;
-  window._keVocabRevealed = {}; // { idx: { wordIdx: true } }
-  window._keStudyIdx      = 0;
-  _keRenderVocabPhase(list);
-  // Background prefetch: situation quiz fires several articles ahead.
+  // Flow: Study → Fill → Situation → Final.
+  // The previous Vocab pre-teach phase ("Step 1 · 단어 미리보기") was
+  // teaching the WRONG thing. It picked content words from the first
+  // example sentence and showed them as flashcards — for an expression
+  // like "시간이 날 때마다" with example "시간이 날 때마다 책을 읽어요"
+  // it ended up teaching 책을 / 읽어요 (basic words any learner already
+  // knows) while filtering OUT the meaningful core 시간이 / 날 / 때마다
+  // because they were "in the expression". The expression IS the lesson;
+  // splitting its own components out as trivia is exactly backwards.
+  // Phrase Munch's pre-teach makes sense because PM teaches sentence
+  // patterns where the slot words are the lesson; KE teaches the
+  // expression as a single pattern unit, so pre-teach was a bad fit.
+  // Reverted. Now we lean on the Study card itself to show the pattern
+  // breakdown (parts[] from the AI) inline.
+  window._keExpressions = expressions;
+  window._kePhase       = 'study';
+  window._keStudyIdx    = 0;
+  _keRenderStudyPhase(list);
   if (typeof _kePrefetchSituations === 'function') {
     _kePrefetchSituations(expressions);
   }
-}
-
-// ── Phase 0: Vocab pre-teach ─────────────────────────────────
-// Pull the 2-3 most "content-heavy" words from the expression's first
-// example sentence and show them as tap-to-reveal cards. Learner must
-// reveal all before advancing — guarantees they meet the building
-// blocks before seeing the full expression.
-function _kePickVocabParts(exp) {
-  if (!exp) return [];
-  // Use the first example sentence; fall back to expression itself.
-  var src = (Array.isArray(exp.examples) && exp.examples[0] && exp.examples[0].ko)
-    ? exp.examples[0].ko
-    : (exp.example_ko || exp.ko || '');
-  if (!src) return [];
-  // Pull eojeols (whitespace-separated chunks). Skip particle-only
-  // tokens (조사 단독) and 1-char fragments. Also skip the expression
-  // itself if it appears in the sentence — that's what we're about
-  // to teach in Phase 2, no point double-revealing.
-  var PARTICLE_ONLY = /^[은는이가을를의에서와과도만으로부터까지에게한테로써]+[.,!?]?$/;
-  var expKo = String(exp.ko || '').trim();
-  var picks = [];
-  var seen = {};
-  src.split(/\s+/).forEach(function(tok) {
-    if (!tok) return;
-    var t = tok.replace(/[.,!?"]+$/, '');
-    if (!t || t.length < 2) return;
-    if (PARTICLE_ONLY.test(t)) return;
-    if (expKo && expKo.indexOf(t) !== -1) return;
-    if (seen[t]) return;
-    seen[t] = true;
-    picks.push({ ko: t });
-  });
-  return picks.slice(0, 3);
-}
-
-function _keRenderVocabPhase(list) {
-  var exps = window._keExpressions || [];
-  if (!exps.length) {
-    list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:24px 0">No expressions available.</div>';
-    return;
-  }
-  var idx = window._keVocabIdx || 0;
-  var exp = exps[idx];
-  var parts = _kePickVocabParts(exp);
-  // No usable vocab parts (very short example) → skip straight to Study
-  // for this expression so the learner isn't stuck on an empty preview.
-  if (!parts.length) {
-    _keAdvanceFromVocab();
-    return;
-  }
-  var revealed = window._keVocabRevealed[idx] || {};
-  var allRevealed = parts.every(function(_, vi) { return revealed[vi]; });
-
-  // Look up English meanings from the expression's parts/examples when
-  // the AI provided them; otherwise show "tap to listen" only — better
-  // than a fake translation. Most KE responses don't include word-level
-  // translations, so we lean on TTS.
-  var cardsHtml = parts.map(function(p, vi) {
-    var open = !!revealed[vi];
-    var safeKo = String(p.ko).replace(/'/g,"\\'");
-    return '<button type="button"'
-      + ' onclick="_keRevealVocab(' + vi + ');event.stopPropagation();ttsSpeak(\'' + safeKo + '\')"'
-      + ' style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 16px;border-radius:14px;'
-      + 'border:1px solid ' + (open ? 'rgba(167,139,250,.45)' : 'rgba(255,255,255,.12)') + ';'
-      + 'background:' + (open ? 'rgba(167,139,250,.14)' : 'rgba(255,255,255,.04)') + ';'
-      + 'color:#fff;cursor:pointer;font-family:inherit;text-align:left;width:100%;transition:all .2s">'
-      + '<span style="font-family:\'Noto Serif KR\',serif;font-size:20px;font-weight:900;color:#fff">' + (p.ko||'') + '</span>'
-      + (open
-          ? '<span style="font-size:11px;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.04em;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px;opacity:.6">' + BM_ICON_VOLUME + '</span>다시 들어보기</span>'
-          : '<span style="font-size:11px;color:rgba(255,255,255,.45);font-weight:600;letter-spacing:.04em">탭하여 듣기 / 학습</span>')
-      + '</button>';
-  }).join('');
-
-  list.innerHTML =
-      '<div style="text-align:center;margin-bottom:14px">'
-    +   '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 1 · 단어 미리보기</div>'
-    +   '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
-    + '</div>'
-    + '<div style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:12px;text-align:center;line-height:1.5">예문에 나오는 단어들을 먼저 만나봐요. 카드를 눌러 발음을 들어보세요.</div>'
-    + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">' + cardsHtml + '</div>'
-    + '<div style="display:flex;justify-content:center">'
-    +   '<button onclick="_keAdvanceFromVocab()" '
-    +     (allRevealed ? '' : 'disabled')
-    +     ' style="padding:11px 26px;border:none;border-radius:10px;'
-    +     'background:' + (allRevealed ? 'linear-gradient(135deg,#14cbb0,#0ea88f)' : 'rgba(255,255,255,.08)') + ';'
-    +     'color:' + (allRevealed ? '#fff' : 'rgba(255,255,255,.4)') + ';'
-    +     'font-size:13px;font-weight:800;'
-    +     'cursor:' + (allRevealed ? 'pointer' : 'not-allowed') + ';font-family:inherit">'
-    +     (allRevealed ? '표현 학습으로 →' : '카드를 모두 눌러주세요')
-    +   '</button>'
-    + '</div>';
-  if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
-}
-
-function _keRevealVocab(vi) {
-  var idx = window._keVocabIdx || 0;
-  if (!window._keVocabRevealed[idx]) window._keVocabRevealed[idx] = {};
-  window._keVocabRevealed[idx][vi] = true;
-  _keRenderVocabPhase(document.getElementById('ke-expressions-list'));
-}
-
-function _keAdvanceFromVocab() {
-  // Move from vocab pre-teach into the existing Study card for the
-  // SAME expression index, then on Study "Next" the rest of the
-  // expressions follow their own (vocab → study) cycle.
-  window._keStudyIdx = window._keVocabIdx || 0;
-  window._kePhase = 'study';
-  _keRenderStudyPhase(document.getElementById('ke-expressions-list'));
 }
 
 function _keRenderStudyPhase(list) {
@@ -7855,16 +7768,36 @@ function _keRenderStudyPhase(list) {
       + '<div style="font-size:12px;color:rgba(255,255,255,.42)">' + (ex.en||'') + '</div>'
       + '</div>';
   }).join('');
+  // Pattern breakdown — the AI now returns parts: [{ko, en}, ...] for
+  // each expression so the learner sees what each grammatical chunk
+  // does, INSIDE the headline card. Old responses without parts fall
+  // back to no breakdown (graceful degradation while the cache fills).
+  var partsHtml = '';
+  if (Array.isArray(exp.parts) && exp.parts.length) {
+    partsHtml = '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:.06em;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:8px">PATTERN BREAKDOWN</div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px">'
+      + exp.parts.map(function(p) {
+          return '<div style="display:flex;align-items:baseline;gap:10px;text-align:left">'
+            + '<span style="font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:800;color:#fff;flex-shrink:0;min-width:70px">' + (p.ko || '') + '</span>'
+            + '<span style="font-size:12px;color:rgba(255,255,255,.6);line-height:1.45">' + (p.en || '') + '</span>'
+            + '</div>';
+        }).join('')
+      + '</div></div>';
+  }
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 2 · 표현 학습</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 1 · 표현 학습</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
     + '</div>'
-    // Headline card — clean and uncrowded
+    // Headline card — pattern + parts breakdown together so the learner
+    // sees both the whole expression and what each grammatical chunk
+    // contributes before scrolling to the example sentences.
     + '<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:22px 18px;text-align:center;margin-bottom:14px">'
     +   '<div style="font-family:\'Noto Serif KR\',serif;font-size:26px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:6px">' + (exp.ko||'') + '</div>'
     +   '<div style="font-size:12px;color:rgba(255,255,255,.4);font-style:italic;margin-bottom:10px">' + (exp.rom||'') + '</div>'
     +   '<div style="font-size:15px;color:#7dd3fc;font-weight:700">' + (exp.en||'') + '</div>'
+    +   partsHtml
     + '</div>'
     // Examples block — each clickable for TTS
     + (examplesHtml ? '<div style="padding:0 4px 14px">'
@@ -7876,15 +7809,14 @@ function _keRenderStudyPhase(list) {
     +   '<button onclick="ttsSpeak(\'' + safeKo + '\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
     +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
     + '</div>'
-    // Navigation row. "Next" loops back through the VOCAB phase for
-    // the next expression so each expression gets its own pre-teach
-    // card cycle. The final Study card jumps directly to the Fill quiz
-    // — the old Recognition MCQ between Study and Fill was redundant
-    // with the Situation quiz that follows Fill, so it was cut.
+    // Navigation row — straight prev/next through the Study cards. The
+    // final card jumps directly to the Fill quiz; the old Recognition
+    // MCQ between Study and Fill was redundant with the Situation quiz
+    // and got cut.
     + '<div style="display:flex;gap:8px;justify-content:center;align-items:center">'
-    + '<button onclick="window._keStudyIdx=Math.max(0,window._keStudyIdx-1);window._keVocabIdx=window._keStudyIdx;window._kePhase=\'vocab\';_keRenderVocabPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;visibility:' + (idx > 0 ? 'visible' : 'hidden') + '">&larr; 이전</button>'
+    + '<button onclick="window._keStudyIdx=Math.max(0,window._keStudyIdx-1);_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;visibility:' + (idx > 0 ? 'visible' : 'hidden') + '">&larr; 이전</button>'
     + (idx < exps.length - 1
-      ? '<button onclick="window._keVocabIdx=window._keStudyIdx+1;window._keStudyIdx=window._keVocabIdx;window._kePhase=\'vocab\';_keRenderVocabPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">다음 표현 &rarr;</button>'
+      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">다음 표현 &rarr;</button>'
       : '<button onclick="_keStartFillQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">연습 시작 &rarr;</button>')
     + '</div>';
   // Re-render lucide icons that were just injected (Save button).
