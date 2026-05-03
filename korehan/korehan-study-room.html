@@ -2397,11 +2397,13 @@ body { background: #14253f !important; }
 .su-explain-title { font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:2px; }
 .su-explain-text { font-size:13px;color:#475569;line-height:1.5; }
 .su-explain-text b { color:#0f172a; }
-/* Matching grid — Korean column (left) | English column (right) */
-.su-match-grid { padding:0 16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start; }
-.su-match-col { display:flex;flex-direction:column;gap:8px;min-width:0; }
+/* Matching grid — Korean column (left) | English column (right). Items
+ * are rendered as flat children of the grid (KO_i, EN_i, KO_(i+1), EN_(i+1) …)
+ * so each row's Korean and English cards share the same height. */
+.su-match-grid { padding:0 16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch; }
+.su-match-col { display:contents; }
 .su-match-col-head { font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;padding:0 4px 4px;border-bottom:1px solid #f1f5f9;margin-bottom:2px; }
-.su-match-item { padding:12px 14px;border:1.5px solid #e8eef5;border-radius:12px;cursor:pointer;text-align:center;background:#fff;transition:all .2s;display:flex;align-items:center;justify-content:center;min-height:46px;position:relative; }
+.su-match-item { padding:12px 14px;border:1.5px solid #e8eef5;border-radius:12px;cursor:pointer;text-align:center;background:#fff;transition:all .2s;display:flex;align-items:center;justify-content:center;min-height:56px;position:relative;height:100%; }
 .su-match-item:hover { border-color:#c4b5fd;background:#faf5ff; transform:translateY(-1px); }
 .su-match-item.sel { border-color:#7c3aed;background:#faf5ff;box-shadow:0 0 0 3px rgba(124,58,237,.18); transform:translateY(-1px); }
 .su-match-item.matched { border-color:#22c55e;background:#f0fdf4;pointer-events:none;opacity:.85; }
@@ -20530,18 +20532,27 @@ function asTogglePassage() {
 function _asRenderMatch() {
   var g=document.getElementById('as-mg'); if(!g||!_asMatchState) return;
   var m=_asMatchState;
-  var lh=m.pairs.map(function(v,i){
-    var isDone=m.matched.indexOf(i)>=0;
-    var cls='su-match-item'+(isDone?' matched':m.sel.l===i?' sel':'');
-    return '<div class="'+cls+'" data-li="'+i+'" onclick="asML('+i+')"><div class="su-match-ko">'+v.ko+'</div></div>';
-  }).join('');
-  var rh=m.eng.map(function(item,ri){
-    var isDone=m.matched.indexOf(item.i)>=0;
-    var cls='su-match-item'+(isDone?' matched':m.sel.r===ri?' sel':'');
-    return '<div class="'+cls+'" data-ri="'+ri+'" onclick="asMR('+ri+')"><div class="su-match-en">'+item.t+'</div></div>';
-  }).join('');
-  g.innerHTML = '<div class="su-match-col"><div class="su-match-col-head">한국어</div>' + lh + '</div>'
-              + '<div class="su-match-col"><div class="su-match-col-head">English</div>' + rh + '</div>';
+  // Interleave KO/EN items so each row of the 2-col grid contains one
+  // Korean and one English card. Combined with align-items:stretch + height:100%
+  // on .su-match-item this equalises the heights across the row even when
+  // English meanings wrap to two lines and Korean words are short.
+  var n = Math.max(m.pairs.length, m.eng.length);
+  var html = '<div class="su-match-col-head">한국어</div><div class="su-match-col-head">English</div>';
+  for (var i=0; i<n; i++) {
+    if (i < m.pairs.length) {
+      var v = m.pairs[i];
+      var isDoneL = m.matched.indexOf(i)>=0;
+      var clsL = 'su-match-item'+(isDoneL?' matched':m.sel.l===i?' sel':'');
+      html += '<div class="'+clsL+'" data-li="'+i+'" onclick="asML('+i+')"><div class="su-match-ko">'+v.ko+'</div></div>';
+    } else { html += '<div></div>'; }
+    if (i < m.eng.length) {
+      var item = m.eng[i];
+      var isDoneR = m.matched.indexOf(item.i)>=0;
+      var clsR = 'su-match-item'+(isDoneR?' matched':m.sel.r===i?' sel':'');
+      html += '<div class="'+clsR+'" data-ri="'+i+'" onclick="asMR('+i+')"><div class="su-match-en">'+item.t+'</div></div>';
+    } else { html += '<div></div>'; }
+  }
+  g.innerHTML = html;
   // Update counter + sub-step progress bar
   var cnt=document.getElementById('as-nav-counter');
   if(cnt) cnt.textContent=m.matched.length+' / '+m.pairs.length;
