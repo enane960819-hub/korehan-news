@@ -37,11 +37,14 @@ function updateCommentForm() {
   var noticeEl = document.getElementById('comment-login-notice');
   if (!formEl || !noticeEl) return;
   if (supaUser) {
-    formEl.style.display = 'block';
+    // Clear the inline style entirely so the CSS display: flex from
+    // .comment-form takes over. Setting display:'block' here was the
+    // bug that put the 등록 button on its own line under the textarea.
+    formEl.style.removeProperty('display');
     noticeEl.style.display = 'none';
   } else {
     formEl.style.display = 'none';
-    noticeEl.style.display = 'block';
+    noticeEl.style.removeProperty('display');
   }
 }
 
