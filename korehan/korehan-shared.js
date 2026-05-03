@@ -8399,7 +8399,7 @@ function openCommentDrawer() {
       + '<div class="kh-cdr-panel" role="dialog" aria-label="Comments">'
       +   '<div class="kh-cdr-handle" onclick="closeCommentDrawer()"></div>'
       +   '<div class="kh-cdr-header">'
-      +     '<span class="kh-cdr-title"><span>💬 Comments</span><span class="kh-cdr-count" id="kh-cdr-count">0</span></span>'
+      +     '<span class="kh-cdr-title"><span>댓글</span><span class="kh-cdr-count" id="kh-cdr-count">0</span></span>'
       +     '<button class="kh-cdr-close" onclick="closeCommentDrawer()" aria-label="Close">&times;</button>'
       +   '</div>'
       +   '<div class="kh-cdr-body" id="kh-comment-drawer-body"></div>'
