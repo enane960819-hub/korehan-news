@@ -883,6 +883,130 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   .bm-snap-en { font-size: 18px; }
 }
 
+/* ── STEP 4 v2 — Audio Dictation + Word Association ─────────────
+   Replaces the old flip-card Word Snap. Dictation tests recall via
+   listening + typing (with a Skip path for silent environments);
+   Association tests Korean ↔ English mapping. */
+.bm-dict-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(167,139,250,.06);
+  border: 1px solid rgba(167,139,250,.18);
+  margin-bottom: 14px;
+}
+.bm-dict-play {
+  flex-shrink: 0;
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 0;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 18px rgba(124,58,237,.45);
+  transition: transform .12s, box-shadow .12s;
+}
+.bm-dict-play:hover  { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(124,58,237,.55); }
+.bm-dict-play:active { transform: scale(.94); }
+.bm-dict-input-wrap { flex: 1; min-width: 0; }
+.bm-dict-input-wrap input {
+  width: 100%; box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(167,139,250,.35);
+  background: rgba(255,255,255,.06);
+  color: #fff; font-size: 18px; font-family: inherit;
+  outline: none;
+}
+.bm-dict-input-wrap input.correct { border-color: #4ade80; background: rgba(34,197,94,.1); }
+.bm-dict-input-wrap input.wrong   { border-color: #f87171; background: rgba(239,68,68,.08); }
+.bm-dict-fb { min-height: 22px; margin-top: 8px; font-size: 13px; line-height: 1.4; }
+.bm-dict-fb-ok { color: #4ade80; font-weight: 800; }
+.bm-dict-fb-no { color: #fca5a5; }
+.bm-dict-fb-no strong { color: #a78bfa; font-weight: 800; }
+.bm-dict-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.bm-btn-skip {
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.65);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px; font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+.bm-btn-skip:hover { background: rgba(255,255,255,.08); color: #fff; }
+.bm-btn-skip:disabled { opacity: .35; cursor: not-allowed; }
+.bm-btn-check {
+  border: 0;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 22px;
+  font-size: 13px; font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(124,58,237,.35);
+}
+.bm-btn-check:hover { transform: translateY(-1px); }
+.bm-btn-check:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+
+/* Word Association grid */
+.bm-assoc-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 12px;
+}
+.bm-assoc-col { display: flex; flex-direction: column; gap: 8px; }
+.bm-assoc-card {
+  width: 100%;
+  padding: 14px 12px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px; font-weight: 700;
+  line-height: 1.35;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s, background .15s, transform .12s, opacity .25s;
+  min-height: 52px;
+}
+.bm-assoc-card:hover:not(:disabled):not(.matched) {
+  border-color: rgba(167,139,250,.5);
+  background: rgba(167,139,250,.1);
+}
+.bm-assoc-card.selected {
+  border-color: #a78bfa;
+  background: rgba(167,139,250,.18);
+  box-shadow: 0 0 0 3px rgba(167,139,250,.18);
+}
+.bm-assoc-card.matched {
+  border-color: rgba(34,197,94,.4);
+  background: rgba(34,197,94,.12);
+  color: rgba(255,255,255,.5);
+  cursor: default;
+  opacity: .55;
+}
+.bm-assoc-card.wrong {
+  border-color: #f87171;
+  background: rgba(239,68,68,.12);
+  color: #fca5a5;
+  animation: bmAssocShake .35s;
+}
+@keyframes bmAssocShake {
+  0%,100% { transform: translateX(0); }
+  20%,60% { transform: translateX(-5px); }
+  40%,80% { transform: translateX(5px); }
+}
+.bm-assoc-progress {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  margin-top: 14px;
+}
+
 /* ── STARTER 3-STEP MODAL ─────────────────────────────── */
 .smodal-overlay {
   position: fixed; inset: 0; background: rgba(10,20,40,.88);
@@ -16226,12 +16350,217 @@ function renderBMWordSnap() {
         }
       } catch(e){}
       bmRenderSnapCard();
-    }).catch(function(){ bmRenderSnapCard(); });
+    }).catch(function(){ bmStartDictation(); });
     return;
   }
-  bmRenderSnapCard();
+  bmStartDictation();
 }
 
+// ── Step 4: redesigned ── Audio Dictation → Word Association
+// User feedback: "Word Snap is lame" + the old flip-card was passive.
+// Replaced with two graded recall activities. Skip is supported on
+// Dictation for environments where audio isn't usable.
+
+function bmStartDictation() {
+  _bm.snapPhase = 'dictation';
+  _bm.dictIdx = 0;
+  _bm.dictResults = {};
+  bmRenderDictation();
+}
+
+function bmRenderDictation() {
+  var cards = _bm.snapCards || [];
+  var idx = _bm.dictIdx || 0;
+  if (idx >= cards.length) {
+    bmStartAssociation();
+    return;
+  }
+  var card = cards[idx];
+  var safeKo = (card.ko || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+
+  document.getElementById('bm-body').innerHTML =
+      '<div class="bm-step-label">Step 4 of 4 · 받아쓰기 ' + (idx + 1) + ' / ' + cards.length + '</div>'
+    + '<div class="bm-step-title">' + BM_ICON_VOLUME + '<span>Audio Dictation</span></div>'
+    + '<div class="bm-step-desc">단어를 듣고 한국어로 입력해보세요. 듣기가 어려우면 건너뛰세요.</div>'
+    + '<div class="bm-dict-card">'
+    +   '<button type="button" class="bm-dict-play" onclick="ttsSpeak(\'' + safeKo + '\')" aria-label="Play">'
+    +     '<span style="display:inline-flex;width:36px;height:36px;color:#fff">' + BM_ICON_VOLUME + '</span>'
+    +   '</button>'
+    +   '<div class="bm-dict-input-wrap">'
+    +     '<input type="text" id="bm-dict-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
+    +     ' placeholder="들은 단어를 입력..."'
+    +     ' onkeydown="if(event.key===\'Enter\')bmDictCheck()">'
+    +     '<div class="bm-dict-fb" id="bm-dict-fb"></div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="bm-dict-actions">'
+    +   '<button type="button" class="bm-btn-skip" onclick="bmDictSkip()">건너뛰기 →</button>'
+    +   '<button type="button" class="bm-btn-check" onclick="bmDictCheck()">확인</button>'
+    + '</div>';
+
+  document.getElementById('bm-footer').innerHTML =
+      '<button class="bm-btn-back" onclick="goToBMStep3Back()">← Fill In</button>'
+    + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">듣고 쓰면 단어가 기억에 잘 남아요</span>'
+    + '<button class="bm-btn-next" disabled>Complete →</button>';
+
+  // Auto-play TTS shortly after the card mounts so the learner doesn't
+  // have to hunt for the play button on each new word.
+  setTimeout(function() {
+    try { ttsSpeak(card.ko); } catch(_) {}
+  }, 250);
+  setTimeout(function() {
+    var inp = document.getElementById('bm-dict-input');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+function _bmDictNormalize(s) {
+  return String(s || '').replace(/[\s.,!?。·~]/g, '').toLowerCase();
+}
+
+function bmDictCheck() {
+  var cards = _bm.snapCards || [];
+  var idx = _bm.dictIdx || 0;
+  var card = cards[idx];
+  if (!card) return;
+  var inp = document.getElementById('bm-dict-input');
+  var fb  = document.getElementById('bm-dict-fb');
+  if (!inp || !fb) return;
+  var typed = (inp.value || '').trim();
+  if (!typed) return;
+  var isCorrect = _bmDictNormalize(typed) === _bmDictNormalize(card.ko);
+  _bm.dictResults[idx] = { typed: typed, correct: isCorrect };
+  inp.disabled = true;
+  document.querySelectorAll('.bm-dict-actions button').forEach(function(b){ b.disabled = true; });
+  if (isCorrect) {
+    inp.classList.add('correct');
+    fb.innerHTML = '<span class="bm-dict-fb-ok">✓ 정답!</span>';
+    if (typeof playCorrectSound === 'function') playCorrectSound();
+  } else {
+    inp.classList.add('wrong');
+    fb.innerHTML = '<span class="bm-dict-fb-no">정답: <strong>' + (card.ko||'') + '</strong>'
+      + (card.en ? ' <span style="opacity:.6;font-weight:500">(' + card.en + ')</span>' : '') + '</span>';
+    if (typeof playWrongSound === 'function') playWrongSound();
+  }
+  setTimeout(function() {
+    _bm.dictIdx = (_bm.dictIdx || 0) + 1;
+    bmRenderDictation();
+  }, isCorrect ? 1100 : 1700);
+}
+
+function bmDictSkip() {
+  var idx = _bm.dictIdx || 0;
+  _bm.dictResults[idx] = { skipped: true };
+  _bm.dictIdx = (_bm.dictIdx || 0) + 1;
+  bmRenderDictation();
+}
+
+// ── Phase B: Word Association ──
+function bmStartAssociation() {
+  var cards = _bm.snapCards || [];
+  // Independent shuffles so the matching isn't a freebie.
+  _bm.assocKo = cards.map(function(c, i){ return { idx: i, label: c.ko }; }).sort(function(){ return Math.random() - 0.5; });
+  _bm.assocEn = cards.map(function(c, i){ return { idx: i, label: c.en || c.ko }; }).sort(function(){ return Math.random() - 0.5; });
+  _bm.assocMatched = [];
+  _bm.assocSelKo = null;
+  _bm.assocSelEn = null;
+  _bm.assocFlash = null; // { okKo, okEn } | { wrongKo, wrongEn }
+  _bm.snapPhase = 'association';
+  bmRenderAssociation();
+}
+
+function bmRenderAssociation() {
+  var cards = _bm.snapCards || [];
+  var matched = _bm.assocMatched || [];
+  var allMatched = cards.length > 0 && matched.length === cards.length;
+  var flash = _bm.assocFlash || {};
+
+  function cardCls(item, isKo) {
+    var sel = isKo ? _bm.assocSelKo : _bm.assocSelEn;
+    var cls = 'bm-assoc-card';
+    if (matched.indexOf(item.idx) >= 0)         cls += ' matched';
+    else if (sel === item.idx)                   cls += ' selected';
+    if (flash.wrongKo === item.idx && isKo)      cls += ' wrong';
+    if (flash.wrongEn === item.idx && !isKo)     cls += ' wrong';
+    return cls;
+  }
+
+  var koHtml = (_bm.assocKo || []).map(function(item) {
+    var cls = cardCls(item, true);
+    var disabled = matched.indexOf(item.idx) >= 0 ? 'disabled' : '';
+    return '<button type="button" class="' + cls + '" ' + disabled
+      + ' onclick="bmAssocPickKo(' + item.idx + ')">' + (item.label||'') + '</button>';
+  }).join('');
+
+  var enHtml = (_bm.assocEn || []).map(function(item) {
+    var cls = cardCls(item, false);
+    var disabled = matched.indexOf(item.idx) >= 0 ? 'disabled' : '';
+    return '<button type="button" class="' + cls + '" ' + disabled
+      + ' onclick="bmAssocPickEn(' + item.idx + ')">' + (item.label||'') + '</button>';
+  }).join('');
+
+  document.getElementById('bm-body').innerHTML =
+      '<div class="bm-step-label">Step 4 of 4 · 단어 매칭</div>'
+    + '<div class="bm-step-title">' + BM_ICON_BULB + '<span>Word Association</span></div>'
+    + '<div class="bm-step-desc">한국어를 탭하고 맞는 영어를 탭하세요.</div>'
+    + '<div class="bm-assoc-grid">'
+    +   '<div class="bm-assoc-col">' + koHtml + '</div>'
+    +   '<div class="bm-assoc-col">' + enHtml + '</div>'
+    + '</div>'
+    + '<div class="bm-assoc-progress">' + matched.length + ' / ' + cards.length + ' 매칭 완료</div>';
+
+  document.getElementById('bm-footer').innerHTML =
+      '<button class="bm-btn-back" onclick="bmStartDictation()">← 다시 듣기</button>'
+    + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">'
+    + (allMatched ? '✓ 모든 단어 매칭 완료!' : '짝을 맞춰주세요')
+    + '</span>'
+    + '<button class="bm-btn-next" ' + (allMatched ? '' : 'disabled') + ' onclick="finishBeginner()">Complete →</button>';
+}
+
+function bmAssocPickKo(idx) {
+  if ((_bm.assocMatched || []).indexOf(idx) >= 0) return;
+  _bm.assocSelKo = idx;
+  _bm.assocFlash = null;
+  _bmAssocTryMatch();
+}
+
+function bmAssocPickEn(idx) {
+  if ((_bm.assocMatched || []).indexOf(idx) >= 0) return;
+  _bm.assocSelEn = idx;
+  _bm.assocFlash = null;
+  _bmAssocTryMatch();
+}
+
+function _bmAssocTryMatch() {
+  if (_bm.assocSelKo == null || _bm.assocSelEn == null) {
+    bmRenderAssociation();
+    return;
+  }
+  var won = _bm.assocSelKo === _bm.assocSelEn;
+  if (won) {
+    _bm.assocMatched.push(_bm.assocSelKo);
+    _bm.assocSelKo = null;
+    _bm.assocSelEn = null;
+    if (typeof playCorrectSound === 'function') playCorrectSound();
+    setTimeout(bmRenderAssociation, 250);
+    if (_bm.assocMatched.length === (_bm.snapCards || []).length) {
+      setTimeout(function(){ if (typeof bmFireConfetti === 'function') bmFireConfetti(); }, 350);
+    }
+  } else {
+    _bm.assocFlash = { wrongKo: _bm.assocSelKo, wrongEn: _bm.assocSelEn };
+    _bm.assocSelKo = null;
+    _bm.assocSelEn = null;
+    if (typeof playWrongSound === 'function') playWrongSound();
+    bmRenderAssociation();
+    setTimeout(function() {
+      _bm.assocFlash = null;
+      bmRenderAssociation();
+    }, 600);
+  }
+}
+
+// Legacy — kept so old saved-progress entries that reference these
+// don't blow up. The new flow doesn't call them.
 function bmRenderSnapCard() {
   var cards = _bm.snapCards || [];
   var idx   = _bm.snapIdx || 0;
