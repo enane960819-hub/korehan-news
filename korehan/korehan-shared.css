@@ -3739,6 +3739,230 @@ body.kh-cdr-open #vocab-admin-bar,
 body.kh-cdr-open #fj-resume,
 body.kh-cdr-open #kh-feed-next-pill { display: none !important; }
 
+/* ── Forum-style comments (cm-* — see js/features/comments.js) ───
+   Bubble cards with reply tree and like/dislike reactions, designed
+   to match a Korean community forum (도그드립 inspired) rather than
+   a social feed. The same .cm-row markup renders inline inside
+   #art-comments and inside the bottom-sheet drawer that re-parents it. */
+#comments-list { display: flex; flex-direction: column; gap: 14px; }
+
+.cm-empty {
+  font-size: 13px;
+  color: #94a3b8;
+  padding: 18px 4px;
+  text-align: center;
+  margin: 0;
+}
+
+.cm-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.cm-row.cm-reply { margin-left: 36px; }
+
+.cm-av-col { flex-shrink: 0; padding-top: 2px; }
+.cm-av {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: block;
+  object-fit: cover;
+}
+.cm-av-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2255a4;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.cm-bubble {
+  flex: 1;
+  min-width: 0;
+  background: #f4f6fa;
+  border: 1px solid #e6ebf3;
+  border-radius: 14px;
+  padding: 10px 14px 8px;
+}
+.cm-row.cm-reply .cm-bubble {
+  background: #f7f8fb;
+}
+
+.cm-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.cm-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.3;
+}
+.cm-time {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.cm-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #1f2937;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.cm-mention {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2255a4;
+  background: #e0ecff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-right: 4px;
+  vertical-align: 1px;
+}
+
+.cm-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.cm-actions-spacer { flex: 1; }
+
+.cm-react {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  transition: background .12s, color .12s;
+  line-height: 1;
+}
+.cm-react svg { width: 14px; height: 14px; }
+.cm-react .cm-react-n { font-size: 11px; min-width: 6px; }
+.cm-react:hover { background: #eef2f7; color: #334155; }
+.cm-react.on { color: #2255a4; background: #e0ecff; }
+.cm-react[data-type="dislike"].on { color: #b91c1c; background: #fee2e2; }
+
+.cm-mini {
+  background: transparent;
+  border: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.cm-mini:hover { background: #eef2f7; color: #334155; }
+
+.cm-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  position: relative;
+}
+
+.cm-reply-form {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cm-reply-form[hidden] { display: none; }
+.cm-reply-form textarea {
+  width: 100%;
+  min-height: 62px;
+  resize: vertical;
+  border: 1px solid #d6dde8;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: #0f172a;
+  background: #fff;
+  box-sizing: border-box;
+}
+.cm-reply-form textarea:focus { outline: none; border-color: #2255a4; }
+.cm-reply-form-row {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.cm-reply-submit {
+  background: #2255a4;
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cm-reply-submit:hover { background: #1e40af; }
+
+.cm-hidden-note {
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 10px 0 4px;
+  text-align: center;
+}
+.cm-hidden-note button {
+  background: none;
+  border: 0;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  text-decoration: underline;
+}
+
+/* Drawer (mobile bottom sheet) — slightly tighter spacing inside. */
+#kh-comment-drawer #comments-list { gap: 12px; }
+#kh-comment-drawer .cm-row.cm-reply { margin-left: 28px; }
+
+/* Neon / dark mode */
+body.kh-neon-on .cm-bubble {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.1);
+}
+body.kh-neon-on .cm-row.cm-reply .cm-bubble { background: rgba(255,255,255,.06); }
+body.kh-neon-on .cm-name { color: #f1f5f9; }
+body.kh-neon-on .cm-time { color: #94a3b8; }
+body.kh-neon-on .cm-body { color: #e2e8f0; }
+body.kh-neon-on .cm-mention { background: rgba(96,165,250,.18); color: #93c5fd; }
+body.kh-neon-on .cm-react:hover,
+body.kh-neon-on .cm-mini:hover { background: rgba(255,255,255,.08); color: #e2e8f0; }
+body.kh-neon-on .cm-react.on { background: rgba(96,165,250,.22); color: #93c5fd; }
+body.kh-neon-on .cm-react[data-type="dislike"].on { background: rgba(248,113,113,.22); color: #fca5a5; }
+body.kh-neon-on .cm-reply-form textarea {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.12);
+  color: #f1f5f9;
+}
+
 /* ── Next-article feed pill + slide-out transition ──────────────── */
 body.kh-reading-page #kh-feed-next-pill {
   position: fixed;
