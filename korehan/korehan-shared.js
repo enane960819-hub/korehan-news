@@ -2534,14 +2534,14 @@ function renderArticlePage() {
 
     // 댓글 섹션
     + '<section class="art-comments" id="art-comments">'
-    + '<h3 class="art-comments-title" style="display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px">'+KH_ICON_CHAT+'</span><span>Comments</span> <span id="comment-count" style="font-size:16px;color:var(--gray)"></span></h3>'
+    + '<h3 class="art-comments-title"><span style="display:inline-flex;width:18px;height:18px">'+KH_ICON_CHAT+'</span><span>댓글</span> <span id="comment-count" style="font-size:14px;color:var(--gray);font-weight:700"></span></h3>'
     + '<div id="comment-form-wrap">'
     + '<div class="comment-login-notice" id="comment-login-notice" style="display:none">'
-    + '<p>Sign in to leave a comment — <a href="#" onclick="event.preventDefault();openAuthModal(&apos;signin&apos;)">Sign in</a></p>'
+    + '<p>댓글을 남기려면 로그인하세요 — <a href="#" onclick="event.preventDefault();openAuthModal(&apos;signin&apos;)">로그인</a></p>'
     + '</div>'
     + '<div class="comment-form" id="comment-form" style="display:none">'
-    + '<textarea id="comment-input" placeholder="Write a comment..." rows="3"></textarea>'
-    + '<button class="comment-submit-btn" onclick="submitComment(\'' + a.id + '\')">Post</button>'
+    + '<textarea id="comment-input" placeholder="댓글을 입력하세요…" rows="2" maxlength="500"></textarea>'
+    + '<button class="comment-submit-btn" onclick="submitComment(\'' + a.id + '\')">등록</button>'
     + '</div>'
     + '</div>'
     + '<div id="comments-list"></div>'
