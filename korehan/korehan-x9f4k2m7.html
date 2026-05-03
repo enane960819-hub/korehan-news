@@ -3093,18 +3093,43 @@ function renderTopicsTable(list) {
   const el = document.getElementById('topics-wrap');
   if (!list.length) { el.innerHTML = '<div class="infobox">토픽이 없습니다.</div>'; return; }
   const lvBg = { Starter:'background:#f3e8ff;color:#7c3aed', Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
-  // 오늘 인덱스 계산 (기준일 2026-04-15) — must be before the loop
+  // 오늘의 핀 — study room 생성 로직과 정확히 일치시켜야 함:
+  //   epoch (2026-04-15) 기준 며칠째인지 계산 → 해당 레벨의 active=true
+  //   topics를 sort_order/created_at 정렬 → daysSince % count.
+  // 이전 구현은 화면에 표시되는 list.length로 modulo했는데, 이건
+  //   - 'all' 필터일 때는 모든 레벨 합친 길이라 의미 없음
+  //   - 단일 레벨 필터일 때도 inactive 토픽이 같이 잡혀서 카운트가
+  //     실제 생성에서 쓰는 active 카운트와 어긋남
+  // 결과: 핀이 실제 study room이 오늘 보여줄 토픽과 다른 행을 가리켜
+  // 어드민이 "오늘 토픽"이라고 본 게 사이트의 진짜 오늘 토픽이 아니었음.
   var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
   var nowMs = Date.now() + 9*3600000;
   var daysSince = Math.max(0, Math.floor((nowMs - epoch) / 86400000));
-  var todayIdx = list.length ? (daysSince % list.length) : 0;
+  // Compute today's topic ID per level, using the same active-only,
+  // sort_order/created_at-ordered list the generation code uses.
+  var pinnedTopicIds = Object.create(null);
+  var byLevelActive = Object.create(null);
+  (window._topicsAll || []).forEach(function(t) {
+    if (!t || t.active === false) return;
+    if (!byLevelActive[t.level]) byLevelActive[t.level] = [];
+    byLevelActive[t.level].push(t);
+  });
+  Object.keys(byLevelActive).forEach(function(lvl) {
+    // _topicsAll already comes back ordered by sort_order, created_at
+    // from loadTopics; preserve that order here.
+    var arr = byLevelActive[lvl];
+    if (!arr.length) return;
+    var pickIdx = daysSince % arr.length;
+    var picked = arr[pickIdx];
+    if (picked) pinnedTopicIds[picked.id] = true;
+  });
   let rows = '';
   for (let i=0; i<list.length; i++) {
     const t = list[i];
     const bg = lvBg[t.level] || 'background:#eee;color:#555';
     const activeColor = t.active ? '#2e7d32' : '#c33';
     const usedLabel = t.used_date ? '<span style="font-size:10px;color:#94a3b8">📅 ' + t.used_date + '</span>' : '';
-    var isToday = (i === todayIdx);
+    var isToday = !!pinnedTopicIds[t.id];
     rows += '<tr style="border-bottom:1px solid var(--border);'+(isToday?'background:#fffbeb;':'') +'" data-idx="'+i+'">';
     rows += '<td style="padding:7px 8px;text-align:center;font-size:12px;color:'+(isToday?'#d97706':'#94a3b8')+';width:30px;font-weight:'+(isToday?'900':'400')+'">' + (i+1) + (isToday?' 📌':'') + '</td>';
     rows += '<td style="padding:7px 8px;white-space:nowrap;width:50px">'
@@ -8989,7 +9014,34 @@ async function srLoadDailyContent() {
   }
 
   var rec = r.data;
-  if (msgEl) msgEl.textContent = '✅ Loaded (Day '+daysSince+')';
+  // Mismatch detection — if a stored row exists, compare its topic to
+  // what the level's active-topic schedule says SHOULD show on this
+  // date. They can drift when writing_topics rows were added/removed
+  // or reactivated after the row was generated. Without this badge,
+  // the admin couldn't tell that the stored content was off.
+  var mismatch = false;
+  if (rec && scheduledTopic) {
+    var storedKo  = String(rec.topic_ko || '').trim();
+    var storedEn  = String(rec.topic_en || '').trim();
+    var schedKo   = String(scheduledTopic.topic_ko || '').trim();
+    var schedEn   = String(scheduledTopic.topic_en || '').trim();
+    mismatch = (storedKo && schedKo && storedKo !== schedKo)
+            || (storedEn && schedEn && storedEn !== schedEn);
+  }
+  if (mismatch) {
+    if (msgEl) {
+      msgEl.innerHTML = '⚠️ <b>스케줄 불일치</b> — Day ' + daysSince + ' (' + level + ') 예정 토픽: <b>'
+        + (scheduledTopic.topic_ko || '') + '</b> / 저장된 토픽: <b>' + (rec.topic_ko || '') + '</b>. '
+        + '<button class="btn" onclick="srForceRegenerateScheduled()" '
+        + 'style="margin-left:8px;background:#fde68a;color:#92400e;border:1px solid #f59e0b;font-size:11px;padding:4px 10px">🔄 예정 토픽으로 재생성</button>';
+      msgEl.style.color = '#92400e';
+    }
+    // Stash the scheduled topic so the regenerate button can use it.
+    window._srSchedTopic = { date: date, level: level, topic_ko: scheduledTopic.topic_ko, topic_en: scheduledTopic.topic_en };
+  } else {
+    if (msgEl) msgEl.textContent = '✅ Loaded (Day '+daysSince+')';
+    window._srSchedTopic = null;
+  }
   var regenBtn = document.getElementById('srt-regen-btn');
   if (regenBtn) regenBtn.style.display = '';
   function _jp(v){try{return typeof v==='string'?JSON.parse(v):(v||[]);}catch(e){return [];}}
@@ -9169,6 +9221,29 @@ async function srSaveDailyContent() {
 }
 
 // 상단 재생성 버튼: 현재 날짜+레벨 삭제 후 다시 Load (자동 AI 생성)
+// Wipe the stored row for date+level and re-run the regular Load path,
+// which will see no row and auto-generate from the level's scheduled
+// topic. Used when the existing study_daily_content row's topic drifted
+// off the active writing_topics schedule (e.g. topics were reordered or
+// inactivated after the row was created).
+async function srForceRegenerateScheduled() {
+  var sb = getSb();
+  var msgEl = document.getElementById('srt-msg');
+  var sch = window._srSchedTopic;
+  if (!sch) {
+    if (msgEl) msgEl.textContent = 'No scheduled topic captured. Reload first.';
+    return;
+  }
+  if (!confirm('Day 별 예정 토픽 "' + sch.topic_ko + '"으로 ' + sch.date + ' / ' + sch.level + ' 콘텐츠를 새로 생성합니다. 기존 행은 삭제됩니다. 진행?')) return;
+  if (msgEl) msgEl.textContent = '🗑️ 기존 행 삭제 중…';
+  var del = await sb.from('study_daily_content').delete().eq('scheduled_date', sch.date).eq('level', sch.level);
+  if (del.error) { if (msgEl) msgEl.textContent = '삭제 실패: ' + del.error.message; return; }
+  window._srSchedTopic = null;
+  // Re-enter the normal Load path; with the row gone, it will auto-AI-generate
+  // using the scheduled topic.
+  await srLoadDailyContent();
+}
+
 async function srRegenerate() {
   var sb = getSb();
   var date  = (document.getElementById('srt-date').value  || '').trim();
