@@ -337,27 +337,44 @@ document.addEventListener('DOMContentLoaded', async function() {
   var root = document.getElementById('rp-root');
   if (!rid) { root.innerHTML = '<div class="rp-not-found"><h2>기자를 찾을 수 없습니다</h2></div>'; return; }
   _postMode = getPostModePref();
-  try {
-    var sbBg = getSupa && getSupa();
-    var bgUrl = REPORTER_BG_DEFAULT;
-    if (sbBg) {
-      var bgRes = await sbBg.from('app_settings').select('value').eq('key', 'reporter_bg_image_url').maybeSingle();
-      if (!bgRes.error && bgRes.data && bgRes.data.value) bgUrl = String(bgRes.data.value);
-    }
-    var bgEl = document.getElementById('rp-page-bg');
-    if (bgEl) bgEl.style.backgroundImage = 'url(\"' + bgUrl.replace(/\"/g, '%22') + '\")';
-  } catch(e) {}
-
-  var reporter = null;
   var sb = getSupa();
-  if (sb) {
-    try {
-      var res = await sb.from('character_reporters').select('data').eq('id', rid).maybeSingle();
-      if (!res.error && res.data) reporter = res.data.data || res.data;
-    } catch(e) {}
+
+  // Fire all three independent queries in parallel rather than sequentially
+  // — was costing ~3x the network round-trip of the slowest call.
+  // Each catch swallows its own failure so a slow/missing endpoint doesn't
+  // sink the others.
+  var bgPromise = sb
+    ? sb.from('app_settings').select('value').eq('key', 'reporter_bg_image_url').maybeSingle().then(function(r){
+        if (!r.error && r.data && r.data.value) return String(r.data.value);
+        return REPORTER_BG_DEFAULT;
+      }).catch(function(){ return REPORTER_BG_DEFAULT; })
+    : Promise.resolve(REPORTER_BG_DEFAULT);
+
+  var reporterPromise = sb
+    ? sb.from('character_reporters').select('data').eq('id', rid).maybeSingle().then(function(r){
+        if (!r.error && r.data) return r.data.data || r.data;
+        return null;
+      }).catch(function(){ return null; })
+    : Promise.resolve(null);
+
+  var favPromise = loadAffinityPoints(sb, rid).catch(function(){ return 0; });
+
+  var bgUrl, reporter, favXP;
+  try {
+    var results = await Promise.all([bgPromise, reporterPromise, favPromise]);
+    bgUrl    = results[0];
+    reporter = results[1];
+    favXP    = results[2] || 0;
+  } catch(e) {
+    bgUrl = REPORTER_BG_DEFAULT; reporter = null; favXP = 0;
   }
+
+  var bgEl = document.getElementById('rp-page-bg');
+  if (bgEl) bgEl.style.backgroundImage = 'url(\"' + (bgUrl || REPORTER_BG_DEFAULT).replace(/\"/g, '%22') + '\")';
+
+  // Fall back to KH_REPORTERS cache (already seeded synchronously by
+  // reporters.js + any localStorage cache) if Supabase had no row.
   if (!reporter || !reporter.name) {
-    await _loadReportersIntoKHMap();
     var b = KH_REPORTERS[rid];
     if (b) reporter = { id:rid, name:b.name, role:b.role, image:b.img, color:b.color, intro:'', tags:[] };
   }
@@ -372,7 +389,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   _currentReporterId = rid;
   _currentReporter = reporter;
   _canManagePosts = canManageReporterPosts(reporter);
-  var favXP = await loadAffinityPoints(sb, rid);
   _currentAffinityXP = favXP;
   var favPct = Math.min(100, Math.round(favXP / FAV_HIRE_THRESHOLD * 100));
   var favLevel = favXP >= FAV_HIRE_THRESHOLD ? '매니저' : favXP >= 200 ? '친구' : favXP >= 80 ? '지인' : '모르는 사이';
