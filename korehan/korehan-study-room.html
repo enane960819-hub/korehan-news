@@ -7695,19 +7695,135 @@ function keCloseSituationQuiz() {
 }
 
 function _renderKeyExpressions(list, expressions) {
-  // Phase 1: Study the expressions first
-  window._keExpressions = expressions;
-  window._kePhase = 'study';
-  window._keStudyIdx = 0;
-  _keRenderStudyPhase(list);
-  // Background pre-gen: kick off the situation quiz fetch as soon
-  // as expressions render, so by the time the learner finishes
-  // Study and reaches the quiz step, the situations are already
-  // cached in DB. First learner pays the AI bill; subsequent ones
-  // load instantly.
+  // 4-phase flow (was 5):
+  //   1) VOCAB     — pre-teach the 2-3 content words from each example
+  //                  sentence as tap-to-reveal cards. Was missing entirely
+  //                  — the old flow dumped fully-formed sentences on the
+  //                  learner without warming up the vocabulary inside.
+  //   2) STUDY     — the expression card with examples (now familiar).
+  //   3) FILL      — type the missing expression in a sentence (production).
+  //   4) SITUATION — "When can you use it?" multiple choice (application).
+  //   5) FINAL     — score + complete.
+  // The old Recognition MCQ ("Which expression means…") was redundant
+  // with the Situation quiz and got cut.
+  window._keExpressions   = expressions;
+  window._kePhase         = 'vocab';
+  window._keVocabIdx      = 0;
+  window._keVocabRevealed = {}; // { idx: { wordIdx: true } }
+  window._keStudyIdx      = 0;
+  _keRenderVocabPhase(list);
+  // Background prefetch: situation quiz fires several articles ahead.
   if (typeof _kePrefetchSituations === 'function') {
     _kePrefetchSituations(expressions);
   }
+}
+
+// ── Phase 0: Vocab pre-teach ─────────────────────────────────
+// Pull the 2-3 most "content-heavy" words from the expression's first
+// example sentence and show them as tap-to-reveal cards. Learner must
+// reveal all before advancing — guarantees they meet the building
+// blocks before seeing the full expression.
+function _kePickVocabParts(exp) {
+  if (!exp) return [];
+  // Use the first example sentence; fall back to expression itself.
+  var src = (Array.isArray(exp.examples) && exp.examples[0] && exp.examples[0].ko)
+    ? exp.examples[0].ko
+    : (exp.example_ko || exp.ko || '');
+  if (!src) return [];
+  // Pull eojeols (whitespace-separated chunks). Skip particle-only
+  // tokens (조사 단독) and 1-char fragments. Also skip the expression
+  // itself if it appears in the sentence — that's what we're about
+  // to teach in Phase 2, no point double-revealing.
+  var PARTICLE_ONLY = /^[은는이가을를의에서와과도만으로부터까지에게한테로써]+[.,!?]?$/;
+  var expKo = String(exp.ko || '').trim();
+  var picks = [];
+  var seen = {};
+  src.split(/\s+/).forEach(function(tok) {
+    if (!tok) return;
+    var t = tok.replace(/[.,!?"]+$/, '');
+    if (!t || t.length < 2) return;
+    if (PARTICLE_ONLY.test(t)) return;
+    if (expKo && expKo.indexOf(t) !== -1) return;
+    if (seen[t]) return;
+    seen[t] = true;
+    picks.push({ ko: t });
+  });
+  return picks.slice(0, 3);
+}
+
+function _keRenderVocabPhase(list) {
+  var exps = window._keExpressions || [];
+  if (!exps.length) {
+    list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:24px 0">No expressions available.</div>';
+    return;
+  }
+  var idx = window._keVocabIdx || 0;
+  var exp = exps[idx];
+  var parts = _kePickVocabParts(exp);
+  // No usable vocab parts (very short example) → skip straight to Study
+  // for this expression so the learner isn't stuck on an empty preview.
+  if (!parts.length) {
+    _keAdvanceFromVocab();
+    return;
+  }
+  var revealed = window._keVocabRevealed[idx] || {};
+  var allRevealed = parts.every(function(_, vi) { return revealed[vi]; });
+
+  // Look up English meanings from the expression's parts/examples when
+  // the AI provided them; otherwise show "tap to listen" only — better
+  // than a fake translation. Most KE responses don't include word-level
+  // translations, so we lean on TTS.
+  var cardsHtml = parts.map(function(p, vi) {
+    var open = !!revealed[vi];
+    var safeKo = String(p.ko).replace(/'/g,"\\'");
+    return '<button type="button"'
+      + ' onclick="_keRevealVocab(' + vi + ');event.stopPropagation();ttsSpeak(\'' + safeKo + '\')"'
+      + ' style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 16px;border-radius:14px;'
+      + 'border:1px solid ' + (open ? 'rgba(167,139,250,.45)' : 'rgba(255,255,255,.12)') + ';'
+      + 'background:' + (open ? 'rgba(167,139,250,.14)' : 'rgba(255,255,255,.04)') + ';'
+      + 'color:#fff;cursor:pointer;font-family:inherit;text-align:left;width:100%;transition:all .2s">'
+      + '<span style="font-family:\'Noto Serif KR\',serif;font-size:20px;font-weight:900;color:#fff">' + (p.ko||'') + '</span>'
+      + (open
+          ? '<span style="font-size:11px;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.04em;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px;opacity:.6">' + BM_ICON_VOLUME + '</span>다시 들어보기</span>'
+          : '<span style="font-size:11px;color:rgba(255,255,255,.45);font-weight:600;letter-spacing:.04em">탭하여 듣기 / 학습</span>')
+      + '</button>';
+  }).join('');
+
+  list.innerHTML =
+      '<div style="text-align:center;margin-bottom:14px">'
+    +   '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 1 · 단어 미리보기</div>'
+    +   '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
+    + '</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:12px;text-align:center;line-height:1.5">예문에 나오는 단어들을 먼저 만나봐요. 카드를 눌러 발음을 들어보세요.</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">' + cardsHtml + '</div>'
+    + '<div style="display:flex;justify-content:center">'
+    +   '<button onclick="_keAdvanceFromVocab()" '
+    +     (allRevealed ? '' : 'disabled')
+    +     ' style="padding:11px 26px;border:none;border-radius:10px;'
+    +     'background:' + (allRevealed ? 'linear-gradient(135deg,#14cbb0,#0ea88f)' : 'rgba(255,255,255,.08)') + ';'
+    +     'color:' + (allRevealed ? '#fff' : 'rgba(255,255,255,.4)') + ';'
+    +     'font-size:13px;font-weight:800;'
+    +     'cursor:' + (allRevealed ? 'pointer' : 'not-allowed') + ';font-family:inherit">'
+    +     (allRevealed ? '표현 학습으로 →' : '카드를 모두 눌러주세요')
+    +   '</button>'
+    + '</div>';
+  if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+}
+
+function _keRevealVocab(vi) {
+  var idx = window._keVocabIdx || 0;
+  if (!window._keVocabRevealed[idx]) window._keVocabRevealed[idx] = {};
+  window._keVocabRevealed[idx][vi] = true;
+  _keRenderVocabPhase(document.getElementById('ke-expressions-list'));
+}
+
+function _keAdvanceFromVocab() {
+  // Move from vocab pre-teach into the existing Study card for the
+  // SAME expression index, then on Study "Next" the rest of the
+  // expressions follow their own (vocab → study) cycle.
+  window._keStudyIdx = window._keVocabIdx || 0;
+  window._kePhase = 'study';
+  _keRenderStudyPhase(document.getElementById('ke-expressions-list'));
 }
 
 function _keRenderStudyPhase(list) {
@@ -7741,7 +7857,7 @@ function _keRenderStudyPhase(list) {
   }).join('');
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:4px">Step 1 · Study</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 2 · 표현 학습</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
     + '</div>'
     // Headline card — clean and uncrowded
@@ -7760,12 +7876,16 @@ function _keRenderStudyPhase(list) {
     +   '<button onclick="ttsSpeak(\'' + safeKo + '\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
     +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
     + '</div>'
-    // Navigation row — fixed layout: Prev always present (hidden on first card) + Next/Quiz
+    // Navigation row. "Next" loops back through the VOCAB phase for
+    // the next expression so each expression gets its own pre-teach
+    // card cycle. The final Study card jumps directly to the Fill quiz
+    // — the old Recognition MCQ between Study and Fill was redundant
+    // with the Situation quiz that follows Fill, so it was cut.
     + '<div style="display:flex;gap:8px;justify-content:center;align-items:center">'
-    + '<button onclick="window._keStudyIdx--;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;visibility:' + (idx > 0 ? 'visible' : 'hidden') + '">&larr; Prev</button>'
+    + '<button onclick="window._keStudyIdx=Math.max(0,window._keStudyIdx-1);window._keVocabIdx=window._keStudyIdx;window._kePhase=\'vocab\';_keRenderVocabPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;visibility:' + (idx > 0 ? 'visible' : 'hidden') + '">&larr; 이전</button>'
     + (idx < exps.length - 1
-      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &rarr;</button>'
-      : '<button onclick="_keStartQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Start Quiz &rarr;</button>')
+      ? '<button onclick="window._keVocabIdx=window._keStudyIdx+1;window._keStudyIdx=window._keVocabIdx;window._kePhase=\'vocab\';_keRenderVocabPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">다음 표현 &rarr;</button>'
+      : '<button onclick="_keStartFillQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">연습 시작 &rarr;</button>')
     + '</div>';
   // Re-render lucide icons that were just injected (Save button).
   if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
@@ -7928,21 +8048,21 @@ function _keRenderFillQuiz() {
 
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#14cbb0;margin-bottom:4px">STEP 3: Production \u2014 Fill in the Blank</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#14cbb0;margin-bottom:4px">Step 3 \u00b7 \ube48\uce78 \ucc44\uc6b0\uae30</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
     + '</div>'
     + '<div style="background:rgba(20,203,176,.07);border:1px solid rgba(20,203,176,.2);border-radius:12px;padding:16px;margin-bottom:14px">'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Type the missing Korean expression:</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">빈칸에 들어갈 표현을 입력하세요</div>'
     + '<div style="font-size:15px;color:#e0f2fe;line-height:1.7;margin-bottom:6px">' + blankedDisplay + '</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.35)">' + (exp.example_en||exp.en||'') + '</div>'
     + '</div>'
     + '<div style="margin-bottom:12px">'
-    + '<input type="text" id="ke-fill-input" placeholder="Type the expression in Korean..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
+    + '<input type="text" id="ke-fill-input" placeholder="한국어 표현을 입력하세요…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
     + ' style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(20,203,176,.35);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box"'
     + ' onkeydown="if(event.key===\'Enter\')_keCheckFillAnswer()">'
     + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center">'
-    + '<button onclick="_keCheckFillAnswer()" style="padding:11px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Check &#10003;</button>'
+    + '<button onclick="_keCheckFillAnswer()" style="padding:11px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">확인 &#10003;</button>'
     + '</div>'
     + '<div id="ke-fill-fb" style="margin-top:12px;min-height:28px"></div>';
 
@@ -8120,7 +8240,7 @@ function _keRenderSituationQuiz() {
 
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fb923c;margin-bottom:4px">STEP 4: Situational Mapping</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fb923c;margin-bottom:4px">Step 4 · 상황에 적용</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + situations.length + '</div>'
     + '</div>'
     + '<div style="background:rgba(251,146,60,.07);border:1px solid rgba(251,146,60,.2);border-radius:12px;padding:16px;margin-bottom:14px">'
@@ -21037,21 +21157,23 @@ function openUniverseView() {
      KEY EXPRESSIONS MODAL
 ═══════════════════════════════════════════ -->
 <div class="woverlay hidden" id="ke-modal" onclick="if(event.target===this)closeKeyExpressionsModal()">
-  <div style="max-width:560px;width:95%;margin:auto;color:#fff;max-height:90vh;overflow-y:auto;position:relative;display:flex;flex-direction:column">
-    <button onclick="closeKeyExpressionsModal()" aria-label="Close" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;z-index:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
-    <div class="kh-shell-eyebrow">Key Expressions</div>
-    <h2 style="margin:0 0 4px;font-size:18px;font-weight:900;color:#fff;line-height:1.25;display:inline-flex;align-items:center;gap:8px"><i data-lucide="lightbulb" class="kh-ui-icon" style="width:18px;height:18px;color:#fde68a" aria-hidden="true"></i><span>Useful phrases for today</span></h2>
-    <p style="margin:3px 0 18px;font-size:12px;color:rgba(255,255,255,.5)" id="ke-topic-label">Key expressions for today's topic</p>
-    <div id="ke-expressions-list" style="display:flex;flex-direction:column;gap:10px">
+  <!-- Phrase-Munch parity panel: gradient surface, bordered, with a
+       header bar and step pips. Modal body is the only scrolling area.
+       The old loose markup (eyebrow + h2 + count chip floating directly
+       inside the overlay) was replaced because it didn't read as a
+       single designed surface — "갈아엎어야 할것같다" feedback. -->
+  <div style="background:linear-gradient(180deg,#0f1d3a 0%,#0a1428 100%);border-radius:22px;width:min(560px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.55);display:flex;flex-direction:column;color:#fff;border:1px solid rgba(255,255,255,.06)">
+    <div style="padding:18px 22px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#fde68a;margin-bottom:4px">Key Expressions</div>
+        <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25;display:inline-flex;align-items:center;gap:8px"><i data-lucide="lightbulb" class="kh-ui-icon" style="width:18px;height:18px;color:#fde68a" aria-hidden="true"></i><span>오늘의 핵심 표현</span></div>
+        <div id="ke-topic-label" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:3px">오늘 주제의 표현을 학습합니다</div>
+      </div>
+      <button onclick="closeKeyExpressionsModal()" aria-label="Close" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+    </div>
+    <div id="ke-expressions-list" style="padding:20px 22px 24px;flex:1;overflow-y:auto">
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading expressions...</div>
     </div>
-    <!-- The bottom 완료 button used to live here, visible from the
-         very first study card. That confused the flow: a learner
-         could "complete" the activity before seeing a single
-         expression. The final score screen (_keShowFinalScore)
-         already provides its own 완료 ✓ button at the right
-         moment, so the duplicate is just gone. Close button (×) at
-         the top still lets the learner bail out at any step. -->
   </div>
 </div>
 
