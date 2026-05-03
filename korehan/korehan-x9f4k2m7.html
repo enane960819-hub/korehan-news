@@ -9357,17 +9357,36 @@ async function srLoadDailyContent() {
     mismatch = (storedKo && schedKo && storedKo !== schedKo)
             || (storedEn && schedEn && storedEn !== schedEn);
   }
-  if (mismatch && mismatchBar) {
+  // ALWAYS render the comparison panel so the admin can verify the
+  // formula's pick vs the stored row at a glance — colored red on
+  // mismatch, green on match. The user pointed out that "다른레벨은
+  // 경고 안뜨는데?" — silent success was indistinguishable from a
+  // missing warning. Now there's no ambiguity.
+  if (mismatchBar && rec) {
     mismatchBar.style.display = '';
+    var matchOk = !mismatch && scheduledTopic;
+    mismatchBar.style.background = matchOk ? '#dcfce7' : '#fef3c7';
+    mismatchBar.style.borderColor = matchOk ? '#86efac' : '#f59e0b';
+    mismatchBar.style.color = matchOk ? '#15803d' : '#92400e';
+    var schedLine = scheduledTopic
+      ? '<div>📅 예정 토픽: <b>' + (scheduledTopic.topic_ko || '') + '</b> <span style="opacity:.7">— ' + (scheduledTopic.topic_en || '') + '</span></div>'
+      : '<div>📅 예정 토픽: <span style="opacity:.6">(이 레벨에 active 토픽 없음)</span></div>';
+    var headerLabel = matchOk
+      ? '✅ 스케줄 일치 — Day ' + daysSince + ' (' + level + ')'
+      : '⚠️ 스케줄 불일치 — Day ' + daysSince + ' (' + level + ')';
+    var regenBtnHtml = mismatch
+      ? '<button class="btn" onclick="srForceRegenerateScheduled()" style="margin-top:8px;background:#fde68a;color:#92400e;border:1px solid #f59e0b;font-size:12px;padding:6px 14px;font-weight:800">🔄 예정 토픽으로 새로 생성</button>'
+      : '';
     mismatchBar.innerHTML =
-        '<div style="font-weight:800;margin-bottom:6px">⚠️ 스케줄 불일치 — Day ' + daysSince + ' (' + level + ')</div>'
+        '<div style="font-weight:800;margin-bottom:6px">' + headerLabel + '</div>'
       + '<div style="font-size:12px;line-height:1.6">'
-      +   '<div>📅 예정 토픽: <b>' + (scheduledTopic.topic_ko || '') + '</b> <span style="opacity:.7">— ' + (scheduledTopic.topic_en || '') + '</span></div>'
+      +   schedLine
       +   '<div>💾 저장된 토픽: <b>' + (rec.topic_ko || '') + '</b> <span style="opacity:.7">— ' + (rec.topic_en || '') + '</span></div>'
       + '</div>'
-      + '<button class="btn" onclick="srForceRegenerateScheduled()" '
-      +   'style="margin-top:8px;background:#fde68a;color:#92400e;border:1px solid #f59e0b;font-size:12px;padding:6px 14px;font-weight:800">🔄 예정 토픽으로 새로 생성</button>';
-    window._srSchedTopic = { date: date, level: level, topic_ko: scheduledTopic.topic_ko, topic_en: scheduledTopic.topic_en };
+      + regenBtnHtml;
+    window._srSchedTopic = scheduledTopic
+      ? { date: date, level: level, topic_ko: scheduledTopic.topic_ko, topic_en: scheduledTopic.topic_en }
+      : null;
   } else {
     window._srSchedTopic = null;
   }
