@@ -9763,7 +9763,13 @@ function _srBuildPrompt(level, topicHint) {
     + '"topic_writing_sentences":[{"ko":"","en":""}]'
     + levelExtra + '}'
     + '\nExact counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3, topic_writing_sentences=3' + levelExtraCounts + '.'
-    + '\nIMPORTANT: "helpers" are full example SENTENCES (not single words) that a student can reference before writing. Each helper must be a complete sentence about the topic.';
+    + '\nIMPORTANT: "helpers" are full example SENTENCES (not single words) that a student can reference before writing. Each helper must be a complete sentence about the topic.'
+    + '\n\nDIVERSITY RULES (critical — user complaint: "예문들 너무 겹치는데"):'
+    + '\n- Across ALL example sentences in this response (grammar.example_ko, helpers.ko, dictation_sentences.ko, dictation_questions, topic_writing_sentences.ko): NO two sentences may share the same SUBJECT + VERB pair, and the same noun/verb pair may not appear in more than 2 sentences total.'
+    + '\n- Vary subjects: rotate between 저는 / 우리는 / 친구가 / 가족이 / 동생이 / 선생님이 / [topic-specific actor], not "저는" in every line.'
+    + '\n- Vary verbs/predicates: don\'t use 좋아해요 four times — span across 좋아해요 / 자주 가요 / 만들어요 / 먹어요 / 배워요 / 봐요 / 들어요 (etc., as appropriate to the topic).'
+    + '\n- Each example must illustrate a DIFFERENT facet of the topic (e.g. for "Korean food": 1 about cooking, 1 about eating out, 1 about preference, 1 about ingredients — not all four about "I like X food").'
+    + '\n- A learner reading the 4 helpers + 3 grammar examples + 3 dictation sentences should see 8-10 distinct sentence shapes, not the same template with one word swapped.';
 }
 
 // ── Pre-gen helpers — Phrase Munch + Key Expressions ─────────────
