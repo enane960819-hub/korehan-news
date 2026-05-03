@@ -3029,8 +3029,10 @@ function goTopics() {
     + '<button class="sf-tag" onclick="filterTopics(&apos;Intermediate&apos;,this)">🌳 Tree</button>'
     + '<button class="sf-tag" onclick="filterTopics(&apos;Advanced&apos;,this)">🌲 Forest</button>'
     + '<input id="topic-search" class="sf-input" placeholder="🔍 검색..." oninput="searchTopics(this.value)" style="margin-left:auto;max-width:220px;font-size:13px">'
+    + '<button class="btn" onclick="srDetectDuplicateTopics()" style="background:#fefce8;color:#a16207;border:1px solid #fde047;font-size:12px;padding:6px 12px;font-weight:700">🔍 중복 검사</button>'
     + '</div>'
     + '<div id="topics-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ Loading...</div></div>'
+    + '<div id="topics-dupe-panel" style="display:none;background:#fefce8;border:1px solid #fde047;border-radius:10px;padding:14px;margin-top:14px"></div>'
     + '<div id="ai-topic-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center">'
     + '<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:520px;box-shadow:0 24px 80px rgba(0,0,0,0.3)">'
     + '<h2 style="font-size:18px;margin-bottom:12px">🤖 AI 토픽 자동 생성</h2>'
@@ -3078,6 +3080,155 @@ async function loadTopics() {
   } catch(e) {
     document.getElementById('topics-wrap').innerHTML = '<div class="infobox" style="color:#c33">⚠️ ' + (e.message||e) + '</div>';
   }
+}
+
+// Duplicate topic detector — runs across the loaded _topicsAll set and
+// surfaces topics that appear semantically similar across DIFFERENT
+// levels (or duplicated within the same level). Fuzzy matching:
+//   1) exact normalized text match
+//   2) one is a substring of the other after normalization (catches
+//      "음악을 좋아해요?" ⊂ "어떤 음악을 좋아해요?")
+//   3) Jaccard similarity on tokenized stems ≥ 0.6
+// Runs purely client-side on data already loaded — no extra DB calls.
+function _srNormalizeTopicKo(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[?!.,~()]/g, '')
+    // Strip common particles + endings so "음악을" / "음악이" match.
+    .replace(/(은|는|이|가|을|를|의|에|도|만|과|와|로|으로|부터|까지)\b/g, '')
+    .replace(/(해요|이에요|예요|입니다|어요|아요|습니다)$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function _srNormalizeTopicEn(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[?!.,()]/g, '')
+    .replace(/\b(the|a|an|do|does|did|is|are|was|were|my|your|his|her|their|some|any)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function _srTopicTokens(s) {
+  return _srNormalizeTopicKo(s).split(/\s+/).filter(function(t){ return t.length >= 2; });
+}
+function _srJaccard(a, b) {
+  if (!a.length || !b.length) return 0;
+  var setA = {}, setB = {};
+  a.forEach(function(x){ setA[x] = 1; });
+  b.forEach(function(x){ setB[x] = 1; });
+  var inter = 0, union = 0;
+  Object.keys(setA).forEach(function(x){ if (setB[x]) inter++; union++; });
+  Object.keys(setB).forEach(function(x){ if (!setA[x]) union++; });
+  return union ? inter / union : 0;
+}
+
+function srDetectDuplicateTopics() {
+  var panel = document.getElementById('topics-dupe-panel');
+  if (!panel) return;
+  var all = window._topicsAll || [];
+  if (!all.length) {
+    panel.style.display = 'block';
+    panel.innerHTML = '<div style="font-size:13px;color:#92400e">먼저 토픽을 로드해주세요.</div>';
+    return;
+  }
+  // Pairwise compare. Cluster by union-find so topics linked through a
+  // chain of similarities all end up in the same group.
+  var n = all.length;
+  var parent = new Array(n);
+  for (var i = 0; i < n; i++) parent[i] = i;
+  function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+  function union(x, y) { var rx = find(x), ry = find(y); if (rx !== ry) parent[rx] = ry; }
+
+  var prepared = all.map(function(t) {
+    return {
+      ko:    _srNormalizeTopicKo(t.topic_ko),
+      en:    _srNormalizeTopicEn(t.topic_en),
+      koTok: _srTopicTokens(t.topic_ko),
+      enTok: _srTopicTokens(t.topic_en),
+    };
+  });
+
+  for (var a = 0; a < n; a++) {
+    for (var b = a + 1; b < n; b++) {
+      var pa = prepared[a], pb = prepared[b];
+      var hit = false;
+      // Exact normalized match (either lang)
+      if ((pa.ko && pa.ko === pb.ko) || (pa.en && pa.en === pb.en)) hit = true;
+      // Substring inclusion (either direction, either lang)
+      else if (pa.ko && pb.ko && (pa.ko.indexOf(pb.ko) !== -1 || pb.ko.indexOf(pa.ko) !== -1) && Math.min(pa.ko.length, pb.ko.length) >= 4) hit = true;
+      else if (pa.en && pb.en && (pa.en.indexOf(pb.en) !== -1 || pb.en.indexOf(pa.en) !== -1) && Math.min(pa.en.length, pb.en.length) >= 5) hit = true;
+      // Jaccard token overlap
+      else if (_srJaccard(pa.koTok, pb.koTok) >= 0.6) hit = true;
+      else if (_srJaccard(pa.enTok, pb.enTok) >= 0.6) hit = true;
+      if (hit) union(a, b);
+    }
+  }
+
+  // Group by root
+  var groups = {};
+  for (var k = 0; k < n; k++) {
+    var r = find(k);
+    if (!groups[r]) groups[r] = [];
+    groups[r].push(k);
+  }
+  var dupes = Object.keys(groups).map(function(r){ return groups[r]; }).filter(function(g){ return g.length >= 2; });
+  // Sort: cross-level groups first (more critical), then larger groups
+  dupes.sort(function(g1, g2) {
+    var levels1 = {}, levels2 = {};
+    g1.forEach(function(idx){ levels1[all[idx].level] = 1; });
+    g2.forEach(function(idx){ levels2[all[idx].level] = 1; });
+    var cross1 = Object.keys(levels1).length > 1 ? 1 : 0;
+    var cross2 = Object.keys(levels2).length > 1 ? 1 : 0;
+    if (cross1 !== cross2) return cross2 - cross1;
+    return g2.length - g1.length;
+  });
+
+  panel.style.display = 'block';
+  if (!dupes.length) {
+    panel.innerHTML = '<div style="font-size:13px;color:#15803d;font-weight:700">✅ 중복으로 의심되는 토픽이 없습니다.</div>';
+    return;
+  }
+  var lvBg = { Starter:'background:#f3e8ff;color:#7c3aed', Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
+  var lvLabel = { Starter:'Seed', Beginner:'Sprout', Intermediate:'Tree', Advanced:'Forest' };
+  var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+    + '<div style="font-weight:800;color:#92400e">⚠️ 중복 의심 토픽 ' + dupes.length + '개 그룹</div>'
+    + '<button class="btn" onclick="document.getElementById(\'topics-dupe-panel\').style.display=\'none\'" style="font-size:11px;padding:3px 8px">닫기</button>'
+    + '</div>';
+  html += '<div style="font-size:11px;color:#92400e;margin-bottom:10px">동일/포함/유사도 0.6+ 매칭. 레벨이 다른 그룹이 위에 표시됩니다.</div>';
+  dupes.forEach(function(g, gi) {
+    var levelsInGroup = {};
+    g.forEach(function(idx){ levelsInGroup[all[idx].level] = 1; });
+    var crossLevel = Object.keys(levelsInGroup).length > 1;
+    html += '<div style="background:#fff;border:1px solid #fde047;border-radius:8px;padding:10px;margin-bottom:8px">'
+      + '<div style="font-size:11px;font-weight:800;color:' + (crossLevel ? '#dc2626' : '#92400e') + ';margin-bottom:6px">'
+      + (crossLevel ? '🚨 LEVEL CROSS — ' : 'GROUP ') + (gi + 1)
+      + '</div>';
+    g.forEach(function(idx) {
+      var t = all[idx];
+      var lv = lvBg[t.level] || 'background:#eee;color:#555';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px dashed #f1f5f9">'
+        + '<span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;' + lv + '">' + (lvLabel[t.level] || t.level) + '</span>'
+        + '<span style="flex:1;font-size:13px"><b>' + (t.topic_ko || '') + '</b> <span style="color:#94a3b8">· ' + (t.topic_en || '') + '</span>'
+        + (t.active === false ? ' <span style="color:#c33;font-size:10px">(비활성)</span>' : '')
+        + '</span>'
+        + '<button class="btn" onclick="editTopicById(\'' + t.id + '\')" style="font-size:10px;padding:3px 8px">Edit</button>'
+        + '<button class="btn" onclick="srToggleTopicActive(\'' + t.id + '\',' + (t.active === false ? 'true' : 'false') + ')" style="font-size:10px;padding:3px 8px;background:' + (t.active === false ? '#dcfce7;color:#166534' : '#fee2e2;color:#dc2626') + '">'
+        + (t.active === false ? '활성화' : '비활성화') + '</button>'
+        + '</div>';
+    });
+    html += '</div>';
+  });
+  panel.innerHTML = html;
+}
+
+async function srToggleTopicActive(id, makeActive) {
+  var sb = getSb();
+  if (!sb || !id) return;
+  var r = await sb.from('writing_topics').update({ active: makeActive }).eq('id', id);
+  if (r.error) { alert('Update failed: ' + r.error.message); return; }
+  await loadTopics();
+  // Re-run the detector so the panel reflects the new state.
+  setTimeout(srDetectDuplicateTopics, 100);
 }
 
 function filterTopics(level, btn) {
