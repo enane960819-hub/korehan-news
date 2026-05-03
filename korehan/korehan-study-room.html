@@ -634,7 +634,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 800; transition: all .25s;
 }
-.bm-pill.done   { background: #14cbb0; color: #022c22; }
+.bm-pill.done   { background: #a78bfa; color: #ffffff; }
 .bm-pill.active { background: #fff; color: #0d1f4a;
   box-shadow: 0 0 0 4px rgba(255,255,255,.2), 0 8px 20px rgba(255,255,255,.12); }
 .bm-pill.todo   { background: rgba(255,255,255,.1); color: rgba(255,255,255,.3); }
@@ -647,7 +647,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   transition: color .15s; }
 .bm-close:hover { color: #fff; }
 .bm-progress-track { height: 3px; background: rgba(255,255,255,.08); flex-shrink: 0; }
-.bm-progress-bar   { height: 3px; background: linear-gradient(90deg, #14cbb0, #0ea88f);
+.bm-progress-bar   { height: 3px; background: linear-gradient(90deg, #a78bfa, #2563eb);
   transition: width .5s cubic-bezier(.4,0,.2,1); }
 .bm-body { flex: 1; overflow-y: auto; padding: 24px 22px;
   animation: bmFadeIn .22s ease-out; color: #fff; }
@@ -657,7 +657,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   background: rgba(0,0,0,.18); flex-shrink: 0; }
 .bm-btn-next {
   padding: 13px 30px; border-radius: 14px; border: none;
-  background: linear-gradient(135deg, #14cbb0, #0ea88f); color: #fff;
+  background: linear-gradient(135deg, #a78bfa, #2563eb); color: #fff;
   font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit;
   transition: transform .15s, box-shadow .15s, opacity .15s;
   box-shadow: 0 6px 20px rgba(14,168,143,.38); letter-spacing: -.01em;
@@ -675,12 +675,12 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 
 /* Step header */
 .bm-step-label { font-size: 11px; font-weight: 800; text-transform: uppercase;
-  letter-spacing: .1em; color: #14cbb0; margin-bottom: 8px; }
+  letter-spacing: .1em; color: #a78bfa; margin-bottom: 8px; }
 .bm-step-title { font-size: 22px; font-weight: 900; color: #fff;
   margin-bottom: 6px; line-height: 1.3; letter-spacing: -.02em;
   display: flex; align-items: center; gap: 10px; }
-.bm-step-title svg { width: 26px; height: 26px; flex-shrink: 0; color: #14cbb0;
-  filter: drop-shadow(0 0 6px rgba(20,203,176,.45)); }
+.bm-step-title svg { width: 26px; height: 26px; flex-shrink: 0; color: #a78bfa;
+  filter: drop-shadow(0 0 6px rgba(167,139,250,.45)); }
 .bm-step-desc { font-size: 13px; color: rgba(255,255,255,.48); margin-bottom: 20px; line-height: 1.6; }
 .bm-pill svg { width: 18px; height: 18px; }
 .bm-pill.todo svg { opacity: .55; }
@@ -693,20 +693,20 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .bm-listen-progress { font-size: 12px; color: rgba(255,255,255,.5); margin-bottom: 16px;
   display: flex; align-items: center; gap: 10px; }
 .bm-listen-bar { flex: 1; height: 4px; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; }
-.bm-listen-bar-fill { height: 100%; background: #14cbb0; border-radius: 99px; transition: width .4s ease; }
+.bm-listen-bar-fill { height: 100%; background: #a78bfa; border-radius: 99px; transition: width .4s ease; }
 .bm-listen-cards { display: flex; flex-direction: column; gap: 12px; }
 .bm-listen-card {
   background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
   border-radius: 18px; padding: 16px; transition: border-color .25s, background .25s;
 }
-.bm-listen-card.listened { border-color: rgba(20,203,176,.4); background: rgba(20,203,176,.07); }
+.bm-listen-card.listened { border-color: rgba(167,139,250,.4); background: rgba(167,139,250,.07); }
 .bm-listen-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .bm-listen-num {
   width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.12);
   color: rgba(255,255,255,.6); display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 800; flex-shrink: 0; transition: background .25s, color .25s;
 }
-.bm-listen-num.done { background: #14cbb0; color: #022c22; }
+.bm-listen-num.done { background: #a78bfa; color: #ffffff; }
 .bm-listen-tts {
   flex: 1; background: rgba(255,255,255,.09); border: none; border-radius: 10px;
   padding: 9px 14px; color: rgba(255,255,255,.85); font-size: 13px; font-weight: 700;
@@ -714,7 +714,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   display: inline-flex; align-items: center; gap: 8px;
 }
 .bm-listen-tts:hover { background: rgba(255,255,255,.15); }
-.bm-listen-tts.played { background: rgba(20,203,176,.18); color: #14cbb0; }
+.bm-listen-tts.played { background: rgba(167,139,250,.18); color: #a78bfa; }
 .bm-listen-tts-icon { display: inline-flex; align-items: center; }
 .bm-listen-tts-icon svg { width: 14px; height: 14px; }
 .bm-listen-ko {
@@ -746,7 +746,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   background: rgba(255,255,255,.03); margin-bottom: 14px;
   transition: border-color .2s, background .2s;
 }
-.bm-answer-zone.correct { border-color: #14cbb0; border-style: solid; background: rgba(20,203,176,.08); }
+.bm-answer-zone.correct { border-color: #a78bfa; border-style: solid; background: rgba(167,139,250,.08); }
 .bm-answer-zone.wrong   { border-color: #f87171; border-style: solid; background: rgba(248,113,113,.06); }
 .bm-answer-zone.partial { border-color: #fbbf24; border-style: solid; background: rgba(251,191,36,.05); }
 .bm-answer-empty { font-size: 12px; color: rgba(255,255,255,.25); }
@@ -756,10 +756,10 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   font-family: 'Noto Sans KR', sans-serif; font-size: 15px; font-weight: 700;
   color: #fff; cursor: pointer; transition: all .15s;
 }
-.bm-word-chip:hover:not(:disabled) { border-color: rgba(20,203,176,.55); background: rgba(20,203,176,.14); color: #14cbb0; }
+.bm-word-chip:hover:not(:disabled) { border-color: rgba(167,139,250,.55); background: rgba(167,139,250,.14); color: #a78bfa; }
 .bm-word-chip.bm-word-used { opacity: .2; cursor: not-allowed; }
 .bm-word-selected {
-  background: linear-gradient(135deg, #14cbb0, #0ea88f); color: #fff;
+  background: linear-gradient(135deg, #a78bfa, #2563eb); color: #fff;
   border-color: transparent; box-shadow: 0 4px 12px rgba(14,168,143,.3);
 }
 .bm-word-selected:hover { filter: brightness(1.1); }
@@ -777,12 +777,12 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .bm-blank-btn {
   display: inline-block; min-width: 80px; text-align: center;
   padding: 3px 14px; margin: 0 2px; border-radius: 10px;
-  border: 2px dashed rgba(20,203,176,.5); background: rgba(20,203,176,.08); color: #14cbb0;
+  border: 2px dashed rgba(167,139,250,.5); background: rgba(167,139,250,.08); color: #a78bfa;
   font-size: 15px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
   cursor: default; transition: all .15s;
 }
 .bm-blank-btn.filled  { border-style: solid; border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.12); color: #fff; }
-.bm-blank-btn.correct { background: rgba(20,203,176,.2); border-color: #14cbb0; color: #14cbb0; border-style: solid; }
+.bm-blank-btn.correct { background: rgba(167,139,250,.2); border-color: #a78bfa; color: #a78bfa; border-style: solid; }
 .bm-blank-btn.wrong   { background: rgba(248,113,113,.15); border-color: #f87171; color: #f87171; border-style: solid; }
 .bm-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .bm-choice-btn {
@@ -790,7 +790,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   background: rgba(255,255,255,.08); font-family: 'Noto Sans KR', sans-serif; font-size: 14px;
   font-weight: 700; color: #fff; cursor: pointer; transition: all .15s;
 }
-.bm-choice-btn:hover:not(:disabled) { border-color: rgba(20,203,176,.5); background: rgba(20,203,176,.12); color: #14cbb0; }
+.bm-choice-btn:hover:not(:disabled) { border-color: rgba(167,139,250,.5); background: rgba(167,139,250,.12); color: #a78bfa; }
 .bm-choice-btn:disabled { cursor: not-allowed; }
 
 /* Step 4 — Word Snap */
@@ -840,12 +840,12 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 
 /* Feedback */
 .bm-feedback { margin-top: 14px; padding: 14px 18px; border-radius: 14px; text-align: center; }
-.bm-feedback.correct { background: rgba(20,203,176,.1);  border: 1px solid rgba(20,203,176,.3); }
+.bm-feedback.correct { background: rgba(167,139,250,.1);  border: 1px solid rgba(167,139,250,.3); }
 .bm-feedback.wrong   { background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.25); }
 .bm-feedback.partial { background: rgba(251,191,36,.07); border: 1px solid rgba(251,191,36,.25); }
 .bm-feedback-emoji { font-size: 28px; margin-bottom: 6px; line-height: 0; }
 .bm-feedback-emoji svg { width: 36px; height: 36px; }
-.bm-feedback.correct .bm-feedback-emoji svg { color: #14cbb0; filter: drop-shadow(0 0 10px rgba(20,203,176,.55)); }
+.bm-feedback.correct .bm-feedback-emoji svg { color: #a78bfa; filter: drop-shadow(0 0 10px rgba(167,139,250,.55)); }
 .bm-feedback.partial .bm-feedback-emoji svg { color: #fbbf24; filter: drop-shadow(0 0 10px rgba(251,191,36,.5)); }
 .bm-feedback.wrong   .bm-feedback-emoji svg { color: #f87171; filter: drop-shadow(0 0 10px rgba(248,113,113,.5)); }
 .bm-feedback-msg   { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
@@ -857,7 +857,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .bm-result-emoji.tier-top svg    { color: #fbbf24; filter: drop-shadow(0 0 16px rgba(251,191,36,.7)); }
 .bm-result-emoji.tier-high svg   { color: #fde68a; filter: drop-shadow(0 0 14px rgba(253,230,138,.6)); }
 .bm-result-emoji.tier-mid svg    { color: #a78bfa; filter: drop-shadow(0 0 12px rgba(167,139,250,.55)); }
-.bm-result-emoji.tier-low svg    { color: #14cbb0; filter: drop-shadow(0 0 12px rgba(20,203,176,.5)); }
+.bm-result-emoji.tier-low svg    { color: #a78bfa; filter: drop-shadow(0 0 12px rgba(167,139,250,.5)); }
 .bm-result-score { font-size: 44px; font-weight: 900; color: #fff; margin-bottom: 6px; letter-spacing: -.03em; }
 .bm-result-msg   { font-size: 14px; color: rgba(255,255,255,.55); margin-bottom: 22px; line-height: 1.6; }
 .bm-result-stat  {
@@ -15654,7 +15654,7 @@ function renderBMStep1Loading() {
     '<div class="bm-step-label">Step 1 of 4</div>'
     + '<div class="bm-step-title">' + BM_ICON_HEADPHONES + '<span>Listen & Read</span></div>'
     + '<div class="bm-step-desc">Generating your sentences...</div>'
-    + '<div style="text-align:center;padding:48px 0;opacity:.7;color:#14cbb0"><span style="display:inline-flex;width:38px;height:38px;animation:spin 1.4s linear infinite">' + BM_ICON_SPARKLE + '</span></div>';
+    + '<div style="text-align:center;padding:48px 0;opacity:.7;color:#a78bfa"><span style="display:inline-flex;width:38px;height:38px;animation:spin 1.4s linear infinite">' + BM_ICON_SPARKLE + '</span></div>';
   document.getElementById('bm-footer').innerHTML =
     '<button class="bm-btn-next" disabled>Build It →</button>';
 }
@@ -15885,7 +15885,7 @@ function checkBMWordOrder() {
   fb.className = 'bm-feedback ' + wo.result;
   if (isCorrect) {
     fb.innerHTML = '<div class="bm-feedback-emoji">' + BM_ICON_PARTY + '</div>'
-      + '<div class="bm-feedback-msg" style="color:#14cbb0">Perfect!</div>'
+      + '<div class="bm-feedback-msg" style="color:#a78bfa">Perfect!</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.6);margin-top:4px">Great — the word order is exactly right.</div>';
   } else if (isPartial) {
     var customExp = (s && s.explanation) || '';
@@ -16145,7 +16145,7 @@ function renderBMWordSnap() {
   // showed just the Korean word because en was an empty string).
   var needsTranslation = vocab.some(function(v){ return !v.en; });
   if (needsTranslation) {
-    document.getElementById('bm-body').innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.6);font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px"><span style="display:inline-flex;width:18px;height:18px;color:#14cbb0;animation:spin 1.4s linear infinite">' + BM_ICON_SPARKLE + '</span><span>Preparing word cards…</span></div>';
+    document.getElementById('bm-body').innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.6);font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px"><span style="display:inline-flex;width:18px;height:18px;color:#a78bfa;animation:spin 1.4s linear infinite">' + BM_ICON_SPARKLE + '</span><span>Preparing word cards…</span></div>';
     var words = vocab.map(function(v){ return v.ko; });
     callClaude({
       feature: 'word-snap-translate',
@@ -16215,7 +16215,7 @@ function bmRenderSnapCard() {
     + '</div>'
     + '<div class="bm-snap-back">'
     + '<div class="bm-snap-en">' + (card.en || card.ko) + '</div>'
-    + (card.rom ? '<div class="bm-snap-rom" style="color:rgba(20,203,176,.55);margin-top:6px">' + card.rom + '</div>' : '')
+    + (card.rom ? '<div class="bm-snap-rom" style="color:rgba(167,139,250,.55);margin-top:6px">' + card.rom + '</div>' : '')
     // Real-world context — show the word in a sentence the learner
     // already saw earlier in this session, with the headword
     // highlighted. Without this the back of the card was just a
@@ -16347,7 +16347,7 @@ function finishBeginner() {
     + '<div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:8px">' + headline + '</div>'
     + '<div class="bm-result-msg">' + sub + '</div>'
     + '<div style="display:flex;gap:10px;justify-content:center;margin:20px 0">'
-    + '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#14cbb0">' + _bm.score.order + '%</div><div class="bm-result-stat-lbl">Word Order</div></div>'
+    + '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#a78bfa">' + _bm.score.order + '%</div><div class="bm-result-stat-lbl">Word Order</div></div>'
     + '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#a78bfa">' + _bm.score.blank + '%</div><div class="bm-result-stat-lbl">Fill In</div></div>'
     + (savedCount > 0
         ? '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#fbbf24">' + savedCount + '</div><div class="bm-result-stat-lbl">Words Saved</div></div>'
