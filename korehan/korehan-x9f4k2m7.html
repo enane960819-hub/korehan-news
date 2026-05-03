@@ -3296,7 +3296,13 @@ function renderTopicsTable(list) {
     rows += '<button data-id="'+t.id+'" onclick="deleteTopic(this.dataset.id)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid #fdd;background:#fff5f5;color:#c33;cursor:pointer">Del</button>';
     rows += '</td></tr>';
   }
-  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 #<b>' + (todayIdx+1) + '</b> · Day ' + daysSince + ' (기준일 2026-04-15)</div>'
+  // Header summary — show how many topics are pinned in the current
+  // filter (all = one per level; single level = exactly one).
+  var pinnedCount = 0;
+  for (var pi = 0; pi < list.length; pi++) {
+    if (pinnedTopicIds[list[pi].id]) pinnedCount++;
+  }
+  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 핀 <b>' + pinnedCount + '</b>개 · Day ' + daysSince + ' (기준일 2026-04-15)</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
     + '<th style="padding:7px 8px;text-align:center">#</th>'
