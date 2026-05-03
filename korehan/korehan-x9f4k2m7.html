@@ -4025,6 +4025,16 @@ function goAutoArticle(){
    +'<div id="auto-progress" style="margin-top:20px"></div>'
    +'</div>';
 
+  // If a generation job is running (or just finished) in the background,
+  // rebuild the per-row progress UI from window._autoGenJob so the admin
+  // sees the same progress they had before navigating away.
+  if (window._autoGenJob) {
+    var _genPanel = document.getElementById('gen-panel');
+    if (_genPanel) _genPanel.style.display = '';
+    _autoGenRenderProgressPanel();
+    _autoGenPillRender();
+  }
+
   loadAutoApiKey();
 }
 
@@ -4214,7 +4224,80 @@ function _updateHLCount() {
 }
 
 // ── STEP 3: Generate adapted articles ────────────────────────
+//
+// Generation runs in the background — the admin uses single-page
+// innerHTML swapping for navigation, so the async loop survives going
+// to another admin section. Job state lives on window._autoGenJob and
+// a floating pill (#auto-gen-pill, attached to document.body) shows
+// progress regardless of which admin page is open. Returning to
+// "AI Auto-Generate" while a job is running re-attaches the per-row UI
+// from the job state instead of starting over.
+function _autoGenEnsurePill(){
+  var pill = document.getElementById('auto-gen-pill');
+  if (pill) return pill;
+  pill = document.createElement('div');
+  pill.id = 'auto-gen-pill';
+  pill.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:9999;'
+    + 'background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;'
+    + 'padding:10px 16px;border-radius:999px;font-size:13px;font-weight:700;'
+    + 'box-shadow:0 8px 28px rgba(124,58,237,.45);cursor:pointer;display:none;'
+    + 'font-family:inherit;letter-spacing:.01em;user-select:none;';
+  pill.title = 'Click to return to generation';
+  pill.onclick = function(){ try { goAutoArticle(); } catch(_){} };
+  document.body.appendChild(pill);
+  return pill;
+}
+function _autoGenPillRender(){
+  var job = window._autoGenJob;
+  var pill = _autoGenEnsurePill();
+  if (!job) { pill.style.display='none'; return; }
+  if (job.running) {
+    pill.style.display='block';
+    pill.style.background='linear-gradient(135deg,#7c3aed,#a78bfa)';
+    pill.innerHTML = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#fff;margin-right:8px;animation:autoGenBlink 1s infinite ease-in-out"></span>'
+      + 'Generating ' + job.processed + '/' + job.total + '…';
+  } else {
+    pill.style.display='block';
+    pill.style.background='linear-gradient(135deg,#16a34a,#22c55e)';
+    pill.innerHTML = '✓ Done — ' + job.processed + '/' + job.total
+      + ' <span style="opacity:.85;font-weight:600;margin-left:6px">tap to dismiss</span>';
+    pill.onclick = function(){ window._autoGenJob = null; pill.remove(); };
+  }
+}
+(function _autoGenInjectPillKeyframes(){
+  if (document.getElementById('auto-gen-pill-kf')) return;
+  var st = document.createElement('style');
+  st.id = 'auto-gen-pill-kf';
+  st.textContent = '@keyframes autoGenBlink{0%,100%{opacity:.4}50%{opacity:1}}';
+  document.head.appendChild(st);
+})();
+function _autoGenSetItemStatus(idx, html){
+  var job = window._autoGenJob; if (!job) return;
+  if (!job.items[idx]) return;
+  job.items[idx].statusHtml = html;
+  var rowId = job.items[idx].rowId;
+  var el = document.getElementById(rowId+'-status');
+  if (el) el.innerHTML = html;
+}
+function _autoGenRenderProgressPanel(){
+  var job = window._autoGenJob;
+  var progress = document.getElementById('auto-progress');
+  if (!progress || !job) return;
+  progress.innerHTML = job.items.map(function(it){
+    return '<div id="'+it.rowId+'" style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
+      + '<span style="font-size:18px">'+it.icon+'</span>'
+      + '<div style="flex:1"><div style="font-weight:700;font-size:13px">'+it.titleShort+'</div>'
+      + '<div style="font-size:11px;color:#94a3b8">'+it.sourceLabel+' → '+it.secKey+' · '+it.levelLabel+'</div>'
+      + '<div id="'+it.rowId+'-status" style="color:var(--gr);font-size:13px;margin-top:4px">'+(it.statusHtml||'⏳ 대기 중…')+'</div></div>'
+      + '</div>';
+  }).join('');
+}
+
 async function runAutoGenerate(){
+  if (window._autoGenJob && window._autoGenJob.running) {
+    toast('이미 생성 중입니다.', true);
+    return;
+  }
   const saveStatus = document.getElementById('auto-status')?.value || 'draft';
   const globalDifficulty = document.getElementById('auto-difficulty')?.value || 'Intermediate';
 
@@ -4252,7 +4335,34 @@ async function runAutoGenerate(){
   };
 
   const progress = document.getElementById('auto-progress');
-  progress.innerHTML = '';
+  if (progress) progress.innerHTML = '';
+
+  // Build job state once up-front so all items are visible immediately
+  // (and so a navigation-away/return cycle can rebuild the panel from
+  // window._autoGenJob without losing work).
+  const _diffLevelLabels = {Starter:'🌱 Seed', Beginner:'🌿 Sprout', Intermediate:'🌳 Tree', Advanced:'🌲 Forest'};
+  window._autoGenJob = {
+    running: true,
+    processed: 0,
+    total: selected.length,
+    saveStatus: saveStatus,
+    items: selected.map(function(it, i){
+      var _h = it.headline;
+      var _sec = AUTO_SECTIONS.find(function(s){ return s.key === it.section; }) || AUTO_SECTIONS[0];
+      var _diff = diffMap[it.level] || diffMap[globalDifficulty] || diffMap['Intermediate'];
+      return {
+        rowId: 'prog-' + i,
+        icon: _sec.icon,
+        titleShort: esc((_h.title||'').slice(0,60)) + '…',
+        sourceLabel: esc(_h.source||''),
+        secKey: it.section,
+        levelLabel: _diffLevelLabels[_diff.level] || _diff.level,
+        statusHtml: '⏳ 대기 중…',
+      };
+    }),
+  };
+  _autoGenRenderProgressPanel();
+  _autoGenPillRender();
 
   for (var si = 0; si < selected.length; si++) {
     var item = selected[si];
@@ -4263,16 +4373,9 @@ async function runAutoGenerate(){
     // when the row selector somehow isn't present.
     var diffInfo = diffMap[item.level] || diffMap[globalDifficulty] || diffMap['Intermediate'];
     var rowId = 'prog-' + si;
-    var levelLabels = {Starter:'🌱 Seed', Beginner:'🌿 Sprout', Intermediate:'🌳 Tree', Advanced:'🌲 Forest'};
+    var levelLabels = _diffLevelLabels;
     var levelLabel = levelLabels[diffInfo.level] || diffInfo.level;
-
-    progress.innerHTML +=
-      '<div id="'+rowId+'" style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
-      +'<span style="font-size:18px">'+sec.icon+'</span>'
-      +'<div style="flex:1"><div style="font-weight:700;font-size:13px">'+esc(h.title.slice(0,60))+'…</div>'
-      +'<div style="font-size:11px;color:#94a3b8">'+esc(h.source)+' → '+secKey+' · '+levelLabel+'</div>'
-      +'<div id="'+rowId+'-status" style="color:var(--gr);font-size:13px;margin-top:4px">⏳ 각색 중…</div></div>'
-      +'</div>';
+    _autoGenSetItemStatus(si, '⏳ 각색 중…');
 
     try {
       const today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
@@ -4312,7 +4415,7 @@ async function runAutoGenerate(){
         + '- 본문에 정말 추출할 만한 게 없을 때만 빈 배열 [] 허용\n\n'
         + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)","key_expressions":[{"ko":"...","en":"..."}]}';
 
-      document.getElementById(rowId+'-status').innerHTML = '⏳ 기사 각색 중…';
+      _autoGenSetItemStatus(si, '⏳ 기사 각색 중…');
       const res = await callClaude({
         feature: 'generate',
         model: 'claude-sonnet-4-20250514',
@@ -4359,7 +4462,7 @@ async function runAutoGenerate(){
       DB.unshift(newArticle); refreshCounts();
 
       // ── 캐시 생성 (번역/단어/문법/퀴즈) ──
-      document.getElementById(rowId+'-status').innerHTML = '🧠 Generating cache...';
+      _autoGenSetItemStatus(si, '🧠 Generating cache...');
 
       const _body  = article.body  || '';
       const _title = article.title || '';
@@ -4394,7 +4497,7 @@ async function runAutoGenerate(){
       }
 
       try {
-        document.getElementById(rowId+'-status').innerHTML = '🧠 (1/4) 번역 중…';
+        _autoGenSetItemStatus(si, '🧠 (1/4) 번역 중…');
         const _trans = await _khTranslateArticleForCache(_level, _title, _body);
         if (_trans.bodyTexts && _trans.bodyTexts.length) {
           _row.translation = JSON.stringify({ texts: _trans.bodyTexts });
@@ -4410,21 +4513,21 @@ async function runAutoGenerate(){
       } catch(e) { console.warn('translation failed', e.message); }
 
       try {
-        document.getElementById(rowId+'-status').innerHTML = '🧠 (2/4) 단어 중…';
+        _autoGenSetItemStatus(si, '🧠 (2/4) 단어 중…');
         const v = await _call(window.KH_VOCAB.promptText(_level, _body), 1600);
         const _vCleaned = window.KH_VOCAB.validateBest(_json(v), _body || '');
         if (_vCleaned && _vCleaned.length) { _row.vocab = JSON.stringify(_vCleaned); _ok++; }
       } catch(e) { console.warn('vocab failed', e.message); }
 
       try {
-        document.getElementById(rowId+'-status').innerHTML = '🧠 (3/4) 문법 중…';
+        _autoGenSetItemStatus(si, '🧠 (3/4) 문법 중…');
         const g = await _call('Find 3 grammar patterns used in this article. Return ONLY a JSON object: {"patterns":[{"name":"Korean name + romanization","level":"Starter or Beginner or Intermediate or Advanced","exp":"1-sentence English explanation","ex_ko":"sentence from article","ex_en":"English translation"}]}. No other text.', 900);
         _row.grammar = JSON.stringify(_json(g));
         _ok++;
       } catch(e) { console.warn('grammar failed', e.message); }
 
       try {
-        document.getElementById(rowId+'-status').innerHTML = '🧠 (4/4) 퀴즈 중…';
+        _autoGenSetItemStatus(si, '🧠 (4/4) 퀴즈 중…');
         const q = await _call('Create 5 fill-in-the-blank questions from this article. Return ONLY a JSON object: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English translation with _____","blank":"correct word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.', 1200);
         _row.quiz = JSON.stringify(_json(q));
         _ok++;
@@ -4454,17 +4557,23 @@ async function runAutoGenerate(){
       }
 
       const statusLabel = saveStatus === 'published' ? 'Published' : 'Saved as draft';
-      const existingEl = document.getElementById(rowId+'-status');
-      if (existingEl) existingEl.innerHTML =
+      _autoGenSetItemStatus(si,
         '<span style="color:#28a745;font-weight:700">✅ ' + statusLabel + ' (cache '+_ok+'/4) — </span>'
-        +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">Review &amp; edit →</a>";
+        +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">Review &amp; edit →</a>");
 
     } catch(err) {
-      const existingEl2 = document.getElementById(rowId+'-status');
-      if (existingEl2) existingEl2.innerHTML = '<span style="color:#dc3545">❌ Failed: '+err.message+'</span>';
+      _autoGenSetItemStatus(si, '<span style="color:#dc3545">❌ Failed: '+err.message+'</span>');
+    }
+    if (window._autoGenJob) {
+      window._autoGenJob.processed = si + 1;
+      _autoGenPillRender();
     }
   }
 
+  if (window._autoGenJob) {
+    window._autoGenJob.running = false;
+    _autoGenPillRender();
+  }
   toast('✨ Adaptation complete! ' + selected.length + ' articles generated.');
 }
 
