@@ -7208,10 +7208,32 @@ async function openPhraseMunch() {
 
   var cacheKey = 'phmunch::' + topic.trim();
   var lessons = null;
+
+  // Preferred path — admin pre-generates PM lessons alongside the daily
+  // topic content, stored on the same study_daily_content row. If the
+  // row has phrase_munch_lessons, use it directly: no AI call, no cold
+  // start, and the lessons came in under the latest prompt (so e.g.
+  // practice.parts is always populated for hover tooltips).
   try {
-    var hit = await _aiCacheGet(cacheKey);
-    if (hit && Array.isArray(hit.lessons) && hit.lessons.length >= 2) lessons = hit.lessons;
+    var sb = getSupa();
+    if (sb) {
+      var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+      var lvl = _currentLevel || 'Beginner';
+      var preR = await sb.from('study_daily_content')
+        .select('phrase_munch_lessons')
+        .eq('scheduled_date', dateKey).eq('level', lvl).maybeSingle();
+      var stored = preR && preR.data && preR.data.phrase_munch_lessons;
+      if (Array.isArray(stored) && stored.length) lessons = stored;
+    }
   } catch(_) {}
+
+  // Fallback to the legacy per-topic AI cache (still used by old days).
+  if (!lessons) {
+    try {
+      var hit = await _aiCacheGet(cacheKey);
+      if (hit && Array.isArray(hit.lessons) && hit.lessons.length >= 2) lessons = hit.lessons;
+    } catch(_) {}
+  }
 
   if (!lessons) {
     try {
@@ -7663,6 +7685,26 @@ async function openKeyExpressionsModal() {
 
   // 1) In-memory cache (same session, same topic/level/date)
   if (_keCache) { _renderKeyExpressions(list, _keCache); return; }
+
+  // 1.5) Preferred path — admin pre-generates the key_expressions array
+  //      onto the same study_daily_content row as the topic. That gives
+  //      us the latest-prompt content (parts breakdown, no redundant
+  //      Korean, diverse examples) with zero cold-start cost.
+  try {
+    var sbPre = getSupa();
+    if (sbPre) {
+      var preRow = await sbPre.from('study_daily_content')
+        .select('key_expressions')
+        .eq('scheduled_date', kstDateKey()).eq('level', levelKey).maybeSingle();
+      var storedKE = preRow && preRow.data && preRow.data.key_expressions;
+      if (Array.isArray(storedKE) && storedKE.length) {
+        _keCache = storedKE;
+        try { localStorage.setItem('ke_v2_' + topicKey, JSON.stringify(storedKE)); } catch(_){}
+        _renderKeyExpressions(list, storedKE);
+        return;
+      }
+    }
+  } catch(_) {}
 
   // 2) localStorage cache. Bumped to ke_v2_ when the AI prompt was
   //    reworked to require pattern notation + parts breakdown + diverse

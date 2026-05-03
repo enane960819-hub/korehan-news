@@ -9311,11 +9311,23 @@ async function srLoadDailyContent() {
       if (emptyEl) emptyEl.style.display = '';
       return;
     }
-    // 자동 AI 생성
-    if (msgEl) msgEl.textContent = '⏳ ' + scheduledTopic.topic_ko + ' AI 학습요소 생성 중...';
+    // 자동 AI 생성 — 토픽 콘텐츠 + Phrase Munch + Key Expressions 같이 (병렬)
+    // User: "today's topic 업데이트 될때 다같이 미리 생성시키면 되는거 아님?"
+    // → run all three generators in Promise.all so PM/KE land on the
+    //   row at the same time as the topic. Subsequent user opens of
+    //   PM/KE skip the AI call entirely (loaders prefer the stored
+    //   content).
+    if (msgEl) msgEl.textContent = '⏳ ' + scheduledTopic.topic_ko + ' AI 학습요소 + PM + KE 같이 생성 중...';
     try {
       var topicHint = 'Use EXACTLY this topic: "' + scheduledTopic.topic_ko + '" (' + scheduledTopic.topic_en + '). Do NOT change the topic.';
-      var parsed = await _srGenerateContent(level, topicHint, scheduledTopic.topic_ko, scheduledTopic.topic_en);
+      var bundle = await Promise.all([
+        _srGenerateContent(level, topicHint, scheduledTopic.topic_ko, scheduledTopic.topic_en),
+        _srGenerateBundlePM(scheduledTopic.topic_ko).catch(function(){ return []; }),
+        _srGenerateBundleKE(scheduledTopic.topic_ko, scheduledTopic.topic_en, level).catch(function(){ return []; })
+      ]);
+      var parsed = bundle[0];
+      var pmLessons = bundle[1] || [];
+      var keExpressions = bundle[2] || [];
       var newRec = {
         scheduled_date: date, level: level,
         topic_ko: scheduledTopic.topic_ko, topic_en: scheduledTopic.topic_en,
@@ -9325,11 +9337,22 @@ async function srLoadDailyContent() {
         confusing_grammar: parsed.confusing_grammar||null,
         formality_exercise: parsed.formality_exercise||null,
         culture_note: parsed.culture_note||null,
+        phrase_munch_lessons: pmLessons,
+        key_expressions: keExpressions,
         status: 'approved', admin_edited: false, updated_at: new Date().toISOString()
       };
-      await sb.from('study_daily_content').upsert(newRec, {onConflict:'scheduled_date,level'});
+      var upsertRes = await sb.from('study_daily_content').upsert(newRec, {onConflict:'scheduled_date,level'});
+      // Graceful fallback if the new jsonb columns aren't installed yet
+      // — drop them and retry so the topic content still saves.
+      if (upsertRes && upsertRes.error && /(phrase_munch_lessons|key_expressions)/.test(String(upsertRes.error.message || ''))) {
+        delete newRec.phrase_munch_lessons;
+        delete newRec.key_expressions;
+        await sb.from('study_daily_content').upsert(newRec, {onConflict:'scheduled_date,level'});
+        if (msgEl) msgEl.textContent = '✅ AI 생성 완료 (PM/KE 컬럼 미설치 — SQL 한 번 실행 필요)';
+      } else {
+        if (msgEl) msgEl.textContent = '✅ AI 생성 완료 (토픽 + PM ' + pmLessons.length + '개 + KE ' + keExpressions.length + '개)';
+      }
       r = await sb.from('study_daily_content').select('*').eq('scheduled_date', date).eq('level', level).maybeSingle();
-      if (msgEl) msgEl.textContent = '✅ AI 생성 완료';
     } catch(e) {
       if (msgEl) msgEl.textContent = '❌ AI 생성 실패: ' + (e.message||e);
       return;
@@ -9553,13 +9576,26 @@ async function srSaveDailyContent() {
     return entry;
   }).filter(Boolean);
 
-  var r = await sb.from('study_daily_content').upsert({
+  // Carry along PM/KE bundles from the most recent srRegenDailyContent
+  // run, if present. Without this, hitting Save right after AI gen
+  // would lose the freshly-generated PM/KE blobs (form has no inputs
+  // for them, so they're stashed on window).
+  var rec = {
     scheduled_date: date, level: level,
     topic_ko: (document.getElementById('srt-topic-ko').value || '').trim(),
     topic_en: (document.getElementById('srt-topic-en').value || '').trim(),
     vocab, grammar, helpers, dictation_sentences, dictation_questions, topic_writing_sentences,
     admin_edited: true, updated_at: new Date().toISOString()
-  }, { onConflict: 'scheduled_date,level' });
+  };
+  if (Array.isArray(window._srBundlePM)) rec.phrase_munch_lessons = window._srBundlePM;
+  if (Array.isArray(window._srBundleKE)) rec.key_expressions     = window._srBundleKE;
+
+  var r = await sb.from('study_daily_content').upsert(rec, { onConflict: 'scheduled_date,level' });
+  // If the new jsonb columns aren't installed yet, retry without them.
+  if (r.error && /(phrase_munch_lessons|key_expressions)/.test(String(r.error.message || ''))) {
+    delete rec.phrase_munch_lessons; delete rec.key_expressions;
+    r = await sb.from('study_daily_content').upsert(rec, { onConflict: 'scheduled_date,level' });
+  }
 
   if (r.error) { if (msgEl) msgEl.textContent = 'Error: ' + r.error.message; return; }
   if (msgEl) msgEl.textContent = '저장됐습니다! (' + date + ' / ' + level + ')';
@@ -9637,7 +9673,21 @@ async function srRegenDailyContent() {
       if (msgEl) msgEl.textContent = 'AI가 ' + lvlDisplay + ' 레벨 토픽을 자동 생성 중…';
       topicHint = 'Pick an interesting, specific Korean writing topic appropriate for ' + lvlDisplay + ' level learners.';
     }
-    var parsed = await _srGenerateContent(level, topicHint, topicKo, topicEn);
+    // Generate topic content + PM lessons + KE expressions in parallel.
+    // Same architecture as srLoadDailyContent's auto-gen branch.
+    var bundle = await Promise.all([
+      _srGenerateContent(level, topicHint, topicKo, topicEn),
+      _srGenerateBundlePM(topicKo).catch(function(){ return []; }),
+      _srGenerateBundleKE(topicKo, topicEn, level).catch(function(){ return []; })
+    ]);
+    var parsed = bundle[0];
+    var pmLessons = bundle[1] || [];
+    var keExpressions = bundle[2] || [];
+    // Stash on window so srSaveDailyContent picks them up when the
+    // admin clicks Save (form fields don't have inputs for these
+    // jsonb blobs — they ride along automatically).
+    window._srBundlePM = pmLessons;
+    window._srBundleKE = keExpressions;
 
     document.getElementById('srt-topic-ko').value = parsed.topic_ko || topicKo;
     document.getElementById('srt-topic-en').value = parsed.topic_en || topicEn;
@@ -9651,7 +9701,7 @@ async function srRegenDailyContent() {
 
     document.getElementById('srt-editor').style.display = '';
     document.getElementById('srt-empty').style.display = 'none';
-    if (msgEl) msgEl.textContent = 'AI 생성 완료! 토픽: ' + topicKo + ' — 저장 버튼을 눌러 확정하세요.';
+    if (msgEl) msgEl.textContent = 'AI 생성 완료! 토픽: ' + topicKo + ' (PM ' + pmLessons.length + '개 + KE ' + keExpressions.length + '개 같이 생성됨) — 저장 버튼을 눌러 확정하세요.';
   } catch(err) {
     if (msgEl) msgEl.textContent = 'AI generation failed: ' + (err.message || err);
   }
@@ -9714,6 +9764,100 @@ function _srBuildPrompt(level, topicHint) {
     + levelExtra + '}'
     + '\nExact counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3, topic_writing_sentences=3' + levelExtraCounts + '.'
     + '\nIMPORTANT: "helpers" are full example SENTENCES (not single words) that a student can reference before writing. Each helper must be a complete sentence about the topic.';
+}
+
+// ── Pre-gen helpers — Phrase Munch + Key Expressions ─────────────
+// User wanted PM/KE to be generated together with the daily topic
+// content so users don't pay first-open AI latency, AND so the
+// generation always uses the latest prompt (no stale cached lessons
+// missing practice.parts / parts breakdown / etc).
+// These mirror the prompts in korehan-study-room.html — kept in sync
+// manually because the two files don't share a JS module.
+
+async function _srGenerateBundlePM(topic) {
+  if (!topic) return [];
+  var prompt =
+      'You are a Korean language teacher creating bite-sized phrase lessons for a learner.\n'
+    + 'Today\'s topic: "' + topic + '"\n\n'
+    + 'Create exactly 3 micro-lessons. Each lesson teaches ONE distinct Korean grammar pattern through:\n'
+    + '  1) A natural example sentence connected to today\'s topic.\n'
+    + '  2) A word-by-word breakdown showing the role of each morpheme/particle.\n'
+    + '  3) A practice sentence using the SAME grammar pattern but with DIFFERENT vocabulary,\n'
+    + '     plus 3 plausible-but-wrong English translation choices.\n\n'
+    + 'Pick 3 different beginner-to-intermediate patterns (e.g. ~도, ~을/를, ~았/었어요, ~고 싶어요, ~ㄴ/는데, ~(으)면 etc.) — do not repeat patterns across lessons.\n\n'
+    + 'Return ONLY valid JSON:\n'
+    + '{"lessons":[{\n'
+    + '  "example":{\n'
+    + '    "ko":"Korean sentence",\n'
+    + '    "en":"natural English translation",\n'
+    + '    "parts":[{"ko":"morpheme/word","en":"meaning + grammatical role"}],\n'
+    + '    "grammar_note":"one-line explanation of the grammar pattern"\n'
+    + '  },\n'
+    + '  "practice":{\n'
+    + '    "ko":"Korean sentence using the same grammar but different vocabulary",\n'
+    + '    "en":"correct English translation",\n'
+    + '    "parts":[{"ko":"morpheme/word","en":"meaning + grammatical role"}],\n'
+    + '    "choices":["correct","wrong1","wrong2","wrong3"]\n'
+    + '  }\n'
+    + '}]}\n\n'
+    + 'Rules:\n'
+    + '- 4-7 morpheme parts per breakdown.\n'
+    + '- practice MUST also include a `parts` array breaking down EVERY content word in the practice sentence (especially new words not in the example). Without this the learner has no way to look up unfamiliar words and the activity becomes a guessing game.\n'
+    + '- Wrong choices must be plausible (different particles, different verbs, different subjects) but clearly wrong.\n'
+    + '- The first item in choices is the correct answer; the frontend will shuffle.\n';
+  var res = await callClaude({ feature: 'admin-pregen-pm', model: 'claude-haiku-4-5-20251001', max_tokens: 2400, messages: [{ role: 'user', content: prompt }] });
+  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+  var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+  if (oi < 0 || ei <= oi) throw new Error('PM JSON missing');
+  var parsed = JSON.parse(raw.slice(oi, ei + 1));
+  return Array.isArray(parsed.lessons) ? parsed.lessons : [];
+}
+
+async function _srGenerateBundleKE(topicKo, topicEn, level) {
+  if (!topicKo) return [];
+  var levelLabel = { Starter:'Seed', Beginner:'Sprout', Intermediate:'Tree', Advanced:'Forest' }[level] || level;
+  var prompt =
+      'You are a Korean language teacher. Generate EXACTLY 6 reusable Korean EXPRESSIONS (sentence patterns / collocations / set phrases) for a learner studying the topic: "' + topicKo + '" (' + (topicEn||'') + '). Level: ' + levelLabel + '.\n\n'
+    + 'You MUST teach each expression as a PATTERN with explicit breakdown — not a one-off sentence.\n\n'
+    + 'OUTPUT FORMAT — return ONLY a JSON array of 6 items, no markdown, no commentary:\n'
+    + '[{\n'
+    + '  "ko": "the expression in PATTERN form (use ~ for variable slots, e.g. \\"~하는 것이 취미다\\", \\"~을/를 자주 V\\", \\"~에 시간이 날 때마다\\")",\n'
+    + '  "rom": "romanization of the pattern",\n'
+    + '  "en": "natural English meaning of the pattern",\n'
+    + '  "parts": [\n'
+    + '    {"ko":"~하는", "en":"V + 는 (present-tense modifier)"},\n'
+    + '    {"ko":"것이",  "en":"the act of (nominalizer + subject)"},\n'
+    + '    {"ko":"취미다","en":"is a hobby"}\n'
+    + '  ],\n'
+    + '  "examples": [\n'
+    + '    {"ko":"NATURAL Korean sentence using the pattern with one specific content word","en":"English translation"},\n'
+    + '    {"ko":"NATURAL Korean sentence using the pattern with a DIFFERENT content word in the slot","en":"English translation"}\n'
+    + '  ]\n'
+    + '}]\n\n'
+    + 'STRICT RULES:\n'
+    + '1. ko: pattern form with ~ marking the variable slot. NEVER a fully-instantiated single sentence.\n'
+    + '2. parts: 2-4 items breaking the pattern into its grammatical pieces, each with a SHORT plain-English explanation. The most important "new" word/grammar must appear here (e.g. for "~을/를 자주 V" the parts MUST include 자주 = "often, frequently").\n'
+    + '3. examples: 2 sentences that REUSE the pattern with DIFFERENT content words in the slot.\n'
+    + '4. NEVER generate redundant Korean. Specifically forbidden: "독서 읽는 것을 좋아하다" (독서 already means "reading"; can\'t pair it with 읽다).\n'
+    + '5. Mix expression types across the 6: grammar patterns, collocations, set phrases.\n'
+    + '6. Each expression must be naturally usable when talking about today\'s topic — not generic filler.';
+  var res = await callClaude({ feature: 'admin-pregen-ke', model: 'claude-haiku-4-5-20251001', max_tokens: 1800, messages: [{ role: 'user', content: prompt }] });
+  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+  var clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+  var s = clean.indexOf('['), e = clean.lastIndexOf(']');
+  if (s < 0 || e <= s) throw new Error('KE JSON missing');
+  var arr = JSON.parse(clean.slice(s, e + 1));
+  if (!Array.isArray(arr)) return [];
+  // Same client-side quality filter as the live KE path.
+  var REDUNDANT = /(독서[\s가-힣]*읽|음식[\s가-힣]*먹|영화[\s가-힣]*보는 것을 보)/;
+  return arr.filter(function(x) {
+    if (!x || !x.ko) return false;
+    var ko = String(x.ko).trim();
+    if (ko.indexOf(' ') === -1 && ko.length < 4) return false;
+    if (REDUNDANT.test(ko)) return false;
+    if (Array.isArray(x.examples) && x.examples.some(function(ex){ return ex && ex.ko && REDUNDANT.test(ex.ko); })) return false;
+    return true;
+  });
 }
 
 async function _srGenerateContent(level, topicHint, forceTopicKo, forceTopicEn) {
