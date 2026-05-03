@@ -246,11 +246,18 @@
   function getTargets() {
     // Include story detail modal panel explicitly (it sits outside the
     // outer .st-container and would otherwise never be scanned).
+    // Also include the Phrase Munch and Key Expressions modal bodies —
+    // their example/practice sentences contain words the learner hasn't
+    // necessarily met yet (the user pointed out 영화 in PM Practice
+    // isn't taught anywhere; without hover the activity becomes a
+    // guess-the-meaning instead of a pattern-recognition exercise).
     var list = [
       document.getElementById('dyn-article'),
       document.getElementById('sentences-list'),
       document.getElementById('dyn-article-list'),
-      document.getElementById('st-panel')
+      document.getElementById('st-panel'),
+      document.getElementById('pm-body'),
+      document.getElementById('ke-expressions-list')
     ];
     // querySelectorAll because stories.html has two .st-container instances
     // (outer page wrapper + inner modal body) — we must scan both.
