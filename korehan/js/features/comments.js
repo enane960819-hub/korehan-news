@@ -142,71 +142,83 @@ async function loadComments(articleId) {
 
   function renderRow(c, opts) {
     opts = opts || {};
-    var isReply  = !!opts.isReply;
+    var isReply   = !!opts.isReply;
     var parentName = opts.parentName || '';
-    var isOwn = supaUser && supaUser.id === c.user_id;
+    var isOwn   = supaUser && supaUser.id === c.user_id;
     var isAdmin = !!window._isAdmin;
+
+    // Avatar — small initial chip with a stable per-user color, OR a real
+    // image when the OAuth account provides one.
+    var initial = escapeHTML((c.user_name || '?').charAt(0).toUpperCase());
+    var color   = _khAvColor(c.user_name || c.user_id || '');
     var avatar = (c.avatar_url && isValidImageURL(c.avatar_url))
-      ? '<img src="' + escapeAttr(c.avatar_url) + '" class="cm-av" alt="" onerror="this.style.display=\'none\'">'
-      : '<div class="cm-av cm-av-ph">' + escapeHTML((c.user_name||'?').charAt(0).toUpperCase()) + '</div>';
+      ? '<img src="' + escapeAttr(c.avatar_url) + '" class="cm-av" alt="" onerror="this.outerHTML=\'<div class=\\\'cm-av cm-av-ph\\\' style=\\\'background:' + color + '\\\'>' + initial + '</div>\'">'
+      : '<div class="cm-av cm-av-ph" style="background:' + color + '">' + initial + '</div>';
 
     var agg  = reactions.agg[c.id]  || { like: 0, dislike: 0 };
     var mine = reactions.mine[c.id] || 0;
-    var likeOn    = mine === 1  ? ' on'  : '';
+    var likeOn    = mine === 1  ? ' on' : '';
     var dislikeOn = mine === -1 ? ' on' : '';
 
-    // Body: optionally lead with a colored mention chip on replies.
+    // Replies open with a colored mention chip — keeps the reply target
+    // obvious without needing visual indentation alone to carry it.
     var mention = (isReply && parentName)
       ? '<span class="cm-mention">@' + escapeHTML(parentName) + '</span> '
       : '';
-    var body = '<div class="cm-body">' + mention + escapeHTML(c.content) + '</div>';
 
     var menu = (isOwn || isAdmin)
-      ? '<button class="cm-mini" onclick="deleteComment(\'' + escapeAttr(c.id) + '\')" title="삭제">삭제</button>'
+      ? '<button class="cm-mini cm-danger" onclick="deleteComment(\'' + escapeAttr(c.id) + '\')" title="삭제">삭제</button>'
       : (supaUser
           ? '<button class="cm-mini" onclick="reportComment(\'' + escapeAttr(c.id) + '\')" title="신고하고 가리기">신고</button>'
           : '');
 
     var replyBtn = supaUser
-      ? '<button class="cm-mini cm-reply-toggle" onclick="khCmToggleReply(\'' + escapeAttr(c.id) + '\')">댓글</button>'
+      ? '<button class="cm-mini cm-reply-toggle" onclick="khCmToggleReply(\'' + escapeAttr(c.id) + '\')">답글</button>'
       : '';
 
     var actions =
       '<div class="cm-actions">'
-      + '<button class="cm-react' + likeOn    + '" data-type="like"    onclick="khCmReact(\'' + escapeAttr(c.id) + '\', 1)" title="좋아요">'
+      + '<button class="cm-react' + likeOn    + '" data-type="like"    onclick="khCmReact(\'' + escapeAttr(c.id) + '\', 1)" aria-label="좋아요">'
       +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4V10z"/><path d="M7 10l4-7c1.5 0 2.5 1 2.5 2.5V10h5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 21H7"/></svg>'
-      +   '<span class="cm-react-n" id="cm-like-' + c.id + '">' + agg.like + '</span>'
+      +   '<span id="cm-like-' + c.id + '">' + agg.like + '</span>'
       + '</button>'
-      + '<button class="cm-react' + dislikeOn + '" data-type="dislike" onclick="khCmReact(\'' + escapeAttr(c.id) + '\', -1)" title="싫어요">'
+      + '<button class="cm-react' + dislikeOn + '" data-type="dislike" onclick="khCmReact(\'' + escapeAttr(c.id) + '\', -1)" aria-label="싫어요">'
       +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V3h3v11z"/><path d="M17 14l-4 7c-1.5 0-2.5-1-2.5-2.5V14h-5a2 2 0 0 1-2-2.3l1.2-6A2 2 0 0 1 6.7 3H17"/></svg>'
-      +   '<span class="cm-react-n" id="cm-dislike-' + c.id + '">' + agg.dislike + '</span>'
+      +   '<span id="cm-dislike-' + c.id + '">' + agg.dislike + '</span>'
       + '</button>'
-      + '<span class="cm-actions-spacer"></span>'
+      + '<span class="cm-actions-sep"></span>'
       + replyBtn
       + menu
       + '</div>';
 
     var replyForm =
       '<div class="cm-reply-form" id="cm-reply-form-' + c.id + '" hidden>'
-      + '<textarea placeholder="@' + escapeAttr(c.user_name || '') + '에게 답글…" maxlength="500"></textarea>'
+      + '<textarea placeholder="@' + escapeAttr(c.user_name || '') + '에게 답글…" maxlength="500" rows="1"></textarea>'
       + '<div class="cm-reply-form-row">'
       +   '<button class="cm-mini" onclick="khCmToggleReply(\'' + escapeAttr(c.id) + '\')">취소</button>'
       +   '<button class="cm-reply-submit" onclick="khCmSubmitReply(\'' + escapeAttr(c.id) + '\')">등록</button>'
       + '</div>'
       + '</div>';
 
-    return '<div class="cm-row' + (isReply ? ' cm-reply' : '') + '" id="cm-' + c.id + '">'
-      + '<div class="cm-av-col">' + avatar + '</div>'
-      + '<div class="cm-bubble">'
-      +   '<div class="cm-head">'
-      +     '<span class="cm-name">' + escapeHTML(c.user_name || '익명') + '</span>'
-      +     '<span class="cm-time">' + _khRelTime(c.created_at) + '</span>'
-      +   '</div>'
-      +   body
-      +   actions
-      +   replyForm
+    return '<article class="cm-row' + (isReply ? ' cm-reply' : '') + '" id="cm-' + c.id + '">'
+      + '<div class="cm-head">'
+      +   avatar
+      +   '<span class="cm-name">' + escapeHTML(c.user_name || '익명') + '</span>'
+      +   '<span class="cm-dot">·</span>'
+      +   '<span class="cm-time">' + _khRelTime(c.created_at) + '</span>'
       + '</div>'
-      + '</div>';
+      + '<div class="cm-body">' + mention + escapeHTML(c.content) + '</div>'
+      + actions
+      + replyForm
+      + '</article>';
+  }
+
+  // Stable hash → 8-color palette for initial-chip avatars.
+  function _khAvColor(seed) {
+    var palette = ['#2255a4','#7c3aed','#059669','#db2777','#dc2626','#0891b2','#ea580c','#4338ca'];
+    var h = 0;
+    for (var i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+    return palette[Math.abs(h) % palette.length];
   }
 
   var html = topLevel.map(function(top) {
