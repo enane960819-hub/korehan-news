@@ -8131,6 +8131,18 @@ function _keStartFillQuiz() {
   _keRenderFillQuiz();
 }
 
+// Strip the pattern markers (~, V placeholder, leading particle clusters)
+// to get the answer chunk that should fill the blank.
+function _keStripPatternForFill(p) {
+  return String(p || '')
+    .replace(/~[^\s]*/g, '')
+    .replace(/\bV\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^[을를이가의에서와과도만으로부터까지에게한테로써\s/]+/, '')
+    .trim();
+}
+
 function _keRenderFillQuiz() {
   var list = document.getElementById('ke-expressions-list'); if (!list) return;
   var exps = window._keExpressions || [];
@@ -8143,38 +8155,57 @@ function _keRenderFillQuiz() {
   }
 
   var exp = exps[idx];
-  // Source sentence MUST be a concrete example, never the pattern itself.
-  // The previous fallback `exp.example_ko || exp.ko` blew up when the new
-  // prompt format made `ko` a pattern like "~을/를 V고 싶다" — the blank
-  // logic then replaced the entire visible string with "___" because
-  // exampleKo === exp.ko. Now: prefer examples[0].ko, fall back to legacy
-  // example_ko, and skip the expression entirely if neither exists.
   var exampleObj = (Array.isArray(exp.examples) && exp.examples[0]) || null;
   var exampleKo = (exampleObj && exampleObj.ko) || exp.example_ko || '';
   var exampleEn = (exampleObj && exampleObj.en) || exp.example_en || '';
   if (!exampleKo) { window._keFillIdx = (window._keFillIdx || 0) + 1; _keRenderFillQuiz(); return; }
 
-  // Build the blanked display. For pattern-style expressions ("~하는 것이
-  // 취미다") strip the ~ markers and the V placeholder before searching
-  // for the meaningful core in the example, then use the conjugation-aware
-  // _keBlankExpression helper. If nothing matches, fall back to showing
-  // the full sentence (better than a bare ___ with no Korean visible).
-  var BLANK = '<span style="display:inline-block;min-width:80px;border-bottom:2px solid #a78bfa;padding:0 4px;color:#a78bfa;font-weight:800">___</span>';
-  var stripped = String(exp.ko || '').replace(/~[^\s]*/g, '').replace(/\bV\b/g, '').replace(/\s+/g, ' ').trim();
-  stripped = stripped.replace(/^[을를이가의에서와과도만으로부터까지에게한테로써\s/]+/, '').trim();
-  var blankedDisplay = exampleKo;
-  if (stripped) {
-    if (typeof _keBlankExpression === 'function') {
-      var blanked = _keBlankExpression(exampleKo, stripped);
-      if (blanked && blanked.indexOf('______') !== -1) {
-        blankedDisplay = blanked.replace(/<span [^>]*>______<\/span>/g, BLANK);
-      } else if (exampleKo.indexOf(stripped) !== -1) {
-        blankedDisplay = exampleKo.split(stripped).join(BLANK);
-      }
-    } else if (exampleKo.indexOf(stripped) !== -1) {
-      blankedDisplay = exampleKo.split(stripped).join(BLANK);
-    }
+  // Compute the answer chunk — the substring of the example that the
+  // pattern's variable-stripped core matches. Skip expressions where
+  // we can't find a clean match (rare; AI usually puts the pattern's
+  // verbatim chunk in the example).
+  var correctChunk = _keStripPatternForFill(exp.ko);
+  if (!correctChunk || exampleKo.indexOf(correctChunk) === -1) {
+    window._keFillIdx = (window._keFillIdx || 0) + 1;
+    _keRenderFillQuiz();
+    return;
   }
+
+  // Blank the answer chunk in the example sentence.
+  var BLANK = '<span style="display:inline-block;min-width:80px;border-bottom:2px solid #a78bfa;padding:0 4px;color:#a78bfa;font-weight:800">___</span>';
+  var blankedDisplay = exampleKo.split(correctChunk).join(BLANK);
+
+  // Build distractor pool from OTHER expressions' answer cores so the
+  // wrong choices are plausibly Korean-shaped, not random fluff.
+  var distractorPool = exps.map(function(e, i) {
+    if (i === idx) return null;
+    return _keStripPatternForFill(e.ko);
+  }).filter(function(c) { return c && c !== correctChunk; });
+
+  // Dedupe + shuffle + take 3.
+  var seen = {}; seen[correctChunk] = 1;
+  var distractors = [];
+  distractorPool.sort(function() { return Math.random() - 0.5; }).forEach(function(c) {
+    if (!seen[c] && distractors.length < 3) { seen[c] = 1; distractors.push(c); }
+  });
+  // Edge case (very small expression set): pad with conjugation/particle
+  // variations of the correct so the user still sees 4 buttons. Better
+  // than rendering only 1-2 choices.
+  while (distractors.length < 3) {
+    distractors.push(correctChunk + '요' + (distractors.length ? '?' : ''));
+  }
+
+  var choices = [correctChunk].concat(distractors).sort(function() { return Math.random() - 0.5; });
+  var safeCorrect = correctChunk.replace(/\\/g,'\\\\').replace(/'/g, "\\'");
+  var choicesHtml = choices.map(function(c) {
+    var safeC = c.replace(/\\/g,'\\\\').replace(/'/g, "\\'");
+    return '<button class="ke-fill-choice"'
+      + ' onclick="_keCheckFillChoice(this,\'' + safeC + '\',\'' + safeCorrect + '\')"'
+      + ' style="padding:13px 16px;border:1.5px solid rgba(255,255,255,.12);'
+      +   'border-radius:10px;background:rgba(255,255,255,.04);color:#fff;'
+      +   'font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;'
+      +   'cursor:pointer;text-align:center;transition:.15s">' + c + '</button>';
+  }).join('');
 
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
@@ -8182,27 +8213,56 @@ function _keRenderFillQuiz() {
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
     + '</div>'
     + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:16px;margin-bottom:14px">'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">빈칸에 들어갈 표현을 입력하세요</div>'
-    + '<div style="font-size:15px;color:#e0f2fe;line-height:1.7;margin-bottom:6px;font-family:\'Noto Serif KR\',serif">' + blankedDisplay + '</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">빈칸에 들어갈 표현을 골라보세요</div>'
+    + '<div style="font-size:16px;color:#e0f2fe;line-height:1.8;margin-bottom:6px;font-family:\'Noto Serif KR\',serif">' + blankedDisplay + '</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.35)">' + exampleEn + '</div>'
     + '</div>'
-    + '<div style="margin-bottom:12px">'
-    + '<input type="text" id="ke-fill-input" placeholder="한국어 표현을 입력하세요…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
-    + ' style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(167,139,250,.35);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box"'
-    + ' onkeydown="if(event.key===\'Enter\')_keCheckFillAnswer()">'
-    + '</div>'
-    + '<div style="display:flex;gap:8px;justify-content:center">'
-    + '<button onclick="_keCheckFillAnswer()" style="padding:11px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">확인 &#10003;</button>'
-    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px">' + choicesHtml + '</div>'
     + '<div id="ke-fill-fb" style="margin-top:12px;min-height:28px"></div>';
 
-  // Auto-focus the input
-  setTimeout(function() {
-    var inp = document.getElementById('ke-fill-input');
-    if (inp) inp.focus();
-  }, 80);
 }
 
+// MCQ click handler — replaces the old typed-input check. Picks one
+// of the 4 buttons rendered above; the correct chunk was passed in
+// as the second argument so this stays simple (no DOM lookup back
+// into expression state).
+function _keCheckFillChoice(btn, chosen, correct) {
+  document.querySelectorAll('.ke-fill-choice').forEach(function(b){ b.disabled = true; b.style.cursor = 'default'; });
+  var fb = document.getElementById('ke-fill-fb');
+  var isCorrect = chosen === correct;
+  if (isCorrect) {
+    window._keFillScore = (window._keFillScore || 0) + 1;
+    btn.style.borderColor = '#86efac';
+    btn.style.background  = 'rgba(34,197,94,.15)';
+    btn.style.color       = '#4ade80';
+    if (fb) fb.innerHTML = '<div style="padding:10px 12px;background:rgba(34,197,94,.12);border-radius:8px;color:#4ade80;font-weight:800;font-size:13px">✓ 정답!</div>';
+    if (typeof playCorrectSound === 'function') playCorrectSound();
+  } else {
+    btn.style.borderColor = '#fca5a5';
+    btn.style.background  = 'rgba(239,68,68,.1)';
+    btn.style.color       = '#fca5a5';
+    document.querySelectorAll('.ke-fill-choice').forEach(function(b) {
+      if (b.textContent === correct) {
+        b.style.borderColor = '#86efac';
+        b.style.background  = 'rgba(34,197,94,.15)';
+        b.style.color       = '#4ade80';
+      }
+    });
+    if (fb) fb.innerHTML = '<div style="padding:10px 12px;background:rgba(239,68,68,.1);border-radius:8px;font-size:13px">'
+      + '<div style="color:#fca5a5;font-weight:800;margin-bottom:4px">✗ 오답</div>'
+      + '<div style="color:rgba(255,255,255,.6)">정답: <span style="color:#a78bfa;font-weight:800;font-size:15px">' + correct + '</span></div>'
+      + '</div>';
+    if (typeof playWrongSound === 'function') playWrongSound();
+  }
+  if (fb) fb.innerHTML += '<button onclick="window._keFillIdx=(window._keFillIdx||0)+1;_keRenderFillQuiz()" '
+    + 'style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;'
+    + 'background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;'
+    + 'cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(124,58,237,.3)">다음 →</button>';
+}
+
+// Legacy typed-input check — kept so any onclick handler from a
+// stale modal that still has the old input doesn't throw. New
+// renders use _keCheckFillChoice.
 function _keCheckFillAnswer() {
   var inp = document.getElementById('ke-fill-input');
   var fb = document.getElementById('ke-fill-fb');
