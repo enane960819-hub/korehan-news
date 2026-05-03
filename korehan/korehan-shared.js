@@ -7639,6 +7639,22 @@ function _khSpaLoadArticle(nextId, direction) {
     window.scrollTo(0, 0);
     if (typeof renderArticlePage === 'function') renderArticlePage();
 
+    // Re-prime the hover-tooltip system for the new article. The
+    // MutationObserver in korehan-hover-tooltips.js eventually catches
+    // up via its 250ms debounce, but on slower devices it sometimes
+    // misses the renderArticlePage swap entirely — words on the new
+    // article never get wrapped, so hover silently breaks. Two-step:
+    //   1. Register article-specific extras (vocab not in the master
+    //      hover_vocab_master table) so they're tooltip-able.
+    //   2. Force an immediate re-scan, bypassing the debounce.
+    try {
+      if (window._currentArticle && window._currentArticle.data && Array.isArray(window._currentArticle.data.vocab)
+          && typeof window.korehanHoverRegisterExtras === 'function') {
+        window.korehanHoverRegisterExtras(window._currentArticle.data.vocab);
+      }
+      if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh();
+    } catch(_) {}
+
     // Re-sync sidebar bookmark state to the new article.
     var initTries = 0;
     (function initSync() {
