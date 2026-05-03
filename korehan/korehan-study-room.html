@@ -7140,11 +7140,13 @@ async function _pmGenerateLessons(topic) {
     + '  "practice":{\n'
     + '    "ko":"Korean sentence using the same grammar but different vocabulary",\n'
     + '    "en":"correct English translation",\n'
+    + '    "parts":[{"ko":"morpheme/word","en":"meaning + grammatical role"}],\n'
     + '    "choices":["correct","wrong1","wrong2","wrong3"]\n'
     + '  }\n'
     + '}]}\n\n'
     + 'Rules:\n'
     + '- 4-7 morpheme parts per breakdown.\n'
+    + '- practice MUST also include a `parts` array breaking down EVERY content word in the practice sentence (especially the new content words that were NOT in the example sentence). Without this the learner has no way to look up unfamiliar words in the practice sentence and the activity becomes a guessing game.\n'
     + '- Wrong choices must be plausible (different particles, different verbs, different subjects) but clearly wrong.\n'
     + '- The first item in choices is the correct answer; the frontend will shuffle.\n';
 
@@ -7167,6 +7169,27 @@ function _pmRender() {
   var lesson = _pm.lessons[_pm.idx];
   if (!lesson) { _pmRenderResult(); return; }
 
+  // Register every word the lesson exposes (example parts + practice
+  // parts when present) into the hover-tooltip system, so the learner
+  // can mouse over / tap any unfamiliar token in the modal and get a
+  // meaning. Without this, the Practice phase showed sentences like
+  // "영화도 봐요?" with no path to look up 영화 if it wasn't already
+  // taught — turning the activity into a guessing game.
+  try {
+    if (typeof window.korehanHoverRegisterExtras === 'function') {
+      var hoverExtras = [];
+      var collect = function(parts) {
+        if (!Array.isArray(parts)) return;
+        parts.forEach(function(p) {
+          if (p && p.ko && p.en) hoverExtras.push({ ko: p.ko, en: p.en });
+        });
+      };
+      collect(lesson.example && lesson.example.parts);
+      collect(lesson.practice && lesson.practice.parts);
+      if (hoverExtras.length) window.korehanHoverRegisterExtras(hoverExtras);
+    }
+  } catch(_) {}
+
   // Step pips
   var pipsHtml = _pm.lessons.map(function(_, i) {
     var done = _pm.scores[i] != null;
@@ -7179,6 +7202,11 @@ function _pmRender() {
   else if (_pm.phase === 'learn')    _pmRenderLearn(body, lesson, pipsHtml);
   else if (_pm.phase === 'assemble') _pmRenderAssemble(body, lesson, pipsHtml);
   else                               _pmRenderPractice(body, lesson, pipsHtml);
+
+  // Force a fresh hover sweep on the modal body — MutationObserver's
+  // 250ms debounce sometimes misses a re-render and the practice
+  // sentence renders without underlines.
+  try { if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh(); } catch(_) {}
 }
 
 // Phase 1 — Vocab preview. The user complained that Phrase Munch
@@ -7725,15 +7753,35 @@ function _renderKeyExpressions(list, expressions) {
   // knows) while filtering OUT the meaningful core 시간이 / 날 / 때마다
   // because they were "in the expression". The expression IS the lesson;
   // splitting its own components out as trivia is exactly backwards.
-  // Phrase Munch's pre-teach makes sense because PM teaches sentence
-  // patterns where the slot words are the lesson; KE teaches the
-  // expression as a single pattern unit, so pre-teach was a bad fit.
   // Reverted. Now we lean on the Study card itself to show the pattern
   // breakdown (parts[] from the AI) inline.
   window._keExpressions = expressions;
   window._kePhase       = 'study';
   window._keStudyIdx    = 0;
+
+  // Register every parts entry across all expressions into the hover-
+  // tooltip system so unfamiliar words in the example/fill sentences
+  // show meanings on hover/tap. Without this, the learner had no way
+  // to look up words that weren't already in hover_vocab_master.
+  try {
+    if (typeof window.korehanHoverRegisterExtras === 'function') {
+      var hoverExtras = [];
+      (expressions || []).forEach(function(exp) {
+        if (Array.isArray(exp.parts)) {
+          exp.parts.forEach(function(p) {
+            if (p && p.ko && p.en) hoverExtras.push({ ko: p.ko, en: p.en });
+          });
+        }
+      });
+      if (hoverExtras.length) window.korehanHoverRegisterExtras(hoverExtras);
+    }
+  } catch(_) {}
+
   _keRenderStudyPhase(list);
+  // Force a hover sweep on the modal — debounce sometimes misses the
+  // initial render on slower devices.
+  try { if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh(); } catch(_) {}
+
   if (typeof _kePrefetchSituations === 'function') {
     _kePrefetchSituations(expressions);
   }
@@ -23431,6 +23479,6 @@ function dismissSrOnboarding() {
   if (el) el.style.display = 'none';
 }
 </script>
-<script src="korehan-hover-tooltips.js?v=20260502"></script>
+<script src="korehan-hover-tooltips.js?v=20260503d"></script>
 </body>
 </html>
