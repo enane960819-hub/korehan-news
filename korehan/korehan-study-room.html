@@ -19776,7 +19776,11 @@ function asPrevStep() {
 
 async function _asLoadContent() {
   if (!_asCurrentArt) return;
-  var key = 'as_c2_' + _asCurrentArt.id;
+  // Bumped to as_c3_ when the phrases prompt was reworked from
+  // "complete TRUE sentences" → "reusable expressions". Old as_c2_
+  // entries cached fact-style phrases; the new key forces a one-time
+  // regen (same article_study_content row gets overwritten on save).
+  var key = 'as_c3_' + _asCurrentArt.id;
   var c = sessionStorage.getItem(key);
   if (c) { try { _asStudyContent = JSON.parse(c); return; } catch(e) {} }
   var lm0 = document.getElementById('as-loading-msg');
@@ -19786,14 +19790,26 @@ async function _asLoadContent() {
   try {
     var sb = getSupa();
     var dr = await sb.from('article_study_content').select('*').eq('article_id', String(_asCurrentArt.id)).maybeSingle();
-    if (dr.data && (dr.data.vocab && dr.data.vocab.length > 0)) {
+    // Skip the DB cache when:
+    //   - the row predates the phrases-prompt rework (custom_highlights
+    //     was the old admin-curated fallback; rows generated under the
+    //     "complete TRUE sentence" prompt have no prompt_version field
+    //     and weren't admin-edited). Force regen so existing articles
+    //     pick up the new "reusable expressions" output.
+    //   - the row was admin-edited (custom_highlights set) — always
+    //     respect those, never overwrite.
+    var dbRow = dr.data;
+    var promptV  = dbRow && (dbRow.prompt_version || (dbRow.questions && dbRow.questions._v) || 0);
+    var hasAdminEdit = !!(dbRow && dbRow.custom_highlights);
+    var dbUsable = dbRow && dbRow.vocab && dbRow.vocab.length > 0 && (hasAdminEdit || promptV >= 2);
+    if (dbUsable) {
       _asStudyContent = {
-        vocab:         dr.data.vocab         || [],
-        phrases:       dr.data.phrases       || [],
-        wrong_phrases: dr.data.wrong_phrases || [],
-        word_order:    dr.data.word_order    || [],
-        questions:     dr.data.questions     || [],
-        custom_highlights: dr.data.custom_highlights || null
+        vocab:         dbRow.vocab         || [],
+        phrases:       dbRow.phrases       || [],
+        wrong_phrases: dbRow.wrong_phrases || [],
+        word_order:    dbRow.word_order    || [],
+        questions:     dbRow.questions     || [],
+        custom_highlights: dbRow.custom_highlights || null
       };
       sessionStorage.setItem(key, JSON.stringify(_asStudyContent));
       return;
@@ -19804,12 +19820,16 @@ async function _asLoadContent() {
   var prompt = 'Korean news article study content for language learners.\nTitle: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
     + '\n\nReturn ONLY valid JSON:\n'
     + '{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],'
-    + '"phrases":[{"ko":"COMPLETE Korean sentence taken VERBATIM from the article body (or a faithful condensation that preserves all particles and the verb ending). Must be unambiguously TRUE per the article.","en":"translation"}],'
+    + '"phrases":[{"ko":"a REUSABLE Korean expression or sentence pattern that appears in the article (verbatim substring of the body)","en":"natural English translation"}],'
     + '"wrong_phrases":[{"ko":"a grammatically VALID Korean sentence that is FALSE about this article (wrong subject / wrong action / contradicts a fact in the article). Must NOT be obvious nonsense — the verb must agree with the subject and use proper particles.","en":"translation"}],'
     + '"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],'
     + '"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\n'
     + 'vocab: 6 key words from article. '
-    + 'phrases: 3 SHORT TRUE sentences (max 8 Korean eojeol each). NEVER paraphrase loosely — keep particles + verb endings exactly as in the article. '
+    + 'phrases: 3 REUSABLE Korean expressions or sentence patterns that learners can apply OUTSIDE this specific article (~3-7 eojeol each). '
+    +   'CRITICAL: each `ko` MUST appear as a VERBATIM substring in the article body so it can be highlighted accurately — copy the exact characters, do not paraphrase. '
+    +   'GOOD examples (reusable patterns): "특별한 경고 메시지", "사람들에게 즐거움을 주다", "~다고 생각하다", "화제가 되고 있어요". '
+    +   'BAD examples (article-only facts — DO NOT generate): "미국의 뱅크 오브 아메리카 ATM에 특별한 경고 메시지가 나타났어요", "많은 사람들이 이 ATM 경고문을 보고 재미있다고 생각했어요". '
+    +   'Prefer phrases that teach grammar patterns (~에 ~가 나타나다, ~에게 ~을 주다, ~다고 생각하다 etc.) or common collocations over full subject+object+verb sentences. '
     + 'wrong_phrases: 3 PLAUSIBLE-LOOKING but FALSE sentences for distractors (must be grammatical Korean — subject + object + verb with correct particles; only the meaning is wrong). '
     + 'word_order: 3 sentences split into eojeol chunks in CORRECT order (each max 5 chunks). '
     + 'questions: 3 comprehension questions with clear correct answers.';
@@ -19830,17 +19850,30 @@ async function _asSaveContentToDB(articleId, content) {
   try {
     var sb = getSupa();
     if (!sb) return;
+    // prompt_version: bump when the AI prompt or schema changes so old
+    // rows are detected as stale on read and regenerated. Stamped into
+    // questions._v as a fallback for installs where the prompt_version
+    // column doesn't exist yet — the read path checks both.
+    var qs = content.questions || [];
+    if (Array.isArray(qs)) qs = qs.slice(); else qs = [];
+    qs._v = 2;
     var row = {
       article_id: String(articleId),
       vocab: content.vocab || [],
       phrases: content.phrases || [],
       wrong_phrases: content.wrong_phrases || [],
       word_order: content.word_order || [],
-      questions: content.questions || [],
+      questions: qs,
+      prompt_version: 2,
       admin_edited: false
     };
     // Upsert: insert or update if exists
-    await sb.from('article_study_content').upsert(row, { onConflict: 'article_id' });
+    var res = await sb.from('article_study_content').upsert(row, { onConflict: 'article_id' });
+    // If the prompt_version column doesn't exist yet, retry without it.
+    if (res && res.error && /prompt_version/.test(String(res.error.message || ''))) {
+      delete row.prompt_version;
+      await sb.from('article_study_content').upsert(row, { onConflict: 'article_id' });
+    }
   } catch(e) { console.warn('[ArticleStudy] DB save failed', e); }
 }
 
@@ -20006,9 +20039,35 @@ function _asSpawnParticles(el) {
 function _asStep2(art,act) {
   var phrases=(_asStudyContent&&_asStudyContent.phrases)||[];
   var body=_asCurrentArt&&_asCurrentArt.body?_asFormatBody(_asCurrentArt.body):'';
-  var hlPhrases = (_asStudyContent&&_asStudyContent.custom_highlights&&_asStudyContent.custom_highlights.phrases)
-    ? _asStudyContent.custom_highlights.phrases
-    : phrases.map(function(p){return p.ko&&p.ko.length>8?p.ko.slice(0,12):null;}).filter(Boolean);
+  // Highlight strategy: prefer admin-curated custom_highlights when set;
+  // otherwise highlight each phrase IN FULL when it appears verbatim in
+  // the body. The previous fallback sliced p.ko to 12 characters, which
+  // cut Korean strings mid-word (e.g. "미국의 뱅크 오브 아메리카" became
+  // "미국의 뱅크 오브 아메" — the broken-looking yellow highlight users
+  // were complaining about). If the verbatim phrase doesn't appear in
+  // the body (the AI condensed it), fall back to highlighting the
+  // longest contiguous substring that does match — never an arbitrary
+  // character slice.
+  var hlPhrases;
+  if (_asStudyContent && _asStudyContent.custom_highlights && _asStudyContent.custom_highlights.phrases) {
+    hlPhrases = _asStudyContent.custom_highlights.phrases;
+  } else {
+    hlPhrases = phrases.map(function(p) {
+      var ko = (p && p.ko) || '';
+      if (!ko) return null;
+      if (body.indexOf(ko) !== -1) return ko;
+      // Fallback: longest contiguous chunk of ko (split on whitespace)
+      // that also appears in body. Beats a hardcoded character slice.
+      var parts = ko.split(/\s+/).filter(Boolean);
+      for (var len = parts.length; len > 0; len--) {
+        for (var start = 0; start + len <= parts.length; start++) {
+          var chunk = parts.slice(start, start + len).join(' ');
+          if (chunk.length >= 3 && body.indexOf(chunk) !== -1) return chunk;
+        }
+      }
+      return null;
+    }).filter(Boolean);
+  }
   hlPhrases.forEach(function(s){ if(s) body=body.replace(new RegExp(_asEsc(s),'g'),'<mark class="ph-mark">'+s+'</mark>'); });
   var imgHtml = _asCurrentArt.image
     ? '<img class="su-article-img" src="' + _asCurrentArt.image + '" alt="" onerror="this.style.display=\'none\'">'
