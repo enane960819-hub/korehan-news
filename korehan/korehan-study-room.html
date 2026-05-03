@@ -7816,8 +7816,8 @@ function _keRenderStudyPhase(list) {
     + '<div style="display:flex;gap:8px;justify-content:center;align-items:center">'
     + '<button onclick="window._keStudyIdx=Math.max(0,window._keStudyIdx-1);_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;visibility:' + (idx > 0 ? 'visible' : 'hidden') + '">&larr; 이전</button>'
     + (idx < exps.length - 1
-      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">다음 표현 &rarr;</button>'
-      : '<button onclick="_keStartFillQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">연습 시작 &rarr;</button>')
+      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">다음 표현 &rarr;</button>'
+      : '<button onclick="_keStartFillQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">연습 시작 &rarr;</button>')
     + '</div>';
   // Re-render lucide icons that were just injected (Save button).
   if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
@@ -7971,30 +7971,56 @@ function _keRenderFillQuiz() {
   }
 
   var exp = exps[idx];
-  // Replace the expression in the example sentence with a blank
-  var exampleKo = exp.example_ko || exp.ko;
+  // Source sentence MUST be a concrete example, never the pattern itself.
+  // The previous fallback `exp.example_ko || exp.ko` blew up when the new
+  // prompt format made `ko` a pattern like "~을/를 V고 싶다" — the blank
+  // logic then replaced the entire visible string with "___" because
+  // exampleKo === exp.ko. Now: prefer examples[0].ko, fall back to legacy
+  // example_ko, and skip the expression entirely if neither exists.
+  var exampleObj = (Array.isArray(exp.examples) && exp.examples[0]) || null;
+  var exampleKo = (exampleObj && exampleObj.ko) || exp.example_ko || '';
+  var exampleEn = (exampleObj && exampleObj.en) || exp.example_en || '';
+  if (!exampleKo) { window._keFillIdx = (window._keFillIdx || 0) + 1; _keRenderFillQuiz(); return; }
+
+  // Build the blanked display. For pattern-style expressions ("~하는 것이
+  // 취미다") strip the ~ markers and the V placeholder before searching
+  // for the meaningful core in the example, then use the conjugation-aware
+  // _keBlankExpression helper. If nothing matches, fall back to showing
+  // the full sentence (better than a bare ___ with no Korean visible).
+  var BLANK = '<span style="display:inline-block;min-width:80px;border-bottom:2px solid #a78bfa;padding:0 4px;color:#a78bfa;font-weight:800">___</span>';
+  var stripped = String(exp.ko || '').replace(/~[^\s]*/g, '').replace(/\bV\b/g, '').replace(/\s+/g, ' ').trim();
+  stripped = stripped.replace(/^[을를이가의에서와과도만으로부터까지에게한테로써\s/]+/, '').trim();
   var blankedDisplay = exampleKo;
-  if (exp.ko && exampleKo.indexOf(exp.ko) !== -1) {
-    blankedDisplay = exampleKo.replace(exp.ko, '<span style="display:inline-block;min-width:80px;border-bottom:2px solid #14cbb0;padding:0 4px;color:#14cbb0;font-weight:800">___</span>');
+  if (stripped) {
+    if (typeof _keBlankExpression === 'function') {
+      var blanked = _keBlankExpression(exampleKo, stripped);
+      if (blanked && blanked.indexOf('______') !== -1) {
+        blankedDisplay = blanked.replace(/<span [^>]*>______<\/span>/g, BLANK);
+      } else if (exampleKo.indexOf(stripped) !== -1) {
+        blankedDisplay = exampleKo.split(stripped).join(BLANK);
+      }
+    } else if (exampleKo.indexOf(stripped) !== -1) {
+      blankedDisplay = exampleKo.split(stripped).join(BLANK);
+    }
   }
 
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#14cbb0;margin-bottom:4px">Step 3 \u00b7 \ube48\uce78 \ucc44\uc6b0\uae30</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 2 · 빈칸 채우기</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
     + '</div>'
-    + '<div style="background:rgba(20,203,176,.07);border:1px solid rgba(20,203,176,.2);border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:16px;margin-bottom:14px">'
     + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">빈칸에 들어갈 표현을 입력하세요</div>'
-    + '<div style="font-size:15px;color:#e0f2fe;line-height:1.7;margin-bottom:6px">' + blankedDisplay + '</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,.35)">' + (exp.example_en||exp.en||'') + '</div>'
+    + '<div style="font-size:15px;color:#e0f2fe;line-height:1.7;margin-bottom:6px;font-family:\'Noto Serif KR\',serif">' + blankedDisplay + '</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.35)">' + exampleEn + '</div>'
     + '</div>'
     + '<div style="margin-bottom:12px">'
     + '<input type="text" id="ke-fill-input" placeholder="한국어 표현을 입력하세요…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
-    + ' style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(20,203,176,.35);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box"'
+    + ' style="width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(167,139,250,.35);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box"'
     + ' onkeydown="if(event.key===\'Enter\')_keCheckFillAnswer()">'
     + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center">'
-    + '<button onclick="_keCheckFillAnswer()" style="padding:11px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">확인 &#10003;</button>'
+    + '<button onclick="_keCheckFillAnswer()" style="padding:11px 28px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">확인 &#10003;</button>'
     + '</div>'
     + '<div id="ke-fill-fb" style="margin-top:12px;min-height:28px"></div>';
 
@@ -8039,7 +8065,7 @@ function _keCheckFillAnswer() {
     inp.style.background = 'rgba(239,68,68,.08)';
     fb.innerHTML = '<div style="padding:10px 12px;background:rgba(239,68,68,.1);border-radius:8px;font-size:13px">'
       + '<div style="color:#fca5a5;font-weight:800;margin-bottom:4px">&#10060; Not quite</div>'
-      + '<div style="color:rgba(255,255,255,.6)">Correct: <span style="color:#14cbb0;font-weight:800;font-size:15px">' + correct + '</span></div>'
+      + '<div style="color:rgba(255,255,255,.6)">Correct: <span style="color:#a78bfa;font-weight:800;font-size:15px">' + correct + '</span></div>'
       + '</div>';
   }
 
@@ -8172,10 +8198,10 @@ function _keRenderSituationQuiz() {
 
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fb923c;margin-bottom:4px">Step 4 · 상황에 적용</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 3 · 상황에 적용</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + situations.length + '</div>'
     + '</div>'
-    + '<div style="background:rgba(251,146,60,.07);border:1px solid rgba(251,146,60,.2);border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:16px;margin-bottom:14px">'
     + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Which expression would you use in this situation?</div>'
     + '<div style="font-size:14px;color:#fff;line-height:1.6;font-weight:600">' + (sit.situation||'') + '</div>'
     + '</div>'
