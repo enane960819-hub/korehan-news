@@ -65,6 +65,31 @@
         line-height:1.55;
         color:#e5edf9;
       }
+      .kh-hover-tip .infl{
+        margin-top:8px;
+        padding:8px 10px;
+        background:rgba(147,197,253,.10);
+        border:1px solid rgba(147,197,253,.22);
+        border-radius:10px;
+        font-size:11px;
+        line-height:1.5;
+        color:#cfe2ff;
+      }
+      .kh-hover-tip .infl-line{
+        font-weight:600;
+        color:#e5edf9;
+        word-break:keep-all;
+      }
+      .kh-hover-tip .infl-surface{ color:#fff;font-weight:800; }
+      .kh-hover-tip .infl-stem{ color:#9ec4ff;font-weight:700; }
+      .kh-hover-tip .infl-end{ color:#fcd34d;font-weight:700; }
+      .kh-hover-tip .infl-label{
+        margin-top:3px;
+        font-size:10.5px;
+        font-weight:600;
+        color:#a5b4fc;
+        letter-spacing:.01em;
+      }
       .kh-hover-tip .note{
         font-size:11px;
         line-height:1.55;
@@ -102,6 +127,72 @@
 
   function escapeRegExp(s) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  // ── Inflection analyzer ──────────────────────────────────────
+  // When the surface form in the article (e.g. 만들어진) differs from
+  // the dictionary entry (만들다), explain WHICH endings were combined
+  // so a learner can connect the form they see to the form they'd look
+  // up. Matches longest first, falls back to a generic label when no
+  // pattern fits. Patterns cover the most common verb/adjective endings
+  // for news + conversational Korean — passive (~어지다), past polite
+  // (~었어요), formal (~ㅂ니다), attributives (~ㄴ/~는/~ㄹ), and the
+  // major connectives.
+  var INFLECTION_PATTERNS = [
+    // Passive (~어지다) compounds — listed before plain past so 어진/어졌어요
+    // get the richer label.
+    {re: /^[어아여]진$/,        ending: '~어지다 + ~ㄴ',     label: '피동 · 관형형 과거 (was ___ed)'},
+    {re: /^[어아여]지는$/,      ending: '~어지다 + ~는',     label: '피동 · 관형형 현재 (becoming ___ed)'},
+    {re: /^[어아여]질$/,        ending: '~어지다 + ~ㄹ',     label: '피동 · 관형형 미래 (to be ___ed)'},
+    {re: /^[어아여]졌어요$/,    ending: '~어지다 + ~었어요', label: '피동 과거 정중체 (was ___ed)'},
+    {re: /^[어아여]졌습니다$/,  ending: '~어지다 + ~었습니다', label: '피동 과거 격식체 (was ___ed)'},
+    {re: /^[어아여]지고$/,      ending: '~어지다 + ~고',     label: '피동 + 연결 (becoming ___ed and)'},
+    {re: /^[어아여]지다$/,      ending: '~어지다',           label: '피동/상태변화 (become ___ed)'},
+    {re: /^[어아여]져$/,        ending: '~어지다 (반말/어간)', label: '피동 어간 (becoming ___ed)'},
+    // Past tense
+    {re: /^았어요$|^었어요$|^였어요$/,         ending: '~었어요',   label: '과거 정중체 (___ed)'},
+    {re: /^았습니다$|^었습니다$|^였습니다$/,    ending: '~었습니다', label: '과거 격식체 (___ed)'},
+    {re: /^았다$|^었다$|^였다$/,               ending: '~었다',     label: '과거 평서 (___ed)'},
+    {re: /^았던$|^었던$|^였던$/,               ending: '~었던',     label: '과거 회상 관형형 (that had ___ed)'},
+    // Polite / formal present
+    {re: /^[어아여]요$/,                       ending: '~어요',     label: '정중체 현재 (___s/___ing)'},
+    {re: /^[ㅂ습]니다$/,                       ending: '~ㅂ니다',   label: '격식체 현재 (___s/___ing)'},
+    {re: /^[ㅂ습]니까$/,                       ending: '~ㅂ니까',   label: '격식체 의문 (___?)'},
+    // Plain present
+    {re: /^ㄴ다$|^는다$/,                      ending: '~ㄴ다/~는다', label: '평서체 현재 (___s)'},
+    // Attributive
+    {re: /^[ㄴ은]$/,                           ending: '~ㄴ',       label: '관형형 과거 ([noun] that was ___ed)'},
+    {re: /^는$/,                               ending: '~는',       label: '관형형 현재 ([noun] that ___s)'},
+    {re: /^[ㄹ을]$/,                           ending: '~ㄹ',       label: '관형형 미래 ([noun] that will ___)'},
+    // Connectives
+    {re: /^고$/,                               ending: '~고',       label: '연결 (and / then)'},
+    {re: /^[어아여]서$/,                       ending: '~어서',     label: '연결 (because / and then)'},
+    {re: /^지만$/,                             ending: '~지만',     label: '연결 (but)'},
+    {re: /^[으]?면$/,                          ending: '~(으)면',   label: '조건 (if)'},
+    {re: /^[으]?니까$/,                        ending: '~(으)니까', label: '연결 (because)'},
+    {re: /^[으]?려고$/,                        ending: '~(으)려고', label: '의도 (in order to)'},
+    {re: /^도록$/,                             ending: '~도록',     label: '연결 (so that ___)'},
+    // Nominal / adverbial
+    {re: /^기$/,                               ending: '~기',       label: '명사형 (___ing as noun)'},
+    {re: /^게$/,                               ending: '~게',       label: '부사형 (___ly / so that)'},
+    // Honorific
+    {re: /^시$|^으시$/,                        ending: '~(으)시',   label: '존댓말 어간 (honorific)'},
+    {re: /^세요$|^으세요$/,                    ending: '~(으)세요', label: '존댓 정중체 (please ___)'},
+    {re: /^셨어요$|^으셨어요$/,                ending: '~(으)셨어요', label: '존댓 과거 정중체 (___ed, honorific)'},
+  ];
+  function analyzeInflection(dict, surface) {
+    if (!dict || !surface || dict === surface) return null;
+    var stem = /다$/.test(dict) ? dict.slice(0, -1) : dict;
+    if (!stem || !surface.startsWith(stem)) return null;
+    var trailer = surface.slice(stem.length);
+    if (!trailer) return null;
+    for (var i = 0; i < INFLECTION_PATTERNS.length; i++) {
+      var p = INFLECTION_PATTERNS[i];
+      if (p.re.test(trailer)) {
+        return { trailer: trailer, ending: p.ending, label: p.label };
+      }
+    }
+    return { trailer: trailer, ending: '~' + trailer, label: '활용형 (conjugated form)' };
   }
 
   async function loadHoverVocab() {
@@ -212,6 +303,15 @@
     span.dataset.meaning = vocab.meaning_en || '';
     span.dataset.reading = vocab.reading || '';
     span.dataset.note = vocab.note || '';
+    // When the surface form differs from the dictionary entry (e.g.
+    // 만들어진 vs 만들다), capture the conjugation breakdown so the
+    // tooltip can show which endings were combined to produce it.
+    var infl = analyzeInflection(vocab.word_ko, target);
+    if (infl) {
+      span.dataset.surface = target;
+      span.dataset.inflEnd = infl.ending;
+      span.dataset.inflLabel = infl.label;
+    }
     span.addEventListener('mouseenter', onWordEnter);
     span.addEventListener('mouseleave', onWordLeave);
     span.addEventListener('mousemove', moveTooltip);
@@ -301,16 +401,33 @@
   function showTooltip(e) {
     var el = e.currentTarget;
     var t = ensureTooltip();
-    var word    = el.dataset.word    || '';
-    var reading = el.dataset.reading || '';
-    var meaning = el.dataset.meaning || '';
-    var note    = el.dataset.note    || '';
+    var word     = el.dataset.word     || '';
+    var reading  = el.dataset.reading  || '';
+    var meaning  = el.dataset.meaning  || '';
+    var note     = el.dataset.note     || '';
+    var surface  = el.dataset.surface  || '';
+    var inflEnd  = el.dataset.inflEnd  || '';
+    var inflLab  = el.dataset.inflLabel|| '';
     var saved = isWordSavedLocally(word);
+
+    var inflBlock = '';
+    if (surface && surface !== word) {
+      inflBlock =
+        '<div class="infl">'
+        + '<div class="infl-line">'
+        + '<span class="infl-surface">' + surface + '</span>'
+        + ' = <span class="infl-stem">' + word + '</span>'
+        + (inflEnd ? ' + <span class="infl-end">' + inflEnd + '</span>' : '')
+        + '</div>'
+        + (inflLab ? '<div class="infl-label">' + inflLab + '</div>' : '')
+        + '</div>';
+    }
 
     t.innerHTML =
       '<div class="ko">' + word + '</div>'
       + (reading ? '<div class="rom">' + reading + '</div>' : '')
       + '<div class="en">' + meaning + '</div>'
+      + inflBlock
       + (note ? '<div class="note">' + note + '</div>' : '')
       + '<div class="tip-footer">'
       + '<button class="kh-tip-save' + (saved ? ' saved' : '') + '" '
