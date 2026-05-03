@@ -8440,9 +8440,24 @@ function _keRenderSituationQuiz() {
     + '<div style="display:flex;flex-direction:column;gap:8px">'
     + choices.map(function(c) {
       var cIdx = exps.indexOf(c);
+      // Show the actual concrete example sentence as the choice text,
+      // not the bare pattern with ~ and V placeholders. The user pointed
+      // out "보기가 다 원형이네" — pattern templates aren't recognizable
+      // as natural Korean sentences, so the situation quiz devolved into
+      // matching tilde-shapes instead of meaning. The pattern itself
+      // still appears as a small subtitle so the learner sees the link.
+      var ex = (Array.isArray(c.examples) && c.examples[0]) || null;
+      var sentenceKo = (ex && ex.ko) || c.example_ko || c.ko || '';
+      var sentenceEn = (ex && ex.en) || c.example_en || c.en || '';
+      var patternHint = c.ko && (sentenceKo !== c.ko)
+        ? '<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px">패턴: ' + (c.ko || '') + '</div>'
+        : '';
       return '<button class="ke-sit-btn" onclick="_keSituationAnswer(this,' + cIdx + ',' + correctIdx + ',\'' + (sit.why||'').replace(/'/g,"\\'") + '\')"'
-        + ' style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left;transition:.15s">'
-        + (c.ko||'') + ' <span style="font-size:11px;color:rgba(255,255,255,.3);margin-left:8px">' + (c.en||'') + '</span></button>';
+        + ' style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:14px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif;text-align:left;transition:.15s;line-height:1.45">'
+        +   '<div>' + sentenceKo + '</div>'
+        +   '<div style="font-size:11px;color:rgba(255,255,255,.45);font-weight:500;margin-top:2px;font-family:inherit">' + sentenceEn + '</div>'
+        +   patternHint
+        + '</button>';
     }).join('')
     + '</div>'
     + '<div id="ke-sit-fb" style="margin-top:10px"></div>';
