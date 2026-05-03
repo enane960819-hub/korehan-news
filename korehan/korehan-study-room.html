@@ -501,7 +501,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 }
 .wmodal .wm-mode-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
 .wmodal .wm-mode-btn.active {
-  background: linear-gradient(135deg, #14cbb0, #0ea88f);
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
   border-color: transparent; color: #fff;
   box-shadow: 0 4px 12px rgba(14,168,143,.35);
 }
@@ -526,10 +526,10 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .wmodal .mgrexp  { color: rgba(255,255,255,.55); }
 .wmodal .mgrex {
   background: rgba(0,0,0,.2);
-  border-left-color: #14cbb0;
+  border-left-color: #a78bfa;
   border-radius: 0 8px 8px 0;
 }
-.wmodal .mgrko { color: #14cbb0; }
+.wmodal .mgrko { color: #a78bfa; }
 .wmodal .mgr-en { color: rgba(255,255,255,.5); }
 
 /* Vocab chips */
@@ -540,7 +540,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   transition: all .15s;
 }
 .wmodal .chip:hover {
-  background: rgba(20,203,176,.18); border-color: rgba(20,203,176,.45); color: #14cbb0;
+  background: rgba(167,139,250,.18); border-color: rgba(167,139,250,.45); color: #a78bfa;
 }
 .wmodal .chip.gc {
   background: rgba(251,191,36,.12);
@@ -558,11 +558,11 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   transition: border-color .15s, background .15s;
 }
 .wmodal .write-area::placeholder { color: rgba(255,255,255,.3); }
-.wmodal .write-area:focus { border-color: #14cbb0; background: rgba(255,255,255,.08); }
+.wmodal .write-area:focus { border-color: #a78bfa; background: rgba(255,255,255,.08); }
 
 /* Submit button — match bmodal CTA */
 .wmodal .submit-btn {
-  background: linear-gradient(135deg, #14cbb0, #0ea88f);
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
   border-radius: 14px; padding: 14px 0;
   box-shadow: 0 6px 20px rgba(14,168,143,.38);
   transition: transform .15s, box-shadow .15s;
@@ -574,7 +574,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .wmodal .mhrow { border-bottom-color: rgba(255,255,255,.08); }
 .wmodal .mhko  { color: #fff; font-size: 14px; }
 .wmodal .mhen  { color: rgba(255,255,255,.62); font-size: 12px; }
-.wmodal .mhbtn { color: #14cbb0; font-size: 12px; }
+.wmodal .mhbtn { color: #a78bfa; font-size: 12px; }
 /* Density pass: bigger panel labels and helper rows so the
    Express Practice screen is readable without leaning in. The
    learner mostly reads .plabel / .mhko / .mhen, so those are the
@@ -1422,12 +1422,12 @@ body { background: #14253f !important; }
   inset: -10px;
   border-radius: 50%;
   background: conic-gradient(from -90deg,
-    #34d399 calc(var(--ls-progress, 0) * 1%),
+    #a78bfa calc(var(--ls-progress, 0) * 1%),
     rgba(255,255,255,0.08) calc(var(--ls-progress, 0) * 1%)
   );
   -webkit-mask: radial-gradient(circle, transparent calc(50% - 11px), #000 calc(50% - 9px));
           mask: radial-gradient(circle, transparent calc(50% - 11px), #000 calc(50% - 9px));
-  filter: drop-shadow(0 0 8px rgba(52,211,153,.45));
+  filter: drop-shadow(0 0 8px rgba(167,139,250,.55));
   transition: background .6s ease;
   pointer-events: none;
   z-index: -1;
@@ -1501,8 +1501,8 @@ body { background: #14253f !important; }
   color: #f5f3ff;
 }
 .ls-node.ls-node-done .ls-node-icon {
-  color: #d1fae5;
-  filter: drop-shadow(0 0 8px rgba(110,231,183,.6));
+  color: #ddd6fe;
+  filter: drop-shadow(0 0 8px rgba(167,139,250,.7));
 }
 
 /* Invite pulse (idle state) */
@@ -1535,9 +1535,9 @@ body { background: #14253f !important; }
 .ls-node-circle .ls-node-check {
   display: none; position: absolute; top: -5px; right: -5px;
   width: 20px; height: 20px; border-radius: 50%;
-  background: linear-gradient(135deg,#34d399,#059669); color: #fff; font-size: 11px;
+  background: linear-gradient(135deg,#a78bfa,#7c3aed); color: #fff; font-size: 11px;
   line-height: 20px; text-align: center; font-weight: 900;
-  box-shadow: 0 2px 6px rgba(16,185,129,.5);
+  box-shadow: 0 2px 6px rgba(124,58,237,.5);
   z-index: 3;
 }
 
@@ -1559,18 +1559,18 @@ body { background: #14253f !important; }
 
 /* Done state */
 .ls-node.ls-node-done .ls-node-circle {
-  border-color: rgba(52,211,153,.75);
-  background: radial-gradient(circle at 30% 30%, rgba(52,211,153,.38), rgba(6,78,59,.6) 72%);
-  box-shadow: 0 0 22px rgba(52,211,153,.45), inset 0 0 10px rgba(52,211,153,.22);
+  border-color: rgba(167,139,250,.85);
+  background: radial-gradient(circle at 30% 30%, rgba(167,139,250,.45), rgba(76,29,149,.6) 72%);
+  box-shadow: 0 0 22px rgba(167,139,250,.55), inset 0 0 10px rgba(167,139,250,.28);
 }
 .ls-node.ls-node-done .ls-node-check {
   display: block;
   animation: lsCheckPop .45s cubic-bezier(.34,1.56,.64,1);
 }
 .ls-node.ls-node-done .ls-node-coin {
-  background: linear-gradient(135deg,#a7f3d0,#10b981);
-  color: #064e3b;
-  border-color: rgba(6,78,59,.55);
+  background: linear-gradient(135deg,#c4b5fd,#7c3aed);
+  color: #1e1b4b;
+  border-color: rgba(76,29,149,.55);
 }
 @keyframes lsCheckPop {
   0%   { transform: scale(0); }
@@ -1973,16 +1973,16 @@ body { background: #14253f !important; }
 .ls-wp-sub { font-size: 10px; opacity: .7; margin-top: 2px; }
 /* ── Picture Description 3-step UI — unified mint accent ── */
 .pd-step-pip { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.1); transition:background .2s; }
-.pd-step-pip.pd-step-done   { background:rgba(20,203,176,.55); }
-.pd-step-pip.pd-step-active { background:#14cbb0; }
+.pd-step-pip.pd-step-done   { background:rgba(167,139,250,.55); }
+.pd-step-pip.pd-step-active { background:#a78bfa; }
 .pd-img-square { width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:14px; display:block; max-height:280px; max-width:280px; margin:0 auto; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); }
-.pd-vocab-card { display:inline-block; min-width:80px; padding:10px 16px; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.18); border-radius:12px; cursor:pointer; font-size:15px; font-weight:700; color:#fff; text-align:center; transition:all .15s; user-select:none; margin:0; box-shadow:0 2px 6px rgba(20,203,176,.06); }
-.pd-vocab-card .pd-vocab-back { display:none; font-size:12px; color:#14cbb0; font-weight:600; margin-top:2px; }
-.pd-vocab-card.flipped { background:rgba(20,203,176,.14); border-color:rgba(20,203,176,.55); }
+.pd-vocab-card { display:inline-block; min-width:80px; padding:10px 16px; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.18); border-radius:12px; cursor:pointer; font-size:15px; font-weight:700; color:#fff; text-align:center; transition:all .15s; user-select:none; margin:0; box-shadow:0 2px 6px rgba(167,139,250,.06); }
+.pd-vocab-card .pd-vocab-back { display:none; font-size:12px; color:#a78bfa; font-weight:600; margin-top:2px; }
+.pd-vocab-card.flipped { background:rgba(167,139,250,.14); border-color:rgba(167,139,250,.55); }
 .pd-vocab-card.flipped .pd-vocab-front { display:none; }
 .pd-vocab-card.flipped .pd-vocab-back  { display:block; }
 .pd-sent-btn { width:100%; text-align:left; padding:13px 16px; margin-bottom:8px; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.1); border-radius:14px; color:#fff; font-family:inherit; font-size:15px; line-height:1.5; cursor:pointer; transition:all .15s; }
-.pd-sent-btn:hover:not(:disabled) { background:rgba(20,203,176,.1); border-color:rgba(20,203,176,.4); color:#14cbb0; }
+.pd-sent-btn:hover:not(:disabled) { background:rgba(167,139,250,.1); border-color:rgba(167,139,250,.4); color:#a78bfa; }
 .pd-sent-btn:disabled { cursor:default; opacity:.85; }
 
 .sr-topic-lbl {
@@ -2637,17 +2637,17 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
   border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); color:rgba(255,255,255,.7);
   cursor:pointer; transition:all .18s ease;
 }
-.dct-mode-tab:hover { border-color:rgba(20,203,176,.5); color:#14cbb0; background:rgba(20,203,176,.08); }
+.dct-mode-tab:hover { border-color:rgba(167,139,250,.5); color:#a78bfa; background:rgba(167,139,250,.08); }
 .dct-mode-tab.on {
-  background:linear-gradient(135deg,#14cbb0,#0ea88f);
+  background:linear-gradient(135deg,#a78bfa,#7c3aed);
   border-color:transparent; color:#fff;
-  box-shadow:0 6px 16px -6px rgba(20,203,176,.5);
+  box-shadow:0 6px 16px -6px rgba(167,139,250,.5);
 }
 body.kh-dark .dct-mode-tab { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.12); color:rgba(255,255,255,.7); }
-body.kh-dark .dct-mode-tab:hover { background:rgba(20,203,176,.1); color:#14cbb0; }
+body.kh-dark .dct-mode-tab:hover { background:rgba(167,139,250,.1); color:#a78bfa; }
 .dct-pip { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.1); transition:background .2s; }
-.dct-pip.done   { background:rgba(20,203,176,.55); }
-.dct-pip.active { background:#14cbb0; }
+.dct-pip.done   { background:rgba(167,139,250,.55); }
+.dct-pip.active { background:#a78bfa; }
 body.kh-dark .dct-header { background:linear-gradient(135deg,#0f2040,#152d5a); color:#fff; border-bottom-color:rgba(255,255,255,.06); }
 body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important; }
 .dct-body { flex:1; overflow-y:auto; padding:20px; }
@@ -2655,15 +2655,15 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .dct-foot .btn { font-family:inherit; font-size:14px; font-weight:700; padding:12px 18px; border-radius:12px; border:1.5px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); color:rgba(255,255,255,.75); cursor:pointer; transition:all .15s; min-height:46px; white-space:nowrap; }
 .dct-foot .btn:hover:not(:disabled) { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.25); color:#fff; }
 .dct-foot .btn:disabled { opacity:.4; cursor:not-allowed; }
-.dct-foot .btn-g { flex:1; border:none; background:linear-gradient(135deg,#14cbb0,#0ea88f); color:#fff; font-size:15px; font-weight:800; box-shadow:0 6px 18px rgba(20,203,176,.28); letter-spacing:.3px; }
-.dct-foot .btn-g:hover:not(:disabled) { background:linear-gradient(135deg,#0ea88f,#0a8a73); color:#fff; box-shadow:0 8px 22px rgba(20,203,176,.4); }
+.dct-foot .btn-g { flex:1; border:none; background:linear-gradient(135deg,#a78bfa,#7c3aed); color:#fff; font-size:15px; font-weight:800; box-shadow:0 6px 18px rgba(167,139,250,.28); letter-spacing:.3px; }
+.dct-foot .btn-g:hover:not(:disabled) { background:linear-gradient(135deg,#7c3aed,#0a8a73); color:#fff; box-shadow:0 8px 22px rgba(167,139,250,.4); }
 .dct-foot .btn-g:disabled { background:rgba(255,255,255,.08); color:rgba(255,255,255,.35); box-shadow:none; }
 .dct-sent-card { background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.1); border-radius:14px; padding:16px 18px; margin-bottom:12px; }
 .dct-sent-ko { font-family:'Noto Serif KR',serif; font-size:18px; font-weight:700; color:#fff; margin-bottom:6px; line-height:1.6; }
 .dct-sent-en { font-size:13px; color:rgba(255,255,255,.5); }
-.dct-listen-btn { background:rgba(20,203,176,.1); border:1.5px solid rgba(20,203,176,.3); border-radius:10px; padding:8px 14px; cursor:pointer; font-size:16px; color:#14cbb0; float:right; transition:all .15s; }
-.dct-listen-btn:hover { background:rgba(20,203,176,.18); border-color:rgba(20,203,176,.5); }
-.dct-wo-zone { background:rgba(20,203,176,.06); border:1.5px solid rgba(20,203,176,.25); border-radius:14px; padding:16px; margin-bottom:14px; font-family:'Noto Serif KR',serif; font-size:16px; line-height:2.4; min-height:56px; color:#fff; }
+.dct-listen-btn { background:rgba(167,139,250,.1); border:1.5px solid rgba(167,139,250,.3); border-radius:10px; padding:8px 14px; cursor:pointer; font-size:16px; color:#a78bfa; float:right; transition:all .15s; }
+.dct-listen-btn:hover { background:rgba(167,139,250,.18); border-color:rgba(167,139,250,.5); }
+.dct-wo-zone { background:rgba(167,139,250,.06); border:1.5px solid rgba(167,139,250,.25); border-radius:14px; padding:16px; margin-bottom:14px; font-family:'Noto Serif KR',serif; font-size:16px; line-height:2.4; min-height:56px; color:#fff; }
 @media(max-width:640px) { #dct-modal, #nq-modal { padding:0 !important; align-items:stretch !important; } #dct-modal .dct-panel, #nq-modal .dct-panel { max-height:100dvh; height:100dvh; max-width:100%; width:100%; border-radius:0; } }
 
 /* ── Phrase Munch modal styling ─────────────────────────────────── */
@@ -4109,7 +4109,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 
     <!-- Tab bar -->
     <div class="gf-tab-bar" style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,.08);padding:0 24px;flex-shrink:0">
-      <button class="gf-tab active" onclick="switchGFTab('learn',this)" id="gft-learn" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#14cbb0;border-bottom:2px solid #14cbb0;cursor:pointer;font-family:inherit">① Learn</button>
+      <button class="gf-tab active" onclick="switchGFTab('learn',this)" id="gft-learn" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:#a78bfa;border-bottom:2px solid #a78bfa;cursor:pointer;font-family:inherit">① Learn</button>
       <button class="gf-tab" onclick="switchGFTab('spotit',this)" id="gft-spotit" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">② Spot It</button>
       <button class="gf-tab" onclick="switchGFTab('fill',this)" id="gft-fill" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">③ Practice</button>
       <button class="gf-tab" onclick="switchGFTab('translate',this)" id="gft-translate" style="padding:11px 14px;border:none;background:none;font-size:13px;font-weight:700;color:rgba(255,255,255,.45);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit">④ Translate</button>
@@ -4121,7 +4121,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <!-- Learn tab (was Examples) -->
       <div id="gf-tab-learn">
         <div id="gf-examples-content">
-          <div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#14cbb0;animation:spin 1.4s linear infinite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span><span>Loading grammar…</span></div>
+          <div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#a78bfa;animation:spin 1.4s linear infinite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span><span>Loading grammar…</span></div>
         </div>
       </div>
 
@@ -8565,9 +8565,9 @@ function _keShowFinalScore() {
     + '<div><div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:.5px">Recognition (MCQ)</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Pick the right expression</div></div>'
     + '<div style="font-size:18px;font-weight:900;color:#fbbf24">' + recogScore + '/' + recogTotal + '</div>'
     + '</div>'
-    + '<div style="background:rgba(20,203,176,.08);border:1px solid rgba(20,203,176,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
-    + '<div><div style="font-size:11px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.5px">Production Score</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Fill in the blank</div></div>'
-    + '<div style="font-size:18px;font-weight:900;color:#14cbb0">' + fillScore + '/' + fillTotal + '</div>'
+    + '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + '<div><div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.5px">Production Score</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Fill in the blank</div></div>'
+    + '<div style="font-size:18px;font-weight:900;color:#a78bfa">' + fillScore + '/' + fillTotal + '</div>'
     + '</div>'
     + '<div style="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
     + '<div><div style="font-size:11px;font-weight:800;color:#fb923c;text-transform:uppercase;letter-spacing:.5px">Situational Mapping</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Match expression to context</div></div>'
@@ -12198,7 +12198,7 @@ function _buildHelperCloze(ko) {
   var trail = (word.match(/[.,!?]+$/) || [''])[0];
   var displayTokens = tokens.slice();
   var templateTokens = tokens.slice();
-  displayTokens[pick.i]  = '<span class="mh-cloze-blank" style="display:inline-block;min-width:46px;text-align:center;background:rgba(20,203,176,.14);border:1px dashed rgba(20,203,176,.55);border-radius:6px;padding:1px 8px;color:#14cbb0;font-weight:700">___</span>' + trail;
+  displayTokens[pick.i]  = '<span class="mh-cloze-blank" style="display:inline-block;min-width:46px;text-align:center;background:rgba(167,139,250,.14);border:1px dashed rgba(167,139,250,.55);border-radius:6px;padding:1px 8px;color:#a78bfa;font-weight:700">___</span>' + trail;
   templateTokens[pick.i] = '___' + trail;
   return {
     display:  displayTokens.join(' '),
@@ -14873,7 +14873,7 @@ function _pdRenderStep1(item) {
   var vocab = item.vocab_items || [];
   if (!vocab.length) { _pdGoStep(2); return; }   // skip if admin left blank
   body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📚 이미지 관련 어휘</div>'
+    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📚 이미지 관련 어휘</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:12px">단어를 탭해서 뜻을 확인하세요</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
     + vocab.map(function(v) {
@@ -14892,7 +14892,7 @@ function _pdRenderStep2(item) {
   var words = item.word_order_words || [];
   if (!words.length) { _pdGoStep(3); return; }   // skip if admin left blank
   body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 어절 순서맞추기</div>'
+    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 어절 순서맞추기</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">단어를 클릭해서 올바른 순서로 배치하세요</div>'
     + '<div id="pd-word-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.07);border-radius:10px;margin-bottom:8px;align-items:center"></div>'
     + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">내 답:</div>'
@@ -14921,16 +14921,16 @@ function _pdRenderStep3(item) {
   var vocabHtml = '';
   if (vocab.length) {
     var chips = vocab.map(function(v) {
-      return '<span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:rgba(20,203,176,.14);border:1px solid rgba(20,203,176,.28);color:#fff;font-size:12px;font-family:\'Noto Sans KR\',sans-serif"><b style="font-weight:700">' + (v.ko || '') + '</b><span style="opacity:.6;font-size:11px">— ' + (v.en || '') + '</span></span>';
+      return '<span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.28);color:#fff;font-size:12px;font-family:\'Noto Sans KR\',sans-serif"><b style="font-weight:700">' + (v.ko || '') + '</b><span style="opacity:.6;font-size:11px">— ' + (v.en || '') + '</span></span>';
     }).join('');
     vocabHtml =
-      '<details style="margin-bottom:10px;border:1px dashed rgba(20,203,176,.35);border-radius:10px;padding:8px 10px;background:rgba(20,203,176,.06)" open>'
-      + '<summary style="cursor:pointer;font-size:11px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.6px;list-style:none">📚 어휘 참고 (' + vocab.length + ')</summary>'
+      '<details style="margin-bottom:10px;border:1px dashed rgba(167,139,250,.35);border-radius:10px;padding:8px 10px;background:rgba(167,139,250,.06)" open>'
+      + '<summary style="cursor:pointer;font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.6px;list-style:none">📚 어휘 참고 (' + vocab.length + ')</summary>'
       + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' + chips + '</div>'
       + '</details>';
   }
   body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✏️ 사진 묘사 글쓰기</div>'
+    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✏️ 사진 묘사 글쓰기</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">' + (guidedPrompts[level] || guidedPrompts.Beginner) + '</div>'
     + vocabHtml
     + '<textarea id="pd-input" style="width:100%;min-height:100px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;padding:12px;font-size:14px;font-family:\'Noto Sans KR\',sans-serif;background:rgba(255,255,255,.06);color:#fff;resize:vertical;outline:none;box-sizing:border-box" placeholder="한국어로 써보세요..."></textarea>'
@@ -15805,7 +15805,7 @@ function bmFireConfetti() {
   canvas.height = modal.offsetHeight || 600;
   var ctx = canvas.getContext('2d');
   var W = canvas.width, H = canvas.height;
-  var colors = ['#14cbb0','#7c3aed','#f59e0b','#60a5fa','#f472b6','#34d399'];
+  var colors = ['#a78bfa','#7c3aed','#f59e0b','#60a5fa','#f472b6','#34d399'];
   var pieces = [];
   for (var i = 0; i < 55; i++) {
     pieces.push({
@@ -17617,8 +17617,8 @@ function switchGFTab(tabId, btn) {
     if (pane) pane.style.display = t === tabId ? 'block' : 'none';
     var tb = document.getElementById('gft-' + t);
     if (tb) {
-      tb.style.color            = t === tabId ? '#14cbb0' : '#94a3b8';
-      tb.style.borderBottomColor = t === tabId ? '#14cbb0' : 'transparent';
+      tb.style.color            = t === tabId ? '#a78bfa' : '#94a3b8';
+      tb.style.borderBottomColor = t === tabId ? '#a78bfa' : 'transparent';
       tb.style.fontWeight        = t === tabId ? '800' : '700';
     }
   });
@@ -17653,8 +17653,8 @@ function loadGFPatterns(patterns) {
           return '<button onclick="selectGFPattern(' + i + ')" '
             + 'class="gf-pattern-chip' + (i===0?' gf-chip-on':'') + '" '
             + 'style="padding:5px 12px;border-radius:999px;border:1.5px solid '
-            + (i===0?'#14cbb0':'rgba(255,255,255,.15)') + ';background:' + (i===0?'#eff6ff':'#fff')
-            + ';color:' + (i===0?'#14cbb0':'#475569')
+            + (i===0?'#a78bfa':'rgba(255,255,255,.15)') + ';background:' + (i===0?'#eff6ff':'#fff')
+            + ';color:' + (i===0?'#a78bfa':'#475569')
             + ';font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'
             + (p.name || 'Pattern ' + (i+1)) + '</button>';
         }).join('')
@@ -17677,9 +17677,9 @@ function selectGFPattern(idx) {
   _gfPattern = p;
   document.querySelectorAll('.gf-pattern-chip').forEach(function(b, i) {
     var on = i === idx;
-    b.style.borderColor = on ? '#14cbb0' : 'rgba(255,255,255,.15)';
+    b.style.borderColor = on ? '#a78bfa' : 'rgba(255,255,255,.15)';
     b.style.background  = on ? '#eff6ff' : '#fff';
-    b.style.color       = on ? '#14cbb0' : '#475569';
+    b.style.color       = on ? '#a78bfa' : '#475569';
   });
   var titleEl = document.getElementById('gf-title');
   if (titleEl) titleEl.textContent = p.name || '';
@@ -17755,8 +17755,8 @@ function gfParseKorean(ko) {
 }
 
 function gfRenderSentenceTree(ko) {
-  var ROLE_BG    = { subject:'#fef3c7', object:'#dcfce7', modifier:'rgba(20,203,176,.25)', verb:'#ede9fe', misc:'#f1f5f9' };
-  var ROLE_COLOR = { subject:'#92400e', object:'#15803d', modifier:'#1e40af', verb:'#0ea88f', misc:'#475569' };
+  var ROLE_BG    = { subject:'#fef3c7', object:'#dcfce7', modifier:'rgba(167,139,250,.25)', verb:'#ede9fe', misc:'#f1f5f9' };
+  var ROLE_COLOR = { subject:'#92400e', object:'#15803d', modifier:'#1e40af', verb:'#7c3aed', misc:'#475569' };
   var ROLE_LABEL = { subject:'주어',    object:'목적어', modifier:'수식',     verb:'서술어', misc:'기타' };
   var parsed = gfParseKorean(ko);
   if (!parsed.length) return '';
@@ -17788,10 +17788,10 @@ function gfToggleTree(id, btn) {
 }
 
 function renderGFLearn(p) {
-  var levelColors = { Starter:'#14cbb0', Beginner:'#16a34a', Intermediate:'#d97706', Advanced:'#dc2626' };
+  var levelColors = { Starter:'#a78bfa', Beginner:'#16a34a', Intermediate:'#d97706', Advanced:'#dc2626' };
   var levelBgs    = { Starter:'#f5f3ff', Beginner:'#f0fdf4', Intermediate:'#fffbeb', Advanced:'#fff1f2' };
   var lv = p.level || 'Intermediate';
-  var lc = levelColors[lv] || '#14cbb0';
+  var lc = levelColors[lv] || '#a78bfa';
   var lb = levelBgs[lv]    || '#f0f4ff';
 
   // Extract Korean characters from pattern name for highlighting in examples
@@ -17804,12 +17804,12 @@ function renderGFLearn(p) {
   var structureHtml = structure
     ? '<div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
       + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:6px">공식 Structure</div>'
-      + '<p style="font-size:15px;font-weight:800;color:#14cbb0;margin:0;font-family:Noto Serif KR,serif">' + structure + '</p>'
+      + '<p style="font-size:15px;font-weight:800;color:#a78bfa;margin:0;font-family:Noto Serif KR,serif">' + structure + '</p>'
       + '</div>'
     : '';
 
   // Explanation
-  var expHtml = '<div style="background:rgba(255,255,255,.05);border-left:3px solid #14cbb0;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px">'
+  var expHtml = '<div style="background:rgba(255,255,255,.05);border-left:3px solid #a78bfa;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px">'
     + '<p style="font-size:14px;color:#334155;line-height:1.8;margin:0">' + (p.exp || '') + '</p>'
     + '</div>';
 
@@ -17841,7 +17841,7 @@ function renderGFLearn(p) {
         koChars.forEach(function(kc) {
           var clean = kc.replace(/~/g,'');
           if (clean && koText.indexOf(clean) !== -1) {
-            koText = koText.split(clean).join('<mark style="background:rgba(20,203,176,.15);color:#14cbb0;border-radius:4px;padding:1px 3px;font-style:normal">' + clean + '</mark>');
+            koText = koText.split(clean).join('<mark style="background:rgba(167,139,250,.15);color:#a78bfa;border-radius:4px;padding:1px 3px;font-style:normal">' + clean + '</mark>');
           }
         });
         var treeId = 'gf-tree-' + i;
@@ -17849,7 +17849,7 @@ function renderGFLearn(p) {
           ? '<button type="button" onclick="gfToggleTree(\'' + treeId + '\',this)" style="margin-top:8px;padding:4px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">▼ Show structure</button>'
           + '<div id="' + treeId + '" hidden style="margin-top:10px">' + gfRenderSentenceTree(ex.ko) + '</div>'
           : '';
-        return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(20,203,176,.2);border-radius:12px;padding:14px 16px;margin-bottom:10px">'
+        return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:14px 16px;margin-bottom:10px">'
           + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:7px">예문 ' + (i+1) + '</div>'
           + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#fff;line-height:1.7;margin:0 0 8px">' + koText + '</p>'
           + '<p style="font-size:13px;color:rgba(255,255,255,.55);margin:0;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">' + (ex.en||'') + '</p>'
@@ -17859,7 +17859,7 @@ function renderGFLearn(p) {
 
   // "Got it" advance button
   var advBtn = '<div style="margin-top:20px;text-align:center">'
-    + '<button onclick="gfAdvanceTo(\'spotit\')" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.3px">Got it → Spot It</button>'
+    + '<button onclick="gfAdvanceTo(\'spotit\')" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.3px">Got it → Spot It</button>'
     + '</div>';
 
   return '<div style="margin-bottom:14px">'
@@ -17872,7 +17872,7 @@ function renderGFLearn(p) {
 
 async function generateGFPatterns() {
   var el = document.getElementById('gf-examples-content');
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#14cbb0;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</span><span>Generating grammar patterns…</span></div>';
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</span><span>Generating grammar patterns…</span></div>';
 
   var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
   if (!topic || topic === 'Loading…') {
@@ -17988,7 +17988,7 @@ function openWeakGrammarDrill(grammarName) {
   if (title) title.textContent = grammarName;
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  body.innerHTML = '<div style="text-align:center;padding:40px"><div style="display:inline-flex;width:32px;height:32px;margin-bottom:10px;color:#14cbb0;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</div><div style="font-size:14px;color:rgba(255,255,255,.55)">Generating 5 drill questions for <b>' + grammarName + '</b>…</div></div>';
+  body.innerHTML = '<div style="text-align:center;padding:40px"><div style="display:inline-flex;width:32px;height:32px;margin-bottom:10px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</div><div style="font-size:14px;color:rgba(255,255,255,.55)">Generating 5 drill questions for <b>' + grammarName + '</b>…</div></div>';
   generateWGDrillQuestions(grammarName);
 }
 
@@ -18388,22 +18388,22 @@ function _renderSpotItSentence() {
         var done = i < st.idx;
         var active = i === st.idx;
         return '<div style="flex:1;height:4px;border-radius:2px;background:'
-          + (done ? 'rgba(34,197,94,.7)' : active ? '#14cbb0' : 'rgba(255,255,255,.15)') + '"></div>';
+          + (done ? 'rgba(34,197,94,.7)' : active ? '#a78bfa' : 'rgba(255,255,255,.15)') + '"></div>';
       }).join('')
     + '</div>';
 
   var wordChips = words.map(function(w, wi) {
     return '<button onclick="checkGFSpotIt(' + wi + ',\'' + w.replace(/'/g,"\\'") + '\',\'' + targetWord.replace(/'/g,"\\'") + '\')" '
       + 'id="gfsi-w-' + wi + '" '
-      + 'style="padding:8px 14px;margin:4px;border-radius:8px;border:1.5px solid rgba(20,203,176,.25);background:rgba(255,255,255,.06);font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;font-family:inherit">'
+      + 'style="padding:8px 14px;margin:4px;border-radius:8px;border:1.5px solid rgba(167,139,250,.25);background:rgba(255,255,255,.06);font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;font-family:inherit">'
       + w + '</button>';
   }).join('');
 
   el.innerHTML = progressHtml
     + '<div style="margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.65);line-height:1.6">'
-    + '문법 패턴 <strong style="color:#14cbb0">' + (st.p.name||'') + '</strong> 이 사용된 단어를 찾아 탭하세요.'
+    + '문법 패턴 <strong style="color:#a78bfa">' + (st.p.name||'') + '</strong> 이 사용된 단어를 찾아 탭하세요.'
     + '</div>'
-    + '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(20,203,176,.25);border-radius:14px;padding:18px;margin-bottom:16px">'
+    + '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:14px;padding:18px;margin-bottom:16px">'
     + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">예문 ' + (st.idx+1) + ' / ' + st.total + '</div>'
     + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:14px">' + (ex.en||'') + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:0">' + wordChips + '</div>'
@@ -18430,7 +18430,7 @@ function checkGFSpotIt(wordIdx, word, target) {
       document.querySelectorAll('[id^="gfsi-w-"]').forEach(function(b) {
         b.style.pointerEvents = '';
         b.style.background = '#fff';
-        b.style.borderColor = 'rgba(20,203,176,.25)';
+        b.style.borderColor = 'rgba(167,139,250,.25)';
         b.style.color = '#0f172a';
       });
       if (fb) fb.innerHTML = '';
@@ -18484,9 +18484,9 @@ function _loadSpotItBonus() {
         + 'data-correction="' + (o.correction||'').replace(/"/g,'&quot;') + '" '
         + 'data-error-type="' + (o.error_type||'') + '" '
         + 'style="display:block;width:100%;text-align:left;padding:14px 16px;margin-bottom:8px;'
-        + 'background:rgba(255,255,255,.06);border:1.5px solid rgba(20,203,176,.25);border-radius:10px;font-size:15px;'
+        + 'background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:10px;font-size:15px;'
         + 'font-family:Noto Serif KR,serif;color:#fff;cursor:pointer;transition:all .15s;line-height:1.7"'
-        + ' onmouseover="this.style.borderColor=\'rgba(20,203,176,.5)\'" onmouseout="this.style.borderColor=\'rgba(20,203,176,.25)\'">'
+        + ' onmouseover="this.style.borderColor=\'rgba(167,139,250,.5)\'" onmouseout="this.style.borderColor=\'rgba(167,139,250,.25)\'">'
         + o.ko + '</button>';
     }).join('') + '</div>'
     + '<div id="gf-error-fb" style="margin-top:12px;font-size:13px;font-weight:700"></div>'
@@ -18501,28 +18501,28 @@ function _checkErrorOption(btn, isWrong, idx) {
   if (isWrong) {
     btn.style.borderColor = '#22c55e';
     btn.style.background = '#f0fdf4';
-    var detail = '<div style="margin-top:10px;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(20,203,176,.2);border-radius:8px;font-size:12px;line-height:1.7">'
+    var detail = '<div style="margin-top:10px;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(167,139,250,.2);border-radius:8px;font-size:12px;line-height:1.7">'
       + (w.error_type ? '<div style="font-weight:800;color:#d97706;margin-bottom:4px">Error type: ' + w.error_type + '</div>' : '')
       + '<div><span style="color:#dc2626;text-decoration:line-through">' + (w.ko||'') + '</span></div>'
       + '<div style="color:#16a34a;font-weight:700">→ ' + (w.correction||'') + '</div>'
       + '</div>';
     if (fb) fb.innerHTML = '<span style="color:#16a34a">✓ Correct! You found the grammar error.</span>' + detail
-      + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
+      + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
   } else {
     btn.style.borderColor = '#ef4444';
     btn.style.background = '#fef2f2';
     if (fb) fb.innerHTML = '<span style="color:#dc2626">✗ That sentence is correct. Look more carefully at the grammar endings!</span>'
-      + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
+      + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
   }
 }
 
 function _showSpotItComplete() {
   var el = document.getElementById('gf-spotit-content');
   if (el) el.innerHTML = '<div style="text-align:center;padding:30px 20px">'
-    + '<div style="display:inline-flex;width:38px;height:38px;margin-bottom:12px;color:#14cbb0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></div>'
+    + '<div style="display:inline-flex;width:38px;height:38px;margin-bottom:12px;color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></div>'
     + '<div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:6px">Pattern recognition complete!</div>'
     + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:22px">' + (_gfSpotState ? _gfSpotState.correct + ' / ' + _gfSpotState.total : '') + ' correct</div>'
-    + '<button onclick="gfAdvanceTo(\'fill\')" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Fill in the Blank →</button>'
+    + '<button onclick="gfAdvanceTo(\'fill\')" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Fill in the Blank →</button>'
     + '</div>';
 }
 
@@ -18560,7 +18560,7 @@ function loadGFFill(p) {
   var qs = examples.map(function(ex, i) {
     var koText = ex.ko;
     var blank = allBlanks[i];
-    var blanked = koText.replace(blank, '<span style="display:inline-block;min-width:70px;border-bottom:2.5px solid #14cbb0;color:rgba(255,255,255,.45);text-align:center">______</span>');
+    var blanked = koText.replace(blank, '<span style="display:inline-block;min-width:70px;border-bottom:2.5px solid #a78bfa;color:rgba(255,255,255,.45);text-align:center">______</span>');
 
     // Build 4 choices: correct + 3 distractors
     var distractors = [];
@@ -18578,7 +18578,7 @@ function loadGFFill(p) {
       var ct = choices[ci]; choices[ci] = choices[cj]; choices[cj] = ct;
     }
 
-    return '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(20,203,176,.25);border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gff-card-' + i + '">'
+    return '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gff-card-' + i + '">'
       + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">Question ' + (i+1) + ' / ' + total + '</div>'
       + '<p style="font-size:14px;font-weight:600;color:#334155;margin:0 0 10px;line-height:1.65;background:rgba(251,191,36,.08);border-radius:8px;padding:8px 12px">' + ex.en + '</p>'
       + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#fff;margin:0 0 14px;line-height:1.8">' + blanked + '</p>'
@@ -18587,7 +18587,7 @@ function loadGFFill(p) {
           return '<button onclick="checkGFFillMCQ(this,' + i + ',\'' + c.replace(/'/g,"\\'") + '\',\'' + blank.replace(/'/g,"\\'") + '\',' + total + ')" '
             + 'style="padding:12px 14px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);font-size:15px;font-weight:700;'
             + 'font-family:Noto Serif KR,serif;cursor:pointer;transition:all .15s;color:#fff"'
-            + ' onmouseover="this.style.borderColor=\'rgba(20,203,176,.5)\';this.style.background=\'#f0f7ff\'"'
+            + ' onmouseover="this.style.borderColor=\'rgba(167,139,250,.5)\';this.style.background=\'#f0f7ff\'"'
             + ' onmouseout="this.style.borderColor=\'rgba(255,255,255,.15)\';this.style.background=\'#fff\'"'
             + '>' + c + '</button>';
         }).join('')
@@ -18598,11 +18598,11 @@ function loadGFFill(p) {
 
   el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:rgba(255,255,255,.65);line-height:1.7">'
     + 'Choose the correct word to fill in the blank. '
-    + '<span style="font-size:12px;background:rgba(20,203,176,.1);color:#14cbb0;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
+    + '<span style="font-size:12px;background:rgba(167,139,250,.1);color:#a78bfa;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
     + '</div>'
     + qs
     + '<div id="gff-next-wrap" style="display:none;text-align:center;margin-top:8px">'
-    + '<button onclick="gfAdvanceTo(\'translate\')" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">번역 연습 →</button>'
+    + '<button onclick="gfAdvanceTo(\'translate\')" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">번역 연습 →</button>'
     + '</div>';
 
   window._gffAnswered = {};
@@ -18669,7 +18669,7 @@ function loadGFTranslate(p) {
       var ct = choices[ci]; choices[ci] = choices[cj]; choices[cj] = ct;
     }
 
-    return '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(20,203,176,.25);border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gft-card-' + i + '">'
+    return '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gft-card-' + i + '">'
       + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">문장 ' + (i+1) + ' / ' + total + '</div>'
       + '<p style="font-size:15px;font-weight:700;color:#fff;margin:0 0 14px;line-height:1.7;background:rgba(251,191,36,.08);border-radius:8px;padding:10px 12px">' + ex.en + '</p>'
       + '<div style="display:flex;flex-direction:column;gap:8px">'
@@ -18677,7 +18677,7 @@ function loadGFTranslate(p) {
           return '<button onclick="checkGFTranslateMCQ(this,' + i + ',\'' + c.replace(/'/g,"\\'") + '\',\'' + correct.replace(/'/g,"\\'") + '\',' + total + ')" '
             + 'style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);font-size:14px;font-weight:700;'
             + 'font-family:Noto Serif KR,serif;cursor:pointer;text-align:left;transition:all .15s;color:#fff"'
-            + ' onmouseover="this.style.borderColor=\'rgba(20,203,176,.5)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.15)\'"'
+            + ' onmouseover="this.style.borderColor=\'rgba(167,139,250,.5)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.15)\'"'
             + '>' + c + '</button>';
         }).join('')
       + '</div>'
@@ -18686,11 +18686,11 @@ function loadGFTranslate(p) {
   }).join('');
 
   el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:rgba(255,255,255,.65);line-height:1.7">'
-    + 'Choose the correct Korean translation. <span style="background:rgba(20,203,176,.1);color:#14cbb0;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
+    + 'Choose the correct Korean translation. <span style="background:rgba(167,139,250,.1);color:#a78bfa;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
     + '</div>'
     + qs
     + '<div id="gft-next-wrap" style="display:none;text-align:center;margin-top:8px">'
-    + '<button onclick="gfAdvanceTo(\'build\')" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Judge It →</button>'
+    + '<button onclick="gfAdvanceTo(\'build\')" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Judge It →</button>'
     + '</div>';
 }
 
@@ -18772,10 +18772,10 @@ function loadGFBuild(p) {
   window._gfJudgeState = { items:items, answered:{}, total:items.length, score:0, pattern:p };
 
   el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.65);margin-bottom:14px;line-height:1.7">'
-    + '각 문장이 <span style="background:rgba(20,203,176,.1);color:#14cbb0;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span> 패턴을 올바르게 사용하고 있나요?'
+    + '각 문장이 <span style="background:rgba(167,139,250,.1);color:#a78bfa;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span> 패턴을 올바르게 사용하고 있나요?'
     + '</div>'
     + items.map(function(item, i) {
-        return '<div id="gfj-card-' + i + '" style="background:rgba(255,255,255,.06);border:1.5px solid rgba(20,203,176,.25);border-radius:12px;padding:16px 18px;margin-bottom:12px">'
+        return '<div id="gfj-card-' + i + '" style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:12px;padding:16px 18px;margin-bottom:12px">'
           + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:8px">' + (i+1) + ' / ' + items.length + '</div>'
           + '<p style="font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#fff;margin:0 0 6px;line-height:1.7">' + item.ko + '</p>'
           + '<p style="font-size:12px;color:rgba(255,255,255,.55);margin:0 0 12px">' + (item.en||'') + '</p>'
@@ -18787,7 +18787,7 @@ function loadGFBuild(p) {
           + '</div>';
       }).join('')
     + '<div id="gfj-done" style="display:none;text-align:center;margin-top:16px">'
-    + '<button onclick="_gfJudgeFinish()" style="padding:12px 32px;background:linear-gradient(135deg,#14cbb0,#0ea88f);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">결과 보기 →</button>'
+    + '<button onclick="_gfJudgeFinish()" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">결과 보기 →</button>'
     + '</div>';
 }
 
@@ -18814,8 +18814,8 @@ function _gfJudgeAnswer(idx, judgement) {
   if (fb) {
     var msg = isRight ? '<span style="color:#16a34a;font-size:12px;font-weight:700">✓ 정답!</span>' : '<span style="color:#dc2626;font-size:12px;font-weight:700">✗ 오답</span>';
     if (!item.isCorrect && item.correction) {
-      msg += '<div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:4px">수정: <span style="color:#0ea88f;font-weight:700;font-family:Noto Serif KR,serif">' + item.correction + '</span>'
-        + (item.error_type ? ' <span style="font-size:10px;background:rgba(20,203,176,.1);color:#14cbb0;padding:1px 6px;border-radius:4px;margin-left:4px">' + item.error_type + '</span>' : '')
+      msg += '<div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:4px">수정: <span style="color:#7c3aed;font-weight:700;font-family:Noto Serif KR,serif">' + item.correction + '</span>'
+        + (item.error_type ? ' <span style="font-size:10px;background:rgba(167,139,250,.1);color:#a78bfa;padding:1px 6px;border-radius:4px;margin-left:4px">' + item.error_type + '</span>' : '')
         + '</div>';
     }
     fb.innerHTML = msg;
@@ -18841,7 +18841,7 @@ function _gfJudgeFinish() {
     + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-top:4px">Grammar Detection · ' + pct + '%</div>'
     + '</div>'
     + '<div style="display:flex;gap:10px;justify-content:center;margin-top:20px">'
-    + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>완료</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
+    + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>완료</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
     + '</div>';
   var patternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
   if (patternName) updateGrammarMastery(patternName, st.score > 0);
@@ -19067,7 +19067,7 @@ function _dctRenderListen() {
     + '<span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px;white-space:nowrap">Speed:</span>';
   speeds.forEach(function(sp) {
     var active = Math.abs(_dctSpeed - sp.v) < 0.05;
-    speedHTML += '<button id="dct-speed-'+sp.v+'" onclick="_dctSetSpeed('+sp.v+')" style="padding:4px 12px;font-size:12px;font-weight:700;border-radius:20px;cursor:pointer;transition:all .15s;border:1.5px solid '+(active?'#14cbb0':'#e2e8f0')+';background:'+(active?'#14cbb0':'#fff')+';color:'+(active?'#fff':'#64748b')+'">'+sp.label+'</button>';
+    speedHTML += '<button id="dct-speed-'+sp.v+'" onclick="_dctSetSpeed('+sp.v+')" style="padding:4px 12px;font-size:12px;font-weight:700;border-radius:20px;cursor:pointer;transition:all .15s;border:1.5px solid '+(active?'#a78bfa':'#e2e8f0')+';background:'+(active?'#a78bfa':'#fff')+';color:'+(active?'#fff':'#64748b')+'">'+sp.label+'</button>';
   });
   speedHTML += '</div>';
 
@@ -19083,7 +19083,7 @@ function _dctRenderListen() {
     : '';
   var progress = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
     + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px">문장 '+(curIdx+1)+' / '+sents.length+'</div>'
-    + '<div style="font-size:11px;font-weight:700;color:#14cbb0;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>탭해서 듣기</span></div>'
+    + '<div style="font-size:11px;font-weight:700;color:#a78bfa;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>탭해서 듣기</span></div>'
     + '</div>';
   var html = modeLabel + speedHTML + progress
     + '<div class="dct-sent-card" style="padding:26px 22px;cursor:pointer" onclick="_dctSpeakSentence(\''+safeKo+'\')">'
@@ -19091,7 +19091,7 @@ function _dctRenderListen() {
       + '<div class="dct-sent-ko" style="font-size:22px;line-height:1.55;margin-bottom:10px">'+escapeHTML(s.ko||'')+'</div>'
       + '<div class="dct-sent-en" style="font-size:14px;margin-bottom:18px">'+escapeHTML(s.en||'')+'</div>'
       + '<div style="display:flex;align-items:center;justify-content:center">'
-        + '<button class="dct-listen-btn" onclick="event.stopPropagation();_dctSpeakSentence(\''+safeKo+'\')" style="padding:14px 28px;border-radius:999px;background:rgba(20,203,176,.1);float:none;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px;color:#14cbb0">'+BM_ICON_VOLUME+'</span><span style="font-size:13px;font-weight:800">Play</span></button>'
+        + '<button class="dct-listen-btn" onclick="event.stopPropagation();_dctSpeakSentence(\''+safeKo+'\')" style="padding:14px 28px;border-radius:999px;background:rgba(167,139,250,.1);float:none;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px;color:#a78bfa">'+BM_ICON_VOLUME+'</span><span style="font-size:13px;font-weight:800">Play</span></button>'
       + '</div>'
     + '</div>';
   if (!_dctArticleMode && curIdx === sents.length - 1) {
@@ -19124,8 +19124,8 @@ function _dctSetSpeed(rate) {
     var btn = document.getElementById('dct-speed-' + sp);
     if (!btn) return;
     var active = Math.abs(_dctSpeed - sp) < 0.05;
-    btn.style.borderColor = active ? '#14cbb0' : '#e2e8f0';
-    btn.style.background  = active ? '#14cbb0' : '#fff';
+    btn.style.borderColor = active ? '#a78bfa' : '#e2e8f0';
+    btn.style.background  = active ? '#a78bfa' : '#fff';
     btn.style.color       = active ? '#fff'    : '#64748b';
   });
 }
@@ -19229,7 +19229,7 @@ function _dctRenderArrange() {
   // invisible on the white dictation background. Inline light-theme styles:
   var poolChipBase = 'padding:10px 16px;border-radius:12px;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s';
   var poolChipUsed = poolChipBase + ';opacity:.25;cursor:not-allowed';
-  var selChip      = 'padding:10px 16px;border-radius:12px;border:none;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(14,168,143,.3)';
+  var selChip      = 'padding:10px 16px;border-radius:12px;border:none;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(14,168,143,.3)';
 
   var poolHTML = wo.pool.map(function(w,pi){
     var usedCount=wo.selected.filter(function(x){return x===w;}).length;
@@ -19245,11 +19245,11 @@ function _dctRenderArrange() {
     // English hint card — replace the cheap light-blue/dark-text panel
     // with a mint-accented dark surface so it sits inside the dark
     // dictation modal instead of fighting it.
-    + '<div style="background:rgba(20,203,176,.08);border:1px solid rgba(20,203,176,.25);border-radius:12px;padding:11px 14px;margin-bottom:18px;font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:8px;line-height:1.5"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24;flex-shrink:0">'+BM_ICON_BULB+'</span><span>'+escapeHTML(s.en||'')+'</span></div>'
+    + '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25);border-radius:12px;padding:11px 14px;margin-bottom:18px;font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:8px;line-height:1.5"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24;flex-shrink:0">'+BM_ICON_BULB+'</span><span>'+escapeHTML(s.en||'')+'</span></div>'
     + '<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">내 답</div>'
     // Answer zone — dark transparent so chips read clearly against it
     // (was a near-white panel that broke the dark theme).
-    + '<div id="dct-answer-zone" style="min-height:54px;border:2px dashed rgba(20,203,176,.35);border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:rgba(20,203,176,.05)">'+ansHTML+'</div></div>'
+    + '<div id="dct-answer-zone" style="min-height:54px;border:2px dashed rgba(167,139,250,.35);border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:rgba(167,139,250,.05)">'+ansHTML+'</div></div>'
     + '<div><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">단어 목록</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px">'+poolHTML+'</div></div>'
     + '<div id="dct-wo-msg" style="margin-top:14px;font-size:13px;font-weight:700"></div>';
@@ -19405,7 +19405,7 @@ var PHONEME_PAIRS = [
       { a: '거기 (there)',   b: '고기 (meat)' },
       { a: '서 (stand)',     b: '소 (cow)' }
     ] },
-  { a: 'ㅡ', b: 'ㅜ', colorA: 'rgba(20,203,176,.55)', colorB: '#34d399',
+  { a: 'ㅡ', b: 'ㅜ', colorA: 'rgba(167,139,250,.55)', colorB: '#34d399',
     words: [
       { a: '드 (particle)',  b: '두 (two)' },
       { a: '금 (gold)',      b: '굼 (cave)' },
@@ -19470,8 +19470,8 @@ function _dctPhRender() {
   var dotsHTML = '';
   for (var i = 0; i < st.rounds.length; i++) {
     var state = i < st.idx ? (st.picks[i] ? 'ok' : 'no') : (i === st.idx ? 'cur' : 'up');
-    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#14cbb0' : '#e2e8f0';
-    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(20,203,176,.2);' : '';
+    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#a78bfa' : '#e2e8f0';
+    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(167,139,250,.2);' : '';
     dotsHTML += '<div style="width:8px;height:8px;border-radius:50%;background:' + bg + ';' + ring + 'transition:all .2s"></div>';
   }
 
@@ -19492,7 +19492,7 @@ function _dctPhRender() {
     + '</div>'
     // Big Play button
     + '<div style="display:flex;justify-content:center;margin-bottom:22px">'
-      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:999px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;border:none;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 12px 28px -8px rgba(20,203,176,.55);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'scale(1)\'">'
+      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:999px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;border:none;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 12px 28px -8px rgba(167,139,250,.55);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'scale(1)\'">'
         + '<span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_VOLUME+'</span><span>Play</span>'
       + '</button>'
     + '</div>'
@@ -19630,8 +19630,8 @@ function _dctCsRender() {
   var dotsHTML = '';
   for (var i = 0; i < st.rounds.length; i++) {
     var state = i < st.idx ? (st.picks[i] >= 60 ? 'ok' : 'no') : (i === st.idx ? 'cur' : 'up');
-    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#14cbb0' : '#e2e8f0';
-    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(20,203,176,.2);' : '';
+    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#a78bfa' : '#e2e8f0';
+    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(167,139,250,.2);' : '';
     dotsHTML += '<div style="width:8px;height:8px;border-radius:50%;background:' + bg + ';' + ring + 'transition:all .2s"></div>';
   }
 
@@ -19646,22 +19646,22 @@ function _dctCsRender() {
     // Big play button + waveform accent
     + '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin:10px 0 18px;padding:22px 16px;border-radius:18px;background:linear-gradient(145deg,#f8fafc,#eef2ff);border:1px solid #e0e7ff">'
       + '<div style="display:flex;align-items:center;gap:6px">'
-        + '<div style="width:3px;height:12px;background:#14cbb0;border-radius:2px;opacity:.4"></div>'
-        + '<div style="width:3px;height:20px;background:#14cbb0;border-radius:2px;opacity:.6"></div>'
-        + '<div style="width:3px;height:28px;background:#14cbb0;border-radius:2px;opacity:.85"></div>'
-        + '<div style="width:3px;height:18px;background:#14cbb0;border-radius:2px;opacity:.55"></div>'
-        + '<div style="width:3px;height:24px;background:#14cbb0;border-radius:2px;opacity:.75"></div>'
-        + '<div style="width:3px;height:14px;background:#14cbb0;border-radius:2px;opacity:.45"></div>'
-        + '<div style="width:3px;height:22px;background:#14cbb0;border-radius:2px;opacity:.7"></div>'
+        + '<div style="width:3px;height:12px;background:#a78bfa;border-radius:2px;opacity:.4"></div>'
+        + '<div style="width:3px;height:20px;background:#a78bfa;border-radius:2px;opacity:.6"></div>'
+        + '<div style="width:3px;height:28px;background:#a78bfa;border-radius:2px;opacity:.85"></div>'
+        + '<div style="width:3px;height:18px;background:#a78bfa;border-radius:2px;opacity:.55"></div>'
+        + '<div style="width:3px;height:24px;background:#a78bfa;border-radius:2px;opacity:.75"></div>'
+        + '<div style="width:3px;height:14px;background:#a78bfa;border-radius:2px;opacity:.45"></div>'
+        + '<div style="width:3px;height:22px;background:#a78bfa;border-radius:2px;opacity:.7"></div>'
       + '</div>'
-      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg,#14cbb0,#0ea88f);color:#fff;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 10px 24px -8px rgba(20,203,176,.5);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">'
+      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 10px 24px -8px rgba(167,139,250,.5);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">'
         + '<span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_VOLUME+'</span><span>Play</span><span style="font-size:10px;opacity:.7;font-weight:700">· normal speed</span>'
       + '</button>'
     + '</div>'
     // Input
     + '<input type="text" id="dct-cs-input" placeholder="여기에 받아쓰기…" autocomplete="off"'
       + ' style="width:100%;padding:14px 16px;border:1.5px solid rgba(255,255,255,.15);border-radius:14px;font-family:\'Noto Sans KR\',sans-serif;font-size:16px;font-weight:600;color:#fff;box-sizing:border-box;outline:none;transition:border-color .15s"'
-      + ' onfocus="this.style.borderColor=\'#14cbb0\'" onblur="this.style.borderColor=\'#e2e8f0\'"'
+      + ' onfocus="this.style.borderColor=\'#a78bfa\'" onblur="this.style.borderColor=\'#e2e8f0\'"'
       + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();_dctCsCheck()}">'
     + '<div id="dct-cs-result" style="margin-top:14px"></div>';
 
@@ -19724,7 +19724,7 @@ function _dctCsCheck() {
       + '</div>'
       + '<div style="display:grid;gap:8px">'
         + '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.06)">'
-          + '<div style="font-size:10px;font-weight:800;color:#14cbb0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M16 8c2 1 2 7 0 8"/></svg></span><span>Spoken (what you heard)</span></div>'
+          + '<div style="font-size:10px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M16 8c2 1 2 7 0 8"/></svg></span><span>Spoken (what you heard)</span></div>'
           + '<div style="font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;color:#fff">' + r.spoken + '</div>'
         + '</div>'
         + '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.06)">'
@@ -19831,7 +19831,7 @@ function _dctRenderFillBlank() {
   var s = pool[_dctFbIdx];
   var sentHTML = st.words.map(function(w, i){
     if (i === st.blankIdx) {
-      var blankBg = 'rgba(20,203,176,.08)', blankColor = '#14cbb0', blankText = '___';
+      var blankBg = 'rgba(167,139,250,.08)', blankColor = '#a78bfa', blankText = '___';
       if (st.answered) {
         blankBg = '#dcfce7'; blankColor = '#15803d'; blankText = st.answer;
       }
@@ -19868,7 +19868,7 @@ function _dctRenderFillBlank() {
     +   hintBtn
     + '</div>'
     + '<div style="text-align:center;margin-bottom:14px">'
-    + '<button onclick="_dctFbSpeak()" style="width:66px;height:66px;border-radius:50%;background:rgba(20,203,176,.1);border:2px solid rgba(20,203,176,.3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:30px;height:30px;color:#14cbb0">'+BM_ICON_VOLUME+'</span></button>'
+    + '<button onclick="_dctFbSpeak()" style="width:66px;height:66px;border-radius:50%;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:30px;height:30px;color:#a78bfa">'+BM_ICON_VOLUME+'</span></button>'
     + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">클릭해서 듣기</div>'
     + '</div>'
     + hintEn
@@ -19976,7 +19976,7 @@ function _dctRenderListenPick() {
   body.innerHTML =
       '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:16px">듣고 맞는 문장을 고르세요. (' + (_dctLpIdx + 1) + '/' + pool.length + ')</div>'
     + '<div style="text-align:center;margin-bottom:18px">'
-    + '<button onclick="_dctLpSpeak()" style="width:80px;height:80px;border-radius:50%;background:rgba(20,203,176,.1);border:2px solid rgba(20,203,176,.3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:36px;height:36px;color:#14cbb0">'+BM_ICON_VOLUME+'</span></button>'
+    + '<button onclick="_dctLpSpeak()" style="width:80px;height:80px;border-radius:50%;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:36px;height:36px;color:#a78bfa">'+BM_ICON_VOLUME+'</span></button>'
     + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px">클릭해서 듣기</div>'
     + '</div>'
     + choicesHTML;
@@ -22690,7 +22690,7 @@ function drNext(){_drIndex++;drShowQuestion();}
 function drShowScore(){
   var total=_drQuestions.length, correct=_drScores.reduce(function(a,b){return a+b;},0), pct=total>0?Math.round(correct/total*100):0;
   var icon=pct>=90?BM_ICON_SPARKLE:pct>=75?BM_ICON_TROPHY:pct>=50?BM_ICON_STAR:BM_ICON_FLAME;
-  var iconColor=pct>=90?'#fbbf24':pct>=75?'#fde68a':pct>=50?'#a78bfa':'#14cbb0';
+  var iconColor=pct>=90?'#fbbf24':pct>=75?'#fde68a':pct>=50?'#a78bfa':'#a78bfa';
   var body=document.getElementById('dr-body');
   if(body) body.innerHTML='<div style="text-align:center;padding:20px 0"><div style="display:inline-flex;width:48px;height:48px;margin-bottom:8px;color:'+iconColor+';filter:drop-shadow(0 0 12px '+iconColor+'88)">'+icon+'</div>'
     +'<div style="font-size:36px;font-weight:800;color:#1a1a1a;margin-bottom:4px">'+pct+'%</div>'
@@ -23557,7 +23557,7 @@ function finishReview() {
   else if (pct >= 70 && rewards[70]) xpEarned = rewards[70];
 
   var icon = pct >= 90 ? BM_ICON_SPARKLE : pct >= 80 ? BM_ICON_TROPHY : pct >= 70 ? BM_ICON_STAR : BM_ICON_FLAME;
-  var iconColor = pct >= 90 ? '#fbbf24' : pct >= 80 ? '#fde68a' : pct >= 70 ? '#a78bfa' : '#14cbb0';
+  var iconColor = pct >= 90 ? '#fbbf24' : pct >= 80 ? '#fde68a' : pct >= 70 ? '#a78bfa' : '#a78bfa';
 
   var body = document.getElementById('rv-body');
   body.innerHTML = '<div style="text-align:center;padding:20px 0;position:relative;overflow:visible">'
