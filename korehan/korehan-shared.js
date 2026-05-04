@@ -2931,15 +2931,39 @@ function _khRenderSentPanel(panel, data) {
     });
   }
   if (data && Array.isArray(data.grammar) && data.grammar.length) {
-    html += '<div class="asp-section-title">Grammar</div>';
+    // De-overlap: when two grammar patterns sit on the same verb
+    // (e.g. ~어지다 + ~고 있다 stacked on 많아지고 있어요), the model
+    // returns near-identical example_in_sentence chunks and the panel
+    // looks like the same explanation got duplicated. Drop entries
+    // whose example is a substring of one we've already shown — the
+    // longer/earlier example wins. Patterns with genuinely different
+    // example chunks still both render.
+    var seenExamples = [];
+    var grammarFiltered = [];
     data.grammar.forEach(function(g) {
       if (!g || !g.pattern) return;
-      html += '<div class="asp-grammar-block">'
-           + '<div class="asp-grammar-name">' + escapeHTML(g.pattern) + '</div>'
-           + (g.exp ? '<div class="asp-grammar-exp">' + escapeHTML(g.exp) + '</div>' : '')
-           + (g.example_in_sentence ? '<div class="asp-grammar-ex">→ "' + escapeHTML(g.example_in_sentence) + '"</div>' : '')
-           + '</div>';
+      var ex = (g.example_in_sentence || '').trim();
+      var dupe = false;
+      for (var i = 0; i < seenExamples.length && ex; i++) {
+        var prev = seenExamples[i];
+        if (!prev) continue;
+        // Heavy overlap = one fully contains the other.
+        if (prev.indexOf(ex) >= 0 || ex.indexOf(prev) >= 0) { dupe = true; break; }
+      }
+      if (dupe) return;
+      if (ex) seenExamples.push(ex);
+      grammarFiltered.push(g);
     });
+    if (grammarFiltered.length) {
+      html += '<div class="asp-section-title">Grammar</div>';
+      grammarFiltered.forEach(function(g) {
+        html += '<div class="asp-grammar-block">'
+             + '<div class="asp-grammar-name">' + escapeHTML(g.pattern) + '</div>'
+             + (g.exp ? '<div class="asp-grammar-exp">' + escapeHTML(g.exp) + '</div>' : '')
+             + (g.example_in_sentence ? '<div class="asp-grammar-ex">→ "' + escapeHTML(g.example_in_sentence) + '"</div>' : '')
+             + '</div>';
+      });
+    }
   }
   panel.innerHTML = html;
 }
