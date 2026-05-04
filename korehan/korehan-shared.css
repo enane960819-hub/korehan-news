@@ -2321,15 +2321,29 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
 
 /* phrase detail */
 /* ── TODAY'S PHRASE — full dark mode reader ──────────────── */
-/* Page paints over the global body so the dark gradient extends edge-
- * to-edge regardless of the surrounding shell. */
+/* The base `body` rule above uses !important on background and color
+ * to lock the global cream theme down, so this page-level override
+ * has to use !important too — without that the dark gradient never
+ * paints and the whole reader looks like white-text-on-cream. */
 body.phrase-page-dark {
   background:
     radial-gradient(140% 100% at 50% 0%, rgba(56,189,248,.10) 0%, rgba(56,189,248,0) 55%),
     radial-gradient(140% 120% at 100% 100%, rgba(167,139,250,.12) 0%, rgba(167,139,250,0) 60%),
     linear-gradient(180deg, #0a1426 0%, #0f1729 60%, #0a1426 100%) !important;
-  color: #e2e8f0;
+  background-color: #0a1426 !important;
+  color: #e2e8f0 !important;
 }
+/* Phrase reader is meant to be a focused fullscreen experience —
+ * the iOS-style mockup has no surrounding shell. Hide the global
+ * KoreHani header / footer / bottom nav while this page is active
+ * so the dark hero doesn't compete with the cream chrome. */
+body.phrase-page-dark #kh-header,
+body.phrase-page-dark #kh-footer,
+body.phrase-page-dark #kh-bottom-nav,
+body.phrase-page-dark .kh-bottom-nav,
+body.phrase-page-dark .kh-mobile-tabbar,
+body.phrase-page-dark .kh-header-bar,
+body.phrase-page-dark .kh-topnav { display: none !important; }
 body.phrase-page-dark #kh-header,
 body.phrase-page-dark #kh-footer { color-scheme: dark; }
 

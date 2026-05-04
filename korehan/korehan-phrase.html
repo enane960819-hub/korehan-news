@@ -125,9 +125,9 @@ async function _fillPhraseViaClaude(phrase) {
     + 'Existing English gloss: ' + (phrase.en || '(generate a natural one)') + '\n\n'
     + 'Return ONLY a JSON object — no preamble, no code fences:\n'
     + '{\n'
-    + '  "intro_ko": "1-2 sentence Korean explanation of what this phrase means and the imagery behind it. For 속담, explain the literal image AND the figurative meaning. Friendly tone, ~해요체.",\n'
-    + '  "intro": "1-2 sentence English explanation matching intro_ko in meaning.",\n'
-    + '  "nuance": "1-2 sentence English usage note explaining when a Korean speaker would actually say this. Specific to this phrase.",\n'
+    + '  "intro_ko": "ONE short Korean sentence (~25 chars max, ~해요체) — what it means. No cultural commentary.",\n'
+    + '  "intro": "ONE short English sentence (~15 words max) — direct gloss of the meaning.",\n'
+    + '  "nuance": "ONE short English sentence (~15 words max) — when/where Koreans say this. Skip if it duplicates intro.",\n'
     + '  "level": "Seed | Sprout | Tree | Forest — which TOPIK tier this phrase fits (Seed=basic words, Forest=advanced literary).",\n'
     + '  "examples": [\n'
     + '    {"ko":"natural Korean sentence USING the phrase, max 25 chars","en":"English translation"},\n'
@@ -297,12 +297,19 @@ var _phraseLottieKnown = {};
 
 function _phraseRenderIllus(entry) {
   if (!entry) return '';
-  // Lottie placeholder — JS swaps in a real player after probing if
-  // the JSON file is hosted. Falls back to Iconify silently when not.
-  var slot = '<div class="phrase-card-illus" data-lottie="' + escapeText(entry.lottie || '') + '" data-fallback-icon="' + escapeText(entry.icon || '') + '" data-fallback-emoji="' + escapeText(entry.fallback || '') + '">'
+  // Three-tier illustration: Lottie JSON if present at the mapped
+  // path, Iconify SVG (Fluent Emoji set — looks like a designed icon
+  // not a unicode glyph), unicode emoji as last resort. The unicode
+  // emoji is rendered as the iconify-icon's child so when the iconify
+  // CDN is blocked / slow / failed, the user still sees SOMETHING in
+  // the corner instead of a blank slot. Once the iconify web component
+  // boots it replaces its own contents with the SVG, hiding the
+  // emoji automatically.
+  var fallbackEmoji = entry.fallback || '';
+  var slot = '<div class="phrase-card-illus" data-lottie="' + escapeText(entry.lottie || '') + '" data-fallback-icon="' + escapeText(entry.icon || '') + '" data-fallback-emoji="' + escapeText(fallbackEmoji) + '">'
     + (entry.icon
-        ? '<iconify-icon icon="' + escapeText(entry.icon) + '" width="100%" height="100%" aria-hidden="true"></iconify-icon>'
-        : (entry.fallback || ''))
+        ? '<iconify-icon icon="' + escapeText(entry.icon) + '" width="100%" height="100%" aria-hidden="true">' + escapeText(fallbackEmoji) + '</iconify-icon>'
+        : escapeText(fallbackEmoji))
     + '</div>';
   return slot;
 }
