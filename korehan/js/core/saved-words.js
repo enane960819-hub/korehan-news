@@ -76,6 +76,17 @@ async function dbSaveWord(ko, rom, en) {
     saved.push({ko:ko,rom:rom,en:en});
     lsSet(K_SAVED, saved);
   }
+  // Operational analytics — only logs new saves, not re-saves of the
+  // same word, so the dashboard's "words saved per session" reflects
+  // genuine learning intent.
+  if (!alreadyLocal && typeof khTrackUser === 'function') {
+    try {
+      khTrackUser('word_save', {
+        ko: ko,
+        article_id: (window._currentArticle && window._currentArticle.id) || null,
+      });
+    } catch(_) {}
+  }
 
   if (!supaUser) {
     // 비로그인: localStorage만, 새 단어일 때만 XP
