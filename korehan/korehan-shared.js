@@ -2585,6 +2585,19 @@ function renderArticlePage() {
   _analyzeOn = false;
   _analyzeData = null;
 
+  // Operational analytics — fires only for logged-in users with consent.
+  // Anonymous visitors are covered by Plausible (see js/core/analytics.js).
+  if (typeof khTrackUser === 'function') {
+    try {
+      khTrackUser('article_open', {
+        article_id: a.id,
+        section:    a.section || null,
+        level:      a.level   || null,
+        has_video:  !!(a.video_url && a.use_video),
+      });
+    } catch(_) {}
+  }
+
   // Wire up the HLS player for Reddit hosted videos (fires only when the
   // hero is a <video data-kh-hls="...">; no-op otherwise).
   if (typeof _khAttachHls === 'function') _khAttachHls(wrap);
@@ -2946,6 +2959,16 @@ async function analyzeSentence(idx, el) {
   el.classList.add('active');
   var sentenceText = (el.textContent || '').trim();
   if (!sentenceText) return;
+
+  if (typeof khTrackUser === 'function') {
+    try {
+      khTrackUser('sentence_analyze', {
+        article_id: (window._currentArticle && window._currentArticle.id) || null,
+        idx: idx,
+        sentence_len: sentenceText.length,
+      });
+    } catch(_) {}
+  }
 
   var paragraph = el.closest('p') || el;
   var panel = document.createElement('div');
