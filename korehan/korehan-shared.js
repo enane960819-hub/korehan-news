@@ -3059,7 +3059,12 @@ async function analyzeSentence(idx, el) {
       + '  "vocab": [{"ko":"<word in dictionary form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],\n'
       + '  "grammar": [{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<the chunk from the sentence that uses this pattern>"}]\n'
       + '}\n\n'
-      + 'Limits: vocab max 4 items (skip beginner words like 는/이다/있다 — pick the words a learner would actually want to look up). Grammar max 2 patterns. Skip grammar if the sentence is just a noun phrase.';
+      + 'Rules:\n'
+      + '- TRANSLATION: PRESERVE the original subject — do NOT inject "I/we" if Korean omitted the subject. Use he/she/it/they/the [noun] based on what the sentence implies.\n'
+      + '- VOCAB: max 4 items. Skip beginner words (는/이/가/이다/있다/하다/되다…). The note must be FACTUAL — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
+      + '- GRAMMAR: max 2 patterns. Skip if just a noun phrase. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n'
+      + '- If two patterns stack on the same verb, pick ONLY the more learner-relevant one.\n'
+      + '- Output JSON only.';
     var res = await callClaude({
       feature: 'sentence-analyze',
       model: 'claude-haiku-4-5-20251001',
