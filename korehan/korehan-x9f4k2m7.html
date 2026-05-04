@@ -4533,11 +4533,18 @@ async function runAutoGenerate(){
         throw new Error('no JSON found');
       }
 
+      // Step 1's paragraph-aligned EN translation is hoisted out of the
+      // try-block so step 2 (sentence analysis) can use it as context —
+      // the per-sentence prompt then knows the dropped subject from the
+      // surrounding paragraph and stops guessing "I" for what is
+      // obviously "the cat" / "the team" / "the company" / etc.
+      let _paragraphTranslations = [];
       try {
         _autoGenSetItemStatus(si, '🧠 (1/3) 번역 중…');
         const _trans = await _khTranslateArticleForCache(_level, _title, _body);
         if (_trans.bodyTexts && _trans.bodyTexts.length) {
           _row.translation = JSON.stringify({ texts: _trans.bodyTexts });
+          _paragraphTranslations = _trans.bodyTexts;
           _ok++;
         }
         // Backfill title_en when the source headline (h.title) was empty
@@ -4562,16 +4569,32 @@ async function runAutoGenerate(){
         const _sentList = _khSplitSentencesForCache(_body);
         if (_sentList.length) {
           const _sentEnumerated = _sentList.map(function(s, i){ return '[' + (i+1) + '] ' + s; }).join('\n');
+          // Pair each Korean paragraph with its English translation from
+          // step 1 so the model sees the established context (subjects,
+          // pronouns, formality) when it analyses individual sentences.
+          // Falls back to "no context" gracefully if step 1 produced
+          // nothing — analysis still runs, just with lower precision.
+          const _paraKo = String(_body || '').split(/\n\n+/).map(function(p){return p.trim();}).filter(Boolean);
+          const _ctxBlock = _paragraphTranslations.length
+            ? '\n\nFULL ARTICLE CONTEXT (Korean body paired with the polished English translation already produced for this article — use it as the source of truth for who the subject is, what tense is being used, and the level of formality. The per-sentence translations you write below MUST be consistent with this paragraph translation.):\n'
+              + _paraKo.map(function(ko, i) {
+                  return '[Para ' + (i+1) + ']\n  KO: ' + ko + '\n  EN: ' + (_paragraphTranslations[i] || '(missing)');
+                }).join('\n\n') + '\n\n'
+            : '\n\n';
           const _sentPrompt =
-              'You are a Korean tutor. Analyze each sentence below for a TOPIK ' + _level + ' learner.\n\n'
-            + 'Sentences (one per line, indexed):\n'
+              'You are a Korean tutor. Analyze each sentence below for a TOPIK ' + _level + ' learner.'
+            + _ctxBlock
+            + 'SENTENCES TO ANALYZE (numbered, in body order):\n'
             + _sentEnumerated + '\n\n'
             + 'Return ONLY a JSON object with this shape (no preamble, no code fences):\n'
             + '{"sentences":[{"translation":"...","vocab":[{"ko":"<dictionary form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],"grammar":[{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<chunk from this sentence using the pattern>"}]}]}\n\n'
             + 'Rules:\n'
             + '- One object per input sentence, in the same order.\n'
-            + '- vocab: max 4 items per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다 …) — pick words a learner would actually want to look up. Empty array allowed if nothing useful.\n'
-            + '- grammar: max 2 patterns per sentence. Empty array if the sentence is just a noun phrase or has no notable grammar.\n'
+            + '- TRANSLATION: stay consistent with the paragraph EN above (same subject, same pronouns, same formality). PRESERVE THE ORIGINAL SUBJECT — do NOT inject "I" or "we" if the Korean omitted it; pull the subject from the paragraph EN context. Match the level of formality (정중체 → polite English; 평서체 → plain English).\n'
+            + '- VOCAB: max 4 items per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다 …) — pick words a learner would actually want to look up. Empty array allowed if nothing useful.\n'
+            + '- VOCAB NOTE: must be FACTUAL — what the word literally means and how it is used in standard Korean. Do NOT invent metaphorical readings specific to this sentence (e.g. don\'t say "고양이 here used metaphorically for a group/category" — 고양이 just means cat). Do NOT pad with example collocations that don\'t actually apply (e.g. don\'t say "지나다 used with 시간, 날씨, 계절" — 날씨 doesn\'t pass). Empty note is fine when the meaning alone is enough.\n'
+            + '- GRAMMAR: max 2 patterns per sentence. Empty array if the sentence is just a noun phrase or has no notable grammar.\n'
+            + '- GRAMMAR EXCLUSION: do NOT pick a grammar pattern that is just the natural conjugation of a word already listed in vocab — if 달라지다 is in vocab, do not list ~어지다 with 달라졌어요 as the example (that\'s just the verb\'s past tense, not a separate pattern to teach). Pick patterns that have learning value beyond the vocab (connectives, causatives, ~기 위해, ~ㄴ 것 같다, ~게 되다, etc.).\n'
             + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one — do not list both with near-identical example_in_sentence chunks.\n'
             + '- Output JSON only.';
           const _sentRes = await callClaude({
@@ -4999,13 +5022,54 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     const _sentList = _khSplitSentencesForCache(_body);
     if (!_sentList.length) throw new Error('본문에서 문장을 찾을 수 없음');
     const _sentEnumerated = _sentList.map(function(s, i){ return '[' + (i+1) + '] ' + s; }).join('\n');
+
+    // Pull existing paragraph translation as context BEFORE the prompt
+    // is built — old articles already have a polished EN per paragraph
+    // from the original 5-step pipeline. Feeding it back in fixes the
+    // "AI guesses 'I' for dropped subjects" problem the user reported.
+    let _existingTrans = '';
+    try {
+      if (schema === 'kv') {
+        const _cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?content_type=eq.article&content_id=eq.' + encodeURIComponent(articleId) + '&cache_key=eq.translation&select=cache_value', {
+          headers: { 'apikey': SUPA_KEY_ADMIN, 'Authorization': 'Bearer ' + (_getAccessTokenFromStorage()||SUPA_KEY_ADMIN) }
+        });
+        const _cd = _cr.ok ? await _cr.json() : [];
+        _existingTrans = (Array.isArray(_cd) && _cd[0] && _cd[0].cache_value) || '';
+      } else {
+        const _cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=translation', {
+          headers: { 'apikey': SUPA_KEY_ADMIN, 'Authorization': 'Bearer ' + (_getAccessTokenFromStorage()||SUPA_KEY_ADMIN) }
+        });
+        const _cd = _cr.ok ? await _cr.json() : [];
+        _existingTrans = (Array.isArray(_cd) && _cd[0] && _cd[0].translation) || '';
+      }
+    } catch(_) {}
+    let _bfParaEn = [];
+    try {
+      const _bfTransObj = _existingTrans ? JSON.parse(_existingTrans) : null;
+      if (_bfTransObj && Array.isArray(_bfTransObj.texts)) _bfParaEn = _bfTransObj.texts;
+    } catch(_) {}
+    const _bfParaKo = String(_body || '').split(/\n\n+/).map(function(p){return p.trim();}).filter(Boolean);
+    const _bfCtx = _bfParaEn.length
+      ? '\n\nFULL ARTICLE CONTEXT (Korean body paired with the polished English translation already cached for this article — use it as the source of truth for who the subject is, what tense is being used, and the level of formality. Per-sentence translations MUST be consistent with this paragraph EN.):\n'
+        + _bfParaKo.map(function(ko, i) {
+            return '[Para ' + (i+1) + ']\n  KO: ' + ko + '\n  EN: ' + (_bfParaEn[i] || '(missing)');
+          }).join('\n\n') + '\n\n'
+      : '\n\n';
+
     const _sentPrompt =
-        'You are a Korean tutor. Analyze each sentence below for a TOPIK ' + _level + ' learner.\n\n'
-      + 'Sentences (one per line, indexed):\n'
+        'You are a Korean tutor. Analyze each sentence below for a TOPIK ' + _level + ' learner.'
+      + _bfCtx
+      + 'SENTENCES TO ANALYZE (numbered, in body order):\n'
       + _sentEnumerated + '\n\n'
       + 'Return ONLY a JSON object:\n'
       + '{"sentences":[{"translation":"...","vocab":[{"ko":"<dict form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],"grammar":[{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<chunk from this sentence using the pattern>"}]}]}\n\n'
-      + 'Rules: one object per input sentence in same order. vocab max 4, skip beginner words. grammar max 2, empty ok if none notable. If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one. Output JSON only.';
+      + 'Rules:\n'
+      + '- one object per input sentence in same order.\n'
+      + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE the original subject — do NOT inject "I/we" if Korean omitted it. Pull subject/pronouns/formality from the paragraph EN context.\n'
+      + '- VOCAB: max 4, skip beginner words. NOTE must be factual — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
+      + '- GRAMMAR: max 2 patterns, empty ok. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n'
+      + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one.\n'
+      + '- Output JSON only.';
     const r = await callClaude({
       feature: 'generate-sentence-analysis',
       model: 'claude-haiku-4-5-20251001',
@@ -5028,24 +5092,11 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
       };
     });
 
-    // Read current translation row, splice sentences in, write back.
-    // Different cache schemas need different write paths.
-    let existingTrans = '';
-    if (schema === 'kv') {
-      const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?content_type=eq.article&content_id=eq.' + encodeURIComponent(articleId) + '&cache_key=eq.translation&select=cache_value', {
-        headers: { 'apikey': SUPA_KEY_ADMIN, 'Authorization': 'Bearer ' + (_getAccessTokenFromStorage()||SUPA_KEY_ADMIN) }
-      });
-      const cd = cr.ok ? await cr.json() : [];
-      existingTrans = (Array.isArray(cd) && cd[0] && cd[0].cache_value) || '';
-    } else {
-      const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=translation', {
-        headers: { 'apikey': SUPA_KEY_ADMIN, 'Authorization': 'Bearer ' + (_getAccessTokenFromStorage()||SUPA_KEY_ADMIN) }
-      });
-      const cd = cr.ok ? await cr.json() : [];
-      existingTrans = (Array.isArray(cd) && cd[0] && cd[0].translation) || '';
-    }
+    // Splice the sentences[] into the same translation JSON we already
+    // fetched as context above — saves a second round-trip and keeps
+    // any other fields intact (texts, ai_metadata, etc.).
     let transObj = {};
-    try { if (existingTrans) transObj = JSON.parse(existingTrans); } catch(_) {}
+    try { if (_existingTrans) transObj = JSON.parse(_existingTrans); } catch(_) {}
     transObj.sentences = sentFinal;
     const newTransStr = JSON.stringify(transObj);
 
@@ -5350,13 +5401,17 @@ async function genCache(articleId, schema, opts) {
   }
 
   if (st) st.textContent = '(1/3) 번역 중…';
-  // Title + body in one Claude call via the marker-delimited helper.
+  // Hoisted out of the try-block — step 2 (sentence analysis) reuses
+  // these as context so per-sentence translations stay consistent with
+  // the polished paragraph EN that's about to be cached.
+  let _paragraphTranslationsRC = [];
   {
     const _t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     try {
       const _trans = await _khTranslateArticleForCache(_level, _title, _body);
       if (_trans.bodyTexts && _trans.bodyTexts.length) {
         _row.translation = JSON.stringify({ texts: _trans.bodyTexts });
+        _paragraphTranslationsRC = _trans.bodyTexts;
         _ok++;
         await _logCacheGen(articleId, 'translation', 'ok', null, (typeof performance !== 'undefined' ? performance.now() : Date.now()) - _t0);
       } else {
@@ -5385,16 +5440,25 @@ async function genCache(articleId, schema, opts) {
       const _sentList = _khSplitSentencesForCache(_body);
       if (_sentList.length) {
         const _sentEnumerated = _sentList.map(function(s, i){ return '[' + (i+1) + '] ' + s; }).join('\n');
+        const _paraKoRC = String(_body || '').split(/\n\n+/).map(function(p){return p.trim();}).filter(Boolean);
+        const _ctxBlockRC = _paragraphTranslationsRC.length
+          ? '\n\nFULL ARTICLE CONTEXT (Korean body paired with the polished English translation already produced for this article — use it as the source of truth for who the subject is, what tense is being used, and the level of formality. Per-sentence translations MUST be consistent with this paragraph EN.):\n'
+            + _paraKoRC.map(function(ko, i) {
+                return '[Para ' + (i+1) + ']\n  KO: ' + ko + '\n  EN: ' + (_paragraphTranslationsRC[i] || '(missing)');
+              }).join('\n\n') + '\n\n'
+          : '\n\n';
         const _sentPrompt =
-            'You are a Korean tutor. Analyze each sentence below for a TOPIK ' + _level + ' learner.\n\n'
-          + 'Sentences (one per line, indexed):\n'
+            'You are a Korean tutor. Analyze each sentence below for a TOPIK ' + _level + ' learner.'
+          + _ctxBlockRC
+          + 'SENTENCES TO ANALYZE (numbered, in body order):\n'
           + _sentEnumerated + '\n\n'
           + 'Return ONLY a JSON object:\n'
           + '{"sentences":[{"translation":"...","vocab":[{"ko":"<dict form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],"grammar":[{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<chunk from this sentence using the pattern>"}]}]}\n\n'
           + 'Rules:\n'
           + '- One object per input sentence, in same order.\n'
-          + '- vocab: max 4 items, skip beginner words. Empty array allowed.\n'
-          + '- grammar: max 2 patterns. Empty array if none notable.\n'
+          + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE THE ORIGINAL SUBJECT — do NOT inject "I/we" if Korean omitted it. Pull subject/pronouns/formality from the paragraph EN context.\n'
+          + '- VOCAB: max 4, skip beginner words. NOTE must be factual — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
+          + '- GRAMMAR: max 2 patterns. Empty array if none notable. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. don\'t list ~어지다 with 달라졌어요 when 달라지다 is already in vocab).\n'
           + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one.\n'
           + '- Output JSON only.';
         const _sentRes = await callClaude({
