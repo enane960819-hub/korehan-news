@@ -6394,13 +6394,27 @@ async function goStoriesEditor() {
           <div>
             <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">GENRE</label>
             <select id="st-mood" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
-              <option value="slice_of_life">☕ Slice of Life</option>
-              <option value="romance">💕 Romance</option>
-              <option value="mystery">🔍 Mystery</option>
-              <option value="adventure">🌏 Adventure</option>
-              <option value="thriller">😱 Thriller</option>
-              <option value="essay">✍️ Essay</option>
-              <option value="workplace">💼 Workplace</option>
+              <optgroup label="현대물 / Slice">
+                <option value="slice_of_life">☕ Slice of Life</option>
+                <option value="romance">💕 Romance</option>
+                <option value="mystery">🔍 Mystery</option>
+                <option value="adventure">🌏 Adventure</option>
+                <option value="thriller">😱 Thriller</option>
+                <option value="essay">✍️ Essay</option>
+                <option value="workplace">💼 Workplace</option>
+                <option value="comedy">😂 Comedy</option>
+              </optgroup>
+              <optgroup label="동화 / Fairytale">
+                <option value="fairytale">🧚 Fairytale (서양)</option>
+                <option value="folktale">🐯 Korean Folktale (전래동화)</option>
+                <option value="aesop">🦊 Aesop's Fable</option>
+              </optgroup>
+              <optgroup label="장편 / Novel">
+                <option value="webnovel">📚 Web Novel</option>
+                <option value="sci_fi">🚀 Sci-Fi</option>
+                <option value="historical">⚔️ Historical</option>
+                <option value="fantasy">🧙 Fantasy</option>
+              </optgroup>
             </select>
           </div>
           <div>
@@ -6451,6 +6465,17 @@ async function goStoriesEditor() {
             <input id="st-series" placeholder="Series ID (e.g. newsroom-secret)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px;box-sizing:border-box">
           </div>
         </div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">
+            📜 SOURCE TEXT (optional)
+            <span style="font-weight:400;color:#94a3b8;text-transform:none;letter-spacing:0;margin-left:6px">— public-domain 원문 붙여넣으면 그 내용을 한국어로 각색합니다 (Aesop / Grimm / 전래동화 etc.)</span>
+          </label>
+          <textarea id="st-source" maxlength="3000" placeholder="비워두면 AI가 알아서 생성합니다.&#10;&#10;예: 'The North Wind and the Sun were disputing which was the stronger…' 같은 영어 원문이나 한국어 원문을 붙여넣으면 해당 스토리를 TOPIK 레벨에 맞춰 한국어로 각색합니다." style="width:100%;min-height:90px;padding:10px 12px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px;line-height:1.5;resize:vertical;box-sizing:border-box"></textarea>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+            <span style="font-size:11px;color:#94a3b8">최대 3000자 · 저작권 안전한 public-domain만 사용하세요</span>
+            <span id="st-source-count" style="font-size:11px;color:#94a3b8;font-weight:600">0 / 3000</span>
+          </div>
+        </div>
         <button onclick="generateStories()" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
           🤖 Generate Stories
         </button>
@@ -6458,12 +6483,55 @@ async function goStoriesEditor() {
 
       <div id="st-results"></div>
     </div>`;
+  // Live char counter on the source textarea so admin can see they're
+  // about to hit the 3000-char cap before pasting a full novel chapter.
+  setTimeout(function() {
+    var ta = document.getElementById('st-source');
+    var ct = document.getElementById('st-source-count');
+    if (!ta || !ct) return;
+    function update() { ct.textContent = ta.value.length + ' / 3000'; }
+    ta.addEventListener('input', update);
+    update();
+  }, 0);
+}
+
+// Maps the genre dropdown value → English label, the structural shape
+// AI should follow, and the source_kind we'll persist on the row.
+var STORY_GENRE_META = {
+  // Modern slice / community
+  slice_of_life: { label:'Slice of Life',          shape:'community',  source:'original'        },
+  romance:       { label:'Romance',                 shape:'community',  source:'original'        },
+  mystery:       { label:'Mystery',                 shape:'community',  source:'original'        },
+  adventure:     { label:'Adventure',               shape:'community',  source:'original'        },
+  thriller:      { label:'Thriller',                shape:'community',  source:'original'        },
+  essay:         { label:'Essay',                   shape:'essay',      source:'original'        },
+  workplace:     { label:'Workplace',               shape:'community',  source:'original'        },
+  comedy:        { label:'Comedy',                  shape:'community',  source:'original'        },
+  // Fairytales
+  fairytale:     { label:'Western Fairytale',       shape:'fairytale',  source:'public_domain'   },
+  folktale:      { label:'Korean Folktale',         shape:'folktale',   source:'korean_folktale' },
+  aesop:         { label:'Aesop\'s Fable',          shape:'fable',      source:'aesop'           },
+  // Long-form / novel
+  webnovel:      { label:'Web Novel',               shape:'novel',      source:'original'        },
+  sci_fi:        { label:'Sci-Fi',                  shape:'novel',      source:'original'        },
+  historical:    { label:'Historical',              shape:'novel',      source:'original'        },
+  fantasy:       { label:'Fantasy',                 shape:'novel',      source:'original'        },
+};
+
+function _stStyleHintForShape(shape) {
+  if (shape === 'fairytale')  return '동화체. "옛날 옛적에", "그 후로 행복하게…" 같은 자연스러운 한국어 동화 어투. 의인화/마법 OK. 교훈 한 줄 끝.';
+  if (shape === 'folktale')   return '한국 전래동화 어투. 옛말 약간 섞되 학습자가 읽을 수 있게. 흥부와 놀부 / 콩쥐 팥쥐 / 효녀 심청 / 단군 신화 / 토끼와 거북이 / 해와 달이 된 오누이 / 은혜 갚은 호랑이 / 도깨비 방망이 등 잘 알려진 전래동화에서 골라줘.';
+  if (shape === 'fable')      return 'Aesop\'s Fable 풍. 동물 의인화. 짧고 명확한 교훈("이 이야기의 교훈은 …")으로 마무리.';
+  if (shape === 'novel')      return '웹소설/장편 한 챕터 분량. 1인칭 또는 3인칭, 장면 중심. 다음 챕터로 이어질 만한 클리프행어로 마무리해도 좋음.';
+  if (shape === 'essay')      return '에세이체. 1인칭 회고 또는 사색.';
+  return '커뮤니티 게시글 풍. 친근한 톤.';
 }
 
 async function generateStories() {
   var mood   = document.getElementById('st-mood').value;
   var lvl    = document.getElementById('st-lvl').value;
   var count  = document.getElementById('st-count').value;
+  var sourceText = (document.getElementById('st-source') ? document.getElementById('st-source').value || '' : '').trim();
   var res    = document.getElementById('st-results');
   var lvlMap  = {s:'Seed', b:'Sprout', i:'Tree', a:'Forest'};
   var moodMap = {fun:'Fun', touching:'Touching', scary:'Scary', shocking:'Shocking'};
@@ -6473,7 +6541,32 @@ async function generateStories() {
   res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">⏳ AI generating...</div>';
 
   var levelPrompt = (typeof getLevelPrompt === 'function') ? getLevelPrompt(KH_LEVEL_MAP[lvl] || 'Beginner') : '';
-  var prompt = 'Generate ' + count + ' short Korean community-style stories for Korean learners.\nMood: ' + moodMap[mood] + '\n\n' + levelPrompt + '\n\nReturn ONLY a valid JSON array, no markdown, no backticks.\n\nEach story object:\n{"title":"Korean title","title_en":"English","mood":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\nRules: authentic Korean community post style, body 8-15 paragraphs, 6-8 vocab, 2-3 grammar, 3 comprehension questions. ALL Korean text in the story MUST follow the difficulty level rules above.';
+  var meta = STORY_GENRE_META[mood] || STORY_GENRE_META.slice_of_life;
+  var styleHint = _stStyleHintForShape(meta.shape);
+  // Branch the prompt: pasted source → adapt that specific story.
+  // No source → AI picks/invents based on shape (fairytale / novel / etc).
+  // Source is also clipped to 3000 chars on the input side.
+  var sourceBlock = '';
+  if (sourceText) {
+    sourceBlock =
+        '\n\n[원본 소스 — 이 텍스트를 한국어로 각색하세요]\n'
+      + sourceText.slice(0, 3000) + '\n'
+      + '[지시: 위 원본의 줄거리/캐릭터/교훈을 그대로 보존하되, TOPIK ' + (lvlMap[lvl] || 'Tree') + ' 레벨 한국어로 다시 써. '
+      + (count > 1 ? '여러 개 요청하면 같은 원본을 다른 톤/시점으로 변주해도 OK.' : '')
+      + ']\n';
+  }
+
+  var prompt =
+      'Generate ' + count + ' Korean ' + meta.label + (count > 1 ? ' stories' : ' story') + ' for Korean learners.\n'
+    + 'Genre: ' + meta.label + '\n'
+    + 'Style: ' + styleHint + '\n\n'
+    + levelPrompt + '\n\n'
+    + sourceBlock
+    + 'Return ONLY a valid JSON array, no markdown, no backticks.\n\n'
+    + 'Each story object:\n'
+    + '{"title":"Korean title","title_en":"English","mood":"' + mood + '","genre":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\n'
+    + 'Rules: body 8-15 paragraphs (' + (meta.shape === 'fable' ? 'fables can be 3-6' : 'novels/web novels can be 12-20') + '), 6-8 vocab, 2-3 grammar, 3 comprehension questions. ALL Korean text MUST follow the difficulty level rules above. '
+    + (sourceText ? 'STAY FAITHFUL to the source — do not invent characters or events that aren\'t in it.' : '');
 
   try {
     var resp = await callClaude({
@@ -6485,6 +6578,15 @@ async function generateStories() {
     var raw = resp.content.map(function(b){ return b.text||''; }).join('');
     raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
     var stories = JSON.parse(raw);
+    // Stamp the genre/source metadata onto every story BEFORE we hand
+    // them to the UI + saveAllStories. AI sometimes echoes "genre"
+    // back from the prompt template literally — overwrite to make sure
+    // the persisted value matches the dropdown choice.
+    stories.forEach(function(s) {
+      s.genre = mood;
+      s.source_kind = sourceText ? meta.source : 'original';
+      if (sourceText) s.source_excerpt = sourceText.slice(0, 500);
+    });
 
     var html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
       + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + stories.length + ' stories</span>'
@@ -6525,16 +6627,41 @@ async function saveAllStories() {
   var rows = window._generatedStories.map(function(s) {
     return {
       data: s,
-      mood: s.mood,
+      mood: s.mood || s.genre,         // legacy column kept for backwards compat
+      genre: s.genre || s.mood,
       lvl: s.lvl,
       title: s.title,
       title_en: s.title_en,
       preview: s.preview,
       read_time: s.readTime,
+      source_kind: s.source_kind || 'original',
+      source_excerpt: s.source_excerpt || null,
       created_at: new Date().toISOString()
     };
   });
-  var {error} = await sb.from('stories_data').insert(rows);
+  var insertRes = await sb.from('stories_data').insert(rows);
+  // Schema may still be in the pre-migration shape on a Supabase project
+  // that hasn't run 20260504_stories_genre.sql yet. Detect that specific
+  // failure and retry without the new columns so admin doesn't get
+  // blocked from saving stories.
+  if (insertRes.error) {
+    var msg = (insertRes.error.message || '').toLowerCase();
+    var schemaDrift = /column .* does not exist|genre|source_kind|source_excerpt/.test(msg)
+                   && /does not exist|cache/i.test(msg);
+    if (schemaDrift) {
+      console.warn('[stories] retrying insert without new genre columns:', insertRes.error.message);
+      var legacyRows = rows.map(function(r) {
+        var copy = {};
+        Object.keys(r).forEach(function(k) {
+          if (k === 'genre' || k === 'source_kind' || k === 'source_excerpt') return;
+          copy[k] = r[k];
+        });
+        return copy;
+      });
+      insertRes = await sb.from('stories_data').insert(legacyRows);
+    }
+  }
+  var error = insertRes.error;
   if (error) {
     alert('Save error: ' + error.message);
   } else {
