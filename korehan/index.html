@@ -1682,39 +1682,21 @@ document.addEventListener('DOMContentLoaded', async function() {
         : [];
     }
     if (!phrases.length) return;
-    // Sequential non-repeating: track seen phrases, pick next unseen
+    // Today's phrase is a pure function of the KST date and queue
+    // length: every user sees the SAME phrase on the same day. The
+    // earlier per-user "seen" tracking was a mistake — it made the
+    // home block drift away from the admin's TODAY badge (admin uses
+    // the same simple rotation), so users were seeing 티끌 모아 태산
+    // on home while admin pointed at 뿌린 대로 거둔다. Mirroring the
+    // admin formula keeps the two sources of truth in sync.
     var todayKey = new Date(Date.now() + 9*3600000).toISOString().slice(0,10);
-    var seenKey = 'kh_phrase_seen';
-    var todayCache = 'kh_phrase_today';
-    var cached = null;
-    try { cached = JSON.parse(localStorage.getItem(todayCache)); } catch(e){}
-    var phraseIndex;
-    // Cache must (a) be for today's date AND (b) the cached
-    // {idx, ko} pair must still point to the same phrase in the
-    // current queue — otherwise a delete / reorder in admin leaves
-    // the home block stuck on a phrase that no longer exists at
-    // that index, or worse, on the NEW phrase that slid into that
-    // slot. Validate by Korean text match before reusing the cache.
-    if (cached
-        && cached.date === todayKey
-        && typeof cached.idx === 'number'
-        && cached.idx >= 0
-        && cached.idx < phrases.length
-        && (!cached.ko || cached.ko === phrases[cached.idx].ko)) {
-      phraseIndex = cached.idx;
-    } else {
-      var seen = [];
-      try { seen = JSON.parse(localStorage.getItem(seenKey)) || []; } catch(e){ seen=[]; }
-      // Find first unseen phrase
-      var unseen = [];
-      for (var pi = 0; pi < phrases.length; pi++) { if (seen.indexOf(pi) < 0) unseen.push(pi); }
-      if (!unseen.length) { seen = []; unseen = []; for (var ri = 0; ri < phrases.length; ri++) unseen.push(ri); }
-      // Pick a deterministic daily phrase from unseen
-      var dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
-      phraseIndex = unseen[dayHash % unseen.length];
-      seen.push(phraseIndex);
-      try { localStorage.setItem(seenKey, JSON.stringify(seen)); localStorage.setItem(todayCache, JSON.stringify({date:todayKey,idx:phraseIndex,ko:phrases[phraseIndex].ko})); } catch(e){}
-    }
+    var dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
+    var phraseIndex = dayHash % phrases.length;
+    // Stash the resolved {date, idx, ko} just so we can detect the
+    // queue-changed case quickly on the next render — we still
+    // recompute every load, but if the cached ko no longer matches
+    // we can clear our stale 'seen' list at the same time.
+    try { localStorage.setItem('kh_phrase_today', JSON.stringify({date:todayKey,idx:phraseIndex,ko:phrases[phraseIndex].ko})); } catch(e){}
     var p = phrases[phraseIndex];
     var ko = document.getElementById('pb-ko');
     var rom = document.getElementById('pb-rom');
