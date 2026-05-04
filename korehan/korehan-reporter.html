@@ -967,6 +967,49 @@ function getAffinityStorageKey(reporterId) {
   return 'kh_affinity_' + supaUser.id + '_' + reporterId;
 }
 
+// Auth restores asynchronously after page load. Without this gate the
+// reporter page renders affinity as 0 because supaUser is still null
+// when loadAffinityPoints fires from DOMContentLoaded — the function
+// then short-circuits to getLocalAffinity which keys on supaUser.id
+// (empty), so localStorage looks empty too. We block up to 4s for the
+// session to land before reading.
+async function _waitForSupaUser(timeoutMs) {
+  if (supaUser) return supaUser;
+  return new Promise(function(resolve) {
+    var done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      window.removeEventListener('kh-auth-signed-in', onSignIn);
+      resolve(supaUser || null);
+    }
+    function onSignIn() { finish(); }
+    window.addEventListener('kh-auth-signed-in', onSignIn);
+    // Poll lightly in case the event already fired before listeners
+    // attached (race when shared.js getSession resolves quickly).
+    var pollId = setInterval(function(){
+      if (supaUser) { clearInterval(pollId); finish(); }
+    }, 100);
+    setTimeout(function(){ clearInterval(pollId); finish(); }, timeoutMs || 4000);
+  });
+}
+
+// Belt-and-suspenders: if auth restored AFTER the page already rendered
+// affinity (e.g. very slow getSession on a cold tab), re-fetch and patch
+// the UI in place so the user doesn't see 0 then have to refresh.
+window.addEventListener('kh-auth-signed-in', async function() {
+  if (!_currentReporterId) return;
+  var sb = getSupa();
+  if (!sb) return;
+  try {
+    var fresh = Number(await loadAffinityPoints(sb, _currentReporterId)) || 0;
+    if (fresh > Number(_currentAffinityXP || 0)) {
+      _currentAffinityXP = fresh;
+      updateAffinityUI(fresh);
+    }
+  } catch(_) {}
+});
+
 function shouldUseRemoteAffinity() {
   try {
     return localStorage.getItem('kh_remote_affinity') !== '0';
@@ -1026,6 +1069,10 @@ async function saveAffinityToAppSettings(sb, reporterId, points) {
 }
 
 async function loadAffinityPoints(sb, reporterId) {
+  // Bridge the async auth restore — without this, a fresh page load
+  // calls this function before supaUser settles, the table read gets
+  // skipped, and the user sees their affinity reset to 0 every time.
+  if (!supaUser) await _waitForSupaUser(4000);
   if (!sb || !supaUser) return getLocalAffinity(reporterId);
   // Try primary table first
   if (shouldUseRemoteAffinity()) {
