@@ -1551,34 +1551,36 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   align-items: center;
   gap: 10px;
   margin: 0 0 16px;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, #faf5ff, #ede9fe);
-  border: 1px solid #c4b5fd;
+  padding: 11px 14px;
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  border: 1.5px solid #a78bfa;
   border-radius: 12px;
-  font-size: 13px;
-  color: #5b21b6;
+  font-size: 13.5px;
+  color: #2e1065;
   font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 600;
-  line-height: 1.4;
+  font-weight: 700;
+  line-height: 1.45;
+  box-shadow: 0 2px 8px rgba(124,58,237,.10);
 }
 .art-sent-hint .ash-icon {
   flex-shrink: 0;
-  width: 28px; height: 28px;
+  width: 30px; height: 30px;
   border-radius: 50%;
-  background: rgba(124,58,237,.18);
+  background: #7c3aed;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 14px;
+  font-size: 15px;
+  color: #fff;
 }
-.art-sent-hint .ash-text { flex: 1; }
+.art-sent-hint .ash-text { flex: 1; color: #2e1065; }
 .art-sent-hint .ash-dismiss {
   flex-shrink: 0;
-  width: 24px; height: 24px;
+  width: 26px; height: 26px;
   border: none; border-radius: 50%;
-  background: transparent; color: #7c3aed;
+  background: rgba(124,58,237,.18); color: #4c1d95;
   font-weight: 800; font-size: 16px;
   cursor: pointer; line-height: 1;
 }
-.art-sent-hint .ash-dismiss:hover { background: rgba(124,58,237,.14); }
+.art-sent-hint .ash-dismiss:hover { background: rgba(124,58,237,.32); color: #2e1065; }
 
 /* Panel — clean white card with clear section hierarchy. Translation
  * is visually emphasised because that's what most learners want
@@ -1747,14 +1749,18 @@ body.mobile-redesign .art-sent.active {
 }
 body.dark-mode .art-sent-hint,
 body.mobile-redesign .art-sent-hint {
-  background: linear-gradient(135deg, rgba(124,58,237,.18), rgba(139,92,246,.10));
-  border-color: rgba(167,139,250,.32);
-  color: #ddd6fe;
+  background: linear-gradient(135deg, rgba(167,139,250,.30), rgba(139,92,246,.20));
+  border-color: rgba(196,181,253,.55);
+  color: #f5f3ff;
 }
 body.dark-mode .art-sent-hint .ash-icon,
-body.mobile-redesign .art-sent-hint .ash-icon { background: rgba(167,139,250,.22); }
+body.mobile-redesign .art-sent-hint .ash-icon { background: #a78bfa; color: #1e1b4b; }
+body.dark-mode .art-sent-hint .ash-text,
+body.mobile-redesign .art-sent-hint .ash-text { color: #f5f3ff; }
 body.dark-mode .art-sent-hint .ash-dismiss,
-body.mobile-redesign .art-sent-hint .ash-dismiss { color: #c4b5fd; }
+body.mobile-redesign .art-sent-hint .ash-dismiss {
+  background: rgba(167,139,250,.30); color: #f5f3ff;
+}
 body.dark-mode .art-sent-panel,
 body.mobile-redesign .art-sent-panel {
   background: linear-gradient(180deg, rgba(30,20,60,.92), rgba(20,14,42,.96));

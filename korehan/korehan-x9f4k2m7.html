@@ -4743,6 +4743,21 @@ async function goAICache() {
     return c.translation && c.vocab && c.grammar && c.quiz;
   }).length;
 
+  // Sentence-analysis lives inside the translation cache JSON under
+  // a `sentences` key (added when admin pre-gen runs step 5/5). Parse
+  // each translation row once so we can render a per-article badge
+  // and surface a "missing-only" backfill button.
+  const sentMissingIds = [];
+  articles.forEach(function(a) {
+    const c = existingCache[String(a.id)] || {};
+    if (!c.translation) { sentMissingIds.push(String(a.id)); return; }
+    try {
+      var parsed = JSON.parse(c.translation);
+      var has = parsed && Array.isArray(parsed.sentences) && parsed.sentences.length > 0;
+      if (!has) sentMissingIds.push(String(a.id));
+    } catch(_) { sentMissingIds.push(String(a.id)); }
+  });
+
   // ── 3. 최근 실패 로그 조회 (24h) ───────────────────────────────
   // Pull the most recent N rows from article_cache_generation_log and
   // fold them into a per-article 'recent failures' map so the UI can
@@ -4788,12 +4803,24 @@ async function goAICache() {
     + (cacheComplete < articles.length && _schema
         ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#2563eb;color:#fff;border:none" onclick="generateAllMissingCaches(\'' + (_schema||'') + '\')">⚡ 누락 캐시 일괄 생성 (' + (articles.length - cacheComplete) + '건)</button>'
         : '')
+    + (sentMissingIds.length && _schema
+        ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#7c3aed;color:#fff;border:none" onclick="backfillSentenceAnalysis(\'' + (_schema||'') + '\')">📝 문장분석 백필 (' + sentMissingIds.length + '건)</button>'
+        : '')
     + '</div>';
 
   articles.forEach(function(a) {
     const c = existingCache[String(a.id)] || {};
     const hasT = !!c.translation, hasV = !!c.vocab, hasG = !!c.grammar, hasQ = !!c.quiz;
     const hasE = !!c.expressions;
+    let hasS = false, sCount = 0;
+    if (hasT) {
+      try {
+        var _tr = JSON.parse(c.translation);
+        if (_tr && Array.isArray(_tr.sentences) && _tr.sentences.length) {
+          hasS = true; sCount = _tr.sentences.length;
+        }
+      } catch(_) {}
+    }
     const allDone = hasT && hasV && hasG && hasQ;
     function badge(ok, label) {
       return '<span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + (ok?'#dcfce7':'#fee2e2') + ';color:' + (ok?'#166534':'#991b1b') + '">' + (ok?'✓':'✗') + ' ' + label + '</span>';
@@ -4807,9 +4834,10 @@ async function goAICache() {
       + '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex-wrap:wrap">'
       + '<div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:14px;margin-bottom:4px">' + (a.title||'(제목없음)') + '</div>'
       + '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · ' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level||'') + '</div></div>'
-      + '<div>' + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + errBadge + '</div>'
+      + '<div>' + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + badge(hasS, 'Sentences' + (sCount ? ' (' + sCount + ')' : '')) + errBadge + '</div>'
       + (allDone ? '<span style="color:#166534;font-weight:700;font-size:13px">✅ Done</span>'
           : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')">🧠 Generate</button>')
+      + (hasT && !hasS ? '<button class="btn" style="font-size:12px;padding:6px 12px;background:#ede9fe;border:1.5px solid #a78bfa;color:#5b21b6;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit" id="sbtn-' + a.id + '" onclick="backfillOneSentenceAnalysis(\'' + a.id + '\',\'' + (_schema||'') + '\')">📝 문장분석</button>' : '')
       + '<button style="padding:6px 13px;border:1.5px solid #6366f1;border-radius:8px;background:' + (hasE?'#eef2ff':'#fff') + ';color:#6366f1;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" onclick="toggleExpressionsEditor(\'' + a.id + '\')">'
       + '✏️ Expressions' + (exprCount ? ' (' + exprCount + ')' : '') + '</button>'
       + '<div id="cst-' + a.id + '" style="width:100%;font-size:12px;color:var(--gr);margin-top:4px"></div>'
@@ -4866,6 +4894,129 @@ async function generateAllMissingCaches(schema) {
     if (i % 5 === 4) toast('진행 중… ' + (i + 1) + '/' + ids.length + '건 완료');
   }
   toast('✅ ' + ids.length + '건 완료. Weekly/Monthly Review가 이제 종합 평가로 작동합니다.');
+  setTimeout(function(){ goAICache(); }, 1500);
+}
+
+// Backfill ONLY the per-sentence analysis for a single article. Used
+// by older articles created before pre-gen rolled out — leaves
+// translation/vocab/grammar/quiz untouched and just appends the
+// `sentences` array into the existing translation cache JSON. One
+// Haiku call total, regardless of how many sentences.
+async function backfillOneSentenceAnalysis(articleId, schema, opts) {
+  opts = opts || {};
+  const silent = !!opts.silent;
+  if (!schema) { if (!silent) toast('스키마 미감지', true); return; }
+  const a = DB.find(function(x){ return String(x.id) === String(articleId); });
+  if (!a) { if (!silent) toast('기사를 찾을 수 없음', true); return; }
+  const btn = silent ? null : document.getElementById('sbtn-' + articleId);
+  const stEl = silent ? null : document.getElementById('cst-' + articleId);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 분석 중…'; }
+  if (stEl) stEl.textContent = '문장 분석 생성 중…';
+
+  const _body = a.body || '';
+  const _level = a.level || 'Intermediate';
+  try {
+    const _sentList = _khSplitSentencesForCache(_body);
+    if (!_sentList.length) throw new Error('본문에서 문장을 찾을 수 없음');
+    const _sentEnumerated = _sentList.map(function(s, i){ return '[' + (i+1) + '] ' + s; }).join('\n');
+    const _sentPrompt =
+        'You are a Korean tutor. Analyze each sentence below for a TOPIK ' + _level + ' learner.\n\n'
+      + 'Sentences (one per line, indexed):\n'
+      + _sentEnumerated + '\n\n'
+      + 'Return ONLY a JSON object:\n'
+      + '{"sentences":[{"translation":"...","vocab":[{"ko":"<dict form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],"grammar":[{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<chunk from this sentence using the pattern>"}]}]}\n\n'
+      + 'Rules: one object per input sentence in same order. vocab max 4, skip beginner words. grammar max 2, empty ok if none notable. Output JSON only.';
+    const r = await callClaude({
+      feature: 'generate-sentence-analysis',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4000,
+      messages: [{ role:'user', content: _sentPrompt }]
+    });
+    const raw = (r && r.content && r.content[0] && r.content[0].text) || '';
+    const clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    const oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('JSON 응답 없음');
+    const parsed = JSON.parse(clean.slice(oi, ei+1));
+    const arr = Array.isArray(parsed.sentences) ? parsed.sentences : [];
+    const sentFinal = _sentList.map(function(text, i) {
+      const e = arr[i] || {};
+      return {
+        text: text,
+        translation: typeof e.translation === 'string' ? e.translation : '',
+        vocab: Array.isArray(e.vocab) ? e.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
+        grammar: Array.isArray(e.grammar) ? e.grammar.slice(0, 2).filter(function(g){ return g && g.pattern; }) : [],
+      };
+    });
+
+    // Read current translation row, splice sentences in, write back.
+    // Different cache schemas need different write paths.
+    let existingTrans = '';
+    if (schema === 'kv') {
+      const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?content_type=eq.article&content_id=eq.' + encodeURIComponent(articleId) + '&cache_key=eq.translation&select=cache_value', {
+        headers: { 'apikey': SUPA_KEY_ADMIN, 'Authorization': 'Bearer ' + (_getAccessTokenFromStorage()||SUPA_KEY_ADMIN) }
+      });
+      const cd = cr.ok ? await cr.json() : [];
+      existingTrans = (Array.isArray(cd) && cd[0] && cd[0].cache_value) || '';
+    } else {
+      const cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=translation', {
+        headers: { 'apikey': SUPA_KEY_ADMIN, 'Authorization': 'Bearer ' + (_getAccessTokenFromStorage()||SUPA_KEY_ADMIN) }
+      });
+      const cd = cr.ok ? await cr.json() : [];
+      existingTrans = (Array.isArray(cd) && cd[0] && cd[0].translation) || '';
+    }
+    let transObj = {};
+    try { if (existingTrans) transObj = JSON.parse(existingTrans); } catch(_) {}
+    transObj.sentences = sentFinal;
+    const newTransStr = JSON.stringify(transObj);
+
+    if (schema === 'kv') {
+      await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+        content_type: 'article', content_id: String(articleId),
+        cache_key: 'translation', cache_value: newTransStr,
+      });
+    } else {
+      await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(articleId), {
+        translation: newTransStr, updated_at: new Date().toISOString()
+      });
+    }
+
+    if (stEl) stEl.textContent = '✓ 문장분석 ' + sentFinal.length + '개 생성됨';
+    if (!silent) toast('✓ ' + sentFinal.length + '개 문장 분석 저장됨');
+    if (btn) { btn.style.display = 'none'; }
+    // In single-article mode, refresh the page so the badge flips
+    // to green. Bulk loop calls with silent:true to keep the row
+    // markup stable across iterations.
+    if (!silent) setTimeout(function(){ goAICache(); }, 800);
+  } catch(e) {
+    console.warn('sentence backfill failed', e);
+    if (stEl) stEl.textContent = '❌ ' + (e.message || '실패');
+    if (btn) { btn.disabled = false; btn.textContent = '📝 문장분석'; }
+    if (!silent) toast('실패: ' + (e.message || ''), true);
+    if (silent) throw e;
+  }
+}
+
+// Bulk backfill — runs backfillOneSentenceAnalysis sequentially for
+// every article that's missing the `sentences` array. Sequential
+// (not parallel) so we don't trip per-feature rate limits.
+async function backfillSentenceAnalysis(schema) {
+  if (!schema) { toast('스키마 미감지', true); return; }
+  // Re-collect missing IDs from the rendered rows (safer than relying
+  // on a stale closure variable after partial backfills).
+  const missingIds = Array.from(document.querySelectorAll('[id^="sbtn-"]'))
+    .map(function(b){ return b.id.replace('sbtn-', ''); });
+  if (!missingIds.length) { toast('백필 대상 없음', false); return; }
+  if (!confirm(missingIds.length + '개 기사 문장분석 백필.\n기사당 1회 Claude 호출 (총 약 ' + Math.ceil(missingIds.length / 30) + '분 예상). 진행?')) return;
+  toast('문장분석 백필 시작 (' + missingIds.length + '건)…');
+  let done = 0, failed = 0;
+  for (let i = 0; i < missingIds.length; i++) {
+    try {
+      await backfillOneSentenceAnalysis(missingIds[i], schema, { silent: true });
+      done++;
+    } catch(e) { failed++; }
+    if (i % 5 === 4) toast('진행 중… ' + (i + 1) + '/' + missingIds.length + '건');
+  }
+  toast('✅ 완료: ' + done + '건 성공' + (failed ? ', ' + failed + '건 실패' : ''));
   setTimeout(function(){ goAICache(); }, 1500);
 }
 
