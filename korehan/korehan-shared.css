@@ -1521,24 +1521,18 @@ body.dark-mode .kh-footer     { background: #0b1220; }
  * (different from .kh-hover-word's blue dotted line — this one is
  * fainter and sits at the line edge) so readers know the whole
  * sentence is tappable, not just hover words. */
-/* The faint dotted underline is the affordance — no hover background.
- * A solid bg on .art-sent:hover used to fire on individual words too
- * (because the cursor lives inside the sentence span when over a word),
- * which visually swallowed the .kh-hover-word's blue dotted underline
- * and made readers think per-word hover had stopped working. */
+/* Affordance: cursor + the one-time hint banner + the .active state
+ * teach the interaction. No persistent underline on the sentence span —
+ * we keep the body looking like prose and let the per-word .kh-hover-word
+ * dotted underline be the only inline affordance. */
 .art-sent {
   cursor: pointer;
   border-radius: 4px;
   padding: 2px 0;
-  transition: box-shadow .15s;
-  background-image: linear-gradient(90deg, rgba(124,58,237,.32) 40%, transparent 0);
-  background-size: 5px 1px;
-  background-repeat: repeat-x;
-  background-position: 0 100%;
+  transition: box-shadow .15s, background-color .15s;
 }
 .art-sent.active {
   background-color: rgba(124,58,237,.14);
-  background-image: none;
   box-shadow: inset 0 -2px 0 rgba(124,58,237,.55);
 }
 /* Hover-word inside an active sentence — keep its own affordance
@@ -1734,15 +1728,9 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 
 /* Dark-mode polish — match the article reader's dark theme. */
-body.dark-mode .art-sent,
-body.mobile-redesign .art-sent {
-  background-image: linear-gradient(90deg, rgba(167,139,250,.42) 40%, transparent 0);
-  background-size: 5px 1px;
-}
 body.dark-mode .art-sent.active,
 body.mobile-redesign .art-sent.active {
   background-color: rgba(167,139,250,.22);
-  background-image: none;
   box-shadow: inset 0 -2px 0 rgba(167,139,250,.7);
 }
 body.dark-mode .art-sent-hint,
