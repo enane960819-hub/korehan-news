@@ -121,6 +121,11 @@ async function saveSharedPhrases(rows) {
   if (!normalized.length) normalized = DEF_PHRASES.map(normalizePhrase);
   lsSet(K_PHRASES, normalized);
   _appSettings.phrases = normalized;
+  // Invalidate the home page's "today's phrase" cache so a freshly-
+  // saved queue (delete / edit / bulk add) is reflected immediately
+  // on next home render. Without this, the cached idx kept pointing
+  // at a deleted phrase even after the admin changes settled.
+  try { localStorage.removeItem('kh_phrase_today'); } catch(_) {}
 
   var sb = getSupa();
   if (!sb || !supaUser) return normalized;

@@ -437,11 +437,10 @@ function renderPhraseLayout(phrase, opts) {
     meaningBody = ''
       + (phrase.intro_ko ? '<div class="phrase-card-body-ko">' + escapeText(phrase.intro_ko) + '</div>' : '')
       + (phrase.intro    ? '<div class="phrase-card-body-en">' + escapeText(phrase.intro)    + '</div>' : '')
-      + (phrase.nuance && phrase.nuance.length > 8
-          ? '<div class="phrase-card-body-en" style="margin-top:14px;font-style:normal;color:rgba(125,211,252,.85)">'
-            + '<span style="font-weight:800;text-transform:uppercase;letter-spacing:.1em;font-size:10.5px;display:block;margin-bottom:4px;color:#7dd3fc">When to use it</span>'
-            + escapeText(phrase.nuance)
-            + '</div>'
+      + (phrase.nuance && phrase.nuance.length > 8 && phrase.nuance !== phrase.intro
+          ? '<div class="phrase-card-divider"></div>'
+            + '<div class="phrase-card-section-label">When to use it</div>'
+            + '<div class="phrase-card-body-en" style="margin-top:0">' + escapeText(phrase.nuance) + '</div>'
           : '');
   } else if (opts.generating) {
     meaningBody = '<div class="phrase-card-body-en">의미를 정리하고 있어요…</div>';
