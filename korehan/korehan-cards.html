@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>기자 카드 컬렉션 — KoreHani</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css?v=20260503b">
+<style>
+/* ── Hero ───────────────────────────────────────────────────── */
+.cc-hero {
+  background: linear-gradient(135deg, #0b1626 0%, #1a3a6b 100%);
+  padding: 44px 24px 36px; text-align: center; color: #fff;
+}
+.cc-hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px; font-weight: 900; margin: 0 0 6px;
+}
+.cc-hero .cc-sub { font-size: 14px; color: rgba(255,255,255,.6); margin: 0 0 18px; }
+.cc-hero .cc-stats {
+  display: inline-flex; align-items: center; gap: 18px;
+  padding: 10px 22px; border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  font-size: 13px; font-weight: 700;
+}
+.cc-hero .cc-stat-num { color: #fbbf24; font-size: 16px; font-weight: 900; }
+
+/* ── Grid ───────────────────────────────────────────────────── */
+.cc-grid {
+  max-width: 1080px; margin: 0 auto; padding: 36px 20px 80px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+}
+.cc-card {
+  position: relative; background: #fff;
+  border: 2px solid #e8eef7; border-radius: 18px;
+  overflow: hidden;
+  text-decoration: none; color: inherit;
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+  display: flex; flex-direction: column;
+}
+.cc-card:hover { transform: translateY(-4px); }
+.cc-card.tier-locked {
+  filter: grayscale(.7);
+  opacity: .55;
+}
+.cc-card.tier-locked .cc-img { filter: blur(2px) brightness(.7); }
+.cc-card.tier-bronze { border-color: #d6a168; box-shadow: 0 4px 16px rgba(214,161,104,.18); }
+.cc-card.tier-silver { border-color: #94a3b8; box-shadow: 0 4px 18px rgba(148,163,184,.22); }
+.cc-card.tier-gold   {
+  border-color: #fbbf24;
+  box-shadow: 0 6px 22px rgba(251,191,36,.30);
+}
+.cc-card.tier-platinum {
+  border-color: transparent;
+  box-shadow: 0 8px 30px rgba(167,139,250,.4);
+  background: linear-gradient(135deg, #fff 0%, #faf5ff 100%);
+}
+.cc-card.tier-platinum::before {
+  content: ''; position: absolute; inset: 0;
+  border-radius: 18px; padding: 2px;
+  background: linear-gradient(135deg, #ec4899, #a78bfa, #38bdf8, #fbbf24);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Image */
+.cc-img-wrap {
+  position: relative; height: 200px; overflow: hidden;
+  background: #0f172a;
+}
+.cc-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cc-ph {
+  width: 100%; height: 100%; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 56px; font-weight: 900; color: #fff;
+  letter-spacing: -.03em;
+}
+
+/* Tier badge top-right of image */
+.cc-tier-badge {
+  position: absolute; top: 10px; right: 10px;
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: #fff;
+  backdrop-filter: blur(4px);
+  background: rgba(15,23,42,.55);
+  border: 1px solid rgba(255,255,255,.2);
+}
+.tier-bronze   .cc-tier-badge { background: #b45309; }
+.tier-silver   .cc-tier-badge { background: #475569; }
+.tier-gold     .cc-tier-badge { background: linear-gradient(135deg,#f59e0b,#fbbf24); color: #422006; }
+.tier-platinum .cc-tier-badge { background: linear-gradient(135deg,#ec4899,#a78bfa); }
+
+/* "고용됨" ribbon for platinum */
+.cc-hired-ribbon {
+  position: absolute; top: 12px; left: -24px;
+  transform: rotate(-30deg);
+  padding: 3px 32px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #422006;
+  font-size: 10px; font-weight: 900;
+  letter-spacing: .08em;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+
+/* Lock overlay */
+.cc-lock-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(15,23,42,.45);
+  color: #fff;
+  font-size: 13px; font-weight: 700;
+  gap: 8px;
+}
+.cc-lock-overlay .cc-lock-icon {
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: rgba(255,255,255,.18);
+  font-size: 18px;
+}
+.cc-lock-overlay .cc-lock-text { font-size: 11px; opacity: .85; font-weight: 600; }
+
+/* Card body */
+.cc-body { padding: 14px 16px 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.cc-name { font-family: 'Noto Serif KR', serif; font-size: 16px; font-weight: 900; color: #0f172a; }
+.cc-role { font-size: 12px; color: #64748b; font-weight: 600; margin-top: -4px; }
+.cc-aff-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.cc-aff-bar {
+  flex: 1; height: 8px; border-radius: 999px;
+  background: #f1f5f9; overflow: hidden;
+}
+.cc-aff-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f43f5e, #ec4899);
+  border-radius: 999px;
+  transition: width .4s ease-out;
+}
+.tier-bronze   .cc-aff-fill { background: linear-gradient(90deg, #d6a168, #b45309); }
+.tier-silver   .cc-aff-fill { background: linear-gradient(90deg, #94a3b8, #475569); }
+.tier-gold     .cc-aff-fill { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+.tier-platinum .cc-aff-fill { background: linear-gradient(90deg, #ec4899, #a78bfa); }
+.cc-aff-num {
+  font-size: 11px; color: #475569; font-weight: 700;
+  white-space: nowrap;
+}
+.cc-tier-label {
+  display: inline-block; align-self: flex-start;
+  padding: 2px 8px; border-radius: 6px;
+  font-size: 10.5px; font-weight: 800;
+  background: #f1f5f9; color: #475569;
+  letter-spacing: .03em;
+}
+.tier-bronze   .cc-tier-label { background: #fef3c7; color: #92400e; }
+.tier-silver   .cc-tier-label { background: #e2e8f0; color: #1e293b; }
+.tier-gold     .cc-tier-label { background: #fef3c7; color: #92400e; }
+.tier-platinum .cc-tier-label { background: linear-gradient(135deg,#fce7f3,#ede9fe); color: #6d28d9; }
+
+/* CTA button on card */
+.cc-cta {
+  display: block; width: 100%;
+  margin-top: 6px; padding: 8px 0;
+  border: none; border-radius: 8px;
+  background: #f1f5f9; color: #475569;
+  font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  text-decoration: none; text-align: center;
+  transition: background .15s;
+}
+.cc-card:hover .cc-cta { background: #e2e8f0; }
+.tier-locked .cc-cta { background: #1e293b; color: #fff; }
+.tier-locked:hover .cc-cta { background: #0f172a; }
+.tier-platinum .cc-cta {
+  background: linear-gradient(135deg, #ec4899, #a78bfa);
+  color: #fff;
+}
+
+/* Loading + empty */
+.cc-loading {
+  text-align: center; padding: 80px 20px;
+  color: #94a3b8; font-size: 14px;
+}
+.cc-signin {
+  max-width: 480px; margin: 60px auto;
+  text-align: center; padding: 40px 24px;
+  background: #fff; border-radius: 18px;
+  border: 1px solid #e8eef7;
+}
+.cc-signin h2 { font-family: 'Noto Serif KR', serif; font-size: 20px; margin: 0 0 8px; }
+.cc-signin p { color: #64748b; font-size: 14px; margin: 0 0 16px; }
+.cc-signin button {
+  padding: 10px 24px; border-radius: 10px;
+  border: none; background: #2563eb; color: #fff;
+  font-weight: 700; font-size: 14px; cursor: pointer;
+  font-family: inherit;
+}
+
+@media (max-width: 640px) {
+  .cc-hero h1 { font-size: 26px; }
+  .cc-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 24px 14px 60px; }
+  .cc-img-wrap { height: 160px; }
+  .cc-name { font-size: 14px; }
+  .cc-role { font-size: 11px; }
+  .cc-body { padding: 12px 12px 14px; }
+}
+</style>
+</head>
+<body>
+<div id="dyn-header"></div>
+
+<div class="cc-hero">
+  <h1>📇 기자 카드 컬렉션</h1>
+  <p class="cc-sub">호감도를 쌓아 카드를 잠금해제하세요</p>
+  <div class="cc-stats" id="cc-stats">
+    <span><span class="cc-stat-num" id="cc-unlocked">0</span> / 10 잠금해제</span>
+    <span style="color:rgba(255,255,255,.3)">·</span>
+    <span><span class="cc-stat-num" id="cc-managers">0</span> 매니저</span>
+  </div>
+</div>
+
+<div class="cc-grid" id="cc-grid">
+  <div class="cc-loading" style="grid-column:1/-1">⏳ 카드 로딩 중…</div>
+</div>
+
+<div id="dyn-footer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/security.js?v=20260502a"></script>
+<script src="js/core/storage.js?v=20260502a"></script>
+<script src="js/core/icons.js?v=20260502a"></script>
+<script src="js/core/reporters.js?v=20260502a"></script>
+<script src="js/core/analytics.js?v=20260502a"></script>
+<script src="js/core/user-analytics.js?v=20260504a"></script>
+<script src="korehan-shared.js?v=20260504a"></script>
+<script>
+// Card collection page — shows all 10 reporters with the current user's
+// affinity status. Tier mirrors the level thresholds from the reporter
+// detail page (모르는 사이 → 지인 → 친구 → 매니저). Tier 0 (locked)
+// hides the portrait behind a silhouette + lock overlay so progressing
+// to Tier 1 actually feels like unlocking something.
+
+var FAV_HIRE_THRESHOLD = 3000;
+
+function ccTier(points) {
+  var p = Number(points || 0);
+  if (p >= FAV_HIRE_THRESHOLD) return { key: 'platinum', label: '매니저',     min: FAV_HIRE_THRESHOLD, max: FAV_HIRE_THRESHOLD };
+  if (p >= 200)                return { key: 'gold',     label: '친구',       min: 200,  max: FAV_HIRE_THRESHOLD };
+  if (p >= 80)                 return { key: 'silver',   label: '지인',       min: 80,   max: 200  };
+  if (p >= 1)                  return { key: 'bronze',   label: '모르는 사이', min: 1,    max: 80   };
+  return                              { key: 'locked',   label: '잠금',       min: 0,    max: 1    };
+}
+
+function ccCardHTML(reporter, points) {
+  var tier = ccTier(points);
+  var pct;
+  if (tier.key === 'platinum') {
+    pct = 100;
+  } else if (tier.key === 'locked') {
+    pct = 0;
+  } else {
+    pct = Math.min(100, Math.max(4, Math.round(((points - tier.min) / (tier.max - tier.min)) * 100)));
+  }
+
+  var portrait;
+  var imgSrc = reporter.image || reporter.img || '';
+  // The default 1px gif placeholders shouldn't show — fall back to initial.
+  var hasRealImage = imgSrc && imgSrc.length > 200 && imgSrc.indexOf('data:image/gif;base64,R0lGODlhAQAB') !== 0;
+  if (hasRealImage) {
+    portrait = '<img class="cc-img" src="' + imgSrc + '" alt="' + escapeHtml(reporter.name || '') + '" onerror="this.outerHTML=\'<div class=cc-ph style=&quot;background:' + (reporter.color || '#475569') + '&quot;>' + escapeHtml((reporter.name || '?').slice(0, 1)) + '</div>\'">';
+  } else {
+    portrait = '<div class="cc-ph" style="background:' + (reporter.color || '#475569') + '">' + escapeHtml((reporter.name || '?').slice(0, 1)) + '</div>';
+  }
+
+  var lockOverlay = '';
+  if (tier.key === 'locked') {
+    lockOverlay = '<div class="cc-lock-overlay">'
+      + '<div class="cc-lock-icon">🔒</div>'
+      + '<div>호감도 1+ 필요</div>'
+      + '<div class="cc-lock-text">선물을 보내 시작하세요</div>'
+      + '</div>';
+  }
+
+  var hiredRibbon = (tier.key === 'platinum')
+    ? '<div class="cc-hired-ribbon">고용됨</div>' : '';
+
+  var cta;
+  if (tier.key === 'locked') {
+    cta = '카드 잠금해제하기';
+  } else if (tier.key === 'platinum') {
+    cta = '매니저 페이지 →';
+  } else {
+    cta = '호감도 더 쌓기';
+  }
+
+  var affDisplay = tier.key === 'platinum'
+    ? FAV_HIRE_THRESHOLD + '+ ❤️'
+    : (Number(points || 0) + ' ❤️');
+
+  return '<a class="cc-card tier-' + tier.key + '" href="korehan-reporter.html?id=' + encodeURIComponent(reporter.id) + '">'
+    + '<div class="cc-img-wrap">'
+    +   portrait
+    +   '<div class="cc-tier-badge">' + tier.label + '</div>'
+    +   hiredRibbon
+    +   lockOverlay
+    + '</div>'
+    + '<div class="cc-body">'
+    +   '<div class="cc-name">' + escapeHtml(reporter.name || '') + '</div>'
+    +   '<div class="cc-role">' + escapeHtml(reporter.role || '') + '</div>'
+    +   '<div class="cc-aff-row">'
+    +     '<div class="cc-aff-bar"><div class="cc-aff-fill" style="width:' + pct + '%"></div></div>'
+    +     '<span class="cc-aff-num">' + affDisplay + '</span>'
+    +   '</div>'
+    +   '<span class="cc-cta">' + cta + '</span>'
+    + '</div>'
+    + '</a>';
+}
+
+function ccRender(reporters, affinityMap) {
+  var grid = document.getElementById('cc-grid');
+  if (!grid) return;
+  // Sort: platinum > gold > silver > bronze > locked, then by points desc within tier.
+  var tierOrder = { platinum: 0, gold: 1, silver: 2, bronze: 3, locked: 4 };
+  var sorted = reporters.slice().sort(function(a, b) {
+    var pa = Number(affinityMap[a.id] || 0);
+    var pb = Number(affinityMap[b.id] || 0);
+    var ta = tierOrder[ccTier(pa).key];
+    var tb = tierOrder[ccTier(pb).key];
+    if (ta !== tb) return ta - tb;
+    return pb - pa;
+  });
+
+  grid.innerHTML = sorted.map(function(r) {
+    return ccCardHTML(r, affinityMap[r.id] || 0);
+  }).join('');
+
+  // Stats
+  var unlocked = 0, managers = 0;
+  reporters.forEach(function(r) {
+    var p = Number(affinityMap[r.id] || 0);
+    if (p >= 1) unlocked++;
+    if (p >= FAV_HIRE_THRESHOLD) managers++;
+  });
+  var unlockedEl = document.getElementById('cc-unlocked');
+  var managersEl = document.getElementById('cc-managers');
+  if (unlockedEl) unlockedEl.textContent = unlocked;
+  if (managersEl) managersEl.textContent = managers;
+}
+
+function ccBuildReporterList() {
+  // Use _KH_DEFAULT_REPORTERS_LIST since it's always available synchronously,
+  // then merge any overrides KH_REPORTERS picked up from Supabase / cache.
+  var list = (typeof _KH_DEFAULT_REPORTERS_LIST !== 'undefined' ? _KH_DEFAULT_REPORTERS_LIST : []).slice();
+  if (typeof KH_REPORTERS === 'object' && KH_REPORTERS) {
+    list = list.map(function(d) {
+      var k = KH_REPORTERS[d.id] || {};
+      return {
+        id: d.id,
+        name: k.name || d.name,
+        role: k.role || d.role,
+        color: k.color || d.color,
+        image: k.img || d.image,
+      };
+    });
+  }
+  return list;
+}
+
+async function ccLoad() {
+  var reporters = ccBuildReporterList();
+
+  // Wait for auth to land — without this the affinity batch query runs
+  // with auth.uid() = null and RLS hides every row, so the page
+  // misleadingly shows everything locked even when the user has gifts.
+  if (!supaUser) {
+    await new Promise(function(resolve) {
+      var done = false;
+      function finish() { if (done) return; done = true; resolve(); }
+      window.addEventListener('kh-auth-signed-in', finish);
+      var poll = setInterval(function(){ if (supaUser) { clearInterval(poll); finish(); } }, 100);
+      setTimeout(function(){ clearInterval(poll); finish(); }, 4000);
+    });
+  }
+
+  if (!supaUser) {
+    var grid = document.getElementById('cc-grid');
+    grid.innerHTML = '<div class="cc-signin" style="grid-column:1/-1">'
+      + '<h2>🔒 로그인이 필요해요</h2>'
+      + '<p>카드 컬렉션을 보려면 로그인하세요.</p>'
+      + '<button onclick="if(typeof openAuthModal===\'function\')openAuthModal(\'signin\')">로그인</button>'
+      + '</div>';
+    return;
+  }
+
+  // Single batch query for all reporters at once.
+  var affinityMap = {};
+  var sb = getSupa();
+  if (sb) {
+    try {
+      var res = await sb.from('reporter_user_affinity')
+        .select('reporter_id, affinity_points')
+        .eq('user_id', supaUser.id);
+      if (!res.error && Array.isArray(res.data)) {
+        res.data.forEach(function(r) {
+          affinityMap[r.reporter_id] = Number(r.affinity_points || 0);
+        });
+      }
+    } catch(e) { console.warn('affinity batch fetch failed', e); }
+  }
+
+  // Local fallback — if DB returned nothing for a reporter, check
+  // localStorage in case the gift never settled to the DB. Picks the
+  // larger of the two (defensive against either source being stale).
+  reporters.forEach(function(r) {
+    try {
+      var localKey = 'kh_affinity_' + supaUser.id + '_' + r.id;
+      var localVal = Number(localStorage.getItem(localKey) || 0);
+      if (localVal > (affinityMap[r.id] || 0)) {
+        affinityMap[r.id] = localVal;
+      }
+    } catch(_) {}
+  });
+
+  ccRender(reporters, affinityMap);
+
+  // Track for analytics
+  if (typeof khTrackUser === 'function') {
+    var unlocked = reporters.filter(function(r){ return (affinityMap[r.id] || 0) >= 1; }).length;
+    try { khTrackUser('cards_view', { unlocked: unlocked }); } catch(_) {}
+  }
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+document.addEventListener('DOMContentLoaded', function() { ccLoad(); });
+</script>
+</body>
+</html>
