@@ -1477,14 +1477,25 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .art-hero-img {
   margin:0 0 28px; border-radius:16px; overflow:hidden;
   box-shadow:0 8px 32px rgba(0,0,0,0.12);
-  aspect-ratio:16/9; max-height:500px; background:#0f172a;
+  background:#0f172a;
 }
-.art-hero-img img,
-.art-hero-img iframe,
-.art-hero-img video {
+/* iframe / video wrappers keep a fixed 16:9 slot so the player has a
+   stable size before it loads. <img> wrappers drop the aspect cap so
+   portrait posters / vertical photos render in full instead of being
+   center-cropped — the image's natural ratio drives the height. */
+.art-hero-img:has(> iframe),
+.art-hero-img:has(> video) {
+  aspect-ratio:16/9; max-height:500px;
+}
+.art-hero-img > img {
+  display:block; width:100%; height:auto;
+  max-height:600px; object-fit:contain;
+  background:#0f172a;
+}
+.art-hero-img > iframe,
+.art-hero-img > video {
   width:100%; height:100%; display:block; border:0;
 }
-.art-hero-img img { object-fit:cover; background:#f0f4fa; }
 .art-hero-img iframe { background:#000; }
 .art-hero-img video { object-fit:contain; background:#000; }
 
@@ -1502,6 +1513,129 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   margin-bottom:28px; letter-spacing:-0.01em;
 }
 .art-full p { margin-bottom:22px; }
+
+/* ── Per-sentence click-to-analyze ──────────────────────────────
+ * Each sentence in the article body is wrapped in .art-sent so
+ * tapping it pops a panel with translation + vocab + grammar for
+ * that sentence only. Hover affordance is intentionally subtle so
+ * the body still reads like prose. .kh-hover-word click handlers
+ * stopPropagation so word-tap doesn't double-fire as sentence-tap. */
+.art-sent {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 1px;
+  transition: background .15s, box-shadow .15s;
+}
+.art-sent:hover { background: rgba(124,58,237,.08); }
+.art-sent.active {
+  background: rgba(124,58,237,.14);
+  box-shadow: inset 0 -2px 0 rgba(124,58,237,.55);
+}
+.art-sent-panel {
+  margin: 14px 0 22px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg,#faf5ff,#ede9fe);
+  border: 1.5px solid #c4b5fd;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #1e293b;
+  font-family: 'Noto Sans KR', 'Source Sans 3', sans-serif;
+  position: relative;
+}
+.art-sent-panel .asp-close {
+  position: absolute;
+  top: 8px; right: 10px;
+  width: 24px; height: 24px;
+  border: none; border-radius: 50%;
+  background: rgba(124,58,237,.14);
+  color: #6d28d9;
+  font-weight: 800; font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+}
+.art-sent-panel .asp-close:hover { background: rgba(124,58,237,.24); }
+.art-sent-panel .asp-section-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #6d28d9;
+  margin: 10px 0 4px;
+}
+.art-sent-panel .asp-section-title:first-child { margin-top: 0; }
+.art-sent-panel .asp-trans {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  line-height: 1.6;
+}
+.art-sent-panel .asp-vocab-row {
+  display: flex; gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px dashed rgba(124,58,237,.18);
+  font-size: 13px;
+  align-items: baseline;
+}
+.art-sent-panel .asp-vocab-row:last-child { border-bottom: none; }
+.art-sent-panel .asp-vocab-ko {
+  font-weight: 800; color: #6d28d9;
+  min-width: 78px;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.art-sent-panel .asp-vocab-en {
+  flex: 1; color: #475569;
+}
+.art-sent-panel .asp-vocab-note {
+  display: block; margin-top: 2px;
+  font-size: 11.5px; color: #94a3b8; font-style: italic;
+}
+.art-sent-panel .asp-grammar-block { padding: 6px 0; }
+.art-sent-panel .asp-grammar-name {
+  font-weight: 800; color: #6d28d9; font-size: 13px;
+}
+.art-sent-panel .asp-grammar-exp {
+  color: #475569; font-size: 12.5px; margin-top: 2px;
+}
+.art-sent-panel .asp-grammar-ex {
+  color: #7c3aed; font-size: 12px;
+  margin-top: 3px; font-style: italic;
+}
+.art-sent-panel .asp-loading {
+  color: #7c3aed;
+  font-size: 13px;
+  padding: 4px 0 2px;
+}
+.art-sent-panel .asp-loading::after {
+  content: '...'; display: inline-block;
+  animation: aspDots 1.2s infinite steps(4);
+  width: 18px; overflow: hidden; vertical-align: bottom;
+}
+@keyframes aspDots { 0%,100%{width:0} 50%{width:18px} }
+.art-sent-panel .asp-error {
+  color: #dc2626; font-size: 13px;
+}
+
+/* Dark-mode polish — match the article reader's dark theme. */
+body.dark-mode .art-sent:hover,
+body.mobile-redesign .art-sent:hover { background: rgba(167,139,250,.18); }
+body.dark-mode .art-sent.active,
+body.mobile-redesign .art-sent.active {
+  background: rgba(167,139,250,.22);
+  box-shadow: inset 0 -2px 0 rgba(167,139,250,.7);
+}
+body.dark-mode .art-sent-panel,
+body.mobile-redesign .art-sent-panel {
+  background: linear-gradient(135deg,rgba(76,29,149,.20),rgba(124,58,237,.10));
+  border-color: rgba(167,139,250,.32);
+  color: #e5edf9;
+}
+body.dark-mode .art-sent-panel .asp-trans,
+body.mobile-redesign .art-sent-panel .asp-trans { color: #e5edf9; }
+body.dark-mode .art-sent-panel .asp-vocab-en,
+body.mobile-redesign .art-sent-panel .asp-vocab-en { color: #cbd5e1; }
+body.dark-mode .art-sent-panel .asp-grammar-exp,
+body.mobile-redesign .art-sent-panel .asp-grammar-exp { color: #cbd5e1; }
 
 /* Key Vocabulary Box */
 .art-vocab-box {
@@ -2541,22 +2675,28 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   body.mobile-redesign .kh-article-wrap{background:transparent !important;}
   body.mobile-redesign .art-breadcrumb{display:none !important;}
   body.mobile-redesign .art-card{background:linear-gradient(180deg,rgba(17,24,39,.88),rgba(12,18,31,.96)) !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:24px !important;margin-bottom:14px !important;}
-  /* Mobile hero — same 16:9 slot for image and video. Rounded top corners
-     only, flush-right/left with the card. No fixed 240px height: 16:9 at
-     full viewport width is ~56vw (e.g. 225px at 400px wide) and both
-     heroes match, so feed-swiping doesn't bounce between sizes. */
+  /* Mobile hero — image wrappers use natural aspect (max-height capped) so
+     portrait posters / vertical photos aren't center-cropped. Iframe/video
+     keep a fixed 16:9 slot so the player has a stable size before loading.
+     Rounded top corners only, flush-right/left with the card. */
   body.mobile-redesign .art-card .art-hero-img{
     border:none !important; margin:0 !important; padding:0 !important;
     border-radius:24px 24px 0 0 !important; background:#0f172a !important;
+  }
+  body.mobile-redesign .art-card .art-hero-img:has(> iframe),
+  body.mobile-redesign .art-card .art-hero-img:has(> video){
     aspect-ratio:16/9; max-height:none;
   }
-  body.mobile-redesign .art-card .art-hero-img img,
   body.mobile-redesign .art-card .art-hero-img iframe,
   body.mobile-redesign .art-card .art-hero-img video{
     width:100% !important; height:100% !important;
     border-radius:24px 24px 0 0 !important; display:block;
   }
-  body.mobile-redesign .art-card .art-hero-img img{object-fit:cover;}
+  body.mobile-redesign .art-card .art-hero-img img{
+    display:block; width:100% !important; height:auto !important;
+    max-height:70vh; object-fit:contain;
+    border-radius:24px 24px 0 0 !important;
+  }
   body.mobile-redesign .art-card .art-hero-img video{object-fit:contain; background:#000;}
   body.mobile-redesign .art-card-body{padding:16px !important;}
   body.mobile-redesign .art-card .art-tabs{border:none !important;border-radius:0 !important;margin:0 !important;padding:0 !important;background:transparent !important;}

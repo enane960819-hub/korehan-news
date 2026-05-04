@@ -2732,10 +2732,44 @@ async function _bgPregenArticleCache(a) {
   }
 }
 
+// Counter that resets per body-render so each article reader has its
+// own 0-based sentence index space. Lets the analyze panel resolve a
+// click back to the right sentence even if multiple bodies (lead +
+// full) are stacked in the DOM.
+var _khSentCounter = 0;
+function _khWrapSentences(paragraph) {
+  // Split a paragraph into sentence chunks. Korean news ends sentences
+  // with ./?/!/。 — we split AFTER the punctuation so it stays attached
+  // to the sentence it terminates. Newlines inside a paragraph become
+  // <br> so paragraph shape is preserved when sentence spans flow inline.
+  // Avoids lookbehind so the regex still parses on older Samsung Internet.
+  var pieces = paragraph.split(/\n+/);
+  var out = [];
+  pieces.forEach(function(piece, pi) {
+    if (pi > 0) out.push('<br>');
+    var trimmed = piece.trim();
+    if (!trimmed) return;
+    // Replace sentence-terminator + whitespace with terminator + a
+    // marker that can't appear in Korean text, then split on the marker.
+    // Avoids regex lookbehind so older Samsung Internet still parses it.
+    var marked = trimmed.replace(/([.!?。])\s+/g, '$1\u0001');
+    var sents = marked.split('\u0001');
+    var rendered = sents.map(function(s) {
+      var st = s.trim();
+      if (!st) return '';
+      var idx = _khSentCounter++;
+      return '<span class="art-sent" data-sent-idx="' + idx + '" onclick="analyzeSentence(' + idx + ',this)">' + st + '</span>';
+    }).filter(Boolean).join(' ');
+    out.push(rendered);
+  });
+  return out.join('');
+}
+
 function formatArticleBody(text) {
   if (!text) return '';
   // Strip dangerous tags but keep basic formatting
   text = sanitizeHTML(text);
+  _khSentCounter = 0;
   // \n\n 기준으로 먼저 분리
   var paras = text.split(/\n\n+/);
   if (paras.length <= 1) {
@@ -2748,11 +2782,144 @@ function formatArticleBody(text) {
   }
   if (paras.length <= 1) {
     // 그래도 1개면 그냥 전체를 하나의 단락으로
-    return '<p style="margin-bottom:18px">' + text.trim() + '</p>';
+    return '<p style="margin-bottom:18px">' + _khWrapSentences(text.trim()) + '</p>';
   }
   return paras.map(function(p){
-    return '<p style="margin-bottom:18px">' + p.trim().replace(/\n/g,'<br>') + '</p>';
+    return '<p style="margin-bottom:18px">' + _khWrapSentences(p.trim()) + '</p>';
   }).join('');
+}
+
+// ── Per-sentence click-to-analyze ───────────────────────────────
+// Tap a sentence in the article body to pop a panel showing the
+// English translation, key vocab from that sentence, and any grammar
+// patterns Claude can spot. One Haiku call per first-time tap; result
+// is cached in sessionStorage keyed by article_id + sentence text so
+// re-taps are instant. Panel inserts after the parent paragraph so
+// reading flow stays natural.
+window._khSentAnalyzeCache = window._khSentAnalyzeCache || {};
+function _khSentCacheKey(articleId, idx, text) {
+  // Hashing the text alongside idx makes the cache survive small body
+  // edits (admin tweaks a typo) — the idx-only key would mis-serve a
+  // stale analysis when the sentence at idx N changed.
+  var hash = 0;
+  for (var i = 0; i < text.length; i++) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+  return 'sa_' + (articleId || 'noid') + '_' + idx + '_' + Math.abs(hash);
+}
+function closeSentPanel() {
+  document.querySelectorAll('.art-sent-panel').forEach(function(p){ p.remove(); });
+  document.querySelectorAll('.art-sent.active').forEach(function(s){ s.classList.remove('active'); });
+}
+function _khRenderSentPanel(panel, data) {
+  var html = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>';
+  if (data && data.translation) {
+    html += '<div class="asp-section-title">English</div>'
+         + '<div class="asp-trans">' + escapeHTML(data.translation) + '</div>';
+  }
+  if (data && Array.isArray(data.vocab) && data.vocab.length) {
+    html += '<div class="asp-section-title">Vocab</div>';
+    data.vocab.forEach(function(v) {
+      if (!v || !v.ko) return;
+      html += '<div class="asp-vocab-row">'
+           + '<span class="asp-vocab-ko">' + escapeHTML(v.ko) + '</span>'
+           + '<span class="asp-vocab-en">' + escapeHTML(v.en || '')
+           + (v.note ? '<span class="asp-vocab-note">' + escapeHTML(v.note) + '</span>' : '')
+           + '</span>'
+           + '</div>';
+    });
+  }
+  if (data && Array.isArray(data.grammar) && data.grammar.length) {
+    html += '<div class="asp-section-title">Grammar</div>';
+    data.grammar.forEach(function(g) {
+      if (!g || !g.pattern) return;
+      html += '<div class="asp-grammar-block">'
+           + '<div class="asp-grammar-name">' + escapeHTML(g.pattern) + '</div>'
+           + (g.exp ? '<div class="asp-grammar-exp">' + escapeHTML(g.exp) + '</div>' : '')
+           + (g.example_in_sentence ? '<div class="asp-grammar-ex">→ "' + escapeHTML(g.example_in_sentence) + '"</div>' : '')
+           + '</div>';
+    });
+  }
+  panel.innerHTML = html;
+}
+async function analyzeSentence(idx, el) {
+  if (!el) return;
+  // Toggle off when re-tapping the active sentence.
+  var existing = document.querySelector('.art-sent-panel');
+  if (existing && existing.dataset.sentIdx === String(idx)) {
+    closeSentPanel();
+    return;
+  }
+  closeSentPanel();
+  el.classList.add('active');
+  var sentenceText = (el.textContent || '').trim();
+  if (!sentenceText) return;
+
+  var paragraph = el.closest('p') || el;
+  var panel = document.createElement('div');
+  panel.className = 'art-sent-panel';
+  panel.dataset.sentIdx = String(idx);
+  panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
+    + '<div class="asp-loading">분석 중</div>';
+  paragraph.parentNode.insertBefore(panel, paragraph.nextSibling);
+
+  var articleId = '';
+  try {
+    var p = new URLSearchParams(window.location.search);
+    articleId = p.get('id') || (window._currentArticle && window._currentArticle.id) || '';
+  } catch(_) {}
+  var cacheKey = _khSentCacheKey(articleId, idx, sentenceText);
+
+  // In-memory cache (current page) → sessionStorage (current tab) → live call.
+  if (window._khSentAnalyzeCache[cacheKey]) {
+    _khRenderSentPanel(panel, window._khSentAnalyzeCache[cacheKey]);
+    return;
+  }
+  try {
+    var stored = sessionStorage.getItem(cacheKey);
+    if (stored) {
+      var parsed = JSON.parse(stored);
+      window._khSentAnalyzeCache[cacheKey] = parsed;
+      _khRenderSentPanel(panel, parsed);
+      return;
+    }
+  } catch(_) {}
+
+  if (typeof callClaude !== 'function') {
+    panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
+      + '<div class="asp-error">분석 기능을 불러올 수 없습니다.</div>';
+    return;
+  }
+
+  try {
+    var prompt =
+        'You are a Korean tutor analysing a single sentence for a TOPIK 3-4 learner.\n\n'
+      + 'Sentence: ' + sentenceText + '\n\n'
+      + 'Return ONLY a JSON object with this shape (no preamble, no code fences):\n'
+      + '{\n'
+      + '  "translation": "natural English translation of the whole sentence",\n'
+      + '  "vocab": [{"ko":"<word in dictionary form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],\n'
+      + '  "grammar": [{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<the chunk from the sentence that uses this pattern>"}]\n'
+      + '}\n\n'
+      + 'Limits: vocab max 4 items (skip beginner words like 는/이다/있다 — pick the words a learner would actually want to look up). Grammar max 2 patterns. Skip grammar if the sentence is just a noun phrase.';
+    var res = await callClaude({
+      feature: 'sentence-analyze',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 700,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('JSON 응답을 찾을 수 없습니다');
+    var data = JSON.parse(clean.slice(oi, ei + 1));
+    window._khSentAnalyzeCache[cacheKey] = data;
+    try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch(_) {}
+    _khRenderSentPanel(panel, data);
+  } catch(err) {
+    var msg = (err && err.message) || 'unknown';
+    if (/unauthor|sign/i.test(msg)) msg = '로그인이 필요합니다';
+    panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
+      + '<div class="asp-error">분석 실패: ' + escapeHTML(msg) + '</div>';
+  }
 }
 
 function switchArtTab(tab, btn) {
