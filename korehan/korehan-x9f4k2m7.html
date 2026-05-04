@@ -4692,8 +4692,14 @@ function _khDeriveVocabGrammarFromSentences(sentFinal, level) {
       });
     }
   });
+  // Vocab: keep every unique word the sentence analysis surfaced. The
+  // article reader paginates them client-side (12 per page). Old articles
+  // generated before this change still have whatever cap their old vocab
+  // call produced, so they just render as a single page — backwards
+  // compatible. Hard sanity cap at 100 to keep the cache row small if
+  // sentence analysis ever goes wild.
   return {
-    vocab: aggVocab.slice(0, 12),
+    vocab: aggVocab.slice(0, 100),
     grammar: { patterns: aggGrammar.slice(0, 4) },
   };
 }

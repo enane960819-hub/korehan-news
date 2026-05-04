@@ -1813,6 +1813,62 @@ body.mobile-redesign .art-sent-panel .asp-grammar-ex {
   margin-bottom:16px; text-transform:uppercase; letter-spacing:1.2px;
 }
 .art-vocab-list { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+/* Pager for the Vocab tab — only renders when the list spans more than
+ * one page (12 items per page). Spans both columns so it stays centred
+ * regardless of grid layout. */
+.art-vocab-pager {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 8px 4px;
+  font-size: 13px;
+  color: #475569;
+  font-family: 'Noto Sans KR', 'Source Sans 3', sans-serif;
+}
+.art-vocab-pager .avp-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #c7d2fe;
+  background: #fff;
+  color: #4338ca;
+  font-size: 18px; font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+  font-family: inherit;
+  transition: background .15s, border-color .15s, transform .12s;
+}
+.art-vocab-pager .avp-btn:hover:not(:disabled) {
+  background: #eef2ff; border-color: #818cf8;
+}
+.art-vocab-pager .avp-btn:active:not(:disabled) { transform: scale(.94); }
+.art-vocab-pager .avp-btn:disabled {
+  opacity: .35; cursor: default;
+}
+.art-vocab-pager .avp-info {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  font-weight: 700;
+}
+.art-vocab-pager .avp-range { color: #1e293b; font-size: 14px; }
+.art-vocab-pager .avp-sep   { color: #94a3b8; font-weight: 500; }
+.art-vocab-pager .avp-total { color: #64748b; font-size: 12.5px; font-weight: 600; }
+body.dark-mode .art-vocab-pager,
+body.mobile-redesign .art-vocab-pager { color: #cbd5e1; }
+body.dark-mode .art-vocab-pager .avp-btn,
+body.mobile-redesign .art-vocab-pager .avp-btn {
+  background: rgba(99,102,241,.15);
+  border-color: rgba(129,140,248,.4);
+  color: #c7d2fe;
+}
+body.dark-mode .art-vocab-pager .avp-btn:hover:not(:disabled),
+body.mobile-redesign .art-vocab-pager .avp-btn:hover:not(:disabled) {
+  background: rgba(99,102,241,.28); border-color: #a5b4fc;
+}
+body.dark-mode .art-vocab-pager .avp-range,
+body.mobile-redesign .art-vocab-pager .avp-range { color: #f1f5f9; }
+body.dark-mode .art-vocab-pager .avp-total,
+body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
 .art-vocab-item {
   display:flex; align-items:center; gap:12px;
   padding:12px 14px; border-radius:12px;

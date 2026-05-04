@@ -3616,32 +3616,94 @@ function isWordSaved(ko) {
   return saved.some(function(w){ return (w.ko || w.word_ko || '') === ko; });
 }
 
-function _renderArticleVocabItems(el, items) {
-  el.innerHTML = items.map(function(it) {
-    var k = it.ko;
-    var rom = it.rom || '';
-    var en = it.en || '';
-    var saved = isWordSaved(k);
-    var safeK  = k.replace(/'/g, "\\'");
-    var safeR  = rom.replace(/'/g, "\\'");
-    var safeE  = en.replace(/'/g, "\\'");
-    // Use a stable data attribute instead of interpolating Korean into an id.
-    return '<div class="art-vocab-item" data-avi-ko="' + escapeHtml(k) + '">'
-      + '<div class="avi-main">'
-      + '<span class="art-vocab-ko">' + escapeHtml(k) + '</span>'
-      + '<span class="art-vocab-rom">' + escapeHtml(rom) + '</span>'
-      + '<span class="art-vocab-en">' + escapeHtml(en) + '</span>'
-      + '</div>'
-      + '<div class="avi-actions">'
-      + ttsBtn(k)
-      + '<button class="avi-save-btn' + (saved?' saved':'') + '" title="' + (saved?'Saved':'Save word') + '" '
-      + 'onclick="handleVocabSave(this,\'' + safeK + '\',\'' + safeR + '\',\'' + safeE + '\')">'
-      + (saved ? '<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg><span>Saved</span>' : '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span>Save</span>')
-      + '</button>'
-      + '</div>'
-      + '</div>';
-  }).join('');
+// Vocab tab pagination state — kept module-level because there's only ever
+// one article reader open at a time. Reset to page 0 each time
+// renderArticleVocab repopulates the list (new article opened or admin
+// re-rendered after an edit).
+var _avPageSize = 12;
+var _avPage = 0;
+var _avAll = [];
+function _avRenderItem(it) {
+  var k = it.ko;
+  var rom = it.rom || '';
+  var en = it.en || '';
+  var saved = isWordSaved(k);
+  var safeK  = k.replace(/'/g, "\\'");
+  var safeR  = rom.replace(/'/g, "\\'");
+  var safeE  = en.replace(/'/g, "\\'");
+  return '<div class="art-vocab-item" data-avi-ko="' + escapeHtml(k) + '">'
+    + '<div class="avi-main">'
+    + '<span class="art-vocab-ko">' + escapeHtml(k) + '</span>'
+    + '<span class="art-vocab-rom">' + escapeHtml(rom) + '</span>'
+    + '<span class="art-vocab-en">' + escapeHtml(en) + '</span>'
+    + '</div>'
+    + '<div class="avi-actions">'
+    + ttsBtn(k)
+    + '<button class="avi-save-btn' + (saved?' saved':'') + '" title="' + (saved?'Saved':'Save word') + '" '
+    + 'onclick="handleVocabSave(this,\'' + safeK + '\',\'' + safeR + '\',\'' + safeE + '\')">'
+    + (saved ? '<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg><span>Saved</span>' : '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span>Save</span>')
+    + '</button>'
+    + '</div>'
+    + '</div>';
 }
+function _avPagerHTML(total, page, pages) {
+  if (pages <= 1) return '';
+  var firstIdx = page * _avPageSize + 1;
+  var lastIdx = Math.min((page + 1) * _avPageSize, total);
+  var prevDis = page === 0;
+  var nextDis = page >= pages - 1;
+  return '<div class="art-vocab-pager">'
+    + '<button class="avp-btn" onclick="khVocabPagePrev()" ' + (prevDis ? 'disabled' : '') + ' aria-label="Previous page">‹</button>'
+    + '<span class="avp-info">'
+    +   '<span class="avp-range">' + firstIdx + '–' + lastIdx + '</span>'
+    +   '<span class="avp-sep">/</span>'
+    +   '<span class="avp-total">' + total + '</span>'
+    + '</span>'
+    + '<button class="avp-btn" onclick="khVocabPageNext()" ' + (nextDis ? 'disabled' : '') + ' aria-label="Next page">›</button>'
+    + '</div>';
+}
+function _avRenderPage(el) {
+  var total = _avAll.length;
+  var pages = Math.max(1, Math.ceil(total / _avPageSize));
+  if (_avPage > pages - 1) _avPage = pages - 1;
+  if (_avPage < 0) _avPage = 0;
+  var start = _avPage * _avPageSize;
+  var slice = _avAll.slice(start, start + _avPageSize);
+  el.innerHTML = slice.map(_avRenderItem).join('') + _avPagerHTML(total, _avPage, pages);
+}
+function _renderArticleVocabItems(el, items) {
+  _avAll = Array.isArray(items) ? items : [];
+  _avPage = 0;
+  _avRenderPage(el);
+}
+window.khVocabPagePrev = function() {
+  if (_avPage > 0) {
+    _avPage--;
+    var el = document.getElementById('art-vocab-list');
+    if (el) {
+      _avRenderPage(el);
+      // Keep the user's eye anchored on the box top when paging.
+      var box = el.closest('.art-vocab-box');
+      if (box && typeof box.scrollIntoView === 'function') {
+        box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+};
+window.khVocabPageNext = function() {
+  var pages = Math.max(1, Math.ceil(_avAll.length / _avPageSize));
+  if (_avPage < pages - 1) {
+    _avPage++;
+    var el = document.getElementById('art-vocab-list');
+    if (el) {
+      _avRenderPage(el);
+      var box = el.closest('.art-vocab-box');
+      if (box && typeof box.scrollIntoView === 'function') {
+        box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+};
 
 function renderArticleVocab(a) {
   var el = document.getElementById('art-vocab-list');
@@ -3698,7 +3760,10 @@ function renderArticleVocab(a) {
       seen[norm.ko] = true;
       out.push(norm);
     });
-    return out.slice(0, 12);
+    // No cap — the Vocab tab paginates downstream so all sentence-derived
+    // vocab is reachable. Old articles still come in around 10 entries
+    // because their legacy vocab call was capped at generation time.
+    return out;
   }
 
   function fromGlobalVocab() {
@@ -3758,10 +3823,15 @@ function renderArticleVocab(a) {
     var merged = (items && items.length) ? items.slice() : [];
     var seen = {};
     merged.forEach(function(v){ if (v && v.ko) seen[v.ko] = true; });
-    fromGlobalVocab().forEach(function(v){
-      if (v && v.ko && !seen[v.ko]) { merged.push(v); seen[v.ko] = true; }
-    });
-    merged = merged.slice(0, 12);
+    // Cache items are ranked highest (sentence-analysis-derived order). We
+    // top up with sitewide VOCAB matches, but only when the cache is sparse
+    // — once we have a healthy list (≥ pageSize), don't dilute it with
+    // generic Word Bank matches.
+    if (merged.length < _avPageSize) {
+      fromGlobalVocab().forEach(function(v){
+        if (v && v.ko && !seen[v.ko]) { merged.push(v); seen[v.ko] = true; }
+      });
+    }
     if (!merged.length) {
       el.innerHTML = '<div style="padding:20px;color:#94a3b8;font-size:13px;text-align:center">No vocabulary available for this article yet.</div>';
       _appendAdminAddVocabButton(el, a);
