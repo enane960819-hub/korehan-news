@@ -4535,6 +4535,7 @@ async function runAutoGenerate(){
             + '- One object per input sentence, in the same order.\n'
             + '- vocab: max 4 items per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다 …) — pick words a learner would actually want to look up. Empty array allowed if nothing useful.\n'
             + '- grammar: max 2 patterns per sentence. Empty array if the sentence is just a noun phrase or has no notable grammar.\n'
+            + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one — do not list both with near-identical example_in_sentence chunks.\n'
             + '- Output JSON only.';
           const _sentRes = await callClaude({
             feature: 'generate-sentence-analysis',
@@ -4967,7 +4968,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
       + _sentEnumerated + '\n\n'
       + 'Return ONLY a JSON object:\n'
       + '{"sentences":[{"translation":"...","vocab":[{"ko":"<dict form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],"grammar":[{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<chunk from this sentence using the pattern>"}]}]}\n\n'
-      + 'Rules: one object per input sentence in same order. vocab max 4, skip beginner words. grammar max 2, empty ok if none notable. Output JSON only.';
+      + 'Rules: one object per input sentence in same order. vocab max 4, skip beginner words. grammar max 2, empty ok if none notable. If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one. Output JSON only.';
     const r = await callClaude({
       feature: 'generate-sentence-analysis',
       model: 'claude-haiku-4-5-20251001',
@@ -5357,6 +5358,7 @@ async function genCache(articleId, schema, opts) {
           + '- One object per input sentence, in same order.\n'
           + '- vocab: max 4 items, skip beginner words. Empty array allowed.\n'
           + '- grammar: max 2 patterns. Empty array if none notable.\n'
+          + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one.\n'
           + '- Output JSON only.';
         const _sentRes = await callClaude({
           feature: 'generate-sentence-analysis',
