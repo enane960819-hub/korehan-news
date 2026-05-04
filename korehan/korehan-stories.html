@@ -987,14 +987,58 @@ const LVL_LABEL   = {b:'Sprout',i:'Tree',a:'Forest',s:'Seed'};
 const LVL_PILL    = {b:'st-pill-purple',i:'st-pill-gray',a:'st-pill-red'};
 
 // v2 genre/perspective system
-const GENRE_LABELS = {slice_of_life:'Slice of Life',romance:'Romance',mystery:'Mystery',adventure:'Adventure',thriller:'Thriller',essay:'Essay',workplace:'Workplace',fun:'Fun',touching:'Touching',scary:'Scary',shocking:'Shocking'};
-const GENRE_COLORS = {slice_of_life:'#059669',romance:'#db2777',mystery:'#7c3aed',adventure:'#0284c7',thriller:'#dc2626',essay:'#d97706',workplace:'#475569',fun:'#d97706',touching:'#db2777',scary:'#7c3aed',shocking:'#dc2626'};
-const GENRE_BG = {slice_of_life:'linear-gradient(135deg,#ecfdf5,#d1fae5)',romance:'linear-gradient(135deg,#fdf2f8,#fce7f3)',mystery:'linear-gradient(135deg,#f5f3ff,#ede9fe)',adventure:'linear-gradient(135deg,#f0f9ff,#e0f2fe)',thriller:'linear-gradient(135deg,#fef2f2,#fecaca)',essay:'linear-gradient(135deg,#fffbeb,#fef3c7)',workplace:'linear-gradient(135deg,#f8fafc,#e2e8f0)',fun:'linear-gradient(135deg,#fef9c3,#fde68a)',touching:'linear-gradient(135deg,#fce7f3,#fbcfe8)',scary:'linear-gradient(135deg,#f5f3ff,#ddd6fe)',shocking:'linear-gradient(135deg,#fee2e2,#fecaca)'};
+const GENRE_LABELS = {
+  slice_of_life:'Slice of Life', romance:'Romance', mystery:'Mystery',
+  adventure:'Adventure', thriller:'Thriller', essay:'Essay',
+  workplace:'Workplace', comedy:'Comedy',
+  // Fairytale family
+  fairytale:'Fairytale', folktale:'Korean Folktale', aesop:"Aesop's Fable",
+  // Long-form / novel
+  webnovel:'Web Novel', sci_fi:'Sci-Fi', historical:'Historical', fantasy:'Fantasy',
+  // legacy mood values (kept so old rows still resolve)
+  fun:'Fun', touching:'Touching', scary:'Scary', shocking:'Shocking',
+};
+const GENRE_COLORS = {
+  slice_of_life:'#059669', romance:'#db2777', mystery:'#7c3aed',
+  adventure:'#0284c7', thriller:'#dc2626', essay:'#d97706',
+  workplace:'#475569', comedy:'#f59e0b',
+  fairytale:'#a855f7', folktale:'#16a34a', aesop:'#ea580c',
+  webnovel:'#6366f1', sci_fi:'#0891b2', historical:'#92400e', fantasy:'#9333ea',
+  fun:'#d97706', touching:'#db2777', scary:'#7c3aed', shocking:'#dc2626',
+};
+const GENRE_BG = {
+  slice_of_life:'linear-gradient(135deg,#ecfdf5,#d1fae5)',
+  romance:      'linear-gradient(135deg,#fdf2f8,#fce7f3)',
+  mystery:      'linear-gradient(135deg,#f5f3ff,#ede9fe)',
+  adventure:    'linear-gradient(135deg,#f0f9ff,#e0f2fe)',
+  thriller:     'linear-gradient(135deg,#fef2f2,#fecaca)',
+  essay:        'linear-gradient(135deg,#fffbeb,#fef3c7)',
+  workplace:    'linear-gradient(135deg,#f8fafc,#e2e8f0)',
+  comedy:       'linear-gradient(135deg,#fffbeb,#fde68a)',
+  // Fairytale family — soft pastels for storybook feel
+  fairytale:    'linear-gradient(135deg,#faf5ff,#e9d5ff)',
+  folktale:     'linear-gradient(135deg,#f0fdf4,#bbf7d0)',
+  aesop:        'linear-gradient(135deg,#fff7ed,#fed7aa)',
+  // Long-form / novel — richer gradients
+  webnovel:     'linear-gradient(135deg,#eef2ff,#c7d2fe)',
+  sci_fi:       'linear-gradient(135deg,#ecfeff,#a5f3fc)',
+  historical:   'linear-gradient(135deg,#fef3c7,#fde68a)',
+  fantasy:      'linear-gradient(135deg,#f3e8ff,#d8b4fe)',
+  fun:          'linear-gradient(135deg,#fef9c3,#fde68a)',
+  touching:     'linear-gradient(135deg,#fce7f3,#fbcfe8)',
+  scary:        'linear-gradient(135deg,#f5f3ff,#ddd6fe)',
+  shocking:     'linear-gradient(135deg,#fee2e2,#fecaca)',
+};
 const PERSPECTIVE_LABELS = {first:'1st Person',third:'3rd Person',omniscient:'Omniscient'};
 const PERSPECTIVE_ICONS = {first:'👤',third:'👥',omniscient:'🔮'};
 // Banner icon map — edit here to change icons for each mood. Each story can also
 // override with its own banner_icon field (a Lucide icon name).
-const MOOD_ICONS  = {fun:'sparkles',touching:'heart',scary:'zap',shocking:'flame'};
+const MOOD_ICONS = {
+  fun:'sparkles', touching:'heart', scary:'zap', shocking:'flame',
+  fairytale:'sparkles', folktale:'mountain', aesop:'feather',
+  webnovel:'book-open', sci_fi:'rocket', historical:'landmark',
+  fantasy:'wand-2', comedy:'laugh',
+};
 
 // ─── Character helper stubs ────────────────────────────────────────────────────
 // These functions mirror the versions in korehan-conversations.html.
@@ -1137,7 +1181,12 @@ function renderStories() {
       if (!byGenre[g]) byGenre[g] = [];
       byGenre[g].push(s);
     });
-    var order = ['slice_of_life','romance','mystery','adventure','thriller','essay','workplace','fun','touching','scary','shocking'];
+    var order = [
+      'slice_of_life','romance','mystery','adventure','thriller','essay','workplace','comedy',
+      'fairytale','folktale','aesop',
+      'webnovel','sci_fi','historical','fantasy',
+      'fun','touching','scary','shocking'
+    ];
     var keys = Object.keys(byGenre).sort(function(a, b) {
       var ai = order.indexOf(a); var bi = order.indexOf(b);
       if (ai < 0) ai = 999; if (bi < 0) bi = 999;

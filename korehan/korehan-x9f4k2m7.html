@@ -6622,6 +6622,13 @@ async function generateStories() {
     // back from the prompt template literally — overwrite to make sure
     // the persisted value matches the dropdown choice.
     stories.forEach(function(s) {
+      // Force-stamp BOTH mood and genre to the user's dropdown choice.
+      // The model frequently echoes mood:'slice_of_life' regardless of
+      // what we ask for, and the legacy mood column is what the public
+      // stories grid still falls back to when genre wasn't persisted
+      // (pre-migration projects). Without this every folktale / web
+      // novel / aesop ended up tagged as Slice of Life on the front.
+      s.mood = mood;
       s.genre = mood;
       s.source_kind = sourceText ? meta.source : 'original';
       if (sourceText) s.source_excerpt = sourceText.slice(0, 500);
