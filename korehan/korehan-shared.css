@@ -1517,125 +1517,285 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 /* ── Per-sentence click-to-analyze ──────────────────────────────
  * Each sentence in the article body is wrapped in .art-sent so
  * tapping it pops a panel with translation + vocab + grammar for
- * that sentence only. Hover affordance is intentionally subtle so
- * the body still reads like prose. .kh-hover-word click handlers
- * stopPropagation so word-tap doesn't double-fire as sentence-tap. */
+ * that sentence only. Sentences carry a persistent dotted underline
+ * (different from .kh-hover-word's blue dotted line — this one is
+ * fainter and sits at the line edge) so readers know the whole
+ * sentence is tappable, not just hover words. */
 .art-sent {
   cursor: pointer;
   border-radius: 4px;
-  padding: 1px 1px;
+  padding: 2px 2px;
+  margin: 0 -2px;
   transition: background .15s, box-shadow .15s;
+  background-image: linear-gradient(90deg, rgba(124,58,237,.30) 33%, transparent 0);
+  background-size: 5px 1px;
+  background-repeat: repeat-x;
+  background-position: 0 100%;
 }
-.art-sent:hover { background: rgba(124,58,237,.08); }
+.art-sent:hover {
+  background-color: rgba(124,58,237,.08);
+  background-image: none;
+}
 .art-sent.active {
-  background: rgba(124,58,237,.14);
+  background-color: rgba(124,58,237,.14);
+  background-image: none;
   box-shadow: inset 0 -2px 0 rgba(124,58,237,.55);
 }
-.art-sent-panel {
-  margin: 14px 0 22px;
-  padding: 14px 16px;
-  background: linear-gradient(135deg,#faf5ff,#ede9fe);
-  border: 1.5px solid #c4b5fd;
-  border-radius: 14px;
+
+/* One-time hint banner above the article body explaining the new
+ * tap-to-analyze interaction. Shown until the reader dismisses or
+ * uses the feature once (whichever first). State is persisted in
+ * localStorage so it doesn't nag returning users. */
+.art-sent-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #faf5ff, #ede9fe);
+  border: 1px solid #c4b5fd;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #5b21b6;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.art-sent-hint .ash-icon {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(124,58,237,.18);
+  display: inline-flex; align-items: center; justify-content: center;
   font-size: 14px;
-  line-height: 1.65;
-  color: #1e293b;
+}
+.art-sent-hint .ash-text { flex: 1; }
+.art-sent-hint .ash-dismiss {
+  flex-shrink: 0;
+  width: 24px; height: 24px;
+  border: none; border-radius: 50%;
+  background: transparent; color: #7c3aed;
+  font-weight: 800; font-size: 16px;
+  cursor: pointer; line-height: 1;
+}
+.art-sent-hint .ash-dismiss:hover { background: rgba(124,58,237,.14); }
+
+/* Panel — clean white card with clear section hierarchy. Translation
+ * is visually emphasised because that's what most learners want
+ * first; vocab and grammar follow as supporting detail. */
+.art-sent-panel {
+  margin: 16px 0 24px;
+  padding: 18px 18px 16px;
+  background: #ffffff;
+  border: 1.5px solid #e0d4f7;
+  border-left: 4px solid #7c3aed;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(124,58,237,.08);
   font-family: 'Noto Sans KR', 'Source Sans 3', sans-serif;
+  color: #1e293b;
   position: relative;
+  animation: aspSlide .22s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes aspSlide {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .art-sent-panel .asp-close {
   position: absolute;
-  top: 8px; right: 10px;
-  width: 24px; height: 24px;
+  top: 10px; right: 12px;
+  width: 28px; height: 28px;
   border: none; border-radius: 50%;
-  background: rgba(124,58,237,.14);
+  background: #f3f0fc;
   color: #6d28d9;
-  font-weight: 800; font-size: 14px;
+  font-weight: 800; font-size: 16px;
   cursor: pointer;
   line-height: 1;
+  transition: all .15s;
 }
-.art-sent-panel .asp-close:hover { background: rgba(124,58,237,.24); }
+.art-sent-panel .asp-close:hover { background: #e0d4f7; transform: rotate(90deg); }
+
+/* Section titles — small uppercase eyebrow with an icon dot. */
 .art-sent-panel .asp-section-title {
-  font-size: 10.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: .08em;
-  color: #6d28d9;
-  margin: 10px 0 4px;
+  letter-spacing: .1em;
+  color: #7c3aed;
+  margin: 16px 0 8px;
 }
-.art-sent-panel .asp-section-title:first-child { margin-top: 0; }
+.art-sent-panel .asp-section-title:first-of-type { margin-top: 0; }
+.art-sent-panel .asp-section-title::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #7c3aed;
+}
+
+/* Translation — bigger, the headline of the panel. */
 .art-sent-panel .asp-trans {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1e293b;
-  line-height: 1.6;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+  padding-right: 32px; /* clear the close button */
 }
+
+/* Vocab rows — clean two-column layout with clear separators. */
 .art-sent-panel .asp-vocab-row {
-  display: flex; gap: 10px;
-  padding: 5px 0;
-  border-bottom: 1px dashed rgba(124,58,237,.18);
-  font-size: 13px;
+  display: grid;
+  grid-template-columns: minmax(80px, auto) 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f0fc;
+  font-size: 14px;
   align-items: baseline;
 }
-.art-sent-panel .asp-vocab-row:last-child { border-bottom: none; }
+.art-sent-panel .asp-vocab-row:last-child { border-bottom: none; padding-bottom: 0; }
 .art-sent-panel .asp-vocab-ko {
-  font-weight: 800; color: #6d28d9;
-  min-width: 78px;
+  font-weight: 800;
+  color: #6d28d9;
+  font-size: 15px;
   font-family: 'Noto Sans KR', sans-serif;
 }
 .art-sent-panel .asp-vocab-en {
-  flex: 1; color: #475569;
+  color: #334155;
+  font-weight: 500;
+  line-height: 1.45;
 }
 .art-sent-panel .asp-vocab-note {
-  display: block; margin-top: 2px;
-  font-size: 11.5px; color: #94a3b8; font-style: italic;
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: #94a3b8;
+  font-style: italic;
+  font-weight: 400;
 }
-.art-sent-panel .asp-grammar-block { padding: 6px 0; }
+
+/* Grammar — block style, more breathing room than vocab so the
+ * pattern + explanation + example trio reads as a unit. */
+.art-sent-panel .asp-grammar-block {
+  padding: 10px 12px;
+  margin: 6px 0;
+  background: #faf7ff;
+  border-radius: 10px;
+  border: 1px solid #f3edff;
+}
+.art-sent-panel .asp-grammar-block + .asp-grammar-block { margin-top: 8px; }
 .art-sent-panel .asp-grammar-name {
-  font-weight: 800; color: #6d28d9; font-size: 13px;
+  font-weight: 800;
+  color: #6d28d9;
+  font-size: 14.5px;
+  font-family: 'Noto Sans KR', sans-serif;
+  margin-bottom: 4px;
 }
 .art-sent-panel .asp-grammar-exp {
-  color: #475569; font-size: 12.5px; margin-top: 2px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
 }
 .art-sent-panel .asp-grammar-ex {
-  color: #7c3aed; font-size: 12px;
-  margin-top: 3px; font-style: italic;
+  color: #7c3aed;
+  font-size: 12.5px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: #ede9fe;
+  border-radius: 6px;
+  display: inline-block;
+  font-family: 'Noto Sans KR', sans-serif;
 }
+
 .art-sent-panel .asp-loading {
   color: #7c3aed;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
   padding: 4px 0 2px;
 }
 .art-sent-panel .asp-loading::after {
-  content: '...'; display: inline-block;
+  content: '...';
+  display: inline-block;
   animation: aspDots 1.2s infinite steps(4);
   width: 18px; overflow: hidden; vertical-align: bottom;
 }
 @keyframes aspDots { 0%,100%{width:0} 50%{width:18px} }
 .art-sent-panel .asp-error {
-  color: #dc2626; font-size: 13px;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* Dark-mode polish — match the article reader's dark theme. */
+body.dark-mode .art-sent,
+body.mobile-redesign .art-sent {
+  background-image: linear-gradient(90deg, rgba(167,139,250,.40) 33%, transparent 0);
+  background-size: 5px 1px;
+}
 body.dark-mode .art-sent:hover,
-body.mobile-redesign .art-sent:hover { background: rgba(167,139,250,.18); }
+body.mobile-redesign .art-sent:hover {
+  background-color: rgba(167,139,250,.18);
+  background-image: none;
+}
 body.dark-mode .art-sent.active,
 body.mobile-redesign .art-sent.active {
-  background: rgba(167,139,250,.22);
+  background-color: rgba(167,139,250,.22);
+  background-image: none;
   box-shadow: inset 0 -2px 0 rgba(167,139,250,.7);
 }
+body.dark-mode .art-sent-hint,
+body.mobile-redesign .art-sent-hint {
+  background: linear-gradient(135deg, rgba(124,58,237,.18), rgba(139,92,246,.10));
+  border-color: rgba(167,139,250,.32);
+  color: #ddd6fe;
+}
+body.dark-mode .art-sent-hint .ash-icon,
+body.mobile-redesign .art-sent-hint .ash-icon { background: rgba(167,139,250,.22); }
+body.dark-mode .art-sent-hint .ash-dismiss,
+body.mobile-redesign .art-sent-hint .ash-dismiss { color: #c4b5fd; }
 body.dark-mode .art-sent-panel,
 body.mobile-redesign .art-sent-panel {
-  background: linear-gradient(135deg,rgba(76,29,149,.20),rgba(124,58,237,.10));
-  border-color: rgba(167,139,250,.32);
+  background: linear-gradient(180deg, rgba(30,20,60,.92), rgba(20,14,42,.96));
+  border-color: rgba(167,139,250,.28);
+  border-left-color: #a78bfa;
   color: #e5edf9;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
 }
+body.dark-mode .art-sent-panel .asp-close,
+body.mobile-redesign .art-sent-panel .asp-close {
+  background: rgba(167,139,250,.20);
+  color: #c4b5fd;
+}
+body.dark-mode .art-sent-panel .asp-section-title,
+body.mobile-redesign .art-sent-panel .asp-section-title { color: #c4b5fd; }
+body.dark-mode .art-sent-panel .asp-section-title::before,
+body.mobile-redesign .art-sent-panel .asp-section-title::before { background: #c4b5fd; }
 body.dark-mode .art-sent-panel .asp-trans,
-body.mobile-redesign .art-sent-panel .asp-trans { color: #e5edf9; }
+body.mobile-redesign .art-sent-panel .asp-trans { color: #f1f5f9; }
+body.dark-mode .art-sent-panel .asp-vocab-row,
+body.mobile-redesign .art-sent-panel .asp-vocab-row { border-bottom-color: rgba(167,139,250,.14); }
+body.dark-mode .art-sent-panel .asp-vocab-ko,
+body.mobile-redesign .art-sent-panel .asp-vocab-ko { color: #c4b5fd; }
 body.dark-mode .art-sent-panel .asp-vocab-en,
-body.mobile-redesign .art-sent-panel .asp-vocab-en { color: #cbd5e1; }
+body.mobile-redesign .art-sent-panel .asp-vocab-en { color: #e2e8f0; }
+body.dark-mode .art-sent-panel .asp-vocab-note,
+body.mobile-redesign .art-sent-panel .asp-vocab-note { color: #94a3b8; }
+body.dark-mode .art-sent-panel .asp-grammar-block,
+body.mobile-redesign .art-sent-panel .asp-grammar-block {
+  background: rgba(167,139,250,.10);
+  border-color: rgba(167,139,250,.20);
+}
+body.dark-mode .art-sent-panel .asp-grammar-name,
+body.mobile-redesign .art-sent-panel .asp-grammar-name { color: #c4b5fd; }
 body.dark-mode .art-sent-panel .asp-grammar-exp,
 body.mobile-redesign .art-sent-panel .asp-grammar-exp { color: #cbd5e1; }
+body.dark-mode .art-sent-panel .asp-grammar-ex,
+body.mobile-redesign .art-sent-panel .asp-grammar-ex {
+  color: #c4b5fd;
+  background: rgba(167,139,250,.18);
+}
 
 /* Key Vocabulary Box */
 .art-vocab-box {
