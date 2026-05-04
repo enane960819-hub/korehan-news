@@ -6603,8 +6603,8 @@ async function generateStories() {
     + sourceBlock
     + 'Return ONLY a valid JSON array, no markdown, no backticks.\n\n'
     + 'Each story object:\n'
-    + '{"title":"Korean title","title_en":"English","mood":"' + mood + '","genre":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\n'
-    + 'Rules: body 8-15 paragraphs (' + (meta.shape === 'fable' ? 'fables can be 3-6' : 'novels/web novels can be 12-20') + '), 6-8 vocab, 2-3 grammar, 3 comprehension questions. ALL Korean text MUST follow the difficulty level rules above. '
+    + '{"title":"Korean title","title_en":"English","mood":"' + mood + '","genre":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","body_en":"full English translation, paragraph-aligned with body (same number of paragraphs separated by blank lines, in the same order)","vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\n'
+    + 'Rules: body 8-15 paragraphs (' + (meta.shape === 'fable' ? 'fables can be 3-6' : 'novels/web novels can be 12-20') + '), 6-8 vocab, 2-3 grammar, 3 comprehension questions. body_en MUST exist and be paragraph-aligned with body — readers tap a Korean paragraph to reveal its English translation, so the indices have to line up. ALL Korean text MUST follow the difficulty level rules above. '
     + (sourceText ? 'STAY FAITHFUL to the source — do not invent characters or events that aren\'t in it.' : '');
 
   try {
