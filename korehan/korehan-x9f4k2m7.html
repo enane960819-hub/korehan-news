@@ -6623,9 +6623,12 @@ async function generateStories() {
 
 
 async function saveAllStories() {
-  if (!window._generatedStories || !window._generatedStories.length) return;
+  if (!window._generatedStories || !window._generatedStories.length) {
+    alert('저장할 스토리가 없어요. 먼저 Generate Stories를 눌러주세요.');
+    return;
+  }
   var sb = getSb();
-  if (!sb) return;
+  if (!sb) { alert('Supabase 클라이언트를 가져올 수 없어요.'); return; }
   var rows = window._generatedStories.map(function(s) {
     return {
       data: s,
@@ -6641,17 +6644,25 @@ async function saveAllStories() {
       created_at: new Date().toISOString()
     };
   });
-  var insertRes = await sb.from('stories_data').insert(rows);
-  // Schema may still be in the pre-migration shape on a Supabase project
-  // that hasn't run 20260504_stories_genre.sql yet. Detect that specific
-  // failure and retry without the new columns so admin doesn't get
-  // blocked from saving stories.
-  if (insertRes.error) {
-    var msg = (insertRes.error.message || '').toLowerCase();
-    var schemaDrift = /column .* does not exist|genre|source_kind|source_excerpt/.test(msg)
-                   && /does not exist|cache/i.test(msg);
+
+  // Admin proxy throws on error instead of returning {error}, so we have
+  // to wrap each attempt in try/catch — without this every save was
+  // silently rejected at the await and the click handler swallowed the
+  // exception with no user feedback.
+  async function _trySave(rowSet) {
+    try { return { ok: true,  res: await sb.from('stories_data').insert(rowSet) }; }
+    catch(e) { return { ok: false, err: e }; }
+  }
+
+  var attempt = await _trySave(rows);
+
+  // Schema-drift retry: column missing on the project (migration 20260504_
+  // stories_genre.sql not applied) → strip the new columns and retry.
+  if (!attempt.ok) {
+    var msg = String(attempt.err && attempt.err.message || '').toLowerCase();
+    var schemaDrift = /column|schema cache|does not exist|pgrst20[34]/.test(msg);
     if (schemaDrift) {
-      console.warn('[stories] retrying insert without new genre columns:', insertRes.error.message);
+      console.warn('[stories] retrying without new genre/source columns:', attempt.err.message);
       var legacyRows = rows.map(function(r) {
         var copy = {};
         Object.keys(r).forEach(function(k) {
@@ -6660,17 +6671,26 @@ async function saveAllStories() {
         });
         return copy;
       });
-      insertRes = await sb.from('stories_data').insert(legacyRows);
+      attempt = await _trySave(legacyRows);
     }
   }
-  var error = insertRes.error;
-  if (error) {
-    alert('Save error: ' + error.message);
-  } else {
-    alert('✅ ' + rows.length + ' stories saved/published!');
-    window._generatedStories = [];
-    goStoriesManager();
+
+  if (!attempt.ok) {
+    console.error('[stories] save failed', attempt.err);
+    alert('Save error: ' + (attempt.err && attempt.err.message || 'Unknown error'));
+    return;
   }
+  // Some admin proxies still surface a non-throwing error in a returned
+  // {error} object. Defensive check so we don't false-positive a success.
+  if (attempt.res && attempt.res.error) {
+    console.error('[stories] save returned error', attempt.res.error);
+    alert('Save error: ' + attempt.res.error.message);
+    return;
+  }
+
+  alert('✅ ' + rows.length + ' stories saved/published!');
+  window._generatedStories = [];
+  goStoriesManager();
 }
 
 // ═══════════════════════════════════════════════════════════
