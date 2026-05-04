@@ -11,11 +11,17 @@ const SOURCE_CATALOG = [
   { id:'npr-news', label:'NPR News', kind:'rss', category:'국제', url:'https://feeds.npr.org/1001/rss.xml' },
   { id:'reuters-world', label:'Reuters World', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:reuters.com+world&hl=en-US&gl=US&ceid=US:en' },
   { id:'ap-top', label:'AP Top News', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:apnews.com&hl=en-US&gl=US&ceid=US:en' },
+  { id:'guardian-world', label:'Guardian World', kind:'rss', category:'국제', url:'https://www.theguardian.com/world/rss' },
+  { id:'aljazeera', label:'Al Jazeera English', kind:'rss', category:'국제', url:'https://www.aljazeera.com/xml/rss/all.xml' },
+  { id:'cnn-top', label:'CNN Top Stories', kind:'rss', category:'국제', url:'http://rss.cnn.com/rss/edition.rss' },
 
   // ── Tech / Trends (RSS) ─────────────────────────────────────────
   { id:'techcrunch', label:'TechCrunch', kind:'rss', category:'문화', url:'https://techcrunch.com/feed/' },
   { id:'theverge', label:'The Verge', kind:'rss', category:'문화', url:'https://www.theverge.com/rss/index.xml' },
+  { id:'arstechnica', label:'Ars Technica', kind:'rss', category:'문화', url:'https://feeds.arstechnica.com/arstechnica/index' },
+  { id:'wired', label:'WIRED', kind:'rss', category:'문화', url:'https://www.wired.com/feed/rss' },
   { id:'gtrends-us', label:'Google Trends US', kind:'rss', category:'국제', url:'https://trends.google.com/trending/rss?geo=US' },
+  { id:'gtrends-kr', label:'Google Trends KR', kind:'rss', category:'문화', url:'https://trends.google.com/trending/rss?geo=KR' },
 
   // ── Lifestyle / Travel / Beauty / Food ──────────────────────────
   { id:'gn-viral', label:'Google News Viral', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=viral+trend+OR+"most+watched"&hl=en-US&gl=US&ceid=US:en' },
@@ -24,10 +30,14 @@ const SOURCE_CATALOG = [
   { id:'gn-food', label:'Food Trends', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=food+trend+OR+recipe+OR+restaurant+viral&hl=en-US&gl=US&ceid=US:en' },
   { id:'allure', label:'Allure Beauty', kind:'rss', category:'beauty', url:'https://www.allure.com/feed/rss' },
   { id:'cnet-travel', label:'CNET Travel', kind:'rss', category:'travel', url:'https://www.cnet.com/rss/news/' },
+  { id:'gn-health', label:'Health Trends', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=health+OR+wellness+OR+nutrition+trend&hl=en-US&gl=US&ceid=US:en' },
+  { id:'gn-fashion', label:'Fashion Trends', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=fashion+trend+OR+streetwear+OR+runway&hl=en-US&gl=US&ceid=US:en' },
 
   // ── Entertainment / K-content (English-language only) ──────────
   { id:'gn-kdrama', label:'K-drama News', kind:'rss', category:'K-pop', url:'https://news.google.com/rss/search?q=kdrama+OR+"korean+drama"+OR+"k-pop"&hl=en-US&gl=US&ceid=US:en' },
   { id:'gn-movies', label:'Movies & TV', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=movie+OR+film+OR+"netflix+series"+trending&hl=en-US&gl=US&ceid=US:en' },
+  { id:'soompi', label:'Soompi (K-content)', kind:'rss', category:'K-pop', url:'https://www.soompi.com/feed' },
+  { id:'gn-gaming', label:'Gaming News', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=video+game+OR+gaming+launch+OR+"new+release"+game&hl=en-US&gl=US&ceid=US:en' },
 
   // ── Hacker News (link aggregator, no hotlinked imagery) ─────────
   { id:'hn', label:'Hacker News', kind:'hn', category:'문화' },
@@ -290,10 +300,15 @@ async function fetchReddit(source) {
 //   2. preview.images[0].source.url — larger than d.thumbnail, but comes
 //      HTML-escaped with signed query params. Unescape before returning.
 //   3. d.thumbnail — fall back if it's a full URL.
-// Skips videos entirely (image means "still image hero"); skips self posts
-// (no usable image) and gallery posts (multiple images, too complex here).
+// Skips self posts (no usable image) and gallery posts (multiple images,
+// too complex here). Video posts (Reddit-hosted MP4 / GIFs that Reddit
+// converts to silent loops) used to be skipped entirely, which meant
+// every GIF-source article ended up with no hero. Now we still grab the
+// preview image as a static fallback poster — admin can flip on
+// `use_video` to play the real GIF, and otherwise readers see the
+// snapshot instead of an empty hero slot.
 function extractRedditImage(d) {
-  if (!d || d.is_video || d.is_self || d.is_gallery) return null
+  if (!d || d.is_self || d.is_gallery) return null
   if (d.url && /^https?:\/\/i\.redd\.it\//.test(d.url)) return d.url
   if (d.url && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(d.url)) return d.url
   const preview = d?.preview?.images?.[0]?.source?.url

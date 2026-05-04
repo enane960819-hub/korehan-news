@@ -377,17 +377,36 @@ async function ccLoad() {
   // Wait for auth to land — without this the affinity batch query runs
   // with auth.uid() = null and RLS hides every row, so the page
   // misleadingly shows everything locked even when the user has gifts.
+  // Bumped timeout to 8s (matches shared.js's getSession timeout); on
+  // some cold tabs / slow networks 4s wasn't enough and signed-in users
+  // got bounced to the sign-in screen.
   if (!supaUser) {
     await new Promise(function(resolve) {
       var done = false;
       function finish() { if (done) return; done = true; resolve(); }
       window.addEventListener('kh-auth-signed-in', finish);
       var poll = setInterval(function(){ if (supaUser) { clearInterval(poll); finish(); } }, 100);
-      setTimeout(function(){ clearInterval(poll); finish(); }, 4000);
+      setTimeout(function(){ clearInterval(poll); finish(); }, 8000);
     });
   }
 
-  if (!supaUser) {
+  // Last-resort fallback — if the global supaUser still didn't settle
+  // (the auth event never fired this load), ask Supabase directly. The
+  // session may already be cached locally even when the global wasn't
+  // touched. This covers admin users who reported being kicked to the
+  // sign-in screen despite being logged in.
+  var userId = supaUser ? supaUser.id : null;
+  var sb = getSupa();
+  if (!userId && sb) {
+    try {
+      var sess = await sb.auth.getSession();
+      if (sess && sess.data && sess.data.session && sess.data.session.user) {
+        userId = sess.data.session.user.id;
+      }
+    } catch(_) {}
+  }
+
+  if (!userId) {
     var grid = document.getElementById('cc-grid');
     grid.innerHTML = '<div class="cc-signin" style="grid-column:1/-1">'
       + '<h2>🔒 로그인이 필요해요</h2>'
@@ -399,12 +418,11 @@ async function ccLoad() {
 
   // Single batch query for all reporters at once.
   var affinityMap = {};
-  var sb = getSupa();
   if (sb) {
     try {
       var res = await sb.from('reporter_user_affinity')
         .select('reporter_id, affinity_points')
-        .eq('user_id', supaUser.id);
+        .eq('user_id', userId);
       if (!res.error && Array.isArray(res.data)) {
         res.data.forEach(function(r) {
           affinityMap[r.reporter_id] = Number(r.affinity_points || 0);
@@ -418,7 +436,7 @@ async function ccLoad() {
   // larger of the two (defensive against either source being stale).
   reporters.forEach(function(r) {
     try {
-      var localKey = 'kh_affinity_' + supaUser.id + '_' + r.id;
+      var localKey = 'kh_affinity_' + userId + '_' + r.id;
       var localVal = Number(localStorage.getItem(localKey) || 0);
       if (localVal > (affinityMap[r.id] || 0)) {
         affinityMap[r.id] = localVal;
