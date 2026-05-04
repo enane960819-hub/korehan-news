@@ -4497,7 +4497,7 @@ async function runAutoGenerate(){
       }
 
       try {
-        _autoGenSetItemStatus(si, '🧠 (1/5) 번역 중…');
+        _autoGenSetItemStatus(si, '🧠 (1/3) 번역 중…');
         const _trans = await _khTranslateArticleForCache(_level, _title, _body);
         if (_trans.bodyTexts && _trans.bodyTexts.length) {
           _row.translation = JSON.stringify({ texts: _trans.bodyTexts });
@@ -4512,37 +4512,16 @@ async function runAutoGenerate(){
         }
       } catch(e) { console.warn('translation failed', e.message); }
 
+      // ── Per-sentence analysis (2/3) ─────────────────────────────
+      // ONE Haiku call generates per-sentence translation + vocab +
+      // grammar. We then DERIVE the article-wide Vocab + Grammar tab
+      // payloads from this one response (dedupe vocab by ko, grammar
+      // by pattern, take top N). That replaces the two separate
+      // vocab + grammar Claude calls we used to make — saves ~$0.016
+      // per article (~20% of the AI cost) without dropping any reader
+      // surface area.
       try {
-        _autoGenSetItemStatus(si, '🧠 (2/5) 단어 중…');
-        const v = await _call(window.KH_VOCAB.promptText(_level, _body), 1600);
-        const _vCleaned = window.KH_VOCAB.validateBest(_json(v), _body || '');
-        if (_vCleaned && _vCleaned.length) { _row.vocab = JSON.stringify(_vCleaned); _ok++; }
-      } catch(e) { console.warn('vocab failed', e.message); }
-
-      try {
-        _autoGenSetItemStatus(si, '🧠 (3/5) 문법 중…');
-        const g = await _call('Find 3 grammar patterns used in this article. Return ONLY a JSON object: {"patterns":[{"name":"Korean name + romanization","level":"Starter or Beginner or Intermediate or Advanced","exp":"1-sentence English explanation","ex_ko":"sentence from article","ex_en":"English translation"}]}. No other text.', 900);
-        _row.grammar = JSON.stringify(_json(g));
-        _ok++;
-      } catch(e) { console.warn('grammar failed', e.message); }
-
-      try {
-        _autoGenSetItemStatus(si, '🧠 (4/5) 퀴즈 중…');
-        const q = await _call('Create 5 fill-in-the-blank questions from this article. Return ONLY a JSON object: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English translation with _____","blank":"correct word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.', 1200);
-        _row.quiz = JSON.stringify(_json(q));
-        _ok++;
-      } catch(e) { console.warn('quiz failed', e.message); }
-
-      // ── Per-sentence analysis (5/5) ─────────────────────────────
-      // Pre-generate translation + vocab + grammar for every sentence
-      // in the body so the reader's "tap to analyze" UX is instant
-      // instead of paying for a Claude round-trip on every first tap.
-      // Stored inside the existing `translation` cache JSON so we
-      // don't need a new schema column. Frontend reads it via
-      // _khLoadArticleSentenceCache; falls back to live Claude when
-      // missing (older articles).
-      try {
-        _autoGenSetItemStatus(si, '🧠 (5/5) 문장별 분석 중…');
+        _autoGenSetItemStatus(si, '🧠 (2/3) 문장별 분석 중…');
         const _sentList = _khSplitSentencesForCache(_body);
         if (_sentList.length) {
           const _sentEnumerated = _sentList.map(function(s, i){ return '[' + (i+1) + '] ' + s; }).join('\n');
@@ -4578,15 +4557,26 @@ async function runAutoGenerate(){
               grammar: Array.isArray(e.grammar) ? e.grammar.slice(0, 2).filter(function(g){ return g && g.pattern; }) : [],
             };
           });
-          // Merge into the translation row JSON (which currently holds
-          // {texts:[...]}) so we don't burn a separate cache column.
+          // Merge sentences into the translation row JSON (which currently
+          // holds {texts:[...]}) so we don't burn a separate cache column.
           let _transObj = {};
           try { if (_row.translation) _transObj = JSON.parse(_row.translation); } catch(_) {}
           _transObj.sentences = _sentFinal;
           _row.translation = JSON.stringify(_transObj);
           _ok++;
+          // Derive Vocab + Grammar tab payloads from the same response.
+          const _derived = _khDeriveVocabGrammarFromSentences(_sentFinal, _level);
+          if (_derived.vocab.length)            _row.vocab   = JSON.stringify(_derived.vocab);
+          if (_derived.grammar.patterns.length) _row.grammar = JSON.stringify(_derived.grammar);
         }
       } catch(e) { console.warn('sentence analysis failed', e.message); }
+
+      try {
+        _autoGenSetItemStatus(si, '🧠 (3/3) 퀴즈 중…');
+        const q = await _call('Create 5 fill-in-the-blank questions from this article. Return ONLY a JSON object: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English translation with _____","blank":"correct word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.', 1200);
+        _row.quiz = JSON.stringify(_json(q));
+        _ok++;
+      } catch(e) { console.warn('quiz failed', e.message); }
 
       // Key expressions come back as part of the main article JSON
       // (same Claude call that produced the title + body) so no extra
@@ -4660,6 +4650,52 @@ function _khSplitSentencesForCache(body) {
     });
   });
   return out;
+}
+
+// Derive the Vocab tab + Grammar tab payloads from a sentence-analysis
+// array. Per-sentence analysis already lists 0-4 vocab and 0-2 grammar
+// items per sentence — we union them, dedupe by key, and shape into the
+// formats the article reader's Vocab / Grammar tabs already expect:
+//   vocab:   [{ko, en, note}]                — top 12, deduped by ko
+//   grammar: { patterns: [{name, level, exp, ex_ko, ex_en}] } — top 4
+// Each grammar pattern keeps the source sentence as ex_ko + ex_en so the
+// Grammar tab can show the full sentence context (with ex_en taken from
+// the sentence's translation field, no extra Claude call needed).
+function _khDeriveVocabGrammarFromSentences(sentFinal, level) {
+  var vocabSeen = {};
+  var aggVocab = [];
+  var grammarSeen = {};
+  var aggGrammar = [];
+  (sentFinal || []).forEach(function(s) {
+    if (s && Array.isArray(s.vocab)) {
+      s.vocab.forEach(function(v) {
+        if (!v) return;
+        var ko = (v.ko || '').trim();
+        if (!ko || vocabSeen[ko]) return;
+        vocabSeen[ko] = true;
+        aggVocab.push({ ko: ko, en: (v.en || '').trim(), note: (v.note || '').trim() });
+      });
+    }
+    if (s && Array.isArray(s.grammar)) {
+      s.grammar.forEach(function(g) {
+        if (!g) return;
+        var name = (g.pattern || '').trim();
+        if (!name || grammarSeen[name]) return;
+        grammarSeen[name] = true;
+        aggGrammar.push({
+          name: name,
+          level: level || 'Intermediate',
+          exp: (g.exp || '').trim(),
+          ex_ko: (s.text || '').trim(),
+          ex_en: (s.translation || '').trim(),
+        });
+      });
+    }
+  });
+  return {
+    vocab: aggVocab.slice(0, 12),
+    grammar: { patterns: aggGrammar.slice(0, 4) },
+  };
 }
 
 // ══ AI CACHE 관리 ════════════════════════════════════════════
@@ -4969,15 +5005,37 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     transObj.sentences = sentFinal;
     const newTransStr = JSON.stringify(transObj);
 
+    // Derive Vocab + Grammar tab payloads from the same response so
+    // backfilling an old article also refreshes its Vocab + Grammar
+    // tabs to the cleaner per-sentence-derived versions. Skipped (DB
+    // value left untouched) when the derived array is empty so we
+    // don't accidentally wipe a perfectly good legacy cache.
+    const _bfDerived = _khDeriveVocabGrammarFromSentences(sentFinal, a.level || 'Intermediate');
+    const _bfVocabStr   = _bfDerived.vocab.length            ? JSON.stringify(_bfDerived.vocab)   : null;
+    const _bfGrammarStr = _bfDerived.grammar.patterns.length ? JSON.stringify(_bfDerived.grammar) : null;
+
     if (schema === 'kv') {
       await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
         content_type: 'article', content_id: String(articleId),
         cache_key: 'translation', cache_value: newTransStr,
       });
+      if (_bfVocabStr) {
+        await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+          content_type: 'article', content_id: String(articleId),
+          cache_key: 'vocab', cache_value: _bfVocabStr,
+        });
+      }
+      if (_bfGrammarStr) {
+        await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+          content_type: 'article', content_id: String(articleId),
+          cache_key: 'grammar', cache_value: _bfGrammarStr,
+        });
+      }
     } else {
-      await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(articleId), {
-        translation: newTransStr, updated_at: new Date().toISOString()
-      });
+      const _patch = { translation: newTransStr, updated_at: new Date().toISOString() };
+      if (_bfVocabStr)   _patch.vocab   = _bfVocabStr;
+      if (_bfGrammarStr) _patch.grammar = _bfGrammarStr;
+      await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(articleId), _patch);
     }
 
     if (stEl) stEl.textContent = '✓ 문장분석 ' + sentFinal.length + '개 생성됨';
@@ -5247,12 +5305,8 @@ async function genCache(articleId, schema, opts) {
     return shaped;
   }
 
-  if (st) st.textContent = '(1/5) 번역 중…';
-  // Title + body in one Claude call via the marker-delimited helper so
-  // long articles don't truncate at the previous max_tokens=800 cap.
-  // Logs into article_cache_generation_log under step='translation' the
-  // same way _runStep does so the admin's success/failure dashboard
-  // still reflects this step.
+  if (st) st.textContent = '(1/3) 번역 중…';
+  // Title + body in one Claude call via the marker-delimited helper.
   {
     const _t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     try {
@@ -5265,8 +5319,6 @@ async function genCache(articleId, schema, opts) {
         await _logCacheGen(articleId, 'translation', 'empty', 'no body texts', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - _t0);
       }
       // Backfill title_en on the article row when missing or Korean.
-      // The translate button reads a.title_en for the title swap and
-      // silently leaves it Korean otherwise.
       if (_trans.titleEn && _khTitleEnNeedsBackfill(a.title_en)) {
         try {
           await supaAdminPatch('articles?id=eq.' + encodeURIComponent(articleId), { title_en: _trans.titleEn });
@@ -5278,35 +5330,11 @@ async function genCache(articleId, schema, opts) {
     }
   }
 
-  if (st) st.textContent = '(2/5) 단어 중…';
-  const vOut = await _runStep('vocab',
-    window.KH_VOCAB.promptText(_level, _body),
-    1600,
-    function(v){
-      const c = window.KH_VOCAB.validateBest(v, _body || '');
-      return (c && c.length) ? JSON.stringify(c) : null;
-    });
-  if (vOut) { _row.vocab = vOut; _ok++; }
-
-  if (st) st.textContent = '(3/5) 문법 중…';
-  const gOut = await _runStep('grammar',
-    'Find 3 grammar patterns. Return ONLY: {"patterns":[{"name":"KO+romanization","level":"Starter|Beginner|Intermediate|Advanced","exp":"explanation","ex_ko":"sentence","ex_en":"translation"}]}. No other text.',
-    900,
-    function(g){ return JSON.stringify(g); });
-  if (gOut) { _row.grammar = gOut; _ok++; }
-
-  if (st) st.textContent = '(4/5) 퀴즈 중…';
-  const qOut = await _runStep('quiz',
-    'Create 15 fill-in-the-blank questions from this article, covering different sentences and vocabulary. Return ONLY: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English with _____","blank":"correct answer word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.',
-    2500,
-    function(q){ return JSON.stringify(q); });
-  if (qOut) { _row.quiz = qOut; _ok++; }
-
-  // ── Per-sentence analysis (5/5) ─────────────────────────────────
-  // Pre-generate translation + vocab + grammar per sentence so the
-  // reader's tap-to-analyze UX is instant. Stored inside the existing
-  // translation cache JSON so we don't need a new schema column.
-  if (st) st.textContent = '(5/5) 문장별 분석 중…';
+  // ── Per-sentence analysis (2/3) ─────────────────────────────────
+  // ONE Haiku call generates per-sentence translation + vocab + grammar.
+  // Vocab + Grammar tab payloads are derived from the same response —
+  // replaces what used to be two separate Claude calls (vocab + grammar).
+  if (st) st.textContent = '(2/3) 문장별 분석 중…';
   {
     const _sentT0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     try {
@@ -5347,6 +5375,10 @@ async function genCache(articleId, schema, opts) {
         _transObj.sentences = _sentFinal;
         _row.translation = JSON.stringify(_transObj);
         _ok++;
+        // Derive Vocab + Grammar tab payloads from the same response.
+        const _derived = _khDeriveVocabGrammarFromSentences(_sentFinal, _level);
+        if (_derived.vocab.length)            _row.vocab   = JSON.stringify(_derived.vocab);
+        if (_derived.grammar.patterns.length) _row.grammar = JSON.stringify(_derived.grammar);
         await _logCacheGen(articleId, 'sentence_analysis', 'ok', null, (typeof performance !== 'undefined' ? performance.now() : Date.now()) - _sentT0);
       } else {
         await _logCacheGen(articleId, 'sentence_analysis', 'empty', 'no sentences', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - _sentT0);
@@ -5355,6 +5387,13 @@ async function genCache(articleId, schema, opts) {
       await _logCacheGen(articleId, 'sentence_analysis', 'error', (e && e.message) || '', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - _sentT0);
     }
   }
+
+  if (st) st.textContent = '(3/3) 퀴즈 중…';
+  const qOut = await _runStep('quiz',
+    'Create 15 fill-in-the-blank questions from this article, covering different sentences and vocabulary. Return ONLY: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English with _____","blank":"correct answer word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.',
+    2500,
+    function(q){ return JSON.stringify(q); });
+  if (qOut) { _row.quiz = qOut; _ok++; }
 
   // Persist whatever succeeded. Routes through the admin-api Edge
   // Function via supaAdminPost/Patch so the logged-in admin's JWT does
