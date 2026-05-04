@@ -2859,7 +2859,7 @@ function goPhrases(){
         </div>
         <table class="tbl">
           <thead>
-            <tr><th>표현</th><th>설명</th><th>예문</th><th></th></tr>
+            <tr><th style="width:140px">📅 스케줄</th><th>표현</th><th>설명</th><th>예문</th><th style="width:100px"></th></tr>
           </thead>
           <tbody id="phrase-admin-tbody"></tbody>
         </table>
@@ -3130,32 +3130,128 @@ function renderPhraseAdminTable(){
   const tbody = document.getElementById('phrase-admin-tbody');
   if(!tbody) return;
   const q = (document.getElementById('phrase-search')?.value || '').toLowerCase();
-  tbody.innerHTML = phraseAdminItems.map((raw, idx) => {
+
+  // Compute the rotation schedule once — for each phrase index, work
+  // out which KST date it will be the home-screen entry for. todayIdx
+  // matches getPhraseAdminTodayIndex / the home renderer; live phrases
+  // (non-empty ko) form the "ring" the rotation walks around. Empty
+  // placeholder rows aren't part of rotation so they don't show a date.
+  const livePhrases = phraseAdminItems
+    .map((p, i) => ({ p: p, originalIdx: i }))
+    .filter(x => x.p && x.p.ko && String(x.p.ko).trim());
+  const liveLen = livePhrases.length;
+  // KST midnight ms for "today"
+  const KST_OFFSET = 9 * 3600 * 1000;
+  const kstNow = Date.now() + KST_OFFSET;
+  const kstToday = Math.floor(kstNow / 86400000);
+  const todayIdxInLive = liveLen ? (kstToday % liveLen) : -1;
+
+  // Map originalIdx → days_from_today (0 = today, 1 = tomorrow, etc.)
+  const daysFromToday = {};
+  livePhrases.forEach((x, liveIdx) => {
+    const offset = ((liveIdx - todayIdxInLive) % liveLen + liveLen) % liveLen;
+    daysFromToday[x.originalIdx] = offset;
+  });
+
+  function fmtDate(daysAhead) {
+    const d = new Date((kstToday + daysAhead) * 86400000 - KST_OFFSET);
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+
+  // Sort the rendered rows so today's entry comes first, then
+  // tomorrow, then ongoing — much easier to scan when admin wants to
+  // see "what's coming up". Empty rows go to the bottom.
+  const rendered = phraseAdminItems
+    .map((raw, idx) => ({ raw: raw, idx: idx, days: daysFromToday[idx] }))
+    .sort((a, b) => {
+      if (a.days == null && b.days == null) return a.idx - b.idx;
+      if (a.days == null) return 1;
+      if (b.days == null) return -1;
+      return a.days - b.days;
+    });
+
+  tbody.innerHTML = rendered.map(({ raw, idx, days }) => {
     const p = normalizePhraseAdmin(raw);
-    const hay = [p.ko,p.rom,p.en,p.intro,p.nuance,(p.related||[]).join(' ')].join(' ').toLowerCase();
-    if(q && !hay.includes(q)) return '';
-    return `<tr ${idx===phraseAdminCurrentIndex ? 'style="background:#f8fbff"' : ''}>
+    const hay = [p.ko, p.rom, p.en, p.intro, p.nuance, (p.related||[]).join(' ')].join(' ').toLowerCase();
+    if (q && !hay.includes(q)) return '';
+
+    let scheduleCell;
+    if (days == null) {
+      scheduleCell = '<span style="font-size:11px;color:#dc2626;font-weight:700;background:#fee2e2;padding:2px 7px;border-radius:6px">EMPTY · 로테이션 제외</span>';
+    } else if (days === 0) {
+      scheduleCell = '<span style="font-size:11px;color:#fff;font-weight:800;background:#16a34a;padding:3px 9px;border-radius:6px;letter-spacing:.04em">📅 TODAY · ' + fmtDate(0) + '</span>';
+    } else if (days === 1) {
+      scheduleCell = '<span style="font-size:11px;color:#1e40af;font-weight:700;background:#dbeafe;padding:3px 9px;border-radius:6px">내일 · ' + fmtDate(1) + '</span>';
+    } else {
+      scheduleCell = '<span style="font-size:11px;color:#475569;font-weight:600;background:#f1f5f9;padding:3px 9px;border-radius:6px">D+' + days + ' · ' + fmtDate(days) + '</span>';
+    }
+
+    const isCurrentlyEditing = idx === phraseAdminCurrentIndex;
+    return `<tr ${isCurrentlyEditing ? 'style="background:#f8fbff"' : ''} onclick="openPhraseAdminItem(${idx})" style="cursor:pointer">
+      <td>${scheduleCell}</td>
       <td>
-        <div class="art-t" style="font-size:18px">${esc(p.ko || '-')}</div>
+        <div class="art-t" style="font-size:17px">${esc(p.ko || '-')}</div>
         <div class="art-b" style="max-width:none">${esc(p.rom || '')}</div>
       </td>
       <td>
         <div style="font-weight:700;margin-bottom:4px">${esc(p.en || '')}</div>
-        <div class="art-b" style="max-width:none;-webkit-line-clamp:3">${esc((p.intro || p.nuance || '').slice(0,140))}</div>
+        <div class="art-b" style="max-width:none;-webkit-line-clamp:2">${esc((p.intro || p.nuance || '').slice(0,110))}</div>
       </td>
-      <td>${(p.examples || []).slice(0,2).map(ex => `<div style="font-size:12px;color:var(--gr);margin-bottom:4px">• ${esc(ex.ko || '')}</div>`).join('') || '<span style="color:#99aabb">예문 없음</span>'}</td>
-      <td><button class="btn btn-gh btn-xs" onclick="openPhraseAdminItem(${idx})">Edit</button></td>
+      <td>${(p.examples || []).slice(0,1).map(ex => `<div style="font-size:12px;color:var(--gr)">• ${esc(ex.ko || '')}</div>`).join('') || '<span style="color:#99aabb;font-size:11px">예문 없음</span>'}</td>
+      <td onclick="event.stopPropagation()">
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:stretch;min-width:88px">
+          <button class="btn btn-gh btn-xs" onclick="openPhraseAdminItem(${idx})">Edit</button>
+          <button class="btn btn-r btn-xs" onclick="deletePhraseAdminItemAt(${idx})" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca">🗑 삭제</button>
+        </div>
+      </td>
     </tr>`;
   }).join('');
 }
+
+// Direct delete from the table row — no need to first navigate to
+// the entry via Edit. Bypasses the "current form must have ko" gate
+// in deletePhraseAdminItem; deletes by index directly.
+function deletePhraseAdminItemAt(idx){
+  if (idx < 0 || idx >= phraseAdminItems.length) return;
+  var name = (phraseAdminItems[idx] && phraseAdminItems[idx].ko) || '(empty)';
+  if (!confirm('"' + name + '" 표현을 삭제할까요?')) return;
+  phraseAdminItems.splice(idx, 1);
+  if (!phraseAdminItems.length) phraseAdminItems = [phraseAdminDefaultItem()];
+  if (phraseAdminCurrentIndex >= phraseAdminItems.length) {
+    phraseAdminCurrentIndex = Math.max(0, phraseAdminItems.length - 1);
+  }
+  lsSet(K_PHRASES, phraseAdminItems);
+  if (typeof saveSharedPhrases === 'function') saveSharedPhrases(phraseAdminItems);
+  renderPhraseAdminForm(phraseAdminCurrentIndex);
+  renderPhraseAdminTable();
+  toast('🗑 "' + name + '" 삭제됨 (DB 동기화)');
+}
 function openPhraseAdminItem(idx){
-  savePhraseAdminItem(false);
+  // Best-effort save the current form before switching, but DON'T
+  // block the navigation when it fails (e.g. the current entry has
+  // an empty Korean field). The previous behaviour fired the
+  // "한국어 표현은 필수입니다" alert and returned, leaving the user
+  // unable to click Edit on a different row to fix things.
+  try {
+    var row = collectPhraseAdminForm();
+    if (row && row.ko) {
+      phraseAdminItems[phraseAdminCurrentIndex] = row;
+      lsSet(K_PHRASES, phraseAdminItems);
+      if (typeof saveSharedPhrases === 'function') saveSharedPhrases(phraseAdminItems);
+    }
+  } catch(_) {}
   renderPhraseAdminForm(idx);
   renderPhraseAdminTable();
 }
 function getPhraseAdminTodayIndex(){
   const items = phraseAdminItems.length ? phraseAdminItems : getPhraseAdminItems();
-  return items.length ? (Math.floor(Date.now() / 86400000) % items.length) : 0;
+  // Match the home page rotation — KST date with empty rows filtered
+  // out, mod the queue length. Without the same filter the admin
+  // "TODAY" badge could drift one row off from what the home block
+  // actually shows.
+  const liveItems = items.filter(p => p && p.ko && String(p.ko).trim());
+  if (!liveItems.length) return 0;
+  return Math.floor((Date.now() + 9*3600000) / 86400000) % liveItems.length;
 }
 function openTodayPhrasePreview(){
   location.href = 'korehan-phrase.html?i=' + getPhraseAdminTodayIndex();
