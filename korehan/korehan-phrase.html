@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Today's Phrase — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260503b">
+<link rel="stylesheet" href="korehan-shared.css?v=20260504c">
 </head>
 <body>
 <div id="kh-header"></div>
@@ -40,56 +40,272 @@
 <script src="js/features/fill-blank.js?v=20260502a"></script>
 <script src="korehan-shared.js?v=20260502a"></script>
 <script>
-function renderPhrasePage() {
+// Today's Phrase reader.
+//
+// When a phrase has incomplete metadata (admin saved ko/rom/en but
+// skipped the AI Generate step in the phrases admin), we now fill
+// intro / nuance / examples / related on the fly via Claude. The
+// generated content is cached locally (and shared back via
+// app_settings.phrases when the reader is signed in) so the next
+// visitor doesn't pay for the same call.
+//
+// Layout was bare-bones before — gradient hero with a status pill,
+// example cards with numbered chips and TTS, themed section icons,
+// staggered slide-in.
+
+var PHRASE_FILL_CACHE_KEY = 'kh_phrase_fill_v1';
+
+function escapeText(s) { return String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function _phraseLocalFill() {
+  try { return JSON.parse(localStorage.getItem(PHRASE_FILL_CACHE_KEY) || '{}'); }
+  catch(_) { return {}; }
+}
+function _phraseStashLocal(key, data) {
+  try {
+    var all = _phraseLocalFill();
+    all[key] = data;
+    localStorage.setItem(PHRASE_FILL_CACHE_KEY, JSON.stringify(all));
+  } catch(_) {}
+}
+
+function isPhraseIncomplete(p) {
+  if (!p) return true;
+  var thinIntro   = !p.intro   || p.intro.length   < 24;
+  var thinNuance  = !p.nuance  || p.nuance.length  < 24;
+  var weakExamples = !Array.isArray(p.examples) || !p.examples.length
+    || p.examples.every(function(e){ return !e || !e.ko || e.ko.length < 8; });
+  return thinIntro || thinNuance || weakExamples;
+}
+
+async function _fillPhraseViaClaude(phrase) {
+  if (typeof callClaude !== 'function') return null;
+  var prompt =
+      'You are creating learner-facing content for ONE specific Korean phrase / proverb / idiom.\n\n'
+    + 'Phrase: ' + phrase.ko + '\n'
+    + 'Romanization: ' + (phrase.rom || '(generate)') + '\n'
+    + 'Existing English gloss: ' + (phrase.en || '(generate a natural one)') + '\n\n'
+    + 'Return ONLY a JSON object — no preamble, no code fences:\n'
+    + '{\n'
+    + '  "intro": "2-3 sentence English explanation of what this SPECIFIC phrase means and where it comes from. Must be SPECIFIC to this phrase — not a generic statement like \\"This is a useful Korean phrase\\". If it\'s a proverb (속담), explain the literal image AND the figurative meaning.",\n'
+    + '  "nuance": "2-3 sentence English usage note explaining when a Korean speaker would actually say this — register (formal/casual), conversation contexts, situations it fits or doesn\'t fit. Specific to this phrase.",\n'
+    + '  "examples": [\n'
+    + '    {"ko":"natural Korean sentence USING the phrase, max 25 chars","en":"English translation"},\n'
+    + '    {"ko":"different context using the phrase","en":"…"},\n'
+    + '    {"ko":"third varied example","en":"…"}\n'
+    + '  ],\n'
+    + '  "related": ["관련 표현 1","관련 표현 2","관련 표현 3"]\n'
+    + '}\n\n'
+    + 'Rules:\n'
+    + '- intro and nuance MUST be specific to "' + phrase.ko + '" — do NOT echo back generic learner-platform copy.\n'
+    + '- examples MUST contain the exact phrase (or a natural conjugated form). Do NOT just append the phrase to a generic sentence with bad particles like "을/는" attached to a verb-form proverb. Write fully grammatical Korean.\n'
+    + '- related: 3 thematically related expressions or proverbs in Korean. No commentary.';
+  var res = await callClaude({
+    feature: 'phrase-content-fill',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 700,
+    messages: [{ role: 'user', content: prompt }]
+  });
+  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+  var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+  var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+  if (oi < 0 || ei <= oi) throw new Error('no JSON');
+  var data = JSON.parse(clean.slice(oi, ei + 1));
+  return {
+    intro: typeof data.intro === 'string' ? data.intro : '',
+    nuance: typeof data.nuance === 'string' ? data.nuance : '',
+    examples: Array.isArray(data.examples) ? data.examples
+      .map(function(e){ return { ko: (e && e.ko || '').trim(), en: (e && e.en || '').trim() }; })
+      .filter(function(e){ return e.ko; }).slice(0, 3) : [],
+    related: Array.isArray(data.related) ? data.related
+      .map(function(s){ return String(s || '').trim(); }).filter(Boolean).slice(0, 6) : [],
+  };
+}
+
+async function _ensurePhraseFilled(phrase) {
+  if (!isPhraseIncomplete(phrase)) return phrase;
+  var cacheKey = (phrase.ko || '').trim();
+  if (!cacheKey) return phrase;
+  // Local cache first — survives page reloads without a Claude round-trip.
+  var localAll = _phraseLocalFill();
+  if (localAll[cacheKey]) {
+    return _mergePhraseFill(phrase, localAll[cacheKey]);
+  }
+  // Live generation.
+  try {
+    var fill = await _fillPhraseViaClaude(phrase);
+    if (!fill) return phrase;
+    _phraseStashLocal(cacheKey, fill);
+    // Best-effort: write back to app_settings.phrases so other readers
+    // get the filled version too. Only signed-in users have the policy
+    // to write app_settings; ignore failures silently.
+    try {
+      if (typeof supaUser !== 'undefined' && supaUser && typeof saveSharedPhrases === 'function'
+          && typeof getPhraseSourceRows === 'function') {
+        var rows = getPhraseSourceRows().slice();
+        var idx = rows.findIndex(function(r){ return (r && (r.ko || '').trim()) === cacheKey; });
+        if (idx >= 0) {
+          rows[idx] = Object.assign({}, rows[idx], fill);
+          await saveSharedPhrases(rows);
+        }
+      }
+    } catch(_) {}
+    return _mergePhraseFill(phrase, fill);
+  } catch(e) {
+    console.warn('[phrase] AI fill failed', e);
+    return phrase;
+  }
+}
+
+function _mergePhraseFill(phrase, fill) {
+  if (!fill) return phrase;
+  var merged = Object.assign({}, phrase);
+  if (fill.intro && (!phrase.intro || phrase.intro.length < 24)) merged.intro = fill.intro;
+  if (fill.nuance && (!phrase.nuance || phrase.nuance.length < 24)) merged.nuance = fill.nuance;
+  if (Array.isArray(fill.examples) && fill.examples.length
+      && (!phrase.examples || !phrase.examples.length)) {
+    merged.examples = fill.examples;
+  }
+  if (Array.isArray(fill.related) && fill.related.length
+      && (!phrase.related || !phrase.related.length)) {
+    merged.related = fill.related;
+  }
+  return merged;
+}
+
+function renderPhraseLayout(phrase, opts) {
+  opts = opts || {};
   var root = document.getElementById('phrase-root');
   if (!root) return;
-  var phrases = getPhrases();
+  var examples = (phrase.examples || []).filter(function(e){ return e && e.ko; });
+  var related = (phrase.related || []).map(function(x){
+    var safe = escapeText(x);
+    return '<a class="phrase-chip" href="korehan-phrase.html?q=' + encodeURIComponent(x) + '">'
+      + '<span>' + safe + '</span></a>';
+  }).join('');
+
+  var statusPill = '';
+  if (opts.generating) {
+    statusPill = '<span class="phrase-loading">AI 분석 채우는 중…</span>';
+  }
+
+  var introHTML = phrase.intro
+    ? '<p>' + escapeText(phrase.intro) + '</p>'
+    : (opts.generating
+        ? '<p style="color:#94a3b8">의미 분석을 생성하고 있어요…</p>'
+        : '<p style="color:#94a3b8">No description yet.</p>');
+
+  var nuanceHTML = phrase.nuance
+    ? '<p>' + escapeText(phrase.nuance) + '</p>'
+    : (opts.generating
+        ? '<p style="color:#94a3b8">사용 맥락을 생성하고 있어요…</p>'
+        : '<p style="color:#94a3b8">No usage notes yet.</p>');
+
+  var examplesHTML;
+  if (examples.length) {
+    examplesHTML = examples.map(function(ex, i) {
+      return '<div class="phrase-example">'
+        + '<div class="phrase-example-num">' + (i + 1) + '</div>'
+        + '<div class="phrase-example-ko">' + escapeText(ex.ko) + '</div>'
+        + (ex.en ? '<div class="phrase-example-en">' + escapeText(ex.en) + '</div>' : '')
+        + '</div>';
+    }).join('');
+  } else {
+    examplesHTML = opts.generating
+      ? '<p style="color:#94a3b8;margin:0">예문을 생성하고 있어요…</p>'
+      : '<p style="color:#94a3b8;margin:0">No examples yet.</p>';
+  }
+
+  root.innerHTML = ''
+    + '<section class="phrase-hero-card">'
+    +   '<div class="phrase-eyebrow">'
+    +     '<span style="font-size:13px">📖</span>'
+    +     '<span>Today\'s phrase</span>'
+    +     (statusPill ? '<span style="margin-left:8px">' + statusPill + '</span>' : '')
+    +   '</div>'
+    +   '<div class="phrase-ko">' + escapeText(phrase.ko) + '</div>'
+    +   (phrase.rom ? '<div class="phrase-rom">' + escapeText(phrase.rom) + '</div>' : '')
+    +   (phrase.en  ? '<div class="phrase-en">' + escapeText(phrase.en) + '</div>'  : '')
+    +   (related ? '<div class="phrase-chip-row">' + related + '</div>' : '')
+    +   '<div class="phrase-actions">'
+    +     '<a class="phrase-action primary" href="korehan-study-room.html">✨ Start studying</a>'
+    +     ((typeof window._isAdmin !== 'undefined' && window._isAdmin && opts.idx != null)
+        ? '<a class="phrase-action" href="korehan-x9f4k2m7-phrases.html?edit=' + opts.idx + '">Edit</a>'
+        : '')
+    +   '</div>'
+    + '</section>'
+    + '<div class="phrase-grid">'
+    +   '<section class="phrase-card">'
+    +     '<h3><span class="pc-h-icon">💡</span><span>What it means</span></h3>'
+    +     introHTML
+    +   '</section>'
+    +   '<section class="phrase-card">'
+    +     '<h3><span class="pc-h-icon">🗣️</span><span>How it is used</span></h3>'
+    +     nuanceHTML
+    +   '</section>'
+    + '</div>'
+    + '<section class="phrase-card" style="margin-top:18px">'
+    +   '<h3><span class="pc-h-icon">📝</span><span>Example sentences</span></h3>'
+    +   examplesHTML
+    + '</section>'
+    + '<section class="phrase-card" style="margin-top:18px">'
+    +   '<h3><span class="pc-h-icon">🎯</span><span>Study tip</span></h3>'
+    +   '<div class="phrase-side-note">'
+    +     '오늘 문장 하나를 만들어 입 밖으로 두세 번 소리 내어 읽어보세요. '
+    +     '<b>' + escapeText(phrase.ko) + '</b>처럼 굳어진 표현은 의미만 외우는 것보다 '
+    +     '실제 상황에 갖다 써봐야 진짜 자기 것이 됩니다.'
+    +   '</div>'
+    + '</section>';
+
+  document.title = phrase.ko + ' — KoreHani Phrase';
+
+  // Operational analytics — only fires for logged-in users with consent.
+  if (typeof khTrackUser === 'function') {
+    try { khTrackUser('phrase_view', { ko: phrase.ko, idx: opts.idx }); } catch(_) {}
+  }
+}
+
+async function renderPhrasePage() {
+  var root = document.getElementById('phrase-root');
+  if (!root) return;
+  var phrases = (typeof getPhrases === 'function') ? getPhrases() : [];
   if (!phrases.length) {
     root.innerHTML = '<div class="phrase-empty">No phrase found.</div>';
     return;
   }
+
   var params = new URLSearchParams(location.search);
-  var idx = params.has('i') ? Number(params.get('i')) : getTodaysPhraseIndex();
-  if (!Number.isFinite(idx) || idx < 0 || idx >= phrases.length) idx = getTodaysPhraseIndex();
+  var idx;
+  if (params.has('q')) {
+    var q = params.get('q');
+    idx = phrases.findIndex(function(p){ return (p.ko || '') === q; });
+    if (idx < 0) idx = (typeof getTodaysPhraseIndex === 'function') ? getTodaysPhraseIndex() : 0;
+  } else if (params.has('i')) {
+    idx = Number(params.get('i'));
+  } else {
+    idx = (typeof getTodaysPhraseIndex === 'function') ? getTodaysPhraseIndex() : 0;
+  }
+  if (!Number.isFinite(idx) || idx < 0 || idx >= phrases.length) {
+    idx = (typeof getTodaysPhraseIndex === 'function') ? getTodaysPhraseIndex() : 0;
+  }
   var phrase = phrases[idx] || phrases[0];
-  var examples = (phrase.examples || []).length ? phrase.examples : [{ko: phrase.ko + '을 자주 기사에서 볼 수 있어요.', en: 'You can often see this phrase in articles.'}];
-  var related = (phrase.related || []).map(function(x){ return '<span class="phrase-chip">' + x + '</span>'; }).join('');
-  root.innerHTML = ''
-    + '<section class="phrase-hero-card">'
-    + '<div class="phrase-eyebrow">Today\'s phrase</div>'
-    + '<div class="phrase-ko">' + phrase.ko + '</div>'
-    + '<div class="phrase-rom">' + phrase.rom + '</div>'
-    + '<div class="phrase-en">' + phrase.en + '</div>'
-    + (related ? '<div class="phrase-chip-row">' + related + '</div>' : '')
-    + '<div class="phrase-actions">'
-    + '<a class="phrase-action primary" href="korehan-study-room.html">Start studying</a>'
-    + (window._isAdmin ? '<a class="phrase-action" href="korehan-x9f4k2m7-phrases.html?edit=' + idx + '">Edit phrase</a>' : '')
-    + '</div>'
-    + '</section>'
-    + '<div class="phrase-grid">'
-    + '<section class="phrase-card">'
-    + '<h3>What it means</h3>'
-    + '<p>' + (phrase.intro || 'This is a useful Korean phrase for learners who want to understand real Korean content more naturally.') + '</p>'
-    + '</section>'
-    + '<section class="phrase-card">'
-    + '<h3>How it is used</h3>'
-    + '<p>' + (phrase.nuance || 'Use this phrase when you want to sound natural in news-related or real-life Korean contexts.') + '</p>'
-    + '</section>'
-    + '</div>'
-    + '<section class="phrase-card" style="margin-top:18px">'
-    + '<h3>Example sentences</h3>'
-    + examples.map(function(ex){
-        return '<div class="phrase-example">'
-          + '<div class="phrase-example-ko">' + ex.ko + '</div>'
-          + '<div class="phrase-example-en">' + ex.en + '</div>'
-          + '</div>';
-      }).join('')
-    + '</section>'
-    + '<section class="phrase-card" style="margin-top:18px">'
-    + '<h3>Study tip</h3>'
-    + '<div class="phrase-side-note">Try to use <b>' + phrase.ko + '</b> once in a sentence of your own, then say it out loud two or three times. That makes the phrase stick much faster than just memorizing the translation.</div>'
-    + '</section>';
-  document.title = phrase.ko + ' — KoreHani Phrase';
+
+  // First paint with whatever data we have — even if intro/nuance are
+  // missing, the hero shows immediately. AI fill runs in the
+  // background and re-renders when it lands.
+  var needsFill = isPhraseIncomplete(phrase);
+  renderPhraseLayout(phrase, { idx: idx, generating: needsFill });
+
+  if (needsFill) {
+    try {
+      var filled = await _ensurePhraseFilled(phrase);
+      renderPhraseLayout(filled, { idx: idx, generating: false });
+    } catch(e) {
+      console.warn('[phrase] fill failed', e);
+    }
+  }
 }
 
 document.addEventListener('DOMContentLoaded', renderPhrasePage);
