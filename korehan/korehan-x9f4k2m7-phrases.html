@@ -58,16 +58,56 @@ label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6
       </div>
     </div>
     <div class="card">
-      <div class="cardhd"><h2 style="margin:0">Phrase list</h2></div>
-      <div class="cardbd">
-        <div class="toolbar">
-          <input id="phrase-search" placeholder="Search phrase" oninput="renderPhraseTable()">
+      <div class="cardhd" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <h2 style="margin:0">Phrase queue · <span id="phrase-count-badge" style="font-size:13px;color:#64748b;font-weight:600">…</span></h2>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-soft" onclick="openBulkPhraseModal()" style="background:#fef3c7;color:#a16207;border:1px solid #fde047">📚 Bulk AI Pre-gen</button>
           <button class="btn-soft" onclick="openToday()">Open today</button>
         </div>
+      </div>
+      <div class="cardbd">
+        <div style="font-size:12px;color:#64748b;margin-bottom:10px;line-height:1.5">
+          <b>How rotation works:</b> Phrases are shown to users one per day, cycling through this queue in order. Today's index is computed from the current KST date — at midnight the page automatically swaps to the next phrase. Pre-generate 20-30 to keep a month of unique daily phrases.
+        </div>
+        <div class="toolbar">
+          <input id="phrase-search" placeholder="Search phrase" oninput="renderPhraseTable()">
+        </div>
         <div class="tablewrap"><table>
-          <thead><tr><th>Korean</th><th>English</th><th>Examples</th><th></th></tr></thead>
+          <thead><tr><th style="width:40px">#</th><th>Korean</th><th>English</th><th>Examples</th><th></th></tr></thead>
           <tbody id="phrase-tbody"></tbody>
         </table></div>
+      </div>
+    </div>
+
+    <!-- Bulk AI Pre-gen modal -->
+    <div id="bulk-phrase-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+        <h2 style="font-size:18px;margin:0 0 6px">📚 Bulk AI Pre-generate</h2>
+        <div style="font-size:12px;color:#64748b;margin-bottom:14px;line-height:1.5">
+          AI generates N new phrases avoiding duplicates with what's already in the queue. Each phrase comes with full metadata (intro_ko / intro / nuance / level / 2-3 examples / related). Saved straight to <code>app_settings.phrases</code>.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px">개수</label>
+            <select id="bulk-phrase-count" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px">
+              <option value="5">5개</option>
+              <option value="10">10개</option>
+              <option value="20" selected>20개</option>
+              <option value="30">30개</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#475569;display:block;margin-bottom:4px">테마 hint (optional)</label>
+            <input id="bulk-phrase-theme" placeholder="e.g. 동물 속담, 음식 표현, 일상" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px">
+          </div>
+        </div>
+        <div id="bulk-phrase-status" style="font-size:13px;color:#64748b;margin:10px 0;min-height:18px"></div>
+        <div id="bulk-phrase-preview" style="max-height:280px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:10px;padding:10px;display:none;background:#f8fafc"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
+          <button onclick="closeBulkPhraseModal()" style="padding:9px 18px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-weight:600">취소</button>
+          <button id="bulk-phrase-gen" onclick="bulkGenPhrases()" class="btn-primary">🤖 Generate</button>
+          <button id="bulk-phrase-save" onclick="bulkSavePhrases()" style="display:none;padding:9px 18px;border-radius:8px;border:none;background:#16a34a;color:#fff;cursor:pointer;font-weight:700">✓ Save All to Queue</button>
+        </div>
       </div>
     </div>
   </div>
@@ -166,9 +206,19 @@ function deletePhrase() {
 function renderPhraseTable() {
   var q = (document.getElementById('phrase-search').value || '').toLowerCase();
   var tbody = document.getElementById('phrase-tbody');
+  var todayIdx = (typeof getTodaysPhraseIndex === 'function') ? getTodaysPhraseIndex() : -1;
+  // Update count + today badges in the header.
+  var countEl = document.getElementById('phrase-count-badge');
+  if (countEl) {
+    var dayWord = phrases.length === 1 ? '일' : '일';
+    countEl.textContent = phrases.length + '개 (' + phrases.length + dayWord + '치 로테이션) · 오늘 #' + (todayIdx + 1);
+  }
   tbody.innerHTML = phrases.map(function(p, idx){
     if (q && [p.ko,p.en,p.rom].join(' ').toLowerCase().indexOf(q) === -1) return '';
-    return '<tr>'
+    var isToday = idx === todayIdx;
+    var todayMark = isToday ? '<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#16a34a;color:#fff;font-size:9px;font-weight:800;letter-spacing:.06em">TODAY</span>' : '';
+    return '<tr' + (isToday ? ' style="background:#f0fdf4"' : '') + '>'
+      + '<td style="font-size:11px;color:#94a3b8;font-weight:700">#' + (idx + 1) + todayMark + '</td>'
       + '<td><div class="phrase-ko">' + (p.ko || '-') + '</div><div class="mini">' + (p.rom || '') + '</div></td>'
       + '<td>' + (p.en || '') + '<div class="mini" style="margin-top:6px">' + (p.intro || '').slice(0,110) + '</div></td>'
       + '<td>' + (p.examples || []).slice(0,2).map(function(ex){ return '<div class="mini" style="margin-bottom:4px">• ' + ex.ko + '</div>'; }).join('') + '</td>'
@@ -206,6 +256,163 @@ async function runAIGenerate() {
     btn.disabled = false;
   }
 }
+// ── Bulk AI Pre-gen ──────────────────────────────────────────────
+// Generates N phrases in one Sonnet call, dedupes against the existing
+// queue, parses + normalises each, then on Save All writes the whole
+// merged list back through saveSharedPhrases() (which persists to
+// app_settings.phrases for cross-device rotation).
+var _bulkPhraseStaging = [];
+
+function openBulkPhraseModal() {
+  document.getElementById('bulk-phrase-modal').style.display = 'flex';
+  document.getElementById('bulk-phrase-status').textContent = '';
+  document.getElementById('bulk-phrase-preview').style.display = 'none';
+  document.getElementById('bulk-phrase-preview').innerHTML = '';
+  document.getElementById('bulk-phrase-save').style.display = 'none';
+  document.getElementById('bulk-phrase-gen').disabled = false;
+  _bulkPhraseStaging = [];
+}
+window.openBulkPhraseModal = openBulkPhraseModal;
+window.closeBulkPhraseModal = function() {
+  document.getElementById('bulk-phrase-modal').style.display = 'none';
+};
+
+async function bulkGenPhrases() {
+  var count = parseInt(document.getElementById('bulk-phrase-count').value) || 20;
+  var theme = document.getElementById('bulk-phrase-theme').value.trim();
+  var statusEl = document.getElementById('bulk-phrase-status');
+  var previewEl = document.getElementById('bulk-phrase-preview');
+  var genBtn = document.getElementById('bulk-phrase-gen');
+  var saveBtn = document.getElementById('bulk-phrase-save');
+
+  // Existing phrases for dedup.
+  var existingKo = phrases.map(function(p){ return (p && p.ko || '').trim(); }).filter(Boolean);
+  var existingList = existingKo.length
+    ? '\n\nALREADY IN QUEUE — do NOT repeat any of these:\n' + existingKo.map(function(k){ return '- ' + k; }).join('\n')
+    : '';
+
+  genBtn.disabled = true;
+  genBtn.textContent = '⏳ 생성 중…';
+  statusEl.textContent = '약 ' + Math.ceil(count * 1.2) + '초 소요…';
+
+  var prompt =
+      'You are curating a queue of Korean proverbs / idioms / common expressions for a Korean-learning app. '
+    + 'Each entry rotates onto the home screen for one day, so they need to be distinct, classic, and worth memorising.\n\n'
+    + 'Generate ' + count + ' phrases. ' + (theme ? 'Theme hint: ' + theme + '. ' : '')
+    + 'Mix difficulty levels (Seed / Sprout / Tree / Forest). Prefer classic 속담 (proverbs) and 사자성어 (4-character idioms) plus a few high-frequency colloquial expressions. NO duplicates within the list.'
+    + existingList + '\n\n'
+    + 'Return ONLY a JSON array, no preamble, no code fences:\n'
+    + '[\n'
+    + '  {\n'
+    + '    "ko": "phrase in Korean",\n'
+    + '    "rom": "romanization (revised romanization style, hyphenated by syllable)",\n'
+    + '    "en": "natural English equivalent or short literal gloss",\n'
+    + '    "intro_ko": "1-2 sentence Korean explanation (~해요 tone) — what it means + the imagery / origin if it\'s a proverb",\n'
+    + '    "intro": "1-2 sentence English explanation matching intro_ko",\n'
+    + '    "nuance": "1-2 sentence English usage note explaining when/where Koreans actually say this",\n'
+    + '    "level": "Seed | Sprout | Tree | Forest",\n'
+    + '    "examples": [\n'
+    + '      {"ko":"natural Korean sentence using the phrase, max 25 chars","en":"…"},\n'
+    + '      {"ko":"different context using the phrase","en":"…"}\n'
+    + '    ],\n'
+    + '    "related": ["관련 표현 1","관련 표현 2","관련 표현 3"]\n'
+    + '  }\n'
+    + ']\n\n'
+    + 'Rules:\n'
+    + '- intro_ko / intro / nuance MUST be specific to each phrase. Do NOT echo generic platform copy.\n'
+    + '- examples MUST contain the phrase (or a natural conjugated form) and be fully grammatical Korean.\n'
+    + '- level: Seed for 5-letter words / TOPIK 1, Sprout for TOPIK 2, Tree for TOPIK 3-4, Forest for TOPIK 5-6 / classical proverbs.\n'
+    + '- related: 3 related Korean expressions per entry.\n'
+    + '- Do NOT include any phrase from the ALREADY IN QUEUE list above.';
+
+  try {
+    var res = await callClaude({
+      feature: 'phrase-bulk-pregen',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+    var clean = raw.replace(/^```json\n?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var ai = clean.indexOf('['), bi = clean.lastIndexOf(']');
+    if (ai < 0 || bi <= ai) throw new Error('JSON array not found');
+    var parsed = JSON.parse(clean.slice(ai, bi + 1));
+    if (!Array.isArray(parsed)) throw new Error('expected array');
+
+    // Final dedupe + normalize.
+    var existingSet = {};
+    existingKo.forEach(function(k){ existingSet[k] = true; });
+    var staged = [];
+    parsed.forEach(function(p) {
+      if (!p || !p.ko) return;
+      var ko = String(p.ko).trim();
+      if (!ko || existingSet[ko]) return;
+      existingSet[ko] = true;
+      staged.push(normalizePhrase(p));
+    });
+    _bulkPhraseStaging = staged;
+
+    if (!staged.length) {
+      statusEl.textContent = '⚠️ AI returned 0 unique phrases (all duplicates or invalid).';
+      genBtn.disabled = false;
+      genBtn.textContent = '🤖 Generate';
+      return;
+    }
+    statusEl.textContent = '✓ ' + staged.length + '개 생성 (요청 ' + count + ' 중 ' + (parsed.length - staged.length) + '개 중복 제거)';
+    previewEl.style.display = 'block';
+    previewEl.innerHTML = staged.map(function(p, i) {
+      return '<div style="padding:10px 12px;border-bottom:1px solid #e2e8f0">'
+        + '<div style="display:flex;align-items:baseline;gap:8px">'
+        +   '<span style="font-size:11px;color:#94a3b8;font-weight:700">#' + (i + 1) + '</span>'
+        +   '<b style="font-size:14px;color:#0f172a">' + p.ko + '</b>'
+        +   '<span style="font-size:11px;color:#64748b">' + p.rom + '</span>'
+        +   '<span style="margin-left:auto;padding:2px 7px;border-radius:6px;background:#e0e7ff;color:#4338ca;font-size:10px;font-weight:700">' + (p.level || '') + '</span>'
+        + '</div>'
+        + '<div style="font-size:12px;color:#475569;margin-top:3px">' + (p.en || '') + '</div>'
+        + (p.intro_ko ? '<div style="font-size:11px;color:#64748b;margin-top:3px">' + p.intro_ko + '</div>' : '')
+        + '</div>';
+    }).join('');
+    genBtn.style.display = 'none';
+    saveBtn.style.display = 'inline-block';
+  } catch(e) {
+    console.error('bulk gen failed', e);
+    statusEl.innerHTML = '<span style="color:#dc2626">❌ ' + (e.message || 'unknown') + '</span>';
+    genBtn.disabled = false;
+    genBtn.textContent = '🤖 Generate';
+  }
+}
+window.bulkGenPhrases = bulkGenPhrases;
+
+async function bulkSavePhrases() {
+  if (!_bulkPhraseStaging.length) return;
+  var saveBtn = document.getElementById('bulk-phrase-save');
+  var statusEl = document.getElementById('bulk-phrase-status');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '⏳ 저장 중…';
+  // Append staged phrases to the end of the queue so the rotation
+  // doesn't shift the current "today" position.
+  var addedCount = _bulkPhraseStaging.length;
+  var merged = phrases.slice().concat(_bulkPhraseStaging);
+  try {
+    if (typeof saveSharedPhrases === 'function') {
+      await saveSharedPhrases(merged);
+    } else {
+      lsSet(K_PHRASES, merged);
+    }
+    phrases = merged;
+    _bulkPhraseStaging = [];
+    closeBulkPhraseModal();
+    fillForm(currentIndex);
+    renderPhraseTable();
+    toast('✅ ' + addedCount + ' phrases saved to queue (총 ' + merged.length + '개)');
+  } catch(e) {
+    statusEl.innerHTML = '<span style="color:#dc2626">❌ Save failed: ' + (e.message || '') + '</span>';
+    saveBtn.disabled = false;
+    saveBtn.textContent = '✓ Save All to Queue';
+  }
+}
+window.bulkSavePhrases = bulkSavePhrases;
+
 document.addEventListener('DOMContentLoaded', loadPhraseAdmin);
 </script>
 </body>

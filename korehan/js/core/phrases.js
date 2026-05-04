@@ -70,12 +70,19 @@ function normalizePhrase(row) {
   row = row || {};
   var examples = Array.isArray(row.examples) ? row.examples : [];
   if (!examples.length && row.example_ko) examples = [{ ko: row.example_ko || '', en: row.example_en || '' }];
+  // intro_ko + level are surfaced by the redesigned phrase reader;
+  // older saved rows without them just render the English intro and
+  // default to Sprout, so empty strings are safe defaults.
+  var lvl = (row.level || '').toString();
+  if (['Seed','Sprout','Tree','Forest'].indexOf(lvl) < 0) lvl = '';
   return {
     ko: row.ko || '',
     rom: row.rom || '',
     en: row.en || '',
+    intro_ko: row.intro_ko || '',
     intro: row.intro || row.desc || row.description || '',
     nuance: row.nuance || row.note || '',
+    level: lvl,
     examples: examples.slice(0, 6).map(function(ex){ return { ko: ex.ko || '', en: ex.en || '' }; }).filter(function(ex){ return ex.ko; }),
     related: Array.isArray(row.related) ? row.related.filter(Boolean).slice(0, 8) : []
   };
