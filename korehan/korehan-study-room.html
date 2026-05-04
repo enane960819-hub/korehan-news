@@ -2673,6 +2673,9 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .pm-pip { flex:0 0 auto; width:24px; height:4px; border-radius:2px; transition:background .25s; }
 .pm-step-label { font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:rgba(167,139,250,.85); margin-bottom:10px; }
 .pm-prompt-hint { font-size:12px; color:rgba(255,255,255,.5); margin-bottom:14px; }
+.pm-vocab-context { padding:14px 16px; margin-bottom:14px; border-radius:14px; background:linear-gradient(135deg,rgba(167,139,250,.10),rgba(125,211,252,.06)); border:1px solid rgba(167,139,250,.20); }
+.pm-vocab-context-label { font-size:9.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:rgba(167,139,250,.85); margin-bottom:6px; }
+.pm-vocab-context-ko { font-family:'Noto Serif KR',serif; font-size:18px; font-weight:800; color:#f5f3ff; line-height:1.55; word-break:keep-all; }
 .pm-example-ko { font-family:'Noto Serif KR',serif; font-size:26px; font-weight:900; color:#fff; line-height:1.45; margin-bottom:8px; }
 .pm-example-en { font-size:13px; color:rgba(255,255,255,.6); margin-bottom:18px; font-style:italic; }
 .pm-parts {
@@ -7407,16 +7410,26 @@ function _pmRenderVocab(body, lesson, pipsHtml) {
           : '<span style="font-size:11px;color:rgba(255,255,255,.45);font-weight:600;letter-spacing:.04em">TAP TO REVEAL MEANING</span>')
       + '</button>';
   }).join('');
+  // Show the full example sentence as context above the vocab cards.
+  // Without this the cards looked like a sentence fragment ("운동을 /
+  // 하면 / 스트레스가") because the cap at 3 + the picker filter drops
+  // the predicate verb. The whole sentence stays Korean-only at this
+  // stage — the English translation is the reward in the LEARN step.
+  var fullKo = ex.ko ? '<div class="pm-vocab-context">'
+    +   '<div class="pm-vocab-context-label">TODAY\'S SENTENCE</div>'
+    +   '<div class="pm-vocab-context-ko">' + _esc(ex.ko) + '</div>'
+    + '</div>' : '';
   body.innerHTML =
       '<div class="pm-pips">' + pipsHtml + '</div>'
     + '<div class="pm-step-label">VOCAB · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
-    + '<div class="pm-prompt-hint">Meet today\'s building blocks. Tap each card to reveal what it means.</div>'
+    + fullKo
+    + '<div class="pm-prompt-hint">Tap each chunk to reveal what it means.</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">' + cardsHtml + '</div>'
     + '<div class="pm-actions">'
     +   '<button class="pm-btn pm-btn-primary" '
     +     (allRevealed ? '' : 'disabled style="opacity:.4;cursor:not-allowed"')
     +     ' onclick="_pmAdvanceFromVocab()">'
-    +     (allRevealed ? 'See the full sentence →' : 'Reveal all cards first')
+    +     (allRevealed ? 'See the full breakdown →' : 'Reveal all cards first')
     +   '</button>'
     + '</div>';
 }
