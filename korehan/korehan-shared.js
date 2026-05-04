@@ -2804,20 +2804,60 @@ window._khSentAnalyzeCache = window._khSentAnalyzeCache || {};
 // articles created before sentence pre-gen rolled out, in which case
 // analyzeSentence falls back to a live Claude call.
 window._khArtSentSharedCache = window._khArtSentSharedCache || {};
+// Load the per-sentence analysis array out of article_cache.translation.
+// Reads Supabase directly instead of going through getFromCache because
+// the latter's wide-schema branch only handles a fixed set of cache_keys
+// and silently returns null for 'translation' — which would mean every
+// sentence tap on a wide-schema deployment falls through to a live
+// Claude call (defeating the whole pre-gen). Tries the wide-table
+// shape first, falls back to the kv shape.
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
   if (window._khArtSentSharedCache[articleId] !== undefined) {
     return window._khArtSentSharedCache[articleId];
   }
-  if (typeof getFromCache !== 'function') {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) {
     window._khArtSentSharedCache[articleId] = null;
     return null;
   }
+  function _parseSentences(raw) {
+    if (raw == null) return null;
+    var obj;
+    if (typeof raw === 'object') obj = raw;
+    else if (typeof raw === 'string') {
+      try { obj = JSON.parse(raw); } catch(_) { return null; }
+    } else return null;
+    return (obj && Array.isArray(obj.sentences) && obj.sentences.length) ? obj.sentences : null;
+  }
+  // Wide-table: one row per article with a `translation` jsonb/text column.
   try {
-    var data = await getFromCache('article', articleId, 'translation');
-    if (data && Array.isArray(data.sentences) && data.sentences.length) {
-      window._khArtSentSharedCache[articleId] = { sentences: data.sentences };
-      return window._khArtSentSharedCache[articleId];
+    var w = await sb.from('article_cache')
+      .select('translation')
+      .eq('article_id', String(articleId))
+      .maybeSingle();
+    if (!w.error && w.data) {
+      var sentsW = _parseSentences(w.data.translation);
+      if (sentsW) {
+        window._khArtSentSharedCache[articleId] = { sentences: sentsW };
+        return window._khArtSentSharedCache[articleId];
+      }
+    }
+  } catch(_) {}
+  // Key-value: row keyed by (content_type, content_id, cache_key='translation').
+  try {
+    var kv = await sb.from('article_cache')
+      .select('cache_value')
+      .eq('content_type', 'article')
+      .eq('content_id', String(articleId))
+      .eq('cache_key', 'translation')
+      .maybeSingle();
+    if (!kv.error && kv.data) {
+      var sentsKV = _parseSentences(kv.data.cache_value);
+      if (sentsKV) {
+        window._khArtSentSharedCache[articleId] = { sentences: sentsKV };
+        return window._khArtSentSharedCache[articleId];
+      }
     }
   } catch(_) {}
   window._khArtSentSharedCache[articleId] = null;
