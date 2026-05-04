@@ -673,6 +673,117 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .bm-btn-icon { display: inline-flex; align-items: center; }
 .bm-btn-icon svg { width: 14px; height: 14px; }
 
+/* ── Intermediate Module styling (reuses .bmodal shell) ────────── */
+.im-step-eyebrow {
+  font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(125,211,252,.85); margin-bottom: 8px;
+}
+.im-step-title {
+  font-family: 'Noto Serif KR', serif;
+  font-size: clamp(22px, 5vw, 28px);
+  font-weight: 900; color: #fff; line-height: 1.2; margin-bottom: 8px;
+}
+.im-step-desc { font-size: 13.5px; color: rgba(255,255,255,.6); line-height: 1.6; margin-bottom: 18px; }
+.im-progress-text { font-size: 11px; color: rgba(255,255,255,.45); font-weight: 700; letter-spacing: .03em; }
+
+/* Vocab grid */
+.im-vocab-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px; margin-bottom: 6px;
+}
+@media (max-width: 480px) { .im-vocab-grid { grid-template-columns: 1fr; } }
+.im-vocab-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 14px 16px; border-radius: 14px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  color: #fff; cursor: pointer; font-family: inherit; text-align: left;
+  transition: all .2s;
+  min-height: 78px;
+}
+.im-vocab-card:hover { border-color: rgba(125,211,252,.30); background: rgba(125,211,252,.06); }
+.im-vocab-card.open {
+  background: linear-gradient(135deg, rgba(125,211,252,.14), rgba(167,139,250,.10));
+  border-color: rgba(125,211,252,.45);
+}
+.im-vocab-ko { font-family: 'Noto Serif KR', serif; font-size: 19px; font-weight: 900; color: #fff; }
+.im-vocab-en { font-size: 13.5px; color: #e0f2fe; line-height: 1.5; }
+.im-vocab-rom { font-size: 11.5px; color: rgba(125,211,252,.65); font-style: italic; letter-spacing: .03em; }
+.im-vocab-hint { font-size: 10.5px; color: rgba(255,255,255,.42); font-weight: 700; letter-spacing: .06em; }
+
+/* Grammar stack */
+.im-grammar-stack { display: flex; flex-direction: column; gap: 12px; }
+.im-grammar-card {
+  padding: 16px 18px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(167,139,250,.10), rgba(125,211,252,.06));
+  border: 1px solid rgba(167,139,250,.22);
+}
+.im-grammar-pattern {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 18px; font-weight: 900; color: #c4b5fd; margin-bottom: 6px;
+  letter-spacing: -.005em;
+}
+.im-grammar-exp { font-size: 13px; color: #e2e8f0; line-height: 1.6; margin-bottom: 10px; }
+.im-grammar-ex-wrap { display: flex; flex-direction: column; gap: 6px; }
+.im-grammar-ex {
+  padding: 8px 12px; border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  border-left: 2px solid rgba(167,139,250,.45);
+}
+.im-grammar-ex-ko { font-family: 'Noto Sans KR', sans-serif; font-size: 13.5px; color: #fff; line-height: 1.55; }
+.im-grammar-ex-en { font-size: 12px; color: rgba(255,255,255,.55); line-height: 1.5; margin-top: 3px; font-style: italic; }
+
+/* Writing brief */
+.im-brief-card {
+  padding: 22px 22px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(56,189,248,.10), rgba(99,102,241,.08));
+  border: 1px solid rgba(125,211,252,.30);
+  margin-bottom: 18px;
+}
+.im-brief-label {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  color: rgba(125,211,252,.85); margin-bottom: 8px;
+}
+.im-brief-ko {
+  font-family: 'Noto Serif KR', serif;
+  font-size: clamp(20px, 4.6vw, 26px);
+  font-weight: 900; color: #fff; line-height: 1.35; margin-bottom: 6px;
+  word-break: keep-all;
+}
+.im-brief-en { font-size: 14px; color: rgba(255,255,255,.6); line-height: 1.5; }
+.im-tips {
+  padding: 18px 20px; border-radius: 14px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+}
+.im-tip-title {
+  font-size: 11.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(255,255,255,.6); margin-bottom: 10px;
+}
+.im-tip-list { margin: 0; padding-left: 18px; color: rgba(255,255,255,.78); font-size: 13.5px; line-height: 1.7; }
+.im-tip-list li { margin-bottom: 4px; }
+
+.im-launch {
+  background: linear-gradient(135deg, #38bdf8, #6366f1, #a855f7) !important;
+  box-shadow: 0 12px 32px rgba(99,102,241,.40) !important;
+}
+
+.im-loading {
+  text-align: center; padding: 40px 20px;
+}
+.im-loading-spinner {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 3px solid rgba(125,211,252,.2);
+  border-top-color: #7dd3fc;
+  margin: 0 auto 14px;
+  animation: imSpin .9s linear infinite;
+}
+@keyframes imSpin { to { transform: rotate(360deg); } }
+.im-loading-text { color: #cbd5e1; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.im-loading-sub { color: rgba(148,163,184,.6); font-size: 12px; line-height: 1.5; }
+
 /* Step header */
 .bm-step-label { font-size: 11px; font-weight: 800; text-transform: uppercase;
   letter-spacing: .1em; color: #a78bfa; margin-bottom: 8px; }
@@ -6550,7 +6661,12 @@ function openWritingModal() {
     openBeginnerModal();
     return;
   }
-  // Intermediate / Advanced → 기존 wmodal
+  // Tree (Intermediate) gets the IM scaffold; Forest (Advanced) goes
+  // straight to the writing room.
+  if (_currentLevel === 'Intermediate') {
+    openIntermediateModal();
+    return;
+  }
   document.getElementById('wmodal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
@@ -11251,6 +11367,17 @@ function openWritingModalForLearning() {
     openBeginnerModal();
     return;
   }
+  // Intermediate (Tree) goes through the IM scaffold first — Topic
+  // Vocab → Grammar Patterns → Writing brief → wmodal — so the user
+  // gets the same kind of structured warm-up Sprout has via BM
+  // instead of being dropped straight into the writing room.
+  if (_currentLevel === 'Intermediate') {
+    openIntermediateModal();
+    return;
+  }
+  // Advanced (Forest) keeps direct entry — at that level the writer
+  // doesn't need scaffolding and asking them to go through Vocab
+  // preview screens would feel patronising.
   document.getElementById('wmodal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
@@ -15758,6 +15885,274 @@ function closeBModal() {
   document.getElementById('bmodal-overlay').classList.add('hidden');
   document.body.style.overflow = '';
 }
+
+// ══════════════════════════════════════════════════════════════
+// INTERMEDIATE MODULE (IM) — Tree level pre-writing scaffold
+// ══════════════════════════════════════════════════════════════
+// Mirrors the Beginner Module's modal shell so the look-and-feel
+// stays consistent across difficulty tiers, but with a Tree-level
+// flow: Topic Vocab preview → Grammar pattern preview → Writing
+// brief → opens the existing wmodal (Express Practice) writing room.
+// Reuses the AI content already generated by generateAIContent
+// (_aiContent.vocab / .grammar) instead of new round-trips, so the
+// scaffold is essentially free at runtime.
+var _im = {
+  step: 1,                 // 1 vocab, 2 grammar, 3 brief
+  vocabRevealed: {},       // { idx: true } — which cards have been tapped
+  generating: false,
+};
+var _IM_TOTAL_STEPS = 3;
+var _IM_PROGRESS_KEY = 'kh_im_progress_v1';
+
+function _imSaveProgress() {
+  try {
+    var key = _IM_PROGRESS_KEY + '_' + (_todayTopic && _todayTopic.id || 'noid');
+    localStorage.setItem(key, JSON.stringify({ step: _im.step, vocabRevealed: _im.vocabRevealed }));
+  } catch(_) {}
+}
+function _imLoadProgress() {
+  try {
+    var key = _IM_PROGRESS_KEY + '_' + (_todayTopic && _todayTopic.id || 'noid');
+    var raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(_) { return null; }
+}
+
+function openIntermediateModal() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  _writingMode = 'topic';
+  // If today's AI content isn't loaded yet (cold open from Topic Yum
+  // Yum), fire the same generator wmodal would use. Scaffold renders
+  // its loading state until vocab/grammar arrive.
+  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+
+  var saved = _imLoadProgress();
+  _im = { step: 1, vocabRevealed: {}, generating: false };
+  if (saved && saved.step >= 1 && saved.step <= _IM_TOTAL_STEPS) {
+    _im.step = saved.step;
+    _im.vocabRevealed = saved.vocabRevealed || {};
+  }
+
+  document.getElementById('immodal-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  _imRender();
+}
+function closeIMModal() {
+  document.getElementById('immodal-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+window.openIntermediateModal = openIntermediateModal;
+window.closeIMModal = closeIMModal;
+
+function _imUpdateHeader() {
+  var pillsEl = document.getElementById('im-step-pills');
+  if (pillsEl) {
+    var pills = '';
+    for (var i = 1; i <= _IM_TOTAL_STEPS; i++) {
+      var on = i === _im.step;
+      var done = i < _im.step;
+      pills += '<span class="bm-pip' + (on ? ' on' : '') + (done ? ' done' : '') + '"></span>';
+    }
+    pillsEl.innerHTML = pills;
+  }
+  var topicEl = document.getElementById('im-topic-label');
+  if (topicEl && _todayTopic) {
+    topicEl.textContent = _todayTopic.topic_ko || _todayTopic.topic_en || "Today's Topic";
+  }
+  var bar = document.getElementById('im-progress-bar');
+  if (bar) bar.style.width = ((_im.step - 1) / _IM_TOTAL_STEPS * 100) + '%';
+}
+
+function _imRender() {
+  _imUpdateHeader();
+  if (_im.step === 1)      _imRenderVocab();
+  else if (_im.step === 2) _imRenderGrammar();
+  else                     _imRenderBrief();
+}
+
+// ── Step 1 — Topic Vocab preview ──────────────────────────────
+// Pulls 5-8 entries from the AI content already generated for today's
+// topic, filtered to the ones at Intermediate-relevant complexity.
+// Each card is tap-to-reveal so the learner has a moment to guess
+// before the meaning surfaces — same pattern PM uses in its vocab
+// phase, since the user already responds well to it.
+function _imRenderVocab() {
+  var body = document.getElementById('im-body');
+  var footer = document.getElementById('im-footer');
+  if (!body || !footer) return;
+
+  var vocab = ((_aiContent && _aiContent.vocab) || [])
+    .filter(function(v){ return v && v.ko && v.en; })
+    .slice(0, 8);
+
+  if (!vocab.length) {
+    body.innerHTML = '<div class="im-loading">'
+      + '<div class="im-loading-spinner"></div>'
+      + '<div class="im-loading-text">Loading today\'s vocab…</div>'
+      + '<div class="im-loading-sub">If this hangs, the AI content for today\'s topic hasn\'t been generated yet.</div>'
+      + '</div>';
+    footer.innerHTML = '<button class="bm-btn-next" onclick="_imAdvanceStep()">Skip to grammar →</button>';
+    // Re-render once content arrives.
+    setTimeout(function(){ if (_aiContent && _aiContent.vocab) _imRender(); }, 1200);
+    return;
+  }
+
+  var cardsHtml = vocab.map(function(v, i) {
+    var open = !!_im.vocabRevealed[i];
+    var face = open
+      ? ('<div class="im-vocab-en">' + _esc(v.en) + '</div>'
+         + (v.rom ? '<div class="im-vocab-rom">' + _esc(v.rom) + '</div>' : ''))
+      : '<div class="im-vocab-hint">TAP TO REVEAL</div>';
+    return '<button class="im-vocab-card' + (open ? ' open' : '') + '" type="button" onclick="_imRevealVocab(' + i + ')">'
+      +   '<div class="im-vocab-ko">' + _esc(v.ko) + '</div>'
+      +   face
+      + '</button>';
+  }).join('');
+
+  var revealedCount = Object.keys(_im.vocabRevealed).length;
+  var allRevealed = revealedCount >= Math.min(vocab.length, 5);
+
+  body.innerHTML = ''
+    + '<div class="im-step-eyebrow">STEP 1 · TOPIC VOCAB</div>'
+    + '<div class="im-step-title">Today\'s key words</div>'
+    + '<div class="im-step-desc">Tap each card to reveal what it means. You\'ll use these in your writing.</div>'
+    + '<div class="im-vocab-grid">' + cardsHtml + '</div>';
+  footer.innerHTML = ''
+    + '<div class="im-progress-text">' + revealedCount + ' / ' + vocab.length + ' revealed</div>'
+    + '<button class="bm-btn-next' + (allRevealed ? '' : ' disabled') + '" '
+    +   (allRevealed ? '' : 'disabled')
+    +   ' onclick="_imAdvanceStep()">'
+    +   (allRevealed ? 'Continue to grammar →' : 'Reveal at least 5 cards')
+    + '</button>';
+}
+
+window._imRevealVocab = function(i) {
+  _im.vocabRevealed[i] = true;
+  _imSaveProgress();
+  _imRender();
+};
+window._imAdvanceStep = function() {
+  if (_im.step < _IM_TOTAL_STEPS) {
+    _im.step++;
+    _imSaveProgress();
+    _imRender();
+  }
+};
+window._imBackStep = function() {
+  if (_im.step > 1) {
+    _im.step--;
+    _imSaveProgress();
+    _imRender();
+  }
+};
+
+// ── Step 2 — Grammar patterns preview ─────────────────────────
+function _imRenderGrammar() {
+  var body = document.getElementById('im-body');
+  var footer = document.getElementById('im-footer');
+  if (!body || !footer) return;
+
+  var grammar = ((_aiContent && _aiContent.grammar) || [])
+    .filter(function(g){ return g && g.pattern; })
+    .slice(0, 3);
+
+  var cardsHtml;
+  if (grammar.length) {
+    cardsHtml = grammar.map(function(g) {
+      var examples = Array.isArray(g.examples) && g.examples.length
+        ? g.examples.slice(0, 2).map(function(ex) {
+            var ko = (ex && ex.ko) || ex || '';
+            var en = (ex && ex.en) || '';
+            return '<div class="im-grammar-ex">'
+              +   '<div class="im-grammar-ex-ko">' + _esc(String(ko)) + '</div>'
+              +   (en ? '<div class="im-grammar-ex-en">' + _esc(en) + '</div>' : '')
+              + '</div>';
+          }).join('')
+        : '';
+      return '<div class="im-grammar-card">'
+        +   '<div class="im-grammar-pattern">' + _esc(g.pattern) + '</div>'
+        +   (g.exp ? '<div class="im-grammar-exp">' + _esc(g.exp) + '</div>' : '')
+        +   (examples ? '<div class="im-grammar-ex-wrap">' + examples + '</div>' : '')
+        + '</div>';
+    }).join('');
+  } else {
+    cardsHtml = '<div class="im-loading">'
+      + '<div class="im-loading-text">No grammar focus for this topic yet.</div>'
+      + '<div class="im-loading-sub">You can still continue to the writing brief.</div>'
+      + '</div>';
+  }
+
+  body.innerHTML = ''
+    + '<div class="im-step-eyebrow">STEP 2 · GRAMMAR PATTERNS</div>'
+    + '<div class="im-step-title">Patterns you\'ll need</div>'
+    + '<div class="im-step-desc">These are the structures Korean speakers use for this kind of topic. Lean on them when you write.</div>'
+    + '<div class="im-grammar-stack">' + cardsHtml + '</div>';
+  footer.innerHTML = ''
+    + '<button class="bm-btn-back" onclick="_imBackStep()">← Back</button>'
+    + '<button class="bm-btn-next" onclick="_imAdvanceStep()">Continue →</button>';
+}
+
+// ── Step 3 — Writing brief + launch wmodal ────────────────────
+function _imRenderBrief() {
+  var body = document.getElementById('im-body');
+  var footer = document.getElementById('im-footer');
+  if (!body || !footer) return;
+
+  var topic = _todayTopic || {};
+  var topicKo = topic.topic_ko || '';
+  var topicEn = topic.topic_en || '';
+
+  body.innerHTML = ''
+    + '<div class="im-step-eyebrow">STEP 3 · EXPRESS PRACTICE</div>'
+    + '<div class="im-step-title">You\'re ready to write</div>'
+    + '<div class="im-step-desc">Use today\'s vocab + grammar to answer the topic in your own words. Aim for 3-5 sentences.</div>'
+    + '<div class="im-brief-card">'
+    +   '<div class="im-brief-label">TODAY\'S TOPIC</div>'
+    +   '<div class="im-brief-ko">' + _esc(topicKo) + '</div>'
+    +   (topicEn ? '<div class="im-brief-en">' + _esc(topicEn) + '</div>' : '')
+    + '</div>'
+    + '<div class="im-tips">'
+    +   '<div class="im-tip-title">Quick tips</div>'
+    +   '<ul class="im-tip-list">'
+    +     '<li>Pick a clear position or angle in your first sentence.</li>'
+    +     '<li>Pull at least 2 vocab words from Step 1.</li>'
+    +     '<li>Use one of the grammar patterns from Step 2 at least once.</li>'
+    +     '<li>Stretch yourself — this isn\'t Sprout level. Try connectives like ~지만 / ~기 때문에 / ~는데도.</li>'
+    +   '</ul>'
+    + '</div>';
+  footer.innerHTML = ''
+    + '<button class="bm-btn-back" onclick="_imBackStep()">← Back</button>'
+    + '<button class="bm-btn-next im-launch" onclick="_imLaunchWriting()">'
+    +   '<i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
+    +   '<span>Begin writing →</span>'
+    + '</button>';
+  if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+}
+
+window._imLaunchWriting = function() {
+  // Mark the IM scaffold as "done for today" via the existing
+  // _studyDone.topic flag — submitting the writing later still
+  // upgrades it via the actual submit path. This makes the user
+  // feel rewarded for finishing the scaffold even if they bail
+  // before submitting.
+  closeIMModal();
+  // Hand off to the writing room (wmodal) — same path the legacy
+  // openWritingModalForLearning used to take directly.
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+  if (typeof renderModalContent === 'function') renderModalContent();
+  setTimeout(function() {
+    if (typeof _initWritingTrackerRings === 'function') _initWritingTrackerRings();
+    if (typeof _resetWritingTrackerRings === 'function') _resetWritingTrackerRings();
+  }, 100);
+  if (typeof wmMobileInit === 'function') wmMobileInit();
+  if (typeof khTrackUser === 'function') {
+    try { khTrackUser('im_finished', { topic_id: (_todayTopic && _todayTopic.id) || null }); } catch(_) {}
+  }
+};
 
 // Inline SVG icons used across the beginner modal (replaces the prior emojis
 // so glyphs render consistently and pick up the theme color).
@@ -21435,6 +21830,25 @@ setTimeout(renderCompletedStudies, 500);
     <div class="bm-body" id="bm-body"></div>
     <!-- FOOTER -->
     <div class="bm-footer" id="bm-footer"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     INTERMEDIATE MODULE — Tree level Topic Yum Yum scaffold
+     3 steps before Express Practice (writing room): Vocab preview,
+     Grammar patterns, Writing brief. Reuses .bmodal CSS so it slots
+     into the same modal-shell aesthetic without new chrome work.
+═══════════════════════════════════════════════════════════════ -->
+<div id="immodal-overlay" class="bmodal-overlay hidden" onclick="if(event.target===this)closeIMModal()">
+  <div class="bmodal" id="immodal">
+    <div class="bm-header">
+      <div class="bm-step-pills" id="im-step-pills"></div>
+      <div class="bm-topic" id="im-topic-label">Today's Topic</div>
+      <button class="bm-close" onclick="closeIMModal()" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
+    </div>
+    <div class="bm-progress-track"><div class="bm-progress-bar" id="im-progress-bar"></div></div>
+    <div class="bm-body" id="im-body"></div>
+    <div class="bm-footer" id="im-footer"></div>
   </div>
 </div>
 
