@@ -2987,10 +2987,15 @@ async function runBulkPhraseAdminGen(){
   statusEl.textContent = '약 ' + Math.ceil(count * 1.2) + '초 소요…';
 
   const prompt =
-      'You are curating a queue of Korean proverbs / idioms / common expressions for a Korean-learning app. '
-    + 'Each entry rotates onto the home screen for one day, so they need to be distinct, classic, and worth memorising.\n\n'
+      'You are curating a queue of Korean proverbs / idioms / classic expressions for a Korean-learning app. '
+    + 'Each entry rotates onto the home screen for one day. Quality bar: phrases that are worth a learner\'s attention for a whole day — multi-word, idiomatic, with story or imagery behind them.\n\n'
     + 'Generate ' + count + ' phrases. ' + (theme ? 'Theme hint: ' + theme + '. ' : '')
-    + 'Mix difficulty (Seed / Sprout / Tree / Forest). Prefer classic 속담 + 사자성어 + a few high-frequency colloquial expressions. NO duplicates within the list.'
+    + 'Mix difficulty (Seed / Sprout / Tree / Forest). Lean heavily on classic 속담 (Korean proverbs) and 사자성어 (4-character idioms); a small portion can be common multi-word idiomatic expressions. NO duplicates within the list.\n\n'
+    + 'AVOID:\n'
+    + '- Single-word casual slang or exclamations (대박 / 짱 / 헐 / 완전 / 진짜 / 와 / 헉 / 어머 / 야호 etc.) — these are not "phrases" in the proverb sense; reject them even if a "Theme hint" might invite them.\n'
+    + '- Single Sino-Korean nouns by themselves (사랑 / 행복 / 시간 / 가족) — these are vocabulary, not phrases.\n'
+    + '- Two-character colloquial fillers (그치 / 글쎄 / 어디).\n'
+    + 'INCLUDE: phrases that are 3+ Korean characters, OR multi-word, OR a recognizable proverb / idiom. Examples of the right shape: 등잔 밑이 어둡다, 백문이 불여일견, 시간이 약이다, 가는 말이 고와야 오는 말이 곱다, 우물 안 개구리, 호랑이 굴에 들어가야 호랑이를 잡는다.\n'
     + existingList + '\n\n'
     + 'Return ONLY a JSON array, no preamble, no code fences:\n'
     + '[\n'
@@ -3012,7 +3017,7 @@ async function runBulkPhraseAdminGen(){
     + 'Rules:\n'
     + '- intro_ko / intro / nuance MUST be specific to each phrase. Do NOT echo generic platform copy.\n'
     + '- examples MUST contain the phrase (or a natural conjugated form) and be fully grammatical Korean.\n'
-    + '- level: Seed for TOPIK 1 vocab, Sprout for TOPIK 2, Tree for TOPIK 3-4, Forest for TOPIK 5-6 / classical proverbs.\n'
+    + '- level: Seed for TOPIK 1, Sprout for TOPIK 2, Tree for TOPIK 3-4, Forest for TOPIK 5-6 / classical proverbs.\n'
     + '- related: 3 related Korean expressions.\n'
     + '- Do NOT include any phrase from the ALREADY IN QUEUE list above.';
 
@@ -3112,9 +3117,14 @@ function deletePhraseAdminItem(){
   if(!phraseAdminItems.length) phraseAdminItems = [phraseAdminDefaultItem()];
   phraseAdminCurrentIndex = Math.max(0, Math.min(phraseAdminCurrentIndex, phraseAdminItems.length - 1));
   lsSet(K_PHRASES, phraseAdminItems);
+  // Sync to Supabase too — without this the deleted phrase would
+  // come back on next page load because app_settings.phrases still
+  // had it. Queue rotation is shared across users via that table,
+  // so the local-only path was the wrong source of truth.
+  if (typeof saveSharedPhrases === 'function') saveSharedPhrases(phraseAdminItems);
   renderPhraseAdminForm(phraseAdminCurrentIndex);
   renderPhraseAdminTable();
-  toast('🗑 표현 삭제됨');
+  toast('🗑 표현 삭제됨 (DB 동기화)');
 }
 function renderPhraseAdminTable(){
   const tbody = document.getElementById('phrase-admin-tbody');

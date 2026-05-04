@@ -1670,7 +1670,18 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Today's Phrase
   function renderTodaysPhrase() {
     var phrases = getPhrases();
-    if (!phrases || !phrases.length) return;
+    // Defensive fallback — getPhrases should already fall through to
+    // DEF_PHRASES, but if app_settings.phrases ever lands on an array
+    // of empty placeholder rows ({ko:'',rom:'',en:''}) the home block
+    // used to paint as blank text. Filter out empties + guarantee at
+    // least the seed list shows up.
+    phrases = (phrases || []).filter(function(p){ return p && p.ko && p.ko.trim(); });
+    if (!phrases.length) {
+      phrases = (typeof DEF_PHRASES === 'object' && DEF_PHRASES.length)
+        ? DEF_PHRASES.map(typeof normalizePhrase === 'function' ? normalizePhrase : function(x){ return x; })
+        : [];
+    }
+    if (!phrases.length) return;
     // Sequential non-repeating: track seen phrases, pick next unseen
     var todayKey = new Date(Date.now() + 9*3600000).toISOString().slice(0,10);
     var seenKey = 'kh_phrase_seen';
