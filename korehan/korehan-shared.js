@@ -8570,11 +8570,15 @@ function _fjMarkDone(stepId) {
 function _fjAutoCheck() {
   if (_fjAllDone()) return;
   var page = window.location.pathname.split('/').pop().replace(/\.html$/,'') || 'index';
-  // signup: 로그인 + 온보딩 완료 시에만 체크
+  // signup: any signed-in user counts as having signed up. The original
+  // gate also required the onboarding-completed localStorage flag, but
+  // accounts created before onboarding existed (admins, early users)
+  // never got that flag set — so the signup step stayed unticked
+  // forever and the First Journey banner never cleared. Falling back to
+  // "supaUser exists" is good enough — the rest of the steps still
+  // require the actual interaction.
   if (supaUser && !_fjIsComplete('signup')) {
-    var onboarded = false;
-    try { onboarded = hasCompletedOnboardingLocal(supaUser.id) || hasCompletedOnboardingLocal(''); } catch(e) {}
-    if (onboarded) _fjMarkDone('signup');
+    _fjMarkDone('signup');
   }
   // growth: Growth Lab 페이지 방문
   if (page === 'korehan-learning-overview' && !_fjIsComplete('growth')) _fjMarkDone('growth');

@@ -268,8 +268,12 @@ function dmToggle() {
 }
 
 function injectDailyMission() {
+  var page = pageName();
   // Skip on fullscreen game pages
-  if (pageName().indexOf('korehan-fun-') === 0) return;
+  if (page.indexOf('korehan-fun-') === 0) return;
+  // Skip on study room — the daily mission widget competes for screen
+  // space with the in-room missions and was reported as distracting.
+  if (page === 'korehan-study-room') return;
   if (document.getElementById('kh-daily-mission')) return;
   var el = document.createElement('div');
   el.id = 'kh-daily-mission';
