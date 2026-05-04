@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#0a1426">
 <title>Today's Phrase — KoreHani</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260504c">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css?v=20260504d">
 </head>
-<body>
+<body class="phrase-page-dark">
 <div id="kh-header"></div>
 <div class="phrase-shell">
   <div id="phrase-root"></div>
@@ -40,20 +41,20 @@
 <script src="js/features/fill-blank.js?v=20260502a"></script>
 <script src="korehan-shared.js?v=20260502a"></script>
 <script>
-// Today's Phrase reader.
+// Today's Phrase — dark, mobile-first reader.
 //
-// When a phrase has incomplete metadata (admin saved ko/rom/en but
-// skipped the AI Generate step in the phrases admin), we now fill
-// intro / nuance / examples / related on the fly via Claude. The
-// generated content is cached locally (and shared back via
-// app_settings.phrases when the reader is signed in) so the next
-// visitor doesn't pay for the same call.
+// Layout matches the iOS-mockup the user shared: level pill, big white
+// phrase headline, blue translation, two dark cards (Meaning, Example)
+// with optional decorative illustration in the corner of the meaning
+// card, fixed bottom gradient CTA pill ("+ Add to My Phrases" / saved).
 //
-// Layout was bare-bones before — gradient hero with a status pill,
-// example cards with numbered chips and TTS, themed section icons,
-// staggered slide-in.
+// AI fill flow from the previous version still applies: when a phrase
+// is admin-saved with thin metadata we lazy-fill via Claude and cache
+// the result locally + back to app_settings.phrases for signed-in
+// users.
 
 var PHRASE_FILL_CACHE_KEY = 'kh_phrase_fill_v1';
+var SAVED_PHRASES_KEY = 'kh_saved_phrases_v1';
 
 function escapeText(s) { return String(s == null ? '' : s)
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -69,6 +70,39 @@ function _phraseStashLocal(key, data) {
     all[key] = data;
     localStorage.setItem(PHRASE_FILL_CACHE_KEY, JSON.stringify(all));
   } catch(_) {}
+}
+
+// Saved phrases — local list keyed by Korean text. Tied into the
+// bottom CTA + bookmark icon. Persists across sessions; later we can
+// sync to Supabase too.
+function _getSavedPhrases() {
+  try { return JSON.parse(localStorage.getItem(SAVED_PHRASES_KEY) || '[]'); }
+  catch(_) { return []; }
+}
+function _isPhraseSaved(ko) {
+  if (!ko) return false;
+  var list = _getSavedPhrases();
+  return list.some(function(p){ return (p && p.ko) === ko; });
+}
+function _togglePhraseSaved(phrase) {
+  if (!phrase || !phrase.ko) return false;
+  var list = _getSavedPhrases();
+  var idx = list.findIndex(function(p){ return (p && p.ko) === phrase.ko; });
+  if (idx >= 0) {
+    list.splice(idx, 1);
+  } else {
+    list.unshift({
+      ko: phrase.ko,
+      rom: phrase.rom || '',
+      en: phrase.en || '',
+      saved_at: new Date().toISOString(),
+    });
+  }
+  try { localStorage.setItem(SAVED_PHRASES_KEY, JSON.stringify(list.slice(0, 200))); } catch(_) {}
+  if (typeof khTrackUser === 'function') {
+    try { khTrackUser(idx >= 0 ? 'phrase_unsaved' : 'phrase_saved', { ko: phrase.ko }); } catch(_) {}
+  }
+  return idx < 0;
 }
 
 function isPhraseIncomplete(p) {
@@ -89,19 +123,20 @@ async function _fillPhraseViaClaude(phrase) {
     + 'Existing English gloss: ' + (phrase.en || '(generate a natural one)') + '\n\n'
     + 'Return ONLY a JSON object — no preamble, no code fences:\n'
     + '{\n'
-    + '  "intro": "2-3 sentence English explanation of what this SPECIFIC phrase means and where it comes from. Must be SPECIFIC to this phrase — not a generic statement like \\"This is a useful Korean phrase\\". If it\'s a proverb (속담), explain the literal image AND the figurative meaning.",\n'
-    + '  "nuance": "2-3 sentence English usage note explaining when a Korean speaker would actually say this — register (formal/casual), conversation contexts, situations it fits or doesn\'t fit. Specific to this phrase.",\n'
+    + '  "intro_ko": "1-2 sentence Korean explanation of what this phrase means and the imagery behind it. For 속담, explain the literal image AND the figurative meaning. Friendly tone, ~해요체.",\n'
+    + '  "intro": "1-2 sentence English explanation matching intro_ko in meaning.",\n'
+    + '  "nuance": "1-2 sentence English usage note explaining when a Korean speaker would actually say this. Specific to this phrase.",\n'
+    + '  "level": "Seed | Sprout | Tree | Forest — which TOPIK tier this phrase fits (Seed=basic words, Forest=advanced literary).",\n'
     + '  "examples": [\n'
     + '    {"ko":"natural Korean sentence USING the phrase, max 25 chars","en":"English translation"},\n'
-    + '    {"ko":"different context using the phrase","en":"…"},\n'
-    + '    {"ko":"third varied example","en":"…"}\n'
+    + '    {"ko":"different context using the phrase","en":"…"}\n'
     + '  ],\n'
     + '  "related": ["관련 표현 1","관련 표현 2","관련 표현 3"]\n'
     + '}\n\n'
     + 'Rules:\n'
-    + '- intro and nuance MUST be specific to "' + phrase.ko + '" — do NOT echo back generic learner-platform copy.\n'
-    + '- examples MUST contain the exact phrase (or a natural conjugated form). Do NOT just append the phrase to a generic sentence with bad particles like "을/는" attached to a verb-form proverb. Write fully grammatical Korean.\n'
-    + '- related: 3 thematically related expressions or proverbs in Korean. No commentary.';
+    + '- intro_ko / intro / nuance MUST be specific to "' + phrase.ko + '" — do NOT echo back generic learner-platform copy.\n'
+    + '- examples MUST contain the exact phrase (or a natural conjugated form) and be fully grammatical Korean.\n'
+    + '- related: 3 thematically related expressions in Korean. No commentary.';
   var res = await callClaude({
     feature: 'phrase-content-fill',
     model: 'claude-haiku-4-5-20251001',
@@ -114,8 +149,10 @@ async function _fillPhraseViaClaude(phrase) {
   if (oi < 0 || ei <= oi) throw new Error('no JSON');
   var data = JSON.parse(clean.slice(oi, ei + 1));
   return {
+    intro_ko: typeof data.intro_ko === 'string' ? data.intro_ko : '',
     intro: typeof data.intro === 'string' ? data.intro : '',
     nuance: typeof data.nuance === 'string' ? data.nuance : '',
+    level: ['Seed','Sprout','Tree','Forest'].indexOf(data.level) >= 0 ? data.level : '',
     examples: Array.isArray(data.examples) ? data.examples
       .map(function(e){ return { ko: (e && e.ko || '').trim(), en: (e && e.en || '').trim() }; })
       .filter(function(e){ return e.ko; }).slice(0, 3) : [],
@@ -128,19 +165,14 @@ async function _ensurePhraseFilled(phrase) {
   if (!isPhraseIncomplete(phrase)) return phrase;
   var cacheKey = (phrase.ko || '').trim();
   if (!cacheKey) return phrase;
-  // Local cache first — survives page reloads without a Claude round-trip.
   var localAll = _phraseLocalFill();
   if (localAll[cacheKey]) {
     return _mergePhraseFill(phrase, localAll[cacheKey]);
   }
-  // Live generation.
   try {
     var fill = await _fillPhraseViaClaude(phrase);
     if (!fill) return phrase;
     _phraseStashLocal(cacheKey, fill);
-    // Best-effort: write back to app_settings.phrases so other readers
-    // get the filled version too. Only signed-in users have the policy
-    // to write app_settings; ignore failures silently.
     try {
       if (typeof supaUser !== 'undefined' && supaUser && typeof saveSharedPhrases === 'function'
           && typeof getPhraseSourceRows === 'function') {
@@ -162,8 +194,10 @@ async function _ensurePhraseFilled(phrase) {
 function _mergePhraseFill(phrase, fill) {
   if (!fill) return phrase;
   var merged = Object.assign({}, phrase);
+  if (fill.intro_ko && !phrase.intro_ko) merged.intro_ko = fill.intro_ko;
   if (fill.intro && (!phrase.intro || phrase.intro.length < 24)) merged.intro = fill.intro;
   if (fill.nuance && (!phrase.nuance || phrase.nuance.length < 24)) merged.nuance = fill.nuance;
+  if (fill.level && !phrase.level) merged.level = fill.level;
   if (Array.isArray(fill.examples) && fill.examples.length
       && (!phrase.examples || !phrase.examples.length)) {
     merged.examples = fill.examples;
@@ -175,95 +209,223 @@ function _mergePhraseFill(phrase, fill) {
   return merged;
 }
 
+// Map a phrase's keywords to a small decorative emoji glyph for the
+// meaning card corner. Keeps the design from being just text-on-text.
+// Fall back to 📖 when nothing matches.
+function _phraseIllus(phrase) {
+  var ko = (phrase && phrase.ko) || '';
+  var en = (phrase && (phrase.en || '')).toLowerCase();
+  if (/등잔|램프|불빛|등불|lamp|light/.test(ko + en))     return '💡';
+  if (/태산|산|mountain|hill/.test(ko + en))               return '⛰️';
+  if (/낙|행복|happy|joy|reward/.test(ko + en))           return '🌅';
+  if (/시작|begin|start/.test(ko + en))                   return '🚀';
+  if (/백문|보다|see|sight/.test(ko + en))                return '👀';
+  if (/티끌|먼지|dust|drop/.test(ko + en))                 return '✨';
+  if (/꿩 먹고 알|일석이조|두 마리/.test(ko + en))         return '🐦';
+  if (/소|cow|stable|barn/.test(ko + en))                 return '🐄';
+  if (/호랑이|tiger/.test(ko + en))                        return '🐯';
+  if (/말|horse/.test(ko + en))                           return '🐴';
+  if (/물|river|water/.test(ko + en))                     return '💧';
+  if (/꽃|flower|blossom/.test(ko + en))                  return '🌸';
+  if (/책|글|read|word|book/.test(ko + en))               return '📚';
+  return '📖';
+}
+
+// Map level → CSS modifier.
+var LEVEL_CLASS = {
+  Seed:'lvl-seed', Sprout:'lvl-sprout', Tree:'lvl-tree', Forest:'lvl-forest',
+};
+var LEVEL_LABEL = {
+  Seed:'Seed Level', Sprout:'Sprout Level', Tree:'Tree Level', Forest:'Forest Level',
+};
+
+function speakKorean(text, btn) {
+  if (!text) return;
+  if (typeof speakHangul === 'function') {
+    try { speakHangul(text); return; } catch(_) {}
+  }
+  if (typeof window.speechSynthesis !== 'undefined') {
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ko-KR'; u.rate = 0.92;
+      window.speechSynthesis.speak(u);
+    } catch(_) {}
+  }
+  if (btn) {
+    btn.style.transform = 'scale(.92)';
+    setTimeout(function(){ btn.style.transform = ''; }, 140);
+  }
+}
+window.speakKorean = speakKorean;
+
+// Cycle through the available examples, one per page-load (random
+// but stable for the rest of the session).
+var _exampleIdx = 0;
+function pickExampleIdx(arr) {
+  if (!arr || !arr.length) return -1;
+  if (_exampleIdx >= arr.length) _exampleIdx = 0;
+  return _exampleIdx;
+}
+
+window.cyclePhraseExample = function() {
+  var btn = document.getElementById('ph-cycle-btn');
+  if (btn) { btn.style.transform = 'rotate(180deg)'; setTimeout(function(){ btn.style.transform=''; }, 240); }
+  _exampleIdx++;
+  // Re-render the example card region only.
+  var phrase = window._currentPhrase;
+  if (!phrase) return;
+  renderPhraseLayout(phrase, window._currentPhraseOpts || {});
+};
+
+window.toggleSavePhrase = function() {
+  var phrase = window._currentPhrase;
+  if (!phrase) return;
+  var nowSaved = _togglePhraseSaved(phrase);
+  // Re-render so both the bookmark icon AND the bottom CTA reflect state.
+  renderPhraseLayout(phrase, window._currentPhraseOpts || {});
+  if (typeof toast === 'function') {
+    toast(nowSaved ? '내 표현에 저장됐어요 ❤️' : '저장 해제됨', false);
+  }
+};
+
+window.startPhraseStudy = function() {
+  if (typeof khTrackUser === 'function') {
+    var phrase = window._currentPhrase || {};
+    try { khTrackUser('phrase_study_start', { ko: phrase.ko }); } catch(_) {}
+  }
+  location.href = 'korehan-study-room.html';
+};
+
 function renderPhraseLayout(phrase, opts) {
   opts = opts || {};
+  window._currentPhrase = phrase;
+  window._currentPhraseOpts = opts;
   var root = document.getElementById('phrase-root');
   if (!root) return;
   var examples = (phrase.examples || []).filter(function(e){ return e && e.ko; });
-  var related = (phrase.related || []).map(function(x){
-    var safe = escapeText(x);
-    return '<a class="phrase-chip" href="korehan-phrase.html?q=' + encodeURIComponent(x) + '">'
-      + '<span>' + safe + '</span></a>';
-  }).join('');
+  var exIdx = pickExampleIdx(examples);
+  var ex = exIdx >= 0 ? examples[exIdx] : null;
 
-  var statusPill = '';
-  if (opts.generating) {
-    statusPill = '<span class="phrase-loading">AI 분석 채우는 중…</span>';
-  }
+  var levelKey = phrase.level || '';
+  var levelClass = LEVEL_CLASS[levelKey] || 'lvl-sprout';
+  var levelLabel = LEVEL_LABEL[levelKey] || 'Sprout Level';
 
-  var introHTML = phrase.intro
-    ? '<p>' + escapeText(phrase.intro) + '</p>'
-    : (opts.generating
-        ? '<p style="color:#94a3b8">의미 분석을 생성하고 있어요…</p>'
-        : '<p style="color:#94a3b8">No description yet.</p>');
+  var saved = _isPhraseSaved(phrase.ko);
 
-  var nuanceHTML = phrase.nuance
-    ? '<p>' + escapeText(phrase.nuance) + '</p>'
-    : (opts.generating
-        ? '<p style="color:#94a3b8">사용 맥락을 생성하고 있어요…</p>'
-        : '<p style="color:#94a3b8">No usage notes yet.</p>');
+  var statusPill = opts.generating
+    ? '<span class="phrase-loading">분석 채우는 중</span>'
+    : '';
 
-  var examplesHTML;
-  if (examples.length) {
-    examplesHTML = examples.map(function(ex, i) {
-      return '<div class="phrase-example">'
-        + '<div class="phrase-example-num">' + (i + 1) + '</div>'
-        + '<div class="phrase-example-ko">' + escapeText(ex.ko) + '</div>'
-        + (ex.en ? '<div class="phrase-example-en">' + escapeText(ex.en) + '</div>' : '')
-        + '</div>';
-    }).join('');
+  // Meaning card body — prefer Korean intro_ko + English intro stack.
+  var hasIntro = phrase.intro_ko || phrase.intro;
+  var meaningBody;
+  if (hasIntro) {
+    meaningBody = ''
+      + (phrase.intro_ko ? '<div class="phrase-card-body-ko">' + escapeText(phrase.intro_ko) + '</div>' : '')
+      + (phrase.intro    ? '<div class="phrase-card-body-en">' + escapeText(phrase.intro)    + '</div>' : '')
+      + (phrase.nuance && phrase.nuance.length > 8
+          ? '<div class="phrase-card-body-en" style="margin-top:14px;font-style:normal;color:rgba(125,211,252,.85)">'
+            + '<span style="font-weight:800;text-transform:uppercase;letter-spacing:.1em;font-size:10.5px;display:block;margin-bottom:4px;color:#7dd3fc">When to use it</span>'
+            + escapeText(phrase.nuance)
+            + '</div>'
+          : '');
+  } else if (opts.generating) {
+    meaningBody = '<div class="phrase-card-body-en">의미를 정리하고 있어요…</div>';
   } else {
-    examplesHTML = opts.generating
-      ? '<p style="color:#94a3b8;margin:0">예문을 생성하고 있어요…</p>'
-      : '<p style="color:#94a3b8;margin:0">No examples yet.</p>';
+    meaningBody = '<div class="phrase-card-body-en">No description yet.</div>';
   }
+
+  var illus = _phraseIllus(phrase);
+  var meaningCard = ''
+    + '<div class="phrase-card has-illus">'
+    +   '<div class="phrase-card-header">'
+    +     '<span class="phrase-card-title">Meaning</span>'
+    +   '</div>'
+    +   meaningBody
+    +   (illus ? '<div class="phrase-card-illus">' + illus + '</div>' : '')
+    + '</div>';
+
+  var exampleCard = '';
+  if (ex || opts.generating) {
+    var exBody = ex
+      ? '<div class="phrase-card-body-ko">' + escapeText(ex.ko) + '</div>'
+        + (ex.en ? '<div class="phrase-card-body-en">' + escapeText(ex.en) + '</div>' : '')
+      : '<div class="phrase-card-body-en">예문을 만들고 있어요…</div>';
+    var ttsBtnHtml = ex
+      ? '<button class="phrase-card-tts" onclick="speakKorean(\'' + (ex.ko || '').replace(/\\/g,'\\\\').replace(/\'/g,"\\'") + '\', this)" aria-label="Listen">'
+        + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>'
+      + '</button>'
+      : '';
+    var cycleBtnHtml = examples.length > 1
+      ? '<button class="phrase-card-tts" id="ph-cycle-btn" onclick="cyclePhraseExample()" aria-label="Next example" style="margin-right:6px;transition:transform .24s ease">'
+        + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>'
+      + '</button>'
+      : '';
+    exampleCard = ''
+      + '<div class="phrase-card">'
+      +   '<div class="phrase-card-header">'
+      +     '<span class="phrase-card-title">Example' + (examples.length > 1 ? ' · ' + (exIdx + 1) + '/' + examples.length : '') + '</span>'
+      +     '<span style="display:flex;align-items:center">' + cycleBtnHtml + ttsBtnHtml + '</span>'
+      +   '</div>'
+      +   exBody
+      + '</div>';
+  }
+
+  var related = (phrase.related || []).slice(0, 5);
+  var chipRow = related.length
+    ? '<div class="phrase-meta-row">'
+      + related.map(function(x){
+          return '<a class="phrase-chip" href="korehan-phrase.html?q=' + encodeURIComponent(x) + '">'
+            + '<span>' + escapeText(x) + '</span></a>';
+        }).join('')
+      + '</div>'
+    : '';
+
+  var topRow = ''
+    + '<div class="phrase-toprow">'
+    +   '<a class="phrase-iconbtn" href="javascript:history.length>1?history.back():(location.href=\'index.html\')" aria-label="Back">'
+    +     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
+    +   '</a>'
+    +   '<div class="ptr-right">'
+    +     '<button class="phrase-iconbtn ' + (saved ? 'saved' : '') + '" onclick="toggleSavePhrase()" aria-label="Save phrase">'
+    +       (saved
+    +         ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
+    +         : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>')
+    +     '</button>'
+    +     ((typeof window._isAdmin !== 'undefined' && window._isAdmin && opts.idx != null)
+    +       ? '<a class="phrase-iconbtn" href="korehan-x9f4k2m7-phrases.html?edit=' + opts.idx + '" aria-label="Edit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></a>'
+    +       : '')
+    +   '</div>'
+    + '</div>';
 
   root.innerHTML = ''
-    + '<section class="phrase-hero-card">'
-    +   '<div class="phrase-eyebrow">'
-    +     '<span style="font-size:13px">📖</span>'
-    +     '<span>Today\'s phrase</span>'
-    +     (statusPill ? '<span style="margin-left:8px">' + statusPill + '</span>' : '')
-    +   '</div>'
-    +   '<div class="phrase-ko">' + escapeText(phrase.ko) + '</div>'
-    +   (phrase.rom ? '<div class="phrase-rom">' + escapeText(phrase.rom) + '</div>' : '')
-    +   (phrase.en  ? '<div class="phrase-en">' + escapeText(phrase.en) + '</div>'  : '')
-    +   (related ? '<div class="phrase-chip-row">' + related + '</div>' : '')
-    +   '<div class="phrase-actions">'
-    +     '<a class="phrase-action primary" href="korehan-study-room.html">✨ Start studying</a>'
-    +     ((typeof window._isAdmin !== 'undefined' && window._isAdmin && opts.idx != null)
-        ? '<a class="phrase-action" href="korehan-x9f4k2m7-phrases.html?edit=' + opts.idx + '">Edit</a>'
-        : '')
-    +   '</div>'
-    + '</section>'
-    + '<div class="phrase-grid">'
-    +   '<section class="phrase-card">'
-    +     '<h3><span class="pc-h-icon">💡</span><span>What it means</span></h3>'
-    +     introHTML
-    +   '</section>'
-    +   '<section class="phrase-card">'
-    +     '<h3><span class="pc-h-icon">🗣️</span><span>How it is used</span></h3>'
-    +     nuanceHTML
-    +   '</section>'
-    + '</div>'
-    + '<section class="phrase-card" style="margin-top:18px">'
-    +   '<h3><span class="pc-h-icon">📝</span><span>Example sentences</span></h3>'
-    +   examplesHTML
-    + '</section>'
-    + '<section class="phrase-card" style="margin-top:18px">'
-    +   '<h3><span class="pc-h-icon">🎯</span><span>Study tip</span></h3>'
-    +   '<div class="phrase-side-note">'
-    +     '오늘 문장 하나를 만들어 입 밖으로 두세 번 소리 내어 읽어보세요. '
-    +     '<b>' + escapeText(phrase.ko) + '</b>처럼 굳어진 표현은 의미만 외우는 것보다 '
-    +     '실제 상황에 갖다 써봐야 진짜 자기 것이 됩니다.'
-    +   '</div>'
-    + '</section>';
+    + topRow
+    + '<span class="phrase-level-badge ' + levelClass + '">'
+    +   '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L4 8 L4 22 L11 22 L11 17 L13 17 L13 22 L20 22 L20 8 Z" opacity=".7"/></svg>'
+    +   '<span>' + levelLabel + '</span>'
+    + '</span>'
+    + (statusPill ? statusPill : '')
+    + '<h1 class="phrase-ko">' + escapeText(phrase.ko) + '</h1>'
+    + (phrase.en  ? '<div class="phrase-en">' + escapeText(phrase.en)  + '</div>' : '')
+    + (phrase.rom ? '<div class="phrase-rom">' + escapeText(phrase.rom) + '</div>' : '')
+    + meaningCard
+    + exampleCard
+    + chipRow
+    // Bottom CTA — fixed at viewport bottom; matches the mockup
+    + '<div class="phrase-cta-bar">'
+    +   '<button class="phrase-cta ' + (saved ? 'saved' : '') + '" onclick="toggleSavePhrase()">'
+    +     (saved
+    +       ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6L9 17l-5-5"/></svg>'
+    +       : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>')
+    +     '<span>' + (saved ? 'Saved to My Phrases' : 'Add to My Phrases') + '</span>'
+    +   '</button>'
+    +   '<div class="phrase-cta-sub"><a href="korehan-study-room.html">Or continue studying →</a></div>'
+    + '</div>';
 
   document.title = phrase.ko + ' — KoreHani Phrase';
 
-  // Operational analytics — only fires for logged-in users with consent.
   if (typeof khTrackUser === 'function') {
-    try { khTrackUser('phrase_view', { ko: phrase.ko, idx: opts.idx }); } catch(_) {}
+    try { khTrackUser('phrase_view', { ko: phrase.ko, idx: opts.idx, level: levelKey || null }); } catch(_) {}
   }
 }
 
@@ -292,9 +454,6 @@ async function renderPhrasePage() {
   }
   var phrase = phrases[idx] || phrases[0];
 
-  // First paint with whatever data we have — even if intro/nuance are
-  // missing, the hero shows immediately. AI fill runs in the
-  // background and re-renders when it lands.
   var needsFill = isPhraseIncomplete(phrase);
   renderPhraseLayout(phrase, { idx: idx, generating: needsFill });
 
