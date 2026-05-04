@@ -2461,19 +2461,31 @@ body.phrase-page-dark #kh-footer { color-scheme: dark; }
 
 .phrase-card-body-ko {
   font-family: 'Noto Sans KR', sans-serif;
-  font-size: 15.5px;
+  font-size: 16px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #f1f5f9;
   line-height: 1.65;
   word-break: keep-all;
 }
 .phrase-card-body-en {
   margin-top: 10px;
-  font-size: 13.5px;
-  color: rgba(148,163,184,.95);
-  line-height: 1.65;
-  font-style: italic;
+  font-size: 14.5px;
+  color: rgba(226,232,240,.92);
+  line-height: 1.7;
   font-family: 'Source Sans 3', sans-serif;
+}
+.phrase-card-divider {
+  height: 1px;
+  background: rgba(125,211,252,.16);
+  margin: 18px 0 14px;
+}
+.phrase-card-section-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+  margin-bottom: 8px;
 }
 
 /* Decorative right-side illustration on the meaning card. Small icon

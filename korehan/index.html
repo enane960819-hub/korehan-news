@@ -1689,7 +1689,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     var cached = null;
     try { cached = JSON.parse(localStorage.getItem(todayCache)); } catch(e){}
     var phraseIndex;
-    if (cached && cached.date === todayKey && cached.idx < phrases.length) {
+    // Cache must (a) be for today's date AND (b) the cached
+    // {idx, ko} pair must still point to the same phrase in the
+    // current queue — otherwise a delete / reorder in admin leaves
+    // the home block stuck on a phrase that no longer exists at
+    // that index, or worse, on the NEW phrase that slid into that
+    // slot. Validate by Korean text match before reusing the cache.
+    if (cached
+        && cached.date === todayKey
+        && typeof cached.idx === 'number'
+        && cached.idx >= 0
+        && cached.idx < phrases.length
+        && (!cached.ko || cached.ko === phrases[cached.idx].ko)) {
       phraseIndex = cached.idx;
     } else {
       var seen = [];
@@ -1702,7 +1713,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       var dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
       phraseIndex = unseen[dayHash % unseen.length];
       seen.push(phraseIndex);
-      try { localStorage.setItem(seenKey, JSON.stringify(seen)); localStorage.setItem(todayCache, JSON.stringify({date:todayKey,idx:phraseIndex})); } catch(e){}
+      try { localStorage.setItem(seenKey, JSON.stringify(seen)); localStorage.setItem(todayCache, JSON.stringify({date:todayKey,idx:phraseIndex,ko:phrases[phraseIndex].ko})); } catch(e){}
     }
     var p = phrases[phraseIndex];
     var ko = document.getElementById('pb-ko');
