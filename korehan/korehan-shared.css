@@ -2323,408 +2323,295 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
 }
 
 /* phrase detail */
-/* ── TODAY'S PHRASE — full dark mode reader ──────────────── */
-/* The base `body` rule above uses !important on background and color
- * to lock the global cream theme down, so this page-level override
- * has to use !important too — without that the dark gradient never
- * paints and the whole reader looks like white-text-on-cream. */
-body.phrase-page-dark {
-  background:
-    radial-gradient(140% 100% at 50% 0%, rgba(56,189,248,.10) 0%, rgba(56,189,248,0) 55%),
-    radial-gradient(140% 120% at 100% 100%, rgba(167,139,250,.12) 0%, rgba(167,139,250,0) 60%),
-    linear-gradient(180deg, #0a1426 0%, #0f1729 60%, #0a1426 100%) !important;
-  background-color: #0a1426 !important;
-  color: #e2e8f0 !important;
-}
-/* Phrase reader is meant to be a focused fullscreen experience —
- * the iOS-style mockup has no surrounding shell. Hide the global
- * KoreHani header / footer / bottom nav while this page is active
- * so the dark hero doesn't compete with the cream chrome. */
-body.phrase-page-dark #kh-header,
-body.phrase-page-dark #kh-footer,
-body.phrase-page-dark #kh-bottom-nav,
-body.phrase-page-dark .kh-bottom-nav,
-body.phrase-page-dark .kh-mobile-tabbar,
-body.phrase-page-dark .kh-header-bar,
-body.phrase-page-dark .kh-topnav,
-body.phrase-page-dark .mobile-bottom-nav,
-body.phrase-page-dark .mobile-top-bar,
-body.phrase-page-dark .kh-mobile-overlay,
-body.phrase-page-dark #kh-mobile-tabbar { display: none !important; }
-/* The phrase page is its own fullscreen reader — leave room only for
-   our own fixed CTA at the bottom (handled by phrase-shell padding). */
-body.phrase-page-dark { padding-bottom: 0 !important; }
-body.phrase-page-dark #kh-header,
-body.phrase-page-dark #kh-footer { color-scheme: dark; }
-
-.phrase-shell {
-  max-width: 560px;
-  margin: 0 auto;
-  padding: 24px 18px 130px; /* extra bottom padding so CTA pill doesn't cover content */
-}
-
-/* Top status row — bookmark / share — mirrors the iOS-style mockup */
-.phrase-toprow {
-  display: flex; align-items: center; justify-content: space-between;
-  margin: 0 0 22px;
-  height: 36px;
-}
-.phrase-iconbtn {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255,255,255,.06);
-  color: rgba(255,255,255,.85);
-  display: inline-flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background .15s, transform .12s;
+/* ── TODAY'S PHRASE — editorial card (light) ─────────────────
+   Replaces the previous dark-mode reader. Mirrors the article
+   reader's `kh-article-hero` / `kh-article-body` pattern: white
+   card on cream container, navy serif headline, italic Playfair
+   English subtitle, byline-style meta, sectioned body. Header /
+   footer / bottom nav stay visible — no fullscreen takeover. */
+.kh-phrase-back {
+  display:inline-flex; align-items:center; gap:6px;
+  margin: 8px 0 12px;
+  font-size: 12px; font-weight: 700;
+  color: var(--gray);
   text-decoration: none;
+  letter-spacing: .04em;
+  text-transform: uppercase;
 }
-.phrase-iconbtn:hover { background: rgba(255,255,255,.12); }
-.phrase-iconbtn:active { transform: scale(.92); }
-.phrase-iconbtn.saved { background: rgba(56,189,248,.18); color: #7dd3fc; }
-.phrase-toprow .ptr-right { display: flex; gap: 8px; }
+.kh-phrase-back:hover { color: var(--accent); }
 
-/* Level / category badge */
-.phrase-level-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: rgba(74,222,128,.10);
-  border: 1px solid rgba(74,222,128,.40);
-  color: #4ade80;
-  font-size: 11px; font-weight: 800;
-  letter-spacing: .14em; text-transform: uppercase;
-  margin-bottom: 18px;
-  font-family: 'Source Sans 3', sans-serif;
-}
-.phrase-level-badge.lvl-tree    { background: rgba(34,197,94,.10);  border-color: rgba(34,197,94,.40);  color: #4ade80; }
-.phrase-level-badge.lvl-forest  { background: rgba(168,85,247,.10); border-color: rgba(168,85,247,.45); color: #c4b5fd; }
-.phrase-level-badge.lvl-seed    { background: rgba(251,146,60,.10); border-color: rgba(251,146,60,.40); color: #fdba74; }
-.phrase-level-badge.lvl-sprout  { background: rgba(74,222,128,.10); border-color: rgba(74,222,128,.40); color: #4ade80; }
-
-/* Big phrase headline */
-.phrase-ko {
-  font-family: 'Noto Serif KR', serif;
-  font-size: clamp(36px, 9vw, 52px);
-  font-weight: 900;
-  color: #ffffff;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  margin: 0 0 14px;
-  word-break: keep-all;
-  animation: phraseFadeUp .45s cubic-bezier(.34,1.56,.64,1);
-}
-.phrase-en {
-  font-size: clamp(20px, 5vw, 26px);
-  font-weight: 700;
-  color: #7dd3fc;
-  line-height: 1.35;
-  margin: 0 0 6px;
-  font-family: 'Source Sans 3', sans-serif;
-  animation: phraseFadeUp .5s .05s cubic-bezier(.34,1.56,.64,1) backwards;
-}
-.phrase-rom {
-  font-size: 13px;
-  color: rgba(226,232,240,.5);
-  font-style: italic;
-  margin-bottom: 28px;
-  letter-spacing: .03em;
-  animation: phraseFadeUp .55s .1s cubic-bezier(.34,1.56,.64,1) backwards;
-}
-@keyframes phraseFadeUp { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
-
-/* Cards */
-.phrase-card {
-  position: relative;
-  background: linear-gradient(180deg, rgba(30,41,59,.72), rgba(15,23,41,.86));
-  border: 1px solid rgba(125,211,252,.14);
-  border-radius: 20px;
-  padding: 22px 22px 24px;
-  margin: 0 0 14px;
+.kh-phrase-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
   overflow: hidden;
-  animation: phraseFadeUp .5s .15s cubic-bezier(.34,1.56,.64,1) backwards;
+  margin-bottom: 24px;
 }
-.phrase-card:nth-of-type(2) { animation-delay: .22s; }
-.phrase-card:nth-of-type(3) { animation-delay: .29s; }
-.phrase-card-header {
-  display: flex; align-items: center; justify-content: space-between;
+
+.kh-phrase-hero-banner {
+  position: relative;
+  height: 220px;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(circle at 28% 24%, rgba(122,184,245,.30) 0%, rgba(122,184,245,0) 55%),
+    radial-gradient(circle at 78% 78%, rgba(255,213,128,.32) 0%, rgba(255,213,128,0) 60%),
+    linear-gradient(135deg, #f7faff 0%, #ecf3ff 60%, #fff5e0 100%);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.kh-phrase-hero-illus {
+  width: 168px; height: 168px;
+  display: flex; align-items: center; justify-content: center;
+  filter: drop-shadow(0 12px 24px rgba(13,27,46,.16));
+  font-size: 100px; line-height: 1;
+}
+.kh-phrase-hero-illus iconify-icon { width: 100%; height: 100%; display: inline-block; }
+.kh-phrase-hero-illus svg { width: 100%; height: 100%; display: block; }
+@media (max-width: 640px) {
+  .kh-phrase-hero-banner { height: 168px; }
+  .kh-phrase-hero-illus { width: 128px; height: 128px; font-size: 76px; }
+}
+
+.kh-phrase-card-body { padding: 26px 28px 28px; position: relative; }
+@media (max-width: 640px) { .kh-phrase-card-body { padding: 22px 18px 24px; } }
+
+.kh-phrase-admin-edit {
+  position: absolute; top: 12px; right: 14px;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(124,58,237,.10);
+  color: #7c3aed;
+  text-decoration: none;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.kh-phrase-admin-edit:hover { background: rgba(124,58,237,.18); }
+
+.kh-phrase-eyebrow {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
   margin-bottom: 14px;
 }
-.phrase-card-title {
-  font-size: 15px; font-weight: 800;
-  color: #7dd3fc;
-  letter-spacing: -.005em;
-  font-family: 'Source Sans 3', sans-serif;
+.kh-phrase-eyebrow-cat {
+  font-size: 11px; font-weight: 800;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--bright);
 }
-.phrase-card-tts {
+.kh-phrase-eyebrow-lvl {
+  font-size: 11px; font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(34,85,164,.10);
+  color: var(--accent);
+  letter-spacing: .04em;
+}
+.kh-phrase-loading-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(122,184,245,.18);
+  color: var(--bright);
+}
+.kh-phrase-loading-pill::before {
+  content: ''; width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--bright);
+  animation: kh-phrase-pulse 1.2s infinite ease-in-out;
+}
+@keyframes kh-phrase-pulse { 0%,100%{opacity:.3;transform:scale(.85)} 50%{opacity:1;transform:scale(1.15)} }
+
+.kh-phrase-headline {
+  font-family: 'Noto Serif KR', 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: clamp(30px, 6vw, 42px);
+  line-height: 1.18;
+  letter-spacing: -.012em;
+  color: var(--navy);
+  margin: 0 0 10px;
+  word-break: keep-all;
+}
+.kh-phrase-subtitle {
+  font-family: 'Playfair Display', 'Noto Serif KR', serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(18px, 3.4vw, 22px);
+  line-height: 1.4;
+  color: var(--accent);
+  margin: 0 0 6px;
+}
+.kh-phrase-rom {
+  font-size: 13px;
+  font-style: italic;
+  letter-spacing: .03em;
+  color: var(--gray);
+  margin: 0 0 16px;
+}
+
+.kh-phrase-byline {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--gray);
+  margin: 0 0 8px;
+}
+.kh-phrase-byline-dot { color: #cbd5e1; user-select: none; }
+.kh-phrase-streak-icon { width: 11px; height: 11px; color: #f97316; vertical-align: -1px; margin-right: 2px; }
+.kh-phrase-master-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--gray);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  cursor: pointer;
+  transition: all .15s;
+}
+.kh-phrase-master-btn:hover { color: var(--accent); border-color: var(--accent); }
+.kh-phrase-master-btn.on {
+  background: rgba(34,197,94,.10);
+  border-color: rgba(34,197,94,.40);
+  color: #15803d;
+}
+
+.kh-phrase-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 18px 0 22px;
+}
+
+.kh-phrase-section { margin-bottom: 22px; }
+.kh-phrase-section:last-child { margin-bottom: 0; }
+.kh-phrase-section-label {
+  font-size: 11px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .12em;
+  color: var(--bright);
+  margin: 0 0 10px;
+}
+.kh-phrase-section-ko {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 17px; font-weight: 700;
+  color: var(--navy);
+  line-height: 1.55;
+  margin: 0 0 8px;
+  word-break: keep-all;
+}
+.kh-phrase-section-en {
+  font-size: 15px;
+  color: var(--dark);
+  line-height: 1.7;
+  margin: 0;
+}
+.kh-phrase-section-pending {
+  color: var(--gray);
+  font-style: italic;
+}
+
+/* In Action — slightly heavier than the article-reader's example
+   box because it's the primary "see this in use" surface for a
+   phrase. Uses the existing site gradient + accent stripe. */
+.kh-phrase-example-box { margin-top: 0; }
+.kh-phrase-example-head {
+  display: flex; align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.kh-phrase-example-head > span:first-child { flex: 1; }
+.kh-phrase-example-actions { display: inline-flex; gap: 6px; }
+.kh-phrase-icon-btn {
   width: 30px; height: 30px;
-  border: none; border-radius: 8px;
-  background: rgba(125,211,252,.10);
-  color: #7dd3fc;
+  border: 1px solid rgba(34,85,164,.18);
+  background: var(--white);
+  border-radius: 8px;
+  color: var(--accent);
   cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   transition: background .15s;
 }
-.phrase-card-tts:hover { background: rgba(125,211,252,.20); }
+.kh-phrase-icon-btn:hover { background: rgba(34,85,164,.10); }
 
-.phrase-card-body-ko {
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  color: #f1f5f9;
-  line-height: 1.65;
-  word-break: keep-all;
-}
-.phrase-card-body-en {
-  margin-top: 10px;
-  font-size: 14.5px;
-  color: rgba(226,232,240,.92);
-  line-height: 1.7;
-  font-family: 'Source Sans 3', sans-serif;
-}
-.phrase-card-divider {
-  height: 1px;
-  background: rgba(125,211,252,.16);
-  margin: 18px 0 14px;
-}
-.phrase-card-section-label {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: #7dd3fc;
-  margin-bottom: 8px;
-}
-
-/* Decorative right-side illustration on the meaning card. Small icon
- * tucked in the corner — keeps the layout from feeling like just text
- * blocks. Hidden when the card has none. */
-.phrase-card-illus {
-  position: absolute;
-  right: 14px; bottom: 12px;
-  width: 88px; height: 88px;
-  display: flex; align-items: center; justify-content: center;
-  opacity: .9;
-  filter: drop-shadow(0 6px 16px rgba(125,211,252,.22));
-  pointer-events: none;
-  font-size: 56px;
-  line-height: 1;
-}
-.phrase-card-illus iconify-icon { width: 100%; height: 100%; display: inline-block; }
-.phrase-card-illus svg { width: 100%; height: 100%; display: block; }
-@media (min-width: 480px) {
-  .phrase-card-illus { width: 104px; height: 104px; font-size: 72px; }
-  .phrase-card.has-illus .phrase-card-body-ko { padding-right: 110px; }
-}
-
-.phrase-meta-row {
-  display: flex; flex-wrap: wrap; gap: 6px;
-  margin: 16px 0 24px;
-}
-.phrase-chip {
-  display: inline-flex; align-items: center;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(125,211,252,.08);
-  border: 1px solid rgba(125,211,252,.20);
-  color: #7dd3fc;
-  font-size: 12px; font-weight: 700;
-  text-decoration: none;
-  transition: background .15s;
-  font-family: 'Source Sans 3', sans-serif;
-}
-.phrase-chip:hover { background: rgba(125,211,252,.16); }
-
-/* Bottom CTA pill — single primary action, full-width on mobile */
-.phrase-cta-bar {
-  position: fixed;
-  left: 50%;
-  bottom: 22px;
-  transform: translateX(-50%);
-  width: min(560px, calc(100% - 28px));
-  z-index: 60;
-  pointer-events: none; /* let only the button receive clicks */
-}
-.phrase-cta {
-  display: flex; align-items: center; justify-content: center;
+/* Related expressions list — matches the gradient + border style
+   of art-example-box but as compact rows. */
+.kh-phrase-related-list {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex; flex-direction: column;
   gap: 8px;
-  width: 100%;
-  padding: 16px 22px;
-  border-radius: 999px;
-  border: none;
-  background: linear-gradient(135deg, #38bdf8 0%, #6366f1 50%, #a855f7 100%);
-  color: #fff;
-  font-size: 15px; font-weight: 800;
-  font-family: 'Source Sans 3', 'Noto Sans KR', sans-serif;
-  cursor: pointer;
-  letter-spacing: -.01em;
-  box-shadow: 0 12px 32px rgba(99,102,241,.4), 0 4px 14px rgba(168,85,247,.28);
-  transition: transform .12s, box-shadow .15s;
-  pointer-events: auto;
-  text-decoration: none;
 }
-.phrase-cta:hover { transform: translateY(-1px); box-shadow: 0 16px 40px rgba(99,102,241,.5), 0 6px 18px rgba(168,85,247,.36); }
-.phrase-cta:active { transform: translateY(0); }
-.phrase-cta.saved {
-  background: linear-gradient(135deg, #34d399, #14b8a6);
-  box-shadow: 0 12px 32px rgba(16,185,129,.4);
-}
-.phrase-cta-sub {
-  text-align: center;
-  margin-top: 10px;
-  font-size: 11.5px;
-  color: rgba(148,163,184,.6);
-  font-family: 'Source Sans 3', sans-serif;
-}
-.phrase-cta-sub a {
-  color: #7dd3fc;
-  text-decoration: none;
-  font-weight: 700;
-}
-
-/* ── Redesigned phrase reader ─────────────────────────────────
-   Hero block: centered illustration → phrase headline → EN
-   translation → engagement strip (streak / saved count). The
-   floating chips were replaced by a proper Related Phrases card
-   below the example. */
-.phrase-hero {
-  display: flex; flex-direction: column; align-items: center;
-  text-align: center;
-  margin: 0 0 28px;
-}
-.phrase-hero-illus {
-  width: clamp(120px, 36vw, 168px);
-  height: clamp(120px, 36vw, 168px);
-  margin: 0 auto 18px;
-  display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(circle at center, rgba(125,211,252,.18) 0%, rgba(125,211,252,0) 65%);
-  filter: drop-shadow(0 12px 28px rgba(125,211,252,.28));
-  font-size: clamp(72px, 22vw, 100px);
-  line-height: 1;
-  animation: phraseFadeUp .55s cubic-bezier(.34,1.56,.64,1);
-}
-.phrase-hero-illus iconify-icon { width: 100%; height: 100%; display: inline-block; }
-.phrase-hero-illus svg { width: 100%; height: 100%; display: block; }
-.phrase-hero .phrase-ko { text-align: center; margin-bottom: 12px; }
-.phrase-hero .phrase-en { text-align: center; }
-.phrase-hero .phrase-rom { text-align: center; margin-top: 4px; margin-bottom: 16px; }
-.phrase-hero .phrase-level-badge { margin-bottom: 14px; }
-
-/* Engagement strip — small motivators directly under the phrase.
-   "Day N" of the rotation (the user's streak with phrases) and a
-   "Saved by you" / "Mark as mastered" pill. Designed to be skim-
-   readable, not gamified. */
-.phrase-motivation {
-  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
-  margin: 0 0 26px;
-}
-.phrase-motiv-chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 14px;
-  border-radius: 999px;
-  background: rgba(125,211,252,.08);
-  border: 1px solid rgba(125,211,252,.18);
-  color: rgba(226,232,240,.84);
-  font-size: 11.5px; font-weight: 700;
-  letter-spacing: .04em;
-  font-family: 'Source Sans 3', sans-serif;
-}
-.phrase-motiv-chip strong { color: #7dd3fc; font-weight: 800; margin-right: 2px; }
-.phrase-motiv-chip.is-mastered { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.40); color: #4ade80; cursor: pointer; }
-.phrase-motiv-chip.is-mastered.on { background: linear-gradient(135deg, rgba(34,197,94,.36), rgba(20,184,166,.30)); color: #fff; }
-.phrase-motiv-chip.is-mastered:hover { transform: translateY(-1px); }
-
-/* Related phrases card — replaces the floating chip row.
-   A learner sees up to 3 thematically connected expressions with
-   a one-line gloss for each. Tappable rows route into the same
-   phrase reader with ?q=…. */
-.phrase-related-card {
-  background: linear-gradient(180deg, rgba(15,23,41,.86), rgba(15,23,41,.96));
-  border: 1px solid rgba(168,85,247,.18);
-  border-radius: 20px;
-  padding: 20px 22px 22px;
-  margin: 0 0 18px;
-  animation: phraseFadeUp .55s .35s cubic-bezier(.34,1.56,.64,1) backwards;
-}
-.phrase-related-card .phrase-card-title { color: #c4b5fd; }
-.phrase-related-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-.phrase-related-row {
+.kh-phrase-related-list a {
   display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
   padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(168,85,247,.06);
-  border: 1px solid rgba(168,85,247,.14);
-  color: #f1f5f9;
+  background: linear-gradient(135deg,#f8fbff,#eef4ff);
+  border: 1px solid rgba(34,85,164,.16);
+  border-radius: 10px;
   text-decoration: none;
-  transition: background .15s, transform .12s;
-}
-.phrase-related-row:hover { background: rgba(168,85,247,.14); transform: translateY(-1px); }
-.phrase-related-row .pr-ko {
+  color: var(--navy);
   font-family: 'Noto Serif KR', serif;
   font-size: 15px; font-weight: 700;
-  color: #fff;
-  word-break: keep-all;
+  transition: all .15s;
 }
-.phrase-related-row .pr-arrow {
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  background: rgba(168,85,247,.20);
-  color: #c4b5fd;
-  display: inline-flex; align-items: center; justify-content: center;
+.kh-phrase-related-list a:hover {
+  border-color: var(--bright);
+  transform: translateX(3px);
+  box-shadow: 0 4px 12px rgba(34,85,164,.10);
+}
+.kh-phrase-related-list .kp-rel-arrow {
+  color: var(--bright);
+  font-weight: 800;
+  font-size: 16px;
   flex-shrink: 0;
-  margin-left: 8px;
-}
-/* Mastery toggle row — sits next to the bottom CTA so users can
-   mark a phrase as learned without leaving the page. Subtle, not
-   shouty. */
-.phrase-mastery-row {
-  display: flex; gap: 10px; justify-content: center;
-  margin: 14px 0 18px;
-}
-.phrase-mastery-btn {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 9px 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(125,211,252,.22);
-  background: rgba(125,211,252,.06);
-  color: #cbd5e1;
-  font-size: 12.5px; font-weight: 700;
-  cursor: pointer;
-  font-family: 'Source Sans 3', sans-serif;
-  transition: background .15s, border-color .15s, color .15s;
-}
-.phrase-mastery-btn:hover { background: rgba(125,211,252,.14); color: #f1f5f9; }
-.phrase-mastery-btn.on {
-  background: linear-gradient(135deg, rgba(34,197,94,.32), rgba(20,184,166,.24));
-  border-color: rgba(34,197,94,.54);
-  color: #fff;
 }
 
-/* Loading pill */
-.phrase-loading {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(125,211,252,.08);
-  color: #7dd3fc;
-  font-size: 11px; font-weight: 700;
-  font-family: 'Source Sans 3', sans-serif;
-  margin-left: 10px;
-  letter-spacing: .04em;
+/* CTA row — solid accent button + secondary outline link, no
+   fixed positioning. Matches the rest of the site's button style. */
+.kh-phrase-cta-row {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
 }
-.phrase-loading::before {
-  content: ''; width: 8px; height: 8px;
-  border-radius: 50%;
-  background: #7dd3fc;
-  animation: phrasePulse 1.2s infinite ease-in-out;
+.kh-phrase-save-btn {
+  flex: 1 1 auto; min-width: 200px;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px;
+  padding: 13px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px; font-weight: 800;
+  letter-spacing: .01em;
+  cursor: pointer;
+  transition: background .15s, transform .12s;
 }
-@keyframes phrasePulse { 0%,100%{opacity:.3;transform:scale(.9)} 50%{opacity:1;transform:scale(1.2)} }
+.kh-phrase-save-btn:hover { background: var(--bright); }
+.kh-phrase-save-btn:active { transform: translateY(1px); }
+.kh-phrase-save-btn.saved { background: #16a34a; }
+.kh-phrase-secondary-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 13px 20px;
+  background: var(--white);
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13.5px; font-weight: 800;
+  text-decoration: none;
+  letter-spacing: .01em;
+  transition: background .15s;
+}
+.kh-phrase-secondary-btn:hover { background: rgba(26,58,107,.06); }
 
 .phrase-empty {
   text-align: center; padding: 80px 20px;
-  color: rgba(148,163,184,.7);
+  color: var(--gray);
   font-size: 14px;
 }
 
