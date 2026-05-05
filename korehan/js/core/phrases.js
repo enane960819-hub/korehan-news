@@ -146,13 +146,25 @@ async function saveSharedPhrases(rows) {
   try { localStorage.removeItem('kh_phrase_today'); } catch(_) {}
 
   var sb = getSupa();
-  if (!sb || !supaUser) return normalized;
+  if (!sb || !supaUser) {
+    try { console.warn('[saveSharedPhrases] no auth — DB not updated. Admin must be signed in for the queue to propagate to the home page.'); } catch(_) {}
+    return normalized;
+  }
   try {
-    await sb.from('app_settings').upsert({
+    var res = await sb.from('app_settings').upsert({
       key: 'phrases',
       value: normalized,
       updated_at: new Date().toISOString()
     }, { onConflict: 'key' });
-  } catch(e) {}
+    if (res && res.error) {
+      try { console.error('[saveSharedPhrases] DB upsert FAILED:', res.error); } catch(_) {}
+      try { if (typeof toast === 'function') toast('⚠ DB 저장 실패: ' + (res.error.message || 'unknown') + ' — 홈에 반영되지 않습니다', true); } catch(_) {}
+    } else {
+      try { console.log('[saveSharedPhrases] DB updated, ' + normalized.length + ' phrases'); } catch(_) {}
+    }
+  } catch(e) {
+    try { console.error('[saveSharedPhrases] DB upsert THREW:', e); } catch(_) {}
+    try { if (typeof toast === 'function') toast('⚠ DB 저장 예외: ' + (e && e.message || e), true); } catch(_) {}
+  }
   return normalized;
 }

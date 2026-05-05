@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20260505b">
+<link rel="stylesheet" href="korehan-shared.css?v=20260505c">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -1227,7 +1227,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505b"></script>
+<script src="js/core/phrases.js?v=20260505c"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -1242,7 +1242,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260505b"></script>
+<script src="korehan-shared.js?v=20260505c"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
@@ -1709,17 +1709,22 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
   // 먼저 localStorage 캐시된 phrases로 즉시 렌더 (네트워크 불필요)
   renderTodaysPhrase();
-  // DB phrases는 idle 시 백그라운드 로드 → 렌더 갱신.
-  // force:true bypasses the memoized app_settings promise so users
-  // who got an empty/error result earlier in the session still
-  // pick up admin updates, and getPhrasesAsync writes the fresh
-  // list back into localStorage for the next sync paint.
+  // Force-fetch DB IMMEDIATELY (not idle-deferred). Earlier we used
+  // requestIdleCallback here, but that fires whenever the browser
+  // feels like it — sometimes long after the user has already given
+  // up on the home block. Running it inline guarantees admin queue
+  // changes propagate as fast as the DB call returns.
+  if (typeof getPhrasesAsync === 'function') {
+    getPhrasesAsync({ force: true })
+      .then(function(rows){
+        try { console.log('[home phrase] loaded', (rows||[]).length, 'phrases from DB:', (rows||[]).map(function(r){return r.ko;})); } catch(_) {}
+        renderTodaysPhrase();
+      })
+      .catch(function(e){
+        try { console.warn('[home phrase] DB load failed', e && e.message || e); } catch(_) {}
+      });
+  }
   var _deferHome = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 50); };
-  _deferHome(function() {
-    if (typeof getPhrasesAsync === 'function') {
-      getPhrasesAsync({ force: true }).then(renderTodaysPhrase).catch(function(){});
-    }
-  });
   // Re-render when settings are reloaded post-auth (picks up RLS-
   // protected phrase data). Force a fresh DB read so this also rescues
   // sessions where the original loadAppSettings memoized an empty
