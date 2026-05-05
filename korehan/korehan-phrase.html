@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a1426">
 <title>Today's Phrase — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260504e">
+<link rel="stylesheet" href="korehan-shared.css?v=20260505a">
 <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie_light.min.js" defer></script>
 </head>
@@ -57,6 +57,58 @@
 
 var PHRASE_FILL_CACHE_KEY = 'kh_phrase_fill_v1';
 var SAVED_PHRASES_KEY = 'kh_saved_phrases_v1';
+var MASTERED_PHRASES_KEY = 'kh_mastered_phrases_v1';
+var PHRASE_VIEW_LOG_KEY = 'kh_phrase_view_log_v1';
+
+function _getMasteredPhrases() {
+  try { return JSON.parse(localStorage.getItem(MASTERED_PHRASES_KEY) || '[]'); }
+  catch(_) { return []; }
+}
+function _isPhraseMastered(ko) {
+  if (!ko) return false;
+  return _getMasteredPhrases().indexOf(ko) >= 0;
+}
+function _togglePhraseMastered(ko) {
+  if (!ko) return false;
+  var list = _getMasteredPhrases();
+  var idx = list.indexOf(ko);
+  if (idx >= 0) list.splice(idx, 1);
+  else list.unshift(ko);
+  try { localStorage.setItem(MASTERED_PHRASES_KEY, JSON.stringify(list.slice(0, 500))); } catch(_) {}
+  if (typeof khTrackUser === 'function') {
+    try { khTrackUser(idx < 0 ? 'phrase_mastered' : 'phrase_unmastered', { ko: ko }); } catch(_) {}
+  }
+  return idx < 0;
+}
+
+// Lightweight phrase-view log so we can show a "Day N" streak in the
+// motivation strip. One entry per UTC date when the user opens any
+// phrase. Stored locally only.
+function _logPhraseViewToday() {
+  try {
+    var raw = localStorage.getItem(PHRASE_VIEW_LOG_KEY);
+    var log = raw ? JSON.parse(raw) : { dates: [] };
+    if (!log || typeof log !== 'object') log = { dates: [] };
+    var today = new Date().toISOString().slice(0, 10);
+    if (log.dates.indexOf(today) < 0) {
+      log.dates.unshift(today);
+      log.dates = log.dates.slice(0, 60); // keep two months
+      localStorage.setItem(PHRASE_VIEW_LOG_KEY, JSON.stringify(log));
+    }
+    return log;
+  } catch(_) { return { dates: [] }; }
+}
+function _phraseStreakFromLog(log) {
+  if (!log || !Array.isArray(log.dates) || !log.dates.length) return 0;
+  var streak = 0;
+  var d = new Date();
+  for (var i = 0; i < 60; i++) {
+    var key = d.toISOString().slice(0, 10);
+    if (log.dates.indexOf(key) >= 0) { streak++; d.setUTCDate(d.getUTCDate() - 1); }
+    else break;
+  }
+  return streak;
+}
 
 function escapeText(s) { return String(s == null ? '' : s)
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -295,7 +347,7 @@ function _phraseIllusEntry(phrase) {
 // don't HEAD-fetch on every render.
 var _phraseLottieKnown = {};
 
-function _phraseRenderIllus(entry) {
+function _phraseRenderIllus(entry, opts) {
   if (!entry) return '';
   // Three-tier illustration: Lottie JSON if present at the mapped
   // path, Iconify SVG (Fluent Emoji set — looks like a designed icon
@@ -305,8 +357,11 @@ function _phraseRenderIllus(entry) {
   // the corner instead of a blank slot. Once the iconify web component
   // boots it replaces its own contents with the SVG, hiding the
   // emoji automatically.
+  // opts.hero=true uses the centered-hero class instead of the
+  // corner thumbnail, anchoring the page to the illustration.
+  var cls = (opts && opts.hero) ? 'phrase-hero-illus' : 'phrase-card-illus';
   var fallbackEmoji = entry.fallback || '';
-  var slot = '<div class="phrase-card-illus" data-lottie="' + escapeText(entry.lottie || '') + '" data-fallback-icon="' + escapeText(entry.icon || '') + '" data-fallback-emoji="' + escapeText(fallbackEmoji) + '">'
+  var slot = '<div class="' + cls + '" data-lottie="' + escapeText(entry.lottie || '') + '" data-fallback-icon="' + escapeText(entry.icon || '') + '" data-fallback-emoji="' + escapeText(fallbackEmoji) + '">'
     + (entry.icon
         ? '<iconify-icon icon="' + escapeText(entry.icon) + '" width="100%" height="100%" aria-hidden="true">' + escapeText(fallbackEmoji) + '</iconify-icon>'
         : escapeText(fallbackEmoji))
@@ -318,7 +373,7 @@ function _phraseRenderIllus(entry) {
 // per path per page-load. If Lottie + JSON both exist, replace the
 // Iconify fallback with the animated player.
 async function _phraseHydrateLottie() {
-  var slots = document.querySelectorAll('.phrase-card-illus[data-lottie]');
+  var slots = document.querySelectorAll('.phrase-card-illus[data-lottie], .phrase-hero-illus[data-lottie]');
   if (!slots.length || typeof window.lottie === 'undefined') return;
   for (var i = 0; i < slots.length; i++) {
     var slot = slots[i];
@@ -402,6 +457,16 @@ window.toggleSavePhrase = function() {
   }
 };
 
+window.toggleMasteredPhrase = function() {
+  var phrase = window._currentPhrase;
+  if (!phrase || !phrase.ko) return;
+  var nowMastered = _togglePhraseMastered(phrase.ko);
+  renderPhraseLayout(phrase, window._currentPhraseOpts || {});
+  if (typeof toast === 'function') {
+    toast(nowMastered ? '🎉 마스터했어요!' : '다시 학습 목록에 들어왔어요', false);
+  }
+};
+
 window.startPhraseStudy = function() {
   if (typeof khTrackUser === 'function') {
     var phrase = window._currentPhrase || {};
@@ -425,12 +490,62 @@ function renderPhraseLayout(phrase, opts) {
   var levelLabel = LEVEL_LABEL[levelKey] || 'Sprout Level';
 
   var saved = _isPhraseSaved(phrase.ko);
+  var mastered = _isPhraseMastered(phrase.ko);
 
   var statusPill = opts.generating
     ? '<span class="phrase-loading">분석 채우는 중</span>'
     : '';
 
-  // Meaning card body — prefer Korean intro_ko + English intro stack.
+  // ── Top toolbar — back + bookmark only on the user-facing layout.
+  // Admin gets a small edit shortcut too. The clutter from a third
+  // button hurt the page's visual focus.
+  var topRow = ''
+    + '<div class="phrase-toprow">'
+    +   '<a class="phrase-iconbtn" href="javascript:history.length>1?history.back():(location.href=\'index.html\')" aria-label="Back">'
+    +     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
+    +   '</a>'
+    +   '<div class="ptr-right">'
+    +     '<button class="phrase-iconbtn ' + (saved ? 'saved' : '') + '" onclick="toggleSavePhrase()" aria-label="Save phrase">'
+    +       (saved
+              ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
+              : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>')
+    +     '</button>'
+    +     ((typeof window._isAdmin !== 'undefined' && window._isAdmin && opts.idx != null)
+            ? '<a class="phrase-iconbtn" href="korehan-x9f4k2m7-phrases.html?edit=' + opts.idx + '" aria-label="Edit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></a>'
+            : '')
+    +   '</div>'
+    + '</div>';
+
+  // ── Hero block — illustration centered, big phrase, EN translation,
+  // romanization. The illustration is the page's anchor — earlier the
+  // user said the page felt empty / corner thumbnail wasn't enough.
+  var illusEntry = _phraseIllusEntry(phrase);
+  var dayCounter = (typeof opts.dayLabel === 'string') ? opts.dayLabel : '';
+  var heroBlock = ''
+    + '<div class="phrase-hero">'
+    +   _phraseRenderIllus(illusEntry, { hero: true })
+    +   '<span class="phrase-level-badge ' + levelClass + '">'
+    +     '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L4 8 L4 22 L11 22 L11 17 L13 17 L13 22 L20 22 L20 8 Z" opacity=".7"/></svg>'
+    +     '<span>' + levelLabel + '</span>'
+    +   '</span>'
+    +   (statusPill ? statusPill : '')
+    +   '<h1 class="phrase-ko">' + escapeText(phrase.ko) + '</h1>'
+    +   (phrase.en  ? '<div class="phrase-en">' + escapeText(phrase.en)  + '</div>' : '')
+    +   (phrase.rom ? '<div class="phrase-rom">' + escapeText(phrase.rom) + '</div>' : '')
+    + '</div>';
+
+  // ── Motivation strip — small, restrained chips. Day streak + saved-
+  // count for engagement, plus a tappable mastery toggle. Replaces the
+  // empty-feeling space the user complained about.
+  var streak = opts.streak | 0;
+  var motivChips = [];
+  if (dayCounter) motivChips.push('<span class="phrase-motiv-chip"><strong>' + escapeText(dayCounter) + '</strong></span>');
+  if (streak > 0) motivChips.push('<span class="phrase-motiv-chip">🔥 <strong>' + streak + '</strong>일 연속</span>');
+  motivChips.push('<button type="button" class="phrase-motiv-chip is-mastered ' + (mastered ? 'on' : '') + '" onclick="toggleMasteredPhrase()" aria-pressed="' + (mastered ? 'true' : 'false') + '">' + (mastered ? '✓ 마스터함' : '마스터 표시') + '</button>');
+  var motivStrip = '<div class="phrase-motivation">' + motivChips.join('') + '</div>';
+
+  // ── Meaning card (no corner illustration anymore — illustration is
+  // already in the hero, doubling it just felt cramped).
   var hasIntro = phrase.intro_ko || phrase.intro;
   var meaningBody;
   if (hasIntro) {
@@ -447,17 +562,15 @@ function renderPhraseLayout(phrase, opts) {
   } else {
     meaningBody = '<div class="phrase-card-body-en">No description yet.</div>';
   }
-
-  var illusEntry = _phraseIllusEntry(phrase);
   var meaningCard = ''
-    + '<div class="phrase-card has-illus">'
+    + '<div class="phrase-card">'
     +   '<div class="phrase-card-header">'
     +     '<span class="phrase-card-title">Meaning</span>'
     +   '</div>'
     +   meaningBody
-    +   _phraseRenderIllus(illusEntry)
     + '</div>';
 
+  // ── Example card with TTS + cycle.
   var exampleCard = '';
   if (ex || opts.generating) {
     var exBody = ex
@@ -477,54 +590,39 @@ function renderPhraseLayout(phrase, opts) {
     exampleCard = ''
       + '<div class="phrase-card">'
       +   '<div class="phrase-card-header">'
-      +     '<span class="phrase-card-title">Example' + (examples.length > 1 ? ' · ' + (exIdx + 1) + '/' + examples.length : '') + '</span>'
+      +     '<span class="phrase-card-title">In Action' + (examples.length > 1 ? ' · ' + (exIdx + 1) + '/' + examples.length : '') + '</span>'
       +     '<span style="display:flex;align-items:center">' + cycleBtnHtml + ttsBtnHtml + '</span>'
       +   '</div>'
       +   exBody
       + '</div>';
   }
 
-  var related = (phrase.related || []).slice(0, 5);
-  var chipRow = related.length
-    ? '<div class="phrase-meta-row">'
-      + related.map(function(x){
-          return '<a class="phrase-chip" href="korehan-phrase.html?q=' + encodeURIComponent(x) + '">'
-            + '<span>' + escapeText(x) + '</span></a>';
-        }).join('')
-      + '</div>'
-    : '';
+  // ── Related expressions card. Replaces the floating chips with a
+  // proper card so they don't dangle under the example. Up to 4 rows;
+  // each row links to the same reader with the related phrase loaded.
+  var related = (phrase.related || []).slice(0, 4).filter(function(x){ return x && String(x).trim(); });
+  var relatedCard = '';
+  if (related.length) {
+    var rows = related.map(function(x){
+      var t = String(x).trim();
+      return '<a class="phrase-related-row" href="korehan-phrase.html?q=' + encodeURIComponent(t) + '">'
+        +   '<span class="pr-ko">' + escapeText(t) + '</span>'
+        +   '<span class="pr-arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>'
+        + '</a>';
+    }).join('');
+    relatedCard = ''
+      + '<div class="phrase-related-card">'
+      +   '<div class="phrase-card-header">'
+      +     '<span class="phrase-card-title">Related Expressions</span>'
+      +   '</div>'
+      +   '<div class="phrase-related-list">' + rows + '</div>'
+      + '</div>';
+  }
 
-  var topRow = ''
-    + '<div class="phrase-toprow">'
-    +   '<a class="phrase-iconbtn" href="javascript:history.length>1?history.back():(location.href=\'index.html\')" aria-label="Back">'
-    +     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
-    +   '</a>'
-    +   '<div class="ptr-right">'
-    +     '<button class="phrase-iconbtn ' + (saved ? 'saved' : '') + '" onclick="toggleSavePhrase()" aria-label="Save phrase">'
-    +       (saved
-              ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
-              : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>')
-    +     '</button>'
-    +     ((typeof window._isAdmin !== 'undefined' && window._isAdmin && opts.idx != null)
-            ? '<a class="phrase-iconbtn" href="korehan-x9f4k2m7-phrases.html?edit=' + opts.idx + '" aria-label="Edit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></a>'
-            : '')
-    +   '</div>'
-    + '</div>';
-
-  root.innerHTML = ''
-    + topRow
-    + '<span class="phrase-level-badge ' + levelClass + '">'
-    +   '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L4 8 L4 22 L11 22 L11 17 L13 17 L13 22 L20 22 L20 8 Z" opacity=".7"/></svg>'
-    +   '<span>' + levelLabel + '</span>'
-    + '</span>'
-    + (statusPill ? statusPill : '')
-    + '<h1 class="phrase-ko">' + escapeText(phrase.ko) + '</h1>'
-    + (phrase.en  ? '<div class="phrase-en">' + escapeText(phrase.en)  + '</div>' : '')
-    + (phrase.rom ? '<div class="phrase-rom">' + escapeText(phrase.rom) + '</div>' : '')
-    + meaningCard
-    + exampleCard
-    + chipRow
-    // Bottom CTA — fixed at viewport bottom; matches the mockup
+  // ── Bottom CTA pill. The "or continue studying" link from the
+  // previous version got stripped (redundant with the dedicated study
+  // page in the bottom-app navigation when the user opens that flow).
+  var bottomCta = ''
     + '<div class="phrase-cta-bar">'
     +   '<button class="phrase-cta ' + (saved ? 'saved' : '') + '" onclick="toggleSavePhrase()">'
     +     (saved
@@ -532,8 +630,16 @@ function renderPhraseLayout(phrase, opts) {
             : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>')
     +     '<span>' + (saved ? 'Saved to My Phrases' : 'Add to My Phrases') + '</span>'
     +   '</button>'
-    +   '<div class="phrase-cta-sub"><a href="korehan-study-room.html">Or continue studying →</a></div>'
     + '</div>';
+
+  root.innerHTML = ''
+    + topRow
+    + heroBlock
+    + motivStrip
+    + meaningCard
+    + exampleCard
+    + relatedCard
+    + bottomCta;
 
   document.title = phrase.ko + ' — KoreHani Phrase';
 
@@ -578,13 +684,21 @@ async function renderPhrasePage() {
   }
   var phrase = phrases[idx] || phrases[0];
 
+  var viewLog = _logPhraseViewToday();
+  var streak = _phraseStreakFromLog(viewLog);
+  var dayLabel = phrases.length > 1
+    ? 'Day ' + (idx + 1) + ' / ' + phrases.length
+    : '';
+
+  var renderOpts = { idx: idx, generating: false, streak: streak, dayLabel: dayLabel };
+
   var needsFill = isPhraseIncomplete(phrase);
-  renderPhraseLayout(phrase, { idx: idx, generating: needsFill });
+  renderPhraseLayout(phrase, Object.assign({}, renderOpts, { generating: needsFill }));
 
   if (needsFill) {
     try {
       var filled = await _ensurePhraseFilled(phrase);
-      renderPhraseLayout(filled, { idx: idx, generating: false });
+      renderPhraseLayout(filled, renderOpts);
     } catch(e) {
       console.warn('[phrase] fill failed', e);
     }

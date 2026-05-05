@@ -806,7 +806,10 @@ body.kh-neon-on .kh-neon-toggle:hover { transform: translateY(-2px); box-shadow:
   .nr-rail-scroll > .nc.nc-overlay .nc-meta { margin-bottom: 4px; }
 }
 
-/* Ensure the two-col first child doesn't expand past its grid track on mobile */
+/* Ensure the two-col first child doesn't expand past its grid track —
+   without this, wide horizontal-scroll rails push the sidebar off-screen
+   on desktop because grid items default to min-width:auto. */
+.two-col > div { min-width: 0; }
 body.mobile-redesign .two-col > div:first-child { min-width: 0; }
 .all-empty {
   padding: 50px 20px; text-align: center; color: #94a3b8;
@@ -2343,7 +2346,14 @@ body.phrase-page-dark #kh-bottom-nav,
 body.phrase-page-dark .kh-bottom-nav,
 body.phrase-page-dark .kh-mobile-tabbar,
 body.phrase-page-dark .kh-header-bar,
-body.phrase-page-dark .kh-topnav { display: none !important; }
+body.phrase-page-dark .kh-topnav,
+body.phrase-page-dark .mobile-bottom-nav,
+body.phrase-page-dark .mobile-top-bar,
+body.phrase-page-dark .kh-mobile-overlay,
+body.phrase-page-dark #kh-mobile-tabbar { display: none !important; }
+/* The phrase page is its own fullscreen reader — leave room only for
+   our own fixed CTA at the bottom (handled by phrase-shell padding). */
+body.phrase-page-dark { padding-bottom: 0 !important; }
 body.phrase-page-dark #kh-header,
 body.phrase-page-dark #kh-footer { color-scheme: dark; }
 
@@ -2572,6 +2582,124 @@ body.phrase-page-dark #kh-footer { color-scheme: dark; }
   color: #7dd3fc;
   text-decoration: none;
   font-weight: 700;
+}
+
+/* ── Redesigned phrase reader ─────────────────────────────────
+   Hero block: centered illustration → phrase headline → EN
+   translation → engagement strip (streak / saved count). The
+   floating chips were replaced by a proper Related Phrases card
+   below the example. */
+.phrase-hero {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+  margin: 0 0 28px;
+}
+.phrase-hero-illus {
+  width: clamp(120px, 36vw, 168px);
+  height: clamp(120px, 36vw, 168px);
+  margin: 0 auto 18px;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at center, rgba(125,211,252,.18) 0%, rgba(125,211,252,0) 65%);
+  filter: drop-shadow(0 12px 28px rgba(125,211,252,.28));
+  font-size: clamp(72px, 22vw, 100px);
+  line-height: 1;
+  animation: phraseFadeUp .55s cubic-bezier(.34,1.56,.64,1);
+}
+.phrase-hero-illus iconify-icon { width: 100%; height: 100%; display: inline-block; }
+.phrase-hero-illus svg { width: 100%; height: 100%; display: block; }
+.phrase-hero .phrase-ko { text-align: center; margin-bottom: 12px; }
+.phrase-hero .phrase-en { text-align: center; }
+.phrase-hero .phrase-rom { text-align: center; margin-top: 4px; margin-bottom: 16px; }
+.phrase-hero .phrase-level-badge { margin-bottom: 14px; }
+
+/* Engagement strip — small motivators directly under the phrase.
+   "Day N" of the rotation (the user's streak with phrases) and a
+   "Saved by you" / "Mark as mastered" pill. Designed to be skim-
+   readable, not gamified. */
+.phrase-motivation {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  margin: 0 0 26px;
+}
+.phrase-motiv-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(125,211,252,.08);
+  border: 1px solid rgba(125,211,252,.18);
+  color: rgba(226,232,240,.84);
+  font-size: 11.5px; font-weight: 700;
+  letter-spacing: .04em;
+  font-family: 'Source Sans 3', sans-serif;
+}
+.phrase-motiv-chip strong { color: #7dd3fc; font-weight: 800; margin-right: 2px; }
+.phrase-motiv-chip.is-mastered { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.40); color: #4ade80; cursor: pointer; }
+.phrase-motiv-chip.is-mastered.on { background: linear-gradient(135deg, rgba(34,197,94,.36), rgba(20,184,166,.30)); color: #fff; }
+.phrase-motiv-chip.is-mastered:hover { transform: translateY(-1px); }
+
+/* Related phrases card — replaces the floating chip row.
+   A learner sees up to 3 thematically connected expressions with
+   a one-line gloss for each. Tappable rows route into the same
+   phrase reader with ?q=…. */
+.phrase-related-card {
+  background: linear-gradient(180deg, rgba(15,23,41,.86), rgba(15,23,41,.96));
+  border: 1px solid rgba(168,85,247,.18);
+  border-radius: 20px;
+  padding: 20px 22px 22px;
+  margin: 0 0 18px;
+  animation: phraseFadeUp .55s .35s cubic-bezier(.34,1.56,.64,1) backwards;
+}
+.phrase-related-card .phrase-card-title { color: #c4b5fd; }
+.phrase-related-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.phrase-related-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(168,85,247,.06);
+  border: 1px solid rgba(168,85,247,.14);
+  color: #f1f5f9;
+  text-decoration: none;
+  transition: background .15s, transform .12s;
+}
+.phrase-related-row:hover { background: rgba(168,85,247,.14); transform: translateY(-1px); }
+.phrase-related-row .pr-ko {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 15px; font-weight: 700;
+  color: #fff;
+  word-break: keep-all;
+}
+.phrase-related-row .pr-arrow {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(168,85,247,.20);
+  color: #c4b5fd;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+/* Mastery toggle row — sits next to the bottom CTA so users can
+   mark a phrase as learned without leaving the page. Subtle, not
+   shouty. */
+.phrase-mastery-row {
+  display: flex; gap: 10px; justify-content: center;
+  margin: 14px 0 18px;
+}
+.phrase-mastery-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(125,211,252,.22);
+  background: rgba(125,211,252,.06);
+  color: #cbd5e1;
+  font-size: 12.5px; font-weight: 700;
+  cursor: pointer;
+  font-family: 'Source Sans 3', sans-serif;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.phrase-mastery-btn:hover { background: rgba(125,211,252,.14); color: #f1f5f9; }
+.phrase-mastery-btn.on {
+  background: linear-gradient(135deg, rgba(34,197,94,.32), rgba(20,184,166,.24));
+  border-color: rgba(34,197,94,.54);
+  color: #fff;
 }
 
 /* Loading pill */

@@ -2423,7 +2423,9 @@ body { background: #14253f !important; }
 /* Panel */
 .su-panel { width:100%;max-width:640px;height:100dvh;background:#fff;display:flex;flex-direction:column;overflow:hidden;animation:suFadeIn .2s ease; }
 @keyframes suFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-@media(min-width:641px) { .su-panel { height:92vh;max-height:800px;border-radius:20px;box-shadow:0 24px 64px rgba(0,0,0,.18); } }
+@media(min-width:641px) { .su-panel { max-width:820px;height:92vh;max-height:840px;border-radius:20px;box-shadow:0 24px 64px rgba(0,0,0,.18); } }
+@media(min-width:641px) { .su-panel #as-article-content,
+                          .su-panel #as-activity-area { padding-left:12px;padding-right:12px; } }
 /* Header */
 .su-header { display:flex;align-items:center;gap:12px;padding:16px 20px 12px;flex-shrink:0; }
 .su-back { width:36px;height:36px;border-radius:50%;border:1.5px solid #e2e8f0;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#64748b;flex-shrink:0;transition:all .15s; }
@@ -2625,6 +2627,13 @@ body.kh-neon-on .su-mcq-opt.selected .su-mcq-num { background:#00ffd5;color:#000
   overflow:hidden; cursor:pointer; transition:all .15s; display:flex; flex-direction:column;
 }
 .as-article-card:hover { border-color:#7ab8f5; box-shadow:0 4px 14px rgba(34,85,164,.13); transform:translateY(-2px); }
+.as-article-card { position:relative; }
+.as-article-card.as-studied { opacity:.55; }
+.as-article-card.as-studied:hover { opacity:1; }
+.as-article-card.as-inprogress { box-shadow:0 0 0 2px rgba(124,58,237,.18) inset; }
+.asc-badge { position:absolute; top:8px; right:8px; padding:3px 8px; font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; border-radius:999px; box-shadow:0 2px 6px rgba(0,0,0,.18); z-index:2; }
+.asc-badge-done { background:#22c55e; color:#fff; }
+.asc-badge-prog { background:#7c3aed; color:#fff; }
 .as-article-card img    { width:100%; height:100px; object-fit:cover; display:block; }
 .as-article-card .asc-img-ph { height:100px; background:linear-gradient(135deg,#dbeafe,#e8f0ff); display:flex; align-items:center; justify-content:center; font-size:30px; }
 .as-article-card .asc-body  { padding:14px; flex:1; }
@@ -7582,6 +7591,11 @@ function _pmRenderLearn(body, lesson, pipsHtml) {
 function _pmRenderPractice(body, lesson, pipsHtml) {
   var pr = lesson.practice || {};
   var rawChoices = Array.isArray(pr.choices) ? pr.choices.slice() : [];
+  // The AI is instructed to put the correct answer at choices[0].
+  // pr.en sometimes drifts (re-phrased translation) — when that happens
+  // and we trust pr.en, NONE of the choices match and every pick is
+  // judged wrong. Prefer choices[0] as the source of truth.
+  var correct = rawChoices[0] || pr.en || '';
   // Shuffle once and remember the result for this lesson so we don't
   // reshuffle when the user re-enters the practice screen.
   var shuffleKey = '_pm_shuffle_' + _pm.idx;
@@ -7590,7 +7604,6 @@ function _pmRenderPractice(body, lesson, pipsHtml) {
     _pm[shuffleKey] = shuffled;
   }
   var choices = _pm[shuffleKey];
-  var correct = pr.en || rawChoices[0] || '';
 
   var choicesHtml = choices.map(function(c) {
     var isPicked = (_pm.selected === c);
@@ -7772,7 +7785,9 @@ function _pmPickChoice(choice) {
   if (_pm.selected != null) return;
   _pm.selected = choice;
   var lesson = _pm.lessons[_pm.idx];
-  var correct = (lesson && lesson.practice && lesson.practice.en) || '';
+  var pr = (lesson && lesson.practice) || {};
+  var rawChoices = Array.isArray(pr.choices) ? pr.choices : [];
+  var correct = rawChoices[0] || pr.en || '';
   _pm.scores[_pm.idx] = (choice === correct) ? 1 : 0;
   _pmRender();
 }
@@ -19127,22 +19142,45 @@ function checkGFTranslateMCQ(btn, idx, answer, correct, total) {
 }
 
 // ⑤ Judge It — Identify correct vs incorrect grammar usage
+// Heuristic filter (top-level so all branches can use it):
+// drop "incorrect" examples whose only difference from the correction
+// is a topic↔object particle swap (은/는 ↔ 을/를) — almost always
+// grammatical with a different meaning, not an error. Also drop empty
+// or identical pairs.
+function _gfFilterBadJudgeItems(items) {
+  return (items || []).filter(function(it){
+    if (!it || !it.ko || !it.correction) return false;
+    var a = String(it.ko).replace(/\s+/g,'');
+    var b = String(it.correction).replace(/\s+/g,'');
+    if (!a || !b || a === b) return false;
+    var stripParticles = function(s){ return s.replace(/[은는을를]/g,''); };
+    if (stripParticles(a) === stripParticles(b)) {
+      var hasTopicVsObject = (/[은는]/.test(a) && /[을를]/.test(b)) || (/[을를]/.test(a) && /[은는]/.test(b));
+      if (hasTopicVsObject) return false;
+    }
+    return true;
+  });
+}
+
 function loadGFBuild(p) {
   var el = document.getElementById('gf-build-content');
   if (!el || !p) return;
 
   var correct = (p.examples || []).filter(function(e){ return e.ko; }).slice(0, 3);
-  var incorrect = (p.incorrect_examples || []).filter(function(e){ return e.ko; }).slice(0, 2);
+  var incorrect = _gfFilterBadJudgeItems(p.incorrect_examples || []).slice(0, 2);
 
   if (!incorrect.length) {
     // Same grammar pattern → same incorrect-example list every time.
     // Look up cache first; only call Claude on a miss.
     el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">Generating judge exercises…</div>';
     var exList = correct.map(function(e){ return e.ko; }).join('\n');
-    var judgeKey = 'judge::' + (p.name || '');
+    // v2 cache key: previous version sometimes returned grammatical
+    // sentences flagged as "incorrect" (e.g., topic vs object particle
+    // swaps where both forms are valid). Bump key to drop stale data.
+    var judgeKey = 'judge::v2::' + (p.name || '');
     _aiCacheGet(judgeKey).then(function(cached) {
       if (cached && Array.isArray(cached) && cached.length) {
-        p.incorrect_examples = cached;
+        p.incorrect_examples = _gfFilterBadJudgeItems(cached);
         loadGFBuild(p);
         return;
       }
@@ -19153,7 +19191,12 @@ function loadGFBuild(p) {
         messages: [{ role: 'user', content:
           'Korean grammar pattern: "' + (p.name||'') + '"\n'
           + 'These sentences use the pattern CORRECTLY:\n' + exList + '\n\n'
-          + 'Generate exactly 2 sentences that use this pattern INCORRECTLY — realistic errors a learner would make.\n'
+          + 'Generate exactly 2 sentences that are UNAMBIGUOUSLY ungrammatical when used with this pattern — clear, hard errors that any native Korean speaker would mark wrong, not stylistic variants.\n'
+          + 'STRICT RULES:\n'
+          + ' 1. The "ko" sentence MUST be ungrammatical. Do NOT submit sentences that are merely awkward, contextually different, or use a different but valid particle.\n'
+          + ' 2. NEVER swap topic markers (은/는) with object markers (을/를) and call it an error — both are usually grammatical with a meaning shift.\n'
+          + ' 3. The "correction" must DIFFER from "ko" in exactly the part the pattern targets, and must FIX an actual grammar mistake (wrong conjugation, missing required particle, wrong tense form, broken honorific level, scrambled word order that changes meaning).\n'
+          + ' 4. If you cannot produce 2 unambiguously wrong sentences, return [].\n'
           + 'Return ONLY a JSON array: [{"ko":"incorrect sentence","en":"English translation","error_type":"CONJUGATION|PARTICLE|TENSE|FORMALITY|WORD_ORDER","correction":"correct Korean sentence"}]'
         }]
       }).then(function(res) {
@@ -19163,7 +19206,7 @@ function loadGFBuild(p) {
           var si = txt.indexOf('['), ei = txt.lastIndexOf(']');
           if (si >= 0 && ei > si) txt = txt.slice(si, ei+1);
           var parsed = JSON.parse(txt);
-          p.incorrect_examples = Array.isArray(parsed) ? parsed : [];
+          p.incorrect_examples = _gfFilterBadJudgeItems(Array.isArray(parsed) ? parsed : []);
           if (p.incorrect_examples.length) _aiCacheSet(judgeKey, p.incorrect_examples);
         } catch(e) { p.incorrect_examples = []; }
         loadGFBuild(p);
@@ -20620,6 +20663,7 @@ async function _asLoadArticles() {
       _asArticles = savedRows
         .filter(function(a){ return a.title; })
         .sort(function(a, b){ return (bmOrder[String(a.id)] || 0) - (bmOrder[String(b.id)] || 0); });
+      await _asLoadStudiedSet();
       _asRenderGrid();
       return;
     }
@@ -20645,6 +20689,7 @@ async function _asLoadArticles() {
       if (a.status && a.status !== 'published') return false;
       return !!a.title;
     });
+    await _asLoadStudiedSet();
     _asRenderGrid();
   } catch(e) {
     console.error('[Article Study] picker load failed:', e);
@@ -20682,6 +20727,34 @@ async function _asFetchArticles(opts) {
   }
   throw (lastErr || new Error('article fetch failed'));
 }
+var _asStudiedSet = null;
+async function _asLoadStudiedSet() {
+  // Mark articles the learner has already finished studying so unstudied
+  // ones stand out. We treat any article_study row whose progress_data
+  // has completed:true as "studied". Rows with progress but no completion
+  // flag are treated as "in-progress" so the user still sees them at
+  // full opacity.
+  _asStudiedSet = { done: {}, started: {} };
+  if (!supaUser) return;
+  try {
+    var sb = getSupa(); if (!sb) return;
+    var res = await sb.from('user_read_history')
+      .select('content_id,progress_data')
+      .eq('user_id', supaUser.id)
+      .eq('content_type', 'article_study')
+      .limit(500);
+    if (res.error) return;
+    (res.data || []).forEach(function(r) {
+      var pd = r.progress_data;
+      if (typeof pd === 'string') { try { pd = JSON.parse(pd); } catch(_) { pd = null; } }
+      var id = String(r.content_id || '');
+      if (!id) return;
+      if (pd && pd.completed) _asStudiedSet.done[id] = true;
+      else _asStudiedSet.started[id] = true;
+    });
+  } catch(_){}
+}
+
 function _asRenderGrid() {
   var g = document.getElementById('as-article-grid'); if (!g) return;
   if (!_asArticles.length) { g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">No articles available.</div>'; return; }
@@ -20689,14 +20762,23 @@ function _asRenderGrid() {
   // (국제 / 문화 / 사회 / …) to their English labels (World / Culture
   // / Society / …) so the picker stays English-first.
   var labelOf = (typeof sectionLabel === 'function') ? sectionLabel : function(k){ return k || 'Article'; };
+  var studied = _asStudiedSet || { done:{}, started:{} };
   g.innerHTML = _asArticles.map(function(a) {
     var imgHtml = a.image
       ? '<img src="' + a.image + '" alt="" onerror="this.style.display=\'none\'">'
       : '<div class="asc-img-ph"><span style="display:inline-flex;width:24px;height:24px">' + BM_ICON_NEWSPAPER + '</span></div>';
     var displayTitle = a.title_en || a.title || '';
     var displaySection = labelOf(a.section) || 'Article';
-    return '<div class="as-article-card" onclick="asSelectArticle(\'' + String(a.id).replace(/'/g,"\\'") + '\')">'
+    var idStr = String(a.id);
+    var isDone = !!studied.done[idStr];
+    var inProg = !isDone && !!studied.started[idStr];
+    var studiedCls = isDone ? ' as-studied' : (inProg ? ' as-inprogress' : '');
+    var badge = isDone
+      ? '<div class="asc-badge asc-badge-done">Studied</div>'
+      : (inProg ? '<div class="asc-badge asc-badge-prog">In progress</div>' : '');
+    return '<div class="as-article-card' + studiedCls + '" onclick="asSelectArticle(\'' + idStr.replace(/'/g,"\\'") + '\')">'
       + imgHtml
+      + badge
       + '<div class="asc-body">'
       + '<div class="asc-cat">' + displaySection + '</div>'
       + '<div class="asc-title">' + displayTitle + '</div>'
@@ -21413,6 +21495,7 @@ function asMarkDone() {
   _asStepDone[_asStep-1]=true; _asSaveProgress(); _asTmpCompletion();
   _asTmpStep5((document.getElementById('as-write-ta')||{}).value||'');
   if (typeof _khMarkArticleStudied === 'function' && _asCurrentArt) _khMarkArticleStudied(_asCurrentArt.id);
+  if (_asCurrentArt && _asStudiedSet) _asStudiedSet.done[String(_asCurrentArt.id)] = true;
   } catch(e) { console.warn('asMarkDone save error:', e); }
   document.getElementById('as-article-content').innerHTML='';
   document.getElementById('as-activity-area').innerHTML=

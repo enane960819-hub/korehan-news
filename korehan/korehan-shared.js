@@ -4553,6 +4553,18 @@ function openVocabEditModal(word) {
     btn.textContent = 'Saving...'; btn.disabled = true;
     try {
       await saveVocabToDB(finalWord, rom, en, false);
+      // Also save to the user's personal vocab list so it appears in
+      // the Vocab tab. saveVocabToDB only touches the sitewide
+      // vocabulary_bank — without this call the user-facing Vocab tab
+      // (which reads user_saved_words) stays empty after Edit-mode add.
+      try {
+        if (typeof dbSaveWord === 'function') {
+          await dbSaveWord(finalWord, rom, en);
+        } else if (typeof saveWord === 'function') {
+          var _sbSv = getSupa();
+          if (_sbSv) await saveWord(_sbSv, { wordKey: finalWord, wordKo: finalWord, wordRom: rom, wordEn: en, sourceKind: 'manual' });
+        }
+      } catch(e) { console.warn('[vocab-edit] user-side save failed:', e); }
       VOCAB[finalWord] = { rom: rom, en: en };
       // 로컬 변수 word를 finalWord로 덮어씌워 이하 코드가 올바른 단어를 참조
       word = finalWord;
@@ -5706,21 +5718,34 @@ function applySiteConfigToPage() {
   if (descEl) descEl.textContent = cfg.learnBannerDesc || DEFAULT_SITE_CONFIG.learnBannerDesc;
 }
 
-async function loadAppSettings() {
+async function loadAppSettings(opts) {
+  // opts.force=true bypasses the memoized promise and re-queries DB.
+  // Without this, a session that was opened while RLS denied reads (or
+  // before the user was authenticated) caches an empty result and
+  // loadAppSettings() returns it forever — which is what made the
+  // home page's Today's Phrase keep painting whatever was in stale
+  // localStorage even after admin updates landed in the DB.
+  if (opts && opts.force) _appSettingsPromise = null;
   if (_appSettingsPromise) return _appSettingsPromise;
   _appSettingsPromise = (async function() {
     var sb = getSupa();
-    if (!sb) return;
+    if (!sb) { _appSettingsPromise = null; return; }
     try {
       // API 키는 로그인한 유저만 읽을 수 있음 (RLS로 보호)
       var res = await sb.from('app_settings').select('key,value');
-      if (res.data) {
+      if (res && res.data) {
         res.data.forEach(function(row) {
           _appSettings[row.key] = row.value;
         });
         // API 키는 localStorage에 저장하지 않음 (보안)
+      } else if (res && res.error) {
+        // RLS denial / network blip — drop the memo so the next
+        // caller can retry instead of being stuck on an empty result.
+        _appSettingsPromise = null;
       }
-    } catch(e) {}
+    } catch(e) {
+      _appSettingsPromise = null;
+    }
   })();
   return _appSettingsPromise;
 }

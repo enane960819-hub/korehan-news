@@ -99,6 +99,22 @@
 .st-para .st-para-tap-hint{display:block;font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.06em;text-transform:uppercase;margin-top:8px;}
 .st-para.is-open .st-para-tap-hint{color:#64748b;}
 @keyframes stParaReveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.st-sent-block{display:none;margin-top:14px;padding-top:12px;border-top:1px dashed #cbd5e1;}
+.st-para.is-open .st-sent-block{display:block;animation:stParaReveal .25s ease-out;}
+.st-sent-block-label{font-size:10px;font-weight:800;color:#7c3aed;letter-spacing:.1em;margin-bottom:10px;}
+.st-sent-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.st-sent-card:last-child{margin-bottom:0;}
+.st-sent-ko{font-family:'Noto Serif KR',serif;font-size:14px;font-weight:600;color:#0f172a;line-height:1.55;}
+.st-sent-en{margin-top:4px;font-size:12px;color:#64748b;line-height:1.5;}
+.st-sent-vocab-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
+.st-sent-vocab-pill{display:inline-flex;align-items:center;background:rgba(124,58,237,.08);color:#6d28d9;font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;}
+.st-sent-grammar-row{margin-top:8px;display:flex;flex-direction:column;gap:4px;}
+.st-sent-grammar-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;font-size:11px;line-height:1.4;}
+.st-sent-grammar-pat{font-family:'Noto Serif KR',serif;font-weight:800;color:#0ea5e9;}
+.st-sent-grammar-exp{color:#64748b;}
+.st-theme-sepia .st-sent-card{background:#f7eed8;border-color:#d6c89c;}
+.st-theme-sepia .st-sent-ko{color:#5b4636;}
+.st-theme-sepia .st-sent-en{color:#7a6240;}
 
 /* ── Reading settings popover (font size + line height + theme).
    Sits over the body scroll area top-right, toggled via gear btn.
@@ -1581,7 +1597,7 @@ function openStory(id) {
             + '</div>'
           + '</div>'
         + '</div>'
-        + '<div class="st-body-text st-paras" id="st-body-ko" data-hover-scan="1">' + stRenderParagraphCards(s.body || '', enBody, hasEnBody) + '</div>'
+        + '<div class="st-body-text st-paras" id="st-body-ko" data-hover-scan="1">' + stRenderParagraphCards(s.body || '', enBody, hasEnBody, s.sentence_analysis) + '</div>'
         + (hasEnBody ? '<div class="st-body-text" id="st-body-en" style="display:none;white-space:pre-line;color:#334155">' + escapeHtml(enBody) + '</div>' : '')
         + stRenderSeriesNav(s)
       + '</div>'
@@ -1692,6 +1708,19 @@ function openStory(id) {
         if (ko && en) hoverEntries.push({ ko: ko, en: en, rom: rom, note: k.usage || k.note || '' });
       });
     }
+    // hover_extras: a second tier of less-common words from the body
+    // that didn't make the headline vocab list. Same shape as vocab —
+    // adding these expands the hover coverage so almost every tricky
+    // word in the body becomes lookup-able.
+    if (Array.isArray(s.hover_extras)) {
+      s.hover_extras.forEach(function(v){
+        if (!v) return;
+        var ko  = v.ko  || v.word    || '';
+        var en  = v.en  || v.meaning || '';
+        var rom = v.rom || v.reading || '';
+        if (ko && en) hoverEntries.push({ ko: ko, en: en, rom: rom, note: v.note || '' });
+      });
+    }
     if (hoverEntries.length) window.korehanHoverRegisterExtras(hoverEntries);
   }
   if (typeof window.korehanHoverRefresh === 'function') {
@@ -1705,23 +1734,102 @@ function openStory(id) {
 //    paragraph-align by index — if counts differ (older stories
 //    where translation wasn't run paragraph-by-paragraph) we fall
 //    back to whatever EN we have for that index, or none.
-function stRenderParagraphCards(koBody, enBody, hasEn) {
+//
+//    When sentence_analysis is available (new stories), the open
+//    state ALSO shows a per-sentence breakdown beneath the paragraph
+//    EN: each sentence in the paragraph gets its own translation
+//    plus a tight vocab/grammar list. Without this, stories only
+//    showed "translation only", which is what learners complained
+//    about — they want the same per-sentence depth articles offer.
+function _stSplitSentencesKo(text) {
+  // Use a Korean-aware split: keep the punctuation, split on .!?。?!? followed
+  // by whitespace, then trim. Long quoted speech with internal punctuation
+  // stays as one sentence — the AI is told to copy the exact text so the
+  // sentence_analysis lookup keys on full strings.
+  var raw = String(text || '');
+  var parts = raw
+    .replace(/([.!?。！？]+)\s+/g, '$1')
+    .split('')
+    .map(function (s) { return s.trim(); })
+    .filter(Boolean);
+  return parts.length ? parts : [raw.trim()].filter(Boolean);
+}
+
+function _stRenderSentenceAnalysis(koPara, sentenceMap) {
+  if (!sentenceMap) return '';
+  var koSents = _stSplitSentencesKo(koPara);
+  if (!koSents.length) return '';
+  var rows = koSents.map(function (ko) {
+    var key = ko.replace(/\s+/g, '');
+    var entry = sentenceMap[key];
+    if (!entry) return '';
+    var vocabHtml = (Array.isArray(entry.vocab) && entry.vocab.length)
+      ? '<div class="st-sent-vocab-row">'
+        + entry.vocab.map(function (v) {
+            var vKo = v && (v.ko || v.word) || '';
+            var vEn = v && (v.en || v.meaning) || '';
+            if (!vKo) return '';
+            return '<span class="st-sent-vocab-pill"><strong>' + escapeHtml(vKo) + '</strong> · ' + escapeHtml(vEn) + '</span>';
+          }).filter(Boolean).join('')
+        + '</div>'
+      : '';
+    var grammarHtml = (Array.isArray(entry.grammar) && entry.grammar.length)
+      ? '<div class="st-sent-grammar-row">'
+        + entry.grammar.map(function (g) {
+            var gp = g && (g.pattern || g.point) || '';
+            var ge = g && (g.exp || g.explanation || g.ex) || '';
+            if (!gp) return '';
+            return '<div class="st-sent-grammar-line"><span class="st-sent-grammar-pat">' + escapeHtml(gp) + '</span><span class="st-sent-grammar-exp">' + escapeHtml(ge) + '</span></div>';
+          }).filter(Boolean).join('')
+        + '</div>'
+      : '';
+    return '<div class="st-sent-card">'
+      + '<div class="st-sent-ko">' + escapeHtml(ko) + '</div>'
+      + (entry.en ? '<div class="st-sent-en">' + escapeHtml(entry.en) + '</div>' : '')
+      + vocabHtml
+      + grammarHtml
+      + '</div>';
+  }).filter(Boolean).join('');
+  if (!rows) return '';
+  return '<div class="st-sent-block">'
+    + '<div class="st-sent-block-label">SENTENCE BREAKDOWN</div>'
+    + rows
+    + '</div>';
+}
+
+function _stBuildSentenceMap(sentenceAnalysis) {
+  if (!Array.isArray(sentenceAnalysis) || !sentenceAnalysis.length) return null;
+  var map = {};
+  sentenceAnalysis.forEach(function (e) {
+    if (!e || !e.ko) return;
+    var key = String(e.ko).replace(/\s+/g, '');
+    if (key) map[key] = e;
+  });
+  return Object.keys(map).length ? map : null;
+}
+
+function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis) {
   var splitParas = function (s) {
     return String(s || '').split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean);
   };
   var koParas = splitParas(koBody);
   var enParas = hasEn ? splitParas(enBody) : [];
   if (!koParas.length) return '';
+  var sentMap = _stBuildSentenceMap(sentenceAnalysis);
   return koParas.map(function (ko, i) {
     var en = enParas[i] || '';
-    var hint = en
-      ? '<span class="st-para-tap-hint">Tap to reveal translation ↓</span>'
+    var sentBreakdown = sentMap ? _stRenderSentenceAnalysis(ko, sentMap) : '';
+    var hasBreakdown = !!sentBreakdown;
+    var canOpen = !!(en || hasBreakdown);
+    var hint = canOpen
+      ? '<span class="st-para-tap-hint">' + (hasBreakdown ? 'Tap for translation + sentence breakdown ↓' : 'Tap to reveal translation ↓') + '</span>'
       : '';
     return '<div class="st-para" '
-      + (en ? 'onclick="stTogglePara(this)" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();stTogglePara(this);}"' : '')
+      + (canOpen ? 'onclick="stTogglePara(this)" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();stTogglePara(this);}"' : '')
       + '>'
       + '<div class="st-para-ko">' + escapeHtml(ko) + '</div>'
       + (en ? '<div class="st-para-en">' + escapeHtml(en) + '</div>' : '')
+      + sentBreakdown
       + hint
       + '</div>';
   }).join('');

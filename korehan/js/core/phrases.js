@@ -111,9 +111,27 @@ function getTodaysPhrase() {
   return phrases[getTodaysPhraseIndex()] || normalizePhrase({});
 }
 
-async function getPhrasesAsync() {
-  await loadAppSettings();
-  return getPhrases();
+async function getPhrasesAsync(opts) {
+  // opts.force=true triggers a fresh DB read (bypasses the memoized
+  // app_settings promise) AND writes the resolved phrases list back
+  // to localStorage so the NEXT synchronous getPhrases() call doesn't
+  // paint a stale snapshot. Without this, the home page kept rendering
+  // an old phrase (e.g. 하늘의 별 따기) even after the admin queue had
+  // been replaced — the deferred async render saw fresh data but the
+  // browser's localStorage K_PHRASES was still the old list.
+  await loadAppSettings(opts && opts.force ? { force: true } : undefined);
+  var rows = getPhrases();
+  try {
+    var raw = _appSettings && _appSettings.phrases;
+    if (raw && typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e) { raw = null; } }
+    if (Array.isArray(raw) && raw.length) {
+      lsSet(K_PHRASES, raw);
+      // Drop the home block's stashed "today" cache so the picker
+      // re-resolves against the fresh queue.
+      try { localStorage.removeItem('kh_phrase_today'); } catch(_) {}
+    }
+  } catch(_) {}
+  return rows;
 }
 
 async function saveSharedPhrases(rows) {
