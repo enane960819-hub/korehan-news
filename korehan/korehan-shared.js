@@ -4553,6 +4553,18 @@ function openVocabEditModal(word) {
     btn.textContent = 'Saving...'; btn.disabled = true;
     try {
       await saveVocabToDB(finalWord, rom, en, false);
+      // Also save to the user's personal vocab list so it appears in
+      // the Vocab tab. saveVocabToDB only touches the sitewide
+      // vocabulary_bank — without this call the user-facing Vocab tab
+      // (which reads user_saved_words) stays empty after Edit-mode add.
+      try {
+        if (typeof dbSaveWord === 'function') {
+          await dbSaveWord(finalWord, rom, en);
+        } else if (typeof saveWord === 'function') {
+          var _sbSv = getSupa();
+          if (_sbSv) await saveWord(_sbSv, { wordKey: finalWord, wordKo: finalWord, wordRom: rom, wordEn: en, sourceKind: 'manual' });
+        }
+      } catch(e) { console.warn('[vocab-edit] user-side save failed:', e); }
       VOCAB[finalWord] = { rom: rom, en: en };
       // 로컬 변수 word를 finalWord로 덮어씌워 이하 코드가 올바른 단어를 참조
       word = finalWord;

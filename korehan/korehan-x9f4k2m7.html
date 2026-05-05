@@ -5634,6 +5634,12 @@ async function genCache(articleId, schema, opts) {
   const st  = silent ? null : document.getElementById('cst-' + articleId);
   const btn = silent ? null : document.getElementById('cbtn-' + articleId);
   if (btn) btn.disabled = true;
+  // Track in-flight generations so the auto-refresh below doesn't fire
+  // while parallel jobs are still running. Without this, finishing one
+  // article re-rendered the whole AI Cache page mid-job and the
+  // still-running articles flashed as "complete" (their cache rows had
+  // a partial write that already counted) until the next refresh.
+  window._aiCacheInFlight = (window._aiCacheInFlight || 0) + 1;
 
   const _body  = a.body  || '';
   const _title = a.title || '';
@@ -5841,6 +5847,7 @@ async function genCache(articleId, schema, opts) {
       await _logCacheGen(articleId, 'save', 'db_error', 'schema undetected', 0);
       if (st) st.textContent = '❌ 스키마 감지 실패 — article_cache 컬럼 확인 필요';
       if (btn) btn.disabled = false;
+      window._aiCacheInFlight = Math.max(0, (window._aiCacheInFlight || 1) - 1);
       return;
     }
 
@@ -5849,6 +5856,7 @@ async function genCache(articleId, schema, opts) {
       await _logCacheGen(articleId, 'save', 'db_error', lastErr || 'unknown', saveDur);
       if (st) st.textContent = '❌ DB 저장 실패 (' + schema + ')';
       if (btn) btn.disabled = false;
+      window._aiCacheInFlight = Math.max(0, (window._aiCacheInFlight || 1) - 1);
       return;
     } else {
       await _logCacheGen(articleId, 'save', 'ok', null, saveDur);
@@ -5858,7 +5866,16 @@ async function genCache(articleId, schema, opts) {
   }
 
   if (st) st.textContent = '✅ 완료 (' + _ok + '/4)';
-  if (!silent) setTimeout(function(){ goAICache(); }, 1200);
+  window._aiCacheInFlight = Math.max(0, (window._aiCacheInFlight || 1) - 1);
+  // Only auto-refresh when no other gen jobs are still running. This
+  // is the fix for the "other in-flight articles flashed as done"
+  // bug — prematurely re-rendering the table while siblings are
+  // still mid-generation showed misleading status.
+  if (!silent && (window._aiCacheInFlight | 0) === 0) {
+    setTimeout(function(){
+      if ((window._aiCacheInFlight | 0) === 0) goAICache();
+    }, 1200);
+  }
   return _ok;
 }
 
@@ -6833,10 +6850,10 @@ async function goStoriesEditor() {
           <div>
             <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">COUNT</label>
             <select id="st-count" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
-              <option value="1">1개</option>
+              <option value="1" selected>1개</option>
               <option value="3">3개</option>
               <option value="5">5개</option>
-              <option value="10" selected>10개</option>
+              <option value="10">10개</option>
             </select>
           </div>
         </div>
@@ -6961,15 +6978,24 @@ async function generateStories() {
     + sourceBlock
     + 'Return ONLY a valid JSON array, no markdown, no backticks.\n\n'
     + 'Each story object:\n'
-    + '{"title":"Korean title","title_en":"English","mood":"' + mood + '","genre":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","body_en":"full English translation, paragraph-aligned with body (same number of paragraphs separated by blank lines, in the same order)","vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\n'
-    + 'Rules: body 8-15 paragraphs (' + (meta.shape === 'fable' ? 'fables can be 3-6' : 'novels/web novels can be 12-20') + '), 6-8 vocab, 2-3 grammar, 3 comprehension questions. body_en MUST exist and be paragraph-aligned with body — readers tap a Korean paragraph to reveal its English translation, so the indices have to line up. ALL Korean text MUST follow the difficulty level rules above. '
-    + (sourceText ? 'STAY FAITHFUL to the source — do not invent characters or events that aren\'t in it.' : '');
+    + '{"title":"Korean title","title_en":"English","mood":"' + mood + '","genre":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","body_en":"full English translation, paragraph-aligned with body (same number of paragraphs separated by blank lines, in the same order)","vocab":[{"ko":"","rom":"","en":""}],"hover_extras":[{"ko":"","rom":"","en":""}],"sentence_analysis":[{"ko":"single sentence from body, exact match","en":"natural English translation","vocab":[{"ko":"","en":""}],"grammar":[{"pattern":"~ㄴ다 / etc","exp":"1-line explanation"}]}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\n'
+    + 'Rules:\n'
+    + '- body length: ' + (meta.shape === 'fable' ? '8-12 paragraphs (fables stay short but DO include every plot beat — beginning, conflict, turning point, resolution, lesson)' : '12-20 paragraphs (novels / web novels — keep every important scene, do NOT compress two scenes into one paragraph)') + '\n'
+    + '- PLOT FIDELITY: this is the most important rule. DO NOT skip plot points. DO NOT summarize "and then many things happened". DO NOT compress major scenes. Every key turn (introduction → inciting incident → rising action → climax → resolution) must be on the page in its own paragraph. A learner who reads only this story should understand the WHOLE plot without needing to read the source. Even at lower TOPIK levels, simplify the LANGUAGE not the STORY.\n'
+    + '- vocab: 15-25 hover-worthy content words from the body (proper nouns, less-common verbs/nouns, idiomatic expressions). Include ko + rom + en for each. These power the inline hover tooltips, so MORE is better than fewer — readers should be able to mouse over almost any tricky word and get a definition.\n'
+    + '- hover_extras: another 10-15 supporting words that appear in the body but didn\'t make the headline vocab list. Same shape (ko/rom/en). These also become hover tooltips. Combined with vocab, every uncommon word in the body should be lookup-able.\n'
+    + '- sentence_analysis: ONE entry per sentence in the body, in body order. Each entry must have: ko (the EXACT sentence text from body — copy/paste, don\'t paraphrase), en (natural English translation), vocab (1-3 entries — important content words from THIS sentence, ko+en), grammar (0-2 entries — pattern + 1-line English explanation). The reader taps a sentence and sees this — so vocab/grammar must be relevant to THAT specific sentence, not the whole story.\n'
+    + '- grammar: 3-5 patterns (was 2-3 — give the learner more to study), each with a 1-line explanation and the example chunk from the body where it appears.\n'
+    + '- comprehension: 3 questions checking actual plot understanding (not surface details).\n'
+    + '- body_en MUST exist and be paragraph-aligned with body — readers tap a Korean paragraph to reveal its English translation, so paragraph counts MUST match.\n'
+    + '- ALL Korean text MUST follow the difficulty level rules above.\n'
+    + (sourceText ? '- STAY FAITHFUL to the source — do not invent characters or events that aren\'t in it. Reproduce every plot beat from the source.\n' : '');
 
   try {
     var resp = await callClaude({
       feature: 'story_gen',
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 8000,
+      max_tokens: 12000,
       messages: [{role:'user', content: prompt}]
     });
     var raw = resp.content.map(function(b){ return b.text||''; }).join('');

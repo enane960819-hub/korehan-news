@@ -351,17 +351,23 @@
     // necessarily met yet (the user pointed out 영화 in PM Practice
     // isn't taught anywhere; without hover the activity becomes a
     // guess-the-meaning instead of a pattern-recognition exercise).
+    // Article-Study modal containers are also included — without them
+    // the body text inside the study room reader was missing tooltips
+    // intermittently after a step transition.
     var list = [
       document.getElementById('dyn-article'),
       document.getElementById('sentences-list'),
       document.getElementById('dyn-article-list'),
       document.getElementById('st-panel'),
       document.getElementById('pm-body'),
-      document.getElementById('ke-expressions-list')
+      document.getElementById('ke-expressions-list'),
+      document.getElementById('as-article-content'),
+      document.getElementById('as-activity-area'),
+      document.getElementById('as-su-body')
     ];
     // querySelectorAll because stories.html has two .st-container instances
     // (outer page wrapper + inner modal body) — we must scan both.
-    ['.conv-page-container', '.st-container', '.sr-body', '.learn-body'].forEach(function(sel) {
+    ['.conv-page-container', '.st-container', '.sr-body', '.learn-body', '.su-body', '.su-panel', '.as-panel'].forEach(function(sel) {
       document.querySelectorAll(sel).forEach(function(el){ list.push(el); });
     });
     return list.filter(Boolean);
@@ -545,8 +551,13 @@
     await loadHoverVocab();
     applyHoverTooltips();
     installObserver();
+    // Multiple delayed sweeps — modals that open after init's first
+    // sweep (article-study, story detail, PM) sometimes mount their
+    // text after the MutationObserver's debounce fires once and never
+    // again, so we re-scan known target containers a few more times.
     setTimeout(applyHoverTooltips, 800);
     setTimeout(applyHoverTooltips, 1800);
+    setTimeout(applyHoverTooltips, 3500);
   }
 
   if (document.readyState === 'loading') {
