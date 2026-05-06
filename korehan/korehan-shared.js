@@ -5951,6 +5951,27 @@ var DEFAULT_SECTIONS = [
   { key:'오피니언',label:'Opinion',  icon:'<i data-lucide="pen-tool" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:11 },
 ];
 
+// Canonical Lucide icon per section key. Overrides whatever the DB
+// has stored (older rows kept emoji here, which leaked into the rails
+// header even after DEFAULT_SECTIONS got migrated to Lucide). Update
+// the map to add new sections; unknown keys fall through to the row's
+// stored icon (emoji or otherwise) so we don't blank out unfamiliar
+// keys.
+var SECTION_ICON_LUCIDE = {
+  '사회':   'users',
+  '국제':   'globe',
+  '문화':   'palette',
+  'k-pop':  'music',
+  '스포츠': 'trophy',
+  'beauty': 'sparkles',
+  'travel': 'plane',
+  'korea':  'flag',
+  '오피니언': 'pen-tool',
+};
+function _khSectionLucideHtml(name) {
+  return '<i data-lucide="' + name + '" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>';
+}
+
 function normalizeSectionCatalog(list) {
   var items = Array.isArray(list) ? list.slice() : [];
   // Politics / Economy were dropped from the site — ensure they don't
@@ -5964,11 +5985,28 @@ function normalizeSectionCatalog(list) {
     return k && !blocked.has(k);
   });
 
+  // Force Lucide icons on every row that has a known key, regardless
+  // of what the DB has stored. Older sections rows kept an emoji
+  // string here (🏙️, 🌍, 🎤, …) which leaked into the rails header
+  // even after the DEFAULT_SECTIONS array migrated to Lucide HTML.
+  // Cleaner than running a one-shot DB migration.
+  items = items.map(function(row) {
+    if (!row) return row;
+    var k = String(row.key || '').trim().toLowerCase();
+    var lookup = SECTION_ICON_LUCIDE[k] || (k === 'k-pop' ? 'music' : null);
+    if (lookup) row = Object.assign({}, row, { icon: _khSectionLucideHtml(lookup) });
+    // Strip the leading flag emoji from "🇰🇷 Korea" labels too.
+    if (k === 'korea' && row.label) {
+      row.label = String(row.label).replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '');
+    }
+    return row;
+  });
+
   function hasKey(key) {
     return items.some(function(row) { return String((row && row.key) || '') === key; });
   }
-  if (!hasKey('beauty')) items.push({ key:'beauty', label:'Beauty', icon:'<i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:8, active:true });
-  if (!hasKey('travel')) items.push({ key:'travel', label:'Travel', icon:'<i data-lucide="plane" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:9, active:true });
+  if (!hasKey('beauty')) items.push({ key:'beauty', label:'Beauty', icon: _khSectionLucideHtml('sparkles'), sort_order:8, active:true });
+  if (!hasKey('travel')) items.push({ key:'travel', label:'Travel', icon: _khSectionLucideHtml('plane'),    sort_order:9, active:true });
 
   return items.sort(function(a, b) {
     return Number(a.sort_order || 999) - Number(b.sort_order || 999);

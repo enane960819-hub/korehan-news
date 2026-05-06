@@ -266,26 +266,17 @@
     <div class="kh-page-hero-eyebrow">Stories · Fiction · Essays</div>
     <h1><i data-lucide="book-open" class="kh-ui-icon" aria-hidden="true"></i><span>Korean Stories</span></h1>
     <p>Short stories, web novels, and character-driven series. Read authentic Korean in multiple genres and narrative styles.</p>
-    <div class="kh-filter-bar" id="mood-pills">
-    <button class="kh-filter-pill sf-pill on" data-genre="all">All</button>
-    <button class="kh-filter-pill sf-pill" data-genre="slice_of_life">Slice of Life</button>
-    <button class="kh-filter-pill sf-pill" data-genre="romance">Romance</button>
-    <button class="kh-filter-pill sf-pill" data-genre="mystery">Mystery</button>
-    <button class="kh-filter-pill sf-pill" data-genre="adventure">Adventure</button>
-    <button class="kh-filter-pill sf-pill" data-genre="thriller">Thriller</button>
-    <button class="kh-filter-pill sf-pill" data-genre="essay">Essay</button>
-    <div class="kh-filter-divider sf-sep"></div>
-    <button class="kh-filter-pill sf-pill on" data-lvl="all">All</button>
-    <button class="kh-filter-pill sf-pill" data-lvl="s"><span class="kh-filter-dot" style="background:#7b5cff"></span>Seed</button>
-    <button class="kh-filter-pill sf-pill" data-lvl="b"><span class="kh-filter-dot" style="background:#22c55e"></span>Sprout</button>
-    <button class="kh-filter-pill sf-pill" data-lvl="i"><span class="kh-filter-dot" style="background:#f59e0b"></span>Tree</button>
-    <button class="kh-filter-pill sf-pill" data-lvl="a"><span class="kh-filter-dot" style="background:#ef4444"></span>Forest</button>
-    <div class="kh-filter-divider sf-sep"></div>
-    <button class="kh-filter-pill sf-pill on" data-perspective="all">All Views</button>
-    <button class="kh-filter-pill sf-pill" data-perspective="first">1st Person</button>
-    <button class="kh-filter-pill sf-pill" data-perspective="third">3rd Person</button>
-    <button class="kh-filter-pill sf-pill" data-perspective="omniscient">Omniscient</button>
-  </div>
+    <div class="kh-page-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Search stories…" id="st-search-input" oninput="_filterStSearch(this.value)">
+    </div>
+    <div class="kh-filter-bar" id="mood-pills" style="margin-top:12px">
+      <button class="kh-filter-pill sf-pill on" data-lvl="all">All</button>
+      <button class="kh-filter-pill sf-pill" data-lvl="s"><span class="kh-filter-dot" style="background:#7b5cff"></span>Seed</button>
+      <button class="kh-filter-pill sf-pill" data-lvl="b"><span class="kh-filter-dot" style="background:#22c55e"></span>Sprout</button>
+      <button class="kh-filter-pill sf-pill" data-lvl="i"><span class="kh-filter-dot" style="background:#f59e0b"></span>Tree</button>
+      <button class="kh-filter-pill sf-pill" data-lvl="a"><span class="kh-filter-dot" style="background:#ef4444"></span>Forest</button>
+    </div>
   </div>
 </div>
 
@@ -1102,6 +1093,18 @@ function characterProfileUrl(slug) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 var activeGenre = 'all', activeLvl = 'all', activePerspective = 'all';
+var activeSearchSt = '';
+
+// Triggered by the hero search input. Stores the trimmed lowercased
+// query and re-renders. Empty string returns to the unfiltered rails
+// view. Genre + perspective filters are no longer surfaced as pills
+// (the user trimmed the filter strip down to just level), but the
+// fields still exist on each row so we keep matching them in
+// renderStories for future reuse.
+function _filterStSearch(q) {
+  activeSearchSt = String(q || '').trim().toLowerCase();
+  renderStories();
+}
 
 function renderStories() {
   var grid = document.getElementById('st-grid');
@@ -1111,7 +1114,11 @@ function renderStories() {
     var genreOk = activeGenre === 'all' || genre === activeGenre || s.mood === activeGenre;
     var lvlOk = activeLvl === 'all' || s.lvl === activeLvl;
     var perspOk = activePerspective === 'all' || persp === activePerspective;
-    return genreOk && lvlOk && perspOk;
+    var searchOk = !activeSearchSt || (
+      ((s.title || '') + ' ' + (s.title_en || '') + ' ' + (s.summary || '') + ' ' + (s.body || '') + ' ' + genre)
+        .toLowerCase().indexOf(activeSearchSt) !== -1
+    );
+    return genreOk && lvlOk && perspOk && searchOk;
   });
 
   renderSeriesSection();
@@ -1126,7 +1133,7 @@ function renderStories() {
   // Netflix-style genre rails when no filter is active.
   // Each story appears in exactly ONE rail — priority order:
   //   1) ⚡ Quick Reads  →  2) its genre rail  →  3) its level rail
-  var noFilter = activeGenre === 'all' && activeLvl === 'all' && activePerspective === 'all';
+  var noFilter = activeGenre === 'all' && activeLvl === 'all' && activePerspective === 'all' && !activeSearchSt;
   if (noFilter) {
     grid.className = 'st-rails';
     grid.style.display = 'block';

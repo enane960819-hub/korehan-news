@@ -575,6 +575,22 @@ body.kh-page-conv    { --kh-hue-1:#0f3a4d; --kh-hue-2:#0891b2; --kh-hue-3:rgba(1
   display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
   padding: 16px 0 4px;
 }
+/* On phones we keep the level pills on a single line — wrapping the
+   "Forest" pill onto a second row just for one extra item looked
+   broken. Horizontal scroll handles any overflow without breaking
+   the visual rhythm; the scrollbar is hidden so it reads as a
+   continuous strip. */
+@media (max-width: 600px) {
+  .kh-filter-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-right: 6px;
+  }
+  .kh-filter-bar::-webkit-scrollbar { display: none; }
+  .kh-filter-pill { flex-shrink: 0; }
+}
 .kh-filter-pill {
   padding: 8px 16px; border-radius: 999px;
   background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18);
