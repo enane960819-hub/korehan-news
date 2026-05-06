@@ -2300,7 +2300,13 @@ function renderAllPage() {
 
   if (searchQ) {
     articles = articles.filter(function(a) {
-      var text = (a.title || '') + ' ' + (a.body || '') + ' ' + (a.full || '') + ' ' + (a.section || '');
+      // Include title_en + section_key so English keywords match
+      // Korean-bodied articles. Without these an English query like
+      // "tech" returned 0 even when matching content existed.
+      var text = (a.title || '') + ' ' + (a.title_en || '') + ' '
+        + (a.body || '') + ' ' + (a.full || '') + ' '
+        + (a.section || '') + ' '
+        + (typeof getSectionKey === 'function' ? (getSectionKey(a.section) || '') : '');
       return text.toLowerCase().indexOf(searchQ.toLowerCase()) !== -1;
     });
   }

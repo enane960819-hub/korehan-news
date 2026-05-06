@@ -3166,6 +3166,8 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 .lv-pill.lv-b.on { background:#15803d; }
 .lv-pill.lv-i.on { background:#0369a1; }
 .lv-pill.lv-a.on { background:#b91c1c; }
+.lv-pill.lv-locked { opacity:.45; cursor:not-allowed; color:rgba(255,255,255,.35); }
+.lv-pill.lv-locked:hover { background:rgba(255,255,255,.03); color:rgba(255,255,255,.4); }
 .sr-quest-ring-mob { display:none !important; }
 @media(max-width:860px) { .sr-quest-ring-mob { display:block !important; } }
 
@@ -3370,7 +3372,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   <button class="lv-pill lv-s"    onclick="setLevel('Starter',this)"><i data-lucide="sprout" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Seed</span></button>
   <button class="lv-pill lv-b on" onclick="setLevel('Beginner',this)"><i data-lucide="leaf" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Sprout</span></button>
   <button class="lv-pill lv-i"    onclick="setLevel('Intermediate',this)"><i data-lucide="tree-deciduous" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Tree</span></button>
-  <button class="lv-pill lv-a"    onclick="setLevel('Advanced',this)"><i data-lucide="trees" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Forest</span></button>
+  <button class="lv-pill lv-a lv-locked" onclick="khForestLockedToast()" title="Forest level coming soon" aria-disabled="true"><i data-lucide="lock" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Forest</span></button>
 </div>
 
 <!-- TAB BAR (mobile/tablet only — outside all panels so it persists) -->
@@ -5242,6 +5244,18 @@ function clearAIContentUI() {
 // ═══════════════════════════════════════════════════════════════
 // LEVEL
 // ═══════════════════════════════════════════════════════════════
+function khForestLockedToast() {
+  var prev = document.getElementById('kh-forest-locked-toast');
+  if (prev) prev.remove();
+  var t = document.createElement('div');
+  t.id = 'kh-forest-locked-toast';
+  t.textContent = 'Forest level is coming soon';
+  t.style.cssText = 'position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:rgba(15,23,42,.94);color:#fff;padding:11px 18px;border-radius:999px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.35);';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.transition='opacity .25s'; t.style.opacity='0'; }, 1700);
+  setTimeout(function(){ t.remove(); }, 2100);
+}
+
 function setLevel(level, btn) {
   level = normalizeLevelName(level);
   if (_currentLevel === level) return;
