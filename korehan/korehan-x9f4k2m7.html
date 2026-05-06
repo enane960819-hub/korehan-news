@@ -3085,10 +3085,14 @@ async function saveBulkPhraseAdmin(){
   saveBtn.textContent = '⏳ 저장 중…';
   const addedCount = _bulkPhraseAdminStaging.length;
   // Append to keep "today's index" stable.
-  const merged = phraseAdminItems.slice().concat(_bulkPhraseAdminStaging);
+  const preBulk = phraseAdminItems.slice();
+  const merged = preBulk.concat(_bulkPhraseAdminStaging);
   try {
     if (typeof saveSharedPhrases === 'function') {
-      await saveSharedPhrases(merged);
+      // oldList = the queue admin was looking at right before bulk
+      // gen ran. Used by _computeOffsetPreserveToday to pin today
+      // even if _appSettings.phrases hasn't synced from DB yet.
+      await saveSharedPhrases(merged, { oldList: preBulk });
     } else {
       lsSet(K_PHRASES, merged);
     }
