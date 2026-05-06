@@ -1248,6 +1248,10 @@ function _khRenderNotifItem(n) {
   } else if (n.kind === 'badge_earned') {
     iconName = 'award';
     text = 'You earned a new badge: <strong>' + _khEsc(p.name || '') + '</strong>';
+  } else if (n.kind === 'streak_freeze_used') {
+    iconName = 'snowflake';
+    var rem = (typeof p.remaining === 'number') ? (' · ' + p.remaining + ' left') : '';
+    text = '🧊 We used a streak freeze to save your streak yesterday' + _khEsc(rem) + '.';
   } else {
     iconName = 'info';
     text = _khEsc(p.message || 'New notification');
@@ -6496,6 +6500,10 @@ document.addEventListener('DOMContentLoaded', async function() {
   var _deferPost = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 0); };
   _deferPost(function(){ ttsInit(); });
   _deferPost(function(){ injectDailyMission(); });
+  // Streak freeze auto-apply: check if yesterday was missed and
+  // silently spend an inventory freeze if available. Lives in idle
+  // time so it doesn't compete with first paint.
+  _deferPost(function(){ if (typeof khMaybeAutoFreezeYesterday === 'function') khMaybeAutoFreezeYesterday(); });
   _deferPost(function(){ startClock(); });
   // conversations/stories 등 tooltip 불필요 페이지에서는 2000행 vocabulary_bank 쿼리 스킵
   var _skipVocabPages = ['index','','korehan-news','korehan-conversations','korehan-stories','korehan-mypage','korehan-learn','korehan-courses','korehan-onboarding','korehan-learning-overview'];
@@ -6641,46 +6649,82 @@ function getCurrentStreak() {
   return Math.max(streak, lsGet('kh_synced_activity_streak', 0));
 }
 
-// ── Phase 2: streak freeze (1 use / 7 days) ──────────────────────
-// State lives in profiles.streak_freeze_used_week (the timestamp
-// the freeze was redeemed). Mirror to localStorage so the streak
-// walker stays sync. Two helpers: status check + redeem.
+// ── Streak freeze: shop inventory + auto-apply ──────────────────
+// Freezes are bought from the shop (purchase_streak_freeze RPC) and
+// stored as profiles.freeze_count. On home-page load we check whether
+// yesterday was missed; if it was AND the user has at least one
+// freeze, we silently consume one (consume_streak_freeze) and mark
+// the day in localStorage so getCurrentStreak() honours it
+// immediately. The notifications row inserted by the RPC pops up in
+// the bell — that's the only UI surface for the event.
 async function khFreezeStatus() {
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb || typeof supaUser === 'undefined' || !supaUser) {
-    return { used_at: null, can_use: false, signed_in: false };
+    return { count: 0, signed_in: false };
   }
   try {
-    var r = await sb.from('profiles')
-      .select('streak_freeze_used_week')
-      .eq('id', supaUser.id)
-      .maybeSingle();
-    var used = r && r.data && r.data.streak_freeze_used_week
-      ? new Date(r.data.streak_freeze_used_week) : null;
-    var weekAgoMs = Date.now() - 7 * 86400000;
-    var canUse = !used || used.getTime() < weekAgoMs;
-    return { used_at: used, can_use: canUse, signed_in: true };
+    var r = await sb.rpc('get_freeze_inventory');
+    var n = (r && typeof r.data === 'number') ? r.data : 0;
+    return { count: n, signed_in: true };
   } catch (_) {
-    return { used_at: null, can_use: false, signed_in: true };
+    return { count: 0, signed_in: true };
   }
 }
 
 async function khFreezeUse(forDate) {
+  // Manual call kept for back-compat; routes through the RPC now.
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb || typeof supaUser === 'undefined' || !supaUser) return false;
   var d = forDate || new Date();
-  var iso = d.toISOString();
   try {
-    await sb.from('profiles').upsert({
-      id:                      supaUser.id,
-      streak_freeze_used_week: iso,
-      updated_at:              iso,
-    }, { onConflict: 'id' });
-  } catch (_) { return false; }
-  // Mirror to localStorage so getCurrentStreak() honours the freeze
-  // immediately without a round-trip.
-  try { lsSet('kh_streak_freeze_day', d.toISOString().slice(0, 10)); } catch (_) {}
-  return true;
+    var r = await sb.rpc('consume_streak_freeze', { p_for_date: d.toISOString().slice(0,10) });
+    if (r && r.data && r.data.ok) {
+      try { lsSet('kh_streak_freeze_day', d.toISOString().slice(0, 10)); } catch (_) {}
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+// Detect a missed yesterday and auto-apply a freeze if the learner
+// has one. Designed to be called once per page load on home / mypage
+// / any signed-in entry. Idempotent: if yesterday is already covered
+// (real activity OR earlier freeze), it no-ops.
+async function khMaybeAutoFreezeYesterday() {
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  // KST yesterday (the streak walk uses UTC-ISH dates with KST tilt
+  // already, so we mirror that here).
+  var now = new Date();
+  var y = new Date(now.getTime() - 86400000);
+  var ykey = y.toISOString().slice(0, 10);
+  // Already covered? skip.
+  var log = lsGet('kh_study_log', {});
+  var days = lsGet('kh_study_days', {});
+  var fzd = lsGet('kh_streak_freeze_day', '');
+  var hadActivity = !!days[ykey] || ((log[ykey] || {}).articles || (log[ykey] || {}).words || (log[ykey] || {}).quiz);
+  if (hadActivity || fzd === ykey) return;
+  // Only spend a freeze if the user actually had a streak going —
+  // otherwise we'd burn freezes on brand-new accounts that haven't
+  // built one up yet.
+  var prevStreak = lsGet('kh_synced_activity_streak', 0) || 0;
+  if (prevStreak < 1) return;
+  // Inventory check.
+  var inv = await khFreezeStatus();
+  if (!inv.signed_in || inv.count <= 0) return;
+  // Spend.
+  try {
+    var r = await sb.rpc('consume_streak_freeze', { p_for_date: ykey });
+    if (r && r.data && r.data.ok) {
+      try { lsSet('kh_streak_freeze_day', ykey); } catch (_) {}
+      // Also bump in-memory days so this session's streak walk picks
+      // it up without a reload.
+      days[ykey] = true; lsSet('kh_study_days', days);
+      // Refresh the bell so the new notification surfaces immediately.
+      if (typeof khLoadNotifications === 'function') khLoadNotifications();
+    }
+  } catch (_) {}
 }
 
 // Sync the localStorage mirror from profiles on sign-in / page load.

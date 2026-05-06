@@ -6165,12 +6165,24 @@ async function adminDeleteComment(id) {
 }
 
 // ══ NEWSLETTER ADMIN ════════════════════════════════════════
-function goNewsletter() {
+// ── Newsletter admin ────────────────────────────────────────────
+// Two sub-views: subscribers list (CSV export) and campaigns
+// (compose / draft / test send / broadcast). Tab state lives in
+// window._nlActiveTab so a refresh comes back to the same view.
+
+function goNewsletter(tab) {
   setSbOn(null);
+  tab = tab || window._nlActiveTab || 'subs';
+  window._nlActiveTab = tab;
   document.getElementById('main').innerHTML =
-    '<div class="pg-hd"><div><h1>📬 뉴스레터 구독자</h1><p>구독자 목록을 확인하고 CSV로 내보낼 수 있어요.</p></div></div>'
+    '<div class="pg-hd"><div><h1>📬 뉴스레터</h1><p>구독자 관리 + 캠페인 작성/발송.</p></div></div>'
+   +'<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'
+   +'  <button class="btn ' + (tab==='subs'?'btn-g':'') + '" onclick="goNewsletter(\'subs\')">👥 구독자</button>'
+   +'  <button class="btn ' + (tab==='camp'?'btn-g':'') + '" onclick="goNewsletter(\'camp\')">✍️ 캠페인</button>'
+   +'</div>'
    +'<div id="nl-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
-  loadNewsletter();
+  if (tab === 'camp') loadNewsletterCampaigns();
+  else loadNewsletter();
 }
 
 async function loadNewsletter() {
@@ -6209,15 +6221,191 @@ async function loadNewsletter() {
 
 function exportNlCsv() {
   if(!window._nlRows) return;
-  var csv = '이름,이메일,구독일,상태\n'
-    + window._nlRows.map(function(r){
-        return [r.name||'',r.email,new Date(r.subscribed_at).toLocaleDateString('ko-KR'),r.active?'구독중':'취소됨'].join(',');
-      }).join('\n');
-  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  // CSV-safe escape: wrap in quotes, double-up internal quotes, and
+  // prefix with ' if the cell starts with a formula trigger so Excel
+  // doesn't interpret it as a function (CSV-injection guard).
+  function csvCell(v) {
+    var s = String(v == null ? '' : v);
+    if (/^[=+\-@]/.test(s)) s = "'" + s;
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  var rows = [['이름','이메일','구독일','상태']]
+    .concat(window._nlRows.map(function(r){
+      return [r.name||'', r.email, new Date(r.subscribed_at).toLocaleDateString('ko-KR'), r.active?'구독중':'취소됨'];
+    }));
+  var csv = rows.map(function(row){ return row.map(csvCell).join(','); }).join('\r\n');
+  var blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'}); // BOM so Excel reads UTF-8
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'korehan_newsletter_'+new Date().toISOString().split('T')[0]+'.csv';
   a.click();
+}
+
+// ── Campaigns ───────────────────────────────────────────────────
+
+async function loadNewsletterCampaigns() {
+  var wrap = document.getElementById('nl-admin-wrap');
+  try {
+    var sb = getSb();
+    var r = await sb.from('newsletter_campaigns').select('*').order('created_at',{ascending:false});
+    var rows = (r && r.data) || [];
+    var newBtn = '<button class="btn btn-g" onclick="openNlCampaignEditor()">+ 새 캠페인</button>';
+    if (!rows.length) {
+      wrap.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px">' + newBtn + '</div>'
+        + '<div class="infobox">아직 작성한 캠페인이 없어요. <b>+ 새 캠페인</b>으로 시작하세요.</div>';
+      return;
+    }
+    wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      + '<span style="font-size:13px;color:var(--gr)">총 ' + rows.length + '개</span>'
+      + newBtn
+      + '</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<thead><tr style="border-bottom:2px solid var(--bo)">'
+      + '<th style="padding:8px 12px;text-align:left;color:var(--gr)">제목</th>'
+      + '<th style="padding:8px 12px;text-align:left;color:var(--gr)">상태</th>'
+      + '<th style="padding:8px 12px;text-align:left;color:var(--gr)">수신자</th>'
+      + '<th style="padding:8px 12px;text-align:left;color:var(--gr)">생성</th>'
+      + '<th></th></tr></thead><tbody>'
+      + rows.map(function(c){
+          var statusLabel = ({draft:'초안', sending:'전송 중', sent:'발송됨', failed:'실패'})[c.status] || c.status;
+          var statusBg = ({draft:'#e2e8f0;color:#475569', sending:'#fef3c7;color:#b45309', sent:'#dcfce7;color:#15803d', failed:'#fee2e2;color:#b91c1c'})[c.status] || '#e2e8f0;color:#475569';
+          return '<tr style="border-bottom:1px solid var(--bo)">'
+            + '<td style="padding:10px 12px"><b>' + esc(c.subject||'(제목 없음)') + '</b><br><span style="font-size:11px;color:var(--gr)">' + esc(c.preheader||'') + '</span></td>'
+            + '<td style="padding:10px 12px"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:'+statusBg+'">'+statusLabel+'</span></td>'
+            + '<td style="padding:10px 12px;color:var(--gr)">' + (c.recipient_count || 0) + '</td>'
+            + '<td style="padding:10px 12px;color:var(--gr);font-size:11px">' + new Date(c.created_at).toLocaleString('ko-KR') + '</td>'
+            + '<td style="padding:10px 12px;text-align:right">'
+            +   '<button class="btn" onclick="openNlCampaignEditor(\'' + c.id + '\')">' + (c.status === 'sent' ? '보기' : '편집') + '</button>'
+            + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table>';
+  } catch(e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패: ' + esc(e.message||e) + '</div>';
+  }
+}
+
+async function openNlCampaignEditor(campaignId) {
+  var sb = getSb();
+  var existing = null;
+  if (campaignId) {
+    var res = await sb.from('newsletter_campaigns').select('*').eq('id', campaignId).maybeSingle();
+    existing = res && res.data;
+  }
+  var isNew = !existing;
+  var alreadySent = existing && existing.status === 'sent';
+  var ov = document.createElement('div');
+  ov.className = 'ov';
+  ov.innerHTML = '<div class="mbox" style="max-width:720px"><div class="m-hd"><h2>' + (isNew ? '새 캠페인' : (alreadySent ? '발송된 캠페인' : '캠페인 편집')) + '</h2><button class="m-x" onclick="this.closest(\'.ov\').remove()">×</button></div>'
+    + '<div class="m-bd">'
+    + '<div class="fg"><label>제목 (Subject)</label><input id="nlc-subject" ' + (alreadySent?'readonly':'') + ' value="' + esc((existing && existing.subject) || '') + '" placeholder="이번 주 한국어 학습 팁"></div>'
+    + '<div class="fg"><label>프리헤더 (메일 미리보기 한 줄)</label><input id="nlc-preheader" ' + (alreadySent?'readonly':'') + ' value="' + esc((existing && existing.preheader) || '') + '" placeholder="새 단어 7개와 오늘의 문장"></div>'
+    + '<div class="fg-row">'
+    +   '<div class="fg"><label>From 이름</label><input id="nlc-from-name" ' + (alreadySent?'readonly':'') + ' value="' + esc((existing && existing.from_name) || 'KoreHani') + '"></div>'
+    +   '<div class="fg"><label>From 이메일</label><input id="nlc-from-email" ' + (alreadySent?'readonly':'') + ' value="' + esc((existing && existing.from_email) || 'hello@korehani.com') + '"></div>'
+    + '</div>'
+    + '<div class="fg"><label>본문 HTML <span style="font-weight:400;color:var(--gr);font-size:11px">— 변수 <code>{{unsubscribe_url}}</code> 사용 가능. 비우면 푸터 자동 추가.</span></label>'
+    +   '<textarea id="nlc-body-html" rows="14" ' + (alreadySent?'readonly':'') + ' style="font-family:ui-monospace,SF Mono,Menlo,Consolas,monospace;font-size:12px;line-height:1.5">' + esc((existing && existing.body_html) || '<p>안녕하세요!</p>\n<p>이번 주 KoreHani의 새 콘텐츠를 소개드려요.</p>\n<p>— KoreHani 팀</p>') + '</textarea></div>'
+    + '<div class="fg"><label>본문 텍스트 (선택, plain-text fallback)</label>'
+    +   '<textarea id="nlc-body-text" rows="4" ' + (alreadySent?'readonly':'') + ' style="font-size:12px">' + esc((existing && existing.body_text) || '') + '</textarea></div>'
+    + '<div class="fg"><label>테스트 발송 이메일 (Send test 버튼용)</label><input id="nlc-test-to" placeholder="me@example.com"></div>'
+    + '</div>'
+    + '<div class="m-ft" style="display:flex;gap:8px;flex-wrap:wrap">'
+    +   '<button class="btn" onclick="this.closest(\'.ov\').remove()">닫기</button>'
+    +   (alreadySent ? '' :
+        '<button class="btn" onclick="saveNlCampaign(\'' + (campaignId||'') + '\',this,false)">초안 저장</button>'
+      + '<button class="btn" onclick="testNlCampaign(\'' + (campaignId||'') + '\',this)">테스트 발송</button>'
+      + '<button class="btn btn-r" onclick="sendNlCampaignAll(\'' + (campaignId||'') + '\',this)">전체 발송</button>')
+    + '</div></div>';
+  document.body.appendChild(ov);
+}
+
+function _nlCollectFields() {
+  return {
+    subject:    document.getElementById('nlc-subject').value.trim(),
+    preheader:  document.getElementById('nlc-preheader').value.trim(),
+    from_name:  document.getElementById('nlc-from-name').value.trim() || 'KoreHani',
+    from_email: document.getElementById('nlc-from-email').value.trim() || 'hello@korehani.com',
+    body_html:  document.getElementById('nlc-body-html').value,
+    body_text:  document.getElementById('nlc-body-text').value || null,
+  };
+}
+
+async function saveNlCampaign(campaignId, btn, asSendingHandoff) {
+  var sb = getSb();
+  var fields = _nlCollectFields();
+  if (!fields.subject) { toast('제목을 입력하세요.', true); return null; }
+  if (!fields.body_html.trim()) { toast('본문을 입력하세요.', true); return null; }
+  if (btn) { btn.disabled = true; btn.textContent = '저장 중…'; }
+  try {
+    var rec = Object.assign({}, fields, { updated_at: new Date().toISOString() });
+    if (campaignId) rec.id = campaignId;
+    var r = await sb.from('newsletter_campaigns').upsert(rec, { onConflict: 'id' }).select('*').maybeSingle();
+    if (r.error) throw r.error;
+    if (!asSendingHandoff) {
+      toast('초안 저장됐어요.');
+      var ov = document.querySelector('.ov'); if (ov) ov.remove();
+      goNewsletter('camp');
+    }
+    return r.data;
+  } catch(e) {
+    toast('저장 실패: ' + (e.message||e), true);
+    if (btn) { btn.disabled = false; btn.textContent = '초안 저장'; }
+    return null;
+  }
+}
+
+async function testNlCampaign(campaignId, btn) {
+  var testTo = (document.getElementById('nlc-test-to').value || '').trim();
+  if (!testTo) { toast('테스트 받을 이메일을 입력하세요.', true); return; }
+  // Save first if needed so the edge function has a row to send.
+  var saved = await saveNlCampaign(campaignId, null, true);
+  if (!saved) return;
+  if (btn) { btn.disabled = true; btn.textContent = '발송 중…'; }
+  try {
+    var r = await _callNewsletterEdge({ action: 'send_campaign', campaign_id: saved.id, test_to: testTo });
+    if (!r.ok) throw new Error(r.error || 'send_failed');
+    toast('테스트 발송 완료 → ' + testTo);
+  } catch(e) {
+    toast('테스트 실패: ' + (e.message||e), true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '테스트 발송'; }
+  }
+}
+
+async function sendNlCampaignAll(campaignId, btn) {
+  if (!confirm('확인된 모든 구독자에게 발송할까요? 되돌릴 수 없어요.')) return;
+  var saved = await saveNlCampaign(campaignId, null, true);
+  if (!saved) return;
+  if (btn) { btn.disabled = true; btn.textContent = '발송 중…'; }
+  try {
+    var r = await _callNewsletterEdge({ action: 'send_campaign', campaign_id: saved.id });
+    if (!r.ok) throw new Error(r.error || 'send_failed');
+    toast('발송 완료 — 전송 ' + (r.sent||0) + ' / 실패 ' + (r.failed||0));
+    var ov = document.querySelector('.ov'); if (ov) ov.remove();
+    goNewsletter('camp');
+  } catch(e) {
+    toast('발송 실패: ' + (e.message||e), true);
+    if (btn) { btn.disabled = false; btn.textContent = '전체 발송'; }
+  }
+}
+
+async function _callNewsletterEdge(body) {
+  var sb = getSb();
+  var session = (await sb.auth.getSession()).data.session;
+  var resp = await fetch(SUPA_URL_ADMIN + '/functions/v1/newsletter-send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPA_KEY_ADMIN,
+      'Authorization': 'Bearer ' + (session ? session.access_token : SUPA_KEY_ADMIN),
+    },
+    body: JSON.stringify(body),
+  });
+  var data = {};
+  try { data = await resp.json(); } catch(_) {}
+  if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+  return data;
 }
 
 // ══ VISITOR STATS ════════════════════════════════════════════
