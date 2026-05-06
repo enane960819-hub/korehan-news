@@ -41,7 +41,11 @@
 .kh-pf-btn-ghost:hover { background:rgba(255,255,255,.16); }
 .kh-pf-btn-disabled { opacity:.55; cursor:not-allowed; }
 
-.kh-pf-section { background:#fff; border:1px solid var(--border); border-radius:14px; padding:18px 20px; margin-bottom:14px; }
+.kh-pf-section {
+  background:#fff; border:1px solid rgba(15,23,42,.06); border-radius:16px;
+  padding:20px 22px; margin-bottom:14px;
+  box-shadow:0 4px 16px rgba(15,23,42,.05);
+}
 .kh-pf-section h2 { font-family:'Noto Serif KR',serif; font-weight:900; font-size:18px; color:var(--navy); margin:0 0 12px; }
 
 .kh-pf-badges { display:grid; grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:10px; }
@@ -59,7 +63,11 @@
 .kh-pf-room-empty { display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.4); font-size:13px; height:100%; }
 
 .kh-pf-gb-list { display:flex; flex-direction:column; gap:10px; }
-.kh-pf-gb-entry { background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+.kh-pf-gb-entry {
+  background:#f3f6fb; border:1px solid rgba(15,23,42,.06); border-radius:12px;
+  padding:14px 16px;
+  box-shadow:0 1px 3px rgba(15,23,42,.04);
+}
 .kh-pf-gb-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
 .kh-pf-gb-author { font-size:13px; font-weight:800; color:var(--navy); cursor:pointer; }
 .kh-pf-gb-author:hover { color:var(--bright); }
@@ -68,14 +76,25 @@
 .kh-pf-gb-empty { text-align:center; padding:30px 16px; color:var(--gray); font-size:13px; }
 .kh-pf-gb-form { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
 .kh-pf-gb-form textarea {
-  flex:1; min-width:240px; min-height:64px; padding:10px 14px; border:1px solid var(--border);
-  border-radius:10px; resize:vertical; font-family:inherit; font-size:14px; line-height:1.5;
+  flex:1; min-width:240px; min-height:72px; padding:12px 14px;
+  border:1px solid rgba(15,23,42,.10); border-radius:12px;
+  resize:vertical; font-family:inherit; font-size:14px; line-height:1.5;
+  background:#f3f6fb;
+  transition:border-color .15s, background .15s, box-shadow .15s;
+}
+.kh-pf-gb-form textarea:focus {
+  border-color:#1e3a8a; background:#fff; outline:0;
+  box-shadow:0 0 0 4px rgba(30,58,138,.10);
 }
 .kh-pf-gb-form button {
-  padding:0 22px; border-radius:10px; border:0; background:var(--accent); color:#fff;
+  padding:0 24px; border-radius:12px; border:0;
+  background:linear-gradient(135deg,#1e3a8a,#2563eb); color:#fff;
   font-weight:800; cursor:pointer; font-family:inherit; font-size:13px;
   align-self:stretch;
+  box-shadow:0 6px 16px rgba(30,58,138,.32);
+  transition:transform .12s, box-shadow .15s;
 }
+.kh-pf-gb-form button:hover { transform:translateY(-1px); box-shadow:0 10px 22px rgba(30,58,138,.40); }
 .kh-pf-gb-locked { font-size:13px; color:var(--gray); margin-top:14px; text-align:center; padding:12px; background:#f8fafc; border-radius:10px; }
 
 @media(max-width:600px) {

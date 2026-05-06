@@ -530,6 +530,11 @@ body.kh-page-conv    { --kh-hue-1:#0f3a4d; --kh-hue-2:#0891b2; --kh-hue-3:rgba(1
   color: #fff;
   padding: 28px 24px 26px;
   border-bottom: 0;
+  /* Bleed the dark hue down into the body so the seam between the
+     premium hero and the cream body doesn't read as a hard edge. The
+     value uses a hue-tinted shadow so the page still feels themed,
+     not just generic gray. */
+  box-shadow: 0 16px 32px -16px rgba(11, 31, 63, .35);
 }
 .kh-page-hero::before {
   content: ''; position: absolute; pointer-events: none;
@@ -4014,12 +4019,17 @@ body.kh-neon-on .gf-structure-box h4 { color: #7dd3fc !important; }
 ══════════════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
 
-  /* ── Body & background — warm cream (한지 톤) ── */
+  /* ── Body & background — soft premium light (cool cream) ──
+     Was a warm #FAF6F0 cream which read "generic blog page" against
+     the navy hero. The new tone has a subtle cool tilt so the page
+     feels deliberately on-brand without going full dark. The dark
+     hero's box-shadow bleeds into this softer tone for a smoother
+     edge. */
   body.mobile-light,
   .mobile-light body {
     background:
-      radial-gradient(ellipse at 50% 0%, rgba(255,235,205,.45), transparent 50%),
-      #FAF6F0 !important;
+      radial-gradient(ellipse at 50% 0%, rgba(186,200,232,.30), transparent 55%),
+      #f3f6fb !important;
     color: #0d1b2e !important;
   }
 
@@ -4233,21 +4243,27 @@ body.kh-neon-on .gf-structure-box h4 { color: #7dd3fc !important; }
     color: #0d1b2e !important;
   }
 
-  /* ── Bottom nav ── */
+  /* ── Bottom nav (premium light) ── */
   body.mobile-light .mobile-bottom-nav {
-    background: rgba(255,255,255,.92) !important;
-    border: 1px solid #d4dce8 !important;
-    box-shadow: 0 -4px 24px rgba(15,23,42,.1) !important;
+    background: rgba(255,255,255,.94) !important;
+    border: 1px solid rgba(15,23,42,.08) !important;
+    box-shadow:
+      0 -2px 8px rgba(15,23,42,.04),
+      0 18px 38px rgba(15,23,42,.16) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+            backdrop-filter: blur(14px) saturate(1.4);
   }
   body.mobile-light .mobile-bottom-nav a {
     color: #64748b !important;
+    transition: color .12s, background .12s;
   }
   body.mobile-light .mobile-bottom-nav a svg {
     stroke-width: 1.8;
   }
   body.mobile-light .mobile-bottom-nav a.on {
-    background: #eef4ff !important;
-    color: #1a3a6b !important;
+    background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
+    color: #fff !important;
+    box-shadow: 0 6px 16px rgba(30,58,138,.32) !important;
   }
   body.mobile-light .mobile-bottom-nav a.on svg {
     fill: currentColor;
