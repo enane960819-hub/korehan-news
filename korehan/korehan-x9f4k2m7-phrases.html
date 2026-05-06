@@ -122,7 +122,7 @@ label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505h"></script>
+<script src="js/core/phrases.js?v=20260505i"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -137,7 +137,7 @@ label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260505h"></script>
+<script src="korehan-shared.js?v=20260505i"></script>
 <script>
 var phrases = [];
 var currentIndex = 0;
@@ -231,9 +231,10 @@ function renderPhraseTable() {
   }).join('');
 }
 
-// Reorder a phrase by ±1 in the queue. saveSharedPhrases() pins
-// today's phrase via the rotation offset, so moving a non-today
-// phrase doesn't shift the home block to a different one.
+// Reorder a phrase by ±1 in the queue. preserveOffset:true keeps
+// the today numeric index fixed — non-today moves leave today
+// alone, and moving today swaps it onto whatever phrase ends up
+// in today's slot.
 function movePhrase(idx, delta) {
   if (!Array.isArray(phrases) || idx < 0 || idx >= phrases.length) return;
   var target = idx + delta;
@@ -243,7 +244,7 @@ function movePhrase(idx, delta) {
   phrases[target] = tmp;
   if (currentIndex === idx) currentIndex = target;
   else if (currentIndex === target) currentIndex = idx;
-  if (typeof saveSharedPhrases === 'function') saveSharedPhrases(phrases);
+  if (typeof saveSharedPhrases === 'function') saveSharedPhrases(phrases, { preserveOffset: true });
   else lsSet(K_PHRASES, phrases);
   renderPhraseTable();
   fillForm(currentIndex);

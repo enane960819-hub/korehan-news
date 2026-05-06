@@ -196,12 +196,23 @@ async function saveSharedPhrases(rows, opts) {
   var normalized = (rows || []).map(normalizePhrase).filter(function(row){ return row.ko; });
   if (!normalized.length) normalized = DEF_PHRASES.map(normalizePhrase);
 
-  // Skip preservation when the caller explicitly opts out (e.g. an
-  // initial seed write where there's no "yesterday" to preserve).
-  var preserve = !(opts && opts.preserveToday === false);
-  var newOffset = preserve
-    ? _computeOffsetPreserveToday(normalized, { oldList: oldList })
-    : 0;
+  // Three save modes for the rotation offset:
+  //   - opts.preserveOffset === true: keep the numeric offset unchanged.
+  //     Use this for reorder/swap so the today INDEX stays put and the
+  //     phrase that ends up at that index becomes today (lets admin
+  //     swap today's slot with a neighbor).
+  //   - opts.preserveToday === false: reset offset to 0. Used for
+  //     initial seed writes where there's no "yesterday" to preserve.
+  //   - default: re-anchor onto whatever ko was today before, so add /
+  //     delete / edit don't shove today onto a different phrase.
+  var newOffset;
+  if (opts && opts.preserveOffset === true) {
+    newOffset = getPhraseRotationOffset();
+  } else if (opts && opts.preserveToday === false) {
+    newOffset = 0;
+  } else {
+    newOffset = _computeOffsetPreserveToday(normalized, { oldList: oldList });
+  }
 
   lsSet(K_PHRASES, normalized);
   _appSettings.phrases = normalized;
