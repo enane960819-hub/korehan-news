@@ -1085,6 +1085,7 @@ function updateAuthUI() {
         + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP 0 · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>냥 0</span></div>'
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
+        + '<a href="korehan-friends.html" class="kh-user-dropdown-link">' + khIcon('users', 'Friends', 'kh-ui-icon-sm') + '</a>'
         + '<a href="korehan-notes.html" class="kh-user-dropdown-link">' + khIcon('bookmark', 'My Notes', 'kh-ui-icon-sm') + '</a>'
         + (isAdmin ? '<a href="korehan-x9f4k2m7.html" class="kh-user-dropdown-link">' + khIcon('settings', 'Admin CMS', 'kh-ui-icon-sm') + '</a>' : '')
         + (isTutor ? '<a href="korehan-tutor-7v3ca.html" class="kh-user-dropdown-link">' + khIcon('graduation-cap', 'Tutor Dashboard', 'kh-ui-icon-sm') + '</a>' : '')
