@@ -5964,18 +5964,28 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
     });
   } else if (isHomePage) {
-    // 캐시 있으면 즉시 렌더 (재방문 시 즉시 화면 표시)
-    if (getCachedArticles().length) {
+    // Repeat-visit fast path: if we have cached articles render + dismiss
+    // loader immediately, then refresh in the background. This was the
+    // root cause of the "loader stalls at ~86%" complaint — the await
+    // on a fresh fetch held the loader for the full Korea↔Supabase
+    // round-trip on every visit even when the page was already drawable.
+    var hadCache = getCachedArticles().length > 0;
+    if (hadCache) {
       renderHomePage();
-      _ldr(80); // Cached articles rendered
+      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+      _ldr(100);
+      // Background refresh — re-render once newer rows arrive.
+      loadArticlesFromDB({ homeOptimized: true, force: true })
+        .then(function(){ renderHomePage(); })
+        .catch(function(err){ console.warn('background articles refresh failed', err); });
+    } else {
+      _ldr(50); // Loading articles...
+      await loadArticlesFromDB({ homeOptimized: true, force: true });
+      _ldr(85); // Articles loaded
+      renderHomePage();
+      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+      _ldr(100); // Done
     }
-    _ldr(50); // Loading articles...
-    // 기사 데이터만 await — sections/settings는 헤더에 필요하지만 기본값으로 이미 렌더됨
-    await loadArticlesFromDB({ homeOptimized: true, force: true });
-    _ldr(85); // Articles loaded
-    renderHomePage();
-    if (window._khLoaderClearAuto) window._khLoaderClearAuto();
-    _ldr(100); // Done
 
     // 나머지는 백그라운드에서 완료 후 UI 갱신 (세션, 섹션, 설정)
     if (footerEl) footerEl.innerHTML = renderFooter();
