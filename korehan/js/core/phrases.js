@@ -107,10 +107,26 @@ function getPhraseSourceRows() {
   return DEF_PHRASES;
 }
 function getPhrases()   { return getPhraseSourceRows().map(normalizePhrase); }
+// Rotation offset — written by saveSharedPhrases() whenever the queue
+// is mutated, so today's visible phrase doesn't get shoved to a
+// different position when admin appends / deletes / reorders.
+// Without this, every bulk-AI-pre-gen would jolt the home block to a
+// new phrase because (dayHash % length) lands somewhere different
+// once length changes.
+function getPhraseRotationOffset() {
+  if (!_appSettings) return 0;
+  var v = _appSettings.phrase_rotation_offset;
+  if (typeof v === 'object' && v) v = v.value; // some KV setups wrap value
+  var n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : 0;
+}
 function getTodaysPhraseIndex() {
   var phrases = getPhrases();
   if (!phrases.length) return 0;
-  return Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length;
+  var dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
+  var offset = getPhraseRotationOffset();
+  var len = phrases.length;
+  return ((dayHash + offset) % len + len) % len;
 }
 function getTodaysPhrase() {
   var phrases = getPhrases();
@@ -140,11 +156,56 @@ async function getPhrasesAsync(opts) {
   return rows;
 }
 
-async function saveSharedPhrases(rows) {
+// Compute the rotation offset that keeps today's phrase pinned to
+// the SAME phrase across a queue mutation. Find the ko that was
+// today before, look it up in the new list, and solve:
+//   (dayHash + newOffset) % newLen === newTodayIdx
+// If the previously-shown phrase isn't in the new list (admin
+// deleted it), default to 0 — the next phrase in queue order
+// becomes today.
+function _computeOffsetPreserveToday(newList, opts) {
+  var oldList = (opts && opts.oldList) || (Array.isArray(_appSettings && _appSettings.phrases) ? _appSettings.phrases : []);
+  oldList = oldList.map(normalizePhrase).filter(function(p){ return p.ko; });
+  newList = (newList || []).filter(function(p){ return p && p.ko; });
+  var newLen = newList.length;
+  if (!newLen) return 0;
+  if (!oldList.length) return 0;
+  var dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
+  var oldOffset = getPhraseRotationOffset();
+  var oldLen = oldList.length;
+  var oldTodayIdx = ((dayHash + oldOffset) % oldLen + oldLen) % oldLen;
+  var todayKo = oldList[oldTodayIdx] && oldList[oldTodayIdx].ko;
+  if (!todayKo) return 0;
+  var newTodayIdx = -1;
+  for (var i = 0; i < newList.length; i++) {
+    if ((newList[i].ko || '').trim() === (todayKo || '').trim()) { newTodayIdx = i; break; }
+  }
+  if (newTodayIdx < 0) return 0; // today's phrase was removed
+  var off = (newTodayIdx - dayHash) % newLen;
+  if (off < 0) off += newLen;
+  return off;
+}
+
+async function saveSharedPhrases(rows, opts) {
+  // Snapshot the OLD list before we overwrite _appSettings.phrases —
+  // we need it to figure out which phrase was "today" so the offset
+  // adjustment can pin it in place.
+  var oldList = Array.isArray(_appSettings && _appSettings.phrases)
+    ? _appSettings.phrases.slice()
+    : [];
   var normalized = (rows || []).map(normalizePhrase).filter(function(row){ return row.ko; });
   if (!normalized.length) normalized = DEF_PHRASES.map(normalizePhrase);
+
+  // Skip preservation when the caller explicitly opts out (e.g. an
+  // initial seed write where there's no "yesterday" to preserve).
+  var preserve = !(opts && opts.preserveToday === false);
+  var newOffset = preserve
+    ? _computeOffsetPreserveToday(normalized, { oldList: oldList })
+    : 0;
+
   lsSet(K_PHRASES, normalized);
   _appSettings.phrases = normalized;
+  _appSettings.phrase_rotation_offset = newOffset;
   // Invalidate the home page's "today's phrase" cache so a freshly-
   // saved queue (delete / edit / bulk add) is reflected immediately
   // on next home render. Without this, the cached idx kept pointing
@@ -157,16 +218,15 @@ async function saveSharedPhrases(rows) {
     return normalized;
   }
   try {
-    var res = await sb.from('app_settings').upsert({
-      key: 'phrases',
-      value: normalized,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'key' });
+    var res = await sb.from('app_settings').upsert([
+      { key: 'phrases',                value: normalized, updated_at: new Date().toISOString() },
+      { key: 'phrase_rotation_offset', value: newOffset,  updated_at: new Date().toISOString() }
+    ], { onConflict: 'key' });
     if (res && res.error) {
       try { console.error('[saveSharedPhrases] DB upsert FAILED:', res.error); } catch(_) {}
       try { if (typeof toast === 'function') toast('⚠ DB 저장 실패: ' + (res.error.message || 'unknown') + ' — 홈에 반영되지 않습니다', true); } catch(_) {}
     } else {
-      try { console.log('[saveSharedPhrases] DB updated, ' + normalized.length + ' phrases'); } catch(_) {}
+      try { console.log('[saveSharedPhrases] DB updated, ' + normalized.length + ' phrases, rotation_offset=' + newOffset); } catch(_) {}
     }
   } catch(e) {
     try { console.error('[saveSharedPhrases] DB upsert THREW:', e); } catch(_) {}

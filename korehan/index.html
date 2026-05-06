@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20260505g">
+<link rel="stylesheet" href="korehan-shared.css?v=20260505h">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -1227,7 +1227,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505g"></script>
+<script src="js/core/phrases.js?v=20260505h"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -1242,7 +1242,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260505g"></script>
+<script src="korehan-shared.js?v=20260505h"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
@@ -1682,16 +1682,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         : [];
     }
     if (!phrases.length) return;
-    // Today's phrase is a pure function of the KST date and queue
-    // length: every user sees the SAME phrase on the same day. The
-    // earlier per-user "seen" tracking was a mistake — it made the
-    // home block drift away from the admin's TODAY badge (admin uses
-    // the same simple rotation), so users were seeing 티끌 모아 태산
-    // on home while admin pointed at 뿌린 대로 거둔다. Mirroring the
-    // admin formula keeps the two sources of truth in sync.
+    // Today's index uses getTodaysPhraseIndex() which honors the
+    // rotation offset — admin's bulk-add / reorder / delete won't
+    // shift today's phrase to a different one mid-day.
     var todayKey = new Date(Date.now() + 9*3600000).toISOString().slice(0,10);
-    var dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
-    var phraseIndex = dayHash % phrases.length;
+    var phraseIndex = (typeof getTodaysPhraseIndex === 'function')
+      ? getTodaysPhraseIndex()
+      : Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length;
     // Stash the resolved {date, idx, ko} just so we can detect the
     // queue-changed case quickly on the next render — we still
     // recompute every load, but if the cached ko no longer matches
