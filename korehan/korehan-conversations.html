@@ -351,13 +351,12 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" placeholder="Search conversations…" id="conv-search-input" oninput="_filterConvSearch(this.value)">
     </div>
-    <div class="kh-filter-bar conv-tab-bar" id="cat-pills">
-      <button class="kh-filter-pill cf-tab on" data-cat="all">All</button>
-      <button class="kh-filter-pill cf-tab" data-cat="everyday">Everyday</button>
-      <button class="kh-filter-pill cf-tab" data-cat="work">Workplace</button>
-      <button class="kh-filter-pill cf-tab" data-cat="friends">Friends</button>
-      <button class="kh-filter-pill cf-tab" data-cat="family">Family</button>
-      <button class="kh-filter-pill cf-tab" data-cat="dating">Dating</button>
+    <div class="kh-filter-bar conv-tab-bar" id="cat-pills" style="margin-top:12px">
+      <button class="kh-filter-pill cf-tab on" data-lvl="all">All</button>
+      <button class="kh-filter-pill cf-tab" data-lvl="s"><span class="kh-filter-dot" style="background:#7b5cff"></span>Seed</button>
+      <button class="kh-filter-pill cf-tab" data-lvl="b"><span class="kh-filter-dot" style="background:#22c55e"></span>Sprout</button>
+      <button class="kh-filter-pill cf-tab" data-lvl="i"><span class="kh-filter-dot" style="background:#f59e0b"></span>Tree</button>
+      <button class="kh-filter-pill cf-tab" data-lvl="a"><span class="kh-filter-dot" style="background:#ef4444"></span>Forest</button>
     </div>
   </div>
 </div>
@@ -715,14 +714,14 @@ function _renderConvRails(list) {
   grid.innerHTML = html || '<p style="color:#64748b;font-size:14px;padding:20px 0">No conversations yet.</p>';
 }
 
-// Click handler for "See all" — flip the top tab + filter set.
+// Click handler for "See all" — render a flat grid filtered by
+// category. The top filter bar is now level-based (no cat pills) so
+// the only place "filter by category" surfaces is via these rails
+// shortcuts. activeCat is set so subsequent level changes still
+// scope to the same category until the user navigates away.
 function _jumpToConvCat(cat) {
-  var btn = document.querySelector('#cat-pills .cf-tab[data-cat="' + cat + '"]');
-  document.querySelectorAll('#cat-pills .cf-tab').forEach(function(b){ b.classList.remove('on'); });
-  if (btn) btn.classList.add('on');
-  renderCards(cat, 'all');
-  // Scroll to the top so the user sees the filtered grid header,
-  // not the bottom of the previous rails view.
+  activeCat = cat;
+  renderCards(cat, activeLvl || 'all');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1876,16 +1875,8 @@ function _convRowToObj(row) {
     }
   })();
 
-  // ── 탭 바 이벤트 (동기 — 즉시 바인딩) ──
+  // ── Filter bar (level pills only — categories surface via rails) ──
   var pills = document.getElementById('cat-pills');
-  pills.querySelectorAll('.cf-tab:not([data-lvl])').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      pills.querySelectorAll('.cf-tab:not([data-lvl])').forEach(function(b){b.classList.remove('on');});
-      btn.classList.add('on');
-      activeCat = btn.dataset.cat;
-      renderCards(activeCat, activeLvl);
-    });
-  });
   pills.querySelectorAll('.cf-tab[data-lvl]').forEach(function(btn) {
     btn.addEventListener('click', function() {
       pills.querySelectorAll('.cf-tab[data-lvl]').forEach(function(b){b.classList.remove('on');});
@@ -1894,9 +1885,11 @@ function _convRowToObj(row) {
       renderCards(activeCat, activeLvl);
     });
   });
+  // Honour ?cat=xxx deep-links by jumping straight to that rail's
+  // flat grid — works even though we no longer surface a cat pill.
   var params = new URLSearchParams(window.location.search);
   var cp = params.get('cat');
-  if (cp) { var t = pills.querySelector('[data-cat="'+cp+'"]'); if(t) t.click(); }
+  if (cp) _jumpToConvCat(cp);
 })();
 document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeDetail(); });
 

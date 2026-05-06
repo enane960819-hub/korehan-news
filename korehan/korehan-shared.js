@@ -2528,8 +2528,8 @@ function renderAllPage() {
       + '<button onclick="doSearch(document.getElementById(\'search-bar-input\').value)" style="background:#fff;color:var(--kh-hue-1);border:0;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Search</button>'
       + '</div>'
       + (searchQ ? '<div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:8px">Results for <strong style="color:#fff">\u201c' + escapeHtml(searchQ) + '\u201d</strong></div>' : '')
-      + '<div class="kh-filter-bar" id="all-level-filter">'
-      + '<button class="kh-filter-pill on" data-level="All" onclick="filterAllLevel(\'All\',this)">All Levels</button>'
+      + '<div class="kh-filter-bar" id="all-level-filter" style="margin-top:12px">'
+      + '<button class="kh-filter-pill on" data-level="All" onclick="filterAllLevel(\'All\',this)">All</button>'
       + '<button class="kh-filter-pill" data-level="Starter" onclick="filterAllLevel(\'Starter\',this)"><span class="kh-filter-dot" style="background:#7b5cff"></span>Seed</button>'
       + '<button class="kh-filter-pill" data-level="Beginner" onclick="filterAllLevel(\'Beginner\',this)"><span class="kh-filter-dot" style="background:#22c55e"></span>Sprout</button>'
       + '<button class="kh-filter-pill" data-level="Intermediate" onclick="filterAllLevel(\'Intermediate\',this)"><span class="kh-filter-dot" style="background:#f59e0b"></span>Tree</button>'
