@@ -6385,8 +6385,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         await Promise.all([sectionsPromise, settingsPromise]);
       } else {
         // Cold All News visit — render an immediate skeleton so the
-        // user sees activity instead of a blank page during the
-        // 3–5s 500-row fetch. Replaced as soon as renderAllPage runs.
+        // user sees activity instead of a blank page during the fetch.
+        // Replaced as soon as renderAllPage runs.
         if (_isAllPage) {
           var _skel = document.getElementById('dyn-article-list');
           if (_skel && !_skel.children.length) {
@@ -6399,9 +6399,14 @@ document.addEventListener('DOMContentLoaded', async function() {
           }
         }
         var _forceRefresh = _isArticleReaderFallback || _isAllPage;
-        await Promise.all([loadArticlesFromDB({ force: _forceRefresh, all: _isAllPage }), sectionsPromise, settingsPromise]);
+        // Only the articles fetch blocks the loader. sections + settings
+        // resolve in the background; the header/sidebar already paint
+        // from defaults and reflow once they land. This shaved ~600ms
+        // off cold All News when sections happened to be slow.
+        await loadArticlesFromDB({ force: _forceRefresh, all: _isAllPage });
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
         _ldr(100);
+        Promise.allSettled([sectionsPromise, settingsPromise]);
       }
     }
 

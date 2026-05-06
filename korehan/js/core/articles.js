@@ -245,15 +245,14 @@ async function loadArticlesFromDB(options) {
   if (!shouldForceRefresh && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
     return _articlesCache;
   }
-  // Sized down from (30 / 80 / 500) — All News at 500 was a 5-second
-  // fetch on Korean LTE because every row carried `body`. Most
-  // browsing happens above the fold; reducing to 120 gives each
-  // section ~12 cards in the rails view, which covers the visible
-  // strip + a swipe or two without dragging in the entire archive.
-  // Search now scans title/title_en/section locally (see renderAllPage)
-  // instead of body, so we don't need body for the All News list at
-  // all — drop it to slash payload by ~80%.
-  var lim = useHomeOptimizedQuery ? 30 : useAllArticles ? 120 : 80;
+  // Sized down from 500 to a body-less 1000-row cap. With body
+  // excluded each row is ~300 bytes — 1000 rows ≈ 300KB, vs the old
+  // 500 × ~1KB+ ≈ 1MB. Keeps every article visible on All News
+  // (currently ~260 published, plenty of headroom for growth) while
+  // still cutting the LTE wait by ~3x. Search now scans title /
+  // title_en / section locally (see renderAllPage) — body fetch is
+  // single-row only, in the article reader.
+  var lim = useHomeOptimizedQuery ? 30 : useAllArticles ? 1000 : 80;
   // Try the lite column list first; fall back to '*' if PostgREST
   // rejects an unknown column (production schemas can lag behind the
   // codebase). Without this fallback any missing column on the lite
