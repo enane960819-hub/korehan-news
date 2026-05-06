@@ -1,34 +1,24 @@
 // KoreHani Service Worker
 //
-// Keeps the app usable on flaky connections (subway, plane) and gives
-// articles the learner has already opened a second chance if the
-// Supabase fetch stalls. Strategy per request class:
+// Strategy per request class:
 //
-//   static shell (CSS/JS/fonts/images) → stale-while-revalidate
-//     The user sees the cached version immediately and the new one
-//     lands in the background for the next visit. Safe because these
-//     assets carry Cache-Control: no-cache but rarely change
-//     catastrophically.
+//   HTML navigations + same-origin CSS/JS → network-first, cache fallback
+//     Eliminates the "old version flash" where a fresh HTML painted
+//     against stale cached CSS/JS for one frame before the new bundles
+//     arrived. Now HTML, CSS, and JS are always fetched fresh when
+//     online and only fall back to cache when offline.
 //
-//   HTML navigations (korehan-*.html) → network-falling-back-to-cache
-//     Serves fresh when online, falls back to the last successful
-//     cache copy when offline so bookmarks still open.
+//   Fonts / images → stale-while-revalidate
+//     Cheap to serve from cache, rarely change catastrophically.
 //
 //   Supabase / API / Anthropic / CDN calls → network-only
-//     Auth tokens, live data, and streaming responses must never be
-//     served from cache. We explicitly skip these to avoid stale
-//     session tokens or frozen feeds.
+//     Auth tokens and live data must never be served from cache.
 //
 // Version bump: change CACHE_VERSION whenever the SW logic itself
 // changes. Install event will build a fresh cache under the new name
 // and the activate event will delete stale caches.
 
-// Bumped to v3 to evict the v2 caches that captured the
-// over-zealous grammar-tooltip rollout (it had been auto-loaded
-// site-wide, breaking the article reader's own .kh-word vocab
-// hover). v3 ships with grammar-tooltip scoped to the study room
-// only, so reader pages get their vocab hover back.
-const CACHE_VERSION = 'kh-v3';
+const CACHE_VERSION = 'kh-v4';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
@@ -61,9 +51,17 @@ self.addEventListener('activate', function(event) {
   );
 });
 
-function isSameOriginStatic(url) {
+function isCodeAsset(url) {
+  // CSS/JS get network-first treatment so a fresh HTML never paints
+  // against a stale stylesheet/script (which caused the "old version
+  // flashes for ~1s" bug). Cache only as offline fallback.
   if (url.origin !== self.location.origin) return false;
-  return /\.(css|js|woff2?|ttf|otf|png|jpg|jpeg|webp|svg|ico)(\?|$)/i.test(url.pathname);
+  return /\.(css|js)(\?|$)/i.test(url.pathname);
+}
+function isMediaAsset(url) {
+  // Fonts and images are safe to stale-serve.
+  if (url.origin !== self.location.origin) return false;
+  return /\.(woff2?|ttf|otf|png|jpg|jpeg|webp|svg|ico)(\?|$)/i.test(url.pathname);
 }
 function isHTMLNavigation(request, url) {
   if (request.mode === 'navigate') return true;
@@ -87,7 +85,11 @@ self.addEventListener('fetch', function(event) {
   // Same-origin API proxies (/api/*) and the like — also pass through.
   if (url.origin === self.location.origin && /^\/api\//.test(url.pathname)) return;
 
-  if (isSameOriginStatic(url)) {
+  if (isCodeAsset(url)) {
+    event.respondWith(networkFirstPage(req, STATIC_CACHE));
+    return;
+  }
+  if (isMediaAsset(url)) {
     event.respondWith(staleWhileRevalidate(req, STATIC_CACHE));
     return;
   }

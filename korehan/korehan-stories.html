@@ -29,7 +29,8 @@
 .sf-pill.on,.sf-pill:hover{background:#fff;color:#7c3aed;border-color:#fff;}
 .sf-sep{flex-basis:100%;height:0;}
 .st-container{max-width:1280px;margin:0 auto;padding:0 24px 60px;}
-.st-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.st-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+.sc{aspect-ratio:3/4;min-height:0;}
 /* Full-image overlay card (news-card style) */
 .sc{position:relative;background:#0b1626;border-radius:20px;overflow:hidden;cursor:pointer;transition:transform .18s,box-shadow .18s;box-shadow:0 10px 32px rgba(15,23,42,.1);aspect-ratio:3/4;min-height:320px;}
 .sc:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(15,23,42,.15);}
@@ -203,8 +204,8 @@
 .st-q-item{padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e8eef7;}
 .st-q-q{font-size:12px;font-weight:700;color:#0f172a;margin-bottom:4px;}
 .st-q-a{font-size:12px;color:#475569;line-height:1.5;}
-@media(max-width:900px){.st-grid{grid-template-columns:repeat(2,1fr)}.st-panel{grid-template-columns:1fr}.st-right{border-left:none;border-top:1px solid #e8eef7}}
-@media(max-width:600px){.st-grid{grid-template-columns:1fr}.st-hero h1{font-size:28px}.st-panel{border-radius:20px}}
+@media(max-width:900px){.st-grid{grid-template-columns:repeat(2,1fr);gap:14px}.st-panel{grid-template-columns:1fr}.st-right{border-left:none;border-top:1px solid #e8eef7}}
+@media(max-width:600px){.st-grid{grid-template-columns:repeat(2,1fr);gap:10px}.st-hero h1{font-size:28px}.st-panel{border-radius:20px}.sc{min-height:0}}
 
 /* Mobile-only Read / Learn tab strip on the story detail. Desktop
    keeps the 2-column layout (body + right panel side-by-side) so
