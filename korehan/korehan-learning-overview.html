@@ -562,29 +562,34 @@
          tooltip explaining what each stat actually tracks — the audit
          flagged that XP / Streak / Words / Articles were unexplained
          jargon for first-time users. -->
+    <style>
+      .gl-stat{flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;cursor:help;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;min-height:62px;position:relative;}
+      .gl-stat-label{font-size:10px;font-weight:500;color:var(--muted);line-height:1.2;text-align:center;}
+      .gl-stat-num{font-size:22px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;justify-content:center;height:24px;}
+    </style>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-      <div title="XP earned today. You gain XP for reading, quizzes, and saving words." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
-        <div style="font-size:10px;font-weight:500;color:var(--muted)">XP today</div>
-        <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-xp">0</div>
+      <div class="gl-stat" title="XP earned today. You gain XP for reading, quizzes, and saving words.">
+        <div class="gl-stat-label">XP today</div>
+        <div class="gl-stat-num" id="stat-xp">0</div>
       </div>
-      <div title="New words saved today. Tap any word while reading to add it to your Word Book." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
-        <div style="font-size:10px;font-weight:500;color:var(--muted)">Words today</div>
-        <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-words">0</div>
+      <div class="gl-stat" title="New words saved today. Tap any word while reading to add it to your Word Book.">
+        <div class="gl-stat-label">Words today</div>
+        <div class="gl-stat-num" id="stat-words">0</div>
       </div>
-      <div title="Articles, conversations, and stories read today." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
-        <div style="font-size:10px;font-weight:500;color:var(--muted)">Read today</div>
-        <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-articles">0</div>
+      <div class="gl-stat" title="Articles, conversations, and stories read today.">
+        <div class="gl-stat-label">Read today</div>
+        <div class="gl-stat-num" id="stat-articles">0</div>
       </div>
-      <div title="Consecutive days you've studied. Breaks if you skip a day." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help;position:relative">
-        <div style="font-size:10px;font-weight:500;color:var(--muted)">Streak</div>
-        <div style="font-size:22px;font-weight:800;color:#ea580c" id="stat-streak">0</div>
+      <div class="gl-stat" title="Consecutive days you've studied. Breaks if you skip a day.">
+        <div class="gl-stat-label">Streak</div>
+        <div class="gl-stat-num" id="stat-streak" style="color:#ea580c">0</div>
         <button id="freeze-btn" type="button" onclick="khOpenFreezeDialog()" hidden
-          style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:linear-gradient(135deg,#bae6fd,#7dd3fc);color:#0c4a6e;font-size:12px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(14,165,233,.35)"
-          title="Use streak freeze (once per week)" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="snowflake" class="kh-ui-icon" style="color:#7dd3fc" aria-hidden="true"></i></button>
+          style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:linear-gradient(135deg,#bae6fd,#7dd3fc);color:#0c4a6e;font-size:12px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(14,165,233,.35);display:inline-flex;align-items:center;justify-content:center"
+          title="Use streak freeze (once per week)"><i data-lucide="snowflake" class="kh-ui-icon" style="color:#7dd3fc" aria-hidden="true"></i></button>
       </div>
-      <div title="Active time spent in the app today. Counts minutes while the tab is visible and you've interacted within the last minute." style="flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;text-align:center;cursor:help">
-        <div style="font-size:10px;font-weight:500;color:var(--muted)">Time today</div>
-        <div style="font-size:22px;font-weight:800;color:var(--text)" id="stat-minutes">0m</div>
+      <div class="gl-stat" title="Active time spent in the app today. Counts minutes while the tab is visible and you've interacted within the last minute.">
+        <div class="gl-stat-label">Time today</div>
+        <div class="gl-stat-num" id="stat-minutes">0m</div>
       </div>
     </div>
 
@@ -1518,19 +1523,18 @@
     const s = data.scores || {};
     const activityDays = data.activity_days || 0;
     const locked = activityDays < 10;
-    const skillsHtml = SKILL_META.map(r => {
-      const score = r.comingSoon ? '—' : `${pct(s[r.key])} / 100`;
-      const barWidth = r.comingSoon ? 0 : pct(s[r.key]);
-      const barStyle = r.comingSoon
-        ? 'width:100%;background:repeating-linear-gradient(-45deg,#e5e7eb 0 6px,#f3f4f6 6px 12px);opacity:.6'
-        : `width:${barWidth}%;background:${r.color}`;
-      const soonBadge = r.comingSoon
-        ? '<span style="margin-left:6px;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#4f46e5;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;">Coming soon</span>'
-        : '';
+    // Hide axes whose scoring pipelines aren't live yet (was: showing
+    // them with a "Coming soon" badge, which made the panel feel half
+    // broken). They re-appear automatically when comingSoon is removed.
+    const ACTIVE_SKILLS = SKILL_META.filter(r => !r.comingSoon);
+    const skillsHtml = ACTIVE_SKILLS.map(r => {
+      const score = `${pct(s[r.key])} / 100`;
+      const barWidth = pct(s[r.key]);
+      const barStyle = `width:${barWidth}%;background:${r.color}`;
       return `
-      <div class="skill-row${r.comingSoon ? ' skill-coming-soon' : ''}">
+      <div class="skill-row">
         <div class="skill-top">
-          <div class="skill-name">${r.label}${soonBadge}</div>
+          <div class="skill-name">${r.label}</div>
           <div class="skill-score">${score}</div>
         </div>
         <div class="skill-track"><div class="skill-bar" style="${barStyle}"></div></div>
