@@ -2940,8 +2940,25 @@ function _khRenderSentPanel(panel, data) {
     // example chunks still both render.
     var seenExamples = [];
     var grammarFiltered = [];
+    // Heuristic: a real grammar pattern is a morpheme/connective/ending,
+    // not a noun phrase. Reject "patterns" where the model glued a
+    // content noun onto the morpheme (e.g. "~ㄴ 동물" — animal is just
+    // a noun, the actual pattern is ~는). If the field strips down to
+    // 3+ contiguous Hangul syllables, it's almost certainly a noun and
+    // should be dropped.
+    function _looksLikePadding(pattern) {
+      if (!pattern) return true;
+      // Strip the morpheme markers + standard pattern punctuation;
+      // whatever remains should not be a multi-syllable noun.
+      var stripped = String(pattern)
+        .replace(/[~\/()\s\-,.?!]/g, '')
+        .replace(/[은는이가을를으]/g, '');
+      // If a 3+ Korean-syllable run survives the strip, treat as noun.
+      return /[가-힣]{3,}/.test(stripped);
+    }
     data.grammar.forEach(function(g) {
       if (!g || !g.pattern) return;
+      if (_looksLikePadding(g.pattern)) return;
       var ex = (g.example_in_sentence || '').trim();
       var dupe = false;
       for (var i = 0; i < seenExamples.length && ex; i++) {

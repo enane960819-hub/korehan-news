@@ -4922,8 +4922,10 @@ async function runAutoGenerate(){
             + '- TRANSLATION: stay consistent with the paragraph EN above (same subject, same pronouns, same formality). PRESERVE THE ORIGINAL SUBJECT — do NOT inject "I" or "we" if the Korean omitted it; pull the subject from the paragraph EN context. Match the level of formality (정중체 → polite English; 평서체 → plain English).\n'
             + '- VOCAB: max 4 items per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다 …) — pick words a learner would actually want to look up. Empty array allowed if nothing useful.\n'
             + '- VOCAB NOTE: must be FACTUAL — what the word literally means and how it is used in standard Korean. Do NOT invent metaphorical readings specific to this sentence (e.g. don\'t say "고양이 here used metaphorically for a group/category" — 고양이 just means cat). Do NOT pad with example collocations that don\'t actually apply (e.g. don\'t say "지나다 used with 시간, 날씨, 계절" — 날씨 doesn\'t pass). Empty note is fine when the meaning alone is enough.\n'
-            + '- GRAMMAR: max 2 patterns per sentence. Empty array if the sentence is just a noun phrase or has no notable grammar.\n'
-            + '- GRAMMAR EXCLUSION: do NOT pick a grammar pattern that is just the natural conjugation of a word already listed in vocab — if 달라지다 is in vocab, do not list ~어지다 with 달라졌어요 as the example (that\'s just the verb\'s past tense, not a separate pattern to teach). Pick patterns that have learning value beyond the vocab (connectives, causatives, ~기 위해, ~ㄴ 것 같다, ~게 되다, etc.).\n'
+            + '- GRAMMAR: max 2 patterns per sentence, EMPTY ARRAY [] PREFERRED. Only include a pattern when there is a real, teachable grammatical structure that adds learning value beyond the vocab. When in doubt, RETURN EMPTY. Padding with weak/obvious patterns ruins the lesson.\n'
+            + '- GRAMMAR PATTERN FIELD: must be a GRAMMATICAL MORPHEME / connective / ending only (e.g. "~기 위해", "~게 되다", "~ㄴ/는 것 같다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" (animal is a noun, not part of the pattern). The pattern there would be "~는" alone, but ~는 modifier is too basic for an Intermediate+ learner so OMIT it entirely.\n'
+            + '- GRAMMAR LEVEL FILTER: skip patterns that a TOPIK ' + _level + ' learner already knows. For Intermediate/Advanced articles do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 polite endings, ~았/었 past, ~을/를 object marker. For Beginner articles those CAN appear. The article level on this run is "' + _level + '" — calibrate accordingly.\n'
+            + '- GRAMMAR EXCLUSION: do NOT pick a pattern that is just the natural conjugation of a word already listed in vocab — if 달라지다 is in vocab, do not list ~어지다 with 달라졌어요 as the example.\n'
             + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one — do not list both with near-identical example_in_sentence chunks.\n'
             + '- Output JSON only.';
           const _sentRes = await callClaude({
@@ -5396,7 +5398,10 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
       + '- one object per input sentence in same order.\n'
       + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE the original subject — do NOT inject "I/we" if Korean omitted it. Pull subject/pronouns/formality from the paragraph EN context.\n'
       + '- VOCAB: max 4, skip beginner words. NOTE must be factual — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
-      + '- GRAMMAR: max 2 patterns, empty ok. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n'
+      + '- GRAMMAR: max 2 patterns, EMPTY ARRAY [] PREFERRED when the sentence has no teachable structure beyond basic conjugation. Padding ruins the lesson — when in doubt, return empty.\n'
+      + '- GRAMMAR PATTERN FIELD: must be a grammatical morpheme/connective/ending only (e.g. "~기 위해", "~게 되다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" — animal is a noun, not part of the pattern.\n'
+      + '- GRAMMAR LEVEL: skip basics for ' + _level + ' learners — for Intermediate/Advanced do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 endings, ~았/었 past, ~을/를 object marker.\n'
+      + '- Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n'
       + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one.\n'
       + '- Output JSON only.';
     const r = await callClaude({
@@ -5793,7 +5798,10 @@ async function genCache(articleId, schema, opts) {
           + '- One object per input sentence, in same order.\n'
           + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE THE ORIGINAL SUBJECT — do NOT inject "I/we" if Korean omitted it. Pull subject/pronouns/formality from the paragraph EN context.\n'
           + '- VOCAB: max 4, skip beginner words. NOTE must be factual — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
-          + '- GRAMMAR: max 2 patterns. Empty array if none notable. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. don\'t list ~어지다 with 달라졌어요 when 달라지다 is already in vocab).\n'
+          + '- GRAMMAR: max 2 patterns, EMPTY ARRAY [] PREFERRED when the sentence has no teachable structure beyond basics. Padding ruins the lesson — when in doubt, return empty.\n'
+          + '- GRAMMAR PATTERN FIELD: a grammatical morpheme/connective/ending only (e.g. "~기 위해", "~게 되다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" — animal is a noun, not part of the pattern.\n'
+          + '- GRAMMAR LEVEL: skip basics for ' + _level + ' learners — for Intermediate/Advanced do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 endings, ~았/었 past, ~을/를 object marker.\n'
+          + '- Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. don\'t list ~어지다 with 달라졌어요 when 달라지다 is already in vocab).\n'
           + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one.\n'
           + '- Output JSON only.';
         const _sentRes = await callClaude({
