@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f0f2f7">
+<title>My Phrases — KoreHani</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css?v=20260505m">
+<style>
+.kh-myp-page { padding: 24px 0; }
+.kh-myp-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+.kh-myp-title { font-family:'Noto Serif KR','Playfair Display',serif; font-weight:900; font-size:clamp(22px, 4vw, 30px); color:var(--navy); margin:0; }
+.kh-myp-sub { font-size:13px; color:var(--gray); margin:4px 0 0; }
+.kh-myp-count { font-size:12px; color:var(--bright); font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+
+.kh-myp-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+.kh-myp-card {
+  display:flex; flex-direction:column;
+  background:var(--white); border:1px solid var(--border); border-radius:14px;
+  padding:18px 18px 16px; box-shadow:var(--shadow);
+  text-decoration:none; color:inherit;
+  transition: box-shadow .15s, transform .12s, border-color .15s;
+  position:relative;
+  min-height:160px;
+}
+.kh-myp-card:hover { border-color: var(--bright); box-shadow:0 10px 26px rgba(34,85,164,.14); transform:translateY(-2px); }
+.kh-myp-card-eyebrow {
+  font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--bright); margin-bottom:8px;
+}
+.kh-myp-card-ko {
+  font-family:'Noto Serif KR',serif; font-weight:900;
+  font-size:clamp(20px,3.6vw,24px); color:var(--navy);
+  line-height:1.22; margin:0 0 6px; word-break:keep-all;
+}
+.kh-myp-card-en {
+  font-family:'Playfair Display','Noto Serif KR',serif; font-style:italic;
+  font-size:14px; color:var(--accent); line-height:1.4; margin:0 0 8px;
+}
+.kh-myp-card-rom { font-size:11px; color:var(--gray); font-style:italic; }
+.kh-myp-card-foot {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-top:auto; padding-top:14px;
+  font-size:11px; color:var(--gray);
+}
+.kh-myp-card-arrow { color:var(--bright); font-weight:800; font-size:14px; }
+.kh-myp-remove {
+  position:absolute; top:10px; right:10px;
+  width:26px; height:26px; border-radius:50%;
+  background:rgba(220,38,38,.08); color:#dc2626;
+  border:none; cursor:pointer; font-size:14px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; transition:opacity .15s;
+}
+.kh-myp-card:hover .kh-myp-remove { opacity:1; }
+.kh-myp-remove:hover { background:rgba(220,38,38,.18); }
+
+.kh-myp-empty {
+  text-align:center; padding:80px 20px;
+  background:var(--white); border:1px dashed var(--border); border-radius:14px;
+  color:var(--gray);
+}
+.kh-myp-empty-icon { font-size:42px; margin-bottom:10px; }
+.kh-myp-empty-title { font-family:'Noto Serif KR',serif; font-weight:900; color:var(--navy); font-size:18px; margin-bottom:6px; }
+.kh-myp-empty-sub { font-size:13px; line-height:1.6; }
+.kh-myp-empty-cta {
+  display:inline-block; margin-top:18px; padding:11px 22px;
+  background:var(--accent); color:#fff; border-radius:10px;
+  text-decoration:none; font-weight:800; font-size:13px;
+}
+.kh-myp-empty-cta:hover { background:var(--bright); }
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+<div class="container">
+  <div class="kh-myp-page">
+    <div class="kh-myp-head">
+      <div>
+        <h1 class="kh-myp-title">My Phrases</h1>
+        <p class="kh-myp-sub">Phrases you've bookmarked from Today's Phrase. Tap any card to open the full reader.</p>
+      </div>
+      <div class="kh-myp-count" id="kh-myp-count"></div>
+    </div>
+    <div id="kh-myp-root"></div>
+  </div>
+</div>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/security.js?v=20260502a"></script>
+<script src="js/core/storage.js?v=20260502a"></script>
+<script src="js/core/icons.js?v=20260502a"></script>
+<script src="js/core/modals.js?v=20260502a"></script>
+<script src="js/core/ui-states.js?v=20260502a"></script>
+<script src="js/core/analytics.js?v=20260502a"></script>
+<script src="js/core/user-analytics.js?v=20260504a"></script>
+<script src="js/core/plans.js?v=20260502a"></script>
+<script src="js/core/article-cache.js?v=20260505b"></script>
+<script src="js/core/phrases.js?v=20260505m"></script>
+<script src="js/core/saved-words.js?v=20260505b"></script>
+<script src="js/features/video-player.js?v=20260502a"></script>
+<script src="js/core/articles.js?v=20260502a"></script>
+<script src="js/core/reporters.js?v=20260502a"></script>
+<script src="js/features/streak.js?v=20260502a"></script>
+<script src="js/features/daily-mission.js?v=20260502a"></script>
+<script src="js/features/reading-tracker.js?v=20260502a"></script>
+<script src="js/features/bookmarks.js?v=20260502a"></script>
+<script src="js/features/comments.js?v=20260503c"></script>
+<script src="js/features/sidebar.js?v=20260502a"></script>
+<script src="js/features/highlighted-expressions.js?v=20260502a"></script>
+<script src="js/features/analyze-mode.js?v=20260502a"></script>
+<script src="js/features/translation.js?v=20260502a"></script>
+<script src="js/features/fill-blank.js?v=20260502a"></script>
+<script src="korehan-shared.js?v=20260505m"></script>
+<script>
+// My Phrases — gallery of phrases the user has saved from the
+// phrase reader's "Add to My Phrases" CTA. Saved entries live in
+// localStorage under kh_saved_phrases_v1 (same key the phrase
+// reader writes). Click a card → open the full reader on that
+// phrase.
+var SAVED_PHRASES_KEY = 'kh_saved_phrases_v1';
+
+function _esc(s) { return String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function _getSaved() {
+  try { return JSON.parse(localStorage.getItem(SAVED_PHRASES_KEY) || '[]') || []; }
+  catch(_) { return []; }
+}
+function _setSaved(list) {
+  try { localStorage.setItem(SAVED_PHRASES_KEY, JSON.stringify(list)); } catch(_) {}
+}
+
+function _formatDate(iso) {
+  if (!iso) return '';
+  try {
+    var d = new Date(iso);
+    var diffMs = Date.now() - d.getTime();
+    var diffDays = Math.floor(diffMs / 86400000);
+    if (diffDays === 0) return 'Saved today';
+    if (diffDays === 1) return 'Saved yesterday';
+    if (diffDays < 7)   return 'Saved ' + diffDays + 'd ago';
+    return 'Saved ' + d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  } catch(_) { return ''; }
+}
+
+window.removeSavedPhrase = function(idx, ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  var list = _getSaved();
+  if (idx < 0 || idx >= list.length) return;
+  var ko = list[idx] && list[idx].ko;
+  list.splice(idx, 1);
+  _setSaved(list);
+  if (typeof khTrackUser === 'function') {
+    try { khTrackUser('phrase_unsaved', { ko: ko, source: 'my-phrases' }); } catch(_) {}
+  }
+  render();
+};
+
+function render() {
+  var root = document.getElementById('kh-myp-root');
+  var countEl = document.getElementById('kh-myp-count');
+  if (!root) return;
+  var saved = _getSaved();
+  if (countEl) countEl.textContent = saved.length ? saved.length + ' saved' : '';
+  if (!saved.length) {
+    root.innerHTML = '<div class="kh-myp-empty">'
+      + '<div class="kh-myp-empty-icon" aria-hidden="true">📚</div>'
+      + '<div class="kh-myp-empty-title">No saved phrases yet</div>'
+      + '<div class="kh-myp-empty-sub">Open Today\'s Phrase, tap <strong>Add to My Phrases</strong>, and your collection will appear here.</div>'
+      + '<a class="kh-myp-empty-cta" href="korehan-phrase.html">Open today\'s phrase →</a>'
+      + '</div>';
+    return;
+  }
+  // Try to resolve each saved entry against the live phrase queue
+  // so we can include intro/translation alongside the bare ko/en/rom
+  // the saved record carries. Falls back to whatever the saved
+  // record had when the queue lookup misses.
+  var queue = (typeof getPhrases === 'function') ? getPhrases() : [];
+  var byKo = {};
+  queue.forEach(function(p, i) { if (p && p.ko) byKo[p.ko.trim()] = { p: p, i: i }; });
+
+  root.innerHTML = '<div class="kh-myp-grid">'
+    + saved.map(function(s, idx) {
+        var koTrim = (s.ko || '').trim();
+        var hit = byKo[koTrim];
+        var p = hit ? hit.p : s;
+        var queueIdx = hit ? hit.i : -1;
+        var href = queueIdx >= 0
+          ? 'korehan-phrase.html?i=' + queueIdx
+          : 'korehan-phrase.html?q=' + encodeURIComponent(koTrim);
+        return '<a class="kh-myp-card" href="' + _esc(href) + '">'
+          +   '<button type="button" class="kh-myp-remove" aria-label="Remove from My Phrases" onclick="removeSavedPhrase(' + idx + ', event)">×</button>'
+          +   '<div class="kh-myp-card-eyebrow">Saved phrase</div>'
+          +   '<h2 class="kh-myp-card-ko">' + _esc(p.ko || s.ko || '') + '</h2>'
+          +   (p.en ? '<div class="kh-myp-card-en">' + _esc(p.en) + '</div>' : '')
+          +   (p.rom ? '<div class="kh-myp-card-rom">' + _esc(p.rom) + '</div>' : '')
+          +   '<div class="kh-myp-card-foot">'
+          +     '<span>' + _esc(_formatDate(s.saved_at)) + '</span>'
+          +     '<span class="kh-myp-card-arrow" aria-hidden="true">→</span>'
+          +   '</div>'
+          + '</a>';
+      }).join('')
+    + '</div>';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Pull the latest queue from DB so card en/rom are populated even
+  // if localStorage K_PHRASES is stale on this device.
+  if (typeof getPhrasesAsync === 'function') {
+    getPhrasesAsync({ force: true }).then(render).catch(render);
+  } else {
+    render();
+  }
+  document.title = 'My Phrases — KoreHani';
+});
+</script>
+</body>
+</html>

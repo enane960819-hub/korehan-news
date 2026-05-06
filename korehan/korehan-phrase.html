@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f0f2f7">
 <title>Today's Phrase — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260505l">
+<link rel="stylesheet" href="korehan-shared.css?v=20260505m">
 <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie_light.min.js" defer></script>
 </head>
@@ -29,7 +29,7 @@
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505l"></script>
+<script src="js/core/phrases.js?v=20260505m"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -44,7 +44,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260505l"></script>
+<script src="korehan-shared.js?v=20260505m"></script>
 <script>
 // Today's Phrase — dark, mobile-first reader.
 //
@@ -193,12 +193,12 @@ async function _fillPhraseViaClaude(phrase) {
     + '    {"ko":"natural Korean sentence USING the phrase, max 25 chars","en":"English translation"},\n'
     + '    {"ko":"different context using the phrase","en":"…"}\n'
     + '  ],\n'
-    + '  "related": ["관련 표현 1","관련 표현 2","관련 표현 3"]\n'
+    + '  "related": ["idiom 1","idiom 2"]\n'
     + '}\n\n'
     + 'Rules:\n'
     + '- intro_ko / intro / nuance MUST be specific to "' + phrase.ko + '" — do NOT echo back generic learner-platform copy.\n'
     + '- examples MUST contain the exact phrase (or a natural conjugated form) and be fully grammatical Korean.\n'
-    + '- related: STRICT semantic match. Each entry must be a Korean idiom/proverb/expression that conveys the SAME core meaning as "' + phrase.ko + '" — i.e. could be substituted in conversation without changing what the speaker is trying to say. Just being "another Korean proverb" is NOT enough. Examples of WRONG matches: pairing 하늘의 별 따기 (impossible task) with 등잔 밑이 어둡다 (overlooking the obvious) or 모래 위에 집 짓기 (unstable foundation) — those are about totally different concepts. Examples of RIGHT matches for 하늘의 별 따기: 낙타가 바늘구멍 들어가기, 하늘 보고 별 따기. If you cannot find 3 truly synonymous Korean expressions, return FEWER (even an empty array []) — DO NOT pad with loosely-themed idioms. Quality > quantity.';
+    + '- related: EXACTLY 0-2 entries (NEVER more than 2). Each MUST be a real Korean 관용구 (idiom) or 속담 (proverb) — a fixed multi-word expression you would find in a Korean idiom dictionary, not a literal noun phrase like "불가능한 일" or "어려운 목표". RIGHT examples for 하늘의 별 따기: 낙타가 바늘구멍 들어가기, 하늘이 두 쪽 나도. WRONG: 불가능한 일 (literal noun phrase, not an idiom). Each related entry must convey the SAME core meaning as "' + phrase.ko + '" and be substitutable in conversation. If you cannot find at least 2 real idioms/proverbs that strongly match, return FEWER (even an empty array []) — DO NOT pad with literal phrases or weak matches.';
   var res = await callClaude({
     feature: 'phrase-content-fill',
     model: 'claude-haiku-4-5-20251001',
@@ -224,7 +224,7 @@ async function _fillPhraseViaClaude(phrase) {
       seen[stripped] = true;
       return true;
     })
-    .slice(0, 4) : [];
+    .slice(0, 2) : [];
   return {
     intro_ko: typeof data.intro_ko === 'string' ? data.intro_ko : '',
     intro: typeof data.intro === 'string' ? data.intro : '',
@@ -243,12 +243,12 @@ window._khRelatedRefreshedSession = window._khRelatedRefreshedSession || {};
 
 // Tighten-up pass for ALREADY-complete phrases whose `related` was
 // generated under the old loose-match prompt. Triggers when the
-// phrase has related entries but no `related_v: 2` marker. One
+// phrase has related entries but no `related_v: 3` marker. One
 // short Claude call per phrase per session, then persisted to DB
 // for everyone else.
 async function _ensureRelatedFresh(phrase) {
   if (!phrase || !phrase.ko) return phrase;
-  if (phrase.related_v === 2) return phrase;
+  if (phrase.related_v === 3) return phrase;
   // Only applies when there ARE existing related entries that could
   // be stale. If admin left it empty there's nothing to clean up.
   if (!Array.isArray(phrase.related) || !phrase.related.length) return phrase;
@@ -261,11 +261,12 @@ async function _ensureRelatedFresh(phrase) {
     + (phrase.en ? 'Meaning: ' + phrase.en + '\n' : '')
     + '\n'
     + 'Return ONLY a JSON object — no preamble, no code fences:\n'
-    + '{ "related": ["expression 1", "expression 2", ...] }\n\n'
+    + '{ "related": ["idiom 1", "idiom 2"] }\n\n'
     + 'Rules:\n'
-    + '- Each entry must be a Korean idiom/proverb/expression that conveys the SAME core meaning as "' + phrase.ko + '" — substitutable in conversation without changing what the speaker means.\n'
-    + '- Just being "another Korean proverb" is NOT enough. WRONG: 하늘의 별 따기 (impossible) paired with 등잔 밑이 어둡다 (overlooking the obvious) — totally different concepts. RIGHT: 하늘의 별 따기 paired with 낙타가 바늘구멍 들어가기 (both = impossible).\n'
-    + '- Return up to 4. If you cannot find truly synonymous expressions, return FEWER (even an empty array []) — DO NOT pad with loosely-themed proverbs. Quality > quantity.\n'
+    + '- EXACTLY 0-2 entries (NEVER more than 2).\n'
+    + '- Each entry MUST be a real Korean 관용구 (idiom) or 속담 (proverb) — a fixed multi-word expression you would find in a Korean idiom dictionary. NOT literal noun phrases like "불가능한 일" or "어려운 목표".\n'
+    + '- Each idiom must convey the SAME core meaning as "' + phrase.ko + '" and be substitutable in conversation. RIGHT for 하늘의 별 따기: 낙타가 바늘구멍 들어가기. WRONG: 불가능한 일 (literal noun phrase, not an idiom).\n'
+    + '- If you cannot find 2 real idioms/proverbs with strong semantic match, return FEWER or [] — DO NOT pad with loose / literal phrases.\n'
     + '- No commentary, no romanization, just the Korean expressions.';
 
   try {
@@ -293,9 +294,9 @@ async function _ensureRelatedFresh(phrase) {
         seen[stripped] = true;
         return true;
       })
-      .slice(0, 4) : [];
+      .slice(0, 2) : [];
 
-    var merged = Object.assign({}, phrase, { related: related, related_v: 2 });
+    var merged = Object.assign({}, phrase, { related: related, related_v: 3 });
 
     // Persist back to the shared queue so other users (and our next
     // page load) see the cleaned data.
@@ -307,7 +308,7 @@ async function _ensureRelatedFresh(phrase) {
         var koTrim = String(phrase.ko || '').trim();
         var i = rows.findIndex(function(r){ return (r && (r.ko || '').trim()) === koTrim; });
         if (i >= 0) {
-          rows[i] = Object.assign({}, rows[i], { related: related, related_v: 2 });
+          rows[i] = Object.assign({}, rows[i], { related: related, related_v: 3 });
           await saveSharedPhrases(rows);
         }
       }
@@ -713,7 +714,7 @@ function renderPhraseLayout(phrase, opts) {
 
   // Related expressions — list of bordered links, same gradient cream
   // background as art-example-box for visual consistency.
-  var related = (phrase.related || []).slice(0, 4).filter(function(x){ return x && String(x).trim(); });
+  var related = (phrase.related || []).slice(0, 2).filter(function(x){ return x && String(x).trim(); });
   var relatedSection = '';
   if (related.length) {
     var rows = related.map(function(x){
@@ -732,6 +733,12 @@ function renderPhraseLayout(phrase, opts) {
 
   // CTA row — solid accent button to save, secondary outline to open
   // the study room. No more fixed bottom pill.
+  // When already saved, swap the secondary button to a "View My
+  // Phrases" link so the user can find the saved collection (the
+  // most common follow-up after saving a phrase).
+  var secondary = saved
+    ? '<a class="kh-phrase-secondary-btn" href="korehan-my-phrases.html">View My Phrases <span aria-hidden="true">→</span></a>'
+    : '<a class="kh-phrase-secondary-btn" href="korehan-my-phrases.html">My Phrases <span aria-hidden="true">→</span></a>';
   var ctaRow = ''
     + '<div class="kh-phrase-cta-row">'
     +   '<button class="kh-phrase-save-btn ' + (saved ? 'saved' : '') + '" onclick="toggleSavePhrase()">'
@@ -740,7 +747,7 @@ function renderPhraseLayout(phrase, opts) {
             : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>')
     +     '<span>' + (saved ? 'Saved to My Phrases' : 'Add to My Phrases') + '</span>'
     +   '</button>'
-    +   '<a class="kh-phrase-secondary-btn" href="korehan-study-room.html">Open in Study Room <span aria-hidden="true">→</span></a>'
+    +   secondary
     + '</div>';
 
   // Admin-only edit shortcut, tucked discreetly above the headline.
@@ -834,7 +841,7 @@ async function renderPhrasePage() {
       // _fillPhraseViaClaude returns related under the v2 prompt, so
       // stamp the marker in-memory too — _mergePhraseFill doesn't
       // currently set it.
-      filled.related_v = 2;
+      filled.related_v = 3;
       phrase = filled;
       renderPhraseLayout(filled, renderOpts);
     } catch(e) {
@@ -844,10 +851,10 @@ async function renderPhrasePage() {
 
   // Pass 2 — for phrases that ARE complete (intro/nuance/examples
   // already good) but whose `related` was generated under the old
-  // loose-match prompt. Detected via missing related_v: 2 marker.
+  // loose-match prompt. Detected via missing related_v: 3 marker.
   // Cheap related-only Claude call, then persisted to DB so the
   // next visitor doesn't re-pay.
-  if (!phrase.related_v || phrase.related_v < 2) {
+  if (!phrase.related_v || phrase.related_v < 3) {
     try {
       var freshened = await _ensureRelatedFresh(phrase);
       if (freshened && freshened !== phrase) {
