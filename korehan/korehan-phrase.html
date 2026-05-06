@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f0f2f7">
 <title>Today's Phrase — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260505k">
+<link rel="stylesheet" href="korehan-shared.css?v=20260505l">
 <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie_light.min.js" defer></script>
 </head>
@@ -29,7 +29,7 @@
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505k"></script>
+<script src="js/core/phrases.js?v=20260505l"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -44,7 +44,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260505k"></script>
+<script src="korehan-shared.js?v=20260505l"></script>
 <script>
 // Today's Phrase — dark, mobile-first reader.
 //
@@ -468,26 +468,15 @@ var _phraseLottieKnown = {};
 
 function _phraseRenderIllus(entry) {
   if (!entry) return '';
-  // When the entry has a hand-drawn image (pixel art etc.), render
-  // it as a full-bleed banner — image-rendering: pixelated keeps
-  // pixel art crisp regardless of CSS scaling, and a soft white
-  // gradient at the bottom eases the transition into the body.
-  // The cache-bust on the URL invalidates any browser-cached 404 so
-  // a freshly-deployed image actually gets fetched.
+  // When the entry has a hand-drawn image, render it as a CSS
+  // background-image on the banner — no <img> element means no
+  // broken-image icon if the file is missing or still propagating
+  // through the CDN. The banner's gradient acts as the natural
+  // fallback layer underneath. image-rendering: pixelated on the
+  // container keeps pixel art crisp at any container size.
   if (entry.image) {
-    var imgUrl = entry.image + '?v=20260505k';
-    var fbEmoji = entry.fallback || '';
-    var fbIcon  = entry.icon || '';
-    // Inline onerror swaps to the Iconify slot when the PNG 404s
-    // (e.g. before the deploy lands on Cloudflare). Avoids the
-    // broken-image icon ever showing on a real user device.
-    var onErr = "this.parentNode.innerHTML='<div class=&quot;kh-phrase-hero-illus&quot; data-fallback-icon=&quot;" + escapeText(fbIcon) + "&quot; data-fallback-emoji=&quot;" + escapeText(fbEmoji) + "&quot;>"
-      + (fbIcon
-          ? "<iconify-icon icon=&quot;" + escapeText(fbIcon) + "&quot; width=&quot;100%&quot; height=&quot;100%&quot; aria-hidden=&quot;true&quot;>" + escapeText(fbEmoji) + "</iconify-icon>"
-          : escapeText(fbEmoji))
-      + "</div>'";
-    return '<div class="kh-phrase-hero-img-wrap">'
-      +    '<img src="' + escapeText(imgUrl) + '" alt="" class="kh-phrase-hero-img" loading="eager" decoding="async" onerror="' + onErr + '">'
+    var imgUrl = entry.image + '?v=20260505l';
+    return '<div class="kh-phrase-hero-img-wrap" style="background-image:url(\'' + escapeText(imgUrl) + '\')" role="img" aria-label="phrase illustration">'
       +    '<div class="kh-phrase-hero-fade" aria-hidden="true"></div>'
       +  '</div>';
   }

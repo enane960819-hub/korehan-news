@@ -2368,23 +2368,21 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
 }
 .kh-phrase-hero-illus iconify-icon { width: 100%; height: 100%; display: inline-block; }
 .kh-phrase-hero-illus svg { width: 100%; height: 100%; display: block; }
-/* Hand-drawn pixel art / illustration banner — full-bleed image
-   with pixelated rendering so pixel art stays crisp at any scale,
-   plus a soft white gradient at the bottom that bleeds into the
-   body card. The wrap sits absolute over the gradient so when JS
-   loads slowly or the image fails, the gradient still shows. */
+/* Hand-drawn pixel art / illustration banner — uses a CSS
+   background-image so a missing file (CDN propagation lag, broken
+   path) just falls back to the gradient under it instead of
+   rendering the browser's broken-image icon. image-rendering:
+   pixelated keeps pixel art crisp at any container size. */
 .kh-phrase-hero-img-wrap {
   position: absolute; inset: 0;
   display: block;
-}
-.kh-phrase-hero-img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  object-position: center 30%;
+  background-size: cover;
+  background-position: center 30%;
+  background-repeat: no-repeat;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  display: block;
 }
+.kh-phrase-hero-img-wrap > .kh-phrase-hero-fade { /* keep fade child rendered */ }
 .kh-phrase-hero-fade {
   position: absolute; left: 0; right: 0; bottom: 0;
   height: 90px;
