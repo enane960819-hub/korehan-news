@@ -3217,14 +3217,11 @@ function renderPhraseAdminTable(){
 }
 
 // Move a phrase one slot up or down in the queue (i.e. shift its
-// scheduled date by ±1 day). Today's pin is preserved by the
-// rotation-offset logic in saveSharedPhrases() — moving a non-today
-// phrase doesn't drag today onto a different one.
+// scheduled date by ±1 day). Uses preserveOffset:true so the today
+// INDEX stays put — non-today moves leave today untouched, and
+// moving today itself swaps today onto whatever phrase landed in
+// today's slot.
 function movePhraseAdminItem(idx, delta) {
-  // The visible table is sorted by date but the underlying
-  // phraseAdminItems is queue-order. To make ▲/▼ feel like "earlier
-  // date / later date" we operate on the queue order: ▲ = -1 in
-  // queue, ▼ = +1.
   if (!Array.isArray(phraseAdminItems) || idx < 0 || idx >= phraseAdminItems.length) return;
   var target = idx + delta;
   if (target < 0 || target >= phraseAdminItems.length) return;
@@ -3234,7 +3231,7 @@ function movePhraseAdminItem(idx, delta) {
   if (phraseAdminCurrentIndex === idx) phraseAdminCurrentIndex = target;
   else if (phraseAdminCurrentIndex === target) phraseAdminCurrentIndex = idx;
   lsSet(K_PHRASES, phraseAdminItems);
-  if (typeof saveSharedPhrases === 'function') saveSharedPhrases(phraseAdminItems);
+  if (typeof saveSharedPhrases === 'function') saveSharedPhrases(phraseAdminItems, { preserveOffset: true });
   renderPhraseAdminTable();
   renderPhraseAdminForm(phraseAdminCurrentIndex);
 }
