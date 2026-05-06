@@ -166,8 +166,21 @@ async function getPhrasesAsync(opts) {
 // If that's also missing, walk further down the old list until we
 // find a survivor; failing everything, default offset 0.
 function _computeOffsetPreserveToday(newList, opts) {
-  var oldList = (opts && opts.oldList) || (Array.isArray(_appSettings && _appSettings.phrases) ? _appSettings.phrases : []);
-  oldList = oldList.map(normalizePhrase).filter(function(p){ return p.ko; });
+  // Prefer caller-supplied oldList → in-memory _appSettings.phrases →
+  // localStorage K_PHRASES. Without the localStorage fallback, a
+  // queue mutation that fires before loadAppSettings finishes (e.g.
+  // admin opens the page and immediately runs Bulk AI Pre-gen) sees
+  // an empty oldList and resets the offset to 0, which shoves today
+  // onto whatever phrase happens to land at dayHash % newLen.
+  var oldList = (opts && opts.oldList);
+  if (!Array.isArray(oldList) || !oldList.length) {
+    if (Array.isArray(_appSettings && _appSettings.phrases) && _appSettings.phrases.length) {
+      oldList = _appSettings.phrases;
+    } else {
+      try { oldList = lsGet(K_PHRASES, []) || []; } catch(_) { oldList = []; }
+    }
+  }
+  oldList = (oldList || []).map(normalizePhrase).filter(function(p){ return p.ko; });
   newList = (newList || []).filter(function(p){ return p && p.ko; });
   var newLen = newList.length;
   if (!newLen) return 0;

@@ -122,7 +122,7 @@ label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505m"></script>
+<script src="js/core/phrases.js?v=20260505n"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -137,7 +137,7 @@ label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260505m"></script>
+<script src="korehan-shared.js?v=20260505n"></script>
 <script>
 var phrases = [];
 var currentIndex = 0;
@@ -416,10 +416,14 @@ async function bulkSavePhrases() {
   // Append staged phrases to the end of the queue so the rotation
   // doesn't shift the current "today" position.
   var addedCount = _bulkPhraseStaging.length;
-  var merged = phrases.slice().concat(_bulkPhraseStaging);
+  var preBulk = phrases.slice();
+  var merged = preBulk.concat(_bulkPhraseStaging);
   try {
     if (typeof saveSharedPhrases === 'function') {
-      await saveSharedPhrases(merged);
+      // Pass the pre-bulk queue as oldList — this is what the admin
+      // is staring at, so today should pin against THIS, not against
+      // whatever stale value _appSettings.phrases happens to hold.
+      await saveSharedPhrases(merged, { oldList: preBulk });
     } else {
       lsSet(K_PHRASES, merged);
     }
