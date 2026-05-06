@@ -1055,6 +1055,14 @@ function updateAuthUI() {
   var isTutor = supaUser && TUTOR_EMAILS.includes((supaUser.email || '').toLowerCase());
   window._isTutor = isTutor;
 
+  // Notification bell: only shown when signed in. khStartNotifications
+  // handles polling + initial fetch so we don't block the header render.
+  var notifWrap = document.getElementById('topbar-notif-wrap');
+  if (notifWrap) notifWrap.style.display = supaUser ? 'inline-flex' : 'none';
+  if (supaUser && typeof khStartNotifications === 'function') {
+    try { khStartNotifications(); } catch (_) {}
+  }
+
   if (supaUser) {
     // 로그인 상태
     if (signinBtn) {
@@ -1117,6 +1125,219 @@ function updateAuthUI() {
   renderKhLucideIcons();
   scheduleSignupNudge();
 }
+
+// ══════════════════════════════════════════════════════════════════
+// Notifications (in-app inbox)
+//
+// Lives in the header. Polls notifications every 30s while the tab
+// is visible and the user is signed in. Unread count drives the red
+// chip on the bell; clicking the bell opens a dropdown with the most
+// recent 20 entries. Friend-request notifications expose inline
+// Accept / Decline buttons that call the same RPCs the profile page
+// uses, so the user can resolve a request without navigating.
+// ══════════════════════════════════════════════════════════════════
+
+var _khNotifPollTimer = null;
+var _khNotifRows = [];
+var _khNotifCount = 0;
+var _khNotifAuthorMap = {};
+
+function khStartNotifications() {
+  if (_khNotifPollTimer || typeof supaUser === 'undefined' || !supaUser) return;
+  khLoadNotifications();
+  _khNotifPollTimer = setInterval(function () {
+    if (typeof supaUser === 'undefined' || !supaUser) {
+      clearInterval(_khNotifPollTimer); _khNotifPollTimer = null; return;
+    }
+    if (document.visibilityState === 'visible') khLoadNotifications();
+  }, 30000);
+  document.addEventListener('click', _khNotifMaybeCloseDropdown, true);
+}
+
+async function khLoadNotifications() {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || typeof supaUser === 'undefined' || !supaUser) return;
+  try {
+    var r = await sb.from('notifications')
+      .select('id, kind, payload, read_at, created_at')
+      .eq('user_id', supaUser.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (r.error) return;
+    _khNotifRows = r.data || [];
+    _khNotifCount = _khNotifRows.filter(function (n) { return !n.read_at; }).length;
+
+    // Resolve display names for the senders referenced in the payloads
+    // so the UI can show "Alice sent you a friend request" instead of
+    // "<uuid> sent...". One IN(...) query per refresh.
+    var ids = new Set();
+    _khNotifRows.forEach(function (n) {
+      var p = n.payload || {};
+      if (p.from)      ids.add(p.from);
+      if (p.friend_id) ids.add(p.friend_id);
+    });
+    if (ids.size) {
+      var us = await sb.from('user_stats')
+        .select('user_id, display_name')
+        .in('user_id', Array.from(ids));
+      _khNotifAuthorMap = {};
+      ((us && us.data) || []).forEach(function (u) { _khNotifAuthorMap[u.user_id] = u.display_name; });
+    }
+
+    _khRenderNotifBell();
+    _khRenderNotifDropdown();
+  } catch (_) { /* ignore poll failures */ }
+}
+
+function _khRenderNotifBell() {
+  var chip = document.getElementById('topbar-notif-count');
+  if (!chip) return;
+  if (_khNotifCount > 0) {
+    chip.textContent = _khNotifCount > 99 ? '99+' : String(_khNotifCount);
+    chip.hidden = false;
+  } else {
+    chip.hidden = true;
+  }
+}
+
+function _khRenderNotifDropdown() {
+  var drop = document.getElementById('topbar-notif-dropdown');
+  if (!drop) return;
+  var head = '<div class="kh-notif-head">'
+    +   '<div class="kh-notif-head-title">Notifications</div>'
+    +   (_khNotifCount > 0 ? '<button class="kh-notif-mark-all" type="button" onclick="khMarkAllNotifsRead()">Mark all read</button>' : '')
+    + '</div>';
+  if (!_khNotifRows.length) {
+    drop.innerHTML = head + '<div class="kh-notif-empty">No notifications yet.</div>';
+    return;
+  }
+  var listHtml = _khNotifRows.map(_khRenderNotifItem).join('');
+  drop.innerHTML = head + '<div class="kh-notif-list">' + listHtml + '</div>';
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+}
+
+function _khRenderNotifItem(n) {
+  var p = n.payload || {};
+  var unread = !n.read_at;
+  var iconName = 'bell';
+  var text = '';
+  var actionsHtml = '';
+  if (n.kind === 'friend_request') {
+    iconName = 'user-plus';
+    var nameFr = _khNotifAuthorMap[p.from] || 'A learner';
+    text = '<a href="korehan-profile.html?user=' + encodeURIComponent(p.from || '') + '">' + _khEsc(nameFr) + '</a> sent you a friend request.';
+    if (p.request_id) {
+      actionsHtml = '<div class="kh-notif-item-actions">'
+        + '<button class="kh-notif-item-btn kh-notif-item-btn-primary" onclick="khAcceptFriendFromBell(\'' + p.request_id + '\', this)">Accept</button>'
+        + '<button class="kh-notif-item-btn kh-notif-item-btn-ghost" onclick="khRejectFriendFromBell(\'' + p.request_id + '\', this)">Decline</button>'
+        + '</div>';
+    }
+  } else if (n.kind === 'friend_accepted') {
+    iconName = 'user-check';
+    var nameFa = _khNotifAuthorMap[p.friend_id] || 'A learner';
+    text = 'You\'re now friends with <a href="korehan-profile.html?user=' + encodeURIComponent(p.friend_id || '') + '">' + _khEsc(nameFa) + '</a>.';
+  } else if (n.kind === 'guestbook_post') {
+    iconName = 'message-square';
+    var nameGb = _khNotifAuthorMap[p.from] || 'A friend';
+    var preview = p.preview ? ' · "' + _khEsc(p.preview) + '"' : '';
+    text = '<a href="korehan-profile.html?user=' + encodeURIComponent(supaUser.id) + '">' + _khEsc(nameGb) + '</a> left a note on your wall' + preview;
+  } else if (n.kind === 'comment_reply') {
+    iconName = 'message-circle';
+    text = 'Someone replied to your comment.';
+  } else if (n.kind === 'badge_earned') {
+    iconName = 'award';
+    text = 'You earned a new badge: <strong>' + _khEsc(p.name || '') + '</strong>';
+  } else {
+    iconName = 'info';
+    text = _khEsc(p.message || 'New notification');
+  }
+  return '<div class="kh-notif-item ' + (unread ? 'kh-notif-item-unread' : '') + '">'
+    +    '<div class="kh-notif-item-icon"><i data-lucide="' + iconName + '" class="kh-ui-icon" aria-hidden="true"></i></div>'
+    +    '<div class="kh-notif-item-body">'
+    +      '<div class="kh-notif-item-text">' + text + '</div>'
+    +      '<div class="kh-notif-item-time">' + _khTimeAgo(n.created_at) + '</div>'
+    +      actionsHtml
+    +    '</div>'
+    +  '</div>';
+}
+
+function _khEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function _khTimeAgo(iso) {
+  if (!iso) return '';
+  var ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60000) return 'just now';
+  var m = Math.floor(ms / 60000); if (m < 60) return m + 'm';
+  var h = Math.floor(m / 60); if (h < 24) return h + 'h';
+  var d = Math.floor(h / 24); if (d < 7) return d + 'd';
+  return new Date(iso).toLocaleDateString();
+}
+
+window.khToggleNotifDropdown = function (ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  var drop = document.getElementById('topbar-notif-dropdown');
+  if (!drop) return;
+  var nowOn = !drop.classList.contains('on');
+  drop.classList.toggle('on', nowOn);
+  if (nowOn) {
+    // Refresh on open so the dropdown is never stale.
+    khLoadNotifications();
+  }
+};
+
+function _khNotifMaybeCloseDropdown(ev) {
+  var drop = document.getElementById('topbar-notif-dropdown');
+  var btn  = document.getElementById('topbar-notif-btn');
+  if (!drop || !drop.classList.contains('on')) return;
+  if (drop.contains(ev.target) || (btn && btn.contains(ev.target))) return;
+  drop.classList.remove('on');
+}
+
+window.khMarkAllNotifsRead = async function () {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || typeof supaUser === 'undefined' || !supaUser) return;
+  try {
+    await sb.rpc('mark_notifications_read', { p_ids: null });
+    _khNotifRows = _khNotifRows.map(function (n) { return Object.assign({}, n, { read_at: n.read_at || new Date().toISOString() }); });
+    _khNotifCount = 0;
+    _khRenderNotifBell();
+    _khRenderNotifDropdown();
+  } catch (_) {}
+};
+
+window.khAcceptFriendFromBell = async function (requestId, btn) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !requestId) return;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await sb.rpc('accept_friend_request', { p_request_id: requestId });
+    await khLoadNotifications();
+  } catch (_) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Accept'; }
+  }
+};
+
+window.khRejectFriendFromBell = async function (requestId, btn) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !requestId) return;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await sb.rpc('reject_friend_request', { p_request_id: requestId });
+    await khLoadNotifications();
+  } catch (_) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Decline'; }
+  }
+};
+
+// Re-render the bell dropdown on auth changes so the polling timer
+// kicks in right after sign-in without waiting for the next page load.
+window.addEventListener('kh-auth-signed-in', function () { khStartNotifications(); });
+window.addEventListener('kh-auth-signed-out', function () {
+  if (_khNotifPollTimer) { clearInterval(_khNotifPollTimer); _khNotifPollTimer = null; }
+  _khNotifRows = []; _khNotifCount = 0;
+  _khRenderNotifBell(); _khRenderNotifDropdown();
+});
 
 // Sticky sign-up nudge for unauthenticated visitors. Shows 30s after
 // a session-confirmed-anonymous load, on public content pages where a
@@ -5159,6 +5380,13 @@ function renderHeader() {
     + '<div class="kh-hsearch">' + khIcon('search', '', 'kh-ui-icon-muted kh-ui-icon-sm') + '<input type="text" placeholder="Search articles\u2026" onkeydown="if(event.key===\'Enter\')doSearch(this.value)" style="border:none;background:none;outline:none;font-size:13px;color:inherit;font-family:inherit;width:100%;"></div>'
     + '<button id="topbar-neon-toggle" class="kh-neon-toggle" type="button" aria-pressed="false" onclick="toggleKhNeon(event)">' + khIcon('zap', 'Neon OFF', 'kh-ui-icon-sm') + '</button>'
     + (isHome ? '<div class="kh-diff-ctrl" id="kh-diff-ctrl"><span class="kh-diff-dot" id="kh-diff-dot"></span><select class="kh-diff-sel" id="kh-diff-select" onchange="khSetDiff(this.value)"><option value="all">All Levels</option><option value="Starter">Seed</option><option value="Beginner">Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select><span class="kh-diff-arr">&#9662;</span></div>' : '')
+    + '<div id="topbar-notif-wrap" class="kh-notif-wrap" style="display:none">'
+    + '<button id="topbar-notif-btn" class="kh-notif-btn" type="button" aria-label="Notifications" onclick="khToggleNotifDropdown(event)">'
+    +   '<i data-lucide="bell" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
+    +   '<span id="topbar-notif-count" class="kh-notif-count" hidden>0</span>'
+    + '</button>'
+    + '<div id="topbar-notif-dropdown" class="kh-notif-dropdown"></div>'
+    + '</div>'
     + '<div id="topbar-auth-menu" class="kh-auth-menu" style="display:none">'
     + '<button id="topbar-user-avatar" class="kh-avatar-btn" type="button" aria-label="Open profile menu" onclick="toggleTopbarUserMenu(event)" style="display:none"></button>'
     + '<div id="topbar-user-dropdown" class="kh-user-dropdown"></div>'

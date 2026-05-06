@@ -162,6 +162,59 @@ body.kh-neon-on .kh-diff-sel option { color:var(--dark); background:#fff; }
   .kh-diff-ctrl { display: none; }
 }
 
+/* Notification bell + dropdown — sits in the header next to the user
+   avatar. Hidden entirely when signed out. The unread count chip is
+   absolutely positioned so it overlays the bell icon top-right. */
+.kh-notif-wrap { position: relative; display: inline-flex; align-items: center; margin-right: 6px; }
+.kh-notif-btn {
+  width: 38px; height: 38px; border-radius: 999px; border: 1px solid rgba(34,85,164,.14);
+  background: #fff; color: #1a3a6b; display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative; transition: transform .16s, box-shadow .16s, background .15s;
+}
+.kh-notif-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(26,58,107,.18); background:#f8fafc; }
+.kh-notif-btn .kh-ui-icon { width: 18px; height: 18px; }
+.kh-notif-count {
+  position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px;
+  padding: 0 5px; border-radius: 999px;
+  background: #dc2626; color: #fff;
+  font-size: 10px; font-weight: 800; line-height: 18px; text-align: center;
+  box-shadow: 0 0 0 2px #fff;
+}
+.kh-notif-dropdown {
+  position: absolute; top: calc(100% + 10px); right: 0; width: min(360px, 92vw);
+  max-height: 460px; overflow-y: auto;
+  background: #fff; border: 1px solid rgba(212,220,232,.9); border-radius: 16px;
+  box-shadow: 0 20px 44px rgba(15,23,42,.18); display: none; z-index: 300;
+}
+.kh-notif-dropdown.on { display: block; }
+.kh-notif-head { padding: 14px 16px; border-bottom: 1px solid #eef2f7; display: flex; align-items: center; justify-content: space-between; }
+.kh-notif-head-title { font-size: 14px; font-weight: 800; color: #0f172a; }
+.kh-notif-mark-all { background: none; border: 0; color: #2563eb; font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.kh-notif-mark-all:hover { background: #eff6ff; }
+.kh-notif-empty { padding: 36px 20px; text-align: center; color: #94a3b8; font-size: 13px; }
+.kh-notif-list { display: flex; flex-direction: column; }
+.kh-notif-item { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; display: flex; gap: 10px; align-items: flex-start; }
+.kh-notif-item:last-child { border-bottom: 0; }
+.kh-notif-item-unread { background: #f0f9ff; }
+.kh-notif-item-icon { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #eff6ff; color: #2563eb; }
+.kh-notif-item-icon .kh-ui-icon { width: 16px; height: 16px; }
+.kh-notif-item-body { flex: 1; min-width: 0; }
+.kh-notif-item-text { font-size: 13px; color: #0f172a; line-height: 1.4; }
+.kh-notif-item-text a { color: #2563eb; font-weight: 700; text-decoration: none; }
+.kh-notif-item-text a:hover { text-decoration: underline; }
+.kh-notif-item-time { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+.kh-notif-item-actions { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+.kh-notif-item-btn { padding: 5px 12px; border-radius: 999px; border: 0; font-size: 11px; font-weight: 800; cursor: pointer; font-family: inherit; }
+.kh-notif-item-btn-primary { background: #2563eb; color: #fff; }
+.kh-notif-item-btn-primary:hover { background: #1d4ed8; }
+.kh-notif-item-btn-ghost { background: #f1f5f9; color: #475569; }
+.kh-notif-item-btn-ghost:hover { background: #e2e8f0; }
+@media (max-width: 600px) {
+  .kh-notif-btn { width: 34px; height: 34px; }
+  .kh-notif-btn .kh-ui-icon { width: 16px; height: 16px; }
+  .kh-notif-dropdown { width: calc(100vw - 24px); right: -8px; }
+}
+
 .kh-auth-menu { position: relative; display: inline-flex; align-items: center; }
 .kh-avatar-btn {
   width: 38px; height: 38px; border-radius: 999px; border: 1px solid rgba(34,85,164,.14);
@@ -4445,6 +4498,13 @@ body.kh-cdr-open #kh-feed-next-pill { display: none !important; }
   line-height: 1;
 }
 .cm-name { font-size: 13px; font-weight: 800; color: #0f172a; }
+/* Profile-link variant gets a hover underline so the click target
+   reads as actionable. Phase 2 of the friends system makes this open
+   the public profile page. */
+.cm-name-link { cursor: pointer; transition: color .12s; }
+.cm-name-link:hover { color: var(--bright, #2563eb); text-decoration: underline; }
+.cm-av-link { display: inline-block; }
+.cm-av-link:hover .cm-av { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(0,0,0,.12); }
 .cm-dot  { color: #cbd5e1; font-size: 12px; line-height: 1; margin: 0 -1px; }
 .cm-time { font-size: 12px; color: #94a3b8; }
 

@@ -154,9 +154,16 @@ async function loadComments(articleId) {
     // image when the OAuth account provides one.
     var initial = escapeHTML((c.user_name || '?').charAt(0).toUpperCase());
     var color   = _khAvColor(c.user_name || c.user_id || '');
-    var avatar = (c.avatar_url && isValidImageURL(c.avatar_url))
+    var avatarInner = (c.avatar_url && isValidImageURL(c.avatar_url))
       ? '<img src="' + escapeAttr(c.avatar_url) + '" class="cm-av" alt="" onerror="this.outerHTML=\'<div class=\\\'cm-av cm-av-ph\\\' style=\\\'background:' + color + '\\\'>' + initial + '</div>\'">'
       : '<div class="cm-av cm-av-ph" style="background:' + color + '">' + initial + '</div>';
+    // Wrap avatar + name in profile links when we have a user_id, so
+    // tapping either one opens the public profile page (Phase 2 of the
+    // friends/social system). Anonymous rows render as plain text.
+    var profileHref = c.user_id ? ('korehan-profile.html?user=' + encodeURIComponent(c.user_id)) : null;
+    var avatar = profileHref
+      ? '<a class="cm-av-link" href="' + profileHref + '" aria-label="View profile" style="text-decoration:none;line-height:0">' + avatarInner + '</a>'
+      : avatarInner;
 
     var agg  = reactions.agg[c.id]  || { like: 0, dislike: 0 };
     var mine = reactions.mine[c.id] || 0;
@@ -203,10 +210,14 @@ async function loadComments(articleId) {
       + '</div>'
       + '</div>';
 
+    var nameLabel = escapeHTML(c.user_name || '익명');
+    var nameHtml = profileHref
+      ? '<a class="cm-name cm-name-link" href="' + profileHref + '" style="color:inherit;text-decoration:none">' + nameLabel + '</a>'
+      : '<span class="cm-name">' + nameLabel + '</span>';
     return '<article class="cm-row' + (isReply ? ' cm-reply' : '') + '" id="cm-' + c.id + '">'
       + '<div class="cm-head">'
       +   avatar
-      +   '<span class="cm-name">' + escapeHTML(c.user_name || '익명') + '</span>'
+      +   nameHtml
       +   '<span class="cm-dot">·</span>'
       +   '<span class="cm-time">' + _khRelTime(c.created_at) + '</span>'
       + '</div>'
