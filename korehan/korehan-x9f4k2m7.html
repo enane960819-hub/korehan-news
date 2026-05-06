@@ -6984,6 +6984,54 @@ function _stStyleHintForShape(shape) {
   return '커뮤니티 게시글 풍. 친근한 톤.';
 }
 
+// Stage-2 helper: given a story object with `body` already filled,
+// generate per-sentence translation + targeted vocab + grammar.
+// Uses Haiku because the input is the already-written body — no
+// creative work, just structured analysis. Runs in parallel for
+// multi-story batches and stays well under the edge function's
+// timeout because each call covers only one story.
+async function _genStorySentenceAnalysis(story, levelLabel) {
+  if (!story || !story.body) return [];
+  // Split the body into sentences (skip empty fragments). Korean uses
+  // .!? and 다/요 sentence-enders; we use the simpler Han punctuation
+  // split here — Claude tolerates over-split inputs and matches what
+  // it can.
+  var sentences = String(story.body)
+    .split(/\n\s*\n/)
+    .flatMap(function(p) { return p.split(/(?<=[.!?。！？])\s+/); })
+    .map(function(s) { return s.trim(); })
+    .filter(Boolean);
+  if (!sentences.length) return [];
+  var enumerated = sentences.map(function(s, i) { return '[' + (i+1) + '] ' + s; }).join('\n');
+  var prompt =
+      'Analyze each Korean sentence below for a TOPIK ' + levelLabel + ' learner.\n\n'
+    + 'STORY TITLE: ' + (story.title || '') + '\n'
+    + 'PARAGRAPH-LEVEL EN (use as context to keep subjects + tense consistent):\n'
+    + (story.body_en || '') + '\n\n'
+    + 'SENTENCES TO ANALYZE (numbered, in body order):\n'
+    + enumerated + '\n\n'
+    + 'Return ONLY a JSON object:\n'
+    + '{"sentences":[{"ko":"<exact sentence text>","en":"natural translation","vocab":[{"ko":"<dict form>","en":"<short meaning>"}],"grammar":[{"pattern":"~기 위해 / ~게 되다 / etc","exp":"<1-line English explanation>"}]}]}\n\n'
+    + 'Rules:\n'
+    + '- One object per input sentence, in same order. ko MUST be the exact sentence text — copy/paste, do NOT paraphrase.\n'
+    + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE the original subject — do NOT inject "I/we" if the Korean omitted it.\n'
+    + '- VOCAB: max 3 per sentence, skip beginner words. Empty array allowed when nothing useful.\n'
+    + '- GRAMMAR: max 2, EMPTY ARRAY [] PREFERRED when no teachable structure beyond basics. Pattern field must be a morpheme/connective/ending only — never glue a noun on (WRONG: "~ㄴ 동물"). For ' + levelLabel + ' learners do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 endings, ~았/었 past, ~을/를 object marker.\n'
+    + '- Output JSON only.';
+  var res = await callClaude({
+    feature: 'story-sentence-analysis',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4000,
+    messages: [{ role: 'user', content: prompt }]
+  });
+  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+  var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+  var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+  if (oi < 0 || ei <= oi) return [];
+  var data = JSON.parse(clean.slice(oi, ei + 1));
+  return Array.isArray(data.sentences) ? data.sentences.filter(function(s) { return s && s.ko; }) : [];
+}
+
 async function generateStories() {
   var mood   = document.getElementById('st-mood').value;
   var lvl    = document.getElementById('st-lvl').value;
@@ -7021,45 +7069,57 @@ async function generateStories() {
     + sourceBlock
     + 'Return ONLY a valid JSON array, no markdown, no backticks.\n\n'
     + 'Each story object:\n'
-    + '{"title":"Korean title","title_en":"English","mood":"' + mood + '","genre":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","body_en":"full English translation, paragraph-aligned with body (same number of paragraphs separated by blank lines, in the same order)","vocab":[{"ko":"","rom":"","en":""}],"hover_extras":[{"ko":"","rom":"","en":""}],"sentence_analysis":[{"ko":"single sentence from body, exact match","en":"natural English translation","vocab":[{"ko":"","en":""}],"grammar":[{"pattern":"~ㄴ다 / etc","exp":"1-line explanation"}]}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\n'
+    + '{"title":"Korean title","title_en":"English","mood":"' + mood + '","genre":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","body_en":"full English translation, paragraph-aligned with body (same number of paragraphs separated by blank lines, in the same order)","vocab":[{"ko":"","rom":"","en":""}],"hover_extras":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\n'
     + 'Rules:\n'
     + '- body length: ' + (meta.shape === 'fable' ? '8-12 paragraphs (fables stay short but DO include every plot beat — beginning, conflict, turning point, resolution, lesson)' : '12-20 paragraphs (novels / web novels — keep every important scene, do NOT compress two scenes into one paragraph)') + '\n'
     + '- PLOT FIDELITY: this is the most important rule. DO NOT skip plot points. DO NOT summarize "and then many things happened". DO NOT compress major scenes. Every key turn (introduction → inciting incident → rising action → climax → resolution) must be on the page in its own paragraph. A learner who reads only this story should understand the WHOLE plot without needing to read the source. Even at lower TOPIK levels, simplify the LANGUAGE not the STORY.\n'
     + '- vocab: 15-25 hover-worthy content words from the body (proper nouns, less-common verbs/nouns, idiomatic expressions). Include ko + rom + en for each. These power the inline hover tooltips, so MORE is better than fewer — readers should be able to mouse over almost any tricky word and get a definition.\n'
     + '- hover_extras: another 10-15 supporting words that appear in the body but didn\'t make the headline vocab list. Same shape (ko/rom/en). These also become hover tooltips. Combined with vocab, every uncommon word in the body should be lookup-able.\n'
-    + '- sentence_analysis: ONE entry per sentence in the body, in body order. Each entry must have: ko (the EXACT sentence text from body — copy/paste, don\'t paraphrase), en (natural English translation), vocab (1-3 entries — important content words from THIS sentence, ko+en), grammar (0-2 entries — pattern + 1-line English explanation). The reader taps a sentence and sees this — so vocab/grammar must be relevant to THAT specific sentence, not the whole story.\n'
-    + '- grammar: 3-5 patterns (was 2-3 — give the learner more to study), each with a 1-line explanation and the example chunk from the body where it appears.\n'
+    + '- grammar: 3-5 patterns, each with a 1-line explanation and the example chunk from the body where it appears.\n'
     + '- comprehension: 3 questions checking actual plot understanding (not surface details).\n'
     + '- body_en MUST exist and be paragraph-aligned with body — readers tap a Korean paragraph to reveal its English translation, so paragraph counts MUST match.\n'
     + '- ALL Korean text MUST follow the difficulty level rules above.\n'
     + (sourceText ? '- STAY FAITHFUL to the source — do not invent characters or events that aren\'t in it. Reproduce every plot beat from the source.\n' : '');
 
   try {
+    // Stage 1 — body + vocab + grammar + comprehension. Sentence-level
+    // analysis is split into a second call (Stage 2) below: bundling
+    // everything into one Sonnet call frequently hit the edge function's
+    // 60s timeout when sentence_analysis ballooned the response.
     var resp = await callClaude({
       feature: 'story_gen',
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 12000,
+      max_tokens: 8000,
       messages: [{role:'user', content: prompt}]
     });
     var raw = resp.content.map(function(b){ return b.text||''; }).join('');
     raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
     var stories = JSON.parse(raw);
-    // Stamp the genre/source metadata onto every story BEFORE we hand
-    // them to the UI + saveAllStories. AI sometimes echoes "genre"
-    // back from the prompt template literally — overwrite to make sure
-    // the persisted value matches the dropdown choice.
     stories.forEach(function(s) {
       // Force-stamp BOTH mood and genre to the user's dropdown choice.
       // The model frequently echoes mood:'slice_of_life' regardless of
       // what we ask for, and the legacy mood column is what the public
-      // stories grid still falls back to when genre wasn't persisted
-      // (pre-migration projects). Without this every folktale / web
-      // novel / aesop ended up tagged as Slice of Life on the front.
+      // stories grid still falls back to when genre wasn't persisted.
       s.mood = mood;
       s.genre = mood;
       s.source_kind = sourceText ? meta.source : 'original';
       if (sourceText) s.source_excerpt = sourceText.slice(0, 500);
     });
+
+    // Stage 2 — for each generated story, fire a separate Haiku call
+    // that produces sentence_analysis from the already-generated body.
+    // Run in parallel so total wall time scales with the slowest call,
+    // not the sum. Failures are non-fatal — the story still saves
+    // without sentence breakdown.
+    res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">⏳ Adding sentence analysis (' + stories.length + ' ' + (stories.length === 1 ? 'story' : 'stories') + ')…</div>';
+    await Promise.all(stories.map(async function(s) {
+      try {
+        s.sentence_analysis = await _genStorySentenceAnalysis(s, lvlMap[lvl] || 'Tree');
+      } catch(e) {
+        console.warn('[story sentence_analysis] failed for', s.title, e && e.message);
+        s.sentence_analysis = [];
+      }
+    }));
 
     var html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
       + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + stories.length + ' stories</span>'
