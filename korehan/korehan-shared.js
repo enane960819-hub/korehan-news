@@ -2623,12 +2623,14 @@ function renderAllList(listEl, articles, opts) {
     }).join('');
     // Fetch + cache any still-missing EN titles, then swap them into the DOM.
     try { _khEnsureTitlesEn(articles); } catch(e) {}
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
     return;
   }
 
   listEl.className = 'all-card-grid';
   listEl.innerHTML = articles.map(_buildNewsCardHTML).join('');
   try { _khEnsureTitlesEn(articles); } catch(e) {}
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
 }
 
 function filterAllLevel(level, btn) {
@@ -5928,15 +5930,15 @@ function startClock() {
 var _sectionsCache = null;
 
 var DEFAULT_SECTIONS = [
-  { key:'사회',   label:'Society',   icon:'🏙️', sort_order:3 },
-  { key:'국제',   label:'World',     icon:'🌍', sort_order:4 },
-  { key:'문화',   label:'Culture',   icon:'🎭', sort_order:5 },
-  { key:'K-pop',  label:'K-pop',     icon:'🎤', sort_order:6 },
-  { key:'스포츠', label:'Sports',    icon:'⚽', sort_order:7 },
-  { key:'beauty', label:'Beauty',    icon:'💄', sort_order:8 },
-  { key:'travel', label:'Travel',    icon:'✈️', sort_order:9 },
-  { key:'Korea',  label:'🇰🇷 Korea', icon:'🇰🇷', sort_order:10 },
-  { key:'오피니언',label:'Opinion',  icon:'✍️', sort_order:11 },
+  { key:'사회',   label:'Society',   icon:'<i data-lucide="users" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:3 },
+  { key:'국제',   label:'World',     icon:'<i data-lucide="globe" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:4 },
+  { key:'문화',   label:'Culture',   icon:'<i data-lucide="palette" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:5 },
+  { key:'K-pop',  label:'K-pop',     icon:'<i data-lucide="music" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:6 },
+  { key:'스포츠', label:'Sports',    icon:'<i data-lucide="trophy" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:7 },
+  { key:'beauty', label:'Beauty',    icon:'<i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:8 },
+  { key:'travel', label:'Travel',    icon:'<i data-lucide="plane" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:9 },
+  { key:'Korea',  label:'Korea',     icon:'<i data-lucide="flag" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:10 },
+  { key:'오피니언',label:'Opinion',  icon:'<i data-lucide="pen-tool" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:11 },
 ];
 
 function normalizeSectionCatalog(list) {
@@ -5955,8 +5957,8 @@ function normalizeSectionCatalog(list) {
   function hasKey(key) {
     return items.some(function(row) { return String((row && row.key) || '') === key; });
   }
-  if (!hasKey('beauty')) items.push({ key:'beauty', label:'Beauty', icon:'💄', sort_order:8, active:true });
-  if (!hasKey('travel')) items.push({ key:'travel', label:'Travel', icon:'✈️', sort_order:9, active:true });
+  if (!hasKey('beauty')) items.push({ key:'beauty', label:'Beauty', icon:'<i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:8, active:true });
+  if (!hasKey('travel')) items.push({ key:'travel', label:'Travel', icon:'<i data-lucide="plane" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:9, active:true });
 
   return items.sort(function(a, b) {
     return Number(a.sort_order || 999) - Number(b.sort_order || 999);
