@@ -5533,27 +5533,57 @@ async function khSubscribeNewsletter(e) {
   e.preventDefault();
   var emailEl = document.getElementById('kh-nl-email');
   var msgEl = document.getElementById('kh-nl-msg');
-  var form = document.getElementById('kh-nl-form');
   var email = (emailEl.value || '').trim().toLowerCase();
   if (!email) return false;
 
   msgEl.style.display = 'block';
   msgEl.style.color = 'rgba(255,255,255,.5)';
-  msgEl.textContent = 'Subscribing...';
+  msgEl.textContent = 'Sending confirmation…';
 
+  // Newsletter v2 flow: edge function calls newsletter_request_subscribe
+  // (which mints a confirm token + leaves the row pending) and then
+  // emails the confirmation link via Resend. Successful delivery is
+  // independent of whether Resend is configured — the RPC always
+  // succeeds, and the user gets a graceful message either way.
   try {
     var sb = getSupa();
-    var { error } = await sb.from('newsletter_subs').insert({ email: email });
-    if (error) {
-      if (error.code === '23505') {
+    var session = (await sb.auth.getSession()).data.session;
+    var anonKey = (window.SUPA_KEY || (typeof SUPA_KEY !== 'undefined' ? SUPA_KEY : ''));
+    var supaUrl = (window.SUPA_URL || (typeof SUPA_URL !== 'undefined' ? SUPA_URL : ''));
+    var headers = {
+      'Content-Type': 'application/json',
+      'apikey': anonKey,
+      'Authorization': 'Bearer ' + (session ? session.access_token : anonKey),
+    };
+    var resp = await fetch(supaUrl + '/functions/v1/newsletter-send', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ action: 'subscribe', email: email, source: 'footer' }),
+    });
+    var data = {};
+    try { data = await resp.json(); } catch (_) {}
+    if (!resp.ok || !data.ok) {
+      if (data && data.error === 'invalid_email') {
         msgEl.style.color = '#fbbf24';
-        msgEl.textContent = 'You are already subscribed!';
+        msgEl.textContent = 'Please enter a valid email address.';
       } else {
-        throw error;
+        msgEl.style.color = '#f87171';
+        msgEl.textContent = 'Something went wrong. Please try again.';
       }
+      return false;
+    }
+    if (data.status === 'already_confirmed') {
+      msgEl.style.color = '#fbbf24';
+      msgEl.textContent = 'You\'re already subscribed!';
+    } else if (data.mailed === false) {
+      // Subscription request stored, but the email layer isn't live
+      // yet (no Resend key configured). Don't promise mail delivery.
+      msgEl.style.color = '#34d399';
+      msgEl.textContent = 'Got it — we\'ll send a confirmation link as soon as our mailer is live.';
+      emailEl.value = '';
     } else {
       msgEl.style.color = '#34d399';
-      msgEl.textContent = 'Subscribed! Welcome aboard.';
+      msgEl.textContent = 'Almost done! Check your inbox to confirm.';
       emailEl.value = '';
     }
   } catch (err) {
