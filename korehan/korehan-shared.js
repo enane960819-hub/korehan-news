@@ -6264,10 +6264,34 @@ document.addEventListener('DOMContentLoaded', async function() {
     // on a fresh fetch held the loader for the full Korea↔Supabase
     // round-trip on every visit even when the page was already drawable.
     var hadCache = getCachedArticles().length > 0;
+
+    // Hold the loader until Today's Phrase actually paints. The user
+    // pointed out it was awkward to see "loading" still happening
+    // inside the page after the splash hid; the phrase banner is the
+    // tallest above-the-fold block that depends on a network fetch.
+    // We poll the #pb-ko text node and bail after a 4s ceiling so a
+    // slow phrase API doesn't strand the loader on screen.
+    function _khAwaitTodaysPhrase(maxMs) {
+      maxMs = maxMs || 4000;
+      return new Promise(function(resolve) {
+        var start = Date.now();
+        function tick() {
+          var el = document.getElementById('pb-ko');
+          var ready = el && (el.textContent || '').trim().length > 0;
+          if (ready || Date.now() - start > maxMs) return resolve();
+          setTimeout(tick, 100);
+        }
+        tick();
+      });
+    }
+
     if (hadCache) {
       renderHomePage();
-      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
-      _ldr(100);
+      _ldr(92);
+      _khAwaitTodaysPhrase(4000).then(function () {
+        if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+        _ldr(100);
+      });
       // Skip the homeOptimized background refresh here — the idle
       // prefetch below pulls the full 500-row "all" dataset, which is
       // a strict superset of what home needs (top 30) and also primes
@@ -6275,10 +6299,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     } else {
       _ldr(50); // Loading articles...
       await loadArticlesFromDB({ homeOptimized: true, force: true });
-      _ldr(85); // Articles loaded
+      _ldr(80); // Articles loaded
       renderHomePage();
-      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
-      _ldr(100); // Done
+      _ldr(92);
+      _khAwaitTodaysPhrase(4000).then(function () {
+        if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+        _ldr(100);
+      });
     }
 
     // Prefetch the full 500-row dataset in idle time so when the user
