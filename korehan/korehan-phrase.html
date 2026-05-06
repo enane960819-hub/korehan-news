@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f0f2f7">
 <title>Today's Phrase — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260505d">
+<link rel="stylesheet" href="korehan-shared.css?v=20260505e">
 <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie_light.min.js" defer></script>
 </head>
@@ -29,7 +29,7 @@
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505d"></script>
+<script src="js/core/phrases.js?v=20260505e"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -44,7 +44,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260505d"></script>
+<script src="korehan-shared.js?v=20260505e"></script>
 <script>
 // Today's Phrase — dark, mobile-first reader.
 //
@@ -58,7 +58,12 @@
 // the result locally + back to app_settings.phrases for signed-in
 // users.
 
-var PHRASE_FILL_CACHE_KEY = 'kh_phrase_fill_v1';
+// Cache key bumped to v2 — v1 stored loose AI-generated related
+// expressions (e.g. 하늘의 별 따기 paired with 등잔 밑이 어둡다 which
+// is about a completely different concept). The new prompt enforces
+// strict semantic match; bumping the key invalidates stale entries
+// so users see clean data on next load.
+var PHRASE_FILL_CACHE_KEY = 'kh_phrase_fill_v2';
 var SAVED_PHRASES_KEY = 'kh_saved_phrases_v1';
 var MASTERED_PHRASES_KEY = 'kh_mastered_phrases_v1';
 var PHRASE_VIEW_LOG_KEY = 'kh_phrase_view_log_v1';
@@ -193,7 +198,7 @@ async function _fillPhraseViaClaude(phrase) {
     + 'Rules:\n'
     + '- intro_ko / intro / nuance MUST be specific to "' + phrase.ko + '" — do NOT echo back generic learner-platform copy.\n'
     + '- examples MUST contain the exact phrase (or a natural conjugated form) and be fully grammatical Korean.\n'
-    + '- related: 3 thematically related expressions in Korean. No commentary.';
+    + '- related: STRICT semantic match. Each entry must be a Korean idiom/proverb/expression that conveys the SAME core meaning as "' + phrase.ko + '" — i.e. could be substituted in conversation without changing what the speaker is trying to say. Just being "another Korean proverb" is NOT enough. Examples of WRONG matches: pairing 하늘의 별 따기 (impossible task) with 등잔 밑이 어둡다 (overlooking the obvious) or 모래 위에 집 짓기 (unstable foundation) — those are about totally different concepts. Examples of RIGHT matches for 하늘의 별 따기: 낙타가 바늘구멍 들어가기, 하늘 보고 별 따기. If you cannot find 3 truly synonymous Korean expressions, return FEWER (even an empty array []) — DO NOT pad with loosely-themed idioms. Quality > quantity.';
   var res = await callClaude({
     feature: 'phrase-content-fill',
     model: 'claude-haiku-4-5-20251001',
@@ -205,6 +210,21 @@ async function _fillPhraseViaClaude(phrase) {
   var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
   if (oi < 0 || ei <= oi) throw new Error('no JSON');
   var data = JSON.parse(clean.slice(oi, ei + 1));
+  // Sanitise related: drop entries that are the phrase itself, drop
+  // duplicates, drop near-empty strings.
+  var phraseStripped = String(phrase.ko || '').replace(/\s+/g,'').trim();
+  var seen = {};
+  var related = Array.isArray(data.related) ? data.related
+    .map(function(s){ return String(s || '').trim(); })
+    .filter(function(s){
+      if (!s || s.length < 3) return false;
+      var stripped = s.replace(/\s+/g,'');
+      if (stripped === phraseStripped) return false;
+      if (seen[stripped]) return false;
+      seen[stripped] = true;
+      return true;
+    })
+    .slice(0, 4) : [];
   return {
     intro_ko: typeof data.intro_ko === 'string' ? data.intro_ko : '',
     intro: typeof data.intro === 'string' ? data.intro : '',
@@ -213,8 +233,7 @@ async function _fillPhraseViaClaude(phrase) {
     examples: Array.isArray(data.examples) ? data.examples
       .map(function(e){ return { ko: (e && e.ko || '').trim(), en: (e && e.en || '').trim() }; })
       .filter(function(e){ return e.ko; }).slice(0, 3) : [],
-    related: Array.isArray(data.related) ? data.related
-      .map(function(s){ return String(s || '').trim(); }).filter(Boolean).slice(0, 6) : [],
+    related: related,
   };
 }
 
@@ -259,9 +278,17 @@ function _mergePhraseFill(phrase, fill) {
       && (!phrase.examples || !phrase.examples.length)) {
     merged.examples = fill.examples;
   }
-  if (Array.isArray(fill.related) && fill.related.length
-      && (!phrase.related || !phrase.related.length)) {
+  // related: ALWAYS overwrite when the fresh fill has them. Lazy fill
+  // only runs when isPhraseIncomplete is true (intro/nuance/examples
+  // missing) — meaning admin didn't curate this phrase manually, so
+  // AI is the only source. Without this overwrite, bad related from
+  // the previous loose-prompt run would survive forever in DB.
+  if (Array.isArray(fill.related) && fill.related.length) {
     merged.related = fill.related;
+  } else if (fill.related && !fill.related.length) {
+    // AI explicitly returned [] — better to show nothing than the
+    // loose stale list.
+    merged.related = [];
   }
   return merged;
 }
@@ -480,8 +507,9 @@ function renderPhraseLayout(phrase, opts) {
   var ex = exIdx >= 0 ? examples[exIdx] : null;
 
   var levelKey = phrase.level || '';
-  var levelLabel = LEVEL_LABEL[levelKey] || 'Sprout Level';
-
+  // Level pill removed from the user-facing eyebrow — the user found
+  // it noisy and not useful for casual reading. The level value is
+  // still tracked in analytics + admin queue.
   var saved = _isPhraseSaved(phrase.ko);
   var mastered = _isPhraseMastered(phrase.ko);
   var streak = opts.streak | 0;
@@ -505,7 +533,6 @@ function renderPhraseLayout(phrase, opts) {
   var eyebrow = ''
     + '<div class="kh-phrase-eyebrow">'
     +   '<span class="kh-phrase-eyebrow-cat">Phrase of the Day</span>'
-    +   '<span class="kh-phrase-eyebrow-lvl">' + escapeText(levelLabel) + '</span>'
     +   statusPill
     + '</div>';
 

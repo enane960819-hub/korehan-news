@@ -3018,7 +3018,7 @@ async function runBulkPhraseAdminGen(){
     + '- intro_ko / intro / nuance MUST be specific to each phrase. Do NOT echo generic platform copy.\n'
     + '- examples MUST contain the phrase (or a natural conjugated form) and be fully grammatical Korean.\n'
     + '- level: Seed for TOPIK 1, Sprout for TOPIK 2, Tree for TOPIK 3-4, Forest for TOPIK 5-6 / classical proverbs.\n'
-    + '- related: 3 related Korean expressions.\n'
+    + '- related: STRICT semantic match. Each related entry must convey the SAME core meaning as the parent phrase — substitutable in conversation. Just being "another Korean proverb" is NOT enough. WRONG: 하늘의 별 따기 (impossible) paired with 등잔 밑이 어둡다 (overlooking the obvious). RIGHT: 하늘의 별 따기 paired with 낙타가 바늘구멍 들어가기 (both = impossible). Return FEWER (or []) when truly synonymous expressions don\'t exist — DO NOT pad.\n'
     + '- Do NOT include any phrase from the ALREADY IN QUEUE list above.';
 
   try {
