@@ -7,21 +7,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20260505p">
 </head>
-<body>
+<body class="kh-page-news">
 
 <div id="kh-header"></div>
 
-<div class="page-banner">
-  <div class="page-banner-inner">
-    <h1>All News</h1>
-    <p>Browse all articles across every section</p>
+<div class="kh-page-hero">
+  <div class="kh-page-hero-inner">
+    <div class="kh-page-hero-eyebrow">Breaking · All Sections</div>
+    <h1><i data-lucide="newspaper" class="kh-ui-icon" aria-hidden="true"></i><span>All News</span></h1>
+    <p>Browse every published article — society, world, culture, sports, opinion. Filter by TOPIK level or search for a topic.</p>
+    <div id="dyn-search-bar"></div>
   </div>
 </div>
 
 <div class="container">
   <div class="two-col">
     <div>
-      <div id="dyn-search-bar"></div>
       <div class="hero" id="dyn-hero"></div>
       <div id="dyn-article-list"></div>
     </div>

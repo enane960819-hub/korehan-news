@@ -22,10 +22,10 @@
 <link rel="stylesheet" href="korehan-shared.css?v=20260505p">
 <style>
 /* ── Tab Bar ── */
-.conv-tab-bar{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;gap:2px;border-bottom:2px solid rgba(255,255,255,.08);position:relative;z-index:2;background:var(--dark);}
-.cf-tab{padding:10px 16px;background:none;border:none;color:rgba(255,255,255,.45);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-2px;}
-.cf-tab.on{color:#fff;border-bottom-color:var(--bright);}
-.cf-tab:hover{color:rgba(255,255,255,.75);}
+/* Conv tab bar / cf-tab styles superseded by .kh-filter-bar /
+   .kh-filter-pill in shared.css (May 2026 unification). The class
+   names stay in the markup as JS hooks (e.g. #cat-pills .cf-tab
+   selectors), but their visual now comes from the unified pill. */
 
 /* ── Page Layout ── */
 .conv-page-container{max-width:1280px;margin:0 auto;padding:20px 24px 60px;}
@@ -37,9 +37,9 @@
 .conv-cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
 
 /* ── Search ── */
-.conv-search{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 16px;margin-bottom:18px;}
-.conv-search input{border:none;background:none;outline:none;font-size:13px;color:#fff;font-family:inherit;width:100%;}
-.conv-search input::placeholder{color:rgba(255,255,255,.35);}
+/* .conv-search replaced by .kh-page-search — kept as a comment so
+   future search anchors moving back here remember which shared
+   component handles the styling now. */
 
 /* ── Netflix-style category rails (All filter) ──
    When the All tab is active, conversations group into horizontally
@@ -340,29 +340,30 @@
 }
 </style>
 </head>
-<body>
+<body class="kh-page-conv">
 <div id="kh-header"></div>
-<div class="page-banner">
-  <div class="page-banner-inner">
-    <h1>Conversations</h1>
-    <p>Real Korean dialogues for every situation</p>
+<div class="kh-page-hero">
+  <div class="kh-page-hero-inner">
+    <div class="kh-page-hero-eyebrow">Real-life Dialogue</div>
+    <h1><i data-lucide="messages-square" class="kh-ui-icon" aria-hidden="true"></i><span>Conversations</span></h1>
+    <p>Real Korean dialogues for every situation — workplace, family, dating, and everyday small talk.</p>
+    <div class="kh-page-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Search conversations…" id="conv-search-input" oninput="_filterConvSearch(this.value)">
+    </div>
+    <div class="kh-filter-bar conv-tab-bar" id="cat-pills">
+      <button class="kh-filter-pill cf-tab on" data-cat="all">All</button>
+      <button class="kh-filter-pill cf-tab" data-cat="everyday">Everyday</button>
+      <button class="kh-filter-pill cf-tab" data-cat="work">Workplace</button>
+      <button class="kh-filter-pill cf-tab" data-cat="friends">Friends</button>
+      <button class="kh-filter-pill cf-tab" data-cat="family">Family</button>
+      <button class="kh-filter-pill cf-tab" data-cat="dating">Dating</button>
+    </div>
   </div>
-</div>
-<div class="conv-tab-bar" id="cat-pills">
-  <button class="cf-tab on" data-cat="all">All</button>
-  <button class="cf-tab" data-cat="everyday">Everyday</button>
-  <button class="cf-tab" data-cat="work">Workplace</button>
-  <button class="cf-tab" data-cat="friends">Friends</button>
-  <button class="cf-tab" data-cat="family">Family</button>
-  <button class="cf-tab" data-cat="dating">Dating</button>
 </div>
 <div class="conv-page-container">
   <div class="conv-two-col">
     <div>
-      <div class="conv-search">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" placeholder="Search conversations..." id="conv-search-input" oninput="_filterConvSearch(this.value)">
-      </div>
       <div class="conv-cards-grid" id="conv-cards-grid"></div>
     </div>
     <div id="conv-sidebar" class="sidebar"></div>

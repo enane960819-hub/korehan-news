@@ -2508,25 +2508,22 @@ function renderAllPage() {
 
   var searchWrap = document.getElementById('dyn-search-bar');
   if (searchWrap) {
-    searchWrap.innerHTML = '<div class="all-search-wrap">'
-      + '<div class="all-search-row">'
-      + '<div class="all-search-field">'
-      + '<svg class="all-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>'
-      + '<input type="text" id="search-bar-input" class="all-search-input" placeholder="Search articles, topics, keywords\u2026" value="' + escapeHtml(searchQ) + '" onkeydown="if(event.key===\'Enter\')doSearch(this.value)">'
-      + (searchQ ? '<button class="all-search-clear" onclick="window.location.href=\'korehan-all.html\'" title="Clear search">'
-        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
-        + '</button>' : '')
+    // New unified hero chrome (May 2026): search lives inside the
+    // page hero on a dark gradient. Pills use .kh-filter-pill so the
+    // visual matches Stories / Conversations.
+    searchWrap.innerHTML = '<div class="kh-page-search">'
+      + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>'
+      + '<input type="text" id="search-bar-input" placeholder="Search articles, topics, keywords\u2026" value="' + escapeHtml(searchQ) + '" onkeydown="if(event.key===\'Enter\')doSearch(this.value)">'
+      + (searchQ ? '<button onclick="window.location.href=\'korehan-all.html\'" title="Clear search" style="background:none;border:0;color:rgba(255,255,255,.65);cursor:pointer;padding:4px;display:inline-flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' : '')
+      + '<button onclick="doSearch(document.getElementById(\'search-bar-input\').value)" style="background:#fff;color:var(--kh-hue-1);border:0;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Search</button>'
       + '</div>'
-      + '<button class="all-search-btn" onclick="doSearch(document.getElementById(\'search-bar-input\').value)">Search</button>'
-      + '</div>'
-      + (searchQ ? '<div class="all-search-result-label">Results for <strong>\u201c' + escapeHtml(searchQ) + '\u201d</strong></div>' : '')
-      + '</div>'
-      + '<div class="all-level-filter" id="all-level-filter">'
-      + '<button class="alf-btn on" data-level="All" onclick="filterAllLevel(\'All\',this)">All Levels</button>'
-      + '<button class="alf-btn starter" data-level="Starter" onclick="filterAllLevel(\'Starter\',this)"><span class="alf-dot"></span>Seed</button>'
-      + '<button class="alf-btn beginner" data-level="Beginner" onclick="filterAllLevel(\'Beginner\',this)"><span class="alf-dot"></span>Sprout</button>'
-      + '<button class="alf-btn intermediate" data-level="Intermediate" onclick="filterAllLevel(\'Intermediate\',this)"><span class="alf-dot"></span>Tree</button>'
-      + '<button class="alf-btn advanced" data-level="Advanced" onclick="filterAllLevel(\'Advanced\',this)"><span class="alf-dot"></span>Forest</button>'
+      + (searchQ ? '<div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:8px">Results for <strong style="color:#fff">\u201c' + escapeHtml(searchQ) + '\u201d</strong></div>' : '')
+      + '<div class="kh-filter-bar" id="all-level-filter">'
+      + '<button class="kh-filter-pill on" data-level="All" onclick="filterAllLevel(\'All\',this)">All Levels</button>'
+      + '<button class="kh-filter-pill" data-level="Starter" onclick="filterAllLevel(\'Starter\',this)"><span class="kh-filter-dot" style="background:#7b5cff"></span>Seed</button>'
+      + '<button class="kh-filter-pill" data-level="Beginner" onclick="filterAllLevel(\'Beginner\',this)"><span class="kh-filter-dot" style="background:#22c55e"></span>Sprout</button>'
+      + '<button class="kh-filter-pill" data-level="Intermediate" onclick="filterAllLevel(\'Intermediate\',this)"><span class="kh-filter-dot" style="background:#f59e0b"></span>Tree</button>'
+      + '<button class="kh-filter-pill" data-level="Advanced" onclick="filterAllLevel(\'Advanced\',this)"><span class="kh-filter-dot" style="background:#ef4444"></span>Forest</button>'
       + '</div>';
   }
 
@@ -2633,7 +2630,7 @@ function renderAllList(listEl, articles, opts) {
 }
 
 function filterAllLevel(level, btn) {
-  document.querySelectorAll('#all-level-filter .alf-btn').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('#all-level-filter .kh-filter-pill').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
   var base = window._allArticlesCache || published();
   var filtered = level === 'All' ? base : base.filter(function(a){ return a.level === level; });
