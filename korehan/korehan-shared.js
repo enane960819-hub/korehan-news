@@ -8494,6 +8494,15 @@ function runMobileRedesign() {
 }
 
 document.addEventListener('DOMContentLoaded', function(){
+  // Mark the body as mobile *immediately* on DCL — the heavier
+  // enhancement pass (DOM rewrites, mobile bottom nav, immersive
+  // reading) is deferred 700ms so it doesn't compete with first
+  // paint, but the body class itself drives `display:none` rules for
+  // desktop-only chrome (breaking ticker, top nav, sidebar). Without
+  // running markMobileBody first the user briefly sees that chrome
+  // for ~700ms on every navigation — exactly the "old version flash"
+  // learners reported.
+  markMobileBody();
   setTimeout(runMobileRedesign, 700);
 });
 window.addEventListener('resize', function(){

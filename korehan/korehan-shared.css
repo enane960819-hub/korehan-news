@@ -1195,6 +1195,19 @@ body.kh-neon-on .kh-wb-row:hover { background: rgba(0,255,214,.04) !important; }
 .vc-save-btn.saved { opacity: 1; }
 
 /* ── BREAKING NEWS TICKER ────────────────────────────────── */
+/* Hide desktop-only chrome on small viewports up front, before any
+   JS runs. The body.mobile-redesign rule later in this file does the
+   same thing once JS marks the body class, but that class is added
+   ~700ms after DOMContentLoaded — leaving a paint window where the
+   breaking ticker, desktop top nav, and right sidebar flashed in
+   then disappeared. CSS-level guard kills the flash entirely. */
+@media (max-width: 767px) {
+  .kh-breaking,
+  .brk-bar,
+  .kh-topnav,
+  #kh-sidebar,
+  .sidebar { display: none !important; }
+}
 .kh-breaking {
   background: #cc0000;
   width: 100vw;
