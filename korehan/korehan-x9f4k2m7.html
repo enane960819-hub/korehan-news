@@ -1323,6 +1323,41 @@ async function adminUploadArticleImage(file) {
   return sb.storage.from('article-images').getPublicUrl(path).data.publicUrl;
 }
 
+// ── Shop / Room item image upload (uses article-images bucket with
+// kind-prefixed path so we don't have to create a new bucket). The
+// admin opens the file picker, we upload, and we drop the resulting
+// public URL straight into the target <input> field.
+async function adminUploadItemImage(file, kind) {
+  var sb = getSb();
+  if (!sb) throw new Error('Admin client not available');
+  var prefix = kind === 'room' ? 'room' : 'shop';
+  var ext  = (file.name.split('.').pop() || 'png').toLowerCase();
+  var path = prefix + '/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext;
+  var up   = await sb.storage.from('article-images').upload(path, file, { upsert: true, contentType: file.type });
+  if (up.error) throw up.error;
+  return sb.storage.from('article-images').getPublicUrl(path).data.publicUrl;
+}
+
+// File-picker handler used by Shop / Room editor upload buttons.
+// `targetInputId` = id of the <input> to fill, `previewId` = optional
+// id of a node where we paint a thumbnail + status line.
+async function adminHandleItemImg(input, targetInputId, kind, previewId) {
+  if (!input.files || !input.files[0]) return;
+  var preview = previewId ? document.getElementById(previewId) : null;
+  var target  = document.getElementById(targetInputId);
+  if (preview) preview.innerHTML = '<span style="font-size:12px;color:#64748b">⏳ 업로드 중…</span>';
+  try {
+    var url = await adminUploadItemImage(input.files[0], kind);
+    if (target) target.value = url;
+    if (preview) preview.innerHTML = '<img src="' + url + '" style="max-height:80px;border-radius:8px;border:1px solid #e2e8f0;margin-top:4px"><div style="font-size:11px;color:#16a34a;margin-top:4px">✅ 업로드 완료</div>';
+  } catch (e) {
+    if (preview) preview.innerHTML = '<span style="font-size:12px;color:#dc2626">❌ 업로드 실패: ' + (e.message || e) + '</span>';
+    if (typeof toast === 'function') toast('Image upload failed: ' + (e.message || e), true);
+  } finally {
+    input.value = '';
+  }
+}
+
 async function adminHandleImgFile(input) {
   // Called from the article create/edit form file picker
   if (!input.files || !input.files[0]) return;
@@ -10003,7 +10038,13 @@ function openShopItemEditor(itemId) {
     <div class="fg"><label>ID</label><input id="si-id" value="${esc(item.id||'')}" ${itemId ? 'disabled' : ''}></div>
     <div class="fg"><label>Name</label><input id="si-name" value="${esc(item.name||'')}"></div>
     <div class="fg"><label>Description</label><textarea id="si-desc">${esc(item.description||'')}</textarea></div>
-    <div class="fg"><label>Image URL</label><input id="si-img" value="${esc(item.image_url||'')}"></div>
+    <div class="fg"><label>Image</label>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <input id="si-img" value="${esc(item.image_url||'')}" placeholder="https://… 또는 업로드 →" style="flex:1;min-width:200px">
+        <label class="btn" style="cursor:pointer;margin:0">📷 업로드<input type="file" accept="image/*" onchange="adminHandleItemImg(this,'si-img','shop','si-img-preview')" style="display:none"></label>
+      </div>
+      <div id="si-img-preview" style="margin-top:6px">${item.image_url ? '<img src="'+esc(item.image_url)+'" style="max-height:80px;border-radius:8px;border:1px solid #e2e8f0">' : ''}</div>
+    </div>
     <div class="fg-row"><div class="fg"><label>Type</label><input id="si-type" value="${esc(item.item_type||'one_time_unlock')}"></div>
     <div class="fg"><label>Sort</label><input id="si-sort" type="number" value="${item.sort_order||100}"></div></div>
     <div class="fg-row"><div class="fg"><label>Coin Price</label><input id="si-coin" type="number" value="${item.coin_price||0}"></div>
@@ -14429,8 +14470,20 @@ async function openRoomItemEditor(editId) {
     + '<div class="fg"><label>ID (영문, 변경불가)</label><input id="ri-id" value="' + (existing ? existing.id : '') + '" ' + (isNew ? '' : 'readonly style="background:#f1f5f9"') + '></div>'
     + '<div class="fg"><label>이름</label><input id="ri-name" value="' + (existing ? existing.name : '') + '"></div>'
     + '<div class="fg"><label>가격 (냥)</label><input id="ri-price" type="number" value="' + (existing ? existing.price_nyang : 0) + '"></div>'
-    + '<div class="fg"><label>이미지 경로 (assets/파일명.png)</label><input id="ri-img" value="' + (existing ? existing.image_url : 'assets/') + '"></div>'
-    + '<div class="fg"><label>썸네일 경로 (상점 표시용, 비우면 이미지와 동일)</label><input id="ri-thumb" value="' + (existing && existing.thumbnail_url ? existing.thumbnail_url : '') + '"></div>'
+    + '<div class="fg"><label>이미지</label>'
+    +   '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+    +     '<input id="ri-img" value="' + (existing ? existing.image_url : '') + '" placeholder="https://… 또는 업로드 →" style="flex:1;min-width:200px">'
+    +     '<label class="btn" style="cursor:pointer;margin:0">📷 업로드<input type="file" accept="image/*" onchange="adminHandleItemImg(this,\'ri-img\',\'room\',\'ri-img-preview\')" style="display:none"></label>'
+    +   '</div>'
+    +   '<div id="ri-img-preview" style="margin-top:6px">' + (existing && existing.image_url ? '<img src="' + existing.image_url + '" style="max-height:80px;border-radius:8px;border:1px solid #e2e8f0">' : '') + '</div>'
+    + '</div>'
+    + '<div class="fg"><label>썸네일 (상점 표시용, 비우면 이미지와 동일)</label>'
+    +   '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+    +     '<input id="ri-thumb" value="' + (existing && existing.thumbnail_url ? existing.thumbnail_url : '') + '" placeholder="(선택) 다른 이미지를 쓰려면 업로드" style="flex:1;min-width:200px">'
+    +     '<label class="btn" style="cursor:pointer;margin:0">📷 업로드<input type="file" accept="image/*" onchange="adminHandleItemImg(this,\'ri-thumb\',\'room\',\'ri-thumb-preview\')" style="display:none"></label>'
+    +   '</div>'
+    +   '<div id="ri-thumb-preview" style="margin-top:6px">' + (existing && existing.thumbnail_url ? '<img src="' + existing.thumbnail_url + '" style="max-height:80px;border-radius:8px;border:1px solid #e2e8f0">' : '') + '</div>'
+    + '</div>'
     + '<div class="fg"><label>기본 크기 (px)</label><input id="ri-size" type="number" value="' + (existing ? existing.base_size : 60) + '"></div>'
     + '<div class="fg"><label>효과</label><select id="ri-effect"><option value="none"' + (existing && existing.effect === 'none' ? ' selected' : '') + '>없음</option><option value="glow_neon"' + (existing && existing.effect === 'glow_neon' ? ' selected' : '') + '>네온 발광</option><option value="glow_warm"' + (existing && existing.effect === 'glow_warm' ? ' selected' : '') + '>따뜻한 빛</option><option value="sparkle"' + (existing && existing.effect === 'sparkle' ? ' selected' : '') + '>반짝임</option><option value="float"' + (existing && existing.effect === 'float' ? ' selected' : '') + '>둥실둥실</option></select></div>'
     + '<div class="fg"><label>카테고리</label><select id="ri-cat"><option value="character"' + (existing && existing.category === 'character' ? ' selected' : '') + '>캐릭터</option><option value="pet"' + (existing && existing.category === 'pet' ? ' selected' : '') + '>펫</option><option value="furniture"' + (existing && existing.category === 'furniture' ? ' selected' : '') + '>가구</option><option value="deco"' + ((!existing || existing.category === 'deco') ? ' selected' : '') + '>데코</option></select></div>'
