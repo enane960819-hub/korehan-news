@@ -1435,7 +1435,20 @@ function khShare(opts) {
   // Wait until page load so the SW install doesn't compete with the
   // first paint budget.
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/korehan/sw.js', { scope: '/korehan/' })
+    // First, evict the old `/korehan/` scoped registration that never
+    // actually intercepted anything in production (Vite builds the
+    // korehan/ folder as the dist root, so the live paths are /…, not
+    // /korehan/…). Without this cleanup users would carry a dead
+    // registration around forever.
+    if (navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) {
+          var s = r && r.scope || '';
+          if (/\/korehan\/$/.test(s)) { try { r.unregister(); } catch(_) {} }
+        });
+      }).catch(function(){});
+    }
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .catch(function(err) { khLog('[sw] register failed:', err); });
   });
 })();
