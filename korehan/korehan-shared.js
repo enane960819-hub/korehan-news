@@ -1251,7 +1251,12 @@ function _khRenderNotifItem(n) {
   } else if (n.kind === 'streak_freeze_used') {
     iconName = 'snowflake';
     var rem = (typeof p.remaining === 'number') ? (' · ' + p.remaining + ' left') : '';
-    text = '🧊 We used a streak freeze to save your streak yesterday' + _khEsc(rem) + '.';
+    text = 'We used a streak freeze to save your streak yesterday' + _khEsc(rem) + '.';
+  } else if (n.kind === 'streak_freeze_awarded') {
+    iconName = 'snowflake';
+    var grant = p.granted || 1;
+    var st = p.streak ? (' (' + p.streak + '-day streak)') : '';
+    text = 'You earned <strong>' + grant + ' streak freeze' + (grant > 1 ? 's' : '') + '</strong>' + _khEsc(st) + '. We\'ll auto-spend them on missed days.';
   } else {
     iconName = 'info';
     text = _khEsc(p.message || 'New notification');
@@ -6500,9 +6505,18 @@ document.addEventListener('DOMContentLoaded', async function() {
   var _deferPost = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 0); };
   _deferPost(function(){ ttsInit(); });
   _deferPost(function(){ injectDailyMission(); });
-  // Streak freeze auto-apply: check if yesterday was missed and
-  // silently spend an inventory freeze if available. Lives in idle
-  // time so it doesn't compete with first paint.
+  // Streak freeze rewards + auto-apply. Both run in idle time:
+  //   1. Award: 3-day attendance milestone → +1 freeze (capped at 3
+  //      inventory). Server tracks last paid-out streak so this is
+  //      safe to call on every load.
+  //   2. Auto-apply: if yesterday was missed and the user has a
+  //      freeze, silently spend it to save the streak.
+  _deferPost(function(){
+    try {
+      var s = (typeof getCurrentStreak === 'function') ? getCurrentStreak() : 0;
+      if (s >= 3 && typeof khClaimStreakAward === 'function') khClaimStreakAward(s);
+    } catch(_) {}
+  });
   _deferPost(function(){ if (typeof khMaybeAutoFreezeYesterday === 'function') khMaybeAutoFreezeYesterday(); });
   _deferPost(function(){ startClock(); });
   // conversations/stories 등 tooltip 불필요 페이지에서는 2000행 vocabulary_bank 쿼리 스킵
@@ -6684,6 +6698,24 @@ async function khFreezeUse(forDate) {
     }
   } catch (_) {}
   return false;
+}
+
+// Award freeze(s) for a 3-day attendance milestone. Server caps the
+// inventory at 3 and tracks the highest streak we've already paid
+// out for, so calling this on every page load is safe — repeats
+// resolve to {awarded:0}. Returns the number granted so the caller
+// can decide whether to refresh the bell badge.
+async function khClaimStreakAward(currentStreak) {
+  if (typeof supaUser === 'undefined' || !supaUser) return 0;
+  if (!Number.isFinite(currentStreak) || currentStreak < 3) return 0;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return 0;
+  try {
+    var r = await sb.rpc('claim_streak_award', { p_streak: currentStreak });
+    var awarded = (r && r.data && r.data.awarded) || 0;
+    if (awarded > 0 && typeof khLoadNotifications === 'function') khLoadNotifications();
+    return awarded;
+  } catch (_) { return 0; }
 }
 
 // Detect a missed yesterday and auto-apply a freeze if the learner
