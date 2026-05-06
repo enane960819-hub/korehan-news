@@ -160,9 +160,11 @@ async function getPhrasesAsync(opts) {
 // the SAME phrase across a queue mutation. Find the ko that was
 // today before, look it up in the new list, and solve:
 //   (dayHash + newOffset) % newLen === newTodayIdx
-// If the previously-shown phrase isn't in the new list (admin
-// deleted it), default to 0 — the next phrase in queue order
-// becomes today.
+// When today's phrase was deleted, fall through to "tomorrow's"
+// phrase from the old list — that's what naturally rotates next, so
+// deleting today should promote yesterday's "tomorrow" into today.
+// If that's also missing, walk further down the old list until we
+// find a survivor; failing everything, default offset 0.
 function _computeOffsetPreserveToday(newList, opts) {
   var oldList = (opts && opts.oldList) || (Array.isArray(_appSettings && _appSettings.phrases) ? _appSettings.phrases : []);
   oldList = oldList.map(normalizePhrase).filter(function(p){ return p.ko; });
@@ -174,13 +176,19 @@ function _computeOffsetPreserveToday(newList, opts) {
   var oldOffset = getPhraseRotationOffset();
   var oldLen = oldList.length;
   var oldTodayIdx = ((dayHash + oldOffset) % oldLen + oldLen) % oldLen;
-  var todayKo = oldList[oldTodayIdx] && oldList[oldTodayIdx].ko;
-  if (!todayKo) return 0;
+  // Walk the rotation forward starting from today: today, tomorrow,
+  // day-after, ... — pick the first ko that survives in newList.
   var newTodayIdx = -1;
-  for (var i = 0; i < newList.length; i++) {
-    if ((newList[i].ko || '').trim() === (todayKo || '').trim()) { newTodayIdx = i; break; }
+  for (var step = 0; step < oldLen; step++) {
+    var probeIdx = (oldTodayIdx + step) % oldLen;
+    var probeKo = oldList[probeIdx] && oldList[probeIdx].ko;
+    if (!probeKo) continue;
+    for (var i = 0; i < newList.length; i++) {
+      if ((newList[i].ko || '').trim() === (probeKo || '').trim()) { newTodayIdx = i; break; }
+    }
+    if (newTodayIdx >= 0) break;
   }
-  if (newTodayIdx < 0) return 0; // today's phrase was removed
+  if (newTodayIdx < 0) return 0;
   var off = (newTodayIdx - dayHash) % newLen;
   if (off < 0) off += newLen;
   return off;
