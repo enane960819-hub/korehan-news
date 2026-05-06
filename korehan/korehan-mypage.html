@@ -2287,8 +2287,9 @@ async function loadRoomItemsFromDB() {
       _roomItemsLoaded = true;
     }
   } catch(e) { console.warn('room_items load failed, using fallback'); }
-  // Always merge in earned-badge trophies so they appear as placeable items.
-  _mergeEarnedBadgeItems();
+  // Earned-badge → room-item linkage was scrapped per product spec
+  // (#9 in the May 2026 feedback batch). Badges now live as profile
+  // collectibles only; rooms are decorated with shop purchases.
   return ROOM_ITEMS;
 }
 
@@ -3715,8 +3716,6 @@ function applySelectedItemScale(scaleValue) {
 // ownedOnly = false → full Item Shop (kept around for backwards-compat links).
 async function openRoomShop(ownedOnly) {
   await loadRoomItemsFromDB();
-  // Pick up any badges earned since the last shop open.
-  _mergeEarnedBadgeItems();
   var existing = document.querySelector('.room-shop-overlay');
   if (existing) existing.remove();
   _armRoomShopEsc();

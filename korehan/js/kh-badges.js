@@ -543,6 +543,108 @@ var BADGE_DEFS = [
       var cultIds = ['cult_march1','cult_hangul','cult_newyear','cult_chuseok','cult_seollal','cult_gwangbok','cult_pepero','cult_valentine','cult_christmas'];
       return cultIds.filter(function(id){ return !!earned[id]; }).length >= 7;
     } },
+
+  // ───────────────────────────────────────────────────────────────
+  // +30 expansion (May 2026): broaden categories and fill obvious
+  // gaps (no Phrase/Conv/Story coverage previously, sparse XP/streak
+  // ladders, no comeback/lunch-time/seasonal time badges, no meta
+  // achievement for collecting other badges).
+  // ───────────────────────────────────────────────────────────────
+
+  // 💬 PHRASES — uses kh_saved_phrases_v1 / kh_mastered_phrases_v1
+  { id:'phrase_save_1',  cat:'phrase', tier:'bronze', icon:pxBadge('sparkle'), name:'First Phrase',     desc:'Save your first phrase',
+    check: function(){ try { return JSON.parse(localStorage.getItem('kh_saved_phrases_v1')||'[]').length >= 1; } catch(_){ return false; } } },
+  { id:'phrase_save_10', cat:'phrase', tier:'silver', icon:pxBadge('note'),    name:'Phrase Collector', desc:'Save 10 phrases',
+    check: function(){ try { return JSON.parse(localStorage.getItem('kh_saved_phrases_v1')||'[]').length >= 10; } catch(_){ return false; } } },
+  { id:'phrase_save_50', cat:'phrase', tier:'gold',   icon:pxBadge('book'),    name:'Phrase Lover',     desc:'Save 50 phrases',
+    check: function(){ try { return JSON.parse(localStorage.getItem('kh_saved_phrases_v1')||'[]').length >= 50; } catch(_){ return false; } } },
+  { id:'phrase_master_5',cat:'phrase', tier:'gold',   icon:pxBadge('star'),    name:'Phrase Apprentice',desc:'Master 5 phrases',
+    check: function(){ try { return JSON.parse(localStorage.getItem('kh_mastered_phrases_v1')||'[]').length >= 5; } catch(_){ return false; } } },
+  { id:'phrase_master_25',cat:'phrase',tier:'diamond',icon:pxBadge('crown'),   name:'Phrase Master',    desc:'Master 25 phrases',
+    check: function(){ try { return JSON.parse(localStorage.getItem('kh_mastered_phrases_v1')||'[]').length >= 25; } catch(_){ return false; } } },
+
+  // 🔁 STREAK ladder fill-ins
+  { id:'streak_14',  cat:'streak', tier:'silver',  icon:pxBadge('runner'), name:'Two-Week Tempo',  desc:'14-day study streak',
+    check: function(){ return getCurrentStreak() >= 14; } },
+  { id:'streak_180', cat:'streak', tier:'legendary',icon:pxBadge('castle'), name:'Half-Year Hero',  desc:'180-day study streak',
+    check: function(){ return getCurrentStreak() >= 180; } },
+
+  // 📰 READING expansion
+  { id:'read_200',  cat:'reading', tier:'silver', icon:pxBadge('newspaper'), name:'News Regular',  desc:'Read 200 articles',
+    check: function(){ return getTotalArticlesRead() >= 200; } },
+  { id:'read_1000', cat:'reading', tier:'legendary',icon:pxBadge('crown'),   name:'Korean Anchor', desc:'Read 1,000 articles',
+    check: function(){ return getTotalArticlesRead() >= 1000; } },
+
+  // 🔖 VOCAB expansion
+  { id:'word_500', cat:'vocab', tier:'gold',     icon:pxBadge('flower'),  name:'Word Garden', desc:'Save 500 words',
+    check: function(){ return lsGet(K_SAVED,[]).length >= 500; } },
+  { id:'word_5000',cat:'vocab', tier:'legendary',icon:pxBadge('rainbow'), name:'Vocab Galaxy',desc:'Save 5,000 words',
+    check: function(){ return lsGet(K_SAVED,[]).length >= 5000; } },
+
+  // 📝 QUIZ expansion
+  { id:'quiz_30',     cat:'quiz', tier:'gold',     icon:pxBadge('shield'), name:'Quiz Veteran',  desc:'Complete 30 quizzes',
+    check: function(){ return lsGet('kh_quiz_done_count',0) >= 30; } },
+  { id:'quiz_100',    cat:'quiz', tier:'legendary',icon:pxBadge('trophy'), name:'Quiz Centurion',desc:'Complete 100 quizzes',
+    check: function(){ return lsGet('kh_quiz_done_count',0) >= 100; } },
+  { id:'quiz_perfect_10',cat:'quiz', tier:'diamond', icon:pxBadge('diamond'), name:'10 Perfects', desc:'Score 100% on 10 daily tests',
+    check: function(){ return getQuizPerfectCount() >= 10; } },
+  { id:'quiz_30days', cat:'quiz', tier:'diamond',  icon:pxBadge('brain'),   name:'Monthly Devotee',desc:'Complete daily tests 30 days in a row',
+    check: function(){ return getQuizStreakDays() >= 30; } },
+
+  // 🌍 SECTIONS expansion
+  { id:'sec_3masters',cat:'sections', tier:'diamond', icon:pxBadge('medal'), name:'Triple Master', desc:'Earn 3 section-master badges',
+    check: function(){
+      var earned = getEarnedBadges();
+      var ids = ['sec_politics','sec_economy','sec_society','sec_world','sec_culture','sec_sports','sec_korea','sec_beauty','sec_travel','sec_opinion'];
+      return ids.filter(function(id){ return !!earned[id]; }).length >= 3;
+    } },
+  { id:'sec_allmasters',cat:'sections',tier:'legendary',icon:pxBadge('crown'), name:'Section Sovereign',desc:'Earn every section-master badge',
+    check: function(){
+      var earned = getEarnedBadges();
+      var ids = ['sec_politics','sec_economy','sec_society','sec_world','sec_culture','sec_sports','sec_korea','sec_beauty','sec_travel','sec_opinion'];
+      return ids.every(function(id){ return !!earned[id]; });
+    } },
+
+  // 🔢 XP ladder fill-ins
+  { id:'xp_15000', cat:'milestone', tier:'silver', icon:pxBadge('star'),   name:'XP 15,000', desc:'Earn 15,000 XP total',
+    check: function(){ return getXP() >= 15000; } },
+  { id:'xp_50000', cat:'milestone', tier:'gold',   icon:pxBadge('medal'),  name:'XP 50,000', desc:'Earn 50,000 XP total',
+    check: function(){ return getXP() >= 50000; } },
+  { id:'xp_500000',cat:'milestone', tier:'legendary',icon:pxBadge('crown'),name:'XP 500,000',desc:'Earn 500,000 XP total',
+    check: function(){ return getXP() >= 500000; } },
+  { id:'days_180', cat:'milestone', tier:'diamond', icon:pxBadge('castle'),name:'6-Month Resident', desc:'Active study log on 180 distinct days',
+    check: function(){
+      var log = lsGet('kh_study_log',{});
+      var active = Object.keys(log).filter(function(k){ var d=log[k]; return (d.articles||0)+(d.words||0)+(d.quiz||0)>0; });
+      return active.length >= 180;
+    } },
+
+  // ⏰ TIME expansion
+  { id:'time_lunch', cat:'time', tier:'bronze', icon:pxBadge('clock'),  name:'Lunch Learner',  desc:'Study during 12–1 PM, 5 times',
+    check: function(){ return lsGet('kh_lunch_count',0) >= 5; } },
+  { id:'time_late23',cat:'time', tier:'silver', icon:pxBadge('clock'),  name:'Late Bird',      desc:'Study after 11 PM, 5 times',
+    check: function(){ return lsGet('kh_late23_count',0) >= 5; } },
+  { id:'time_4seasons',cat:'time', tier:'gold', icon:pxBadge('rainbow'),name:'Four Seasons',   desc:'Study in spring, summer, autumn, and winter',
+    check: function(){
+      var s = lsGet('kh_seasons_seen',{});
+      return !!(s.spring && s.summer && s.autumn && s.winter);
+    } },
+
+  // 🎌 CULTURAL fill-ins
+  { id:'cult_buddha', cat:'cultural', tier:'gold', icon:pxBadge('clover'), name:'Buddha\'s Birthday', desc:'Study on Buddha\'s Birthday (lunar Apr 8 / approx May 5)',
+    check: function(){ return lsGet('kh_cult_buddha', false); } },
+  { id:'cult_childrens',cat:'cultural', tier:'silver', icon:pxBadge('gift'), name:'Children\'s Day', desc:'Study on May 5',
+    check: function(){ return lsGet('kh_cult_childrens', false); } },
+  { id:'cult_endyear',cat:'cultural', tier:'silver', icon:pxBadge('star'), name:'Year-End Learner', desc:'Study on December 31',
+    check: function(){ return lsGet('kh_cult_endyear', false); } },
+
+  // 🌟 META & comeback
+  { id:'comeback',   cat:'meta', tier:'gold',     icon:pxBadge('zap'),   name:'Welcome Back',  desc:'Return after a 7+ day break',
+    check: function(){ return lsGet('kh_comeback', false); } },
+  { id:'collector_25',cat:'meta', tier:'silver', icon:pxBadge('medal'), name:'Quarter Collector',desc:'Earn 25 badges',
+    check: function(){ return Object.keys(getEarnedBadges()).length >= 25; } },
+  { id:'collector_50',cat:'meta', tier:'legendary',icon:pxBadge('crown'),name:'Hall of Fame',  desc:'Earn 50 badges',
+    check: function(){ return Object.keys(getEarnedBadges()).length >= 50; } },
 ];
 
 // ── 날짜/시간 기반 문화 뱃지 체크 ──────────────────────────────────────────
@@ -556,10 +658,42 @@ function checkCulturalDateBadges() {
   if (m===11 && d===11) lsSet('kh_cult_pepero',    true);
   if (m===2 && d===14)  lsSet('kh_cult_valentine', true);
   if (m===12 && d===25) lsSet('kh_cult_christmas', true);
+  if (m===5 && d===5)   lsSet('kh_cult_childrens', true);
+  if (m===12 && d===31) lsSet('kh_cult_endyear',   true);
+  // Buddha's Birthday — lunar Apr 8 → varies year to year. We approximate
+  // with May 5 (close enough most years; can be tightened with a lunar
+  // table later). Same fixed-day shortcut as Chuseok/Seollal use.
+  if (m===5 && d===5)   lsSet('kh_cult_buddha',    true);
   // 자정/새벽
   if (h >= 0 && h < 1) lsSet('kh_badge_midnight', true);
   if (h < 6)            lsSet('kh_badge_dawn',     true);
   if (h < 7)            { var cnt = lsGet('kh_morning_count',0); lsSet('kh_morning_count', cnt+1); }
+  // 점심/늦은 밤
+  if (h >= 12 && h < 13) {
+    var ll = lsGet('kh_lunch_count',0);
+    var lastLunch = lsGet('kh_last_lunch_day','');
+    var todayKey = now.toISOString().slice(0,10);
+    if (lastLunch !== todayKey) { lsSet('kh_lunch_count', ll+1); lsSet('kh_last_lunch_day', todayKey); }
+  }
+  if (h >= 23) {
+    var lt = lsGet('kh_late23_count',0);
+    var lastLate = lsGet('kh_last_late23_day','');
+    var todayKey2 = now.toISOString().slice(0,10);
+    if (lastLate !== todayKey2) { lsSet('kh_late23_count', lt+1); lsSet('kh_last_late23_day', todayKey2); }
+  }
+  // 4계절 — KST 기준 month boundaries (spring 3-5, summer 6-8, autumn 9-11, winter 12-2)
+  var seasons = lsGet('kh_seasons_seen', {});
+  var seasonKey = (m>=3&&m<=5) ? 'spring' : (m>=6&&m<=8) ? 'summer' : (m>=9&&m<=11) ? 'autumn' : 'winter';
+  if (!seasons[seasonKey]) { seasons[seasonKey] = true; lsSet('kh_seasons_seen', seasons); }
+  // Comeback: if last visit was 7+ days ago, mark earned. Always update last-visit.
+  var last = lsGet('kh_last_visit_day','');
+  var todayKey3 = now.toISOString().slice(0,10);
+  if (last && last !== todayKey3) {
+    var lastDate = new Date(last + 'T00:00:00Z');
+    var diffDays = Math.floor((now - lastDate) / 86400000);
+    if (diffDays >= 7) lsSet('kh_comeback', true);
+  }
+  if (last !== todayKey3) lsSet('kh_last_visit_day', todayKey3);
   // 요일
   var day = now.getDay(); // 0=일, 1=월, 5=금, 6=토
   if (day === 1) {
