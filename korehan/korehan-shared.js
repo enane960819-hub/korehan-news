@@ -2648,6 +2648,30 @@ function renderArticlePage() {
   var a      = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
 
   if (!a) {
+    // Cache miss — could be an older article not in the latest 80
+    // rows, or a fresh single-tab visit before loadArticleById has
+    // resolved. Try a one-shot fetch by id, then re-render. Show a
+    // lightweight "Loading…" while we wait so the learner doesn't
+    // see a flash of "not found" on slow networks.
+    if (id && typeof loadArticleById === 'function' && !wrap.dataset.fetchingId) {
+      wrap.dataset.fetchingId = id;
+      wrap.innerHTML = '<div style="padding:30px;text-align:center;color:#94a3b8">Loading article…</div>';
+      loadArticleById(id).then(function(row) {
+        wrap.dataset.fetchingId = '';
+        if (row) {
+          renderArticlePage();
+        } else {
+          wrap.innerHTML = '<div style="padding:30px">'
+            + '<a href="index.html" style="color:#2255a4;text-decoration:none">← Back to Home</a>'
+            + '<h1 style="margin-top:16px">Article not found</h1>'
+            + '<p style="color:#666;margin-top:8px">This article does not exist or the link is invalid.</p>'
+            + '</div>';
+        }
+      }).catch(function() {
+        wrap.dataset.fetchingId = '';
+      });
+      return;
+    }
     wrap.innerHTML = '<div style="padding:30px">'
       + '<a href="index.html" style="color:#2255a4;text-decoration:none">← Back to Home</a>'
       + '<h1 style="margin-top:16px">Article not found</h1>'
@@ -6358,6 +6382,20 @@ document.addEventListener('DOMContentLoaded', async function() {
           .catch(function(err){ console.warn('[all] background refresh failed', err); });
         await Promise.all([sectionsPromise, settingsPromise]);
       } else {
+        // Cold All News visit — render an immediate skeleton so the
+        // user sees activity instead of a blank page during the
+        // 3–5s 500-row fetch. Replaced as soon as renderAllPage runs.
+        if (_isAllPage) {
+          var _skel = document.getElementById('dyn-article-list');
+          if (_skel && !_skel.children.length) {
+            _skel.innerHTML = '<style>@keyframes khSkel{0%,100%{opacity:.55}50%{opacity:.92}}</style>'
+              + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">'
+              +   Array(6).fill(0).map(function(){
+                    return '<div style="background:#e5edf6;border-radius:14px;aspect-ratio:4/3;animation:khSkel 1.4s ease-in-out infinite"></div>';
+                  }).join('')
+              + '</div>';
+          }
+        }
         var _forceRefresh = _isArticleReaderFallback || _isAllPage;
         await Promise.all([loadArticlesFromDB({ force: _forceRefresh, all: _isAllPage }), sectionsPromise, settingsPromise]);
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
