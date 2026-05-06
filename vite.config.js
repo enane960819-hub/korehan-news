@@ -54,6 +54,27 @@ function copyStaticPlugin() {
           cpSync(resolve(jsDir, f), resolve(distJs, f), { recursive: true })
         );
       }
+      // Copy img/ directory (illustrations + guide assets referenced
+      // directly by HTML at runtime — Vite doesn't crawl these because
+      // they're loaded via JS-built `src` strings, not <img src=>).
+      const imgDir = resolve(src, 'img');
+      const distImg = resolve(dist, 'img');
+      if (existsSync(imgDir)) {
+        if (!existsSync(distImg)) mkdirSync(distImg, { recursive: true });
+        readdirSync(imgDir).forEach(f =>
+          cpSync(resolve(imgDir, f), resolve(distImg, f), { recursive: true })
+        );
+      }
+      // Copy lottie/ directory (animated illustration JSON files
+      // probed at runtime by _phraseHydrateLottie).
+      const lottieDir = resolve(src, 'lottie');
+      const distLottie = resolve(dist, 'lottie');
+      if (existsSync(lottieDir)) {
+        if (!existsSync(distLottie)) mkdirSync(distLottie, { recursive: true });
+        readdirSync(lottieDir).forEach(f =>
+          cpSync(resolve(lottieDir, f), resolve(distLottie, f), { recursive: true })
+        );
+      }
     }
   };
 }
