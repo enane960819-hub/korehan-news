@@ -5987,10 +5987,10 @@ document.addEventListener('DOMContentLoaded', async function() {
       renderHomePage();
       if (window._khLoaderClearAuto) window._khLoaderClearAuto();
       _ldr(100);
-      // Background refresh — re-render once newer rows arrive.
-      loadArticlesFromDB({ homeOptimized: true, force: true })
-        .then(function(){ renderHomePage(); })
-        .catch(function(err){ console.warn('background articles refresh failed', err); });
+      // Skip the homeOptimized background refresh here — the idle
+      // prefetch below pulls the full 500-row "all" dataset, which is
+      // a strict superset of what home needs (top 30) and also primes
+      // All News + search. It re-renders home itself when it lands.
     } else {
       _ldr(50); // Loading articles...
       await loadArticlesFromDB({ homeOptimized: true, force: true });
@@ -5998,6 +5998,34 @@ document.addEventListener('DOMContentLoaded', async function() {
       renderHomePage();
       if (window._khLoaderClearAuto) window._khLoaderClearAuto();
       _ldr(100); // Done
+    }
+
+    // Prefetch the full 500-row dataset in idle time so when the user
+    // taps "All News" the page renders instantly. Home only needs the
+    // 30-row homeOptimized payload, but All News needs the full list
+    // (with body, for search). Without this prefetch All News took
+    // ~3s on LTE because it had to re-fetch from Supabase on click.
+    // Skip if the user is on a slow connection (Save-Data) or if a
+    // recent fetch already populated 80+ rows.
+    var _khPrefetchAll = function () {
+      try {
+        var conn = navigator.connection || navigator.webkitConnection || {};
+        if (conn.saveData) return;
+        var cached = getCachedArticles();
+        if (cached && cached.length >= 80) return;
+        loadArticlesFromDB({ all: true, force: true })
+          .then(function(){
+            // Re-render home with newer rows. This replaces the old
+            // homeOptimized background refresh for cache-hit visits.
+            try { if (typeof renderHomePage === 'function') renderHomePage(); } catch(_){}
+          })
+          .catch(function(err){ console.warn('[prefetch] all news failed', err); });
+      } catch (_) {}
+    };
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(_khPrefetchAll, { timeout: 4000 });
+    } else {
+      setTimeout(_khPrefetchAll, 1500);
     }
 
     // 나머지는 백그라운드에서 완료 후 UI 갱신 (세션, 섹션, 설정)
@@ -6055,13 +6083,31 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
       });
     } else {
-      // korehan-all force-refreshes and fetches up to 500 articles so
-      // every section rail is populated (home seeds only 30).
+      // korehan-all needs the full 500-row dataset with body for its
+      // search filter. If the home page's idle prefetch (or a prior
+      // visit) already populated the cache, render synchronously and
+      // refresh in the background — eliminates the ~3s LTE wait the
+      // user hit when tapping All News from a cold cache.
       var _isAllPage = (pageBase === 'korehan-all');
-      var _forceRefresh = _isArticleReader || _isAllPage;
-      await Promise.all([loadArticlesFromDB({ force: _forceRefresh, all: _isAllPage }), sectionsPromise, settingsPromise]);
-      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
-      _ldr(100);
+      var _isArticleReaderFallback = _isArticleReader; // alias for clarity
+      var _cachedRows = getCachedArticles();
+      var _haveAllCache = _isAllPage && _cachedRows && _cachedRows.length >= 80;
+      if (_haveAllCache) {
+        if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+        _ldr(100);
+        // Background refresh — All News will re-render itself once
+        // the fresh 500-row fetch lands. Sections/settings still
+        // resolve in parallel for headers etc.
+        loadArticlesFromDB({ force: true, all: true })
+          .then(function(){ if (typeof renderAllPage === 'function') { try { renderAllPage(); } catch(_){} } })
+          .catch(function(err){ console.warn('[all] background refresh failed', err); });
+        await Promise.all([sectionsPromise, settingsPromise]);
+      } else {
+        var _forceRefresh = _isArticleReaderFallback || _isAllPage;
+        await Promise.all([loadArticlesFromDB({ force: _forceRefresh, all: _isAllPage }), sectionsPromise, settingsPromise]);
+        if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+        _ldr(100);
+      }
     }
 
     if (footerEl) footerEl.innerHTML = renderFooter();
