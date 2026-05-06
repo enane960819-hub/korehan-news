@@ -3011,14 +3011,14 @@ async function runBulkPhraseAdminGen(){
     + '      {"ko":"natural Korean sentence using the phrase, max 25 chars","en":"…"},\n'
     + '      {"ko":"different context using the phrase","en":"…"}\n'
     + '    ],\n'
-    + '    "related": ["관련 표현 1","관련 표현 2","관련 표현 3"]\n'
+    + '    "related": ["idiom 1","idiom 2"]\n'
     + '  }\n'
     + ']\n\n'
     + 'Rules:\n'
     + '- intro_ko / intro / nuance MUST be specific to each phrase. Do NOT echo generic platform copy.\n'
     + '- examples MUST contain the phrase (or a natural conjugated form) and be fully grammatical Korean.\n'
     + '- level: Seed for TOPIK 1, Sprout for TOPIK 2, Tree for TOPIK 3-4, Forest for TOPIK 5-6 / classical proverbs.\n'
-    + '- related: STRICT semantic match. Each related entry must convey the SAME core meaning as the parent phrase — substitutable in conversation. Just being "another Korean proverb" is NOT enough. WRONG: 하늘의 별 따기 (impossible) paired with 등잔 밑이 어둡다 (overlooking the obvious). RIGHT: 하늘의 별 따기 paired with 낙타가 바늘구멍 들어가기 (both = impossible). Return FEWER (or []) when truly synonymous expressions don\'t exist — DO NOT pad.\n'
+    + '- related: EXACTLY 0-2 entries (NEVER more than 2). Each MUST be a real Korean 관용구 (idiom) or 속담 (proverb) — fixed multi-word expression from an idiom dictionary, NOT literal noun phrases like "불가능한 일". RIGHT for 하늘의 별 따기: 낙타가 바늘구멍 들어가기. WRONG: 불가능한 일 (literal phrase). Strong match required — if 2 real idioms don\'t exist, return FEWER or []. DO NOT pad.\n'
     + '- Do NOT include any phrase from the ALREADY IN QUEUE list above.';
 
   try {
