@@ -2530,12 +2530,14 @@ function renderAllPage() {
   window._allArticlesCache = articles;
 
   if (searchQ) {
+    // Title/title_en/section search only. Body matching was dropped
+    // because the All News fetch no longer pulls `body` (slashed the
+    // ~5s LTE wait). Searching the visible card text + the English
+    // translation handles the vast majority of real queries; deeper
+    // body match can come back as a server-side ilike call later if
+    // needed.
     articles = articles.filter(function(a) {
-      // Include title_en + section_key so English keywords match
-      // Korean-bodied articles. Without these an English query like
-      // "tech" returned 0 even when matching content existed.
       var text = (a.title || '') + ' ' + (a.title_en || '') + ' '
-        + (a.body || '') + ' ' + (a.full || '') + ' '
         + (a.section || '') + ' '
         + (typeof getSectionKey === 'function' ? (getSectionKey(a.section) || '') : '');
       return text.toLowerCase().indexOf(searchQ.toLowerCase()) !== -1;

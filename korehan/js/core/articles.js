@@ -245,13 +245,23 @@ async function loadArticlesFromDB(options) {
   if (!shouldForceRefresh && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
     return _articlesCache;
   }
-  var lim = useHomeOptimizedQuery ? 30 : useAllArticles ? 500 : 80;
+  // Sized down from (30 / 80 / 500) — All News at 500 was a 5-second
+  // fetch on Korean LTE because every row carried `body`. Most
+  // browsing happens above the fold; reducing to 120 gives each
+  // section ~12 cards in the rails view, which covers the visible
+  // strip + a swipe or two without dragging in the entire archive.
+  // Search now scans title/title_en/section locally (see renderAllPage)
+  // instead of body, so we don't need body for the All News list at
+  // all — drop it to slash payload by ~80%.
+  var lim = useHomeOptimizedQuery ? 30 : useAllArticles ? 120 : 80;
   // Try the lite column list first; fall back to '*' if PostgREST
   // rejects an unknown column (production schemas can lag behind the
   // codebase). Without this fallback any missing column on the lite
   // list (e.g. video_kind, source_url) would drop the home page to
   // an empty hero and leave "Loading today's articles…" forever.
-  var primary = useHomeOptimizedQuery ? HOME_ARTICLE_SELECT : LIST_ARTICLE_SELECT;
+  // All News uses the body-less HOME_ARTICLE_SELECT too — search no
+  // longer scans body, so we save a megabyte of payload.
+  var primary = (useHomeOptimizedQuery || useAllArticles) ? HOME_ARTICLE_SELECT : LIST_ARTICLE_SELECT;
   var selects = [primary, FULL_ARTICLE_SELECT];
   for (var i = 0; i < selects.length; i++) {
     try {
