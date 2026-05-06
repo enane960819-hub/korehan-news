@@ -3144,7 +3144,11 @@ function renderPhraseAdminTable(){
   const KST_OFFSET = 9 * 3600 * 1000;
   const kstNow = Date.now() + KST_OFFSET;
   const kstToday = Math.floor(kstNow / 86400000);
-  const todayIdxInLive = liveLen ? (kstToday % liveLen) : -1;
+  // Apply the saved rotation offset so this view matches the home
+  // page's getTodaysPhraseIndex() — without the offset, the admin
+  // schedule column drifts by 1+ positions after every bulk add.
+  const _rotOffset = (typeof getPhraseRotationOffset === 'function') ? getPhraseRotationOffset() : 0;
+  const todayIdxInLive = liveLen ? (((kstToday + _rotOffset) % liveLen) + liveLen) % liveLen : -1;
 
   // Map originalIdx → days_from_today (0 = today, 1 = tomorrow, etc.)
   const daysFromToday = {};
@@ -3199,13 +3203,40 @@ function renderPhraseAdminTable(){
       </td>
       <td>${(p.examples || []).slice(0,1).map(ex => `<div style="font-size:12px;color:var(--gr)">• ${esc(ex.ko || '')}</div>`).join('') || '<span style="color:#99aabb;font-size:11px">예문 없음</span>'}</td>
       <td onclick="event.stopPropagation()">
-        <div style="display:flex;flex-direction:column;gap:4px;align-items:stretch;min-width:88px">
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:stretch;min-width:108px">
+          <div style="display:flex;gap:3px">
+            <button class="btn btn-xs" onclick="movePhraseAdminItem(${idx},-1)" title="위로 (앞날짜)" style="flex:1;padding:3px 0;background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;font-weight:800">▲</button>
+            <button class="btn btn-xs" onclick="movePhraseAdminItem(${idx},1)" title="아래로 (뒷날짜)" style="flex:1;padding:3px 0;background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;font-weight:800">▼</button>
+          </div>
           <button class="btn btn-gh btn-xs" onclick="openPhraseAdminItem(${idx})">Edit</button>
           <button class="btn btn-r btn-xs" onclick="deletePhraseAdminItemAt(${idx})" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca">🗑 삭제</button>
         </div>
       </td>
     </tr>`;
   }).join('');
+}
+
+// Move a phrase one slot up or down in the queue (i.e. shift its
+// scheduled date by ±1 day). Today's pin is preserved by the
+// rotation-offset logic in saveSharedPhrases() — moving a non-today
+// phrase doesn't drag today onto a different one.
+function movePhraseAdminItem(idx, delta) {
+  // The visible table is sorted by date but the underlying
+  // phraseAdminItems is queue-order. To make ▲/▼ feel like "earlier
+  // date / later date" we operate on the queue order: ▲ = -1 in
+  // queue, ▼ = +1.
+  if (!Array.isArray(phraseAdminItems) || idx < 0 || idx >= phraseAdminItems.length) return;
+  var target = idx + delta;
+  if (target < 0 || target >= phraseAdminItems.length) return;
+  var tmp = phraseAdminItems[idx];
+  phraseAdminItems[idx] = phraseAdminItems[target];
+  phraseAdminItems[target] = tmp;
+  if (phraseAdminCurrentIndex === idx) phraseAdminCurrentIndex = target;
+  else if (phraseAdminCurrentIndex === target) phraseAdminCurrentIndex = idx;
+  lsSet(K_PHRASES, phraseAdminItems);
+  if (typeof saveSharedPhrases === 'function') saveSharedPhrases(phraseAdminItems);
+  renderPhraseAdminTable();
+  renderPhraseAdminForm(phraseAdminCurrentIndex);
 }
 
 // Direct delete from the table row — no need to first navigate to
@@ -3251,7 +3282,10 @@ function getPhraseAdminTodayIndex(){
   // actually shows.
   const liveItems = items.filter(p => p && p.ko && String(p.ko).trim());
   if (!liveItems.length) return 0;
-  return Math.floor((Date.now() + 9*3600000) / 86400000) % liveItems.length;
+  const _rotOff = (typeof getPhraseRotationOffset === 'function') ? getPhraseRotationOffset() : 0;
+  const _dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
+  const _len = liveItems.length;
+  return ((_dayHash + _rotOff) % _len + _len) % _len;
 }
 function openTodayPhrasePreview(){
   location.href = 'korehan-phrase.html?i=' + getPhraseAdminTodayIndex();
