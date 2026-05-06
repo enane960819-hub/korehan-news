@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f0f2f7">
 <title>Today's Phrase — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260505e">
+<link rel="stylesheet" href="korehan-shared.css?v=20260505f">
 <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie_light.min.js" defer></script>
 </head>
@@ -29,7 +29,7 @@
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505e"></script>
+<script src="js/core/phrases.js?v=20260505f"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -44,7 +44,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260505e"></script>
+<script src="korehan-shared.js?v=20260505f"></script>
 <script>
 // Today's Phrase — dark, mobile-first reader.
 //
@@ -235,6 +235,89 @@ async function _fillPhraseViaClaude(phrase) {
       .filter(function(e){ return e.ko; }).slice(0, 3) : [],
     related: related,
   };
+}
+
+// Per-session memo so we don't re-call Claude for the same phrase
+// twice within a tab while the DB write is propagating.
+window._khRelatedRefreshedSession = window._khRelatedRefreshedSession || {};
+
+// Tighten-up pass for ALREADY-complete phrases whose `related` was
+// generated under the old loose-match prompt. Triggers when the
+// phrase has related entries but no `related_v: 2` marker. One
+// short Claude call per phrase per session, then persisted to DB
+// for everyone else.
+async function _ensureRelatedFresh(phrase) {
+  if (!phrase || !phrase.ko) return phrase;
+  if (phrase.related_v === 2) return phrase;
+  // Only applies when there ARE existing related entries that could
+  // be stale. If admin left it empty there's nothing to clean up.
+  if (!Array.isArray(phrase.related) || !phrase.related.length) return phrase;
+  if (typeof callClaude !== 'function') return phrase;
+  if (window._khRelatedRefreshedSession[phrase.ko]) return phrase;
+  window._khRelatedRefreshedSession[phrase.ko] = true;
+
+  var prompt =
+      'Korean phrase: ' + phrase.ko + '\n'
+    + (phrase.en ? 'Meaning: ' + phrase.en + '\n' : '')
+    + '\n'
+    + 'Return ONLY a JSON object — no preamble, no code fences:\n'
+    + '{ "related": ["expression 1", "expression 2", ...] }\n\n'
+    + 'Rules:\n'
+    + '- Each entry must be a Korean idiom/proverb/expression that conveys the SAME core meaning as "' + phrase.ko + '" — substitutable in conversation without changing what the speaker means.\n'
+    + '- Just being "another Korean proverb" is NOT enough. WRONG: 하늘의 별 따기 (impossible) paired with 등잔 밑이 어둡다 (overlooking the obvious) — totally different concepts. RIGHT: 하늘의 별 따기 paired with 낙타가 바늘구멍 들어가기 (both = impossible).\n'
+    + '- Return up to 4. If you cannot find truly synonymous expressions, return FEWER (even an empty array []) — DO NOT pad with loosely-themed proverbs. Quality > quantity.\n'
+    + '- No commentary, no romanization, just the Korean expressions.';
+
+  try {
+    var res = await callClaude({
+      feature: 'phrase-related-refresh',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('no JSON');
+    var data = JSON.parse(clean.slice(oi, ei + 1));
+
+    var phraseStripped = String(phrase.ko || '').replace(/\s+/g,'').trim();
+    var seen = {};
+    var related = Array.isArray(data.related) ? data.related
+      .map(function(s){ return String(s || '').trim(); })
+      .filter(function(s){
+        if (!s || s.length < 3) return false;
+        var stripped = s.replace(/\s+/g,'');
+        if (stripped === phraseStripped) return false;
+        if (seen[stripped]) return false;
+        seen[stripped] = true;
+        return true;
+      })
+      .slice(0, 4) : [];
+
+    var merged = Object.assign({}, phrase, { related: related, related_v: 2 });
+
+    // Persist back to the shared queue so other users (and our next
+    // page load) see the cleaned data.
+    try {
+      if (typeof supaUser !== 'undefined' && supaUser
+          && typeof saveSharedPhrases === 'function'
+          && typeof getPhraseSourceRows === 'function') {
+        var rows = getPhraseSourceRows().slice();
+        var koTrim = String(phrase.ko || '').trim();
+        var i = rows.findIndex(function(r){ return (r && (r.ko || '').trim()) === koTrim; });
+        if (i >= 0) {
+          rows[i] = Object.assign({}, rows[i], { related: related, related_v: 2 });
+          await saveSharedPhrases(rows);
+        }
+      }
+    } catch(_) {}
+
+    return merged;
+  } catch(e) {
+    console.warn('[phrase] related refresh failed', e);
+    return phrase;
+  }
 }
 
 async function _ensurePhraseFilled(phrase) {
@@ -730,9 +813,30 @@ async function renderPhrasePage() {
   if (needsFill) {
     try {
       var filled = await _ensurePhraseFilled(phrase);
+      // _fillPhraseViaClaude returns related under the v2 prompt, so
+      // stamp the marker in-memory too — _mergePhraseFill doesn't
+      // currently set it.
+      filled.related_v = 2;
+      phrase = filled;
       renderPhraseLayout(filled, renderOpts);
     } catch(e) {
       console.warn('[phrase] fill failed', e);
+    }
+  }
+
+  // Pass 2 — for phrases that ARE complete (intro/nuance/examples
+  // already good) but whose `related` was generated under the old
+  // loose-match prompt. Detected via missing related_v: 2 marker.
+  // Cheap related-only Claude call, then persisted to DB so the
+  // next visitor doesn't re-pay.
+  if (!phrase.related_v || phrase.related_v < 2) {
+    try {
+      var freshened = await _ensureRelatedFresh(phrase);
+      if (freshened && freshened !== phrase) {
+        renderPhraseLayout(freshened, renderOpts);
+      }
+    } catch(e) {
+      console.warn('[phrase] related refresh failed', e);
     }
   }
 }

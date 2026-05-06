@@ -75,6 +75,11 @@ function normalizePhrase(row) {
   // default to Sprout, so empty strings are safe defaults.
   var lvl = (row.level || '').toString();
   if (['Seed','Sprout','Tree','Forest'].indexOf(lvl) < 0) lvl = '';
+  // related_v is the version of the related-expressions prompt the
+  // current list was generated under. v2 = strict semantic match.
+  // Anything missing or < 2 is from the loose-prompt era and gets
+  // regenerated on first view by the phrase reader.
+  var relatedV = Number(row.related_v || 0) | 0;
   return {
     ko: row.ko || '',
     rom: row.rom || '',
@@ -84,7 +89,8 @@ function normalizePhrase(row) {
     nuance: row.nuance || row.note || '',
     level: lvl,
     examples: examples.slice(0, 6).map(function(ex){ return { ko: ex.ko || '', en: ex.en || '' }; }).filter(function(ex){ return ex.ko; }),
-    related: Array.isArray(row.related) ? row.related.filter(Boolean).slice(0, 8) : []
+    related: Array.isArray(row.related) ? row.related.filter(Boolean).slice(0, 8) : [],
+    related_v: relatedV
   };
 }
 function getPhraseSourceRows() {
