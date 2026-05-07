@@ -1,6 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const ALLOWED_ORIGINS = [
+  'https://korehani.com',
+  'https://www.korehani.com',
   'https://korehannews.com',
   'https://www.korehannews.com',
   'http://localhost:3000',

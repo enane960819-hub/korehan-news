@@ -17,7 +17,7 @@ const ALLOWED_TABLES = new Set([
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || ''
-  const allowed = ['https://korehannews.com','https://www.korehannews.com','http://localhost:3000','http://localhost:8888']
+  const allowed = ['https://korehani.com','https://www.korehani.com','https://korehannews.com','https://www.korehannews.com','http://localhost:3000','http://localhost:8888']
   const matched = allowed.includes(origin) ? origin : allowed[0]
   return {
     'Access-Control-Allow-Origin': matched,

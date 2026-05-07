@@ -13,7 +13,7 @@
 // ── Secrets (Supabase → Project → Edge Functions → Secrets) ─────────
 //   STRIPE_SECRET_KEY          sk_live_... or sk_test_...
 //   STRIPE_PRICE_COACH_COIN    price_...    ($1 one-time)
-//   APP_BASE_URL               https://korehannews.com
+//   APP_BASE_URL               https://korehani.com
 // ══════════════════════════════════════════════════════════════════════
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
@@ -76,7 +76,7 @@ serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    const appBase = Deno.env.get('APP_BASE_URL') || 'https://korehannews.com';
+    const appBase = Deno.env.get('APP_BASE_URL') || 'https://korehani.com';
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],

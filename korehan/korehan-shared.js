@@ -1675,7 +1675,7 @@ function khDebugEnabled() { return _khDebug; }
 //   khShare({
 //     title: 'Today\'s Korean quiz',
 //     text:  'I scored 8/10 on a Korean reading quiz on KoreHani.',
-//     url:   'https://korehannews.com/...',
+//     url:   'https://korehani.com/...',
 //   });
 function khShare(opts) {
   opts = opts || {};
@@ -5848,7 +5848,7 @@ function renderFooter() {
     + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Company</div>'
     + '<div style="display:flex;flex-direction:column;gap:9px">'
     + '<a href="landing.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">About KoreHani</a>'
-    + '<a href="mailto:hello@korehannews.com" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Contact</a>'
+    + '<a href="mailto:hello@korehani.com" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Contact</a>'
     + '</div>'
     + '</div>'
 

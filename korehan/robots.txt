@@ -1,7 +1,7 @@
-# robots.txt for korehannews.com
+# robots.txt for korehani.com
 # Goal: allow legitimate search indexing, block AI training crawlers and SEO spam bots.
 
-Sitemap: https://korehannews.com/sitemap.xml
+Sitemap: https://korehani.com/sitemap.xml
 
 # --- Allow legitimate search engines ---
 User-agent: Googlebot

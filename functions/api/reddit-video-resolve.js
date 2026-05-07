@@ -28,7 +28,7 @@
 // repeat hits within the freshness window. We don't run our own KV cache
 // — Cloudflare's HTTP cache is sufficient and zero-config.
 
-const REDDIT_UA = 'KoreHanNewsBot/1.0 (+https://korehannews.com)'
+const REDDIT_UA = 'KoreHanNewsBot/1.0 (+https://korehani.com)'
 
 function cors(extra = {}) {
   return {

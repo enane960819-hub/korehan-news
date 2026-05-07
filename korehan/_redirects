@@ -1,0 +1,17 @@
+# Cloudflare Pages redirects.
+# Old domain → new domain. Cloudflare's "Bulk Redirects" or a Workers
+# rule can also handle host-level redirects, but Pages also honours
+# this _redirects file at the dist root for path-level rules. Host-
+# level redirect (apex korehannews.com → korehani.com) lives in the
+# Cloudflare dashboard under the old zone's rules.
+#
+# Format: /from /to status
+
+# Legacy paths from the korehannews.com era — not strictly redirects,
+# but explicit so any old bookmarks or shared links that include
+# /korehan/* prefixes still land correctly.
+/korehan/*       /:splat       301
+
+# Trailing-slash → no slash for the article reader URLs (some shared
+# links include them).
+/korehan-article/  /korehan-article.html  301

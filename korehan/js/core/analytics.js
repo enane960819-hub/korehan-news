@@ -10,7 +10,7 @@
    created.
 
      <script>
-       window.KH_PLAUSIBLE_DOMAIN = 'korehannews.com';
+       window.KH_PLAUSIBLE_DOMAIN = 'korehani.com';
        window.KH_SENTRY_DSN = 'https://xxxx@oXXX.ingest.sentry.io/YYY';
      </script>
 

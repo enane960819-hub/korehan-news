@@ -37,7 +37,7 @@ const ALLOWED_ORIGINS = [
   'http://localhost:8888',
 ]
 const ADMIN_EMAILS = ['enane960819@gmail.com']
-const SITE_BASE = 'https://korehannews.com' // Will switch to korehani.com once DNS lands.
+const SITE_BASE = 'https://korehani.com'
 const DEFAULT_FROM = 'KoreHani <hello@korehani.com>'
 
 function getCorsHeaders(req: Request) {
@@ -108,7 +108,7 @@ function confirmEmailHtml(opts: { confirmUrl: string; unsubUrl: string; name?: s
       <p style="font-size:12px;color:#475569;word-break:break-all;margin:0 0 18px">${opts.confirmUrl}</p>
     </div>
     <div style="padding:14px 28px 22px;border-top:1px solid #eef2f7;font-size:11px;color:#94a3b8;line-height:1.6">
-      You're receiving this because someone (hopefully you) entered ${'this email'} on korehannews.com.
+      You're receiving this because someone (hopefully you) entered ${'this email'} on korehani.com.
       <br><a href="${opts.unsubUrl}" style="color:#94a3b8">Unsubscribe</a>
     </div>
   </div>

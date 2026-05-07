@@ -56,7 +56,7 @@ function _khImgHostAllowed(url) {
   if (url.charAt(0) === '/' || url.indexOf('./') === 0) return true;
   if (url.indexOf('data:') === 0 || url.indexOf('blob:') === 0) return true;
   try {
-    var u = new URL(url, (typeof window !== 'undefined' && window.location ? window.location.origin : 'https://korehannews.com'));
+    var u = new URL(url, (typeof window !== 'undefined' && window.location ? window.location.origin : 'https://korehani.com'));
     if (typeof window !== 'undefined' && window.location && u.origin === window.location.origin) return true;
     // Any https image host is CSP-allowed (img-src 'self' data: blob:
     // https:) — og:image backfill from arbitrary news sites needs this.

@@ -10,6 +10,8 @@ const VOICE_MAP: Record<string, string> = {
 }
 
 const ALLOWED_ORIGINS = [
+  'https://korehani.com',
+  'https://www.korehani.com',
   'https://korehannews.com',
   'https://www.korehannews.com',
   'http://localhost:3000',
