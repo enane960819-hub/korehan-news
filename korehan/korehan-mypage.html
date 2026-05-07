@@ -4298,14 +4298,19 @@ function openAllBadgesModal() {
   }
 }
 
-// ── Friends section rendering ──────────────────────────��─────
+// ── Friends section rendering ────────────────────────────────
+// The full Friends hub lives at korehan-friends.html (Find / Pending /
+// Friends / Blocked tabs, request flow, guestbook). The My Page tab
+// links into it instead of duplicating the UI here. Used to render
+// "Coming Soon!" which was misleading — the feature has been live.
 function renderFriendsList() {
   var el = document.getElementById('mp-friends-content');
   if (!el) return;
   el.innerHTML = '<div class="friends-empty">'
-    + '<div class="friends-empty-icon" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="users" class="kh-ui-icon" style="width:48px;height:48px;color:#94a3b8" aria-hidden="true"></i></div>'
-    + '<div class="friends-empty-title">Coming Soon!</div>'
-    + '<div class="friends-empty-desc">친구 기능이 곧 추가됩니다.<br>서로의 마이페이지를 방문하고 선물을 보낼 수 있어요!</div>'
+    + '<div class="friends-empty-icon" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="users" class="kh-ui-icon" style="width:48px;height:48px;color:#a78bfa" aria-hidden="true"></i></div>'
+    + '<div class="friends-empty-title">Friends are on their own page</div>'
+    + '<div class="friends-empty-desc">Find friends, accept pending requests, and post on guestbooks from the dedicated Friends hub.</div>'
+    + '<a href="korehan-friends.html" class="friends-empty-cta" style="display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:10px 18px;border-radius:999px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;text-decoration:none;font-size:13px;font-weight:800">Open Friends hub →</a>'
     + '</div>';
 }
 
