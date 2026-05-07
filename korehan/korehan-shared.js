@@ -1223,56 +1223,96 @@ function _khRenderNotifItem(n) {
   var iconName = 'bell';
   var text = '';
   var actionsHtml = '';
+  // Per-kind landing target for click-through. The whole row becomes
+  // a link to this URL so the user lands on the spot the event
+  // happened. Action buttons (Accept / Decline) e.stopPropagation()
+  // so they don't trigger the row navigation.
+  var targetHref = '#';
+  var meId = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : '';
   if (n.kind === 'friend_request') {
     iconName = 'user-plus';
     var nameFr = _khNotifAuthorMap[p.from] || 'A learner';
-    text = '<a href="korehan-profile.html?user=' + encodeURIComponent(p.from || '') + '">' + _khEsc(nameFr) + '</a> sent you a friend request.';
+    text = _khEsc(nameFr) + ' sent you a friend request.';
+    targetHref = 'korehan-friends.html#pending';
     if (p.request_id) {
       actionsHtml = '<div class="kh-notif-item-actions">'
-        + '<button class="kh-notif-item-btn kh-notif-item-btn-primary" onclick="khAcceptFriendFromBell(\'' + p.request_id + '\', this)">Accept</button>'
-        + '<button class="kh-notif-item-btn kh-notif-item-btn-ghost" onclick="khRejectFriendFromBell(\'' + p.request_id + '\', this)">Decline</button>'
+        + '<button class="kh-notif-item-btn kh-notif-item-btn-primary" onclick="event.preventDefault();event.stopPropagation();khAcceptFriendFromBell(\'' + p.request_id + '\', this)">Accept</button>'
+        + '<button class="kh-notif-item-btn kh-notif-item-btn-ghost" onclick="event.preventDefault();event.stopPropagation();khRejectFriendFromBell(\'' + p.request_id + '\', this)">Decline</button>'
         + '</div>';
     }
   } else if (n.kind === 'friend_accepted') {
     iconName = 'user-check';
     var nameFa = _khNotifAuthorMap[p.friend_id] || 'A learner';
-    text = 'You\'re now friends with <a href="korehan-profile.html?user=' + encodeURIComponent(p.friend_id || '') + '">' + _khEsc(nameFa) + '</a>.';
+    text = 'You\'re now friends with ' + _khEsc(nameFa) + '.';
+    targetHref = p.friend_id ? ('korehan-profile.html?user=' + encodeURIComponent(p.friend_id)) : 'korehan-friends.html';
   } else if (n.kind === 'guestbook_post') {
     iconName = 'message-square';
     var nameGb = _khNotifAuthorMap[p.from] || 'A friend';
     var preview = p.preview ? ' · "' + _khEsc(p.preview) + '"' : '';
-    text = '<a href="korehan-profile.html?user=' + encodeURIComponent(supaUser.id) + '">' + _khEsc(nameGb) + '</a> left a note on your wall' + preview;
+    text = _khEsc(nameGb) + ' left a note on your wall' + preview;
+    // Land on your own profile so you see the new guestbook entry.
+    targetHref = meId ? ('korehan-profile.html?user=' + encodeURIComponent(meId) + '#guestbook') : '#';
   } else if (n.kind === 'comment_reply') {
     iconName = 'message-circle';
     var nameCr = _khNotifAuthorMap[p.from] || 'A learner';
     var prevCr = p.preview ? ' · "' + _khEsc(p.preview) + '"' : '';
-    var hrefCr = p.article_id ? ('korehan-article.html?id=' + encodeURIComponent(p.article_id) + '#cm-' + (p.reply_id || p.parent_id || '')) : '#';
-    text = '<a href="' + hrefCr + '">' + _khEsc(nameCr) + '</a> replied to your comment' + prevCr;
+    text = _khEsc(nameCr) + ' replied to your comment' + prevCr;
+    targetHref = p.article_id
+      ? ('korehan-article.html?id=' + encodeURIComponent(p.article_id) + '#cm-' + (p.reply_id || p.parent_id || ''))
+      : '#';
   } else if (n.kind === 'badge_earned') {
     iconName = 'award';
     text = 'You earned a new badge: <strong>' + _khEsc(p.name || '') + '</strong>';
+    targetHref = 'korehan-mypage.html#badges';
   } else if (n.kind === 'streak_freeze_used') {
     iconName = 'snowflake';
     var rem = (typeof p.remaining === 'number') ? (' · ' + p.remaining + ' left') : '';
     text = 'We used a streak freeze to save your streak yesterday' + _khEsc(rem) + '.';
+    targetHref = 'korehan-learning-overview.html';
   } else if (n.kind === 'streak_freeze_awarded') {
     iconName = 'snowflake';
     var grant = p.granted || 1;
     var st = p.streak ? (' (' + p.streak + '-day streak)') : '';
     text = 'You earned <strong>' + grant + ' streak freeze' + (grant > 1 ? 's' : '') + '</strong>' + _khEsc(st) + '. We\'ll auto-spend them on missed days.';
+    targetHref = 'korehan-learning-overview.html';
+  } else if (n.kind === 'room_visit') {
+    iconName = 'door-open';
+    var nameRv = _khNotifAuthorMap[p.from] || 'A learner';
+    text = _khEsc(nameRv) + ' visited your room.';
+    targetHref = p.from ? ('korehan-profile.html?user=' + encodeURIComponent(p.from)) : '#';
   } else {
     iconName = 'info';
     text = _khEsc(p.message || 'New notification');
   }
-  return '<div class="kh-notif-item ' + (unread ? 'kh-notif-item-unread' : '') + '">'
+  // Wrap the row in an <a> so clicking anywhere on the card (except
+  // Accept/Decline which stopPropagation) navigates to the target.
+  // mark_notifications_read fires on click so the bell badge clears
+  // for the navigated item even before the next poll.
+  var clickAttr = ' onclick="khNotifItemClick(event,\'' + escapeAttr(n.id) + '\')"';
+  return '<a class="kh-notif-item ' + (unread ? 'kh-notif-item-unread' : '') + '"'
+    +    ' href="' + targetHref + '"' + clickAttr + ' style="text-decoration:none;color:inherit">'
     +    '<div class="kh-notif-item-icon"><i data-lucide="' + iconName + '" class="kh-ui-icon" aria-hidden="true"></i></div>'
     +    '<div class="kh-notif-item-body">'
     +      '<div class="kh-notif-item-text">' + text + '</div>'
     +      '<div class="kh-notif-item-time">' + _khTimeAgo(n.created_at) + '</div>'
     +      actionsHtml
     +    '</div>'
-    +  '</div>';
+    +  '</a>';
 }
+
+// Mark the clicked notification as read before the browser navigates
+// — fire and forget; the navigation continues regardless. Closing
+// the dropdown so it isn't still draped over the destination.
+window.khNotifItemClick = function (ev, id) {
+  try {
+    var drop = document.getElementById('topbar-notif-dropdown');
+    if (drop) drop.classList.remove('on');
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (sb && id) {
+      sb.rpc('mark_notifications_read', { p_ids: [id] }).then(function(){}).catch(function(){});
+    }
+  } catch (_) {}
+};
 
 function _khEsc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
