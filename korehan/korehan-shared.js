@@ -3335,6 +3335,20 @@ async function analyzeSentence(idx, el) {
     }
   } catch(_) {}
 
+  // Anonymous users get cached analyses only — no live Claude calls.
+  // The three cache layers above already returned if they had a hit;
+  // by the time we're here we know we'd be paying for an AI call, so
+  // show a sign-in wall instead of letting strangers spend our quota.
+  if (typeof supaUser === 'undefined' || !supaUser) {
+    panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
+      + '<div class="asp-signin" style="padding:18px 16px;text-align:center">'
+      +   '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:6px">Sign in to analyze new sentences</div>'
+      +   '<div style="font-size:12px;color:#475569;line-height:1.55;margin-bottom:14px">Pre-analyzed sentences are open to everyone. Live AI breakdowns of fresh sentences need an account.</div>'
+      +   '<button onclick="closeSentPanel();if(typeof openAuthModal===\'function\')openAuthModal(\'signin\')" style="padding:9px 18px;border-radius:999px;border:0;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 16px rgba(30,58,138,.32)">Sign in — Free</button>'
+      + '</div>';
+    return;
+  }
+
   if (typeof callClaude !== 'function') {
     panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
       + '<div class="asp-error">분석 기능을 불러올 수 없습니다.</div>';
