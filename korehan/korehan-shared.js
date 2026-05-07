@@ -2259,7 +2259,7 @@ async function renderSectionPage(section) {
 }
 
 
-function renderAllPage() {
+async function renderAllPage() {
   var articles = published();
   var listEl   = document.getElementById('dyn-article-list');
   if (!listEl) return;
@@ -2299,16 +2299,28 @@ function renderAllPage() {
   window._allArticlesCache = articles;
 
   if (searchQ) {
-    articles = articles.filter(function(a) {
-      // Include title_en + section_key so English keywords match
-      // Korean-bodied articles. Without these an English query like
-      // "tech" returned 0 even when matching content existed.
-      var text = (a.title || '') + ' ' + (a.title_en || '') + ' '
-        + (a.body || '') + ' ' + (a.full || '') + ' '
-        + (a.section || '') + ' '
-        + (typeof getSectionKey === 'function' ? (getSectionKey(a.section) || '') : '');
-      return text.toLowerCase().indexOf(searchQ.toLowerCase()) !== -1;
+    // Server-side ilike across title/body/full. The bulk All News fetch
+    // no longer ships body text (3MB → 200KB), so we can't filter
+    // locally — but on-demand search is more accurate anyway since it
+    // hits ALL articles, not just the 500 we cached.
+    listEl.innerHTML = '<div style="padding:60px;text-align:center;color:#94a3b8">Searching…</div>';
+    var serverHits = [];
+    try { serverHits = await searchArticlesServer(searchQ, 200); } catch(e) {}
+    // Section-key match (e.g. "tech" → beauty key) doesn't fit ilike
+    // so we still augment with locally cached articles whose section
+    // key matches the query.
+    var lq = searchQ.toLowerCase();
+    var localKeyHits = articles.filter(function(a) {
+      var sk = (typeof getSectionKey === 'function') ? String(getSectionKey(a.section) || '') : '';
+      return sk && sk.toLowerCase().indexOf(lq) !== -1;
     });
+    var seen = {};
+    articles = serverHits.concat(localKeyHits).filter(function(a) {
+      if (!a || !a.id || seen[a.id]) return false;
+      seen[a.id] = true;
+      return true;
+    });
+    try { _khHydrateTitlesEnFromCache(articles); } catch(e) {}
   }
 
   // Rails layout when browsing freely; flat grid when searching so results

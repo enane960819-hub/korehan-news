@@ -3281,9 +3281,13 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 /* Word Book notebook style */
 /* Word Book — Dark theme, compact cards */
 .wb-notebook { max-width:900px;margin:20px auto;background:transparent;border-radius:0;border:none;overflow:visible; }
-.wb-header { background:linear-gradient(135deg,#1e1b4b,#312e81);padding:20px 24px;text-align:center;border-radius:16px;margin-bottom:16px; }
+.wb-header { position:relative;background:linear-gradient(135deg,#1e1b4b,#312e81);padding:20px 24px;text-align:center;border-radius:16px;margin-bottom:16px; }
 .wb-header-title { font-size:20px;font-weight:900;color:#fff; }
 .wb-header-sub { font-size:12px;color:rgba(255,255,255,.5);margin-top:4px; }
+.wb-back-btn { position:absolute;top:14px;left:14px;display:inline-flex;align-items:center;gap:5px;padding:6px 11px 6px 9px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;letter-spacing:.01em; }
+.wb-back-btn:hover { background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);transform:translateX(-1px); }
+.wb-back-btn svg { width:14px;height:14px; }
+@media(max-width:860px) { .wb-back-btn { display:none; } }
 .wb-spine { display:none; }
 .wb-entry { display:grid;grid-template-columns:1fr auto;gap:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;margin-bottom:8px;transition:all .15s;cursor:pointer;position:relative; }
 .wb-entry:hover { background:rgba(124,58,237,.08);border-color:rgba(139,92,246,.25);transform:translateY(-1px); }
@@ -3849,6 +3853,10 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   <div style="max-width:1160px;margin:0 auto;padding:24px">
     <div class="wb-notebook">
       <div class="wb-header">
+        <button type="button" class="wb-back-btn" onclick="switchSrTab('study', document.querySelectorAll('.sr-top-tab')[0])" aria-label="Back to Study">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          <span>Back to Study</span>
+        </button>
         <div class="wb-header-title">My Word Book</div>
         <div class="wb-header-sub">Saved words, expressions & slang</div>
         <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">

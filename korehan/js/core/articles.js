@@ -246,12 +246,16 @@ async function loadArticlesFromDB(options) {
     return _articlesCache;
   }
   var lim = useHomeOptimizedQuery ? 30 : useAllArticles ? 500 : 80;
+  // All News browse uses metadata-only columns. The lede body was
+  // dragging the payload to ~3MB on 500 rows (20s+ on desktop). Search
+  // now goes through searchArticlesServer() which does a server-side
+  // ilike — no need to ship lede text to every visitor up front.
   // Try the lite column list first; fall back to '*' if PostgREST
   // rejects an unknown column (production schemas can lag behind the
   // codebase). Without this fallback any missing column on the lite
   // list (e.g. video_kind, source_url) would drop the home page to
   // an empty hero and leave "Loading today's articles…" forever.
-  var primary = useHomeOptimizedQuery ? HOME_ARTICLE_SELECT : LIST_ARTICLE_SELECT;
+  var primary = (useHomeOptimizedQuery || useAllArticles) ? HOME_ARTICLE_SELECT : LIST_ARTICLE_SELECT;
   var selects = [primary, FULL_ARTICLE_SELECT];
   for (var i = 0; i < selects.length; i++) {
     try {
@@ -301,6 +305,44 @@ async function loadArticleById(id) {
 
 function getCachedArticles() {
   return _articlesCache || [];
+}
+
+// Server-side full-text search. Used by All News when the search box has
+// a value — keeps the bulk fetch metadata-only while still letting users
+// search across title + body content. Escapes %/_/, in the query so
+// learner queries like "100%" don't blow up the LIKE pattern.
+async function searchArticlesServer(query, limit) {
+  var sb = getSupa();
+  var q = String(query || '').trim();
+  if (!sb || !q) return [];
+  var lim = limit || 100;
+  var safe = q.replace(/([%_,])/g, '\\$1');
+  var pattern = '%' + safe + '%';
+  // OR across title (Korean), title_en (English gloss), body (lede), and
+  // full (long-form). LIST_ARTICLE_SELECT here so result cards still get
+  // the lede for the search-result preview snippet.
+  var orFilter = [
+    'title.ilike.' + pattern,
+    'title_en.ilike.' + pattern,
+    'title_ko.ilike.' + pattern,
+    'body.ilike.' + pattern,
+    'full.ilike.' + pattern,
+    'section.ilike.' + pattern
+  ].join(',');
+  try {
+    var res = await sb.from('articles').select(LIST_ARTICLE_SELECT)
+      .or(orFilter)
+      .order('created_at', { ascending: false })
+      .limit(lim);
+    if (res.error) {
+      console.warn('search articles error', res.error);
+      return [];
+    }
+    return normalizeArticles(res.data || []);
+  } catch(e) {
+    console.warn('search articles exception', e);
+    return [];
+  }
 }
 
 // ── DB ────────────────────────────────────────────────────────
