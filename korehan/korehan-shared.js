@@ -316,23 +316,11 @@ function khNormalizeVocabNoun(ko, rom, en) {
   en = en || '';
   if (!ko || ko.length < 2) return null;
   if (/하다$/.test(ko) && ko.length >= 3) {
-    var stem = ko.replace(/하다$/, '');
-    // Only strip 하다 when the resulting stem is 2+ Korean syllables.
-    // Action-verb compounds like 노력하다 → 노력 (2 syl) are real nouns,
-    // but adjectives like 흔하다 → 흔 (1 syl) leave a meaningless
-    // fragment that's not a Korean word in its own right. Keep the
-    // dictionary form for those.
-    var koreanSyl = (stem.match(/[가-힣]/g) || []).length;
-    if (koreanSyl >= 2) {
-      return {
-        ko: stem,
-        rom: rom.replace(/[-\s]*hada$/i, ''),
-        en: en.replace(/^to\s+/i, '')
-      };
-    }
-    // Single-syllable 하다 adjective — return as-is so the learner
-    // sees the real word ("흔하다" → "common"), not a fragment.
-    return { ko: ko, rom: rom, en: en };
+    return {
+      ko: ko.replace(/하다$/, ''),
+      rom: rom.replace(/[-\s]*hada$/i, ''),
+      en: en.replace(/^to\s+/i, '')
+    };
   }
   if (/다$/.test(ko)) return null;
   return { ko: ko, rom: rom, en: en };
@@ -3999,6 +3987,11 @@ function _avRenderItem(it) {
   var safeK  = k.replace(/'/g, "\\'");
   var safeR  = rom.replace(/'/g, "\\'");
   var safeE  = en.replace(/'/g, "\\'");
+  var adminDel = window._isAdmin
+    ? '<button class="avi-del-btn" title="Delete this word from the article cache (visible to all users)" onclick="khArticleVocabRemove(\'' + safeK + '\')" aria-label="Delete">'
+      + '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+      + '</button>'
+    : '';
   return '<div class="art-vocab-item" data-avi-ko="' + escapeHtml(k) + '">'
     + '<div class="avi-main">'
     + '<span class="art-vocab-ko">' + escapeHtml(k) + '</span>'
@@ -4011,9 +4004,69 @@ function _avRenderItem(it) {
     + 'onclick="handleVocabSave(this,\'' + safeK + '\',\'' + safeR + '\',\'' + safeE + '\')">'
     + (saved ? '<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg><span>Saved</span>' : '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span>Save</span>')
     + '</button>'
+    + adminDel
     + '</div>'
     + '</div>';
 }
+
+// Admin-only: remove a vocab entry from the article's Vocab tab and
+// persist the change to article_cache. Visible to every reader after
+// the next render. The current `_avAll` array gets filtered + paged
+// re-render so the UI updates instantly without waiting on the DB.
+window.khArticleVocabRemove = async function (ko) {
+  if (!window._isAdmin) return;
+  if (!ko) return;
+  if (!confirm('이 단어를 삭제할까요? 모든 독자한테 사라집니다.\n\n— ' + ko)) return;
+
+  var before = _avAll.slice();
+  _avAll = _avAll.filter(function (item) { return item && item.ko !== ko; });
+  // Re-render the current page (grab the same list element the tab
+  // initially renders into).
+  var el = document.getElementById('art-vocab-list');
+  if (el) {
+    // Clamp page if the deletion shrank past the current page.
+    var totalPages = Math.max(1, Math.ceil(_avAll.length / _avPageSize));
+    if (_avPage >= totalPages) _avPage = totalPages - 1;
+    _avRenderPage(el);
+  }
+
+  // Persist. Try wide schema first, fall back to KV.
+  try {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb) throw new Error('no supabase client');
+    var params = new URLSearchParams(window.location.search);
+    var articleId = params.get('id');
+    if (!articleId) throw new Error('no article id');
+    var nextVocabJson = JSON.stringify(_avAll);
+
+    var saveErr = null;
+    try {
+      var w = await sb.from('article_cache').upsert(
+        { article_id: String(articleId), vocab: nextVocabJson },
+        { onConflict: 'article_id' }
+      );
+      if (w.error) saveErr = w.error;
+    } catch (e) { saveErr = e; }
+    if (saveErr && /article_id|column.*does not exist|relation/i.test(String(saveErr.message || saveErr))) {
+      saveErr = null;
+      var kv = await sb.from('article_cache').upsert(
+        { content_type: 'article', content_id: String(articleId), cache_key: 'vocab', cache_value: nextVocabJson },
+        { onConflict: 'content_type,content_id,cache_key' }
+      );
+      if (kv.error) saveErr = kv.error;
+    }
+    if (saveErr) throw saveErr;
+    if (typeof showToast === 'function') showToast('삭제됐어요');
+  } catch (e) {
+    // Roll back the optimistic UI on failure so the admin sees the
+    // entry come back with an error message.
+    _avAll = before;
+    var el2 = document.getElementById('art-vocab-list');
+    if (el2) _avRenderPage(el2);
+    if (typeof showToast === 'function') showToast('삭제 실패: ' + (e.message || e), true);
+    else alert('삭제 실패: ' + (e.message || e));
+  }
+};
 function _avPagerHTML(total, page, pages) {
   if (pages <= 1) return '';
   var firstIdx = page * _avPageSize + 1;
@@ -4154,18 +4207,38 @@ function renderArticleVocab(a) {
   }
 
   function syncIntoHover(items) {
-    // Surface the vocab list into the body hover system so the same words
-    // are clickable / underlined in the article. We extend the global VOCAB
-    // (used by wrapVocab → .kh-word) and re-wrap the article body.
-    if (typeof VOCAB !== 'object' || !VOCAB) return;
+    // Two hover systems to keep in sync — the article body has hover
+    // behaviour from BOTH:
+    //   1. .kh-word (wrapVocab) — highlights words present in the global
+    //      VOCAB dict.
+    //   2. .kh-hover-word (korehan-hover-tooltips.js) — dotted
+    //      underline tooltip for words present in hover_vocab_master
+    //      OR registered via korehanHoverRegisterExtras.
+    // Earlier this only updated #1, so an article-only vocab word that
+    // wasn't in the hover_vocab_master table never got a tooltip — the
+    // user reported this as "hover sometimes works, sometimes doesn't".
+    // Register into both systems so every Vocab-tab entry is hoverable
+    // in the body.
+    if (!Array.isArray(items) || !items.length) return;
     var added = 0;
-    items.forEach(function(it) {
-      if (!it || !it.ko) return;
-      if (!VOCAB[it.ko] || !VOCAB[it.ko].en) {
-        VOCAB[it.ko] = { rom: it.rom || '', en: it.en || '' };
-        added++;
+    if (typeof VOCAB === 'object' && VOCAB) {
+      items.forEach(function(it) {
+        if (!it || !it.ko) return;
+        if (!VOCAB[it.ko] || !VOCAB[it.ko].en) {
+          VOCAB[it.ko] = { rom: it.rom || '', en: it.en || '' };
+          added++;
+        }
+      });
+    }
+    // System 2: dotted-underline hover tooltips. Idempotent — the helper
+    // dedupes against its own list.
+    try {
+      if (typeof window.korehanHoverRegisterExtras === 'function') {
+        window.korehanHoverRegisterExtras(items.map(function(it) {
+          return { ko: it.ko, en: it.en || '', rom: it.rom || '', note: it.note || '' };
+        }));
       }
-    });
+    } catch (_) {}
     if (added > 0) {
       try {
         var artEl = document.getElementById('art-tab-article');
@@ -8653,14 +8726,40 @@ function _khSpaLoadArticle(nextId, direction) {
     // MutationObserver in korehan-hover-tooltips.js eventually catches
     // up via its 250ms debounce, but on slower devices it sometimes
     // misses the renderArticlePage swap entirely — words on the new
-    // article never get wrapped, so hover silently breaks. Two-step:
-    //   1. Register article-specific extras (vocab not in the master
-    //      hover_vocab_master table) so they're tooltip-able.
-    //   2. Force an immediate re-scan, bypassing the debounce.
+    // article never get wrapped, so hover silently breaks.
+    //
+    // Pull the article's vocab from article_cache (the canonical
+    // store) and register it as hover extras BEFORE the Vocab tab is
+    // even opened, so every body word that has an entry gets a
+    // dotted-underline tooltip on first hover. Earlier this checked
+    // window._currentArticle.data.vocab — a field that's never
+    // populated, so the registration was effectively a no-op and
+    // hover only worked for words that happened to be in the master
+    // hover_vocab_master table.
     try {
-      if (window._currentArticle && window._currentArticle.data && Array.isArray(window._currentArticle.data.vocab)
-          && typeof window.korehanHoverRegisterExtras === 'function') {
-        window.korehanHoverRegisterExtras(window._currentArticle.data.vocab);
+      var _articleObj = window._currentArticle;
+      var _articleId = _articleObj && _articleObj.id;
+      if (_articleId && typeof window.korehanHoverRegisterExtras === 'function') {
+        // Pull cached vocab without blocking the article render — fire
+        // and forget; the MutationObserver re-scan handles re-wrap.
+        (async function () {
+          try {
+            if (typeof getFromCache === 'function') {
+              var cacheVocab = await getFromCache('article', _articleId, 'vocab');
+              if (Array.isArray(cacheVocab) && cacheVocab.length) {
+                window.korehanHoverRegisterExtras(cacheVocab.map(function (v) {
+                  return {
+                    ko:   v.ko || v.word_ko || v.word || '',
+                    en:   v.en || v.meaning_en || v.meaning || '',
+                    rom:  v.rom || v.reading || '',
+                    note: v.note || ''
+                  };
+                }));
+                if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh();
+              }
+            }
+          } catch (_) {}
+        })();
       }
       if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh();
     } catch(_) {}

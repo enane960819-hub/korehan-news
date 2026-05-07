@@ -2101,6 +2101,18 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
 .avi-save-btn.saved {
   border-color:#2255a4; background:#eff6ff; color:#2255a4;
 }
+/* Admin-only delete button on each Vocab tab card. Tucked next to
+   the save button; muted red so it doesn't compete visually with
+   the save action a regular reader uses. */
+.avi-del-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:30px; height:30px; padding:0;
+  border:1px solid #fca5a5; border-radius:8px;
+  background:#fef2f2; color:#b91c1c; cursor:pointer;
+  transition:background .12s, border-color .12s, color .12s;
+}
+.avi-del-btn:hover { background:#fee2e2; border-color:#dc2626; color:#7f1d1d; }
+.avi-del-btn:active { transform:scale(.96); }
 
 .art-divider { border:none; border-top:2px solid var(--border); margin:32px 0; }
 
