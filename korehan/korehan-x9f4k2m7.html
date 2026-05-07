@@ -5033,24 +5033,43 @@ async function runAutoGenerate(){
           // back to KV if the column doesn't exist. Surfaces a toast
           // on total failure so the admin doesn't keep paying for AI
           // calls that never get cached.
+          // Split expressions out so a missing `expressions` column
+          // doesn't tank the whole save — translations/vocab/grammar
+          // are the expensive parts to lose.
+          var _exprPayload = _row.expressions;
+          var _coreRow = Object.assign({}, _row);
+          delete _coreRow.expressions;
+
           var _saveErr = null;
           try {
-            const _wideRes = await getSb().from('article_cache').upsert(_row, { onConflict: 'article_id' });
+            const _wideRes = await getSb().from('article_cache').upsert(_coreRow, { onConflict: 'article_id' });
             if (_wideRes.error) _saveErr = _wideRes.error;
           } catch (e) { _saveErr = e; }
           // KV fallback: one row per cache_key.
           if (_saveErr && /article_id|column.*does not exist|relation/i.test(String(_saveErr.message || _saveErr))) {
             _saveErr = null;
-            for (const k of ['translation', 'vocab', 'grammar', 'quiz', 'expressions']) {
-              if (!_row[k]) continue;
+            for (const k of ['translation', 'vocab', 'grammar', 'quiz']) {
+              if (!_coreRow[k]) continue;
               try {
                 await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
                   content_type: 'article',
                   content_id:   String(articleId),
                   cache_key:    k,
-                  cache_value:  _row[k],
+                  cache_value:  _coreRow[k],
                 });
               } catch (e) { _saveErr = e; console.warn('[cache] kv save ' + k + ' failed:', e); }
+            }
+          }
+          // Expressions write happens in a separate try so it can
+          // fail (column missing) without taking the rest down.
+          if (_exprPayload) {
+            try {
+              await getSb().from('article_cache').upsert(
+                { article_id: String(articleId), expressions: _exprPayload },
+                { onConflict: 'article_id' }
+              );
+            } catch (e) {
+              console.warn('expressions write skipped:', e && e.message || e);
             }
           }
           if (_saveErr) {
