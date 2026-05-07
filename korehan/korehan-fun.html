@@ -7,11 +7,14 @@
   <link rel="stylesheet" href="korehan-shared.css?v=20260505b">
   <style>
     body{margin:0;background:#f3f7fc;color:#0f172a;font-family:'Happy Monkey','Jua','DM Sans',Inter,Pretendard,-apple-system,sans-serif}
-    .wrap{max-width:1160px;margin:0 auto;padding:22px 16px 56px}
-    .hero{background:linear-gradient(135deg,#0b1f3f,#1e3a8a 56%,#7c3aed);color:#fff;border-radius:18px;padding:32px 28px;box-shadow:0 20px 38px rgba(15,23,42,.18);position:relative;overflow:hidden}
+    .wrap{max-width:1280px;margin:0 auto;padding:0 24px 56px;position:relative;z-index:2}
+    /* Hero — matches the news/convo/stories family (eyebrow + bold h1 + p over a gradient banner). */
+    .hero{background:linear-gradient(160deg,#0b1f3f 0%,#1e3a8a 55%,#7c3aed 100%);color:#fff;padding:36px 0 80px;margin-bottom:-56px;position:relative;overflow:hidden}
     .hero::before{content:'';position:absolute;top:-40%;right:-10%;width:260px;height:260px;background:radial-gradient(circle,rgba(124,58,237,.35),transparent 70%);pointer-events:none}
-    .hero h1{margin:0;font-size:32px;font-weight:900;display:flex;align-items:center;gap:10px}
-    .hero p{margin:10px 0 0;color:rgba(255,255,255,.78);line-height:1.6;font-size:15px;max-width:480px}
+    .hero-inner{max-width:1280px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+    .hero-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.75);margin-bottom:10px}
+    .hero h1{margin:0 0 10px;font-family:'Playfair Display',Georgia,serif;font-size:38px;font-weight:900;line-height:1.15;letter-spacing:-.01em;display:inline-flex;align-items:center;gap:12px;color:#fff}
+    .hero p{margin:0;color:rgba(255,255,255,.85);line-height:1.7;font-size:15px;max-width:560px}
 
     .fun-game-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px}
     .fun-game-card{display:block;border-radius:18px;overflow:hidden;text-decoration:none;color:#fff;transition:.25s transform,.25s box-shadow;position:relative;aspect-ratio:4/3}
@@ -69,18 +72,21 @@
     body.kh-neon-on{background:#050b15 !important;color:#eefcff !important}
     body.kh-neon-on .hero{background:linear-gradient(135deg,#0c1a35,#1a2f6b 56%,#5b21b6);box-shadow:0 20px 38px rgba(0,0,0,.4)}
 
-    @media(max-width:900px){.fun-game-grid{grid-template-columns:repeat(2,1fr);gap:14px}.hero{padding:24px 20px}.hero h1{font-size:26px}}
-    @media(max-width:560px){.fun-game-grid{grid-template-columns:1fr;gap:12px}.wrap{padding:14px 12px 40px}.hero{padding:20px 16px}.hero h1{font-size:22px}.hero p{font-size:13px}.fun-game-card{aspect-ratio:16/9}.fun-title{font-size:16px}}
+    @media(max-width:900px){.fun-game-grid{grid-template-columns:repeat(2,1fr);gap:14px}.hero{padding:30px 0 60px}.hero h1{font-size:30px}}
+    @media(max-width:560px){.fun-game-grid{grid-template-columns:1fr;gap:12px}.wrap{padding:0 16px 40px}.hero{padding:22px 0 50px;margin-bottom:-34px}.hero-inner{padding:0 16px}.hero h1{font-size:24px;margin-bottom:6px}.hero p{font-size:12px;line-height:1.5}.fun-game-card{aspect-ratio:16/9}.fun-title{font-size:16px}}
   </style>
 </head>
 <body>
   <div id="kh-header"></div>
-  <main class="wrap">
-    <section class="hero">
-      <h1 style="display:inline-flex;align-items:center;gap:10px"><i data-lucide="gamepad-2" class="kh-ui-icon" style="width:32px;height:32px" aria-hidden="true"></i><span>Playground</span></h1>
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-eyebrow">KoreHani</div>
+      <h1><i data-lucide="gamepad-2" class="kh-ui-icon" style="width:32px;height:32px" aria-hidden="true"></i><span>Playground</span></h1>
       <p>Pick a mini game and have fun while learning Korean. Each game opens on its own dedicated page.</p>
-    </section>
-    <section id="fun-game-grid" class="fun-game-grid"></section>
+    </div>
+  </section>
+  <main class="wrap">
+    <section id="fun-game-grid" class="fun-game-grid" style="padding-top:24px"></section>
   </main>
   <div id="kh-footer"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

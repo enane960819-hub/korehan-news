@@ -16577,11 +16577,14 @@ function bmSelectWord(sentIdx, wordPos) {
   var totalCount = wo.shuffled.filter(function(x){ return x === word; }).length;
   if (usedCount >= totalCount) return;
   wo.selected.push(word);
+  try { if (typeof ttsSpeak === 'function') ttsSpeak(word); } catch(_){}
   renderBMStep2();
 }
 
 function bmDeselectWord(sentIdx, selIdx) {
+  var word = _bm.wordOrders[sentIdx].selected[selIdx];
   _bm.wordOrders[sentIdx].selected.splice(selIdx, 1);
+  try { if (word && typeof ttsSpeak === 'function') ttsSpeak(word); } catch(_){}
   renderBMStep2();
 }
 
@@ -19708,7 +19711,13 @@ function _dctRenderArrange() {
     var shuffled = words.slice();
     for (var i=shuffled.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1));var t=shuffled[i];shuffled[i]=shuffled[j];shuffled[j]=t; }
     if(words.length>1&&shuffled.every(function(w,i){return w===words[i];})){var t=shuffled[0];shuffled[0]=shuffled[shuffled.length-1];shuffled[shuffled.length-1]=t;}
-    _dctWOState = { sentIdx:_dctWOIdx, original:words, pool:shuffled, selected:[], result:null };
+    // Pre-select the first word of the intended order so the learner
+    // knows where to start. Korean often allows multiple grammatical
+    // orderings of the same chunks (e.g. "친구들이 제 사진을 좋아해요"
+    // vs "제 사진을 친구들이 좋아해요"); anchoring the start removes
+    // that ambiguity and avoids the "where do I begin" pause.
+    var preselected = words.length ? [words[0]] : [];
+    _dctWOState = { sentIdx:_dctWOIdx, original:words, pool:shuffled, selected:preselected, result:null };
   }
   var wo = _dctWOState;
   // Dictation modal uses a LIGHT theme; the shared .bm-word-chip class is
@@ -19749,9 +19758,17 @@ function dctWOPick(pi) {
   var used=_dctWOState.selected.filter(function(x){return x===w;}).length;
   var total=_dctWOState.pool.filter(function(x){return x===w;}).length;
   if(used>=total) return;
-  _dctWOState.selected.push(w); _dctRenderArrange();
+  _dctWOState.selected.push(w);
+  try { _dctSpeakSentence(w); } catch(_){}
+  _dctRenderArrange();
 }
-function dctWORemove(si) { if(!_dctWOState) return; _dctWOState.selected.splice(si,1); _dctRenderArrange(); }
+function dctWORemove(si) {
+  if(!_dctWOState) return;
+  var w = _dctWOState.selected[si];
+  _dctWOState.selected.splice(si,1);
+  if (w) { try { _dctSpeakSentence(w); } catch(_){} }
+  _dctRenderArrange();
+}
 function dctWOClear()    { if(!_dctWOState) return; _dctWOState.selected=[]; _dctRenderArrange(); }
 function dctWOCheck() {
   if(!_dctWOState) return;
