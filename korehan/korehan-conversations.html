@@ -213,11 +213,24 @@
 .dp-keyword:hover{background:#dbeafe;}
 
 /* ── Practice tab drills ── */
-.dp-pr-sub{font-size:13px;color:#64748b;margin:-6px 0 12px;line-height:1.5;}
+/* Drill picker (replaces the old stack-of-5-cards layout). Horizontal
+   pill row that scrolls on mobile when the labels overflow. The
+   active pill goes solid blue; disabled drills (no data) dim out. */
+.dp-pr-shell{padding:18px 18px 22px;}
+.dp-pr-tabs{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;margin:0 -4px 14px;padding:2px 4px 8px;scrollbar-width:none;}
+.dp-pr-tabs::-webkit-scrollbar{display:none;}
+.dp-pr-tab{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;flex-shrink:0;}
+.dp-pr-tab:hover:not(.is-disabled){background:#e0e7ff;border-color:#c7d2fe;color:#3730a3;}
+.dp-pr-tab.is-active{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:transparent;color:#fff;box-shadow:0 4px 10px rgba(37,99,235,.25);}
+.dp-pr-tab.is-disabled{opacity:.4;cursor:not-allowed;}
+.dp-pr-tab .kh-ui-icon{width:13px;height:13px;}
+.dp-pr-stages{}
+.dp-pr-stage-preview{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:6px 0;}
+.dp-pr-stage-blurb{font-size:13px;color:#475569;line-height:1.55;}
 .dp-pr-empty{font-size:13px;color:#94a3b8;padding:8px 0;}
 .dp-pr-progress{font-size:11px;font-weight:700;color:#64748b;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;}
 .dp-pr-done{font-size:15px;font-weight:800;color:#15803d;margin-bottom:12px;}
-.dp-pr-start{width:100%;padding:11px 16px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s;}
+.dp-pr-start{display:inline-block;padding:9px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s;}
 .dp-pr-start:hover{background:#1d4ed8;}
 /* Expression Match */
 .dp-pr-em-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
@@ -1328,18 +1341,16 @@ function _shuffle(arr) {
   return a;
 }
 
-// Render the Practice cards. Drills are stage-gated to feel like a
-// progression: Expression Match → Vocab in Context → Reply Check →
-// Comprehension Quiz → Sentence Build → deeper Study Room CTA.
-// The two newer drills (Comprehension Quiz + Sentence Build) use AI
-// for question generation and DOM word-arrange respectively, modelled
-// on the article-study learning loop the user pointed at.
+// Practice section: drill picker + single stage. Five drills used to
+// stack as full-width cards with thick padding — at 5 entries that
+// got 난잡 (the user's word). Now: a single card with a horizontal
+// chip-row picker at the top, the active drill renders below it, and
+// the deeper Study Room CTA sits on its own at the bottom.
 function _convPracticeCardsHTML(c) {
   var hasExpr  = !!(c && (c.key_expressions || []).length >= 2);
   var hasVocab = !!(c && (c.vocab || []).filter(function(v){ return v && v.ko && v.en; }).length);
   var hasReply = !!(c && (c.msgs || []).filter(function(m){ return m && (m.s === 'l' || m.s === 'r'); }).length >= 4);
   var hasComp  = !!(c && (c.msgs || []).filter(function(m){ return m && m.txt && (m.s === 'l' || m.s === 'r'); }).length >= 4);
-  // Sentence Build needs at least one dialogue line with 3+ word chunks.
   var buildLine = (c && c.msgs || []).find(function(m) {
     if (!m || !m.txt || (m.s !== 'l' && m.s !== 'r')) return false;
     var w = m.txt.replace(/[.!?。！？]/g,'').trim().split(/\s+/);
@@ -1347,53 +1358,85 @@ function _convPracticeCardsHTML(c) {
   });
   var hasBuild = !!buildLine;
 
-  function startBtn(label, fn) {
-    return '<button class="dp-pr-start" onclick="' + fn + '()">' + label + '</button>';
+  // First available drill is the default active one so the panel
+  // doesn't open empty if Expression Match has no data.
+  var drills = [
+    { key:'em',    icon:'link-2',          label:'Expression Match', avail:hasExpr,  starter:'startExpressionMatch',  preview:'Match each Korean expression to its English meaning.', empty:'No key expressions for this conversation.' },
+    { key:'vic',   icon:'library',         label:'Vocab in Context', avail:hasVocab, starter:'startVocabInContext',   preview:'Read a dialogue line, pick what the highlighted word means.', empty:'No vocabulary for this conversation.' },
+    { key:'rc',    icon:'message-circle',  label:'Reply Check',      avail:hasReply, starter:'startReplyCheck',       preview:'Choose the natural reply to each line.',                       empty:'Not enough dialogue lines for this drill.' },
+    { key:'comp',  icon:'help-circle',     label:'Comprehension',    avail:hasComp,  starter:'startComprehensionQuiz',preview:'3 questions about who said what, why, and how it unfolds.',  empty:'Not enough dialogue lines for a quiz.' },
+    { key:'build', icon:'shuffle',         label:'Sentence Build',   avail:hasBuild, starter:'startSentenceBuild',    preview:'Rebuild a real line by tapping the chunks in order.',          empty:'No dialogue line long enough for this drill.' }
+  ];
+  var defaultKey = (drills.find(function(d){ return d.avail; }) || drills[0]).key;
+  // Persist any prior selection across re-renders (tab switches keep
+  // the user on the drill they were doing).
+  if (window._convPracticeActive && drills.some(function(d){ return d.key === window._convPracticeActive; })) {
+    defaultKey = window._convPracticeActive;
+  } else {
+    window._convPracticeActive = defaultKey;
   }
-  function emptyMsg(text) {
-    return '<div class="dp-pr-empty">' + escapeHtml(text) + '</div>';
+
+  var pickerHTML = drills.map(function(d) {
+    var disabled = !d.avail;
+    var isActive = d.key === defaultKey;
+    return '<button class="dp-pr-tab' + (isActive ? ' is-active' : '') + (disabled ? ' is-disabled' : '') + '"'
+      + ' onclick="setConvPracticeActive(\'' + d.key + '\')"'
+      + (disabled ? ' disabled' : '')
+      + ' title="' + escapeHtml(d.label) + '">'
+      + '<i data-lucide="' + d.icon + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
+      + '<span>' + escapeHtml(d.label) + '</span>'
+      + '</button>';
+  }).join('');
+
+  // Each drill mounts its own div the existing start* functions
+  // already target. We stamp them all so the start handlers don't
+  // need to know about the picker; the picker just controls which
+  // is visible via display:none.
+  function stage(d) {
+    var inner = d.avail
+      ? '<div class="dp-pr-stage-preview">'
+        + '<div class="dp-pr-stage-blurb">' + escapeHtml(d.preview) + '</div>'
+        + '<button class="dp-pr-start" onclick="' + d.starter + '()">Start</button>'
+        + '</div>'
+      : '<div class="dp-pr-empty">' + escapeHtml(d.empty) + '</div>';
+    return '<div class="dp-pr-stage" data-drill="' + d.key + '"' + (d.key === defaultKey ? '' : ' style="display:none"') + '>'
+      + '<div id="dp-pr-' + d.key + '">' + inner + '</div>'
+      + '</div>';
   }
+  var stagesHTML = drills.map(stage).join('');
 
   return ''
-    + '<div class="dp-study-card" data-study="practice">'
-    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="link-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Expression Match</span></div>'
-    +   '<div class="dp-pr-sub">Match each Korean expression to its English meaning.</div>'
-    +   '<div id="dp-pr-em">' + (hasExpr ? startBtn('Start matching', 'startExpressionMatch') : emptyMsg('No key expressions for this conversation.')) + '</div>'
+    + '<div class="dp-study-card dp-pr-shell" data-study="practice">'
+    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="dumbbell" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Practice</span></div>'
+    +   '<div class="dp-pr-tabs">' + pickerHTML + '</div>'
+    +   '<div class="dp-pr-stages">' + stagesHTML + '</div>'
     + '</div>'
 
-    + '<div class="dp-study-card" data-study="practice">'
-    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Vocab in Context</span></div>'
-    +   '<div class="dp-pr-sub">Read the dialogue line, pick what the highlighted word means.</div>'
-    +   '<div id="dp-pr-vic">' + (hasVocab ? startBtn('Start drill', 'startVocabInContext') : emptyMsg('No vocabulary for this conversation.')) + '</div>'
-    + '</div>'
-
-    + '<div class="dp-study-card" data-study="practice">'
-    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Reply Check</span></div>'
-    +   '<div class="dp-pr-sub">Choose the natural reply to each line.</div>'
-    +   '<div id="dp-pr-rc">' + (hasReply ? startBtn('Start drill', 'startReplyCheck') : emptyMsg('Not enough dialogue lines for this drill.')) + '</div>'
-    + '</div>'
-
-    + '<div class="dp-study-card" data-study="practice">'
-    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="help-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Comprehension Quiz</span></div>'
-    +   '<div class="dp-pr-sub">3 questions about who said what, why, and how the conversation unfolds.</div>'
-    +   '<div id="dp-pr-comp">' + (hasComp ? startBtn('Start quiz', 'startComprehensionQuiz') : emptyMsg('Not enough dialogue lines for a quiz.')) + '</div>'
-    + '</div>'
-
-    + '<div class="dp-study-card" data-study="practice">'
-    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="shuffle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Sentence Build</span></div>'
-    +   '<div class="dp-pr-sub">Rebuild a real line from the conversation by tapping the chunks in order.</div>'
-    +   '<div id="dp-pr-build">' + (hasBuild ? startBtn('Start building', 'startSentenceBuild') : emptyMsg('No dialogue line long enough for this drill.')) + '</div>'
-    + '</div>'
-
-    // Deeper study CTA — mirrors the article reader's Review→Study Room
-    // pattern. Opens the conv-study modal in Study Room and auto-loads
-    // this conversation via mode=conversation&id=<id>.
+    // Deeper study CTA — kept as its own card so it has clear standalone
+    // emphasis rather than competing with the drill picker.
     + '<div class="dp-study-card dp-pr-deep" data-study="practice">'
     +   '<div class="dp-pr-deep-eyebrow">Want more depth?</div>'
     +   '<div class="dp-pr-deep-title">Study this in the Study Room</div>'
     +   '<div class="dp-pr-deep-sub">A 4-step guided flow — dialogue + flashcards + choose-response + sentence build.</div>'
     +   '<button class="dp-pr-deep-btn" onclick="goToStudyRoomConv()">Open in Study Room →</button>'
     + '</div>';
+}
+
+// Picker handler — swap which drill stage is visible without
+// re-rendering the whole panel (preserves any in-progress drill state
+// the user might come back to). Persisted on window so re-renders
+// (e.g. tab switches that re-build the practice section) restore it.
+function setConvPracticeActive(key) {
+  window._convPracticeActive = key;
+  document.querySelectorAll('.dp-pr-tab').forEach(function(b) {
+    b.classList.toggle('is-active', b.getAttribute('onclick').indexOf("'" + key + "'") !== -1);
+  });
+  document.querySelectorAll('.dp-pr-stage').forEach(function(s) {
+    s.style.display = s.getAttribute('data-drill') === key ? '' : 'none';
+  });
+  if (typeof lucide !== 'undefined' && lucide.createIcons) {
+    try { lucide.createIcons(); } catch(_) {}
+  }
 }
 
 function goToStudyRoomConv() {
