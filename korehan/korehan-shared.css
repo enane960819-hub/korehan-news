@@ -4331,11 +4331,18 @@ body.kh-reading-page #kh-rs-bookmark.active .kh-rs-label { color: #fbbf24; }
 body.kh-reading-page #kh-rs-comment svg,
 body.kh-reading-page #kh-rs-study svg { width: 22px; height: 22px; }
 
-/* Inline Comments section is hidden on reading pages — the drawer
-   picks it up on demand. Override takes effect after setupImmersive
-   Reading adds the body class. */
-body.kh-reading-page #art-comments { display: none; }
-body.kh-reading-page #kh-comment-drawer #art-comments { display: block; }
+/* Inline Comments section is hidden on reading pages on mobile — the
+   drawer picks it up on demand. Desktop keeps the normal inline form
+   below the article. Override takes effect after setupImmersiveReading
+   adds the body class. */
+@media (max-width: 900px) {
+  body.kh-reading-page #art-comments { display: none; }
+  body.kh-reading-page #kh-comment-drawer #art-comments { display: block; }
+}
+@media (min-width: 901px) {
+  body.kh-reading-page #kh-comment-drawer { display: none !important; }
+  body.kh-reading-page #kh-rs-comment { display: none !important; }
+}
 
 /* ── Bottom-sheet comment drawer ─────────────────────────────────── */
 #kh-comment-drawer {
