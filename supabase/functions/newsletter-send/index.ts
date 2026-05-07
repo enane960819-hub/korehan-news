@@ -132,6 +132,19 @@ function withUnsubFooter(html: string, unsubUrl: string) {
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
+// In-process per-email cooldown to stop one address being used to
+// shotgun confirmation emails (was the obvious vector after we made
+// the subscribe RPC public). Lives in module scope so it survives
+// across requests within the same Deno isolate. Hard-cleared by
+// isolate restart, which is fine — a real abuser would need to wait
+// out our 1-min window across hundreds of cold-start instances.
+const SUBSCRIBE_COOLDOWN_MS = 60_000
+const lastSubscribeAt = new Map<string, number>()
+function _gcSubscribeMap() {
+  const cutoff = Date.now() - SUBSCRIBE_COOLDOWN_MS * 4
+  for (const [email, t] of lastSubscribeAt) if (t < cutoff) lastSubscribeAt.delete(email)
+}
+
 async function handleSubscribe(
   sb: ReturnType<typeof createClient>,
   body: { email?: string; name?: string; source?: string },
@@ -141,6 +154,18 @@ async function handleSubscribe(
   if (!email || !email.includes('@')) {
     return jsonResponse({ ok: false, error: 'invalid_email' }, 400, cors)
   }
+  // Per-email cooldown: 1 minute between confirm-email triggers. Keeps
+  // a single subscriber from being signed up 1000× by a bot in a few
+  // seconds, which would burn the Resend quota and look like spam to
+  // the recipient.
+  const now = Date.now()
+  const last = lastSubscribeAt.get(email) || 0
+  if (now - last < SUBSCRIBE_COOLDOWN_MS) {
+    return jsonResponse({ ok: true, status: 'cooldown' }, 200, cors)
+  }
+  lastSubscribeAt.set(email, now)
+  if (lastSubscribeAt.size > 1000) _gcSubscribeMap()
+
   const { data: rpcRes, error: rpcErr } = await sb.rpc('newsletter_request_subscribe', {
     p_email: email,
     p_name: body.name || null,
@@ -250,6 +275,17 @@ async function handleSendCampaign(
     return jsonResponse({ ok: false, error: 'subscriber_fetch_failed' }, 500, cors)
   }
 
+  // Pre-load every prior 'sent' send for THIS campaign in one query
+  // instead of per-subscriber maybeSingle inside the loop. The old
+  // pattern was ~1 round trip per subscriber: 1000 subs ≈ 1000 DB
+  // queries + 120ms-per-loop pacing → well past the function's wall
+  // budget. Now it's a single SELECT, in-memory Set lookup per row.
+  const { data: priorSends } = await sb.from('newsletter_sends')
+    .select('sub_id')
+    .eq('campaign_id', campaignId)
+    .eq('status', 'sent')
+  const alreadySent = new Set((priorSends || []).map((r: { sub_id: string }) => r.sub_id))
+
   let sentCount = 0
   let failCount = 0
   // Resend free tier rate limit is ~10/sec. We trickle by inserting
@@ -261,11 +297,7 @@ async function handleSendCampaign(
       : `${SITE_BASE}/unsubscribe.html`
     const html = withUnsubFooter(campaign.body_html, unsubUrl)
 
-    // Skip if already sent in a prior run of the same campaign (UNIQUE
-    // constraint on (campaign_id, sub_id) backstops this).
-    const { data: existing } = await sb.from('newsletter_sends')
-      .select('id, status').eq('campaign_id', campaignId).eq('sub_id', sub.id).maybeSingle()
-    if (existing && existing.status === 'sent') continue
+    if (alreadySent.has(sub.id as string)) continue
 
     const send = await sendViaResend(apiKey, {
       from: `${campaign.from_name} <${campaign.from_email}>`,
