@@ -2842,6 +2842,122 @@ window._khArtSentSharedCache = window._khArtSentSharedCache || {};
 // sentence tap on a wide-schema deployment falls through to a live
 // Claude call (defeating the whole pre-gen). Tries the wide-table
 // shape first, falls back to the kv shape.
+// Background "warm the cache" trigger. When a learner taps any sentence
+// in an article whose article_cache.translation is empty, we fire ONE
+// Claude pass over EVERY sentence in the body and persist the result so
+// the next reader gets instant per-sentence translations without burning
+// a Claude call. Per-article in-memory + sessionStorage lock prevents
+// multiple simultaneous taps from re-triggering. Failure is silent —
+// the live single-sentence call already painted the panel.
+window._khArtFullAnalyzeRunning = window._khArtFullAnalyzeRunning || {};
+async function _khTriggerFullArticleAnalyze(articleId) {
+  if (!articleId) return;
+  if (window._khArtFullAnalyzeRunning[articleId]) return;
+  // Per-tab lock survives reload of the article reader within the same
+  // session; the canonical "is it cached?" check still hits Supabase
+  // every page load via _khLoadArticleSentenceCache, so we don't need
+  // a long-lived flag.
+  var lockKey = 'kh_artfull_running_' + articleId;
+  try { if (sessionStorage.getItem(lockKey)) return; } catch(_) {}
+  window._khArtFullAnalyzeRunning[articleId] = true;
+  try { sessionStorage.setItem(lockKey, '1'); } catch(_) {}
+
+  try {
+    // Sentences are already split + numbered by _khWrapSentences when
+    // the body rendered — pull them straight out of the DOM rather
+    // than re-splitting (avoids drift between display and analysis
+    // indexing). Use the article reader's body element to avoid the
+    // related-articles strip / drawer comments.
+    // Article body lives inside #dyn-article (renderArticlePage). All
+    // .art-sent spans flow there. Falling back to document covers the
+    // story / convo readers if they ever start emitting .art-sent
+    // spans through the same wrapper.
+    var bodyEl = document.getElementById('dyn-article') || document;
+    var nodes = bodyEl.querySelectorAll('.art-sent');
+    var sentences = [];
+    nodes.forEach(function(n) {
+      var idx = parseInt(n.dataset.sentIdx, 10);
+      var text = (n.textContent || '').trim();
+      if (text && !isNaN(idx)) sentences.push({ idx: idx, text: text });
+    });
+    // Dedupe by idx so duplicate spans (e.g. lead + full body) don't
+    // make us pay twice for the same sentence.
+    var seen = {};
+    sentences = sentences.filter(function(s){ if (seen[s.idx]) return false; seen[s.idx] = true; return true; });
+    if (!sentences.length) return;
+
+    if (typeof callClaude !== 'function') return;
+    // Single Claude call with ALL sentences batched. Haiku handles ~30
+    // sentences with a 2200-token budget comfortably; the bulk-gen flow
+    // already runs similar batched prompts. Batching halves the wall-
+    // clock vs serial calls and keeps cost predictable.
+    var payload = sentences.map(function(s, i) {
+      return (i + 1) + '. ' + s.text;
+    }).join('\n');
+    var prompt =
+        'You are a Korean tutor analysing each sentence of an article for a TOPIK 3-4 learner.\n\n'
+      + 'Sentences (numbered, in order):\n' + payload + '\n\n'
+      + 'Return ONLY a JSON object — no preamble, no code fences:\n'
+      + '{ "sentences": [\n'
+      + '  { "translation": "natural English of sentence 1",\n'
+      + '    "vocab":   [{"ko":"<dictionary form>","en":"<short meaning>","note":"<optional 1-line>"}],\n'
+      + '    "grammar": [{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English>","example_in_sentence":"<chunk from sentence>"}]\n'
+      + '  }, ... one entry per input sentence, same order ...\n'
+      + ']}\n\n'
+      + 'Rules:\n'
+      + '- TRANSLATION: preserve the original subject. Do NOT inject "I/we" if Korean omitted it.\n'
+      + '- VOCAB: max 4 per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다…).\n'
+      + '- GRAMMAR: max 2 per sentence. Skip if just a noun phrase. Don\'t pick patterns that are just a vocab word\'s conjugation.\n'
+      + '- Return EXACTLY ' + sentences.length + ' entries in sentences[].';
+    var res = await callClaude({
+      feature: 'sentence-analyze-bulk',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: Math.min(8000, 250 * sentences.length + 600),
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('JSON not found');
+    var parsed = JSON.parse(clean.slice(oi, ei + 1));
+    var arr = parsed && Array.isArray(parsed.sentences) ? parsed.sentences : null;
+    if (!arr || !arr.length) throw new Error('empty sentences[]');
+
+    // Stitch back: each entry = {text, translation, vocab, grammar},
+    // indexed by source sentence idx so analyzeSentence can look up by
+    // either numeric index or text equality.
+    var stitched = sentences.map(function(s, i) {
+      var a = arr[i] || {};
+      return {
+        text: s.text,
+        idx: s.idx,
+        translation: a.translation || '',
+        vocab: Array.isArray(a.vocab) ? a.vocab : [],
+        grammar: Array.isArray(a.grammar) ? a.grammar : []
+      };
+    });
+
+    // Persist to article_cache.translation as { sentences: [...] }.
+    // upsertArticleCacheRow handles the kv vs wide schema split.
+    if (typeof upsertArticleCacheRow === 'function') {
+      try {
+        await upsertArticleCacheRow(articleId, { translation: { sentences: stitched } });
+      } catch(e) { console.warn('[sent-bg] persist failed:', e); }
+    }
+    // Update the in-memory shared cache so other taps in this session
+    // hit it instead of going live.
+    window._khArtSentSharedCache[articleId] = { sentences: stitched };
+    // Also drop a one-off log so the admin can confirm the trigger
+    // fired (the user pointed out it wasn't actually wired before).
+    console.log('[sent-bg] cached ' + stitched.length + ' sentences for article ' + articleId);
+  } catch(err) {
+    console.warn('[sent-bg] failed:', err && err.message || err);
+  } finally {
+    window._khArtFullAnalyzeRunning[articleId] = false;
+    try { sessionStorage.removeItem(lockKey); } catch(_) {}
+  }
+}
+
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
   if (window._khArtSentSharedCache[articleId] !== undefined) {
@@ -3045,12 +3161,13 @@ async function analyzeSentence(idx, el) {
   // Pre-generated shared cache (admin built this when the article was
   // created). Match by index first, fall back to text equality so an
   // index-shift from minor body edits still finds the right entry.
+  var sharedCache = null;
   try {
-    var shared = await _khLoadArticleSentenceCache(articleId);
-    if (shared && shared.sentences) {
-      var hit = shared.sentences[idx];
+    sharedCache = await _khLoadArticleSentenceCache(articleId);
+    if (sharedCache && sharedCache.sentences) {
+      var hit = sharedCache.sentences[idx];
       if (!hit || (hit.text || '').trim() !== sentenceText) {
-        hit = shared.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
+        hit = sharedCache.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
       }
       if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length))) {
         window._khSentAnalyzeCache[cacheKey] = hit;
@@ -3060,6 +3177,16 @@ async function analyzeSentence(idx, el) {
       }
     }
   } catch(_) {}
+
+  // No shared cache for this article yet — first reader to tap a
+  // sentence triggers a background pass over EVERY sentence and
+  // writes the result to article_cache.translation. The current
+  // single-sentence Claude call below still runs so this user gets
+  // an immediate panel; subsequent readers (and subsequent taps on
+  // this same article) hit the cache instead.
+  if (articleId && (!sharedCache || !sharedCache.sentences || !sharedCache.sentences.length)) {
+    try { _khTriggerFullArticleAnalyze(articleId); } catch(_) {}
+  }
 
   if (typeof callClaude !== 'function') {
     panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
