@@ -12,7 +12,28 @@ const ALLOWED_TABLES = new Set([
   'study_picture_prompts','study_room_grammar','study_room_helpers',
   'vocabulary_bank','fast_track_scenarios','user_submissions',
   'room_items','badges','hover_vocab_master','article_study_content',
-  'listening_quiz_bank','grammar_examples_cache','grammar_curriculum'
+  'listening_quiz_bank','grammar_examples_cache','grammar_curriculum',
+  'newsletter_campaigns','newsletter_sends','study_topic_schedule',
+  'profiles','user_blocks',
+])
+
+// Whitelist of RPCs the admin client is allowed to call. Without this
+// gate the rpc method below would let an admin (or anyone who's
+// hijacked the admin token) call ANY SECURITY DEFINER function in the
+// database — including ones that mutate other users' data. Add new
+// RPCs here as the admin tooling needs them.
+const ALLOWED_RPCS = new Set([
+  // Admin moderation
+  'admin_set_suspension',
+  // Newsletter (called from admin newsletter campaign UI)
+  'newsletter_request_subscribe','newsletter_confirm','newsletter_unsubscribe',
+  // Streak freeze / awards (claimable from user side too, but admin
+  // tooling exposes a manual trigger for QA)
+  'claim_streak_award','consume_streak_freeze',
+  // Study room generators (admin pre-gen tooling)
+  'assign_daily_vocab',
+  // Read-only reporting
+  'get_blocked_users',
 ])
 
 function getCorsHeaders(req: Request) {
@@ -103,7 +124,11 @@ Deno.serve(async (req) => {
       }
 
       if (method === 'rpc') {
-        const result = await sb.rpc(params.fn, params.args || {})
+        const fn = String(params.fn || '')
+        if (!ALLOWED_RPCS.has(fn)) {
+          return json({ error: 'RPC not allowed: ' + fn }, 400, cors)
+        }
+        const result = await sb.rpc(fn, params.args || {})
         return json(result, result.error ? 400 : 200, cors)
       }
 
