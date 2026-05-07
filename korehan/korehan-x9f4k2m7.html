@@ -5023,9 +5023,40 @@ async function runAutoGenerate(){
 
       if (_ok > 0 || _row.expressions) {
         try {
-          const _cacheRes = await getSb().from('article_cache').upsert(_row, { onConflict: 'article_id' });
-          if (_cacheRes.error) console.warn('cache upsert failed:', _cacheRes.error.message);
-        } catch(e) { console.warn('upsert failed', e); }
+          // Schema-aware write — earlier this just did .upsert with
+          // article_id, which silently failed against the KV-shaped
+          // table that production actually uses. Try wide first, fall
+          // back to KV if the column doesn't exist. Surfaces a toast
+          // on total failure so the admin doesn't keep paying for AI
+          // calls that never get cached.
+          var _saveErr = null;
+          try {
+            const _wideRes = await getSb().from('article_cache').upsert(_row, { onConflict: 'article_id' });
+            if (_wideRes.error) _saveErr = _wideRes.error;
+          } catch (e) { _saveErr = e; }
+          // KV fallback: one row per cache_key.
+          if (_saveErr && /article_id|column.*does not exist|relation/i.test(String(_saveErr.message || _saveErr))) {
+            _saveErr = null;
+            for (const k of ['translation', 'vocab', 'grammar', 'quiz', 'expressions']) {
+              if (!_row[k]) continue;
+              try {
+                await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+                  content_type: 'article',
+                  content_id:   String(articleId),
+                  cache_key:    k,
+                  cache_value:  _row[k],
+                });
+              } catch (e) { _saveErr = e; console.warn('[cache] kv save ' + k + ' failed:', e); }
+            }
+          }
+          if (_saveErr) {
+            console.warn('cache upsert failed:', _saveErr.message || _saveErr);
+            try { toast('⚠️ 캐시 저장 실패: ' + (_saveErr.message || _saveErr).slice(0, 120), true); } catch(_) {}
+          }
+        } catch(e) {
+          console.warn('upsert failed', e);
+          try { toast('⚠️ 캐시 저장 실패: ' + (e.message || e), true); } catch(_) {}
+        }
       }
 
       const statusLabel = saveStatus === 'published' ? 'Published' : 'Saved as draft';
