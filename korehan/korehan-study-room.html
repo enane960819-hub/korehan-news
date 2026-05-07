@@ -7522,12 +7522,20 @@ function _pmPickVocabParts(parts) {
     var p = parts[i];
     if (!p || !p.ko) continue;
     var ko = String(p.ko).trim();
-    if (!ko || ko.length < 2) continue;
+    // Keep ALL meaningful chunks, including 1-character morphemes
+    // (것, 줄, 만 etc. carry real meaning). Only drop pure
+    // punctuation and standalone particles. Earlier this dropped any
+    // ko < 2 chars and capped at 3, which silently swallowed pieces
+    // like '것을' (nominalizer + object marker) on the screenshot —
+    // the learner saw '그림 / 그리는 / 좋아해요' instead of all 4
+    // chunks.
+    if (!ko || /^[.,!?·…]+$/.test(ko)) continue;
     if (PARTICLE_ONLY.test(ko)) continue;
     picks.push({ ko: ko, en: p.en || '', srcIdx: i });
   }
-  // Cap at 3 — more is too much before the sentence breakdown.
-  return picks.slice(0, 3);
+  // Cap at 6 — enough to cover most beginner sentences without making
+  // the warm-up screen feel like a wall of cards.
+  return picks.slice(0, 6);
 }
 
 function _pmRenderVocab(body, lesson, pipsHtml) {
@@ -7875,11 +7883,11 @@ async function openKeyExpressionsModal() {
     }
   } catch(_) {}
 
-  // 2) localStorage cache. Bumped to ke_v2_ when the AI prompt was
-  //    reworked to require pattern notation + parts breakdown + diverse
-  //    examples. Older ke_ entries cached fact-style sentences and
-  //    redundant Korean ("독서 읽는 것") and need to be regenerated.
-  var cacheKey = 'ke_v2_' + topicKey;
+  // 2) localStorage cache. Bumped to ke_v3_ — v2 was producing broken
+  //    pattern instantiations like "그림을 잘 해요" (slot V was
+  //    locked to 해요 instead of the actual action verb). New prompt
+  //    is explicit that the verb is part of the slot.
+  var cacheKey = 'ke_v3_' + topicKey;
   try {
     var cached = localStorage.getItem(cacheKey);
     if (cached) {
@@ -7892,9 +7900,9 @@ async function openKeyExpressionsModal() {
     }
   } catch(e) {}
 
-  // 3) Cross-user DB cache. Same v2 bump as the localStorage key —
+  // 3) Cross-user DB cache. Same v3 bump as the localStorage key —
   //    DB rows seeded under the old prompt are stale.
-  var dbCacheKey = 'kex2::' + topicKoKey + '_' + levelKey;
+  var dbCacheKey = 'kex3::' + topicKoKey + '_' + levelKey;
   try {
     if (typeof _aiCacheGet === 'function') {
       var hit = await _aiCacheGet(dbCacheKey);
@@ -7935,12 +7943,13 @@ async function openKeyExpressionsModal() {
       + '  ]\n'
       + '}]\n\n'
       + 'STRICT RULES:\n'
-      + '1. ko: pattern form with ~ marking the variable slot. NEVER a fully-instantiated single sentence. Good: "~하는 것이 취미다". Bad: "책 읽는 것이 취미다" (no variable slot — that\'s an example, not the pattern).\n'
-      + '2. parts: 2-4 items breaking the pattern into its grammatical pieces, each with a SHORT plain-English explanation of what that piece does. The most important "new" word/grammar must appear here (e.g. for "~을/를 자주 V" the parts MUST include 자주 = "often, frequently", since that\'s what defines the pattern).\n'
-      + '3. examples: 2 sentences that REUSE the pattern with DIFFERENT content words in the slot. They must demonstrate variability — e.g. for "~하는 것이 취미다" use "운동하는 것이 취미예요" + "영화 보는 것이 취미예요", NOT two sentences both about reading books.\n'
-      + '4. NEVER generate redundant Korean. Specifically forbidden: "독서 읽는 것을 좋아하다" (독서 already means "reading"; can\'t pair it with 읽다). "음식 먹는 것" same issue. Use either the noun form (독서를 좋아하다) OR the verbal form (책 읽는 것을 좋아하다), never both.\n'
-      + '5. Mix expression types across the 6: grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다, ~ㄹ 때마다), collocations (시간이 나다, 손이 크다, 기분이 좋아지다), set phrases (오랜만이에요, 시간 가는 줄 모르다).\n'
-      + '6. Each expression must be naturally usable when talking about today\'s topic — not generic filler.'
+      + '1. ko: pattern form with ~ or V marking the variable slots. NEVER a fully-instantiated single sentence. Good: "~하는 것이 취미다", "~을/를 잘 V". Bad: "책 읽는 것이 취미다" (no variable slot — that\'s an example, not the pattern).\n'
+      + '2. CRITICAL — the verb is part of the slot, not part of the pattern. If the pattern is about a fixed adverb + any action verb (e.g. "~을/를 잘 V"), examples MUST use the actual action verb, not 해요. WRONG: "그림을 잘 해요" (해요 doesn\'t belong; the action is 그리다). RIGHT: "그림을 잘 그려요". WRONG: "축구를 잘 해요" only IF 축구하다 is what you mean — but if showing skill at football, "축구를 잘 해요" is OK because 축구하다 is a real verb. Never substitute 해요 for an arbitrary verb just to fill the slot.\n'
+      + '3. parts: 2-4 items breaking the pattern into its grammatical pieces, each with a SHORT plain-English explanation of what that piece does. The most important "new" word/grammar must appear here (e.g. for "~을/를 자주 V" the parts MUST include 자주 = "often, frequently", since that\'s what defines the pattern).\n'
+      + '4. examples: 2 sentences that REUSE the pattern with DIFFERENT content words in the slot. They must demonstrate variability — e.g. for "~하는 것이 취미다" use "운동하는 것이 취미예요" + "영화 보는 것이 취미예요", NOT two sentences both about reading books. Each example must be GRAMMATICALLY VALID Korean a native would actually say.\n'
+      + '5. NEVER generate redundant Korean. Specifically forbidden: "독서 읽는 것을 좋아하다" (독서 already means "reading"; can\'t pair it with 읽다). "음식 먹는 것" same issue. Use either the noun form (독서를 좋아하다) OR the verbal form (책 읽는 것을 좋아하다), never both.\n'
+      + '6. Mix expression types across the 6: grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다, ~ㄹ 때마다), collocations (시간이 나다, 손이 크다, 기분이 좋아지다), set phrases (오랜만이에요, 시간 가는 줄 모르다).\n'
+      + '7. Each expression must be naturally usable when talking about today\'s topic — not generic filler.'
     }]
   }).then(function(res) {
     try {
@@ -7993,7 +8002,9 @@ async function keOpenSituationQuiz(idx) {
   body.innerHTML = '<div style="text-align:center;padding:18px;color:rgba(255,255,255,.5);font-size:13px">⏳ Loading quiz…</div>';
 
   var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
-  var cacheKey = 'kh_ke_situation_quiz_' + encodeURIComponent(exp.ko) + '_' + dateKey;
+  // v2: situation quizzes were cached against expression text from the
+  // ke_v2 era which had broken patterns; force re-fetch.
+  var cacheKey = 'kh_ke_situation_quiz_v2_' + encodeURIComponent(exp.ko) + '_' + dateKey;
   var quiz = null;
   try {
     var raw = localStorage.getItem(cacheKey);
@@ -19913,7 +19924,29 @@ var PHONEME_PAIRS = [
 
 var _dctPhState = null; // { pairIdx, wordIdx, answer, round, correct, total, picks[] }
 
-function _dctPhonemeStart() {
+// Phoneme drill done-today key — the drill is short and there's no
+// SRS yet, so once-per-day is the right pacing. Reopening shows a
+// "Completed today" splash with the option to retry, instead of
+// starting a fresh round silently and confusing the user.
+function _dctPhDoneKey() {
+  var uid = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : 'anon';
+  return 'kh_dct_phoneme_done_' + uid + '_' + (typeof kstDateKey === 'function' ? kstDateKey() : new Date().toISOString().slice(0,10));
+}
+function _dctPhIsDoneToday() {
+  try { return !!localStorage.getItem(_dctPhDoneKey()); } catch(_) { return false; }
+}
+function _dctPhMarkDoneToday(score, total) {
+  try { localStorage.setItem(_dctPhDoneKey(), JSON.stringify({ score: score, total: total, at: Date.now() })); } catch(_){}
+}
+
+function _dctPhonemeStart(forceFresh) {
+  // If today's drill is already done and the caller didn't ask for a
+  // forced re-roll, show the completed state instead of silently
+  // generating a new 10-round set.
+  if (!forceFresh && _dctPhIsDoneToday()) {
+    _dctPhRenderDoneSplash();
+    return;
+  }
   // Build a 10-round sequence: random pair + random word per round
   var rounds = [];
   var poolPairs = PHONEME_PAIRS.slice();
@@ -19925,6 +19958,27 @@ function _dctPhonemeStart() {
   }
   _dctPhState = { rounds: rounds, idx: 0, correct: 0, picks: [] };
   _dctPhRender();
+}
+
+function _dctPhRenderDoneSplash() {
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  var sub  = document.getElementById('dct-step-sub');
+  if (sub) sub.textContent = 'Phoneme discrimination · ear training';
+  if (!body || !foot) return;
+  var prev = null;
+  try { prev = JSON.parse(localStorage.getItem(_dctPhDoneKey()) || 'null'); } catch(_){}
+  var pct = (prev && prev.total) ? Math.round(prev.score / prev.total * 100) : 0;
+  body.innerHTML =
+    '<div style="text-align:center;padding:30px 16px">'
+    + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:10px;color:#22c55e;filter:drop-shadow(0 0 12px rgba(34,197,94,.4))">'+BM_ICON_CHECK+'</div>'
+    + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px">Already done today</div>'
+    + (prev ? '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:16px">Today\'s score · '+(prev.score||0)+' / '+(prev.total||0)+' ('+pct+'%)</div>' : '')
+    + '<div style="font-size:13px;color:rgba(255,255,255,.65);line-height:1.55;max-width:320px;margin:0 auto">Phoneme contrasts cycle daily — come back tomorrow for a fresh set, or try again now if you want extra reps.</div>'
+    + '</div>';
+  foot.innerHTML =
+      '<button class="btn" onclick="_dctSwitchMode(\'topic\')">← Topic drill</button>'
+    + '<button class="btn btn-g" onclick="_dctPhonemeStart(true)" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Try again</span></button>';
 }
 
 function _dctPhRender() {
@@ -20042,7 +20096,11 @@ function _dctPhFinish() {
       + '</div>'
     + '</div>';
   foot.innerHTML = '<button class="btn" onclick="_dctSwitchMode(\'topic\')">← Topic drill</button>'
-    + '<button class="btn btn-g" onclick="_dctPhonemeStart()" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Try again</span></button>';
+    + '<button class="btn btn-g" onclick="_dctPhonemeStart(true)" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Try again</span></button>';
+
+  // Mark today as done so reopening the modal lands on the splash
+  // instead of silently rolling fresh rounds.
+  _dctPhMarkDoneToday(st.correct, st.rounds.length);
 
   // Persist for Listening axis (reuses existing quiz_results table)
   if (typeof supaUser !== 'undefined' && supaUser) {

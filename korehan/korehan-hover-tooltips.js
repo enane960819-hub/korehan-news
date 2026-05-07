@@ -231,7 +231,15 @@
     var tag = parent.tagName.toLowerCase();
     if (['script','style','textarea','input','button','select','option'].indexOf(tag) !== -1) return true;
     if (parent.closest('.kh-hover-word')) return true;
+    if (parent.closest('.kh-word')) return true;
     if (parent.closest('[data-hover-skip="1"]')) return true;
+    // Don't wrap text inside any button or button-role element. The
+    // wrapper span captures clicks for the tooltip, which steals
+    // them from the surrounding button — on desktop study room this
+    // showed up as "click area doesn't match the button". Mobile
+    // tap-to-reveal happened to dodge it because mobile doesn't
+    // hover, but the button's onclick still misfired.
+    if (parent.closest('button, [role="button"], a[onclick], a[href], label')) return true;
     return false;
   }
 
