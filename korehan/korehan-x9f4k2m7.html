@@ -4869,7 +4869,11 @@ async function runAutoGenerate(){
       const _title = article.title || '';
       const _level = diffInfo.level;
       const _sb    = getSb();
-      const _row   = { article_id: String(articleId), updated_at: new Date().toISOString() };
+      // updated_at intentionally omitted — production article_cache
+      // doesn't have that column, and including it made every upsert
+      // fail with "column updated_at does not exist". Confirmed via
+      // information_schema.columns query on May 7 2026.
+      const _row   = { article_id: String(articleId) };
       let   _ok    = 0;
 
       // 공통 호출 함수 — prefill 없이 순수 요청
@@ -5527,7 +5531,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
         });
       }
     } else {
-      const _patch = { translation: newTransStr, updated_at: new Date().toISOString() };
+      const _patch = { translation: newTransStr };
       if (_bfVocabStr)   _patch.vocab   = _bfVocabStr;
       if (_bfGrammarStr) _patch.grammar = _bfGrammarStr;
       await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(articleId), _patch);
@@ -5750,7 +5754,9 @@ async function genCache(articleId, schema, opts) {
   const _body  = a.body  || '';
   const _title = a.title || '';
   const _level = a.level || 'Intermediate';
-  const _row   = { article_id: String(articleId), updated_at: new Date().toISOString() };
+  // updated_at omitted — same reason as in the bulk auto-gen flow:
+  // production article_cache doesn't have that column.
+  const _row   = { article_id: String(articleId) };
   let _ok = 0;
 
   async function _call(instr, max_tok) {
@@ -7907,7 +7913,8 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
 async function _bulkGenerateArticleCache(articleId, title, body, levelKey) {
   var sb = getSb();
   if (!sb) return 0;
-  var row = { article_id: String(articleId), updated_at: new Date().toISOString() };
+  // updated_at omitted — production article_cache lacks the column.
+  var row = { article_id: String(articleId) };
   var ok = 0;
 
   async function _call(instruction, maxTok) {
@@ -8046,8 +8053,7 @@ async function bulkRegenerateVocab(limit) {
             try {
               var upWide = await sb.from('article_cache').upsert({
                 article_id: String(a.id),
-                vocab: JSON.stringify(cleaned),
-                updated_at: new Date().toISOString()
+                vocab: JSON.stringify(cleaned)
               }, { onConflict: 'article_id' });
               if (!upWide.error) savedWide = true;
               else bulkLog('  wide upsert err: ' + upWide.error.message, 'warn');
