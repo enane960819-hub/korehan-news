@@ -160,15 +160,19 @@ Deno.serve(async (req) => {
       if (override?.daily_call_limit) dailyCallLimit = override.daily_call_limit
       if (override?.monthly_cost_limit_usd != null) monthlyUsdLimit = Number(override.monthly_cost_limit_usd)
 
-      // Day window (UTC). KST date matters less than just having a
-      // consistent rolling 24h budget — UTC midnight is fine.
-      const dayStart = new Date()
-      dayStart.setUTCHours(0, 0, 0, 0)
+      // Day window (KST). Most users live in Korea — using UTC means
+      // the daily counter resets at 9am KST, halfway through the
+      // study day. Compute KST midnight by offsetting +9h, snapping
+      // to UTC date floor, then subtracting 9h back so the resulting
+      // ISO timestamp is the UTC instant equivalent to KST 00:00.
+      const KST_OFFSET_MS = 9 * 60 * 60 * 1000
+      const nowKstMs = Date.now() + KST_OFFSET_MS
+      const kstMidnightAsUtcMs = Math.floor(nowKstMs / 86_400_000) * 86_400_000 - KST_OFFSET_MS
+      const dayStart = new Date(kstMidnightAsUtcMs)
 
-      // Month window (UTC) — first day of the current calendar month.
-      const monthStart = new Date()
-      monthStart.setUTCDate(1)
-      monthStart.setUTCHours(0, 0, 0, 0)
+      // Month window (KST). Same idea — reset on the 1st at KST 00:00.
+      const kstNow = new Date(Date.now() + KST_OFFSET_MS)
+      const monthStart = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), 1) - KST_OFFSET_MS)
 
       // One round-trip pulls both windows. We fetch tokens + model so
       // we can compute exact cost rather than estimate.
@@ -194,7 +198,7 @@ Deno.serve(async (req) => {
       if (callsToday >= dailyCallLimit) {
         return jsonResponse({
           error: 'Daily AI limit reached',
-          detail: `Daily limit ${dailyCallLimit} calls. Resets at UTC midnight.`,
+          detail: `Daily limit ${dailyCallLimit} calls. Resets at KST midnight.`,
           quota: { callsToday, dailyCallLimit, monthlyUsd: Math.round(monthlyUsd * 100) / 100, monthlyUsdLimit },
           code: 'daily_call_limit',
         }, 429, cors)

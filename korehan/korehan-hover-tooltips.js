@@ -536,15 +536,29 @@
   function installObserver() {
     if (observer) observer.disconnect();
     observer = new MutationObserver(function(mutations) {
-      // Immediately wrap any newly-added element nodes so there's no
-      // visible delay when articles / cards load asynchronously.
+      // Only react to additions inside target containers — used to
+      // observe document.body which fired on every header/footer
+      // re-render and study-room state change. On the study-room
+      // (the heaviest page, ~141KB inline) that rebuilt the whole
+      // wrap tree on mode swap, sending the observer through a 250ms
+      // debounce loop that visibly janked mid-game.
+      var targets = getTargets();
+      var matched = false;
       mutations.forEach(function(m) {
         m.addedNodes.forEach(function(node) {
-          if (node.nodeType === 1) wrapAllIn(node);
+          if (node.nodeType !== 1) return;
+          for (var i = 0; i < targets.length; i++) {
+            if (targets[i].contains(node)) {
+              wrapAllIn(node);
+              matched = true;
+              return;
+            }
+          }
         });
       });
-      // Debounce a full re-scan as a safety net for text-only mutations.
-      debounceApply();
+      // Debounced safety net — only run if at least one mutation
+      // actually landed in a target.
+      if (matched) debounceApply();
     });
     observer.observe(document.body, { childList: true, subtree: true });
   }
@@ -568,13 +582,14 @@
     await loadHoverVocab();
     applyHoverTooltips();
     installObserver();
-    // Multiple delayed sweeps — modals that open after init's first
-    // sweep (article-study, story detail, PM) sometimes mount their
-    // text after the MutationObserver's debounce fires once and never
-    // again, so we re-scan known target containers a few more times.
-    setTimeout(applyHoverTooltips, 800);
-    setTimeout(applyHoverTooltips, 1800);
-    setTimeout(applyHoverTooltips, 3500);
+    // One delayed sweep — modals that open after init's first sweep
+    // (article-study, story detail, PM) sometimes mount their text
+    // after the MutationObserver's debounce fires once. Down from
+    // three timed sweeps (800/1800/3500ms) since the observer now
+    // catches new modal mounts itself; a single 1.2s safety sweep
+    // covers race conditions without polling. Fewer scheduled scans
+    // = less idle CPU on slow devices.
+    setTimeout(applyHoverTooltips, 1200);
   }
 
   if (document.readyState === 'loading') {

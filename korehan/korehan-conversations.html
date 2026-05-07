@@ -1276,6 +1276,20 @@ function toggleBubbleEn(bubbleEl) {
   // alignment + the .dp-msg-row.right text-align CSS still apply).
   var txt = bubbleEl.textContent.trim();
   if (!txt) return;
+  // Auth gate — anonymous bubble taps used to fall straight through
+  // to a Claude call. A scraper opening the conv reader page could
+  // tap every bubble and burn the daily quota. Keep pre-rendered
+  // EN translations free, but new live translations require sign-in.
+  if (typeof supaUser === 'undefined' || !supaUser) {
+    var div = document.createElement('div');
+    div.className = 'dp-bubble-en show';
+    div.style.cssText = 'background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.18);border-radius:8px;padding:8px 11px;font-size:12px;color:#1d4ed8;cursor:pointer';
+    div.textContent = 'Sign in to translate this line →';
+    div.addEventListener('click', function(){ if (typeof openAuthModal === 'function') openAuthModal('signin'); });
+    if (row.nextSibling) group.insertBefore(div, row.nextSibling);
+    else group.appendChild(div);
+    return;
+  }
   var div = document.createElement('div');
   div.className = 'dp-bubble-en show';
   div.textContent = 'Translating...';

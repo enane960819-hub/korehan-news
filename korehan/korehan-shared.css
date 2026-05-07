@@ -5325,3 +5325,51 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
 .kh-guest-gated .art-comments,
 .kh-guest-gated .art-related { display: none !important; }
 .kh-guest-gated .st-body-text.kh-gate-clip { max-height: 240px; }
+
+/* ── Tight Android (≤360px) breakpoints ─────────────────────────
+   Galaxy A5 / older mid-range Korean carrier phones land at 360px
+   width. The 480 / 600 / 640px breakpoints leave 360px screens
+   running rules sized for slightly bigger viewports — text overflow
+   on news titles, 3-column grids that compress to ~110px columns,
+   nav bars that wrap. This block fine-tunes density for those
+   phones. */
+@media (max-width: 360px) {
+  /* Container padding shrinks so 360px ÷ (16+16) = 328px content. */
+  .container { padding-left: 12px !important; padding-right: 12px !important; }
+
+  /* News card grids — keep 2-column but shrink gaps + radii. */
+  .news-grid,
+  .all-card-grid,
+  .card-grid { gap: 8px !important; }
+
+  /* Card titles — cap at 11px so multi-line headlines don't push the
+     thumb tap-zone below the fold. */
+  .nc-title { font-size: 11px !important; }
+  .nc.nc-overlay .nc-title { font-size: 14px !important; }
+  .nc-meta { font-size: 9.5px !important; }
+
+  /* Hero — tighter banner padding + headline. */
+  .page-banner-inner { padding: 6px 14px 4px !important; }
+  .page-banner h1 { font-size: 19px !important; }
+  .page-banner p { font-size: 11px !important; }
+
+  /* Filter pill bars (Stories / Conv / All News). Some pages used
+     padding: 10px 14px which overflows on 360px. */
+  .all-search-input { font-size: 13px !important; padding: 9px 12px !important; }
+  .alf-btn,
+  .conv-tab-bar .cf-tab,
+  .sf-pill { padding: 5px 9px !important; font-size: 11px !important; }
+
+  /* Footer — drop to single column on 360 too. */
+  .kh-foot-inner { padding: 22px 14px 18px !important; }
+
+  /* Topbar — give the logo less left padding so the level pill +
+     bell + avatar still fit. */
+  .kh-topbar-inner { padding-left: 12px !important; padding-right: 12px !important; gap: 8px !important; }
+
+  /* Bottom mobile nav (5-tab strip) — shrink icon + label so 5 tabs
+     don't overflow on 360. */
+  .mobile-bottom-nav .mb-nav-item { padding: 6px 0 !important; }
+  .mobile-bottom-nav .mb-nav-icon { width: 18px !important; height: 18px !important; }
+  .mobile-bottom-nav .mb-nav-label { font-size: 9.5px !important; }
+}
