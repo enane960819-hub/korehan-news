@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Privacy Policy — KoreHani</title>
   <meta name="description" content="KoreHanii Privacy Policy. Learn how we collect, use, and protect your personal data. GDPR and CCPA compliant." />
-  <link rel="canonical" href="https://korehannews.com/privacy-policy" />
+  <link rel="canonical" href="https://korehani.com/privacy-policy" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="korehan-shared.css?v=20260505p" />
   <style>
@@ -143,7 +143,7 @@
 
   <div class="legal-hero">
     <h1>Privacy Policy</h1>
-    <p class="last-updated">Last updated: March 30, 2026</p>
+    <p class="last-updated">Last updated: May 7, 2026</p>
   </div>
 
   <div class="legal-wrap">
@@ -155,10 +155,13 @@
         <li><a href="#how-we-use">How We Use Your Information</a></li>
         <li><a href="#cookies">Cookies &amp; Tracking</a></li>
         <li><a href="#ai-content">AI-Generated Content</a></li>
+        <li><a href="#social-features">Social Features &amp; Public Profile</a></li>
+        <li><a href="#newsletter">Newsletter &amp; Marketing Email</a></li>
         <li><a href="#data-sharing">Data Sharing</a></li>
         <li><a href="#data-retention">Data Retention</a></li>
         <li><a href="#gdpr">Your Rights (GDPR)</a></li>
         <li><a href="#ccpa">California Rights (CCPA)</a></li>
+        <li><a href="#pipa">Korean PIPA Rights</a></li>
         <li><a href="#children">Children's Privacy</a></li>
         <li><a href="#security">Security</a></li>
         <li><a href="#changes">Changes to This Policy</a></li>
@@ -167,7 +170,7 @@
     </div>
 
     <div class="legal-highlight">
-      KoreHani ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and services at <strong>korehannews.com</strong>. Please read this policy carefully. If you disagree with its terms, please discontinue use of our site.
+      KoreHani ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and services at <strong>korehani.com</strong>. Please read carefully — by using the Service you agree to the practices described here. If you do not agree, please discontinue use of the site.
     </div>
 
     <!-- 1 -->
@@ -185,7 +188,7 @@
       <ul>
         <li><strong>Usage data:</strong> Articles read, vocabulary saved, quiz results, study streaks, TOPIK level progress, and other learning activity.</li>
         <li><strong>Device &amp; technical data:</strong> IP address, browser type and version, operating system, referring URL, and time zone.</li>
-        <li><strong>Log data:</strong> Server logs recording requests made to our infrastructure (Supabase/Netlify), including timestamps and error codes.</li>
+        <li><strong>Log data:</strong> Server logs recording requests made to our infrastructure (Supabase, Cloudflare Pages), including timestamps and error codes.</li>
         <li><strong>Cookies and similar technologies:</strong> See Section 3 for details.</li>
       </ul>
 
@@ -193,6 +196,23 @@
       <ul>
         <li><strong>Google OAuth:</strong> When you sign in with Google, we receive your email address, display name, and profile photo from Google.</li>
         <li><strong>Supabase:</strong> Our database and authentication provider may supply session metadata.</li>
+      </ul>
+
+      <h3>1.4 User-Generated Content (UGC)</h3>
+      <ul>
+        <li><strong>Comments:</strong> Text you submit on articles, including your display name and timestamp.</li>
+        <li><strong>Guestbook posts:</strong> Messages you write on other users' walls (visible to anyone visiting that profile).</li>
+        <li><strong>Display name &amp; profile photo:</strong> What other learners see when you appear in comments, leaderboards, or your public profile page.</li>
+        <li><strong>Friend requests &amp; friendships:</strong> The list of people you have connected with.</li>
+        <li><strong>Block list:</strong> Users you have blocked. Block records are private to you.</li>
+        <li><strong>Notifications:</strong> Records of in-app events delivered to you (friend requests, guestbook posts, badge awards, streak freeze events).</li>
+      </ul>
+
+      <h3>1.5 Virtual Economy Data</h3>
+      <ul>
+        <li><strong>Coin balance (nyang):</strong> Your in-app virtual currency balance and transaction history (earnings + spending in the shop or gacha).</li>
+        <li><strong>Inventory:</strong> Items purchased or earned (badges, room decorations, profile cosmetics, streak freezes).</li>
+        <li><strong>Room layout:</strong> Where you have placed items in your personal room.</li>
       </ul>
     </div>
 
@@ -242,16 +262,76 @@
       </ul>
     </div>
 
-    <!-- 5 -->
+    <!-- 5 — Social features & public profile -->
+    <div class="legal-section" id="social-features">
+      <h2>5. Social Features &amp; Public Profile</h2>
+
+      <h3>5.1 What is public</h3>
+      <p>The following information is visible to anyone — signed in or not — once you create an account:</p>
+      <ul>
+        <li>Your display name and (if you uploaded one) profile photo.</li>
+        <li>Your TOPIK level / XP / streak / articles-read counts (aggregated, in leaderboards and on your public profile page at <code>/korehan-profile.html?user=…</code>).</li>
+        <li>Earned badges shown in your collection.</li>
+        <li>Comments you post on articles.</li>
+        <li>Your guestbook (read by anyone, but only friends can post).</li>
+      </ul>
+
+      <h3>5.2 Friends &amp; friend requests</h3>
+      <p>You can send a friend request from another learner's profile or via the comment thread. The recipient is notified and may accept, decline, or block you. Accepted friendships are visible to both sides; once-friends can write on each other's guestbook.</p>
+
+      <h3>5.3 Blocking other users</h3>
+      <p>You may block any user from your profile page or friends settings. Blocking:</p>
+      <ul>
+        <li>Removes any existing friendship between you.</li>
+        <li>Cancels any pending friend requests in either direction.</li>
+        <li>Prevents the blocked user from sending new friend requests, posting on your guestbook, or interacting with you through the social system.</li>
+        <li>Hides their content from your view in comments and notifications (frontend filter).</li>
+      </ul>
+      <p>Block records are private to you. The blocked user is not notified that they have been blocked. You can unblock at any time from your blocked-users list.</p>
+
+      <h3>5.4 Account suspension by us</h3>
+      <p>We may suspend an account that violates our <a href="terms-of-service" style="color:var(--bright);font-weight:600">Terms of Service</a> (e.g., harassment, spam, scraping, abusive content). Suspended accounts retain read access to their own data but cannot post comments, guestbook messages, friend requests, or send notifications. Where appropriate we will email the suspended user with the reason and a path to appeal.</p>
+
+      <h3>5.5 Data control</h3>
+      <p>You can:</p>
+      <ul>
+        <li>Edit or delete your display name / profile photo from <strong>My Page</strong>.</li>
+        <li>Delete any comment or guestbook post you authored.</li>
+        <li>Delete any guestbook post on your own wall (you are the host).</li>
+        <li>Unfriend a user (friendship row removed for both sides).</li>
+        <li>Delete your account, which removes all UGC, friendships, blocks, and notifications associated with you.</li>
+      </ul>
+    </div>
+
+    <!-- 6 — Newsletter -->
+    <div class="legal-section" id="newsletter">
+      <h2>6. Newsletter &amp; Marketing Email</h2>
+      <p>We operate an opt-in newsletter sent through Resend. We do not add anyone to the newsletter without an explicit subscribe action.</p>
+
+      <h3>6.1 Double opt-in</h3>
+      <p>When you submit your email through the footer form, we send a confirmation email with a unique token link. Your subscription does not become active until you click that link. Unconfirmed subscriptions are removed from our active list.</p>
+
+      <h3>6.2 What you receive</h3>
+      <p>Once confirmed, you receive periodic editorial updates (weekly Korean learning tips, new content highlights, occasional product announcements). We do not share your email with third-party advertisers.</p>
+
+      <h3>6.3 Unsubscribing</h3>
+      <p>Every newsletter email includes a one-click unsubscribe link with a unique token. We honour the standard <code>List-Unsubscribe</code> header for one-click unsubscribe in compatible mail clients (Gmail, Apple Mail, Outlook). Unsubscribing flips your status to <code>unsubscribed</code> immediately. Subscription records are retained for 12 months for audit purposes (proof you were once subscribed) and then deleted.</p>
+
+      <h3>6.4 Transactional email</h3>
+      <p>The newsletter consent does not cover transactional email (password reset, billing receipts, account confirmation). Those are sent regardless of newsletter subscription status because they are necessary to operate your account.</p>
+    </div>
+
+    <!-- 7 -->
     <div class="legal-section" id="data-sharing">
-      <h2>5. Data Sharing &amp; Disclosure</h2>
+      <h2>7. Data Sharing &amp; Disclosure</h2>
       <p>We do not sell your personal data. We share your information only in the following limited circumstances:</p>
 
       <h3>Service Providers</h3>
       <ul>
         <li><strong>Supabase:</strong> Database, authentication, and edge function hosting (servers located in the EU/US depending on region). Supabase acts as a data processor under a Data Processing Agreement.</li>
-        <li><strong>Netlify:</strong> Static file hosting and CDN delivery. Netlify may log IP addresses for security purposes.</li>
+        <li><strong>Cloudflare:</strong> DNS, content delivery (CDN), and Pages static hosting. Cloudflare may log IP addresses for security and DDoS mitigation.</li>
         <li><strong>Anthropic:</strong> AI language model API. Article content is sent to generate learning features as described in Section 4.</li>
+        <li><strong>Resend:</strong> Transactional and newsletter email delivery (subscription confirmation, weekly updates, password reset). Resend processes the recipient email + message body to dispatch mail.</li>
         <li><strong>Stripe (if applicable):</strong> Payment processing. Stripe is PCI-DSS compliant.</li>
         <li><strong>Google:</strong> OAuth authentication provider when you choose to sign in with Google.</li>
       </ul>
@@ -265,7 +345,7 @@
 
     <!-- 6 -->
     <div class="legal-section" id="data-retention">
-      <h2>6. Data Retention</h2>
+      <h2>8. Data Retention</h2>
       <ul>
         <li><strong>Active accounts:</strong> We retain your personal data and learning history for as long as your account is active.</li>
         <li><strong>Deleted accounts:</strong> When you delete your account, we will delete or anonymise your personal data within 30 days, except where we are required to retain it for legal or financial compliance (e.g., payment records retained for 7 years).</li>
@@ -276,7 +356,7 @@
 
     <!-- 7 -->
     <div class="legal-section" id="gdpr">
-      <h2>7. Your Rights Under GDPR (EU/EEA Users)</h2>
+      <h2>9. Your Rights Under GDPR (EU/EEA Users)</h2>
       <p>If you are located in the European Union or European Economic Area, you have the following rights under the General Data Protection Regulation (GDPR):</p>
       <ul>
         <li><strong>Right of access:</strong> You may request a copy of the personal data we hold about you.</li>
@@ -297,12 +377,12 @@
         <li><strong>Legal obligation:</strong> Financial record keeping and compliance with applicable law.</li>
       </ul>
 
-      <p>To exercise any GDPR rights, please contact us at <a href="mailto:privacy@korehannews.com" style="color:var(--bright);font-weight:600">privacy@korehannews.com</a>. We will respond within 30 days.</p>
+      <p>To exercise any GDPR rights, please contact us at <a href="mailto:privacy@korehani.com" style="color:var(--bright);font-weight:600">privacy@korehani.com</a>. We will respond within 30 days.</p>
     </div>
 
     <!-- 8 -->
     <div class="legal-section" id="ccpa">
-      <h2>8. California Privacy Rights (CCPA/CPRA)</h2>
+      <h2>10. California Privacy Rights (CCPA/CPRA)</h2>
       <p>If you are a California resident, the California Consumer Privacy Act (CCPA) and California Privacy Rights Act (CPRA) grant you the following rights:</p>
       <ul>
         <li><strong>Right to know:</strong> You may request disclosure of the categories and specific pieces of personal information we have collected about you, the categories of sources, and the business purposes for collection.</li>
@@ -321,18 +401,66 @@
         <li>Inferences drawn from the above (TOPIK level estimate, learning preferences)</li>
       </ul>
 
-      <p>To exercise your CCPA/CPRA rights, contact us at <a href="mailto:privacy@korehannews.com" style="color:var(--bright);font-weight:600">privacy@korehannews.com</a> or use the subject line "California Privacy Request."</p>
+      <p>To exercise your CCPA/CPRA rights, contact us at <a href="mailto:privacy@korehani.com" style="color:var(--bright);font-weight:600">privacy@korehani.com</a> or use the subject line "California Privacy Request."</p>
     </div>
 
-    <!-- 9 -->
+    <!-- 11 — Korean PIPA -->
+    <div class="legal-section" id="pipa">
+      <h2>11. Korean Personal Information Protection Act (PIPA)</h2>
+      <p>If you are a Korean resident or your data is processed within the Republic of Korea, the Personal Information Protection Act (개인정보 보호법, PIPA) applies. The summary below mirrors the statutory disclosure required under Article 30.</p>
+
+      <h3>11.1 Items collected (수집 항목)</h3>
+      <ul>
+        <li>Required: email address, display name, encrypted password (or Google OAuth identifier).</li>
+        <li>Generated by use: TOPIK level, study activity, comments, guestbook posts, friendships, blocks, virtual currency balance, IP address, browser/device metadata.</li>
+        <li>Optional: profile photo, paid subscription billing data (handled by Stripe).</li>
+      </ul>
+
+      <h3>11.2 Purposes (이용 목적)</h3>
+      <ul>
+        <li>Account creation, authentication, and account recovery.</li>
+        <li>Delivering the Korean learning service (vocabulary, articles, quizzes, AI-generated study aids).</li>
+        <li>Operating social features (friends, comments, guestbook, leaderboards).</li>
+        <li>Operating the virtual economy (nyang balance, shop purchases).</li>
+        <li>Sending transactional and (with consent) marketing email.</li>
+        <li>Security, abuse detection, and legal compliance.</li>
+      </ul>
+
+      <h3>11.3 Retention period (보유 기간)</h3>
+      <ul>
+        <li>Account and learning data: while the account is active; deleted within 30 days of account closure.</li>
+        <li>Payment records: 5 years (Korean Commercial Code 통신판매법).</li>
+        <li>Server access logs: 90 days.</li>
+        <li>Newsletter subscription history: 12 months after unsubscribe (audit trail).</li>
+      </ul>
+
+      <h3>11.4 Third-party processing entrustment (처리위탁)</h3>
+      <p>We entrust the following processors with limited personal-data handling. Each operates under a Data Processing Agreement equivalent to PIPA Article 26:</p>
+      <ul>
+        <li>Supabase, Inc. — DB, auth, edge function hosting</li>
+        <li>Cloudflare, Inc. — DNS, CDN, static hosting</li>
+        <li>Anthropic PBC — AI model API (article + prompt forwarding)</li>
+        <li>Resend, Inc. — outbound email delivery</li>
+        <li>Stripe, Inc. — payment processing (where applicable)</li>
+        <li>Google LLC — OAuth identity (sign-in only)</li>
+      </ul>
+
+      <h3>11.5 Your rights under PIPA</h3>
+      <p>Korean residents may request: access to their personal information (열람), correction (정정), deletion (삭제), suspension of processing (처리정지), and to withdraw consent (동의 철회). Requests should be sent to <a href="mailto:privacy@korehani.com" style="color:var(--bright);font-weight:600">privacy@korehani.com</a>. We aim to respond within 10 days.</p>
+
+      <h3>11.6 Privacy officer (개인정보 보호책임자)</h3>
+      <p>For PIPA enquiries, the contact is the same operator email above. If you are dissatisfied with our response, you may file a complaint with the Personal Information Protection Commission (PIPC) at <a href="https://www.privacy.go.kr" style="color:var(--bright)">privacy.go.kr</a> or call 국번없이 182.</p>
+    </div>
+
+    <!-- 12 -->
     <div class="legal-section" id="children">
-      <h2>9. Children's Privacy</h2>
-      <p>KoreHani is not directed at children under the age of 13 (or 16 in the EU). We do not knowingly collect personal information from children under these ages. If you believe we have inadvertently collected such information, please contact us immediately at <a href="mailto:privacy@korehannews.com" style="color:var(--bright);font-weight:600">privacy@korehannews.com</a> and we will delete it promptly.</p>
+      <h2>12. Children's Privacy</h2>
+      <p>KoreHani is not directed at children under the age of 13 (or 16 in the EU). We do not knowingly collect personal information from children under these ages. If you believe we have inadvertently collected such information, please contact us immediately at <a href="mailto:privacy@korehani.com" style="color:var(--bright);font-weight:600">privacy@korehani.com</a> and we will delete it promptly.</p>
     </div>
 
     <!-- 10 -->
     <div class="legal-section" id="security">
-      <h2>10. Security</h2>
+      <h2>13. Security</h2>
       <p>We implement industry-standard security measures to protect your personal data:</p>
       <ul>
         <li>All data transmission is encrypted via HTTPS/TLS.</li>
@@ -346,7 +474,7 @@
 
     <!-- 11 -->
     <div class="legal-section" id="changes">
-      <h2>11. Changes to This Privacy Policy</h2>
+      <h2>14. Changes to This Privacy Policy</h2>
       <p>We may update this Privacy Policy from time to time. When we make material changes, we will:</p>
       <ul>
         <li>Update the "Last updated" date at the top of this page.</li>
@@ -358,11 +486,11 @@
 
     <!-- 12 -->
     <div class="legal-section" id="contact-privacy">
-      <h2>12. Contact Us</h2>
+      <h2>15. Contact Us</h2>
       <p>If you have questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:</p>
       <ul>
-        <li><strong>Email:</strong> <a href="mailto:privacy@korehannews.com" style="color:var(--bright);font-weight:600">privacy@korehannews.com</a></li>
-        <li><strong>General enquiries:</strong> <a href="mailto:hello@korehannews.com" style="color:var(--bright);font-weight:600">hello@korehannews.com</a></li>
+        <li><strong>Email:</strong> <a href="mailto:privacy@korehani.com" style="color:var(--bright);font-weight:600">privacy@korehani.com</a></li>
+        <li><strong>General enquiries:</strong> <a href="mailto:hello@korehani.com" style="color:var(--bright);font-weight:600">hello@korehani.com</a></li>
       </ul>
       <p>For GDPR-related requests, we aim to respond within 30 days. For CCPA requests, we will respond within 45 days.</p>
     </div>
@@ -370,7 +498,7 @@
     <div class="legal-contact-box">
       <h2>Questions About Your Privacy?</h2>
       <p>Our team is here to help with any data or privacy questions.</p>
-      <a href="mailto:privacy@korehannews.com">Contact Privacy Team</a>
+      <a href="mailto:privacy@korehani.com">Contact Privacy Team</a>
     </div>
 
   </div>

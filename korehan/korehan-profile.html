@@ -234,6 +234,12 @@
   }
 
   async function resolveFriendshipState(meId, otherId) {
+    // Block check first — overrides any other state on display.
+    try {
+      var bl = await sb.from('user_blocks')
+        .select('id').eq('blocker_id', meId).eq('blocked_id', otherId).maybeSingle();
+      if (bl && bl.data) return 'blocked';
+    } catch (_) {}
     try {
       // Cheap approach: list-and-check. friendships RLS is "either side
       // visible", so a select on the lower/higher pair returns 0 or 1.
@@ -314,16 +320,20 @@
     if (friendshipState === 'self') {
       return '<a class="kh-pf-btn kh-pf-btn-ghost" href="korehan-mypage.html">Edit your profile</a>';
     }
+    if (friendshipState === 'blocked') {
+      return '<button class="kh-pf-btn kh-pf-btn-ghost" onclick="khPfUnblock(this)">Unblock</button>';
+    }
+    var blockBtn = '<button class="kh-pf-btn kh-pf-btn-ghost" onclick="khPfBlock(this)" title="Block this user"><i data-lucide="ban" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>';
     if (friendshipState === 'friends') {
-      return '<button class="kh-pf-btn kh-pf-btn-ghost kh-pf-btn-disabled" disabled><i data-lucide="users" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>Friends</button>';
+      return '<button class="kh-pf-btn kh-pf-btn-ghost kh-pf-btn-disabled" disabled><i data-lucide="users" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>Friends</button>' + blockBtn;
     }
     if (friendshipState === 'pending_out') {
-      return '<button class="kh-pf-btn kh-pf-btn-ghost kh-pf-btn-disabled" disabled>Request sent</button>';
+      return '<button class="kh-pf-btn kh-pf-btn-ghost kh-pf-btn-disabled" disabled>Request sent</button>' + blockBtn;
     }
     if (friendshipState === 'pending_in') {
-      return '<button class="kh-pf-btn kh-pf-btn-primary" onclick="khPfAcceptIncoming()"><i data-lucide="user-check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>Accept request</button>';
+      return '<button class="kh-pf-btn kh-pf-btn-primary" onclick="khPfAcceptIncoming()"><i data-lucide="user-check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>Accept request</button>' + blockBtn;
     }
-    return '<button class="kh-pf-btn kh-pf-btn-primary" onclick="khPfAddFriend(this)"><i data-lucide="user-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>Add friend</button>';
+    return '<button class="kh-pf-btn kh-pf-btn-primary" onclick="khPfAddFriend(this)"><i data-lucide="user-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>Add friend</button>' + blockBtn;
   }
 
   function renderBadges() {
@@ -408,6 +418,45 @@
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = 'Add friend'; }
       console.warn('add friend failed', e);
+    }
+  };
+
+  window.khPfBlock = async function (btn) {
+    if (!currentUser || !hostId) return;
+    if (!confirm('Block this user? They won\'t be able to send you friend requests, post on your wall, or interact with you. Existing friendship will be removed.')) return;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      var r = await sb.rpc('block_user', { p_target: hostId, p_reason: null });
+      if (r.error || (r.data && !r.data.ok)) throw r.error || new Error((r.data && r.data.error) || 'block_failed');
+      friendshipState = 'blocked';
+      var root = $('kh-pf-root');
+      var actionsEl = root.querySelector('.kh-pf-actions');
+      if (actionsEl) actionsEl.innerHTML = renderActionBar();
+      var composerWrap = root.querySelector('.kh-pf-section:last-child');
+      if (composerWrap) {
+        var oldForm = composerWrap.querySelector('.kh-pf-gb-form, .kh-pf-gb-locked');
+        if (oldForm) oldForm.outerHTML = renderGuestbookComposer();
+      }
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Block'; }
+      console.warn('block failed', e);
+    }
+  };
+
+  window.khPfUnblock = async function (btn) {
+    if (!currentUser || !hostId) return;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      var r = await sb.rpc('unblock_user', { p_target: hostId });
+      if (r.error || (r.data && !r.data.ok)) throw r.error || new Error('unblock_failed');
+      friendshipState = 'none';
+      var root = $('kh-pf-root');
+      var actionsEl = root.querySelector('.kh-pf-actions');
+      if (actionsEl) actionsEl.innerHTML = renderActionBar();
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Unblock'; }
     }
   };
 
