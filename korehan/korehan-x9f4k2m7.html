@@ -11986,17 +11986,16 @@ function switchFbTab(groupIdx) {
 // appear in the Study Room flow. Used to fill in placeholder sections
 // for activities the user didn't submit so the admin sees a consistent
 // daily report regardless of how much the student finished.
-// Activities that actually have a saveDraft / direct-submit path in
-// Study Room. Grammar Focus / Sentence Writing / Key Expressions have
-// no submission flow yet — they were showing 'Not submitted' forever.
-// Diary uses the same writing modal as Express Practice and DOES save
-// drafts, so it belongs here.
+// Activities that actually submit free-form Korean writing for AI
+// review. Picture Description was redesigned as a comprehension drill
+// (vocab + correct sentence pick + word arrange) — no textarea, no
+// submission. Dictation is a phoneme/word-arrange drill — no
+// submission either. Grammar Focus / Sentence Writing / Key
+// Expressions never had submit paths to begin with.
 var _FB_DAILY_ACTIVITIES = [
-  { type: 'express_practice',    label: 'Express Practice (Topic Writing)' },
-  { type: 'diary',               label: 'Diary' },
-  { type: 'article_study',       label: 'Article Study' },
-  { type: 'picture_description', label: 'Picture Description' },
-  { type: 'dictation',           label: 'Dictation' }
+  { type: 'express_practice', label: 'Express Practice (Topic Writing)' },
+  { type: 'diary',            label: 'Diary' },
+  { type: 'article_study',    label: 'Article Study' }
 ];
 
 // Singular-row labels (legacy individual submissions kept this shape).

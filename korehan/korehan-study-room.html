@@ -4891,19 +4891,10 @@ function checkWordOrder() {
   var isCorrect = ans.join(' ') === correct.join(' ');
   if (isCorrect) {
     res.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac;display:flex;align-items:center;flex-wrap:wrap;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span><br><span style="font-size:12px;opacity:.8;width:100%">' + correct.join(' ') + '</span></div>';
-    // Determine next step based on available data
-    var item = _picturePrompts.length ? _picturePrompts[_pictureIndex % _picturePrompts.length] : null;
-    var hasSents = item && item.incorrect_sentences && item.incorrect_sentences.length;
+    // Word arrangement is the final step in the redesigned PD flow.
+    markStageDone('picture');
     var nav = document.getElementById('pd-nav');
-    if (nav) {
-      if (hasSents) {
-        nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(3)">Next Step →</button>';
-      } else {
-        // No step 3 → mark done and allow close
-        markStageDone('picture');
-        nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
-      }
-    }
+    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
   } else {
     res.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Incorrect. Try again!</span></div>';
   }
@@ -15034,9 +15025,16 @@ function renderPicturePrompt() {
 }
 
 // ── 3-step navigation ──────────────────────────────────────────
+// Picture Description was a writing activity (vocab → arrange → write
+// + AI feedback). Redesigned to drop the writing entirely — it's now
+// a comprehension drill: learn the words, pick the grammatically
+// correct sentence among distractors, then assemble a sentence from
+// shuffled chunks. No textarea, no daily-package submission. The
+// admin already stores incorrect_sentences[] + sample_answer per
+// prompt; we use those directly.
 function _pdGoStep(step) {
   _pdStep = step;
-  var labels = ['Step 1 / 3 — Key Vocabulary', 'Step 2 / 3 — 어절 순서맞추기', 'Step 3 / 3 — 사진 묘사 글쓰기'];
+  var labels = ['Step 1 / 3 — Key Vocabulary', 'Step 2 / 3 — 맞는 문장 선택', 'Step 3 / 3 — 어절 순서맞추기'];
   var lbl = document.getElementById('pd-step-label');
   if (lbl) lbl.textContent = labels[step - 1] || '';
   [1,2,3].forEach(function(n) {
@@ -15074,11 +15072,75 @@ function _pdRenderStep1(item) {
 
 function _pdRenderStep2(item) {
   var body = document.getElementById('pd-step2-body'); if (!body) return;
+  // Step 2: 맞는 문장 선택 — admin stores 1 correct (sample_answer) +
+  // ≥1 wrong (incorrect_sentences). If either is missing, skip to
+  // Step 3 so the activity flow doesn't deadlock.
+  var correct = (item.sample_answer || '').trim();
+  var wrong = Array.isArray(item.incorrect_sentences)
+    ? item.incorrect_sentences.map(function(s){ return String(s||'').trim(); }).filter(Boolean)
+    : [];
+  if (!correct || !wrong.length) { _pdGoStep(3); return; }
+  // Up to 3 wrong distractors so the choice list stays scannable on
+  // mobile. Shuffle position so the answer isn't always slot 0.
+  var pool = [{ text: correct, correct: true }];
+  wrong.slice(0, 3).forEach(function(w){ pool.push({ text: w, correct: false }); });
+  for (var i = pool.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+  body.innerHTML =
+    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✅ 맞는 문장 선택</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:14px">사진을 가장 자연스럽고 문법에 맞게 묘사한 문장을 고르세요.</div>'
+    + '<div id="pd-pick-options" style="display:flex;flex-direction:column;gap:8px"></div>'
+    + '<div id="pd-pick-result" style="margin-top:12px;display:none"></div>';
+  var opts = document.getElementById('pd-pick-options');
+  pool.forEach(function(o, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pd-sent-btn';
+    b.textContent = String.fromCharCode(65 + i) + '. ' + o.text;
+    b.onclick = function() { _pdCheckCorrectPick(b, o.correct, correct); };
+    opts.appendChild(b);
+  });
+}
+
+function _pdCheckCorrectPick(btn, isCorrect, correctText) {
+  document.querySelectorAll('#pd-pick-options .pd-sent-btn').forEach(function(b){ b.disabled = true; });
+  var result = document.getElementById('pd-pick-result');
+  if (isCorrect) {
+    btn.style.cssText += ';background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.55);color:#86efac';
+    if (result) {
+      result.style.display = '';
+      result.innerHTML = '<div style="padding:12px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);border-radius:10px;color:#86efac;font-size:13px;line-height:1.55">✅ 정답이에요! 자연스럽고 문법에 맞는 묘사예요.</div>';
+    }
+  } else {
+    btn.style.cssText += ';background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.5);color:#fca5a5';
+    // Reveal the actual correct option
+    document.querySelectorAll('#pd-pick-options .pd-sent-btn').forEach(function(b){
+      if (b !== btn && b.textContent.indexOf(correctText) !== -1) {
+        b.style.cssText += ';background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.55);color:#86efac';
+      }
+    });
+    if (result) {
+      result.style.display = '';
+      result.innerHTML = '<div style="padding:12px;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.28);border-radius:10px;color:#fca5a5;font-size:13px;line-height:1.55">❌ 다시 한번 살펴보세요. 정답: <b style="color:#86efac">' + escapeHTML(correctText) + '</b></div>';
+    }
+  }
+  var nav = document.getElementById('pd-nav');
+  if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(3)">Next Step →</button>';
+}
+
+function _pdRenderStep3(item) {
+  // Step 3 was the writing-with-AI step — replaced with the word
+  // arrangement that used to be Step 2. Same core logic
+  // (renderWordOrderActivity / checkWordOrder / resetWordOrder), now
+  // the final step before completion.
+  var body = document.getElementById('pd-step3-body'); if (!body) return;
   var words = item.word_order_words || [];
-  if (!words.length) { _pdGoStep(3); return; }   // skip if admin left blank
+  if (!words.length) { _pdSkipToFinish(); return; }
   body.innerHTML =
     '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 어절 순서맞추기</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">단어를 클릭해서 올바른 순서로 배치하세요</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">단어를 클릭해서 올바른 순서로 배치하세요. 첫 단어는 미리 선택되어 있어요.</div>'
     + '<div id="pd-word-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.07);border-radius:10px;margin-bottom:8px;align-items:center"></div>'
     + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">내 답:</div>'
     + '<div id="pd-word-answer" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.04);border:1.5px dashed rgba(255,255,255,.18);border-radius:10px;margin-bottom:10px;align-items:center"></div>'
@@ -15088,54 +15150,6 @@ function _pdRenderStep2(item) {
     + '</div>'
     + '<div id="pd-word-result" style="margin-top:8px;display:none"></div>';
   renderWordOrderActivity(words);
-}
-
-function _pdRenderStep3(item) {
-  var body = document.getElementById('pd-step3-body'); if (!body) return;
-  var level = _currentLevel || 'Beginner';
-  var guidedPrompts = {
-    Starter: '이 사진에 ___이/가 있어요. ___하고 있어요.',
-    Beginner: '이 사진을 보고 누가 무엇을 하고 있는지 2~3문장으로 써보세요.',
-    Intermediate: '이 사진의 상황을 묘사하고, 이 장면에서 어떤 느낌이 드는지 써보세요.',
-    Advanced: '이 사진을 보고 상황을 자세히 묘사한 후, 이 장면이 일어나게 된 배경을 상상해서 써보세요.'
-  };
-  // Vocab scaffolding — keep the Step 1 vocab visible during writing
-  // so learners can reach for the words instead of switching tabs or
-  // giving up. Collapsed by default to keep the textarea prominent.
-  var vocab = item.vocab_items || [];
-  var vocabHtml = '';
-  if (vocab.length) {
-    var chips = vocab.map(function(v) {
-      return '<span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.28);color:#fff;font-size:12px;font-family:\'Noto Sans KR\',sans-serif"><b style="font-weight:700">' + (v.ko || '') + '</b><span style="opacity:.6;font-size:11px">— ' + (v.en || '') + '</span></span>';
-    }).join('');
-    vocabHtml =
-      '<details style="margin-bottom:10px;border:1px dashed rgba(167,139,250,.35);border-radius:10px;padding:8px 10px;background:rgba(167,139,250,.06)" open>'
-      + '<summary style="cursor:pointer;font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.6px;list-style:none">📚 어휘 참고 (' + vocab.length + ')</summary>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' + chips + '</div>'
-      + '</details>';
-  }
-  body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✏️ 사진 묘사 글쓰기</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">' + (guidedPrompts[level] || guidedPrompts.Beginner) + '</div>'
-    + vocabHtml
-    + '<textarea id="pd-input" style="width:100%;min-height:100px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;padding:12px;font-size:14px;font-family:\'Noto Sans KR\',sans-serif;background:rgba(255,255,255,.06);color:#fff;resize:vertical;outline:none;box-sizing:border-box" placeholder="한국어로 써보세요..."></textarea>'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">'
-    + '<span id="pd-char-count" style="font-size:11px;color:rgba(255,255,255,.4)">0 chars</span>'
-    + '</div>'
-    + '<div id="pd-result" style="display:none;margin-top:10px;padding:14px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)"></div>';
-
-  var textarea = document.getElementById('pd-input');
-  if (textarea) {
-    textarea.addEventListener('input', function() {
-      var cnt = document.getElementById('pd-char-count');
-      if (cnt) cnt.textContent = textarea.value.length + ' chars';
-    });
-  }
-
-  var nav = document.getElementById('pd-nav');
-  if (nav) nav.innerHTML =
-    '<button class="sr-activity-btn" onclick="checkPictureDescription()" style="margin-right:8px">🤖 AI 피드백 받기</button>'
-    + '<button class="sr-activity-btn" onclick="_pdSkipToFinish()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15)">건너뛰기</button>';
 }
 
 function _pdSkipToFinish() {
