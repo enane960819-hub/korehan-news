@@ -728,7 +728,7 @@ function _injectAuthModal() {
     <!-- 헤더 -->
     <div style="background:linear-gradient(135deg,#07122a,#0e2554);padding:26px 28px 22px;position:relative">
       <button onclick="closeAuthModal()" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">${KH_ICON_X}</span></button>
-      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:20px;color:#fff;margin-bottom:3px">Kore<span style="color:#7ab8f5;font-style:italic">Han</span></div>
+      <div style="font-size:24px;color:#fff;margin-bottom:3px"><span class="kh-logo-text">KoreHan<span class="kh-logo-i">ı</span></span></div>
       <div style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.8px;text-transform:uppercase">Your Korean learning journey</div>
     </div>
 

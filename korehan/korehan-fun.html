@@ -8,18 +8,29 @@
   <style>
     body{margin:0;background:#f3f7fc;color:#0f172a;font-family:'Happy Monkey','Jua','DM Sans',Inter,Pretendard,-apple-system,sans-serif}
     .wrap{max-width:1160px;margin:0 auto;padding:22px 16px 56px}
-    .hero{background:linear-gradient(135deg,#0b1f3f,#1e3a8a 56%,#7c3aed);color:#fff;border-radius:22px;padding:30px 30px 26px;box-shadow:0 24px 44px rgba(15,23,42,.22);position:relative;overflow:hidden}
-    .hero::before{content:'';position:absolute;top:-40%;right:-10%;width:280px;height:280px;background:radial-gradient(circle,rgba(124,58,237,.35),transparent 70%);pointer-events:none}
-    .hero::after{content:'';position:absolute;bottom:-30%;left:-8%;width:240px;height:240px;background:radial-gradient(circle,rgba(56,189,248,.22),transparent 70%);pointer-events:none}
-    .hero-eyebrow{font-size:11px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:rgba(167,139,250,.85);margin-bottom:6px;display:flex;align-items:center;gap:8px;position:relative;z-index:1}
-    .hero-eyebrow::before{content:'';display:inline-block;width:18px;height:2px;background:linear-gradient(90deg,#a78bfa,transparent);border-radius:2px}
-    .hero h1{margin:0;font-family:'Playfair Display','Noto Serif KR',serif;font-size:36px;font-weight:900;display:flex;align-items:center;gap:12px;letter-spacing:-.02em;position:relative;z-index:1}
-    .hero p{margin:8px 0 0;color:rgba(220,210,255,.78);line-height:1.55;font-size:14px;max-width:520px;position:relative;z-index:1}
-    .hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;position:relative;z-index:1}
-    .hero-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);color:#fff;font-size:12px;font-weight:700;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-    .hero-chip-num{color:#fde68a;font-weight:900}
-    .hero-cta{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:999px;background:linear-gradient(135deg,#fde68a,#fbbf24);color:#0b1f3f;font-size:12px;font-weight:900;cursor:pointer;border:0;font-family:inherit;box-shadow:0 6px 16px rgba(251,191,36,.32);transition:transform .15s,box-shadow .15s}
-    .hero-cta:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(251,191,36,.42)}
+    /* Compact header — used to be a tall hero banner. The user
+       flagged it as "banner-y, not header-y", so this is now a
+       single-row strip: icon + title + tagline on the left, stat
+       chip + CTA on the right. Background stays themed but the
+       padding + gradient + radial glows are pulled way back so it
+       reads as page chrome, not a marketing splash. */
+    .hero{background:linear-gradient(135deg,#0b1f3f,#1e3a8a);color:#fff;border-radius:16px;padding:14px 20px;box-shadow:0 8px 22px rgba(15,23,42,.16);border:1px solid rgba(124,58,237,.18);}
+    .hero-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .hero-title-block{min-width:0;flex:1;}
+    .hero h1{margin:0;font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;display:flex;align-items:center;gap:9px;letter-spacing:-.01em;line-height:1;}
+    .hero h1 .kh-ui-icon{width:22px;height:22px;color:#a78bfa}
+    .hero-tag{margin:5px 0 0;color:rgba(220,210,255,.62);font-size:11.5px;letter-spacing:.02em;}
+    .hero-actions{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+    .hero-stat{display:inline-flex;align-items:baseline;gap:5px;color:#fff;font-size:14px;font-weight:900;}
+    .hero-stat small{font-size:10px;font-weight:700;color:rgba(220,210,255,.55);text-transform:uppercase;letter-spacing:.1em;}
+    .hero-cta{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;background:linear-gradient(135deg,#fde68a,#fbbf24);color:#0b1f3f;font-size:12px;font-weight:900;cursor:pointer;border:0;font-family:inherit;box-shadow:0 4px 10px rgba(251,191,36,.30);transition:transform .15s,box-shadow .15s}
+    .hero-cta:hover{transform:translateY(-1px);box-shadow:0 8px 16px rgba(251,191,36,.42)}
+    @media (max-width:540px){
+      .hero{padding:12px 16px;border-radius:14px;}
+      .hero h1{font-size:19px;}
+      .hero-tag{font-size:11px;}
+      .hero-actions{width:100%;justify-content:space-between;}
+    }
 
     .fun-game-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:24px}
     .fun-game-card{display:block;border-radius:18px;overflow:hidden;text-decoration:none;color:#fff;transition:.25s transform,.25s box-shadow;position:relative;aspect-ratio:4/3}
@@ -85,13 +96,15 @@
   <div id="kh-header"></div>
   <main class="wrap">
     <section class="hero">
-      <div class="hero-eyebrow"><i data-lucide="sparkles" class="kh-ui-icon" style="width:13px;height:13px" aria-hidden="true"></i>Mini Games</div>
-      <h1><i data-lucide="gamepad-2" class="kh-ui-icon" style="width:32px;height:32px" aria-hidden="true"></i><span>Playground</span></h1>
-      <p>Pick a mini game and have fun while learning Korean. Each game opens on its own dedicated page.</p>
-      <div class="hero-meta">
-        <span class="hero-chip"><i data-lucide="grid-2x2" class="kh-ui-icon" style="width:13px;height:13px" aria-hidden="true"></i><span class="hero-chip-num" id="hero-game-count">9</span> games</span>
-        <span class="hero-chip"><i data-lucide="zap" class="kh-ui-icon" style="width:13px;height:13px" aria-hidden="true"></i>Free to play</span>
-        <button class="hero-cta" type="button" onclick="khPlaygroundSurprise()"><i data-lucide="dice-5" class="kh-ui-icon" style="width:13px;height:13px" aria-hidden="true"></i>Surprise me</button>
+      <div class="hero-row">
+        <div class="hero-title-block">
+          <h1><i data-lucide="gamepad-2" class="kh-ui-icon" aria-hidden="true"></i><span>Playground</span></h1>
+          <div class="hero-tag">Mini games · Korean drills · Free to play</div>
+        </div>
+        <div class="hero-actions">
+          <span class="hero-stat"><span id="hero-game-count">9</span><small>games</small></span>
+          <button class="hero-cta" type="button" onclick="khPlaygroundSurprise()"><i data-lucide="dice-5" class="kh-ui-icon" style="width:13px;height:13px" aria-hidden="true"></i>Surprise</button>
+        </div>
       </div>
     </section>
     <section id="fun-game-grid" class="fun-game-grid"></section>
