@@ -375,7 +375,10 @@
     ];
     // querySelectorAll because stories.html has two .st-container instances
     // (outer page wrapper + inner modal body) — we must scan both.
-    ['.conv-page-container', '.st-container', '.sr-body', '.learn-body', '.su-body', '.su-panel', '.as-panel'].forEach(function(sel) {
+    // .detail-panel = the conversations detail modal (chat bubbles
+    // live here; without it hover tooltips never reached the per-
+    // bubble Korean text and conversations had silent words).
+    ['.conv-page-container', '.detail-panel', '.st-container', '.sr-body', '.learn-body', '.su-body', '.su-panel', '.as-panel'].forEach(function(sel) {
       document.querySelectorAll(sel).forEach(function(el){ list.push(el); });
     });
     return list.filter(Boolean);

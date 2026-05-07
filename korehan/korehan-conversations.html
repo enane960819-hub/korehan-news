@@ -1211,16 +1211,32 @@ function _restoreConvMobileTab() {
 }
 
 // ── Bubble click → toggle English translation ──
+// Markup tree:
+//   .dp-msg-row > .dp-bubble-group
+//     ├ .dp-who
+//     ├ .dp-bubble-row > .dp-bubble (clicked) + .dp-bubble-save
+//     └ .dp-bubble-en   ← target sits here (sibling of the row)
+// The original implementation looked at bubbleEl.parentElement
+// (= .dp-bubble-row), which never contained .dp-bubble-en — so the
+// pre-rendered translation never showed and the AI fallback ran on
+// every click, inserting the translation INSIDE the row (next to
+// the save button) instead of underneath it.
 function toggleBubbleEn(bubbleEl) {
-  var en = bubbleEl.parentElement.querySelector('.dp-bubble-en');
+  var row = bubbleEl.parentElement;            // .dp-bubble-row
+  var group = row && row.parentElement;        // .dp-bubble-group
+  if (!group) return;
+  var en = group.querySelector(':scope > .dp-bubble-en');
   if (en) { en.classList.toggle('show'); return; }
-  // No pre-rendered translation — try AI translation
+  // No pre-rendered translation — fetch via Claude and append below
+  // the bubble row, as a sibling of .dp-bubble-row (so left/right
+  // alignment + the .dp-msg-row.right text-align CSS still apply).
   var txt = bubbleEl.textContent.trim();
   if (!txt) return;
   var div = document.createElement('div');
   div.className = 'dp-bubble-en show';
   div.textContent = 'Translating...';
-  bubbleEl.parentElement.insertBefore(div, bubbleEl.nextElementSibling);
+  if (row.nextSibling) group.insertBefore(div, row.nextSibling);
+  else group.appendChild(div);
   callClaude({feature:'conv-translate',model:'claude-haiku-4-5-20251001',max_tokens:100,messages:[{role:'user',content:'Translate this Korean to natural English. Return ONLY the translation, nothing else:\n'+txt}]})
     .then(function(r){ div.textContent=(r.content||[]).map(function(c){return c.text||'';}).join('').trim()||txt; })
     .catch(function(){ div.textContent='(Translation unavailable)'; });

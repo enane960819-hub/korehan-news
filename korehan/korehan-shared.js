@@ -5039,7 +5039,22 @@ function wrapVocab(el) {
     acceptNode: function(n) {
       if (!n.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
       var p = n.parentNode;
-      while (p) { if (p.classList && p.classList.contains('kh-word')) return NodeFilter.FILTER_REJECT; p = p.parentNode; }
+      // Skip text nodes already inside a hover-tooltip wrap (.kh-hover-word)
+      // OR a previous .kh-word wrap. When a word appears in BOTH the
+      // sentence-analysis VOCAB and the global hover_vocab_master, the
+      // hover system gets there first; nesting a .kh-word inside a
+      // .kh-hover-word produced overlapping dotted underlines and the
+      // user's eye couldn't tell anything was tappable. Keeping the
+      // hover wrap intact means overlapping words still show the
+      // dotted line (from .kh-hover-word) and the click goes to the
+      // hover dictionary — which is what the user asked for.
+      while (p) {
+        if (p.classList) {
+          if (p.classList.contains('kh-word')) return NodeFilter.FILTER_REJECT;
+          if (p.classList.contains('kh-hover-word')) return NodeFilter.FILTER_REJECT;
+        }
+        p = p.parentNode;
+      }
       return NodeFilter.FILTER_ACCEPT;
     }
   });
