@@ -236,6 +236,37 @@
 .dp-pr-opt-list{display:flex;flex-direction:column;gap:8px;}
 .dp-pr-opt{padding:11px 14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;text-align:left;line-height:1.5;color:#0f172a;transition:background .12s,border-color .12s;}
 .dp-pr-opt:hover:not(:disabled){background:#f8fbff;border-color:#bfdbfe;}
+/* Comprehension Quiz */
+.dp-pr-q{padding:0;}
+.dp-pr-q-progress{font-size:11px;font-weight:700;color:#64748b;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px;}
+.dp-pr-q-text{font-size:14px;color:#0f172a;line-height:1.55;font-weight:700;margin-bottom:12px;}
+.dp-pr-q-options{display:flex;flex-direction:column;gap:8px;}
+.dp-pr-q-opt{padding:11px 14px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;cursor:pointer;font-family:inherit;text-align:left;line-height:1.5;color:#0f172a;transition:all .12s;font-weight:600;}
+.dp-pr-q-opt:hover:not(:disabled){background:#eff6ff;border-color:#bfdbfe;}
+.dp-pr-q-opt-right{background:#dcfce7 !important;border-color:#22c55e !important;color:#15803d !important;}
+.dp-pr-q-opt-wrong{background:#fee2e2 !important;border-color:#ef4444 !important;color:#b91c1c !important;}
+.dp-pr-q-opt-dim{opacity:.45;}
+.dp-pr-q-fb{margin-top:12px;padding:11px 13px;border-radius:10px;font-size:13px;line-height:1.55;}
+.dp-pr-q-fb.is-right{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;}
+.dp-pr-q-fb.is-wrong{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;}
+.dp-pr-result{text-align:center;padding:18px 0;}
+.dp-pr-result-score{font-size:36px;font-weight:900;color:#2563eb;line-height:1;margin-bottom:6px;}
+.dp-pr-result-sub{font-size:13px;color:#64748b;}
+/* Sentence Build */
+.dp-pr-build-wrap{display:flex;flex-direction:column;gap:10px;}
+.dp-pr-build-hint{font-size:13px;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;line-height:1.5;}
+.dp-pr-build-tray{min-height:48px;border:1.5px dashed #bfdbfe;border-radius:12px;padding:9px 12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#f8fbff;}
+.dp-pr-build-pool{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0;}
+.dp-pr-empty-inline{font-size:12px;color:#94a3b8;}
+.dp-pr-chip{padding:8px 14px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#0f172a;font-family:'Noto Serif KR',serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .12s;}
+.dp-pr-chip:hover{background:#f8fbff;border-color:#bfdbfe;}
+.dp-pr-chip-on{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border-color:transparent;}
+.dp-pr-chip-on:hover{filter:brightness(1.05);}
+.dp-pr-build-actions{display:flex;gap:8px;margin-top:4px;}
+.dp-pr-build-actions .dp-pr-start{flex:1;}
+.dp-pr-build-actions .dp-pr-secondary{background:#fff;color:#475569;border:1.5px solid #e2e8f0;}
+.dp-pr-build-actions .dp-pr-secondary:hover{background:#f8fafc;border-color:#cbd5e1;}
+.dp-pr-build-actions .dp-pr-start[disabled]{opacity:.4;cursor:not-allowed;}
 .dp-pr-opt.correct{background:#dcfce7;border-color:#22c55e;color:#15803d;font-weight:700;}
 .dp-pr-opt.wrong{background:#fee2e2;border-color:#ef4444;color:#b91c1c;font-weight:700;}
 .dp-pr-opt:disabled{cursor:default;}
@@ -1297,13 +1328,24 @@ function _shuffle(arr) {
   return a;
 }
 
-// Render the three Practice cards. Each card starts in a "preview"
-// state with a Start button — drills only spin up when the learner
-// actually opens that drill.
+// Render the Practice cards. Drills are stage-gated to feel like a
+// progression: Expression Match → Vocab in Context → Reply Check →
+// Comprehension Quiz → Sentence Build → deeper Study Room CTA.
+// The two newer drills (Comprehension Quiz + Sentence Build) use AI
+// for question generation and DOM word-arrange respectively, modelled
+// on the article-study learning loop the user pointed at.
 function _convPracticeCardsHTML(c) {
   var hasExpr  = !!(c && (c.key_expressions || []).length >= 2);
   var hasVocab = !!(c && (c.vocab || []).filter(function(v){ return v && v.ko && v.en; }).length);
   var hasReply = !!(c && (c.msgs || []).filter(function(m){ return m && (m.s === 'l' || m.s === 'r'); }).length >= 4);
+  var hasComp  = !!(c && (c.msgs || []).filter(function(m){ return m && m.txt && (m.s === 'l' || m.s === 'r'); }).length >= 4);
+  // Sentence Build needs at least one dialogue line with 3+ word chunks.
+  var buildLine = (c && c.msgs || []).find(function(m) {
+    if (!m || !m.txt || (m.s !== 'l' && m.s !== 'r')) return false;
+    var w = m.txt.replace(/[.!?。！？]/g,'').trim().split(/\s+/);
+    return w.length >= 3 && w.length <= 9;
+  });
+  var hasBuild = !!buildLine;
 
   function startBtn(label, fn) {
     return '<button class="dp-pr-start" onclick="' + fn + '()">' + label + '</button>';
@@ -1329,6 +1371,18 @@ function _convPracticeCardsHTML(c) {
     +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Reply Check</span></div>'
     +   '<div class="dp-pr-sub">Choose the natural reply to each line.</div>'
     +   '<div id="dp-pr-rc">' + (hasReply ? startBtn('Start drill', 'startReplyCheck') : emptyMsg('Not enough dialogue lines for this drill.')) + '</div>'
+    + '</div>'
+
+    + '<div class="dp-study-card" data-study="practice">'
+    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="help-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Comprehension Quiz</span></div>'
+    +   '<div class="dp-pr-sub">3 questions about who said what, why, and how the conversation unfolds.</div>'
+    +   '<div id="dp-pr-comp">' + (hasComp ? startBtn('Start quiz', 'startComprehensionQuiz') : emptyMsg('Not enough dialogue lines for a quiz.')) + '</div>'
+    + '</div>'
+
+    + '<div class="dp-study-card" data-study="practice">'
+    +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="shuffle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Sentence Build</span></div>'
+    +   '<div class="dp-pr-sub">Rebuild a real line from the conversation by tapping the chunks in order.</div>'
+    +   '<div id="dp-pr-build">' + (hasBuild ? startBtn('Start building', 'startSentenceBuild') : emptyMsg('No dialogue line long enough for this drill.')) + '</div>'
     + '</div>'
 
     // Deeper study CTA — mirrors the article reader's Review→Study Room
@@ -1575,6 +1629,223 @@ window._rcPick = function(btn, isCorrect) {
   }
   setTimeout(function() { s.idx++; _rcRender(); }, 1100);
 };
+
+// ── 4) Comprehension Quiz — AI-generated multiple choice ────────
+// Builds 3 questions about the conversation (who said what, why, what
+// happens). Cached per-conversation in localStorage so the AI cost is
+// one-time. Same pattern as KE situation quiz / article-study quiz.
+var _cqState = null;
+async function startComprehensionQuiz() {
+  var c = window._currentConv; if (!c) return;
+  var host = document.getElementById('dp-pr-comp'); if (!host) return;
+  host.innerHTML = '<div class="dp-pr-empty">⏳ Generating comprehension questions…</div>';
+
+  var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+  var cacheKey = 'kh_conv_comp_v1_' + (c._id || 'noid') + '_' + dateKey;
+  var quiz = null;
+  try { var raw = localStorage.getItem(cacheKey); if (raw) quiz = JSON.parse(raw); } catch(_) {}
+
+  if (!quiz) {
+    if (typeof callClaude !== 'function') {
+      host.innerHTML = '<div class="dp-pr-empty">Sign in to load AI quizzes.</div>'; return;
+    }
+    var dialogue = (c.msgs || []).filter(function(m){ return m && m.txt && (m.s === 'l' || m.s === 'r'); })
+      .map(function(m){ return (m.who || (m.s === 'l' ? 'A' : 'B')) + ': ' + m.txt; }).join('\n');
+    if (!dialogue) { host.innerHTML = '<div class="dp-pr-empty">No dialogue to quiz.</div>'; return; }
+    try {
+      var res = await callClaude({
+        feature: 'conv-comprehension-quiz',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        messages: [{ role: 'user', content:
+          'You are a Korean teacher writing comprehension questions for an English-speaking learner.\n\n'
+          + 'Dialogue:\n' + dialogue + '\n\n'
+          + 'Write EXACTLY 3 multiple-choice comprehension questions IN ENGLISH about this dialogue. Mix question types:\n'
+          + '  1. Factual (who said X / what happened)\n'
+          + '  2. Inferential (why did A say Y / what does B mean)\n'
+          + '  3. Detail (what specific word/phrase tells us Z)\n\n'
+          + 'Each question has 4 plausible options; the correct one must be true to the dialogue. Wrong options should be plausible (related to topic, similar wording) but clearly wrong on close reading.\n\n'
+          + 'Return ONLY JSON, no markdown:\n'
+          + '{"questions":[{"q":"…","options":["correct","wrong1","wrong2","wrong3"],"correct":0,"explanation":"1 sentence why"}]}\n'
+          + 'choices[0] is correct; the renderer shuffles. Keep each option under 14 English words.'
+        }]
+      });
+      var txt = (res && res.content && res.content[0] && res.content[0].text) || '{}';
+      txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+      var s = txt.indexOf('{'), e = txt.lastIndexOf('}');
+      if (s >= 0 && e > s) txt = txt.slice(s, e + 1);
+      quiz = JSON.parse(txt);
+      if (!quiz || !Array.isArray(quiz.questions) || !quiz.questions.length) throw new Error('bad quiz');
+      try { localStorage.setItem(cacheKey, JSON.stringify(quiz)); } catch(_) {}
+    } catch (err) {
+      host.innerHTML = '<div class="dp-pr-empty">Quiz generation failed — try again later.</div>';
+      return;
+    }
+  }
+  _cqState = { qs: quiz.questions, idx: 0, correct: 0 };
+  _cqRender();
+}
+
+function _cqRender() {
+  var s = _cqState; if (!s) return;
+  var host = document.getElementById('dp-pr-comp'); if (!host) return;
+  if (s.idx >= s.qs.length) {
+    host.innerHTML = '<div class="dp-pr-result">'
+      + '<div class="dp-pr-result-score">' + s.correct + ' / ' + s.qs.length + '</div>'
+      + '<div class="dp-pr-result-sub">Comprehension complete</div>'
+      + '<button class="dp-pr-start" onclick="startComprehensionQuiz()" style="margin-top:10px">Try again</button>'
+      + '</div>';
+    return;
+  }
+  var q = s.qs[s.idx];
+  // Shuffle options once per question, keep mapping back to original index
+  if (!q._order) {
+    q._order = q.options.map(function(_, i){ return i; });
+    for (var i = q._order.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = q._order[i]; q._order[i] = q._order[j]; q._order[j] = t;
+    }
+  }
+  host.innerHTML = '<div class="dp-pr-q">'
+    + '<div class="dp-pr-q-progress">Question ' + (s.idx + 1) + ' / ' + s.qs.length + '</div>'
+    + '<div class="dp-pr-q-text">' + escapeHtml(q.q) + '</div>'
+    + '<div class="dp-pr-q-options">'
+    + q._order.map(function(origIdx, slot) {
+      return '<button class="dp-pr-q-opt" onclick="_cqAnswer(' + origIdx + ')">'
+        + String.fromCharCode(65 + slot) + '. ' + escapeHtml(q.options[origIdx]) + '</button>';
+    }).join('')
+    + '</div>'
+    + '<div id="dp-pr-q-fb"></div>'
+    + '</div>';
+}
+
+function _cqAnswer(picked) {
+  var s = _cqState; if (!s) return;
+  var q = s.qs[s.idx];
+  var right = picked === q.correct;
+  if (right) s.correct++;
+  document.querySelectorAll('.dp-pr-q-opt').forEach(function(b, slot) {
+    b.disabled = true;
+    var origIdx = q._order[slot];
+    if (origIdx === q.correct) b.classList.add('dp-pr-q-opt-right');
+    else if (origIdx === picked) b.classList.add('dp-pr-q-opt-wrong');
+    else b.classList.add('dp-pr-q-opt-dim');
+  });
+  var fb = document.getElementById('dp-pr-q-fb');
+  if (fb) fb.innerHTML = '<div class="dp-pr-q-fb' + (right ? ' is-right' : ' is-wrong') + '">'
+    + '<b>' + (right ? '정답' : '오답') + '.</b> ' + escapeHtml(q.explanation || '')
+    + '</div>';
+  setTimeout(function() { s.idx++; _cqRender(); }, 1500);
+}
+
+// ── 5) Sentence Build — chunk reorder for one dialogue line ─────
+// Picks the longest natural-sized line (3-9 words) and shuffles its
+// chunks. Pre-selects the first word like the BM Build / dictation
+// drill so the start anchor is unambiguous, plays TTS on each tap.
+var _sbState = null;
+function startSentenceBuild() {
+  var c = window._currentConv; if (!c) return;
+  var host = document.getElementById('dp-pr-build'); if (!host) return;
+  // Prefer the longest 3-9 word line so the drill feels meaningful.
+  var candidates = (c.msgs || []).filter(function(m) {
+    if (!m || !m.txt || (m.s !== 'l' && m.s !== 'r')) return false;
+    var w = m.txt.replace(/[.!?。！？]/g,'').trim().split(/\s+/);
+    return w.length >= 3 && w.length <= 9;
+  }).sort(function(a, b) {
+    return b.txt.length - a.txt.length;
+  });
+  if (!candidates.length) { host.innerHTML = '<div class="dp-pr-empty">No suitable line.</div>'; return; }
+  var line = candidates[0];
+  var words = line.txt.replace(/[.!?。！？]/g,'').trim().split(/\s+/);
+  var shuffled = _shuffle(words.map(function(w, i){ return { word: w, origIdx: i }; }));
+  // Avoid the no-op shuffle.
+  if (words.length > 1 && shuffled.every(function(o, i){ return o.word === words[i]; })) {
+    var t = shuffled[0]; shuffled[0] = shuffled[shuffled.length-1]; shuffled[shuffled.length-1] = t;
+  }
+  // Move the first-word entry into the answer tray so the start is
+  // anchored — same pattern as BM Build and Dictation Word Order.
+  var answer = [];
+  var anchorIdx = -1;
+  for (var i = 0; i < shuffled.length; i++) {
+    if (shuffled[i].word === words[0]) { anchorIdx = i; break; }
+  }
+  if (anchorIdx >= 0) answer.push(shuffled.splice(anchorIdx, 1)[0]);
+  _sbState = {
+    line: line, original: words, pool: shuffled, answer: answer,
+    correctEn: line.en || ''
+  };
+  _sbRender();
+}
+
+function _sbRender() {
+  var s = _sbState; if (!s) return;
+  var host = document.getElementById('dp-pr-build'); if (!host) return;
+  var poolHTML = s.pool.map(function(o, i) {
+    return '<button class="dp-pr-chip" onclick="_sbPick(' + o.origIdx + ')">' + escapeHtml(o.word) + '</button>';
+  }).join('');
+  var ansHTML = s.answer.length
+    ? s.answer.map(function(o, pos) {
+        return '<button class="dp-pr-chip dp-pr-chip-on" onclick="_sbRemove(' + pos + ')">' + escapeHtml(o.word) + ' ×</button>';
+      }).join('')
+    : '<span class="dp-pr-empty-inline">Tap chunks below to build the line.</span>';
+  var done = s.answer.length === s.original.length;
+  host.innerHTML = '<div class="dp-pr-build-wrap">'
+    + (s.correctEn ? '<div class="dp-pr-build-hint">' + escapeHtml(s.correctEn) + '</div>' : '')
+    + '<div class="dp-pr-build-tray">' + ansHTML + '</div>'
+    + '<div class="dp-pr-build-pool">' + poolHTML + '</div>'
+    + '<div class="dp-pr-build-actions">'
+    +   '<button class="dp-pr-start dp-pr-secondary" onclick="_sbReset()">Reset</button>'
+    +   '<button class="dp-pr-start" ' + (done ? '' : 'disabled') + ' onclick="_sbCheck()">Check</button>'
+    + '</div>'
+    + '<div id="dp-pr-build-fb"></div>'
+    + '</div>';
+}
+
+function _sbPick(origIdx) {
+  var s = _sbState; if (!s) return;
+  var idx = -1;
+  for (var i = 0; i < s.pool.length; i++) {
+    if (s.pool[i].origIdx === origIdx) { idx = i; break; }
+  }
+  if (idx < 0) return;
+  var picked = s.pool.splice(idx, 1)[0];
+  s.answer.push(picked);
+  try { if (typeof ttsSpeak === 'function') ttsSpeak(picked.word); } catch(_) {}
+  _sbRender();
+}
+
+function _sbRemove(pos) {
+  var s = _sbState; if (!s) return;
+  if (pos <= 0) return; // can't remove the anchor
+  var removed = s.answer.splice(pos, 1)[0];
+  if (removed) s.pool.push(removed);
+  try { if (removed && typeof ttsSpeak === 'function') ttsSpeak(removed.word); } catch(_) {}
+  _sbRender();
+}
+
+function _sbReset() {
+  var s = _sbState; if (!s) return;
+  // Restore the start anchor; everything else goes back to the pool.
+  var keep = s.answer.slice(0, 1);
+  s.pool = s.pool.concat(s.answer.slice(1));
+  s.answer = keep;
+  _sbRender();
+}
+
+function _sbCheck() {
+  var s = _sbState; if (!s) return;
+  var ans = s.answer.map(function(o){ return o.word; });
+  var ok = ans.join(' ') === s.original.join(' ');
+  var fb = document.getElementById('dp-pr-build-fb');
+  if (fb) {
+    fb.innerHTML = ok
+      ? '<div class="dp-pr-q-fb is-right"><b>완벽해요!</b> ' + escapeHtml(s.original.join(' ')) + '</div>'
+      : '<div class="dp-pr-q-fb is-wrong"><b>다시 한번.</b> 정답: ' + escapeHtml(s.original.join(' ')) + '</div>';
+  }
+  if (ok) {
+    try { if (typeof ttsSpeak === 'function') ttsSpeak(s.original.join(' ')); } catch(_) {}
+  }
+}
 
 function closeDetail() {
   document.getElementById('detail-overlay').classList.add('hidden');

@@ -473,28 +473,16 @@ function updateFillProgress() {
 }
 
 async function showFillResult() {
+  // The big "Exercise Complete!" celebration card with Try Again / Back
+  // to Article buttons used to flash here before _reviewFlowAdvance(2)
+  // hid the whole fill section and revealed the next step. The
+  // interstitial added nothing — the next step's reveal animation
+  // gives enough completion signal, and the buttons (Try Again,
+  // Back to Article) duplicate already-available navigation. Drop it
+  // and just advance.
   var correct = Object.values(_fillState).filter(function(s){ return s.correct; }).length;
   var total = _fillQuestions.length;
   var pct = Math.round(correct / total * 100);
-  var icon = pct >= 80 ? KH_ICON_PARTY : pct >= 60 ? KH_ICON_THUMBS_UP : KH_ICON_FLAME;
-  var iconColor = pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171';
-  var color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
-
-  var finalEl = document.getElementById('fill-final');
-  if (!finalEl) return;
-  finalEl.style.display = 'block';
-  finalEl.innerHTML =
-    '<div style="background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:16px;padding:28px;text-align:center;margin-top:8px">'
-    + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:10px;color:' + iconColor + ';filter:drop-shadow(0 0 12px ' + iconColor + 'aa)">' + icon + '</div>'
-    + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:4px">Exercise Complete!</div>'
-    + '<div style="font-size:36px;font-weight:900;color:' + color + ';margin:12px 0">' + correct + ' / ' + total + '</div>'
-    + '<div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:20px">' + pct + '% correct</div>'
-    + '<div style="height:6px;background:rgba(255,255,255,.15);border-radius:999px;margin:0 auto 20px;max-width:200px;overflow:hidden">'
-    + '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:999px;transition:width .8s"></div>'
-    + '</div>'
-    + '<button onclick="resetFill()" style="padding:11px 28px;background:#fff;color:#0b1626;border:none;border-radius:999px;font-size:13px;font-weight:900;cursor:pointer;margin-right:8px;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_REFRESH+'</span><span>Try Again</span></button>'
-    + '<button onclick="switchArtTab(\'article\',document.querySelectorAll(\'.art-tab\')[0])" style="padding:11px 28px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_NEWSPAPER+'</span><span>Back to Article</span></button>'
-    + '</div>';
 
   // 퀴즈 완료 뱃지/XP
   if (typeof trackActivityOnQuizComplete === 'function') trackActivityOnQuizComplete(pct);
