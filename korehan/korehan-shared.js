@@ -316,11 +316,23 @@ function khNormalizeVocabNoun(ko, rom, en) {
   en = en || '';
   if (!ko || ko.length < 2) return null;
   if (/하다$/.test(ko) && ko.length >= 3) {
-    return {
-      ko: ko.replace(/하다$/, ''),
-      rom: rom.replace(/[-\s]*hada$/i, ''),
-      en: en.replace(/^to\s+/i, '')
-    };
+    var stem = ko.replace(/하다$/, '');
+    // Only strip 하다 when the resulting stem is 2+ Korean syllables.
+    // Action-verb compounds like 노력하다 → 노력 (2 syl) are real nouns,
+    // but adjectives like 흔하다 → 흔 (1 syl) leave a meaningless
+    // fragment that's not a Korean word in its own right. Keep the
+    // dictionary form for those.
+    var koreanSyl = (stem.match(/[가-힣]/g) || []).length;
+    if (koreanSyl >= 2) {
+      return {
+        ko: stem,
+        rom: rom.replace(/[-\s]*hada$/i, ''),
+        en: en.replace(/^to\s+/i, '')
+      };
+    }
+    // Single-syllable 하다 adjective — return as-is so the learner
+    // sees the real word ("흔하다" → "common"), not a fragment.
+    return { ko: ko, rom: rom, en: en };
   }
   if (/다$/.test(ko)) return null;
   return { ko: ko, rom: rom, en: en };
@@ -3356,8 +3368,28 @@ async function analyzeSentence(idx, el) {
   }
 
   try {
+    // Read article level so the prompt can calibrate which patterns
+    // to teach. Default to Sprout (Beginner) if unknown so we err on
+    // the side of explaining more, not less.
+    var _articleLevel = (window._currentArticle && window._currentArticle.level) || 'Beginner';
+    var _levelLabel = ({
+      Starter:      'Seed (TOPIK 1, complete beginner)',
+      Beginner:     'Sprout (TOPIK 2, beginner)',
+      Intermediate: 'Tree (TOPIK 3-4, intermediate)',
+      Advanced:     'Forest (TOPIK 5-6, advanced)',
+    })[_articleLevel] || 'Sprout (TOPIK 2, beginner)';
+    var _isLowLevel = (_articleLevel === 'Starter' || _articleLevel === 'Beginner');
+    // For Seed/Sprout learners we WANT the basics explained: object
+    // markers, simple negation, present continuous, etc. For Tree+
+    // we skip those because they're already known and noise.
+    var _vocabSkipRule = _isLowLevel
+      ? '- VOCAB: max 4 items. Include any content word the learner might not know (verbs, adjectives, nouns). Only skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone). 흔하다 / 보다 / 키우다 / 살다 / 먹다 are FAIR GAME at this level — explain them.\n'
+      : '- VOCAB: max 4 items. Skip beginner words (는/이/가/이다/있다/하다/되다…). The note must be FACTUAL — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply.\n';
+    var _grammarSkipRule = _isLowLevel
+      ? '- GRAMMAR: max 3 patterns. At THIS LEVEL, basic patterns ARE the lesson — INCLUDE them: ~을/를 (object marker) + verb, ~지 않다 (negation), ~고 있다 (present continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency). Skip only when the entire sentence is one already-explained pattern. Do NOT pick a pattern that\'s just the conjugation of a vocab word.\n'
+      : '- GRAMMAR: max 2 patterns. Skip if just a noun phrase. Skip beginner-level patterns (~는 noun modifier, ~다 declarative, ~요/습니다 polite, ~았/었 past, ~을/를 object marker) — the learner already knows them at this level. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n';
     var prompt =
-        'You are a Korean tutor analysing a single sentence for a TOPIK 3-4 learner.\n\n'
+        'You are a Korean tutor analysing a single sentence for a ' + _levelLabel + ' learner.\n\n'
       + 'Sentence: ' + sentenceText + '\n\n'
       + 'Return ONLY a JSON object with this shape (no preamble, no code fences):\n'
       + '{\n'
@@ -3367,8 +3399,9 @@ async function analyzeSentence(idx, el) {
       + '}\n\n'
       + 'Rules:\n'
       + '- TRANSLATION: PRESERVE the original subject — do NOT inject "I/we" if Korean omitted the subject. Use he/she/it/they/the [noun] based on what the sentence implies.\n'
-      + '- VOCAB: max 4 items. Skip beginner words (는/이/가/이다/있다/하다/되다…). The note must be FACTUAL — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
-      + '- GRAMMAR: max 2 patterns. Skip if just a noun phrase. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n'
+      + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔, 살다 not 살). Single-syllable stems are not Korean words.\n'
+      + _vocabSkipRule
+      + _grammarSkipRule
       + '- If two patterns stack on the same verb, pick ONLY the more learner-relevant one.\n'
       + '- Output JSON only.';
     var res = await callClaude({

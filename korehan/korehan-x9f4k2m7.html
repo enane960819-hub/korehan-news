@@ -4809,11 +4809,17 @@ async function runAutoGenerate(){
         + '- 원본에 없는 사실 추가 금지\n'
         + '- 한자 표기 금지 (한글만 사용)\n\n'
         + '[중요표현 / Key Expressions]\n'
-        + '- 본문에서 학습자가 외울 만한 표현을 **3~5개** 추출 (필수, 비우지 말 것)\n'
-        + '- 우선순위: 관용 표현 / 자주 쓰이는 굳어진 구 / 유용한 문법 패턴 / 의미 단위로 묶이는 명사구·동사구\n'
-        + '- 각 표현은 ko(표현 자체) + en(영어 번역 또는 풀이) 짝으로\n'
-        + '- 본문에 한 번이라도 등장한 표현을 그대로 뽑을 것 (단어 하나가 아니라 2단어 이상의 구)\n'
-        + '- 본문에 정말 추출할 만한 게 없을 때만 빈 배열 [] 허용\n\n'
+        + '- 본문에서 학습자가 외울 만한 **고정 표현**을 0~3개 추출 (빈 배열 [] 선호 — 적합한 게 없으면 빈 배열)\n'
+        + '- 적합한 것: 관용 표현(예: 발이 넓다), 사자성어/속담, 자주 쓰이는 굳어진 표현(예: 빨리빨리, 천천히 가세요), 의존명사 패턴(~는 것 같다, ~기 때문에), 호칭/인사 표현, 문화 특화 표현\n'
+        + '- 적합하지 않은 것 (절대 추출 금지):\n'
+        + '  * 일반 평서문/절 ("풀을 먹고 있었어요", "보통 아프리카에 살아요")\n'
+        + '  * 단순 SVO/SOV 문장 조각\n'
+        + '  * 주어+동사 단순 결합 ("사람들이 키우는")\n'
+        + '  * 명사+조사+동사 (이미 vocab으로 충분)\n'
+        + '  * 한 단어 (vocab과 중복)\n'
+        + '- 각 표현은 ko(표현 자체) + en(영어 풀이) 짝으로\n'
+        + '- 본문에 그대로 등장한 형태만 추출\n'
+        + '- 정말 외울 가치 있는 게 1~3개면 그만큼만, 없으면 빈 배열 [] (이게 가장 흔한 결과)\n\n'
         + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)","key_expressions":[{"ko":"...","en":"..."}]}';
 
       _autoGenSetItemStatus(si, '⏳ 기사 각색 중…');
@@ -4959,11 +4965,24 @@ async function runAutoGenerate(){
             + 'Rules:\n'
             + '- One object per input sentence, in the same order.\n'
             + '- TRANSLATION: stay consistent with the paragraph EN above (same subject, same pronouns, same formality). PRESERVE THE ORIGINAL SUBJECT — do NOT inject "I" or "we" if the Korean omitted it; pull the subject from the paragraph EN context. Match the level of formality (정중체 → polite English; 평서체 → plain English).\n'
-            + '- VOCAB: max 4 items per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다 …) — pick words a learner would actually want to look up. Empty array allowed if nothing useful.\n'
+            + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔, 살다 not 살, 키우다 not 키우). Single-syllable stems are NEVER valid Korean words.\n'
+            + '- VOCAB: max 4 items per sentence. ' + (
+                (_level === 'Starter' || _level === 'Beginner')
+                  ? 'INCLUDE beginner verbs/adjectives at this level — 보다, 살다, 먹다, 키우다, 흔하다 are FAIR GAME, the learner needs them explained. Only skip particles (이/가/을/를/의/에/도/는) and the bare copula/존재 verbs (이다/있다 alone).'
+                  : 'Skip beginner words (는/이/가/이다/있다/하다/되다…) — pick words a learner would actually want to look up.'
+              ) + ' Empty array allowed if nothing useful.\n'
             + '- VOCAB NOTE: must be FACTUAL — what the word literally means and how it is used in standard Korean. Do NOT invent metaphorical readings specific to this sentence (e.g. don\'t say "고양이 here used metaphorically for a group/category" — 고양이 just means cat). Do NOT pad with example collocations that don\'t actually apply (e.g. don\'t say "지나다 used with 시간, 날씨, 계절" — 날씨 doesn\'t pass). Empty note is fine when the meaning alone is enough.\n'
-            + '- GRAMMAR: max 2 patterns per sentence, EMPTY ARRAY [] PREFERRED. Only include a pattern when there is a real, teachable grammatical structure that adds learning value beyond the vocab. When in doubt, RETURN EMPTY. Padding with weak/obvious patterns ruins the lesson.\n'
-            + '- GRAMMAR PATTERN FIELD: must be a GRAMMATICAL MORPHEME / connective / ending only (e.g. "~기 위해", "~게 되다", "~ㄴ/는 것 같다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" (animal is a noun, not part of the pattern). The pattern there would be "~는" alone, but ~는 modifier is too basic for an Intermediate+ learner so OMIT it entirely.\n'
-            + '- GRAMMAR LEVEL FILTER: skip patterns that a TOPIK ' + _level + ' learner already knows. For Intermediate/Advanced articles do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 polite endings, ~았/었 past, ~을/를 object marker. For Beginner articles those CAN appear. The article level on this run is "' + _level + '" — calibrate accordingly.\n'
+            + '- GRAMMAR: ' + (
+                (_level === 'Starter' || _level === 'Beginner')
+                  ? 'max 3 patterns per sentence. INCLUDE the basics that this level needs: ~을/를 + verb (object marker), ~지 않다 (negation), ~고 있다 (continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency). Empty array OK if the sentence is just one already-explained pattern.'
+                  : 'max 2 patterns per sentence, EMPTY ARRAY [] PREFERRED. Only include a pattern when there is a real, teachable grammatical structure that adds learning value beyond the vocab. When in doubt, RETURN EMPTY. Padding with weak/obvious patterns ruins the lesson.'
+              ) + '\n'
+            + '- GRAMMAR PATTERN FIELD: must be a GRAMMATICAL MORPHEME / connective / ending only (e.g. "~기 위해", "~게 되다", "~ㄴ/는 것 같다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" (animal is a noun, not part of the pattern).\n'
+            + '- GRAMMAR LEVEL FILTER: this article is "' + _level + '" level. ' + (
+                (_level === 'Starter' || _level === 'Beginner')
+                  ? 'TEACH the basics — ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 polite endings, ~았/었 past, ~을/를 object marker SHOULD appear because the learner is still learning them.'
+                  : 'SKIP basics the learner already knows — do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 polite endings, ~았/었 past, ~을/를 object marker.'
+              ) + '\n'
             + '- GRAMMAR EXCLUSION: do NOT pick a pattern that is just the natural conjugation of a word already listed in vocab — if 달라지다 is in vocab, do not list ~어지다 with 달라졌어요 as the example.\n'
             + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one — do not list both with near-identical example_in_sentence chunks.\n'
             + '- Output JSON only.';
