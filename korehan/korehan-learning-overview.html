@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KoreHani Growth Lab</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;800&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="korehan-shared.css?v=20260505b">
+  <link rel="stylesheet" href="korehan-shared.css?v=20260505p">
   <style>
     :root{
       --navy:#0b1626; --blue:#1a3a6b; --bright:#2563eb; --sky:#7ab8f5;
@@ -563,8 +563,11 @@
          flagged that XP / Streak / Words / Articles were unexplained
          jargon for first-time users. -->
     <style>
-      .gl-stat{flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;cursor:help;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;min-height:62px;position:relative;}
-      .gl-stat-label{font-size:10px;font-weight:500;color:var(--muted);line-height:1.2;text-align:center;}
+      .gl-stat{flex:1;min-width:70px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;cursor:help;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;min-height:62px;position:relative;}
+      /* Reserve 2 lines worth of label height so single-line labels
+         like "Streak" and 2-line labels like "Words today" don't shift
+         the numbers below to different baselines on narrow tiles. */
+      .gl-stat-label{font-size:10px;font-weight:500;color:var(--muted);line-height:1.2;text-align:center;min-height:2.4em;display:flex;align-items:flex-end;justify-content:center;}
       .gl-stat-num{font-size:22px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;justify-content:center;height:24px;}
     </style>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
@@ -583,9 +586,8 @@
       <div class="gl-stat" title="Consecutive days you've studied. Breaks if you skip a day.">
         <div class="gl-stat-label">Streak</div>
         <div class="gl-stat-num" id="stat-streak" style="color:#ea580c">0</div>
-        <button id="freeze-btn" type="button" onclick="khOpenFreezeDialog()" hidden
-          style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:linear-gradient(135deg,#bae6fd,#7dd3fc);color:#0c4a6e;font-size:12px;line-height:1;cursor:pointer;box-shadow:0 2px 6px rgba(14,165,233,.35);display:inline-flex;align-items:center;justify-content:center"
-          title="Use streak freeze (once per week)"><i data-lucide="snowflake" class="kh-ui-icon" style="color:#7dd3fc" aria-hidden="true"></i></button>
+        <!-- Manual freeze button removed: freezes are auto-applied on
+             missed days now. Trigger lives in refreshFreezeBtn(). -->
       </div>
       <div class="gl-stat" title="Active time spent in the app today. Counts minutes while the tab is visible and you've interacted within the last minute.">
         <div class="gl-stat-label">Time today</div>
@@ -1262,7 +1264,7 @@
 <script src="js/core/user-analytics.js?v=20260504a"></script>
   <script src="js/core/plans.js?v=20260502a"></script>
   <script src="js/core/article-cache.js?v=20260505b"></script>
-  <script src="js/core/phrases.js?v=20260505b"></script>
+  <script src="js/core/phrases.js?v=20260505p"></script>
   <script src="js/core/saved-words.js?v=20260505b"></script>
   <script src="js/features/video-player.js?v=20260502a"></script>
   <script src="js/core/articles.js?v=20260502a"></script>
@@ -1277,7 +1279,7 @@
   <script src="js/features/analyze-mode.js?v=20260502a"></script>
   <script src="js/features/translation.js?v=20260502a"></script>
   <script src="js/features/fill-blank.js?v=20260502a"></script>
-  <script src="korehan-shared.js?v=20260505b"></script>
+  <script src="korehan-shared.js?v=20260505p"></script>
   <script src="js/kh-universe.js?v=20260426a"></script>
   <script src="js/kh-curriculum.js?v=20260420y"></script>
   <script src="learning_hub_vocab_data.js"></script>
@@ -2343,41 +2345,16 @@
     // (단어는 위에서 이미 loadAndRenderInterests 또는 renderWords로 처리됨)
   }
 
-  // ── Phase 2: streak freeze trigger ───────────────────────────
-  // Sync the freeze status from profiles + localStorage on page
-  // load. If the user is signed in AND has a freeze available
-  // (i.e. > 7 days since last use), show the 🧊 button next to the
-  // streak count.
-  async function refreshFreezeBtn() {
-    var btn = document.getElementById('freeze-btn');
-    if (!btn || typeof khFreezeSync !== 'function') return;
-    try {
-      var st = await khFreezeSync();
-      btn.hidden = !(st.signed_in && st.can_use);
-    } catch (_) { /* leave hidden */ }
-  }
-  window.khOpenFreezeDialog = async function () {
-    if (typeof supaUser === 'undefined' || !supaUser) {
-      if (typeof openAuthModal === 'function') openAuthModal('signin');
-      return;
-    }
-    var ok = window.confirm('Use this week\'s streak freeze?\n\nToday will count as active even if you don\'t complete an activity. The freeze recharges 7 days from now.');
-    if (!ok) return;
-    var done = await khFreezeUse(new Date());
-    if (done) {
-      var btn = document.getElementById('freeze-btn');
-      if (btn) btn.hidden = true;
-      // Re-render the streak number — getCurrentStreak now picks up
-      // today via the localStorage mirror set by khFreezeUse().
-      try {
-        var streak = typeof getCurrentStreak === 'function' ? getCurrentStreak() : 0;
-        setText('stat-streak', streak);
-      } catch (_) {}
-      if (typeof showToast === 'function') showToast('Streak protected for today');
-    } else {
-      if (typeof showToast === 'function') showToast('Could not use freeze. Please retry.', true);
-    }
-  };
+  // ── Streak freeze: manual prompt removed ─────────────────────
+  // The old weekly button + confirm dialog was confusing learners
+  // into spending freezes on days they didn't need them. New contract
+  // (per the product spec): freezes come from the shop as inventory
+  // items and auto-apply to a missed day with just a notification.
+  // Until the shop-inventory wire-up + missed-day detection RPC ship,
+  // the manual UX is simply hidden; the existing weekly grant in
+  // khFreezeSync still ticks but no longer surfaces a button.
+  function refreshFreezeBtn() { /* no-op until auto-apply lands */ }
+  window.khOpenFreezeDialog = function () { /* shim — button is gone */ };
 
   // fallback: RPC 없을 때 localStorage에서 가능한 것만 표시
   function loadHubFallback() {

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirm subscription — KoreHani</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+.kh-confirm { max-width:520px; margin:60px auto; padding:36px 28px; background:#fff; border-radius:18px; box-shadow:0 14px 36px rgba(15,23,42,.10); text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; }
+.kh-confirm h1 { font-family:'Noto Serif KR',serif; font-weight:900; font-size:28px; color:#0f172a; margin:0 0 12px; letter-spacing:-.01em; }
+.kh-confirm p { font-size:15px; color:#475569; line-height:1.6; margin:0 0 20px; }
+.kh-confirm .ok-icon, .kh-confirm .err-icon { width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px; }
+.kh-confirm .ok-icon { background:#dcfce7; color:#15803d; }
+.kh-confirm .err-icon { background:#fee2e2; color:#b91c1c; }
+.kh-confirm .home-btn { display:inline-block; padding:11px 22px; background:#2563eb; color:#fff; border-radius:999px; text-decoration:none; font-weight:800; font-size:14px; transition:background .15s; }
+.kh-confirm .home-btn:hover { background:#1d4ed8; }
+.kh-confirm .email { font-weight:800; color:#0f172a; }
+</style>
+</head>
+<body style="background:#f3f7fc">
+<div id="kh-header"></div>
+<div class="container">
+  <div class="kh-confirm" id="kh-confirm-wrap">
+    <div class="ok-icon" id="kh-confirm-icon" style="display:none">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h1 id="kh-confirm-title">Confirming…</h1>
+    <p id="kh-confirm-body">Hold on, we're activating your subscription.</p>
+    <a class="home-btn" id="kh-confirm-cta" href="index.html" style="display:none">Back to home</a>
+  </div>
+</div>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js"></script>
+<script>
+(function () {
+  // Token-only landing page. Hits the newsletter_confirm RPC and
+  // shows success/failure copy. Designed to be runnable on any
+  // browser, signed in or not — anon role has EXECUTE on the RPC.
+  function $(id) { return document.getElementById(id); }
+  function setError(title, body) {
+    var ic = $('kh-confirm-icon');
+    ic.className = 'err-icon';
+    ic.style.display = 'flex';
+    ic.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    $('kh-confirm-title').textContent = title;
+    $('kh-confirm-body').innerHTML = body;
+    $('kh-confirm-cta').style.display = 'inline-block';
+  }
+  function setSuccess(email) {
+    var ic = $('kh-confirm-icon');
+    ic.className = 'ok-icon';
+    ic.style.display = 'flex';
+    $('kh-confirm-title').textContent = 'You\'re subscribed!';
+    $('kh-confirm-body').innerHTML = email
+      ? 'Welcome aboard. We\'ll send updates to <span class="email">' + escapeHtml(email) + '</span>.'
+      : 'Welcome aboard. Watch your inbox for the next issue.';
+    $('kh-confirm-cta').style.display = 'inline-block';
+  }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  document.addEventListener('DOMContentLoaded', async function () {
+    var p = new URLSearchParams(location.search);
+    var token = p.get('t') || p.get('token') || '';
+    if (!token) {
+      setError('Missing token', 'This confirmation link is incomplete. Please use the link from your email.');
+      return;
+    }
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb) {
+      setError('Something went wrong', 'We couldn\'t reach the server. Please retry in a moment.');
+      return;
+    }
+    try {
+      var r = await sb.rpc('newsletter_confirm', { p_token: token });
+      var data = r && r.data;
+      if (r.error || !data || !data.ok) {
+        setError('Link expired', 'This confirmation link is no longer valid. Resubscribe from the homepage footer to get a fresh one.');
+        return;
+      }
+      setSuccess(data.email || '');
+    } catch (e) {
+      setError('Something went wrong', 'We couldn\'t confirm your subscription. Please retry in a moment.');
+    }
+  });
+})();
+</script>
+</body>
+</html>

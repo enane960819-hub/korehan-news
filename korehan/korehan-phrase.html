@@ -2,18 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover">
-<meta name="theme-color" content="#0a1426">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f0f2f7">
 <title>Today's Phrase — KoreHani</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260505b">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css?v=20260505p">
 <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie_light.min.js" defer></script>
 </head>
-<body class="phrase-page-dark">
+<body>
 <div id="kh-header"></div>
-<div class="phrase-shell">
-  <div id="phrase-root"></div>
+<div class="container">
+  <div class="two-col">
+    <div id="phrase-root"></div>
+    <div id="kh-sidebar"></div>
+  </div>
 </div>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -26,7 +29,7 @@
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505b"></script>
+<script src="js/core/phrases.js?v=20260505p"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -41,7 +44,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260505b"></script>
+<script src="korehan-shared.js?v=20260505p"></script>
 <script>
 // Today's Phrase — dark, mobile-first reader.
 //
@@ -55,7 +58,12 @@
 // the result locally + back to app_settings.phrases for signed-in
 // users.
 
-var PHRASE_FILL_CACHE_KEY = 'kh_phrase_fill_v1';
+// Cache key bumped to v2 — v1 stored loose AI-generated related
+// expressions (e.g. 하늘의 별 따기 paired with 등잔 밑이 어둡다 which
+// is about a completely different concept). The new prompt enforces
+// strict semantic match; bumping the key invalidates stale entries
+// so users see clean data on next load.
+var PHRASE_FILL_CACHE_KEY = 'kh_phrase_fill_v2';
 var SAVED_PHRASES_KEY = 'kh_saved_phrases_v1';
 var MASTERED_PHRASES_KEY = 'kh_mastered_phrases_v1';
 var PHRASE_VIEW_LOG_KEY = 'kh_phrase_view_log_v1';
@@ -185,12 +193,12 @@ async function _fillPhraseViaClaude(phrase) {
     + '    {"ko":"natural Korean sentence USING the phrase, max 25 chars","en":"English translation"},\n'
     + '    {"ko":"different context using the phrase","en":"…"}\n'
     + '  ],\n'
-    + '  "related": ["관련 표현 1","관련 표현 2","관련 표현 3"]\n'
+    + '  "related": ["idiom 1","idiom 2"]\n'
     + '}\n\n'
     + 'Rules:\n'
     + '- intro_ko / intro / nuance MUST be specific to "' + phrase.ko + '" — do NOT echo back generic learner-platform copy.\n'
     + '- examples MUST contain the exact phrase (or a natural conjugated form) and be fully grammatical Korean.\n'
-    + '- related: 3 thematically related expressions in Korean. No commentary.';
+    + '- related: EXACTLY 0-2 entries (NEVER more than 2). Each MUST be a real Korean 관용구 (idiom) or 속담 (proverb) — a fixed multi-word expression you would find in a Korean idiom dictionary, not a literal noun phrase like "불가능한 일" or "어려운 목표". RIGHT examples for 하늘의 별 따기: 낙타가 바늘구멍 들어가기, 하늘이 두 쪽 나도. WRONG: 불가능한 일 (literal noun phrase, not an idiom). Each related entry must convey the SAME core meaning as "' + phrase.ko + '" and be substitutable in conversation. If you cannot find at least 2 real idioms/proverbs that strongly match, return FEWER (even an empty array []) — DO NOT pad with literal phrases or weak matches.';
   var res = await callClaude({
     feature: 'phrase-content-fill',
     model: 'claude-haiku-4-5-20251001',
@@ -202,6 +210,21 @@ async function _fillPhraseViaClaude(phrase) {
   var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
   if (oi < 0 || ei <= oi) throw new Error('no JSON');
   var data = JSON.parse(clean.slice(oi, ei + 1));
+  // Sanitise related: drop entries that are the phrase itself, drop
+  // duplicates, drop near-empty strings.
+  var phraseStripped = String(phrase.ko || '').replace(/\s+/g,'').trim();
+  var seen = {};
+  var related = Array.isArray(data.related) ? data.related
+    .map(function(s){ return String(s || '').trim(); })
+    .filter(function(s){
+      if (!s || s.length < 3) return false;
+      var stripped = s.replace(/\s+/g,'');
+      if (stripped === phraseStripped) return false;
+      if (seen[stripped]) return false;
+      seen[stripped] = true;
+      return true;
+    })
+    .slice(0, 2) : [];
   return {
     intro_ko: typeof data.intro_ko === 'string' ? data.intro_ko : '',
     intro: typeof data.intro === 'string' ? data.intro : '',
@@ -210,9 +233,92 @@ async function _fillPhraseViaClaude(phrase) {
     examples: Array.isArray(data.examples) ? data.examples
       .map(function(e){ return { ko: (e && e.ko || '').trim(), en: (e && e.en || '').trim() }; })
       .filter(function(e){ return e.ko; }).slice(0, 3) : [],
-    related: Array.isArray(data.related) ? data.related
-      .map(function(s){ return String(s || '').trim(); }).filter(Boolean).slice(0, 6) : [],
+    related: related,
   };
+}
+
+// Per-session memo so we don't re-call Claude for the same phrase
+// twice within a tab while the DB write is propagating.
+window._khRelatedRefreshedSession = window._khRelatedRefreshedSession || {};
+
+// Tighten-up pass for ALREADY-complete phrases whose `related` was
+// generated under the old loose-match prompt. Triggers when the
+// phrase has related entries but no `related_v: 3` marker. One
+// short Claude call per phrase per session, then persisted to DB
+// for everyone else.
+async function _ensureRelatedFresh(phrase) {
+  if (!phrase || !phrase.ko) return phrase;
+  if (phrase.related_v === 3) return phrase;
+  // Only applies when there ARE existing related entries that could
+  // be stale. If admin left it empty there's nothing to clean up.
+  if (!Array.isArray(phrase.related) || !phrase.related.length) return phrase;
+  if (typeof callClaude !== 'function') return phrase;
+  if (window._khRelatedRefreshedSession[phrase.ko]) return phrase;
+  window._khRelatedRefreshedSession[phrase.ko] = true;
+
+  var prompt =
+      'Korean phrase: ' + phrase.ko + '\n'
+    + (phrase.en ? 'Meaning: ' + phrase.en + '\n' : '')
+    + '\n'
+    + 'Return ONLY a JSON object — no preamble, no code fences:\n'
+    + '{ "related": ["idiom 1", "idiom 2"] }\n\n'
+    + 'Rules:\n'
+    + '- EXACTLY 0-2 entries (NEVER more than 2).\n'
+    + '- Each entry MUST be a real Korean 관용구 (idiom) or 속담 (proverb) — a fixed multi-word expression you would find in a Korean idiom dictionary. NOT literal noun phrases like "불가능한 일" or "어려운 목표".\n'
+    + '- Each idiom must convey the SAME core meaning as "' + phrase.ko + '" and be substitutable in conversation. RIGHT for 하늘의 별 따기: 낙타가 바늘구멍 들어가기. WRONG: 불가능한 일 (literal noun phrase, not an idiom).\n'
+    + '- If you cannot find 2 real idioms/proverbs with strong semantic match, return FEWER or [] — DO NOT pad with loose / literal phrases.\n'
+    + '- No commentary, no romanization, just the Korean expressions.';
+
+  try {
+    var res = await callClaude({
+      feature: 'phrase-related-refresh',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('no JSON');
+    var data = JSON.parse(clean.slice(oi, ei + 1));
+
+    var phraseStripped = String(phrase.ko || '').replace(/\s+/g,'').trim();
+    var seen = {};
+    var related = Array.isArray(data.related) ? data.related
+      .map(function(s){ return String(s || '').trim(); })
+      .filter(function(s){
+        if (!s || s.length < 3) return false;
+        var stripped = s.replace(/\s+/g,'');
+        if (stripped === phraseStripped) return false;
+        if (seen[stripped]) return false;
+        seen[stripped] = true;
+        return true;
+      })
+      .slice(0, 2) : [];
+
+    var merged = Object.assign({}, phrase, { related: related, related_v: 3 });
+
+    // Persist back to the shared queue so other users (and our next
+    // page load) see the cleaned data.
+    try {
+      if (typeof supaUser !== 'undefined' && supaUser
+          && typeof saveSharedPhrases === 'function'
+          && typeof getPhraseSourceRows === 'function') {
+        var rows = getPhraseSourceRows().slice();
+        var koTrim = String(phrase.ko || '').trim();
+        var i = rows.findIndex(function(r){ return (r && (r.ko || '').trim()) === koTrim; });
+        if (i >= 0) {
+          rows[i] = Object.assign({}, rows[i], { related: related, related_v: 3 });
+          await saveSharedPhrases(rows);
+        }
+      }
+    } catch(_) {}
+
+    return merged;
+  } catch(e) {
+    console.warn('[phrase] related refresh failed', e);
+    return phrase;
+  }
 }
 
 async function _ensurePhraseFilled(phrase) {
@@ -256,9 +362,17 @@ function _mergePhraseFill(phrase, fill) {
       && (!phrase.examples || !phrase.examples.length)) {
     merged.examples = fill.examples;
   }
-  if (Array.isArray(fill.related) && fill.related.length
-      && (!phrase.related || !phrase.related.length)) {
+  // related: ALWAYS overwrite when the fresh fill has them. Lazy fill
+  // only runs when isPhraseIncomplete is true (intro/nuance/examples
+  // missing) — meaning admin didn't curate this phrase manually, so
+  // AI is the only source. Without this overwrite, bad related from
+  // the previous loose-prompt run would survive forever in DB.
+  if (Array.isArray(fill.related) && fill.related.length) {
     merged.related = fill.related;
+  } else if (fill.related && !fill.related.length) {
+    // AI explicitly returned [] — better to show nothing than the
+    // loose stale list.
+    merged.related = [];
   }
   return merged;
 }
@@ -278,6 +392,12 @@ function _mergePhraseFill(phrase, fill) {
 //   - fallback: unicode emoji for the worst case (Iconify CDN down,
 //              browser blocking the web component, etc.)
 var PHRASE_ILLUS_MAP = [
+  // First-match wins. Pixel-art hero images (entry.image) take
+  // precedence over Lottie/Iconify when they're hand-drawn for a
+  // specific phrase — they get rendered as a full-bleed banner.
+  { rx: /하늘의 별 따기|star.*sky|star.*ladder|impossible.*star/i,
+    image: 'img/phrases/star-ladder.png',
+    icon: 'fluent-emoji-flat:star', fallback: '⭐' },
   { rx: /등잔|램프|불빛|등불|lamp|light/i,
     lottie: 'lottie/lamp.json',           icon: 'fluent-emoji-flat:light-bulb',  fallback: '💡' },
   { rx: /태산|산|mountain|hill|peak/i,
@@ -347,33 +467,36 @@ function _phraseIllusEntry(phrase) {
 // don't HEAD-fetch on every render.
 var _phraseLottieKnown = {};
 
-function _phraseRenderIllus(entry, opts) {
+function _phraseRenderIllus(entry) {
   if (!entry) return '';
-  // Three-tier illustration: Lottie JSON if present at the mapped
-  // path, Iconify SVG (Fluent Emoji set — looks like a designed icon
-  // not a unicode glyph), unicode emoji as last resort. The unicode
-  // emoji is rendered as the iconify-icon's child so when the iconify
-  // CDN is blocked / slow / failed, the user still sees SOMETHING in
-  // the corner instead of a blank slot. Once the iconify web component
-  // boots it replaces its own contents with the SVG, hiding the
-  // emoji automatically.
-  // opts.hero=true uses the centered-hero class instead of the
-  // corner thumbnail, anchoring the page to the illustration.
-  var cls = (opts && opts.hero) ? 'phrase-hero-illus' : 'phrase-card-illus';
+  // When the entry has a hand-drawn image, render it as a CSS
+  // background-image on the banner — no <img> element means no
+  // broken-image icon if the file is missing or still propagating
+  // through the CDN. The banner's gradient acts as the natural
+  // fallback layer underneath. image-rendering: pixelated on the
+  // container keeps pixel art crisp at any container size.
+  if (entry.image) {
+    var imgUrl = entry.image + '?v=20260505l';
+    return '<div class="kh-phrase-hero-img-wrap" style="background-image:url(\'' + escapeText(imgUrl) + '\')" role="img" aria-label="phrase illustration">'
+      +    '<div class="kh-phrase-hero-fade" aria-hidden="true"></div>'
+      +  '</div>';
+  }
+  // Three-tier illustration: Lottie JSON → Iconify SVG (Fluent Emoji)
+  // → unicode emoji fallback nested as iconify-icon's child so the
+  // banner is never empty if the CDN is slow/blocked.
   var fallbackEmoji = entry.fallback || '';
-  var slot = '<div class="' + cls + '" data-lottie="' + escapeText(entry.lottie || '') + '" data-fallback-icon="' + escapeText(entry.icon || '') + '" data-fallback-emoji="' + escapeText(fallbackEmoji) + '">'
+  return '<div class="kh-phrase-hero-illus" data-lottie="' + escapeText(entry.lottie || '') + '" data-fallback-icon="' + escapeText(entry.icon || '') + '" data-fallback-emoji="' + escapeText(fallbackEmoji) + '">'
     + (entry.icon
         ? '<iconify-icon icon="' + escapeText(entry.icon) + '" width="100%" height="100%" aria-hidden="true">' + escapeText(fallbackEmoji) + '</iconify-icon>'
         : escapeText(fallbackEmoji))
     + '</div>';
-  return slot;
 }
 
 // Try to load Lottie JSON for an illustration slot. Probe only once
 // per path per page-load. If Lottie + JSON both exist, replace the
 // Iconify fallback with the animated player.
 async function _phraseHydrateLottie() {
-  var slots = document.querySelectorAll('.phrase-card-illus[data-lottie], .phrase-hero-illus[data-lottie]');
+  var slots = document.querySelectorAll('.kh-phrase-hero-illus[data-lottie]');
   if (!slots.length || typeof window.lottie === 'undefined') return;
   for (var i = 0; i < slots.length; i++) {
     var slot = slots[i];
@@ -486,167 +609,184 @@ function renderPhraseLayout(phrase, opts) {
   var ex = exIdx >= 0 ? examples[exIdx] : null;
 
   var levelKey = phrase.level || '';
-  var levelClass = LEVEL_CLASS[levelKey] || 'lvl-sprout';
-  var levelLabel = LEVEL_LABEL[levelKey] || 'Sprout Level';
-
+  // Level pill removed from the user-facing eyebrow — the user found
+  // it noisy and not useful for casual reading. The level value is
+  // still tracked in analytics + admin queue.
   var saved = _isPhraseSaved(phrase.ko);
   var mastered = _isPhraseMastered(phrase.ko);
+  var streak = opts.streak | 0;
+  var dayCounter = (typeof opts.dayLabel === 'string') ? opts.dayLabel : '';
+
+  var illusEntry = _phraseIllusEntry(phrase);
+
+  // ── Editorial layout — mirrors the article reader card style:
+  // white card on cream container, navy serif headline, italic Playfair
+  // English subtitle, byline-style meta strip, sectioned body. No more
+  // dark-mode takeover, no more iOS-style fixed CTA bar.
+  var heroBanner = ''
+    + '<div class="kh-phrase-hero-banner">'
+    +   _phraseRenderIllus(illusEntry)
+    + '</div>';
 
   var statusPill = opts.generating
-    ? '<span class="phrase-loading">분석 채우는 중</span>'
+    ? '<span class="kh-phrase-loading-pill" aria-live="polite">분석 채우는 중</span>'
     : '';
 
-  // ── Top toolbar — back + bookmark only on the user-facing layout.
-  // Admin gets a small edit shortcut too. The clutter from a third
-  // button hurt the page's visual focus.
-  var topRow = ''
-    + '<div class="phrase-toprow">'
-    +   '<a class="phrase-iconbtn" href="javascript:history.length>1?history.back():(location.href=\'index.html\')" aria-label="Back">'
-    +     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
-    +   '</a>'
-    +   '<div class="ptr-right">'
-    +     '<button class="phrase-iconbtn ' + (saved ? 'saved' : '') + '" onclick="toggleSavePhrase()" aria-label="Save phrase">'
-    +       (saved
-              ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
-              : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>')
-    +     '</button>'
-    +     ((typeof window._isAdmin !== 'undefined' && window._isAdmin && opts.idx != null)
-            ? '<a class="phrase-iconbtn" href="korehan-x9f4k2m7-phrases.html?edit=' + opts.idx + '" aria-label="Edit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></a>'
-            : '')
-    +   '</div>'
+  var eyebrow = ''
+    + '<div class="kh-phrase-eyebrow">'
+    +   '<span class="kh-phrase-eyebrow-cat">Phrase of the Day</span>'
+    +   statusPill
     + '</div>';
 
-  // ── Hero block — illustration centered, big phrase, EN translation,
-  // romanization. The illustration is the page's anchor — earlier the
-  // user said the page felt empty / corner thumbnail wasn't enough.
-  var illusEntry = _phraseIllusEntry(phrase);
-  var dayCounter = (typeof opts.dayLabel === 'string') ? opts.dayLabel : '';
-  var heroBlock = ''
-    + '<div class="phrase-hero">'
-    +   _phraseRenderIllus(illusEntry, { hero: true })
-    +   '<span class="phrase-level-badge ' + levelClass + '">'
-    +     '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L4 8 L4 22 L11 22 L11 17 L13 17 L13 22 L20 22 L20 8 Z" opacity=".7"/></svg>'
-    +     '<span>' + levelLabel + '</span>'
-    +   '</span>'
-    +   (statusPill ? statusPill : '')
-    +   '<h1 class="phrase-ko">' + escapeText(phrase.ko) + '</h1>'
-    +   (phrase.en  ? '<div class="phrase-en">' + escapeText(phrase.en)  + '</div>' : '')
-    +   (phrase.rom ? '<div class="phrase-rom">' + escapeText(phrase.rom) + '</div>' : '')
-    + '</div>';
+  var headline = '<h1 class="kh-phrase-headline">' + escapeText(phrase.ko) + '</h1>';
+  var subtitle = phrase.en
+    ? '<p class="kh-phrase-subtitle">' + escapeText(phrase.en) + '</p>'
+    : '';
+  var rom = phrase.rom
+    ? '<p class="kh-phrase-rom">' + escapeText(phrase.rom) + '</p>'
+    : '';
 
-  // ── Motivation strip — small, restrained chips. Day streak + saved-
-  // count for engagement, plus a tappable mastery toggle. Replaces the
-  // empty-feeling space the user complained about.
-  var streak = opts.streak | 0;
-  var motivChips = [];
-  if (dayCounter) motivChips.push('<span class="phrase-motiv-chip"><strong>' + escapeText(dayCounter) + '</strong></span>');
-  if (streak > 0) motivChips.push('<span class="phrase-motiv-chip">🔥 <strong>' + streak + '</strong>일 연속</span>');
-  motivChips.push('<button type="button" class="phrase-motiv-chip is-mastered ' + (mastered ? 'on' : '') + '" onclick="toggleMasteredPhrase()" aria-pressed="' + (mastered ? 'true' : 'false') + '">' + (mastered ? '✓ 마스터함' : '마스터 표시') + '</button>');
-  var motivStrip = '<div class="phrase-motivation">' + motivChips.join('') + '</div>';
+  // Byline-style meta — replaces the flashy chip strip. Treats
+  // streak/day counter/master toggle like newspaper byline metadata.
+  var bylineParts = [];
+  if (dayCounter) bylineParts.push('<span>' + escapeText(dayCounter) + '</span>');
+  if (streak > 0) bylineParts.push('<span><svg class="kh-phrase-streak-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5.5C13.5 4 11 5.5 9.5 7.5c-1.7 2.4-2 5.5-.5 8 1.6 2.7 5 4 8 3 3.2-1 5-3.7 5-7 0-3.4-2-6-4-8 0 2-1 4-2.5 5C13.8 9 14 6.5 13.5.5z"/></svg> ' + streak + 'd streak</span>');
+  bylineParts.push('<button type="button" class="kh-phrase-master-btn ' + (mastered ? 'on' : '') + '" onclick="toggleMasteredPhrase()" aria-pressed="' + (mastered ? 'true' : 'false') + '">'
+    + (mastered
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><polyline points="20 6 9 17 4 12"/></svg> Mastered'
+        : 'Mark as mastered')
+    + '</button>');
+  var byline = '<div class="kh-phrase-byline">' + bylineParts.join('<span class="kh-phrase-byline-dot">·</span>') + '</div>';
 
-  // ── Meaning card (no corner illustration anymore — illustration is
-  // already in the hero, doubling it just felt cramped).
-  var hasIntro = phrase.intro_ko || phrase.intro;
-  var meaningBody;
-  if (hasIntro) {
-    meaningBody = ''
-      + (phrase.intro_ko ? '<div class="phrase-card-body-ko">' + escapeText(phrase.intro_ko) + '</div>' : '')
-      + (phrase.intro    ? '<div class="phrase-card-body-en">' + escapeText(phrase.intro)    + '</div>' : '')
-      + (phrase.nuance && phrase.nuance.length > 8 && phrase.nuance !== phrase.intro
-          ? '<div class="phrase-card-divider"></div>'
-            + '<div class="phrase-card-section-label">When to use it</div>'
-            + '<div class="phrase-card-body-en" style="margin-top:0">' + escapeText(phrase.nuance) + '</div>'
-          : '');
-  } else if (opts.generating) {
-    meaningBody = '<div class="phrase-card-body-en">의미를 정리하고 있어요…</div>';
-  } else {
-    meaningBody = '<div class="phrase-card-body-en">No description yet.</div>';
+  // ── Body sections.
+  var hasIntroKo  = !!(phrase.intro_ko && phrase.intro_ko.trim());
+  var hasIntroEn  = !!(phrase.intro    && phrase.intro.trim());
+  var hasNuance   = !!(phrase.nuance   && phrase.nuance.trim() && phrase.nuance !== phrase.intro);
+
+  var meaningSection = '';
+  if (hasIntroKo || hasIntroEn || opts.generating) {
+    meaningSection = ''
+      + '<section class="kh-phrase-section">'
+      +   '<h2 class="kh-phrase-section-label">Meaning</h2>'
+      +   (hasIntroKo ? '<p class="kh-phrase-section-ko">' + escapeText(phrase.intro_ko) + '</p>' : '')
+      +   (hasIntroEn ? '<p class="kh-phrase-section-en">' + escapeText(phrase.intro)    + '</p>'
+                      : (opts.generating ? '<p class="kh-phrase-section-en kh-phrase-section-pending">의미를 정리하고 있어요…</p>' : ''))
+      + '</section>';
   }
-  var meaningCard = ''
-    + '<div class="phrase-card">'
-    +   '<div class="phrase-card-header">'
-    +     '<span class="phrase-card-title">Meaning</span>'
-    +   '</div>'
-    +   meaningBody
-    + '</div>';
 
-  // ── Example card with TTS + cycle.
-  var exampleCard = '';
+  var nuanceSection = hasNuance
+    ? '<section class="kh-phrase-section">'
+        + '<h2 class="kh-phrase-section-label">When to use it</h2>'
+        + '<p class="kh-phrase-section-en">' + escapeText(phrase.nuance) + '</p>'
+      + '</section>'
+    : '';
+
+  // In Action — uses the existing site `art-example-box` look (cream
+  // gradient panel) so it visually matches the article reader's
+  // example boxes. TTS + cycle controls inline.
+  var inActionSection = '';
   if (ex || opts.generating) {
-    var exBody = ex
-      ? '<div class="phrase-card-body-ko">' + escapeText(ex.ko) + '</div>'
-        + (ex.en ? '<div class="phrase-card-body-en">' + escapeText(ex.en) + '</div>' : '')
-      : '<div class="phrase-card-body-en">예문을 만들고 있어요…</div>';
-    var ttsBtnHtml = ex
-      ? '<button class="phrase-card-tts" onclick="speakKorean(\'' + (ex.ko || '').replace(/\\/g,'\\\\').replace(/\'/g,"\\'") + '\', this)" aria-label="Listen">'
+    var ttsBtn = ex
+      ? '<button class="kh-phrase-icon-btn" onclick="speakKorean(\'' + (ex.ko || '').replace(/\\/g,'\\\\').replace(/\'/g,"\\'") + '\', this)" aria-label="Listen">'
         + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>'
       + '</button>'
       : '';
-    var cycleBtnHtml = examples.length > 1
-      ? '<button class="phrase-card-tts" id="ph-cycle-btn" onclick="cyclePhraseExample()" aria-label="Next example" style="margin-right:6px;transition:transform .24s ease">'
+    var cycleBtn = examples.length > 1
+      ? '<button class="kh-phrase-icon-btn" id="ph-cycle-btn" onclick="cyclePhraseExample()" aria-label="Next example">'
         + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>'
       + '</button>'
       : '';
-    exampleCard = ''
-      + '<div class="phrase-card">'
-      +   '<div class="phrase-card-header">'
-      +     '<span class="phrase-card-title">In Action' + (examples.length > 1 ? ' · ' + (exIdx + 1) + '/' + examples.length : '') + '</span>'
-      +     '<span style="display:flex;align-items:center">' + cycleBtnHtml + ttsBtnHtml + '</span>'
+    var exBody = ex
+      ? '<div class="art-example-ko">' + escapeText(ex.ko) + '</div>'
+        + (ex.en ? '<div class="art-example-en">' + escapeText(ex.en) + '</div>' : '')
+      : '<div class="art-example-en kh-phrase-section-pending">예문을 만들고 있어요…</div>';
+    inActionSection = ''
+      + '<section class="kh-phrase-section">'
+      +   '<div class="art-example-box kh-phrase-example-box">'
+      +     '<div class="art-example-head kh-phrase-example-head">'
+      +       '<span>In Action' + (examples.length > 1 ? ' · ' + (exIdx + 1) + '/' + examples.length : '') + '</span>'
+      +       '<span class="kh-phrase-example-actions">' + cycleBtn + ttsBtn + '</span>'
+      +     '</div>'
+      +     exBody
       +   '</div>'
-      +   exBody
-      + '</div>';
+      + '</section>';
   }
 
-  // ── Related expressions card. Replaces the floating chips with a
-  // proper card so they don't dangle under the example. Up to 4 rows;
-  // each row links to the same reader with the related phrase loaded.
-  var related = (phrase.related || []).slice(0, 4).filter(function(x){ return x && String(x).trim(); });
-  var relatedCard = '';
+  // Related expressions — list of bordered links, same gradient cream
+  // background as art-example-box for visual consistency.
+  var related = (phrase.related || []).slice(0, 2).filter(function(x){ return x && String(x).trim(); });
+  var relatedSection = '';
   if (related.length) {
     var rows = related.map(function(x){
       var t = String(x).trim();
-      return '<a class="phrase-related-row" href="korehan-phrase.html?q=' + encodeURIComponent(t) + '">'
-        +   '<span class="pr-ko">' + escapeText(t) + '</span>'
-        +   '<span class="pr-arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>'
-        + '</a>';
+      return '<li><a href="korehan-phrase.html?q=' + encodeURIComponent(t) + '">'
+        +   '<span class="kp-rel-ko">' + escapeText(t) + '</span>'
+        +   '<span class="kp-rel-arrow" aria-hidden="true">→</span>'
+        + '</a></li>';
     }).join('');
-    relatedCard = ''
-      + '<div class="phrase-related-card">'
-      +   '<div class="phrase-card-header">'
-      +     '<span class="phrase-card-title">Related Expressions</span>'
-      +   '</div>'
-      +   '<div class="phrase-related-list">' + rows + '</div>'
-      + '</div>';
+    relatedSection = ''
+      + '<section class="kh-phrase-section">'
+      +   '<h2 class="kh-phrase-section-label">Related Expressions</h2>'
+      +   '<ul class="kh-phrase-related-list">' + rows + '</ul>'
+      + '</section>';
   }
 
-  // ── Bottom CTA pill. The "or continue studying" link from the
-  // previous version got stripped (redundant with the dedicated study
-  // page in the bottom-app navigation when the user opens that flow).
-  var bottomCta = ''
-    + '<div class="phrase-cta-bar">'
-    +   '<button class="phrase-cta ' + (saved ? 'saved' : '') + '" onclick="toggleSavePhrase()">'
+  // CTA row — solid accent button to save, secondary outline to open
+  // the study room. No more fixed bottom pill.
+  // When already saved, swap the secondary button to a "View My
+  // Phrases" link so the user can find the saved collection (the
+  // most common follow-up after saving a phrase).
+  var secondary = saved
+    ? '<a class="kh-phrase-secondary-btn" href="korehan-my-phrases.html">View My Phrases <span aria-hidden="true">→</span></a>'
+    : '<a class="kh-phrase-secondary-btn" href="korehan-my-phrases.html">My Phrases <span aria-hidden="true">→</span></a>';
+  var ctaRow = ''
+    + '<div class="kh-phrase-cta-row">'
+    +   '<button class="kh-phrase-save-btn ' + (saved ? 'saved' : '') + '" onclick="toggleSavePhrase()">'
     +     (saved
-            ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6L9 17l-5-5"/></svg>'
-            : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>')
+            ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
+            : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>')
     +     '<span>' + (saved ? 'Saved to My Phrases' : 'Add to My Phrases') + '</span>'
     +   '</button>'
+    +   secondary
     + '</div>';
 
+  // Admin-only edit shortcut, tucked discreetly above the headline.
+  var adminEdit = (typeof window._isAdmin !== 'undefined' && window._isAdmin && opts.idx != null)
+    ? '<a class="kh-phrase-admin-edit" href="korehan-x9f4k2m7-phrases.html?edit=' + opts.idx + '" title="Edit this phrase">'
+      + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>'
+      + '<span>Edit</span></a>'
+    : '';
+
+  var backLink = ''
+    + '<a class="kh-phrase-back" href="javascript:history.length>1?history.back():(location.href=\'index.html\')">'
+    +   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
+    +   '<span>All news</span>'
+    + '</a>';
+
   root.innerHTML = ''
-    + topRow
-    + heroBlock
-    + motivStrip
-    + meaningCard
-    + exampleCard
-    + relatedCard
-    + bottomCta;
+    + backLink
+    + '<article class="kh-phrase-card">'
+    +   heroBanner
+    +   '<div class="kh-phrase-card-body">'
+    +     adminEdit
+    +     eyebrow
+    +     headline
+    +     subtitle
+    +     rom
+    +     byline
+    +     '<div class="kh-phrase-divider"></div>'
+    +     meaningSection
+    +     nuanceSection
+    +     inActionSection
+    +     relatedSection
+    +     ctaRow
+    +   '</div>'
+    + '</article>';
 
   document.title = phrase.ko + ' — KoreHani Phrase';
 
   // Lottie hydration runs after the DOM is in place — replaces the
   // Iconify fallback with the animated SVG when the JSON exists.
-  // Lottie library loads with `defer` so it may not be ready on the
-  // first call; retry a few times until it is.
   var _hydrateTries = 0;
   function _tryHydrate() {
     if (typeof window.lottie !== 'undefined') { _phraseHydrateLottie(); return; }
@@ -698,9 +838,30 @@ async function renderPhrasePage() {
   if (needsFill) {
     try {
       var filled = await _ensurePhraseFilled(phrase);
+      // _fillPhraseViaClaude returns related under the v2 prompt, so
+      // stamp the marker in-memory too — _mergePhraseFill doesn't
+      // currently set it.
+      filled.related_v = 3;
+      phrase = filled;
       renderPhraseLayout(filled, renderOpts);
     } catch(e) {
       console.warn('[phrase] fill failed', e);
+    }
+  }
+
+  // Pass 2 — for phrases that ARE complete (intro/nuance/examples
+  // already good) but whose `related` was generated under the old
+  // loose-match prompt. Detected via missing related_v: 3 marker.
+  // Cheap related-only Claude call, then persisted to DB so the
+  // next visitor doesn't re-pay.
+  if (!phrase.related_v || phrase.related_v < 3) {
+    try {
+      var freshened = await _ensureRelatedFresh(phrase);
+      if (freshened && freshened !== phrase) {
+        renderPhraseLayout(freshened, renderOpts);
+      }
+    } catch(e) {
+      console.warn('[phrase] related refresh failed', e);
     }
   }
 }

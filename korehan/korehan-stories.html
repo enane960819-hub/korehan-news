@@ -17,16 +17,12 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehannews.com/og-default.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260505b">
+<link rel="stylesheet" href="korehan-shared.css?v=20260505p">
 <style>
-.st-hero{background:linear-gradient(160deg,#4c1d95 0%,#7c3aed 55%,#a78bfa 100%);padding:36px 0 80px;margin-bottom:-56px;}
-.st-hero-inner{max-width:1280px;margin:0 auto;padding:0 24px;}
-.st-hero-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.75);margin-bottom:10px;}
-.st-hero h1{font-family:'Playfair Display',serif;font-size:38px;font-weight:900;color:#fff;margin:0 0 10px;line-height:1.15;}
-.st-hero p{font-size:15px;color:rgba(255,255,255,.85);line-height:1.7;max-width:560px;margin:0;}
-.st-filter-bar{max-width:1280px;margin:0 auto;padding:20px 24px 28px;display:flex;flex-wrap:wrap;gap:8px;position:relative;z-index:2;}
-.sf-pill{padding:8px 18px;border-radius:999px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;}
-.sf-pill.on,.sf-pill:hover{background:#fff;color:#7c3aed;border-color:#fff;}
+/* Stories-specific tweaks. Hero styling now comes from .kh-page-hero
+   in korehan-shared.css; the body.kh-page-stories class on <body> picks
+   the purple hue. The `.sf-sep` line-break stays so each filter group
+   wraps to its own row. */
 .sf-sep{flex-basis:100%;height:0;}
 .st-container{max-width:1280px;margin:0 auto;padding:0 24px 60px;}
 .st-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
@@ -205,7 +201,7 @@
 .st-q-q{font-size:12px;font-weight:700;color:#0f172a;margin-bottom:4px;}
 .st-q-a{font-size:12px;color:#475569;line-height:1.5;}
 @media(max-width:900px){.st-grid{grid-template-columns:repeat(2,1fr);gap:14px}.st-panel{grid-template-columns:1fr}.st-right{border-left:none;border-top:1px solid #e8eef7}}
-@media(max-width:600px){.st-grid{grid-template-columns:repeat(2,1fr);gap:10px}.st-hero h1{font-size:28px}.st-panel{border-radius:20px}.sc{min-height:0}}
+@media(max-width:600px){.st-grid{grid-template-columns:repeat(2,1fr);gap:10px}.st-panel{border-radius:20px}.sc{min-height:0}}
 
 /* Mobile-only Read / Learn tab strip on the story detail. Desktop
    keeps the 2-column layout (body + right panel side-by-side) so
@@ -257,43 +253,30 @@
   .st-rail-title{font-size:15px;}
   .st-rail-scroll > .sc .sc-title{font-size:12px;}
   .st-rail-scroll > .sc .sc-body{padding:8px 10px;}
-  .st-hero{padding:22px 0 50px;margin-bottom:-34px;}
-  .st-hero h1{font-size:24px;margin-bottom:6px;}
-  .st-hero p{font-size:12px;line-height:1.5;}
-  .st-filter-bar{padding:12px 16px 16px;gap:6px;}
-  .sf-pill{padding:6px 12px;font-size:12px;}
   .st-container{padding:0 14px 48px;}
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
-<body>
+<body class="kh-page-stories">
 <div id="kh-header"></div>
 
-<div class="st-hero">
-  <div class="st-hero-inner">
-    <div class="st-hero-eyebrow">KoreHani</div>
-    <h1>Korean Stories</h1>
+<div class="kh-page-hero">
+  <div class="kh-page-hero-inner">
+    <div class="kh-page-hero-eyebrow">Stories · Fiction · Essays</div>
+    <h1><i data-lucide="book-open" class="kh-ui-icon" aria-hidden="true"></i><span>Korean Stories</span></h1>
     <p>Short stories, web novels, and character-driven series. Read authentic Korean in multiple genres and narrative styles.</p>
-  </div>
-  <div class="st-filter-bar" id="mood-pills">
-    <button class="sf-pill on" data-genre="all">All</button>
-    <button class="sf-pill" data-genre="slice_of_life">Slice of Life</button>
-    <button class="sf-pill" data-genre="romance">Romance</button>
-    <button class="sf-pill" data-genre="mystery">Mystery</button>
-    <button class="sf-pill" data-genre="adventure">Adventure</button>
-    <button class="sf-pill" data-genre="thriller">Thriller</button>
-    <button class="sf-pill" data-genre="essay">Essay</button>
-    <div class="sf-sep"></div>
-    <button class="sf-pill on" data-lvl="all">All Levels</button>
-    <button class="sf-pill" data-lvl="b">Sprout</button>
-    <button class="sf-pill" data-lvl="i">Tree</button>
-    <button class="sf-pill" data-lvl="a">Forest</button>
-    <div class="sf-sep"></div>
-    <button class="sf-pill on" data-perspective="all">All Views</button>
-    <button class="sf-pill" data-perspective="first">1st Person</button>
-    <button class="sf-pill" data-perspective="third">3rd Person</button>
-    <button class="sf-pill" data-perspective="omniscient">Omniscient</button>
+    <div class="kh-page-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Search stories…" id="st-search-input" oninput="_filterStSearch(this.value)">
+    </div>
+    <div class="kh-filter-bar" id="mood-pills" style="margin-top:12px">
+      <button class="kh-filter-pill sf-pill on" data-lvl="all">All</button>
+      <button class="kh-filter-pill sf-pill" data-lvl="s"><span class="kh-filter-dot" style="background:#7b5cff"></span>Seed</button>
+      <button class="kh-filter-pill sf-pill" data-lvl="b"><span class="kh-filter-dot" style="background:#22c55e"></span>Sprout</button>
+      <button class="kh-filter-pill sf-pill" data-lvl="i"><span class="kh-filter-dot" style="background:#f59e0b"></span>Tree</button>
+      <button class="kh-filter-pill sf-pill" data-lvl="a"><span class="kh-filter-dot" style="background:#ef4444"></span>Forest</button>
+    </div>
   </div>
 </div>
 
@@ -322,7 +305,7 @@
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505b"></script>
+<script src="js/core/phrases.js?v=20260505p"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -337,7 +320,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260505b"></script>
+<script src="korehan-shared.js?v=20260505p"></script>
 <script src="korehan-hover-tooltips.js?v=20260505b"></script>
 <script>
 // ── Story progress + favorites helpers (Phase 2) ────────────────
@@ -1110,6 +1093,18 @@ function characterProfileUrl(slug) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 var activeGenre = 'all', activeLvl = 'all', activePerspective = 'all';
+var activeSearchSt = '';
+
+// Triggered by the hero search input. Stores the trimmed lowercased
+// query and re-renders. Empty string returns to the unfiltered rails
+// view. Genre + perspective filters are no longer surfaced as pills
+// (the user trimmed the filter strip down to just level), but the
+// fields still exist on each row so we keep matching them in
+// renderStories for future reuse.
+function _filterStSearch(q) {
+  activeSearchSt = String(q || '').trim().toLowerCase();
+  renderStories();
+}
 
 function renderStories() {
   var grid = document.getElementById('st-grid');
@@ -1119,7 +1114,11 @@ function renderStories() {
     var genreOk = activeGenre === 'all' || genre === activeGenre || s.mood === activeGenre;
     var lvlOk = activeLvl === 'all' || s.lvl === activeLvl;
     var perspOk = activePerspective === 'all' || persp === activePerspective;
-    return genreOk && lvlOk && perspOk;
+    var searchOk = !activeSearchSt || (
+      ((s.title || '') + ' ' + (s.title_en || '') + ' ' + (s.summary || '') + ' ' + (s.body || '') + ' ' + genre)
+        .toLowerCase().indexOf(activeSearchSt) !== -1
+    );
+    return genreOk && lvlOk && perspOk && searchOk;
   });
 
   renderSeriesSection();
@@ -1134,7 +1133,7 @@ function renderStories() {
   // Netflix-style genre rails when no filter is active.
   // Each story appears in exactly ONE rail — priority order:
   //   1) ⚡ Quick Reads  →  2) its genre rail  →  3) its level rail
-  var noFilter = activeGenre === 'all' && activeLvl === 'all' && activePerspective === 'all';
+  var noFilter = activeGenre === 'all' && activeLvl === 'all' && activePerspective === 'all' && !activeSearchSt;
   if (noFilter) {
     grid.className = 'st-rails';
     grid.style.display = 'block';

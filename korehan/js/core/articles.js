@@ -245,11 +245,13 @@ async function loadArticlesFromDB(options) {
   if (!shouldForceRefresh && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
     return _articlesCache;
   }
-  var lim = useHomeOptimizedQuery ? 30 : useAllArticles ? 500 : 80;
-  // All News browse uses metadata-only columns. The lede body was
-  // dragging the payload to ~3MB on 500 rows (20s+ on desktop). Search
-  // now goes through searchArticlesServer() which does a server-side
-  // ilike — no need to ship lede text to every visitor up front.
+  // All News browse uses metadata-only columns. With body excluded
+  // each row is ~300 bytes — 1000 rows ≈ 300KB, vs the old 500 ×
+  // body-included ~1MB+. Plenty of headroom for growth (~260 published
+  // currently). Search now goes through searchArticlesServer() (a
+  // server-side ilike on title / title_en / body / full) so we don't
+  // need to ship lede text to every visitor up front.
+  var lim = useHomeOptimizedQuery ? 30 : useAllArticles ? 1000 : 80;
   // Try the lite column list first; fall back to '*' if PostgREST
   // rejects an unknown column (production schemas can lag behind the
   // codebase). Without this fallback any missing column on the lite

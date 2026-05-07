@@ -728,7 +728,7 @@ function _injectAuthModal() {
     <!-- 헤더 -->
     <div style="background:linear-gradient(135deg,#07122a,#0e2554);padding:26px 28px 22px;position:relative">
       <button onclick="closeAuthModal()" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">${KH_ICON_X}</span></button>
-      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:20px;color:#fff;margin-bottom:3px">Kore<span style="color:#7ab8f5;font-style:italic">Han</span></div>
+      <div style="font-size:24px;color:#fff;margin-bottom:3px"><span class="kh-logo-text">KoreHan<span class="kh-logo-i">ı</span></span></div>
       <div style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.8px;text-transform:uppercase">Your Korean learning journey</div>
     </div>
 
@@ -1055,6 +1055,14 @@ function updateAuthUI() {
   var isTutor = supaUser && TUTOR_EMAILS.includes((supaUser.email || '').toLowerCase());
   window._isTutor = isTutor;
 
+  // Notification bell: only shown when signed in. khStartNotifications
+  // handles polling + initial fetch so we don't block the header render.
+  var notifWrap = document.getElementById('topbar-notif-wrap');
+  if (notifWrap) notifWrap.style.display = supaUser ? 'inline-flex' : 'none';
+  if (supaUser && typeof khStartNotifications === 'function') {
+    try { khStartNotifications(); } catch (_) {}
+  }
+
   if (supaUser) {
     // 로그인 상태
     if (signinBtn) {
@@ -1077,6 +1085,7 @@ function updateAuthUI() {
         + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP 0 · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>냥 0</span></div>'
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
+        + '<a href="korehan-friends.html" class="kh-user-dropdown-link">' + khIcon('users', 'Friends', 'kh-ui-icon-sm') + '</a>'
         + '<a href="korehan-notes.html" class="kh-user-dropdown-link">' + khIcon('bookmark', 'My Notes', 'kh-ui-icon-sm') + '</a>'
         + (isAdmin ? '<a href="korehan-x9f4k2m7.html" class="kh-user-dropdown-link">' + khIcon('settings', 'Admin CMS', 'kh-ui-icon-sm') + '</a>' : '')
         + (isTutor ? '<a href="korehan-tutor-7v3ca.html" class="kh-user-dropdown-link">' + khIcon('graduation-cap', 'Tutor Dashboard', 'kh-ui-icon-sm') + '</a>' : '')
@@ -1117,6 +1126,271 @@ function updateAuthUI() {
   renderKhLucideIcons();
   scheduleSignupNudge();
 }
+
+// ══════════════════════════════════════════════════════════════════
+// Notifications (in-app inbox)
+//
+// Lives in the header. Polls notifications every 30s while the tab
+// is visible and the user is signed in. Unread count drives the red
+// chip on the bell; clicking the bell opens a dropdown with the most
+// recent 20 entries. Friend-request notifications expose inline
+// Accept / Decline buttons that call the same RPCs the profile page
+// uses, so the user can resolve a request without navigating.
+// ══════════════════════════════════════════════════════════════════
+
+var _khNotifPollTimer = null;
+var _khNotifRows = [];
+var _khNotifCount = 0;
+var _khNotifAuthorMap = {};
+
+function khStartNotifications() {
+  if (_khNotifPollTimer || typeof supaUser === 'undefined' || !supaUser) return;
+  khLoadNotifications();
+  _khNotifPollTimer = setInterval(function () {
+    if (typeof supaUser === 'undefined' || !supaUser) {
+      clearInterval(_khNotifPollTimer); _khNotifPollTimer = null; return;
+    }
+    if (document.visibilityState === 'visible') khLoadNotifications();
+  }, 30000);
+  document.addEventListener('click', _khNotifMaybeCloseDropdown, true);
+}
+
+async function khLoadNotifications() {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || typeof supaUser === 'undefined' || !supaUser) return;
+  try {
+    var r = await sb.from('notifications')
+      .select('id, kind, payload, read_at, created_at')
+      .eq('user_id', supaUser.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (r.error) return;
+    _khNotifRows = r.data || [];
+    _khNotifCount = _khNotifRows.filter(function (n) { return !n.read_at; }).length;
+
+    // Resolve display names for the senders referenced in the payloads
+    // so the UI can show "Alice sent you a friend request" instead of
+    // "<uuid> sent...". One IN(...) query per refresh.
+    var ids = new Set();
+    _khNotifRows.forEach(function (n) {
+      var p = n.payload || {};
+      if (p.from)      ids.add(p.from);
+      if (p.friend_id) ids.add(p.friend_id);
+    });
+    if (ids.size) {
+      var us = await sb.from('user_stats')
+        .select('user_id, display_name')
+        .in('user_id', Array.from(ids));
+      _khNotifAuthorMap = {};
+      ((us && us.data) || []).forEach(function (u) { _khNotifAuthorMap[u.user_id] = u.display_name; });
+    }
+
+    _khRenderNotifBell();
+    _khRenderNotifDropdown();
+  } catch (_) { /* ignore poll failures */ }
+}
+
+function _khRenderNotifBell() {
+  var chip = document.getElementById('topbar-notif-count');
+  if (!chip) return;
+  if (_khNotifCount > 0) {
+    chip.textContent = _khNotifCount > 99 ? '99+' : String(_khNotifCount);
+    chip.hidden = false;
+  } else {
+    chip.hidden = true;
+  }
+}
+
+function _khRenderNotifDropdown() {
+  var drop = document.getElementById('topbar-notif-dropdown');
+  if (!drop) return;
+  var head = '<div class="kh-notif-head">'
+    +   '<div class="kh-notif-head-title">Notifications</div>'
+    +   (_khNotifCount > 0 ? '<button class="kh-notif-mark-all" type="button" onclick="khMarkAllNotifsRead()">Mark all read</button>' : '')
+    + '</div>';
+  if (!_khNotifRows.length) {
+    drop.innerHTML = head + '<div class="kh-notif-empty">No notifications yet.</div>';
+    return;
+  }
+  var listHtml = _khNotifRows.map(_khRenderNotifItem).join('');
+  drop.innerHTML = head + '<div class="kh-notif-list">' + listHtml + '</div>';
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+}
+
+function _khRenderNotifItem(n) {
+  var p = n.payload || {};
+  var unread = !n.read_at;
+  var iconName = 'bell';
+  var text = '';
+  var actionsHtml = '';
+  // Per-kind landing target for click-through. The whole row becomes
+  // a link to this URL so the user lands on the spot the event
+  // happened. Action buttons (Accept / Decline) e.stopPropagation()
+  // so they don't trigger the row navigation.
+  var targetHref = '#';
+  var meId = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : '';
+  if (n.kind === 'friend_request') {
+    iconName = 'user-plus';
+    var nameFr = _khNotifAuthorMap[p.from] || 'A learner';
+    text = _khEsc(nameFr) + ' sent you a friend request.';
+    targetHref = 'korehan-friends.html#pending';
+    if (p.request_id) {
+      actionsHtml = '<div class="kh-notif-item-actions">'
+        + '<button class="kh-notif-item-btn kh-notif-item-btn-primary" onclick="event.preventDefault();event.stopPropagation();khAcceptFriendFromBell(\'' + p.request_id + '\', this)">Accept</button>'
+        + '<button class="kh-notif-item-btn kh-notif-item-btn-ghost" onclick="event.preventDefault();event.stopPropagation();khRejectFriendFromBell(\'' + p.request_id + '\', this)">Decline</button>'
+        + '</div>';
+    }
+  } else if (n.kind === 'friend_accepted') {
+    iconName = 'user-check';
+    var nameFa = _khNotifAuthorMap[p.friend_id] || 'A learner';
+    text = 'You\'re now friends with ' + _khEsc(nameFa) + '.';
+    targetHref = p.friend_id ? ('korehan-profile.html?user=' + encodeURIComponent(p.friend_id)) : 'korehan-friends.html';
+  } else if (n.kind === 'guestbook_post') {
+    iconName = 'message-square';
+    var nameGb = _khNotifAuthorMap[p.from] || 'A friend';
+    var preview = p.preview ? ' · "' + _khEsc(p.preview) + '"' : '';
+    text = _khEsc(nameGb) + ' left a note on your wall' + preview;
+    // Land on your own profile so you see the new guestbook entry.
+    targetHref = meId ? ('korehan-profile.html?user=' + encodeURIComponent(meId) + '#guestbook') : '#';
+  } else if (n.kind === 'comment_reply') {
+    iconName = 'message-circle';
+    var nameCr = _khNotifAuthorMap[p.from] || 'A learner';
+    var prevCr = p.preview ? ' · "' + _khEsc(p.preview) + '"' : '';
+    text = _khEsc(nameCr) + ' replied to your comment' + prevCr;
+    targetHref = p.article_id
+      ? ('korehan-article.html?id=' + encodeURIComponent(p.article_id) + '#cm-' + (p.reply_id || p.parent_id || ''))
+      : '#';
+  } else if (n.kind === 'badge_earned') {
+    iconName = 'award';
+    text = 'You earned a new badge: <strong>' + _khEsc(p.name || '') + '</strong>';
+    targetHref = 'korehan-mypage.html#badges';
+  } else if (n.kind === 'streak_freeze_used') {
+    iconName = 'snowflake';
+    var rem = (typeof p.remaining === 'number') ? (' · ' + p.remaining + ' left') : '';
+    text = 'We used a streak freeze to save your streak yesterday' + _khEsc(rem) + '.';
+    targetHref = 'korehan-learning-overview.html';
+  } else if (n.kind === 'streak_freeze_awarded') {
+    iconName = 'snowflake';
+    var grant = p.granted || 1;
+    var st = p.streak ? (' (' + p.streak + '-day streak)') : '';
+    text = 'You earned <strong>' + grant + ' streak freeze' + (grant > 1 ? 's' : '') + '</strong>' + _khEsc(st) + '. We\'ll auto-spend them on missed days.';
+    targetHref = 'korehan-learning-overview.html';
+  } else if (n.kind === 'room_visit') {
+    iconName = 'door-open';
+    var nameRv = _khNotifAuthorMap[p.from] || 'A learner';
+    text = _khEsc(nameRv) + ' visited your room.';
+    targetHref = p.from ? ('korehan-profile.html?user=' + encodeURIComponent(p.from)) : '#';
+  } else {
+    iconName = 'info';
+    text = _khEsc(p.message || 'New notification');
+  }
+  // Wrap the row in an <a> so clicking anywhere on the card (except
+  // Accept/Decline which stopPropagation) navigates to the target.
+  // mark_notifications_read fires on click so the bell badge clears
+  // for the navigated item even before the next poll.
+  var clickAttr = ' onclick="khNotifItemClick(event,\'' + escapeAttr(n.id) + '\')"';
+  return '<a class="kh-notif-item ' + (unread ? 'kh-notif-item-unread' : '') + '"'
+    +    ' href="' + targetHref + '"' + clickAttr + ' style="text-decoration:none;color:inherit">'
+    +    '<div class="kh-notif-item-icon"><i data-lucide="' + iconName + '" class="kh-ui-icon" aria-hidden="true"></i></div>'
+    +    '<div class="kh-notif-item-body">'
+    +      '<div class="kh-notif-item-text">' + text + '</div>'
+    +      '<div class="kh-notif-item-time">' + _khTimeAgo(n.created_at) + '</div>'
+    +      actionsHtml
+    +    '</div>'
+    +  '</a>';
+}
+
+// Mark the clicked notification as read before the browser navigates
+// — fire and forget; the navigation continues regardless. Closing
+// the dropdown so it isn't still draped over the destination.
+window.khNotifItemClick = function (ev, id) {
+  try {
+    var drop = document.getElementById('topbar-notif-dropdown');
+    if (drop) drop.classList.remove('on');
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (sb && id) {
+      sb.rpc('mark_notifications_read', { p_ids: [id] }).then(function(){}).catch(function(){});
+    }
+  } catch (_) {}
+};
+
+function _khEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function _khTimeAgo(iso) {
+  if (!iso) return '';
+  var ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60000) return 'just now';
+  var m = Math.floor(ms / 60000); if (m < 60) return m + 'm';
+  var h = Math.floor(m / 60); if (h < 24) return h + 'h';
+  var d = Math.floor(h / 24); if (d < 7) return d + 'd';
+  return new Date(iso).toLocaleDateString();
+}
+
+window.khToggleNotifDropdown = function (ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  var drop = document.getElementById('topbar-notif-dropdown');
+  if (!drop) return;
+  var nowOn = !drop.classList.contains('on');
+  drop.classList.toggle('on', nowOn);
+  if (nowOn) {
+    // Refresh on open so the dropdown is never stale.
+    khLoadNotifications();
+  }
+};
+
+function _khNotifMaybeCloseDropdown(ev) {
+  var drop = document.getElementById('topbar-notif-dropdown');
+  var btn  = document.getElementById('topbar-notif-btn');
+  if (!drop || !drop.classList.contains('on')) return;
+  if (drop.contains(ev.target) || (btn && btn.contains(ev.target))) return;
+  drop.classList.remove('on');
+}
+
+window.khMarkAllNotifsRead = async function () {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || typeof supaUser === 'undefined' || !supaUser) return;
+  try {
+    await sb.rpc('mark_notifications_read', { p_ids: null });
+    _khNotifRows = _khNotifRows.map(function (n) { return Object.assign({}, n, { read_at: n.read_at || new Date().toISOString() }); });
+    _khNotifCount = 0;
+    _khRenderNotifBell();
+    _khRenderNotifDropdown();
+  } catch (_) {}
+};
+
+window.khAcceptFriendFromBell = async function (requestId, btn) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !requestId) return;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await sb.rpc('accept_friend_request', { p_request_id: requestId });
+    await khLoadNotifications();
+  } catch (_) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Accept'; }
+  }
+};
+
+window.khRejectFriendFromBell = async function (requestId, btn) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !requestId) return;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await sb.rpc('reject_friend_request', { p_request_id: requestId });
+    await khLoadNotifications();
+  } catch (_) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Decline'; }
+  }
+};
+
+// Re-render the bell dropdown on auth changes so the polling timer
+// kicks in right after sign-in without waiting for the next page load.
+window.addEventListener('kh-auth-signed-in', function () { khStartNotifications(); });
+window.addEventListener('kh-auth-signed-out', function () {
+  if (_khNotifPollTimer) { clearInterval(_khNotifPollTimer); _khNotifPollTimer = null; }
+  _khNotifRows = []; _khNotifCount = 0;
+  _khRenderNotifBell(); _khRenderNotifDropdown();
+});
 
 // Sticky sign-up nudge for unauthenticated visitors. Shows 30s after
 // a session-confirmed-anonymous load, on public content pages where a
@@ -1435,7 +1709,20 @@ function khShare(opts) {
   // Wait until page load so the SW install doesn't compete with the
   // first paint budget.
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/korehan/sw.js', { scope: '/korehan/' })
+    // First, evict the old `/korehan/` scoped registration that never
+    // actually intercepted anything in production (Vite builds the
+    // korehan/ folder as the dist root, so the live paths are /…, not
+    // /korehan/…). Without this cleanup users would carry a dead
+    // registration around forever.
+    if (navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) {
+          var s = r && r.scope || '';
+          if (/\/korehan\/$/.test(s)) { try { r.unregister(); } catch(_) {} }
+        });
+      }).catch(function(){});
+    }
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
       .catch(function(err) { khLog('[sw] register failed:', err); });
   });
 })();
@@ -2274,25 +2561,22 @@ async function renderAllPage() {
 
   var searchWrap = document.getElementById('dyn-search-bar');
   if (searchWrap) {
-    searchWrap.innerHTML = '<div class="all-search-wrap">'
-      + '<div class="all-search-row">'
-      + '<div class="all-search-field">'
-      + '<svg class="all-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>'
-      + '<input type="text" id="search-bar-input" class="all-search-input" placeholder="Search articles, topics, keywords\u2026" value="' + escapeHtml(searchQ) + '" onkeydown="if(event.key===\'Enter\')doSearch(this.value)">'
-      + (searchQ ? '<button class="all-search-clear" onclick="window.location.href=\'korehan-all.html\'" title="Clear search">'
-        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>'
-        + '</button>' : '')
+    // New unified hero chrome (May 2026): search lives inside the
+    // page hero on a dark gradient. Pills use .kh-filter-pill so the
+    // visual matches Stories / Conversations.
+    searchWrap.innerHTML = '<div class="kh-page-search">'
+      + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>'
+      + '<input type="text" id="search-bar-input" placeholder="Search articles, topics, keywords\u2026" value="' + escapeHtml(searchQ) + '" onkeydown="if(event.key===\'Enter\')doSearch(this.value)">'
+      + (searchQ ? '<button onclick="window.location.href=\'korehan-all.html\'" title="Clear search" style="background:none;border:0;color:rgba(255,255,255,.65);cursor:pointer;padding:4px;display:inline-flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' : '')
+      + '<button onclick="doSearch(document.getElementById(\'search-bar-input\').value)" style="background:#fff;color:var(--kh-hue-1);border:0;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Search</button>'
       + '</div>'
-      + '<button class="all-search-btn" onclick="doSearch(document.getElementById(\'search-bar-input\').value)">Search</button>'
-      + '</div>'
-      + (searchQ ? '<div class="all-search-result-label">Results for <strong>\u201c' + escapeHtml(searchQ) + '\u201d</strong></div>' : '')
-      + '</div>'
-      + '<div class="all-level-filter" id="all-level-filter">'
-      + '<button class="alf-btn on" data-level="All" onclick="filterAllLevel(\'All\',this)">All Levels</button>'
-      + '<button class="alf-btn starter" data-level="Starter" onclick="filterAllLevel(\'Starter\',this)"><span class="alf-dot"></span>Seed</button>'
-      + '<button class="alf-btn beginner" data-level="Beginner" onclick="filterAllLevel(\'Beginner\',this)"><span class="alf-dot"></span>Sprout</button>'
-      + '<button class="alf-btn intermediate" data-level="Intermediate" onclick="filterAllLevel(\'Intermediate\',this)"><span class="alf-dot"></span>Tree</button>'
-      + '<button class="alf-btn advanced" data-level="Advanced" onclick="filterAllLevel(\'Advanced\',this)"><span class="alf-dot"></span>Forest</button>'
+      + (searchQ ? '<div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:8px">Results for <strong style="color:#fff">\u201c' + escapeHtml(searchQ) + '\u201d</strong></div>' : '')
+      + '<div class="kh-filter-bar" id="all-level-filter" style="margin-top:12px">'
+      + '<button class="kh-filter-pill on" data-level="All" onclick="filterAllLevel(\'All\',this)">All</button>'
+      + '<button class="kh-filter-pill" data-level="Starter" onclick="filterAllLevel(\'Starter\',this)"><span class="kh-filter-dot" style="background:#7b5cff"></span>Seed</button>'
+      + '<button class="kh-filter-pill" data-level="Beginner" onclick="filterAllLevel(\'Beginner\',this)"><span class="kh-filter-dot" style="background:#22c55e"></span>Sprout</button>'
+      + '<button class="kh-filter-pill" data-level="Intermediate" onclick="filterAllLevel(\'Intermediate\',this)"><span class="kh-filter-dot" style="background:#f59e0b"></span>Tree</button>'
+      + '<button class="kh-filter-pill" data-level="Advanced" onclick="filterAllLevel(\'Advanced\',this)"><span class="kh-filter-dot" style="background:#ef4444"></span>Forest</button>'
       + '</div>';
   }
 
@@ -2300,9 +2584,9 @@ async function renderAllPage() {
 
   if (searchQ) {
     // Server-side ilike across title/body/full. The bulk All News fetch
-    // no longer ships body text (3MB → 200KB), so we can't filter
-    // locally — but on-demand search is more accurate anyway since it
-    // hits ALL articles, not just the 500 we cached.
+    // no longer ships body text, so we can't filter locally — but
+    // on-demand search is more accurate anyway since it hits ALL
+    // articles, not just the 1000 we cached.
     listEl.innerHTML = '<div style="padding:60px;text-align:center;color:#94a3b8">Searching…</div>';
     var serverHits = [];
     try { serverHits = await searchArticlesServer(searchQ, 200); } catch(e) {}
@@ -2402,16 +2686,18 @@ function renderAllList(listEl, articles, opts) {
     }).join('');
     // Fetch + cache any still-missing EN titles, then swap them into the DOM.
     try { _khEnsureTitlesEn(articles); } catch(e) {}
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
     return;
   }
 
   listEl.className = 'all-card-grid';
   listEl.innerHTML = articles.map(_buildNewsCardHTML).join('');
   try { _khEnsureTitlesEn(articles); } catch(e) {}
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
 }
 
 function filterAllLevel(level, btn) {
-  document.querySelectorAll('#all-level-filter .alf-btn').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('#all-level-filter .kh-filter-pill').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
   var base = window._allArticlesCache || published();
   var filtered = level === 'All' ? base : base.filter(function(a){ return a.level === level; });
@@ -2429,6 +2715,30 @@ function renderArticlePage() {
   var a      = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
 
   if (!a) {
+    // Cache miss — could be an older article not in the latest 80
+    // rows, or a fresh single-tab visit before loadArticleById has
+    // resolved. Try a one-shot fetch by id, then re-render. Show a
+    // lightweight "Loading…" while we wait so the learner doesn't
+    // see a flash of "not found" on slow networks.
+    if (id && typeof loadArticleById === 'function' && !wrap.dataset.fetchingId) {
+      wrap.dataset.fetchingId = id;
+      wrap.innerHTML = '<div style="padding:30px;text-align:center;color:#94a3b8">Loading article…</div>';
+      loadArticleById(id).then(function(row) {
+        wrap.dataset.fetchingId = '';
+        if (row) {
+          renderArticlePage();
+        } else {
+          wrap.innerHTML = '<div style="padding:30px">'
+            + '<a href="index.html" style="color:#2255a4;text-decoration:none">← Back to Home</a>'
+            + '<h1 style="margin-top:16px">Article not found</h1>'
+            + '<p style="color:#666;margin-top:8px">This article does not exist or the link is invalid.</p>'
+            + '</div>';
+        }
+      }).catch(function() {
+        wrap.dataset.fetchingId = '';
+      });
+      return;
+    }
     wrap.innerHTML = '<div style="padding:30px">'
       + '<a href="index.html" style="color:#2255a4;text-decoration:none">← Back to Home</a>'
       + '<h1 style="margin-top:16px">Article not found</h1>'
@@ -3074,8 +3384,25 @@ function _khRenderSentPanel(panel, data) {
     // example chunks still both render.
     var seenExamples = [];
     var grammarFiltered = [];
+    // Heuristic: a real grammar pattern is a morpheme/connective/ending,
+    // not a noun phrase. Reject "patterns" where the model glued a
+    // content noun onto the morpheme (e.g. "~ㄴ 동물" — animal is just
+    // a noun, the actual pattern is ~는). If the field strips down to
+    // 3+ contiguous Hangul syllables, it's almost certainly a noun and
+    // should be dropped.
+    function _looksLikePadding(pattern) {
+      if (!pattern) return true;
+      // Strip the morpheme markers + standard pattern punctuation;
+      // whatever remains should not be a multi-syllable noun.
+      var stripped = String(pattern)
+        .replace(/[~\/()\s\-,.?!]/g, '')
+        .replace(/[은는이가을를으]/g, '');
+      // If a 3+ Korean-syllable run survives the strip, treat as noun.
+      return /[가-힣]{3,}/.test(stripped);
+    }
     data.grammar.forEach(function(g) {
       if (!g || !g.pattern) return;
+      if (_looksLikePadding(g.pattern)) return;
       var ex = (g.example_in_sentence || '').trim();
       var dupe = false;
       for (var i = 0; i < seenExamples.length && ex; i++) {
@@ -3178,6 +3505,20 @@ async function analyzeSentence(idx, el) {
     }
   } catch(_) {}
 
+  // Anonymous users get cached analyses only — no live Claude calls.
+  // The three cache layers above already returned if they had a hit;
+  // by the time we're here we know we'd be paying for an AI call, so
+  // show a sign-in wall instead of letting strangers spend our quota.
+  if (typeof supaUser === 'undefined' || !supaUser) {
+    panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
+      + '<div class="asp-signin" style="padding:18px 16px;text-align:center">'
+      +   '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:6px">Sign in to analyze new sentences</div>'
+      +   '<div style="font-size:12px;color:#475569;line-height:1.55;margin-bottom:14px">Pre-analyzed sentences are open to everyone. Live AI breakdowns of fresh sentences need an account.</div>'
+      +   '<button onclick="closeSentPanel();if(typeof openAuthModal===\'function\')openAuthModal(\'signin\')" style="padding:9px 18px;border-radius:999px;border:0;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 16px rgba(30,58,138,.32)">Sign in — Free</button>'
+      + '</div>';
+    return;
+  }
+
   // No shared cache for this article yet — first reader to tap a
   // sentence triggers a background pass over EVERY sentence and
   // writes the result to article_cache.translation. The current
@@ -3195,8 +3536,28 @@ async function analyzeSentence(idx, el) {
   }
 
   try {
+    // Read article level so the prompt can calibrate which patterns
+    // to teach. Default to Sprout (Beginner) if unknown so we err on
+    // the side of explaining more, not less.
+    var _articleLevel = (window._currentArticle && window._currentArticle.level) || 'Beginner';
+    var _levelLabel = ({
+      Starter:      'Seed (TOPIK 1, complete beginner)',
+      Beginner:     'Sprout (TOPIK 2, beginner)',
+      Intermediate: 'Tree (TOPIK 3-4, intermediate)',
+      Advanced:     'Forest (TOPIK 5-6, advanced)',
+    })[_articleLevel] || 'Sprout (TOPIK 2, beginner)';
+    var _isLowLevel = (_articleLevel === 'Starter' || _articleLevel === 'Beginner');
+    // For Seed/Sprout learners we WANT the basics explained: object
+    // markers, simple negation, present continuous, etc. For Tree+
+    // we skip those because they're already known and noise.
+    var _vocabSkipRule = _isLowLevel
+      ? '- VOCAB: max 4 items. Include any content word the learner might not know (verbs, adjectives, nouns). Only skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone). 흔하다 / 보다 / 키우다 / 살다 / 먹다 are FAIR GAME at this level — explain them.\n'
+      : '- VOCAB: max 4 items. Skip beginner words (는/이/가/이다/있다/하다/되다…). The note must be FACTUAL — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply.\n';
+    var _grammarSkipRule = _isLowLevel
+      ? '- GRAMMAR: max 3 patterns. At THIS LEVEL, basic patterns ARE the lesson — INCLUDE them: ~을/를 (object marker) + verb, ~지 않다 (negation), ~고 있다 (present continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency). Skip only when the entire sentence is one already-explained pattern. Do NOT pick a pattern that\'s just the conjugation of a vocab word.\n'
+      : '- GRAMMAR: max 2 patterns. Skip if just a noun phrase. Skip beginner-level patterns (~는 noun modifier, ~다 declarative, ~요/습니다 polite, ~았/었 past, ~을/를 object marker) — the learner already knows them at this level. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n';
     var prompt =
-        'You are a Korean tutor analysing a single sentence for a TOPIK 3-4 learner.\n\n'
+        'You are a Korean tutor analysing a single sentence for a ' + _levelLabel + ' learner.\n\n'
       + 'Sentence: ' + sentenceText + '\n\n'
       + 'Return ONLY a JSON object with this shape (no preamble, no code fences):\n'
       + '{\n'
@@ -3206,8 +3567,9 @@ async function analyzeSentence(idx, el) {
       + '}\n\n'
       + 'Rules:\n'
       + '- TRANSLATION: PRESERVE the original subject — do NOT inject "I/we" if Korean omitted the subject. Use he/she/it/they/the [noun] based on what the sentence implies.\n'
-      + '- VOCAB: max 4 items. Skip beginner words (는/이/가/이다/있다/하다/되다…). The note must be FACTUAL — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
-      + '- GRAMMAR: max 2 patterns. Skip if just a noun phrase. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n'
+      + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔, 살다 not 살). Single-syllable stems are not Korean words.\n'
+      + _vocabSkipRule
+      + _grammarSkipRule
       + '- If two patterns stack on the same verb, pick ONLY the more learner-relevant one.\n'
       + '- Output JSON only.';
     var res = await callClaude({
@@ -3805,6 +4167,11 @@ function _avRenderItem(it) {
   var safeK  = k.replace(/'/g, "\\'");
   var safeR  = rom.replace(/'/g, "\\'");
   var safeE  = en.replace(/'/g, "\\'");
+  var adminDel = window._isAdmin
+    ? '<button class="avi-del-btn" title="Delete this word from the article cache (visible to all users)" onclick="khArticleVocabRemove(\'' + safeK + '\')" aria-label="Delete">'
+      + '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>'
+      + '</button>'
+    : '';
   return '<div class="art-vocab-item" data-avi-ko="' + escapeHtml(k) + '">'
     + '<div class="avi-main">'
     + '<span class="art-vocab-ko">' + escapeHtml(k) + '</span>'
@@ -3817,9 +4184,69 @@ function _avRenderItem(it) {
     + 'onclick="handleVocabSave(this,\'' + safeK + '\',\'' + safeR + '\',\'' + safeE + '\')">'
     + (saved ? '<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg><span>Saved</span>' : '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><span>Save</span>')
     + '</button>'
+    + adminDel
     + '</div>'
     + '</div>';
 }
+
+// Admin-only: remove a vocab entry from the article's Vocab tab and
+// persist the change to article_cache. Visible to every reader after
+// the next render. The current `_avAll` array gets filtered + paged
+// re-render so the UI updates instantly without waiting on the DB.
+window.khArticleVocabRemove = async function (ko) {
+  if (!window._isAdmin) return;
+  if (!ko) return;
+  if (!confirm('이 단어를 삭제할까요? 모든 독자한테 사라집니다.\n\n— ' + ko)) return;
+
+  var before = _avAll.slice();
+  _avAll = _avAll.filter(function (item) { return item && item.ko !== ko; });
+  // Re-render the current page (grab the same list element the tab
+  // initially renders into).
+  var el = document.getElementById('art-vocab-list');
+  if (el) {
+    // Clamp page if the deletion shrank past the current page.
+    var totalPages = Math.max(1, Math.ceil(_avAll.length / _avPageSize));
+    if (_avPage >= totalPages) _avPage = totalPages - 1;
+    _avRenderPage(el);
+  }
+
+  // Persist. Try wide schema first, fall back to KV.
+  try {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb) throw new Error('no supabase client');
+    var params = new URLSearchParams(window.location.search);
+    var articleId = params.get('id');
+    if (!articleId) throw new Error('no article id');
+    var nextVocabJson = JSON.stringify(_avAll);
+
+    var saveErr = null;
+    try {
+      var w = await sb.from('article_cache').upsert(
+        { article_id: String(articleId), vocab: nextVocabJson },
+        { onConflict: 'article_id' }
+      );
+      if (w.error) saveErr = w.error;
+    } catch (e) { saveErr = e; }
+    if (saveErr && /article_id|column.*does not exist|relation/i.test(String(saveErr.message || saveErr))) {
+      saveErr = null;
+      var kv = await sb.from('article_cache').upsert(
+        { content_type: 'article', content_id: String(articleId), cache_key: 'vocab', cache_value: nextVocabJson },
+        { onConflict: 'content_type,content_id,cache_key' }
+      );
+      if (kv.error) saveErr = kv.error;
+    }
+    if (saveErr) throw saveErr;
+    if (typeof showToast === 'function') showToast('삭제됐어요');
+  } catch (e) {
+    // Roll back the optimistic UI on failure so the admin sees the
+    // entry come back with an error message.
+    _avAll = before;
+    var el2 = document.getElementById('art-vocab-list');
+    if (el2) _avRenderPage(el2);
+    if (typeof showToast === 'function') showToast('삭제 실패: ' + (e.message || e), true);
+    else alert('삭제 실패: ' + (e.message || e));
+  }
+};
 function _avPagerHTML(total, page, pages) {
   if (pages <= 1) return '';
   var firstIdx = page * _avPageSize + 1;
@@ -3960,18 +4387,38 @@ function renderArticleVocab(a) {
   }
 
   function syncIntoHover(items) {
-    // Surface the vocab list into the body hover system so the same words
-    // are clickable / underlined in the article. We extend the global VOCAB
-    // (used by wrapVocab → .kh-word) and re-wrap the article body.
-    if (typeof VOCAB !== 'object' || !VOCAB) return;
+    // Two hover systems to keep in sync — the article body has hover
+    // behaviour from BOTH:
+    //   1. .kh-word (wrapVocab) — highlights words present in the global
+    //      VOCAB dict.
+    //   2. .kh-hover-word (korehan-hover-tooltips.js) — dotted
+    //      underline tooltip for words present in hover_vocab_master
+    //      OR registered via korehanHoverRegisterExtras.
+    // Earlier this only updated #1, so an article-only vocab word that
+    // wasn't in the hover_vocab_master table never got a tooltip — the
+    // user reported this as "hover sometimes works, sometimes doesn't".
+    // Register into both systems so every Vocab-tab entry is hoverable
+    // in the body.
+    if (!Array.isArray(items) || !items.length) return;
     var added = 0;
-    items.forEach(function(it) {
-      if (!it || !it.ko) return;
-      if (!VOCAB[it.ko] || !VOCAB[it.ko].en) {
-        VOCAB[it.ko] = { rom: it.rom || '', en: it.en || '' };
-        added++;
+    if (typeof VOCAB === 'object' && VOCAB) {
+      items.forEach(function(it) {
+        if (!it || !it.ko) return;
+        if (!VOCAB[it.ko] || !VOCAB[it.ko].en) {
+          VOCAB[it.ko] = { rom: it.rom || '', en: it.en || '' };
+          added++;
+        }
+      });
+    }
+    // System 2: dotted-underline hover tooltips. Idempotent — the helper
+    // dedupes against its own list.
+    try {
+      if (typeof window.korehanHoverRegisterExtras === 'function') {
+        window.korehanHoverRegisterExtras(items.map(function(it) {
+          return { ko: it.ko, en: it.en || '', rom: it.rom || '', note: it.note || '' };
+        }));
       }
-    });
+    } catch (_) {}
     if (added > 0) {
       try {
         var artEl = document.getElementById('art-tab-article');
@@ -5283,6 +5730,13 @@ function renderHeader() {
     + '<div class="kh-hsearch">' + khIcon('search', '', 'kh-ui-icon-muted kh-ui-icon-sm') + '<input type="text" placeholder="Search articles\u2026" onkeydown="if(event.key===\'Enter\')doSearch(this.value)" style="border:none;background:none;outline:none;font-size:13px;color:inherit;font-family:inherit;width:100%;"></div>'
     + '<button id="topbar-neon-toggle" class="kh-neon-toggle" type="button" aria-pressed="false" onclick="toggleKhNeon(event)">' + khIcon('zap', 'Neon OFF', 'kh-ui-icon-sm') + '</button>'
     + (isHome ? '<div class="kh-diff-ctrl" id="kh-diff-ctrl"><span class="kh-diff-dot" id="kh-diff-dot"></span><select class="kh-diff-sel" id="kh-diff-select" onchange="khSetDiff(this.value)"><option value="all">All Levels</option><option value="Starter">Seed</option><option value="Beginner">Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select><span class="kh-diff-arr">&#9662;</span></div>' : '')
+    + '<div id="topbar-notif-wrap" class="kh-notif-wrap" style="display:none">'
+    + '<button id="topbar-notif-btn" class="kh-notif-btn" type="button" aria-label="Notifications" onclick="khToggleNotifDropdown(event)">'
+    +   '<i data-lucide="bell" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
+    +   '<span id="topbar-notif-count" class="kh-notif-count" hidden>0</span>'
+    + '</button>'
+    + '<div id="topbar-notif-dropdown" class="kh-notif-dropdown"></div>'
+    + '</div>'
     + '<div id="topbar-auth-menu" class="kh-auth-menu" style="display:none">'
     + '<button id="topbar-user-avatar" class="kh-avatar-btn" type="button" aria-label="Open profile menu" onclick="toggleTopbarUserMenu(event)" style="display:none"></button>'
     + '<div id="topbar-user-dropdown" class="kh-user-dropdown"></div>'
@@ -5429,27 +5883,57 @@ async function khSubscribeNewsletter(e) {
   e.preventDefault();
   var emailEl = document.getElementById('kh-nl-email');
   var msgEl = document.getElementById('kh-nl-msg');
-  var form = document.getElementById('kh-nl-form');
   var email = (emailEl.value || '').trim().toLowerCase();
   if (!email) return false;
 
   msgEl.style.display = 'block';
   msgEl.style.color = 'rgba(255,255,255,.5)';
-  msgEl.textContent = 'Subscribing...';
+  msgEl.textContent = 'Sending confirmation…';
 
+  // Newsletter v2 flow: edge function calls newsletter_request_subscribe
+  // (which mints a confirm token + leaves the row pending) and then
+  // emails the confirmation link via Resend. Successful delivery is
+  // independent of whether Resend is configured — the RPC always
+  // succeeds, and the user gets a graceful message either way.
   try {
     var sb = getSupa();
-    var { error } = await sb.from('newsletter_subs').insert({ email: email });
-    if (error) {
-      if (error.code === '23505') {
+    var session = (await sb.auth.getSession()).data.session;
+    var anonKey = (window.SUPA_KEY || (typeof SUPA_KEY !== 'undefined' ? SUPA_KEY : ''));
+    var supaUrl = (window.SUPA_URL || (typeof SUPA_URL !== 'undefined' ? SUPA_URL : ''));
+    var headers = {
+      'Content-Type': 'application/json',
+      'apikey': anonKey,
+      'Authorization': 'Bearer ' + (session ? session.access_token : anonKey),
+    };
+    var resp = await fetch(supaUrl + '/functions/v1/newsletter-send', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ action: 'subscribe', email: email, source: 'footer' }),
+    });
+    var data = {};
+    try { data = await resp.json(); } catch (_) {}
+    if (!resp.ok || !data.ok) {
+      if (data && data.error === 'invalid_email') {
         msgEl.style.color = '#fbbf24';
-        msgEl.textContent = 'You are already subscribed!';
+        msgEl.textContent = 'Please enter a valid email address.';
       } else {
-        throw error;
+        msgEl.style.color = '#f87171';
+        msgEl.textContent = 'Something went wrong. Please try again.';
       }
+      return false;
+    }
+    if (data.status === 'already_confirmed') {
+      msgEl.style.color = '#fbbf24';
+      msgEl.textContent = 'You\'re already subscribed!';
+    } else if (data.mailed === false) {
+      // Subscription request stored, but the email layer isn't live
+      // yet (no Resend key configured). Don't promise mail delivery.
+      msgEl.style.color = '#34d399';
+      msgEl.textContent = 'Got it — we\'ll send a confirmation link as soon as our mailer is live.';
+      emailEl.value = '';
     } else {
       msgEl.style.color = '#34d399';
-      msgEl.textContent = 'Subscribed! Welcome aboard.';
+      msgEl.textContent = 'Almost done! Check your inbox to confirm.';
       emailEl.value = '';
     }
   } catch (err) {
@@ -5771,16 +6255,37 @@ function startClock() {
 var _sectionsCache = null;
 
 var DEFAULT_SECTIONS = [
-  { key:'사회',   label:'Society',   icon:'🏙️', sort_order:3 },
-  { key:'국제',   label:'World',     icon:'🌍', sort_order:4 },
-  { key:'문화',   label:'Culture',   icon:'🎭', sort_order:5 },
-  { key:'K-pop',  label:'K-pop',     icon:'🎤', sort_order:6 },
-  { key:'스포츠', label:'Sports',    icon:'⚽', sort_order:7 },
-  { key:'beauty', label:'Beauty',    icon:'💄', sort_order:8 },
-  { key:'travel', label:'Travel',    icon:'✈️', sort_order:9 },
-  { key:'Korea',  label:'🇰🇷 Korea', icon:'🇰🇷', sort_order:10 },
-  { key:'오피니언',label:'Opinion',  icon:'✍️', sort_order:11 },
+  { key:'사회',   label:'Society',   icon:'<i data-lucide="users" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:3 },
+  { key:'국제',   label:'World',     icon:'<i data-lucide="globe" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:4 },
+  { key:'문화',   label:'Culture',   icon:'<i data-lucide="palette" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:5 },
+  { key:'K-pop',  label:'K-pop',     icon:'<i data-lucide="music" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:6 },
+  { key:'스포츠', label:'Sports',    icon:'<i data-lucide="trophy" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:7 },
+  { key:'beauty', label:'Beauty',    icon:'<i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:8 },
+  { key:'travel', label:'Travel',    icon:'<i data-lucide="plane" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:9 },
+  { key:'Korea',  label:'Korea',     icon:'<i data-lucide="flag" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:10 },
+  { key:'오피니언',label:'Opinion',  icon:'<i data-lucide="pen-tool" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:11 },
 ];
+
+// Canonical Lucide icon per section key. Overrides whatever the DB
+// has stored (older rows kept emoji here, which leaked into the rails
+// header even after DEFAULT_SECTIONS got migrated to Lucide). Update
+// the map to add new sections; unknown keys fall through to the row's
+// stored icon (emoji or otherwise) so we don't blank out unfamiliar
+// keys.
+var SECTION_ICON_LUCIDE = {
+  '사회':   'users',
+  '국제':   'globe',
+  '문화':   'palette',
+  'k-pop':  'music',
+  '스포츠': 'trophy',
+  'beauty': 'sparkles',
+  'travel': 'plane',
+  'korea':  'flag',
+  '오피니언': 'pen-tool',
+};
+function _khSectionLucideHtml(name) {
+  return '<i data-lucide="' + name + '" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>';
+}
 
 function normalizeSectionCatalog(list) {
   var items = Array.isArray(list) ? list.slice() : [];
@@ -5795,11 +6300,28 @@ function normalizeSectionCatalog(list) {
     return k && !blocked.has(k);
   });
 
+  // Force Lucide icons on every row that has a known key, regardless
+  // of what the DB has stored. Older sections rows kept an emoji
+  // string here (🏙️, 🌍, 🎤, …) which leaked into the rails header
+  // even after the DEFAULT_SECTIONS array migrated to Lucide HTML.
+  // Cleaner than running a one-shot DB migration.
+  items = items.map(function(row) {
+    if (!row) return row;
+    var k = String(row.key || '').trim().toLowerCase();
+    var lookup = SECTION_ICON_LUCIDE[k] || (k === 'k-pop' ? 'music' : null);
+    if (lookup) row = Object.assign({}, row, { icon: _khSectionLucideHtml(lookup) });
+    // Strip the leading flag emoji from "🇰🇷 Korea" labels too.
+    if (k === 'korea' && row.label) {
+      row.label = String(row.label).replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '');
+    }
+    return row;
+  });
+
   function hasKey(key) {
     return items.some(function(row) { return String((row && row.key) || '') === key; });
   }
-  if (!hasKey('beauty')) items.push({ key:'beauty', label:'Beauty', icon:'💄', sort_order:8, active:true });
-  if (!hasKey('travel')) items.push({ key:'travel', label:'Travel', icon:'✈️', sort_order:9, active:true });
+  if (!hasKey('beauty')) items.push({ key:'beauty', label:'Beauty', icon: _khSectionLucideHtml('sparkles'), sort_order:8, active:true });
+  if (!hasKey('travel')) items.push({ key:'travel', label:'Travel', icon: _khSectionLucideHtml('plane'),    sort_order:9, active:true });
 
   return items.sort(function(a, b) {
     return Number(a.sort_order || 999) - Number(b.sort_order || 999);
@@ -6107,21 +6629,75 @@ document.addEventListener('DOMContentLoaded', async function() {
     // on a fresh fetch held the loader for the full Korea↔Supabase
     // round-trip on every visit even when the page was already drawable.
     var hadCache = getCachedArticles().length > 0;
+
+    // Hold the loader until Today's Phrase actually paints. The user
+    // pointed out it was awkward to see "loading" still happening
+    // inside the page after the splash hid; the phrase banner is the
+    // tallest above-the-fold block that depends on a network fetch.
+    // We poll the #pb-ko text node and bail after a 4s ceiling so a
+    // slow phrase API doesn't strand the loader on screen.
+    function _khAwaitTodaysPhrase(maxMs) {
+      maxMs = maxMs || 4000;
+      return new Promise(function(resolve) {
+        var start = Date.now();
+        function tick() {
+          var el = document.getElementById('pb-ko');
+          var ready = el && (el.textContent || '').trim().length > 0;
+          if (ready || Date.now() - start > maxMs) return resolve();
+          setTimeout(tick, 100);
+        }
+        tick();
+      });
+    }
+
     if (hadCache) {
       renderHomePage();
-      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
-      _ldr(100);
-      // Background refresh — re-render once newer rows arrive.
-      loadArticlesFromDB({ homeOptimized: true, force: true })
-        .then(function(){ renderHomePage(); })
-        .catch(function(err){ console.warn('background articles refresh failed', err); });
+      _ldr(92);
+      _khAwaitTodaysPhrase(4000).then(function () {
+        if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+        _ldr(100);
+      });
+      // Skip the homeOptimized background refresh here — the idle
+      // prefetch below pulls the full 1000-row "all" dataset, which is
+      // a strict superset of what home needs (top 30) and also primes
+      // All News + search. It re-renders home itself when it lands.
     } else {
       _ldr(50); // Loading articles...
       await loadArticlesFromDB({ homeOptimized: true, force: true });
-      _ldr(85); // Articles loaded
+      _ldr(80); // Articles loaded
       renderHomePage();
-      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
-      _ldr(100); // Done
+      _ldr(92);
+      _khAwaitTodaysPhrase(4000).then(function () {
+        if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+        _ldr(100);
+      });
+    }
+
+    // Prefetch the full 1000-row dataset in idle time so when the user
+    // taps "All News" the page renders instantly. Home only needs the
+    // 30-row homeOptimized payload, but All News needs the full list
+    // (without body — body is fetched per-article in the reader).
+    // Skip if the user is on a slow connection (Save-Data) or if a
+    // recent fetch already populated 80+ rows.
+    var _khPrefetchAll = function () {
+      try {
+        var conn = navigator.connection || navigator.webkitConnection || {};
+        if (conn.saveData) return;
+        var cached = getCachedArticles();
+        if (cached && cached.length >= 80) return;
+        loadArticlesFromDB({ all: true, force: true })
+          .then(function(){
+            // Re-render home with newer rows. This replaces the old
+            // homeOptimized background refresh for cache-hit visits.
+            try { if (typeof renderHomePage === 'function') renderHomePage(); } catch(_){}
+          })
+          .catch(function(err){ console.warn('[prefetch] all news failed', err); });
+      } catch (_) {}
+    };
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(_khPrefetchAll, { timeout: 4000 });
+    } else {
+      setTimeout(_khPrefetchAll, 1500);
     }
 
     // 나머지는 백그라운드에서 완료 후 UI 갱신 (세션, 섹션, 설정)
@@ -6179,13 +6755,50 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
       });
     } else {
-      // korehan-all force-refreshes and fetches up to 500 articles so
-      // every section rail is populated (home seeds only 30).
+      // korehan-all needs the full 500-row dataset with body for its
+      // search filter. If the home page's idle prefetch (or a prior
+      // visit) already populated the cache, render synchronously and
+      // refresh in the background — eliminates the ~3s LTE wait the
+      // user hit when tapping All News from a cold cache.
       var _isAllPage = (pageBase === 'korehan-all');
-      var _forceRefresh = _isArticleReader || _isAllPage;
-      await Promise.all([loadArticlesFromDB({ force: _forceRefresh, all: _isAllPage }), sectionsPromise, settingsPromise]);
-      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
-      _ldr(100);
+      var _isArticleReaderFallback = _isArticleReader; // alias for clarity
+      var _cachedRows = getCachedArticles();
+      var _haveAllCache = _isAllPage && _cachedRows && _cachedRows.length >= 80;
+      if (_haveAllCache) {
+        if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+        _ldr(100);
+        // Background refresh — All News will re-render itself once
+        // the fresh 500-row fetch lands. Sections/settings still
+        // resolve in parallel for headers etc.
+        loadArticlesFromDB({ force: true, all: true })
+          .then(function(){ if (typeof renderAllPage === 'function') { try { renderAllPage(); } catch(_){} } })
+          .catch(function(err){ console.warn('[all] background refresh failed', err); });
+        await Promise.all([sectionsPromise, settingsPromise]);
+      } else {
+        // Cold All News visit — render an immediate skeleton so the
+        // user sees activity instead of a blank page during the fetch.
+        // Replaced as soon as renderAllPage runs.
+        if (_isAllPage) {
+          var _skel = document.getElementById('dyn-article-list');
+          if (_skel && !_skel.children.length) {
+            _skel.innerHTML = '<style>@keyframes khSkel{0%,100%{opacity:.55}50%{opacity:.92}}</style>'
+              + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">'
+              +   Array(6).fill(0).map(function(){
+                    return '<div style="background:#e5edf6;border-radius:14px;aspect-ratio:4/3;animation:khSkel 1.4s ease-in-out infinite"></div>';
+                  }).join('')
+              + '</div>';
+          }
+        }
+        var _forceRefresh = _isArticleReaderFallback || _isAllPage;
+        // Only the articles fetch blocks the loader. sections + settings
+        // resolve in the background; the header/sidebar already paint
+        // from defaults and reflow once they land. This shaved ~600ms
+        // off cold All News when sections happened to be slow.
+        await loadArticlesFromDB({ force: _forceRefresh, all: _isAllPage });
+        if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+        _ldr(100);
+        Promise.allSettled([sectionsPromise, settingsPromise]);
+      }
     }
 
     if (footerEl) footerEl.innerHTML = renderFooter();
@@ -6244,6 +6857,19 @@ document.addEventListener('DOMContentLoaded', async function() {
   var _deferPost = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 0); };
   _deferPost(function(){ ttsInit(); });
   _deferPost(function(){ injectDailyMission(); });
+  // Streak freeze rewards + auto-apply. Both run in idle time:
+  //   1. Award: 3-day attendance milestone → +1 freeze (capped at 3
+  //      inventory). Server tracks last paid-out streak so this is
+  //      safe to call on every load.
+  //   2. Auto-apply: if yesterday was missed and the user has a
+  //      freeze, silently spend it to save the streak.
+  _deferPost(function(){
+    try {
+      var s = (typeof getCurrentStreak === 'function') ? getCurrentStreak() : 0;
+      if (s >= 3 && typeof khClaimStreakAward === 'function') khClaimStreakAward(s);
+    } catch(_) {}
+  });
+  _deferPost(function(){ if (typeof khMaybeAutoFreezeYesterday === 'function') khMaybeAutoFreezeYesterday(); });
   _deferPost(function(){ startClock(); });
   // conversations/stories 등 tooltip 불필요 페이지에서는 2000행 vocabulary_bank 쿼리 스킵
   var _skipVocabPages = ['index','','korehan-news','korehan-conversations','korehan-stories','korehan-mypage','korehan-learn','korehan-courses','korehan-onboarding','korehan-learning-overview'];
@@ -6389,46 +7015,100 @@ function getCurrentStreak() {
   return Math.max(streak, lsGet('kh_synced_activity_streak', 0));
 }
 
-// ── Phase 2: streak freeze (1 use / 7 days) ──────────────────────
-// State lives in profiles.streak_freeze_used_week (the timestamp
-// the freeze was redeemed). Mirror to localStorage so the streak
-// walker stays sync. Two helpers: status check + redeem.
+// ── Streak freeze: shop inventory + auto-apply ──────────────────
+// Freezes are bought from the shop (purchase_streak_freeze RPC) and
+// stored as profiles.freeze_count. On home-page load we check whether
+// yesterday was missed; if it was AND the user has at least one
+// freeze, we silently consume one (consume_streak_freeze) and mark
+// the day in localStorage so getCurrentStreak() honours it
+// immediately. The notifications row inserted by the RPC pops up in
+// the bell — that's the only UI surface for the event.
 async function khFreezeStatus() {
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb || typeof supaUser === 'undefined' || !supaUser) {
-    return { used_at: null, can_use: false, signed_in: false };
+    return { count: 0, signed_in: false };
   }
   try {
-    var r = await sb.from('profiles')
-      .select('streak_freeze_used_week')
-      .eq('id', supaUser.id)
-      .maybeSingle();
-    var used = r && r.data && r.data.streak_freeze_used_week
-      ? new Date(r.data.streak_freeze_used_week) : null;
-    var weekAgoMs = Date.now() - 7 * 86400000;
-    var canUse = !used || used.getTime() < weekAgoMs;
-    return { used_at: used, can_use: canUse, signed_in: true };
+    var r = await sb.rpc('get_freeze_inventory');
+    var n = (r && typeof r.data === 'number') ? r.data : 0;
+    return { count: n, signed_in: true };
   } catch (_) {
-    return { used_at: null, can_use: false, signed_in: true };
+    return { count: 0, signed_in: true };
   }
 }
 
 async function khFreezeUse(forDate) {
+  // Manual call kept for back-compat; routes through the RPC now.
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb || typeof supaUser === 'undefined' || !supaUser) return false;
   var d = forDate || new Date();
-  var iso = d.toISOString();
   try {
-    await sb.from('profiles').upsert({
-      id:                      supaUser.id,
-      streak_freeze_used_week: iso,
-      updated_at:              iso,
-    }, { onConflict: 'id' });
-  } catch (_) { return false; }
-  // Mirror to localStorage so getCurrentStreak() honours the freeze
-  // immediately without a round-trip.
-  try { lsSet('kh_streak_freeze_day', d.toISOString().slice(0, 10)); } catch (_) {}
-  return true;
+    var r = await sb.rpc('consume_streak_freeze', { p_for_date: d.toISOString().slice(0,10) });
+    if (r && r.data && r.data.ok) {
+      try { lsSet('kh_streak_freeze_day', d.toISOString().slice(0, 10)); } catch (_) {}
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+// Award freeze(s) for a 3-day attendance milestone. Server caps the
+// inventory at 3 and tracks the highest streak we've already paid
+// out for, so calling this on every page load is safe — repeats
+// resolve to {awarded:0}. Returns the number granted so the caller
+// can decide whether to refresh the bell badge.
+async function khClaimStreakAward(currentStreak) {
+  if (typeof supaUser === 'undefined' || !supaUser) return 0;
+  if (!Number.isFinite(currentStreak) || currentStreak < 3) return 0;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return 0;
+  try {
+    var r = await sb.rpc('claim_streak_award', { p_streak: currentStreak });
+    var awarded = (r && r.data && r.data.awarded) || 0;
+    if (awarded > 0 && typeof khLoadNotifications === 'function') khLoadNotifications();
+    return awarded;
+  } catch (_) { return 0; }
+}
+
+// Detect a missed yesterday and auto-apply a freeze if the learner
+// has one. Designed to be called once per page load on home / mypage
+// / any signed-in entry. Idempotent: if yesterday is already covered
+// (real activity OR earlier freeze), it no-ops.
+async function khMaybeAutoFreezeYesterday() {
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  // KST yesterday (the streak walk uses UTC-ISH dates with KST tilt
+  // already, so we mirror that here).
+  var now = new Date();
+  var y = new Date(now.getTime() - 86400000);
+  var ykey = y.toISOString().slice(0, 10);
+  // Already covered? skip.
+  var log = lsGet('kh_study_log', {});
+  var days = lsGet('kh_study_days', {});
+  var fzd = lsGet('kh_streak_freeze_day', '');
+  var hadActivity = !!days[ykey] || ((log[ykey] || {}).articles || (log[ykey] || {}).words || (log[ykey] || {}).quiz);
+  if (hadActivity || fzd === ykey) return;
+  // Only spend a freeze if the user actually had a streak going —
+  // otherwise we'd burn freezes on brand-new accounts that haven't
+  // built one up yet.
+  var prevStreak = lsGet('kh_synced_activity_streak', 0) || 0;
+  if (prevStreak < 1) return;
+  // Inventory check.
+  var inv = await khFreezeStatus();
+  if (!inv.signed_in || inv.count <= 0) return;
+  // Spend.
+  try {
+    var r = await sb.rpc('consume_streak_freeze', { p_for_date: ykey });
+    if (r && r.data && r.data.ok) {
+      try { lsSet('kh_streak_freeze_day', ykey); } catch (_) {}
+      // Also bump in-memory days so this session's streak walk picks
+      // it up without a reload.
+      days[ykey] = true; lsSet('kh_study_days', days);
+      // Refresh the bell so the new notification surfaces immediately.
+      if (typeof khLoadNotifications === 'function') khLoadNotifications();
+    }
+  } catch (_) {}
 }
 
 // Sync the localStorage mirror from profiles on sign-in / page load.
@@ -8240,14 +8920,40 @@ function _khSpaLoadArticle(nextId, direction) {
     // MutationObserver in korehan-hover-tooltips.js eventually catches
     // up via its 250ms debounce, but on slower devices it sometimes
     // misses the renderArticlePage swap entirely — words on the new
-    // article never get wrapped, so hover silently breaks. Two-step:
-    //   1. Register article-specific extras (vocab not in the master
-    //      hover_vocab_master table) so they're tooltip-able.
-    //   2. Force an immediate re-scan, bypassing the debounce.
+    // article never get wrapped, so hover silently breaks.
+    //
+    // Pull the article's vocab from article_cache (the canonical
+    // store) and register it as hover extras BEFORE the Vocab tab is
+    // even opened, so every body word that has an entry gets a
+    // dotted-underline tooltip on first hover. Earlier this checked
+    // window._currentArticle.data.vocab — a field that's never
+    // populated, so the registration was effectively a no-op and
+    // hover only worked for words that happened to be in the master
+    // hover_vocab_master table.
     try {
-      if (window._currentArticle && window._currentArticle.data && Array.isArray(window._currentArticle.data.vocab)
-          && typeof window.korehanHoverRegisterExtras === 'function') {
-        window.korehanHoverRegisterExtras(window._currentArticle.data.vocab);
+      var _articleObj = window._currentArticle;
+      var _articleId = _articleObj && _articleObj.id;
+      if (_articleId && typeof window.korehanHoverRegisterExtras === 'function') {
+        // Pull cached vocab without blocking the article render — fire
+        // and forget; the MutationObserver re-scan handles re-wrap.
+        (async function () {
+          try {
+            if (typeof getFromCache === 'function') {
+              var cacheVocab = await getFromCache('article', _articleId, 'vocab');
+              if (Array.isArray(cacheVocab) && cacheVocab.length) {
+                window.korehanHoverRegisterExtras(cacheVocab.map(function (v) {
+                  return {
+                    ko:   v.ko || v.word_ko || v.word || '',
+                    en:   v.en || v.meaning_en || v.meaning || '',
+                    rom:  v.rom || v.reading || '',
+                    note: v.note || ''
+                  };
+                }));
+                if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh();
+              }
+            }
+          } catch (_) {}
+        })();
       }
       if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh();
     } catch(_) {}
@@ -8618,6 +9324,15 @@ function runMobileRedesign() {
 }
 
 document.addEventListener('DOMContentLoaded', function(){
+  // Mark the body as mobile *immediately* on DCL — the heavier
+  // enhancement pass (DOM rewrites, mobile bottom nav, immersive
+  // reading) is deferred 700ms so it doesn't compete with first
+  // paint, but the body class itself drives `display:none` rules for
+  // desktop-only chrome (breaking ticker, top nav, sidebar). Without
+  // running markMobileBody first the user briefly sees that chrome
+  // for ~700ms on every navigation — exactly the "old version flash"
+  // learners reported.
+  markMobileBody();
   setTimeout(runMobileRedesign, 700);
 });
 window.addEventListener('resize', function(){

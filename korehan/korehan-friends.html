@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Friends — KoreHani</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+.kh-fr-page { padding: 24px 0 60px; font-family: 'Source Sans 3', system-ui, sans-serif; }
+.kh-fr-tabs { display: flex; gap: 4px; margin: 18px 0 14px; padding: 0 20px; flex-wrap: wrap; }
+.kh-fr-tab {
+  padding: 9px 16px; border-radius: 999px;
+  border: 1px solid rgba(15,23,42,.08);
+  background: #fff; color: var(--text); font-weight: 700; font-size: 13px;
+  cursor: pointer; font-family: inherit;
+  transition: background .15s, color .15s, border-color .15s, box-shadow .15s, transform .12s;
+  display: inline-flex; align-items: center; gap: 6px;
+  box-shadow: 0 2px 6px rgba(15,23,42,.06);
+}
+.kh-fr-tab:hover { border-color: rgba(30,58,138,.28); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(30,58,138,.12); }
+.kh-fr-tab.on { background: #1e3a8a; color: #fff; border-color: #1e3a8a; box-shadow: 0 8px 18px rgba(30,58,138,.32); }
+.kh-fr-tab-count { padding: 1px 8px; border-radius: 999px; font-size: 11px; }
+.kh-fr-tab.on .kh-fr-tab-count { background: rgba(255,255,255,.22); color: #fff; }
+.kh-fr-tab:not(.on) .kh-fr-tab-count { background: #eef2f7; color: #475569; }
+
+.kh-fr-section { padding: 0 20px; }
+.kh-fr-search-wrap { margin-bottom: 14px; }
+.kh-fr-search-input {
+  width: 100%; padding: 12px 16px;
+  border: 1px solid rgba(15,23,42,.10); border-radius: 12px;
+  font-size: 14px; font-family: inherit; outline: none;
+  background: #f3f6fb;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.kh-fr-search-input::placeholder { color: #94a3b8; }
+.kh-fr-search-input:focus {
+  border-color: #1e3a8a; background: #fff;
+  box-shadow: 0 0 0 4px rgba(30,58,138,.10);
+}
+.kh-fr-list { display: flex; flex-direction: column; gap: 10px; }
+.kh-fr-row {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  background: #fff;
+  border: 1px solid rgba(15,23,42,.06); border-radius: 14px;
+  text-decoration: none; color: inherit;
+  transition: border-color .15s, transform .12s, box-shadow .15s;
+  box-shadow: 0 2px 8px rgba(15,23,42,.05);
+}
+.kh-fr-row:hover {
+  border-color: rgba(30,58,138,.20);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(15,23,42,.10);
+}
+.kh-fr-avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #2255a4, #1a3a6b); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 18px;
+}
+.kh-fr-body { flex: 1; min-width: 0; }
+.kh-fr-name { font-size: 14px; font-weight: 800; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kh-fr-meta { font-size: 12px; color: var(--gray); margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
+.kh-fr-meta-item { display: inline-flex; align-items: center; gap: 4px; }
+.kh-fr-meta-item .kh-ui-icon { width: 12px; height: 12px; opacity: .7; }
+.kh-fr-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.kh-fr-btn {
+  padding: 7px 14px; border-radius: 999px; border: 0; font-size: 12px; font-weight: 800;
+  cursor: pointer; font-family: inherit;
+  transition: background .15s, box-shadow .15s, transform .12s;
+}
+.kh-fr-btn-primary { background: #2563eb; color: #fff; box-shadow: 0 4px 10px rgba(37,99,235,.28); }
+.kh-fr-btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 8px 18px rgba(37,99,235,.36); }
+.kh-fr-btn-ghost { background: #eef2f7; color: #334155; }
+.kh-fr-btn-ghost:hover { background: #e2e8f0; }
+.kh-fr-btn-success { background: #dcfce7; color: #15803d; cursor: default; }
+
+.kh-fr-empty {
+  text-align: center; padding: 56px 24px; color: var(--gray); font-size: 13px;
+  background: #fff;
+  border: 1px solid rgba(15,23,42,.06); border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(15,23,42,.05);
+}
+.kh-fr-empty-title { font-family: 'Noto Serif KR', serif; font-weight: 900; color: var(--text); font-size: 16px; margin-bottom: 6px; }
+.kh-fr-loading { padding: 30px 20px; text-align: center; color: var(--gray); font-size: 13px; }
+
+.kh-fr-signin {
+  text-align: center; padding: 60px 24px; background: #fff; border: 1px solid var(--border); border-radius: 14px; margin: 0 20px;
+}
+.kh-fr-signin h2 { font-family: 'Noto Serif KR', serif; color: var(--text); margin: 0 0 8px; font-size: 20px; }
+.kh-fr-signin p { color: var(--gray); font-size: 14px; line-height: 1.6; margin: 0 0 16px; }
+.kh-fr-signin button {
+  padding: 11px 22px; border-radius: 999px; border: 0; background: #2563eb; color: #fff;
+  font-weight: 800; cursor: pointer; font-family: inherit;
+}
+
+@media (max-width: 600px) {
+  .kh-fr-tabs { padding: 0 12px; }
+  .kh-fr-section { padding: 0 12px; }
+  .kh-fr-row { padding: 10px 12px; gap: 10px; }
+  .kh-fr-avatar { width: 40px; height: 40px; font-size: 16px; }
+  .kh-fr-name { font-size: 13px; }
+}
+</style>
+</head>
+<body class="kh-page-news">
+<div id="kh-header"></div>
+
+<div class="kh-page-hero">
+  <div class="kh-page-hero-inner">
+    <div class="kh-page-hero-eyebrow">Community</div>
+    <h1><i data-lucide="users" class="kh-ui-icon" aria-hidden="true"></i><span>Friends</span></h1>
+    <p>See who you're connected with, manage incoming requests, and find new learning partners by name.</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="kh-fr-page">
+    <div id="kh-fr-tabs" class="kh-fr-tabs" hidden>
+      <button class="kh-fr-tab on" data-tab="friends" onclick="khFrSwitchTab('friends',this)">
+        <i data-lucide="user-check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>
+        Friends <span class="kh-fr-tab-count" id="kh-fr-count-friends">0</span>
+      </button>
+      <button class="kh-fr-tab" data-tab="pending" onclick="khFrSwitchTab('pending',this)">
+        <i data-lucide="user-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>
+        Pending <span class="kh-fr-tab-count" id="kh-fr-count-pending">0</span>
+      </button>
+      <button class="kh-fr-tab" data-tab="find" onclick="khFrSwitchTab('find',this)">
+        <i data-lucide="search" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>
+        Find
+      </button>
+      <button class="kh-fr-tab" data-tab="blocked" onclick="khFrSwitchTab('blocked',this)">
+        <i data-lucide="ban" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>
+        Blocked <span class="kh-fr-tab-count" id="kh-fr-count-blocked">0</span>
+      </button>
+    </div>
+
+    <div id="kh-fr-loading" class="kh-fr-loading">Loading…</div>
+
+    <div id="kh-fr-signin" class="kh-fr-signin" hidden>
+      <h2>Sign in to see your friends</h2>
+      <p>Friends, guestbook, and notifications need an account.</p>
+      <button onclick="if(typeof openAuthModal==='function')openAuthModal('signin')">Sign in</button>
+    </div>
+
+    <div class="kh-fr-section" id="kh-fr-pane-friends" hidden>
+      <div id="kh-fr-list-friends"></div>
+    </div>
+
+    <div class="kh-fr-section" id="kh-fr-pane-pending" hidden>
+      <div id="kh-fr-list-pending"></div>
+    </div>
+
+    <div class="kh-fr-section" id="kh-fr-pane-find" hidden>
+      <div class="kh-fr-search-wrap">
+        <input type="text" class="kh-fr-search-input" id="kh-fr-search-input" placeholder="Search by display name…" autocomplete="off">
+      </div>
+      <div id="kh-fr-list-find">
+        <div class="kh-fr-empty">
+          <div class="kh-fr-empty-title">Find learning partners</div>
+          <div>Type a display name above to search the community.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kh-fr-section" id="kh-fr-pane-blocked" hidden>
+      <div id="kh-fr-list-blocked"></div>
+    </div>
+  </div>
+</div>
+
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/security.js?v=20260502a"></script>
+<script src="js/core/storage.js?v=20260502a"></script>
+<script src="js/core/icons.js?v=20260502a"></script>
+<script src="js/core/modals.js?v=20260502a"></script>
+<script src="js/core/ui-states.js?v=20260502a"></script>
+<script src="js/core/analytics.js?v=20260502a"></script>
+<script src="js/core/user-analytics.js?v=20260504a"></script>
+<script src="js/core/plans.js?v=20260502a"></script>
+<script src="js/core/article-cache.js?v=20260505b"></script>
+<script src="js/core/phrases.js?v=20260505p"></script>
+<script src="js/core/saved-words.js?v=20260505b"></script>
+<script src="js/features/video-player.js?v=20260502a"></script>
+<script src="js/core/articles.js?v=20260502a"></script>
+<script src="js/core/reporters.js?v=20260502a"></script>
+<script src="js/features/streak.js?v=20260502a"></script>
+<script src="js/features/daily-mission.js?v=20260502a"></script>
+<script src="js/features/reading-tracker.js?v=20260502a"></script>
+<script src="js/features/bookmarks.js?v=20260502a"></script>
+<script src="js/features/comments.js?v=20260503c"></script>
+<script src="js/features/sidebar.js?v=20260502a"></script>
+<script src="js/features/highlighted-expressions.js?v=20260502a"></script>
+<script src="js/features/analyze-mode.js?v=20260502a"></script>
+<script src="js/features/translation.js?v=20260502a"></script>
+<script src="js/features/fill-blank.js?v=20260502a"></script>
+<script src="korehan-shared.js"></script>
+<script>
+// Friends hub — list + pending + find
+//
+// Three lists driven by RPCs from the social-system migration
+// (20260506_friends_notifications.sql):
+//   - get_friend_list:   accepted friendships, joined to user_stats
+//   - get_pending_friend_requests: incoming pending rows for the
+//                        signed-in user, joined to sender display_name
+//   - send_friend_request / accept_friend_request / reject_friend_request:
+//                        action handlers wired to button clicks
+//
+// Find tab uses an ilike() against user_stats.display_name. user_stats
+// is public-readable so we don't need a dedicated search RPC for v1;
+// debounce 250ms so we're not hammering the DB on every keystroke.
+
+(function () {
+  var sb;
+  var currentUser = null;
+  var friendsList = [];
+  var pendingList = [];
+  var pendingByOther = {};   // map: other-user-id -> {request_id, status} from sent-by-me side too
+  var friendIds = new Set(); // accepted friend uids
+  var activeTab = 'friends';
+
+  function $(id) { return document.getElementById(id); }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function initial(name) {
+    var s = String(name || '').trim();
+    return s ? s.charAt(0).toUpperCase() : '?';
+  }
+  function avatarHtml(name) {
+    return '<div class="kh-fr-avatar">' + escapeHtml(initial(name)) + '</div>';
+  }
+  function metaPill(icon, text) {
+    return '<span class="kh-fr-meta-item"><i data-lucide="' + icon + '" class="kh-ui-icon" aria-hidden="true"></i>' + escapeHtml(String(text)) + '</span>';
+  }
+  function profileHref(uid) {
+    return 'korehan-profile.html?user=' + encodeURIComponent(uid);
+  }
+
+  async function init() {
+    sb = (typeof getSupa === 'function') ? getSupa() : null;
+    try {
+      currentUser = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null;
+    } catch (_) { currentUser = null; }
+
+    if (!currentUser) {
+      // Wait briefly for the auth check that runs in shared.js DCL —
+      // some users land here mid-bootstrap.
+      await new Promise(function (r) { setTimeout(r, 600); });
+      try {
+        currentUser = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null;
+      } catch (_) {}
+    }
+    if (!currentUser) {
+      $('kh-fr-loading').hidden = true;
+      $('kh-fr-signin').hidden = false;
+      return;
+    }
+
+    $('kh-fr-tabs').hidden = false;
+    $('kh-fr-loading').hidden = true;
+
+    await Promise.all([loadFriends(), loadPending(), loadBlocked()]);
+    showPane('friends');
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+
+    var input = $('kh-fr-search-input');
+    if (input) input.addEventListener('input', debouncedSearch);
+  }
+
+  var blockedList = [];
+  async function loadBlocked() {
+    try {
+      var r = await sb.rpc('get_blocked_users');
+      blockedList = (r && r.data) || [];
+      renderBlockedList();
+      $('kh-fr-count-blocked').textContent = String(blockedList.length);
+    } catch (e) {
+      blockedList = [];
+      renderBlockedList();
+    }
+  }
+
+  function renderBlockedList() {
+    var el = $('kh-fr-list-blocked');
+    if (!el) return;
+    if (!blockedList.length) {
+      el.innerHTML = '<div class="kh-fr-empty">'
+        + '<div class="kh-fr-empty-title">No blocked users</div>'
+        + '<div>Anyone you block will appear here so you can unblock them later.</div>'
+        + '</div>';
+      return;
+    }
+    el.innerHTML = '<div class="kh-fr-list">'
+      + blockedList.map(function (b) {
+          return '<div class="kh-fr-row" data-bid="' + escapeHtml(b.blocked_id) + '">'
+            +    '<a href="' + profileHref(b.blocked_id) + '" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit">'
+            +      avatarHtml(b.display_name)
+            +      '<div class="kh-fr-body">'
+            +        '<div class="kh-fr-name">' + escapeHtml(b.display_name || 'Learner') + '</div>'
+            +        '<div class="kh-fr-meta">Blocked ' + escapeHtml(timeAgo(b.blocked_at)) + '</div>'
+            +      '</div>'
+            +    '</a>'
+            +    '<div class="kh-fr-actions">'
+            +      '<button class="kh-fr-btn kh-fr-btn-ghost" onclick="khFrUnblock(\'' + escapeHtml(b.blocked_id) + '\',this)">Unblock</button>'
+            +    '</div>'
+            +  '</div>';
+        }).join('')
+      + '</div>';
+  }
+
+  window.khFrUnblock = async function (targetId, btn) {
+    if (!sb || !targetId) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      var r = await sb.rpc('unblock_user', { p_target: targetId });
+      if (r.error || (r.data && !r.data.ok)) throw r.error || new Error('unblock_failed');
+      blockedList = blockedList.filter(function (b) { return b.blocked_id !== targetId; });
+      renderBlockedList();
+      $('kh-fr-count-blocked').textContent = String(blockedList.length);
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Unblock';
+    }
+  };
+
+  async function loadFriends() {
+    try {
+      var r = await sb.rpc('get_friend_list');
+      friendsList = (r && r.data) || [];
+      friendIds.clear();
+      friendsList.forEach(function (f) { friendIds.add(f.user_id); });
+      renderFriendsList();
+      $('kh-fr-count-friends').textContent = String(friendsList.length);
+    } catch (e) {
+      friendsList = [];
+      renderFriendsList();
+    }
+  }
+
+  async function loadPending() {
+    try {
+      var r = await sb.rpc('get_pending_friend_requests');
+      pendingList = (r && r.data) || [];
+      renderPendingList();
+      $('kh-fr-count-pending').textContent = String(pendingList.length);
+    } catch (e) {
+      pendingList = [];
+      renderPendingList();
+    }
+  }
+
+  function renderFriendsList() {
+    var el = $('kh-fr-list-friends');
+    if (!el) return;
+    if (!friendsList.length) {
+      el.innerHTML = '<div class="kh-fr-empty">'
+        + '<div class="kh-fr-empty-title">No friends yet</div>'
+        + '<div>Find learning partners in the <strong>Find</strong> tab, or tap a name in any comments thread to send a request.</div>'
+        + '</div>';
+      return;
+    }
+    el.innerHTML = '<div class="kh-fr-list">'
+      + friendsList.map(function (f) {
+          return '<a class="kh-fr-row" href="' + profileHref(f.user_id) + '">'
+            +    avatarHtml(f.display_name)
+            +    '<div class="kh-fr-body">'
+            +      '<div class="kh-fr-name">' + escapeHtml(f.display_name || 'Learner') + '</div>'
+            +      '<div class="kh-fr-meta">'
+            +        metaPill('sparkles', 'XP ' + (f.xp || 0).toLocaleString())
+            +        metaPill('flame', (f.streak || 0) + ' day streak')
+            +      '</div>'
+            +    '</div>'
+            +  '</a>';
+        }).join('')
+      + '</div>';
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+  }
+
+  function renderPendingList() {
+    var el = $('kh-fr-list-pending');
+    if (!el) return;
+    if (!pendingList.length) {
+      el.innerHTML = '<div class="kh-fr-empty">'
+        + '<div class="kh-fr-empty-title">No pending requests</div>'
+        + '<div>Incoming friend requests will appear here.</div>'
+        + '</div>';
+      return;
+    }
+    el.innerHTML = '<div class="kh-fr-list">'
+      + pendingList.map(function (p) {
+          return '<div class="kh-fr-row" data-rid="' + escapeHtml(p.request_id) + '">'
+            +    '<a href="' + profileHref(p.sender_id) + '" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit">'
+            +      avatarHtml(p.display_name)
+            +      '<div class="kh-fr-body">'
+            +        '<div class="kh-fr-name">' + escapeHtml(p.display_name || 'Learner') + '</div>'
+            +        '<div class="kh-fr-meta">' + escapeHtml(timeAgo(p.created_at)) + '</div>'
+            +      '</div>'
+            +    '</a>'
+            +    '<div class="kh-fr-actions">'
+            +      '<button class="kh-fr-btn kh-fr-btn-primary" onclick="khFrAccept(\'' + escapeHtml(p.request_id) + '\',this)">Accept</button>'
+            +      '<button class="kh-fr-btn kh-fr-btn-ghost" onclick="khFrReject(\'' + escapeHtml(p.request_id) + '\',this)">Decline</button>'
+            +    '</div>'
+            +  '</div>';
+        }).join('')
+      + '</div>';
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return '';
+    var ms = Date.now() - new Date(iso).getTime();
+    if (ms < 60000) return 'just now';
+    var m = Math.floor(ms / 60000); if (m < 60) return m + 'm ago';
+    var h = Math.floor(m / 60); if (h < 24) return h + 'h ago';
+    var d = Math.floor(h / 24); if (d < 7) return d + 'd ago';
+    return new Date(iso).toLocaleDateString();
+  }
+
+  // ── Find tab (debounced search) ─────────────────────────────────
+  var _searchTimer = null;
+  function debouncedSearch(ev) {
+    clearTimeout(_searchTimer);
+    var q = (ev.target.value || '').trim();
+    var listEl = $('kh-fr-list-find');
+    if (!q) {
+      listEl.innerHTML = '<div class="kh-fr-empty">'
+        + '<div class="kh-fr-empty-title">Find learning partners</div>'
+        + '<div>Type a display name above to search the community.</div>'
+        + '</div>';
+      return;
+    }
+    if (q.length < 2) return; // avoid flooding on a single character
+    _searchTimer = setTimeout(function () { runSearch(q); }, 250);
+  }
+
+  async function runSearch(q) {
+    var listEl = $('kh-fr-list-find');
+    listEl.innerHTML = '<div class="kh-fr-loading">Searching…</div>';
+    try {
+      var r = await sb.from('user_stats')
+        .select('user_id, display_name, xp, streak')
+        .ilike('display_name', '%' + q + '%')
+        .neq('user_id', currentUser.id)
+        .limit(20);
+      var rows = (r && r.data) || [];
+      if (!rows.length) {
+        listEl.innerHTML = '<div class="kh-fr-empty">'
+          + '<div class="kh-fr-empty-title">No matches</div>'
+          + '<div>No one with a display name like “' + escapeHtml(q) + '”.</div>'
+          + '</div>';
+        return;
+      }
+      listEl.innerHTML = '<div class="kh-fr-list">'
+        + rows.map(function (u) {
+            var isFriend = friendIds.has(u.user_id);
+            var btnHtml = isFriend
+              ? '<button class="kh-fr-btn kh-fr-btn-success" disabled>Friends</button>'
+              : '<button class="kh-fr-btn kh-fr-btn-primary" onclick="khFrAddFriend(\'' + escapeHtml(u.user_id) + '\',this)">Add</button>';
+            return '<div class="kh-fr-row" style="text-decoration:none;color:inherit">'
+              +    '<a href="' + profileHref(u.user_id) + '" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit">'
+              +      avatarHtml(u.display_name)
+              +      '<div class="kh-fr-body">'
+              +        '<div class="kh-fr-name">' + escapeHtml(u.display_name || 'Learner') + '</div>'
+              +        '<div class="kh-fr-meta">'
+              +          metaPill('sparkles', 'XP ' + (u.xp || 0).toLocaleString())
+              +          metaPill('flame', (u.streak || 0) + ' day streak')
+              +        '</div>'
+              +      '</div>'
+              +    '</a>'
+              +    '<div class="kh-fr-actions">' + btnHtml + '</div>'
+              +  '</div>';
+          }).join('')
+        + '</div>';
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    } catch (e) {
+      listEl.innerHTML = '<div class="kh-fr-empty">Search failed. Please retry.</div>';
+    }
+  }
+
+  // ── Action handlers (window-scoped for onclick) ─────────────────
+  window.khFrSwitchTab = function (tab, btn) {
+    activeTab = tab;
+    document.querySelectorAll('.kh-fr-tab').forEach(function (t) { t.classList.remove('on'); });
+    if (btn) btn.classList.add('on');
+    showPane(tab);
+  };
+  function showPane(tab) {
+    $('kh-fr-pane-friends').hidden = tab !== 'friends';
+    $('kh-fr-pane-pending').hidden = tab !== 'pending';
+    $('kh-fr-pane-find').hidden    = tab !== 'find';
+    $('kh-fr-pane-blocked').hidden = tab !== 'blocked';
+    if (tab === 'find') {
+      var input = $('kh-fr-search-input');
+      if (input) setTimeout(function () { input.focus(); }, 0);
+    }
+  }
+
+  window.khFrAccept = async function (requestId, btn) {
+    if (!sb || !requestId) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      var r = await sb.rpc('accept_friend_request', { p_request_id: requestId });
+      if (r.error) throw r.error;
+      // Remove the row, refresh friends list
+      pendingList = pendingList.filter(function (p) { return p.request_id !== requestId; });
+      renderPendingList();
+      $('kh-fr-count-pending').textContent = String(pendingList.length);
+      await loadFriends();
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Accept';
+    }
+  };
+
+  window.khFrReject = async function (requestId, btn) {
+    if (!sb || !requestId) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      await sb.rpc('reject_friend_request', { p_request_id: requestId });
+      pendingList = pendingList.filter(function (p) { return p.request_id !== requestId; });
+      renderPendingList();
+      $('kh-fr-count-pending').textContent = String(pendingList.length);
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Decline';
+    }
+  };
+
+  window.khFrAddFriend = async function (targetId, btn) {
+    if (!sb || !targetId) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      var r = await sb.rpc('send_friend_request', { p_target: targetId });
+      var status = (r && r.data && r.data.status) || '';
+      if (status === 'accepted' || status === 'already_friends') {
+        btn.textContent = 'Friends';
+        btn.className = 'kh-fr-btn kh-fr-btn-success';
+        friendIds.add(targetId);
+        await loadFriends();
+      } else if (status === 'sent' || status === 'already_pending') {
+        btn.textContent = 'Sent';
+        btn.className = 'kh-fr-btn kh-fr-btn-ghost';
+      } else {
+        btn.disabled = false; btn.textContent = 'Add';
+      }
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Add';
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>

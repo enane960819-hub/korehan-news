@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unsubscribe — KoreHani</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+.kh-unsub { max-width:520px; margin:60px auto; padding:36px 28px; background:#fff; border-radius:18px; box-shadow:0 14px 36px rgba(15,23,42,.10); text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; }
+.kh-unsub h1 { font-family:'Noto Serif KR',serif; font-weight:900; font-size:26px; color:#0f172a; margin:0 0 12px; letter-spacing:-.01em; }
+.kh-unsub p { font-size:15px; color:#475569; line-height:1.6; margin:0 0 20px; }
+.kh-unsub .icon { width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px; background:#fef3c7; color:#b45309; }
+.kh-unsub .icon.ok { background:#dcfce7; color:#15803d; }
+.kh-unsub .icon.err { background:#fee2e2; color:#b91c1c; }
+.kh-unsub .btn-row { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
+.kh-unsub .btn { padding:11px 20px; border-radius:999px; font-weight:800; font-size:13px; cursor:pointer; border:0; font-family:inherit; transition:background .15s, transform .12s; }
+.kh-unsub .btn-primary { background:#dc2626; color:#fff; }
+.kh-unsub .btn-primary:hover { background:#b91c1c; }
+.kh-unsub .btn-ghost { background:#f1f5f9; color:#475569; text-decoration:none; display:inline-block; }
+.kh-unsub .btn-ghost:hover { background:#e2e8f0; }
+.kh-unsub .email { font-weight:800; color:#0f172a; }
+</style>
+</head>
+<body style="background:#f3f7fc">
+<div id="kh-header"></div>
+<div class="container">
+  <div class="kh-unsub" id="kh-unsub-wrap">
+    <div class="icon" id="kh-unsub-icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <h1 id="kh-unsub-title">Unsubscribe?</h1>
+    <p id="kh-unsub-body">Confirm to stop receiving KoreHani emails.</p>
+    <div class="btn-row" id="kh-unsub-actions">
+      <button class="btn btn-primary" id="kh-unsub-confirm" onclick="khRunUnsubscribe()">Yes, unsubscribe</button>
+      <a class="btn btn-ghost" href="index.html">Keep subscribed</a>
+    </div>
+  </div>
+</div>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js"></script>
+<script>
+(function () {
+  function $(id) { return document.getElementById(id); }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function lock() {
+    var btn = $('kh-unsub-confirm');
+    if (btn) { btn.disabled = true; btn.textContent = 'Working…'; }
+  }
+  function showResult(ok, email) {
+    var icon = $('kh-unsub-icon');
+    if (ok) {
+      icon.className = 'icon ok';
+      icon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      $('kh-unsub-title').textContent = 'You\'re unsubscribed';
+      $('kh-unsub-body').innerHTML = email
+        ? '<span class="email">' + escapeHtml(email) + '</span> won\'t receive KoreHani updates anymore. We\'re sorry to see you go.'
+        : 'You won\'t receive KoreHani updates anymore. We\'re sorry to see you go.';
+      $('kh-unsub-actions').innerHTML = '<a class="btn btn-ghost" href="index.html">Back to home</a>';
+    } else {
+      icon.className = 'icon err';
+      icon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      $('kh-unsub-title').textContent = 'Link expired';
+      $('kh-unsub-body').innerHTML = 'This unsubscribe link is no longer valid. Please use the link from a recent email.';
+      $('kh-unsub-actions').innerHTML = '<a class="btn btn-ghost" href="index.html">Back to home</a>';
+    }
+  }
+
+  window.khRunUnsubscribe = async function () {
+    var p = new URLSearchParams(location.search);
+    var token = p.get('t') || p.get('token') || '';
+    if (!token) { showResult(false); return; }
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb) { showResult(false); return; }
+    lock();
+    try {
+      var r = await sb.rpc('newsletter_unsubscribe', { p_token: token });
+      var data = r && r.data;
+      if (r.error || !data || !data.ok) { showResult(false); return; }
+      showResult(true, data.email || '');
+    } catch (_) {
+      showResult(false);
+    }
+  };
+
+  // If there's no token, surface that immediately rather than waiting
+  // for the user to click the button.
+  document.addEventListener('DOMContentLoaded', function () {
+    var p = new URLSearchParams(location.search);
+    if (!p.get('t') && !p.get('token')) {
+      $('kh-unsub-title').textContent = 'Missing token';
+      $('kh-unsub-body').textContent = 'This unsubscribe link is incomplete. Please use the link from your email.';
+      $('kh-unsub-actions').innerHTML = '<a class="btn btn-ghost" href="index.html">Back to home</a>';
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile — KoreHani</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css">
+<style>
+.kh-pf-page { padding: 24px 0 60px; font-family: 'Source Sans 3', system-ui, sans-serif; }
+.kh-pf-hero {
+  background: linear-gradient(135deg,#0b1f3f,#1e3a8a 56%,#7c3aed);
+  color:#fff; border-radius:22px; padding:30px 28px; box-shadow:0 24px 44px rgba(15,23,42,.22);
+  position:relative; overflow:hidden; margin-bottom:18px;
+}
+.kh-pf-hero::before{content:'';position:absolute;top:-40%;right:-10%;width:280px;height:280px;background:radial-gradient(circle,rgba(124,58,237,.35),transparent 70%);pointer-events:none}
+.kh-pf-row { display:flex; align-items:center; gap:18px; flex-wrap:wrap; position:relative; z-index:1; }
+.kh-pf-avatar {
+  width:84px; height:84px; border-radius:50%;
+  background:#fff; border:3px solid rgba(255,255,255,.85); flex-shrink:0;
+  background-size:cover; background-position:center;
+  font-family:'Noto Serif KR',serif; font-weight:900; font-size:34px; color:#1e3a8a;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 8px 22px rgba(0,0,0,.22);
+}
+.kh-pf-name { font-family:'Noto Serif KR',serif; font-weight:900; font-size:28px; margin:0; letter-spacing:-.01em; }
+.kh-pf-handle { font-size:12px; color:rgba(220,210,255,.7); margin-top:2px; }
+.kh-pf-stats { display:flex; gap:18px; margin-top:14px; flex-wrap:wrap; position:relative; z-index:1; }
+.kh-pf-stat { display:flex; flex-direction:column; }
+.kh-pf-stat-label { font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:rgba(220,210,255,.7); }
+.kh-pf-stat-value { font-size:22px; font-weight:900; color:#fff; line-height:1.1; margin-top:2px; }
+.kh-pf-actions { margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; position:relative; z-index:1; }
+.kh-pf-btn {
+  padding:9px 18px; border-radius:999px; border:0; font-size:13px; font-weight:800;
+  font-family:inherit; cursor:pointer; transition:transform .12s, box-shadow .12s, background .15s;
+  display:inline-flex; align-items:center; gap:7px;
+}
+.kh-pf-btn-primary { background:linear-gradient(135deg,#fde68a,#fbbf24); color:#0b1f3f; box-shadow:0 6px 16px rgba(251,191,36,.32); }
+.kh-pf-btn-primary:hover { transform:translateY(-1px); box-shadow:0 10px 22px rgba(251,191,36,.42); }
+.kh-pf-btn-ghost { background:rgba(255,255,255,.10); color:#fff; border:1px solid rgba(255,255,255,.16); }
+.kh-pf-btn-ghost:hover { background:rgba(255,255,255,.16); }
+.kh-pf-btn-disabled { opacity:.55; cursor:not-allowed; }
+
+.kh-pf-section {
+  background:#fff; border:1px solid rgba(15,23,42,.06); border-radius:16px;
+  padding:20px 22px; margin-bottom:14px;
+  box-shadow:0 4px 16px rgba(15,23,42,.05);
+}
+.kh-pf-section h2 { font-family:'Noto Serif KR',serif; font-weight:900; font-size:18px; color:var(--navy); margin:0 0 12px; }
+
+.kh-pf-badges { display:grid; grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:10px; }
+.kh-pf-badge { display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 6px; border-radius:10px; background:#f8fafc; border:1px solid var(--border); }
+.kh-pf-badge-icon { width:38px; height:38px; display:flex; align-items:center; justify-content:center; }
+.kh-pf-badge-icon svg { width:38px; height:38px; }
+.kh-pf-badge-name { font-size:10px; font-weight:700; color:var(--navy); text-align:center; line-height:1.2; }
+.kh-pf-badge-locked { opacity:.3; filter:grayscale(1); }
+.kh-pf-badge-count { font-size:13px; font-weight:800; color:var(--gray); }
+
+.kh-pf-room {
+  position:relative; aspect-ratio: 16/10; border-radius:12px;
+  background:#0b1626; overflow:hidden; min-height:220px;
+}
+.kh-pf-room-empty { display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.4); font-size:13px; height:100%; }
+
+.kh-pf-gb-list { display:flex; flex-direction:column; gap:10px; }
+.kh-pf-gb-entry {
+  background:#f3f6fb; border:1px solid rgba(15,23,42,.06); border-radius:12px;
+  padding:14px 16px;
+  box-shadow:0 1px 3px rgba(15,23,42,.04);
+}
+.kh-pf-gb-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.kh-pf-gb-author { font-size:13px; font-weight:800; color:var(--navy); cursor:pointer; }
+.kh-pf-gb-author:hover { color:var(--bright); }
+.kh-pf-gb-time { font-size:11px; color:var(--gray); margin-left:auto; }
+.kh-pf-gb-msg { font-size:14px; line-height:1.55; color:var(--text); white-space:pre-wrap; word-break:break-word; }
+.kh-pf-gb-empty { text-align:center; padding:30px 16px; color:var(--gray); font-size:13px; }
+.kh-pf-gb-form { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+.kh-pf-gb-form textarea {
+  flex:1; min-width:240px; min-height:72px; padding:12px 14px;
+  border:1px solid rgba(15,23,42,.10); border-radius:12px;
+  resize:vertical; font-family:inherit; font-size:14px; line-height:1.5;
+  background:#f3f6fb;
+  transition:border-color .15s, background .15s, box-shadow .15s;
+}
+.kh-pf-gb-form textarea:focus {
+  border-color:#1e3a8a; background:#fff; outline:0;
+  box-shadow:0 0 0 4px rgba(30,58,138,.10);
+}
+.kh-pf-gb-form button {
+  padding:0 24px; border-radius:12px; border:0;
+  background:linear-gradient(135deg,#1e3a8a,#2563eb); color:#fff;
+  font-weight:800; cursor:pointer; font-family:inherit; font-size:13px;
+  align-self:stretch;
+  box-shadow:0 6px 16px rgba(30,58,138,.32);
+  transition:transform .12s, box-shadow .15s;
+}
+.kh-pf-gb-form button:hover { transform:translateY(-1px); box-shadow:0 10px 22px rgba(30,58,138,.40); }
+.kh-pf-gb-locked { font-size:13px; color:var(--gray); margin-top:14px; text-align:center; padding:12px; background:#f8fafc; border-radius:10px; }
+
+@media(max-width:600px) {
+  .kh-pf-hero { padding:22px 18px; border-radius:18px; }
+  .kh-pf-name { font-size:22px; }
+  .kh-pf-avatar { width:68px; height:68px; font-size:28px; }
+  .kh-pf-stats { gap:14px; }
+  .kh-pf-stat-value { font-size:18px; }
+}
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+<div class="container">
+  <div class="kh-pf-page">
+    <div id="kh-pf-loading" style="text-align:center;padding:60px 20px;color:var(--gray)">Loading profile…</div>
+    <div id="kh-pf-root" style="display:none"></div>
+    <div id="kh-pf-error" style="display:none;text-align:center;padding:60px 20px;color:var(--gray)">
+      <div style="font-family:'Noto Serif KR',serif;font-weight:900;font-size:18px;color:var(--navy);margin-bottom:6px">User not found</div>
+      <div style="font-size:13px">This profile doesn't exist or hasn't been set up yet.</div>
+    </div>
+  </div>
+</div>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/security.js?v=20260502a"></script>
+<script src="js/core/storage.js?v=20260502a"></script>
+<script src="js/core/icons.js?v=20260502a"></script>
+<script src="js/core/modals.js?v=20260502a"></script>
+<script src="js/core/ui-states.js?v=20260502a"></script>
+<script src="js/core/analytics.js?v=20260502a"></script>
+<script src="js/core/user-analytics.js?v=20260504a"></script>
+<script src="js/core/plans.js?v=20260502a"></script>
+<script src="js/core/article-cache.js?v=20260505b"></script>
+<script src="js/core/phrases.js?v=20260505p"></script>
+<script src="js/core/saved-words.js?v=20260505b"></script>
+<script src="js/features/video-player.js?v=20260502a"></script>
+<script src="js/core/articles.js?v=20260502a"></script>
+<script src="js/core/reporters.js?v=20260502a"></script>
+<script src="js/features/streak.js?v=20260502a"></script>
+<script src="js/features/daily-mission.js?v=20260502a"></script>
+<script src="js/features/reading-tracker.js?v=20260502a"></script>
+<script src="js/features/bookmarks.js?v=20260502a"></script>
+<script src="js/features/comments.js?v=20260503c"></script>
+<script src="js/features/sidebar.js?v=20260502a"></script>
+<script src="js/features/highlighted-expressions.js?v=20260502a"></script>
+<script src="js/features/analyze-mode.js?v=20260502a"></script>
+<script src="js/features/translation.js?v=20260502a"></script>
+<script src="js/features/fill-blank.js?v=20260502a"></script>
+<script src="korehan-shared.js"></script>
+<script src="js/kh-badges.js?v=20260506a"></script>
+<script>
+// Public profile page
+//
+// URL: /korehan-profile.html?user=<uuid>  (or ?u= short form)
+// What it shows
+//   - Hero card: avatar, display name, handle, level/XP/streak/days
+//   - Action bar: Add Friend / Pending / Friends / (no button if self)
+//   - Badges grid (earned only, with full count)
+//   - My Room read-only thumbnail (placeholder if not yet wired)
+//   - Guestbook: public read, friend-only write (RPC enforced)
+//
+// Identity model: profile keys off user_stats.user_id since that's
+// already populated on signup via syncUserStats(). The auth display
+// avatar comes from auth.users metadata, but that's private — we fall
+// back to a monogram of the display name.
+
+(function () {
+  var sb;
+  var currentUser = null;          // signed-in viewer
+  var profile = null;              // host (target user) row
+  var hostId = null;
+  var friendshipState = 'none';    // none | pending_out | pending_in | friends | self
+
+  function $(id) { return document.getElementById(id); }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function timeAgo(iso) {
+    if (!iso) return '';
+    var ms = Date.now() - new Date(iso).getTime();
+    if (ms < 60000) return 'just now';
+    var m = Math.floor(ms / 60000); if (m < 60) return m + 'm ago';
+    var h = Math.floor(m / 60); if (h < 24) return h + 'h ago';
+    var d = Math.floor(h / 24); if (d < 7) return d + 'd ago';
+    return new Date(iso).toLocaleDateString();
+  }
+
+  function getTargetUserId() {
+    var p = new URLSearchParams(location.search);
+    return (p.get('user') || p.get('u') || '').trim();
+  }
+
+  async function loadProfile() {
+    sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb) { showError(); return; }
+    hostId = getTargetUserId();
+    if (!hostId) { showError(); return; }
+    try {
+      currentUser = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null;
+    } catch (_) { currentUser = null; }
+
+    // Pull public host stats. user_stats is public-readable.
+    var r = await sb.from('user_stats')
+      .select('user_id, display_name, xp, streak, articles_read, words_saved, fill_done, quizzes_done')
+      .eq('user_id', hostId)
+      .maybeSingle();
+    if (r.error || !r.data) { showError(); return; }
+    profile = r.data;
+
+    // Friendship state (only meaningful when signed in)
+    if (currentUser && currentUser.id === hostId) {
+      friendshipState = 'self';
+    } else if (currentUser) {
+      friendshipState = await resolveFriendshipState(currentUser.id, hostId);
+    }
+
+    // Guestbook entries (public). We pull author display names too via
+    // a join — Supabase doesn't allow inline joins to user_stats with
+    // RLS the way articles works, so we fan out manually.
+    var gb = await sb.from('guestbook')
+      .select('id, author_id, message, created_at')
+      .eq('host_id', hostId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    var entries = (gb && gb.data) || [];
+    var authorIds = Array.from(new Set(entries.map(function(e){ return e.author_id; })));
+    var authorMap = {};
+    if (authorIds.length) {
+      var us = await sb.from('user_stats')
+        .select('user_id, display_name')
+        .in('user_id', authorIds);
+      ((us && us.data) || []).forEach(function(u){ authorMap[u.user_id] = u.display_name; });
+    }
+
+    render(entries, authorMap);
+  }
+
+  async function resolveFriendshipState(meId, otherId) {
+    // Block check first — overrides any other state on display.
+    try {
+      var bl = await sb.from('user_blocks')
+        .select('id').eq('blocker_id', meId).eq('blocked_id', otherId).maybeSingle();
+      if (bl && bl.data) return 'blocked';
+    } catch (_) {}
+    try {
+      // Cheap approach: list-and-check. friendships RLS is "either side
+      // visible", so a select on the lower/higher pair returns 0 or 1.
+      var lo = meId < otherId ? meId : otherId;
+      var hi = meId < otherId ? otherId : meId;
+      var fr = await sb.from('friendships')
+        .select('id').eq('low_id', lo).eq('high_id', hi).maybeSingle();
+      if (fr && fr.data) return 'friends';
+    } catch (_) {}
+    try {
+      var pend = await sb.from('friend_requests')
+        .select('id, sender_id, recipient_id, status')
+        .or('and(sender_id.eq.' + meId + ',recipient_id.eq.' + otherId + '),and(sender_id.eq.' + otherId + ',recipient_id.eq.' + meId + ')')
+        .eq('status', 'pending');
+      var rows = (pend && pend.data) || [];
+      var outBound = rows.find(function(r){ return r.sender_id === meId; });
+      if (outBound) return 'pending_out';
+      var inBound = rows.find(function(r){ return r.recipient_id === meId; });
+      if (inBound) return 'pending_in';
+    } catch (_) {}
+    return 'none';
+  }
+
+  function render(gbEntries, authorMap) {
+    $('kh-pf-loading').style.display = 'none';
+    $('kh-pf-error').style.display = 'none';
+    var root = $('kh-pf-root');
+    root.style.display = 'block';
+
+    var name = profile.display_name || 'Learner';
+    var initial = (name.match(/\S/) || ['?'])[0];
+    var lvl = computeLevel(profile.xp || 0);
+
+    var actionHtml = renderActionBar();
+    var badgesHtml = renderBadges();
+    var roomHtml = '<div class="kh-pf-room"><div class="kh-pf-room-empty">My Room preview coming soon</div></div>';
+    var gbListHtml = renderGuestbookList(gbEntries, authorMap);
+    var gbComposerHtml = renderGuestbookComposer();
+
+    root.innerHTML =
+      '<div class="kh-pf-hero">' +
+        '<div class="kh-pf-row">' +
+          '<div class="kh-pf-avatar">' + escapeHtml(initial) + '</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<h1 class="kh-pf-name">' + escapeHtml(name) + '</h1>' +
+            '<div class="kh-pf-handle">Level ' + lvl.level + ' · ' + lvl.title + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="kh-pf-stats">' +
+          '<div class="kh-pf-stat"><div class="kh-pf-stat-label">XP</div><div class="kh-pf-stat-value">' + (profile.xp || 0).toLocaleString() + '</div></div>' +
+          '<div class="kh-pf-stat"><div class="kh-pf-stat-label">Streak</div><div class="kh-pf-stat-value">' + (profile.streak || 0) + '</div></div>' +
+          '<div class="kh-pf-stat"><div class="kh-pf-stat-label">Read</div><div class="kh-pf-stat-value">' + (profile.articles_read || 0) + '</div></div>' +
+          '<div class="kh-pf-stat"><div class="kh-pf-stat-label">Words</div><div class="kh-pf-stat-value">' + (profile.words_saved || 0) + '</div></div>' +
+        '</div>' +
+        '<div class="kh-pf-actions">' + actionHtml + '</div>' +
+      '</div>' +
+
+      '<div class="kh-pf-section"><h2>Badges</h2>' + badgesHtml + '</div>' +
+      '<div class="kh-pf-section"><h2>My Room</h2>' + roomHtml + '</div>' +
+      '<div class="kh-pf-section"><h2>Guestbook</h2>' + gbListHtml + gbComposerHtml + '</div>';
+
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+  }
+
+  function computeLevel(xp) {
+    // Same staircase the rest of the app uses for the navbar level pill.
+    // Tier name from a small ladder; tweak alongside Growth Lab later.
+    var lvl = Math.floor(Math.sqrt(xp / 200)) + 1;
+    var titles = ['Seedling','Sprout','Sapling','Tree','Forest','Mountain','Ocean','Constellation'];
+    var tier = titles[Math.min(titles.length - 1, Math.floor((lvl - 1) / 5))];
+    return { level: lvl, title: tier };
+  }
+
+  function renderActionBar() {
+    if (!currentUser) {
+      return '<button class="kh-pf-btn kh-pf-btn-ghost" onclick="khSbOpen ? khSbOpen() : (typeof openAuthModal===\'function\' ? openAuthModal(\'signin\') : null)">Sign in to add friend</button>';
+    }
+    if (friendshipState === 'self') {
+      return '<a class="kh-pf-btn kh-pf-btn-ghost" href="korehan-mypage.html">Edit your profile</a>';
+    }
+    if (friendshipState === 'blocked') {
+      return '<button class="kh-pf-btn kh-pf-btn-ghost" onclick="khPfUnblock(this)">Unblock</button>';
+    }
+    var blockBtn = '<button class="kh-pf-btn kh-pf-btn-ghost" onclick="khPfBlock(this)" title="Block this user"><i data-lucide="ban" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>';
+    if (friendshipState === 'friends') {
+      return '<button class="kh-pf-btn kh-pf-btn-ghost kh-pf-btn-disabled" disabled><i data-lucide="users" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>Friends</button>' + blockBtn;
+    }
+    if (friendshipState === 'pending_out') {
+      return '<button class="kh-pf-btn kh-pf-btn-ghost kh-pf-btn-disabled" disabled>Request sent</button>' + blockBtn;
+    }
+    if (friendshipState === 'pending_in') {
+      return '<button class="kh-pf-btn kh-pf-btn-primary" onclick="khPfAcceptIncoming()"><i data-lucide="user-check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>Accept request</button>' + blockBtn;
+    }
+    return '<button class="kh-pf-btn kh-pf-btn-primary" onclick="khPfAddFriend(this)"><i data-lucide="user-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>Add friend</button>' + blockBtn;
+  }
+
+  function renderBadges() {
+    if (typeof BADGE_DEFS === 'undefined') return '<div style="font-size:13px;color:var(--gray)">Badge data not loaded.</div>';
+    // Public badge readout: we don't yet expose other users' earned set
+    // server-side, so first pass shows "X / Y badges earned" with the
+    // viewer's own list when self-viewing, and a count placeholder
+    // otherwise. Phase 3 wires user_badges public read.
+    if (friendshipState === 'self') {
+      var earned = (typeof getEarnedBadges === 'function') ? getEarnedBadges() : {};
+      var html = '';
+      var total = BADGE_DEFS.length;
+      var earnedCount = 0;
+      BADGE_DEFS.slice(0, 24).forEach(function(b) {
+        var got = !!earned[b.id];
+        if (got) earnedCount++;
+        html += '<div class="kh-pf-badge ' + (got ? '' : 'kh-pf-badge-locked') + '" title="' + escapeHtml(b.name + ' — ' + (b.desc || '')) + '">' +
+                  '<div class="kh-pf-badge-icon">' + (b.icon || '') + '</div>' +
+                  '<div class="kh-pf-badge-name">' + escapeHtml(b.name) + '</div>' +
+                '</div>';
+      });
+      var earnedAll = Object.keys(earned).filter(function(k){ return !!earned[k]; }).length;
+      return '<div class="kh-pf-badge-count" style="margin-bottom:10px">' + earnedAll + ' / ' + total + ' earned</div>' +
+             '<div class="kh-pf-badges">' + html + '</div>';
+    }
+    return '<div style="font-size:13px;color:var(--gray)">Public badge collection coming with Phase 3 (user_badges public read).</div>';
+  }
+
+  function renderGuestbookList(entries, authorMap) {
+    if (!entries || !entries.length) {
+      return '<div class="kh-pf-gb-empty">No guestbook entries yet. Be the first!</div>';
+    }
+    return '<div class="kh-pf-gb-list">' + entries.map(function(e){
+      var author = authorMap[e.author_id] || 'Learner';
+      return '<div class="kh-pf-gb-entry">' +
+               '<div class="kh-pf-gb-head">' +
+                 '<a class="kh-pf-gb-author" href="korehan-profile.html?user=' + encodeURIComponent(e.author_id) + '">' + escapeHtml(author) + '</a>' +
+                 '<span class="kh-pf-gb-time">' + timeAgo(e.created_at) + '</span>' +
+               '</div>' +
+               '<div class="kh-pf-gb-msg">' + escapeHtml(e.message) + '</div>' +
+             '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderGuestbookComposer() {
+    if (!currentUser) return '<div class="kh-pf-gb-locked">Sign in to leave a message.</div>';
+    if (friendshipState === 'self') return '<div class="kh-pf-gb-locked">This is your wall — friends can post here when you have any.</div>';
+    if (friendshipState !== 'friends') return '<div class="kh-pf-gb-locked">Only friends can write on this wall.</div>';
+    return '<form class="kh-pf-gb-form" onsubmit="khPfSubmitGuestbook(event)">' +
+             '<textarea id="kh-pf-gb-text" maxlength="500" placeholder="Leave a note..." required></textarea>' +
+             '<button type="submit">Post</button>' +
+           '</form>';
+  }
+
+  function showError() {
+    $('kh-pf-loading').style.display = 'none';
+    $('kh-pf-root').style.display = 'none';
+    $('kh-pf-error').style.display = 'block';
+  }
+
+  // ── Action handlers ────────────────────────────────────────────
+  window.khPfAddFriend = async function (btn) {
+    if (!currentUser) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    try {
+      var r = await sb.rpc('send_friend_request', { p_target: hostId });
+      if (r.error) throw r.error;
+      var status = r.data && r.data.status;
+      if (status === 'accepted') friendshipState = 'friends';
+      else if (status === 'sent' || status === 'already_pending') friendshipState = 'pending_out';
+      else if (status === 'already_friends') friendshipState = 'friends';
+      // Re-render the action bar + composer
+      var root = $('kh-pf-root');
+      var actionsEl = root.querySelector('.kh-pf-actions');
+      if (actionsEl) actionsEl.innerHTML = renderActionBar();
+      var composerWrap = root.querySelector('.kh-pf-section:last-child');
+      if (composerWrap) {
+        var oldForm = composerWrap.querySelector('.kh-pf-gb-form, .kh-pf-gb-locked');
+        if (oldForm) oldForm.outerHTML = renderGuestbookComposer();
+      }
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Add friend'; }
+      console.warn('add friend failed', e);
+    }
+  };
+
+  window.khPfBlock = async function (btn) {
+    if (!currentUser || !hostId) return;
+    if (!confirm('Block this user? They won\'t be able to send you friend requests, post on your wall, or interact with you. Existing friendship will be removed.')) return;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      var r = await sb.rpc('block_user', { p_target: hostId, p_reason: null });
+      if (r.error || (r.data && !r.data.ok)) throw r.error || new Error((r.data && r.data.error) || 'block_failed');
+      friendshipState = 'blocked';
+      var root = $('kh-pf-root');
+      var actionsEl = root.querySelector('.kh-pf-actions');
+      if (actionsEl) actionsEl.innerHTML = renderActionBar();
+      var composerWrap = root.querySelector('.kh-pf-section:last-child');
+      if (composerWrap) {
+        var oldForm = composerWrap.querySelector('.kh-pf-gb-form, .kh-pf-gb-locked');
+        if (oldForm) oldForm.outerHTML = renderGuestbookComposer();
+      }
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Block'; }
+      console.warn('block failed', e);
+    }
+  };
+
+  window.khPfUnblock = async function (btn) {
+    if (!currentUser || !hostId) return;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      var r = await sb.rpc('unblock_user', { p_target: hostId });
+      if (r.error || (r.data && !r.data.ok)) throw r.error || new Error('unblock_failed');
+      friendshipState = 'none';
+      var root = $('kh-pf-root');
+      var actionsEl = root.querySelector('.kh-pf-actions');
+      if (actionsEl) actionsEl.innerHTML = renderActionBar();
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Unblock'; }
+    }
+  };
+
+  window.khPfAcceptIncoming = async function () {
+    // Find the pending incoming request id and call accept_friend_request.
+    if (!currentUser) return;
+    try {
+      var pend = await sb.from('friend_requests')
+        .select('id').eq('sender_id', hostId).eq('recipient_id', currentUser.id).eq('status','pending')
+        .maybeSingle();
+      if (!pend || !pend.data) return;
+      var r = await sb.rpc('accept_friend_request', { p_request_id: pend.data.id });
+      if (r.error) throw r.error;
+      friendshipState = 'friends';
+      var root = $('kh-pf-root');
+      var actionsEl = root.querySelector('.kh-pf-actions');
+      if (actionsEl) actionsEl.innerHTML = renderActionBar();
+      var composerWrap = root.querySelector('.kh-pf-section:last-child');
+      if (composerWrap) {
+        var oldForm = composerWrap.querySelector('.kh-pf-gb-form, .kh-pf-gb-locked');
+        if (oldForm) oldForm.outerHTML = renderGuestbookComposer();
+      }
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    } catch (e) {
+      console.warn('accept failed', e);
+    }
+  };
+
+  window.khPfSubmitGuestbook = async function (ev) {
+    ev.preventDefault();
+    var ta = $('kh-pf-gb-text');
+    if (!ta) return;
+    var msg = ta.value.trim();
+    if (!msg) return;
+    var btn = ev.target.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
+    try {
+      var r = await sb.rpc('post_guestbook', { p_host: hostId, p_message: msg });
+      if (r.error) throw r.error;
+      ta.value = '';
+      // Re-pull the list cheaply.
+      var gb = await sb.from('guestbook').select('id, author_id, message, created_at').eq('host_id', hostId).order('created_at', { ascending: false }).limit(50);
+      var entries = (gb && gb.data) || [];
+      var authorIds = Array.from(new Set(entries.map(function(e){ return e.author_id; })));
+      var authorMap = {};
+      if (authorIds.length) {
+        var us = await sb.from('user_stats').select('user_id, display_name').in('user_id', authorIds);
+        ((us && us.data) || []).forEach(function(u){ authorMap[u.user_id] = u.display_name; });
+      }
+      var sec = document.querySelectorAll('.kh-pf-section')[2];
+      if (sec) {
+        sec.innerHTML = '<h2>Guestbook</h2>' + renderGuestbookList(entries, authorMap) + renderGuestbookComposer();
+      }
+    } catch (e) {
+      console.warn('guestbook post failed', e);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Post'; }
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadProfile);
+  } else {
+    loadProfile();
+  }
+})();
+</script>
+</body>
+</html>

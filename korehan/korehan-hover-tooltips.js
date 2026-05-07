@@ -231,6 +231,12 @@
     var tag = parent.tagName.toLowerCase();
     if (['script','style','textarea','input','button','select','option'].indexOf(tag) !== -1) return true;
     if (parent.closest('.kh-hover-word')) return true;
+    // .kh-word is the legacy hover system (wrapVocab → global VOCAB
+    // dict). When both systems wrapped the same word the user saw the
+    // tooltip stacked / rendered twice. Skipping anything already
+    // covered by .kh-word means each word gets exactly one hover
+    // surface — .kh-word owns the article body, .kh-hover-word
+    // covers everywhere else.
     if (parent.closest('.kh-word')) return true;
     if (parent.closest('[data-hover-skip="1"]')) return true;
     // Don't wrap text inside any button or button-role element. The

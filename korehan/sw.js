@@ -18,15 +18,20 @@
 // changes. Install event will build a fresh cache under the new name
 // and the activate event will delete stale caches.
 
-const CACHE_VERSION = 'kh-v4';
+// v5: scope correction. Earlier registrations targeted /korehan/ but
+// Vite builds the korehan/ folder as the dist root, so the live paths
+// are /…, not /korehan/…. The SW had effectively never intercepted
+// anything on production. v5 ships at scope '/' and pre-caches the
+// real deployed paths.
+const CACHE_VERSION = 'kh-v5';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
 // Pre-cache just the core shell — everything else fills in lazily on
 // first use so the install step is fast even on 3G.
 const CORE_ASSETS = [
-  '/korehan/korehan-shared.css',
-  '/korehan/korehan-shared.js',
+  '/korehan-shared.css',
+  '/korehan-shared.js',
 ];
 
 self.addEventListener('install', function(event) {

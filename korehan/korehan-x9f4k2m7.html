@@ -3046,14 +3046,14 @@ async function runBulkPhraseAdminGen(){
     + '      {"ko":"natural Korean sentence using the phrase, max 25 chars","en":"…"},\n'
     + '      {"ko":"different context using the phrase","en":"…"}\n'
     + '    ],\n'
-    + '    "related": ["관련 표현 1","관련 표현 2","관련 표현 3"]\n'
+    + '    "related": ["idiom 1","idiom 2"]\n'
     + '  }\n'
     + ']\n\n'
     + 'Rules:\n'
     + '- intro_ko / intro / nuance MUST be specific to each phrase. Do NOT echo generic platform copy.\n'
     + '- examples MUST contain the phrase (or a natural conjugated form) and be fully grammatical Korean.\n'
     + '- level: Seed for TOPIK 1, Sprout for TOPIK 2, Tree for TOPIK 3-4, Forest for TOPIK 5-6 / classical proverbs.\n'
-    + '- related: 3 related Korean expressions.\n'
+    + '- related: EXACTLY 0-2 entries (NEVER more than 2). Each MUST be a real Korean 관용구 (idiom) or 속담 (proverb) — fixed multi-word expression from an idiom dictionary, NOT literal noun phrases like "불가능한 일". RIGHT for 하늘의 별 따기: 낙타가 바늘구멍 들어가기. WRONG: 불가능한 일 (literal phrase). Strong match required — if 2 real idioms don\'t exist, return FEWER or []. DO NOT pad.\n'
     + '- Do NOT include any phrase from the ALREADY IN QUEUE list above.';
 
   try {
@@ -3120,10 +3120,14 @@ async function saveBulkPhraseAdmin(){
   saveBtn.textContent = '⏳ 저장 중…';
   const addedCount = _bulkPhraseAdminStaging.length;
   // Append to keep "today's index" stable.
-  const merged = phraseAdminItems.slice().concat(_bulkPhraseAdminStaging);
+  const preBulk = phraseAdminItems.slice();
+  const merged = preBulk.concat(_bulkPhraseAdminStaging);
   try {
     if (typeof saveSharedPhrases === 'function') {
-      await saveSharedPhrases(merged);
+      // oldList = the queue admin was looking at right before bulk
+      // gen ran. Used by _computeOffsetPreserveToday to pin today
+      // even if _appSettings.phrases hasn't synced from DB yet.
+      await saveSharedPhrases(merged, { oldList: preBulk });
     } else {
       lsSet(K_PHRASES, merged);
     }
@@ -3179,7 +3183,11 @@ function renderPhraseAdminTable(){
   const KST_OFFSET = 9 * 3600 * 1000;
   const kstNow = Date.now() + KST_OFFSET;
   const kstToday = Math.floor(kstNow / 86400000);
-  const todayIdxInLive = liveLen ? (kstToday % liveLen) : -1;
+  // Apply the saved rotation offset so this view matches the home
+  // page's getTodaysPhraseIndex() — without the offset, the admin
+  // schedule column drifts by 1+ positions after every bulk add.
+  const _rotOffset = (typeof getPhraseRotationOffset === 'function') ? getPhraseRotationOffset() : 0;
+  const todayIdxInLive = liveLen ? (((kstToday + _rotOffset) % liveLen) + liveLen) % liveLen : -1;
 
   // Map originalIdx → days_from_today (0 = today, 1 = tomorrow, etc.)
   const daysFromToday = {};
@@ -3234,13 +3242,37 @@ function renderPhraseAdminTable(){
       </td>
       <td>${(p.examples || []).slice(0,1).map(ex => `<div style="font-size:12px;color:var(--gr)">• ${esc(ex.ko || '')}</div>`).join('') || '<span style="color:#99aabb;font-size:11px">예문 없음</span>'}</td>
       <td onclick="event.stopPropagation()">
-        <div style="display:flex;flex-direction:column;gap:4px;align-items:stretch;min-width:88px">
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:stretch;min-width:108px">
+          <div style="display:flex;gap:3px">
+            <button class="btn btn-xs" onclick="movePhraseAdminItem(${idx},-1)" title="위로 (앞날짜)" style="flex:1;padding:3px 0;background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;font-weight:800">▲</button>
+            <button class="btn btn-xs" onclick="movePhraseAdminItem(${idx},1)" title="아래로 (뒷날짜)" style="flex:1;padding:3px 0;background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;font-weight:800">▼</button>
+          </div>
           <button class="btn btn-gh btn-xs" onclick="openPhraseAdminItem(${idx})">Edit</button>
           <button class="btn btn-r btn-xs" onclick="deletePhraseAdminItemAt(${idx})" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca">🗑 삭제</button>
         </div>
       </td>
     </tr>`;
   }).join('');
+}
+
+// Move a phrase one slot up or down in the queue (i.e. shift its
+// scheduled date by ±1 day). Uses preserveOffset:true so the today
+// INDEX stays put — non-today moves leave today untouched, and
+// moving today itself swaps today onto whatever phrase landed in
+// today's slot.
+function movePhraseAdminItem(idx, delta) {
+  if (!Array.isArray(phraseAdminItems) || idx < 0 || idx >= phraseAdminItems.length) return;
+  var target = idx + delta;
+  if (target < 0 || target >= phraseAdminItems.length) return;
+  var tmp = phraseAdminItems[idx];
+  phraseAdminItems[idx] = phraseAdminItems[target];
+  phraseAdminItems[target] = tmp;
+  if (phraseAdminCurrentIndex === idx) phraseAdminCurrentIndex = target;
+  else if (phraseAdminCurrentIndex === target) phraseAdminCurrentIndex = idx;
+  lsSet(K_PHRASES, phraseAdminItems);
+  if (typeof saveSharedPhrases === 'function') saveSharedPhrases(phraseAdminItems, { preserveOffset: true });
+  renderPhraseAdminTable();
+  renderPhraseAdminForm(phraseAdminCurrentIndex);
 }
 
 // Direct delete from the table row — no need to first navigate to
@@ -3286,7 +3318,10 @@ function getPhraseAdminTodayIndex(){
   // actually shows.
   const liveItems = items.filter(p => p && p.ko && String(p.ko).trim());
   if (!liveItems.length) return 0;
-  return Math.floor((Date.now() + 9*3600000) / 86400000) % liveItems.length;
+  const _rotOff = (typeof getPhraseRotationOffset === 'function') ? getPhraseRotationOffset() : 0;
+  const _dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
+  const _len = liveItems.length;
+  return ((_dayHash + _rotOff) % _len + _len) % _len;
 }
 function openTodayPhrasePreview(){
   location.href = 'korehan-phrase.html?i=' + getPhraseAdminTodayIndex();
@@ -4774,11 +4809,17 @@ async function runAutoGenerate(){
         + '- 원본에 없는 사실 추가 금지\n'
         + '- 한자 표기 금지 (한글만 사용)\n\n'
         + '[중요표현 / Key Expressions]\n'
-        + '- 본문에서 학습자가 외울 만한 표현을 **3~5개** 추출 (필수, 비우지 말 것)\n'
-        + '- 우선순위: 관용 표현 / 자주 쓰이는 굳어진 구 / 유용한 문법 패턴 / 의미 단위로 묶이는 명사구·동사구\n'
-        + '- 각 표현은 ko(표현 자체) + en(영어 번역 또는 풀이) 짝으로\n'
-        + '- 본문에 한 번이라도 등장한 표현을 그대로 뽑을 것 (단어 하나가 아니라 2단어 이상의 구)\n'
-        + '- 본문에 정말 추출할 만한 게 없을 때만 빈 배열 [] 허용\n\n'
+        + '- 본문에서 학습자가 외울 만한 **고정 표현**을 0~3개 추출 (빈 배열 [] 선호 — 적합한 게 없으면 빈 배열)\n'
+        + '- 적합한 것: 관용 표현(예: 발이 넓다), 사자성어/속담, 자주 쓰이는 굳어진 표현(예: 빨리빨리, 천천히 가세요), 의존명사 패턴(~는 것 같다, ~기 때문에), 호칭/인사 표현, 문화 특화 표현\n'
+        + '- 적합하지 않은 것 (절대 추출 금지):\n'
+        + '  * 일반 평서문/절 ("풀을 먹고 있었어요", "보통 아프리카에 살아요")\n'
+        + '  * 단순 SVO/SOV 문장 조각\n'
+        + '  * 주어+동사 단순 결합 ("사람들이 키우는")\n'
+        + '  * 명사+조사+동사 (이미 vocab으로 충분)\n'
+        + '  * 한 단어 (vocab과 중복)\n'
+        + '- 각 표현은 ko(표현 자체) + en(영어 풀이) 짝으로\n'
+        + '- 본문에 그대로 등장한 형태만 추출\n'
+        + '- 정말 외울 가치 있는 게 1~3개면 그만큼만, 없으면 빈 배열 [] (이게 가장 흔한 결과)\n\n'
         + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)","key_expressions":[{"ko":"...","en":"..."}]}';
 
       _autoGenSetItemStatus(si, '⏳ 기사 각색 중…');
@@ -4834,7 +4875,11 @@ async function runAutoGenerate(){
       const _title = article.title || '';
       const _level = diffInfo.level;
       const _sb    = getSb();
-      const _row   = { article_id: String(articleId), updated_at: new Date().toISOString() };
+      // updated_at intentionally omitted — production article_cache
+      // doesn't have that column, and including it made every upsert
+      // fail with "column updated_at does not exist". Confirmed via
+      // information_schema.columns query on May 7 2026.
+      const _row   = { article_id: String(articleId) };
       let   _ok    = 0;
 
       // 공통 호출 함수 — prefill 없이 순수 요청
@@ -4920,10 +4965,25 @@ async function runAutoGenerate(){
             + 'Rules:\n'
             + '- One object per input sentence, in the same order.\n'
             + '- TRANSLATION: stay consistent with the paragraph EN above (same subject, same pronouns, same formality). PRESERVE THE ORIGINAL SUBJECT — do NOT inject "I" or "we" if the Korean omitted it; pull the subject from the paragraph EN context. Match the level of formality (정중체 → polite English; 평서체 → plain English).\n'
-            + '- VOCAB: max 4 items per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다 …) — pick words a learner would actually want to look up. Empty array allowed if nothing useful.\n'
+            + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔, 살다 not 살, 키우다 not 키우). Single-syllable stems are NEVER valid Korean words.\n'
+            + '- VOCAB: max 4 items per sentence. ' + (
+                (_level === 'Starter' || _level === 'Beginner')
+                  ? 'INCLUDE beginner verbs/adjectives at this level — 보다, 살다, 먹다, 키우다, 흔하다 are FAIR GAME, the learner needs them explained. Only skip particles (이/가/을/를/의/에/도/는) and the bare copula/존재 verbs (이다/있다 alone).'
+                  : 'Skip beginner words (는/이/가/이다/있다/하다/되다…) — pick words a learner would actually want to look up.'
+              ) + ' Empty array allowed if nothing useful.\n'
             + '- VOCAB NOTE: must be FACTUAL — what the word literally means and how it is used in standard Korean. Do NOT invent metaphorical readings specific to this sentence (e.g. don\'t say "고양이 here used metaphorically for a group/category" — 고양이 just means cat). Do NOT pad with example collocations that don\'t actually apply (e.g. don\'t say "지나다 used with 시간, 날씨, 계절" — 날씨 doesn\'t pass). Empty note is fine when the meaning alone is enough.\n'
-            + '- GRAMMAR: max 2 patterns per sentence. Empty array if the sentence is just a noun phrase or has no notable grammar.\n'
-            + '- GRAMMAR EXCLUSION: do NOT pick a grammar pattern that is just the natural conjugation of a word already listed in vocab — if 달라지다 is in vocab, do not list ~어지다 with 달라졌어요 as the example (that\'s just the verb\'s past tense, not a separate pattern to teach). Pick patterns that have learning value beyond the vocab (connectives, causatives, ~기 위해, ~ㄴ 것 같다, ~게 되다, etc.).\n'
+            + '- GRAMMAR: ' + (
+                (_level === 'Starter' || _level === 'Beginner')
+                  ? 'max 3 patterns per sentence. INCLUDE the basics that this level needs: ~을/를 + verb (object marker), ~지 않다 (negation), ~고 있다 (continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency). Empty array OK if the sentence is just one already-explained pattern.'
+                  : 'max 2 patterns per sentence, EMPTY ARRAY [] PREFERRED. Only include a pattern when there is a real, teachable grammatical structure that adds learning value beyond the vocab. When in doubt, RETURN EMPTY. Padding with weak/obvious patterns ruins the lesson.'
+              ) + '\n'
+            + '- GRAMMAR PATTERN FIELD: must be a GRAMMATICAL MORPHEME / connective / ending only (e.g. "~기 위해", "~게 되다", "~ㄴ/는 것 같다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" (animal is a noun, not part of the pattern).\n'
+            + '- GRAMMAR LEVEL FILTER: this article is "' + _level + '" level. ' + (
+                (_level === 'Starter' || _level === 'Beginner')
+                  ? 'TEACH the basics — ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 polite endings, ~았/었 past, ~을/를 object marker SHOULD appear because the learner is still learning them.'
+                  : 'SKIP basics the learner already knows — do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 polite endings, ~았/었 past, ~을/를 object marker.'
+              ) + '\n'
+            + '- GRAMMAR EXCLUSION: do NOT pick a pattern that is just the natural conjugation of a word already listed in vocab — if 달라지다 is in vocab, do not list ~어지다 with 달라졌어요 as the example.\n'
             + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one — do not list both with near-identical example_in_sentence chunks.\n'
             + '- Output JSON only.';
           const _sentRes = await callClaude({
@@ -4986,9 +5046,59 @@ async function runAutoGenerate(){
 
       if (_ok > 0 || _row.expressions) {
         try {
-          const _cacheRes = await getSb().from('article_cache').upsert(_row, { onConflict: 'article_id' });
-          if (_cacheRes.error) console.warn('cache upsert failed:', _cacheRes.error.message);
-        } catch(e) { console.warn('upsert failed', e); }
+          // Schema-aware write — earlier this just did .upsert with
+          // article_id, which silently failed against the KV-shaped
+          // table that production actually uses. Try wide first, fall
+          // back to KV if the column doesn't exist. Surfaces a toast
+          // on total failure so the admin doesn't keep paying for AI
+          // calls that never get cached.
+          // Split expressions out so a missing `expressions` column
+          // doesn't tank the whole save — translations/vocab/grammar
+          // are the expensive parts to lose.
+          var _exprPayload = _row.expressions;
+          var _coreRow = Object.assign({}, _row);
+          delete _coreRow.expressions;
+
+          var _saveErr = null;
+          try {
+            const _wideRes = await getSb().from('article_cache').upsert(_coreRow, { onConflict: 'article_id' });
+            if (_wideRes.error) _saveErr = _wideRes.error;
+          } catch (e) { _saveErr = e; }
+          // KV fallback: one row per cache_key.
+          if (_saveErr && /article_id|column.*does not exist|relation/i.test(String(_saveErr.message || _saveErr))) {
+            _saveErr = null;
+            for (const k of ['translation', 'vocab', 'grammar', 'quiz']) {
+              if (!_coreRow[k]) continue;
+              try {
+                await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+                  content_type: 'article',
+                  content_id:   String(articleId),
+                  cache_key:    k,
+                  cache_value:  _coreRow[k],
+                });
+              } catch (e) { _saveErr = e; console.warn('[cache] kv save ' + k + ' failed:', e); }
+            }
+          }
+          // Expressions write happens in a separate try so it can
+          // fail (column missing) without taking the rest down.
+          if (_exprPayload) {
+            try {
+              await getSb().from('article_cache').upsert(
+                { article_id: String(articleId), expressions: _exprPayload },
+                { onConflict: 'article_id' }
+              );
+            } catch (e) {
+              console.warn('expressions write skipped:', e && e.message || e);
+            }
+          }
+          if (_saveErr) {
+            console.warn('cache upsert failed:', _saveErr.message || _saveErr);
+            try { toast('⚠️ 캐시 저장 실패: ' + (_saveErr.message || _saveErr).slice(0, 120), true); } catch(_) {}
+          }
+        } catch(e) {
+          console.warn('upsert failed', e);
+          try { toast('⚠️ 캐시 저장 실패: ' + (e.message || e), true); } catch(_) {}
+        }
       }
 
       const statusLabel = saveStatus === 'published' ? 'Published' : 'Saved as draft';
@@ -5396,7 +5506,10 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
       + '- one object per input sentence in same order.\n'
       + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE the original subject — do NOT inject "I/we" if Korean omitted it. Pull subject/pronouns/formality from the paragraph EN context.\n'
       + '- VOCAB: max 4, skip beginner words. NOTE must be factual — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
-      + '- GRAMMAR: max 2 patterns, empty ok. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n'
+      + '- GRAMMAR: max 2 patterns, EMPTY ARRAY [] PREFERRED when the sentence has no teachable structure beyond basic conjugation. Padding ruins the lesson — when in doubt, return empty.\n'
+      + '- GRAMMAR PATTERN FIELD: must be a grammatical morpheme/connective/ending only (e.g. "~기 위해", "~게 되다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" — animal is a noun, not part of the pattern.\n'
+      + '- GRAMMAR LEVEL: skip basics for ' + _level + ' learners — for Intermediate/Advanced do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 endings, ~았/었 past, ~을/를 object marker.\n'
+      + '- Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n'
       + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one.\n'
       + '- Output JSON only.';
     const r = await callClaude({
@@ -5456,7 +5569,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
         });
       }
     } else {
-      const _patch = { translation: newTransStr, updated_at: new Date().toISOString() };
+      const _patch = { translation: newTransStr };
       if (_bfVocabStr)   _patch.vocab   = _bfVocabStr;
       if (_bfGrammarStr) _patch.grammar = _bfGrammarStr;
       await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(articleId), _patch);
@@ -5679,7 +5792,9 @@ async function genCache(articleId, schema, opts) {
   const _body  = a.body  || '';
   const _title = a.title || '';
   const _level = a.level || 'Intermediate';
-  const _row   = { article_id: String(articleId), updated_at: new Date().toISOString() };
+  // updated_at omitted — same reason as in the bulk auto-gen flow:
+  // production article_cache doesn't have that column.
+  const _row   = { article_id: String(articleId) };
   let _ok = 0;
 
   async function _call(instr, max_tok) {
@@ -5793,7 +5908,10 @@ async function genCache(articleId, schema, opts) {
           + '- One object per input sentence, in same order.\n'
           + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE THE ORIGINAL SUBJECT — do NOT inject "I/we" if Korean omitted it. Pull subject/pronouns/formality from the paragraph EN context.\n'
           + '- VOCAB: max 4, skip beginner words. NOTE must be factual — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
-          + '- GRAMMAR: max 2 patterns. Empty array if none notable. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. don\'t list ~어지다 with 달라졌어요 when 달라지다 is already in vocab).\n'
+          + '- GRAMMAR: max 2 patterns, EMPTY ARRAY [] PREFERRED when the sentence has no teachable structure beyond basics. Padding ruins the lesson — when in doubt, return empty.\n'
+          + '- GRAMMAR PATTERN FIELD: a grammatical morpheme/connective/ending only (e.g. "~기 위해", "~게 되다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" — animal is a noun, not part of the pattern.\n'
+          + '- GRAMMAR LEVEL: skip basics for ' + _level + ' learners — for Intermediate/Advanced do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 endings, ~았/었 past, ~을/를 object marker.\n'
+          + '- Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. don\'t list ~어지다 with 달라졌어요 when 달라지다 is already in vocab).\n'
           + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one.\n'
           + '- Output JSON only.';
         const _sentRes = await callClaude({
@@ -6122,12 +6240,24 @@ async function adminDeleteComment(id) {
 }
 
 // ══ NEWSLETTER ADMIN ════════════════════════════════════════
-function goNewsletter() {
+// ── Newsletter admin ────────────────────────────────────────────
+// Two sub-views: subscribers list (CSV export) and campaigns
+// (compose / draft / test send / broadcast). Tab state lives in
+// window._nlActiveTab so a refresh comes back to the same view.
+
+function goNewsletter(tab) {
   setSbOn(null);
+  tab = tab || window._nlActiveTab || 'subs';
+  window._nlActiveTab = tab;
   document.getElementById('main').innerHTML =
-    '<div class="pg-hd"><div><h1>📬 뉴스레터 구독자</h1><p>구독자 목록을 확인하고 CSV로 내보낼 수 있어요.</p></div></div>'
+    '<div class="pg-hd"><div><h1>📬 뉴스레터</h1><p>구독자 관리 + 캠페인 작성/발송.</p></div></div>'
+   +'<div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">'
+   +'  <button class="btn ' + (tab==='subs'?'btn-g':'') + '" onclick="goNewsletter(\'subs\')">👥 구독자</button>'
+   +'  <button class="btn ' + (tab==='camp'?'btn-g':'') + '" onclick="goNewsletter(\'camp\')">✍️ 캠페인</button>'
+   +'</div>'
    +'<div id="nl-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
-  loadNewsletter();
+  if (tab === 'camp') loadNewsletterCampaigns();
+  else loadNewsletter();
 }
 
 async function loadNewsletter() {
@@ -6166,15 +6296,191 @@ async function loadNewsletter() {
 
 function exportNlCsv() {
   if(!window._nlRows) return;
-  var csv = '이름,이메일,구독일,상태\n'
-    + window._nlRows.map(function(r){
-        return [r.name||'',r.email,new Date(r.subscribed_at).toLocaleDateString('ko-KR'),r.active?'구독중':'취소됨'].join(',');
-      }).join('\n');
-  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  // CSV-safe escape: wrap in quotes, double-up internal quotes, and
+  // prefix with ' if the cell starts with a formula trigger so Excel
+  // doesn't interpret it as a function (CSV-injection guard).
+  function csvCell(v) {
+    var s = String(v == null ? '' : v);
+    if (/^[=+\-@]/.test(s)) s = "'" + s;
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  var rows = [['이름','이메일','구독일','상태']]
+    .concat(window._nlRows.map(function(r){
+      return [r.name||'', r.email, new Date(r.subscribed_at).toLocaleDateString('ko-KR'), r.active?'구독중':'취소됨'];
+    }));
+  var csv = rows.map(function(row){ return row.map(csvCell).join(','); }).join('\r\n');
+  var blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'}); // BOM so Excel reads UTF-8
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'korehan_newsletter_'+new Date().toISOString().split('T')[0]+'.csv';
   a.click();
+}
+
+// ── Campaigns ───────────────────────────────────────────────────
+
+async function loadNewsletterCampaigns() {
+  var wrap = document.getElementById('nl-admin-wrap');
+  try {
+    var sb = getSb();
+    var r = await sb.from('newsletter_campaigns').select('*').order('created_at',{ascending:false});
+    var rows = (r && r.data) || [];
+    var newBtn = '<button class="btn btn-g" onclick="openNlCampaignEditor()">+ 새 캠페인</button>';
+    if (!rows.length) {
+      wrap.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px">' + newBtn + '</div>'
+        + '<div class="infobox">아직 작성한 캠페인이 없어요. <b>+ 새 캠페인</b>으로 시작하세요.</div>';
+      return;
+    }
+    wrap.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      + '<span style="font-size:13px;color:var(--gr)">총 ' + rows.length + '개</span>'
+      + newBtn
+      + '</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<thead><tr style="border-bottom:2px solid var(--bo)">'
+      + '<th style="padding:8px 12px;text-align:left;color:var(--gr)">제목</th>'
+      + '<th style="padding:8px 12px;text-align:left;color:var(--gr)">상태</th>'
+      + '<th style="padding:8px 12px;text-align:left;color:var(--gr)">수신자</th>'
+      + '<th style="padding:8px 12px;text-align:left;color:var(--gr)">생성</th>'
+      + '<th></th></tr></thead><tbody>'
+      + rows.map(function(c){
+          var statusLabel = ({draft:'초안', sending:'전송 중', sent:'발송됨', failed:'실패'})[c.status] || c.status;
+          var statusBg = ({draft:'#e2e8f0;color:#475569', sending:'#fef3c7;color:#b45309', sent:'#dcfce7;color:#15803d', failed:'#fee2e2;color:#b91c1c'})[c.status] || '#e2e8f0;color:#475569';
+          return '<tr style="border-bottom:1px solid var(--bo)">'
+            + '<td style="padding:10px 12px"><b>' + esc(c.subject||'(제목 없음)') + '</b><br><span style="font-size:11px;color:var(--gr)">' + esc(c.preheader||'') + '</span></td>'
+            + '<td style="padding:10px 12px"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:'+statusBg+'">'+statusLabel+'</span></td>'
+            + '<td style="padding:10px 12px;color:var(--gr)">' + (c.recipient_count || 0) + '</td>'
+            + '<td style="padding:10px 12px;color:var(--gr);font-size:11px">' + new Date(c.created_at).toLocaleString('ko-KR') + '</td>'
+            + '<td style="padding:10px 12px;text-align:right">'
+            +   '<button class="btn" onclick="openNlCampaignEditor(\'' + c.id + '\')">' + (c.status === 'sent' ? '보기' : '편집') + '</button>'
+            + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table>';
+  } catch(e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패: ' + esc(e.message||e) + '</div>';
+  }
+}
+
+async function openNlCampaignEditor(campaignId) {
+  var sb = getSb();
+  var existing = null;
+  if (campaignId) {
+    var res = await sb.from('newsletter_campaigns').select('*').eq('id', campaignId).maybeSingle();
+    existing = res && res.data;
+  }
+  var isNew = !existing;
+  var alreadySent = existing && existing.status === 'sent';
+  var ov = document.createElement('div');
+  ov.className = 'ov';
+  ov.innerHTML = '<div class="mbox" style="max-width:720px"><div class="m-hd"><h2>' + (isNew ? '새 캠페인' : (alreadySent ? '발송된 캠페인' : '캠페인 편집')) + '</h2><button class="m-x" onclick="this.closest(\'.ov\').remove()">×</button></div>'
+    + '<div class="m-bd">'
+    + '<div class="fg"><label>제목 (Subject)</label><input id="nlc-subject" ' + (alreadySent?'readonly':'') + ' value="' + esc((existing && existing.subject) || '') + '" placeholder="이번 주 한국어 학습 팁"></div>'
+    + '<div class="fg"><label>프리헤더 (메일 미리보기 한 줄)</label><input id="nlc-preheader" ' + (alreadySent?'readonly':'') + ' value="' + esc((existing && existing.preheader) || '') + '" placeholder="새 단어 7개와 오늘의 문장"></div>'
+    + '<div class="fg-row">'
+    +   '<div class="fg"><label>From 이름</label><input id="nlc-from-name" ' + (alreadySent?'readonly':'') + ' value="' + esc((existing && existing.from_name) || 'KoreHani') + '"></div>'
+    +   '<div class="fg"><label>From 이메일</label><input id="nlc-from-email" ' + (alreadySent?'readonly':'') + ' value="' + esc((existing && existing.from_email) || 'hello@korehani.com') + '"></div>'
+    + '</div>'
+    + '<div class="fg"><label>본문 HTML <span style="font-weight:400;color:var(--gr);font-size:11px">— 변수 <code>{{unsubscribe_url}}</code> 사용 가능. 비우면 푸터 자동 추가.</span></label>'
+    +   '<textarea id="nlc-body-html" rows="14" ' + (alreadySent?'readonly':'') + ' style="font-family:ui-monospace,SF Mono,Menlo,Consolas,monospace;font-size:12px;line-height:1.5">' + esc((existing && existing.body_html) || '<p>안녕하세요!</p>\n<p>이번 주 KoreHani의 새 콘텐츠를 소개드려요.</p>\n<p>— KoreHani 팀</p>') + '</textarea></div>'
+    + '<div class="fg"><label>본문 텍스트 (선택, plain-text fallback)</label>'
+    +   '<textarea id="nlc-body-text" rows="4" ' + (alreadySent?'readonly':'') + ' style="font-size:12px">' + esc((existing && existing.body_text) || '') + '</textarea></div>'
+    + '<div class="fg"><label>테스트 발송 이메일 (Send test 버튼용)</label><input id="nlc-test-to" placeholder="me@example.com"></div>'
+    + '</div>'
+    + '<div class="m-ft" style="display:flex;gap:8px;flex-wrap:wrap">'
+    +   '<button class="btn" onclick="this.closest(\'.ov\').remove()">닫기</button>'
+    +   (alreadySent ? '' :
+        '<button class="btn" onclick="saveNlCampaign(\'' + (campaignId||'') + '\',this,false)">초안 저장</button>'
+      + '<button class="btn" onclick="testNlCampaign(\'' + (campaignId||'') + '\',this)">테스트 발송</button>'
+      + '<button class="btn btn-r" onclick="sendNlCampaignAll(\'' + (campaignId||'') + '\',this)">전체 발송</button>')
+    + '</div></div>';
+  document.body.appendChild(ov);
+}
+
+function _nlCollectFields() {
+  return {
+    subject:    document.getElementById('nlc-subject').value.trim(),
+    preheader:  document.getElementById('nlc-preheader').value.trim(),
+    from_name:  document.getElementById('nlc-from-name').value.trim() || 'KoreHani',
+    from_email: document.getElementById('nlc-from-email').value.trim() || 'hello@korehani.com',
+    body_html:  document.getElementById('nlc-body-html').value,
+    body_text:  document.getElementById('nlc-body-text').value || null,
+  };
+}
+
+async function saveNlCampaign(campaignId, btn, asSendingHandoff) {
+  var sb = getSb();
+  var fields = _nlCollectFields();
+  if (!fields.subject) { toast('제목을 입력하세요.', true); return null; }
+  if (!fields.body_html.trim()) { toast('본문을 입력하세요.', true); return null; }
+  if (btn) { btn.disabled = true; btn.textContent = '저장 중…'; }
+  try {
+    var rec = Object.assign({}, fields, { updated_at: new Date().toISOString() });
+    if (campaignId) rec.id = campaignId;
+    var r = await sb.from('newsletter_campaigns').upsert(rec, { onConflict: 'id' }).select('*').maybeSingle();
+    if (r.error) throw r.error;
+    if (!asSendingHandoff) {
+      toast('초안 저장됐어요.');
+      var ov = document.querySelector('.ov'); if (ov) ov.remove();
+      goNewsletter('camp');
+    }
+    return r.data;
+  } catch(e) {
+    toast('저장 실패: ' + (e.message||e), true);
+    if (btn) { btn.disabled = false; btn.textContent = '초안 저장'; }
+    return null;
+  }
+}
+
+async function testNlCampaign(campaignId, btn) {
+  var testTo = (document.getElementById('nlc-test-to').value || '').trim();
+  if (!testTo) { toast('테스트 받을 이메일을 입력하세요.', true); return; }
+  // Save first if needed so the edge function has a row to send.
+  var saved = await saveNlCampaign(campaignId, null, true);
+  if (!saved) return;
+  if (btn) { btn.disabled = true; btn.textContent = '발송 중…'; }
+  try {
+    var r = await _callNewsletterEdge({ action: 'send_campaign', campaign_id: saved.id, test_to: testTo });
+    if (!r.ok) throw new Error(r.error || 'send_failed');
+    toast('테스트 발송 완료 → ' + testTo);
+  } catch(e) {
+    toast('테스트 실패: ' + (e.message||e), true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '테스트 발송'; }
+  }
+}
+
+async function sendNlCampaignAll(campaignId, btn) {
+  if (!confirm('확인된 모든 구독자에게 발송할까요? 되돌릴 수 없어요.')) return;
+  var saved = await saveNlCampaign(campaignId, null, true);
+  if (!saved) return;
+  if (btn) { btn.disabled = true; btn.textContent = '발송 중…'; }
+  try {
+    var r = await _callNewsletterEdge({ action: 'send_campaign', campaign_id: saved.id });
+    if (!r.ok) throw new Error(r.error || 'send_failed');
+    toast('발송 완료 — 전송 ' + (r.sent||0) + ' / 실패 ' + (r.failed||0));
+    var ov = document.querySelector('.ov'); if (ov) ov.remove();
+    goNewsletter('camp');
+  } catch(e) {
+    toast('발송 실패: ' + (e.message||e), true);
+    if (btn) { btn.disabled = false; btn.textContent = '전체 발송'; }
+  }
+}
+
+async function _callNewsletterEdge(body) {
+  var sb = getSb();
+  var session = (await sb.auth.getSession()).data.session;
+  var resp = await fetch(SUPA_URL_ADMIN + '/functions/v1/newsletter-send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPA_KEY_ADMIN,
+      'Authorization': 'Bearer ' + (session ? session.access_token : SUPA_KEY_ADMIN),
+    },
+    body: JSON.stringify(body),
+  });
+  var data = {};
+  try { data = await resp.json(); } catch(_) {}
+  if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+  return data;
 }
 
 // ══ VISITOR STATS ════════════════════════════════════════════
@@ -6273,12 +6579,15 @@ async function loadUsers(){
     const authData = await supaAdminAuthUsers(500);
     const authUsers = authData.users || [];
 
-    // 구독 정보 조회
+    // 구독 정보 + 정지 상태 조회
     var subMap = {};
+    var suspMap = {};
     try {
       var sb = getSb();
       var { data: subs } = await sb.from('user_subscriptions').select('user_id, plan, status, expires_at');
       (subs || []).forEach(function(s) { subMap[s.user_id] = s; });
+      var { data: profs } = await sb.from('profiles').select('id, is_suspended, suspended_reason, suspended_until');
+      (profs || []).forEach(function(p) { suspMap[p.id] = p; });
     } catch(e) {}
 
     // 활동 데이터 병렬 조회 (각 테이블 실패해도 계속)
@@ -6322,6 +6631,7 @@ async function loadUsers(){
       +'<th style="padding:10px 12px">💬댓글</th>'
       +'<th style="padding:10px 12px">🔥연속</th>'
       +'<th style="padding:10px 12px">플랜</th>'
+      +'<th style="padding:10px 12px">상태</th>'
       +'</tr></thead><tbody>'
       + authUsers.map(function(u){
           var a = act[u.id] || {words:0,articles:0,quizzes:0,streak:0};
@@ -6348,6 +6658,11 @@ async function loadUsers(){
             +'<option value="standard"'+(planVal==='standard'?' selected':'')+'>Standard</option>'
             +'<option value="pro"'+(planVal==='pro'?' selected':'')+'>Pro</option>'
             +'</select></td>'
+            +'<td style="padding:10px 12px">'+
+              (suspMap[u.id] && suspMap[u.id].is_suspended
+                ? '<button onclick="adminUnsuspendUser(\''+u.id+'\')" title="'+esc(suspMap[u.id].suspended_reason||'')+'" style="padding:4px 10px;border-radius:6px;border:1px solid #fca5a5;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;cursor:pointer">정지됨</button>'
+                : '<button onclick="adminSuspendUser(\''+u.id+'\')" style="padding:4px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#475569;font-size:11px;font-weight:700;cursor:pointer">정상</button>')
+            +'</td>'
             +'</tr>';
         }).join('')
       +'</tbody></table>';
@@ -6357,6 +6672,47 @@ async function loadUsers(){
   }
 }
 
+
+async function adminSuspendUser(userId) {
+  var reason = prompt('정지 사유 (optional, 영문/한글):', '');
+  if (reason === null) return; // user hit cancel
+  var untilStr = prompt('정지 해제일 (YYYY-MM-DD, 영구정지면 비워두기):', '');
+  if (untilStr === null) return;
+  var until = null;
+  if (untilStr.trim()) {
+    var d = new Date(untilStr.trim());
+    if (isNaN(d.getTime())) { showToastAdmin('날짜 형식이 잘못됐어요.', true); return; }
+    until = d.toISOString();
+  }
+  try {
+    var sb = getSb();
+    var r = await sb.rpc('admin_set_suspension', {
+      p_target: userId,
+      p_reason: reason || null,
+      p_until: until,
+      p_active: true,
+    });
+    if (r.error || (r.data && !r.data.ok)) throw r.error || new Error((r.data && r.data.error) || 'failed');
+    showToastAdmin('정지 처리됐어요.');
+    loadUsers();
+  } catch(e) { showToastAdmin('정지 실패: '+(e.message||e), true); }
+}
+
+async function adminUnsuspendUser(userId) {
+  if (!confirm('정지 해제할까요?')) return;
+  try {
+    var sb = getSb();
+    var r = await sb.rpc('admin_set_suspension', {
+      p_target: userId,
+      p_reason: null,
+      p_until: null,
+      p_active: false,
+    });
+    if (r.error || (r.data && !r.data.ok)) throw r.error || new Error('failed');
+    showToastAdmin('정지 해제됐어요.');
+    loadUsers();
+  } catch(e) { showToastAdmin('해제 실패: '+(e.message||e), true); }
+}
 
 async function adminChangePlan(userId, plan) {
   try {
@@ -6976,6 +7332,54 @@ function _stStyleHintForShape(shape) {
   return '커뮤니티 게시글 풍. 친근한 톤.';
 }
 
+// Stage-2 helper: given a story object with `body` already filled,
+// generate per-sentence translation + targeted vocab + grammar.
+// Uses Haiku because the input is the already-written body — no
+// creative work, just structured analysis. Runs in parallel for
+// multi-story batches and stays well under the edge function's
+// timeout because each call covers only one story.
+async function _genStorySentenceAnalysis(story, levelLabel) {
+  if (!story || !story.body) return [];
+  // Split the body into sentences (skip empty fragments). Korean uses
+  // .!? and 다/요 sentence-enders; we use the simpler Han punctuation
+  // split here — Claude tolerates over-split inputs and matches what
+  // it can.
+  var sentences = String(story.body)
+    .split(/\n\s*\n/)
+    .flatMap(function(p) { return p.split(/(?<=[.!?。！？])\s+/); })
+    .map(function(s) { return s.trim(); })
+    .filter(Boolean);
+  if (!sentences.length) return [];
+  var enumerated = sentences.map(function(s, i) { return '[' + (i+1) + '] ' + s; }).join('\n');
+  var prompt =
+      'Analyze each Korean sentence below for a TOPIK ' + levelLabel + ' learner.\n\n'
+    + 'STORY TITLE: ' + (story.title || '') + '\n'
+    + 'PARAGRAPH-LEVEL EN (use as context to keep subjects + tense consistent):\n'
+    + (story.body_en || '') + '\n\n'
+    + 'SENTENCES TO ANALYZE (numbered, in body order):\n'
+    + enumerated + '\n\n'
+    + 'Return ONLY a JSON object:\n'
+    + '{"sentences":[{"ko":"<exact sentence text>","en":"natural translation","vocab":[{"ko":"<dict form>","en":"<short meaning>"}],"grammar":[{"pattern":"~기 위해 / ~게 되다 / etc","exp":"<1-line English explanation>"}]}]}\n\n'
+    + 'Rules:\n'
+    + '- One object per input sentence, in same order. ko MUST be the exact sentence text — copy/paste, do NOT paraphrase.\n'
+    + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE the original subject — do NOT inject "I/we" if the Korean omitted it.\n'
+    + '- VOCAB: max 3 per sentence, skip beginner words. Empty array allowed when nothing useful.\n'
+    + '- GRAMMAR: max 2, EMPTY ARRAY [] PREFERRED when no teachable structure beyond basics. Pattern field must be a morpheme/connective/ending only — never glue a noun on (WRONG: "~ㄴ 동물"). For ' + levelLabel + ' learners do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 endings, ~았/었 past, ~을/를 object marker.\n'
+    + '- Output JSON only.';
+  var res = await callClaude({
+    feature: 'story-sentence-analysis',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4000,
+    messages: [{ role: 'user', content: prompt }]
+  });
+  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+  var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+  var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+  if (oi < 0 || ei <= oi) return [];
+  var data = JSON.parse(clean.slice(oi, ei + 1));
+  return Array.isArray(data.sentences) ? data.sentences.filter(function(s) { return s && s.ko; }) : [];
+}
+
 async function generateStories() {
   var mood   = document.getElementById('st-mood').value;
   var lvl    = document.getElementById('st-lvl').value;
@@ -7013,45 +7417,57 @@ async function generateStories() {
     + sourceBlock
     + 'Return ONLY a valid JSON array, no markdown, no backticks.\n\n'
     + 'Each story object:\n'
-    + '{"title":"Korean title","title_en":"English","mood":"' + mood + '","genre":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","body_en":"full English translation, paragraph-aligned with body (same number of paragraphs separated by blank lines, in the same order)","vocab":[{"ko":"","rom":"","en":""}],"hover_extras":[{"ko":"","rom":"","en":""}],"sentence_analysis":[{"ko":"single sentence from body, exact match","en":"natural English translation","vocab":[{"ko":"","en":""}],"grammar":[{"pattern":"~ㄴ다 / etc","exp":"1-line explanation"}]}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\n'
+    + '{"title":"Korean title","title_en":"English","mood":"' + mood + '","genre":"' + mood + '","lvl":"' + lvl + '","readTime":"X min","preview":"first 1-2 sentences","body":"full story in Korean with paragraphs","body_en":"full English translation, paragraph-aligned with body (same number of paragraphs separated by blank lines, in the same order)","vocab":[{"ko":"","rom":"","en":""}],"hover_extras":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}\n\n'
     + 'Rules:\n'
     + '- body length: ' + (meta.shape === 'fable' ? '8-12 paragraphs (fables stay short but DO include every plot beat — beginning, conflict, turning point, resolution, lesson)' : '12-20 paragraphs (novels / web novels — keep every important scene, do NOT compress two scenes into one paragraph)') + '\n'
     + '- PLOT FIDELITY: this is the most important rule. DO NOT skip plot points. DO NOT summarize "and then many things happened". DO NOT compress major scenes. Every key turn (introduction → inciting incident → rising action → climax → resolution) must be on the page in its own paragraph. A learner who reads only this story should understand the WHOLE plot without needing to read the source. Even at lower TOPIK levels, simplify the LANGUAGE not the STORY.\n'
     + '- vocab: 15-25 hover-worthy content words from the body (proper nouns, less-common verbs/nouns, idiomatic expressions). Include ko + rom + en for each. These power the inline hover tooltips, so MORE is better than fewer — readers should be able to mouse over almost any tricky word and get a definition.\n'
     + '- hover_extras: another 10-15 supporting words that appear in the body but didn\'t make the headline vocab list. Same shape (ko/rom/en). These also become hover tooltips. Combined with vocab, every uncommon word in the body should be lookup-able.\n'
-    + '- sentence_analysis: ONE entry per sentence in the body, in body order. Each entry must have: ko (the EXACT sentence text from body — copy/paste, don\'t paraphrase), en (natural English translation), vocab (1-3 entries — important content words from THIS sentence, ko+en), grammar (0-2 entries — pattern + 1-line English explanation). The reader taps a sentence and sees this — so vocab/grammar must be relevant to THAT specific sentence, not the whole story.\n'
-    + '- grammar: 3-5 patterns (was 2-3 — give the learner more to study), each with a 1-line explanation and the example chunk from the body where it appears.\n'
+    + '- grammar: 3-5 patterns, each with a 1-line explanation and the example chunk from the body where it appears.\n'
     + '- comprehension: 3 questions checking actual plot understanding (not surface details).\n'
     + '- body_en MUST exist and be paragraph-aligned with body — readers tap a Korean paragraph to reveal its English translation, so paragraph counts MUST match.\n'
     + '- ALL Korean text MUST follow the difficulty level rules above.\n'
     + (sourceText ? '- STAY FAITHFUL to the source — do not invent characters or events that aren\'t in it. Reproduce every plot beat from the source.\n' : '');
 
   try {
+    // Stage 1 — body + vocab + grammar + comprehension. Sentence-level
+    // analysis is split into a second call (Stage 2) below: bundling
+    // everything into one Sonnet call frequently hit the edge function's
+    // 60s timeout when sentence_analysis ballooned the response.
     var resp = await callClaude({
       feature: 'story_gen',
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 12000,
+      max_tokens: 8000,
       messages: [{role:'user', content: prompt}]
     });
     var raw = resp.content.map(function(b){ return b.text||''; }).join('');
     raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
     var stories = JSON.parse(raw);
-    // Stamp the genre/source metadata onto every story BEFORE we hand
-    // them to the UI + saveAllStories. AI sometimes echoes "genre"
-    // back from the prompt template literally — overwrite to make sure
-    // the persisted value matches the dropdown choice.
     stories.forEach(function(s) {
       // Force-stamp BOTH mood and genre to the user's dropdown choice.
       // The model frequently echoes mood:'slice_of_life' regardless of
       // what we ask for, and the legacy mood column is what the public
-      // stories grid still falls back to when genre wasn't persisted
-      // (pre-migration projects). Without this every folktale / web
-      // novel / aesop ended up tagged as Slice of Life on the front.
+      // stories grid still falls back to when genre wasn't persisted.
       s.mood = mood;
       s.genre = mood;
       s.source_kind = sourceText ? meta.source : 'original';
       if (sourceText) s.source_excerpt = sourceText.slice(0, 500);
     });
+
+    // Stage 2 — for each generated story, fire a separate Haiku call
+    // that produces sentence_analysis from the already-generated body.
+    // Run in parallel so total wall time scales with the slowest call,
+    // not the sum. Failures are non-fatal — the story still saves
+    // without sentence breakdown.
+    res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">⏳ Adding sentence analysis (' + stories.length + ' ' + (stories.length === 1 ? 'story' : 'stories') + ')…</div>';
+    await Promise.all(stories.map(async function(s) {
+      try {
+        s.sentence_analysis = await _genStorySentenceAnalysis(s, lvlMap[lvl] || 'Tree');
+      } catch(e) {
+        console.warn('[story sentence_analysis] failed for', s.title, e && e.message);
+        s.sentence_analysis = [];
+      }
+    }));
 
     var html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
       + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + stories.length + ' stories</span>'
@@ -7535,7 +7951,8 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
 async function _bulkGenerateArticleCache(articleId, title, body, levelKey) {
   var sb = getSb();
   if (!sb) return 0;
-  var row = { article_id: String(articleId), updated_at: new Date().toISOString() };
+  // updated_at omitted — production article_cache lacks the column.
+  var row = { article_id: String(articleId) };
   var ok = 0;
 
   async function _call(instruction, maxTok) {
@@ -7674,8 +8091,7 @@ async function bulkRegenerateVocab(limit) {
             try {
               var upWide = await sb.from('article_cache').upsert({
                 article_id: String(a.id),
-                vocab: JSON.stringify(cleaned),
-                updated_at: new Date().toISOString()
+                vocab: JSON.stringify(cleaned)
               }, { onConflict: 'article_id' });
               if (!upWide.error) savedWide = true;
               else bulkLog('  wide upsert err: ' + upWide.error.message, 'warn');

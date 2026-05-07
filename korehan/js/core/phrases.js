@@ -75,6 +75,11 @@ function normalizePhrase(row) {
   // default to Sprout, so empty strings are safe defaults.
   var lvl = (row.level || '').toString();
   if (['Seed','Sprout','Tree','Forest'].indexOf(lvl) < 0) lvl = '';
+  // related_v is the version of the related-expressions prompt the
+  // current list was generated under. v2 = strict semantic match.
+  // Anything missing or < 2 is from the loose-prompt era and gets
+  // regenerated on first view by the phrase reader.
+  var relatedV = Number(row.related_v || 0) | 0;
   return {
     ko: row.ko || '',
     rom: row.rom || '',
@@ -84,7 +89,8 @@ function normalizePhrase(row) {
     nuance: row.nuance || row.note || '',
     level: lvl,
     examples: examples.slice(0, 6).map(function(ex){ return { ko: ex.ko || '', en: ex.en || '' }; }).filter(function(ex){ return ex.ko; }),
-    related: Array.isArray(row.related) ? row.related.filter(Boolean).slice(0, 8) : []
+    related: Array.isArray(row.related) ? row.related.filter(Boolean).slice(0, 8) : [],
+    related_v: relatedV
   };
 }
 function getPhraseSourceRows() {
@@ -101,10 +107,26 @@ function getPhraseSourceRows() {
   return DEF_PHRASES;
 }
 function getPhrases()   { return getPhraseSourceRows().map(normalizePhrase); }
+// Rotation offset — written by saveSharedPhrases() whenever the queue
+// is mutated, so today's visible phrase doesn't get shoved to a
+// different position when admin appends / deletes / reorders.
+// Without this, every bulk-AI-pre-gen would jolt the home block to a
+// new phrase because (dayHash % length) lands somewhere different
+// once length changes.
+function getPhraseRotationOffset() {
+  if (!_appSettings) return 0;
+  var v = _appSettings.phrase_rotation_offset;
+  if (typeof v === 'object' && v) v = v.value; // some KV setups wrap value
+  var n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : 0;
+}
 function getTodaysPhraseIndex() {
   var phrases = getPhrases();
   if (!phrases.length) return 0;
-  return Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length;
+  var dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
+  var offset = getPhraseRotationOffset();
+  var len = phrases.length;
+  return ((dayHash + offset) % len + len) % len;
 }
 function getTodaysPhrase() {
   var phrases = getPhrases();
@@ -134,11 +156,88 @@ async function getPhrasesAsync(opts) {
   return rows;
 }
 
-async function saveSharedPhrases(rows) {
+// Compute the rotation offset that keeps today's phrase pinned to
+// the SAME phrase across a queue mutation. Find the ko that was
+// today before, look it up in the new list, and solve:
+//   (dayHash + newOffset) % newLen === newTodayIdx
+// When today's phrase was deleted, fall through to "tomorrow's"
+// phrase from the old list — that's what naturally rotates next, so
+// deleting today should promote yesterday's "tomorrow" into today.
+// If that's also missing, walk further down the old list until we
+// find a survivor; failing everything, default offset 0.
+function _computeOffsetPreserveToday(newList, opts) {
+  // Prefer caller-supplied oldList → in-memory _appSettings.phrases →
+  // localStorage K_PHRASES. Without the localStorage fallback, a
+  // queue mutation that fires before loadAppSettings finishes (e.g.
+  // admin opens the page and immediately runs Bulk AI Pre-gen) sees
+  // an empty oldList and resets the offset to 0, which shoves today
+  // onto whatever phrase happens to land at dayHash % newLen.
+  var oldList = (opts && opts.oldList);
+  if (!Array.isArray(oldList) || !oldList.length) {
+    if (Array.isArray(_appSettings && _appSettings.phrases) && _appSettings.phrases.length) {
+      oldList = _appSettings.phrases;
+    } else {
+      try { oldList = lsGet(K_PHRASES, []) || []; } catch(_) { oldList = []; }
+    }
+  }
+  oldList = (oldList || []).map(normalizePhrase).filter(function(p){ return p.ko; });
+  newList = (newList || []).filter(function(p){ return p && p.ko; });
+  var newLen = newList.length;
+  if (!newLen) return 0;
+  if (!oldList.length) return 0;
+  var dayHash = Math.floor((Date.now() + 9*3600000) / 86400000);
+  var oldOffset = getPhraseRotationOffset();
+  var oldLen = oldList.length;
+  var oldTodayIdx = ((dayHash + oldOffset) % oldLen + oldLen) % oldLen;
+  // Walk the rotation forward starting from today: today, tomorrow,
+  // day-after, ... — pick the first ko that survives in newList.
+  var newTodayIdx = -1;
+  for (var step = 0; step < oldLen; step++) {
+    var probeIdx = (oldTodayIdx + step) % oldLen;
+    var probeKo = oldList[probeIdx] && oldList[probeIdx].ko;
+    if (!probeKo) continue;
+    for (var i = 0; i < newList.length; i++) {
+      if ((newList[i].ko || '').trim() === (probeKo || '').trim()) { newTodayIdx = i; break; }
+    }
+    if (newTodayIdx >= 0) break;
+  }
+  if (newTodayIdx < 0) return 0;
+  var off = (newTodayIdx - dayHash) % newLen;
+  if (off < 0) off += newLen;
+  return off;
+}
+
+async function saveSharedPhrases(rows, opts) {
+  // Snapshot the OLD list before we overwrite _appSettings.phrases —
+  // we need it to figure out which phrase was "today" so the offset
+  // adjustment can pin it in place.
+  var oldList = Array.isArray(_appSettings && _appSettings.phrases)
+    ? _appSettings.phrases.slice()
+    : [];
   var normalized = (rows || []).map(normalizePhrase).filter(function(row){ return row.ko; });
   if (!normalized.length) normalized = DEF_PHRASES.map(normalizePhrase);
+
+  // Three save modes for the rotation offset:
+  //   - opts.preserveOffset === true: keep the numeric offset unchanged.
+  //     Use this for reorder/swap so the today INDEX stays put and the
+  //     phrase that ends up at that index becomes today (lets admin
+  //     swap today's slot with a neighbor).
+  //   - opts.preserveToday === false: reset offset to 0. Used for
+  //     initial seed writes where there's no "yesterday" to preserve.
+  //   - default: re-anchor onto whatever ko was today before, so add /
+  //     delete / edit don't shove today onto a different phrase.
+  var newOffset;
+  if (opts && opts.preserveOffset === true) {
+    newOffset = getPhraseRotationOffset();
+  } else if (opts && opts.preserveToday === false) {
+    newOffset = 0;
+  } else {
+    newOffset = _computeOffsetPreserveToday(normalized, { oldList: oldList });
+  }
+
   lsSet(K_PHRASES, normalized);
   _appSettings.phrases = normalized;
+  _appSettings.phrase_rotation_offset = newOffset;
   // Invalidate the home page's "today's phrase" cache so a freshly-
   // saved queue (delete / edit / bulk add) is reflected immediately
   // on next home render. Without this, the cached idx kept pointing
@@ -146,13 +245,24 @@ async function saveSharedPhrases(rows) {
   try { localStorage.removeItem('kh_phrase_today'); } catch(_) {}
 
   var sb = getSupa();
-  if (!sb || !supaUser) return normalized;
+  if (!sb || !supaUser) {
+    try { console.warn('[saveSharedPhrases] no auth — DB not updated. Admin must be signed in for the queue to propagate to the home page.'); } catch(_) {}
+    return normalized;
+  }
   try {
-    await sb.from('app_settings').upsert({
-      key: 'phrases',
-      value: normalized,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'key' });
-  } catch(e) {}
+    var res = await sb.from('app_settings').upsert([
+      { key: 'phrases',                value: normalized, updated_at: new Date().toISOString() },
+      { key: 'phrase_rotation_offset', value: newOffset,  updated_at: new Date().toISOString() }
+    ], { onConflict: 'key' });
+    if (res && res.error) {
+      try { console.error('[saveSharedPhrases] DB upsert FAILED:', res.error); } catch(_) {}
+      try { if (typeof toast === 'function') toast('⚠ DB 저장 실패: ' + (res.error.message || 'unknown') + ' — 홈에 반영되지 않습니다', true); } catch(_) {}
+    } else {
+      try { console.log('[saveSharedPhrases] DB updated, ' + normalized.length + ' phrases, rotation_offset=' + newOffset); } catch(_) {}
+    }
+  } catch(e) {
+    try { console.error('[saveSharedPhrases] DB upsert THREW:', e); } catch(_) {}
+    try { if (typeof toast === 'function') toast('⚠ DB 저장 예외: ' + (e && e.message || e), true); } catch(_) {}
+  }
   return normalized;
 }
