@@ -25,7 +25,19 @@
     <div>
       <div id="dyn-search-bar"></div>
       <div class="hero" id="dyn-hero"></div>
-      <div id="dyn-article-list"></div>
+      <div id="dyn-article-list">
+        <!-- Skeleton placeholders — visible until renderAllPage()
+             swaps them out with real card markup. Without this the
+             user saw 0.5–2s of blank space below the search bar. -->
+        <div class="all-card-grid" aria-hidden="true">
+          <div class="kh-skel-card"><div class="kh-skel kh-skel-img"></div><div class="kh-skel kh-skel-line"></div><div class="kh-skel kh-skel-line short"></div></div>
+          <div class="kh-skel-card"><div class="kh-skel kh-skel-img"></div><div class="kh-skel kh-skel-line"></div><div class="kh-skel kh-skel-line short"></div></div>
+          <div class="kh-skel-card"><div class="kh-skel kh-skel-img"></div><div class="kh-skel kh-skel-line"></div><div class="kh-skel kh-skel-line short"></div></div>
+          <div class="kh-skel-card"><div class="kh-skel kh-skel-img"></div><div class="kh-skel kh-skel-line"></div><div class="kh-skel kh-skel-line short"></div></div>
+          <div class="kh-skel-card"><div class="kh-skel kh-skel-img"></div><div class="kh-skel kh-skel-line"></div><div class="kh-skel kh-skel-line short"></div></div>
+          <div class="kh-skel-card"><div class="kh-skel kh-skel-img"></div><div class="kh-skel kh-skel-line"></div><div class="kh-skel kh-skel-line short"></div></div>
+        </div>
+      </div>
     </div>
     <div id="kh-sidebar"></div>
   </div>

@@ -5373,3 +5373,32 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
   .mobile-bottom-nav .mb-nav-icon { width: 18px !important; height: 18px !important; }
   .mobile-bottom-nav .mb-nav-label { font-size: 9.5px !important; }
 }
+
+/* ── Generic skeleton shimmer ──────────────────────────────────
+   Drop-in placeholder for async-loaded content. Use as
+   <div class="kh-skel" style="height:140px;border-radius:12px"></div>
+   inside any container that's about to populate via fetch. The
+   shimmer keeps the visual rhythm consistent across pages without
+   each renderer having to invent its own loader. */
+.kh-skel {
+  background: linear-gradient(90deg, #eef2f7 0%, #f8fafc 50%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: kh-shimmer 1.2s linear infinite;
+  border-radius: 8px;
+}
+@keyframes kh-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Skeleton card variant — matches .nc card silhouette so the swap
+   from skeleton to real card doesn't shift layout. Use where a card
+   grid is the loading content. */
+.kh-skel-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 8px; background: #fff; border-radius: 12px;
+  border: 1px solid #eef2f7;
+}
+.kh-skel-card .kh-skel-img { aspect-ratio: 16/9; border-radius: 8px; }
+.kh-skel-card .kh-skel-line { height: 12px; border-radius: 4px; }
+.kh-skel-card .kh-skel-line.short { width: 55%; }

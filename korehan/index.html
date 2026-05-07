@@ -1635,12 +1635,27 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (ai >= 0 && bi > ai) text = text.slice(ai, bi + 1);
         var arr = JSON.parse(text);
         if (!Array.isArray(arr)) return;
+        var sb = getSupa();
         needed.forEach(function(r, i) {
           var t = (typeof arr[i] === 'string' ? arr[i] : '').trim();
           if (!t || !r.id) return;
           _storyTitleEnCacheSet(r.id, t);
           var card = document.querySelector('[data-kh-story-title-id="' + r.id + '"] .story-title');
           if (card) card.textContent = t;
+          // Persist to stories_data.title_en so the next visitor never
+          // pays for this translation. Best-effort: failures (RLS,
+          // missing column) just leave the localStorage cache as the
+          // source of truth. RLS allows authenticated users to update
+          // their own stories — this update will silently no-op for
+          // anonymous home visitors, which is fine because someone
+          // logged in will eventually trip the path.
+          if (sb) {
+            try {
+              sb.from('stories_data').update({ title_en: t }).eq('id', r.id)
+                .then(function(){})
+                .catch(function(){});
+            } catch(_) {}
+          }
         });
       } catch(_) {}
     }
