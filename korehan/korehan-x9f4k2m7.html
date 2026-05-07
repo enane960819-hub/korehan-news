@@ -6504,12 +6504,15 @@ async function loadUsers(){
     const authData = await supaAdminAuthUsers(500);
     const authUsers = authData.users || [];
 
-    // 구독 정보 조회
+    // 구독 정보 + 정지 상태 조회
     var subMap = {};
+    var suspMap = {};
     try {
       var sb = getSb();
       var { data: subs } = await sb.from('user_subscriptions').select('user_id, plan, status, expires_at');
       (subs || []).forEach(function(s) { subMap[s.user_id] = s; });
+      var { data: profs } = await sb.from('profiles').select('id, is_suspended, suspended_reason, suspended_until');
+      (profs || []).forEach(function(p) { suspMap[p.id] = p; });
     } catch(e) {}
 
     // 활동 데이터 병렬 조회 (각 테이블 실패해도 계속)
@@ -6553,6 +6556,7 @@ async function loadUsers(){
       +'<th style="padding:10px 12px">💬댓글</th>'
       +'<th style="padding:10px 12px">🔥연속</th>'
       +'<th style="padding:10px 12px">플랜</th>'
+      +'<th style="padding:10px 12px">상태</th>'
       +'</tr></thead><tbody>'
       + authUsers.map(function(u){
           var a = act[u.id] || {words:0,articles:0,quizzes:0,streak:0};
@@ -6579,6 +6583,11 @@ async function loadUsers(){
             +'<option value="standard"'+(planVal==='standard'?' selected':'')+'>Standard</option>'
             +'<option value="pro"'+(planVal==='pro'?' selected':'')+'>Pro</option>'
             +'</select></td>'
+            +'<td style="padding:10px 12px">'+
+              (suspMap[u.id] && suspMap[u.id].is_suspended
+                ? '<button onclick="adminUnsuspendUser(\''+u.id+'\')" title="'+esc(suspMap[u.id].suspended_reason||'')+'" style="padding:4px 10px;border-radius:6px;border:1px solid #fca5a5;background:#fee2e2;color:#b91c1c;font-size:11px;font-weight:700;cursor:pointer">정지됨</button>'
+                : '<button onclick="adminSuspendUser(\''+u.id+'\')" style="padding:4px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#475569;font-size:11px;font-weight:700;cursor:pointer">정상</button>')
+            +'</td>'
             +'</tr>';
         }).join('')
       +'</tbody></table>';
@@ -6588,6 +6597,47 @@ async function loadUsers(){
   }
 }
 
+
+async function adminSuspendUser(userId) {
+  var reason = prompt('정지 사유 (optional, 영문/한글):', '');
+  if (reason === null) return; // user hit cancel
+  var untilStr = prompt('정지 해제일 (YYYY-MM-DD, 영구정지면 비워두기):', '');
+  if (untilStr === null) return;
+  var until = null;
+  if (untilStr.trim()) {
+    var d = new Date(untilStr.trim());
+    if (isNaN(d.getTime())) { showToastAdmin('날짜 형식이 잘못됐어요.', true); return; }
+    until = d.toISOString();
+  }
+  try {
+    var sb = getSb();
+    var r = await sb.rpc('admin_set_suspension', {
+      p_target: userId,
+      p_reason: reason || null,
+      p_until: until,
+      p_active: true,
+    });
+    if (r.error || (r.data && !r.data.ok)) throw r.error || new Error((r.data && r.data.error) || 'failed');
+    showToastAdmin('정지 처리됐어요.');
+    loadUsers();
+  } catch(e) { showToastAdmin('정지 실패: '+(e.message||e), true); }
+}
+
+async function adminUnsuspendUser(userId) {
+  if (!confirm('정지 해제할까요?')) return;
+  try {
+    var sb = getSb();
+    var r = await sb.rpc('admin_set_suspension', {
+      p_target: userId,
+      p_reason: null,
+      p_until: null,
+      p_active: false,
+    });
+    if (r.error || (r.data && !r.data.ok)) throw r.error || new Error('failed');
+    showToastAdmin('정지 해제됐어요.');
+    loadUsers();
+  } catch(e) { showToastAdmin('해제 실패: '+(e.message||e), true); }
+}
 
 async function adminChangePlan(userId, plan) {
   try {

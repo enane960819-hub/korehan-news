@@ -129,6 +129,10 @@
         <i data-lucide="search" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>
         Find
       </button>
+      <button class="kh-fr-tab" data-tab="blocked" onclick="khFrSwitchTab('blocked',this)">
+        <i data-lucide="ban" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>
+        Blocked <span class="kh-fr-tab-count" id="kh-fr-count-blocked">0</span>
+      </button>
     </div>
 
     <div id="kh-fr-loading" class="kh-fr-loading">Loading…</div>
@@ -157,6 +161,10 @@
           <div>Type a display name above to search the community.</div>
         </div>
       </div>
+    </div>
+
+    <div class="kh-fr-section" id="kh-fr-pane-blocked" hidden>
+      <div id="kh-fr-list-blocked"></div>
     </div>
   </div>
 </div>
@@ -255,13 +263,68 @@
     $('kh-fr-tabs').hidden = false;
     $('kh-fr-loading').hidden = true;
 
-    await Promise.all([loadFriends(), loadPending()]);
+    await Promise.all([loadFriends(), loadPending(), loadBlocked()]);
     showPane('friends');
     if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
 
     var input = $('kh-fr-search-input');
     if (input) input.addEventListener('input', debouncedSearch);
   }
+
+  var blockedList = [];
+  async function loadBlocked() {
+    try {
+      var r = await sb.rpc('get_blocked_users');
+      blockedList = (r && r.data) || [];
+      renderBlockedList();
+      $('kh-fr-count-blocked').textContent = String(blockedList.length);
+    } catch (e) {
+      blockedList = [];
+      renderBlockedList();
+    }
+  }
+
+  function renderBlockedList() {
+    var el = $('kh-fr-list-blocked');
+    if (!el) return;
+    if (!blockedList.length) {
+      el.innerHTML = '<div class="kh-fr-empty">'
+        + '<div class="kh-fr-empty-title">No blocked users</div>'
+        + '<div>Anyone you block will appear here so you can unblock them later.</div>'
+        + '</div>';
+      return;
+    }
+    el.innerHTML = '<div class="kh-fr-list">'
+      + blockedList.map(function (b) {
+          return '<div class="kh-fr-row" data-bid="' + escapeHtml(b.blocked_id) + '">'
+            +    '<a href="' + profileHref(b.blocked_id) + '" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;color:inherit">'
+            +      avatarHtml(b.display_name)
+            +      '<div class="kh-fr-body">'
+            +        '<div class="kh-fr-name">' + escapeHtml(b.display_name || 'Learner') + '</div>'
+            +        '<div class="kh-fr-meta">Blocked ' + escapeHtml(timeAgo(b.blocked_at)) + '</div>'
+            +      '</div>'
+            +    '</a>'
+            +    '<div class="kh-fr-actions">'
+            +      '<button class="kh-fr-btn kh-fr-btn-ghost" onclick="khFrUnblock(\'' + escapeHtml(b.blocked_id) + '\',this)">Unblock</button>'
+            +    '</div>'
+            +  '</div>';
+        }).join('')
+      + '</div>';
+  }
+
+  window.khFrUnblock = async function (targetId, btn) {
+    if (!sb || !targetId) return;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      var r = await sb.rpc('unblock_user', { p_target: targetId });
+      if (r.error || (r.data && !r.data.ok)) throw r.error || new Error('unblock_failed');
+      blockedList = blockedList.filter(function (b) { return b.blocked_id !== targetId; });
+      renderBlockedList();
+      $('kh-fr-count-blocked').textContent = String(blockedList.length);
+    } catch (e) {
+      btn.disabled = false; btn.textContent = 'Unblock';
+    }
+  };
 
   async function loadFriends() {
     try {
@@ -427,6 +490,7 @@
     $('kh-fr-pane-friends').hidden = tab !== 'friends';
     $('kh-fr-pane-pending').hidden = tab !== 'pending';
     $('kh-fr-pane-find').hidden    = tab !== 'find';
+    $('kh-fr-pane-blocked').hidden = tab !== 'blocked';
     if (tab === 'find') {
       var input = $('kh-fr-search-input');
       if (input) setTimeout(function () { input.focus(); }, 0);
