@@ -1244,7 +1244,10 @@ function _khRenderNotifItem(n) {
     text = '<a href="korehan-profile.html?user=' + encodeURIComponent(supaUser.id) + '">' + _khEsc(nameGb) + '</a> left a note on your wall' + preview;
   } else if (n.kind === 'comment_reply') {
     iconName = 'message-circle';
-    text = 'Someone replied to your comment.';
+    var nameCr = _khNotifAuthorMap[p.from] || 'A learner';
+    var prevCr = p.preview ? ' · "' + _khEsc(p.preview) + '"' : '';
+    var hrefCr = p.article_id ? ('korehan-article.html?id=' + encodeURIComponent(p.article_id) + '#cm-' + (p.reply_id || p.parent_id || '')) : '#';
+    text = '<a href="' + hrefCr + '">' + _khEsc(nameCr) + '</a> replied to your comment' + prevCr;
   } else if (n.kind === 'badge_earned') {
     iconName = 'award';
     text = 'You earned a new badge: <strong>' + _khEsc(p.name || '') + '</strong>';

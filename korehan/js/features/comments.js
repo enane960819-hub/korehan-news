@@ -295,7 +295,7 @@ async function khCmSubmitReply(parentId) {
     content:     content,
     parent_id:   parentId
   };
-  var res = await sb.from('comments').insert(payload);
+  var res = await sb.from('comments').insert(payload).select('id').maybeSingle();
   if (res.error) {
     var msg = String(res.error.message || '');
     // parent_id column missing → retry without; user gets a flat comment
@@ -304,10 +304,20 @@ async function khCmSubmitReply(parentId) {
       _khCmFeatures.parentChecked = true;
       _khCmFeatures.parentOk = false;
       delete payload.parent_id;
-      res = await sb.from('comments').insert(payload);
+      res = await sb.from('comments').insert(payload).select('id').maybeSingle();
     }
   }
   if (res.error) { toast('답글 등록 실패: ' + res.error.message, true); return; }
+  // Notify the parent comment's author. RPC is fire-and-forget — if
+  // it fails (table missing, RLS), the reply still went through.
+  try {
+    var childId = res.data && res.data.id;
+    if (parentId && _khCmFeatures.parentOk !== false) {
+      sb.rpc('notify_comment_reply', { p_parent_id: parentId, p_child_id: childId || null })
+        .then(function(){})
+        .catch(function(){});
+    }
+  } catch (_) {}
   _commentLastTime[supaUser.id] = Date.now();
   ta.value = '';
   formEl.setAttribute('hidden', '');
