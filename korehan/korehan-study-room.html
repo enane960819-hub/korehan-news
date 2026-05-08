@@ -7651,11 +7651,18 @@ function _pmRenderPractice(body, lesson, pipsHtml) {
     ? '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="_pmAdvanceLesson()">' + nextLabel + '</button></div>'
     : '';
 
+  // The choices are Korean particle/tense/subject variants of pr.ko —
+  // the AI is instructed to make them PLAUSIBLY wrong. Showing Korean
+  // as the prompt and Korean variants as choices made the user stare
+  // at "제 할머니는 70살이에요" twice over with no clear question;
+  // they didn't know which axis to differentiate on. Flip it: show
+  // the English meaning as the prompt, and the user picks the Korean
+  // form that means that. The instruction line is rewritten to match.
   body.innerHTML =
       '<div class="pm-pips">' + pipsHtml + '</div>'
     + '<div class="pm-step-label">PRACTICE · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
-    + '<div class="pm-prompt-hint">Same pattern, new sentence — pick the English meaning.</div>'
-    + '<div class="pm-example-ko" style="font-size:24px">' + _esc(pr.ko || '') + '</div>'
+    + '<div class="pm-prompt-hint">Same pattern — pick the Korean that means this.</div>'
+    + '<div class="pm-example-ko" style="font-size:22px;color:#7dd3fc">' + _esc(pr.en || '') + '</div>'
     + '<div class="pm-choices">' + choicesHtml + '</div>'
     + feedback
     + actions;
@@ -7717,7 +7724,19 @@ function _pmRenderAssemble(body, lesson, pipsHtml) {
     if (shuffled.every(function(w, i){ return w === tokens[i]; })) {
       var s0 = shuffled[0]; shuffled[0] = shuffled[shuffled.length - 1]; shuffled[shuffled.length - 1] = s0;
     }
-    _pm.asmState = { target: tokens, pool: shuffled, picked: [], result: null };
+    // Pre-pick the first token like every other word-arrange drill in
+    // the app (BM Build, Dictation Word Order, Picture Description,
+    // Sentence Build). Korean accepts multiple grammatical orderings
+    // of the same chunks, so anchoring the start removes the
+    // "where do I begin" pause without giving the answer away. Pop
+    // the first occurrence of tokens[0] out of the shuffled pool.
+    var picked = [];
+    var firstWord = tokens[0];
+    var anchorIdx = shuffled.indexOf(firstWord);
+    if (anchorIdx >= 0) {
+      picked.push(shuffled.splice(anchorIdx, 1)[0]);
+    }
+    _pm.asmState = { target: tokens, pool: shuffled, picked: picked, result: null };
   }
   var st = _pm.asmState;
   var poolHtml = st.pool.map(function(w, pi) {
@@ -7775,12 +7794,20 @@ function _pmAsmPick(pi) {
 }
 function _pmAsmRemove(si) {
   if (!_pm.asmState || _pm.asmState.result !== null) return;
+  // Anchor (picked[0]) is the pre-selected first word — can't remove
+  // it. Same convention as Sentence Build / Picture Description.
+  if (si <= 0) return;
   _pm.asmState.picked.splice(si, 1);
   _pmRender();
 }
 function _pmAsmClear() {
   if (!_pm.asmState || _pm.asmState.result !== null) return;
-  _pm.asmState.picked = [];
+  // Restore the anchor; everything else goes back to the pool.
+  var st = _pm.asmState;
+  if (st.picked.length > 1) {
+    st.pool = st.pool.concat(st.picked.slice(1));
+    st.picked = st.picked.slice(0, 1);
+  }
   _pmRender();
 }
 function _pmAsmCheck() {
@@ -8380,8 +8407,12 @@ function _keRenderFillQuiz() {
     return;
   }
 
-  // Blank the answer chunk in the example sentence.
-  var BLANK = '<span style="display:inline-block;min-width:80px;border-bottom:2px solid #a78bfa;padding:0 4px;color:#a78bfa;font-weight:800">___</span>';
+  // Blank the answer chunk in the example sentence. Tagged with a
+  // class so _keCheckFillChoice can fill it in once the user picks
+  // correctly — the old behaviour just highlighted the choice button
+  // and left the blank empty, which made it unclear whether the
+  // sentence was now complete.
+  var BLANK = '<span class="ke-fill-blank" style="display:inline-block;min-width:80px;border-bottom:2px solid #a78bfa;padding:0 4px;color:#a78bfa;font-weight:800;transition:all .25s">___</span>';
   var blankedDisplay = exampleKo.split(correctChunk).join(BLANK);
 
   // Build distractor pool from OTHER expressions' answer cores so the
@@ -8439,6 +8470,20 @@ function _keCheckFillChoice(btn, chosen, correct) {
   document.querySelectorAll('.ke-fill-choice').forEach(function(b){ b.disabled = true; b.style.cursor = 'default'; });
   var fb = document.getElementById('ke-fill-fb');
   var isCorrect = chosen === correct;
+  // Fill every blank in the prompt with the correct chunk so the user
+  // sees the completed sentence (and confirms the pattern actually fits).
+  // Done on both correct and wrong picks — when wrong, the green-tinted
+  // fill makes the right answer obvious without requiring a separate
+  // "정답: …" line below.
+  document.querySelectorAll('.ke-fill-blank').forEach(function(el) {
+    el.textContent = correct;
+    el.style.minWidth = '0';
+    el.style.borderBottom = '2px solid #4ade80';
+    el.style.color = '#4ade80';
+    el.style.background = 'rgba(74,222,128,.10)';
+    el.style.padding = '0 6px';
+    el.style.borderRadius = '4px';
+  });
   if (isCorrect) {
     window._keFillScore = (window._keFillScore || 0) + 1;
     btn.style.borderColor = '#86efac';
@@ -19774,12 +19819,23 @@ function dctWOPick(pi) {
 }
 function dctWORemove(si) {
   if(!_dctWOState) return;
+  // Anchor (selected[0]) is the pre-selected first word — disallow
+  // removing it, same as the other word-arrange drills.
+  if (si <= 0) return;
   var w = _dctWOState.selected[si];
   _dctWOState.selected.splice(si,1);
   if (w) { try { _dctSpeakSentence(w); } catch(_){} }
   _dctRenderArrange();
 }
-function dctWOClear()    { if(!_dctWOState) return; _dctWOState.selected=[]; _dctRenderArrange(); }
+function dctWOClear() {
+  if (!_dctWOState) return;
+  // Reset to first-word-anchored state instead of fully empty so the
+  // pre-selected start chunk persists through "다시" the same way it
+  // does in BM Build / Picture Description / Sentence Build.
+  var first = _dctWOState.original && _dctWOState.original.length ? _dctWOState.original[0] : null;
+  _dctWOState.selected = first ? [first] : [];
+  _dctRenderArrange();
+}
 function dctWOCheck() {
   if(!_dctWOState) return;
   var ok=_dctWOState.selected.join(' ')===_dctWOState.original.join(' ');
