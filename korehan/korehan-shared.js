@@ -697,6 +697,29 @@ async function authSignUp() {
   _authShowOk('Account created! We sent a confirmation email. Please check your inbox (including spam).');
   document.getElementById('kh-signup-form').querySelectorAll('input').forEach(function(i){ i.value=''; });
   _resetTurnstile();
+  // Push admin notification. Edge function dedupes by user_id so a
+  // follow-up SIGNED_IN event (after email confirmation, or via the
+  // separate Google OAuth path) won't send a second message.
+  if (data && data.user && data.user.id) _khNotifySignup(data.user.id);
+}
+
+// Pings the notify-signup edge function with the new user's id. The
+// function looks up created_at server-side and silently no-ops for
+// returning users, so we can call it on every SIGNED_IN event without
+// worrying about false positives. Per-tab guard avoids hammering the
+// endpoint when SIGNED_IN re-fires (token refreshes, multi-tab focus).
+window._khNotifyFiredFor = window._khNotifyFiredFor || {};
+function _khNotifySignup(userId) {
+  if (!userId || _khNotifyFiredFor[userId]) return;
+  _khNotifyFiredFor[userId] = true;
+  try {
+    fetch(SUPA_URL + '/functions/v1/notify-signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      body: JSON.stringify({ user_id: userId }),
+      keepalive: true, // survives the page unload that often follows OAuth redirects
+    }).catch(function(){ /* best-effort */ });
+  } catch(_) {}
 }
 
 // ── 비밀번호 재설정 ───────────────────────────────────────────
@@ -937,6 +960,11 @@ async function checkSession() {
       renderDailyMission();
       window.dispatchEvent(new Event('kh-auth-signed-in'));
       setTimeout(function(){ updateAuthUI(); }, 300);
+      // Catches OAuth signups (Google) and email signups whose first
+      // SIGNED_IN event fires after email confirmation. The edge function
+      // checks created_at and skips returning users, so this is safe to
+      // run on every SIGNED_IN.
+      if (supaUser && supaUser.id) _khNotifySignup(supaUser.id);
       // DB 동기화는 idle 시점으로 지연
       var _deferSI = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 200); };
       _deferSI(function() {

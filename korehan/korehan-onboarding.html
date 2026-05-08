@@ -456,11 +456,13 @@ function cardWrap(inner) {
 function bindTap(el, fn) {
   if (!el || el.dataset.boundTap === '1') return;
   el.dataset.boundTap = '1';
+  // click only — adding touchend on top fired the handler twice on touch
+  // devices (touchend → click), and worse, touchend fires wherever the
+  // finger releases. Scrolling past a card and lifting your thumb on a
+  // different one would silently toggle that wrong card. The 300ms tap
+  // delay this used to dodge isn't a thing on the mobile-friendly viewport
+  // we already declare.
   el.addEventListener('click', fn);
-  el.addEventListener('touchend', function(e){
-    e.preventDefault();
-    fn(e);
-  }, { passive:false });
 }
 
 function wireStepInteractions() {
