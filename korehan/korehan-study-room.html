@@ -23044,27 +23044,32 @@ body.kh-dr-active #sr-quest-ring,
 body.kh-dr-active #sr-checklist-box,
 body.kh-dr-active .sr-mission-item,
 body.kh-dr-active #sr-notif-daily { display:none !important; }
-.dr-modal{background:#fff;border-radius:20px;width:min(680px,96vw);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden}
-.dr-header{background:linear-gradient(135deg,#0b1626,#1a3a6b);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.dr-header h2{margin:0;font-size:18px;font-weight:800;color:#fff}
-.dr-header p{margin:2px 0 0;font-size:12px;color:rgba(255,255,255,.45)}
+/* Daily Review modal — dark theme aligned with the rest of the
+   Study Room (KE / GF / PD / PM / Dictation all use the deep-navy
+   panel surface). White-body modal felt like a different app. */
+.dr-modal{background:linear-gradient(180deg,#0f1d3a 0%,#0a1428 100%);border:1px solid rgba(255,255,255,.06);border-radius:22px;width:min(680px,96vw);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.55);overflow:hidden}
+.dr-header{background:linear-gradient(135deg,#1e1b4b,#312e81);padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.dr-header h2{margin:0;font-size:18px;font-weight:800;color:#fff;font-family:'Playfair Display','Noto Serif KR',serif}
+.dr-header p{margin:2px 0 0;font-size:12px;color:rgba(255,255,255,.55)}
 .dr-progress-track{height:6px;background:rgba(255,255,255,.12);flex:1;border-radius:3px;margin:0 14px}
-.dr-progress-fill{height:100%;border-radius:3px;background:#4ade80;transition:width .4s ease}
+.dr-progress-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#a78bfa,#7dd3fc);transition:width .4s ease}
 .dr-body{flex:1;overflow-y:auto;padding:24px;animation:srFadeIn .25s ease-out}
-.dr-footer{padding:14px 24px;border-top:1px solid #f0f0f0;background:#fafafa;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}
-.dr-q-label{font-size:11px;font-weight:700;color:var(--bright,#2563eb);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
-.dr-q-title{font-size:22px;font-weight:800;color:#1a1a1a;line-height:1.3;margin-bottom:8px;font-family:'Noto Serif KR',serif}
-.dr-q-hint{font-size:14px;color:#8b8b8b;margin-bottom:18px;line-height:1.5}
+.dr-footer{padding:14px 24px;border-top:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}
+.dr-q-label{font-size:11px;font-weight:800;color:#a78bfa;margin-bottom:8px;text-transform:uppercase;letter-spacing:1.2px}
+.dr-q-title{font-size:24px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:8px;font-family:'Noto Serif KR','Playfair Display',serif}
+.dr-q-hint{font-size:14px;color:rgba(255,255,255,.55);margin-bottom:18px;line-height:1.5}
 .dr-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.dr-choice{padding:13px 16px;border:1.5px solid #e8e8e8;border-radius:12px;background:#fff;font-size:14px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;transition:all .15s;line-height:1.4}
-.dr-choice:hover{border-color:var(--bright,#2563eb);background:#f8f9ff;transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.dr-choice.correct{border-color:#16a34a;background:#f0fdf4;color:#15803d}
-.dr-choice.wrong{border-color:#dc2626;background:#fef2f2;color:#dc2626}
-.dr-typed-input{width:100%;padding:13px 16px;border:1.5px solid #e8e8e8;border-radius:12px;font-size:15px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .15s}
-.dr-typed-input:focus{border-color:var(--bright,#2563eb)}
+.dr-choice{padding:13px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(255,255,255,.04);color:#e2e8f0;font-size:14px;font-weight:700;cursor:pointer;text-align:left;font-family:inherit;transition:all .15s;line-height:1.4}
+.dr-choice:hover:not(:disabled){border-color:rgba(167,139,250,.55);background:rgba(167,139,250,.10);transform:translateY(-1px)}
+.dr-choice.correct{border-color:#22c55e;background:rgba(34,197,94,.18);color:#86efac}
+.dr-choice.wrong{border-color:#ef4444;background:rgba(239,68,68,.16);color:#fca5a5}
+.dr-choice:disabled{cursor:default}
+.dr-typed-input{width:100%;padding:13px 16px;border:1.5px solid rgba(255,255,255,.15);border-radius:12px;background:rgba(255,255,255,.06);color:#fff;font-size:15px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .15s}
+.dr-typed-input::placeholder{color:rgba(255,255,255,.35)}
+.dr-typed-input:focus{border-color:#a78bfa;background:rgba(167,139,250,.08)}
 .dr-feedback-box{margin-top:12px;padding:14px 16px;border-radius:12px;font-size:14px;line-height:1.5}
-.dr-feedback-box.correct{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
-.dr-feedback-box.wrong{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.dr-feedback-box.correct{background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.30);color:#86efac}
+.dr-feedback-box.wrong{background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.30);color:#fca5a5}
 </style>
 
 <div class="dr-overlay hidden" id="dr-overlay" onclick="if(event.target===this)closeDailyReview()">
@@ -23258,10 +23263,28 @@ async function drGenerateQuestions() {
     }
   });
 
-  // 1 typed (from saved words) — vocab recall
-  if (pool.length > 8) {
-    var tw = pool[8];
-    questions.push({ type:'typed', word_en: tw.word_en, word_rom: tw.word_rom, correct: tw.word_ko, slot: 'vocab' });
+  // 1 typed (from saved words) — vocab recall.
+  // Skip ambiguous English meanings (comma-separated like "interesting,
+  // fascinating" or slash-separated) — those map to multiple correct
+  // Korean words and the typed input check requires an exact match,
+  // so the user gets marked wrong even with a valid translation. Walk
+  // forward through the pool to find one with a single clean meaning;
+  // if none, drop the typed question entirely (better to have 7 clean
+  // questions than 8 with one frustrating one).
+  function _drIsCleanMeaning(en) {
+    var s = String(en || '').trim();
+    if (!s) return false;
+    if (/[,/;]/.test(s)) return false;       // multi-meaning
+    if (/\bor\b/i.test(s)) return false;     // "X or Y"
+    if (s.length > 30) return false;         // probably a phrase, not a single word
+    return true;
+  }
+  for (var ti = 8; ti < pool.length; ti++) {
+    var tw = pool[ti];
+    if (_drIsCleanMeaning(tw.word_en)) {
+      questions.push({ type:'typed', word_en: tw.word_en, word_rom: tw.word_rom, correct: tw.word_ko, slot: 'vocab' });
+      break;
+    }
   }
 
   _drQuestions = _drShuffle(questions);
@@ -23319,11 +23342,28 @@ function drShowQuestion() {
       +'<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>';
   } else if(q.type==='order'){
     body.innerHTML='<div class="dr-q-label">Arrange into a correct sentence</div><div class="dr-q-hint">'+q.en+'</div>'
-      +'<div id="dr-order-selected" style="min-height:40px;border:1.5px dashed #e8e8e8;border-radius:8px;padding:6px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px"></div>'
-      +'<div id="dr-order-pool" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">'+q.words.map(function(w,i){return '<button id="drow_'+i+'" class="dr-choice" style="display:inline-flex;padding:7px 10px" onclick="drSelectOrder(this,'+i+',\''+w.replace(/'/g,"\\'")+'\')">'+w+'</button>';}).join('')+'</div>'
+      +'<div id="dr-order-selected" style="min-height:42px;border:1.5px dashed rgba(167,139,250,.35);background:rgba(167,139,250,.05);border-radius:10px;padding:8px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center"></div>'
+      +'<div id="dr-order-pool" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+q.words.map(function(w,i){return '<button id="drow_'+i+'" class="dr-choice" style="display:inline-flex;padding:8px 12px;font-family:\'Noto Serif KR\',serif" onclick="drSelectOrder(this,'+i+',\''+w.replace(/'/g,"\\'")+'\')">'+w+'</button>';}).join('')+'</div>'
       +'<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>'
-      +'<button onclick="drCheckOrder()" style="padding:8px 16px;background:var(--bright,#2563eb);color:#fff;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">Check</button>';
+      +'<button onclick="drCheckOrder()" style="padding:9px 18px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer">Check ✓</button>';
     window._drOrderSelected=[];
+    // Pre-anchor the first word of the correct sentence — same
+    // pattern as every other word-arrange drill in the app. Find
+    // the matching pool button (q.words is shuffled, q.correct is
+    // the original order) and click it programmatically so the
+    // existing drSelectOrder logic moves it to the selected zone.
+    var anchor = (q.correct && q.correct.length) ? q.correct[0] : null;
+    if (anchor != null) {
+      setTimeout(function() {
+        for (var i = 0; i < q.words.length; i++) {
+          if (q.words[i] === anchor) {
+            var btn = document.getElementById('drow_' + i);
+            if (btn) drSelectOrder(btn, i, anchor);
+            break;
+          }
+        }
+      }, 0);
+    }
   } else if(q.type==='fill'){
     body.innerHTML='<div class="dr-q-label">Fill in the blank</div><div class="dr-q-title" style="font-size:17px">'+q.template+'</div><div class="dr-q-hint">'+q.hint+'</div>'
       +'<div class="dr-choices">'+q.choices.map(function(c){return '<button class="dr-choice" onclick="drSelectMC(this,\''+c.replace(/'/g,"\\'")+'\')">'+c+'</button>';}).join('')+'</div>'
@@ -23347,10 +23387,22 @@ function drSelectMC(btn,choice){
 }
 function drSelectOrder(btn,idx,word){
   if(_drAnswered)return; btn.style.display='none';
-  window._drOrderSelected=window._drOrderSelected||[]; window._drOrderSelected.push({idx:idx,word:word});
+  window._drOrderSelected=window._drOrderSelected||[];
+  // First entry pushed is the pre-anchored start word — mark it so
+  // its remove-handler refuses to unpop it. Same convention as every
+  // other word-arrange drill.
+  var isAnchor = window._drOrderSelected.length === 0;
+  window._drOrderSelected.push({idx:idx,word:word,anchor:isAnchor});
   var sel=document.getElementById('dr-order-selected'); if(!sel)return;
-  var span=document.createElement('button');span.className='dr-choice';span.style.cssText='display:inline-flex;padding:7px 10px;cursor:pointer';span.textContent=word;
-  span.onclick=function(){window._drOrderSelected=window._drOrderSelected.filter(function(x){return x.idx!==idx;});sel.removeChild(span);btn.style.display='';};
+  var span=document.createElement('button');
+  span.className='dr-choice';
+  span.style.cssText = isAnchor
+    ? 'display:inline-flex;padding:8px 12px;cursor:default;background:rgba(167,139,250,.18);border-color:rgba(167,139,250,.5);color:#fff;font-family:\'Noto Serif KR\',serif'
+    : 'display:inline-flex;padding:8px 12px;cursor:pointer;font-family:\'Noto Serif KR\',serif';
+  span.textContent=word;
+  if (!isAnchor) {
+    span.onclick=function(){window._drOrderSelected=window._drOrderSelected.filter(function(x){return x.idx!==idx;});sel.removeChild(span);btn.style.display='';};
+  }
   sel.appendChild(span);
 }
 function drCheckOrder(){
