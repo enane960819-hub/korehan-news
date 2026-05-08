@@ -1130,9 +1130,9 @@ function renderStories() {
     return;
   }
 
-  // Netflix-style genre rails when no filter is active.
-  // Each story appears in exactly ONE rail — priority order:
-  //   1) ⚡ Quick Reads  →  2) its genre rail  →  3) its level rail
+  // Netflix-style genre rails when no filter is active. Continue Reading
+  // and Saved sit on top (when relevant), then every story shows up in its
+  // genre rail. No spotlight rails — categorisation is the navigation.
   var noFilter = activeGenre === 'all' && activeLvl === 'all' && activePerspective === 'all' && !activeSearchSt;
   if (noFilter) {
     grid.className = 'st-rails';
@@ -1167,30 +1167,7 @@ function renderStories() {
       }
     }
 
-    // 0) ✨ New Stories — spotlight rail, does NOT remove items from genre rails below
-    var byCreatedDesc = list.slice().sort(function(a, b) {
-      var ad = a.created_at || a.createdAt || '';
-      var bd = b.created_at || b.createdAt || '';
-      if (ad && bd) return bd.localeCompare(ad);
-      return (b.id || 0) - (a.id || 0);
-    });
-    var newStories = byCreatedDesc.slice(0, 6);
-    var newHTML = newStories.length
-      ? '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="sparkles" class="kh-ui-icon" style="width:18px;height:18px;color:#fbbf24" aria-hidden="true"></i><span>New Stories</span></div></div>'
-        + '<div class="st-rail-scroll">' + newStories.map(renderStoryCard).join('') + '</div></div>'
-      : '';
-
-    // 1) Quick Reads — spotlight rail for ≤3-min stories, also non-claiming
-    var quickReads = list.filter(function(s) {
-      var m = String(s.readTime || s.read_time || '').match(/\d+/);
-      return m && parseInt(m[0], 10) <= 3;
-    }).slice(0, 12);
-    var quickHTML = quickReads.length
-      ? '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="zap" class="kh-ui-icon" style="width:18px;height:18px;color:#fbbf24" aria-hidden="true"></i><span>Quick Reads</span></div></div>'
-        + '<div class="st-rail-scroll">' + quickReads.map(renderStoryCard).join('') + '</div></div>'
-      : '';
-
-    // 2) Genre rails — every story appears in its own genre section
+    // Genre rails — every story appears in its own genre section
     var byGenre = {};
     list.forEach(function(s) {
       var g = s.genre || s.mood || 'slice_of_life';
@@ -1220,7 +1197,7 @@ function renderStories() {
       + '</div>';
     }).join('');
 
-    grid.innerHTML = contHTML + savedHTML + newHTML + quickHTML + genreRailsHTML;
+    grid.innerHTML = contHTML + savedHTML + genreRailsHTML;
     if (window.renderKhLucideIcons) renderKhLucideIcons();
     return;
   }
