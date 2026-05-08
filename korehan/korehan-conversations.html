@@ -217,14 +217,20 @@
    pill row that scrolls on mobile when the labels overflow. The
    active pill goes solid blue; disabled drills (no data) dim out. */
 .dp-pr-shell{padding:18px 18px 22px;}
-.dp-pr-tabs{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;margin:0 -4px 14px;padding:2px 4px 8px;scrollbar-width:none;}
-.dp-pr-tabs::-webkit-scrollbar{display:none;}
-.dp-pr-tab{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;flex-shrink:0;}
-.dp-pr-tab:hover:not(.is-disabled){background:#e0e7ff;border-color:#c7d2fe;color:#3730a3;}
-.dp-pr-tab.is-active{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:transparent;color:#fff;box-shadow:0 4px 10px rgba(37,99,235,.25);}
-.dp-pr-tab.is-disabled{opacity:.4;cursor:not-allowed;}
-.dp-pr-tab .kh-ui-icon{width:13px;height:13px;}
-.dp-pr-stages{}
+/* Progress strip — visual indicator only, no clicks. Shows 5 drill
+   step labels separated by › chevrons. Active step is solid blue,
+   completed steps are checked green, skipped (no data) are dim.
+   Replaces the old chip picker since the linear flow now drives
+   which drill is active, not the user. */
+.dp-pr-steps{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;margin:0 -4px 14px;padding:2px 4px 8px;scrollbar-width:none;}
+.dp-pr-steps::-webkit-scrollbar{display:none;}
+.dp-pr-step{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:999px;background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;font-size:11px;font-weight:700;font-family:inherit;white-space:nowrap;flex-shrink:0;}
+.dp-pr-step.is-active{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:transparent;color:#fff;box-shadow:0 4px 10px rgba(37,99,235,.25);}
+.dp-pr-step.is-done{background:#dcfce7;border-color:#bbf7d0;color:#15803d;}
+.dp-pr-step.is-skip{opacity:.35;}
+.dp-pr-step .kh-ui-icon{width:13px;height:13px;}
+.dp-pr-step-sep{color:#cbd5e1;font-weight:700;flex-shrink:0;}
+.dp-pr-stage{}
 .dp-pr-stage-preview{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:6px 0;}
 .dp-pr-stage-blurb{font-size:13px;color:#475569;line-height:1.55;}
 .dp-pr-empty{font-size:13px;color:#94a3b8;padding:8px 0;}
@@ -232,6 +238,8 @@
 .dp-pr-done{font-size:15px;font-weight:800;color:#15803d;margin-bottom:12px;}
 .dp-pr-start{display:inline-block;padding:9px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s;}
 .dp-pr-start:hover{background:#1d4ed8;}
+.dp-pr-start.dp-pr-secondary{background:#fff;color:#475569;border:1.5px solid #e2e8f0;}
+.dp-pr-start.dp-pr-secondary:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155;}
 /* Expression Match */
 .dp-pr-em-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
 .dp-pr-em-col{display:flex;flex-direction:column;gap:8px;}
@@ -990,6 +998,31 @@ async function openDetail(idx) {
   var cast = resolveConversationCast(c);
   window._currentConv = c;
 
+  // Register this conversation's saved vocab + key_expressions with
+  // the global hover-tooltip system so the same words get dotted
+  // underlines in the dialogue bubbles. Without this the user could
+  // see vocab listed in the right panel but hovering over the same
+  // word in the chat showed nothing — the user pointed this out as
+  // a clear gap.
+  function _khRegisterConvHoverVocab(conv) {
+    if (typeof window.korehanHoverRegisterExtras !== 'function') return;
+    var extras = [];
+    (conv.vocab || []).forEach(function(v) {
+      if (v && v.ko) extras.push({ ko: v.ko, en: v.en || '', rom: v.rom || '' });
+    });
+    (conv.key_expressions || []).forEach(function(k) {
+      if (k && k.ko) extras.push({ ko: k.ko, en: k.en || '', rom: k.rom || '' });
+    });
+    if (extras.length) {
+      window.korehanHoverRegisterExtras(extras);
+      // Force a sweep on the detail panel so existing bubble text
+      // gets wrapped immediately — the MutationObserver only catches
+      // nodes added AFTER the register call.
+      try { if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh(); } catch(_) {}
+    }
+  }
+  _khRegisterConvHoverVocab(c);
+
   // ── 데일리 미션 + 읽기 기록 추적 ──────────────────────
   if (typeof dmTrackArticle === 'function') dmTrackArticle({ content_id: c._id ? String(c._id) : null });
   if (supaUser && typeof getSupa === 'function') {
@@ -1023,6 +1056,10 @@ async function openDetail(idx) {
           c.mission = enriched.data.mission || [];
           window._currentConv = c;
           renderStudyNotes(c);
+          // Cache may have shipped the vocab the conv row didn't —
+          // register those with the hover system too so the bubbles
+          // get the dotted underlines on this load (not next visit).
+          _khRegisterConvHoverVocab(c);
         }
       }
     }).catch(function(){});
@@ -1180,6 +1217,11 @@ async function openDetail(idx) {
   document.body.style.overflow = 'hidden';
   document.documentElement.style.overflow = 'hidden';
 
+  // Auto-fire the first practice drill (linear flow). Same call as
+  // the renderStudyNotes path uses; defer to next tick so the DOM
+  // is fully painted.
+  setTimeout(function() { try { convPracticeAutoStart(); } catch(_) {} }, 0);
+
   // 저장된 단어 상태 복원 (비동기)
   restoreSaveButtons('detail-overlay');
 }
@@ -1224,6 +1266,11 @@ function renderStudyNotes(c) {
     +(grammar||isAdm ? '<div class="dp-study-card" data-study="grammar"><div class="dp-study-card-title">'+_IC.pen+' Expressions'+addGrammarBtn+'</div><div class="dp-grammar-list" id="dp-grammar-list">'+(grammar||'')+'</div></div>' : '')
     + _convPracticeCardsHTML(c)
     +'<div style="height:80px"></div>';
+  // Auto-fire the first practice drill so the user lands on the
+  // first activity instead of an empty stage. Wrapped in a timeout
+  // so the DOM is fully painted (lucide icons etc.) before the
+  // start handler grabs #dp-pr-<key>.
+  setTimeout(function() { try { convPracticeAutoStart(); } catch(_) {} }, 0);
 }
 
 var _CONV_TAB_KEY = 'kh_conv_mobile_tab';
@@ -1355,102 +1402,132 @@ function _shuffle(arr) {
   return a;
 }
 
-// Practice section: drill picker + single stage. Five drills used to
-// stack as full-width cards with thick padding — at 5 entries that
-// got 난잡 (the user's word). Now: a single card with a horizontal
-// chip-row picker at the top, the active drill renders below it, and
-// the deeper Study Room CTA sits on its own at the bottom.
+// Practice section: linear sequential progression.
+// First drill auto-starts on render; each completion shows
+// "Next drill →" that auto-launches the next available drill.
+// After the last drill, the Study Room CTA replaces the stage so
+// the user has one obvious next step instead of a pile of cards.
+//
+// The chip row at the top is now a progress indicator only
+// (current/done/pending dots). Clicking is disabled — the user
+// asked for guided flow, not a buffet picker.
+var _CONV_PRACTICE_DRILLS = [
+  { key:'em',    icon:'link-2',         label:'Expression Match', starter:'startExpressionMatch',  blurb:'Match each Korean expression to its English meaning.',           emptyMsg:'No key expressions for this conversation.',  has:function(c){ return (c.key_expressions||[]).length >= 2; } },
+  { key:'vic',   icon:'library',        label:'Vocab in Context', starter:'startVocabInContext',   blurb:'Read a dialogue line, pick what the highlighted word means.',    emptyMsg:'No vocabulary for this conversation.',       has:function(c){ return (c.vocab||[]).filter(function(v){return v&&v.ko&&v.en;}).length > 0; } },
+  { key:'rc',    icon:'message-circle', label:'Reply Check',      starter:'startReplyCheck',       blurb:'Choose the natural reply to each line.',                          emptyMsg:'Not enough dialogue lines for this drill.',  has:function(c){ return (c.msgs||[]).filter(function(m){return m&&(m.s==='l'||m.s==='r');}).length >= 4; } },
+  { key:'comp',  icon:'help-circle',    label:'Comprehension',    starter:'startComprehensionQuiz',blurb:'3 questions about who said what, why, and how it unfolds.',     emptyMsg:'Not enough dialogue lines for a quiz.',      has:function(c){ return (c.msgs||[]).filter(function(m){return m&&m.txt&&(m.s==='l'||m.s==='r');}).length >= 4; } },
+  { key:'build', icon:'shuffle',        label:'Sentence Build',   starter:'startSentenceBuild',    blurb:'Rebuild a real line by tapping the chunks in order.',            emptyMsg:'No dialogue line long enough for this drill.', has:function(c){
+      return (c.msgs||[]).some(function(m){
+        if (!m||!m.txt||(m.s!=='l'&&m.s!=='r')) return false;
+        var w = m.txt.replace(/[.!?。！？]/g,'').trim().split(/\s+/);
+        return w.length >= 3 && w.length <= 9;
+      });
+    } },
+];
+
+// Drill state — module-level so handlers can read it across renders.
+window._convPracticeQueue = [];   // ordered list of drill keys this conv has data for
+window._convPracticeActive = '';
+window._convPracticeDone   = {};  // map: key → true
+
 function _convPracticeCardsHTML(c) {
-  var hasExpr  = !!(c && (c.key_expressions || []).length >= 2);
-  var hasVocab = !!(c && (c.vocab || []).filter(function(v){ return v && v.ko && v.en; }).length);
-  var hasReply = !!(c && (c.msgs || []).filter(function(m){ return m && (m.s === 'l' || m.s === 'r'); }).length >= 4);
-  var hasComp  = !!(c && (c.msgs || []).filter(function(m){ return m && m.txt && (m.s === 'l' || m.s === 'r'); }).length >= 4);
-  var buildLine = (c && c.msgs || []).find(function(m) {
-    if (!m || !m.txt || (m.s !== 'l' && m.s !== 'r')) return false;
-    var w = m.txt.replace(/[.!?。！？]/g,'').trim().split(/\s+/);
-    return w.length >= 3 && w.length <= 9;
-  });
-  var hasBuild = !!buildLine;
+  var queue = _CONV_PRACTICE_DRILLS.filter(function(d){ return d.has(c); }).map(function(d){ return d.key; });
+  window._convPracticeQueue  = queue;
+  window._convPracticeActive = queue[0] || '';
+  window._convPracticeDone   = {};
 
-  // First available drill is the default active one so the panel
-  // doesn't open empty if Expression Match has no data.
-  var drills = [
-    { key:'em',    icon:'link-2',          label:'Expression Match', avail:hasExpr,  starter:'startExpressionMatch',  preview:'Match each Korean expression to its English meaning.', empty:'No key expressions for this conversation.' },
-    { key:'vic',   icon:'library',         label:'Vocab in Context', avail:hasVocab, starter:'startVocabInContext',   preview:'Read a dialogue line, pick what the highlighted word means.', empty:'No vocabulary for this conversation.' },
-    { key:'rc',    icon:'message-circle',  label:'Reply Check',      avail:hasReply, starter:'startReplyCheck',       preview:'Choose the natural reply to each line.',                       empty:'Not enough dialogue lines for this drill.' },
-    { key:'comp',  icon:'help-circle',     label:'Comprehension',    avail:hasComp,  starter:'startComprehensionQuiz',preview:'3 questions about who said what, why, and how it unfolds.',  empty:'Not enough dialogue lines for a quiz.' },
-    { key:'build', icon:'shuffle',         label:'Sentence Build',   avail:hasBuild, starter:'startSentenceBuild',    preview:'Rebuild a real line by tapping the chunks in order.',          empty:'No dialogue line long enough for this drill.' }
-  ];
-  var defaultKey = (drills.find(function(d){ return d.avail; }) || drills[0]).key;
-  // Persist any prior selection across re-renders (tab switches keep
-  // the user on the drill they were doing).
-  if (window._convPracticeActive && drills.some(function(d){ return d.key === window._convPracticeActive; })) {
-    defaultKey = window._convPracticeActive;
-  } else {
-    window._convPracticeActive = defaultKey;
-  }
-
-  var pickerHTML = drills.map(function(d) {
-    var disabled = !d.avail;
-    var isActive = d.key === defaultKey;
-    return '<button class="dp-pr-tab' + (isActive ? ' is-active' : '') + (disabled ? ' is-disabled' : '') + '"'
-      + ' onclick="setConvPracticeActive(\'' + d.key + '\')"'
-      + (disabled ? ' disabled' : '')
-      + ' title="' + escapeHtml(d.label) + '">'
+  // Progress dots — visual indicator only, no click handlers.
+  var dotsHTML = _CONV_PRACTICE_DRILLS.map(function(d) {
+    var inQueue = queue.indexOf(d.key) >= 0;
+    var cls = !inQueue ? ' is-skip'
+            : (d.key === window._convPracticeActive ? ' is-active' : '');
+    return '<div class="dp-pr-step' + cls + '" title="' + escapeHtml(d.label) + '">'
       + '<i data-lucide="' + d.icon + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
       + '<span>' + escapeHtml(d.label) + '</span>'
-      + '</button>';
-  }).join('');
-
-  // Each drill mounts its own div the existing start* functions
-  // already target. We stamp them all so the start handlers don't
-  // need to know about the picker; the picker just controls which
-  // is visible via display:none.
-  function stage(d) {
-    var inner = d.avail
-      ? '<div class="dp-pr-stage-preview">'
-        + '<div class="dp-pr-stage-blurb">' + escapeHtml(d.preview) + '</div>'
-        + '<button class="dp-pr-start" onclick="' + d.starter + '()">Start</button>'
-        + '</div>'
-      : '<div class="dp-pr-empty">' + escapeHtml(d.empty) + '</div>';
-    return '<div class="dp-pr-stage" data-drill="' + d.key + '"' + (d.key === defaultKey ? '' : ' style="display:none"') + '>'
-      + '<div id="dp-pr-' + d.key + '">' + inner + '</div>'
       + '</div>';
-  }
-  var stagesHTML = drills.map(stage).join('');
+  }).join('<span class="dp-pr-step-sep" aria-hidden="true">›</span>');
 
+  // Single stage container — renderConvPracticeStage paints whichever
+  // drill is active. First drill auto-fires on the next tick.
   return ''
     + '<div class="dp-study-card dp-pr-shell" data-study="practice">'
     +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="dumbbell" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Practice</span></div>'
-    +   '<div class="dp-pr-tabs">' + pickerHTML + '</div>'
-    +   '<div class="dp-pr-stages">' + stagesHTML + '</div>'
-    + '</div>'
+    +   '<div class="dp-pr-steps">' + dotsHTML + '</div>'
+    +   '<div id="dp-pr-stage" class="dp-pr-stage"><div class="dp-pr-empty">Loading…</div></div>'
+    + '</div>';
+}
 
-    // Deeper study CTA — kept as its own card so it has clear standalone
-    // emphasis rather than competing with the drill picker.
-    + '<div class="dp-study-card dp-pr-deep" data-study="practice">'
-    +   '<div class="dp-pr-deep-eyebrow">Want more depth?</div>'
-    +   '<div class="dp-pr-deep-title">Study this in the Study Room</div>'
+// Linear practice flow:
+//   - convPracticeStart(key): point #dp-pr-stage at a fresh drill mount
+//     div (#dp-pr-<key>) and call the drill's start* function. The
+//     start handlers were already targeting #dp-pr-<key>, so they
+//     don't need to know about the linear flow at all.
+//   - convPracticeAdvance(): called by each drill at completion.
+//     Marks current drill done, walks the queue to the next one, and
+//     auto-fires its starter. Last drill → swap stage to the
+//     "Open in Study Room" CTA so the user has one obvious next step.
+function convPracticeStart(key) {
+  if (!key) return;
+  var stage = document.getElementById('dp-pr-stage');
+  if (!stage) return;
+  window._convPracticeActive = key;
+  stage.innerHTML = '<div id="dp-pr-' + key + '"></div>';
+  // Update progress dots.
+  document.querySelectorAll('.dp-pr-step').forEach(function(el) {
+    var label = el.getAttribute('title') || '';
+    el.classList.remove('is-active');
+    var matched = false;
+    _CONV_PRACTICE_DRILLS.forEach(function(d) {
+      if (d.label === label) {
+        if (d.key === key) { el.classList.add('is-active'); matched = true; }
+        if (window._convPracticeDone[d.key]) el.classList.add('is-done');
+      }
+    });
+    void matched;
+  });
+  if (typeof lucide !== 'undefined' && lucide.createIcons) { try { lucide.createIcons(); } catch(_) {} }
+  // Find drill meta + invoke its start function.
+  var meta = _CONV_PRACTICE_DRILLS.find(function(d){ return d.key === key; });
+  if (meta && typeof window[meta.starter] === 'function') {
+    try { window[meta.starter](); } catch(e) { console.warn('[conv-practice] start failed', e); }
+  }
+}
+
+function convPracticeAdvance() {
+  var queue = window._convPracticeQueue || [];
+  var current = window._convPracticeActive;
+  window._convPracticeDone[current] = true;
+  var idx = queue.indexOf(current);
+  var next = idx >= 0 ? queue[idx + 1] : null;
+  if (next) {
+    convPracticeStart(next);
+  } else {
+    convPracticeShowStudyRoomCTA();
+  }
+}
+
+function convPracticeShowStudyRoomCTA() {
+  var stage = document.getElementById('dp-pr-stage');
+  if (!stage) return;
+  // Mark every step done so the strip reads as fully-checked.
+  document.querySelectorAll('.dp-pr-step').forEach(function(el) {
+    el.classList.add('is-done');
+    el.classList.remove('is-active');
+  });
+  stage.innerHTML =
+      '<div class="dp-pr-deep" style="border:none;padding:8px 0">'
+    +   '<div class="dp-pr-deep-eyebrow">All practice drills done 🎉</div>'
+    +   '<div class="dp-pr-deep-title">Now go deeper in the Study Room</div>'
     +   '<div class="dp-pr-deep-sub">A 4-step guided flow — dialogue + flashcards + choose-response + sentence build.</div>'
     +   '<button class="dp-pr-deep-btn" onclick="goToStudyRoomConv()">Open in Study Room →</button>'
     + '</div>';
 }
 
-// Picker handler — swap which drill stage is visible without
-// re-rendering the whole panel (preserves any in-progress drill state
-// the user might come back to). Persisted on window so re-renders
-// (e.g. tab switches that re-build the practice section) restore it.
-function setConvPracticeActive(key) {
-  window._convPracticeActive = key;
-  document.querySelectorAll('.dp-pr-tab').forEach(function(b) {
-    b.classList.toggle('is-active', b.getAttribute('onclick').indexOf("'" + key + "'") !== -1);
-  });
-  document.querySelectorAll('.dp-pr-stage').forEach(function(s) {
-    s.style.display = s.getAttribute('data-drill') === key ? '' : 'none';
-  });
-  if (typeof lucide !== 'undefined' && lucide.createIcons) {
-    try { lucide.createIcons(); } catch(_) {}
-  }
+// First drill auto-fires after the practice card is rendered. Hook
+// this in the same path that builds the conv detail panel.
+function convPracticeAutoStart() {
+  var first = (window._convPracticeQueue || [])[0];
+  if (first) convPracticeStart(first);
 }
 
 function goToStudyRoomConv() {
@@ -1510,7 +1587,9 @@ function _emRender() {
     +   '<div class="dp-pr-em-col">' + leftHTML + '</div>'
     +   '<div class="dp-pr-em-col">' + rightHTML + '</div>'
     + '</div>'
-    + (done === total ? '<button class="dp-pr-start" onclick="startExpressionMatch()">Play again</button>' : '');
+    + (done === total
+        ? '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="dp-pr-start dp-pr-secondary" onclick="startExpressionMatch()">Play again</button><button class="dp-pr-start" onclick="convPracticeAdvance()">Next drill →</button></div>'
+        : '');
 }
 window._emPick = function(side, slot) {
   var s = _emState; if (!s) return;
@@ -1581,7 +1660,7 @@ function _vicRender() {
   var box = document.getElementById('dp-pr-vic'); if (!box) return;
   if (s.idx >= s.rounds.length) {
     box.innerHTML = '<div class="dp-pr-done">Done — ' + s.correct + ' / ' + s.rounds.length + ' correct</div>'
-      + '<button class="dp-pr-start" onclick="startVocabInContext()">Try again</button>';
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="dp-pr-start dp-pr-secondary" onclick="startVocabInContext()">Try again</button><button class="dp-pr-start" onclick="convPracticeAdvance()">Next drill →</button></div>';
     return;
   }
   var r = s.rounds[s.idx];
@@ -1648,7 +1727,7 @@ function _rcRender() {
   var box = document.getElementById('dp-pr-rc'); if (!box) return;
   if (s.idx >= s.rounds.length) {
     box.innerHTML = '<div class="dp-pr-done">Done — ' + s.correct + ' / ' + s.rounds.length + ' correct</div>'
-      + '<button class="dp-pr-start" onclick="startReplyCheck()">Try again</button>';
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="dp-pr-start dp-pr-secondary" onclick="startReplyCheck()">Try again</button><button class="dp-pr-start" onclick="convPracticeAdvance()">Next drill →</button></div>';
     return;
   }
   var r = s.rounds[s.idx];
@@ -1750,7 +1829,7 @@ function _cqRender() {
     host.innerHTML = '<div class="dp-pr-result">'
       + '<div class="dp-pr-result-score">' + s.correct + ' / ' + s.qs.length + '</div>'
       + '<div class="dp-pr-result-sub">Comprehension complete</div>'
-      + '<button class="dp-pr-start" onclick="startComprehensionQuiz()" style="margin-top:10px">Try again</button>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px"><button class="dp-pr-start dp-pr-secondary" onclick="startComprehensionQuiz()">Try again</button><button class="dp-pr-start" onclick="convPracticeAdvance()">Next drill →</button></div>'
       + '</div>';
     return;
   }
@@ -1895,9 +1974,12 @@ function _sbCheck() {
   var ok = ans.join(' ') === s.original.join(' ');
   var fb = document.getElementById('dp-pr-build-fb');
   if (fb) {
-    fb.innerHTML = ok
+    fb.innerHTML = (ok
       ? '<div class="dp-pr-q-fb is-right"><b>완벽해요!</b> ' + escapeHtml(s.original.join(' ')) + '</div>'
-      : '<div class="dp-pr-q-fb is-wrong"><b>다시 한번.</b> 정답: ' + escapeHtml(s.original.join(' ')) + '</div>';
+      : '<div class="dp-pr-q-fb is-wrong"><b>다시 한번.</b> 정답: ' + escapeHtml(s.original.join(' ')) + '</div>')
+      // Always offer "Next" so the user isn't stranded; on wrong, they
+      // can retry with Reset (button above) or move on.
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="dp-pr-start" onclick="convPracticeAdvance()">Next drill →</button></div>';
   }
   if (ok) {
     try { if (typeof ttsSpeak === 'function') ttsSpeak(s.original.join(' ')); } catch(_) {}
