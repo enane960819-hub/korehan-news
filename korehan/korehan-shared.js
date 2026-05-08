@@ -3356,8 +3356,9 @@ function closeSentPanel() {
   document.querySelectorAll('.art-sent-panel').forEach(function(p){ p.remove(); });
   document.querySelectorAll('.art-sent.active').forEach(function(s){ s.classList.remove('active'); });
 }
-function _khRenderSentPanel(panel, data) {
-  var html = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>';
+function _khRenderSentPanel(panel, data, closer) {
+  var closeFn = closer || 'closeSentPanel()';
+  var html = '<button class="asp-close" onclick="' + closeFn + '" aria-label="Close">×</button>';
   if (data && data.translation) {
     html += '<div class="asp-section-title">English</div>'
          + '<div class="asp-trans">' + escapeHTML(data.translation) + '</div>';
@@ -3591,6 +3592,287 @@ async function analyzeSentence(idx, el) {
     if (/unauthor|sign/i.test(msg)) msg = '로그인이 필요합니다';
     panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
       + '<div class="asp-error">분석 실패: ' + escapeHTML(msg) + '</div>';
+  }
+}
+
+// ── Per-bubble click-to-analyze for conversations ──────────────
+// Mirrors the article reader's tap-to-analyze: tapping a chat bubble
+// opens a panel showing English translation, key vocab, and grammar
+// for that single line. Cache layout matches articles (article_cache
+// kv schema with content_type='conversation') so the same admin tools
+// can pre-warm both. Reuses _khRenderSentPanel + .art-sent-panel CSS.
+window._khConvSentSharedCache = window._khConvSentSharedCache || {};
+window._khConvFullAnalyzeRunning = window._khConvFullAnalyzeRunning || {};
+
+async function _khLoadConvSentenceCache(convId) {
+  if (!convId) return null;
+  if (window._khConvSentSharedCache[convId] !== undefined) {
+    return window._khConvSentSharedCache[convId];
+  }
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) { window._khConvSentSharedCache[convId] = null; return null; }
+  function _parseMsgs(raw) {
+    if (raw == null) return null;
+    var obj;
+    if (typeof raw === 'object') obj = raw;
+    else if (typeof raw === 'string') {
+      try { obj = JSON.parse(raw); } catch(_) { return null; }
+    } else return null;
+    return (obj && Array.isArray(obj.messages) && obj.messages.length) ? obj.messages : null;
+  }
+  try {
+    var kv = await sb.from('article_cache')
+      .select('cache_value')
+      .eq('content_type', 'conversation')
+      .eq('content_id', String(convId))
+      .eq('cache_key', 'sentence_analysis')
+      .maybeSingle();
+    if (!kv.error && kv.data) {
+      var msgs = _parseMsgs(kv.data.cache_value);
+      if (msgs) {
+        window._khConvSentSharedCache[convId] = { messages: msgs };
+        return window._khConvSentSharedCache[convId];
+      }
+    }
+  } catch(_) {}
+  window._khConvSentSharedCache[convId] = null;
+  return null;
+}
+
+function _khConvLevelLabel(lvl) {
+  return ({
+    s: 'Seed (TOPIK 1, complete beginner)',
+    b: 'Sprout (TOPIK 2, beginner)',
+    i: 'Tree (TOPIK 3-4, intermediate)',
+    a: 'Forest (TOPIK 5-6, advanced)'
+  })[lvl] || 'Sprout (TOPIK 2, beginner)';
+}
+
+async function _khTriggerFullConvAnalyze(convId) {
+  if (!convId) return;
+  if (window._khConvFullAnalyzeRunning[convId]) return;
+  var lockKey = 'kh_convfull_running_' + convId;
+  try { if (sessionStorage.getItem(lockKey)) return; } catch(_) {}
+  window._khConvFullAnalyzeRunning[convId] = true;
+  try { sessionStorage.setItem(lockKey, '1'); } catch(_) {}
+
+  try {
+    var c = window._currentConv;
+    if (!c || !c.msgs || String(c._id || '') !== String(convId)) return;
+    var sentences = [];
+    c.msgs.forEach(function(m, i) {
+      if (!m || m.s === 'n') return; // skip narration
+      var t = (m.txt || '').trim();
+      if (t) sentences.push({ idx: i, text: t });
+    });
+    if (!sentences.length) return;
+    if (typeof callClaude !== 'function') return;
+
+    var _levelLabel = _khConvLevelLabel(c.lvl);
+    var payload = sentences.map(function(s, i){ return (i + 1) + '. ' + s.text; }).join('\n');
+    var prompt =
+        'You are a Korean tutor analysing each line of a casual conversation for a ' + _levelLabel + ' learner.\n\n'
+      + 'Lines (numbered, in order):\n' + payload + '\n\n'
+      + 'Return ONLY a JSON object — no preamble, no code fences:\n'
+      + '{ "lines": [\n'
+      + '  { "translation": "natural English of line 1",\n'
+      + '    "vocab":   [{"ko":"<dictionary form>","en":"<short meaning>","note":"<optional 1-line>"}],\n'
+      + '    "grammar": [{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English>","example_in_sentence":"<chunk from line>"}]\n'
+      + '  }, ... one entry per input line, same order ...\n'
+      + ']}\n\n'
+      + 'Rules:\n'
+      + '- TRANSLATION: natural conversational English. Preserve original speakers/subjects — do NOT inject "I/we" if Korean omitted them.\n'
+      + '- VOCAB: max 3 per line. Skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone).\n'
+      + '- GRAMMAR: max 2 per line. Skip if just a noun phrase. Don\'t pick patterns that are just a vocab word\'s conjugation.\n'
+      + '- Return EXACTLY ' + sentences.length + ' entries in lines[].';
+    var res = await callClaude({
+      feature: 'conv-sentence-analyze-bulk',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: Math.min(8000, 250 * sentences.length + 600),
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('JSON not found');
+    var parsed = JSON.parse(clean.slice(oi, ei + 1));
+    var arr = parsed && Array.isArray(parsed.lines) ? parsed.lines : null;
+    if (!arr || !arr.length) throw new Error('empty lines[]');
+
+    var stitched = sentences.map(function(s, i) {
+      var a = arr[i] || {};
+      return {
+        idx: s.idx,
+        text: s.text,
+        translation: a.translation || '',
+        vocab: Array.isArray(a.vocab) ? a.vocab : [],
+        grammar: Array.isArray(a.grammar) ? a.grammar : []
+      };
+    });
+
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (sb) {
+      try {
+        await sb.from('article_cache').upsert(
+          { content_type: 'conversation', content_id: String(convId), cache_key: 'sentence_analysis', cache_value: JSON.stringify({ messages: stitched }) },
+          { onConflict: 'content_type,content_id,cache_key' }
+        );
+      } catch(e) { console.warn('[conv-sent-bg] persist failed:', e); }
+    }
+    window._khConvSentSharedCache[convId] = { messages: stitched };
+    console.log('[conv-sent-bg] cached ' + stitched.length + ' lines for conv ' + convId);
+  } catch(err) {
+    console.warn('[conv-sent-bg] failed:', err && err.message || err);
+  } finally {
+    window._khConvFullAnalyzeRunning[convId] = false;
+    try { sessionStorage.removeItem(lockKey); } catch(_) {}
+  }
+}
+
+function closeConvSentPanel() {
+  document.querySelectorAll('.conv-sent-panel').forEach(function(p){ p.remove(); });
+  document.querySelectorAll('.dp-bubble.conv-sent-active').forEach(function(b){ b.classList.remove('conv-sent-active'); });
+}
+
+async function analyzeConvBubble(convId, msgIdx, el) {
+  if (!el) return;
+  var bubbleRow = el.parentElement;            // .dp-bubble-row
+  var group = bubbleRow && bubbleRow.parentElement; // .dp-bubble-group
+  if (!group) return;
+
+  // Tapping the same active bubble closes the panel.
+  var existingPanel = group.querySelector(':scope > .conv-sent-panel');
+  if (existingPanel) {
+    existingPanel.remove();
+    el.classList.remove('conv-sent-active');
+    return;
+  }
+  closeConvSentPanel();
+  el.classList.add('conv-sent-active');
+
+  // Hide the legacy quick-translation div (it's a strict subset of the
+  // analysis panel's translation, so keeping both visible is noise).
+  var legacyEn = group.querySelector(':scope > .dp-bubble-en');
+  if (legacyEn) legacyEn.classList.remove('show');
+
+  var sentenceText = (el.textContent || '').trim();
+  if (!sentenceText) { el.classList.remove('conv-sent-active'); return; }
+
+  if (typeof khTrackUser === 'function') {
+    try {
+      khTrackUser('conv_sentence_analyze', {
+        conv_id: convId || null,
+        idx: msgIdx,
+        sentence_len: sentenceText.length,
+      });
+    } catch(_) {}
+  }
+
+  var panel = document.createElement('div');
+  panel.className = 'art-sent-panel conv-sent-panel';
+  panel.dataset.msgIdx = String(msgIdx);
+  panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
+    + '<div class="asp-loading">분석 중</div>';
+  // Insert as sibling after .dp-bubble-row, before .dp-bubble-en / .dp-time.
+  if (bubbleRow.nextSibling) group.insertBefore(panel, bubbleRow.nextSibling);
+  else group.appendChild(panel);
+
+  var cacheKey = 'csa_' + (convId || 'noid') + '_' + msgIdx;
+
+  if (window._khSentAnalyzeCache[cacheKey]) {
+    _khRenderSentPanel(panel, window._khSentAnalyzeCache[cacheKey], 'closeConvSentPanel()');
+    return;
+  }
+  try {
+    var stored = sessionStorage.getItem(cacheKey);
+    if (stored) {
+      var parsedStored = JSON.parse(stored);
+      window._khSentAnalyzeCache[cacheKey] = parsedStored;
+      _khRenderSentPanel(panel, parsedStored, 'closeConvSentPanel()');
+      return;
+    }
+  } catch(_) {}
+
+  // Pre-generated shared cache (article_cache row).
+  var sharedCache = null;
+  try {
+    sharedCache = await _khLoadConvSentenceCache(convId);
+    if (sharedCache && sharedCache.messages) {
+      var hit = sharedCache.messages.find(function(m){ return m && m.idx === msgIdx; });
+      if (!hit || (hit.text || '').trim() !== sentenceText) {
+        hit = sharedCache.messages.find(function(m){ return m && (m.text || '').trim() === sentenceText; });
+      }
+      if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length))) {
+        window._khSentAnalyzeCache[cacheKey] = hit;
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
+        _khRenderSentPanel(panel, hit, 'closeConvSentPanel()');
+        return;
+      }
+    }
+  } catch(_) {}
+
+  // Anonymous gate — same as articles. Pre-cached lines are free, live
+  // calls require sign-in to keep the Claude budget under control.
+  if (typeof supaUser === 'undefined' || !supaUser) {
+    panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
+      + '<div class="asp-signin" style="padding:18px 16px;text-align:center">'
+      +   '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:6px">Sign in to analyze new lines</div>'
+      +   '<div style="font-size:12px;color:#475569;line-height:1.55;margin-bottom:14px">Pre-analyzed lines are open to everyone. Live AI breakdowns of fresh lines need an account.</div>'
+      +   '<button onclick="closeConvSentPanel();if(typeof openAuthModal===\'function\')openAuthModal(\'signin\')" style="padding:9px 18px;border-radius:999px;border:0;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 16px rgba(30,58,138,.32)">Sign in — Free</button>'
+      + '</div>';
+    return;
+  }
+
+  // First reader on a never-analyzed conversation triggers a background
+  // bulk pass so subsequent taps (and other readers) hit the cache.
+  if (convId && (!sharedCache || !sharedCache.messages || !sharedCache.messages.length)) {
+    try { _khTriggerFullConvAnalyze(convId); } catch(_) {}
+  }
+
+  if (typeof callClaude !== 'function') {
+    panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
+      + '<div class="asp-error">분석 기능을 불러올 수 없습니다.</div>';
+    return;
+  }
+
+  try {
+    var c = window._currentConv;
+    var _levelLabel = _khConvLevelLabel(c && c.lvl);
+    var prompt =
+        'You are a Korean tutor analysing a single line of a casual conversation for a ' + _levelLabel + ' learner.\n\n'
+      + 'Line: ' + sentenceText + '\n\n'
+      + 'Return ONLY a JSON object with this shape (no preamble, no code fences):\n'
+      + '{\n'
+      + '  "translation": "natural English translation of the whole line",\n'
+      + '  "vocab": [{"ko":"<word in dictionary form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],\n'
+      + '  "grammar": [{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<the chunk from the line that uses this pattern>"}]\n'
+      + '}\n\n'
+      + 'Rules:\n'
+      + '- TRANSLATION: natural conversational English. PRESERVE the original subject — do NOT inject "I/we" if Korean omitted it.\n'
+      + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔).\n'
+      + '- VOCAB: max 3 items. Skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone).\n'
+      + '- GRAMMAR: max 2 patterns. Skip if just a noun phrase. Don\'t pick a pattern that\'s just the conjugation of a vocab word.\n'
+      + '- If two patterns stack on the same verb, pick ONLY the more learner-relevant one.\n'
+      + '- Output JSON only.';
+    var res = await callClaude({
+      feature: 'conv-sentence-analyze',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('JSON 응답을 찾을 수 없습니다');
+    var data = JSON.parse(clean.slice(oi, ei + 1));
+    window._khSentAnalyzeCache[cacheKey] = data;
+    try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch(_) {}
+    _khRenderSentPanel(panel, data, 'closeConvSentPanel()');
+  } catch(err) {
+    var emsg = (err && err.message) || 'unknown';
+    if (/unauthor|sign/i.test(emsg)) emsg = '로그인이 필요합니다';
+    panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
+      + '<div class="asp-error">분석 실패: ' + escapeHTML(emsg) + '</div>';
   }
 }
 

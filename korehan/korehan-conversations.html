@@ -1083,13 +1083,15 @@ async function openDetail(idx) {
     // _khPhraseSavedSet cache (loaded in openDetail) so re-renders
     // get the right ★/☆ state without re-querying.
     var saveOn = (typeof khPhraseIsSaved === 'function' && c._id != null) && khPhraseIsSaved(c._id, i);
-    var saveBtn = '<button class="dp-bubble-save' + (saveOn ? ' is-saved' : '') + '" onclick="event.stopPropagation();khPhraseSaveToggle(\'' + String(c._id || '').replace(/'/g,"\\'") + '\', ' + i + ', this)" aria-label="Save phrase" title="Save phrase">' + (saveOn ? '★' : '☆') + '</button>';
+    var convIdJs = String(c._id || '').replace(/'/g,"\\'");
+    var saveBtn = '<button class="dp-bubble-save' + (saveOn ? ' is-saved' : '') + '" onclick="event.stopPropagation();khPhraseSaveToggle(\'' + convIdJs + '\', ' + i + ', this)" aria-label="Save phrase" title="Save phrase">' + (saveOn ? '★' : '☆') + '</button>';
+    var bubbleClick = 'analyzeConvBubble(\'' + convIdJs + '\', ' + i + ', this)';
     if (msg.s === 'l') {
       return '<div class="dp-msg-row left" data-msg-idx="'+i+'">'
         + renderCharacterAvatar(cast.left, '', 36)
         +'<div class="dp-bubble-group">'
           +'<div class="dp-who">'+escapeHtml(msg.who || cast.left.name_ko || cast.left.name || '')+'</div>'
-          +'<div class="dp-bubble-row"><div class="dp-bubble" onclick="toggleBubbleEn(this)">'+highlightKeyExprs(msg.txt || '', _keyExprs)+'</div>'+saveBtn+'</div>'
+          +'<div class="dp-bubble-row"><div class="dp-bubble" onclick="'+bubbleClick+'">'+highlightKeyExprs(msg.txt || '', _keyExprs)+'</div>'+saveBtn+'</div>'
           +(enNote ? '<div class="dp-bubble-en">'+escapeHtml(enNote)+'</div>' : '')
           +'<div class="dp-time">'+time+'</div>'
         +'</div></div>';
@@ -1097,7 +1099,7 @@ async function openDetail(idx) {
       return '<div class="dp-msg-row right" data-msg-idx="'+i+'">'
         +'<div class="dp-bubble-group">'
           +'<div class="dp-who">'+escapeHtml(msg.who || cast.right.name_ko || cast.right.name || '')+'</div>'
-          +'<div class="dp-bubble-row dp-bubble-row-right">'+saveBtn+'<div class="dp-bubble" onclick="toggleBubbleEn(this)">'+highlightKeyExprs(msg.txt || '', _keyExprs)+'</div></div>'
+          +'<div class="dp-bubble-row dp-bubble-row-right">'+saveBtn+'<div class="dp-bubble" onclick="'+bubbleClick+'">'+highlightKeyExprs(msg.txt || '', _keyExprs)+'</div></div>'
           +(enNote ? '<div class="dp-bubble-en">'+escapeHtml(enNote)+'</div>' : '')
           +'<div class="dp-time">'+time+'</div>'
         +'</div>'
@@ -1299,52 +1301,6 @@ function _restoreConvMobileTab() {
   if (!saved || ['read','analysis','practice'].indexOf(saved) === -1) return;
   if (saved === 'read') return;
   switchConvMobileTab(saved, { skipPersist: true });
-}
-
-// ── Bubble click → toggle English translation ──
-// Markup tree:
-//   .dp-msg-row > .dp-bubble-group
-//     ├ .dp-who
-//     ├ .dp-bubble-row > .dp-bubble (clicked) + .dp-bubble-save
-//     └ .dp-bubble-en   ← target sits here (sibling of the row)
-// The original implementation looked at bubbleEl.parentElement
-// (= .dp-bubble-row), which never contained .dp-bubble-en — so the
-// pre-rendered translation never showed and the AI fallback ran on
-// every click, inserting the translation INSIDE the row (next to
-// the save button) instead of underneath it.
-function toggleBubbleEn(bubbleEl) {
-  var row = bubbleEl.parentElement;            // .dp-bubble-row
-  var group = row && row.parentElement;        // .dp-bubble-group
-  if (!group) return;
-  var en = group.querySelector(':scope > .dp-bubble-en');
-  if (en) { en.classList.toggle('show'); return; }
-  // No pre-rendered translation — fetch via Claude and append below
-  // the bubble row, as a sibling of .dp-bubble-row (so left/right
-  // alignment + the .dp-msg-row.right text-align CSS still apply).
-  var txt = bubbleEl.textContent.trim();
-  if (!txt) return;
-  // Auth gate — anonymous bubble taps used to fall straight through
-  // to a Claude call. A scraper opening the conv reader page could
-  // tap every bubble and burn the daily quota. Keep pre-rendered
-  // EN translations free, but new live translations require sign-in.
-  if (typeof supaUser === 'undefined' || !supaUser) {
-    var div = document.createElement('div');
-    div.className = 'dp-bubble-en show';
-    div.style.cssText = 'background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.18);border-radius:8px;padding:8px 11px;font-size:12px;color:#1d4ed8;cursor:pointer';
-    div.textContent = 'Sign in to translate this line →';
-    div.addEventListener('click', function(){ if (typeof openAuthModal === 'function') openAuthModal('signin'); });
-    if (row.nextSibling) group.insertBefore(div, row.nextSibling);
-    else group.appendChild(div);
-    return;
-  }
-  var div = document.createElement('div');
-  div.className = 'dp-bubble-en show';
-  div.textContent = 'Translating...';
-  if (row.nextSibling) group.insertBefore(div, row.nextSibling);
-  else group.appendChild(div);
-  callClaude({feature:'conv-translate',model:'claude-haiku-4-5-20251001',max_tokens:100,messages:[{role:'user',content:'Translate this Korean to natural English. Return ONLY the translation, nothing else:\n'+txt}]})
-    .then(function(r){ div.textContent=(r.content||[]).map(function(c){return c.text||'';}).join('').trim()||txt; })
-    .catch(function(){ div.textContent='(Translation unavailable)'; });
 }
 
 // ── Admin: vocab/grammar CRUD ──
