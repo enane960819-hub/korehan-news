@@ -2608,23 +2608,36 @@ async function renderAllPage() {
   window._allArticlesCache = articles;
 
   if (searchQ) {
-    // Server-side ilike across title/body/full. The bulk All News fetch
-    // no longer ships body text, so we can't filter locally — but
-    // on-demand search is more accurate anyway since it hits ALL
-    // articles, not just the 1000 we cached.
+    // Server-side ilike across title/body/section. The bulk All News
+    // fetch no longer ships body text, so we can't filter locally for
+    // body — but on-demand server search is more accurate anyway since
+    // it hits ALL articles, not just the 1000 we cached.
     listEl.innerHTML = '<div style="padding:60px;text-align:center;color:#94a3b8">Searching…</div>';
     var serverHits = [];
     try { serverHits = await searchArticlesServer(searchQ, 200); } catch(e) {}
+    var lq = searchQ.toLowerCase();
+    // English-title search.
+    // Translated titles live in localStorage (kh_title_en_<id>)
+    // because the articles table doesn't have a title_en column. The
+    // server-side ilike therefore can't match English queries against
+    // articles whose body is Korean — "india" returned 0 hits even
+    // though "1895 photo of Patna, India" was sitting cached on
+    // device. Hydrate title_en from localStorage and intersect
+    // client-side so English search works against translated cards.
+    try { _khHydrateTitlesEnFromCache(articles); } catch(_) {}
+    var localTitleEnHits = articles.filter(function(a) {
+      if (!a || !a.title_en) return false;
+      return String(a.title_en).toLowerCase().indexOf(lq) !== -1;
+    });
     // Section-key match (e.g. "tech" → beauty key) doesn't fit ilike
     // so we still augment with locally cached articles whose section
     // key matches the query.
-    var lq = searchQ.toLowerCase();
     var localKeyHits = articles.filter(function(a) {
       var sk = (typeof getSectionKey === 'function') ? String(getSectionKey(a.section) || '') : '';
       return sk && sk.toLowerCase().indexOf(lq) !== -1;
     });
     var seen = {};
-    articles = serverHits.concat(localKeyHits).filter(function(a) {
+    articles = serverHits.concat(localTitleEnHits).concat(localKeyHits).filter(function(a) {
       if (!a || !a.id || seen[a.id]) return false;
       seen[a.id] = true;
       return true;
@@ -3125,12 +3138,36 @@ function _khWrapSentences(paragraph) {
       var st = s.trim();
       if (!st) return '';
       var idx = _khSentCounter++;
-      return '<span class="art-sent" data-sent-idx="' + idx + '" onclick="analyzeSentence(' + idx + ',this)">' + st + '</span>';
+      return '<span class="art-sent" data-sent-idx="' + idx + '" role="button" tabindex="0">' + st + '</span>';
     }).filter(Boolean).join(' ');
     out.push(rendered);
   });
   return out.join('');
 }
+
+// Document-level delegate for sentence taps. Bound once per session
+// (window._khSentTapDelegateBound). Replaces the per-span inline
+// onclick that occasionally failed to fire on Samsung Internet when a
+// touchend landed on a child .kh-hover-word — the user reported the
+// symptom as "기사 본문 클릭해도 무반응" (no panel + no word hover).
+// Listening at document level means a click bubbling from ANY
+// descendant of .art-sent (including hover words and edit-mode wraps)
+// reaches analyzeSentence reliably.
+(function _khInstallSentTapDelegate() {
+  if (typeof document === 'undefined') return;
+  if (window._khSentTapDelegateBound) return;
+  window._khSentTapDelegateBound = true;
+  document.addEventListener('click', function(e) {
+    if (!e.target || !e.target.closest) return;
+    if (e.target.closest('.art-sent-panel')) return; // close/x lives there
+    var sent = e.target.closest('.art-sent');
+    if (!sent) return;
+    if (typeof analyzeSentence !== 'function') return;
+    var idx = parseInt(sent.dataset.sentIdx, 10);
+    if (isNaN(idx)) return;
+    analyzeSentence(idx, sent);
+  });
+})();
 
 function formatArticleBody(text) {
   if (!text) return '';
