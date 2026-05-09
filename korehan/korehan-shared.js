@@ -6152,6 +6152,40 @@ async function saveVocabToDB(word, rom, en, isDelete) {
     }
   });
   if (res && res.error) throw new Error(res.error.message || res.error);
+  // Verify-after-write — the recurring complaint has been "added,
+  // refreshed, gone". Even routing through admin-api with
+  // service_role doesn't preclude a column / constraint surprise
+  // (e.g. NOT NULL user_id added later, schema cache not reloaded
+  // by PostgREST so the upsert silently lands without is_active,
+  // or the row landing under a different word_key than what
+  // loadVocabFromDB queries for). Read the row back through the
+  // public read path so we see exactly what the next page load
+  // will see. If the row isn't there, throw — the modal surfaces
+  // the message instead of pretending the save worked.
+  try {
+    var verify = await khAdminApi({
+      action: 'db',
+      table: 'vocabulary_bank',
+      method: 'select',
+      params: {
+        columns: 'word_key,word_ko,word_en,is_active',
+        eq: [{ col: 'word_key', val: word }],
+        limit: 1,
+      }
+    });
+    var rows = (verify && verify.data) || (Array.isArray(verify) ? verify : null);
+    var row = Array.isArray(rows) ? rows[0] : rows;
+    if (!row || !row.word_key) {
+      throw new Error('Saved but verify read returned no row — check vocabulary_bank constraints (likely missing NOT NULL column).');
+    }
+    if (row.is_active === false) {
+      throw new Error('Saved but is_active landed false — check default/trigger on vocabulary_bank.');
+    }
+  } catch (verifyErr) {
+    // Re-throw so the modal surfaces the real cause. We deliberately
+    // don't swallow — silent success is what got us here.
+    throw verifyErr;
+  }
 }
 
 function wrapVocab(el) {
