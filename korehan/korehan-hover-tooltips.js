@@ -199,19 +199,51 @@
     try {
       var client = getSb();
       if (!client) return;
-      var res = await client
-        .from('hover_vocab_master')
-        .select('word_ko, meaning_en, reading, note, is_active, sort_order')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true })
-        .order('word_ko', { ascending: true });
-
-      vocabList = (res.data || []).filter(function(x){
-        // Require a meaning AND at least 2 characters — 1-char entries are
-        // usually particles/morphemes that would match inside compound words
-        // and produce the "한글자씩" highlighting problem.
-        return x.word_ko && x.meaning_en && x.word_ko.length >= 2;
+      // Lookup pool unions hover_vocab_master + vocabulary_bank.
+      // hover_vocab_master is the big general dictionary; vocabulary_bank
+      // is the curated learning pool (admin Vocab Bank, daily-vocab
+      // assignments). Previously only hover_vocab_master powered the
+      // article-body hover, so anything an admin added through Vocab
+      // Bank silently failed to underline. Pull both, dedupe by
+      // word_ko (hover_vocab_master wins on conflict — its meaning_en
+      // is usually shorter / more dictionary-clean).
+      var hoverRows = [];
+      var bankRows = [];
+      try {
+        var r1 = await client
+          .from('hover_vocab_master')
+          .select('word_ko, meaning_en, reading, note, is_active, sort_order')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('word_ko', { ascending: true });
+        hoverRows = r1.data || [];
+      } catch(_) {}
+      try {
+        var r2 = await client
+          .from('vocabulary_bank')
+          .select('word_ko, word_en, word_rom, is_active')
+          .eq('is_active', true);
+        bankRows = (r2.data || []).map(function(b) {
+          return {
+            word_ko: b.word_ko,
+            meaning_en: b.word_en,
+            reading: b.word_rom || '',
+            note: '',
+            is_active: true,
+            sort_order: 99999,
+          };
+        });
+      } catch(_) {}
+      var seen = {};
+      var merged = [];
+      hoverRows.concat(bankRows).forEach(function(x) {
+        if (!x || !x.word_ko || !x.meaning_en || x.word_ko.length < 2) return;
+        if (seen[x.word_ko]) return;
+        seen[x.word_ko] = true;
+        merged.push(x);
       });
+
+      vocabList = merged;
       vocabWords = vocabList.map(function(x){ return x.word_ko; }).sort(function(a,b){ return b.length - a.length; });
     } catch (e) {
       console.warn('hover vocab load failed', e);
