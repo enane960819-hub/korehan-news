@@ -1223,7 +1223,17 @@
             lblSprite.scale.set(lblW, lblH, 1);
             lblSprite.position.set(pos.x, pos.y - size * 0.8 - lblH * 0.55, pos.z);
             lblSprite.renderOrder = 1;
-            lblSprite.userData = { isLabel: true, forStarIdx: i };
+            // Marking the label as isStar with the SAME word/mastery/idx/
+            // category as its parent star lets raycaster + screen-space
+            // fallback both treat a label tap as a star tap. The user
+            // reported tapping on the word label did nothing — only
+            // hitting the tiny glow registered. Flagging the label
+            // sprite as pickable fixes that without forcing a separate
+            // pick-resolution branch downstream.
+            lblSprite.userData = {
+              isLabel: true, isStar: true,
+              forStarIdx: i, word: w, mastery: m, idx: i, category: cat,
+            };
             group.add(lblSprite);
           }
         }
@@ -1548,7 +1558,10 @@
     // because their billboard rect in NDC is tiny. Walk every star, project
     // to screen, pick the one closest to the tap within a generous radius.
     var nearest = null, nearestDist = Infinity;
-    var threshold = 48; // px
+    // 64 px — fingertip-friendly on mobile. The earlier 48 felt
+    // pixel-perfect; users were tapping right next to a label and
+    // landing in dead space.
+    var threshold = 64;
     var v = new THREE.Vector3();
     function checkChild(child) {
       if (!child.userData) return;
@@ -1603,9 +1616,17 @@
     if (sprite.material) sprite.material.opacity = 1;
     renderWordCard(sprite.userData.word, sprite.userData.mastery || 0);
     // Recenter the orbit target on the tapped star so subsequent zoom
-    // zooms into that star, not the galaxy origin.
+    // zooms into that star, not the galaxy origin. We deliberately
+    // shift the target DOWN in world-Y by ~22 % of the orbit radius
+    // — the .khu-card overlay covers the bottom ~280 px of the canvas
+    // (~30 % of a phone viewport), so centering the camera ON the
+    // sprite hides it behind the card. Pulling the target down moves
+    // the visual focus down too, which pushes the sprite into the
+    // upper half of the canvas where the user can actually see it.
+    // The user-reported "내가 선택한 단어가 안보임".
     var p = sprite.position;
-    animateTarget(p.x, p.y, p.z);
+    var cardOffset = state.cam.radius * 0.22;
+    animateTarget(p.x, p.y - cardOffset, p.z);
   }
 
   function clearSelection() {
