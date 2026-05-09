@@ -9393,7 +9393,6 @@ function setupFeedNavigation() {
     window._khFeedPillAutoHide = true;
     var _pillLastY = window.scrollY || 0;
     var _pillTicking = false;
-    var _pillIdleTimer = null;
     var _pillSetVisible = function(on) {
       var b = document.body;
       if (!b.classList.contains('kh-reading-page')) return;
@@ -9411,16 +9410,14 @@ function setupFeedNavigation() {
         var atBottom = y > maxY - 120;
         var dy = y - _pillLastY;
         _pillLastY = y;
-        // Hide while reading down, reveal on up. Edges always show
-        // so the learner can always reach Next from the bottom of the
-        // article, and Prev from the very top.
+        // Reveal only on intentional moves: scrolling UP (= done /
+        // heading back) or sitting near a page edge. Stopping
+        // mid-article does NOT bring the chrome back — the learner
+        // pointed out that the previous idle-reveal was distracting
+        // every time they paused to read a sentence.
         if (atTop || atBottom) _pillSetVisible(true);
         else if (dy > 4)       _pillSetVisible(false);
         else if (dy < -4)      _pillSetVisible(true);
-        // Idle reveal — if the learner stops scrolling, the chrome
-        // returns. Same idea as iOS Safari's URL bar.
-        if (_pillIdleTimer) clearTimeout(_pillIdleTimer);
-        _pillIdleTimer = setTimeout(function() { _pillSetVisible(true); }, 1500);
         _pillTicking = false;
       });
     };

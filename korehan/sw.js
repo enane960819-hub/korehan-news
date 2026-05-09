@@ -18,11 +18,11 @@
 // changes. Install event will build a fresh cache under the new name
 // and the activate event will delete stale caches.
 
-// v7: prev/next pill auto-hide handler shipped on 2026-05-09 evening,
-// but learners on the morning's v6 cache were still seeing the
-// always-visible chrome. Bumping to v7 wipes v6-* and forces a fresh
-// pull of korehan-shared.js so the new auto-hide takes effect.
-const CACHE_VERSION = 'kh-v7';
+// v8: drop the 1.5s idle reveal — when the learner stops scrolling
+// to read a sentence the chrome no longer pops back into view.
+// Bumping to v8 wipes v7-* so devices pick up the change.
+// 
+const CACHE_VERSION = 'kh-v8';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
