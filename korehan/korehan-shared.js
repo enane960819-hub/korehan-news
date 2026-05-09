@@ -2474,12 +2474,9 @@ var SECTION_ALIASES = {
   '사회':    ['사회','Society','society','Social','social'],
   '국제':    ['국제','World','world','International','international','Global','global'],
   '문화':    ['문화','Culture','culture','Entertainment','entertainment'],
-  '정치':    ['정치','Politics','politics'],
-  '경제':    ['경제','Economy','economy','Business','business'],
   'Korea':   ['Korea','korea','한국','Korean','korean'],
   '오피니언':['오피니언','Opinion','opinion'],
   'K-pop':   ['K-pop','Kpop','케이팝','kpop','k-pop'],
-  '스포츠':  ['스포츠','Sports','sports'],
   'beauty':  ['beauty','Beauty','뷰티','미용','라이프스타일','IT과학','tech','Tech'],
   'travel':  ['travel','Travel','여행','관광','trip'],
 };
@@ -6709,9 +6706,10 @@ var DEFAULT_SECTIONS = [
   { key:'국제',   label:'World',     icon:'<i data-lucide="globe" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:4 },
   { key:'문화',   label:'Culture',   icon:'<i data-lucide="palette" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:5 },
   { key:'K-pop',  label:'K-pop',     icon:'<i data-lucide="music" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:6 },
-  { key:'스포츠', label:'Sports',    icon:'<i data-lucide="trophy" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:7 },
   { key:'beauty', label:'Beauty',    icon:'<i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:8 },
   { key:'travel', label:'Travel',    icon:'<i data-lucide="plane" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:9 },
+  { key:'역사',   label:'History',   icon:'<i data-lucide="scroll" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:7 },
+  { key:'nature', label:'Nature',    icon:'<i data-lucide="leaf" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:8 },
   { key:'Korea',  label:'Korea',     icon:'<i data-lucide="flag" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:10 },
   { key:'오피니언',label:'Opinion',  icon:'<i data-lucide="pen-tool" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:11 },
 ];
@@ -6727,11 +6725,12 @@ var SECTION_ICON_LUCIDE = {
   '국제':   'globe',
   '문화':   'palette',
   'k-pop':  'music',
-  '스포츠': 'trophy',
   'beauty': 'sparkles',
   'travel': 'plane',
   'korea':  'flag',
   '오피니언': 'pen-tool',
+  '역사':   'scroll',
+  'nature': 'leaf',
 };
 function _khSectionLucideHtml(name) {
   return '<i data-lucide="' + name + '" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>';
@@ -7690,7 +7689,7 @@ var BADGE_DEFS = [
   { id:'read_allsec',cat:'reading',   tier:'diamond',  icon:pxBadge('target'), name:'All-Rounder',     desc:'Read from every section',
     check: function(){
       var sc = getSectionReadCounts();
-      var secs = ['사회','국제','문화','스포츠','Korea','beauty','travel','오피니언'];
+      var secs = ['사회','국제','문화','Korea','beauty','travel','오피니언','IT과학','역사','nature'];
       return secs.every(function(s){ return (sc[s]||0) >= 1; });
     } },
 
@@ -7725,8 +7724,6 @@ var BADGE_DEFS = [
     check: function(){ return (getSectionReadCounts()['국제']||0) >= 20; } },
   { id:'sec_culture', cat:'sections', tier:'gold', icon:pxBadge('flower'), name:'Culture Master', desc:'Read 20 Culture articles',
     check: function(){ return (getSectionReadCounts()['문화']||0) >= 20; } },
-  { id:'sec_sports',  cat:'sections', tier:'gold', icon:pxBadge('trophy'), name:'Sports Master',desc:'Read 20 Sports articles',
-    check: function(){ return (getSectionReadCounts()['스포츠']||0) >= 20; } },
   { id:'sec_korea',   cat:'sections', tier:'gold', icon:pxBadge('gift'), name:'Korea Master',desc:'Read 20 Korea articles',
     check: function(){ return (getSectionReadCounts()['Korea']||0) >= 20; } },
   { id:'sec_beauty',  cat:'sections', tier:'gold', icon:pxBadge('flower'), name:'Beauty Master',desc:'Read 20 Beauty articles',

@@ -80,7 +80,6 @@ a{color:inherit;text-decoration:none}
 .c사회{background:#e8eef7;color:#1a3a6b}
 .c국제{background:#f0e8f7;color:#5a1a7a}
 .c문화{background:#f7e8ee;color:#7a1a3a}
-.c스포츠{background:#e8f4f7;color:#1a5a7a}
 .cKorea{background:#fff0ec;color:#cc2200}
 .cK-pop{background:#f3e8ff;color:#6b21a8}
 .cbeauty{background:#fce7f3;color:#9d174d}
@@ -516,7 +515,6 @@ const SEED = [
   { id:'s10', section:'Korea',  status:'published', featured:false, date:'2026-03-02', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  title:'외국인 한국어 능력시험(TOPIK) 지원자 역대 최다 기록',             body:'2026년 TOPIK 시험 지원자 수가 역대 최고치를 기록하며 전 세계적인 한국어 학습 열풍을 실감케 했다.' },
   { id:'s11', section:'beauty', status:'published', featured:false, date:'2026-03-02', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', title:'국내 스킨케어 브랜드, 북미 시장 점유율 급상승',                    body:'한국 스킨케어 브랜드들이 북미 온라인 채널을 중심으로 판매를 확대하며 점유율을 빠르게 끌어올리고 있다.' },
   { id:'s12', section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',      title:'여야, 민생 안정 패키지 법안 처리 합의… 이번 주 본회의 통과 예정', body:'여야가 민생 안정 패키지 법안 처리에 합의하면서 이번 주 본회의 통과가 유력해졌다.' },
-  { id:'s13', section:'스포츠', status:'published', featured:false, date:'2026-03-02', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',      title:'손흥민, 챔피언스리그 결승 진출… 한국 선수 최초 기록 수립',       body:'손흥민이 챔피언스리그 결승에 진출하며 한국 선수 최초라는 역사적 기록을 세웠다.' },
   { id:'s14', section:'국제',   status:'published', featured:false, date:'2026-03-02', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',      title:'기후변화 대응 새 국제협약 서명… 한국 탄소중립 2045년 목표 발표', body:'새로운 국제 기후 협약이 서명되면서 한국은 탄소중립 목표 시점을 2045년으로 앞당겼다.' },
   { id:'s15', section:'사회',   status:'published', featured:false, date:'2026-03-02', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',      title:'수도권 광역급행철도 GTX-B 노선 2027년 개통 확정',                body:'GTX-B 노선이 2027년 개통을 목표로 공사가 마무리 단계에 접어들었다.' },
   { id:'s16', section:'문화',   status:'published', featured:false, date:'2026-03-02', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',    title:'넷플릭스 한국 오리지널 드라마, 전 세계 1위 달성',                body:'넷플릭스가 제작한 한국 오리지널 드라마가 공개 첫 주 전 세계 92개국에서 1위를 기록했다.' },
@@ -527,7 +525,6 @@ const SEED = [
   { id:'s21', section:'국제',   status:'published', featured:false, date:'2026-03-01', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',    title:'미국, 對中 반도체 수출 규제 추가 강화… 한국 기업 영향 촉각',      body:'미국 정부가 중국에 대한 첨단 반도체 및 장비 수출 규제를 추가로 강화했다. 삼성전자, SK하이닉스 등 한국 기업들의 대응에 관심이 쏠린다.' },
   { id:'s22', section:'국제',   status:'published', featured:false, date:'2026-03-01', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',    title:'일본, 독도 영유권 주장 또 반복… 외교부 강력 항의',               body:'일본 외무성이 연례 외교청서에서 독도를 일본 고유 영토라고 재차 주장했다. 우리 외교부는 즉각 주일 대사를 초치해 강력 항의했다.' },
   { id:'s23', section:'문화',   status:'published', featured:false, date:'2026-03-01', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',    title:'한국 영화 "새벽의 빛", 칸 영화제 경쟁 부문 초청 확정',           body:'한국 신예 감독 박지수의 장편 데뷔작 "새벽의 빛"이 칸 국제영화제 경쟁 부문에 공식 초청됐다. 한국 영화의 글로벌 위상을 다시 한번 확인시켰다.' },
-  { id:'s24', section:'스포츠', status:'published', featured:false, date:'2026-03-01', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',    title:'한국 야구 대표팀, 프리미어12 우승 기대감 고조',                  body:'WBC 4강 신화의 주역들이 대거 포함된 한국 야구 대표팀이 다음 달 열리는 프리미어12 준비에 박차를 가하고 있다.' },
   { id:'s25', section:'travel', status:'published', featured:false, date:'2026-03-01', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', title:'제주 직항 노선 확대… 봄 성수기 여행 수요 급증',                    body:'국내외 항공사가 제주 직항 노선을 늘리면서 봄 성수기 여행 예약이 지난해보다 큰 폭으로 증가했다.' },
   { id:'s26', section:'beauty', status:'published', featured:false, date:'2026-03-01', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', title:'K-뷰티 박람회 개막… 친환경 화장품 수출 상담 집중',                 body:'서울에서 열린 K-뷰티 박람회에서 친환경 화장품 브랜드들이 해외 바이어와 활발한 수출 상담을 진행했다.' },
   { id:'s27', section:'Korea',  status:'published', featured:false, date:'2026-03-01', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',    title:'제주 감귤 수확량 역대 최다… 올해 해외 수출도 사상 최고',          body:'올해 제주 감귤 생산량이 65만 톤으로 역대 최다를 기록했다. 동남아·미주 지역 수출도 크게 늘어 농가 소득 향상에 도움이 될 전망이다.' },
@@ -867,14 +864,13 @@ async function dbDeleteArticle(id) {
 var SECTION_REPORTER_MAP = {
   '사회'   : 'cr1',   // 박서진 — 기자
   '국제'   : 'cr2',   // 김지원 — 특파원
-  '경제'   : 'cr3',   // 이민준 — 에디터
   '문화'   : 'cr4',   // 최유나 — 기자
+  '역사'   : 'cr4',   // 역사 → 문화 reporter for now
+  'nature' : 'cr10',  // nature → 류하늘 (lifestyle)
   'K-pop'  : 'cr4',   // 최유나
   'Korea'  : 'cr4',   // 최유나
-  '정치'   : 'cr5',   // 정우성 — 선임기자
   'beauty' : 'cr6',   // 한소희 — 뷰티·트래블 에디터
   'travel' : 'cr10',  // 류하늘 — 문화·라이프 기자
-  '스포츠' : 'cr7',   // 오지훈 — 기자
   '오피니언': 'cr8',  // 신지은 — 사회·환경 전문기자
 };
 
@@ -915,7 +911,7 @@ dbLoadFromSupabase();
 // ══ COUNTS ══════════════════════════════════════════════════
 function refreshCounts(){
   document.getElementById('p-all').textContent = DB.length;
-  ['사회','국제','문화','K-pop','Korea','스포츠','beauty','travel','오피니언'].forEach(s=>{
+  ['사회','국제','문화','K-pop','Korea','beauty','travel','오피니언','IT과학'].forEach(s=>{
     const el=document.getElementById('p-'+s);
     if(el) el.textContent=DB.filter(a=>a.section===s).length;
   });
@@ -2424,11 +2420,8 @@ function saveOpinions(){
 var DEF_CHAR_REPORTERS = [
   { id:'cr1',  name:'박서진',   role:'기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'KoreHani 기자. 복잡한 사회 이슈를 쉬운 한국어로 전달합니다.',             personality:'친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.',    tone:'Friendly and approachable',  tags:['사회','오피니언'], profilePage:'', color:'#2563eb' },
   { id:'cr2',  name:'김지원',   role:'특파원',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'전 세계 뉴스를 한국어로 쉽게 풀어드립니다. 국제 정세 전문.',                          personality:'분석적이고 논리적. 데이터와 사실 중심.',               tone:'Analytical and precise',     tags:['국제','travel'],  profilePage:'', color:'#7c3aed' },
-  { id:'cr3',  name:'이민준',   role:'에디터',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'경제 지표와 금융 시장을 알기 쉽게 분석합니다. 10년 경력의 경제 전문 기자.',             personality:'명확하고 숫자 중심. 배경 설명을 충실히 합니다.',       tone:'Clear and data-driven',      tags:['경제'],           profilePage:'', color:'#059669' },
-  { id:'cr4',  name:'최유나',   role:'기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'K-팝, 영화, 드라마 등 한국 대중문화 전문 기자. 트렌드를 누구보다 빠르게 전달합니다.', personality:'활기차고 트렌디. 젊은 독자층을 고려합니다.',          tone:'Energetic and trendy',       tags:['문화','스포츠'],  profilePage:'', color:'#db2777' },
-  { id:'cr5',  name:'정우성',   role:'선임기자',   image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'국회와 청와대를 20년 취재한 정치 전문 기자. 깊이 있는 분석으로 독자의 신뢰를 받습니다.',personality:'신중하고 균형 잡힌 시각. 중립적 보도.',               tone:'Balanced and measured',      tags:['정치'],           profilePage:'', color:'#dc2626' },
+  { id:'cr4',  name:'최유나',   role:'기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'K-팝, 영화, 드라마 등 한국 대중문화 전문 기자. 트렌드를 누구보다 빠르게 전달합니다.', personality:'활기차고 트렌디. 젊은 독자층을 고려합니다.',          tone:'Energetic and trendy',       tags:['문화'],  profilePage:'', color:'#db2777' },
   { id:'cr6',  name:'한소희',   role:'뷰티·트래블 에디터', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'뷰티 트렌드와 여행 라이프스타일 뉴스를 누구나 이해할 수 있게 쉽고 감각적으로 전달합니다.', personality:'호기심 넘치고 쉬운 설명. 비유와 예시를 즐겨 사용.',   tone:'Curious and explanatory',    tags:['beauty','travel'], profilePage:'', color:'#0891b2' },
-  { id:'cr7',  name:'오지훈',   role:'기자',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'축구, 야구, 올림픽까지. 현장의 열기를 생생하게 전달하는 스포츠 전문 기자입니다.',       personality:'열정적이고 생동감 있는 문체. 현장감 강조.',           tone:'Passionate and vivid',       tags:['스포츠'],         profilePage:'', color:'#ea580c' },
   { id:'cr8',  name:'신지은',   role:'사회·환경 전문기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'기후 위기, 환경 정책, 복지 이슈를 사람 중심으로 취재합니다.',                          personality:'진지하고 공감 중심. 사람의 이야기를 중요시합니다.',   tone:'Empathetic and serious',     tags:['사회','오피니언'], profilePage:'', color:'#16a34a' },
   { id:'cr9',  name:'강태양',   role:'국제·외교 기자',    image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'미국, 중국, 일본 등 주요국 외교 뉴스를 심층 분석합니다.',                              personality:'통찰력 있고 비교 시각 강함. 맥락을 중시합니다.',     tone:'Insightful and contextual',  tags:['국제','정치'],    profilePage:'', color:'#4338ca' },
   { id:'cr10', name:'류하늘',   role:'문화·라이프 기자',  image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'한국의 생활 문화, 음식, 여행, 트렌드를 친근하게 소개합니다.',                          personality:'가볍고 유머러스. 일상적인 언어를 선호합니다.',        tone:'Light and relatable',        tags:['문화','사회'],    profilePage:'', color:'#c026d3' },
@@ -7255,11 +7248,8 @@ async function goStoriesEditor() {
               <option value="">Random / None</option>
               <option value="cr1">박서진</option>
               <option value="cr2">김지원</option>
-              <option value="cr3">이민준</option>
               <option value="cr4">최유나</option>
-              <option value="cr5">정우성</option>
               <option value="cr6">한소희 (뷰티/트래블)</option>
-              <option value="cr7">오지훈</option>
               <option value="cr8">신지은 (환경)</option>
               <option value="cr9">강태양 (외교)</option>
               <option value="cr10">류하늘 (라이프)</option>
@@ -10214,7 +10204,7 @@ async function openStoryEditModal(rowId) {
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">'
     + ceField('se-series', 'Series ID', 'text', d.series_id||'', 'e.g. newsroom-secret')
     + ceField('se-episode', 'Episode #', 'number', d.episode||'0', '0')
-    + '<div>' + ceSelect('se-character', 'Character', ['','cr1','cr2','cr3','cr4','cr5','cr6','cr7','cr8','cr9','cr10'], ['None','박서진','김지원','이민준','최유나','정우성','한소희','오지훈','신지은','강태양','류하늘'], (d.character_slugs&&d.character_slugs[0])||'') + '</div>'
+    + '<div>' + ceSelect('se-character', 'Character', ['','cr1','cr2','cr4','cr6','cr8','cr9','cr10'], ['None','박서진','김지원','최유나','한소희','신지은','강태양','류하늘'], (d.character_slugs&&d.character_slugs[0])||'') + '</div>'
     + '</div>'
     + '<div style="margin-bottom:12px">'
     + '<label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:4px">썸네일 이미지</label>'
@@ -15143,7 +15133,6 @@ var _DEFAULT_BADGES = [
   {id:'sec_society',cat:'sections',tier:'gold',icon:'🏘️',name:'Society Master',desc:'Read 20 Society articles',condition:{type:'section_read',section:'사회',value:20}},
   {id:'sec_world',cat:'sections',tier:'gold',icon:'🌐',name:'World Master',desc:'Read 20 World articles',condition:{type:'section_read',section:'국제',value:20}},
   {id:'sec_culture',cat:'sections',tier:'gold',icon:'🎨',name:'Culture Master',desc:'Read 20 Culture articles',condition:{type:'section_read',section:'문화',value:20}},
-  {id:'sec_sports',cat:'sections',tier:'gold',icon:'⚽',name:'Sports Master',desc:'Read 20 Sports articles',condition:{type:'section_read',section:'스포츠',value:20}},
   {id:'sec_korea',cat:'sections',tier:'gold',icon:'🇰🇷',name:'Korea Master',desc:'Read 20 Korea articles',condition:{type:'section_read',section:'Korea',value:20}},
   {id:'sec_beauty',cat:'sections',tier:'gold',icon:'💄',name:'Beauty Master',desc:'Read 20 Beauty articles',condition:{type:'section_read',section:'beauty',value:20}},
   {id:'sec_travel',cat:'sections',tier:'gold',icon:'✈️',name:'Travel Master',desc:'Read 20 Travel articles',condition:{type:'section_read',section:'travel',value:20}},
