@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KoreHani Growth Lab</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;800&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="korehan-shared.css?v=20260509ao">
+  <link rel="stylesheet" href="korehan-shared.css?v=20260509ap">
   <style>
     :root{
       --navy:#0b1626; --blue:#1a3a6b; --bright:#2563eb; --sky:#7ab8f5;
@@ -1131,11 +1131,16 @@
       </div>
     </section>
 
-    <!-- ═══ WRITING FEEDBACK HISTORY (moved to top) ═══ -->
+    <!-- ═══ FEEDBACK ENTRY POINT ═══
+         Was an inline list of every submission, which dominated the
+         Growth Lab scroll once a learner had a few weeks of history
+         ("스크롤 너무 길어져"). Now the section is a single card with
+         the latest 3 previews and a "View all" pill that opens a
+         tabbed modal grouped by content_type. -->
     <section class="card" style="margin-bottom:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:17px;font-weight:800">Writing Feedback</span>
-        <span style="font-size:11px;color:var(--muted)" id="fb-hist-count-top"></span>
+        <span style="font-size:17px;font-weight:800">Feedback</span>
+        <button type="button" onclick="window._glOpenFeedbackListModal && window._glOpenFeedbackListModal()" style="font-size:12px;font-weight:800;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:5px 14px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span id="fb-hist-count-top">0건</span><span style="opacity:.6">·</span><span>View all →</span></button>
       </div>
       <div id="fb-history-list-top"></div>
     </section>
@@ -1282,7 +1287,7 @@
   <script src="js/features/analyze-mode.js?v=20260502a"></script>
   <script src="js/features/translation.js?v=20260502a"></script>
   <script src="js/features/fill-blank.js?v=20260502a"></script>
-  <script src="korehan-shared.js?v=20260509ao"></script>
+  <script src="korehan-shared.js?v=20260509ap"></script>
   <script src="js/kh-universe.js?v=20260509an"></script>
   <script src="js/kh-curriculum.js?v=20260420y"></script>
   <script src="learning_hub_vocab_data.js"></script>
@@ -3830,6 +3835,114 @@
     }
   });
   window._glOpenFbModal = _glOpenFbModal;
+
+  // ═══════════════════════════════════════════════════════════════
+  // FEEDBACK LIST MODAL — tabbed by content_type, cards by date.
+  // Replaces the previous endless inline feed in Growth Lab. The
+  // inline section above only shows the latest 3 entries; this modal
+  // is the full archive. Click a card → existing _glOpenFbModal opens
+  // the per-submission detail. ═══════════════════════════════════
+  var _glFbActiveBucket = 'all';
+  var _GL_FB_BUCKETS = [
+    { id: 'all',     label: 'All',     types: null /* no filter */ },
+    { id: 'writing', label: 'Writing', types: ['topic','writing','diary'] },
+    { id: 'article', label: 'Article', types: ['article','article_study','reading'] },
+    { id: 'convo',   label: 'Convo',   types: ['conversation'] },
+    { id: 'story',   label: 'Story',   types: ['story'] },
+  ];
+  function _glFbBucketCount(items, types) {
+    if (!types) return items.length;
+    return items.filter(function(it){ return types.indexOf(it.content_type) >= 0; }).length;
+  }
+  function _glRenderFeedbackList() {
+    var grid = document.getElementById('gl-fb-list-grid');
+    if (!grid) return;
+    var bucket = _GL_FB_BUCKETS.find(function(b){ return b.id === _glFbActiveBucket; }) || _GL_FB_BUCKETS[0];
+    var items = bucket.types
+      ? _glFbAllItems.filter(function(it){ return bucket.types.indexOf(it.content_type) >= 0; })
+      : _glFbAllItems.slice();
+    if (!items.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#94a3b8;font-size:13px">이 카테고리엔 아직 피드백이 없어요.</div>';
+      return;
+    }
+    var grouped = {};
+    items.forEach(function(item) {
+      var date = item.study_date || (item.submitted_at ? item.submitted_at.slice(0, 10) : '?');
+      if (!grouped[date]) grouped[date] = [];
+      grouped[date].push(item);
+    });
+    var html = '';
+    Object.keys(grouped).sort(function(a, b){ return b.localeCompare(a); }).forEach(function(date) {
+      html += '<div style="grid-column:1/-1;font-size:11px;font-weight:900;color:#475569;letter-spacing:.06em;text-transform:uppercase;margin:14px 0 4px">' + date + '</div>';
+      grouped[date].forEach(function(item) {
+        var t = TYPE_LABELS[item.content_type] || TYPE_LABELS.writing;
+        var isReviewed = item.status === 'admin_approved' || item.status === 'sent';
+        var statusText = isReviewed ? '피드백 도착' : item.status === 'ai_reviewed' ? '검토 중' : '제출됨';
+        var statusColor = isReviewed ? '#16a34a' : '#94a3b8';
+        var preview = (item.writing_text || '').slice(0, 70);
+        if ((item.writing_text || '').length > 70) preview += '…';
+        var safeId = String(item.id).replace(/'/g, "\\'");
+        html += '<button type="button" onclick="window._glOpenFbModal(\'' + safeId + '\')" style="text-align:left;padding:12px;border-radius:14px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;gap:8px;transition:transform .12s,border-color .12s,box-shadow .12s" onmouseover="this.style.borderColor=\'#bfdbfe\';this.style.boxShadow=\'0 4px 12px rgba(15,23,42,.06)\';this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.boxShadow=\'none\';this.style.transform=\'\'">'
+          +   '<div style="display:flex;align-items:center;gap:8px">'
+          +     '<div style="width:28px;height:28px;border-radius:8px;background:' + t.color + '15;color:' + t.color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="' + t.icon + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>'
+          +     '<span style="font-size:11px;font-weight:800;color:' + t.color + ';letter-spacing:.04em;text-transform:uppercase">' + t.label + '</span>'
+          +     (item.score != null ? '<span style="margin-left:auto;font-size:11px;font-weight:900;color:#2563eb">' + item.score + '점</span>' : '')
+          +   '</div>'
+          + (item.topic_ko ? '<div style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + item.topic_ko.replace(/[<>]/g,'') + '</div>' : '')
+          + (preview ? '<div style="font-size:11px;color:#64748b;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + preview.replace(/[<>]/g,'') + '</div>' : '')
+          +   '<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:' + statusColor + ';font-weight:700;margin-top:auto"><span>●</span><span>' + statusText + '</span></div>'
+          + '</button>';
+      });
+    });
+    grid.innerHTML = html;
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+  }
+  function _glOpenFeedbackListModal() {
+    var overlay = document.getElementById('gl-fb-list-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'gl-fb-list-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:0;backdrop-filter:blur(6px)';
+      overlay.innerHTML =
+          '<div style="background:#fff;width:min(960px,100vw);height:min(720px,100vh);max-width:100vw;max-height:100vh;border-radius:0;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(15,23,42,.25)" id="gl-fb-list-shell">'
+        +   '<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e2e8f0">'
+        +     '<div style="font-size:16px;font-weight:900;color:#0f172a">Your feedback</div>'
+        +     '<span id="gl-fb-list-count" style="font-size:11px;color:#64748b;font-weight:700"></span>'
+        +     '<button type="button" aria-label="Close" onclick="window._glCloseFeedbackListModal && window._glCloseFeedbackListModal()" style="margin-left:auto;width:32px;height:32px;border-radius:50%;border:none;background:#f1f5f9;color:#475569;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit">×</button>'
+        +   '</div>'
+        +   '<div style="display:flex;gap:6px;overflow-x:auto;padding:10px 18px;border-bottom:1px solid #f1f5f9;scrollbar-width:none" id="gl-fb-list-tabs"></div>'
+        +   '<div style="flex:1;overflow-y:auto;padding:8px 18px 18px"><div id="gl-fb-list-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px"></div></div>'
+        + '</div>';
+      // Click backdrop to dismiss.
+      overlay.addEventListener('click', function(e){ if (e.target === overlay) window._glCloseFeedbackListModal && window._glCloseFeedbackListModal(); });
+      document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    document.getElementById('gl-fb-list-count').textContent = '· ' + _glFbAllItems.length + '건';
+    // Render the tabs once per open — counts re-compute against the
+    // freshest fetch result.
+    var tabsEl = document.getElementById('gl-fb-list-tabs');
+    tabsEl.innerHTML = _GL_FB_BUCKETS.map(function(b) {
+      var n = _glFbBucketCount(_glFbAllItems, b.types);
+      var on = b.id === _glFbActiveBucket;
+      return '<button type="button" data-bucket="' + b.id + '" style="white-space:nowrap;padding:7px 14px;border-radius:999px;border:1px solid ' + (on ? '#1d4ed8' : '#e2e8f0') + ';background:' + (on ? '#1d4ed8' : '#fff') + ';color:' + (on ? '#fff' : '#334155') + ';font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>' + b.label + '</span><span style="font-size:10px;opacity:.7">' + n + '</span></button>';
+    }).join('');
+    Array.prototype.forEach.call(tabsEl.querySelectorAll('button[data-bucket]'), function(btn) {
+      btn.addEventListener('click', function() {
+        _glFbActiveBucket = btn.dataset.bucket;
+        _glOpenFeedbackListModal(); // re-render tabs + grid with new active state
+      });
+    });
+    _glRenderFeedbackList();
+  }
+  window._glOpenFeedbackListModal = _glOpenFeedbackListModal;
+  window._glCloseFeedbackListModal = function() {
+    var overlay = document.getElementById('gl-fb-list-overlay');
+    if (overlay) overlay.style.display = 'none';
+    document.body.style.overflow = '';
+  };
+
   function _glAcc(opts) {
     // opts: { title, iconName, iconColor, badge, badgeStyle, body, open }
     if (!opts || !opts.body) return '';
@@ -3892,6 +4005,10 @@
     return _glAcc({ title:'Additional ideas', iconName:'lightbulb', iconColor:'#0369a1', body:'<div style="color:#475569;white-space:pre-wrap">' + _glEsc(text) + '</div>' });
   }
 
+  // Module-level cache of the full fetched list — the inline preview
+  // shows the latest 3 and the tabbed modal reuses the same dataset
+  // without a second round-trip.
+  var _glFbAllItems = [];
   async function loadFeedbackHistory() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb || !supaUser) return;
@@ -3903,9 +4020,10 @@
         .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, score, submitted_at, context_data, writing_mode')
         .eq('user_id', supaUser.id)
         .order('submitted_at', { ascending: false })
-        .limit(20);
+        .limit(60);
       if (res.error) throw res.error;
       var items = res.data || [];
+      _glFbAllItems = items;
       if (countEl) countEl.textContent = items.length + '건';
       if (!items.length) {
         el.innerHTML = '<div style="font-size:13px;color:#8b8b8b;padding:8px 0">아직 제출한 글이 없습니다. Study Room에서 글쓰기를 시작해보세요.</div>';
@@ -3916,6 +4034,11 @@
       // always see the freshest item.
       _glFbItemMap = Object.create(null);
       items.forEach(function(item) { if (item && item.id != null) _glFbItemMap[item.id] = item; });
+      // Inline preview is now intentionally short — the long scroll
+      // has been moved into _glOpenFeedbackListModal. Keep just the 3
+      // most recent so the section still feels alive without
+      // dominating the page.
+      items = items.slice(0, 3);
 
       // Group by date
       var grouped = {};
