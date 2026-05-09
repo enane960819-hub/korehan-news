@@ -7273,22 +7273,19 @@ document.addEventListener('DOMContentLoaded', async function() {
       // All News + search. It re-renders home itself when it lands.
     } else {
       _ldr(50); // Loading articles...
-      // Race the DB fetch against an 8s ceiling so Samsung Internet
-      // (and any other browser where the Supabase fetch can wedge —
-      // refresh-token races, idle-tab throttling, captive portals)
-      // doesn't strand the splash loader on screen forever. If the
-      // fetch wins, articles are populated and renderHomePage paints
-      // them; if the timeout wins, renderHomePage runs against the
-      // empty getCachedArticles() and the page degrades to the
-      // skeleton instead of an infinite loading spinner.
-      try {
-        await Promise.race([
-          loadArticlesFromDB({ homeOptimized: true, force: true }),
-          new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('articles fetch timeout')); }, 8000); })
-        ]);
-      } catch (_) { /* fall through to render whatever we have */ }
-      _ldr(80); // Articles loaded
+      // No-cache first-visit path: render the skeleton immediately
+      // and fire the articles fetch in the background instead of
+      // blocking on it. The user reported a ~15s blank-hero stretch
+      // on Samsung Internet because the previous version awaited
+      // the round-trip (8s ceiling + 4s phrase wait + prefetch_all
+      // before any articles surfaced). Now the page paints right
+      // away and the rail upgrades from skeleton → real cards the
+      // moment the DB call returns.
       renderHomePage();
+      _ldr(80);
+      loadArticlesFromDB({ homeOptimized: true, force: true })
+        .then(function () { try { renderHomePage(); } catch(_){} })
+        .catch(function (e) { console.warn('home articles fetch failed', e && e.message || e); });
       _ldr(92);
       _khAwaitTodaysPhrase(4000).then(function () {
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
