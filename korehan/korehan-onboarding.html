@@ -135,76 +135,32 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
 .loading-spinner{width:34px;height:34px;border-radius:999px;border:3px solid rgba(255,255,255,.18);border-top-color:#fff;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── 화려 mode polish layer ────────────────────────────────────
-   Animated background orbs, gradient shimmer on titles, stagger
-   reveals on option grids, pulse glow on selected state, plus a
-   confetti burst that fires on step completion. CSS-only — the
-   step renderers already toggle .selected / re-mount the card,
-   which is enough to drive everything below. */
-.ob-orb{position:fixed;border-radius:50%;filter:blur(60px);pointer-events:none;z-index:0;mix-blend-mode:screen;opacity:.55;animation:orbDrift 18s ease-in-out infinite}
-.ob-orb.o1{width:340px;height:340px;left:6%;top:8%;background:radial-gradient(circle,rgba(56,189,248,.55),transparent 70%);animation-duration:22s}
-.ob-orb.o2{width:300px;height:300px;right:4%;top:38%;background:radial-gradient(circle,rgba(167,139,250,.45),transparent 70%);animation-duration:26s;animation-delay:-8s}
-.ob-orb.o3{width:260px;height:260px;left:30%;bottom:6%;background:radial-gradient(circle,rgba(251,191,36,.36),transparent 70%);animation-duration:30s;animation-delay:-14s}
-@keyframes orbDrift{0%,100%{transform:translate3d(0,0,0) scale(1)}33%{transform:translate3d(34px,-22px,0) scale(1.07)}66%{transform:translate3d(-26px,18px,0) scale(.96)}}
-
-/* Floating star/sparkle particles — sit ABOVE the orbs but below
-   content. Small tag-soup elements are added by JS. */
-.ob-spark{position:fixed;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.95),rgba(255,255,255,.2) 60%,transparent 70%);pointer-events:none;z-index:0;animation:sparkFloat linear infinite}
-@keyframes sparkFloat{0%{transform:translateY(0) scale(.6);opacity:0}10%{opacity:.8}90%{opacity:.6}100%{transform:translateY(-100vh) scale(1);opacity:0}}
-
-/* Title gets an animated gradient sweep — calls attention to the
-   step prompt without any markup change. */
-.ob-title{background:linear-gradient(120deg,#fff 0%,#fff 30%,#7dd3fc 50%,#a78bfa 70%,#fff 100%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:titleSweep 6s ease-in-out infinite}
-@keyframes titleSweep{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
-
-/* Stagger options — adds 60ms per child cascade on top of the
-   existing card-enter animation. */
-.ob-options > *,.ob-time-grid > *,.ob-choice-grid > *,.ob-link-grid > *,.test-opts > *{animation:optReveal .55s cubic-bezier(.22,1,.36,1) backwards}
+/* Light polish — kept after the user reported lag from the
+   earlier "화려" pass. Drift orbs, sparkle particles, gradient
+   title sweep, 3-D tilt, mascot chip, and the selected pulse are
+   all gone. The card-enter animation already exists upstream;
+   this layer just adds a 60ms stagger for option grids and a
+   small spring on the active progress dot. Both are one-shot. */
+.ob-options > *,.ob-time-grid > *,.ob-choice-grid > *,.ob-link-grid > *,.test-opts > *{animation:optReveal .35s cubic-bezier(.22,1,.36,1) backwards}
 .ob-options > :nth-child(1),.ob-time-grid > :nth-child(1),.ob-choice-grid > :nth-child(1),.ob-link-grid > :nth-child(1),.test-opts > :nth-child(1){animation-delay:.04s}
-.ob-options > :nth-child(2),.ob-time-grid > :nth-child(2),.ob-choice-grid > :nth-child(2),.ob-link-grid > :nth-child(2),.test-opts > :nth-child(2){animation-delay:.10s}
-.ob-options > :nth-child(3),.ob-time-grid > :nth-child(3),.ob-choice-grid > :nth-child(3),.ob-link-grid > :nth-child(3),.test-opts > :nth-child(3){animation-delay:.16s}
-.ob-options > :nth-child(4),.ob-time-grid > :nth-child(4),.ob-choice-grid > :nth-child(4),.ob-link-grid > :nth-child(4),.test-opts > :nth-child(4){animation-delay:.22s}
-.ob-options > :nth-child(5),.ob-time-grid > :nth-child(5){animation-delay:.28s}
-@keyframes optReveal{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.ob-options > :nth-child(2),.ob-time-grid > :nth-child(2),.ob-choice-grid > :nth-child(2),.ob-link-grid > :nth-child(2),.test-opts > :nth-child(2){animation-delay:.08s}
+.ob-options > :nth-child(3),.ob-time-grid > :nth-child(3),.ob-choice-grid > :nth-child(3),.ob-link-grid > :nth-child(3),.test-opts > :nth-child(3){animation-delay:.12s}
+.ob-options > :nth-child(4),.ob-time-grid > :nth-child(4),.ob-choice-grid > :nth-child(4),.ob-link-grid > :nth-child(4),.test-opts > :nth-child(4){animation-delay:.16s}
+.ob-options > :nth-child(5),.ob-time-grid > :nth-child(5){animation-delay:.20s}
+@keyframes optReveal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.ob-step-dot.active{animation:dotPop .3s cubic-bezier(.22,1.4,.36,1)}
+@keyframes dotPop{0%{transform:scale(.85)}60%{transform:scale(1.16)}100%{transform:scale(1.06)}}
 
-/* Selected option — pulse + soft glow. Stronger payoff so the
-   tap feels weighty. */
-.ob-opt.selected,.ob-time-btn.selected,.ob-choice-card.selected,.ob-link-card.selected{animation:selPulse 1.4s ease-in-out infinite;will-change:transform,box-shadow}
-@keyframes selPulse{0%,100%{box-shadow:0 22px 36px rgba(37,99,235,.34),0 0 0 0 rgba(125,211,252,.5)}50%{box-shadow:0 22px 36px rgba(37,99,235,.34),0 0 0 14px rgba(125,211,252,0)}}
+/* Google sign-up button — used on step 4 when the user landed
+   from the marketing CTA without an account. */
+.ob-google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px 18px;border:none;border-radius:18px;background:#fff;color:#0f172a;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 14px 30px rgba(0,0,0,.18);transition:transform .15s ease,box-shadow .15s ease}
+.ob-google-btn:hover{transform:translateY(-1px);box-shadow:0 16px 34px rgba(0,0,0,.22)}
+.ob-google-btn:active{transform:translateY(0)}
+.ob-google-btn:disabled{opacity:.6;cursor:wait}
+.ob-google-btn svg{width:20px;height:20px;flex-shrink:0}
 
-/* Tilt the option card slightly toward the cursor on hover so
-   the hover state feels 3-D. Disabled on touch via the media
-   query below. */
-@media (hover:hover){
-  .ob-opt:hover,.ob-time-btn:hover,.ob-choice-card:hover,.ob-link-card:hover{transform:translateY(-3px) rotateX(2deg) rotateY(-1.5deg);transform-style:preserve-3d}
-}
-
-/* Progress dot pop when it activates. */
-.ob-step-dot.active{animation:dotPop .35s cubic-bezier(.22,1.4,.36,1)}
-@keyframes dotPop{0%{transform:scale(.8)}60%{transform:scale(1.18)}100%{transform:scale(1.06)}}
-
-/* Confetti burst — JS injects 16 .ob-confetti pieces inside an
-   .ob-confetti-burst overlay; CSS launches them in random
-   directions via per-piece custom property. */
-.ob-confetti-burst{position:fixed;left:50%;top:24%;z-index:30;pointer-events:none}
-.ob-confetti{position:absolute;width:10px;height:18px;border-radius:2px;animation:confettiFly 1100ms cubic-bezier(.22,1,.36,1) forwards}
-@keyframes confettiFly{0%{transform:translate(-50%,-50%) rotate(0deg);opacity:1}100%{transform:translate(calc(-50% + var(--cx)),calc(-50% + var(--cy))) rotate(var(--cr));opacity:0}}
-
-/* Mascot chip — small reporter avatar that pops in at the top
-   right of the card and changes per step. JS swaps the inner
-   image; CSS animates the swap. */
-.ob-mascot-chip{position:absolute;top:14px;right:14px;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);font-size:11px;font-weight:700;color:rgba(255,255,255,.85);z-index:2;animation:mascotIn .55s cubic-bezier(.22,1,.36,1) backwards;animation-delay:.18s}
-.ob-mascot-chip img{width:30px;height:30px;border-radius:50%;object-fit:cover;background:rgba(255,255,255,.12)}
-.ob-mascot-chip-name{font-family:'Noto Sans KR',sans-serif;font-weight:800}
-.ob-mascot-chip-role{font-size:10px;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.04em}
-@keyframes mascotIn{from{opacity:0;transform:translateX(20px) scale(.85)}to{opacity:1;transform:translateX(0) scale(1)}}
-@media (max-width:640px){.ob-mascot-chip{top:8px;right:8px;padding:4px 10px 4px 4px;font-size:10px}.ob-mascot-chip img{width:26px;height:26px}}
-
-/* Reduce motion users get the structure but no infinite loops. */
 @media (prefers-reduced-motion:reduce){
-  .ob-orb,.ob-spark,.ob-title{animation:none}
-  .ob-opt.selected,.ob-time-btn.selected,.ob-choice-card.selected,.ob-link-card.selected{animation:none}
-  .ob-options > *,.ob-time-grid > *,.ob-choice-grid > *,.ob-link-grid > *,.test-opts > *{animation:none}
+  .ob-options > *,.ob-time-grid > *,.ob-choice-grid > *,.ob-link-grid > *,.test-opts > *,.ob-step-dot.active{animation:none}
 }
 @media (max-width: 980px){
   body{padding:14px;align-items:flex-start}
@@ -272,11 +228,6 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
 </style>
 </head>
 <body>
-<!-- Background orbs (drift) + sparkles (rise) — pure decoration,
-     pointer-events:none. Injected once on load. -->
-<div class="ob-orb o1" aria-hidden="true"></div>
-<div class="ob-orb o2" aria-hidden="true"></div>
-<div class="ob-orb o3" aria-hidden="true"></div>
 <div class="ob-shell">
   <aside class="ob-side">
     <div class="ob-logo">Start smart <strong>KoreHani</strong></div>
@@ -503,7 +454,6 @@ function saveOnboardingLocal(done) {
 }
 
 function updateProgress(step) {
-  var prevStep = state.step;
   state.step = step;
   var stageCopy = document.getElementById('ob-stage-copy');
   if (stageCopy) stageCopy.textContent = 'Step ' + step + ' of 4';
@@ -525,89 +475,10 @@ function updateProgress(step) {
       if (line) line.className = 'ob-step-line' + (i < step ? ' done' : '');
     }
   }
-  // Burst confetti the first time each step advances. Skip on the
-  // initial render (prevStep === 1, step === 1) and on backward
-  // navigation so the user only gets the payoff for forward
-  // progress.
-  if (step > prevStep && prevStep >= 1) _obConfettiBurst();
-}
-
-// 7-piece pastel palette borrowed from the rest of the site so
-// the confetti reads as on-brand celebration. Each call drops 16
-// confetti shards near the top of the card and lets CSS animate
-// them out — no rAF loop needed.
-var _OB_CONFETTI_COLORS = ['#7dd3fc','#a78bfa','#fbbf24','#fb7185','#67e8f9','#86efac','#fde68a'];
-function _obConfettiBurst() {
-  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
-  var burst = document.createElement('div');
-  burst.className = 'ob-confetti-burst';
-  for (var i = 0; i < 18; i++) {
-    var p = document.createElement('span');
-    p.className = 'ob-confetti';
-    var ang = (Math.random() * 2 - 1) * Math.PI;
-    var dist = 110 + Math.random() * 140;
-    p.style.setProperty('--cx', (Math.cos(ang) * dist).toFixed(0) + 'px');
-    p.style.setProperty('--cy', (Math.sin(ang) * dist - 80).toFixed(0) + 'px');
-    p.style.setProperty('--cr', (Math.random() * 720 - 360).toFixed(0) + 'deg');
-    p.style.background = _OB_CONFETTI_COLORS[i % _OB_CONFETTI_COLORS.length];
-    p.style.animationDelay = (Math.random() * 60) + 'ms';
-    burst.appendChild(p);
-  }
-  document.body.appendChild(burst);
-  setTimeout(function(){ try { burst.remove(); } catch(_){} }, 1300);
-}
-
-// Floating sparkles drifting upward in the background. Created
-// once on first load; ~14 particles, infinite loop.
-function _obStartSparks() {
-  if (document.getElementById('ob-sparks-host')) return;
-  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
-  var host = document.createElement('div');
-  host.id = 'ob-sparks-host';
-  host.setAttribute('aria-hidden', 'true');
-  for (var i = 0; i < 14; i++) {
-    var s = document.createElement('span');
-    s.className = 'ob-spark';
-    s.style.left = (Math.random() * 100) + '%';
-    s.style.bottom = (-10 + Math.random() * 30) + '%';
-    s.style.opacity = (0.45 + Math.random() * 0.45).toFixed(2);
-    s.style.animationDuration = (12 + Math.random() * 18) + 's';
-    s.style.animationDelay = (-Math.random() * 18) + 's';
-    s.style.transform = 'scale(' + (0.6 + Math.random() * 0.9).toFixed(2) + ')';
-    host.appendChild(s);
-  }
-  document.body.appendChild(host);
-}
-document.addEventListener('DOMContentLoaded', _obStartSparks);
-
-// Mascot chip — a small reporter avatar in the card's top-right
-// that swaps per step. The 7 character_reporters defined in
-// js/core/reporters.js are the closest thing the site has to a
-// mascot cast; we cycle through 4 of them so each step gets a
-// distinct guide. Falls back to a colored initial bubble when
-// the avatar image hasn't loaded.
-var _OB_MASCOTS = [
-  { name:'박서진', role:'Goals',       color:'#2563eb', initial:'박' },
-  { name:'한소희', role:'Schedule',    color:'#0891b2', initial:'한' },
-  { name:'강태양', role:'Placement',   color:'#4338ca', initial:'강' },
-  { name:'류하늘', role:'Ready!',      color:'#c026d3', initial:'류' },
-];
-function _obMascotForStep(step) {
-  return _OB_MASCOTS[Math.max(0, Math.min(_OB_MASCOTS.length - 1, step - 1))];
-}
-function _obMascotChipHTML(step) {
-  var m = _obMascotForStep(step);
-  return '<div class="ob-mascot-chip" aria-hidden="true">'
-    + '<div style="width:30px;height:30px;border-radius:50%;background:' + m.color + ';display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:#fff;font-family:\'Noto Sans KR\',sans-serif">' + m.initial + '</div>'
-    + '<div><div class="ob-mascot-chip-name">' + m.name + '</div><div class="ob-mascot-chip-role">' + m.role + '</div></div>'
-    + '</div>';
 }
 
 function cardWrap(inner) {
-  return '<div class="ob-card ob-card-enter">'
-    + _obMascotChipHTML(state.step || 1)
-    + inner
-    + '</div>';
+  return '<div class="ob-card ob-card-enter">' + inner + '</div>';
 }
 
 function bindTap(el, fn) {
@@ -657,7 +528,8 @@ function wireStepInteractions() {
     'back-level-choice': backToLevelChoice,
     'next-test': nextTestQ,
     'finish': finishOnboarding,
-    'skip': skipOnboarding
+    'skip': skipOnboarding,
+    'signup-google': signUpWithGoogle
   };
   root.querySelectorAll('[data-action]').forEach(function(el){
     var fn = actionMap[el.dataset.action];
@@ -1219,16 +1091,50 @@ function selectRecommendedLevel(level) {
 
 function goStep4() {
   updateProgress(4);
+  // Stash the in-progress state so it survives the Google OAuth
+  // round-trip. When the user comes back signed in, the page's
+  // bootstrapper picks it up and finishes the upsert into
+  // user_stats — no fields lost.
+  saveOnboardingLocal(false);
+  try {
+    localStorage.setItem('kh_onboarding_pending_state', JSON.stringify({
+      goals: state.goals,
+      minutes: state.minutes,
+      level: state.level,
+      levelChoice: state.levelChoice,
+      testScore: state.testScore,
+      placementResult: state.placementResult || null,
+      testAnswers: state.testAnswers || null
+    }));
+  } catch(_) {}
   var goalsText = state.goals.map(function(id) {
     var found = GOALS.find(function(g) { return g.id === id; });
     return found ? found.label : id;
   }).join(', ');
   var timeData = TIME_OPTIONS.find(function(item) { return item.min === state.minutes; }) || TIME_OPTIONS[1];
+  // Branch on auth: signed-out users get a one-tap Google sign-up
+  // as the primary CTA (the marketing CTA promised "sign up takes
+  // 30 seconds"). Signed-in users see the existing finish flow.
+  var isSignedIn = !!_user;
+  var primaryCTA = isSignedIn
+    ? '<button class="ob-btn ob-btn-primary" id="finish-btn" data-action="finish">Go to main page →</button>'
+    : '<button class="ob-google-btn" id="signup-btn" data-action="signup-google" type="button">'
+        + '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+        + '<path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>'
+        + '<path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>'
+        + '<path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35 26.8 36 24 36c-5.3 0-9.7-3.4-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/>'
+        + '<path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2c-.4.4 6.6-4.8 6.6-14.8 0-1.3-.1-2.4-.4-3.5z"/>'
+        + '</svg>'
+        + '<span>Sign up with Google · 30 seconds</span>'
+      + '</button>';
+  var introCopy = isSignedIn
+    ? 'We will save your setup, send you to the main page, and highlight the Beginner Guide so first-time users can get oriented right away.'
+    : 'Sign up with Google to save your setup. Your goals, level, and daily pace stay attached to your account so the main page lands ready.';
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Step 4 · Finish</div><div class="ob-stage">Main page tip is ready</div></div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Step 4 · Finish</div><div class="ob-stage">' + (isSignedIn ? 'Main page tip is ready' : '30-second sign-up') + '</div></div>'
       + '<h2 class="ob-title">You are ready to start.</h2>'
-      + '<p class="ob-desc">We will save your setup, send you to the main page, and highlight the Beginner Guide so first-time users can get oriented right away.</p>'
+      + '<p class="ob-desc">' + introCopy + '</p>'
       + '<div class="ob-side-card" style="background:rgba(255,255,255,.05);margin-bottom:18px">'
       + '<small>Your setup summary</small>'
       + '<h3 style="margin-bottom:12px">A quick plan for your first session</h3>'
@@ -1238,16 +1144,19 @@ function goStep4() {
       + '<div class="ob-journey-card"><strong>Daily pace</strong><p>' + timeData.label + '<br>' + timeData.sub + '</p></div>'
       + '</div>'
       + '</div>'
-      + '<div class="ob-link-grid">'
-      + '<a class="ob-link-card" href="beginner-guide.html" onclick="saveOnboardingLocal(true);persistOnboardingState()"><span>Tip page</span><h3>Beginner Guide</h3><p>See how News, Study Room, Growth Lab, Stories, and Conversations fit together.</p></a>'
-      + '<a class="ob-link-card" href="korehan-study-room.html" onclick="saveOnboardingLocal(true);persistOnboardingState()"><span>Practice page</span><h3>Study Room</h3><p>Use your reading to review words, grammar, and active practice right away.</p></a>'
-      + '</div>'
+      + (isSignedIn
+          ? '<div class="ob-link-grid">'
+            + '<a class="ob-link-card" href="beginner-guide.html" onclick="saveOnboardingLocal(true);persistOnboardingState()"><span>Tip page</span><h3>Beginner Guide</h3><p>See how News, Study Room, Growth Lab, Stories, and Conversations fit together.</p></a>'
+            + '<a class="ob-link-card" href="korehan-study-room.html" onclick="saveOnboardingLocal(true);persistOnboardingState()"><span>Practice page</span><h3>Study Room</h3><p>Use your reading to review words, grammar, and active practice right away.</p></a>'
+            + '</div>'
+          : '')
       + '<div class="ob-footer-note">Your onboarding state is also saved locally so you do not get bounced back into onboarding again if the database response is slow.</div>'
     + '</div>'
     + '<div>'
-      + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" data-action="back-step3">← Back</button>'
-      + '<button class="ob-btn ob-btn-primary" id="finish-btn" data-action="finish">Go to main page →</button>'
+      + '<div class="ob-btn-row" style="' + (isSignedIn ? '' : 'flex-direction:column;gap:10px') + '">'
+      + (isSignedIn
+          ? '<button class="ob-btn ob-btn-secondary" data-action="back-step3">← Back</button>' + primaryCTA
+          : primaryCTA + '<button class="ob-btn ob-btn-secondary" data-action="back-step3" style="flex:0 0 auto;width:100%">← Back to placement</button>')
       + '</div>'
     + '</div>'
   );
@@ -1297,6 +1206,44 @@ async function persistOnboardingState() {
         p_version:           'v2'
       });
     } catch(e) { /* RPC not installed yet → ignore, local state already saved */ }
+  }
+}
+
+// Step 4 "Sign up with Google" — triggers Supabase OAuth and
+// hands control to Google. Supabase appends ?code=… on return,
+// at which point _bootstrap() picks the user up, finds the
+// kh_onboarding_pending_state we stashed in goStep4(), pushes
+// it into user_stats, and redirects to study-room. The redirect
+// target is the same page so the OAuth round-trip lands here.
+async function signUpWithGoogle() {
+  var btn = document.getElementById('signup-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span style="display:inline-block;width:18px;height:18px;border:2px solid rgba(15,23,42,.2);border-top-color:#0f172a;border-radius:50%;animation:spin .8s linear infinite"></span><span>Opening Google…</span>';
+  }
+  saveOnboardingLocal(false);
+  var sb = getSb();
+  if (!sb) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>Sign-in unavailable. Refresh and try again.</span>';
+    }
+    return;
+  }
+  try {
+    var { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + '/korehan-onboarding.html?finish=1',
+        queryParams: { access_type: 'offline', prompt: 'select_account' }
+      }
+    });
+    if (error) throw error;
+  } catch (e) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>Sign-in error: ' + (e.message || 'unknown') + '</span>';
+    }
   }
 }
 
@@ -1359,6 +1306,34 @@ async function initUser() {
 
   if (!_user) {
     startOnboarding();
+    return;
+  }
+
+  // Returning from "Sign up with Google" on step 4 — the user
+  // filled out goals/level/minutes anonymously, then OAuth round-
+  // tripped them. Restore the in-progress state from the pending
+  // blob and finish the upsert before redirecting. Without this,
+  // signing up would lose every onboarding answer.
+  if (window.location.search.indexOf('finish=1') >= 0) {
+    try {
+      var raw = localStorage.getItem('kh_onboarding_pending_state');
+      if (raw) {
+        var pending = JSON.parse(raw);
+        if (pending) {
+          state.goals           = pending.goals           || state.goals;
+          state.minutes         = pending.minutes         || state.minutes;
+          state.level           = pending.level           || state.level;
+          state.levelChoice     = pending.levelChoice     || state.levelChoice;
+          state.testScore       = pending.testScore       != null ? pending.testScore : state.testScore;
+          state.placementResult = pending.placementResult || state.placementResult;
+          state.testAnswers     = pending.testAnswers     || state.testAnswers;
+        }
+      }
+    } catch(_) {}
+    saveOnboardingLocal(true);
+    try { await persistOnboardingState(); } catch(_) {}
+    try { localStorage.removeItem('kh_onboarding_pending_state'); } catch(_) {}
+    window.location.href = 'korehan-study-room.html?welcome=1';
     return;
   }
 
