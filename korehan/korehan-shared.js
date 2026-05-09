@@ -7191,18 +7191,25 @@ document.addEventListener('DOMContentLoaded', async function() {
       // not whatever 30-row homeOptimized cache the home page seeded
       // (was the root cause of the "same articles repeat after a few
       // swipes" complaint).
+      // Crucially, only the single-article fetch blocks the splash.
+      // Sections + settings hydrate the header/footer chrome and don't
+      // gate the article body — they used to be inside the Promise.all
+      // here, which on Korean LTE pushed the splash from ~800ms to
+      // 2-4s. Now they resolve in the background and the chrome reflows
+      // when they land, while the learner is already reading.
       var singlePromise = loadArticleById(_articleId);
       var listPromise = loadArticlesFromDB({ force: true });
-      await Promise.all([singlePromise, sectionsPromise, settingsPromise]);
+      await singlePromise;
       if (window._khLoaderClearAuto) window._khLoaderClearAuto();
       _ldr(100);
-      // Refresh the related-articles strip + swipe context once the
-      // background list lands.
+      // Background: list refresh re-renders related-articles + swipe.
       listPromise.then(function() {
         if (typeof renderArticlePage === 'function') {
           try { renderArticlePage(); } catch(e) {}
         }
       });
+      // Background: sections + settings refresh page chrome.
+      Promise.allSettled([sectionsPromise, settingsPromise]);
     } else {
       // korehan-all needs the full 500-row dataset with body for its
       // search filter. If the home page's idle prefetch (or a prior
