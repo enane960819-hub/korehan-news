@@ -201,12 +201,17 @@
       // the white star points painted on the canvas above. The
       // 90s khuDrift animation is a very slow scale + translate
       // — adds depth without distracting from the constellation.
-      '.khu-nebula{position:absolute;inset:-8%;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;transition:opacity .35s ease;mix-blend-mode:screen;filter:saturate(.9) hue-rotate(-8deg) contrast(1);will-change:transform,opacity;pointer-events:none;}',
+      // Explicit inset:0 + transform:scale(1.08) instead of the
+      // earlier inset:-8% — on Samsung Internet / some Chromium
+      // mobile builds the negative-inset percentages computed
+      // against an offset containing block and left a vertical
+      // dark stripe on one edge (the user's circled bug).
+      '.khu-nebula{position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;transition:opacity .35s ease;mix-blend-mode:screen;filter:saturate(.9) hue-rotate(-8deg) contrast(1);will-change:transform,opacity;pointer-events:none;transform:scale(1.08);}',
       '.khu-nebula.active{opacity:.48;animation:khuDrift 90s ease-in-out infinite alternate;}',
       '#khu-nebula-witch{background-image:url(\'img/universe/witch-head.jpg\');}',
       '#khu-nebula-carina{background-image:url(\'img/universe/carina.webp\');}',
       '#khu-nebula-cliffs{background-image:url(\'img/universe/cosmic-cliffs.jpg\');}',
-      '@keyframes khuDrift{0%{transform:scale(1.04) translate3d(-1.2%,-.8%,0);}50%{transform:scale(1.08) translate3d(1.4%,.6%,0);}100%{transform:scale(1.05) translate3d(-.6%,1%,0);}}',
+      '@keyframes khuDrift{0%{transform:scale(1.08) translate3d(-1.2%,-.8%,0);}50%{transform:scale(1.12) translate3d(1.4%,.6%,0);}100%{transform:scale(1.09) translate3d(-.6%,1%,0);}}',
       // Soft vignette on top of the nebula so the corners stay
       // dark and the header / word card text keeps contrast.
       '.khu-vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 35%,rgba(2,3,10,.35) 75%,rgba(2,3,10,.7) 100%);}',
