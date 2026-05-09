@@ -12752,7 +12752,16 @@ function _buildFbModalInner(groupIdx) {
   if (!row) return '';
   var fb = null;
   try { fb = typeof row.ai_feedback === 'string' ? JSON.parse(row.ai_feedback) : row.ai_feedback; } catch(e) {}
-  var adminDraft = row.admin_feedback || (fb ? _buildAdminFeedbackDraft(fb) : '');
+  // Don't auto-populate the textarea with the AI draft anymore.
+  // Saving an unedited draft would pipe the AI's bullet list to
+  // user_submissions.admin_feedback, and the user-side renderer
+  // shows admin_feedback at the TOP of the breakdown PLUS the
+  // categorized cards below — duplicate content the user flagged
+  // ("피드백 중복 위에 한번에 써준건 삭제하고 아래처럼 카테고리별
+  // 분석은 유지하자"). Admin can still click "📋 Load AI draft"
+  // below to opt in to the auto-text when they want to use it as
+  // a starting point.
+  var adminDraft = row.admin_feedback || '';
   var typeLabels = _FB_TYPE_LABELS;
 
   var m = '';
@@ -13131,12 +13140,42 @@ async function fbModalSend() {
   var sb = getSb(); if (!sb) return;
   var fb = (document.getElementById('fb-modal-admin').value || '').trim();
   var score = parseInt(document.getElementById('fb-modal-score').value) || null;
-  if (!fb) { toast('피드백을 먼저 작성하세요.'); return; }
+  // Allow empty admin_feedback — the user-side render shows the
+  // structured AI breakdown (corrections, naturalness, etc.) on
+  // its own. Forcing an admin note here was the reason we ended
+  // up auto-pasting the AI draft into the textarea, which then
+  // showed up duplicated at the top of the student's screen.
+  // Send still requires SOMETHING in the row though, so we accept
+  // an empty admin note if a structured ai_feedback or any
+  // corrections exist.
+  var hasStructured = !!(_fbModalRow && (_fbModalRow.ai_feedback || _fbModalRow.context_data));
+  if (!fb && !hasStructured) { toast('피드백을 먼저 작성하세요.'); return; }
   var r = await sb.from('user_submissions').update({
-    admin_feedback: fb, score: score,
+    admin_feedback: fb || null, score: score,
     status: 'sent', sent_at: new Date().toISOString(), reviewed_at: new Date().toISOString()
   }).eq('id', _fbModalRow.id);
   if (r.error) { toast('Error: ' + r.error.message); return; }
+  // Ring the user's notification bell. Without this row the
+  // top-bar bell never lights up — the user-reported "피드백 왔는데
+  // 상단 종모양에 알람 안떴는데". RLS only lets users insert their
+  // own notifications, so we go through admin-api / service_role.
+  try {
+    var targetUserId = _fbModalRow.user_id;
+    if (targetUserId && typeof supaAdminPost === 'function') {
+      await supaAdminPost('/rest/v1/notifications', {
+        user_id: targetUserId,
+        kind: 'feedback_received',
+        payload: {
+          submission_id: _fbModalRow.id,
+          topic: _fbModalRow.topic_ko || '',
+          content_type: _fbModalRow.content_type || 'writing',
+          score: score,
+        }
+      });
+    }
+  } catch (notifErr) {
+    console.warn('[fbModalSend] notification insert failed:', notifErr && notifErr.message || notifErr);
+  }
   toast('전송 완료!');
   document.getElementById('fb-detail-modal').remove();
   await srLoadFeedbackDashboard();
