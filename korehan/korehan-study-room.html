@@ -4304,6 +4304,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="js/core/article-cache.js?v=20260505b"></script>
 <script src="js/core/phrases.js?v=20260505p"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
+<script src="js/core/hangul-jamo-input.js?v=20260509r"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
 <script src="js/core/reporters.js?v=20260502a"></script>
@@ -24325,6 +24326,12 @@ function renderReviewQuestion() {
       + '</div>';
     var inp = document.getElementById('rv-typed-input');
     if (inp) setTimeout(function(){ inp.focus(); }, 100);
+    // Tap-driven Korean keyboard for users without an OS-level
+    // Korean IME. Slots in right under the input; the IME state
+    // machine handles cho → jung → jong composition.
+    if (inp && typeof khAttachJamoKeyboard === 'function') {
+      try { khAttachJamoKeyboard(inp); } catch(_) {}
+    }
   } else {
     body.innerHTML = '<div style="text-align:center;margin-bottom:20px">'
       + '<div style="font-size:12px;font-weight:600;color:rgba(255,255,255,.4);margin-bottom:8px">' + diffLabel + '</div>'

@@ -39,6 +39,14 @@ const SOURCE_CATALOG = [
   { id:'soompi', label:'Soompi (K-content)', kind:'rss', category:'K-pop', url:'https://www.soompi.com/feed' },
   { id:'gn-gaming', label:'Gaming News', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=video+game+OR+gaming+launch+OR+"new+release"+game&hl=en-US&gl=US&ceid=US:en' },
 
+  // ── Wikinews (CC-BY 2.5 — full content + image free to adapt) ───
+  // Pulls the latest articles in Category:Published via the MediaWiki
+  // API, then extracts intro paragraph + main image in a single
+  // batched query. Output shape matches the RSS handlers so the
+  // admin picker UI doesn't need any source-specific handling.
+  { id:'wikinews-en', label:'Wikinews EN', kind:'wikinews', category:'국제', lang:'en' },
+  { id:'wikinews-ko', label:'Wikinews KO', kind:'wikinews', category:'국제', lang:'ko' },
+
   // ── Hacker News (link aggregator, no hotlinked imagery) ─────────
   { id:'hn', label:'Hacker News', kind:'hn', category:'문화' },
 
@@ -294,6 +302,54 @@ async function fetchReddit(source) {
   })
 }
 
+// Wikinews (en + ko) — uses the MediaWiki API to fetch the most
+// recently published articles plus their lead paragraph and main
+// image in two HTTP calls.
+//
+// Wikinews content is licensed CC-BY 2.5 (and most images are
+// either CC0 or CC-BY); the source URL stored on every row gives
+// the admin everything they need to attribute the original
+// authors when they adapt the article into a learning piece.
+async function fetchWikinews(source) {
+  const lang = source.lang === 'ko' ? 'ko' : 'en'
+  const apiBase = `https://${lang}.wikinews.org/w/api.php`
+
+  // 1) List the 20 most recent published articles. Wikinews convention is
+  //    to drop every published story under Category:Published (en) /
+  //    분류:정식기사 (ko). cmsort=timestamp + cmdir=desc puts the newest first.
+  const cmTitle = lang === 'ko' ? '분류:정식기사' : 'Category:Published'
+  const listUrl = `${apiBase}?action=query&list=categorymembers&cmtitle=${encodeURIComponent(cmTitle)}&cmsort=timestamp&cmdir=desc&cmlimit=20&cmprop=ids|title|timestamp&format=json&origin=*`
+  const listRes = await fetch(listUrl, { headers: { 'user-agent': 'KoreHanNewsBot/1.0' } })
+  if (!listRes.ok) throw new Error('upstream_not_ok')
+  const listJson = await listRes.json()
+  const pages = listJson?.query?.categorymembers || []
+  if (!pages.length) return []
+
+  // 2) Batch-fetch intro extracts + main image for every page in one query.
+  //    pageids is comma-separated; piprop=original gives the full-size image.
+  const pageIds = pages.map((p) => p.pageid).join('|')
+  const detailUrl = `${apiBase}?action=query&pageids=${pageIds}&prop=extracts|pageimages|info&exintro=1&explaintext=1&piprop=original&inprop=url&format=json&origin=*`
+  const detailRes = await fetch(detailUrl, { headers: { 'user-agent': 'KoreHanNewsBot/1.0' } })
+  if (!detailRes.ok) throw new Error('upstream_not_ok')
+  const detailJson = await detailRes.json()
+  const detailMap = detailJson?.query?.pages || {}
+
+  return pages.map((p) => {
+    const d = detailMap[String(p.pageid)] || {}
+    const summary = stripHtml(d.extract || '').slice(0, 280)
+    const image = d.original?.source || d.thumbnail?.source || ''
+    return {
+      title: stripHtml(p.title || ''),
+      source: source.label,
+      url: d.fullurl || `https://${lang}.wikinews.org/wiki/${encodeURIComponent(p.title || '')}`,
+      published_at: toIso(p.timestamp || ''),
+      summary,
+      category: source.category,
+      image: image || null,
+    }
+  })
+}
+
 // Pull a usable full-size image out of a Reddit post. Priority:
 //   1. Direct i.redd.it URL (post_hint='image' or d.url ends in an image
 //      extension) — these are stable, public, CORS-friendly.
@@ -461,6 +517,7 @@ export async function onRequest({ request }) {
         if (source.kind === 'rss') rows = await fetchRss(source)
         else if (source.kind === 'hn') rows = await fetchHn(source)
         else if (source.kind === 'reddit') rows = await fetchReddit(source)
+        else if (source.kind === 'wikinews') rows = await fetchWikinews(source)
         bySource.push({ id: source.id, label: source.label, count: rows.length })
         merged = merged.concat(rows)
       } catch {
