@@ -2330,8 +2330,9 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
   transition: background .15s, transform .15s;
   flex-shrink: 0; vertical-align: middle;
 }
-.tts-btn:hover  { background: #2255a4; transform: scale(1.1); }
-.tts-btn.tts-playing { background: #2255a4; animation: tts-pulse .8s ease-in-out infinite; }
+.tts-btn:hover  { background: #2255a4; color: #fff; transform: scale(1.1); }
+.tts-btn.tts-playing { background: #2255a4; color: #fff; animation: tts-pulse .8s ease-in-out infinite; }
+.tts-btn svg { display: block; }
 @keyframes tts-pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.12);} }
 
 .art-vocab-item .tts-btn { flex-shrink: 0; }
