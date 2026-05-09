@@ -1134,10 +1134,20 @@ function updateAuthUI() {
     }
     if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-block' : 'none';
   } else {
-    // Logged out state
+    // Logged out state. The display gate used to read
+    // `window._sessionChecked` so the buttons stayed hidden until
+    // the session check finished — but the IIFE at the top of
+    // this file already injects #kh-auth-flash-guard whenever a
+    // stored token exists, which handles the flash case via CSS.
+    // Layering both gates created a race: if updateAuthUI ran
+    // during init with _sessionChecked=false the buttons got
+    // display:none and stayed that way whenever the second pass
+    // (which would have flipped them back) hit a hung getSession
+    // / exchangeCodeForSession / setSession await. The user's
+    // "갑자기 로그인이 안됨, 우측 상단 공백" report.
     if (signinBtn) {
       signinBtn.textContent = 'Sign In';
-      signinBtn.style.display = window._sessionChecked ? '' : 'none';
+      signinBtn.style.display = '';
       signinBtn.onclick = function(e){ e.preventDefault(); openAuthModal("signin"); };
     }
     if (authMenu) authMenu.style.display = 'none';
@@ -1145,9 +1155,10 @@ function updateAuthUI() {
     if (userDrop) userDrop.classList.remove('on');
     if (adminBtn) adminBtn.style.display = 'none';
   }
-  // Join Free button: only visible when logged out
+  // Join Free button: only visible when logged out (no
+  // _sessionChecked gate — same reason as signinBtn above).
   var joinBtn = document.getElementById('topbar-join-btn');
-  if (joinBtn) joinBtn.style.display = supaUser ? 'none' : (window._sessionChecked ? '' : 'none');
+  if (joinBtn) joinBtn.style.display = supaUser ? 'none' : '';
   updateSidebarAuth();
   injectMobileBottomNav();
   setupImmersiveReading();
