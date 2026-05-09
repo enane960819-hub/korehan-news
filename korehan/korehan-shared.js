@@ -7157,6 +7157,19 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (headerEl)  headerEl.innerHTML  = renderHeader();
   _ldr(35); // Header rendered
+  // Run updateAuthUI() immediately after the header is in DOM so
+  // the IIFE-injected #kh-auth-flash-guard <style> gets removed on
+  // every page load — even if checkSession() later hangs on a
+  // wedged exchangeCodeForSession / setSession / getSession await.
+  // Previously updateAuthUI only ran from inside checkSession (and
+  // from the auth state listener, which is itself driven by the
+  // SDK boot). If any of those chains stalled, the flash guard's
+  // `display:none !important` rule kept #topbar-signin-btn /
+  // #topbar-join-btn hidden forever — the user's "우측 상단 공백"
+  // report. supaUser starts as null, so this first call paints the
+  // signed-out state; subsequent calls (from checkSession success
+  // or the auth listener) flip to signed-in if a session exists.
+  try { updateAuthUI(); } catch(_) {}
   if (footerEl)  footerEl.innerHTML  = renderFooter();
   if (sidebarEl) sidebarEl.innerHTML = renderSharedSidebar();
   renderKhLucideIcons();
