@@ -3188,7 +3188,7 @@ window._khArtSentSharedCache = window._khArtSentSharedCache || {};
 // multiple simultaneous taps from re-triggering. Failure is silent —
 // the live single-sentence call already painted the panel.
 window._khArtFullAnalyzeRunning = window._khArtFullAnalyzeRunning || {};
-async function _khTriggerFullArticleAnalyze(articleId) {
+async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
   if (!articleId) return;
   if (window._khArtFullAnalyzeRunning[articleId]) return;
   // Per-tab lock survives reload of the article reader within the same
@@ -3232,8 +3232,27 @@ async function _khTriggerFullArticleAnalyze(articleId) {
     var payload = sentences.map(function(s, i) {
       return (i + 1) + '. ' + s.text;
     }).join('\n');
+    // Level-aware prompt — same calibration as the single-sentence path.
+    // Pre-2026-05-09 this was hardcoded to TOPIK 3-4 regardless of article
+    // level, which is why Seed/Sprout articles were caching with empty
+    // grammar arrays (the prompt skipped beginner patterns the learner
+    // actually needed to see).
+    var _lvl = articleLevel || (window._currentArticle && window._currentArticle.level) || 'Beginner';
+    var _lvlLabel = ({
+      Starter:      'Seed (TOPIK 1, complete beginner)',
+      Beginner:     'Sprout (TOPIK 2, beginner)',
+      Intermediate: 'Tree (TOPIK 3-4, intermediate)',
+      Advanced:     'Forest (TOPIK 5-6, advanced)',
+    })[_lvl] || 'Sprout (TOPIK 2, beginner)';
+    var _isLow = (_lvl === 'Starter' || _lvl === 'Beginner');
+    var _vocabRule = _isLow
+      ? '- VOCAB: max 4 per sentence. Include any content word the learner might not know. Only skip particles and 이다/있다 alone. 흔하다 / 보다 / 키우다 / 살다 / 먹다 are FAIR GAME — explain them.\n'
+      : '- VOCAB: max 4 per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다…).\n';
+    var _grammarRule = _isLow
+      ? '- GRAMMAR: MINIMUM 1 pattern, max 3 per sentence. INCLUDE basic patterns: ~을/를 (object marker), ~지 않다 (negation), ~고 있다 (continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~다고 알려져 있어요 / ~ㄴ다고 해요 (reported), ~어 주다 (benefactive), ~아/어 있다 (resultative). 0 patterns is allowed ONLY for a pure noun phrase, proper-noun list, or a single greeting like "안녕하세요." Don\'t pick a pattern that\'s just a vocab word\'s conjugation.\n'
+      : '- GRAMMAR: MINIMUM 1 pattern (unless purely a noun phrase / greeting), max 2 per sentence. Skip beginner patterns (~는 modifier, ~다, ~요/습니다, ~았/었, ~을/를). Don\'t pick a pattern that\'s just a vocab word\'s conjugation.\n';
     var prompt =
-        'You are a Korean tutor analysing each sentence of an article for a TOPIK 3-4 learner.\n\n'
+        'You are a Korean tutor analysing each sentence of an article for a ' + _lvlLabel + ' learner.\n\n'
       + 'Sentences (numbered, in order):\n' + payload + '\n\n'
       + 'Return ONLY a JSON object — no preamble, no code fences:\n'
       + '{ "sentences": [\n'
@@ -3244,8 +3263,8 @@ async function _khTriggerFullArticleAnalyze(articleId) {
       + ']}\n\n'
       + 'Rules:\n'
       + '- TRANSLATION: preserve the original subject. Do NOT inject "I/we" if Korean omitted it.\n'
-      + '- VOCAB: max 4 per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다…).\n'
-      + '- GRAMMAR: max 2 per sentence. Skip if just a noun phrase. Don\'t pick patterns that are just a vocab word\'s conjugation.\n'
+      + _vocabRule
+      + _grammarRule
       + '- Return EXACTLY ' + sentences.length + ' entries in sentences[].';
     var res = await callClaude({
       feature: 'sentence-analyze-bulk',
@@ -3514,10 +3533,21 @@ async function analyzeSentence(idx, el) {
     }
   } catch(_) {}
 
+  // Read article level early — used both for live prompt calibration
+  // and for spotting stale low-level cache hits (see below).
+  var _articleLevel = (window._currentArticle && window._currentArticle.level) || 'Beginner';
+  var _isLowLevel = (_articleLevel === 'Starter' || _articleLevel === 'Beginner');
+
   // Pre-generated shared cache (admin built this when the article was
   // created). Match by index first, fall back to text equality so an
   // index-shift from minor body edits still finds the right entry.
+  // Pre-2026-05-09 the bulk pre-cache ran a TOPIK 3-4 prompt for every
+  // article regardless of level, which dropped beginner grammar and left
+  // Seed/Sprout articles with grammar:[]. Treat such hits as stale at
+  // low levels and fall through to the live call so the new level-aware
+  // prompt repopulates the cache with patterns the learner actually needs.
   var sharedCache = null;
+  var _sharedCacheStale = false;
   try {
     sharedCache = await _khLoadArticleSentenceCache(articleId);
     if (sharedCache && sharedCache.sentences) {
@@ -3525,11 +3555,19 @@ async function analyzeSentence(idx, el) {
       if (!hit || (hit.text || '').trim() !== sentenceText) {
         hit = sharedCache.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
       }
-      if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length))) {
+      var _hitGrammarMissing = !hit || !hit.grammar || !Array.isArray(hit.grammar) || !hit.grammar.length;
+      var _hitStale = _isLowLevel && _hitGrammarMissing;
+      if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length)) && !_hitStale) {
         window._khSentAnalyzeCache[cacheKey] = hit;
         try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
         _khRenderSentPanel(panel, hit);
         return;
+      }
+      if (_isLowLevel) {
+        var _emptyCount = sharedCache.sentences.filter(function(s){
+          return !s.grammar || !Array.isArray(s.grammar) || !s.grammar.length;
+        }).length;
+        if (_emptyCount / sharedCache.sentences.length >= 0.3) _sharedCacheStale = true;
       }
     }
   } catch(_) {}
@@ -3554,8 +3592,13 @@ async function analyzeSentence(idx, el) {
   // single-sentence Claude call below still runs so this user gets
   // an immediate panel; subsequent readers (and subsequent taps on
   // this same article) hit the cache instead.
-  if (articleId && (!sharedCache || !sharedCache.sentences || !sharedCache.sentences.length)) {
-    try { _khTriggerFullArticleAnalyze(articleId); } catch(_) {}
+  // Also re-trigger when the existing cache is stale at this level
+  // (≥30% of cached sentences have empty grammar at Seed/Sprout).
+  // The bulk function's per-tab lock keeps this to one re-analyze
+  // per article per session.
+  var _needsBulk = !sharedCache || !sharedCache.sentences || !sharedCache.sentences.length || _sharedCacheStale;
+  if (articleId && _needsBulk) {
+    try { _khTriggerFullArticleAnalyze(articleId, _articleLevel); } catch(_) {}
   }
 
   if (typeof callClaude !== 'function') {
@@ -3583,8 +3626,8 @@ async function analyzeSentence(idx, el) {
       ? '- VOCAB: max 4 items. Include any content word the learner might not know (verbs, adjectives, nouns). Only skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone). 흔하다 / 보다 / 키우다 / 살다 / 먹다 are FAIR GAME at this level — explain them.\n'
       : '- VOCAB: max 4 items. Skip beginner words (는/이/가/이다/있다/하다/되다…). The note must be FACTUAL — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply.\n';
     var _grammarSkipRule = _isLowLevel
-      ? '- GRAMMAR: max 3 patterns. At THIS LEVEL, basic patterns ARE the lesson — INCLUDE them: ~을/를 (object marker) + verb, ~지 않다 (negation), ~고 있다 (present continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency). Skip only when the entire sentence is one already-explained pattern. Do NOT pick a pattern that\'s just the conjugation of a vocab word.\n'
-      : '- GRAMMAR: max 2 patterns. Skip if just a noun phrase. Skip beginner-level patterns (~는 noun modifier, ~다 declarative, ~요/습니다 polite, ~았/었 past, ~을/를 object marker) — the learner already knows them at this level. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n';
+      ? '- GRAMMAR: MINIMUM 1 pattern, max 3. At THIS LEVEL, basic patterns ARE the lesson — INCLUDE them: ~을/를 (object marker) + verb, ~지 않다 (negation), ~고 있다 (present continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency), ~다고 알려져 있어요 / ~ㄴ다고 해요 (reported), ~어 주다 (benefactive), ~아/어 있다 (resultative state). The ONLY excuse for 0 patterns is a sentence that is purely a proper noun, interjection, or single greeting (e.g. "안녕하세요."). Do NOT pick a pattern that\'s just the conjugation of a vocab word.\n'
+      : '- GRAMMAR: MINIMUM 1 pattern (unless the sentence is purely a noun phrase / proper-noun list / single greeting), max 2. Skip beginner-level patterns (~는 noun modifier, ~다 declarative, ~요/습니다 polite, ~았/었 past, ~을/를 object marker) — the learner already knows them at this level. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n';
     var prompt =
         'You are a Korean tutor analysing a single sentence for a ' + _levelLabel + ' learner.\n\n'
       + 'Sentence: ' + sentenceText + '\n\n'
