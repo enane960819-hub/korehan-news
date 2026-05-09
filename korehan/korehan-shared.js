@@ -3840,38 +3840,20 @@ async function analyzeSentence(idx, el) {
     } catch(_) {}
   }
 
-  // If a bulk is in flight for this article, wait for it before
-  // falling through to a paid single-sentence call. The bulk call
-  // returns full analysis for every sentence, so the cache hit on
-  // the way back gives the learner the same panel — just funded
-  // by one Claude call instead of N.
-  if (articleId && window._khArtFullAnalyzePromise[articleId]) {
-    try {
-      // Race the bulk against a 25 s ceiling so a hung Claude call
-      // can't pin "분석 중…" to the screen forever. The bulk pass
-      // covers ~30 sentences on Haiku, which usually returns in
-      // 5-10 s; 25 s leaves slack for a slow request without
-      // letting the user wait 60+. On timeout we fall through to
-      // the live single-sentence call below — paid but bounded.
-      await Promise.race([
-        window._khArtFullAnalyzePromise[articleId],
-        new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('bulk timeout')); }, 25000); })
-      ]);
-      var _sharedCache2 = await _khLoadArticleSentenceCache(articleId);
-      if (_sharedCache2 && _sharedCache2.sentences) {
-        var _hit2 = _sharedCache2.sentences[idx];
-        if (!_hit2 || (_hit2.text || '').trim() !== sentenceText) {
-          _hit2 = _sharedCache2.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
-        }
-        if (_hit2 && (_hit2.translation || (_hit2.vocab && _hit2.vocab.length) || (_hit2.grammar && _hit2.grammar.length))) {
-          window._khSentAnalyzeCache[cacheKey] = _hit2;
-          try { sessionStorage.setItem(cacheKey, JSON.stringify(_hit2)); } catch(_) {}
-          _khRenderSentPanel(panel, _hit2, null, sentenceText);
-          return;
-        }
-      }
-    } catch(_) { /* fall through to live call */ }
-  }
+  // We deliberately DO NOT await the bulk promise here anymore.
+  // Earlier the await blocked every per-sentence tap until the
+  // article-wide bulk Claude call returned (with a 25 s ceiling).
+  // For sentences whose existing cache row was empty (the bulk
+  // pre-gen only filled some slots, the rest were still null) the
+  // user kept seeing "분석 중…" stuck for 25 s every time they
+  // tapped a fresh sentence — exactly the report
+  //   "분석중 뜨고 새로운 문장분석 떠도 그 다음문장 클릭하면
+  //    다시 또 분석중 걸린다고."
+  // Bulk still runs in the background (block above triggered it),
+  // and future taps on this article will pick up its result via
+  // the cache-load path. For THIS tap we just go straight to the
+  // live single-sentence call — paid (one Haiku call, ~1-2 s) but
+  // bounded and predictable. No more 25 s stalls.
 
   if (typeof callClaude !== 'function') {
     panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
