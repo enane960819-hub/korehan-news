@@ -9381,11 +9381,51 @@ function setupFeedNavigation() {
     document.body.appendChild(prev);
   }
 
-  // Pills now show as soon as the article opens — the previous "wait until
-  // 80% scrolled" rule meant short articles never revealed them and learners
-  // were forced to use the strict swipe gesture (page-bottom + 80px swipe up).
-  // The body class is added once on setup and not toggled by scroll anymore.
+  // Pills appear by default so the learner discovers them, and an
+  // auto-hide handler below pulls them out of the way while the
+  // article is actively being scrolled. Reveal triggers on scroll-up,
+  // edge proximity (top/bottom of page), or idle (no scroll for ~1.5s)
+  // — a standard "mobile app chrome" pattern. Replaces the previous
+  // "80% scrolled" rule, which never fired on short articles.
   document.body.classList.add('kh-feed-pill-on');
+
+  if (!window._khFeedPillAutoHide) {
+    window._khFeedPillAutoHide = true;
+    var _pillLastY = window.scrollY || 0;
+    var _pillTicking = false;
+    var _pillIdleTimer = null;
+    var _pillSetVisible = function(on) {
+      var b = document.body;
+      if (!b.classList.contains('kh-reading-page')) return;
+      if (on) b.classList.add('kh-feed-pill-on');
+      else b.classList.remove('kh-feed-pill-on');
+    };
+    var _pillOnScroll = function() {
+      if (_pillTicking) return;
+      _pillTicking = true;
+      requestAnimationFrame(function() {
+        var y = window.scrollY || document.documentElement.scrollTop || 0;
+        var doc = document.documentElement;
+        var maxY = (doc.scrollHeight || 0) - (doc.clientHeight || 0);
+        var atTop = y < 60;
+        var atBottom = y > maxY - 120;
+        var dy = y - _pillLastY;
+        _pillLastY = y;
+        // Hide while reading down, reveal on up. Edges always show
+        // so the learner can always reach Next from the bottom of the
+        // article, and Prev from the very top.
+        if (atTop || atBottom) _pillSetVisible(true);
+        else if (dy > 4)       _pillSetVisible(false);
+        else if (dy < -4)      _pillSetVisible(true);
+        // Idle reveal — if the learner stops scrolling, the chrome
+        // returns. Same idea as iOS Safari's URL bar.
+        if (_pillIdleTimer) clearTimeout(_pillIdleTimer);
+        _pillIdleTimer = setTimeout(function() { _pillSetVisible(true); }, 1500);
+        _pillTicking = false;
+      });
+    };
+    window.addEventListener('scroll', _pillOnScroll, { passive: true });
+  }
 
   // Vertical swipe gestures for feed navigation, Reels / Shorts style:
   //   - swipe UP   AT the very bottom     = next article
