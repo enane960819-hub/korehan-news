@@ -7602,22 +7602,40 @@ async function checkOnboardingStatus() {
 async function loadVocabFromDB() {
   try {
     var sb = getSupa(); if (!sb) { initTooltips(); return; }
-    // ORDER BY + bigger limit so newly-added words land in the loaded
-    // window. The previous unordered .limit(2000) returned an arbitrary
-    // 2000 rows once vocabulary_bank grew past that, which is why a
-    // freshly-added Vocab Edit Mode word could vanish on refresh even
-    // when the row WAS in the table — random sample didn't include it.
-    var res = await sb.from('vocabulary_bank')
-      .select('word_ko,word_rom,word_en')
-      .eq('is_active', true)
-      .order('word_ko', { ascending: true })
-      .limit(5000);
-    if (res.data && res.data.length) {
-      res.data.forEach(function(row) {
+    // Paginate. PostgREST defaults to a 1000-row hard cap that
+    // silently truncates `.limit(5000)` server-side, which is why
+    // a freshly-added late-alphabet word (혁신, 흥미 …) kept
+    // disappearing from the hover dict on refresh even when the
+    // row was confirmed in the table — order=word_ko ascending
+    // pushed the newest words past row 1000 and the client never
+    // saw them. Use range() in 1000-row pages instead, advance
+    // until the server returns fewer rows than the page size.
+    // is_active is intentionally NOT filtered server-side: an
+    // admin upsert that lands with is_active=null (default-not-
+    // populated, schema-cache lag) would have been excluded by
+    // .eq('is_active', true) and looked like a vanish too. We
+    // skip explicitly inactive rows on the client instead.
+    var PAGE = 1000;
+    var page = 0;
+    while (true) {
+      var from = page * PAGE;
+      var to   = from + PAGE - 1;
+      var res = await sb.from('vocabulary_bank')
+        .select('word_ko,word_rom,word_en,is_active')
+        .order('word_ko', { ascending: true })
+        .range(from, to);
+      if (res.error) { console.warn('[loadVocabFromDB] page', page, res.error); break; }
+      var rows = res.data || [];
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        if (row.is_active === false) continue;
         if (row.word_ko && row.word_en) {
           VOCAB[row.word_ko] = { rom: row.word_rom || '', en: row.word_en };
         }
-      });
+      }
+      if (rows.length < PAGE) break;       // last page
+      page++;
+      if (page > 30) break;                // hard ceiling — 30k rows
     }
   } catch(e) {}
 }
