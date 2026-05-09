@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/og-default.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260509v">
+<link rel="stylesheet" href="korehan-shared.css?v=20260509w">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
 <style>
 /* ─── LAYOUT ─────────────────────────────── */
@@ -3777,7 +3777,16 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   </div>
 </div>
 
-<!-- ═══ TAB: Master ═══ -->
+<!-- ═══ TAB: Exercise ═══
+     Restructured 2026-05-09 by skill axis (옵션 1):
+       Vocab · Grammar · Listening
+     Today's Phrase becomes the full-width daily anchor at the
+     top. Flashcards (categories) and 3D Flashcards merged into
+     one card with a "3D mode →" link in the header so we don't
+     present the same concept twice. "Canvas 2.0 — immersive
+     learning with visual effects" copy dropped — it described
+     nothing. IDs preserved (phrase-box-help, fc-grid-help) so
+     existing renderers keep targeting the right containers. -->
 <div class="sr-tab-panel" id="sr-panel-master">
   <div style="max-width:1160px;margin:0 auto;padding:24px">
     <div style="margin-bottom:20px">
@@ -3785,63 +3794,61 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Interactive tools to practice Korean</div>
     </div>
 
-    <!-- Today's Phrase + Flashcards moved here from the Help tab —
-         these are practice material, not reference material. IDs
-         (`phrase-box-help`, `fc-grid-help`) preserved so the
-         existing renderers keep targeting the right containers. -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:20px">
-      <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden">
-        <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4);display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today's Phrase</span></div></div>
-        <div class="cb" id="phrase-box-help" style="padding:12px 14px"></div>
-      </div>
-      <div class="sr-sb-panel" style="padding:0;overflow:hidden">
-        <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08)">
-          <div class="ct" style="color:rgba(255,255,255,.45);display:inline-flex;align-items:center;gap:6px"><i data-lucide="layers" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Flashcards</span></div>
+    <!-- Daily anchor — full-width Today's Phrase. -->
+    <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden;margin-bottom:24px">
+      <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4);display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today's Phrase</span></div></div>
+      <div class="cb" id="phrase-box-help" style="padding:12px 14px"></div>
+    </div>
+
+    <!-- ═══ Vocab · 어휘 ═══ -->
+    <div style="font-size:13px;font-weight:900;color:#7dd3fc;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;display:inline-flex;align-items:center;gap:6px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Vocab · 어휘</span></div>
+    <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:12px">Flashcards by topic and the Hangul basics</div>
+    <div class="master-grid" style="margin-bottom:24px">
+      <!-- Flashcards: categories grid + 3D mode link, merged. -->
+      <div class="master-card" style="padding:0;cursor:default">
+        <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div class="ct" style="color:rgba(255,255,255,.55);display:inline-flex;align-items:center;gap:6px;font-weight:900"><i data-lucide="layers" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Flashcards</span></div>
+          <button type="button" onclick="KHFlashcards&&KHFlashcards.open({title:'3D Flashcards'})" style="background:rgba(125,211,252,.14);border:1px solid rgba(125,211,252,.28);color:#7dd3fc;font-size:11px;font-weight:900;letter-spacing:.04em;padding:5px 10px;border-radius:999px;cursor:pointer;font-family:inherit">3D mode →</button>
         </div>
         <div style="padding:10px 14px 14px">
           <div class="mgrid" id="fc-grid-help"></div>
         </div>
       </div>
-    </div>
-
-    <div class="master-grid">
-      <div class="master-card" style="padding:0" onclick="openAlphaModal()">
+      <!-- Korean Alphabet (Hangul basics). -->
+      <div class="master-card" style="padding:0;cursor:pointer" onclick="openAlphaModal()">
         <div class="mc-banner" style="height:160px"><img src="assets/file_000000004d1c72098736e9b8d1ef65eb.png" alt="Korean Alphabet" onerror="this.parentNode.style.background='linear-gradient(135deg,#0c4a6e,#0369a1)';this.style.display='none'"></div>
       </div>
     </div>
 
-    <!-- ═══ INTERACTIVE TOOLS ═══ -->
-    <div style="margin-top:28px">
-      <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px;display:inline-flex;align-items:center;gap:8px"><i data-lucide="gamepad-2" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Interactive Tools</span></div>
-      <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:14px">Canvas 2.0 — immersive learning with visual effects</div>
-      <div class="master-grid">
-        <div class="master-card" onclick="KHFlashcards&&KHFlashcards.open({title:'3D Flashcards'})" style="cursor:pointer">
-          <div style="text-align:center;padding:20px">
-            <i data-lucide="layers" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#7dd3fc" aria-hidden="true"></i>
-            <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">3D Flashcards</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">Swipe cards to review vocabulary<br>with mastery tracking</div>
-          </div>
+    <!-- ═══ Grammar · 문법 ═══ -->
+    <div style="font-size:13px;font-weight:900;color:#86efac;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;display:inline-flex;align-items:center;gap:6px"><i data-lucide="git-branch" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Grammar · 문법</span></div>
+    <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:12px">Patterns to recognise and sentences to assemble</div>
+    <div class="master-grid" style="margin-bottom:24px">
+      <div class="master-card" onclick="KHGrammarTree&&KHGrammarTree.open()" style="cursor:pointer">
+        <div style="text-align:center;padding:20px">
+          <i data-lucide="git-branch" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#86efac" aria-hidden="true"></i>
+          <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">Grammar Skill Tree</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">45 grammar patterns<br>across 3 levels</div>
         </div>
-        <div class="master-card" onclick="KHGrammarTree&&KHGrammarTree.open()" style="cursor:pointer">
-          <div style="text-align:center;padding:20px">
-            <i data-lucide="git-branch" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#86efac" aria-hidden="true"></i>
-            <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">Grammar Skill Tree</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">45 grammar patterns<br>across 3 levels</div>
-          </div>
+      </div>
+      <div class="master-card" onclick="KHSentenceBuilder&&KHSentenceBuilder.open()" style="cursor:pointer">
+        <div style="text-align:center;padding:20px">
+          <i data-lucide="puzzle" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#c4b5fd" aria-hidden="true"></i>
+          <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">Sentence Builder</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">Drag color-coded blocks<br>to build Korean sentences</div>
         </div>
-        <div class="master-card" onclick="KHSentenceBuilder&&KHSentenceBuilder.open()" style="cursor:pointer">
-          <div style="text-align:center;padding:20px">
-            <i data-lucide="puzzle" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#c4b5fd" aria-hidden="true"></i>
-            <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">Sentence Builder</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">Drag color-coded blocks<br>to build Korean sentences</div>
-          </div>
-        </div>
-        <div class="master-card" onclick="startLQ()" style="cursor:pointer">
-          <div style="text-align:center;padding:20px">
-            <i data-lucide="headphones" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#fde68a" aria-hidden="true"></i>
-            <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">Listening Quiz</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">AI-generated audio quiz<br>with waveform visualization</div>
-          </div>
+      </div>
+    </div>
+
+    <!-- ═══ Listening · 듣기 ═══ -->
+    <div style="font-size:13px;font-weight:900;color:#fde68a;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;display:inline-flex;align-items:center;gap:6px"><i data-lucide="headphones" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Listening · 듣기</span></div>
+    <div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:12px">Audio drills with AI-generated dialogue</div>
+    <div class="master-grid">
+      <div class="master-card" onclick="startLQ()" style="cursor:pointer">
+        <div style="text-align:center;padding:20px">
+          <i data-lucide="headphones" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#fde68a" aria-hidden="true"></i>
+          <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">Listening Quiz</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">AI-generated audio quiz<br>with waveform visualization</div>
         </div>
       </div>
     </div>
@@ -4318,7 +4325,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260509v"></script>
+<script src="korehan-shared.js?v=20260509w"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260502a"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>

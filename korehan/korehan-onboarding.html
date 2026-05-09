@@ -151,6 +151,22 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
 .ob-step-dot.active{animation:dotPop .3s cubic-bezier(.22,1.4,.36,1)}
 @keyframes dotPop{0%{transform:scale(.85)}60%{transform:scale(1.16)}100%{transform:scale(1.06)}}
 
+/* Step 1 name-pun explainer — shown only on the goals step, the
+   user's very first onboarding screen. The Korean phrase reads
+   "Are you doing Korean?" using 하니, the casual Q-form of 하다,
+   which is also the back half of the brand. Compact card so it
+   doesn't crowd the actual goal-picker below. */
+.ob-namepun{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:18px;background:linear-gradient(135deg,rgba(56,189,248,.14),rgba(167,139,250,.10));border:1px solid rgba(125,211,252,.22);margin-bottom:18px}
+.ob-namepun-ko{font-family:'Noto Serif KR',serif;font-size:22px;font-weight:900;color:#7dd3fc;line-height:1;flex-shrink:0;letter-spacing:-.01em}
+.ob-namepun-en{font-size:13px;line-height:1.55;color:rgba(255,255,255,.78)}
+.ob-namepun-en span{color:#fff;font-weight:700;font-style:italic}
+.ob-namepun-en b{color:#fff;font-weight:800}
+@media (max-width:640px){
+  .ob-namepun{flex-direction:column;align-items:flex-start;gap:8px;padding:12px 14px}
+  .ob-namepun-ko{font-size:19px}
+  .ob-namepun-en{font-size:12px}
+}
+
 /* Google sign-up button — used on step 4 when the user landed
    from the marketing CTA without an account. */
 .ob-google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px 18px;border:none;border-radius:18px;background:#fff;color:#0f172a;font-size:15px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 14px 30px rgba(0,0,0,.18);transition:transform .15s ease,box-shadow .15s ease}
@@ -543,6 +559,11 @@ function renderStep1() {
   saveOnboardingLocal(false);
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
+      + '<div class="ob-namepun">'
+      +   '<div class="ob-namepun-ko">한국어 하니?</div>'
+      +   '<div class="ob-namepun-en"><span>"Are you doing Korean?"</span><br>'
+      +   'The name <b>KoreHani</b> is a pun — <b>하니 (hani)</b> is casual Korean for <i>"are you doing it?"</i> So the brand asks the question; this app helps you say yes.</div>'
+      + '</div>'
       + '<div class="ob-topline"><div class="ob-eyebrow">Step 1 · Goals</div><div class="ob-stage">Pick one or more reasons</div></div>'
       + '<h2 class="ob-title">Why are you learning Korean?</h2>'
       + '<p class="ob-desc">Choose every goal that fits. We will use this to shape your suggestions, examples, and first-study recommendations.</p>'
