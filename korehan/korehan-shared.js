@@ -3255,9 +3255,22 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
   // every page load via _khLoadArticleSentenceCache, so we don't need
   // a long-lived flag.
   var lockKey = 'kh_artfull_running_' + articleId;
-  try { if (sessionStorage.getItem(lockKey)) return; } catch(_) {}
+  // Stamp the lock with a timestamp so a previous tab that crashed
+  // mid-call doesn't pin all future bulk runs forever. Reuse if
+  // less than 60 s old (real bulk should finish within that), else
+  // overwrite. The user-reported "분석 중…" stuck on every
+  // sentence after a single hung call traces back to this lock
+  // staying set indefinitely.
+  try {
+    var stamped = sessionStorage.getItem(lockKey);
+    if (stamped) {
+      var n = parseInt(stamped, 10);
+      if (Number.isFinite(n) && (Date.now() - n) < 60000) return; // recent → respect
+      sessionStorage.removeItem(lockKey); // stale → clear and continue
+    }
+  } catch(_) {}
   window._khArtFullAnalyzeRunning[articleId] = true;
-  try { sessionStorage.setItem(lockKey, '1'); } catch(_) {}
+  try { sessionStorage.setItem(lockKey, String(Date.now())); } catch(_) {}
 
   try {
     // Sentences are already split + numbered by _khWrapSentences when
@@ -3745,25 +3758,45 @@ async function analyzeSentence(idx, el) {
       // cache is still considered fresh. If it's stale, skip the
       // hit — the bulk-await block below will rebuild the row and
       // every tap in this session lands on the new analysis.
-      if (!_sharedCacheStale) {
-        var hit = sharedCache.sentences[idx];
-        if (!hit || (hit.text || '').trim() !== sentenceText) {
-          hit = sharedCache.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
+      // Render IMMEDIATELY from the stale hit too. The previous
+      // behaviour skipped the hit entirely when the article was
+      // marked stale, then made every tap wait for the bulk call
+      // to finish — if the bulk hung or took 10+ seconds, the user
+      // saw "분석 중..." stuck on every sentence (the screenshot).
+      // Render the (filtered, hallucination-stripped) old data
+      // immediately so the user has something to read; trigger the
+      // background bulk anyway via the block below so the next
+      // refresh has clean data.
+      var hit = sharedCache.sentences[idx];
+      if (!hit || (hit.text || '').trim() !== sentenceText) {
+        hit = sharedCache.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
+      }
+      var _hitGrammarMissing = !hit || !hit.grammar || !Array.isArray(hit.grammar) || !hit.grammar.length;
+      var _hitGrammarBad = hit && _khSentGrammarLooksBad(hit);
+      var _hitStale = (_isLowLevel && _hitGrammarMissing) || _hitGrammarBad;
+      if (_hitStale) _sharedCacheStale = true;
+      if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length))) {
+        window._khSentAnalyzeCache[cacheKey] = hit;
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
+        _khRenderSentPanel(panel, hit, null, sentenceText);
+        // If the article is stale, kick off the background rebuild
+        // and return. The cache update will land for the next tap /
+        // refresh; no need to keep "분석 중…" on screen waiting for
+        // it.
+        if (_sharedCacheStale && articleId) {
+          window._khArtFullAnalyzePromise = window._khArtFullAnalyzePromise || {};
+          if (!window._khArtFullAnalyzePromise[articleId]) {
+            try {
+              var _bulkBg = _khTriggerFullArticleAnalyze(articleId, _articleLevel);
+              if (_bulkBg && typeof _bulkBg.then === 'function') {
+                window._khArtFullAnalyzePromise[articleId] = _bulkBg.finally(function() {
+                  delete window._khArtFullAnalyzePromise[articleId];
+                });
+              }
+            } catch(_) {}
+          }
         }
-        var _hitGrammarMissing = !hit || !hit.grammar || !Array.isArray(hit.grammar) || !hit.grammar.length;
-        var _hitGrammarBad = hit && _khSentGrammarLooksBad(hit);
-        var _hitStale = (_isLowLevel && _hitGrammarMissing) || _hitGrammarBad;
-        // If a single sentence looks bad, promote to article-level
-        // stale rather than mixing cached + uncached responses in
-        // the same session.
-        if (_hitStale) {
-          _sharedCacheStale = true;
-        } else if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length))) {
-          window._khSentAnalyzeCache[cacheKey] = hit;
-          try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
-          _khRenderSentPanel(panel, hit, null, sentenceText);
-          return;
-        }
+        return;
       }
     }
   } catch(_) {}
@@ -3814,7 +3847,16 @@ async function analyzeSentence(idx, el) {
   // by one Claude call instead of N.
   if (articleId && window._khArtFullAnalyzePromise[articleId]) {
     try {
-      await window._khArtFullAnalyzePromise[articleId];
+      // Race the bulk against a 25 s ceiling so a hung Claude call
+      // can't pin "분석 중…" to the screen forever. The bulk pass
+      // covers ~30 sentences on Haiku, which usually returns in
+      // 5-10 s; 25 s leaves slack for a slow request without
+      // letting the user wait 60+. On timeout we fall through to
+      // the live single-sentence call below — paid but bounded.
+      await Promise.race([
+        window._khArtFullAnalyzePromise[articleId],
+        new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('bulk timeout')); }, 25000); })
+      ]);
       var _sharedCache2 = await _khLoadArticleSentenceCache(articleId);
       if (_sharedCache2 && _sharedCache2.sentences) {
         var _hit2 = _sharedCache2.sentences[idx];
