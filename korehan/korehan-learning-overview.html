@@ -1266,6 +1266,7 @@
   <script src="js/core/article-cache.js?v=20260505b"></script>
   <script src="js/core/phrases.js?v=20260505p"></script>
   <script src="js/core/saved-words.js?v=20260505b"></script>
+<script src="js/core/hangul-jamo-input.js?v=20260509r"></script>
   <script src="js/features/video-player.js?v=20260502a"></script>
   <script src="js/core/articles.js?v=20260502a"></script>
   <script src="js/core/reporters.js?v=20260502a"></script>
@@ -2592,7 +2593,16 @@
         + '<input class="dr-typed-input" id="dr-typed" placeholder="Type the Korean word…" onkeydown="if(event.key===\'Enter\')drCheckTyped()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />'
         + '<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>'
         + '<button onclick="drCheckTyped()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-weight:800;font-size:13px;cursor:pointer;margin-top:12px">Check</button>';
-      setTimeout(function(){ var el = document.getElementById('dr-typed'); if (el) el.focus(); }, 60);
+      setTimeout(function(){
+        var el = document.getElementById('dr-typed');
+        if (el) el.focus();
+        // On-screen Korean keyboard for users without an OS-level
+        // Korean IME — taps drive the same cho/jung/jong state
+        // machine and write the composed text into the input.
+        if (el && typeof khAttachJamoKeyboard === 'function') {
+          try { khAttachJamoKeyboard(el); } catch(_) {}
+        }
+      }, 60);
     }
   }
 
