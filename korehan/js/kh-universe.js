@@ -201,8 +201,8 @@
       // the white star points painted on the canvas above. The
       // 90s khuDrift animation is a very slow scale + translate
       // — adds depth without distracting from the constellation.
-      '.khu-nebula{position:absolute;inset:-8%;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;transition:opacity 1.2s ease;mix-blend-mode:screen;filter:saturate(1.1) contrast(1.05);will-change:transform,opacity;pointer-events:none;}',
-      '.khu-nebula.active{opacity:.55;animation:khuDrift 90s ease-in-out infinite alternate;}',
+      '.khu-nebula{position:absolute;inset:-8%;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;transition:opacity .35s ease;mix-blend-mode:screen;filter:saturate(.9) hue-rotate(-8deg) contrast(1);will-change:transform,opacity;pointer-events:none;}',
+      '.khu-nebula.active{opacity:.32;animation:khuDrift 90s ease-in-out infinite alternate;}',
       '#khu-nebula-witch{background-image:url(\'img/universe/witch-head.jpg\');}',
       '#khu-nebula-carina{background-image:url(\'img/universe/carina.webp\');}',
       '#khu-nebula-cliffs{background-image:url(\'img/universe/cosmic-cliffs.jpg\');}',
@@ -2008,15 +2008,18 @@
     state.words = (opts.words || []).slice(0, 600);
     document.addEventListener('keydown', onKeydown);
 
-    // Activate one of the three nebula backdrops at random per
-    // session. .khu-nebula.active fades in; the rest stay hidden.
-    // Caller can pin a specific one via opts.nebula = 'witch' |
-    // 'carina' | 'cliffs' if we ever want themed views.
-    var nebulae = ['witch', 'carina', 'cliffs'];
-    var pick = (opts.nebula && nebulae.indexOf(opts.nebula) >= 0)
+    // Activate one nebula backdrop at random. Cosmic Cliffs is
+    // available via opts.nebula='cliffs' for themed views but
+    // dropped from the random rotation — its warm orange clashed
+    // with the deep-purple Universe palette and washed out the
+    // category labels. Witch Head + Carina both sit in the cool
+    // purple/red range that blends with the existing gradient.
+    var pool = ['witch', 'carina'];
+    var allKnown = ['witch', 'carina', 'cliffs'];
+    var pick = (opts.nebula && allKnown.indexOf(opts.nebula) >= 0)
       ? opts.nebula
-      : nebulae[Math.floor(Math.random() * nebulae.length)];
-    nebulae.forEach(function(n) {
+      : pool[Math.floor(Math.random() * pool.length)];
+    allKnown.forEach(function(n) {
       var el = document.getElementById('khu-nebula-' + n);
       if (el) el.classList.toggle('active', n === pick);
     });
@@ -2065,6 +2068,14 @@
     state.open = false;
     var overlay = document.getElementById(OVERLAY_ID);
     if (overlay) overlay.classList.remove('open');
+    // Reset every nebula layer to inactive on close so the next
+    // open() can fade in a single one cleanly. Without this, a
+    // close-then-reopen pair left the previous .active class in
+    // place; if the new pick differed, both images cross-faded
+    // for 1.2s and visibly overlapped (the user-reported "껐다
+    // 다시 키면 오류" screenshot).
+    var nebs = overlay ? overlay.querySelectorAll('.khu-nebula') : [];
+    for (var i = 0; i < nebs.length; i++) nebs[i].classList.remove('active');
     if (state.animId) { cancelAnimationFrame(state.animId); state.animId = null; }
     if (state.renderer) unbindControls(state.renderer.domElement);
     if (state.activeCategory) _clearCategoryHighlight();
