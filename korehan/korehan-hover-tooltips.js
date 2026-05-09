@@ -488,8 +488,13 @@
     scheduleHide();
   }
   function onWordTap(e) {
-    // Mobile: tap a word to show its tooltip (mouse events don't fire on touch)
-    e.stopPropagation();
+    // Mobile: tap a word to show its tooltip (mouse events don't fire on touch).
+    // Crucially, do NOT stopPropagation — the .art-sent ancestor has an
+    // onclick that opens the sentence-analysis panel, and swallowing the
+    // event here was the "기사 본문 탭이 무반응" bug. With the click
+    // bubbling through, the hover tip flashes and the sentence panel
+    // takes over; the tip's outside-tap closer dismisses it as soon as
+    // the panel renders, so the learner sees the sentence panel.
     clearTimeout(_hideTimer);
     showTooltip(e);
     // Position near the tapped word (mousemove won't fire on touch)
