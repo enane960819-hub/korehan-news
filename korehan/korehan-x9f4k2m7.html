@@ -905,6 +905,106 @@ async function batchAssignReporters() {
   renderRows();
 }
 
+// ── AI-powered batch section re-classification ───────────────
+// User-facing: 1 click → Claude reads each article and assigns it to
+// the right section. Operates on ALL articles (default) or only the
+// ones currently in 문화 if the user prefers a less aggressive sweep.
+const ALLOWED_SECTIONS = ['사회','국제','문화','K-pop','Korea','beauty','travel','오피니언','IT과학','역사','nature'];
+
+async function batchReclassifySections() {
+  if (typeof callClaude !== 'function') { toast('AI helper not loaded', true); return; }
+  var sb = getSb();
+  if (!sb) { toast('Supabase 연결 없음', true); return; }
+  var scope = confirm('Re-classify ALL articles?\n\nOK = all ' + DB.length + ' articles\nCancel = only articles currently in 문화');
+  var pool = scope ? DB.slice() : DB.filter(function(a){ return (a.section || '') === '문화'; });
+  if (!pool.length) { toast('No articles to classify'); return; }
+  if (!confirm('AI will read ' + pool.length + ' articles and pick a section for each.\n\nThis takes ~1 minute and costs ~$0.05 in Haiku tokens.\n\nProceed?')) return;
+
+  // Batch articles 25 at a time so each Claude call stays under the
+  // token budget and we get partial progress visible.
+  var BATCH = 25;
+  var changed = 0;
+  var unchanged = 0;
+  var failed = 0;
+  var msgEl = document.createElement('div');
+  msgEl.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:14px 22px;border-radius:14px;z-index:99999;font-size:13px;font-weight:700;box-shadow:0 14px 30px rgba(0,0,0,.35)';
+  document.body.appendChild(msgEl);
+  msgEl.textContent = 'Classifying 0 / ' + pool.length + '…';
+
+  for (var start = 0; start < pool.length; start += BATCH) {
+    var batch = pool.slice(start, start + BATCH);
+    var payload = batch.map(function(a, i) {
+      var body = String(a.body || '').replace(/\s+/g, ' ').slice(0, 280);
+      return (i + 1) + '. [' + a.id + '] ' + a.title + ' — ' + body;
+    }).join('\n\n');
+    var prompt =
+        'Classify each Korean news article into ONE of these sections:\n'
+      + ALLOWED_SECTIONS.map(function(s){ return '  - ' + s; }).join('\n') + '\n\n'
+      + 'Section meanings:\n'
+      + '  - 사회 (Society): Korean domestic society, Korean schools, Korean crime / accidents / law / politics-light\n'
+      + '  - 국제 (World): international news, foreign countries, world events not Korea-centric\n'
+      + '  - 문화 (Culture): general cultural items, arts, viral cultural moments that don\'t fit elsewhere\n'
+      + '  - K-pop: K-pop, K-drama, Korean entertainment industry\n'
+      + '  - Korea: Korean traditional culture, Korean food, Korean language, Korean tourism, things uniquely Korean\n'
+      + '  - beauty: cosmetics, fashion, skincare, beauty trends\n'
+      + '  - travel: travel destinations, travel experiences, transportation\n'
+      + '  - 오피니언 (Opinion): explicitly opinion pieces, columns, editorials\n'
+      + '  - IT과학 (Tech & Science): technology, science, AI, gadgets, space, research\n'
+      + '  - 역사 (History): historical events (pre-1990 typically), historical figures, archaeology\n'
+      + '  - nature: wildlife, animals, plants, environment, climate, natural phenomena\n\n'
+      + 'Articles:\n' + payload + '\n\n'
+      + 'Return ONLY a JSON array (no preamble) with this shape:\n'
+      + '[{"id":"<article-id>","section":"<section name>"}, ...]\n'
+      + 'EXACTLY ' + batch.length + ' entries, in the same order.\n'
+      + 'Use ONLY the section names listed above (Korean spellings exact).';
+
+    var assignments = null;
+    try {
+      var res = await callClaude({
+        feature: 'admin-bulk-section-classify',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: Math.min(8000, 80 * batch.length + 400),
+        messages: [{ role:'user', content: prompt }]
+      });
+      var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+      var s = raw.indexOf('['); var e = raw.lastIndexOf(']');
+      if (s < 0 || e <= s) throw new Error('JSON not found');
+      assignments = JSON.parse(raw.slice(s, e + 1));
+    } catch(err) {
+      console.warn('[reclass] batch failed:', err);
+      failed += batch.length;
+      msgEl.textContent = 'Batch ' + (start/BATCH + 1) + ' failed — ' + (start + batch.length) + ' / ' + pool.length;
+      continue;
+    }
+
+    // Apply each assignment
+    for (var j = 0; j < batch.length; j++) {
+      var a = batch[j];
+      var ass = assignments.find(function(x){ return x && String(x.id) === String(a.id); }) || assignments[j];
+      if (!ass || !ass.section) { failed++; continue; }
+      var newSec = String(ass.section).trim();
+      if (ALLOWED_SECTIONS.indexOf(newSec) === -1) { failed++; continue; }
+      if (newSec === a.section) { unchanged++; continue; }
+      try {
+        var ur = await sb.from('articles').update({ section: newSec }).eq('id', a.id);
+        if (!ur.error) {
+          a.section = newSec;
+          changed++;
+        } else {
+          failed++;
+        }
+      } catch(_) { failed++; }
+    }
+    msgEl.textContent = 'Classifying ' + Math.min(start + BATCH, pool.length) + ' / ' + pool.length
+      + '  ·  ' + changed + ' moved, ' + unchanged + ' kept, ' + failed + ' failed';
+  }
+
+  msgEl.textContent = '✓ Done. ' + changed + ' moved, ' + unchanged + ' kept, ' + failed + ' failed.';
+  setTimeout(function(){ msgEl.remove(); }, 6000);
+  renderRows();
+  refreshCounts && refreshCounts();
+}
+
 // Init — Supabase에서 기사 로드
 dbLoadFromSupabase();
 
@@ -947,7 +1047,10 @@ function renderList(){
     </div>
     <div class="infobox" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <span>💡 Click an article to edit, or, <strong>Featured</strong>to feature it on the main hero.</span>
-      <button class="btn" style="background:#f1f5f9;color:#334155;font-size:12px;padding:6px 14px;flex-shrink:0" onclick="batchAssignReporters()">🎭 기자 일괄 배정</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" style="background:#f1f5f9;color:#334155;font-size:12px;padding:6px 14px" onclick="batchAssignReporters()">🎭 기자 일괄 배정</button>
+        <button class="btn" style="background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;font-size:12px;padding:6px 14px" onclick="batchReclassifySections()">🤖 AI 카테고리 재분류</button>
+      </div>
     </div>
     <div class="toolbar">
       <div class="srch"><span>🔍</span><input id="q" type="text" placeholder="Search by title..." oninput="renderRows()"></div>
