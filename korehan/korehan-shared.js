@@ -6051,15 +6051,15 @@ function showCoinToast(coin) {
 async function saveVocabToDB(word, rom, en, isDelete) {
   var sb = getSupa();
   if (!sb) throw new Error('Supabase not connected');
-  // vocabulary_bank locked down 2026-04-09 with RLS
-  //   FOR ALL USING (auth.uid() = user_id)
-  // Pre-lockdown saves omitted user_id, so PostgREST silently dropped
-  // the upsert (no row inserted, but res.error stayed empty for upsert
-  // with on-conflict). UI rendered "saved" because in-memory VOCAB was
-  // updated, then a refresh wiped the in-memory state and the row was
-  // never in the DB to load back — the exact "added a word, refreshed,
-  // it's gone from hover and the Vocab tab" report.
-  // Stamp user_id on every write so the policy lets it through.
+  // vocabulary_bank is the sitewide pool (admin Vocab Bank panel +
+  // Vocab Edit Mode adds). The 2026-04-09 plan was to lock it down
+  // with RLS keyed off a user_id column, but the column was never
+  // added to prod — PostgREST surfaces "Could not find the 'user_id'
+  // column of 'vocabulary_bank' in the schema cache" the moment we
+  // try to stamp it. Per-user saves go to user_saved_words via the
+  // dbSaveWord call site upstream, so vocabulary_bank can stay the
+  // shared dictionary it actually is. Sign-in is still required so
+  // anonymous visitors don't pollute the pool.
   var u = (typeof supaUser !== 'undefined') ? supaUser : null;
   if (!u || !u.id) throw new Error('Sign in to save vocabulary');
   if (isDelete) {
@@ -6070,7 +6070,6 @@ async function saveVocabToDB(word, rom, en, isDelete) {
       word_key: word, word_ko: word,
       word_rom: rom || '', word_en: en || '',
       is_active: true,
-      user_id: u.id
     }, { onConflict: 'word_key' });
     if (res.error) throw res.error;
   }
