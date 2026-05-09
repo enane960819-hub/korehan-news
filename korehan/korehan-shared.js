@@ -2473,12 +2473,16 @@ function buildHeroHTML(featured, rest) {
 var SECTION_ALIASES = {
   '사회':    ['사회','Society','society','Social','social'],
   '국제':    ['국제','World','world','International','international','Global','global'],
-  '문화':    ['문화','Culture','culture','Entertainment','entertainment'],
+  '문화':    ['문화','Culture','culture'],
+  '연예':    ['연예','Entertainment','entertainment','Celeb','celeb','Celebrity','celebrity','show-biz','연예계'],
   'Korea':   ['Korea','korea','한국','Korean','korean'],
   '오피니언':['오피니언','Opinion','opinion'],
   'K-pop':   ['K-pop','Kpop','케이팝','kpop','k-pop'],
-  'beauty':  ['beauty','Beauty','뷰티','미용','라이프스타일','IT과학','tech','Tech'],
+  'beauty':  ['beauty','Beauty','뷰티','미용','라이프스타일'],
   'travel':  ['travel','Travel','여행','관광','trip'],
+  'IT과학':  ['IT과학','it과학','tech','Tech','Technology','technology','과학','Science','science','IT'],
+  'nature':  ['nature','Nature','자연','동물','wildlife','Wildlife'],
+  '역사':    ['역사','History','history'],
 };
 
 function getSectionKey(rawSection) {
@@ -6756,16 +6760,18 @@ function startClock() {
 var _sectionsCache = null;
 
 var DEFAULT_SECTIONS = [
-  { key:'사회',   label:'Society',   icon:'<i data-lucide="users" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:3 },
-  { key:'국제',   label:'World',     icon:'<i data-lucide="globe" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:4 },
-  { key:'문화',   label:'Culture',   icon:'<i data-lucide="palette" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:5 },
-  { key:'K-pop',  label:'K-pop',     icon:'<i data-lucide="music" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:6 },
-  { key:'beauty', label:'Beauty',    icon:'<i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:8 },
-  { key:'travel', label:'Travel',    icon:'<i data-lucide="plane" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:9 },
-  { key:'역사',   label:'History',   icon:'<i data-lucide="scroll" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:7 },
-  { key:'nature', label:'Nature',    icon:'<i data-lucide="leaf" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:8 },
-  { key:'Korea',  label:'Korea',     icon:'<i data-lucide="flag" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:10 },
-  { key:'오피니언',label:'Opinion',  icon:'<i data-lucide="pen-tool" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>', sort_order:11 },
+  { key:'사회',   label:'Society',        icon:'<i data-lucide="users" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',     sort_order:3  },
+  { key:'국제',   label:'World',          icon:'<i data-lucide="globe" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',     sort_order:4  },
+  { key:'문화',   label:'Culture',        icon:'<i data-lucide="palette" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',   sort_order:5  },
+  { key:'연예',   label:'Entertainment',  icon:'<i data-lucide="film" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',      sort_order:6  },
+  { key:'K-pop',  label:'K-pop',          icon:'<i data-lucide="music" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',     sort_order:7  },
+  { key:'IT과학', label:'Tech & Science', icon:'<i data-lucide="cpu" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',       sort_order:8  },
+  { key:'nature', label:'Nature',         icon:'<i data-lucide="leaf" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',      sort_order:9  },
+  { key:'역사',   label:'History',        icon:'<i data-lucide="scroll" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',    sort_order:10 },
+  { key:'Korea',  label:'Korea',          icon:'<i data-lucide="flag" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',      sort_order:11 },
+  { key:'beauty', label:'Beauty',         icon:'<i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',  sort_order:12 },
+  { key:'travel', label:'Travel',         icon:'<i data-lucide="plane" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',     sort_order:13 },
+  { key:'오피니언',label:'Opinion',       icon:'<i data-lucide="pen-tool" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',  sort_order:14 },
 ];
 
 // Canonical Lucide icon per section key. Overrides whatever the DB
@@ -6778,7 +6784,9 @@ var SECTION_ICON_LUCIDE = {
   '사회':   'users',
   '국제':   'globe',
   '문화':   'palette',
+  '연예':   'film',
   'k-pop':  'music',
+  'it과학': 'cpu',
   'beauty': 'sparkles',
   'travel': 'plane',
   'korea':  'flag',
@@ -6793,9 +6801,10 @@ function _khSectionLucideHtml(name) {
 function normalizeSectionCatalog(list) {
   var items = Array.isArray(list) ? list.slice() : [];
   // Politics / Economy were dropped from the site — ensure they don't
-  // sneak back in via the Supabase `sections` table cache.
+  // sneak back in via the Supabase `sections` table cache. IT과학 was
+  // previously blocked here (and aliased into Beauty), but the user
+  // pointed out that hides a whole category of articles — restore it.
   var blocked = new Set([
-    'tech', 'it과학', 'technology', 'tech/science',
     'politics', '정치', 'economy', '경제'
   ]);
   items = items.filter(function(row) {
@@ -6823,8 +6832,15 @@ function normalizeSectionCatalog(list) {
   function hasKey(key) {
     return items.some(function(row) { return String((row && row.key) || '') === key; });
   }
-  if (!hasKey('beauty')) items.push({ key:'beauty', label:'Beauty', icon: _khSectionLucideHtml('sparkles'), sort_order:8, active:true });
-  if (!hasKey('travel')) items.push({ key:'travel', label:'Travel', icon: _khSectionLucideHtml('plane'),    sort_order:9, active:true });
+  // Backfill rows that may not exist in the Supabase `sections` table
+  // yet — All News rails / sidebar filters silently dropped these
+  // categories whenever the DB had a partial row set.
+  if (!hasKey('beauty')) items.push({ key:'beauty', label:'Beauty',          icon: _khSectionLucideHtml('sparkles'), sort_order:12, active:true });
+  if (!hasKey('travel')) items.push({ key:'travel', label:'Travel',          icon: _khSectionLucideHtml('plane'),    sort_order:13, active:true });
+  if (!hasKey('연예'))    items.push({ key:'연예',   label:'Entertainment',   icon: _khSectionLucideHtml('film'),     sort_order:6,  active:true });
+  if (!hasKey('IT과학'))  items.push({ key:'IT과학', label:'Tech & Science',  icon: _khSectionLucideHtml('cpu'),      sort_order:8,  active:true });
+  if (!hasKey('nature'))  items.push({ key:'nature', label:'Nature',          icon: _khSectionLucideHtml('leaf'),     sort_order:9,  active:true });
+  if (!hasKey('역사'))    items.push({ key:'역사',   label:'History',         icon: _khSectionLucideHtml('scroll'),   sort_order:10, active:true });
 
   return items.sort(function(a, b) {
     return Number(a.sort_order || 999) - Number(b.sort_order || 999);
