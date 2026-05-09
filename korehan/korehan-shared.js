@@ -3367,12 +3367,20 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
   }
 }
 
-// Bumped to 'p2' on 2026-05-09 evening when the level-aware bulk
-// prompt + GRAMMAR VERIFY rule went live. Any cache written before
-// this stamp lacks the version field and is treated as stale, so a
-// re-tap on an article cached under the old prompt re-runs bulk and
-// overwrites the entry with cleaner analysis.
-var KH_SENT_CACHE_VERSION = 'p2';
+// Bumped to 'p3' on 2026-05-09 night when PR #383 added the
+// hallucination filter — pattern markers must literally appear in
+// the sentence. Any p2 cache may still hold the wrong-pattern
+// items (e.g. ~(으)로서 on a sentence with no 로서/으로서) so we
+// treat p2 as stale here. Reading a p2 cache marks the article
+// stale, _khTriggerFullArticleAnalyze re-runs bulk over every
+// sentence in the body, and the new payload lands with version
+// 'p3'. Old cache stays in DB (won't break anything) until
+// upserted on next bulk run.
+//
+// Bump again whenever the prompt or filter changes shape. Older
+// stamps cascade: p1 → p2 was the level-aware prompt + GRAMMAR
+// VERIFY rule, p2 → p3 is the marker-presence filter.
+var KH_SENT_CACHE_VERSION = 'p3';
 
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
@@ -3445,6 +3453,26 @@ function _khSentGrammarLooksBad(sentObj) {
     if (bodyText && bodyText.indexOf(ex) === -1) return true;
     var pat = String(g.pattern || '');
     if (/~?[ㄴ는]다\b|~?[ㄴ는]다(?!고)/.test(pat) && /(예요|이에요|이었|였)\.?$/.test(ex)) return true;
+    // PR #383 mirror: pattern markers (Korean runs of length ≥ 2 in
+    // the pattern field) must appear somewhere in the sentence.
+    // Catches the user-reported "~(으)로서 cited on a line that has
+    // no 로서/으로서 anywhere". Single-char markers skipped — too
+    // many false positives from particles (이/가/을/를).
+    var stripped = pat.replace(/[~()\s\-.?!]/g, '');
+    var markers = [];
+    var rePieces = stripped.split(/[\/,]/);
+    rePieces.forEach(function(piece) {
+      var re = /[가-힣]{2,}/g, m;
+      while ((m = re.exec(piece))) markers.push(m[0]);
+    });
+    if (markers.length) {
+      var fullText = (sentObj.text || '');
+      var hit = false;
+      for (var i = 0; i < markers.length; i++) {
+        if (fullText.indexOf(markers[i]) >= 0) { hit = true; break; }
+      }
+      if (!hit) return true;
+    }
     return false;
   });
 }
