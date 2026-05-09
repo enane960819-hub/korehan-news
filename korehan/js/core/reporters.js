@@ -22,13 +22,13 @@ var _KH_REPORTERS_LS_KEY  = 'kh_reporters_cache';
 // Default reporter data (matches DEF_CHAR_REPORTERS in admin).
 // Always available — no Supabase needed for basic display.
 var _KH_DEFAULT_REPORTERS_LIST = [
-  { id:'cr1',  name:'박서진', role:'사회부 기자',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#2563eb' },
-  { id:'cr2',  name:'김지원', role:'국제부 특파원',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#7c3aed' },
-  { id:'cr3',  name:'이민준', role:'경제부 에디터',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#059669' },
-  { id:'cr4',  name:'최유나', role:'문화부 기자',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#db2777' },
-  { id:'cr5',  name:'정우성', role:'정치부 선임기자',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#dc2626' },
+  { id:'cr1',  name:'박서진', role:'기자',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#2563eb' },
+  { id:'cr2',  name:'김지원', role:'특파원',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#7c3aed' },
+  { id:'cr3',  name:'이민준', role:'에디터',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#059669' },
+  { id:'cr4',  name:'최유나', role:'기자',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#db2777' },
+  { id:'cr5',  name:'정우성', role:'선임기자',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#dc2626' },
   { id:'cr6',  name:'한소희', role:'뷰티·트래블 에디터', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#0891b2' },
-  { id:'cr7',  name:'오지훈', role:'스포츠부 기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#ea580c' },
+  { id:'cr7',  name:'오지훈', role:'기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#ea580c' },
   { id:'cr8',  name:'신지은', role:'사회·환경 전문기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#16a34a' },
   { id:'cr9',  name:'강태양', role:'국제·외교 기자',      image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#4338ca' },
   { id:'cr10', name:'류하늘', role:'문화·라이프 기자',    image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#c026d3' },

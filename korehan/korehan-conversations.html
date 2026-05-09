@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20260509h">
+<link rel="stylesheet" href="korehan-shared.css?v=20260509i">
 <style>
 /* ── Tab Bar ── */
 /* Conv tab bar / cf-tab styles superseded by .kh-filter-bar /
@@ -449,7 +449,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260509h"></script>
+<script src="korehan-shared.js?v=20260509i"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -471,13 +471,13 @@ function _charInitialColor(name) {
 
 // 기본 기자 목록 (admin의 DEF_CHAR_REPORTERS와 동일 — DB 접근 없이 동작)
 var _DEF_REPORTERS = [
-  {id:'cr1',  name:'박서진', role:'사회부 기자',        image:'https://picsum.photos/seed/cr1/200/200',  color:'#2563eb'},
-  {id:'cr2',  name:'김지원', role:'국제부 특파원',      image:'https://picsum.photos/seed/cr2/200/200',  color:'#7c3aed'},
-  {id:'cr3',  name:'이민준', role:'경제부 에디터',      image:'https://picsum.photos/seed/cr3/200/200',  color:'#059669'},
-  {id:'cr4',  name:'최유나', role:'문화부 기자',        image:'https://picsum.photos/seed/cr4/200/200',  color:'#db2777'},
-  {id:'cr5',  name:'정우성', role:'정치부 선임기자',    image:'https://picsum.photos/seed/cr5/200/200',  color:'#dc2626'},
+  {id:'cr1',  name:'박서진', role:'기자',        image:'https://picsum.photos/seed/cr1/200/200',  color:'#2563eb'},
+  {id:'cr2',  name:'김지원', role:'특파원',      image:'https://picsum.photos/seed/cr2/200/200',  color:'#7c3aed'},
+  {id:'cr3',  name:'이민준', role:'에디터',      image:'https://picsum.photos/seed/cr3/200/200',  color:'#059669'},
+  {id:'cr4',  name:'최유나', role:'기자',        image:'https://picsum.photos/seed/cr4/200/200',  color:'#db2777'},
+  {id:'cr5',  name:'정우성', role:'선임기자',    image:'https://picsum.photos/seed/cr5/200/200',  color:'#dc2626'},
   {id:'cr6',  name:'한소희', role:'뷰티·트래블 에디터', image:'https://picsum.photos/seed/cr6/200/200',  color:'#0891b2'},
-  {id:'cr7',  name:'오지훈', role:'스포츠부 기자',      image:'https://picsum.photos/seed/cr7/200/200',  color:'#ea580c'},
+  {id:'cr7',  name:'오지훈', role:'기자',      image:'https://picsum.photos/seed/cr7/200/200',  color:'#ea580c'},
   {id:'cr8',  name:'신지은', role:'사회·환경 전문기자', image:'https://picsum.photos/seed/cr8/200/200',  color:'#16a34a'},
   {id:'cr9',  name:'강태양', role:'국제·외교 기자',     image:'https://picsum.photos/seed/cr9/200/200',  color:'#4338ca'},
   {id:'cr10', name:'류하늘', role:'문화·라이프 기자',   image:'https://picsum.photos/seed/cr10/200/200', color:'#c026d3'},
@@ -1623,7 +1623,7 @@ function _vicRender() {
   var sentence = escapeHtml(r.sentence).replace(
     escapeHtml(r.v.ko),
     '<mark class="dp-pr-mark">' + escapeHtml(r.v.ko) + '</mark>'
-  );
+);
   // Distractors: pick 2 other meanings, fall back to filler if fewer
   // unique ones exist.
   var pool = s.allEn.filter(function(en){ return en !== r.v.en; });
@@ -2623,7 +2623,7 @@ async function deleteCurrentConv() {
     'Delete conversation?',
     'This will permanently remove "' + c.name + '".',
     { okLabel: 'Delete', destructive: true }
-  );
+);
   if (!ok) return;
   try {
     var sb = getSupa();

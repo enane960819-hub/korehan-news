@@ -303,7 +303,7 @@ a{color:inherit;text-decoration:none}
     var sb = window.supabase && window.supabase.createClient(
       'https://samghztrdvtxmrmawneu.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs'
-    );
+);
     if (!sb) return;
     window._adminAuthClient = sb; // callClaude에서 세션 조회용으로 재사용
     sb.auth.getSession().then(function(r) {
@@ -602,7 +602,7 @@ const DEF_OPINIONS = [
   {name:'김민준',title:'경제 전문 에디터',   img:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',headline:'금리 인하는 독인가 약인가 — 지금 결정이 중요한 이유'},
   {name:'이서연',title:'외교안보 칼럼니스트',img:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',headline:'한반도 평화 프로세스, 지금 재가동해야 할 때'},
   {name:'박준호',title:'IT 산업 분석가',    img:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',headline:'AI 거버넌스 없이 기술 패권 경쟁에서 이길 수 없다'},
-  {name:'최유진',title:'사회문화부 기자',    img:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',headline:'저출생 위기, 숫자가 아닌 삶의 질 문제로 접근해야'},
+  {name:'최유진',title:'기자',    img:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',headline:'저출생 위기, 숫자가 아닌 삶의 질 문제로 접근해야'},
 ];
 
 // ══ DB STATE ════════════════════════════════════════════════
@@ -865,16 +865,16 @@ async function dbDeleteArticle(id) {
 
 // ── Section → default reporter mapping ───────────────────────
 var SECTION_REPORTER_MAP = {
-  '사회'   : 'cr1',   // 박서진 — 사회부 기자
-  '국제'   : 'cr2',   // 김지원 — 국제부 특파원
-  '경제'   : 'cr3',   // 이민준 — 경제부 에디터
-  '문화'   : 'cr4',   // 최유나 — 문화부 기자
+  '사회'   : 'cr1',   // 박서진 — 기자
+  '국제'   : 'cr2',   // 김지원 — 특파원
+  '경제'   : 'cr3',   // 이민준 — 에디터
+  '문화'   : 'cr4',   // 최유나 — 기자
   'K-pop'  : 'cr4',   // 최유나
   'Korea'  : 'cr4',   // 최유나
-  '정치'   : 'cr5',   // 정우성 — 정치부 선임기자
+  '정치'   : 'cr5',   // 정우성 — 선임기자
   'beauty' : 'cr6',   // 한소희 — 뷰티·트래블 에디터
   'travel' : 'cr10',  // 류하늘 — 문화·라이프 기자
-  '스포츠' : 'cr7',   // 오지훈 — 스포츠부 기자
+  '스포츠' : 'cr7',   // 오지훈 — 기자
   '오피니언': 'cr8',  // 신지은 — 사회·환경 전문기자
 };
 
@@ -1300,7 +1300,7 @@ async function seThumbUpload(input) {
       var up = await _seUploadWithTimeout(
         sb.storage.from('article-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' }),
         60000
-      );
+);
       if (up && up.error) throw up.error;
       publicUrl = sb.storage.from('article-images').getPublicUrl(path).data.publicUrl;
     }
@@ -1763,7 +1763,7 @@ async function goUserStats() {
                 + '</tr>';
             }).join('')
           + '</table>'
-        )
+)
       + '</div>'
 
       // 유저별 통계 테이블
@@ -1800,7 +1800,7 @@ async function goUserStats() {
                 + '</tr>';
             }).join('')
           + '</table></div>'
-        )
+)
       + '</div>';
 
     document.getElementById('stats-content').innerHTML = html;
@@ -2422,13 +2422,13 @@ function saveOpinions(){
 
 // ══ CHARACTER REPORTERS ══════════════════════════════════════
 var DEF_CHAR_REPORTERS = [
-  { id:'cr1',  name:'박서진',   role:'사회부 기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'KoreHani 사회부 기자. 복잡한 사회 이슈를 쉬운 한국어로 전달합니다.',             personality:'친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.',    tone:'Friendly and approachable',  tags:['사회','오피니언'], profilePage:'', color:'#2563eb' },
-  { id:'cr2',  name:'김지원',   role:'국제부 특파원',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'전 세계 뉴스를 한국어로 쉽게 풀어드립니다. 국제 정세 전문.',                          personality:'분석적이고 논리적. 데이터와 사실 중심.',               tone:'Analytical and precise',     tags:['국제','travel'],  profilePage:'', color:'#7c3aed' },
-  { id:'cr3',  name:'이민준',   role:'경제부 에디터',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'경제 지표와 금융 시장을 알기 쉽게 분석합니다. 10년 경력의 경제 전문 기자.',             personality:'명확하고 숫자 중심. 배경 설명을 충실히 합니다.',       tone:'Clear and data-driven',      tags:['경제'],           profilePage:'', color:'#059669' },
-  { id:'cr4',  name:'최유나',   role:'문화부 기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'K-팝, 영화, 드라마 등 한국 대중문화 전문 기자. 트렌드를 누구보다 빠르게 전달합니다.', personality:'활기차고 트렌디. 젊은 독자층을 고려합니다.',          tone:'Energetic and trendy',       tags:['문화','스포츠'],  profilePage:'', color:'#db2777' },
-  { id:'cr5',  name:'정우성',   role:'정치부 선임기자',   image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'국회와 청와대를 20년 취재한 정치 전문 기자. 깊이 있는 분석으로 독자의 신뢰를 받습니다.',personality:'신중하고 균형 잡힌 시각. 중립적 보도.',               tone:'Balanced and measured',      tags:['정치'],           profilePage:'', color:'#dc2626' },
+  { id:'cr1',  name:'박서진',   role:'기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'KoreHani 기자. 복잡한 사회 이슈를 쉬운 한국어로 전달합니다.',             personality:'친근하고 따뜻한 어조. 독자에게 설명하듯이 씁니다.',    tone:'Friendly and approachable',  tags:['사회','오피니언'], profilePage:'', color:'#2563eb' },
+  { id:'cr2',  name:'김지원',   role:'특파원',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'전 세계 뉴스를 한국어로 쉽게 풀어드립니다. 국제 정세 전문.',                          personality:'분석적이고 논리적. 데이터와 사실 중심.',               tone:'Analytical and precise',     tags:['국제','travel'],  profilePage:'', color:'#7c3aed' },
+  { id:'cr3',  name:'이민준',   role:'에디터',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'경제 지표와 금융 시장을 알기 쉽게 분석합니다. 10년 경력의 경제 전문 기자.',             personality:'명확하고 숫자 중심. 배경 설명을 충실히 합니다.',       tone:'Clear and data-driven',      tags:['경제'],           profilePage:'', color:'#059669' },
+  { id:'cr4',  name:'최유나',   role:'기자',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'K-팝, 영화, 드라마 등 한국 대중문화 전문 기자. 트렌드를 누구보다 빠르게 전달합니다.', personality:'활기차고 트렌디. 젊은 독자층을 고려합니다.',          tone:'Energetic and trendy',       tags:['문화','스포츠'],  profilePage:'', color:'#db2777' },
+  { id:'cr5',  name:'정우성',   role:'선임기자',   image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'국회와 청와대를 20년 취재한 정치 전문 기자. 깊이 있는 분석으로 독자의 신뢰를 받습니다.',personality:'신중하고 균형 잡힌 시각. 중립적 보도.',               tone:'Balanced and measured',      tags:['정치'],           profilePage:'', color:'#dc2626' },
   { id:'cr6',  name:'한소희',   role:'뷰티·트래블 에디터', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'뷰티 트렌드와 여행 라이프스타일 뉴스를 누구나 이해할 수 있게 쉽고 감각적으로 전달합니다.', personality:'호기심 넘치고 쉬운 설명. 비유와 예시를 즐겨 사용.',   tone:'Curious and explanatory',    tags:['beauty','travel'], profilePage:'', color:'#0891b2' },
-  { id:'cr7',  name:'오지훈',   role:'스포츠부 기자',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'축구, 야구, 올림픽까지. 현장의 열기를 생생하게 전달하는 스포츠 전문 기자입니다.',       personality:'열정적이고 생동감 있는 문체. 현장감 강조.',           tone:'Passionate and vivid',       tags:['스포츠'],         profilePage:'', color:'#ea580c' },
+  { id:'cr7',  name:'오지훈',   role:'기자',     image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'축구, 야구, 올림픽까지. 현장의 열기를 생생하게 전달하는 스포츠 전문 기자입니다.',       personality:'열정적이고 생동감 있는 문체. 현장감 강조.',           tone:'Passionate and vivid',       tags:['스포츠'],         profilePage:'', color:'#ea580c' },
   { id:'cr8',  name:'신지은',   role:'사회·환경 전문기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'기후 위기, 환경 정책, 복지 이슈를 사람 중심으로 취재합니다.',                          personality:'진지하고 공감 중심. 사람의 이야기를 중요시합니다.',   tone:'Empathetic and serious',     tags:['사회','오피니언'], profilePage:'', color:'#16a34a' },
   { id:'cr9',  name:'강태양',   role:'국제·외교 기자',    image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  intro:'미국, 중국, 일본 등 주요국 외교 뉴스를 심층 분석합니다.',                              personality:'통찰력 있고 비교 시각 강함. 맥락을 중시합니다.',     tone:'Insightful and contextual',  tags:['국제','정치'],    profilePage:'', color:'#4338ca' },
   { id:'cr10', name:'류하늘',   role:'문화·라이프 기자',  image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', intro:'한국의 생활 문화, 음식, 여행, 트렌드를 친근하게 소개합니다.',                          personality:'가볍고 유머러스. 일상적인 언어를 선호합니다.',        tone:'Light and relatable',        tags:['문화','사회'],    profilePage:'', color:'#c026d3' },
@@ -2545,7 +2545,7 @@ function crEditModal(idx) {
     <input type="hidden" id="cr-id" value="${esc(r.id||'')}">
     <div class="fg-row">
       <div class="fg"><label>Name *</label><input id="cr-name" type="text" value="${esc(r.name)}" placeholder="e.g. 박서진"></div>
-      <div class="fg"><label>Role / Title *</label><input id="cr-role" type="text" value="${esc(r.role)}" placeholder="e.g. 사회부 기자"></div>
+      <div class="fg"><label>Role / Title *</label><input id="cr-role" type="text" value="${esc(r.role)}" placeholder="e.g. 기자"></div>
     </div>
     <div class="fg">
       <label>Profile Image</label>
@@ -3102,7 +3102,7 @@ async function runBulkPhraseAdminGen(){
       + '<div style="font-size:12px;color:#475569;margin-top:3px">' + (p.en || '') + '</div>'
       + (p.intro_ko ? '<div style="font-size:11px;color:#64748b;margin-top:3px">' + p.intro_ko + '</div>' : '')
       + '</div>'
-    ).join('');
+).join('');
     genBtn.style.display = 'none';
     saveBtn.style.display = 'inline-block';
   } catch(e) {
@@ -4970,19 +4970,19 @@ async function runAutoGenerate(){
                 (_level === 'Starter' || _level === 'Beginner')
                   ? 'INCLUDE beginner verbs/adjectives at this level — 보다, 살다, 먹다, 키우다, 흔하다 are FAIR GAME, the learner needs them explained. Only skip particles (이/가/을/를/의/에/도/는) and the bare copula/존재 verbs (이다/있다 alone).'
                   : 'Skip beginner words (는/이/가/이다/있다/하다/되다…) — pick words a learner would actually want to look up.'
-              ) + ' Empty array allowed if nothing useful.\n'
+) + ' Empty array allowed if nothing useful.\n'
             + '- VOCAB NOTE: must be FACTUAL — what the word literally means and how it is used in standard Korean. Do NOT invent metaphorical readings specific to this sentence (e.g. don\'t say "고양이 here used metaphorically for a group/category" — 고양이 just means cat). Do NOT pad with example collocations that don\'t actually apply (e.g. don\'t say "지나다 used with 시간, 날씨, 계절" — 날씨 doesn\'t pass). Empty note is fine when the meaning alone is enough.\n'
             + '- GRAMMAR: ' + (
                 (_level === 'Starter' || _level === 'Beginner')
                   ? 'max 3 patterns per sentence. INCLUDE the basics that this level needs: ~을/를 + verb (object marker), ~지 않다 (negation), ~고 있다 (continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency). Empty array OK if the sentence is just one already-explained pattern.'
                   : 'max 2 patterns per sentence, EMPTY ARRAY [] PREFERRED. Only include a pattern when there is a real, teachable grammatical structure that adds learning value beyond the vocab. When in doubt, RETURN EMPTY. Padding with weak/obvious patterns ruins the lesson.'
-              ) + '\n'
+) + '\n'
             + '- GRAMMAR PATTERN FIELD: must be a GRAMMATICAL MORPHEME / connective / ending only (e.g. "~기 위해", "~게 되다", "~ㄴ/는 것 같다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" (animal is a noun, not part of the pattern).\n'
             + '- GRAMMAR LEVEL FILTER: this article is "' + _level + '" level. ' + (
                 (_level === 'Starter' || _level === 'Beginner')
                   ? 'TEACH the basics — ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 polite endings, ~았/었 past, ~을/를 object marker SHOULD appear because the learner is still learning them.'
                   : 'SKIP basics the learner already knows — do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 polite endings, ~았/었 past, ~을/를 object marker.'
-              ) + '\n'
+) + '\n'
             + '- GRAMMAR EXCLUSION: do NOT pick a pattern that is just the natural conjugation of a word already listed in vocab — if 달라지다 is in vocab, do not list ~어지다 with 달라졌어요 as the example.\n'
             + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one — do not list both with near-identical example_in_sentence chunks.\n'
             + '- Output JSON only.';
@@ -5086,7 +5086,7 @@ async function runAutoGenerate(){
               await getSb().from('article_cache').upsert(
                 { article_id: String(articleId), expressions: _exprPayload },
                 { onConflict: 'article_id' }
-              );
+);
             } catch (e) {
               console.warn('expressions write skipped:', e && e.message || e);
             }
@@ -5312,7 +5312,7 @@ async function goAICache() {
       'article_cache_generation_log?select=article_id,step,status,error_message,created_at'
       + '&status=neq.ok&created_at=gte.' + encodeURIComponent(since)
       + '&order=created_at.desc&limit=500'
-    );
+);
     if (Array.isArray(logRows)) {
       logRows.forEach(function(r){
         var aid = String(r.article_id);
@@ -5404,7 +5404,7 @@ async function retryFailedCaches(schema) {
     rows = await supaAdminGet(
       'article_cache_generation_log?select=article_id&status=neq.ok&created_at=gte.'
       + encodeURIComponent(since) + '&order=created_at.desc&limit=500'
-    );
+);
   } catch(e) { toast('로그 조회 실패: ' + e.message, true); return; }
   var ids = Array.from(new Set((rows || []).map(function(r){ return String(r.article_id); })));
   if (!ids.length) { toast('재시도 대상 없음', false); return; }
@@ -5682,7 +5682,7 @@ async function saveExpressions(articleId) {
     const eRes = await getSb().from('article_cache').upsert(
       { content_type: 'article', content_id: String(articleId), cache_key: 'expressions', cache_value: JSON.stringify(exprs) },
       { onConflict: 'content_type,content_id,cache_key' }
-    );
+);
     if (eRes.error) {
       if (status) status.textContent = '❌ ' + (eRes.error.message||'').slice(0,80);
     } else {
@@ -6207,7 +6207,7 @@ async function loadAllComments() {
             +(c.reply
               ? '<div style="background:#f0f4ff;border-left:3px solid var(--a);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13px;margin-bottom:8px"><b>내 답변:</b> '+c.reply+'</div>'
               : ''
-            )
+)
             +'<div style="display:flex;gap:8px;align-items:flex-end">'
             +'<textarea data-id="'+c.id+'" placeholder="답변 입력…" style="flex:1;padding:8px 12px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:60px">'+(c.reply||'')+'</textarea>'
             +'<button data-id="'+c.id+'" onclick="adminReplyComment(this.dataset.id,this)" style="padding:8px 18px;background:var(--a);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">답변 Save</button>'
@@ -7253,13 +7253,13 @@ async function goStoriesEditor() {
             <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:5px">CHARACTER (optional)</label>
             <select id="st-character" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;font-family:inherit;font-size:13px">
               <option value="">Random / None</option>
-              <option value="cr1">박서진 (사회부)</option>
-              <option value="cr2">김지원 (국제부)</option>
-              <option value="cr3">이민준 (경제부)</option>
-              <option value="cr4">최유나 (문화부)</option>
-              <option value="cr5">정우성 (정치부)</option>
+              <option value="cr1">박서진</option>
+              <option value="cr2">김지원</option>
+              <option value="cr3">이민준</option>
+              <option value="cr4">최유나</option>
+              <option value="cr5">정우성</option>
               <option value="cr6">한소희 (뷰티/트래블)</option>
-              <option value="cr7">오지훈 (스포츠부)</option>
+              <option value="cr7">오지훈</option>
               <option value="cr8">신지은 (환경)</option>
               <option value="cr9">강태양 (외교)</option>
               <option value="cr10">류하늘 (라이프)</option>
@@ -15754,7 +15754,7 @@ function fteRenderNodes() {
           + '<input data-nk="' + key + '" data-f="scene" value="' + (n.scene||'').replace(/"/g,'&quot;') + '" placeholder="Scene desc" style="padding:4px 6px;border:1px solid #e8e8e8;border-radius:4px;font-size:11px;color:#555">'
           + '<input data-nk="' + key + '" data-f="label" value="' + (n.label||'').replace(/"/g,'&quot;') + '" placeholder="Label" style="padding:4px 6px;border:1px solid #e8e8e8;border-radius:4px;font-size:11px;color:#555">'
           + '</div>'
-      )
+)
       + choiceRows
       + '</div>';
   }).join('');
