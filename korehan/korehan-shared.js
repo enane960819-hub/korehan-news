@@ -4875,16 +4875,13 @@ function renderArticleVocab(a) {
                                  .sort(function(a,b){ return b.length - a.length; });
     var out = [];
     var seen = {};
-    // Removed the previous out.length<10 cap. The cap was meant to keep
-    // the Vocab tab tidy, but it silently dropped admin-added Vocab Edit
-    // Mode words once the AI cache + the first 10 sitewide matches
-    // saturated the merge — the user added 혁신, the hover dict picked
-    // it up (VOCAB[혁신] populated by paginated loadVocabFromDB), but the
-    // Vocab tab never rendered it because by the time fromGlobalVocab()
-    // ran the cap was full of older AI-curated matches. Returning every
-    // match lets the tab's downstream pagination expose later entries
-    // instead of hiding them.
-    for (var i = 0; i < keys.length; i++) {
+    // Cap at 10 sitewide matches — feeding the entire VOCAB dict into
+    // the Vocab tab's downstream syncIntoHover() / korehanHoverRegisterExtras
+    // path put thousands of words into the hover system and broke
+    // hover entirely (regex compile + DOM walk choked on the volume).
+    // Admin-added words still surface via the dedicated
+    // _admin_extra_vocab path below — no need to dump everything here.
+    for (var i = 0; i < keys.length && out.length < 10; i++) {
       var k = keys[i];
       if (!inArticleBody(k)) continue;
       var v = VOCAB[k] || {};
@@ -4893,6 +4890,36 @@ function renderArticleVocab(a) {
       seen[norm.ko] = true;
       out.push(norm);
     }
+    return out;
+  }
+
+  // Admin Vocab Edit Mode (+ New Word, drag-select, edit existing) writes
+  // into the sitewide vocabulary_bank. Those entries land in VOCAB on the
+  // next page load, but the article AI cache doesn't know about them, so
+  // a freshly-added admin word never made it into the Vocab tab merge —
+  // even when the body matched. We track admin-added words in a sidecar
+  // localStorage list and ALWAYS include those whose body matches, on top
+  // of the capped fromGlobalVocab pass above. Targeted instead of dumping
+  // every sitewide entry through the hover system.
+  function fromAdminAdds() {
+    if (!body) return [];
+    var out = [];
+    var seen = {};
+    try {
+      var raw = localStorage.getItem('kh_admin_added_vocab');
+      if (!raw) return [];
+      var list = JSON.parse(raw);
+      if (!Array.isArray(list)) return [];
+      list.forEach(function(item) {
+        if (!item || !item.ko) return;
+        if (seen[item.ko]) return;
+        if (!inArticleBody(item.ko)) return;
+        var norm = khNormalizeVocabNoun(item.ko, item.rom || '', item.en || '');
+        if (!norm) return;
+        seen[norm.ko] = true;
+        out.push(norm);
+      });
+    } catch (_) {}
     return out;
   }
 
@@ -4954,17 +4981,21 @@ function renderArticleVocab(a) {
     var merged = (items && items.length) ? items.slice() : [];
     var seen = {};
     merged.forEach(function(v){ if (v && v.ko) seen[v.ko] = true; });
-    // Always merge sitewide VOCAB matches that appear in the body.
-    // Cache items keep priority (AI-picked, sentence-analysis order)
-    // and stay at the top; sitewide entries (admin Vocab Edit Mode +
-    // hover dictionary) are appended at the end so the Vocab tab's
-    // pagination still surfaces them. The previous "skip when cache is
-    // already full" gate was the reason a freshly-added admin word
-    // never appeared in the Vocab tab even when it hovered correctly
-    // in the body.
-    fromGlobalVocab().forEach(function(v){
+    // ALWAYS merge admin-added words first — these come from the
+    // localStorage sidecar populated whenever an admin saves through
+    // Vocab Edit Mode. Body-filtered, dedupe-against-cache, no cap.
+    // This is the targeted fix for "admin added 혁신 but Vocab tab
+    // doesn't show it" without dumping all of VOCAB into the hover
+    // system.
+    fromAdminAdds().forEach(function(v){
       if (v && v.ko && !seen[v.ko]) { merged.push(v); seen[v.ko] = true; }
     });
+    // Then top up with general sitewide VOCAB matches when cache is sparse.
+    if (merged.length < _avPageSize) {
+      fromGlobalVocab().forEach(function(v){
+        if (v && v.ko && !seen[v.ko]) { merged.push(v); seen[v.ko] = true; }
+      });
+    }
     if (!merged.length) {
       el.innerHTML = '<div style="padding:20px;color:#94a3b8;font-size:13px;text-align:center">No vocabulary available for this article yet.</div>';
       _appendAdminAddVocabButton(el, a);
@@ -5673,6 +5704,27 @@ function openVocabEditModal(word) {
         }
       } catch(e) { console.warn('[vocab-edit] user-side save failed:', e); }
       VOCAB[finalWord] = { rom: rom, en: en };
+      // Sidecar so renderArticleVocab's fromAdminAdds() can surface
+      // this word in the Vocab tab on every article whose body matches
+      // — even when the article's AI cache already has 12+ entries
+      // and would otherwise saturate the merge.
+      try {
+        var _kAdd = 'kh_admin_added_vocab';
+        var _existing = [];
+        try { _existing = JSON.parse(localStorage.getItem(_kAdd) || '[]') || []; } catch (_) {}
+        if (!Array.isArray(_existing)) _existing = [];
+        var _has = false;
+        for (var _i = 0; _i < _existing.length; _i++) {
+          if (_existing[_i] && _existing[_i].ko === finalWord) {
+            _existing[_i].rom = rom; _existing[_i].en = en; _has = true; break;
+          }
+        }
+        if (!_has) _existing.push({ ko: finalWord, rom: rom, en: en, t: Date.now() });
+        // Cap at 500 most-recent so the localStorage entry doesn't
+        // grow unbounded over time.
+        if (_existing.length > 500) _existing = _existing.slice(_existing.length - 500);
+        localStorage.setItem(_kAdd, JSON.stringify(_existing));
+      } catch (_) {}
       // 로컬 변수 word를 finalWord로 덮어씌워 이하 코드가 올바른 단어를 참조
       word = finalWord;
 
