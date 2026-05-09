@@ -3484,13 +3484,19 @@ function closeSentPanel() {
   document.querySelectorAll('.art-sent-panel').forEach(function(p){ p.remove(); });
   document.querySelectorAll('.art-sent.active').forEach(function(s){ s.classList.remove('active'); });
 }
-function _khRenderSentPanel(panel, data, closer) {
+function _khRenderSentPanel(panel, data, closer, sentenceText) {
   var closeFn = closer || 'closeSentPanel()';
   var html = '<button class="asp-close" onclick="' + closeFn + '" aria-label="Close">×</button>';
   if (data && data.translation) {
     html += '<div class="asp-section-title">English</div>'
          + '<div class="asp-trans">' + escapeHTML(data.translation) + '</div>';
   }
+  // Use the sentenceText passed by the caller, or fall back to whatever
+  // the panel dataset preserved from a prior render. Defensive — if we
+  // can't recover it we just skip the hallucination filter below
+  // instead of breaking rendering.
+  var _sent = (sentenceText || (panel && panel.dataset && panel.dataset.sentence) || '').trim();
+  if (panel && _sent && panel.dataset) panel.dataset.sentence = _sent;
   if (data && Array.isArray(data.vocab) && data.vocab.length) {
     html += '<div class="asp-section-title">Vocab</div>';
     data.vocab.forEach(function(v) {
@@ -3529,9 +3535,56 @@ function _khRenderSentPanel(panel, data, closer) {
       // If a 3+ Korean-syllable run survives the strip, treat as noun.
       return /[가-힣]{3,}/.test(stripped);
     }
+    // Hallucination guard. The model occasionally claims a pattern
+    // that simply isn't in the sentence — e.g. it returned ~(으)로서
+    // ("in the capacity of / as") for "...새로운 웰니스 트렌드가
+    // 젊은층 사이에서 인기를 얻고 있어요" which contains no 로서/
+    // 으로서 anywhere. Drop any grammar item whose pattern markers
+    // genuinely don't appear in the sentence text. Skipped when we
+    // don't have the sentence (older cache / unknown source) so we
+    // never block on missing context.
+    function _patternMarkers(pattern) {
+      // Collect every Korean-character run of length ≥ 2 inside the
+      // pattern field, after stripping ~ / parens / slashes etc. A
+      // pattern like "~(으)로서" yields ["로서"]; "~ㄴ다 / ~는다"
+      // yields []. We deliberately skip 1-char remnants because
+      // particles (이/가/을/를…) match nearly every sentence and
+      // would defeat the check.
+      if (!pattern) return [];
+      var out = [];
+      String(pattern).split(/[\/,]/).forEach(function(piece) {
+        var stripped = piece.replace(/[~()\s\-.?!]/g, '');
+        var re = /[가-힣]{2,}/g, m;
+        while ((m = re.exec(stripped))) out.push(m[0]);
+      });
+      return out;
+    }
+    function _grammarMatchesSentence(g) {
+      if (!_sent) return true; // no sentence context — skip the check
+      var ex = (g.example_in_sentence || '').trim();
+      // The chunk the model claims as the example must literally
+      // appear in the sentence. That alone catches ~"새로운 웰니스
+      // 트렌드" hallucinations where the example doesn't sit inside
+      // the sentence at all.
+      if (ex && _sent.indexOf(ex) < 0) return false;
+      // The pattern's own marker(s) must also appear somewhere in
+      // the sentence — covers the case where the model picks an
+      // example chunk that IS in the sentence but the pattern is a
+      // different morpheme that isn't.
+      var markers = _patternMarkers(g.pattern);
+      if (markers.length) {
+        var hit = false;
+        for (var k = 0; k < markers.length; k++) {
+          if (_sent.indexOf(markers[k]) >= 0) { hit = true; break; }
+        }
+        if (!hit) return false;
+      }
+      return true;
+    }
     data.grammar.forEach(function(g) {
       if (!g || !g.pattern) return;
       if (_looksLikePadding(g.pattern)) return;
+      if (!_grammarMatchesSentence(g)) return;
       var ex = (g.example_in_sentence || '').trim();
       var dupe = false;
       for (var i = 0; i < seenExamples.length && ex; i++) {
@@ -3601,7 +3654,7 @@ async function analyzeSentence(idx, el) {
 
   // In-memory cache (current page) → sessionStorage (current tab) → live call.
   if (window._khSentAnalyzeCache[cacheKey]) {
-    _khRenderSentPanel(panel, window._khSentAnalyzeCache[cacheKey]);
+    _khRenderSentPanel(panel, window._khSentAnalyzeCache[cacheKey], null, sentenceText);
     return;
   }
   try {
@@ -3609,7 +3662,7 @@ async function analyzeSentence(idx, el) {
     if (stored) {
       var parsed = JSON.parse(stored);
       window._khSentAnalyzeCache[cacheKey] = parsed;
-      _khRenderSentPanel(panel, parsed);
+      _khRenderSentPanel(panel, parsed, null, sentenceText);
       return;
     }
   } catch(_) {}
@@ -3670,7 +3723,7 @@ async function analyzeSentence(idx, el) {
         } else if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length))) {
           window._khSentAnalyzeCache[cacheKey] = hit;
           try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
-          _khRenderSentPanel(panel, hit);
+          _khRenderSentPanel(panel, hit, null, sentenceText);
           return;
         }
       }
@@ -3733,7 +3786,7 @@ async function analyzeSentence(idx, el) {
         if (_hit2 && (_hit2.translation || (_hit2.vocab && _hit2.vocab.length) || (_hit2.grammar && _hit2.grammar.length))) {
           window._khSentAnalyzeCache[cacheKey] = _hit2;
           try { sessionStorage.setItem(cacheKey, JSON.stringify(_hit2)); } catch(_) {}
-          _khRenderSentPanel(panel, _hit2);
+          _khRenderSentPanel(panel, _hit2, null, sentenceText);
           return;
         }
       }
@@ -3804,7 +3857,7 @@ async function analyzeSentence(idx, el) {
     var data = JSON.parse(clean.slice(oi, ei + 1));
     window._khSentAnalyzeCache[cacheKey] = data;
     try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch(_) {}
-    _khRenderSentPanel(panel, data);
+    _khRenderSentPanel(panel, data, null, sentenceText);
   } catch(err) {
     var msg = (err && err.message) || 'unknown';
     if (/unauthor|sign/i.test(msg)) msg = '로그인이 필요합니다';
@@ -3998,7 +4051,7 @@ async function analyzeConvBubble(convId, msgIdx, el) {
   var cacheKey = 'csa_' + (convId || 'noid') + '_' + msgIdx;
 
   if (window._khSentAnalyzeCache[cacheKey]) {
-    _khRenderSentPanel(panel, window._khSentAnalyzeCache[cacheKey], 'closeConvSentPanel()');
+    _khRenderSentPanel(panel, window._khSentAnalyzeCache[cacheKey], 'closeConvSentPanel()', sentenceText);
     return;
   }
   try {
@@ -4006,7 +4059,7 @@ async function analyzeConvBubble(convId, msgIdx, el) {
     if (stored) {
       var parsedStored = JSON.parse(stored);
       window._khSentAnalyzeCache[cacheKey] = parsedStored;
-      _khRenderSentPanel(panel, parsedStored, 'closeConvSentPanel()');
+      _khRenderSentPanel(panel, parsedStored, 'closeConvSentPanel()', sentenceText);
       return;
     }
   } catch(_) {}
@@ -4023,7 +4076,7 @@ async function analyzeConvBubble(convId, msgIdx, el) {
       if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length))) {
         window._khSentAnalyzeCache[cacheKey] = hit;
         try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
-        _khRenderSentPanel(panel, hit, 'closeConvSentPanel()');
+        _khRenderSentPanel(panel, hit, 'closeConvSentPanel()', sentenceText);
         return;
       }
     }
@@ -4086,7 +4139,7 @@ async function analyzeConvBubble(convId, msgIdx, el) {
     var data = JSON.parse(clean.slice(oi, ei + 1));
     window._khSentAnalyzeCache[cacheKey] = data;
     try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch(_) {}
-    _khRenderSentPanel(panel, data, 'closeConvSentPanel()');
+    _khRenderSentPanel(panel, data, 'closeConvSentPanel()', sentenceText);
   } catch(err) {
     var emsg = (err && err.message) || 'unknown';
     if (/unauthor|sign/i.test(emsg)) emsg = '로그인이 필요합니다';
