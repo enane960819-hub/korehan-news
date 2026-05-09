@@ -5206,16 +5206,22 @@ function _setupVocabFabVisibility() {
 function initTooltips() {
   var tip = document.createElement('div');
   tip.id = 'kh-tip';
+  // Visual parity with the kh-hover-tip card from
+  // korehan-hover-tooltips.js — same dark navy, same 16px rounding,
+  // same shadow. The two tooltip systems used to look like different
+  // products on the same page (one was a sharp 4px-rounded toast,
+  // the other a 16px rounded card with a Save button). User couldn't
+  // tell why hover changed shape mid-article.
   Object.assign(tip.style, {
     position:'fixed', zIndex:'9999', pointerEvents:'none',
-    background:'#0d1b2e', color:'#fff',
-    padding:'8px 12px', borderRadius:'4px',
-    fontFamily:"'Source Sans 3', sans-serif", fontSize:'13px',
-    borderLeft:'3px solid #2255a4',
-    boxShadow:'0 4px 16px rgba(0,0,0,0.35)',
-    maxWidth:'220px', lineHeight:'1.4',
-    opacity:'0', transition:'opacity 0.15s',
-    whiteSpace:'nowrap',
+    background:'#0f172a', color:'#fff',
+    padding:'13px 14px 10px', borderRadius:'16px',
+    fontFamily:"'DM Sans','Noto Sans KR','Source Sans 3',sans-serif",
+    fontSize:'12px', lineHeight:'1.55',
+    boxShadow:'0 18px 40px rgba(2,8,23,.38)',
+    minWidth:'180px', maxWidth:'280px',
+    opacity:'0', transform:'translateY(6px)',
+    transition:'opacity .15s,transform .15s',
   });
   document.body.appendChild(tip);
 
@@ -5274,25 +5280,39 @@ function initTooltips() {
     if (!w) return;
     var word = w.dataset.word;
     var d = VOCAB[word];
-    if (window._vocabEditMode && window._isAdmin) {
-      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+KH_ICON_PENCIL+'</span><span>Click to edit</span></span><br>'
-        + '<span style="color:#7ab8f5;font-weight:700">' + word + '</span>'
-        + (d ? '<br><span style="color:#94a3b8;font-size:11px">' + d.en + '</span>' : '<br><span style="color:#f87171;font-size:11px">No definition</span>');
+    // Tooltip layout mirrors .kh-hover-tip from korehan-hover-tooltips.js
+    // so the two systems look like the same component when a learner
+    // moves between words on the page.
+    function _showTip() {
       tip.style.opacity = '1';
+      tip.style.transform = 'translateY(0)';
+    }
+    if (window._vocabEditMode && window._isAdmin) {
+      tip.innerHTML =
+          '<div style="font-size:11px;color:#fbbf24;font-weight:700;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px;margin-bottom:6px"><span style="display:inline-flex;width:13px;height:13px">'+KH_ICON_PENCIL+'</span>Click to edit</div>'
+        + '<div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:2px">' + word + '</div>'
+        + (d
+            ? '<div style="font-size:12px;color:#e5edf9;line-height:1.55">' + d.en + '</div>'
+            : '<div style="font-size:12px;color:#fca5a5;line-height:1.55">No definition</div>');
+      _showTip();
       return;
     }
     if (!d) return;
-    tip.innerHTML = '<span style="font-size:16px;font-weight:700;color:#7ab8f5">' + word + '</span><br>'
-      + '<span style="color:#aabbd0;font-size:11px;font-style:italic">' + d.rom + '</span><br>'
-      + '<strong>' + d.en + '</strong>';
-    tip.style.opacity = '1';
+    tip.innerHTML =
+        '<div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:2px">' + word + '</div>'
+      + (d.rom ? '<div style="font-size:11px;color:#9ec4ff;font-style:italic;margin-bottom:6px">' + d.rom + '</div>' : '')
+      + '<div style="font-size:12px;line-height:1.55;color:#e5edf9">' + d.en + '</div>';
+    _showTip();
   });
   document.addEventListener('mousemove', function(e) {
     tip.style.left = (e.clientX + 14) + 'px';
     tip.style.top  = (e.clientY - 10) + 'px';
   });
   document.addEventListener('mouseout', function(e) {
-    if (e.target.closest && e.target.closest('.kh-word')) tip.style.opacity = '0';
+    if (e.target.closest && e.target.closest('.kh-word')) {
+      tip.style.opacity = '0';
+      tip.style.transform = 'translateY(6px)';
+    }
   });
 
   // 어드민 편집 모드 클릭/터치 처리
