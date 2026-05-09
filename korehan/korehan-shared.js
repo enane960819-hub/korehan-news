@@ -3251,6 +3251,8 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
     var _grammarRule = _isLow
       ? '- GRAMMAR: MINIMUM 1 pattern, max 3 per sentence. INCLUDE basic patterns: ~을/를 (object marker), ~지 않다 (negation), ~고 있다 (continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~다고 알려져 있어요 / ~ㄴ다고 해요 (reported), ~어 주다 (benefactive), ~아/어 있다 (resultative). 0 patterns is allowed ONLY for a pure noun phrase, proper-noun list, or a single greeting like "안녕하세요." Don\'t pick a pattern that\'s just a vocab word\'s conjugation.\n'
       : '- GRAMMAR: MINIMUM 1 pattern (unless purely a noun phrase / greeting), max 2 per sentence. Skip beginner patterns (~는 modifier, ~다, ~요/습니다, ~았/었, ~을/를). Don\'t pick a pattern that\'s just a vocab word\'s conjugation.\n';
+    var _grammarVerify =
+        '- GRAMMAR VERIFY: example_in_sentence MUST literally contain the form. Don\'t label "X예요 / X이에요" as ~ㄴ다 (that\'s plain declarative, not polite copula). Don\'t pick ~어요/~아요 if no verb is in the chunk. Don\'t claim a particle (~에서, ~로) the chunk doesn\'t actually have. If you can\'t find a chunk that demonstrates the pattern, drop the pattern — empty arrays are better than wrong matches.\n';
     var prompt =
         'You are a Korean tutor analysing each sentence of an article for a ' + _lvlLabel + ' learner.\n\n'
       + 'Sentences (numbered, in order):\n' + payload + '\n\n'
@@ -3265,6 +3267,7 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
       + '- TRANSLATION: preserve the original subject. Do NOT inject "I/we" if Korean omitted it.\n'
       + _vocabRule
       + _grammarRule
+      + _grammarVerify
       + '- Return EXACTLY ' + sentences.length + ' entries in sentences[].';
     var res = await callClaude({
       feature: 'sentence-analyze-bulk',
@@ -3588,17 +3591,51 @@ async function analyzeSentence(idx, el) {
 
   // No shared cache for this article yet — first reader to tap a
   // sentence triggers a background pass over EVERY sentence and
-  // writes the result to article_cache.translation. The current
-  // single-sentence Claude call below still runs so this user gets
-  // an immediate panel; subsequent readers (and subsequent taps on
-  // this same article) hit the cache instead.
-  // Also re-trigger when the existing cache is stale at this level
-  // (≥30% of cached sentences have empty grammar at Seed/Sprout).
-  // The bulk function's per-tab lock keeps this to one re-analyze
-  // per article per session.
+  // writes the result to article_cache.translation. We capture the
+  // bulk promise globally so any *subsequent* tap on this article
+  // (still mid-bulk) can await it instead of paying for a second
+  // single-sentence call. That fixes the user-reported "every
+  // sentence shows '분석 중' for 5+ seconds even though I tapped
+  // the first one a minute ago" — bulk WAS running, but each new
+  // tap was kicking off its own paid live call alongside it.
+  // Re-trigger when existing cache is stale at low level
+  // (≥30% empty grammar). Per-tab lock prevents multiple bulks.
+  window._khArtFullAnalyzePromise = window._khArtFullAnalyzePromise || {};
   var _needsBulk = !sharedCache || !sharedCache.sentences || !sharedCache.sentences.length || _sharedCacheStale;
-  if (articleId && _needsBulk) {
-    try { _khTriggerFullArticleAnalyze(articleId, _articleLevel); } catch(_) {}
+  if (articleId && _needsBulk && !window._khArtFullAnalyzePromise[articleId]) {
+    try {
+      var _bulkP = _khTriggerFullArticleAnalyze(articleId, _articleLevel);
+      if (_bulkP && typeof _bulkP.then === 'function') {
+        window._khArtFullAnalyzePromise[articleId] = _bulkP.finally(function() {
+          // Clear so a future stale-cache detection can re-trigger.
+          delete window._khArtFullAnalyzePromise[articleId];
+        });
+      }
+    } catch(_) {}
+  }
+
+  // If a bulk is in flight for this article, wait for it before
+  // falling through to a paid single-sentence call. The bulk call
+  // returns full analysis for every sentence, so the cache hit on
+  // the way back gives the learner the same panel — just funded
+  // by one Claude call instead of N.
+  if (articleId && window._khArtFullAnalyzePromise[articleId]) {
+    try {
+      await window._khArtFullAnalyzePromise[articleId];
+      var _sharedCache2 = await _khLoadArticleSentenceCache(articleId);
+      if (_sharedCache2 && _sharedCache2.sentences) {
+        var _hit2 = _sharedCache2.sentences[idx];
+        if (!_hit2 || (_hit2.text || '').trim() !== sentenceText) {
+          _hit2 = _sharedCache2.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
+        }
+        if (_hit2 && (_hit2.translation || (_hit2.vocab && _hit2.vocab.length) || (_hit2.grammar && _hit2.grammar.length))) {
+          window._khSentAnalyzeCache[cacheKey] = _hit2;
+          try { sessionStorage.setItem(cacheKey, JSON.stringify(_hit2)); } catch(_) {}
+          _khRenderSentPanel(panel, _hit2);
+          return;
+        }
+      }
+    } catch(_) { /* fall through to live call */ }
   }
 
   if (typeof callClaude !== 'function') {
@@ -3628,6 +3665,12 @@ async function analyzeSentence(idx, el) {
     var _grammarSkipRule = _isLowLevel
       ? '- GRAMMAR: MINIMUM 1 pattern, max 3. At THIS LEVEL, basic patterns ARE the lesson — INCLUDE them: ~을/를 (object marker) + verb, ~지 않다 (negation), ~고 있다 (present continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency), ~다고 알려져 있어요 / ~ㄴ다고 해요 (reported), ~어 주다 (benefactive), ~아/어 있다 (resultative state). The ONLY excuse for 0 patterns is a sentence that is purely a proper noun, interjection, or single greeting (e.g. "안녕하세요."). Do NOT pick a pattern that\'s just the conjugation of a vocab word.\n'
       : '- GRAMMAR: MINIMUM 1 pattern (unless the sentence is purely a noun phrase / proper-noun list / single greeting), max 2. Skip beginner-level patterns (~는 noun modifier, ~다 declarative, ~요/습니다 polite, ~았/었 past, ~을/를 object marker) — the learner already knows them at this level. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n';
+    var _grammarVerifyRule =
+        '- GRAMMAR VERIFY: example_in_sentence MUST literally contain the form you claim. Common failures to avoid:\n'
+      + '    · Don\'t pick ~ㄴ다 / ~는다 (plain declarative) when the example is "X예요 / X이에요" — that\'s the polite copula, NOT the plain ending.\n'
+      + '    · Don\'t pick ~어요 / ~아요 if the chunk has no verb in it.\n'
+      + '    · Don\'t pick a particle pattern (~에서, ~로, ~까지) when the chunk doesn\'t actually contain that particle.\n'
+      + '    · If you can\'t find a chunk that genuinely demonstrates the pattern, drop the pattern entirely (you\'re not forced to fill the slot with a wrong match).\n';
     var prompt =
         'You are a Korean tutor analysing a single sentence for a ' + _levelLabel + ' learner.\n\n'
       + 'Sentence: ' + sentenceText + '\n\n'
@@ -3642,6 +3685,7 @@ async function analyzeSentence(idx, el) {
       + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔, 살다 not 살). Single-syllable stems are not Korean words.\n'
       + _vocabSkipRule
       + _grammarSkipRule
+      + _grammarVerifyRule
       + '- If two patterns stack on the same verb, pick ONLY the more learner-relevant one.\n'
       + '- Output JSON only.';
     var res = await callClaude({
