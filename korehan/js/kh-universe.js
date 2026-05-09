@@ -162,8 +162,20 @@
       '    <div class="khu-title" id="khu-title">Your Universe</div>',
       '  </div>',
       '  <div class="khu-stats" id="khu-stats"></div>',
+      '  <button class="khu-bgm" id="khu-bgm-btn" type="button" aria-label="Toggle background music" onclick="KHUniverse._toggleBgm()">',
+      '    <svg class="khu-bgm-on"  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+      '    <svg class="khu-bgm-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><line x1="3" y1="3" x2="21" y2="21"/></svg>',
+      '  </button>',
       '  <button class="khu-close" onclick="KHUniverse.close()" aria-label="Close">✕</button>',
       '</div>',
+      // Background music — looped, low-volume ambient. Source paths
+      // resolve against the deployed root; drop the actual track at
+      // /img/universe/bgm.mp3 (or .ogg). preload=metadata so the
+      // overlay opens instantly and the file streams in on demand.
+      '<audio id="khu-bgm" preload="none" loop>',
+      '  <source src="img/universe/bgm.mp3" type="audio/mpeg">',
+      '  <source src="img/universe/bgm.ogg" type="audio/ogg">',
+      '</audio>',
       '<canvas class="khu-canvas" id="khu-canvas"></canvas>',
       '<div class="khu-zoom">',
       '  <button class="khu-zoom-btn" aria-label="Zoom in" onclick="KHUniverse._zoom(0.8)">+</button>',
@@ -224,6 +236,15 @@
       '.khu-stats{font-size:11px;font-weight:800;letter-spacing:.06em;color:rgba(200,210,255,.7);padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);white-space:nowrap;}',
       '.khu-close{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(15,20,40,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,transform .12s;}',
       '.khu-close:hover{background:rgba(255,255,255,.15);transform:scale(1.06);}',
+      // BGM toggle — same shape as close, sits to its left. The two
+      // SVGs swap visibility based on .muted on the parent button.
+      '.khu-bgm{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(15,20,40,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;cursor:pointer;font-family:inherit;transition:background .15s,transform .12s,color .15s;display:inline-flex;align-items:center;justify-content:center;padding:0;}',
+      '.khu-bgm:hover{background:rgba(125,211,252,.18);transform:scale(1.06);color:#7dd3fc;}',
+      '.khu-bgm svg{width:18px;height:18px;flex-shrink:0;}',
+      '.khu-bgm .khu-bgm-on{display:block;}',
+      '.khu-bgm .khu-bgm-off{display:none;}',
+      '.khu-bgm.muted .khu-bgm-on{display:none;}',
+      '.khu-bgm.muted .khu-bgm-off{display:block;color:rgba(255,255,255,.5);}',
       /* Zoom controls */
       '.khu-zoom{position:absolute;right:18px;bottom:92px;z-index:3;display:flex;flex-direction:column;gap:8px;}',
       '.khu-zoom-btn{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(15,20,40,.6);color:#fff;font-size:18px;font-weight:700;line-height:1;cursor:pointer;font-family:inherit;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:background .15s,transform .12s,border-color .15s;display:flex;align-items:center;justify-content:center;}',
@@ -2006,8 +2027,58 @@
     state.renderer.render(state.scene, state.camera);
   }
 
+  // ── Background music ────────────────────────────────────────
+  // Looped ambient track that plays whenever the Universe overlay
+  // is open. Mute preference persists across sessions in
+  // localStorage so a user who muted it stays muted on the next
+  // visit. Audio file is loaded lazily from /img/universe/bgm.mp3
+  // (or .ogg) — if the file isn't there yet, .play() rejects and
+  // we just leave the button in its mute state without yelling.
+  var KHU_BGM_MUTED_KEY = 'kh_universe_bgm_muted';
+  var KHU_BGM_VOLUME = 0.4;
+  function _bgmEl() { return document.getElementById('khu-bgm'); }
+  function _bgmBtn() { return document.getElementById('khu-bgm-btn'); }
+  function _bgmIsMuted() {
+    try { return localStorage.getItem(KHU_BGM_MUTED_KEY) === '1'; } catch (_) { return false; }
+  }
+  function _bgmSetMuted(v) {
+    try { localStorage.setItem(KHU_BGM_MUTED_KEY, v ? '1' : '0'); } catch (_) {}
+    var btn = _bgmBtn();
+    if (btn) btn.classList.toggle('muted', !!v);
+  }
+  function _bgmStart() {
+    var a = _bgmEl();
+    if (!a) return;
+    a.volume = KHU_BGM_VOLUME;
+    var muted = _bgmIsMuted();
+    _bgmSetMuted(muted);
+    if (muted) { try { a.pause(); } catch (_) {} return; }
+    // .play() returns a Promise; reject silently if the file is
+    // missing or the browser blocks it.
+    var p = a.play && a.play();
+    if (p && typeof p.catch === 'function') p.catch(function () {});
+  }
+  function _bgmPause() {
+    var a = _bgmEl();
+    if (a) { try { a.pause(); } catch (_) {} }
+  }
+
   // ── Public API ──────────────────────────────────────────────
   var KHUniverse = {};
+
+  KHUniverse._toggleBgm = function () {
+    var a = _bgmEl();
+    if (!a) return;
+    var nowMuted = !_bgmIsMuted();
+    _bgmSetMuted(nowMuted);
+    if (nowMuted) {
+      try { a.pause(); } catch (_) {}
+    } else {
+      a.volume = KHU_BGM_VOLUME;
+      var p = a.play && a.play();
+      if (p && typeof p.catch === 'function') p.catch(function () {});
+    }
+  };
 
   function onKeydown(e) {
     if (!state.open) return;
@@ -2042,6 +2113,15 @@
       var el = document.getElementById('khu-nebula-' + n);
       if (el) el.classList.toggle('active', n === pick);
     });
+
+    // Background music — start (or stay paused) based on the
+    // persisted mute preference. The audio file lives at
+    // /img/universe/bgm.mp3 (.ogg fallback); if it 404s the play()
+    // promise rejects silently and we just leave the toggle button
+    // in its mute state. .play() works here because open() is
+    // called from a user click, so browser autoplay policy is
+    // satisfied.
+    _bgmStart();
 
     // Header
     var titleEl = document.getElementById('khu-title');
@@ -2095,6 +2175,10 @@
     // 다시 키면 오류" screenshot).
     var nebs = overlay ? overlay.querySelectorAll('.khu-nebula') : [];
     for (var i = 0; i < nebs.length; i++) nebs[i].classList.remove('active');
+    // Pause background music on close. We don't reset currentTime
+    // here so reopening picks up roughly where it left off — feels
+    // more natural than restarting the same intro every time.
+    _bgmPause();
     if (state.animId) { cancelAnimationFrame(state.animId); state.animId = null; }
     if (state.renderer) unbindControls(state.renderer.domElement);
     if (state.activeCategory) _clearCategoryHighlight();
