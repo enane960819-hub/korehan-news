@@ -5911,6 +5911,17 @@ function showCoinToast(coin) {
 async function saveVocabToDB(word, rom, en, isDelete) {
   var sb = getSupa();
   if (!sb) throw new Error('Supabase not connected');
+  // vocabulary_bank locked down 2026-04-09 with RLS
+  //   FOR ALL USING (auth.uid() = user_id)
+  // Pre-lockdown saves omitted user_id, so PostgREST silently dropped
+  // the upsert (no row inserted, but res.error stayed empty for upsert
+  // with on-conflict). UI rendered "saved" because in-memory VOCAB was
+  // updated, then a refresh wiped the in-memory state and the row was
+  // never in the DB to load back — the exact "added a word, refreshed,
+  // it's gone from hover and the Vocab tab" report.
+  // Stamp user_id on every write so the policy lets it through.
+  var u = (typeof supaUser !== 'undefined') ? supaUser : null;
+  if (!u || !u.id) throw new Error('Sign in to save vocabulary');
   if (isDelete) {
     var res = await sb.from('vocabulary_bank').delete().eq('word_key', word);
     if (res.error) throw res.error;
@@ -5918,7 +5929,8 @@ async function saveVocabToDB(word, rom, en, isDelete) {
     var res = await sb.from('vocabulary_bank').upsert({
       word_key: word, word_ko: word,
       word_rom: rom || '', word_en: en || '',
-      is_active: true
+      is_active: true,
+      user_id: u.id
     }, { onConflict: 'word_key' });
     if (res.error) throw res.error;
   }
@@ -7294,10 +7306,16 @@ async function checkOnboardingStatus() {
 async function loadVocabFromDB() {
   try {
     var sb = getSupa(); if (!sb) { initTooltips(); return; }
+    // ORDER BY + bigger limit so newly-added words land in the loaded
+    // window. The previous unordered .limit(2000) returned an arbitrary
+    // 2000 rows once vocabulary_bank grew past that, which is why a
+    // freshly-added Vocab Edit Mode word could vanish on refresh even
+    // when the row WAS in the table — random sample didn't include it.
     var res = await sb.from('vocabulary_bank')
       .select('word_ko,word_rom,word_en')
       .eq('is_active', true)
-      .limit(2000);
+      .order('word_ko', { ascending: true })
+      .limit(5000);
     if (res.data && res.data.length) {
       res.data.forEach(function(row) {
         if (row.word_ko && row.word_en) {
