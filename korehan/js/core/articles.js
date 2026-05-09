@@ -313,6 +313,12 @@ function getCachedArticles() {
 // a value — keeps the bulk fetch metadata-only while still letting users
 // search across title + body content. Escapes %/_/, in the query so
 // learner queries like "100%" don't blow up the LIKE pattern.
+//
+// Defensively retries when PostgREST rejects a column that doesn't exist
+// in the production schema (title_en, title_ko, full all live in the
+// codebase but only some deployments have them as real columns). Without
+// this fallback the entire search 400'd because of one missing column,
+// which is exactly the "site search doesn't work" bug the user hit.
 async function searchArticlesServer(query, limit) {
   var sb = getSupa();
   var q = String(query || '').trim();
@@ -320,31 +326,51 @@ async function searchArticlesServer(query, limit) {
   var lim = limit || 100;
   var safe = q.replace(/([%_,])/g, '\\$1');
   var pattern = '%' + safe + '%';
-  // OR across title (Korean), title_en (English gloss), body (lede), and
-  // full (long-form). LIST_ARTICLE_SELECT here so result cards still get
-  // the lede for the search-result preview snippet.
-  var orFilter = [
-    'title.ilike.' + pattern,
-    'title_en.ilike.' + pattern,
-    'title_ko.ilike.' + pattern,
-    'body.ilike.' + pattern,
-    'full.ilike.' + pattern,
-    'section.ilike.' + pattern
-  ].join(',');
-  try {
-    var res = await sb.from('articles').select(LIST_ARTICLE_SELECT)
-      .or(orFilter)
-      .order('created_at', { ascending: false })
-      .limit(lim);
-    if (res.error) {
-      console.warn('search articles error', res.error);
+  var orderedCols = ['title', 'title_en', 'title_ko', 'body', 'full', 'section'];
+  // Cache of columns that have already failed in this session so we
+  // don't pay the round-trip for them again on the next search.
+  searchArticlesServer._missing = searchArticlesServer._missing || {};
+  for (var attempt = 0; attempt < 4; attempt++) {
+    var cols = orderedCols.filter(function(c){ return !searchArticlesServer._missing[c]; });
+    if (!cols.length) cols = ['title'];
+    var orFilter = cols.map(function(c){ return c + '.ilike.' + pattern; }).join(',');
+    try {
+      // SELECT '*' rather than LIST_ARTICLE_SELECT so a missing column
+      // (title_en, title_ko, full are absent from this deployment's
+      // schema even though the codebase reads them defensively) doesn't
+      // 400 the whole search. Result count is bounded by limit so the
+      // payload bloat is negligible.
+      var res = await sb.from('articles').select('*')
+        .or(orFilter)
+        .order('created_at', { ascending: false })
+        .limit(lim);
+      if (res.error) {
+        var msg = String(res.error.message || '');
+        var m = msg.match(/column [^.]*\.(\w+) does not exist/i);
+        if (m && cols.indexOf(m[1]) !== -1) {
+          searchArticlesServer._missing[m[1]] = true;
+          continue;
+        }
+        // Also handle "could not find column" / "unknown column" wording.
+        var m2 = msg.match(/(?:find|reference) (?:the )?column ['"]?(\w+)['"]?/i);
+        if (m2 && cols.indexOf(m2[1]) !== -1) {
+          searchArticlesServer._missing[m2[1]] = true;
+          continue;
+        }
+        console.warn('search articles error', res.error);
+        return [];
+      }
+      // Defensive: drop the non-existent columns from LIST_ARTICLE_SELECT
+      // too if PostgREST is also rejecting them inside the select list.
+      // For now LIST_ARTICLE_SELECT runs a separate retry path
+      // (loadArticlesFromDB falls back to '*'), so we don't double-fix.
+      return normalizeArticles(res.data || []);
+    } catch(e) {
+      console.warn('search articles exception', e);
       return [];
     }
-    return normalizeArticles(res.data || []);
-  } catch(e) {
-    console.warn('search articles exception', e);
-    return [];
   }
+  return [];
 }
 
 // ── DB ────────────────────────────────────────────────────────
