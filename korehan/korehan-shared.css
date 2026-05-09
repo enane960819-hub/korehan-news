@@ -2012,6 +2012,10 @@ body.mobile-redesign .art-sent-panel .asp-grammar-ex {
   background: rgba(167,139,250,.18);
 }
 
+/* Conversation bubble analysis — same panel as articles but tighter
+ * vertical rhythm so it sits comfortably inside a chat bubble group. */
+.conv-sent-panel { margin: 8px 0 6px; }
+
 /* Key Vocabulary Box */
 .art-vocab-box {
   border:1px solid #e2e8f2; border-radius:16px;
