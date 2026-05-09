@@ -7273,7 +7273,20 @@ document.addEventListener('DOMContentLoaded', async function() {
       // All News + search. It re-renders home itself when it lands.
     } else {
       _ldr(50); // Loading articles...
-      await loadArticlesFromDB({ homeOptimized: true, force: true });
+      // Race the DB fetch against an 8s ceiling so Samsung Internet
+      // (and any other browser where the Supabase fetch can wedge —
+      // refresh-token races, idle-tab throttling, captive portals)
+      // doesn't strand the splash loader on screen forever. If the
+      // fetch wins, articles are populated and renderHomePage paints
+      // them; if the timeout wins, renderHomePage runs against the
+      // empty getCachedArticles() and the page degrades to the
+      // skeleton instead of an infinite loading spinner.
+      try {
+        await Promise.race([
+          loadArticlesFromDB({ homeOptimized: true, force: true }),
+          new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('articles fetch timeout')); }, 8000); })
+        ]);
+      } catch (_) { /* fall through to render whatever we have */ }
       _ldr(80); // Articles loaded
       renderHomePage();
       _ldr(92);
