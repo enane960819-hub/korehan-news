@@ -2996,8 +2996,15 @@ function renderArticlePage() {
   // 핵심 단어 추출
   renderArticleVocab(a);
 
-  // Highlighted expressions
-  applyHighlightedExpressions(a.id);
+  // Highlighted expressions feature was removed 2026-05-09 — admin
+  // never used it productively and the inline highlights distracted
+  // from the core hover + Vocab tab UX. The script tag is no longer
+  // loaded on any page; this guarded call stays so a stale
+  // deployment doesn't throw if shared.js lands before the HTML
+  // tag updates ship.
+  if (typeof applyHighlightedExpressions === 'function') {
+    try { applyHighlightedExpressions(a.id); } catch(_) {}
+  }
 
   // Guest gate: non-signed-in readers get half the article + a sign-up CTA.
   // Prefer clipping .art-full (the long body) so the lede stays readable;
