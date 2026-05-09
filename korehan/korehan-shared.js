@@ -5691,18 +5691,16 @@ function openVocabEditModal(word) {
     btn.textContent = 'Saving...'; btn.disabled = true;
     try {
       await saveVocabToDB(finalWord, rom, en, false);
-      // Also save to the user's personal vocab list so it appears in
-      // the Vocab tab. saveVocabToDB only touches the sitewide
-      // vocabulary_bank — without this call the user-facing Vocab tab
-      // (which reads user_saved_words) stays empty after Edit-mode add.
-      try {
-        if (typeof dbSaveWord === 'function') {
-          await dbSaveWord(finalWord, rom, en);
-        } else if (typeof saveWord === 'function') {
-          var _sbSv = getSupa();
-          if (_sbSv) await saveWord(_sbSv, { wordKey: finalWord, wordKo: finalWord, wordRom: rom, wordEn: en, sourceKind: 'manual' });
-        }
-      } catch(e) { console.warn('[vocab-edit] user-side save failed:', e); }
+      // INTENTIONAL: do NOT call dbSaveWord here. Vocab Edit Mode is
+      // the admin tool for adding a word to the *sitewide* dictionary
+      // (vocabulary_bank → hover for everyone, Vocab tab for everyone).
+      // The earlier code also wrote into user_saved_words via
+      // dbSaveWord, which polluted the admin's personal My Words /
+      // Word Book every time they curated a word for the site. The
+      // user-reported "운영자 my word db에 추가되는게 문제" — exactly
+      // this. Vocab tab visibility is now driven by VOCAB +
+      // fromAdminAdds() (PR #374 sidecar) and the per-article cache,
+      // none of which need a per-user row.
       VOCAB[finalWord] = { rom: rom, en: en };
       // Persist into the warm VOCAB snapshot so hover survives a
       // refresh even if the next loadVocabFromDB() comes back
