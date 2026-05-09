@@ -5636,8 +5636,19 @@ function openVocabEditModal(word) {
     if (!en) { err.textContent = 'Please enter an English meaning.'; err.style.display='block'; return; }
     var btn = modal.querySelector('#ve-save');
     btn.textContent = 'Saving...'; btn.disabled = true;
+    var localOnly = false;
     try {
-      await saveVocabToDB(finalWord, rom, en, false);
+      try {
+        await saveVocabToDB(finalWord, rom, en, false);
+      } catch (sitewideErr) {
+        // saveVocabToDB always populates the localStorage shadow
+        // first, so the word survives a refresh on this device
+        // even if the sitewide write was rejected. Don't abort
+        // the rest of the save flow — proceed and surface a
+        // local-only toast at the end.
+        localOnly = true;
+        console.warn('[vocab-edit] sitewide save dropped, falling back to local cache:', sitewideErr && sitewideErr.message || sitewideErr);
+      }
       // Also save to the user's personal vocab list so it appears in
       // the Vocab tab. saveVocabToDB only touches the sitewide
       // vocabulary_bank — without this call the user-facing Vocab tab
@@ -5671,7 +5682,7 @@ function openVocabEditModal(word) {
       _addWordToKeyVocabList(word, rom, en);
 
       modal.remove();
-      showToast(word + ' saved');
+      showToast(word + (localOnly ? ' saved locally (sitewide DB blocked)' : ' saved'));
     } catch(e) {
       err.textContent = 'Save failed:' + e.message;
       err.style.display = 'block';
@@ -6052,26 +6063,60 @@ async function saveVocabToDB(word, rom, en, isDelete) {
   var sb = getSupa();
   if (!sb) throw new Error('Supabase not connected');
   // vocabulary_bank is the sitewide pool (admin Vocab Bank panel +
-  // Vocab Edit Mode adds). The 2026-04-09 plan was to lock it down
-  // with RLS keyed off a user_id column, but the column was never
-  // added to prod — PostgREST surfaces "Could not find the 'user_id'
-  // column of 'vocabulary_bank' in the schema cache" the moment we
-  // try to stamp it. Per-user saves go to user_saved_words via the
-  // dbSaveWord call site upstream, so vocabulary_bank can stay the
-  // shared dictionary it actually is. Sign-in is still required so
-  // anonymous visitors don't pollute the pool.
+  // Vocab Edit Mode adds). VOCAB rehydrates from this table on
+  // every page load (see "vocabulary_bank … is_active=true …
+  // limit 5000" load further down), so a row that doesn't land
+  // here is invisible after refresh — the symptom the user keeps
+  // reporting.
+  //
+  // History of the silent-drop bug:
+  //   - 2026-04-09 plan: lock the table with RLS
+  //       FOR ALL USING (auth.uid() = user_id)
+  //     The column was never actually added to prod. PostgREST
+  //     started rejecting requests with "Could not find the
+  //     'user_id' column of 'vocabulary_bank' in the schema
+  //     cache" once the client started stamping user_id.
+  //   - Earlier hotfix dropped the user_id stamp so PostgREST
+  //     would accept the body. But if RLS still references the
+  //     column, or if any other policy returns false, PostgREST
+  //     reports `res.error == null` for an upsert with on-conflict
+  //     while inserting zero rows — the classic silent drop.
+  //
+  // Fix: ask PostgREST to return the inserted/updated row via
+  // .select('word_key'). If `data` comes back empty, the row was
+  // not actually persisted; throw a real error so the modal
+  // surfaces the problem instead of leaving the user with a
+  // ghost save.
   var u = (typeof supaUser !== 'undefined') ? supaUser : null;
   if (!u || !u.id) throw new Error('Sign in to save vocabulary');
   if (isDelete) {
     var res = await sb.from('vocabulary_bank').delete().eq('word_key', word);
+    khLocalVocabDelete(word);
     if (res.error) throw res.error;
-  } else {
-    var res = await sb.from('vocabulary_bank').upsert({
-      word_key: word, word_ko: word,
-      word_rom: rom || '', word_en: en || '',
-      is_active: true,
-    }, { onConflict: 'word_key' });
-    if (res.error) throw res.error;
+    return;
+  }
+  // Stash the word in the local shadow BEFORE the network call so
+  // the next page load survives a silent RLS drop or a network
+  // failure. The DB write below is still attempted; on error we
+  // surface the message but the word is already on the device.
+  khLocalVocabUpsert(word, rom, en);
+  var res = await sb.from('vocabulary_bank').upsert({
+    word_key: word, word_ko: word,
+    word_rom: rom || '', word_en: en || '',
+    is_active: true,
+  }, { onConflict: 'word_key' }).select('word_key');
+  if (res.error) throw res.error;
+  if (!res.data || !res.data.length) {
+    // Upsert returned no rows — RLS dropped it. Confirm with an
+    // explicit read so we don't false-alarm on a PostgREST quirk.
+    var verify = await sb.from('vocabulary_bank')
+      .select('word_key').eq('word_key', word).maybeSingle();
+    if (!verify.data) {
+      // Word is still in the local shadow above, so the user keeps
+      // it across refreshes on this device — but the sitewide pool
+      // didn't pick it up, which is a real problem worth surfacing.
+      throw new Error('DB rejected (RLS). Saved on this device only; ask admin to check vocabulary_bank policy.');
+    }
   }
 }
 
@@ -7463,7 +7508,51 @@ async function checkOnboardingStatus() {
   } catch(e) {}
 }
 
+// localStorage shadow of words added via Vocab Edit Mode. The
+// sitewide vocabulary_bank table is the source of truth, but if
+// Supabase RLS silently drops a write (the recurring schema-cache
+// /user_id-policy mismatch — see saveVocabToDB for history) the
+// row still needs to survive a refresh on the user's device, or
+// the user is left adding the same word over and over. This
+// cache fills both gaps:
+//   1. Every save_or_delete via saveVocabToDB also touches the
+//      cache, so the word is available offline immediately.
+//   2. loadVocabFromDB merges the cache on top of the DB load,
+//      so even a dropped DB write is recoverable on refresh.
+var KH_LOCAL_VOCAB_KEY = 'kh_local_vocab_bank';
+function khLocalVocabRead() {
+  try {
+    var raw = localStorage.getItem(KH_LOCAL_VOCAB_KEY);
+    if (!raw) return {};
+    var parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch(_) { return {}; }
+}
+function khLocalVocabWrite(map) {
+  try { localStorage.setItem(KH_LOCAL_VOCAB_KEY, JSON.stringify(map || {})); } catch(_) {}
+}
+function khLocalVocabUpsert(word, rom, en) {
+  if (!word) return;
+  var m = khLocalVocabRead();
+  m[word] = { rom: rom || '', en: en || '', t: Date.now() };
+  khLocalVocabWrite(m);
+}
+function khLocalVocabDelete(word) {
+  if (!word) return;
+  var m = khLocalVocabRead();
+  if (m[word]) { delete m[word]; khLocalVocabWrite(m); }
+}
+
 async function loadVocabFromDB() {
+  // Apply the local shadow first so the words are visible even if
+  // the network round-trip is slow or fails outright.
+  try {
+    var local = khLocalVocabRead();
+    Object.keys(local).forEach(function(k) {
+      var row = local[k];
+      if (row && row.en) VOCAB[k] = { rom: row.rom || '', en: row.en };
+    });
+  } catch(_) {}
   try {
     var sb = getSupa(); if (!sb) { initTooltips(); return; }
     // ORDER BY + bigger limit so newly-added words land in the loaded
@@ -7483,6 +7572,13 @@ async function loadVocabFromDB() {
         }
       });
     }
+    // Re-apply the local shadow after the DB load so any local
+    // edits the user just made win over a stale DB row.
+    var localAfter = khLocalVocabRead();
+    Object.keys(localAfter).forEach(function(k) {
+      var row = localAfter[k];
+      if (row && row.en) VOCAB[k] = { rom: row.rom || '', en: row.en };
+    });
   } catch(e) {}
 }
 
