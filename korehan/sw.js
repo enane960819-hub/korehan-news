@@ -18,12 +18,11 @@
 // changes. Install event will build a fresh cache under the new name
 // and the activate event will delete stale caches.
 
-// v6: cache-buster bump after the 2026-05-09 landing-page deploy. Some
-// learners (Korean LTE) hit an infinite-loading splash on korehani.com
-// because their device still held the v5 shared.js / shared.css cache
-// against a freshly-deployed index.html. Bumping CACHE_VERSION forces
-// the activate handler to wipe v5-* caches and re-fetch the shell.
-const CACHE_VERSION = 'kh-v6';
+// v7: prev/next pill auto-hide handler shipped on 2026-05-09 evening,
+// but learners on the morning's v6 cache were still seeing the
+// always-visible chrome. Bumping to v7 wipes v6-* and forces a fresh
+// pull of korehan-shared.js so the new auto-hide takes effect.
+const CACHE_VERSION = 'kh-v7';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
