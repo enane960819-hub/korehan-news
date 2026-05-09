@@ -1319,6 +1319,16 @@ function _khRenderNotifItem(n) {
     var nameRv = _khNotifAuthorMap[p.from] || 'A learner';
     text = _khEsc(nameRv) + ' visited your room.';
     targetHref = p.from ? ('korehan-profile.html?user=' + encodeURIComponent(p.from)) : '#';
+  } else if (n.kind === 'feedback_received') {
+    iconName = 'message-square';
+    var topicFr = p.topic ? (' on "' + _khEsc(String(p.topic).slice(0, 32)) + (String(p.topic).length > 32 ? '…' : '') + '"') : '';
+    text = 'Your tutor sent feedback' + topicFr + '.';
+    // Land on Growth Lab feedback list. The submission_id is
+    // payload.submission_id when the row is fresh; we just deep-
+    // link to the feedback section and let the page open the
+    // matching item.
+    targetHref = 'korehan-learning-overview.html#feedback'
+      + (p.submission_id ? ('-' + encodeURIComponent(p.submission_id)) : '');
   } else {
     iconName = 'info';
     text = _khEsc(p.message || 'New notification');

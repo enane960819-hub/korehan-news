@@ -19,7 +19,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/og-default.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260509an">
+<link rel="stylesheet" href="korehan-shared.css?v=20260509ao">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
 <style>
 /* ─── LAYOUT ─────────────────────────────── */
@@ -4327,7 +4327,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260509an"></script>
+<script src="korehan-shared.js?v=20260509ao"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260502a"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
@@ -12960,7 +12960,7 @@ async function _triggerPackageFeedback(submissionId, items) {
       + '      "score": 0-100,\n'
       + '      "overall": "ONE short English sentence about THIS activity",\n'
       + '      "corrected_full": "Korean rewrite, OR null if no real errors",\n'
-      + '      "corrections": [{"original":"Korean snippet","corrected":"Korean snippet","reason":"English explanation","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],\n'
+      + '      "corrections": [{"original":"Korean snippet","corrected":"Korean snippet","reason":"English explanation","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],\n'
       + '      "naturalness": {"score":0-10,"comment":"ONE English sentence — register / flow / word-choice notes (NOT a repeat of corrections)"} or null\n'
       + '    }\n'
       + '  ]\n'
@@ -12986,7 +12986,7 @@ async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
   try {
     var prompt = 'You are a Korean writing tutor giving feedback to an English-speaking student learning Korean.\n\nStudent\'s writing:\n"""\n' + text + '\n"""\nTopic: ' + topicOrTitle + '\n\n'
       + 'Give feedback in ENGLISH. Return ONLY valid JSON:\n'
-      + '{"overall":"1-2 sentence overall assessment in English","corrections":[{"original":"original text","corrected":"corrected text","reason":"English explanation of why","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],"encouragement":"short encouraging message in English"}\nReturn JSON only.';
+      + '{"overall":"1-2 sentence overall assessment in English","corrections":[{"original":"original text","corrected":"corrected text","reason":"English explanation of why","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],"encouragement":"short encouraging message in English"}\nReturn JSON only.';
     var data = await callClaude({ feature:'unified_writing_feedback', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('').replace(/```json|```/g,'').trim();
     var parsed = JSON.parse(raw);
@@ -13225,7 +13225,7 @@ async function triggerArticleAIFeedback(submissionId, text, articleTitle) {
       + '다음 형식으로 첨삭해주세요 (JSON):\n'
       + '{\n'
       + '  "overall": "전반적인 평가 1-2문장",\n'
-      + '  "corrections": [{"original":"원문","corrected":"수정문","reason":"이유","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],\n'
+      + '  "corrections": [{"original":"원문","corrected":"수정문","reason":"이유","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],\n'
       + '  "encouragement": "격려 한마디"\n'
       + '}\nJSON만 반환하세요.';
     var data = await callClaude({
