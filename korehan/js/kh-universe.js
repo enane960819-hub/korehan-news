@@ -1596,23 +1596,36 @@
 
   function selectStar(sprite) {
     if (!sprite || !sprite.userData || !sprite.userData.word) return;
-    // Restore previous
+    // Restore previous. The earlier code restored with one scalar
+    // for both x and y, which crushed wide label sprites back into
+    // a square — fine for stars (uniform scale) but the labels we
+    // now make pickable in PR #379 carry an aspect ratio.
     if (state.selected && state.selected.sprite && state.selected.sprite !== sprite) {
       var prev = state.selected.sprite;
-      prev.scale.set(state.selected.baseScale, state.selected.baseScale, 1);
+      var prevBaseX = state.selected.baseScaleX != null ? state.selected.baseScaleX : state.selected.baseScale;
+      var prevBaseY = state.selected.baseScaleY != null ? state.selected.baseScaleY : state.selected.baseScale;
+      prev.scale.set(prevBaseX, prevBaseY, 1);
       if (prev.material) prev.material.opacity = state.selected.baseOpacity;
     }
     _clearSatellites(); // remove satellites from any previous selection
-    var base = sprite.scale.x;
+    var baseX = sprite.scale.x;
+    var baseY = sprite.scale.y;
     state.selected = {
       sprite: sprite,
       word: sprite.userData.word,
-      baseScale: base,
+      baseScale: baseX, // legacy field — kept for any external reader
+      baseScaleX: baseX,
+      baseScaleY: baseY,
       baseOpacity: sprite.material ? sprite.material.opacity : 1,
     };
-    // Emphasize selected
-    var boost = base * 1.6;
-    sprite.scale.set(boost, boost, 1);
+    // Emphasize selected — scale BOTH dimensions by 1.6 instead of
+    // setting them both to baseX*1.6. The previous form turned a
+    // wide label sprite (e.g. "혼자예요" with aspect ~4) into a
+    // square 4× too tall — exactly the user's "왜 카드가 커져"
+    // screenshot. Uniform multiplication keeps the label's pill
+    // shape intact while still drawing the eye.
+    var boostFactor = 1.6;
+    sprite.scale.set(baseX * boostFactor, baseY * boostFactor, 1);
     if (sprite.material) sprite.material.opacity = 1;
     renderWordCard(sprite.userData.word, sprite.userData.mastery || 0);
     // Recenter the orbit target on the tapped star so subsequent zoom
@@ -1634,7 +1647,11 @@
     if (!state.selected) return;
     var s = state.selected.sprite;
     if (s) {
-      s.scale.set(state.selected.baseScale, state.selected.baseScale, 1);
+      // Restore using stored baseScaleX/Y so wide label sprites go
+      // back to their original pill aspect, not a square.
+      var bx = state.selected.baseScaleX != null ? state.selected.baseScaleX : state.selected.baseScale;
+      var by = state.selected.baseScaleY != null ? state.selected.baseScaleY : state.selected.baseScale;
+      s.scale.set(bx, by, 1);
       if (s.material) s.material.opacity = state.selected.baseOpacity;
     }
     state.selected = null;
