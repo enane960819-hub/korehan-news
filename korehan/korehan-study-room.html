@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/og-default.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260509p">
+<link rel="stylesheet" href="korehan-shared.css?v=20260509q">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
 <style>
 /* ─── LAYOUT ─────────────────────────────── */
@@ -4317,7 +4317,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260509p"></script>
+<script src="korehan-shared.js?v=20260509q"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260502a"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
@@ -23249,17 +23249,42 @@ async function drGenerateQuestions() {
     return h.ko && h.ko.trim().split(/\s+/).length >= 3 && h.ko.trim().split(/\s+/).length <= 6;
   });
   if (orderSources.length < 2) {
-    // Fallback: basic sentences
+    // Fallback: basic sentences. English MUST track Korean —
+    // user reported "친구는 형제자매가 없어요" being labelled as
+    // "My friend doesn't have any siblings" and asked why "my"
+    // appeared when no 내 / 제 was in the Korean. Translations
+    // here drop "my" / "I" unless the Korean explicitly carries
+    // 저/제/내. AI-generated helpers go through the same cleanup
+    // below before being shown.
     orderSources = [
-      {ko:'저는 학생 이에요', en:'I am a student.'}, {ko:'오늘 날씨가 좋아요', en:'The weather is nice today.'},
-      {ko:'저는 한국어를 공부해요', en:'I study Korean.'}, {ko:'친구가 학교에 가요', en:'My friend goes to school.'}
+      {ko:'저는 학생이에요',          en:'I am a student.'},
+      {ko:'오늘 날씨가 좋아요',       en:'The weather is nice today.'},
+      {ko:'저는 한국어를 공부해요',   en:'I study Korean.'},
+      {ko:'친구가 학교에 가요',       en:'A friend goes to school.'}
     ];
+  }
+  // Fix English/Korean subject-pronoun mismatches. "my" / "I" in
+  // English without 내/제/저 in Korean confuses learners on the
+  // arrange-words quiz.
+  function _drFixOrderEn(ko, en) {
+    if (!en) return en;
+    var hasMy = /^|\bmy\b/i.test(en);
+    var hasIWe = /\b(I|we|our|us)\b/i.test(en);
+    var hasKoSelf = /(저는|제가|저의|제 |내가|내 |나는|나의)/.test(ko);
+    if (hasMy && !hasKoSelf) {
+      en = en.replace(/^My\s+/i, 'A ').replace(/\bmy\s+/gi, 'a ');
+    }
+    if (hasIWe && !hasKoSelf) {
+      en = en.replace(/^I\s+/i, 'Someone ').replace(/^We\s+/i, 'They ');
+    }
+    return en;
   }
   _drShuffle(orderSources).slice(0, 2).forEach(function(s) {
     var ko = (s.ko||'').replace(/[.!?]/g,'').trim();
     var words = ko.split(/\s+/);
     if (words.length >= 3) {
-      questions.push({ type:'order', words: _drShuffle(words.slice()), correct: words, en: s.en||'', slot: 'word_order' });
+      var enFixed = _drFixOrderEn(ko, s.en || '');
+      questions.push({ type:'order', words: _drShuffle(words.slice()), correct: words, en: enFixed, slot: 'word_order' });
     }
   });
 
@@ -23886,7 +23911,20 @@ function _mrShuffle(arr) {
 
 function _mrSlotVocab(n, savedWords, alreadyUsedAnswers) {
   var used = alreadyUsedAnswers || {};
-  var pool = savedWords.filter(function(w){ return !used[w.ko] && !used[w.en]; });
+  var pool = savedWords.filter(function(w){
+    if (!w || !w.ko || !w.en) return false;
+    if (used[w.ko] || used[w.en]) return false;
+    // Forbid multi-word phrases / overly long compounds in review.
+    // Examples user flagged: "공기정화시스템" (technical multi-noun
+    // mash), "재미있는 이야기" (phrase). A first-day learner can't
+    // type either of those, and they aren't really "vocab words."
+    // Keep entries that are single Korean tokens of 1-4 syllables.
+    var ko = String(w.ko).trim();
+    if (/\s/.test(ko)) return false;            // any whitespace = phrase
+    if (ko.length > 4) return false;            // 5+ syllables ≈ compound
+    if (!/^[가-힣]+$/.test(ko)) return false; // pure hangul only
+    return true;
+  });
   if (pool.length < 4) return [];
   var qs = [];
   for (var i = 0; i < pool.length && qs.length < n; i++) {
@@ -24159,13 +24197,29 @@ async function _buildComprehensiveReview(targetCount, lookbackDays) {
 
   var all = vocabQs.concat(grammarQs).concat(readingQs).concat(particleQs).concat(exprQs).concat(listeningQs);
 
-  // Pad to targetCount with extra vocab questions when other slots
-  // were sparse (new user / hasn't read many articles yet).
-  if (all.length < targetCount && savedWords.length >= 4) {
+  // Cap vocab share at ~40%. Padding the deficit purely with vocab
+  // turned daily/weekly review into a glorified flashcard quiz —
+  // user reported "왜 자꾸 단어시험 수준이냐고." Pull the rest of
+  // the deficit from a generic grammar/expression fallback so the
+  // mix stays varied even for users without a deep reading history.
+  if (all.length < targetCount) {
     var usedAnswers = {};
     all.forEach(function(q){ if (q.answer) usedAnswers[q.answer] = 1; });
-    var extra = _mrSlotVocab(targetCount - all.length, savedWords, usedAnswers);
-    all = all.concat(extra);
+    var deficit = targetCount - all.length;
+    var vocabCount = vocabQs.length;
+    var maxVocab = Math.ceil(targetCount * 0.4);
+    var vocabHeadroom = Math.max(0, maxVocab - vocabCount);
+    var vocabPad = Math.min(deficit, vocabHeadroom);
+    if (vocabPad > 0 && savedWords.length >= 4) {
+      var extra = _mrSlotVocab(vocabPad, savedWords, usedAnswers);
+      all = all.concat(extra);
+      extra.forEach(function(q){ if (q.answer) usedAnswers[q.answer] = 1; });
+      deficit -= extra.length;
+    }
+    if (deficit > 0) {
+      var fb = _mrFallbackQuestions(deficit, usedAnswers);
+      all = all.concat(fb);
+    }
   }
 
   // Final fallback — if we still don't have 4+ questions (brand new
@@ -24174,6 +24228,79 @@ async function _buildComprehensiveReview(targetCount, lookbackDays) {
   if (all.length < 4) return generateReviewQuestions(targetCount);
 
   return _mrShuffle(all).slice(0, targetCount);
+}
+
+// Fallback question pool — used when the user's history doesn't
+// give the slot builders enough data. Mix of grammar concepts,
+// daily-life expressions, and short word-order drills so review
+// stays varied even on day 1.
+function _mrFallbackQuestions(n, used) {
+  used = used || {};
+  var pool = [];
+  // Grammar pattern recall
+  var grammar = [
+    { pattern:'~을/를', meaning:'object marker',                    example:'책을 읽어요' },
+    { pattern:'~에서',  meaning:'place where action happens',       example:'학교에서 공부해요' },
+    { pattern:'~ㄴ/은', meaning:'past-tense noun modifier',         example:'어제 본 영화' },
+    { pattern:'~고 있다', meaning:'present continuous (-ing)',      example:'밥을 먹고 있어요' },
+    { pattern:'~지 않다', meaning:'long-form negation',             example:'먹지 않아요' },
+    { pattern:'~아/어 보다', meaning:'try doing something',         example:'한국 음식을 먹어 봤어요' },
+    { pattern:'~으면', meaning:'if / when',                         example:'시간이 있으면 만나요' },
+    { pattern:'~기 전에', meaning:'before doing',                   example:'자기 전에 책을 읽어요' },
+    { pattern:'~아/어 주다', meaning:'do for someone (benefactive)', example:'문을 열어 주세요' },
+    { pattern:'~ㄹ/을 거예요', meaning:'will / probably',           example:'내일 갈 거예요' },
+  ];
+  // Everyday expressions (single concept ↔ Korean)
+  var phrases = [
+    { ko:'안녕하세요',    en:'hello (polite)' },
+    { ko:'감사합니다',    en:'thank you (polite)' },
+    { ko:'잘 부탁드려요', en:'please take care of me' },
+    { ko:'어디 가요',     en:'where are you going' },
+    { ko:'얼마예요',      en:'how much is it' },
+    { ko:'잘 먹겠습니다', en:'I will eat well (before a meal)' },
+    { ko:'잘 먹었습니다', en:'thanks for the meal' },
+    { ko:'이거 주세요',   en:'please give me this' },
+    { ko:'천천히 말해 주세요', en:'please speak slowly' },
+    { ko:'다시 한 번 말해 주세요', en:'please say it again' },
+  ];
+  // Word-order drills
+  var orders = [
+    { ko:'오늘 날씨가 좋아요',     en:'The weather is nice today.' },
+    { ko:'한국어를 배우고 있어요', en:'Studying Korean.' },
+    { ko:'커피 한 잔 주세요',      en:'One coffee, please.' },
+    { ko:'시간이 있으면 만나요',   en:'Meet if there is time.' },
+    { ko:'밥을 먹고 있어요',       en:'Eating a meal.' },
+  ];
+
+  function pushIfFree(q) {
+    if (!q || !q.answer) return;
+    if (used[q.answer]) return;
+    used[q.answer] = 1;
+    pool.push(q);
+  }
+
+  // Grammar — ask "what does this pattern mean?"
+  _mrShuffle(grammar.slice()).forEach(function(g) {
+    var distractors = _mrShuffle(grammar.filter(function(x){ return x.meaning !== g.meaning; })).slice(0, 3);
+    if (distractors.length < 3) return;
+    var ch = _mrShuffle([g.meaning].concat(distractors.map(function(d){ return d.meaning; })));
+    pushIfFree({ type:'mcq', prompt:g.pattern, answer:g.meaning, choices:ch, slot:'grammar', label:'What grammar pattern is this?' });
+  });
+  // Expressions — pick the Korean for the English
+  _mrShuffle(phrases.slice()).forEach(function(p) {
+    var distractors = _mrShuffle(phrases.filter(function(x){ return x.ko !== p.ko; })).slice(0, 3);
+    if (distractors.length < 3) return;
+    var chK = _mrShuffle([p.ko].concat(distractors.map(function(d){ return d.ko; })));
+    pushIfFree({ type:'mcq_reverse', prompt:p.en, answer:p.ko, choices:chK, slot:'expr', label:'Pick the Korean phrase' });
+  });
+  // Word-order drills with English-Korean alignment cleanup
+  _mrShuffle(orders.slice()).forEach(function(s) {
+    var ko = (s.ko || '').replace(/[.!?]/g, '').trim();
+    var words = ko.split(/\s+/);
+    if (words.length < 3) return;
+    pool.push({ type:'order', words:_mrShuffle(words.slice()), correct:words, en:s.en, slot:'word_order' });
+  });
+  return _mrShuffle(pool).slice(0, n);
 }
 
 function renderReviewQuestion() {
