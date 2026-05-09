@@ -3580,27 +3580,14 @@ async function analyzeSentence(idx, el) {
   try {
     sharedCache = await _khLoadArticleSentenceCache(articleId);
     if (sharedCache && sharedCache.sentences) {
-      var hit = sharedCache.sentences[idx];
-      if (!hit || (hit.text || '').trim() !== sentenceText) {
-        hit = sharedCache.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
-      }
-      var _hitGrammarMissing = !hit || !hit.grammar || !Array.isArray(hit.grammar) || !hit.grammar.length;
-      var _hitGrammarBad = hit && _khSentGrammarLooksBad(hit);
-      var _hitStale = (_isLowLevel && _hitGrammarMissing) || _hitGrammarBad;
-      if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length)) && !_hitStale) {
-        window._khSentAnalyzeCache[cacheKey] = hit;
-        try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
-        _khRenderSentPanel(panel, hit);
-        return;
-      }
-      // Whole-cache staleness — any of these flips the bulk re-trigger:
-      //   1. Cache predates the current prompt version (KH_SENT_CACHE_VERSION).
-      //      Pre-2026-05-09-evening writes have no version field at all.
-      //   2. ≥30% of sentences are missing grammar at low level (the
-      //      original empty-grammar bug from this morning).
-      //   3. ≥20% of sentences have an obviously hallucinated grammar
-      //      pattern (~ㄴ다 paired with X예요, or example_in_sentence
-      //      that isn't actually in the source sentence).
+      // Compute article-level staleness FIRST so a single bad
+      // sentence in the cache promotes the entire article to
+      // "needs bulk re-analysis," and every tap during this session
+      // takes the same path (await bulk → cache hit). The previous
+      // ordering checked per-sentence first, which let some taps
+      // return cached panels while others showed "분석 중" mid-
+      // session — the user reported it as "동일 기사인데 어떤
+      // 문장은 즉시 뜨고 어떤 건 다시 분석 중."
       if (sharedCache.version !== KH_SENT_CACHE_VERSION) _sharedCacheStale = true;
       if (_isLowLevel) {
         var _emptyCount = sharedCache.sentences.filter(function(s){
@@ -3610,6 +3597,31 @@ async function analyzeSentence(idx, el) {
       }
       var _badCount = sharedCache.sentences.filter(function(s){ return _khSentGrammarLooksBad(s); }).length;
       if (_badCount / sharedCache.sentences.length >= 0.2) _sharedCacheStale = true;
+
+      // Only serve the per-sentence cache hit when the article
+      // cache is still considered fresh. If it's stale, skip the
+      // hit — the bulk-await block below will rebuild the row and
+      // every tap in this session lands on the new analysis.
+      if (!_sharedCacheStale) {
+        var hit = sharedCache.sentences[idx];
+        if (!hit || (hit.text || '').trim() !== sentenceText) {
+          hit = sharedCache.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
+        }
+        var _hitGrammarMissing = !hit || !hit.grammar || !Array.isArray(hit.grammar) || !hit.grammar.length;
+        var _hitGrammarBad = hit && _khSentGrammarLooksBad(hit);
+        var _hitStale = (_isLowLevel && _hitGrammarMissing) || _hitGrammarBad;
+        // If a single sentence looks bad, promote to article-level
+        // stale rather than mixing cached + uncached responses in
+        // the same session.
+        if (_hitStale) {
+          _sharedCacheStale = true;
+        } else if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length))) {
+          window._khSentAnalyzeCache[cacheKey] = hit;
+          try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
+          _khRenderSentPanel(panel, hit);
+          return;
+        }
+      }
     }
   } catch(_) {}
 
@@ -5206,22 +5218,19 @@ function _setupVocabFabVisibility() {
 function initTooltips() {
   var tip = document.createElement('div');
   tip.id = 'kh-tip';
-  // Visual parity with the kh-hover-tip card from
-  // korehan-hover-tooltips.js — same dark navy, same 16px rounding,
-  // same shadow. The two tooltip systems used to look like different
-  // products on the same page (one was a sharp 4px-rounded toast,
-  // the other a 16px rounded card with a Save button). User couldn't
-  // tell why hover changed shape mid-article.
+  // Sharp toast with blue left-stripe accent — the original kh-tip
+  // look. Tried unifying with the kh-hover-tip rounded-card style;
+  // user preferred the original here. Kept tighter / single-line.
   Object.assign(tip.style, {
     position:'fixed', zIndex:'9999', pointerEvents:'none',
-    background:'#0f172a', color:'#fff',
-    padding:'13px 14px 10px', borderRadius:'16px',
-    fontFamily:"'DM Sans','Noto Sans KR','Source Sans 3',sans-serif",
-    fontSize:'12px', lineHeight:'1.55',
-    boxShadow:'0 18px 40px rgba(2,8,23,.38)',
-    minWidth:'180px', maxWidth:'280px',
-    opacity:'0', transform:'translateY(6px)',
-    transition:'opacity .15s,transform .15s',
+    background:'#0d1b2e', color:'#fff',
+    padding:'8px 12px', borderRadius:'4px',
+    fontFamily:"'Source Sans 3', sans-serif", fontSize:'13px',
+    borderLeft:'3px solid #2255a4',
+    boxShadow:'0 4px 16px rgba(0,0,0,0.35)',
+    maxWidth:'220px', lineHeight:'1.4',
+    opacity:'0', transition:'opacity 0.15s',
+    whiteSpace:'nowrap',
   });
   document.body.appendChild(tip);
 
@@ -5280,39 +5289,25 @@ function initTooltips() {
     if (!w) return;
     var word = w.dataset.word;
     var d = VOCAB[word];
-    // Tooltip layout mirrors .kh-hover-tip from korehan-hover-tooltips.js
-    // so the two systems look like the same component when a learner
-    // moves between words on the page.
-    function _showTip() {
-      tip.style.opacity = '1';
-      tip.style.transform = 'translateY(0)';
-    }
     if (window._vocabEditMode && window._isAdmin) {
-      tip.innerHTML =
-          '<div style="font-size:11px;color:#fbbf24;font-weight:700;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px;margin-bottom:6px"><span style="display:inline-flex;width:13px;height:13px">'+KH_ICON_PENCIL+'</span>Click to edit</div>'
-        + '<div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:2px">' + word + '</div>'
-        + (d
-            ? '<div style="font-size:12px;color:#e5edf9;line-height:1.55">' + d.en + '</div>'
-            : '<div style="font-size:12px;color:#fca5a5;line-height:1.55">No definition</div>');
-      _showTip();
+      tip.innerHTML = '<span style="font-size:13px;color:#fbbf24;font-weight:700;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+KH_ICON_PENCIL+'</span><span>Click to edit</span></span><br>'
+        + '<span style="color:#7ab8f5;font-weight:700">' + word + '</span>'
+        + (d ? '<br><span style="color:#94a3b8;font-size:11px">' + d.en + '</span>' : '<br><span style="color:#f87171;font-size:11px">No definition</span>');
+      tip.style.opacity = '1';
       return;
     }
     if (!d) return;
-    tip.innerHTML =
-        '<div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:2px">' + word + '</div>'
-      + (d.rom ? '<div style="font-size:11px;color:#9ec4ff;font-style:italic;margin-bottom:6px">' + d.rom + '</div>' : '')
-      + '<div style="font-size:12px;line-height:1.55;color:#e5edf9">' + d.en + '</div>';
-    _showTip();
+    tip.innerHTML = '<span style="font-size:16px;font-weight:700;color:#7ab8f5">' + word + '</span><br>'
+      + '<span style="color:#aabbd0;font-size:11px;font-style:italic">' + d.rom + '</span><br>'
+      + '<strong>' + d.en + '</strong>';
+    tip.style.opacity = '1';
   });
   document.addEventListener('mousemove', function(e) {
     tip.style.left = (e.clientX + 14) + 'px';
     tip.style.top  = (e.clientY - 10) + 'px';
   });
   document.addEventListener('mouseout', function(e) {
-    if (e.target.closest && e.target.closest('.kh-word')) {
-      tip.style.opacity = '0';
-      tip.style.transform = 'translateY(6px)';
-    }
+    if (e.target.closest && e.target.closest('.kh-word')) tip.style.opacity = '0';
   });
 
   // 어드민 편집 모드 클릭/터치 처리
