@@ -2142,8 +2142,17 @@
         state.words && rebuildWordStars(three, state.stars);
       } else {
         buildScene(three, canvas);
-        bindControls(canvas);
       }
+      // Bind pointer / wheel / pinch handlers on every open. Close
+      // unbinds them via unbindControls(); on reopen the renderer is
+      // reused (we don't dispose it) but the handlers are gone, so
+      // without re-binding the canvas was visually present but
+      // completely unresponsive to touch / drag / zoom — the user-
+      // reported "껐다 다시 키면 터치 안먹힘". bindControls is
+      // idempotent enough: addEventListener with the same {target,
+      // type, listener} tuple is a no-op on the first open, and a
+      // genuine re-attach on the reopen.
+      bindControls(canvas);
       if (loading) loading.classList.add('hidden');
       if (!state.animId) tick();
       // Kick off category enrichment + corpus load in parallel.
