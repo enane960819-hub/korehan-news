@@ -4875,7 +4875,16 @@ function renderArticleVocab(a) {
                                  .sort(function(a,b){ return b.length - a.length; });
     var out = [];
     var seen = {};
-    for (var i = 0; i < keys.length && out.length < 10; i++) {
+    // Removed the previous out.length<10 cap. The cap was meant to keep
+    // the Vocab tab tidy, but it silently dropped admin-added Vocab Edit
+    // Mode words once the AI cache + the first 10 sitewide matches
+    // saturated the merge — the user added 혁신, the hover dict picked
+    // it up (VOCAB[혁신] populated by paginated loadVocabFromDB), but the
+    // Vocab tab never rendered it because by the time fromGlobalVocab()
+    // ran the cap was full of older AI-curated matches. Returning every
+    // match lets the tab's downstream pagination expose later entries
+    // instead of hiding them.
+    for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
       if (!inArticleBody(k)) continue;
       var v = VOCAB[k] || {};
@@ -4945,15 +4954,17 @@ function renderArticleVocab(a) {
     var merged = (items && items.length) ? items.slice() : [];
     var seen = {};
     merged.forEach(function(v){ if (v && v.ko) seen[v.ko] = true; });
-    // Cache items are ranked highest (sentence-analysis-derived order). We
-    // top up with sitewide VOCAB matches, but only when the cache is sparse
-    // — once we have a healthy list (≥ pageSize), don't dilute it with
-    // generic Word Bank matches.
-    if (merged.length < _avPageSize) {
-      fromGlobalVocab().forEach(function(v){
-        if (v && v.ko && !seen[v.ko]) { merged.push(v); seen[v.ko] = true; }
-      });
-    }
+    // Always merge sitewide VOCAB matches that appear in the body.
+    // Cache items keep priority (AI-picked, sentence-analysis order)
+    // and stay at the top; sitewide entries (admin Vocab Edit Mode +
+    // hover dictionary) are appended at the end so the Vocab tab's
+    // pagination still surfaces them. The previous "skip when cache is
+    // already full" gate was the reason a freshly-added admin word
+    // never appeared in the Vocab tab even when it hovered correctly
+    // in the body.
+    fromGlobalVocab().forEach(function(v){
+      if (v && v.ko && !seen[v.ko]) { merged.push(v); seen[v.ko] = true; }
+    });
     if (!merged.length) {
       el.innerHTML = '<div style="padding:20px;color:#94a3b8;font-size:13px;text-align:center">No vocabulary available for this article yet.</div>';
       _appendAdminAddVocabButton(el, a);
@@ -7599,6 +7610,31 @@ async function checkOnboardingStatus() {
   } catch(e) {}
 }
 
+// Hydrate VOCAB from a localStorage snapshot of the last successful
+// vocabulary_bank load. This unblocks the "기사들 간헐적으로 hover
+// 안뜨는" complaint — when a network blip / RLS retry / service
+// hiccup makes loadVocabFromDB() come up empty, the article body's
+// .vocab-zone wrapVocab() ran against a fresh-empty VOCAB and no
+// words got the .kh-word class, which is why hover sometimes just
+// silently didn't work. Now we paint the warm copy first; the
+// network refresh fills in any new words on top.
+var KH_VOCAB_LS_KEY = 'kh_vocab_dict_v1';
+var KH_VOCAB_LS_MAX_AGE_MS = 24 * 3600 * 1000;
+(function _hydrateVocabFromLocal() {
+  try {
+    var raw = localStorage.getItem(KH_VOCAB_LS_KEY);
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    if (!parsed || !parsed.dict) return;
+    if (parsed.savedAt && Date.now() - parsed.savedAt > KH_VOCAB_LS_MAX_AGE_MS) return;
+    var dict = parsed.dict;
+    Object.keys(dict).forEach(function(k) {
+      var v = dict[k];
+      if (k && v && v.en && !VOCAB[k]) VOCAB[k] = { rom: v.rom || '', en: v.en };
+    });
+  } catch (_) {}
+})();
+
 async function loadVocabFromDB() {
   try {
     var sb = getSupa(); if (!sb) { initTooltips(); return; }
@@ -7617,6 +7653,7 @@ async function loadVocabFromDB() {
     // skip explicitly inactive rows on the client instead.
     var PAGE = 1000;
     var page = 0;
+    var anyRowsLoaded = false;
     while (true) {
       var from = page * PAGE;
       var to   = from + PAGE - 1;
@@ -7631,11 +7668,31 @@ async function loadVocabFromDB() {
         if (row.is_active === false) continue;
         if (row.word_ko && row.word_en) {
           VOCAB[row.word_ko] = { rom: row.word_rom || '', en: row.word_en };
+          anyRowsLoaded = true;
         }
       }
       if (rows.length < PAGE) break;       // last page
       page++;
       if (page > 30) break;                // hard ceiling — 30k rows
+    }
+    // Snapshot the freshly-loaded VOCAB to localStorage so the next
+    // page load can hydrate hover before the network round-trip
+    // finishes — the safety net for the intermittent-hover bug. Skip
+    // if every page errored (we don't want to overwrite a good cache
+    // with an empty one). The snapshot includes anything in VOCAB,
+    // not just rows we just fetched, so words registered by other
+    // sources (article AI cache, hover_vocab_master) also persist.
+    if (anyRowsLoaded) {
+      try {
+        var snapshot = {};
+        Object.keys(VOCAB).forEach(function(k) {
+          var v = VOCAB[k];
+          if (k && v && v.en) snapshot[k] = { rom: v.rom || '', en: v.en };
+        });
+        localStorage.setItem(KH_VOCAB_LS_KEY, JSON.stringify({
+          savedAt: Date.now(), dict: snapshot,
+        }));
+      } catch (_) {}
     }
   } catch(e) {}
 }
