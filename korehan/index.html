@@ -1531,30 +1531,41 @@ document.addEventListener('DOMContentLoaded', async function() {
     renderHomeConvs();
   }
 
-  // 2) 백그라운드 DB 갱신 — data JSONB 포함해서 chat-bubble 미리보기 살림
-  try {
-    var sb = getSupa();
-    var res = await sb.from('conversations_data')
-      .select('id, cat, lvl, name, ctx, data')
-      .order('created_at', {ascending: false})
-      .limit(12);
-    if (res.data && res.data.length) {
-      var freshConvs = res.data.map(function(row) {
-        return _mapConvRow({_id: row.id, name: row.name, ctx: row.ctx, cat: row.cat, lvl: row.lvl, data: row.data});
-      });
-      // 캐시 저장 — msgs 첫 3개만 보관 (data 전체는 크고 카드에 불필요)
-      try {
-        var toCache = freshConvs.map(function(c){
-          return { _id:c._id, name:c.name, ctx:c.ctx, cat:c.cat, lvl:c.lvl, msgs:c.msgs };
+  // 2) 백그라운드 DB 갱신 — fire-and-forget IIFE로 분리.
+  //    예전엔 `await sb.from('conversations_data')...` 가 outer
+  //    DOMContentLoaded async handler를 직접 막고 있어서, Supabase
+  //    응답이 늦어지거나 hang하면 그 아래 renderTodaysPhrase /
+  //    home-learning-preview / news grid 까지 전부 실행이 막혀 화면이
+  //    "Preparing your learning snapshot…" 그대로 남고 우측상단 auth UI
+  //    flip도 안 됐음 (사용자 리포트). IIFE로 독립시켜서 다른 렌더링은
+  //    네트워크 응답을 기다리지 않게 함.
+  (async function refreshHomeConvsFromDB() {
+    try {
+      var sb = getSupa();
+      if (!sb) return;
+      var res = await sb.from('conversations_data')
+        .select('id, cat, lvl, name, ctx, data')
+        .order('created_at', {ascending: false})
+        .limit(12);
+      if (res.data && res.data.length) {
+        var freshConvs = res.data.map(function(row) {
+          return _mapConvRow({_id: row.id, name: row.name, ctx: row.ctx, cat: row.cat, lvl: row.lvl, data: row.data});
         });
-        localStorage.setItem(_HOME_CONV_CACHE_KEY, JSON.stringify(toCache));
-      } catch(e) {}
-      HOME_CONVS = freshConvs;
+        try {
+          var toCache = freshConvs.map(function(c){
+            return { _id:c._id, name:c.name, ctx:c.ctx, cat:c.cat, lvl:c.lvl, msgs:c.msgs };
+          });
+          localStorage.setItem(_HOME_CONV_CACHE_KEY, JSON.stringify(toCache));
+        } catch(e) {}
+        HOME_CONVS = freshConvs;
+        renderHomeConvs();
+      }
+    } catch(e) {
+      console.warn('conv DB load failed, using fallback:', e.message);
     }
-  } catch(e) {
-    console.warn('conv DB load failed, using fallback:', e.message);
-  }
-  renderHomeConvs();
+  })();
+  // 캐시가 없을 때만 placeholder 컨버세이션을 즉시 그려서 빈 화면 안 보이게.
+  if (!_cachedConvs || !_cachedConvs.length) renderHomeConvs();
 
   // ── Stories: DB-driven home grid (matches Stories page) ──
   (async function loadHomeStories() {
