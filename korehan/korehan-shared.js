@@ -3301,12 +3301,12 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
     // upsertArticleCacheRow handles the kv vs wide schema split.
     if (typeof upsertArticleCacheRow === 'function') {
       try {
-        await upsertArticleCacheRow(articleId, { translation: { sentences: stitched } });
+        await upsertArticleCacheRow(articleId, { translation: { sentences: stitched, version: KH_SENT_CACHE_VERSION } });
       } catch(e) { console.warn('[sent-bg] persist failed:', e); }
     }
     // Update the in-memory shared cache so other taps in this session
     // hit it instead of going live.
-    window._khArtSentSharedCache[articleId] = { sentences: stitched };
+    window._khArtSentSharedCache[articleId] = { sentences: stitched, version: KH_SENT_CACHE_VERSION };
     // Also drop a one-off log so the admin can confirm the trigger
     // fired (the user pointed out it wasn't actually wired before).
     console.log('[sent-bg] cached ' + stitched.length + ' sentences for article ' + articleId);
@@ -3318,6 +3318,13 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
   }
 }
 
+// Bumped to 'p2' on 2026-05-09 evening when the level-aware bulk
+// prompt + GRAMMAR VERIFY rule went live. Any cache written before
+// this stamp lacks the version field and is treated as stale, so a
+// re-tap on an article cached under the old prompt re-runs bulk and
+// overwrites the entry with cleaner analysis.
+var KH_SENT_CACHE_VERSION = 'p2';
+
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
   if (window._khArtSentSharedCache[articleId] !== undefined) {
@@ -3328,14 +3335,15 @@ async function _khLoadArticleSentenceCache(articleId) {
     window._khArtSentSharedCache[articleId] = null;
     return null;
   }
-  function _parseSentences(raw) {
+  function _parseShape(raw) {
     if (raw == null) return null;
     var obj;
     if (typeof raw === 'object') obj = raw;
     else if (typeof raw === 'string') {
       try { obj = JSON.parse(raw); } catch(_) { return null; }
     } else return null;
-    return (obj && Array.isArray(obj.sentences) && obj.sentences.length) ? obj.sentences : null;
+    if (!obj || !Array.isArray(obj.sentences) || !obj.sentences.length) return null;
+    return { sentences: obj.sentences, version: obj.version || null };
   }
   // Wide-table: one row per article with a `translation` jsonb/text column.
   try {
@@ -3344,10 +3352,10 @@ async function _khLoadArticleSentenceCache(articleId) {
       .eq('article_id', String(articleId))
       .maybeSingle();
     if (!w.error && w.data) {
-      var sentsW = _parseSentences(w.data.translation);
-      if (sentsW) {
-        window._khArtSentSharedCache[articleId] = { sentences: sentsW };
-        return window._khArtSentSharedCache[articleId];
+      var shapeW = _parseShape(w.data.translation);
+      if (shapeW) {
+        window._khArtSentSharedCache[articleId] = shapeW;
+        return shapeW;
       }
     }
   } catch(_) {}
@@ -3360,15 +3368,36 @@ async function _khLoadArticleSentenceCache(articleId) {
       .eq('cache_key', 'translation')
       .maybeSingle();
     if (!kv.error && kv.data) {
-      var sentsKV = _parseSentences(kv.data.cache_value);
-      if (sentsKV) {
-        window._khArtSentSharedCache[articleId] = { sentences: sentsKV };
-        return window._khArtSentSharedCache[articleId];
+      var shapeKV = _parseShape(kv.data.cache_value);
+      if (shapeKV) {
+        window._khArtSentSharedCache[articleId] = shapeKV;
+        return shapeKV;
       }
     }
   } catch(_) {}
   window._khArtSentSharedCache[articleId] = null;
   return null;
+}
+
+// Heuristic — was this cached sentence's grammar likely hallucinated
+// by the pre-VERIFY prompt? Catches the two failure modes the user
+// hit on a single article session:
+//   1. example_in_sentence text doesn't actually appear in sentence.text
+//   2. pattern is ~ㄴ다 / ~는다 (plain declarative) but the example
+//      chunk ends in 예요 / 이에요 / 요 / 었어요 / etc. — those are
+//      the polite copula and verb endings, not plain declarative.
+function _khSentGrammarLooksBad(sentObj) {
+  if (!sentObj || !Array.isArray(sentObj.grammar) || !sentObj.grammar.length) return false;
+  var bodyText = (sentObj.text || '').replace(/\s+/g, '');
+  return sentObj.grammar.some(function(g) {
+    if (!g) return false;
+    var ex = (g.example_in_sentence || '').replace(/<[^>]*>/g, '').replace(/\s+/g, '').trim();
+    if (!ex) return false;
+    if (bodyText && bodyText.indexOf(ex) === -1) return true;
+    var pat = String(g.pattern || '');
+    if (/~?[ㄴ는]다\b|~?[ㄴ는]다(?!고)/.test(pat) && /(예요|이에요|이었|였)\.?$/.test(ex)) return true;
+    return false;
+  });
 }
 // One-time hint shown above the article body so readers discover
 // the tap-to-analyze interaction. State lives in localStorage so
@@ -3559,19 +3588,31 @@ async function analyzeSentence(idx, el) {
         hit = sharedCache.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
       }
       var _hitGrammarMissing = !hit || !hit.grammar || !Array.isArray(hit.grammar) || !hit.grammar.length;
-      var _hitStale = _isLowLevel && _hitGrammarMissing;
+      var _hitGrammarBad = hit && _khSentGrammarLooksBad(hit);
+      var _hitStale = (_isLowLevel && _hitGrammarMissing) || _hitGrammarBad;
       if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length)) && !_hitStale) {
         window._khSentAnalyzeCache[cacheKey] = hit;
         try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
         _khRenderSentPanel(panel, hit);
         return;
       }
+      // Whole-cache staleness — any of these flips the bulk re-trigger:
+      //   1. Cache predates the current prompt version (KH_SENT_CACHE_VERSION).
+      //      Pre-2026-05-09-evening writes have no version field at all.
+      //   2. ≥30% of sentences are missing grammar at low level (the
+      //      original empty-grammar bug from this morning).
+      //   3. ≥20% of sentences have an obviously hallucinated grammar
+      //      pattern (~ㄴ다 paired with X예요, or example_in_sentence
+      //      that isn't actually in the source sentence).
+      if (sharedCache.version !== KH_SENT_CACHE_VERSION) _sharedCacheStale = true;
       if (_isLowLevel) {
         var _emptyCount = sharedCache.sentences.filter(function(s){
           return !s.grammar || !Array.isArray(s.grammar) || !s.grammar.length;
         }).length;
         if (_emptyCount / sharedCache.sentences.length >= 0.3) _sharedCacheStale = true;
       }
+      var _badCount = sharedCache.sentences.filter(function(s){ return _khSentGrammarLooksBad(s); }).length;
+      if (_badCount / sharedCache.sentences.length >= 0.2) _sharedCacheStale = true;
     }
   } catch(_) {}
 
