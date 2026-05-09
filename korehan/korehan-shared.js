@@ -3324,7 +3324,15 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
       ? '- GRAMMAR: MINIMUM 1 pattern, max 3 per sentence. INCLUDE basic patterns: ~을/를 (object marker), ~지 않다 (negation), ~고 있다 (continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~다고 알려져 있어요 / ~ㄴ다고 해요 (reported), ~어 주다 (benefactive), ~아/어 있다 (resultative). 0 patterns is allowed ONLY for a pure noun phrase, proper-noun list, or a single greeting like "안녕하세요." Don\'t pick a pattern that\'s just a vocab word\'s conjugation.\n'
       : '- GRAMMAR: MINIMUM 1 pattern (unless purely a noun phrase / greeting), max 2 per sentence. Skip beginner patterns (~는 modifier, ~다, ~요/습니다, ~았/었, ~을/를). Don\'t pick a pattern that\'s just a vocab word\'s conjugation.\n';
     var _grammarVerify =
-        '- GRAMMAR VERIFY: example_in_sentence MUST literally contain the form. Don\'t label "X예요 / X이에요" as ~ㄴ다 (that\'s plain declarative, not polite copula). Don\'t pick ~어요/~아요 if no verb is in the chunk. Don\'t claim a particle (~에서, ~로) the chunk doesn\'t actually have. If you can\'t find a chunk that demonstrates the pattern, drop the pattern — empty arrays are better than wrong matches.\n';
+        '- GRAMMAR VERIFY (HARD RULE — non-negotiable):\n'
+      + '    1. example_in_sentence MUST be a literal substring of that source sentence (numbered above). If you alter even one character, the entry is silently dropped on the client.\n'
+      + '    2. example_in_sentence MUST contain the pattern marker. For ~(으)로서 → the chunk needs 로서 or 으로서. For ~고 있다 → 고 있 or 고있. For ~지 않다 → 지 않. The chunk should be ~4-12 characters and include the morpheme plus a couple chars of context.\n'
+      + '    3. If a sentence has no usable chunk for the pattern you had in mind, OMIT it from that sentence\'s grammar. Empty grammar arrays are fine. Do not invent. Empty is better than wrong.\n'
+      + '    Common hallucinations to avoid:\n'
+      + '    · Citing a noun phrase like "새로운 웰니스 트렌드" as the example for ~(으)로서 — the chunk has no 로서. Drop.\n'
+      + '    · Picking ~ㄴ다 / ~는다 (plain declarative) when the example is "X예요 / X이에요" — that\'s polite copula, not plain ending.\n'
+      + '    · Picking ~어요 / ~아요 if the chunk has no verb.\n'
+      + '    · Claiming a particle pattern (~에서, ~로, ~까지) for a chunk that doesn\'t contain that particle.\n';
     var prompt =
         'You are a Korean tutor analysing each sentence of an article for a ' + _lvlLabel + ' learner.\n\n'
       + 'Sentences (numbered, in order):\n' + payload + '\n\n'
@@ -3403,7 +3411,13 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
 // Bump again whenever the prompt or filter changes shape. Older
 // stamps cascade: p1 → p2 was the level-aware prompt + GRAMMAR
 // VERIFY rule, p2 → p3 is the marker-presence filter.
-var KH_SENT_CACHE_VERSION = 'p3';
+// Bumped to 'p4' on 2026-05-09 night when the GRAMMAR VERIFY rule
+// became a hard "marker must appear inside the example chunk" check
+// (both prompt + client-side validator). p3 caches still pass the
+// marker-in-sentence check but fail the new marker-in-example check
+// for any item where AI cited an unrelated chunk; mark them stale
+// so the next reader regenerates with the tighter prompt.
+var KH_SENT_CACHE_VERSION = 'p4';
 
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
@@ -3489,13 +3503,15 @@ function _khSentGrammarLooksBad(sentObj) {
       while ((m = re.exec(piece))) markers.push(m[0]);
     });
     if (markers.length) {
-      // bodyText already has whitespace stripped (line above) — match
-      // against the no-whitespace form so patterns with internal
-      // spaces ("~고 있다", "~지 않다") don't false-positive against a
-      // sentence that genuinely contains them.
+      // Strict check: marker must appear inside the example chunk
+      // (which we've already verified is in the sentence). bodyText
+      // is the sentence with whitespace stripped; ex same. Requiring
+      // marker-inside-example catches the case where AI cites a
+      // chunk that's in the sentence but doesn't actually demonstrate
+      // the pattern.
       var hit = false;
       for (var i = 0; i < markers.length; i++) {
-        if (bodyText.indexOf(markers[i]) >= 0) { hit = true; break; }
+        if (ex.indexOf(markers[i]) >= 0) { hit = true; break; }
       }
       if (!hit) return true;
     }
@@ -3615,23 +3631,30 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
     }
     function _grammarMatchesSentence(g) {
       if (!_sent) return true; // no sentence context — skip the check
-      // Compare against the sentence with whitespace stripped — many
-      // Korean grammar patterns naturally carry a space ("~고 있다",
-      // "~지 않다", "~ㄴ 것 같다") and the marker we extract from the
-      // pattern field strips that space too. Without normalising
-      // whitespace on BOTH sides every such pattern got dropped on
-      // sentences that genuinely contained it ("...하고 있어요" had
-      // the marker "고있다" but indexOf returned -1 because of the
-      // space). User reported as "grammar 가 아예 사라졌는데" right
-      // after PR #383's filter shipped.
+      // Compare with whitespace stripped on both sides — many Korean
+      // grammar patterns naturally carry a space ("~고 있다", "~지
+      // 않다") and the marker we extract from the pattern field
+      // strips that space. Without normalising on both sides, every
+      // such pattern got dropped on sentences that genuinely
+      // contained it.
       var sentNoWs = _sent.replace(/\s+/g, '');
       var ex = (g.example_in_sentence || '').replace(/\s+/g, '').trim();
-      if (ex && sentNoWs.indexOf(ex) < 0) return false;
+      // Rule 1: the example chunk must literally appear in the
+      // sentence. Catches "→ 새로운 웰니스 트렌드" cited as an
+      // example when the sentence is something else entirely.
+      if (!ex || sentNoWs.indexOf(ex) < 0) return false;
+      // Rule 2 (the strict one): the pattern's own marker(s) must
+      // appear inside the example chunk — not just somewhere in
+      // the sentence. The looser "marker in sentence anywhere"
+      // version still let through cases where the example chunk
+      // was unrelated to the marker (e.g. AI cited "새로운 웰니스
+      // 트렌드" for ~(으)로서 because 로서 happened to appear
+      // 200 chars away). The example must DEMONSTRATE the pattern.
       var markers = _patternMarkers(g.pattern);
       if (markers.length) {
         var hit = false;
         for (var k = 0; k < markers.length; k++) {
-          if (sentNoWs.indexOf(markers[k]) >= 0) { hit = true; break; }
+          if (ex.indexOf(markers[k]) >= 0) { hit = true; break; }
         }
         if (!hit) return false;
       }
@@ -3888,11 +3911,15 @@ async function analyzeSentence(idx, el) {
       ? '- GRAMMAR: MINIMUM 1 pattern, max 3. At THIS LEVEL, basic patterns ARE the lesson — INCLUDE them: ~을/를 (object marker) + verb, ~지 않다 (negation), ~고 있다 (present continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency), ~다고 알려져 있어요 / ~ㄴ다고 해요 (reported), ~어 주다 (benefactive), ~아/어 있다 (resultative state). The ONLY excuse for 0 patterns is a sentence that is purely a proper noun, interjection, or single greeting (e.g. "안녕하세요."). Do NOT pick a pattern that\'s just the conjugation of a vocab word.\n'
       : '- GRAMMAR: MINIMUM 1 pattern (unless the sentence is purely a noun phrase / proper-noun list / single greeting), max 2. Skip beginner-level patterns (~는 noun modifier, ~다 declarative, ~요/습니다 polite, ~았/었 past, ~을/를 object marker) — the learner already knows them at this level. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n';
     var _grammarVerifyRule =
-        '- GRAMMAR VERIFY: example_in_sentence MUST literally contain the form you claim. Common failures to avoid:\n'
-      + '    · Don\'t pick ~ㄴ다 / ~는다 (plain declarative) when the example is "X예요 / X이에요" — that\'s the polite copula, NOT the plain ending.\n'
-      + '    · Don\'t pick ~어요 / ~아요 if the chunk has no verb in it.\n'
-      + '    · Don\'t pick a particle pattern (~에서, ~로, ~까지) when the chunk doesn\'t actually contain that particle.\n'
-      + '    · If you can\'t find a chunk that genuinely demonstrates the pattern, drop the pattern entirely (you\'re not forced to fill the slot with a wrong match).\n';
+        '- GRAMMAR VERIFY (HARD RULE — non-negotiable):\n'
+      + '    1. example_in_sentence MUST be a literal substring of the sentence above. If you change a single character, the item is dropped.\n'
+      + '    2. example_in_sentence MUST literally contain the pattern marker. For ~(으)로서, the chunk must include 로서 or 으로서. For ~고 있다, it must include 고 있 or 고있. For ~지 않다, it must include 지 않. The chunk should be 4-12 characters and include the morpheme + a couple chars of context.\n'
+      + '    3. If the sentence does NOT contain a usable chunk for a pattern you have in mind, OMIT THAT PATTERN. Empty grammar arrays are fine. Do not invent.\n'
+      + '    Common hallucinations to avoid:\n'
+      + '    · Citing a noun phrase like "새로운 웰니스 트렌드" as the example for ~(으)로서 — the chunk has no 로서 in it. Drop.\n'
+      + '    · Picking ~ㄴ다 / ~는다 (plain declarative) when the example is "X예요 / X이에요" — that\'s the polite copula, NOT the plain ending.\n'
+      + '    · Picking ~어요 / ~아요 if the chunk has no verb in it.\n'
+      + '    · Picking a particle pattern (~에서, ~로, ~까지) when the chunk doesn\'t actually contain that particle.\n';
     var prompt =
         'You are a Korean tutor analysing a single sentence for a ' + _levelLabel + ' learner.\n\n'
       + 'Sentence: ' + sentenceText + '\n\n'
