@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/og-default.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260509w">
+<link rel="stylesheet" href="korehan-shared.css?v=20260509x">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
 <style>
 /* ─── LAYOUT ─────────────────────────────── */
@@ -3780,24 +3780,20 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <!-- ═══ TAB: Exercise ═══
      Restructured 2026-05-09 by skill axis (옵션 1):
        Vocab · Grammar · Listening
-     Today's Phrase becomes the full-width daily anchor at the
-     top. Flashcards (categories) and 3D Flashcards merged into
-     one card with a "3D mode →" link in the header so we don't
-     present the same concept twice. "Canvas 2.0 — immersive
-     learning with visual effects" copy dropped — it described
-     nothing. IDs preserved (phrase-box-help, fc-grid-help) so
-     existing renderers keep targeting the right containers. -->
+     Today's Phrase removed — already lives on the main page,
+     duplicating it inside the Exercise tab was just scroll. The
+     `mgrid#fc-grid-help` container is mirrored from the sidebar
+     `fc-grid-left` via _mirrorHelpTabContent(); switchSrTab()
+     now also runs the mirror on the master tab so the Flashcards
+     categories actually show up here. The Korean Alphabet card
+     uses the standard tool layout (icon + title + sub) instead
+     of a bare banner image, which previously looked like an
+     empty background. -->
 <div class="sr-tab-panel" id="sr-panel-master">
   <div style="max-width:1160px;margin:0 auto;padding:24px">
     <div style="margin-bottom:20px">
       <div style="font-size:20px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px"><i data-lucide="target" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i><span>Exercise</span></div>
       <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Interactive tools to practice Korean</div>
-    </div>
-
-    <!-- Daily anchor — full-width Today's Phrase. -->
-    <div class="sr-sb-panel pcard" style="padding:0;overflow:hidden;margin-bottom:24px">
-      <div class="chd" style="padding:10px 14px"><div class="ct" style="color:rgba(255,255,255,.4);display:inline-flex;align-items:center;gap:6px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today's Phrase</span></div></div>
-      <div class="cb" id="phrase-box-help" style="padding:12px 14px"></div>
     </div>
 
     <!-- ═══ Vocab · 어휘 ═══ -->
@@ -3808,15 +3804,19 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
       <div class="master-card" style="padding:0;cursor:default">
         <div style="padding:10px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
           <div class="ct" style="color:rgba(255,255,255,.55);display:inline-flex;align-items:center;gap:6px;font-weight:900"><i data-lucide="layers" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Flashcards</span></div>
-          <button type="button" onclick="KHFlashcards&&KHFlashcards.open({title:'3D Flashcards'})" style="background:rgba(125,211,252,.14);border:1px solid rgba(125,211,252,.28);color:#7dd3fc;font-size:11px;font-weight:900;letter-spacing:.04em;padding:5px 10px;border-radius:999px;cursor:pointer;font-family:inherit">3D mode →</button>
+          <button type="button" onclick="event.stopPropagation();KHFlashcards&&KHFlashcards.open({title:'3D Flashcards'})" style="background:rgba(125,211,252,.14);border:1px solid rgba(125,211,252,.28);color:#7dd3fc;font-size:11px;font-weight:900;letter-spacing:.04em;padding:5px 10px;border-radius:999px;cursor:pointer;font-family:inherit">3D mode →</button>
         </div>
         <div style="padding:10px 14px 14px">
           <div class="mgrid" id="fc-grid-help"></div>
         </div>
       </div>
-      <!-- Korean Alphabet (Hangul basics). -->
-      <div class="master-card" style="padding:0;cursor:pointer" onclick="openAlphaModal()">
-        <div class="mc-banner" style="height:160px"><img src="assets/file_000000004d1c72098736e9b8d1ef65eb.png" alt="Korean Alphabet" onerror="this.parentNode.style.background='linear-gradient(135deg,#0c4a6e,#0369a1)';this.style.display='none'"></div>
+      <!-- Korean Alphabet — standard tool card layout. -->
+      <div class="master-card" onclick="openAlphaModal()" style="cursor:pointer">
+        <div style="text-align:center;padding:20px">
+          <i data-lucide="type" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:10px;color:#7dd3fc" aria-hidden="true"></i>
+          <div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:4px">Korean Alphabet · 자모</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">14 consonants + 10 vowels<br>with stroke order and audio</div>
+        </div>
       </div>
     </div>
 
@@ -4325,7 +4325,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260509w"></script>
+<script src="korehan-shared.js?v=20260509x"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260502a"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
@@ -10961,7 +10961,11 @@ function switchSrTab(tab, btn) {
   // Show level bar only on Study tab (desktop only — on mobile it stays visible with hero)
   var lvBar = document.getElementById('sr-level-bar');
   if (lvBar && window.innerWidth > 860) lvBar.style.display = (tab === 'study') ? '' : 'none';
-  if (tab === 'help') _mirrorHelpTabContent();
+  // Mirror sidebar source boxes into the Help/Exercise tab twins.
+  // Exercise (master) uses the same fc-grid-help / phrase-box-help
+  // IDs as Help, so without this the Flashcards categories grid
+  // shows up empty when the user lands on Exercise first.
+  if (tab === 'help' || tab === 'master') _mirrorHelpTabContent();
 }
 
 // ── Word Book (단어장) ──
