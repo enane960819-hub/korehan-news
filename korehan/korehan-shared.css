@@ -1817,6 +1817,13 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   color: #1e293b;
   position: relative;
   animation: aspSlide .22s cubic-bezier(.34,1.56,.64,1);
+  /* Cap height on mobile so a 4-vocab + 2-grammar panel doesn't
+     stretch past the viewport. Internal scroll keeps the close
+     button reachable without leaving the article. */
+  max-height: 70vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 @keyframes aspSlide {
   from { opacity: 0; transform: translateY(-6px); }
