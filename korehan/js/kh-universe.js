@@ -202,7 +202,7 @@
       // 90s khuDrift animation is a very slow scale + translate
       // — adds depth without distracting from the constellation.
       '.khu-nebula{position:absolute;inset:-8%;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;transition:opacity .35s ease;mix-blend-mode:screen;filter:saturate(.9) hue-rotate(-8deg) contrast(1);will-change:transform,opacity;pointer-events:none;}',
-      '.khu-nebula.active{opacity:.32;animation:khuDrift 90s ease-in-out infinite alternate;}',
+      '.khu-nebula.active{opacity:.48;animation:khuDrift 90s ease-in-out infinite alternate;}',
       '#khu-nebula-witch{background-image:url(\'img/universe/witch-head.jpg\');}',
       '#khu-nebula-carina{background-image:url(\'img/universe/carina.webp\');}',
       '#khu-nebula-cliffs{background-image:url(\'img/universe/cosmic-cliffs.jpg\');}',
@@ -558,7 +558,16 @@
     scene.fog = new three.FogExp2(0x040612, 0.012);
 
     var w = canvas.clientWidth, h = canvas.clientHeight;
-    var camera = new three.PerspectiveCamera(55, w / h, 0.1, 500);
+    // Vertical FOV is fixed; on portrait mobile (aspect ~0.45)
+    // the horizontal FOV ends up around 27° at the default 55°
+    // setting, which projects the outer category labels outside
+    // the visible canvas — the user-reported "화면 짤리는 이슈".
+    // Widen the field for narrow viewports so the same scene
+    // fits horizontally without having to pull the camera back
+    // and shrink every star.
+    var aspect = w / Math.max(1, h);
+    var fov = aspect < 0.6 ? 78 : aspect < 0.85 ? 68 : 55;
+    var camera = new three.PerspectiveCamera(fov, aspect, 0.1, 500);
     updateCameraFromOrbit(camera);
 
     var renderer = new three.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
@@ -1910,7 +1919,12 @@
     if (!r || !cam) return;
     var canvas = r.domElement;
     var w = canvas.clientWidth, h = canvas.clientHeight;
-    cam.aspect = w / h;
+    var aspect = w / Math.max(1, h);
+    cam.aspect = aspect;
+    // Match the aspect-aware FOV from buildScene so an
+    // orientation change (portrait → landscape) re-fits the
+    // scene horizontally instead of cutting labels off again.
+    cam.fov = aspect < 0.6 ? 78 : aspect < 0.85 ? 68 : 55;
     cam.updateProjectionMatrix();
     r.setSize(w, h, false);
   }
