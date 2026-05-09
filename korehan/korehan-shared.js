@@ -3489,10 +3489,13 @@ function _khSentGrammarLooksBad(sentObj) {
       while ((m = re.exec(piece))) markers.push(m[0]);
     });
     if (markers.length) {
-      var fullText = (sentObj.text || '');
+      // bodyText already has whitespace stripped (line above) — match
+      // against the no-whitespace form so patterns with internal
+      // spaces ("~고 있다", "~지 않다") don't false-positive against a
+      // sentence that genuinely contains them.
       var hit = false;
       for (var i = 0; i < markers.length; i++) {
-        if (fullText.indexOf(markers[i]) >= 0) { hit = true; break; }
+        if (bodyText.indexOf(markers[i]) >= 0) { hit = true; break; }
       }
       if (!hit) return true;
     }
@@ -3612,21 +3615,23 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
     }
     function _grammarMatchesSentence(g) {
       if (!_sent) return true; // no sentence context — skip the check
-      var ex = (g.example_in_sentence || '').trim();
-      // The chunk the model claims as the example must literally
-      // appear in the sentence. That alone catches ~"새로운 웰니스
-      // 트렌드" hallucinations where the example doesn't sit inside
-      // the sentence at all.
-      if (ex && _sent.indexOf(ex) < 0) return false;
-      // The pattern's own marker(s) must also appear somewhere in
-      // the sentence — covers the case where the model picks an
-      // example chunk that IS in the sentence but the pattern is a
-      // different morpheme that isn't.
+      // Compare against the sentence with whitespace stripped — many
+      // Korean grammar patterns naturally carry a space ("~고 있다",
+      // "~지 않다", "~ㄴ 것 같다") and the marker we extract from the
+      // pattern field strips that space too. Without normalising
+      // whitespace on BOTH sides every such pattern got dropped on
+      // sentences that genuinely contained it ("...하고 있어요" had
+      // the marker "고있다" but indexOf returned -1 because of the
+      // space). User reported as "grammar 가 아예 사라졌는데" right
+      // after PR #383's filter shipped.
+      var sentNoWs = _sent.replace(/\s+/g, '');
+      var ex = (g.example_in_sentence || '').replace(/\s+/g, '').trim();
+      if (ex && sentNoWs.indexOf(ex) < 0) return false;
       var markers = _patternMarkers(g.pattern);
       if (markers.length) {
         var hit = false;
         for (var k = 0; k < markers.length; k++) {
-          if (_sent.indexOf(markers[k]) >= 0) { hit = true; break; }
+          if (sentNoWs.indexOf(markers[k]) >= 0) { hit = true; break; }
         }
         if (!hit) return false;
       }
