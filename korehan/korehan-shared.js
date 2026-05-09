@@ -3770,6 +3770,7 @@ async function analyzeSentence(idx, el) {
       + 'Rules:\n'
       + '- TRANSLATION: PRESERVE the original subject — do NOT inject "I/we" if Korean omitted the subject. Use he/she/it/they/the [noun] based on what the sentence implies.\n'
       + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔, 살다 not 살). Single-syllable stems are not Korean words.\n'
+      + '- VOCAB SINGLE-WORD ONLY: every "ko" entry must be ONE Korean token — no whitespace, no slash, no parens. NEVER emit multi-word phrases like "공기 정화 시스템," "한국 음식," or "재미있는 이야기" as a vocab entry; pick the single hardest word inside (시스템, 정화, etc) instead. Cap each "ko" at ~5 characters / 4 hangul syllables; longer technical compounds belong in the article body, not in vocab.\n'
       + _vocabSkipRule
       + _grammarSkipRule
       + _grammarVerifyRule
@@ -4052,6 +4053,7 @@ async function analyzeConvBubble(convId, msgIdx, el) {
       + 'Rules:\n'
       + '- TRANSLATION: natural conversational English. PRESERVE the original subject — do NOT inject "I/we" if Korean omitted it.\n'
       + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔).\n'
+      + '- VOCAB SINGLE-WORD ONLY: every "ko" entry must be ONE Korean token — no whitespace, no slash. Cap at ~5 chars / 4 hangul syllables. Phrases like "공기 정화 시스템" or "재미있는 이야기" should be split or skipped.\n'
       + '- VOCAB: max 3 items. Skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone).\n'
       + '- GRAMMAR: max 2 patterns. Skip if just a noun phrase. Don\'t pick a pattern that\'s just the conjugation of a vocab word.\n'
       + '- If two patterns stack on the same verb, pick ONLY the more learner-relevant one.\n'
