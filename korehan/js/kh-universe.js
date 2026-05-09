@@ -145,6 +145,17 @@
     ov.id = OVERLAY_ID;
     ov.className = 'kh-universe-overlay';
     ov.innerHTML = [
+      // Nebula backdrop layer — sits behind everything else and
+      // gives the overlay an actual deep-space atmosphere instead
+      // of just the flat radial gradient. Three real astrophoto
+      // backdrops; KHUniverse.open() picks one per session and
+      // toggles its .active class. mix-blend-mode:screen on the
+      // CSS layer side lets the nebula starlight fuse with the
+      // existing gradient without washing out the canvas stars.
+      '<div class="khu-nebula" id="khu-nebula-witch"  aria-hidden="true"></div>',
+      '<div class="khu-nebula" id="khu-nebula-carina" aria-hidden="true"></div>',
+      '<div class="khu-nebula" id="khu-nebula-cliffs" aria-hidden="true"></div>',
+      '<div class="khu-vignette" aria-hidden="true"></div>',
       '<div class="khu-header">',
       '  <div class="khu-header-info">',
       '    <div class="khu-eyebrow">Vocabulary</div>',
@@ -180,8 +191,25 @@
     var s = document.createElement('style');
     s.id = 'kh-universe-styles';
     s.textContent = [
-      '.kh-universe-overlay{position:fixed;inset:0;z-index:9500;background:radial-gradient(ellipse at center,#0a0e22 0%,#04060f 70%,#02030a 100%);display:none;opacity:0;transition:opacity .35s ease;}',
+      '.kh-universe-overlay{position:fixed;inset:0;z-index:9500;background:radial-gradient(ellipse at center,#0a0e22 0%,#04060f 70%,#02030a 100%);display:none;opacity:0;transition:opacity .35s ease;overflow:hidden;}',
       '.kh-universe-overlay.open{display:block;opacity:1;}',
+      // ── Nebula backdrops ────────────────────────────────────
+      // Each layer is a full-bleed astrophoto, hidden by default;
+      // KHUniverse.open() activates one per session. Screen blend
+      // mode + slight saturation so the nebula colour reads but
+      // the existing dark gradient still anchors the contrast for
+      // the white star points painted on the canvas above. The
+      // 90s khuDrift animation is a very slow scale + translate
+      // — adds depth without distracting from the constellation.
+      '.khu-nebula{position:absolute;inset:-8%;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;transition:opacity 1.2s ease;mix-blend-mode:screen;filter:saturate(1.1) contrast(1.05);will-change:transform,opacity;pointer-events:none;}',
+      '.khu-nebula.active{opacity:.55;animation:khuDrift 90s ease-in-out infinite alternate;}',
+      '#khu-nebula-witch{background-image:url(\'img/universe/witch-head.jpg\');}',
+      '#khu-nebula-carina{background-image:url(\'img/universe/carina.webp\');}',
+      '#khu-nebula-cliffs{background-image:url(\'img/universe/cosmic-cliffs.jpg\');}',
+      '@keyframes khuDrift{0%{transform:scale(1.04) translate3d(-1.2%,-.8%,0);}50%{transform:scale(1.08) translate3d(1.4%,.6%,0);}100%{transform:scale(1.05) translate3d(-.6%,1%,0);}}',
+      // Soft vignette on top of the nebula so the corners stay
+      // dark and the header / word card text keeps contrast.
+      '.khu-vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 35%,rgba(2,3,10,.35) 75%,rgba(2,3,10,.7) 100%);}',
       '.khu-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}',
       '.khu-header{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;align-items:center;gap:14px;padding:calc(env(safe-area-inset-top,0px) + 18px) calc(env(safe-area-inset-right,0px) + 20px) 14px calc(env(safe-area-inset-left,0px) + 20px);pointer-events:none;}',
       '.khu-header > *{pointer-events:auto;}',
@@ -1979,6 +2007,19 @@
     state.open = true;
     state.words = (opts.words || []).slice(0, 600);
     document.addEventListener('keydown', onKeydown);
+
+    // Activate one of the three nebula backdrops at random per
+    // session. .khu-nebula.active fades in; the rest stay hidden.
+    // Caller can pin a specific one via opts.nebula = 'witch' |
+    // 'carina' | 'cliffs' if we ever want themed views.
+    var nebulae = ['witch', 'carina', 'cliffs'];
+    var pick = (opts.nebula && nebulae.indexOf(opts.nebula) >= 0)
+      ? opts.nebula
+      : nebulae[Math.floor(Math.random() * nebulae.length)];
+    nebulae.forEach(function(n) {
+      var el = document.getElementById('khu-nebula-' + n);
+      if (el) el.classList.toggle('active', n === pick);
+    });
 
     // Header
     var titleEl = document.getElementById('khu-title');
