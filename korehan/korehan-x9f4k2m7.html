@@ -5393,17 +5393,29 @@ async function goAICache() {
   // Sentence-analysis lives inside the translation cache JSON under
   // a `sentences` key (added when admin pre-gen runs step 5/5). Parse
   // each translation row once so we can render a per-article badge
-  // and surface a "missing-only" backfill button.
+  // and surface a "missing-only" backfill button. Also pull the
+  // version stamp ('p2' / 'p3' / 'p4' / undefined) so the dashboard
+  // can flag stale rows that need a re-analyse under the current
+  // prompt — KH_SENT_CACHE_VERSION on the user-facing client.
+  const SENT_CACHE_CURRENT = 'p4';
   const sentMissingIds = [];
+  const sentVersionByArt = {}; // articleId → 'p4' | 'p3' | 'p2' | 'older' | 'missing'
   articles.forEach(function(a) {
     const c = existingCache[String(a.id)] || {};
-    if (!c.translation) { sentMissingIds.push(String(a.id)); return; }
+    if (!c.translation) { sentMissingIds.push(String(a.id)); sentVersionByArt[a.id] = 'missing'; return; }
     try {
       var parsed = JSON.parse(c.translation);
       var has = parsed && Array.isArray(parsed.sentences) && parsed.sentences.length > 0;
-      if (!has) sentMissingIds.push(String(a.id));
-    } catch(_) { sentMissingIds.push(String(a.id)); }
+      if (!has) { sentMissingIds.push(String(a.id)); sentVersionByArt[a.id] = 'missing'; return; }
+      sentVersionByArt[a.id] = parsed.version || 'older';
+    } catch(_) { sentMissingIds.push(String(a.id)); sentVersionByArt[a.id] = 'missing'; }
   });
+  // Aggregate counts for the dashboard header.
+  const versionCounts = articles.reduce(function(acc, a) {
+    var v = sentVersionByArt[a.id] || 'missing';
+    acc[v] = (acc[v] || 0) + 1;
+    return acc;
+  }, {});
 
   // ── 3. 최근 실패 로그 조회 (24h) ───────────────────────────────
   // Pull the most recent N rows from article_cache_generation_log and
@@ -5439,10 +5451,30 @@ async function goAICache() {
     ? '<span style="font-size:11px;padding:2px 8px;background:#fee2e2;border-radius:8px;color:#991b1b;font-weight:700">⚠️ 최근 24h 실패 ' + failedArticleIds.length + '건</span>'
     : '<span style="font-size:11px;padding:2px 8px;background:#dcfce7;border-radius:8px;color:#166534;font-weight:700">✓ 최근 24h 실패 없음</span>';
 
+  // Sentence-analysis version chip — a quick visual on how many
+  // articles are caught up to the current prompt vs how many still
+  // hold older payloads with potential hallucinations. Greens =
+  // current, ambers = previous-but-still-recent, reds = ancient or
+  // missing. Click toggles a filter (TODO: not yet wired to a
+  // filter function — for now it's display only).
+  function _vbadge(label, n, bg, fg) {
+    if (!n) return '';
+    return '<span style="font-size:11px;padding:2px 8px;background:' + bg + ';border-radius:8px;color:' + fg + ';font-weight:700">' + label + ' ' + n + '</span>';
+  }
+  const versionChip = '<span style="display:inline-flex;gap:4px;align-items:center">'
+    + '<span style="font-size:11px;color:#64748b;font-weight:700">문장분석:</span>'
+    + _vbadge('p4 ✓',          versionCounts.p4      || 0, '#dcfce7', '#166534')
+    + _vbadge('p3 (재분석 대상)', versionCounts.p3     || 0, '#fef3c7', '#92400e')
+    + _vbadge('p2',             versionCounts.p2      || 0, '#fde68a', '#92400e')
+    + _vbadge('미스탬프',        versionCounts.older   || 0, '#fed7aa', '#9a3412')
+    + _vbadge('없음',           versionCounts.missing || 0, '#fee2e2', '#991b1b')
+    + '</span>';
+
   let html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     + '<span style="font-size:13px;color:var(--gr)">발행 기사 <b>' + articles.length + '</b>개 · 캐시 완료 <b>' + cacheComplete + '</b>개</span>'
     + schemaNote
     + failCountNote
+    + versionChip
     + '<button class="btn" style="font-size:12px;padding:6px 14px;background:#f1f5f9;color:#374151;border:1px solid var(--bo)" onclick="goAICache()">🔄 새로고침</button>'
     + (failedArticleIds.length
         ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#ef4444;color:#fff;border:none" onclick="retryFailedCaches(\'' + (_schema||'') + '\')">🔁 실패 재시도 (' + failedArticleIds.length + ')</button>'
@@ -5477,20 +5509,42 @@ async function goAICache() {
     var errBadge = articleErrs.length
       ? '<span title="' + articleErrs.map(function(r){ return r.step + ' [' + r.status + ']: ' + (r.error_message||''); }).join(' | ').replace(/"/g,'&quot;') + '" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:#fef3c7;color:#92400e;cursor:help">⚠ ' + articleErrs.length + ' 실패</span>'
       : '';
+    // Per-row sentence-cache version badge. Same colour vocabulary
+    // as the dashboard chip so the admin can scan the list and spot
+    // what needs re-analysis at a glance.
+    var _sv = sentVersionByArt[a.id] || 'missing';
+    var _svColor = _sv === SENT_CACHE_CURRENT ? '#dcfce7'
+                  : _sv === 'p3'              ? '#fef3c7'
+                  : _sv === 'p2'              ? '#fde68a'
+                  : _sv === 'older'           ? '#fed7aa'
+                  : /* missing */               '#fee2e2';
+    var _svFG    = _sv === SENT_CACHE_CURRENT ? '#166534'
+                  : _sv === 'p3' || _sv === 'p2' ? '#92400e'
+                  : _sv === 'older'           ? '#9a3412'
+                  :                             '#991b1b';
+    var versionBadge = '<span title="문장분석 version" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + _svColor + ';color:' + _svFG + '">v ' + _sv + '</span>';
+    var isStaleSent = _sv !== SENT_CACHE_CURRENT;
+
     html += '<div id="crow-' + a.id + '" style="background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:8px;overflow:hidden' + (articleErrs.length ? ';border-color:#f59e0b' : '') + '">'
       + '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex-wrap:wrap">'
       + '<div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:14px;margin-bottom:4px">' + (a.title||'(제목없음)') + '</div>'
       + '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · ' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level||'') + '</div></div>'
-      + '<div>' + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + badge(hasS, 'Sentences' + (sCount ? ' (' + sCount + ')' : '')) + errBadge + '</div>'
+      + '<div>' + versionBadge + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + badge(hasS, 'Sentences' + (sCount ? ' (' + sCount + ')' : '')) + errBadge + '</div>'
       + (allDone ? '<span style="color:#166534;font-weight:700;font-size:13px">✅ Done</span>'
           : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')">🧠 Generate</button>')
-      + (hasT && !hasS ? '<button class="btn" style="font-size:12px;padding:6px 12px;background:#ede9fe;border:1.5px solid #a78bfa;color:#5b21b6;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit" id="sbtn-' + a.id + '" onclick="backfillOneSentenceAnalysis(\'' + a.id + '\',\'' + (_schema||'') + '\')">📝 문장분석</button>' : '')
-      + '<button style="padding:6px 13px;border:1.5px solid #6366f1;border-radius:8px;background:' + (hasE?'#eef2ff':'#fff') + ';color:#6366f1;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" onclick="toggleExpressionsEditor(\'' + a.id + '\')">'
-      + '✏️ Expressions' + (exprCount ? ' (' + exprCount + ')' : '') + '</button>'
+      // Re-analyse button — always available so admin can refresh
+      // the sentence-analysis cache for this single article on
+      // demand. Highlights when the row is on an old version.
+      // backfillOneSentenceAnalysis stamps version 'p4' on save so
+      // the row flips green on the next page load.
+      + '<button class="btn" style="font-size:12px;padding:6px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;'
+      + (isStaleSent
+          ? 'background:#7c3aed;color:#fff;border:1.5px solid #6d28d9'
+          : 'background:#fff;color:#7c3aed;border:1.5px solid #c4b5fd')
+      + '" id="sbtn-' + a.id + '" onclick="backfillOneSentenceAnalysis(\'' + a.id + '\',\'' + (_schema||'') + '\')">'
+      + (isStaleSent ? '🔄 재분석' : '📝 재분석')
+      + '</button>'
       + '<div id="cst-' + a.id + '" style="width:100%;font-size:12px;color:var(--gr);margin-top:4px"></div>'
-      + '</div>'
-      + '<div id="expr-editor-' + a.id + '" style="display:none;padding:0 16px 16px;border-top:1px solid #f1f5f9">'
-      + renderExpressionsEditor(a.id, hasE && c.expressions ? c.expressions : '[]')
       + '</div>'
       + '</div>';
   });
@@ -5645,6 +5699,14 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     let transObj = {};
     try { if (_existingTrans) transObj = JSON.parse(_existingTrans); } catch(_) {}
     transObj.sentences = sentFinal;
+    // Stamp the version this analysis was generated under. Mirrors
+    // KH_SENT_CACHE_VERSION on the user-facing shared.js side — kept
+    // in sync manually, bumped whenever the prompt or validator
+    // changes (currently 'p4', see PR #390 history). Without this
+    // the user-side staleness check (`sharedCache.version !==
+    // KH_SENT_CACHE_VERSION`) would mark every freshly-backfilled
+    // row as stale on first read.
+    transObj.version = 'p4';
     const newTransStr = JSON.stringify(transObj);
 
     // Derive Vocab + Grammar tab payloads from the same response so
