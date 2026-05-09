@@ -2140,6 +2140,17 @@
       canvas.height = canvas.clientHeight * (window.devicePixelRatio || 1);
       if (state.renderer) {
         state.words && rebuildWordStars(three, state.stars);
+        // Renderer is reused across close/reopen, but its internal
+        // viewport (renderer.setSize) and camera.aspect were last set
+        // by buildScene on the first open. If the user rotates the
+        // device or just reopens after the layout stabilised, the
+        // canvas's internal pixel buffer is freshly sized above but
+        // the renderer's viewport is stale → WebGL draws into the
+        // old rectangle, leaving a dark strip on one edge and slicing
+        // labels at the other (the user-reported "껐다 키면 빈공간
+        // 생기고 짤림"). onResize() reads the current canvas size and
+        // re-applies it to both the renderer and the camera.
+        try { onResize(); } catch (_) {}
       } else {
         buildScene(three, canvas);
       }
