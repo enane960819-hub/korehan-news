@@ -151,6 +151,14 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
 .ob-step-dot.active{animation:dotPop .3s cubic-bezier(.22,1.4,.36,1)}
 @keyframes dotPop{0%{transform:scale(.85)}60%{transform:scale(1.16)}100%{transform:scale(1.06)}}
 
+/* Compact back chip — replaces the full "← Back" secondary
+   button that used to sit next to the primary CTA on every
+   step. Lives in the top-left of the card so it's reachable
+   but doesn't compete with the forward action. */
+.ob-back-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px 5px 8px;border-radius:999px;background:transparent;border:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;transition:color .15s ease,background .15s ease;letter-spacing:.02em}
+.ob-back-chip:hover{color:#fff;background:rgba(255,255,255,.06)}
+.ob-back-chip svg{width:14px;height:14px;flex-shrink:0}
+
 /* Step 1 name-pun explainer — shown only on the goals step, the
    user's very first onboarding screen. The Korean phrase reads
    "Are you doing Korean?" using 하니, the casual Q-form of 하다,
@@ -580,9 +588,6 @@ function renderStep1() {
             + '</button>';
         }).join('')
       + '</div>'
-      + '<div class="ob-pill-list">'
-      + '<span class="ob-pill">News recommendations</span><span class="ob-pill">Study Room prompts</span><span class="ob-pill">Beginner guide highlight</span>'
-      + '</div>'
     + '</div>'
     + '<div>'
       + '<div class="ob-btn-row">'
@@ -598,7 +603,14 @@ function toggleGoal(id) {
   var idx = state.goals.indexOf(id);
   if (idx > -1) state.goals.splice(idx, 1);
   else state.goals.push(id);
-  renderStep1();
+  // Surgical update — flipping classes is cheap and stops the
+  // entire card from re-mounting on every tap (the user-reported
+  // "blink/refresh" loop). Full re-render is reserved for actions
+  // that change the card's structure.
+  var btn = document.querySelector('.ob-opt[data-id="' + id + '"]');
+  if (btn) btn.classList.toggle('selected', state.goals.indexOf(id) > -1);
+  var nextBtn = document.getElementById('step1-next');
+  if (nextBtn) nextBtn.disabled = state.goals.length === 0;
 }
 
 function goStep2() { renderStep2(); }
@@ -607,6 +619,7 @@ function renderStep2() {
   updateProgress(2);
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
+      + '<button class="ob-back-chip" data-action="back-step1" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Back</span></button>'
       + '<div class="ob-topline"><div class="ob-eyebrow">Step 2 · Time</div><div class="ob-stage">Choose a realistic daily rhythm</div></div>'
       + '<h2 class="ob-title">How much time can you study each day?</h2>'
       + '<p class="ob-desc">Pick the pace you can repeat. The descriptions below match the actual flow of your site: news reading, Beginner Guide, Study Room, Conversations, Stories, and Growth Lab.</p>'
@@ -626,8 +639,7 @@ function renderStep2() {
     + '<div>'
       + '<div class="ob-footer-note">The best plan is the one you will actually repeat. <b>Even 5 minutes counts</b> if you keep the loop going.</div>'
       + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" data-action="back-step1">← Back</button>'
-      + '<button class="ob-btn ob-btn-primary" data-action="go-step3">Continue →</button>'
+      + '<button class="ob-btn ob-btn-primary ob-btn-full" data-action="go-step3">Continue →</button>'
       + '</div>'
     + '</div>'
   );
@@ -636,7 +648,11 @@ function renderStep2() {
 
 function selectTime(min) {
   state.minutes = min;
-  renderStep2();
+  // Surgical: flip classes on the time buttons. Avoids the
+  // re-mount flash and keeps focus where it was.
+  document.querySelectorAll('.ob-time-btn[data-min]').forEach(function(b) {
+    b.classList.toggle('selected', Number(b.dataset.min) === min);
+  });
 }
 
 function goStep3() { renderStep3Choice(); }
@@ -645,6 +661,7 @@ function renderStep3Choice() {
   updateProgress(3);
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
+      + '<button class="ob-back-chip" data-action="back-step2" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Back</span></button>'
       + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Level</div><div class="ob-stage">Self-select or take a test</div></div>'
       + '<h2 class="ob-title">Choose how you want to set your level.</h2>'
       + '<p class="ob-desc">If you already know your level, pick it directly and skip the test. If you are unsure, take a randomized placement test with mixed answer positions.</p>'
@@ -656,10 +673,9 @@ function renderStep3Choice() {
     + '</div>'
     + '<div>'
       + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" data-action="back-step2">← Back</button>'
       + (state.levelChoice === 'self'
-          ? '<button class="ob-btn ob-btn-primary" data-action="go-step4"' + (state.level ? '' : ' disabled') + '>Use this level →</button>'
-          : '<button class="ob-btn ob-btn-primary" data-action="start-test">Start test →</button>')
+          ? '<button class="ob-btn ob-btn-primary ob-btn-full" data-action="go-step4"' + (state.level ? '' : ' disabled') + '>Use this level →</button>'
+          : '<button class="ob-btn ob-btn-primary ob-btn-full" data-action="start-test">Start test →</button>')
       + '</div>'
     + '</div>'
   );
@@ -687,8 +703,8 @@ function renderTestIntroHTML() {
   return '<div style="margin-top:18px">'
     + '<div class="ob-helper"><span>🧪</span><div><b>Fresh every time:</b> the quiz now randomizes both questions and answer order, so the correct answer is no longer always the first option.</div></div>'
     + '<div class="ob-link-grid">'
-    + '<div class="ob-link-card' + (m==='balanced'?' selected':'') + '" onclick="state.testMode=\'balanced\';renderStep3Choice()" style="cursor:pointer"><span>20 questions</span><h3>Balanced mix</h3><p>5 Seed, 5 Sprout, 5 Tree, and 5 Forest items.</p></div>'
-    + '<div class="ob-link-card' + (m==='recommended'?' selected':'') + '" onclick="state.testMode=\'recommended\';renderStep3Choice()" style="cursor:pointer"><span>Fast result</span><h3>Recommended level</h3><p>You will still be able to override the suggested level after the test.</p></div>'
+    + '<div class="ob-link-card' + (m==='balanced'?' selected':'') + '" data-test-mode="balanced" onclick="_obSelectTestMode(\'balanced\')" style="cursor:pointer"><span>20 questions</span><h3>Balanced mix</h3><p>5 Seed, 5 Sprout, 5 Tree, and 5 Forest items.</p></div>'
+    + '<div class="ob-link-card' + (m==='recommended'?' selected':'') + '" data-test-mode="recommended" onclick="_obSelectTestMode(\'recommended\')" style="cursor:pointer"><span>Fast result</span><h3>Recommended level</h3><p>You will still be able to override the suggested level after the test.</p></div>'
     + '</div>'
     + '</div>';
 }
@@ -696,13 +712,34 @@ function renderTestIntroHTML() {
 function setLevelChoice(choice) {
   state.levelChoice = choice;
   if (choice === 'self' && !state.level) state.level = 'Beginner';
+  // Full re-render here is justified — the inline subcontent
+  // swaps from level-list to test-mode picker, which is a
+  // structural change.
   renderStep3Choice();
+}
+
+// Surgical test-mode flip — replaces the previous inline
+// renderStep3Choice() call that re-mounted the whole card just
+// to toggle .selected on two cards. Inlined helper because the
+// onclick attribute sits inside a renderTestIntroHTML string.
+function _obSelectTestMode(mode) {
+  state.testMode = mode;
+  document.querySelectorAll('.ob-link-card[data-test-mode]').forEach(function(c) {
+    c.classList.toggle('selected', c.dataset.testMode === mode);
+  });
 }
 
 function selectLevel(level) {
   state.level = level;
   state.levelChoice = 'self';
-  renderStep3Choice();
+  // Surgical — selectLevel only fires from inside the self-pick
+  // subview, so the levelChoice flip is a no-op for the visible
+  // structure. Just flip .selected and re-enable Continue.
+  document.querySelectorAll('.ob-opt[data-level]').forEach(function(b) {
+    b.classList.toggle('selected', b.dataset.level === level);
+  });
+  var continueBtn = document.querySelector('[data-action="go-step4"]');
+  if (continueBtn) continueBtn.disabled = false;
 }
 
 // ── Listening placement bank (Phase 3) ─────────────────────────────
@@ -853,6 +890,7 @@ function renderTestQuestion() {
 
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
+      + '<button class="ob-back-chip" data-action="back-level-choice" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Leave test</span></button>'
       + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Placement test</div><div class="ob-stage">Question ' + (_testIdx + 1) + ' of ' + total + '</div></div>'
       + '<div class="test-progress"><div class="test-prog-bar"><div class="test-prog-fill" style="width:' + pct + '%"></div></div><div class="test-prog-label"><span>' + pct + '% complete</span><span>' + (areaLabels[q.area] || 'Mixed') + '</span></div></div>'
       + '<div class="test-level-badge ' + badgeClass + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[q.level]||q.level) + '</div>'
@@ -866,8 +904,7 @@ function renderTestQuestion() {
     + '</div>'
     + '<div>'
       + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" data-action="back-level-choice">← Back</button>'
-      + '<button class="ob-btn ob-btn-primary" id="test-next-btn" data-action="next-test" style="display:none">' + (_testIdx === total - 1 ? 'See result →' : 'Next question →') + '</button>'
+      + '<button class="ob-btn ob-btn-primary ob-btn-full" id="test-next-btn" data-action="next-test" style="display:none">' + (_testIdx === total - 1 ? 'See result →' : 'Next question →') + '</button>'
       + '</div>'
     + '</div>'
   );
@@ -1107,7 +1144,14 @@ function showTestResult() {
 function selectRecommendedLevel(level) {
   state.level = level;
   state.levelChoice = 'self'; // User overrode the recommendation
-  showTestResult();
+  // Surgical — flip the .selected class on the level buttons
+  // shown inside the test-result card. Re-rendering the entire
+  // result card (with all the per-area bars, the kh-area-in
+  // animations, and the recompute pass) was the heaviest flash
+  // in the flow.
+  document.querySelectorAll('.ob-opt[data-recommended-level]').forEach(function(b) {
+    b.classList.toggle('selected', b.dataset.recommendedLevel === level);
+  });
 }
 
 function goStep4() {
@@ -1138,7 +1182,7 @@ function goStep4() {
   // 30 seconds"). Signed-in users see the existing finish flow.
   var isSignedIn = !!_user;
   var primaryCTA = isSignedIn
-    ? '<button class="ob-btn ob-btn-primary" id="finish-btn" data-action="finish">Go to main page →</button>'
+    ? '<button class="ob-btn ob-btn-primary ob-btn-full" id="finish-btn" data-action="finish">Go to main page →</button>'
     : '<button class="ob-google-btn" id="signup-btn" data-action="signup-google" type="button">'
         + '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
         + '<path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>'
@@ -1174,10 +1218,8 @@ function goStep4() {
       + '<div class="ob-footer-note">Your onboarding state is also saved locally so you do not get bounced back into onboarding again if the database response is slow.</div>'
     + '</div>'
     + '<div>'
-      + '<div class="ob-btn-row" style="' + (isSignedIn ? '' : 'flex-direction:column;gap:10px') + '">'
-      + (isSignedIn
-          ? '<button class="ob-btn ob-btn-secondary" data-action="back-step3">← Back</button>' + primaryCTA
-          : primaryCTA + '<button class="ob-btn ob-btn-secondary" data-action="back-step3" style="flex:0 0 auto;width:100%">← Back to placement</button>')
+      + '<div class="ob-btn-row">'
+      + primaryCTA
       + '</div>'
     + '</div>'
   );
