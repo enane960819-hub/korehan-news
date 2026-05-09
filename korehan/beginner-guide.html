@@ -15,7 +15,7 @@
     a{text-decoration:none;color:inherit}
     /* ── Hero: fullscreen background ── */
     .bg-hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:#0a1423}
-    .bg-hero-img{position:absolute;inset:0;background:url('img/guide/hero-bg.png') center/cover no-repeat;opacity:.25;filter:blur(2px)}
+    .bg-hero-img{position:absolute;inset:0;background:url('img/guide/hero-universe.png') center/cover no-repeat;opacity:.3;filter:blur(2px)}
     .bg-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,20,35,.7) 0%,rgba(10,20,35,.85) 50%,rgba(10,20,35,.95) 100%)}
     .bg-hero-content{position:relative;z-index:2;text-align:center;padding:60px 24px 40px;max-width:720px}
     .bg-hero-eyebrow{font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--sky);margin-bottom:16px}
@@ -103,8 +103,8 @@
       <div style="font-family:'Happy Monkey',sans-serif;font-size:clamp(42px,8vw,72px);font-weight:400;color:#fff;letter-spacing:-.03em;line-height:1"><span class="kh-logo-text" style="color:#fff">KoreHan<span class="kh-logo-i">i</span></span></div>
     </a>
     <div class="bg-hero-eyebrow">Beginner Guide</div>
-    <h1>Learn Korean<br>Through Real News.</h1>
-    <p>Read articles, save vocabulary, study grammar, and track your progress — all in one place. Here's how to get started.</p>
+    <h1>Learn Korean<br>The Way You'd Live It.</h1>
+    <p>News, stories, conversations, daily writing, and slang — woven into a 5-step study flow that turns reading into real Korean. Here's how it fits together.</p>
   </div>
   <a href="#steps" class="bg-hero-scroll">
     <span>Get Started</span>
@@ -117,34 +117,34 @@
   <div class="steps-grid">
     <a href="#step1" class="step-card" data-reveal>
       <div class="step-img">
-        <img src="img/guide/step1-read.png" alt="Pick an article" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder>Screenshot: Article Page</div>'">
+        <img src="img/guide/step1-article-mobile.png" alt="Read an article and tap any sentence" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder>Screenshot: Article Page</div>'">
         <div class="step-num">1</div>
       </div>
       <div class="step-body">
-        <h3>Pick Your Article</h3>
-        <p>Choose a news article at your level. Hover words to see meanings instantly.</p>
+        <h3>Read & Tap</h3>
+        <p>Pick an article, story, or conversation at your level. Tap any sentence for instant analysis.</p>
         <span class="arrow">Learn more ↓</span>
       </div>
     </a>
     <a href="#step2" class="step-card" data-reveal>
       <div class="step-img">
-        <img src="img/guide/step2-study.png" alt="Study and review" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder>Screenshot: Study Room</div>'">
+        <img src="img/guide/step2-reading.png" alt="5-step Article Study flow" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder>Screenshot: Article Study</div>'">
         <div class="step-num">2</div>
       </div>
       <div class="step-body">
-        <h3>Study & Review</h3>
-        <p>Save words, check grammar, and practice in Study Room while it's fresh.</p>
+        <h3>5-Step Active Practice</h3>
+        <p>Vocab → Phrases → Reading → Quiz → Writing. Plus Sprout daily writing with AI feedback.</p>
         <span class="arrow">Learn more ↓</span>
       </div>
     </a>
     <a href="#step3" class="step-card" data-reveal>
       <div class="step-img">
-        <img src="img/guide/step3-xp.png" alt="Gain XP" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder>Screenshot: Growth Lab</div>'">
+        <img src="img/guide/hero-universe.png" alt="Vocabulary Universe — saved words become stars" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder>Screenshot: Vocabulary Universe</div>'">
         <div class="step-num">3</div>
       </div>
       <div class="step-body">
-        <h3>Gain XP & Enjoy</h3>
-        <p>Track your streak, earn XP, and watch your Korean grow day by day.</p>
+        <h3>Watch It Grow</h3>
+        <p>Saved words become stars. XP, streaks, and Monthly Reports show your progress.</p>
         <span class="arrow">Learn more ↓</span>
       </div>
     </a>
@@ -158,21 +158,22 @@
   <section class="detail-section" id="step1" data-reveal>
     <div class="detail-text">
       <div class="detail-num">1</div>
-      <h2>Pick an article and start reading</h2>
-      <p>Browse articles by section — Society, World, Culture, K-pop, and more. Each article is tagged with a difficulty level so you always know what fits your skill.</p>
+      <h2>Pick something to read — and tap to dig in</h2>
+      <p>Browse articles by section, conversations by scene, or stories by mood. Every piece is tagged with a TOPIK level so you always know what fits.</p>
       <ul>
-        <li><strong>Hover any word</strong> to see its meaning, pronunciation, and save it</li>
-        <li><strong>Click translate</strong> to see the full English version side-by-side</li>
-        <li><strong>Grammar highlights</strong> show key patterns used in the article</li>
+        <li><strong>Tap any sentence</strong> to see translation, vocab list, and grammar breakdown</li>
+        <li><strong>Read · Grammar · Vocab · Review</strong> tabs let you switch modes without leaving the page</li>
+        <li><strong>Save words</strong> with one tap — they'll show up in your Vocabulary Universe</li>
+        <li><strong>Conversations</strong> render as visual scene maps, not walls of text</li>
       </ul>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
         <a href="korehan-all.html" class="btn btn-primary">Browse Articles →</a>
+        <a href="korehan-conversations.html" class="btn btn-outline">Try Conversations →</a>
       </div>
     </div>
     <div class="detail-showcase">
-      <!-- Main screenshot + floating overlay -->
-      <img class="ss-main" src="img/guide/detail-article.png" alt="Article page" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px>Screenshot: Article with vocab tooltip</div>'">
-      <img class="ss-float top-right" src="img/guide/detail-tooltip.png" alt="Vocab tooltip" onerror="this.style.display='none'">
+      <img class="ss-main" src="img/guide/step1-tap-analysis.png" alt="Tap a sentence — translation, vocab, and grammar appear inline" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px>Screenshot: Article with tap analysis</div>'">
+      <img class="ss-float top-right" src="img/guide/step1-conversation.png" alt="Conversation scene map" onerror="this.style.display='none'">
     </div>
   </section>
 
@@ -180,22 +181,23 @@
   <section class="detail-section reverse" id="step2" data-reveal>
     <div class="detail-text">
       <div class="detail-num">2</div>
-      <h2>Study and reinforce what you read</h2>
-      <p>Don't just read — practice. Study Room takes the article you just read and turns it into active learning exercises.</p>
+      <h2>Five steps from passive reading to active Korean</h2>
+      <p>Every article opens into a structured 5-step flow. You don't just read — you build the words, recognize the phrases, fill in the gaps, prove it on a quiz, and write your own response.</p>
       <ul>
-        <li><strong>Vocabulary quiz</strong> — test yourself on saved words</li>
-        <li><strong>Grammar breakdown</strong> — understand the patterns</li>
-        <li><strong>Conversations</strong> — see the same words in real dialogue</li>
-        <li><strong>Stories</strong> — longer narratives for deeper reading</li>
+        <li><strong>1. Vocab</strong> — image-anchored word study with audio and translations</li>
+        <li><strong>2. Phrases</strong> — recognize the natural chunks Koreans actually use</li>
+        <li><strong>3. Reading</strong> — fill blanks back into the article from the word bank</li>
+        <li><strong>4. Quiz</strong> — multiple-choice or type-the-answer, both modes</li>
+        <li><strong>5. Writing</strong> — free-write your reaction; AI feedback lands in Growth Lab</li>
       </ul>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
         <a href="korehan-study-room.html" class="btn btn-primary">Open Study Room →</a>
-        <a href="korehan-conversations.html" class="btn btn-outline">Try Conversations →</a>
+        <a href="index.html#sprout" class="btn btn-outline">Try Sprout Writing →</a>
       </div>
     </div>
     <div class="detail-showcase">
-      <img class="ss-main" src="img/guide/detail-studyroom.png" alt="Study Room" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px>Screenshot: Study Room interface</div>'">
-      <img class="ss-float bottom-left" src="img/guide/detail-quiz.png" alt="Quiz" onerror="this.style.display='none'">
+      <img class="ss-main" src="img/guide/step2-reading.png" alt="Reading: fill blanks back into the article" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px>Screenshot: Reading fill-in step</div>'">
+      <img class="ss-float bottom-left" src="img/guide/step2-writing.png" alt="Writing: free-write your reaction" onerror="this.style.display='none'">
     </div>
   </section>
 
@@ -203,22 +205,23 @@
   <section class="detail-section" id="step3" data-reveal>
     <div class="detail-text">
       <div class="detail-num">3</div>
-      <h2>Track progress and build your streak</h2>
-      <p>Growth Lab shows everything at a glance — your daily streak, XP earned, weak grammar points, and words saved. The more consistent you are, the faster you grow.</p>
+      <h2>Watch every saved word become a star</h2>
+      <p>Growth Lab is more than a stats page. Your Vocabulary Universe turns saved words into a constellation you can explore, while XP trends, streak counts, and a Monthly Report email keep you honest about consistency.</p>
       <ul>
-        <li><strong>Daily missions</strong> — read articles, save words, take quizzes</li>
-        <li><strong>XP & Nyang</strong> — earn rewards for consistent study</li>
-        <li><strong>Weak grammar</strong> — focus practice where you need it most</li>
-        <li><strong>Shop</strong> — spend Nyang on room decorations and items</li>
+        <li><strong>Vocabulary Universe</strong> — every saved word is a star, clustered by topic</li>
+        <li><strong>XP Trend</strong> — daily and weekly chart with this-week-vs-last-week deltas</li>
+        <li><strong>Writing Feedback</strong> — AI reviews your Sprout writing and Article essays</li>
+        <li><strong>Monthly Report</strong> — a summary of your month, delivered to your inbox</li>
+        <li><strong>Seed → Sprout → Tree → Forest</strong> — your overall growth stage, visible at a glance</li>
       </ul>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
         <a href="korehan-learning-overview.html" class="btn btn-primary">Open Growth Lab →</a>
-        <a href="korehan-shop.html" class="btn btn-outline">Visit Shop →</a>
+        <a href="korehan-shop.html" class="btn btn-outline">Spend Nyang in Shop →</a>
       </div>
     </div>
     <div class="detail-showcase">
-      <img class="ss-main" src="img/guide/detail-growthlab.png" alt="Growth Lab" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px>Screenshot: Growth Lab dashboard</div>'">
-      <img class="ss-float top-right blurred" src="img/guide/detail-shop.png" alt="Shop" onerror="this.style.display='none'">
+      <img class="ss-main" src="img/guide/hero-growth-lab.png" alt="Growth Lab dashboard" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px>Screenshot: Growth Lab</div>'">
+      <img class="ss-float top-right" src="img/guide/step3-trend.png" alt="XP Trend and weekly improvement" onerror="this.style.display='none'">
     </div>
   </section>
 
@@ -234,58 +237,58 @@
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px" class="feat-grid">
 
-      <a href="korehan-study-room.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📝</div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Study Room</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">AI-powered review sessions. Load any article and get vocab quizzes, grammar breakdowns, and fill-in exercises.</p>
-      </a>
-
-      <a href="korehan-mypage.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🏠</div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">My Room</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Your personal space. Customize your room with items from the Shop, track stats, and manage your profile.</p>
-      </a>
-
-      <a href="korehan-shop.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#fdf4ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🛍️</div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Shop</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Spend Nyang (냥) on room decorations, avatar items, and gifts. Earn Nyang by studying consistently.</p>
-      </a>
-
-      <a href="korehan-learning-overview.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#fefce8;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📊</div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Growth Lab</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Your learning dashboard. Daily missions, streaks, XP history, weak grammar tracking, and weekly analytics.</p>
-      </a>
-
-      <a href="korehan-reporters.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#fff1f2;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">👨‍💼</div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">KoreHani Characters</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Meet our reporters and conversation characters. Each has a unique personality, writing style, and recurring role.</p>
+      <a href="korehan-all.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📰</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Article Study</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Daily Korean news with a 5-step learning flow — Vocab, Phrases, Reading, Quiz, Writing.</p>
       </a>
 
       <a href="korehan-conversations.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
         <div style="width:48px;height:48px;border-radius:14px;background:#ecfeff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">💬</div>
         <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Conversations</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Real Korean dialogues in everyday, workplace, friends, family, and dating contexts. Natural speech patterns you can actually use.</p>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Visual scene maps — taxi, café, workplace, family. Pick your line and follow the dialogue.</p>
       </a>
 
       <a href="korehan-stories.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
         <div style="width:48px;height:48px;border-radius:14px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📖</div>
         <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Stories</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Longer narrative reading — fun, touching, scary, or shocking. Great for building reading stamina and emotional vocab.</p>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Longer narratives across moods — fun, touching, scary, shocking. Build reading stamina through emotion.</p>
       </a>
 
-      <a href="korehan-learn.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#fff7ed;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🎴</div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Flashcards</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Daily vocabulary cards pulled from your saved words and the master word bank. Swipe through and test yourself.</p>
+      <a href="index.html#sprout" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fff7ed;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🌱</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Sprout Daily Writing</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">One topic a day. Write in Korean and get AI feedback — Seed → Sprout → Tree → Forest.</p>
+      </a>
+
+      <a href="korehan-study-room.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#faf5ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🪐</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Express Practice</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">A node graph of speaking, dictation, phrase, and key-expression drills. Earn Nyang per node.</p>
       </a>
 
       <a href="korehan-fun.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🎮</div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">FUN Zone</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Korean name generator, fortune telling, worldcup games — take a break from studying and have fun with Korean culture.</p>
+        <div style="width:48px;height:48px;border-radius:14px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🔥</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Slang &amp; FAST TRACK</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Native-speaker slang, abbreviations, internet Korean. Daily 3, full library, and quizzes.</p>
+      </a>
+
+      <a href="korehan-fun-hangul-tetris.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🔤</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Hangul Builder</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Tap jamo (자모) in order to build syllables. Absolute-beginner-friendly with audio playback.</p>
+      </a>
+
+      <a href="korehan-learning-overview.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fefce8;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">📊</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Growth Lab</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">XP trends, streaks, weekly improvement, AI Writing Feedback, and a Monthly Report email.</p>
+      </a>
+
+      <a href="korehan-shop.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
+        <div style="width:48px;height:48px;border-radius:14px;background:#fdf4ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px">🛍️</div>
+        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Shop &amp; My Room</h3>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Spend Nyang you earned by studying — characters, lamps, plants, pets, and room decorations.</p>
       </a>
 
     </div>

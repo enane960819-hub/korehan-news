@@ -15,7 +15,7 @@ a{text-decoration:none;color:inherit}
 
 /* Hero */
 .l-hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;padding:40px 24px}
-.l-hero-bg{position:absolute;inset:0;background:url('img/guide/hero-bg.png') center/cover no-repeat;opacity:.15;filter:blur(3px)}
+.l-hero-bg{position:absolute;inset:0;background:url('img/guide/hero-universe.png') center/cover no-repeat;opacity:.18;filter:blur(3px)}
 .l-hero-grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,20,35,.6) 0%,rgba(10,20,35,.85) 50%,var(--navy) 100%)}
 .l-hero-content{position:relative;z-index:2;max-width:680px}
 .l-logo{font-size:clamp(48px,10vw,80px);line-height:1;margin-bottom:20px}
@@ -122,7 +122,7 @@ a{text-decoration:none;color:inherit}
       <span class="kh-logo-text">KoreHan<span class="kh-logo-i">ı</span></span>
     </div>
     <div class="l-tagline">Learn Korean, Naturally.</div>
-    <div class="l-sub">Read real Korean content, build vocabulary, practice grammar, and track your progress — at your own pace.</div>
+    <div class="l-sub">Read articles, walk through conversations, write daily, and watch every saved word become a star in your Vocabulary Universe.</div>
     <div class="l-btns">
       <a href="index.html" class="l-btn l-btn-primary" onclick="localStorage.setItem('kh_visited','1')">Get Started — Free</a>
       <a href="beginner-guide.html" class="l-btn l-btn-ghost">How It Works</a>
@@ -142,11 +142,11 @@ a{text-decoration:none;color:inherit}
 <!-- ═══ SCREENSHOT SHOWCASE ═══ -->
 <section class="l-showcase" id="screenshots" data-reveal>
   <div class="l-showcase-wrap">
-    <img class="l-ss-main" src="img/guide/hero-bg.png" alt="KoreHanii dashboard"
-         onerror="this.outerHTML='<div class=l-ss-placeholder>Add screenshot: hero-bg.png</div>'">
-    <img class="l-ss-float l-ss-left" src="img/guide/detail-article.png" alt="Article view"
+    <img class="l-ss-main" src="img/guide/hero-universe.png" alt="Your Vocabulary Universe — every saved word becomes a star"
+         onerror="this.outerHTML='<div class=l-ss-placeholder>Add screenshot: hero-universe.png</div>'">
+    <img class="l-ss-float l-ss-left" src="img/guide/hero-growth-lab.png" alt="Growth Lab dashboard"
          onerror="this.style.display='none'">
-    <img class="l-ss-float l-ss-right" src="img/guide/detail-studyroom.png" alt="Study Room"
+    <img class="l-ss-float l-ss-right" src="img/guide/hero-express.png" alt="Express Practice"
          onerror="this.style.display='none'">
   </div>
 </section>
@@ -161,18 +161,18 @@ a{text-decoration:none;color:inherit}
   <div class="l-steps-grid">
     <div class="l-step" data-reveal>
       <div class="l-step-num">1</div>
-      <h3>Pick & Read</h3>
-      <p>Choose from news, conversations, or stories at your level. Hover any word to see its meaning instantly.</p>
+      <h3>Read & Tap</h3>
+      <p>Pick an article, story, or conversation at your level. Tap any sentence to see translation, vocab, and grammar instantly.</p>
     </div>
     <div class="l-step" data-reveal>
       <div class="l-step-num">2</div>
-      <h3>Study & Review</h3>
-      <p>Save words, check grammar patterns, and practice with AI-powered quizzes in Study Room.</p>
+      <h3>Active Practice</h3>
+      <p>Every article runs through a 5-step study flow — Vocab → Phrases → Reading → Quiz → Writing. Plus daily Sprout writing with AI feedback.</p>
     </div>
     <div class="l-step" data-reveal>
       <div class="l-step-num">3</div>
-      <h3>Track & Grow</h3>
-      <p>Earn XP, maintain your streak, and watch your Korean improve day by day in Growth Lab.</p>
+      <h3>Watch It Grow</h3>
+      <p>Saved words become stars in your Vocabulary Universe. Track XP, streaks, and weekly improvement in Growth Lab.</p>
     </div>
   </div>
 </section>
@@ -187,33 +187,48 @@ a{text-decoration:none;color:inherit}
   <div class="l-feat-grid">
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(37,99,235,.15);display:inline-flex;align-items:center;justify-content:center"><i data-lucide="newspaper" class="kh-ui-icon" style="width:28px;height:28px;color:#2563eb" aria-hidden="true"></i></div>
-      <h3>News</h3>
-      <p>Korean news updated daily with hover vocab, grammar highlights, and level-appropriate content.</p>
+      <h3>Article Study</h3>
+      <p>Daily Korean news with a 5-step learning flow: Vocab → Phrases → Reading → Quiz → Writing.</p>
     </div>
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(16,185,129,.15);display:inline-flex;align-items:center;justify-content:center"><i data-lucide="message-circle" class="kh-ui-icon" style="width:28px;height:28px;color:#10b981" aria-hidden="true"></i></div>
       <h3>Conversations</h3>
-      <p>Natural dialogues in everyday, workplace, friends, family, and dating scenarios.</p>
+      <p>Visual dialogue maps. Step into a taxi or workplace scene and choose your line — natural Korean you can actually use.</p>
     </div>
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(139,92,246,.15);display:inline-flex;align-items:center;justify-content:center"><i data-lucide="book-open" class="kh-ui-icon" style="width:28px;height:28px;color:#8b5cf6" aria-hidden="true"></i></div>
       <h3>Stories</h3>
-      <p>Longer narratives for deeper reading. Fun, touching, scary — learn through emotion.</p>
+      <p>Longer narratives across moods — fun, touching, scary, shocking. Build reading stamina through emotion.</p>
+    </div>
+    <div class="l-feat" data-reveal>
+      <div class="l-feat-icon" style="background:rgba(168,85,247,.15);display:inline-flex;align-items:center;justify-content:center"><i data-lucide="orbit" class="kh-ui-icon" style="width:28px;height:28px;color:#a855f7" aria-hidden="true"></i></div>
+      <h3>Express Practice</h3>
+      <p>A node graph of speaking, dictation, phrase, and key-expression drills — earn Nyang by completing nodes.</p>
     </div>
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(245,158,11,.15);display:inline-flex;align-items:center;justify-content:center"><i data-lucide="pen-line" class="kh-ui-icon" style="width:28px;height:28px;color:#f59e0b" aria-hidden="true"></i></div>
-      <h3>Study Room</h3>
-      <p>AI-powered review with vocab quizzes, grammar breakdowns, and fill-in exercises.</p>
+      <h3>Sprout Daily Writing</h3>
+      <p>One topic a day. Write in Korean, get AI feedback in Growth Lab, and grow from Seed → Sprout → Tree → Forest.</p>
+    </div>
+    <div class="l-feat" data-reveal>
+      <div class="l-feat-icon" style="background:rgba(239,68,68,.15);display:inline-flex;align-items:center;justify-content:center"><i data-lucide="flame" class="kh-ui-icon" style="width:28px;height:28px;color:#ef4444" aria-hidden="true"></i></div>
+      <h3>Slang & FAST TRACK</h3>
+      <p>Native-speaker slang, abbreviations, and internet Korean — daily 3, full library, and quizzes.</p>
+    </div>
+    <div class="l-feat" data-reveal>
+      <div class="l-feat-icon" style="background:rgba(20,184,166,.15);display:inline-flex;align-items:center;justify-content:center"><i data-lucide="type" class="kh-ui-icon" style="width:28px;height:28px;color:#14b8a6" aria-hidden="true"></i></div>
+      <h3>Hangul Builder</h3>
+      <p>Tap jamo (자모) in order to build syllables. Absolute-beginner-friendly Hangul practice with audio.</p>
     </div>
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(236,72,153,.15);display:inline-flex;align-items:center;justify-content:center"><i data-lucide="bar-chart-3" class="kh-ui-icon" style="width:28px;height:28px;color:#ec4899" aria-hidden="true"></i></div>
       <h3>Growth Lab</h3>
-      <p>Track streaks, XP, weak grammar, and daily missions. See your progress at a glance.</p>
+      <p>XP trends, streaks, weekly improvement, AI Writing Feedback, and a Monthly Report delivered to your inbox.</p>
     </div>
     <div class="l-feat" data-reveal>
       <div class="l-feat-icon" style="background:rgba(14,165,233,.15);display:inline-flex;align-items:center;justify-content:center"><i data-lucide="shopping-bag" class="kh-ui-icon" style="width:28px;height:28px;color:#0ea5e9" aria-hidden="true"></i></div>
       <h3>Shop & My Room</h3>
-      <p>Earn Nyang by studying. Spend it on room decorations, avatar items, and gifts.</p>
+      <p>Spend Nyang (냥) you earned by studying — room decorations, characters, lamps, plants, and pets.</p>
     </div>
   </div>
 </section>
