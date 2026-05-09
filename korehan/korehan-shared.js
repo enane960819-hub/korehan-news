@@ -5704,6 +5704,20 @@ function openVocabEditModal(word) {
         }
       } catch(e) { console.warn('[vocab-edit] user-side save failed:', e); }
       VOCAB[finalWord] = { rom: rom, en: en };
+      // Persist into the warm VOCAB snapshot so hover survives a
+      // refresh even if the next loadVocabFromDB() comes back
+      // empty (RLS asymmetry between admin-api writes and the
+      // anon/authenticated read path was the root cause of "saved
+      // to My Words but hover doesn't pick it up").
+      try {
+        var _vKey = (typeof KH_VOCAB_LS_KEY !== 'undefined') ? KH_VOCAB_LS_KEY : 'kh_vocab_dict_v1';
+        var _raw = localStorage.getItem(_vKey);
+        var _snap = (_raw && JSON.parse(_raw)) || {};
+        if (!_snap.dict || typeof _snap.dict !== 'object') _snap.dict = {};
+        _snap.dict[finalWord] = { rom: rom || '', en: en || '' };
+        _snap.savedAt = Date.now();
+        localStorage.setItem(_vKey, JSON.stringify(_snap));
+      } catch (_) {}
       // Sidecar so renderArticleVocab's fromAdminAdds() can surface
       // this word in the Vocab tab on every article whose body matches
       // — even when the article's AI cache already has 12+ entries
@@ -7703,16 +7717,43 @@ async function loadVocabFromDB() {
     // populated, schema-cache lag) would have been excluded by
     // .eq('is_active', true) and looked like a vanish too. We
     // skip explicitly inactive rows on the client instead.
+    //
+    // Admin path: route through admin-api / service_role. The
+    // anon read path was sometimes returning fewer rows than
+    // admin-api verify could see (vb_public_read RLS policy
+    // didn't make it to prod cleanly for every install — the
+    // read-write asymmetry that caused "saved but doesn't hover
+    // back on refresh" for admin-added words). When we know the
+    // caller is admin, going through admin-api guarantees the
+    // freshly-saved row comes back.
     var PAGE = 1000;
     var page = 0;
     var anyRowsLoaded = false;
+    var useAdminPath = !!window._isAdmin && typeof khAdminApi === 'function';
     while (true) {
       var from = page * PAGE;
       var to   = from + PAGE - 1;
-      var res = await sb.from('vocabulary_bank')
-        .select('word_ko,word_rom,word_en,is_active')
-        .order('word_ko', { ascending: true })
-        .range(from, to);
+      var res;
+      if (useAdminPath) {
+        try {
+          var raw = await khAdminApi({
+            action: 'db', table: 'vocabulary_bank', method: 'select',
+            params: {
+              columns: 'word_ko,word_rom,word_en,is_active',
+              order: [{ col: 'word_ko', asc: true }],
+              range: { from: from, to: to },
+            }
+          });
+          res = { data: (raw && raw.data) || (Array.isArray(raw) ? raw : []), error: raw && raw.error || null };
+        } catch (e) {
+          res = { data: null, error: e };
+        }
+      } else {
+        res = await sb.from('vocabulary_bank')
+          .select('word_ko,word_rom,word_en,is_active')
+          .order('word_ko', { ascending: true })
+          .range(from, to);
+      }
       if (res.error) { console.warn('[loadVocabFromDB] page', page, res.error); break; }
       var rows = res.data || [];
       for (var i = 0; i < rows.length; i++) {
