@@ -161,7 +161,7 @@ a{color:inherit;text-decoration:none}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="learning_hub_vocab_data.js"></script>
 <script src="js/kh-vocab-prompt.js?v=20260420z"></script>
-<script src="js/core/kh-grammar-patterns.js?v=20260510w"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260510y"></script>
 </head>
 <body>
 
@@ -4815,7 +4815,7 @@ function _autoGenRenderProgressPanel(){
 // shape changes so old caches show as stale in AI Cache Management.
 //   p2-p7 = legacy Haiku-driven sentence-analysis iterations
 //   s1    = combined Sonnet (article + sentences in one call) — current
-const SENT_CACHE_CURRENT = 's2';
+const SENT_CACHE_CURRENT = 's3';
 
 async function runAutoGenerate(){
   if (window._autoGenJob && window._autoGenJob.running) {
@@ -4971,9 +4971,9 @@ async function runAutoGenerate(){
         + '    label: 패턴/표현 자체. grammar는 형태소/연결어미/활용 종류만 (~기 위해, ~게 되다, ~ㄴ/는 것 같다, ~(으)면서, ㄷ 불규칙, ㅂ 불규칙). 명사 X.\n'
         + '    exp: 1-2줄 영어 설명. **반드시 사전형 → 활용형 변형을 보여주기**. 예: "negation. 보이다 (to be seen) → 보이지 않다 (to not be seen) → 보이지 않았어요" / "continuous past. 일을 하다 → 일을 하고 있다 → 일을 하고 있었어요" / "to start V-ing. 쉬다 → 쉬기 시작하다" / "ㄷ-irregular: 듣다 (to hear) → 들어 → 들었어요 (ㄷ받침이 모음 어미 앞에서 ㄹ로 바뀜)".\n'
         + '    example_in_sentence: 이 문장에서 발췌한 chunk (해당 패턴이 사용된 부분).\n'
-        + '- 분석 우선순위:\n'
+        + '- 분석 우선순위 (under-include 금지 — 의심되면 포함):\n'
         + '    grammar — 학습 가치 있는 문법 패턴, 활용 (불규칙 활용은 vocab에 있는 동사라도 무조건 grammar 항목으로 추가)\n'
-        + '    expression — 자주 쓰는 굳어진 표현 (~에도 불구하고, ~에 따르면, ~을/를 통해)\n'
+        + '    expression — collocation/굳어진 표현. **2-3음절 동사+조사 chunk라도 학습 가치 있으면 포함**. 예: ~에도 불구하고, ~에 따르면, ~을/를 통해, ~로 이어지다, ~에 대한 관심, ~을 위한 N, ~중 하나, ~는 것이 좋다, 자리잡다, 관심이 높아지다, ~을 보이다, ~기 마련이다.\n'
         + '    idiom — 관용구/사자성어 (발이 넓다, 우후죽순)\n'
         + '- ' + (
             (diffInfo.level === 'Starter' || diffInfo.level === 'Beginner')
@@ -6491,9 +6491,12 @@ async function genCache(articleId, schema, opts) {
 ) + ' 빈 배열 OK. note는 1줄 또는 빈 문자열.\n'
           + '- analysis:\n'
           + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사**. exp = 1줄 영어, **반드시 사전형 → 활용형 변형을 보여주기** (예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요" / "ㄷ-irregular: 듣다 → 들어 → 들었어요").\n'
-          + '    2. 추가로 idiom (사자성어/관용구) / expression (~에도 불구하고, ~을 통해 같은 굳어진 표현) 발견하면 entry 더 추가 (type=idiom 또는 expression).\n'
+          + '    2. **추가 entry는 매우 적극적으로 추가 (under-include 금지)**. type 기준:\n'
+          + '         - expression: 학습자가 통째로 외울 가치 있는 collocation/굳어진 표현. 예: ~로 이어지다, ~에 대한 관심, ~을 통해, ~에 따르면, ~에도 불구하고, ~을 위한 N, ~중 하나, ~는 것이 좋다, ~기 마련이다, 자리잡다, ~을 보이다, 관심이 높아지다 등. **2-3음절 동사+조사 chunk라도 학습 가치 있으면 무조건 포함**. 의심되면 포함 (over-include이 under-include보다 100x 낫다).\n'
+          + '         - idiom: 사자성어/관용구/속담 (발이 넓다, 우후죽순).\n'
+          + '         - grammar (additional): code list에 빠진 어미/연결어/조사 패턴 — 본문에 있는데 list에 없으면 추가 OK.\n'
           + '    3. example_in_sentence: 해당 패턴이 사용된 문장 내 chunk.\n'
-          + '    4. 본문에 없는 패턴 절대 추가 X — detected list에 없는 grammar 항목 만들지 말 것 (idiom/expression은 OK).\n\n'
+          + '    4. **유일한 금지**: 본문 텍스트에 안 나오는 패턴/표현은 추가 X. label에 적은 markers가 sentence text에 실제로 보여야 함. 그 외엔 자유롭게 더 추가하세요.\n\n'
           + '[출력 — JSON ONLY]\n'
           + '{\n'
           + '  "sentences": [\n'
