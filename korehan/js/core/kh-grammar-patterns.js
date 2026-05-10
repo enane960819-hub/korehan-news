@@ -352,29 +352,79 @@
     return hits.filter(function(p) { return !INTERMEDIATE_SKIP_LABELS[p.label]; });
   }
 
+  // Extract Korean morpheme tokens from a pattern label — mirror of the
+  // renderer's _patternMarkers in korehan-shared.js. Used as a fallback
+  // example_in_sentence for _check-only patterns where there's no regex
+  // match string to lift verbatim.
+  function _labelMarkers(label) {
+    var out = [];
+    String(label || '').split(/[\/,]/).forEach(function(piece) {
+      var stripped = piece.replace(/[~()\s\-.?!+]/g, '');
+      var re = /[가-힣]+/g, m;
+      while ((m = re.exec(stripped))) {
+        var token = m[0];
+        if (token.length > 1 && /다$/.test(token)) token = token.slice(0, -1);
+        if (token) out.push(token);
+      }
+    });
+    return out;
+  }
+
+  // Find the actual chunk in `text` that triggered pattern `p`. Used by
+  // enforce to produce a non-empty example_in_sentence — without it the
+  // article renderer's filter (sentNoWs.indexOf(ex) < 0) drops the entry,
+  // which made every enforce-injected pattern silently invisible to users.
+  function _extractExample(text, p) {
+    if (!text) return '';
+    if (p.re) {
+      var m = text.match(p.re);
+      if (m && m[0]) return m[0];
+      var stripped = text.replace(/\s+/g, '');
+      m = stripped.match(p.re);
+      if (m && m[0]) return m[0];
+    }
+    // _check-only pattern (or regex didn't match raw form) — fall back
+    // to a label-derived marker that actually appears in the sentence.
+    var markers = _labelMarkers(p.label);
+    var sentNoWs = text.replace(/\s+/g, '');
+    for (var i = 0; i < markers.length; i++) {
+      if (sentNoWs.indexOf(markers[i]) >= 0) return markers[i];
+    }
+    return '';
+  }
+
   // Post-process gate: every detected pattern that the AI omitted gets
-  // added back to s.analysis with the canonical hint as the explanation.
-  // The shared per-sentence renderer already handles dedup via label
-  // string so an enforced entry never collides with a richer AI entry.
-  // Mutates sentFinal in place AND returns it for convenience.
+  // added back to s.analysis with the canonical hint as the explanation
+  // and a real chunk as example_in_sentence (so the article renderer's
+  // marker-check filter actually keeps it). Mutates sentFinal in place.
   function enforceDetectedPatterns(sentFinal, level) {
     if (!Array.isArray(sentFinal)) return sentFinal;
+    var isBasic = level === 'Starter' || level === 'Beginner';
     sentFinal.forEach(function(s) {
       if (!s || !s.text) return;
-      var detected = detectForLevel(s.text, level);
-      if (!detected.length) return;
       var existing = {};
       (s.analysis || []).forEach(function(a) {
         if (a && a.label) existing[String(a.label).trim()] = true;
       });
       if (!Array.isArray(s.analysis)) s.analysis = [];
-      detected.forEach(function(p) {
+      var seenLabels = {};
+      var stripped = s.text.replace(/\s+/g, '');
+      PATTERNS.forEach(function(p) {
+        if (seenLabels[p.label]) return;
+        var matched = false;
+        if (p.re) matched = p.re.test(s.text) || p.re.test(stripped);
+        else if (p._check) matched = !!p._check(s.text) || !!p._check(stripped);
+        if (!matched) return;
+        seenLabels[p.label] = true;
+        if (!isBasic && INTERMEDIATE_SKIP_LABELS[p.label]) return;
         if (existing[p.label]) return;
+        var example = _extractExample(s.text, p);
+        if (!example) return;  // no chunk → renderer would drop it anyway
         s.analysis.push({
           type: 'grammar',
           label: p.label,
           exp: p.hint,
-          example_in_sentence: '',
+          example_in_sentence: example,
         });
       });
     });
