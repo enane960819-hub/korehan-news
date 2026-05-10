@@ -7796,10 +7796,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
         _ldr(100);
       });
-      // Skip the homeOptimized background refresh here — the idle
-      // prefetch below pulls the full 1000-row "all" dataset, which is
-      // a strict superset of what home needs (top 30) and also primes
-      // All News + search. It re-renders home itself when it lands.
+      // Always fire a small homeOptimized refresh so newly published
+      // articles surface within seconds instead of waiting up to an
+      // hour for the localStorage cache TTL. Earlier we relied on the
+      // idle "prefetch all" pass below, but when that 400'd (e.g.
+      // PostgREST max-rows on limit=1000) home stayed stale until
+      // cache expiry — admin would publish an article and not see it
+      // on the front page for minutes.
+      loadArticlesFromDB({ homeOptimized: true, force: true })
+        .then(function (rows) { if (rows && rows.length) { try { renderHomePage(); } catch(_){} } })
+        .catch(function(){});
     } else {
       _ldr(50); // Loading articles...
       // No-cache first-visit path: render the skeleton immediately

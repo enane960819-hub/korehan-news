@@ -4959,6 +4959,7 @@ async function runAutoGenerate(){
         + '[출력 — JSON ONLY, no preamble, no code fences]\n'
         + '{\n'
         + '  "title": "...",\n'
+        + '  "title_en": "<polished English headline matching the Korean title — journalistic, ≤70 chars, no quotes>",\n'
         + '  "body": "본문 (단락 \\\\n\\\\n)",\n'
         + '  "key_expressions": [{"ko":"...","en":"..."}],\n'
         + '  "paragraph_translations": ["para 1 EN", "para 2 EN", ...],\n'
@@ -4995,10 +4996,17 @@ async function runAutoGenerate(){
       // we're using a video hero.
       var _srcImgRaw = hasSrcVideo ? '' : (h.image || '');
       var _srcImgFinal = _srcImgRaw ? (await _khPersistImage(_srcImgRaw, articleId)) : '';
+      // Prefer Sonnet's polished English headline; fall back to the
+      // raw source headline if the model didn't return one (or returned
+      // empty). This way Korean-source articles still get an English
+      // hero title on the frontend without depending on the async
+      // _khEnsureTitlesEn translation pass.
+      const _titleEnFromAI = (typeof article.title_en === 'string' && article.title_en.trim()) ? article.title_en.trim() : '';
+      const _titleEnFinal = _titleEnFromAI || (h.title && !/[ㄱ-힝]/.test(h.title) ? h.title : '');
       const newArticle = {
         id: articleId, section: secKey,
         title: article.title, body: article.body,
-        title_en: h.title || '',
+        title_en: _titleEnFinal,
         date: today_date(), status: saveStatus,
         featured: false, level: diffInfo.level,
         source_url: h.link || '',
@@ -5279,21 +5287,41 @@ function _khDeriveVocabGrammarFromSentences(sentFinal, level) {
         aggVocab.push({ ko: ko, en: (v.en || '').trim(), note: (v.note || '').trim() });
       });
     }
-    if (s && Array.isArray(s.grammar)) {
+    // Grammar Tab payload — accept BOTH the new s.analysis format
+    // (combined-Sonnet sentences each carry an analysis[] with
+    // type/label/exp/example) and the legacy s.grammar format
+    // (older Haiku-driven sentence analysis with pattern/exp). For
+    // analysis we only surface type='grammar' items in the Grammar
+    // tab; expressions/idioms live in the per-sentence panel only.
+    var grammarItems = [];
+    if (s && Array.isArray(s.analysis) && s.analysis.length) {
+      s.analysis.forEach(function(a) {
+        if (!a) return;
+        var typ = a.type || 'grammar';
+        if (typ !== 'grammar') return;
+        var nm = (a.label || a.pattern || '').trim();
+        if (!nm) return;
+        grammarItems.push({ name: nm, exp: (a.exp || '').trim() });
+      });
+    } else if (s && Array.isArray(s.grammar)) {
       s.grammar.forEach(function(g) {
         if (!g) return;
-        var name = (g.pattern || '').trim();
-        if (!name || grammarSeen[name]) return;
-        grammarSeen[name] = true;
-        aggGrammar.push({
-          name: name,
-          level: level || 'Intermediate',
-          exp: (g.exp || '').trim(),
-          ex_ko: (s.text || '').trim(),
-          ex_en: (s.translation || '').trim(),
-        });
+        var nm = (g.pattern || g.label || '').trim();
+        if (!nm) return;
+        grammarItems.push({ name: nm, exp: (g.exp || '').trim() });
       });
     }
+    grammarItems.forEach(function(g) {
+      if (grammarSeen[g.name]) return;
+      grammarSeen[g.name] = true;
+      aggGrammar.push({
+        name: g.name,
+        level: level || 'Intermediate',
+        exp: g.exp,
+        ex_ko: (s.text || '').trim(),
+        ex_en: (s.translation || '').trim(),
+      });
+    });
   });
   // Vocab: keep every unique word the sentence analysis surfaced. The
   // article reader paginates them client-side (12 per page). Old articles
@@ -8003,6 +8031,7 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     + '[출력 — JSON ONLY]\n'
     + '{\n'
     + '  "title": "...",\n'
+    + '  "title_en": "<polished English headline matching the Korean title — ≤70 chars>",\n'
     + '  "body": "본문 (단락 \\\\n\\\\n)",\n'
     + '  "key_expressions": [{"ko":"...","en":"..."}],\n'
     + '  "paragraph_translations": ["para 1 EN", ...],\n'
@@ -8048,10 +8077,17 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
   if (!hasSrcVideo && headline.image) {
     _bulkSrcImg = await _khPersistImage(headline.image, articleId);
   }
+  // Prefer Sonnet's title_en (added in the combined-Sonnet prompt)
+  // so Korean-source articles get a polished English headline up
+  // front. Fall back to the raw source headline when it's already in
+  // English; treat Korean-script source headlines as missing so the
+  // _khEnsureTitlesEn async translation can still kick in later.
+  var _bulkTitleEnFromAI = (typeof article.title_en === 'string' && article.title_en.trim()) ? article.title_en.trim() : '';
+  var _bulkTitleEnFinal = _bulkTitleEnFromAI || (headline.title && !/[ㄱ-힝]/.test(headline.title) ? headline.title : '');
   var newArticle = {
     id: articleId, section: section,
     title: article.title, body: article.body,
-    title_en: headline.title || '',
+    title_en: _bulkTitleEnFinal,
     // Default to draft. The live site skews toward CNET-ish clickbait
     // (puzzle answers, "best fiber internet 2026", etc.) that don't
     // serve Korean learners, so auto-ingest is quality-gated by hand in
