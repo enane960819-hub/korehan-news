@@ -289,7 +289,16 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
-    throw new Error(err.error || 'AI server error (' + resp.status + ')');
+    var errMsg;
+    if (typeof err.error === 'string') errMsg = err.error;
+    else if (err.error && typeof err.error === 'object') {
+      // Anthropic forwards the upstream error verbatim — pull the
+      // human-readable message out instead of letting Error.message
+      // become an object that stringifies to "[object Object]".
+      errMsg = err.error.message || err.error.type || JSON.stringify(err.error);
+    } else if (err.message) errMsg = String(err.message);
+    else errMsg = 'AI server error (' + resp.status + ')';
+    throw new Error(errMsg);
   }
   return resp.json();
 }
