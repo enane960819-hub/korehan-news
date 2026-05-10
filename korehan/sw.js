@@ -18,11 +18,12 @@
 // changes. Install event will build a fresh cache under the new name
 // and the activate event will delete stale caches.
 
-// v8: drop the 1.5s idle reveal — when the learner stops scrolling
-// to read a sentence the chrome no longer pops back into view.
-// Bumping to v8 wipes v7-* so devices pick up the change.
-// 
-const CACHE_VERSION = 'kh-v8';
+// v9: bump to force fresh install on devices stuck on a stale v8
+// cache. Some Samsung Internet users were reportedly on a wedged
+// SW state that wouldn't update; v9 + skipWaiting + clients.claim
+// in the activate handler should drop the old SW + caches in one go.
+//
+const CACHE_VERSION = 'kh-v9';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
