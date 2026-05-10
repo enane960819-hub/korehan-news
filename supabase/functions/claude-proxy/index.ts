@@ -63,8 +63,11 @@ const MAX_TOKENS_PER_CALL = 16384
 
 // Anthropic call timeout. Above this we abort the connection so the
 // client doesn't hang on a stalled upstream and we don't keep the
-// function billed alive.
-const ANTHROPIC_TIMEOUT_MS = 45_000
+// function billed alive. Bumped to 90s — the combined Sonnet article-
+// generation call (verbose Beginner-level analysis with conjugation
+// chains) routinely runs 40-60s, leaving little headroom at the
+// previous 45s cap.
+const ANTHROPIC_TIMEOUT_MS = 90_000
 
 function jsonResponse(body: unknown, status: number, cors: Record<string, string>) {
   return new Response(JSON.stringify(body), {

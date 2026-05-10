@@ -5005,7 +5005,7 @@ async function runAutoGenerate(){
       const res = await callClaude({
         feature: 'generate-article-combined',
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 12000,
+        max_tokens: 8000,
         messages: [{ role:'user', content: prompt }]
       });
 
