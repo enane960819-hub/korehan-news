@@ -2274,19 +2274,70 @@ var _heroTouchDeltaX = 0;
 // wedges (Samsung Internet on phone is the reproducer — Supabase fetch
 // hangs silently due to tab throttling / cookie partitioning). Called
 // from the home boot path after the 12s race times out.
+// Hard reset for browsers stuck in a corrupted-storage loop.
+// Symptom (Samsung Internet phone, regular mode): a stale Supabase
+// refresh_token in localStorage triggers an infinite refresh attempt,
+// which wedges every subsequent sb.from(...) call. Hero never loads,
+// post-OAuth profile never appears. Incognito works because there's
+// nothing in storage. This nukes everything app-related and reloads.
+//   - localStorage keys with sb-* (Supabase auth) or kh* (our caches)
+//   - IndexedDB databases used by Supabase
+//   - All Cache Storage entries
+//   - Service worker registrations
+// Wrapped in best-effort try/catch — even if any one step throws we
+// still proceed to the next so the reload happens.
+window._khResetClientStorage = async function _khResetClientStorage() {
+  try {
+    var toDrop = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (!k) continue;
+      if (/^sb-/.test(k) || /^kh/.test(k) || /supabase/i.test(k)) toDrop.push(k);
+    }
+    toDrop.forEach(function(k){ try { localStorage.removeItem(k); } catch(_){} });
+  } catch(_){}
+  try { sessionStorage.clear(); } catch(_){}
+  try {
+    if (window.indexedDB && indexedDB.databases) {
+      var dbs = await indexedDB.databases();
+      await Promise.all((dbs || []).map(function(d){
+        return new Promise(function(resolve){
+          try { var req = indexedDB.deleteDatabase(d.name); req.onsuccess = req.onerror = req.onblocked = function(){ resolve(); }; }
+          catch(_) { resolve(); }
+        });
+      }));
+    }
+  } catch(_){}
+  try {
+    if (window.caches && caches.keys) {
+      var keys = await caches.keys();
+      await Promise.all(keys.map(function(k){ return caches.delete(k); }));
+    }
+  } catch(_){}
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      var regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(function(r){ return r.unregister(); }));
+    }
+  } catch(_){}
+  try { location.reload(); } catch(_) { window.location = window.location.href; }
+};
+
 // Top banner shown when OAuth round-trip completed but no session was
 // established. Helps the user understand why they're back on the home
 // page still signed-out (browser cleared the PKCE verifier between
-// redirect to Google and back). Appears once per page load; tapping
-// dismiss removes it.
+// redirect to Google and back, or a stale token is wedging the SDK).
+// Offers an explicit Reset Data button as the recovery path — that's
+// the only thing that fixes the corrupt-storage case in practice.
 function _khShowAuthFailureBanner() {
   if (document.getElementById('kh-auth-fail-banner')) return;
   var bar = document.createElement('div');
   bar.id = 'kh-auth-fail-banner';
-  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 16px;background:#fef3c7;color:#92400e;border-bottom:1px solid #fcd34d;font-size:13px;line-height:1.5;display:flex;align-items:center;gap:10px;justify-content:center;font-family:inherit;text-align:center';
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 16px;background:#fef3c7;color:#92400e;border-bottom:1px solid #fcd34d;font-size:13px;line-height:1.5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;font-family:inherit;text-align:center';
   bar.innerHTML =
-      '<span>로그인이 완료되지 않았어요. 브라우저가 인증 데이터를 저장하지 못했을 수 있어요. 다시 시도하거나 Chrome에서 열어주세요.</span>'
-    + '<button onclick="this.parentNode.remove()" style="border:0;background:#92400e;color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>';
+      '<span style="flex-basis:100%;max-width:540px">로그인이 완료되지 않았어요. 브라우저에 저장된 옛 인증 데이터가 막고 있을 수 있어요. <b>데이터 리셋</b>을 누르거나 Chrome에서 열어주세요.</span>'
+    + '<button onclick="window._khResetClientStorage&&window._khResetClientStorage()" style="border:0;background:#dc2626;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🔄 데이터 리셋</button>'
+    + '<button onclick="this.parentNode.remove()" style="border:0;background:#92400e;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>';
   document.body.appendChild(bar);
 }
 
@@ -2300,10 +2351,13 @@ function _khRenderHeroEmptyState() {
   heroEl.className = '';
   heroEl.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:300px;border-radius:18px;background:#f8fbff;border:1px solid #e7eef8;padding:24px;text-align:center;';
   heroEl.innerHTML =
-      '<div style="max-width:340px">'
+      '<div style="max-width:360px">'
     + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:0 0 6px">최신 기사를 불러오지 못했어요</div>'
-    + '<div style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.5">네트워크가 잠시 느리거나 브라우저가 요청을 막고 있을 수 있어요. 다른 브라우저(Chrome 권장)에서 잘 보인다면 같은 사이트가 맞는지 확인해주세요.</div>'
-    + '<button onclick="location.reload()" style="padding:9px 20px;border:0;border-radius:999px;background:#0f172a;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">다시 시도</button>'
+    + '<div style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.5">브라우저에 저장된 옛 데이터가 요청을 막고 있을 수 있어요. <b>데이터 리셋</b>으로 한 번에 정리하면 대부분 해결됩니다 (다시 로그인 필요).</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
+    +   '<button onclick="location.reload()" style="padding:9px 18px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#0f172a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">다시 시도</button>'
+    +   '<button onclick="window._khResetClientStorage&&window._khResetClientStorage()" style="padding:9px 18px;border:0;border-radius:999px;background:#dc2626;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">🔄 데이터 리셋</button>'
+    + '</div>'
     + '</div>';
 }
 
