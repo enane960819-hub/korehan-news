@@ -3335,12 +3335,17 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
     // beginner patterns) was also dropped — judge each sentence on
     // its own contents, not on metadata.
     var _analysisRule =
-        '- ANALYSIS: include EVERY genuinely useful item in the sentence — grammar patterns, key fixed expressions, idioms / 사자성어 / 관용구, and notable collocations. No cap. If a sentence has 5 worthy items, return 5; if it honestly has 1, return 1; if it has 0 (pure noun phrase, proper-noun list, single greeting), return [].\n'
-      + '    Each item carries a "type" field — one of:\n'
-      + '      grammar    — morphemes, endings, particles, connective patterns (~고 있다, ~지 않다, ~ㄴ/은 것, etc.)\n'
-      + '      expression — fixed phrases learners hear constantly (시간이 없다 → "no time", 마음에 들다 → "to like / take a liking to")\n'
-      + '      idiom      — 사자성어 / 관용구 / metaphors (눈에 띄다 → "to stand out", 시간 가는 줄 모르다 → "to lose track of time")\n'
-      + '    Use the same JSON shape for every item: {"type":"grammar|expression|idiom","label":"<the pattern / phrase / idiom in clean form>","exp":"<short English explanation>","example_in_sentence":"<chunk from sentence>"}.\n';
+        '- ANALYSIS: be GENEROUS. Surface every grammar pattern, fixed expression, idiom, and notable collocation in the sentence — even ones you think are "obvious". Learners explicitly want these labelled. If a sentence has 5 worthy items, return 5; if it honestly has 0 (pure noun phrase / proper-noun list / single greeting only), return [].\n'
+      + '    MUST include when present (this list is not exhaustive — it is a floor, not a ceiling):\n'
+      + '    · Connectives & subordinators: ~에도 불구하고 (despite), ~기 때문에 (because), ~기 위해(서) (in order to), ~을/를 위해 (for the sake of), ~려고 (intend to), ~다가 (mid-action shift), ~자마자 (as soon as), ~ㄴ/는데 (background), ~지만 / ~으나 (but), ~거나 (or), ~면 (if).\n'
+      + '    · Auxiliary endings: ~ㄹ/을 수 있다 (can), ~ㄹ/을 수 없다 (cannot), ~지 못하다 (fail to), ~지 않다 (negation), ~게 되다 (come to), ~기 시작하다 (start to), ~기로 하다 (decide to), ~ㄴ/은 적이 있다 (have experience), ~아/어 보다 (try), ~아/어 주다 (benefactive), ~아/어 있다 (resultative state), ~고 있다 (continuous), ~았/었어요 (past polite, including 봤어요/했어요/됐어요 contractions).\n'
+      + '    · Modifiers: ~ㄴ/은/는 + noun (relative-clause modifier), ~ㄹ/을 + noun (prospective modifier), ~ㄴ/은 채로 (in the state of), ~ㄴ/은 후에 (after), ~기 전에 (before).\n'
+      + '    · Reported / quotation: ~다고 하다, ~냐고 하다, ~자고 하다, ~라고 하다, ~다고 알려져 있어요.\n'
+      + '    · Particles worth flagging: ~만 (only), ~까지 (up to), ~부터 (from), ~조차 (even), ~밖에 (only / nothing but), ~마다 (every), ~처럼 / ~같이 (like), ~보다 (than), ~에 비해 (compared to).\n'
+      + '    · Common fixed expressions: 마음에 들다 (to like), 시간이 없다 (no time), 도움이 되다 (be helpful), 관심을 가지다 (be interested), 눈에 띄다 (to stand out), ~에 참여하다 (to participate in), ~의 도움으로 (with the help of), …\n'
+      + '    · Idioms / 사자성어 / 관용구: surface whenever they actually appear.\n'
+      + '    Each item: {"type":"grammar|expression|idiom","label":"<canonical form>","exp":"<short English>","example_in_sentence":"<chunk from sentence>"}.\n'
+      + '    Skipping a pattern because it "feels too basic" is the WRONG call — include it. The learner is reading at this level for a reason.\n';
     var _analysisVerify =
         '- ANALYSIS VERIFY (HARD RULE):\n'
       + '    1. example_in_sentence MUST be a literal substring of that source sentence. Whitespace can differ; characters cannot.\n'
@@ -3459,7 +3464,13 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
 // have only `grammar` and get auto-promoted on render via the
 // legacy fallback in _khRenderSentPanel, but admin re-analyse
 // rewrites them into the new shape.
-var KH_SENT_CACHE_VERSION = 'p5';
+// Bumped to 'p6' on 2026-05-09 night when the prompt added an
+// explicit MUST-INCLUDE list of patterns (~에도 불구하고, ~기 위해,
+// ~ㄹ 수 있다, etc.) — the previous "be generous" framing alone
+// wasn't enough; AI was still skipping textbook patterns it judged
+// "obvious" and the user pointed out ~에도 불구하고 was missing
+// from a Tree-level article. p5 caches roll forward on tap.
+var KH_SENT_CACHE_VERSION = 'p6';
 
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
@@ -3969,12 +3980,17 @@ async function analyzeSentence(idx, el) {
     // hit this when the bulk cache misses for one row, so the rules
     // need to match exactly to avoid mixed-shape cache rows.
     var _analysisRule =
-        '- ANALYSIS: include EVERY genuinely useful item — grammar patterns, key fixed expressions, idioms / 사자성어 / 관용구, notable collocations. No upper cap. If 5 are honestly there, return 5; if 0 are (pure noun phrase / greeting), return [].\n'
+        '- ANALYSIS: be GENEROUS. Surface every grammar pattern, fixed expression, idiom, and notable collocation in this sentence — even ones you think are "obvious". Learners want these labelled.\n'
+      + '    MUST include when present (floor, not ceiling):\n'
+      + '    · Connectives: ~에도 불구하고 (despite), ~기 때문에 (because), ~기 위해(서), ~을/를 위해, ~려고, ~다가, ~자마자, ~ㄴ/는데, ~지만/~으나, ~거나, ~면.\n'
+      + '    · Auxiliaries: ~ㄹ/을 수 있다, ~ㄹ/을 수 없다, ~지 못하다, ~지 않다, ~게 되다, ~기 시작하다, ~기로 하다, ~ㄴ/은 적이 있다, ~아/어 보다, ~아/어 주다, ~아/어 있다, ~고 있다, ~았/었어요 (incl. contracted 봤어요 / 했어요 / 됐어요).\n'
+      + '    · Modifiers: ~ㄴ/은/는 + noun, ~ㄹ/을 + noun, ~ㄴ/은 채로, ~ㄴ/은 후에, ~기 전에.\n'
+      + '    · Reported: ~다고 하다, ~냐고 하다, ~자고 하다, ~라고 하다, ~다고 알려져 있어요.\n'
+      + '    · Particles worth flagging: ~만, ~까지, ~부터, ~조차, ~밖에, ~마다, ~처럼/같이, ~보다, ~에 비해.\n'
+      + '    · Fixed expressions: 마음에 들다, 시간이 없다, 도움이 되다, 관심을 가지다, 눈에 띄다, ~에 참여하다, ~의 도움으로, …\n'
+      + '    · Idioms / 사자성어 / 관용구 whenever actually used.\n'
       + '    Each item: {"type":"grammar|expression|idiom","label":"<canonical form>","exp":"<short English>","example_in_sentence":"<chunk from sentence>"}.\n'
-      + '    type definitions:\n'
-      + '      grammar    — morphemes, endings, particles, connective patterns\n'
-      + '      expression — fixed phrases learners hear constantly (시간이 없다, 마음에 들다)\n'
-      + '      idiom      — 사자성어 / 관용구 / metaphors (눈에 띄다, 시간 가는 줄 모르다)\n';
+      + '    Skipping a pattern because it "feels too basic" is the WRONG call — include it.\n';
     var _analysisVerifyRule =
         '- ANALYSIS VERIFY (HARD RULE):\n'
       + '    1. example_in_sentence MUST be a literal substring of the sentence above. Whitespace can differ; characters cannot.\n'
