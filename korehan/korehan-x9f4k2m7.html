@@ -664,7 +664,21 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   if (resp.status === 429) throw new Error('rate_limit');
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
-    throw new Error(err.error || 'API error ' + resp.status);
+    // err.error from the proxy can be a nested {type, message}
+    // (Anthropic error envelope) — pull the readable string out
+    // before stuffing it into Error.message, otherwise downstream
+    // toasts show "[object Object]". Mirrors the same fix made in
+    // korehan-shared.js callClaude (PR #405).
+    var _msg;
+    if (typeof err.error === 'string') _msg = err.error;
+    else if (err.error && typeof err.error === 'object') {
+      _msg = err.error.message || err.error.type || JSON.stringify(err.error);
+    } else if (err.message) _msg = String(err.message);
+    else _msg = 'API error ' + resp.status;
+    // Tack on the model + status so the toast tells us *which*
+    // call shape was rejected — invaluable when debugging
+    // model-id mismatches without backend logs.
+    throw new Error(_msg + ' (model=' + (model || '?') + ', status=' + resp.status + ')');
   }
   return resp.json();
 }
