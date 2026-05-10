@@ -129,17 +129,17 @@
 
     // ── Modal / aspectual collocations ──────────────────────────
     { re: /[가-힣]게\s*(하|만들|시키|했|만들었|만들어요|시켰|시켜요|시킬|만들기)/, label: '~게 하다 (causative)', hint: 'periphrastic causative. <stem> + 게 하다 = "make / cause X to". 알게 하다 (let know); 가게 하다 (make go); 슬프게 하다 (make sad). Different from morphological causatives like 알리다, 보이다.' },
-    { _check: function(t) { return _hasJongFollowedBy(t, 8, ['만하', '만한', '만했', '만해']) || /[가-힣]을\s*만(하|한|했|해)/.test(t); }, label: '~(으)ㄹ 만하다 (worth doing)', hint: 'value/possibility. <stem> + ㄹ/을 만하다 = "worth -ing / can manage". 볼 만하다 (worth seeing); 살 만하다 (livable); 먹을 만하다 (edible).' },
-    { _check: function(t) { return _hasJongFollowedBy(t, 8, ['뻔']) || /[가-힣]을\s*뻔/.test(t); }, label: '~(으)ㄹ 뻔하다 (almost did)', hint: 'near-miss. <stem> + ㄹ/을 뻔했다 = "almost V-ed / nearly". 죽을 뻔했어요 (almost died); 넘어질 뻔했어요 (almost fell).' },
+    { _check: function(t) { var c = _hasJongFollowedBy(t, 8, ['만하', '만한', '만했', '만해']); if (c) return c; var m = t.match(/[가-힣]을\s*만(하|한|했|해)/); return m ? m[0] : ''; }, label: '~(으)ㄹ 만하다 (worth doing)', hint: 'value/possibility. <stem> + ㄹ/을 만하다 = "worth -ing / can manage". 볼 만하다 (worth seeing); 살 만하다 (livable); 먹을 만하다 (edible).' },
+    { _check: function(t) { var c = _hasJongFollowedBy(t, 8, ['뻔']); if (c) return c; var m = t.match(/[가-힣]을\s*뻔/); return m ? m[0] : ''; }, label: '~(으)ㄹ 뻔하다 (almost did)', hint: 'near-miss. <stem> + ㄹ/을 뻔했다 = "almost V-ed / nearly". 죽을 뻔했어요 (almost died); 넘어질 뻔했어요 (almost fell).' },
     { re: /[가-힣](는|은)\s*척\s*(하|한|했|해요)/, label: '~ㄴ/는 척하다 (pretend to)', hint: 'feigning. <stem> + ㄴ/는 척하다 = "pretend to / act as if". 모르는 척하다 (pretend not to know); 자는 척하다 (pretend to sleep).' },
     { _check: function(t) { return _hasJongFollowedBy(t, 4, ['척하', '척한', '척했']); }, label: '~ㄴ/는 척하다 (pretend to)', hint: 'feigning (ㄴ-batchim modifier form). 안 그런 척하다 (pretend not to be).' },
-    { _check: function(t) { return _hasJongFollowedBy(t, 8, ['까 봐', '까봐', '까봤', '까 봤']) || /[가-힣]을까\s*(봐|봐서|봤)/.test(t); }, label: '~(으)ㄹ까 봐 (worry that / lest)', hint: 'apprehension. <stem> + ㄹ/을까 봐 = "worried that / in case". 늦을까 봐 (afraid of being late); 비가 올까 봐 (in case it rains).' },
-    { _check: function(t) { return _hasJongFollowedBy(t, 8, ['줄 알', '줄 모르', '줄 아', '줄 몰라', '줄알', '줄모르']) || /[가-힣]을\s*줄\s*(알|모르|아|몰라)/.test(t); }, label: '~(으)ㄹ 줄 알다/모르다 (know how / expect)', hint: 'skill or expectation. <stem> + ㄹ/을 줄 알다 = "know how to / think that". 운전할 줄 알다 (know how to drive); 올 줄 알았어요 (I thought you\'d come).' },
+    { _check: function(t) { var c = _hasJongFollowedBy(t, 8, ['까 봐', '까봐', '까봤', '까 봤']); if (c) return c; var m = t.match(/[가-힣]을까\s*(봐|봐서|봤)/); return m ? m[0] : ''; }, label: '~(으)ㄹ까 봐 (worry that / lest)', hint: 'apprehension. <stem> + ㄹ/을까 봐 = "worried that / in case". 늦을까 봐 (afraid of being late); 비가 올까 봐 (in case it rains).' },
+    { _check: function(t) { var c = _hasJongFollowedBy(t, 8, ['줄 알', '줄 모르', '줄 아', '줄 몰라', '줄알', '줄모르']); if (c) return c; var m = t.match(/[가-힣]을\s*줄\s*(알|모르|아|몰라)/); return m ? m[0] : ''; }, label: '~(으)ㄹ 줄 알다/모르다 (know how / expect)', hint: 'skill or expectation. <stem> + ㄹ/을 줄 알다 = "know how to / think that". 운전할 줄 알다 (know how to drive); 올 줄 알았어요 (I thought you\'d come).' },
     { re: /[가-힣](듯이|듯)(?=\s|[.,!?]|$)/, label: '~듯이 / ~듯 (as if / like)', hint: 'simile. <stem> + 듯이 = "as if / just like". 비가 오듯이 (as if it\'s raining); 알듯이 (as you know); 흐르듯 (as if flowing).' },
     { re: /[가-힣](는|을)\s*듯(하|한|해|했|해요)/, label: '~ㄴ/는/(으)ㄹ 듯하다 (seems)', hint: 'conjecture, softer than ~것 같다. 비가 오는 듯해요 (seems to be raining); 어려울 듯해요 (will likely be hard).' },
     { _check: function(t) { return _hasJongFollowedBy(t, 4, ['듯하', '듯한', '듯해']) || _hasJongFollowedBy(t, 8, ['듯하', '듯한', '듯해']); }, label: '~ㄴ/는/(으)ㄹ 듯하다 (seems)', hint: 'conjecture (ㄴ/ㄹ-batchim modifier forms). 끝난 듯해요 (seems to have ended); 어려울 듯해요.' },
     { re: /[가-힣]기\s*(쉽|쉬|어렵|어려|좋아|좋|싫어|싫|편하|편해|불편하|불편해)/, label: '~기 쉽다/어렵다/좋다 (easy/hard/good to V)', hint: 'evaluation collocation. <stem> + 기 + 쉽다/어렵다/좋다/싫다 = "easy/hard/good/unpleasant to V". Includes ㅂ-irregular forms (쉬워요, 어려워요). 배우기 쉽다 (easy to learn); 알기 어렵다 (hard to know); 보기 좋다 (looks good).' },
-    { _check: function(t) { return _hasJongFollowedBy(t, 8, ['텐데']) || /[가-힣]을\s*텐데/.test(t); }, label: '~(으)ㄹ 텐데 (would be / probably)', hint: 'speaker conjecture with follow-up clause. <stem> + ㄹ/을 텐데 = "probably / I imagine... but". 힘들 텐데 (must be tough); 비쌀 텐데 (would be expensive).' },
+    { _check: function(t) { var c = _hasJongFollowedBy(t, 8, ['텐데']); if (c) return c; var m = t.match(/[가-힣]을\s*텐데/); return m ? m[0] : ''; }, label: '~(으)ㄹ 텐데 (would be / probably)', hint: 'speaker conjecture with follow-up clause. <stem> + ㄹ/을 텐데 = "probably / I imagine... but". 힘들 텐데 (must be tough); 비쌀 텐데 (would be expensive).' },
     { re: /[가-힣](ㄴ가|은가|나)\s*(보|봐|봤|봅니다)/, label: '~ㄴ/은가 보다, ~나 보다 (seems / I guess)', hint: 'inferential. <stem> + ㄴ가/나 보다 = "I guess / seems". 좋은가 봐요 (seems good); 가나 봐요 (I guess he\'s going).' },
 
     // ── Additional connectives ──────────────────────────────────
@@ -156,7 +156,8 @@
     { re: /[가-힣]밖에(?=[^가-힣]|$)/, label: '~밖에 (only / nothing but) [+negative]', hint: 'exclusive — pairs with negative verb (안/없/모르). <noun> + 밖에 + neg = "only / nothing but". 천 원밖에 없어요 (I only have 1000 won).' },
     { re: /[가-힣]씩(?=[^가-힣]|$)/, label: '~씩 (each / per)', hint: 'distributive. <number/amount> + 씩 = "each / per". 한 명씩 (one by one); 매일 한 시간씩 (an hour each day).' },
     { _check: function(t) {
-      if (/[가-힣]이나(?=\s|[.,!?])/.test(t)) return true;
+      var m = t.match(/[가-힣]이나(?=\s|[.,!?])/);
+      if (m) return m[0];
       // Bare ~나 after a vowel-ending syllable (no batchim, jong=0) followed
       // by space/punct. The vowel-ending requirement excludes verb stems like
       // 만나, 혼나, 가나(요).
@@ -164,9 +165,9 @@
         if (_jong(t.charAt(i)) !== 0) continue;
         if (t.charAt(i + 1) !== '나') continue;
         var nxt = t.charAt(i + 2) || '';
-        if (nxt === '' || /[\s.,!?]/.test(nxt)) return true;
+        if (nxt === '' || /[\s.,!?]/.test(nxt)) return t.charAt(i) + '나';
       }
-      return false;
+      return '';
     }, label: '~(이)나 (or / about / as much as)', hint: 'alternation, approximation, or surprising quantity. After consonant-ending nouns: 이나 (책이나). After vowel-ending nouns: 나 (커피나, 차나). 커피나 차 (coffee or tea); 열 명이나 (as many as 10); 하루나 이틀 (a day or two).' },
     { re: /[가-힣]라도(?=[^가-힣]|$)|[가-힣]이라도(?=[^가-힣]|$)/, label: '~(이)라도 (even / at least)', hint: 'concessive selection. <noun> + (이)라도 = "even / at least / something like". 물이라도 (at least water); 누구라도 (anyone).' },
 
@@ -270,26 +271,32 @@
   // Jongseong table indices used here:
   //   4 = ㄴ, 8 = ㄹ, 16 = ㅁ, 17 = ㅂ, 20 = ㅆ
   function _hasJongFollowedBy(text, jong, endings) {
-    if (!text) return false;
+    if (!text) return '';
     for (var i = 0; i < text.length - 1; i++) {
       if (_jong(text.charAt(i)) !== jong) continue;
-      var after = text.substr(i + 1).replace(/^\s+/, '');
+      var afterRaw = text.substr(i + 1);
+      var afterStripped = afterRaw.replace(/^\s+/, '');
+      var leadingSpaces = afterRaw.length - afterStripped.length;
       for (var j = 0; j < endings.length; j++) {
-        if (after.indexOf(endings[j]) === 0) return true;
+        if (afterStripped.indexOf(endings[j]) === 0) {
+          return text.substr(i, 1 + leadingSpaces + endings[j].length);
+        }
       }
     }
-    return false;
+    return '';
   }
 
   function _hasContractedPastEnding(text, ending) {
-    if (!text || !ending) return false;
+    if (!text || !ending) return '';
     for (var i = 0; i + ending.length < text.length + 1; i++) {
       var ch = text.charAt(i);
       if (ch === '있' || ch === '겠') continue;
       if (_jong(ch) !== JONG_SS) continue;
-      if (text.substr(i + 1, ending.length) === ending) return true;
+      if (text.substr(i + 1, ending.length) === ending) {
+        return ch + ending;
+      }
     }
-    return false;
+    return '';
   }
 
   function detect(sentenceText) {
@@ -382,9 +389,18 @@
       var stripped = text.replace(/\s+/g, '');
       m = stripped.match(p.re);
       if (m && m[0]) return m[0];
+    } else if (p._check) {
+      // _check callbacks return the matched chunk string when matched, ''
+      // otherwise. Use the chunk directly so example_in_sentence reflects
+      // the actual surface form that triggered detection.
+      var chunk = p._check(text);
+      if (typeof chunk === 'string' && chunk) return chunk;
+      var stripped2 = text.replace(/\s+/g, '');
+      chunk = p._check(stripped2);
+      if (typeof chunk === 'string' && chunk) return chunk;
     }
-    // _check-only pattern (or regex didn't match raw form) — fall back
-    // to a label-derived marker that actually appears in the sentence.
+    // Fall back to a label-derived marker that actually appears in the
+    // sentence — covers older _check callbacks that still return bool.
     var markers = _labelMarkers(p.label);
     var sentNoWs = text.replace(/\s+/g, '');
     for (var i = 0; i < markers.length; i++) {
