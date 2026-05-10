@@ -37,8 +37,10 @@
 
     // ── Tense (sentence enders, past first since most specific) ─
     { re: /했어요(?=[^가-힣]|$)/, label: '했어요 (하다 past polite)', hint: '하다 verb past polite. 하다 → 했어요' },
-    { re: /[가-힣](았|었|였)어요(?=[^가-힣]|$)/, label: '~았/었/였어요 (past polite)', hint: 'past polite ending. <stem> + 았/었/였어요. Vowel harmony: ㅏ/ㅗ → 았; else → 었; 하 → 했/하였' },
+    { re: /[가-힣](았|었|였)어요(?=[^가-힣]|$)/, label: '~았/었/였어요 (past polite)', hint: 'past polite ending. <stem> + 았/었/였어요. Vowel harmony: ㅏ/ㅗ → 았; else → 었; 하 → 했/하였. Vowel contraction: 보+았→봤, 오+았→왔, 되+었→됐, 마시+었→마셨' },
+    { _check: function(t) { return _hasContractedPastEnding(t, '어요'); }, label: '~았/었/였어요 (past polite)', hint: 'past polite (vowel-contracted form). 보다→봤어요, 오다→왔어요, 되다→됐어요, 마시다→마셨어요. Stem vowel + 았/었 collapses into one syllable with ㅆ batchim.' },
     { re: /[가-힣](았|었|였)습니다(?=[^가-힣]|$)/, label: '~았/었/였습니다 (past formal)', hint: 'past formal-polite ending' },
+    { _check: function(t) { return _hasContractedPastEnding(t, '습니다'); }, label: '~았/었/였습니다 (past formal)', hint: 'past formal-polite (vowel-contracted form). 보+았+습니다→봤습니다' },
     { re: /[가-힣](았|었)었/, label: '~았/었었 (past perfect)', hint: 'past perfect / earlier past. doubled past for "had done"' },
     { re: /[가-힣]ㄹ\s*거예요|[가-힣](을|ㄹ)\s*거예요/, label: '~ㄹ/을 거예요 (future)', hint: 'future tense polite. <stem> + ㄹ/을 거예요 = "will"' },
     { re: /[가-힣]겠(어요|습니다|네요|구나|지)/, label: '~겠 (intention/conjecture)', hint: 'intention or conjecture. "I will / probably is"' },
@@ -58,18 +60,18 @@
     { re: /고\s*있(어|었|는|다|네|습)/, label: '~고 있다 (continuous)', hint: 'progressive aspect. "is V-ing"' },
     { re: /(아|어|여)\s*있(어|었|는|다|네|습)/, label: '~아/어 있다 (resultant state)', hint: 'resulting state from completed action. "remains V-ed"' },
     { re: /게\s*되(었|어|네|는|었어요|었습니다)/, label: '~게 되다 (come to / passive)', hint: 'become so / circumstance change. "comes to / ends up"' },
-    { re: /(아|어|여)\s*보(았|았어요|아|아요|세요|니|는|기)/, label: '~아/어 보다 (try doing)', hint: 'attempt or experience. "try V-ing / have done"' },
-    { re: /(아|어|여)\s*주(었|어|어요|세요|시|니|는|기)/, label: '~아/어 주다 (do for)', hint: 'do as a favor for someone' },
-    { re: /(아|어|여)\s*버리(었|어|네|기|어요)/, label: '~아/어 버리다 (do completely / regret)', hint: 'finish off / end up doing (often regret)' },
-    { re: /(아|어|여)\s*놓(았|아|네|아요|기|는다)/, label: '~아/어 놓다 (do in advance)', hint: 'do and leave the result for later' },
-    { re: /(아|어|여)\s*두(었|어|네|기|어요)/, label: '~아/어 두다 (do for later)', hint: 'do and store the result' },
-    { re: /(아|어|여)야\s*(하|되|돼|한다)/, label: '~아/어야 하다/되다 (must)', hint: 'obligation. "have to / must"' },
+    { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*보(았|았어요|아|아요|세요|니|는|기|면|면서)/, label: '~아/어 보다 (try doing)', hint: 'attempt or experience. "try V-ing / have done". Includes vowel-contracted: 고려하다→고려해 보다, 보다→봐 보다, 가다→가 보다' },
+    { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*주(었|어|어요|세요|시|니|는|기)/, label: '~아/어 주다 (do for)', hint: 'do as a favor for someone. Includes contracted: 도와주다→도와줘요, 해 주다' },
+    { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*버리(었|어|네|기|어요)/, label: '~아/어 버리다 (do completely / regret)', hint: 'finish off / end up doing (often regret)' },
+    { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*놓(았|아|네|아요|기|는다)/, label: '~아/어 놓다 (do in advance)', hint: 'do and leave the result for later' },
+    { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*두(었|어|네|기|어요)/, label: '~아/어 두다 (do for later)', hint: 'do and store the result' },
+    { re: /(아야|어야|여야|봐야|와야|줘야|둬야|매야|깨야|떼야|째야|쳐야|쪄야|져야|돼야|해야|펴야|켜야|셔야|쒀야|폐야)\s*(하|되|돼|한다|했|해|됐|됨|함)/, label: '~아/어야 하다/되다 (must)', hint: 'obligation. "have to / must". Includes vowel-contracted forms: 꿰매다→꿰매야 했어요, 하다→해야 해요, 되다→돼야 해요' },
     { re: /기로\s*하(다|기로\s*했|었|기로\s*해)/, label: '~기로 하다 (decide to)', hint: 'decide to do. "plan / decide"' },
     { re: /ㄴ\s*적(이|이\s*있|이\s*없)|은\s*적(이|이\s*있|이\s*없)/, label: '~ㄴ/은 적이 있다/없다 (have done before)', hint: 'experiential past. "have V-ed / never V-ed"' },
     { re: /[가-힣]\s*수\s*(있|없)/, label: '~(으)ㄹ 수 있다/없다 (ability/possibility)', hint: 'ability or possibility. <stem> + ㄹ/을 수 있다 = "can"; 없다 = "cannot". 옮기다 → 옮길 수 없다 = "cannot transmit"' },
 
     // ── Connectives ─────────────────────────────────────────────
-    { re: /(아서|어서|여서)/, label: '~아/어서 (cause / sequence)', hint: 'reason or sequence. "because / and then"' },
+    { re: /(아서|어서|여서|봐서|와서|줘서|둬서|매서|깨서|떼서|째서|쳐서|쪄서|져서|돼서|해서|펴서|켜서|셔서|쒀서|폐서)/, label: '~아/어서 (cause / sequence)', hint: 'reason or sequence. "because / and then". Includes vowel-contracted forms: 넘어지다→넘어져서, 보다→봐서, 되다→돼서, 하다→해서' },
     { re: /(니까|으니까)/, label: '~(으)니까 (reason)', hint: 'reason (more conversational than ~아서)' },
     { re: /기\s*때문(에|이|이다)/, label: '~기 때문에 (because)', hint: 'because. <stem> + 기 때문에' },
     { re: /(?<!기)[가-힣]\s*때문(에|이|이다)/, label: '~ 때문에 (because of N)', hint: 'because of (noun). <noun> + 때문에 = "because of / due to". 세균 때문에 = "because of the bacteria"' },
@@ -154,6 +156,10 @@
     { re: /(ㄴ|는)\s*반면(에)?(?=[^가-힣]|$)/, label: '~ㄴ/는 반면(에) (on the other hand)', hint: 'contrast clause. "whereas / on the other hand"' },
     { re: /(ㄴ|는)\s*한(?=[^가-힣]|$)/, label: '~ㄴ/는 한 (as long as)', hint: 'conditional limit. "as long as"' },
     { re: /기\s*마련이/, label: '~기 마련이다 (bound to)', hint: 'inevitability. "is bound to / naturally"' },
+    { re: /(중|중에)\s*(하나|한\s*명|한\s*가지|두|세|몇)/, label: '~ 중 하나 (one of)', hint: 'one of (a group). <group> + 중 하나 = "one of the". 비싼 나라 중 하나예요 = "is one of the expensive countries"' },
+    { re: /(는|ㄴ|은|을|ㄹ)\s*것이?\s*좋(다|아|아요|겠|겠어요|겠습니다)/, label: '~는 것이 좋다/좋겠다 (it would be good to)', hint: 'recommendation/advice. <stem> + 는 것이 좋다/좋겠다 = "it is/would be good to V". 고려해 보는 것이 좋겠어요 = "it would be good to consider"' },
+    { re: /(는|ㄴ|은|을|ㄹ)\s*편이/, label: '~는 편이다 (tend to)', hint: 'tendency. "tends to be / is rather"' },
+    { re: /(는|ㄴ|은)\s*(대로|만큼)/, label: '~는 대로/만큼 (as / to the extent)', hint: 'manner or extent. "as / according to / as much as"' },
     { re: /ㄴ\s*셈이|은\s*셈이/, label: '~ㄴ/은 셈이다 (amounts to)', hint: 'roughly equivalent to. "amounts to / can be counted as"' },
 
     // ── Honorifics ──────────────────────────────────────────────
@@ -173,16 +179,49 @@
   // "~지 않다" hit "보이지않았어요" too.
   function _strip(s) { return String(s || '').replace(/\s+/g, ''); }
 
+  // Hangul jongseong (final consonant) extractor. Returns -1 for non-Hangul,
+  // 20 for ㅆ (used to detect contracted past forms like 봤/왔/갔/됐). The
+  // jongseong table indexes ㅆ at 20 (not 19 — common off-by-one trap).
+  function _jong(c) {
+    if (!c) return -1;
+    var code = c.charCodeAt(0);
+    if (code < 0xAC00 || code > 0xD7A3) return -1;
+    return (code - 0xAC00) % 28;
+  }
+  var JONG_SS = 20;
+
+  // Detect contracted past-polite forms that the regex can't catch because
+  // the past marker (았/었/였) merged into the verb stem (보+았→봤, 오+았→왔,
+  // 되+었→됐, 마시+었→마셨, etc). Any syllable with ㅆ jongseong immediately
+  // followed by a past-tense ending is a contracted past form. Exceptions:
+  // 있 (present existential) and 겠 (intention/conjecture) also carry ㅆ
+  // jongseong but aren't past markers — their own patterns catch them.
+  function _hasContractedPastEnding(text, ending) {
+    if (!text || !ending) return false;
+    for (var i = 0; i + ending.length < text.length + 1; i++) {
+      var ch = text.charAt(i);
+      if (ch === '있' || ch === '겠') continue;
+      if (_jong(ch) !== JONG_SS) continue;
+      if (text.substr(i + 1, ending.length) === ending) return true;
+    }
+    return false;
+  }
+
   function detect(sentenceText) {
     if (!sentenceText) return [];
     var stripped = _strip(sentenceText);
     var seen = {};
     var hits = [];
     PATTERNS.forEach(function(p) {
-      // Test against both raw and whitespace-stripped forms so we
-      // tolerate "보이지 않았어요" vs "보이지않았어요" without writing
-      // each pattern twice.
-      if (p.re.test(sentenceText) || p.re.test(stripped)) {
+      // Test against both raw and whitespace-stripped forms so we tolerate
+      // "보이지 않았어요" vs "보이지않았어요" without writing each pattern twice.
+      // Patterns can declare either a regex (p.re) or a custom code check
+      // (p._check) — the latter handles Hangul vowel contractions that
+      // can't be expressed as a simple character-class regex.
+      var matched = false;
+      if (p.re) matched = p.re.test(sentenceText) || p.re.test(stripped);
+      else if (p._check) matched = !!p._check(sentenceText) || !!p._check(stripped);
+      if (matched) {
         if (seen[p.label]) return;
         seen[p.label] = true;
         hits.push({ label: p.label, hint: p.hint });
