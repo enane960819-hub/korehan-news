@@ -160,6 +160,43 @@ function khIcon(name, label, extraClass) {
   return html + '<span>' + label + '</span>';
 }
 
+// KH_GRAMMAR is the regex-based pattern detector that the admin page
+// loads via <script src="js/core/kh-grammar-patterns.js">. User-facing
+// pages don't include that script tag (44 of them), so we lazy-inject
+// it the first time anyone needs grammar enforcement. After the
+// promise resolves, window.KH_GRAMMAR.enforceDetectedPatterns is
+// guaranteed to exist — call sites guard with `if (window.KH_GRAMMAR)`
+// and skip enforcement if loading failed (offline, blocked, etc).
+var _khGrammarReady = null;
+function ensureKhGrammar() {
+  if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.enforceDetectedPatterns === 'function') {
+    return Promise.resolve(window.KH_GRAMMAR);
+  }
+  if (_khGrammarReady) return _khGrammarReady;
+  _khGrammarReady = new Promise(function(resolve, reject) {
+    var existing = document.querySelector('script[data-kh-grammar="1"]');
+    if (existing) {
+      existing.addEventListener('load', function() { resolve(window.KH_GRAMMAR); }, { once: true });
+      existing.addEventListener('error', reject, { once: true });
+      return;
+    }
+    var script = document.createElement('script');
+    script.src = 'js/core/kh-grammar-patterns.js?v=20260511f';
+    script.defer = true;
+    script.setAttribute('data-kh-grammar', '1');
+    script.onload = function() { resolve(window.KH_GRAMMAR); };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  }).catch(function(err) {
+    console.warn('KH_GRAMMAR failed to load.', err);
+    return null;
+  });
+  return _khGrammarReady;
+}
+// Kick off the load early so enforce calls aren't blocked on the
+// network round-trip when the user taps a sentence.
+try { ensureKhGrammar(); } catch(_) {}
+
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
 // → API 키가 브라우저에 절대 노출되지 않음
@@ -3555,10 +3592,10 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
     var _analysisRule =
         '- ANALYSIS: be EXHAUSTIVE. Surface every grammar pattern, fixed expression, idiom, 사자성어, 관용구, and notable collocation in the sentence — even ones you think are "obvious". Korean grammar has 200+ learner-relevant patterns; don\'t hold back. 8 worthy items → return 8. Only return [] when the sentence is a pure proper-noun list or single greeting.\n'
       + '    MUST include when present (this is a partial floor — surface anything else from a comprehensive TOPIK 2-6 grammar inventory too):\n'
-      + '    · CONNECTIVES & SUBORDINATORS: ~에도 불구하고 (despite), ~기 때문에 (because), ~기 위해(서) / ~을·를 위해 (in order to / for), ~려고 / ~려면 (intend / if want), ~다가 (mid-action shift), ~자마자 (as soon as), ~ㄴ/는데 (background), ~지만 / ~으나 (but), ~거나 (or), ~면 (if), ~아/어도 / ~더라도 / ~ㄹ지라도 (even if), ~았/었더라면 (counterfactual), ~았/었더니 (after I did), ~다 보면 (if you keep), ~다 보니(까) (as a result of doing), ~ㄴ/는 반면(에) (whereas), ~ㄴ/는 만큼 (as much as), ~ㄴ/는 데다(가) (on top of), ~ㄴ/는 김에 (while you\'re at it), ~ㄴ/는 결과 / ~ㄴ 끝에 (as a result / after all the), ~ㄴ/는커녕 (let alone), ~을 뿐(만) 아니라 (not only), ~ㄹ/을수록 (the more), ~ㄴ/는 한 (as long as), ~ㄴ/는다면 (if), ~을 텐데 / ~을 테니까 (probably / since I\'ll), ~ㄴ/는다고 해도 (even if), ~기에 (formal because), ~며 / ~으며 (and / while — formal).\n'
+      + '    · CONNECTIVES & SUBORDINATORS: ~에도 불구하고 (despite), ~기 때문에 (because), ~기 위해(서) / ~을·를 위해 (in order to / for), ~려고 / ~려면 (intend / if want), ~(으)면서 (simultaneous action — "while / as"; same subject doing two things at once), ~다가 (mid-action shift), ~자마자 (as soon as), ~ㄴ/는데 (background), ~지만 / ~으나 (but), ~거나 (or), ~면 (if), ~아/어도 / ~더라도 / ~ㄹ지라도 (even if), ~았/었더라면 (counterfactual), ~았/었더니 (after I did), ~다 보면 (if you keep), ~다 보니(까) (as a result of doing), ~ㄴ/는 반면(에) (whereas), ~ㄴ/는 만큼 (as much as), ~ㄴ/는 데다(가) (on top of), ~ㄴ/는 김에 (while you\'re at it), ~ㄴ/는 결과 / ~ㄴ 끝에 (as a result / after all the), ~ㄴ/는커녕 (let alone), ~을 뿐(만) 아니라 (not only), ~ㄹ/을수록 (the more), ~ㄴ/는 한 (as long as), ~ㄴ/는다면 (if), ~을 텐데 / ~을 테니까 (probably / since I\'ll), ~ㄴ/는다고 해도 (even if), ~기에 (formal because), ~며 / ~으며 (and / while — formal).\n'
       + '    · AUXILIARY ENDINGS / MODALS: ~ㄹ/을 수 있다·없다, ~지 못하다, ~지 않다 / ~지 말다, ~게 되다, ~기 시작하다, ~기로 하다, ~ㄴ/은 적이 있다·없다, ~아/어 보다, ~아/어 주다, ~아/어 있다, ~고 있다, ~았/었어요 (incl. contracted 봤·했·됐·갔), ~아/어 놓다·두다, ~아/어 버리다, ~아/어 가다·오다 (continue / have been), ~아/어 내다 (manage), ~아/어 대다 (do repeatedly), ~게 하다·만들다 (make / let), ~ㄹ/을 줄 알다·모르다 (know how / not), ~을 수밖에 없다, ~ㄹ 리가 없다, ~ㄹ 모양이다 / ~ㄹ 것 같다, ~ㄹ까 하다, ~ㄹ까 봐, ~ㄹ 만하다, ~기 마련이다 / ~기 십상이다, ~을 뻔하다, ~ㄴ/는 척하다, ~기는 하다 (do indeed but), ~ㄹ 정도이다 / ~ㄹ 정도로.\n'
       + '    · MODIFIERS / CLAUSAL: ~ㄴ/은/는 + 명사, ~ㄹ/을 + 명사, ~던 / ~았/었던 (recalled past), ~ㄴ/은 채(로) (in the state of), ~ㄴ/은 후에 / ~ㄴ 뒤에 / ~기 전에, ~을 때(에), ~ㄴ/는 셈이다 (counts as), ~ㄴ/는 편이다 (tends to be), ~ㄴ/는 듯하다, ~ㄴ/는 모양이다, ~다는 + 명사, ~ㄴ/는 점에서 (in the sense that).\n'
-      + '    · REPORTED / QUOTATION: ~다고 하다, ~냐고 하다, ~자고 하다, ~라고 하다, ~다고 알려져 있어요, ~ㄴ다는 / ~는다는 / ~라는 + 명사, ~다네 / ~다더라 / ~다잖아 (informal), ~다고요? / ~라고요? (you say?), ~ㄹ 거라고 하다.\n'
+      + '    · REPORTED / QUOTATION: ~다고 하다 / ~다고 해요 / ~ㄴ다고 해요 / ~다고 했어요 (polite reported speech — "X says/said that …"; surface this whenever the sentence ends in any 하다 conjugation of a quote, including 해요·했어요·한대(요)·한답니다), ~냐고 하다, ~자고 하다, ~라고 하다, ~다고 알려져 있어요, ~ㄴ다는 / ~는다는 / ~라는 + 명사, ~다네 / ~다더라 / ~다잖아 (informal), ~다고요? / ~라고요? (you say?), ~ㄹ 거라고 하다.\n'
       + '    · PARTICLES WORTH FLAGGING: ~만, ~까지, ~부터, ~조차, ~밖에, ~마다, ~씩, ~이나 (or / approx.), ~마저, ~처럼 / ~같이, ~보다, ~에 비해, ~로서 (role), ~로써 (means), ~에 대해(서), ~에 의해(서) / ~으로 인해(서), ~에 관한·관해(서), ~을 통해(서), ~을 따라, ~에 따라, ~을 비롯해(서).\n'
       + '    · SPEECH-LEVEL / ENDER: ~지(요) (right? / softening), ~네(요) (discovery), ~군요 / ~구나 (realisation), ~잖아(요) (you know), ~다니까(요) (I\'m telling you), ~ㄹ게(요) (will / promise), ~ㄹ까(요) (shall we / I wonder), ~을걸(요) (probably), ~ㄴ걸 (mild surprise), ~던가(요) (recall Q).\n'
       + '    · FIXED EXPRESSIONS / COLLOCATIONS: 마음에 들다, 마음이 무겁다 / 가볍다, 마음에 걸리다, 마음이 놓이다, 시간이 없다, 시간 가는 줄 모르다, 정신을 차리다 / 정신없다, 도움이 되다 / 도움을 주다·받다, 관심을 가지다 / 받다, 눈에 띄다, 눈을 감다·뜨다, 눈치가 빠르다, 손이 크다 / 손이 가다, 발이 넓다, 발등에 불이 떨어지다, 입이 가볍다·무겁다, 귀가 얇다, 머리를 맞대다 / 식히다, 한 술 더 뜨다, 발 벗고 나서다, 등을 돌리다, 어깨가 무겁다, 콧대가 높다, 기가 차다, 가슴이 뭉클하다, 가슴에 새기다·와닿다, ~에 참여 / 참가하다, ~의 도움으로, ~을 둘러싸다, ~을 차지하다, ~을 비롯하다, ~에 영향을 미치다, ~에 한해(서), ~을 거치다, ~을 무릅쓰다, …\n'
@@ -3591,9 +3628,28 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
       + _analysisRule
       + _analysisVerify
       + '- Return EXACTLY ' + sentences.length + ' entries in sentences[].';
+    // Prime Sonnet with the full KH_GRAMMAR catalog so it sees every
+    // regex-detectable pattern (~250) up front, not just the hand-
+    // curated floor list (~80). Mirrors admin runAutoGenerate. Cost
+    // is ~9K extra input tokens per article (negligible).
+    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.formatFullCatalog === 'function') {
+      prompt += '\n\n[GRAMMAR PATTERN INVENTORY — canonical reference]\n'
+             + 'Below is the COMPLETE list of grammar patterns the post-process regex layer detects. '
+             + 'For each sentence, scan against this list and surface EVERY pattern that genuinely '
+             + 'appears. Use the canonical labels exactly as written so they match the enforce gate.\n\n'
+             + window.KH_GRAMMAR.formatFullCatalog();
+    }
+
+    // Use the same Sonnet model admin's runAutoGenerate uses, so the
+    // first-viewer fallback writes the same quality cache that admin
+    // would have. Earlier this path used Haiku, which meant a cache-
+    // miss tap by user 1 persisted lower-quality analysis that every
+    // subsequent viewer then saw — quality was effectively a race
+    // (admin re-bake vs first viewer tap). Sonnet here makes the
+    // distinction architectural-only: same cache contents either way.
     var res = await callClaude({
       feature: 'sentence-analyze-bulk',
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: Math.min(16000, 500 * sentences.length + 800),
       messages: [{ role: 'user', content: prompt }]
     });
@@ -3657,6 +3713,20 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
       };
     });
 
+    // Code-level enforcement of must-include grammar patterns. Mirrors
+    // the admin runAutoGenerate path — Haiku regularly skips ~(으)면서,
+    // ~다고 해요, ~게 만들다 even when the prompt says be exhaustive,
+    // so the regex detector fills the gaps deterministically before
+    // we persist. INTERMEDIATE_SKIP_LABELS inside enforce already
+    // strips trivial particles for non-basic levels, so Tree+ readers
+    // don't see ~을/를 noise on every sentence.
+    try {
+      await ensureKhGrammar();
+      if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns) {
+        window.KH_GRAMMAR.enforceDetectedPatterns(stitched, articleLevel);
+      }
+    } catch(_) {}
+
     // Persist to article_cache.translation as { sentences: [...] }.
     // upsertArticleCacheRow handles the kv vs wide schema split.
     if (typeof upsertArticleCacheRow === 'function') {
@@ -3716,7 +3786,45 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
 // is generated by the same call that wrote the body, so the
 // hallucinated-grammar class of bugs that haunted p2-p7 should
 // be largely structural-fixed. Mirror in admin SENT_CACHE_CURRENT.
-var KH_SENT_CACHE_VERSION = 's1';
+//   s2: added ~(으)면서 to the CONNECTIVES floor and polite
+// reported-speech variants (~다고 해요 / ~ㄴ다고 해요 /
+// ~한대요 / ~한답니다) to the REPORTED floor — both were
+// silently absent from the single-sentence and bulk MUST-INCLUDE
+// lists, so common patterns like "들어가면서" and "만든다고 해요"
+// were not surfaced even though the rest of the prompt told the
+// model to be exhaustive.
+//   s3: wired KH_GRAMMAR.enforceDetectedPatterns into the
+// user-facing bulk path AND the render path. Previously enforce
+// existed only in admin code, so any article served from a
+// pre-enforce cache (or from the user-facing Haiku fallback)
+// was missing all the regex-deterministic patterns. Also fixed
+// the ~게 만들다 causative regex (was missing 만든 / 만든다 /
+// 만들고) and added contracted reported speech (~한대요 /
+// ~한답니다 / ~래요) + ~아/어지다 (passive / become).
+//   s4: news-register batch sweep — 20+ TOPIK 3-5 patterns that
+// surface every paragraph of news copy but were missing from
+// KH_GRAMMAR. Includes ~던 대로 (fixed regex from line 229),
+// ~다고 밝히다/강조하다/지적하다/주장하다/발표하다 (extended
+// reporting-verb alternation), ~로 보이다/추정되다/분석되다/
+// 평가되다 (evaluative passives), ~로 알려지다, ~ㄹ 전망/
+// 계획/방침/예정이다, ~ㄹ 것으로 보이다/예상되다, ~에 그치다/
+// 달하다, ~을 둘러싸고/둘러싼, ~을 비롯해(서), ~기보다(는),
+// ~ㄹ 뿐(이다), ~ㄹ 따름이다, ~ㄹ 뿐만 아니라, ~ㄴ/는/(으)ㄹ
+// 대신(에), ~지 않을 수 없다, ~려던 참이다, ~게 마련이다,
+// ~ㄹ 정도(이다/로), ~기 십상이다, ~다는/라는 + N, ~ㄴ/는
+// 점(에서), ~기를 바라다/원하다, ~ㄹ 수밖에 없다, ~로 이루어
+// 지다/구성되다.
+//   s5: KH_GRAMMAR full-catalog injection into Sonnet prompts.
+// Floor lists were hand-curated subsets (~80 patterns); the
+// full regex inventory is now ~239. Sonnet now sees the entire
+// inventory up front via formatFullCatalog() so it can prime
+// its analysis pass against the SAME dictionary that enforce
+// will check after. Mirrors admin runAutoGenerate path. Plus
+// the prior s4 batch (60+ TOPIK 3-5 patterns: time/sequence,
+// cause/blame/credit, concession, combined-purpose, attempt/
+// futility, suggestion, sentence enders, particles, and
+// fixed expressions / news).
+var KH_SENT_CACHE_VERSION = 's5';
 
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
@@ -3879,6 +3987,21 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
   // instead of breaking rendering.
   var _sent = (sentenceText || (panel && panel.dataset && panel.dataset.sentence) || '').trim();
   if (panel && _sent && panel.dataset) panel.dataset.sentence = _sent;
+
+  // Enrich `data.analysis` with regex-detected patterns the AI missed.
+  // Runs on EVERY render path (cache hit, sessionStorage hit, fresh
+  // analyze) so even articles whose cache was baked before enforce
+  // existed get the gap-fill treatment instantly — no admin re-bake
+  // required. Idempotent: enforceDetectedPatterns dedupes by label, so
+  // calling it twice on the same data is a no-op.
+  if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns && _sent && data) {
+    try {
+      var _lvl = (window._currentArticle && window._currentArticle.level) || 'Intermediate';
+      var _wrap = [{ text: _sent, analysis: Array.isArray(data.analysis) ? data.analysis : [] }];
+      window.KH_GRAMMAR.enforceDetectedPatterns(_wrap, _lvl);
+      data.analysis = _wrap[0].analysis;
+    } catch(_) {}
+  }
   if (data && Array.isArray(data.vocab) && data.vocab.length) {
     html += '<div class="asp-section-title">Vocab</div>';
     data.vocab.forEach(function(v) {
@@ -4251,10 +4374,10 @@ async function analyzeSentence(idx, el) {
     var _analysisRule =
         '- ANALYSIS: be EXHAUSTIVE. Surface every grammar pattern, fixed expression, idiom, 사자성어, 관용구, and notable collocation in this sentence — even ones you think are "obvious". 8 worthy items → return 8.\n'
       + '    MUST include when present (partial floor — surface anything else from TOPIK 2-6 grammar too):\n'
-      + '    · CONNECTIVES: ~에도 불구하고, ~기 때문에, ~기 위해(서) / ~을·를 위해, ~려고 / ~려면, ~다가, ~자마자, ~ㄴ/는데, ~지만/~으나, ~거나, ~면, ~아/어도 / ~더라도 / ~ㄹ지라도, ~았/었더라면, ~았/었더니, ~다 보면, ~다 보니(까), ~ㄴ/는 반면(에), ~ㄴ/는 만큼, ~ㄴ/는 데다(가), ~ㄴ/는 김에, ~ㄴ/는 결과, ~ㄴ 끝에, ~ㄴ/는커녕, ~을 뿐(만) 아니라, ~ㄹ/을수록, ~ㄴ/는 한, ~을 텐데, ~을 테니까, ~기에, ~며 / ~으며.\n'
+      + '    · CONNECTIVES: ~에도 불구하고, ~기 때문에, ~기 위해(서) / ~을·를 위해, ~려고 / ~려면, ~(으)면서 (simultaneous action — "while / as"), ~다가, ~자마자, ~ㄴ/는데, ~지만/~으나, ~거나, ~면, ~아/어도 / ~더라도 / ~ㄹ지라도, ~았/었더라면, ~았/었더니, ~다 보면, ~다 보니(까), ~ㄴ/는 반면(에), ~ㄴ/는 만큼, ~ㄴ/는 데다(가), ~ㄴ/는 김에, ~ㄴ/는 결과, ~ㄴ 끝에, ~ㄴ/는커녕, ~을 뿐(만) 아니라, ~ㄹ/을수록, ~ㄴ/는 한, ~을 텐데, ~을 테니까, ~기에, ~며 / ~으며.\n'
       + '    · AUXILIARIES: ~ㄹ/을 수 있다·없다, ~지 못하다, ~지 않다 / ~지 말다, ~게 되다, ~기 시작하다, ~기로 하다, ~ㄴ/은 적이 있다·없다, ~아/어 보다, ~아/어 주다, ~아/어 있다, ~고 있다, ~았/었어요 (incl. 봤·했·됐·갔), ~아/어 놓다·두다, ~아/어 버리다, ~아/어 가다·오다, ~아/어 내다, ~아/어 대다, ~게 하다·만들다, ~ㄹ/을 줄 알다·모르다, ~을 수밖에 없다, ~ㄹ 리가 없다, ~ㄹ 모양이다, ~ㄹ 것 같다, ~ㄹ까 하다, ~ㄹ까 봐, ~ㄹ 만하다, ~기 마련이다, ~기 십상이다, ~을 뻔하다, ~ㄴ/는 척하다, ~기는 하다, ~ㄹ 정도이다.\n'
       + '    · MODIFIERS: ~ㄴ/은/는 + 명사, ~ㄹ/을 + 명사, ~던 / ~았/었던, ~ㄴ/은 채(로), ~ㄴ/은 후에·뒤에, ~기 전에, ~을 때(에), ~ㄴ/는 셈이다, ~ㄴ/는 편이다, ~ㄴ/는 듯하다, ~ㄴ/는 모양이다, ~다는 + 명사, ~ㄴ/는 점에서.\n'
-      + '    · REPORTED: ~다고/냐고/자고/라고 하다, ~다고 알려져 있어요, ~ㄴ다는 / ~는다는 / ~라는 + 명사, ~다네 / ~다더라 / ~다잖아, ~다고요? / ~라고요?, ~ㄹ 거라고 하다.\n'
+      + '    · REPORTED: ~다고/냐고/자고/라고 하다 (and polite forms ~다고 해요 / ~ㄴ다고 해요 / ~다고 했어요 / ~한대요 / ~한답니다 — surface whenever the sentence ends in any conjugation of 하다 attached to a quoted clause), ~다고 알려져 있어요, ~ㄴ다는 / ~는다는 / ~라는 + 명사, ~다네 / ~다더라 / ~다잖아, ~다고요? / ~라고요?, ~ㄹ 거라고 하다.\n'
       + '    · PARTICLES: ~만, ~까지, ~부터, ~조차, ~밖에, ~마다, ~씩, ~이나, ~마저, ~처럼/같이, ~보다, ~에 비해, ~로서 (role), ~로써 (means), ~에 대해(서), ~에 의해(서), ~으로 인해(서), ~에 관한·관해(서), ~을 통해(서), ~을 따라, ~에 따라, ~을 비롯해(서).\n'
       + '    · ENDERS: ~지(요), ~네(요), ~군요/구나, ~잖아(요), ~다니까(요), ~ㄹ게(요), ~ㄹ까(요), ~을걸(요), ~ㄴ걸, ~던가(요).\n'
       + '    · FIXED EXPRESSIONS: 마음에 들다, 마음이 무겁다·가볍다, 마음에 걸리다, 마음이 놓이다, 시간이 없다, 시간 가는 줄 모르다, 정신을 차리다, 정신없다, 도움이 되다, 도움을 주다·받다, 관심을 가지다, 눈에 띄다, 눈을 감다·뜨다, 눈치가 빠르다, 손이 크다·가다, 발이 넓다, 발등에 불이 떨어지다, 입이 가볍다·무겁다, 귀가 얇다, 머리를 맞대다·식히다, 한 술 더 뜨다, 발 벗고 나서다, 등을 돌리다, 어깨가 무겁다, 콧대가 높다, 기가 차다, 가슴이 뭉클하다, 가슴에 새기다·와닿다, ~에 참여 / 참가하다, ~의 도움으로, ~을 둘러싸다, ~을 차지하다, ~에 영향을 미치다, ~을 거치다, ~을 무릅쓰다, …\n'
@@ -4288,10 +4411,27 @@ async function analyzeSentence(idx, el) {
       + _analysisRule
       + _analysisVerifyRule
       + '- Output JSON only.';
+    // Prime Sonnet with the full KH_GRAMMAR catalog (same as bulk
+    // and admin paths). One sentence still scans the same dictionary.
+    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.formatFullCatalog === 'function') {
+      prompt += '\n\n[GRAMMAR PATTERN INVENTORY — canonical reference]\n'
+             + 'Below is the COMPLETE list of grammar patterns the post-process regex layer detects. '
+             + 'Scan THIS sentence against this list and surface EVERY pattern that appears. Use the '
+             + 'canonical labels exactly as written so they match the enforce gate.\n\n'
+             + window.KH_GRAMMAR.formatFullCatalog();
+    }
+
+    // Single-sentence fallback (cache miss for one sentence). Uses the
+    // same Sonnet model as the bulk path above and as admin runAuto-
+    // Generate, so this code path can never write a lower-quality
+    // single-sentence row than what admin would have produced. Bumped
+    // max_tokens 700 → 1500: Sonnet's analysis output is more verbose
+    // per item and 700 occasionally truncated mid-JSON on dense
+    // sentences, which then JSON-parse-failed and showed an error.
     var res = await callClaude({
       feature: 'sentence-analyze',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 700,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }]
     });
     var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
