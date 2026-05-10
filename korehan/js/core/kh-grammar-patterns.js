@@ -36,22 +36,22 @@
     { re: /(?:^|\s|[.,?!])못\s+[가-힣]/, label: '못 + V', hint: 'short-form inability. 못 + verb = "cannot"' },
 
     // ── Tense (sentence enders, past first since most specific) ─
-    { re: /했어요\b/, label: '했어요 (하다 past polite)', hint: '하다 verb past polite. 하다 → 했어요' },
-    { re: /[가-힣](았|었|였)어요\b/, label: '~았/었/였어요 (past polite)', hint: 'past polite ending. <stem> + 았/었/였어요. Vowel harmony: ㅏ/ㅗ → 았; else → 었; 하 → 했/하였' },
-    { re: /[가-힣](았|었|였)습니다\b/, label: '~았/었/였습니다 (past formal)', hint: 'past formal-polite ending' },
+    { re: /했어요(?=[^가-힣]|$)/, label: '했어요 (하다 past polite)', hint: '하다 verb past polite. 하다 → 했어요' },
+    { re: /[가-힣](았|었|였)어요(?=[^가-힣]|$)/, label: '~았/었/였어요 (past polite)', hint: 'past polite ending. <stem> + 았/었/였어요. Vowel harmony: ㅏ/ㅗ → 았; else → 었; 하 → 했/하였' },
+    { re: /[가-힣](았|었|였)습니다(?=[^가-힣]|$)/, label: '~았/었/였습니다 (past formal)', hint: 'past formal-polite ending' },
     { re: /[가-힣](았|었)었/, label: '~았/었었 (past perfect)', hint: 'past perfect / earlier past. doubled past for "had done"' },
     { re: /[가-힣]ㄹ\s*거예요|[가-힣](을|ㄹ)\s*거예요/, label: '~ㄹ/을 거예요 (future)', hint: 'future tense polite. <stem> + ㄹ/을 거예요 = "will"' },
     { re: /[가-힣]겠(어요|습니다|네요|구나|지)/, label: '~겠 (intention/conjecture)', hint: 'intention or conjecture. "I will / probably is"' },
-    { re: /[가-힣](아|어|여)요\b/, label: '~아/어/여요 (present polite)', hint: 'present polite informal ending' },
-    { re: /[가-힣](ㅂ니다|습니다)\b/, label: '~ㅂ/습니다 (present formal)', hint: 'present formal-polite ending' },
-    { re: /[가-힣]네요\b/, label: '~네요 (discovery)', hint: 'realization / mild surprise. "oh, it is"' },
-    { re: /[가-힣]군요\b|[가-힣]구나\b/, label: '~군요/~구나 (realization)', hint: 'realization / acknowledgement' },
-    { re: /[가-힣]잖아요?\b/, label: '~잖아(요) (as you know)', hint: 'asserting shared knowledge. "you know / obviously"' },
-    { re: /[가-힣]지요?\b|[가-힣]죠\b/, label: '~지요/~죠 (confirming)', hint: 'seeking agreement / soft confirmation' },
+    { re: /[가-힣](아|어|여)요(?=[^가-힣]|$)/, label: '~아/어/여요 (present polite)', hint: 'present polite informal ending' },
+    { re: /[가-힣](ㅂ니다|습니다)(?=[^가-힣]|$)/, label: '~ㅂ/습니다 (present formal)', hint: 'present formal-polite ending' },
+    { re: /[가-힣]네요(?=[^가-힣]|$)/, label: '~네요 (discovery)', hint: 'realization / mild surprise. "oh, it is"' },
+    { re: /[가-힣]군요(?=[^가-힣]|$)|[가-힣]구나(?=[^가-힣]|$)/, label: '~군요/~구나 (realization)', hint: 'realization / acknowledgement' },
+    { re: /[가-힣]잖아요?(?=[^가-힣]|$)/, label: '~잖아(요) (as you know)', hint: 'asserting shared knowledge. "you know / obviously"' },
+    { re: /[가-힣]지요?(?=[^가-힣]|$)|[가-힣]죠(?=[^가-힣]|$)/, label: '~지요/~죠 (confirming)', hint: 'seeking agreement / soft confirmation' },
     { re: /[가-힣]ㄹ까요\?|[가-힣]을까요\?/, label: '~ㄹ까요? (shall we / I wonder)', hint: 'suggestion or wondering. "shall we / do you think"' },
-    { re: /[가-힣]ㄹ게요\b|[가-힣]을게요\b/, label: '~ㄹ게요 (I will, intent to listener)', hint: 'speaker promise / intention with listener awareness' },
+    { re: /[가-힣]ㄹ게요(?=[^가-힣]|$)|[가-힣]을게요(?=[^가-힣]|$)/, label: '~ㄹ게요 (I will, intent to listener)', hint: 'speaker promise / intention with listener awareness' },
     { re: /[가-힣]나요\?/, label: '~나요? (gentle question)', hint: 'soft polite question form' },
-    { re: /[가-힣](으세요|세요)\b/, label: '~(으)세요 (polite imperative/honorific)', hint: 'polite request OR subject honorific present' },
+    { re: /[가-힣](으세요|세요)(?=[^가-힣]|$)/, label: '~(으)세요 (polite imperative/honorific)', hint: 'polite request OR subject honorific present' },
 
     // ── Auxiliary verbs (보조용언) ────────────────────────────────
     { re: /기\s*시작(했|해|하)/, label: '~기 시작하다 (start V-ing)', hint: 'begin doing. <stem> + 기 시작하다' },
@@ -66,26 +66,28 @@
     { re: /(아|어|여)야\s*(하|되|돼|한다)/, label: '~아/어야 하다/되다 (must)', hint: 'obligation. "have to / must"' },
     { re: /기로\s*하(다|기로\s*했|었|기로\s*해)/, label: '~기로 하다 (decide to)', hint: 'decide to do. "plan / decide"' },
     { re: /ㄴ\s*적(이|이\s*있|이\s*없)|은\s*적(이|이\s*있|이\s*없)/, label: '~ㄴ/은 적이 있다/없다 (have done before)', hint: 'experiential past. "have V-ed / never V-ed"' },
+    { re: /[가-힣]\s*수\s*(있|없)/, label: '~(으)ㄹ 수 있다/없다 (ability/possibility)', hint: 'ability or possibility. <stem> + ㄹ/을 수 있다 = "can"; 없다 = "cannot". 옮기다 → 옮길 수 없다 = "cannot transmit"' },
 
     // ── Connectives ─────────────────────────────────────────────
     { re: /(아서|어서|여서)/, label: '~아/어서 (cause / sequence)', hint: 'reason or sequence. "because / and then"' },
     { re: /(니까|으니까)/, label: '~(으)니까 (reason)', hint: 'reason (more conversational than ~아서)' },
     { re: /기\s*때문(에|이|이다)/, label: '~기 때문에 (because)', hint: 'because. <stem> + 기 때문에' },
+    { re: /(?<!기)[가-힣]\s*때문(에|이|이다)/, label: '~ 때문에 (because of N)', hint: 'because of (noun). <noun> + 때문에 = "because of / due to". 세균 때문에 = "because of the bacteria"' },
     { re: /(?:^|[가-힣])면(?:서|$|\s|[.,])/, label: '~(으)면 (if/when)', hint: 'conditional. "if / when"' },
     { re: /(다면)/, label: '~다면 (hypothetical if)', hint: 'hypothetical conditional. "if it were that"' },
     { re: /(면서|으면서)/, label: '~(으)면서 (while)', hint: 'simultaneous action. "while / as"' },
-    { re: /다가\b/, label: '~다가 (mid-action shift)', hint: 'doing X then Y / interrupted action' },
+    { re: /다가(?=[^가-힣]|$)/, label: '~다가 (mid-action shift)', hint: 'doing X then Y / interrupted action' },
     { re: /(거나)/, label: '~거나 (or)', hint: 'alternative connective. "or"' },
     { re: /(려고|으려고)/, label: '~(으)려고 (intention)', hint: 'in order to / intending to' },
     { re: /기\s*위해서?/, label: '~기 위해(서) (in order to)', hint: 'purpose. "in order to / for the sake of"' },
-    { re: /(러|으러)\s*(가|오|다니)/, label: '~(으)러 (purpose with movement)', hint: 'purpose verb + movement verb' },
-    { re: /도록\b/, label: '~도록 (so that / until)', hint: 'so that / extent / until' },
-    { re: /[가-힣]지만\b/, label: '~지만 (but)', hint: 'contrast. "but / however"' },
-    { re: /(는데|ㄴ데|은데)\b/, label: '~ㄴ/는데 (background/contrast)', hint: 'background or mild contrast (sets up next clause)' },
-    { re: /(아도|어도|여도)\b/, label: '~아/어도 (even if/though)', hint: 'concessive. "even if / even though"' },
+    { re: /(러|으러)\s*(가|오|와|왔|갔|간|온|갈|올|갑|옵|감|옴|다니|다녔|다녀)/, label: '~(으)러 (purpose with movement)', hint: 'purpose verb + movement verb. <stem> + 러/으러 + 가다/오다 = "go/come to do". 보다 → 보러 가다, 보러 와요' },
+    { re: /도록(?=[^가-힣]|$)/, label: '~도록 (so that / until)', hint: 'so that / extent / until' },
+    { re: /[가-힣]지만(?=[^가-힣]|$)/, label: '~지만 (but)', hint: 'contrast. "but / however"' },
+    { re: /(는데|ㄴ데|은데)(?=[^가-힣]|$)/, label: '~ㄴ/는데 (background/contrast)', hint: 'background or mild contrast (sets up next clause)' },
+    { re: /(아도|어도|여도)(?=[^가-힣]|$)/, label: '~아/어도 (even if/though)', hint: 'concessive. "even if / even though"' },
     { re: /기는커녕/, label: '~기는커녕 (far from)', hint: 'far from doing. emphatic negation' },
     { re: /ㄹ수록|을수록/, label: '~(으)ㄹ수록 (the more)', hint: 'comparative correlation. "the more X, the more Y"' },
-    { re: /고도\b|면서도\b/, label: '~고도 / ~면서도 (despite)', hint: 'despite doing / while still being' },
+    { re: /고도(?=[^가-힣]|$)|면서도(?=[^가-힣]|$)/, label: '~고도 / ~면서도 (despite)', hint: 'despite doing / while still being' },
 
     // ── Modifiers (관형형) ───────────────────────────────────────
     // Labels intentionally do NOT include "+ N" — the AI was copying
@@ -107,59 +109,59 @@
     { re: /[가-힣](을|를)(?:\s|[가-힣])/, label: '~을/를 (object marker)', hint: 'direct object particle. attaches to noun' },
     { re: /[가-힣](이|가)\s/, label: '~이/가 (subject marker)', hint: 'subject particle. attaches to noun' },
     { re: /[가-힣](은|는)\s/, label: '~은/는 (topic marker)', hint: 'topic particle. attaches to noun (contrastive or topical)' },
-    { re: /[가-힣]에서\b/, label: '~에서 (location/source)', hint: 'at/in (location of action) or from (source)' },
-    { re: /[가-힣]에게\b|[가-힣]한테\b/, label: '~에게/한테 (to person)', hint: 'indirect object marker for animate' },
-    { re: /[가-힣]께(?:서)?\b/, label: '~께(서) (honorific dative/subject)', hint: 'honorific marker for elders/superiors' },
+    { re: /[가-힣]에서(?=[^가-힣]|$)/, label: '~에서 (location/source)', hint: 'at/in (location of action) or from (source)' },
+    { re: /[가-힣]에게(?=[^가-힣]|$)|[가-힣]한테(?=[^가-힣]|$)/, label: '~에게/한테 (to person)', hint: 'indirect object marker for animate' },
+    { re: /[가-힣]께(?:서)?(?=[^가-힣]|$)/, label: '~께(서) (honorific dative/subject)', hint: 'honorific marker for elders/superiors' },
     { re: /[가-힣]에\s/, label: '~에 (location/time)', hint: 'static location / time / direction' },
     { re: /[가-힣](으로|로)\s/, label: '~(으)로 (means/direction)', hint: 'instrument / direction / means' },
     { re: /[가-힣](과|와)\s/, label: '~과/와 (with/and)', hint: 'with / and (formal)' },
     { re: /[가-힣]하고\s/, label: '~하고 (with/and, conv)', hint: 'with / and (conversational)' },
-    { re: /[가-힣]부터\b/, label: '~부터 (from)', hint: 'starting from (time / sequence)' },
-    { re: /[가-힣]까지\b/, label: '~까지 (until)', hint: 'up to / until' },
+    { re: /[가-힣]부터(?=[^가-힣]|$)/, label: '~부터 (from)', hint: 'starting from (time / sequence)' },
+    { re: /[가-힣]까지(?=[^가-힣]|$)/, label: '~까지 (until)', hint: 'up to / until' },
     { re: /[가-힣]만\s|[가-힣]만\.|[가-힣]만$/, label: '~만 (only)', hint: 'limiter. "only / just"' },
     { re: /[가-힣]도\s|[가-힣]도\.|[가-힣]도$/, label: '~도 (also)', hint: 'inclusive. "also / too"' },
     { re: /[가-힣]의\s/, label: '~의 (possessive)', hint: 'possessive / attributive' },
-    { re: /[가-힣]보다\b/, label: '~보다 (comparison)', hint: 'comparative. "than / more than"' },
+    { re: /[가-힣]보다(?=[^가-힣]|$)/, label: '~보다 (comparison)', hint: 'comparative. "than / more than"' },
 
     // ── Quoted speech ───────────────────────────────────────────
     { re: /(다고|ㄴ다고|는다고)\s*(하|했|해|말)/, label: '~다고 하다 (indirect declarative)', hint: 'reported speech. "says/said that"' },
     { re: /라고\s*(하|했|해|말|불|부)/, label: '~(이)라고 하다 (indirect copula/name)', hint: 'reported identification or naming' },
     { re: /냐고\s*(하|했|해|물)/, label: '~냐고 하다 (indirect question)', hint: 'reported question' },
     { re: /자고\s*(하|했|해|제안)/, label: '~자고 하다 (indirect proposal)', hint: 'reported suggestion' },
-    { re: /달라고\b|주라고\b/, label: '~달라고/주라고 (request)', hint: 'reported request / asking for something' },
+    { re: /달라고(?=[^가-힣]|$)|주라고(?=[^가-힣]|$)/, label: '~달라고/주라고 (request)', hint: 'reported request / asking for something' },
 
     // ── Nominalizers ───────────────────────────────────────────
-    { re: /[가-힣]는\s*것\b/, label: '~는 것 (the thing of V-ing)', hint: 'verbal nominalizer (present). makes verb a noun phrase' },
-    { re: /[가-힣]ㄴ\s*것\b|[가-힣]은\s*것\b/, label: '~ㄴ/은 것 (the thing V-ed)', hint: 'past verbal noun phrase' },
+    { re: /[가-힣]는\s*것(?=[^가-힣]|$)/, label: '~는 것 (the thing of V-ing)', hint: 'verbal nominalizer (present). makes verb a noun phrase' },
+    { re: /[가-힣]ㄴ\s*것(?=[^가-힣]|$)|[가-힣]은\s*것(?=[^가-힣]|$)/, label: '~ㄴ/은 것 (the thing V-ed)', hint: 'past verbal noun phrase' },
     { re: /[가-힣](ㄴ|는|을)\s*것\s*같(다|아|네|군)/, label: '~ㄴ/는/을 것 같다 (seems)', hint: 'conjecture. "seems like"' },
     { re: /[가-힣]기\s*(가|를|에|로|보다|쉽|어렵|좋|싫)/, label: '~기 (nominalizer)', hint: 'verbal noun. <stem> + 기 used as noun' },
 
     // ── Common fixed expressions ────────────────────────────────
-    { re: /에\s*따르면\b/, label: '~에 따르면 (according to)', hint: 'evidential. "according to"' },
-    { re: /에\s*대해서?\b|에\s*대한\b/, label: '~에 대해(서)/대한 (about)', hint: 'topical. "about / regarding"' },
-    { re: /에\s*의해서?\b|에\s*의한\b/, label: '~에 의해(서)/의한 (by, passive)', hint: 'passive agent. "by / by means of"' },
-    { re: /을\s*통해서?\b|를\s*통해서?\b/, label: '~을/를 통해(서) (through)', hint: 'medium / channel. "through / by way of"' },
-    { re: /을\s*위해서?\b|를\s*위해서?\b/, label: '~을/를 위해(서) (for the sake of)', hint: 'beneficiary / purpose' },
-    { re: /을\s*비롯한\b|를\s*비롯한\b/, label: '~을/를 비롯한 (including)', hint: 'inclusive listing. "including / starting with"' },
-    { re: /과\s*관련(된|하여|해서)\b|와\s*관련(된|하여|해서)\b/, label: '~과/와 관련된 (related to)', hint: 'connection. "related to / regarding"' },
-    { re: /으로\s*인해\b|로\s*인해\b/, label: '~(으)로 인해 (due to)', hint: 'causation. "due to / because of"' },
-    { re: /의\s*경우\b/, label: '~의 경우 (in the case of)', hint: 'case-specifying. "in the case of"' },
-    { re: /만에\b/, label: '~만에 (after a duration)', hint: 'time-elapsed pattern. "after X time"' },
-    { re: /(ㄴ|은)\s*채(로)?\b/, label: '~ㄴ/은 채(로) (while in state)', hint: 'remaining state. "while still / leaving as"' },
-    { re: /에도\s*불구하고\b/, label: '~에도 불구하고 (despite)', hint: 'concession. "despite / in spite of"' },
-    { re: /에\s*따라서?\b/, label: '~에 따라(서) (depending on / as)', hint: 'variation/dependence. "depending on / according to"' },
-    { re: /(ㄴ|는)\s*가운데\b/, label: '~ㄴ/는 가운데 (amid)', hint: 'background context. "amid / while"' },
-    { re: /(ㄴ|는)\s*반면(에)?\b/, label: '~ㄴ/는 반면(에) (on the other hand)', hint: 'contrast clause. "whereas / on the other hand"' },
-    { re: /(ㄴ|는)\s*한\b/, label: '~ㄴ/는 한 (as long as)', hint: 'conditional limit. "as long as"' },
+    { re: /에\s*따르면(?=[^가-힣]|$)/, label: '~에 따르면 (according to)', hint: 'evidential. "according to"' },
+    { re: /에\s*대해서?(?=[^가-힣]|$)|에\s*대한(?=[^가-힣]|$)/, label: '~에 대해(서)/대한 (about)', hint: 'topical. "about / regarding"' },
+    { re: /에\s*의해서?(?=[^가-힣]|$)|에\s*의한(?=[^가-힣]|$)/, label: '~에 의해(서)/의한 (by, passive)', hint: 'passive agent. "by / by means of"' },
+    { re: /을\s*통해서?(?=[^가-힣]|$)|를\s*통해서?(?=[^가-힣]|$)/, label: '~을/를 통해(서) (through)', hint: 'medium / channel. "through / by way of"' },
+    { re: /을\s*위해서?(?=[^가-힣]|$)|를\s*위해서?(?=[^가-힣]|$)/, label: '~을/를 위해(서) (for the sake of)', hint: 'beneficiary / purpose' },
+    { re: /을\s*비롯한(?=[^가-힣]|$)|를\s*비롯한(?=[^가-힣]|$)/, label: '~을/를 비롯한 (including)', hint: 'inclusive listing. "including / starting with"' },
+    { re: /과\s*관련(된|하여|해서)(?=[^가-힣]|$)|와\s*관련(된|하여|해서)(?=[^가-힣]|$)/, label: '~과/와 관련된 (related to)', hint: 'connection. "related to / regarding"' },
+    { re: /으로\s*인해(?=[^가-힣]|$)|로\s*인해(?=[^가-힣]|$)/, label: '~(으)로 인해 (due to)', hint: 'causation. "due to / because of"' },
+    { re: /의\s*경우(?=[^가-힣]|$)/, label: '~의 경우 (in the case of)', hint: 'case-specifying. "in the case of"' },
+    { re: /만에(?=[^가-힣]|$)/, label: '~만에 (after a duration)', hint: 'time-elapsed pattern. "after X time"' },
+    { re: /(ㄴ|은)\s*채(로)?(?=[^가-힣]|$)/, label: '~ㄴ/은 채(로) (while in state)', hint: 'remaining state. "while still / leaving as"' },
+    { re: /에도\s*불구하고(?=[^가-힣]|$)/, label: '~에도 불구하고 (despite)', hint: 'concession. "despite / in spite of"' },
+    { re: /에\s*따라서?(?=[^가-힣]|$)/, label: '~에 따라(서) (depending on / as)', hint: 'variation/dependence. "depending on / according to"' },
+    { re: /(ㄴ|는)\s*가운데(?=[^가-힣]|$)/, label: '~ㄴ/는 가운데 (amid)', hint: 'background context. "amid / while"' },
+    { re: /(ㄴ|는)\s*반면(에)?(?=[^가-힣]|$)/, label: '~ㄴ/는 반면(에) (on the other hand)', hint: 'contrast clause. "whereas / on the other hand"' },
+    { re: /(ㄴ|는)\s*한(?=[^가-힣]|$)/, label: '~ㄴ/는 한 (as long as)', hint: 'conditional limit. "as long as"' },
     { re: /기\s*마련이/, label: '~기 마련이다 (bound to)', hint: 'inevitability. "is bound to / naturally"' },
     { re: /ㄴ\s*셈이|은\s*셈이/, label: '~ㄴ/은 셈이다 (amounts to)', hint: 'roughly equivalent to. "amounts to / can be counted as"' },
 
     // ── Honorifics ──────────────────────────────────────────────
     { re: /(으셨|셨)(어요|습니다|네|군|는)/, label: '~(으)셨 (honorific past)', hint: 'subject honorific past tense' },
-    { re: /(으십시오|십시오)\b/, label: '~(으)십시오 (formal imperative)', hint: 'highly formal command' },
+    { re: /(으십시오|십시오)(?=[^가-힣]|$)/, label: '~(으)십시오 (formal imperative)', hint: 'highly formal command' },
 
     // ── Irregular conjugations ──────────────────────────────────
-    { re: /(들었|걸었|물었|실었|깨달았|일컬었|불었|싣었)/, label: 'ㄷ 불규칙 (ㄷ → ㄹ before vowel)', hint: 'ㄷ-irregular: 듣다→들어/들었, 걷다→걸어, 묻다→물어' },
+    { re: /(들었|들어|들으|걸었|걸어|걸으|물었|물어|물으|실었|실어|실으|깨달았|깨달아|깨달으|일컬었|일컬어|일컬으|불었|불어|불으|싣었|싣어|싣으)/, label: 'ㄷ 불규칙 (ㄷ → ㄹ before vowel)', hint: 'ㄷ-irregular: 듣다→들어/들었/들으면, 걷다→걸어/걸으면, 묻다→물어/물으면' },
     { re: /(도와|도왔|추워|추웠|더워|더웠|즐거워|어려워|쉬워|매워|차가워|뜨거워)/, label: 'ㅂ 불규칙 (ㅂ → 우/오)', hint: 'ㅂ-irregular: 돕다→도와, 춥다→추워, 덥다→더워' },
     { re: /(예뻐|바빠|기뻐|슬퍼|아파|커|꺼|모아|써)\s|예뻤|바빴|기뻤|슬펐|아팠|컸|껐|모았|썼/, label: 'ㅡ 탈락 (ㅡ drops before 아/어)', hint: 'ㅡ-deletion: 예쁘다→예뻐, 바쁘다→바빠, 슬프다→슬퍼' },
     { re: /(몰라|몰랐|달라|달랐|빨라|빨랐|불러|불렀|올라|올랐)/, label: '르 불규칙 (르 → ㄹㄹ)', hint: '르-irregular: 모르다→몰라, 다르다→달라, 부르다→불러' },
@@ -199,8 +201,66 @@
     }).join('\n');
   }
 
+  // Trivial particles + basic enders + basic modifiers are detected by
+  // KH_GRAMMAR but would be noise to repeat per-sentence for Intermediate+
+  // learners (they'd appear in nearly every sentence panel and flood the
+  // Grammar tab). Past-polite stays IN — users explicitly want to see it
+  // even when it's the only finite verb on the sentence.
+  var INTERMEDIATE_SKIP_LABELS = {
+    '~을/를 (object marker)': 1,
+    '~이/가 (subject marker)': 1,
+    '~은/는 (topic marker)': 1,
+    '~의 (possessive)': 1,
+    '~에 (location/time)': 1,
+    '~아/어/여요 (present polite)': 1,
+    '~ㅂ/습니다 (present formal)': 1,
+    '~는 (present verb modifier)': 1,
+    '~ㄴ/은 (past verb / present adj modifier)': 1,
+  };
+
+  // Level-aware variant of detect — strips trivial labels so the
+  // MUST-INCLUDE prompt list and post-process enforcement don't drown
+  // Intermediate/Advanced learners in noise.
+  function detectForLevel(sentenceText, level) {
+    var hits = detect(sentenceText);
+    var isBasic = level === 'Starter' || level === 'Beginner';
+    if (isBasic) return hits;
+    return hits.filter(function(p) { return !INTERMEDIATE_SKIP_LABELS[p.label]; });
+  }
+
+  // Post-process gate: every detected pattern that the AI omitted gets
+  // added back to s.analysis with the canonical hint as the explanation.
+  // The shared per-sentence renderer already handles dedup via label
+  // string so an enforced entry never collides with a richer AI entry.
+  // Mutates sentFinal in place AND returns it for convenience.
+  function enforceDetectedPatterns(sentFinal, level) {
+    if (!Array.isArray(sentFinal)) return sentFinal;
+    sentFinal.forEach(function(s) {
+      if (!s || !s.text) return;
+      var detected = detectForLevel(s.text, level);
+      if (!detected.length) return;
+      var existing = {};
+      (s.analysis || []).forEach(function(a) {
+        if (a && a.label) existing[String(a.label).trim()] = true;
+      });
+      if (!Array.isArray(s.analysis)) s.analysis = [];
+      detected.forEach(function(p) {
+        if (existing[p.label]) return;
+        s.analysis.push({
+          type: 'grammar',
+          label: p.label,
+          exp: p.hint,
+          example_in_sentence: '',
+        });
+      });
+    });
+    return sentFinal;
+  }
+
   window.KH_GRAMMAR = {
     detect: detect,
+    detectForLevel: detectForLevel,
+    enforceDetectedPatterns: enforceDetectedPatterns,
     formatPromptList: formatPromptList,
     _PATTERNS: PATTERNS,  // exposed for testing only
   };
