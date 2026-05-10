@@ -88,10 +88,20 @@
     { re: /고도\b|면서도\b/, label: '~고도 / ~면서도 (despite)', hint: 'despite doing / while still being' },
 
     // ── Modifiers (관형형) ───────────────────────────────────────
-    { re: /[가-힣](하|되|이|아|어)는\s+[가-힣]/, label: '~는 + N (present modifier, verb)', hint: 'verb modifies noun (present). 하다 → 하는' },
-    { re: /[가-힣](ㄴ|은)\s+[가-힣]/, label: '~ㄴ/은 + N (past modifier verb / present adj)', hint: 'verb past OR adjective present modifying noun' },
-    { re: /[가-힣](ㄹ|을)\s+[가-힣]/, label: '~ㄹ/을 + N (future modifier)', hint: 'future / prospective modifier. "noun that will be V-ed"' },
-    { re: /[가-힣]던\s+[가-힣]/, label: '~던 + N (retrospective modifier)', hint: 'past habitual or unfinished action modifying noun' },
+    // Labels intentionally do NOT include "+ N" — the AI was copying
+    // the placeholder verbatim and emitting labels like "~는 개" or
+    // "~ㄴ 동물" with the actual noun stuck on. Now labels are pure
+    // morphemes; the prompt instructs the model to copy them as-is.
+    { re: /[가-힣](하|되|이|아|어)는\s+[가-힣]/, label: '~는 (present verb modifier)', hint: 'verb modifying a noun (present). 하다 → 하는 + 책 = "the (book) that one does"' },
+    { re: /[가-힣](ㄴ|은)\s+[가-힣]/, label: '~ㄴ/은 (past verb / present adj modifier)', hint: 'verb past OR adjective present modifying a noun. 보다 → 본; 작다 → 작은' },
+    // Note: ~ㄹ/을 (future modifier) intentionally NOT detected by
+    // regex. The pattern collides with object-particle 을/를 in
+    // surface forms like "일을 하다" — both would match the same
+    // chunk and the AI ends up labeling "일을" as future modifier
+    // when it's really a noun + object particle. The ~을/를 object
+    // detection below covers that case; AI can identify the rare
+    // true future-modifier case from context.
+    { re: /[가-힣]던\s+[가-힣]/, label: '~던 (retrospective modifier)', hint: 'past habitual / unfinished action modifying a noun. "the (X) that used to / was being"' },
 
     // ── Particles ─────────────────────────────────────────────
     { re: /[가-힣](을|를)(?:\s|[가-힣])/, label: '~을/를 (object marker)', hint: 'direct object particle. attaches to noun' },

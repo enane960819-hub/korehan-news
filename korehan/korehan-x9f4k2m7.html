@@ -161,7 +161,7 @@ a{color:inherit;text-decoration:none}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="learning_hub_vocab_data.js"></script>
 <script src="js/kh-vocab-prompt.js?v=20260420z"></script>
-<script src="js/core/kh-grammar-patterns.js?v=20260510n"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260510o"></script>
 </head>
 <body>
 
@@ -5844,7 +5844,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
             : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵.'
 ) + ' 빈 배열 OK. note는 1줄 또는 빈 문자열.\n'
       + '- analysis:\n'
-      + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label = 위 list의 패턴 이름 그대로. exp = 1줄 영어, **반드시 사전형 → 활용형 변형을 보여주기** (예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요").\n'
+      + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사** (예: "~는 (present verb modifier)" 그대로. 절대 "~는 개" 같이 명사를 붙이지 말 것). exp = 1줄 영어, **반드시 사전형 → 활용형 변형을 보여주기** (예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요").\n'
       + '    2. 추가로 idiom (사자성어/관용구) / expression (~에도 불구하고, ~을 통해 같은 굳어진 표현) 발견하면 entry 더 추가 (type=idiom 또는 expression).\n'
       + '    3. example_in_sentence: 해당 패턴이 사용된 문장 내 chunk.\n'
       + '    4. 본문에 없는 패턴 절대 추가 X — detected list에 없는 grammar 항목 만들지 말 것 (idiom/expression은 OK).\n\n'

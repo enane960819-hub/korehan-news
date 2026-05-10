@@ -3875,11 +3875,23 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
     }
     function _patternMarkers(label) {
       if (!label) return [];
+      // Extract Korean morpheme markers from the label so we can
+      // verify they appear in the sentence. Two relaxations:
+      //   1. Drop trailing "다" (citation form): 않다 → 않, 시작하다
+      //      → 시작하, 있다 → 있. Conjugated surface forms (않았어요,
+      //      시작했어요, 있었어요) match the bare stem.
+      //   2. Allow 1+ char markers (was 2+): single-syllable bare
+      //      stems (지, 고, 게, 기) anchor patterns whose conjugating
+      //      half just got 다-stripped above.
       var out = [];
       String(label).split(/[\/,]/).forEach(function(piece) {
-        var stripped = piece.replace(/[~()\s\-.?!]/g, '');
-        var re = /[가-힣]{2,}/g, m;
-        while ((m = re.exec(stripped))) out.push(m[0]);
+        var stripped = piece.replace(/[~()\s\-.?!+]/g, '');
+        var re = /[가-힣]+/g, m;
+        while ((m = re.exec(stripped))) {
+          var token = m[0];
+          if (token.length > 1 && /다$/.test(token)) token = token.slice(0, -1);
+          if (token) out.push(token);
+        }
       });
       return out;
     }
