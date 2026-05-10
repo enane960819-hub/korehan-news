@@ -5769,9 +5769,17 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     if (!silent) setTimeout(function(){ goAICache(); }, 800);
   } catch(e) {
     console.warn('sentence backfill failed', e);
-    if (stEl) stEl.textContent = '❌ ' + (e.message || '실패');
+    // Always coerce to string — earlier callers got "[object Object]"
+    // when an Anthropic upstream error came back as a nested {message,
+    // type} object that the Error wrapper stored verbatim.
+    var _msg = '';
+    if (e instanceof Error && typeof e.message === 'string') _msg = e.message;
+    else if (e && typeof e.message === 'string') _msg = e.message;
+    else if (e && e.message) { try { _msg = JSON.stringify(e.message); } catch(_) { _msg = String(e.message); } }
+    else { try { _msg = JSON.stringify(e); } catch(_) { _msg = String(e); } }
+    if (stEl) stEl.textContent = '❌ ' + (_msg || 'failed');
     if (btn) { btn.disabled = false; btn.textContent = '🔁 재분석'; }
-    if (!silent) toast('실패: ' + (e.message || ''), true);
+    if (!silent) toast('실패: ' + _msg, true);
     if (silent) throw e;
   }
 }
