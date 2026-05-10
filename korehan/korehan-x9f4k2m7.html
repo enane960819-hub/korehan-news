@@ -4963,17 +4963,20 @@ async function runAutoGenerate(){
               : 'max 4 items. 빈 배열 OK.'
 ) + ' 각 항목:\n'
         + '    type: "grammar" | "expression" | "idiom"\n'
-        + '    label: 패턴/표현 자체. grammar는 형태소/연결어미만 (~기 위해, ~게 되다, ~ㄴ/는 것 같다, ~(으)면서). 명사 X.\n'
-        + '    exp: 1-2줄 영어 설명. **반드시 사전형 → 활용형 변형을 보여주기**. 예: "negation. 보이다 (to be seen) → 보이지 않다 (to not be seen)" / "continuous past. 일을 하다 → 일을 하고 있다 → 일을 하고 있었어요" / "to start V-ing. 쉬다 → 쉬기 시작하다".\n'
+        + '    label: 패턴/표현 자체. grammar는 형태소/연결어미/활용 종류만 (~기 위해, ~게 되다, ~ㄴ/는 것 같다, ~(으)면서, ㄷ 불규칙, ㅂ 불규칙). 명사 X.\n'
+        + '    exp: 1-2줄 영어 설명. **반드시 사전형 → 활용형 변형을 보여주기**. 예: "negation. 보이다 (to be seen) → 보이지 않다 (to not be seen) → 보이지 않았어요" / "continuous past. 일을 하다 → 일을 하고 있다 → 일을 하고 있었어요" / "to start V-ing. 쉬다 → 쉬기 시작하다" / "ㄷ-irregular: 듣다 (to hear) → 들어 → 들었어요 (ㄷ받침이 모음 어미 앞에서 ㄹ로 바뀜)".\n'
         + '    example_in_sentence: 이 문장에서 발췌한 chunk (해당 패턴이 사용된 부분).\n'
         + '- 분석 우선순위:\n'
-        + '    grammar — 학습 가치 있는 문법 패턴 (이미 vocab에 있는 동사의 자연 활용도 beginner면 포함)\n'
+        + '    grammar — 학습 가치 있는 문법 패턴, 활용 (불규칙 활용은 vocab에 있는 동사라도 무조건 grammar 항목으로 추가)\n'
         + '    expression — 자주 쓰는 굳어진 표현 (~에도 불구하고, ~에 따르면, ~을/를 통해)\n'
         + '    idiom — 관용구/사자성어 (발이 넓다, 우후죽순)\n'
         + '- ' + (
             (diffInfo.level === 'Starter' || diffInfo.level === 'Beginner')
               ? '**기초 grammar 무조건 포함**: ~지 않다 (부정), ~았/었어요 (과거 정중), ~고 있다 (진행), ~기 시작하다 (start V-ing), ~ㄴ/은/는 + noun (수식), ~을/를 (목적격). 두 패턴이 한 동사에 쌓이면 (예: 보이지 않았어요 = ~지 않다 + ~았어요, 일을 하고 있었어요 = ~고 있다 + ~었어요) **둘 다 별도 항목으로** 분리해서 단계별로 설명. 절대 합치지 말 것.'
-              : '기초 grammar(~는/ㄴ noun modifier, ~다, ~요/습니다, ~았/었, ~을/를) 스킵. 두 패턴 stack은 학습 가치 더 높은 하나만.'
+              : '기초 markers(~는/ㄴ noun modifier, ~다, ~요/습니다, ~을/를) 스킵. **단 다음 케이스는 무조건 grammar 항목으로 포함**:\n'
+                + '    a. 불규칙 활용 (ㄷ/ㅂ/ㅅ/르/ㅎ/ㅡ-탈락/ㄹ-탈락) — vocab에 있는 동사라도 활용이 불규칙이면 별도 항목. 예: 듣다 → 들었어요, 돕다 → 도와요, 모르다 → 몰라요.\n'
+                + '    b. ~았/었어요가 다른 패턴(~지 않다, ~고 있다, ~기 시작하다, ~게 되다 등)과 stack되는 경우 — 둘 다 별도 항목. 예: 보이지 않았어요 = ~지 않다 + ~았어요 두 entry.\n'
+                + '    c. 단순 ~았/었어요만 있을 때는 스킵 OK.'
 ) + '\n'
         + '- 만들지 말 것: 본문에 없는 패턴 절대 금지. label에 있는 markers가 sentence text에 안 보이면 그 항목 자체를 빼세요.\n\n'
         + '[출력 — JSON ONLY, no preamble, no code fences]\n'
@@ -4997,7 +5000,7 @@ async function runAutoGenerate(){
       const res = await callClaude({
         feature: 'generate-article-combined',
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
+        max_tokens: 12000,
         messages: [{ role:'user', content: prompt }]
       });
 
@@ -6435,61 +6438,95 @@ async function genCache(articleId, schema, opts) {
   }
 
   // ── Per-sentence analysis (2/3) ─────────────────────────────────
-  // ONE Haiku call generates per-sentence translation + vocab + grammar.
-  // Vocab + Grammar tab payloads are derived from the same response —
-  // replaces what used to be two separate Claude calls (vocab + grammar).
+  // Mirrors backfillOneSentenceAnalysis: code-detected MUST-INCLUDE
+  // patterns (KH_GRAMMAR.detect) feed the prompt so the model explains
+  // each detected pattern instead of choosing what to skip. Output uses
+  // the new analysis[] shape (type/label/exp/example_in_sentence) that
+  // _khDeriveVocabGrammarFromSentences and the article reader expect.
   if (st) st.textContent = '(2/3) 문장별 분석 중…';
   {
     const _sentT0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     try {
       const _sentList = _khSplitSentencesForCache(_body);
       if (_sentList.length) {
-        const _sentEnumerated = _sentList.map(function(s, i){ return '[' + (i+1) + '] ' + s; }).join('\n');
+        const _sentBlocks = _sentList.map(function(s, i) {
+          var hits = (window.KH_GRAMMAR && window.KH_GRAMMAR.detect) ? window.KH_GRAMMAR.detect(s) : [];
+          var listText = hits.length
+            ? '\n  MUST-INCLUDE detected patterns (one analysis entry per item, do NOT skip, do NOT merge):\n' + window.KH_GRAMMAR.formatPromptList(hits)
+            : '';
+          return '문장 ' + (i + 1) + ': ' + s + listText;
+        }).join('\n\n');
         const _paraKoRC = String(_body || '').split(/\n\n+/).map(function(p){return p.trim();}).filter(Boolean);
         const _ctxBlockRC = _paragraphTranslationsRC.length
-          ? '\n\nFULL ARTICLE CONTEXT (Korean body paired with the polished English translation already produced for this article — use it as the source of truth for who the subject is, what tense is being used, and the level of formality. Per-sentence translations MUST be consistent with this paragraph EN.):\n'
+          ? '[FULL ARTICLE CONTEXT — Korean paragraph paired with polished English. Per-sentence translations MUST stay consistent with this paragraph EN.]\n'
             + _paraKoRC.map(function(ko, i) {
                 return '[Para ' + (i+1) + ']\n  KO: ' + ko + '\n  EN: ' + (_paragraphTranslationsRC[i] || '(missing)');
               }).join('\n\n') + '\n\n'
-          : '\n\n';
+          : '';
         const _sentPrompt =
-            'You are a Korean tutor. Analyze each sentence below for a TOPIK ' + _level + ' learner.'
+            '당신은 외국인 한국어 학습자를 위한 Korean 튜터입니다.\n'
+          + '아래 기사의 모든 문장에 번역/단어/분석을 달아주세요.\n\n'
+          + '[기사 정보] 제목: ' + _title + ' / 난이도: ' + _level + '\n\n'
           + _ctxBlockRC
-          + 'SENTENCES TO ANALYZE (numbered, in body order):\n'
-          + _sentEnumerated + '\n\n'
-          + 'Return ONLY a JSON object:\n'
-          + '{"sentences":[{"translation":"...","vocab":[{"ko":"<dict form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],"grammar":[{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<chunk from this sentence using the pattern>"}]}]}\n\n'
-          + 'Rules:\n'
-          + '- One object per input sentence, in same order.\n'
-          + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE THE ORIGINAL SUBJECT — do NOT inject "I/we" if Korean omitted it. Pull subject/pronouns/formality from the paragraph EN context.\n'
-          + '- VOCAB: max 4, skip beginner words. NOTE must be factual — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
-          + '- GRAMMAR: max 2 patterns, EMPTY ARRAY [] PREFERRED when the sentence has no teachable structure beyond basics. Padding ruins the lesson — when in doubt, return empty.\n'
-          + '- GRAMMAR PATTERN FIELD: a grammatical morpheme/connective/ending only (e.g. "~기 위해", "~게 되다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" — animal is a noun, not part of the pattern.\n'
-          + '- GRAMMAR LEVEL: skip basics for ' + _level + ' learners — for Intermediate/Advanced do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 endings, ~았/었 past, ~을/를 object marker.\n'
-          + '- Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. don\'t list ~어지다 with 달라졌어요 when 달라지다 is already in vocab).\n'
-          + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one.\n'
-          + '- Output JSON only.';
+          + '[문장별 입력 — 각 문장의 detected pattern을 모두 explain]\n'
+          + _sentBlocks + '\n\n'
+          + '[출력 규칙]\n'
+          + '- sentences[]: 위 문장 순서대로, 각 문장당 1개 객체.\n'
+          + '- text: 위 입력의 한국어 문장 그대로 (마침표 포함).\n'
+          + '- translation: 위 paragraph EN과 일관되게. 한국어가 주어 생략하면 문맥의 주어를 채워서 he/she/it/the dog 등으로. "I/we" 함부로 안 넣음.\n'
+          + '- vocab: max 4 dictionary forms (보다, 흔하다, 키우다 등 — 단음절 어간 X). ' + (
+              (_level === 'Starter' || _level === 'Beginner')
+                ? '입문/초급 동사·형용사 포함 OK. 조사와 단독 이다/있다만 제외.'
+                : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵.'
+) + ' 빈 배열 OK. note는 1줄 또는 빈 문자열.\n'
+          + '- analysis:\n'
+          + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사**. exp = 1줄 영어, **반드시 사전형 → 활용형 변형을 보여주기** (예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요" / "ㄷ-irregular: 듣다 → 들어 → 들었어요").\n'
+          + '    2. 추가로 idiom (사자성어/관용구) / expression (~에도 불구하고, ~을 통해 같은 굳어진 표현) 발견하면 entry 더 추가 (type=idiom 또는 expression).\n'
+          + '    3. example_in_sentence: 해당 패턴이 사용된 문장 내 chunk.\n'
+          + '    4. 본문에 없는 패턴 절대 추가 X — detected list에 없는 grammar 항목 만들지 말 것 (idiom/expression은 OK).\n\n'
+          + '[출력 — JSON ONLY]\n'
+          + '{\n'
+          + '  "sentences": [\n'
+          + '    { "text": "...", "translation": "...", "vocab": [{"ko","en","note"}], "analysis": [{"type","label","exp","example_in_sentence"}] }\n'
+          + '  ]\n'
+          + '}';
         const _sentRes = await callClaude({
           feature: 'generate-sentence-analysis',
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 4000,
+          max_tokens: 8000,
           messages: [{ role:'user', content: _sentPrompt }]
         });
         const _sentRaw = (_sentRes && _sentRes.content && _sentRes.content[0] && _sentRes.content[0].text) || '';
         const _sentParsed = _json(_sentRaw);
         const _sentArr = Array.isArray(_sentParsed.sentences) ? _sentParsed.sentences : [];
         const _sentFinal = _sentList.map(function(text, i) {
-          const e = _sentArr[i] || {};
+          var match = null;
+          for (var k = 0; k < _sentArr.length; k++) {
+            var t = (_sentArr[k] && _sentArr[k].text || '').trim();
+            if (t && (t === text || text.indexOf(t) >= 0 || t.indexOf(text) >= 0)) { match = _sentArr[k]; break; }
+          }
+          if (!match) match = _sentArr[i] || {};
+          var analysis = [];
+          if (Array.isArray(match.analysis)) {
+            analysis = match.analysis.slice(0, 8).filter(function(x){ return x && (x.label || x.pattern); }).map(function(x){
+              return { type: x.type || 'grammar', label: x.label || x.pattern || '', exp: x.exp || '', example_in_sentence: x.example_in_sentence || '' };
+            });
+          } else if (Array.isArray(match.grammar)) {
+            analysis = match.grammar.slice(0, 8).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
+              return { type: 'grammar', label: g.pattern || g.label || '', exp: g.exp || '', example_in_sentence: g.example_in_sentence || '' };
+            });
+          }
           return {
             text: text,
-            translation: typeof e.translation === 'string' ? e.translation : '',
-            vocab: Array.isArray(e.vocab) ? e.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
-            grammar: Array.isArray(e.grammar) ? e.grammar.slice(0, 2).filter(function(g){ return g && g.pattern; }) : [],
+            translation: typeof match.translation === 'string' ? match.translation : '',
+            vocab: Array.isArray(match.vocab) ? match.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
+            analysis: analysis,
           };
         });
         let _transObj = {};
         try { if (_row.translation) _transObj = JSON.parse(_row.translation); } catch(_) {}
         _transObj.sentences = _sentFinal;
+        _transObj.version = SENT_CACHE_CURRENT;
         _row.translation = JSON.stringify(_transObj);
         _ok++;
         // Derive Vocab + Grammar tab payloads from the same response.
@@ -8574,11 +8611,11 @@ async function _bulkGenerateArticleCache(articleId, title, body, levelKey, combi
         if (!match) match = sentRaw[i] || {};
         var analysis = [];
         if (Array.isArray(match.analysis)) {
-          analysis = match.analysis.slice(0, 4).filter(function(x){ return x && (x.label || x.pattern); }).map(function(x){
+          analysis = match.analysis.slice(0, 8).filter(function(x){ return x && (x.label || x.pattern); }).map(function(x){
             return { type: x.type || 'grammar', label: x.label || x.pattern || '', exp: x.exp || '', example_in_sentence: x.example_in_sentence || '' };
           });
         } else if (Array.isArray(match.grammar)) {
-          analysis = match.grammar.slice(0, 4).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
+          analysis = match.grammar.slice(0, 8).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
             return { type: 'grammar', label: g.pattern || g.label || '', exp: g.exp || '', example_in_sentence: g.example_in_sentence || '' };
           });
         }
