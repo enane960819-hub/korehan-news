@@ -3335,17 +3335,18 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
     // beginner patterns) was also dropped — judge each sentence on
     // its own contents, not on metadata.
     var _analysisRule =
-        '- ANALYSIS: be GENEROUS. Surface every grammar pattern, fixed expression, idiom, and notable collocation in the sentence — even ones you think are "obvious". Learners explicitly want these labelled. If a sentence has 5 worthy items, return 5; if it honestly has 0 (pure noun phrase / proper-noun list / single greeting only), return [].\n'
-      + '    MUST include when present (this list is not exhaustive — it is a floor, not a ceiling):\n'
-      + '    · Connectives & subordinators: ~에도 불구하고 (despite), ~기 때문에 (because), ~기 위해(서) (in order to), ~을/를 위해 (for the sake of), ~려고 (intend to), ~다가 (mid-action shift), ~자마자 (as soon as), ~ㄴ/는데 (background), ~지만 / ~으나 (but), ~거나 (or), ~면 (if).\n'
-      + '    · Auxiliary endings: ~ㄹ/을 수 있다 (can), ~ㄹ/을 수 없다 (cannot), ~지 못하다 (fail to), ~지 않다 (negation), ~게 되다 (come to), ~기 시작하다 (start to), ~기로 하다 (decide to), ~ㄴ/은 적이 있다 (have experience), ~아/어 보다 (try), ~아/어 주다 (benefactive), ~아/어 있다 (resultative state), ~고 있다 (continuous), ~았/었어요 (past polite, including 봤어요/했어요/됐어요 contractions).\n'
-      + '    · Modifiers: ~ㄴ/은/는 + noun (relative-clause modifier), ~ㄹ/을 + noun (prospective modifier), ~ㄴ/은 채로 (in the state of), ~ㄴ/은 후에 (after), ~기 전에 (before).\n'
-      + '    · Reported / quotation: ~다고 하다, ~냐고 하다, ~자고 하다, ~라고 하다, ~다고 알려져 있어요.\n'
-      + '    · Particles worth flagging: ~만 (only), ~까지 (up to), ~부터 (from), ~조차 (even), ~밖에 (only / nothing but), ~마다 (every), ~처럼 / ~같이 (like), ~보다 (than), ~에 비해 (compared to).\n'
-      + '    · Common fixed expressions: 마음에 들다 (to like), 시간이 없다 (no time), 도움이 되다 (be helpful), 관심을 가지다 (be interested), 눈에 띄다 (to stand out), ~에 참여하다 (to participate in), ~의 도움으로 (with the help of), …\n'
-      + '    · Idioms / 사자성어 / 관용구: surface whenever they actually appear.\n'
+        '- ANALYSIS: be EXHAUSTIVE. Surface every grammar pattern, fixed expression, idiom, 사자성어, 관용구, and notable collocation in the sentence — even ones you think are "obvious". Korean grammar has 200+ learner-relevant patterns; don\'t hold back. 8 worthy items → return 8. Only return [] when the sentence is a pure proper-noun list or single greeting.\n'
+      + '    MUST include when present (this is a partial floor — surface anything else from a comprehensive TOPIK 2-6 grammar inventory too):\n'
+      + '    · CONNECTIVES & SUBORDINATORS: ~에도 불구하고 (despite), ~기 때문에 (because), ~기 위해(서) / ~을·를 위해 (in order to / for), ~려고 / ~려면 (intend / if want), ~다가 (mid-action shift), ~자마자 (as soon as), ~ㄴ/는데 (background), ~지만 / ~으나 (but), ~거나 (or), ~면 (if), ~아/어도 / ~더라도 / ~ㄹ지라도 (even if), ~았/었더라면 (counterfactual), ~았/었더니 (after I did), ~다 보면 (if you keep), ~다 보니(까) (as a result of doing), ~ㄴ/는 반면(에) (whereas), ~ㄴ/는 만큼 (as much as), ~ㄴ/는 데다(가) (on top of), ~ㄴ/는 김에 (while you\'re at it), ~ㄴ/는 결과 / ~ㄴ 끝에 (as a result / after all the), ~ㄴ/는커녕 (let alone), ~을 뿐(만) 아니라 (not only), ~ㄹ/을수록 (the more), ~ㄴ/는 한 (as long as), ~ㄴ/는다면 (if), ~을 텐데 / ~을 테니까 (probably / since I\'ll), ~ㄴ/는다고 해도 (even if), ~기에 (formal because), ~며 / ~으며 (and / while — formal).\n'
+      + '    · AUXILIARY ENDINGS / MODALS: ~ㄹ/을 수 있다·없다, ~지 못하다, ~지 않다 / ~지 말다, ~게 되다, ~기 시작하다, ~기로 하다, ~ㄴ/은 적이 있다·없다, ~아/어 보다, ~아/어 주다, ~아/어 있다, ~고 있다, ~았/었어요 (incl. contracted 봤·했·됐·갔), ~아/어 놓다·두다, ~아/어 버리다, ~아/어 가다·오다 (continue / have been), ~아/어 내다 (manage), ~아/어 대다 (do repeatedly), ~게 하다·만들다 (make / let), ~ㄹ/을 줄 알다·모르다 (know how / not), ~을 수밖에 없다, ~ㄹ 리가 없다, ~ㄹ 모양이다 / ~ㄹ 것 같다, ~ㄹ까 하다, ~ㄹ까 봐, ~ㄹ 만하다, ~기 마련이다 / ~기 십상이다, ~을 뻔하다, ~ㄴ/는 척하다, ~기는 하다 (do indeed but), ~ㄹ 정도이다 / ~ㄹ 정도로.\n'
+      + '    · MODIFIERS / CLAUSAL: ~ㄴ/은/는 + 명사, ~ㄹ/을 + 명사, ~던 / ~았/었던 (recalled past), ~ㄴ/은 채(로) (in the state of), ~ㄴ/은 후에 / ~ㄴ 뒤에 / ~기 전에, ~을 때(에), ~ㄴ/는 셈이다 (counts as), ~ㄴ/는 편이다 (tends to be), ~ㄴ/는 듯하다, ~ㄴ/는 모양이다, ~다는 + 명사, ~ㄴ/는 점에서 (in the sense that).\n'
+      + '    · REPORTED / QUOTATION: ~다고 하다, ~냐고 하다, ~자고 하다, ~라고 하다, ~다고 알려져 있어요, ~ㄴ다는 / ~는다는 / ~라는 + 명사, ~다네 / ~다더라 / ~다잖아 (informal), ~다고요? / ~라고요? (you say?), ~ㄹ 거라고 하다.\n'
+      + '    · PARTICLES WORTH FLAGGING: ~만, ~까지, ~부터, ~조차, ~밖에, ~마다, ~씩, ~이나 (or / approx.), ~마저, ~처럼 / ~같이, ~보다, ~에 비해, ~로서 (role), ~로써 (means), ~에 대해(서), ~에 의해(서) / ~으로 인해(서), ~에 관한·관해(서), ~을 통해(서), ~을 따라, ~에 따라, ~을 비롯해(서).\n'
+      + '    · SPEECH-LEVEL / ENDER: ~지(요) (right? / softening), ~네(요) (discovery), ~군요 / ~구나 (realisation), ~잖아(요) (you know), ~다니까(요) (I\'m telling you), ~ㄹ게(요) (will / promise), ~ㄹ까(요) (shall we / I wonder), ~을걸(요) (probably), ~ㄴ걸 (mild surprise), ~던가(요) (recall Q).\n'
+      + '    · FIXED EXPRESSIONS / COLLOCATIONS: 마음에 들다, 마음이 무겁다 / 가볍다, 마음에 걸리다, 마음이 놓이다, 시간이 없다, 시간 가는 줄 모르다, 정신을 차리다 / 정신없다, 도움이 되다 / 도움을 주다·받다, 관심을 가지다 / 받다, 눈에 띄다, 눈을 감다·뜨다, 눈치가 빠르다, 손이 크다 / 손이 가다, 발이 넓다, 발등에 불이 떨어지다, 입이 가볍다·무겁다, 귀가 얇다, 머리를 맞대다 / 식히다, 한 술 더 뜨다, 발 벗고 나서다, 등을 돌리다, 어깨가 무겁다, 콧대가 높다, 기가 차다, 가슴이 뭉클하다, 가슴에 새기다·와닿다, ~에 참여 / 참가하다, ~의 도움으로, ~을 둘러싸다, ~을 차지하다, ~을 비롯하다, ~에 영향을 미치다, ~에 한해(서), ~을 거치다, ~을 무릅쓰다, …\n'
+      + '    · IDIOMS / 사자성어 / 관용구: surface whenever actually used (예: 일거양득, 우물 안 개구리, 가는 말이 고와야 오는 말이 곱다, 백문이 불여일견, 호랑이 굴, 발 없는 말이 천 리 간다, 호박씨를 까다, 작심삼일, 일석이조, 십시일반, …).\n'
       + '    Each item: {"type":"grammar|expression|idiom","label":"<canonical form>","exp":"<short English>","example_in_sentence":"<chunk from sentence>"}.\n'
-      + '    Skipping a pattern because it "feels too basic" is the WRONG call — include it. The learner is reading at this level for a reason.\n';
+      + '    Skipping a pattern because it "feels too basic" or "too obvious" is the WRONG call — include it. The list above is illustrative; surface anything else from TOPIK 2-6 grammar that genuinely appears.\n';
     var _analysisVerify =
         '- ANALYSIS VERIFY (HARD RULE):\n'
       + '    1. example_in_sentence MUST be a literal substring of that source sentence. Whitespace can differ; characters cannot.\n'
@@ -3464,13 +3465,14 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
 // have only `grammar` and get auto-promoted on render via the
 // legacy fallback in _khRenderSentPanel, but admin re-analyse
 // rewrites them into the new shape.
-// Bumped to 'p6' on 2026-05-09 night when the prompt added an
-// explicit MUST-INCLUDE list of patterns (~에도 불구하고, ~기 위해,
-// ~ㄹ 수 있다, etc.) — the previous "be generous" framing alone
-// wasn't enough; AI was still skipping textbook patterns it judged
-// "obvious" and the user pointed out ~에도 불구하고 was missing
-// from a Tree-level article. p5 caches roll forward on tap.
-var KH_SENT_CACHE_VERSION = 'p6';
+// Bumped to 'p7' on 2026-05-09 night after the user pointed out
+// the p6 list was still too thin ("저거 너무 적지않아?"). Expanded
+// the MUST-INCLUDE inventory to ~80-100 patterns covering TOPIK
+// 2-6 — connectives, auxiliaries, modifiers, reported speech,
+// particles, sentence enders, fixed expressions / collocations,
+// idioms / 사자성어 / 관용구. Same "this is illustrative, surface
+// anything else from comprehensive grammar" framing.
+var KH_SENT_CACHE_VERSION = 'p7';
 
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
@@ -3980,17 +3982,18 @@ async function analyzeSentence(idx, el) {
     // hit this when the bulk cache misses for one row, so the rules
     // need to match exactly to avoid mixed-shape cache rows.
     var _analysisRule =
-        '- ANALYSIS: be GENEROUS. Surface every grammar pattern, fixed expression, idiom, and notable collocation in this sentence — even ones you think are "obvious". Learners want these labelled.\n'
-      + '    MUST include when present (floor, not ceiling):\n'
-      + '    · Connectives: ~에도 불구하고 (despite), ~기 때문에 (because), ~기 위해(서), ~을/를 위해, ~려고, ~다가, ~자마자, ~ㄴ/는데, ~지만/~으나, ~거나, ~면.\n'
-      + '    · Auxiliaries: ~ㄹ/을 수 있다, ~ㄹ/을 수 없다, ~지 못하다, ~지 않다, ~게 되다, ~기 시작하다, ~기로 하다, ~ㄴ/은 적이 있다, ~아/어 보다, ~아/어 주다, ~아/어 있다, ~고 있다, ~았/었어요 (incl. contracted 봤어요 / 했어요 / 됐어요).\n'
-      + '    · Modifiers: ~ㄴ/은/는 + noun, ~ㄹ/을 + noun, ~ㄴ/은 채로, ~ㄴ/은 후에, ~기 전에.\n'
-      + '    · Reported: ~다고 하다, ~냐고 하다, ~자고 하다, ~라고 하다, ~다고 알려져 있어요.\n'
-      + '    · Particles worth flagging: ~만, ~까지, ~부터, ~조차, ~밖에, ~마다, ~처럼/같이, ~보다, ~에 비해.\n'
-      + '    · Fixed expressions: 마음에 들다, 시간이 없다, 도움이 되다, 관심을 가지다, 눈에 띄다, ~에 참여하다, ~의 도움으로, …\n'
-      + '    · Idioms / 사자성어 / 관용구 whenever actually used.\n'
+        '- ANALYSIS: be EXHAUSTIVE. Surface every grammar pattern, fixed expression, idiom, 사자성어, 관용구, and notable collocation in this sentence — even ones you think are "obvious". 8 worthy items → return 8.\n'
+      + '    MUST include when present (partial floor — surface anything else from TOPIK 2-6 grammar too):\n'
+      + '    · CONNECTIVES: ~에도 불구하고, ~기 때문에, ~기 위해(서) / ~을·를 위해, ~려고 / ~려면, ~다가, ~자마자, ~ㄴ/는데, ~지만/~으나, ~거나, ~면, ~아/어도 / ~더라도 / ~ㄹ지라도, ~았/었더라면, ~았/었더니, ~다 보면, ~다 보니(까), ~ㄴ/는 반면(에), ~ㄴ/는 만큼, ~ㄴ/는 데다(가), ~ㄴ/는 김에, ~ㄴ/는 결과, ~ㄴ 끝에, ~ㄴ/는커녕, ~을 뿐(만) 아니라, ~ㄹ/을수록, ~ㄴ/는 한, ~을 텐데, ~을 테니까, ~기에, ~며 / ~으며.\n'
+      + '    · AUXILIARIES: ~ㄹ/을 수 있다·없다, ~지 못하다, ~지 않다 / ~지 말다, ~게 되다, ~기 시작하다, ~기로 하다, ~ㄴ/은 적이 있다·없다, ~아/어 보다, ~아/어 주다, ~아/어 있다, ~고 있다, ~았/었어요 (incl. 봤·했·됐·갔), ~아/어 놓다·두다, ~아/어 버리다, ~아/어 가다·오다, ~아/어 내다, ~아/어 대다, ~게 하다·만들다, ~ㄹ/을 줄 알다·모르다, ~을 수밖에 없다, ~ㄹ 리가 없다, ~ㄹ 모양이다, ~ㄹ 것 같다, ~ㄹ까 하다, ~ㄹ까 봐, ~ㄹ 만하다, ~기 마련이다, ~기 십상이다, ~을 뻔하다, ~ㄴ/는 척하다, ~기는 하다, ~ㄹ 정도이다.\n'
+      + '    · MODIFIERS: ~ㄴ/은/는 + 명사, ~ㄹ/을 + 명사, ~던 / ~았/었던, ~ㄴ/은 채(로), ~ㄴ/은 후에·뒤에, ~기 전에, ~을 때(에), ~ㄴ/는 셈이다, ~ㄴ/는 편이다, ~ㄴ/는 듯하다, ~ㄴ/는 모양이다, ~다는 + 명사, ~ㄴ/는 점에서.\n'
+      + '    · REPORTED: ~다고/냐고/자고/라고 하다, ~다고 알려져 있어요, ~ㄴ다는 / ~는다는 / ~라는 + 명사, ~다네 / ~다더라 / ~다잖아, ~다고요? / ~라고요?, ~ㄹ 거라고 하다.\n'
+      + '    · PARTICLES: ~만, ~까지, ~부터, ~조차, ~밖에, ~마다, ~씩, ~이나, ~마저, ~처럼/같이, ~보다, ~에 비해, ~로서 (role), ~로써 (means), ~에 대해(서), ~에 의해(서), ~으로 인해(서), ~에 관한·관해(서), ~을 통해(서), ~을 따라, ~에 따라, ~을 비롯해(서).\n'
+      + '    · ENDERS: ~지(요), ~네(요), ~군요/구나, ~잖아(요), ~다니까(요), ~ㄹ게(요), ~ㄹ까(요), ~을걸(요), ~ㄴ걸, ~던가(요).\n'
+      + '    · FIXED EXPRESSIONS: 마음에 들다, 마음이 무겁다·가볍다, 마음에 걸리다, 마음이 놓이다, 시간이 없다, 시간 가는 줄 모르다, 정신을 차리다, 정신없다, 도움이 되다, 도움을 주다·받다, 관심을 가지다, 눈에 띄다, 눈을 감다·뜨다, 눈치가 빠르다, 손이 크다·가다, 발이 넓다, 발등에 불이 떨어지다, 입이 가볍다·무겁다, 귀가 얇다, 머리를 맞대다·식히다, 한 술 더 뜨다, 발 벗고 나서다, 등을 돌리다, 어깨가 무겁다, 콧대가 높다, 기가 차다, 가슴이 뭉클하다, 가슴에 새기다·와닿다, ~에 참여 / 참가하다, ~의 도움으로, ~을 둘러싸다, ~을 차지하다, ~에 영향을 미치다, ~을 거치다, ~을 무릅쓰다, …\n'
+      + '    · IDIOMS / 사자성어 / 관용구: 일거양득, 우물 안 개구리, 가는 말이 고와야 오는 말이 곱다, 백문이 불여일견, 작심삼일, 일석이조, 십시일반, 호박씨를 까다, 발 없는 말이 천 리 간다, etc.\n'
       + '    Each item: {"type":"grammar|expression|idiom","label":"<canonical form>","exp":"<short English>","example_in_sentence":"<chunk from sentence>"}.\n'
-      + '    Skipping a pattern because it "feels too basic" is the WRONG call — include it.\n';
+      + '    Skipping because "too basic / too obvious" is the WRONG call — include it.\n';
     var _analysisVerifyRule =
         '- ANALYSIS VERIFY (HARD RULE):\n'
       + '    1. example_in_sentence MUST be a literal substring of the sentence above. Whitespace can differ; characters cannot.\n'
