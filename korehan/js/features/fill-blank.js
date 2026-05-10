@@ -188,7 +188,7 @@ Respond ONLY with this JSON (no markdown, no extra text):
   try {
     var data = await callClaude({
       feature: 'quiz',
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }]
     });
