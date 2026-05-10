@@ -2297,6 +2297,29 @@ window._khResetClientStorage = async function _khResetClientStorage() {
     toDrop.forEach(function(k){ try { localStorage.removeItem(k); } catch(_){} });
   } catch(_){}
   try { sessionStorage.clear(); } catch(_){}
+  // Clear all readable cookies on this origin (Cloudflare bot-mgmt
+  // cookies, consent flags, and any Supabase server-side helper
+  // cookies). Iterating document.cookie misses HttpOnly entries —
+  // those need an admin-issued logout, which we don't have here, but
+  // the readable ones cover the wedge case the user is hitting.
+  // Try expiring against every parent of the current hostname so a
+  // domain=.korehani.com cookie also gets killed.
+  try {
+    var hostParts = (location.hostname || '').split('.');
+    var domains = ['', location.hostname];
+    for (var j = 0; j < hostParts.length - 1; j++) {
+      domains.push('.' + hostParts.slice(j).join('.'));
+    }
+    document.cookie.split(';').forEach(function(pair){
+      var eq = pair.indexOf('=');
+      var name = (eq > -1 ? pair.slice(0, eq) : pair).trim();
+      if (!name) return;
+      domains.forEach(function(d){
+        var suffix = (d ? '; domain=' + d : '');
+        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' + suffix;
+      });
+    });
+  } catch(_){}
   try {
     if (window.indexedDB && indexedDB.databases) {
       var dbs = await indexedDB.databases();
@@ -2320,7 +2343,15 @@ window._khResetClientStorage = async function _khResetClientStorage() {
       await Promise.all(regs.map(function(r){ return r.unregister(); }));
     }
   } catch(_){}
-  try { location.reload(); } catch(_) { window.location = window.location.href; }
+  // Reload with a unique cache-buster so Samsung Internet can't serve
+  // the HTML from its disk cache (it does this even when the response
+  // is Cache-Control: no-cache). Adding a fresh ?_reset=<timestamp>
+  // makes the URL unique → forced network fetch → new JS too.
+  try {
+    var base = window.location.pathname + (window.location.search || '');
+    var sep = base.indexOf('?') > -1 ? '&' : '?';
+    window.location = base + sep + '_reset=' + Date.now();
+  } catch(_) { try { location.reload(); } catch(__){} }
 };
 
 // Top banner shown when OAuth round-trip completed but no session was
@@ -2362,10 +2393,12 @@ function _khRenderHeroEmptyState() {
 }
 
 // Belt-and-suspenders safety net: regardless of which load path the
-// page took, if the hero is still on the skeleton 15s after the page
+// page took, if the hero is still on the skeleton 7s after the page
 // became interactive, force the empty state. Catches every wedge mode
 // (fetch hung, exception in renderHomePage, race lost, etc.) so the
-// user always gets the Reset button as a recovery affordance.
+// user always gets the Reset button as a recovery affordance. Slightly
+// longer than the 5s race so the race fires first when the no-cache
+// path is the one that wedged.
 (function _khArmHeroSafetyNet() {
   if (typeof document === 'undefined') return;
   function arm() {
@@ -2378,7 +2411,7 @@ function _khRenderHeroEmptyState() {
       if (/home-hero-loading/.test(heroEl.className || '')) {
         try { _khRenderHeroEmptyState(); } catch(_){}
       }
-    }, 15000);
+    }, 7000);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', arm, { once: true });
@@ -7753,16 +7786,15 @@ document.addEventListener('DOMContentLoaded', async function() {
       // moment the DB call returns.
       renderHomePage();
       _ldr(80);
-      // Race the home article fetch against a 12s ceiling so Samsung
-      // Internet on phone (where the Supabase fetch can wedge silently
-      // due to tab throttling / cookie partitioning) doesn't leave the
-      // hero stuck on the skeleton forever. On timeout we render an
-      // explicit "couldn't load" empty state with a Retry button so the
-      // page degrades gracefully instead of looking permanently broken.
-      // NOTE: loadArticlesFromDB swallows fetch errors and resolves with
-      // an empty array (whatever was cached), so we must also treat
-      // "resolved but empty" as a failure — otherwise the timeout never
-      // fires and the empty state never appears.
+      // Race the home article fetch against a 5s ceiling. On a healthy
+      // network the homeOptimized payload returns in ~200-1500ms, so
+      // 5s is well past "real load failed". Earlier we used 12s because
+      // we feared aborting slow legitimate fetches, but the user
+      // pointed out 12s feels broken — most users bail at 4-5s anyway.
+      // NOTE: loadArticlesFromDB swallows fetch errors and resolves
+      // with an empty array (cached value), so we must also treat
+      // "resolved but empty" as failure — otherwise the empty state
+      // never appears.
       var _heroFinished = false;
       Promise.race([
         loadArticlesFromDB({ homeOptimized: true, force: true }).then(function (rows) {
@@ -7770,10 +7802,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             _heroFinished = true;
             try { renderHomePage(); } catch(_){}
           }
-          // rows empty → leave _heroFinished false so the 12s timeout
-          // path still wins the race and surfaces the empty state.
         }),
-        new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('home articles fetch timeout / empty')); }, 12000); })
+        new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('home articles fetch timeout / empty')); }, 5000); })
       ]).catch(function (e) {
         if (_heroFinished) return;
         console.warn('home articles fetch failed:', e && e.message || e);
