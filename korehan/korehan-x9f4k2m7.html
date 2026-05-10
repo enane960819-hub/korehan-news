@@ -346,6 +346,7 @@ body.sb-open .sb-backdrop{display:block}
     <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽</button>
     <button class="sb-btn" id="sb-qw-tips" onclick="goQuickWinTips()"><span class="ico">💡</span>Quick Win Tips</button>
     <button class="sb-btn" id="sb-art-study-ed" onclick="goArticleStudyEditor()"><span class="ico">📖</span>Article Study Editor</button>
+    <button class="sb-btn" id="sb-vocab-sanity" onclick="goVocabSanity()"><span class="ico">🔍</span>Vocab Sanity Check</button>
     <button class="sb-btn" id="sb-badges" onclick="goBadgeAdmin()"><span class="ico">🏆</span>뱃지 관리</button>
 
     <div class="section-sep" style="margin-top:8px"></div>
@@ -16373,6 +16374,243 @@ async function vbDelete(key) {
   var sb = getSb(); if (!sb) return;
   await sb.from('vocabulary_bank').delete().eq('word_key', key);
   await vbLoadAll();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VOCAB SANITY CHECK — Sonnet-driven audit of hover_vocab_master
+// + vocabulary_bank entries. User reported wrong meanings in the
+// article-body hover tooltips (원래 → "exactly", 존경 → "knowledge",
+// 대통령 → "greatly"). Diagnosis: bad rows in the dictionary tables,
+// likely from AI autofill hallucinations or a bulk-import column
+// misalignment. This tool scans all rows in batches of 50, asks
+// Sonnet to verify each Korean→English pair, and offers a one-
+// click batch update with Sonnet's suggested replacement. Cost:
+// ~$0.30 per full 1000-entry scan; under $1 even for the full
+// hover_vocab_master pass.
+// ═══════════════════════════════════════════════════════════════
+var _vsScanState = {
+  table: 'hover_vocab_master',
+  rows: [],
+  scanned: 0,
+  verdicts: [],
+  running: false,
+};
+
+function _vsEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function goVocabSanity() {
+  var main = document.getElementById('main');
+  main.innerHTML = '<div style="max-width:1000px">'
+    + '<div class="pg-hd"><div><h1>🔍 Vocab Sanity Check</h1>'
+    + '<p>Sonnet으로 단어 사전 entry의 영어 의미가 한국어 단어에 맞는지 검증. 명백히 틀린 거 일괄 수정.</p></div></div>'
+    + '<div class="infobox">'
+    + '<h3>How it works</h3>'
+    + '두 dictionary 테이블 (<code>hover_vocab_master</code>, <code>vocabulary_bank</code>) 의 단어 → 영어 의미 매핑을 Sonnet에 50개씩 batch로 보내서 "이 의미가 이 한국어 단어에 합당한가?" 검증. '
+    + '<b>BAD</b> 판정 받은 entry만 표시되고, Sonnet이 제안한 새 의미와 함께 일괄 수정 버튼 제공. 비용 ~$0.30 / 1000 entries.'
+    + '</div>'
+    + '<div class="sf-card" style="margin-bottom:14px">'
+    + '<div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">'
+    + '<div style="min-width:240px"><label class="inp-label">테이블</label>'
+    + '<select id="vs-table" class="inp inp-sm">'
+    + '<option value="hover_vocab_master">hover_vocab_master (대용량 일반 사전)</option>'
+    + '<option value="vocabulary_bank">vocabulary_bank (학습 풀)</option>'
+    + '</select></div>'
+    + '<div><label class="inp-label">샘플 크기 (0=전체)</label>'
+    + '<input id="vs-limit" class="inp inp-sm" type="number" value="200" min="0" max="10000" style="width:120px"></div>'
+    + '<button class="btn btn-b" onclick="vsStartScan()" id="vs-start-btn">▶ Start Scan</button>'
+    + '<span id="vs-progress" style="font-size:12px;color:#555"></span>'
+    + '</div>'
+    + '<div id="vs-progress-bar" style="height:6px;background:#e2e8f0;border-radius:3px;margin-top:10px;display:none;overflow:hidden">'
+    + '<div id="vs-progress-fill" style="height:100%;background:#2563eb;border-radius:3px;width:0%;transition:width .2s"></div>'
+    + '</div>'
+    + '</div>'
+    + '<div id="vs-results"></div>'
+    + '</div>';
+}
+
+async function vsStartScan() {
+  if (_vsScanState.running) return;
+  _vsScanState.running = true;
+  _vsScanState.table = document.getElementById('vs-table').value;
+  var limit = parseInt(document.getElementById('vs-limit').value, 10) || 0;
+  var startBtn = document.getElementById('vs-start-btn');
+  startBtn.disabled = true;
+  startBtn.textContent = '⏳ Loading rows...';
+  document.getElementById('vs-progress-bar').style.display = 'block';
+  document.getElementById('vs-results').innerHTML = '';
+
+  var sb = getSb();
+  if (!sb) { toast('Supabase 연결 실패'); _vsScanState.running = false; startBtn.disabled = false; startBtn.textContent = '▶ Start Scan'; return; }
+  var rows = [];
+  var batchSize = 1000;
+  var from = 0;
+  while (true) {
+    var fields = _vsScanState.table === 'hover_vocab_master' ? 'word_ko, meaning_en' : 'word_ko, word_en';
+    var r = await sb.from(_vsScanState.table).select(fields).order('word_ko').range(from, from + batchSize - 1);
+    if (r.error) {
+      toast('Load 실패: ' + r.error.message);
+      _vsScanState.running = false; startBtn.disabled = false; startBtn.textContent = '▶ Start Scan';
+      return;
+    }
+    var batch = (r.data || []).filter(function(x) { return x.word_ko && (x.meaning_en || x.word_en); });
+    rows = rows.concat(batch);
+    if (batch.length < batchSize) break;
+    if (limit > 0 && rows.length >= limit) { rows = rows.slice(0, limit); break; }
+    from += batchSize;
+  }
+  rows = rows.map(function(x) { return { ko: x.word_ko, current: x.meaning_en || x.word_en || '' }; });
+  _vsScanState.rows = rows;
+  _vsScanState.scanned = 0;
+  _vsScanState.verdicts = [];
+
+  if (!rows.length) {
+    document.getElementById('vs-results').innerHTML = '<div class="infobox">로드된 row 없음.</div>';
+    _vsScanState.running = false; startBtn.disabled = false; startBtn.textContent = '▶ Start Scan';
+    return;
+  }
+
+  startBtn.textContent = '⏳ Scanning (Sonnet)...';
+  document.getElementById('vs-progress').textContent = '0 / ' + rows.length;
+
+  var batchN = 50;
+  for (var i = 0; i < rows.length; i += batchN) {
+    var batch = rows.slice(i, i + batchN);
+    try {
+      var verdicts = await vsScanBatch(batch);
+      _vsScanState.verdicts = _vsScanState.verdicts.concat(verdicts);
+    } catch (e) {
+      console.warn('vs batch failed:', e);
+      batch.forEach(function(r) {
+        _vsScanState.verdicts.push({ ko: r.ko, current: r.current, verdict: 'UNCERTAIN', suggested: '' });
+      });
+    }
+    _vsScanState.scanned = Math.min(i + batchN, rows.length);
+    document.getElementById('vs-progress').textContent = _vsScanState.scanned + ' / ' + rows.length;
+    document.getElementById('vs-progress-fill').style.width = (100 * _vsScanState.scanned / rows.length) + '%';
+    vsRenderResults();
+  }
+
+  startBtn.disabled = false;
+  startBtn.textContent = '▶ Re-scan';
+  _vsScanState.running = false;
+}
+
+async function vsScanBatch(batch) {
+  var prompt = 'You are a Korean→English dictionary auditor. For each entry below, judge whether the English meaning is a reasonable definition for the Korean word.\n\n'
+    + 'Return ONLY a JSON array, one object per entry, IN THE SAME ORDER as input:\n'
+    + '[{"ko":"<korean>","verdict":"OK"|"BAD","suggested":"<better meaning if BAD, else empty string>"}]\n\n'
+    + 'Rules:\n'
+    + '- "OK": the English captures at least one valid sense of the Korean. Common synonyms / partial overlap / different formality = OK.\n'
+    + '- "BAD": the English is unambiguously wrong, unrelated to the Korean, or clearly the meaning of a different word.\n'
+    + '- For BAD entries provide a concise replacement (1-5 words, dictionary-style, primary sense only).\n'
+    + '- Be conservative — only flag BAD when you are sure. When in doubt, return OK.\n\n'
+    + 'Entries:\n'
+    + batch.map(function(r, i) { return (i + 1) + '. ' + r.ko + ' → "' + (r.current || '').replace(/"/g, '\\"') + '"'; }).join('\n');
+  var res = await callClaude({
+    feature: 'vocab-sanity-check',
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 3000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+  var s = raw.indexOf('['), e = raw.lastIndexOf(']');
+  if (s < 0 || e <= s) throw new Error('JSON not found in Sonnet response');
+  var arr = JSON.parse(raw.slice(s, e + 1));
+  return batch.map(function(r, i) {
+    var v = arr[i] || {};
+    return {
+      ko: r.ko,
+      current: r.current,
+      verdict: (v.verdict === 'BAD' ? 'BAD' : 'OK'),
+      suggested: String(v.suggested || '').trim(),
+    };
+  });
+}
+
+function vsRenderResults() {
+  var el = document.getElementById('vs-results');
+  if (!el) return;
+  var bad = _vsScanState.verdicts.filter(function(v) { return v.verdict === 'BAD' && v.suggested; });
+  if (!bad.length) {
+    if (_vsScanState.scanned >= _vsScanState.rows.length && _vsScanState.rows.length) {
+      el.innerHTML = '<div class="infobox" style="background:#dcfce7;border-left-color:#16a34a;color:#15803d">'
+        + '<h3>✓ Clean</h3>스캔한 ' + _vsScanState.rows.length + '개 entry 중 의심스러운 거 없음.</div>';
+    } else {
+      el.innerHTML = '<div class="infobox">스캔 진행 중... 의심 entry 발견되면 여기에 표시됩니다.</div>';
+    }
+    return;
+  }
+  el.innerHTML = '<div class="sf-card">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">'
+    + '<div style="font-weight:700">의심 entry <span style="color:#dc2626">' + bad.length + '</span>개</div>'
+    + '<button class="btn btn-r" onclick="vsApplyAll()">Apply all ' + bad.length + ' fixes</button>'
+    + '</div>'
+    + '<table class="tbl" style="font-size:12px">'
+    + '<thead><tr><th>한국어</th><th>현재 의미</th><th>Sonnet 제안 (수정 가능)</th><th style="text-align:center;width:80px">Apply</th></tr></thead>'
+    + '<tbody>'
+    + bad.map(function(v, i) {
+        return '<tr>'
+          + '<td><b>' + _vsEsc(v.ko) + '</b></td>'
+          + '<td style="color:#dc2626"><s>' + _vsEsc(v.current) + '</s></td>'
+          + '<td><input class="inp inp-sm" id="vs-sug-' + i + '" value="' + _vsEsc(v.suggested) + '" style="width:100%"></td>'
+          + '<td style="text-align:center"><button class="btn btn-sm btn-b" onclick="vsApplyOne(' + i + ')">Apply</button></td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table></div>';
+}
+
+async function vsApplyOne(idx) {
+  var bad = _vsScanState.verdicts.filter(function(v) { return v.verdict === 'BAD' && v.suggested; });
+  var v = bad[idx];
+  if (!v) return;
+  var input = document.getElementById('vs-sug-' + idx);
+  var newMeaning = ((input && input.value) || '').trim();
+  if (!newMeaning) { toast('빈 값 — skip'); return; }
+  var sb = getSb(); if (!sb) return;
+  var col = _vsScanState.table === 'hover_vocab_master' ? 'meaning_en' : 'word_en';
+  var update = {}; update[col] = newMeaning;
+  var r = await sb.from(_vsScanState.table).update(update).eq('word_ko', v.ko);
+  if (r.error) { toast('실패: ' + r.error.message); return; }
+  toast('✓ ' + v.ko + ' → "' + newMeaning + '"');
+  for (var i = 0; i < _vsScanState.verdicts.length; i++) {
+    if (_vsScanState.verdicts[i].ko === v.ko) {
+      _vsScanState.verdicts[i].verdict = 'OK';
+      _vsScanState.verdicts[i].current = newMeaning;
+    }
+  }
+  vsRenderResults();
+}
+
+async function vsApplyAll() {
+  var bad = _vsScanState.verdicts.filter(function(v) { return v.verdict === 'BAD' && v.suggested; });
+  if (!bad.length) return;
+  if (!confirm(bad.length + '개 entry 일괄 수정 — 확실해요? (취소 불가)')) return;
+  var sb = getSb(); if (!sb) return;
+  var col = _vsScanState.table === 'hover_vocab_master' ? 'meaning_en' : 'word_en';
+  var ok = 0, fail = 0;
+  for (var i = 0; i < bad.length; i++) {
+    var v = bad[i];
+    var input = document.getElementById('vs-sug-' + i);
+    var newMeaning = ((input && input.value) || v.suggested || '').trim();
+    if (!newMeaning) { fail++; continue; }
+    try {
+      var update = {}; update[col] = newMeaning;
+      var r = await sb.from(_vsScanState.table).update(update).eq('word_ko', v.ko);
+      if (r.error) fail++;
+      else ok++;
+    } catch (e) { fail++; }
+  }
+  toast('완료: ' + ok + ' 성공 / ' + fail + ' 실패');
+  bad.forEach(function(v) {
+    for (var i = 0; i < _vsScanState.verdicts.length; i++) {
+      if (_vsScanState.verdicts[i].ko === v.ko) _vsScanState.verdicts[i].verdict = 'OK';
+    }
+  });
+  vsRenderResults();
 }
 
 // ═══════════════════════════════════════════════════════════════
