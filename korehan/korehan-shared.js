@@ -3628,9 +3628,16 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
       + _analysisRule
       + _analysisVerify
       + '- Return EXACTLY ' + sentences.length + ' entries in sentences[].';
+    // Use the same Sonnet model admin's runAutoGenerate uses, so the
+    // first-viewer fallback writes the same quality cache that admin
+    // would have. Earlier this path used Haiku, which meant a cache-
+    // miss tap by user 1 persisted lower-quality analysis that every
+    // subsequent viewer then saw — quality was effectively a race
+    // (admin re-bake vs first viewer tap). Sonnet here makes the
+    // distinction architectural-only: same cache contents either way.
     var res = await callClaude({
       feature: 'sentence-analyze-bulk',
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: Math.min(16000, 500 * sentences.length + 800),
       messages: [{ role: 'user', content: prompt }]
     });
@@ -4369,10 +4376,17 @@ async function analyzeSentence(idx, el) {
       + _analysisRule
       + _analysisVerifyRule
       + '- Output JSON only.';
+    // Single-sentence fallback (cache miss for one sentence). Uses the
+    // same Sonnet model as the bulk path above and as admin runAuto-
+    // Generate, so this code path can never write a lower-quality
+    // single-sentence row than what admin would have produced. Bumped
+    // max_tokens 700 → 1500: Sonnet's analysis output is more verbose
+    // per item and 700 occasionally truncated mid-JSON on dense
+    // sentences, which then JSON-parse-failed and showed an error.
     var res = await callClaude({
       feature: 'sentence-analyze',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 700,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }]
     });
     var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
