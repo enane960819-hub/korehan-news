@@ -5398,9 +5398,10 @@ async function goAICache() {
   // can flag stale rows that need a re-analyse under the current
   // prompt — KH_SENT_CACHE_VERSION on the user-facing client.
   // Mirror of KH_SENT_CACHE_VERSION on shared.js. Bump together when
-  // the user-side prompt / response shape changes — currently 'p5'
-  // for the analysis (grammar + expression + idiom) shape.
-  const SENT_CACHE_CURRENT = 'p5';
+  // the user-side prompt / response shape changes — currently 'p6'
+  // for the MUST-INCLUDE pattern list (added when AI kept skipping
+  // ~에도 불구하고 etc. as "too obvious").
+  const SENT_CACHE_CURRENT = 'p6';
   const sentMissingIds = [];
   const sentVersionByArt = {}; // articleId → 'p4' | 'p3' | 'p2' | 'older' | 'missing'
   articles.forEach(function(a) {
@@ -5466,8 +5467,9 @@ async function goAICache() {
   }
   const versionChip = '<span style="display:inline-flex;gap:4px;align-items:center">'
     + '<span style="font-size:11px;color:#64748b;font-weight:700">문장분석:</span>'
-    + _vbadge('p5 ✓',          versionCounts.p5      || 0, '#dcfce7', '#166534')
-    + _vbadge('p4 (재분석 대상)', versionCounts.p4     || 0, '#fef3c7', '#92400e')
+    + _vbadge('p6 ✓',          versionCounts.p6      || 0, '#dcfce7', '#166534')
+    + _vbadge('p5 (재분석 대상)', versionCounts.p5     || 0, '#fef3c7', '#92400e')
+    + _vbadge('p4',             versionCounts.p4      || 0, '#fde68a', '#92400e')
     + _vbadge('p3',             versionCounts.p3      || 0, '#fde68a', '#92400e')
     + _vbadge('p2',             versionCounts.p2      || 0, '#fde68a', '#92400e')
     + _vbadge('미스탬프',        versionCounts.older   || 0, '#fed7aa', '#9a3412')
@@ -5710,7 +5712,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     // the user-side staleness check (`sharedCache.version !==
     // KH_SENT_CACHE_VERSION`) would mark every freshly-backfilled
     // row as stale on first read.
-    transObj.version = 'p5';
+    transObj.version = 'p6';
     const newTransStr = JSON.stringify(transObj);
 
     // Derive Vocab + Grammar tab payloads from the same response so
