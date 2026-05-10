@@ -3999,6 +3999,45 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
       var _lvl = (window._currentArticle && window._currentArticle.level) || 'Intermediate';
       var _wrap = [{ text: _sent, analysis: Array.isArray(data.analysis) ? data.analysis : [] }];
       window.KH_GRAMMAR.enforceDetectedPatterns(_wrap, _lvl);
+      // Canonical-label normalization: cached entries baked before the
+      // prompt forbade noun-stuffed labels still carry strings like
+      // "~ㄴ/은 도시 중 하나" or "새로운 웰니스 트렌드로서" — the AI mixed
+      // a specific noun into what should be a pure morpheme label. Run
+      // KH_GRAMMAR.detect on each entry's example_in_sentence; if the
+      // canonical morpheme appears as a substring of the buggy label,
+      // swap the label (and hint) for the canonical form so learners
+      // see "~중 하나 (one of)" instead of "~ㄴ/은 도시 중 하나".
+      if (window.KH_GRAMMAR.detect) {
+        _wrap[0].analysis = _wrap[0].analysis.map(function(item) {
+          if (!item || !item.label || !item.example_in_sentence) return item;
+          var detected = window.KH_GRAMMAR.detect(item.example_in_sentence);
+          if (!detected || !detected.length) return item;
+          for (var i = 0; i < detected.length; i++) {
+            var canon = detected[i];
+            if (item.label === canon.label) return item; // already canonical
+            // Strip ~, parens, slashes, whitespace from canonical label to
+            // get its core Hangul morpheme. If that morpheme appears in the
+            // AI's noisy label, normalize. e.g. canon "~중 하나 (one of)"
+            // → core "중하나"; AI label "~ㄴ/은 도시 중 하나" stripped to
+            // "ㄴ은도시중하나" — contains "중하나" → swap.
+            // Strip ~, parens (both inline like "(이)" and trailing
+            // gloss "(one of)"), slashes, and whitespace to get the
+            // pure Hangul morpheme. e.g. "~(이)나 (or)" → "이나",
+            // "~ 중 하나 (one of)" → "중하나".
+            var core = canon.label.replace(/[~\s()/]/g, '')
+                                  .replace(/[a-zA-Z,]+/g, '');
+            if (core && core.length >= 2) {
+              var labelStripped = item.label.replace(/[~\s]/g, '');
+              if (labelStripped.indexOf(core) >= 0 && labelStripped !== core) {
+                return { type: item.type || 'grammar', label: canon.label,
+                  exp: canon.hint || item.exp || '',
+                  example_in_sentence: item.example_in_sentence };
+              }
+            }
+          }
+          return item;
+        });
+      }
       data.analysis = _wrap[0].analysis;
     } catch(_) {}
   }
