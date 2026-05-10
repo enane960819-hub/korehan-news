@@ -5113,7 +5113,7 @@ async function runAutoGenerate(){
           // mixes the two.
           var analysis = [];
           if (Array.isArray(match.analysis)) {
-            analysis = match.analysis.slice(0, 4).filter(function(a){ return a && (a.label || a.pattern); }).map(function(a){
+            analysis = match.analysis.slice(0, 8).filter(function(a){ return a && (a.label || a.pattern); }).map(function(a){
               return {
                 type: a.type || 'grammar',
                 label: a.label || a.pattern || '',
@@ -5122,7 +5122,7 @@ async function runAutoGenerate(){
               };
             });
           } else if (Array.isArray(match.grammar)) {
-            analysis = match.grammar.slice(0, 4).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
+            analysis = match.grammar.slice(0, 8).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
               return {
                 type: 'grammar',
                 label: g.pattern || g.label || '',
@@ -5138,6 +5138,18 @@ async function runAutoGenerate(){
             analysis: analysis,
           };
         });
+
+        // Code-level enforcement of must-include grammar patterns. Combined
+        // Sonnet emits richer entries when it does include a pattern, but it
+        // routinely omits common ones (~고 있다, ~ㄹ 수 있다, ~ 때문에) on
+        // judgment — and sometimes hallucinates patterns not in the body.
+        // This gate fills any KH_GRAMMAR-detected pattern the AI skipped
+        // using the canonical hint as the explanation, with a chunk lifted
+        // from the actual sentence as example_in_sentence (so the article
+        // renderer's marker-check filter actually keeps the entry).
+        if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns) {
+          window.KH_GRAMMAR.enforceDetectedPatterns(_sentFinal, _level);
+        }
 
         if (_paraTrans.length || _sentFinal.length) {
           _row.translation = JSON.stringify({
