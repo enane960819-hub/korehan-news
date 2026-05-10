@@ -157,6 +157,146 @@ a{color:inherit;text-decoration:none}
 .sb-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.8px;color:#b0bec8;
   padding:14px 18px 5px;display:flex;align-items:center;gap:6px}
 .sb-lbl:first-child{padding-top:18px}
+
+/* ════════════════ MOBILE / TABLET RESPONSIVE LAYER ════════════════
+   Original admin was desktop-only (no @media queries). This block
+   adds responsive behaviour for ≤900px (tablet) and ≤640px (phone)
+   without touching desktop styles above. Sidebar collapses into a
+   slide-in drawer; tables get horizontal scroll; modals go full-
+   screen; multi-col grids collapse to single column; tap targets
+   bumped to 42px+ minimum.
+   ────────────────────────────────────────────────────────────── */
+
+/* Hamburger toggle — hidden on desktop, shown on mobile */
+.mobile-toggle{display:none;background:none;border:none;color:#fff;font-size:24px;
+  cursor:pointer;padding:0 6px;line-height:1;font-family:inherit;align-items:center;justify-content:center}
+
+/* Sidebar backdrop — only visible when drawer is open */
+.sb-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:90;
+  -webkit-tap-highlight-color:transparent}
+body.sb-open .sb-backdrop{display:block}
+
+/* === Tablet (≤ 900px) === */
+@media (max-width: 900px) {
+  .main{padding:18px 16px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .sf-row{grid-template-columns:1fr}
+  .fg-row{grid-template-columns:1fr}
+  .pg-hd h1{font-size:22px}
+  .mbox{width:92vw}
+  .sb{width:200px}
+}
+
+/* === Phone (≤ 640px) === */
+@media (max-width: 640px) {
+  /* Show hamburger */
+  .mobile-toggle{display:inline-flex}
+
+  /* Topbar: tighter spacing, smaller logo */
+  .topbar{padding:0 10px;height:48px;gap:6px}
+  .tb-logo{font-size:16px}
+  .badge{font-size:9px;padding:2px 5px;margin-left:5px;letter-spacing:.6px}
+  .tb-right{font-size:11px;gap:6px}
+  .vsb{padding:5px 9px;font-size:11px}
+
+  /* Layout becomes block (sidebar overlays main) */
+  .layout{display:block;min-height:auto}
+
+  /* Sidebar slides in from left as a drawer */
+  .sb{position:fixed;top:48px;left:0;bottom:0;width:280px;max-width:85vw;
+    z-index:95;transform:translateX(-100%);transition:transform .25s ease;
+    overflow-y:auto;-webkit-overflow-scrolling:touch}
+  body.sb-open .sb{transform:translateX(0);box-shadow:4px 0 24px rgba(0,0,0,0.25)}
+
+  /* Main: full width, less padding */
+  .main{padding:14px 12px;min-height:calc(100vh - 48px)}
+
+  /* Page header stacks */
+  .pg-hd{flex-direction:column;gap:10px;margin-bottom:16px;align-items:stretch}
+  .pg-hd h1{font-size:20px;line-height:1.2}
+  .pg-hd p{font-size:12px}
+  .pg-hd > div:last-child{display:flex;flex-wrap:wrap;gap:6px}
+  .pg-hd > div:last-child .btn{flex:1;min-width:120px;justify-content:center}
+
+  /* Stats grid: 2 cols + tighter cells */
+  .stats{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+  .stat{padding:12px 14px}
+  .stat-n{font-size:22px}
+  .stat-l{font-size:10px}
+
+  /* Tables: horizontal scroll instead of breaking layout. The wrapper
+     stays as <table>; we just let it overflow horizontally so all
+     columns stay visible via swipe. Keep td white-space:normal so
+     text inside still wraps within its column. */
+  .tbl{font-size:12px;display:block;overflow-x:auto;white-space:nowrap;
+    -webkit-overflow-scrolling:touch}
+  .tbl th, .tbl td{padding:8px 10px;white-space:normal}
+  .tbl th{white-space:nowrap}
+  .art-t{font-size:13px}
+  .art-b{font-size:11px;max-width:220px}
+  .thumb{width:54px;height:36px}
+  .row-act{flex-wrap:wrap;gap:4px}
+
+  /* Modal: full-screen on phone */
+  .mbox{width:100vw;max-width:100vw;height:100vh;max-height:100vh;border-radius:0}
+  .m-hd{padding:12px 14px;position:sticky;top:0;background:var(--w);z-index:1}
+  .m-hd h2{font-size:16px}
+  .m-bd{padding:14px}
+  .m-ft{padding:10px 14px;flex-direction:column-reverse;gap:8px;
+    position:sticky;bottom:0;background:var(--w);border-top:1px solid var(--br)}
+  .m-ft .btn{width:100%;justify-content:center}
+
+  /* Form fields: 1-col grids, larger font (prevents iOS zoom on focus) */
+  .fg-row{grid-template-columns:1fr;gap:10px}
+  .sf-row{grid-template-columns:1fr;gap:12px}
+  .sf-card{padding:14px;border-radius:6px}
+  .fg input, .fg select, .fg textarea, .inp{font-size:16px}
+  .fg textarea{min-height:140px}
+
+  /* Toolbar: search/filter full-width, wrapping */
+  .toolbar{gap:8px;flex-direction:column;align-items:stretch}
+  .srch{width:100%}
+  .flt{width:100%}
+  .toolbar > .btn{width:100%;justify-content:center}
+
+  /* Buttons: bigger tap targets (≥42px) */
+  .btn{padding:11px 16px;font-size:13px;min-height:42px;border-radius:4px}
+  .btn-sm{padding:8px 12px;font-size:12px;min-height:36px}
+  .btn-xs{padding:6px 10px;font-size:11px;min-height:30px}
+
+  /* Sidebar buttons: bigger tap targets, comfortable spacing */
+  .sb-btn{padding:14px 18px;font-size:14px}
+  .sb-btn .ico{font-size:17px}
+
+  /* Toasts: full-width strip at bottom */
+  #toasts{bottom:12px;right:12px;left:12px}
+  .t{min-width:auto;width:100%}
+
+  /* Tab strips */
+  .itabs{gap:4px;padding-bottom:10px;margin-bottom:14px;overflow-x:auto;
+    flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .itab{padding:6px 12px;font-size:11px;white-space:nowrap;flex-shrink:0}
+
+  /* Row editors */
+  .row-editor{padding:10px}
+
+  /* Delete-confirm modal: keep centered but fit phone */
+  .del-box{width:92vw;max-width:340px;padding:24px 20px}
+
+  /* Info box compact */
+  .infobox{padding:12px 14px;font-size:12px;line-height:1.6}
+  .infobox h3{font-size:13px}
+}
+
+/* iOS safe-area notch handling — push topbar below the notch */
+@supports (padding-top: env(safe-area-inset-top)) {
+  @media (max-width: 640px) {
+    .topbar{padding-top:env(safe-area-inset-top);
+      height:calc(48px + env(safe-area-inset-top))}
+    .sb{top:calc(48px + env(safe-area-inset-top))}
+    .main{min-height:calc(100vh - 48px - env(safe-area-inset-top))}
+  }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="learning_hub_vocab_data.js"></script>
@@ -168,6 +308,8 @@ a{color:inherit;text-decoration:none}
 <!-- TOP BAR -->
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:0">
+    <button class="mobile-toggle" aria-label="Toggle menu"
+      onclick="document.body.classList.toggle('sb-open')">☰</button>
     <span class="tb-logo">KoreHani</span>
     <span class="badge">Admin CMS</span>
   </div>
@@ -175,6 +317,9 @@ a{color:inherit;text-decoration:none}
     <a href="index.html" target="_blank" class="vsb">↗ View Site</a>
   </div>
 </div>
+
+<!-- Sidebar backdrop — only visible on mobile when drawer is open -->
+<div class="sb-backdrop" onclick="document.body.classList.remove('sb-open')"></div>
 
 <div class="layout">
 
@@ -295,6 +440,20 @@ a{color:inherit;text-decoration:none}
     if (document.readyState !== 'loading') blockAccess('You are not signed in as admin.');
     return; // 스크립트 나머지 실행 방지
   }
+
+  // Mobile sidebar drawer: auto-close when a nav button is tapped on
+  // phone (≤640px) so the user lands on the chosen page instead of
+  // staring at the still-open drawer. Event delegation at body level
+  // covers every .sb-btn including ones added later by JS.
+  document.addEventListener('click', function(e) {
+    var t = e.target;
+    if (!t) return;
+    var btn = t.closest && t.closest('.sb-btn');
+    if (!btn) return;
+    if (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) {
+      document.body.classList.remove('sb-open');
+    }
+  });
 
   // 2차: SDK 세션 실시간 검증 (DOMContentLoaded 후)
   document.addEventListener('DOMContentLoaded', function() {
