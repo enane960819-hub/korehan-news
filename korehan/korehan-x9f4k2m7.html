@@ -185,6 +185,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI Article Generator</button>
     <button class="sb-btn" id="sb-bulk-seed" onclick="goBulkSeed()"><span class="ico">🌱</span>Bulk Seed (AI)</button>
     <button class="sb-btn" id="sb-cache" onclick="goAICache()"><span class="ico">🧠</span>AI Cache Management</button>
+    <button class="sb-btn" id="sb-ai-usage" onclick="goAIUsage()"><span class="ico">💸</span>AI Usage</button>
     <button class="sb-btn" id="sb-img" onclick="goArticleImages()"><span class="ico">🖼️</span>Image Management</button>
     <button class="sb-btn" id="sb-conv" onclick="goConversations()"><span class="ico">💬</span>Conversations</button>
     <button class="sb-btn" id="sb-stor" onclick="goStories()"><span class="ico">📖</span>Stories</button>
@@ -5350,6 +5351,163 @@ function _khDeriveVocabGrammarFromSentences(sentFinal, level) {
     vocab: aggVocab.slice(0, 100),
     grammar: { patterns: aggGrammar.slice(0, 4) },
   };
+}
+
+// ══ AI USAGE DASHBOARD ══════════════════════════════════════
+// Reads claude_api_usage (admin-only via admin-api allowlist) and
+// breaks down spend by 24h / 30d, by user, by feature, by model.
+// Useful for spotting which feature is bleeding the Anthropic
+// balance and which user is responsible.
+//
+// Pricing matches what the proxy bills (usage table doesn't store
+// a cost column, only token counts). Anthropic published rates as
+// of the last project review:
+//   Sonnet 4 / 4-6: $3 / $15 per M tokens (in / out)
+//   Haiku 4-5:      $0.80 / $4
+//   Opus 4-7:       $15 / $75
+const _AI_USAGE_PRICING = {
+  'claude-opus-4-7':           { inP: 15, outP: 75 },
+  'claude-sonnet-4-20250514':  { inP:  3, outP: 15 },
+  'claude-sonnet-4-6':         { inP:  3, outP: 15 },
+  'claude-3-sonnet-20240229':  { inP:  3, outP: 15 },
+  'claude-haiku-4-5-20251001': { inP: 0.8, outP: 4 },
+  'claude-haiku-4-5':          { inP: 0.8, outP: 4 },
+};
+function _aiUsageCost(model, inT, outT) {
+  var p = _AI_USAGE_PRICING[model] || { inP: 3, outP: 15 };
+  return ((inT || 0) / 1e6) * p.inP + ((outT || 0) / 1e6) * p.outP;
+}
+function _aiUsageFmtCost(usd) {
+  if (usd >= 1) return '$' + usd.toFixed(2);
+  if (usd >= 0.01) return '$' + usd.toFixed(3);
+  return '$' + usd.toFixed(5);
+}
+
+async function goAIUsage() {
+  setSbOn('sb-ai-usage');
+  var main = document.getElementById('main');
+  main.innerHTML = '<div class="pg-hd"><div><h1>💸 AI Usage</h1>'
+    + '<p>Anthropic 사용량 분석 — 누가 / 어떤 feature / 어떤 모델로 얼마 썼는지. claude_api_usage 테이블 기준.</p></div></div>'
+    + '<div id="aiu-wrap" style="padding:24px;text-align:center;color:var(--gr)">⏳ 사용량 로드 중…</div>';
+
+  var rows = [];
+  try {
+    // Pull last 30 days. Limit big enough to cover real volume but
+    // bounded so a runaway log doesn't OOM the page.
+    var since = new Date(Date.now() - 30 * 86400 * 1000).toISOString();
+    var path = 'claude_api_usage?select=user_id,feature,model,input_tokens,output_tokens,created_at'
+      + '&created_at=gte.' + encodeURIComponent(since)
+      + '&order=created_at.desc&limit=10000';
+    rows = await supaAdminGet(path);
+    if (!Array.isArray(rows)) rows = [];
+  } catch (e) {
+    document.getElementById('aiu-wrap').innerHTML =
+        '<div style="padding:18px;border-radius:10px;background:#fee2e2;color:#991b1b;font-size:13px;line-height:1.55">'
+      + '❌ 사용량 로드 실패: ' + (e && e.message || String(e)).replace(/[<>]/g,'') + '<br>'
+      + '<small>admin-api ALLOWED_TABLES에 claude_api_usage가 추가됐는지, Edge function 재배포(supabase functions deploy admin-api) 됐는지 확인.</small>'
+      + '</div>';
+    return;
+  }
+
+  var nowMs = Date.now();
+  var DAY_MS = 86400 * 1000;
+  var totals = {
+    last24h: { calls: 0, cost: 0 },
+    last7d:  { calls: 0, cost: 0 },
+    last30d: { calls: 0, cost: 0 },
+  };
+  var byUser = {};       // user_id → {calls, cost}
+  var byFeature = {};    // feature → {calls, cost, inT, outT}
+  var byModel = {};      // model → {calls, cost, inT, outT}
+  var byDay = {};        // YYYY-MM-DD → {calls, cost}
+
+  rows.forEach(function(r) {
+    var inT = r.input_tokens || 0, outT = r.output_tokens || 0;
+    var cost = _aiUsageCost(r.model, inT, outT);
+    var ts = new Date(r.created_at).getTime();
+    var ageMs = nowMs - ts;
+    if (ageMs < DAY_MS)      { totals.last24h.calls++; totals.last24h.cost += cost; }
+    if (ageMs < 7 * DAY_MS)  { totals.last7d.calls++;  totals.last7d.cost  += cost; }
+    totals.last30d.calls++;
+    totals.last30d.cost += cost;
+
+    var u = r.user_id || '(anon)';
+    if (!byUser[u]) byUser[u] = { calls: 0, cost: 0 };
+    byUser[u].calls++; byUser[u].cost += cost;
+
+    var f = r.feature || '(no-feature)';
+    if (!byFeature[f]) byFeature[f] = { calls: 0, cost: 0, inT: 0, outT: 0 };
+    byFeature[f].calls++; byFeature[f].cost += cost; byFeature[f].inT += inT; byFeature[f].outT += outT;
+
+    var m = r.model || '(unknown)';
+    if (!byModel[m]) byModel[m] = { calls: 0, cost: 0, inT: 0, outT: 0 };
+    byModel[m].calls++; byModel[m].cost += cost; byModel[m].inT += inT; byModel[m].outT += outT;
+
+    var d = (r.created_at || '').slice(0, 10);
+    if (d) { if (!byDay[d]) byDay[d] = { calls: 0, cost: 0 }; byDay[d].calls++; byDay[d].cost += cost; }
+  });
+
+  function _toRows(map, keyLabel, sortBy) {
+    return Object.keys(map).map(function(k){ return Object.assign({ _key: k }, map[k]); })
+      .sort(function(a, b){ return (b[sortBy] || 0) - (a[sortBy] || 0); });
+  }
+  var userRows    = _toRows(byUser,    'user',    'cost').slice(0, 20);
+  var featureRows = _toRows(byFeature, 'feature', 'cost').slice(0, 30);
+  var modelRows   = _toRows(byModel,   'model',   'cost');
+  var dayRows     = _toRows(byDay,     'day',     'cost').sort(function(a,b){ return a._key < b._key ? 1 : -1; });
+
+  function _kpiCard(label, totals, color) {
+    return '<div style="flex:1;min-width:160px;padding:14px 16px;border-radius:12px;background:' + color + ';color:#fff">'
+      + '<div style="font-size:11px;opacity:.85;letter-spacing:.08em;text-transform:uppercase;font-weight:700">' + label + '</div>'
+      + '<div style="font-size:22px;font-weight:900;margin-top:4px">' + _aiUsageFmtCost(totals.cost) + '</div>'
+      + '<div style="font-size:11px;opacity:.85;margin-top:2px">' + totals.calls.toLocaleString() + ' calls</div>'
+      + '</div>';
+  }
+
+  function _table(headers, rows, render) {
+    var html = '<div style="overflow:auto;border-radius:10px;border:1px solid #e2e8f0;background:#fff">'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+      + '<thead style="background:#f8fafc"><tr>'
+      + headers.map(function(h){ return '<th style="text-align:left;padding:9px 12px;font-weight:800;color:#475569;border-bottom:1px solid #e2e8f0">' + h + '</th>'; }).join('')
+      + '</tr></thead><tbody>'
+      + rows.map(function(r, i) {
+          return '<tr style="' + (i % 2 ? 'background:#fcfdfe' : '') + '">' + render(r).map(function(c){
+            return '<td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-family:' + (typeof c === 'object' && c.mono ? 'ui-monospace,monospace' : 'inherit') + '">'
+              + (typeof c === 'object' ? c.html : esc(String(c)))
+              + '</td>';
+          }).join('') + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+    return html;
+  }
+
+  var html = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
+    +   _kpiCard('Last 24h', totals.last24h, 'linear-gradient(135deg,#0f172a,#1e3a8a)')
+    +   _kpiCard('Last 7d',  totals.last7d,  'linear-gradient(135deg,#1e3a8a,#7c3aed)')
+    +   _kpiCard('Last 30d', totals.last30d, 'linear-gradient(135deg,#7c3aed,#dc2626)')
+    + '</div>'
+
+    + '<div style="margin-bottom:8px;font-weight:800;font-size:14px;color:#0f172a">By model (last 30d)</div>'
+    + _table(['Model','Calls','In tokens','Out tokens','Cost'], modelRows, function(r){
+        return [r._key, r.calls.toLocaleString(), { html: r.inT.toLocaleString() }, { html: r.outT.toLocaleString() }, _aiUsageFmtCost(r.cost)];
+      })
+
+    + '<div style="margin:18px 0 8px;font-weight:800;font-size:14px;color:#0f172a">Top features (last 30d, by cost)</div>'
+    + _table(['Feature','Calls','In tokens','Out tokens','Cost'], featureRows, function(r){
+        return [r._key, r.calls.toLocaleString(), { html: r.inT.toLocaleString() }, { html: r.outT.toLocaleString() }, _aiUsageFmtCost(r.cost)];
+      })
+
+    + '<div style="margin:18px 0 8px;font-weight:800;font-size:14px;color:#0f172a">Top users (last 30d, by cost)</div>'
+    + _table(['User ID','Calls','Cost'], userRows, function(r){
+        return [{ html: '<code style="font-size:11px;color:#475569">' + esc(String(r._key).slice(0, 12)) + '…</code>' }, r.calls.toLocaleString(), _aiUsageFmtCost(r.cost)];
+      })
+
+    + '<div style="margin:18px 0 8px;font-weight:800;font-size:14px;color:#0f172a">Daily breakdown (last 30d)</div>'
+    + _table(['Date','Calls','Cost'], dayRows, function(r){
+        return [r._key, r.calls.toLocaleString(), _aiUsageFmtCost(r.cost)];
+      });
+
+  document.getElementById('aiu-wrap').innerHTML = html;
 }
 
 // ══ AI CACHE 관리 ════════════════════════════════════════════

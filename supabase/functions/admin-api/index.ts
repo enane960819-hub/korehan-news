@@ -15,6 +15,9 @@ const ALLOWED_TABLES = new Set([
   'listening_quiz_bank','grammar_examples_cache','grammar_curriculum',
   'newsletter_campaigns','newsletter_sends','study_topic_schedule',
   'profiles','user_blocks',
+  // AI usage telemetry — admin-only dashboard reads this to break
+  // down Claude spend by user / feature / model. Not user-writable.
+  'claude_api_usage',
 ])
 
 // Whitelist of RPCs the admin client is allowed to call. Without this
