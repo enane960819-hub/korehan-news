@@ -113,7 +113,62 @@
     // dictionary→surface chain so enforce-injected entries don't show up as
     // a bare chunk translation ("easily") — that's the bug class the AI keeps
     // hitting on its own.
-    { re: /[가-힣]게(?=\s+[가-힣])/, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly). NEVER write exp as just the English meaning of the chunk — explain the morpheme + show the dictionary→surface chain.' },
+    { re: /[가-힣]게(?=\s+[가-힣]|[.,!?])/, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly). NEVER write exp as just the English meaning of the chunk — explain the morpheme + show the dictionary→surface chain.' },
+
+    // ── Derivational suffixes (sibling family of ~게) ───────────
+    // Same exp-policy as ~게: explain the morpheme role and show a
+    // dictionary→surface chain. The AI keeps defaulting to "translate
+    // the chunk" for these short suffixes, so the canonical hint here
+    // serves as the ground truth when enforce auto-injects them.
+    { re: /[가-힣]히(?=\s|[.,!?]|$)/, label: '~히 (adverb suffix, Sino-Korean)', hint: 'adverbializer for Sino-Korean and a few native bases. 정확하다 → 정확히 (accurately); 조용하다 → 조용히 (quietly); 천천히 (slowly); 분명히 (clearly); 충분히 (sufficiently). Sibling of ~게 — different surface but same role.' },
+    { re: /[가-힣](답다|답게|답고|답다고|답습니다|다워|다워요|다웠)/, label: '~답다 (befits / characteristic of)', hint: 'noun → adjective: <noun> + 답다 = "befits / acts like the role of". 학생답다 → 학생답게 (in a student-like way); 사람답다 (humanly); 봄답다 (spring-like).' },
+    { re: /[가-힣](롭다|롭게|로워|로워요|로웠|로운)/, label: '~롭다 (-ous / adjective formative)', hint: 'noun → adjective for abstract qualities. 자유 → 자유롭다 → 자유롭게 (freely); 새 → 새롭다 → 새롭게 (newly); 여유롭다 (relaxed); 평화롭다 (peaceful).' },
+    { re: /[가-힣](스럽다|스럽게|스러워|스러워요|스러웠|스러운)/, label: '~스럽다 (seems / has the quality of)', hint: 'noun/stem → adjective for evident qualities. 자연 → 자연스럽다 → 자연스럽게 (naturally); 조심 → 조심스럽다 → 조심스럽게 (carefully); 사랑스럽다 (lovely).' },
+    { re: /[가-힣]적(이다|이에요|입니다|이|인|으로|으로\s)/, label: '~적 (-ic / -al adjective suffix)', hint: 'Sino-Korean noun → adjective. <noun> + 적 = "-ic / -al / -ive". Forms: 적이다 (predicate), 적인 N (modifier), 적으로 (adverb). 일반적 (general); 효과적 (effective); 경제적 (economic).' },
+    { re: /[가-힣]화(되|하|된|한|돼|됨|함|되었|되었어|되어|됩니다|합니다)/, label: '~화하다/~화되다 (-ization / -ize)', hint: 'Sino-Korean noun → verb. <noun> + 화 = "-ization"; + 하다/되다 = "-ize / become -ized". 디지털화 (digitalization), 산업화 (industrialization), 자동화하다 (automate).' },
+
+    // ── Modal / aspectual collocations ──────────────────────────
+    { re: /[가-힣]게\s*(하|만들|시키|했|만들었|만들어요|시켰|시켜요|시킬|만들기)/, label: '~게 하다 (causative)', hint: 'periphrastic causative. <stem> + 게 하다 = "make / cause X to". 알게 하다 (let know); 가게 하다 (make go); 슬프게 하다 (make sad). Different from morphological causatives like 알리다, 보이다.' },
+    { _check: function(t) { return _hasJongFollowedBy(t, 8, ['만하', '만한', '만했', '만해']) || /[가-힣]을\s*만(하|한|했|해)/.test(t); }, label: '~(으)ㄹ 만하다 (worth doing)', hint: 'value/possibility. <stem> + ㄹ/을 만하다 = "worth -ing / can manage". 볼 만하다 (worth seeing); 살 만하다 (livable); 먹을 만하다 (edible).' },
+    { _check: function(t) { return _hasJongFollowedBy(t, 8, ['뻔']) || /[가-힣]을\s*뻔/.test(t); }, label: '~(으)ㄹ 뻔하다 (almost did)', hint: 'near-miss. <stem> + ㄹ/을 뻔했다 = "almost V-ed / nearly". 죽을 뻔했어요 (almost died); 넘어질 뻔했어요 (almost fell).' },
+    { re: /[가-힣](는|은)\s*척\s*(하|한|했|해요)/, label: '~ㄴ/는 척하다 (pretend to)', hint: 'feigning. <stem> + ㄴ/는 척하다 = "pretend to / act as if". 모르는 척하다 (pretend not to know); 자는 척하다 (pretend to sleep).' },
+    { _check: function(t) { return _hasJongFollowedBy(t, 4, ['척하', '척한', '척했']); }, label: '~ㄴ/는 척하다 (pretend to)', hint: 'feigning (ㄴ-batchim modifier form). 안 그런 척하다 (pretend not to be).' },
+    { _check: function(t) { return _hasJongFollowedBy(t, 8, ['까 봐', '까봐', '까봤', '까 봤']) || /[가-힣]을까\s*(봐|봐서|봤)/.test(t); }, label: '~(으)ㄹ까 봐 (worry that / lest)', hint: 'apprehension. <stem> + ㄹ/을까 봐 = "worried that / in case". 늦을까 봐 (afraid of being late); 비가 올까 봐 (in case it rains).' },
+    { _check: function(t) { return _hasJongFollowedBy(t, 8, ['줄 알', '줄 모르', '줄 아', '줄 몰라', '줄알', '줄모르']) || /[가-힣]을\s*줄\s*(알|모르|아|몰라)/.test(t); }, label: '~(으)ㄹ 줄 알다/모르다 (know how / expect)', hint: 'skill or expectation. <stem> + ㄹ/을 줄 알다 = "know how to / think that". 운전할 줄 알다 (know how to drive); 올 줄 알았어요 (I thought you\'d come).' },
+    { re: /[가-힣](듯이|듯)(?=\s|[.,!?]|$)/, label: '~듯이 / ~듯 (as if / like)', hint: 'simile. <stem> + 듯이 = "as if / just like". 비가 오듯이 (as if it\'s raining); 알듯이 (as you know); 흐르듯 (as if flowing).' },
+    { re: /[가-힣](는|을)\s*듯(하|한|해|했|해요)/, label: '~ㄴ/는/(으)ㄹ 듯하다 (seems)', hint: 'conjecture, softer than ~것 같다. 비가 오는 듯해요 (seems to be raining); 어려울 듯해요 (will likely be hard).' },
+    { _check: function(t) { return _hasJongFollowedBy(t, 4, ['듯하', '듯한', '듯해']) || _hasJongFollowedBy(t, 8, ['듯하', '듯한', '듯해']); }, label: '~ㄴ/는/(으)ㄹ 듯하다 (seems)', hint: 'conjecture (ㄴ/ㄹ-batchim modifier forms). 끝난 듯해요 (seems to have ended); 어려울 듯해요.' },
+    { re: /[가-힣]기\s*(쉽|쉬|어렵|어려|좋아|좋|싫어|싫|편하|편해|불편하|불편해)/, label: '~기 쉽다/어렵다/좋다 (easy/hard/good to V)', hint: 'evaluation collocation. <stem> + 기 + 쉽다/어렵다/좋다/싫다 = "easy/hard/good/unpleasant to V". Includes ㅂ-irregular forms (쉬워요, 어려워요). 배우기 쉽다 (easy to learn); 알기 어렵다 (hard to know); 보기 좋다 (looks good).' },
+    { _check: function(t) { return _hasJongFollowedBy(t, 8, ['텐데']) || /[가-힣]을\s*텐데/.test(t); }, label: '~(으)ㄹ 텐데 (would be / probably)', hint: 'speaker conjecture with follow-up clause. <stem> + ㄹ/을 텐데 = "probably / I imagine... but". 힘들 텐데 (must be tough); 비쌀 텐데 (would be expensive).' },
+    { re: /[가-힣](ㄴ가|은가|나)\s*(보|봐|봤|봅니다)/, label: '~ㄴ/은가 보다, ~나 보다 (seems / I guess)', hint: 'inferential. <stem> + ㄴ가/나 보다 = "I guess / seems". 좋은가 봐요 (seems good); 가나 봐요 (I guess he\'s going).' },
+
+    // ── Additional connectives ──────────────────────────────────
+    { re: /[가-힣]던지(?=[^가-힣]|$)/, label: '~던지 (whether / however)', hint: 'past indirect question / concessive. 어떻던지 (however it is); 가든지 말든지 (whether to go or not).' },
+    { re: /[가-힣]다가는(?=[^가-힣]|$)/, label: '~다가는 (if you keep V-ing → bad)', hint: 'warning. <stem> + 다가는 = "if you keep V-ing (bad outcome)". 그렇게 먹다가는 살쪄요 (if you keep eating like that, you\'ll gain weight).' },
+    { re: /[가-힣](는|은)\s*데다(가)?(?=[^가-힣]|$)/, label: '~ㄴ/는 데다(가) (in addition)', hint: 'addition. <stem> + ㄴ/는 데다(가) = "on top of / and what\'s more". 비싼 데다 맛도 없어요 (expensive AND not tasty).' },
+    { _check: function(t) { return _hasJongFollowedBy(t, 4, ['데다', '데다가']); }, label: '~ㄴ/는 데다(가) (in addition)', hint: 'addition (ㄴ-batchim modifier form). 비싼 데다 (on top of being expensive).' },
+    { re: /[가-힣](는|은)\s*김에/, label: '~ㄴ/는 김에 (while at it)', hint: 'opportunistic. <stem> + ㄴ/는 김에 = "since / while you\'re at it". 가는 김에 (while you\'re going); 일어난 김에 (since I\'m up).' },
+    { _check: function(t) { return _hasJongFollowedBy(t, 4, ['김에']); }, label: '~ㄴ/는 김에 (while at it)', hint: 'opportunistic (ㄴ-batchim modifier form). 일어난 김에 (since I\'m up).' },
+
+    // ── Additional particles ────────────────────────────────────
+    { re: /[가-힣]조차(?=[^가-힣]|$)/, label: '~조차 (even — emphasis)', hint: 'emphatic inclusion, often negative. <noun> + 조차 = "even / not even". 너조차 (even you); 나조차 모른다 (even I don\'t know).' },
+    { re: /[가-힣]마저(?=[^가-힣]|$)/, label: '~마저 (even / the last)', hint: 'inclusive of the last/least expected. <noun> + 마저 = "even / on top of all that". 너마저 (even you of all people).' },
+    { re: /[가-힣]밖에(?=[^가-힣]|$)/, label: '~밖에 (only / nothing but) [+negative]', hint: 'exclusive — pairs with negative verb (안/없/모르). <noun> + 밖에 + neg = "only / nothing but". 천 원밖에 없어요 (I only have 1000 won).' },
+    { re: /[가-힣]씩(?=[^가-힣]|$)/, label: '~씩 (each / per)', hint: 'distributive. <number/amount> + 씩 = "each / per". 한 명씩 (one by one); 매일 한 시간씩 (an hour each day).' },
+    { _check: function(t) {
+      if (/[가-힣]이나(?=\s|[.,!?])/.test(t)) return true;
+      // Bare ~나 after a vowel-ending syllable (no batchim, jong=0) followed
+      // by space/punct. The vowel-ending requirement excludes verb stems like
+      // 만나, 혼나, 가나(요).
+      for (var i = 0; i < t.length - 1; i++) {
+        if (_jong(t.charAt(i)) !== 0) continue;
+        if (t.charAt(i + 1) !== '나') continue;
+        var nxt = t.charAt(i + 2) || '';
+        if (nxt === '' || /[\s.,!?]/.test(nxt)) return true;
+      }
+      return false;
+    }, label: '~(이)나 (or / about / as much as)', hint: 'alternation, approximation, or surprising quantity. After consonant-ending nouns: 이나 (책이나). After vowel-ending nouns: 나 (커피나, 차나). 커피나 차 (coffee or tea); 열 명이나 (as many as 10); 하루나 이틀 (a day or two).' },
+    { re: /[가-힣]라도(?=[^가-힣]|$)|[가-힣]이라도(?=[^가-힣]|$)/, label: '~(이)라도 (even / at least)', hint: 'concessive selection. <noun> + (이)라도 = "even / at least / something like". 물이라도 (at least water); 누구라도 (anyone).' },
 
     // ── Particles ─────────────────────────────────────────────
     { re: /[가-힣](을|를)(?:\s|[가-힣])/, label: '~을/를 (object marker)', hint: 'direct object particle. attaches to noun' },
@@ -207,6 +262,25 @@
   // followed by a past-tense ending is a contracted past form. Exceptions:
   // 있 (present existential) and 겠 (intention/conjecture) also carry ㅆ
   // jongseong but aren't past markers — their own patterns catch them.
+  // Generic helper: returns true iff some syllable in `text` has the given
+  // jongseong (final consonant) AND is followed (optionally across whitespace)
+  // by any string in `endings`. Used for patterns where the trigger is "an
+  // ㄹ-batchim syllable + 텐데" / "an ㄴ-batchim syllable + 듯하다" — those
+  // can't be expressed with [가-힣]ㄹ since the ㄹ is buried in the syllable.
+  // Jongseong table indices used here:
+  //   4 = ㄴ, 8 = ㄹ, 16 = ㅁ, 17 = ㅂ, 20 = ㅆ
+  function _hasJongFollowedBy(text, jong, endings) {
+    if (!text) return false;
+    for (var i = 0; i < text.length - 1; i++) {
+      if (_jong(text.charAt(i)) !== jong) continue;
+      var after = text.substr(i + 1).replace(/^\s+/, '');
+      for (var j = 0; j < endings.length; j++) {
+        if (after.indexOf(endings[j]) === 0) return true;
+      }
+    }
+    return false;
+  }
+
   function _hasContractedPastEnding(text, ending) {
     if (!text || !ending) return false;
     for (var i = 0; i + ending.length < text.length + 1; i++) {
