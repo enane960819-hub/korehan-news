@@ -16491,17 +16491,43 @@ async function goVocabSanity() {
   vsLoadFromCache();
 }
 
-function vsRefreshCacheStats() {
+async function _vsFetchTableCount(table) {
+  // Supabase count-only query: head:true returns just the row count
+  // without transferring any data. Much cheaper than paginating.
+  var sb = getSb(); if (!sb) return null;
+  try {
+    var r = await sb.from(table).select('*', { count: 'exact', head: true });
+    return (r.count != null) ? r.count : null;
+  } catch (_) { return null; }
+}
+
+async function vsRefreshCacheStats() {
   var tableSel = document.getElementById('vs-table');
   if (!tableSel) return;
   var table = tableSel.value;
-  var s = _vsCacheStats(table);
   var el = document.getElementById('vs-cache-stats');
   if (!el) return;
-  if (s.total === 0) {
-    el.innerHTML = '캐시 비어 있음 — 이 테이블 첫 스캔.';
-  } else {
-    el.innerHTML = '캐시: ' + s.total + ' entries 검증 완료 (<span style="color:#15803d">OK ' + s.ok + '</span> / <span style="color:#dc2626">BAD ' + s.bad + '</span>)';
+  var s = _vsCacheStats(table);
+  // First render with cache stats only (instant); fetch DB count
+  // async and patch in when it arrives. Two-phase render so the UI
+  // isn't gated on the network call.
+  function _line(totalRows) {
+    var cacheChunk = s.total === 0
+      ? '캐시 비어 있음'
+      : '캐시 ' + s.total + ' 완료 (<span style="color:#15803d">OK ' + s.ok + '</span> / <span style="color:#dc2626">BAD ' + s.bad + '</span>)';
+    if (totalRows == null) {
+      return '<code>' + _vsEsc(table) + '</code> · ' + cacheChunk + ' · DB total ⏳';
+    }
+    var remaining = Math.max(0, totalRows - s.total);
+    var color = remaining === 0 ? '#15803d' : '#0f172a';
+    return '<code>' + _vsEsc(table) + '</code> · DB total <b>' + totalRows + '</b> · ' + cacheChunk
+      + ' · <span style="color:' + color + '">audit 남음 ' + remaining + '</span>';
+  }
+  el.innerHTML = _line(null);
+  var count = await _vsFetchTableCount(table);
+  // Only patch if the user hasn't switched table while we were waiting.
+  if (document.getElementById('vs-table') && document.getElementById('vs-table').value === table) {
+    el.innerHTML = _line(count);
   }
 }
 
