@@ -3206,8 +3206,14 @@ function renderArticlePage() {
     })();
   }
 
-  // 어드민이면 중요표현 관리 패널 표시
-  if (window._isAdmin) _renderPhrasesAdmin(a.id);
+  // 어드민이면 중요표현 관리 패널 표시 — only when the helper is
+  // actually loaded. _renderPhrasesAdmin lives in
+  // js/features/highlighted-expressions.js and isn't included on
+  // every page that uses renderArticlePage. Without this guard
+  // admins on article pages hit a ReferenceError that bubbled out
+  // of renderArticlePage and aborted the rest of the render —
+  // surfacing as the "swipe → blank screen" bug from PR #412-414.
+  if (window._isAdmin && typeof _renderPhrasesAdmin === 'function') _renderPhrasesAdmin(a.id);
 
   // Lazy-hydrate the full body if this article was loaded via the lite
   // list select (related-article swipe path). The lede already shows
