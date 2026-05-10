@@ -7986,17 +7986,19 @@ document.addEventListener('DOMContentLoaded', async function() {
       // 2-4s. Now they resolve in the background and the chrome reflows
       // when they land, while the learner is already reading.
       var singlePromise = loadArticleById(_articleId);
-      // Only re-fetch the swipe pool when the cache is too thin to
-      // power navigation. Earlier this fired force:true on every
-      // article-page load, even when home had just prefetched 1000
-      // rows two seconds prior — that re-fetch took 2-4s on LTE and
-      // blocked the swipe pool from populating, which the user
-      // reported as "swipe → blank screen for 5s". 30 cached rows is
-      // plenty for next-article picking; we still upgrade to a
-      // larger pool in the background only when we genuinely need
-      // it.
-      var _cachedRowCount = (typeof getCachedArticles === 'function' ? getCachedArticles() : []).length;
-      var listPromise = (_cachedRowCount >= 30)
+      // Re-fetch only when the cache lacks bodied rows. Earlier
+      // attempts (PR #412) tried to skip the re-fetch whenever
+      // cache had ≥30 rows — but the home prefetch's metadata-only
+      // rows count toward that 30, leaving the swipe pool with no
+      // bodies to render. That made every subsequent swipe pick
+      // a metadata-only row and either render blank (PR #412 alone)
+      // or flash "Loading article…" (PR #413 follow-up). The right
+      // condition is "do we already have ≥30 BODIED rows" — if so
+      // swipe is instant; if not, fire the with-body fetch in
+      // background like the old behaviour did.
+      var _cachedBodied = (typeof getCachedArticles === 'function' ? getCachedArticles() : [])
+        .filter(function(x){ return x && x.body && String(x.body).trim(); }).length;
+      var listPromise = (_cachedBodied >= 30)
         ? Promise.resolve(getCachedArticles())
         : loadArticlesFromDB({ force: true });
       await singlePromise;
