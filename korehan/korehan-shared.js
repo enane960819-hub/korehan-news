@@ -3327,34 +3327,45 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
     var _vocabRule = _isLow
       ? '- VOCAB: max 4 per sentence. Include any content word the learner might not know. Only skip particles and 이다/있다 alone. 흔하다 / 보다 / 키우다 / 살다 / 먹다 are FAIR GAME — explain them.\n'
       : '- VOCAB: max 4 per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다…).\n';
-    var _grammarRule = _isLow
-      ? '- GRAMMAR: MINIMUM 1 pattern, max 3 per sentence. INCLUDE basic patterns: ~을/를 (object marker), ~지 않다 (negation), ~고 있다 (continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~다고 알려져 있어요 / ~ㄴ다고 해요 (reported), ~어 주다 (benefactive), ~아/어 있다 (resultative). 0 patterns is allowed ONLY for a pure noun phrase, proper-noun list, or a single greeting like "안녕하세요." Don\'t pick a pattern that\'s just a vocab word\'s conjugation.\n'
-      : '- GRAMMAR: MINIMUM 1 pattern (unless purely a noun phrase / greeting), max 2 per sentence. Skip beginner patterns (~는 modifier, ~다, ~요/습니다, ~았/었, ~을/를). Don\'t pick a pattern that\'s just a vocab word\'s conjugation.\n';
-    var _grammarVerify =
-        '- GRAMMAR VERIFY (HARD RULE — non-negotiable):\n'
-      + '    1. example_in_sentence MUST be a literal substring of that source sentence (numbered above). If you alter even one character, the entry is silently dropped on the client.\n'
-      + '    2. example_in_sentence MUST contain the pattern marker. For ~(으)로서 → the chunk needs 로서 or 으로서. For ~고 있다 → 고 있 or 고있. For ~지 않다 → 지 않. The chunk should be ~4-12 characters and include the morpheme plus a couple chars of context.\n'
-      + '    3. If a sentence has no usable chunk for the pattern you had in mind, OMIT it from that sentence\'s grammar. Empty grammar arrays are fine. Do not invent. Empty is better than wrong.\n'
+    // Analysis = grammar + key expressions + idioms. Maximum coverage:
+    // every interesting morpheme, fixed expression, idiom, or
+    // collocation that appears in the sentence. The user explicitly
+    // asked us to drop the 0-or-1 cap and surface as much as is
+    // genuinely there. Article-level skipping rule (Tree+/Forest skip
+    // beginner patterns) was also dropped — judge each sentence on
+    // its own contents, not on metadata.
+    var _analysisRule =
+        '- ANALYSIS: include EVERY genuinely useful item in the sentence — grammar patterns, key fixed expressions, idioms / 사자성어 / 관용구, and notable collocations. No cap. If a sentence has 5 worthy items, return 5; if it honestly has 1, return 1; if it has 0 (pure noun phrase, proper-noun list, single greeting), return [].\n'
+      + '    Each item carries a "type" field — one of:\n'
+      + '      grammar    — morphemes, endings, particles, connective patterns (~고 있다, ~지 않다, ~ㄴ/은 것, etc.)\n'
+      + '      expression — fixed phrases learners hear constantly (시간이 없다 → "no time", 마음에 들다 → "to like / take a liking to")\n'
+      + '      idiom      — 사자성어 / 관용구 / metaphors (눈에 띄다 → "to stand out", 시간 가는 줄 모르다 → "to lose track of time")\n'
+      + '    Use the same JSON shape for every item: {"type":"grammar|expression|idiom","label":"<the pattern / phrase / idiom in clean form>","exp":"<short English explanation>","example_in_sentence":"<chunk from sentence>"}.\n';
+    var _analysisVerify =
+        '- ANALYSIS VERIFY (HARD RULE):\n'
+      + '    1. example_in_sentence MUST be a literal substring of that source sentence. Whitespace can differ; characters cannot.\n'
+      + '    2. For type="grammar", the pattern marker should be present somewhere in the sentence. Korean past-tense contractions (봤어요 = 보+았어요, 했어요, 됐어요, 갔어요) count as containing ~았/었어요 even though the literal "었어요" doesn\'t appear; the client validator already understands this.\n'
+      + '    3. For type="expression" / "idiom", the label should be the canonical form; example_in_sentence is the actual chunk as it appears.\n'
+      + '    4. If a candidate doesn\'t survive these checks, OMIT it. Empty is better than wrong. The previous "fill at least 1 slot" rule was dropped — empty arrays are honest output.\n'
       + '    Common hallucinations to avoid:\n'
-      + '    · Citing a noun phrase like "새로운 웰니스 트렌드" as the example for ~(으)로서 — the chunk has no 로서. Drop.\n'
-      + '    · Picking ~ㄴ다 / ~는다 (plain declarative) when the example is "X예요 / X이에요" — that\'s polite copula, not plain ending.\n'
-      + '    · Picking ~어요 / ~아요 if the chunk has no verb.\n'
-      + '    · Claiming a particle pattern (~에서, ~로, ~까지) for a chunk that doesn\'t contain that particle.\n';
+      + '    · Citing a noun phrase like "새로운 웰니스 트렌드" as the example for ~(으)로서 — the chunk has no 로서.\n'
+      + '    · Calling "X예요 / X이에요" plain ~ㄴ다 — that\'s polite copula.\n'
+      + '    · Naming an idiom that isn\'t actually used in the sentence.\n';
     var prompt =
         'You are a Korean tutor analysing each sentence of an article for a ' + _lvlLabel + ' learner.\n\n'
       + 'Sentences (numbered, in order):\n' + payload + '\n\n'
       + 'Return ONLY a JSON object — no preamble, no code fences:\n'
       + '{ "sentences": [\n'
       + '  { "translation": "natural English of sentence 1",\n'
-      + '    "vocab":   [{"ko":"<dictionary form>","en":"<short meaning>","note":"<optional 1-line>"}],\n'
-      + '    "grammar": [{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English>","example_in_sentence":"<chunk from sentence>"}]\n'
+      + '    "vocab":    [{"ko":"<dictionary form>","en":"<short meaning>","note":"<optional 1-line>"}],\n'
+      + '    "analysis": [{"type":"grammar|expression|idiom","label":"<pattern / phrase / idiom>","exp":"<1-sentence English>","example_in_sentence":"<chunk from sentence>"}]\n'
       + '  }, ... one entry per input sentence, same order ...\n'
       + ']}\n\n'
       + 'Rules:\n'
       + '- TRANSLATION: preserve the original subject. Do NOT inject "I/we" if Korean omitted it.\n'
       + _vocabRule
-      + _grammarRule
-      + _grammarVerify
+      + _analysisRule
+      + _analysisVerify
       + '- Return EXACTLY ' + sentences.length + ' entries in sentences[].';
     var res = await callClaude({
       feature: 'sentence-analyze-bulk',
@@ -3375,12 +3386,28 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
     // either numeric index or text equality.
     var stitched = sentences.map(function(s, i) {
       var a = arr[i] || {};
+      // Accept both the new "analysis" field (grammar + expression +
+      // idiom) and legacy "grammar" payloads from older Claude calls.
+      // Legacy items are promoted to type:'grammar' so the renderer
+      // sees a single shape.
+      var analysis = [];
+      if (Array.isArray(a.analysis)) analysis = a.analysis.slice();
+      else if (Array.isArray(a.grammar)) {
+        analysis = a.grammar.map(function(g) {
+          return {
+            type: 'grammar',
+            label: g.pattern || g.label || '',
+            exp: g.exp || '',
+            example_in_sentence: g.example_in_sentence || '',
+          };
+        });
+      }
       return {
         text: s.text,
         idx: s.idx,
         translation: a.translation || '',
         vocab: Array.isArray(a.vocab) ? a.vocab : [],
-        grammar: Array.isArray(a.grammar) ? a.grammar : []
+        analysis: analysis,
       };
     });
 
@@ -3424,7 +3451,15 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
 // marker-in-sentence check but fail the new marker-in-example check
 // for any item where AI cited an unrelated chunk; mark them stale
 // so the next reader regenerates with the tighter prompt.
-var KH_SENT_CACHE_VERSION = 'p4';
+// Bumped to 'p5' on 2026-05-09 night — the response shape changed
+// from { grammar:[{pattern,...}] } to { analysis:[{type,label,...}] }
+// covering grammar + expression + idiom in one array, with no
+// upper cap and the article-level skip rule dropped (every level
+// now surfaces whatever the sentence honestly contains). p4 caches
+// have only `grammar` and get auto-promoted on render via the
+// legacy fallback in _khRenderSentPanel, but admin re-analyse
+// rewrites them into the new shape.
+var KH_SENT_CACHE_VERSION = 'p5';
 
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
@@ -3488,20 +3523,39 @@ async function _khLoadArticleSentenceCache(articleId) {
 //      chunk ends in 예요 / 이에요 / 요 / 었어요 / etc. — those are
 //      the polite copula and verb endings, not plain declarative.
 function _khSentGrammarLooksBad(sentObj) {
-  if (!sentObj || !Array.isArray(sentObj.grammar) || !sentObj.grammar.length) return false;
+  if (!sentObj) return false;
+  // Accept either the new analysis array (preferred) or the legacy
+  // grammar array. Either shape is run through the same validity
+  // heuristic — broken example text or marker-not-in-sentence.
+  var items = [];
+  if (Array.isArray(sentObj.analysis) && sentObj.analysis.length) {
+    items = sentObj.analysis.map(function(a) {
+      return { pattern: a.label || a.pattern || '', example_in_sentence: a.example_in_sentence || '', _type: a.type || 'grammar' };
+    });
+  } else if (Array.isArray(sentObj.grammar) && sentObj.grammar.length) {
+    items = sentObj.grammar.slice();
+  }
+  if (!items.length) return false;
   var bodyText = (sentObj.text || '').replace(/\s+/g, '');
-  return sentObj.grammar.some(function(g) {
+  return items.some(function(g) {
     if (!g) return false;
     var ex = (g.example_in_sentence || '').replace(/<[^>]*>/g, '').replace(/\s+/g, '').trim();
     if (!ex) return false;
     if (bodyText && bodyText.indexOf(ex) === -1) return true;
+    // Marker check applies only to grammar items — expression / idiom
+    // labels don't have particle-style markers and would always trip
+    // the heuristic. Items without an explicit type (legacy cache)
+    // default to grammar.
+    var typ = g._type || g.type || 'grammar';
+    if (typ !== 'grammar') return false;
     var pat = String(g.pattern || '');
     if (/~?[ㄴ는]다\b|~?[ㄴ는]다(?!고)/.test(pat) && /(예요|이에요|이었|였)\.?$/.test(ex)) return true;
-    // PR #383 mirror: pattern markers (Korean runs of length ≥ 2 in
-    // the pattern field) must appear somewhere in the sentence.
-    // Catches the user-reported "~(으)로서 cited on a line that has
-    // no 로서/으로서 anywhere". Single-char markers skipped — too
-    // many false positives from particles (이/가/을/를).
+    // Marker-in-sentence (broad) check — marker must appear somewhere
+    // in the sentence. Relaxed from "marker must be in the example
+    // chunk" because Korean past-tense contractions (봤어요 = 보+았어요,
+    // 했어요, 됐어요) drop the literal marker string while still
+    // belonging to the pattern. Single-char markers skipped — too many
+    // false positives from particles.
     var stripped = pat.replace(/[~()\s\-.?!]/g, '');
     var markers = [];
     var rePieces = stripped.split(/[\/,]/);
@@ -3510,15 +3564,9 @@ function _khSentGrammarLooksBad(sentObj) {
       while ((m = re.exec(piece))) markers.push(m[0]);
     });
     if (markers.length) {
-      // Strict check: marker must appear inside the example chunk
-      // (which we've already verified is in the sentence). bodyText
-      // is the sentence with whitespace stripped; ex same. Requiring
-      // marker-inside-example catches the case where AI cites a
-      // chunk that's in the sentence but doesn't actually demonstrate
-      // the pattern.
       var hit = false;
       for (var i = 0; i < markers.length; i++) {
-        if (ex.indexOf(markers[i]) >= 0) { hit = true; break; }
+        if (bodyText.indexOf(markers[i]) >= 0) { hit = true; break; }
       }
       if (!hit) return true;
     }
@@ -3586,110 +3634,113 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
            + '</div>';
     });
   }
-  if (data && Array.isArray(data.grammar) && data.grammar.length) {
-    // De-overlap: when two grammar patterns sit on the same verb
-    // (e.g. ~어지다 + ~고 있다 stacked on 많아지고 있어요), the model
-    // returns near-identical example_in_sentence chunks and the panel
-    // looks like the same explanation got duplicated. Drop entries
-    // whose example is a substring of one we've already shown — the
-    // longer/earlier example wins. Patterns with genuinely different
-    // example chunks still both render.
+  // Analysis section — grammar patterns + idioms + key expressions,
+  // grouped by type. The cache may carry either the new `analysis`
+  // array (each item: {type:'grammar'|'expression'|'idiom', label,
+  // exp, example_in_sentence}) OR the legacy `grammar` array (which
+  // we promote to type:'grammar' for backward compat). Skip render
+  // when both are missing.
+  var _analysisItems = [];
+  if (data && Array.isArray(data.analysis) && data.analysis.length) {
+    _analysisItems = data.analysis.slice();
+  } else if (data && Array.isArray(data.grammar) && data.grammar.length) {
+    _analysisItems = data.grammar.map(function(g) {
+      return {
+        type: 'grammar',
+        label: g.pattern || g.label || '',
+        exp: g.exp || '',
+        example_in_sentence: g.example_in_sentence || '',
+      };
+    });
+  }
+  if (_analysisItems.length) {
     var seenExamples = [];
-    var grammarFiltered = [];
-    // Heuristic: a real grammar pattern is a morpheme/connective/ending,
-    // not a noun phrase. Reject "patterns" where the model glued a
-    // content noun onto the morpheme (e.g. "~ㄴ 동물" — animal is just
-    // a noun, the actual pattern is ~는). If the field strips down to
-    // 3+ contiguous Hangul syllables, it's almost certainly a noun and
-    // should be dropped.
-    function _looksLikePadding(pattern) {
-      if (!pattern) return true;
-      // Strip the morpheme markers + standard pattern punctuation;
-      // whatever remains should not be a multi-syllable noun.
-      var stripped = String(pattern)
+    var analysisFiltered = [];
+    function _looksLikePadding(label) {
+      if (!label) return true;
+      var stripped = String(label)
         .replace(/[~\/()\s\-,.?!]/g, '')
         .replace(/[은는이가을를으]/g, '');
-      // If a 3+ Korean-syllable run survives the strip, treat as noun.
       return /[가-힣]{3,}/.test(stripped);
     }
-    // Hallucination guard. The model occasionally claims a pattern
-    // that simply isn't in the sentence — e.g. it returned ~(으)로서
-    // ("in the capacity of / as") for "...새로운 웰니스 트렌드가
-    // 젊은층 사이에서 인기를 얻고 있어요" which contains no 로서/
-    // 으로서 anywhere. Drop any grammar item whose pattern markers
-    // genuinely don't appear in the sentence text. Skipped when we
-    // don't have the sentence (older cache / unknown source) so we
-    // never block on missing context.
-    function _patternMarkers(pattern) {
-      // Collect every Korean-character run of length ≥ 2 inside the
-      // pattern field, after stripping ~ / parens / slashes etc. A
-      // pattern like "~(으)로서" yields ["로서"]; "~ㄴ다 / ~는다"
-      // yields []. We deliberately skip 1-char remnants because
-      // particles (이/가/을/를…) match nearly every sentence and
-      // would defeat the check.
-      if (!pattern) return [];
+    function _patternMarkers(label) {
+      if (!label) return [];
       var out = [];
-      String(pattern).split(/[\/,]/).forEach(function(piece) {
+      String(label).split(/[\/,]/).forEach(function(piece) {
         var stripped = piece.replace(/[~()\s\-.?!]/g, '');
         var re = /[가-힣]{2,}/g, m;
         while ((m = re.exec(stripped))) out.push(m[0]);
       });
       return out;
     }
-    function _grammarMatchesSentence(g) {
-      if (!_sent) return true; // no sentence context — skip the check
-      // Compare with whitespace stripped on both sides — many Korean
-      // grammar patterns naturally carry a space ("~고 있다", "~지
-      // 않다") and the marker we extract from the pattern field
-      // strips that space. Without normalising on both sides, every
-      // such pattern got dropped on sentences that genuinely
-      // contained it.
+    function _itemMatchesSentence(item) {
+      if (!_sent) return true;
       var sentNoWs = _sent.replace(/\s+/g, '');
-      var ex = (g.example_in_sentence || '').replace(/\s+/g, '').trim();
-      // Rule 1: the example chunk must literally appear in the
-      // sentence. Catches "→ 새로운 웰니스 트렌드" cited as an
-      // example when the sentence is something else entirely.
+      var ex = (item.example_in_sentence || '').replace(/\s+/g, '').trim();
+      // example must literally appear in the sentence
       if (!ex || sentNoWs.indexOf(ex) < 0) return false;
-      // Rule 2 (the strict one): the pattern's own marker(s) must
-      // appear inside the example chunk — not just somewhere in
-      // the sentence. The looser "marker in sentence anywhere"
-      // version still let through cases where the example chunk
-      // was unrelated to the marker (e.g. AI cited "새로운 웰니스
-      // 트렌드" for ~(으)로서 because 로서 happened to appear
-      // 200 chars away). The example must DEMONSTRATE the pattern.
-      var markers = _patternMarkers(g.pattern);
-      if (markers.length) {
-        var hit = false;
-        for (var k = 0; k < markers.length; k++) {
-          if (ex.indexOf(markers[k]) >= 0) { hit = true; break; }
+      // Marker check only for grammar (idioms / expressions are
+      // already validated by example-in-sentence above; the label
+      // for an idiom is often the idiom itself, which is the chunk).
+      // For grammar specifically, the marker must appear in the
+      // sentence somewhere — relaxed from PR #390's strict
+      // "marker in example chunk" because Korean past-tense
+      // contractions (봤어요 = 보+았어요) lose the literal marker
+      // string while still using the pattern.
+      // Marker check — only for grammar items. Idioms / expressions
+      // are validated by the example-in-sentence rule above; their
+      // labels are the canonical phrase form, not a particle. The
+      // marker check itself is the broad "appears in sentence
+      // somewhere" version (relaxed from PR #390's "must be in the
+      // example chunk") so Korean past-tense contractions like 봤어요
+      // (= 보+았어요) still surface ~았/었어요.
+      if ((item.type || 'grammar') === 'grammar') {
+        var markers = _patternMarkers(item.label);
+        if (markers.length) {
+          var hit = false;
+          for (var k = 0; k < markers.length; k++) {
+            if (sentNoWs.indexOf(markers[k]) >= 0) { hit = true; break; }
+          }
+          if (!hit) return false;
         }
-        if (!hit) return false;
       }
       return true;
     }
-    data.grammar.forEach(function(g) {
-      if (!g || !g.pattern) return;
-      if (_looksLikePadding(g.pattern)) return;
-      if (!_grammarMatchesSentence(g)) return;
-      var ex = (g.example_in_sentence || '').trim();
+    _analysisItems.forEach(function(item) {
+      if (!item || !item.label) return;
+      var typ = item.type || 'grammar';
+      // Padding-noun check only for grammar; idioms/expressions can
+      // legitimately have multi-syllable Korean content.
+      if (typ === 'grammar' && _looksLikePadding(item.label)) return;
+      if (!_itemMatchesSentence(item)) return;
+      var ex = (item.example_in_sentence || '').trim();
       var dupe = false;
       for (var i = 0; i < seenExamples.length && ex; i++) {
         var prev = seenExamples[i];
         if (!prev) continue;
-        // Heavy overlap = one fully contains the other.
         if (prev.indexOf(ex) >= 0 || ex.indexOf(prev) >= 0) { dupe = true; break; }
       }
       if (dupe) return;
       if (ex) seenExamples.push(ex);
-      grammarFiltered.push(g);
+      analysisFiltered.push(item);
     });
-    if (grammarFiltered.length) {
-      html += '<div class="asp-section-title">Grammar</div>';
-      grammarFiltered.forEach(function(g) {
+    if (analysisFiltered.length) {
+      var TYPE_META = {
+        grammar:    { label: 'Grammar',    color: '#a78bfa', bg: 'rgba(167,139,250,.12)' },
+        expression: { label: 'Expression', color: '#34d399', bg: 'rgba(52,211,153,.12)' },
+        idiom:      { label: 'Idiom',      color: '#fbbf24', bg: 'rgba(251,191,36,.12)' },
+      };
+      html += '<div class="asp-section-title">Analysis</div>';
+      analysisFiltered.forEach(function(item) {
+        var typ = item.type || 'grammar';
+        var meta = TYPE_META[typ] || TYPE_META.grammar;
         html += '<div class="asp-grammar-block">'
-             + '<div class="asp-grammar-name">' + escapeHTML(g.pattern) + '</div>'
-             + (g.exp ? '<div class="asp-grammar-exp">' + escapeHTML(g.exp) + '</div>' : '')
-             + (g.example_in_sentence ? '<div class="asp-grammar-ex">→ "' + escapeHTML(g.example_in_sentence) + '"</div>' : '')
+             + '<div class="asp-grammar-name" style="display:flex;align-items:center;gap:6px">'
+             +   '<span style="font-size:9px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:6px;background:' + meta.bg + ';color:' + meta.color + '">' + meta.label + '</span>'
+             +   '<span>' + escapeHTML(item.label) + '</span>'
+             + '</div>'
+             + (item.exp ? '<div class="asp-grammar-exp">' + escapeHTML(item.exp) + '</div>' : '')
+             + (item.example_in_sentence ? '<div class="asp-grammar-ex">→ "' + escapeHTML(item.example_in_sentence) + '"</div>' : '')
              + '</div>';
       });
     }
@@ -3914,36 +3965,42 @@ async function analyzeSentence(idx, el) {
     var _vocabSkipRule = _isLowLevel
       ? '- VOCAB: max 4 items. Include any content word the learner might not know (verbs, adjectives, nouns). Only skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone). 흔하다 / 보다 / 키우다 / 살다 / 먹다 are FAIR GAME at this level — explain them.\n'
       : '- VOCAB: max 4 items. Skip beginner words (는/이/가/이다/있다/하다/되다…). The note must be FACTUAL — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply.\n';
-    var _grammarSkipRule = _isLowLevel
-      ? '- GRAMMAR: MINIMUM 1 pattern, max 3. At THIS LEVEL, basic patterns ARE the lesson — INCLUDE them: ~을/를 (object marker) + verb, ~지 않다 (negation), ~고 있다 (present continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency), ~다고 알려져 있어요 / ~ㄴ다고 해요 (reported), ~어 주다 (benefactive), ~아/어 있다 (resultative state). The ONLY excuse for 0 patterns is a sentence that is purely a proper noun, interjection, or single greeting (e.g. "안녕하세요."). Do NOT pick a pattern that\'s just the conjugation of a vocab word.\n'
-      : '- GRAMMAR: MINIMUM 1 pattern (unless the sentence is purely a noun phrase / proper-noun list / single greeting), max 2. Skip beginner-level patterns (~는 noun modifier, ~다 declarative, ~요/습니다 polite, ~았/었 past, ~을/를 object marker) — the learner already knows them at this level. Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n';
-    var _grammarVerifyRule =
-        '- GRAMMAR VERIFY (HARD RULE — non-negotiable):\n'
-      + '    1. example_in_sentence MUST be a literal substring of the sentence above. If you change a single character, the item is dropped.\n'
-      + '    2. example_in_sentence MUST literally contain the pattern marker. For ~(으)로서, the chunk must include 로서 or 으로서. For ~고 있다, it must include 고 있 or 고있. For ~지 않다, it must include 지 않. The chunk should be 4-12 characters and include the morpheme + a couple chars of context.\n'
-      + '    3. If the sentence does NOT contain a usable chunk for a pattern you have in mind, OMIT THAT PATTERN. Empty grammar arrays are fine. Do not invent.\n'
-      + '    Common hallucinations to avoid:\n'
-      + '    · Citing a noun phrase like "새로운 웰니스 트렌드" as the example for ~(으)로서 — the chunk has no 로서 in it. Drop.\n'
-      + '    · Picking ~ㄴ다 / ~는다 (plain declarative) when the example is "X예요 / X이에요" — that\'s the polite copula, NOT the plain ending.\n'
-      + '    · Picking ~어요 / ~아요 if the chunk has no verb in it.\n'
-      + '    · Picking a particle pattern (~에서, ~로, ~까지) when the chunk doesn\'t actually contain that particle.\n';
+    // Same Analysis design as the bulk path. Single-sentence calls
+    // hit this when the bulk cache misses for one row, so the rules
+    // need to match exactly to avoid mixed-shape cache rows.
+    var _analysisRule =
+        '- ANALYSIS: include EVERY genuinely useful item — grammar patterns, key fixed expressions, idioms / 사자성어 / 관용구, notable collocations. No upper cap. If 5 are honestly there, return 5; if 0 are (pure noun phrase / greeting), return [].\n'
+      + '    Each item: {"type":"grammar|expression|idiom","label":"<canonical form>","exp":"<short English>","example_in_sentence":"<chunk from sentence>"}.\n'
+      + '    type definitions:\n'
+      + '      grammar    — morphemes, endings, particles, connective patterns\n'
+      + '      expression — fixed phrases learners hear constantly (시간이 없다, 마음에 들다)\n'
+      + '      idiom      — 사자성어 / 관용구 / metaphors (눈에 띄다, 시간 가는 줄 모르다)\n';
+    var _analysisVerifyRule =
+        '- ANALYSIS VERIFY (HARD RULE):\n'
+      + '    1. example_in_sentence MUST be a literal substring of the sentence above. Whitespace can differ; characters cannot.\n'
+      + '    2. For type="grammar", the marker should appear in the sentence somewhere. Past-tense contractions (봤어요 = 보+았어요, 했어요, 됐어요) are valid examples for ~았/었어요.\n'
+      + '    3. For type="expression"/"idiom", the label is the canonical form; example_in_sentence is the chunk as it appears.\n'
+      + '    4. If a candidate fails any rule, OMIT it. Empty arrays are honest output.\n'
+      + '    Hallucinations to avoid:\n'
+      + '    · Citing a noun phrase like "새로운 웰니스 트렌드" as the example for ~(으)로서.\n'
+      + '    · Calling "X예요 / X이에요" plain ~ㄴ다 — that\'s polite copula.\n'
+      + '    · Naming an idiom that isn\'t actually in the sentence.\n';
     var prompt =
         'You are a Korean tutor analysing a single sentence for a ' + _levelLabel + ' learner.\n\n'
       + 'Sentence: ' + sentenceText + '\n\n'
       + 'Return ONLY a JSON object with this shape (no preamble, no code fences):\n'
       + '{\n'
       + '  "translation": "natural English translation of the whole sentence",\n'
-      + '  "vocab": [{"ko":"<word in dictionary form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],\n'
-      + '  "grammar": [{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<the chunk from the sentence that uses this pattern>"}]\n'
+      + '  "vocab":    [{"ko":"<word in dictionary form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],\n'
+      + '  "analysis": [{"type":"grammar|expression|idiom","label":"<pattern / phrase / idiom>","exp":"<1-sentence English>","example_in_sentence":"<chunk from sentence>"}]\n'
       + '}\n\n'
       + 'Rules:\n'
       + '- TRANSLATION: PRESERVE the original subject — do NOT inject "I/we" if Korean omitted the subject. Use he/she/it/they/the [noun] based on what the sentence implies.\n'
       + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔, 살다 not 살). Single-syllable stems are not Korean words.\n'
       + '- VOCAB SINGLE-WORD ONLY: every "ko" entry must be ONE Korean token — no whitespace, no slash, no parens. NEVER emit multi-word phrases like "공기 정화 시스템," "한국 음식," or "재미있는 이야기" as a vocab entry; pick the single hardest word inside (시스템, 정화, etc) instead. Cap each "ko" at ~5 characters / 4 hangul syllables; longer technical compounds belong in the article body, not in vocab.\n'
       + _vocabSkipRule
-      + _grammarSkipRule
-      + _grammarVerifyRule
-      + '- If two patterns stack on the same verb, pick ONLY the more learner-relevant one.\n'
+      + _analysisRule
+      + _analysisVerifyRule
       + '- Output JSON only.';
     var res = await callClaude({
       feature: 'sentence-analyze',
