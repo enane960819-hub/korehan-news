@@ -1041,8 +1041,33 @@ async function checkSession() {
       var hashParams = new URLSearchParams(window.location.hash.slice(1));
       var accessToken = hashParams.get('access_token');
       var refreshToken = hashParams.get('refresh_token');
+      // Log so we can see exactly what came back when this fails.
+      // Mobile Chrome's strict referrer/storage policies sometimes
+      // strip the hash mid-redirect, leaving us with no token at
+      // all — that needs to be visible in the console rather than
+      // silently dropping the user back at "Sign In".
+      console.log('[auth] implicit hash:',
+        'access_token=', accessToken ? '<' + accessToken.length + ' chars>' : 'MISSING',
+        'refresh_token=', refreshToken ? '<' + refreshToken.length + ' chars>' : 'MISSING');
       if (accessToken) {
-        await sb.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || '' });
+        // setSession requires both tokens. If Supabase didn't
+        // return a refresh_token (some providers, some configs),
+        // pass the access_token as refresh_token too — that
+        // satisfies the SDK's input validation, and the session
+        // still works for the access_token's lifetime (~1 hour).
+        // The user re-authenticates after that instead of getting
+        // a silent failure now.
+        try {
+          var setRes = await sb.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || accessToken,
+          });
+          if (setRes && setRes.error) {
+            console.warn('setSession returned error:', setRes.error.message || setRes.error);
+          }
+        } catch(setErr) {
+          console.warn('setSession threw:', setErr.message || setErr);
+        }
       }
     } catch(e) {
       console.warn('implicit flow session failed:', e);

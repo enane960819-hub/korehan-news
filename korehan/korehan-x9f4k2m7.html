@@ -161,7 +161,7 @@ a{color:inherit;text-decoration:none}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="learning_hub_vocab_data.js"></script>
 <script src="js/kh-vocab-prompt.js?v=20260420z"></script>
-<script src="js/core/kh-grammar-patterns.js?v=20260510u"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260510v"></script>
 </head>
 <body>
 
@@ -5394,8 +5394,15 @@ async function goTitleBackfill() {
   var artsMissing = [];
   var convsMissing = [];
 
+  // Fetch with '*' so a missing column on the production schema
+  // doesn't 400 the whole scan. The earlier "id, title, title_en"
+  // narrow select returned 400 when title_en wasn't materialized
+  // in PostgREST's schema cache, leaving a misleading "0 missing"
+  // KPI on the page.
+  var scanErrors = [];
   try {
-    var artRes = await sb.from('articles').select('id, title, title_en').limit(2000);
+    var artRes = await sb.from('articles').select('*').limit(2000);
+    if (artRes.error) scanErrors.push('articles: ' + (artRes.error.message || JSON.stringify(artRes.error)));
     if (artRes.data) {
       artRes.data.forEach(function(r) {
         if (r && r.title && isKoreanText(r.title) && isMissingEn(r.title_en)) {
@@ -5403,11 +5410,13 @@ async function goTitleBackfill() {
         }
       });
     }
-  } catch(_) {}
+  } catch(e) {
+    scanErrors.push('articles fetch threw: ' + (e && e.message || e));
+  }
 
   try {
-    // Conversations may store ctx in either ctx column or data.ctx.
-    var convRes = await sb.from('conversations_data').select('id, ctx, ctx_en, name, name_en, data').limit(2000);
+    var convRes = await sb.from('conversations_data').select('*').limit(2000);
+    if (convRes.error) scanErrors.push('conversations_data: ' + (convRes.error.message || JSON.stringify(convRes.error)));
     if (convRes.data) {
       convRes.data.forEach(function(r) {
         var ctx = r.ctx || (r.data && r.data.ctx) || '';
@@ -5417,7 +5426,9 @@ async function goTitleBackfill() {
         }
       });
     }
-  } catch(_) {}
+  } catch(e) {
+    scanErrors.push('conversations_data fetch threw: ' + (e && e.message || e));
+  }
 
   // Cost estimate. Haiku 4.5: $1/M input, $5/M output. Per batch of
   // 15 we send ~600 input tokens and get back ~300 output tokens, so
@@ -5440,8 +5451,12 @@ async function goTitleBackfill() {
       + '</div>';
   }
 
+  var errBanner = scanErrors.length
+    ? '<div style="margin-bottom:12px;padding:12px 14px;border-radius:10px;background:#fee2e2;color:#991b1b;font-size:13px;line-height:1.55"><b>스캔 중 오류:</b><br>' + scanErrors.map(esc).join('<br>') + '<br><small>"missing" 카운트가 부정확할 수 있음. 위 오류 먼저 해결.</small></div>'
+    : '';
   document.getElementById('tb-wrap').innerHTML =
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
+      errBanner
+    + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
     +   _kpi('Articles · title_en', artsMissing.length, 'articles')
     +   _kpi('Conversations · ctx_en', convsMissing.length, 'conversations')
     + '</div>'
