@@ -361,6 +361,145 @@
     // ~로 이루어지다 / 구성되다 — structural composition
     { re: /(으로|로)\s*(이루어|이루어져|이루어진|이루어졌|구성되|구성된|구성됐|구성될|구성)/, label: '~(으)로 이루어지다 / 구성되다 (be made up of / consist of)', hint: 'composition. <noun(s)> + (으)로 이루어지다 / 구성되다 = "is made up of / consists of". 5개 위원회로 구성되었다 (consisted of 5 committees); 학생들로 이루어진 모임 (a gathering made up of students).' },
 
+    // ── TOPIK 3-5 comprehensive sweep (60+ patterns) ────────────
+    // Audit pass after the news-register block. Goal: stop forcing
+    // the user to flag patterns one-by-one. Grouped by category;
+    // each entry tested for false-positive risk before commit.
+
+    // ── Time / sequence connectives ─────────────────────────────
+    { re: /(는|ㄴ|은)\s*동안(에)?(?=[^가-힣]|$)/, label: '~ㄴ/는 동안(에) (while / during)', hint: 'duration during which something happens. <stem> + ㄴ/는 동안(에) = "while / during the time that". 자는 동안에 (while sleeping); 회의가 진행되는 동안 (during the meeting).' },
+    { re: /기\s*전에(?=[^가-힣]|$)/, label: '~기 전에 (before V-ing)', hint: 'time-before. <stem> + 기 전에 = "before V-ing". 떠나기 전에 (before leaving); 식사하기 전에 (before eating).' },
+    { re: /(ㄴ|은)\s*(후에|뒤에)(?=[^가-힣]|$)/, label: '~ㄴ/은 후에 / 뒤에 (after V-ing)', hint: 'time-after. <stem> + ㄴ/은 + 후에/뒤에 = "after having V-ed". 떠난 후에 (after leaving); 끝난 뒤에.' },
+    { re: /(는|ㄴ|은)\s*사이(에)?(?=[^가-힣]|$)/, label: '~ㄴ/는 사이(에) (in the time between / while)', hint: 'time-during span. <stem> + ㄴ/는 사이(에) = "during / while / in the time between". 잠깐 자는 사이에 (in the brief time of sleeping); 부재중인 사이에 (during my absence).' },
+    { re: /(는|ㄴ|은)\s*동시에(?=[^가-힣]|$)/, label: '~ㄴ/는 동시에 (at the same time as)', hint: 'simultaneity. <stem> + ㄴ/는 동시에 = "at the same time as / simultaneously with". 발표하는 동시에 (simultaneously with announcing); 결정된 동시에 시행됐다.' },
+    { re: /(는|ㄴ|은)\s*한편(?=[^가-힣]|\s|[,.])/, label: '~ㄴ/는 한편 (meanwhile / on the other hand)', hint: 'parallel/contrast clause. <stem> + ㄴ/는 한편 = "meanwhile / while on the other hand". 회복되는 한편 (recovering on the other hand); 비판하는 한편 응원하다.' },
+    { re: /(는|ㄴ|은)\s*와중에(?=[^가-힣]|$)/, label: '~ㄴ/는 와중에 (in the midst of)', hint: 'in the middle of (often chaotic) something. <stem> + ㄴ/는 와중에 = "in the midst of / amid". 사고가 일어난 와중에 (in the midst of the accident).' },
+    { re: /고\s*나서(?=[^가-힣]|$)/, label: '~고 나서 (after V-ing)', hint: 'sequence after completion. <stem> + 고 나서 = "after V-ing (and completing it)". 식사하고 나서 (after eating); 끝내고 나서 가자.' },
+    { re: /[가-힣]고서(?=[^가-힣]|\s|[,.])/, label: '~고서 (having V-ed)', hint: 'sequence with completion emphasis. <stem> + 고서 = "having V-ed (then)". 듣고서 결정했다 (decided after hearing).' },
+    { re: /고서야(?=[^가-힣]|\s|[,.])/, label: '~고서야 (only after V-ing)', hint: 'only-after-completion. <stem> + 고서야 = "only after V-ing (does/did) …". 다 듣고서야 이해했다 (understood only after hearing it all).' },
+    { re: /곤\s*(하|했|해|한)/, label: '~곤 하다 (used to / repeatedly does)', hint: 'habitual past or repeated action. <stem> + 곤 하다 = "used to / would often". 만나곤 했다 (used to meet); 가곤 한다 (often goes).' },
+
+    // ── Cause / blame / credit ──────────────────────────────────
+    { re: /(는|ㄴ|은)\s*통에(?=[^가-힣]|$)/, label: '~ㄴ/는 통에 (because of — negative)', hint: 'negative-outcome cause (often blamed). <stem> + ㄴ/는 통에 = "because of (the disturbance/bother of)". 비가 오는 통에 늦었다 (was late because of the rain).' },
+    { re: /(는|ㄴ|은)\s*탓(에|이|이다|으로)?(?=[^가-힣]|$)/, label: '~ㄴ/는 탓에 / ~ㄴ/은 탓이다 (because of / fault of)', hint: 'negative cause attribution. <stem> + ㄴ/는 탓에 = "because of / due to (the fault of)"; ~탓이다 = "is the fault of". 늦은 탓에 (because (he) was late); 환경 탓이다 (is the environment\'s fault).' },
+    { re: /(ㄴ|은)\s*덕(분에|분이다|으로|택에)?(?=[^가-힣]|$)/, label: '~ㄴ/은 덕분에 / 덕분이다 (thanks to)', hint: 'positive cause attribution. <stem> + ㄴ/은 덕분에 = "thanks to / owing to". 도와준 덕분에 (thanks to (your) help); 노력한 덕분이다 (is thanks to (one\'s) efforts).' },
+    { re: /(ㄴ|은)\s*끝에(?=[^가-힣]|$)/, label: '~ㄴ/은 끝에 (after / finally as a result)', hint: 'culmination after extended effort. <stem> + ㄴ/은 끝에 = "after (finally) / at the end of". 고민한 끝에 (after long deliberation); 토론한 끝에 결정됐다.' },
+    { re: /(ㄴ|은)\s*결과(?=[^가-힣]|\s|[,.])/, label: '~ㄴ/은 결과 (as a result)', hint: 'outcome of action. <stem> + ㄴ/은 결과 = "as a result of having V-ed". 조사한 결과 (as a result of investigating); 노력한 결과 성공했다.' },
+    { re: /(ㄴ|은)\s*나머지(?=[^가-힣]|$)/, label: '~ㄴ/은 나머지 (as a consequence of being so)', hint: 'extreme-state consequence. <stem> + ㄴ/은 나머지 = "as a result of being so / so X that …". 흥분한 나머지 (in his excitement); 놀란 나머지 말을 잃었다.' },
+    { re: /[가-힣]기에\s+[가-힣]/, label: '~기에 (formal because — written register)', hint: 'formal cause connector. <stem> + 기에 = "because / since (formal)". 학생이기에 (because he\'s a student); 비싸기에 사지 않았다.' },
+    { re: /[가-힣]길래(?=[^가-힣]|\s|[,.])/, label: '~길래 (because — colloquial / spoken)', hint: 'spoken/informal cause connector, often after observing something. <stem> + 길래 = "since / because (I saw/heard)". 비가 오길래 (since it was raining); 맛있다길래 사봤다.' },
+
+    // ── Concession / contrast ───────────────────────────────────
+    { re: /[가-힣]으나(?=\s+[가-힣]|[,])/, label: '~(으)나 (but / however — formal)', hint: 'formal contrast connector. <stem> + (으)나 = "but / however / yet". 노력했으나 실패했다 (tried but failed); 비싸나 좋다.' },
+    { re: /(는데도|ㄴ데도|은데도)(?=[^가-힣]|\s|[,.])/, label: '~ㄴ/는데도 (even though)', hint: 'concession. <stem> + ㄴ/는데도 = "even though / despite". 비가 오는데도 갔다 (went even though it was raining); 늦은데도 와줬다.' },
+    { re: /(다고|ㄴ다고|는다고|라고)\s*(해도|치더라도)/, label: '~다고/라고 해도 (even if / supposing)', hint: 'concession via reported clause. <quote> + 다고 해도 = "even if (one says/assumes) that". 비싸다고 해도 (even if it\'s expensive); 사실이라고 해도.' },
+
+    // ── Combined / parallel purpose ─────────────────────────────
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['겸']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*겸/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 겸 (combined purpose)', hint: 'combined purposes. <stem₁> + (으)ㄹ 겸 + <stem₂> + (으)ㄹ 겸 = "to V₁ and also V₂ / serving both purposes". 산책할 겸 운동할 겸 (both for a walk and for exercise); 점심 먹을 겸 만나자.' },
+
+    // ── Aspectual / progressive ─────────────────────────────────
+    { re: /[가-힣](중이|중인|중에는|중에|중입|중)\s/, label: '~중이다 / ~중인 (in the middle of / ongoing)', hint: 'aspectual "in the middle of". <noun-V> + 중이다 = "is in the middle of"; 중인 + N = "X-ing (modifier)". 회의 중이다 (is in a meeting); 진행 중인 사업 (an ongoing project).' },
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['작정']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*작정/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 작정이다 (intend / plan to)', hint: 'firm intention. <stem> + (으)ㄹ 작정이다 = "intend / plan / am set on V-ing". 떠날 작정이다 (intends to leave); 끝낼 작정이었다.' },
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['모양이', '모양인']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*모양이/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 모양이다 (seems like / looks like)', hint: 'inferred conjecture. <stem> + (으)ㄹ 모양이다 = "seems like / looks like (will V)". 비가 올 모양이다 (looks like it\'ll rain); 화난 모양이다 (seems angry).' },
+
+    // ── Auxiliary attempt / futility / extreme ──────────────────
+    { re: /(아|어|여|봐|와|줘|둬|매|쳐|져|돼|해|펴|켜|셔|가|사|자|차|타|서|짜|패|배)\s*봐야(?=[^가-힣]|\s)/, label: '~아/어 봐야 (no matter how / even if you V)', hint: 'futility despite trying. <stem> + 아/어 봐야 = "no matter how V / even if (you) V (it doesn\'t help)". 노력해 봐야 (no matter how hard you try); 가 봐야 소용없다 (no point even going); 사 봐야 (even if you buy).' },
+    { re: /(아|어|여|봐|와|줘|둬|매|쳐|져|돼|해|펴|켜|셔|가|사|자|차|타|서|짜|패|배)\s*봤자(?=[^가-힣]|\s)/, label: '~아/어 봤자 (no point in / even if)', hint: 'futility marker (stronger than 봐야). <stem> + 아/어 봤자 = "no point V-ing / even if you V". 가 봤자 (no point going); 말해 봤자 소용없다.' },
+    { re: /(아|어|여|봐|와|줘|매|쳐|져|돼|해|펴|켜|셔)\s*죽(겠|을|겠어|겠습)/, label: '~아/어 죽겠다 (dying to / extremely — colloquial)', hint: 'colloquial extreme-degree. <stem> + 아/어 죽겠다 = "dying of / extremely / can\'t stand X". 배고파 죽겠다 (starving to death); 보고 싶어 죽겠다 (dying to see).' },
+    { re: /(아야지|어야지|여야지|해야지|돼야지|봐야지|와야지)(요)?(?=[^가-힣]|\s|[.!?]|$)/, label: '~아/어야지(요) (should / will (resolve))', hint: 'self-resolve or gentle obligation. <stem> + 아/어야지(요) = "should / will (definitely) V / oughta V". 해야지요 (you really should); 가야지 (I should go).' },
+    { re: /기는\s*(하|했|해|한)/, label: '~기는 하다 (do indeed but)', hint: 'concessive admission. <stem₁> + 기는 + <stem₁> + 다 = "(does) V₁ indeed (but)". 알기는 안다 (I know but); 가기는 가지만 (will go, but).' },
+    { re: /기로\s*(결정|약속|마음|예정|확정|결심|선언|합의)/, label: '~기로 결정/약속/마음먹다/합의하다 (decide/promise/resolve to)', hint: 'firm choice expressed via 기로 + commitment verb. <stem> + 기로 + 결정하다 / 약속하다 / 마음먹다 / 예정이다 / 확정하다 / 합의하다 = "decide/promise/resolve/agree to V". 가기로 결정했다; 만나기로 약속했다; 폐지하기로 합의했다.' },
+
+    // ── Habitual / quality predicates ───────────────────────────
+    { re: /기\s*일쑤이/, label: '~기 일쑤이다 (often does — habitual)', hint: 'habitual (often unwanted) frequency. <stem> + 기 일쑤이다 = "is in the habit of V-ing (often)". 잊어버리기 일쑤이다 (often forgets); 늦기 일쑤이다.' },
+    { re: /기\s*나름이/, label: '~기 나름이다 (depends on how V)', hint: 'outcome depends on the manner of V-ing. <stem> + 기 나름이다 = "depends on how (one) V-s". 생각하기 나름이다 (depends on how you think about it); 하기 나름이다 (depends on how you do it).' },
+    { re: /기\s*짝이\s*없/, label: '~기 짝이 없다 (extremely / unparalleled)', hint: 'extreme-degree (often negative). <stem> + 기 짝이 없다 = "is V to no compare / extremely". 안타깝기 짝이 없다 (extremely regrettable); 부끄럽기 짝이 없다.' },
+    { re: /기\s*그지없/, label: '~기 그지없다 (boundlessly / endlessly)', hint: 'unlimited-degree marker. <stem> + 기 그지없다 = "is boundlessly / endlessly V". 안타깝기 그지없다 (endlessly regrettable); 기쁘기 그지없다.' },
+
+    // ── Suggestion / obligation / prohibition ───────────────────
+    { re: /지\s*그래(요)?(?=[^가-힣]|\s|\?)/, label: '~지 그래(요)? (why don\'t you?)', hint: 'soft suggestion. <stem> + 지 그래(요)? = "why don\'t you V?". 한번 가지 그래요? (why don\'t you go once?); 쉬지 그래?' },
+    { re: /(으면|면)\s*안\s*(되|돼|된|됐|돼요|됩)/, label: '~(으)면 안 되다 (must not / shouldn\'t)', hint: 'prohibition. <stem> + (으)면 안 되다 = "must not / it\'s not OK to V". 늦으면 안 돼요 (you mustn\'t be late); 만지면 안 됩니다.' },
+    { re: /지\s*않으면\s*안\s*(되|돼|된|됐|돼요|됩)/, label: '~지 않으면 안 되다 (must / have to)', hint: 'double-negative obligation = "must". <stem> + 지 않으면 안 되다 = "(I) must / have no choice but to V". 가지 않으면 안 된다 (have to go).' },
+
+    // ── Wish / hypothetical ─────────────────────────────────────
+    // ~았/었으면 좋겠다. Generic ㅆ-jongseong + 으면 좋겠 catch covers
+    // every contracted past form (했으면, 됐으면, 봤으면, 갔으면, 왔으면,
+    // 쳤으면, 졌으면, 컸으면, 썼으면, etc.) without enumerating each verb.
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, JONG_SS, ['으면 좋겠', '으면좋겠', '으면 좋', '으면좋']);
+        if (c) return c;
+        var m = t.match(/(았|었|였)으면\s*좋(겠|을|아)/);
+        return m ? m[0] : '';
+      }, label: '~았/었으면 좋겠다 (would like / I wish)', hint: 'wish or desire (counterfactual softener). <stem> + 았/었으면 좋겠다 = "would be nice if / I wish". 비가 왔으면 좋겠다 (I wish it would rain); 빨리 그쳤으면 좋겠어요 (I wish it would stop quickly).' },
+
+    // ── Sentence enders ─────────────────────────────────────────
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['걸요', '걸.', '걸,', '걸?', '걸!']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*걸(요)?(?=[^가-힣]|\s|[.!?]|$)/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ걸(요) (probably / I bet)', hint: 'soft conjecture. <stem> + (으)ㄹ걸(요) = "probably / I bet (X)". 비가 올걸요 (it\'ll probably rain); 알고 있을걸 (he probably knows).' },
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['걸 그랬', '걸 그래']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*걸\s*(그랬|그래)/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ걸 그랬다 (should have / regret)', hint: 'past regret. <stem> + (으)ㄹ걸 그랬다 = "should have V-ed (regret not doing)". 갈걸 그랬다 (I should have gone); 미리 알릴걸 그랬어요.' },
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['까 하', '까하']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을까\s*(하|했|해|한)/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ까 하다 (think about V-ing)', hint: 'tentative consideration. <stem> + (으)ㄹ까 하다 = "thinking about V-ing / considering (V)". 갈까 해요 (thinking of going); 그만둘까 했다 (thought about quitting).' },
+    { re: /(다지요?|라지요?)(?=[^가-힣]|\s|[.?!]|$)/, label: '~다지(요) / ~라지(요) (I hear / they say)', hint: 'reported information softener. <quote> + 다지요 / 라지요 = "I hear that / they say (right?)". 곧 도착한다지요 (I hear they\'re arriving soon).' },
+    { re: /(다네|다더라|라더라|라네)(?=[^가-힣]|\s|[.!?]|$)/, label: '~다네 / ~다더라 / ~라더라 (I hear — informal)', hint: 'casual informational hearsay. <quote> + 다네 / 다더라 / 라더라 = "I hear / heard that (informal)". 결혼한다네 (I hear (he\'s) getting married); 비가 온다더라.' },
+    { re: /다잖(아|아요|니|니까|소)/, label: '~다잖아(요) (I told you / they\'re saying)', hint: 'reminder via reported speech. <quote> + 다잖아(요) = "I told you / they ARE saying that". 못 한다잖아 (he\'s saying he can\'t); 비싸다잖아요.' },
+    { re: /(다고요|라고요|냐고요|자고요)(\?|!|\.|$|\s)/, label: '~다고요? / ~라고요? (you say?)', hint: 'echo question / disbelief. <quote> + 다고요 / 라고요 + ? = "(you\'re saying) X?". 진짜로 간다고요? (you\'re really going?).' },
+    { re: /[가-힣](ㅂ니까|습니까)(?=[^가-힣]|\s|[?.])/, label: '~ㅂ/습니까? (formal question)', hint: 'highly formal question. <stem> + ㅂ/습니까? = "(do/are) you V?". 가십니까? (are you going?); 알고 있습니까?' },
+
+    // ── Particles ───────────────────────────────────────────────
+    { re: /[가-힣](로서|으로서)(?=[^가-힣]|\s|[,.])/, label: '~(으)로서 (as a role / qualification)', hint: 'role/status marker. <noun> + (으)로서 = "as a / in the role/capacity of". 학생으로서 (as a student); 의장으로서 발언했다 (spoke as the chair). Distinct from ~(으)로써.' },
+    { re: /[가-힣](로써|으로써)(?=[^가-힣]|\s|[,.])/, label: '~(으)로써 (by means of / by V-ing)', hint: 'means/instrument marker (formal, narrower than ~(으)로). <noun> + (으)로써 = "by means of / using"; <stem> + ㅁ으로써 = "by V-ing". 노력으로써 (by means of effort); 함으로써 (by doing).' },
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 16, ['으로써']);
+        if (c) return c;
+        var m = t.match(/[가-힣]ㅁ으로써|[가-힣]음으로써/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㅁ으로써 (by V-ing — formal)', hint: 'formal nominalized "by V-ing". <stem> + (으)ㅁ으로써 = "by V-ing / through V-ing". 참여함으로써 (by participating); 시행됨으로써 (by being implemented).' },
+    { re: /만\s*해도(?=[^가-힣]|\s|[,.])/, label: '~만 해도 (just considering / X alone)', hint: 'singling-out emphasis. <noun> + 만 해도 = "X alone is enough / just considering X". 어제만 해도 (just yesterday alone); 한 사람만 해도 (just one person alone).' },
+    { re: /(는|ㄴ|은)\s*데(에)?(?=\s+[가-힣]|[,.])/, label: '~ㄴ/는 데(에) (in V-ing / for V-ing)', hint: 'purpose/situation marker. <stem> + ㄴ/는 데(에) = "in V-ing / for V-ing". 공부하는 데 도움이 된다 (helps in studying); 사는 데 어려움이 있다 (has trouble in living).' },
+    { re: /[가-힣]\s*따위(?=[^가-힣]|\s|[,.])/, label: '~따위 (such as / things like — often disparaging)', hint: 'enumerative or disparaging "things like". <noun> + 따위 = "things like / such as (often dismissive)". 너 따위가 (someone like you); 책 따위는 안 봐.' },
+    { re: /에\s*한(해|해서|한)(?=[^가-힣]|\s|[,.])/, label: '~에 한해(서) (limited to)', hint: 'restriction marker. <noun> + 에 한해(서) = "limited to / only in the case of". 회원에 한해 (only for members); 오늘에 한해서.' },
+    { re: /에\s*상관없이(?=[^가-힣]|\s|[,.])/, label: '~에 상관없이 (regardless of)', hint: 'irrespective-of marker. <noun> + 에 상관없이 = "regardless of / irrespective of". 나이에 상관없이 (regardless of age); 결과에 상관없이.' },
+
+    // ── Fixed expressions / news (additional) ───────────────────
+    { re: /(을|를)\s*향(해|해서|한)(?=[^가-힣]|\s|[,.])/, label: '~을/를 향해(서) / 향한 (toward / aimed at)', hint: 'direction or aim. <noun> + 을/를 향해(서) = "toward / heading to"; ~을/를 향한 + N = "X aimed at". 미래를 향해 (toward the future); 평화를 향한 노력.' },
+    { re: /(을|를)\s*막론(하고|한)(?=[^가-힣]|\s|[,.])/, label: '~을/를 막론하고 (regardless of)', hint: 'all-encompassing inclusion. <noun> + 을/를 막론하고 = "regardless of / no matter what". 남녀노소를 막론하고 (regardless of age or gender).' },
+    { re: /(을|를)\s*무릅쓰(고|면|는|ㄴ|ㄹ)/, label: '~을/를 무릅쓰고 (despite the risk / braving)', hint: 'braving difficulty. <noun> + 을/를 무릅쓰고 = "despite / braving (the risk of)". 위험을 무릅쓰고 (braving the danger); 비를 무릅쓰고.' },
+    { re: /(을|를)\s*가지고(?=[^가-힣]|\s|[,.])/, label: '~을/를 가지고 (with / using / about)', hint: 'instrumental or topical marker. <noun> + 을/를 가지고 = "with / using / about". 그것을 가지고 (with that / about that); 돈을 가지고 뭐 할까?' },
+    { re: /(을|를)\s*두고(?=[^가-힣]|\s|[,.])/, label: '~을/를 두고 (over / regarding)', hint: 'topic-of-discussion marker. <noun> + 을/를 두고 = "over / regarding / about (the matter of)". 정책을 두고 논쟁이 벌어졌다 (debate broke out over the policy).' },
+    { re: /(을|를)\s*거치(다|는|ㄴ|었|어|면|면서|고|기|는데)/, label: '~을/를 거치다 (go through / via)', hint: 'transit / process marker. <noun> + 을/를 거치다 = "go through / pass via". 검토를 거치다 (go through review); 일본을 거쳐 (via Japan).' },
+    { re: /(을|를)\s*차지(하|한|했|할|함|해)/, label: '~을/를 차지하다 (account for / occupy)', hint: 'occupy/take-up marker. <noun> + 을/를 차지하다 = "accounts for / occupies / takes up". 절반을 차지하다 (accounts for half); 1위를 차지했다 (took 1st place).' },
+    { re: /(다는|라는)\s*입장(이|이다|입니다|을|에서)/, label: '~다는/라는 입장이다 (the position that)', hint: 'stated stance via reported speech. <quote> + 다는/라는 입장이다 = "(holds the) position that". 반대한다는 입장이다 (holds the position of opposing); 문제없다는 입장입니다.' },
+    { re: /(으로|로)\s*전해(져|졌|진|지)/, label: '~(으)로 전해지다 (be reported / passed down)', hint: 'passive of 전하다 — informational passive. <noun/clause> + (으)로 전해지다 = "is reported / handed down as". 사실로 전해진다 (is reported as fact).' },
+    { re: /[가-힣]\s*기록(하|되|된|될|했|됐|할|함)/, label: '기록하다 / 기록되다 (record / be recorded)', hint: 'news-statistic verb. <noun> + 기록하다 / 기록되다 = "(X) records / is recorded as". 신기록을 기록하다 (sets a new record); 역대 최고로 기록됐다 (was recorded as the highest ever).' },
+    { re: /의\s*일종(이|이다|입니다|으로|이라)/, label: '~의 일종이다 (is a kind / type of)', hint: 'classification marker. <noun> + 의 일종이다 = "is a kind / type of (X)". 운동의 일종이다 (is a kind of exercise); 사기의 일종으로 분류된다 (is classified as a kind of fraud).' },
+
     // ── Honorifics ──────────────────────────────────────────────
     { re: /(으셨|셨)(어요|습니다|네|군|는)/, label: '~(으)셨 (honorific past)', hint: 'subject honorific past tense' },
     { re: /(으십시오|십시오)(?=[^가-힣]|$)/, label: '~(으)십시오 (formal imperative)', hint: 'highly formal command' },
