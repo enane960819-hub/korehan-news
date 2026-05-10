@@ -7980,7 +7980,19 @@ document.addEventListener('DOMContentLoaded', async function() {
       // 2-4s. Now they resolve in the background and the chrome reflows
       // when they land, while the learner is already reading.
       var singlePromise = loadArticleById(_articleId);
-      var listPromise = loadArticlesFromDB({ force: true });
+      // Only re-fetch the swipe pool when the cache is too thin to
+      // power navigation. Earlier this fired force:true on every
+      // article-page load, even when home had just prefetched 1000
+      // rows two seconds prior — that re-fetch took 2-4s on LTE and
+      // blocked the swipe pool from populating, which the user
+      // reported as "swipe → blank screen for 5s". 30 cached rows is
+      // plenty for next-article picking; we still upgrade to a
+      // larger pool in the background only when we genuinely need
+      // it.
+      var _cachedRowCount = (typeof getCachedArticles === 'function' ? getCachedArticles() : []).length;
+      var listPromise = (_cachedRowCount >= 30)
+        ? Promise.resolve(getCachedArticles())
+        : loadArticlesFromDB({ force: true });
       await singlePromise;
       if (window._khLoaderClearAuto) window._khLoaderClearAuto();
       _ldr(100);
