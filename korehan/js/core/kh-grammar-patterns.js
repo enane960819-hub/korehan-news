@@ -165,12 +165,24 @@
       if (m) return m[0];
       // Bare ~나 after a vowel-ending syllable (no batchim, jong=0) followed
       // by space/punct. The vowel-ending requirement excludes verb stems like
-      // 만나, 혼나, 가나(요).
+      // 만나, 혼나, 가나(요). Also explicitly skip "하나" (the cardinal number
+      // "one") — 하 ends in vowel + 나 + space matches the pattern but in
+      // surface form 하나 is almost always the numeral, not the ~(이)나
+      // particle. False-positive carrier especially for "X 중 하나" / "한 개".
       for (var i = 0; i < t.length - 1; i++) {
         if (_jong(t.charAt(i)) !== 0) continue;
         if (t.charAt(i + 1) !== '나') continue;
         var nxt = t.charAt(i + 2) || '';
-        if (nxt === '' || /[\s.,!?]/.test(nxt)) return t.charAt(i) + '나';
+        if (!(nxt === '' || /[\s.,!?]/.test(nxt))) continue;
+        var pair = t.charAt(i) + '나';
+        if (pair === '하나') continue; // numeral, not particle
+        // Skip when preceded by 중/한/한두/두/세/네/몇 + space — these mark
+        // "one of N" / counting contexts where 나 is the numeral suffix,
+        // not the particle. e.g. "중 하나", "한 개나 두 개나" — the latter
+        // actually IS the particle but rare; favouring precision over recall.
+        var prevWord = t.substr(Math.max(0, i - 3), 3);
+        if (/(중|한|두|세|네|몇)\s$/.test(prevWord)) continue;
+        return pair;
       }
       return '';
     }, label: '~(이)나 (or / about / as much as)', hint: 'alternation, approximation, or surprising quantity. After consonant-ending nouns: 이나 (책이나). After vowel-ending nouns: 나 (커피나, 차나). 커피나 차 (coffee or tea); 열 명이나 (as many as 10); 하루나 이틀 (a day or two).' },
@@ -197,6 +209,14 @@
     // ── Quoted speech ───────────────────────────────────────────
     { re: /(다고|ㄴ다고|는다고)\s*(하|했|해|말|알려|전해|보도|밝혀|밝혔|밝히|강조|지적|주장|발표|언급|덧붙|평가|설명|판단|진단|분석|예측|전망|호소|토로|항변|반박|시인|부인)/, label: '~다고 하다 / ~다고 밝히다 / ~다고 강조하다 (indirect declarative + news reporting verbs)', hint: 'reported speech (declarative) — the news-paper "(X) said / stated / emphasized / pointed out / argued / announced / revealed / explained / analyzed / projected (that)" frame. <quote> + 다고 + {하다 / 밝히다 / 강조하다 / 지적하다 / 주장하다 / 발표하다 / 언급하다 / 덧붙이다 / 평가하다 / 설명하다 / 분석하다 / 전망하다}. Polite: ~다고 해요 / ~다고 밝혔어요. 만든다고 해요 = "they say it makes …"; 발표할 것이라고 밝혔다 = "(they) revealed that they will announce".' },
     { re: /라고\s*(하|했|해|말|불|부|알려|전해|밝혀|밝혔|밝히|강조|지적|주장|발표|언급|덧붙|평가|설명)/, label: '~(이)라고 하다 / ~(이)라고 밝히다 (indirect copula/name + news reporting)', hint: 'reported identification, naming, or stated quote. <noun/quote> + (이)라고 + {하다 / 밝히다 / 강조하다 / 발표하다 / 알려지다}. 학생이라고 해요 = "(they) say (he) is a student"; 사실이라고 밝혔다 = "(they) revealed that it\'s true".' },
+    // ~(이)라고 / ~(ㄴ)다고 할 수 있다 — "can be called / can be said to be".
+    // Distinct from plain ~(이)라고 하다 (just naming/quoting). This is a
+    // hedged classification ("X may be considered Y / X qualifies as Y"),
+    // very common in academic and formal Korean. Same pattern family
+    // covers ~라고 볼 수 있다 (can be seen as) and ~라고 말할 수 있다.
+    { re: /(라고|다고|ㄴ다고|는다고)\s*(할|볼|말할|얘기할|일컬을)\s*수\s*(있|없)/, label: '~(이)라고 / ~(ㄴ)다고 할 수 있다 (can be called / can be said to be)', hint: 'hedged classification or qualified assertion. <noun/quote> + (이)라고/(ㄴ)다고 + {할 / 볼 / 말할 / 얘기할 / 일컬을} + 수 있다 = "can be called / may be considered / can be said to be / can be seen as". Different from plain ~(이)라고 하다 (just naming) — this version softens to a tentative classification often seen in news, op-eds, and academic prose. 주민들이라고 할 수 있다 = "can be called residents"; 성공이라고 볼 수 있다 = "can be seen as a success"; 새로운 시대라고 말할 수 있다.' },
+    // ~(이)라고 해도 과언이 아니다 — emphatic "no exaggeration to say".
+    { re: /(라고|다고|ㄴ다고|는다고)\s*해도\s*과언이?\s*(아니|아닙)/, label: '~(이)라고 해도 과언이 아니다 (it\'s no exaggeration to say)', hint: 'emphatic assertion via litotes. <quote> + 라고/다고 + 해도 과언이 아니다 = "it\'s no exaggeration to say (that)". Common rhetorical device in op-eds. 혁명이라고 해도 과언이 아니다 = "it\'s no exaggeration to call it a revolution".' },
     { re: /냐고\s*(하|했|해|물|여쭤)/, label: '~냐고 하다 / ~냐고 해요 (indirect question)', hint: 'reported question. Polite: 냐고 해요 / 물어봐요. 가냐고 해요 = "(they) are asking whether (X) goes".' },
     { re: /자고\s*(하|했|해|제안|권유)/, label: '~자고 하다 / ~자고 해요 (indirect proposal)', hint: 'reported suggestion / let\'s. 가자고 해요 = "(they) suggest going / say let\'s go".' },
     { re: /달라고(?=[^가-힣]|$)|주라고(?=[^가-힣]|$)/, label: '~달라고/주라고 (request)', hint: 'reported request / asking for something' },
