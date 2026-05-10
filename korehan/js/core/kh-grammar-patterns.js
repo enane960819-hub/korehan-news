@@ -718,11 +718,26 @@
     return sentFinal;
   }
 
+  // Full catalog dump for prompt injection. Use this when you want to
+  // prime the AI with EVERY pattern it should look for (vs detect()
+  // which returns only the patterns matching a specific sentence).
+  // Output format is a flat numbered list "label — hint" per line so
+  // the model can scan it as a checklist while it analyzes. Used by
+  // article-generation prompts where the body doesn't exist yet, so
+  // we can't pre-detect — we instead prime the model with the whole
+  // dictionary up front and let enforce backfill any slips after.
+  function formatFullCatalog() {
+    return PATTERNS.map(function(p, i) {
+      return (i + 1) + '. ' + p.label + ' — ' + (p.hint || '');
+    }).join('\n');
+  }
+
   window.KH_GRAMMAR = {
     detect: detect,
     detectForLevel: detectForLevel,
     enforceDetectedPatterns: enforceDetectedPatterns,
     formatPromptList: formatPromptList,
+    formatFullCatalog: formatFullCatalog,
     _PATTERNS: PATTERNS,  // exposed for testing only
   };
 })();

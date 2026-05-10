@@ -3628,6 +3628,18 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
       + _analysisRule
       + _analysisVerify
       + '- Return EXACTLY ' + sentences.length + ' entries in sentences[].';
+    // Prime Sonnet with the full KH_GRAMMAR catalog so it sees every
+    // regex-detectable pattern (~250) up front, not just the hand-
+    // curated floor list (~80). Mirrors admin runAutoGenerate. Cost
+    // is ~9K extra input tokens per article (negligible).
+    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.formatFullCatalog === 'function') {
+      prompt += '\n\n[GRAMMAR PATTERN INVENTORY — canonical reference]\n'
+             + 'Below is the COMPLETE list of grammar patterns the post-process regex layer detects. '
+             + 'For each sentence, scan against this list and surface EVERY pattern that genuinely '
+             + 'appears. Use the canonical labels exactly as written so they match the enforce gate.\n\n'
+             + window.KH_GRAMMAR.formatFullCatalog();
+    }
+
     // Use the same Sonnet model admin's runAutoGenerate uses, so the
     // first-viewer fallback writes the same quality cache that admin
     // would have. Earlier this path used Haiku, which meant a cache-
@@ -3802,7 +3814,17 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
 // ~ㄹ 정도(이다/로), ~기 십상이다, ~다는/라는 + N, ~ㄴ/는
 // 점(에서), ~기를 바라다/원하다, ~ㄹ 수밖에 없다, ~로 이루어
 // 지다/구성되다.
-var KH_SENT_CACHE_VERSION = 's4';
+//   s5: KH_GRAMMAR full-catalog injection into Sonnet prompts.
+// Floor lists were hand-curated subsets (~80 patterns); the
+// full regex inventory is now ~239. Sonnet now sees the entire
+// inventory up front via formatFullCatalog() so it can prime
+// its analysis pass against the SAME dictionary that enforce
+// will check after. Mirrors admin runAutoGenerate path. Plus
+// the prior s4 batch (60+ TOPIK 3-5 patterns: time/sequence,
+// cause/blame/credit, concession, combined-purpose, attempt/
+// futility, suggestion, sentence enders, particles, and
+// fixed expressions / news).
+var KH_SENT_CACHE_VERSION = 's5';
 
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
@@ -4389,6 +4411,16 @@ async function analyzeSentence(idx, el) {
       + _analysisRule
       + _analysisVerifyRule
       + '- Output JSON only.';
+    // Prime Sonnet with the full KH_GRAMMAR catalog (same as bulk
+    // and admin paths). One sentence still scans the same dictionary.
+    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.formatFullCatalog === 'function') {
+      prompt += '\n\n[GRAMMAR PATTERN INVENTORY — canonical reference]\n'
+             + 'Below is the COMPLETE list of grammar patterns the post-process regex layer detects. '
+             + 'Scan THIS sentence against this list and surface EVERY pattern that appears. Use the '
+             + 'canonical labels exactly as written so they match the enforce gate.\n\n'
+             + window.KH_GRAMMAR.formatFullCatalog();
+    }
+
     // Single-sentence fallback (cache miss for one sentence). Uses the
     // same Sonnet model as the bulk path above and as admin runAuto-
     // Generate, so this code path can never write a lower-quality
