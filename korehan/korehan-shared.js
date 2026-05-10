@@ -2947,6 +2947,12 @@ function renderArticlePage() {
   var id     = params.get('id');
   var all    = getCachedArticles();
   var a      = id ? all.find(function(x){ return String(x.id) === String(id); }) : null;
+  // The home prefetch uses HOME_ARTICLE_SELECT (no body) so a swipe
+  // pick can find an article object in cache that's just metadata —
+  // and renderArticlePage would happily paint a blank body. Treat
+  // "found but body missing" as a cache miss so loadArticleById
+  // (FULL_ARTICLE_SELECT) fetches the full row before render.
+  if (a && !(a.body && String(a.body).trim())) a = null;
 
   if (!a) {
     // Cache miss — could be an older article not in the latest 80
