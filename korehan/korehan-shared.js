@@ -49,10 +49,20 @@ function getSupa() {
   if (window.supabase) {
     _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
       auth: {
-        detectSessionInUrl: false,  // 수동 exchangeCodeForSession 사용 — auto와 충돌 방지
+        detectSessionInUrl: false,  // hash/code는 checkSession에서 수동 처리
         persistSession: true,
         autoRefreshToken: true,
-        flowType: 'pkce',
+        // 'implicit' so OAuth returns the access_token in the URL
+        // hash directly. Drops the dependency on localStorage-stored
+        // PKCE codeVerifier surviving the redirect — Mobile Chrome's
+        // recent privacy hardening was clearing that key during the
+        // round-trip in regular mode (incognito worked because no
+        // stored state to confuse it). Trade-off: implicit flow
+        // doesn't return a long-lived refresh token, so users will
+        // re-authenticate when the access token expires (~1 hour
+        // for Supabase). Acceptable cost for OAuth that actually
+        // works for the average mobile user.
+        flowType: 'implicit',
       }
     });
     return _supa;
