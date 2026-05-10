@@ -2392,13 +2392,15 @@ function _khRenderHeroEmptyState() {
     + '</div>';
 }
 
-// Belt-and-suspenders safety net: regardless of which load path the
-// page took, if the hero is still on the skeleton 7s after the page
-// became interactive, force the empty state. Catches every wedge mode
-// (fetch hung, exception in renderHomePage, race lost, etc.) so the
-// user always gets the Reset button as a recovery affordance. Slightly
-// longer than the 5s race so the race fires first when the no-cache
-// path is the one that wedged.
+// Belt-and-suspenders safety net: if the hero is still on the
+// skeleton 15s after the page became interactive, force the empty
+// state. This is for the truly-wedged case where the fetch never
+// resolves and splash + main code paths all silently fail; under
+// normal conditions the splash holds for up to 8s waiting for the
+// hero, then the in-flight fetch's then/catch fires the empty
+// state itself. 15s gives the splash + late-arriving fetch every
+// chance to win first so the alarming red Reset button only
+// appears when the user is genuinely stuck.
 (function _khArmHeroSafetyNet() {
   if (typeof document === 'undefined') return;
   function arm() {
@@ -2411,7 +2413,7 @@ function _khRenderHeroEmptyState() {
       if (/home-hero-loading/.test(heroEl.className || '')) {
         try { _khRenderHeroEmptyState(); } catch(_){}
       }
-    }, 7000);
+    }, 15000);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', arm, { once: true });
@@ -7786,29 +7788,31 @@ document.addEventListener('DOMContentLoaded', async function() {
       // moment the DB call returns.
       renderHomePage();
       _ldr(80);
-      // Race the home article fetch against a 5s ceiling. On a healthy
-      // network the homeOptimized payload returns in ~200-1500ms, so
-      // 5s is well past "real load failed". Earlier we used 12s because
-      // we feared aborting slow legitimate fetches, but the user
-      // pointed out 12s feels broken — most users bail at 4-5s anyway.
-      // NOTE: loadArticlesFromDB swallows fetch errors and resolves
-      // with an empty array (cached value), so we must also treat
-      // "resolved but empty" as failure — otherwise the empty state
-      // never appears.
+      // Drive the empty state off REAL signals only, not a hard timer.
+      // Earlier we used a 5s race that fired prematurely whenever the
+      // fetch was just slow (slow LTE, long-cached connection re-handshake)
+      // and showed the alarming red Reset button to users whose page
+      // would have loaded fine in 6-7s. Now: render on success, render
+      // empty state on error, and let the 7s safety net below catch
+      // the silent-wedge case where the fetch never resolves at all.
       var _heroFinished = false;
-      Promise.race([
-        loadArticlesFromDB({ homeOptimized: true, force: true }).then(function (rows) {
+      loadArticlesFromDB({ homeOptimized: true, force: true })
+        .then(function (rows) {
           if (rows && rows.length) {
             _heroFinished = true;
             try { renderHomePage(); } catch(_){}
           }
-        }),
-        new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('home articles fetch timeout / empty')); }, 5000); })
-      ]).catch(function (e) {
-        if (_heroFinished) return;
-        console.warn('home articles fetch failed:', e && e.message || e);
-        try { _khRenderHeroEmptyState(); } catch(_) {}
-      });
+          // Empty rows = fetch returned but DB empty / RLS blocked /
+          // unrecoverable error. Show the empty state so the user
+          // gets the recovery affordance.
+          else {
+            try { _khRenderHeroEmptyState(); } catch(_) {}
+          }
+        })
+        .catch(function (e) {
+          console.warn('home articles fetch failed:', e && e.message || e);
+          try { _khRenderHeroEmptyState(); } catch(_) {}
+        });
       _ldr(92);
       _khAwaitTodaysPhrase(4000).then(function () {
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();

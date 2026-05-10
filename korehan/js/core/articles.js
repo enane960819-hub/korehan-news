@@ -264,10 +264,15 @@ async function loadArticlesFromDB(options) {
       var res = await sb.from('articles').select(selects[i])
         .order('created_at', { ascending: false }).limit(lim);
       if (res.error) {
-        var msg = String(res.error.message || '');
-        // PostgREST returns "column ... does not exist" or similar
-        if (i < selects.length - 1 && /column|does not exist|could not find/i.test(msg)) {
-          console.warn('articles select retry — dropping to *:', msg);
+        // ALWAYS fall back to '*' on any error short of the last
+        // attempt. Earlier we restricted this to "column does not
+        // exist" wording, but PostgREST surfaces missing columns in
+        // many shapes (column does not exist / could not find /
+        // 42703 / generic 400) and any one of those would silently
+        // strand the home page on an empty hero. The fallback to
+        // SELECT * is cheap, so any retry is worth it.
+        if (i < selects.length - 1) {
+          console.warn('articles select retry — dropping to *:', res.error.message || res.error);
           continue;
         }
         throw res.error;
