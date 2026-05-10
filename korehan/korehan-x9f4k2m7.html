@@ -4814,8 +4814,12 @@ function _autoGenRenderProgressPanel(){
 // korehan-shared.js. Bump together whenever the prompt / response
 // shape changes so old caches show as stale in AI Cache Management.
 //   p2-p7 = legacy Haiku-driven sentence-analysis iterations
-//   s1    = combined Sonnet (article + sentences in one call) — current
-const SENT_CACHE_CURRENT = 's3';
+//   s1    = combined Sonnet (article + sentences in one call)
+//   s2-s3 = admin-side Sonnet prompt iterations
+//   s4    = added ~(으)면서 + polite reported speech (~다고 해요 /
+//           ~ㄴ다고 해요 / ~한대요) to user-facing analyze prompt
+//           floors. Mirrored as 's2' on KH_SENT_CACHE_VERSION.
+const SENT_CACHE_CURRENT = 's4';
 
 async function runAutoGenerate(){
   if (window._autoGenJob && window._autoGenJob.running) {
