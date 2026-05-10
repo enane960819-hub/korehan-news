@@ -179,22 +179,20 @@ a{color:inherit;text-decoration:none}
 
   <!-- SIDEBAR -->
   <div class="sb">
-    <div class="sb-lbl">Article Management</div>
+    <div class="sb-lbl">📰 콘텐츠</div>
     <button class="sb-btn on" id="sb-all" onclick="goList()"><span class="ico">📰</span>Article List<span class="pill" id="p-all">0</span></button>
     <button class="sb-btn" onclick="openModal(null)"><span class="ico">✏️</span>New Article</button>
     <button class="sb-btn" onclick="goAutoArticle()"><span class="ico">🤖</span>AI Article Generator</button>
+    <button class="sb-btn" id="sb-bulk-seed" onclick="goBulkSeed()"><span class="ico">🌱</span>Bulk Seed (AI)</button>
     <button class="sb-btn" id="sb-cache" onclick="goAICache()"><span class="ico">🧠</span>AI Cache Management</button>
     <button class="sb-btn" id="sb-img" onclick="goArticleImages()"><span class="ico">🖼️</span>Image Management</button>
-    <button class="sb-btn" id="sb-video-upgrade" onclick="goVideoUpgrade()"><span class="ico">🔄</span>Reddit Video Upgrade</button>
-    <button class="sb-btn" id="sb-img-persist" onclick="goImagePersist()"><span class="ico">🗄️</span>Image Persistence</button>
-
-    <div class="section-sep" style="margin-top:8px"></div>
-    <div class="sb-lbl">Learning Content</div>
     <button class="sb-btn" id="sb-conv" onclick="goConversations()"><span class="ico">💬</span>Conversations</button>
     <button class="sb-btn" id="sb-stor" onclick="goStories()"><span class="ico">📖</span>Stories</button>
-    <button class="sb-btn" id="sb-bulk-seed" onclick="goBulkSeed()"><span class="ico">🌱</span>Bulk Seed (AI)</button>
     <button class="sb-btn" id="sb-slang" onclick="goSlangAdmin()"><span class="ico">🔥</span>Korean Slang</button>
     <button class="sb-btn" id="sb-phone" onclick="goPhoneCallAdmin()"><span class="ico">📞</span>Phone Calls</button>
+
+    <div class="section-sep" style="margin-top:8px"></div>
+    <div class="sb-lbl">📚 학습 설정</div>
     <button class="sb-btn" id="sb-study-room" onclick="goStudyRoomOps()"><span class="ico">🏫</span>Study Room</button>
     <button class="sb-btn" id="sb-vocab" onclick="goVocabContent()"><span class="ico">📚</span>단어 & 표현</button>
     <button class="sb-btn" onclick="goTopics()"><span class="ico">📝</span>작문 토픽</button>
@@ -203,7 +201,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" id="sb-badges" onclick="goBadgeAdmin()"><span class="ico">🏆</span>뱃지 관리</button>
 
     <div class="section-sep" style="margin-top:8px"></div>
-    <div class="sb-lbl">운영</div>
+    <div class="sb-lbl">👥 커뮤니티</div>
     <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>User Management</button>
     <button class="sb-btn" onclick="goComments()"><span class="ico">🗨️</span>Comment Management</button>
     <button class="sb-btn" id="sb-speaking" onclick="goSpeakingReviews()"><span class="ico">🎙️</span>Speaking Reviews</button>
@@ -211,17 +209,13 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" id="sb-analytics" onclick="goAnalytics()"><span class="ico">📊</span>통계</button>
 
     <div class="section-sep" style="margin-top:8px"></div>
-    <div class="sb-lbl">설정</div>
+    <div class="sb-lbl">⚙️ 시스템</div>
     <button class="sb-btn" id="sb-site-settings" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 설정</button>
     <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>Edit Onboarding</button>
     <button class="sb-btn" id="sb-char-reporters" onclick="goCharReporters()"><span class="ico">🎭</span>캐릭터 기자</button>
     <button class="sb-btn" id="sb-shop" onclick="goShopContent()"><span class="ico">🛍️</span>상점 & 코인</button>
-
-    <div class="section-sep" style="margin-top:8px"></div>
-    <div class="sb-lbl">데이터</div>
     <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기</button>
     <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기</button>
-    <button class="sb-btn" onclick="resetAll()" style="color:#cc2200"><span class="ico">⚠️</span>전체 초기화</button>
     <input type="file" id="imp" accept=".json" style="display:none" onchange="doImport(event)">
   </div>
 
@@ -4799,6 +4793,13 @@ function _autoGenRenderProgressPanel(){
   }).join('');
 }
 
+// Cache version stamp — must mirror KH_SENT_CACHE_VERSION in
+// korehan-shared.js. Bump together whenever the prompt / response
+// shape changes so old caches show as stale in AI Cache Management.
+//   p2-p7 = legacy Haiku-driven sentence-analysis iterations
+//   s1    = combined Sonnet (article + sentences in one call) — current
+const SENT_CACHE_CURRENT = 's1';
+
 async function runAutoGenerate(){
   if (window._autoGenJob && window._autoGenJob.running) {
     toast('이미 생성 중입니다.', true);
@@ -4886,17 +4887,31 @@ async function runAutoGenerate(){
     try {
       const today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
 
+      // ── COMBINED SONNET CALL ────────────────────────────────────
+      // Single Sonnet call produces: title + body + key_expressions +
+      // paragraph_translations + per-sentence analysis (text/translation
+      // /vocab/analysis). Replaces the old 1 Sonnet (article) +
+      // 3 Haiku (translation/sentence-analysis/quiz) pipeline. Quiz
+      // stays on Haiku — see below.
+      // Why combined: per-sentence analysis is grounded in the body the
+      // SAME model just wrote, eliminating the hallucinated-grammar
+      // class of bugs that haunted p2-p7 of the Haiku sentence-analysis
+      // path. Sonnet grades the whole shape end-to-end.
+      // The existing legacy path (`runAutoGenerate` → 3 sequential Haiku
+      // calls) is removed — admin can still re-analyse an existing
+      // article via the per-article AI Cache button (see goAICache).
       const prompt =
-        '당신은 외국인 한국어 학습자를 위한 뉴스 기사를 각색하는 편집자입니다.\n\n'
+        '당신은 외국인 한국어 학습자를 위한 뉴스 기사 편집자 + 한국어 튜터입니다.\n'
+        + '한 번의 응답으로 (1) 학습자용 기사를 각색하고 (2) 단락별 영어 번역을 만들고 (3) 모든 문장에 대해 번역/단어/분석까지 해주세요.\n\n'
         + '[원본 뉴스]\n'
         + '제목: ' + h.title + '\n'
         + '내용: ' + (h.desc || '(요약 없음)') + '\n'
         + '출처: ' + h.source + '\n\n'
-        + '[지시사항]\n'
-        + '위 실제 뉴스를 바탕으로 한국어 학습자용 기사를 작성하세요.\n'
-        + '- 원본의 핵심 사실과 주제를 유지하세요\n'
-        + '- 출처가 영어라면 한국어로 완전히 번역·각색하세요\n'
-        + '- 한국 독자 시각으로 관련성 있게 풀어주세요\n\n'
+        + '[지시사항 — 각색]\n'
+        + '- 원본의 핵심 사실과 주제 유지. 영어 출처면 한국어로 번역·각색.\n'
+        + '- 한국 독자 시각으로 관련성 있게 풀어주세요.\n'
+        + '- 원본에 없는 사실/통계/인물 발언 절대 추가 금지.\n'
+        + '- 클리셰 마무리 금지 — "전문가들은 ~", "사회적 관심을 모으고 있어요", "앞으로의 귀추가 주목됩니다", "많은 이들의 ~" 등 정형화된 표현으로 단락을 끝내지 마세요.\n\n'
         + '[섹션: ' + secKey + ']\n'
         + '[난이도: ' + diffInfo.ko + ']\n'
         + '[어휘 수준: ' + diffInfo.vocab + ']\n'
@@ -4906,32 +4921,62 @@ async function runAutoGenerate(){
         + '- 정중체 (~했어요, ~입니다, ~예요)\n'
         + '- 어려운 용어는 괄호로 설명: 기준금리(돈을 빌릴 때 기본이 되는 이자율)\n'
         + '- 영어 단어는 원어 병기: 인공지능(AI)\n'
-        + '- **한자 절대 금지**: 괄호 안에든 본문에든 한자(漢字, 中文, etc.) 한 글자도 쓰지 마세요. 학습자가 읽을 수 없습니다. 完全變態 같은 표기 X — 그냥 "완전변태"만.\n'
+        + '- **한자 절대 금지**. 完全變態 X — 그냥 "완전변태"만.\n'
         + '- 4~6개 단락, 단락당 2~3문장\n'
         + '- 제목: 15~25자\n\n'
-        + '[금지]\n'
-        + '- 실존 인물 비방, 미검증 주장 금지\n'
-        + '- 원본에 없는 사실 추가 금지\n'
-        + '- 한자 표기 금지 (한글만 사용)\n\n'
-        + '[중요표현 / Key Expressions]\n'
-        + '- 본문에서 학습자가 외울 만한 **고정 표현**을 0~3개 추출 (빈 배열 [] 선호 — 적합한 게 없으면 빈 배열)\n'
-        + '- 적합한 것: 관용 표현(예: 발이 넓다), 사자성어/속담, 자주 쓰이는 굳어진 표현(예: 빨리빨리, 천천히 가세요), 의존명사 패턴(~는 것 같다, ~기 때문에), 호칭/인사 표현, 문화 특화 표현\n'
-        + '- 적합하지 않은 것 (절대 추출 금지):\n'
-        + '  * 일반 평서문/절 ("풀을 먹고 있었어요", "보통 아프리카에 살아요")\n'
-        + '  * 단순 SVO/SOV 문장 조각\n'
-        + '  * 주어+동사 단순 결합 ("사람들이 키우는")\n'
-        + '  * 명사+조사+동사 (이미 vocab으로 충분)\n'
-        + '  * 한 단어 (vocab과 중복)\n'
-        + '- 각 표현은 ko(표현 자체) + en(영어 풀이) 짝으로\n'
-        + '- 본문에 그대로 등장한 형태만 추출\n'
-        + '- 정말 외울 가치 있는 게 1~3개면 그만큼만, 없으면 빈 배열 [] (이게 가장 흔한 결과)\n\n'
-        + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)","key_expressions":[{"ko":"...","en":"..."}]}';
+        + '[중요표현]\n'
+        + '- 본문에 등장한 **고정 표현** 0~3개. 적합 없으면 [] (가장 흔한 결과).\n'
+        + '- 적합: 관용 표현, 사자성어/속담, 굳어진 표현, 호칭/인사 표현, 문화 특화 표현.\n'
+        + '- 부적합: 일반 평서문, 단순 SVO, 명사+조사+동사 결합 (vocab으로 충분).\n\n'
+        + '[단락별 번역]\n'
+        + '- body의 각 단락(\\n\\n로 구분)마다 polished English translation 1줄.\n'
+        + '- 한국어 단락 개수와 동일해야 함.\n\n'
+        + '[문장별 분석 — 가장 중요]\n'
+        + '- body에 등장하는 모든 한국어 문장을 등장 순서대로 추출.\n'
+        + '- text: 본문에 EXACTLY 등장한 형태 그대로 (마침표/물음표 포함).\n'
+        + '- translation: 위 단락 번역과 일관되게 (같은 주어, 같은 시제, 같은 격식).\n'
+        + '- vocab: max 4. 사전형으로 (보다, 흔하다, 키우다 — 단음절 어간 절대 X). ' + (
+            (diffInfo.level === 'Starter' || diffInfo.level === 'Beginner')
+              ? '입문/초급 단어도 포함 OK. 조사(이/가/을/를/도/는)와 단독 이다/있다만 제외.'
+              : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵. 학습자가 찾아볼 만한 단어만.'
+) + ' 빈 배열 OK.\n'
+        + '- analysis: max 3. 빈 배열 OK. 각 항목:\n'
+        + '    type: "grammar" | "expression" | "idiom"\n'
+        + '    label: 패턴/표현 자체. grammar는 형태소/연결어미만 (~기 위해, ~게 되다, ~ㄴ/는 것 같다, ~(으)면서). 명사 X.\n'
+        + '    exp: 1줄 영어 설명.\n'
+        + '    example_in_sentence: 이 문장에서 발췌한 chunk (해당 패턴이 사용된 부분).\n'
+        + '- 분석 우선순위:\n'
+        + '    grammar — 학습 가치 있는 문법 패턴 (TOPIK 2-6급 패턴, 이미 vocab에 있는 동사의 자연 활용은 제외)\n'
+        + '    expression — 자주 쓰는 굳어진 표현 (~에도 불구하고, ~에 따르면, ~을/를 통해)\n'
+        + '    idiom — 관용구/사자성어 (발이 넓다, 우후죽순)\n'
+        + '- ' + (
+            (diffInfo.level === 'Starter' || diffInfo.level === 'Beginner')
+              ? '기초 grammar 적극 포함: ~을/를, ~지 않다, ~고 있다, ~았/었어요, ~ㄴ/은 것, ~보다.'
+              : '기초 grammar(~는/ㄴ noun modifier, ~다, ~요/습니다, ~았/었, ~을/를) 스킵.'
+) + '\n'
+        + '- 만들지 말 것: 본문에 없는 패턴 절대 금지. label에 있는 markers가 sentence text에 안 보이면 그 항목 자체를 빼세요.\n'
+        + '- 두 패턴이 같은 동사에 스택되면 (~어지다 + ~고 있다 on 많아지고 있어요) 학습 가치 더 높은 하나만.\n\n'
+        + '[출력 — JSON ONLY, no preamble, no code fences]\n'
+        + '{\n'
+        + '  "title": "...",\n'
+        + '  "body": "본문 (단락 \\\\n\\\\n)",\n'
+        + '  "key_expressions": [{"ko":"...","en":"..."}],\n'
+        + '  "paragraph_translations": ["para 1 EN", "para 2 EN", ...],\n'
+        + '  "sentences": [\n'
+        + '    {\n'
+        + '      "text": "<exact KO sentence from body>",\n'
+        + '      "translation": "<EN>",\n'
+        + '      "vocab": [{"ko":"<dict form>","en":"...","note":"..."}],\n'
+        + '      "analysis": [{"type":"grammar","label":"~기 위해","exp":"...","example_in_sentence":"..."}]\n'
+        + '    }\n'
+        + '  ]\n'
+        + '}';
 
-      _autoGenSetItemStatus(si, '⏳ 기사 각색 중…');
+      _autoGenSetItemStatus(si, '⏳ 기사 + 분석 생성 중…');
       const res = await callClaude({
-        feature: 'generate',
+        feature: 'generate-article-combined',
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
+        max_tokens: 8000,
         messages: [{ role:'user', content: prompt }]
       });
 
@@ -4973,163 +5018,116 @@ async function runAutoGenerate(){
       await dbSaveArticle(newArticle);
       DB.unshift(newArticle); refreshCounts();
 
-      // ── 캐시 생성 (번역/단어/문법/퀴즈) ──
-      _autoGenSetItemStatus(si, '🧠 Generating cache...');
+      // ── 캐시 생성 — 통합 Sonnet 응답에서 직접 추출 ──
+      // 위 combined Sonnet call already produced paragraph_translations
+      // + per-sentence analysis. We just shape it into the cache row,
+      // derive Vocab + Grammar tabs, and only call Haiku for the quiz
+      // (intentionally separate — quiz quality from Haiku is fine and
+      // it keeps the Sonnet output JSON shorter).
+      _autoGenSetItemStatus(si, '🧠 캐시 정리 중…');
 
       const _body  = article.body  || '';
       const _title = article.title || '';
       const _level = diffInfo.level;
       const _sb    = getSb();
       // updated_at intentionally omitted — production article_cache
-      // doesn't have that column, and including it made every upsert
-      // fail with "column updated_at does not exist". Confirmed via
-      // information_schema.columns query on May 7 2026.
+      // lacks that column; including it makes every upsert fail.
       const _row   = { article_id: String(articleId) };
       let   _ok    = 0;
 
-      // 공통 호출 함수 — prefill 없이 순수 요청
-      async function _call(instruction, max_tok) {
-        const r = await callClaude({
-          feature: 'generate',
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: max_tok,
-          messages: [{
-            role: 'user',
-            content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\nBODY START\n' + _body.slice(0, 3000) + '\nBODY END\n\n---\n' + instruction
-          }]
-        });
-        return (r.content && r.content[0] && r.content[0].text) || '';
-      }
-
-      // JSON 안전 추출
+      // JSON-safe extractor (kept for the Haiku quiz call below).
       function _json(text) {
-        // 배열 먼저
         const ai = text.indexOf('['), bi = text.lastIndexOf(']');
         const oi = text.indexOf('{'), ei = text.lastIndexOf('}');
-        // 배열이 객체보다 앞에 나오면 배열 우선
         if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
         if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
         throw new Error('no JSON found');
       }
 
-      // Step 1's paragraph-aligned EN translation is hoisted out of the
-      // try-block so step 2 (sentence analysis) can use it as context —
-      // the per-sentence prompt then knows the dropped subject from the
-      // surrounding paragraph and stops guessing "I" for what is
-      // obviously "the cat" / "the team" / "the company" / etc.
-      let _paragraphTranslations = [];
+      // ── Translation + sentence analysis (from combined Sonnet) ──
       try {
-        _autoGenSetItemStatus(si, '🧠 (1/3) 번역 중…');
-        const _trans = await _khTranslateArticleForCache(_level, _title, _body);
-        if (_trans.bodyTexts && _trans.bodyTexts.length) {
-          _row.translation = JSON.stringify({ texts: _trans.bodyTexts });
-          _paragraphTranslations = _trans.bodyTexts;
-          _ok++;
-        }
-        // Backfill title_en when the source headline (h.title) was empty
-        // or Korean — without this, the translate button at read time has
-        // nothing to swap the Korean title to and leaves it as-is.
-        if (_trans.titleEn && _khTitleEnNeedsBackfill(newArticle.title_en)) {
-          newArticle.title_en = _trans.titleEn;
-          try { await dbSaveArticle(newArticle); } catch(e) { console.warn('title_en update failed', e.message); }
-        }
-      } catch(e) { console.warn('translation failed', e.message); }
-
-      // ── Per-sentence analysis (2/3) ─────────────────────────────
-      // ONE Haiku call generates per-sentence translation + vocab +
-      // grammar. We then DERIVE the article-wide Vocab + Grammar tab
-      // payloads from this one response (dedupe vocab by ko, grammar
-      // by pattern, take top N). That replaces the two separate
-      // vocab + grammar Claude calls we used to make — saves ~$0.016
-      // per article (~20% of the AI cost) without dropping any reader
-      // surface area.
-      try {
-        _autoGenSetItemStatus(si, '🧠 (2/3) 문장별 분석 중…');
+        const _paraTrans = Array.isArray(article.paragraph_translations)
+          ? article.paragraph_translations.filter(function(t){ return typeof t === 'string'; })
+          : [];
+        const _sentRaw = Array.isArray(article.sentences) ? article.sentences : [];
+        // Sanity: align per-sentence array length with the body's
+        // actual sentence split. Sonnet sometimes drops/merges a
+        // sentence at the boundary; we fall back to the body-split
+        // text + empty analysis for any mismatched entry so the
+        // reader still has a complete sentence list.
         const _sentList = _khSplitSentencesForCache(_body);
-        if (_sentList.length) {
-          const _sentEnumerated = _sentList.map(function(s, i){ return '[' + (i+1) + '] ' + s; }).join('\n');
-          // Pair each Korean paragraph with its English translation from
-          // step 1 so the model sees the established context (subjects,
-          // pronouns, formality) when it analyses individual sentences.
-          // Falls back to "no context" gracefully if step 1 produced
-          // nothing — analysis still runs, just with lower precision.
-          const _paraKo = String(_body || '').split(/\n\n+/).map(function(p){return p.trim();}).filter(Boolean);
-          const _ctxBlock = _paragraphTranslations.length
-            ? '\n\nFULL ARTICLE CONTEXT (Korean body paired with the polished English translation already produced for this article — use it as the source of truth for who the subject is, what tense is being used, and the level of formality. The per-sentence translations you write below MUST be consistent with this paragraph translation.):\n'
-              + _paraKo.map(function(ko, i) {
-                  return '[Para ' + (i+1) + ']\n  KO: ' + ko + '\n  EN: ' + (_paragraphTranslations[i] || '(missing)');
-                }).join('\n\n') + '\n\n'
-            : '\n\n';
-          const _sentPrompt =
-              'You are a Korean tutor. Analyze each sentence below for a TOPIK ' + _level + ' learner.'
-            + _ctxBlock
-            + 'SENTENCES TO ANALYZE (numbered, in body order):\n'
-            + _sentEnumerated + '\n\n'
-            + 'Return ONLY a JSON object with this shape (no preamble, no code fences):\n'
-            + '{"sentences":[{"translation":"...","vocab":[{"ko":"<dictionary form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],"grammar":[{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<chunk from this sentence using the pattern>"}]}]}\n\n'
-            + 'Rules:\n'
-            + '- One object per input sentence, in the same order.\n'
-            + '- TRANSLATION: stay consistent with the paragraph EN above (same subject, same pronouns, same formality). PRESERVE THE ORIGINAL SUBJECT — do NOT inject "I" or "we" if the Korean omitted it; pull the subject from the paragraph EN context. Match the level of formality (정중체 → polite English; 평서체 → plain English).\n'
-            + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔, 살다 not 살, 키우다 not 키우). Single-syllable stems are NEVER valid Korean words.\n'
-            + '- VOCAB: max 4 items per sentence. ' + (
-                (_level === 'Starter' || _level === 'Beginner')
-                  ? 'INCLUDE beginner verbs/adjectives at this level — 보다, 살다, 먹다, 키우다, 흔하다 are FAIR GAME, the learner needs them explained. Only skip particles (이/가/을/를/의/에/도/는) and the bare copula/존재 verbs (이다/있다 alone).'
-                  : 'Skip beginner words (는/이/가/이다/있다/하다/되다…) — pick words a learner would actually want to look up.'
-) + ' Empty array allowed if nothing useful.\n'
-            + '- VOCAB NOTE: must be FACTUAL — what the word literally means and how it is used in standard Korean. Do NOT invent metaphorical readings specific to this sentence (e.g. don\'t say "고양이 here used metaphorically for a group/category" — 고양이 just means cat). Do NOT pad with example collocations that don\'t actually apply (e.g. don\'t say "지나다 used with 시간, 날씨, 계절" — 날씨 doesn\'t pass). Empty note is fine when the meaning alone is enough.\n'
-            + '- GRAMMAR: ' + (
-                (_level === 'Starter' || _level === 'Beginner')
-                  ? 'max 3 patterns per sentence. INCLUDE the basics that this level needs: ~을/를 + verb (object marker), ~지 않다 (negation), ~고 있다 (continuous), ~았/었어요 (past polite), ~ㄴ/은 것 (nominalizer), ~보다 / ~보고 (sight + grammar), 보통 ~ (frequency). Empty array OK if the sentence is just one already-explained pattern.'
-                  : 'max 2 patterns per sentence, EMPTY ARRAY [] PREFERRED. Only include a pattern when there is a real, teachable grammatical structure that adds learning value beyond the vocab. When in doubt, RETURN EMPTY. Padding with weak/obvious patterns ruins the lesson.'
-) + '\n'
-            + '- GRAMMAR PATTERN FIELD: must be a GRAMMATICAL MORPHEME / connective / ending only (e.g. "~기 위해", "~게 되다", "~ㄴ/는 것 같다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" (animal is a noun, not part of the pattern).\n'
-            + '- GRAMMAR LEVEL FILTER: this article is "' + _level + '" level. ' + (
-                (_level === 'Starter' || _level === 'Beginner')
-                  ? 'TEACH the basics — ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 polite endings, ~았/었 past, ~을/를 object marker SHOULD appear because the learner is still learning them.'
-                  : 'SKIP basics the learner already knows — do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 polite endings, ~았/었 past, ~을/를 object marker.'
-) + '\n'
-            + '- GRAMMAR EXCLUSION: do NOT pick a pattern that is just the natural conjugation of a word already listed in vocab — if 달라지다 is in vocab, do not list ~어지다 with 달라졌어요 as the example.\n'
-            + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one — do not list both with near-identical example_in_sentence chunks.\n'
-            + '- Output JSON only.';
-          const _sentRes = await callClaude({
-            feature: 'generate-sentence-analysis',
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 4000,
-            messages: [{ role:'user', content: _sentPrompt }]
-          });
-          const _sentRaw = (_sentRes && _sentRes.content && _sentRes.content[0] && _sentRes.content[0].text) || '';
-          const _sentParsed = _json(_sentRaw);
-          const _sentArr = Array.isArray(_sentParsed.sentences) ? _sentParsed.sentences : [];
-          // Pair each parsed entry with its source sentence text — frontend
-          // matches by text first, falling back to index, so this stays
-          // resilient to small admin edits.
-          const _sentFinal = _sentList.map(function(text, i) {
-            const e = _sentArr[i] || {};
-            return {
-              text: text,
-              translation: typeof e.translation === 'string' ? e.translation : '',
-              vocab: Array.isArray(e.vocab) ? e.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
-              grammar: Array.isArray(e.grammar) ? e.grammar.slice(0, 2).filter(function(g){ return g && g.pattern; }) : [],
-            };
-          });
-          // Merge sentences into the translation row JSON (which currently
-          // holds {texts:[...]}) so we don't burn a separate cache column.
-          let _transObj = {};
-          try { if (_row.translation) _transObj = JSON.parse(_row.translation); } catch(_) {}
-          _transObj.sentences = _sentFinal;
-          _row.translation = JSON.stringify(_transObj);
-          _ok++;
-          // Derive Vocab + Grammar tab payloads from the same response.
-          const _derived = _khDeriveVocabGrammarFromSentences(_sentFinal, _level);
-          if (_derived.vocab.length)            _row.vocab   = JSON.stringify(_derived.vocab);
-          if (_derived.grammar.patterns.length) _row.grammar = JSON.stringify(_derived.grammar);
-        }
-      } catch(e) { console.warn('sentence analysis failed', e.message); }
+        const _sentFinal = _sentList.map(function(text, i) {
+          // Try matching by text first (admin edits or whitespace may
+          // shift index), then fall back to positional.
+          var match = null;
+          for (var k = 0; k < _sentRaw.length; k++) {
+            var t = (_sentRaw[k] && _sentRaw[k].text || '').trim();
+            if (t && (t === text || text.indexOf(t) >= 0 || t.indexOf(text) >= 0)) { match = _sentRaw[k]; break; }
+          }
+          if (!match) match = _sentRaw[i] || {};
+          // Normalise analysis array — accept new shape {type,label,...}
+          // OR legacy grammar shape {pattern,...} just in case Sonnet
+          // mixes the two.
+          var analysis = [];
+          if (Array.isArray(match.analysis)) {
+            analysis = match.analysis.slice(0, 4).filter(function(a){ return a && (a.label || a.pattern); }).map(function(a){
+              return {
+                type: a.type || 'grammar',
+                label: a.label || a.pattern || '',
+                exp: a.exp || '',
+                example_in_sentence: a.example_in_sentence || '',
+              };
+            });
+          } else if (Array.isArray(match.grammar)) {
+            analysis = match.grammar.slice(0, 4).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
+              return {
+                type: 'grammar',
+                label: g.pattern || g.label || '',
+                exp: g.exp || '',
+                example_in_sentence: g.example_in_sentence || '',
+              };
+            });
+          }
+          return {
+            text: text,
+            translation: typeof match.translation === 'string' ? match.translation : '',
+            vocab: Array.isArray(match.vocab) ? match.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
+            analysis: analysis,
+          };
+        });
 
+        if (_paraTrans.length || _sentFinal.length) {
+          _row.translation = JSON.stringify({
+            texts: _paraTrans,
+            sentences: _sentFinal,
+            version: SENT_CACHE_CURRENT,
+          });
+          _ok++;
+        }
+
+        // Derive Vocab + Grammar tab payloads.
+        if (_sentFinal.length) {
+          const _derived = _khDeriveVocabGrammarFromSentences(_sentFinal, _level);
+          if (_derived.vocab.length)            { _row.vocab   = JSON.stringify(_derived.vocab);   _ok++; }
+          if (_derived.grammar.patterns.length) { _row.grammar = JSON.stringify(_derived.grammar); _ok++; }
+        }
+      } catch(e) { console.warn('combined Sonnet response shape error', e.message); }
+
+      // ── Quiz (Haiku, separate by design) ──
       try {
-        _autoGenSetItemStatus(si, '🧠 (3/3) 퀴즈 중…');
-        const q = await _call('Create 5 fill-in-the-blank questions from this article. Return ONLY a JSON object: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English translation with _____","blank":"correct word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.', 1200);
-        _row.quiz = JSON.stringify(_json(q));
+        _autoGenSetItemStatus(si, '🧠 퀴즈 생성 중…');
+        const r = await callClaude({
+          feature: 'generate-quiz',
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1200,
+          messages: [{
+            role: 'user',
+            content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\nBODY START\n' + _body.slice(0, 3000) + '\nBODY END\n\n---\n'
+              + 'Create 5 fill-in-the-blank questions from this article. Return ONLY a JSON object: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English translation with _____","blank":"correct word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.'
+          }]
+        });
+        const _qText = (r.content && r.content[0] && r.content[0].text) || '';
+        _row.quiz = JSON.stringify(_json(_qText));
         _ok++;
       } catch(e) { console.warn('quiz failed', e.message); }
 
@@ -5397,11 +5395,8 @@ async function goAICache() {
   // version stamp ('p2' / 'p3' / 'p4' / undefined) so the dashboard
   // can flag stale rows that need a re-analyse under the current
   // prompt — KH_SENT_CACHE_VERSION on the user-facing client.
-  // Mirror of KH_SENT_CACHE_VERSION on shared.js. Bump together when
-  // the user-side prompt / response shape changes — currently 'p7'
-  // for the comprehensive ~80-100 pattern MUST-INCLUDE list
-  // (expanded after the p6 list was flagged as too thin).
-  const SENT_CACHE_CURRENT = 'p7';
+  // SENT_CACHE_CURRENT is module-scoped now (defined right above
+  // runAutoGenerate) so both paths can stamp the same version.
   const sentMissingIds = [];
   const sentVersionByArt = {}; // articleId → 'p4' | 'p3' | 'p2' | 'older' | 'missing'
   articles.forEach(function(a) {
@@ -5485,12 +5480,6 @@ async function goAICache() {
     + '<button class="btn" style="font-size:12px;padding:6px 14px;background:#f1f5f9;color:#374151;border:1px solid var(--bo)" onclick="goAICache()">🔄 새로고침</button>'
     + (failedArticleIds.length
         ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#ef4444;color:#fff;border:none" onclick="retryFailedCaches(\'' + (_schema||'') + '\')">🔁 실패 재시도 (' + failedArticleIds.length + ')</button>'
-        : '')
-    + (cacheComplete < articles.length && _schema
-        ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#2563eb;color:#fff;border:none" onclick="generateAllMissingCaches(\'' + (_schema||'') + '\')">⚡ 누락 캐시 일괄 생성 (' + (articles.length - cacheComplete) + '건)</button>'
-        : '')
-    + (sentMissingIds.length && _schema
-        ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#7c3aed;color:#fff;border:none" onclick="backfillSentenceAnalysis(\'' + (_schema||'') + '\')">📝 문장분석 백필 (' + sentMissingIds.length + '건)</button>'
         : '')
     + '</div>';
 
@@ -5585,31 +5574,13 @@ async function retryFailedCaches(schema) {
   setTimeout(function(){ goAICache(); }, 1500);
 }
 
-// 누락 캐시 일괄 생성 — "🧠 Generate" 버튼이 있는 기사(=캐시 미완성) 전체 처리
-// Weekly/monthly review grammar·reading 슬롯이 article_cache에 의존하므로
-// 이 버튼 실행 후 review가 vocab-only → 종합 평가로 변환됨
-async function generateAllMissingCaches(schema) {
-  if (!schema) { toast('스키마 미감지 — 페이지 새로고침 후 재시도', true); return; }
-  var btns = Array.from(document.querySelectorAll('[id^="cbtn-"]')).filter(function(b){
-    return b.textContent.trim().indexOf('Generate') !== -1;
-  });
-  if (!btns.length) { toast('모든 기사 캐시 완료 — 추가 작업 불필요', false); return; }
-  if (!confirm(btns.length + '개 기사 누락 캐시 생성.\n기사당 약 3~5초 소요 (총 ' + Math.ceil(btns.length * 4 / 60) + '분 예상). 진행?')) return;
-  toast('캐시 생성 시작 (' + btns.length + '건)…');
-  var ids = btns.map(function(b){ return b.id.replace('cbtn-', ''); });
-  for (var i = 0; i < ids.length; i++) {
-    try { await genCache(ids[i], schema, { silent: true }); } catch(e) { console.warn('cache gen failed', ids[i], e); }
-    if (i % 5 === 4) toast('진행 중… ' + (i + 1) + '/' + ids.length + '건 완료');
-  }
-  toast('✅ ' + ids.length + '건 완료. Weekly/Monthly Review가 이제 종합 평가로 작동합니다.');
-  setTimeout(function(){ goAICache(); }, 1500);
-}
-
-// Backfill ONLY the per-sentence analysis for a single article. Used
-// by older articles created before pre-gen rolled out — leaves
-// translation/vocab/grammar/quiz untouched and just appends the
-// `sentences` array into the existing translation cache JSON. One
-// Haiku call total, regardless of how many sentences.
+// Re-analyze an existing article with the combined Sonnet prompt.
+// Used by the per-article "🔁 재분석" button on AI Cache Management
+// for articles that pre-date the s1 (combined Sonnet) cache version.
+// Body stays untouched — we just regenerate paragraph_translations +
+// sentences[] (and the derived Vocab + Grammar tabs) using the same
+// Sonnet prompt shape as new article generation, minus the "각색"
+// half. One Sonnet call total.
 async function backfillOneSentenceAnalysis(articleId, schema, opts) {
   opts = opts || {};
   const silent = !!opts.silent;
@@ -5619,69 +5590,62 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
   const btn = silent ? null : document.getElementById('sbtn-' + articleId);
   const stEl = silent ? null : document.getElementById('cst-' + articleId);
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 분석 중…'; }
-  if (stEl) stEl.textContent = '문장 분석 생성 중…';
+  if (stEl) stEl.textContent = 'Sonnet 재분석 중…';
 
   const _body = a.body || '';
+  const _title = a.title || '';
   const _level = a.level || 'Intermediate';
   try {
-    const _sentList = _khSplitSentencesForCache(_body);
-    if (!_sentList.length) throw new Error('본문에서 문장을 찾을 수 없음');
-    const _sentEnumerated = _sentList.map(function(s, i){ return '[' + (i+1) + '] ' + s; }).join('\n');
-
-    // Pull existing paragraph translation as context BEFORE the prompt
-    // is built — old articles already have a polished EN per paragraph
-    // from the original 5-step pipeline. Feeding it back in fixes the
-    // "AI guesses 'I' for dropped subjects" problem the user reported.
-    let _existingTrans = '';
-    try {
-      if (schema === 'kv') {
-        const _cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?content_type=eq.article&content_id=eq.' + encodeURIComponent(articleId) + '&cache_key=eq.translation&select=cache_value', {
-          headers: { 'apikey': SUPA_KEY_ADMIN, 'Authorization': 'Bearer ' + (_getAccessTokenFromStorage()||SUPA_KEY_ADMIN) }
-        });
-        const _cd = _cr.ok ? await _cr.json() : [];
-        _existingTrans = (Array.isArray(_cd) && _cd[0] && _cd[0].cache_value) || '';
-      } else {
-        const _cr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=translation', {
-          headers: { 'apikey': SUPA_KEY_ADMIN, 'Authorization': 'Bearer ' + (_getAccessTokenFromStorage()||SUPA_KEY_ADMIN) }
-        });
-        const _cd = _cr.ok ? await _cr.json() : [];
-        _existingTrans = (Array.isArray(_cd) && _cd[0] && _cd[0].translation) || '';
-      }
-    } catch(_) {}
-    let _bfParaEn = [];
-    try {
-      const _bfTransObj = _existingTrans ? JSON.parse(_existingTrans) : null;
-      if (_bfTransObj && Array.isArray(_bfTransObj.texts)) _bfParaEn = _bfTransObj.texts;
-    } catch(_) {}
-    const _bfParaKo = String(_body || '').split(/\n\n+/).map(function(p){return p.trim();}).filter(Boolean);
-    const _bfCtx = _bfParaEn.length
-      ? '\n\nFULL ARTICLE CONTEXT (Korean body paired with the polished English translation already cached for this article — use it as the source of truth for who the subject is, what tense is being used, and the level of formality. Per-sentence translations MUST be consistent with this paragraph EN.):\n'
-        + _bfParaKo.map(function(ko, i) {
-            return '[Para ' + (i+1) + ']\n  KO: ' + ko + '\n  EN: ' + (_bfParaEn[i] || '(missing)');
-          }).join('\n\n') + '\n\n'
-      : '\n\n';
+    if (!_body.trim()) throw new Error('빈 본문');
 
     const _sentPrompt =
-        'You are a Korean tutor. Analyze each sentence below for a TOPIK ' + _level + ' learner.'
-      + _bfCtx
-      + 'SENTENCES TO ANALYZE (numbered, in body order):\n'
-      + _sentEnumerated + '\n\n'
-      + 'Return ONLY a JSON object:\n'
-      + '{"sentences":[{"translation":"...","vocab":[{"ko":"<dict form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],"grammar":[{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<chunk from this sentence using the pattern>"}]}]}\n\n'
-      + 'Rules:\n'
-      + '- one object per input sentence in same order.\n'
-      + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE the original subject — do NOT inject "I/we" if Korean omitted it. Pull subject/pronouns/formality from the paragraph EN context.\n'
-      + '- VOCAB: max 4, skip beginner words. NOTE must be factual — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply (e.g. 날씨 with 지나다).\n'
-      + '- GRAMMAR: max 2 patterns, EMPTY ARRAY [] PREFERRED when the sentence has no teachable structure beyond basic conjugation. Padding ruins the lesson — when in doubt, return empty.\n'
-      + '- GRAMMAR PATTERN FIELD: must be a grammatical morpheme/connective/ending only (e.g. "~기 위해", "~게 되다", "~(으)면서"). NEVER glue a noun onto the pattern. WRONG: "~ㄴ 동물" — animal is a noun, not part of the pattern.\n'
-      + '- GRAMMAR LEVEL: skip basics for ' + _level + ' learners — for Intermediate/Advanced do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 endings, ~았/었 past, ~을/를 object marker.\n'
-      + '- Do NOT pick a pattern that\'s just the conjugation of a vocab word (e.g. ~어지다 with 달라졌어요 when 달라지다 is in vocab).\n'
-      + '- If two patterns stack on the same verb (e.g. ~어지다 + ~고 있다 on 많아지고 있어요), pick ONLY the more learner-relevant one.\n'
-      + '- Output JSON only.';
+        '당신은 외국인 한국어 학습자를 위한 Korean 튜터입니다.\n'
+      + '아래 기사 본문에 대해 (1) 단락별 영어 번역과 (2) 문장별 분석을 만들어주세요.\n\n'
+      + '[기사 정보]\n'
+      + '제목: ' + _title + '\n'
+      + '난이도: ' + _level + '\n\n'
+      + '[본문 — 단락은 \\n\\n로 구분]\n'
+      + _body + '\n\n'
+      + '[단락별 번역]\n'
+      + '- body의 각 단락마다 polished English translation 1줄.\n'
+      + '- 한국어 단락 개수와 동일해야 함.\n\n'
+      + '[문장별 분석]\n'
+      + '- body에 등장하는 모든 한국어 문장을 등장 순서대로 추출.\n'
+      + '- text: 본문에 EXACTLY 등장한 형태 그대로.\n'
+      + '- translation: 단락 번역과 일관되게 (같은 주어, 시제, 격식). 한국어가 주어를 생략했으면 영어에서도 paragraph 번역의 주어를 그대로 가져오기.\n'
+      + '- vocab: max 4. 사전형으로. ' + (
+          (_level === 'Starter' || _level === 'Beginner')
+            ? '입문/초급 동사·형용사 포함 OK. 조사와 단독 이다/있다만 제외.'
+            : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵.'
+) + ' 빈 배열 OK.\n'
+      + '- analysis: max 3. 빈 배열 OK. 각 항목:\n'
+      + '    type: "grammar" | "expression" | "idiom"\n'
+      + '    label: 패턴/표현 자체. grammar는 형태소/연결어미만. 명사 X.\n'
+      + '    exp: 1줄 영어 설명.\n'
+      + '    example_in_sentence: 이 문장에서 발췌한 chunk.\n'
+      + '- 본문에 없는 패턴 절대 만들지 말 것 — label markers가 sentence text에 없으면 그 항목 자체를 빼세요.\n'
+      + '- ' + (
+          (_level === 'Starter' || _level === 'Beginner')
+            ? '기초 grammar 적극 포함: ~을/를, ~지 않다, ~고 있다, ~았/었어요, ~ㄴ/은 것, ~보다.'
+            : '기초 grammar 스킵 (~는/ㄴ noun modifier, ~다, ~요/습니다, ~았/었, ~을/를).'
+) + '\n'
+      + '- 두 패턴이 같은 동사에 스택되면 학습 가치 더 높은 하나만.\n\n'
+      + '[출력 — JSON ONLY]\n'
+      + '{\n'
+      + '  "paragraph_translations": ["para 1 EN", "para 2 EN", ...],\n'
+      + '  "sentences": [\n'
+      + '    {\n'
+      + '      "text": "<exact KO sentence>",\n'
+      + '      "translation": "<EN>",\n'
+      + '      "vocab": [{"ko":"<dict form>","en":"...","note":"..."}],\n'
+      + '      "analysis": [{"type":"grammar","label":"~기 위해","exp":"...","example_in_sentence":"..."}]\n'
+      + '    }\n'
+      + '  ]\n'
+      + '}';
     const r = await callClaude({
-      feature: 'generate-sentence-analysis',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4000,
+      feature: 'generate-article-analysis-backfill',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 7000,
       messages: [{ role:'user', content: _sentPrompt }]
     });
     const raw = (r && r.content && r.content[0] && r.content[0].text) || '';
@@ -5689,32 +5653,45 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     const oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
     if (oi < 0 || ei <= oi) throw new Error('JSON 응답 없음');
     const parsed = JSON.parse(clean.slice(oi, ei+1));
-    const arr = Array.isArray(parsed.sentences) ? parsed.sentences : [];
+
+    const _paraTrans = Array.isArray(parsed.paragraph_translations)
+      ? parsed.paragraph_translations.filter(function(t){ return typeof t === 'string'; })
+      : [];
+    const _sentRaw = Array.isArray(parsed.sentences) ? parsed.sentences : [];
+    const _sentList = _khSplitSentencesForCache(_body);
     const sentFinal = _sentList.map(function(text, i) {
-      const e = arr[i] || {};
+      var match = null;
+      for (var k = 0; k < _sentRaw.length; k++) {
+        var t = (_sentRaw[k] && _sentRaw[k].text || '').trim();
+        if (t && (t === text || text.indexOf(t) >= 0 || t.indexOf(text) >= 0)) { match = _sentRaw[k]; break; }
+      }
+      if (!match) match = _sentRaw[i] || {};
+      var analysis = [];
+      if (Array.isArray(match.analysis)) {
+        analysis = match.analysis.slice(0, 4).filter(function(x){ return x && (x.label || x.pattern); }).map(function(x){
+          return { type: x.type || 'grammar', label: x.label || x.pattern || '', exp: x.exp || '', example_in_sentence: x.example_in_sentence || '' };
+        });
+      } else if (Array.isArray(match.grammar)) {
+        analysis = match.grammar.slice(0, 4).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
+          return { type: 'grammar', label: g.pattern || g.label || '', exp: g.exp || '', example_in_sentence: g.example_in_sentence || '' };
+        });
+      }
       return {
         text: text,
-        translation: typeof e.translation === 'string' ? e.translation : '',
-        vocab: Array.isArray(e.vocab) ? e.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
-        grammar: Array.isArray(e.grammar) ? e.grammar.slice(0, 2).filter(function(g){ return g && g.pattern; }) : [],
+        translation: typeof match.translation === 'string' ? match.translation : '',
+        vocab: Array.isArray(match.vocab) ? match.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
+        analysis: analysis,
       };
     });
 
-    // Splice the sentences[] into the same translation JSON we already
-    // fetched as context above — saves a second round-trip and keeps
-    // any other fields intact (texts, ai_metadata, etc.).
-    let transObj = {};
-    try { if (_existingTrans) transObj = JSON.parse(_existingTrans); } catch(_) {}
-    transObj.sentences = sentFinal;
-    // Stamp the version this analysis was generated under. Mirrors
-    // KH_SENT_CACHE_VERSION on the user-facing shared.js side — kept
-    // in sync manually, bumped whenever the prompt or validator
-    // changes (currently 'p4', see PR #390 history). Without this
-    // the user-side staleness check (`sharedCache.version !==
-    // KH_SENT_CACHE_VERSION`) would mark every freshly-backfilled
-    // row as stale on first read.
-    transObj.version = 'p7';
-    const newTransStr = JSON.stringify(transObj);
+    // Build the new translation JSON. Replaces texts (paragraph EN)
+    // with the fresh Sonnet output and stamps the current cache
+    // version so the dashboard flips to "up-to-date".
+    const newTransStr = JSON.stringify({
+      texts: _paraTrans,
+      sentences: sentFinal,
+      version: SENT_CACHE_CURRENT,
+    });
 
     // Derive Vocab + Grammar tab payloads from the same response so
     // backfilling an old article also refreshes its Vocab + Grammar
@@ -5759,34 +5736,10 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
   } catch(e) {
     console.warn('sentence backfill failed', e);
     if (stEl) stEl.textContent = '❌ ' + (e.message || '실패');
-    if (btn) { btn.disabled = false; btn.textContent = '📝 문장분석'; }
+    if (btn) { btn.disabled = false; btn.textContent = '🔁 재분석'; }
     if (!silent) toast('실패: ' + (e.message || ''), true);
     if (silent) throw e;
   }
-}
-
-// Bulk backfill — runs backfillOneSentenceAnalysis sequentially for
-// every article that's missing the `sentences` array. Sequential
-// (not parallel) so we don't trip per-feature rate limits.
-async function backfillSentenceAnalysis(schema) {
-  if (!schema) { toast('스키마 미감지', true); return; }
-  // Re-collect missing IDs from the rendered rows (safer than relying
-  // on a stale closure variable after partial backfills).
-  const missingIds = Array.from(document.querySelectorAll('[id^="sbtn-"]'))
-    .map(function(b){ return b.id.replace('sbtn-', ''); });
-  if (!missingIds.length) { toast('백필 대상 없음', false); return; }
-  if (!confirm(missingIds.length + '개 기사 문장분석 백필.\n기사당 1회 Claude 호출 (총 약 ' + Math.ceil(missingIds.length / 30) + '분 예상). 진행?')) return;
-  toast('문장분석 백필 시작 (' + missingIds.length + '건)…');
-  let done = 0, failed = 0;
-  for (let i = 0; i < missingIds.length; i++) {
-    try {
-      await backfillOneSentenceAnalysis(missingIds[i], schema, { silent: true });
-      done++;
-    } catch(e) { failed++; }
-    if (i % 5 === 4) toast('진행 중… ' + (i + 1) + '/' + missingIds.length + '건');
-  }
-  toast('✅ 완료: ' + done + '건 성공' + (failed ? ', ' + failed + '건 실패' : ''));
-  setTimeout(function(){ goAICache(); }, 1500);
 }
 
 function renderExpressionsEditor(articleId, existingJson) {
@@ -7858,14 +7811,6 @@ function goBulkSeed() {
     +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedStories(3)" style="padding:10px 18px;font-size:13px;font-weight:800">📖 +3 Stories</button>'
     +     '<button data-bulk-btn class="btn btn-b" onclick="bulkSeedAll(3)" style="padding:10px 18px;font-size:13px;font-weight:800;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none">✨ +3×3 All</button>'
     +   '</div>'
-    +   '<hr style="margin:16px 0;border:none;border-top:1px solid #e2e8f0">'
-    +   '<h3 style="margin-bottom:4px;font-size:14px">🩺 Fix: regenerate stale vocab</h3>'
-    +   '<p style="font-size:12px;color:#64748b;margin:0 0 10px;line-height:1.55">Old cache may have hallucinated meanings (e.g. 갖추다 → "victim"). This re-runs the hardened vocab prompt on every article and overwrites article_cache.vocab. Rate-limited at ~1 article/sec to stay under Claude limits.</p>'
-    +   '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'
-    +     '<button data-bulk-btn class="btn" onclick="bulkRegenerateVocab(20)" style="padding:8px 14px;font-size:12px;font-weight:800;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:8px">🔄 Latest 20</button>'
-    +     '<button data-bulk-btn class="btn" onclick="bulkRegenerateVocab(100)" style="padding:8px 14px;font-size:12px;font-weight:800;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:8px">🔄 Latest 100</button>'
-    +     '<button data-bulk-btn class="btn" onclick="bulkRegenerateVocab(9999)" style="padding:8px 14px;font-size:12px;font-weight:800;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:8px">🔄 ALL articles</button>'
-    +   '</div>'
     + '</div>'
 
     + '<div class="sf-card">'
@@ -7995,51 +7940,79 @@ function _bulkPickSectionVariedItems(items, count) {
   return picked;
 }
 
-// Generate + save one article from a fetched headline. Returns the id on
-// success, throws on failure. Mirrors runAutoGenerate but headless.
+// Generate + save one article from a fetched headline. Returns the id +
+// the parsed combined-Sonnet response on success, throws on failure.
+// Mirrors runAutoGenerate (combined Sonnet path): one Sonnet call
+// produces title + body + key_expressions + paragraph_translations +
+// per-sentence analysis. _bulkGenerateArticleCache then takes the
+// combined object and writes the cache row + does the Haiku quiz call.
 async function _bulkGenerateOneArticle(headline, section, levelKey) {
   var diff = BULK_ART_DIFF_MAP[levelKey] || BULK_ART_DIFF_MAP.Intermediate;
   var today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
   var srcSummary = (headline.summary || headline.desc || '').trim();
   var hasSource = srcSummary.length > 0;
+  var levelKeyLocal = diff.level;
   var prompt =
-      '당신은 외국인 한국어 학습자를 위한 뉴스 기사를 각색하는 편집자입니다.\n\n'
+      '당신은 외국인 한국어 학습자를 위한 뉴스 기사 편집자 + 한국어 튜터입니다.\n'
+    + '한 번의 응답으로 (1) 학습자용 기사를 각색하고 (2) 단락별 영어 번역을 만들고 (3) 모든 문장에 대해 번역/단어/분석까지 해주세요.\n\n'
     + '[원본 뉴스]\n'
     + '제목: ' + headline.title + '\n'
     + '내용: ' + (hasSource ? srcSummary : '(요약 없음)') + '\n'
     + '출처: ' + (headline.source || '') + '\n\n'
-    + '[지시사항]\n'
-    + '위 실제 뉴스를 바탕으로 한국어 학습자용 기사를 작성하세요.\n'
-    + '- 원본의 핵심 사실과 주제를 유지하세요\n'
-    + '- 출처가 영어라면 한국어로 완전히 번역·각색하세요\n'
-    + '- 한국 독자 시각으로 관련성 있게 풀어주세요\n\n'
+    + '[지시사항 — 각색]\n'
+    + '- 원본의 핵심 사실과 주제 유지. 영어 출처면 한국어로 번역·각색.\n'
+    + '- 한국 독자 시각으로 풀어주세요.\n'
+    + '- 원본에 없는 사실/통계/인물 발언 절대 추가 금지.\n'
+    + '- 클리셰 마무리 금지 — "전문가들은 ~", "사회적 관심을 모으고 있어요", "앞으로의 귀추가 주목됩니다" 등.\n\n'
     + '[섹션: ' + section + ']\n'
     + '[난이도: ' + diff.ko + ']\n'
     + '[어휘 수준: ' + diff.vocab + ']\n'
     + '[오늘 날짜: ' + today + ']\n\n'
     + '[문체]\n'
-    + '- 짧고 명확한 문장 (20~35자)\n'
-    + '- 정중체 (~했어요, ~입니다, ~예요)\n'
-    + '- 어려운 용어는 괄호로 설명\n'
-    + '- 영어 단어는 원어 병기: 인공지능(AI)\n'
-    + '- **한자 절대 금지**: 괄호 안에든 본문에든 한자(漢字) 쓰지 마세요. 학습자가 못 읽습니다. 한글만 사용.\n'
+    + '- 짧고 명확한 문장 (20~35자), 정중체 (~했어요, ~입니다, ~예요).\n'
+    + '- 어려운 용어는 괄호로 설명. 영어 단어는 원어 병기: 인공지능(AI).\n'
+    + '- **한자 절대 금지**. 한글만 사용.\n'
     + (hasSource
-        ? '- 길이는 원본이 담은 정보량에 맞춰 조절. 원본이 짧으면 기사도 짧게 (1~2 단락 OK), 원본이 풍부하면 4~6 단락. 단락 수를 채우려고 내용을 늘리지 말 것.\n'
-        : '- 원본 요약이 없으니 제목만 가지고 1~2 단락 수준으로 짧게 처리. 모르는 사실은 절대 만들지 말 것. 사실이 부족하면 "현재 자세한 내용은 알려지지 않았어요" 같은 솔직한 마무리 OK.\n')
-    + '- 제목: 15~25자\n\n'
-    + '[금지 — 매우 중요]\n'
-    + '- 원본에 없는 사실 추가 절대 금지. 인물의 발언, 통계, 배경 설명, 전망 등은 원본 텍스트에 명시적으로 있을 때만 사용.\n'
-    + '- "전문가들은…", "일부 시민들은…", "이는 …로 평가받는다" 같은 정형 문장으로 빈 공간 채우지 말 것. 학습자에게 정보 가치 0.\n'
-    + '- "이 사건은 사회적 관심을 모으고 있어요" / "앞으로의 추이가 주목됩니다" 류 마무리 클리셰 금지.\n'
-    + '- 실존 인물 비방, 미검증 주장 금지.\n'
-    + '- 한자 표기 금지.\n'
-    + '- 길이를 늘리기 위해 같은 사실을 다른 말로 두 번 말하지 말 것.\n\n'
-    + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)"}';
+        ? '- 길이는 원본 정보량에 맞춰. 원본이 짧으면 1~2 단락, 풍부하면 4~6 단락. 채우기용 늘리지 말 것.\n'
+        : '- 원본 요약 없음 — 제목만으로 1~2 단락 짧게. 모르는 사실 만들지 말 것. "현재 자세한 내용은 알려지지 않았어요" 같은 솔직한 마무리 OK.\n')
+    + '- 제목: 15~25자.\n\n'
+    + '[중요표현]\n'
+    + '- 본문에 등장한 **고정 표현** 0~3개. 적합 없으면 [].\n'
+    + '- 적합: 관용 표현, 사자성어/속담, 굳어진 표현, 호칭/인사 표현, 문화 특화 표현.\n\n'
+    + '[단락별 번역]\n'
+    + '- body의 각 단락(\\n\\n 구분)마다 polished English translation 1줄. 한국어 단락 개수와 동일.\n\n'
+    + '[문장별 분석]\n'
+    + '- body에 등장하는 모든 한국어 문장을 등장 순서대로.\n'
+    + '- text: 본문에 EXACTLY 등장한 형태 그대로.\n'
+    + '- translation: 단락 번역과 일관되게.\n'
+    + '- vocab: max 4. 사전형으로 (단음절 어간 X). ' + (
+        (levelKeyLocal === 'Starter' || levelKeyLocal === 'Beginner')
+          ? '입문/초급 단어도 포함 OK. 조사와 단독 이다/있다만 제외.'
+          : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵.'
+) + ' 빈 배열 OK.\n'
+    + '- analysis: max 3. 빈 배열 OK. type: "grammar" | "expression" | "idiom".\n'
+    + '    label: 패턴/표현 자체. grammar는 형태소/연결어미만. 명사 X.\n'
+    + '    exp: 1줄 영어 설명.\n'
+    + '    example_in_sentence: 이 문장에서 발췌한 chunk.\n'
+    + '- 본문에 없는 패턴 절대 만들지 말 것.\n'
+    + '- ' + (
+        (levelKeyLocal === 'Starter' || levelKeyLocal === 'Beginner')
+          ? '기초 grammar 적극 포함.'
+          : '기초 grammar 스킵.'
+) + '\n\n'
+    + '[출력 — JSON ONLY]\n'
+    + '{\n'
+    + '  "title": "...",\n'
+    + '  "body": "본문 (단락 \\\\n\\\\n)",\n'
+    + '  "key_expressions": [{"ko":"...","en":"..."}],\n'
+    + '  "paragraph_translations": ["para 1 EN", ...],\n'
+    + '  "sentences": [{"text":"...","translation":"...","vocab":[{"ko","en","note"}],"analysis":[{"type","label","exp","example_in_sentence"}]}]\n'
+    + '}';
 
   var res = await callClaude({
-    feature: 'bulk-seed-article',
+    feature: 'bulk-seed-article-combined',
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 2000,
+    max_tokens: 8000,
     messages: [{ role:'user', content: prompt }]
   });
   var text = (res && res.content && res.content[0] && res.content[0].text) || '';
@@ -8120,22 +8093,85 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
   if (!r.ok) throw new Error('db insert failed: ' + r.message);
 
   if (typeof DB !== 'undefined' && DB.unshift) { DB.unshift(newArticle); if (typeof refreshCounts === 'function') refreshCounts(); }
-  return { articleId: articleId, title: article.title, body: article.body, level: diff.level, tags: article._tags || [] };
+  return {
+    articleId: articleId,
+    title: article.title,
+    body: article.body,
+    level: diff.level,
+    tags: article._tags || [],
+    // Hand the full combined-Sonnet response back to the caller so
+    // _bulkGenerateArticleCache can shape it into the cache row
+    // without re-calling the model.
+    combined: article,
+  };
 }
 
-// Fill article_cache (translation / vocab / grammar / quiz) via Haiku.
-// Fire-and-forget per section — partial caches are fine; the reader pages
-// regenerate whatever's missing on demand.
-async function _bulkGenerateArticleCache(articleId, title, body, levelKey) {
+// Fill article_cache (translation/vocab/grammar from combined-Sonnet
+// response, quiz from a separate Haiku call). The combined object
+// arrives via _bulkGenerateOneArticle's return value so we don't pay
+// for sentence analysis twice. Quiz stays on Haiku — separate by
+// design, see runAutoGenerate for the matching reasoning.
+async function _bulkGenerateArticleCache(articleId, title, body, levelKey, combined) {
   var sb = getSb();
   if (!sb) return 0;
-  // updated_at omitted — production article_cache lacks the column.
   var row = { article_id: String(articleId) };
   var ok = 0;
 
+  // Shape Vocab/Grammar/translation from the combined response.
+  if (combined && (Array.isArray(combined.sentences) || Array.isArray(combined.paragraph_translations))) {
+    try {
+      var paraTrans = Array.isArray(combined.paragraph_translations)
+        ? combined.paragraph_translations.filter(function(t){ return typeof t === 'string'; })
+        : [];
+      var sentRaw = Array.isArray(combined.sentences) ? combined.sentences : [];
+      var sentList = _khSplitSentencesForCache(body);
+      var sentFinal = sentList.map(function(text, i) {
+        var match = null;
+        for (var k = 0; k < sentRaw.length; k++) {
+          var t = (sentRaw[k] && sentRaw[k].text || '').trim();
+          if (t && (t === text || text.indexOf(t) >= 0 || t.indexOf(text) >= 0)) { match = sentRaw[k]; break; }
+        }
+        if (!match) match = sentRaw[i] || {};
+        var analysis = [];
+        if (Array.isArray(match.analysis)) {
+          analysis = match.analysis.slice(0, 4).filter(function(x){ return x && (x.label || x.pattern); }).map(function(x){
+            return { type: x.type || 'grammar', label: x.label || x.pattern || '', exp: x.exp || '', example_in_sentence: x.example_in_sentence || '' };
+          });
+        } else if (Array.isArray(match.grammar)) {
+          analysis = match.grammar.slice(0, 4).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
+            return { type: 'grammar', label: g.pattern || g.label || '', exp: g.exp || '', example_in_sentence: g.example_in_sentence || '' };
+          });
+        }
+        return {
+          text: text,
+          translation: typeof match.translation === 'string' ? match.translation : '',
+          vocab: Array.isArray(match.vocab) ? match.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
+          analysis: analysis,
+        };
+      });
+      if (paraTrans.length || sentFinal.length) {
+        row.translation = JSON.stringify({ texts: paraTrans, sentences: sentFinal, version: SENT_CACHE_CURRENT });
+        ok++;
+      }
+      if (sentFinal.length) {
+        var derived = _khDeriveVocabGrammarFromSentences(sentFinal, levelKey);
+        if (derived.vocab.length)            { row.vocab   = JSON.stringify(derived.vocab);   ok++; }
+        if (derived.grammar.patterns.length) { row.grammar = JSON.stringify(derived.grammar); ok++; }
+      }
+      // key_expressions → expressions cache row
+      if (Array.isArray(combined.key_expressions) && combined.key_expressions.length) {
+        var keyExprs = combined.key_expressions
+          .filter(function(e){ return e && e.ko && body.indexOf(e.ko) !== -1; })
+          .slice(0, 3)
+          .map(function(e){ return { phrase: String(e.ko).trim(), note: String(e.en || '').trim(), color: 'amber' }; });
+        if (keyExprs.length) row.expressions = JSON.stringify(keyExprs);
+      }
+    } catch(e) { bulkLog('combined-shape error: ' + e.message, 'warn'); }
+  }
+
   async function _call(instruction, maxTok) {
     var r = await callClaude({
-      feature: 'bulk-seed-article-cache',
+      feature: 'bulk-seed-quiz',
       model: 'claude-haiku-4-5-20251001',
       max_tokens: maxTok,
       messages: [{ role:'user', content:
@@ -8152,34 +8188,8 @@ async function _bulkGenerateArticleCache(articleId, title, body, levelKey) {
     throw new Error('no JSON');
   }
 
-  try {
-    // Marker-delimited title+body translation. The previous JSON-array
-    // prompt at max_tokens=800 truncated long articles to 1-2 paragraphs,
-    // and that bad cache then served every reader.
-    var _trans = await _khTranslateArticleForCache(levelKey, title, body);
-    if (_trans.bodyTexts && _trans.bodyTexts.length) {
-      row.translation = JSON.stringify({ texts: _trans.bodyTexts });
-      ok++;
-    }
-    if (_trans.titleEn) {
-      try {
-        var _cur = await sb.from('articles').select('title_en').eq('id', articleId).maybeSingle();
-        if (!_cur.error && _khTitleEnNeedsBackfill(_cur.data && _cur.data.title_en)) {
-          await sb.from('articles').update({ title_en: _trans.titleEn }).eq('id', articleId);
-        }
-      } catch(e) { bulkLog('title_en backfill failed: ' + (e && e.message || ''), 'warn'); }
-    }
-  } catch(e) {}
-  try {
-    var v = await _call(window.KH_VOCAB.promptText(levelKey, body), 1600);
-    var cleaned = window.KH_VOCAB.validateBest(_json(v), body || '');
-    if (cleaned && cleaned.length) { row.vocab = JSON.stringify(cleaned); ok++; }
-  } catch(e) {}
-  try {
-    var g = await _call('Find 3 grammar patterns used in this article. Return ONLY {"patterns":[{"name","level","exp","ex_ko","ex_en"}]}. No other text.', 900);
-    row.grammar = JSON.stringify(_json(g));
-    ok++;
-  } catch(e) {}
+  // Quiz — separate Haiku call (translation/vocab/grammar already
+  // shaped above from the combined Sonnet response).
   try {
     var q = await _call('Create 5 fill-in-the-blank questions. Return ONLY {"questions":[{"sentence":"Korean with _____","sentence_en":"English with _____","blank":"","blank_en":"","choices":["","","",""]}]}. No other text.', 1200);
     row.quiz = JSON.stringify(_json(q));
@@ -8193,117 +8203,6 @@ async function _bulkGenerateArticleCache(articleId, title, body, levelKey) {
   return ok;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Bulk REGENERATE only article_cache.vocab using the hardened
-// prompt + validator. Does NOT touch translation / grammar / quiz
-// so existing good output isn't wasted. Rate-limited to 1 article
-// per second to stay polite to Claude.
-// ─────────────────────────────────────────────────────────────
-async function bulkRegenerateVocab(limit) {
-  limit = Math.max(1, Math.min(9999, Number(limit) || 20));
-  if (!confirm('Regenerate vocab for up to ' + (limit === 9999 ? 'ALL' : limit) + ' articles?\nThis overwrites article_cache.vocab for each article hit. Expect ~1s per article.')) return;
-  bulkLog('🩺 Starting vocab regenerate (up to ' + limit + ' articles)…');
-  var btns = document.querySelectorAll('[data-bulk-btn]');
-  btns.forEach(function(b){ b.disabled = true; });
-  try {
-    var sb = getSb();
-    if (!sb) { bulkLog('Supabase client missing', 'err'); return; }
-    // The canonical table is `articles` (not articles_data — that was a
-    // copy-paste error). Status can be null on older rows, so we don't
-    // filter by it in the query; instead drop unpublished rows after fetch.
-    var r;
-    try {
-      var q = sb.from('articles')
-        .select('id, title, body, level, status')
-        .order('created_at', { ascending: false });
-      if (limit < 9999) q = q.limit(Math.min(limit * 2, 500));
-      r = await q;
-    } catch (queryErr) {
-      bulkLog('Fetch threw: ' + (queryErr && queryErr.message || queryErr), 'err');
-      return;
-    }
-    if (!r) { bulkLog('articles fetch returned nothing (admin proxy issue?)', 'err'); return; }
-    if (r.error) { bulkLog('articles fetch failed: ' + (r.error.message || JSON.stringify(r.error)), 'err'); return; }
-    var rows = (r.data || []).filter(function(a){ return a && (!a.status || a.status === 'published'); });
-    if (limit < 9999) rows = rows.slice(0, limit);
-    bulkLog('Fetched ' + rows.length + ' articles (filtered published).');
-    if (!rows.length) { bulkLog('No articles matched. Raw data length: ' + ((r.data || []).length), 'warn'); return; }
-    var ok = 0, skip = 0, fail = 0;
-    for (var i = 0; i < rows.length; i++) {
-      var a = rows[i];
-      if (!a || !a.body || a.body.length < 40) { skip++; continue; }
-      bulkLog('[' + (i + 1) + '/' + rows.length + '] ' + (a.title || '').slice(0, 40) + '…');
-      try {
-        var r2 = await callClaude({
-          feature: 'bulk-vocab-regen',
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1600,
-          messages: [{ role:'user', content:
-            'Korean article (level: ' + (a.level || 'Intermediate') + ')\nTitle: ' + a.title + '\n\nBODY START\n' + String(a.body).slice(0, 3000) + '\nBODY END\n\n---\n'
-            + window.KH_VOCAB.promptText(a.level || 'Intermediate', a.body)
-          }]
-        });
-        var raw = (r2 && r2.content && r2.content[0] && r2.content[0].text) || '';
-        var ai = raw.indexOf('['), bi = raw.lastIndexOf(']');
-        var parsed = (ai >= 0 && bi > ai) ? JSON.parse(raw.slice(ai, bi + 1)) : null;
-        var cleaned = window.KH_VOCAB.validateBest(parsed, a.body || '');
-        if (cleaned && cleaned.length) {
-          // Write to article_cache — try both schemas (kv vs wide) so we
-          // work regardless of which one production is actually on.
-          var savedKv = false, savedWide = false;
-          // kv schema: (content_type, content_id, cache_key, cache_value)
-          try {
-            var upKv = await sb.from('article_cache').upsert({
-              content_type: 'article',
-              content_id:   String(a.id),
-              cache_key:    'vocab',
-              cache_value:  JSON.stringify(cleaned)
-            }, { onConflict: 'content_type,content_id,cache_key' });
-            if (!upKv.error) savedKv = true;
-            else if (!/column|cache_key|cache_value|does not exist/i.test(upKv.error.message || '')) {
-              bulkLog('  kv upsert warn: ' + upKv.error.message, 'warn');
-            }
-          } catch (_) {}
-          // wide schema: (article_id, vocab column)
-          if (!savedKv) {
-            try {
-              var upWide = await sb.from('article_cache').upsert({
-                article_id: String(a.id),
-                vocab: JSON.stringify(cleaned)
-              }, { onConflict: 'article_id' });
-              if (!upWide.error) savedWide = true;
-              else bulkLog('  wide upsert err: ' + upWide.error.message, 'warn');
-            } catch (e3) { bulkLog('  wide upsert threw: ' + (e3 && e3.message || e3), 'warn'); }
-          }
-          // article_cache is the single source of truth for article vocab.
-          // V4.3 tried to also write articles.data / V4.4 tried articles.vocab —
-          // neither column exists on the articles table in this deployment,
-          // and V4.5 changed the reader to prefer cache anyway, so both
-          // writes were dead weight. Dropped in the cleanup pass.
-
-          if (savedKv || savedWide) {
-            ok++;
-            bulkLog('  ✓ ' + cleaned.length + ' words saved (' + (savedKv ? 'kv' : 'wide') + ')', 'ok');
-          } else {
-            fail++;
-            bulkLog('  ✗ both schemas failed — cache not saved', 'warn');
-          }
-        } else {
-          fail++;
-          bulkLog('  ✗ empty output, skipped', 'warn');
-        }
-      } catch (e) {
-        fail++;
-        bulkLog('  ✗ error: ' + (e && e.message || e), 'warn');
-      }
-      // Rate limit
-      await new Promise(function(res){ setTimeout(res, 900); });
-    }
-    bulkLog('Done. ok=' + ok + ' / skip=' + skip + ' / fail=' + fail, ok > 0 ? 'ok' : 'warn');
-  } finally {
-    btns.forEach(function(b){ b.disabled = false; });
-  }
-}
 
 // Public entry point — seed N articles. Ignores its own output on failure
 // so a partial batch still counts.
@@ -8361,7 +8260,7 @@ async function bulkSeedArticles(count) {
         if (out.tags && out.tags.length) _bulkPushTagHistory('article', out.tags);
         _bulkBumpCounter('article', lvl);
         bulkLog('  ✔ saved "' + out.title + '" — now generating cache…', 'ok');
-        var cok = await _bulkGenerateArticleCache(out.articleId, out.title, out.body, lvl);
+        var cok = await _bulkGenerateArticleCache(out.articleId, out.title, out.body, lvl, out.combined);
         bulkLog('  ✔ cache ' + cok + '/4 done', 'ok');
         success++;
       } catch(err) {
