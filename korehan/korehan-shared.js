@@ -3538,14 +3538,36 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
     var res = await callClaude({
       feature: 'sentence-analyze-bulk',
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: Math.min(8000, 250 * sentences.length + 600),
+      max_tokens: Math.min(16000, 500 * sentences.length + 800),
       messages: [{ role: 'user', content: prompt }]
     });
     var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
     var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
     var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
     if (oi < 0 || ei <= oi) throw new Error('JSON not found');
-    var parsed = JSON.parse(clean.slice(oi, ei + 1));
+    // Tolerate truncation: when JSON.parse blows on a cut-off
+    // response, walk back from the last `}` looking for the deepest
+    // bracket that still produces valid JSON. Better to render
+    // partial sentence analysis than to throw the whole article's
+    // worth of tokens away with a "분석 실패" error toast.
+    var parsed;
+    try {
+      parsed = JSON.parse(clean.slice(oi, ei + 1));
+    } catch (e1) {
+      var slice = clean.slice(oi, ei + 1);
+      var fixed = null;
+      var lastObjEnd = slice.lastIndexOf('},');
+      while (lastObjEnd > 0) {
+        try {
+          fixed = JSON.parse(slice.slice(0, lastObjEnd + 1) + ']}');
+          break;
+        } catch (_) {
+          lastObjEnd = slice.lastIndexOf('},', lastObjEnd - 1);
+        }
+      }
+      if (fixed) parsed = fixed;
+      else throw e1;
+    }
     var arr = parsed && Array.isArray(parsed.sentences) ? parsed.sentences : null;
     if (!arr || !arr.length) throw new Error('empty sentences[]');
 
@@ -3767,7 +3789,7 @@ function _khSentHintHTML() {
   if (!_khShouldShowSentHint()) return '';
   return '<div class="art-sent-hint" id="art-sent-hint">'
     + '<span class="ash-icon">✨</span>'
-    + '<span class="ash-text">문장을 탭하면 번역 · 단어 · 문법 분석이 나와요.</span>'
+    + '<span class="ash-text">Tap a sentence for translation, vocab, and grammar analysis.</span>'
     + '<button class="ash-dismiss" onclick="dismissSentHint()" aria-label="Dismiss">×</button>'
     + '</div>';
 }
@@ -4009,10 +4031,21 @@ async function analyzeSentence(idx, el) {
       // return cached panels while others showed "분석 중" mid-
       // session — the user reported it as "동일 기사인데 어떤
       // 문장은 즉시 뜨고 어떤 건 다시 분석 중."
-      if (sharedCache.version !== KH_SENT_CACHE_VERSION) _sharedCacheStale = true;
+      // NOTE: dropped the version-mismatch auto-stale flag in favor
+      // of admin-driven re-analysis (the 🔁 재분석 button on AI
+      // Cache Management). Auto-bulk on every version bump caused
+      // (a) every tap to wait on a Haiku reanalysis that often
+      // truncated and JSON-parse-failed, and (b) wasted Haiku
+      // tokens on data the admin will refresh comprehensively
+      // with Sonnet anyway. Content-quality checks below still
+      // surface genuinely-broken cache.
       if (_isLowLevel) {
         var _emptyCount = sharedCache.sentences.filter(function(s){
-          return !s.grammar || !Array.isArray(s.grammar) || !s.grammar.length;
+          // Treat a sentence as "missing analysis" only when BOTH
+          // the new analysis[] and the legacy grammar[] are empty.
+          var hasAnalysis = Array.isArray(s.analysis) && s.analysis.length;
+          var hasGrammar  = Array.isArray(s.grammar)  && s.grammar.length;
+          return !hasAnalysis && !hasGrammar;
         }).length;
         if (_emptyCount / sharedCache.sentences.length >= 0.3) _sharedCacheStale = true;
       }
@@ -4040,7 +4073,7 @@ async function analyzeSentence(idx, el) {
       var _hitGrammarBad = hit && _khSentGrammarLooksBad(hit);
       var _hitStale = (_isLowLevel && _hitGrammarMissing) || _hitGrammarBad;
       if (_hitStale) _sharedCacheStale = true;
-      if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length))) {
+      if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.analysis && hit.analysis.length) || (hit.grammar && hit.grammar.length))) {
         window._khSentAnalyzeCache[cacheKey] = hit;
         try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
         _khRenderSentPanel(panel, hit, null, sentenceText);
@@ -4205,7 +4238,7 @@ async function analyzeSentence(idx, el) {
     var msg = (err && err.message) || 'unknown';
     if (/unauthor|sign/i.test(msg)) msg = '로그인이 필요합니다';
     panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
-      + '<div class="asp-error">분석 실패: ' + escapeHTML(msg) + '</div>';
+      + '<div class="asp-error">Analysis failed: ' + escapeHTML(msg) + '</div>';
   }
 }
 
@@ -4416,7 +4449,7 @@ async function analyzeConvBubble(convId, msgIdx, el) {
       if (!hit || (hit.text || '').trim() !== sentenceText) {
         hit = sharedCache.messages.find(function(m){ return m && (m.text || '').trim() === sentenceText; });
       }
-      if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.grammar && hit.grammar.length))) {
+      if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.analysis && hit.analysis.length) || (hit.grammar && hit.grammar.length))) {
         window._khSentAnalyzeCache[cacheKey] = hit;
         try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
         _khRenderSentPanel(panel, hit, 'closeConvSentPanel()', sentenceText);
@@ -4487,7 +4520,7 @@ async function analyzeConvBubble(convId, msgIdx, el) {
     var emsg = (err && err.message) || 'unknown';
     if (/unauthor|sign/i.test(emsg)) emsg = '로그인이 필요합니다';
     panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
-      + '<div class="asp-error">분석 실패: ' + escapeHTML(emsg) + '</div>';
+      + '<div class="asp-error">Analysis failed: ' + escapeHTML(emsg) + '</div>';
   }
 }
 
@@ -7796,10 +7829,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
         _ldr(100);
       });
-      // Skip the homeOptimized background refresh here — the idle
-      // prefetch below pulls the full 1000-row "all" dataset, which is
-      // a strict superset of what home needs (top 30) and also primes
-      // All News + search. It re-renders home itself when it lands.
+      // Always fire a small homeOptimized refresh so newly published
+      // articles surface within seconds instead of waiting up to an
+      // hour for the localStorage cache TTL. Earlier we relied on the
+      // idle "prefetch all" pass below, but when that 400'd (e.g.
+      // PostgREST max-rows on limit=1000) home stayed stale until
+      // cache expiry — admin would publish an article and not see it
+      // on the front page for minutes.
+      loadArticlesFromDB({ homeOptimized: true, force: true })
+        .then(function (rows) { if (rows && rows.length) { try { renderHomePage(); } catch(_){} } })
+        .catch(function(){});
     } else {
       _ldr(50); // Loading articles...
       // No-cache first-visit path: render the skeleton immediately
