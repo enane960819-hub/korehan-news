@@ -2361,6 +2361,32 @@ function _khRenderHeroEmptyState() {
     + '</div>';
 }
 
+// Belt-and-suspenders safety net: regardless of which load path the
+// page took, if the hero is still on the skeleton 15s after the page
+// became interactive, force the empty state. Catches every wedge mode
+// (fetch hung, exception in renderHomePage, race lost, etc.) so the
+// user always gets the Reset button as a recovery affordance.
+(function _khArmHeroSafetyNet() {
+  if (typeof document === 'undefined') return;
+  function arm() {
+    var heroEl = document.getElementById('dyn-hero');
+    if (!heroEl) return;
+    setTimeout(function() {
+      if (_heroSlides && _heroSlides.length) return;
+      // Detect the still-skeleton case by class — initial markup has
+      // home-hero-loading; a successful render replaces className.
+      if (/home-hero-loading/.test(heroEl.className || '')) {
+        try { _khRenderHeroEmptyState(); } catch(_){}
+      }
+    }, 15000);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', arm, { once: true });
+  } else {
+    arm();
+  }
+})();
+
 function renderHomePage() {
   var all      = published();
   // Hydrate any title_en from local cache *before* we build cards so
@@ -7733,14 +7759,24 @@ document.addEventListener('DOMContentLoaded', async function() {
       // hero stuck on the skeleton forever. On timeout we render an
       // explicit "couldn't load" empty state with a Retry button so the
       // page degrades gracefully instead of looking permanently broken.
+      // NOTE: loadArticlesFromDB swallows fetch errors and resolves with
+      // an empty array (whatever was cached), so we must also treat
+      // "resolved but empty" as a failure — otherwise the timeout never
+      // fires and the empty state never appears.
       var _heroFinished = false;
       Promise.race([
-        loadArticlesFromDB({ homeOptimized: true, force: true })
-          .then(function () { _heroFinished = true; try { renderHomePage(); } catch(_){} }),
-        new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('home articles fetch timeout')); }, 12000); })
+        loadArticlesFromDB({ homeOptimized: true, force: true }).then(function (rows) {
+          if (rows && rows.length) {
+            _heroFinished = true;
+            try { renderHomePage(); } catch(_){}
+          }
+          // rows empty → leave _heroFinished false so the 12s timeout
+          // path still wins the race and surfaces the empty state.
+        }),
+        new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('home articles fetch timeout / empty')); }, 12000); })
       ]).catch(function (e) {
         if (_heroFinished) return;
-        console.warn('home articles fetch failed', e && e.message || e);
+        console.warn('home articles fetch failed:', e && e.message || e);
         try { _khRenderHeroEmptyState(); } catch(_) {}
       });
       _ldr(92);
