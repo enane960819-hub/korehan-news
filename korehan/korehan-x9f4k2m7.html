@@ -16497,8 +16497,9 @@ async function _vsFetchTableCount(table) {
   var sb = getSb(); if (!sb) return null;
   try {
     var r = await sb.from(table).select('*', { count: 'exact', head: true });
+    if (r.error) { console.warn('[vs] count error', table, r.error); return null; }
     return (r.count != null) ? r.count : null;
-  } catch (_) { return null; }
+  } catch (e) { console.warn('[vs] count exception', table, e); return null; }
 }
 
 async function vsRefreshCacheStats() {
@@ -16515,15 +16516,18 @@ async function vsRefreshCacheStats() {
     var cacheChunk = s.total === 0
       ? '캐시 비어 있음'
       : '캐시 ' + s.total + ' 완료 (<span style="color:#15803d">OK ' + s.ok + '</span> / <span style="color:#dc2626">BAD ' + s.bad + '</span>)';
-    if (totalRows == null) {
+    if (totalRows === '__LOADING__') {
       return '<code>' + _vsEsc(table) + '</code> · ' + cacheChunk + ' · DB total ⏳';
+    }
+    if (totalRows == null) {
+      return '<code>' + _vsEsc(table) + '</code> · ' + cacheChunk + ' · <span style="color:#dc2626">DB total 조회 실패 (콘솔 확인)</span>';
     }
     var remaining = Math.max(0, totalRows - s.total);
     var color = remaining === 0 ? '#15803d' : '#0f172a';
     return '<code>' + _vsEsc(table) + '</code> · DB total <b>' + totalRows + '</b> · ' + cacheChunk
       + ' · <span style="color:' + color + '">audit 남음 ' + remaining + '</span>';
   }
-  el.innerHTML = _line(null);
+  el.innerHTML = _line('__LOADING__');
   var count = await _vsFetchTableCount(table);
   // Only patch if the user hasn't switched table while we were waiting.
   if (document.getElementById('vs-table') && document.getElementById('vs-table').value === table) {
@@ -16586,19 +16590,45 @@ async function vsStartScan() {
   if (!sb) { toast('Supabase 연결 실패'); _resetUI('▶ Start Scan'); return; }
 
   var rows = [];
+  var rawRowsTotal = 0;
   var batchSize = 1000;
   var from = 0;
   while (true) {
     var fields = _vsScanState.table === 'hover_vocab_master' ? 'word_ko, meaning_en' : 'word_ko, word_en';
     var r = await sb.from(_vsScanState.table).select(fields).order('word_ko').range(from, from + batchSize - 1);
-    if (r.error) { toast('Load 실패: ' + r.error.message); _resetUI('▶ Start Scan'); return; }
-    var batch = (r.data || []).filter(function(x) { return x.word_ko && (x.meaning_en || x.word_en); });
+    if (r.error) {
+      console.warn('[vs] load error', r.error);
+      toast('Load 실패: ' + r.error.message);
+      document.getElementById('vs-results').innerHTML =
+        '<div class="infobox" style="background:#fef2f2;border-left-color:#dc2626;color:#991b1b">'
+        + '<h3>DB load failed</h3>'
+        + '<code>' + _vsEsc(_vsScanState.table) + '</code> 에서 row 가져오기 실패: <code>' + _vsEsc(r.error.message) + '</code><br>'
+        + 'RLS / permissions 문제일 가능성 큼. 브라우저 콘솔의 [vs] 로그 확인.'
+        + '</div>';
+      _resetUI('▶ Start Scan'); return;
+    }
+    var raw = r.data || [];
+    rawRowsTotal += raw.length;
+    var batch = raw.filter(function(x) { return x.word_ko && (x.meaning_en || x.word_en); });
     rows = rows.concat(batch);
-    if (batch.length < batchSize) break;
+    if (raw.length < batchSize) break;
     if (limit > 0 && rows.length >= limit) { rows = rows.slice(0, limit); break; }
     from += batchSize;
   }
+  console.log('[vs] loaded', rawRowsTotal, 'raw rows, kept', rows.length, 'after filter for', _vsScanState.table);
   rows = rows.map(function(x) { return { ko: x.word_ko, current: x.meaning_en || x.word_en || '' }; });
+
+  if (rows.length === 0) {
+    document.getElementById('vs-results').innerHTML =
+      '<div class="infobox" style="background:#fffbeb;border-left-color:#d97706;color:#92400e">'
+      + '<h3>0 valid rows loaded</h3>'
+      + 'DB query는 성공했지만 valid row가 없음. <code>' + _vsEsc(_vsScanState.table) + '</code>가 비어 있거나 모든 row의 '
+      + (_vsScanState.table === 'hover_vocab_master' ? '<code>meaning_en</code>' : '<code>word_en</code>')
+      + ' 컬럼이 NULL/empty.<br>raw row count: ' + rawRowsTotal + '<br>'
+      + 'Supabase 대시보드에서 직접 확인 권장: <code>SELECT count(*) FROM ' + _vsEsc(_vsScanState.table) + ';</code>'
+      + '</div>';
+    _resetUI('▶ Start Scan'); return;
+  }
 
   // Filter rows against the persistent cache. A row is considered
   // "already audited" if its (ko, current) pair matches the cached
