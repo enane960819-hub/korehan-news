@@ -5397,7 +5397,10 @@ async function goAICache() {
   // version stamp ('p2' / 'p3' / 'p4' / undefined) so the dashboard
   // can flag stale rows that need a re-analyse under the current
   // prompt — KH_SENT_CACHE_VERSION on the user-facing client.
-  const SENT_CACHE_CURRENT = 'p4';
+  // Mirror of KH_SENT_CACHE_VERSION on shared.js. Bump together when
+  // the user-side prompt / response shape changes — currently 'p5'
+  // for the analysis (grammar + expression + idiom) shape.
+  const SENT_CACHE_CURRENT = 'p5';
   const sentMissingIds = [];
   const sentVersionByArt = {}; // articleId → 'p4' | 'p3' | 'p2' | 'older' | 'missing'
   articles.forEach(function(a) {
@@ -5463,8 +5466,9 @@ async function goAICache() {
   }
   const versionChip = '<span style="display:inline-flex;gap:4px;align-items:center">'
     + '<span style="font-size:11px;color:#64748b;font-weight:700">문장분석:</span>'
-    + _vbadge('p4 ✓',          versionCounts.p4      || 0, '#dcfce7', '#166534')
-    + _vbadge('p3 (재분석 대상)', versionCounts.p3     || 0, '#fef3c7', '#92400e')
+    + _vbadge('p5 ✓',          versionCounts.p5      || 0, '#dcfce7', '#166534')
+    + _vbadge('p4 (재분석 대상)', versionCounts.p4     || 0, '#fef3c7', '#92400e')
+    + _vbadge('p3',             versionCounts.p3      || 0, '#fde68a', '#92400e')
     + _vbadge('p2',             versionCounts.p2      || 0, '#fde68a', '#92400e')
     + _vbadge('미스탬프',        versionCounts.older   || 0, '#fed7aa', '#9a3412')
     + _vbadge('없음',           versionCounts.missing || 0, '#fee2e2', '#991b1b')
@@ -5706,7 +5710,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     // the user-side staleness check (`sharedCache.version !==
     // KH_SENT_CACHE_VERSION`) would mark every freshly-backfilled
     // row as stale on first read.
-    transObj.version = 'p4';
+    transObj.version = 'p5';
     const newTransStr = JSON.stringify(transObj);
 
     // Derive Vocab + Grammar tab payloads from the same response so
@@ -7993,11 +7997,13 @@ function _bulkPickSectionVariedItems(items, count) {
 async function _bulkGenerateOneArticle(headline, section, levelKey) {
   var diff = BULK_ART_DIFF_MAP[levelKey] || BULK_ART_DIFF_MAP.Intermediate;
   var today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
+  var srcSummary = (headline.summary || headline.desc || '').trim();
+  var hasSource = srcSummary.length > 0;
   var prompt =
       '당신은 외국인 한국어 학습자를 위한 뉴스 기사를 각색하는 편집자입니다.\n\n'
     + '[원본 뉴스]\n'
     + '제목: ' + headline.title + '\n'
-    + '내용: ' + (headline.summary || headline.desc || '(요약 없음)') + '\n'
+    + '내용: ' + (hasSource ? srcSummary : '(요약 없음)') + '\n'
     + '출처: ' + (headline.source || '') + '\n\n'
     + '[지시사항]\n'
     + '위 실제 뉴스를 바탕으로 한국어 학습자용 기사를 작성하세요.\n'
@@ -8014,12 +8020,17 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     + '- 어려운 용어는 괄호로 설명\n'
     + '- 영어 단어는 원어 병기: 인공지능(AI)\n'
     + '- **한자 절대 금지**: 괄호 안에든 본문에든 한자(漢字) 쓰지 마세요. 학습자가 못 읽습니다. 한글만 사용.\n'
-    + '- 4~6개 단락, 단락당 2~3문장\n'
+    + (hasSource
+        ? '- 길이는 원본이 담은 정보량에 맞춰 조절. 원본이 짧으면 기사도 짧게 (1~2 단락 OK), 원본이 풍부하면 4~6 단락. 단락 수를 채우려고 내용을 늘리지 말 것.\n'
+        : '- 원본 요약이 없으니 제목만 가지고 1~2 단락 수준으로 짧게 처리. 모르는 사실은 절대 만들지 말 것. 사실이 부족하면 "현재 자세한 내용은 알려지지 않았어요" 같은 솔직한 마무리 OK.\n')
     + '- 제목: 15~25자\n\n'
-    + '[금지]\n'
-    + '- 실존 인물 비방, 미검증 주장 금지\n'
-    + '- 원본에 없는 사실 추가 금지\n'
-    + '- 한자 표기 금지\n\n'
+    + '[금지 — 매우 중요]\n'
+    + '- 원본에 없는 사실 추가 절대 금지. 인물의 발언, 통계, 배경 설명, 전망 등은 원본 텍스트에 명시적으로 있을 때만 사용.\n'
+    + '- "전문가들은…", "일부 시민들은…", "이는 …로 평가받는다" 같은 정형 문장으로 빈 공간 채우지 말 것. 학습자에게 정보 가치 0.\n'
+    + '- "이 사건은 사회적 관심을 모으고 있어요" / "앞으로의 추이가 주목됩니다" 류 마무리 클리셰 금지.\n'
+    + '- 실존 인물 비방, 미검증 주장 금지.\n'
+    + '- 한자 표기 금지.\n'
+    + '- 길이를 늘리기 위해 같은 사실을 다른 말로 두 번 말하지 말 것.\n\n'
     + '응답은 JSON만: {"title":"제목","body":"본문 (단락 구분 \\n\\n)"}';
 
   var res = await callClaude({
