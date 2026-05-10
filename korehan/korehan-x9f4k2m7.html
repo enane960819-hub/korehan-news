@@ -4819,7 +4819,11 @@ function _autoGenRenderProgressPanel(){
 //   s4    = added ~(으)면서 + polite reported speech (~다고 해요 /
 //           ~ㄴ다고 해요 / ~한대요) to user-facing analyze prompt
 //           floors. Mirrored as 's2' on KH_SENT_CACHE_VERSION.
-const SENT_CACHE_CURRENT = 's4';
+//   s5    = expanded KH_GRAMMAR (~게 만들다 fix, ~한대요/~한답니다
+//           contracted reported, ~아/어지다 passive) and wired
+//           enforce into the user-facing bulk + render paths.
+//           Mirrored as 's3' on KH_SENT_CACHE_VERSION.
+const SENT_CACHE_CURRENT = 's5';
 
 async function runAutoGenerate(){
   if (window._autoGenJob && window._autoGenJob.running) {

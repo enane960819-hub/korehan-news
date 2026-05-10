@@ -160,6 +160,43 @@ function khIcon(name, label, extraClass) {
   return html + '<span>' + label + '</span>';
 }
 
+// KH_GRAMMAR is the regex-based pattern detector that the admin page
+// loads via <script src="js/core/kh-grammar-patterns.js">. User-facing
+// pages don't include that script tag (44 of them), so we lazy-inject
+// it the first time anyone needs grammar enforcement. After the
+// promise resolves, window.KH_GRAMMAR.enforceDetectedPatterns is
+// guaranteed to exist — call sites guard with `if (window.KH_GRAMMAR)`
+// and skip enforcement if loading failed (offline, blocked, etc).
+var _khGrammarReady = null;
+function ensureKhGrammar() {
+  if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.enforceDetectedPatterns === 'function') {
+    return Promise.resolve(window.KH_GRAMMAR);
+  }
+  if (_khGrammarReady) return _khGrammarReady;
+  _khGrammarReady = new Promise(function(resolve, reject) {
+    var existing = document.querySelector('script[data-kh-grammar="1"]');
+    if (existing) {
+      existing.addEventListener('load', function() { resolve(window.KH_GRAMMAR); }, { once: true });
+      existing.addEventListener('error', reject, { once: true });
+      return;
+    }
+    var script = document.createElement('script');
+    script.src = 'js/core/kh-grammar-patterns.js?v=20260511f';
+    script.defer = true;
+    script.setAttribute('data-kh-grammar', '1');
+    script.onload = function() { resolve(window.KH_GRAMMAR); };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  }).catch(function(err) {
+    console.warn('KH_GRAMMAR failed to load.', err);
+    return null;
+  });
+  return _khGrammarReady;
+}
+// Kick off the load early so enforce calls aren't blocked on the
+// network round-trip when the user taps a sentence.
+try { ensureKhGrammar(); } catch(_) {}
+
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
 // → API 키가 브라우저에 절대 노출되지 않음
@@ -3657,6 +3694,20 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
       };
     });
 
+    // Code-level enforcement of must-include grammar patterns. Mirrors
+    // the admin runAutoGenerate path — Haiku regularly skips ~(으)면서,
+    // ~다고 해요, ~게 만들다 even when the prompt says be exhaustive,
+    // so the regex detector fills the gaps deterministically before
+    // we persist. INTERMEDIATE_SKIP_LABELS inside enforce already
+    // strips trivial particles for non-basic levels, so Tree+ readers
+    // don't see ~을/를 noise on every sentence.
+    try {
+      await ensureKhGrammar();
+      if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns) {
+        window.KH_GRAMMAR.enforceDetectedPatterns(stitched, articleLevel);
+      }
+    } catch(_) {}
+
     // Persist to article_cache.translation as { sentences: [...] }.
     // upsertArticleCacheRow handles the kv vs wide schema split.
     if (typeof upsertArticleCacheRow === 'function') {
@@ -3723,7 +3774,15 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
 // lists, so common patterns like "들어가면서" and "만든다고 해요"
 // were not surfaced even though the rest of the prompt told the
 // model to be exhaustive.
-var KH_SENT_CACHE_VERSION = 's2';
+//   s3: wired KH_GRAMMAR.enforceDetectedPatterns into the
+// user-facing bulk path AND the render path. Previously enforce
+// existed only in admin code, so any article served from a
+// pre-enforce cache (or from the user-facing Haiku fallback)
+// was missing all the regex-deterministic patterns. Also fixed
+// the ~게 만들다 causative regex (was missing 만든 / 만든다 /
+// 만들고) and added contracted reported speech (~한대요 /
+// ~한답니다 / ~래요) + ~아/어지다 (passive / become).
+var KH_SENT_CACHE_VERSION = 's3';
 
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;
@@ -3886,6 +3945,21 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
   // instead of breaking rendering.
   var _sent = (sentenceText || (panel && panel.dataset && panel.dataset.sentence) || '').trim();
   if (panel && _sent && panel.dataset) panel.dataset.sentence = _sent;
+
+  // Enrich `data.analysis` with regex-detected patterns the AI missed.
+  // Runs on EVERY render path (cache hit, sessionStorage hit, fresh
+  // analyze) so even articles whose cache was baked before enforce
+  // existed get the gap-fill treatment instantly — no admin re-bake
+  // required. Idempotent: enforceDetectedPatterns dedupes by label, so
+  // calling it twice on the same data is a no-op.
+  if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns && _sent && data) {
+    try {
+      var _lvl = (window._currentArticle && window._currentArticle.level) || 'Intermediate';
+      var _wrap = [{ text: _sent, analysis: Array.isArray(data.analysis) ? data.analysis : [] }];
+      window.KH_GRAMMAR.enforceDetectedPatterns(_wrap, _lvl);
+      data.analysis = _wrap[0].analysis;
+    } catch(_) {}
+  }
   if (data && Array.isArray(data.vocab) && data.vocab.length) {
     html += '<div class="asp-section-title">Vocab</div>';
     data.vocab.forEach(function(v) {

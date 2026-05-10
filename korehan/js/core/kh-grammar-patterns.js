@@ -75,7 +75,12 @@
     { re: /(니까|으니까)/, label: '~(으)니까 (reason)', hint: 'reason (more conversational than ~아서)' },
     { re: /기\s*때문(에|이|이다)/, label: '~기 때문에 (because)', hint: 'because. <stem> + 기 때문에' },
     { re: /(?<!기)[가-힣]\s*때문(에|이|이다)/, label: '~ 때문에 (because of N)', hint: 'because of (noun). <noun> + 때문에 = "because of / due to". 세균 때문에 = "because of the bacteria"' },
-    { re: /(?:^|[가-힣])면(?:서|$|\s|[.,])/, label: '~(으)면 (if/when)', hint: 'conditional. "if / when"' },
+    // ~(으)면 must NOT swallow ~(으)면서 — the 서 alternative used to
+    // be in the lookahead, which made every "가면서" / "들어가면서" fire
+    // both ~(으)면 AND ~(으)면서. Now require the next char to be end-
+    // of-string, whitespace, or punctuation (any continuation Hangul
+    // including 서 lets the dedicated ~(으)면서 pattern win instead).
+    { re: /(?:^|[가-힣])면(?:$|\s|[.,?!])/, label: '~(으)면 (if/when)', hint: 'conditional. "if / when"' },
     { re: /(다면)/, label: '~다면 (hypothetical if)', hint: 'hypothetical conditional. "if it were that"' },
     { re: /(면서|으면서)/, label: '~(으)면서 (while)', hint: 'simultaneous action. "while / as"' },
     { re: /다가(?=[^가-힣]|$)/, label: '~다가 (mid-action shift)', hint: 'doing X then Y / interrupted action' },
@@ -128,7 +133,7 @@
     { re: /[가-힣]화(되|하|된|한|돼|됨|함|되었|되었어|되어|됩니다|합니다)/, label: '~화하다/~화되다 (-ization / -ize)', hint: 'Sino-Korean noun → verb. <noun> + 화 = "-ization"; + 하다/되다 = "-ize / become -ized". 디지털화 (digitalization), 산업화 (industrialization), 자동화하다 (automate).' },
 
     // ── Modal / aspectual collocations ──────────────────────────
-    { re: /[가-힣]게\s*(하|만들|시키|했|만들었|만들어요|시켰|시켜요|시킬|만들기)/, label: '~게 하다 (causative)', hint: 'periphrastic causative. <stem> + 게 하다 = "make / cause X to". 알게 하다 (let know); 가게 하다 (make go); 슬프게 하다 (make sad). Different from morphological causatives like 알리다, 보이다.' },
+    { re: /[가-힣]게\s*(하|했|해|한|함|할|한다|만들|만든|만드|만들었|만들어|만들고|만들면|만들기|시키|시킨|시켜|시켰|시킬)/, label: '~게 하다 (causative)', hint: 'periphrastic causative. <stem> + 게 하다 / 게 만들다 / 게 시키다 = "make / cause X to". 알게 하다 (let know); 가게 하다 (make go); 슬프게 하다 (make sad); 약하게 만들다 (make weak); 약하게 만든다 (makes weak — declarative). Different from morphological causatives like 알리다, 보이다.' },
     { _check: function(t) { var c = _hasJongFollowedBy(t, 8, ['만하', '만한', '만했', '만해']); if (c) return c; var m = t.match(/[가-힣]을\s*만(하|한|했|해)/); return m ? m[0] : ''; }, label: '~(으)ㄹ 만하다 (worth doing)', hint: 'value/possibility. <stem> + ㄹ/을 만하다 = "worth -ing / can manage". 볼 만하다 (worth seeing); 살 만하다 (livable); 먹을 만하다 (edible).' },
     { _check: function(t) { var c = _hasJongFollowedBy(t, 8, ['뻔']); if (c) return c; var m = t.match(/[가-힣]을\s*뻔/); return m ? m[0] : ''; }, label: '~(으)ㄹ 뻔하다 (almost did)', hint: 'near-miss. <stem> + ㄹ/을 뻔했다 = "almost V-ed / nearly". 죽을 뻔했어요 (almost died); 넘어질 뻔했어요 (almost fell).' },
     { re: /[가-힣](는|은)\s*척\s*(하|한|했|해요)/, label: '~ㄴ/는 척하다 (pretend to)', hint: 'feigning. <stem> + ㄴ/는 척하다 = "pretend to / act as if". 모르는 척하다 (pretend not to know); 자는 척하다 (pretend to sleep).' },
@@ -190,11 +195,21 @@
     { re: /[가-힣]보다(?=[^가-힣]|$)/, label: '~보다 (comparison)', hint: 'comparative. "than / more than"' },
 
     // ── Quoted speech ───────────────────────────────────────────
-    { re: /(다고|ㄴ다고|는다고)\s*(하|했|해|말)/, label: '~다고 하다 (indirect declarative)', hint: 'reported speech. "says/said that"' },
-    { re: /라고\s*(하|했|해|말|불|부)/, label: '~(이)라고 하다 (indirect copula/name)', hint: 'reported identification or naming' },
-    { re: /냐고\s*(하|했|해|물)/, label: '~냐고 하다 (indirect question)', hint: 'reported question' },
-    { re: /자고\s*(하|했|해|제안)/, label: '~자고 하다 (indirect proposal)', hint: 'reported suggestion' },
+    { re: /(다고|ㄴ다고|는다고)\s*(하|했|해|말|알려|전해|보도)/, label: '~다고 하다 / ~다고 해요 (indirect declarative)', hint: 'reported speech (declarative). <quote> + 다고 하다. Polite forms: ~다고 해요, ~다고 했어요, ~다고 합니다. Common in news: "X (한)다고 해요" = "they say (that) X". 만든다고 해요 = "they say it makes …".' },
+    { re: /라고\s*(하|했|해|말|불|부|알려|전해)/, label: '~(이)라고 하다 / ~(이)라고 해요 (indirect copula/name)', hint: 'reported identification or naming. Polite: 라고 해요 / 라고 합니다. 학생이라고 해요 = "(they) say (he) is a student".' },
+    { re: /냐고\s*(하|했|해|물|여쭤)/, label: '~냐고 하다 / ~냐고 해요 (indirect question)', hint: 'reported question. Polite: 냐고 해요 / 물어봐요. 가냐고 해요 = "(they) are asking whether (X) goes".' },
+    { re: /자고\s*(하|했|해|제안|권유)/, label: '~자고 하다 / ~자고 해요 (indirect proposal)', hint: 'reported suggestion / let\'s. 가자고 해요 = "(they) suggest going / say let\'s go".' },
     { re: /달라고(?=[^가-힣]|$)|주라고(?=[^가-힣]|$)/, label: '~달라고/주라고 (request)', hint: 'reported request / asking for something' },
+    // Contracted reported speech — ~다고 해요 → ~대요, ~라고 해요 → ~래요,
+    // ~냐고 해요 → ~냬요, ~자고 해요 → ~재요. Very common in news/casual
+    // Korean. ~ㄴ대요 / ~는대요 require ㄴ-jongseong on the prior syllable
+    // (한대요 = 하 + ㄴ-jong + 대요), so use _check + _hasJongFollowedBy.
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 4, ['대요', '대.', '대,', '대?', '대!', '답니다', '답니까', '대네', '대네요', '대지', '대지요']);
+        if (c) return c;
+        var m = t.match(/[가-힣](랍니다|랍니까|래요|래\.|래,|래\?|랜다|냬요|냬\.|냬\?|쟤요|쟤\.|쟤\?)/);
+        return m ? m[0] : '';
+      }, label: '~다고 해(요) → ~대(요) (contracted reported speech)', hint: 'contracted reported speech (extremely common in news headlines and casual Korean). ~ㄴ다고 해요 → ~ㄴ대요 (한다고 해요 → 한대요), ~ㄴ다고 합니다 → ~ㄴ답니다, ~라고 해요 → ~래요 (학생이라고 해요 → 학생이래요), ~냐고 해요 → ~냬요, ~자고 해요 → ~재요. Always relays what someone else said. 만든대요 = 만든다고 해요 ("they say it makes"); 한답니다 = 한다고 합니다.' },
 
     // ── Nominalizers ───────────────────────────────────────────
     { re: /[가-힣]는\s*것(?=[^가-힣]|$)/, label: '~는 것 (the thing of V-ing)', hint: 'verbal nominalizer (present). makes verb a noun phrase' },
@@ -228,6 +243,13 @@
     { re: /(는|ㄴ|은|을|ㄹ)\s*편이/, label: '~는 편이다 (tend to)', hint: 'tendency. "tends to be / is rather"' },
     { re: /(는|ㄴ|은)\s*(대로|만큼)/, label: '~는 대로/만큼 (as / to the extent)', hint: 'manner or extent. "as / according to / as much as"' },
     { re: /ㄴ\s*셈이|은\s*셈이/, label: '~ㄴ/은 셈이다 (amounts to)', hint: 'roughly equivalent to. "amounts to / can be counted as"' },
+
+    // ── Passive / change-of-state ───────────────────────────────
+    // ~아/어지다 (passive, "becomes") attaches to action verbs to form
+    // a passive, and to adjectives to mean "becomes X". Extremely common
+    // in news and academic Korean. Vowel-contracted forms covered by the
+    // ~아/어 alternation list mirroring ~아/어 보다.
+    { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*지(다|는|었|어|어요|었어요|면|면서|기|ㄴ|ㄹ|니|니까|고)/, label: '~아/어지다 (passive / become)', hint: 'passive or change-of-state. <action-stem> + 아/어지다 = passive ("gets V-ed"); <adj-stem> + 아/어지다 = "becomes <adj>". 만들어지다 (be made / get made); 좋아지다 (become good / improve); 약해지다 (weaken — get weak). Includes contracted: 보다 → 보아지다 → 봐져요.' },
 
     // ── Honorifics ──────────────────────────────────────────────
     { re: /(으셨|셨)(어요|습니다|네|군|는)/, label: '~(으)셨 (honorific past)', hint: 'subject honorific past tense' },
