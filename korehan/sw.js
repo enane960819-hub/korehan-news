@@ -18,12 +18,14 @@
 // changes. Install event will build a fresh cache under the new name
 // and the activate event will delete stale caches.
 
-// v9: bump to force fresh install on devices stuck on a stale v8
-// cache. Some Samsung Internet users were reportedly on a wedged
-// SW state that wouldn't update; v9 + skipWaiting + clients.claim
-// in the activate handler should drop the old SW + caches in one go.
+// v10: bump after the grammar-enforcement deploy. Some users were
+// stuck with stale v9 shared.js cached against fresh HTML, and the
+// resulting mismatch broke logged-in state (regular browser showed
+// "Sign in / Join Free" while incognito worked fine — classic stale-
+// SW symptom). v10 + skipWaiting + clients.claim drops the old SW
+// and caches in one tab-close cycle.
 //
-const CACHE_VERSION = 'kh-v9';
+const CACHE_VERSION = 'kh-v10';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
