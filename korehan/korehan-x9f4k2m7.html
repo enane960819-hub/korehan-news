@@ -161,7 +161,7 @@ a{color:inherit;text-decoration:none}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="learning_hub_vocab_data.js"></script>
 <script src="js/kh-vocab-prompt.js?v=20260420z"></script>
-<script src="js/core/kh-grammar-patterns.js?v=20260510t"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260510u"></script>
 </head>
 <body>
 
@@ -187,6 +187,7 @@ a{color:inherit;text-decoration:none}
     <button class="sb-btn" id="sb-bulk-seed" onclick="goBulkSeed()"><span class="ico">🌱</span>Bulk Seed (AI)</button>
     <button class="sb-btn" id="sb-cache" onclick="goAICache()"><span class="ico">🧠</span>AI Cache Management</button>
     <button class="sb-btn" id="sb-ai-usage" onclick="goAIUsage()"><span class="ico">💸</span>AI Usage</button>
+    <button class="sb-btn" id="sb-title-backfill" onclick="goTitleBackfill()"><span class="ico">🌐</span>Title Backfill</button>
     <button class="sb-btn" id="sb-img" onclick="goArticleImages()"><span class="ico">🖼️</span>Image Management</button>
     <button class="sb-btn" id="sb-conv" onclick="goConversations()"><span class="ico">💬</span>Conversations</button>
     <button class="sb-btn" id="sb-stor" onclick="goStories()"><span class="ico">📖</span>Stories</button>
@@ -5352,6 +5353,185 @@ function _khDeriveVocabGrammarFromSentences(sentFinal, level) {
     vocab: aggVocab.slice(0, 100),
     grammar: { patterns: aggGrammar.slice(0, 4) },
   };
+}
+
+// ══ TITLE BACKFILL ══════════════════════════════════════════
+// Eliminates the per-device translation leak. articles.title_en
+// and conversations_data.ctx_en are read by the home/list pages
+// to render English labels for Korean-source content. When those
+// columns are empty the frontend (_khEnsureTitlesEn,
+// _ensureCtxEn) Haiku-translates them per-device and caches the
+// result in localStorage — meaning every fresh device pays for
+// the translation again. Estimated cost: ~$0.005 × N missing ×
+// device-firsts. Can add up to $50-100/month at scale.
+//
+// This page lets admin run the translation server-side once and
+// persist into the DB column. After that, the per-device leak
+// stops (frontend reads the populated column on first paint).
+//
+// Each backfill batches 15 items per Haiku call (~$0.005/batch).
+// Sequential to stay under per-second rate limits.
+async function goTitleBackfill() {
+  setSbOn('sb-title-backfill');
+  var main = document.getElementById('main');
+  main.innerHTML = '<div class="pg-hd"><div><h1>🌐 Title Backfill</h1>'
+    + '<p>한글 제목/맥락을 영문으로 한 번에 번역해서 DB에 박아둡니다. 이후 모든 기기에서 별도 AI 콜 없이 영문 표시.</p></div></div>'
+    + '<div id="tb-wrap" style="padding:24px;text-align:center;color:var(--gr)">⏳ 누락 항목 스캔 중…</div>';
+
+  var sb = getSb();
+  if (!sb) {
+    document.getElementById('tb-wrap').innerHTML = '<div style="color:#dc2626;padding:18px">Supabase client unavailable</div>';
+    return;
+  }
+
+  // Pull all candidates. We only consider rows whose Korean field
+  // looks Korean and whose English field is empty/missing. Article
+  // title_en sometimes carries the source headline (English) which
+  // is fine — we leave those alone.
+  function isKoreanText(s) { return /[가-힯]/.test(String(s || '')); }
+  function isMissingEn(s)  { var t = String(s || '').trim(); return !t || isKoreanText(t); }
+
+  var artsMissing = [];
+  var convsMissing = [];
+
+  try {
+    var artRes = await sb.from('articles').select('id, title, title_en').limit(2000);
+    if (artRes.data) {
+      artRes.data.forEach(function(r) {
+        if (r && r.title && isKoreanText(r.title) && isMissingEn(r.title_en)) {
+          artsMissing.push({ id: r.id, ko: r.title });
+        }
+      });
+    }
+  } catch(_) {}
+
+  try {
+    // Conversations may store ctx in either ctx column or data.ctx.
+    var convRes = await sb.from('conversations_data').select('id, ctx, ctx_en, name, name_en, data').limit(2000);
+    if (convRes.data) {
+      convRes.data.forEach(function(r) {
+        var ctx = r.ctx || (r.data && r.data.ctx) || '';
+        var ctxEn = r.ctx_en || (r.data && r.data.ctx_en) || '';
+        if (ctx && isKoreanText(ctx) && isMissingEn(ctxEn)) {
+          convsMissing.push({ id: r.id, ko: ctx });
+        }
+      });
+    }
+  } catch(_) {}
+
+  // Cost estimate. Haiku 4.5: $1/M input, $5/M output. Per batch of
+  // 15 we send ~600 input tokens and get back ~300 output tokens, so
+  // ~$0.0021 per batch. Round up.
+  function _estCostUsd(missingCount) {
+    var batches = Math.ceil(missingCount / 15);
+    return batches * 0.003;
+  }
+
+  function _kpi(label, count, kind) {
+    var disabled = count === 0;
+    return '<div style="flex:1;min-width:180px;padding:14px 16px;border-radius:12px;background:#0f172a;color:#fff">'
+      + '<div style="font-size:11px;opacity:.85;letter-spacing:.08em;text-transform:uppercase;font-weight:700">' + label + '</div>'
+      + '<div style="font-size:22px;font-weight:900;margin-top:4px">' + count.toLocaleString() + ' missing</div>'
+      + '<div style="font-size:11px;opacity:.7;margin-top:2px">est. $' + _estCostUsd(count).toFixed(3) + ' to backfill</div>'
+      + '<button onclick="runTitleBackfill(\'' + kind + '\')" ' + (disabled ? 'disabled' : '')
+      + ' style="margin-top:10px;padding:7px 14px;border:0;border-radius:8px;background:' + (disabled ? '#475569' : '#2563eb')
+      + ';color:#fff;font-size:12px;font-weight:800;cursor:' + (disabled ? 'not-allowed' : 'pointer') + ';font-family:inherit;width:100%">'
+      + (disabled ? '✓ Done' : 'Run backfill') + '</button>'
+      + '</div>';
+  }
+
+  document.getElementById('tb-wrap').innerHTML =
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'
+    +   _kpi('Articles · title_en', artsMissing.length, 'articles')
+    +   _kpi('Conversations · ctx_en', convsMissing.length, 'conversations')
+    + '</div>'
+    + '<div id="tb-progress" style="font-family:ui-monospace,monospace;font-size:12px;background:#0b1626;color:#e2e8f0;border-radius:10px;padding:14px;min-height:120px;max-height:380px;overflow:auto"><div style="color:#94a3b8">[idle] Pick a category above to start.</div></div>';
+
+  // Stash the missing arrays for runTitleBackfill to consume.
+  window._tbMissing = { articles: artsMissing, conversations: convsMissing };
+}
+
+function _tbLog(msg, tone) {
+  var el = document.getElementById('tb-progress');
+  if (!el) return;
+  var color = tone === 'err' ? '#f87171' : tone === 'ok' ? '#86efac' : tone === 'warn' ? '#fbbf24' : '#e2e8f0';
+  var ts = new Date().toLocaleTimeString('en-GB', { hour12: false });
+  var line = document.createElement('div');
+  line.style.color = color;
+  line.textContent = '[' + ts + '] ' + msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function runTitleBackfill(kind) {
+  var data = (window._tbMissing && window._tbMissing[kind]) || [];
+  if (!data.length) { _tbLog('Nothing to backfill for ' + kind, 'warn'); return; }
+  var btns = document.querySelectorAll('#tb-wrap button');
+  btns.forEach(function(b){ b.disabled = true; });
+  _tbLog('Starting ' + kind + ' backfill — ' + data.length + ' items, ~' + Math.ceil(data.length / 15) + ' batches');
+
+  var basePromptArt =
+      'Translate each Korean news headline into natural, concise English '
+    + '(journalistic tone, ≤70 chars, no surrounding quotes, no period). '
+    + 'Return ONLY a JSON array of strings in the same order as the input.\n\nHeadlines:\n';
+  var basePromptCtx =
+      'Translate each Korean conversation topic into a short, descriptive English title '
+    + '(≤45 chars, Title Case, no surrounding quotes, no period). '
+    + 'Capture what the conversation is ABOUT — e.g. "택배 박스 손상 신고" → "Damaged Package Complaint", '
+    + 'not "Daily Conversation". Return ONLY a JSON array of strings in input order.\n\nTopics:\n';
+
+  var sb = getSb();
+  var savedOk = 0, savedFail = 0;
+  for (var i = 0; i < data.length; i += 15) {
+    var chunk = data.slice(i, i + 15);
+    var prompt = (kind === 'articles' ? basePromptArt : basePromptCtx)
+      + chunk.map(function(c, n) { return (n + 1) + '. ' + c.ko; }).join('\n');
+    try {
+      var res = await callClaude({
+        feature: 'admin-title-backfill',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 900,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      var raw = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+      var ai = raw.indexOf('['), bi = raw.lastIndexOf(']');
+      if (ai < 0 || bi <= ai) throw new Error('no JSON array in response');
+      var arr = JSON.parse(raw.slice(ai, bi + 1));
+      if (!Array.isArray(arr)) throw new Error('not an array');
+
+      // Persist to DB. Articles → articles.title_en. Conversations →
+      // conversations_data.ctx_en. Both single-column updates so the
+      // admin-api proxy is enough.
+      for (var k = 0; k < chunk.length; k++) {
+        var en = (typeof arr[k] === 'string' ? arr[k] : '').trim();
+        if (!en) continue;
+        var row = chunk[k];
+        try {
+          if (kind === 'articles') {
+            var u = await sb.from('articles').update({ title_en: en }).eq('id', row.id);
+            if (u && u.error) throw u.error;
+          } else {
+            var u2 = await sb.from('conversations_data').update({ ctx_en: en }).eq('id', row.id);
+            if (u2 && u2.error) throw u2.error;
+          }
+          savedOk++;
+        } catch(e) {
+          savedFail++;
+          _tbLog('  ✗ ' + (row.ko || row.id) + ' → ' + (e.message || e), 'warn');
+        }
+      }
+      _tbLog('Batch ' + (Math.floor(i / 15) + 1) + ' OK (' + chunk.length + ' items)', 'ok');
+    } catch (e) {
+      _tbLog('Batch ' + (Math.floor(i / 15) + 1) + ' failed: ' + (e.message || e), 'err');
+      savedFail += chunk.length;
+    }
+    // Small breather between batches to stay polite.
+    await new Promise(function(r) { setTimeout(r, 600); });
+  }
+  _tbLog('Done — ' + savedOk + ' saved, ' + savedFail + ' failed', savedOk ? 'ok' : 'warn');
+  btns.forEach(function(b){ b.disabled = false; });
+  // Auto-refresh the page so KPIs reflect the new state.
+  setTimeout(function(){ goTitleBackfill(); }, 1500);
 }
 
 // ══ AI USAGE DASHBOARD ══════════════════════════════════════
