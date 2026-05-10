@@ -1053,6 +1053,15 @@ async function checkSession() {
           checkOnboardingStatus();
         }
       });
+    } else if (hasCode || hasHash) {
+      // We came back from an OAuth round-trip but no session materialised.
+      // Most common cause on Samsung Internet phone: the PKCE codeVerifier
+      // entry in localStorage (sb-{ref}-auth-token-code-verifier) got
+      // cleared during the redirect to accounts.google.com and back, so
+      // exchangeCodeForSession can't complete. Surface a visible hint so
+      // the user knows what's happening instead of seeing the page go
+      // back to "Sign In" silently after Google said success.
+      try { _khShowAuthFailureBanner(); } catch(_) {}
     }
   } catch(e) {
     console.warn('getSession failed or timed out:', e.message || e);
@@ -2259,6 +2268,44 @@ var _heroIdx = 0;
 var _heroTimer = null;
 var _heroTouchStartX = 0;
 var _heroTouchDeltaX = 0;
+
+// Replace the hero skeleton with an explicit "couldn't load" panel so
+// the page doesn't look permanently broken when the article fetch
+// wedges (Samsung Internet on phone is the reproducer — Supabase fetch
+// hangs silently due to tab throttling / cookie partitioning). Called
+// from the home boot path after the 12s race times out.
+// Top banner shown when OAuth round-trip completed but no session was
+// established. Helps the user understand why they're back on the home
+// page still signed-out (browser cleared the PKCE verifier between
+// redirect to Google and back). Appears once per page load; tapping
+// dismiss removes it.
+function _khShowAuthFailureBanner() {
+  if (document.getElementById('kh-auth-fail-banner')) return;
+  var bar = document.createElement('div');
+  bar.id = 'kh-auth-fail-banner';
+  bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 16px;background:#fef3c7;color:#92400e;border-bottom:1px solid #fcd34d;font-size:13px;line-height:1.5;display:flex;align-items:center;gap:10px;justify-content:center;font-family:inherit;text-align:center';
+  bar.innerHTML =
+      '<span>로그인이 완료되지 않았어요. 브라우저가 인증 데이터를 저장하지 못했을 수 있어요. 다시 시도하거나 Chrome에서 열어주세요.</span>'
+    + '<button onclick="this.parentNode.remove()" style="border:0;background:#92400e;color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>';
+  document.body.appendChild(bar);
+}
+
+function _khRenderHeroEmptyState() {
+  var heroEl = document.getElementById('dyn-hero');
+  if (!heroEl) return;
+  // If real articles arrived between the timeout and this call, leave
+  // them alone — _heroSlides being non-empty means renderHeroSlide
+  // already painted them.
+  if (_heroSlides && _heroSlides.length) return;
+  heroEl.className = '';
+  heroEl.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:300px;border-radius:18px;background:#f8fbff;border:1px solid #e7eef8;padding:24px;text-align:center;';
+  heroEl.innerHTML =
+      '<div style="max-width:340px">'
+    + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:0 0 6px">최신 기사를 불러오지 못했어요</div>'
+    + '<div style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.5">네트워크가 잠시 느리거나 브라우저가 요청을 막고 있을 수 있어요. 다른 브라우저(Chrome 권장)에서 잘 보인다면 같은 사이트가 맞는지 확인해주세요.</div>'
+    + '<button onclick="location.reload()" style="padding:9px 20px;border:0;border-radius:999px;background:#0f172a;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">다시 시도</button>'
+    + '</div>';
+}
 
 function renderHomePage() {
   var all      = published();
@@ -7626,9 +7673,22 @@ document.addEventListener('DOMContentLoaded', async function() {
       // moment the DB call returns.
       renderHomePage();
       _ldr(80);
-      loadArticlesFromDB({ homeOptimized: true, force: true })
-        .then(function () { try { renderHomePage(); } catch(_){} })
-        .catch(function (e) { console.warn('home articles fetch failed', e && e.message || e); });
+      // Race the home article fetch against a 12s ceiling so Samsung
+      // Internet on phone (where the Supabase fetch can wedge silently
+      // due to tab throttling / cookie partitioning) doesn't leave the
+      // hero stuck on the skeleton forever. On timeout we render an
+      // explicit "couldn't load" empty state with a Retry button so the
+      // page degrades gracefully instead of looking permanently broken.
+      var _heroFinished = false;
+      Promise.race([
+        loadArticlesFromDB({ homeOptimized: true, force: true })
+          .then(function () { _heroFinished = true; try { renderHomePage(); } catch(_){} }),
+        new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('home articles fetch timeout')); }, 12000); })
+      ]).catch(function (e) {
+        if (_heroFinished) return;
+        console.warn('home articles fetch failed', e && e.message || e);
+        try { _khRenderHeroEmptyState(); } catch(_) {}
+      });
       _ldr(92);
       _khAwaitTodaysPhrase(4000).then(function () {
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
