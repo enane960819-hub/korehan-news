@@ -161,6 +161,7 @@ a{color:inherit;text-decoration:none}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="learning_hub_vocab_data.js"></script>
 <script src="js/kh-vocab-prompt.js?v=20260420z"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260510n"></script>
 </head>
 <body>
 
@@ -5806,51 +5807,51 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
   try {
     if (!_body.trim()) throw new Error('빈 본문');
 
+    // ── Code-detected MUST-INCLUDE patterns per sentence ─────────
+    // Earlier the prompt only described "must include ~지 않다 etc"
+    // in narrative form; the model routinely ignored it and the
+    // user reported the same patterns being skipped article after
+    // article (~지 않다, ~기 시작하다, ~았/었어요 chains, etc).
+    // Embedding the detected pattern list with verbatim hint per
+    // sentence converts the task from "AI judgment about which
+    // patterns matter" into "explain this list" — which models
+    // are far more reliable at. Code (KH_GRAMMAR.detect) handles
+    // the textbook fundamentals; AI still freely adds idioms /
+    // 사자성어 / less-common patterns it finds on its own.
+    const _sents = _khSplitSentencesForCache(_body);
+    const _sentBlocks = _sents.map(function(s, i) {
+      var hits = (window.KH_GRAMMAR && window.KH_GRAMMAR.detect) ? window.KH_GRAMMAR.detect(s) : [];
+      var listText = hits.length
+        ? '\n  MUST-INCLUDE detected patterns (one analysis entry per item, do NOT skip, do NOT merge):\n' + window.KH_GRAMMAR.formatPromptList(hits)
+        : '';
+      return '문장 ' + (i + 1) + ': ' + s + listText;
+    }).join('\n\n');
+
     const _sentPrompt =
         '당신은 외국인 한국어 학습자를 위한 Korean 튜터입니다.\n'
-      + '아래 기사 본문에 대해 (1) 단락별 영어 번역과 (2) 문장별 분석을 만들어주세요.\n\n'
-      + '[기사 정보]\n'
-      + '제목: ' + _title + '\n'
-      + '난이도: ' + _level + '\n\n'
-      + '[본문 — 단락은 \\n\\n로 구분]\n'
-      + _body + '\n\n'
-      + '[단락별 번역]\n'
-      + '- body의 각 단락마다 polished English translation 1줄.\n'
-      + '- 한국어 단락 개수와 동일해야 함.\n\n'
-      + '[문장별 분석]\n'
-      + '- body에 등장하는 모든 한국어 문장을 등장 순서대로 추출.\n'
-      + '- text: 본문에 EXACTLY 등장한 형태 그대로.\n'
-      + '- translation: 단락 번역과 일관되게 (같은 주어, 시제, 격식). 한국어가 주어를 생략했으면 영어에서도 paragraph 번역의 주어를 그대로 가져오기.\n'
-      + '- vocab: max 4. 사전형으로. ' + (
+      + '아래 기사의 모든 문장에 번역/단어/분석을 달아주세요.\n\n'
+      + '[기사 정보] 제목: ' + _title + ' / 난이도: ' + _level + '\n\n'
+      + '[본문 (참고용)]\n' + _body + '\n\n'
+      + '[문장별 입력 — 각 문장의 detected pattern을 모두 explain]\n'
+      + _sentBlocks + '\n\n'
+      + '[출력 규칙]\n'
+      + '- sentences[]: 위 문장 순서대로, 각 문장당 1개 객체.\n'
+      + '- text: 위 입력의 한국어 문장 그대로 (마침표 포함).\n'
+      + '- translation: 자연스러운 영어 번역. 한국어가 주어 생략하면 문맥의 주어를 채워서 he/she/it/the dog 등으로. "I/we" 함부로 안 넣음.\n'
+      + '- vocab: max 4 dictionary forms (보다, 흔하다, 키우다 등 — 단음절 어간 X). ' + (
           (_level === 'Starter' || _level === 'Beginner')
             ? '입문/초급 동사·형용사 포함 OK. 조사와 단독 이다/있다만 제외.'
             : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵.'
-) + ' 빈 배열 OK.\n'
-      + '- analysis: ' + (
-          (_level === 'Starter' || _level === 'Beginner')
-            ? 'max 6 items. EVERY conjugation step must be explained — beginners need to see the chain from dictionary form to the surface form.'
-            : 'max 4 items. 빈 배열 OK.'
-) + ' 각 항목:\n'
-      + '    type: "grammar" | "expression" | "idiom"\n'
-      + '    label: 패턴/표현 자체. grammar는 형태소/연결어미만. 명사 X.\n'
-      + '    exp: 1-2줄 영어 설명. **반드시 사전형 → 활용형 변형을 보여주기**. 예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요" / "to start V-ing. 쉬다 → 쉬기 시작하다".\n'
-      + '    example_in_sentence: 이 문장에서 발췌한 chunk.\n'
-      + '- 본문에 없는 패턴 절대 만들지 말 것 — label markers가 sentence text에 없으면 그 항목 자체를 빼세요.\n'
-      + '- ' + (
-          (_level === 'Starter' || _level === 'Beginner')
-            ? '**기초 grammar 무조건 포함**: ~지 않다 (부정), ~았/었어요 (과거), ~고 있다 (진행), ~기 시작하다, ~ㄴ/은/는 + noun, ~을/를. 한 동사에 두 패턴 스택되면 (보이지 않았어요 = ~지 않다 + ~았어요) **둘 다 별도 항목으로** 분리해서 단계별 설명. 절대 합치지 말 것.'
-            : '기초 grammar 스킵 (~는/ㄴ noun modifier, ~다, ~요/습니다, ~았/었, ~을/를). 두 패턴 stack은 학습 가치 더 높은 하나만.'
-) + '\n\n'
+) + ' 빈 배열 OK. note는 1줄 또는 빈 문자열.\n'
+      + '- analysis:\n'
+      + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label = 위 list의 패턴 이름 그대로. exp = 1줄 영어, **반드시 사전형 → 활용형 변형을 보여주기** (예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요").\n'
+      + '    2. 추가로 idiom (사자성어/관용구) / expression (~에도 불구하고, ~을 통해 같은 굳어진 표현) 발견하면 entry 더 추가 (type=idiom 또는 expression).\n'
+      + '    3. example_in_sentence: 해당 패턴이 사용된 문장 내 chunk.\n'
+      + '    4. 본문에 없는 패턴 절대 추가 X — detected list에 없는 grammar 항목 만들지 말 것 (idiom/expression은 OK).\n\n'
       + '[출력 — JSON ONLY]\n'
       + '{\n'
-      + '  "paragraph_translations": ["para 1 EN", "para 2 EN", ...],\n'
       + '  "sentences": [\n'
-      + '    {\n'
-      + '      "text": "<exact KO sentence>",\n'
-      + '      "translation": "<EN>",\n'
-      + '      "vocab": [{"ko":"<dict form>","en":"...","note":"..."}],\n'
-      + '      "analysis": [{"type":"grammar","label":"~기 위해","exp":"...","example_in_sentence":"..."}]\n'
-      + '    }\n'
+      + '    { "text": "...", "translation": "...", "vocab": [{"ko","en","note"}], "analysis": [{"type","label","exp","example_in_sentence"}] }\n'
       + '  ]\n'
       + '}';
     const r = await callClaude({
@@ -5865,9 +5866,6 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     if (oi < 0 || ei <= oi) throw new Error('JSON 응답 없음');
     const parsed = JSON.parse(clean.slice(oi, ei+1));
 
-    const _paraTrans = Array.isArray(parsed.paragraph_translations)
-      ? parsed.paragraph_translations.filter(function(t){ return typeof t === 'string'; })
-      : [];
     const _sentRaw = Array.isArray(parsed.sentences) ? parsed.sentences : [];
     const _sentList = _khSplitSentencesForCache(_body);
     const sentFinal = _sentList.map(function(text, i) {
@@ -5877,13 +5875,16 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
         if (t && (t === text || text.indexOf(t) >= 0 || t.indexOf(text) >= 0)) { match = _sentRaw[k]; break; }
       }
       if (!match) match = _sentRaw[i] || {};
+      // Cap raised 4 → 8 so all detected must-include patterns
+      // (negation + past + continuous + modifier + …) survive
+      // alongside any extra idioms / expressions the AI added.
       var analysis = [];
       if (Array.isArray(match.analysis)) {
-        analysis = match.analysis.slice(0, 4).filter(function(x){ return x && (x.label || x.pattern); }).map(function(x){
+        analysis = match.analysis.slice(0, 8).filter(function(x){ return x && (x.label || x.pattern); }).map(function(x){
           return { type: x.type || 'grammar', label: x.label || x.pattern || '', exp: x.exp || '', example_in_sentence: x.example_in_sentence || '' };
         });
       } else if (Array.isArray(match.grammar)) {
-        analysis = match.grammar.slice(0, 4).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
+        analysis = match.grammar.slice(0, 8).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
           return { type: 'grammar', label: g.pattern || g.label || '', exp: g.exp || '', example_in_sentence: g.example_in_sentence || '' };
         });
       }
@@ -5895,9 +5896,22 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
       };
     });
 
-    // Build the new translation JSON. Replaces texts (paragraph EN)
-    // with the fresh Sonnet output and stamps the current cache
-    // version so the dashboard flips to "up-to-date".
+    // Derive paragraph_translations from sentence translations —
+    // the AI no longer outputs paragraph EN separately (output
+    // compression saves ~1K output tokens). Walk the body's
+    // paragraphs, match each contained sentence, join the EN.
+    const _paraTrans = (function() {
+      var paraTexts = String(_body || '').split(/\n\n+/).map(function(p){ return p.trim(); }).filter(Boolean);
+      var bySent = {};
+      sentFinal.forEach(function(s){ if (s.text) bySent[s.text.trim()] = s.translation || ''; });
+      return paraTexts.map(function(p) {
+        var pieces = [];
+        Object.keys(bySent).forEach(function(t) { if (p.indexOf(t) !== -1) pieces.push(bySent[t]); });
+        return pieces.filter(Boolean).join(' ');
+      });
+    })();
+
+    // Build the new translation JSON.
     const newTransStr = JSON.stringify({
       texts: _paraTrans,
       sentences: sentFinal,
