@@ -161,7 +161,7 @@ a{color:inherit;text-decoration:none}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="learning_hub_vocab_data.js"></script>
 <script src="js/kh-vocab-prompt.js?v=20260420z"></script>
-<script src="js/core/kh-grammar-patterns.js?v=20260510y"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260511a"></script>
 </head>
 <body>
 
@@ -4969,7 +4969,10 @@ async function runAutoGenerate(){
 ) + ' 각 항목:\n'
         + '    type: "grammar" | "expression" | "idiom"\n'
         + '    label: 패턴/표현 자체. grammar는 형태소/연결어미/활용 종류만 (~기 위해, ~게 되다, ~ㄴ/는 것 같다, ~(으)면서, ㄷ 불규칙, ㅂ 불규칙). 명사 X.\n'
-        + '    exp: 1-2줄 영어 설명. **반드시 사전형 → 활용형 변형을 보여주기**. 예: "negation. 보이다 (to be seen) → 보이지 않다 (to not be seen) → 보이지 않았어요" / "continuous past. 일을 하다 → 일을 하고 있다 → 일을 하고 있었어요" / "to start V-ing. 쉬다 → 쉬기 시작하다" / "ㄷ-irregular: 듣다 (to hear) → 들어 → 들었어요 (ㄷ받침이 모음 어미 앞에서 ㄹ로 바뀜)".\n'
+        + '    exp: 1-2줄 영어 설명. **morpheme이 무엇을 하는지 + 사전형 → 활용형 chain 필수**. 활용형 chunk의 영어 번역만 적으면 안 됨.\n'
+        + '         WRONG: label="~게", exp="easily; in an easy manner" ← 이건 chunk(쉽게)의 의미일 뿐, morpheme(~게)이 뭘 하는지 설명 X.\n'
+        + '         RIGHT: label="~게", exp="adverbializer suffix. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 → 다르게 (differently)."\n'
+        + '         RIGHT: "negation. 보이다 (to be seen) → 보이지 않다 → 보이지 않았어요" / "continuous past. 일을 하다 → 일을 하고 있다 → 일을 하고 있었어요" / "ㄷ-irregular: 듣다 → 들어 → 들었어요 (ㄷ받침이 모음 어미 앞에서 ㄹ로 바뀜)".\n'
         + '    example_in_sentence: 이 문장에서 발췌한 chunk (해당 패턴이 사용된 부분).\n'
         + '- 분석 우선순위 (under-include 금지 — 의심되면 포함):\n'
         + '    grammar — 학습 가치 있는 문법 패턴, 활용 (불규칙 활용은 vocab에 있는 동사라도 무조건 grammar 항목으로 추가)\n'
@@ -6490,7 +6493,9 @@ async function genCache(articleId, schema, opts) {
                 : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵.'
 ) + ' 빈 배열 OK. note는 1줄 또는 빈 문자열.\n'
           + '- analysis:\n'
-          + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사**. exp = 1줄 영어, **반드시 사전형 → 활용형 변형을 보여주기** (예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요" / "ㄷ-irregular: 듣다 → 들어 → 들었어요").\n'
+          + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사**. exp = 1줄 영어, **morpheme이 무엇을 하는지 + 사전형 → 활용형 chain 필수**. 활용형 chunk의 영어 번역만 적으면 안 됨.\n'
+          + '         WRONG: label="~게", exp="easily" (chunk 번역). RIGHT: label="~게", exp="adverbializer. <adj-stem> + 게 = adverb. 쉽다 → 쉽게; 다르다 → 다르게."\n'
+          + '         RIGHT 예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요" / "ㄷ-irregular: 듣다 → 들어 → 들었어요".\n'
           + '    2. **추가 entry는 매우 적극적으로 추가 (under-include 금지)**. type 기준:\n'
           + '         - expression: 학습자가 통째로 외울 가치 있는 collocation/굳어진 표현. 예: ~로 이어지다, ~에 대한 관심, ~을 통해, ~에 따르면, ~에도 불구하고, ~을 위한 N, ~중 하나, ~는 것이 좋다, ~기 마련이다, 자리잡다, ~을 보이다, 관심이 높아지다 등. **2-3음절 동사+조사 chunk라도 학습 가치 있으면 무조건 포함**. 의심되면 포함 (over-include이 under-include보다 100x 낫다).\n'
           + '         - idiom: 사자성어/관용구/속담 (발이 넓다, 우후죽순).\n'
