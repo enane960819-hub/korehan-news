@@ -3789,7 +3789,20 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
 // the ~게 만들다 causative regex (was missing 만든 / 만든다 /
 // 만들고) and added contracted reported speech (~한대요 /
 // ~한답니다 / ~래요) + ~아/어지다 (passive / become).
-var KH_SENT_CACHE_VERSION = 's3';
+//   s4: news-register batch sweep — 20+ TOPIK 3-5 patterns that
+// surface every paragraph of news copy but were missing from
+// KH_GRAMMAR. Includes ~던 대로 (fixed regex from line 229),
+// ~다고 밝히다/강조하다/지적하다/주장하다/발표하다 (extended
+// reporting-verb alternation), ~로 보이다/추정되다/분석되다/
+// 평가되다 (evaluative passives), ~로 알려지다, ~ㄹ 전망/
+// 계획/방침/예정이다, ~ㄹ 것으로 보이다/예상되다, ~에 그치다/
+// 달하다, ~을 둘러싸고/둘러싼, ~을 비롯해(서), ~기보다(는),
+// ~ㄹ 뿐(이다), ~ㄹ 따름이다, ~ㄹ 뿐만 아니라, ~ㄴ/는/(으)ㄹ
+// 대신(에), ~지 않을 수 없다, ~려던 참이다, ~게 마련이다,
+// ~ㄹ 정도(이다/로), ~기 십상이다, ~다는/라는 + N, ~ㄴ/는
+// 점(에서), ~기를 바라다/원하다, ~ㄹ 수밖에 없다, ~로 이루어
+// 지다/구성되다.
+var KH_SENT_CACHE_VERSION = 's4';
 
 async function _khLoadArticleSentenceCache(articleId) {
   if (!articleId) return null;

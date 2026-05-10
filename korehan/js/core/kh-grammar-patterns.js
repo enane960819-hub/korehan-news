@@ -195,8 +195,8 @@
     { re: /[가-힣]보다(?=[^가-힣]|$)/, label: '~보다 (comparison)', hint: 'comparative. "than / more than"' },
 
     // ── Quoted speech ───────────────────────────────────────────
-    { re: /(다고|ㄴ다고|는다고)\s*(하|했|해|말|알려|전해|보도)/, label: '~다고 하다 / ~다고 해요 (indirect declarative)', hint: 'reported speech (declarative). <quote> + 다고 하다. Polite forms: ~다고 해요, ~다고 했어요, ~다고 합니다. Common in news: "X (한)다고 해요" = "they say (that) X". 만든다고 해요 = "they say it makes …".' },
-    { re: /라고\s*(하|했|해|말|불|부|알려|전해)/, label: '~(이)라고 하다 / ~(이)라고 해요 (indirect copula/name)', hint: 'reported identification or naming. Polite: 라고 해요 / 라고 합니다. 학생이라고 해요 = "(they) say (he) is a student".' },
+    { re: /(다고|ㄴ다고|는다고)\s*(하|했|해|말|알려|전해|보도|밝혀|밝혔|밝히|강조|지적|주장|발표|언급|덧붙|평가|설명|판단|진단|분석|예측|전망|호소|토로|항변|반박|시인|부인)/, label: '~다고 하다 / ~다고 밝히다 / ~다고 강조하다 (indirect declarative + news reporting verbs)', hint: 'reported speech (declarative) — the news-paper "(X) said / stated / emphasized / pointed out / argued / announced / revealed / explained / analyzed / projected (that)" frame. <quote> + 다고 + {하다 / 밝히다 / 강조하다 / 지적하다 / 주장하다 / 발표하다 / 언급하다 / 덧붙이다 / 평가하다 / 설명하다 / 분석하다 / 전망하다}. Polite: ~다고 해요 / ~다고 밝혔어요. 만든다고 해요 = "they say it makes …"; 발표할 것이라고 밝혔다 = "(they) revealed that they will announce".' },
+    { re: /라고\s*(하|했|해|말|불|부|알려|전해|밝혀|밝혔|밝히|강조|지적|주장|발표|언급|덧붙|평가|설명)/, label: '~(이)라고 하다 / ~(이)라고 밝히다 (indirect copula/name + news reporting)', hint: 'reported identification, naming, or stated quote. <noun/quote> + (이)라고 + {하다 / 밝히다 / 강조하다 / 발표하다 / 알려지다}. 학생이라고 해요 = "(they) say (he) is a student"; 사실이라고 밝혔다 = "(they) revealed that it\'s true".' },
     { re: /냐고\s*(하|했|해|물|여쭤)/, label: '~냐고 하다 / ~냐고 해요 (indirect question)', hint: 'reported question. Polite: 냐고 해요 / 물어봐요. 가냐고 해요 = "(they) are asking whether (X) goes".' },
     { re: /자고\s*(하|했|해|제안|권유)/, label: '~자고 하다 / ~자고 해요 (indirect proposal)', hint: 'reported suggestion / let\'s. 가자고 해요 = "(they) suggest going / say let\'s go".' },
     { re: /달라고(?=[^가-힣]|$)|주라고(?=[^가-힣]|$)/, label: '~달라고/주라고 (request)', hint: 'reported request / asking for something' },
@@ -241,7 +241,12 @@
     { re: /(중|중에)\s*(하나|한\s*명|한\s*가지|두|세|몇)/, label: '~ 중 하나 (one of)', hint: 'one of (a group). <group> + 중 하나 = "one of the". 비싼 나라 중 하나예요 = "is one of the expensive countries"' },
     { re: /(는|ㄴ|은|을|ㄹ)\s*것이?\s*좋(다|아|아요|겠|겠어요|겠습니다)/, label: '~는 것이 좋다/좋겠다 (it would be good to)', hint: 'recommendation/advice. <stem> + 는 것이 좋다/좋겠다 = "it is/would be good to V". 고려해 보는 것이 좋겠어요 = "it would be good to consider"' },
     { re: /(는|ㄴ|은|을|ㄹ)\s*편이/, label: '~는 편이다 (tend to)', hint: 'tendency. "tends to be / is rather"' },
-    { re: /(는|ㄴ|은)\s*(대로|만큼)/, label: '~는 대로/만큼 (as / to the extent)', hint: 'manner or extent. "as / according to / as much as"' },
+    // ~ㄴ/는/던 대로 / 만큼. The original regex missed ~던 대로
+    // ("원했던 대로 / 들었던 만큼"), which is one of the most common
+    // retrospective forms in news copy. Optional leading Hangul pulls
+    // the verb stem into the example chunk so learners see "했던 대로"
+    // instead of just "던 대로".
+    { re: /[가-힣]?(는|ㄴ|은|던)\s*(대로|만큼)/, label: '~ㄴ/는/던 대로 / ~만큼 (as / according to / to the extent)', hint: 'manner or extent. <stem> + ㄴ/는/던 대로 = "as / according to what (was)"; <stem> + ㄴ/는/던 만큼 = "as much as". 원했던 대로 ("just as one wished"); 들은 대로 ("as one heard"); 노력한 만큼 ("as much as one tried").' },
     { re: /ㄴ\s*셈이|은\s*셈이/, label: '~ㄴ/은 셈이다 (amounts to)', hint: 'roughly equivalent to. "amounts to / can be counted as"' },
 
     // ── Passive / change-of-state ───────────────────────────────
@@ -250,6 +255,111 @@
     // in news and academic Korean. Vowel-contracted forms covered by the
     // ~아/어 alternation list mirroring ~아/어 보다.
     { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*지(다|는|었|어|어요|었어요|면|면서|기|ㄴ|ㄹ|니|니까|고)/, label: '~아/어지다 (passive / become)', hint: 'passive or change-of-state. <action-stem> + 아/어지다 = passive ("gets V-ed"); <adj-stem> + 아/어지다 = "becomes <adj>". 만들어지다 (be made / get made); 좋아지다 (become good / improve); 약해지다 (weaken — get weak). Includes contracted: 보다 → 보아지다 → 봐져요.' },
+
+    // ── News-register patterns (TOPIK 3-5, very high frequency in
+    // articles). These are the patterns that surface every paragraph
+    // of any news/op-ed copy — passives of evaluation verbs, future-
+    // expectation forms, scope quantifiers, news reporting frame
+    // verbs, and a handful of high-value TOPIK 3-4 connectives that
+    // were missing from the earlier "textbook fundamentals" focus.
+    // Each entry is news-validated; conservative regexes keep false-
+    // positive risk low.
+
+    // Evaluative passives (X로 보이다 / 추정되다 / 분석되다 / 평가되다 /
+    // 드러나다 / 나타나다 / 판단되다)
+    { re: /(으로|로)\s*(보이|보였|보인다|추정되|추정됐|추정된|추정될|분석되|분석됐|분석된|분석될|판단되|판단됐|판단된|판단될|평가되|평가됐|평가된|평가될|드러나|드러났|드러난|나타나|나타났|나타난|확인되|확인됐|확인된|확인될|관측되|관측됐|관측된)/, label: '~(으)로 보이다 / 추정되다 / 분석되다 / 평가되다 (news evaluative passives)', hint: 'news-register evaluative passives. <noun/clause> + (으)로 + 보이다 / 추정되다 / 분석되다 / 판단되다 / 평가되다 / 드러나다 / 나타나다 / 확인되다 / 관측되다 = "appears to be / is estimated / is analyzed / is judged / is evaluated as / turns out to be / is confirmed". Pervasive in news copy.' },
+
+    // ~로 알려지다 / 알려져 있다
+    { re: /(으로|로)\s*알려(져|졌|진|지|집|짐)/, label: '~(으)로 알려지다 / 알려져 있다 (be known as)', hint: 'passive of 알리다. <noun/clause> + (으)로 알려지다 = "is known / reported / understood as". 명소로 알려져 있다 = "is known as a famous place"; 사실로 알려졌다 = "was revealed to be true".' },
+
+    // ~ㄹ 전망이다 / 계획이다 / 방침이다 / 예정이다 — formal future intent
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['전망', '계획', '방침', '예정']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*(전망|계획|방침|예정)/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 전망이다 / 계획이다 / 방침이다 / 예정이다 (is expected / planned to)', hint: 'formal news-register future intent. <stem> + (으)ㄹ {전망 / 계획 / 방침 / 예정}이다 = "is expected / is planning / is policy / is scheduled to". 발표할 전망이다 (is expected to announce); 추진할 계획이다 (plans to push forward); 시행될 예정이다 (is scheduled to take effect).' },
+
+    // ~ㄹ 것으로 보이다 / 예상되다 / 기대되다 / 관측되다
+    { re: /(ㄹ|을)\s*것으로\s*(보이|보였|보인다|예상되|예상됐|예상된|예상될|기대되|기대됐|기대된|기대될|관측되|관측됐|관측된|관측될|전망되|전망됐|전망된)/, label: '~(으)ㄹ 것으로 보이다 / 예상되다 / 기대되다 (is expected / projected to)', hint: 'projected outcome in news. <stem> + (으)ㄹ 것으로 + {보이다 / 예상되다 / 기대되다 / 관측되다 / 전망되다} = "is expected / anticipated / projected to". 증가할 것으로 보입니다 (is expected to increase); 회복될 것으로 예상됩니다.' },
+
+    // ~에 그치다 / ~에 달하다 (statistic floor/ceiling)
+    { re: /[가-힣]에\s*(그치|그쳤|그칠|그친|그친다|그칩)/, label: '~에 그치다 (only / merely reaches)', hint: 'limitation. <amount/state> + 에 그치다 = "only reaches / stops at / is limited to". Common with statistics: 5%에 그쳤다 (only reached 5%); 권고에 그쳤다 (was limited to a recommendation).' },
+    { re: /[가-힣]에\s*(달하|달했|달할|달한|달한다|달합)/, label: '~에 달하다 (reach / amount to)', hint: 'attainment of a level. <amount/state> + 에 달하다 = "reaches / amounts to". 100억 원에 달한다 = "amounts to 10 billion won".' },
+
+    // ~을 둘러싸고 / 둘러싼 (the topic of a dispute or focus)
+    { re: /(을|를)\s*둘러싸?(고|ㄴ|싸인|싼|싸고는)/, label: '~을/를 둘러싸고 / ~을/를 둘러싼 (over / surrounding)', hint: 'topic of dispute or focus. <noun> + 을/를 둘러싸고 = "over / surrounding / regarding (the issue of)"; ~을/를 둘러싼 + N = "surrounding the …". 정책을 둘러싼 논란 (controversy surrounding the policy).' },
+
+    // ~을 비롯해(서) / ~을 비롯하여 — the verbal cousin of the existing
+    // 비롯한 (line for adjective-modifier form). Both surface in news.
+    { re: /(을|를)\s*비롯(해|하여|해서)(?=[^가-힣]|$)/, label: '~을/를 비롯해(서) / 비롯하여 (including / starting with)', hint: 'inclusive listing — verbal form. <head-noun> + 을/를 비롯해(서) + <other items> = "including X (along with Y, Z)". 한국을 비롯해 일본, 중국 (Korea, along with Japan and China).' },
+
+    // ~기보다(는/도) — preference comparison
+    { re: /기보다(는|도)?(?=[^가-힣]|$)/, label: '~기보다(는) (rather than)', hint: 'comparison preference. <stem> + 기보다(는) = "rather than V-ing". 가기보다는 머무르고 싶어요 = "I\'d rather stay than go"; 비판하기보다 응원하다 = "to support rather than criticize".' },
+
+    // ~ㄹ 뿐(이다) — exclusive limitation
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['뿐']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*뿐/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 뿐(이다) (only / merely)', hint: 'exclusive limitation. <stem> + (으)ㄹ 뿐(이다) = "only / merely / nothing more than". 노력할 뿐이다 (only does (one\'s) best); 듣고 있을 뿐 (just listening).' },
+
+    // ~ㄹ 따름이다 — emphatic limitation
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['따름']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*따름/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 따름이다 (nothing but / can only)', hint: 'emphatic limitation, slightly more formal than ~ㄹ 뿐이다. <stem> + (으)ㄹ 따름이다 = "nothing more than / merely / can only". 감사할 따름입니다 (I can only be grateful).' },
+
+    // ~ㄹ 뿐(만) 아니라 — additive emphasis (in prompt floor list, no regex)
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['뿐만 아니라', '뿐 아니라', '뿐만아니라', '뿐아니라']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*뿐(만)?\s*아니라/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 뿐(만) 아니라 (not only / on top of)', hint: 'addition emphasis. <stem> + (으)ㄹ 뿐만 아니라 = "not only X (but also Y)". 빠를 뿐만 아니라 정확하다 (not only fast but also accurate); 비싼 뿐만 아니라 맛도 없다.' },
+
+    // ~ㄴ/는/(으)ㄹ 대신(에) — substitution
+    { re: /(는|ㄴ|은|을|ㄹ)\s*대신(에)?(?=[^가-힣]|$)/, label: '~ㄴ/는/(으)ㄹ 대신(에) (instead of / in exchange for)', hint: 'substitution. <stem> + ㄴ/는/(으)ㄹ 대신(에) = "instead of / in exchange for". 가는 대신에 (instead of going); 일찍 일어난 대신 일찍 자다 (in exchange for waking early, sleeps early).' },
+
+    // ~지 않을 수 없다 — cannot but
+    { re: /지\s*않을\s*수\s*없/, label: '~지 않을 수 없다 (cannot but)', hint: 'double negation = strong assertion. <stem> + 지 않을 수 없다 = "cannot help but / must necessarily". 인정하지 않을 수 없다 (cannot but admit); 감동하지 않을 수 없다 (cannot help being moved).' },
+
+    // ~(으)려던 참이다 — was just about to
+    { re: /(려던|으려던)\s*참이/, label: '~(으)려던 참이다 (was just about to)', hint: 'imminent past intention. <stem> + (으)려던 참이다 = "was just about to V". 나가려던 참이었어요 (I was just about to leave); 전화하려던 참이다.' },
+
+    // ~게 마련이다 — variant of ~기 마련이다 (existing line catches only 기)
+    { re: /게\s*마련이/, label: '~게 마련이다 (bound to / naturally)', hint: 'inevitability variant. <adverb> + 게 마련이다 = "is naturally / is bound to be". 시간이 가게 마련이다 = "time is bound to pass".' },
+
+    // ~(으)ㄹ 정도(이다/로) — degree marker (in prompt floor, no regex)
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['정도', '정도로', '정도이', '정도였']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*정도/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 정도(이다/로) (to the extent)', hint: 'degree marker. <stem> + (으)ㄹ 정도로 = "to the extent that"; ~ㄹ 정도이다 = "is to the degree of". 울 정도로 슬프다 (sad enough to cry); 믿기 어려울 정도이다 (is to the point of being hard to believe).' },
+
+    // ~기 십상이다 — likely / prone to (often negative outcome)
+    { re: /기\s*십상이/, label: '~기 십상이다 (likely / prone to)', hint: 'likelihood, often of a negative outcome. <stem> + 기 십상이다 = "easily ends up / is likely to". 잊어버리기 십상이다 (easily ends up forgotten); 다치기 십상이다 (is prone to getting hurt).' },
+
+    // ~다는 / ~ㄴ다는 / ~는다는 / ~라는 + N — quoted attributive
+    { re: /(ㄴ다는|는다는|다는|라는)\s+[가-힣]/, label: '~ㄴ/는다는 / ~라는 + N (the claim/fact/idea that)', hint: 'attributive of reported speech — turns a quoted clause into a noun-modifier. <quote> + ㄴ/는다는 / 라는 + <noun> = "the (idea/fact/claim/news) that …". 그렇게 한다는 사실 (the fact that (he) does so); 학생이라는 점 (the point that he\'s a student); 회복된다는 소식 (the news that (X) recovers).' },
+
+    // ~ㄴ/는 점(에서/이/도) — aspect introducer (in prompt floor, no regex)
+    { re: /(ㄴ|는|은|을)\s*점(에서|이|도|만|을|은|에|마저|조차)?(?=[^가-힣]|\s|[,.!?])/, label: '~ㄴ/는 점(에서) (in the point that / aspect)', hint: 'aspect / point introducer. <clause> + ㄴ/는 점(에서) = "in the aspect/point that". 환경을 보호한다는 점에서 = "in the respect that it protects the environment"; 가능하다는 점이 (the point that it\'s possible).' },
+
+    // ~기를 바라다 / 원하다 — hope/desire
+    { re: /기를?\s*(바라|바랐|바랍|바람|원하|원했|원합|원한|원함|희망)/, label: '~기(를) 바라다 / 원하다 (hope / want to)', hint: 'desire. <stem> + 기를 + {바라다 / 원하다 / 희망하다} = "hopes / wants / wishes to V". 성공하기를 바랍니다 (I hope (you) succeed); 가기를 원해요 (wants to go).' },
+
+    // ~ㄹ 수밖에 없다 — already at line 71 covers ~ㄹ 수 있/없; this is
+    // the inevitability sense. Existing ~지 않을 수 없다 above is its
+    // double-negation cousin.
+    { re: /[가-힣]\s*수밖에\s*없/, label: '~(으)ㄹ 수밖에 없다 (have no choice but)', hint: 'inevitability / no alternative. <stem> + (으)ㄹ 수밖에 없다 = "have no choice but to / cannot help but". 받아들일 수밖에 없다 (have no choice but to accept); 인정할 수밖에 없었다.' },
+
+    // ~로 이루어지다 / 구성되다 — structural composition
+    { re: /(으로|로)\s*(이루어|이루어져|이루어진|이루어졌|구성되|구성된|구성됐|구성될|구성)/, label: '~(으)로 이루어지다 / 구성되다 (be made up of / consist of)', hint: 'composition. <noun(s)> + (으)로 이루어지다 / 구성되다 = "is made up of / consists of". 5개 위원회로 구성되었다 (consisted of 5 committees); 학생들로 이루어진 모임 (a gathering made up of students).' },
 
     // ── Honorifics ──────────────────────────────────────────────
     { re: /(으셨|셨)(어요|습니다|네|군|는)/, label: '~(으)셨 (honorific past)', hint: 'subject honorific past tense' },

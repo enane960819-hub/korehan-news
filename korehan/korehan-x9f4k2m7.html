@@ -4823,7 +4823,12 @@ function _autoGenRenderProgressPanel(){
 //           contracted reported, ~아/어지다 passive) and wired
 //           enforce into the user-facing bulk + render paths.
 //           Mirrored as 's3' on KH_SENT_CACHE_VERSION.
-const SENT_CACHE_CURRENT = 's5';
+//   s6    = news-register batch sweep — 20+ TOPIK 3-5 patterns
+//           (evaluative passives, news reporting verbs, ~던 대로,
+//           ~ㄹ 전망/계획/예정이다, ~을 둘러싸고, ~기보다, ~ㄹ
+//           뿐(만 아니라), ~ㄹ 따름이다, ~다는/라는 + N, ~ㄴ/는
+//           점, ~기를 바라다, etc.). Mirrored as 's4'.
+const SENT_CACHE_CURRENT = 's6';
 
 async function runAutoGenerate(){
   if (window._autoGenJob && window._autoGenJob.running) {
