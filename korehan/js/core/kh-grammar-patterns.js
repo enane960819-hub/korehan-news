@@ -106,6 +106,14 @@
     // detection below covers that case; AI can identify the rare
     // true future-modifier case from context.
     { re: /[가-힣]던\s+[가-힣]/, label: '~던 (retrospective modifier)', hint: 'past habitual / unfinished action modifying a noun. "the (X) that used to / was being"' },
+    // ~게 (adverbializer) — converts adjective to adverb. Regex is intentionally
+    // loose (any 게 followed by whitespace + Korean continuation) since adjective
+    // stems are too varied to enumerate. False positives with the noun 게 (crab)
+    // are rare in news copy. The hint deliberately spells out morpheme-role +
+    // dictionary→surface chain so enforce-injected entries don't show up as
+    // a bare chunk translation ("easily") — that's the bug class the AI keeps
+    // hitting on its own.
+    { re: /[가-힣]게(?=\s+[가-힣])/, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly). NEVER write exp as just the English meaning of the chunk — explain the morpheme + show the dictionary→surface chain.' },
 
     // ── Particles ─────────────────────────────────────────────
     { re: /[가-힣](을|를)(?:\s|[가-힣])/, label: '~을/를 (object marker)', hint: 'direct object particle. attaches to noun' },
