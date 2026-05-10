@@ -7764,11 +7764,35 @@ document.addEventListener('DOMContentLoaded', async function() {
         tick();
       });
     }
+    // Hold the splash until the hero has actually painted, with a
+    // 5s ceiling. User reported splash dismissing onto a still-blank
+    // hero ("로딩창이 실제 로딩완료 전에 사라짐"). _heroSlides is set
+    // synchronously when renderHomePage runs against cached articles,
+    // so the cache-hit path resolves in 0ms — no slowdown there. The
+    // no-cache path waits for the fetch + re-render. 5s is short
+    // enough that genuinely wedged loads still surface the skeleton +
+    // safety-net empty state on the visible page rather than holding
+    // splash.
+    function _khAwaitHero(maxMs) {
+      maxMs = maxMs || 5000;
+      return new Promise(function(resolve) {
+        var start = Date.now();
+        function tick() {
+          if (_heroSlides && _heroSlides.length) return resolve();
+          // Empty-state painted = hero is "done" (failed but final).
+          var heroEl = document.getElementById('dyn-hero');
+          if (heroEl && heroEl.innerHTML.indexOf('데이터 리셋') !== -1) return resolve();
+          if (Date.now() - start > maxMs) return resolve();
+          setTimeout(tick, 100);
+        }
+        tick();
+      });
+    }
 
     if (hadCache) {
       renderHomePage();
       _ldr(92);
-      _khAwaitTodaysPhrase(4000).then(function () {
+      Promise.all([_khAwaitTodaysPhrase(4000), _khAwaitHero(5000)]).then(function () {
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
         _ldr(100);
       });
@@ -7814,7 +7838,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           try { _khRenderHeroEmptyState(); } catch(_) {}
         });
       _ldr(92);
-      _khAwaitTodaysPhrase(4000).then(function () {
+      Promise.all([_khAwaitTodaysPhrase(4000), _khAwaitHero(5000)]).then(function () {
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
         _ldr(100);
       });
