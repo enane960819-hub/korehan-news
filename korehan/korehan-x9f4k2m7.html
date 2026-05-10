@@ -16394,12 +16394,59 @@ var _vsScanState = {
   scanned: 0,
   verdicts: [],
   running: false,
+  cancel: false,
 };
 
 function _vsEsc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// localStorage-backed verdict cache so repeat scans skip entries
+// already audited. Key format: "{table}:{word_ko}" → { verdict, suggested,
+// current, checked_at }. Persisted incrementally after each Sonnet
+// batch so a long 5000-entry scan that gets interrupted (tab close,
+// network blip, manual stop) doesn't lose its progress — resuming the
+// scan only re-audits what's missing from cache.
+//
+// Cache is invalidated per-row when `meaning_en` (or `word_en`) has
+// changed since the last check — a different current value triggers
+// a fresh Sonnet pass, which catches admin-edited rows.
+var _VS_CACHE_VERSION = 'v1';
+function _vsCacheKey() { return 'vs_cache_' + _VS_CACHE_VERSION; }
+function _vsCacheRowKey(table, ko) { return table + ':' + ko; }
+function _vsCacheLoad() {
+  try { return JSON.parse(localStorage.getItem(_vsCacheKey()) || '{}') || {}; }
+  catch(_) { return {}; }
+}
+function _vsCacheSave(cache) {
+  try { localStorage.setItem(_vsCacheKey(), JSON.stringify(cache)); }
+  catch(e) {
+    // localStorage quota exceeded (cache > 5MB) — trim oldest entries
+    if (e && /quota/i.test(e.name || e.message || '')) {
+      var entries = Object.entries(cache);
+      entries.sort(function(a, b) { return (a[1].checked_at || 0) - (b[1].checked_at || 0); });
+      var trimmed = {};
+      entries.slice(Math.floor(entries.length / 2)).forEach(function(e) { trimmed[e[0]] = e[1]; });
+      try { localStorage.setItem(_vsCacheKey(), JSON.stringify(trimmed)); } catch(_) {}
+    }
+  }
+}
+function _vsCacheClear() {
+  try { localStorage.removeItem(_vsCacheKey()); } catch(_) {}
+}
+function _vsCacheStats(table) {
+  var cache = _vsCacheLoad();
+  var prefix = table + ':';
+  var total = 0, ok = 0, bad = 0;
+  Object.keys(cache).forEach(function(k) {
+    if (k.indexOf(prefix) !== 0) return;
+    total++;
+    if (cache[k].verdict === 'OK') ok++;
+    else if (cache[k].verdict === 'BAD') bad++;
+  });
+  return { total: total, ok: ok, bad: bad };
 }
 
 async function goVocabSanity() {
@@ -16410,52 +16457,115 @@ async function goVocabSanity() {
     + '<div class="infobox">'
     + '<h3>How it works</h3>'
     + '두 dictionary 테이블 (<code>hover_vocab_master</code>, <code>vocabulary_bank</code>) 의 단어 → 영어 의미 매핑을 Sonnet에 50개씩 batch로 보내서 "이 의미가 이 한국어 단어에 합당한가?" 검증. '
-    + '<b>BAD</b> 판정 받은 entry만 표시되고, Sonnet이 제안한 새 의미와 함께 일괄 수정 버튼 제공. 비용 ~$0.30 / 1000 entries.'
+    + '<b>BAD</b> 판정 받은 entry만 표시되고, Sonnet이 제안한 새 의미와 함께 일괄 수정 버튼 제공. 비용 ~$0.30 / 1000 entries. '
+    + '검증 결과는 브라우저 localStorage에 저장돼서 재스캔 시 이미 audit한 entry는 자동 skip (의미 변동 없으면). 5000개 풀스캔도 중단/재개 가능.'
     + '</div>'
     + '<div class="sf-card" style="margin-bottom:14px">'
     + '<div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">'
     + '<div style="min-width:240px"><label class="inp-label">테이블</label>'
-    + '<select id="vs-table" class="inp inp-sm">'
+    + '<select id="vs-table" class="inp inp-sm" onchange="vsRefreshCacheStats()">'
     + '<option value="hover_vocab_master">hover_vocab_master (대용량 일반 사전)</option>'
     + '<option value="vocabulary_bank">vocabulary_bank (학습 풀)</option>'
     + '</select></div>'
     + '<div><label class="inp-label">샘플 크기 (0=전체)</label>'
     + '<input id="vs-limit" class="inp inp-sm" type="number" value="200" min="0" max="10000" style="width:120px"></div>'
+    + '<div style="display:flex;flex-direction:column;gap:4px">'
+    + '<label style="font-size:11px;font-weight:600;color:#555;display:flex;align-items:center;gap:6px">'
+    + '<input type="checkbox" id="vs-skip-cached" checked> 캐시된 거 skip (재스캔 시 권장)</label>'
+    + '<button class="btn btn-xs" onclick="if(confirm(\'localStorage 캐시 비우기? 다음 스캔 때 처음부터 다시 audit.\')){_vsCacheClear();vsRefreshCacheStats();toast(\'캐시 비웠음\');}" style="background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-size:10px">캐시 비우기</button>'
+    + '</div>'
     + '<button class="btn btn-b" onclick="vsStartScan()" id="vs-start-btn">▶ Start Scan</button>'
+    + '<button class="btn btn-r" onclick="vsStopScan()" id="vs-stop-btn" style="display:none">■ Stop</button>'
     + '<span id="vs-progress" style="font-size:12px;color:#555"></span>'
     + '</div>'
+    + '<div id="vs-cache-stats" style="margin-top:8px;font-size:11px;color:#64748b"></div>'
     + '<div id="vs-progress-bar" style="height:6px;background:#e2e8f0;border-radius:3px;margin-top:10px;display:none;overflow:hidden">'
     + '<div id="vs-progress-fill" style="height:100%;background:#2563eb;border-radius:3px;width:0%;transition:width .2s"></div>'
     + '</div>'
     + '</div>'
     + '<div id="vs-results"></div>'
     + '</div>';
+  vsRefreshCacheStats();
+  // Restore last scan's BAD verdicts from cache for the current table
+  // so user sees prior results without having to re-scan.
+  vsLoadFromCache();
+}
+
+function vsRefreshCacheStats() {
+  var tableSel = document.getElementById('vs-table');
+  if (!tableSel) return;
+  var table = tableSel.value;
+  var s = _vsCacheStats(table);
+  var el = document.getElementById('vs-cache-stats');
+  if (!el) return;
+  if (s.total === 0) {
+    el.innerHTML = '캐시 비어 있음 — 이 테이블 첫 스캔.';
+  } else {
+    el.innerHTML = '캐시: ' + s.total + ' entries 검증 완료 (<span style="color:#15803d">OK ' + s.ok + '</span> / <span style="color:#dc2626">BAD ' + s.bad + '</span>)';
+  }
+}
+
+function vsLoadFromCache() {
+  var tableSel = document.getElementById('vs-table');
+  if (!tableSel) return;
+  var table = tableSel.value;
+  var cache = _vsCacheLoad();
+  var prefix = table + ':';
+  var verdicts = [];
+  Object.keys(cache).forEach(function(k) {
+    if (k.indexOf(prefix) !== 0) return;
+    var ko = k.slice(prefix.length);
+    var c = cache[k];
+    verdicts.push({ ko: ko, current: c.current || '', verdict: c.verdict, suggested: c.suggested || '' });
+  });
+  _vsScanState.table = table;
+  _vsScanState.verdicts = verdicts;
+  _vsScanState.rows = verdicts.map(function(v) { return { ko: v.ko, current: v.current }; });
+  _vsScanState.scanned = verdicts.length;
+  vsRenderResults();
+}
+
+function vsStopScan() {
+  _vsScanState.cancel = true;
+  var stopBtn = document.getElementById('vs-stop-btn');
+  if (stopBtn) stopBtn.textContent = '⏳ Stopping after current batch...';
 }
 
 async function vsStartScan() {
   if (_vsScanState.running) return;
   _vsScanState.running = true;
+  _vsScanState.cancel = false;
   _vsScanState.table = document.getElementById('vs-table').value;
   var limit = parseInt(document.getElementById('vs-limit').value, 10) || 0;
+  var skipCached = !!document.getElementById('vs-skip-cached').checked;
   var startBtn = document.getElementById('vs-start-btn');
+  var stopBtn = document.getElementById('vs-stop-btn');
   startBtn.disabled = true;
   startBtn.textContent = '⏳ Loading rows...';
+  stopBtn.style.display = '';
+  stopBtn.disabled = false;
+  stopBtn.textContent = '■ Stop';
   document.getElementById('vs-progress-bar').style.display = 'block';
-  document.getElementById('vs-results').innerHTML = '';
+
+  function _resetUI(label) {
+    startBtn.disabled = false;
+    startBtn.textContent = label;
+    stopBtn.style.display = 'none';
+    _vsScanState.running = false;
+    _vsScanState.cancel = false;
+    vsRefreshCacheStats();
+  }
 
   var sb = getSb();
-  if (!sb) { toast('Supabase 연결 실패'); _vsScanState.running = false; startBtn.disabled = false; startBtn.textContent = '▶ Start Scan'; return; }
+  if (!sb) { toast('Supabase 연결 실패'); _resetUI('▶ Start Scan'); return; }
+
   var rows = [];
   var batchSize = 1000;
   var from = 0;
   while (true) {
     var fields = _vsScanState.table === 'hover_vocab_master' ? 'word_ko, meaning_en' : 'word_ko, word_en';
     var r = await sb.from(_vsScanState.table).select(fields).order('word_ko').range(from, from + batchSize - 1);
-    if (r.error) {
-      toast('Load 실패: ' + r.error.message);
-      _vsScanState.running = false; startBtn.disabled = false; startBtn.textContent = '▶ Start Scan';
-      return;
-    }
+    if (r.error) { toast('Load 실패: ' + r.error.message); _resetUI('▶ Start Scan'); return; }
     var batch = (r.data || []).filter(function(x) { return x.word_ko && (x.meaning_en || x.word_en); });
     rows = rows.concat(batch);
     if (batch.length < batchSize) break;
@@ -16463,40 +16573,87 @@ async function vsStartScan() {
     from += batchSize;
   }
   rows = rows.map(function(x) { return { ko: x.word_ko, current: x.meaning_en || x.word_en || '' }; });
-  _vsScanState.rows = rows;
-  _vsScanState.scanned = 0;
-  _vsScanState.verdicts = [];
 
-  if (!rows.length) {
-    document.getElementById('vs-results').innerHTML = '<div class="infobox">로드된 row 없음.</div>';
-    _vsScanState.running = false; startBtn.disabled = false; startBtn.textContent = '▶ Start Scan';
+  // Filter rows against the persistent cache. A row is considered
+  // "already audited" if its (ko, current) pair matches the cached
+  // value — admin edits that change the current meaning_en force a
+  // re-audit. Failed/UNCERTAIN cached entries are also re-audited
+  // so users can retry batches that errored out the first time.
+  var cache = _vsCacheLoad();
+  var prefix = _vsScanState.table + ':';
+  var cachedVerdicts = []; // entries we skip but want to display
+  var rowsToScan = rows;
+  if (skipCached) {
+    rowsToScan = [];
+    rows.forEach(function(r) {
+      var key = _vsCacheRowKey(_vsScanState.table, r.ko);
+      var c = cache[key];
+      if (c && c.current === r.current && (c.verdict === 'OK' || c.verdict === 'BAD')) {
+        cachedVerdicts.push({ ko: r.ko, current: r.current, verdict: c.verdict, suggested: c.suggested || '' });
+      } else {
+        rowsToScan.push(r);
+      }
+    });
+  }
+
+  _vsScanState.rows = rows;
+  _vsScanState.verdicts = cachedVerdicts.slice(); // seed with cached so render shows existing BAD
+  _vsScanState.scanned = cachedVerdicts.length;
+  vsRenderResults();
+
+  if (!rowsToScan.length) {
+    document.getElementById('vs-progress').textContent = '캐시에서 ' + cachedVerdicts.length + '개 로드 — 새로 스캔할 거 없음';
+    document.getElementById('vs-progress-fill').style.width = '100%';
+    _resetUI('▶ Re-scan');
+    return;
+  }
+
+  var estSec = Math.round(rowsToScan.length * 0.20); // ~10s per 50-row batch
+  var estCost = (rowsToScan.length * 0.0003).toFixed(2);
+  if (!confirm(rowsToScan.length + '개 audit (캐시 skip: ' + cachedVerdicts.length + '개)\n\n예상 시간: ~' + Math.ceil(estSec / 60) + '분, 예상 비용: ~$' + estCost + '\n\n진행할까요?')) {
+    _resetUI('▶ Start Scan');
     return;
   }
 
   startBtn.textContent = '⏳ Scanning (Sonnet)...';
-  document.getElementById('vs-progress').textContent = '0 / ' + rows.length;
+  document.getElementById('vs-progress').textContent = cachedVerdicts.length + ' (cached) / ' + rows.length;
 
   var batchN = 50;
-  for (var i = 0; i < rows.length; i += batchN) {
-    var batch = rows.slice(i, i + batchN);
+  for (var i = 0; i < rowsToScan.length; i += batchN) {
+    if (_vsScanState.cancel) {
+      document.getElementById('vs-progress').textContent += ' — STOPPED';
+      _resetUI('▶ Resume Scan');
+      return;
+    }
+    var batch = rowsToScan.slice(i, i + batchN);
     try {
       var verdicts = await vsScanBatch(batch);
       _vsScanState.verdicts = _vsScanState.verdicts.concat(verdicts);
+      // Persist this batch to cache immediately so a crash/close
+      // doesn't lose progress. Re-load cache each time in case the
+      // user has another tab open touching the same key.
+      var fresh = _vsCacheLoad();
+      verdicts.forEach(function(v) {
+        fresh[_vsCacheRowKey(_vsScanState.table, v.ko)] = {
+          verdict: v.verdict, suggested: v.suggested, current: v.current,
+          checked_at: Date.now(),
+        };
+      });
+      _vsCacheSave(fresh);
     } catch (e) {
       console.warn('vs batch failed:', e);
       batch.forEach(function(r) {
         _vsScanState.verdicts.push({ ko: r.ko, current: r.current, verdict: 'UNCERTAIN', suggested: '' });
       });
     }
-    _vsScanState.scanned = Math.min(i + batchN, rows.length);
-    document.getElementById('vs-progress').textContent = _vsScanState.scanned + ' / ' + rows.length;
+    _vsScanState.scanned = cachedVerdicts.length + Math.min(i + batchN, rowsToScan.length);
+    document.getElementById('vs-progress').textContent = _vsScanState.scanned + ' / ' + rows.length
+      + ' (' + cachedVerdicts.length + ' cached, ' + Math.min(i + batchN, rowsToScan.length) + ' new)';
     document.getElementById('vs-progress-fill').style.width = (100 * _vsScanState.scanned / rows.length) + '%';
     vsRenderResults();
   }
 
-  startBtn.disabled = false;
-  startBtn.textContent = '▶ Re-scan';
-  _vsScanState.running = false;
+  _resetUI('▶ Re-scan');
 }
 
 async function vsScanBatch(batch) {
@@ -16563,6 +16720,16 @@ function vsRenderResults() {
     + '</tbody></table></div>';
 }
 
+function _vsCacheMarkOK(ko, newCurrent) {
+  // After applying a fix, update the cached entry to reflect the new
+  // meaning_en value and mark it OK so the next scan doesn't re-audit
+  // a row that was just corrected by hand.
+  var cache = _vsCacheLoad();
+  var key = _vsCacheRowKey(_vsScanState.table, ko);
+  cache[key] = { verdict: 'OK', suggested: '', current: newCurrent, checked_at: Date.now() };
+  _vsCacheSave(cache);
+}
+
 async function vsApplyOne(idx) {
   var bad = _vsScanState.verdicts.filter(function(v) { return v.verdict === 'BAD' && v.suggested; });
   var v = bad[idx];
@@ -16576,6 +16743,7 @@ async function vsApplyOne(idx) {
   var r = await sb.from(_vsScanState.table).update(update).eq('word_ko', v.ko);
   if (r.error) { toast('실패: ' + r.error.message); return; }
   toast('✓ ' + v.ko + ' → "' + newMeaning + '"');
+  _vsCacheMarkOK(v.ko, newMeaning);
   for (var i = 0; i < _vsScanState.verdicts.length; i++) {
     if (_vsScanState.verdicts[i].ko === v.ko) {
       _vsScanState.verdicts[i].verdict = 'OK';
@@ -16583,6 +16751,7 @@ async function vsApplyOne(idx) {
     }
   }
   vsRenderResults();
+  vsRefreshCacheStats();
 }
 
 async function vsApplyAll() {
@@ -16600,8 +16769,8 @@ async function vsApplyAll() {
     try {
       var update = {}; update[col] = newMeaning;
       var r = await sb.from(_vsScanState.table).update(update).eq('word_ko', v.ko);
-      if (r.error) fail++;
-      else ok++;
+      if (r.error) { fail++; }
+      else { ok++; _vsCacheMarkOK(v.ko, newMeaning); }
     } catch (e) { fail++; }
   }
   toast('완료: ' + ok + ' 성공 / ' + fail + ' 실패');
@@ -16611,6 +16780,7 @@ async function vsApplyAll() {
     }
   });
   vsRenderResults();
+  vsRefreshCacheStats();
 }
 
 // ═══════════════════════════════════════════════════════════════
