@@ -13191,7 +13191,7 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
 
     var data = await callClaude({
       feature: 'writing_feedback',
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -13207,7 +13207,7 @@ async function triggerAIFeedback(submissionId, text, vocab, grammar) {
       await sb.from('user_submissions').update({
         ai_feedback:    parsed,
         ai_feedback_at: new Date().toISOString(),
-        ai_model:       'claude-sonnet-4-6',
+        ai_model:       'claude-sonnet-4-20250514',
         status:         'ai_reviewed'
       }).eq('id', submissionId);
     }
