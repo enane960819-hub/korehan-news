@@ -16594,7 +16594,9 @@ async function vsStartScan() {
   var batchSize = 1000;
   var from = 0;
   while (true) {
-    var fields = _vsScanState.table === 'hover_vocab_master' ? 'word_ko, meaning_en' : 'word_ko, word_en';
+    var fields = _vsScanState.table === 'hover_vocab_master'
+      ? 'word_ko, meaning_en, reading'
+      : 'word_ko, word_en, word_rom';
     var r = await sb.from(_vsScanState.table).select(fields).order('word_ko').range(from, from + batchSize - 1);
     if (r.error) {
       console.warn('[vs] load error', r.error);
@@ -16616,7 +16618,13 @@ async function vsStartScan() {
     from += batchSize;
   }
   console.log('[vs] loaded', rawRowsTotal, 'raw rows, kept', rows.length, 'after filter for', _vsScanState.table);
-  rows = rows.map(function(x) { return { ko: x.word_ko, current: x.meaning_en || x.word_en || '' }; });
+  rows = rows.map(function(x) {
+    return {
+      ko: x.word_ko,
+      current: x.meaning_en || x.word_en || '',
+      rom: x.reading || x.word_rom || '',
+    };
+  });
 
   if (rows.length === 0) {
     document.getElementById('vs-results').innerHTML =
@@ -16738,6 +16746,7 @@ async function vsScanBatch(batch) {
     return {
       ko: r.ko,
       current: r.current,
+      rom: r.rom || '',
       verdict: (v.verdict === 'BAD' ? 'BAD' : 'OK'),
       suggested: String(v.suggested || '').trim(),
     };
@@ -16763,17 +16772,87 @@ function vsRenderResults() {
     + '<button class="btn btn-r" onclick="vsApplyAll()">Apply all ' + bad.length + ' fixes</button>'
     + '</div>'
     + '<table class="tbl" style="font-size:12px">'
-    + '<thead><tr><th>한국어</th><th>현재 의미</th><th>Sonnet 제안 (수정 가능)</th><th style="text-align:center;width:80px">Apply</th></tr></thead>'
+    + '<thead><tr><th>한국어 / 로마자</th><th>현재 의미</th><th>Sonnet 제안 (수정 가능)</th><th style="text-align:center;width:140px">Apply / 기사</th></tr></thead>'
     + '<tbody>'
     + bad.map(function(v, i) {
         return '<tr>'
-          + '<td><b>' + _vsEsc(v.ko) + '</b></td>'
+          + '<td><b>' + _vsEsc(v.ko) + '</b>'
+          + (v.rom ? '<div style="font-size:10px;color:#64748b;margin-top:2px;font-family:monospace">' + _vsEsc(v.rom) + '</div>' : '')
+          + '</td>'
           + '<td style="color:#dc2626"><s>' + _vsEsc(v.current) + '</s></td>'
           + '<td><input class="inp inp-sm" id="vs-sug-' + i + '" value="' + _vsEsc(v.suggested) + '" style="width:100%"></td>'
-          + '<td style="text-align:center"><button class="btn btn-sm btn-b" onclick="vsApplyOne(' + i + ')">Apply</button></td>'
-          + '</tr>';
+          + '<td style="text-align:center;white-space:nowrap">'
+          +   '<button class="btn btn-sm btn-b" onclick="vsApplyOne(' + i + ')" style="margin-right:4px">Apply</button>'
+          +   '<button class="btn btn-sm btn-gh" onclick="vsToggleArticles(' + i + ',\'' + _vsEsc(v.ko).replace(/'/g, "\\'") + '\')" id="vs-art-btn-' + i + '" title="이 단어가 들어간 기사 보기">📰</button>'
+          + '</td>'
+          + '</tr>'
+          + '<tr id="vs-art-row-' + i + '" style="display:none"><td colspan="4" style="background:#f8fafc;padding:8px 14px"><div id="vs-art-list-' + i + '" style="font-size:11px;color:#64748b">Loading...</div></td></tr>';
       }).join('')
     + '</tbody></table></div>';
+}
+
+// Lazy article lookup for a BAD word — only fires when user clicks the
+// 📰 button so we don't fan out N queries per scan. Substring match on
+// articles_data.body is enough (cheaper than a fulltext index, and
+// learner-relevant words like 대통령 will hit accurately). Cached on
+// the verdict object so re-toggling doesn't re-fetch.
+async function vsToggleArticles(idx, ko) {
+  var row = document.getElementById('vs-art-row-' + idx);
+  var list = document.getElementById('vs-art-list-' + idx);
+  if (!row || !list) return;
+  if (row.style.display !== 'none') { row.style.display = 'none'; return; }
+  row.style.display = '';
+  var bad = _vsScanState.verdicts.filter(function(v) { return v.verdict === 'BAD' && v.suggested; });
+  var v = bad[idx];
+  if (v && v._articlesFetched) { _vsRenderArticleList(list, v._articles, ko); return; }
+  list.textContent = '⏳ 기사 검색 중...';
+  var sb = getSb(); if (!sb) { list.textContent = 'Supabase 연결 실패'; return; }
+  try {
+    var r = await sb.from('articles_data')
+      .select('id, title, level, section, body')
+      .ilike('body', '%' + ko + '%')
+      .limit(8);
+    if (r.error) { console.warn('[vs] article lookup error', r.error); list.textContent = 'Article lookup 실패: ' + r.error.message; return; }
+    var articles = (r.data || []).map(function(a) {
+      var body = a.body || '';
+      var occIdx = body.indexOf(ko);
+      var snippet = '';
+      if (occIdx >= 0) {
+        var start = Math.max(0, occIdx - 20);
+        var end = Math.min(body.length, occIdx + ko.length + 30);
+        snippet = (start > 0 ? '…' : '') + body.slice(start, end).replace(/\s+/g, ' ') + (end < body.length ? '…' : '');
+      }
+      return { id: a.id, title: a.title, level: a.level, section: a.section, snippet: snippet };
+    });
+    if (v) { v._articles = articles; v._articlesFetched = true; }
+    _vsRenderArticleList(list, articles, ko);
+  } catch (e) {
+    console.warn('[vs] article lookup exception', e);
+    list.textContent = 'Lookup 실패 (콘솔 확인)';
+  }
+}
+
+function _vsRenderArticleList(list, articles, ko) {
+  if (!articles || !articles.length) {
+    list.innerHTML = '<i>이 단어가 들어간 기사 없음 (또는 DB에 본문이 없음).</i>';
+    return;
+  }
+  var koEsc = _vsEsc(ko);
+  list.innerHTML = '<div style="font-weight:700;color:#0f172a;margin-bottom:6px">사용된 기사 ' + articles.length + '개 (로마자 검증용)</div>'
+    + articles.map(function(a) {
+        var snippet = _vsEsc(a.snippet);
+        // Bold-highlight the target word within the snippet
+        snippet = snippet.split(koEsc).join('<b style="background:#fef3c7;color:#92400e">' + koEsc + '</b>');
+        return '<div style="margin:6px 0;padding:6px 8px;background:#fff;border:1px solid #e2e8f0;border-radius:4px">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px">'
+          +   '<a href="korehan-article.html?id=' + encodeURIComponent(a.id) + '" target="_blank" style="font-size:12px;font-weight:700;color:#1e40af;text-decoration:none">'
+          +     _vsEsc(a.title || '(no title)') + ' ↗'
+          +   '</a>'
+          +   '<span style="font-size:10px;color:#94a3b8">' + _vsEsc(a.level || '') + ' · ' + _vsEsc(a.section || '') + '</span>'
+          + '</div>'
+          + '<div style="font-size:11px;color:#475569;line-height:1.5">' + snippet + '</div>'
+          + '</div>';
+      }).join('');
 }
 
 function _vsCacheMarkOK(ko, newCurrent) {
