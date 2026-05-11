@@ -4075,13 +4075,18 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
   if (_analysisItems.length) {
     var seenExamples = [];
     var analysisFiltered = [];
-    function _looksLikePadding(label) {
-      if (!label) return true;
-      var stripped = String(label)
-        .replace(/[~\/()\s\-,.?!]/g, '')
-        .replace(/[은는이가을를으]/g, '');
-      return /[가-힣]{3,}/.test(stripped);
-    }
+    // _looksLikePadding USED to drop labels with 3+ Korean characters
+    // (after stripping particles and English gloss). Intent: catch
+    // AI-hallucinated labels like "~ㄴ/은 도시 중 하나" that shoved a
+    // noun into the canonical-pattern slot. But it also drops every
+    // legitimate multi-syllable canonical label — "~ 중 하나 (one of)"
+    // strips to "중하나" (3 chars), "~ㄴ/은 후에" strips to "ㄴ은후에"
+    // (4 chars), etc. So every TOPIK-3+ fixed-form pattern from
+    // KH_GRAMMAR's enforce gate was being silently filtered out on
+    // render. The label normalizer added in PR #430 now canonicalizes
+    // noun-stuffed labels back to their pure-morpheme form before this
+    // filter runs, so the padding check is redundant — and harmful.
+    // Dropping it entirely.
     function _patternMarkers(label) {
       if (!label) return [];
       // Extract Korean morpheme markers from the label so we can
@@ -4140,9 +4145,6 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
     _analysisItems.forEach(function(item) {
       if (!item || !item.label) return;
       var typ = item.type || 'grammar';
-      // Padding-noun check only for grammar; idioms/expressions can
-      // legitimately have multi-syllable Korean content.
-      if (typ === 'grammar' && _looksLikePadding(item.label)) return;
       if (!_itemMatchesSentence(item)) return;
       var ex = (item.example_in_sentence || '').trim();
       var dupe = false;
