@@ -3650,7 +3650,8 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
                + 'CONTEXT GUARDRAILS for type="expression" / "idiom" (the part AI judges):\n'
                + '  - Only surface a phrase if it is CENTRAL to this specific sentence\'s meaning — the learner couldn\'t paraphrase the sentence without grasping that phrase. Examples of GOOD: 마음에 들다 when the sentence is literally "I like it", ~을 둘러싸고 when controversy is the topic.\n'
                + '  - SKIP tangential / generic phrases that just happen to appear (정말, 그런, 새로운, 이런 식으로 etc). Skip phrases the learner already knows at this level. Skip phrases that don\'t add a distinct learning point beyond what the grammar entries already cover.\n'
-               + '  - Don\'t surface two entries that mean the same thing (e.g. ~다고 하다 AND ~다고 해요 — pick the canonical one).\n\n'
+               + '  - Don\'t surface two entries that mean the same thing (e.g. ~다고 하다 AND ~다고 해요 — pick the canonical one).\n'
+               + '  - COMPOUND CONSTRUCTIONS: when the sentence demonstrates a multi-token rhetorical structure ("X도 중요하지만 Y(이/가) 더 ~" comparative, "~기도 하고 ~기도 하다" both-and, "~ㄴ/는 데다 ~기까지 하다" on-top-of), surface the WHOLE compound as ONE expression entry with the multi-token chunk — not the individual particles split apart. Atomic particles stay as separate grammar entries; the compound is additional.\n\n'
                + perSentBlocks.join('\n\n');
       }
     }
@@ -4544,7 +4545,8 @@ async function analyzeSentence(idx, el) {
         prompt += '\n\n[REGEX-DETECTED PATTERNS — floor, not ceiling]\n'
                + 'The patterns below were already verified by the regex layer for this sentence. Surface EVERY one as an analysis entry with the EXACT canonical label shown. You may add more (idioms, collocations, semantic patterns the regex missed) but never less.\n\n'
                + 'CONTEXT GUARDRAILS for type="expression" / "idiom" (the part AI judges):\n'
-               + '  - Only surface a phrase if it is CENTRAL to this sentence\'s meaning. Skip tangential / generic phrases (정말, 그런, 새로운 etc). Skip phrases the learner already knows at this level. Skip semantic duplicates of a grammar entry.\n\n'
+               + '  - Only surface a phrase if it is CENTRAL to this sentence\'s meaning. Skip tangential / generic phrases (정말, 그런, 새로운 etc). Skip phrases the learner already knows at this level. Skip semantic duplicates of a grammar entry.\n'
+               + '  - COMPOUND CONSTRUCTIONS: if the sentence shows a multi-token rhetorical structure ("X도 중요하지만 Y가 더 ~" comparative, "~기도 하고 ~기도 하다" etc), surface the WHOLE compound as ONE expression entry — not the particles split apart.\n\n'
                + window.KH_GRAMMAR.formatPromptList(_ssHits);
       }
     }
