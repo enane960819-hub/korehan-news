@@ -3975,6 +3975,56 @@ function closeSentPanel() {
   document.querySelectorAll('.art-sent-panel').forEach(function(p){ p.remove(); });
   document.querySelectorAll('.art-sent.active').forEach(function(s){ s.classList.remove('active'); });
 }
+// Widen an analysis chunk to its natural reading boundary within the
+// containing sentence. Two scenarios:
+//
+//   1. Cached chunks like "국에서" (from the old _extractExample that
+//      returned the raw regex match) → widen leftward across Hangul
+//      until whitespace/punct → "미국에서".
+//
+//   2. Modifier-pattern chunks like "숨겨진" (~ㄴ/은 modifier alone) →
+//      include the noun being modified so the chunk shows the full
+//      construction "숨겨진 주민들". Only triggers when the label
+//      itself signals a modifier role (contains "modifier" / "관형" /
+//      "+ 명사"); other patterns like ~(으)로 stay tight ("코로", NOT
+//      "코로 들어가면서").
+function _widenChunkOnRender(chunk, sentence, label) {
+  if (!chunk || !sentence) return chunk;
+  var idx = sentence.indexOf(chunk);
+  if (idx < 0) return chunk;
+  function isHangul(code) {
+    return (code >= 0xAC00 && code <= 0xD7A3) || (code >= 0x3131 && code <= 0x318E);
+  }
+  // Walk left across Hangul until non-Hangul boundary.
+  var i = idx;
+  while (i > 0 && isHangul(sentence.charCodeAt(i - 1))) i--;
+  // Walk right across Hangul until non-Hangul boundary.
+  var j = idx + chunk.length;
+  while (j < sentence.length && isHangul(sentence.charCodeAt(j))) j++;
+  // Modifier patterns: pull in the modified noun across ONE whitespace
+  // so "숨겨진" → "숨겨진 주민들". Detect via label — modifier hints
+  // contain "modifier", "관형", or "+ 명사". Cap rightward extension
+  // at 3 Hangul syllables past the whitespace; beyond that the chunk
+  // typically pulls in 조사 (particles like ~이라고, ~으로) and gets
+  // pedagogically noisy. 3 syllables covers most learner-relevant
+  // nouns (단어, 사람, 주민들, 한국인 etc.) without leaking particles.
+  var lab = String(label || '');
+  var isModifier = /modifier|관형|\+\s*명사/i.test(lab);
+  if (isModifier && j < sentence.length && /\s/.test(sentence.charAt(j))) {
+    var k = j + 1;
+    while (k < sentence.length && /\s/.test(sentence.charAt(k))) k++;
+    var wordStart = k;
+    var MAX_NOUN_SYLLABLES = 3;
+    var taken = 0;
+    while (k < sentence.length && isHangul(sentence.charCodeAt(k)) && taken < MAX_NOUN_SYLLABLES) {
+      k++; taken++;
+    }
+    if (k > wordStart) j = k;
+  }
+  if (i === idx && j === idx + chunk.length) return chunk;
+  return sentence.slice(i, j);
+}
+
 function _khRenderSentPanel(panel, data, closer, sentenceText) {
   var closeFn = closer || 'closeSentPanel()';
   var html = '<button class="asp-close" onclick="' + closeFn + '" aria-label="Close">×</button>';
@@ -4040,6 +4090,21 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
         });
       }
       data.analysis = _wrap[0].analysis;
+      // Re-widen every chunk to its natural word boundary, including
+      // entries that were ALREADY in the cache (not just enforce-
+      // added ones). The cache's example_in_sentence chunks were
+      // baked with the old _extractExample that returned the literal
+      // regex match — e.g. ~에서 against "미국에서" stored "국에서",
+      // ~게 stored "렇게", etc. Widening on render means existing
+      // articles get readable chunks without admin re-bake.
+      data.analysis = (data.analysis || []).map(function(item) {
+        if (!item || !item.example_in_sentence || !_sent) return item;
+        var widened = _widenChunkOnRender(item.example_in_sentence, _sent, item.label || '');
+        if (widened && widened !== item.example_in_sentence) {
+          return Object.assign({}, item, { example_in_sentence: widened });
+        }
+        return item;
+      });
     } catch(_) {}
   }
   if (data && Array.isArray(data.vocab) && data.vocab.length) {
