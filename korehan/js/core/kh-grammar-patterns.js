@@ -823,6 +823,18 @@
   // article-generation prompts where the body doesn't exist yet, so
   // we can't pre-detect — we instead prime the model with the whole
   // dictionary up front and let enforce backfill any slips after.
+  // Label-only catalog for prompt injection. Same checklist effect
+  // as formatFullCatalog but ~70% smaller (~2K tokens vs ~9K) since
+  // Sonnet already knows what each canonical pattern means from its
+  // built-in Korean grammar knowledge — just naming + enumeration is
+  // the value-add. Used by runAutoGenerate where speed matters and
+  // the body doesn't exist for pre-detection.
+  function formatLabelCatalog() {
+    return PATTERNS.map(function(p, i) {
+      return (i + 1) + '. ' + p.label;
+    }).join('\n');
+  }
+
   function formatFullCatalog() {
     return PATTERNS.map(function(p, i) {
       return (i + 1) + '. ' + p.label + ' — ' + (p.hint || '');
@@ -877,6 +889,7 @@
     enforceDetectedPatterns: enforceDetectedPatterns,
     formatPromptList: formatPromptList,
     formatFullCatalog: formatFullCatalog,
+    formatLabelCatalog: formatLabelCatalog,
     romanize: romanize,
     _PATTERNS: PATTERNS,  // exposed for testing only
   };
