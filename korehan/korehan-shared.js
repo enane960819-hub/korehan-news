@@ -3629,16 +3629,30 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
       + _analysisRule
       + _analysisVerify
       + '- Return EXACTLY ' + sentences.length + ' entries in sentences[].';
-    // Prime Sonnet with the full KH_GRAMMAR catalog so it sees every
-    // regex-detectable pattern (~250) up front, not just the hand-
-    // curated floor list (~80). Mirrors admin runAutoGenerate. Cost
-    // is ~9K extra input tokens per article (negligible).
-    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.formatFullCatalog === 'function') {
-      prompt += '\n\n[GRAMMAR PATTERN INVENTORY — canonical reference]\n'
-             + 'Below is the COMPLETE list of grammar patterns the post-process regex layer detects. '
-             + 'For each sentence, scan against this list and surface EVERY pattern that genuinely '
-             + 'appears. Use the canonical labels exactly as written so they match the enforce gate.\n\n'
-             + window.KH_GRAMMAR.formatFullCatalog();
+    // Per-sentence MUST-INCLUDE injection: run KH_GRAMMAR.detectForLevel
+    // on each sentence and embed ONLY the matched canonical labels as a
+    // floor list. Drops input tokens from ~9K (full catalog dump) to
+    // ~0.5-2K, eliminates the "AI gets distracted by 230 irrelevant
+    // patterns" failure mode (~$0.03/call savings + faster TTFT). The
+    // full catalog stays in admin runAutoGenerate because the body
+    // doesn't exist there yet.
+    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.detectForLevel === 'function' && typeof window.KH_GRAMMAR.formatPromptList === 'function') {
+      var perSentBlocks = [];
+      for (var pi = 0; pi < sentences.length; pi++) {
+        var pHits = window.KH_GRAMMAR.detectForLevel(sentences[pi].text, articleLevel || 'Intermediate');
+        if (pHits && pHits.length) {
+          perSentBlocks.push('Sentence ' + (pi + 1) + ' detected patterns:\n' + window.KH_GRAMMAR.formatPromptList(pHits));
+        }
+      }
+      if (perSentBlocks.length) {
+        prompt += '\n\n[REGEX-DETECTED PATTERNS PER SENTENCE — floor, not ceiling]\n'
+               + 'For each sentence, the patterns below were already verified by the regex layer. Surface EVERY one as an analysis entry with the EXACT canonical label shown. You may add more (idioms, collocations, semantic patterns the regex missed) but never less.\n\n'
+               + 'CONTEXT GUARDRAILS for type="expression" / "idiom" (the part AI judges):\n'
+               + '  - Only surface a phrase if it is CENTRAL to this specific sentence\'s meaning — the learner couldn\'t paraphrase the sentence without grasping that phrase. Examples of GOOD: 마음에 들다 when the sentence is literally "I like it", ~을 둘러싸고 when controversy is the topic.\n'
+               + '  - SKIP tangential / generic phrases that just happen to appear (정말, 그런, 새로운, 이런 식으로 etc). Skip phrases the learner already knows at this level. Skip phrases that don\'t add a distinct learning point beyond what the grammar entries already cover.\n'
+               + '  - Don\'t surface two entries that mean the same thing (e.g. ~다고 하다 AND ~다고 해요 — pick the canonical one).\n\n'
+               + perSentBlocks.join('\n\n');
+      }
     }
 
     // Use the same Sonnet model admin's runAutoGenerate uses, so the
@@ -4519,14 +4533,20 @@ async function analyzeSentence(idx, el) {
       + _analysisRule
       + _analysisVerifyRule
       + '- Output JSON only.';
-    // Prime Sonnet with the full KH_GRAMMAR catalog (same as bulk
-    // and admin paths). One sentence still scans the same dictionary.
-    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.formatFullCatalog === 'function') {
-      prompt += '\n\n[GRAMMAR PATTERN INVENTORY — canonical reference]\n'
-             + 'Below is the COMPLETE list of grammar patterns the post-process regex layer detects. '
-             + 'Scan THIS sentence against this list and surface EVERY pattern that appears. Use the '
-             + 'canonical labels exactly as written so they match the enforce gate.\n\n'
-             + window.KH_GRAMMAR.formatFullCatalog();
+    // Detect-first MUST-INCLUDE: regex-scan THIS sentence and inject
+    // only the matched canonical labels. Same architecture as the bulk
+    // path. Drops input tokens from ~9K → ~0.5K, eliminates the
+    // "distracted by irrelevant catalog entries" failure mode.
+    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.detectForLevel === 'function' && typeof window.KH_GRAMMAR.formatPromptList === 'function') {
+      var _ssLvl = (window._currentArticle && window._currentArticle.level) || 'Intermediate';
+      var _ssHits = window.KH_GRAMMAR.detectForLevel(sentenceText, _ssLvl);
+      if (_ssHits && _ssHits.length) {
+        prompt += '\n\n[REGEX-DETECTED PATTERNS — floor, not ceiling]\n'
+               + 'The patterns below were already verified by the regex layer for this sentence. Surface EVERY one as an analysis entry with the EXACT canonical label shown. You may add more (idioms, collocations, semantic patterns the regex missed) but never less.\n\n'
+               + 'CONTEXT GUARDRAILS for type="expression" / "idiom" (the part AI judges):\n'
+               + '  - Only surface a phrase if it is CENTRAL to this sentence\'s meaning. Skip tangential / generic phrases (정말, 그런, 새로운 etc). Skip phrases the learner already knows at this level. Skip semantic duplicates of a grammar entry.\n\n'
+               + window.KH_GRAMMAR.formatPromptList(_ssHits);
+      }
     }
 
     // Single-sentence fallback (cache miss for one sentence). Uses the
