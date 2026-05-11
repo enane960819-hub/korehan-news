@@ -181,7 +181,7 @@ function ensureKhGrammar() {
       return;
     }
     var script = document.createElement('script');
-    script.src = 'js/core/kh-grammar-patterns.js?v=20260511n';
+    script.src = 'js/core/kh-grammar-patterns.js?v=20260511o';
     script.defer = true;
     script.setAttribute('data-kh-grammar', '1');
     script.onload = function() { resolve(window.KH_GRAMMAR); };
@@ -4220,8 +4220,42 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
           }
           if (!hit) return false;
         }
+        // Strict sentence-level revalidation against KH_GRAMMAR.detect.
+        // Catches AI hallucinations like "~기 (nominalizer)" with chunk
+        // "쓰는" (no 기 anywhere) or "이야기를" (이야기 is a noun — the
+        // regex blacklist rejects it, so detect returns nothing for ~기
+        // here). Run detect on the full sentence (not the chunk alone)
+        // because some regexes need trailing context (~게 requires
+        // \s+Hangul or punctuation after) that gets stripped when the
+        // chunk is widened to word boundary.
+        //
+        // Skipped for contractable patterns where the label contains
+        // Hangul jamo (ㄴ ㄹ ㅂ ㅁ) — those don't surface as literal
+        // characters; the jongseong stays inside its compound syllable.
+        var labelHasJamo = /[ㄱ-㆏]/.test(item.label || '');
+        if (!labelHasJamo && _sentDetectedLabels) {
+          var labelCore = String(item.label).replace(/[~\s()/.\-]/g, '');
+          var foundInSent = _sentDetectedLabels.some(function(detectedCore) {
+            // Substring match either direction handles "~기 (nominalizer)"
+            // vs "~기 시작하다", "~중 하나 (one of)" vs "~중 하나" etc.
+            return (detectedCore && labelCore.indexOf(detectedCore) >= 0) ||
+                   (labelCore && detectedCore.indexOf(labelCore) >= 0);
+          });
+          if (!foundInSent) return false;
+        }
       }
       return true;
+    }
+    // Pre-compute the sentence's detected pattern labels ONCE so each
+    // item check above can membership-test cheaply. _sent is the
+    // widened sentence text already validated above.
+    var _sentDetectedLabels = null;
+    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.detect === 'function' && _sent) {
+      try {
+        _sentDetectedLabels = window.KH_GRAMMAR.detect(_sent).map(function(h) {
+          return String(h.label).replace(/[~\s()/.\-]/g, '');
+        });
+      } catch (_) { _sentDetectedLabels = null; }
     }
     _analysisItems.forEach(function(item) {
       if (!item || !item.label) return;

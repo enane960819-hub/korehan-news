@@ -248,7 +248,7 @@
         var m = t.match(/([가-힣])기\s*(가|를|에|로|보다|쉽|어렵|좋|싫)/);
         if (!m) return '';
         var prev = m[1];
-        var NOUN_KI_STARTERS = '모일시향학인단식자토사정장무부호용연';
+        var NOUN_KI_STARTERS = '모일시향학인단식자토사정장무부호용연세야분후초위공동우만환임';
         if (NOUN_KI_STARTERS.indexOf(prev) >= 0) return '';
         return m[0];
       }, label: '~기 (nominalizer)', hint: 'verbal noun. <stem> + 기 used as noun' },
