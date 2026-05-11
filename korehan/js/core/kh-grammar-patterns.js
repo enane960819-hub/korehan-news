@@ -235,7 +235,23 @@
     { re: /[가-힣]는\s*것(?=[^가-힣]|$)/, label: '~는 것 (the thing of V-ing)', hint: 'verbal nominalizer (present). makes verb a noun phrase' },
     { re: /[가-힣]ㄴ\s*것(?=[^가-힣]|$)|[가-힣]은\s*것(?=[^가-힣]|$)/, label: '~ㄴ/은 것 (the thing V-ed)', hint: 'past verbal noun phrase' },
     { re: /[가-힣](ㄴ|는|을)\s*것\s*같(다|아|네|군)/, label: '~ㄴ/는/을 것 같다 (seems)', hint: 'conjecture. "seems like"' },
-    { re: /[가-힣]기\s*(가|를|에|로|보다|쉽|어렵|좋|싫)/, label: '~기 (nominalizer)', hint: 'verbal noun. <stem> + 기 used as noun' },
+    { _check: function(t) {
+        // ~기 nominalizer is indistinguishable from noun-ending 기 by
+        // regex alone — both surface as "X기 + particle". Common
+        // single-syllable nouns that end in 기 (모기 mosquito, 일기
+        // diary, 시기 timing, 향기 scent, 학기 semester, 인기
+        // popularity, 자기 oneself, 잡기 grasping, 무기 weapon, etc.)
+        // were trigger-happy false-positive carriers. Blacklist those
+        // 1-syllable starters; legitimate verb-기 forms (먹기, 가기,
+        // 하기, 살기) still match because their starter isn't in the
+        // blacklist.
+        var m = t.match(/([가-힣])기\s*(가|를|에|로|보다|쉽|어렵|좋|싫)/);
+        if (!m) return '';
+        var prev = m[1];
+        var NOUN_KI_STARTERS = '모일시향학인단식자토사정장무부호용연';
+        if (NOUN_KI_STARTERS.indexOf(prev) >= 0) return '';
+        return m[0];
+      }, label: '~기 (nominalizer)', hint: 'verbal noun. <stem> + 기 used as noun' },
 
     // ── Common fixed expressions ────────────────────────────────
     { re: /에\s*따르면(?=[^가-힣]|$)/, label: '~에 따르면 (according to)', hint: 'evidential. "according to"' },
