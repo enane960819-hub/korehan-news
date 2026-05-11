@@ -95,7 +95,16 @@ Deno.serve(async (req) => {
       let query = sb.from(table)
 
       if (method === 'select') {
-        query = query.select(params.columns || '*')
+        // count + head must be passed to the FIRST .select() call.
+        // Supabase JS v2 doesn't let you re-apply them via a second
+        // .select() — the second call replaces the first and (in
+        // some versions) silently drops the options. Building the
+        // options object up front keeps {count, head} attached to
+        // the only select() invocation.
+        const selectOpts: any = {}
+        if (params.count) selectOpts.count = 'exact'
+        if (params.head) selectOpts.head = true
+        query = query.select(params.columns || '*', selectOpts)
         query = applyFilters(query, params)
         const result = await query
         return json(result, result.error ? 400 : 200, cors)
@@ -208,6 +217,7 @@ function applyFilters(query: any, params: any) {
   if (params.gte) params.gte.forEach((f: any) => { query = query.gte(f.col, f.val) })
   if (params.lte) params.lte.forEach((f: any) => { query = query.lte(f.col, f.val) })
   if (params.like) params.like.forEach((f: any) => { query = query.like(f.col, f.val) })
+  if (params.ilike) params.ilike.forEach((f: any) => { query = query.ilike(f.col, f.val) })
   if (params.is) params.is.forEach((f: any) => { query = query.is(f.col, f.val) })
   if (params.not) params.not.forEach((f: any) => { query = query.not(f.col, f.op || 'is', f.val) })
   if (params.in) params.in.forEach((f: any) => { query = query.in(f.col, f.val) })
@@ -216,7 +226,10 @@ function applyFilters(query: any, params: any) {
   if (params.range) query = query.range(params.range.from, params.range.to)
   if (params.maybeSingle) query = query.maybeSingle()
   if (params.single) query = query.single()
-  if (params.count) query = query.select('*', { count: 'exact', head: true })
+  // count + head are NOT applied here — they're set in the FIRST
+  // select() call up in the 'select' method handler. Re-applying via
+  // a second select() would override the first and drop the
+  // user's column list. See comment above the select case.
   return query
 }
 

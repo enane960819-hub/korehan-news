@@ -887,6 +887,7 @@ function _createAdminProxy() {
   QueryBuilder.prototype.gte = function(col, val) { return this._addFilter('gte', col, val); };
   QueryBuilder.prototype.lte = function(col, val) { return this._addFilter('lte', col, val); };
   QueryBuilder.prototype.like = function(col, val) { return this._addFilter('like', col, val); };
+  QueryBuilder.prototype.ilike = function(col, val) { return this._addFilter('ilike', col, val); };
   QueryBuilder.prototype.is = function(col, val) { return this._addFilter('is', col, val); };
   QueryBuilder.prototype.not = function(col, op, val) {
     if (!this._params.not) this._params.not = [];
