@@ -118,7 +118,7 @@
     // dictionary→surface chain so enforce-injected entries don't show up as
     // a bare chunk translation ("easily") — that's the bug class the AI keeps
     // hitting on its own.
-    { re: /[가-힣]게(?=\s+[가-힣]|[.,!?])/, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly). NEVER write exp as just the English meaning of the chunk — explain the morpheme + show the dictionary→surface chain.' },
+    { re: /[가-힣]게(?=\s+[가-힣]|[.,!?])/, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly).' },
 
     // ── Derivational suffixes (sibling family of ~게) ───────────
     // Same exp-policy as ~게: explain the morpheme role and show a
@@ -668,15 +668,69 @@
     return out;
   }
 
+  // Extend a raw regex match outward to the nearest word boundary so
+  // the chunk shown to the learner is the whole readable word, not a
+  // 2-syllable suffix. e.g. for "이렇게" against /[가-힣]게(?=...)/,
+  // the raw match is "렇게"; this widens to "이렇게". For "대도시에서"
+  // against /[가-힣]에서/, raw is "시에서"; widens to "대도시에서".
+  //
+  // Word boundary = whitespace, punctuation, start/end of string. We
+  // don't extend rightward into the next word because most patterns
+  // already include their full trailing morpheme in the match (the
+  // truncation always happens on the leading side).
+  function _widenToWord(text, matchIdx, matchLen) {
+    if (matchIdx == null || matchIdx < 0) return null;
+    // Some regexes (e.g. [가-힣]로\s) include trailing whitespace in
+    // their match. Pull the match-end inward past any trailing space /
+    // punctuation BEFORE widening rightward, otherwise we'd skip
+    // straight over the boundary and grab the next word too.
+    var rawEnd = matchIdx + matchLen;
+    while (rawEnd > matchIdx && /\s|[.,!?;:]/.test(text.charAt(rawEnd - 1))) rawEnd--;
+    // Similarly trim leading whitespace inside the match.
+    var rawStart = matchIdx;
+    while (rawStart < rawEnd && /\s|[.,!?;:]/.test(text.charAt(rawStart))) rawStart++;
+
+    // Walk backward from rawStart while we're still inside a Hangul
+    // word: stop on whitespace or punctuation. The Hangul block alone
+    // is 0xAC00-0xD7A3; we also accept other Korean Jamo characters
+    // that appear in canonical morpheme strings.
+    var i = rawStart;
+    while (i > 0) {
+      var c = text.charCodeAt(i - 1);
+      var isHangul = (c >= 0xAC00 && c <= 0xD7A3) || (c >= 0x3131 && c <= 0x318E);
+      if (!isHangul) break;
+      i--;
+    }
+    // Extend rightward across trailing Hangul up to next boundary —
+    // catches cases where the regex stopped mid-word (e.g. "면서"
+    // match should grow to "들어가면서").
+    var j = rawEnd;
+    while (j < text.length) {
+      var c2 = text.charCodeAt(j);
+      var isHangul2 = (c2 >= 0xAC00 && c2 <= 0xD7A3) || (c2 >= 0x3131 && c2 <= 0x318E);
+      if (!isHangul2) break;
+      j++;
+    }
+    if (i === matchIdx && j === matchIdx + matchLen) return null;
+    return text.slice(i, j);
+  }
+
   // Find the actual chunk in `text` that triggered pattern `p`. Used by
   // enforce to produce a non-empty example_in_sentence — without it the
   // article renderer's filter (sentNoWs.indexOf(ex) < 0) drops the entry,
   // which made every enforce-injected pattern silently invisible to users.
+  // After getting the raw regex match, widen it outward to the nearest
+  // word boundary so users see "이렇게" instead of "렇게" and
+  // "대도시에서" instead of "시에서".
   function _extractExample(text, p) {
     if (!text) return '';
     if (p.re) {
       var m = text.match(p.re);
-      if (m && m[0]) return m[0];
+      if (m && m[0]) {
+        var idx = text.indexOf(m[0]);
+        var wider = _widenToWord(text, idx, m[0].length);
+        return wider || m[0];
+      }
       var stripped = text.replace(/\s+/g, '');
       m = stripped.match(p.re);
       if (m && m[0]) return m[0];
@@ -685,7 +739,14 @@
       // otherwise. Use the chunk directly so example_in_sentence reflects
       // the actual surface form that triggered detection.
       var chunk = p._check(text);
-      if (typeof chunk === 'string' && chunk) return chunk;
+      if (typeof chunk === 'string' && chunk) {
+        var idx2 = text.indexOf(chunk);
+        if (idx2 >= 0) {
+          var wider2 = _widenToWord(text, idx2, chunk.length);
+          if (wider2) return wider2;
+        }
+        return chunk;
+      }
       var stripped2 = text.replace(/\s+/g, '');
       chunk = p._check(stripped2);
       if (typeof chunk === 'string' && chunk) return chunk;
