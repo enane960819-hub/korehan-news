@@ -181,7 +181,7 @@ function ensureKhGrammar() {
       return;
     }
     var script = document.createElement('script');
-    script.src = 'js/core/kh-grammar-patterns.js?v=20260511h';
+    script.src = 'js/core/kh-grammar-patterns.js?v=20260511j';
     script.defer = true;
     script.setAttribute('data-kh-grammar', '1');
     script.onload = function() { resolve(window.KH_GRAMMAR); };
