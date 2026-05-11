@@ -181,7 +181,7 @@ function ensureKhGrammar() {
       return;
     }
     var script = document.createElement('script');
-    script.src = 'js/core/kh-grammar-patterns.js?v=20260511k';
+    script.src = 'js/core/kh-grammar-patterns.js?v=20260511l';
     script.defer = true;
     script.setAttribute('data-kh-grammar', '1');
     script.onload = function() { resolve(window.KH_GRAMMAR); };
@@ -3611,7 +3611,8 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
       + '    Common hallucinations to avoid:\n'
       + '    · Citing a noun phrase like "새로운 웰니스 트렌드" as the example for ~(으)로서 — the chunk has no 로서.\n'
       + '    · Calling "X예요 / X이에요" plain ~ㄴ다 — that\'s polite copula.\n'
-      + '    · Naming an idiom that isn\'t actually used in the sentence.\n';
+      + '    · Naming an idiom that isn\'t actually used in the sentence.\n'
+      + '- VOCAB ↔ ANALYSIS CROSS-REFERENCE: every content word that appears inside an analysis chunk MUST also appear as a vocab[] entry (in dictionary form). If your analysis surfaces "비교해 보면" as the chunk for ~아/어 보다, then 비교하다 must be in vocab[] for that sentence. Particles (을/를/이/가/은/는/의), the pattern morphemes themselves (~게, ~로, 중 하나), and the most basic verbs (있다 / 하다 / 되다 / 이다) are exempt — only nouns, adjectives, and content verbs need the vocab row. Skip the cross-ref only if the word is already in a prior sentence\'s vocab[] for this article.\n';
     var prompt =
         'You are a Korean tutor analysing each sentence of an article for a ' + _lvlLabel + ' learner.\n\n'
       + 'Sentences (numbered, in order):\n' + payload + '\n\n'
@@ -4434,7 +4435,8 @@ async function analyzeSentence(idx, el) {
       + '    Hallucinations to avoid:\n'
       + '    · Citing a noun phrase like "새로운 웰니스 트렌드" as the example for ~(으)로서.\n'
       + '    · Calling "X예요 / X이에요" plain ~ㄴ다 — that\'s polite copula.\n'
-      + '    · Naming an idiom that isn\'t actually in the sentence.\n';
+      + '    · Naming an idiom that isn\'t actually in the sentence.\n'
+      + '- VOCAB ↔ ANALYSIS CROSS-REFERENCE: every content word that appears inside an analysis chunk MUST also appear as a vocab[] entry (dictionary form). If your analysis surfaces "비교해 보면" as the chunk for ~아/어 보다, then 비교하다 must be in vocab[]. Particles (을/를/이/가/은/는/의), the pattern morphemes themselves (~게, ~로, 중 하나), and the most basic verbs (있다 / 하다 / 되다 / 이다) are exempt — only nouns, adjectives, and content verbs need a vocab row.\n';
     var prompt =
         'You are a Korean tutor analysing a single sentence for a ' + _levelLabel + ' learner.\n\n'
       + 'Sentence: ' + sentenceText + '\n\n'

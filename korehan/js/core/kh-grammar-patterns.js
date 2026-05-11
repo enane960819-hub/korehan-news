@@ -813,12 +813,55 @@
     }).join('\n');
   }
 
+  // Revised Romanization of Korean — syllable-by-syllable converter
+  // for filling in missing word_rom / reading columns without an AI
+  // call. Hyphenated between syllables to match the existing admin
+  // autofill format (e.g. 한국어 → "han-guk-eo"). Does NOT apply
+  // batchim assimilation rules (신라 → "sin-ra" instead of "sil-la")
+  // because for hover-tooltip use the literal syllable-by-syllable
+  // form is more pedagogically useful (learners can map each hangul
+  // syllable to its sound) and correctly-assimilated form requires a
+  // much larger ruleset.
+  var _ROM_INITIAL = ['g','kk','n','d','tt','r','m','b','pp','s','ss','','j','jj','ch','k','t','p','h'];
+  var _ROM_MEDIAL  = ['a','ae','ya','yae','eo','e','yeo','ye','o','wa','wae','oe','yo','u','wo','we','wi','yu','eu','ui','i'];
+  // Final consonants: index 0 = no batchim, 1-27 = standard 종성 set.
+  // Cluster batchims (ㄳ ㄵ ㄶ ㄺ ㄻ ㄼ ㄽ ㄾ ㄿ ㅀ ㅄ) reduce to their
+  // pronounced final per the simplified-coda rule.
+  var _ROM_FINAL = ['','k','k','k','n','n','n','t','l','k','m','l','l','l','p','l','m','p','p','t','t','ng','t','t','k','t','p','h'];
+  function romanize(text) {
+    if (!text) return '';
+    var out = [];
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charCodeAt(i);
+      if (c >= 0xAC00 && c <= 0xD7A3) {
+        var idx = c - 0xAC00;
+        var ini = Math.floor(idx / 588);
+        var med = Math.floor((idx % 588) / 28);
+        var fin = idx % 28;
+        out.push(_ROM_INITIAL[ini] + _ROM_MEDIAL[med] + _ROM_FINAL[fin]);
+      } else if (/\s/.test(text.charAt(i))) {
+        if (out.length && out[out.length - 1] !== ' ') out.push(' ');
+      } else {
+        // Pass-through ASCII / punctuation / other non-Hangul
+        out.push(text.charAt(i));
+      }
+    }
+    // Join syllables with hyphens, but reset between whitespace-separated
+    // words so "한국 사람" → "han-guk sa-ram" not "han-guk- -sa-ram".
+    return out.reduce(function(acc, syl) {
+      if (syl === ' ') return acc + ' ';
+      if (!acc || acc.charAt(acc.length - 1) === ' ') return acc + syl;
+      return acc + '-' + syl;
+    }, '');
+  }
+
   window.KH_GRAMMAR = {
     detect: detect,
     detectForLevel: detectForLevel,
     enforceDetectedPatterns: enforceDetectedPatterns,
     formatPromptList: formatPromptList,
     formatFullCatalog: formatFullCatalog,
+    romanize: romanize,
     _PATTERNS: PATTERNS,  // exposed for testing only
   };
 })();

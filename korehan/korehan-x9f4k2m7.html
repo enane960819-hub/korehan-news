@@ -301,7 +301,7 @@ body.sb-open .sb-backdrop{display:block}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="learning_hub_vocab_data.js"></script>
 <script src="js/kh-vocab-prompt.js?v=20260420z"></script>
-<script src="js/core/kh-grammar-patterns.js?v=20260511k"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260511l"></script>
 </head>
 <body>
 
@@ -5164,7 +5164,8 @@ async function runAutoGenerate(){
                 + '    b. ~았/었어요가 다른 패턴(~지 않다, ~고 있다, ~기 시작하다, ~게 되다 등)과 stack되는 경우 — 둘 다 별도 항목. 예: 보이지 않았어요 = ~지 않다 + ~았어요 두 entry.\n'
                 + '    c. 단순 ~았/었어요만 있을 때는 스킵 OK.'
 ) + '\n'
-        + '- 만들지 말 것: 본문에 없는 패턴 절대 금지. label에 있는 markers가 sentence text에 안 보이면 그 항목 자체를 빼세요.\n\n'
+        + '- 만들지 말 것: 본문에 없는 패턴 절대 금지. label에 있는 markers가 sentence text에 안 보이면 그 항목 자체를 빼세요.\n'
+        + '- VOCAB ↔ ANALYSIS 교차 보장: analysis chunk 안의 모든 content word(명사/형용사/내용 동사)는 같은 문장 vocab[]에도 사전형으로 등록해야 함. 예: analysis가 "비교해 보면" chunk를 ~아/어 보다로 surface하면 vocab에 "비교하다" 필수. 면제: 조사 (을/를/이/가/은/는/의), 패턴 morpheme 자체 (~게, ~로, 중 하나), 가장 기본 동사 (있다/하다/되다/이다). 학습자가 모르는 단어가 분석에는 나오는데 vocab에 없으면 학습자는 어디서도 뜻을 못 봄.\n\n'
         + '[출력 — JSON ONLY, no preamble, no code fences]\n'
         + '{\n'
         + '  "title": "...",\n'
@@ -16477,6 +16478,7 @@ async function goVocabSanity() {
     + '</div>'
     + '<button class="btn btn-b" onclick="vsStartScan()" id="vs-start-btn">▶ Start Scan</button>'
     + '<button class="btn btn-r" onclick="vsStopScan()" id="vs-stop-btn" style="display:none">■ Stop</button>'
+    + '<button class="btn btn-g" onclick="vsFillRomanization()" id="vs-fill-rom-btn" title="로마자가 NULL/빈 row만 룰 기반으로 채움. AI 호출 없음, 무료, 즉시.">📝 로마자 채우기</button>'
     + '<span id="vs-progress" style="font-size:12px;color:#555"></span>'
     + '</div>'
     + '<div id="vs-cache-stats" style="margin-top:8px;font-size:11px;color:#64748b"></div>'
@@ -16864,6 +16866,72 @@ function _vsCacheMarkOK(ko, newCurrent) {
   var key = _vsCacheRowKey(_vsScanState.table, ko);
   cache[key] = { verdict: 'OK', suggested: '', current: newCurrent, checked_at: Date.now() };
   _vsCacheSave(cache);
+}
+
+// Rule-based romanization backfill — fills word_rom (vocabulary_bank) or
+// reading (hover_vocab_master) for every row where it's NULL/empty.
+// Uses KH_GRAMMAR.romanize (Revised Romanization, syllable-by-syllable
+// with hyphens). No AI call → free, instant, deterministic. Won't
+// touch rows that already have a rom value (admin / AI work preserved).
+async function vsFillRomanization() {
+  if (!window.KH_GRAMMAR || typeof window.KH_GRAMMAR.romanize !== 'function') {
+    toast('KH_GRAMMAR not loaded', true); return;
+  }
+  var table = document.getElementById('vs-table').value;
+  var romCol = table === 'hover_vocab_master' ? 'reading' : 'word_rom';
+  var btn = document.getElementById('vs-fill-rom-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Loading...';
+
+  var sb = getSb(); if (!sb) { btn.disabled = false; btn.textContent = '📝 로마자 채우기'; return; }
+  var rows = [];
+  var batchSize = 1000;
+  var from = 0;
+  while (true) {
+    var r = await sb.from(table).select('word_ko, ' + romCol).order('word_ko').range(from, from + batchSize - 1);
+    if (r.error) { toast('Load 실패: ' + r.error.message, true); btn.disabled = false; btn.textContent = '📝 로마자 채우기'; return; }
+    var batch = r.data || [];
+    rows = rows.concat(batch);
+    if (batch.length < batchSize) break;
+    from += batchSize;
+  }
+  // Filter to rows that need romanization
+  var missing = rows.filter(function(x) {
+    return x.word_ko && (!x[romCol] || !String(x[romCol]).trim());
+  });
+  if (!missing.length) {
+    toast('모든 row에 이미 로마자가 있음 (' + rows.length + ' rows scanned).');
+    btn.disabled = false; btn.textContent = '📝 로마자 채우기';
+    return;
+  }
+
+  if (!confirm(rows.length + '개 row 중 ' + missing.length + '개에 로마자 없음.\n\n룰 기반으로 한번에 채울까요? (AI 호출 없음, 무료, 즉시)')) {
+    btn.disabled = false; btn.textContent = '📝 로마자 채우기'; return;
+  }
+
+  btn.textContent = '⏳ Filling ' + missing.length + '...';
+  var ok = 0, fail = 0;
+  // Batch updates 50 at a time to avoid hammering the proxy with
+  // hundreds of individual UPDATE round-trips. Supabase JS doesn't
+  // do bulk-by-key UPDATE in a single call, but the admin-api proxy
+  // is fast enough to handle 50/sec.
+  for (var i = 0; i < missing.length; i++) {
+    var row = missing[i];
+    var rom = window.KH_GRAMMAR.romanize(row.word_ko);
+    if (!rom || rom === row.word_ko) { fail++; continue; }
+    try {
+      var update = {}; update[romCol] = rom;
+      var ur = await sb.from(table).update(update).eq('word_ko', row.word_ko);
+      if (ur.error) { fail++; console.warn('[vs] rom update error', row.word_ko, ur.error); }
+      else ok++;
+    } catch (e) { fail++; console.warn('[vs] rom update exception', row.word_ko, e); }
+    if (i % 25 === 24) {
+      btn.textContent = '⏳ ' + (i + 1) + ' / ' + missing.length;
+    }
+  }
+  toast('로마자 채움 완료: ' + ok + ' 성공 / ' + fail + ' 실패');
+  btn.disabled = false; btn.textContent = '📝 로마자 채우기';
+  vsRefreshCacheStats();
 }
 
 async function vsApplyOne(idx) {
