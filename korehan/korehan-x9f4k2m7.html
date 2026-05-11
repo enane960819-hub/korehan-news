@@ -5209,7 +5209,13 @@ async function runAutoGenerate(){
           + 'CRITICAL guardrails for ANALYSIS:\n'
           + '  - Only include a pattern if its marker actually appears in the sentence (the post-process '
           + 'enforce layer verifies this and drops items whose example_in_sentence is not a literal '
-          + 'substring). When in doubt, omit.\n\n'
+          + 'substring). When in doubt, omit.\n'
+          + '  - For type="expression" / "idiom" (where regex doesn\'t apply and you are the judge): '
+          + 'only surface a phrase if it is CENTRAL to that specific sentence\'s meaning — the learner '
+          + 'could not paraphrase the sentence without grasping it. SKIP tangential / generic fillers '
+          + '(정말, 그런, 새로운, 이런 식으로, …), phrases the learner already knows at this level, and '
+          + 'semantic duplicates of a grammar entry already in the same analysis array (e.g. don\'t '
+          + 'list both ~다고 하다 AND ~다고 해요 — pick the canonical one).\n\n'
           + window.KH_GRAMMAR.formatFullCatalog()
         : '';
       var fullPrompt = prompt + _khCatalog;
