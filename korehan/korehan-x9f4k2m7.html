@@ -597,6 +597,8 @@ const CATEGORIES = [
   { key:'국제',    icon:'🌍', label:'World',       topics:'international affairs, geopolitics, diplomacy, global economy, foreign relations' },
   { key:'문화',    icon:'🎭', label:'Culture',     topics:'Korean traditional culture, arts, museums, history, literature, lifestyle and identity' },
   { key:'연예',    icon:'🎬', label:'Entertainment', topics:'celebrities, K-drama, movies, variety shows, TV programs, actor news, broadcasting industry' },
+  { key:'해외연예',icon:'🌟', label:'Overseas Entertainment', topics:'Hollywood celebrities, international actors, foreign film and TV, global music, overseas pop culture, award shows' },
+  { key:'crime',   icon:'🔍', label:'True Crime',  topics:'true crime cases, criminal investigations, court trials, cold cases, notorious crimes, forensic stories' },
   { key:'K-pop',   icon:'🎤', label:'K-pop',       topics:'idol comebacks, chart rankings, fan culture, concerts, agencies, K-pop industry' },
   { key:'IT과학',  icon:'🔬', label:'Tech & Science', topics:'technology, AI, semiconductors, electric vehicles, space, robotics, scientific research' },
   { key:'nature',  icon:'🌿', label:'Nature',      topics:'wildlife, animals, ecosystems, climate, environment, national parks, plants' },
@@ -5106,12 +5108,13 @@ async function runAutoGenerate(){
         + '    b. 사진/영상의 시각적 묘사 (당신은 사진을 못 봅니다). 원본 텍스트에 "안고 있다", "웃고 있다", "손을 잡았다" 같은 동작이 명시 안 되어 있으면 절대 쓰지 마세요. WRONG: 원본이 "아빠와 아들 29년 후 같은 사진"이라고만 하는데 "아버지가 아들을 안고 있는 모습이에요"라고 쓰기.\n'
         + '    c. 편집자 감상/감정/해석 — "사랑이 변하지 않았어요", "정말 특별해요", "마음이 따뜻해져요" 같은 주관적 표현 금지. 원본이 사실만 전달하면 본문도 사실만.\n'
         + '    d. 인과관계 추측 — 원본이 "X가 일어났다"라고만 하면 "Y 때문에 X가 일어났다"로 확장 금지.\n'
-        + '- **분량 4~6단락 (단락당 2~3문장) — 학습용으로 충분한 본문이 되도록 채울 것**.\n'
+        + '- **분량 — 원본 정보량에 비례해 충실히 풀어 쓸 것. 절대 중간에 자르지 마세요.**\n'
+        + '    원본이 풍부하면 단락 수에 상한 없음 — 원본에 있는 사실/맥락/시간 순서/인과 구조를 모두 풀어 써서 끝까지 마무리.\n'
+        + '    원본이 빈약해도 최소 4단락은 사실 안에서 채워 자연스럽게 마무리.\n'
         + '    환각 없이 분량 채우는 방법:\n'
         + '      1. 원본 사실을 자연스러운 한국어 문장으로 풀어 다시 쓰기\n'
         + '      2. 원본의 시간 순서/인과 구조를 명확히 풀어 쓰기 (단, 원본에 없는 인과 추가 X)\n'
-        + '    금지: 괄호로 영어 원어나 일반 지식 보충하기, 원본에 없는 디테일/감상/장면 묘사 추가.\n'
-        + '    원본이 빈약하면 4단락이라도 사실 안에서 충실히 풀고 끝내세요. 2-3단락만 내고 끝내는 건 학습용으로 부적절.\n'
+        + '    금지: 괄호로 영어 원어나 일반 지식 보충하기, 원본에 없는 디테일/감상/장면 묘사 추가, **중간에 본문 끊고 끝내기 (학습자 이탈 직격타)**.\n'
         + '- 클리셰 마무리 금지 — "전문가들은 ~", "사회적 관심을 모으고 있어요", "앞으로의 귀추가 주목됩니다", "많은 이들의 ~" 등 정형화된 표현으로 단락을 끝내지 마세요.\n\n'
         + '[섹션: ' + secKey + ']\n'
         + '[난이도: ' + diffInfo.ko + ']\n'
@@ -5122,7 +5125,7 @@ async function runAutoGenerate(){
         + '- 정중체 (~했어요, ~입니다, ~예요)\n'
         + '- **괄호 보충 설명 금지**: "기준금리(돈을 빌릴 때 ...)", "인공지능(AI)" 같이 원어/일반-지식 괄호 추가하지 마세요. 본문은 일반 한국어 뉴스처럼 깔끔하게. 단어 의미 설명은 vocab 패널이 담당함.\n'
         + '- **한자 절대 금지**. 完全變態 X — 그냥 "완전변태"만.\n'
-        + '- **4~6단락, 단락당 2~3문장** (학습 분량 기준). 위 [지시사항]의 환각 금지 룰 안에서 충실히 풀어 채울 것.\n'
+        + '- **분량 상한 없음** — 원본이 길면 본문도 길게. 위 [지시사항]의 환각 금지 룰 안에서 끝까지 풀어 쓸 것. 중간에 자르지 말 것.\n'
         + '- 제목: 15~25자\n\n'
         + '[중요표현]\n'
         + '- 본문에 등장한 **고정 표현** 0~3개. 적합 없으면 [] (가장 흔한 결과).\n'
@@ -5216,10 +5219,16 @@ async function runAutoGenerate(){
       var fullPrompt = prompt + _khCatalog + _khLabels;
 
       _autoGenSetItemStatus(si, '⏳ 기사 + 분석 생성 중…');
+      // max_tokens 8000 → 16000: long source articles + full per-sentence
+      // analysis routinely hit the cap and produced truncated JSON. Per
+      // user feedback: "기사 길어지더라도 중간에 짜르면 유저 이탈 직격원인이다.
+      // 자르지마". Raising the cap is the only way to honour that on long
+      // sources; cost rises linearly with output length, which is fine — we
+      // explicitly want long, complete articles.
       const res = await callClaude({
         feature: 'generate-article-combined',
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
+        max_tokens: 16000,
         messages: [{ role:'user', content: fullPrompt }]
       });
 
@@ -8684,7 +8693,7 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     + '- **괄호 보충 설명 금지**: "기준금리(...)", "인공지능(AI)" 같은 원어/일반-지식 괄호 추가 X. 단어 의미는 vocab 패널이 담당.\n'
     + '- **한자 절대 금지**. 한글만 사용.\n'
     + (hasSource
-        ? '- 길이는 원본 정보량에 맞춰. 원본이 짧으면 1~2 단락, 풍부하면 4~6 단락. 채우기용 늘리지 말 것.\n'
+        ? '- 길이는 원본 정보량에 비례. 원본이 짧으면 1~2 단락, 풍부하면 단락 수 상한 없이 끝까지 풀어 쓸 것. **절대 중간에 자르지 말 것 (학습자 이탈 직격타)**. 채우기용 늘리지는 말되, 원본 사실 안에서 충실히.\n'
         : '- 원본 요약 없음 — 제목만으로 1~2 단락 짧게. 모르는 사실 만들지 말 것. "현재 자세한 내용은 알려지지 않았어요" 같은 솔직한 마무리 OK.\n')
     + '- 제목: 15~25자.\n\n'
     + '[중요표현]\n'
@@ -8725,10 +8734,13 @@ async function _bulkGenerateOneArticle(headline, section, levelKey) {
     + '  "sentences": [{"text":"...","translation":"...","vocab":[{"ko","en","note"}],"analysis":[{"type","label","exp","example_in_sentence"}]}]\n'
     + '}';
 
+  // max_tokens raised 8000 → 16000 to match runAutoGenerate. Long source
+  // articles otherwise hit the cap mid-JSON, truncating the body or the
+  // per-sentence analysis tail. User-facing rule: never mid-cut.
   var res = await callClaude({
     feature: 'bulk-seed-article-combined',
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 8000,
+    max_tokens: 16000,
     messages: [{ role:'user', content: prompt }]
   });
   var text = (res && res.content && res.content[0] && res.content[0].text) || '';

@@ -3322,8 +3322,12 @@ function renderArticlePage() {
       markArticleRead(articleId, articleTitle, articleSection, articleLevel);
       // Start the reading-time timer — stops on close/navigate/visibility.
       _startArticleReadTimer(articleId, a.body || '');
-      // 캐시 없는 기사: 첫 방문 유저가 자동으로 전체 캐시 생성 (공유 캐시)
-      _bgPregenArticleCache(a);
+      // Admin pre-bakes the article cache via runAutoGenerate before
+      // publishing; user-side _bgPregenArticleCache is intentionally
+      // NOT called here. Owner directive: "fallback할 상황을 안만들면
+      // 되는거 아닌가" — eliminate fallback need entirely, don't make
+      // it cheaper. The function is left in the file (kept as an
+      // admin-debug utility) but no normal user flow triggers it.
     } else if (attempts < 20) {
       setTimeout(waitAndUpdate, 300);
     }
@@ -4467,23 +4471,11 @@ async function analyzeSentence(idx, el) {
         window._khSentAnalyzeCache[cacheKey] = hit;
         try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
         _khRenderSentPanel(panel, hit, null, sentenceText);
-        // If the article is stale, kick off the background rebuild
-        // and return. The cache update will land for the next tap /
-        // refresh; no need to keep "분석 중…" on screen waiting for
-        // it.
-        if (_sharedCacheStale && articleId) {
-          window._khArtFullAnalyzePromise = window._khArtFullAnalyzePromise || {};
-          if (!window._khArtFullAnalyzePromise[articleId]) {
-            try {
-              var _bulkBg = _khTriggerFullArticleAnalyze(articleId, _articleLevel);
-              if (_bulkBg && typeof _bulkBg.then === 'function') {
-                window._khArtFullAnalyzePromise[articleId] = _bulkBg.finally(function() {
-                  delete window._khArtFullAnalyzePromise[articleId];
-                });
-              }
-            } catch(_) {}
-          }
-        }
+        // Stale-cache auto-rebuild removed — owner directive is to
+        // eliminate user-side AI fallback entirely (the bulk path
+        // burned tokens silently on every reader whenever the
+        // heuristic flagged drift). Admin re-bakes via the AI Cache
+        // Management 🔁 재분석 button when needed.
         return;
       }
     }
@@ -4503,193 +4495,19 @@ async function analyzeSentence(idx, el) {
     return;
   }
 
-  // No shared cache for this article yet — first reader to tap a
-  // sentence triggers a background pass over EVERY sentence and
-  // writes the result to article_cache.translation. We capture the
-  // bulk promise globally so any *subsequent* tap on this article
-  // (still mid-bulk) can await it instead of paying for a second
-  // single-sentence call. That fixes the user-reported "every
-  // sentence shows '분석 중' for 5+ seconds even though I tapped
-  // the first one a minute ago" — bulk WAS running, but each new
-  // tap was kicking off its own paid live call alongside it.
-  // Re-trigger when existing cache is stale at low level
-  // (≥30% empty grammar). Per-tab lock prevents multiple bulks.
-  window._khArtFullAnalyzePromise = window._khArtFullAnalyzePromise || {};
-  var _needsBulk = !sharedCache || !sharedCache.sentences || !sharedCache.sentences.length || _sharedCacheStale;
-  if (articleId && _needsBulk && !window._khArtFullAnalyzePromise[articleId]) {
-    try {
-      var _bulkP = _khTriggerFullArticleAnalyze(articleId, _articleLevel);
-      if (_bulkP && typeof _bulkP.then === 'function') {
-        window._khArtFullAnalyzePromise[articleId] = _bulkP.finally(function() {
-          // Clear so a future stale-cache detection can re-trigger.
-          delete window._khArtFullAnalyzePromise[articleId];
-        });
-      }
-    } catch(_) {}
-  }
-
-  // We deliberately DO NOT await the bulk promise here anymore.
-  // Earlier the await blocked every per-sentence tap until the
-  // article-wide bulk Claude call returned (with a 25 s ceiling).
-  // For sentences whose existing cache row was empty (the bulk
-  // pre-gen only filled some slots, the rest were still null) the
-  // user kept seeing "분석 중…" stuck for 25 s every time they
-  // tapped a fresh sentence — exactly the report
-  //   "분석중 뜨고 새로운 문장분석 떠도 그 다음문장 클릭하면
-  //    다시 또 분석중 걸린다고."
-  // Bulk still runs in the background (block above triggered it),
-  // and future taps on this article will pick up its result via
-  // the cache-load path. For THIS tap we just go straight to the
-  // live single-sentence call — paid (one Haiku call, ~1-2 s) but
-  // bounded and predictable. No more 25 s stalls.
-
-  if (typeof callClaude !== 'function') {
-    panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
-      + '<div class="asp-error">분석 기능을 불러올 수 없습니다.</div>';
-    return;
-  }
-
-  try {
-    // Read article level so the prompt can calibrate which patterns
-    // to teach. Default to Sprout (Beginner) if unknown so we err on
-    // the side of explaining more, not less.
-    var _articleLevel = (window._currentArticle && window._currentArticle.level) || 'Beginner';
-    var _levelLabel = ({
-      Starter:      'Seed (TOPIK 1, complete beginner)',
-      Beginner:     'Sprout (TOPIK 2, beginner)',
-      Intermediate: 'Tree (TOPIK 3-4, intermediate)',
-      Advanced:     'Forest (TOPIK 5-6, advanced)',
-    })[_articleLevel] || 'Sprout (TOPIK 2, beginner)';
-    var _isLowLevel = (_articleLevel === 'Starter' || _articleLevel === 'Beginner');
-    // For Seed/Sprout learners we WANT the basics explained: object
-    // markers, simple negation, present continuous, etc. For Tree+
-    // we skip those because they're already known and noise.
-    var _vocabSkipRule = _isLowLevel
-      ? '- VOCAB: max 4 items. Include any content word the learner might not know (verbs, adjectives, nouns). Only skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone). 흔하다 / 보다 / 키우다 / 살다 / 먹다 are FAIR GAME at this level — explain them.\n'
-      : '- VOCAB: max 4 items. Skip beginner words (는/이/가/이다/있다/하다/되다…). The note must be FACTUAL — what the word means and how it\'s used. Do NOT invent metaphorical readings specific to this sentence; do NOT add example collocations that don\'t apply.\n';
-    // Same Analysis design as the bulk path. Single-sentence calls
-    // hit this when the bulk cache misses for one row, so the rules
-    // need to match exactly to avoid mixed-shape cache rows.
-    var _analysisRule =
-        '- ANALYSIS: be EXHAUSTIVE. Surface every grammar pattern, fixed expression, idiom, 사자성어, 관용구, and notable collocation in this sentence — even ones you think are "obvious". 8 worthy items → return 8.\n'
-      + '    MUST include when present (partial floor — surface anything else from TOPIK 2-6 grammar too):\n'
-      + '    · CONNECTIVES: ~에도 불구하고, ~기 때문에, ~기 위해(서) / ~을·를 위해, ~려고 / ~려면, ~(으)면서 (simultaneous action — "while / as"), ~다가, ~자마자, ~ㄴ/는데, ~지만/~으나, ~거나, ~면, ~아/어도 / ~더라도 / ~ㄹ지라도, ~았/었더라면, ~았/었더니, ~다 보면, ~다 보니(까), ~ㄴ/는 반면(에), ~ㄴ/는 만큼, ~ㄴ/는 데다(가), ~ㄴ/는 김에, ~ㄴ/는 결과, ~ㄴ 끝에, ~ㄴ/는커녕, ~을 뿐(만) 아니라, ~ㄹ/을수록, ~ㄴ/는 한, ~을 텐데, ~을 테니까, ~기에, ~며 / ~으며.\n'
-      + '    · AUXILIARIES: ~ㄹ/을 수 있다·없다, ~지 못하다, ~지 않다 / ~지 말다, ~게 되다, ~기 시작하다, ~기로 하다, ~ㄴ/은 적이 있다·없다, ~아/어 보다, ~아/어 주다, ~아/어 있다, ~고 있다, ~았/었어요 (incl. 봤·했·됐·갔), ~아/어 놓다·두다, ~아/어 버리다, ~아/어 가다·오다, ~아/어 내다, ~아/어 대다, ~게 하다·만들다, ~ㄹ/을 줄 알다·모르다, ~을 수밖에 없다, ~ㄹ 리가 없다, ~ㄹ 모양이다, ~ㄹ 것 같다, ~ㄹ까 하다, ~ㄹ까 봐, ~ㄹ 만하다, ~기 마련이다, ~기 십상이다, ~을 뻔하다, ~ㄴ/는 척하다, ~기는 하다, ~ㄹ 정도이다.\n'
-      + '    · MODIFIERS: ~ㄴ/은/는 + 명사, ~ㄹ/을 + 명사, ~던 / ~았/었던, ~ㄴ/은 채(로), ~ㄴ/은 후에·뒤에, ~기 전에, ~을 때(에), ~ㄴ/는 셈이다, ~ㄴ/는 편이다, ~ㄴ/는 듯하다, ~ㄴ/는 모양이다, ~다는 + 명사, ~ㄴ/는 점에서.\n'
-      + '    · REPORTED: ~다고/냐고/자고/라고 하다 (and polite forms ~다고 해요 / ~ㄴ다고 해요 / ~다고 했어요 / ~한대요 / ~한답니다 — surface whenever the sentence ends in any conjugation of 하다 attached to a quoted clause), ~다고 알려져 있어요, ~ㄴ다는 / ~는다는 / ~라는 + 명사, ~다네 / ~다더라 / ~다잖아, ~다고요? / ~라고요?, ~ㄹ 거라고 하다.\n'
-      + '    · PARTICLES: ~만, ~까지, ~부터, ~조차, ~밖에, ~마다, ~씩, ~이나, ~마저, ~처럼/같이, ~보다, ~에 비해, ~로서 (role), ~로써 (means), ~에 대해(서), ~에 의해(서), ~으로 인해(서), ~에 관한·관해(서), ~을 통해(서), ~을 따라, ~에 따라, ~을 비롯해(서).\n'
-      + '    · ENDERS: ~지(요), ~네(요), ~군요/구나, ~잖아(요), ~다니까(요), ~ㄹ게(요), ~ㄹ까(요), ~을걸(요), ~ㄴ걸, ~던가(요).\n'
-      + '    · FIXED EXPRESSIONS: 마음에 들다, 마음이 무겁다·가볍다, 마음에 걸리다, 마음이 놓이다, 시간이 없다, 시간 가는 줄 모르다, 정신을 차리다, 정신없다, 도움이 되다, 도움을 주다·받다, 관심을 가지다, 눈에 띄다, 눈을 감다·뜨다, 눈치가 빠르다, 손이 크다·가다, 발이 넓다, 발등에 불이 떨어지다, 입이 가볍다·무겁다, 귀가 얇다, 머리를 맞대다·식히다, 한 술 더 뜨다, 발 벗고 나서다, 등을 돌리다, 어깨가 무겁다, 콧대가 높다, 기가 차다, 가슴이 뭉클하다, 가슴에 새기다·와닿다, ~에 참여 / 참가하다, ~의 도움으로, ~을 둘러싸다, ~을 차지하다, ~에 영향을 미치다, ~을 거치다, ~을 무릅쓰다, …\n'
-      + '    · IDIOMS / 사자성어 / 관용구: 일거양득, 우물 안 개구리, 가는 말이 고와야 오는 말이 곱다, 백문이 불여일견, 작심삼일, 일석이조, 십시일반, 호박씨를 까다, 발 없는 말이 천 리 간다, etc.\n'
-      + '    Each item: {"type":"grammar|expression|idiom","label":"<canonical form>","exp":"<short English>","example_in_sentence":"<chunk from sentence>"}.\n'
-      + '    Skipping because "too basic / too obvious" is the WRONG call — include it.\n';
-    var _analysisVerifyRule =
-        '- ANALYSIS VERIFY (HARD RULE):\n'
-      + '    1. example_in_sentence MUST be a literal substring of the sentence above. Whitespace can differ; characters cannot.\n'
-      + '    2. For type="grammar", the marker should appear in the sentence somewhere. Past-tense contractions (봤어요 = 보+았어요, 했어요, 됐어요) are valid examples for ~았/었어요.\n'
-      + '    3. For type="expression"/"idiom", the label is the canonical form; example_in_sentence is the chunk as it appears.\n'
-      + '    4. If a candidate fails any rule, OMIT it. Empty arrays are honest output.\n'
-      + '    Hallucinations to avoid:\n'
-      + '    · Citing a noun phrase like "새로운 웰니스 트렌드" as the example for ~(으)로서.\n'
-      + '    · Calling "X예요 / X이에요" plain ~ㄴ다 — that\'s polite copula.\n'
-      + '    · Naming an idiom that isn\'t actually in the sentence.\n'
-      + '- VOCAB ↔ ANALYSIS CROSS-REFERENCE: every content word that appears inside an analysis chunk MUST also appear as a vocab[] entry (dictionary form). If your analysis surfaces "비교해 보면" as the chunk for ~아/어 보다, then 비교하다 must be in vocab[]. Particles (을/를/이/가/은/는/의), the pattern morphemes themselves (~게, ~로, 중 하나), and the most basic verbs (있다 / 하다 / 되다 / 이다) are exempt — only nouns, adjectives, and content verbs need a vocab row.\n';
-    var prompt =
-        'You are a Korean tutor analysing a single sentence for a ' + _levelLabel + ' learner.\n\n'
-      + 'Sentence: ' + sentenceText + '\n\n'
-      + 'Return ONLY a JSON object with this shape (no preamble, no code fences):\n'
-      + '{\n'
-      + '  "translation": "natural English translation of the whole sentence",\n'
-      + '  "vocab":    [{"ko":"<word in dictionary form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],\n'
-      + '  "analysis": [{"type":"grammar|expression|idiom","label":"<pattern / phrase / idiom>","exp":"<1-sentence English>","example_in_sentence":"<chunk from sentence>"}]\n'
-      + '}\n\n'
-      + 'Rules:\n'
-      + '- TRANSLATION: PRESERVE the original subject — do NOT inject "I/we" if Korean omitted the subject. Use he/she/it/they/the [noun] based on what the sentence implies.\n'
-      + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔, 살다 not 살). Single-syllable stems are not Korean words.\n'
-      + '- VOCAB SINGLE-WORD ONLY: every "ko" entry must be ONE Korean token — no whitespace, no slash, no parens. NEVER emit multi-word phrases like "공기 정화 시스템," "한국 음식," or "재미있는 이야기" as a vocab entry; pick the single hardest word inside (시스템, 정화, etc) instead. Cap each "ko" at ~5 characters / 4 hangul syllables; longer technical compounds belong in the article body, not in vocab.\n'
-      + _vocabSkipRule
-      + _analysisRule
-      + _analysisVerifyRule
-      + '- Output JSON only.';
-    // Detect-first MUST-INCLUDE: regex-scan THIS sentence and inject
-    // only the matched canonical labels. Same architecture as the bulk
-    // path. Drops input tokens from ~9K → ~0.5K, eliminates the
-    // "distracted by irrelevant catalog entries" failure mode.
-    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.detectForLevel === 'function' && typeof window.KH_GRAMMAR.formatPromptList === 'function') {
-      var _ssLvl = (window._currentArticle && window._currentArticle.level) || 'Intermediate';
-      var _ssHits = window.KH_GRAMMAR.detectForLevel(sentenceText, _ssLvl);
-      if (_ssHits && _ssHits.length) {
-        prompt += '\n\n[REGEX-DETECTED PATTERNS — floor, not ceiling]\n'
-               + 'The patterns below were already verified by the regex layer for this sentence. Surface EVERY one as an analysis entry with the EXACT canonical label shown. You may add more (idioms, collocations, semantic patterns the regex missed) but never less.\n\n'
-               + 'CONTEXT GUARDRAILS for type="expression" / "idiom" (the part AI judges):\n'
-               + '  - Only surface a phrase if it is CENTRAL to this sentence\'s meaning. Skip tangential / generic phrases (정말, 그런, 새로운 etc). Skip phrases the learner already knows at this level. Skip semantic duplicates of a grammar entry.\n'
-               + '  - COMPOUND CONSTRUCTIONS: if the sentence shows a multi-token rhetorical structure ("X도 중요하지만 Y가 더 ~" comparative, "~기도 하고 ~기도 하다" etc), surface the WHOLE compound as ONE expression entry — not the particles split apart.\n\n'
-               + window.KH_GRAMMAR.formatPromptList(_ssHits);
-      }
-    }
-
-    // Before firing the live single-sentence Sonnet call: if a bulk
-    // article-wide analyze is already in flight (kicked off earlier
-    // in this function when sharedCache was missing/stale), wait for
-    // it briefly. The bulk processes EVERY sentence including this
-    // one, so if it finishes within the timeout we get the result
-    // for free and skip the duplicate single-Sonnet charge.
-    //
-    // Without this gate, cache-miss first-taps charged BOTH bulk +
-    // single Sonnet in parallel (~$0.30 combined). With it, the
-    // single only fires when bulk is genuinely too slow (>12s),
-    // collapsing the dual-call to one call in most cases.
-    try {
-      var _pendingBulk = window._khArtFullAnalyzePromise && articleId && window._khArtFullAnalyzePromise[articleId];
-      if (_pendingBulk && typeof _pendingBulk.then === 'function') {
-        await Promise.race([
-          _pendingBulk,
-          new Promise(function(_, rej) { setTimeout(function(){ rej(new Error('bulk wait timeout')); }, 12000); })
-        ]);
-        // Bulk finished — re-read the shared cache and check whether
-        // it now has our sentence. If yes, render from it and skip
-        // the single Sonnet call entirely.
-        var _freshShared = await _khLoadArticleSentenceCache(articleId);
-        if (_freshShared && _freshShared.sentences && _freshShared.sentences.length) {
-          var _freshHit = _freshShared.sentences[idx];
-          if (!_freshHit || (_freshHit.text || '').trim() !== sentenceText) {
-            _freshHit = _freshShared.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
-          }
-          if (_freshHit && (_freshHit.translation || (_freshHit.vocab && _freshHit.vocab.length) || (_freshHit.analysis && _freshHit.analysis.length))) {
-            window._khSentAnalyzeCache[cacheKey] = _freshHit;
-            try { sessionStorage.setItem(cacheKey, JSON.stringify(_freshHit)); } catch(_) {}
-            _khRenderSentPanel(panel, _freshHit, null, sentenceText);
-            return;
-          }
-        }
-      }
-    } catch (_) { /* bulk timed out / errored — fall through to live single call */ }
-
-    // Single-sentence fallback: Haiku, not Sonnet. Reverted in the
-    // same change that reverted sentence-analyze-bulk above. See the
-    // big comment up there for the cost / quality rationale — same
-    // applies here. Tap-fallback is supposed to be cheap and rare;
-    // Sonnet was burning ~$0.02/tap while Haiku is ~$0.001/tap.
-    var res = await callClaude({
-      feature: 'sentence-analyze',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 900,
-      messages: [{ role: 'user', content: prompt }]
-    });
-    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
-    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
-    if (oi < 0 || ei <= oi) throw new Error('JSON 응답을 찾을 수 없습니다');
-    var data = JSON.parse(clean.slice(oi, ei + 1));
-    window._khSentAnalyzeCache[cacheKey] = data;
-    try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch(_) {}
-    _khRenderSentPanel(panel, data, null, sentenceText);
-  } catch(err) {
-    var msg = (err && err.message) || 'unknown';
-    if (/unauthor|sign/i.test(msg)) msg = '로그인이 필요합니다';
-    panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
-      + '<div class="asp-error">Analysis failed: ' + escapeHTML(msg) + '</div>';
-  }
+  // No cached analysis for this sentence. User-side AI fallback was
+  // removed by owner directive: "fallback할 상황을 안만들면 되는거
+  // 아닌가". Admin pre-bakes every article via runAutoGenerate before
+  // publish; if a row is missing it means either (a) the article was
+  // imported before combined-Sonnet rolled out, or (b) admin needs to
+  // re-bake from the AI Cache Management page. Either way, we don't
+  // charge tokens silently on the reader's tap — we show a friendly
+  // "preparing" panel and stop.
+  panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
+    + '<div class="asp-prep" style="padding:14px 16px;text-align:center;color:#475569;font-size:13px;line-height:1.55">'
+    +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">분석 준비 중</div>'
+    +   '관리자가 이 기사의 문장 분석을 준비하고 있어요. 잠시 후 다시 시도해 주세요.'
+    + '</div>';
 }
 
 // ── Per-bubble click-to-analyze for conversations ──────────────
@@ -4920,58 +4738,15 @@ async function analyzeConvBubble(convId, msgIdx, el) {
     return;
   }
 
-  // First reader on a never-analyzed conversation triggers a background
-  // bulk pass so subsequent taps (and other readers) hit the cache.
-  if (convId && (!sharedCache || !sharedCache.messages || !sharedCache.messages.length)) {
-    try { _khTriggerFullConvAnalyze(convId); } catch(_) {}
-  }
-
-  if (typeof callClaude !== 'function') {
-    panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
-      + '<div class="asp-error">분석 기능을 불러올 수 없습니다.</div>';
-    return;
-  }
-
-  try {
-    var c = window._currentConv;
-    var _levelLabel = _khConvLevelLabel(c && c.lvl);
-    var prompt =
-        'You are a Korean tutor analysing a single line of a casual conversation for a ' + _levelLabel + ' learner.\n\n'
-      + 'Line: ' + sentenceText + '\n\n'
-      + 'Return ONLY a JSON object with this shape (no preamble, no code fences):\n'
-      + '{\n'
-      + '  "translation": "natural English translation of the whole line",\n'
-      + '  "vocab": [{"ko":"<word in dictionary form>","en":"<short meaning>","note":"<optional 1-line usage hint>"}],\n'
-      + '  "grammar": [{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English explanation>","example_in_sentence":"<the chunk from the line that uses this pattern>"}]\n'
-      + '}\n\n'
-      + 'Rules:\n'
-      + '- TRANSLATION: natural conversational English. PRESERVE the original subject — do NOT inject "I/we" if Korean omitted it.\n'
-      + '- VOCAB DICTIONARY FORM: write Korean verbs/adjectives in their FULL dictionary form (보다 not 보, 흔하다 not 흔).\n'
-      + '- VOCAB SINGLE-WORD ONLY: every "ko" entry must be ONE Korean token — no whitespace, no slash. Cap at ~5 chars / 4 hangul syllables. Phrases like "공기 정화 시스템" or "재미있는 이야기" should be split or skipped.\n'
-      + '- VOCAB: max 3 items. Skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone).\n'
-      + '- GRAMMAR: max 2 patterns. Skip if just a noun phrase. Don\'t pick a pattern that\'s just the conjugation of a vocab word.\n'
-      + '- If two patterns stack on the same verb, pick ONLY the more learner-relevant one.\n'
-      + '- Output JSON only.';
-    var res = await callClaude({
-      feature: 'conv-sentence-analyze',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
-      messages: [{ role: 'user', content: prompt }]
-    });
-    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
-    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
-    if (oi < 0 || ei <= oi) throw new Error('JSON 응답을 찾을 수 없습니다');
-    var data = JSON.parse(clean.slice(oi, ei + 1));
-    window._khSentAnalyzeCache[cacheKey] = data;
-    try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch(_) {}
-    _khRenderSentPanel(panel, data, 'closeConvSentPanel()', sentenceText);
-  } catch(err) {
-    var emsg = (err && err.message) || 'unknown';
-    if (/unauthor|sign/i.test(emsg)) emsg = '로그인이 필요합니다';
-    panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
-      + '<div class="asp-error">Analysis failed: ' + escapeHTML(emsg) + '</div>';
-  }
+  // No cached analysis for this line. User-side AI fallback was removed
+  // by owner directive — admin pre-bakes conversation analysis before
+  // publish (same as articles). Show a friendly "preparing" panel
+  // instead of charging tokens on every reader tap.
+  panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
+    + '<div class="asp-prep" style="padding:14px 16px;text-align:center;color:#475569;font-size:13px;line-height:1.55">'
+    +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">분석 준비 중</div>'
+    +   '관리자가 이 대화의 문장 분석을 준비하고 있어요. 잠시 후 다시 시도해 주세요.'
+    + '</div>';
 }
 
 function switchArtTab(tab, btn) {
