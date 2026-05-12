@@ -4397,7 +4397,14 @@ async function analyzeSentence(idx, el) {
         if (_emptyCount / sharedCache.sentences.length >= 0.3) _sharedCacheStale = true;
       }
       var _badCount = sharedCache.sentences.filter(function(s){ return _khSentGrammarLooksBad(s); }).length;
-      if (_badCount / sharedCache.sentences.length >= 0.2) _sharedCacheStale = true;
+      // Threshold raised 20% → 40% per audit. The 20% level was a
+      // hair-trigger: minor sentence-text drift (admin edits a typo,
+      // an idx shifts by one) orphaned example_in_sentence chunks and
+      // marked the whole article stale. Stale-flag → bulk Sonnet
+      // fires on the next tap → another full re-analysis charged.
+      // 40% means at least 2/5 of sentences have broken examples
+      // before we pay to rebuild.
+      if (_badCount / sharedCache.sentences.length >= 0.4) _sharedCacheStale = true;
 
       // Only serve the per-sentence cache hit when the article
       // cache is still considered fresh. If it's stale, skip the
@@ -4585,13 +4592,49 @@ async function analyzeSentence(idx, el) {
       }
     }
 
-    // Single-sentence fallback (cache miss for one sentence). Uses the
-    // same Sonnet model as the bulk path above and as admin runAuto-
-    // Generate, so this code path can never write a lower-quality
-    // single-sentence row than what admin would have produced. Bumped
-    // max_tokens 700 → 1500: Sonnet's analysis output is more verbose
-    // per item and 700 occasionally truncated mid-JSON on dense
-    // sentences, which then JSON-parse-failed and showed an error.
+    // Before firing the live single-sentence Sonnet call: if a bulk
+    // article-wide analyze is already in flight (kicked off earlier
+    // in this function when sharedCache was missing/stale), wait for
+    // it briefly. The bulk processes EVERY sentence including this
+    // one, so if it finishes within the timeout we get the result
+    // for free and skip the duplicate single-Sonnet charge.
+    //
+    // Without this gate, cache-miss first-taps charged BOTH bulk +
+    // single Sonnet in parallel (~$0.30 combined). With it, the
+    // single only fires when bulk is genuinely too slow (>12s),
+    // collapsing the dual-call to one call in most cases.
+    try {
+      var _pendingBulk = window._khArtFullAnalyzePromise && articleId && window._khArtFullAnalyzePromise[articleId];
+      if (_pendingBulk && typeof _pendingBulk.then === 'function') {
+        await Promise.race([
+          _pendingBulk,
+          new Promise(function(_, rej) { setTimeout(function(){ rej(new Error('bulk wait timeout')); }, 12000); })
+        ]);
+        // Bulk finished — re-read the shared cache and check whether
+        // it now has our sentence. If yes, render from it and skip
+        // the single Sonnet call entirely.
+        var _freshShared = await _khLoadArticleSentenceCache(articleId);
+        if (_freshShared && _freshShared.sentences && _freshShared.sentences.length) {
+          var _freshHit = _freshShared.sentences[idx];
+          if (!_freshHit || (_freshHit.text || '').trim() !== sentenceText) {
+            _freshHit = _freshShared.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
+          }
+          if (_freshHit && (_freshHit.translation || (_freshHit.vocab && _freshHit.vocab.length) || (_freshHit.analysis && _freshHit.analysis.length))) {
+            window._khSentAnalyzeCache[cacheKey] = _freshHit;
+            try { sessionStorage.setItem(cacheKey, JSON.stringify(_freshHit)); } catch(_) {}
+            _khRenderSentPanel(panel, _freshHit, null, sentenceText);
+            return;
+          }
+        }
+      }
+    } catch (_) { /* bulk timed out / errored — fall through to live single call */ }
+
+    // Single-sentence fallback (cache miss for one sentence, OR bulk
+    // missed this sentence's row, OR bulk took longer than the await
+    // window). Uses the same Sonnet model as the bulk path above and
+    // as admin runAutoGenerate. Bumped max_tokens 700 → 1500 because
+    // Sonnet's analysis output is more verbose per item and 700
+    // occasionally truncated mid-JSON on dense sentences.
     var res = await callClaude({
       feature: 'sentence-analyze',
       model: 'claude-sonnet-4-20250514',
