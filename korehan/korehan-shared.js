@@ -8525,19 +8525,17 @@ async function checkOnboardingStatus() {
       return;
     }
 
-    // Only redirect new accounts (created within 30 min) that haven't onboarded
-    var createdAt = supaUser.created_at ? new Date(supaUser.created_at) : null;
-    var isNew = createdAt && (Date.now() - createdAt.getTime() < 30 * 60 * 1000);
-    if (isNew && res.data && res.data.onboarded === false) {
-      setTimeout(function() {
-        window.location.href = 'korehan-onboarding.html';
-      }, 600);
-    } else if (isNew && !res.data) {
-      // No user_stats row yet — new signup
-      setTimeout(function() {
-        window.location.href = 'korehan-onboarding.html';
-      }, 600);
-    }
+    // Auto-redirect to onboarding REMOVED per user report — new signups
+    // from the home page were being "hijacked" to onboarding mid-read.
+    // The onboarding lives at /korehan-onboarding.html and is reachable
+    // from the side menu + a post-signup CTA card the user can render
+    // on home for new accounts. The auto-redirect was a one-time
+    // experiment that proved too disruptive.
+    //
+    // If you want the onboarding flow to fire again, it should be a
+    // dismissible bottom-sheet modal on the home page rather than a
+    // full-page redirect that yanks users out of whatever they were
+    // reading.
   } catch(e) {}
 }
 
