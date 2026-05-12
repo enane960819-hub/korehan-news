@@ -1287,6 +1287,16 @@ function khStartNotifications() {
 async function khLoadNotifications() {
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb || typeof supaUser === 'undefined' || !supaUser) return;
+  // Drop confirmed alerts that are >7 days old so the dropdown doesn't
+  // accumulate forever. Server-side RPC; gated to own rows. Runs once
+  // per session — the in-memory flag means subsequent 30s polls just
+  // refresh the list instead of cleaning every time.
+  try {
+    if (!window._khNotifCleanupFired) {
+      window._khNotifCleanupFired = true;
+      sb.rpc('cleanup_old_read_notifications').then(function(){}).catch(function(){});
+    }
+  } catch(_) {}
   try {
     var r = await sb.from('notifications')
       .select('id, kind, payload, read_at, created_at')
@@ -1404,11 +1414,18 @@ function _khRenderNotifItem(n) {
     var st = p.streak ? (' (' + p.streak + '-day streak)') : '';
     text = 'You earned <strong>' + grant + ' streak freeze' + (grant > 1 ? 's' : '') + '</strong>' + _khEsc(st) + '. We\'ll auto-spend them on missed days.';
     targetHref = 'korehan-learning-overview.html';
-  } else if (n.kind === 'room_visit') {
-    iconName = 'door-open';
-    var nameRv = _khNotifAuthorMap[p.from] || 'A learner';
-    text = _khEsc(nameRv) + ' visited your room.';
-    targetHref = p.from ? ('korehan-profile.html?user=' + encodeURIComponent(p.from)) : '#';
+  } else if (n.kind === 'admin_cache_miss') {
+    iconName = 'sparkles';
+    var ct = p.content_type || 'article';
+    var sentPreview = p.sentence ? (' · "' + _khEsc(String(p.sentence).slice(0, 60)) + (String(p.sentence).length > 60 ? '…' : '') + '"') : '';
+    text = 'A reader tapped an un-cached ' + _khEsc(ct) + ' sentence' + sentPreview;
+    // Deep-link to the admin AI Cache Management panel for the
+    // article. The admin page reads the hash and opens the right row.
+    if (ct === 'article' && p.content_id) {
+      targetHref = 'korehan-x9f4k2m7.html#ai-cache-' + encodeURIComponent(p.content_id);
+    } else {
+      targetHref = 'korehan-x9f4k2m7.html#ai-cache';
+    }
   } else if (n.kind === 'feedback_received') {
     iconName = 'message-square';
     var topicFr = p.topic ? (' on "' + _khEsc(String(p.topic).slice(0, 32)) + (String(p.topic).length > 32 ? '…' : '') + '"') : '';
@@ -4508,6 +4525,27 @@ async function analyzeSentence(idx, el) {
     +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">분석 준비 중</div>'
     +   '관리자가 이 기사의 문장 분석을 준비하고 있어요. 잠시 후 다시 시도해 주세요.'
     + '</div>';
+  // Ring the admin's bell. The RPC dedupes per (content_id, 10min) so
+  // a reader tapping multiple uncached sentences on the same article
+  // only fires once. Best-effort; silent failure is fine.
+  try { _khNotifyAdminCacheMiss('article', articleId, sentenceText); } catch (_) {}
+}
+
+// Posts an admin-targeted bell notification when a reader hits an
+// article/conversation/story whose per-sentence analysis isn't cached.
+// Server-side notify_admin_cache_miss RPC handles the admin-email
+// lookup + 10-minute dedupe.
+async function _khNotifyAdminCacheMiss(contentType, contentId, sentence) {
+  if (!contentId) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || typeof supaUser === 'undefined' || !supaUser) return;
+  try {
+    await sb.rpc('notify_admin_cache_miss', {
+      p_content_type: String(contentType || 'article'),
+      p_content_id:   String(contentId),
+      p_sentence:     String(sentence || '').slice(0, 200),
+    });
+  } catch (_) { /* best-effort */ }
 }
 
 // ── Per-bubble click-to-analyze for conversations ──────────────
@@ -4747,6 +4785,7 @@ async function analyzeConvBubble(convId, msgIdx, el) {
     +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">분석 준비 중</div>'
     +   '관리자가 이 대화의 문장 분석을 준비하고 있어요. 잠시 후 다시 시도해 주세요.'
     + '</div>';
+  try { _khNotifyAdminCacheMiss('conversation', convId, sentenceText); } catch (_) {}
 }
 
 function switchArtTab(tab, btn) {
