@@ -1085,6 +1085,13 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   text-align: center;
   transition: border-color .15s, background .15s, transform .12s, opacity .25s;
   min-height: 52px;
+  /* Drop the 300ms tap delay mobile browsers apply to non-disabled
+     interactive elements, and skip double-tap-zoom hit-testing on
+     this card. Without this, the second card-pick of a Word
+     Association pair sometimes "misses" because the first tap's
+     re-render replaced the DOM before the synthetic click fired. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(167,139,250,.18);
 }
 .bm-assoc-card:hover:not(:disabled):not(.matched) {
   border-color: rgba(167,139,250,.5);
@@ -5714,7 +5721,7 @@ async function _generateAndSaveDailyContent(date, opts) {
     + '{\n'
     + '  "topic_ko": "주제 한국어 (2-5 words)",\n'
     + '  "topic_en": "Topic in English",\n'
-    + '  "vocab": [{"ko":"topic-specific Korean word","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}],\n'
+    + '  "vocab": [{"ko":"<SINGLE Korean dictionary word — noun/verb-다/adjective-다/adverb. NOT a phrase. NOT a sentence fragment. NEVER ending in 이에요/예요/이고/이라고/입니다/어요/아요/해요/이/가/은/는/을/를/도. e.g. 친구 OK, 친구가 NOT OK, 만나다 OK, 만나요 NOT OK>","rom":"romanization (hyphenated)","en":"<English meaning, MUST be in Latin letters only — NEVER copy the Korean back into this field>","level":"' + _currentLevel + '"}],\n'
     + '  "grammar": [{"level":"' + _currentLevel + '","pattern":"pattern","explanation":"English explanation","example_ko":"example sentence about today\'s topic","example_en":"translation"}],\n'
     + '  "helpers": [{"ko":"Korean sentence about the topic","en":"translation"}],\n'
     + '  "dictation_sentences": [{"ko":"Korean sentence about the topic","en":"English meaning"}],\n'
@@ -16905,14 +16912,47 @@ function goToBMStep4() {
 function renderBMWordSnap() {
   var sentenceJoin = (_bm.sentences || []).map(function(s){ return s.ko || ''; }).join(' ');
   var aiVocab = (_aiContent && Array.isArray(_aiContent.vocab)) ? _aiContent.vocab : [];
-  var topicRelevant = aiVocab.filter(function(v) {
+
+  // _isCleanVocab — accept a vocab card only if it's a real dictionary
+  // word with a real English translation. Rejects:
+  //   - empty ko / en
+  //   - ko ending in a copula / particle pattern that means the AI
+  //     emitted a sentence fragment ("명이에요", "친구가", "김민지이고")
+  //     instead of a word
+  //   - en containing Hangul (AI sometimes mirrored Korean back into
+  //     the en field, which then surfaced as "Korean on both sides" in
+  //     Word Association cards)
+  //   - en empty or pure whitespace
+  function _isCleanVocab(v) {
     if (!v || !v.ko || !v.en) return false;
+    var ko = String(v.ko).trim();
+    var en = String(v.en).trim();
+    if (!ko || !en) return false;
+    // Korean characters in the English field → AI didn't translate
+    if (/[ㄱ-힝]/.test(en)) return false;
+    // ko ends in a sentence-fragment marker (copula, conjunctive,
+    // quotation, question — all signals this is a phrase, not a word)
+    if (/(이에요|예요|이고|이며|이고요|이라고|입니다|이었어요|였어요|이에|이가|에요|어요|아요|해요|돼요)$/.test(ko)) return false;
+    // ko ends in a bare particle attached to a noun — same fragment
+    // class. Single-char ending like "친구가", "방을".
+    if (/[가-힣](을|를|이|가|은|는|도|만|의|에|과|와)$/.test(ko) && ko.length >= 2) return false;
+    return true;
+  }
+
+  var topicRelevant = aiVocab.filter(_isCleanVocab).filter(function(v) {
     var stem = v.ko.replace(/[을를이가는도에서의하다요]$/g, '');
     return sentenceJoin.indexOf(stem || v.ko) !== -1 || sentenceJoin.indexOf(v.ko) !== -1;
   });
 
+  // Strip particles AND copula tails from a scraped word. Expanded
+  // from the previous version to catch "명이에요" → "명", "친구가" →
+  // "친구", etc. — the old regex only caught single-syllable particles
+  // and let copula endings (~이에요, ~예요) through unchanged.
   function trimParticle(w) {
-    return w.replace(/(은|는|이|가|을|를|의|에|도|만|과|와|나|께|부터|까지|로|으로|라고|이라고)$/g, '');
+    if (!w) return '';
+    return w
+      .replace(/(이에요|예요|이고|이며|이라고|입니다|이었어요|였어요|에요|이라|이가)$/g, '')
+      .replace(/(은|는|이|가|을|를|의|에|도|만|과|와|나|께|부터|까지|로|으로|라고)$/g, '');
   }
 
   var vocab = topicRelevant.slice(0, 5);
@@ -16922,7 +16962,20 @@ function renderBMWordSnap() {
     (_bm.sentences || []).forEach(function(s) {
       (s.ko || '').replace(/[.,!?。]/g,'').split(/\s+/).forEach(function(w) {
         var base = trimParticle(w);
-        if (base.length >= 2 && !existing[base]) { existing[base] = true; vocab.push({ ko: base, rom:'', en:'' }); }
+        // Drop ultra-short bases and anything still looking like a
+        // fragment after trim. A real noun/adjective/verb stem is
+        // typically 2+ Hangul syllables.
+        if (base.length < 2) return;
+        if (/[ㄱ-힝]/.test(base) === false) return;
+        if (existing[base]) return;
+        existing[base] = true;
+        // Scraped words have no en translation; mark with a deferred
+        // marker so they still show in dictation (which only needs ko)
+        // but get filtered out of Word Association below (which needs
+        // a real en pair). Without the marker, the previous code shipped
+        // empty-en cards into Word Association where the fallback
+        // `c.en || c.ko` produced Korean on both sides of the grid.
+        vocab.push({ ko: base, rom:'', en:'', _scraped: true });
       });
     });
     vocab = vocab.slice(0, 5);
@@ -17104,10 +17157,28 @@ function bmDictSkip() {
 
 // ── Phase B: Word Association ──
 function bmStartAssociation() {
-  var cards = _bm.snapCards || [];
+  // Word Association needs Korean↔English pairs. Skip cards whose
+  // .en is empty / missing / Korean (the old fallback `c.en || c.ko`
+  // produced Korean on both sides of the grid — that's what the user
+  // was seeing in the broken screenshot). Cards without a real
+  // English translation can't be matched as a Korean/English pair, so
+  // they're filtered out of this phase entirely.
+  var cards = (_bm.snapCards || []).filter(function(c) {
+    if (!c || !c.ko || !c.en) return false;
+    var en = String(c.en).trim();
+    if (!en) return false;
+    if (/[ㄱ-힝]/.test(en)) return false; // en mirrored Korean back
+    return true;
+  });
+  if (!cards.length) {
+    // Nothing pairable — skip directly to the completion screen.
+    finishBeginner();
+    return;
+  }
   // Independent shuffles so the matching isn't a freebie.
   _bm.assocKo = cards.map(function(c, i){ return { idx: i, label: c.ko }; }).sort(function(){ return Math.random() - 0.5; });
-  _bm.assocEn = cards.map(function(c, i){ return { idx: i, label: c.en || c.ko }; }).sort(function(){ return Math.random() - 0.5; });
+  _bm.assocEn = cards.map(function(c, i){ return { idx: i, label: c.en }; }).sort(function(){ return Math.random() - 0.5; });
+  _bm.snapCards = cards; // also narrow the source array so .idx values stay aligned
   _bm.assocMatched = [];
   _bm.assocSelKo = null;
   _bm.assocSelEn = null;
@@ -17164,10 +17235,32 @@ function bmRenderAssociation() {
     + '<button class="bm-btn-next" ' + (allMatched ? '' : 'disabled') + ' onclick="finishBeginner()">Complete →</button>';
 }
 
+// Targeted .selected class toggle — avoids the full bmRenderAssociation
+// re-render that used to fire on the first tap of a Korean/English
+// pair. The full re-render destroyed the DOM mid-interaction; the
+// user's second tap on the partner card landed on a stale node
+// reference and silently no-op'd. Now we just toggle the class on the
+// relevant column and only re-render after BOTH sides are picked
+// (i.e. the match attempt is ready to evaluate).
+function _bmAssocApplyClasses(col, selIdx) {
+  var matched = _bm.assocMatched || [];
+  document.querySelectorAll('.bm-assoc-col' + (col === 'ko' ? ':first-child' : ':last-child') + ' .bm-assoc-card').forEach(function(btn, i) {
+    var items = col === 'ko' ? _bm.assocKo : _bm.assocEn;
+    var item = items && items[i];
+    if (!item) return;
+    btn.classList.remove('selected', 'wrong');
+    if (matched.indexOf(item.idx) >= 0) btn.classList.add('matched');
+    else if (selIdx === item.idx) btn.classList.add('selected');
+  });
+}
+
 function bmAssocPickKo(idx) {
   if ((_bm.assocMatched || []).indexOf(idx) >= 0) return;
   _bm.assocSelKo = idx;
   _bm.assocFlash = null;
+  // If the partner side hasn't been picked yet, update CSS classes
+  // in-place and stop here — no DOM-destroying re-render mid-tap.
+  if (_bm.assocSelEn == null) { _bmAssocApplyClasses('ko', idx); return; }
   _bmAssocTryMatch();
 }
 
@@ -17175,6 +17268,7 @@ function bmAssocPickEn(idx) {
   if ((_bm.assocMatched || []).indexOf(idx) >= 0) return;
   _bm.assocSelEn = idx;
   _bm.assocFlash = null;
+  if (_bm.assocSelKo == null) { _bmAssocApplyClasses('en', idx); return; }
   _bmAssocTryMatch();
 }
 
