@@ -3331,8 +3331,37 @@ function renderArticlePage() {
   setTimeout(waitAndUpdate, 300);
 }
 
+// Per-article in-flight lock for _bgPregenArticleCache. Without it,
+// the admin's own workflow burned tokens: runAutoGenerate writes
+// article_cache async; admin clicks the new article seconds later;
+// the cache check below sees stale "not yet" state and fires 4
+// Haiku calls in parallel with the still-completing Sonnet write.
+// The lock survives the function's await tree so a second concurrent
+// open of the same article short-circuits even before the cache
+// read returns.
+window._khBgPregenLock = window._khBgPregenLock || {};
+
 // 로그인 유저가 기사 열 때, 캐시 없으면 백그라운드 자동 생성 → 모든 유저가 공유
 async function _bgPregenArticleCache(a) {
+  if (!supaUser || _remoteCacheDisabled) return;
+  if (!a || !a.id) return;
+  // Race guard: skip if another _bgPregenArticleCache is already
+  // running for this article in the same tab. Same-tab is the only
+  // realistic dup-fire path (separate tabs hit separate JS contexts).
+  if (window._khBgPregenLock[a.id]) return;
+  window._khBgPregenLock[a.id] = true;
+  try {
+    return await _bgPregenArticleCacheInner(a);
+  } finally {
+    // Hold the lock for a short tail after completion so a rapid
+    // open-close-open of the same article doesn't re-fire before
+    // the cache write has time to land in Supabase. 8s is enough
+    // for the upsert at line 3398 to commit + replicate.
+    setTimeout(function() { delete window._khBgPregenLock[a.id]; }, 8000);
+  }
+}
+
+async function _bgPregenArticleCacheInner(a) {
   if (!supaUser || _remoteCacheDisabled) return;
   try {
     var cached = await getFromCache('article', a.id, 'ai_analysis');
