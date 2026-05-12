@@ -3656,17 +3656,24 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
       }
     }
 
-    // Use the same Sonnet model admin's runAutoGenerate uses, so the
-    // first-viewer fallback writes the same quality cache that admin
-    // would have. Earlier this path used Haiku, which meant a cache-
-    // miss tap by user 1 persisted lower-quality analysis that every
-    // subsequent viewer then saw — quality was effectively a race
-    // (admin re-bake vs first viewer tap). Sonnet here makes the
-    // distinction architectural-only: same cache contents either way.
+    // User-side fallback: Haiku, not Sonnet. Earlier in this session
+    // I swapped Haiku → Sonnet here to match admin's quality, but the
+    // owner's AI Usage page showed cost-per-call jumped 5-15x and
+    // burned ~$10 on ~20 articles of testing. Reverting because:
+    //   - Admin's runAutoGenerate already writes Sonnet-quality cache
+    //     before users see the article in normal flow.
+    //   - User-side fallback only fires on genuine cache-miss / stale
+    //     edges, which are rare in production.
+    //   - When it DOES fire, Haiku quality is adequate for a first-
+    //     viewer; the next visitor reads the same cache anyway, so
+    //     paying Sonnet for the rare first-viewer is poor ROI.
+    //   - The render-side enforce + label-normalizer + chunk-widening
+    //     pipeline patches Haiku's coarser output to canonical labels
+    //     on display, so the visible quality gap is small.
     var res = await callClaude({
       feature: 'sentence-analyze-bulk',
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: Math.min(16000, 500 * sentences.length + 800),
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: Math.min(8000, 300 * sentences.length + 600),
       messages: [{ role: 'user', content: prompt }]
     });
     var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
@@ -4629,16 +4636,15 @@ async function analyzeSentence(idx, el) {
       }
     } catch (_) { /* bulk timed out / errored — fall through to live single call */ }
 
-    // Single-sentence fallback (cache miss for one sentence, OR bulk
-    // missed this sentence's row, OR bulk took longer than the await
-    // window). Uses the same Sonnet model as the bulk path above and
-    // as admin runAutoGenerate. Bumped max_tokens 700 → 1500 because
-    // Sonnet's analysis output is more verbose per item and 700
-    // occasionally truncated mid-JSON on dense sentences.
+    // Single-sentence fallback: Haiku, not Sonnet. Reverted in the
+    // same change that reverted sentence-analyze-bulk above. See the
+    // big comment up there for the cost / quality rationale — same
+    // applies here. Tap-fallback is supposed to be cheap and rare;
+    // Sonnet was burning ~$0.02/tap while Haiku is ~$0.001/tap.
     var res = await callClaude({
       feature: 'sentence-analyze',
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 900,
       messages: [{ role: 'user', content: prompt }]
     });
     var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
