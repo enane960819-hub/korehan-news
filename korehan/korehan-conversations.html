@@ -865,33 +865,77 @@ function _ctxEn(c) {
   return { text: raw, pending: true };
 }
 var _ctxInflight = {};
+var _ctxBatchQueue = [];
+var _ctxBatchTimer = null;
+
+// Per-card lazy translator — collects cards needing translation into a
+// queue, then fires ONE batched Haiku call instead of N separate calls
+// per page render. With 12 cards rendered at once, this drops 12 API
+// calls to 1 (≈92% reduction in token burn for the conversations page,
+// which used to be the biggest auto-fire leak on the site).
 function _translateCtxAsync(c, idx) {
   var raw = (c && c.ctx) || '';
   if (!raw || _ctxCache[raw] || _ctxInflight[raw]) return;
+  // Gate behind signed-in users. Anonymous traffic used to fire this
+  // Haiku call per card (multiplied to 12+ per page load before the
+  // batch refactor); now anonymous visitors just see the Korean ctx
+  // as fallback. Signed-in users still warm the localStorage cache.
+  if (typeof supaUser === 'undefined' || !supaUser) return;
   _ctxInflight[raw] = true;
+  _ctxBatchQueue.push({ c: c, idx: idx, raw: raw });
+  if (_ctxBatchTimer) return;
+  // 80ms debounce window catches every card rendered in the same tick
+  // (a paginated grid renders synchronously, so the timer fires once
+  // after the whole batch is queued).
+  _ctxBatchTimer = setTimeout(function() {
+    _ctxBatchTimer = null;
+    var batch = _ctxBatchQueue.splice(0);
+    _flushCtxBatch(batch);
+  }, 80);
+}
+
+function _flushCtxBatch(batch) {
+  if (!batch.length) return;
+  // Dedupe by raw text in case two cards share the same ctx string.
+  var seen = {};
+  var unique = batch.filter(function(b) {
+    if (seen[b.raw]) return false;
+    seen[b.raw] = true;
+    return true;
+  });
+  var prompt = 'Translate each Korean situation description to natural, concise English (one sentence each, no quotes, no extra commentary). Return ONLY a JSON array of strings IN THE SAME ORDER. No markdown, no preamble.\n\nInputs:\n'
+    + unique.map(function(b, i) { return (i + 1) + '. ' + b.raw; }).join('\n');
   callClaude({
-    feature: 'conv-ctx-translate',
+    feature: 'conv-ctx-translate-batch',
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 120,
-    messages: [{
-      role: 'user',
-      content: 'Translate this Korean situation description to natural, concise English (one sentence, no quotes, no extra commentary). Return ONLY the English translation:\n\n' + raw
-    }]
+    max_tokens: Math.max(400, unique.length * 60),
+    messages: [{ role: 'user', content: prompt }]
   }).then(function(r) {
-    var en = ((r.content || []).map(function(b){return b.text||'';}).join('')).trim();
-    if (!en) return;
-    _ctxCache[raw] = en;
-    _saveCtxCache();
-    c.ctx_en = en;
-    // Patch any visible card / detail headline that's keyed to this conv
-    document.querySelectorAll('[data-ctx-target="'+idx+'"]').forEach(function(el){
-      el.classList.remove('cc2-ctx-loading');
-      el.textContent = en;
+    var rawTxt = ((r.content || []).map(function(b){return b.text||'';}).join('')).trim();
+    var s = rawTxt.indexOf('['), e = rawTxt.lastIndexOf(']');
+    if (s < 0 || e <= s) throw new Error('JSON not found in batch response');
+    var arr = JSON.parse(rawTxt.slice(s, e + 1));
+    // Map results back to ALL queued items (not just unique) so cards
+    // that share a ctx string both get patched.
+    var byRaw = {};
+    unique.forEach(function(b, i) { byRaw[b.raw] = (arr[i] || '').trim(); });
+    batch.forEach(function(b) {
+      var en = byRaw[b.raw];
+      if (!en) return;
+      _ctxCache[b.raw] = en;
+      b.c.ctx_en = en;
+      document.querySelectorAll('[data-ctx-target="' + b.idx + '"]').forEach(function(el) {
+        el.classList.remove('cc2-ctx-loading');
+        el.textContent = en;
+      });
+      var detailTitle = document.querySelector('[data-ctx-detail="' + b.idx + '"]');
+      if (detailTitle) detailTitle.textContent = en;
     });
-    var detailTitle = document.querySelector('[data-ctx-detail="'+idx+'"]');
-    if (detailTitle) detailTitle.textContent = en;
-  }).catch(function(){})
-    .then(function(){ delete _ctxInflight[raw]; });
+    _saveCtxCache();
+  }).catch(function(err){ console.warn('[conv-ctx-batch] failed:', err); })
+    .then(function() {
+      batch.forEach(function(b) { delete _ctxInflight[b.raw]; });
+    });
 }
 
 function _appendConvCards() {

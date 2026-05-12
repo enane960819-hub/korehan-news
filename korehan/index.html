@@ -1353,6 +1353,13 @@ function renderHomeConvs() {
 async function _khBackfillConvCtxEn(rows) {
   if (!Array.isArray(rows) || !rows.length) return;
   if (typeof callClaude !== 'function') return;
+  // Gate behind signed-in users — anonymous traffic was firing this
+  // Haiku batch on every fresh visit (localStorage cache is per-browser
+  // so each new device paid). Anonymous visitors fall through to the
+  // Korean ctx as visible text, which the renderHomeConvs path
+  // already handles. Signed-in users still warm the cache for
+  // themselves; the localStorage cache persists for return visits.
+  if (typeof supaUser === 'undefined' || !supaUser) return;
   var cache = {};
   try { cache = JSON.parse(localStorage.getItem('kh_conv_ctx_en_v1') || '{}') || {}; } catch(_) {}
   var needed = rows.filter(function(c) {
@@ -1632,6 +1639,17 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function _khBackfillStoryTitlesEn(rows) {
       if (!Array.isArray(rows) || !rows.length) return;
       if (typeof callClaude !== 'function') return;
+      // Anonymous home visitors used to fire this Haiku call once per
+      // browser session for every story missing title_en. RLS blocks
+      // their DB update, so the translation only landed in their own
+      // localStorage — the NEXT anonymous visitor paid the same Haiku
+      // bill. With heavy anonymous traffic this turned into a per-visit
+      // token leak. Gate behind signed-in users so only people who can
+      // actually persist to stories_data.title_en pay for the call.
+      // Anonymous visitors see the Korean title fallback (which the
+      // code was already designed around — see the comment at the top
+      // of this function).
+      if (typeof supaUser === 'undefined' || !supaUser) return;
       var needed = rows.filter(function(r) {
         var d = r.data || r;
         if ((d && d.title_en) || r.title_en) return false;
