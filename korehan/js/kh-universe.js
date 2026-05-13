@@ -393,9 +393,104 @@
     } catch (e) { return []; }
   }
 
-  // localStorage cache so we don't re-ask Claude for the same word's
-  // category on every Universe rebuild.
-  var _CAT_CACHE_KEY = 'kh_universe_cat_cache_v1';
+  // Rule-based categorizer — no AI calls. Owner directive: eliminate
+  // user-side AI fallback (cost). When vocabulary_bank.interest_tag is
+  // empty we now categorise client-side via a Korean keyword bank +
+  // English-meaning regex. Hits a known category → use it. Otherwise
+  // 'misc' (and we'll continue improving the bank over time).
+  //
+  // The bank is intentionally permissive: each pattern can be a full
+  // word, a stem, a suffix (^…), or an English-meaning regex (en:/…/).
+  // First match wins, so order matters — keep specific categories
+  // (food, kpop) above broad ones (everyday).
+  var RULE_CAT_BANK = [
+    // ── Food ──────────────────────────────────────────────
+    { cat: 'food',  rx: /^(밥|국|찌개|반찬|김치|떡|국수|면|라면|불고기|삼겹살|치킨|피자|햄버거|샐러드|빵|과자|사탕|초콜릿|커피|차|주스|우유|맥주|소주|와인|물|음식|식사|요리|레시피|간식|디저트|아이스크림|케이크|쿠키|과일|사과|바나나|딸기|포도|수박|오렌지|복숭아|채소|야채|당근|양파|마늘|고추|배추|상추|시금치|버섯|두부|계란|소고기|돼지고기|닭고기|생선|새우|게|조개|회|초밥|짜장면|짬뽕|탕수육|볶음밥|비빔밥|냉면|순두부|된장|간장|고추장|식초|소금|설탕|기름|땅콩|호두|아몬드|치즈|버터|요거트|시리얼|샌드위치|토스트|샐러드|스파게티|파스타|스테이크|캔디|쿠키)/ },
+    { cat: 'food',  rx: /^(먹|마시|삼키|씹|굽|튀기|볶|끓이|구이|튀김)/ },
+    { cat: 'food',  en: /(food|meal|eat|drink|cook|bake|fry|grill|dish|recipe|cuisine|snack|dessert|candy|cookie|bread|cake|coffee|tea|juice|milk|beer|wine|fruit|vegetable|meat|fish|noodle|soup|sauce)/i },
+
+    // ── Travel ────────────────────────────────────────────
+    { cat: 'travel', rx: /^(여행|관광|관광객|여권|비자|공항|비행기|기차|버스|지하철|택시|호텔|숙소|예약|티켓|항공|국가|나라|도시|마을|섬|해변|산|바다|강|호수|광장|박물관|미술관|기념품|배낭|짐|가이드|투어|일정|휴가|휴일|국내|해외|외국|풍경|광경|명소|입국|출국|체크인|체크아웃)/ },
+    { cat: 'travel', en: /(travel|trip|tour|vacation|holiday|airport|airplane|flight|hotel|tourist|tourism|country|city|town|beach|mountain|river|lake|sea|landmark|sightseeing)/i },
+
+    // ── Nature ────────────────────────────────────────────
+    { cat: 'nature', rx: /^(자연|동물|식물|나무|꽃|풀|숲|들|언덕|계곡|폭포|바위|돌|모래|땅|흙|하늘|구름|비|눈|바람|태풍|번개|천둥|무지개|해|달|별|우주|행성|지구|화성|금성|토성|목성|수성|천체|은하|별자리|생태계|환경|기후|온도|온실|오염|반려동물|강아지|고양이|새|물고기|호랑이|사자|코끼리|곰|토끼|소|돼지|닭|오리|말|개구리|뱀|거북이|곤충|벌|나비|개미|모기|파리|거미|쥐|곰팡이|박테리아|바이러스)/ },
+    { cat: 'nature', en: /(nature|animal|plant|tree|flower|forest|river|mountain|ocean|sea|sky|cloud|rain|snow|wind|sun|moon|star|planet|earth|pet|dog|cat|bird|fish|tiger|lion|elephant|bear|insect|ecosystem|environment|climate|weather|galaxy|cosmos|universe)/i },
+
+    // ── K-pop / Music / Entertainment ─────────────────────
+    { cat: 'kpop',  rx: /^(아이돌|케이팝|컴백|음반|앨범|싱글|음원|차트|순위|연습생|소속사|팬|팬덤|굿즈|콘서트|무대|뮤직비디오|뮤비)/ },
+    { cat: 'music', rx: /^(노래|가수|음악|악기|기타|피아노|드럼|바이올린|첼로|오케스트라|밴드|작곡|작사|가사|멜로디|리듬|악보|연주|공연)/ },
+    { cat: 'music', en: /(music|song|sing|singer|melody|rhythm|concert|album|band|musician|instrument|guitar|piano|drum|violin)/i },
+    { cat: 'drama', rx: /^(드라마|배우|연기|연출|시나리오|대본|촬영|방영|시청자|시청률|회|화)/ },
+    { cat: 'movie', rx: /^(영화|감독|개봉|상영|시사회|예매|극장|영화관|관객|박스오피스|개막)/ },
+    { cat: 'entertainment', rx: /^(연예|예능|쇼|버라이어티|코미디|개그|토크|리얼리티|방송|프로그램|MC|진행|장난감|게임)/ },
+    { cat: 'entertainment', en: /(game|toy|show|variety|comedy|entertainment|drama|movie|film|actor|actress|director)/i },
+
+    // ── Sports / Health ───────────────────────────────────
+    { cat: 'sports', rx: /^(축구|야구|농구|배구|골프|테니스|배드민턴|탁구|수영|육상|마라톤|달리기|등산|스키|스노보드|스케이트|복싱|태권도|유도|레슬링|체조|요가|필라테스|헬스|운동|선수|감독|경기|시합|경기장|올림픽|월드컵|메달|우승|결승|준결승)/ },
+    { cat: 'health', rx: /^(병원|의사|간호사|약|약국|치료|진료|수술|입원|퇴원|검사|진단|증상|아프|건강|운동|스트레스|면역|체온|혈압|혈당|심장|폐|간|위|장|뼈|근육|피부|머리|이|치아|눈|코|입|귀|손|발|배|허리|어깨|무릎)/ },
+    { cat: 'sports', en: /(soccer|baseball|basketball|football|tennis|golf|swim|running|marathon|olympic|athletic|workout|exercise|sport)/i },
+    { cat: 'health', en: /(health|hospital|doctor|nurse|medicine|drug|treatment|surgery|symptom|disease|body|organ|muscle|skin|heart|lung)/i },
+
+    // ── Tech ──────────────────────────────────────────────
+    { cat: 'tech',  rx: /^(컴퓨터|노트북|스마트폰|핸드폰|휴대폰|태블릿|앱|어플|프로그램|소프트웨어|하드웨어|인터넷|와이파이|이메일|메일|메시지|문자|채팅|소셜|sns|블로그|유튜브|인스타|페이스북|트위터|틱톡|크롬|구글|네이버|카카오|인공지능|에이아이|로봇|드론|가상현실|증강현실|블록체인|코인|가상화폐|클라우드|데이터|코딩|프로그래밍|개발자|엔지니어|혁신)/ },
+    { cat: 'tech',  en: /(computer|laptop|smartphone|tablet|app|software|hardware|internet|wifi|email|message|chat|social|blog|youtube|instagram|facebook|twitter|ai|robot|drone|virtual reality|blockchain|cloud|data|coding|programming|developer|engineer|innovation)/i },
+
+    // ── Family / Friends / Dating ─────────────────────────
+    { cat: 'family', rx: /^(가족|부모|아버지|어머니|아빠|엄마|형|누나|오빠|언니|동생|남동생|여동생|할아버지|할머니|친척|삼촌|이모|고모|사촌|조카|손자|손녀|아들|딸|남편|아내|부부|결혼|약혼)/ },
+    { cat: 'friends', rx: /^(친구|동료|선배|후배|이웃|지인|선생님|학우|반친구|단짝)/ },
+    { cat: 'dating', rx: /^(연애|데이트|커플|애인|남친|여친|썸|고백|소개팅|결혼|사랑|이별|이혼)/ },
+    { cat: 'family', en: /(family|parent|father|mother|brother|sister|grandparent|grandfather|grandmother|uncle|aunt|cousin|nephew|niece|son|daughter|husband|wife|spouse)/i },
+
+    // ── Study / Education ─────────────────────────────────
+    { cat: 'study', rx: /^(공부|학습|숙제|과제|시험|문제|답|정답|오답|단어|문법|발음|회화|독해|작문|쓰기|읽기|듣기|말하기|점수|등급|토픽|급수|레벨|연습|복습|예습|메모|필기|노트|책|교재|참고서|사전)/ },
+    { cat: 'education', rx: /^(학교|학원|대학|대학교|초등|중등|고등|교사|교수|학생|교실|강의|수업|등록|입학|졸업|학기|학년|학과|전공|학위|졸업|학사|석사|박사|기숙사|기말|중간|교원)/ },
+    { cat: 'education', en: /(school|college|university|class|classroom|lecture|student|teacher|professor|study|education|exam|test|grade|graduate|major|degree|tuition|semester)/i },
+
+    // ── Work / Business / Economy ─────────────────────────
+    { cat: 'work',  rx: /^(회사|직장|사무실|출근|퇴근|야근|회의|업무|일|보고|보고서|이메일|상사|부하|동료|팀|부서|프로젝트|마감|실적|성과|연봉|월급|보너스|승진|면접|이력서|채용|구직|취업|이직|퇴사|사직|근무|근로|적임)/ },
+    { cat: 'economy', rx: /^(경제|시장|주식|증시|코스피|코스닥|투자|투자자|펀드|채권|환율|금리|물가|인플레이션|불황|호황|기업|회사|매출|이익|손실|매입|매각|수출|수입|gdp|국내총생산|예산|세금|소득|재정|금융|은행|대출|적금|예금)/ },
+    { cat: 'work',  en: /(work|job|office|company|business|career|salary|wage|meeting|colleague|boss|employee|employer|hire|interview)/i },
+    { cat: 'economy', en: /(economy|market|stock|investment|finance|bank|loan|tax|budget|income|inflation|recession|gdp|export|import|trade)/i },
+
+    // ── News / Politics / Society / Culture ───────────────
+    { cat: 'politics', rx: /^(정치|정부|대통령|총리|장관|국회|국회의원|의원|선거|투표|당|여당|야당|법|법률|법안|정책|외교|안보|국방|군대|군인|전쟁|평화|조약|협정|회담|정상)/ },
+    { cat: 'society', rx: /^(사회|시민|국민|복지|연금|보험|범죄|사건|사고|화재|지진|태풍|홍수|구조|구급|경찰|소방|법원|판사|검사|변호사|재판|판결|체포|구속|기소|범인|피해자|증인|시위|집회|운동|단체|조합|노조|파업|보육|육아|결혼|이혼|출산|인구|고령|청년|노인|장애|학대|차별|평등|인권|대피소|공공장소|반려동물)/ },
+    { cat: 'culture', rx: /^(문화|예술|미술|조각|회화|서예|도예|건축|디자인|공예|박물관|미술관|전시|관람|작품|작가|예술가|화가|조각가|시인|소설가|작곡가|시|소설|수필|문학|민속|전통|풍습|관습|풍속|예절|예의|역사|유산|문화재|보물|국보|왕자|개막)/ },
+    { cat: 'news', rx: /^(뉴스|기사|언론|기자|방송|신문|잡지|보도|취재|특보|속보|사설|논평|매체|미디어|편집|발행)/ },
+    { cat: 'politics', en: /(politics|government|president|election|vote|party|policy|law|diplomat|military|war|peace)/i },
+    { cat: 'society', en: /(society|community|citizen|welfare|crime|accident|fire|earthquake|police|court|judge|lawyer|protest|union|strike|inequality|human right)/i },
+    { cat: 'culture', en: /(culture|art|history|tradition|heritage|museum|gallery|exhibition|literature|poet|writer|architect|design)/i },
+    { cat: 'news', en: /(news|article|press|journalist|broadcast|newspaper|magazine|media)/i },
+
+    // ── Everyday (last-pass catch-all for common life words) ──
+    { cat: 'everyday', rx: /^(시간|날짜|날|요일|월|년|어제|오늘|내일|모레|아침|점심|저녁|밤|새벽|주말|평일|시|분|초|일정|약속|계획|목적|이유|방법|결정|선택|기회|준비|시작|진행|완성|성공|실패|문제|해결|도움|소개|이름|주소|전화번호|생일|나이|성별|직업|취미|성격|기분|감정|걱정|행복|슬픔|화|기쁨|놀람|두려움|사랑|미움|희망|꿈|소원|기억|추억|약점|장점|단점|특징|모습|모양|색깔|크기|길이|높이|무게|숫자|돈|값|가격|할인|세일|구매|판매|교환|반품|영수증|봉지|가방|지갑|열쇠|시계|안경|모자|옷|신발|가구|침대|책상|의자|소파|냉장고|세탁기|tv|텔레비전|에어컨|선풍기|히터|등|전기|가스|수도|화장실|샤워|목욕|세수|양치|이불|베개|쓰레기|청소|빨래|설거지|장보기|쇼핑|마트|시장|편의점|약속|연락|인사|선물|축하|위로|격려|혼자|함께|같이|만남|만나다|보다|듣다|말하다|읽다|쓰다|걷다|뛰다|타다|내리다|오다|가다|돌아오다|살다|살아오다|일어나다|자다|쉬다|놀다|일하다|공부하다|만들다|고치다|버리다|찾다|잃다|받다|주다|보내다|기다리다|돕다|배우다|가르치다|시작하다|끝나다|끝내다|좋아하다|싫어하다|기억하다|잊다|믿다|의심하다|결심하다|결정하다|선택하다|관측하다|측정하다|적합한)/ },
+    { cat: 'everyday', en: /(time|date|day|week|month|year|today|tomorrow|yesterday|morning|afternoon|evening|night|weekend|hour|minute|second|plan|schedule|decide|choose|method|reason|purpose|name|address|phone|birthday|age|gender|hobby|character|mood|feeling|happy|sad|angry|surprise|fear|love|hate|hope|dream|memory|money|price|shopping|market|store|gift|congratulation|greeting|hello|goodbye)/i },
+  ];
+
+  // Run the rule bank against a list of Korean words (and their English
+  // meanings, when provided via the optional ko→meta map). Returns a
+  // { [ko]: tag } mapping covering only the words that matched a rule;
+  // callers fall back to 'misc' for the rest.
+  function _ruleCategorize(words, koMetaMap) {
+    var out = {};
+    (words || []).forEach(function(ko) {
+      var meta = koMetaMap && koMetaMap[ko];
+      var en = (meta && meta.en) || '';
+      for (var i = 0; i < RULE_CAT_BANK.length; i++) {
+        var rule = RULE_CAT_BANK[i];
+        if (rule.rx && rule.rx.test(ko)) { out[ko] = rule.cat; break; }
+        if (rule.en && en && rule.en.test(en)) { out[ko] = rule.cat; break; }
+      }
+    });
+    return out;
+  }
+
+  // localStorage cache so we don't re-walk the rule bank for every
+  // word on each Universe open. Sized small (rule bank is cheap) but
+  // mirrors the previous AI-cache contract so the rest of the file
+  // keeps working unchanged.
+  var _CAT_CACHE_KEY = 'kh_universe_cat_cache_v2';
   function _readCatCache() {
     try { return JSON.parse(localStorage.getItem(_CAT_CACHE_KEY) || '{}'); }
     catch(_) { return {}; }
@@ -404,45 +499,18 @@
     try { localStorage.setItem(_CAT_CACHE_KEY, JSON.stringify(map)); } catch(_) {}
   }
 
-  // Ask Claude haiku to bucket each word into one of our category tags.
-  // Used as a fallback when vocabulary_bank.interest_tag is empty (which
-  // is why so many user-saved words were ending up in MISC).
-  async function _aiCategorize(words) {
+  // Replaces the old AI categorizer. Identical shape (kos in → cache out)
+  // so the existing enrichWithCategories path stays as-is. No Claude
+  // calls; pure local rule lookup. Cost: 0.
+  function _localCategorize(words, koMetaMap) {
     if (!Array.isArray(words) || !words.length) return {};
-    if (typeof callClaude !== 'function') return {};
     var cache = _readCatCache();
     var stillUnknown = words.filter(function(k){ return !cache[k]; });
-    if (!stillUnknown.length) return cache;
-    // Cap chunks at 30 — keep prompts short so haiku stays fast/cheap.
-    for (var off = 0; off < stillUnknown.length; off += 30) {
-      var chunk = stillUnknown.slice(off, off + 30);
-      var prompt = 'Categorize each Korean word into ONE of these tags:\n'
-        + 'everyday, food, travel, work, kpop, music, news, politics, economy, '
-        + 'culture, society, tech, sports, health, nature, drama, movie, '
-        + 'entertainment, family, friends, dating, study, education, misc.\n\n'
-        + 'Words (one per line):\n' + chunk.join('\n')
-        + '\n\nReturn ONLY a JSON array of tags in the same order as the input. '
-        + 'Example: ["food","everyday","misc"]. No explanations.';
-      try {
-        var res = await callClaude({
-          feature: 'universe-categorize',
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 600,
-          messages: [{ role: 'user', content: prompt }]
-        });
-        var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
-        var ai = txt.indexOf('['), bi = txt.lastIndexOf(']');
-        if (ai >= 0 && bi > ai) txt = txt.slice(ai, bi + 1);
-        var tags = JSON.parse(txt);
-        if (Array.isArray(tags)) {
-          chunk.forEach(function(ko, i) {
-            var t = String(tags[i] || 'misc').toLowerCase().trim();
-            cache[ko] = t;
-          });
-        }
-      } catch(_) { /* keep going; remaining words fall back to misc */ }
+    if (stillUnknown.length) {
+      var hits = _ruleCategorize(stillUnknown, koMetaMap);
+      Object.keys(hits).forEach(function(k){ cache[k] = hits[k]; });
+      _writeCatCache(cache);
     }
-    _writeCatCache(cache);
     return cache;
   }
 
@@ -482,16 +550,25 @@
           });
         }
       }
-      // Anything still missing → ask Claude (cached). This is what
-      // rescues user-saved words that bypassed vocabulary_bank or that
-      // exist there with an empty interest_tag — previously they all
-      // collapsed into a giant MISC blob.
+      // Anything still missing → rule-based local categorizer (no AI
+      // call). Owner directive: eliminate user-side AI fallback. The
+      // rule bank above covers ~300 common Korean stems + English-
+      // meaning regexes; remaining unknowns honestly fall to 'misc'
+      // instead of paying tokens to guess.
       var missing = needsLookup.map(function(w){ return w.word_ko || w.ko; })
         .filter(function(ko){ return ko && !found[ko]; });
-      var aiCache = missing.length ? await _aiCategorize(missing) : {};
+      // Build a {ko → {en}} map so the English-meaning regex rules
+      // can match too (covers user-saved words with thin Korean
+      // morphology, e.g. proper nouns whose en gloss is clearer).
+      var koMeta = {};
       needsLookup.forEach(function(w) {
         var ko = w.word_ko || w.ko;
-        var tag = found[ko] || aiCache[ko] || 'misc';
+        if (ko) koMeta[ko] = { en: w.word_en || w.en || '' };
+      });
+      var ruleCache = missing.length ? _localCategorize(missing, koMeta) : {};
+      needsLookup.forEach(function(w) {
+        var ko = w.word_ko || w.ko;
+        var tag = found[ko] || ruleCache[ko] || 'misc';
         w._cat = normCategory(tag);
       });
     } catch(_) {
