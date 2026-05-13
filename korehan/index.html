@@ -1707,7 +1707,26 @@ document.addEventListener('DOMContentLoaded', async function() {
         .order('created_at', {ascending: false})
         .limit(8);
       var rows = (res && res.data) || [];
-      if (!rows.length) { grid.innerHTML = '<div style="color:#64748b;font-size:13px;padding:16px">아직 스토리가 없어요.</div>'; return; }
+      console.log('[home-stories] loaded', rows.length, 'rows', (res && res.error) ? ('error:' + res.error.message) : '');
+      if (res && res.error) {
+        // Surface RLS / network / column errors directly so the user
+        // sees WHY the rail is empty instead of a silent void. Most
+        // common cause: stories_data RLS blocking the current user, or
+        // schema drift (a select column the DB no longer has).
+        grid.innerHTML = '<div style="color:#dc2626;font-size:13px;padding:16px;line-height:1.6;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;">'
+          + '<strong>Stories 불러오기 실패.</strong><br>' + esc(res.error.message || String(res.error))
+          + '<br><br><a href="korehan-stories.html" style="color:#7c3aed;font-weight:700;text-decoration:underline">📚 Stories 페이지에서 확인</a>'
+          + '</div>';
+        return;
+      }
+      if (!rows.length) {
+        grid.innerHTML = '<div style="color:#64748b;font-size:13px;padding:20px;background:#fff;border:1px dashed #cbd5e1;border-radius:12px;text-align:center;line-height:1.7">'
+          + '<div style="font-size:28px;margin-bottom:8px">📖</div>'
+          + '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">아직 스토리가 없어요</div>'
+          + '<div>새 스토리는 어드민에서 추가하거나 <a href="korehan-stories.html" style="color:#7c3aed;font-weight:700;text-decoration:underline">전체 Stories 페이지</a>에서 확인하세요.</div>'
+          + '</div>';
+        return;
+      }
       grid.innerHTML = rows.map(renderHomeStory).join('');
       if (window.renderKhLucideIcons) renderKhLucideIcons();
       else if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
@@ -1717,8 +1736,11 @@ document.addEventListener('DOMContentLoaded', async function() {
       // upgrades to English in-place once Claude returns.
       try { _khBackfillStoryTitlesEn(rows); } catch(_) {}
     } catch(e) {
-      console.warn('home stories load failed:', e.message || e);
-      grid.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:16px">Unable to load stories.</div>';
+      console.warn('home stories load failed:', e && e.message || e);
+      grid.innerHTML = '<div style="color:#dc2626;font-size:13px;padding:16px;line-height:1.6;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;">'
+        + '<strong>Stories 로드 중 오류:</strong> ' + esc(e && e.message || String(e))
+        + '<br><br><a href="korehan-stories.html" style="color:#7c3aed;font-weight:700;text-decoration:underline">📚 Stories 페이지에서 다시 시도</a>'
+        + '</div>';
     }
   })();
 
