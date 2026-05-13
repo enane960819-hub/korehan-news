@@ -60,9 +60,21 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260512b"></script>
+<script src="korehan-shared.js?v=20260512d"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
+  // Remember the page the user came from BEFORE entering the reporters
+  // flow, so a per-reporter "← 뒤로가기" can skip back over this list
+  // when they bounce off a reporter detail page (rather than dropping
+  // them on this same all-reporters page). Skip recording when they're
+  // already inside the reporters flow.
+  try {
+    var ref = document.referrer || '';
+    if (ref && !/korehan-reporter(s)?\.html/.test(ref)) {
+      sessionStorage.setItem('kh_rp_pre_list', ref);
+    }
+  } catch (_) {}
+
   await _loadReportersIntoKHMap();
   var grid = document.getElementById('rpl-grid');
 
