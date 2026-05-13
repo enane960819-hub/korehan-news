@@ -468,7 +468,7 @@ body {
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260512b"></script>
+<script src="korehan-shared.js?v=20260512d"></script>
 <script>
 var FAV_HIRE_THRESHOLD = 3000;
 var REPORTER_BG_DEFAULT = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=2200&q=80';
@@ -580,7 +580,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   root.innerHTML =
     '<div class="rp-wrap">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    +   '<a href="javascript:history.back()" style="color:var(--bright);font-size:14px;font-weight:700;text-decoration:none;opacity:.8">← 뒤로가기</a>'
+    +   '<a href="#" onclick="rpGoBack(event)" style="color:var(--bright);font-size:14px;font-weight:700;text-decoration:none;opacity:.8">← 뒤로가기</a>'
     +   '<a href="korehan-reporters.html" style="color:var(--bright);font-size:13px;font-weight:700;text-decoration:none;opacity:.8">전체 기자 보기 →</a>'
     + '</div>'
 
@@ -765,6 +765,39 @@ function canManageReporterPosts(reporter) {
 }
 
 function escHtml(t){ return String(t || '').replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+
+// Smart "← 뒤로가기" target. The old javascript:history.back() did the
+// literal browser-back, which on the common path (home → all reporters
+// → reporter detail) lands the user on the all-reporters list rather
+// than where they actually started — owner-reported as "뒤로가기 하면
+// 뒤로 안가고 전체 기자 페이지가 나옴". Heuristic:
+//   1. If we came directly from the all-reporters list AND we stashed
+//      the page that preceded it (kh_rp_pre_list, set by reporters.html
+//      on its own load), navigate straight there.
+//   2. Otherwise, do the standard history.back() if there's anything
+//      to go back to.
+//   3. Final fallback: home page.
+window.rpGoBack = function (e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  var ref = document.referrer || '';
+  if (/korehan-reporters\.html/i.test(ref)) {
+    var pre = '';
+    try { pre = sessionStorage.getItem('kh_rp_pre_list') || ''; } catch (_) {}
+    if (pre) {
+      try {
+        var u = new URL(pre, window.location.origin);
+        if (u.origin === window.location.origin && !/korehan-reporter(s)?\.html/i.test(u.pathname)) {
+          window.location.href = u.pathname + u.search + u.hash;
+          return;
+        }
+      } catch (_) {}
+    }
+    window.location.href = 'index.html';
+    return;
+  }
+  if (window.history.length > 1) { window.history.back(); return; }
+  window.location.href = 'index.html';
+};
 
 function formatPostTime(ts) {
   if (!ts) return '';
