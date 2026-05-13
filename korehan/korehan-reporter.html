@@ -190,15 +190,175 @@ body {
 .rp-art-title { font-size: 14px; font-weight: 700; color: #0f172a; line-height: 1.45; margin-bottom: 3px; font-family: 'Noto Serif KR', serif; }
 .rp-art-meta { font-size: 12px; color: #94a3b8; }
 
-/* ── Reporter body layout ── */
+/* ── Reporter body layout — single column with idol-style tabs ── */
 .rp-body-grid {
-  display:grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(280px, .8fr);
-  gap: 18px;
-  align-items: start;
+  display:block;
 }
 .rp-main-col { min-width:0; }
-.rp-side-col { min-width:0; position: sticky; top: 96px; }
+.rp-side-col { min-width:0; }
+
+/* ── Idol-style tab bar (Posts / Album / Photocards / Articles) ── */
+.rp-tabbar {
+  display:flex; gap:6px;
+  background:#fff; border:1px solid #e8eef7; border-radius:18px;
+  padding:6px; margin:0 0 18px;
+  box-shadow:0 4px 20px rgba(15,23,42,.05);
+  overflow-x:auto; scrollbar-width:none;
+}
+.rp-tabbar::-webkit-scrollbar { display:none; }
+.rp-tab {
+  flex:1 1 auto;
+  padding:11px 14px;
+  border-radius:12px; border:none; background:transparent;
+  font:inherit; font-size:13px; font-weight:800;
+  color:#64748b; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  white-space:nowrap;
+  transition: background .15s, color .15s, transform .12s;
+}
+.rp-tab:hover { color:#0f172a; }
+.rp-tab.on {
+  background:#0f172a; color:#fff;
+  transform:translateY(-1px);
+  box-shadow:0 6px 18px rgba(15,23,42,.18);
+}
+.rp-tab-count {
+  font-size:11px; padding:1px 7px; border-radius:999px;
+  background:rgba(15,23,42,.08); color:#64748b; font-weight:800;
+}
+.rp-tab.on .rp-tab-count { background:rgba(255,255,255,.18); color:#fff; }
+
+.rp-panel { display:none; }
+.rp-panel.on { display:block; animation: rpPanelIn .22s ease; }
+@keyframes rpPanelIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+
+/* ── Compact stat strip (favorability + nyang) under profile ── */
+.rp-stat-strip {
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  background:#fff; border:1px solid #e8eef7; border-radius:16px;
+  padding:12px 16px; margin:0 0 14px;
+  box-shadow:0 4px 18px rgba(15,23,42,.05);
+}
+.rp-stat-strip-fav {
+  flex:1 1 auto; min-width:160px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.rp-stat-strip-bar {
+  position:relative; height:8px; border-radius:999px; background:#f1f5f9; overflow:hidden;
+}
+.rp-stat-strip-bar-fill {
+  position:absolute; inset:0 auto 0 0; border-radius:999px;
+  transition: width .35s ease;
+}
+.rp-stat-strip-row {
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:11px; color:#64748b; font-weight:700;
+}
+.rp-stat-strip-row b { color:#0f172a; font-size:12px; font-weight:900; }
+
+/* ── Album grid (Instagram-style 3-col image grid) ── */
+.rp-album-grid {
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:4px;
+}
+@media (min-width: 640px) {
+  .rp-album-grid { gap:6px; grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 960px) {
+  .rp-album-grid { grid-template-columns: repeat(5, 1fr); }
+}
+.rp-album-tile {
+  position:relative; aspect-ratio:1/1; overflow:hidden;
+  background:#0f172a; cursor:zoom-in;
+  border-radius:6px;
+}
+.rp-album-tile img {
+  width:100%; height:100%; object-fit:cover; display:block;
+  transition: transform .25s ease;
+}
+.rp-album-tile:hover img { transform: scale(1.05); }
+.rp-album-empty {
+  text-align:center; padding:48px 20px; color:#64748b; font-size:13px;
+  background:#fff; border:1px dashed #cbd5e1; border-radius:14px;
+}
+
+/* ── Photocards (idol photocard tiles) ── */
+.rp-pc-grid {
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap:14px;
+}
+@media (min-width: 480px) {
+  .rp-pc-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 720px) {
+  .rp-pc-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.rp-pc {
+  position:relative;
+  aspect-ratio: 2/3;
+  border-radius:18px;
+  overflow:hidden;
+  border:3px solid #fff;
+  box-shadow: 0 12px 28px rgba(15,23,42,.22), 0 0 0 1px rgba(15,23,42,.08);
+  background:#0f172a;
+  cursor:zoom-in;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.rp-pc:hover { transform: translateY(-4px) rotate(-1deg); box-shadow: 0 18px 36px rgba(15,23,42,.32), 0 0 0 1px rgba(15,23,42,.08); }
+.rp-pc-img {
+  position:absolute; inset:0;
+  background-size:cover; background-position:center top;
+}
+.rp-pc-fade {
+  position:absolute; inset:auto 0 0 0; height:60%;
+  background: linear-gradient(180deg, rgba(8,14,28,0) 0%, rgba(8,14,28,.55) 55%, rgba(8,14,28,.92) 100%);
+}
+.rp-pc-edge {
+  position:absolute; top:0; left:0; right:0; height:5px;
+}
+.rp-pc-body {
+  position:absolute; left:0; right:0; bottom:0;
+  padding:14px 14px 14px;
+  color:#fff;
+}
+.rp-pc-num {
+  position:absolute; top:10px; right:12px;
+  font-family:'Source Sans 3', system-ui, sans-serif;
+  font-size:11px; font-weight:900; letter-spacing:.18em;
+  color:rgba(255,255,255,.85);
+  text-shadow:0 1px 2px rgba(0,0,0,.4);
+}
+.rp-pc-tag {
+  display:inline-block;
+  font-size:9px; font-weight:900; letter-spacing:.16em; text-transform:uppercase;
+  padding:3px 8px; border-radius:999px;
+  background:rgba(255,255,255,.16);
+  border:1px solid rgba(255,255,255,.32);
+  backdrop-filter: blur(4px);
+  margin-bottom:6px;
+}
+.rp-pc-name {
+  font-family:'Noto Serif KR', serif;
+  font-size:18px; font-weight:900; line-height:1.15;
+  margin:0;
+  text-shadow: 0 2px 8px rgba(0,0,0,.45);
+}
+.rp-pc-role {
+  font-size:10px; font-weight:700; letter-spacing:.04em;
+  color:rgba(255,255,255,.85); margin-top:3px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.45);
+}
+.rp-pc-ph {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Noto Serif KR', serif; font-size:88px; font-weight:900; color:#fff;
+}
+.rp-pc-empty {
+  text-align:center; padding:48px 20px; color:#64748b; font-size:13px;
+  background:#fff; border:1px dashed #cbd5e1; border-radius:14px;
+}
 
 .rp-post-compose {
   background:#fff; border:1px solid #e8eef7; border-radius:22px; padding:18px; margin-bottom:14px;
@@ -267,6 +427,11 @@ body {
   .rp-post-images.one img { height:240px; }
   .rp-body-grid { grid-template-columns: 1fr; }
   .rp-side-col { position: static; }
+  /* Tab bar: compact icons on the smallest screens so 4 labels still
+     fit in a single row without horizontal scroll bars dominating. */
+  .rp-tab { padding:10px 10px; font-size:12px; }
+  .rp-tabbar { padding:5px; gap:4px; border-radius:14px; }
+  .rp-stat-strip { padding:10px 12px; gap:8px; }
 }
 </style>
 </head>
@@ -438,35 +603,159 @@ document.addEventListener('DOMContentLoaded', async function() {
     +   '</div>'
     + '</div>'
 
-    + '<div class="rp-body-grid">'
-    +   '<div class="rp-main-col">'
-    +     '<div id="rp-post-compose"></div>'
-    +     '<div id="rp-post-feed" class="rp-post-feed"><div class="rp-post-empty">Posts 로딩 중…</div></div>'
+    // ── Compact favorability/nyang strip under the profile ──
+    + '<div class="rp-stat-strip">'
+    +   '<div class="rp-stat-strip-fav">'
+    +     '<div class="rp-stat-strip-row"><span>❤️ 호감도 · <b id="rp-fav-level">' + favLevel + '</b></span><span id="rp-fav-xp"><b>' + favXP + '</b> / ' + FAV_HIRE_THRESHOLD + '</span></div>'
+    +     '<div class="rp-stat-strip-bar"><div class="rp-stat-strip-bar-fill" id="rp-fav-bar-fill" style="width:' + favPct + '%;background:linear-gradient(90deg,' + color + ',' + color + 'aa)"></div></div>'
     +   '</div>'
-    +   '<aside class="rp-side-col">'
-    // ── Favorability ──
-    +   '<div class="rp-fav-card">'
-    +     '<div class="rp-fav-header">'
-    +       '<div class="rp-fav-title">❤️ 호감도</div>'
-    +       '<div style="display:flex;gap:8px;align-items:center"><span class="rp-nyang-chip" id="rp-nyang-balance">🐾 냥 -</span><div class="rp-fav-level" id="rp-fav-level">' + favLevel + '</div></div>'
-    +     '</div>'
-    +     '<div class="rp-fav-bar-bg"><div class="rp-fav-bar-fill" id="rp-fav-bar-fill" style="width:' + favPct + '%;background:linear-gradient(90deg,' + color + ',' + color + 'aa)"></div></div>'
-    +     '<div class="rp-fav-meta"><span id="rp-fav-xp">' + favXP + ' / ' + FAV_HIRE_THRESHOLD + ' 친밀도</span><span id="rp-fav-left">매니저 고용까지 ' + (FAV_HIRE_THRESHOLD - favXP) + ' 남음</span></div>'
-    +     '<div class="rp-gifts" id="rp-gifts">선물 불러오는 중…</div>'
-    +     '<div id="rp-gift-msg" style="font-size:12px;color:#64748b;margin:2px 0 10px"></div>'
-    +     '<button class="rp-hire-btn" disabled>🎓 한국어 매니저로 고용하기</button>'
-    +     '<div class="rp-hire-progress" id="rp-fav-progress">호감도 ' + FAV_HIRE_THRESHOLD + ' 달성 시 고용 가능 · 현재 ' + favPct + '%</div>'
-    +   '</div>'
-    // ── Articles ──
-    +   '<div id="rp-arts"></div>'
-    +   '</aside>'
+    +   '<span class="rp-nyang-chip" id="rp-nyang-balance">🐾 냥 -</span>'
     + '</div>'
+
+    // ── Idol-style tab bar ──
+    + '<div class="rp-tabbar" role="tablist">'
+    +   '<button type="button" class="rp-tab on" data-tab="posts"      role="tab" aria-selected="true" onclick="rpSwitchTab(\'posts\')">📝 Posts <span class="rp-tab-count" id="rp-tab-c-posts"></span></button>'
+    +   '<button type="button" class="rp-tab"    data-tab="album"      role="tab" aria-selected="false" onclick="rpSwitchTab(\'album\')">📷 Album <span class="rp-tab-count" id="rp-tab-c-album"></span></button>'
+    +   '<button type="button" class="rp-tab"    data-tab="photocards" role="tab" aria-selected="false" onclick="rpSwitchTab(\'photocards\')">💳 Photocards <span class="rp-tab-count" id="rp-tab-c-pc"></span></button>'
+    +   '<button type="button" class="rp-tab"    data-tab="articles"   role="tab" aria-selected="false" onclick="rpSwitchTab(\'articles\')">📰 Articles <span class="rp-tab-count" id="rp-tab-c-arts"></span></button>'
+    + '</div>'
+
+    // ── Tab panels ──
+    + '<div class="rp-panel on" id="rp-panel-posts" role="tabpanel">'
+    +   '<div id="rp-post-compose"></div>'
+    +   '<div id="rp-post-feed" class="rp-post-feed"><div class="rp-post-empty">Posts 로딩 중…</div></div>'
+    + '</div>'
+
+    + '<div class="rp-panel" id="rp-panel-album" role="tabpanel">'
+    +   '<div id="rp-album-root"><div class="rp-album-empty">Album 로딩 중…</div></div>'
+    + '</div>'
+
+    + '<div class="rp-panel" id="rp-panel-photocards" role="tabpanel">'
+    +   '<div id="rp-pc-root"><div class="rp-pc-empty">Photocards 로딩 중…</div></div>'
+    + '</div>'
+
+    + '<div class="rp-panel" id="rp-panel-articles" role="tabpanel">'
+    +   '<div id="rp-arts"></div>'
+    + '</div>'
+
+    // ── Gift panel (kept as a card below the tabs since it spans every tab's idol-stan flow) ──
+    + '<div class="rp-fav-card" style="margin-top:24px">'
+    +   '<div class="rp-fav-header">'
+    +     '<div class="rp-fav-title">🎁 선물 보내기</div>'
+    +   '</div>'
+    +   '<div class="rp-gifts" id="rp-gifts">선물 불러오는 중…</div>'
+    +   '<div id="rp-gift-msg" style="font-size:12px;color:#64748b;margin:2px 0 10px"></div>'
+    +   '<button class="rp-hire-btn" disabled>🎓 한국어 매니저로 고용하기</button>'
+    +   '<div class="rp-hire-progress" id="rp-fav-progress">호감도 ' + FAV_HIRE_THRESHOLD + ' 달성 시 고용 가능 · 현재 ' + favPct + '%</div>'
+    + '</div>'
+
     + '</div>';
 
   loadReporterArticles(rid, reporter.name);
   loadReporterGiftPanel(rid);
   initReporterPosts(rid, reporter);
 });
+
+// Idol-style tab switching: toggle .on between buttons and panels.
+// Panel rendering is lazy — Posts loads automatically (initReporterPosts),
+// Album + Photocards hydrate from the cached _postCache when first opened,
+// Articles is loaded by loadReporterArticles in the main entry.
+window.rpSwitchTab = function(tab) {
+  document.querySelectorAll('.rp-tab').forEach(function(b){
+    var on = b.dataset.tab === tab;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('.rp-panel').forEach(function(p){
+    p.classList.toggle('on', p.id === 'rp-panel-' + tab);
+  });
+  if (tab === 'album')      rpRenderAlbum();
+  if (tab === 'photocards') rpRenderPhotocards();
+};
+
+// Album: every post image flattened into a square Instagram-style grid.
+// Pulls from _postCache (already loaded by initReporterPosts) so there's
+// no extra round-trip. Updates the tab badge count too.
+function rpRenderAlbum() {
+  var root = document.getElementById('rp-album-root');
+  var countEl = document.getElementById('rp-tab-c-album');
+  if (!root) return;
+  var imgs = [];
+  (_postCache || []).forEach(function(p) {
+    if (Array.isArray(p.images)) p.images.forEach(function(u){ if (u) imgs.push(u); });
+  });
+  if (countEl) countEl.textContent = imgs.length ? imgs.length : '';
+  if (!imgs.length) {
+    root.innerHTML = '<div class="rp-album-empty">아직 사진이 없습니다. Posts 탭에서 사진을 올려보세요.</div>';
+    return;
+  }
+  root.innerHTML = '<div class="rp-album-grid">'
+    + imgs.map(function(u){
+        return '<div class="rp-album-tile" onclick="rpOpenPostImage(&quot;' + escHtml(u) + '&quot;)">'
+          + '<img src="' + escHtml(u) + '" loading="lazy" alt="">'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+
+// Photocards: the reporter's official profile shot + every published
+// post image gets framed as an idol photocard. Numbered 001/N onward
+// so collectors get a "set" feel. Single image (reporter.image only)
+// is fine — that's the official card.
+function rpRenderPhotocards() {
+  var root = document.getElementById('rp-pc-root');
+  var countEl = document.getElementById('rp-tab-c-pc');
+  if (!root || !_currentReporter) return;
+  var r = _currentReporter;
+  var color = r.color || '#2563eb';
+
+  // Build the card list: official first (reporter.image), then one per
+  // post image. Each entry → { src, tag, num } shape the renderer uses.
+  var cards = [];
+  if (r.image) {
+    cards.push({ src: r.image, tag: 'OFFICIAL', num: 1 });
+  }
+  (_postCache || []).forEach(function(p) {
+    (p.images || []).forEach(function(u) {
+      if (u && u !== r.image) cards.push({ src: u, tag: 'BEHIND', num: cards.length + 1 });
+    });
+  });
+
+  if (countEl) countEl.textContent = cards.length ? cards.length : '';
+  if (!cards.length) {
+    root.innerHTML = '<div class="rp-pc-empty">아직 포카가 없습니다. 기자가 사진을 올리면 포카가 생성됩니다.</div>';
+    return;
+  }
+
+  var total = cards.length;
+  root.innerHTML = '<div class="rp-pc-grid">'
+    + cards.map(function(c, i) {
+        var num = String(c.num).padStart(3, '0');
+        var imgLayer = c.src
+          ? '<div class="rp-pc-img" style="background-image:url(\'' + escHtml(c.src) + '\')"></div>'
+          : '<div class="rp-pc-ph" style="background:' + color + '">' + escHtml(r.name.charAt(0)) + '</div>';
+        return '<div class="rp-pc" onclick="rpOpenPostImage(&quot;' + escHtml(c.src) + '&quot;)">'
+          + imgLayer
+          + '<div class="rp-pc-edge" style="background:' + color + '"></div>'
+          + '<div class="rp-pc-fade"></div>'
+          + '<div class="rp-pc-num">' + num + ' / ' + String(total).padStart(3, '0') + '</div>'
+          + '<div class="rp-pc-body">'
+          +   '<span class="rp-pc-tag">' + escHtml(c.tag) + '</span>'
+          +   '<h3 class="rp-pc-name">' + escHtml(r.name) + '</h3>'
+          +   '<div class="rp-pc-role">' + escHtml(r.role || '') + '</div>'
+          + '</div>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+
+// Wrapper around the existing renderReporterPosts so the Posts and
+// Articles tab counters stay in sync with whatever the loaders write
+// to _postCache. Articles count is set in loadReporterArticles.
+function rpUpdatePostsCount() {
+  var el = document.getElementById('rp-tab-c-posts');
+  if (el) el.textContent = (_postCache && _postCache.length) ? _postCache.length : '';
+}
 
 function canManageReporterPosts(reporter) {
   if (window._isAdmin) return true;
@@ -620,6 +909,13 @@ async function loadReporterPosts(reporterId) {
 function renderReporterPosts(posts) {
   var feed = document.getElementById('rp-post-feed');
   if (!feed) return;
+  // Keep the tab badge count in sync with whatever lands in the feed,
+  // and refresh the Album / Photocards panels if they happen to be
+  // open so a new post upload doesn't leave them stale.
+  if (typeof rpUpdatePostsCount === 'function') rpUpdatePostsCount();
+  var openPanel = document.querySelector('.rp-panel.on');
+  if (openPanel && openPanel.id === 'rp-panel-album')      rpRenderAlbum();
+  if (openPanel && openPanel.id === 'rp-panel-photocards') rpRenderPhotocards();
   if (!posts.length) {
     feed.innerHTML = '<div class="rp-post-empty">아직 올라온 포스트가 없습니다.</div>';
     return;
@@ -1128,10 +1424,15 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.
 
 async function loadReporterArticles(rid, name) {
   var el = document.getElementById('rp-arts');
+  var countEl = document.getElementById('rp-tab-c-arts');
   if (!el) return;
   await loadArticlesFromDB({ force: false });
   var arts = getCachedArticles().filter(function(a){ return a.reporter_id === rid && (!a.status || a.status === 'published'); });
-  if (!arts.length) return;
+  if (countEl) countEl.textContent = arts.length ? arts.length : '';
+  if (!arts.length) {
+    el.innerHTML = '<div class="rp-post-empty">아직 작성한 기사가 없습니다.</div>';
+    return;
+  }
   arts.sort(function(a,b){ return (b.date||'') > (a.date||'') ? 1 : -1; });
   el.innerHTML = '<div class="rp-sec-title">' + name + '의 기사 ' + arts.length + '편</div>'
     + '<div class="rp-art-list">'
