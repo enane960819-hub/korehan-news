@@ -9,6 +9,10 @@
 <title>My Phrases — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20260510v">
+<!-- Iconify for phrase illustration fallback (same lib the Today's
+     Phrase page uses). Loaded defer so it doesn't block paint; cards
+     render with the gradient + emoji until iconify hydrates. -->
+<script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js" defer></script>
 <style>
 /* Two-font system to keep the gallery visually quiet:
    - Noto Serif KR for Korean phrases (only)
@@ -22,10 +26,8 @@
 .kh-myp-empty,
 .kh-myp-sub,
 .kh-myp-count,
-.kh-myp-card-eyebrow,
 .kh-myp-card-en,
 .kh-myp-card-rom,
-.kh-myp-card-foot,
 .kh-myp-empty-sub,
 .kh-myp-empty-cta { font-family: 'Source Sans 3', system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
 
@@ -35,46 +37,81 @@
 .kh-myp-sub { font-size:13px; color:var(--gray); margin:4px 0 0; line-height:1.5; }
 .kh-myp-count { font-size:12px; color:var(--bright); font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
 
-.kh-myp-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+/* ── Mini-card grid (Today's Phrase style) ──────────────────────
+   3 per row on mobile, 4 on slightly wider phones, scales up on
+   desktop. Each card is a small "trading card" with the phrase
+   illustration on top and KO + EN underneath. */
+.kh-myp-grid {
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:10px;
+}
+@media (min-width: 480px) { .kh-myp-grid { grid-template-columns: repeat(4, 1fr); gap:12px; } }
+@media (min-width: 720px) { .kh-myp-grid { grid-template-columns: repeat(5, 1fr); } }
+@media (min-width: 960px) { .kh-myp-grid { grid-template-columns: repeat(6, 1fr); } }
+
 .kh-myp-card {
   display:flex; flex-direction:column;
   background:var(--white); border:1px solid var(--border); border-radius:14px;
-  padding:18px 18px 16px; box-shadow:var(--shadow);
+  overflow:hidden; box-shadow:var(--shadow);
   text-decoration:none; color:inherit;
   transition: box-shadow .15s, transform .12s, border-color .15s;
   position:relative;
-  min-height:160px;
 }
 .kh-myp-card:hover { border-color: var(--bright); box-shadow:0 10px 26px rgba(34,85,164,.14); transform:translateY(-2px); }
-.kh-myp-card-eyebrow {
-  font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--bright); margin-bottom:8px;
+
+/* Illustration tile — square, gradient base so it never looks empty
+   even when the phrase entry has no image. The .kh-myp-card-img
+   layer paints the entry.image (pixel art) on top when present;
+   .kh-myp-card-emoji is the fallback. */
+.kh-myp-card-illus {
+  position:relative; width:100%; aspect-ratio:1/1;
+  background:linear-gradient(135deg,#e6efff 0%,#d6e6ff 100%);
+  overflow:hidden;
 }
+.kh-myp-card-img {
+  position:absolute; inset:0; background-size:cover; background-position:center;
+  image-rendering: pixelated;
+}
+.kh-myp-card-emoji {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:clamp(34px, 7vw, 56px); line-height:1;
+}
+.kh-myp-card-iconify {
+  position:absolute; inset:14% 14%; display:flex; align-items:center; justify-content:center;
+}
+.kh-myp-card-iconify iconify-icon { width:100%; height:100%; }
+
+.kh-myp-card-body { padding:10px 10px 12px; display:flex; flex-direction:column; gap:4px; }
 .kh-myp-card-ko {
   font-family:'Noto Serif KR', serif; font-weight:900;
-  font-size:clamp(20px,3.6vw,24px); color:var(--navy);
-  line-height:1.22; margin:0 0 6px; word-break:keep-all;
+  font-size:clamp(13px, 2.6vw, 15px); color:var(--navy);
+  line-height:1.25; margin:0; word-break:keep-all;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 .kh-myp-card-en {
-  font-size:14px; font-weight:600; color:var(--accent); line-height:1.45; margin:0 0 8px;
+  font-size:clamp(10px, 2.1vw, 12px); font-weight:600; color:var(--accent);
+  line-height:1.35; margin:0;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
-.kh-myp-card-rom { font-size:11px; color:var(--gray); font-weight:500; }
-.kh-myp-card-foot {
-  display:flex; align-items:center; justify-content:space-between;
-  margin-top:auto; padding-top:14px;
-  font-size:11px; color:var(--gray);
-}
-.kh-myp-card-arrow { color:var(--bright); font-weight:800; font-size:14px; }
+.kh-myp-card-rom { display:none; }
+
 .kh-myp-remove {
-  position:absolute; top:10px; right:10px;
-  width:26px; height:26px; border-radius:50%;
-  background:rgba(220,38,38,.08); color:#dc2626;
-  border:none; cursor:pointer; font-size:14px; line-height:1;
+  position:absolute; top:6px; right:6px;
+  width:22px; height:22px; border-radius:50%;
+  background:rgba(15,23,42,.55); color:#fff;
+  border:none; cursor:pointer; font-size:13px; line-height:1;
   display:flex; align-items:center; justify-content:center;
-  opacity:0; transition:opacity .15s;
+  opacity:0; transition:opacity .15s, background .15s;
+  backdrop-filter: blur(4px);
 }
-.kh-myp-card:hover .kh-myp-remove { opacity:1; }
-.kh-myp-remove:hover { background:rgba(220,38,38,.18); }
+.kh-myp-card:hover .kh-myp-remove,
+.kh-myp-card:focus-within .kh-myp-remove { opacity:1; }
+.kh-myp-remove:hover { background:#dc2626; }
+/* Always show the × on touch devices — hover doesn't exist there. */
+@media (hover: none) {
+  .kh-myp-remove { opacity:.85; }
+}
 
 .kh-myp-empty {
   text-align:center; padding:80px 20px;
@@ -131,7 +168,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260511m"></script>
+<script src="korehan-shared.js?v=20260512b"></script>
 <script>
 // My Phrases — gallery of phrases the user has saved from the
 // phrase reader's "Add to My Phrases" CTA. Saved entries live in
@@ -212,17 +249,36 @@ function render() {
           : 'korehan-phrase.html?q=' + encodeURIComponent(koTrim);
         return '<a class="kh-myp-card" href="' + _esc(href) + '">'
           +   '<button type="button" class="kh-myp-remove" aria-label="Remove from My Phrases" onclick="removeSavedPhrase(' + idx + ', event)">×</button>'
-          +   '<div class="kh-myp-card-eyebrow">Saved phrase</div>'
-          +   '<h2 class="kh-myp-card-ko">' + _esc(p.ko || s.ko || '') + '</h2>'
-          +   (p.en ? '<div class="kh-myp-card-en">' + _esc(p.en) + '</div>' : '')
-          +   (p.rom ? '<div class="kh-myp-card-rom">' + _esc(p.rom) + '</div>' : '')
-          +   '<div class="kh-myp-card-foot">'
-          +     '<span>' + _esc(_formatDate(s.saved_at)) + '</span>'
-          +     '<span class="kh-myp-card-arrow" aria-hidden="true">→</span>'
+          +   _renderIllus(p)
+          +   '<div class="kh-myp-card-body">'
+          +     '<div class="kh-myp-card-ko">' + _esc(p.ko || s.ko || '') + '</div>'
+          +     (p.en ? '<div class="kh-myp-card-en">' + _esc(p.en) + '</div>' : '')
           +   '</div>'
           + '</a>';
       }).join('')
     + '</div>';
+}
+
+// Mini-card illustration — mirrors korehan-phrase.html's three-tier
+// approach (image → iconify → emoji) but sized for the gallery tile.
+// When the saved entry hasn't been resolved against the live queue
+// (older saved phrases that pre-date the image field), the gradient
+// background of .kh-myp-card-illus shows through.
+function _renderIllus(entry) {
+  if (!entry) return '<div class="kh-myp-card-illus"></div>';
+  if (entry.image) {
+    var imgUrl = entry.image + '?v=20260505l';
+    return '<div class="kh-myp-card-illus">'
+      +    '<div class="kh-myp-card-img" style="background-image:url(\'' + _esc(imgUrl) + '\')" role="img" aria-label="phrase illustration"></div>'
+      +  '</div>';
+  }
+  if (entry.icon) {
+    return '<div class="kh-myp-card-illus">'
+      +    '<div class="kh-myp-card-iconify"><iconify-icon icon="' + _esc(entry.icon) + '" aria-hidden="true">' + _esc(entry.fallback || '') + '</iconify-icon></div>'
+      +  '</div>';
+  }
+  var emoji = entry.fallback || '✨';
+  return '<div class="kh-myp-card-illus"><div class="kh-myp-card-emoji" aria-hidden="true">' + _esc(emoji) + '</div></div>';
 }
 
 document.addEventListener('DOMContentLoaded', function() {
