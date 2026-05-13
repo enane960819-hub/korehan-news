@@ -29,6 +29,76 @@
     </div>
   </div>
 
+  <script>
+  // ── Fast-paint article from localStorage cache, BEFORE the 26-script chain ──
+  // Owner: "기사 본문 들어가면 4~5초 정도 걸리는데 이거 맞냐..?"
+  //
+  // The real renderArticlePage lives in korehan-shared.js DOMContentLoaded,
+  // which only fires after all 26 sequential <script src> tags below execute.
+  // On real mobile that's 2-4s of blank screen even when the article is
+  // already in localStorage from the list-page cache.
+  //
+  // This inline runs the moment the parser hits this position — title +
+  // image + lede body show immediately. The proper renderer below later
+  // replaces this with the full version (hover vocab, grammar tooltips,
+  // audio button, AI cache, etc.) by writing to the same #dyn-article
+  // wrap.innerHTML, so no skip-flag plumbing is needed.
+  (function _articleCacheFastPaint(){
+    try {
+      var params = new URLSearchParams(location.search);
+      var id = params.get('id');
+      if (!id) return;
+      var raw = localStorage.getItem('kh_articles_cache_v2');
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      var items = (parsed && parsed.items) || [];
+      var a = null;
+      for (var i = 0; i < items.length; i++) {
+        if (String(items[i] && items[i].id) === String(id)) { a = items[i]; break; }
+      }
+      if (!a) return;
+      var wrap = document.getElementById('dyn-article');
+      if (!wrap) return;
+      function esc(s){
+        return String(s == null ? '' : s)
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+      function escAttr(s){ return esc(s).replace(/"/g,'&quot;'); }
+      var title   = a.title || a.title_ko || '';
+      var titleEn = a.title_en || '';
+      var img     = a.image || '';
+      var body    = a.body || '';
+      var dateStr = '';
+      if (a.date) {
+        try {
+          var d = new Date(a.date);
+          if (!isNaN(d.getTime())) {
+            dateStr = d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate() + '.';
+          }
+        } catch (_) {}
+      }
+      var imgHtml = '';
+      // Only paint cached image if it's https / data: — matches the
+      // CSP img-src and avoids broken icon on mixed-content URLs.
+      if (img && (img.indexOf('https://') === 0 || img.indexOf('data:') === 0 || img.indexOf('/') === 0)) {
+        imgHtml = '<img src="' + escAttr(img) + '" alt="" loading="eager" '
+          + 'style="width:100%;max-height:340px;object-fit:cover;border-radius:14px;margin-bottom:18px;background:#e2e8f0">';
+      }
+      var html = ''
+        + '<div data-fastpaint="article" style="font-family:\'Noto Serif KR\',serif;max-width:760px;margin:0 auto;padding:8px 0 32px">'
+        +   imgHtml
+        +   '<h1 style="font-size:clamp(22px,5vw,32px);font-weight:900;line-height:1.3;color:#0f172a;margin:0 0 8px;word-break:keep-all">' + esc(title) + '</h1>'
+        +   (titleEn ? '<div style="font-family:\'Source Sans 3\',sans-serif;font-size:14px;color:#64748b;margin-bottom:14px">' + esc(titleEn) + '</div>' : '')
+        +   (dateStr ? '<div style="font-size:12px;color:#94a3b8;margin-bottom:18px;font-family:\'Source Sans 3\',sans-serif">' + dateStr + '</div>' : '')
+        +   (body ? '<div style="font-size:17px;line-height:1.85;color:#1e293b;white-space:pre-wrap">' + esc(body) + '</div>' : '<div style="font-size:13px;color:#94a3b8;padding:16px;text-align:center">Loading full article…</div>')
+        +   '<div style="margin-top:24px;padding:12px 14px;background:#f1f5f9;border-radius:10px;font-size:12px;color:#64748b;text-align:center;font-family:\'Source Sans 3\',sans-serif">Loading vocab hover, grammar, audio…</div>'
+        + '</div>';
+      wrap.innerHTML = html;
+      window._articleFastPainted = true;
+    } catch (_) {}
+  })();
+  </script>
+
   <div id="kh-footer"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/security.js?v=20260502a"></script>

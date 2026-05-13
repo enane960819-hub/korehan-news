@@ -422,6 +422,78 @@
     <div id="conv-sidebar" class="sidebar"></div>
   </div>
 </div>
+<script>
+// ── Fast-paint from localStorage cache, BEFORE the 26-script chain ──
+// Owner: "conversations 들어가면 또 멈춘다 — 탭 눌렀는데 카드 뜨기 전에 멈춤".
+//
+// Root cause: the existing _initConvPage cache-render lives in an inline
+// script AFTER all 26 <script src> tags below, which sequentially block
+// the HTML parser. On real mobile that chain costs 2-4s before any card
+// can paint, even when localStorage holds the data needed RIGHT NOW.
+//
+// This inline runs the moment the parser hits this position — just
+// after #conv-cards-grid is in the DOM, BEFORE any external script.
+// It reads kh_conv_list_v1 and paints a flat-grid version of the cards
+// (rails layout comes later when renderCards runs from _initConvPage).
+// Same cc2/cc2-head/cc2-bubbles/cc2-footer markup → CSS works as-is.
+//
+// _convFastPainted flag tells _initConvPage to skip its own cache pass
+// so we don't double-render the same content; the DB-fetch re-render
+// still runs and replaces these cards with the proper rails view.
+(function _convCacheFastPaint(){
+  try {
+    var raw = localStorage.getItem('kh_conv_list_v1');
+    if (!raw) return;
+    var cached = JSON.parse(raw);
+    if (!cached || !cached.length) return;
+    var grid = document.getElementById('conv-cards-grid');
+    if (!grid) return;
+    function esc(s){
+      return String(s == null ? '' : s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    var LBL = {s:'Seed', b:'Sprout', i:'Tree', a:'Forest'};
+    var CLS = {s:'badge-s', b:'badge-b', i:'badge-i', a:'badge-a'};
+    function renderOne(c) {
+      var lvl = c.lvl || 'b';
+      var bubbles = '';
+      if (c.preview && c.preview.length) {
+        var firstWho = c.preview[0] && c.preview[0].who;
+        var bubArr = c.preview.slice(0, 3).map(function(p){
+          var side = (p && p.who === firstWho) ? 'cc2-bub-l' : 'cc2-bub-r';
+          return '<div class="cc2-bub ' + side + '">' + esc(p && p.txt || '') + '</div>';
+        });
+        bubbles = '<div class="cc2-bubbles">' + bubArr.join('') + '</div>';
+      }
+      var vocabLabel = c._vocabCount ? '📚 ' + c._vocabCount + ' key words' : '';
+      var cidJs = String(c._id || '').replace(/'/g, "\\'");
+      // onclick targets openDetailById, which gets defined later in the
+      // script chain. Taps within the ~2s gap between this paint and
+      // the chain finishing are very rare (user has to even SEE the
+      // card first); if it happens the browser logs a ReferenceError
+      // and the next tap (after scripts loaded) works.
+      return '<div class="cc2" onclick="openDetailById(\'' + cidJs + '\')">'
+        +   '<div class="cc2-head">'
+        +     '<div class="cc2-head-info">' + esc(c.ctx || '') + '</div>'
+        +     '<span class="cc2-tag ' + (CLS[lvl] || '') + '">' + (LBL[lvl] || '') + '</span>'
+        +   '</div>'
+        +   bubbles
+        +   '<div class="cc2-footer">'
+        +     '<span class="cc2-vocab-count">' + vocabLabel + '</span>'
+        +     '<span class="cc2-study-btn">Study →</span>'
+        +   '</div>'
+        + '</div>';
+    }
+    grid.innerHTML = cached.map(renderOne).join('');
+    // Apply the flat-grid class so the cards lay out correctly before
+    // _renderConvRails (which fires after the scripts load + cache-IIFE
+    // skips) replaces this with the rails view.
+    grid.classList.add('conv-cards-grid-flat');
+    window._convFastPainted = true;
+  } catch (_) {}
+})();
+</script>
 <div class="detail-overlay hidden" id="detail-overlay" onclick="if(event.target===this)closeDetail()">
   <div class="detail-panel" id="detail-panel"></div>
 </div>
@@ -2289,6 +2361,12 @@ function _convRowToObj(row) {
 
   if (cached && cached.length) {
     CONVS = cached.map(_convRowToObj);
+    // Always run renderCards: even when the fast-paint inline near
+    // the top of <body> already drew flat cards from this same cache,
+    // we still want to upgrade to the rails layout once the helpers
+    // (CAT_RAIL_ORDER, _renderConvRails, lvlLabel) are defined. The
+    // flat→rails swap is one-time and far better than the previous
+    // blank→rails wait that was 2-4s on real mobile.
     renderCards(activeCat, activeLvl);
   }
 
