@@ -19507,6 +19507,9 @@ function _gfJudgeFinish() {
 // ARTICLE STUDY
 // ═══════════════════════════════════════════════════════════════
 var _asArticles      = [];
+var _asArticlesShown = 0;       // how many cards we've rendered in the picker so far
+var _asPageSize      = 30;      // initial render + each "load more" batch
+var _asGridObserver  = null;    // IntersectionObserver for infinite scroll
 var _asCurrentArt    = null;
 var _asStudyContent  = null;
 var _asStep          = 1;
@@ -21025,68 +21028,132 @@ async function _asLoadStudiedSet() {
   } catch(_){}
 }
 
-function _asRenderGrid() {
-  var g = document.getElementById('as-article-grid'); if (!g) return;
-  if (!_asArticles.length) { g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">No articles available.</div>'; return; }
-  // sectionLabel() (from korehan-shared.js) maps Korean section keys
-  // (국제 / 문화 / 사회 / …) to their English labels (World / Culture
-  // / Society / …) so the picker stays English-first.
+// sectionLabel() (from korehan-shared.js) maps Korean section keys
+// (국제 / 문화 / 사회 / …) to their English labels (World / Culture
+// / Society / …) so the picker stays English-first.
+function _asCardHtml(a) {
   var labelOf = (typeof sectionLabel === 'function') ? sectionLabel : function(k){ return k || 'Article'; };
   var studied = _asStudiedSet || { done:{}, started:{} };
-  g.innerHTML = _asArticles.map(function(a) {
-    var imgHtml = a.image
-      ? '<img src="' + a.image + '" alt="" onerror="this.style.display=\'none\'">'
-      : '<div class="asc-img-ph"><span style="display:inline-flex;width:24px;height:24px">' + BM_ICON_NEWSPAPER + '</span></div>';
-    var displayTitle = a.title_en || a.title || '';
-    var displaySection = labelOf(a.section) || 'Article';
-    var idStr = String(a.id);
-    var isDone = !!studied.done[idStr];
-    var inProg = !isDone && !!studied.started[idStr];
-    var studiedCls = isDone ? ' as-studied' : (inProg ? ' as-inprogress' : '');
-    var badge = isDone
-      ? '<div class="asc-badge asc-badge-done">Studied</div>'
-      : (inProg ? '<div class="asc-badge asc-badge-prog">In progress</div>' : '');
-    return '<div class="as-article-card' + studiedCls + '" onclick="asSelectArticle(\'' + idStr.replace(/'/g,"\\'") + '\')">'
-      + imgHtml
-      + badge
-      + '<div class="asc-body">'
-      + '<div class="asc-cat">' + displaySection + '</div>'
-      + '<div class="asc-title">' + displayTitle + '</div>'
-      + (a.level ? '<div class="asc-meta">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</div>' : '')
-      + '</div></div>';
-  }).join('');
+  // loading="lazy" + decoding="async" prevent the picker from firing
+  // hundreds of image requests at once. Without this, opening the
+  // picker on mobile locked the main thread long enough for Chrome to
+  // pop "페이지에서 응답이 없습니다".
+  var imgHtml = a.image
+    ? '<img src="' + a.image + '" alt="" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">'
+    : '<div class="asc-img-ph"><span style="display:inline-flex;width:24px;height:24px">' + BM_ICON_NEWSPAPER + '</span></div>';
+  var displayTitle = a.title_en || a.title || '';
+  var displaySection = labelOf(a.section) || 'Article';
+  var idStr = String(a.id);
+  var isDone = !!studied.done[idStr];
+  var inProg = !isDone && !!studied.started[idStr];
+  var studiedCls = isDone ? ' as-studied' : (inProg ? ' as-inprogress' : '');
+  var badge = isDone
+    ? '<div class="asc-badge asc-badge-done">Studied</div>'
+    : (inProg ? '<div class="asc-badge asc-badge-prog">In progress</div>' : '');
+  return '<div class="as-article-card' + studiedCls + '" onclick="asSelectArticle(\'' + idStr.replace(/'/g,"\\'") + '\')">'
+    + imgHtml
+    + badge
+    + '<div class="asc-body">'
+    + '<div class="asc-cat">' + displaySection + '</div>'
+    + '<div class="asc-title">' + displayTitle + '</div>'
+    + (a.level ? '<div class="asc-meta">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</div>' : '')
+    + '</div></div>';
+}
+
+// Append the next _asPageSize cards onto the grid. Called once at
+// initial render and again every time the IntersectionObserver
+// sentinel scrolls into view.
+function _asAppendBatch() {
+  var g = document.getElementById('as-article-grid'); if (!g) return;
+  var sent = document.getElementById('as-grid-sentinel');
+  if (sent && sent.parentNode === g) g.removeChild(sent);
+
+  var end = Math.min(_asArticlesShown + _asPageSize, _asArticles.length);
+  var html = '';
+  for (var i = _asArticlesShown; i < end; i++) html += _asCardHtml(_asArticles[i]);
+  g.insertAdjacentHTML('beforeend', html);
+  _asArticlesShown = end;
+
+  // Re-attach the sentinel so the observer can fire again. When we run
+  // out of articles, drop it so the observer doesn't keep callback-ing.
+  if (_asArticlesShown < _asArticles.length) {
+    if (!sent) {
+      sent = document.createElement('div');
+      sent.id = 'as-grid-sentinel';
+      sent.style.cssText = 'grid-column:1/-1;height:1px;width:100%';
+    }
+    g.appendChild(sent);
+    if (_asGridObserver) _asGridObserver.observe(sent);
+  }
+}
+
+function _asRenderGrid() {
+  var g = document.getElementById('as-article-grid'); if (!g) return;
+  // Tear down any previous observer so re-entering the picker doesn't
+  // pile up listeners. The .observe() call below recreates one.
+  if (_asGridObserver) { try { _asGridObserver.disconnect(); } catch(_) {} _asGridObserver = null; }
+  _asArticlesShown = 0;
+  if (!_asArticles.length) {
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">No articles available.</div>';
+    return;
+  }
+  // Reset the grid container then append the first batch. Splitting
+  // into batches keeps the initial DOM cost ~30 cards instead of 500,
+  // which is what was freezing the picker on first open.
+  g.innerHTML = '';
+  if ('IntersectionObserver' in window) {
+    _asGridObserver = new IntersectionObserver(function(entries) {
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].isIntersecting) { _asAppendBatch(); break; }
+      }
+    }, { root: g.closest('.su-modal-body') || null, rootMargin: '400px' });
+  }
+  _asAppendBatch();
 }
 
 async function asSelectArticle(id) {
   var art = _asArticles.find(function(a){ return String(a.id)===String(id); });
   if (!art) return;
-  // Body isn't in the list query (size cap) — fetch it now for the
-  // one article the user actually opened, then mutate art.body so
-  // the rest of the flow reads it like before.
-  if (!art.body) {
-    try {
-      var sb = (typeof getSupa === 'function') ? getSupa() : null;
-      if (sb) {
-        var bodyRes = await sb.from('articles').select('body').eq('id', art.id).maybeSingle();
-        if (bodyRes && bodyRes.data && bodyRes.data.body) art.body = bodyRes.data.body;
-      }
-    } catch(_) {}
-  }
   _asCurrentArt = art; _asStep = 1; _asStepDone = [false,false,false,false,false];
   _asStudyContent = null; _asMatchState = null; _asWOState = null; _asQState = null;
-  // Restore progress: localStorage first, then DB
-  if (!_asRestoreProgress()) {
-    await _asLoadProgressFromDB();
-  }
+
+  // Switch the view IMMEDIATELY so the tap feels responsive. Previously
+  // we awaited body + progress fetches BEFORE switching, which left
+  // the picker frozen for the duration — long enough that Chrome
+  // would pop "페이지에서 응답이 없습니다" on slower connections.
   document.getElementById('as-list-view').classList.add('as-hidden');
   document.getElementById('as-study-view').classList.remove('as-hidden');
   document.getElementById('as-article-title').textContent = art.title || 'Article Study';
   _asRenderPips();
   document.getElementById('as-article-content').innerHTML =
-    '<p class="as-section-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_BOOK + '</span><span>기사 읽기</span></p><div class="as-article-text">' + _asFormatBody(art.body||'') + '</div>';
+    '<p class="as-section-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_BOOK + '</span><span>기사 읽기</span></p>'
+    + '<div class="as-article-text" id="as-article-text-host">'
+    + (art.body ? _asFormatBody(art.body) : '<div style="color:#94a3b8;font-size:13px">⏳ Loading article…</div>')
+    + '</div>';
   document.getElementById('as-activity-area').innerHTML =
     '<div class="su-loading"><div class="su-spinner"></div><div id="as-loading-msg">Preparing your study session…</div></div>';
   _asSetNav('none','none','none');
+
+  // Body fetch — only if not already present. Don't block the view
+  // switch; rewrite the body container when it lands.
+  if (!art.body) {
+    try {
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      if (sb) {
+        var bodyRes = await sb.from('articles').select('body').eq('id', art.id).maybeSingle();
+        if (bodyRes && bodyRes.data && bodyRes.data.body) {
+          art.body = bodyRes.data.body;
+          var host = document.getElementById('as-article-text-host');
+          if (host) host.innerHTML = _asFormatBody(art.body);
+        }
+      }
+    } catch(_) {}
+  }
+
+  // Restore progress: localStorage first, then DB
+  if (!_asRestoreProgress()) {
+    await _asLoadProgressFromDB();
+  }
   await _asLoadContent();
   _asRenderStep();
 }
