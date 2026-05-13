@@ -154,7 +154,7 @@
 <script src="js/core/user-analytics.js?v=20260504a"></script>
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
-<script src="js/core/phrases.js?v=20260505p"></script>
+<script src="js/core/phrases.js?v=20260512c"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
 <script src="js/core/articles.js?v=20260502a"></script>
@@ -259,26 +259,38 @@ function render() {
     + '</div>';
 }
 
-// Mini-card illustration — mirrors korehan-phrase.html's three-tier
-// approach (image → iconify → emoji) but sized for the gallery tile.
-// When the saved entry hasn't been resolved against the live queue
-// (older saved phrases that pre-date the image field), the gradient
-// background of .kh-myp-card-illus shows through.
+// Mini-card illustration — resolves through the shared PHRASE_ILLUS_MAP
+// from js/core/phrases.js (the same registry the Today's Phrase reader
+// uses) so a saved phrase carries its real pixel-art / Iconify
+// illustration here, not just the emoji fallback. The phrase ko + en
+// drive the regex match; we never relied on entry.image being saved
+// to localStorage because the reader doesn't save it either — both
+// pages now derive illustrations the same way.
 function _renderIllus(entry) {
   if (!entry) return '<div class="kh-myp-card-illus"></div>';
-  if (entry.image) {
-    var imgUrl = entry.image + '?v=20260505l';
+  var illus = (typeof window.getPhraseIllusEntry === 'function')
+    ? window.getPhraseIllusEntry(entry)
+    : null;
+  // Caller may also have passed an entry that already carries image /
+  // icon / fallback directly (e.g. from the live queue) — fall back
+  // to those when the registry lookup returned nothing useful.
+  illus = illus || {};
+  var image    = illus.image    || entry.image    || '';
+  var icon     = illus.icon     || entry.icon     || '';
+  var fallback = illus.fallback || entry.fallback || '✨';
+
+  if (image) {
+    var imgUrl = image + '?v=20260505l';
     return '<div class="kh-myp-card-illus">'
       +    '<div class="kh-myp-card-img" style="background-image:url(\'' + _esc(imgUrl) + '\')" role="img" aria-label="phrase illustration"></div>'
       +  '</div>';
   }
-  if (entry.icon) {
+  if (icon) {
     return '<div class="kh-myp-card-illus">'
-      +    '<div class="kh-myp-card-iconify"><iconify-icon icon="' + _esc(entry.icon) + '" aria-hidden="true">' + _esc(entry.fallback || '') + '</iconify-icon></div>'
+      +    '<div class="kh-myp-card-iconify"><iconify-icon icon="' + _esc(icon) + '" aria-hidden="true">' + _esc(fallback) + '</iconify-icon></div>'
       +  '</div>';
   }
-  var emoji = entry.fallback || '✨';
-  return '<div class="kh-myp-card-illus"><div class="kh-myp-card-emoji" aria-hidden="true">' + _esc(emoji) + '</div></div>';
+  return '<div class="kh-myp-card-illus"><div class="kh-myp-card-emoji" aria-hidden="true">' + _esc(fallback) + '</div></div>';
 }
 
 document.addEventListener('DOMContentLoaded', function() {
