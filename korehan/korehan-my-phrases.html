@@ -171,11 +171,24 @@
 <script src="korehan-shared.js?v=20260513d"></script>
 <script>
 // My Phrases — gallery of phrases the user has saved from the
-// phrase reader's "Add to My Phrases" CTA. Saved entries live in
-// localStorage under kh_saved_phrases_v1 (same key the phrase
-// reader writes). Click a card → open the full reader on that
-// phrase.
+// phrase reader's "Add to My Phrases" CTA.
+//
+// Storage model (post DB-sync):
+//   Source of truth: user_saved_phrases table on Supabase
+//     (source_type='daily_phrase', source_id=ko)
+//   Offline cache:   localStorage kh_saved_phrases_v1 — keeps the
+//     page renderable while signed out and during the brief window
+//     before the cloud fetch returns.
+//
+// On load when signed in:
+//   1) Paint from localStorage immediately (zero network, instant UX)
+//   2) Fetch DB rows in background, merge, re-render
+//   3) One-time migration: push any localStorage-only rows to DB so
+//      the user's pre-sync saves carry forward to other devices.
+//
+// Click a card → open the full reader on that phrase.
 var SAVED_PHRASES_KEY = 'kh_saved_phrases_v1';
+var MIGRATION_DONE_KEY = 'kh_saved_phrases_migrated_v1';
 
 function _esc(s) { return String(s == null ? '' : s)
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -187,6 +200,104 @@ function _getSaved() {
 }
 function _setSaved(list) {
   try { localStorage.setItem(SAVED_PHRASES_KEY, JSON.stringify(list)); } catch(_) {}
+}
+
+// Pull the user's saved phrases from Supabase. Returns the same shape
+// _getSaved() returns ({ko, en, rom, saved_at}) so the renderer can
+// treat the merged list uniformly. `rom` is empty here because the
+// table doesn't store it — Today's Phrase queue resolution at render
+// time fills it back in for any entry that matches a known phrase.
+async function _fetchSavedFromDb() {
+  if (typeof supaUser === 'undefined' || !supaUser) return null;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return null;
+  try {
+    var r = await sb.from('user_saved_phrases')
+      .select('ko, en, created_at')
+      .eq('user_id', supaUser.id)
+      .eq('source_type', 'daily_phrase')
+      .order('created_at', { ascending: false });
+    if (r && r.error) {
+      console.warn('[my-phrases] cloud fetch failed:', r.error.message || r.error);
+      return null;
+    }
+    return (r && r.data || []).map(function(row){
+      return { ko: row.ko, en: row.en || '', rom: '', saved_at: row.created_at };
+    });
+  } catch(err) {
+    console.warn('[my-phrases] cloud fetch threw:', err);
+    return null;
+  }
+}
+
+// One-time push of localStorage-only entries into the cloud table so
+// the user's pre-sync saves persist when they sign in on another
+// device. Runs idempotently — once the localStorage flag flips, this
+// becomes a no-op. PostgREST returns 23505 (unique_violation) for any
+// row that already exists; we treat that as success.
+async function _migrateLocalToCloud() {
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  try {
+    var done = localStorage.getItem(MIGRATION_DONE_KEY);
+    if (done) return;
+    var local = _getSaved();
+    if (!local.length) {
+      localStorage.setItem(MIGRATION_DONE_KEY, '1');
+      return;
+    }
+    var rows = local.filter(function(p){ return p && p.ko; }).map(function(p){
+      return {
+        user_id:     supaUser.id,
+        source_type: 'daily_phrase',
+        source_id:   p.ko,
+        msg_idx:     0,
+        ko:          p.ko,
+        en:          p.en || '',
+      };
+    });
+    if (!rows.length) {
+      localStorage.setItem(MIGRATION_DONE_KEY, '1');
+      return;
+    }
+    // upsert via insert with onConflict; duplicates raise 23505 row
+    // by row but PostgREST's batch insert returns a single error if
+    // ANY row fails — so we insert one row at a time and tolerate
+    // 23505. Slow but only runs once per device.
+    for (var i = 0; i < rows.length; i++) {
+      try {
+        var ir = await sb.from('user_saved_phrases').insert(rows[i]);
+        if (ir && ir.error && String(ir.error.code) !== '23505') {
+          console.warn('[my-phrases] migration row failed:', ir.error.message || ir.error);
+        }
+      } catch(_) {}
+    }
+    localStorage.setItem(MIGRATION_DONE_KEY, '1');
+    console.log('[my-phrases] migrated', rows.length, 'localStorage entries to DB');
+  } catch(err) {
+    console.warn('[my-phrases] migration threw:', err);
+  }
+}
+
+// Combined view: cloud rows take precedence (source of truth), but
+// localStorage entries that haven't been pushed yet (e.g. migration
+// still in flight) are still shown so the user doesn't see saves
+// vanish during the transition. Dedupe by ko.
+function _mergeCloudAndLocal(cloudRows, localRows) {
+  var seen = Object.create(null);
+  var out = [];
+  (cloudRows || []).forEach(function(p){
+    if (!p || !p.ko || seen[p.ko]) return;
+    seen[p.ko] = true;
+    out.push(p);
+  });
+  (localRows || []).forEach(function(p){
+    if (!p || !p.ko || seen[p.ko]) return;
+    seen[p.ko] = true;
+    out.push(p);
+  });
+  return out;
 }
 
 function _formatDate(iso) {
@@ -202,13 +313,35 @@ function _formatDate(iso) {
   } catch(_) { return ''; }
 }
 
+// In-memory copy of the merged (cloud + localStorage) list. Mutated
+// by remove operations so the next render() picks up the change
+// without a refetch. Falls back to localStorage when not initialised.
+var _mergedSaved = null;
+
 window.removeSavedPhrase = function(idx, ev) {
   if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-  var list = _getSaved();
+  var list = _mergedSaved || _getSaved();
   if (idx < 0 || idx >= list.length) return;
   var ko = list[idx] && list[idx].ko;
   list.splice(idx, 1);
+  _mergedSaved = list;
   _setSaved(list);
+  // Mirror the delete to Supabase so the next device sync drops it
+  // too — without this, removing from device A left it on device B
+  // forever.
+  if (ko && typeof supaUser !== 'undefined' && supaUser) {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (sb) {
+      sb.from('user_saved_phrases').delete()
+        .eq('user_id',     supaUser.id)
+        .eq('source_type', 'daily_phrase')
+        .eq('source_id',   ko)
+        .then(function(r){
+          if (r && r.error) console.warn('[my-phrases] DB delete failed:', r.error.message || r.error);
+        })
+        .catch(function(err){ console.warn('[my-phrases] DB delete threw:', err); });
+    }
+  }
   if (typeof khTrackUser === 'function') {
     try { khTrackUser('phrase_unsaved', { ko: ko, source: 'my-phrases' }); } catch(_) {}
   }
@@ -219,7 +352,7 @@ function render() {
   var root = document.getElementById('kh-myp-root');
   var countEl = document.getElementById('kh-myp-count');
   if (!root) return;
-  var saved = _getSaved();
+  var saved = _mergedSaved || _getSaved();
   if (countEl) countEl.textContent = saved.length ? saved.length + ' saved' : '';
   if (!saved.length) {
     root.innerHTML = '<div class="kh-myp-empty">'
@@ -293,6 +426,44 @@ function _renderIllus(entry) {
   return '<div class="kh-myp-card-illus"><div class="kh-myp-card-emoji" aria-hidden="true">' + _esc(fallback) + '</div></div>';
 }
 
+// Cross-device sync — kicks in once the auth check (which runs from
+// korehan-shared.js DOMContentLoaded) has populated supaUser. We
+// can't await checkSession from here without knowing exactly when
+// shared.js completes it, so we poll briefly (typical latency is
+// 50-300ms) before deciding whether to do the cloud fetch + migration.
+function _waitForAuthThenSync() {
+  var deadline = Date.now() + 4000;
+  function tryOnce(){
+    var ready = typeof supaUser !== 'undefined' && supaUser !== undefined && supaUser !== null;
+    var givenUp = Date.now() > deadline;
+    if (!ready && !givenUp) {
+      setTimeout(tryOnce, 150);
+      return;
+    }
+    if (!ready) {
+      // Signed out — localStorage is the whole picture. Nothing more
+      // to do; the initial render() already drew it.
+      return;
+    }
+    // Signed in: fetch cloud, merge, re-render, then migrate any
+    // localStorage-only entries up to the cloud in the background.
+    _fetchSavedFromDb().then(function(cloudRows){
+      if (cloudRows === null) return; // fetch failed; keep localStorage view
+      var local = _getSaved();
+      var merged = _mergeCloudAndLocal(cloudRows, local);
+      _mergedSaved = merged;
+      // Persist the merged view as the new localStorage cache so the
+      // next paint on this device starts from cloud-augmented data.
+      _setSaved(merged);
+      render();
+    }).then(function(){
+      // One-time push of pre-sync local-only entries up to the cloud.
+      _migrateLocalToCloud();
+    });
+  }
+  tryOnce();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   // Pull the latest queue from DB so card en/rom are populated even
   // if localStorage K_PHRASES is stale on this device.
@@ -302,6 +473,7 @@ document.addEventListener('DOMContentLoaded', function() {
     render();
   }
   document.title = 'My Phrases — KoreHani';
+  _waitForAuthThenSync();
 });
 </script>
 </body>

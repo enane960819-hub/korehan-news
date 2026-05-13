@@ -147,12 +147,55 @@ function _isPhraseSaved(ko) {
   var list = _getSavedPhrases();
   return list.some(function(p){ return (p && p.ko) === ko; });
 }
+
+// ── DB sync (user_saved_phrases) ────────────────────────────────
+// localStorage is the instant-UI store; the DB row is the source of
+// truth for cross-device sync. Conv-page sentence saves already use
+// this exact table — see korehan-conversations.html khPhraseSaveToggle.
+// Daily-phrase entries reuse it with source_type='daily_phrase' and
+// source_id=ko (Korean text is functionally unique per phrase across
+// the daily pool, no per-day collisions to worry about).
+function _khPhraseDbInsert(phrase) {
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !phrase || !phrase.ko) return;
+  sb.from('user_saved_phrases').insert({
+    user_id:     supaUser.id,
+    source_type: 'daily_phrase',
+    source_id:   phrase.ko,
+    msg_idx:     0,
+    ko:          phrase.ko,
+    en:          phrase.en || '',
+  }).then(function(r){
+    if (r && r.error) {
+      // 23505 = unique_violation — already saved on another device, fine.
+      if (String(r.error.code) !== '23505') {
+        console.warn('[phrase] DB insert failed:', r.error.message || r.error);
+      }
+    }
+  }).catch(function(err){ console.warn('[phrase] DB insert threw:', err); });
+}
+function _khPhraseDbDelete(ko) {
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !ko) return;
+  sb.from('user_saved_phrases').delete()
+    .eq('user_id',     supaUser.id)
+    .eq('source_type', 'daily_phrase')
+    .eq('source_id',   ko)
+    .then(function(r){
+      if (r && r.error) console.warn('[phrase] DB delete failed:', r.error.message || r.error);
+    })
+    .catch(function(err){ console.warn('[phrase] DB delete threw:', err); });
+}
+
 function _togglePhraseSaved(phrase) {
   if (!phrase || !phrase.ko) return false;
   var list = _getSavedPhrases();
   var idx = list.findIndex(function(p){ return (p && p.ko) === phrase.ko; });
   if (idx >= 0) {
     list.splice(idx, 1);
+    _khPhraseDbDelete(phrase.ko);
   } else {
     list.unshift({
       ko: phrase.ko,
@@ -160,6 +203,7 @@ function _togglePhraseSaved(phrase) {
       en: phrase.en || '',
       saved_at: new Date().toISOString(),
     });
+    _khPhraseDbInsert(phrase);
   }
   try { localStorage.setItem(SAVED_PHRASES_KEY, JSON.stringify(list.slice(0, 200))); } catch(_) {}
   if (typeof khTrackUser === 'function') {
