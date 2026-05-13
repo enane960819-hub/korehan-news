@@ -107,6 +107,95 @@ function getPhraseSourceRows() {
   return DEF_PHRASES;
 }
 function getPhrases()   { return getPhraseSourceRows().map(normalizePhrase); }
+
+// ── Phrase illustration registry ──────────────────────────────
+// Lives here (not in korehan-phrase.html) so My Phrases / any future
+// gallery can reuse the same regex → illustration mapping. The phrase
+// reader itself imports these via the global names below.
+//
+// Each entry maps a regex against the phrase's KO + EN to:
+//   image    — full-bleed pixel-art PNG when one is hand-drawn for
+//              this specific phrase. Takes precedence over icon/lottie.
+//   lottie   — Lottie JSON path in /korehan/lottie/. Animated banner.
+//   icon     — Iconify name; rendered as a colored SVG fallback.
+//   fallback — unicode emoji used when everything else is unavailable.
+// First match wins. The default at the bottom kicks in when nothing
+// matches so every phrase has a visible illustration.
+var PHRASE_ILLUS_MAP = [
+  { rx: /하늘의 별 따기|star.*sky|star.*ladder|impossible.*star/i,
+    image: 'img/phrases/star-ladder.png',
+    icon: 'fluent-emoji-flat:star', fallback: '⭐' },
+  { rx: /등잔|램프|불빛|등불|lamp|light/i,
+    lottie: 'lottie/lamp.json',           icon: 'fluent-emoji-flat:light-bulb',  fallback: '💡' },
+  { rx: /태산|산|mountain|hill|peak/i,
+    lottie: 'lottie/mountain.json',       icon: 'fluent-emoji-flat:mountain',     fallback: '⛰️' },
+  { rx: /낙|행복|happy|joy|reward|sunrise|일출|새벽/i,
+    lottie: 'lottie/sunrise.json',        icon: 'fluent-emoji-flat:sunrise',      fallback: '🌅' },
+  { rx: /시작|첫걸음|begin|start|launch/i,
+    lottie: 'lottie/rocket.json',         icon: 'fluent-emoji-flat:rocket',        fallback: '🚀' },
+  { rx: /백문|보다|see|sight|eye|관찰/i,
+    lottie: 'lottie/eye.json',            icon: 'fluent-emoji-flat:eye',           fallback: '👀' },
+  { rx: /티끌|먼지|dust|drop|작은|tiny|small/i,
+    lottie: 'lottie/sparkle.json',        icon: 'fluent-emoji-flat:sparkles',      fallback: '✨' },
+  { rx: /꿩 먹고 알|일석이조|두 마리|bird/i,
+    lottie: 'lottie/bird.json',           icon: 'fluent-emoji-flat:bird',          fallback: '🐦' },
+  { rx: /소\b|cow|stable|barn|황소/i,
+    lottie: 'lottie/cow.json',            icon: 'fluent-emoji-flat:cow-face',      fallback: '🐄' },
+  { rx: /호랑이|범|tiger/i,
+    lottie: 'lottie/tiger.json',          icon: 'fluent-emoji-flat:tiger-face',    fallback: '🐯' },
+  { rx: /말\b|마이|horse|gallop/i,
+    lottie: 'lottie/horse.json',          icon: 'fluent-emoji-flat:horse-face',    fallback: '🐴' },
+  { rx: /개\b|강아지|dog/i,
+    lottie: 'lottie/dog.json',            icon: 'fluent-emoji-flat:dog-face',      fallback: '🐶' },
+  { rx: /물|강|river|water|stream/i,
+    lottie: 'lottie/water.json',          icon: 'fluent-emoji-flat:droplet',       fallback: '💧' },
+  { rx: /꽃|꽃밭|flower|blossom|핀/i,
+    lottie: 'lottie/flower.json',         icon: 'fluent-emoji-flat:cherry-blossom',fallback: '🌸' },
+  { rx: /나무|tree|숲|forest|woods/i,
+    lottie: 'lottie/tree.json',           icon: 'fluent-emoji-flat:deciduous-tree',fallback: '🌳' },
+  { rx: /책|글|read|word|book|문장/i,
+    lottie: 'lottie/book.json',           icon: 'fluent-emoji-flat:open-book',     fallback: '📖' },
+  { rx: /시간|세월|time|hour|clock/i,
+    lottie: 'lottie/clock.json',          icon: 'fluent-emoji-flat:alarm-clock',    fallback: '⏰' },
+  { rx: /돈|금|wealth|money|gold|부자/i,
+    lottie: 'lottie/coin.json',           icon: 'fluent-emoji-flat:coin',          fallback: '🪙' },
+  { rx: /불|불꽃|fire|flame|burn/i,
+    lottie: 'lottie/fire.json',           icon: 'fluent-emoji-flat:fire',          fallback: '🔥' },
+  { rx: /바람|wind|breeze/i,
+    lottie: 'lottie/wind.json',           icon: 'fluent-emoji-flat:wind-face',     fallback: '🌬️' },
+  { rx: /비\b|rain|shower|폭우/i,
+    lottie: 'lottie/rain.json',           icon: 'fluent-emoji-flat:cloud-with-rain', fallback: '🌧️' },
+  { rx: /눈\b|snow|winter|겨울/i,
+    lottie: 'lottie/snow.json',           icon: 'fluent-emoji-flat:snowflake',     fallback: '❄️' },
+  { rx: /해\b|sun|볕|햇살/i,
+    lottie: 'lottie/sun.json',            icon: 'fluent-emoji-flat:sun',           fallback: '☀️' },
+  { rx: /달\b|moon|밤|night/i,
+    lottie: 'lottie/moon.json',           icon: 'fluent-emoji-flat:full-moon-face',fallback: '🌝' },
+  { rx: /길\b|길|road|path|여정/i,
+    lottie: 'lottie/road.json',           icon: 'fluent-emoji-flat:motorway',      fallback: '🛣️' },
+  { rx: /손|hand|손길/i,
+    lottie: 'lottie/hand.json',           icon: 'fluent-emoji-flat:open-hands',    fallback: '🤲' },
+  { rx: /친구|friend|벗\b/i,
+    lottie: 'lottie/friends.json',        icon: 'fluent-emoji-flat:people-hugging',fallback: '🫂' },
+  { rx: /입\b|말씀|word|speak|talk/i,
+    lottie: 'lottie/speech.json',         icon: 'fluent-emoji-flat:speech-balloon',fallback: '💬' },
+];
+var PHRASE_DEFAULT_ILLUS = { lottie: 'lottie/book.json', icon: 'fluent-emoji-flat:open-book', fallback: '📖' };
+
+function getPhraseIllusEntry(phrase) {
+  var hay = ((phrase && phrase.ko) || '') + ' ' + ((phrase && phrase.en) || '');
+  for (var i = 0; i < PHRASE_ILLUS_MAP.length; i++) {
+    if (PHRASE_ILLUS_MAP[i].rx.test(hay)) return PHRASE_ILLUS_MAP[i];
+  }
+  return PHRASE_DEFAULT_ILLUS;
+}
+
+// Expose on window so HTML pages that don't use ES modules can hit them.
+try {
+  window.PHRASE_ILLUS_MAP = PHRASE_ILLUS_MAP;
+  window.PHRASE_DEFAULT_ILLUS = PHRASE_DEFAULT_ILLUS;
+  window.getPhraseIllusEntry = getPhraseIllusEntry;
+} catch (_) {}
 // Rotation offset — written by saveSharedPhrases() whenever the queue
 // is mutated, so today's visible phrase doesn't get shoved to a
 // different position when admin appends / deletes / reorders.
