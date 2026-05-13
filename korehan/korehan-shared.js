@@ -4100,6 +4100,20 @@ function _widenChunkOnRender(chunk, sentence, label) {
 function _khRenderSentPanel(panel, data, closer, sentenceText) {
   var closeFn = closer || 'closeSentPanel()';
   var html = '<button class="asp-close" onclick="' + closeFn + '" aria-label="Close">×</button>';
+  // Conversation-only "register" pill (반말 / 존댓말 / 격식체). The admin
+  // conv sentence analyser bakes this onto each message so the learner
+  // sees at a glance whether the line is casual or polite — central to
+  // chat Korean, irrelevant for news. Article analyses don't carry the
+  // field, so this is a no-op there.
+  if (data && data.register) {
+    var reg = String(data.register).trim();
+    if (reg) {
+      var regCls = /존대|존댓|polite/i.test(reg) ? 'asp-reg-polite'
+                 : /격식|formal/i.test(reg)         ? 'asp-reg-formal'
+                                                    : 'asp-reg-casual';
+      html += '<div class="asp-register ' + regCls + '">' + escapeHTML(reg) + '</div>';
+    }
+  }
   if (data && data.translation) {
     html += '<div class="asp-section-title">English</div>'
          + '<div class="asp-trans">' + escapeHTML(data.translation) + '</div>';

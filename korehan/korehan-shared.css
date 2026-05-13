@@ -1874,6 +1874,39 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   padding-right: 32px; /* clear the close button */
 }
 
+/* Conversation-only register pill (반말 / 존댓말 / 격식체). Rendered
+   above the translation when the admin conv sentence analyser tagged
+   the message with a speech level. Articles don't carry this field
+   so the pill never appears there. */
+.art-sent-panel .asp-register {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+  border: 1px solid transparent;
+}
+.art-sent-panel .asp-register.asp-reg-casual {
+  background: rgba(127, 255, 212, 0.12);
+  border-color: rgba(127, 255, 212, 0.35);
+  color: #a7ffe5;
+}
+.art-sent-panel .asp-register.asp-reg-polite {
+  background: rgba(167, 139, 250, 0.16);
+  border-color: rgba(167, 139, 250, 0.4);
+  color: #d8c9ff;
+}
+.art-sent-panel .asp-register.asp-reg-formal {
+  background: rgba(251, 191, 36, 0.16);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde68a;
+}
+
 /* Vocab rows — clean two-column layout with clear separators. */
 .art-sent-panel .asp-vocab-row {
   display: grid;
