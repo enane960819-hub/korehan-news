@@ -1,0 +1,13 @@
+# Supabase per-function config. The CLI reads this on `supabase functions
+# deploy` (and `supabase functions serve`) and propagates the per-function
+# settings to the deployed function metadata.
+#
+# notify-signup must accept OPTIONS preflight without a JWT — the browser
+# does the preflight before any session token is attached, and our gateway
+# was returning 401 on that OPTIONS request, breaking CORS. The function
+# itself does server-side auth: it ignores the caller's claims and uses
+# the service role to look up the user by id, then checks `created_at`
+# freshness (≤5min) to reject spoofed payloads. So gateway-level JWT
+# verification adds nothing here and only breaks the signup-time call.
+[functions.notify-signup]
+verify_jwt = false

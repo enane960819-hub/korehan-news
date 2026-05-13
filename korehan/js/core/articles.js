@@ -26,13 +26,18 @@ var ARTICLES_STORAGE_MAX_AGE = 60 * 60 * 1000; // 1시간 (localStorage — stal
 // body — cards/excerpts only need `body` (lede). On LTE this can shrink
 // the home/section payload from MBs to KBs. The full body is fetched on
 // demand by loadArticleById() when the reader actually opens an article.
-var LIST_ARTICLE_SELECT = 'id,title,title_en,title_ko,body,image,section,level,date,published_at,created_at,updated_at,status,view_count,featured,reporter_id,reporter,video_url,use_video,video_kind,video_fallback_url,source_url';
+// `source_url` was previously in this select but the column was never
+// added to the production `articles` table — every list fetch failed
+// with 400 (column does not exist), wiping the section/home rails.
+// Removed so the query parses; if/when we add a source-URL field we
+// should also create the column in a migration.
+var LIST_ARTICLE_SELECT = 'id,title,title_en,title_ko,body,image,section,level,date,published_at,created_at,updated_at,status,view_count,featured,reporter_id,reporter,video_url,use_video,video_kind,video_fallback_url';
 // Home cards only need metadata + image — `body` was the dominant cost
 // (often >80% of payload) and made the LTE first-paint waterfall stall
 // while the loader sat at ~86%. All News still uses LIST_ARTICLE_SELECT
 // because its search filter scans the body. The reader fast-path in
 // loadArticleById() pulls the full row when a learner opens an article.
-var HOME_ARTICLE_SELECT = 'id,title,title_en,title_ko,image,section,level,date,published_at,created_at,updated_at,status,view_count,featured,reporter_id,reporter,video_url,use_video,video_kind,video_fallback_url,source_url';
+var HOME_ARTICLE_SELECT = 'id,title,title_en,title_ko,image,section,level,date,published_at,created_at,updated_at,status,view_count,featured,reporter_id,reporter,video_url,use_video,video_kind,video_fallback_url';
 var FULL_ARTICLE_SELECT = '*';
 
 // 이미지 없는 기사용 placeholder — SVG inline data URI (깨지지 않음)
