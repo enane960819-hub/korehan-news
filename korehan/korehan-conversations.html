@@ -450,7 +450,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260513b"></script>
+<script src="korehan-shared.js?v=20260513c"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -991,8 +991,26 @@ function openDetailById(convId) {
   for (var i = 0; i < CONVS.length; i++) {
     if (CONVS[i] && String(CONVS[i]._id) === String(convId)) { idx = i; break; }
   }
-  if (idx < 0) return;
-  openDetail(idx);
+  if (idx < 0) {
+    console.warn('[conv] openDetailById: convId not in CONVS', convId);
+    return;
+  }
+  // Defer openDetail to the next animation frame so the synchronous
+  // tap handler returns immediately. Owner-reported page-unresponsive
+  // dialog was partly caused by sync work inside openDetail running
+  // on the same tick as the click — Chrome flagged the page as
+  // non-responsive before the loading overlay even painted. Splitting
+  // those guarantees the overlay shows up instantly and any further
+  // hang at least happens AFTER the spinner is visible.
+  (window.requestAnimationFrame || function(fn){ setTimeout(fn, 0); })(function () {
+    Promise.resolve().then(function () { return openDetail(idx); }).catch(function (err) {
+      console.error('[conv] openDetail crashed:', err);
+      var panel = document.getElementById('detail-panel');
+      var overlay = document.getElementById('detail-overlay');
+      if (panel) panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:15px;font-weight:700;color:#334155;margin-bottom:6px">잠시 후 다시 시도해 주세요</div><div style="font-size:13px;color:#64748b;margin-bottom:16px">대화를 불러오지 못했어요. 페이지를 새로고침하거나 다른 대화를 골라 주세요.</div><button onclick="closeDetail()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">← Back to list</button></div></div>';
+      if (overlay) overlay.classList.remove('hidden');
+    });
+  });
 }
 window.openDetailById = openDetailById;
 

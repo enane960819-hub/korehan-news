@@ -25,7 +25,7 @@
 // SW symptom). v10 + skipWaiting + clients.claim drops the old SW
 // and caches in one tab-close cycle.
 //
-const CACHE_VERSION = 'kh-v10';
+const CACHE_VERSION = 'kh-v11';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
