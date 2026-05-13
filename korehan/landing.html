@@ -114,19 +114,28 @@ button{font:inherit;cursor:pointer}
 .demo-sentence{font-family:'Noto Serif KR',serif;font-size:clamp(20px,2.6vw,30px);font-weight:600;line-height:1.6;color:var(--ink);cursor:pointer;padding:18px 0;border-radius:8px;transition:.2s;letter-spacing:-.01em}
 .demo-sentence:hover{color:var(--bright)}
 .demo-sentence.is-active{color:var(--bright)}
-.demo-panel{margin-top:18px;background:linear-gradient(180deg,#1e293b,#0f172a);border-radius:18px;padding:22px;color:#fff;display:none;animation:demoSlide .35s cubic-bezier(.22,1,.36,1)}
+/* ── Demo analysis panel — matches in-app sentence-analyze card ──
+   The previous panel used a navy gradient with cyan/blue accents,
+   which didn't match the article reader's actual purple/violet
+   analysis card the owner wanted to advertise. Repalette to deep
+   indigo background, lavender pill accents, mint section dots — the
+   same vocabulary the production .art-sent-panel uses.            */
+.demo-panel{margin-top:18px;background:linear-gradient(180deg,#1f1442 0%,#160a33 100%);border-radius:20px;padding:24px;color:#fff;display:none;animation:demoSlide .35s cubic-bezier(.22,1,.36,1);box-shadow:0 24px 60px rgba(31,20,66,.45),inset 0 0 0 1px rgba(167,139,250,.12)}
 .demo-panel.is-open{display:block}
 @keyframes demoSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.demo-section-label{font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--mint);margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.demo-section-label::before{content:'•';color:var(--mint);font-size:14px}
-.demo-translation{font-size:16px;font-weight:600;color:#fff;line-height:1.5;margin-bottom:18px}
-.demo-row{display:grid;grid-template-columns:auto 1fr;gap:14px 18px;font-size:14px;align-items:baseline;padding:8px 0;border-top:1px solid rgba(255,255,255,.08)}
+.demo-section-label{font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#7fffd4;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.demo-section-label::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:#7fffd4;box-shadow:0 0 8px rgba(127,255,212,.6)}
+.demo-translation{font-size:17px;font-weight:700;color:#fff;line-height:1.55;margin-bottom:22px}
+.demo-row{display:grid;grid-template-columns:auto 1fr;gap:14px 18px;font-size:14px;align-items:baseline;padding:10px 0;border-top:1px solid rgba(167,139,250,.12)}
 .demo-row:first-of-type{border-top:0;padding-top:4px}
-.demo-row .ko{font-family:'Noto Serif KR',serif;font-size:17px;font-weight:700;color:var(--mint)}
-.demo-row .en{color:rgba(255,255,255,.85);line-height:1.5}
-.demo-grammar-card{margin-top:14px;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.18);border-radius:12px;padding:14px 16px}
-.demo-grammar-card .pat{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:800;color:var(--sky);margin-bottom:4px}
-.demo-grammar-card .exp{font-size:13px;color:rgba(255,255,255,.78);line-height:1.55}
+.demo-row .ko{font-family:'Noto Serif KR',serif;font-size:17px;font-weight:800;color:#c7b5ff}
+.demo-row .en{color:rgba(255,255,255,.85);line-height:1.55}
+.demo-grammar-card{margin-top:14px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:14px 16px}
+.demo-grammar-card .demo-pill{display:inline-block;font-size:9px;font-weight:900;letter-spacing:.14em;padding:3px 10px;border-radius:999px;background:rgba(167,139,250,.22);color:#d8c9ff;margin-bottom:8px;text-transform:uppercase}
+.demo-grammar-card.is-exp .demo-pill{background:rgba(127,255,212,.18);color:#a7ffe5}
+.demo-grammar-card .pat{font-family:'Noto Serif KR',serif;font-size:16px;font-weight:800;color:#fff;margin-bottom:4px}
+.demo-grammar-card .exp{font-size:13px;color:rgba(255,255,255,.78);line-height:1.6}
+.demo-grammar-card .chunk{display:inline-block;margin-top:8px;font-family:'Noto Serif KR',serif;font-size:12px;color:#c7b5ff;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.22);padding:4px 10px;border-radius:8px}
 .demo-foot{margin-top:24px;text-align:center;color:var(--muted);font-size:13px}
 .demo-foot strong{color:var(--ink)}
 .demo-empty{padding:40px 20px;text-align:center;color:var(--soft);font-size:14px;font-weight:600}
@@ -325,8 +334,8 @@ button{font:inherit;cursor:pointer}
     <div class="demo-card" data-reveal>
       <div class="demo-tabs" id="demo-tabs">
         <button class="demo-tab is-active" data-demo="1">Beginner</button>
-        <button class="demo-tab" data-demo="2">Daily</button>
-        <button class="demo-tab" data-demo="3">News</button>
+        <button class="demo-tab" data-demo="2">K-pop</button>
+        <button class="demo-tab" data-demo="3">Culture</button>
       </div>
       <div class="demo-stage">
         <div class="demo-instr">Tap the sentence</div>
@@ -698,34 +707,37 @@ button{font:inherit;cursor:pointer}
         { ko:'만나다',     en:'to meet' },
         { ko:'반갑다',     en:'(to be) glad' }
       ],
-      grammar: [
-        { pat:'~아/어서', exp:'Connects two clauses with cause/sequence — "having met you, I am glad."' }
+      analysis: [
+        { type:'grammar', pat:'~아/어서', exp:'Connects two clauses with cause/sequence — "having met you, I am glad."', chunk:'"만나서 반갑습니다"' }
       ]
     },
     '2': {
-      ko: '오늘 카페에서 친구를 만나서 커피를 마셨어요.',
-      en: 'Today I met a friend at a café and drank coffee.',
+      ko: '새 앨범이 발매되자마자 음원 차트 1위를 차지했어요.',
+      en: 'As soon as the new album was released, it took the #1 spot on the music charts.',
       vocab: [
-        { ko:'카페',  en:'café' },
-        { ko:'친구',  en:'friend' },
-        { ko:'마시다', en:'to drink' }
+        { ko:'앨범',     en:'album' },
+        { ko:'발매되다', en:'to be released (album/single)' },
+        { ko:'차트',     en:'chart (music ranking)' },
+        { ko:'차지하다', en:'to take, to occupy (a rank)' }
       ],
-      grammar: [
-        { pat:'~에서', exp:'Particle marking the place where an action happens.' },
-        { pat:'~았/었어요', exp:'Past tense in polite speech — "drank."' }
+      analysis: [
+        { type:'grammar',    pat:'~자마자', exp:'"As soon as ~." The second action happens immediately after the first. Common in K-pop news headlines for album-release reactions.', chunk:'"발매되자마자"' },
+        { type:'expression', pat:'1위를 차지하다', exp:'Set phrase Koreans use for "claim the #1 spot." Standard for chart rankings on Melon, Genie, etc.', chunk:'"1위를 차지했어요"' }
       ]
     },
     '3': {
-      ko: '새똥 속 효소가 각질을 제거해준다고 알려져 있어요.',
-      en: 'The enzyme in bird droppings is known to remove dead skin cells.',
+      ko: '한복을 입어 보면 한국 전통 문화의 매력을 느낄 수 있어요.',
+      en: 'If you try wearing hanbok, you can feel the charm of traditional Korean culture.',
       vocab: [
-        { ko:'효소',     en:'enzyme' },
-        { ko:'각질',     en:'dead skin cells, keratin' },
-        { ko:'제거하다', en:'to remove' }
+        { ko:'한복',   en:'hanbok (traditional dress)' },
+        { ko:'전통',   en:'tradition; traditional' },
+        { ko:'매력',   en:'charm, appeal' },
+        { ko:'느끼다', en:'to feel, to sense' }
       ],
-      grammar: [
-        { pat:'~다고 알려져 있어요', exp:'Reported + resultative — "is known that…" Common in articles &amp; news.' },
-        { pat:'~어 주다', exp:'Benefactive — does the action for someone’s benefit ("removes for you").' }
+      analysis: [
+        { type:'grammar',    pat:'~아/어 보다',   exp:'"Try V-ing." Used for experiential attempts — eat-and-see, wear-and-see, etc.', chunk:'"입어 보면"' },
+        { type:'grammar',    pat:'~을 수 있다',   exp:'Capability/possibility marker — "can V."', chunk:'"느낄 수 있어요"' },
+        { type:'expression', pat:'매력을 느끼다', exp:'Fixed collocation: "to feel the charm of ~." Common in culture/travel writing.', chunk:'"매력을 느낄"' }
       ]
     }
   };
@@ -745,10 +757,25 @@ button{font:inherit;cursor:pointer}
     d.vocab.forEach(function(v){
       html += '<div class="demo-row"><span class="ko">' + v.ko + '</span><span class="en">' + v.en + '</span></div>';
     });
-    if(d.grammar && d.grammar.length){
-      html += '<div class="demo-section-label" style="margin-top:18px">Grammar</div>';
-      d.grammar.forEach(function(g){
-        html += '<div class="demo-grammar-card"><div class="pat">' + g.pat + '</div><div class="exp">' + g.exp + '</div></div>';
+    // Analysis section mirrors the production article reader: each
+    // entry is tagged grammar / expression / idiom and the panel pill
+    // colours flip mint vs lavender so the user can see at a glance
+    // which kind of pattern they're looking at.
+    var entries = d.analysis || d.grammar || [];
+    if(entries.length){
+      html += '<div class="demo-section-label" style="margin-top:20px">Analysis</div>';
+      entries.forEach(function(g){
+        var typ = (g.type || 'grammar').toLowerCase();
+        var cls = 'demo-grammar-card' + (typ === 'expression' || typ === 'idiom' ? ' is-exp' : '');
+        var pillLabel = typ === 'expression' ? 'Expression'
+                      : typ === 'idiom'      ? 'Idiom'
+                                              : 'Grammar';
+        html += '<div class="' + cls + '">'
+              +   '<span class="demo-pill">' + pillLabel + '</span>'
+              +   '<div class="pat">' + g.pat + '</div>'
+              +   '<div class="exp">' + g.exp + '</div>'
+              +   (g.chunk ? '<div class="chunk">→ ' + g.chunk + '</div>' : '')
+              + '</div>';
       });
     }
     panelEl.innerHTML = html;
