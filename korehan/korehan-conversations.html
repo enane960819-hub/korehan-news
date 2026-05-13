@@ -450,7 +450,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260513a"></script>
+<script src="korehan-shared.js?v=20260513b"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -1023,11 +1023,21 @@ async function openDetail(idx) {
     document.documentElement.style.overflow = 'hidden';
   }
 
-  // 상세 데이터 아직 안 로드됐으면 DB에서 가져오기
+  // 상세 데이터 아직 안 로드됐으면 DB에서 가져오기. Wrap the await in a
+  // Promise.race against a 10-second timeout so a stalled Supabase
+  // call (RLS edge case, slow LTE) can't pin the reader on the
+  // "Loading conversation…" spinner forever — owner-reported as
+  // "한참 있다 켜지면 무한로딩 걸림". We still let it succeed up to
+  // the deadline; only beyond that do we fall through to the
+  // "not available" UI below.
   if (!c._loaded && c._id) {
     try {
       var sb = getSupa();
-      var res = await sb.from('conversations_data').select('*').eq('id', c._id).maybeSingle();
+      var loadPromise = sb.from('conversations_data').select('*').eq('id', c._id).maybeSingle();
+      var timeoutPromise = new Promise(function (_, reject) {
+        setTimeout(function () { reject(new Error('conv-detail-load timeout')); }, 10000);
+      });
+      var res = await Promise.race([loadPromise, timeoutPromise]);
       if (res.error) { console.warn('conv load error:', res.error); }
       var row = res.data;
       if (row && row.data) {
@@ -1046,14 +1056,32 @@ async function openDetail(idx) {
         c.cast_right_slug = d.cast_right_slug;
         c._loaded = true;
       }
-    } catch(e) { console.warn('conv detail load failed:', e); }
+    } catch(e) { console.warn('conv detail load failed:', e && e.message || e); }
   }
 
-  // Phase 2: pre-load saved-phrase indices for this conv so star
-  // states paint correctly on first render. Awaited (not a fire-
-  // and-forget) so the very first paint already has the right
-  // ★/☆ markers.
-  await khPhraseLoadForConv(c._id);
+  // Phase 2: saved-phrase indices for this conv. Fire-and-forget —
+  // the previous `await` here meant a slow / RLS-blocked
+  // user_saved_phrases query stalled the entire openDetail. The
+  // saved-phrase indicator (★/☆) is purely cosmetic; we can paint
+  // empty stars now and flip them on after the query resolves.
+  if (c._id) {
+    khPhraseLoadForConv(c._id).then(function () {
+      // Re-render just the ★/☆ buttons once the index lands so the
+      // already-saved phrases get marked. Safe re-entrant: the bubble
+      // DOM keeps its onclick; we only flip the className/icon.
+      try {
+        document.querySelectorAll('.dp-bubble-save').forEach(function (btn) {
+          var row = btn.closest('.dp-msg-row');
+          if (!row) return;
+          var mi = parseInt(row.getAttribute('data-msg-idx'), 10);
+          if (isNaN(mi)) return;
+          var saved = typeof khPhraseIsSaved === 'function' && khPhraseIsSaved(c._id, mi);
+          btn.classList.toggle('is-saved', !!saved);
+          btn.textContent = saved ? '★' : '☆';
+        });
+      } catch (_) {}
+    }).catch(function () {});
+  }
 
   if (!c.msgs || !c.msgs.length) {
     // Show a friendly message instead of alert
