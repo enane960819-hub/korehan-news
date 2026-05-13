@@ -1417,7 +1417,13 @@ async function initUser() {
 
   try {
     var res = await sb.from('user_stats').select('onboarded').eq('user_id', _user.id).maybeSingle();
-    if (res.data && res.data.onboarded === true) {
+    // Production deployments without the user_stats.onboarded column
+    // surface as PostgREST 42703 here. We can't read cross-device
+    // onboarding state without it; the local flag is the only signal,
+    // and re-running onboarding is idempotent so this is safe.
+    if (res && res.error && (res.error.code === '42703' || /onboarded.*does not exist/i.test(String(res.error.message || '')))) {
+      console.warn('[onboarding] user_stats.onboarded missing — relying on local flag');
+    } else if (res && res.data && res.data.onboarded === true) {
       saveOnboardingLocal(true);
       window.location.href = 'index.html';
       return;

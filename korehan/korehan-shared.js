@@ -769,9 +769,21 @@ function _khNotifySignup(userId) {
   if (!userId || _khNotifyFiredFor[userId]) return;
   _khNotifyFiredFor[userId] = true;
   try {
+    // Supabase Edge Functions default to verify_jwt=on — the runtime
+    // 401's any request (including the OPTIONS preflight) that lacks
+    // an Authorization header BEFORE the function's own CORS handler
+    // runs, which is what surfaced as "Response to preflight doesn't
+    // pass access control check: It does not have HTTP ok status" in
+    // the console. Passing the anon key as Bearer satisfies the
+    // runtime gate; the function still uses the service role
+    // server-side for the actual webhook delivery.
     fetch(SUPA_URL + '/functions/v1/notify-signup', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      headers: {
+        'Content-Type':  'application/json',
+        'apikey':        SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+      },
       body: JSON.stringify({ user_id: userId }),
       keepalive: true, // survives the page unload that often follows OAuth redirects
     }).catch(function(){ /* best-effort */ });
@@ -1288,13 +1300,22 @@ async function khLoadNotifications() {
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb || typeof supaUser === 'undefined' || !supaUser) return;
   // Drop confirmed alerts that are >7 days old so the dropdown doesn't
-  // accumulate forever. Server-side RPC; gated to own rows. Runs once
-  // per session — the in-memory flag means subsequent 30s polls just
-  // refresh the list instead of cleaning every time.
+  // accumulate forever. Was using a `cleanup_old_read_notifications`
+  // RPC that doesn't exist in the production DB (404 in console on
+  // every signed-in page load). Replaced with a direct DELETE that
+  // relies on the same own-row RLS the SELECT just above uses — if
+  // the row is readable, it's deletable. Bounded to read+old so
+  // unread alerts always survive.
   try {
     if (!window._khNotifCleanupFired) {
       window._khNotifCleanupFired = true;
-      sb.rpc('cleanup_old_read_notifications').then(function(){}).catch(function(){});
+      var cutoff = new Date(Date.now() - 7 * 86400000).toISOString();
+      sb.from('notifications').delete()
+        .eq('user_id', supaUser.id)
+        .not('read_at', 'is', null)
+        .lt('read_at', cutoff)
+        .then(function(){})
+        .catch(function(){});
     }
   } catch(_) {}
   try {
@@ -8428,11 +8449,26 @@ async function checkOnboardingStatus() {
     // Check both keyed and un-keyed localStorage (handles edge cases)
     if (hasCompletedOnboardingLocal(supaUser.id)) return;
     if (hasCompletedOnboardingLocal('')) return;
+    // The cross-device DB sync below relies on user_stats.onboarded
+    // existing — in deployments where the migration hasn't run yet,
+    // PostgREST 400s with "column user_stats.onboarded does not exist"
+    // on every signed-in page load. Window-level latch suppresses
+    // subsequent calls in the tab so we don't keep hitting it.
+    if (window._khOnboardedColMissing) return;
     var sb = getSupa(); if (!sb) return;
     var res = await sb.from('user_stats')
       .select('onboarded, onboarded_at, created_at')
       .eq('user_id', supaUser.id)
       .maybeSingle();
+
+    if (res && res.error) {
+      var msg = String(res.error.message || res.error);
+      if (/onboarded.*does not exist/i.test(msg) || /column.*onboarded/i.test(msg) || res.error.code === '42703') {
+        window._khOnboardedColMissing = true;
+        console.warn('[onboarding] user_stats.onboarded column missing — falling back to localStorage signal. See supabase/migrations/20260513_user_stats_onboarded_col.sql');
+        return;
+      }
+    }
 
     if (res.data && res.data.onboarded === true) {
       markCompletedOnboardingLocal(supaUser.id, res.data.onboarded_at || '');
@@ -8640,9 +8676,20 @@ async function khFreezeStatus() {
   if (!sb || typeof supaUser === 'undefined' || !supaUser) {
     return { count: 0, signed_in: false };
   }
+  // Was using a `get_freeze_inventory` RPC that doesn't exist in the
+  // production DB (404 on every signed-in load). Per the comment at
+  // the top of this block, the data lives at profiles.freeze_count —
+  // so just SELECT it directly. RLS gates to own profile row.
   try {
-    var r = await sb.rpc('get_freeze_inventory');
-    var n = (r && typeof r.data === 'number') ? r.data : 0;
+    var r = await sb.from('profiles')
+      .select('freeze_count')
+      .eq('id', supaUser.id)
+      .maybeSingle();
+    if (r && r.error) {
+      console.warn('[freeze] profile fetch error:', r.error.message || r.error);
+      return { count: 0, signed_in: true };
+    }
+    var n = (r && r.data && Number(r.data.freeze_count)) || 0;
     return { count: n, signed_in: true };
   } catch (_) {
     return { count: 0, signed_in: true };
@@ -8672,14 +8719,33 @@ async function khFreezeUse(forDate) {
 async function khClaimStreakAward(currentStreak) {
   if (typeof supaUser === 'undefined' || !supaUser) return 0;
   if (!Number.isFinite(currentStreak) || currentStreak < 3) return 0;
+  // RPC params are wrong in production (400 Bad Request every signed-in
+  // page load). Until the user runs the migration that creates the
+  // claim_streak_award(p_streak integer) function with the matching
+  // signature (see supabase/migrations/20260513_streak_award_rpc.sql),
+  // skip after the first failure in this tab so we don't keep
+  // polluting the console.
+  if (window._khClaimAwardBroken) return 0;
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb) return 0;
   try {
     var r = await sb.rpc('claim_streak_award', { p_streak: currentStreak });
+    if (r && r.error) {
+      // 42883 (function does not exist) / 42P01 / 22023 (bad param) —
+      // any of those means we can't usefully call this RPC again on
+      // this deployment. Latch the broken flag.
+      window._khClaimAwardBroken = true;
+      console.warn('[streak-award] RPC unavailable, skipping further calls:', r.error.message || r.error);
+      return 0;
+    }
     var awarded = (r && r.data && r.data.awarded) || 0;
     if (awarded > 0 && typeof khLoadNotifications === 'function') khLoadNotifications();
     return awarded;
-  } catch (_) { return 0; }
+  } catch (e) {
+    window._khClaimAwardBroken = true;
+    console.warn('[streak-award] RPC threw, skipping further calls:', e && e.message || e);
+    return 0;
+  }
 }
 
 // Detect a missed yesterday and auto-apply a freeze if the learner
