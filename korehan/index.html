@@ -848,6 +848,35 @@ body.kh-neon-on .hero-dot {
 </head>
 <body>
 <script>
+// ── Auto-recover from a previously stuck load ───────────────────
+// When the watchdog at the bottom of this file detects a stranded
+// blank page on mobile (15s with no content), it offers a "Reset &
+// reload" button that lands here with ?_recover=1 in the URL. This
+// belt-and-suspenders pass re-clears any state that might survive
+// the prior nuke (e.g. SW registration that hadn't fully unregistered
+// before navigation, fresh localStorage writes between nuke + reload)
+// so the post-recovery load is clean. Auth tokens and the onboarding
+// flag are preserved so the user doesn't get logged out by recovery.
+(function khAutoRecoverFlag(){
+  if (location.search.indexOf('_recover=1') < 0) return;
+  try {
+    var keep = {};
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (!k) continue;
+      if (k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) keep[k] = localStorage.getItem(k);
+      if (k === 'kh_visited') keep[k] = localStorage.getItem(k);
+    }
+    localStorage.clear();
+    Object.keys(keep).forEach(function(k){ try { localStorage.setItem(k, keep[k]); } catch(_){} });
+  } catch(_) {}
+  try { sessionStorage.clear(); } catch(_){}
+  // Strip the flag so refresh-to-bookmark doesn't recover repeatedly.
+  try { history.replaceState(null, '', location.pathname); } catch(_) {}
+  console.log('[kh-recover] auto-recover flag processed; localStorage purged (auth preserved)');
+})();
+</script>
+<script>
 // 첫 방문자 → 랜딩 페이지로 리다이렉트
 // sessionStorage로 관리 — 탭/브라우저 닫으면 초기화되어 다시 랜딩 표시 가능
 // localStorage kh_visited는 "한 번이라도 Start Free 눌렀음"을 의미
@@ -937,6 +966,90 @@ body.kh-neon-on .hero-dot {
   // skeleton, so degrading to "no fresh data" is far better than
   // "stuck loader forever".
   setTimeout(function(){ if (!done) window._khLoaderSet(100); }, 12000);
+})();
+</script>
+<script>
+// ── Stuck-page watchdog ──────────────────────────────────────────
+// The final safety net guaranteeing the user is NEVER left on a blank
+// page no matter what failed during init. Symptoms this catches:
+//   - shared.js failed to load (network hung past SW timeout, then
+//     cache empty too — the inline init handler in shared.js never
+//     runs, so DOM containers stay empty)
+//   - a JS exception silently halted DOMContentLoaded (caught by an
+//     outer try/catch, no console error surfaced to the user)
+//   - the SW served a corrupt cached bundle (parse error in console
+//     but the splash 12s ceiling still dismissed the loader)
+// At 15s post-load we check whether the header OR hero actually has
+// content. If neither does, the page is stranded — we replace the
+// blank screen with a recovery card the user can act on (one-tap
+// reset clears caches/SW/localStorage and reloads cleanly).
+(function khStuckWatchdog(){
+  function pageHasContent() {
+    var header = document.getElementById('kh-header');
+    var hero   = document.getElementById('dyn-hero');
+    if (header && header.innerHTML && header.innerHTML.length > 100) return true;
+    if (hero && hero.children && hero.children.length > 0) return true;
+    return false;
+  }
+  function showRecoveryCard(){
+    if (document.getElementById('kh-stuck-recovery')) return;
+    var card = document.createElement('div');
+    card.id = 'kh-stuck-recovery';
+    card.style.cssText = 'position:fixed;inset:0;z-index:100000;background:linear-gradient(135deg,#0b1626 0%,#1a3a6b 100%);display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,system-ui,"Noto Sans KR",sans-serif;color:#fff;padding:24px;animation:khStuckFadeIn .4s ease-out';
+    card.innerHTML = ''
+      + '<style>@keyframes khStuckFadeIn{from{opacity:0}to{opacity:1}}</style>'
+      + '<div style="max-width:380px;width:100%;text-align:center">'
+      +   '<div style="font-size:54px;margin-bottom:18px">⚡</div>'
+      +   '<h2 style="font-size:20px;font-weight:800;margin:0 0 10px;letter-spacing:-.5px">Loading is taking too long</h2>'
+      +   '<p style="font-size:14px;line-height:1.55;color:rgba(255,255,255,.65);margin:0 0 22px">Cached files on this device seem out of date. Resetting usually fixes it (you stay signed in).</p>'
+      +   '<button id="kh-stuck-reset" style="display:block;width:100%;padding:14px;border:0;border-radius:14px;background:#fff;color:#0b1626;font-weight:800;font-size:15px;cursor:pointer;margin-bottom:10px">Reset &amp; reload</button>'
+      +   '<button id="kh-stuck-retry" style="display:block;width:100%;padding:14px;border:1px solid rgba(255,255,255,.2);border-radius:14px;background:transparent;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Just reload</button>'
+      + '</div>';
+    document.body.appendChild(card);
+    document.getElementById('kh-stuck-retry').addEventListener('click', function(){ location.reload(); });
+    document.getElementById('kh-stuck-reset').addEventListener('click', window.khHardRecover);
+  }
+  // The hard-recover function is also exposed globally so it can be
+  // triggered from DevTools / a deep-linked support URL / a settings
+  // page button if we add one.
+  window.khHardRecover = function khHardRecover(){
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        navigator.serviceWorker.getRegistrations().then(function(rs){
+          rs.forEach(function(r){ try { r.unregister(); } catch(_){} });
+        }).catch(function(){});
+      }
+    } catch(_) {}
+    try {
+      if (window.caches && caches.keys) {
+        caches.keys().then(function(ks){ ks.forEach(function(k){ caches.delete(k).catch(function(){}); }); }).catch(function(){});
+      }
+    } catch(_) {}
+    try {
+      var keep = {};
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k) continue;
+        if (k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) keep[k] = localStorage.getItem(k);
+        if (k === 'kh_visited') keep[k] = localStorage.getItem(k);
+      }
+      localStorage.clear();
+      Object.keys(keep).forEach(function(k){ try { localStorage.setItem(k, keep[k]); } catch(_){} });
+    } catch(_) {}
+    try { sessionStorage.clear(); } catch(_){}
+    // Slight delay so the unregister/delete calls flush before nav.
+    setTimeout(function(){
+      location.replace(location.pathname + '?_recover=1&t=' + Date.now());
+    }, 300);
+  };
+  // 15s is a generous budget — the splash itself dismisses at 12s
+  // via its hard ceiling, and a healthy page paints inside 1-3s on
+  // 4G. Anything still blank at 15s is genuinely stuck.
+  setTimeout(function() {
+    if (pageHasContent()) return;
+    console.error('[kh-watchdog] page stuck after 15s — showing recovery card. UA:', navigator.userAgent);
+    showRecoveryCard();
+  }, 15000);
 })();
 </script>
 <div id="kh-header"></div>
@@ -1253,7 +1366,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260513d"></script>
+<script src="korehan-shared.js?v=20260513e"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},

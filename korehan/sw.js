@@ -2,11 +2,14 @@
 //
 // Strategy per request class:
 //
-//   HTML navigations + same-origin CSS/JS → network-first, cache fallback
+//   HTML navigations + same-origin CSS/JS → network-first WITH TIMEOUT, cache fallback
 //     Eliminates the "old version flash" where a fresh HTML painted
 //     against stale cached CSS/JS for one frame before the new bundles
 //     arrived. Now HTML, CSS, and JS are always fetched fresh when
-//     online and only fall back to cache when offline.
+//     online and fall back to cache when offline OR when the network
+//     hangs past the timeout (the recurring mobile-Chrome blank-page
+//     bug — flaky cellular fetch never resolves AND never rejects, so
+//     the SW await sat forever without the cache fallback ever firing).
 //
 //   Fonts / images → stale-while-revalidate
 //     Cheap to serve from cache, rarely change catastrophically.
@@ -18,14 +21,16 @@
 // changes. Install event will build a fresh cache under the new name
 // and the activate event will delete stale caches.
 
-// v10: bump after the grammar-enforcement deploy. Some users were
-// stuck with stale v9 shared.js cached against fresh HTML, and the
-// resulting mismatch broke logged-in state (regular browser showed
-// "Sign in / Join Free" while incognito worked fine — classic stale-
-// SW symptom). v10 + skipWaiting + clients.claim drops the old SW
-// and caches in one tab-close cycle.
+// v12: add hard fetch timeouts on the network-first path. Without them
+// a hung mobile fetch (e.g. cellular handoff with TCP RST never
+// surfacing as a failure) blocks the JS load indefinitely. The page
+// JS never runs, the splash 12s ceiling dismisses, and the user is
+// stranded on a blank page. v12 races every network-first fetch
+// against a 3s timeout (code) / 6s timeout (HTML), then falls back
+// to cache. Pages that have ever loaded before will ALWAYS produce
+// a paint, even on the worst cellular conditions.
 //
-const CACHE_VERSION = 'kh-v11';
+const CACHE_VERSION = 'kh-v12';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
@@ -35,6 +40,12 @@ const CORE_ASSETS = [
   '/korehan-shared.css',
   '/korehan-shared.js',
 ];
+
+// Network timeouts. Shorter for code (we have cached fallback ready)
+// than for the initial HTML navigation (where cache fallback means
+// "you might see a stale version").
+const NET_TIMEOUT_CODE_MS = 3000;
+const NET_TIMEOUT_HTML_MS = 6000;
 
 self.addEventListener('install', function(event) {
   self.skipWaiting();
@@ -93,7 +104,7 @@ self.addEventListener('fetch', function(event) {
   if (url.origin === self.location.origin && /^\/api\//.test(url.pathname)) return;
 
   if (isCodeAsset(url)) {
-    event.respondWith(networkFirstPage(req, STATIC_CACHE));
+    event.respondWith(networkFirstPage(req, STATIC_CACHE, NET_TIMEOUT_CODE_MS));
     return;
   }
   if (isMediaAsset(url)) {
@@ -101,7 +112,7 @@ self.addEventListener('fetch', function(event) {
     return;
   }
   if (isHTMLNavigation(req, url)) {
-    event.respondWith(networkFirstPage(req, PAGE_CACHE));
+    event.respondWith(networkFirstPage(req, PAGE_CACHE, NET_TIMEOUT_HTML_MS));
     return;
   }
 });
@@ -118,8 +129,32 @@ function staleWhileRevalidate(req, cacheName) {
   });
 }
 
-function networkFirstPage(req, cacheName) {
-  return fetch(req).then(function(res) {
+// Race a network fetch against a timeout. The first to resolve wins.
+// On timeout we reject so the catch path serves the cached copy.
+function fetchWithTimeout(req, ms) {
+  return new Promise(function(resolve, reject) {
+    var settled = false;
+    var timer = setTimeout(function() {
+      if (settled) return;
+      settled = true;
+      reject(new Error('sw-network-timeout'));
+    }, ms);
+    fetch(req).then(function(res) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(res);
+    }).catch(function(err) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+function networkFirstPage(req, cacheName, timeoutMs) {
+  return fetchWithTimeout(req, timeoutMs || NET_TIMEOUT_HTML_MS).then(function(res) {
     if (res && res.status === 200) {
       const clone = res.clone();
       caches.open(cacheName).then(function(cache) { cache.put(req, clone).catch(function(){}); });
