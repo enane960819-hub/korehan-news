@@ -7697,6 +7697,134 @@ async function autoGenConvAI(convId, convObj) {
   }
 }
 
+// ─── Conversation per-sentence analysis (CASUAL REGISTER) ─────────
+// The article analysis pipeline is tuned for news prose (formal
+// connectors, reported speech 다고 알려져 있어요, etc.). Conversations
+// are KakaoTalk-style casual chat — different patterns matter:
+// vocatives, casual enders (~네/~지/~잖아/~구나/~ㄹ게), 반말,
+// vowel contractions (떨려, 챙겨줘, 할게), conversational connectors
+// (근데). This generates per-message analysis WITH a prompt that
+// specifically targets those patterns, then writes the result to
+// article_cache.cache_key='sentence_analysis' so the user-side
+// tap-to-analyze panel (_khLoadConvSentenceCache) lights up.
+async function autoGenConvSentenceAnalysis(convId, convObj) {
+  showToastAdmin('💬 대화 문장 분석 생성 중…');
+  try {
+    var sb = getSb();
+    if (!sb) throw new Error('Supabase unavailable');
+    // Pull fresh row in case caller passed a stale snapshot.
+    var fetched = await sb.from('conversations_data').select('data').eq('id', convId).single();
+    var row = fetched && fetched.data;
+    var d = (row && row.data) ? row.data : (convObj || {});
+    var allMsgs = Array.isArray(d.msgs) ? d.msgs : [];
+    // Skip narration ('n'); only talk messages (left/right) get analyzed.
+    var talk = [];
+    allMsgs.forEach(function(m, i) {
+      if (!m || m.s === 'n') return;
+      var t = String(m.txt || '').trim();
+      if (!t) return;
+      talk.push({ idx: i, text: t, who: m.who || (m.s === 'l' ? 'A' : 'B') });
+    });
+    if (!talk.length) { showToastAdmin('⚠️ 분석할 메시지가 없습니다'); return; }
+
+    var lvlMap = {
+      s: 'Seed (TOPIK 1, complete beginner)',
+      b: 'Sprout (TOPIK 2, beginner)',
+      i: 'Tree (TOPIK 3-4, intermediate)',
+      a: 'Forest (TOPIK 5-6, advanced)',
+    };
+    var levelLabel = lvlMap[d.lvl] || 'Sprout (TOPIK 2, beginner)';
+
+    var payload = talk.map(function(m, i) {
+      return (i + 1) + '. [' + m.who + '] ' + m.text;
+    }).join('\n');
+
+    // Conversation-specific prompt. Different from the article path —
+    // the MUST-INCLUDE floor here is CASUAL register, not news prose.
+    var prompt =
+        'You are a Korean tutor analysing each line of a KakaoTalk-style casual conversation for a ' + levelLabel + ' learner.\n\n'
+      + 'Conversation context: ' + (d.ctx || '(none)') + '\n'
+      + 'Lines (numbered, in order, with speaker tag):\n' + payload + '\n\n'
+      + 'Return ONLY a JSON object — no preamble, no code fences:\n'
+      + '{ "lines": [\n'
+      + '  { "translation": "natural English of line 1",\n'
+      + '    "register":    "반말 | 존댓말 | 격식체 (mark the speech level so the learner sees it)",\n'
+      + '    "vocab":       [{"ko":"<dictionary form>","en":"<short meaning>","note":"<optional 1-line>"}],\n'
+      + '    "analysis":    [{"type":"grammar|expression|idiom","label":"<canonical form>","exp":"<1-sentence English>","example_in_sentence":"<chunk from the line>"}]\n'
+      + '  }, ... one entry per input line, same order ...\n'
+      + ']}\n\n'
+      + 'CRITICAL — this is CONVERSATIONAL Korean, NOT news. Tune the analysis accordingly:\n'
+      + '- TRANSLATION: natural, idiomatic chat English. PRESERVE the original subject — do NOT inject "I/we" if Korean omitted it.\n'
+      + '- VOCAB: max 3 per line. Dictionary form (보다, 흔하다, 살다). Skip particles (이/가/을/를/의/에/도/는) and the most basic copula (이다/있다 alone). Casual contractions count — list 떨리다 (not 떨려), 챙기다 (not 챙겨줘), etc.\n'
+      + '- ANALYSIS: be EXHAUSTIVE for CONVERSATIONAL patterns. The article-style analyser overweights formal connectors; this prompt overrides that. Surface every casual pattern you see.\n'
+      + '    MUST INCLUDE when present:\n'
+      + '    · VOCATIVES (호격): ~야 (close, intimate), ~아 (close, after consonant), ~씨 (polite acquaintance), ~님 (formal). Almost never in news; central in chat.\n'
+      + '    · CASUAL ENDERS: ~네(요) (discovery), ~지(요) (confirmation, "right?"), ~잖아(요) (you know, shared info), ~구나 / ~군요 (realization), ~ㄹ게(요) (promise / I\'ll), ~ㄹ까(요) (let\'s? / I wonder), ~ㄴ걸 (mild surprise), ~던가(요) (recall question), ~ㄴ대(요) / ~래(요) (casual reported). NEVER skip these — they\'re what makes Korean feel like chat.\n'
+      + '    · 반말 / 존댓말 ENDERS: ~다 / ~아·어 (반말 statement), ~지 (반말 confirmation), ~ㄴ다 (반말 plain present), ~아·어요 (존댓말 polite). Always mark register.\n'
+      + '    · CASUAL IMPERATIVES & REQUESTS: ~아·어 줘 / 줘요 (casual benefactive request), ~지 마 (negative command, 반말), ~ㄹ래(요) (would you?), ~자 (let\'s, 반말), ~하지 그래(요) (why don\'t you).\n'
+      + '    · VOWEL CONTRACTIONS: explain when present. 떨려 = 떨리어, 챙겨줘 = 챙기어 + 줘, 할게 = 하 + ㄹ게, 괜찮아 = 괜찮 + 아, 봤어 = 보 + 았어. Learners need to see the chain.\n'
+      + '    · CONVERSATIONAL CONJUNCTIONS: 근데 (contracted 그런데), 그래서, 아무튼, 그러니까, 그치 / 그치? (cf. 그렇지). News almost never uses these.\n'
+      + '    · CHAT-ONLY SHORTHAND IF PRESENT: ㅋㅋ, ㅎㅎ, ㅠㅠ, ㄱㄱ, ㅇㅇ, ~ㅁ (~음 abbreviation), ~ㅈㅇ (정도). Note them as type="expression".\n'
+      + '    · QUESTION SOFTENERS: ~ㄴ가(요), ~어 / 아 (rising-intonation casual question).\n'
+      + '    · TIME / WHILE / SEQUENCE in chat-style: ~ㄴ/는 동안 (while), ~ㄹ 때, ~다가, ~자마자, ~고 나서.\n'
+      + '  EXPLICITLY SKIP (these are news markers, not chat):\n'
+      + '    · ~다고 알려져 있어요 (reported-resultative); ~에 따르면; formal 했다 / 한다 ender on its own; ~ㄹ 전망이다; bureaucratic 이루어지다; news-only fixed phrases like 관계자에 따르면.\n'
+      + '    · If a literal news-style chunk did somehow appear, downgrade it: only surface as expression if it\'s genuinely the load-bearing unit of the line.\n'
+      + '- ANALYSIS VERIFY (HARD RULE):\n'
+      + '    1. example_in_sentence MUST be a literal substring of that source line. Whitespace differences fine; characters must match.\n'
+      + '    2. Past-tense contractions (봤어 = 보+았어, 했어 = 하+였어) count as containing ~았/었어 for grammar matching even if the literal "었" is missing in the surface form.\n'
+      + '    3. Empty arrays are OK and honest. Do not pad with filler when the line is one-word ("응", "어").\n'
+      + '- VOCAB ↔ ANALYSIS CROSS-REFERENCE: every content word appearing inside an analysis chunk MUST also appear in vocab[] (dictionary form), unless it\'s a particle or one of 있다/하다/되다/이다. Example: if analysis surfaces "챙겨줘" as the chunk for ~아/어 줘, then 챙기다 must be in vocab[].\n'
+      + '- Return EXACTLY ' + talk.length + ' entries in lines[].';
+
+    var resp = await callClaude({
+      feature: 'admin-conv-sentence-analyze',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: Math.min(12000, 280 * talk.length + 800),
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var rawTxt = (resp && resp.content && resp.content[0] && resp.content[0].text) || '';
+    var clean = rawTxt.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('JSON not found in response');
+    var parsed = JSON.parse(clean.slice(oi, ei + 1));
+    var arr = parsed && Array.isArray(parsed.lines) ? parsed.lines : null;
+    if (!arr || !arr.length) throw new Error('empty lines[]');
+
+    // Stitch back into the cache shape the frontend expects:
+    //   { messages: [{ idx, text, translation, register, vocab, analysis }] }
+    var stitched = talk.map(function(m, i) {
+      var a = arr[i] || {};
+      return {
+        idx:         m.idx,
+        text:        m.text,
+        translation: String(a.translation || '').trim(),
+        register:    String(a.register || '').trim(),
+        vocab:       Array.isArray(a.vocab) ? a.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
+        analysis:    Array.isArray(a.analysis) ? a.analysis.slice(0, 8).filter(function(x){ return x && (x.label || x.pattern); }).map(function(x){
+          return {
+            type: x.type || 'grammar',
+            label: x.label || x.pattern || '',
+            exp: x.exp || '',
+            example_in_sentence: x.example_in_sentence || ''
+          };
+        }) : []
+      };
+    });
+
+    // Write to article_cache so _khLoadConvSentenceCache picks it up.
+    var upsertRes = await sb.from('article_cache').upsert(
+      { content_type: 'conversation', content_id: String(convId), cache_key: 'sentence_analysis', cache_value: JSON.stringify({ messages: stitched }) },
+      { onConflict: 'content_type,content_id,cache_key' }
+    );
+    if (upsertRes && upsertRes.error) throw upsertRes.error;
+    showToastAdmin('✅ 대화 문장 분석 ' + stitched.length + '개 완료');
+  } catch (e) {
+    console.error('autoGenConvSentenceAnalysis failed:', e);
+    showToastAdmin('⚠️ 분석 실패: ' + (e.message || String(e)));
+  }
+}
+
 async function autoGenStoryAI(storyId, storyObj) {
   showToastAdmin('🤖 스토리 AI 분석 중…');
   try {
@@ -9713,6 +9841,7 @@ async function loadConvList() {
       + '</div></div>'
       + '<div style="display:flex;gap:8px;flex-shrink:0;">'
       + '<button onclick="regenConvAI(' + row.id + ')" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" title="AI로 vocab/grammar/mission 자동 생성">🤖 AI</button>'
+      + '<button onclick="autoGenConvSentenceAnalysis(' + row.id + ', null)" style="background:#faf5ff;color:#7c3aed;border:1px solid #ddd6fe;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" title="회화체 패턴(~네/~지/~잖아/~ㄹ게, 호격, 반말/존댓말) 기준 문장별 분석 생성">💬 Sent</button>'
       + '<button onclick="openConvEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Edit</button>'
       + '<button onclick="deleteConv(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 Delete</button>'
       + '</div></div>';
