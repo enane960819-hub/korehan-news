@@ -450,7 +450,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260512d"></script>
+<script src="korehan-shared.js?v=20260513a"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -789,7 +789,18 @@ var CAT_RAIL_ORDER = ['everyday','work','friends','family','dating'];
 var CAT_ICON = {everyday:'☕',work:'💼',friends:'👋',family:'👨‍👩‍👧',dating:'💖'};
 
 function _renderOneCard(c) {
+  // ri (index in CONVS) is still used as the data-ctx-target hook for
+  // the async translator's in-place card update — that path matches by
+  // index inside the same render pass and is fine.
+  // The CLICK dispatch, however, switched to id-based lookup. openDetail
+  // (idx) was racing against the DB refresh path that replaces CONVS in
+  // place — even when ids matched in order, rendered cards carried stale
+  // integer indices that could land on a different conversation if CONVS
+  // got resorted between render and click. ("conversations 아무거나 막
+  // 눌리고" was the symptom.) Looking up by _id at click time means any
+  // future array mutation can't misroute the tap.
   var ri = CONVS.indexOf(c);
+  var convIdJs = String(c && c._id || '').replace(/'/g,"\\'");
   var ctxRaw = c.ctx || '';
   // English context drives the card now (speakers + avatars are gone).
   // _ctxEn() returns the cached English version if we have one and a
@@ -822,7 +833,7 @@ function _renderOneCard(c) {
   // Kick off the translation lazily (only when we don't already have it)
   if (isPending && ctxRaw) _translateCtxAsync(c, ri);
 
-  return '<div class="cc2" onclick="openDetail('+ri+')">'
+  return '<div class="cc2" onclick="openDetailById(\''+convIdJs+'\')">'
     +'<div class="cc2-head">'
       +'<div class="cc2-head-info">'
         + ctxHtml
@@ -969,6 +980,21 @@ function highlightKeyExprs(text, keyExprs) {
   });
   return escaped;
 }
+
+// id-keyed entry point used by the card click handler. Resolves the
+// _id to a CURRENT index in CONVS so feed-style swipe nav keeps
+// working, then delegates to openDetail. Falls back to no-op when
+// the id isn't in CONVS (rare: deleted while the card was visible).
+function openDetailById(convId) {
+  if (!convId) return;
+  var idx = -1;
+  for (var i = 0; i < CONVS.length; i++) {
+    if (CONVS[i] && String(CONVS[i]._id) === String(convId)) { idx = i; break; }
+  }
+  if (idx < 0) return;
+  openDetail(idx);
+}
+window.openDetailById = openDetailById;
 
 async function openDetail(idx) {
   var c = CONVS[idx];

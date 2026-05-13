@@ -4525,10 +4525,13 @@ async function analyzeSentence(idx, el) {
     +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">분석 준비 중</div>'
     +   '관리자가 이 기사의 문장 분석을 준비하고 있어요. 잠시 후 다시 시도해 주세요.'
     + '</div>';
-  // Ring the admin's bell. The RPC dedupes per (content_id, 10min) so
-  // a reader tapping multiple uncached sentences on the same article
+  // Ring the admin's bell on the next macrotask so the RPC round-trip
+  // can never extend this tap-handler turn. Server-side RPC dedupes
+  // per (content_id, 10min) so multi-tap on the same uncached article
   // only fires once. Best-effort; silent failure is fine.
-  try { _khNotifyAdminCacheMiss('article', articleId, sentenceText); } catch (_) {}
+  setTimeout(function () {
+    try { _khNotifyAdminCacheMiss('article', articleId, sentenceText); } catch (_) {}
+  }, 0);
 }
 
 // Posts an admin-targeted bell notification when a reader hits an
@@ -4785,7 +4788,12 @@ async function analyzeConvBubble(convId, msgIdx, el) {
     +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">분석 준비 중</div>'
     +   '관리자가 이 대화의 문장 분석을 준비하고 있어요. 잠시 후 다시 시도해 주세요.'
     + '</div>';
-  try { _khNotifyAdminCacheMiss('conversation', convId, sentenceText); } catch (_) {}
+  // Defer the admin notification RPC to the next macrotask so its
+  // Supabase round-trip can't extend the tap-handler turn (and so
+  // any RPC error never bubbles into the click handler chain).
+  setTimeout(function () {
+    try { _khNotifyAdminCacheMiss('conversation', convId, sentenceText); } catch (_) {}
+  }, 0);
 }
 
 function switchArtTab(tab, btn) {
