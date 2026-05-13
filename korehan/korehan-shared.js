@@ -18,8 +18,22 @@
         }, { once: true });
       }
     }
-    // Hide Sign In / Join buttons if user has a stored session
-    // Supabase stores session as sb-{ref}-auth-token in localStorage
+    // Hide Sign In / Join buttons whenever we know a session is
+    // imminent — either already stored OR mid-OAuth-callback.
+    //
+    // Owner-reported flash: "구글 로그인하면 로그인 뒤에도 한 1~2초정도
+    // sign up free join 버튼 뜨고 프로필 사진으로 바뀜". Root cause:
+    // with flowType='implicit' + detectSessionInUrl=false, Supabase
+    // returns OAuth tokens in location.hash and checkSession() processes
+    // them manually. At this IIFE's tick, localStorage doesn't yet
+    // contain sb-*-auth-token (checkSession hasn't run), so the
+    // pre-existing "stored session?" check missed the in-flight login
+    // entirely → flash-guard not installed → signed-out header painted
+    // until checkSession resolved 1-2s later.
+    //
+    // Two-signal detection covers both cases:
+    //   (a) stored session (return visit, no OAuth in URL)
+    //   (b) OAuth callback in URL (fresh Google login mid-flight)
     var hasSession = false;
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
@@ -28,8 +42,14 @@
         if (v && v.indexOf('"access_token"') > 0) { hasSession = true; break; }
       }
     }
-    if (hasSession) {
-      // Inject a style that hides auth buttons until JS confirms state
+    var midOAuth = false;
+    try {
+      var h = (location.hash || '') + ' ' + (location.search || '');
+      // access_token=… (implicit) or code=… (PKCE) — both indicate
+      // checkSession is about to upgrade us to signed-in.
+      midOAuth = /(?:^|[#&?])(?:access_token|code|refresh_token)=/.test(h);
+    } catch (_) {}
+    if (hasSession || midOAuth) {
       var s = document.createElement('style');
       s.id = 'kh-auth-flash-guard';
       s.textContent = '#topbar-signin-btn,#topbar-join-btn,.kh-hbtn-out[onclick*="openAuth"]{display:none!important}';
@@ -1153,9 +1173,31 @@ async function checkSession() {
 
 // UI 업데이트
 function updateAuthUI() {
-  // Remove flash guard now that we know the real auth state
+  // Remove the flash guard, but ONLY when we either (a) have a real
+  // supaUser to render signed-in chrome with, or (b) know auth isn't
+  // mid-flight any more. The previous version removed the guard
+  // unconditionally on the first call (which fires right after header
+  // inject, before checkSession resolves), which is exactly when the
+  // OAuth-callback flash happened: guard gone → signed-out buttons
+  // painted → 1-2s later checkSession resolves → re-paint as signed-in.
+  // Keeping the guard up across that gap suppresses the flash.
+  //
+  // Safety net 5s setTimeout ensures the guard never permanently
+  // strands the buttons if checkSession hangs.
   var guard = document.getElementById('kh-auth-flash-guard');
-  if (guard) guard.remove();
+  var midOAuth = false;
+  try {
+    var h = (location.hash || '') + ' ' + (location.search || '');
+    midOAuth = /(?:^|[#&?])(?:access_token|code|refresh_token)=/.test(h);
+  } catch (_) {}
+  var shouldKeepGuard = !supaUser && midOAuth && !window._sessionChecked;
+  if (guard && !shouldKeepGuard) guard.remove();
+  if (guard && shouldKeepGuard && !window._khAuthGuardSafety) {
+    window._khAuthGuardSafety = setTimeout(function(){
+      var g = document.getElementById('kh-auth-flash-guard');
+      if (g) g.remove();
+    }, 5000);
+  }
   var signinBtn  = document.getElementById('topbar-signin-btn');
   var adminBtn   = document.getElementById('topbar-admin-btn');
   var authMenu   = document.getElementById('topbar-auth-menu');
