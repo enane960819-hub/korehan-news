@@ -5492,95 +5492,31 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
   overscroll-behavior: contain;
 }
 
-/* Layer 2: body lock when ANY visible modal is in the DOM. The
-   `:not(.hidden):not([hidden])` filter keeps the page scrollable
-   when modals are present but display:none'd (the convention this
-   codebase uses to keep modals mounted but offscreen). The
-   `:not(.kh-allow-bg-scroll)` escape hatch lets a modal opt out
-   for the rare case where background scroll is intentional. */
-/* Layer 2: body lock when ANY visible modal-overlay is in the DOM.
-   IMPORTANT: target the OUTER overlay classes (`.woverlay`,
-   `.su-overlay`, `.X-overlay`) — those are the ones that toggle
-   `.hidden` when the modal opens/closes. The inner content divs
-   (`.wmodal`, `.su-modal`, etc.) live inside the overlay and never
-   receive `.hidden` themselves, so a selector targeting those would
-   ALWAYS match (study-room.html keeps ~10 hidden overlays mounted),
-   locking the body permanently. That's exactly what broke Study
-   Room scroll + taps in the previous version of this rule.
-
-   Two classes of overlay live in this codebase:
-     A. .hidden-toggled  — display:none on `.hidden`. Match when the
-        overlay element exists WITHOUT the `.hidden` class.
-        (.detail-overlay, .woverlay, .su-overlay, .bmodal-overlay,
-         .smodal-overlay, .ls-overlay, .mm-overlay, .st-overlay,
-         .dr-overlay, .gl-fb-overlay, .alpha-modal)
-     B. .open-toggled    — opacity:0 + pointer-events:none by default,
-        becomes visible when `.open` is added. Match when `.open` is
-        present.  (.feat-overlay, .ft-overlay)
-
-   Each class needs its own visibility predicate; mixing them caused
-   the .feat-overlay / .ft-overlay nodes to ALWAYS appear visible
-   to the previous selector and re-locked the body. */
-html:has(
-  .detail-overlay:not(.hidden):not([hidden]),
-  .woverlay:not(.hidden):not([hidden]),
-  .su-overlay:not(.hidden):not([hidden]),
-  .bmodal-overlay:not(.hidden):not([hidden]),
-  .smodal-overlay:not(.hidden):not([hidden]),
-  .ls-overlay:not(.hidden):not([hidden]),
-  .mm-overlay:not(.hidden):not([hidden]),
-  .st-overlay:not(.hidden):not([hidden]),
-  .dr-overlay:not(.hidden):not([hidden]),
-  .gl-fb-overlay:not(.hidden):not([hidden]),
-  .alpha-modal:not(.hidden):not([hidden]),
-  .feat-overlay.open,
-  .ft-overlay.open,
-  .fun-overlay.open
-):not(:has(.kh-allow-bg-scroll)) {
-  overflow: hidden;
-}
-body:has(
-  .detail-overlay:not(.hidden):not([hidden]),
-  .woverlay:not(.hidden):not([hidden]),
-  .su-overlay:not(.hidden):not([hidden]),
-  .bmodal-overlay:not(.hidden):not([hidden]),
-  .smodal-overlay:not(.hidden):not([hidden]),
-  .ls-overlay:not(.hidden):not([hidden]),
-  .mm-overlay:not(.hidden):not([hidden]),
-  .st-overlay:not(.hidden):not([hidden]),
-  .dr-overlay:not(.hidden):not([hidden]),
-  .gl-fb-overlay:not(.hidden):not([hidden]),
-  .alpha-modal:not(.hidden):not([hidden]),
-  .feat-overlay.open,
-  .ft-overlay.open,
-  .fun-overlay.open
-):not(:has(.kh-allow-bg-scroll)) {
-  overflow: hidden;
-  /* DO NOT set `touch-action: none` here. It propagates to descendants
-     and prevents Samsung Internet (and a few Chrome variants) from
-     synthesising click events from a touch — meaning every tap inside
-     the modal becomes a no-op. Article Study card taps froze with
-     this set; overscroll-behavior:contain on the modal scroll
-     container already handles scroll-bleed without breaking taps. */
-}
+/* Layer 2 (body lock via :has()) was REMOVED.
+ *
+ * Three iterations all re-broke Study Room scroll. Codebase mixes
+ * .hidden-toggled, .open-toggled, and ad-hoc display:none overlays
+ * with no consistent visibility marker — any single :has() selector
+ * matched invisible overlays on at least some pages and locked
+ * <body> permanently.
+ *
+ * Per-modal JS already handles `document.body.style.overflow =
+ * 'hidden'` in each open() helper and clears it on close. That's
+ * the canonical guard and it works. The CSS attempt was supposed
+ * to be a backup but kept causing the user-visible scroll lock the
+ * JS lock was supposed to prevent — net negative.
+ *
+ * Layer 1 (overscroll-behavior:contain on modal scrollers) stays;
+ * it never blocks scroll, just prevents scroll-chaining inside
+ * modals. */
 
 /* Hide the Daily Mission floating badge while the user is in any
-   modal (Article Study, Express Practice, Dictation, etc.). Same
-   selector list (both visibility patterns) so it only triggers when
-   something is actually visible. */
-body:has(
-  .detail-overlay:not(.hidden):not([hidden]),
-  .woverlay:not(.hidden):not([hidden]),
-  .su-overlay:not(.hidden):not([hidden]),
-  .bmodal-overlay:not(.hidden):not([hidden]),
-  .smodal-overlay:not(.hidden):not([hidden]),
-  .ls-overlay:not(.hidden):not([hidden]),
-  .mm-overlay:not(.hidden):not([hidden]),
-  .st-overlay:not(.hidden):not([hidden]),
-  .dr-overlay:not(.hidden):not([hidden]),
-  .gl-fb-overlay:not(.hidden):not([hidden]),
-  .alpha-modal:not(.hidden):not([hidden]),
-  .feat-overlay.open,
-  .ft-overlay.open,
-  .fun-overlay.open
-) #kh-daily-mission { display: none !important; }
+   modal. Piggybacks on the JS lock (`document.body.style.overflow =
+   'hidden'`) by matching the inline `style` attribute, which avoids
+   the :has() overlay-class minefield entirely. Both spacing variants
+   covered because some browsers serialize the inline style with no
+   space after the colon. */
+body[style*="overflow: hidden"] #kh-daily-mission,
+body[style*="overflow:hidden"]  #kh-daily-mission {
+  display: none !important;
+}
