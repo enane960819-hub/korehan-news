@@ -5498,58 +5498,75 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
    codebase uses to keep modals mounted but offscreen). The
    `:not(.kh-allow-bg-scroll)` escape hatch lets a modal opt out
    for the rare case where background scroll is intentional. */
+/* Layer 2: body lock when ANY visible modal-overlay is in the DOM.
+   IMPORTANT: target the OUTER overlay classes (`.woverlay`,
+   `.su-overlay`, `.X-overlay`) — those are the ones that toggle
+   `.hidden` when the modal opens/closes. The inner content divs
+   (`.wmodal`, `.su-modal`, etc.) live inside the overlay and never
+   receive `.hidden` themselves, so a selector targeting those would
+   ALWAYS match (study-room.html keeps ~10 hidden overlays mounted),
+   locking the body permanently. That's exactly what broke Study
+   Room scroll + taps in the previous version of this rule. */
 html:has(
   .detail-overlay:not(.hidden):not([hidden]),
-  .su-modal:not(.hidden):not([hidden]),
-  .wmodal:not(.hidden):not([hidden]),
-  .dct-modal:not(.hidden):not([hidden]),
-  .feat-modal:not(.hidden):not([hidden]),
+  .woverlay:not(.hidden):not([hidden]),
+  .su-overlay:not(.hidden):not([hidden]),
+  .bmodal-overlay:not(.hidden):not([hidden]),
+  .smodal-overlay:not(.hidden):not([hidden]),
+  .ls-overlay:not(.hidden):not([hidden]),
+  .mm-overlay:not(.hidden):not([hidden]),
+  .st-overlay:not(.hidden):not([hidden]),
+  .dr-overlay:not(.hidden):not([hidden]),
+  .ft-overlay:not(.hidden):not([hidden]),
+  .fun-overlay:not(.hidden):not([hidden]),
   .feat-overlay:not(.hidden):not([hidden]),
-  .alpha-modal:not(.hidden):not([hidden]),
-  .bmodal:not(.hidden):not([hidden]),
-  .dr-modal:not(.hidden):not([hidden]),
-  .gl-fb-modal:not(.hidden):not([hidden])
+  .gl-fb-overlay:not(.hidden):not([hidden]),
+  .alpha-modal:not(.hidden):not([hidden])
 ):not(:has(.kh-allow-bg-scroll)) {
   overflow: hidden;
 }
 body:has(
   .detail-overlay:not(.hidden):not([hidden]),
-  .su-modal:not(.hidden):not([hidden]),
-  .wmodal:not(.hidden):not([hidden]),
-  .dct-modal:not(.hidden):not([hidden]),
-  .feat-modal:not(.hidden):not([hidden]),
+  .woverlay:not(.hidden):not([hidden]),
+  .su-overlay:not(.hidden):not([hidden]),
+  .bmodal-overlay:not(.hidden):not([hidden]),
+  .smodal-overlay:not(.hidden):not([hidden]),
+  .ls-overlay:not(.hidden):not([hidden]),
+  .mm-overlay:not(.hidden):not([hidden]),
+  .st-overlay:not(.hidden):not([hidden]),
+  .dr-overlay:not(.hidden):not([hidden]),
+  .ft-overlay:not(.hidden):not([hidden]),
+  .fun-overlay:not(.hidden):not([hidden]),
   .feat-overlay:not(.hidden):not([hidden]),
-  .alpha-modal:not(.hidden):not([hidden]),
-  .bmodal:not(.hidden):not([hidden]),
-  .dr-modal:not(.hidden):not([hidden]),
-  .gl-fb-modal:not(.hidden):not([hidden])
+  .gl-fb-overlay:not(.hidden):not([hidden]),
+  .alpha-modal:not(.hidden):not([hidden])
 ):not(:has(.kh-allow-bg-scroll)) {
   overflow: hidden;
   /* DO NOT set `touch-action: none` here. It propagates to descendants
      and prevents Samsung Internet (and a few Chrome variants) from
      synthesising click events from a touch — meaning every tap inside
-     the modal becomes a no-op. The previous version of this rule
-     applied touch-action:none to body, which broke Article Study card
-     taps (page froze, Chrome popped 페이지에서 응답이 없습니다).
-     overscroll-behavior:contain on the modal scroll container (defined
-     above) already handles the scroll-bleed case for both desktop and
-     iOS, so dropping touch-action here is safe. */
+     the modal becomes a no-op. Article Study card taps froze with
+     this set; overscroll-behavior:contain on the modal scroll
+     container already handles scroll-bleed without breaking taps. */
 }
 
 /* Hide the Daily Mission floating badge while the user is in any
-   modal (Article Study, Express Practice, Dictation, etc.). It
-   was overlapping the study UI and broke immersion. Already
-   hidden during article reading via body.kh-reading-page above —
-   this generalises that rule to every modal/overlay surface. */
+   modal (Article Study, Express Practice, Dictation, etc.). Same
+   outer-overlay selector list so it only triggers when something is
+   actually visible. */
 body:has(
   .detail-overlay:not(.hidden):not([hidden]),
-  .su-modal:not(.hidden):not([hidden]),
-  .wmodal:not(.hidden):not([hidden]),
-  .dct-modal:not(.hidden):not([hidden]),
-  .feat-modal:not(.hidden):not([hidden]),
+  .woverlay:not(.hidden):not([hidden]),
+  .su-overlay:not(.hidden):not([hidden]),
+  .bmodal-overlay:not(.hidden):not([hidden]),
+  .smodal-overlay:not(.hidden):not([hidden]),
+  .ls-overlay:not(.hidden):not([hidden]),
+  .mm-overlay:not(.hidden):not([hidden]),
+  .st-overlay:not(.hidden):not([hidden]),
+  .dr-overlay:not(.hidden):not([hidden]),
+  .ft-overlay:not(.hidden):not([hidden]),
+  .fun-overlay:not(.hidden):not([hidden]),
   .feat-overlay:not(.hidden):not([hidden]),
-  .alpha-modal:not(.hidden):not([hidden]),
-  .bmodal:not(.hidden):not([hidden]),
-  .dr-modal:not(.hidden):not([hidden]),
-  .gl-fb-modal:not(.hidden):not([hidden])
+  .gl-fb-overlay:not(.hidden):not([hidden]),
+  .alpha-modal:not(.hidden):not([hidden])
 ) #kh-daily-mission { display: none !important; }
