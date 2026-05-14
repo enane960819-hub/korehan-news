@@ -5525,11 +5525,15 @@ body:has(
   .gl-fb-modal:not(.hidden):not([hidden])
 ):not(:has(.kh-allow-bg-scroll)) {
   overflow: hidden;
-  /* touch-action:none on body kills any leftover momentum scroll
-     that iOS Safari otherwise lets bleed through behind the
-     modal. Inputs inside the modal still receive touches because
-     the modal itself doesn't inherit this. */
-  touch-action: none;
+  /* DO NOT set `touch-action: none` here. It propagates to descendants
+     and prevents Samsung Internet (and a few Chrome variants) from
+     synthesising click events from a touch — meaning every tap inside
+     the modal becomes a no-op. The previous version of this rule
+     applied touch-action:none to body, which broke Article Study card
+     taps (page froze, Chrome popped 페이지에서 응답이 없습니다).
+     overscroll-behavior:contain on the modal scroll container (defined
+     above) already handles the scroll-bleed case for both desktop and
+     iOS, so dropping touch-action here is safe. */
 }
 
 /* Hide the Daily Mission floating badge while the user is in any

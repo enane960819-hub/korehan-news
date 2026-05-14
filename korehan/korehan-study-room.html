@@ -19,7 +19,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/og-default.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260513d">
+<link rel="stylesheet" href="korehan-shared.css?v=20260514a">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
 <style>
 /* ─── LAYOUT ─────────────────────────────── */
@@ -5775,11 +5775,31 @@ async function _generateAndSaveDailyContent(date, opts) {
       updated_at:          new Date().toISOString()
     };
 
-    // Persist to DB (best-effort — don't block render if save fails)
+    // Persist to DB via SECURITY DEFINER RPC (best-effort, fire-and-
+    // forget). Direct upsert was blocked by RLS — only admin can
+    // write to study_daily_content directly. Without this RPC, every
+    // learner who landed before admin pre-baked re-generated, burned
+    // a Claude call, AND silently failed to save — so the next
+    // learner did the same.
+    //
+    // The RPC gates writes on the server: if a row already exists with
+    // non-empty vocab OR admin_edited=true, it no-ops and the call
+    // costs ~ms.
     var sb = getSupa();
     if (sb) {
-      sb.from('study_daily_content').upsert(rec, { onConflict: 'scheduled_date,level' })
-        .then(function(r) { if (r.error) console.warn('study_daily_content save:', r.error.message); });
+      sb.rpc('save_daily_content_if_missing', {
+        p_date:                date,
+        p_level:               _currentLevel,
+        p_topic_ko:            rec.topic_ko,
+        p_topic_en:            rec.topic_en,
+        p_vocab:               rec.vocab,
+        p_grammar:             rec.grammar,
+        p_helpers:             rec.helpers,
+        p_dictation_sentences: rec.dictation_sentences,
+        p_dictation_questions: rec.dictation_questions
+      }).then(function(r) {
+        if (r && r.error) console.warn('save_daily_content_if_missing:', r.error.message);
+      });
     }
 
     khLog('[_generateAndSaveDailyContent] AI succeeded — topic:', parsed.topic_ko);
@@ -21319,7 +21339,7 @@ function _asRenderGrid() {
 async function asSelectArticle(id) {
   var art = _asArticles.find(function(a){ return String(a.id)===String(id); });
   if (!art) return;
-  _asCurrentArt = art; _asStep = 1; _asStepDone = [false,false,false,false,false];
+  _asCurrentArt = art; _asStep = 1; _asStepDone = [false,false,false,false];
   _asStudyContent = null; _asMatchState = null; _asWOState = null; _asQState = null;
 
   // Switch the view IMMEDIATELY so the tap feels responsive. Previously
@@ -22189,7 +22209,7 @@ function _asRestoreProgress() {
   var saved = _asGetTmp();
   if (saved && saved.step && !saved.completed) {
     _asStep = saved.step;
-    _asStepDone = saved.stepDone || [false,false,false,false,false];
+    _asStepDone = saved.stepDone || [false,false,false,false];
     if (saved.wo_filledBlanks && saved.wo_idx !== undefined) {
       _asWOState = _asWOState || {};
       _asWOState.idx = saved.wo_idx;
@@ -22232,7 +22252,7 @@ async function _asLoadProgressFromDB() {
       var saved = typeof data.progress_data === 'string' ? JSON.parse(data.progress_data) : data.progress_data;
       if (saved && saved.step && !saved.completed) {
         _asStep = saved.step;
-        _asStepDone = saved.stepDone || [false,false,false,false,false];
+        _asStepDone = saved.stepDone || [false,false,false,false];
         // Also cache locally
         _asUpdateTmp(saved);
         return true;
