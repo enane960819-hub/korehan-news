@@ -1350,18 +1350,39 @@ function startOnboarding() {
   renderStep1();
 }
 
-async function initUser() {
+// Two-phase init so the page paints + becomes interactive immediately:
+//
+//   Phase 1 (synchronous, NO await): render the onboarding UI. The
+//   user can start tapping the very first question while the auth
+//   check is still in flight.
+//
+//   Phase 2 (background): wait for Supabase to load, then check
+//   auth + the user_stats.onboarded flag. If already onboarded
+//   (or has a localStorage marker), redirect to /index.html. Even
+//   if this takes 2+ seconds the user isn't staring at a blank
+//   page anymore.
+//
+// Previously this function awaited the Supabase wait loop (up to
+// 3s) BEFORE startOnboarding() ran, which is why the page felt
+// frozen on first paint — especially on mobile where the CDN
+// fetch for @supabase/supabase-js can be slow over LTE.
+async function initUserBackground() {
+  // Phase 2 starts here, after startOnboarding() has already
+  // painted in phase 1. Yield to the browser so the first paint
+  // can commit without the SDK-load loop competing for the main
+  // thread; this is what makes the page feel instant.
+  await new Promise(function(r) { setTimeout(r, 0); });
+
+  // Faster wait loop — 100ms × up to 20 iterations = 2s ceiling
+  // instead of 3s. SDK arrives in <300ms on a warm CDN anyway.
   var waited = 0;
-  while (!window.supabase && waited < 30) {
+  while (!window.supabase && waited < 20) {
     await new Promise(function(r) { setTimeout(r, 100); });
     waited += 1;
   }
 
   var sb = getSb();
-  if (!sb) {
-    startOnboarding();
-    return;
-  }
+  if (!sb) return;  // No SDK; the user can still progress through onboarding offline.
 
   try {
     var sessionRes = await sb.auth.getUser();
@@ -1370,10 +1391,7 @@ async function initUser() {
     _user = null;
   }
 
-  if (!_user) {
-    startOnboarding();
-    return;
-  }
+  if (!_user) return;
 
   // Returning from "Sign up with Google" on step 4 — the user
   // filled out goals/level/minutes anonymously, then OAuth round-
@@ -1399,13 +1417,13 @@ async function initUser() {
     saveOnboardingLocal(true);
     try { await persistOnboardingState(); } catch(_) {}
     try { localStorage.removeItem('kh_onboarding_pending_state'); } catch(_) {}
-    // Recovered pending-state path — also lands on home, not study
-    // room. Same reasoning as completeOnboarding above.
     window.location.href = 'index.html?welcome=1';
     return;
   }
 
-  // Check localStorage FIRST — prevents loop when DB upsert is slow or fails
+  // Already-onboarded short-circuit. Run this AFTER phase-1 paint
+  // so the splash never blocks the user. localStorage check is
+  // first because it's instant; DB check follows.
   try {
     var localKey = getOnboardingStorageKey('completed', _user.id);
     var localKeyFallback = getOnboardingStorageKey('completed', '');
@@ -1423,11 +1441,13 @@ async function initUser() {
       return;
     }
   } catch(e) {}
-
-  startOnboarding();
 }
 
-initUser();
+// Phase 1 — paint the UI immediately. Background auth check is
+// fire-and-forget; if it discovers the user is already onboarded
+// it'll redirect away, but until then the user can interact.
+startOnboarding();
+initUserBackground();
 </script>
 </body>
 </html>

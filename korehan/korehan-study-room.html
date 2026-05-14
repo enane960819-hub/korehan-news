@@ -3923,6 +3923,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
         <!-- 모달 내 모드 탭 -->
         <div class="wm-mode-toggle" id="wm-mode-toggle">
           <button class="wm-mode-btn active" id="mbtab-topic" onclick="switchModalMode('topic')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Topic</span></button>
+          <button class="wm-mode-btn" id="mbtab-free" onclick="switchModalMode('free')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="feather" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Free Writing</span></button>
           <button class="wm-mode-btn" id="mbtab-diary" onclick="switchModalMode('diary')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="notebook" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Diary</span></button>
         </div>
       </div>
@@ -12545,6 +12546,7 @@ var _SUBMIT_TYPE_INFO = {
   'topic_writing':       { label: 'Topic Yum Yum',     icon: 'pen-line', open: 'openWritingModal' },
   'writing':             { label: 'Writing',           icon: 'pencil', open: 'openWritingModal' },
   'diary':               { label: 'Diary',             icon: 'notebook', open: 'openWritingModal' },
+  'free_writing':        { label: 'Free Writing',      icon: 'feather', open: 'openWritingModal' },
   'reading':             { label: 'Reading & Writing', icon: 'book-open', open: 'openWritingModal' },
   'grammar':             { label: 'Grammar Focus',     icon: 'library', open: 'openGrammarFocusModal' },
   'picture_description': { label: 'Picture Desc.',     icon: 'image', open: 'openPictureDescription' },
@@ -12931,6 +12933,7 @@ async function _triggerPackageFeedback(submissionId, items) {
         topic_writing: 'Topic Yum Yum',
         writing: 'Topic Yum Yum',
         diary: 'Diary',
+        free_writing: 'Free Writing',
         reading: 'Reading & Writing',
         article_study: 'Article Study',
         grammar: 'Grammar Focus',
@@ -12959,8 +12962,8 @@ async function _triggerPackageFeedback(submissionId, items) {
       + '  "encouragement": "ONE short motivating English line",\n'
       + '  "activities": [\n'
       + '    {\n'
-      + '      "type": "express_practice|diary|article_study|picture_description|dictation",\n'
-      + '      "activity_name": "Express Practice (Topic Writing) | Diary | Article Study | Picture Description | Dictation",\n'
+      + '      "type": "express_practice|diary|free_writing|article_study|picture_description|dictation",\n'
+      + '      "activity_name": "Express Practice (Topic Writing) | Diary | Free Writing | Article Study | Picture Description | Dictation",\n'
       + '      "topic": "the topic / title shown to the student",\n'
       + '      "student_text": "the student\'s original Korean text, copied verbatim",\n'
       + '      "score": 0-100,\n'
@@ -13028,15 +13031,18 @@ async function submitWriting() {
   var text = (document.getElementById('write-area').value || '').trim();
   if (!text) { showToast('Write something first!'); return; }
 
-  // Vocab usage check (skip for diary mode — free writing)
+  // Vocab usage check — skip for diary AND free modes (both are
+  // user-chosen subject; no daily-required vocab to enforce).
   var requiredVocab = (_aiContent && _aiContent.vocab || []).map(function(v){ return v.ko; }).filter(Boolean);
   var usedVocab = requiredVocab.filter(function(w){ return text.includes(w); });
-  if (_writingMode !== 'diary' && requiredVocab.length > 0 && usedVocab.length < 2) {
+  var skipVocabCheck = (_writingMode === 'diary' || _writingMode === 'free');
+  if (!skipVocabCheck && requiredVocab.length > 0 && usedVocab.length < 2) {
     showToast('Include at least 2 vocab words in your writing. (' + usedVocab.length + '/2)');
     return;
   }
 
   var isDiary = _writingMode === 'diary';
+  var isFree  = _writingMode === 'free';
   var diaryPrompts = isDiary ? _getDiaryPrompts() : [];
   var todayPrompt = isDiary ? diaryPrompts[new Date().getDate() % diaryPrompts.length] : null;
 
@@ -13044,14 +13050,27 @@ async function submitWriting() {
   // writing_mode is compounded with the genre when non-free so the Claude
   // prompt and Learning Hub know the format (e.g. 'express_practice:essay').
   var genreSuffix = (_wmGenre && _wmGenre !== 'free') ? (':' + _wmGenre) : '';
-  saveDraft(isDiary ? 'diary' : 'express_practice', {
+  var draftKey = isDiary ? 'diary' : (isFree ? 'free_writing' : 'express_practice');
+  var ctxKeyPrefix = isDiary ? 'diary_' : (isFree ? 'free_' : 'express_');
+  var topicKo = isDiary
+    ? (todayPrompt ? todayPrompt.ko : '오늘의 일기')
+    : (isFree ? '자유 글쓰기' : ((_todayTopic && _todayTopic.topic_ko) || ''));
+  var topicEn = isDiary
+    ? (todayPrompt ? todayPrompt.en : 'Daily Diary')
+    : (isFree ? 'Free Writing — student-chosen subject' : ((_todayTopic && _todayTopic.topic_en) || ''));
+  var ctxObj = isDiary
+    ? { type: 'diary', prompt: todayPrompt, genre: _wmGenre || 'free' }
+    : (isFree
+        ? { type: 'free_writing', genre: _wmGenre || 'free' }
+        : { used_vocab: usedVocab, required_vocab: requiredVocab, genre: _wmGenre || 'free' });
+  saveDraft(draftKey, {
     text: text,
-    topic_ko: isDiary ? (todayPrompt ? todayPrompt.ko : '오늘의 일기') : ((_todayTopic && _todayTopic.topic_ko) || ''),
-    topic_en: isDiary ? (todayPrompt ? todayPrompt.en : 'Daily Diary') : ((_todayTopic && _todayTopic.topic_en) || ''),
+    topic_ko: topicKo,
+    topic_en: topicEn,
     writing_mode: (_writingMode || 'topic') + genreSuffix,
     writing_genre: _wmGenre || 'free',
-    context_key: (isDiary ? 'diary_' : 'express_') + kstDateKey(),
-    context: isDiary ? { type: 'diary', prompt: todayPrompt, genre: _wmGenre || 'free' } : { used_vocab: usedVocab, required_vocab: requiredVocab, genre: _wmGenre || 'free' }
+    context_key: ctxKeyPrefix + kstDateKey(),
+    context: ctxObj
   });
 
   markStageDone('topic');
@@ -14254,7 +14273,11 @@ function updateHighlight() {
 // ═══════════════════════════════════════════════════════════
 // WRITING MODE SELECTION (Topic / Reading)
 // ═══════════════════════════════════════════════════════════
-var _writingMode = 'topic';  // 'topic' | 'reading' | 'diary'
+var _writingMode = 'topic';  // 'topic' | 'reading' | 'diary' | 'free'
+// 'free' = Free Writing — user picks their own subject, vocab hints
+// come from their recent user_saved_words + last article they read.
+// Submissions go through the same Growth Lab feedback pipeline as
+// Topic and Diary so the tutor sees them in the same inbox.
 
 function _getDiaryPrompts() {
   return [
@@ -14290,6 +14313,91 @@ function _getDiaryPrompts() {
     { ko:'한국 친구가 있어요?', en:'Do you have any Korean friends?' },
     { ko:'오늘 가장 재미있었던 일은?', en:'What was the funniest thing today?' },
   ];
+}
+
+// Free Writing hints — pulls the learner's recent saved vocab + last
+// article + recent saved phrases and renders them into the left panel
+// chips / hints area + the free-prompt info card. No AI calls.
+async function _loadFreeWritingHints() {
+  var hintsHost = document.getElementById('wm-free-hints');
+  var chipsEl   = document.getElementById('wm-vocab-chips');
+  var grammarEl = document.getElementById('wm-grammar');
+  if (chipsEl)   chipsEl.innerHTML = '<span style="font-size:11px;color:#94a3b8">Loading your saved words…</span>';
+  if (grammarEl) grammarEl.innerHTML = '';
+
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !supaUser) {
+    if (chipsEl) chipsEl.innerHTML = '<span style="font-size:11px;color:#94a3b8">Sign in to see your saved vocab here.</span>';
+    return;
+  }
+
+  try {
+    var savedRes = await sb.from('user_saved_words')
+      .select('word_ko,word_en,word_rom,created_at')
+      .eq('user_id', supaUser.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    var savedWords = (savedRes && savedRes.data) || [];
+
+    if (chipsEl) {
+      if (!savedWords.length) {
+        chipsEl.innerHTML = '<span style="font-size:11px;color:#94a3b8">No saved words yet — tap ★ on any word while reading and they\'ll show up here.</span>';
+      } else {
+        chipsEl.innerHTML = savedWords.map(function(w) {
+          var ko = (w.word_ko || '').replace(/[<&]/g, '');
+          var en = (w.word_en || '').replace(/[<&]/g, '');
+          return '<span class="chip" title="' + en + '">' + ko + (en ? ' <span style="font-size:10px;color:#94a3b8">(' + en + ')</span>' : '') + '</span>';
+        }).join('');
+      }
+    }
+
+    // Recent article — most recently studied / read by this user. Use
+    // read_articles for the latest entry and fall back to user_submissions
+    // (article_study) if read_articles is empty.
+    var lastArticle = null;
+    try {
+      var readRes = await sb.from('read_articles')
+        .select('article_id,read_at')
+        .eq('user_id', supaUser.id)
+        .order('read_at', { ascending: false })
+        .limit(1);
+      var rrow = readRes && readRes.data && readRes.data[0];
+      if (rrow && rrow.article_id) {
+        var aRes = await sb.from('articles').select('id,title,title_en').eq('id', rrow.article_id).maybeSingle();
+        if (aRes && aRes.data) lastArticle = aRes.data;
+      }
+    } catch(_) {}
+
+    if (hintsHost) {
+      var html = '';
+      if (savedWords.length) {
+        var top6 = savedWords.slice(0, 6).map(function(w){ return (w.word_ko || '').replace(/[<&]/g, ''); }).filter(Boolean);
+        if (top6.length) {
+          html += '<div style="font-size:11px;font-weight:800;color:#1d4ed8;margin-bottom:6px">💡 최근 저장한 단어 ' + top6.length + '개 활용 추천:</div>'
+            + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'
+            + top6.map(function(k){ return '<span style="font-size:12px;padding:3px 10px;background:rgba(255,255,255,.7);border:1px solid #bfdbfe;border-radius:20px;color:#1d4ed8;font-weight:700">' + k + '</span>'; }).join('')
+            + '</div>';
+        }
+      }
+      if (lastArticle) {
+        var lt = (lastArticle.title_en || lastArticle.title || '').replace(/[<&]/g, '');
+        if (lt) {
+          html += '<div style="font-size:11px;color:#1e40af;margin-top:4px">📖 마지막 읽은 기사: <b>' + lt + '</b> — 이 기사 주제로 써봐도 좋아요.</div>';
+        }
+      }
+      hintsHost.innerHTML = html || '<div style="font-size:11px;color:#1e40af">저장한 단어가 없어요 — 기사 읽으면서 ★ 표시해두면 여기에 모여요.</div>';
+    }
+
+    if (grammarEl) {
+      grammarEl.innerHTML = '<div style="font-size:11px;color:#475569;line-height:1.7;padding:6px 8px;background:#f8fafc;border-radius:6px">'
+        + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">🪶 Tip</div>'
+        + 'Free Writing은 채점 규칙이 같은 Topic Yum Yum과 동일해요. 본인이 공부한 단어/문법을 의도적으로 써보면 튜터가 그 부분에 코멘트를 더 깊이 달아줘요.'
+        + '</div>';
+    }
+  } catch (e) {
+    console.warn('[free-writing] hints load failed:', e && e.message);
+    if (chipsEl) chipsEl.innerHTML = '<span style="font-size:11px;color:#94a3b8">Could not load saved vocab.</span>';
+  }
 }
 
 function _loadDiaryVocab() {
@@ -14689,9 +14797,11 @@ function switchModalMode(mode) {
   var tTopic   = document.getElementById('mbtab-topic');
   var tDiary   = document.getElementById('mbtab-diary');
   var tReading = document.getElementById('mbtab-reading');
+  var tFree    = document.getElementById('mbtab-free');
   if (tTopic)   tTopic.classList.toggle('active', mode === 'topic');
   if (tDiary)   tDiary.classList.toggle('active', mode === 'diary');
   if (tReading) tReading.classList.toggle('active', mode === 'reading');
+  if (tFree)    tFree.classList.toggle('active', mode === 'free');
 
   var sourceBar    = document.getElementById('wm-source-bar');
   var modeLabel    = document.getElementById('wm-mode-label');
@@ -14703,9 +14813,46 @@ function switchModalMode(mode) {
   var placeholder  = document.getElementById('write-area');
   var topicContent = document.getElementById('wm-topic-content');
   var diaryPrompt  = document.getElementById('wm-diary-prompt');
+  var freePrompt   = document.getElementById('wm-free-prompt');
 
-  // Hide diary prompt by default
+  // Hide both prompts by default; each branch re-shows its own.
   if (diaryPrompt) diaryPrompt.style.display = 'none';
+  if (freePrompt)  freePrompt.style.display  = 'none';
+
+  if (mode === 'free') {
+    // Free Writing — the user picks their own subject. We don't inject
+    // a "today's topic" or daily prompt; the left panel gets repopulated
+    // with the words they recently saved and the last article they read,
+    // so they can practice the material they've already been studying.
+    if (sourceBar) sourceBar.style.display = 'none';
+    var fModalEl = document.querySelector('.wmodal');
+    if (fModalEl) fModalEl.classList.remove('reading-mode');
+    if (modeLabel) modeLabel.textContent = '🪶 Free Writing';
+    if (subEl) subEl.textContent = 'Pick any subject — use what you\'ve been studying';
+    if (leftPanel)    leftPanel.style.display    = '';
+    if (contextBlock) contextBlock.style.display = 'none';
+    if (helpersBlock) helpersBlock.style.display = 'none';
+    if (readingBlock) readingBlock.style.display = 'none';
+    if (topicContent) topicContent.style.display = 'none';
+    if (placeholder)  placeholder.placeholder    = '한국어로 자유롭게 써보세요.\n\n공부했던 단어나 표현을 활용해 보세요. 무엇이든 좋아요 — 일상, 의견, 상상한 이야기, 최근 읽은 기사에 대한 생각…';
+    // Lazy-create the free-writing prompt card and load hints from the
+    // user's saved words / recent reads.
+    if (!freePrompt) {
+      var fp = document.createElement('div');
+      fp.id = 'wm-free-prompt';
+      fp.style.cssText = 'font-size:12px;color:#1e3a8a;line-height:1.7;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:10px';
+      fp.innerHTML = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#1d4ed8;margin-bottom:6px">🪶 Free Writing</div>'
+        + '<div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:4px">아무 주제나 한국어로 써보세요.</div>'
+        + '<div style="font-size:11px;color:#1e40af">아래 패널에 최근 저장한 단어 + 마지막으로 읽은 기사가 표시돼요 — 그걸 재료로 써보세요.</div>'
+        + '<div id="wm-free-hints" style="margin-top:10px"></div>';
+      var writeAreaElF = document.getElementById('write-area');
+      if (writeAreaElF && writeAreaElF.parentNode) writeAreaElF.parentNode.insertBefore(fp, writeAreaElF);
+      freePrompt = fp;
+    }
+    if (freePrompt) freePrompt.style.display = '';
+    _loadFreeWritingHints();
+    return;
+  }
 
   if (mode === 'diary') {
     if (sourceBar) sourceBar.style.display = 'none';
@@ -18630,7 +18777,11 @@ async function generateWGDrillQuestions(grammarName, opts) {
   // 'drill::' prefix keeps it in its own namespace so it doesn't
   // collide with the Grammar Focus patterns saved under the bare
   // pattern_name. DB hit = free. DB miss = AI generate + save.
-  var cacheKey = 'drill::' + grammarName;
+  // v2 = examples-study phase + no A/B/C prefix in choices.
+  // Old v1 cache entries lacked `examples` and embedded "A) ..."
+  // prefixes in choice text; reusing them would skip the study
+  // phase and re-show the shuffled-prefix bug.
+  var cacheKey = 'drill::v2::' + grammarName;
 
   // 1) Try cache first (unless caller asked for a fresh set)
   if (!force && sb) {
@@ -18648,6 +18799,7 @@ async function generateWGDrillQuestions(grammarName, opts) {
         });
         if (validQ0.length) {
           _wgDrillState.questions = validQ0;
+          _wgDrillState.examples = Array.isArray(pkt && pkt.examples) ? pkt.examples : [];
           _wgDrillState.explanation = (pkt && pkt.explanation) || '';
           _wgDrillState.idx = 0;
           _wgDrillState.score = 0;
@@ -18664,15 +18816,27 @@ async function generateWGDrillQuestions(grammarName, opts) {
     var res = await callClaude({
       feature: 'weak-grammar-drill',
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1500,
+      max_tokens: 1800,
       messages: [{ role: 'user', content:
         'Korean grammar drill generator.\n'
         + 'Grammar point: "' + grammarName + '"\n\n'
-        + 'Create exactly 5 multiple-choice questions testing this grammar point.\n'
-        + 'Mix question types: fill-in-blank, error correction, sentence completion, choose correct usage.\n'
-        + 'Each question must have 1 correct answer and 2 wrong answers.\n\n'
-        + 'Return ONLY valid JSON:\n'
-        + '{"explanation":"Brief English explanation of this grammar (2 sentences max)","questions":[{"q":"question text (use ___ for blanks)","choices":["A","B","C"],"correct":0,"hint":"short English hint why correct"}]}'
+        + 'Return TWO things in one JSON object:\n'
+        + '  1. A short STUDY phase: 3 example sentences with English translation + a tiny analytical note.\n'
+        + '  2. A PRACTICE phase: 5 multiple-choice questions testing this grammar point.\n\n'
+        + 'STUDY phase requirements:\n'
+        + '  - 3 short Korean sentences that clearly demonstrate this pattern in real-world use\n'
+        + '  - Vary the register / context across the three (formal, conversational, narrative)\n'
+        + '  - For each: include the Korean (ko), natural English translation (en), and ONE-line note explaining WHY this is an example of the pattern (e.g. "verb stem 가- + 자마자 → 가자마자")\n\n'
+        + 'PRACTICE phase requirements:\n'
+        + '  - Exactly 5 multiple-choice questions, mixed types: fill-in-blank (use ___ for the blank), error correction, sentence completion, choose-correct-usage\n'
+        + '  - Each question has 1 correct + 2 wrong choices.\n'
+        + '  - **CRITICAL**: each `choices` entry must contain ONLY the answer text — NEVER prefix with "A)", "B)", "C)" or any letter/number. The UI renders the letters itself and shuffles the order, so prefixed text creates a mismatch where the visible label disagrees with the answer order.\n'
+        + '  - `correct` is the zero-based index into `choices`.\n'
+        + '  - `hint` is a one-line English reason why the correct answer is correct.\n\n'
+        + 'Return ONLY valid JSON, no markdown, no preamble:\n'
+        + '{"explanation":"Brief English explanation of this grammar (2 sentences max)",'
+        + '"examples":[{"ko":"...","en":"...","note":"..."}],'
+        + '"questions":[{"q":"question text","choices":["raw answer text","raw answer text","raw answer text"],"correct":0,"hint":"short English hint why correct"}]}'
       }]
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || '';
@@ -18682,13 +18846,30 @@ async function generateWGDrillQuestions(grammarName, opts) {
       throw new Error('AI response was not valid JSON.');
     }
     var parsed = JSON.parse(raw.slice(oi, ei + 1));
-    var validQuestions = (parsed.questions || []).filter(function(q) {
+    // Strip any stray "A) " / "B." / "C)" / "1." prefix from choice
+    // text — older prompts told the model to prefix and some Haiku
+    // outputs still do it. The shuffled-letter mismatch the user saw
+    // (visible "C" button hiding answer "B") originated here.
+    var stripPrefix = function(s) {
+      if (typeof s !== 'string') return s;
+      return s.replace(/^\s*[A-Ca-c1-3][\)\.\:\s\-]+\s*/, '').trim();
+    };
+    var validQuestions = (parsed.questions || []).map(function(q) {
+      if (q && Array.isArray(q.choices)) {
+        q.choices = q.choices.map(stripPrefix);
+      }
+      return q;
+    }).filter(function(q) {
       return q && typeof q.q === 'string' && q.q.trim()
         && Array.isArray(q.choices) && q.choices.length >= 2
         && typeof q.correct === 'number';
     });
+    var validExamples = Array.isArray(parsed.examples)
+      ? parsed.examples.filter(function(e){ return e && typeof e.ko === 'string' && e.ko.trim(); })
+      : [];
     if (validQuestions.length) {
       _wgDrillState.questions = validQuestions;
+      _wgDrillState.examples = validExamples;
       _wgDrillState.explanation = parsed.explanation || '';
       _wgDrillState.idx = 0;
       _wgDrillState.score = 0;
@@ -18699,7 +18880,7 @@ async function generateWGDrillQuestions(grammarName, opts) {
       if (sb) {
         sb.from('grammar_examples_cache').upsert({
           pattern_name: cacheKey,
-          patterns_json: JSON.stringify({ explanation: parsed.explanation || '', questions: validQuestions }),
+          patterns_json: JSON.stringify({ explanation: parsed.explanation || '', examples: validExamples, questions: validQuestions }),
           updated_at: new Date().toISOString()
         }, { onConflict: 'pattern_name' }).then(function(r) {
           if (r && r.error) console.warn('[WGDrill] cache save failed:', r.error.message);
@@ -18722,14 +18903,38 @@ function renderWGDrillIntro() {
   var body = document.getElementById('wg-drill-body');
   if (!body) return;
   var st = _wgDrillState;
+  var esc = function(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+
+  // Owner-feedback: "예문들 뜻도 좀 알려주고 천천히 배우게 해 — 해당 문법
+  // 공부하면서 예문도 같이 공부를 해야지 이해가지". So the intro is now
+  // a study phase: explanation card + 3 example sentences with English
+  // + a note explaining why each is an example. Drill starts only after
+  // the user taps "I'm ready — Start Drill".
+  var examples = Array.isArray(st.examples) ? st.examples.filter(function(e){ return e && e.ko; }) : [];
+  var examplesHtml = '';
+  if (examples.length) {
+    examplesHtml = '<div style="margin-bottom:18px">'
+      + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#86efac;margin-bottom:8px">📖 Study these first</div>'
+      + examples.map(function(ex) {
+          var note = ex.note ? '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px;line-height:1.5"><span style="color:#86efac;font-weight:800">▸</span> ' + esc(ex.note) + '</div>' : '';
+          return '<div style="padding:12px 14px;margin-bottom:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px">'
+            + '<div style="font-size:15px;font-weight:700;color:#fff;line-height:1.5;font-family:\'Noto Sans KR\',sans-serif">' + esc(ex.ko) + '</div>'
+            + (ex.en ? '<div style="font-size:13px;color:rgba(255,255,255,.65);margin-top:4px;line-height:1.5">' + esc(ex.en) + '</div>' : '')
+            + note
+            + '</div>';
+        }).join('')
+      + '</div>';
+  }
+
   body.innerHTML =
     '<div style="background:rgba(251,191,36,.1);border:1px solid rgba(253,230,138,.4);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
     + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#fde68a;margin-bottom:4px">About this grammar</div>'
-    + '<div style="font-size:14px;color:#fef3c7;line-height:1.6">' + (st.explanation || st.grammar) + '</div>'
+    + '<div style="font-size:14px;color:#fef3c7;line-height:1.6">' + esc(st.explanation || st.grammar) + '</div>'
     + '</div>'
+    + examplesHtml
     + '<div style="text-align:center">'
-    + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-bottom:12px">' + st.questions.length + ' questions · Fill-in, correction, completion</div>'
-    + '<button onclick="renderWGDrillQuestion()" style="padding:12px 28px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Start Drill →</button>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:12px">' + st.questions.length + ' questions follow — fill-in / correction / completion</div>'
+    + '<button onclick="renderWGDrillQuestion()" style="padding:12px 28px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">I\'m ready — Start Drill →</button>'
     + '</div>';
 }
 
@@ -19513,7 +19718,7 @@ var _asGridObserver  = null;    // IntersectionObserver for infinite scroll
 var _asCurrentArt    = null;
 var _asStudyContent  = null;
 var _asStep          = 1;
-var _asStepDone      = [false,false,false,false,false];
+var _asStepDone      = [false,false,false,false];
 var _asMatchState    = null;
 var _asWOState       = null;
 var _asQState        = null;
@@ -21169,6 +21374,7 @@ function _asSetNav(check, next, done) {
 }
 function asGoToStep(step) {
   // Only allow going to completed steps or current
+  if (step < 1 || step > 4) return;
   if (step > _asStep && !_asStepDone[step-2]) return;
   _asStep = step; _asRenderStep();
 }
@@ -21279,8 +21485,8 @@ async function _asSaveContentToDB(articleId, content) {
   } catch(e) { console.warn('[ArticleStudy] DB save failed', e); }
 }
 
-var _asStepLabels = ['Step 1 / 5 — Vocabulary','Step 2 / 5 — Phrases','Step 3 / 5 — Reading','Step 4 / 5 — Quiz','Step 5 / 5 — Writing'];
-var _asStepTabLabels = ['Vocab','Phrases','Reading','Quiz','Writing'];
+var _asStepLabels = ['Step 1 / 4 — Vocabulary','Step 2 / 4 — Phrases','Step 3 / 4 — Reading','Step 4 / 4 — Quiz'];
+var _asStepTabLabels = ['Vocab','Phrases','Reading','Quiz'];
 function _asRenderPips() {
   // Update step tabs
   var tabs = document.querySelectorAll('#as-step-tabs .su-step');
@@ -21293,7 +21499,7 @@ function _asRenderPips() {
   var lbl = document.getElementById('as-step-label');
   if (lbl) lbl.textContent = _asStepLabels[_asStep-1] || '';
   // Update progress bar
-  var pct = Math.round(((_asStep - 1) / 5) * 100);
+  var pct = Math.round(((_asStep - 1) / 4) * 100);
   var fill = document.getElementById('as-progress-fill');
   if (fill) fill.style.width = pct + '%';
   // Update nav
@@ -21305,10 +21511,12 @@ function _asRenderStep() {
   var art=document.getElementById('as-article-content'), act=document.getElementById('as-activity-area');
   if (!art||!act) return;
   _asSetNav('none','none','none');
+  // Writing step (case 5) was removed — free-form writing moved to
+  // Express Practice's "Free Writing" mode where users get AI feedback
+  // and a sustained writing journal. The article flow now ends at Quiz.
   switch(_asStep) {
     case 1: _asStep1(art,act); break; case 2: _asStep2(art,act); break;
     case 3: _asStep3(art,act); break; case 4: _asStep4(art,act); break;
-    case 5: _asStep5(art,act); break;
   }
 }
 
@@ -21763,29 +21971,13 @@ function _asCheckSentence(btn) {
   }
 }
 
-// ── Step 5: Free writing (optional) ──
-function _asStep5(art,act) {
-  var bodyHtml=_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'';
-  art.innerHTML='<details class="as-article-toggle"><summary style="cursor:pointer;font-size:12px;color:var(--gray);font-weight:700;padding:8px 0;user-select:none;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_BOOK+'</span><span>기사 다시 보기 (클릭해서 펼치기)</span></summary><div class="as-article-text" style="margin-top:8px">'+bodyHtml+'</div></details>';
-  var saved=_asGetTmp(); var txt=(saved&&saved.step5_text)||'';
-  var vocabHints = '';
-  if (_asCurrentArt && _asCurrentArt._vocab && _asCurrentArt._vocab.length) {
-    var hints = _asCurrentArt._vocab.slice(0,6);
-    vocabHints = '<div style="margin-bottom:10px;padding:10px 12px;background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px">'
-      + '<div style="font-size:10px;font-weight:800;color:#2563eb;margin-bottom:6px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">' + BM_ICON_BULB + '</span><span>이 단어들을 사용해보세요:</span></div>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
-      + hints.map(function(v) { return '<span style="font-size:12px;padding:3px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:20px;color:#1d4ed8;font-weight:700">' + (v.ko||v) + '</span>'; }).join('')
-      + '</div></div>';
-  }
-  act.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-    +'<p class="as-section-label" style="margin:0;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_PENCIL+'</span><span>자유 글쓰기</span></p>'
-    +'<span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:999px;font-weight:700">선택사항</span></div>'
-    +'<p style="font-size:12px;color:var(--gray);margin-bottom:10px">이 기사를 읽고 느낀 점이나 비슷한 경험을 한국어로 써보세요.</p>'
-    + vocabHints
-    +'<textarea id="as-write-ta" style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;box-sizing:border-box" placeholder="예: 이 기사가 흥미로웠어요. 저도 비슷한 경험이 있어요..." oninput="_asTmpStep5(this.value)">'+txt+'</textarea>'
-    +'<div style="margin-top:6px;font-size:11px;color:var(--gray);display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_CHECK+'</span><span>자동 저장됩니다.</span></div>';
-  _asSetNav('none','none','');
-}
+// Step 5 (Writing) was removed. Free-form writing now lives in Express
+// Practice's "Free Writing" mode (writingMode='free') where the AI
+// tutor scores submissions in Growth Lab — same feedback loop as Topic
+// Yum Yum, but the user picks their own prompt instead of using the
+// daily rotation. Removing the inline textarea from the article flow
+// trims a stretch that ~80% of users skipped anyway and ships writing
+// into the dedicated practice module.
 
 // ── Nav actions ──
 function asCheckAnswer() {
@@ -21796,7 +21988,14 @@ function _asCheckWO() {
   // Step 3 now auto-checks in asBlankFill3 — this is a no-op for compat
   if(!_asWOState) return;
 }
-function asNextStep() { _asStepDone[_asStep-1]=true; _asStep=Math.min(_asStep+1,5); _asSaveProgress(); _asRenderStep(); }
+function asNextStep() {
+  _asStepDone[_asStep-1]=true; _asSaveProgress();
+  // Step 4 (Quiz) is now the final step — clicking Next there transitions
+  // straight to the completion screen instead of looping back on itself
+  // (previously this advanced to Step 5 Writing, which has been retired).
+  if (_asStep >= 4) { asMarkDone(); return; }
+  _asStep = _asStep + 1; _asRenderStep();
+}
 
 // ── Translation toggle (loads from article_cache DB) ──
 var _asTranslationCache = null;
@@ -21830,7 +22029,8 @@ async function asToggleTranslation() {
 function asMarkDone() {
   try {
   _asStepDone[_asStep-1]=true; _asSaveProgress(); _asTmpCompletion();
-  _asTmpStep5((document.getElementById('as-write-ta')||{}).value||'');
+  // Step 5 (writing textarea) was removed — no per-article writing to
+  // persist here anymore; free writing now lives in Express Practice.
   if (typeof _khMarkArticleStudied === 'function' && _asCurrentArt) _khMarkArticleStudied(_asCurrentArt.id);
   if (_asCurrentArt && _asStudiedSet) _asStudiedSet.done[String(_asCurrentArt.id)] = true;
   } catch(e) { console.warn('asMarkDone save error:', e); }
@@ -21971,19 +22171,9 @@ function _asUpdateTmp(patch) {
   } catch(e){}
 }
 function _asTmpStep4(a) { _asUpdateTmp({step4_answers:a}); }
-function _asTmpStep5(t) {
-  _asUpdateTmp({step5_text:t});
-  // Also save to unified drafts if there's actual writing
-  if (t && t.trim().length > 5 && _asCurrentArt) {
-    saveDraft('article_study', {
-      text: t.trim(),
-      content_id: String(_asCurrentArt.id),
-      content_title: _asCurrentArt.title || '',
-      writing_mode: 'article_study',
-      context_key: 'article_' + _asCurrentArt.id
-    });
-  }
-}
+// _asTmpStep5 removed — Step 5 (Writing) was deleted. Free writing
+// moved to Express Practice's Free Writing mode, which uses its own
+// saveDraft / Growth Lab pipeline.
 function _asTmpCompletion() { _asUpdateTmp({completed:true,completedAt:new Date().toISOString()}); }
 function _asSaveProgress() {
   var patch = {step:_asStep, stepDone:_asStepDone.slice()};
@@ -22064,19 +22254,17 @@ async function asSubmitWork() {
   if(saveBtn){ saveBtn.disabled=true; saveBtn.style.opacity='.6'; saveBtn.textContent='Saving…'; }
   var saved=_asGetTmp()||{};
   try {
-    var step5 = saved.step5_text||'';
+    // writing_text + AI feedback path removed alongside Step 5. The
+    // user_submissions row is still written so the activity log keeps
+    // tracking article completions, but writing_text is empty.
     var r=await sb.from('user_submissions').upsert({
       user_id:supaUser.id, content_type:'article_study',
       content_id:String(_asCurrentArt.id), content_title:_asCurrentArt.title||'',
-      study_date:kstDateKey(), writing_text:step5, word_count:step5.length,
+      study_date:kstDateKey(), writing_text:'', word_count:0,
       context_data:JSON.stringify({step4_answers:saved.step4_answers||[]}),
       level:_currentLevel||'', status:'submitted'
     },{onConflict:'user_id,content_type,study_date,content_id'}).select();
     if(r.error) throw r.error;
-    // Trigger AI feedback if there's writing
-    if(step5.trim().length>10 && r.data && r.data[0] && r.data[0].id){
-      triggerArticleAIFeedback(r.data[0].id, step5, _asCurrentArt.title||'');
-    }
     showToast('Submitted!');
     _asUpdateTmp({submitted:true});
     document.getElementById('as-activity-area').innerHTML=
@@ -22100,11 +22288,10 @@ async function asSubmitTodayAll() {
     var ids=Object.keys(d); var submitted=0;
     for(var i=0;i<ids.length;i++){
       var item=d[ids[i]]; if(!item||item.submitted) continue;
-      var s5=item.step5_text||'';
       var r=await sb.from('user_submissions').upsert({
         user_id:supaUser.id, content_type:'article_study',
         content_id:String(ids[i]), content_title:item.article_title||'',
-        study_date:today, writing_text:s5, word_count:s5.length,
+        study_date:today, writing_text:'', word_count:0,
         context_data:JSON.stringify({step4_answers:item.step4_answers||[]}),
         status:'submitted'
       },{onConflict:'user_id,content_type,study_date,content_id'});
@@ -22127,11 +22314,10 @@ async function asAutoSubmitOldWork() {
     var ids=Object.keys(d); var changed=false;
     for(var ai=0;ai<ids.length;ai++){
       var item=d[ids[ai]]; if(!item||item.submitted) continue;
-      var s5a=item.step5_text||'';
       var r=await sb.from('user_submissions').upsert({
         user_id:supaUser.id, content_type:'article_study',
         content_id:String(ids[ai]), content_title:item.article_title||'',
-        study_date:date, writing_text:s5a, word_count:s5a.length,
+        study_date:date, writing_text:'', word_count:0,
         context_data:JSON.stringify({step4_answers:item.step4_answers||[]}),
         status:'submitted'
       },{onConflict:'user_id,content_type,study_date,content_id'});
@@ -23170,18 +23356,17 @@ function _csBuildCheck() {
       <div class="su-header">
         <button class="su-back" onclick="asBackToList()">&#8592;</button>
         <div class="su-header-info">
-          <div class="su-header-eyebrow" id="as-step-label">Step 1 / 5 — Vocabulary</div>
+          <div class="su-header-eyebrow" id="as-step-label">Step 1 / 4 — Vocabulary</div>
           <div class="su-header-title" id="as-article-title">Article Study</div>
         </div>
         <button class="su-close" onclick="closeArticleStudy()">&#10005;</button>
       </div>
-      <!-- Step tabs -->
+      <!-- Step tabs (Writing step removed — Free Writing lives in Express Practice now) -->
       <div class="su-steps" id="as-step-tabs">
         <div class="su-step active" onclick="asGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Vocab</span></div>
         <div class="su-step" onclick="asGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Phrases</span></div>
         <div class="su-step" onclick="asGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Reading</span></div>
         <div class="su-step" onclick="asGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Quiz</span></div>
-        <div class="su-step" onclick="asGoToStep(5)"><span class="su-step-num">5</span><span class="su-step-label">Writing</span></div>
       </div>
       <!-- Progress bar -->
       <div class="su-progress">
@@ -24942,7 +25127,7 @@ function closeReviewModal() {
       </div>
       <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:rgba(255,255,255,.06);border-radius:12px;border:1px solid rgba(255,255,255,.08)">
         <i data-lucide="newspaper" class="kh-ui-icon" style="width:20px;height:20px;flex-shrink:0;color:#86efac" aria-hidden="true"></i>
-        <div><div style="font-size:13px;font-weight:800">Article / Conversation Study</div><div style="font-size:11px;color:rgba(255,255,255,.4)">5-step learning with real Korean content</div></div>
+        <div><div style="font-size:13px;font-weight:800">Article / Conversation Study</div><div style="font-size:11px;color:rgba(255,255,255,.4)">4-step learning with real Korean content</div></div>
       </div>
       <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:rgba(255,255,255,.06);border-radius:12px;border:1px solid rgba(255,255,255,.08)">
         <i data-lucide="target" class="kh-ui-icon" style="width:20px;height:20px;flex-shrink:0;color:#fde68a" aria-hidden="true"></i>

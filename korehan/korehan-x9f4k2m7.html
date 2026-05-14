@@ -5535,10 +5535,28 @@ function _khSplitSentencesForCache(body) {
 // Each grammar pattern keeps the source sentence as ex_ko + ex_en so the
 // Grammar tab can show the full sentence context (with ex_en taken from
 // the sentence's translation field, no extra Claude call needed).
+// Canonicalise a grammar label so micro-variants ("~에 따라", "~에 따라
+// (서)", "~에 따라서 (according to)") dedupe to one entry in the Grammar
+// tab. Lowercasing + whitespace squash + drop trailing "(...)" English
+// gloss + drop the (서) optional suffix gives a stable dedupe key.
+// Display label stays the longest/most-descriptive variant we saw so
+// the user still sees the readable form.
+function _khCanonGrammarKey(label) {
+  if (!label) return '';
+  var s = String(label).trim();
+  // Strip trailing English gloss in parentheses: "~에 따라 (according to)" → "~에 따라"
+  s = s.replace(/\s*\([^)]*[a-zA-Z][^)]*\)\s*$/, '').trim();
+  // Optional trailing 서: "~에 따라서" / "~에 따라(서)" → "~에 따라"
+  s = s.replace(/\(서\)$/, '').replace(/서$/, '').trim();
+  // Squash any remaining whitespace
+  s = s.replace(/\s+/g, ' ').toLowerCase();
+  return s;
+}
+
 function _khDeriveVocabGrammarFromSentences(sentFinal, level) {
   var vocabSeen = {};
   var aggVocab = [];
-  var grammarSeen = {};
+  var grammarByKey = {};
   var aggGrammar = [];
   (sentFinal || []).forEach(function(s) {
     if (s && Array.isArray(s.vocab)) {
@@ -5575,26 +5593,40 @@ function _khDeriveVocabGrammarFromSentences(sentFinal, level) {
       });
     }
     grammarItems.forEach(function(g) {
-      if (grammarSeen[g.name]) return;
-      grammarSeen[g.name] = true;
-      aggGrammar.push({
+      var key = _khCanonGrammarKey(g.name);
+      if (!key) return;
+      if (grammarByKey[key]) {
+        // Already have this pattern. Keep the longest display label so
+        // "~에 따라" gets upgraded to "~에 따라(서) (according to)" if a
+        // later sentence used the verbose form, and keep the longest
+        // exp (more thorough explanation wins).
+        var prev = grammarByKey[key];
+        if (g.name.length > prev.name.length) prev.name = g.name;
+        if (g.exp && g.exp.length > (prev.exp || '').length) prev.exp = g.exp;
+        return;
+      }
+      var entry = {
         name: g.name,
         level: level || 'Intermediate',
         exp: g.exp,
         ex_ko: (s.text || '').trim(),
         ex_en: (s.translation || '').trim(),
-      });
+      };
+      grammarByKey[key] = entry;
+      aggGrammar.push(entry);
     });
   });
   // Vocab: keep every unique word the sentence analysis surfaced. The
-  // article reader paginates them client-side (12 per page). Old articles
-  // generated before this change still have whatever cap their old vocab
-  // call produced, so they just render as a single page — backwards
-  // compatible. Hard sanity cap at 100 to keep the cache row small if
-  // sentence analysis ever goes wild.
+  // article reader paginates them client-side (12 per page). Hard
+  // sanity cap at 100 to keep the cache row small.
+  //
+  // Grammar: cap raised 8 → 15 so longer articles surface the full set
+  // of patterns instead of arbitrarily dropping the tail. Article
+  // reader Grammar tab paginates / wraps these, so 15 doesn't blow up
+  // the layout.
   return {
     vocab: aggVocab.slice(0, 100),
-    grammar: { patterns: aggGrammar.slice(0, 8) },
+    grammar: { patterns: aggGrammar.slice(0, 15) },
   };
 }
 
