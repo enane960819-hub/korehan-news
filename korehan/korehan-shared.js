@@ -11288,9 +11288,14 @@ function _fjShowResumeBtn() {
   document.body.appendChild(btn);
 }
 
-// 초기화 — DOMContentLoaded 후 실행
+// 초기화 — DOMContentLoaded 후 실행. First Journey is an onboarding
+// quest for new users; admin sees it as clutter (the dartboard 🎯
+// FAB and the widget). Skip both injection paths entirely when
+// window._isAdmin is set. We poll briefly because the admin flag
+// resolves async from the auth handler.
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
+    if (window._isAdmin) return;
     _fjAutoCheck();
     if (_fjAllDone()) return;
     if (localStorage.getItem('kh_fj_dismissed')) {
@@ -11299,4 +11304,20 @@ document.addEventListener('DOMContentLoaded', function() {
       _fjRenderWidget();  // 처음 → 전체 위젯
     }
   }, 1500);
+  // Belt-and-suspenders — if the admin flag arrives AFTER the
+  // 1500ms init and the FAB / widget already rendered, sweep them
+  // away once the flag flips true.
+  var sweepTries = 0;
+  var sweep = setInterval(function() {
+    sweepTries++;
+    if (window._isAdmin) {
+      var fab = document.getElementById('fj-resume');
+      if (fab) fab.remove();
+      var w = document.getElementById('fj-widget');
+      if (w) w.remove();
+      clearInterval(sweep);
+    } else if (sweepTries > 15) {
+      clearInterval(sweep);  // 30s ceiling — non-admin, give up
+    }
+  }, 2000);
 });
