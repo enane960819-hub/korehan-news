@@ -21155,14 +21155,73 @@ function _asSetFilter(mode) {
   _asLoadArticles();
 }
 
+// localStorage cache for the Article Study picker. The 'Loading articles...'
+// spinner used to fire on every modal open because the picker re-fetched
+// the full article list each time. With ~300 published articles + their
+// lite columns that's ~50–100 KB of network and noticeable lag.
+// Stale-while-revalidate: paint cached list immediately, then fetch
+// fresh in the background and re-render only if the row set changed.
+var _AS_PICKER_CACHE_KEY     = 'kh_as_picker_v1';
+var _AS_PICKER_CACHE_TTL_MS  = 30 * 60 * 1000;  // 30 min — articles list changes infrequently
+
+function _asLoadPickerCache() {
+  try {
+    var raw = localStorage.getItem(_AS_PICKER_CACHE_KEY);
+    if (!raw) return null;
+    var p = JSON.parse(raw);
+    if (!p || !Array.isArray(p.rows) || !p.ts) return null;
+    if (Date.now() - p.ts > _AS_PICKER_CACHE_TTL_MS) return null;
+    return p.rows;
+  } catch(_) { return null; }
+}
+function _asSavePickerCache(rows) {
+  try { localStorage.setItem(_AS_PICKER_CACHE_KEY, JSON.stringify({ ts: Date.now(), rows: rows })); } catch(_) {}
+}
+
 async function _asLoadArticles() {
   var sb = getSupa();
   var g = document.getElementById('as-article-grid'); if (!g) return;
-  g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading articles…</div></div>';
   if (!sb) {
     g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">Cannot connect — please reload the page.</div>';
     return;
   }
+
+  // Stale-while-revalidate from localStorage when on the Latest tab.
+  // Saved tab can't be cached this way because it's per-user bookmarks.
+  if (_asFilter !== 'saved') {
+    var cached = _asLoadPickerCache();
+    if (cached && cached.length) {
+      _asArticles = cached.filter(function(a){
+        if (a.status && a.status !== 'published') return false;
+        return !!a.title;
+      });
+      try { await _asLoadStudiedSet(); } catch(_) {}
+      _asRenderGrid();
+      // Fire background revalidation. If the new row set differs from
+      // what we painted, swap in the fresh one. Otherwise it's a no-op.
+      (async function () {
+        try {
+          var fresh = await _asFetchArticles({});
+          if (!Array.isArray(fresh)) return;
+          var oldIds = cached.map(function(a){ return String(a.id); }).join(',');
+          var newIds = fresh.map(function(a){ return String(a.id); }).join(',');
+          _asSavePickerCache(fresh);
+          if (oldIds !== newIds) {
+            _asArticles = fresh.filter(function(a){
+              if (a.status && a.status !== 'published') return false;
+              return !!a.title;
+            });
+            try { await _asLoadStudiedSet(); } catch(_) {}
+            _asRenderGrid();
+          }
+        } catch(_) {}
+      })();
+      return;
+    }
+  }
+
+  // Cache miss → spinner + network fetch (the previous default path).
+  g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading articles…</div></div>';
   try {
     if (_asFilter === 'saved') {
       if (!supaUser) {
@@ -21205,6 +21264,7 @@ async function _asLoadArticles() {
     //   · Try the lite column list first; on column-missing error,
     //     fall back to '*' (same shape as home page's loader).
     var rows = await _asFetchArticles({});
+    _asSavePickerCache(rows);
     _asArticles = rows.filter(function(a){
       // Apply status filter client-side: hide drafts but keep rows
       // where status came back null/missing (production has been
@@ -21429,33 +21489,52 @@ function asPrevStep() {
 
 async function _asLoadContent() {
   if (!_asCurrentArt) return;
-  // Bumped to as_c3_ when the phrases prompt was reworked from
-  // "complete TRUE sentences" → "reusable expressions". Old as_c2_
-  // entries cached fact-style phrases; the new key forces a one-time
-  // regen (same article_study_content row gets overwritten on save).
-  var key = 'as_c3_' + _asCurrentArt.id;
-  var c = sessionStorage.getItem(key);
-  if (c) { try { _asStudyContent = JSON.parse(c); return; } catch(e) {} }
+  // Cache keys. sessionStorage was the original layer (lost on tab
+  // close → user re-hit DB / AI on every fresh session). Added
+  // localStorage on top so repeat visits — even days later — hit a
+  // local copy with zero network. Both keys mirror the same payload.
+  var key   = 'as_c3_' + _asCurrentArt.id;
+  var lsKey = 'kh_as_content_' + _asCurrentArt.id;
+  // 1. sessionStorage — fastest, current tab only.
+  try {
+    var c = sessionStorage.getItem(key);
+    if (c) {
+      var parsedSS = JSON.parse(c);
+      if (parsedSS && Array.isArray(parsedSS.vocab) && parsedSS.vocab.length > 0) {
+        _asStudyContent = parsedSS;
+        return;
+      }
+    }
+  } catch(_) {}
+  // 2. localStorage — survives tab close + browser restart.
+  try {
+    var lsRaw = localStorage.getItem(lsKey);
+    if (lsRaw) {
+      var parsedLS = JSON.parse(lsRaw);
+      if (parsedLS && Array.isArray(parsedLS.vocab) && parsedLS.vocab.length > 0) {
+        _asStudyContent = parsedLS;
+        try { sessionStorage.setItem(key, lsRaw); } catch(_) {}
+        return;
+      }
+    }
+  } catch(_) {}
   var lm0 = document.getElementById('as-loading-msg');
   if (lm0) lm0.textContent = 'Loading saved content…';
   if (!supaUser) return;
-  // Check DB for saved content (admin-edited OR previously AI-generated)
+  // 3. DB.
   try {
     var sb = getSupa();
     var dr = await sb.from('article_study_content').select('*').eq('article_id', String(_asCurrentArt.id)).maybeSingle();
-    // Skip the DB cache when:
-    //   - the row predates the phrases-prompt rework (custom_highlights
-    //     was the old admin-curated fallback; rows generated under the
-    //     "complete TRUE sentence" prompt have no prompt_version field
-    //     and weren't admin-edited). Force regen so existing articles
-    //     pick up the new "reusable expressions" output.
-    //   - the row was admin-edited (custom_highlights set) — always
-    //     respect those, never overwrite.
     var dbRow = dr.data;
-    var promptV  = dbRow && (dbRow.prompt_version || (dbRow.questions && dbRow.questions._v) || 0);
-    var hasAdminEdit = !!(dbRow && dbRow.custom_highlights);
-    var dbUsable = dbRow && dbRow.vocab && dbRow.vocab.length > 0 && (hasAdminEdit || promptV >= 2);
-    if (dbUsable) {
+    // Relaxed cache-hit condition: if the row exists and has non-empty
+    // vocab, USE IT. Previous version also required prompt_version >= 2
+    // OR admin_edited, which meant pre-migration rows (prompt_version=0)
+    // got re-generated every visit even though their vocab was perfectly
+    // valid. Owner-reported '이미 article study 했던 기사들 들어가도 다시
+    // 로딩되고 있음'. The prompt rework guard wasn't worth the cost-
+    // every-visit hit for thousands of rows that pre-dated the column.
+    var hasVocab = dbRow && Array.isArray(dbRow.vocab) && dbRow.vocab.length > 0;
+    if (hasVocab) {
       _asStudyContent = {
         vocab:         dbRow.vocab         || [],
         phrases:       dbRow.phrases       || [],
@@ -21464,7 +21543,9 @@ async function _asLoadContent() {
         questions:     dbRow.questions     || [],
         custom_highlights: dbRow.custom_highlights || null
       };
-      sessionStorage.setItem(key, JSON.stringify(_asStudyContent));
+      var payload = JSON.stringify(_asStudyContent);
+      try { sessionStorage.setItem(key, payload); } catch(_) {}
+      try { localStorage.setItem(lsKey, payload);  } catch(_) {}
       return;
     }
   } catch(e) { console.warn('[AS] Cache read failed:', e && e.message); }
@@ -21493,8 +21574,10 @@ async function _asLoadContent() {
     var s=cl.indexOf('{'),e=cl.lastIndexOf('}'); if(s>=0&&e>s) cl=cl.slice(s,e+1);
     _asStudyContent = JSON.parse(cl);
     if (!Array.isArray(_asStudyContent.wrong_phrases)) _asStudyContent.wrong_phrases = [];
-    sessionStorage.setItem(key, JSON.stringify(_asStudyContent));
-    // Save to DB so next time it loads from DB (no AI needed)
+    var freshPayload = JSON.stringify(_asStudyContent);
+    try { sessionStorage.setItem(key,   freshPayload); } catch(_) {}
+    try { localStorage.setItem(lsKey,   freshPayload); } catch(_) {}
+    // Save to DB so OTHER devices / users also hit cache.
     _asSaveContentToDB(_asCurrentArt.id, _asStudyContent);
   } catch(err) { _asStudyContent = {vocab:[],phrases:[],wrong_phrases:[],word_order:[],questions:[{q:'이 기사의 내용을 잘 이해했나요?',options:['네, 잘 이해했어요','조금 이해했어요','어려웠어요','다시 읽을게요'],correct:0}]}; }
 }
