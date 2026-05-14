@@ -11705,6 +11705,7 @@ function srTopicsFormHTML() {
     + '<select id="srt-level"><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '<button class="btn btn-g" onclick="srLoadDailyContent()">Load</button>'
     + '<button class="btn" id="srt-regen-btn" onclick="srRegenerate()" style="display:none;background:#fefce8;color:#a16207;border:1px solid #fde047">🔄 AI 재생성</button>'
+    + '<button class="btn" onclick="srPreWarmTodayAllLevels()" style="background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;font-weight:800" title="오늘 날짜에 대해 Seed/Sprout/Tree/Forest 4 레벨 콘텐츠를 모두 생성+저장합니다. 한 번 누르면 ~40초. 그 후 모든 학습자는 즉시 DB 캐시 hit (Claude 호출 0).">⚡ Pre-warm 4 levels (today)</button>'
     + '</div>'
     + '<div id="srt-editor" style="display:none">'
     + '<div id="srt-mismatch-bar" style="display:none;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#92400e"></div>'
@@ -12135,6 +12136,69 @@ async function srRegenerate() {
   var regenBtn = document.getElementById('srt-regen-btn');
   if (regenBtn) regenBtn.style.display = 'none';
   await srLoadDailyContent();
+}
+
+// One-shot: generate + save today's content for all 4 levels in
+// sequence. The whole point is to eliminate the "every learner sees
+// a 10–30s Generating screen" feeling — once admin clicks this and
+// 4 rows exist in study_daily_content, every learner hits DB cache
+// immediately. Each level is one Haiku call (~$0.04 total) so the
+// full pre-warm is ~$0.16/day.
+async function srPreWarmTodayAllLevels() {
+  var msgEl = document.getElementById('srt-msg');
+  if (!confirm('오늘 날짜에 대해 4개 레벨 (Seed/Sprout/Tree/Forest) 모두 생성 + 저장합니다.\n\n예상: ~40초, ~$0.16 (Haiku × 4).\n이후 학습자는 모두 즉시 DB 캐시 hit (Claude 호출 0).\n\n진행할까요?')) return;
+  var sb = getSb(); if (!sb) { if (msgEl) msgEl.textContent = '❌ Supabase 클라이언트 없음'; return; }
+  var levels = ['Starter','Beginner','Intermediate','Advanced'];
+  var today = new Date().toISOString().slice(0,10);
+  var ok = 0, fail = 0;
+  for (var i = 0; i < levels.length; i++) {
+    var lvl = levels[i];
+    var lvlDisplay = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl] || lvl;
+    if (msgEl) msgEl.textContent = '(' + (i+1) + '/4) ' + lvlDisplay + ' 생성 중…';
+    try {
+      // 1. Pick a topic from writing_topics for this level (rotates so we
+      //    don't repeat). Fall back to AI-chosen topic if none available.
+      var picked = await _srPickTopicFromDB(sb, lvl, today);
+      var topicKo = picked ? picked.topic_ko : '';
+      var topicEn = picked ? picked.topic_en : '';
+      var topicHint = topicKo
+        ? 'Use EXACTLY this topic: "' + topicKo + '" (' + topicEn + '). Do NOT change the topic.'
+        : 'Pick an interesting, specific Korean writing topic appropriate for ' + lvlDisplay + ' level learners.';
+
+      // 2. Generate.
+      var parsed = await _srGenerateContent(lvl, topicHint, topicKo, topicEn);
+
+      // 3. Upsert. Admin auth bypasses RLS so we can write directly
+      //    (no need to call save_daily_content_if_missing RPC).
+      var row = {
+        scheduled_date:      today,
+        level:               lvl,
+        topic_ko:            parsed.topic_ko             || topicKo,
+        topic_en:            parsed.topic_en             || topicEn,
+        vocab:               parsed.vocab                || [],
+        grammar:             parsed.grammar              || [],
+        helpers:             parsed.helpers              || [],
+        dictation_sentences: parsed.dictation_sentences  || [],
+        dictation_questions: parsed.dictation_questions  || [],
+        confusing_grammar:   parsed.confusing_grammar    || [],
+        formality_exercise:  parsed.formality_exercise   || null,
+        culture_note:        parsed.culture_note         || '',
+        status:              'approved',
+        admin_edited:        false,
+        updated_at:          new Date().toISOString()
+      };
+      var upRes = await sb.from('study_daily_content').upsert(row, { onConflict: 'scheduled_date,level' });
+      if (upRes && upRes.error) throw upRes.error;
+      ok++;
+    } catch(e) {
+      console.warn('[pre-warm]', lvl, 'failed:', e && e.message);
+      fail++;
+    }
+  }
+  if (msgEl) msgEl.textContent = '✅ Pre-warm 완료 — 성공 ' + ok + ' / 실패 ' + fail + ' (총 4 레벨)';
+  // Refresh the editor so the just-saved row for the currently-selected
+  // level shows up.
+  try { await srLoadDailyContent(); } catch(_) {}
 }
 
 async function srRegenDailyContent() {
