@@ -21766,27 +21766,40 @@ function _asStep3(art,act) {
     }
   }
   _asWOState={blankWords:blankWords,filledBlanks:{},originalBody:body,selectedBlank:null};
+  // Pre-compute heavy stuff ONCE per step entry. Old renderBlankUI
+  // ran _asFormatBody (5 regex passes) + per-blank regex.replace
+  // + per-blank split/join on the entire article body on EVERY
+  // click. Now the slow regex path runs ONCE at step entry;
+  // renderBlankUI only swaps placeholder tokens for current slot
+  // state via split().join() — pure string ops, no regex per click.
+  var _preFormatted=_asFormatBody(body);
+  var _sortedBiInit=blankWords.map(function(_,i){return i;}).sort(function(a,b){return blankWords[b].length-blankWords[a].length;});
+  _sortedBiInit.forEach(function(bi){
+    var escaped=_asEsc(blankWords[bi]);
+    _preFormatted=_preFormatted.replace(new RegExp(escaped),'\u0000GFB'+bi+'\u0000');
+  });
+  _asWOState._tokenizedBody=_preFormatted;
+  // Same one-shot prep for the word pool. Re-shuffling on every
+  // click also visually jumbled the grid mid-quiz.
+  var _allEojeolsInit=body.split(/\s+/).filter(function(w){return w.length>=2&&blankWords.indexOf(w)<0;});
+  var _distractorsInit=_asShuffle(_allEojeolsInit).slice(0,2);
+  _asWOState._poolItems=_asShuffle(
+    blankWords.map(function(w,bi){return{text:w,bi:bi};})
+      .concat(_distractorsInit.map(function(d){return{text:d,bi:-1};}))
+  );
   _asRenderBlankUI();
 }
 function _asRenderBlankUI() {
   var art=document.getElementById('as-article-content');
   var act=document.getElementById('as-activity-area');
   if(!art||!act||!_asWOState) return;
-  var body=_asWOState.originalBody;
   var bw=_asWOState.blankWords;
   var fb=_asWOState.filledBlanks;
   var sel=_asWOState.selectedBlank;
-  // Build article HTML with blanks.
-  // Two-pass: (1) substitute each blank word with a unique placeholder token,
-  // longest words first so a shorter blank word doesn't steal a match inside a longer one
-  // (e.g. "학생" vs "대학생"). (2) expand tokens into the real span HTML. Avoids the regex
-  // matching inside already-inserted span attributes.
-  var formatted=_asFormatBody(body);
-  var sortedBi=bw.map(function(_,i){return i;}).sort(function(a,b){return bw[b].length-bw[a].length;});
-  sortedBi.forEach(function(bi){
-    var escaped=_asEsc(bw[bi]);
-    formatted=formatted.replace(new RegExp(escaped),'\u0000GFB'+bi+'\u0000');
-  });
+  // Cheap render: start from pre-tokenised body and split/join each
+  // \u0000GFB<i>\u0000 placeholder into the current
+  // slot HTML. No regex per click.
+  var formatted=_asWOState._tokenizedBody;
   bw.forEach(function(w,bi){
     var filled=fb[bi];
     var html;
@@ -21801,12 +21814,9 @@ function _asRenderBlankUI() {
   });
   art.innerHTML='<div class="su-instruction">빈칸을 먼저 클릭하고, 아래에서 단어를 선택하세요</div>'
     +'<div class="su-blank-article">'+formatted+'</div>';
-  // Pool of words
-  var pool=_asShuffle(bw.map(function(w,bi){return{text:w,bi:bi};}));
-  var allEojeols=_asWOState.originalBody.split(/\s+/).filter(function(w){return w.length>=2&&bw.indexOf(w)<0;});
-  var distractors=_asShuffle(allEojeols).slice(0,2);
-  distractors.forEach(function(d){pool.push({text:d,bi:-1});});
-  pool=_asShuffle(pool);
+  // Pool: pre-shuffled order persists for the whole step so the
+  // grid doesn't jump as the user fills in answers.
+  var pool=_asWOState._poolItems||[];
   var poolHTML=pool.map(function(item){
     var isUsed=Object.values(fb).indexOf(item.text)>=0;
     return '<div class="su-pool-word'+(isUsed?' used':'')+'" '+(isUsed?'':'onclick="asBlankFillWord(\''+item.text.replace(/'/g,"\\'")+'\')"')+'>'+item.text+'</div>';
