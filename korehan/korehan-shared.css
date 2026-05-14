@@ -5517,6 +5517,10 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
    covered because some browsers serialize the inline style with no
    space after the colon. */
 body[style*="overflow: hidden"] #kh-daily-mission,
-body[style*="overflow:hidden"]  #kh-daily-mission {
+body[style*="overflow:hidden"]  #kh-daily-mission,
+body[style*="overflow: hidden"] #fj-resume,
+body[style*="overflow:hidden"]  #fj-resume,
+body[style*="overflow: hidden"] #fj-widget,
+body[style*="overflow:hidden"]  #fj-widget {
   display: none !important;
 }
