@@ -21435,6 +21435,16 @@ async function asSelectArticle(id) {
   document.getElementById('as-study-view').classList.remove('as-hidden');
   document.getElementById('as-article-title').textContent = art.title || 'Article Study';
   _asRenderPips();
+
+  // Body cache: the picker query is lite (no body), so every article
+  // tap used to fetch body fresh — adding ~500ms-2s per first open.
+  // localStorage layer eliminates that on repeat visits to the SAME
+  // article on the SAME device.
+  var bodyLsKey = 'kh_as_body_' + art.id;
+  if (!art.body) {
+    try { var cachedBody = localStorage.getItem(bodyLsKey); if (cachedBody) art.body = cachedBody; } catch(_) {}
+  }
+
   document.getElementById('as-article-content').innerHTML =
     '<p class="as-section-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_BOOK + '</span><span>기사 읽기</span></p>'
     + '<div class="as-article-text" id="as-article-text-host">'
@@ -21444,27 +21454,33 @@ async function asSelectArticle(id) {
     '<div class="su-loading"><div class="su-spinner"></div><div id="as-loading-msg">Preparing your study session…</div></div>';
   _asSetNav('none','none','none');
 
-  // Body fetch — only if not already present. Don't block the view
-  // switch; rewrite the body container when it lands.
-  if (!art.body) {
-    try {
-      var sb = (typeof getSupa === 'function') ? getSupa() : null;
-      if (sb) {
+  // Run body / progress / content fetches IN PARALLEL instead of one
+  // after the other. Three awaits at ~500ms each = ~1.5s sequentially;
+  // Promise.all flattens to ~500ms (the slowest one). On Samsung
+  // Internet LTE the difference is 2-3x faster perceived.
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  await Promise.all([
+    // Body fetch (skip when picker or localStorage already had it).
+    (async function () {
+      if (art.body || !sb) return;
+      try {
         var bodyRes = await sb.from('articles').select('body').eq('id', art.id).maybeSingle();
         if (bodyRes && bodyRes.data && bodyRes.data.body) {
           art.body = bodyRes.data.body;
+          try { localStorage.setItem(bodyLsKey, art.body); } catch(_) {}
           var host = document.getElementById('as-article-text-host');
           if (host) host.innerHTML = _asFormatBody(art.body);
         }
-      }
-    } catch(_) {}
-  }
-
-  // Restore progress: localStorage first, then DB
-  if (!_asRestoreProgress()) {
-    await _asLoadProgressFromDB();
-  }
-  await _asLoadContent();
+      } catch(_) {}
+    })(),
+    // Progress restore — localStorage first, then DB.
+    (async function () {
+      if (_asRestoreProgress()) return;
+      try { await _asLoadProgressFromDB(); } catch(_) {}
+    })(),
+    // Study content — localStorage / sessionStorage / DB / AI fallback.
+    _asLoadContent()
+  ]);
   _asRenderStep();
 }
 
