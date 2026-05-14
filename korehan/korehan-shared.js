@@ -181,7 +181,7 @@ function ensureKhGrammar() {
       return;
     }
     var script = document.createElement('script');
-    script.src = 'js/core/kh-grammar-patterns.js?v=20260511o';
+    script.src = 'js/core/kh-grammar-patterns.js?v=20260513a';
     script.defer = true;
     script.setAttribute('data-kh-grammar', '1');
     script.onload = function() { resolve(window.KH_GRAMMAR); };
@@ -769,9 +769,18 @@ function _khNotifySignup(userId) {
   if (!userId || _khNotifyFiredFor[userId]) return;
   _khNotifyFiredFor[userId] = true;
   try {
+    // Authorization (Bearer + anon key) is required by Supabase's edge
+    // gateway when JWT verification is enabled. Without it the preflight
+    // OPTIONS got 401 and the browser logged a CORS error. The function
+    // itself does service-role lookup, so the anon-key token is enough
+    // to clear the gateway.
     fetch(SUPA_URL + '/functions/v1/notify-signup', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+      },
       body: JSON.stringify({ user_id: userId }),
       keepalive: true, // survives the page unload that often follows OAuth redirects
     }).catch(function(){ /* best-effort */ });

@@ -118,7 +118,13 @@
     // dictionary→surface chain so enforce-injected entries don't show up as
     // a bare chunk translation ("easily") — that's the bug class the AI keeps
     // hitting on its own.
-    { re: /[가-힣]게(?=\s+[가-힣]|[.,!?])/, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly).' },
+    //
+    // Negative lookbehind for 에 — the dative particle 에게 ("to <person>")
+    // ends in 게 and was getting flagged as the adverbializer ("그녀에게"
+    // surfaced as `~게 (adverbializer suffix)` with chunk "그녀에게").
+    // Similarly exclude 께 / 한테(게) edge cases by anchoring on the
+    // exact 에게 sequence.
+    { re: /(?<!에)[가-힣]게(?=\s+[가-힣]|[.,!?])/, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly).' },
 
     // ── Derivational suffixes (sibling family of ~게) ───────────
     // Same exp-policy as ~게: explain the morpheme role and show a

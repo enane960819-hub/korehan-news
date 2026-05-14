@@ -18,6 +18,13 @@ const ALLOWED_TABLES = new Set([
   // AI usage telemetry — admin-only dashboard reads this to break
   // down Claude spend by user / feature / model. Not user-writable.
   'claude_api_usage',
+  // Per-step cache generation log — the AI Cache admin page queries
+  // this to surface "which step failed for which article" and offers
+  // a retry button.
+  'article_cache_generation_log',
+  // Signup notification history — admin "Signup Notification Log"
+  // page (page-views sibling) reads this for an audit trail.
+  'signup_notifications_log',
 ])
 
 // Whitelist of RPCs the admin client is allowed to call. Without this

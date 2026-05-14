@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20260513c">
+<link rel="stylesheet" href="korehan-shared.css?v=20260513d">
 <style>
 /* ── Tab Bar ── */
 /* Conv tab bar / cf-tab styles superseded by .kh-filter-bar /
@@ -63,7 +63,8 @@
 .cv-rail-title .cv-icon{font-size:18px;}
 .cv-rail-more{font-size:12px;font-weight:700;color:#64748b;cursor:pointer;background:none;border:none;padding:4px 0;font-family:inherit;}
 .cv-rail-more:hover{color:#0f172a;}
-.cv-rail-scroll{display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;padding:4px 4px 14px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;min-width:0;width:100%;touch-action:pan-x pan-y;}
+.cv-rail-scroll{display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;padding:4px 4px 14px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;min-width:0;width:100%;touch-action:pan-x pan-y;cursor:grab;user-select:none;-webkit-user-select:none;}
+.cv-rail-scroll:active{cursor:grabbing;}
 .cv-rail-scroll::-webkit-scrollbar{height:6px;}
 .cv-rail-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
 /* Cards inside a rail get a fixed width so they tile neatly. */
@@ -439,7 +440,7 @@
 <script src="js/core/phrases.js?v=20260512c"></script>
 <script src="js/core/saved-words.js?v=20260505b"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
-<script src="js/core/articles.js?v=20260502a"></script>
+<script src="js/core/articles.js?v=20260513a"></script>
 <script src="js/core/reporters.js?v=20260502a"></script>
 <script src="js/features/streak.js?v=20260502a"></script>
 <script src="js/features/daily-mission.js?v=20260502a"></script>
@@ -450,7 +451,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260513d"></script>
+<script src="korehan-shared.js?v=20260513e"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -833,7 +834,12 @@ function _renderOneCard(c) {
   // Kick off the translation lazily (only when we don't already have it)
   if (isPending && ctxRaw) _translateCtxAsync(c, ri);
 
-  return '<div class="cc2" onclick="openDetailById(\''+convIdJs+'\')">'
+  // data-conv-id + delegated click (registered once at the grid level
+   // below) instead of inline onclick — inline onclick was failing
+   // silently for some users (cards rendered, taps did nothing). The
+   // delegated handler also survives in-place card updates that
+   // replace innerHTML.
+   return '<div class="cc2" data-conv-id="'+convIdJs+'" role="button" tabindex="0">'
     +'<div class="cc2-head">'
       +'<div class="cc2-head-info">'
         + ctxHtml
@@ -1013,6 +1019,79 @@ function openDetailById(convId) {
   });
 }
 window.openDetailById = openDetailById;
+
+// Delegated click handler — survives innerHTML replacement, doesn't
+// depend on inline onclick being correctly escaped or window-global
+// at parse time, and works for keyboard activation too.
+(function _khWireConvCardClicks() {
+  function handle(e) {
+    var card = e.target && e.target.closest && e.target.closest('.cc2[data-conv-id]');
+    if (!card) return;
+    // Don't hijack clicks on inner interactive elements (save buttons etc.)
+    var inner = e.target.closest('button, a, [data-no-card-click]');
+    if (inner && card.contains(inner)) return;
+    var id = card.getAttribute('data-conv-id');
+    if (!id) return;
+    e.preventDefault();
+    openDetailById(id);
+  }
+  document.addEventListener('click', handle);
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var card = e.target && e.target.closest && e.target.closest('.cc2[data-conv-id]');
+    if (!card) return;
+    e.preventDefault();
+    var id = card.getAttribute('data-conv-id');
+    if (id) openDetailById(id);
+  });
+})();
+
+// Pointer-based drag-to-scroll fallback for the category rails. Native
+// overflow-x:auto produces a scrollbar but some users reported the
+// scrollbar didn't drag the content — likely a stacking/pointer-events
+// regression we couldn't reproduce. This adds an explicit click-and-
+// drag handler on the rail container that scrolls programmatically, so
+// the rail is always navigable regardless of the native scrollbar.
+(function _khWireRailDragScroll() {
+  var active = null;
+  var startX = 0;
+  var startScroll = 0;
+  var moved = false;
+  document.addEventListener('pointerdown', function(e) {
+    var rail = e.target && e.target.closest && e.target.closest('.cv-rail-scroll');
+    if (!rail) return;
+    // Only left mouse / touch / pen — ignore right click etc.
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    active = rail;
+    startX = e.clientX;
+    startScroll = rail.scrollLeft;
+    moved = false;
+    rail.style.cursor = 'grabbing';
+  }, { passive: true });
+  document.addEventListener('pointermove', function(e) {
+    if (!active) return;
+    var dx = e.clientX - startX;
+    if (Math.abs(dx) > 4) moved = true;
+    active.scrollLeft = startScroll - dx;
+  }, { passive: true });
+  function end() {
+    if (!active) return;
+    active.style.cursor = '';
+    // If the pointer moved meaningfully, suppress the upcoming click so
+    // a drag doesn't open a card.
+    if (moved) {
+      var swallow = function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        document.removeEventListener('click', swallow, true);
+      };
+      document.addEventListener('click', swallow, true);
+    }
+    active = null;
+  }
+  document.addEventListener('pointerup', end, { passive: true });
+  document.addEventListener('pointercancel', end, { passive: true });
+})();
 
 async function openDetail(idx) {
   var c = CONVS[idx];
@@ -2306,51 +2385,104 @@ function _convRowToObj(row) {
       grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px">\u23F3 Loading...</div>';
     }
 
+    // Two-phase load to fix slow first paint:
+    //  Phase 1 — fetch lightweight metadata (no `data` JSONB) and render
+    //  cards immediately. With 50+ conversations the full `data` field
+    //  was a multi-MB transfer that left the page on "⏳ Loading..." for
+    //  many seconds on first visit (no localStorage cache yet).
+    //  Phase 2 — fetch `data` in the background and enrich previews +
+    //  vocab counts in place. Cards swap from "no preview" → "with
+    //  preview" without re-blocking.
     try {
       var sb = getSupa();
-      var res = await sb.from('conversations_data')
-        .select('id,name,ctx,cat,lvl,data')
+      var metaRes = await sb.from('conversations_data')
+        .select('id,name,ctx,cat,lvl')
         .order('created_at', {ascending: false});
 
-      if (res.error) throw res.error;
+      if (metaRes.error) throw metaRes.error;
 
-      if (res.data && res.data.length) {
-        var freshConvs = res.data.map(function(row) {
-          var d = row.data || {};
-          var msgs = d.msgs || [];
-          // Extract preview: first 3 message lines for chat bubble preview
-          var talkMsgs = msgs.filter(function(m){ return m.s !== 'n'; });
-          var preview = talkMsgs.slice(0,3).map(function(m) {
-            return { who: (m.who || m.name || (m.s === 'l' ? 'A' : 'B')).slice(0,6), txt: (m.txt || '').slice(0,40) };
-          });
-          var vocabCount = (d.vocab || []).length;
+      if (metaRes.data && metaRes.data.length) {
+        var basicConvs = metaRes.data.map(function(row) {
           return _convRowToObj({
-            _id: row.id, name: row.name || d.name, ctx: row.ctx || d.ctx,
+            _id: row.id, name: row.name || '', ctx: row.ctx || '',
             cat: row.cat, lvl: row.lvl,
-            topic: d.topic || '', thumb: d.thumb || null,
-            preview: preview, _msgCount: talkMsgs.length, _vocabCount: vocabCount,
-            cast_left_slug: d.cast_left_slug || null,
-            cast_right_slug: d.cast_right_slug || null
+            topic: '', thumb: null,
+            preview: [], _msgCount: 0, _vocabCount: 0,
+            cast_left_slug: null, cast_right_slug: null
           });
         });
 
-        // localStorage 캐시 업데이트 (preview 포함)
-        try {
-          var toCache = freshConvs.map(function(c){
-            return {_id:c._id, name:c.name, ctx:c.ctx, cat:c.cat, lvl:c.lvl, topic:c.topic, thumb:c.thumb, preview:c.preview, _msgCount:c._msgCount, _vocabCount:c._vocabCount, cast_left_slug:c.cast_left_slug, cast_right_slug:c.cast_right_slug};
-          });
-          localStorage.setItem(_CONV_CACHE_KEY, JSON.stringify(toCache));
-        } catch(e) {}
+        var oldIds0 = CONVS.map(function(c){return c._id;}).join(',');
+        var newIds0 = basicConvs.map(function(c){return c._id;}).join(',');
 
-        // 데이터가 변경됐을 때만 다시 렌더 (캐시와 동일하면 스킵)
-        var oldIds = CONVS.map(function(c){return c._id;}).join(',');
-        var newIds = freshConvs.map(function(c){return c._id;}).join(',');
-        if (oldIds !== newIds || !cached) {
-          CONVS = freshConvs;
-          renderCards(activeCat, activeLvl);
+        if (cached && cached.length) {
+          // Cache already painted the rich version. Merge: keep cached
+          // preview/counts for rows that still exist, drop rows the DB
+          // no longer has.
+          var byId = {};
+          CONVS.forEach(function(c){ byId[c._id] = c; });
+          CONVS = basicConvs.map(function(b) {
+            var prev = byId[b._id];
+            if (prev) {
+              b.preview = prev.preview || [];
+              b._msgCount = prev._msgCount || 0;
+              b._vocabCount = prev._vocabCount || 0;
+              b.topic = prev.topic || '';
+              b.thumb = prev.thumb || null;
+              b.cast_left_slug = prev.cast_left_slug || null;
+              b.cast_right_slug = prev.cast_right_slug || null;
+            }
+            return b;
+          });
+          if (oldIds0 !== newIds0) renderCards(activeCat, activeLvl);
         } else {
-          CONVS = freshConvs;
+          // First visit — render basic cards now (no preview yet).
+          CONVS = basicConvs;
+          renderCards(activeCat, activeLvl);
         }
+
+        // Phase 2: pull `data` in the background and enrich.
+        (async function _enrichConvData() {
+          try {
+            var dataRes = await sb.from('conversations_data')
+              .select('id,data')
+              .order('created_at', {ascending: false});
+            if (dataRes.error) throw dataRes.error;
+            var dataById = {};
+            (dataRes.data || []).forEach(function(r){ dataById[r.id] = r.data || {}; });
+
+            CONVS.forEach(function(c) {
+              var d = dataById[c._id];
+              if (!d) return;
+              var msgs = d.msgs || [];
+              var talkMsgs = msgs.filter(function(m){ return m.s !== 'n'; });
+              c.preview = talkMsgs.slice(0,3).map(function(m) {
+                return { who: (m.who || m.name || (m.s === 'l' ? 'A' : 'B')).slice(0,6), txt: (m.txt || '').slice(0,40) };
+              });
+              c._msgCount = talkMsgs.length;
+              c._vocabCount = (d.vocab || []).length;
+              c.topic = d.topic || c.topic || '';
+              c.thumb = d.thumb || c.thumb || null;
+              c.cast_left_slug = d.cast_left_slug || c.cast_left_slug || null;
+              c.cast_right_slug = d.cast_right_slug || c.cast_right_slug || null;
+              if (!c.name) c.name = d.name || '';
+              if (!c.ctx)  c.ctx  = d.ctx  || '';
+            });
+
+            // Re-render so previews + vocab counts appear on the cards.
+            renderCards(activeCat, activeLvl);
+
+            // Refresh cache with enriched payload for instant next-load.
+            try {
+              var toCache = CONVS.map(function(c){
+                return {_id:c._id, name:c.name, ctx:c.ctx, cat:c.cat, lvl:c.lvl, topic:c.topic, thumb:c.thumb, preview:c.preview, _msgCount:c._msgCount, _vocabCount:c._vocabCount, cast_left_slug:c.cast_left_slug, cast_right_slug:c.cast_right_slug};
+              });
+              localStorage.setItem(_CONV_CACHE_KEY, JSON.stringify(toCache));
+            } catch(_) {}
+          } catch(err) {
+            console.warn('[conv] data enrich failed:', err && err.message);
+          }
+        })();
       } else if (!cached) {
         renderCards(activeCat, activeLvl);
       }
