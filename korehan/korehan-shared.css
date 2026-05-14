@@ -5506,7 +5506,21 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
    receive `.hidden` themselves, so a selector targeting those would
    ALWAYS match (study-room.html keeps ~10 hidden overlays mounted),
    locking the body permanently. That's exactly what broke Study
-   Room scroll + taps in the previous version of this rule. */
+   Room scroll + taps in the previous version of this rule.
+
+   Two classes of overlay live in this codebase:
+     A. .hidden-toggled  — display:none on `.hidden`. Match when the
+        overlay element exists WITHOUT the `.hidden` class.
+        (.detail-overlay, .woverlay, .su-overlay, .bmodal-overlay,
+         .smodal-overlay, .ls-overlay, .mm-overlay, .st-overlay,
+         .dr-overlay, .gl-fb-overlay, .alpha-modal)
+     B. .open-toggled    — opacity:0 + pointer-events:none by default,
+        becomes visible when `.open` is added. Match when `.open` is
+        present.  (.feat-overlay, .ft-overlay)
+
+   Each class needs its own visibility predicate; mixing them caused
+   the .feat-overlay / .ft-overlay nodes to ALWAYS appear visible
+   to the previous selector and re-locked the body. */
 html:has(
   .detail-overlay:not(.hidden):not([hidden]),
   .woverlay:not(.hidden):not([hidden]),
@@ -5517,11 +5531,11 @@ html:has(
   .mm-overlay:not(.hidden):not([hidden]),
   .st-overlay:not(.hidden):not([hidden]),
   .dr-overlay:not(.hidden):not([hidden]),
-  .ft-overlay:not(.hidden):not([hidden]),
-  .fun-overlay:not(.hidden):not([hidden]),
-  .feat-overlay:not(.hidden):not([hidden]),
   .gl-fb-overlay:not(.hidden):not([hidden]),
-  .alpha-modal:not(.hidden):not([hidden])
+  .alpha-modal:not(.hidden):not([hidden]),
+  .feat-overlay.open,
+  .ft-overlay.open,
+  .fun-overlay.open
 ):not(:has(.kh-allow-bg-scroll)) {
   overflow: hidden;
 }
@@ -5535,11 +5549,11 @@ body:has(
   .mm-overlay:not(.hidden):not([hidden]),
   .st-overlay:not(.hidden):not([hidden]),
   .dr-overlay:not(.hidden):not([hidden]),
-  .ft-overlay:not(.hidden):not([hidden]),
-  .fun-overlay:not(.hidden):not([hidden]),
-  .feat-overlay:not(.hidden):not([hidden]),
   .gl-fb-overlay:not(.hidden):not([hidden]),
-  .alpha-modal:not(.hidden):not([hidden])
+  .alpha-modal:not(.hidden):not([hidden]),
+  .feat-overlay.open,
+  .ft-overlay.open,
+  .fun-overlay.open
 ):not(:has(.kh-allow-bg-scroll)) {
   overflow: hidden;
   /* DO NOT set `touch-action: none` here. It propagates to descendants
@@ -5552,8 +5566,8 @@ body:has(
 
 /* Hide the Daily Mission floating badge while the user is in any
    modal (Article Study, Express Practice, Dictation, etc.). Same
-   outer-overlay selector list so it only triggers when something is
-   actually visible. */
+   selector list (both visibility patterns) so it only triggers when
+   something is actually visible. */
 body:has(
   .detail-overlay:not(.hidden):not([hidden]),
   .woverlay:not(.hidden):not([hidden]),
@@ -5564,9 +5578,9 @@ body:has(
   .mm-overlay:not(.hidden):not([hidden]),
   .st-overlay:not(.hidden):not([hidden]),
   .dr-overlay:not(.hidden):not([hidden]),
-  .ft-overlay:not(.hidden):not([hidden]),
-  .fun-overlay:not(.hidden):not([hidden]),
-  .feat-overlay:not(.hidden):not([hidden]),
   .gl-fb-overlay:not(.hidden):not([hidden]),
-  .alpha-modal:not(.hidden):not([hidden])
+  .alpha-modal:not(.hidden):not([hidden]),
+  .feat-overlay.open,
+  .ft-overlay.open,
+  .fun-overlay.open
 ) #kh-daily-mission { display: none !important; }
