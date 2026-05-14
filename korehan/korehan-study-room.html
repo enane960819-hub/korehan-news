@@ -21799,14 +21799,18 @@ function _asRenderBlankUI() {
   }).join('');
   act.innerHTML='<div class="su-pool">'+poolHTML+'</div>'
     +'<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px">'+(sel!==null?'<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>빈칸 #'+(sel+1)+' 선택됨 — 아래에서 단어를 고르세요</span>':'<span>👆 위 문장에서 빈칸을 먼저 클릭하세요</span>')+'</div>';
-  // Auto-check
+  // Show Next ONLY when every blank is filled. Owner-reported a bug
+  // where Next was visible from step entry (0/N filled) and clicking
+  // it advanced to step 4 with the activity skipped — that was the
+  // un-conditional `_asSetNav('none','')` in the else branch.
   var allFilled=bw.every(function(w,bi){return fb[bi]!==undefined&&fb[bi]!==null;});
   if(allFilled) {
     var allCorrect=bw.every(function(w,i){return fb[i]===w;});
     if(allCorrect) _asStepDone[2]=true;
     _asSetNav('none','');
+  } else {
+    _asSetNav('none','none');
   }
-  else _asSetNav('none','');
 }
 function asBlankSelect(bi) {
   if(!_asWOState) return;
