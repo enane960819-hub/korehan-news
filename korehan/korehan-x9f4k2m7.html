@@ -15362,16 +15362,26 @@ function aseRenderList(arts) {
   }).join('');
 }
 
-async function aseOpenEditor(artId) {
+async function aseOpenEditor(artId, prefetchedContent) {
   var sb = getSb();
   var main = document.getElementById('main');
   try {
   var artRes = await sb.from('articles').select('*').eq('id', artId).maybeSingle();
   var cont = null;
-  try {
-    var contentRes = await sb.from('article_study_content').select('*').eq('article_id', String(artId)).maybeSingle();
-    cont = contentRes.data;
-  } catch(e) {}
+  // When the caller already has fresh content in memory (e.g. AI just
+  // generated a draft, _aseCurrentContent is set but nothing's in DB
+  // yet) skip the DB fetch and use the in-memory copy. Without this
+  // override the AI draft was getting silently wiped — DB row is empty
+  // for new articles, so `cont = contentRes.data` resolved to null and
+  // the form rendered with empty arrays even though the AI succeeded.
+  if (prefetchedContent && typeof prefetchedContent === 'object') {
+    cont = prefetchedContent;
+  } else {
+    try {
+      var contentRes = await sb.from('article_study_content').select('*').eq('article_id', String(artId)).maybeSingle();
+      cont = contentRes.data;
+    } catch(e) {}
+  }
   var art  = artRes.data;
   if (!art) { alert('기사를 찾을 수 없습니다. (id: '+artId+')'); return; }
   _aseCurrentArt     = art;
@@ -15596,10 +15606,12 @@ async function aseGenFromAI() {
     var cl = raw.replace(/```json|```/g,'').trim();
     var s=cl.indexOf('{'),e=cl.lastIndexOf('}'); if(s>=0&&e>s) cl=cl.slice(s,e+1);
     var parsed = JSON.parse(cl);
-    // Re-render editor with parsed data
+    // Re-render editor with the freshly-parsed AI data. Pass it as
+    // prefetchedContent so aseOpenEditor doesn't re-fetch DB and
+    // clobber the parsed result with the still-empty saved row.
     var artId = art.id;
     _aseCurrentContent = parsed;
-    await aseOpenEditor(artId);
+    await aseOpenEditor(artId, parsed);
     document.getElementById('ase-msg').textContent = '✅ AI draft generated. 수정 후 저장하세요.';
   } catch(e) {
     msgEl.textContent = '❌ AI generation failed: ' + e.message;
