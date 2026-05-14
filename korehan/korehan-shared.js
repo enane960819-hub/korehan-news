@@ -9431,7 +9431,22 @@ async function syncUserStats(patch) {
     if (patch.quizzes_done)  updated.quizzes_done  = (cur.quizzes_done||0) + 1;
     if (patch.fill_done)     updated.fill_done     = (cur.fill_done||0) + 1;
     if (patch.xp)            updated.xp            = (cur.xp||0) + patch.xp;
-    await sb.from('user_stats').upsert(updated, { onConflict: 'user_id' });
+    // Explicit error check + retry-stripping-the-bad-column. Silent
+    // fire-and-forget was hiding column-missing failures (fill_done /
+    // last_mission_date / writing_tickets / preferences were
+    // referenced before being added in migrations) AND rolling back
+    // valid fields alongside the bad one.
+    var upRes = await sb.from('user_stats').upsert(updated, { onConflict: 'user_id' });
+    if (upRes && upRes.error) {
+      var msg = String(upRes.error.message || '');
+      var badCol = (msg.match(/column [\\"']?(\w+)[\\"']?/i) || [])[1];
+      console.warn('[syncUserStats] upsert failed:', msg, badCol ? '(dropping ' + badCol + ' and retrying)' : '');
+      if (badCol && badCol in updated) {
+        delete updated[badCol];
+        var retryRes = await sb.from('user_stats').upsert(updated, { onConflict: 'user_id' });
+        if (retryRes && retryRes.error) console.warn('[syncUserStats] retry also failed:', retryRes.error.message);
+      }
+    }
   } catch(e) { console.warn('syncUserStats', e); }
 }
 
@@ -9451,7 +9466,12 @@ async function syncDailyMission(field) {
     var wasCompleted = cur.completed;
     cur.completed = cur.articles >= 3 && cur.words >= 20 && cur.quizzes >= 3 && cur.fill >= 1;
 
-    await sb.from('daily_missions').upsert(cur, { onConflict: 'user_id,date' });
+    var dmRes = await sb.from('daily_missions').upsert(cur, { onConflict: 'user_id,date' });
+    if (dmRes && dmRes.error) {
+      console.warn('[syncDailyMission] upsert failed:', dmRes.error.message);
+      // Don't award streak ticket if the daily mission row didn't save.
+      return;
+    }
 
     // 처음으로 완료된 순간 → 미션 스트릭 + 첨삭권 체크
     if (!wasCompleted && cur.completed) {
