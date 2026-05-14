@@ -6057,9 +6057,35 @@ async function goAICache() {
   const wrap = document.getElementById('cache-wrap');
   if (!articles.length) { wrap.innerHTML = '<p style="padding:24px;color:var(--gr)">발행된 기사가 없어요.</p>'; return; }
 
+  // article_study_content — the per-article Vocab/Phrases/Reading/Quiz
+  // pack used by Article Study (Study Room). Different table from
+  // article_cache (which holds Translation/Vocab/Grammar/Quiz for the
+  // reader). Admin asked for visibility on which articles have this
+  // cached so they can tell whether learners will pay the Haiku-gen
+  // cost on first open.
+  let studyContent = {}; // article_id → { vocab[], phrases[], questions[], wrong_phrases[], prompt_version }
+  try {
+    const scr = await fetch(SUPA_URL_ADMIN + '/rest/v1/article_study_content?select=article_id,vocab,phrases,wrong_phrases,questions,prompt_version,admin_edited,updated_at', { headers: H });
+    const scd = scr.ok ? await scr.json() : [];
+    if (Array.isArray(scd)) scd.forEach(function(r) {
+      studyContent[String(r.article_id)] = r;
+    });
+  } catch(e) { console.warn('[AICache] article_study_content fetch failed:', e && e.message); }
+
   const cacheComplete = articles.filter(function(a) {
     const c = existingCache[String(a.id)] || {};
     return c.translation && c.vocab && c.grammar && c.quiz;
+  }).length;
+
+  // Article Study (article_study_content) coverage — useful to flag
+  // articles where the first learner will trigger a Haiku call.
+  const studyComplete = articles.filter(function(a) {
+    var s = studyContent[String(a.id)];
+    if (!s) return false;
+    var hasVocab    = Array.isArray(s.vocab)     && s.vocab.length     > 0;
+    var hasPhrases  = Array.isArray(s.phrases)   && s.phrases.length   > 0;
+    var hasQuestions= Array.isArray(s.questions) && s.questions.length > 0;
+    return hasVocab && hasPhrases && hasQuestions;
   }).length;
 
   // Sentence-analysis lives inside the translation cache JSON under
@@ -6147,7 +6173,7 @@ async function goAICache() {
     + '</span>';
 
   let html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-    + '<span style="font-size:13px;color:var(--gr)">발행 기사 <b>' + articles.length + '</b>개 · 캐시 완료 <b>' + cacheComplete + '</b>개</span>'
+    + '<span style="font-size:13px;color:var(--gr)">발행 기사 <b>' + articles.length + '</b>개 · Reader 캐시 <b>' + cacheComplete + '</b>개 · <span title="Article Study(Study Room) 학습 콘텐츠 — vocab + phrases + questions가 모두 있을 때 카운트. 없으면 첫 학습자가 들어갈 때 Haiku 호출 발생.">Study 캐시 <b>' + studyComplete + '</b>개</span></span>'
     + schemaNote
     + failCountNote
     + versionChip
@@ -6195,11 +6221,27 @@ async function goAICache() {
     var versionBadge = '<span title="문장분석 version" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + _svColor + ';color:' + _svFG + '">v ' + _sv + '</span>';
     var isStaleSent = _sv !== SENT_CACHE_CURRENT;
 
+    // Article Study (article_study_content) status — separate Haiku-
+    // generated cache for the Study Room's per-article Vocab/Phrases/
+    // Reading/Quiz pack. Shows a tooltip with what's missing so admin
+    // can decide whether to pre-bake (button below).
+    var _sc = studyContent[String(a.id)];
+    var _scVocabN = _sc && Array.isArray(_sc.vocab)     ? _sc.vocab.length     : 0;
+    var _scPhrN   = _sc && Array.isArray(_sc.phrases)   ? _sc.phrases.length   : 0;
+    var _scWrN    = _sc && Array.isArray(_sc.wrong_phrases) ? _sc.wrong_phrases.length : 0;
+    var _scQN     = _sc && Array.isArray(_sc.questions) ? _sc.questions.length : 0;
+    var _scOk     = _sc && _scVocabN > 0 && _scPhrN > 0 && _scQN > 0;
+    var _scAdminEdit = !!(_sc && _sc.admin_edited);
+    var _scTip = _sc
+      ? ('article_study_content: vocab ' + _scVocabN + ' · phrases ' + _scPhrN + ' · wrong_phrases ' + _scWrN + ' · questions ' + _scQN + (_scAdminEdit ? ' · admin_edited' : '') + (_sc.prompt_version ? ' · v' + _sc.prompt_version : ''))
+      : 'article_study_content row 없음 — 첫 학습자가 Haiku 호출 발생';
+    var studyBadge = '<span title="' + _scTip.replace(/"/g,'&quot;') + '" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + (_scOk?'#dcfce7':'#fee2e2') + ';color:' + (_scOk?'#166534':'#991b1b') + ';cursor:help">' + (_scOk?'✓':'✗') + ' Study' + (_sc ? '' : ' (없음)') + '</span>';
+
     html += '<div id="crow-' + a.id + '" style="background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:8px;overflow:hidden' + (articleErrs.length ? ';border-color:#f59e0b' : '') + '">'
       + '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex-wrap:wrap">'
       + '<div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:14px;margin-bottom:4px">' + (a.title||'(제목없음)') + '</div>'
       + '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · ' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level||'') + '</div></div>'
-      + '<div>' + versionBadge + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + badge(hasS, 'Sentences' + (sCount ? ' (' + sCount + ')' : '')) + errBadge + '</div>'
+      + '<div>' + versionBadge + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + badge(hasS, 'Sentences' + (sCount ? ' (' + sCount + ')' : '')) + studyBadge + errBadge + '</div>'
       + (allDone ? '<span style="color:#166534;font-weight:700;font-size:13px">✅ Done</span>'
           : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')">🧠 Generate</button>')
       // Re-analyse button — always available so admin can refresh
