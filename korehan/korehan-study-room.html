@@ -5787,9 +5787,11 @@ async function _generateAndSaveDailyContent(date, opts) {
     // costs ~ms.
     var sb = getSupa();
     if (sb) {
-      // Explicit success/failure logging so admin can debug in the
-      // browser console why a save did/didn't land. Look for
-      // [save_daily_content] entries with grep.
+      // Explicit logging + visible admin toast so we can see on
+      // mobile (where DevTools is hard to reach) whether the save
+      // actually landed. Owner-reported '들어갈때마다 저장좀해' — if
+      // this RPC is silently failing for any user, this toast will
+      // surface it for the admin account immediately.
       sb.rpc('save_daily_content_if_missing', {
         p_date:                date,
         p_level:               _currentLevel,
@@ -5803,11 +5805,23 @@ async function _generateAndSaveDailyContent(date, opts) {
       }).then(function(r) {
         if (r && r.error) {
           console.warn('[save_daily_content] RPC error:', r.error.message, 'date=', date, 'level=', _currentLevel);
+          if (window._isAdmin && typeof showToast === 'function') {
+            showToast('💾 save_daily_content RPC ERROR: ' + r.error.message);
+          }
         } else {
-          console.log('[save_daily_content] RPC ok:', r && r.data, 'date=', date, 'level=', _currentLevel);
+          var pkt = r && r.data;
+          console.log('[save_daily_content] RPC ok:', pkt, 'date=', date, 'level=', _currentLevel);
+          if (window._isAdmin && typeof showToast === 'function') {
+            // pkt is { ok: true, inserted: bool } | { ok: true, skipped: 'already_filled' } | etc.
+            var tag = (pkt && (pkt.inserted ? '✓ inserted' : (pkt.skipped ? '⏭ ' + pkt.skipped : '?'))) || '?';
+            showToast('💾 save_daily_content ' + tag + ' (' + _currentLevel + ')');
+          }
         }
       }).catch(function(e) {
         console.warn('[save_daily_content] RPC threw:', e && e.message, 'date=', date, 'level=', _currentLevel);
+        if (window._isAdmin && typeof showToast === 'function') {
+          showToast('💾 save_daily_content THREW: ' + (e && e.message));
+        }
       });
     } else {
       console.warn('[save_daily_content] no supabase client — skipping save');
