@@ -2557,6 +2557,13 @@ function renderHomePage() {
     heroEl.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0;align-items:stretch;border-radius:18px;overflow:hidden;box-shadow:0 14px 50px rgba(13,27,46,.18);background:#fff;';
     renderHeroSlide(heroEl);
     resetHeroTimer();
+  } else if (heroEl && /home-hero-loading/.test(heroEl.className || '')) {
+    // renderHomePage ran but the article pool was empty (cache stale,
+    // all rows draft, RLS filtered everything, etc.). Skeleton was
+    // staying up forever — empty-state only fired on fetch error, not
+    // on 'fetch ok but published() filtered to zero'. Owner: '로딩창
+    // 끝났는데도 스켈레톤 보여주잖아'. Swap in the recovery panel.
+    try { _khRenderHeroEmptyState(); } catch(_){}
   }
 
   // TOP STORIES
