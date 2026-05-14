@@ -21586,13 +21586,8 @@ async function _asSaveContentToDB(articleId, content) {
   try {
     var sb = getSupa();
     if (!sb) return;
-    // prompt_version: bump when the AI prompt or schema changes so old
-    // rows are detected as stale on read and regenerated. Stamped into
-    // questions._v as a fallback for installs where the prompt_version
-    // column doesn't exist yet — the read path checks both.
     var qs = content.questions || [];
     if (Array.isArray(qs)) qs = qs.slice(); else qs = [];
-    qs._v = 2;
     var row = {
       article_id: String(articleId),
       vocab: content.vocab || [],
@@ -21603,14 +21598,47 @@ async function _asSaveContentToDB(articleId, content) {
       prompt_version: 2,
       admin_edited: false
     };
-    // Upsert: insert or update if exists
-    var res = await sb.from('article_study_content').upsert(row, { onConflict: 'article_id' });
-    // If the prompt_version column doesn't exist yet, retry without it.
-    if (res && res.error && /prompt_version/.test(String(res.error.message || ''))) {
-      delete row.prompt_version;
-      await sb.from('article_study_content').upsert(row, { onConflict: 'article_id' });
+    // Robust upsert: retry by stripping ANY column the DB rejects, not
+    // just prompt_version. Previous version only handled prompt_version;
+    // a missing wrong_phrases / word_order / etc. would silently kill
+    // the entire save. The retry loop bounded to 6 attempts (one per
+    // possible missing column) so a permanent failure mode can't spin.
+    //
+    // Owner-reported: article_study_content was empty in production
+    // even though every learner triggered the AI gen path. This
+    // strict-prompt_version retry was the reason saves were rolling
+    // back on installs missing wrong_phrases (the 20260424 migration
+    // wasn't applied) — admin saw 0 rows after weeks of Haiku spend.
+    var res;
+    for (var attempt = 0; attempt < 6; attempt++) {
+      res = await sb.from('article_study_content').upsert(row, { onConflict: 'article_id' });
+      if (!res || !res.error) break;
+      var msg = String((res.error && res.error.message) || '');
+      var badCol = (msg.match(/column [\\"']?(\w+)[\\"']?/i) || [])[1];
+      if (badCol && (badCol in row)) {
+        console.warn('[ArticleStudy] dropping unknown column', badCol, '— retrying');
+        delete row[badCol];
+        continue;
+      }
+      // Not a column error — bail and surface so admin sees it.
+      console.warn('[ArticleStudy] DB save failed:', msg);
+      if (window._isAdmin && typeof showToast === 'function') {
+        showToast('💾 article_study_content save ERROR: ' + msg.slice(0, 120));
+      }
+      return;
     }
-  } catch(e) { console.warn('[ArticleStudy] DB save failed', e); }
+    if (res && !res.error) {
+      console.log('[ArticleStudy] DB save ok for article', articleId);
+      if (window._isAdmin && typeof showToast === 'function') {
+        showToast('💾 article_study_content ✓ saved (' + articleId + ')');
+      }
+    }
+  } catch(e) {
+    console.warn('[ArticleStudy] DB save threw', e);
+    if (window._isAdmin && typeof showToast === 'function') {
+      showToast('💾 article_study_content THREW: ' + (e && e.message ? e.message.slice(0, 120) : 'unknown'));
+    }
+  }
 }
 
 var _asStepLabels = ['Step 1 / 4 — Vocabulary','Step 2 / 4 — Phrases','Step 3 / 4 — Reading','Step 4 / 4 — Quiz'];
