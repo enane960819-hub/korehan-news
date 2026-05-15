@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20260515e">
+<link rel="stylesheet" href="korehan-shared.css?v=20260515f">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -314,15 +314,12 @@
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
-  /* touch-action: pan-x ONLY. The rail only scrolls horizontally
-     (overflow-y is visible/hidden, never auto), so declaring pan-y
-     here would tell the browser to handle vertical pan locally —
-     and since it can't, vertical swipes died silently. With pan-x
-     only, vertical swipes propagate to <body> and the page scrolls
-     normally. Owner-reported: "기사 카드 위에선 스크롤이 가로든
-     세로든 다 안먹히는데" — that was my touch-action: pan-x pan-y
-     fix. Now reverted to the correct minimal declaration. */
-  touch-action: pan-x;
+  /* NO touch-action override. Browser default = auto = allow any
+     direction. `pan-x` killed vertical pan ON the rail (because
+     descendants inherit gesture-arbitration scope). `pan-x pan-y`
+     blocked propagation to <body> on some browsers. Just dropping
+     scroll-snap-type was the actual fix all along — touch-action
+     wasn't the bug. Owner-reported repeatedly. */
   scrollbar-width: none;
   padding-bottom: 10px;
   margin-bottom: 16px;
