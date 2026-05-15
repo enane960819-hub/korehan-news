@@ -43,6 +43,12 @@ CREATE POLICY "articles public read"
 -- 2) Defensive: re-assert public read on the other content tables that
 -- home/section/conversation pages depend on. If RLS got rebuilt on
 -- any of them for the same reason, this catches it.
+--
+-- Note: conversations_data and stories_data do NOT have a `status`
+-- column in production (the frontend never filtered by it). Using
+-- USING (true) here — these tables only contain admin-curated rows
+-- to begin with. If we ever add draft/published lifecycle to them
+-- the policy should be tightened.
 
 ALTER TABLE public.conversations_data ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "conversations_data public read" ON public.conversations_data;
@@ -50,7 +56,7 @@ CREATE POLICY "conversations_data public read"
   ON public.conversations_data
   FOR SELECT
   TO public
-  USING (status IS NULL OR status = 'published');
+  USING (true);
 
 ALTER TABLE public.stories_data ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "stories_data public read" ON public.stories_data;
@@ -58,6 +64,6 @@ CREATE POLICY "stories_data public read"
   ON public.stories_data
   FOR SELECT
   TO public
-  USING (status IS NULL OR status = 'published');
+  USING (true);
 
 NOTIFY pgrst, 'reload schema';
