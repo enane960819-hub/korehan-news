@@ -8364,21 +8364,30 @@ document.addEventListener('DOMContentLoaded', async function() {
       try {
         var conn = navigator.connection || navigator.webkitConnection || {};
         if (conn.saveData) return;
+        // Skip prefetch entirely when the home fetch only just landed
+        // a fresh 15-row payload. The 1000-row All News bulk is
+        // pure bandwidth waste on the home page — it competes with
+        // the home articles fetch on slow LTE and turned a 3s page
+        // into an 8s page. Only prefetch if cache is suspiciously
+        // small (<10 articles, indicating a stale prior session)
+        // — in that case the user is likely about to navigate, so
+        // pre-warming makes sense. Owner-reported 8s home load.
         var cached = getCachedArticles();
-        if (cached && cached.length >= 80) return;
+        if (cached && cached.length >= 10) return;
         loadArticlesFromDB({ all: true, force: true })
           .then(function(){
-            // Re-render home with newer rows. This replaces the old
-            // homeOptimized background refresh for cache-hit visits.
             try { if (typeof renderHomePage === 'function') renderHomePage(); } catch(_){}
           })
           .catch(function(err){ console.warn('[prefetch] all news failed', err); });
       } catch (_) {}
     };
+    // Delay the prefetch trigger so it never competes with the home
+    // hero fetch on slow LTE. requestIdleCallback's 4s timeout was
+    // too aggressive — the home fetch hadn't finished by then.
     if (typeof requestIdleCallback === 'function') {
-      requestIdleCallback(_khPrefetchAll, { timeout: 4000 });
+      requestIdleCallback(_khPrefetchAll, { timeout: 8000 });
     } else {
-      setTimeout(_khPrefetchAll, 1500);
+      setTimeout(_khPrefetchAll, 5000);
     }
 
     // 나머지는 백그라운드에서 완료 후 UI 갱신 (세션, 섹션, 설정)
