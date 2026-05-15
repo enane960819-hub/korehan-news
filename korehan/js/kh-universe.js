@@ -1705,18 +1705,26 @@
     sprite.scale.set(baseX * boostFactor, baseY * boostFactor, 1);
     if (sprite.material) sprite.material.opacity = 1;
     renderWordCard(sprite.userData.word, sprite.userData.mastery || 0);
-    // Recenter the orbit target on the tapped star so subsequent zoom
-    // zooms into that star, not the galaxy origin. We deliberately
-    // shift the target DOWN in world-Y by ~22 % of the orbit radius
-    // — the .khu-card overlay covers the bottom ~280 px of the canvas
-    // (~30 % of a phone viewport), so centering the camera ON the
-    // sprite hides it behind the card. Pulling the target down moves
-    // the visual focus down too, which pushes the sprite into the
-    // upper half of the canvas where the user can actually see it.
-    // The user-reported "내가 선택한 단어가 안보임".
-    var p = sprite.position;
-    var cardOffset = state.cam.radius * 0.22;
-    animateTarget(p.x, p.y - cardOffset, p.z);
+    // Recenter the orbit target on the tapped sprite's WORLD position
+    // (sprite.position may be local to a parent group; getWorldPosition
+    // gives the actual coords the camera should track). Owner-reported
+    // "단어 클릭하면 그 단어쪽으로 클로즈업되는게 아니고 왼쪽으로
+    // 포커스가 나가버린 상태" — symptom suggests the target was being
+    // set to a wrong position relative to the camera frame. Using
+    // world position fixes the case where the sprite is parented to a
+    // transformed group.
+    //
+    // The Y offset was previously radius*0.22 to keep the sprite
+    // above the bottom .khu-card overlay, but for small radii (zoomed
+    // in tight) that offset was too small AND, for the world-position
+    // case, the math was off because phi/theta rotate the orbit. Use
+    // a clamped pixel-equivalent: about 1/8 of the radius, clamped
+    // to [4, 18] world units. The bottom card on a phone is ~30 %
+    // of viewport; this offset places the sprite in the upper ~60%.
+    var worldP = new THREE.Vector3();
+    sprite.getWorldPosition(worldP);
+    var cardOffset = Math.max(4, Math.min(18, state.cam.radius * 0.12));
+    animateTarget(worldP.x, worldP.y - cardOffset, worldP.z);
   }
 
   function clearSelection() {
@@ -2221,7 +2229,28 @@
     var loading = document.getElementById('khu-loading');
     overlay.classList.add('open');
     state.open = true;
-    state.words = (opts.words || []).slice(0, 600);
+    // Filter out multi-word phrases and full sentences — the Universe
+    // is a SINGLE-word vocab visualization. Owner-reported "공기 정화
+    // 시스템이 왜 한단어야? 저딴거 빼". Same goes for "이거 뭐예요?"
+    // (a question, not a word). Heuristic:
+    //   - drop entries with any space (multi-word phrase / sentence)
+    //   - drop entries that contain typical sentence punctuation
+    //     (?, !, .) — leaves vocab-form words intact
+    //   - drop entries longer than ~8 Korean syllables (single
+    //     compound words like 일확천금 (4) / 자기소개서 (5) stay;
+    //     full phrases get cut)
+    var rawWords = opts.words || [];
+    var filtered = rawWords.filter(function (w) {
+      var ko = (w && (w.ko || w.word || '')) + '';
+      if (!ko) return false;
+      if (/\s/.test(ko)) return false;
+      if (/[.?!]/.test(ko)) return false;
+      // Korean syllable count cap
+      var hangulCount = (ko.match(/[가-힣]/g) || []).length;
+      if (hangulCount > 8) return false;
+      return true;
+    });
+    state.words = filtered.slice(0, 600);
     document.addEventListener('keydown', onKeydown);
 
     // Activate one nebula backdrop at random. Cosmic Cliffs is
