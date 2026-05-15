@@ -141,19 +141,23 @@ Deno.serve(async (req) => {
     }
 
     // Log so the admin can see signup history even when the webhook
-    // fails or isn't configured. This also drives the dedupe check above.
-    sb.from('signup_notifications_log').insert({
-      user_id: u.id,
-      email: u.email || null,
-      name: name || null,
-      provider,
-      email_confirmed: emailConfirmed,
-      webhook_url_set: !!webhookUrl,
-      webhook_ok: webhookOk,
-      webhook_status: webhookStatus,
-    }).then(({ error }: { error: { message: string } | null }) => {
+    // fails or isn't configured. This also drives the dedupe check
+    // above, so the insert MUST complete before this request returns
+    // — otherwise a fast retry can race the dedupe SELECT and send
+    // two webhooks for the same signup. Codex P2.
+    {
+      const { error } = await sb.from('signup_notifications_log').insert({
+        user_id: u.id,
+        email: u.email || null,
+        name: name || null,
+        provider,
+        email_confirmed: emailConfirmed,
+        webhook_url_set: !!webhookUrl,
+        webhook_ok: webhookOk,
+        webhook_status: webhookStatus,
+      })
       if (error) console.warn('[notify-signup] log insert failed:', error.message)
-    })
+    }
 
     return jsonResponse(
       { ok: true, webhook_set: !!webhookUrl, webhook_ok: webhookOk, status: webhookStatus },

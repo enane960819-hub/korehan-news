@@ -2153,10 +2153,21 @@
   var KHU_BGM_VOLUME = 0.4;
   function _bgmEl() { return document.getElementById('khu-bgm'); }
   function _bgmBtn() { return document.getElementById('khu-bgm-btn'); }
+  // In-memory fallback for environments where localStorage throws
+  // (private browsing, sandboxed iframe). Without this, _bgmIsMuted
+  // always returned false on storage failure, so _toggleBgm() flipped
+  // to muted on every click and never recovered. Codex P2.
+  var _bgmMutedMem = false;
   function _bgmIsMuted() {
-    try { return localStorage.getItem(KHU_BGM_MUTED_KEY) === '1'; } catch (_) { return false; }
+    try {
+      var v = localStorage.getItem(KHU_BGM_MUTED_KEY);
+      if (v === '1') return true;
+      if (v === '0') return false;
+    } catch (_) {}
+    return _bgmMutedMem;
   }
   function _bgmSetMuted(v) {
+    _bgmMutedMem = !!v;
     try { localStorage.setItem(KHU_BGM_MUTED_KEY, v ? '1' : '0'); } catch (_) {}
     var btn = _bgmBtn();
     if (btn) btn.classList.toggle('muted', !!v);
