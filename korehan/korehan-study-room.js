@@ -17674,6 +17674,9 @@ function _asStep3(art,act) {
     blankWords.map(function(w,bi){return{text:w,bi:bi};})
       .concat(_distractorsInit.map(function(d){return{text:d,bi:-1};}))
   );
+  // Force a fresh first-render (rebuild HTML once) for the new step entry.
+  var _artFresh = document.getElementById('as-article-content');
+  if (_artFresh) delete _artFresh.dataset.asBlankBuilt;
   _asRenderBlankUI();
 }
 function _asRenderBlankUI() {
@@ -17683,45 +17686,95 @@ function _asRenderBlankUI() {
   var bw=_asWOState.blankWords;
   var fb=_asWOState.filledBlanks;
   var sel=_asWOState.selectedBlank;
-  // Cheap render: start from pre-tokenised body and split/join each
-  // \u0000GFB<i>\u0000 placeholder into the current
-  // slot HTML. No regex per click.
-  var formatted=_asWOState._tokenizedBody;
-  bw.forEach(function(w,bi){
-    var filled=fb[bi];
-    var html;
-    if(filled!==undefined&&filled!==null){
-      var cls=filled===w?'su-blank filled correct':'su-blank filled wrong';
-      html='<span class="'+cls+'" data-bi="'+bi+'" onclick="asBlankClear('+bi+')">'+filled+'</span>';
-    } else {
-      var selCls=sel===bi?'su-blank selected':'su-blank';
-      html='<span class="'+selCls+'" data-bi="'+bi+'" onclick="asBlankSelect('+bi+')" style="'+(sel===bi?'border-color:#2563eb;background:#eff6ff;':'')+'cursor:pointer">____</span>';
-    }
-    formatted=formatted.split('\u0000GFB'+bi+'\u0000').join(html);
-  });
-  art.innerHTML='<div class="su-instruction">빈칸을 먼저 클릭하고, 아래에서 단어를 선택하세요</div>'
-    +'<div class="su-blank-article">'+formatted+'</div>';
-  // Pool: pre-shuffled order persists for the whole step so the
-  // grid doesn't jump as the user fills in answers.
-  var pool=_asWOState._poolItems||[];
-  var poolHTML=pool.map(function(item){
-    var isUsed=Object.values(fb).indexOf(item.text)>=0;
-    return '<div class="su-pool-word'+(isUsed?' used':'')+'" '+(isUsed?'':'onclick="asBlankFillWord(\''+item.text.replace(/'/g,"\\'")+'\')"')+'>'+item.text+'</div>';
-  }).join('');
-  act.innerHTML='<div class="su-pool">'+poolHTML+'</div>'
-    +'<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px">'+(sel!==null?'<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>빈칸 #'+(sel+1)+' 선택됨 — 아래에서 단어를 고르세요</span>':'<span>👆 위 문장에서 빈칸을 먼저 클릭하세요</span>')+'</div>';
-  // Show Next ONLY when every blank is filled. Owner-reported a bug
-  // where Next was visible from step entry (0/N filled) and clicking
-  // it advanced to step 4 with the activity skipped — that was the
-  // un-conditional `_asSetNav('none','')` in the else branch.
-  var allFilled=bw.every(function(w,bi){return fb[bi]!==undefined&&fb[bi]!==null;});
-  if(allFilled) {
-    var allCorrect=bw.every(function(w,i){return fb[i]===w;});
-    if(allCorrect) _asStepDone[2]=true;
-    _asSetNav('none','');
-  } else {
-    _asSetNav('none','none');
+
+  // Owner-reported "step 3 렉 존나 심해". Previous version did
+  // art.innerHTML = ... on EVERY blank click, forcing the browser
+  // to re-parse + relayout the entire article body. For long
+  // Korean articles with many spans, ~100ms per tap on mid-range
+  // phones. Now: build the article + pool HTML ONCE, then on
+  // subsequent calls mutate only the affected blank span + toggle
+  // pool item .used class. No innerHTML thrash per click.
+  var firstRender = art.dataset.asBlankBuilt !== '1';
+  if (firstRender) {
+    var formatted = _asWOState._tokenizedBody;
+    bw.forEach(function(w, bi) {
+      formatted = formatted.split('\u0000GFB' + bi + '\u0000').join(
+        '<span class="su-blank" data-bi="' + bi + '" onclick="asBlankClickSpan(' + bi + ')" style="cursor:pointer">____</span>'
+      );
+    });
+    art.innerHTML = '<div class="su-instruction">빈칸을 먼저 클릭하고, 아래에서 단어를 선택하세요</div>'
+      + '<div class="su-blank-article">' + formatted + '</div>';
+    art.dataset.asBlankBuilt = '1';
+
+    var pool = _asWOState._poolItems || [];
+    var poolHTML = pool.map(function(item, idx) {
+      return '<div class="su-pool-word" data-pi="' + idx + '" data-text="' + item.text.replace(/"/g,'&quot;') + '" onclick="asBlankFillWord(\'' + item.text.replace(/'/g, "\\'") + '\')">' + item.text + '</div>';
+    }).join('');
+    act.innerHTML = '<div class="su-pool">' + poolHTML + '</div>'
+      + '<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px"></div>';
   }
+
+  // Per-click mutation — no innerHTML thrash. ~5 elements max.
+  bw.forEach(function(w, bi) {
+    var span = art.querySelector('.su-blank[data-bi="' + bi + '"]');
+    if (!span) return;
+    var filled = fb[bi];
+    if (filled !== undefined && filled !== null) {
+      span.textContent = filled;
+      span.className = filled === w ? 'su-blank filled correct' : 'su-blank filled wrong';
+      span.setAttribute('onclick', 'asBlankClear(' + bi + ')');
+      span.style.cursor = 'pointer';
+      span.style.borderColor = '';
+      span.style.background = '';
+    } else {
+      span.textContent = '____';
+      span.className = sel === bi ? 'su-blank selected' : 'su-blank';
+      span.setAttribute('onclick', 'asBlankClickSpan(' + bi + ')');
+      span.style.cursor = 'pointer';
+      if (sel === bi) {
+        span.style.borderColor = '#2563eb';
+        span.style.background = '#eff6ff';
+      } else {
+        span.style.borderColor = '';
+        span.style.background = '';
+      }
+    }
+  });
+
+  // Pool: toggle .used class on existing chips (no re-render).
+  var usedSet = {};
+  Object.values(fb).forEach(function (t) { if (t) usedSet[t] = true; });
+  var poolItems = act.querySelectorAll('.su-pool-word');
+  for (var i = 0; i < poolItems.length; i++) {
+    var p = poolItems[i];
+    p.classList.toggle('used', !!usedSet[p.getAttribute('data-text')]);
+  }
+
+  var msg = document.getElementById('as-wo-msg');
+  if (msg) {
+    if (sel !== null && sel !== undefined) {
+      msg.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">' + BM_ICON_CHECK + '</span><span>빈칸 #' + (sel + 1) + ' 선택됨 — 아래에서 단어를 고르세요</span>';
+    } else {
+      msg.innerHTML = '<span>👆 위 문장에서 빈칸을 먼저 클릭하세요</span>';
+    }
+  }
+
+  var allFilled = bw.every(function (w, bi) { return fb[bi] !== undefined && fb[bi] !== null; });
+  if (allFilled) {
+    var allCorrect = bw.every(function (w, i) { return fb[i] === w; });
+    if (allCorrect) _asStepDone[2] = true;
+    _asSetNav('none', '');
+  } else {
+    _asSetNav('none', 'none');
+  }
+}
+
+// Blank-span click router. Filled blanks clear; empty blanks select.
+function asBlankClickSpan(bi) {
+  if (!_asWOState) return;
+  var fb = _asWOState.filledBlanks;
+  if (fb[bi] !== undefined && fb[bi] !== null) asBlankClear(bi);
+  else asBlankSelect(bi);
 }
 function asBlankSelect(bi) {
   if(!_asWOState) return;
