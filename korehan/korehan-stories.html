@@ -1814,16 +1814,28 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
   var storyVocab    = (story && Array.isArray(story.vocab))           ? story.vocab           : [];
   var storyGrammar  = (story && Array.isArray(story.grammar))         ? story.grammar         : [];
   var storyKeyExprs = (story && Array.isArray(story.key_expressions)) ? story.key_expressions : [];
+  // Stem-aware substring check. The vocab list stores dictionary
+  // forms (먹다, 가다) but the body text has inflected forms
+  // (먹었어요, 갔다, 가셨다) — plain indexOf would miss every verb /
+  // adjective. Stripping the trailing 다 lets 먹다 match 먹었어요
+  // via the 먹 prefix. Doesn't fix Korean morphology fully but
+  // catches the vast majority of misses.
+  function _stKoMatches(ko, target) {
+    if (!ko || !target) return false;
+    if (ko.indexOf(target) >= 0) return true;
+    var stem = String(target).replace(/[다요죠어아]$/, '');
+    return stem.length >= 2 && ko.indexOf(stem) >= 0;
+  }
   return koParas.map(function (ko, i) {
     var en = enParas[i] || '';
     var sentBreakdown = sentMap ? _stRenderSentenceAnalysis(ko, sentMap) : '';
-    var paraVocab = storyVocab.filter(function(v){ return v && v.ko && ko.indexOf(v.ko) >= 0; });
+    var paraVocab = storyVocab.filter(function(v){ return v && v.ko && _stKoMatches(ko, v.ko); });
     var paraGrammar = storyGrammar.filter(function(g){
       var pat = (g && (g.pattern || g.label)) || '';
       var key = String(pat).replace(/^~|\(.*$/g, '').trim();
       return key && ko.indexOf(key.split(/[\/·,]/)[0]) >= 0;
     });
-    var paraExprs = storyKeyExprs.filter(function(k){ return k && k.ko && ko.indexOf(k.ko) >= 0; });
+    var paraExprs = storyKeyExprs.filter(function(k){ return k && k.ko && _stKoMatches(ko, k.ko); });
     var paraAnalysisHTML = '';
     if (paraVocab.length || paraGrammar.length || paraExprs.length) {
       paraAnalysisHTML = '<div class="st-para-analysis">';
