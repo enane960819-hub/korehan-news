@@ -4710,7 +4710,19 @@ async function analyzeSentence(idx, el) {
       }
       var _hitGrammarMissing = !hit || !hit.grammar || !Array.isArray(hit.grammar) || !hit.grammar.length;
       var _hitGrammarBad = hit && _khSentGrammarLooksBad(hit);
-      var _hitStale = (_isLowLevel && _hitGrammarMissing) || _hitGrammarBad;
+      // Codex P2: empty grammar is LEGITIMATE for noun phrases /
+      // greetings (the prompt explicitly allows zero grammar for
+      // those, especially at Seed/Sprout levels). Marking the cache
+      // stale just because grammar:[] returns means anon visitors
+      // are forced to a sign-in wall for already-cached translations,
+      // and signed-in users pay for unnecessary live AI on each tap.
+      // Only treat the hit as stale when grammar AND translation AND
+      // vocab are ALL missing — that's a genuine broken-cache signal,
+      // not a valid no-grammar line. Bad-content signal (typo/idx
+      // drift) still flagged via _hitGrammarBad.
+      var _hitContentMissing = !hit
+        || (!hit.translation && !(hit.vocab && hit.vocab.length) && _hitGrammarMissing);
+      var _hitStale = (_isLowLevel && _hitContentMissing) || _hitGrammarBad;
       if (_hitStale) _sharedCacheStale = true;
       if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.analysis && hit.analysis.length) || (hit.grammar && hit.grammar.length))) {
         window._khSentAnalyzeCache[cacheKey] = hit;
@@ -4998,6 +5010,23 @@ async function analyzeConvBubble(convId, msgIdx, el) {
   // Anonymous gate — same as articles. Pre-cached lines are free, live
   // calls require sign-in to keep the Claude budget under control.
   if (typeof supaUser === 'undefined' || !supaUser) {
+    // Codex P2: don't punish anon when the bubble HAS a pre-rendered
+    // .dp-bubble-en sibling (the conversation publish step bakes that
+    // English line in). Surface it instead of a sign-in wall — those
+    // legacy translations are already in the DOM and free to show.
+    var legacyEnText = legacyEn ? (legacyEn.textContent || '').trim() : '';
+    if (legacyEnText) {
+      panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
+        + '<div style="padding:14px 16px">'
+        +   '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px">Translation</div>'
+        +   '<div style="font-size:14px;line-height:1.55;color:#0f172a">' + escapeHtml(legacyEnText) + '</div>'
+        +   '<div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#64748b">'
+        +     '<a href="#" onclick="closeConvSentPanel();if(typeof openAuthModal===\'function\')openAuthModal(\'signin\');return false" style="color:#1d4ed8;font-weight:700;text-decoration:none">Sign in</a>'
+        +     ' for full vocab + grammar breakdown.'
+        +   '</div>'
+        + '</div>';
+      return;
+    }
     panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
       + '<div class="asp-signin" style="padding:18px 16px;text-align:center">'
       +   '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:6px">Sign in to analyze new lines</div>'
