@@ -5674,36 +5674,49 @@ async function goTitleBackfill() {
   // narrow select returned 400 when title_en wasn't materialized
   // in PostgREST's schema cache, leaving a misleading "0 missing"
   // KPI on the page.
+  //
+  // Paginated. Codex P2 review: a flat limit(2000) silently truncated
+  // the backfill scan, so any rows beyond the first 2000 never got
+  // translation candidates and the per-device fallback kept paying
+  // for them. .range(start, end) iterates until the page comes back
+  // short of the requested size.
+  var PAGE = 1000;
+  var SCAN_HARD_CAP = 20000; // safety: stop runaway loops on bad data
   var scanErrors = [];
-  try {
-    var artRes = await sb.from('articles').select('*').limit(2000);
-    if (artRes.error) scanErrors.push('articles: ' + (artRes.error.message || JSON.stringify(artRes.error)));
-    if (artRes.data) {
-      artRes.data.forEach(function(r) {
-        if (r && r.title && isKoreanText(r.title) && isMissingEn(r.title_en)) {
-          artsMissing.push({ id: r.id, ko: r.title });
+
+  async function _scanPaged(table, onRow) {
+    var offset = 0;
+    while (offset < SCAN_HARD_CAP) {
+      try {
+        var res = await sb.from(table).select('*').range(offset, offset + PAGE - 1);
+        if (res.error) {
+          scanErrors.push(table + ' [offset ' + offset + ']: ' + (res.error.message || JSON.stringify(res.error)));
+          break;
         }
-      });
+        if (!res.data || !res.data.length) break;
+        res.data.forEach(onRow);
+        if (res.data.length < PAGE) break; // last page
+        offset += PAGE;
+      } catch (e) {
+        scanErrors.push(table + ' fetch threw [offset ' + offset + ']: ' + (e && e.message || e));
+        break;
+      }
     }
-  } catch(e) {
-    scanErrors.push('articles fetch threw: ' + (e && e.message || e));
   }
 
-  try {
-    var convRes = await sb.from('conversations_data').select('*').limit(2000);
-    if (convRes.error) scanErrors.push('conversations_data: ' + (convRes.error.message || JSON.stringify(convRes.error)));
-    if (convRes.data) {
-      convRes.data.forEach(function(r) {
-        var ctx = r.ctx || (r.data && r.data.ctx) || '';
-        var ctxEn = r.ctx_en || (r.data && r.data.ctx_en) || '';
-        if (ctx && isKoreanText(ctx) && isMissingEn(ctxEn)) {
-          convsMissing.push({ id: r.id, ko: ctx });
-        }
-      });
+  await _scanPaged('articles', function (r) {
+    if (r && r.title && isKoreanText(r.title) && isMissingEn(r.title_en)) {
+      artsMissing.push({ id: r.id, ko: r.title });
     }
-  } catch(e) {
-    scanErrors.push('conversations_data fetch threw: ' + (e && e.message || e));
-  }
+  });
+
+  await _scanPaged('conversations_data', function (r) {
+    var ctx = (r && r.ctx) || (r && r.data && r.data.ctx) || '';
+    var ctxEn = (r && r.ctx_en) || (r && r.data && r.data.ctx_en) || '';
+    if (ctx && isKoreanText(ctx) && isMissingEn(ctxEn)) {
+      convsMissing.push({ id: r.id, ko: ctx });
+    }
+  });
 
   // Cost estimate. Haiku 4.5: $1/M input, $5/M output. Per batch of
   // 15 we send ~600 input tokens and get back ~300 output tokens, so
