@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20260515d">
+<link rel="stylesheet" href="korehan-shared.css?v=20260515e">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -312,21 +312,21 @@
   flex-direction: row;
   gap: 14px;
   overflow-x: auto;
-  overflow-y: hidden;
-  /* scroll-snap-type 제거: Samsung Internet 일부 버전에서 'x mandatory'
-     + flex 조합이 horizontal touch scroll 을 잠가버림. 스냅이 없어도
-     레일 카드들이 충분히 넓어서 UX 차이 없음. Owner-reported:
-     "메인페이지 가로 스크롤 안되는 이슈". */
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
-  /* touch-action 명시: pan-x = 가로 드래그 허용, pan-y = 페이지 위/아래
-     스크롤이 레일 위에서도 막히지 않게. 둘 다 명시해야 Android Chrome /
-     Samsung Internet 가 horizontal swipe 를 confidently 인식. */
-  touch-action: pan-x pan-y;
+  /* touch-action: pan-x ONLY. The rail only scrolls horizontally
+     (overflow-y is visible/hidden, never auto), so declaring pan-y
+     here would tell the browser to handle vertical pan locally —
+     and since it can't, vertical swipes died silently. With pan-x
+     only, vertical swipes propagate to <body> and the page scrolls
+     normally. Owner-reported: "기사 카드 위에선 스크롤이 가로든
+     세로든 다 안먹히는데" — that was my touch-action: pan-x pan-y
+     fix. Now reverted to the correct minimal declaration. */
+  touch-action: pan-x;
   scrollbar-width: none;
   padding-bottom: 10px;
   margin-bottom: 16px;
   align-items: stretch;
-  /* 가로 chain-scroll 방지 — 레일 끝에서 페이지 좌우로 튕기지 않게 */
   overscroll-behavior-x: contain;
 }
 .home-news-grid::-webkit-scrollbar,
