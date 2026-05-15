@@ -225,7 +225,15 @@
    completed steps are checked green, skipped (no data) are dim.
    Replaces the old chip picker since the linear flow now drives
    which drill is active, not the user. */
-.dp-pr-steps{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;margin:0 -4px 14px;padding:2px 4px 8px;scrollbar-width:none;}
+/* Steps strip — horizontal scroll, fade right edge so users see
+   there's more. Without the fade the last tab looked clipped and
+   users assumed broken layout (owner-reported '문제들 다 짤려보이는
+   이슈'). The wrapping container gives us the fade pseudo-elements;
+   the inner .dp-pr-steps still scrolls horizontally as before. */
+.dp-pr-steps-wrap{position:relative;margin:0 -4px 14px;}
+.dp-pr-steps-wrap::after{content:'';position:absolute;top:0;bottom:0;right:0;width:24px;pointer-events:none;background:linear-gradient(to right, transparent, #fff 90%);}
+.dp-pr-steps{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;padding:2px 4px 8px;scrollbar-width:none;cursor:grab;}
+.dp-pr-steps:active{cursor:grabbing;}
 .dp-pr-steps::-webkit-scrollbar{display:none;}
 .dp-pr-step{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:999px;background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;font-size:11px;font-weight:700;font-family:inherit;white-space:nowrap;flex-shrink:0;}
 .dp-pr-step.is-active{background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:transparent;color:#fff;box-shadow:0 4px 10px rgba(37,99,235,.25);}
@@ -1564,7 +1572,11 @@ var _CONV_PRACTICE_DRILLS = [
   { key:'em',    icon:'link-2',         label:'Expression Match', starter:'startExpressionMatch',  blurb:'Match each Korean expression to its English meaning.',           emptyMsg:'No key expressions for this conversation.',  has:function(c){ return (c.key_expressions||[]).length >= 2; } },
   { key:'vic',   icon:'library',        label:'Vocab in Context', starter:'startVocabInContext',   blurb:'Read a dialogue line, pick what the highlighted word means.',    emptyMsg:'No vocabulary for this conversation.',       has:function(c){ return (c.vocab||[]).filter(function(v){return v&&v.ko&&v.en;}).length > 0; } },
   { key:'rc',    icon:'message-circle', label:'Reply Check',      starter:'startReplyCheck',       blurb:'Choose the natural reply to each line.',                          emptyMsg:'Not enough dialogue lines for this drill.',  has:function(c){ return (c.msgs||[]).filter(function(m){return m&&(m.s==='l'||m.s==='r');}).length >= 4; } },
-  { key:'comp',  icon:'help-circle',    label:'Comprehension',    starter:'startComprehensionQuiz',blurb:'3 questions about who said what, why, and how it unfolds.',     emptyMsg:'Not enough dialogue lines for a quiz.',      has:function(c){ return (c.msgs||[]).filter(function(m){return m&&m.txt&&(m.s==='l'||m.s==='r');}).length >= 4; } },
+  // Comprehension drill removed — owner-feedback that 'who-said-what'
+  // recall questions add noise on top of Reply Check + Vocab in
+  // Context which already test understanding. Plus 'Generating
+  // comprehension questions…' fired a Haiku call per learner per
+  // conversation, padding cost without payoff.
   { key:'build', icon:'shuffle',        label:'Sentence Build',   starter:'startSentenceBuild',    blurb:'Rebuild a real line by tapping the chunks in order.',            emptyMsg:'No dialogue line long enough for this drill.', has:function(c){
       return (c.msgs||[]).some(function(m){
         if (!m||!m.txt||(m.s!=='l'&&m.s!=='r')) return false;
@@ -1601,7 +1613,7 @@ function _convPracticeCardsHTML(c) {
   return ''
     + '<div class="dp-study-card dp-pr-shell" data-study="practice">'
     +   '<div class="dp-study-card-title" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="dumbbell" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Practice</span></div>'
-    +   '<div class="dp-pr-steps">' + dotsHTML + '</div>'
+    +   '<div class="dp-pr-steps-wrap"><div class="dp-pr-steps">' + dotsHTML + '</div></div>'
     +   '<div id="dp-pr-stage" class="dp-pr-stage"><div class="dp-pr-empty">Loading…</div></div>'
     + '</div>';
 }
