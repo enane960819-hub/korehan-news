@@ -21576,27 +21576,27 @@ async function _asLoadContent() {
   var lm0 = document.getElementById('as-loading-msg');
   if (lm0) lm0.textContent = 'Loading saved content…';
   if (!supaUser) return;
-  // 3. DB — but RACE against a 4s timeout. Owner-reported 15s+
-  // "Loading saved content…" hangs on slow LTE: PostgREST select
-  // sometimes stalls without erroring (no error, no data — promise
-  // just sits). Without a ceiling the entire step renders blank
-  // until the query finally resolves. 4s is enough for any real
-  // query; beyond that we'd rather show stale (empty) than hang.
+  // 3. DB. Owner-reported root-cause cleanup: DO NOT fall through to
+  // a per-user Claude call on miss/timeout. Every user who happened
+  // to be first on a fresh article was paying for Haiku to generate
+  // study content (and every cache wipe / timeout re-paid). Admin
+  // has explicit "Gen Study" + "Gen All Missing" buttons in the
+  // admin panel — that's the only path that should ever hit Claude.
+  //
+  // On DB miss: leave _asStudyContent empty. The render path shows
+  // "Study content not ready yet" + an admin-only "Generate" button.
+  // No more cost leak.
   try {
     var sb = getSupa();
     var dbPromise = sb.from('article_study_content').select('*').eq('article_id', String(_asCurrentArt.id)).maybeSingle();
     var timeoutPromise = new Promise(function (_, reject) {
-      setTimeout(function () { reject(new Error('article_study_content fetch timeout (4s)')); }, 4000);
+      setTimeout(function () { reject(new Error('article_study_content fetch timeout (10s)')); }, 10000);
     });
     var dr = await Promise.race([dbPromise, timeoutPromise]);
     var dbRow = dr.data;
-    // Relaxed cache-hit condition: if the row exists and has non-empty
-    // vocab, USE IT. Previous version also required prompt_version >= 2
-    // OR admin_edited, which meant pre-migration rows (prompt_version=0)
-    // got re-generated every visit even though their vocab was perfectly
-    // valid. Owner-reported '이미 article study 했던 기사들 들어가도 다시
-    // 로딩되고 있음'. The prompt rework guard wasn't worth the cost-
-    // every-visit hit for thousands of rows that pre-dated the column.
+    // If the row exists with vocab, use it. Don't filter on
+    // prompt_version / admin_edited — that previously caused valid
+    // pre-migration rows to re-generate every visit.
     var hasVocab = dbRow && Array.isArray(dbRow.vocab) && dbRow.vocab.length > 0;
     if (hasVocab) {
       _asStudyContent = {
@@ -21612,38 +21612,64 @@ async function _asLoadContent() {
       try { localStorage.setItem(lsKey, payload);  } catch(_) {}
       return;
     }
-  } catch(e) { console.warn('[AS] Cache read failed:', e && e.message); }
-  var lm = document.getElementById('as-loading-msg');
-  if (lm) lm.textContent = 'First-time setup: generating study content… (~10s)';
-  var prompt = 'Korean news article study content for language learners.\nTitle: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
-    + '\n\nReturn ONLY valid JSON:\n'
-    + '{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],'
-    + '"phrases":[{"ko":"a REUSABLE Korean expression or sentence pattern that appears in the article (verbatim substring of the body)","en":"natural English translation"}],'
-    + '"wrong_phrases":[{"ko":"a grammatically VALID Korean sentence that is FALSE about this article (wrong subject / wrong action / contradicts a fact in the article). Must NOT be obvious nonsense — the verb must agree with the subject and use proper particles.","en":"translation"}],'
-    + '"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],'
-    + '"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\n'
-    + 'vocab: 6 key words from article. '
-    + 'phrases: 3 REUSABLE Korean expressions or sentence patterns that learners can apply OUTSIDE this specific article (~3-7 eojeol each). '
-    +   'CRITICAL: each `ko` MUST appear as a VERBATIM substring in the article body so it can be highlighted accurately — copy the exact characters, do not paraphrase. '
-    +   'GOOD examples (reusable patterns): "특별한 경고 메시지", "사람들에게 즐거움을 주다", "~다고 생각하다", "화제가 되고 있어요". '
-    +   'BAD examples (article-only facts — DO NOT generate): "미국의 뱅크 오브 아메리카 ATM에 특별한 경고 메시지가 나타났어요", "많은 사람들이 이 ATM 경고문을 보고 재미있다고 생각했어요". '
-    +   'Prefer phrases that teach grammar patterns (~에 ~가 나타나다, ~에게 ~을 주다, ~다고 생각하다 etc.) or common collocations over full subject+object+verb sentences. '
-    + 'wrong_phrases: 3 PLAUSIBLE-LOOKING but FALSE sentences for distractors (must be grammatical Korean — subject + object + verb with correct particles; only the meaning is wrong). '
-    + 'word_order: 3 sentences split into eojeol chunks in CORRECT order (each max 5 chunks). '
-    + 'questions: 3 comprehension questions with clear correct answers.';
+    // DB returned no row (or empty vocab). Mark so the render path
+    // shows the "not ready" placeholder instead of pretending we
+    // have content.
+    _asStudyContent = null;
+  } catch(e) {
+    console.warn('[AS] DB read failed:', e && e.message);
+    if (typeof kh_log_error === 'function') {
+      kh_log_error('article_study_content fetch failed', { article_id: _asCurrentArt.id, msg: e && e.message });
+    }
+    _asStudyContent = null;
+  }
+}
+
+// "← Browse articles" — clears the current article and reopens the
+// picker. Used by the "not ready" placeholder so users can recover
+// without page reload.
+function _asGoBackToPicker() {
+  _asCurrentArt = null;
+  _asStudyContent = null;
+  if (typeof _asLoadArticles === 'function') _asLoadArticles();
+}
+
+// Admin-only one-shot gen. Reuses the admin-panel's bulk generator
+// for a single article id so the admin doesn't have to leave Study
+// Room to prep content. Falls back to a Claude call if the admin
+// gen helper isn't loaded.
+async function _asAdminGenerate() {
+  if (!_asCurrentArt) return;
+  if (!window._isAdmin) return;
+  var btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
   try {
-    var data = await callClaude({ feature:'article-study', model:'claude-haiku-4-5-20251001', max_tokens:1800, messages:[{role:'user',content:prompt}] });
-    var raw = (data.content||[]).map(function(c){return c.text||'';}).join('');
-    var cl = raw.replace(/```json|```/g,'').trim();
-    var s=cl.indexOf('{'),e=cl.lastIndexOf('}'); if(s>=0&&e>s) cl=cl.slice(s,e+1);
-    _asStudyContent = JSON.parse(cl);
-    if (!Array.isArray(_asStudyContent.wrong_phrases)) _asStudyContent.wrong_phrases = [];
-    var freshPayload = JSON.stringify(_asStudyContent);
-    try { sessionStorage.setItem(key,   freshPayload); } catch(_) {}
-    try { localStorage.setItem(lsKey,   freshPayload); } catch(_) {}
-    // Save to DB so OTHER devices / users also hit cache.
-    _asSaveContentToDB(_asCurrentArt.id, _asStudyContent);
-  } catch(err) { _asStudyContent = {vocab:[],phrases:[],wrong_phrases:[],word_order:[],questions:[{q:'이 기사의 내용을 잘 이해했나요?',options:['네, 잘 이해했어요','조금 이해했어요','어려웠어요','다시 읽을게요'],correct:0}]}; }
+    if (typeof aseGenAndSaveOne === 'function') {
+      // The admin-panel gen helper writes directly to article_study_content
+      // and returns when done. We then re-run _asLoadContent.
+      await aseGenAndSaveOne(_asCurrentArt.id);
+    } else {
+      // Inline fallback for when the admin helper isn't loaded on this
+      // page. Admin-side only, so the cost concern doesn't apply.
+      var prompt = 'Korean news article study content. Title: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
+        + '\n\nReturn ONLY JSON: {"vocab":[{"ko":"","en":"","rom":""}], "phrases":[{"ko":"","en":""}], "wrong_phrases":[{"ko":"","en":""}], "word_order":[{"chunks":["",""]}], "questions":[{"q":"","options":["","","",""],"correct":0}]} — 6 vocab, 3 phrases, 3 wrong_phrases, 3 word_order, 3 questions.';
+      var data = await callClaude({ feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:1800, messages:[{role:'user',content:prompt}] });
+      var raw = (data.content||[]).map(function(c){return c.text||'';}).join('');
+      var cl = raw.replace(/```json|```/g,'').trim();
+      var s = cl.indexOf('{'), e = cl.lastIndexOf('}');
+      if (s >= 0 && e > s) cl = cl.slice(s, e + 1);
+      var parsed = JSON.parse(cl);
+      await _asSaveContentToDB(_asCurrentArt.id, parsed);
+    }
+    // Re-fetch from DB so we use whatever was actually persisted.
+    try { sessionStorage.removeItem('as_c3_' + _asCurrentArt.id); } catch(_) {}
+    try { localStorage.removeItem('kh_as_content_' + _asCurrentArt.id); } catch(_) {}
+    await _asLoadContent();
+    _asRenderStep();
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate (admin)'; }
+    alert('Generate failed: ' + (e && e.message || 'unknown'));
+  }
 }
 
 async function _asSaveContentToDB(articleId, content) {
@@ -21767,7 +21793,24 @@ function _asStep1(art,act) {
     + '<div id="as-translation" style="display:none;padding:12px 16px;font-size:13px;color:#475569;line-height:1.7;border-top:1px solid #f1f5f9;font-family:\'DM Sans\',sans-serif"></div>'
     + '<button class="su-article-toggle" onclick="asTogglePassage()" type="button"><span class="su-art-tog-arrow">▲</span><span id="as-art-tog-label">접기</span></button>'
     + '</div>';
-  if (!vocab.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No vocabulary items.</div>'; _asSetNav('none',''); return; }
+  if (!vocab.length) {
+    // No content for this article yet. Owner-side: surface a one-tap
+    // "Generate" so the admin can pre-warm from any device. User-
+    // side: explain rather than show a blank panel. We DO NOT auto-
+    // generate from the user path — that was a cost leak.
+    var isAdmin = !!window._isAdmin;
+    act.innerHTML =
+        '<div style="padding:40px 20px;text-align:center">'
+      + '<div style="font-size:38px;margin-bottom:10px">📝</div>'
+      + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:6px">Study content not ready yet</div>'
+      + '<div style="font-size:13px;color:#64748b;margin-bottom:18px;line-height:1.55">This article hasn\'t been prepared for study. Try another article — we have over 200 ready.</div>'
+      + (isAdmin
+          ? '<button onclick="_asAdminGenerate()" style="padding:10px 22px;border:0;border-radius:999px;background:#1d4ed8;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Generate (admin)</button>'
+          : '<button onclick="_asGoBackToPicker()" style="padding:10px 22px;border:0;border-radius:999px;background:#1d4ed8;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">← Browse articles</button>')
+      + '</div>';
+    _asSetNav('none','none','none');
+    return;
+  }
   var eng=_asShuffle(vocab.map(function(v,i){return{t:v.en,i:i};}));
   _asMatchState={pairs:vocab,eng:eng,matched:[],sel:{l:null,r:null}};
   act.innerHTML='<div class="su-substep"><div class="su-substep-fill" id="as-substep-fill" style="width:0%"></div></div>'

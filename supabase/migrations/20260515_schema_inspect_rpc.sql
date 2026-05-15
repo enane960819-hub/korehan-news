@@ -25,10 +25,13 @@ BEGIN
   -- Admin-only. Reuses the app_settings.admin_emails list the rest of
   -- the admin RPCs use; falls back to a hard-coded check if that
   -- setting doesn't exist yet.
+  -- app_settings.value is `text` in production (not jsonb), so the
+  -- coalesce arms have to be the same type. Cast to jsonb explicitly
+  -- so the email allowlist parses correctly. 42804 error otherwise.
   IF NOT (
     auth.jwt() ->> 'email' IN (
       SELECT jsonb_array_elements_text(coalesce(
-        (SELECT value FROM public.app_settings WHERE key = 'admin_emails'),
+        (SELECT value::jsonb FROM public.app_settings WHERE key = 'admin_emails'),
         '["enane960819@gmail.com"]'::jsonb
       ))
     )
