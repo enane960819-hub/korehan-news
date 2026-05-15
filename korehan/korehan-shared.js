@@ -2557,12 +2557,14 @@ function renderHomePage() {
     heroEl.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0;align-items:stretch;border-radius:18px;overflow:hidden;box-shadow:0 14px 50px rgba(13,27,46,.18);background:#fff;';
     renderHeroSlide(heroEl);
     resetHeroTimer();
-  } else if (heroEl && /home-hero-loading/.test(heroEl.className || '')) {
-    // renderHomePage ran but the article pool was empty (cache stale,
-    // all rows draft, RLS filtered everything, etc.). Skeleton was
-    // staying up forever — empty-state only fired on fetch error, not
-    // on 'fetch ok but published() filtered to zero'. Owner: '로딩창
-    // 끝났는데도 스켈레톤 보여주잖아'. Swap in the recovery panel.
+  } else if (heroEl && /home-hero-loading/.test(heroEl.className || '') && window._khHomeFetchTried) {
+    // Empty-state guard. Only fire AFTER loadArticlesFromDB has at
+    // least been attempted. The previous version of this rule fired
+    // on every renderHomePage call — including the synchronous first
+    // paint before any fetch had run — so first-visit users with no
+    // localStorage cache saw the red 'Reset' panel even though
+    // articles were about to load fine. The _khHomeFetchTried flag
+    // is set by the loadArticlesFromDB.then/catch path.
     try { _khRenderHeroEmptyState(); } catch(_){}
   }
 
@@ -8139,8 +8141,8 @@ document.addEventListener('DOMContentLoaded', async function() {
       // cache expiry — admin would publish an article and not see it
       // on the front page for minutes.
       loadArticlesFromDB({ homeOptimized: true, force: true })
-        .then(function (rows) { if (rows && rows.length) { try { renderHomePage(); } catch(_){} } })
-        .catch(function(){});
+        .then(function (rows) { window._khHomeFetchTried = true; if (rows && rows.length) { try { renderHomePage(); } catch(_){} } })
+        .catch(function(){ window._khHomeFetchTried = true; });
     } else {
       _ldr(50); // Loading articles...
       // No-cache first-visit path: render the skeleton immediately
@@ -8163,6 +8165,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       var _heroFinished = false;
       loadArticlesFromDB({ homeOptimized: true, force: true })
         .then(function (rows) {
+          window._khHomeFetchTried = true;
           if (rows && rows.length) {
             _heroFinished = true;
             try { renderHomePage(); } catch(_){}
@@ -8175,6 +8178,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           }
         })
         .catch(function (e) {
+          window._khHomeFetchTried = true;
           console.warn('home articles fetch failed:', e && e.message || e);
           try { _khRenderHeroEmptyState(); } catch(_) {}
         });
