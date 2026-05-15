@@ -12160,7 +12160,12 @@ async function srPreWarmTodayAllLevels() {
   if (!confirm('오늘 날짜에 대해 4개 레벨 (Seed/Sprout/Tree/Forest) 모두 생성 + 저장합니다.\n\n예상: ~40초, ~$0.16 (Haiku × 4).\n이후 학습자는 모두 즉시 DB 캐시 hit (Claude 호출 0).\n\n진행할까요?')) return;
   var sb = getSb(); if (!sb) { if (msgEl) msgEl.textContent = '❌ Supabase 클라이언트 없음'; return; }
   var levels = ['Starter','Beginner','Intermediate','Advanced'];
-  var today = new Date().toISOString().slice(0,10);
+  // Use KST date — pre-warming "today" must align with the same
+  // day boundary the Study Room scheduling logic uses (Korea
+  // midnight). UTC slice() between 00:00-08:59 KST would write to
+  // yesterday's row, and learners loading at 09:00 KST would miss
+  // the cache. Codex P2 review flagged.
+  var today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
   var ok = 0, fail = 0;
   for (var i = 0; i < levels.length; i++) {
     var lvl = levels[i];
