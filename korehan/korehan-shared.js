@@ -73,6 +73,47 @@ function getSupa() {
 // 현재 로그인 유저
 var supaUser = null;
 
+// ── Minimal i18n helper ───────────────────────────────────────
+// Site UI is migrating from Korean labels to English; learner-facing
+// dialogue/article CONTENT stays Korean (that's the study material).
+//
+// Usage:
+//   kh_t('loading')              // 'Loading…'
+//   kh_t('try_again')            // 'Try again'
+//   kh_t('analysis_in_progress') // 'Analysis in progress'
+//
+// Override per-string at call site: kh_t('try_again', 'Retry').
+// The map below is the canonical English copy; add Korean variants
+// later (e.g. window.KH_LANG = 'ko') by extending the structure.
+window.KH_I18N = window.KH_I18N || {
+  en: {
+    loading:                 'Loading…',
+    just_a_moment:           'Just a moment',
+    try_again:               'Try again',
+    reset_data:              'Reset Data',
+    analysis_in_progress:    'Analysis in progress',
+    analysis_being_prepared: 'Sentence analysis is being prepared. Please try again in a moment.',
+    read_article:            'Read the article',
+    show_article_again:      'Show article again (tap to expand)',
+    preparing_session:       'Preparing your study session…',
+    couldnt_load_articles:   'Couldn\'t load the latest articles',
+    couldnt_load_conv:       'Couldn\'t load conversation. Refresh the page or pick another one.',
+    sign_in:                 'Sign In',
+    sign_up:                 'Sign Up',
+    free_writing:            'Free Writing',
+    topic_writing:           'Topic Writing',
+    diary:                   'Diary',
+  }
+};
+function kh_t(key, fallback) {
+  var lang = (typeof window !== 'undefined' && window.KH_LANG) || 'en';
+  var tbl  = (window.KH_I18N && window.KH_I18N[lang]) || {};
+  if (key in tbl) return tbl[key];
+  if (typeof fallback === 'string') return fallback;
+  return key;  // last resort — at least visible/debuggable
+}
+window.kh_t = kh_t;
+
 // ── Global difficulty filter ───────────────────────────────────
 var _activeDiff = (function(){ try { return localStorage.getItem('kh_diff') || 'all'; } catch(e){ return 'all'; } })();
 function khSetDiff(val) {
@@ -2473,8 +2514,8 @@ function _khShowAuthFailureBanner() {
   bar.id = 'kh-auth-fail-banner';
   bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 16px;background:#fef3c7;color:#92400e;border-bottom:1px solid #fcd34d;font-size:13px;line-height:1.5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;font-family:inherit;text-align:center';
   bar.innerHTML =
-      '<span style="flex-basis:100%;max-width:540px">로그인이 완료되지 않았어요. 브라우저에 저장된 옛 인증 데이터가 막고 있을 수 있어요. <b>데이터 리셋</b>을 누르거나 Chrome에서 열어주세요.</span>'
-    + '<button onclick="window._khResetClientStorage&&window._khResetClientStorage()" style="border:0;background:#dc2626;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🔄 데이터 리셋</button>'
+      '<span style="flex-basis:100%;max-width:540px">로그인이 완료되지 않았어요. 브라우저에 저장된 옛 인증 데이터가 막고 있을 수 있어요. <b>Reset Data</b>을 누르거나 Chrome에서 열어주세요.</span>'
+    + '<button onclick="window._khResetClientStorage&&window._khResetClientStorage()" style="border:0;background:#dc2626;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🔄 Reset Data</button>'
     + '<button onclick="this.parentNode.remove()" style="border:0;background:#92400e;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>';
   document.body.appendChild(bar);
 }
@@ -2490,11 +2531,11 @@ function _khRenderHeroEmptyState() {
   heroEl.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:300px;border-radius:18px;background:#f8fbff;border:1px solid #e7eef8;padding:24px;text-align:center;';
   heroEl.innerHTML =
       '<div style="max-width:360px">'
-    + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:0 0 6px">최신 기사를 불러오지 못했어요</div>'
-    + '<div style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.5">브라우저에 저장된 옛 데이터가 요청을 막고 있을 수 있어요. <b>데이터 리셋</b>으로 한 번에 정리하면 대부분 해결됩니다 (다시 로그인 필요).</div>'
+    + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:0 0 6px">Couldn't load the latest articles</div>'
+    + '<div style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.5">브라우저에 저장된 옛 데이터가 요청을 막고 있을 수 있어요. <b>Reset Data</b>으로 한 번에 정리하면 대부분 해결됩니다 (다시 로그인 필요).</div>'
     + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
-    +   '<button onclick="location.reload()" style="padding:9px 18px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#0f172a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">다시 시도</button>'
-    +   '<button onclick="window._khResetClientStorage&&window._khResetClientStorage()" style="padding:9px 18px;border:0;border-radius:999px;background:#dc2626;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">🔄 데이터 리셋</button>'
+    +   '<button onclick="location.reload()" style="padding:9px 18px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#0f172a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try again</button>'
+    +   '<button onclick="window._khResetClientStorage&&window._khResetClientStorage()" style="padding:9px 18px;border:0;border-radius:999px;background:#dc2626;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">🔄 Reset Data</button>'
     + '</div>'
     + '</div>';
 }
@@ -4554,8 +4595,8 @@ async function analyzeSentence(idx, el) {
   // "preparing" panel and stop.
   panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
     + '<div class="asp-prep" style="padding:14px 16px;text-align:center;color:#475569;font-size:13px;line-height:1.55">'
-    +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">분석 준비 중</div>'
-    +   '관리자가 이 기사의 문장 분석을 준비하고 있어요. 잠시 후 다시 시도해 주세요.'
+    +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">Analysis in progress</div>'
+    +   'Sentence analysis is being prepared. Please try again in a moment.'
     + '</div>';
   // Ring the admin's bell on the next macrotask so the RPC round-trip
   // can never extend this tap-handler turn. Server-side RPC dedupes
@@ -4817,8 +4858,8 @@ async function analyzeConvBubble(convId, msgIdx, el) {
   // instead of charging tokens on every reader tap.
   panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
     + '<div class="asp-prep" style="padding:14px 16px;text-align:center;color:#475569;font-size:13px;line-height:1.55">'
-    +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">분석 준비 중</div>'
-    +   '관리자가 이 대화의 문장 분석을 준비하고 있어요. 잠시 후 다시 시도해 주세요.'
+    +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">Analysis in progress</div>'
+    +   'Sentence analysis is being prepared. Please try again in a moment.'
     + '</div>';
   // Defer the admin notification RPC to the next macrotask so its
   // Supabase round-trip can't extend the tap-handler turn (and so
@@ -8118,7 +8159,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           if (_heroSlides && _heroSlides.length) return resolve();
           // Empty-state painted = hero is "done" (failed but final).
           var heroEl = document.getElementById('dyn-hero');
-          if (heroEl && heroEl.innerHTML.indexOf('데이터 리셋') !== -1) return resolve();
+          if (heroEl && heroEl.innerHTML.indexOf('Reset Data') !== -1) return resolve();
           if (Date.now() - start > maxMs) return resolve();
           setTimeout(tick, 100);
         }
@@ -9388,7 +9429,7 @@ function ttsSpeak(text, btnEl) {
   var startGuard = setTimeout(function() {
     if (_ttsCurrent === btnEl && synth.speaking === false && synth.pending === false) {
       _ttsReset();
-      if (typeof toast === 'function') toast('음성 엔진이 응답하지 않습니다. 잠시 후 다시 시도해주세요.', true);
+      if (typeof toast === 'function') toast('Audio engine not responding. Try again in a moment.', true);
     }
   }, 1500);
   utter.onstart = function() { clearTimeout(startGuard); };
