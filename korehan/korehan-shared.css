@@ -979,9 +979,7 @@ body.mobile-redesign .kh-page-hero-inner { padding: 0 !important; }
   overflow-x: auto; overflow-y: hidden;
   padding: 4px 4px 16px;
   -webkit-overflow-scrolling: touch;
-  /* pan-x only — vertical swipes propagate to <body>. See note in
-     index.html .home-news-grid for the full reasoning. */
-  touch-action: pan-x;
+  /* No touch-action override — browser default handles both axes. */
   overscroll-behavior-x: contain;
   scrollbar-width: thin;
 }
