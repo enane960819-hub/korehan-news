@@ -241,8 +241,21 @@ function normalizeArticles(items) {
   }));
 }
 
-function applyArticlesCache(items) {
-  _articlesCache = normalizeArticles(items);
+function applyArticlesCache(items, opts) {
+  var normalized = normalizeArticles(items);
+  // Codex P2: small homeOptimized fetches (15 rows) were clobbering a
+  // previously-warmed cache (80+ rows from regular list or All News
+  // prefetch). After clobbering, navigating to All News had to re-
+  // fetch the full list. Merge by id when the incoming set is
+  // smaller than the existing cache — newer rows override, older
+  // ones survive.
+  if (opts && opts.merge && Array.isArray(_articlesCache) && _articlesCache.length > normalized.length) {
+    var byId = Object.create(null);
+    _articlesCache.forEach(function (a) { if (a && a.id != null) byId[String(a.id)] = a; });
+    normalized.forEach(function (a) { if (a && a.id != null) byId[String(a.id)] = a; });
+    normalized = sortArticlesNewest(Object.keys(byId).map(function (k) { return byId[k]; }));
+  }
+  _articlesCache = normalized;
   _articlesCacheTime = Date.now();
   persistArticlesCache(_articlesCache);
   document.dispatchEvent(new Event('khArticlesLoaded'));
@@ -294,7 +307,10 @@ async function loadArticlesFromDB(options) {
         }
         throw res.error;
       }
-      return applyArticlesCache(normalizeArticles(res.data || []));
+      // Pass merge flag so homeOptimized refreshes don't clobber
+      // a warm full cache. Other call sites (All News, regular list)
+      // use the default replace behavior.
+      return applyArticlesCache(normalizeArticles(res.data || []), { merge: useHomeOptimizedQuery });
     } catch(e) {
       console.warn('articles load error', e);
       if (i >= selects.length - 1) return getCachedArticles();

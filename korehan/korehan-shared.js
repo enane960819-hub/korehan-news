@@ -3957,6 +3957,18 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
     }
     var arr = parsed && Array.isArray(parsed.sentences) ? parsed.sentences : null;
     if (!arr || !arr.length) throw new Error('empty sentences[]');
+    // Codex P2: when the response was truncated mid-array, the salvage
+    // path above recovers a SHORTER `arr` than `sentences.length`. If
+    // we proceed, stitched fills the missing tail with empty
+    // {translation:'', vocab:[], analysis:[]} entries and writes that
+    // to article_cache as if it were a complete result. Future visits
+    // then skip background re-analysis because the cache "exists",
+    // even though those sentences will never have content.
+    // Require >= 80% coverage; otherwise treat as a parse failure and
+    // skip the cache write.
+    if (arr.length < Math.floor(sentences.length * 0.8)) {
+      throw new Error('truncated sentences[] — got ' + arr.length + ' of ' + sentences.length);
+    }
 
     // Stitch back: each entry = {text, translation, vocab, grammar},
     // indexed by source sentence idx so analyzeSentence can look up by
@@ -8374,19 +8386,31 @@ document.addEventListener('DOMContentLoaded', async function() {
             // for real users — that's almost always an RLS issue
             // and points at the right migration to apply.
             if (attempt < 3) setTimeout(function(){ _khTryLoadArticles(attempt + 1); }, attempt * 1500 + 1500);
-            else if (typeof kh_log_error === 'function') {
-              kh_log_error('home articles fetch returned 0 rows after 3 attempts (likely articles RLS denies anon)', {
-                feature: 'home_hero',
-                authed: !!(typeof supaUser !== 'undefined' && supaUser),
-                ua: (navigator && navigator.userAgent || '').slice(0, 200),
-              });
+            else {
+              // Codex P2: previously we logged but didn't render. The
+              // 25s safety net would eventually paint the empty state,
+              // but the user stared at the skeleton for 25 seconds.
+              // Fire the empty state immediately on the 3rd empty
+              // result — the safety net stays as a fallback for the
+              // case where retries never even resolve.
+              if (typeof kh_log_error === 'function') {
+                kh_log_error('home articles fetch returned 0 rows after 3 attempts (likely articles RLS denies anon)', {
+                  feature: 'home_hero',
+                  authed: !!(typeof supaUser !== 'undefined' && supaUser),
+                  ua: (navigator && navigator.userAgent || '').slice(0, 200),
+                });
+              }
+              try { _khRenderHeroEmptyState(); } catch (_) {}
             }
           })
           .catch(function (e) {
             window._khHomeFetchTried = true;
             console.warn('home articles fetch failed (attempt ' + attempt + '):', e && e.message || e);
             if (attempt < 3) setTimeout(function(){ _khTryLoadArticles(attempt + 1); }, attempt * 1500 + 1500);
-            else if (typeof kh_log_error === 'function') kh_log_error(e || 'home articles fetch failed after 3 attempts', { feature: 'home_hero', attempt: attempt });
+            else {
+              if (typeof kh_log_error === 'function') kh_log_error(e || 'home articles fetch failed after 3 attempts', { feature: 'home_hero', attempt: attempt });
+              try { _khRenderHeroEmptyState(); } catch (_) {}
+            }
           });
       }
       _khTryLoadArticles(1);
