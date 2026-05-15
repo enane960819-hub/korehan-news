@@ -17304,10 +17304,13 @@ function _asGoBackToPicker() {
 // for a single article id so the admin doesn't have to leave Study
 // Room to prep content. Falls back to a Claude call if the admin
 // gen helper isn't loaded.
-async function _asAdminGenerate() {
+async function _asAdminGenerate(ev) {
   if (!_asCurrentArt) return;
   if (!window._isAdmin) return;
-  var btn = event && event.target;
+  // Accept the event explicitly. Reading window.event broke this
+  // function on Firefox and other browsers that don't expose
+  // event as a global outside the click handler scope.
+  var btn = (ev && ev.target) || (typeof event !== 'undefined' && event && event.target) || null;
   if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
   try {
     if (typeof aseGenAndSaveOne === 'function') {
@@ -17471,7 +17474,7 @@ function _asStep1(art,act) {
       + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:6px">Study content not ready yet</div>'
       + '<div style="font-size:13px;color:#64748b;margin-bottom:18px;line-height:1.55">This article hasn\'t been prepared for study. Try another article — we have over 200 ready.</div>'
       + (isAdmin
-          ? '<button onclick="_asAdminGenerate()" style="padding:10px 22px;border:0;border-radius:999px;background:#1d4ed8;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Generate (admin)</button>'
+          ? '<button onclick="_asAdminGenerate(event)" style="padding:10px 22px;border:0;border-radius:999px;background:#1d4ed8;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Generate (admin)</button>'
           : '<button onclick="_asGoBackToPicker()" style="padding:10px 22px;border:0;border-radius:999px;background:#1d4ed8;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">← Browse articles</button>')
       + '</div>';
     _asSetNav('none','none','none');
@@ -18131,8 +18134,21 @@ function _asSaveProgress() {
 function _asRestoreProgress() {
   var saved = _asGetTmp();
   if (saved && saved.step && !saved.completed) {
-    _asStep = saved.step;
-    _asStepDone = saved.stepDone || [false,false,false,false];
+    // Clamp legacy step values to the new 4-step range. After the
+    // 5→4 refactor, learners with persisted step=5 progress would
+    // hit `switch(_asStep)` with no matching case and see a blank
+    // activity area. Map 5+ to "completed" (step 4 done) so the
+    // user lands on the final summary instead of nothing. Codex
+    // P2 flagged.
+    var step = parseInt(saved.step, 10) || 1;
+    if (step >= 5) {
+      _asStep = 4;
+      _asStepDone = [true, true, true, true];
+    } else {
+      _asStep = step;
+      _asStepDone = (saved.stepDone || [false,false,false,false]).slice(0, 4);
+      while (_asStepDone.length < 4) _asStepDone.push(false);
+    }
     if (saved.wo_filledBlanks && saved.wo_idx !== undefined) {
       _asWOState = _asWOState || {};
       _asWOState.idx = saved.wo_idx;
