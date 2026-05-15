@@ -168,7 +168,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260514f"></script>
+<script src="korehan-shared.js?v=20260515a"></script>
 <script>
 // My Phrases — gallery of phrases the user has saved from the
 // phrase reader's "Add to My Phrases" CTA. Saved entries live in
@@ -209,11 +209,57 @@ window.removeSavedPhrase = function(idx, ev) {
   var ko = list[idx] && list[idx].ko;
   list.splice(idx, 1);
   _setSaved(list);
+  // Mirror removal to DB so the next device sees it removed too.
+  try {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    var u  = (typeof supaUser !== 'undefined') ? supaUser : null;
+    if (sb && u && ko) {
+      sb.from('user_saved_phrases').delete()
+        .eq('user_id', u.id).eq('source_type', 'phrase').eq('source_id', ko)
+        .then(function(){}, function(){});
+    }
+  } catch(_){}
   if (typeof khTrackUser === 'function') {
     try { khTrackUser('phrase_unsaved', { ko: ko, source: 'my-phrases' }); } catch(_) {}
   }
   render();
 };
+
+// Pull DB-side saved phrases and merge into localStorage so this
+// gallery shows the user's full collection, not just the entries
+// saved on this device/browser. Owner-reported "db 저장하라고 그렇게
+// 말했는데 또 사라져있네". Local stays the source of truth for the
+// current tab; DB rows missing from local get appended.
+async function _khHydrateSavedPhrasesFromDB() {
+  try {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    var u  = (typeof supaUser !== 'undefined') ? supaUser : null;
+    if (!sb || !u) return false;
+    var r = await sb.from('user_saved_phrases')
+      .select('ko,en,created_at')
+      .eq('user_id', u.id)
+      .eq('source_type', 'phrase')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (r.error || !r.data) return false;
+    var local = _getSaved();
+    var seen  = Object.create(null);
+    local.forEach(function (p) { if (p && p.ko) seen[p.ko] = true; });
+    var merged = local.slice();
+    var added = 0;
+    r.data.forEach(function (row) {
+      if (!row || !row.ko || seen[row.ko]) return;
+      seen[row.ko] = true;
+      merged.push({
+        ko: row.ko, rom: '', en: row.en || '',
+        saved_at: row.created_at || new Date().toISOString(),
+      });
+      added++;
+    });
+    if (added) _setSaved(merged.slice(0, 200));
+    return added > 0;
+  } catch(_) { return false; }
+}
 
 function render() {
   var root = document.getElementById('kh-myp-root');
@@ -301,6 +347,10 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     render();
   }
+  // Then merge in any DB-side saved entries that aren't in local
+  // storage yet (different device, cleared cache, etc.). Re-render
+  // if new entries landed.
+  _khHydrateSavedPhrasesFromDB().then(function (added) { if (added) render(); });
   document.title = 'My Phrases — KoreHani';
 });
 </script>

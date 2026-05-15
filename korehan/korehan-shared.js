@@ -2528,15 +2528,15 @@ function _khRenderHeroEmptyState() {
   // already painted them.
   if (_heroSlides && _heroSlides.length) return;
   heroEl.className = '';
-  heroEl.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:300px;border-radius:18px;background:#f8fbff;border:1px solid #e7eef8;padding:24px;text-align:center;';
+  heroEl.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:260px;border-radius:18px;background:#f8fbff;border:1px solid #e7eef8;padding:24px;text-align:center;';
+  // Quiet recovery panel — no red alarm button. The 3-attempt
+  // retry path in init handles transient empties silently; this
+  // only paints after the 15s safety net fires, meaning nothing
+  // ever loaded. Reset Data is still reachable but secondary.
   heroEl.innerHTML =
-      '<div style="max-width:360px">'
-    + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:0 0 6px">Cannot load the latest articles</div>'
-    + '<div style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.5">브라우저에 저장된 옛 데이터가 요청을 막고 있을 수 있어요. <b>Reset Data</b>으로 한 번에 정리하면 대부분 해결됩니다 (다시 로그인 필요).</div>'
-    + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
-    +   '<button onclick="location.reload()" style="padding:9px 18px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#0f172a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try again</button>'
-    +   '<button onclick="window._khResetClientStorage&&window._khResetClientStorage()" style="padding:9px 18px;border:0;border-radius:999px;background:#dc2626;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">🔄 Reset Data</button>'
-    + '</div>'
+      '<div style="max-width:340px">'
+    + '<div style="font-size:14px;font-weight:700;color:#334155;margin:0 0 10px;line-height:1.5">Still loading the latest articles…</div>'
+    + '<button onclick="location.reload()" style="padding:9px 18px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#0f172a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Refresh</button>'
     + '</div>';
 }
 
@@ -2558,10 +2558,12 @@ function _khRenderHeroEmptyState() {
       if (_heroSlides && _heroSlides.length) return;
       // Detect the still-skeleton case by class — initial markup has
       // home-hero-loading; a successful render replaces className.
+      // 25s ceiling = past the 3-attempt retry window (~8s + 3×
+      // fetch latency). Only fires when fetches are truly silent.
       if (/home-hero-loading/.test(heroEl.className || '')) {
         try { _khRenderHeroEmptyState(); } catch(_){}
       }
-    }, 15000);
+    }, 25000);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', arm, { once: true });
@@ -8170,7 +8172,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (hadCache) {
       renderHomePage();
       _ldr(92);
-      Promise.all([_khAwaitTodaysPhrase(4000), _khAwaitHero(5000)]).then(function () {
+      // Cache-hit path: hero paints synchronously, so the splash
+      // resolves in ~0ms. Phrase wait stays at 4s but yields fast
+      // when cache exists. Net result: splash dismisses immediately.
+      Promise.all([_khAwaitTodaysPhrase(2500), _khAwaitHero(1500)]).then(function () {
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
         _ldr(100);
       });
@@ -8203,28 +8208,42 @@ document.addEventListener('DOMContentLoaded', async function() {
       // would have loaded fine in 6-7s. Now: render on success, render
       // empty state on error, and let the 7s safety net below catch
       // the silent-wedge case where the fetch never resolves at all.
+      // No-cache first visit: render skeleton, fetch articles. On
+      // empty rows or error, RETRY silently rather than slapping the
+      // user with an alarming "Cannot load — Reset Data" panel.
+      // Owner: "히어로랑 기사로딩하는데 왜이렇게 오래걸리는거임? 걍
+      // 오래 안걸리게 하면 저딴거 필요없잖아" — they're right; the
+      // empty state was firing on transient slow LTE / RLS edge
+      // cases. Only the 15s safety net at top-of-file fires it now,
+      // and only when nothing rendered at all after 15s.
       var _heroFinished = false;
-      loadArticlesFromDB({ homeOptimized: true, force: true })
-        .then(function (rows) {
-          window._khHomeFetchTried = true;
-          if (rows && rows.length) {
-            _heroFinished = true;
-            try { renderHomePage(); } catch(_){}
-          }
-          // Empty rows = fetch returned but DB empty / RLS blocked /
-          // unrecoverable error. Show the empty state so the user
-          // gets the recovery affordance.
-          else {
-            try { _khRenderHeroEmptyState(); } catch(_) {}
-          }
-        })
-        .catch(function (e) {
-          window._khHomeFetchTried = true;
-          console.warn('home articles fetch failed:', e && e.message || e);
-          try { _khRenderHeroEmptyState(); } catch(_) {}
-        });
+      function _khTryLoadArticles(attempt) {
+        loadArticlesFromDB({ homeOptimized: true, force: true })
+          .then(function (rows) {
+            window._khHomeFetchTried = true;
+            if (rows && rows.length) {
+              _heroFinished = true;
+              try { renderHomePage(); } catch(_){}
+              return;
+            }
+            // 0 rows — retry up to 3 times with backoff. Empty isn't
+            // necessarily fatal (RLS warmup, edge cache miss, etc.).
+            if (attempt < 3) setTimeout(function(){ _khTryLoadArticles(attempt + 1); }, attempt * 1500 + 1500);
+          })
+          .catch(function (e) {
+            window._khHomeFetchTried = true;
+            console.warn('home articles fetch failed (attempt ' + attempt + '):', e && e.message || e);
+            if (attempt < 3) setTimeout(function(){ _khTryLoadArticles(attempt + 1); }, attempt * 1500 + 1500);
+          });
+      }
+      _khTryLoadArticles(1);
       _ldr(92);
-      Promise.all([_khAwaitTodaysPhrase(4000), _khAwaitHero(5000)]).then(function () {
+      // No-cache path: shorter splash ceiling so the page paints
+      // sooner. If the fetch hasn't completed by 2.5s, the splash
+      // dismisses onto the skeleton — that's friendlier than a 5s
+      // blank-loader hold. Owner: "걍 오래 안걸리게 하면 저딴거
+      // 필요없잖아".
+      Promise.all([_khAwaitTodaysPhrase(2500), _khAwaitHero(2500)]).then(function () {
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
         _ldr(100);
       });
