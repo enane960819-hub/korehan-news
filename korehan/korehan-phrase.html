@@ -45,7 +45,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260514f"></script>
+<script src="korehan-shared.js?v=20260515a"></script>
 <script>
 // Today's Phrase — dark, mobile-first reader.
 //
@@ -162,6 +162,32 @@ function _togglePhraseSaved(phrase) {
     });
   }
   try { localStorage.setItem(SAVED_PHRASES_KEY, JSON.stringify(list.slice(0, 200))); } catch(_) {}
+  // Mirror the toggle to the user_saved_phrases table so the
+  // collection survives a localStorage wipe / device swap. The
+  // localStorage write above is the source of truth for the
+  // current tab — DB sync is fire-and-forget. Owner-reported
+  // "db 저장하라고 그렇게 말했는데 또 사라져있네".
+  try {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    var u  = (typeof supaUser !== 'undefined') ? supaUser : null;
+    if (sb && u && phrase.ko) {
+      if (idx >= 0) {
+        sb.from('user_saved_phrases').delete()
+          .eq('user_id', u.id).eq('source_type', 'phrase').eq('source_id', phrase.ko)
+          .then(function(){}, function(){});
+      } else {
+        sb.from('user_saved_phrases').upsert({
+          user_id:     u.id,
+          source_type: 'phrase',
+          source_id:   phrase.ko,
+          msg_idx:     null,
+          ko:          phrase.ko,
+          en:          phrase.en || '',
+        }, { onConflict: 'user_id,source_type,source_id,msg_idx' })
+          .then(function(){}, function(){});
+      }
+    }
+  } catch(_){}
   if (typeof khTrackUser === 'function') {
     try { khTrackUser(idx >= 0 ? 'phrase_unsaved' : 'phrase_saved', { ko: phrase.ko }); } catch(_) {}
   }
@@ -799,7 +825,46 @@ async function renderPhrasePage() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', renderPhrasePage);
+// Pull DB-side saved phrases on load and merge into localStorage so
+// the bookmark icon reflects the user's full saved set, not just
+// whatever was on this device. Fire-and-forget — render still
+// happens immediately off the local cache.
+async function _khHydrateSavedPhrasesFromDB() {
+  try {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    var u  = (typeof supaUser !== 'undefined') ? supaUser : null;
+    if (!sb || !u) return;
+    var r = await sb.from('user_saved_phrases')
+      .select('ko,en,created_at')
+      .eq('user_id', u.id)
+      .eq('source_type', 'phrase')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (r.error || !r.data) return;
+    var local = _getSavedPhrases();
+    var seen  = Object.create(null);
+    local.forEach(function (p) { if (p && p.ko) seen[p.ko] = true; });
+    var merged = local.slice();
+    r.data.forEach(function (row) {
+      if (!row || !row.ko || seen[row.ko]) return;
+      seen[row.ko] = true;
+      merged.push({
+        ko: row.ko, rom: '', en: row.en || '',
+        saved_at: row.created_at || new Date().toISOString(),
+      });
+    });
+    if (merged.length !== local.length) {
+      try { localStorage.setItem(SAVED_PHRASES_KEY, JSON.stringify(merged.slice(0, 200))); } catch(_) {}
+      // Re-render so the CTA / bookmark reflect the merged state.
+      try { renderPhrasePage(); } catch(_){}
+    }
+  } catch(_){}
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  renderPhrasePage();
+  _khHydrateSavedPhrasesFromDB();
+});
 </script>
 </body>
 </html>
