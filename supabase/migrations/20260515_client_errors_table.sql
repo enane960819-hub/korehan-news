@@ -41,6 +41,7 @@ CREATE POLICY "client_errors anyone insert"
 
 -- SELECT: admin only. Reuse app_settings.admin_emails for parity
 -- with the rest of the admin RPCs.
+-- app_settings.value is text in prod (not jsonb) so cast both arms.
 DROP POLICY IF EXISTS "client_errors admin select" ON public.client_errors;
 CREATE POLICY "client_errors admin select"
   ON public.client_errors
@@ -49,7 +50,7 @@ CREATE POLICY "client_errors admin select"
   USING (
     auth.jwt() ->> 'email' IN (
       SELECT jsonb_array_elements_text(coalesce(
-        (SELECT value FROM public.app_settings WHERE key = 'admin_emails'),
+        (SELECT value::jsonb FROM public.app_settings WHERE key = 'admin_emails'),
         '["enane960819@gmail.com"]'::jsonb
       ))
     )
@@ -64,7 +65,7 @@ CREATE POLICY "client_errors admin delete"
   USING (
     auth.jwt() ->> 'email' IN (
       SELECT jsonb_array_elements_text(coalesce(
-        (SELECT value FROM public.app_settings WHERE key = 'admin_emails'),
+        (SELECT value::jsonb FROM public.app_settings WHERE key = 'admin_emails'),
         '["enane960819@gmail.com"]'::jsonb
       ))
     )
