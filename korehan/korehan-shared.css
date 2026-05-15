@@ -978,8 +978,11 @@ body.mobile-redesign .kh-page-hero-inner { padding: 0 !important; }
   display: flex; gap: 14px;
   overflow-x: auto; overflow-y: hidden;
   padding: 4px 4px 16px;
-  scroll-snap-type: x mandatory;
+  /* scroll-snap-type 제거: Samsung Internet 에서 horizontal touch
+     scroll 잠금 유발. touch-action 명시로 모호함 제거. */
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
   scrollbar-width: thin;
 }
 .nr-rail-scroll::-webkit-scrollbar { height: 6px; }
