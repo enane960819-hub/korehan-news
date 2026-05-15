@@ -3134,9 +3134,43 @@ function renderAllList(listEl, articles, opts) {
   }
 
   listEl.className = 'all-card-grid';
-  listEl.innerHTML = articles.map(_buildNewsCardHTML).join('');
+  // Paginated flat rendering — owner-reported "all news 렉 존나걸리고".
+  // The previous version dumped all 200+ articles into innerHTML at
+  // once, which froze the main thread for 1-2s on mobile (HTML parse
+  // + 200 lazy <img> requests at once). Now: first 30 cards
+  // immediately, infinite-scroll the rest via IntersectionObserver
+  // sentinel. Same pattern Article Study picker uses (#469).
+  var ALL_PAGE_BATCH = 30;
+  var rendered = 0;
+  function _allAppendBatch() {
+    var slice = articles.slice(rendered, rendered + ALL_PAGE_BATCH);
+    if (!slice.length) return;
+    var html = slice.map(_buildNewsCardHTML).join('');
+    var sentinel = listEl.querySelector('.all-page-sentinel');
+    if (sentinel) sentinel.remove();
+    listEl.insertAdjacentHTML('beforeend', html);
+    rendered += slice.length;
+    if (rendered < articles.length) {
+      listEl.insertAdjacentHTML('beforeend', '<div class="all-page-sentinel" aria-hidden="true" style="grid-column:1/-1;height:1px"></div>');
+      _allObserveSentinel();
+    }
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+  }
+  function _allObserveSentinel() {
+    var sentinel = listEl.querySelector('.all-page-sentinel');
+    if (!sentinel || typeof IntersectionObserver !== 'function') {
+      // Older browsers: just dump the rest now. Better than nothing.
+      while (rendered < articles.length) _allAppendBatch();
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting) { io.disconnect(); _allAppendBatch(); }
+    }, { rootMargin: '400px 0px' });
+    io.observe(sentinel);
+  }
+  listEl.innerHTML = '';
+  _allAppendBatch();
   try { _khEnsureTitlesEn(articles); } catch(e) {}
-  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
 }
 
 function filterAllLevel(level, btn) {
