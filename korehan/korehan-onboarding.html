@@ -1296,8 +1296,10 @@ async function signUpWithGoogle() {
     return;
   }
   try {
-    // SECURITY: state token for session-fixation protection (see
-    // korehan-shared.js signInWithGoogle for the full reasoning).
+    // SECURITY: state token (cookie + sessionStorage) for session-
+    // fixation protection. See korehan-shared.js signInWithGoogle
+    // for the full rationale — cookies survive privacy-mode storage
+    // wipes during OAuth redirect, sessionStorage is the fallback.
     var stateBytes = new Uint8Array(16);
     try { crypto.getRandomValues(stateBytes); } catch (_) {
       for (var i = 0; i < 16; i++) stateBytes[i] = (Math.random() * 256) | 0;
@@ -1306,6 +1308,12 @@ async function signUpWithGoogle() {
       return ('0' + b.toString(16)).slice(-2);
     }).join('');
     try { sessionStorage.setItem('kh_oauth_state', oauthState); } catch (_) {}
+    try {
+      var isSecure = location.protocol === 'https:';
+      document.cookie = 'kh_oauth_state=' + oauthState
+        + '; path=/; max-age=600; SameSite=Lax'
+        + (isSecure ? '; Secure' : '');
+    } catch (_) {}
     var { error } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: {
