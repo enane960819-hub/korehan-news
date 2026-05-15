@@ -2578,20 +2578,6 @@ function _khShowAuthFailureBanner() {
   document.body.appendChild(bar);
 }
 
-// Samsung Internet ships with "Smart Anti-Tracking" enabled by
-// default, which blocks third-party JS hosts including Supabase.
-// Same device on Chrome works fine, but on Samsung Internet every
-// articles/stories/RPC fetch is silently denied at the network layer
-// (Edge Function returns blocked / fetch resolves with status 0).
-// Detecting the UA lets us paint a helpful message instead of a
-// generic "still loading" panel.
-function _khIsSamsungInternet() {
-  try {
-    var ua = (navigator && navigator.userAgent) || '';
-    return /SamsungBrowser/i.test(ua);
-  } catch (_) { return false; }
-}
-
 function _khRenderHeroEmptyState() {
   var heroEl = document.getElementById('dyn-hero');
   if (!heroEl) return;
@@ -2601,38 +2587,11 @@ function _khRenderHeroEmptyState() {
   if (_heroSlides && _heroSlides.length) return;
   heroEl.className = '';
   heroEl.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:260px;border-radius:18px;background:#f8fbff;border:1px solid #e7eef8;padding:24px;text-align:center;';
-
-  if (_khIsSamsungInternet()) {
-    // Samsung Internet "Smart Anti-Tracking" is on by default and
-    // blocks the Supabase host. The user has to either disable it
-    // for this site OR switch to Chrome. Spell that out in the
-    // empty state rather than leaving them staring at a spinner.
-    heroEl.innerHTML =
-        '<div style="max-width:380px;line-height:1.5">'
-      + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:0 0 8px">Samsung Internet is blocking content</div>'
-      + '<div style="font-size:13px;color:#475569;margin:0 0 14px">Samsung Internet\'s <b>Smart Anti-Tracking</b> blocks our news database by default. To see the latest articles:</div>'
-      + '<div style="text-align:left;font-size:13px;color:#334155;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin:0 0 14px">'
-      +   '<div style="margin-bottom:6px"><b>Option 1 — Whitelist this site:</b></div>'
-      +   '<div style="margin-bottom:10px;color:#64748b">Tap the ☰ menu → Settings → Sites and downloads → Smart Anti-Tracking → Off (or add korehani.com).</div>'
-      +   '<div style="margin-bottom:6px"><b>Option 2 — Use Chrome:</b></div>'
-      +   '<div style="color:#64748b">Open <code>korehani.com</code> in Chrome and everything just works.</div>'
-      + '</div>'
-      + '<button onclick="location.reload()" style="padding:9px 18px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#0f172a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">I fixed it — try again</button>'
-      + '</div>';
-    // Log so the owner can confirm Samsung-Browser is the actual
-    // root cause in client_errors, not a coincidence.
-    if (typeof kh_log_error === 'function') {
-      kh_log_error('Samsung Internet hero empty state shown', {
-        feature: 'home_hero',
-        ua: (navigator && navigator.userAgent) || '',
-      });
-    }
-    return;
-  }
-
-  // Generic recovery panel — no red alarm. The 3-attempt retry path
-  // in init handles transient empties silently; this only paints
-  // after the safety net fires, meaning nothing ever loaded.
+  // Quiet recovery panel. The retries + safety net at startup mean
+  // this only paints when fetches are truly stuck — not on a slow
+  // LTE blip. Owner: "삼성브라우저 저딴거 넣지말고 로딩되게 근본 문제를
+  // 해결하라고" — UA-specific copy removed; root cause is fixed via
+  // the articles RLS migration (20260515_articles_anon_select_rls.sql).
   heroEl.innerHTML =
       '<div style="max-width:340px">'
     + '<div style="font-size:14px;font-weight:700;color:#334155;margin:0 0 10px;line-height:1.5">Still loading the latest articles…</div>'
@@ -2654,18 +2613,16 @@ function _khRenderHeroEmptyState() {
   function arm() {
     var heroEl = document.getElementById('dyn-hero');
     if (!heroEl) return;
-    // Samsung Internet's anti-tracking blocks Supabase silently
-    // (status 0 — never resolves either way), so the 3-retry path
-    // also never errors and never re-renders. Fire the empty state
-    // sooner on Samsung so the user sees the "whitelist this site"
-    // help text instead of staring at a skeleton for 25 seconds.
-    var ceiling = _khIsSamsungInternet() ? 8000 : 25000;
     setTimeout(function() {
       if (_heroSlides && _heroSlides.length) return;
+      // Detect the still-skeleton case by class — initial markup has
+      // home-hero-loading; a successful render replaces className.
+      // 12s ceiling: past the 3-attempt retry window (~8s + fetch
+      // latency) but not so long the user gives up and closes the tab.
       if (/home-hero-loading/.test(heroEl.className || '')) {
         try { _khRenderHeroEmptyState(); } catch(_){}
       }
-    }, ceiling);
+    }, 12000);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', arm, { once: true });
@@ -8328,9 +8285,20 @@ document.addEventListener('DOMContentLoaded', async function() {
               try { renderHomePage(); } catch(_){}
               return;
             }
-            // 0 rows — retry up to 3 times with backoff. Empty isn't
-            // necessarily fatal (RLS warmup, edge cache miss, etc.).
+            // 0 rows. Empty isn't necessarily fatal (RLS warmup,
+            // network blip), so retry 3 times. On the LAST attempt,
+            // log it so the owner can see in /korehan-x9f4k2m7-errors
+            // whether the articles fetch is silently returning empty
+            // for real users — that's almost always an RLS issue
+            // and points at the right migration to apply.
             if (attempt < 3) setTimeout(function(){ _khTryLoadArticles(attempt + 1); }, attempt * 1500 + 1500);
+            else if (typeof kh_log_error === 'function') {
+              kh_log_error('home articles fetch returned 0 rows after 3 attempts (likely articles RLS denies anon)', {
+                feature: 'home_hero',
+                authed: !!(typeof supaUser !== 'undefined' && supaUser),
+                ua: (navigator && navigator.userAgent || '').slice(0, 200),
+              });
+            }
           })
           .catch(function (e) {
             window._khHomeFetchTried = true;
