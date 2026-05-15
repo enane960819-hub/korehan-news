@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20260515i">
+<link rel="stylesheet" href="korehan-shared.css?v=20260515j">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -312,14 +312,16 @@
   flex-direction: row;
   gap: 14px;
   overflow-x: auto;
-  overflow-y: visible;
+  /* `overflow-y: hidden` is REQUIRED (not visible). When one axis
+     is auto/scroll/hidden and the other is visible, CSS spec
+     computes the `visible` axis as `auto` — Chrome on Android
+     honored this strictly, so vertical swipes on cards were
+     captured by the rail (which has nothing to scroll vertically)
+     and never propagated to <body>. Result: page wouldn't scroll
+     up/down when the finger started on a card. Owner-reported
+     "기사 카드 스크롤 안되는 이슈 크롬에서만 발생함". */
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  /* NO touch-action override. Browser default = auto = allow any
-     direction. `pan-x` killed vertical pan ON the rail (because
-     descendants inherit gesture-arbitration scope). `pan-x pan-y`
-     blocked propagation to <body> on some browsers. Just dropping
-     scroll-snap-type was the actual fix all along — touch-action
-     wasn't the bug. Owner-reported repeatedly. */
   scrollbar-width: none;
   padding-bottom: 10px;
   margin-bottom: 16px;

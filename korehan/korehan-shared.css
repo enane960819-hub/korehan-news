@@ -584,6 +584,7 @@ body.kh-page-conv    { --kh-hue-1:#0f3a4d; --kh-hue-2:#0891b2; --kh-hue-3:rgba(1
   .kh-filter-bar {
     flex-wrap: nowrap;
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     padding-right: 6px;
