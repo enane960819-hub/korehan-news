@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Errors — Admin</title>
+<link rel="stylesheet" href="korehan-shared.css?v=20260515a">
+<style>
+.ce-wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; font-family: 'Source Sans 3', system-ui, sans-serif; }
+.ce-head { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
+.ce-h1 { font-family:'Playfair Display', serif; font-weight:900; font-size:26px; color:#0f172a; margin:0; }
+.ce-sub { font-size:13px; color:#64748b; margin:0; max-width:600px; line-height:1.55; }
+.ce-toolbar { display:flex; gap:8px; flex-wrap:wrap; }
+.ce-toolbar button { padding:9px 16px; border:1px solid #cbd5e1; background:#fff; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; }
+.ce-toolbar button.primary { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+.ce-toolbar button.danger  { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }
+
+.ce-group { background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; box-shadow:0 2px 12px rgba(15,23,42,.04); margin-bottom:14px; }
+.ce-group-head { padding:14px 18px; background:#f8fafc; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; gap:12px; align-items:center; cursor:pointer; }
+.ce-group-msg { font-weight:800; color:#0f172a; font-size:14px; word-break:break-word; flex:1; }
+.ce-group-count { font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:#fee2e2; color:#b91c1c; flex-shrink:0; }
+.ce-group-when { font-size:11px; color:#64748b; flex-shrink:0; }
+.ce-occ { padding:12px 18px; border-top:1px solid #f1f5f9; font-size:12px; color:#475569; display:none; }
+.ce-group.open .ce-occ { display:block; }
+.ce-occ-row { display:grid; grid-template-columns: 110px 1fr; gap:8px; padding:6px 0; }
+.ce-occ-label { font-weight:700; color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+.ce-occ-val { font-family:'Menlo', 'Consolas', monospace; font-size:11px; word-break:break-all; }
+.ce-stack { background:#0f172a; color:#e2e8f0; padding:10px 14px; border-radius:8px; font-size:11px; white-space:pre-wrap; font-family:'Menlo', monospace; max-height:200px; overflow:auto; }
+.ce-loading, .ce-empty { padding:60px 20px; text-align:center; color:#64748b; }
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+<div class="ce-wrap">
+  <div class="ce-head">
+    <div>
+      <h1 class="ce-h1">Client Errors</h1>
+      <p class="ce-sub">Every <code>catch</code> branch that calls <code>kh_log_error()</code>, plus global <code>window.error</code> and unhandled promise rejections. Grouped by message; click to expand.</p>
+    </div>
+    <div class="ce-toolbar">
+      <button class="primary" onclick="ceRefresh()">↻ Refresh</button>
+      <button onclick="ceLoadRange(7)">7d</button>
+      <button onclick="ceLoadRange(1)">24h</button>
+      <button onclick="ceLoadRange(0.5)">12h</button>
+      <button class="danger" onclick="ceClearOlder(7)">Delete &gt;7d</button>
+    </div>
+  </div>
+  <div id="ce-results" class="ce-loading">Loading client errors…</div>
+</div>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/security.js?v=20260502a"></script>
+<script src="js/core/storage.js?v=20260502a"></script>
+<script src="korehan-shared.js?v=20260515a"></script>
+<script>
+var _ceRangeDays = 1;
+function $(id) { return document.getElementById(id); }
+function _esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _fmtWhen(iso) {
+  try {
+    var d = new Date(iso);
+    var diff = Date.now() - d.getTime();
+    if (diff < 60000) return Math.floor(diff/1000) + 's ago';
+    if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+    return d.toLocaleString();
+  } catch(_) { return iso; }
+}
+
+async function ceRefresh() {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) { $('ce-results').textContent = 'Supabase not initialized'; return; }
+  $('ce-results').className = 'ce-loading';
+  $('ce-results').textContent = 'Loading client errors…';
+  var since = new Date(Date.now() - _ceRangeDays * 86400000).toISOString();
+  var r = await sb.from('client_errors')
+    .select('id,user_id,message,stack,url,user_agent,context,created_at')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(500);
+  if (r.error) {
+    $('ce-results').className = 'ce-empty';
+    $('ce-results').textContent = 'Error fetching: ' + (r.error.message || 'unknown') + ' — is the client_errors table migrated?';
+    return;
+  }
+  var rows = r.data || [];
+  if (!rows.length) {
+    $('ce-results').className = 'ce-empty';
+    $('ce-results').textContent = 'No errors in the last ' + _ceRangeDays + ' day(s).';
+    return;
+  }
+  // Group by message
+  var groups = Object.create(null);
+  rows.forEach(function (row) {
+    var k = row.message || '(empty)';
+    if (!groups[k]) groups[k] = { msg: k, rows: [], latest: row.created_at };
+    groups[k].rows.push(row);
+    if (row.created_at > groups[k].latest) groups[k].latest = row.created_at;
+  });
+  var groupList = Object.values(groups).sort(function (a, b) {
+    return new Date(b.latest) - new Date(a.latest);
+  });
+
+  var html = '';
+  groupList.forEach(function (g, gi) {
+    var firstFew = g.rows.slice(0, 20);
+    html += '<div class="ce-group" id="ce-g-' + gi + '">'
+      + '<div class="ce-group-head" onclick="ceToggle(' + gi + ')">'
+      +   '<div class="ce-group-msg">' + _esc(g.msg) + '</div>'
+      +   '<div class="ce-group-when">' + _fmtWhen(g.latest) + '</div>'
+      +   '<div class="ce-group-count">' + g.rows.length + '×</div>'
+      + '</div>';
+    firstFew.forEach(function (row) {
+      html += '<div class="ce-occ">'
+        + '<div class="ce-occ-row"><div class="ce-occ-label">When</div><div class="ce-occ-val">' + _esc(row.created_at) + '</div></div>'
+        + '<div class="ce-occ-row"><div class="ce-occ-label">User</div><div class="ce-occ-val">' + _esc(row.user_id || '(anon)') + '</div></div>'
+        + '<div class="ce-occ-row"><div class="ce-occ-label">URL</div><div class="ce-occ-val">' + _esc(row.url || '') + '</div></div>'
+        + '<div class="ce-occ-row"><div class="ce-occ-label">UA</div><div class="ce-occ-val">' + _esc(row.user_agent || '') + '</div></div>'
+        + (row.context ? '<div class="ce-occ-row"><div class="ce-occ-label">Context</div><div class="ce-occ-val">' + _esc(JSON.stringify(row.context)) + '</div></div>' : '')
+        + (row.stack ? '<div class="ce-occ-row"><div class="ce-occ-label">Stack</div><div class="ce-occ-val"><div class="ce-stack">' + _esc(row.stack) + '</div></div></div>' : '')
+        + '</div>';
+    });
+    html += '</div>';
+  });
+  $('ce-results').className = '';
+  $('ce-results').innerHTML = html;
+}
+
+window.ceToggle = function (gi) {
+  var el = document.getElementById('ce-g-' + gi);
+  if (el) el.classList.toggle('open');
+};
+
+window.ceLoadRange = function (days) {
+  _ceRangeDays = days;
+  ceRefresh();
+};
+
+window.ceClearOlder = async function (days) {
+  if (!confirm('Delete error rows older than ' + days + ' day(s)?')) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  var cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  var r = await sb.from('client_errors').delete().lt('created_at', cutoff);
+  if (r.error) alert('Delete failed: ' + (r.error.message || 'unknown'));
+  else ceRefresh();
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+  setTimeout(ceRefresh, 400);
+});
+</script>
+</body>
+</html>

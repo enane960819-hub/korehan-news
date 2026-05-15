@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schema Health — Admin</title>
+<link rel="stylesheet" href="korehan-shared.css?v=20260515a">
+<style>
+.sh-wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; font-family: 'Source Sans 3', system-ui, sans-serif; }
+.sh-head { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
+.sh-h1 { font-family:'Playfair Display', serif; font-weight:900; font-size:26px; color:#0f172a; margin:0; }
+.sh-sub { font-size:13px; color:#64748b; max-width:640px; line-height:1.55; margin:0; }
+.sh-table { width:100%; background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; box-shadow:0 2px 12px rgba(15,23,42,.04); margin-bottom:24px; }
+.sh-row { display:grid; grid-template-columns: 1fr auto; padding:14px 16px; border-top:1px solid #f1f5f9; gap:12px; align-items:start; }
+.sh-row:first-child { border-top:0; }
+.sh-tbl-name { font-weight:800; color:#0f172a; font-size:14px; }
+.sh-tbl-status { font-size:12px; font-weight:700; padding:3px 10px; border-radius:999px; }
+.sh-ok    { background:#dcfce7; color:#15803d; }
+.sh-warn  { background:#fef3c7; color:#92400e; }
+.sh-bad   { background:#fee2e2; color:#b91c1c; }
+.sh-cols  { font-size:12px; color:#475569; line-height:1.6; margin-top:8px; word-break:break-word; }
+.sh-col   { display:inline-block; margin-right:6px; margin-bottom:4px; padding:2px 8px; border-radius:6px; background:#f1f5f9; }
+.sh-col.missing { background:#fee2e2; color:#b91c1c; font-weight:700; }
+.sh-col.extra   { background:#fef9c3; color:#854d0e; }
+.sh-fix { margin-top:10px; }
+.sh-fix code { display:block; background:#0f172a; color:#e2e8f0; padding:10px 14px; border-radius:8px; font-size:12px; font-family: 'Menlo', 'Consolas', monospace; white-space:pre-wrap; word-break:break-all; }
+.sh-toolbar { display:flex; gap:8px; margin-bottom:14px; }
+.sh-toolbar button { padding:9px 18px; border:1px solid #cbd5e1; background:#fff; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer; }
+.sh-toolbar button.primary { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
+.sh-loading { text-align:center; padding:60px 20px; color:#64748b; }
+.sh-empty   { padding:60px 20px; text-align:center; color:#64748b; }
+.sh-section-title { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#64748b; margin: 18px 0 8px; }
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+<div class="sh-wrap">
+  <div class="sh-head">
+    <div>
+      <h1 class="sh-h1">Schema Health</h1>
+      <p class="sh-sub">Diffs the production database against the columns the frontend expects to write. Red = upserts to that table will silently roll back. Run the SQL snippet in Supabase SQL Editor to fix.</p>
+    </div>
+    <div class="sh-toolbar">
+      <button class="primary" onclick="schemaRefresh()">↻ Re-check</button>
+    </div>
+  </div>
+  <div id="sh-results" class="sh-loading">Inspecting schema…</div>
+</div>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/security.js?v=20260502a"></script>
+<script src="js/core/storage.js?v=20260502a"></script>
+<script src="korehan-shared.js?v=20260515a"></script>
+<script>
+// Expected schema — single source of truth for "what columns does
+// the frontend write to which table". Add new entries here when you
+// add a feature that writes a new column. The health check tells
+// you whether prod has caught up.
+//
+// Each entry: { table: 'table_name', required: ['col1', 'col2', ...] }
+//   - required = columns the frontend code references in
+//     .insert()/.upsert()/.update() calls.
+//   - The page also lists "extra" columns that exist in prod but
+//     aren't in the required list — those are usually fine
+//     (legacy / admin-only) but flagged for visibility.
+var EXPECTED_SCHEMA = [
+  { table: 'articles',                 required: ['id','title','title_en','title_ko','body','image','section','level','date','published_at','created_at','updated_at','status','view_count','featured','reporter_id','reporter','video_url','use_video','video_kind','video_fallback_url'] },
+  { table: 'article_study_content',    required: ['article_id','vocab','phrases','wrong_phrases','word_order','questions','custom_highlights','admin_edited','prompt_version','updated_at'] },
+  { table: 'article_cache',            required: ['article_id','vocab','grammar','mission','updated_at'] },
+  { table: 'conversations_data',       required: ['id','data','level','category','topic','created_at','updated_at','status'] },
+  { table: 'stories_data',             required: ['id','data','level','category','title','created_at','updated_at','status'] },
+  { table: 'vocabulary_bank',          required: ['id','ko','en','rom','level','category','created_at'] },
+  { table: 'hover_vocab_master',       required: ['word','definition','rom','created_at'] },
+  { table: 'app_settings',             required: ['key','value','updated_at'] },
+  { table: 'user_stats',               required: ['user_id','total_xp','streak_days','last_active','level','onboarded','words_learned','articles_read','conversations_completed','stories_completed'] },
+  { table: 'user_read_history',        required: ['user_id','content_type','content_id','read_at'] },
+  { table: 'user_saved_words',         required: ['user_id','ko','en','rom','saved_at'] },
+  { table: 'user_saved_phrases',       required: ['user_id','source_type','source_id','msg_idx','ko','en','created_at'] },
+  { table: 'user_daily_progress',      required: ['user_id','date','reading_minutes','words_added','quiz_score'] },
+  { table: 'user_quiz_results',        required: ['user_id','quiz_type','content_id','score','total','created_at'] },
+  { table: 'study_daily_content',      required: ['date','level','content','created_at','updated_at'] },
+  { table: 'signup_notifications_log', required: ['email','created_at'] },
+  { table: 'article_cache_generation_log', required: ['article_id','status','error','created_at'] },
+  { table: 'client_errors',            required: ['user_id','message','stack','url','user_agent','context','created_at'] },
+];
+
+function $(id) { return document.getElementById(id); }
+function _esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function _fetchSchemaForTable(sb, table) {
+  try {
+    var r = await sb.rpc('inspect_table_columns', { p_table: table });
+    if (r.error) return { ok: false, error: r.error.message || 'rpc error' };
+    return { ok: true, cols: (r.data || []).map(function (c) { return c.column_name; }) };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || 'fetch failed' };
+  }
+}
+
+async function schemaRefresh() {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) { $('sh-results').textContent = 'Supabase not initialized'; return; }
+  var u = (typeof supaUser !== 'undefined') ? supaUser : null;
+  if (!u) { $('sh-results').textContent = 'Sign in as admin to run schema health'; return; }
+
+  $('sh-results').className = 'sh-loading';
+  $('sh-results').textContent = 'Inspecting schema…';
+
+  // Pull table list once so missing tables are detected too.
+  var allTables = [];
+  try {
+    var lr = await sb.rpc('inspect_public_tables');
+    if (!lr.error && lr.data) allTables = lr.data.map(function (r) { return r.table_name; });
+  } catch (_) {}
+
+  var rows = await Promise.all(EXPECTED_SCHEMA.map(async function (entry) {
+    if (allTables.length && allTables.indexOf(entry.table) < 0) {
+      return { entry: entry, status: 'missing-table', actual: [] };
+    }
+    var got = await _fetchSchemaForTable(sb, entry.table);
+    if (!got.ok) return { entry: entry, status: 'error', error: got.error, actual: [] };
+    var actualSet = new Set(got.cols);
+    var missing = entry.required.filter(function (c) { return !actualSet.has(c); });
+    var extra   = got.cols.filter(function (c) { return entry.required.indexOf(c) < 0; });
+    var status  = missing.length ? 'missing-cols' : 'ok';
+    return { entry: entry, status: status, actual: got.cols, missing: missing, extra: extra };
+  }));
+
+  var html = '';
+  var counts = { ok: 0, warn: 0, bad: 0 };
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var entry = r.entry;
+    var pill, body;
+
+    if (r.status === 'ok') {
+      counts.ok++;
+      pill = '<span class="sh-tbl-status sh-ok">OK</span>';
+      body = '<div class="sh-cols">' + entry.required.map(function (c) { return '<span class="sh-col">' + _esc(c) + '</span>'; }).join('') + '</div>';
+      if (r.extra.length) {
+        body += '<div class="sh-cols" style="margin-top:6px;color:#854d0e">Extra in prod (not flagged): ' + r.extra.map(function (c) { return '<span class="sh-col extra">' + _esc(c) + '</span>'; }).join('') + '</div>';
+      }
+    } else if (r.status === 'missing-cols') {
+      counts.bad++;
+      pill = '<span class="sh-tbl-status sh-bad">' + r.missing.length + ' missing</span>';
+      var sql = 'ALTER TABLE public.' + entry.table + '\n  ' +
+        r.missing.map(function (c) { return 'ADD COLUMN IF NOT EXISTS ' + c + ' /* type? — fill in */'; }).join(',\n  ') + ';';
+      body = '<div class="sh-cols">'
+        + r.missing.map(function (c) { return '<span class="sh-col missing">✗ ' + _esc(c) + '</span>'; }).join('')
+        + entry.required.filter(function (c) { return r.missing.indexOf(c) < 0; }).map(function (c) { return '<span class="sh-col">' + _esc(c) + '</span>'; }).join('')
+        + '</div>'
+        + '<div class="sh-fix"><code>' + _esc(sql) + '</code></div>';
+    } else if (r.status === 'missing-table') {
+      counts.bad++;
+      pill = '<span class="sh-tbl-status sh-bad">TABLE MISSING</span>';
+      body = '<div class="sh-cols" style="color:#b91c1c">Run the migration that creates <code>public.' + _esc(entry.table) + '</code>.</div>';
+    } else {
+      counts.warn++;
+      pill = '<span class="sh-tbl-status sh-warn">error</span>';
+      body = '<div class="sh-cols" style="color:#b91c1c">' + _esc(r.error || 'unknown') + '</div>';
+    }
+
+    html += '<div class="sh-row">'
+      +    '<div><div class="sh-tbl-name">' + _esc(entry.table) + '</div>' + body + '</div>'
+      +    '<div>' + pill + '</div>'
+      + '</div>';
+  }
+
+  var summary = '<div class="sh-section-title">' + counts.ok + ' OK · ' + counts.bad + ' need migration · ' + counts.warn + ' errors</div>';
+  $('sh-results').className = '';
+  $('sh-results').innerHTML = summary + '<div class="sh-table">' + html + '</div>';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  setTimeout(schemaRefresh, 400); // wait for auth bootstrap
+});
+</script>
+</body>
+</html>

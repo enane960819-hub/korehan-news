@@ -114,6 +114,64 @@ function kh_t(key, fallback) {
 }
 window.kh_t = kh_t;
 
+// ── Client error logging ───────────────────────────────────────
+// Fire-and-forget POST to public.client_errors. Use this anywhere
+// you currently `catch(_) {}` something the owner would want to
+// know about. Rate-limited per session so a hot loop can't flood
+// the table. Drops the row silently on RLS / network failure —
+// failing to log a failure shouldn't crash the page.
+//
+//   kh_log_error('descriptive message', { extra: 'context' });
+//   kh_log_error(err);  // passes err.message + err.stack
+var _khErrLogged = 0;
+var _KH_ERR_LOG_CAP = 25; // per page-load
+var _khErrSeen = Object.create(null);
+function kh_log_error(msgOrErr, context) {
+  try {
+    var message = '';
+    var stack = '';
+    if (msgOrErr && typeof msgOrErr === 'object') {
+      message = String(msgOrErr.message || msgOrErr.toString() || '').slice(0, 500);
+      stack   = String(msgOrErr.stack || '').slice(0, 4000);
+    } else {
+      message = String(msgOrErr || '').slice(0, 500);
+    }
+    if (!message) return;
+    // De-dupe within this page-load: same message text only logged
+    // once. Stops a 60Hz scroll loop from filling the table.
+    var key = message + '|' + (typeof context === 'object' && context ? JSON.stringify(context).slice(0, 200) : '');
+    if (_khErrSeen[key]) return;
+    _khErrSeen[key] = true;
+    if (_khErrLogged++ >= _KH_ERR_LOG_CAP) return;
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (!sb) return;
+    var u  = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null;
+    sb.from('client_errors').insert({
+      user_id:    u ? u.id : null,
+      message:    message,
+      stack:      stack || null,
+      url:        (typeof location !== 'undefined') ? location.href : null,
+      user_agent: (typeof navigator !== 'undefined') ? (navigator.userAgent || '').slice(0, 500) : null,
+      context:    (context && typeof context === 'object') ? context : (context ? { value: String(context) } : {}),
+    }).then(function(){}, function(){});
+  } catch (_) {}
+}
+window.kh_log_error = kh_log_error;
+
+// Global uncaught error / unhandled promise listeners — the safety
+// net that catches everything no try/catch noticed. Same rate-limit
+// applies.
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', function (ev) {
+    kh_log_error(ev.error || ev.message || 'window.error', {
+      filename: ev.filename, lineno: ev.lineno, colno: ev.colno,
+    });
+  });
+  window.addEventListener('unhandledrejection', function (ev) {
+    kh_log_error(ev.reason || 'unhandledrejection', { kind: 'unhandledrejection' });
+  });
+}
+
 // ── Global difficulty filter ───────────────────────────────────
 var _activeDiff = (function(){ try { return localStorage.getItem('kh_diff') || 'all'; } catch(e){ return 'all'; } })();
 function khSetDiff(val) {
@@ -8234,6 +8292,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             window._khHomeFetchTried = true;
             console.warn('home articles fetch failed (attempt ' + attempt + '):', e && e.message || e);
             if (attempt < 3) setTimeout(function(){ _khTryLoadArticles(attempt + 1); }, attempt * 1500 + 1500);
+            else if (typeof kh_log_error === 'function') kh_log_error(e || 'home articles fetch failed after 3 attempts', { feature: 'home_hero', attempt: attempt });
           });
       }
       _khTryLoadArticles(1);

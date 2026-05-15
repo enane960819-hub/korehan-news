@@ -169,8 +169,6 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
             return '<button class="qa-choice-btn" onclick="KHQuizArena._selectMC(this,\'' + _escAttr(c) + '\')" style="width:100%;padding:14px 16px;border-radius:12px;border:1.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font-size:16px;font-weight:700;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;text-align:center;transition:all .15s">' + _esc(c) + '</button>';
           }).join('')
         + '</div>';
-    }
-
     } else if (q.type === 'listening') {
       var safeKo = q.word_ko ? q.word_ko.replace(/'/g, "\\'") : '';
       html = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">' + _esc(q.label || 'Listen and choose the meaning') + '</div>'
