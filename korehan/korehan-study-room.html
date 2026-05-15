@@ -21454,13 +21454,15 @@ async function asSelectArticle(id) {
     '<div class="su-loading"><div class="su-spinner"></div><div id="as-loading-msg">Preparing your study session…</div></div>';
   _asSetNav('none','none','none');
 
-  // Run body / progress / content fetches IN PARALLEL instead of one
-  // after the other. Three awaits at ~500ms each = ~1.5s sequentially;
-  // Promise.all flattens to ~500ms (the slowest one). On Samsung
-  // Internet LTE the difference is 2-3x faster perceived.
+  // Body + progress in parallel — both fast (cached / small). Render
+  // the step immediately after those resolve so the user sees vocab
+  // cards (from sessionStorage/localStorage cache if any) or an empty
+  // "still loading" placeholder rather than a 15-second blank
+  // "Loading saved content…" spinner. The DB / AI study-content
+  // fetch runs in the BACKGROUND and re-renders the step when it
+  // finishes. Owner-reported "saved content 로딩에 15초는 개에바지".
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   await Promise.all([
-    // Body fetch (skip when picker or localStorage already had it).
     (async function () {
       if (art.body || !sb) return;
       try {
@@ -21473,15 +21475,52 @@ async function asSelectArticle(id) {
         }
       } catch(_) {}
     })(),
-    // Progress restore — localStorage first, then DB.
     (async function () {
       if (_asRestoreProgress()) return;
       try { await _asLoadProgressFromDB(); } catch(_) {}
     })(),
-    // Study content — localStorage / sessionStorage / DB / AI fallback.
-    _asLoadContent()
   ]);
+  // Synchronously pull from sessionStorage / localStorage so cache
+  // hits paint instantly without waiting for the DB at all. Only
+  // when both miss do we end up in the slow path below.
+  _asLoadContentFromCacheSync();
   _asRenderStep();
+  // Fire the rest of _asLoadContent (DB + AI fallback) in the
+  // background. If it ends up with vocab the cache didn't have, the
+  // re-render swaps the placeholder out for real cards.
+  _asLoadContent().then(function () {
+    try { _asRenderStep(); } catch(_){}
+  });
+}
+
+// Synchronous slice of _asLoadContent — checks the two local caches
+// only. Used by _asSelectArticle so the initial paint never has to
+// await anything. Mirrors the cache-check half of _asLoadContent.
+function _asLoadContentFromCacheSync() {
+  if (!_asCurrentArt) return false;
+  var key   = 'as_c3_' + _asCurrentArt.id;
+  var lsKey = 'kh_as_content_' + _asCurrentArt.id;
+  try {
+    var c = sessionStorage.getItem(key);
+    if (c) {
+      var parsedSS = JSON.parse(c);
+      if (parsedSS && Array.isArray(parsedSS.vocab) && parsedSS.vocab.length > 0) {
+        _asStudyContent = parsedSS; return true;
+      }
+    }
+  } catch(_) {}
+  try {
+    var lsRaw = localStorage.getItem(lsKey);
+    if (lsRaw) {
+      var parsedLS = JSON.parse(lsRaw);
+      if (parsedLS && Array.isArray(parsedLS.vocab) && parsedLS.vocab.length > 0) {
+        _asStudyContent = parsedLS;
+        try { sessionStorage.setItem(key, lsRaw); } catch(_) {}
+        return true;
+      }
+    }
+  } catch(_) {}
+  return false;
 }
 
 function _asFormatBody(b) {
@@ -21537,10 +21576,19 @@ async function _asLoadContent() {
   var lm0 = document.getElementById('as-loading-msg');
   if (lm0) lm0.textContent = 'Loading saved content…';
   if (!supaUser) return;
-  // 3. DB.
+  // 3. DB — but RACE against a 4s timeout. Owner-reported 15s+
+  // "Loading saved content…" hangs on slow LTE: PostgREST select
+  // sometimes stalls without erroring (no error, no data — promise
+  // just sits). Without a ceiling the entire step renders blank
+  // until the query finally resolves. 4s is enough for any real
+  // query; beyond that we'd rather show stale (empty) than hang.
   try {
     var sb = getSupa();
-    var dr = await sb.from('article_study_content').select('*').eq('article_id', String(_asCurrentArt.id)).maybeSingle();
+    var dbPromise = sb.from('article_study_content').select('*').eq('article_id', String(_asCurrentArt.id)).maybeSingle();
+    var timeoutPromise = new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error('article_study_content fetch timeout (4s)')); }, 4000);
+    });
+    var dr = await Promise.race([dbPromise, timeoutPromise]);
     var dbRow = dr.data;
     // Relaxed cache-hit condition: if the row exists and has non-empty
     // vocab, USE IT. Previous version also required prompt_version >= 2
