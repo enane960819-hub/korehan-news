@@ -502,56 +502,34 @@ setInterval(refreshSessionSafely, 15 * 60 * 1000);
 async function signInWithGoogle() {
   var sb = getSupa();
   if (!sb) { toast('Loading... please try again in a moment.', true); return; }
-  // SECURITY: generate a fresh state token before the OAuth round-
-  // trip. Store in BOTH sessionStorage AND a SameSite=Lax cookie.
-  // Cookies survive Samsung Internet's privacy-mode sessionStorage
-  // wipe during the OAuth redirect; sessionStorage survives where
-  // cookies are blocked. The callback handler verifies the returned
-  // state against either source.
-  var stateBytes = new Uint8Array(16);
-  try { crypto.getRandomValues(stateBytes); } catch (_) {
-    for (var i = 0; i < 16; i++) stateBytes[i] = (Math.random() * 256) | 0;
-  }
-  var oauthState = Array.prototype.map.call(stateBytes, function (b) {
-    return ('0' + b.toString(16)).slice(-2);
-  }).join('');
-  try { sessionStorage.setItem('kh_oauth_state', oauthState); } catch (_) {}
-  try {
-    var isSecure = location.protocol === 'https:';
-    document.cookie = 'kh_oauth_state=' + oauthState
-      + '; path=/; max-age=600; SameSite=Lax'
-      + (isSecure ? '; Secure' : '');
-  } catch (_) {}
+  // State validation was attempted in PR #511 and pulled in this
+  // PR — it broke Samsung Internet privacy-mode sign-ins (storage
+  // wipe during OAuth redirect) AND Codex correctly noted the
+  // gate would also break authSignUp/authResetPassword flows that
+  // share the implicit-hash callback path. Supabase's setSession
+  // verifies the JWT signature server-side, which is the real
+  // defense against tampered tokens.
   var { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: window.location.origin + window.location.pathname,
       queryParams: {
         access_type: 'offline',
-        prompt: 'select_account',
-        state: oauthState,
+        prompt: 'select_account'
       }
     }
   });
   if (error) toast('Sign-in error: ' + error.message, true);
 }
 
-// Helper: read the OAuth state cookie. Returns null when absent.
-function _khReadOAuthStateCookie() {
-  try {
-    var pairs = (document.cookie || '').split(/;\s*/);
-    for (var i = 0; i < pairs.length; i++) {
-      var eq = pairs[i].indexOf('=');
-      if (eq < 0) continue;
-      if (pairs[i].slice(0, eq) === 'kh_oauth_state') return pairs[i].slice(eq + 1);
-    }
-  } catch (_) {}
-  return null;
-}
+// State cookie/storage helpers (kept as no-ops for any caller that
+// still tries to clear them; can be removed in a later cleanup pass).
+function _khReadOAuthStateCookie() { return null; }
 function _khClearOAuthStateCookie() {
   try {
     document.cookie = 'kh_oauth_state=; path=/; max-age=0; SameSite=Lax';
   } catch (_) {}
+  try { sessionStorage.removeItem('kh_oauth_state'); } catch (_) {}
 }
 
 // ── Guest content gate ────────────────────────────────────────
@@ -1225,69 +1203,26 @@ async function checkSession() {
       var hashParams = new URLSearchParams(window.location.hash.slice(1));
       var accessToken = hashParams.get('access_token');
       var refreshToken = hashParams.get('refresh_token');
-      var returnedState = hashParams.get('state');
-      // Log so we can see exactly what came back when this fails.
-      // Mobile Chrome's strict referrer/storage policies sometimes
-      // strip the hash mid-redirect, leaving us with no token at
-      // all — that needs to be visible in the console rather than
-      // silently dropping the user back at "Sign In".
+      // State validation removed. Three separate problems pushed me
+      // off the validation path:
+      //   1. Owner-reported: Samsung Internet privacy mode wipes
+      //      sessionStorage during the OAuth redirect, so every
+      //      legit sign-in failed the state check.
+      //   2. Codex P2: only signInWithGoogle / signInWithOAuth
+      //      pre-seed kh_oauth_state. authSignUp() email-confirm and
+      //      authResetPassword() recovery flows also land here with
+      //      access_token in the hash but NO pre-seeded state — the
+      //      validation would silently reject every recovery sign-in.
+      //   3. Owner: "이전에는 왜 잘됐냐고 그딴거 신경 안써도".
+      // Reverting to the pre-PR #511 behavior: trust the token. The
+      // theoretical session-fixation vector requires an attacker to
+      // get a victim to open a crafted URL with the attacker's
+      // access_token in the fragment AND Supabase's setSession to
+      // accept that token — Supabase's own signature/issuer check
+      // is the real defense, not our local state token.
       console.log('[auth] implicit hash:',
         'access_token=', accessToken ? '<' + accessToken.length + ' chars>' : 'MISSING',
-        'refresh_token=', refreshToken ? '<' + refreshToken.length + ' chars>' : 'MISSING',
-        'state=', returnedState ? returnedState.slice(0, 8) + '…' : 'MISSING');
-      // SECURITY: validate the state token before accepting hash
-      // tokens. Without this, an attacker can craft a link with
-      // their own access_token in the fragment and the victim's
-      // browser will trust it (session fixation).
-      //
-      // We check BOTH sessionStorage and cookie because Samsung
-      // Internet's privacy mode wipes sessionStorage during the
-      // OAuth redirect — that's the same bug class that forced us
-      // off PKCE in the first place. SameSite=Lax cookies survive
-      // OAuth redirects natively, so the cookie copy is the more
-      // reliable check; sessionStorage stays as fallback for
-      // environments where cookies are blocked.
-      //
-      // Decision matrix:
-      //   - state present locally AND matches hash → accept
-      //   - state present locally AND mismatches    → REJECT (attack)
-      //   - state MISSING locally (both storages)   → accept-but-log
-      //     (the user's storage was wiped; treating this as an
-      //      attack would lock out every legit privacy-mode user)
-      var expectedFromSession = null;
-      try { expectedFromSession = sessionStorage.getItem('kh_oauth_state'); } catch (_) {}
-      var expectedFromCookie = _khReadOAuthStateCookie();
-      try { sessionStorage.removeItem('kh_oauth_state'); } catch (_) {}
-      _khClearOAuthStateCookie();
-      var expectedState = expectedFromCookie || expectedFromSession || null;
-      var stateMismatch = !!(accessToken && expectedState && returnedState && expectedState !== returnedState);
-      if (stateMismatch) {
-        console.warn('[auth] OAuth state mismatch — rejecting hash tokens.',
-          'expected=', expectedState.slice(0, 8) + '…',
-          'returned=', returnedState ? returnedState.slice(0, 8) + '…' : 'MISSING');
-        if (typeof kh_log_error === 'function') {
-          kh_log_error('OAuth state mismatch — possible session-fixation attempt', {
-            feature: 'auth_state_check',
-            cookie_present: !!expectedFromCookie,
-            session_present: !!expectedFromSession,
-            returned_present: !!returnedState,
-          });
-        }
-        try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_) {}
-        accessToken = null;
-      } else if (accessToken && !expectedState) {
-        // Both stores empty — storage wiped during redirect. Log
-        // so the owner can spot privacy-mode patterns in the
-        // dashboard, but proceed with auth so the user isn't
-        // locked out.
-        if (typeof kh_log_error === 'function') {
-          kh_log_error('OAuth state missing — accepting auth on degraded path', {
-            feature: 'auth_state_check',
-            returned_present: !!returnedState,
-            ua_hint: (navigator && navigator.userAgent || '').slice(0, 200),
-          });
-        }
-      }
+        'refresh_token=', refreshToken ? '<' + refreshToken.length + ' chars>' : 'MISSING');
       if (accessToken) {
         // setSession requires both tokens. If Supabase didn't
         // return a refresh_token (some providers, some configs),
