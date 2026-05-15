@@ -440,14 +440,16 @@ function _phraseRenderIllus(entry) {
       +    '<div class="kh-phrase-hero-fade" aria-hidden="true"></div>'
       +  '</div>';
   }
-  // Three-tier illustration: Lottie JSON → Iconify SVG (Fluent Emoji)
-  // → unicode emoji fallback nested as iconify-icon's child so the
-  // banner is never empty if the CDN is slow/blocked.
-  var fallbackEmoji = entry.fallback || '';
-  return '<div class="kh-phrase-hero-illus" data-lottie="' + escapeText(entry.lottie || '') + '" data-fallback-icon="' + escapeText(entry.icon || '') + '" data-fallback-emoji="' + escapeText(fallbackEmoji) + '">'
+  // Three-tier illustration: Lottie JSON → Iconify SVG → (no emoji).
+  // Owner: "이모지 필요없어" — drop the unicode emoji fallback. If
+  // both Iconify and Lottie fail to load (CDN blocked / 404), the
+  // banner falls back to the gradient alone. Hand-drawn `image:`
+  // entries in PHRASE_ILLUS_MAP are the right way to ensure a
+  // visible illustration; emoji was distracting.
+  return '<div class="kh-phrase-hero-illus" data-lottie="' + escapeText(entry.lottie || '') + '" data-fallback-icon="' + escapeText(entry.icon || '') + '">'
     + (entry.icon
-        ? '<iconify-icon icon="' + escapeText(entry.icon) + '" width="100%" height="100%" aria-hidden="true">' + escapeText(fallbackEmoji) + '</iconify-icon>'
-        : escapeText(fallbackEmoji))
+        ? '<iconify-icon class="kh-phrase-hero-iconify" icon="' + escapeText(entry.icon) + '" width="100%" height="100%" aria-hidden="true"></iconify-icon>'
+        : '')
     + '</div>';
 }
 
