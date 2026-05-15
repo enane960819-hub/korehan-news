@@ -73,16 +73,85 @@ async function fetchActivityStreakFromDB(sb, userId) {
 }
 
 // ── Sync user preferences to DB (best-effort, non-blocking) ──
+// Bundles every kh_* localStorage key that represents user data into
+// user_stats.preferences JSONB. The owner asked for a sweep — most
+// kh_* keys are device-local cache (translations, drafts) and can
+// stay local, but the ones below are user-owned data that have to
+// survive a cache wipe / device swap.
+//
+// Each entry: lsKey = the localStorage key, prefKey = the JSONB
+// field on the server. The server key avoids the "kh_" prefix for
+// cleanliness. Adding a new pref takes one line here + (optionally)
+// a kh_pref_set call so the write side is captured automatically.
+var _KH_PERSISTED_PREFS = [
+  // identity / level
+  { ls: 'kh_user_level',       pref: 'user_level' },
+  { ls: 'kh_user_interests',   pref: 'user_interests', json: true },
+  // visual / theme
+  { ls: 'kh_profile_frame',    pref: 'profile_frame' },
+  { ls: 'kh_theme_item',       pref: 'theme_item' },
+  // gamification (paid / earned — losing these is the worst case)
+  { ls: 'kh_room_owned',       pref: 'room_owned',     json: true },
+  { ls: 'kh_room_layout',      pref: 'room_layout',    json: true },
+  // study state
+  { ls: 'kh_grammar_curriculum_progress', pref: 'grammar_progress', json: true },
+  { ls: 'kh_quiz_grammar_stats',          pref: 'grammar_quiz_stats', json: true },
+  // phrase mastery (saved phrases already go through user_saved_phrases)
+  { ls: 'kh_mastered_phrases_v1', pref: 'mastered_phrases', json: true },
+];
+function _khReadLocalPrefBlob() {
+  var out = { diff: _activeDiff || 'all', neon: isKhNeonEnabled() };
+  for (var i = 0; i < _KH_PERSISTED_PREFS.length; i++) {
+    var entry = _KH_PERSISTED_PREFS[i];
+    try {
+      var raw = localStorage.getItem(entry.ls);
+      if (raw == null || raw === '') continue;
+      out[entry.pref] = entry.json ? JSON.parse(raw) : raw;
+    } catch (_) { /* malformed json — skip rather than poison the blob */ }
+  }
+  return out;
+}
 function _syncPrefsToDB() {
   if (!supaUser) return;
   var sb = getSupa(); if (!sb) return;
-  var prefs = {
-    diff: _activeDiff || 'all',
-    neon: isKhNeonEnabled()
-  };
+  var prefs = _khReadLocalPrefBlob();
   sb.from('user_stats').update({ preferences: prefs }).eq('user_id', supaUser.id)
     .then(function(r) { if (r.error) console.warn('prefs sync:', r.error.message); })
     .catch(function() {});
+}
+// Public helper: setting a pref through this fn automatically does
+// both localStorage AND the DB sync. Most call sites still write to
+// localStorage directly + call _syncPrefsToDB; this is the cleaner
+// path for new features.
+function kh_pref_set(lsKey, value) {
+  try {
+    var v = (typeof value === 'string') ? value : JSON.stringify(value);
+    localStorage.setItem(lsKey, v);
+  } catch (_) {}
+  _syncPrefsToDB();
+}
+if (typeof window !== 'undefined') window.kh_pref_set = kh_pref_set;
+
+// Periodic safety-net sync: even if a call site forgets to call
+// _syncPrefsToDB() explicitly, we push the current local pref blob
+// to user_stats every 45s while the tab is alive. Combined with the
+// login-time rehydrate, this gives "cross-device + cache-wipe safe"
+// behavior without rewriting every setItem site in the codebase.
+// 45s is short enough that a user who flips a toggle and switches
+// devices in under a minute still sees consistent state; long
+// enough that we're not hammering the DB on every keystroke.
+if (typeof window !== 'undefined' && !window._khPrefAutoSync) {
+  window._khPrefAutoSync = true;
+  setInterval(function () {
+    try { if (typeof supaUser !== 'undefined' && supaUser) _syncPrefsToDB(); } catch (_) {}
+  }, 45000);
+  // Push on page hide too so the last toggle before they navigate
+  // away makes it to the server.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      try { if (typeof supaUser !== 'undefined' && supaUser) _syncPrefsToDB(); } catch (_) {}
+    }
+  });
 }
 
 // ── Cross-device rehydration: restore XP + daily mission from DB on login ──
@@ -129,6 +198,21 @@ async function _rehydrateUserState() {
       if (prefs.neon !== undefined && !localStorage.getItem(K_NEON_THEME)) {
         localStorage.setItem(K_NEON_THEME, prefs.neon ? '1' : '0');
         applyKhNeon(!!prefs.neon);
+      }
+      // Restore each persisted pref to localStorage if the device
+      // doesn't have it yet. We never CLOBBER local data — the user's
+      // current tab is authoritative; we only fill in blanks. This
+      // is what makes "save phrase on device A, see it on device B"
+      // work even when DBs are slower than localStorage.
+      for (var pi = 0; pi < _KH_PERSISTED_PREFS.length; pi++) {
+        var entry = _KH_PERSISTED_PREFS[pi];
+        if (localStorage.getItem(entry.ls)) continue;
+        var serverVal = prefs[entry.pref];
+        if (serverVal == null) continue;
+        try {
+          var toStore = (typeof serverVal === 'string') ? serverVal : JSON.stringify(serverVal);
+          localStorage.setItem(entry.ls, toStore);
+        } catch (_) {}
       }
     }
   } catch(e) { /* preferences column may not exist yet — ignore */ }
