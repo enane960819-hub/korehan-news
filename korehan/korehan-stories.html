@@ -95,6 +95,16 @@
 .st-para-ko{font-family:'Noto Sans KR',sans-serif;font-size:var(--st-body-fs,14px);line-height:var(--st-body-lh,1.9);color:#1e293b;white-space:pre-line;}
 .st-para-en{margin-top:10px;padding-top:10px;border-top:1px dashed #cbd5e1;font-size:13px;line-height:1.65;color:#475569;white-space:pre-line;display:none;}
 .st-para.is-open .st-para-en{display:block;animation:stParaReveal .25s ease-out;}
+/* Per-paragraph analysis revealed alongside translation — filtered
+   subset of the story's overall vocab / grammar / key_expressions. */
+.st-para-analysis{display:none;margin-top:12px;padding-top:12px;border-top:1px dashed #cbd5e1;}
+.st-para.is-open .st-para-analysis{display:block;animation:stParaReveal .25s ease-out;}
+.st-para-section{margin-top:10px;}
+.st-para-section:first-child{margin-top:0;}
+.st-para-section-h{font-size:11px;font-weight:800;color:#475569;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px;}
+.st-para-list{margin:0;padding:0 0 0 4px;list-style:none;font-size:13px;line-height:1.65;color:#334155;}
+.st-para-list li{padding:3px 0;}
+.st-para-list li b{font-weight:800;color:#0f172a;}
 .st-para .st-para-tap-hint{display:block;font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.06em;text-transform:uppercase;margin-top:8px;}
 .st-para.is-open .st-para-tap-hint{color:#64748b;}
 @keyframes stParaReveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
@@ -321,7 +331,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260514e"></script>
+<script src="korehan-shared.js?v=20260514f"></script>
 <script src="korehan-hover-tooltips.js?v=20260509r"></script>
 <script>
 // ── Story progress + favorites helpers (Phase 2) ────────────────
@@ -1575,7 +1585,7 @@ function openStory(id) {
             + '</div>'
           + '</div>'
         + '</div>'
-        + '<div class="st-body-text st-paras" id="st-body-ko" data-hover-scan="1">' + stRenderParagraphCards(s.body || '', enBody, hasEnBody, s.sentence_analysis) + '</div>'
+        + '<div class="st-body-text st-paras" id="st-body-ko" data-hover-scan="1">' + stRenderParagraphCards(s.body || '', enBody, hasEnBody, s.sentence_analysis, s) + '</div>'
         + (hasEnBody ? '<div class="st-body-text" id="st-body-en" style="display:none;white-space:pre-line;color:#334155">' + escapeHtml(enBody) + '</div>' : '')
         + stRenderSeriesNav(s)
       + '</div>'
@@ -1786,7 +1796,7 @@ function _stBuildSentenceMap(sentenceAnalysis) {
   return Object.keys(map).length ? map : null;
 }
 
-function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis) {
+function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) {
   var splitParas = function (s) {
     return String(s || '').split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean);
   };
@@ -1794,20 +1804,65 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis) {
   var enParas = hasEn ? splitParas(enBody) : [];
   if (!koParas.length) return '';
   var sentMap = _stBuildSentenceMap(sentenceAnalysis);
+  // Story-level analysis arrays — same data the right-side 'Study
+  // Notes' panel renders. We filter per paragraph so the tap-to-
+  // reveal also shows the vocab / grammar / key expressions that
+  // actually appear in THAT paragraph. Cost-wise: zero AI calls,
+  // just substring matching against arrays we already have.
+  // Owner-feedback: 'stories 이거 문장분석 말고 문단 분석으로 간다고 했지 않냐
+  // 비용때문에? 근데 왜 아무것도 없이 영어해석만 나옴?'
+  var storyVocab    = (story && Array.isArray(story.vocab))           ? story.vocab           : [];
+  var storyGrammar  = (story && Array.isArray(story.grammar))         ? story.grammar         : [];
+  var storyKeyExprs = (story && Array.isArray(story.key_expressions)) ? story.key_expressions : [];
   return koParas.map(function (ko, i) {
     var en = enParas[i] || '';
     var sentBreakdown = sentMap ? _stRenderSentenceAnalysis(ko, sentMap) : '';
-    var hasBreakdown = !!sentBreakdown;
-    var canOpen = !!(en || hasBreakdown);
-    var hint = canOpen
-      ? '<span class="st-para-tap-hint">' + (hasBreakdown ? 'Tap for translation + sentence breakdown ↓' : 'Tap to reveal translation ↓') + '</span>'
+    var paraVocab = storyVocab.filter(function(v){ return v && v.ko && ko.indexOf(v.ko) >= 0; });
+    var paraGrammar = storyGrammar.filter(function(g){
+      var pat = (g && (g.pattern || g.label)) || '';
+      var key = String(pat).replace(/^~|\(.*$/g, '').trim();
+      return key && ko.indexOf(key.split(/[\/·,]/)[0]) >= 0;
+    });
+    var paraExprs = storyKeyExprs.filter(function(k){ return k && k.ko && ko.indexOf(k.ko) >= 0; });
+    var paraAnalysisHTML = '';
+    if (paraVocab.length || paraGrammar.length || paraExprs.length) {
+      paraAnalysisHTML = '<div class="st-para-analysis">';
+      if (paraVocab.length) {
+        paraAnalysisHTML += '<div class="st-para-section"><div class="st-para-section-h">📚 Vocab</div><ul class="st-para-list">'
+          + paraVocab.slice(0,6).map(function(v){
+              return '<li><b>' + escapeHtml(v.ko) + '</b>' + (v.en ? ' · ' + escapeHtml(v.en) : '') + '</li>';
+            }).join('')
+          + '</ul></div>';
+      }
+      if (paraExprs.length) {
+        paraAnalysisHTML += '<div class="st-para-section"><div class="st-para-section-h">⭐ Key Expressions</div><ul class="st-para-list">'
+          + paraExprs.slice(0,5).map(function(k){
+              return '<li><b>' + escapeHtml(k.ko) + '</b>' + (k.en ? ' · ' + escapeHtml(k.en) : '') + '</li>';
+            }).join('')
+          + '</ul></div>';
+      }
+      if (paraGrammar.length) {
+        paraAnalysisHTML += '<div class="st-para-section"><div class="st-para-section-h">📝 Grammar</div><ul class="st-para-list">'
+          + paraGrammar.slice(0,4).map(function(g){
+              var pat = escapeHtml(g.pattern || g.label || '');
+              var exp = escapeHtml(g.exp || g.explanation || '');
+              return '<li><b>' + pat + '</b>' + (exp ? ' — ' + exp : '') + '</li>';
+            }).join('')
+          + '</ul></div>';
+      }
+      paraAnalysisHTML += '</div>';
+    }
+    var hasAny = !!(en || sentBreakdown || paraAnalysisHTML);
+    var hint = hasAny
+      ? '<span class="st-para-tap-hint">' + (paraAnalysisHTML || sentBreakdown ? 'Tap for translation + analysis ↓' : 'Tap to reveal translation ↓') + '</span>'
       : '';
     return '<div class="st-para" '
-      + (canOpen ? 'onclick="stTogglePara(this)" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();stTogglePara(this);}"' : '')
+      + (hasAny ? 'onclick="stTogglePara(this)" role="button" tabindex="0" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();stTogglePara(this);}"' : '')
       + '>'
       + '<div class="st-para-ko">' + escapeHtml(ko) + '</div>'
       + (en ? '<div class="st-para-en">' + escapeHtml(en) + '</div>' : '')
       + sentBreakdown
+      + paraAnalysisHTML
       + hint
       + '</div>';
   }).join('');

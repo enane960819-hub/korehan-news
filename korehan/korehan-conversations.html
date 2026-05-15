@@ -470,7 +470,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260514e"></script>
+<script src="korehan-shared.js?v=20260514f"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -1032,7 +1032,7 @@ function openDetailById(convId) {
       console.error('[conv] openDetail crashed:', err);
       var panel = document.getElementById('detail-panel');
       var overlay = document.getElementById('detail-overlay');
-      if (panel) panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:15px;font-weight:700;color:#334155;margin-bottom:6px">Please try again in a moment</div><div style="font-size:13px;color:#64748b;margin-bottom:16px">Couldn't load conversation. Refresh the page or pick another one.</div><button onclick="closeDetail()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">← Back to list</button></div></div>';
+      if (panel) panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:15px;font-weight:700;color:#334155;margin-bottom:6px">Please try again in a moment</div><div style="font-size:13px;color:#64748b;margin-bottom:16px">Cannot load conversation. Refresh the page or pick another one.</div><button onclick="closeDetail()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">← Back to list</button></div></div>';
       if (overlay) overlay.classList.remove('hidden');
     });
   });

@@ -2531,7 +2531,7 @@ function _khRenderHeroEmptyState() {
   heroEl.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:300px;border-radius:18px;background:#f8fbff;border:1px solid #e7eef8;padding:24px;text-align:center;';
   heroEl.innerHTML =
       '<div style="max-width:360px">'
-    + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:0 0 6px">Couldn't load the latest articles</div>'
+    + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin:0 0 6px">Cannot load the latest articles</div>'
     + '<div style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.5">브라우저에 저장된 옛 데이터가 요청을 막고 있을 수 있어요. <b>Reset Data</b>으로 한 번에 정리하면 대부분 해결됩니다 (다시 로그인 필요).</div>'
     + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
     +   '<button onclick="location.reload()" style="padding:9px 18px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#0f172a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try again</button>'
