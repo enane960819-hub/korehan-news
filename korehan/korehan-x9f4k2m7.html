@@ -6181,6 +6181,9 @@ async function goAICache() {
     + (failedArticleIds.length
         ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#ef4444;color:#fff;border:none" onclick="retryFailedCaches(\'' + (_schema||'') + '\')">🔁 실패 재시도 (' + failedArticleIds.length + ')</button>'
         : '')
+    + ((articles.length - studyComplete) > 0
+        ? '<button class="btn" style="font-size:12px;padding:6px 14px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;font-weight:800" onclick="aseGenAndSaveAllMissing()" title="Study 캐시 ✗인 모든 기사에 대해 일괄 생성+저장. 1개당 ~$0.003 / ~5초.">⚡ Gen All Missing Study (' + (articles.length - studyComplete) + ')</button>'
+        : '')
     + '</div>';
 
   articles.forEach(function(a) {
@@ -6236,12 +6239,17 @@ async function goAICache() {
       ? ('article_study_content: vocab ' + _scVocabN + ' · phrases ' + _scPhrN + ' · wrong_phrases ' + _scWrN + ' · questions ' + _scQN + (_scAdminEdit ? ' · admin_edited' : '') + (_sc.prompt_version ? ' · v' + _sc.prompt_version : ''))
       : 'article_study_content row 없음 — 첫 학습자가 Haiku 호출 발생';
     var studyBadge = '<span title="' + _scTip.replace(/"/g,'&quot;') + '" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + (_scOk?'#dcfce7':'#fee2e2') + ';color:' + (_scOk?'#166534':'#991b1b') + ';cursor:help">' + (_scOk?'✓':'✗') + ' Study' + (_sc ? '' : ' (없음)') + '</span>';
+    // Per-row generate button for missing article_study_content.
+    // Single Haiku call per article (~$0.003), saves to DB so every
+    // learner of that article hits cache from then on.
+    var studyGenBtn = _scOk ? '' :
+      '<button class="btn" id="asgenbtn-' + a.id + '" style="font-size:11px;padding:4px 10px;border-radius:8px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;cursor:pointer;font-family:inherit;margin-right:4px" onclick="aseGenAndSaveOne(\'' + a.id + '\')" title="이 기사의 Article Study 학습 콘텐츠 (vocab/phrases/quiz)를 한 번에 생성+저장. ~$0.003 / 5초">🤖 Gen Study</button>';
 
     html += '<div id="crow-' + a.id + '" style="background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:8px;overflow:hidden' + (articleErrs.length ? ';border-color:#f59e0b' : '') + '">'
       + '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex-wrap:wrap">'
       + '<div style="flex:1;min-width:200px"><div style="font-weight:700;font-size:14px;margin-bottom:4px">' + (a.title||'(제목없음)') + '</div>'
       + '<div style="font-size:12px;color:var(--gr)">' + (a.section||'') + ' · ' + (a.date||'') + ' · ' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level||'') + '</div></div>'
-      + '<div>' + versionBadge + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + badge(hasS, 'Sentences' + (sCount ? ' (' + sCount + ')' : '')) + studyBadge + errBadge + '</div>'
+      + '<div>' + versionBadge + badge(hasT,'Translation') + badge(hasV,'Vocab') + badge(hasG,'Grammar') + badge(hasQ,'Quiz') + badge(hasS, 'Sentences' + (sCount ? ' (' + sCount + ')' : '')) + studyBadge + studyGenBtn + errBadge + '</div>'
       + (allDone ? '<span style="color:#166534;font-weight:700;font-size:13px">✅ Done</span>'
           : '<button class="btn btn-g" style="font-size:13px;padding:7px 16px" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')">🧠 Generate</button>')
       // Re-analyse button — always available so admin can refresh
@@ -15616,6 +15624,91 @@ async function aseGenFromAI() {
   } catch(e) {
     msgEl.textContent = '❌ AI generation failed: ' + e.message;
   }
+}
+
+// One-shot from AI Cache Management: pick article by id, generate via
+// Claude, save to article_study_content. No editor open. Used by the
+// per-row '🤖 Gen Study' button + the bulk '⚡ Gen All Missing Study'
+// header button.
+async function aseGenAndSaveOne(articleId) {
+  var sb = getSb(); if (!sb) return false;
+  var btn = document.getElementById('asgenbtn-' + articleId);
+  var origLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 생성 중…'; }
+  try {
+    var artRes = await sb.from('articles').select('id,title,body,level,section').eq('id', articleId).maybeSingle();
+    var art = artRes && artRes.data;
+    if (!art) throw new Error('기사를 찾을 수 없습니다: ' + articleId);
+    var artLevel = art.level || 'Beginner';
+    var levelPrompt = (typeof getLevelPrompt === 'function') ? getLevelPrompt(artLevel) : '';
+    var prompt = 'Korean news article study content for language learners.\n' + levelPrompt + '\n\nTitle: ' + art.title + '\nBody:\n' + (art.body || '').slice(0,1600)
+      + '\n\nReturn ONLY valid JSON:\n'
+      + '{"vocab":[{"ko":"word","en":"meaning","rom":"rom"}],'
+      + '"phrases":[{"ko":"REUSABLE Korean expression or pattern that appears VERBATIM in the article","en":"translation"}],'
+      + '"wrong_phrases":[{"ko":"grammatical Korean sentence that is FALSE about this article","en":"translation"}],'
+      + '"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],'
+      + '"questions":[{"q":"comprehension question in Korean","options":["A","B","C","D"],"correct":0}]}\n'
+      + 'vocab: 6 key words. phrases: 3 reusable expressions. wrong_phrases: 3 plausible distractors. word_order: 3 sentences. questions: 3 comprehension questions.';
+    var data = await callClaude({ feature: 'article-study-admin', model: 'claude-haiku-4-5-20251001', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] });
+    var raw = ((data.content) || []).map(function(c){ return c.text || ''; }).join('');
+    var cl = raw.replace(/```json|```/g, '').trim();
+    var s = cl.indexOf('{'), e = cl.lastIndexOf('}');
+    if (s >= 0 && e > s) cl = cl.slice(s, e + 1);
+    var parsed = JSON.parse(cl);
+    if (!Array.isArray(parsed.wrong_phrases)) parsed.wrong_phrases = [];
+    // Upsert directly (admin auth bypasses RLS via the global Supabase
+    // client this page uses). Same column-strip retry pattern as the
+    // learner-side save so missing columns don't kill the entire row.
+    var row = {
+      article_id:    String(articleId),
+      vocab:         parsed.vocab         || [],
+      phrases:       parsed.phrases       || [],
+      wrong_phrases: parsed.wrong_phrases || [],
+      word_order:    parsed.word_order    || [],
+      questions:     parsed.questions     || [],
+      prompt_version: 2,
+      admin_edited:  false
+    };
+    var res;
+    for (var attempt = 0; attempt < 6; attempt++) {
+      res = await sb.from('article_study_content').upsert(row, { onConflict: 'article_id' });
+      if (!res || !res.error) break;
+      var msg = String((res.error && res.error.message) || '');
+      var badCol = (msg.match(/column [\\"']?(\w+)[\\"']?/i) || [])[1];
+      if (badCol && (badCol in row)) { delete row[badCol]; continue; }
+      throw new Error(msg);
+    }
+    if (btn) {
+      btn.style.background = '#dcfce7'; btn.style.color = '#166534'; btn.style.borderColor = '#86efac';
+      btn.textContent = '✓ Saved';
+    }
+    return true;
+  } catch(err) {
+    console.warn('[aseGenAndSaveOne]', articleId, err && err.message);
+    if (btn) { btn.disabled = false; btn.textContent = origLabel || '🤖 Gen Study'; }
+    if (typeof toast === 'function') toast('❌ ' + (err && err.message || 'gen failed').slice(0, 120), true);
+    return false;
+  }
+}
+
+// Bulk: generate + save for every article that currently has ✗ Study.
+// Sequential to avoid hammering Claude with N parallel calls (~$0.003
+// per article × N). Updates each row's button as it goes.
+async function aseGenAndSaveAllMissing() {
+  var sb = getSb(); if (!sb) return;
+  var btns = document.querySelectorAll('button[id^="asgenbtn-"]:not([disabled])');
+  if (!btns.length) { if (typeof toast === 'function') toast('생성할 기사가 없습니다.'); return; }
+  var ids = Array.from(btns).map(function(b){ return b.id.replace('asgenbtn-',''); });
+  if (!confirm(ids.length + '개 기사 Article Study 콘텐츠 일괄 생성. 약 $' + (ids.length * 0.003).toFixed(2) + ' / ' + Math.ceil(ids.length * 5) + '초 예상. 진행?')) return;
+  if (typeof toast === 'function') toast('일괄 생성 시작 (' + ids.length + '건)…');
+  var ok = 0, fail = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var success = await aseGenAndSaveOne(ids[i]);
+    if (success) ok++; else fail++;
+    if ((i + 1) % 5 === 0 && typeof toast === 'function') toast('진행 중 ' + (i+1) + '/' + ids.length + ' (성공 ' + ok + ' / 실패 ' + fail + ')');
+  }
+  if (typeof toast === 'function') toast('✅ 완료 — 성공 ' + ok + ' / 실패 ' + fail);
+  setTimeout(function(){ goAICache(); }, 1500);
 }
 
 async function aseSaveContent() {
