@@ -1135,8 +1135,10 @@ async function openDetail(idx) {
   if (!c._loaded) {
     panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:32px;margin-bottom:12px;animation:spin 1s linear infinite">⏳</div><div style="font-size:15px;font-weight:700;color:#334155">Loading conversation…</div></div></div>';
     overlay.classList.remove('hidden');
+    // Only body — locking html as well breaks iOS Safari's gesture
+    // forwarding to the fixed overlay's overflow-y:auto scroller,
+    // owner-reported as "convo 스크롤 그냥 스크롤 자체가 안됨".
     document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
   }
 
   // 상세 데이터 아직 안 로드됐으면 DB에서 가져오기. Wrap the await in a
@@ -1429,7 +1431,6 @@ async function openDetail(idx) {
 
   document.getElementById('detail-overlay').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  document.documentElement.style.overflow = 'hidden';
 
   // Auto-fire the first practice drill (linear flow). Same call as
   // the renderStudyNotes path uses; defer to next tick so the DOM
@@ -2165,6 +2166,7 @@ function closeDetail() {
   document.body.classList.remove('kh-reading-page');
   document.body.classList.remove('kh-feed-pill-on');
   _convDetailIdx = -1;
+  // _khLastConvScrollDy is reset implicitly when the panel reopens.
 }
 
 // Animated hand-off between conversations — mirrors _khSpaLoadArticle
@@ -2307,6 +2309,13 @@ var _convSwipeValid  = false;
     var overlay = document.getElementById('detail-overlay');
     var scroller = panel;
     if (overlay && overlay.scrollHeight > overlay.clientHeight + 10) scroller = overlay;
+    // Short conversations: scrollHeight ≈ clientHeight, so both atTop
+    // AND atBottom would be true — any 100px+ swipe in any direction
+    // would auto-navigate. Owner reported "스크롤 자체가 안됨" because
+    // every scroll attempt was being eaten by the swipe nav. Only
+    // honor edge-flick navigation when there's enough content to
+    // actually scroll through.
+    if (scroller.scrollHeight <= scroller.clientHeight + 20) return;
     var atTop    = scroller.scrollTop < 60;
     var atBottom = (scroller.scrollTop + scroller.clientHeight) >= scroller.scrollHeight - 120;
     var list = (_convFilteredList && _convFilteredList.length) ? _convFilteredList : CONVS;
