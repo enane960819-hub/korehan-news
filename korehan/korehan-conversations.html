@@ -220,6 +220,17 @@
    pill row that scrolls on mobile when the labels overflow. The
    active pill goes solid blue; disabled drills (no data) dim out. */
 .dp-pr-shell{padding:18px 18px 22px;}
+/* Practice card on mobile — give it a min-height so the empty
+   white between the bottom of the drill content and the bottom of
+   the viewport is INSIDE the card (intentional breathing room),
+   not below it (orphaned content). Owner-reported '카드는 ㅈㄴ 큰데
+   공간활용 안되는 이슈'.
+   220px accounts for the conv reader's top tabs + Practice card
+   title row + step strip. Result: card always reaches near the
+   bottom of the viewport, content inside aligned to the top. */
+@media(max-width:900px){
+  .dp-pr-shell{min-height:calc(100vh - 220px);padding-bottom:32px;}
+}
 /* Progress strip — visual indicator only, no clicks. Shows 5 drill
    step labels separated by › chevrons. Active step is solid blue,
    completed steps are checked green, skipped (no data) are dim.
@@ -459,7 +470,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260514d"></script>
+<script src="korehan-shared.js?v=20260514e"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -1021,7 +1032,7 @@ function openDetailById(convId) {
       console.error('[conv] openDetail crashed:', err);
       var panel = document.getElementById('detail-panel');
       var overlay = document.getElementById('detail-overlay');
-      if (panel) panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:15px;font-weight:700;color:#334155;margin-bottom:6px">잠시 후 다시 시도해 주세요</div><div style="font-size:13px;color:#64748b;margin-bottom:16px">대화를 불러오지 못했어요. 페이지를 새로고침하거나 다른 대화를 골라 주세요.</div><button onclick="closeDetail()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">← Back to list</button></div></div>';
+      if (panel) panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;width:100%;background:#fff;border-radius:28px"><div style="text-align:center;padding:40px"><div style="font-size:15px;font-weight:700;color:#334155;margin-bottom:6px">Please try again in a moment</div><div style="font-size:13px;color:#64748b;margin-bottom:16px">Couldn't load conversation. Refresh the page or pick another one.</div><button onclick="closeDetail()" style="padding:10px 20px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">← Back to list</button></div></div>';
       if (overlay) overlay.classList.remove('hidden');
     });
   });

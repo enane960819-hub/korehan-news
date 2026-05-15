@@ -4334,7 +4334,7 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260514d"></script>
+<script src="korehan-shared.js?v=20260514e"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260502a"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
@@ -8088,7 +8088,7 @@ async function keOpenSituationQuiz(idx) {
   } catch (_) {}
   if (!quiz) {
     if (typeof callClaude !== 'function') {
-      body.innerHTML = '<div style="text-align:center;padding:18px;color:#fca5a5;font-size:13px">AI 호출 불가 — 로그인 후 다시 시도하세요.</div>';
+      body.innerHTML = '<div style="text-align:center;padding:18px;color:#fca5a5;font-size:13px">AI unavailable — sign in and try again.</div>';
       return;
     }
     try {
@@ -13099,7 +13099,7 @@ async function submitWriting() {
   var ctxKeyPrefix = isDiary ? 'diary_' : (isFree ? 'free_' : 'express_');
   var topicKo = isDiary
     ? (todayPrompt ? todayPrompt.ko : '오늘의 일기')
-    : (isFree ? '자유 글쓰기' : ((_todayTopic && _todayTopic.topic_ko) || ''));
+    : (isFree ? 'Free Writing' : ((_todayTopic && _todayTopic.topic_ko) || ''));
   var topicEn = isDiary
     ? (todayPrompt ? todayPrompt.en : 'Daily Diary')
     : (isFree ? 'Free Writing — student-chosen subject' : ((_todayTopic && _todayTopic.topic_en) || ''));
@@ -14141,7 +14141,7 @@ function showAILoading() {
   el.style.cssText = 'position:fixed;inset:0;z-index:400;backdrop-filter:blur(6px);background:rgba(13,27,46,0.45);display:flex;align-items:center;justify-content:center;';
   el.innerHTML = '<div style="text-align:center;color:#fff">'
     + '<div style="font-size:52px;animation:spin 1s linear infinite;display:inline-block">✨</div>'
-    + '<div style="margin-top:14px;font-size:15px;font-weight:700">잠시만 기다려주세요</div>'
+    + '<div style="margin-top:14px;font-size:15px;font-weight:700">Just a moment</div>'
     + '<div style="margin-top:6px;font-size:12px;color:rgba(255,255,255,0.5)">Generating vocab, grammar & helpers</div>'
     + '</div>';
   document.body.appendChild(el);
@@ -21446,7 +21446,7 @@ async function asSelectArticle(id) {
   }
 
   document.getElementById('as-article-content').innerHTML =
-    '<p class="as-section-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_BOOK + '</span><span>기사 읽기</span></p>'
+    '<p class="as-section-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_BOOK + '</span><span>Read the article</span></p>'
     + '<div class="as-article-text" id="as-article-text-host">'
     + (art.body ? _asFormatBody(art.body) : '<div style="color:#94a3b8;font-size:13px">⏳ Loading article…</div>')
     + '</div>';
@@ -21994,7 +21994,7 @@ function asBlankFillWord(text) {
     var msg=document.getElementById('as-wo-msg');
     if(msg) msg.innerHTML=allCorrect
       ?'<span style="color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:6px"><span>모두 정답! 잘했어요</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_PARTY+'</span></span>'
-      :'<span style="color:#dc2626;font-weight:700">틀린 단어가 있어요. 빨간색을 터치해서 다시 시도하세요.</span>';
+      :'<span style="color:#dc2626;font-weight:700">Some answers are wrong. Tap the red ones to retry.</span>';
     if(allCorrect) { _asStepDone[2]=true; }
     // Next always visible when all filled (correct or not)
     _asSetNav('none','');
