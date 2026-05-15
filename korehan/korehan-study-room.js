@@ -1,0 +1,18363 @@
+// ═══════════════════════════════════════════════════════════════
+// SOUND EFFECTS (Web Audio API)
+// ═══════════════════════════════════════════════════════════════
+var _audioCtx = null;
+function _getAudioCtx() {
+  if (!_audioCtx) try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+  if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume().catch(function(){});
+  return _audioCtx;
+}
+// Ensure AudioContext can play on mobile (requires user gesture)
+document.addEventListener('click', function _initAudio() {
+  _getAudioCtx();
+  document.removeEventListener('click', _initAudio);
+}, { once: true });
+function playCorrectSound() {
+  var ctx = _getAudioCtx(); if (!ctx) return;
+  var osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = 'sine'; gain.gain.value = 0.15;
+  osc.frequency.setValueAtTime(523, ctx.currentTime);      // C5
+  osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1); // E5
+  osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2); // G5
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+}
+function playWrongSound() {
+  var ctx = _getAudioCtx(); if (!ctx) return;
+  var osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = 'sine'; gain.gain.value = 0.12;
+  osc.frequency.setValueAtTime(330, ctx.currentTime);       // E4
+  osc.frequency.setValueAtTime(277, ctx.currentTime + 0.15); // C#4
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+var _currentLevel   = 'Beginner';
+var _todayTopic     = null;   // {id, topic_ko, topic_en, category, level}
+var _aiContent      = null;   // {vocab:[], grammar:[], helpers:[]}
+var _allTopics      = [];     // all from DB
+var _doneTopicIds   = new Set();
+var _lqMode         = 'hear';
+var _fcWords        = [];
+var _convVocab      = [];     // conv DB vocab 전체
+var _storyVocab     = [];     // stories DB vocab 전체
+var _vocabPoolLoaded = false;
+var _picturePrompts   = [];  // populated from DB via loadPicturePromptsFromDB()
+var _dbHelpersLoaded  = false;
+var _dbGrammarLoaded  = false;
+var _wordOrderState   = { pool:[], answer:[], correct:[] };
+var _pdStep = 1;            // current picture description step (1, 2, or 3)
+var _pictureIndex = 0;
+var _sentencePractice = {
+  mode:'copy',
+  articles:[],
+  selected:null,
+  sentences:[],
+  idx:0,
+  hideTimer:null,
+  hidden:false
+};
+var _studyDone = { topic:false, grammar:false, picture:false, sentence:false, expressions:false };
+var _dailyDictationSentences = [];   // [{ko,en}]  from study_daily_content
+var _dailyDictationQuestions = [];   // [{question_ko,answer_ko,hint_en}]  from study_daily_content
+
+function kstNow() { return new Date(Date.now() + (9 * 60 * 60 * 1000)); }
+function kstDateKey() {
+  var d = kstNow();
+  var y = d.getUTCFullYear();
+  var m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  var day = String(d.getUTCDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+function studyDoneKey() {
+  return 'kh_sr_done_' + (supaUser ? supaUser.id : 'guest') + '_' + kstDateKey();
+}
+function loadStudyDoneState() {
+  try {
+    _studyDone = JSON.parse(localStorage.getItem(studyDoneKey()) || '{"topic":false,"grammar":false,"picture":false,"sentence":false,"expressions":false}');
+  } catch(e) {
+    _studyDone = { topic:false, grammar:false, picture:false, sentence:false, expressions:false };
+  }
+}
+function saveStudyDoneState() {
+  try { localStorage.setItem(studyDoneKey(), JSON.stringify(_studyDone)); } catch(e) {}
+  renderStudyChecklist();
+}
+function markStageDone(stage) {
+  if (!_studyDone[stage]) {
+    _studyDone[stage] = true;
+    saveStudyDoneState();
+    syncStudyProgress(stage);
+    // Log to activity pipeline
+    var typeMap = {topic:'writing_submit', grammar:'grammar_practice', picture:'picture_desc', sentence:'dictation'};
+    if (typeof logActivity === 'function') {
+      logActivity(typeMap[stage] || stage, {
+        content_type: 'daily_topic',
+        content_title: (_todayTopic && _todayTopic.topic_ko) || '',
+        metadata: { stage: stage, level: _currentLevel || '' }
+      });
+    }
+  }
+}
+
+async function syncStudyProgress(stage) {
+  var sb = getSupa();
+  if (!sb || !supaUser) return;
+  var patch = { user_id:supaUser.id, study_date:kstDateKey(), updated_at:new Date().toISOString() };
+  if (stage === 'topic') patch.topic_done = true;
+  if (stage === 'grammar') patch.grammar_done = true;
+  if (stage === 'picture') patch.picture_done = true;
+  if (stage === 'sentence') patch.sentence_done = true;
+  if (stage === 'expressions') patch.expressions_done = true;
+  try { await sb.from('user_daily_progress').upsert(patch, { onConflict:'user_id,study_date' }); } catch(e) {}
+  if (stage === 'grammar') {
+    var focus = new URLSearchParams(window.location.search).get('focus') || ((_gfPattern && _gfPattern.name) || '');
+    if (focus) {
+      await sb.from('study_grammar_progress').upsert({
+        user_id: supaUser.id,
+        grammar_key: focus,
+        completed_at: new Date().toISOString(),
+        start_writing_clicked: true,
+        attempt_count: 1,
+        updated_at: new Date().toISOString()
+      }, { onConflict:'user_id,grammar_key' });
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+// This script is loaded with `defer` so by the time it executes,
+// DOMContentLoaded has typically already fired. Use the
+// readyState gate: if we're past 'loading', run the init body
+// immediately; otherwise register a listener.
+function _khStudyRoomInit() {
+  return (async function() {
+  // Safety net: render static <i data-lucide> icons right away. updateAuthUI
+  // calls renderKhLucideIcons too, but that waits for the auth session round-
+  // trip. On a slow signed-out page load the top tabs (Study / Help / Exercise
+  // / Word Book) rendered as invisible inline stubs until auth resolved — this
+  // surfaces them immediately.
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+
+  // ── Mobile layout restructure ──
+  // Move hero block outside tab panel so it stays visible across all tabs
+  // Move tab bar between hero block and activity cards
+  (function() {
+    if (window.innerWidth > 860) return;
+    var heroBlock = document.querySelector('.sr-hero-block');
+    var tabsWrap = document.querySelector('.sr-top-tabs-wrap');
+    var levelBar = document.getElementById('sr-level-bar');
+    if (!heroBlock || !tabsWrap || !levelBar) return;
+    // Move hero block after level bar (outside sr-panel-study)
+    levelBar.after(heroBlock);
+    // Move tabs after hero block (between Daily Review and Activity cards)
+    heroBlock.after(tabsWrap);
+  })();
+
+  loadStudyDoneState();
+  renderStudyChecklist();
+  // Load grammar curriculum from DB (then refresh banner)
+  _loadGrammarCurriculumFromDB().then(function() { renderGrammarPathBanner(); }).catch(function() { renderGrammarPathBanner(); });
+  renderGrammarPathBanner();
+  renderPhrase();
+
+  // ── START button idle canvas glow ──
+  _startBtnIdleGlow();
+
+  // ── OPTIMIZED: Only 2 essential DB calls at page load ──
+  // 1) Access gate (subscription check)
+  // 2) Daily content (includes vocab, grammar, helpers — no separate calls)
+  // Everything else loads AFTER session is confirmed, or lazily.
+  await loadStudyAccessGate();
+
+  // Wait for auth session, then load daily content (single call)
+  var waited = 0;
+  var _dailyContentStarted = false;
+  function waitForSession() {
+    if (window._sessionChecked) {
+      if (_dailyContentStarted) return;
+      _dailyContentStarted = true;
+      loadStudyDoneState();
+      loadStudyDoneFromDB();
+      loadDailyContent().catch(function(e){
+        console.error('[loadDailyContent] uncaught:', e);
+        _applyFallbackTopic(kstDateKey());
+      });
+      loadFeedbackInbox();
+      asAutoSubmitOldWork();
+      _asRefreshSubmitBanner();
+      setTimeout(function() {
+        loadVocabPool();
+        renderFlashcardFilters();
+        loadFlashcards('all', document.querySelector('#fc-filters-left .tpill'));
+        loadWordBankPreview();
+        loadWeakGrammarBanner();
+        showReviewNotifications();
+        loadPicturePromptsFromDB();
+      }, 1500);
+    } else if (waited >= 120) {
+      console.error('[waitForSession] _sessionChecked never set after 12s');
+      window._sessionChecked = true;
+      if (!_dailyContentStarted) { _dailyContentStarted = true; loadDailyContent().catch(function(){}); }
+    } else {
+      waited++;
+      setTimeout(waitForSession, 100);
+    }
+  }
+  waitForSession();
+
+  // HARD FALLBACK: If topic STILL shows "Loading" after 15 seconds, force fallback content
+  setTimeout(function() {
+    var heroKo = document.getElementById('hero-topic-ko');
+    if (heroKo && (heroKo.textContent === 'Loading…' || heroKo.textContent === 'Loading...')) {
+      console.warn('[HARD FALLBACK] Topic still loading after 15s — forcing fallback');
+      _applyFallbackTopic(kstDateKey());
+    }
+  }, 15000);
+  // Removed: loadPicturePromptsFromDB, loadDBHelpers, loadDBGrammar, loadAllTopics, preloadSentenceArticles
+  // These are now covered by loadDailyContent or deferred to when actually needed
+  if (window._isAdmin) {
+    var adminBtn = document.getElementById('pd-admin-btn');
+    if (adminBtn) adminBtn.style.display = '';
+  }
+
+  // Grammar Focus from article grammar guide link or homepage weak grammar
+  var _urlParams = new URLSearchParams(window.location.search);
+  var _focusSource = _urlParams.get('source') || '';
+  var _hasFocusGrammar = _urlParams.get('focus') && (
+    _focusSource === 'grammar-guide' ||
+    _focusSource === 'growth-lab'
+  );
+  if (_hasFocusGrammar) {
+    var _focusName = decodeURIComponent(_urlParams.get('focus') || '');
+    // Wait for content to load then auto-open grammar focus modal
+    var _focusWaited = 0;
+    function waitAndOpenGFModal() {
+      if (window._sessionChecked || _focusWaited >= 30) {
+        setTimeout(function() {
+          // Build a single-pattern object from the focus name
+          var pattern = { name: _focusName, level: 'Intermediate', exp: 'Practice this grammar pattern.', examples: [{ ko: '이 문법으로 직접 문장을 만들어 보세요.', en: 'Try making your own sentence with this grammar pattern.' }] };
+          // Check if _aiContent already has this pattern loaded
+          var rawG = (_aiContent && _aiContent.grammar) || [];
+          var found = rawG.map(function(g){ return { name:g.pattern||g.name||'', level:g.level||'Intermediate', exp:g.explanation||g.exp||'', examples:[{ko:g.example_ko||'',en:g.example_en||''}] }; });
+          if (found.length) {
+            // Fuzzy match: check if focus name is contained in pattern name or vice versa
+            var match = found.find(function(p){ return p.name === _focusName; })
+              || found.find(function(p){ return p.name.indexOf(_focusName) !== -1 || _focusName.indexOf(p.name) !== -1; });
+            if (match) found = [match].concat(found.filter(function(p){ return p !== match; }));
+          }
+          // If no AI content patterns matched, generate focused patterns via AI
+          if (!found.length || (found.length === 1 && found[0] === pattern)) {
+            found = [pattern];
+            // Auto-generate patterns for this specific grammar point
+            var modal = document.getElementById('gf-modal');
+            if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+            loadGFPatterns(found);
+            generateGFPatternsForFocus(_focusName);
+            return;
+          }
+          var modal = document.getElementById('gf-modal');
+          if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+          loadGFPatterns(found);
+        }, 600);
+      } else { _focusWaited++; setTimeout(waitAndOpenGFModal, 150); }
+    }
+    setTimeout(waitAndOpenGFModal, 400);
+  }
+
+  // Daily/Weekly/Monthly Review auto-open from home (?review=daily|weekly|monthly)
+  var _reviewParam = _urlParams.get('review');
+  if (_reviewParam === 'daily' || _reviewParam === 'weekly' || _reviewParam === 'monthly') {
+    var _rvWaited = 0;
+    function waitAndOpenReview() {
+      if (window._sessionChecked || _rvWaited >= 40) {
+        setTimeout(function() {
+          if (_reviewParam === 'daily' && typeof openDailyReview === 'function') openDailyReview();
+          else if (_reviewParam === 'weekly' && typeof openWeeklyReview === 'function') openWeeklyReview();
+          else if (_reviewParam === 'monthly' && typeof openMonthlyReview === 'function') openMonthlyReview();
+        }, 600);
+      } else { _rvWaited++; setTimeout(waitAndOpenReview, 150); }
+    }
+    setTimeout(waitAndOpenReview, 400);
+  }
+
+  // Weak Grammar Drill from homepage or Growth Lab
+  if (_urlParams.get('focus') && _focusSource === 'home-weak-grammar') {
+    var _wgFocusName = decodeURIComponent(_urlParams.get('focus') || '');
+    var _wgWaited = 0;
+    function waitAndOpenWGDrill() {
+      if (window._sessionChecked || _wgWaited >= 30) {
+        setTimeout(function() { openWeakGrammarDrill(_wgFocusName); }, 500);
+      } else { _wgWaited++; setTimeout(waitAndOpenWGDrill, 150); }
+    }
+    setTimeout(waitAndOpenWGDrill, 400);
+  }
+
+  // URL 파라미터로 conversations/stories에서 넘어온 경우
+  if (_urlParams.get('mode') === 'conv' || _urlParams.get('mode') === 'story') {
+    function safeParseJSON(str, fallback) {
+      if (!str) return fallback;
+      try { return JSON.parse(str); } catch(e) {
+        try { return JSON.parse(decodeURIComponent(str)); } catch(e2) { return fallback; }
+      }
+    }
+    _externalPracticeData = {
+      title:   _urlParams.get('title') || '',
+      vocab:   safeParseJSON(_urlParams.get('vocab'),   []),
+      grammar: safeParseJSON(_urlParams.get('grammar'), []),
+    };
+    // 세션 체크 후 모달 열기
+    function waitAndOpenModal() {
+      if (window._sessionChecked || waited >= 30) {
+        if (supaUser) openExternalPracticeModal();
+        else openAuthModal('signin');
+      } else {
+        setTimeout(waitAndOpenModal, 120);
+      }
+    }
+    setTimeout(waitAndOpenModal, 400);
+  }
+
+  // Article 페이지 우측 사이드바 Study 버튼에서 넘어온 경우.
+  // mode=article&id=<articleId>  →  세션 대기 후 article-study 모달 오픈,
+  // 목록 로드되면 해당 기사 자동 선택.
+  if (_urlParams.get('mode') === 'article' && _urlParams.get('id')) {
+    var _asTargetId = _urlParams.get('id');
+    function waitAndOpenArticleStudy() {
+      if (!(window._sessionChecked || waited >= 30)) {
+        setTimeout(waitAndOpenArticleStudy, 120);
+        return;
+      }
+      if (!supaUser) { openAuthModal('signin'); return; }
+      openArticleStudy();
+      // _asLoadArticles 는 async. 목록 세팅 기다렸다가 자동 선택.
+      var listTries = 0;
+      function waitForListThenSelect() {
+        listTries++;
+        if (typeof _asArticles !== 'undefined' && _asArticles.length) {
+          asSelectArticle(_asTargetId);
+        } else if (listTries < 50) {
+          setTimeout(waitForListThenSelect, 200);
+        }
+      }
+      setTimeout(waitForListThenSelect, 300);
+    }
+    setTimeout(waitAndOpenArticleStudy, 400);
+  }
+
+  // Conversation reader → "Open in Study Room" deep-dive shortcut.
+  // mode=conversation&id=<convId> → wait for session, open conv-study
+  // modal, then auto-select the conversation once the list lands.
+  if (_urlParams.get('mode') === 'conversation' && _urlParams.get('id')) {
+    var _csTargetId = _urlParams.get('id');
+    function waitAndOpenConvStudy() {
+      if (!(window._sessionChecked || waited >= 30)) {
+        setTimeout(waitAndOpenConvStudy, 120);
+        return;
+      }
+      if (!supaUser) { openAuthModal('signin'); return; }
+      openConvStudy();
+      var listTries = 0;
+      function waitForConvListThenSelect() {
+        listTries++;
+        if (typeof _csConvs !== 'undefined' && _csConvs.length) {
+          var idx = -1;
+          for (var i = 0; i < _csConvs.length; i++) {
+            if (String(_csConvs[i].id) === String(_csTargetId)) { idx = i; break; }
+          }
+          if (idx >= 0) _csStartConv(idx);
+        } else if (listTries < 50) {
+          setTimeout(waitForConvListThenSelect, 200);
+        }
+      }
+      setTimeout(waitForConvListThenSelect, 300);
+    }
+    setTimeout(waitAndOpenConvStudy, 400);
+  }
+  })();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _khStudyRoomInit);
+} else {
+  _khStudyRoomInit();
+}
+
+function _mapPicturePrompt(x) {
+  return {
+    id:                  x.id,
+    image:               x.image_url || '',
+    prompt_ko:           x.prompt_ko || '',
+    sample:              x.sample_answer || '',
+    word_order_words:    Array.isArray(x.word_order_words)    ? x.word_order_words    : [],
+    vocab_items:         Array.isArray(x.vocab_items)         ? x.vocab_items         : [],
+    incorrect_sentences: Array.isArray(x.incorrect_sentences) ? x.incorrect_sentences : [],
+    custom_prompt:       x.custom_prompt || ''
+  };
+}
+
+async function loadPicturePromptsFromDB() {
+  var sb = getSupa();
+  if (!sb) return;
+
+  // Full field set (requires migration 20260402 to have run).
+  // Falls back to base fields if new columns don't exist yet.
+  var fieldsWithNew  = 'id,prompt_ko,image_url,sample_answer,sort_order,word_order_words,vocab_items,incorrect_sentences,custom_prompt,scheduled_date';
+  var fieldsBaseOnly = 'id,prompt_ko,image_url,sample_answer,sort_order,word_order_words,custom_prompt,scheduled_date';
+
+  async function fetchPrompts(fields) {
+    var today = kstDateKey();
+    // 1. Prefer today's scheduled item
+    var r = await sb.from('study_picture_prompts')
+      .select(fields)
+      .eq('is_active', true)
+      .eq('scheduled_date', today)
+      .limit(1)
+      .maybeSingle();
+    if (!r.error && r.data) { _picturePrompts = [_mapPicturePrompt(r.data)]; return true; }
+    if (r.error && r.error.message && r.error.message.includes('column')) throw new Error('missing_column');
+
+    // 2. Fallback: unscheduled items ordered by sort_order
+    var r2 = await sb.from('study_picture_prompts')
+      .select(fields)
+      .eq('is_active', true)
+      .is('scheduled_date', null)
+      .order('sort_order', { ascending: true })
+      .limit(50);
+    if (r2.error && r2.error.message && r2.error.message.includes('column')) throw new Error('missing_column');
+    if (!r2.error && r2.data && r2.data.length) { _picturePrompts = r2.data.map(_mapPicturePrompt); }
+    return true;
+  }
+
+  try {
+    await fetchPrompts(fieldsWithNew);
+  } catch(e) {
+    if (e.message === 'missing_column') {
+      // Migration hasn't run yet — retry without new columns
+      try { await fetchPrompts(fieldsBaseOnly); } catch(e2) { console.error('loadPicturePromptsFromDB', e2); }
+    } else {
+      console.error('loadPicturePromptsFromDB', e);
+    }
+  }
+}
+
+// ─── DB-backed Quick Help (빠른 도움) ───────────────────────
+async function loadDBHelpers(level) {
+  var sb = getSupa();
+  if (!sb) return false;
+  try {
+    var r = await sb.from('study_room_helpers')
+      .select('ko,en,display_order')
+      .eq('level', level)
+      .eq('active', true)
+      .order('display_order', { ascending: true });
+    if (r.error || !r.data || !r.data.length) return false;
+    var hhtml = r.data.map(function(h) {
+      return '<div class="hrow">'
+        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
+        + '<div class="hen">' + h.en + '</div>'
+        + '</div>';
+    }).join('');
+    var box = document.getElementById('helper-box');
+    if (box) box.innerHTML = hhtml;
+    _dbHelpersLoaded = true;
+    if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
+    return true;
+  } catch(e) { return false; }
+}
+
+// ─── DB-backed Grammar ───────────────────────────────────────
+async function loadDBGrammar(level) {
+  var sb = getSupa();
+  if (!sb) return false;
+  try {
+    var r = await sb.from('study_room_grammar')
+      .select('pattern,explanation,example_ko,example_en,display_order')
+      .eq('level', level)
+      .eq('active', true)
+      .order('display_order', { ascending: true });
+    if (r.error || !r.data || !r.data.length) return false;
+    var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la', Starter:'lb' };
+    var ghtml = r.data.map(function(g) {
+      return '<div class="grb">'
+        + '<span class="grbadge lvbadge ' + (glvColor[level]||'lb') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level) + '</span>'
+        + '<div class="grname">' + g.pattern + '</div>'
+        + '<div class="grexp">' + g.explanation + '</div>'
+        + '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>'
+        + '</div>';
+    }).join('');
+    var box = document.getElementById('grammar-box');
+    if (box) box.innerHTML = ghtml;
+    _dbGrammarLoaded = true;
+    if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
+    return true;
+  } catch(e) { return false; }
+}
+
+// ─── Word-order activity (어절 순서맞추기) ─────────────────────
+function renderWordOrderActivity(words) {
+  _wordOrderState.correct = words.slice();
+  var shuffled = words.map(function(w, i){ return { word:w, origIdx:i }; });
+  for (var i = shuffled.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+  }
+  _wordOrderState.pool = shuffled;
+  _wordOrderState.answer = [];
+  // Pre-select the first word of the intended order — anchors the start so
+  // alternative valid orderings don't leave the user guessing.
+  if (_wordOrderState.pool.length && _wordOrderState.correct.length) {
+    var firstWord = _wordOrderState.correct[0];
+    for (var k = 0; k < _wordOrderState.pool.length; k++) {
+      if (_wordOrderState.pool[k].word === firstWord) {
+        _wordOrderState.answer.push(_wordOrderState.pool.splice(k, 1)[0]);
+        break;
+      }
+    }
+  }
+  _renderWordOrderUI();
+}
+
+function _renderWordOrderUI() {
+  var pool = document.getElementById('pd-word-pool');
+  var ans  = document.getElementById('pd-word-answer');
+  var res  = document.getElementById('pd-word-result');
+  if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+  if (pool) {
+    pool.innerHTML = _wordOrderState.pool.length
+      ? _wordOrderState.pool.map(function(item) {
+          return '<button class="wc-mode-tab" style="cursor:pointer" onclick="pickWordFromPool(' + item.origIdx + ')">' + item.word + '</button>';
+        }).join('')
+      : '<span style="font-size:12px;color:rgba(255,255,255,.3)">All placed</span>';
+  }
+  if (ans) {
+    ans.innerHTML = _wordOrderState.answer.length
+      ? _wordOrderState.answer.map(function(item, pos) {
+          return '<button class="wc-mode-tab" style="background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.3);color:#86efac;cursor:pointer" onclick="removeWordFromAnswer(' + pos + ')">' + item.word + '</button>';
+        }).join('')
+      : '<span style="font-size:12px;color:rgba(255,255,255,.3)">Click words above to arrange them in order</span>';
+  }
+}
+
+function pickWordFromPool(origIdx) {
+  var idx = -1;
+  for (var i = 0; i < _wordOrderState.pool.length; i++) {
+    if (_wordOrderState.pool[i].origIdx === origIdx) { idx = i; break; }
+  }
+  if (idx < 0) return;
+  _wordOrderState.answer.push(_wordOrderState.pool.splice(idx, 1)[0]);
+  _renderWordOrderUI();
+}
+
+function removeWordFromAnswer(pos) {
+  if (pos < 0 || pos >= _wordOrderState.answer.length) return;
+  _wordOrderState.pool.push(_wordOrderState.answer.splice(pos, 1)[0]);
+  _renderWordOrderUI();
+}
+
+function checkWordOrder() {
+  var ans     = _wordOrderState.answer.map(function(item){ return item.word.trim(); });
+  var correct = _wordOrderState.correct.map(function(w){ return w.trim(); });
+  var res = document.getElementById('pd-word-result');
+  if (!res) return;
+  res.style.display = '';
+  if (ans.length < correct.length) {
+    res.innerHTML = '<div style="padding:10px;background:rgba(251,191,36,.1);border-radius:8px;color:#fbbf24">Place all the words first!</div>';
+    return;
+  }
+  var isCorrect = ans.join(' ') === correct.join(' ');
+  if (isCorrect) {
+    res.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac;display:flex;align-items:center;flex-wrap:wrap;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span><br><span style="font-size:12px;opacity:.8;width:100%">' + correct.join(' ') + '</span></div>';
+    // Word arrangement is the final step in the redesigned PD flow.
+    markStageDone('picture');
+    var nav = document.getElementById('pd-nav');
+    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
+  } else {
+    res.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Incorrect. Try again!</span></div>';
+  }
+}
+
+function resetWordOrder() {
+  var item = _picturePrompts.length ? _picturePrompts[_pictureIndex % _picturePrompts.length] : null;
+  if (item && item.word_order_words && item.word_order_words.length) {
+    renderWordOrderActivity(item.word_order_words);
+  }
+}
+
+// Credit system removed — plan system (requirePlan) handles access
+function loadStudyAccessGate() { /* no-op */ }
+function ensureStudyUnlocked() { return true; }
+
+function renderStudyChecklist() {
+  var box = document.getElementById('sr-checklist-box');
+  if (!box) return;
+  var isAdvanced = _currentLevel === 'Advanced';
+  var items = [
+    { k:'topic',    label:'Express Practice',  sub:'Write & speak on today\'s topic',     pts:'+20 냥' },
+    { k:'grammar',  label:'Review grammar points',     sub:'Quick, light review',       pts:'+10 냥' },
+    { k:'picture',  label:'Speaking Practice',  sub:'발음 & 유창성 평가',  pts:'+15 냥' },
+    { k:'sentence', label:'Dictation practice',         sub:'Accuracy training',         pts:'+10 냥' }
+  ];
+  var doneCnt = items.filter(function(i){ return !!_studyDone[i.k]; }).length;
+  var pd = document.getElementById('sr-done-picture');
+  var sd = document.getElementById('sr-done-sentence');
+  if (pd) pd.innerHTML = _studyDone.picture ? '<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span>' : '';
+  if (sd) sd.innerHTML = _studyDone.sentence ? '<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span>' : '';
+  box.innerHTML = items.map(function(i){
+    var done = !!_studyDone[i.k];
+    var nameStyle = done ? 'text-decoration:line-through;opacity:.5' : '';
+    return '<div class="sr-mission-item" style="' + (done ? 'opacity:.7' : '') + '">'
+      + '<div class="sr-mission-item-left">'
+      + '<span class="sr-mission-item-name" style="' + nameStyle + '">' + (done ? '<span style="display:inline-flex;width:12px;height:12px;color:#22c55e;vertical-align:-1px;margin-right:4px">'+BM_ICON_CHECK+'</span>' : '') + i.label + '</span>'
+      + '<span class="sr-mission-item-sub" style="' + nameStyle + '">' + i.sub + '</span>'
+      + '</div>'
+      + '<div class="sr-mission-right">'
+      + '<span class="sr-mission-pts">' + i.pts + '</span>'
+      + '<span class="' + (done ? 'sr-mission-status-done' : 'sr-mission-status-todo') + '">' + (done ? 'DONE' : 'TODO') + '</span>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+  // Update quest ring
+  _drawQuestRing(doneCnt, items.length);
+  var qSub = document.getElementById('sr-quest-sub');
+  if (qSub) qSub.textContent = doneCnt + '/' + items.length + ' · +40 bonus';
+  // Keep learning selector badges in sync if modal is open
+  var lsModal = document.getElementById('ls-modal');
+  if (lsModal && !lsModal.classList.contains('hidden')) _updateLSSelectorBadges();
+}
+
+var _questRingFill = 0;
+function _drawQuestRing(done, total) {
+  _drawRingOnCanvas('sr-quest-ring', 72, done, total, true);
+  _drawRingOnCanvas('sr-quest-ring-mobile', 40, done, total, false);
+}
+function _drawRingOnCanvas(canvasId, S, done, total, showText) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var R = S / 2, r = R * 0.78, lw = S * 0.083;
+  var target = done / Math.max(1, total);
+
+  function frame() {
+    _questRingFill += (target - _questRingFill) * 0.08;
+    if (Math.abs(_questRingFill - target) < 0.005) _questRingFill = target;
+    ctx.clearRect(0, 0, S, S);
+    ctx.beginPath(); ctx.arc(R, R, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.stroke();
+    if (_questRingFill > 0) {
+      var sa = -Math.PI / 2, ea = sa + Math.PI * 2 * _questRingFill;
+      var g = ctx.createLinearGradient(0, 0, S, S);
+      if (_questRingFill >= 1) { g.addColorStop(0,'#34d399'); g.addColorStop(1,'#22c55e'); }
+      else { g.addColorStop(0,'#a78bfa'); g.addColorStop(1,'#7c3aed'); }
+      ctx.beginPath(); ctx.arc(R, R, r, sa, ea); ctx.strokeStyle = g; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(R, R, r, sa, ea);
+      ctx.strokeStyle = _questRingFill >= 1 ? 'rgba(52,211,153,.3)' : 'rgba(124,58,237,.3)';
+      ctx.lineWidth = lw + 4; ctx.lineCap = 'round'; ctx.stroke();
+    }
+    if (showText) { ctx.fillStyle = '#fff'; ctx.font = '900 ' + Math.round(S * 0.25) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(done, R, R); }
+    if (Math.abs(_questRingFill - target) > 0.003) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── START Button Ripple Effect ──
+function _startBtnRipple(e) {
+  var canvas = document.getElementById('sr-start-ripple');
+  if (!canvas || !canvas.getContext) return;
+  var btn = canvas.parentElement;
+  var rect = btn.getBoundingClientRect();
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  var cx = e.clientX - rect.left;
+  var cy = e.clientY - rect.top;
+  var maxR = Math.sqrt(rect.width * rect.width + rect.height * rect.height);
+  var t = 0;
+
+  function frame() {
+    t += 0.035;
+    if (t > 1) { ctx.clearRect(0, 0, rect.width, rect.height); return; }
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    var r = maxR * t;
+    var alpha = 0.35 * (1 - t);
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(122,184,245,' + alpha + ')';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // Inner glow
+    var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.8);
+    grad.addColorStop(0, 'rgba(122,184,245,' + (alpha * 0.4) + ')');
+    grad.addColorStop(1, 'rgba(122,184,245,0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── START button idle glow canvas ──
+var _startGlowId = null;
+function _startBtnIdleGlow() {
+  var canvas = document.getElementById('sr-start-ripple');
+  if (!canvas || !canvas.getContext) return;
+  if (_startGlowId) return; // already running
+  var btn = canvas.parentElement;
+  function resize() {
+    var rect = btn.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    return { w: rect.width, h: rect.height, dpr: dpr };
+  }
+  var sz = resize();
+  var t = 0;
+  function frame() {
+    t += 0.012;
+    var w = sz.w, h = sz.h;
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(sz.dpr, 0, 0, sz.dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    // Aurora blobs
+    for (var i = 0; i < 3; i++) {
+      var bx = w * (0.3 + 0.4 * Math.sin(t * 0.7 + i * 2.1));
+      var by = h * (0.25 + 0.5 * Math.cos(t * 0.5 + i * 1.7));
+      var br = Math.max(w, h) * 0.55;
+      var grad = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+      var a = 0.08 + 0.05 * Math.sin(t * 1.2 + i);
+      grad.addColorStop(0, 'rgba(122,184,245,' + a + ')');
+      grad.addColorStop(0.4, 'rgba(139,92,246,' + (a * 0.6) + ')');
+      grad.addColorStop(1, 'rgba(122,184,245,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // Shimmer sweep
+    var sx = (w + 120) * ((Math.sin(t * 0.35) + 1) / 2) - 60;
+    var sg = ctx.createLinearGradient(sx - 50, 0, sx + 50, 0);
+    sg.addColorStop(0, 'rgba(255,255,255,0)');
+    sg.addColorStop(0.5, 'rgba(255,255,255,0.09)');
+    sg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Breathing border glow
+    var ba = 0.12 + 0.08 * Math.sin(t * 1.5);
+    ctx.strokeStyle = 'rgba(122,184,245,' + ba + ')';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(12, 0); ctx.lineTo(w - 12, 0);
+    ctx.arcTo(w, 0, w, 12, 12); ctx.lineTo(w, h - 12);
+    ctx.arcTo(w, h, w - 12, h, 12); ctx.lineTo(12, h);
+    ctx.arcTo(0, h, 0, h - 12, 12); ctx.lineTo(0, 12);
+    ctx.arcTo(0, 0, 12, 0, 12);
+    ctx.stroke();
+
+    _startGlowId = requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  // Resize on window change
+  window.addEventListener('resize', function() { sz = resize(); });
+}
+
+// ── Universal canvas ripple (for activity cards, etc.) ──
+function _canvasRipple(el, e) {
+  var rect = el.getBoundingClientRect();
+  var c = document.createElement('canvas');
+  c.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:10;border-radius:inherit';
+  var dpr = window.devicePixelRatio || 1;
+  c.width = rect.width * dpr; c.height = rect.height * dpr;
+  el.appendChild(c);
+  var ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  var cx = e ? (e.clientX - rect.left) : rect.width / 2;
+  var cy = e ? (e.clientY - rect.top) : rect.height / 2;
+  var maxR = Math.sqrt(rect.width * rect.width + rect.height * rect.height);
+  var t = 0;
+  function frame() {
+    t += 0.028;
+    if (t > 1) { c.remove(); return; }
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    var r = maxR * t;
+    var alpha = 0.35 * (1 - t);
+    // Filled glow
+    var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, 'rgba(122,184,245,' + (alpha * 0.4) + ')');
+    grad.addColorStop(0.6, 'rgba(122,184,245,' + (alpha * 0.15) + ')');
+    grad.addColorStop(1, 'rgba(122,184,245,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, rect.width, rect.height);
+    // Ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(122,184,245,' + (alpha * 0.8) + ')';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── Fast Track node entry ripple ──
+function _ftNodeRipple(nodeId) {
+  var nodeEl = document.getElementById('ftn-' + nodeId);
+  if (!nodeEl) return;
+  var box = nodeEl.querySelector('.ft-node-box');
+  if (!box) return;
+  _canvasRipple(box, null);
+}
+
+function renderStudyRoomWordTracks() {
+  var lvEl = document.getElementById('sr-level-words');
+  var inEl = document.getElementById('sr-interest-words');
+  if (!lvEl || !inEl) return;
+  var lvKey = 'kh_vocab_level_' + (_currentLevel || 'Beginner') + '_' + (function(){ try{ return new Date().toISOString().slice(0,10);}catch(e){return '';} })();
+  var tags = [];
+  try { tags = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
+  var intScope = (tags || []).slice().sort().join('__') || 'none';
+  var intKey = 'kh_vocab_interest_' + intScope + '_' + (function(){ try{ return new Date().toISOString().slice(0,10);}catch(e){return '';} })();
+  var lvWords = [];
+  var intWords = [];
+  try { lvWords = JSON.parse(localStorage.getItem(lvKey) || '[]'); } catch(e) {}
+  try { intWords = JSON.parse(localStorage.getItem(intKey) || '[]'); } catch(e) {}
+  function row(w) {
+    var ko = w.word_ko || w.ko || '';
+    var en = w.word_en || w.en || '';
+    var rom = w.word_rom || w.rom || '';
+    return '<div class="vrow"><div><div class="vko">' + ko + '</div><div class="ven">' + en + '</div></div>'
+      + '<button class="sr-pill" onclick="saveMustKnowWord(\'' + ko.replace(/'/g,"\\'") + '\',\'' + en.replace(/'/g,"\\'") + '\',\'' + rom.replace(/'/g,"\\'") + '\')">Save</button></div>';
+  }
+  lvEl.innerHTML = lvWords.length ? lvWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">Generate today\'s words in Growth Lab first to continue studying here.</div>';
+  inEl.innerHTML = intWords.length ? intWords.slice(0,10).map(row).join('') : '<div style="font-size:12px;color:#94a3b8">No interest words yet. Save your interests in Growth Lab first.</div>';
+}
+
+async function saveMustKnowWord(ko, en, rom) {
+  if (!ko) return;
+  await saveToWordBook(ko, en, rom);
+}
+// Universal save to word book — works from anywhere
+// Delimiter used to attach an example sentence inside word_en.
+// Format: "<English>  ||EX|<exampleKo>|<exampleEn>"
+// Consumers that only want the translation should call splitWordEnMeaning().
+var WORDBOOK_EX_DELIM = '||EX|';
+function splitWordEnMeaning(en) {
+  if (!en) return { meaning: '', exKo: '', exEn: '' };
+  var i = en.indexOf(WORDBOOK_EX_DELIM);
+  if (i < 0) return { meaning: en, exKo: '', exEn: '' };
+  var parts = en.slice(i + WORDBOOK_EX_DELIM.length).split('|');
+  return { meaning: en.slice(0, i).trim(), exKo: parts[0] || '', exEn: parts[1] || '' };
+}
+
+async function saveToWordBook(ko, en, rom, category, opts) {
+  if (!ko) return;
+  if (!supaUser) { showToast('Sign in to save words'); return; }
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    // category: 'word' (default), 'slang', 'expression'
+    var cat = category || 'word';
+    var enWithCat = en || '';
+    // Prefix category marker if not already present
+    if (cat === 'slang' && enWithCat.indexOf('[슬랭]') < 0) enWithCat = '[슬랭] ' + enWithCat;
+    if (cat === 'expression' && enWithCat.indexOf('[표현]') < 0) enWithCat = '[표현] ' + enWithCat;
+    // Attach example sentence, if any, so the vocab notebook can offer contextual practice
+    if (opts && (opts.exampleKo || opts.exampleEn)) {
+      enWithCat = enWithCat + '  ' + WORDBOOK_EX_DELIM
+        + (opts.exampleKo || '').replace(/\|/g,'／') + '|'
+        + (opts.exampleEn || '').replace(/\|/g,'／');
+    }
+    await sb.from('user_saved_words').upsert({
+      user_id: supaUser.id, word_key: ko, word_ko: ko, word_en: enWithCat, word_rom: rom || ''
+    }, { onConflict: 'user_id,word_key' });
+    showToast('Saved to Word Book: ' + ko);
+  } catch(e) {
+    console.warn('[saveToWordBook]', e);
+    showToast('저장 실패');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PHRASE
+// ═══════════════════════════════════════════════════════════════
+function renderPhrase() {
+  var phrases = typeof getPhrases === 'function' ? getPhrases() : [];
+  var dailyPhraseIdx = phrases.length
+    ? ((typeof getTodaysPhraseIndex === 'function') ? getTodaysPhraseIndex() : Math.floor((Date.now() + 9*3600000) / 86400000) % phrases.length)
+    : 0;
+  var p = phrases[dailyPhraseIdx] || { ko:'오늘도 화이팅!', rom:'Oneuldo hwaiting!', en:"You've got this today!" };
+  var el = document.getElementById('phrase-box-help') || document.getElementById('phrase-box-left');
+  if (el) el.innerHTML =
+    '<div class="pko">' + p.ko + '</div>'
+    + '<div class="prom">' + p.rom + '</div>'
+    + '<div class="pen">' + p.en + '</div>';
+}
+
+function normalizeLevelName(level) {
+  var v = String(level || '').toLowerCase().trim();
+  if (v === 'starter' || v === 'seed') return 'Starter';
+  if (v === 'beginner' || v === 'sprout') return 'Beginner';
+  if (v === 'intermediate' || v === 'tree') return 'Intermediate';
+  if (v === 'advanced' || v === 'forest') return 'Advanced';
+  return level || 'Beginner';
+}
+
+function clearAIContentUI() {
+  ['vocab-box','grammar-box','helper-box','wcard-chips','wm-grammar','wm-vocab-chips','wm-vocab-chips-mobile','wm-grammar-chips','wm-helpers'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (id === 'wcard-chips') el.innerHTML = '';
+    else el.innerHTML = '<div style="color:#8ea0b8;font-size:12px">Loading…</div>';
+  });
+  // Keep the Help tab in sync — without this, switching level while on
+  // the Help tab kept the previous topic's Vocab + Quick Help on screen.
+  if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEVEL
+// ═══════════════════════════════════════════════════════════════
+function khForestLockedToast() {
+  var prev = document.getElementById('kh-forest-locked-toast');
+  if (prev) prev.remove();
+  var t = document.createElement('div');
+  t.id = 'kh-forest-locked-toast';
+  t.textContent = 'Forest level is coming soon';
+  t.style.cssText = 'position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:rgba(15,23,42,.94);color:#fff;padding:11px 18px;border-radius:999px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.35);';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.transition='opacity .25s'; t.style.opacity='0'; }, 1700);
+  setTimeout(function(){ t.remove(); }, 2100);
+}
+
+function setLevel(level, btn) {
+  level = normalizeLevelName(level);
+  if (_currentLevel === level) return;
+  _currentLevel = level;
+  document.querySelectorAll('.lv-btn,.lv-pill').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+
+  // Members only
+  if (!supaUser) {
+    showLoginWall();
+    return;
+  }
+
+  _aiContent = null;
+  _dbHelpersLoaded = false;
+  _dbGrammarLoaded = false;
+  clearAIContentUI();
+  renderStudyRoomWordTracks();
+  loadDBHelpers(level);
+  loadDBGrammar(level);
+  reassignTopicForLevel(level);
+}
+
+async function reassignTopicForLevel(level) {
+  // Level changed — reload daily content for the new level from study_daily_content (DB-first, AI-fallback).
+  // This is the same flow as the initial load, so we just delegate to loadDailyContent.
+  khLog('[reassignTopicForLevel] level changed to', level, '— reloading daily content');
+  _todayTopic = null;
+  _aiContent = null;
+  clearAIContentUI();
+  var subEl = document.getElementById('wm-topic-sub');
+  if (subEl) subEl.textContent = 'Loading…';
+  await loadDailyContent();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TOPICS — load all from DB
+// ═══════════════════════════════════════════════════════════════
+async function loadAllTopics() {
+  try {
+    var controller = new AbortController();
+    var timer = setTimeout(function(){ controller.abort(); }, 5000);
+    var res = await fetch(SUPA_URL + '/rest/v1/writing_topics?select=*&active=eq.true&order=category.asc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY },
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    var data = await res.json();
+    _allTopics = Array.isArray(data) && data.length ? data : getFallbackTopics();
+  } catch(e) { _allTopics = getFallbackTopics(); }
+}
+
+function getFallbackTopics() {
+  return [
+    {id:1001, topic_ko:'가보고 싶은 나라가 있나요?', topic_en:'Is there a country you want to visit?', category:'travel', level:'Beginner',  active:true},
+    {id:1002, topic_ko:'좋아하는 계절은 무엇인가요?', topic_en:'What is your favorite season?',         category:'daily',  level:'Beginner',  active:true},
+    {id:1003, topic_ko:'오늘 기분이 어때요?',          topic_en:'How do you feel today?',               category:'daily',  level:'Beginner',  active:true},
+    {id:1004, topic_ko:'한국 음식 중 좋아하는 음식은?', topic_en:'What Korean food do you like?',       category:'food',   level:'Beginner',  active:true},
+    {id:1005, topic_ko:'주말에 주로 뭐 해요?',          topic_en:'What do you usually do on weekends?', category:'daily',  level:'Beginner',  active:true},
+    {id:1006, topic_ko:'한국어를 공부하는 이유는?',     topic_en:'Why are you studying Korean?',        category:'study',  level:'Intermediate', active:true},
+    {id:1007, topic_ko:'최근에 본 드라마나 영화는?',    topic_en:'What drama or movie did you watch recently?', category:'culture', level:'Intermediate', active:true},
+    {id:1008, topic_ko:'서울에서 꼭 가봐야 할 곳은?',  topic_en:'Where should you visit in Seoul?',    category:'travel', level:'Intermediate', active:true},
+    {id:1009, topic_ko:'한국 문화에서 가장 인상적인 점은?', topic_en:'What impresses you most about Korean culture?', category:'culture', level:'Advanced', active:true},
+    {id:1010, topic_ko:'글로벌 시대에 언어 공부의 중요성', topic_en:'Importance of language learning in a global era', category:'opinion', level:'Advanced', active:true},
+  ];
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOAD DAILY CONTENT — from study_daily_content (AI-generated + admin-editable)
+// ═══════════════════════════════════════════════════════════════
+async function loadDailyContent() {
+  var today = kstDateKey();
+  khLog('[loadDailyContent] start — date:', today, 'level:', _currentLevel, 'user:', supaUser ? supaUser.id : 'none');
+
+  // Fast path: check localStorage cache first (instant, no network)
+  // Only use cache if it's fresh (<6h old) AND has an admin_edited flag
+  // OR cache is marked as verified from DB within this session
+  var lsCacheKey = 'sr_daily_' + today + '_' + _currentLevel;
+  var sessionCheckKey = 'sr_daily_checked_' + today + '_' + _currentLevel;
+  var alreadyCheckedThisSession = sessionStorage.getItem(sessionCheckKey) === '1';
+  // Stale-while-revalidate. The cache key embeds today's date, so any
+  // entry we find is by definition for today. If we have one, paint the
+  // UI from it immediately (zero network) and either return — when the
+  // session has already validated this level — or kick off a silent
+  // background DB check that overwrites the cache only if the server
+  // has a newer/different record. Previously we required the session
+  // check to have already happened before touching the cache, which
+  // meant every first level switch hit the DB and felt slow.
+  try {
+    var lsCached = localStorage.getItem(lsCacheKey);
+    if (lsCached) {
+      var cachedRec = JSON.parse(lsCached);
+      if (cachedRec && cachedRec.topic_ko && cachedRec.vocab && cachedRec.vocab.length > 0) {
+        if (alreadyCheckedThisSession) {
+          khLog('[loadDailyContent] instant cache load (already validated this session)');
+          _applyDailyContent(cachedRec);
+          return;
+        }
+        khLog('[loadDailyContent] instant cache load + background revalidate');
+        _applyDailyContent(cachedRec);
+        // Fire-and-forget background validation. Same query as the
+        // foreground path below, but it never blocks the UI and only
+        // re-applies content when the server actually has something
+        // different (e.g. admin edited the day's vocab/grammar).
+        (function(t, lvl){
+          try {
+            var sb = getSupa();
+            if (!sb || !supaUser) return;
+            sb.from('study_daily_content').select('*').eq('scheduled_date', t).eq('level', lvl).maybeSingle()
+              .then(function(r){
+                if (r.error || !r.data) return;
+                var newJson = JSON.stringify(r.data);
+                if (newJson === lsCached) return;
+                khLog('[loadDailyContent] background revalidate found newer content, updating');
+                if (_currentLevel === lvl) _applyDailyContent(r.data);
+                else { try { localStorage.setItem('sr_daily_' + t + '_' + lvl, newJson); } catch(e){} }
+                try { sessionStorage.setItem('sr_daily_checked_' + t + '_' + lvl, '1'); } catch(e){}
+              });
+          } catch(e) {}
+        })(today, _currentLevel);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Admin preview: ?preview_date=YYYY-MM-DD (up to +6 days)
+  if (window._isAdmin) {
+    var p = new URLSearchParams(window.location.search).get('preview_date');
+    if (p && /^\d{4}-\d{2}-\d{2}$/.test(p)) {
+      var maxDate = new Date(new Date(today + 'T00:00:00Z').getTime() + (6 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+      if (p >= today && p <= maxDate) today = p;
+    }
+  }
+
+  // _sessionChecked is guaranteed true before this function is called (waitForSession ensures it)
+  if (!supaUser) {
+    khLog('[loadDailyContent] no user — showing login wall');
+    var subEl = document.getElementById('wm-topic-sub');
+    if (subEl) subEl.textContent = 'Today\'s Topic';
+    var heroKo = document.getElementById('hero-topic-ko');
+    var heroEn = document.getElementById('hero-topic-en');
+    if (heroKo) heroKo.textContent = 'Today\'s Topic';
+    if (heroEn) heroEn.textContent = 'Sign in to start studying';
+    showLoginWall();
+    return;
+  }
+
+  var sb = getSupa();
+  if (!sb) {
+    console.error('[loadDailyContent] getSupa() returned null');
+    // Fallback: try localStorage cache when DB unavailable
+    var lsCacheKey = 'sr_daily_' + today + '_' + _currentLevel;
+    try {
+      var lsCached = localStorage.getItem(lsCacheKey);
+      if (lsCached) { var cachedRec = JSON.parse(lsCached); if (cachedRec && cachedRec.topic_ko) { _applyDailyContent(cachedRec); return; } }
+    } catch(e) {}
+    _applyFallbackTopic(today);
+    return;
+  }
+
+  // Step 1: Try loading from study_daily_content (admin-generated or auto-generated, any status)
+  try {
+    khLog('[loadDailyContent] querying study_daily_content');
+    var r = await Promise.race([
+      sb.from('study_daily_content').select('*').eq('scheduled_date', today).eq('level', _currentLevel).maybeSingle(),
+      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('db_timeout')); }, 8000); })
+    ]);
+    if (!r.error && r.data) {
+      // Check if learning elements actually exist — if only topic is set but vocab/grammar are empty, trigger AI generation
+      var hasLearning = r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : (typeof r.data.vocab === 'string' && r.data.vocab.length > 2));
+      if (hasLearning) {
+        khLog('[loadDailyContent] found content with learning elements, status:', r.data.status);
+        _applyDailyContent(r.data);
+        _pregenTomorrow();
+        return;
+      }
+      // Topic exists but learning elements are empty — pass topic to AI generation
+      khLog('[loadDailyContent] topic found but learning elements empty — generating AI content');
+      _approvedTopicForGen = { topic_ko: r.data.topic_ko, topic_en: r.data.topic_en };
+    }
+    if (r.error) console.warn('[loadDailyContent] DB error:', r.error.message);
+  } catch(e) {
+    console.warn('[loadDailyContent] study_daily_content failed:', e.message);
+  }
+
+  // Step 2: Try auto-generating via AI
+  try {
+    khLog('[loadDailyContent] auto-generating via AI');
+    await Promise.race([
+      _generateAndSaveDailyContent(today),
+      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('gen_timeout')); }, 35000); })
+    ]);
+    // If _generateAndSaveDailyContent succeeded, _applyDailyContent was already called
+    if (_todayTopic && _todayTopic.topic_ko) { _pregenTomorrow(); return; }
+  } catch(e) {
+    console.warn('[loadDailyContent] AI generation failed:', e.message);
+  }
+
+  // Step 3: Last resort — local fallback content (no DB, no AI needed)
+  khLog('[loadDailyContent] applying local fallback');
+  _applyFallbackTopic(today);
+}
+
+// 다음날 콘텐츠 미리 생성 (백그라운드, 지연)
+// Daily content is generated server-side by daily-content-gen Edge Function (cron).
+// Client-side _pregenTomorrow kept as lightweight fallback only for current level.
+var _pregenDone = false;
+function _pregenTomorrow() {
+  if (_pregenDone) return;
+  _pregenDone = true;
+  setTimeout(function() {
+    try {
+      var todayMs = new Date(kstDateKey() + 'T00:00:00+09:00').getTime();
+      var tomorrow = new Date(todayMs + 86400000).toISOString().slice(0,10);
+      var sb = getSupa(); if (!sb || !supaUser) return;
+      sb.from('study_daily_content').select('id,vocab').eq('scheduled_date', tomorrow).eq('level', _currentLevel).maybeSingle()
+        .then(function(r) {
+          var hasVocab = r.data && r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : true);
+          if (!hasVocab) {
+            khLog('[pregenTomorrow] fallback — generating for', tomorrow, _currentLevel);
+            _generateAndSaveDailyContent(tomorrow, { silent: true });
+          }
+        });
+    } catch(e) {}
+  }, 10000);
+}
+
+function _applyFallbackTopic(date) {
+  hideAILoading();
+  try {
+    // Level-aware fallback topic pools. The original implementation used
+    // a single beginner-style list ("나의 하루", "좋아하는 음식"…) for
+    // every level, so Advanced learners hit the offline fallback and
+    // were handed a kindergarten prompt. Each level now has its own
+    // pool tuned to the level's writing complexity.
+    var poolByLevel = {
+      Starter: [
+        { ko:'나의 하루', en:'My Daily Routine' },
+        { ko:'좋아하는 음식', en:'My Favorite Food' },
+        { ko:'좋아하는 색깔', en:'My Favorite Color' },
+        { ko:'우리 가족', en:'My Family' },
+        { ko:'오늘 날씨', en:'Today\'s Weather' },
+        { ko:'좋아하는 동물', en:'My Favorite Animal' },
+        { ko:'주말 계획', en:'Weekend Plans' }
+      ],
+      Beginner: [
+        { ko:'나의 하루', en:'My Daily Routine' },
+        { ko:'좋아하는 음식', en:'My Favorite Food' },
+        { ko:'주말 계획', en:'Weekend Plans' },
+        { ko:'한국 여행', en:'Traveling in Korea' },
+        { ko:'좋아하는 계절', en:'My Favorite Season' },
+        { ko:'가족 소개', en:'Introducing My Family' },
+        { ko:'취미 생활', en:'My Hobbies' }
+      ],
+      Intermediate: [
+        { ko:'한국어를 공부하는 이유', en:'Why I Study Korean' },
+        { ko:'최근에 본 드라마나 영화', en:'A Drama or Movie I Watched Recently' },
+        { ko:'서울에서 꼭 가봐야 할 곳', en:'Must-visit Places in Seoul' },
+        { ko:'스트레스를 푸는 방법', en:'How I Relieve Stress' },
+        { ko:'기억에 남는 여행', en:'A Memorable Trip' },
+        { ko:'한국 음식과 우리나라 음식 비교', en:'Comparing Korean and My Country\'s Food' },
+        { ko:'10년 후의 나의 모습', en:'My Life Ten Years from Now' }
+      ],
+      Advanced: [
+        { ko:'한국 문화에서 가장 인상적인 점', en:'What Impresses Me Most About Korean Culture' },
+        { ko:'글로벌 시대에 언어 공부의 중요성', en:'The Importance of Language Learning in a Global Era' },
+        { ko:'SNS가 인간관계에 미치는 영향', en:'How Social Media Affects Human Relationships' },
+        { ko:'AI 기술과 노동 시장의 미래', en:'AI Technology and the Future of the Labor Market' },
+        { ko:'전통과 현대 사이의 균형', en:'Balancing Tradition and Modernity' },
+        { ko:'한국 사회의 빠른 변화에 대한 생각', en:'Thoughts on the Rapid Changes in Korean Society' },
+        { ko:'환경 문제와 개인의 책임', en:'Environmental Issues and Personal Responsibility' }
+      ]
+    };
+    var cats = poolByLevel[_currentLevel] || poolByLevel.Beginner;
+    var dateHash = date.split('-').reduce(function(a,b){ return a + parseInt(b); }, 0);
+    var topic = cats[dateHash % cats.length];
+    var fb = buildStudyRoomFallbackContent({ topic_ko: topic.ko, topic_en: topic.en }, _currentLevel);
+    _applyDailyContent({
+      scheduled_date: date,
+      level: _currentLevel,
+      topic_ko: topic.ko,
+      topic_en: topic.en,
+      vocab: fb.vocab,
+      grammar: fb.grammar,
+      helpers: fb.helpers,
+      dictation_sentences: [],
+      dictation_questions: [],
+      __fallback: true
+    });
+  } catch(e) {
+    console.error('[_applyFallbackTopic] failed:', e);
+    _setTopicLoadError('Please refresh the page');
+  }
+}
+
+function _setTopicLoadError(msg) {
+  hideAILoading();
+  var subEl = document.getElementById('wm-topic-sub');
+  if (subEl) subEl.textContent = msg || 'Topic unavailable — please refresh';
+  var heroKo = document.getElementById('hero-topic-ko');
+  if (heroKo) heroKo.textContent = 'Loading Error';
+  var heroEn = document.getElementById('hero-topic-en');
+  if (heroEn) heroEn.textContent = msg || 'Loading failed — please refresh the page';
+}
+
+function _applyDailyContent(rec) {
+  khLog('[_applyDailyContent] applying topic:', rec.topic_ko, '/', rec.topic_en, '| admin_edited:', rec.admin_edited, rec.__fallback ? '| FALLBACK' : '');
+  _todayTopic = {
+    id:       (rec.scheduled_date || '') + '_' + (rec.level || ''),
+    topic_ko: rec.topic_ko || '',
+    topic_en: rec.topic_en || '',
+    level:    rec.level    || _currentLevel
+  };
+  _aiContent = {
+    vocab:                   Array.isArray(rec.vocab)                   ? rec.vocab                   : [],
+    grammar:                 Array.isArray(rec.grammar)                 ? rec.grammar                 : [],
+    helpers:                 Array.isArray(rec.helpers)                 ? rec.helpers                 : [],
+    topic_writing_sentences: Array.isArray(rec.topic_writing_sentences) ? rec.topic_writing_sentences : [],
+    confusing_grammar:       Array.isArray(rec.confusing_grammar)       ? rec.confusing_grammar       : [],
+    formality_exercise:      rec.formality_exercise                     || null,
+    culture_note:            rec.culture_note                           || ''
+  };
+  _dailyDictationSentences = Array.isArray(rec.dictation_sentences) ? rec.dictation_sentences : [];
+  _dailyDictationQuestions = Array.isArray(rec.dictation_questions) ? rec.dictation_questions : [];
+  // Prevent AI from overwriting DB-loaded helpers and grammar
+  _dbHelpersLoaded = true;
+  _dbGrammarLoaded = true;
+  renderTopicUI();
+  renderAIContent();
+  hideAILoading();
+  // idiom banner removed (duplicate of Home "Today's Phrase")
+  // Cache in localStorage so topic stays consistent across reloads — but ONLY
+  // when the content came from DB or a successful AI generation. Fallback
+  // records would otherwise lock the user onto the generic actor/singer set
+  // because next session would re-serve the cached fallback without retrying.
+  try {
+    if (!rec.__fallback) {
+      var lsKey = 'sr_daily_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel);
+      localStorage.setItem(lsKey, JSON.stringify(rec));
+      sessionStorage.setItem('sr_daily_checked_' + (rec.scheduled_date || kstDateKey()) + '_' + (rec.level || _currentLevel), '1');
+    }
+  } catch(e) {}
+}
+
+// _showIdiomBanner removed — duplicate of Home "Today's Phrase"
+
+var _approvedTopicForGen = null;
+
+async function _generateAndSaveDailyContent(date, opts) {
+  if (!supaUser) { showLoginWall(); return; }
+  var silent = !!(opts && opts.silent);
+  khLog('[_generateAndSaveDailyContent] generating for date:', date, 'level:', _currentLevel, 'silent:', silent);
+  // Only show the full-screen "잠시만 기다려주세요" overlay when the user
+  // is actively waiting for TODAY's content. Background pregen of
+  // tomorrow's content must never block the current UI — the page is
+  // already rendered and the user isn't waiting on this.
+  if (!silent) showAILoading();
+
+  var levelGuide = {
+    Starter:      'STARTER: Ultra-basic. Daily life, family, food. Vocab: 1-2 syllable words. Grammar: ~이에요/예요, ~있어요/없어요. Sentences max 4 words.',
+    Beginner:     'BEGINNER: Present tense (~아요/어요). Basic particles. Everyday vocab. Helper sentences 5-8 words.',
+    Intermediate: 'INTERMEDIATE: Past tense, conjunctions, modals. Sentences 8-12 words. Topic-specific terms.',
+    Advanced:     'ADVANCED: Complex structures, formal style, advanced connectors. Sentences 12+ words. Abstract vocab.'
+  };
+  // 작문 토픽 — 날짜 기반 순차 선택 (모든 유저 동일)
+  // 기준일(2026-04-14)부터 매일 1번씩 sort_order 순으로
+  var assignedTopic = null;
+  try {
+    var sb = getSupa();
+    if (sb) {
+      var topicRes = await sb.from('writing_topics')
+        .select('*')
+        .eq('level', _currentLevel)
+        .eq('active', true)
+        .order('sort_order')
+        .order('created_at');
+      var allTopics = topicRes.data || [];
+      if (allTopics.length) {
+        // 기준일로부터 며칠째인지 계산 → 인덱스
+        var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
+        var now = new Date(date + 'T00:00:00+09:00').getTime();
+        var daysSinceEpoch = Math.max(0, Math.floor((now - epoch) / 86400000));
+        var todayIdx = daysSinceEpoch % allTopics.length;
+        assignedTopic = allTopics[todayIdx];
+      }
+    }
+  } catch(e) { console.warn('[_generateAndSaveDailyContent] writing_topics fetch failed:', e); }
+
+  // Growth Lab: load user interests for personalized topics
+  var userInterests = [];
+  try { userInterests = JSON.parse(localStorage.getItem('kh_user_interests') || '[]'); } catch(e) {}
+
+  var topicHint = '';
+  var fallbackTopicKo = '';
+  var fallbackTopicEn = '';
+  // Priority: approved topic from study_daily_content > writing_topics > random category
+  if (_approvedTopicForGen && _approvedTopicForGen.topic_ko) {
+    fallbackTopicKo = _approvedTopicForGen.topic_ko;
+    fallbackTopicEn = _approvedTopicForGen.topic_en || '';
+    topicHint = 'Use EXACTLY this topic: "' + fallbackTopicKo + '" (' + fallbackTopicEn + ').';
+    khLog('[_generateAndSaveDailyContent] using approved topic override:', fallbackTopicKo);
+    _approvedTopicForGen = null;
+  } else if (assignedTopic) {
+    fallbackTopicKo = assignedTopic.topic_ko || '';
+    fallbackTopicEn = assignedTopic.topic_en || '';
+    topicHint = 'Use EXACTLY this topic: "' + fallbackTopicKo + '" (' + fallbackTopicEn + '). Category: ' + (assignedTopic.category || '') + '.';
+  } else {
+    var topicCategories = [
+      'daily life', 'food & cooking', 'K-pop & music', 'travel in Korea', 'Korean seasons & weather',
+      'school & studying', 'hobbies', 'Korean traditions & culture', 'family & relationships',
+      'technology & social media', 'health & wellness', 'sports & exercise', 'Korean cinema & dramas',
+      'friendship', 'work & career', 'nature & environment', 'festivals & holidays', 'shopping',
+      'transportation in Korea', 'Korean language learning'
+    ];
+    // Prefer user's interests if available
+    var interestMap = {kpop:'K-pop & music',travel:'travel in Korea',food:'food & cooking',business:'work & career',daily:'daily life',news:'Korean news & current events',sports:'sports & exercise',drama:'Korean cinema & dramas',beauty:'beauty & fashion'};
+    var personalCats = userInterests.map(function(t){return interestMap[t];}).filter(Boolean);
+    var allCats = personalCats.length >= 2 ? personalCats.concat(topicCategories) : topicCategories;
+    var catHash = date.split('-').reduce(function(a,b){ return a + parseInt(b); }, 0);
+    topicHint = 'Pick an interesting, specific topic within the theme: "' + allCats[catHash % allCats.length] + '"';
+    if (personalCats.length) topicHint += '. The student is interested in: ' + personalCats.join(', ') + '.';
+  }
+
+  // Level-specific extra fields for the AI prompt
+  var levelExtraFields = '';
+  var levelExtraInstructions = '';
+  if (_currentLevel === 'Beginner') {
+    levelExtraFields = '\n  NOTE: For each grammar item, also include a "parts" array that breaks the example_ko into color-coded sentence parts.\n'
+      + '  Each grammar item should have: "parts": [{"text":"저는","role":"subject"},{"text":"음식을","role":"object"},{"text":"좋아해요","role":"verb"}]\n'
+      + '  Valid roles: "subject", "object", "verb", "particle", "other". Every word/particle in example_ko must appear in parts.\n';
+  } else if (_currentLevel === 'Intermediate') {
+    levelExtraFields = '\n  Also include a top-level "confusing_grammar" array with 2 items:\n'
+      + '  "confusing_grammar": [{"pair":["~는/은","~이/가"],"explanation":"Topic marker vs subject marker","wrong":"incorrect example sentence","correct":"correct example sentence"}]\n';
+    levelExtraInstructions = '\nconfusing_grammar: exactly 2 items. Each must have pair (2 grammar patterns), explanation, wrong (common mistake sentence), correct (proper sentence).';
+  } else if (_currentLevel === 'Advanced') {
+    levelExtraFields = '\n  Also include:\n'
+      + '  "formality_exercise": {"casual":"casual sentence","formal":"formal/honorific equivalent","explanation":"English explanation of the formality difference"}\n'
+      + '  "culture_note": "A short cultural note (1-2 sentences) related to today\'s topic, explaining Korean customs, etiquette, or social norms relevant to the vocabulary/grammar being taught."\n';
+    levelExtraInstructions = '\nformality_exercise: 1 item with casual, formal, and explanation fields. culture_note: 1-2 sentences about Korean culture related to the topic.';
+  }
+
+  var topicForPrompt = fallbackTopicKo || (assignedTopic && assignedTopic.topic_ko) || '';
+  var prompt = 'You are a Korean language teacher creating complete daily study content.\n\n'
+    + (typeof getLevelPrompt === 'function' ? getLevelPrompt(_currentLevel) : 'Level: ' + _currentLevel) + '\n\n'
+    + topicHint + '\n\n'
+    + 'CRITICAL: Every vocab word, grammar example, helper sentence, and dictation item MUST be directly about the topic' + (topicForPrompt ? ' "' + topicForPrompt + '"' : '') + '. Do NOT return generic vocabulary (배우, 가수, 드라마, 학생) unless the topic literally is about that. Words must be ones a learner would actually need to write or talk about this specific topic.\n\n'
+    + 'Return ONLY valid JSON (no markdown, no extra text):\n'
+    + '{\n'
+    + '  "topic_ko": "주제 한국어 (2-5 words)",\n'
+    + '  "topic_en": "Topic in English",\n'
+    + '  "vocab": [{"ko":"<SINGLE Korean dictionary word — noun/verb-다/adjective-다/adverb. NOT a phrase. NOT a sentence fragment. NEVER ending in 이에요/예요/이고/이라고/입니다/어요/아요/해요/이/가/은/는/을/를/도. e.g. 친구 OK, 친구가 NOT OK, 만나다 OK, 만나요 NOT OK>","rom":"romanization (hyphenated)","en":"<English meaning, MUST be in Latin letters only — NEVER copy the Korean back into this field>","level":"' + _currentLevel + '"}],\n'
+    + '  "grammar": [{"level":"' + _currentLevel + '","pattern":"pattern","explanation":"English explanation","example_ko":"example sentence about today\'s topic","example_en":"translation"}],\n'
+    + '  "helpers": [{"ko":"Korean sentence about the topic","en":"translation"}],\n'
+    + '  "dictation_sentences": [{"ko":"Korean sentence about the topic","en":"English meaning"}],\n'
+    + '  "dictation_questions": [{"question_ko":"question about the topic","answer_ko":"short answer","hint_en":"hint in English"}]\n'
+    + levelExtraFields
+    + '}\n'
+    + 'vocab: exactly 5 items — each word must be a noun/verb/adjective naturally used when discussing today\'s topic. grammar: exactly 3 items, example_ko must be a sentence about today\'s topic. helpers: exactly 4 items, all about today\'s topic. dictation_sentences: exactly 3 items about today\'s topic. dictation_questions: exactly 3 items about today\'s topic.'
+    + levelExtraInstructions;
+
+  try {
+    var _aiGenTimeout;
+    // 30s — Claude Haiku on Supabase Edge Function can sometimes take 15-25s
+    // under load. The previous 15s cap caused generation to time out often,
+    // dropping users onto the generic actor/singer fallback content.
+    var timeoutPromise = new Promise(function(_, reject) {
+      _aiGenTimeout = setTimeout(function() { reject(new Error('timeout')); }, 30000);
+    });
+    var data = await Promise.race([
+      callClaude({
+        feature:    'study-room-daily',
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
+        messages:   [{ role: 'user', content: prompt }]
+      }),
+      timeoutPromise
+    ]);
+    clearTimeout(_aiGenTimeout);
+
+    var raw = (data.content || []).map(function(c){ return c.text||''; }).join('');
+    var clean = raw.replace(/```json|```/g, '').trim();
+    var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+    if (s >= 0 && e > s) clean = clean.slice(s, e + 1);
+    var parsed = JSON.parse(clean);
+
+    var rec = {
+      scheduled_date:      date,
+      level:               _currentLevel,
+      topic_ko:            parsed.topic_ko             || '',
+      topic_en:            parsed.topic_en             || '',
+      vocab:               parsed.vocab               || [],
+      grammar:             parsed.grammar             || [],
+      helpers:             parsed.helpers             || [],
+      dictation_sentences: parsed.dictation_sentences || [],
+      dictation_questions: parsed.dictation_questions || [],
+      confusing_grammar:   parsed.confusing_grammar   || [],
+      formality_exercise:  parsed.formality_exercise  || null,
+      culture_note:        parsed.culture_note        || '',
+      status:              'approved',
+      admin_edited:        false,
+      updated_at:          new Date().toISOString()
+    };
+
+    // Persist to DB via SECURITY DEFINER RPC (best-effort, fire-and-
+    // forget). Direct upsert was blocked by RLS — only admin can
+    // write to study_daily_content directly. Without this RPC, every
+    // learner who landed before admin pre-baked re-generated, burned
+    // a Claude call, AND silently failed to save — so the next
+    // learner did the same.
+    //
+    // The RPC gates writes on the server: if a row already exists with
+    // non-empty vocab OR admin_edited=true, it no-ops and the call
+    // costs ~ms.
+    var sb = getSupa();
+    if (sb) {
+      // Explicit logging + visible admin toast so we can see on
+      // mobile (where DevTools is hard to reach) whether the save
+      // actually landed. Owner-reported '들어갈때마다 저장좀해' — if
+      // this RPC is silently failing for any user, this toast will
+      // surface it for the admin account immediately.
+      sb.rpc('save_daily_content_if_missing', {
+        p_date:                date,
+        p_level:               _currentLevel,
+        p_topic_ko:            rec.topic_ko,
+        p_topic_en:            rec.topic_en,
+        p_vocab:               rec.vocab,
+        p_grammar:             rec.grammar,
+        p_helpers:             rec.helpers,
+        p_dictation_sentences: rec.dictation_sentences,
+        p_dictation_questions: rec.dictation_questions
+      }).then(function(r) {
+        if (r && r.error) {
+          console.warn('[save_daily_content] RPC error:', r.error.message, 'date=', date, 'level=', _currentLevel);
+          if (window._isAdmin && typeof showToast === 'function') {
+            showToast('💾 save_daily_content RPC ERROR: ' + r.error.message);
+          }
+        } else {
+          var pkt = r && r.data;
+          console.log('[save_daily_content] RPC ok:', pkt, 'date=', date, 'level=', _currentLevel);
+          if (window._isAdmin && typeof showToast === 'function') {
+            // pkt is { ok: true, inserted: bool } | { ok: true, skipped: 'already_filled' } | etc.
+            var tag = (pkt && (pkt.inserted ? '✓ inserted' : (pkt.skipped ? '⏭ ' + pkt.skipped : '?'))) || '?';
+            showToast('💾 save_daily_content ' + tag + ' (' + _currentLevel + ')');
+          }
+        }
+      }).catch(function(e) {
+        console.warn('[save_daily_content] RPC threw:', e && e.message, 'date=', date, 'level=', _currentLevel);
+        if (window._isAdmin && typeof showToast === 'function') {
+          showToast('💾 save_daily_content THREW: ' + (e && e.message));
+        }
+      });
+    } else {
+      console.warn('[save_daily_content] no supabase client — skipping save');
+    }
+
+    khLog('[_generateAndSaveDailyContent] AI succeeded — topic:', parsed.topic_ko);
+    _applyDailyContent(rec);
+
+  } catch(err) {
+    console.error('[_generateAndSaveDailyContent] failed:', err && err.message ? err.message : err);
+    // If no assigned topic is available, rethrow so loadDailyContent's _applyFallbackTopic
+    // picks a proper built-in topic instead of showing a placeholder.
+    if (!fallbackTopicKo) throw err;
+    // Hard fallback — preserve the assigned writing topic, use built-in vocab/grammar.
+    try {
+      var fb = buildStudyRoomFallbackContent({ topic_ko: fallbackTopicKo, topic_en: fallbackTopicEn }, _currentLevel);
+      _applyDailyContent({
+        scheduled_date:      date,
+        level:               _currentLevel,
+        topic_ko:            fallbackTopicKo,
+        topic_en:            fallbackTopicEn,
+        vocab:               fb.vocab,
+        grammar:             fb.grammar,
+        helpers:             fb.helpers,
+        dictation_sentences: [],
+        dictation_questions: [],
+        __fallback:          true
+      });
+    } catch(fb_err) {
+      console.error('[_generateAndSaveDailyContent] fallback also failed:', fb_err);
+      _setTopicLoadError('Loading failed — please refresh');
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER TOPIC UI
+// ═══════════════════════════════════════════════════════════════
+function renderTopicUI() {
+  if (!_todayTopic) return;
+  document.getElementById('hero-topic-ko').textContent  = _todayTopic.topic_ko;
+  document.getElementById('hero-topic-en').textContent  = _todayTopic.topic_en;
+  document.getElementById('wcard-topic-ko').textContent = _todayTopic.topic_ko;
+  document.getElementById('wm-topic-sub').textContent   = _todayTopic.topic_ko + ' · ' + (_todayTopic.topic_en || '');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AI CONTENT — vocab, grammar, helpers for topic
+// ═══════════════════════════════════════════════════════════════
+async function generateAIContent(topic) {
+  if (!topic) return;
+  // Skip if content already loaded from DB
+  if (_aiContent && _aiContent.vocab && _aiContent.vocab.length > 0 && _dbHelpersLoaded) {
+    renderAIContent(); hideAILoading(); return;
+  }
+  clearAIContentUI();
+  var cacheKey = 'sr_topic2_' + topic.id + '_' + _currentLevel;
+
+  // 1. sessionStorage (즉시)
+  var cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    try { _aiContent = JSON.parse(cached); renderAIContent(); hideAILoading(); return; } catch(e) {}
+  }
+
+  if (!supaUser) {
+    // Don't cache the fallback — let the next load retry a real generation.
+    _aiContent = buildStudyRoomFallbackContent(topic, _currentLevel);
+    renderAIContent();
+    hideAILoading();
+    return;
+  }
+
+  showAILoading();
+  // call AI
+  var levelGuide = {
+    Starter:      'STARTER: Ultra-basic level — student just learned Hangul. Use ONLY 1-syllable or extremely common 2-syllable words (엄마, 아빠, 밥, 물, 집, 학교, 나, 너). Grammar ONLY: ~이에요/예요, ~있어요/없어요. NO particles except 은/는. Sentences max 4 words. Helper sentences must be 3-5 words only. Vocab: body parts, food, family, colors, numbers. Example: 저는 학생이에요.',
+    Beginner:     'BEGINNER: Use only present tense (~아요/어요), simple vocabulary (1-2 syllable words), basic particles (은/는/이/가/을/를). Vocab should be common everyday words. Grammar patterns: ~이에요/예요, ~아요/어요, ~있어요/없어요. Helper sentences should be very short (5-8 words). Example: 저는 음식을 좋아해요.',
+    Intermediate: 'INTERMEDIATE: Use past tense (~었어요/았어요), conjunctions (~고, ~지만, ~서, ~때문에), modal expressions (~고 싶어요, ~아/어 보다). Vocab should include 2-3 syllable words and topic-specific terms. Grammar patterns: ~았/었어요, ~(으)ㄹ 것 같아요, ~다고 생각해요. Helper sentences 8-12 words. Example: 어릴 때부터 이 음식을 좋아했는데, 지금도 자주 먹어요.',
+    Advanced:     'ADVANCED: Use complex sentence structures, formal/written style (~습니다/ㅂ니다), relative clauses (~는/은/을), nominalizations (~는 것, ~기), advanced connectors (~에도 불구하고, ~(으)ㄹ수록). Vocab should include abstract nouns, advanced topic-specific terminology. Grammar patterns: ~(으)ㄹ수록, ~에 비해, ~는 반면에. Helper sentences 12+ words with complex grammar. Example: 현대 사회에서 스마트폰이 일상생활에 미치는 영향은 매우 크다고 할 수 있다.'
+  };
+
+  var prompt = 'You are a Korean language teacher creating study material strictly calibrated to the student level.\n\n'
+    + 'Student level: ' + _currentLevel + '\n'
+    + 'Level requirements: ' + levelGuide[_currentLevel] + '\n'
+    + 'Writing topic: ' + topic.topic_ko + ' (' + topic.topic_en + ')\n\n'
+    + 'CRITICAL: ALL vocab, grammar patterns, example sentences, and helper sentences MUST match the ' + _currentLevel + ' level exactly. Do NOT mix in easier or harder content.\n\n'
+    + 'VOCAB RULES (strict):\n'
+    + '- Every entry MUST be a concrete noun or noun phrase that appears naturally in a sentence about this exact topic.\n'
+    + '- NO verbs or adjectives (no dictionary-form words ending in ~다, ~하다, ~되다). NO particle-only items. NO standalone verb stems (e.g. 배우, 좋아, 마시).\n'
+    + '- If the topic has an established Korean loanword (블랙커피, 아메리카노, 카페라떼, 에스프레소, 디카페인 for coffee; 피자, 햄버거 for food; 스마트폰 for phone, etc.) use the loanword exactly — do NOT literal-translate English compounds (e.g. "black coffee" → 블랙커피, NEVER 검은 커피).\n'
+    + '- Skip generic filler (사람, 것, 시간) unless it is the direct subject of the topic.\n\n'
+    + 'Return ONLY this JSON (no markdown, no extra text):\n'
+    + '{\n'
+    + '  "vocab": [\n'
+    + '    {"ko":"noun or noun phrase","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}\n'
+    + '    // exactly ' + (_currentLevel === 'Starter' ? '7' : '5') + ' topic-specific NOUNS (no verbs/adjectives), all at ' + _currentLevel + ' level' + (_currentLevel === 'Starter' ? '. Ultra-basic 1-2 syllable nouns with romanization.' : '') + '\n'
+    + '  ],\n'
+    + '  "grammar": [\n'
+    + '    {"level":"' + _currentLevel + '","pattern":"grammar pattern","explanation":"explanation in English","example_ko":"example using the topic","example_en":"translation"}\n'
+    + '    // exactly ' + (_currentLevel === 'Starter' ? '4' : '3') + ' grammar patterns, all at ' + _currentLevel + ' level\n'
+    + '  ],\n'
+    + '  "helpers": [\n'
+    + '    {"ko":"Korean sentence at ' + _currentLevel + ' level","en":"English translation"}\n'
+    + '    // exactly ' + (_currentLevel === 'Starter' ? '6' : '4') + ' helper sentences, all at ' + _currentLevel + ' level, directly about the topic' + (_currentLevel === 'Starter' ? '. Very short, max 4 words each.' : '') + '\n'
+    + '  ]' + (_currentLevel === 'Starter' ? ',\n  "sight_words": [\n    // exactly 5 common sight words (ultra-basic words like 나, 너, 이것, 저것, 뭐, 네, 아니요)\n    {"ko":"word","rom":"romanization","en":"meaning"}\n  ]' : '') + '\n'
+    + '}';
+
+  try {
+    var _aiTimeoutReject;
+    var _aiTimeoutPromise = new Promise(function(_, reject) {
+      _aiTimeoutReject = reject;
+      setTimeout(function(){ reject(new Error('ai_timeout')); }, 12000);
+    });
+    var data = await Promise.race([
+      callClaude({
+        feature: 'study-room',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: _currentLevel === 'Starter' ? 1200 : 900,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      _aiTimeoutPromise
+    ]);
+    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
+    var clean = raw.replace(/```json|```/g, '').trim();
+    var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+    if (s >= 0 && e > s) clean = clean.slice(s, e + 1);
+    _aiContent = JSON.parse(clean);
+    sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
+
+    renderAIContent();
+    hideAILoading();
+  } catch(err) {
+    // Don't cache the fallback — let the next load retry a real generation.
+    _aiContent = buildStudyRoomFallbackContent(topic, _currentLevel);
+    renderAIContent();
+    hideAILoading();
+  }
+}
+
+// Topic-keyword → vocab/grammar/helper packs. When Claude generation fails
+// we match the day's topic against these keywords so the fallback content is
+// at least in the same thematic ballpark (time-of-day topic → time vocab, not
+// generic actor/singer).
+var STUDY_TOPIC_PACKS = [
+  // ── Specific food sub-topics — listed BEFORE the broad '음식' pack so a
+  //    yasik / dessert / dating-food topic doesn't fall back to generic
+  //    restaurant vocab (which made '야식을 자주 먹어요?' look unrelated).
+  {
+    keys: ['야식','라면','치킨','떡볶이','배달','피자','족발','보쌈','분식','late-night','midnight snack','delivery','fried chicken','tteokbokki'],
+    vocab: {
+      Starter:      [{ko:'야식',rom:'ya-sik',en:'late-night snack'},{ko:'라면',rom:'ra-myeon',en:'ramen'},{ko:'치킨',rom:'chi-kin',en:'fried chicken'},{ko:'먹어요',rom:'meo-geo-yo',en:'I eat'},{ko:'배고파요',rom:'bae-go-pa-yo',en:'I am hungry'}],
+      Beginner:     [{ko:'야식',rom:'ya-sik',en:'late-night snack'},{ko:'배달',rom:'bae-dal',en:'food delivery'},{ko:'떡볶이',rom:'tteok-bok-ki',en:'spicy rice cakes'},{ko:'시키다',rom:'si-ki-da',en:'to order (food)'},{ko:'새벽',rom:'sae-byeok',en:'dawn / late night'}],
+      Intermediate: [{ko:'야식 문화',rom:'ya-sik mun-hwa',en:'late-night snack culture'},{ko:'주문하다',rom:'ju-mun-ha-da',en:'to place an order'},{ko:'배달비',rom:'bae-dal-bi',en:'delivery fee'},{ko:'살이 찌다',rom:'sa-ri jji-da',en:'to gain weight'},{ko:'끊다',rom:'kkeun-ta',en:'to quit / cut off (a habit)'}],
+      Advanced:     [{ko:'식습관',rom:'sik-seup-gwan',en:'eating habits'},{ko:'폭식',rom:'pok-sik',en:'binge eating'},{ko:'배달 앱',rom:'bae-dal aep',en:'delivery app'},{ko:'야식 증후군',rom:'ya-sik jeung-hu-gun',en:'night-eating syndrome'},{ko:'유혹',rom:'yu-hok',en:'temptation'}]
+    },
+    helpers: [
+      {ko:'저는 일주일에 두 번 정도 야식을 먹어요.',en:'I eat late-night snacks about twice a week.'},
+      {ko:'야식으로 라면이 제일 맛있어요.',en:'Ramen is the best as a late-night snack.'},
+      {ko:'요즘은 야식을 끊으려고 노력 중이에요.',en:'I\'m trying to quit late-night snacking these days.'},
+      {ko:'배달 앱으로 자주 치킨을 시켜 먹어요.',en:'I often order fried chicken through the delivery app.'}
+    ]
+  },
+  {
+    keys: ['디저트','케이크','빙수','마카롱','쿠키','아이스크림','dessert','cake','bingsu','ice cream','sweets','sweet'],
+    vocab: {
+      Starter:      [{ko:'디저트',rom:'di-jeo-teu',en:'dessert'},{ko:'케이크',rom:'ke-i-keu',en:'cake'},{ko:'달다',rom:'dal-da',en:'to be sweet'},{ko:'좋아해요',rom:'jo-a-hae-yo',en:'I like'},{ko:'먹어요',rom:'meo-geo-yo',en:'I eat'}],
+      Beginner:     [{ko:'디저트',rom:'di-jeo-teu',en:'dessert'},{ko:'빙수',rom:'bing-su',en:'shaved ice'},{ko:'아이스크림',rom:'a-i-seu-keu-rim',en:'ice cream'},{ko:'달콤하다',rom:'dal-kom-ha-da',en:'to be sweet'},{ko:'추천하다',rom:'chu-cheon-ha-da',en:'to recommend'}],
+      Intermediate: [{ko:'식후',rom:'sik-hu',en:'after a meal'},{ko:'단맛',rom:'dan-mat',en:'sweetness'},{ko:'감미롭다',rom:'gam-mi-rop-da',en:'to be sweet / mellow'},{ko:'한 입',rom:'han ip',en:'a bite'},{ko:'녹다',rom:'nok-da',en:'to melt'}],
+      Advanced:     [{ko:'당분',rom:'dang-bun',en:'sugar / sweetness'},{ko:'풍미',rom:'pung-mi',en:'flavor / aroma'},{ko:'식감',rom:'sik-gam',en:'mouthfeel'},{ko:'장인 정신',rom:'jang-in jeong-sin',en:'craftsmanship'},{ko:'무가당',rom:'mu-ga-dang',en:'sugar-free'}]
+    },
+    helpers: [
+      {ko:'저는 식사 후에 디저트를 꼭 먹어요.',en:'I always eat dessert after a meal.'},
+      {ko:'여름엔 빙수가 제일 맛있어요.',en:'Bingsu is the best in summer.'},
+      {ko:'이 케이크는 너무 달지 않아서 좋아요.',en:'This cake is good because it\'s not too sweet.'},
+      {ko:'아이스크림 한 입에 기분이 풀려요.',en:'One bite of ice cream lifts my mood.'}
+    ]
+  },
+  {
+    keys: ['데이트','연애','사귀','첫 데이트','커플','date','dating','couple','romance','first date'],
+    vocab: {
+      Starter:      [{ko:'데이트',rom:'de-i-teu',en:'a date'},{ko:'좋아해요',rom:'jo-a-hae-yo',en:'I like'},{ko:'친구',rom:'chin-gu',en:'friend'},{ko:'함께',rom:'ham-kke',en:'together'},{ko:'재미있어요',rom:'jae-mi-i-sseo-yo',en:'fun'}],
+      Beginner:     [{ko:'데이트',rom:'de-i-teu',en:'a date'},{ko:'사귀다',rom:'sa-gwi-da',en:'to date / go out with'},{ko:'커플',rom:'keo-peul',en:'couple'},{ko:'설레다',rom:'seol-le-da',en:'to feel butterflies'},{ko:'약속',rom:'yak-sok',en:'plans / appointment'}],
+      Intermediate: [{ko:'고백하다',rom:'go-baek-ha-da',en:'to confess (feelings)'},{ko:'연애',rom:'yeon-ae',en:'romantic relationship'},{ko:'분위기',rom:'bun-wi-gi',en:'mood / vibe'},{ko:'어색하다',rom:'eo-saek-ha-da',en:'to feel awkward'},{ko:'다정하다',rom:'da-jeong-ha-da',en:'to be affectionate'}],
+      Advanced:     [{ko:'밀당',rom:'mil-dang',en:'push-pull (dating game)'},{ko:'썸',rom:'sseom',en:'pre-dating phase'},{ko:'기념일',rom:'gi-nyeom-il',en:'anniversary'},{ko:'장거리 연애',rom:'jang-geo-ri yeon-ae',en:'long-distance relationship'},{ko:'권태기',rom:'gwon-tae-gi',en:'relationship rut'}]
+    },
+    helpers: [
+      {ko:'첫 데이트는 영화관에서 했어요.',en:'I had my first date at a movie theater.'},
+      {ko:'우리는 일 년 동안 사귀고 있어요.',en:'We\'ve been dating for a year.'},
+      {ko:'이번 주말에 데이트 약속이 있어요.',en:'I have a date this weekend.'},
+      {ko:'사귀기 전에 좀 어색했어요.',en:'It was a little awkward before we started dating.'}
+    ]
+  },
+  {
+    keys: ['k-pop','kpop','케이팝','아이돌','가수','콘서트','idol','concert','album','fandom','팬','팬덤'],
+    vocab: {
+      Starter:      [{ko:'K팝',rom:'kei-pap',en:'K-pop'},{ko:'가수',rom:'ga-su',en:'singer'},{ko:'노래',rom:'no-rae',en:'song'},{ko:'좋아해요',rom:'jo-a-hae-yo',en:'I like'},{ko:'팬',rom:'paen',en:'fan'}],
+      Beginner:     [{ko:'아이돌',rom:'a-i-dol',en:'idol'},{ko:'콘서트',rom:'kon-seo-teu',en:'concert'},{ko:'앨범',rom:'ael-beom',en:'album'},{ko:'팬덤',rom:'paen-deom',en:'fandom'},{ko:'응원하다',rom:'eung-won-ha-da',en:'to cheer / support'}],
+      Intermediate: [{ko:'데뷔',rom:'de-bwi',en:'debut'},{ko:'활동',rom:'hwal-dong',en:'(promotional) activities'},{ko:'안무',rom:'an-mu',en:'choreography'},{ko:'무대',rom:'mu-dae',en:'stage'},{ko:'컴백',rom:'keom-baek',en:'comeback'}],
+      Advanced:     [{ko:'한류',rom:'hal-lyu',en:'Korean Wave'},{ko:'팬 사인회',rom:'paen sa-in-hoe',en:'fan signing event'},{ko:'음원 차트',rom:'eum-won cha-teu',en:'music chart'},{ko:'서사',rom:'seo-sa',en:'narrative (within group concept)'},{ko:'세계관',rom:'se-gye-gwan',en:'lore / worldview'}]
+    },
+    helpers: [
+      {ko:'제가 좋아하는 가수의 콘서트에 갔어요.',en:'I went to my favorite singer\'s concert.'},
+      {ko:'이번 앨범은 정말 명반이에요.',en:'This album is really a classic.'},
+      {ko:'그 아이돌은 노래도 잘하고 춤도 잘 춰요.',en:'That idol sings well and dances well.'},
+      {ko:'팬으로서 항상 응원하고 있어요.',en:'As a fan, I\'m always cheering them on.'}
+    ]
+  },
+  {
+    keys: ['운동','헬스','다이어트','조깅','요가','workout','exercise','diet','fitness','jogging','yoga','gym'],
+    vocab: {
+      Starter:      [{ko:'운동',rom:'un-dong',en:'exercise'},{ko:'걷다',rom:'geot-da',en:'to walk'},{ko:'뛰다',rom:'ttwi-da',en:'to run'},{ko:'좋아요',rom:'jo-a-yo',en:'I like'},{ko:'매일',rom:'mae-il',en:'every day'}],
+      Beginner:     [{ko:'운동',rom:'un-dong',en:'exercise'},{ko:'헬스장',rom:'hel-seu-jang',en:'gym'},{ko:'다이어트',rom:'da-i-eo-teu',en:'diet'},{ko:'땀',rom:'ttam',en:'sweat'},{ko:'근육',rom:'geun-yuk',en:'muscle'}],
+      Intermediate: [{ko:'유산소',rom:'yu-san-so',en:'cardio'},{ko:'무산소',rom:'mu-san-so',en:'anaerobic / strength training'},{ko:'스트레칭',rom:'seu-teu-re-ching',en:'stretching'},{ko:'체중',rom:'che-jung',en:'body weight'},{ko:'자세',rom:'ja-se',en:'posture'}],
+      Advanced:     [{ko:'근력 운동',rom:'geul-lyeok un-dong',en:'strength training'},{ko:'기초 대사량',rom:'gi-cho dae-sa-ryang',en:'basal metabolism'},{ko:'체지방률',rom:'che-ji-bang-nyul',en:'body fat percentage'},{ko:'재활 운동',rom:'jae-hwal un-dong',en:'rehab exercise'},{ko:'꾸준함',rom:'kku-jun-ham',en:'consistency'}]
+    },
+    helpers: [
+      {ko:'저는 일주일에 세 번 헬스장에 가요.',en:'I go to the gym three times a week.'},
+      {ko:'아침마다 30분씩 조깅을 해요.',en:'I jog for 30 minutes every morning.'},
+      {ko:'다이어트 중이라서 야식은 안 먹어요.',en:'I don\'t eat late-night snacks because I\'m on a diet.'},
+      {ko:'운동을 꾸준히 하면 기분이 좋아져요.',en:'Exercising consistently makes me feel better.'}
+    ]
+  },
+  {
+    keys: ['시간','하루','아침','점심','저녁','오전','오후','새벽','time of day','morning','evening','afternoon','dawn','dusk'],
+    vocab: {
+      Starter:      [{ko:'아침',rom:'a-chim',en:'morning'},{ko:'점심',rom:'jeom-sim',en:'lunch / noon'},{ko:'저녁',rom:'jeo-nyeok',en:'evening'},{ko:'시간',rom:'si-gan',en:'time'},{ko:'하루',rom:'ha-ru',en:'a day'}],
+      Beginner:     [{ko:'아침',rom:'a-chim',en:'morning'},{ko:'저녁',rom:'jeo-nyeok',en:'evening'},{ko:'오전',rom:'o-jeon',en:'a.m.'},{ko:'오후',rom:'o-hu',en:'p.m.'},{ko:'가장',rom:'ga-jang',en:'the most'}],
+      Intermediate: [{ko:'여유',rom:'yeo-yu',en:'leisure / breathing room'},{ko:'집중',rom:'jip-jung',en:'focus'},{ko:'상쾌하다',rom:'sang-kwae-ha-da',en:'to feel refreshed'},{ko:'고요하다',rom:'go-yo-ha-da',en:'to be quiet / calm'},{ko:'피곤하다',rom:'pi-gon-ha-da',en:'to be tired'}],
+      Advanced:     [{ko:'생체 리듬',rom:'saeng-che ri-deum',en:'biorhythm'},{ko:'활력',rom:'hwal-ryeok',en:'vitality / energy'},{ko:'해질녘',rom:'hae-jil-nyeok',en:'dusk / sundown'},{ko:'여명',rom:'yeo-myeong',en:'dawn'},{ko:'정적',rom:'jeong-jeok',en:'stillness'}]
+    },
+    helpers: [
+      {ko:'저는 아침이 가장 좋아요.',en:'I like mornings the most.'},
+      {ko:'제 가장 좋아하는 시간은 저녁이에요.',en:'My favorite time is evening.'},
+      {ko:'조용한 새벽이 제일 편해요.',en:'The quiet dawn is the most comfortable.'},
+      {ko:'하루 중 점심 시간을 제일 기다려요.',en:'I look forward to lunch the most each day.'}
+    ]
+  },
+  {
+    keys: ['음식','요리','식당','밥','먹','food','cooking','eat','meal','cuisine'],
+    vocab: {
+      Starter:      [{ko:'밥',rom:'bap',en:'rice / meal'},{ko:'김치',rom:'gim-chi',en:'kimchi'},{ko:'음식',rom:'eum-sik',en:'food'},{ko:'맛있어요',rom:'ma-si-sseo-yo',en:'delicious'},{ko:'좋아해요',rom:'jo-a-hae-yo',en:'I like'}],
+      Beginner:     [{ko:'음식',rom:'eum-sik',en:'food'},{ko:'요리',rom:'yo-ri',en:'cooking / dish'},{ko:'식당',rom:'sik-dang',en:'restaurant'},{ko:'맛',rom:'mat',en:'taste'},{ko:'재료',rom:'jae-ryo',en:'ingredient'}],
+      Intermediate: [{ko:'식감',rom:'sik-gam',en:'texture (mouthfeel)'},{ko:'풍미',rom:'pung-mi',en:'flavor / aroma'},{ko:'담백하다',rom:'dam-baek-ha-da',en:'light / clean-tasting'},{ko:'얼큰하다',rom:'eol-keun-ha-da',en:'spicy and warming'},{ko:'보양식',rom:'bo-yang-sik',en:'restorative dish'}],
+      Advanced:     [{ko:'식문화',rom:'sik-mun-hwa',en:'food culture'},{ko:'조리법',rom:'jo-ri-beop',en:'cooking method'},{ko:'향토 음식',rom:'hyang-to eum-sik',en:'regional cuisine'},{ko:'발효',rom:'bal-hyo',en:'fermentation'},{ko:'계승하다',rom:'gye-seung-ha-da',en:'to pass down'}]
+    },
+    helpers: [
+      {ko:'저는 한식을 가장 좋아해요.',en:'I like Korean food the most.'},
+      {ko:'김치찌개는 제가 자주 만드는 요리예요.',en:'Kimchi stew is a dish I often make.'},
+      {ko:'이 식당은 맛이 깊어요.',en:'This restaurant has deep flavors.'},
+      {ko:'재료가 신선해서 더 맛있어요.',en:'It tastes better because the ingredients are fresh.'}
+    ]
+  },
+  {
+    keys: ['주말','계획','휴일','weekend','plan'],
+    vocab: {
+      Starter:      [{ko:'주말',rom:'ju-mal',en:'weekend'},{ko:'친구',rom:'chin-gu',en:'friend'},{ko:'영화',rom:'yeong-hwa',en:'movie'},{ko:'집',rom:'jip',en:'home'},{ko:'쉬어요',rom:'swi-eo-yo',en:'I rest'}],
+      Beginner:     [{ko:'주말',rom:'ju-mal',en:'weekend'},{ko:'계획',rom:'gye-hoek',en:'plan'},{ko:'약속',rom:'yak-sok',en:'appointment / plan'},{ko:'만나요',rom:'man-na-yo',en:'to meet'},{ko:'쇼핑',rom:'syo-ping',en:'shopping'}],
+      Intermediate: [{ko:'여유롭다',rom:'yeo-yu-rop-da',en:'to be relaxed'},{ko:'재충전',rom:'jae-chung-jeon',en:'recharging'},{ko:'약속을 잡다',rom:'yak-so-geul jap-da',en:'to set up plans'},{ko:'알차다',rom:'al-cha-da',en:'to be fulfilling / productive'},{ko:'미루다',rom:'mi-ru-da',en:'to postpone'}],
+      Advanced:     [{ko:'휴식의 질',rom:'hyu-sik-ui jil',en:'quality of rest'},{ko:'자기 계발',rom:'ja-gi gye-bal',en:'self-development'},{ko:'루틴',rom:'ru-tin',en:'routine'},{ko:'몰입',rom:'mol-ip',en:'immersion'},{ko:'삶의 균형',rom:'sal-mui gyun-hyeong',en:'life balance'}]
+    },
+    helpers: [
+      {ko:'이번 주말에는 친구를 만날 거예요.',en:'This weekend I will meet a friend.'},
+      {ko:'저는 주말에 보통 집에서 쉬어요.',en:'I usually rest at home on weekends.'},
+      {ko:'주말 계획을 미리 세우는 편이에요.',en:'I tend to plan my weekends in advance.'},
+      {ko:'재충전할 시간이 꼭 필요해요.',en:'I really need time to recharge.'}
+    ]
+  },
+  {
+    keys: ['여행','관광','travel','trip','tour','vacation'],
+    vocab: {
+      Starter:      [{ko:'여행',rom:'yeo-haeng',en:'trip / travel'},{ko:'가요',rom:'ga-yo',en:'I go'},{ko:'사진',rom:'sa-jin',en:'photo'},{ko:'바다',rom:'ba-da',en:'sea'},{ko:'산',rom:'san',en:'mountain'}],
+      Beginner:     [{ko:'여행',rom:'yeo-haeng',en:'travel'},{ko:'비행기',rom:'bi-haeng-gi',en:'airplane'},{ko:'호텔',rom:'ho-tel',en:'hotel'},{ko:'관광',rom:'gwan-gwang',en:'sightseeing'},{ko:'숙소',rom:'suk-so',en:'lodging'}],
+      Intermediate: [{ko:'여정',rom:'yeo-jeong',en:'itinerary / journey'},{ko:'현지',rom:'hyeon-ji',en:'local (place)'},{ko:'예약하다',rom:'ye-yak-ha-da',en:'to reserve'},{ko:'명소',rom:'myeong-so',en:'famous spot'},{ko:'인상적이다',rom:'in-sang-jeo-gi-da',en:'to be impressive'}],
+      Advanced:     [{ko:'이색적이다',rom:'i-saek-jeo-gi-da',en:'to be unique / exotic'},{ko:'체류',rom:'che-ryu',en:'sojourn / stay'},{ko:'문화 교류',rom:'mun-hwa gyo-ryu',en:'cultural exchange'},{ko:'관광 명소',rom:'gwan-gwang myeong-so',en:'tourist attraction'},{ko:'여독',rom:'yeo-dok',en:'travel fatigue'}]
+    },
+    helpers: [
+      {ko:'저는 제주도로 여행을 가고 싶어요.',en:'I want to travel to Jeju Island.'},
+      {ko:'여행하면서 사진을 많이 찍어요.',en:'I take a lot of photos while traveling.'},
+      {ko:'현지 음식을 꼭 먹어 봐요.',en:'Be sure to try the local food.'},
+      {ko:'숙소를 미리 예약하는 게 좋아요.',en:'It is good to book lodging in advance.'}
+    ]
+  },
+  {
+    keys: ['계절','봄','여름','가을','겨울','season','spring','summer','autumn','winter','weather','날씨'],
+    vocab: {
+      Starter:      [{ko:'봄',rom:'bom',en:'spring'},{ko:'여름',rom:'yeo-reum',en:'summer'},{ko:'가을',rom:'ga-eul',en:'autumn'},{ko:'겨울',rom:'gyeo-ul',en:'winter'},{ko:'날씨',rom:'nal-ssi',en:'weather'}],
+      Beginner:     [{ko:'계절',rom:'gye-jeol',en:'season'},{ko:'덥다',rom:'deop-da',en:'to be hot'},{ko:'춥다',rom:'chup-da',en:'to be cold'},{ko:'따뜻하다',rom:'tta-tteut-ha-da',en:'to be warm'},{ko:'시원하다',rom:'si-won-ha-da',en:'to be cool'}],
+      Intermediate: [{ko:'일교차',rom:'il-gyo-cha',en:'daily temp range'},{ko:'단풍',rom:'dan-pung',en:'autumn foliage'},{ko:'장마',rom:'jang-ma',en:'rainy season'},{ko:'영상/영하',rom:'yeong-sang/yeong-ha',en:'above/below zero'},{ko:'포근하다',rom:'po-geun-ha-da',en:'to be mild / cozy-warm'}],
+      Advanced:     [{ko:'이상 기후',rom:'i-sang gi-hu',en:'abnormal climate'},{ko:'한파',rom:'han-pa',en:'cold wave'},{ko:'폭염',rom:'po-gyeom',en:'heatwave'},{ko:'강수량',rom:'gang-su-ryang',en:'precipitation'},{ko:'계절성',rom:'gye-jeol-seong',en:'seasonality'}]
+    },
+    helpers: [
+      {ko:'저는 가을을 제일 좋아해요.',en:'I like autumn the most.'},
+      {ko:'여름에는 바다에 자주 가요.',en:'In summer I often go to the sea.'},
+      {ko:'겨울은 춥지만 눈이 예뻐요.',en:'Winter is cold but the snow is pretty.'},
+      {ko:'봄에는 날씨가 따뜻해져요.',en:'In spring the weather gets warmer.'}
+    ]
+  },
+  {
+    keys: ['가족','부모','형제','family','parent','brother','sister'],
+    vocab: {
+      Starter:      [{ko:'가족',rom:'ga-jok',en:'family'},{ko:'엄마',rom:'eom-ma',en:'mom'},{ko:'아빠',rom:'a-ppa',en:'dad'},{ko:'동생',rom:'dong-saeng',en:'younger sibling'},{ko:'사랑해요',rom:'sa-rang-hae-yo',en:'I love you'}],
+      Beginner:     [{ko:'가족',rom:'ga-jok',en:'family'},{ko:'부모님',rom:'bu-mo-nim',en:'parents'},{ko:'형',rom:'hyeong',en:'older brother (male speaker)'},{ko:'누나',rom:'nu-na',en:'older sister (male speaker)'},{ko:'함께',rom:'ham-kke',en:'together'}],
+      Intermediate: [{ko:'유대감',rom:'yu-dae-gam',en:'bond / connection'},{ko:'가풍',rom:'ga-pung',en:'family tradition / atmosphere'},{ko:'서로 닮다',rom:'seo-ro dal-da',en:'to resemble each other'},{ko:'친해지다',rom:'chin-hae-ji-da',en:'to grow close'},{ko:'화목하다',rom:'hwa-mok-ha-da',en:'to be harmonious'}],
+      Advanced:     [{ko:'세대 차이',rom:'se-dae cha-i',en:'generation gap'},{ko:'가족애',rom:'ga-jo-gae',en:'family love'},{ko:'돌봄',rom:'dol-bom',en:'care-giving'},{ko:'유산',rom:'yu-san',en:'legacy / inheritance'},{ko:'소통하다',rom:'so-tong-ha-da',en:'to communicate'}]
+    },
+    helpers: [
+      {ko:'제 가족은 네 명이에요.',en:'My family has four people.'},
+      {ko:'부모님과 자주 통화해요.',en:'I often call my parents.'},
+      {ko:'우리 가족은 함께 저녁을 먹어요.',en:'My family eats dinner together.'},
+      {ko:'가족과 함께 있을 때 가장 행복해요.',en:'I am happiest when I am with my family.'}
+    ]
+  },
+  {
+    keys: ['커피','카페','음료','마시','coffee','cafe','drink','beverage','tea','차'],
+    vocab: {
+      Starter:      [{ko:'커피',rom:'keo-pi',en:'coffee'},{ko:'물',rom:'mul',en:'water'},{ko:'우유',rom:'u-yu',en:'milk'},{ko:'차',rom:'cha',en:'tea'},{ko:'컵',rom:'keop',en:'cup'}],
+      Beginner:     [{ko:'커피',rom:'keo-pi',en:'coffee'},{ko:'블랙커피',rom:'beul-laek-keo-pi',en:'black coffee'},{ko:'카페',rom:'ka-pe',en:'cafe'},{ko:'아메리카노',rom:'a-me-ri-ka-no',en:'americano'},{ko:'카페라떼',rom:'ka-pe-ra-tte',en:'cafe latte'}],
+      Intermediate: [{ko:'에스프레소',rom:'e-seu-peu-re-so',en:'espresso'},{ko:'디카페인',rom:'di-ka-pe-in',en:'decaf'},{ko:'원두',rom:'won-du',en:'coffee beans'},{ko:'향',rom:'hyang',en:'aroma'},{ko:'한 잔',rom:'han jan',en:'one cup'}],
+      Advanced:     [{ko:'카페인',rom:'ka-pe-in',en:'caffeine'},{ko:'로스팅',rom:'ro-seu-ting',en:'roasting'},{ko:'산미',rom:'san-mi',en:'acidity (coffee)'},{ko:'바디감',rom:'ba-di-gam',en:'body (mouthfeel)'},{ko:'추출',rom:'chu-chul',en:'extraction / brewing'}]
+    },
+    helpers: [
+      {ko:'저는 커피를 자주 마셔요.',en:'I drink coffee often.'},
+      {ko:'아침에는 블랙커피를 좋아해요.',en:'In the morning I like black coffee.'},
+      {ko:'카페라떼 한 잔 주세요.',en:'One cafe latte, please.'},
+      {ko:'디카페인 커피도 있어요?',en:'Do you have decaf coffee too?'}
+    ]
+  },
+  {
+    keys: ['취미','hobby','hobbies','pastime','leisure'],
+    vocab: {
+      Starter:      [{ko:'취미',rom:'chwi-mi',en:'hobby'},{ko:'독서',rom:'dok-seo',en:'reading'},{ko:'운동',rom:'un-dong',en:'exercise'},{ko:'음악',rom:'eu-mak',en:'music'},{ko:'게임',rom:'ge-im',en:'game'}],
+      Beginner:     [{ko:'취미',rom:'chwi-mi',en:'hobby'},{ko:'자주',rom:'ja-ju',en:'often'},{ko:'스트레스',rom:'seu-teu-re-seu',en:'stress'},{ko:'관심',rom:'gwan-sim',en:'interest'},{ko:'재미있다',rom:'jae-mi-it-da',en:'to be fun'}],
+      Intermediate: [{ko:'몰두하다',rom:'mol-du-ha-da',en:'to be absorbed in'},{ko:'성취감',rom:'seong-chwi-gam',en:'sense of accomplishment'},{ko:'소질',rom:'so-jil',en:'knack / talent'},{ko:'꾸준히',rom:'kku-jun-hi',en:'steadily'},{ko:'여가',rom:'yeo-ga',en:'leisure time'}],
+      Advanced:     [{ko:'자기만족',rom:'ja-gi-man-jok',en:'self-satisfaction'},{ko:'몰입감',rom:'mol-ip-gam',en:'sense of immersion'},{ko:'정서적 안정',rom:'jeong-seo-jeo-gin an-jeong',en:'emotional stability'},{ko:'장르',rom:'jang-reu',en:'genre'},{ko:'깊이 있다',rom:'gi-pi it-da',en:'to have depth'}]
+    },
+    helpers: [
+      {ko:'제 취미는 책을 읽는 거예요.',en:'My hobby is reading books.'},
+      {ko:'운동을 하면 기분이 좋아져요.',en:'Exercising makes me feel better.'},
+      {ko:'주말마다 새로운 취미를 시도해요.',en:'I try a new hobby every weekend.'},
+      {ko:'음악을 들으면서 스트레스를 풀어요.',en:'I relieve stress by listening to music.'}
+    ]
+  }
+];
+
+function _matchTopicPack(topicKo, topicEn) {
+  var ko = (topicKo || '').toLowerCase();
+  var en = (topicEn || '').toLowerCase();
+  // Korean keys: substring match (Korean has no word-boundary issue for our
+  // current key list — every Korean key here is 2+ jamo and unique enough).
+  // English keys: strict word-boundary match against punctuation/whitespace.
+  // The previous substring match silently routed every "late-night" topic
+  // (e.g. "야식을 자주 먹어요? Do you often eat late-night snacks?") into the
+  // time-of-day pack because 'night' lives inside 'late-night', so the
+  // learner saw morning/evening vocab on a snacks topic.
+  function asciiOnly(s) { return /^[\x00-\x7f]+$/.test(s); }
+  for (var i = 0; i < STUDY_TOPIC_PACKS.length; i++) {
+    var pack = STUDY_TOPIC_PACKS[i];
+    for (var j = 0; j < pack.keys.length; j++) {
+      var key = String(pack.keys[j]).toLowerCase();
+      if (asciiOnly(key)) {
+        // (^|[\s.,!?]) … ($|[\s.,!?]) — '-' is treated as a word char here so
+        // 'late-night' won't match 'night'. Spaces inside the key (e.g.
+        // 'time of day') are matched literally.
+        var safe = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        var re = new RegExp('(^|[\\s.,!?])' + safe + '($|[\\s.,!?])', 'i');
+        if (re.test(en)) return pack;
+      } else {
+        if (ko.indexOf(key) !== -1) return pack;
+      }
+    }
+  }
+  return null;
+}
+
+// Level-appropriate grammar fallback. Example sentences try to reference the
+// matched pack's first vocab word so the grammar at least reads on-topic.
+function _fallbackGrammarFor(level, topicKo, topicEn, vocab) {
+  var sample = (vocab && vocab[0] && vocab[0].ko) || '';
+  var sample2 = (vocab && vocab[1] && vocab[1].ko) || sample;
+  if (level === 'Starter') {
+    return [
+      { level:'Starter', pattern:'~이에요/예요', explanation:'Use this to say what something is.', example_ko: (sample ? sample + '이에요.' : '학생이에요.'), example_en:'It is ' + (sample ? sample : 'a student') + '.' },
+      { level:'Starter', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko: (sample ? '저는 ' + sample + '을/를 좋아해요.' : '저는 음악을 좋아해요.'), example_en:'I like ' + (sample ? sample : 'music') + '.' },
+      { level:'Starter', pattern:'~이/가 있어요', explanation:'Use this to say something exists or that you have it.', example_ko: (sample2 ? sample2 + '이/가 있어요.' : '시간이 있어요.'), example_en:'There is ' + (sample2 ? sample2 : 'time') + '.' }
+    ];
+  }
+  if (level === 'Intermediate') {
+    return [
+      { level:'Intermediate', pattern:'~아서/어서', explanation:'Use this to connect a reason with a result.', example_ko: (sample ? sample + '이/가 좋아서 자주 생각나요.' : '이 주제가 좋아서 자주 생각나요.'), example_en:'Because ' + (sample ? sample : 'this topic') + ' is nice, I think of it often.' },
+      { level:'Intermediate', pattern:'~(으)ㄹ 것 같아요', explanation:'Use this to give an opinion or guess politely.', example_ko: '앞으로도 자주 ' + (sample ? sample + '을/를 ' : '') + '생각할 것 같아요.', example_en:'I think I will keep thinking about ' + (sample ? sample : 'it') + '.' },
+      { level:'Intermediate', pattern:'~지만', explanation:'Use this to show contrast.', example_ko: (sample ? sample + '은/는 간단하지만 의미가 커요.' : '간단하지만 의미가 커요.'), example_en:'It is simple, but the meaning is big.' }
+    ];
+  }
+  if (level === 'Advanced') {
+    return [
+      { level:'Advanced', pattern:'~는 반면에', explanation:'Use this to compare two contrasting facts.', example_ko: (sample ? sample + '에는 장점이 많은 반면에 아쉬운 점도 있어요.' : '장점이 많은 반면에 아쉬운 점도 있어요.'), example_en:'There are many strengths, while there are also regrettable points.' },
+      { level:'Advanced', pattern:'~(으)ㄹ수록', explanation:'Use this to say one thing changes as another increases.', example_ko: (sample ? '생각하면 할수록 ' + sample + '의 가치를 느껴요.' : '생각하면 할수록 가치를 느껴요.'), example_en:'The more I think, the more I feel its value.' },
+      { level:'Advanced', pattern:'~다는 점에서', explanation:'Use this to explain in what respect something matters.', example_ko: (sample ? sample + '이/가 일상과 맞닿아 있다는 점에서 의미가 있어요.' : '일상과 맞닿아 있다는 점에서 의미가 있어요.'), example_en:'It is meaningful in that it is connected to daily life.' }
+    ];
+  }
+  // Beginner default
+  return [
+    { level:'Beginner', pattern:'~이/가 있어요', explanation:'Use this to say someone or something exists.', example_ko: (sample ? '좋아하는 ' + sample + '이/가 있어요.' : '좋아하는 주제가 있어요.'), example_en:'There is ' + (sample ? sample : 'a topic') + ' I like.' },
+    { level:'Beginner', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko: (sample ? '저는 ' + sample + '을/를 좋아해요.' : '저는 이 주제를 좋아해요.'), example_en:'I like ' + (sample ? sample : 'this topic') + '.' },
+    { level:'Beginner', pattern:'~고 싶어요', explanation:'Use this to say what you want to do.', example_ko: (sample ? sample + '에 대해 이야기하고 싶어요.' : '이야기하고 싶어요.'), example_en:'I want to talk about ' + (sample ? sample : 'it') + '.' }
+  ];
+}
+
+function buildStudyRoomFallbackContent(topic, level) {
+  var topicKo = (topic && (topic.topic_ko || topic.topic_en)) || "Today's Topic";
+  var topicEn = (topic && topic.topic_en) || 'today\'s topic';
+
+  // Topic-specific pack first — matches keyword families so a "time of day"
+  // topic does NOT silently fall back to the generic actor/singer set.
+  var pack = _matchTopicPack(topic && topic.topic_ko, topic && topic.topic_en);
+  if (pack) {
+    var packLevel = pack.vocab[level] || pack.vocab.Beginner || pack.vocab.Starter;
+    var vocab = (packLevel || []).map(function(v){ return Object.assign({ level: level }, v); });
+    var helpers = (pack.helpers || []).slice(0, 4);
+    return { vocab: vocab, grammar: _fallbackGrammarFor(level, topicKo, topicEn, vocab), helpers: helpers };
+  }
+
+  var levelSets = {
+    Starter: {
+      vocab: [
+        { ko:'좋아해요', rom:'jo-a-hae-yo', en:'like', level:'Starter' },
+        { ko:'배우', rom:'bae-u', en:'actor', level:'Starter' },
+        { ko:'가수', rom:'ga-su', en:'singer', level:'Starter' },
+        { ko:'한국', rom:'han-guk', en:'Korea', level:'Starter' },
+        { ko:'있어요', rom:'i-sseo-yo', en:'there is / have', level:'Starter' },
+        { ko:'사람', rom:'sa-ram', en:'person', level:'Starter' },
+        { ko:'노래', rom:'no-rae', en:'song', level:'Starter' },
+        { ko:'학교', rom:'hak-gyo', en:'school', level:'Starter' }
+      ],
+      grammar: [
+        { level:'Starter', pattern:'~이에요/예요', explanation:'Use this to say what something is.', example_ko:'이 사람은 배우예요.', example_en:'This person is an actor.' },
+        { level:'Starter', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko:'저는 노래를 좋아해요.', example_en:'I like songs.' },
+        { level:'Starter', pattern:'~이/가 있어요', explanation:'Use this to say that something exists or that you have it.', example_ko:'좋아하는 가수가 있어요.', example_en:'I have a singer that I like.' },
+        { level:'Starter', pattern:'~은/는', explanation:'Use this to mark the topic of the sentence.', example_ko:'저는 학생이에요.', example_en:'I am a student.' },
+        { level:'Starter', pattern:'~아니에요', explanation:'Use this to say something is not.', example_ko:'저는 가수가 아니에요.', example_en:'I am not a singer.' }
+      ],
+      sight_words: [
+        { ko:'나', rom:'na', en:'I / me' },
+        { ko:'너', rom:'neo', en:'you' },
+        { ko:'이것', rom:'i-geot', en:'this' },
+        { ko:'저것', rom:'jeo-geot', en:'that' },
+        { ko:'뭐', rom:'mwo', en:'what' }
+      ]
+    },
+    Beginner: {
+      vocab: [
+        { ko:'좋아하다', rom:'jo-a-ha-da', en:'to like', level:'Beginner' },
+        { ko:'배우', rom:'bae-u', en:'actor', level:'Beginner' },
+        { ko:'가수', rom:'ga-su', en:'singer', level:'Beginner' },
+        { ko:'드라마', rom:'deu-ra-ma', en:'drama', level:'Beginner' },
+        { ko:'노래', rom:'no-rae', en:'song', level:'Beginner' }
+      ],
+      grammar: [
+        { level:'Beginner', pattern:'~이/가 있어요', explanation:'Use this to say that someone or something exists.', example_ko:'좋아하는 배우가 있어요.', example_en:'There is an actor I like.' },
+        { level:'Beginner', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko:'저는 이 노래를 좋아해요.', example_en:'I like this song.' },
+        { level:'Beginner', pattern:'~고 싶어요', explanation:'Use this to say what you want to do.', example_ko:'콘서트에 가고 싶어요.', example_en:'I want to go to the concert.' }
+      ]
+    },
+    Intermediate: {
+      vocab: [
+        { ko:'팬', rom:'paen', en:'fan', level:'Intermediate' },
+        { ko:'활동', rom:'hwal-dong', en:'activities', level:'Intermediate' },
+        { ko:'매력', rom:'mae-ryeok', en:'charm', level:'Intermediate' },
+        { ko:'연기', rom:'yeon-gi', en:'acting', level:'Intermediate' },
+        { ko:'무대', rom:'mu-dae', en:'stage', level:'Intermediate' }
+      ],
+      grammar: [
+        { level:'Intermediate', pattern:'~아서/어서', explanation:'Use this to connect a reason with a result.', example_ko:'연기를 잘해서 더 좋아하게 됐어요.', example_en:'I came to like them more because they act well.' },
+        { level:'Intermediate', pattern:'~(으)ㄹ 것 같아요', explanation:'Use this to give an opinion or guess politely.', example_ko:'앞으로도 오래 활동할 것 같아요.', example_en:'I think they will stay active for a long time.' },
+        { level:'Intermediate', pattern:'~지만', explanation:'Use this to show contrast.', example_ko:'바쁘지만 새 작품을 꼭 챙겨 봐요.', example_en:'I am busy, but I still make sure to watch the new work.' }
+      ]
+    },
+    Advanced: {
+      vocab: [
+        { ko:'영향력', rom:'yeong-hyang-ryeok', en:'influence', level:'Advanced' },
+        { ko:'서사', rom:'seo-sa', en:'narrative', level:'Advanced' },
+        { ko:'대중성', rom:'dae-jung-seong', en:'mass appeal', level:'Advanced' },
+        { ko:'완성도', rom:'wan-seong-do', en:'quality / completeness', level:'Advanced' },
+        { ko:'상징적', rom:'sang-jing-jeok', en:'symbolic', level:'Advanced' }
+      ],
+      grammar: [
+        { level:'Advanced', pattern:'~는 반면에', explanation:'Use this to compare two contrasting facts.', example_ko:'대중성은 높아진 반면에 작품성 논의도 함께 늘었어요.', example_en:'While mass appeal increased, discussion about artistic quality also grew.' },
+        { level:'Advanced', pattern:'~(으)ㄹ수록', explanation:'Use this to say that one thing changes as another increases.', example_ko:'알면 알수록 더 매력적인 배우라고 생각해요.', example_en:'I think the actor becomes more charming the more you learn about them.' },
+        { level:'Advanced', pattern:'~다는 점에서', explanation:'Use this to explain in what respect something is meaningful.', example_ko:'세대 공감을 이끈다는 점에서 의미가 커요.', example_en:'It is meaningful in that it brings out generational empathy.' }
+      ]
+    }
+  };
+  var picked = levelSets[level] || levelSets.Beginner;
+  var helpers;
+  if (level === 'Starter') {
+    helpers = [
+      { ko: '저는 좋아해요.', en: 'I like it.' },
+      { ko: '이것은 뭐예요?', en: 'What is this?' },
+      { ko: '한국 노래 좋아요.', en: 'Korean songs are good.' },
+      { ko: '나는 학생이에요.', en: 'I am a student.' },
+      { ko: '사람이 있어요.', en: 'There is a person.' },
+      { ko: '저것은 학교예요.', en: 'That is a school.' }
+    ];
+  } else {
+    helpers = [
+      { ko: topicKo + '에 대해 이야기하고 싶어요.', en: 'I want to talk about ' + topicEn + '.' },
+      { ko: '저는 이 주제가 정말 흥미로워요.', en: 'I find this topic really interesting.' },
+      { ko: '특히 기억에 남는 이유가 있어요.', en: 'There is a reason it especially stayed with me.' },
+      { ko: '제 생각을 한국어로 천천히 써 볼게요.', en: 'I will try writing my thoughts in Korean step by step.' }
+    ];
+  }
+  var result = {
+    vocab: picked.vocab,
+    grammar: picked.grammar,
+    helpers: helpers
+  };
+  if (picked.sight_words) result.sight_words = picked.sight_words;
+  return result;
+}
+
+function renderAIContent() {
+  if (!_aiContent) return;
+
+  // VOCAB BOX (left)
+  var vhtml = '';
+  var lvMap = { Beginner:'lvb', Intermediate:'lvi', Advanced:'lva' };
+  (_aiContent.vocab || []).forEach(function(w) {
+    vhtml += '<div class="vrow">'
+      + '<span class="lvbadge ' + (lvMap[w.level]||'lvb') + '">' + (w.level||'B')[0] + '</span>'
+      + '<div><div class="vko">' + w.ko + (w.rom ? ' <span style="font-size:10px;font-weight:400;color:#7ab8f5;font-style:italic">'+w.rom+'</span>' : '') + '</div>'
+      + '<div class="ven">' + w.en + '</div></div>'
+      + '</div>';
+  });
+  var vboxEl = document.getElementById('vocab-box-left');
+  if (vboxEl) vboxEl.innerHTML = vhtml || '<div style="color:#aaa;font-size:12px">No vocab loaded.</div>';
+
+  // GRAMMAR BOX — always render from _aiContent
+  {
+    var ghtml = '';
+    var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la' };
+    var partColorMap = { subject:'#2563eb', object:'#16a34a', verb:'#7c3aed' };
+    (_aiContent.grammar || []).forEach(function(g) {
+      // Build example display — for Beginner with parts, color-code them
+      var exampleHtml = '';
+      if (_currentLevel === 'Beginner' && Array.isArray(g.parts) && g.parts.length > 0) {
+        var partsHtml = g.parts.map(function(p) {
+          var color = partColorMap[p.role] || '';
+          if (color) return '<span style="color:' + color + ';font-weight:700">' + p.text + '</span>';
+          return p.text;
+        }).join(' ');
+        exampleHtml = '<div class="grex"><div class="grko">' + partsHtml + '</div><div class="gren">' + g.example_en + '</div></div>';
+      } else {
+        exampleHtml = '<div class="grex"><div class="grko">' + g.example_ko + '</div><div class="gren">' + g.example_en + '</div></div>';
+      }
+      ghtml += '<div class="grb">'
+        + '<span class="grbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[g.level]||g.level) + '</span>'
+        + '<div class="grname">' + g.pattern + '</div>'
+        + '<div class="grexp">' + g.explanation + '</div>'
+        + exampleHtml
+        + '</div>';
+    });
+    // Beginner: add color legend
+    if (_currentLevel === 'Beginner') {
+      ghtml += '<div style="margin-top:8px;padding:6px 8px;font-size:11px;color:rgba(255,255,255,.6);border-top:1px solid rgba(255,255,255,.08)">'
+        + '\uD83D\uDD35 Subject \uD83D\uDFE2 Object \uD83D\uDFE3 Verb</div>';
+    }
+    document.getElementById('grammar-box').innerHTML = ghtml || '<div style="color:#aaa;font-size:12px">No grammar loaded.</div>';
+
+    // INTERMEDIATE: Confusing Grammar (Common Mistakes) section
+    if (_currentLevel === 'Intermediate' && _aiContent.confusing_grammar && _aiContent.confusing_grammar.length > 0) {
+      var cghtml = '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1)">'
+        + '<div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:8px">\u26A1 COMMON MISTAKES</div>';
+      _aiContent.confusing_grammar.forEach(function(item) {
+        cghtml += '<div style="margin-bottom:10px">'
+          + '<div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:3px">' + (item.pair || []).join(' vs ') + '</div>'
+          + '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:4px">' + (item.explanation || '') + '</div>'
+          + '<div style="font-size:11px;color:#ef4444;margin-bottom:2px">\u2718 <span style="text-decoration:line-through">' + (item.wrong || '') + '</span></div>'
+          + '<div style="font-size:11px;color:#22c55e">\u2714 ' + (item.correct || '') + '</div>'
+          + '</div>';
+      });
+      cghtml += '</div>';
+      document.getElementById('grammar-box').innerHTML += cghtml;
+    }
+
+    // ADVANCED: Formality Switch section
+    if (_currentLevel === 'Advanced' && _aiContent.formality_exercise) {
+      var fe = _aiContent.formality_exercise;
+      var fehtml = '<div class="sr-sb-panel" style="margin-top:12px">'
+        + '<div style="font-size:11px;font-weight:700;color:#8b5cf6;margin-bottom:8px">\uD83C\uDFA9 FORMALITY SWITCH</div>'
+        + '<div style="font-size:12px;color:#e2e8f0;margin-bottom:4px"><span style="color:#94a3b8;font-size:10px;font-weight:600">CASUAL:</span> ' + (fe.casual || '') + '</div>'
+        + '<div style="font-size:12px;color:#e2e8f0;margin-bottom:4px"><span style="color:#94a3b8;font-size:10px;font-weight:600">FORMAL:</span> ' + (fe.formal || '') + '</div>'
+        + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px">' + (fe.explanation || '') + '</div>'
+        + '</div>';
+      document.getElementById('grammar-box').innerHTML += fehtml;
+    }
+
+    // ADVANCED: Culture Note section
+    if (_currentLevel === 'Advanced' && _aiContent.culture_note) {
+      var cnhtml = '<div class="sr-sb-panel" style="margin-top:12px">'
+        + '<div style="font-size:11px;font-weight:700;color:#ec4899;margin-bottom:8px">\uD83C\uDDF0\uD83C\uDDF7 CULTURE NOTE</div>'
+        + '<p style="font-size:12px;color:rgba(255,255,255,.7);margin:0;line-height:1.5">' + _aiContent.culture_note + '</p>'
+        + '</div>';
+      document.getElementById('grammar-box').innerHTML += cnhtml;
+    }
+  }
+
+  // WCARD CHIPS (desktop)
+  var chips = '';
+  (_aiContent.vocab || []).slice(0,4).forEach(function(w){ chips += '<span class="wchip v">' + w.ko + '</span>'; });
+  (_aiContent.grammar || []).slice(0,2).forEach(function(g){ chips += '<span class="wchip g">' + g.pattern + '</span>'; });
+  document.getElementById('wcard-chips').innerHTML = chips;
+
+  // HELPER BOX — always render from _aiContent
+  {
+    var hhtml = '';
+    (_aiContent.helpers || []).forEach(function(h) {
+      hhtml += '<div class="hrow">'
+        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
+        + '<div class="hen">' + h.en + '</div>'
+        + '</div>';
+    });
+    document.getElementById('helper-box').innerHTML = hhtml || '<div style="color:#aaa;font-size:12px">No helpers loaded.</div>';
+  }
+
+  // MODAL content
+  renderModalContent();
+
+  // Sentence Builder for Beginner
+  if (typeof initSentenceBuilder === 'function') initSentenceBuilder();
+
+  // Push the freshly-rendered source boxes into the Help tab twins.
+  // Without this, learners on the Help tab when topic/level changed
+  // kept seeing the previous topic's Must-know Vocab and Quick Help.
+  if (typeof _mirrorHelpTabContent === 'function') _mirrorHelpTabContent();
+}
+
+function renderModalContent() {
+  // Provide a clear placeholder instead of leaving the side panels truly
+  // empty — without this, mobile users who tap VOCAB / GRAMMAR / AI see a
+  // blank screen and can't tell whether the page is broken or still
+  // loading.
+  var emptyPlaceholder = '<div style="padding:14px 12px;font-size:11px;color:#94a3b8;font-style:italic;text-align:center">Loading today\'s content…</div>';
+  if (!_aiContent || !_todayTopic) {
+    ['wm-grammar','wm-vocab-chips','wm-vocab-chips-mobile','wm-grammar-chips','wm-helpers'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el && !el.innerHTML.trim()) el.innerHTML = emptyPlaceholder;
+    });
+    return;
+  }
+
+  // grammar in modal
+  var mgh = '';
+  var glvColor = { Beginner:'lb', Intermediate:'li', Advanced:'la' };
+  (_aiContent.grammar || []).forEach(function(g) {
+    mgh += '<div class="mgrb">'
+      + '<span class="mgrbadge lvbadge ' + (glvColor[g.level]||'lb') + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[g.level]||g.level) + '</span>'
+      + '<div class="mgrname">' + g.pattern + '</div>'
+      + '<div class="mgrexp">' + g.explanation + '</div>'
+      + '<div class="mgrex"><div class="mgrko">' + g.example_ko + '</div><div class="mgr-en">' + g.example_en + '</div></div>'
+      + '</div>';
+  });
+  var gmEl = document.getElementById('wm-grammar');
+  if (gmEl) gmEl.innerHTML = mgh;
+
+  // vocab chips
+  var vcEl = document.getElementById('wm-vocab-chips');
+  if (vcEl) vcEl.innerHTML = (_aiContent.vocab || []).map(function(w){ return '<div class="chip">' + w.ko + '</div>'; }).join('');
+
+  // 모바일 vocab chips 미러링
+  var vcMobile = document.getElementById('wm-vocab-chips-mobile');
+  if (vcMobile) vcMobile.innerHTML = (_aiContent.vocab || []).slice(0, 6).map(function(w){
+    return '<div class="chip" onclick="insertVocabChip(\'' + w.ko.replace(/'/g,"\\'") + '\')">' + w.ko + '</div>';
+  }).join('');
+  // 모바일 힌트바 보이기 (quick-btns은 제거됨 — tab nav 중복이라 사용자 요청으로 삭제)
+  var hintBar = document.getElementById('wm-mobile-hint-bar');
+  if (window.innerWidth <= 640) {
+    if (hintBar) hintBar.style.display = 'block';
+  }
+
+  // grammar chips
+  var gcEl = document.getElementById('wm-grammar-chips');
+  if (gcEl) gcEl.innerHTML = (_aiContent.grammar || []).map(function(g){ return '<div class="chip gc">' + g.pattern + '</div>'; }).join('');
+
+  // helpers in modal — rendered as fill-in-the-blank cloze prompts
+  // instead of full copy-paste sentences. The learner sees a blanked
+  // template, has to think of the missing word themselves, and can
+  // tap "정답 보기" to reveal. The "+ insert" button inserts the
+  // BLANKED template into the writing area so they finish it on
+  // their own — no more lazy copy/paste of the whole sentence.
+  var whEl = document.getElementById('wm-helpers');
+  if (whEl) {
+    whEl.innerHTML = (_aiContent.helpers || []).map(function(h, idx) {
+      var safeKo  = h.ko.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      var cloze   = _buildHelperCloze(h.ko);          // {display, template, answer} or null
+      var hasBlank = !!(cloze && cloze.answer);
+      var clozeKo = hasBlank ? cloze.display : h.ko;
+      var dataTpl = hasBlank
+        ? cloze.template.replace(/"/g,'&quot;')
+        : h.ko.replace(/"/g,'&quot;');
+      return '<div class="mhrow" data-helper-idx="' + idx + '">'
+        + '<div style="display:flex;align-items:flex-start;gap:6px">'
+        + '<div style="flex:1">'
+        +   '<div class="mhko" data-helper-cloze="' + (hasBlank ? '1' : '0') + '">' + clozeKo + '</div>'
+        +   (hasBlank
+              ? '<div class="mhen" style="margin-bottom:4px">' + h.en + '</div>'
+                + '<div class="mh-answer" data-answer="' + h.ko.replace(/"/g,'&quot;') + '" style="display:none;font-size:12px;color:#0d6e5a;font-weight:600;margin-bottom:2px"></div>'
+              : '<div class="mhen">' + h.en + '</div>')
+        + '</div>'
+        + '<button onclick="speakKorean(\'' + safeKo + '\')" title="Listen" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:4px 7px;cursor:pointer;flex-shrink:0;color:#64748b;display:inline-flex;align-items:center" aria-label="Read aloud"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button>'
+        + '</div>'
+        + (hasBlank
+            ? '<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">'
+              + '<button class="mhbtn" onclick="revealHelperAnswer(this)" type="button">👁 정답 보기</button>'
+              + '<button class="mhbtn" data-ko="' + dataTpl + '" onclick="copyHelper(this)" type="button">+ 빈칸 템플릿 넣기</button>'
+              + '</div>'
+            : '<button class="mhbtn" data-ko="' + dataTpl + '" onclick="copyHelper(this)">+ copy to writing</button>')
+        + '</div>';
+    }).join('');
+  }
+
+  // context
+  var ctxEl = document.getElementById('wm-context');
+  var topicContentEl = document.getElementById('wm-topic-content');
+  if (ctxEl) {
+    var arts = (typeof published === 'function' ? published() : []).slice(0, 2);
+    if (arts.length) {
+      ctxEl.innerHTML = '<strong style="color:var(--accent)">Topic:</strong> ' + _todayTopic.topic_ko + '<br><span style="font-size:11px">Reference: ' + arts.map(function(a){ return a.title; }).join(' · ') + '</span>';
+    } else {
+      ctxEl.textContent = 'Topic: ' + _todayTopic.topic_ko + ' — ' + _todayTopic.topic_en;
+    }
+  }
+  if (topicContentEl) {
+    // Just the topic — the "X completed" rows used to live here as a
+    // status checklist, but the user pointed out they ate space for
+    // Show sentences & vocab learned in Phrase Munch so Express Practice
+    // truly builds on everything the user just studied.
+    _wmRenderTopicContent(topicContentEl);
+  }
+}
+
+function _wmEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Click a sentence chip → append to write area
+function wmCopySentence(el) {
+  var ko = el && el.dataset.ko;
+  if (!ko) return;
+  var ta = document.getElementById('write-area');
+  if (!ta) return;
+  var cur = ta.value.trim();
+  ta.value = cur ? cur + ' ' + ko : ko;
+  ta.dispatchEvent(new Event('input'));
+  var orig = el.style.background;
+  el.style.background = 'rgba(124,58,237,.35)';
+  el.style.borderColor = 'rgba(139,92,246,.6)';
+  setTimeout(function() { el.style.background = orig; el.style.borderColor = ''; }, 500);
+}
+
+function _wmRenderTopicContent(el) {
+  if (!el) return;
+  var html = '';
+
+  // ── 1. Sentences from Phrase Munch (Step 1) ──
+  var sentences = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.sentences)) ? _bm.sentences : [];
+  if (sentences.length) {
+    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">오늘 배운 문장 — 탭하면 복사</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">';
+    sentences.forEach(function(s) {
+      if (!s || !s.ko) return;
+      html += '<div onclick="wmCopySentence(this)" data-ko="' + _wmEsc(s.ko) + '" '
+        + 'style="cursor:pointer;padding:8px 11px;background:rgba(124,58,237,.07);border:1px solid rgba(139,92,246,.18);border-radius:9px;transition:background .15s,border-color .15s">'
+        + '<div style="font-family:\'Noto Sans KR\',sans-serif;font-size:13px;font-weight:700;color:#e2e8f0;line-height:1.5">' + _wmEsc(s.ko) + '</div>'
+        + (s.en ? '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;font-style:italic">' + _wmEsc(s.en) + '</div>' : '')
+        + '</div>';
+    });
+    html += '</div>';
+  }
+
+  // ── 2. Vocab from Word Snap ──
+  var snapVocab = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.snapCards)) ? _bm.snapCards : [];
+  if (snapVocab.length) {
+    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">오늘 배운 단어</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">';
+    snapVocab.forEach(function(v) {
+      if (!v || !v.ko) return;
+      html += '<span style="display:inline-flex;flex-direction:column;padding:5px 10px;background:rgba(124,58,237,.1);border:1px solid rgba(139,92,246,.2);border-radius:8px">'
+        + '<span style="font-family:\'Noto Sans KR\',sans-serif;font-size:13px;font-weight:800;color:#e2e8f0">' + _wmEsc(v.ko) + '</span>'
+        + (v.en ? '<span style="font-size:10px;color:rgba(255,255,255,.45)">' + _wmEsc(v.en) + '</span>' : '')
+        + '</span>';
+    });
+    html += '</div>';
+  }
+
+  // ── 3. Example answer built from the sentences ──
+  if (sentences.length >= 2) {
+    var exampleSents = sentences.slice(0, 3).map(function(s){ return s.ko; }).join(' ');
+    _wmExampleAnswer = exampleSents;
+    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">예시 답안</div>';
+    html += '<div onclick="wmCopySentence(this)" data-ko="' + _wmEsc(exampleSents) + '" '
+      + 'style="cursor:pointer;padding:10px 12px;background:rgba(124,58,237,.1);border:1px solid rgba(139,92,246,.25);border-radius:10px;transition:background .15s">'
+      + '<div style="font-family:\'Noto Sans KR\',sans-serif;font-size:13px;font-weight:700;color:#e2e8f0;line-height:1.7">' + _wmEsc(exampleSents) + '</div>'
+      + '<div style="font-size:10px;color:rgba(167,139,250,.6);margin-top:4px;font-weight:700">탭하면 전체 복사</div>'
+      + '</div>';
+  } else if (_todayTopic && _todayTopic.topic_ko) {
+    html += '<div style="color:rgba(255,255,255,.5);font-size:12px">Topic: ' + _wmEsc(_todayTopic.topic_ko)
+      + (_todayTopic.topic_en ? ' — ' + _wmEsc(_todayTopic.topic_en) : '') + '</div>';
+  }
+
+  el.innerHTML = html || '<div style="color:rgba(255,255,255,.4);font-size:12px">Phrase Munch를 먼저 완료하면 오늘 배운 내용이 여기 표시됩니다.</div>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WRITING MODAL
+// ═══════════════════════════════════════════════════════════════
+// ── Phase 2: Topic-Writing common mistakes panel ────────────────
+// AI generates 4-6 common errors learners make on the current topic
+// at the current level. Cached 24h in localStorage so we don't burn
+// a Claude call every time the writing modal opens. Renders into
+// the #wm-common-mistakes details inside the writing modal.
+async function khLoadCommonMistakes() {
+  var details = document.getElementById('wm-common-mistakes');
+  var body    = document.getElementById('wm-cm-body');
+  var countEl = document.getElementById('wm-cm-count');
+  if (!details || !body) return;
+  var topicKo = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '';
+  if (!topicKo) { details.hidden = true; return; }
+  var level   = _currentLevel || 'Beginner';
+  var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+  // Cache key bumped to v2 — the v1 prompt was too loose and was
+  // labelling formality choices (-ㅂ니다 vs -어요), vocabulary
+  // alternatives (싶어요 vs 좋아해요), subject omission, and
+  // spacing as "mistakes." User pushed back; new prompt limits
+  // results to actual grammar errors only. Old v1 cache entries
+  // would still display the BS so we invalidate by namespace.
+  var cacheKey = 'kh_topic_common_mistakes_v3_' + encodeURIComponent(topicKo) + '_' + level + '_' + dateKey;
+  function paint(items) {
+    if (!Array.isArray(items) || !items.length) { details.hidden = true; return; }
+    var valid = items.filter(function(it) {
+      var w = (it.wrong || '').trim().replace(/\s+/g,' ');
+      var r = (it.right || '').trim().replace(/\s+/g,' ');
+      return w && r && w !== r;
+    });
+    if (!valid.length) { details.hidden = true; return; }
+    body.innerHTML = valid.map(function (it) {
+      var wrong = (it.wrong || '').replace(/</g, '&lt;');
+      var right = (it.right || '').replace(/</g, '&lt;');
+      var note  = (it.why   || it.note || '').replace(/</g, '&lt;');
+      return '<div style="margin:8px 0;padding:8px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(239,68,68,.2);border-radius:8px">'
+        + '<div style="font-weight:800;color:#fca5a5;margin-bottom:3px">' + (it.label || it.title || 'Common mistake') + '</div>'
+        + '<div style="font-family:\'Noto Sans KR\',sans-serif;font-size:13px;line-height:1.6;margin-bottom:4px">'
+          + '<div style="color:#f87171;text-decoration:line-through;margin-bottom:2px">✗ ' + wrong + '</div>'
+          + '<div style="color:#86efac;font-weight:700">✓ ' + right + '</div>'
+        + '</div>'
+        + (note  ? '<div style="font-size:11px;color:rgba(255,255,255,.5);border-top:1px solid rgba(255,255,255,.06);padding-top:4px;margin-top:4px">' + note + '</div>' : '')
+        + '</div>';
+    }).join('');
+    if (countEl) countEl.textContent = '(' + valid.length + ')';
+    details.hidden = false;
+  }
+  // Try localStorage cache first (today only — date is in the key).
+  try {
+    var raw = localStorage.getItem(cacheKey);
+    if (raw) { var parsed = JSON.parse(raw); if (Array.isArray(parsed)) { paint(parsed); return; } }
+  } catch (_) {}
+  // Cache miss → call Claude Haiku for 4-6 short error patterns.
+  if (typeof callClaude !== 'function') { details.hidden = true; return; }
+  details.hidden = false;
+  body.innerHTML = '<div style="padding:6px 0;color:#92400e;font-size:11px">⏳ AI 분석 중...</div>';
+  if (countEl) countEl.textContent = '';
+  try {
+    var res = await callClaude({
+      feature: 'topic-common-mistakes',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role: 'user', content:
+        'Korean learning topic: "' + topicKo + '"\n'
+        + 'Learner level: ' + level + '\n\n'
+        + 'List 3-5 GRAMMAR errors Korean learners commonly make when writing about this topic.\n\n'
+        + 'STRICT INCLUDE — only items that are objectively grammatically WRONG:\n'
+        + '  • Wrong particle (e.g. 음악에 좋아해요 instead of 음악을 좋아해요).\n'
+        + '  • Wrong conjugation form for the chosen ending (e.g. 좋아하어요 instead of 좋아해요).\n'
+        + '  • Missing or extra required morpheme (e.g. dropping the 을/를 object marker entirely on a transitive verb).\n'
+        + '  • Wrong word order that breaks Korean syntax (e.g. SVO when Korean requires SOV).\n'
+        + '  • Honorific concord errors when a subject demands honorific verbs.\n\n'
+        + 'STRICT EXCLUDE — these are NOT mistakes, do NOT list them:\n'
+        + '  • Formality choice (~어요/~아요 vs ~ㅂ니다/~습니다 — both are correct, just different register).\n'
+        + '  • Vocabulary alternatives (싶어요 vs 좋아해요, 듣다 vs 즐기다 — different verbs with different meanings, not "wrong").\n'
+        + '  • Subject omission (Korean naturally drops subjects when context is clear; including or omitting 저는 is NOT a grammar error).\n'
+        + '  • Spacing or punctuation differences.\n'
+        + '  • Stylistic awkwardness, length, or naturalness — only mark hard grammar errors.\n\n'
+        + 'For each error:\n'
+        + '  - "label": short name of the mistake type (e.g. "Wrong particle")\n'
+        + '  - "wrong": a Korean sentence with the grammar ERROR clearly present (e.g. wrong particle used)\n'
+        + '  - "right": the SAME sentence with the error FIXED — must be different from "wrong"\n'
+        + '  - "why": one short English reason (max 12 words) naming the rule\n\n'
+        + 'CRITICAL: "wrong" and "right" MUST differ. The "wrong" version must contain the actual error (e.g. the wrong particle). Do NOT return the same sentence for both.\n\n'
+        + 'Return ONLY a JSON array — no markdown, no commentary.\n'
+        + 'Format: [{"label":"...","wrong":"...","right":"...","why":"..."}]'
+      }]
+    });
+    var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+    txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+    var s = txt.indexOf('['), e = txt.lastIndexOf(']');
+    if (s >= 0 && e > s) txt = txt.slice(s, e + 1);
+    var items = JSON.parse(txt);
+    if (Array.isArray(items) && items.length) {
+      try { localStorage.setItem(cacheKey, JSON.stringify(items)); } catch (_) {}
+      paint(items);
+    } else {
+      details.hidden = true;
+    }
+  } catch (err) {
+    body.innerHTML = '<div style="padding:6px 0;color:#92400e;font-size:11px">분석 실패 — 그냥 토픽으로 진행하세요.</div>';
+  }
+}
+
+function openWritingModal() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  if (!canEnterWritingRoom()) return;
+  // Starter (Seed) + Beginner both use the 4-step writing flow — Starter vocab-only
+  // learning lives in its own entry, not the Writing / Topic Writing path.
+  if (_currentLevel === 'Starter' || _currentLevel === 'Beginner') {
+    openBeginnerModal();
+    return;
+  }
+  // Tree (Intermediate) gets the IM scaffold; Forest (Advanced) goes
+  // straight to the writing room.
+  if (_currentLevel === 'Intermediate') {
+    openIntermediateModal();
+    return;
+  }
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+  renderModalContent();
+  // Phase 2: load common-mistakes panel for the current topic.
+  if (typeof khLoadCommonMistakes === 'function') khLoadCommonMistakes();
+  // Canvas tracker rings 초기화
+  setTimeout(function() { _initWritingTrackerRings(); _resetWritingTrackerRings(); }, 100);
+  // 모바일 탭 초기화
+  wmMobileInit();
+  // Pro: load coach-coin balance for the speaking section badge
+  if (typeof _refreshSpeakingCoinBadge === 'function') _refreshSpeakingCoinBadge();
+  // Paint the genre pills + scaffold for this session
+  if (typeof _renderGenrePills === 'function')    _renderGenrePills();
+  if (typeof _renderGenreScaffold === 'function') _renderGenreScaffold();
+}
+
+function canEnterWritingRoom() {
+  var hasDoneStep = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence || _studyDone.expressions);
+  if (hasDoneStep) return true;
+  khAlert(
+    'Finish one step first',
+    'Complete at least one learning step (Topic Yum Yum, Grammar Focus, Picture Description, Dictation, or Key Expressions) before entering Express Practice.'
+  );
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEARNING SELECTOR
+// ═══════════════════════════════════════════════════════════════
+function openLearningSelector() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  var modal = document.getElementById('ls-modal');
+  if (!modal) return;
+  // Apply the user's chosen mobile layout (solar / tarot / orb) so
+  // the panel switches to the right renderer before paint. Desktop
+  // (≥768px) keeps the original pentagon regardless via media query.
+  _lsApplyMobileMode();
+  _updateLSSelectorBadges();
+  modal.classList.remove('hidden');
+  // Recalc line coordinates after modal is visible
+  setTimeout(_lsRecalcCoords, 150);
+  setTimeout(_lsRecalcCoords, 400);
+  // Start the solar-system orbit loop if that's the active mobile mode.
+  // Idempotent — if already running it's a no-op.
+  if (_lsGetMobileMode() === 'solar') _lsStartSolarOrbits();
+  else _lsStopSolarOrbits();
+}
+
+function closeLearningSelector() {
+  var modal = document.getElementById('ls-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function _updateLSSelectorBadges() {
+  var types = ['topic','grammar','picture','sentence','expressions'];
+  var ptsMap = { topic:20, grammar:10, picture:15, sentence:10, expressions:10 };
+  var doneCount = 0;
+  var totalPts = 0;
+  types.forEach(function(t) {
+    var node = document.getElementById('ls-card-' + t);
+    if (!node) return;
+    if (_studyDone[t]) {
+      node.classList.add('ls-node-done');
+      doneCount++;
+      totalPts += ptsMap[t] || 0;
+    } else {
+      node.classList.remove('ls-node-done');
+    }
+  });
+  // Update orb
+  var orbCount = document.getElementById('ls-orb-count');
+  var orbPts   = document.getElementById('ls-orb-pts');
+  if (orbCount) orbCount.textContent = doneCount;
+  if (orbPts)   orbPts.textContent = totalPts + ' 냥';
+  // Update CSS progress variable for the orb halo ring + Tarot top
+  // bar (Tarot reads --ls-progress off the .ls-mindmap, not the
+  // orb-wrap, so set it on both).
+  var orbWrap = document.querySelector('.ls-orb-wrap');
+  var pctVar = String((doneCount / 5) * 100);
+  if (orbWrap) orbWrap.style.setProperty('--ls-progress', pctVar);
+  var mmEl = document.getElementById('ls-mindmap');
+  if (mmEl) mmEl.style.setProperty('--ls-progress', pctVar);
+  // Set target fill for canvas orb
+  if (typeof _lsOrbTargetFill !== 'undefined') _lsOrbTargetFill = Math.max(0.12, doneCount / 5);
+  // Update line done states for canvas
+  if (typeof _lsLineDone !== 'undefined') {
+    types.forEach(function(t){ _lsLineDone[t] = !!_studyDone[t]; });
+  }
+  // Writing Practice button
+  var wpBtn  = document.getElementById('ls-wp-btn');
+  var wpLock = document.getElementById('ls-wp-lock');
+  var wpSub  = document.getElementById('ls-wp-sub');
+  var hasAny = doneCount > 0;
+  var LS_LOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
+  var LS_UNLOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 7.5-1.5"/></svg>';
+  if (wpBtn) {
+    if (hasAny) {
+      wpBtn.classList.add('ls-wp-unlocked');
+      wpBtn.disabled = false;
+      if (wpLock) wpLock.innerHTML = LS_UNLOCK_SVG;
+      if (wpSub)  wpSub.textContent  = doneCount + '/5 완료! Express Practice 시작 →';
+    } else {
+      wpBtn.classList.remove('ls-wp-unlocked');
+      wpBtn.disabled = true;
+      if (wpLock) wpLock.innerHTML = LS_LOCK_SVG;
+      if (wpSub)  wpSub.textContent  = '학습 1개 이상 완료 시 열립니다';
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CANVAS ORB + LINE RENDERER
+// ═══════════════════════════════════════════════════════════════
+var _lsOrbTargetFill = 0.12;
+var _lsOrbCurrentFill = 0.12;
+var _lsOrbAnimId = null;
+var _lsLineDone = { topic:false, grammar:false, picture:false, sentence:false, expressions:false };
+
+// Node endpoint positions in viewBox coords (380×399)
+// Node coords computed dynamically from DOM positions
+var _lsNodeCoords = {};
+var _lsCenterCoord = { x:190, y:200 };
+
+function _lsRecalcCoords() {
+  var wrap = document.getElementById('ls-mindmap');
+  if (!wrap) return;
+  var rect = wrap.getBoundingClientRect();
+  var W = rect.width, H = rect.height;
+  // Center = orb center
+  var orb = document.querySelector('.ls-orb-wrap');
+  if (orb) {
+    var or = orb.getBoundingClientRect();
+    _lsCenterCoord = { x: (or.left + or.width/2 - rect.left) * (380/W), y: (or.top + or.height/2 - rect.top) * (399/H) };
+  }
+  // Each node
+  ['topic','grammar','picture','sentence','expressions'].forEach(function(key) {
+    var map = {topic:'ls-card-topic', grammar:'ls-card-grammar', picture:'ls-card-picture', sentence:'ls-card-sentence', expressions:'ls-card-expressions'};
+    var el = document.getElementById(map[key]);
+    if (!el) return;
+    var circle = el.querySelector('.ls-node-circle');
+    var target = circle || el;
+    var nr = target.getBoundingClientRect();
+    _lsNodeCoords[key] = {
+      x: (nr.left + nr.width/2 - rect.left) * (380/W),
+      y: (nr.top + nr.height/2 - rect.top) * (399/H)
+    };
+  });
+}
+
+// Particles for completed lines
+var _lsParticles = [];
+
+function _lsSpawnParticle(key) {
+  var n = _lsNodeCoords[key]; if (!n) return;
+  _lsParticles.push({
+    key: key,
+    t: 0,
+    speed: 0.008 + Math.random() * 0.006,
+    x1: _lsCenterCoord.x, y1: _lsCenterCoord.y,
+    x2: n.x, y2: n.y,
+    size: 1.5 + Math.random() * 2,
+    alpha: 0.6 + Math.random() * 0.4
+  });
+}
+
+function _lsInitOrbCanvas() {
+  var canvas = document.getElementById('ls-orb-canvas');
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var S = 240; // canvas pixel size
+  var R = S / 2;
+  var t = 0;
+
+  function drawOrb() {
+    t += 0.025;
+    // Smooth fill interpolation
+    _lsOrbCurrentFill += (_lsOrbTargetFill - _lsOrbCurrentFill) * 0.04;
+    var fill = _lsOrbCurrentFill;
+
+    ctx.clearRect(0, 0, S, S);
+    ctx.save();
+
+    // Clip to circle
+    ctx.beginPath();
+    ctx.arc(R, R, R - 2, 0, Math.PI * 2);
+    ctx.clip();
+
+    // Background
+    var bgGrad = ctx.createRadialGradient(R * 0.75, R * 0.6, 0, R, R, R);
+    bgGrad.addColorStop(0, '#1a0a2e');
+    bgGrad.addColorStop(1, '#060210');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, S, S);
+
+    // Liquid fill level (bottom up)
+    var liquidTop = S - (fill * S * 0.88) - S * 0.06;
+
+    // Draw 4 wave layers for realistic liquid surface
+    var waves = [
+      { amp:6, freq:2.2, speed:1.0,  color:'rgba(168,85,247,0.3)',  yOff:-8 },
+      { amp:4, freq:3.0, speed:1.4,  color:'rgba(139,92,246,0.35)', yOff:-4 },
+      { amp:5, freq:2.5, speed:-0.8, color:'rgba(124,58,237,0.45)', yOff:0  },
+      { amp:3, freq:3.5, speed:1.8,  color:'rgba(168,85,247,0.25)', yOff:-6 }
+    ];
+
+    waves.forEach(function(w) {
+      ctx.beginPath();
+      ctx.moveTo(0, S);
+      for (var x = 0; x <= S; x += 2) {
+        var y = liquidTop + w.yOff
+          + Math.sin((x / S) * Math.PI * w.freq + t * w.speed) * w.amp
+          + Math.sin((x / S) * Math.PI * (w.freq * 0.7) + t * w.speed * 1.3) * (w.amp * 0.5);
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.lineTo(S, S);
+      ctx.lineTo(0, S);
+      ctx.closePath();
+      ctx.fillStyle = w.color;
+      ctx.fill();
+    });
+
+    // Main liquid body
+    var mainWaveY = liquidTop;
+    ctx.beginPath();
+    for (var x = 0; x <= S; x += 2) {
+      var y = mainWaveY
+        + Math.sin((x / S) * Math.PI * 2.8 + t) * 5
+        + Math.sin((x / S) * Math.PI * 1.5 + t * 1.5) * 3;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.lineTo(S, S);
+    ctx.lineTo(0, S);
+    ctx.closePath();
+
+    var liqGrad = ctx.createLinearGradient(0, liquidTop, 0, S);
+    liqGrad.addColorStop(0, 'rgba(168,85,247,0.75)');
+    liqGrad.addColorStop(0.3, 'rgba(124,58,237,0.85)');
+    liqGrad.addColorStop(0.7, 'rgba(91,33,182,0.92)');
+    liqGrad.addColorStop(1, 'rgba(67,20,150,0.95)');
+    ctx.fillStyle = liqGrad;
+    ctx.fill();
+
+    // Surface highlight (bright line at wave surface)
+    ctx.beginPath();
+    for (var x = 0; x <= S; x += 2) {
+      var y = mainWaveY
+        + Math.sin((x / S) * Math.PI * 2.8 + t) * 5
+        + Math.sin((x / S) * Math.PI * 1.5 + t * 1.5) * 3;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(200,160,255,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Floating bubbles in liquid
+    for (var i = 0; i < 6; i++) {
+      var bx = ((i * 41 + t * 15) % S);
+      var by = liquidTop + 15 + ((i * 37 + Math.sin(t + i) * 10) % (S - liquidTop - 20));
+      var br = 1.5 + Math.sin(t * 0.8 + i * 2) * 0.8;
+      var ba = 0.15 + Math.sin(t + i * 1.5) * 0.1;
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(220,190,255,' + ba + ')';
+      ctx.fill();
+    }
+
+    // Glass refraction edge (inner shadow)
+    var edgeGrad = ctx.createRadialGradient(R, R, R * 0.75, R, R, R);
+    edgeGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    edgeGrad.addColorStop(0.85, 'rgba(0,0,0,0.15)');
+    edgeGrad.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = edgeGrad;
+    ctx.fillRect(0, 0, S, S);
+
+    // Specular highlight (top-left)
+    ctx.beginPath();
+    ctx.ellipse(R * 0.62, R * 0.42, R * 0.28, R * 0.18, -0.4, 0, Math.PI * 2);
+    var specGrad = ctx.createRadialGradient(R * 0.62, R * 0.42, 0, R * 0.62, R * 0.42, R * 0.28);
+    specGrad.addColorStop(0, 'rgba(255,255,255,0.22)');
+    specGrad.addColorStop(0.5, 'rgba(255,255,255,0.06)');
+    specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = specGrad;
+    ctx.fill();
+
+    // Small secondary highlight
+    ctx.beginPath();
+    ctx.ellipse(R * 0.45, R * 0.32, R * 0.08, R * 0.05, -0.3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fill();
+
+    // Border ring
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(R, R, R - 2, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(160,100,240,0.35)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Outer glow
+    ctx.beginPath();
+    ctx.arc(R, R, R - 1, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(140,80,220,' + (0.1 + Math.sin(t * 0.8) * 0.08) + ')';
+    ctx.lineWidth = 6;
+    ctx.stroke();
+
+    _lsOrbAnimId = requestAnimationFrame(drawOrb);
+  }
+
+  drawOrb();
+}
+
+function _lsInitLinesCanvas() {
+  var wrap = document.getElementById('ls-mindmap');
+  var canvas = document.getElementById('ls-lines-canvas');
+  if (!wrap || !canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var t = 0;
+
+  function resizeCanvas() {
+    var rect = wrap.getBoundingClientRect();
+    canvas.width = rect.width * (window.devicePixelRatio || 1);
+    canvas.height = rect.height * (window.devicePixelRatio || 1);
+    ctx.setTransform(
+      canvas.width / 380, 0, 0,
+      canvas.height / 399, 0, 0
+    );
+    _lsRecalcCoords();
+  }
+  // Delay initial calc so layout is settled
+  setTimeout(resizeCanvas, 100);
+  setTimeout(resizeCanvas, 500);
+  window.addEventListener('resize', resizeCanvas);
+
+  // Starfield buffer — fixed points so stars don't strobe between
+  // frames. Computed once on first solar-mode draw, then twinkled by
+  // animating only the alpha each frame.
+  var _stars = null;
+  function _ensureStars() {
+    if (_stars) return _stars;
+    _stars = [];
+    var seed = 42; // deterministic so the same star pattern shows every open
+    function rng() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    for (var i = 0; i < 50; i++) {
+      _stars.push({ x: rng() * 380, y: rng() * 399, r: 0.4 + rng() * 0.9, phase: rng() * Math.PI * 2 });
+    }
+    return _stars;
+  }
+
+  function drawLines() {
+    t += 0.02;
+    ctx.clearRect(0, 0, 380, 399);
+
+    var inSolar = (typeof _lsGetMobileMode === 'function')
+      && _lsGetMobileMode() === 'solar'
+      && wrap.classList.contains('ls-mode-solar');
+
+    if (inSolar) {
+      // Starfield — twinkle each star independently via its phase.
+      var stars = _ensureStars();
+      for (var si = 0; si < stars.length; si++) {
+        var st = stars[si];
+        var alpha = 0.3 + 0.4 * (0.5 + 0.5 * Math.sin(t * 1.2 + st.phase));
+        ctx.beginPath();
+        ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(220,230,255,' + alpha + ')';
+        ctx.fill();
+      }
+      // Orbit rings — one ellipse per planet so the user can see
+      // which track each one is on. Faint stroke so the moving
+      // planets stay the focal point. The canvas viewBox is 380×399
+      // so the orbits are anchored to the centre of that virtual box.
+      var cxV = 190, cyV = 199.5;
+      var refV = Math.min(cxV, cyV);
+      var orbitKeys = ['topic','grammar','picture','sentence','expressions'];
+      ctx.save();
+      for (var oi = 0; oi < orbitKeys.length; oi++) {
+        var oo = (typeof _LS_ORBITS !== 'undefined') ? _LS_ORBITS[orbitKeys[oi]] : null;
+        if (!oo) continue;
+        var rxV = refV * oo.radius;
+        var ryV = refV * oo.radius * 0.82;
+        ctx.beginPath();
+        ctx.ellipse(cxV, cyV, rxV, ryV, 0, 0, Math.PI * 2);
+        // Outer orbits get fainter strokes — depth cue.
+        var fade = 0.06 + 0.10 * (1 - oo.radius);
+        ctx.strokeStyle = _lsLineDone[orbitKeys[oi]]
+          ? 'rgba(120,255,200,' + (fade + 0.12) + ')'
+          : 'rgba(168,139,250,' + fade + ')';
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    Object.keys(_lsNodeCoords).forEach(function(key) {
+      var n = _lsNodeCoords[key];
+      var done = _lsLineDone[key];
+
+      if (done) {
+        // Glowing line
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(_lsCenterCoord.x, _lsCenterCoord.y);
+        ctx.lineTo(n.x, n.y);
+        // Outer glow
+        ctx.strokeStyle = 'rgba(52,211,153,0.2)';
+        ctx.lineWidth = 8;
+        ctx.stroke();
+        // Mid glow
+        ctx.strokeStyle = 'rgba(52,211,153,' + (0.35 + Math.sin(t * 2) * 0.15) + ')';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        // Core
+        ctx.strokeStyle = 'rgba(120,255,200,' + (0.6 + Math.sin(t * 2) * 0.2) + ')';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+
+        // Spawn particles occasionally
+        if (Math.random() < 0.06) _lsSpawnParticle(key);
+      } else {
+        // Dim dashed line with flowing offset toward node
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([5, 5]);
+        ctx.lineDashOffset = -(t * 18) % 10;
+        ctx.moveTo(_lsCenterCoord.x, _lsCenterCoord.y);
+        ctx.lineTo(n.x, n.y);
+        ctx.strokeStyle = 'rgba(168,139,250,0.22)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0;
+        ctx.restore();
+      }
+    });
+
+    // Draw particles
+    for (var i = _lsParticles.length - 1; i >= 0; i--) {
+      var p = _lsParticles[i];
+      p.t += p.speed;
+      if (p.t > 1) { _lsParticles.splice(i, 1); continue; }
+      var px = p.x1 + (p.x2 - p.x1) * p.t;
+      var py = p.y1 + (p.y2 - p.y1) * p.t;
+      var fadeAlpha = p.alpha * (1 - Math.pow(p.t * 2 - 1, 2));
+      // Glow
+      ctx.beginPath();
+      ctx.arc(px, py, p.size * 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(52,211,153,' + (fadeAlpha * 0.2) + ')';
+      ctx.fill();
+      // Core
+      ctx.beginPath();
+      ctx.arc(px, py, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(160,255,220,' + fadeAlpha + ')';
+      ctx.fill();
+    }
+
+    requestAnimationFrame(drawLines);
+  }
+
+  drawLines();
+}
+
+function _lsStartCanvasRendering() {
+  _lsInitOrbCanvas();
+  _lsInitLinesCanvas();
+}
+
+// ─── Mobile layout mode (solar / tarot / orb) — toggle UI inside the
+// modal lets the user flip between three experimental layouts so we
+// can pick the winner. Desktop (≥768px) ignores this entirely and
+// always shows the pentagon, scoped via media query in the CSS.
+var _LS_MODE_KEY = 'kh_ls_mobile_mode_v1';
+var _LS_MODES = ['solar', 'tarot', 'orb'];
+function _lsGetMobileMode() {
+  try {
+    var m = localStorage.getItem(_LS_MODE_KEY);
+    if (m && _LS_MODES.indexOf(m) >= 0) return m;
+  } catch(_) {}
+  return 'orb';
+}
+function _lsSetMobileMode(mode) {
+  if (_LS_MODES.indexOf(mode) < 0) return;
+  try { localStorage.setItem(_LS_MODE_KEY, mode); } catch(_) {}
+  _lsApplyMobileMode();
+  if (mode === 'solar') _lsStartSolarOrbits();
+  else _lsStopSolarOrbits();
+}
+function _lsApplyMobileMode() {
+  var mode = _lsGetMobileMode();
+  var mindmap = document.getElementById('ls-mindmap');
+  if (mindmap) {
+    mindmap.classList.remove('ls-mode-solar', 'ls-mode-tarot', 'ls-mode-orb');
+    mindmap.classList.add('ls-mode-' + mode);
+  }
+  var toggleRow = document.getElementById('ls-mode-toggle');
+  if (toggleRow) {
+    toggleRow.querySelectorAll('[data-ls-mode]').forEach(function(b) {
+      b.classList.toggle('on', b.getAttribute('data-ls-mode') === mode);
+    });
+  }
+}
+
+// ─── Solar System mode: 5 nodes orbit the centre orb on staggered
+// elliptical paths. Node DOM transforms are updated each frame so the
+// lines/particles canvas can keep tracking them via _lsNodeCoords.
+// Stops itself when mode flips away from solar — no zombie loop.
+// Five planets at five distinctly different orbital radii so no two
+// nodes share a track. Innermost (0.42) clears the centre orb's edge
+// by ~12px after y-squish — the previous 0.32 was visually inside the
+// orb's halo. Outermost (1.00) hugs the container edge.
+var _LS_ORBITS = {
+  topic:       { radius: 0.42, period: 22, offset:   0 },
+  grammar:     { radius: 0.58, period: 30, offset: 144 },
+  picture:     { radius: 0.72, period: 40, offset:  72 },
+  sentence:    { radius: 0.86, period: 50, offset: 216 },
+  expressions: { radius: 1.00, period: 62, offset: 288 },
+};
+var _lsSolarStart = 0;
+var _lsSolarRafId = null;
+function _lsStartSolarOrbits() {
+  if (_lsSolarRafId) return; // already running
+  _lsSolarStart = performance.now();
+  var loop = function() {
+    if (_lsGetMobileMode() !== 'solar') { _lsSolarRafId = null; return; }
+    var modal = document.getElementById('ls-modal');
+    if (!modal || modal.classList.contains('hidden')) {
+      // Modal closed — pause the loop so we don't spin forever.
+      _lsSolarRafId = null; return;
+    }
+    var wrap = document.getElementById('ls-mindmap');
+    if (!wrap) { _lsSolarRafId = requestAnimationFrame(loop); return; }
+    var rect = wrap.getBoundingClientRect();
+    var cx = rect.width / 2;
+    var cy = rect.height / 2;
+    // Use the smaller dimension as the orbit reference so a portrait
+    // container doesn't shoot nodes past the right edge.
+    var refRadius = Math.min(rect.width, rect.height) / 2;
+    var elapsed = (performance.now() - _lsSolarStart) / 1000;
+    Object.keys(_LS_ORBITS).forEach(function(key) {
+      var o = _LS_ORBITS[key];
+      var theta = (o.offset * Math.PI / 180) + (elapsed / o.period) * Math.PI * 2;
+      var R = refRadius * o.radius;
+      var nx = R * Math.cos(theta);
+      // y-squish 0.82 — outer orbits stay safely inside vertical
+      // bounds while still reading as 3D rather than flat circles.
+      var ny = R * Math.sin(theta) * 0.82;
+      var el = document.getElementById('ls-card-' + key);
+      if (el) {
+        // Anchor each orbiting node to the wrap centre and translate
+        // by the orbit offset. The inline transform overrides the
+        // pentagon-positioning rules from the desktop CSS.
+        el.style.left = cx + 'px';
+        el.style.top  = cy + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+        el.style.transform = 'translate(calc(-50% + ' + nx.toFixed(1) + 'px), calc(-50% + ' + ny.toFixed(1) + 'px))';
+      }
+    });
+    _lsRecalcCoords(); // keep canvas line endpoints in sync with moved DOM
+    _lsSolarRafId = requestAnimationFrame(loop);
+  };
+  _lsSolarRafId = requestAnimationFrame(loop);
+}
+function _lsStopSolarOrbits() {
+  if (_lsSolarRafId) {
+    cancelAnimationFrame(_lsSolarRafId);
+    _lsSolarRafId = null;
+  }
+  // Clear inline transforms so pentagon CSS positions take over again
+  // when the user flips back.
+  ['topic','grammar','picture','sentence','expressions'].forEach(function(key) {
+    var el = document.getElementById('ls-card-' + key);
+    if (el) {
+      el.style.left = ''; el.style.top = '';
+      el.style.right = ''; el.style.bottom = '';
+      el.style.transform = '';
+    }
+  });
+}
+
+// Start canvas when modal opens
+var _origOpenLS = openLearningSelector;
+openLearningSelector = function() {
+  _origOpenLS();
+  // Start canvas on first open
+  if (!_lsOrbAnimId) {
+    setTimeout(_lsStartCanvasRendering, 50);
+  }
+};
+
+function lsStart(type) {
+  closeLearningSelector();
+  if (type === 'topic') {
+    openWritingModalForLearning();
+  } else if (type === 'grammar') {
+    // Slot key stays `grammar` for storage compat (_studyDone.grammar,
+    // localStorage, line-done flags), but the activity is now
+    // Phrase Munch — Grammar Focus moved to the Skill Tree because
+    // daily topics rarely surfaced challenging grammar and the same
+    // beginner patterns kept recycling.
+    if (typeof openPhraseMunch === 'function') openPhraseMunch();
+  } else if (type === 'picture') {
+    if (typeof openSpeakingPractice === 'function') openSpeakingPractice();
+  } else if (type === 'sentence') {
+    openDictationModal();
+  } else if (type === 'expressions') {
+    openKeyExpressionsModal();
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Phrase Munch — replaces Grammar Focus in the learning selector.
+// Grammar Focus moved to the Skill Tree because daily topics rarely
+// hit interesting grammar, and the topic-derived 3-pattern lesson
+// kept regenerating the same beginner forms.
+//
+// Each session = 3 mini-lessons. Each lesson = Learn step (annotated
+// breakdown of one example sentence) → Practice step (a parallel
+// sentence using the SAME grammar pattern but different vocab,
+// answered as 4-choice EN MCQ). The user sees WHAT each piece does
+// before being asked to translate, so they're not guessing cold —
+// the user's previous "translation 처음부터 불친절하게 던져주는게
+// 아니고 스텝별로 설명해줘야지" feedback drove this redesign.
+//
+// One Claude call per daily topic, cached in grammar_examples_cache
+// under 'phmunch::<topic>' so all users on the same daily topic
+// share the lesson set. DB hit = free.
+// ──────────────────────────────────────────────────────────────────
+var _pm = {
+  lessons: null,   // [{example, practice}, ...]
+  idx: 0,          // current lesson index (0..N-1)
+  phase: 'vocab',  // 'vocab' | 'learn' | 'assemble' | 'practice'
+  scores: [],      // per-lesson 1/0 (correct/wrong)
+  selected: null,  // user's choice during practice phase
+  vocabRevealed: {},  // { lessonIdx: { partIdx: true } } — tap-to-reveal cards
+  asmState: null,     // { pool: [...], picked: [...], result: 'right'|'wrong'|null }
+};
+
+async function openPhraseMunch() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+
+  var modal = document.getElementById('pm-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  var body = document.getElementById('pm-body');
+  if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,.55);display:flex;flex-direction:column;align-items:center;gap:12px"><span style="display:inline-flex;width:24px;height:24px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</span><span>Loading today\'s phrases…</span></div>';
+
+  var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
+  if (!topic || topic === 'Loading…') {
+    if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,.5)">Please load today\'s topic first.</div>';
+    return;
+  }
+
+  var cacheKey = 'phmunch::' + topic.trim();
+  var lessons = null;
+
+  // Preferred path — admin pre-generates PM lessons alongside the daily
+  // topic content, stored on the same study_daily_content row. If the
+  // row has phrase_munch_lessons, use it directly: no AI call, no cold
+  // start, and the lessons came in under the latest prompt (so e.g.
+  // practice.parts is always populated for hover tooltips).
+  try {
+    var sb = getSupa();
+    if (sb) {
+      var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+      var lvl = _currentLevel || 'Beginner';
+      var preR = await sb.from('study_daily_content')
+        .select('phrase_munch_lessons')
+        .eq('scheduled_date', dateKey).eq('level', lvl).maybeSingle();
+      var stored = preR && preR.data && preR.data.phrase_munch_lessons;
+      if (Array.isArray(stored) && stored.length) lessons = stored;
+    }
+  } catch(_) {}
+
+  // Fallback to the legacy per-topic AI cache (still used by old days).
+  if (!lessons) {
+    try {
+      var hit = await _aiCacheGet(cacheKey);
+      if (hit && Array.isArray(hit.lessons) && hit.lessons.length >= 2) lessons = hit.lessons;
+    } catch(_) {}
+  }
+
+  if (!lessons) {
+    try {
+      lessons = await _pmGenerateLessons(topic);
+      if (lessons && lessons.length >= 2) _aiCacheSet(cacheKey, { lessons: lessons });
+    } catch(e) {
+      if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#ef4444">Could not load lessons. Try again later.</div>';
+      return;
+    }
+  }
+  if (!lessons || !lessons.length) {
+    if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#ef4444">No lessons available right now.</div>';
+    return;
+  }
+
+  _pm.lessons = lessons.slice(0, 3);
+  _pm.idx = 0;
+  _pm.phase = 'vocab';
+  _pm.scores = [];
+  _pm.selected = null;
+  _pm.vocabRevealed = {};
+  _pm.asmState = null;
+  _pmRender();
+}
+
+function closePhraseMunch() {
+  var modal = document.getElementById('pm-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function _pmGenerateLessons(topic) {
+  var prompt =
+      'You are a Korean teacher building bite-sized lessons for an English-speaking learner.\n'
+    + 'Today\'s topic: "' + topic + '"\n\n'
+    + 'Create exactly 3 micro-lessons. Each teaches ONE distinct grammar pattern.\n\n'
+    + 'PEDAGOGY (most important):\n'
+    + '- Pick 3 patterns the learner can ACTUALLY use to talk about today\'s topic. No filler grammar that doesn\'t fit the topic.\n'
+    + '- Patterns must be DIFFERENT across the 3 lessons (don\'t do ~을/를 + ~을/를 + ~을/를).\n'
+    + '- Mix difficulty: 1 basic, 1 mid, 1 slightly stretching. Beginner-to-intermediate range (~도, ~을/를, ~았/었어요, ~고 싶어요, ~ㄴ/는데, ~(으)면, ~기 위해, ~게 되다, ~아/어 보다 etc.).\n\n'
+    + 'EXAMPLE vs PRACTICE:\n'
+    + '- example.ko: a natural full sentence using the pattern in context of today\'s topic.\n'
+    + '- practice.ko: SAME pattern, DIFFERENT content words. The learner translates English → picks the Korean. Don\'t reuse example\'s nouns/verbs.\n'
+    + '- choices[0] is correct. Other 3 are PLAUSIBLY wrong (wrong particle, wrong tense, wrong subject) but not random gibberish — must look like real options a learner could mistakenly pick.\n\n'
+    + 'BREAKDOWN PARTS:\n'
+    + '- 4-7 parts per sentence. Each part = ONE meaningful chunk (morpheme, word, or particle group).\n'
+    + '- BOTH example.parts AND practice.parts required — the practice sentence introduces new content words and the learner needs them broken down. Skipping practice.parts turns the quiz into a guessing game.\n'
+    + '- "en" for each part = meaning + brief grammatical role in plain English. e.g. {"ko":"먹었어요","en":"ate (past polite)"}, NOT {"ko":"먹었어요","en":"verb suffix"}.\n\n'
+    + 'GRAMMAR NOTE:\n'
+    + '- ONE sentence (≤20 words) explaining when/why to use the pattern. Concrete, not abstract. Good: "~도 means \'also\' — attaches to the second item being added to a list." Bad: "~도 is a particle that performs an additive function."\n\n'
+    + 'Return ONLY valid JSON, no markdown:\n'
+    + '{"lessons":[{\n'
+    + '  "example":{"ko":"...","en":"...","parts":[{"ko":"...","en":"..."}],"grammar_note":"..."},\n'
+    + '  "practice":{"ko":"...","en":"...","parts":[{"ko":"...","en":"..."}],"choices":["correct","wrong1","wrong2","wrong3"]}\n'
+    + '}]}\n';
+
+  var res = await callClaude({
+    feature: 'phrase-munch',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2400,
+    messages: [{ role: 'user', content: prompt }]
+  });
+  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
+  var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+  if (oi < 0 || ei <= oi) throw new Error('no JSON in response');
+  var parsed = JSON.parse(raw.slice(oi, ei + 1));
+  return Array.isArray(parsed.lessons) ? parsed.lessons : [];
+}
+
+function _pmRender() {
+  var body = document.getElementById('pm-body');
+  if (!body || !_pm.lessons) return;
+  var lesson = _pm.lessons[_pm.idx];
+  if (!lesson) { _pmRenderResult(); return; }
+
+  // Register every word the lesson exposes (example parts + practice
+  // parts when present) into the hover-tooltip system, so the learner
+  // can mouse over / tap any unfamiliar token in the modal and get a
+  // meaning. Without this, the Practice phase showed sentences like
+  // "영화도 봐요?" with no path to look up 영화 if it wasn't already
+  // taught — turning the activity into a guessing game.
+  try {
+    if (typeof window.korehanHoverRegisterExtras === 'function') {
+      var hoverExtras = [];
+      var collect = function(parts) {
+        if (!Array.isArray(parts)) return;
+        parts.forEach(function(p) {
+          if (p && p.ko && p.en) hoverExtras.push({ ko: p.ko, en: p.en });
+        });
+      };
+      collect(lesson.example && lesson.example.parts);
+      collect(lesson.practice && lesson.practice.parts);
+      if (hoverExtras.length) window.korehanHoverRegisterExtras(hoverExtras);
+    }
+  } catch(_) {}
+
+  // Step pips
+  var pipsHtml = _pm.lessons.map(function(_, i) {
+    var done = _pm.scores[i] != null;
+    var current = i === _pm.idx;
+    var bg = done ? (_pm.scores[i] ? '#22c55e' : '#ef4444') : (current ? '#a78bfa' : 'rgba(255,255,255,.15)');
+    return '<span class="pm-pip" style="background:' + bg + '"></span>';
+  }).join('');
+
+  if      (_pm.phase === 'vocab')    _pmRenderVocab(body, lesson, pipsHtml);
+  else if (_pm.phase === 'learn')    _pmRenderLearn(body, lesson, pipsHtml);
+  else if (_pm.phase === 'assemble') _pmRenderAssemble(body, lesson, pipsHtml);
+  else                               _pmRenderPractice(body, lesson, pipsHtml);
+
+  // Force a fresh hover sweep on the modal body — MutationObserver's
+  // 250ms debounce sometimes misses a re-render and the practice
+  // sentence renders without underlines.
+  try { if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh(); } catch(_) {}
+}
+
+// Phase 1 — Vocab preview. The user complained that Phrase Munch
+// dropped them straight into a full sentence breakdown with no warm-up.
+// This phase pulls the 2-3 most "content-heavy" parts (skip pure
+// particles/punctuation, prefer ≥2-char chunks) and shows them as
+// tap-to-reveal cards. Goal: meet the building blocks BEFORE seeing
+// the whole sentence.
+function _pmPickVocabParts(parts) {
+  if (!Array.isArray(parts)) return [];
+  var PARTICLE_ONLY = /^[은는이가을를의에서와과도만으로부터까지에게한테로써]+[.,!?]?$/;
+  var picks = [];
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i];
+    if (!p || !p.ko) continue;
+    var ko = String(p.ko).trim();
+    // Keep ALL meaningful chunks, including 1-character morphemes
+    // (것, 줄, 만 etc. carry real meaning). Only drop pure
+    // punctuation and standalone particles. Earlier this dropped any
+    // ko < 2 chars and capped at 3, which silently swallowed pieces
+    // like '것을' (nominalizer + object marker) on the screenshot —
+    // the learner saw '그림 / 그리는 / 좋아해요' instead of all 4
+    // chunks.
+    if (!ko || /^[.,!?·…]+$/.test(ko)) continue;
+    if (PARTICLE_ONLY.test(ko)) continue;
+    picks.push({ ko: ko, en: p.en || '', srcIdx: i });
+  }
+  // Cap at 6 — enough to cover most beginner sentences without making
+  // the warm-up screen feel like a wall of cards.
+  return picks.slice(0, 6);
+}
+
+function _pmRenderVocab(body, lesson, pipsHtml) {
+  var ex = lesson.example || {};
+  var vocab = _pmPickVocabParts(ex.parts);
+  // Fallback: if the breakdown didn't yield usable vocab cards (e.g.
+  // a very short sentence) skip straight to the breakdown so the
+  // learner isn't stuck on an empty preview screen.
+  if (!vocab.length) {
+    _pm.phase = 'learn';
+    _pmRender();
+    return;
+  }
+  var revealed = _pm.vocabRevealed[_pm.idx] || {};
+  var allRevealed = vocab.every(function(_, vi) { return revealed[vi]; });
+  var cardsHtml = vocab.map(function(v, vi) {
+    var open = !!revealed[vi];
+    return '<button type="button" class="pm-vocab-card' + (open ? ' pm-vocab-open' : '') + '"'
+      + ' onclick="_pmRevealVocab(' + vi + ')"'
+      + ' style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 16px;border-radius:14px;'
+      + 'border:1px solid ' + (open ? 'rgba(167,139,250,.45)' : 'rgba(255,255,255,.12)') + ';'
+      + 'background:' + (open ? 'rgba(167,139,250,.14)' : 'rgba(255,255,255,.04)') + ';'
+      + 'color:#fff;cursor:pointer;font-family:inherit;text-align:left;width:100%;transition:all .2s">'
+      + '<span style="font-family:\'Noto Serif KR\',serif;font-size:20px;font-weight:900;color:#fff">' + _esc(v.ko) + '</span>'
+      + (open
+          ? '<span style="font-size:13px;color:#e0d7ff;line-height:1.5">' + _esc(v.en) + '</span>'
+          : '<span style="font-size:11px;color:rgba(255,255,255,.45);font-weight:600;letter-spacing:.04em">TAP TO REVEAL MEANING</span>')
+      + '</button>';
+  }).join('');
+  // Show the full example sentence as context above the vocab cards.
+  // Without this the cards looked like a sentence fragment ("운동을 /
+  // 하면 / 스트레스가") because the cap at 3 + the picker filter drops
+  // the predicate verb. The whole sentence stays Korean-only at this
+  // stage — the English translation is the reward in the LEARN step.
+  var fullKo = ex.ko ? '<div class="pm-vocab-context">'
+    +   '<div class="pm-vocab-context-label">TODAY\'S SENTENCE</div>'
+    +   '<div class="pm-vocab-context-ko">' + _esc(ex.ko) + '</div>'
+    + '</div>' : '';
+  body.innerHTML =
+      '<div class="pm-pips">' + pipsHtml + '</div>'
+    + '<div class="pm-step-label">VOCAB · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
+    + fullKo
+    + '<div class="pm-prompt-hint">Tap each chunk to reveal what it means.</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">' + cardsHtml + '</div>'
+    + '<div class="pm-actions">'
+    +   '<button class="pm-btn pm-btn-primary" '
+    +     (allRevealed ? '' : 'disabled style="opacity:.4;cursor:not-allowed"')
+    +     ' onclick="_pmAdvanceFromVocab()">'
+    +     (allRevealed ? 'See the full breakdown →' : 'Reveal all cards first')
+    +   '</button>'
+    + '</div>';
+}
+
+function _pmRevealVocab(vi) {
+  if (!_pm.vocabRevealed[_pm.idx]) _pm.vocabRevealed[_pm.idx] = {};
+  _pm.vocabRevealed[_pm.idx][vi] = true;
+  _pmRender();
+}
+
+function _pmAdvanceFromVocab() {
+  _pm.phase = 'learn';
+  _pmRender();
+}
+
+function _pmRenderLearn(body, lesson, pipsHtml) {
+  var ex = lesson.example || {};
+  var partsHtml = (Array.isArray(ex.parts) ? ex.parts : []).map(function(p) {
+    return '<div class="pm-part">'
+      +   '<div class="pm-part-ko">' + _esc(p.ko || '') + '</div>'
+      +   '<div class="pm-part-en">' + _esc(p.en || '') + '</div>'
+      + '</div>';
+  }).join('');
+  body.innerHTML =
+      '<div class="pm-pips">' + pipsHtml + '</div>'
+    + '<div class="pm-step-label">LEARN · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
+    + '<div class="pm-example-ko">' + _esc(ex.ko || '') + '</div>'
+    + '<div class="pm-example-en">' + _esc(ex.en || '') + '</div>'
+    + (partsHtml ? '<div class="pm-parts">' + partsHtml + '</div>' : '')
+    + (ex.grammar_note ? '<div class="pm-grammar-note"><span class="pm-gn-label">Grammar</span><span>' + _esc(ex.grammar_note) + '</span></div>' : '')
+    + '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="_pmAdvanceToPractice()">Got it →</button></div>';
+}
+
+function _pmRenderPractice(body, lesson, pipsHtml) {
+  var pr = lesson.practice || {};
+  var rawChoices = Array.isArray(pr.choices) ? pr.choices.slice() : [];
+  // The AI is instructed to put the correct answer at choices[0].
+  // pr.en sometimes drifts (re-phrased translation) — when that happens
+  // and we trust pr.en, NONE of the choices match and every pick is
+  // judged wrong. Prefer choices[0] as the source of truth.
+  var correct = rawChoices[0] || pr.en || '';
+  // Shuffle once and remember the result for this lesson so we don't
+  // reshuffle when the user re-enters the practice screen.
+  var shuffleKey = '_pm_shuffle_' + _pm.idx;
+  if (!_pm[shuffleKey]) {
+    var shuffled = rawChoices.slice().sort(function(){ return Math.random() - 0.5; });
+    _pm[shuffleKey] = shuffled;
+  }
+  var choices = _pm[shuffleKey];
+
+  var choicesHtml = choices.map(function(c) {
+    var isPicked = (_pm.selected === c);
+    var isCorrect = (c === correct);
+    var stateCls = '';
+    if (_pm.selected != null) {
+      if (isCorrect)              stateCls = ' pm-choice-correct';
+      else if (isPicked)          stateCls = ' pm-choice-wrong';
+      else                        stateCls = ' pm-choice-dim';
+    }
+    var safe = (c || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    return '<button class="pm-choice' + stateCls + '"'
+      + (_pm.selected != null ? ' disabled' : '')
+      + ' onclick="_pmPickChoice(\'' + safe + '\')">' + _esc(c) + '</button>';
+  }).join('');
+
+  var feedback = '';
+  if (_pm.selected != null) {
+    var won = _pm.selected === correct;
+    feedback = '<div class="pm-feedback ' + (won ? 'pm-feedback-win' : 'pm-feedback-lose') + '">'
+      + (won ? '<span>Nice — that\'s the same pattern you just learned.</span>'
+             : '<span>Close. The answer is: <strong>' + _esc(correct) + '</strong></span>')
+      + '</div>';
+  }
+
+  var nextLabel = (_pm.idx + 1 < _pm.lessons.length) ? 'Next lesson →' : 'See results →';
+  var actions = (_pm.selected != null)
+    ? '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="_pmAdvanceLesson()">' + nextLabel + '</button></div>'
+    : '';
+
+  // The choices are Korean particle/tense/subject variants of pr.ko —
+  // the AI is instructed to make them PLAUSIBLY wrong. Showing Korean
+  // as the prompt and Korean variants as choices made the user stare
+  // at "제 할머니는 70살이에요" twice over with no clear question;
+  // they didn't know which axis to differentiate on. Flip it: show
+  // the English meaning as the prompt, and the user picks the Korean
+  // form that means that. The instruction line is rewritten to match.
+  body.innerHTML =
+      '<div class="pm-pips">' + pipsHtml + '</div>'
+    + '<div class="pm-step-label">PRACTICE · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
+    + '<div class="pm-prompt-hint">Same pattern — pick the Korean that means this.</div>'
+    + '<div class="pm-example-ko" style="font-size:22px;color:#7dd3fc">' + _esc(pr.en || '') + '</div>'
+    + '<div class="pm-choices">' + choicesHtml + '</div>'
+    + feedback
+    + actions;
+}
+
+function _pmRenderResult() {
+  var body = document.getElementById('pm-body');
+  if (!body) return;
+  var correct = _pm.scores.filter(function(s){ return s; }).length;
+  var total = _pm.scores.length;
+  var pct = total ? Math.round(correct / total * 100) : 0;
+  body.innerHTML =
+      '<div class="pm-result">'
+    +   '<div class="pm-result-icon"><span style="display:inline-flex;width:48px;height:48px;color:#fbbf24">'+BM_ICON_SPARKLE+'</span></div>'
+    +   '<div class="pm-result-score">' + correct + ' / ' + total + '</div>'
+    +   '<div class="pm-result-pct">' + pct + '% correct</div>'
+    +   '<div class="pm-actions"><button class="pm-btn pm-btn-primary" onclick="closePhraseMunch()">Done</button></div>'
+    + '</div>';
+  // Mark the slot done in the learning selector — uses the existing
+  // `grammar` key for storage compat (renamed visible label only).
+  try { markStageDone('grammar'); } catch(_) {}
+  if (typeof logQuizResult === 'function') {
+    logQuizResult('phrase_munch', { score: correct, max_score: total, accuracy_pct: pct });
+  }
+  if (typeof logActivity === 'function') {
+    logActivity('quiz', { content_type: 'phrase_munch', score: correct, max_score: total });
+  }
+}
+
+function _pmAdvanceToPractice() {
+  // Insert the Assemble phase between Learn and Practice so the
+  // learner physically rebuilds the example sentence before being
+  // asked to translate a parallel one. Forces active recall instead
+  // of "I read it once → I'll guess the next translation."
+  _pm.phase = 'assemble';
+  _pm.selected = null;
+  _pm.asmState = null;
+  _pmRender();
+}
+
+function _pmRenderAssemble(body, lesson, pipsHtml) {
+  var ex = lesson.example || {};
+  var ko = String(ex.ko || '').trim();
+  // Fallback: tap-to-arrange needs ≥3 tokens. Shorter sentences
+  // would just be a 1-tap puzzle, so skip to practice.
+  var tokens = ko.replace(/[.!?。！？]/g, '').split(/\s+/).filter(Boolean);
+  if (tokens.length < 3) {
+    _pm.phase = 'practice';
+    _pmRender();
+    return;
+  }
+  if (!_pm.asmState) {
+    var shuffled = tokens.slice();
+    for (var i = shuffled.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = t;
+    }
+    // Ensure the shuffle isn't accidentally identical to the original.
+    if (shuffled.every(function(w, i){ return w === tokens[i]; })) {
+      var s0 = shuffled[0]; shuffled[0] = shuffled[shuffled.length - 1]; shuffled[shuffled.length - 1] = s0;
+    }
+    // Pre-pick the first token like every other word-arrange drill in
+    // the app (BM Build, Dictation Word Order, Picture Description,
+    // Sentence Build). Korean accepts multiple grammatical orderings
+    // of the same chunks, so anchoring the start removes the
+    // "where do I begin" pause without giving the answer away. Pop
+    // the first occurrence of tokens[0] out of the shuffled pool.
+    var picked = [];
+    var firstWord = tokens[0];
+    var anchorIdx = shuffled.indexOf(firstWord);
+    if (anchorIdx >= 0) {
+      picked.push(shuffled.splice(anchorIdx, 1)[0]);
+    }
+    _pm.asmState = { target: tokens, pool: shuffled, picked: picked, result: null };
+  }
+  var st = _pm.asmState;
+  var poolHtml = st.pool.map(function(w, pi) {
+    var usedCount = st.picked.filter(function(x){ return x === w; }).length;
+    var totalCount = st.pool.filter(function(x){ return x === w; }).length;
+    var isUsed = usedCount >= totalCount;
+    return '<button type="button" ' + (isUsed ? 'disabled' : '') + ' onclick="_pmAsmPick(' + pi + ')" '
+      + 'style="padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.18);'
+      + 'background:rgba(255,255,255,.06);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;'
+      + 'cursor:' + (isUsed ? 'not-allowed' : 'pointer') + ';opacity:' + (isUsed ? '.25' : '1') + ';transition:all .15s">'
+      + _esc(w) + '</button>';
+  }).join('');
+  var pickedHtml = st.picked.length
+    ? st.picked.map(function(w, si) {
+        return '<button type="button" onclick="_pmAsmRemove(' + si + ')" '
+          + 'style="padding:10px 14px;border-radius:12px;border:none;'
+          + 'background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;'
+          + 'cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.3)">' + _esc(w) + ' ×</button>';
+      }).join('')
+    : '<span style="font-size:12px;color:rgba(255,255,255,.45)">단어를 선택해서 문장을 만드세요</span>';
+  var allPicked = st.picked.length === st.target.length;
+  var resultLine = '';
+  if (st.result === 'right') {
+    resultLine = '<div class="pm-feedback pm-feedback-win" style="margin-top:14px"><span>완벽! 같은 패턴으로 다음 문제를 풀어볼까요?</span></div>';
+  } else if (st.result === 'wrong') {
+    resultLine = '<div class="pm-feedback pm-feedback-lose" style="margin-top:14px"><span>아쉬워요. 정답: <strong>' + _esc(ko) + '</strong></span></div>';
+  }
+  body.innerHTML =
+      '<div class="pm-pips">' + pipsHtml + '</div>'
+    + '<div class="pm-step-label">ASSEMBLE · ' + (_pm.idx + 1) + ' / ' + _pm.lessons.length + '</div>'
+    + '<div class="pm-prompt-hint">Rebuild the example sentence — tap the words in order.</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.65);font-style:italic;margin-bottom:14px;line-height:1.5">' + _esc(ex.en || '') + '</div>'
+    + '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Your sentence</div>'
+    + '<div style="min-height:54px;border:2px dashed rgba(167,139,250,.35);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:rgba(167,139,250,.05)">' + pickedHtml + '</div></div>'
+    + '<div><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Word bank</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">' + poolHtml + '</div></div>'
+    + resultLine
+    + '<div class="pm-actions" style="margin-top:18px;display:flex;gap:10px;justify-content:flex-end">'
+    +   (st.result === null
+          ? '<button type="button" onclick="_pmAsmClear()" style="padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.7);font-weight:700;cursor:pointer;font-family:inherit">다시</button>'
+          + '<button class="pm-btn pm-btn-primary" ' + (allPicked ? '' : 'disabled style="opacity:.4;cursor:not-allowed"') + ' onclick="_pmAsmCheck()">확인 ✓</button>'
+          : '<button class="pm-btn pm-btn-primary" onclick="_pmAdvanceToTranslate()">Translate a new one →</button>')
+    + '</div>';
+}
+
+function _pmAsmPick(pi) {
+  if (!_pm.asmState || _pm.asmState.result !== null) return;
+  var st = _pm.asmState;
+  var w = st.pool[pi];
+  var used = st.picked.filter(function(x){ return x === w; }).length;
+  var total = st.pool.filter(function(x){ return x === w; }).length;
+  if (used >= total) return;
+  st.picked.push(w);
+  _pmRender();
+}
+function _pmAsmRemove(si) {
+  if (!_pm.asmState || _pm.asmState.result !== null) return;
+  // Anchor (picked[0]) is the pre-selected first word — can't remove
+  // it. Same convention as Sentence Build / Picture Description.
+  if (si <= 0) return;
+  _pm.asmState.picked.splice(si, 1);
+  _pmRender();
+}
+function _pmAsmClear() {
+  if (!_pm.asmState || _pm.asmState.result !== null) return;
+  // Restore the anchor; everything else goes back to the pool.
+  var st = _pm.asmState;
+  if (st.picked.length > 1) {
+    st.pool = st.pool.concat(st.picked.slice(1));
+    st.picked = st.picked.slice(0, 1);
+  }
+  _pmRender();
+}
+function _pmAsmCheck() {
+  if (!_pm.asmState) return;
+  var st = _pm.asmState;
+  var ok = st.picked.length === st.target.length
+    && st.picked.every(function(w, i){ return w === st.target[i]; });
+  st.result = ok ? 'right' : 'wrong';
+  _pmRender();
+}
+
+function _pmAdvanceToTranslate() {
+  _pm.phase = 'practice';
+  _pm.selected = null;
+  _pmRender();
+}
+
+function _pmPickChoice(choice) {
+  if (_pm.selected != null) return;
+  _pm.selected = choice;
+  var lesson = _pm.lessons[_pm.idx];
+  var pr = (lesson && lesson.practice) || {};
+  var rawChoices = Array.isArray(pr.choices) ? pr.choices : [];
+  var correct = rawChoices[0] || pr.en || '';
+  _pm.scores[_pm.idx] = (choice === correct) ? 1 : 0;
+  _pmRender();
+}
+
+function _pmAdvanceLesson() {
+  _pm.idx += 1;
+  _pm.phase = 'vocab';
+  _pm.selected = null;
+  _pm.asmState = null;
+  _pmRender();
+}
+
+// Local escape helper so Phrase Munch doesn't depend on the article
+// renderer's globals being loaded yet.
+function _esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── Key Expressions Modal ──
+var _keCache = null;
+var _keCacheKey = null; // topic+level+date — invalidate when any changes
+async function openKeyExpressionsModal() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  var modal = document.getElementById('ke-modal');
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  var topicLabel = document.getElementById('ke-topic-label');
+  if (_todayTopic) topicLabel.textContent = (_todayTopic.topic_ko || _todayTopic.topic_en || 'Key expressions for today\'s topic');
+  var list = document.getElementById('ke-expressions-list');
+
+  // topicKoKey is the stable text identifier (topic_ko is consistent across days).
+  // topicKey includes date for in-memory / localStorage invalidation only.
+  var topicKoKey = (_todayTopic && _todayTopic.topic_ko) || 'default';
+  var levelKey   = _currentLevel || 'Beginner';
+  var topicKey   = topicKoKey + '_' + levelKey + '_' + kstDateKey();
+  if (_keCacheKey !== topicKey) { _keCache = null; _keCacheKey = topicKey; }
+
+  // 1) In-memory cache (same session, same topic/level/date)
+  if (_keCache) { _renderKeyExpressions(list, _keCache); return; }
+
+  // 1.5) Preferred path — admin pre-generates the key_expressions array
+  //      onto the same study_daily_content row as the topic. That gives
+  //      us the latest-prompt content (parts breakdown, no redundant
+  //      Korean, diverse examples) with zero cold-start cost.
+  try {
+    var sbPre = getSupa();
+    if (sbPre) {
+      var preRow = await sbPre.from('study_daily_content')
+        .select('key_expressions')
+        .eq('scheduled_date', kstDateKey()).eq('level', levelKey).maybeSingle();
+      var storedKE = preRow && preRow.data && preRow.data.key_expressions;
+      if (Array.isArray(storedKE) && storedKE.length) {
+        _keCache = storedKE;
+        try { localStorage.setItem('ke_v2_' + topicKey, JSON.stringify(storedKE)); } catch(_){}
+        _renderKeyExpressions(list, storedKE);
+        return;
+      }
+    }
+  } catch(_) {}
+
+  // 2) localStorage cache. Bumped to ke_v3_ — v2 was producing broken
+  //    pattern instantiations like "그림을 잘 해요" (slot V was
+  //    locked to 해요 instead of the actual action verb). New prompt
+  //    is explicit that the verb is part of the slot.
+  var cacheKey = 'ke_v3_' + topicKey;
+  try {
+    var cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      var parsed = JSON.parse(cached);
+      if (parsed && Array.isArray(parsed) && parsed.length) {
+        _keCache = parsed;
+        _renderKeyExpressions(list, parsed);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // 3) Cross-user DB cache. Same v3 bump as the localStorage key —
+  //    DB rows seeded under the old prompt are stale.
+  var dbCacheKey = 'kex3::' + topicKoKey + '_' + levelKey;
+  try {
+    if (typeof _aiCacheGet === 'function') {
+      var hit = await _aiCacheGet(dbCacheKey);
+      if (hit && Array.isArray(hit.expressions) && hit.expressions.length) {
+        _keCache = hit.expressions;
+        try { localStorage.setItem(cacheKey, JSON.stringify(hit.expressions)); } catch(_){}
+        _renderKeyExpressions(list, hit.expressions);
+        return;
+      }
+    }
+  } catch(_) {}
+
+  // 4) Generate via Claude — expressions must be directly usable for today's topic
+  list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Generating key expressions...</div>';
+  var topicText = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || 'daily life';
+  var topicEn   = (_todayTopic && _todayTopic.topic_en) || topicText;
+  var level = _currentLevel || 'Beginner';
+  callClaude({
+    feature: 'key-expressions',
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1800,
+    messages: [{ role: 'user', content:
+      'You are a Korean language teacher. Generate EXACTLY 6 reusable Korean EXPRESSIONS (sentence patterns / collocations / set phrases) for a learner studying the topic: "' + topicText + '" (' + topicEn + '). Level: ' + level + '.\n\n'
+      + 'You MUST teach each expression as a PATTERN with explicit breakdown — not a one-off sentence.\n\n'
+      + 'OUTPUT FORMAT — return ONLY a JSON array of 6 items, no markdown, no commentary:\n'
+      + '[{\n'
+      + '  "ko": "the expression in PATTERN form (use ~ for variable slots, e.g. \\"~하는 것이 취미다\\", \\"~을/를 자주 V\\", \\"~에 시간이 날 때마다\\")",\n'
+      + '  "rom": "romanization of the pattern",\n'
+      + '  "en": "natural English meaning of the pattern",\n'
+      + '  "parts": [\n'
+      + '    {"ko":"~하는", "en":"V + 는 (present-tense modifier)"},\n'
+      + '    {"ko":"것이",  "en":"the act of (nominalizer + subject)"},\n'
+      + '    {"ko":"취미다","en":"is a hobby"}\n'
+      + '  ],\n'
+      + '  "examples": [\n'
+      + '    {"ko":"NATURAL Korean sentence using the pattern with one specific content word","en":"English translation"},\n'
+      + '    {"ko":"NATURAL Korean sentence using the pattern with a DIFFERENT content word in the slot","en":"English translation"}\n'
+      + '  ]\n'
+      + '}]\n\n'
+      + 'STRICT RULES:\n'
+      + '1. ko: pattern form with ~ or V marking the variable slots. NEVER a fully-instantiated single sentence. Good: "~하는 것이 취미다", "~을/를 잘 V". Bad: "책 읽는 것이 취미다" (no variable slot — that\'s an example, not the pattern).\n'
+      + '2. CRITICAL — the verb is part of the slot, not part of the pattern. If the pattern is about a fixed adverb + any action verb (e.g. "~을/를 잘 V"), examples MUST use the actual action verb, not 해요. WRONG: "그림을 잘 해요" (해요 doesn\'t belong; the action is 그리다). RIGHT: "그림을 잘 그려요". WRONG: "축구를 잘 해요" only IF 축구하다 is what you mean — but if showing skill at football, "축구를 잘 해요" is OK because 축구하다 is a real verb. Never substitute 해요 for an arbitrary verb just to fill the slot.\n'
+      + '3. parts: 2-4 items breaking the pattern into its grammatical pieces, each with a SHORT plain-English explanation of what that piece does. The most important "new" word/grammar must appear here (e.g. for "~을/를 자주 V" the parts MUST include 자주 = "often, frequently", since that\'s what defines the pattern).\n'
+      + '4. examples: 2 sentences that REUSE the pattern with DIFFERENT content words in the slot. They must demonstrate variability — e.g. for "~하는 것이 취미다" use "운동하는 것이 취미예요" + "영화 보는 것이 취미예요", NOT two sentences both about reading books. Each example must be GRAMMATICALLY VALID Korean a native would actually say.\n'
+      + '5. NEVER generate redundant Korean. Specifically forbidden: "독서 읽는 것을 좋아하다" (독서 already means "reading"; can\'t pair it with 읽다). "음식 먹는 것" same issue. Use either the noun form (독서를 좋아하다) OR the verbal form (책 읽는 것을 좋아하다), never both.\n'
+      + '6. Mix expression types across the 6: grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다, ~ㄹ 때마다), collocations (시간이 나다, 손이 크다, 기분이 좋아지다), set phrases (오랜만이에요, 시간 가는 줄 모르다).\n'
+      + '7. Each expression must be naturally usable when talking about today\'s topic — not generic filler.'
+    }]
+  }).then(function(res) {
+    try {
+      var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+      text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+      var s = text.indexOf('['), e = text.lastIndexOf(']');
+      if (s >= 0 && e > s) text = text.slice(s, e+1);
+      var expressions = JSON.parse(text);
+      // Quality filter: reject items missing required fields and items
+      // that flag the redundancy bug ("독서 읽는 것", "음식 먹는 것" etc.).
+      var REDUNDANT = /(독서[\s가-힣]*읽|음식[\s가-힣]*먹|영화[\s가-힣]*보는 것을 보)/;
+      expressions = (expressions || []).filter(function(x) {
+        if (!x || !x.ko) return false;
+        var ko = String(x.ko).trim();
+        if (ko.indexOf(' ') === -1 && ko.length < 4) return false;
+        // Reject any expression or example containing the redundancy patterns
+        if (REDUNDANT.test(ko)) return false;
+        if (Array.isArray(x.examples) && x.examples.some(function(ex){ return ex && ex.ko && REDUNDANT.test(ex.ko); })) return false;
+        return true;
+      });
+      if (!expressions.length) throw new Error('no valid expressions');
+      _keCache = expressions;
+      try { localStorage.setItem(cacheKey, JSON.stringify(expressions)); } catch(e) {}
+      // Promote to the cross-user DB cache so the next learner on the
+      // same daily topic gets it instantly without burning AI credits.
+      try {
+        if (typeof _aiCacheSet === 'function') _aiCacheSet(dbCacheKey, { expressions: expressions });
+      } catch(_) {}
+      _renderKeyExpressions(list, expressions);
+    } catch(e) {
+      list.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px 0">Failed to generate. Please try again.</div>';
+    }
+  }).catch(function() {
+    list.innerHTML = '<div style="color:#f87171;text-align:center;padding:16px 0">Network error. Please try again.</div>';
+  });
+}
+
+// ── Phase 2: Key Expression "When to use" situation quiz ───────
+// AI generates a single multiple-choice question per expression.
+// 24h localStorage cache so the same expression doesn't burn a
+// Claude call on each tap.
+async function keOpenSituationQuiz(idx) {
+  var exps = window._keExpressions || [];
+  var exp = exps[idx];
+  if (!exp || !exp.ko) return;
+  var modal = document.getElementById('ke-quiz-modal');
+  var body  = document.getElementById('ke-quiz-body');
+  if (!modal || !body) return;
+  modal.classList.remove('hidden');
+  body.innerHTML = '<div style="text-align:center;padding:18px;color:rgba(255,255,255,.5);font-size:13px">⏳ Loading quiz…</div>';
+
+  var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+  // v2: situation quizzes were cached against expression text from the
+  // ke_v2 era which had broken patterns; force re-fetch.
+  var cacheKey = 'kh_ke_situation_quiz_v2_' + encodeURIComponent(exp.ko) + '_' + dateKey;
+  var quiz = null;
+  try {
+    var raw = localStorage.getItem(cacheKey);
+    if (raw) quiz = JSON.parse(raw);
+  } catch (_) {}
+  if (!quiz) {
+    if (typeof callClaude !== 'function') {
+      body.innerHTML = '<div style="text-align:center;padding:18px;color:#fca5a5;font-size:13px">AI unavailable — sign in and try again.</div>';
+      return;
+    }
+    try {
+      var res = await callClaude({
+        feature: 'key-expr-situation-quiz',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        messages: [{ role: 'user', content:
+          'Korean expression: "' + exp.ko + '" (' + (exp.en || '') + ')\n\n'
+          + 'Create ONE multiple-choice question: "When is the most natural situation to use this expression?"\n'
+          + 'One option must be the correct situation; three must be plausible but wrong (different context, wrong formality, etc).\n\n'
+          + 'Return ONLY valid JSON, no markdown. Keep each option under 14 English words.\n'
+          + '{ "options": ["...","...","...","..."], "correct": 0, "explanation": "Short reason why the correct option is right (1 sentence)" }'
+        }]
+      });
+      var txt = (res && res.content && res.content[0] && res.content[0].text) || '{}';
+      txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+      var s = txt.indexOf('{'), e = txt.lastIndexOf('}');
+      if (s >= 0 && e > s) txt = txt.slice(s, e + 1);
+      quiz = JSON.parse(txt);
+      if (!quiz || !Array.isArray(quiz.options) || quiz.options.length < 2) throw new Error('bad quiz');
+      try { localStorage.setItem(cacheKey, JSON.stringify(quiz)); } catch (_) {}
+    } catch (err) {
+      body.innerHTML = '<div style="text-align:center;padding:18px;color:#fca5a5;font-size:13px">퀴즈 생성 실패 — 잠시 후 다시.</div>';
+      return;
+    }
+  }
+  // Render question.
+  body.innerHTML =
+    '<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.24);border-radius:12px;padding:14px;margin-bottom:14px">'
+    +   '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#fde68a;margin-bottom:6px">Expression</div>'
+    +   '<div style="font-size:18px;font-weight:900;font-family:Noto Serif KR,serif">' + (exp.ko||'') + '</div>'
+    +   '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px">' + (exp.en||'') + '</div>'
+    + '</div>'
+    + '<div id="ke-quiz-options" style="display:flex;flex-direction:column;gap:8px"></div>'
+    + '<div id="ke-quiz-result" style="margin-top:14px"></div>';
+  var opts = document.getElementById('ke-quiz-options');
+  quiz.options.forEach(function (opt, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.style.cssText = 'padding:11px 14px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.05);color:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit';
+    b.textContent = String.fromCharCode(65 + i) + '. ' + opt;
+    b.onclick = function () { _keQuizAnswer(quiz, i); };
+    opts.appendChild(b);
+  });
+}
+function _keQuizAnswer(quiz, picked) {
+  var opts = document.getElementById('ke-quiz-options');
+  var result = document.getElementById('ke-quiz-result');
+  if (!opts || !result) return;
+  Array.prototype.forEach.call(opts.children, function (b, i) {
+    b.disabled = true;
+    if (i === quiz.correct) {
+      b.style.borderColor = '#34d399';
+      b.style.background  = 'rgba(52,211,153,.18)';
+      b.style.color       = '#a7f3d0';
+    } else if (i === picked) {
+      b.style.borderColor = '#f87171';
+      b.style.background  = 'rgba(248,113,113,.16)';
+      b.style.color       = '#fecaca';
+    } else {
+      b.style.opacity = '.55';
+    }
+  });
+  var right = picked === quiz.correct;
+  result.innerHTML =
+    '<div style="padding:12px;border-radius:10px;background:' + (right ? 'rgba(52,211,153,.12)' : 'rgba(248,113,113,.10)') + ';border:1px solid ' + (right ? 'rgba(52,211,153,.32)' : 'rgba(248,113,113,.32)') + ';color:#fff;font-size:13px">'
+    +   '<div style="font-weight:800;color:' + (right ? '#a7f3d0' : '#fca5a5') + ';margin-bottom:4px;display:inline-flex;align-items:center;gap:5px">' + (right ? '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정답!</span>' : '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>다시 생각해봐요.</span>') + '</div>'
+    +   '<div style="color:rgba(255,255,255,.7);line-height:1.55">' + (quiz.explanation || '') + '</div>'
+    + '</div>';
+}
+function keCloseSituationQuiz() {
+  var modal = document.getElementById('ke-quiz-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function _renderKeyExpressions(list, expressions) {
+  // Flow: Study → Fill → Situation → Final.
+  // The previous Vocab pre-teach phase ("Step 1 · 단어 미리보기") was
+  // teaching the WRONG thing. It picked content words from the first
+  // example sentence and showed them as flashcards — for an expression
+  // like "시간이 날 때마다" with example "시간이 날 때마다 책을 읽어요"
+  // it ended up teaching 책을 / 읽어요 (basic words any learner already
+  // knows) while filtering OUT the meaningful core 시간이 / 날 / 때마다
+  // because they were "in the expression". The expression IS the lesson;
+  // splitting its own components out as trivia is exactly backwards.
+  // Reverted. Now we lean on the Study card itself to show the pattern
+  // breakdown (parts[] from the AI) inline.
+  window._keExpressions = expressions;
+  window._kePhase       = 'study';
+  window._keStudyIdx    = 0;
+
+  // Register every parts entry across all expressions into the hover-
+  // tooltip system so unfamiliar words in the example/fill sentences
+  // show meanings on hover/tap. Without this, the learner had no way
+  // to look up words that weren't already in hover_vocab_master.
+  try {
+    if (typeof window.korehanHoverRegisterExtras === 'function') {
+      var hoverExtras = [];
+      (expressions || []).forEach(function(exp) {
+        if (Array.isArray(exp.parts)) {
+          exp.parts.forEach(function(p) {
+            if (p && p.ko && p.en) hoverExtras.push({ ko: p.ko, en: p.en });
+          });
+        }
+      });
+      if (hoverExtras.length) window.korehanHoverRegisterExtras(hoverExtras);
+    }
+  } catch(_) {}
+
+  _keRenderStudyPhase(list);
+  // Force a hover sweep on the modal — debounce sometimes misses the
+  // initial render on slower devices.
+  try { if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh(); } catch(_) {}
+
+  if (typeof _kePrefetchSituations === 'function') {
+    _kePrefetchSituations(expressions);
+  }
+}
+
+function _keRenderStudyPhase(list) {
+  var exps = window._keExpressions || [];
+  if (!exps.length) { list.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:20px">No expressions available.</div>'; return; }
+  var idx = window._keStudyIdx || 0;
+  var exp = exps[idx];
+
+  // Card refactor — the previous version crammed expression + romanization +
+  // English + Example + 3 action buttons all into one bordered block, which
+  // read as "난잡" on mobile. Split into:
+  //   1) Headline card: just expression / romanization / meaning. Big.
+  //   2) Example block: muted, no border, sits below the headline as a
+  //      separate visual chunk.
+  //   3) Actions row: Listen / Save / Situation Quiz on their own line so
+  //      they don't fight the example text for attention.
+  var safeKo = (exp.ko||'').replace(/'/g,"\\'");
+  // Collect all examples: new multi-example format OR legacy single example
+  var allExamples = [];
+  if (Array.isArray(exp.examples) && exp.examples.length) {
+    allExamples = exp.examples;
+  } else if (exp.example_ko) {
+    allExamples = [{ ko: exp.example_ko, en: exp.example_en || '' }];
+  }
+  var examplesHtml = allExamples.map(function(ex) {
+    var safeExKo = (ex.ko||'').replace(/'/g,"\\'");
+    return '<div onclick="var el=this;el.style.opacity=\'.5\';setTimeout(function(){el.style.opacity=\'1\'},400);ttsSpeak(\'' + safeExKo + '\')" style="cursor:pointer;padding:10px 12px;border-radius:10px;transition:opacity .2s;margin-bottom:6px">'
+      + '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:2px;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:13px;height:13px;opacity:.55">' + BM_ICON_VOLUME + '</span>' + (ex.ko||'') + '</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.42)">' + (ex.en||'') + '</div>'
+      + '</div>';
+  }).join('');
+  // Pattern breakdown — the AI now returns parts: [{ko, en}, ...] for
+  // each expression so the learner sees what each grammatical chunk
+  // does, INSIDE the headline card. Old responses without parts fall
+  // back to no breakdown (graceful degradation while the cache fills).
+  var partsHtml = '';
+  if (Array.isArray(exp.parts) && exp.parts.length) {
+    partsHtml = '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)">'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:.06em;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:8px">PATTERN BREAKDOWN</div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px">'
+      + exp.parts.map(function(p) {
+          return '<div style="display:flex;align-items:baseline;gap:10px;text-align:left">'
+            + '<span style="font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:800;color:#fff;flex-shrink:0;min-width:70px">' + (p.ko || '') + '</span>'
+            + '<span style="font-size:12px;color:rgba(255,255,255,.6);line-height:1.45">' + (p.en || '') + '</span>'
+            + '</div>';
+        }).join('')
+      + '</div></div>';
+  }
+  list.innerHTML =
+    '<div style="text-align:center;margin-bottom:14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 1 · 표현 학습</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
+    + '</div>'
+    // Headline card — pattern + parts breakdown together so the learner
+    // sees both the whole expression and what each grammatical chunk
+    // contributes before scrolling to the example sentences.
+    + '<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:22px 18px;text-align:center;margin-bottom:14px">'
+    +   '<div style="font-family:\'Noto Serif KR\',serif;font-size:26px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:6px">' + (exp.ko||'') + '</div>'
+    +   '<div style="font-size:12px;color:rgba(255,255,255,.4);font-style:italic;margin-bottom:10px">' + (exp.rom||'') + '</div>'
+    +   '<div style="font-size:15px;color:#7dd3fc;font-weight:700">' + (exp.en||'') + '</div>'
+    +   partsHtml
+    + '</div>'
+    // Examples block — each clickable for TTS
+    + (examplesHtml ? '<div style="padding:0 4px 14px">'
+        + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);margin-bottom:8px">Examples <span style="opacity:.6;font-weight:600">(tap to listen)</span></div>'
+        + examplesHtml
+        + '</div>' : '')
+    // Actions row — Listen expression / Save
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
+    +   '<button onclick="ttsSpeak(\'' + safeKo + '\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
+    +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
+    + '</div>'
+    // Navigation row — straight prev/next through the Study cards. The
+    // final card jumps directly to the Fill quiz; the old Recognition
+    // MCQ between Study and Fill was redundant with the Situation quiz
+    // and got cut.
+    + '<div style="display:flex;gap:8px;justify-content:center;align-items:center">'
+    + '<button onclick="window._keStudyIdx=Math.max(0,window._keStudyIdx-1);_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;visibility:' + (idx > 0 ? 'visible' : 'hidden') + '">&larr; 이전</button>'
+    + (idx < exps.length - 1
+      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">다음 표현 &rarr;</button>'
+      : '<button onclick="_keStartFillQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">연습 시작 &rarr;</button>')
+    + '</div>';
+  // Re-render lucide icons that were just injected (Save button).
+  if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
+}
+
+// Smart cloze blanker for KE example sentences. The previous
+// implementation did a literal `replace(correct.ko, ___)` which
+// failed when correct.ko was the dictionary form ("음악을 듣다")
+// and the example sentence used a conjugation ("음악을 들어요").
+// Result: the whole sentence rendered with no blank and the
+// answer was visually obvious — the user called this out as
+// "이딴게 무슨 학습이냐고."
+//
+// Strategy:
+//   1. Direct substring match → replace.
+//   2. Anchor on the first token of the expression. From there,
+//      find the LAST token's stem (drop the trailing "다") and
+//      allow up to 4 trailing Korean syllables to absorb the
+//      conjugation. Blank from the first token's start to the
+//      end of the conjugated tail.
+//   3. Fallback: blank just the first token (still better than
+//      showing the full sentence).
+function _keBlankExpression(sentence, expr) {
+  var BLANK = '<span style="display:inline-block;min-width:80px;border-bottom:2px solid #7dd3fc;padding:0 6px;color:#7dd3fc;font-weight:800">______</span>';
+  var safe = String(sentence || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  var phrase = String(expr || '').trim();
+  if (!safe || !phrase) return safe;
+  if (safe.indexOf(phrase) !== -1) {
+    return safe.split(phrase).join(BLANK);
+  }
+  var tokens = phrase.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return safe;
+  var first = tokens[0];
+  var firstIdx = safe.indexOf(first);
+  if (firstIdx === -1) return safe;
+  var last = tokens[tokens.length - 1];
+  var stem = last.replace(/다$/, '');
+  // Strip a trailing particle if present so 음악을 → 음악 etc.
+  stem = stem.replace(/(은|는|이|가|을|를|의|에|도|만|과|와|로|으로)$/, '');
+  if (!stem) {
+    return safe.slice(0, firstIdx) + BLANK + safe.slice(firstIdx + first.length);
+  }
+  // Look for the stem + up to 4 trailing Korean syllables AFTER
+  // the first-token anchor. Limits over-eating the rest of the
+  // sentence.
+  var escStem = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  var afterFirst = safe.slice(firstIdx);
+  var m = afterFirst.match(new RegExp(escStem + '[가-힣]{0,4}'));
+  if (!m) {
+    return safe.slice(0, firstIdx) + BLANK + safe.slice(firstIdx + first.length);
+  }
+  var stemRel = afterFirst.indexOf(m[0]);
+  var endAbs  = firstIdx + stemRel + m[0].length;
+  return safe.slice(0, firstIdx) + BLANK + safe.slice(endAbs);
+}
+
+function _keStartQuiz() {
+  window._kePhase = 'quiz';
+  window._keQuizIdx = 0;
+  window._keQuizScore = 0;
+  _keRenderQuiz();
+}
+
+function _keRenderQuiz() {
+  var list = document.getElementById('ke-expressions-list'); if (!list) return;
+  var exps = window._keExpressions || [];
+  var idx = window._keQuizIdx || 0;
+
+  if (idx >= exps.length) {
+    // MCQ quiz complete — transition to Phase 2: Sentence Completion
+    _keStartFillQuiz();
+    return;
+  }
+
+  var correct = exps[idx];
+  // 4-way MCQ — 1 correct + 3 distractors from the same deck so
+  // the wrong answers are plausibly thematic, not random fluff.
+  var wrongs = exps.filter(function(_, i){ return i !== idx; }).sort(function(){ return Math.random() - .5; }).slice(0, 3);
+  var choices = [correct].concat(wrongs).sort(function(){ return Math.random() - .5; });
+
+  // Lead with the ENGLISH meaning. The previous version led with
+  // the Korean sentence and gave Korean choices, which let the
+  // learner solve the question by matching the verb root in the
+  // sentence to the verb root in the option list — pure pattern
+  // matching, not recall. Reversing the direction (English → which
+  // Korean form?) makes it an actual recognition test, plus the
+  // blanked context sentence below stays as a usage hint.
+  var englishPrompt = (correct.en || '').trim() || '(no meaning)';
+  var contextSentence = correct.example_ko || '';
+  var blanked = contextSentence ? _keBlankExpression(contextSentence, correct.ko || '') : '';
+
+  list.innerHTML =
+    '<div style="text-align:center;margin-bottom:12px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#fbbf24;margin-bottom:4px">STEP 2: Recognition</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.22);border-radius:12px;padding:16px;margin-bottom:12px">'
+    + '<div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Which expression means…</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fff;line-height:1.4">' + englishPrompt + '</div>'
+    + (blanked
+        ? '<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08);font-size:13px;color:rgba(255,255,255,.55);font-family:\'Noto Serif KR\',serif;line-height:1.55">'
+          + '<span style="font-size:10px;font-weight:800;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;font-family:inherit">Used in context</span>'
+          + blanked
+          + '</div>'
+        : '')
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px">'
+    + choices.map(function(c) {
+      return '<button class="ke-quiz-btn" onclick="_keQuizAnswer(this,\'' + (correct.ko||'').replace(/'/g,"\\'") + '\',\'' + (c.ko||'').replace(/'/g,"\\'") + '\')" style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif;text-align:left;transition:.15s">'
+        + (c.ko||'') + '</button>';
+    }).join('')
+    + '</div>'
+    + '<div id="ke-quiz-fb" style="margin-top:10px"></div>';
+}
+
+function _keQuizAnswer(btn, correctKo, chosenKo) {
+  document.querySelectorAll('.ke-quiz-btn').forEach(function(b){ b.disabled = true; });
+  var isCorrect = chosenKo === correctKo;
+  if (isCorrect) {
+    window._keQuizScore = (window._keQuizScore||0) + 1;
+    btn.style.borderColor = '#86efac'; btn.style.background = 'rgba(34,197,94,.15)'; btn.style.color = '#4ade80';
+  } else {
+    btn.style.borderColor = '#fca5a5'; btn.style.background = 'rgba(239,68,68,.1)'; btn.style.color = '#fca5a5';
+    // Highlight correct
+    document.querySelectorAll('.ke-quiz-btn').forEach(function(b){
+      if (b.textContent.indexOf(correctKo) === 0) { b.style.borderColor = '#86efac'; b.style.background = 'rgba(34,197,94,.15)'; }
+    });
+  }
+  var fb = document.getElementById('ke-quiz-fb');
+  if (fb) fb.innerHTML = '<div style="font-size:12px;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';font-weight:700;display:flex;align-items:center;gap:5px">' + (isCorrect ? '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정답!</span>' : '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>오답 — 정답: ' + correctKo + '</span>') + '</div>';
+  setTimeout(function(){ window._keQuizIdx = (window._keQuizIdx||0) + 1; _keRenderQuiz(); }, 1300);
+}
+
+// ── Phase 2: Sentence Completion (Fill-in-the-blank) ──
+function _keStartFillQuiz() {
+  window._kePhase = 'fill';
+  window._keFillIdx = 0;
+  window._keFillScore = 0;
+  _keRenderFillQuiz();
+}
+
+// Strip the pattern markers (~, V placeholder, leading particle clusters)
+// to get the answer chunk that should fill the blank.
+function _keStripPatternForFill(p) {
+  return String(p || '')
+    .replace(/~[^\s]*/g, '')
+    .replace(/\bV\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^[을를이가의에서와과도만으로부터까지에게한테로써\s/]+/, '')
+    .trim();
+}
+
+function _keRenderFillQuiz() {
+  var list = document.getElementById('ke-expressions-list'); if (!list) return;
+  var exps = window._keExpressions || [];
+  var idx = window._keFillIdx || 0;
+
+  if (idx >= exps.length) {
+    // Fill phase complete — transition to Phase 3: Situational Mapping
+    _keStartSituationQuiz();
+    return;
+  }
+
+  var exp = exps[idx];
+  var exampleObj = (Array.isArray(exp.examples) && exp.examples[0]) || null;
+  var exampleKo = (exampleObj && exampleObj.ko) || exp.example_ko || '';
+  var exampleEn = (exampleObj && exampleObj.en) || exp.example_en || '';
+  if (!exampleKo) { window._keFillIdx = (window._keFillIdx || 0) + 1; _keRenderFillQuiz(); return; }
+
+  // Compute the answer chunk — the substring of the example that the
+  // pattern's variable-stripped core matches. Skip expressions where
+  // we can't find a clean match (rare; AI usually puts the pattern's
+  // verbatim chunk in the example).
+  var correctChunk = _keStripPatternForFill(exp.ko);
+  if (!correctChunk || exampleKo.indexOf(correctChunk) === -1) {
+    window._keFillIdx = (window._keFillIdx || 0) + 1;
+    _keRenderFillQuiz();
+    return;
+  }
+
+  // Blank the answer chunk in the example sentence. Tagged with a
+  // class so _keCheckFillChoice can fill it in once the user picks
+  // correctly — the old behaviour just highlighted the choice button
+  // and left the blank empty, which made it unclear whether the
+  // sentence was now complete.
+  var BLANK = '<span class="ke-fill-blank" style="display:inline-block;min-width:80px;border-bottom:2px solid #a78bfa;padding:0 4px;color:#a78bfa;font-weight:800;transition:all .25s">___</span>';
+  var blankedDisplay = exampleKo.split(correctChunk).join(BLANK);
+
+  // Build distractor pool from OTHER expressions' answer cores so the
+  // wrong choices are plausibly Korean-shaped, not random fluff.
+  var distractorPool = exps.map(function(e, i) {
+    if (i === idx) return null;
+    return _keStripPatternForFill(e.ko);
+  }).filter(function(c) { return c && c !== correctChunk; });
+
+  // Dedupe + shuffle + take 3.
+  var seen = {}; seen[correctChunk] = 1;
+  var distractors = [];
+  distractorPool.sort(function() { return Math.random() - 0.5; }).forEach(function(c) {
+    if (!seen[c] && distractors.length < 3) { seen[c] = 1; distractors.push(c); }
+  });
+  // Edge case (very small expression set): pad with conjugation/particle
+  // variations of the correct so the user still sees 4 buttons. Better
+  // than rendering only 1-2 choices.
+  while (distractors.length < 3) {
+    distractors.push(correctChunk + '요' + (distractors.length ? '?' : ''));
+  }
+
+  var choices = [correctChunk].concat(distractors).sort(function() { return Math.random() - 0.5; });
+  var safeCorrect = correctChunk.replace(/\\/g,'\\\\').replace(/'/g, "\\'");
+  var choicesHtml = choices.map(function(c) {
+    var safeC = c.replace(/\\/g,'\\\\').replace(/'/g, "\\'");
+    return '<button class="ke-fill-choice"'
+      + ' onclick="_keCheckFillChoice(this,\'' + safeC + '\',\'' + safeCorrect + '\')"'
+      + ' style="padding:13px 16px;border:1.5px solid rgba(255,255,255,.12);'
+      +   'border-radius:10px;background:rgba(255,255,255,.04);color:#fff;'
+      +   'font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;'
+      +   'cursor:pointer;text-align:center;transition:.15s">' + c + '</button>';
+  }).join('');
+
+  list.innerHTML =
+    '<div style="text-align:center;margin-bottom:14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 2 · 빈칸 채우기</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">빈칸에 들어갈 표현을 골라보세요</div>'
+    + '<div style="font-size:16px;color:#e0f2fe;line-height:1.8;margin-bottom:6px;font-family:\'Noto Serif KR\',serif">' + blankedDisplay + '</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.35)">' + exampleEn + '</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px">' + choicesHtml + '</div>'
+    + '<div id="ke-fill-fb" style="margin-top:12px;min-height:28px"></div>';
+
+}
+
+// MCQ click handler — replaces the old typed-input check. Picks one
+// of the 4 buttons rendered above; the correct chunk was passed in
+// as the second argument so this stays simple (no DOM lookup back
+// into expression state).
+function _keCheckFillChoice(btn, chosen, correct) {
+  document.querySelectorAll('.ke-fill-choice').forEach(function(b){ b.disabled = true; b.style.cursor = 'default'; });
+  var fb = document.getElementById('ke-fill-fb');
+  var isCorrect = chosen === correct;
+  // Fill every blank in the prompt with the correct chunk so the user
+  // sees the completed sentence (and confirms the pattern actually fits).
+  // Done on both correct and wrong picks — when wrong, the green-tinted
+  // fill makes the right answer obvious without requiring a separate
+  // "정답: …" line below.
+  document.querySelectorAll('.ke-fill-blank').forEach(function(el) {
+    el.textContent = correct;
+    el.style.minWidth = '0';
+    el.style.borderBottom = '2px solid #4ade80';
+    el.style.color = '#4ade80';
+    el.style.background = 'rgba(74,222,128,.10)';
+    el.style.padding = '0 6px';
+    el.style.borderRadius = '4px';
+  });
+  if (isCorrect) {
+    window._keFillScore = (window._keFillScore || 0) + 1;
+    btn.style.borderColor = '#86efac';
+    btn.style.background  = 'rgba(34,197,94,.15)';
+    btn.style.color       = '#4ade80';
+    if (fb) fb.innerHTML = '<div style="padding:10px 12px;background:rgba(34,197,94,.12);border-radius:8px;color:#4ade80;font-weight:800;font-size:13px">✓ 정답!</div>';
+    if (typeof playCorrectSound === 'function') playCorrectSound();
+  } else {
+    btn.style.borderColor = '#fca5a5';
+    btn.style.background  = 'rgba(239,68,68,.1)';
+    btn.style.color       = '#fca5a5';
+    document.querySelectorAll('.ke-fill-choice').forEach(function(b) {
+      if (b.textContent === correct) {
+        b.style.borderColor = '#86efac';
+        b.style.background  = 'rgba(34,197,94,.15)';
+        b.style.color       = '#4ade80';
+      }
+    });
+    if (fb) fb.innerHTML = '<div style="padding:10px 12px;background:rgba(239,68,68,.1);border-radius:8px;font-size:13px">'
+      + '<div style="color:#fca5a5;font-weight:800;margin-bottom:4px">✗ 오답</div>'
+      + '<div style="color:rgba(255,255,255,.6)">정답: <span style="color:#a78bfa;font-weight:800;font-size:15px">' + correct + '</span></div>'
+      + '</div>';
+    if (typeof playWrongSound === 'function') playWrongSound();
+  }
+  if (fb) fb.innerHTML += '<button onclick="window._keFillIdx=(window._keFillIdx||0)+1;_keRenderFillQuiz()" '
+    + 'style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;'
+    + 'background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;'
+    + 'cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(124,58,237,.3)">다음 →</button>';
+}
+
+// Legacy typed-input check — kept so any onclick handler from a
+// stale modal that still has the old input doesn't throw. New
+// renders use _keCheckFillChoice.
+function _keCheckFillAnswer() {
+  var inp = document.getElementById('ke-fill-input');
+  var fb = document.getElementById('ke-fill-fb');
+  if (!inp || !fb) return;
+
+  var exps = window._keExpressions || [];
+  var idx = window._keFillIdx || 0;
+  var exp = exps[idx];
+  if (!exp) return;
+
+  var typed = inp.value.trim();
+  if (!typed) return; // require non-empty answer
+  var correct = (exp.ko || '').trim();
+
+  // Flexible match: ignore whitespace and punctuation
+  function normalizeKo(s) {
+    return s.replace(/[.,!?\u007e\s]/g, '').toLowerCase();
+  }
+  var isCorrect = normalizeKo(typed) === normalizeKo(correct);
+
+  // Disable input and check button
+  inp.disabled = true;
+  document.querySelectorAll('#ke-expressions-list button').forEach(function(b){ b.disabled = true; });
+
+  if (isCorrect) {
+    window._keFillScore = (window._keFillScore || 0) + 1;
+    inp.style.borderColor = '#4ade80';
+    inp.style.background = 'rgba(34,197,94,.1)';
+    fb.innerHTML = '<div style="padding:10px 12px;background:rgba(34,197,94,.12);border-radius:8px;color:#4ade80;font-weight:800;font-size:13px">&#9989; \uc815\ub2f5! Well done!</div>';
+  } else {
+    inp.style.borderColor = '#f87171';
+    inp.style.background = 'rgba(239,68,68,.08)';
+    fb.innerHTML = '<div style="padding:10px 12px;background:rgba(239,68,68,.1);border-radius:8px;font-size:13px">'
+      + '<div style="color:#fca5a5;font-weight:800;margin-bottom:4px">&#10060; Not quite</div>'
+      + '<div style="color:rgba(255,255,255,.6)">Correct: <span style="color:#a78bfa;font-weight:800;font-size:15px">' + correct + '</span></div>'
+      + '</div>';
+  }
+
+  fb.innerHTML += '<button onclick="window._keFillIdx=(window._keFillIdx||0)+1;_keRenderFillQuiz()" style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &#8594;</button>';
+}
+
+// ── Phase 3: Situational Mapping ──
+var _keSituations = null;
+
+// Cross-user DB cache key for the situation set, scoped by topic +
+// level + date so the situation Quiz step doesn't burn a Claude
+// call on every visit. Same daily topic for everyone = same Q's
+// for everyone, so the first learner pays the bill and all later
+// learners read from DB.
+function _keSitCacheKey() {
+  var topicId = (_todayTopic && (_todayTopic.id || _todayTopic.topic_ko)) || 'default';
+  var level   = _currentLevel || 'Beginner';
+  var date    = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+  return 'kex_sit::' + topicId + '_' + level + '_' + date;
+}
+
+// Background pre-gen — called as soon as expressions render so the
+// situation step is instant by the time the learner reaches it.
+// Skips the AI call if the DB already has a cached set.
+function _kePrefetchSituations(expressions) {
+  if (!Array.isArray(expressions) || !expressions.length) return;
+  if (typeof _aiCacheGet !== 'function' || typeof callClaude !== 'function') return;
+  var key = _keSitCacheKey();
+  _aiCacheGet(key).then(function(hit) {
+    if (hit && Array.isArray(hit.situations) && hit.situations.length) return;
+    var expList = expressions.map(function(e, i) { return (i+1) + '. ' + e.ko + ' — ' + e.en; }).join('\n');
+    callClaude({
+      feature: 'ke-situations-prefetch',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: 'Given these Korean expressions:\n' + expList + '\n\nCreate exactly 3 real-life situational questions. For each, return JSON with: situation (1-2 sentence English description of a real-life moment), correct_index (0-based index from the list above of the best expression), why (brief English reason). Return a JSON array only, no markdown.' }]
+    }).then(function(res) {
+      try {
+        var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+        text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+        var sits = JSON.parse(text);
+        if (Array.isArray(sits) && sits.length && typeof _aiCacheSet === 'function') {
+          _aiCacheSet(key, { situations: sits });
+        }
+      } catch(_) {}
+    }).catch(function(){});
+  });
+}
+
+function _keStartSituationQuiz() {
+  window._kePhase = 'situation';
+  window._keSitIdx = 0;
+  window._keSitScore = 0;
+  _keSituations = null;
+
+  var list = document.getElementById('ke-expressions-list'); if (!list) return;
+  list.innerHTML = '<div style="text-align:center;padding:24px;color:rgba(255,255,255,.4)">Loading situational exercises...</div>';
+  var sitCacheKey = _keSitCacheKey();
+
+  var exps = window._keExpressions || [];
+  var expList = exps.map(function(e, i) { return (i+1) + '. ' + e.ko + ' \u2014 ' + e.en; }).join('\n');
+
+  // 1) Cross-user DB cache lookup. If the situation set already
+  //    exists for this topic/level/date the quiz step is instant
+  //    and we don't burn a Claude call.
+  function _afterLoad(situations) {
+    _keSituations = situations;
+    _keRenderSituationQuiz();
+  }
+  function _generate() {
+    callClaude({
+      feature: 'ke-situations',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: 'Given these Korean expressions:\n' + expList + '\n\nCreate exactly 3 real-life situational questions. For each, return JSON with: situation (1-2 sentence English description of a real-life moment), correct_index (0-based index from the list above of the best expression), why (brief English reason). Return a JSON array only, no markdown.' }]
+    }).then(function(res) {
+      try {
+        var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+        text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+        var situations = JSON.parse(text);
+        if (!Array.isArray(situations) || !situations.length) throw new Error('empty');
+        // Save to DB so the next learner on the same topic/level
+        // hits the cache instead of regenerating.
+        if (typeof _aiCacheSet === 'function') _aiCacheSet(sitCacheKey, { situations: situations });
+        _afterLoad(situations);
+      } catch(e) {
+        _afterLoad(exps.slice(0, 3).map(function(exp, i) {
+          return { situation: 'You want to say: "' + exp.en + '"', correct_index: i, why: 'This expression means: ' + exp.en };
+        }));
+      }
+    }).catch(function() {
+      _afterLoad(exps.slice(0, 3).map(function(exp, i) {
+        return { situation: 'You want to say: "' + exp.en + '"', correct_index: i, why: 'This expression means: ' + exp.en };
+      }));
+    });
+  }
+  if (typeof _aiCacheGet === 'function') {
+    _aiCacheGet(sitCacheKey).then(function(hit) {
+      if (hit && Array.isArray(hit.situations) && hit.situations.length) {
+        _afterLoad(hit.situations);
+        return;
+      }
+      _generate();
+    }).catch(_generate);
+  } else {
+    _generate();
+  }
+}
+
+function _keRenderSituationQuiz() {
+  var list = document.getElementById('ke-expressions-list'); if (!list) return;
+  var exps = window._keExpressions || [];
+  var situations = _keSituations || [];
+  var idx = window._keSitIdx || 0;
+
+  if (idx >= situations.length) {
+    // All phases complete \u2014 show final combined score
+    _keShowFinalScore();
+    return;
+  }
+
+  var sit = situations[idx];
+  var correctIdx = sit.correct_index;
+  if (correctIdx == null || correctIdx < 0 || correctIdx >= exps.length) correctIdx = 0;
+  var correctExp = exps[correctIdx];
+
+  // Build choices: correct + up to 3 wrongs
+  var wrongExps = exps.filter(function(_, i) { return i !== correctIdx; }).sort(function() { return Math.random() - .5; }).slice(0, 3);
+  var choices = [correctExp].concat(wrongExps).sort(function() { return Math.random() - .5; });
+
+  list.innerHTML =
+    '<div style="text-align:center;margin-bottom:14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 3 · 상황에 적용</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + situations.length + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:16px;margin-bottom:14px">'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Which expression would you use in this situation?</div>'
+    + '<div style="font-size:14px;color:#fff;line-height:1.6;font-weight:600">' + (sit.situation||'') + '</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px">'
+    + choices.map(function(c) {
+      var cIdx = exps.indexOf(c);
+      // Show the actual concrete example sentence as the choice text,
+      // not the bare pattern with ~ and V placeholders. The user pointed
+      // out "보기가 다 원형이네" — pattern templates aren't recognizable
+      // as natural Korean sentences, so the situation quiz devolved into
+      // matching tilde-shapes instead of meaning. The pattern itself
+      // still appears as a small subtitle so the learner sees the link.
+      var ex = (Array.isArray(c.examples) && c.examples[0]) || null;
+      var sentenceKo = (ex && ex.ko) || c.example_ko || c.ko || '';
+      var sentenceEn = (ex && ex.en) || c.example_en || c.en || '';
+      var patternHint = c.ko && (sentenceKo !== c.ko)
+        ? '<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px">패턴: ' + (c.ko || '') + '</div>'
+        : '';
+      return '<button class="ke-sit-btn" onclick="_keSituationAnswer(this,' + cIdx + ',' + correctIdx + ',\'' + (sit.why||'').replace(/'/g,"\\'") + '\')"'
+        + ' style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:14px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif;text-align:left;transition:.15s;line-height:1.45">'
+        +   '<div>' + sentenceKo + '</div>'
+        +   '<div style="font-size:11px;color:rgba(255,255,255,.45);font-weight:500;margin-top:2px;font-family:inherit">' + sentenceEn + '</div>'
+        +   patternHint
+        + '</button>';
+    }).join('')
+    + '</div>'
+    + '<div id="ke-sit-fb" style="margin-top:10px"></div>';
+}
+
+function _keSituationAnswer(btn, chosenIdx, correctIdx, why) {
+  document.querySelectorAll('.ke-sit-btn').forEach(function(b){ b.disabled = true; });
+  var isCorrect = chosenIdx === correctIdx;
+  var exps = window._keExpressions || [];
+  var correctExp = exps[correctIdx];
+
+  if (isCorrect) {
+    window._keSitScore = (window._keSitScore || 0) + 1;
+    btn.style.borderColor = '#86efac'; btn.style.background = 'rgba(34,197,94,.15)'; btn.style.color = '#4ade80';
+  } else {
+    btn.style.borderColor = '#fca5a5'; btn.style.background = 'rgba(239,68,68,.1)'; btn.style.color = '#fca5a5';
+    document.querySelectorAll('.ke-sit-btn').forEach(function(b) {
+      if (correctExp && b.textContent.trim().indexOf(correctExp.ko) === 0) {
+        b.style.borderColor = '#86efac'; b.style.background = 'rgba(34,197,94,.15)';
+      }
+    });
+  }
+
+  var fb = document.getElementById('ke-sit-fb');
+  if (fb) {
+    fb.innerHTML = '<div style="padding:10px 12px;background:' + (isCorrect ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.08)') + ';border-radius:8px;font-size:12px">'
+      + '<div style="font-weight:800;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';margin-bottom:4px">' + (isCorrect ? '&#9989; \uc815\ub2f5!' : '&#10060; \uc624\ub2f5 \u2014 Correct: ' + (correctExp&&correctExp.ko||'')) + '</div>'
+      + (why ? '<div style="color:rgba(255,255,255,.5)">' + why + '</div>' : '')
+      + '</div>'
+      + '<button onclick="window._keSitIdx=(window._keSitIdx||0)+1;_keRenderSituationQuiz()" style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &#8594;</button>';
+  }
+}
+
+// ── Final Combined Score Screen ──
+function _keShowFinalScore() {
+  var list = document.getElementById('ke-expressions-list'); if (!list) return;
+  var exps = window._keExpressions || [];
+  var situations = _keSituations || [];
+
+  var recogScore = window._keQuizScore || 0;
+  var fillScore = window._keFillScore || 0;
+  var sitScore = window._keSitScore || 0;
+  var recogTotal = exps.length;
+  var fillTotal = exps.length;
+  var sitTotal = situations.length;
+
+  var totalScore = recogScore + fillScore + sitScore;
+  var totalMax = recogTotal + fillTotal + sitTotal;
+  var totalPct = totalMax > 0 ? Math.round(totalScore / totalMax * 100) : 0;
+
+  // No emoji on the celebration line per design feedback. The score
+  // ring + percentage already tell the same story.
+  var headlineColor = totalPct >= 80 ? '#34d399' : totalPct >= 60 ? '#7dd3fc' : '#fbbf24';
+  var headlineLabel = totalPct >= 80 ? 'Excellent' : totalPct >= 60 ? 'Nice work' : 'Keep going';
+  list.innerHTML =
+    '<div style="text-align:center;padding:20px 0 8px">'
+    + '<div style="font-size:11px;font-weight:800;color:' + headlineColor + ';text-transform:uppercase;letter-spacing:.18em;margin-bottom:8px">' + headlineLabel + '</div>'
+    + '<div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:2px">Session Complete</div>'
+    + '<div style="font-size:13px;color:#94a3b8;margin-bottom:18px">Here\'s how you did:</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">'
+    + '<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + '<div><div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:.5px">Recognition (MCQ)</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Pick the right expression</div></div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fbbf24">' + recogScore + '/' + recogTotal + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + '<div><div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.5px">Production Score</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Fill in the blank</div></div>'
+    + '<div style="font-size:18px;font-weight:900;color:#a78bfa">' + fillScore + '/' + fillTotal + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + '<div><div style="font-size:11px;font-weight:800;color:#fb923c;text-transform:uppercase;letter-spacing:.5px">Situational Mapping</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Match expression to context</div></div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fb923c">' + sitScore + '/' + sitTotal + '</div>'
+    + '</div>'
+    + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + '<div><div style="font-size:11px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.5px">Overall</div></div>'
+    + '<div style="font-size:22px;font-weight:900;color:#fff">' + totalPct + '%</div>'
+    + '</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center">'
+    + '<button onclick="window._keStudyIdx=0;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Review Again</button>'
+    + '<button onclick="markStageDone(\'expressions\');returnToActivities(closeKeyExpressionsModal)" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">완료 &#10003;</button>'
+    + '</div>';
+}
+
+async function saveKeyExpr(btn) {
+  var ko = btn.dataset.ko, rom = btn.dataset.rom, en = btn.dataset.en;
+  if (!ko) return;
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (btn.classList.contains('saved')) {
+    if (typeof dbRemoveWord === 'function') await dbRemoveWord(ko);
+    btn.classList.remove('saved');
+    btn.textContent = '+ Save';
+    btn.style.background = 'rgba(251,191,36,.12)';
+    return;
+  }
+  if (typeof dbSaveWord === 'function') await dbSaveWord(ko, rom, en, 'expression');
+  btn.classList.add('saved');
+  btn.textContent = '✓ Saved';
+  btn.style.background = 'rgba(251,191,36,.3)';
+}
+function closeKeyExpressionsModal() {
+  var modal = document.getElementById('ke-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+// ── Mobile Tab Switcher ──
+// srMobTab removed — replaced by switchSrTab
+
+// ── Korean Alphabet (Hangul) Cards ──
+var _HANGUL = {
+  consonant: [
+    { char:'ㄱ', rom:'g/k', name:'기역 (giyeok)', ex:'가방 (gabang) = bag' },
+    { char:'ㄴ', rom:'n', name:'니은 (nieun)', ex:'나라 (nara) = country' },
+    { char:'ㄷ', rom:'d/t', name:'디귿 (digeut)', ex:'다리 (dari) = bridge' },
+    { char:'ㄹ', rom:'r/l', name:'리을 (rieul)', ex:'라면 (ramyeon) = ramen' },
+    { char:'ㅁ', rom:'m', name:'미음 (mieum)', ex:'물 (mul) = water' },
+    { char:'ㅂ', rom:'b/p', name:'비읍 (bieup)', ex:'바다 (bada) = sea' },
+    { char:'ㅅ', rom:'s', name:'시옷 (siot)', ex:'산 (san) = mountain' },
+    { char:'ㅇ', rom:'-/ng', name:'이응 (ieung)', ex:'아이 (ai) = child' },
+    { char:'ㅈ', rom:'j', name:'지읒 (jieut)', ex:'집 (jip) = house' },
+    { char:'ㅊ', rom:'ch', name:'치읓 (chieut)', ex:'차 (cha) = tea/car' },
+    { char:'ㅋ', rom:'k', name:'키읔 (kieuk)', ex:'코 (ko) = nose' },
+    { char:'ㅌ', rom:'t', name:'티읕 (tieut)', ex:'토끼 (tokki) = rabbit' },
+    { char:'ㅍ', rom:'p', name:'피읖 (pieup)', ex:'포도 (podo) = grape' },
+    { char:'ㅎ', rom:'h', name:'히읗 (hieut)', ex:'하늘 (haneul) = sky' }
+  ],
+  vowel: [
+    { char:'ㅏ', rom:'a', name:'아 (a)', ex:'아버지 (abeoji) = father' },
+    { char:'ㅑ', rom:'ya', name:'야 (ya)', ex:'야구 (yagu) = baseball' },
+    { char:'ㅓ', rom:'eo', name:'어 (eo)', ex:'어머니 (eomeoni) = mother' },
+    { char:'ㅕ', rom:'yeo', name:'여 (yeo)', ex:'여름 (yeoreum) = summer' },
+    { char:'ㅗ', rom:'o', name:'오 (o)', ex:'오리 (ori) = duck' },
+    { char:'ㅛ', rom:'yo', name:'요 (yo)', ex:'요리 (yori) = cooking' },
+    { char:'ㅜ', rom:'u', name:'우 (u)', ex:'우유 (uyu) = milk' },
+    { char:'ㅠ', rom:'yu', name:'유 (yu)', ex:'유리 (yuri) = glass' },
+    { char:'ㅡ', rom:'eu', name:'으 (eu)', ex:'으악! (euak!) = yikes!' },
+    { char:'ㅣ', rom:'i', name:'이 (i)', ex:'이름 (ireum) = name' },
+    { char:'ㅐ', rom:'ae', name:'애 (ae)', ex:'개 (gae) = dog' },
+    { char:'ㅔ', rom:'e', name:'에 (e)', ex:'세계 (segye) = world' }
+  ],
+  double: [
+    { char:'ㄲ', rom:'kk', name:'쌍기역 (ssang-giyeok)', ex:'꽃 (kkot) = flower' },
+    { char:'ㄸ', rom:'tt', name:'쌍디귿 (ssang-digeut)', ex:'딸 (ttal) = daughter' },
+    { char:'ㅃ', rom:'pp', name:'쌍비읍 (ssang-bieup)', ex:'빵 (ppang) = bread' },
+    { char:'ㅆ', rom:'ss', name:'쌍시옷 (ssang-siot)', ex:'쓰다 (sseuda) = to write' },
+    { char:'ㅉ', rom:'jj', name:'쌍지읒 (ssang-jieut)', ex:'짜다 (jjada) = salty' }
+  ]
+};
+var _hangulMode = 'consonant';
+var _hangulIdx = 0;
+function setHangulMode(mode) {
+  _hangulMode = mode;
+  _hangulIdx = 0;
+  renderHangulCard();
+  // Update button styles
+  ['con','vow','dbl'].forEach(function(k) {
+    var b = document.getElementById('sr-hg-btn-' + k);
+    if (!b) return;
+    var isOn = (k === 'con' && mode === 'consonant') || (k === 'vow' && mode === 'vowel') || (k === 'dbl' && mode === 'double');
+    b.style.background = isOn ? 'rgba(56,189,248,.15)' : 'transparent';
+    b.style.borderColor = isOn ? 'rgba(56,189,248,.3)' : 'rgba(255,255,255,.1)';
+    b.style.color = isOn ? '#7dd3fc' : 'rgba(255,255,255,.4)';
+  });
+}
+function prevHangul() { var arr = _HANGUL[_hangulMode]; _hangulIdx = (_hangulIdx - 1 + arr.length) % arr.length; renderHangulCard(); }
+function nextHangul() { var arr = _HANGUL[_hangulMode]; _hangulIdx = (_hangulIdx + 1) % arr.length; renderHangulCard(); }
+function renderHangulCard() {
+  var arr = _HANGUL[_hangulMode];
+  if (!arr || !arr[_hangulIdx]) return;
+  var h = arr[_hangulIdx];
+  var el = function(id){ return document.getElementById(id); };
+  if (el('sr-hangul-char')) el('sr-hangul-char').textContent = h.char;
+  if (el('sr-hangul-rom')) el('sr-hangul-rom').textContent = h.rom;
+  if (el('sr-hangul-name')) el('sr-hangul-name').textContent = h.name;
+  if (el('sr-hangul-example')) el('sr-hangul-example').textContent = h.ex;
+}
+
+// ── Korean Slang Data (loaded from DB, hardcoded fallback) ──
+var _KOREAN_SLANGS = [];
+var _slangIdx = 0;
+var _slangsLoaded = false;
+
+// Hardcoded fallback (used if DB unavailable)
+var _SLANG_FALLBACK = [
+  { ko:'갓생', en:'God-life', desc:'"신(God)" + "인생(life)". 매우 성실하고 생산적인 하루를 보내는 것', tag:'MZ세대', warn:false,
+    chat:[{me:false,name:'수진',msg:'오늘 새벽 5시에 일어나서 운동하고 공부했어'},{me:true,msg:'와 진짜 <hl>갓생</hl> 사네 😱'},{me:false,name:'수진',msg:'ㅋㅋ 내일부터 같이 할래?'},{me:true,msg:'나는 갓생은 무리... 낮생이라도 할게'}]},
+  { ko:'ㅋㅋㅋ', en:'hahaha', desc:'한국어 웃음소리. ㅋ이 많을수록 더 웃김. ㅋ 하나면 비꼬는 느낌일 수 있음', tag:'기본', warn:true, warnText:'ㅋ 하나만 쓰면 "재미없다/비꼬는" 느낌',
+    chat:[{me:false,name:'민수',msg:'나 오늘 면접에서 자기소개를 일본어로 했어'},{me:true,msg:'뭐?? <hl>ㅋㅋㅋㅋㅋㅋ</hl>'},{me:false,name:'민수',msg:'긴장해서 ㅠㅠ'},{me:true,msg:'ㅋㅋㅋㅋ 아 진짜 웃기다'}]},
+  { ko:'혼코노', en:'solo karaoke', desc:'혼자(alone) + 코인 노래방(coin karaoke). 혼자 노래방 가는 것', tag:'혼족문화',
+    chat:[{me:false,name:'지영',msg:'오늘 뭐 해?'},{me:true,msg:'<hl>혼코노</hl> 가려고 ㅎㅎ'},{me:false,name:'지영',msg:'오 좋다~ 나도 혼코노 좋아해'},{me:true,msg:'스트레스 풀기 최고지'}]},
+  { ko:'꿀잼', en:'super fun', desc:'꿀(honey) + 재미(fun). 정말 재밌다는 의미. 반대말: 노잼', tag:'일상',
+    chat:[{me:false,name:'하은',msg:'그 드라마 봤어?'},{me:true,msg:'응 어제 밤새 봤어 진짜 <hl>꿀잼</hl>이야'},{me:false,name:'하은',msg:'맞아 나도 멈출 수가 없었어'},{me:true,msg:'시즌2 나와야 하는데...'}]},
+  { ko:'노잼', en:'no fun', desc:'No + 재미(fun). 전혀 재미없다', tag:'일상',
+    chat:[{me:false,name:'서준',msg:'어제 소개팅 어땠어?'},{me:true,msg:'완전 <hl>노잼</hl>이었어...'},{me:false,name:'서준',msg:'왜 뭐가 문제였는데'},{me:true,msg:'자기 얘기만 2시간 함 ㅠ'}]},
+  { ko:'존맛탱', en:'crazy delicious', desc:'존나 맛있다의 줄임말. 매우 맛있다', tag:'음식', warn:true, warnText:'원래 비속어에서 온 말 — 친구 사이에서만',
+    chat:[{me:false,name:'유진',msg:'이 떡볶이 먹어봐'},{me:true,msg:'헐... <hl>존맛탱</hl> 🤤🤤🤤'},{me:false,name:'유진',msg:'여기 맨날 줄 서는 곳이야'},{me:true,msg:'이해된다 진짜'}]},
+  { ko:'별다줄', en:'abbreviation of everything', desc:'"별걸 다 줄인다"의 줄임말. 그 자체가 줄임말인 게 포인트', tag:'메타',
+    chat:[{me:false,name:'현우',msg:'갑분싸, 별다줄, 설참... 한국어 줄임말 너무 많아'},{me:true,msg:'ㅋㅋ <hl>별다줄</hl> 자체도 줄임말이잖아'},{me:false,name:'현우',msg:'아... 진짜네 ㅋㅋㅋ'}]},
+  { ko:'인싸', en:'insider/popular person', desc:'Insider의 한국식 발음. 사교적이고 인기 많은 사람', tag:'사회생활',
+    chat:[{me:false,name:'소연',msg:'새 동기가 벌써 모든 팀이랑 친해짐'},{me:true,msg:'완전 <hl>인싸</hl>네'},{me:false,name:'소연',msg:'부럽다 나는 만년 아싸인데'},{me:true,msg:'ㅋㅋ 우리 둘 다 아싸끼리 잘 지내잖아'}]},
+  { ko:'아싸', en:'outsider/loner', desc:'Outsider의 한국식 발음. 혼자 있는 걸 좋아하는 사람 (부정적이지 않음)', tag:'사회생활',
+    chat:[{me:true,msg:'주말에 뭐 했어?'},{me:false,name:'태현',msg:'집에서 넷플릭스 정주행 ㅎㅎ'},{me:true,msg:'완전 <hl>아싸</hl> 라이프 ㅋㅋ'},{me:false,name:'태현',msg:'행복한 아싸입니다 😌'}]},
+  { ko:'떡상', en:'skyrocket', desc:'떡(rice cake) + 상승(rise). 가격이나 인기가 급등하는 것', tag:'투자/트렌드',
+    chat:[{me:false,name:'준호',msg:'비트코인 또 올랐대'},{me:true,msg:'진짜? 완전 <hl>떡상</hl>이네'},{me:false,name:'준호',msg:'나 왜 안 샀을까 ㅠㅠ'},{me:true,msg:'떡락할 수도 있으니까 ㅋㅋ'}]},
+  { ko:'플렉스', en:'flex/show off', desc:'영어 flex에서 온 말. 돈을 쓰며 과시하는 것', tag:'소비문화',
+    chat:[{me:false,name:'다은',msg:'새 가방 샀다~'},{me:true,msg:'오 <hl>플렉스</hl> 했네 👀'},{me:false,name:'다은',msg:'월급 들어온 기념 ㅎㅎ'},{me:true,msg:'부럽... 나는 이번달 텅장이야'}]},
+  { ko:'갑분싸', en:'sudden awkward silence', desc:'"갑자기 분위기 싸해짐"의 줄임말', tag:'일상',
+    chat:[{me:false,name:'채원',msg:'다들 재밌게 놀고 있었는데 팀장님이 들어오심'},{me:true,msg:'<hl>갑분싸</hl> ㅋㅋㅋㅋ'},{me:false,name:'채원',msg:'모두 갑자기 조용해짐 ㅎㅎ'}]},
+  { ko:'혼밥', en:'eating alone', desc:'혼자(alone) + 밥(rice/meal). 혼자 밥 먹는 것. 지금은 매우 자연스러운 문화', tag:'혼족문화',
+    chat:[{me:true,msg:'오늘 점심 같이 먹을 사람?'},{me:false,name:'은지',msg:'미안 나 오늘 <hl>혼밥</hl>할래 ㅎㅎ'},{me:true,msg:'ㅋㅋ 혼밥러 갬성 즐기는 거지?'},{me:false,name:'은지',msg:'응 이어폰 끼고 유튜브 보면서 먹는 게 최고야'}]},
+  { ko:'댕댕이', en:'puppy/doggo', desc:'멍멍이(doggy)를 귀엽게 바꾼 말. ㅁ→ㄷ, ㅇ→ㅇ 글자 모양이 비슷해서', tag:'귀여움',
+    chat:[{me:false,name:'예린',msg:'[사진] 우리 <hl>댕댕이</hl> 봐 🐶'},{me:true,msg:'어머 너무 귀여워!!'},{me:false,name:'예린',msg:'오늘 산책하다가 다른 댕댕이랑 친구 됨 ㅎㅎ'},{me:true,msg:'댕댕이 인싸네 ㅋㅋ'}]},
+  { ko:'실화냐', en:'is this real?', desc:'"실화(real story)냐?" 믿기 어려울 때 쓰는 말', tag:'리액션',
+    chat:[{me:false,name:'성민',msg:'나 복권 당첨됐어'},{me:true,msg:'....<hl>실화냐</hl>???'},{me:false,name:'성민',msg:'5000원 ㅋㅋ'},{me:true,msg:'ㅋㅋㅋㅋ 그것도 실화라고'}]}
+];
+
+// Load slangs from DB
+async function loadSlangsFromDB() {
+  try {
+    var sb = getSupa();
+    if (!sb) { _KOREAN_SLANGS = _SLANG_FALLBACK; return; }
+    var { data, error } = await sb.from('korean_slangs').select('*').eq('is_active', true).order('sort_order');
+    if (error || !data || data.length === 0) { _KOREAN_SLANGS = _SLANG_FALLBACK; return; }
+    _KOREAN_SLANGS = data.map(function(r) {
+      return { id:r.id, ko:r.ko, en:r.en, desc:r.desc_text||'', tag:r.tag||'일상', warn:!!r.warn, warnText:r.warn_text||'', chat:r.chat||[], difficulty:r.difficulty||'Beginner' };
+    });
+    _slangsLoaded = true;
+  } catch(e) {
+    console.warn('[Slang] DB load failed, using fallback', e);
+    _KOREAN_SLANGS = _SLANG_FALLBACK;
+  }
+  _slangIdx = Math.floor(Math.random() * _KOREAN_SLANGS.length);
+  renderSlang();
+}
+
+function loadNextSlang() { _slangIdx = (_slangIdx + 1) % _KOREAN_SLANGS.length; renderSlang(); }
+function renderSlang() {
+  if (_KOREAN_SLANGS.length === 0) return;
+  var s = _KOREAN_SLANGS[_slangIdx];
+  var pre = document.getElementById('sr-slang-preview');
+  var mean = document.getElementById('sr-slang-meaning');
+  if (pre) pre.textContent = s.ko + ' = ' + s.en;
+  if (mean) mean.textContent = s.desc;
+}
+// Initial load — try DB first, fallback to hardcoded
+(function(){ _KOREAN_SLANGS = _SLANG_FALLBACK; _slangIdx = Math.floor(Math.random() * _SLANG_FALLBACK.length); setTimeout(renderSlang, 500); setTimeout(loadSlangsFromDB, 1000); })();
+
+// ── Daily 3 Slangs (seeded by date) ──
+function getDailySlang3() {
+  var today = new Date().toISOString().slice(0,10);
+  var seed = 0;
+  for (var i = 0; i < today.length; i++) seed = ((seed << 5) - seed) + today.charCodeAt(i);
+  seed = Math.abs(seed);
+  var pool = _KOREAN_SLANGS.slice();
+  var picks = [];
+  for (var j = 0; j < 3 && pool.length > 0; j++) {
+    var idx = (seed + j * 7919) % pool.length;
+    picks.push(pool.splice(idx, 1)[0]);
+  }
+  return picks;
+}
+
+// Avatar colors for dark messenger
+var _dmAvatarColors = ['#7c3aed','#059669','#dc2626','#0284c7','#d97706','#be185d','#4f46e5','#0d9488'];
+function getDmColor(name) { var h=0; for(var i=0;i<(name||'').length;i++) h=((h<<5)-h)+(name||'').charCodeAt(i); return _dmAvatarColors[Math.abs(h)%_dmAvatarColors.length]; }
+
+function buildDmChat(chatArr) {
+  var html = '<div class="dm-chat"><div class="dm-header">Real Conversation</div>';
+  (chatArr || []).forEach(function(m) {
+    var bubble = m.msg.replace(/<hl>/g, '<span class="dm-hl">').replace(/<\/hl>/g, '</span>');
+    if (m.me) {
+      html += '<div class="dm-row me"><div class="dm-bubble">' + bubble + '</div></div>';
+    } else {
+      var avColor = getDmColor(m.name||'');
+      html += '<div class="dm-row">'
+        + '<div class="dm-avatar" style="background:' + avColor + '">' + (m.name||'?')[0] + '</div>'
+        + '<div><div class="dm-name">' + (m.name||'친구') + '</div><div class="dm-bubble">' + bubble + '</div></div>'
+        + '</div>';
+    }
+  });
+  html += '</div>';
+  return html;
+}
+
+// ── Slang Modal ──
+var _slangView = 'daily'; // 'daily' | 'all' | 'quiz'
+var _slangQuiz = { questions:[], current:0, score:0 };
+
+function openSlangModal() {
+  var ov = document.getElementById('slang-overlay');
+  if (!ov) return;
+  _slangView = 'daily';
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderSlangModal();
+}
+function closeSlangModal() {
+  document.getElementById('slang-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderSlangModal() {
+  var content = document.getElementById('slang-content');
+  if (!content) return;
+  if (_slangView === 'daily') renderSlangDaily(content);
+  else if (_slangView === 'all') renderSlangAll(content);
+  else if (_slangView === 'quiz') renderSlangQuiz(content);
+  // Update tab buttons
+  ['daily','all','quiz'].forEach(function(t) {
+    var b = document.getElementById('slang-tab-' + t);
+    if (b) { b.style.background = (t === _slangView) ? 'rgba(124,58,237,.25)' : 'transparent'; b.style.color = (t === _slangView) ? '#c4b5fd' : 'rgba(255,255,255,.4)'; b.style.borderColor = (t === _slangView) ? 'rgba(124,58,237,.4)' : 'rgba(255,255,255,.1)'; }
+  });
+}
+
+function switchSlangView(view) {
+  if ((view === 'all' || view === 'quiz') && !canAccess('slang_full')) {
+    closeSlangModal(); requirePlan('slang_full'); return;
+  }
+  _slangView = view; renderSlangModal();
+}
+
+function renderSlangDaily(el) {
+  var daily = getDailySlang3();
+  var html = '<div style="font-size:13px;color:rgba(255,255,255,.35);margin-bottom:14px">매일 3개씩 새로운 슬랭을 배워보세요</div>';
+  daily.forEach(function(s, i) {
+    var tags = '<span class="slang-tag slang-tag-gen">' + (s.tag||'일상') + '</span>';
+    if (s.warn) tags += '<span class="slang-tag slang-tag-warn">' + (s.warnText||'주의') + '</span>';
+    html += '<div style="margin-bottom:16px;padding:16px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+      + '<span style="font-size:11px;color:rgba(255,255,255,.2);font-weight:800">#' + (i+1) + '</span>'
+      + tags + '</div>'
+      + '<div class="slang-detail-hd" style="font-size:24px">' + s.ko + '</div>'
+      + '<div class="slang-detail-en">' + s.en + '</div>'
+      + '<div class="slang-detail-desc">' + s.desc + '</div>'
+      + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\',\'slang\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(196,181,253,.25);background:rgba(196,181,253,.08);color:#c4b5fd;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">+ Word Book</button>'
+      + buildDmChat(s.chat)
+      + '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function renderSlangAll(el) {
+  el.innerHTML = '<div class="slang-grid" id="slang-grid-all"></div><div id="slang-detail-all" style="display:none"></div>';
+  var grid = document.getElementById('slang-grid-all');
+  grid.innerHTML = _KOREAN_SLANGS.map(function(s, i) {
+    return '<div class="slang-card" onclick="showSlangDetailAll(' + i + ')" id="sca-' + i + '">'
+      + '<div class="slang-card-ko">' + s.ko + '</div>'
+      + '<div class="slang-card-en">' + s.en + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function showSlangDetailAll(idx) {
+  var s = _KOREAN_SLANGS[idx];
+  document.querySelectorAll('#slang-grid-all .slang-card').forEach(function(c){ c.classList.remove('active'); });
+  var card = document.getElementById('sca-' + idx);
+  if (card) card.classList.add('active');
+  var det = document.getElementById('slang-detail-all');
+  var tags = '<span class="slang-tag slang-tag-gen">' + (s.tag||'일상') + '</span>';
+  if (s.warn) tags += '<span class="slang-tag slang-tag-warn">' + (s.warnText||'주의') + '</span>';
+  det.innerHTML = '<div class="slang-detail">' + tags
+    + '<div class="slang-detail-hd">' + s.ko + '</div>'
+    + '<div class="slang-detail-en">' + s.en + '</div>'
+    + '<div class="slang-detail-desc">' + s.desc + '</div>'
+    + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\',\'slang\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(196,181,253,.25);background:rgba(196,181,253,.08);color:#c4b5fd;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">+ Word Book</button>'
+    + buildDmChat(s.chat) + '</div>';
+  det.style.display = 'block';
+  det.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+// ── Slang Quiz ──
+function startSlangQuiz() {
+  _slangView = 'quiz';
+  var pool = _KOREAN_SLANGS.slice().sort(function() { return Math.random() - 0.5; }).slice(0, 5);
+  _slangQuiz = { questions: pool.map(function(s) {
+    var wrong = _KOREAN_SLANGS.filter(function(x){ return x.ko !== s.ko; }).sort(function(){ return Math.random()-0.5; }).slice(0,3).map(function(x){ return x.en; });
+    var opts = wrong.concat([s.en]).sort(function(){ return Math.random()-0.5; });
+    return { slang: s, options: opts, answered: false, correct: false };
+  }), current: 0, score: 0 };
+  renderSlangModal();
+}
+
+function renderSlangQuiz(el) {
+  var q = _slangQuiz;
+  if (q.current >= q.questions.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px">'
+      + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:12px;color:'+(q.score >= 4 ? '#a78bfa' : q.score >= 2 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(q.score >= 4 ? '#a78bfa' : q.score >= 2 ? '#22c55e' : '#f87171')+'aa)">' + (q.score >= 4 ? BM_ICON_PARTY : q.score >= 2 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
+      + '<div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:4px">' + q.score + ' / ' + q.questions.length + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px">' + (q.score >= 4 ? '슬랭 마스터!' : q.score >= 2 ? '잘했어요!' : '다시 도전해보세요!') + '</div>'
+      + '<button onclick="startSlangQuiz()" style="padding:10px 24px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:8px">다시 도전</button>'
+      + '<button onclick="switchSlangView(\'daily\')" style="padding:10px 24px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">돌아가기</button>'
+      + '</div>';
+    return;
+  }
+  var item = q.questions[q.current];
+  var s = item.slang;
+  var html = '<div style="text-align:center;margin-bottom:16px">'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:8px">' + (q.current+1) + ' / ' + q.questions.length + '</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:8px">이 슬랭의 뜻은?</div>'
+    + '<div style="font-size:36px;font-weight:900;color:#fff;margin-bottom:16px">' + s.ko + '</div>'
+    + '</div>';
+  html += '<div id="sq-options" style="display:flex;flex-direction:column;gap:8px">';
+  item.options.forEach(function(opt, oi) {
+    html += '<button class="sq-opt" onclick="slangQuizAnswer(' + oi + ')" id="sq-o-' + oi + '" style="padding:14px 18px;border-radius:12px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s">' + opt + '</button>';
+  });
+  html += '</div>';
+  html += '<div id="sq-feedback" style="display:none;margin-top:16px;padding:14px;border-radius:12px;text-align:center"></div>';
+  el.innerHTML = html;
+}
+
+function slangQuizAnswer(optIdx) {
+  var q = _slangQuiz;
+  var item = q.questions[q.current];
+  if (item.answered) return;
+  item.answered = true;
+  var chosen = item.options[optIdx];
+  var correct = chosen === item.slang.en;
+  item.correct = correct;
+  if (correct) q.score++;
+  // Highlight
+  item.options.forEach(function(opt, i) {
+    var btn = document.getElementById('sq-o-' + i);
+    if (!btn) return;
+    btn.style.cursor = 'default';
+    if (opt === item.slang.en) { btn.style.borderColor = '#059669'; btn.style.background = 'rgba(5,150,105,.15)'; btn.style.color = '#34d399'; }
+    else if (i === optIdx && !correct) { btn.style.borderColor = '#dc2626'; btn.style.background = 'rgba(220,38,38,.1)'; btn.style.color = '#ef4444'; }
+    else { btn.style.opacity = '.3'; }
+  });
+  var fb = document.getElementById('sq-feedback');
+  if (fb) {
+    fb.style.display = 'block';
+    fb.style.background = correct ? 'rgba(5,150,105,.1)' : 'rgba(220,38,38,.08)';
+    fb.style.border = '1px solid ' + (correct ? 'rgba(5,150,105,.2)' : 'rgba(220,38,38,.15)');
+    fb.innerHTML = '<div style="font-size:14px;font-weight:700;color:' + (correct?'#34d399':'#ef4444') + ';margin-bottom:4px">' + (correct ? '정답!' : '오답!') + '</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.5)">' + item.slang.ko + ' = ' + item.slang.en + '</div>'
+      + '<button onclick="_slangQuiz.current++;renderSlangQuiz(document.getElementById(\'slang-content\'))" style="margin-top:10px;padding:8px 20px;border-radius:8px;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">다음 →</button>';
+  }
+}
+
+// ── Word Builder Modal ──
+// Users tap syllable tiles in the correct order to assemble a Korean word.
+// Replaces the older consonant + vowel → single-syllable canvas game.
+var _AW_WORD_POOL = [
+  // 2-syllable words
+  { word:'가방', rom:'ga-bang', en:'bag',       syllables:['가','방'] },
+  { word:'나라', rom:'na-ra',   en:'country',   syllables:['나','라'] },
+  { word:'다리', rom:'da-ri',   en:'bridge',    syllables:['다','리'] },
+  { word:'바다', rom:'ba-da',   en:'sea',       syllables:['바','다'] },
+  { word:'도시', rom:'do-si',   en:'city',      syllables:['도','시'] },
+  { word:'우유', rom:'u-yu',    en:'milk',      syllables:['우','유'] },
+  { word:'기분', rom:'gi-bun',  en:'feeling',   syllables:['기','분'] },
+  { word:'아이', rom:'a-i',     en:'child',     syllables:['아','이'] },
+  { word:'고기', rom:'go-gi',   en:'meat',      syllables:['고','기'] },
+  { word:'노래', rom:'no-rae',  en:'song',      syllables:['노','래'] },
+  { word:'하늘', rom:'ha-neul', en:'sky',       syllables:['하','늘'] },
+  { word:'커피', rom:'keo-pi',  en:'coffee',    syllables:['커','피'] },
+  { word:'머리', rom:'meo-ri',  en:'head / hair', syllables:['머','리'] },
+  { word:'서울', rom:'seo-ul',  en:'Seoul',     syllables:['서','울'] },
+  { word:'사랑', rom:'sa-rang', en:'love',      syllables:['사','랑'] },
+  { word:'라면', rom:'ra-myeon', en:'ramen',    syllables:['라','면'] },
+  { word:'포도', rom:'po-do',   en:'grape',     syllables:['포','도'] },
+  { word:'토끼', rom:'to-kki',  en:'rabbit',    syllables:['토','끼'] },
+  { word:'시간', rom:'si-gan',  en:'time',      syllables:['시','간'] },
+  { word:'여름', rom:'yeo-reum', en:'summer',   syllables:['여','름'] },
+  { word:'소리', rom:'so-ri',   en:'sound',     syllables:['소','리'] },
+  { word:'기차', rom:'gi-cha',  en:'train',     syllables:['기','차'] },
+  { word:'학교', rom:'hak-gyo', en:'school',    syllables:['학','교'] },
+  { word:'친구', rom:'chin-gu', en:'friend',    syllables:['친','구'] },
+  { word:'가족', rom:'ga-jok',  en:'family',    syllables:['가','족'] },
+  { word:'음식', rom:'eum-sik', en:'food',      syllables:['음','식'] },
+  { word:'공부', rom:'gong-bu', en:'studying',  syllables:['공','부'] },
+  { word:'주말', rom:'ju-mal',  en:'weekend',   syllables:['주','말'] },
+  // 3-syllable words
+  { word:'고양이', rom:'go-yang-i', en:'cat',        syllables:['고','양','이'] },
+  { word:'바나나', rom:'ba-na-na',  en:'banana',     syllables:['바','나','나'] },
+  { word:'아버지', rom:'a-beo-ji',  en:'father',     syllables:['아','버','지'] },
+  { word:'어머니', rom:'eo-meo-ni', en:'mother',     syllables:['어','머','니'] },
+  { word:'도서관', rom:'do-seo-gwan', en:'library',  syllables:['도','서','관'] },
+  { word:'한국어', rom:'han-guk-eo',  en:'Korean (language)', syllables:['한','국','어'] },
+  { word:'자전거', rom:'ja-jeon-geo', en:'bicycle',  syllables:['자','전','거'] },
+  { word:'비행기', rom:'bi-haeng-gi', en:'airplane', syllables:['비','행','기'] }
+];
+
+// Word Builder state
+var _awWords = [];       // 8 words picked for this round
+var _awIdx = 0;          // index of current word inside _awWords
+var _awScore = 0;        // words completed correctly this round
+var _awRoundTotal = 8;
+var _awPool = [];        // [{syl, placed}] scrambled tiles for current word
+var _awPlaced = [];      // tile indices in the order they were tapped
+var _awPhase = 'idle';   // idle | playing | round-complete
+var _awLockInput = false;
+var _awMode = 'syllable'; // 'syllable' (default) | 'jamo'
+var _awJamoPool = [];    // [{jamo, originalIdx, placed}] in jamo mode
+var _awJamoPlaced = [];  // pool indices in tap order
+var _awJamoTarget = [];  // expected jamo sequence for current word
+
+// Local "I already know this word" list — words the user has marked as
+// known are filtered out of subsequent rounds so the deck shrinks to the
+// vocabulary they actually need to practise. localStorage scope is the
+// browser, not the user account, which is fine for a self-paced drill.
+var _AW_KNOWN_KEY = 'kh_aw_known_words_v1';
+function _awGetKnown() {
+  try { return JSON.parse(localStorage.getItem(_AW_KNOWN_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function _awSaveKnown(arr) {
+  try { localStorage.setItem(_AW_KNOWN_KEY, JSON.stringify(arr || [])); } catch(e) {}
+}
+function _awAddKnown(word) {
+  if (!word) return;
+  var arr = _awGetKnown();
+  if (arr.indexOf(word) === -1) { arr.push(word); _awSaveKnown(arr); }
+}
+function _awKnownSet() {
+  var arr = _awGetKnown();
+  var s = Object.create(null);
+  for (var i = 0; i < arr.length; i++) s[arr[i]] = 1;
+  return s;
+}
+
+// ── Hangul jamo helpers ──────────────────────────────────────────
+// Decompose a complete Hangul word into the ordered jamo sequence that
+// would have been typed on a Korean keyboard. 'word' must be Hangul
+// syllables only — non-syllable chars are skipped.
+var _AW_INIT = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+var _AW_VOW  = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+var _AW_FIN  = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+var _AW_INIT_MAP = {'ㄱ':0,'ㄲ':1,'ㄴ':2,'ㄷ':3,'ㄸ':4,'ㄹ':5,'ㅁ':6,'ㅂ':7,'ㅃ':8,'ㅅ':9,'ㅆ':10,'ㅇ':11,'ㅈ':12,'ㅉ':13,'ㅊ':14,'ㅋ':15,'ㅌ':16,'ㅍ':17,'ㅎ':18};
+var _AW_VOW_MAP  = {'ㅏ':0,'ㅐ':1,'ㅑ':2,'ㅒ':3,'ㅓ':4,'ㅔ':5,'ㅕ':6,'ㅖ':7,'ㅗ':8,'ㅘ':9,'ㅙ':10,'ㅚ':11,'ㅛ':12,'ㅜ':13,'ㅝ':14,'ㅞ':15,'ㅟ':16,'ㅠ':17,'ㅡ':18,'ㅢ':19,'ㅣ':20};
+var _AW_FIN_MAP  = {'ㄱ':1,'ㄲ':2,'ㄳ':3,'ㄴ':4,'ㄵ':5,'ㄶ':6,'ㄷ':7,'ㄹ':8,'ㄺ':9,'ㄻ':10,'ㄼ':11,'ㄽ':12,'ㄾ':13,'ㄿ':14,'ㅀ':15,'ㅁ':16,'ㅂ':17,'ㅄ':18,'ㅅ':19,'ㅆ':20,'ㅇ':21,'ㅈ':22,'ㅊ':23,'ㅋ':24,'ㅌ':25,'ㅍ':26,'ㅎ':27};
+
+function _awDecomposeJamo(word) {
+  var jamo = [];
+  for (var i = 0; i < word.length; i++) {
+    var code = word.charCodeAt(i) - 0xAC00;
+    if (code < 0 || code > 0x2BA3) continue;
+    jamo.push(_AW_INIT[Math.floor(code / 588)]);
+    jamo.push(_AW_VOW[Math.floor((code % 588) / 28)]);
+    var fIdx = code % 28;
+    if (fIdx) jamo.push(_AW_FIN[fIdx]);
+  }
+  return jamo;
+}
+
+// Compose an ordered jamo array greedily into Hangul syllables, mirroring
+// Korean IME behaviour: a consonant after a complete CV pair becomes the
+// final (batchim); a vowel that follows a final causes a split (the final
+// becomes the initial of a new syllable).
+function _awComposeJamo(arr) {
+  var result = '';
+  var state = []; // [init] | [init, vowel] | [init, vowel, final]
+
+  function flush() {
+    if (state.length >= 2) {
+      var i = _AW_INIT_MAP[state[0]];
+      var v = _AW_VOW_MAP[state[1]];
+      var f = state.length === 3 ? (_AW_FIN_MAP[state[2]] || 0) : 0;
+      if (i != null && v != null) {
+        result += String.fromCharCode(0xAC00 + (i * 21 + v) * 28 + f);
+      } else if (i != null) {
+        result += state[0];
+      }
+    } else if (state.length === 1) {
+      result += state[0]; // standalone consonant preview
+    }
+    state = [];
+  }
+  function isCons(j) { return _AW_INIT_MAP[j] != null; }
+  function isVow(j)  { return _AW_VOW_MAP[j]  != null; }
+
+  for (var k = 0; k < arr.length; k++) {
+    var j = arr[k];
+    if (isCons(j)) {
+      if (state.length === 0)        state.push(j);
+      else if (state.length === 1) { flush(); state.push(j); }
+      else if (state.length === 2) {
+        if (_AW_FIN_MAP[j] != null)  state.push(j); // becomes batchim
+        else                       { flush(); state.push(j); }
+      }
+      else if (state.length === 3) { flush(); state.push(j); }
+    } else if (isVow(j)) {
+      if (state.length === 0)        result += j;
+      else if (state.length === 1)   state.push(j);
+      else if (state.length === 2) { flush(); result += j; }
+      else if (state.length === 3) {
+        // Split: the just-typed batchim is actually the initial of the
+        // syllable being started by this vowel.
+        var batchim = state[2];
+        state = state.slice(0, 2);
+        flush();
+        state = [batchim, j];
+      }
+    }
+  }
+  flush();
+  return result;
+}
+
+function _awShuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+function openAlphaModal() {
+  var ov = document.getElementById('alpha-overlay');
+  if (!ov) return;
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  startAlphaWordRound();
+}
+
+function closeAlphaModal() {
+  var ov = document.getElementById('alpha-overlay');
+  if (ov) ov.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function startAlphaWordRound() {
+  _awPhase = 'playing';
+  _awScore = 0;
+  _awIdx = 0;
+  _awLockInput = false;
+  // Filter out words the user has already marked as "I know this".
+  // If they marked everything, clear the list and start fresh — better
+  // UX than showing an empty round.
+  var known = _awKnownSet();
+  var available = _AW_WORD_POOL.filter(function(w){ return !known[w.word]; });
+  if (!available.length) {
+    _awSaveKnown([]);
+    available = _AW_WORD_POOL.slice();
+  }
+  _awWords = _awShuffle(available).slice(0, Math.min(_awRoundTotal, available.length));
+  if (!_awWords.length) return;
+  _renderAwWord();
+}
+
+// Build scrambled tiles for the current word, render slots + pool + meta.
+function _renderAwWord() {
+  var stage = document.getElementById('aw-word-stage');
+  var fb = document.getElementById('aw-fb');
+  if (fb) { fb.textContent = ''; fb.className = 'aw-fb'; }
+  if (_awPhase === 'round-complete') { _renderAwRoundComplete(); return; }
+  var w = _awWords[_awIdx];
+  if (!w) { _awPhase = 'round-complete'; _renderAwRoundComplete(); return; }
+  _awLockInput = false;
+  _awPlaced = [];
+  _awJamoPlaced = [];
+  // Score + progress
+  var scoreEl = document.getElementById('aw-score-txt');
+  if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
+  var fill = document.getElementById('aw-progress-fill');
+  if (fill) fill.style.width = Math.round((_awIdx / _awRoundTotal) * 100) + '%';
+  // Meaning + rom
+  var meaning = document.getElementById('aw-word-meaning');
+  if (meaning) meaning.textContent = w.en || '';
+  var rom = document.getElementById('aw-word-rom');
+  if (rom) rom.textContent = w.rom || '';
+  if (stage) stage.classList.remove('aw-shake');
+
+  if (_awMode === 'jamo') {
+    _renderAwWordJamoMode(w);
+  } else {
+    _renderAwWordSyllableMode(w);
+  }
+}
+
+function _renderAwWordSyllableMode(w) {
+  // Shuffle syllables; ensure not already in order when possible
+  var tiles = w.syllables.map(function(s, i){ return { syl: s, originalIdx: i, placed: false }; });
+  _awPool = _awShuffle(tiles);
+  if (_awPool.length > 1 && _awPool.every(function(t,i){ return t.originalIdx === i; })) {
+    var tmp = _awPool[0]; _awPool[0] = _awPool[_awPool.length-1]; _awPool[_awPool.length-1] = tmp;
+  }
+  var slots = document.getElementById('aw-slots');
+  if (slots) {
+    slots.innerHTML = w.syllables.map(function(_, i){
+      return '<div class="aw-slot" data-slot="' + i + '" onclick="awUnplace(' + i + ')"></div>';
+    }).join('');
+  }
+  _renderAwPool();
+}
+
+function _renderAwWordJamoMode(w) {
+  _awJamoTarget = _awDecomposeJamo(w.word);
+  var tiles = _awJamoTarget.map(function(j, i){ return { jamo: j, originalIdx: i, placed: false }; });
+  _awJamoPool = _awShuffle(tiles);
+  // Avoid identical-to-target ordering when possible (small chance for short words).
+  if (_awJamoPool.length > 1 && _awJamoPool.every(function(t,i){ return t.originalIdx === i; })) {
+    var tmp = _awJamoPool[0]; _awJamoPool[0] = _awJamoPool[_awJamoPool.length-1]; _awJamoPool[_awJamoPool.length-1] = tmp;
+  }
+  var slots = document.getElementById('aw-slots');
+  if (slots) {
+    // Single growing display of the in-progress composition. Tap to undo
+    // the last jamo.
+    slots.innerHTML = '<div class="aw-jamo-build" id="aw-jamo-build" onclick="awJamoUndo()" title="Tap to undo">·</div>'
+      + '<div class="aw-jamo-hint">자모를 순서대로 탭하면 단어가 만들어져요</div>';
+  }
+  _renderAwJamoPool();
+}
+
+function awSwitchMode(mode) {
+  if (mode !== 'syllable' && mode !== 'jamo') return;
+  if (_awMode === mode) return;
+  _awMode = mode;
+  // Update tab UI
+  var tabs = document.querySelectorAll('.aw-mode-tab');
+  tabs.forEach(function(el){
+    el.classList.toggle('on', el.getAttribute('data-mode') === mode);
+  });
+  // Hint text in the modal header
+  var hint = document.getElementById('aw-mode-hint');
+  if (hint) hint.textContent = mode === 'jamo'
+    ? '자음·모음을 순서대로 탭해서 단어를 완성하세요'
+    : '음절을 순서대로 탭해서 단어를 완성하세요';
+  // Reset state for the current word so the new mode renders cleanly.
+  _awLockInput = false;
+  _awPlaced = [];
+  _awJamoPlaced = [];
+  if (_awPhase === 'playing') _renderAwWord();
+}
+
+function _renderAwPool() {
+  var pool = document.getElementById('aw-tile-pool');
+  if (!pool) return;
+  pool.innerHTML = _awPool.map(function(t, i){
+    return '<button class="aw-tile' + (t.placed ? ' used' : '') + '" onclick="awTapTile(' + i + ')" type="button">'
+      + t.syl + '</button>';
+  }).join('');
+}
+
+function awTapTile(poolIdx) {
+  if (_awLockInput) return;
+  var t = _awPool[poolIdx];
+  if (!t || t.placed) return;
+  var w = _awWords[_awIdx];
+  if (!w) return;
+  var nextSlot = _awPlaced.length;
+  if (nextSlot >= w.syllables.length) return;
+  t.placed = true;
+  _awPlaced.push(poolIdx);
+  // Update slot DOM
+  var slotEl = document.querySelector('#aw-slots .aw-slot[data-slot="' + nextSlot + '"]');
+  if (slotEl) { slotEl.textContent = t.syl; slotEl.classList.add('filled', 'aw-pop'); }
+  // Fade used tile
+  var btn = document.querySelectorAll('#aw-tile-pool .aw-tile')[poolIdx];
+  if (btn) btn.classList.add('used');
+  // Complete?
+  if (_awPlaced.length === w.syllables.length) _awCheckAnswer();
+}
+
+function awUnplace(slotIdx) {
+  if (_awLockInput) return;
+  if (slotIdx >= _awPlaced.length) return;
+  // Only allow removing the last placed tile to keep the order predictable
+  if (slotIdx !== _awPlaced.length - 1) return;
+  var poolIdx = _awPlaced.pop();
+  if (typeof poolIdx === 'number' && _awPool[poolIdx]) _awPool[poolIdx].placed = false;
+  var slotEl = document.querySelector('#aw-slots .aw-slot[data-slot="' + slotIdx + '"]');
+  if (slotEl) { slotEl.textContent = ''; slotEl.classList.remove('filled','correct','wrong','aw-pop'); }
+  _renderAwPool();
+}
+
+function _awCheckAnswer() {
+  var w = _awWords[_awIdx];
+  if (!w) return;
+  var assembled = _awPlaced.map(function(pi){ return _awPool[pi].syl; }).join('');
+  var fb = document.getElementById('aw-fb');
+  var stage = document.getElementById('aw-word-stage');
+  _awLockInput = true;
+  if (assembled === w.word) {
+    _awScore++;
+    var slotEls = document.querySelectorAll('#aw-slots .aw-slot');
+    slotEls.forEach(function(el){ el.classList.add('correct'); });
+    if (fb) { fb.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span>완벽해요!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span><span>' + w.word + ' = ' + w.en + '</span></span>'; fb.className = 'aw-fb ok'; }
+    if (typeof speakHangul === 'function') speakHangul(w.word);
+    var scoreEl = document.getElementById('aw-score-txt');
+    if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
+    setTimeout(function(){
+      _awIdx++;
+      if (_awIdx >= _awRoundTotal || _awIdx >= _awWords.length) { _awPhase = 'round-complete'; _renderAwRoundComplete(); }
+      else _renderAwWord();
+    }, 1400);
+  } else {
+    var slotEls2 = document.querySelectorAll('#aw-slots .aw-slot');
+    slotEls2.forEach(function(el){ el.classList.add('wrong'); });
+    if (stage) stage.classList.add('aw-shake');
+    if (fb) { fb.textContent = '틀렸어요. 다시 시도하세요 — 정답: ' + w.word; fb.className = 'aw-fb no'; }
+    setTimeout(function(){
+      // Auto-reset so user can try again
+      awResetRound();
+    }, 1500);
+  }
+}
+
+// ── Jamo mode ────────────────────────────────────────────────────
+function _renderAwJamoPool() {
+  var pool = document.getElementById('aw-tile-pool');
+  if (!pool) return;
+  pool.innerHTML = _awJamoPool.map(function(t, i){
+    return '<button class="aw-tile aw-tile-jamo' + (t.placed ? ' used' : '') + '" onclick="awTapJamo(' + i + ')" type="button">'
+      + t.jamo + '</button>';
+  }).join('');
+}
+
+function _awUpdateJamoBuild() {
+  var jamoArr = _awJamoPlaced.map(function(pi){ return _awJamoPool[pi].jamo; });
+  var current = _awComposeJamo(jamoArr);
+  var buildEl = document.getElementById('aw-jamo-build');
+  if (buildEl) buildEl.textContent = current || '·';
+}
+
+function awTapJamo(poolIdx) {
+  if (_awLockInput) return;
+  if (_awMode !== 'jamo') return;
+  var t = _awJamoPool[poolIdx];
+  if (!t || t.placed) return;
+  if (_awJamoPlaced.length >= _awJamoTarget.length) return;
+  t.placed = true;
+  _awJamoPlaced.push(poolIdx);
+  _awUpdateJamoBuild();
+  _renderAwJamoPool();
+  if (_awJamoPlaced.length === _awJamoTarget.length) _awCheckJamoAnswer();
+}
+
+function awJamoUndo() {
+  if (_awLockInput) return;
+  if (_awMode !== 'jamo') return;
+  if (!_awJamoPlaced.length) return;
+  var poolIdx = _awJamoPlaced.pop();
+  if (typeof poolIdx === 'number' && _awJamoPool[poolIdx]) _awJamoPool[poolIdx].placed = false;
+  _awUpdateJamoBuild();
+  _renderAwJamoPool();
+}
+
+function _awCheckJamoAnswer() {
+  var w = _awWords[_awIdx];
+  if (!w) return;
+  var jamoArr = _awJamoPlaced.map(function(pi){ return _awJamoPool[pi].jamo; });
+  var composed = _awComposeJamo(jamoArr);
+  var fb = document.getElementById('aw-fb');
+  var stage = document.getElementById('aw-word-stage');
+  _awLockInput = true;
+  if (composed === w.word) {
+    _awScore++;
+    var buildEl = document.getElementById('aw-jamo-build');
+    if (buildEl) buildEl.classList.add('correct');
+    if (fb) { fb.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span>완벽해요!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span><span>' + w.word + ' = ' + w.en + '</span></span>'; fb.className = 'aw-fb ok'; }
+    if (typeof speakHangul === 'function') speakHangul(w.word);
+    var scoreEl = document.getElementById('aw-score-txt');
+    if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
+    setTimeout(function(){
+      _awIdx++;
+      if (_awIdx >= _awRoundTotal || _awIdx >= _awWords.length) { _awPhase = 'round-complete'; _renderAwRoundComplete(); }
+      else _renderAwWord();
+    }, 1400);
+  } else {
+    var buildEl2 = document.getElementById('aw-jamo-build');
+    if (buildEl2) buildEl2.classList.add('wrong');
+    if (stage) stage.classList.add('aw-shake');
+    if (fb) { fb.textContent = '틀렸어요. 다시 시도하세요 — 정답: ' + w.word; fb.className = 'aw-fb no'; }
+    setTimeout(function(){ awResetRound(); }, 1500);
+  }
+}
+
+function awResetRound() {
+  _awLockInput = false;
+  _renderAwWord();
+}
+
+function awSkip() {
+  if (_awPhase !== 'playing') return;
+  _awIdx++;
+  if (_awIdx >= _awRoundTotal || _awIdx >= _awWords.length) { _awPhase = 'round-complete'; _renderAwRoundComplete(); }
+  else _renderAwWord();
+}
+
+function awKnowIt() {
+  if (_awPhase !== 'playing') return;
+  if (_awLockInput) return;
+  var w = _awWords[_awIdx];
+  if (!w) return;
+  _awAddKnown(w.word);
+  _awIdx++;
+  if (_awIdx >= _awRoundTotal || _awIdx >= _awWords.length) { _awPhase = 'round-complete'; _renderAwRoundComplete(); }
+  else _renderAwWord();
+}
+
+function awResetKnown() {
+  _awSaveKnown([]);
+  // If we're sitting on the round-complete screen, kick off a new round
+  // so the freshly-restored words can show up immediately.
+  if (_awPhase === 'round-complete') startAlphaWordRound();
+}
+
+function awSpeakTarget() {
+  var w = _awWords[_awIdx];
+  if (w && typeof speakHangul === 'function') speakHangul(w.word);
+}
+
+function _renderAwRoundComplete() {
+  var pool = document.getElementById('aw-tile-pool');
+  var slots = document.getElementById('aw-slots');
+  var meaning = document.getElementById('aw-word-meaning');
+  var rom = document.getElementById('aw-word-rom');
+  var fb = document.getElementById('aw-fb');
+  if (meaning) meaning.textContent = 'Round complete!';
+  if (rom) rom.textContent = _awScore + ' / ' + _awRoundTotal + ' 정답';
+  if (slots) slots.innerHTML = '';
+  var knownCount = _awGetKnown().length;
+  if (pool) {
+    pool.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;align-items:center">'
+      + '<button class="aw-btn aw-btn-skip" onclick="startAlphaWordRound()" type="button">새 라운드 ↺</button>'
+      + (knownCount > 0
+          ? '<button class="aw-btn aw-btn-reset" onclick="awResetKnown()" type="button" style="font-size:11px">아는 단어 목록 초기화 (' + knownCount + ')</button>'
+          : '')
+      + '</div>';
+  }
+  if (fb) { fb.innerHTML = _awScore === _awRoundTotal ? '<span style="display:inline-flex;align-items:center;gap:6px"><span>완벽합니다!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span></span>' : '좋아요! 다시 도전해보세요.'; fb.className = 'aw-fb ok'; }
+  var fill = document.getElementById('aw-progress-fill');
+  if (fill) fill.style.width = '100%';
+  var scoreEl = document.getElementById('aw-score-txt');
+  if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
+}
+
+var _ttsAudio = null;
+var _ttsCache = {};
+function speakHangul(text, voice) {
+  if (!text) return;
+  // Try Edge TTS first (natural AI voice), fall back to Web Speech API
+  speakEdgeTTS(text, voice || 'female');
+}
+async function speakEdgeTTS(text, voice) {
+  try {
+    var cacheKey = text + '_' + voice;
+    if (_ttsCache[cacheKey]) { playTTSAudio(_ttsCache[cacheKey]); return; }
+    var supaUrl = typeof SUPA_URL !== 'undefined' ? SUPA_URL : '';
+    if (!supaUrl) { speakFallback(text); return; }
+    var headers = { 'Content-Type': 'application/json' };
+    // Add auth token if available
+    try {
+      var sb = getSupa();
+      if (sb) {
+        var sess = await sb.auth.getSession();
+        if (sess && sess.data && sess.data.session) {
+          headers['Authorization'] = 'Bearer ' + sess.data.session.access_token;
+        }
+      }
+    } catch(e) {}
+    // If no auth, use anon key
+    if (!headers['Authorization']) {
+      headers['Authorization'] = 'Bearer ' + (typeof SUPA_KEY !== 'undefined' ? SUPA_KEY : '');
+      headers['apikey'] = typeof SUPA_KEY !== 'undefined' ? SUPA_KEY : '';
+    }
+    var res = await fetch(supaUrl + '/functions/v1/tts-proxy', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ text: text.slice(0, 200), voice: voice })
+    });
+    if (!res.ok) throw new Error('TTS ' + res.status);
+    var blob = await res.blob();
+    if (blob.size < 100) throw new Error('empty audio');
+    var url = URL.createObjectURL(blob);
+    _ttsCache[cacheKey] = url;
+    playTTSAudio(url);
+  } catch(e) {
+    console.warn('[TTS] Edge TTS failed, using fallback:', e.message);
+    speakFallback(text);
+  }
+}
+function playTTSAudio(url) {
+  if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio = null; }
+  _ttsAudio = new Audio(url);
+  _ttsAudio.play().catch(function(){});
+}
+function speakFallback(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ko-KR'; u.rate = 0.8;
+  var voices = window.speechSynthesis.getVoices();
+  var kr = voices.find(function(v){ return v.lang && v.lang.indexOf('ko') === 0; });
+  if (kr) u.voice = kr;
+  window.speechSynthesis.speak(u);
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// FAST TRACK — Scenario Engine + Detroit-style Flowchart
+// ═══════════════════════════════════════════════════════════════
+var _ftState = { scenario:null, nodeId:null, visited:[], path:[], phrases:[], playing:false };
+
+// ── Scenario Data ──
+var _FT_SCENARIOS = [
+{
+  id:'cafe', title:'THE CAFE', sub:'카페에서 음료 주문하기', titleKo:'카페 주문',
+  difficulty:'Beginner', icon:'☕', locked:false,
+  nodes: {
+    start:    { type:'start', x:3, y:50, label:'입장', next:'greet' },
+    greet:    { type:'npc', x:16, y:50, label:'바리스타 인사', npc:'바리스타', scene:'카페 카운터',
+                text:'어서오세요~ 주문하시겠어요?', textEn:'Welcome~ Would you like to order?',
+                choices:[
+                  { id:'g1', text:'아이스 아메리카노 주세요', textEn:'Iced americano please', next:'size_q', pts:3, phrase:'아이스 아메리카노 주세요' },
+                  { id:'g2', text:'네, 잠시만요...', textEn:'Yes, just a moment...', next:'hesitate', pts:1 },
+                  { id:'g3', text:'(메뉴판을 가리키며) 이거요', textEn:'(pointing at menu) This one', next:'point', pts:1 },
+                  { id:'g4', text:'(영어로) ONE COFFEE PLEASE', textEn:'(in English) ONE COFFEE PLEASE', next:'english_fail', pts:0 }
+                ]},
+    hesitate: { type:'npc', x:30, y:20, label:'잠시 망설임', npc:'바리스타', scene:'카페 카운터',
+                text:'천천히 보세요~ 메뉴 추천해드릴까요?', textEn:'Take your time~ Want me to recommend something?',
+                choices:[
+                  { id:'h1', text:'네, 추천해주세요!', textEn:'Yes, please recommend!', next:'recommend', pts:2, phrase:'추천해주세요' },
+                  { id:'h2', text:'아메리카노 있어요?', textEn:'Do you have americano?', next:'size_q', pts:2, phrase:'아메리카노 있어요?' }
+                ]},
+    point:    { type:'npc', x:30, y:80, label:'메뉴 가리킴', npc:'바리스타', scene:'카페 카운터',
+                text:'카페라떼요? 핫으로 드릴까요, 아이스로 드릴까요?', textEn:'Cafe latte? Hot or iced?',
+                choices:[
+                  { id:'p1', text:'아이스로 주세요', textEn:'Iced please', next:'size_q', pts:2, phrase:'아이스로 주세요' },
+                  { id:'p2', text:'핫으로 주세요', textEn:'Hot please', next:'size_q', pts:2, phrase:'핫으로 주세요' }
+                ]},
+    recommend:{ type:'npc', x:44, y:20, label:'추천 받기', npc:'바리스타', scene:'카페 카운터',
+                text:'요즘 자몽 허니 블랙티 인기 많아요! 드셔보시겠어요?', textEn:'Grapefruit honey black tea is popular these days! Want to try it?',
+                choices:[
+                  { id:'r1', text:'네, 그걸로 할게요!', textEn:'Yes, I\'ll have that!', next:'size_q', pts:3, phrase:'그걸로 할게요' },
+                  { id:'r2', text:'그냥 아메리카노로 할게요', textEn:'I\'ll just have americano', next:'size_q', pts:2 }
+                ]},
+    size_q:   { type:'npc', x:56, y:50, label:'사이즈 선택', npc:'바리스타', scene:'카페 카운터',
+                text:'사이즈 어떤 걸로 하시겠어요? 톨, 그란데, 벤티 있어요.', textEn:'What size? We have Tall, Grande, Venti.',
+                choices:[
+                  { id:'s1', text:'톨로 주세요', textEn:'Tall please', next:'pay_q', pts:3, phrase:'톨로 주세요' },
+                  { id:'s2', text:'그란데로 주세요', textEn:'Grande please', next:'pay_q', pts:3, phrase:'그란데로 주세요' },
+                  { id:'s3', text:'벤티로 주세요', textEn:'Venti please', next:'pay_q', pts:3, phrase:'벤티로 주세요' },
+                  { id:'s4', text:'사이즈가 뭐예요?', textEn:'What are the sizes?', next:'size_explain', pts:1, phrase:'사이즈가 뭐예요?' }
+                ]},
+    size_explain:{ type:'npc', x:68, y:25, label:'사이즈 설명', npc:'바리스타', scene:'카페 카운터',
+                text:'톨이 제일 작고요, 그란데가 중간, 벤티가 제일 커요!', textEn:'Tall is the smallest, Grande is medium, Venti is the largest!',
+                choices:[
+                  { id:'se1', text:'그란데로 할게요', textEn:'I\'ll have Grande', next:'pay_q', pts:2, phrase:'그란데로 할게요' },
+                  { id:'se2', text:'벤티로 할게요', textEn:'I\'ll have Venti', next:'pay_q', pts:2, phrase:'벤티로 할게요' },
+                  { id:'se3', text:'톨로 할게요', textEn:'I\'ll have Tall', next:'pay_q', pts:2, phrase:'톨로 할게요' }
+                ]},
+    pay_q:    { type:'npc', x:76, y:50, label:'결제', npc:'바리스타', scene:'카페 카운터',
+                text:'결제는 어떻게 하시겠어요?', textEn:'How would you like to pay?',
+                choices:[
+                  { id:'pq1', text:'카드로 할게요', textEn:'By card please', next:'done_good', pts:3, phrase:'카드로 할게요' },
+                  { id:'pq2', text:'현금이요', textEn:'Cash', next:'done_good', pts:2 },
+                  { id:'pq3', text:'이거 얼마예요?', textEn:'How much is this?', next:'price_ask', pts:1, phrase:'이거 얼마예요?' }
+                ]},
+    price_ask:{ type:'npc', x:86, y:25, label:'가격 확인', npc:'바리스타', scene:'카페 카운터',
+                text:'4,500원이에요~', textEn:'It\'s 4,500 won~',
+                choices:[
+                  { id:'pa1', text:'카드로 할게요', textEn:'By card please', next:'done_good', pts:2, phrase:'카드로 할게요' }
+                ]},
+    english_fail:{ type:'npc', x:30, y:50, label:'영어 시도 😅', npc:'바리스타', scene:'카페 카운터',
+                text:'아... 저 영어 잘 못하는데... 한국어로 해주실 수 있어요?', textEn:'Ah... I\'m not good at English... Can you try in Korean?',
+                choices:[
+                  { id:'ef1', text:'아... 아메리카노... 주세요?', textEn:'Ah... americano... please?', next:'size_q', pts:2, phrase:'아메리카노 주세요' },
+                  { id:'ef2', text:'(구글 번역기 꺼냄)', textEn:'(pulls out Google Translate)', next:'translate', pts:1 },
+                  { id:'ef3', text:'AMERICANO! BIG! COLD!', textEn:'AMERICANO! BIG! COLD!', next:'angry_barista', pts:0 }
+                ]},
+    translate:{ type:'npc', x:44, y:80, label:'번역기 사용', npc:'바리스타', scene:'카페 카운터',
+                text:'ㅋㅋ 괜찮아요~ 여기 가리켜주세요!', textEn:'Haha it\'s okay~ Just point here!',
+                choices:[
+                  { id:'tr1', text:'(메뉴 가리킴) 이거... 차가운 거...', textEn:'(points) This... cold one...', next:'size_q', pts:1 }
+                ]},
+    angry_barista:{ type:'end', x:56, y:80, label:'바리스타 짜증 😤', npc:'바리스타', scene:'카페 카운터',
+                text:'...손님, 여기 한국이에요. "아이스 아메리카노 주세요" 이렇게 말해보세요 😤', textEn:'...Sir/Ma\'am, this is Korea. Try saying "아이스 아메리카노 주세요" 😤',
+                choices:[]},
+    done_good:{ type:'end', x:94, y:50, label:'주문 완료! ☕', npc:'바리스타', scene:'카페 카운터',
+                text:'네~ 잠시만 기다려주세요! 음료 나오면 불러드릴게요 😊', textEn:'Yes~ Please wait a moment! I\'ll call you when your drink is ready 😊',
+                choices:[]}
+  },
+  edges:[
+    ['start','greet'],['greet','size_q'],['greet','hesitate'],['greet','point'],['greet','english_fail'],
+    ['english_fail','size_q'],['english_fail','translate'],['english_fail','angry_barista'],
+    ['translate','size_q'],
+    ['hesitate','recommend'],['hesitate','size_q'],['point','size_q'],
+    ['recommend','size_q'],['size_q','pay_q'],['size_q','size_explain'],
+    ['size_explain','pay_q'],['pay_q','done_good'],['pay_q','price_ask'],['price_ask','done_good']
+  ]
+},
+{
+  id:'taxi', title:'THE TAXI', sub:'택시 타고 목적지 가기', titleKo:'택시 타기',
+  difficulty:'Beginner', icon:'🚕', locked:false,
+  nodes: {
+    start:    { type:'start', x:3, y:50, label:'택시 탑승', next:'driver_greet' },
+    driver_greet:{ type:'npc', x:15, y:50, label:'기사 인사', npc:'택시기사', scene:'택시 뒷좌석',
+                text:'어디로 가시죠?', textEn:'Where are you headed?',
+                choices:[
+                  { id:'t1', text:'강남역으로 가주세요', textEn:'Gangnam Station please', next:'confirm', pts:3, phrase:'강남역으로 가주세요' },
+                  { id:'t2', text:'이 주소로 가주세요 (핸드폰 보여줌)', textEn:'Please go to this address (shows phone)', next:'phone_addr', pts:2, phrase:'이 주소로 가주세요' },
+                  { id:'t3', text:'음... 잠깐만요', textEn:'Um... just a moment', next:'search', pts:1 },
+                  { id:'t4', text:'(한참 침묵...)', textEn:'(long silence...)', next:'driver_impatient', pts:0 }
+                ]},
+    phone_addr:{ type:'npc', x:28, y:25, label:'주소 확인', npc:'택시기사', scene:'택시',
+                text:'아~ 여기요? 한 20분 정도 걸릴 것 같은데, 괜찮으시죠?', textEn:'Ah here? It\'ll take about 20 minutes, is that okay?',
+                choices:[
+                  { id:'pa1', text:'네, 괜찮아요', textEn:'Yes, that\'s fine', next:'riding', pts:2, phrase:'네, 괜찮아요' },
+                  { id:'pa2', text:'얼마나 나올까요?', textEn:'How much will it be?', next:'ask_fare', pts:2, phrase:'얼마나 나올까요?' }
+                ]},
+    search:   { type:'npc', x:28, y:75, label:'검색 중', npc:'택시기사', scene:'택시',
+                text:'천천히 하세요~ 네비에 검색하시면 돼요.', textEn:'Take your time~ You can search on the navigation.',
+                choices:[
+                  { id:'s1', text:'강남역이요!', textEn:'Gangnam Station!', next:'confirm', pts:2 },
+                  { id:'s2', text:'이태원 가주세요', textEn:'Itaewon please', next:'confirm', pts:2, phrase:'이태원 가주세요' }
+                ]},
+    confirm:  { type:'npc', x:40, y:50, label:'목적지 확인', npc:'택시기사', scene:'택시',
+                text:'네! 출발할게요~', textEn:'Okay! Let\'s go~',
+                choices:[
+                  { id:'c1', text:'감사합니다', textEn:'Thank you', next:'riding', pts:2, phrase:'감사합니다' }
+                ]},
+    ask_fare: { type:'npc', x:40, y:25, label:'요금 문의', npc:'택시기사', scene:'택시',
+                text:'미터기로 가면 만 오천 원에서 이만 원 사이 나올 거예요.', textEn:'By meter, it\'ll be between 15,000-20,000 won.',
+                choices:[
+                  { id:'af1', text:'네, 출발해주세요', textEn:'Okay, let\'s go', next:'riding', pts:2, phrase:'출발해주세요' }
+                ]},
+    riding:   { type:'npc', x:55, y:50, label:'이동 중', npc:'택시기사', scene:'택시 이동 중',
+                text:'손님, 한국 오신 지 얼마나 되셨어요?', textEn:'So, how long have you been in Korea?',
+                choices:[
+                  { id:'r1', text:'한 달 정도 됐어요', textEn:'About a month', next:'small_talk', pts:3, phrase:'한 달 정도 됐어요' },
+                  { id:'r2', text:'(알아듣지 못함) 네...?', textEn:'(didn\'t understand) Yes...?', next:'arrive_quiet', pts:1 },
+                  { id:'r4', text:'여기 아닌 것 같은데... 어디예요 여기?', textEn:'I don\'t think this is right... Where are we?', next:'wrong_dest', pts:0 },
+                  { id:'r3', text:'일주일이요! 한국 좋아요', textEn:'One week! I like Korea', next:'small_talk', pts:3, phrase:'한국 좋아요' }
+                ]},
+    small_talk:{ type:'npc', x:68, y:35, label:'스몰톡', npc:'택시기사', scene:'택시',
+                text:'오~ 한국어 잘하시네! 어디서 배우셨어요?', textEn:'Oh~ Your Korean is good! Where did you learn?',
+                choices:[
+                  { id:'st1', text:'앱으로 배우고 있어요', textEn:'I\'m learning from an app', next:'arrive', pts:2, phrase:'앱으로 배우고 있어요' },
+                  { id:'st2', text:'감사합니다! 아직 많이 못해요', textEn:'Thank you! I still can\'t speak well', next:'arrive', pts:3, phrase:'아직 많이 못해요' }
+                ]},
+    arrive_quiet:{ type:'npc', x:68, y:70, label:'도착 (조용)', npc:'택시기사', scene:'목적지 앞',
+                text:'다 왔습니다~', textEn:'We\'re here~',
+                choices:[
+                  { id:'aq1', text:'감사합니다. 카드로 할게요', textEn:'Thank you. Card please', next:'pay', pts:2, phrase:'카드로 할게요' }
+                ]},
+    arrive:   { type:'npc', x:80, y:50, label:'도착', npc:'택시기사', scene:'목적지 앞',
+                text:'거의 다 왔어요! 저기 앞에서 내리시면 돼요.', textEn:'Almost there! You can get off right ahead.',
+                choices:[
+                  { id:'a1', text:'여기서 세워주세요', textEn:'Please stop here', next:'pay', pts:3, phrase:'여기서 세워주세요' },
+                  { id:'a2', text:'조금만 더 가주세요', textEn:'A bit further please', next:'pay', pts:2, phrase:'조금만 더 가주세요' }
+                ]},
+    driver_impatient:{ type:'npc', x:28, y:80, label:'기사 짜증', npc:'택시기사', scene:'택시',
+                text:'손님... 어디 가실 건지 빨리 좀 말해주세요. 미터기 돌아가고 있어요.', textEn:'Sir/Ma\'am... please tell me quickly where you\'re going. The meter is running.',
+                choices:[
+                  { id:'di1', text:'아! 죄송해요. 강남역이요!', textEn:'Ah! Sorry. Gangnam Station!', next:'confirm', pts:2, phrase:'죄송해요' },
+                  { id:'di2', text:'(계속 핸드폰만 봄)', textEn:'(keeps looking at phone)', next:'kicked_out', pts:0 }
+                ]},
+    kicked_out:{ type:'end', x:44, y:80, label:'하차 당함 😱', npc:'택시기사', scene:'택시',
+                text:'손님 죄송한데 다른 택시 타세요. 뒤에 손님 많아요.', textEn:'Sorry but please take another taxi. There are other customers waiting.',
+                choices:[]},
+    wrong_dest:{ type:'npc', x:80, y:20, label:'엉뚱한 곳', npc:'택시기사', scene:'낯선 거리',
+                text:'여기가 맞아요? 근데 여긴 공장 지대인데...', textEn:'Is this right? But this is an industrial area...',
+                choices:[
+                  { id:'wd1', text:'아... 아닌 것 같아요. 강남역 가주세요!', textEn:'Ah... I don\'t think so. Gangnam Station please!', next:'arrive', pts:1, phrase:'아닌 것 같아요' },
+                  { id:'wd2', text:'맞아요! (아닌데 자존심 때문에)', textEn:'Yes! (wrong but too proud)', next:'lost_end', pts:0 }
+                ]},
+    lost_end: { type:'end', x:94, y:20, label:'미아 엔딩 😭', npc:'나', scene:'낯선 거리',
+                text:'(공장 지대 한가운데서 혼자 서있음... 다시 택시 잡아야 함)', textEn:'(Standing alone in an industrial area... need to catch another taxi)',
+                choices:[]},
+    pay:      { type:'end', x:94, y:50, label:'하차 완료 🚕', npc:'택시기사', scene:'택시',
+                text:'네~ 감사합니다! 안녕히 가세요~', textEn:'Thank you! Have a good day~',
+                choices:[]}
+  },
+  edges:[
+    ['start','driver_greet'],['driver_greet','confirm'],['driver_greet','phone_addr'],['driver_greet','search'],['driver_greet','driver_impatient'],
+    ['driver_impatient','confirm'],['driver_impatient','kicked_out'],
+    ['phone_addr','riding'],['phone_addr','ask_fare'],['search','confirm'],
+    ['confirm','riding'],['ask_fare','riding'],
+    ['riding','small_talk'],['riding','arrive_quiet'],['riding','wrong_dest'],
+    ['wrong_dest','arrive'],['wrong_dest','lost_end'],
+    ['small_talk','arrive'],['arrive_quiet','pay'],['arrive','pay']
+  ]
+},
+{
+  id:'conv-store', title:'THE CONVENIENCE STORE', sub:'편의점에서 물건 사기', titleKo:'편의점',
+  difficulty:'Beginner', icon:'🏪', locked:false,
+  nodes: {
+    start:    { type:'start', x:3, y:50, label:'편의점 입장', next:'browse' },
+    browse:   { type:'npc', x:14, y:50, label:'둘러보기', npc:'나', scene:'편의점 안',
+                text:'(뭘 살지 둘러보는 중...)', textEn:'(Looking around...)',
+                choices:[
+                  { id:'b1', text:'삼각김밥이랑 음료수 사자', textEn:'Let me get a triangle kimbap and a drink', next:'counter', pts:2 },
+                  { id:'b2', text:'(점원에게) 충전기 있어요?', textEn:'(to clerk) Do you have chargers?', next:'ask_item', pts:2, phrase:'충전기 있어요?' },
+                  { id:'b3', text:'도시락 데워주세요', textEn:'Please heat up this lunch box', next:'microwave', pts:3, phrase:'도시락 데워주세요' },
+                  { id:'b4', text:'(삼각김밥을 뜯어서 바로 먹기 시작)', textEn:'(opens triangle kimbap and starts eating)', next:'caught_eating', pts:0 }
+                ]},
+    ask_item: { type:'npc', x:28, y:25, label:'물건 위치 문의', npc:'점원', scene:'편의점',
+                text:'충전기요? 저쪽 선반에 있어요~', textEn:'Chargers? They\'re on that shelf over there~',
+                choices:[
+                  { id:'ai1', text:'감사합니다! 이것도 같이 계산해주세요', textEn:'Thanks! Ring this up too please', next:'counter', pts:2, phrase:'같이 계산해주세요' },
+                  { id:'ai2', text:'C타입 있어요?', textEn:'Do you have USB-C?', next:'type_c', pts:2, phrase:'C타입 있어요?' }
+                ]},
+    type_c:   { type:'npc', x:40, y:15, label:'타입 확인', npc:'점원', scene:'편의점',
+                text:'네, 이거요! 12,000원이에요.', textEn:'Yes, this one! It\'s 12,000 won.',
+                choices:[
+                  { id:'tc1', text:'이거 주세요', textEn:'I\'ll take this', next:'counter', pts:2, phrase:'이거 주세요' }
+                ]},
+    microwave:{ type:'npc', x:28, y:75, label:'전자레인지', npc:'점원', scene:'편의점 카운터',
+                text:'네! 2분이면 돼요. 수저 필요하세요?', textEn:'Sure! 2 minutes. Do you need utensils?',
+                choices:[
+                  { id:'m1', text:'네, 주세요!', textEn:'Yes, please!', next:'counter', pts:2, phrase:'수저 주세요' },
+                  { id:'m2', text:'괜찮아요, 젓가락만 주세요', textEn:'No thanks, just chopsticks please', next:'counter', pts:3, phrase:'젓가락만 주세요' }
+                ]},
+    counter:  { type:'npc', x:52, y:50, label:'계산', npc:'점원', scene:'편의점 카운터',
+                text:'봉투 필요하세요?', textEn:'Do you need a bag?',
+                choices:[
+                  { id:'ct1', text:'네, 주세요', textEn:'Yes, please', next:'pay_method', pts:2, phrase:'봉투 주세요' },
+                  { id:'ct2', text:'아니요, 괜찮아요', textEn:'No, I\'m fine', next:'pay_method', pts:2, phrase:'괜찮아요' }
+                ]},
+    pay_method:{ type:'npc', x:66, y:50, label:'결제 수단', npc:'점원', scene:'카운터',
+                text:'3,800원입니다~', textEn:'That\'ll be 3,800 won~',
+                choices:[
+                  { id:'pm1', text:'카카오페이로 할게요', textEn:'KakaoPay please', next:'kakao', pts:3, phrase:'카카오페이로 할게요' },
+                  { id:'pm2', text:'카드요', textEn:'Card', next:'done', pts:2 },
+                  { id:'pm3', text:'포인트 적립할게요', textEn:'I\'d like to earn points', next:'points', pts:2, phrase:'포인트 적립할게요' }
+                ]},
+    kakao:    { type:'npc', x:78, y:30, label:'카카오페이', npc:'점원', scene:'카운터',
+                text:'바코드 찍어주세요~', textEn:'Please scan the barcode~',
+                choices:[
+                  { id:'k1', text:'(바코드 보여줌) 여기요', textEn:'(shows barcode) Here', next:'done', pts:2 }
+                ]},
+    points:   { type:'npc', x:78, y:70, label:'포인트 적립', npc:'점원', scene:'카운터',
+                text:'전화번호 알려주세요~', textEn:'Tell me your phone number~',
+                choices:[
+                  { id:'pt1', text:'010-xxxx-xxxx요', textEn:'010-xxxx-xxxx', next:'done', pts:2, phrase:'전화번호 알려주세요' }
+                ]},
+    caught_eating:{ type:'npc', x:28, y:50, label:'현장 적발 😳', npc:'점원', scene:'편의점',
+                text:'저기... 손님? 그거 아직 계산 안 하신 건데요...', textEn:'Um... customer? You haven\'t paid for that yet...',
+                choices:[
+                  { id:'ce1', text:'아! 죄송해요! 바로 계산할게요!', textEn:'Ah! Sorry! I\'ll pay right away!', next:'counter', pts:1, phrase:'바로 계산할게요' },
+                  { id:'ce2', text:'(모른 척하며 계속 먹음)', textEn:'(pretends not to hear, keeps eating)', next:'police_end', pts:0 }
+                ]},
+    police_end:{ type:'end', x:44, y:50, label:'경찰 출동 🚔', npc:'점원', scene:'편의점',
+                text:'(점원이 전화를 들며) 여보세요? 경찰서요? 네, 편의점 도둑이요...', textEn:'(clerk picks up phone) Hello? Police? Yes, a shoplifter...',
+                choices:[]},
+    done:     { type:'end', x:94, y:50, label:'구매 완료! 🏪', npc:'점원', scene:'편의점',
+                text:'감사합니다~ 안녕히 가세요!', textEn:'Thank you~ Goodbye!',
+                choices:[]}
+  },
+  edges:[
+    ['start','browse'],['browse','counter'],['browse','ask_item'],['browse','microwave'],['browse','caught_eating'],
+    ['caught_eating','counter'],['caught_eating','police_end'],
+    ['ask_item','counter'],['ask_item','type_c'],['type_c','counter'],['microwave','counter'],
+    ['counter','pay_method'],['pay_method','kakao'],['pay_method','done'],['pay_method','points'],
+    ['kakao','done'],['points','done']
+  ]
+},
+{
+  id:'restaurant', title:'THE RESTAURANT', sub:'식당에서 주문하기', titleKo:'식당 주문',
+  difficulty:'Beginner', icon:'🍜', locked:false,
+  nodes: {
+    start:    { type:'start', x:3, y:50, label:'식당 입장', next:'seat' },
+    seat:     { type:'npc', x:14, y:50, label:'자리 안내', npc:'직원', scene:'식당 입구',
+                text:'어서오세요! 몇 분이세요?', textEn:'Welcome! How many people?',
+                choices:[
+                  { id:'s1', text:'한 명이요', textEn:'Just one', next:'menu', pts:2, phrase:'한 명이요' },
+                  { id:'s2', text:'두 명이요', textEn:'Two people', next:'menu', pts:2, phrase:'두 명이요' }
+                ]},
+    menu:     { type:'npc', x:26, y:50, label:'메뉴 보기', npc:'직원', scene:'테이블',
+                text:'메뉴 여기 있어요~ 천천히 보시고 부르세요!', textEn:'Here\'s the menu~ Take your time and call me!',
+                choices:[
+                  { id:'m1', text:'저기요~ 추천 메뉴 뭐예요?', textEn:'Excuse me~ What do you recommend?', next:'recommend', pts:3, phrase:'추천 메뉴 뭐예요?' },
+                  { id:'m2', text:'주문할게요!', textEn:'I\'d like to order!', next:'order', pts:2, phrase:'주문할게요' },
+                  { id:'m3', text:'이거 매워요?', textEn:'Is this spicy?', next:'spicy_q', pts:2, phrase:'이거 매워요?' },
+                  { id:'m4', text:'전부 다 주세요!', textEn:'Give me everything!', next:'too_much', pts:0 }
+                ]},
+    recommend:{ type:'npc', x:40, y:25, label:'추천 메뉴', npc:'직원', scene:'테이블',
+                text:'김치찌개가 제일 인기 많아요! 된장찌개도 맛있어요~', textEn:'Kimchi jjigae is the most popular! Doenjang jjigae is also good~',
+                choices:[
+                  { id:'r1', text:'김치찌개 주세요', textEn:'Kimchi jjigae please', next:'side_q', pts:3, phrase:'김치찌개 주세요' },
+                  { id:'r2', text:'된장찌개로 할게요', textEn:'I\'ll have doenjang jjigae', next:'side_q', pts:2 }
+                ]},
+    spicy_q:  { type:'npc', x:40, y:75, label:'매운맛 문의', npc:'직원', scene:'테이블',
+                text:'좀 매워요~ 안 매운 거 원하시면 된장찌개 추천해요!', textEn:'It\'s a bit spicy~ If you want less spicy, I recommend doenjang jjigae!',
+                choices:[
+                  { id:'sp1', text:'안 매운 걸로 주세요', textEn:'Less spicy one please', next:'side_q', pts:2, phrase:'안 매운 걸로 주세요' },
+                  { id:'sp2', text:'괜찮아요, 매운 거 좋아해요', textEn:'It\'s fine, I like spicy', next:'order', pts:3, phrase:'매운 거 좋아해요' }
+                ]},
+    order:    { type:'npc', x:54, y:50, label:'주문', npc:'직원', scene:'테이블',
+                text:'네~ 뭘로 하시겠어요?', textEn:'Sure~ What would you like?',
+                choices:[
+                  { id:'o1', text:'비빔밥 하나 주세요', textEn:'One bibimbap please', next:'side_q', pts:3, phrase:'비빔밥 하나 주세요' },
+                  { id:'o2', text:'불고기 정식이요', textEn:'Bulgogi set meal', next:'side_q', pts:2, phrase:'불고기 정식이요' }
+                ]},
+    side_q:   { type:'npc', x:68, y:50, label:'추가 주문', npc:'직원', scene:'테이블',
+                text:'음료는 필요하세요?', textEn:'Do you need any drinks?',
+                choices:[
+                  { id:'sq1', text:'물 주세요', textEn:'Water please', next:'eating', pts:2, phrase:'물 주세요' },
+                  { id:'sq2', text:'콜라 하나요', textEn:'One cola', next:'eating', pts:2 },
+                  { id:'sq3', text:'소주 한 병이요!', textEn:'One bottle of soju!', next:'eating', pts:3, phrase:'소주 한 병이요' },
+                  { id:'sq4', text:'제일 매운 거로 해주세요!!! 🔥', textEn:'Make it the spiciest!!! 🔥', next:'spicy_die', pts:0 }
+                ]},
+    eating:   { type:'npc', x:80, y:50, label:'식사 완료', npc:'직원', scene:'테이블',
+                text:'맛있게 드셨어요?', textEn:'Did you enjoy your meal?',
+                choices:[
+                  { id:'e1', text:'네, 너무 맛있었어요!', textEn:'Yes, it was delicious!', next:'bill', pts:3, phrase:'너무 맛있었어요' },
+                  { id:'e2', text:'계산해주세요', textEn:'Check please', next:'bill', pts:2, phrase:'계산해주세요' }
+                ]},
+    too_much: { type:'npc', x:40, y:15, label:'과다 주문', npc:'직원', scene:'테이블',
+                text:'네...? 전부요? 메뉴가 30개가 넘는데... 정말이요?', textEn:'Yes...? Everything? There are over 30 items... Are you sure?',
+                choices:[
+                  { id:'tm1', text:'ㅋㅋ 농담이에요. 비빔밥 하나만요', textEn:'Haha just kidding. Just one bibimbap', next:'side_q', pts:1, phrase:'농담이에요' },
+                  { id:'tm2', text:'네! 전부 다요! 💪', textEn:'Yes! Everything! 💪', next:'broke_end', pts:0 }
+                ]},
+    broke_end:{ type:'end', x:56, y:15, label:'파산 엔딩 💸', npc:'직원', scene:'테이블',
+                text:'(30분 후... 테이블 위에 음식이 가득) 계산은... 487,000원입니다 😅', textEn:'(30 min later... table covered in food) The bill is... 487,000 won 😅',
+                choices:[]},
+    spicy_die:{ type:'end', x:94, y:80, label:'매운맛 KO 🥵', npc:'나', scene:'테이블',
+                text:'(김치찌개 한 입 먹고 얼굴이 빨개짐) 물... 물 주세요!!!! 🥵🔥', textEn:'(one bite of kimchi jjigae, face turns red) Water... WATER PLEASE!!!! 🥵🔥',
+                choices:[]},
+    bill:     { type:'end', x:94, y:50, label:'계산 완료! 🍜', npc:'직원', scene:'카운터',
+                text:'감사합니다! 또 오세요~', textEn:'Thank you! Please come again~',
+                choices:[]}
+  },
+  edges:[
+    ['start','seat'],['seat','menu'],['menu','recommend'],['menu','order'],['menu','spicy_q'],['menu','too_much'],
+    ['too_much','side_q'],['too_much','broke_end'],
+    ['recommend','side_q'],['spicy_q','side_q'],['spicy_q','order'],['order','side_q'],
+    ['side_q','eating'],['side_q','spicy_die'],
+    ['eating','bill']
+  ]
+},
+{
+  id:'immigration', title:'THE IMMIGRATION OFFICE', sub:'출입국사무소 방문', titleKo:'출입국사무소',
+  difficulty:'Intermediate', icon:'🏛️', locked:false,
+  nodes:{
+    start:{type:'start',x:3,y:50,label:'사무소 도착',next:'number'},
+    number:{type:'npc',x:13,y:50,label:'번호표 뽑기',npc:'안내원',scene:'출입국사무소 로비',
+      text:'번호표 뽑으시고 앉아서 기다려주세요~',textEn:'Please take a number and wait.',
+      choices:[
+        {id:'n1',text:'감사합니다 (번호표 뽑음)',textEn:'Thank you (takes number)',next:'wait',pts:2,phrase:'감사합니다'},
+        {id:'n2',text:'(번호표 안 뽑고 바로 창구로 감)',textEn:'(goes straight to counter without number)',next:'no_number',pts:0}
+      ]},
+    no_number:{type:'npc',x:24,y:20,label:'번호표 없음',npc:'직원',scene:'창구',
+      text:'손님, 번호표 먼저 뽑아오세요. 저기 기계에서요.',textEn:'Please get a number first. From the machine over there.',
+      choices:[
+        {id:'nn1',text:'아 죄송합니다!',textEn:'Oh sorry!',next:'wait',pts:1,phrase:'죄송합니다'}
+      ]},
+    wait:{type:'npc',x:24,y:50,label:'대기',npc:'스피커',scene:'대기실',
+      text:'352번 손님~ 3번 창구로 오세요!',textEn:'Number 352~ Please come to counter 3!',
+      choices:[
+        {id:'w1',text:'(창구로 이동) 안녕하세요',textEn:'(walks to counter) Hello',next:'clerk_greet',pts:2,phrase:'안녕하세요'}
+      ]},
+    clerk_greet:{type:'npc',x:36,y:50,label:'직원 인사',npc:'직원',scene:'3번 창구',
+      text:'안녕하세요. 어떤 업무로 오셨어요?',textEn:'Hello. What brings you here today?',
+      choices:[
+        {id:'cg1',text:'외국인등록증 만들러 왔어요',textEn:'I came to make an alien registration card',next:'passport_check',pts:3,phrase:'외국인등록증 만들러 왔어요'},
+        {id:'cg2',text:'비자 연장하러 왔어요',textEn:'I came to extend my visa',next:'passport_check',pts:3,phrase:'비자 연장하러 왔어요'},
+        {id:'cg3',text:'음... 잘 모르겠는데요',textEn:'Um... I am not sure',next:'clerk_help',pts:1}
+      ]},
+    clerk_help:{type:'npc',x:36,y:80,label:'직원 도움',npc:'직원',scene:'3번 창구',
+      text:'혹시 한국에 처음 오셨어요? 여권 좀 보여주시겠어요?',textEn:'Is this your first time in Korea? Can I see your passport?',
+      choices:[
+        {id:'ch1',text:'네, 여기요 (여권 건냄)',textEn:'Yes, here (hands passport)',next:'passport_check',pts:2}
+      ]},
+    passport_check:{type:'npc',x:50,y:50,label:'여권 확인',npc:'직원',scene:'3번 창구',
+      text:'여권 보여주세요.',textEn:'Please show me your passport.',
+      choices:[
+        {id:'pc1',text:'여기 있습니다 (여권 건냄)',textEn:'Here it is',next:'address_q',pts:2},
+        {id:'pc2',text:'어... 여권을 호텔에 두고 왔어요',textEn:'Uh... I left my passport at the hotel',next:'forgot_passport',pts:0}
+      ]},
+    forgot_passport:{type:'end',x:62,y:20,label:'여권 깜빡 😱',npc:'직원',scene:'3번 창구',
+      text:'여권 없이는 업무 처리가 안 돼요. 여권 가지고 다시 오세요.',textEn:'I cannot process anything without a passport. Please come back with it.',
+      choices:[]},
+    address_q:{type:'npc',x:62,y:50,label:'주소 확인',npc:'직원',scene:'3번 창구',
+      text:'한국 주소가 어떻게 되세요?',textEn:'What is your address in Korea?',
+      choices:[
+        {id:'aq1',text:'서울시 강남구... (주소 말함)',textEn:'Seoul Gangnam-gu... (gives address)',next:'docs_check',pts:3,phrase:'한국 주소가 어떻게 되세요?'},
+        {id:'aq2',text:'아직 주소가 없어요...',textEn:'I don\'t have an address yet...',next:'no_address',pts:1}
+      ]},
+    no_address:{type:'npc',x:74,y:80,label:'주소 없음',npc:'직원',scene:'3번 창구',
+      text:'주소가 있어야 등록이 가능해요. 숙소 주소라도 괜찮아요.',textEn:'You need an address to register. Even your accommodation address is fine.',
+      choices:[
+        {id:'na1',text:'아 그러면 호텔 주소요! (보여줌)',textEn:'Oh then my hotel address! (shows it)',next:'docs_check',pts:2}
+      ]},
+    docs_check:{type:'npc',x:74,y:50,label:'서류 확인',npc:'직원',scene:'3번 창구',
+      text:'네 확인됐습니다. 수수료 3만원이에요. 카드 되세요?',textEn:'Confirmed. The fee is 30,000 won. Can you pay by card?',
+      choices:[
+        {id:'dc1',text:'네, 카드로 할게요',textEn:'Yes, by card',next:'done_imm',pts:2,phrase:'카드로 할게요'},
+        {id:'dc2',text:'현금으로 할게요',textEn:'Cash please',next:'done_imm',pts:2}
+      ]},
+    done_imm:{type:'end',x:90,y:50,label:'등록 완료! 🏛️',npc:'직원',scene:'3번 창구',
+      text:'2주 후에 등록증 찾으러 오시면 됩니다. 수고하셨어요~',textEn:'Come back in 2 weeks to pick up your card. Good job~',
+      choices:[]}
+  },
+  edges:[
+    ['start','number'],['number','wait'],['number','no_number'],['no_number','wait'],
+    ['wait','clerk_greet'],['clerk_greet','passport_check'],['clerk_greet','clerk_help'],
+    ['clerk_help','passport_check'],['passport_check','address_q'],['passport_check','forgot_passport'],
+    ['address_q','docs_check'],['address_q','no_address'],['no_address','docs_check'],
+    ['docs_check','done_imm']
+  ]
+},
+{
+  id:'directions', title:'ASKING DIRECTIONS', sub:'길 물어보기', titleKo:'길 묻기',
+  difficulty:'Beginner', icon:'🗺️', locked:false,
+  nodes:{
+    start:{type:'start',x:3,y:50,label:'길을 잃음',next:'look_around'},
+    look_around:{type:'npc',x:13,y:50,label:'주위 둘러보기',npc:'나',scene:'낯선 거리',
+      text:'(지도 앱이 안 돼서 길을 잃었다...)',textEn:'(Map app isn\'t working, I\'m lost...)',
+      choices:[
+        {id:'la1',text:'(행인에게) 저기요, 길 좀 물어볼게요',textEn:'Excuse me, can I ask for directions?',next:'ask_person',pts:3,phrase:'길 좀 물어볼게요'},
+        {id:'la2',text:'(편의점에 들어감) 여기 지하철역 어디예요?',textEn:'(enters convenience store) Where is the subway?',next:'conv_help',pts:2,phrase:'지하철역 어디예요?'},
+        {id:'la3',text:'(감으로 걸어봄)',textEn:'(walks by instinct)',next:'wrong_way',pts:0}
+      ]},
+    ask_person:{type:'npc',x:26,y:35,label:'행인에게 묻기',npc:'행인',scene:'거리',
+      text:'네! 어디 가세요?',textEn:'Sure! Where are you going?',
+      choices:[
+        {id:'ap1',text:'강남역 가려고 하는데요',textEn:'I\'m trying to go to Gangnam Station',next:'directions_given',pts:2,phrase:'강남역 가려고 하는데요'},
+        {id:'ap2',text:'이 주소로 가고 싶어요 (핸드폰 보여줌)',textEn:'I want to go to this address (shows phone)',next:'directions_given',pts:2}
+      ]},
+    conv_help:{type:'npc',x:26,y:70,label:'편의점에서 묻기',npc:'점원',scene:'편의점',
+      text:'지하철역이요? 여기서 나가서 오른쪽으로 쭉 가면 있어요!',textEn:'Subway? Go out and keep going right!',
+      choices:[
+        {id:'cvh1',text:'오른쪽이요? 감사합니다!',textEn:'Right? Thank you!',next:'follow_right',pts:2,phrase:'오른쪽이요'},
+        {id:'cvh2',text:'오른쪽이... 어느 쪽이에요?',textEn:'Right is... which way?',next:'point_dir',pts:1}
+      ]},
+    wrong_way:{type:'npc',x:26,y:15,label:'엉뚱한 방향',npc:'나',scene:'골목길',
+      text:'(20분째 걷고 있는데 점점 더 모르는 곳으로...)',textEn:'(Walking for 20 min, getting more lost...)',
+      choices:[
+        {id:'ww1',text:'(결국 사람에게 물어봄) 저기요!',textEn:'(finally asks someone) Excuse me!',next:'ask_person',pts:1},
+        {id:'ww2',text:'(계속 걸음)',textEn:'(keeps walking)',next:'circle_end',pts:0}
+      ]},
+    circle_end:{type:'end',x:40,y:15,label:'제자리 엔딩 🔄',npc:'나',scene:'출발점',
+      text:'어...? 여기 아까 왔던 곳 아니야?? (원점 회귀 ㅋㅋ)',textEn:'Wait...? Isn\'t this where I started?? (back to square one lol)',
+      choices:[]},
+    point_dir:{type:'npc',x:40,y:70,label:'방향 확인',npc:'점원',scene:'편의점',
+      text:'(밖으로 나와서 가리키며) 저쪽이요! 5분이면 돼요~',textEn:'(comes outside and points) That way! 5 minutes~',
+      choices:[
+        {id:'pd1',text:'아! 감사합니다!',textEn:'Ah! Thank you!',next:'follow_right',pts:2,phrase:'감사합니다'}
+      ]},
+    directions_given:{type:'npc',x:40,y:35,label:'길 안내',npc:'행인',scene:'거리',
+      text:'여기서 직진하다가 사거리에서 왼쪽으로 꺾으세요. 그러면 보여요!',textEn:'Go straight and turn left at the intersection. You\'ll see it!',
+      choices:[
+        {id:'dg1',text:'직진하고 왼쪽이요? 감사합니다!',textEn:'Straight then left? Thanks!',next:'follow_left',pts:3,phrase:'직진하고 왼쪽이요'},
+        {id:'dg2',text:'(왼쪽 오른쪽 헷갈림) 왼쪽이... 이쪽?',textEn:'(confused) Left is... this way?',next:'wrong_turn',pts:1}
+      ]},
+    follow_left:{type:'npc',x:56,y:35,label:'왼쪽으로',npc:'나',scene:'사거리',
+      text:'(사거리 도착! 왼쪽으로 꺾으니까 역이 보인다!)',textEn:'(At the intersection! Turn left and I can see the station!)',
+      choices:[
+        {id:'fl1',text:'찾았다! 감사합니다~',textEn:'Found it! Thank you~',next:'found',pts:2}
+      ]},
+    follow_right:{type:'npc',x:56,y:70,label:'오른쪽으로',npc:'나',scene:'거리',
+      text:'(오른쪽으로 걷다보니 지하철 표지가 보인다!)',textEn:'(Walking right, I can see the subway sign!)',
+      choices:[
+        {id:'fr1',text:'오 저기다! 감사합니다~',textEn:'Oh there it is! Thank you~',next:'found',pts:2}
+      ]},
+    wrong_turn:{type:'npc',x:56,y:15,label:'잘못된 방향',npc:'또 다른 행인',scene:'골목',
+      text:'아 거기 아니에요! 반대쪽이에요 ㅋㅋ',textEn:'No not that way! It\'s the opposite direction haha',
+      choices:[
+        {id:'wt1',text:'아 ㅋㅋ 감사합니다!',textEn:'Oh haha thanks!',next:'follow_left',pts:1}
+      ]},
+    found:{type:'end',x:75,y:50,label:'도착 성공! 🗺️',npc:'나',scene:'지하철역 앞',
+      text:'드디어 찾았다! 한국어로 길 물어보기 성공! 🎉',textEn:'Finally found it! Successfully asked for directions in Korean! 🎉',
+      choices:[]}
+  },
+  edges:[
+    ['start','look_around'],['look_around','ask_person'],['look_around','conv_help'],['look_around','wrong_way'],
+    ['wrong_way','ask_person'],['wrong_way','circle_end'],
+    ['ask_person','directions_given'],['conv_help','follow_right'],['conv_help','point_dir'],
+    ['point_dir','follow_right'],['directions_given','follow_left'],['directions_given','wrong_turn'],
+    ['wrong_turn','follow_left'],['follow_left','found'],['follow_right','found']
+  ]
+},
+{
+  id:'hospital', title:'THE HOSPITAL', sub:'병원에서 증상 설명하기', titleKo:'병원 방문',
+  difficulty:'Intermediate', icon:'🏥', locked:false,
+  nodes:{
+    start:{type:'start',x:3,y:50,label:'병원 도착',next:'reception'},
+    reception:{type:'npc',x:13,y:50,label:'접수',npc:'간호사',scene:'접수 데스크',
+      text:'안녕하세요~ 어디가 불편하세요?',textEn:'Hello~ What seems to be the problem?',
+      choices:[
+        {id:'rc1',text:'머리가 아프고 열이 나요',textEn:'I have a headache and fever',next:'form',pts:3,phrase:'머리가 아프고 열이 나요'},
+        {id:'rc2',text:'배가 아파요',textEn:'My stomach hurts',next:'form',pts:3,phrase:'배가 아파요'},
+        {id:'rc3',text:'(번역기로) I am... 아프다...',textEn:'(with translator) I am... sick...',next:'nurse_help',pts:1},
+        {id:'rc4',text:'강아지가 아파요',textEn:'My dog is sick',next:'vet_end',pts:0}
+      ]},
+    vet_end:{type:'end',x:24,y:15,label:'동물병원 아닌데 🐶',npc:'간호사',scene:'접수',
+      text:'여기는 사람 병원이에요... 동물병원은 길 건너편에 있어요 ㅋㅋ',textEn:'This is a hospital for people... The vet is across the street haha',
+      choices:[]},
+    nurse_help:{type:'npc',x:24,y:80,label:'간호사 도움',npc:'간호사',scene:'접수',
+      text:'괜찮아요~ 어디가 아프세요? (몸 가리키며) 여기? 여기?',textEn:'It\'s okay~ Where does it hurt? (pointing) Here? Here?',
+      choices:[
+        {id:'nh1',text:'(배를 가리키며) 여기... 아파요',textEn:'(points at stomach) Here... hurts',next:'form',pts:2,phrase:'여기 아파요'}
+      ]},
+    form:{type:'npc',x:28,y:50,label:'접수서 작성',npc:'간호사',scene:'접수',
+      text:'보험 있으세요? 여권이나 외국인등록증 주세요.',textEn:'Do you have insurance? Please give me your passport or ARC.',
+      choices:[
+        {id:'f1',text:'네, 보험 있어요 (카드 건냄)',textEn:'Yes I have insurance (hands card)',next:'wait_doc',pts:2,phrase:'보험 있어요'},
+        {id:'f2',text:'보험 없어요...',textEn:'I don\'t have insurance...',next:'no_insurance',pts:1}
+      ]},
+    no_insurance:{type:'npc',x:40,y:75,label:'보험 없음',npc:'간호사',scene:'접수',
+      text:'보험 없으시면 진료비가 좀 나올 수 있어요. 괜찮으세요?',textEn:'Without insurance it might be expensive. Is that okay?',
+      choices:[
+        {id:'ni1',text:'네, 괜찮아요',textEn:'Yes, that\'s fine',next:'wait_doc',pts:2,phrase:'괜찮아요'}
+      ]},
+    wait_doc:{type:'npc',x:42,y:50,label:'진료 대기',npc:'간호사',scene:'대기실',
+      text:'잠시만 기다려주세요~ 곧 불러드릴게요.',textEn:'Please wait a moment~ We\'ll call you soon.',
+      choices:[
+        {id:'wd1',text:'(기다림) 네~',textEn:'(waits) Okay~',next:'see_doctor',pts:1}
+      ]},
+    see_doctor:{type:'npc',x:55,y:50,label:'의사 진료',npc:'의사',scene:'진료실',
+      text:'어서오세요. 어디가 불편하세요? 언제부터 아팠어요?',textEn:'Come in. What\'s bothering you? When did it start?',
+      choices:[
+        {id:'sd1',text:'어제부터 머리가 아프고 열이 나요',textEn:'Since yesterday, headache and fever',next:'examine',pts:3,phrase:'어제부터 아팠어요'},
+        {id:'sd2',text:'3일 전부터 배가 아파요. 설사도 해요',textEn:'Stomach pain for 3 days. Also diarrhea',next:'examine',pts:3,phrase:'설사도 해요'},
+        {id:'sd3',text:'(증상을 과장해서 설명) 온몸이 다 아파요!!!',textEn:'(exaggerates) MY WHOLE BODY HURTS!!!',next:'drama_end',pts:0}
+      ]},
+    drama_end:{type:'end',x:68,y:15,label:'응급실 이송 😅',npc:'의사',scene:'진료실',
+      text:'온몸이요?! 간호사! 응급실 준비해주세요! ...환자분 표정이 너무 괜찮아 보이는데요?',textEn:'Whole body?! Nurse! Prep the ER! ...The patient looks surprisingly fine though?',
+      choices:[]},
+    examine:{type:'npc',x:68,y:50,label:'검사',npc:'의사',scene:'진료실',
+      text:'음, 알겠습니다. 목 좀 벌려보세요. 아~ 해보세요.',textEn:'I see. Open your mouth please. Say ah~.',
+      choices:[
+        {id:'ex1',text:'아~~~',textEn:'Ah~~~',next:'prescription',pts:2}
+      ]},
+    prescription:{type:'npc',x:80,y:50,label:'처방',npc:'의사',scene:'진료실',
+      text:'감기 같네요. 약 처방해드릴게요. 3일치 드릴 테니 하루 세 번 드세요.',textEn:'Looks like a cold. I\'ll prescribe medicine. Take it 3 times a day for 3 days.',
+      choices:[
+        {id:'pr1',text:'감사합니다. 약국은 어디예요?',textEn:'Thank you. Where is the pharmacy?',next:'done_hosp',pts:3,phrase:'약국은 어디예요?'},
+        {id:'pr2',text:'하루에 세 번이요? 알겠습니다',textEn:'Three times a day? Got it',next:'done_hosp',pts:2,phrase:'하루에 세 번이요'}
+      ]},
+    done_hosp:{type:'end',x:94,y:50,label:'진료 완료! 🏥',npc:'의사',scene:'진료실',
+      text:'1층 약국에서 약 받으세요. 푹 쉬시고 안 나으면 다시 오세요~',textEn:'Get your medicine at the pharmacy on 1F. Rest well and come back if it doesn\'t improve~',
+      choices:[]}
+  },
+  edges:[
+    ['start','reception'],['reception','form'],['reception','nurse_help'],['reception','vet_end'],
+    ['nurse_help','form'],['form','wait_doc'],['form','no_insurance'],['no_insurance','wait_doc'],
+    ['wait_doc','see_doctor'],['see_doctor','examine'],['see_doctor','drama_end'],
+    ['examine','prescription'],['prescription','done_hosp']
+  ]
+},
+{
+  id:'phone-shop', title:'THE PHONE SHOP', sub:'통신사에서 폰 개통하기', titleKo:'폰 개통',
+  difficulty:'Intermediate', icon:'📱', locked:false,
+  nodes:{
+    start:{type:'start',x:3,y:50,label:'통신사 입장',next:'staff_greet'},
+    staff_greet:{type:'npc',x:13,y:50,label:'직원 인사',npc:'직원',scene:'통신사 매장',
+      text:'어서오세요! 어떤 걸로 도와드릴까요?',textEn:'Welcome! How can I help you?',
+      choices:[
+        {id:'sg1',text:'폰 개통하러 왔어요',textEn:'I came to activate a phone',next:'plan_type',pts:3,phrase:'폰 개통하러 왔어요'},
+        {id:'sg2',text:'유심만 살 수 있어요?',textEn:'Can I just buy a SIM card?',next:'usim_only',pts:2,phrase:'유심만 살 수 있어요?'},
+        {id:'sg3',text:'와이파이 비밀번호 뭐예요?',textEn:'What\'s the WiFi password?',next:'wifi_end',pts:0}
+      ]},
+    wifi_end:{type:'end',x:24,y:15,label:'와이파이 도둑 😅',npc:'직원',scene:'통신사',
+      text:'...여기 카페가 아니라 통신사인데요 ㅋㅋ 와이파이는 "store_5G"이에요...',textEn:'...This is a phone shop, not a cafe lol The WiFi is "store_5G"...',
+      choices:[]},
+    usim_only:{type:'npc',x:24,y:75,label:'유심 문의',npc:'직원',scene:'통신사',
+      text:'네! 선불 유심이랑 후불 유심 있어요. 여권 있으시죠?',textEn:'Sure! We have prepaid and postpaid SIMs. Do you have your passport?',
+      choices:[
+        {id:'uo1',text:'선불로 할게요. 여기 여권이요',textEn:'Prepaid please. Here\'s my passport',next:'plan_choose',pts:2,phrase:'선불로 할게요'},
+        {id:'uo2',text:'후불이 뭐예요?',textEn:'What\'s postpaid?',next:'explain_plan',pts:1}
+      ]},
+    plan_type:{type:'npc',x:24,y:50,label:'개통 유형',npc:'직원',scene:'통신사',
+      text:'새 폰도 같이 구매하실 건가요, 아니면 유심만 하실 건가요?',textEn:'Will you also buy a new phone, or just a SIM card?',
+      choices:[
+        {id:'pt1',text:'유심만이요',textEn:'Just SIM',next:'plan_choose',pts:2},
+        {id:'pt2',text:'새 폰도 보고 싶어요',textEn:'I\'d like to see new phones too',next:'phone_browse',pts:2,phrase:'새 폰도 보고 싶어요'}
+      ]},
+    phone_browse:{type:'npc',x:38,y:35,label:'폰 구경',npc:'직원',scene:'매장 진열대',
+      text:'요즘 이 모델이 제일 인기 있어요! 할부도 가능하고요.',textEn:'This model is the most popular! Installment plans are available too.',
+      choices:[
+        {id:'pb1',text:'한달에 얼마예요?',textEn:'How much per month?',next:'plan_choose',pts:2,phrase:'한달에 얼마예요?'},
+        {id:'pb2',text:'제일 비싼 거 주세요!',textEn:'Give me the most expensive one!',next:'expensive_end',pts:0}
+      ]},
+    expensive_end:{type:'end',x:52,y:15,label:'통장 텅 💸',npc:'직원',scene:'통신사',
+      text:'최신 폰 + 무제한 요금제... 월 18만원입니다! (3년 약정) 😱',textEn:'Latest phone + unlimited plan... 180,000 won/month! (3-year contract) 😱',
+      choices:[]},
+    explain_plan:{type:'npc',x:38,y:75,label:'요금제 설명',npc:'직원',scene:'통신사',
+      text:'선불은 미리 충전해서 쓰는 거고, 후불은 매달 자동 결제돼요. 외국인은 선불을 많이 써요!',textEn:'Prepaid is pay-in-advance, postpaid is monthly auto-payment. Foreigners usually use prepaid!',
+      choices:[
+        {id:'ep1',text:'그러면 선불로 할게요',textEn:'Then prepaid please',next:'plan_choose',pts:2}
+      ]},
+    plan_choose:{type:'npc',x:52,y:50,label:'요금제 선택',npc:'직원',scene:'통신사',
+      text:'요금제는 3만원, 5만원, 7만원짜리가 있어요. 데이터 차이예요.',textEn:'Plans are 30K, 50K, 70K won. The difference is data.',
+      choices:[
+        {id:'plc1',text:'5만원짜리로 할게요',textEn:'50K won plan please',next:'id_check',pts:2,phrase:'5만원짜리로 할게요'},
+        {id:'plc2',text:'데이터 무제한은 없어요?',textEn:'No unlimited data?',next:'unlimited_q',pts:2,phrase:'데이터 무제한은 없어요?'}
+      ]},
+    unlimited_q:{type:'npc',x:64,y:75,label:'무제한 문의',npc:'직원',scene:'통신사',
+      text:'무제한은 후불 요금제에만 있어요. 후불은 외국인등록증이 필요한데, 있으세요?',textEn:'Unlimited is only for postpaid plans. You need an ARC. Do you have one?',
+      choices:[
+        {id:'uq1',text:'아직 없어요. 5만원짜리로 할게요',textEn:'Not yet. 50K plan then',next:'id_check',pts:2}
+      ]},
+    id_check:{type:'npc',x:68,y:50,label:'신분증 확인',npc:'직원',scene:'통신사',
+      text:'여권 확인할게요. 사인도 부탁드려요.',textEn:'Let me check your passport. Please sign here too.',
+      choices:[
+        {id:'ic1',text:'(여권 건네고 사인) 여기요',textEn:'(hands passport and signs) Here',next:'activate',pts:2}
+      ]},
+    activate:{type:'npc',x:82,y:50,label:'개통 중',npc:'직원',scene:'통신사',
+      text:'유심 넣어드릴게요~ 잠시만요... 네, 개통됐습니다!',textEn:'I\'ll put the SIM in~ One moment... Done, it\'s activated!',
+      choices:[
+        {id:'ac1',text:'감사합니다! 인터넷 되는지 확인해볼게요',textEn:'Thanks! Let me check if internet works',next:'done_phone',pts:2,phrase:'인터넷 되는지 확인해볼게요'}
+      ]},
+    done_phone:{type:'end',x:94,y:50,label:'개통 완료! 📱',npc:'직원',scene:'통신사',
+      text:'잘 되시죠? 문제 있으면 언제든 오세요~ 감사합니다!',textEn:'Working well? Come anytime if there are issues~ Thank you!',
+      choices:[]}
+  },
+  edges:[
+    ['start','staff_greet'],['staff_greet','plan_type'],['staff_greet','usim_only'],['staff_greet','wifi_end'],
+    ['usim_only','plan_choose'],['usim_only','explain_plan'],['explain_plan','plan_choose'],
+    ['plan_type','plan_choose'],['plan_type','phone_browse'],
+    ['phone_browse','plan_choose'],['phone_browse','expensive_end'],
+    ['plan_choose','id_check'],['plan_choose','unlimited_q'],['unlimited_q','id_check'],
+    ['id_check','activate'],['activate','done_phone']
+  ]
+}
+];
+
+// DB override: load scenarios from fast_track_scenarios table
+var _FT_HARDCODED = _FT_SCENARIOS.slice();
+async function _ftLoadFromDB() {
+  try {
+    var sb = getSupa(); if (!sb) return;
+    var res = await sb.from('fast_track_scenarios').select('id,title,sub,title_ko,difficulty,icon,category,sort_order,is_active,locked,data').eq('is_active', true).order('sort_order');
+    if (res.error) throw res.error;
+    if (res.data && res.data.length > 0) {
+      _FT_SCENARIOS = res.data.map(function(row) {
+        var d = row.data || {};
+        return {
+          id: row.id, title: row.title, sub: row.sub, titleKo: row.title_ko,
+          difficulty: row.difficulty, icon: row.icon, locked: row.locked || false,
+          nodes: d.nodes || {}, edges: d.edges || []
+        };
+      });
+    }
+  } catch(e) { console.warn('[FastTrack] DB load failed, using hardcoded'); }
+}
+
+// ── Flowchart Renderer ──
+function renderFlowchart(scenario, animateEdge) {
+  var chart = document.getElementById('ft-chart');
+  var svg = document.getElementById('ft-svg');
+  if (!chart || !svg) return;
+  chart.querySelectorAll('.ft-node').forEach(function(n){ n.remove(); });
+  svg.innerHTML = '';
+  // Set viewBox to 1000x400 so we use simple coordinates
+  svg.setAttribute('viewBox', '0 0 1000 400');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  var nodes = scenario.nodes;
+  var edges = scenario.edges;
+  var visited = _ftState.visited;
+  var visitedEdges = [];
+  for (var i = 0; i < _ftState.path.length - 1; i++) {
+    visitedEdges.push(_ftState.path[i] + '->' + _ftState.path[i+1]);
+  }
+  var latestEdge = _ftState.path.length >= 2
+    ? _ftState.path[_ftState.path.length-2] + '->' + _ftState.path[_ftState.path.length-1] : null;
+  // Draw edges — convert % to viewBox coordinates (1000 x 400)
+  edges.forEach(function(e) {
+    var from = nodes[e[0]], to = nodes[e[1]];
+    if (!from || !to) return;
+    var x1 = from.x * 10, y1 = from.y * 4, x2 = to.x * 10, y2 = to.y * 4;
+    var mx = (x1 + x2) / 2;
+    var path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', 'M ' + x1 + ' ' + y1 + ' C ' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 + ', ' + x2 + ' ' + y2);
+    var edgeKey = e[0]+'->'+e[1];
+    var isVisited = visitedEdges.indexOf(edgeKey) >= 0;
+    var isLatest = animateEdge && edgeKey === latestEdge;
+    // Hide edges to nodes player hasn't discovered yet
+    var fromVisited = visited.indexOf(e[0]) >= 0;
+    var toVisited = visited.indexOf(e[1]) >= 0;
+    var isHidden = !fromVisited && !toVisited;
+    // Show edge only if: both visited, or one is current adjacent
+    var toCurrent = e[1] === _ftState.nodeId;
+    var fromCurrent = e[0] === _ftState.nodeId;
+    if (!isVisited && !isLatest && !toCurrent && !fromCurrent && !fromVisited) isHidden = true;
+    path.setAttribute('class', 'ft-edge' + (isLatest ? ' animating' : isVisited ? ' visited glow' : isHidden ? ' hidden' : ''));
+    // For animating edge, compute path length for dasharray
+    svg.appendChild(path);
+    if (isLatest) {
+      var len = path.getTotalLength();
+      path.style.strokeDasharray = len;
+      path.style.strokeDashoffset = len;
+    }
+  });
+  // Draw nodes
+  Object.keys(nodes).forEach(function(id) {
+    var n = nodes[id];
+    var div = document.createElement('div');
+    var isVisited = visited.indexOf(id) >= 0;
+    var isCurrent = _ftState.nodeId === id;
+    var isLocked = !isVisited && !isCurrent;
+    div.className = 'ft-node' + (n.type === 'start' ? ' start' : '') + (n.type === 'end' ? ' end' : '')
+      + (isVisited ? ' visited' : '') + (isCurrent ? ' current pulse' : '') + (isLocked ? ' locked' : '');
+    div.style.left = n.x + '%';
+    div.style.top = n.y + '%';
+    div.setAttribute('id', 'ftn-' + id);
+    div.innerHTML = '<div class="ft-node-box"><div class="ft-node-label">' + (n.label || '') + '</div>'
+      + (n.npc ? '<div class="ft-node-sub">' + n.npc + '</div>' : '') + '</div>';
+    div.onclick = function() {
+      if (isVisited && n.type !== 'start') showNodeReplay(id);
+    };
+    chart.appendChild(div);
+  });
+  // Auto-scroll to current node
+  if (_ftState.nodeId) {
+    var curNode = document.getElementById('ftn-' + _ftState.nodeId);
+    if (curNode) curNode.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+  }
+}
+
+function showNodeReplay(id) {
+  var n = _ftState.scenario.nodes[id];
+  if (!n) return;
+  showToast(n.npc + ': ' + n.text);
+}
+
+// ── Player Engine ──
+async function openFastTrack() {
+  if (!requirePlan('fast_track')) return;
+  var ov = document.getElementById('ft-overlay');
+  if (!ov) return;
+  // Load from DB first (fallback to hardcoded)
+  await _ftLoadFromDB();
+  renderScenarioList();
+  document.getElementById('ft-scenario-list').style.display = 'block';
+  document.getElementById('ft-chart').parentElement.style.display = 'none';
+  document.getElementById('ft-title').textContent = 'FAST TRACK';
+  document.getElementById('ft-sub').textContent = 'Korean Master Fast Track';
+  document.getElementById('ft-pct').textContent = '';
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFastTrack() {
+  document.getElementById('ft-overlay').classList.remove('open');
+  document.getElementById('ft-player').classList.remove('open');
+  document.body.style.overflow = '';
+  _ftState.playing = false;
+}
+
+async function renderScenarioList() {
+  var el = document.getElementById('ft-scenarios');
+  var progress = await loadAllFtProgress();
+  el.innerHTML = _FT_SCENARIOS.map(function(s) {
+    var lockStyle = s.locked ? 'opacity:.4;pointer-events:none;' : 'cursor:pointer;';
+    var prog = progress[s.id];
+    var pctBar = '';
+    if (prog && prog.completion_pct > 0) {
+      pctBar = '<div style="margin-top:8px;height:4px;border-radius:2px;background:#e5e7eb;overflow:hidden">'
+        + '<div style="height:100%;width:' + prog.completion_pct + '%;background:#2196F3;border-radius:2px"></div></div>'
+        + '<div style="font-size:9px;color:#5a6a7a;margin-top:3px">' + prog.completion_pct + '% explored · ' + (prog.play_count||1) + ' plays · ' + (prog.phrases||[]).length + ' phrases</div>';
+    }
+    return '<div onclick="_canvasRipple(this,event);startScenario(\'' + s.id + '\')" style="padding:20px;border-radius:14px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);border:2px solid transparent;transition:all .15s;position:relative;overflow:hidden;' + lockStyle + '"'
+      + ' onmouseover="if(!' + s.locked + ')this.style.borderColor=\'#2196F3\'" onmouseout="this.style.borderColor=\'transparent\'">'
+      + '<div style="font-size:28px;margin-bottom:8px">' + (s.icon || '📘') + '</div>'
+      + '<div style="font-size:14px;font-weight:900;color:#1a2a3a">' + (s.titleKo || s.title || 'Scenario') + '</div>'
+      + '<div style="font-size:11px;color:#5a6a7a;margin-top:2px">' + (s.sub || '') + '</div>'
+      + '<div style="margin-top:8px;display:flex;align-items:center;gap:6px">'
+      + '<span style="padding:2px 8px;border-radius:10px;background:' + (s.locked ? '#e5e7eb' : '#dbeafe') + ';color:' + (s.locked ? '#9ca3af' : '#2563eb') + ';font-size:10px;font-weight:700">' + (s.difficulty || 'Beginner') + '</span>'
+      + (s.locked ? '<span style="font-size:10px;color:#9ca3af">🔒 Locked</span>' : '')
+      + '</div>' + pctBar + '</div>';
+  }).join('');
+}
+
+function startScenario(id) {
+  var scenario = _FT_SCENARIOS.find(function(s){ return s.id === id; });
+  if (!scenario || scenario.locked) return;
+  _ftState = { scenario:scenario, nodeId:'start', visited:['start'], path:['start'], phrases:[], playing:true };
+  // Update header
+  document.getElementById('ft-title').textContent = scenario.title;
+  document.getElementById('ft-sub').textContent = scenario.sub;
+  updateFtPct();
+  // Show chart, hide list
+  document.getElementById('ft-scenario-list').style.display = 'none';
+  document.getElementById('ft-chart').parentElement.style.display = 'block';
+  renderFlowchart(scenario);
+  // Auto-advance from start
+  var startNode = scenario.nodes.start;
+  if (startNode && startNode.next) {
+    setTimeout(function(){ advanceToNode(startNode.next); }, 600);
+  }
+}
+
+function advanceToNode(nodeId) {
+  var scenario = _ftState.scenario;
+  var node = scenario.nodes[nodeId];
+  if (!node) return;
+  _ftState.nodeId = nodeId;
+  if (_ftState.visited.indexOf(nodeId) < 0) _ftState.visited.push(nodeId);
+  if (_ftState.path[_ftState.path.length - 1] !== nodeId) _ftState.path.push(nodeId);
+  updateFtPct();
+  renderFlowchart(scenario, true); // animate the latest edge
+  // Canvas ripple on the new node
+  setTimeout(function(){ _ftNodeRipple(nodeId); }, 300);
+  // Show player
+  if (node.type === 'end') {
+    showEndNode(node);
+  } else if (node.text) {
+    showDialogue(node);
+  }
+}
+
+function showDialogue(node) {
+  var player = document.getElementById('ft-player');
+  document.getElementById('ftp-scene').textContent = node.scene || '';
+  document.getElementById('ftp-npc').textContent = node.npc || '';
+  document.getElementById('ftp-text').innerHTML =
+    '<span class="ft-ko">' + node.text + '</span>'
+    + '<span class="ft-en">' + (node.textEn || '') + '</span>';
+  var choicesEl = document.getElementById('ftp-choices');
+  choicesEl.innerHTML = (node.choices || []).map(function(c, i) {
+    return '<button class="ft-choice" onclick="pickChoice(\'' + _ftState.nodeId + '\',' + i + ')">'
+      + c.text
+      + (c.textEn ? '<div class="ft-choice-en">' + c.textEn + '</div>' : '')
+      + '</button>';
+  }).join('');
+  // Show collected phrases
+  var phrasesEl = document.getElementById('ftp-phrases');
+  var phrasesList = document.getElementById('ftp-phrases-list');
+  if (_ftState.phrases.length) {
+    phrasesList.innerHTML = _ftState.phrases.map(function(p,pi){ return _renderFtPhraseChip(p,pi); }).join('');
+    phrasesEl.style.display = 'block';
+  } else {
+    phrasesEl.style.display = 'none';
+  }
+  player.classList.add('open');
+  // Speak NPC line
+  speakHangul(node.text);
+}
+
+function _ftPhraseObj(p) {
+  // Migrate legacy string-shaped phrases in-place
+  return typeof p === 'string' ? { ko: p, en: '', sceneKo: '', sceneEn: '' } : (p || {});
+}
+function _renderFtPhraseChip(p, pi) {
+  var obj = _ftPhraseObj(p);
+  var ko = obj.ko || '';
+  return '<span class="ft-phrase-chip" onclick="saveFtPhraseAt(' + pi + ')" style="cursor:pointer" title="Tap to save">'
+    + ko + ' <span style="display:inline-flex;width:11px;height:11px;opacity:.5;vertical-align:-1px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span></span>';
+}
+function saveFtPhraseAt(idx) {
+  var p = _ftPhraseObj(_ftState.phrases[idx]);
+  if (!p.ko) return;
+  saveToWordBook(p.ko, p.en || '', '', 'expression', { exampleKo: p.sceneKo || '', exampleEn: p.sceneEn || '' });
+}
+
+function pickChoice(nodeId, idx) {
+  var node = _ftState.scenario.nodes[nodeId];
+  if (!node || !node.choices || !node.choices[idx]) return;
+  var choice = node.choices[idx];
+  // Highlight picked choice
+  var btns = document.querySelectorAll('#ftp-choices .ft-choice');
+  btns.forEach(function(b, i) {
+    b.style.pointerEvents = 'none';
+    if (i === idx) b.classList.add('picked');
+    else b.style.opacity = '.3';
+  });
+  // Collect phrase with its English translation + scene context for Word Book
+  if (choice.phrase) {
+    var already = _ftState.phrases.some(function(p){
+      return (typeof p === 'string' ? p : (p && p.ko)) === choice.phrase;
+    });
+    if (!already) {
+      _ftState.phrases.push({
+        ko: choice.phrase,
+        en: choice.textEn || choice.text || '',
+        sceneKo: node.text || '',
+        sceneEn: node.textEn || ''
+      });
+    }
+  }
+  // Advance after short delay
+  setTimeout(function(){
+    document.getElementById('ft-player').classList.remove('open');
+    setTimeout(function(){ advanceToNode(choice.next); }, 300);
+  }, 800);
+}
+
+function showEndNode(node) {
+  saveFtProgress(); // Save to DB
+  var player = document.getElementById('ft-player');
+  document.getElementById('ftp-scene').textContent = '';
+  document.getElementById('ftp-npc').textContent = node.npc || '';
+  document.getElementById('ftp-text').innerHTML =
+    '<span class="ft-ko">' + node.text + '</span>'
+    + '<span class="ft-en">' + (node.textEn || '') + '</span>';
+  var choicesEl = document.getElementById('ftp-choices');
+  // Show result
+  var totalNodes = Object.keys(_ftState.scenario.nodes).length;
+  var visitedCount = _ftState.visited.length;
+  var pct = Math.round((visitedCount / totalNodes) * 100);
+  choicesEl.innerHTML = '<div class="ft-result">'
+    + '<div class="ft-result-icon" style="display:inline-flex;width:48px;height:48px;color:#a78bfa">'+BM_ICON_PARTY+'</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:4px">Scenario Complete!</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:6px">탐색률: ' + pct + '% (' + visitedCount + '/' + totalNodes + ' 노드)</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:16px">다른 선택지를 골라 더 많은 경로를 탐색해보세요!</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
+    + '<button class="ft-result-btn" onclick="startScenario(\'' + _ftState.scenario.id + '\')" style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시 하기</span></button>'
+    + '<button class="ft-result-btn sec" style="background:rgba(255,255,255,.1);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px" onclick="closeFtPlayer();showFtChart()"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg></span><span>플로우차트 보기</span></button>'
+    + '</div></div>';
+  // Phrases
+  var phrasesEl = document.getElementById('ftp-phrases');
+  var phrasesList = document.getElementById('ftp-phrases-list');
+  if (_ftState.phrases.length) {
+    phrasesList.innerHTML = _ftState.phrases.map(function(p,pi){ return _renderFtPhraseChip(p,pi); }).join('');
+    phrasesEl.style.display = 'block';
+  }
+  player.classList.add('open');
+}
+
+function closeFtPlayer() {
+  document.getElementById('ft-player').classList.remove('open');
+}
+
+function showFtChart() {
+  // Just close player, chart is already visible
+  closeFtPlayer();
+  renderFlowchart(_ftState.scenario);
+}
+
+function updateFtPct() {
+  var total = Object.keys(_ftState.scenario.nodes).length;
+  var visited = _ftState.visited.length;
+  var pct = Math.round((visited / total) * 100);
+  document.getElementById('ft-pct').textContent = pct + '%';
+}
+
+// ── Fast Track DB Save/Load ──
+async function saveFtProgress() {
+  if (!supaUser || !_ftState.scenario) return;
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var total = Object.keys(_ftState.scenario.nodes).length;
+    var pct = Math.round((_ftState.visited.length / total) * 100);
+    await sb.from('fast_track_progress').upsert({
+      user_id: supaUser.id,
+      scenario_id: _ftState.scenario.id,
+      visited_nodes: _ftState.visited,
+      best_path: _ftState.path,
+      phrases: _ftState.phrases,
+      completion_pct: pct,
+      play_count: 1,  // increment handled below
+      best_score: _ftState.phrases.length,
+      last_played: new Date().toISOString()
+    }, { onConflict: 'user_id,scenario_id' });
+    // Increment play_count
+    await sb.rpc('increment_ft_play_count', { p_user_id: supaUser.id, p_scenario_id: _ftState.scenario.id }).catch(function(){});
+  } catch(e) { console.warn('[FT] save failed:', e.message); }
+}
+
+async function loadFtProgress(scenarioId) {
+  if (!supaUser) return null;
+  try {
+    var sb = getSupa();
+    if (!sb) return null;
+    var { data } = await sb.from('fast_track_progress')
+      .select('*').eq('user_id', supaUser.id).eq('scenario_id', scenarioId).maybeSingle();
+    return data;
+  } catch(e) { return null; }
+}
+
+async function loadAllFtProgress() {
+  if (!supaUser) return {};
+  try {
+    var sb = getSupa();
+    if (!sb) return {};
+    var { data } = await sb.from('fast_track_progress')
+      .select('scenario_id, completion_pct, play_count, phrases')
+      .eq('user_id', supaUser.id);
+    var map = {};
+    (data || []).forEach(function(r) { map[r.scenario_id] = r; });
+    return map;
+  } catch(e) { return {}; }
+}
+
+// ── Phone Call Modal ──
+var _phoneCalls = [];
+var _pcCurrentCall = null;
+var _pcAudio = null;
+var _pcPlaying = false;
+var _pcAnimFrame = null;
+
+async function loadPhoneCalls() {
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var { data, error } = await sb.from('phone_calls').select('*').eq('is_active', true).order('sort_order');
+    if (!error && data && data.length > 0) _phoneCalls = data;
+  } catch(e) { console.warn('[PhoneCall] load failed', e); }
+}
+
+function openPhoneModal() {
+  if (!requirePlan('phone_call')) return;
+  var ov = document.getElementById('phone-overlay');
+  if (!ov) return;
+  ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderPhoneCallList();
+  if (_phoneCalls.length === 0) loadPhoneCalls().then(renderPhoneCallList);
+}
+function closePhoneModal() {
+  document.getElementById('phone-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  pcStop();
+}
+
+function renderPhoneCallList() {
+  var list = document.getElementById('phone-call-list');
+  var player = document.getElementById('phone-call-player');
+  if (!list) return;
+  if (player) player.classList.remove('active');
+  list.style.display = '';
+  if (_phoneCalls.length === 0) {
+    list.innerHTML = '<div class="pc-empty"><div class="pc-empty-icon" style="display:inline-flex;width:48px;height:48px;color:#7dd3fc">'+BM_ICON_HEADPHONES+'</div>'
+      + '<div class="pc-empty-title">No calls yet</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.4)">Phone call lessons will appear here</div></div>';
+    return;
+  }
+  var html = '<div class="pc-call-list">';
+  _phoneCalls.forEach(function(c, i) {
+    var badgeCls = 'pc-badge-' + (c.difficulty||'Beginner').toLowerCase();
+    var dur = c.duration_seconds ? Math.floor(c.duration_seconds/60) + ':' + String(c.duration_seconds%60).padStart(2,'0') : '';
+    html += '<div class="pc-call-card" onclick="pcSelectCall(' + i + ')">'
+      + '<div class="pc-call-icon" style="display:inline-flex;width:24px;height:24px;color:#7dd3fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72a2 2 0 0 1 1.72 2z"/></svg></div>'
+      + '<div class="pc-call-info">'
+      + '<div class="pc-call-title">' + (c.title||'') + '</div>'
+      + '<div class="pc-call-sub">' + (c.description||c.title_en||'') + (dur ? ' · ' + dur : '') + '</div>'
+      + '</div>'
+      + '<span class="pc-call-badge ' + badgeCls + '">' + (c.difficulty||'Beginner') + '</span>'
+      + '</div>';
+  });
+  html += '</div>';
+  list.innerHTML = html;
+}
+
+function pcSelectCall(idx) {
+  _pcCurrentCall = _phoneCalls[idx];
+  if (!_pcCurrentCall) return;
+  pcStop();
+  document.getElementById('phone-call-list').style.display = 'none';
+  var player = document.getElementById('phone-call-player');
+  player.classList.add('active');
+  // Header
+  document.getElementById('pc-title').textContent = _pcCurrentCall.title || '';
+  document.getElementById('pc-desc').textContent = _pcCurrentCall.description || _pcCurrentCall.title_en || '';
+  // Speakers legend
+  var speakers = _pcCurrentCall.speakers || {};
+  var legendHtml = '';
+  Object.keys(speakers).forEach(function(k) {
+    var sp = speakers[k];
+    legendHtml += '<div class="pc-speaker-tag"><div class="pc-speaker-dot" style="background:' + sp.color + '"></div><span style="color:' + sp.color + '">' + sp.name + '</span></div>';
+  });
+  document.getElementById('pc-speakers').innerHTML = legendHtml;
+  // Waveform bars
+  var waveBox = document.getElementById('pc-wave-visual');
+  var barCount = 50;
+  var bars = '';
+  for (var i = 0; i < barCount; i++) {
+    var h = 8 + Math.random() * 28;
+    bars += '<div class="pc-wave-bar" style="height:' + h + 'px" data-idx="' + i + '"></div>';
+  }
+  waveBox.innerHTML = bars;
+  // Time
+  var dur = _pcCurrentCall.duration_seconds || 0;
+  document.getElementById('pc-time-end').textContent = Math.floor(dur/60) + ':' + String(dur%60).padStart(2,'0');
+  document.getElementById('pc-time-cur').textContent = '0:00';
+  document.getElementById('pc-progress-fill').style.width = '0%';
+  document.getElementById('pc-progress-dot').style.left = '0%';
+  // Script
+  var script = _pcCurrentCall.script || [];
+  var scriptHtml = '';
+  script.forEach(function(line, li) {
+    var spKey = line.speaker || 'A';
+    var sp = speakers[spKey] || { name: spKey, color: '#34d399' };
+    scriptHtml += '<div class="pc-line" data-idx="' + li + '" data-start="' + (line.start||0) + '" data-end="' + (line.end||0) + '" onclick="pcSeekTo(' + (line.start||0) + ')">'
+      + '<div class="pc-line-speaker" style="background:' + sp.color + '">' + spKey + '</div>'
+      + '<div class="pc-line-content">'
+      + '<div class="pc-line-ko">' + (line.ko||'') + '</div>'
+      + '<div class="pc-line-en">' + (line.en||'') + '</div>'
+      + '</div></div>';
+  });
+  document.getElementById('pc-script-lines').innerHTML = scriptHtml;
+  // Setup audio if URL exists
+  if (_pcCurrentCall.audio_url) {
+    _pcAudio = new Audio(_pcCurrentCall.audio_url);
+    _pcAudio.addEventListener('ended', function() { _pcPlaying = false; pcUpdatePlayBtn(); });
+  }
+}
+
+function pcBackToList() {
+  pcStop();
+  _pcCurrentCall = null;
+  renderPhoneCallList();
+}
+
+function pcTogglePlay() {
+  if (!_pcCurrentCall) return;
+  if (!_pcAudio && _pcCurrentCall.audio_url) {
+    _pcAudio = new Audio(_pcCurrentCall.audio_url);
+    _pcAudio.addEventListener('ended', function() { _pcPlaying = false; pcUpdatePlayBtn(); });
+  }
+  if (_pcAudio) {
+    if (_pcPlaying) { _pcAudio.pause(); _pcPlaying = false; }
+    else { _pcAudio.play(); _pcPlaying = true; pcAnimLoop(); }
+  } else {
+    // Demo mode (no audio file) — simulate playback
+    _pcPlaying = !_pcPlaying;
+    if (_pcPlaying) pcDemoPlay();
+  }
+  pcUpdatePlayBtn();
+}
+
+function pcUpdatePlayBtn() {
+  var btn = document.getElementById('pc-play-btn');
+  if (btn) btn.innerHTML = _pcPlaying ? '&#10074;&#10074;' : '&#9654;';
+}
+
+function pcStop() {
+  _pcPlaying = false;
+  if (_pcAudio) { _pcAudio.pause(); _pcAudio.currentTime = 0; _pcAudio = null; }
+  if (_pcAnimFrame) { cancelAnimationFrame(_pcAnimFrame); _pcAnimFrame = null; }
+  if (_pcDemoTimer) { clearInterval(_pcDemoTimer); _pcDemoTimer = null; }
+  pcUpdatePlayBtn();
+}
+
+// Real audio sync loop
+function pcAnimLoop() {
+  if (!_pcPlaying || !_pcAudio) return;
+  var ct = _pcAudio.currentTime;
+  var dur = _pcAudio.duration || (_pcCurrentCall.duration_seconds || 1);
+  var pct = (ct / dur) * 100;
+  document.getElementById('pc-progress-fill').style.width = pct + '%';
+  document.getElementById('pc-progress-dot').style.left = pct + '%';
+  document.getElementById('pc-time-cur').textContent = Math.floor(ct/60) + ':' + String(Math.floor(ct%60)).padStart(2,'0');
+  pcHighlightLine(ct);
+  pcUpdateWaveBars(pct);
+  _pcAnimFrame = requestAnimationFrame(pcAnimLoop);
+}
+
+// Demo playback (no real audio, simulates timeline)
+var _pcDemoTimer = null;
+var _pcDemoTime = 0;
+function pcDemoPlay() {
+  _pcDemoTime = 0;
+  var dur = _pcCurrentCall.duration_seconds || 30;
+  _pcDemoTimer = setInterval(function() {
+    if (!_pcPlaying) { clearInterval(_pcDemoTimer); return; }
+    _pcDemoTime += 0.1;
+    if (_pcDemoTime >= dur) { _pcPlaying = false; pcUpdatePlayBtn(); clearInterval(_pcDemoTimer); return; }
+    var pct = (_pcDemoTime / dur) * 100;
+    document.getElementById('pc-progress-fill').style.width = pct + '%';
+    document.getElementById('pc-progress-dot').style.left = pct + '%';
+    document.getElementById('pc-time-cur').textContent = Math.floor(_pcDemoTime/60) + ':' + String(Math.floor(_pcDemoTime%60)).padStart(2,'0');
+    pcHighlightLine(_pcDemoTime);
+    pcUpdateWaveBars(pct);
+  }, 100);
+}
+
+function pcSeekTo(t) {
+  if (_pcAudio) {
+    _pcAudio.currentTime = t;
+    if (!_pcPlaying) { _pcPlaying = true; _pcAudio.play(); pcAnimLoop(); pcUpdatePlayBtn(); }
+  } else if (_pcCurrentCall) {
+    _pcDemoTime = t;
+    var dur = _pcCurrentCall.duration_seconds || 30;
+    var pct = (t / dur) * 100;
+    document.getElementById('pc-progress-fill').style.width = pct + '%';
+    document.getElementById('pc-progress-dot').style.left = pct + '%';
+    document.getElementById('pc-time-cur').textContent = Math.floor(t/60) + ':' + String(Math.floor(t%60)).padStart(2,'0');
+    pcHighlightLine(t);
+    if (!_pcPlaying) { _pcPlaying = true; pcDemoPlay(); pcUpdatePlayBtn(); }
+  }
+}
+
+function pcHighlightLine(currentTime) {
+  var lines = document.querySelectorAll('#pc-script-lines .pc-line');
+  lines.forEach(function(el) {
+    var s = parseFloat(el.dataset.start);
+    var e = parseFloat(el.dataset.end);
+    if (currentTime >= s && currentTime < e) {
+      if (!el.classList.contains('active')) {
+        el.classList.add('active');
+        el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      }
+    } else {
+      el.classList.remove('active');
+    }
+  });
+}
+
+function pcUpdateWaveBars(pct) {
+  var bars = document.querySelectorAll('#pc-wave-visual .pc-wave-bar');
+  bars.forEach(function(b) {
+    var idx = parseInt(b.dataset.idx);
+    var barPct = (idx / bars.length) * 100;
+    b.classList.toggle('active', barPct <= pct);
+  });
+}
+
+function pcProgressClick(e) {
+  var bar = document.getElementById('pc-progress-bar');
+  if (!bar || !_pcCurrentCall) return;
+  var rect = bar.getBoundingClientRect();
+  var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  var dur = (_pcAudio ? _pcAudio.duration : _pcCurrentCall.duration_seconds) || 30;
+  pcSeekTo(pct * dur);
+}
+
+// Init phone calls load
+setTimeout(loadPhoneCalls, 1500);
+
+// Mirror sidebar source boxes (vocab / grammar / helpers / phrases /
+// flashcards) into their Help-tab twin elements. Was previously inlined
+// inside switchSrTab and only ran on Help-tab click — so changing level
+// or topic while already on Help left the learner with stale Vocab +
+// Quick Help. clearAIContentUI() and renderAIContent() now also call
+// this so the Help tab stays in sync with whatever the source boxes
+// currently show.
+function _mirrorHelpTabContent() {
+  ['phrase-box-left','vocab-box-left','fc-grid-left','helper-box','grammar-box'].forEach(function(srcId) {
+    var src = document.getElementById(srcId);
+    var dstId;
+    if (srcId === 'fc-grid-left')         dstId = 'fc-grid-help';
+    else if (srcId === 'phrase-box-left') dstId = 'phrase-box-help';
+    else if (srcId === 'vocab-box-left')  dstId = 'vocab-box-help';
+    else if (srcId === 'helper-box')      dstId = 'helper-box-help';
+    else if (srcId === 'grammar-box')     dstId = 'grammar-box-help';
+    var dst = document.getElementById(dstId);
+    if (src && dst) dst.innerHTML = src.innerHTML;
+  });
+}
+
+// ── Study Room Tab Switching ──
+function switchSrTab(tab, btn) {
+  document.querySelectorAll('.sr-top-tab').forEach(function(b){ b.classList.remove('on'); });
+  document.querySelectorAll('.sr-tab-panel').forEach(function(p){ p.classList.remove('active'); });
+  if (btn) btn.classList.add('on');
+  var panel = document.getElementById('sr-panel-' + tab);
+  if (panel) panel.classList.add('active');
+  if (tab === 'wordbook') loadWordBook();
+  // Show level bar only on Study tab (desktop only — on mobile it stays visible with hero)
+  var lvBar = document.getElementById('sr-level-bar');
+  if (lvBar && window.innerWidth > 860) lvBar.style.display = (tab === 'study') ? '' : 'none';
+  // Mirror sidebar source boxes into the Help/Exercise tab twins.
+  // Exercise (master) uses the same fc-grid-help / phrase-box-help
+  // IDs as Help, so without this the Flashcards categories grid
+  // shows up empty when the user lands on Exercise first.
+  if (tab === 'help' || tab === 'master') _mirrorHelpTabContent();
+}
+
+// ── Word Book (단어장) ──
+var _wbData = [];
+var _wbCategory = 'all';
+async function loadWordBook() {
+  var list = document.getElementById('wb-list');
+  if (!list) return;
+  if (!supaUser) { list.innerHTML = '<div class="wb-empty">Sign in to view your saved words</div>'; return; }
+  list.innerHTML = '<div class="wb-empty">Loading your saved words…</div>';
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var results = [];
+    // user_saved_words (primary word storage) — include review stats for SRS
+    try {
+      var { data: usw } = await sb.from('user_saved_words').select('word_ko, word_rom, word_en, created_at, review_count, correct_count, wrong_count').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(500);
+      if (usw) usw.forEach(function(w) {
+        var en = w.word_en || '';
+        var cat = 'word';
+        if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
+        else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
+        var total = (w.correct_count||0) + (w.wrong_count||0);
+        var accuracy = total > 0 ? Math.round((w.correct_count||0) / total * 100) : -1;
+        results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat,
+          reviewCount:w.review_count||0, correctCount:w.correct_count||0, wrongCount:w.wrong_count||0, accuracy:accuracy });
+      });
+    } catch(e){}
+    // Only user_saved_words — no vocabulary_bank or fast_track_progress
+    // Deduplicate
+    var seen = {};
+    _wbData = results.filter(function(w){ if (!w.ko || seen[w.ko]) return false; seen[w.ko]=true; return true; });
+    renderWordBook(_wbData);
+    renderWbCounts();
+  } catch(e) {
+    console.warn('[WordBook]', e);
+    list.innerHTML = '<div class="wb-empty">Couldn\'t load your words. <button onclick="loadWordBook&&loadWordBook()" style="margin-top:10px;padding:7px 16px;border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Retry</button></div>';
+  }
+}
+function setWbCategory(cat, btn) {
+  _wbCategory = cat;
+  document.querySelectorAll('.wb-cat-btn').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+  var q = document.querySelector('.wb-search');
+  filterWordBook(q ? q.value : '');
+}
+function renderWbCounts() {
+  var counts = { all:_wbData.length, word:0, slang:0, expression:0 };
+  _wbData.forEach(function(w){ counts[w.cat] = (counts[w.cat]||0) + 1; });
+  ['all','word','slang','expression'].forEach(function(k){
+    var el = document.getElementById('wb-cnt-' + k);
+    if (el) el.textContent = counts[k];
+  });
+}
+function renderWordBook(data) {
+  var list = document.getElementById('wb-list');
+  var filtered = _wbCategory === 'all' ? data : data.filter(function(w){ return w.cat === _wbCategory; });
+  if (!filtered.length) {
+    var catNames = { all:'words', word:'words', slang:'slang', expression:'expressions' };
+    list.innerHTML = '<div class="wb-empty">No saved '+catNames[_wbCategory]+' yet<br><span style="font-size:12px;margin-top:8px;display:block;color:rgba(255,255,255,.2)">Tap words while studying to save them here</span></div>';
+    return;
+  }
+  var catBadge = { word:'', slang:'<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(139,92,246,.15);color:#c4b5fd;font-size:9px;font-weight:700;margin-left:6px">SLANG</span>', expression:'<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(5,150,105,.12);color:#34d399;font-size:9px;font-weight:700;margin-left:6px">EXPR</span>' };
+  list.innerHTML = filtered.map(function(w) {
+    var dateStr = w.date ? new Date(w.date).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
+    return '<div class="wb-entry">'
+      + '<div style="min-width:0"><div class="wb-entry-ko">' + escapeHtml(w.ko) + (catBadge[w.cat]||'') + '</div>'
+      + (w.rom ? '<div class="wb-entry-rom">' + escapeHtml(w.rom) + '</div>' : '') + '</div>'
+      + '<div class="wb-entry-en">' + escapeHtml(w.en)
+      + (w.accuracy >= 0 ? '<div style="font-size:9px;margin-top:2px;color:'+(w.accuracy>=70?'#4ade80':w.accuracy>=40?'#fbbf24':'#f87171')+'">'+w.accuracy+'% accuracy</div>' : '')
+      + '</div>'
+      + (dateStr ? '<div class="wb-entry-date">' + dateStr + '</div>' : '')
+      + '</div>';
+  }).join('');
+}
+function filterWordBook(q) {
+  if (!q) { renderWordBook(_wbData); return; }
+  var lower = q.toLowerCase();
+  var filtered = _wbData.filter(function(w) {
+    return w.ko.indexOf(q) >= 0 || w.en.toLowerCase().indexOf(lower) >= 0 || (w.rom && w.rom.toLowerCase().indexOf(lower) >= 0);
+  });
+  renderWordBook(filtered);
+}
+
+// ── Word Book: Hide meaning toggle ──
+var _wbHidden = false;
+function toggleWbHide() {
+  _wbHidden = !_wbHidden;
+  var btn = document.getElementById('wb-hide-btn');
+  if (btn) btn.innerHTML = _wbHidden ? '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span><span>뜻 보기</span></span>' : '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg></span><span>뜻 가리기</span></span>';
+  document.querySelectorAll('.wb-entry-en').forEach(function(el) {
+    if (_wbHidden) {
+      el.dataset.original = el.textContent;
+      el.textContent = '??? (탭하면 보기)';
+      el.style.cursor = 'pointer';
+      el.style.color = '#d8b4fe';
+      el.onclick = function() { this.textContent = this.dataset.original; this.style.color = ''; };
+    } else {
+      if (el.dataset.original) el.textContent = el.dataset.original;
+      el.style.cursor = '';
+      el.style.color = '';
+      el.onclick = null;
+    }
+  });
+}
+
+// ── Word Book: Quiz mode ──
+var _wbQuizIdx = 0, _wbQuizScore = 0, _wbQuizPool = [];
+function startWbQuiz() {
+  if (!_wbData || _wbData.length < 4) { showToast('Save at least 4 words to start the quiz'); return; }
+  // SRS priority from DB accuracy data (no localStorage dependency)
+  // Priority: 1) never reviewed, 2) low accuracy (<70%), 3) rest random
+  var neverReviewed = [], lowAccuracy = [], rest = [];
+  _wbData.forEach(function(w) {
+    if (!w.reviewCount || w.reviewCount === 0) neverReviewed.push(w);
+    else if (w.accuracy >= 0 && w.accuracy < 70) lowAccuracy.push(w);
+    else rest.push(w);
+  });
+  neverReviewed.sort(function(){ return Math.random()-.5; });
+  lowAccuracy.sort(function(a,b){ return (a.accuracy||0) - (b.accuracy||0); }); // worst first
+  rest.sort(function(){ return Math.random()-.5; });
+  _wbQuizPool = neverReviewed.concat(lowAccuracy).concat(rest).slice(0, Math.min(10, _wbData.length));
+  _wbQuizIdx = 0; _wbQuizScore = 0;
+  renderWbQuizQ();
+}
+function renderWbQuizQ() {
+  var list = document.getElementById('wb-list');
+  if (_wbQuizIdx >= _wbQuizPool.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 20px">'
+      + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:12px;color:#a78bfa">'+BM_ICON_PARTY+'</div>'
+      + '<div style="font-size:18px;font-weight:900;color:#7c3aed">Quiz Complete!</div>'
+      + '<div style="font-size:14px;color:rgba(255,255,255,.5);margin-top:8px">' + _wbQuizScore + ' / ' + _wbQuizPool.length + ' correct</div>'
+      + '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">'
+      + '<button onclick="startWbQuiz()" style="padding:10px 24px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try Again</button>'
+      + '<button onclick="renderWordBook(_wbData);renderWbCounts()" style="padding:10px 24px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Back to Words</button>'
+      + '</div>'
+      + '</div>';
+    return;
+  }
+  var q = _wbQuizPool[_wbQuizIdx];
+  // 4 choices: correct + 3 random wrong
+  var wrongs = _wbData.filter(function(w){ return w.ko !== q.ko && w.en; }).sort(function(){ return Math.random()-.5; }).slice(0,3);
+  var choices = wrongs.map(function(w){ return w.en; }).concat([q.en]).sort(function(){ return Math.random()-.5; });
+  list.innerHTML = '<div style="padding:30px 20px;text-align:center">'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:8px">' + (_wbQuizIdx+1) + ' / ' + _wbQuizPool.length + '</div>'
+    + '<div style="font-size:32px;font-weight:900;color:#e2e8f0;margin-bottom:4px;font-family:\'Noto Serif KR\',serif">' + escapeHtml(q.ko) + '</div>'
+    + (q.rom ? '<div style="font-size:13px;color:#c4b5fd;margin-bottom:16px;font-style:italic">' + escapeHtml(q.rom) + '</div>' : '<div style="margin-bottom:16px"></div>')
+    + '<div style="display:flex;flex-direction:column;gap:8px;max-width:420px;margin:0 auto">'
+    + choices.map(function(c) {
+      return '<button onclick="checkWbQuiz(this,\'' + c.replace(/'/g,"\\'") + '\',\'' + q.en.replace(/'/g,"\\'") + '\')" style="padding:13px 18px;border-radius:12px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#e2e8f0;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s">' + escapeHtml(c) + '</button>';
+    }).join('')
+    + '</div></div>';
+}
+function checkWbQuiz(btn, picked, correct) {
+  var btns = btn.parentElement.querySelectorAll('button');
+  var isCorrect = picked === correct;
+  btns.forEach(function(b) {
+    b.style.pointerEvents = 'none';
+    if (b.textContent === correct) { b.style.background = '#dcfce7'; b.style.borderColor = '#22c55e'; b.style.color = '#166534'; }
+  });
+  if (isCorrect) {
+    _wbQuizScore++;
+    playCorrectSound();
+    btn.style.background = '#dcfce7'; btn.style.borderColor = '#22c55e';
+  } else {
+    playWrongSound();
+    btn.style.background = '#fee2e2'; btn.style.borderColor = '#ef4444'; btn.style.color = '#991b1b';
+  }
+  // Show SRS difficulty rating
+  var q = _wbQuizPool[_wbQuizIdx];
+  var srsHtml = '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">'
+    + '<button onclick="_wbSrsRate(\''+q.ko.replace(/'/g,"\\'")+'\',1)" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.1);color:#f87171;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Again</button>'
+    + '<button onclick="_wbSrsRate(\''+q.ko.replace(/'/g,"\\'")+'\',2)" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(251,191,36,.3);background:rgba(251,191,36,.1);color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Hard</button>'
+    + '<button onclick="_wbSrsRate(\''+q.ko.replace(/'/g,"\\'")+'\',3)" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.1);color:#4ade80;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Good</button>'
+    + '<button onclick="_wbSrsRate(\''+q.ko.replace(/'/g,"\\'")+'\',4)" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(96,165,250,.3);background:rgba(96,165,250,.1);color:#60a5fa;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Easy</button>'
+    + '</div>';
+  btn.parentElement.insertAdjacentHTML('afterend', srsHtml);
+}
+function _wbSrsRate(ko, rating) {
+  // Save review result to DB (server-side, persists across devices)
+  if (supaUser && typeof getSupa === 'function') {
+    try {
+      var sb = getSupa();
+      var isCorrect = rating >= 3;
+      sb.rpc('save_or_update_word', {
+        p_word_key: ko, p_word_ko: ko, p_word_en: null, p_word_rom: null,
+        p_source_kind: 'review', p_source_content_type: null, p_source_content_id: null,
+        p_interest_tag: null, p_review_delta: 1,
+        p_correct_delta: isCorrect ? 1 : 0, p_wrong_delta: isCorrect ? 0 : 1
+      }).catch(function(){});
+    } catch(e) {}
+  }
+  // Update local _wbData so next quiz reflects the change immediately
+  var w = _wbData.find(function(x){ return x.ko === ko; });
+  if (w) {
+    w.reviewCount = (w.reviewCount||0) + 1;
+    if (rating >= 3) w.correctCount = (w.correctCount||0) + 1;
+    else w.wrongCount = (w.wrongCount||0) + 1;
+    var total = (w.correctCount||0) + (w.wrongCount||0);
+    w.accuracy = total > 0 ? Math.round((w.correctCount||0) / total * 100) : -1;
+  }
+  _wbQuizIdx++; renderWbQuizQ();
+}
+
+// ── My Word Bank ──
+var _wbAllWords = [];
+async function loadWordBankPreview() {
+  if (!supaUser) return;
+  try {
+    var sb = getSupa();
+    var allWords = [];
+    // user_saved_words (primary)
+    try {
+      var r = await sb.from('user_saved_words').select('word_ko, word_en, word_rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(50);
+      if (r.data && !r.error) r.data.forEach(function(w){ allWords.push(w); });
+    } catch(e){}
+    // Deduplicate by word_ko
+    var seen = {};
+    _wbAllWords = allWords.filter(function(w){ if (!w.word_ko || seen[w.word_ko]) return false; seen[w.word_ko]=true; return true; });
+  } catch(e) {}
+}
+function openWordBankModal() {
+  var modal = document.getElementById('wb-modal');
+  if (modal) modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  renderWordBankList(_wbAllWords);
+}
+function closeWordBankModal() {
+  var modal = document.getElementById('wb-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function renderWordBankList(words) {
+  var list = document.getElementById('wb-full-list');
+  if (!list) return;
+  if (!words.length) {
+    list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">저장한 단어가 없습니다</div>';
+    return;
+  }
+  list.innerHTML = words.map(function(w, wi) {
+    var parsed = (typeof splitWordEnMeaning === 'function') ? splitWordEnMeaning(w.word_en) : { meaning: w.word_en||'', exKo:'', exEn:'' };
+    var meaning = (parsed.meaning || '').replace(/^\s*\[(표현|슬랭)\]\s*/,'');
+    var hasExample = !!(parsed.exKo || parsed.exEn);
+    var exampleBlock = hasExample
+      ? '<div style="margin-top:6px;padding:8px 10px;background:rgba(125,211,252,.06);border-left:2px solid rgba(125,211,252,.4);border-radius:4px;font-size:11px;line-height:1.5">'
+        + (parsed.exKo ? '<div style="color:rgba(255,255,255,.75)">' + parsed.exKo + '</div>' : '')
+        + (parsed.exEn ? '<div style="color:rgba(255,255,255,.4);margin-top:2px">' + parsed.exEn + '</div>' : '')
+        + '<button onclick="wbPracticeExample(' + wi + ')" style="margin-top:6px;padding:4px 10px;border:none;border-radius:6px;background:rgba(125,211,252,.15);color:#7dd3fc;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">예문으로 연습하기 →</button>'
+        + '</div>'
+      : '';
+    return '<div style="padding:10px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px">'
+      + '<div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:15px;font-weight:800">' + (w.word_ko||'') + '</span><span style="font-size:11px;color:rgba(255,255,255,.35)">' + (w.word_rom||'') + '</span></div>'
+      + '<div style="font-size:12px;color:#7dd3fc;margin-top:2px">' + meaning + '</div>'
+      + exampleBlock
+      + '</div>';
+  }).join('');
+}
+
+// Minimal fill-in-the-blank practice using the saved expression's example sentence
+function wbPracticeExample(idx) {
+  var w = (_wbAllWords || [])[idx];
+  if (!w) return;
+  var parsed = (typeof splitWordEnMeaning === 'function') ? splitWordEnMeaning(w.word_en) : { meaning:'', exKo:'', exEn:'' };
+  if (!parsed.exKo) { showToast('이 항목엔 예문이 없어요'); return; }
+  var ko = w.word_ko || '';
+  var blanked = parsed.exKo.indexOf(ko) >= 0
+    ? parsed.exKo.split(ko).join('<span style="display:inline-block;min-width:60px;border-bottom:2px solid #7dd3fc;padding:0 4px;color:#7dd3fc;font-weight:800">______</span>')
+    : parsed.exKo;
+  var html = '<div style="padding:20px">'
+    + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Practice · Fill in the Blank</div>'
+    + '<div style="font-size:17px;font-weight:800;color:#fff;line-height:1.6;margin-bottom:6px">' + blanked + '</div>'
+    + (parsed.exEn ? '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">' + parsed.exEn + '</div>' : '')
+    + '<input id="wb-prac-input" type="text" placeholder="한국어로 입력" style="width:100%;padding:12px;border-radius:10px;border:1.5px solid rgba(125,211,252,.4);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box" autofocus>'
+    + '<div id="wb-prac-fb" style="margin-top:10px;min-height:28px;font-size:13px;font-weight:700"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:10px">'
+    + '<button onclick="_wbCheckPractice(\'' + ko.replace(/\\/g,"\\\\").replace(/'/g,"\\'") + '\')" style="flex:1;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-weight:800;cursor:pointer;font-family:inherit">Check</button>'
+    + '<button onclick="_wbClosePractice()" style="padding:11px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.05);color:#fff;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>'
+    + '</div></div>';
+  var modal = document.getElementById('wb-practice-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'wb-practice-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.88);display:flex;align-items:center;justify-content:center;z-index:9999;padding:14px';
+    modal.onclick = function(e){ if(e.target===modal) _wbClosePractice(); };
+    modal.innerHTML = '<div style="background:#0d1b2e;border-radius:18px;max-width:500px;width:95%;color:#fff;box-shadow:0 20px 50px rgba(0,0,0,.4)" id="wb-practice-body"></div>';
+    document.body.appendChild(modal);
+  }
+  document.getElementById('wb-practice-body').innerHTML = html;
+  modal.style.display = 'flex';
+  setTimeout(function(){ var i=document.getElementById('wb-prac-input'); if(i) i.focus(); }, 60);
+}
+function _wbCheckPractice(correctKo) {
+  var inp = document.getElementById('wb-prac-input');
+  var fb = document.getElementById('wb-prac-fb');
+  if (!inp || !fb) return;
+  var typed = (inp.value || '').trim();
+  if (!typed) return;
+  var norm = function(s){ return s.replace(/[\s.,!?~]/g,'').toLowerCase(); };
+  var ok = norm(typed) === norm(correctKo);
+  fb.innerHTML = ok
+    ? '<span style="color:#4ade80">✓ 정답! (' + correctKo + ')</span>'
+    : '<span style="color:#fca5a5">✗ 정답: ' + correctKo + '</span>';
+  inp.disabled = true;
+}
+function _wbClosePractice() {
+  var modal = document.getElementById('wb-practice-modal');
+  if (modal) modal.style.display = 'none';
+}
+function filterWordBank() {
+  var q = (document.getElementById('wb-search').value || '').toLowerCase().trim();
+  if (!q) { renderWordBankList(_wbAllWords); return; }
+  var filtered = _wbAllWords.filter(function(w) {
+    return (w.word_ko||'').toLowerCase().indexOf(q) >= 0
+      || (w.word_en||'').toLowerCase().indexOf(q) >= 0
+      || (w.word_rom||'').toLowerCase().indexOf(q) >= 0;
+  });
+  renderWordBankList(filtered);
+}
+
+// ── Weak Grammar Banner ──
+async function loadWeakGrammarBanner() {
+  if (!supaUser) return;
+  var panel = document.getElementById('sr-insights-panel');
+  if (!panel) return;
+  var sb = getSupa(); if (!sb) return;
+
+  try {
+    // 1. Load skill scores from user_stats
+    var statsRes = await sb.from('user_stats').select('xp,streak,articles_read,words_saved,quizzes_done').eq('user_id', supaUser.id).maybeSingle();
+    var stats = statsRes.data || {};
+
+    // 2. Load weak grammar (top 5 by wrong_count)
+    var gramRes = await sb.from('user_grammar_stats')
+      .select('grammar_point,wrong_count,correct_count')
+      .eq('user_id', supaUser.id).gt('wrong_count', 0)
+      .order('wrong_count', { ascending: false }).limit(5);
+    var weakGrammar = gramRes.data || [];
+
+    // 3. Load words with low accuracy (review priority)
+    var wordRes = await sb.from('user_saved_words')
+      .select('word_ko,word_en,review_count,correct_count,wrong_count')
+      .eq('user_id', supaUser.id).gt('wrong_count', 0)
+      .order('wrong_count', { ascending: false }).limit(8);
+    var weakWords = (wordRes.data || []).filter(function(w) {
+      var total = (w.correct_count||0) + (w.wrong_count||0);
+      return total > 0 && (w.correct_count||0) / total < 0.7;
+    });
+
+    // 4. Calculate rough skill scores (simplified)
+    var reading = Math.min(100, (stats.articles_read || 0) * 3);
+    var vocab = Math.min(100, (stats.words_saved || 0) * 2);
+    var grammar = weakGrammar.length > 0
+      ? Math.round(weakGrammar.reduce(function(s,g){ return s + (g.correct_count||0) / Math.max(1,(g.correct_count||0)+(g.wrong_count||0)); },0) / weakGrammar.length * 100)
+      : 50;
+    var quizScore = Math.min(100, (stats.quizzes_done || 0) * 5);
+
+    // Render skill bars
+    var skillBars = document.getElementById('sr-skill-bars');
+    if (skillBars) {
+      var skills = [
+        { name:'Reading', score:reading, color:'#3b82f6' },
+        { name:'Vocabulary', score:vocab, color:'#8b5cf6' },
+        { name:'Grammar', score:grammar, color:'#f59e0b' },
+        { name:'Quizzes', score:quizScore, color:'#10b981' }
+      ];
+      skillBars.innerHTML = skills.map(function(s) {
+        return '<div style="display:flex;align-items:center;gap:10px">'
+          +'<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);width:70px">'+s.name+'</div>'
+          +'<div style="flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.08)">'
+          +'<div style="height:100%;width:'+s.score+'%;border-radius:3px;background:'+s.color+';transition:width .5s"></div></div>'
+          +'<div style="font-size:11px;font-weight:800;color:'+s.color+';width:30px;text-align:right">'+s.score+'</div>'
+          +'</div>';
+      }).join('');
+    }
+
+    // Render weak grammar chips
+    if (weakGrammar.length > 0) {
+      var wgSection = document.getElementById('sr-weak-grammar-section');
+      var wgList = document.getElementById('sr-weak-grammar-list');
+      if (wgSection) wgSection.style.display = '';
+      if (wgList) wgList.innerHTML = weakGrammar.map(function(g) {
+        var acc = Math.round((g.correct_count||0) / Math.max(1,(g.correct_count||0)+(g.wrong_count||0)) * 100);
+        return '<span style="padding:4px 10px;border-radius:8px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.2);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer" onclick="openGrammarFocusModal()" title="'+acc+'% accuracy">'+g.grammar_point+' <span style="color:rgba(255,255,255,.3)">'+acc+'%</span></span>';
+      }).join('');
+    }
+
+    // Render review priority words
+    if (weakWords.length > 0) {
+      var rwSection = document.getElementById('sr-review-words-section');
+      var rwList = document.getElementById('sr-review-words-list');
+      if (rwSection) rwSection.style.display = '';
+      if (rwList) rwList.innerHTML = weakWords.slice(0,6).map(function(w) {
+        return '<span style="padding:4px 10px;border-radius:8px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.15);color:#fbbf24;font-size:11px;font-weight:700" title="'+(w.word_en||'')+'">'+w.word_ko+'</span>';
+      }).join('');
+    }
+
+    // Show panel if we have any data
+    if (reading > 0 || weakGrammar.length > 0 || weakWords.length > 0) {
+      panel.style.display = '';
+    }
+  } catch(e) {
+    console.warn('[loadInsights]', e);
+  }
+}
+
+// ── Review Notification Banners ──
+function showReviewNotifications() {
+  if (typeof kstNow !== 'function') return;
+  // Daily: show if user hasn't completed today's review
+  var dailyEl = document.getElementById('sr-notif-daily');
+  if (dailyEl) {
+    var todayKey = 'kh_daily_review_done_' + kstNow().toISOString().slice(0,10);
+    if (!localStorage.getItem(todayKey)) {
+      dailyEl.style.display = '';
+      var deadlineEl = document.getElementById('sr-notif-daily-deadline');
+      if (deadlineEl) deadlineEl.textContent = 'Due by 23:59 KST';
+    }
+  }
+  // Weekly: show on Sunday
+  var weeklyEl = document.getElementById('sr-notif-weekly');
+  if (weeklyEl && isWeeklyReviewAvailable()) {
+    var weekKey = 'kh_weekly_review_done_' + kstNow().toISOString().slice(0,10);
+    if (!localStorage.getItem(weekKey)) {
+      weeklyEl.style.display = '';
+      if (rvLoadSaved('weekly')) {
+        weeklyEl.querySelector('div > div > div:nth-child(2) > div:first-child').textContent = 'Weekly Review Continue!';
+      }
+    }
+  }
+  // Monthly: show on 1st~3rd
+  var monthlyEl = document.getElementById('sr-notif-monthly');
+  if (monthlyEl && isMonthlyReviewAvailable()) {
+    var monthKey = 'kh_monthly_review_done_' + kstNow().toISOString().slice(0,7);
+    if (!localStorage.getItem(monthKey)) {
+      monthlyEl.style.display = '';
+      var mDeadline = document.getElementById('sr-notif-monthly-deadline');
+      if (mDeadline) {
+        var d = kstNow().getDate();
+        mDeadline.textContent = '30문제 · ' + (3 - d + 1) + '일 남음 · 임시저장 1회 가능';
+      }
+      if (rvLoadSaved('monthly')) {
+        monthlyEl.querySelector('div > div > div:nth-child(2) > div:first-child').textContent = 'Monthly Review Continue!';
+      }
+    }
+  }
+  // Activate review card badges
+  updateReviewCardStates();
+}
+
+function updateReviewCardStates() {
+  if (typeof kstNow !== 'function') return;
+  // Weekly
+  var rvWeekly = document.getElementById('rv-weekly');
+  if (rvWeekly) {
+    if (typeof isWeeklyReviewAvailable === 'function' && isWeeklyReviewAvailable()) {
+      var wk = 'kh_weekly_review_done_' + kstNow().toISOString().slice(0,10);
+      if (!localStorage.getItem(wk)) {
+        rvWeekly.classList.add('rv-open');
+        var ws = document.getElementById('weekly-review-sub');
+        if (ws) ws.textContent = '20 questions · Open today!';
+      }
+    }
+  }
+  // Monthly
+  var rvMonthly = document.getElementById('rv-monthly');
+  if (rvMonthly) {
+    if (typeof isMonthlyReviewAvailable === 'function' && isMonthlyReviewAvailable()) {
+      var mk = 'kh_monthly_review_done_' + kstNow().toISOString().slice(0,7);
+      if (!localStorage.getItem(mk)) {
+        rvMonthly.classList.add('rv-open');
+        var ms = document.getElementById('monthly-review-sub');
+        if (ms) {
+          var d = kstNow().getDate();
+          ms.textContent = '25 questions · ' + (3 - d + 1) + '일 남음';
+        }
+      }
+    }
+  }
+}
+
+// Opens Topic Writing modal WITHOUT the canEnterWritingRoom() gate
+// (used by learning selector so users CAN do Topic Writing first)
+function openWritingModalForLearning() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  _writingMode = 'topic';
+  // markStageDone('topic') moved to actual submit/finish functions
+  // Starter (Seed) + Beginner both use the 4-step writing flow so the activity is actually
+  // about writing. The Starter vocab-only modal is a separate entry point.
+  if (_currentLevel === 'Starter' || _currentLevel === 'Beginner') {
+    openBeginnerModal();
+    return;
+  }
+  // Intermediate (Tree) goes through the IM scaffold first — Topic
+  // Vocab → Grammar Patterns → Writing brief → wmodal — so the user
+  // gets the same kind of structured warm-up Sprout has via BM
+  // instead of being dropped straight into the writing room.
+  if (_currentLevel === 'Intermediate') {
+    openIntermediateModal();
+    return;
+  }
+  // Advanced (Forest) keeps direct entry — at that level the writer
+  // doesn't need scaffolding and asking them to go through Vocab
+  // preview screens would feel patronising.
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+  if (typeof renderModalContent === 'function') renderModalContent();
+  setTimeout(function() { _initWritingTrackerRings(); _resetWritingTrackerRings(); }, 100);
+  wmMobileInit();
+}
+
+// Opens Writing Practice — always opens #wmodal (the writing room), not the Beginner activity flow
+function lsStartWriting() {
+  closeLearningSelector();
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  if (!canEnterWritingRoom()) return;
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+  renderModalContent();
+  // Phase 2: load common-mistakes panel for the current topic.
+  if (typeof khLoadCommonMistakes === 'function') khLoadCommonMistakes();
+  wmMobileInit();
+}
+
+// Read today's user_daily_progress from DB and merge into _studyDone
+async function loadStudyDoneFromDB() {
+  var sb = getSupa();
+  if (!sb || !supaUser) return;
+  try {
+    var r = await sb.from('user_daily_progress')
+      .select('*')
+      .eq('user_id', supaUser.id)
+      .eq('study_date', kstDateKey())
+      .maybeSingle();
+    if (r.error || !r.data) return;
+    var d = r.data;
+    if (d.topic_done)       _studyDone.topic       = true;
+    if (d.grammar_done)     _studyDone.grammar     = true;
+    if (d.picture_done)     _studyDone.picture     = true;
+    if (d.sentence_done)    _studyDone.sentence    = true;
+    if (d.expressions_done) _studyDone.expressions = true;
+    // Persist merged state to localStorage under correct user key
+    try { localStorage.setItem(studyDoneKey(), JSON.stringify(_studyDone)); } catch(e) {}
+    renderStudyChecklist();
+    // Refresh selector badges if open
+    var modal = document.getElementById('ls-modal');
+    if (modal && !modal.classList.contains('hidden')) _updateLSSelectorBadges();
+  } catch(e) {}
+}
+
+function wmMobileInit() {
+  // Match the 900px breakpoint where wmodal goes single-column — side panels
+  // are inaccessible in the grid at that width, so the tab switcher is the
+  // only way to reach them.
+  var isMobile = window.innerWidth <= 900;
+  var tabBar = document.getElementById('wm-mobile-tabs');
+  if (tabBar) tabBar.style.display = isMobile ? 'flex' : 'none';
+  var left   = document.querySelector('.wm-left');
+  var right  = document.querySelector('.wm-right');
+  var center = document.querySelector('.wm-center');
+  if (left)   left.classList.remove('mob-on');
+  if (right)  right.classList.remove('mob-on');
+  if (center) center.classList.remove('mob-hide');
+  if (isMobile) wmMobileTab('write');
+}
+
+function wmMobileTab(tab) {
+  var isMobile = window.innerWidth <= 900;
+  if (!isMobile) return;
+  var center = document.querySelector('.wm-center');
+  var left   = document.querySelector('.wm-left');
+  var right  = document.querySelector('.wm-right');
+  // 모두 초기화
+  if (center) center.classList.remove('mob-hide');
+  if (left)   left.classList.remove('mob-on');
+  if (right)  right.classList.remove('mob-on');
+  // 탭 active 리셋
+  ['write','vocab','grammar','feedback'].forEach(function(t) {
+    var btn = document.getElementById('wmtab-' + t);
+    if (btn) btn.classList.remove('active');
+  });
+  var activeBtn = document.getElementById('wmtab-' + tab);
+  if (activeBtn) activeBtn.classList.add('active');
+  // 패널 전환
+  if (tab === 'write') {
+    // center 보임, 나머지 숨김
+    // 사이드 패널 닫기 버튼 제거
+    var oldClose = document.getElementById('wm-mob-panel-close');
+    if (oldClose) oldClose.remove();
+  } else if (tab === 'vocab' || tab === 'grammar') {
+    if (center) center.classList.add('mob-hide');
+    if (left)   { left.classList.add('mob-on'); left.scrollTop = 0; }
+    injectMobPanelClose(left);
+  } else if (tab === 'feedback') {
+    if (center) center.classList.add('mob-hide');
+    if (right)  { right.classList.add('mob-on'); right.scrollTop = 0; }
+    injectMobPanelClose(right);
+  }
+}
+
+function injectMobPanelClose(panelEl) {
+  // 이미 있으면 제거 후 재삽입
+  var old = document.getElementById('wm-mob-panel-close');
+  if (old) old.remove();
+  var btn = document.createElement('button');
+  btn.id = 'wm-mob-panel-close';
+  btn.textContent = '← Write';
+  btn.style.cssText = 'position:sticky;top:0;left:0;z-index:30;display:block;width:100%;padding:10px 14px;background:#f8fafc;border:none;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:700;color:#2255a4;cursor:pointer;font-family:inherit;text-align:left;';
+  btn.onclick = function(){ wmMobileTab('write'); };
+  panelEl.insertBefore(btn, panelEl.firstChild);
+}
+function closeWritingModal() {
+  document.getElementById('wmodal').classList.add('hidden');
+  document.body.style.overflow = '';
+  // 모바일 탭 리셋
+  var tabBar = document.getElementById('wm-mobile-tabs');
+  if (tabBar) tabBar.style.display = 'none';
+  var left = document.querySelector('.wm-left');
+  var right = document.querySelector('.wm-right');
+  var center = document.querySelector('.wm-center');
+  if (left) left.classList.remove('mob-on');
+  if (right) right.classList.remove('mob-on');
+  if (center) center.classList.remove('mob-hide');
+}
+
+function speakKorean(text) {
+  if (!text || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  var utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'ko-KR';
+  utt.rate = 0.88;
+  var voices = window.speechSynthesis.getVoices();
+  var koVoice = voices.find(function(v){ return v.lang === 'ko-KR' || v.lang.startsWith('ko'); });
+  if (koVoice) utt.voice = koVoice;
+  window.speechSynthesis.speak(utt);
+}
+
+// ── Express Practice: Speaking ──
+var _wmExampleAnswer = '';    // example answer text from Phrase Munch; used as speaking reference
+var _speakRecorder = null, _speakChunks = [], _speakBlob = null;
+var _speakRecognition = null;     // Web Speech API SpeechRecognition instance
+var _speakSttTranscript = '';     // accumulated final transcript
+var _speakStartedAt = 0;          // ms — for fluency calculation
+var _speakScores = null;          // { pronunciation, fluency_wpm, fluency_score, transcript, target, duration_ms, filler_count, model }
+
+function _SpeechRecognitionCtor() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+// Start STT in parallel with MediaRecorder. Returns the recognition
+// instance (or null if the browser doesn't support it — we still
+// happily record audio in that case).
+function _startSpeakingSTT() {
+  var Ctor = _SpeechRecognitionCtor();
+  if (!Ctor) return null;
+  try {
+    var r = new Ctor();
+    r.lang = 'ko-KR';
+    r.continuous = true;
+    r.interimResults = false;
+    r.maxAlternatives = 1;
+    _speakSttTranscript = '';
+    r.onresult = function(e) {
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          _speakSttTranscript += (_speakSttTranscript ? ' ' : '') + e.results[i][0].transcript;
+        }
+      }
+    };
+    r.onerror = function(err) { console.warn('[Speaking STT] error:', err && err.error); };
+    r.start();
+    return r;
+  } catch(e) {
+    console.warn('[Speaking STT] start failed:', e);
+    return null;
+  }
+}
+
+// ── Pronunciation / fluency scoring (client-side) ──────────────────
+// Strip whitespace and punctuation, lowercase Latin → compare on the
+// remaining "comparable string". For Korean we just keep Hangul +
+// numerals; punctuation/spaces are noise from the speech engine.
+function _normalizeForScore(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/[.,!?~""''""""·…\-—\(\)\[\]{}<>\/\\:;`@#$%^&*+=|]/g, '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+}
+
+// Levenshtein distance — char-level. For long inputs (>400 chars) we
+// chunk to keep the DP table bounded.
+function _levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+  // Limit explosion: speech is rarely >400 chars per recording.
+  if (a.length > 400) a = a.slice(0, 400);
+  if (b.length > 400) b = b.slice(0, 400);
+  var prev = new Array(b.length + 1);
+  var curr = new Array(b.length + 1);
+  for (var j = 0; j <= b.length; j++) prev[j] = j;
+  for (var i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    for (var k = 1; k <= b.length; k++) {
+      var cost = a.charCodeAt(i - 1) === b.charCodeAt(k - 1) ? 0 : 1;
+      curr[k] = Math.min(curr[k - 1] + 1, prev[k] + 1, prev[k - 1] + cost);
+    }
+    var tmp = prev; prev = curr; curr = tmp;
+  }
+  return prev[b.length];
+}
+
+function _scoreSpeaking(targetText, transcript, durationMs) {
+  var target = _normalizeForScore(targetText);
+  var said   = _normalizeForScore(transcript);
+  var pronunciation = 0;
+  if (target.length) {
+    var dist = _levenshtein(target, said);
+    var maxLen = Math.max(target.length, said.length);
+    pronunciation = Math.max(0, Math.round((1 - dist / maxLen) * 100));
+  }
+
+  var wordsInTranscript = String(transcript || '').trim().split(/\s+/).filter(Boolean).length;
+  var minutes = Math.max(durationMs, 1) / 60000;
+  var wpm = wordsInTranscript > 0 ? Math.round(wordsInTranscript / minutes) : 0;
+
+  // Korean conversational baseline: ~140-180 WPM is comfortable.
+  // Score curve: 0-220 WPM maps roughly to 0-100, with a sweet spot
+  // around 160. Going too fast or too slow both reduce the score.
+  var fluency_score;
+  if (wpm <= 0)              fluency_score = 0;
+  else if (wpm < 80)         fluency_score = Math.round(wpm * 60 / 80);            // 0-60 below 80
+  else if (wpm <= 180)       fluency_score = Math.round(60 + (wpm - 80) * 40 / 100); // 60-100 between 80-180
+  else if (wpm <= 250)       fluency_score = Math.max(60, Math.round(100 - (wpm - 180) * 20 / 70));
+  else                       fluency_score = 60;
+
+  // Filler penalty (어/음/그/저)
+  var fillers = (String(transcript || '').match(/\b(어|음|그|저)\b/g) || []).length;
+  var filler_penalty = Math.min(15, fillers * 3);
+  pronunciation = Math.max(0, pronunciation - filler_penalty);
+
+  return {
+    pronunciation:  pronunciation,
+    fluency_wpm:    wpm,
+    fluency_score:  fluency_score,
+    transcript:     String(transcript || ''),
+    target:         String(targetText || ''),
+    duration_ms:    Math.round(durationMs),
+    filler_count:   fillers,
+    model:          'web-speech-api'
+  };
+}
+
+// ── Azure Pronunciation Assessment via speech-proxy Edge Function ──
+async function _speakAnalyzeAzure(blob, referenceText, durationMs) {
+  try {
+    var sb = getSupa();
+    if (!sb || !supaUser) return null;
+    var session = await sb.auth.getSession();
+    var token = session && session.data && session.data.session && session.data.session.access_token;
+    if (!token) return null;
+
+    var funcUrl = (typeof SUPA_URL !== 'undefined' ? SUPA_URL : '') + '/functions/v1/speech-proxy';
+    var fd = new FormData();
+    fd.append('audio', blob, 'audio.webm');
+    fd.append('referenceText', referenceText);
+    fd.append('contentType', blob.type || 'audio/webm');
+    fd.append('language', 'ko-KR');
+
+    var res = await fetch(funcUrl, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: fd,
+    });
+    if (!res.ok) return null;
+    var data = await res.json();
+    if (!data || data.error || data.pronunciationScore == null) return null;
+
+    var wordsInTranscript = String(data.transcript || '').trim().split(/\s+/).filter(Boolean).length;
+    var minutes = Math.max(durationMs, 1) / 60000;
+    var wpm = wordsInTranscript > 0 ? Math.round(wordsInTranscript / minutes) : 0;
+
+    return {
+      pronunciation:     Math.round(data.accuracyScore || 0),
+      fluency_score:     Math.round(data.fluencyScore || 0),
+      fluency_wpm:       wpm,
+      completeness:      Math.round(data.completenessScore || 0),
+      overall:           Math.round(data.pronunciationScore || 0),
+      transcript:        data.transcript || '',
+      target:            referenceText,
+      duration_ms:       Math.round(durationMs),
+      filler_count:      0,
+      words:             data.words || [],
+      model:             'azure',
+    };
+  } catch(e) {
+    console.warn('[speaking] Azure analyze failed:', e);
+    return null;
+  }
+}
+
+// Reusable SVG radial gauge — animates 0 → value on mount.
+// Use via innerHTML; call _khActivateGauges(scope) afterwards (or rely on
+// the MutationObserver below to auto-activate).
+function _khRadialGauge(opts) {
+  var v      = Math.max(0, Math.min(100, Number(opts.value) || 0));
+  var size   = opts.size   || 92;
+  var stroke = opts.stroke || 8;
+  var accent = opts.accent || '#7c3aed';
+  var track  = opts.track  || 'rgba(15,23,42,.08)';
+  var label  = opts.label  || '';
+  var sub    = opts.sub    || '';
+  var dark   = !!opts.dark;
+  var textColor = opts.textColor || (dark ? '#f1f5f9' : '#0f172a');
+  var labelColor = opts.labelColor || (dark ? 'rgba(241,245,249,.72)' : '#475569');
+  var subColor  = opts.subColor  || (dark ? 'rgba(241,245,249,.45)' : '#94a3b8');
+  var r      = (size - stroke) / 2;
+  var c      = 2 * Math.PI * r;
+  var cx     = size / 2;
+  return '<div class="kh-gauge" data-kh-gauge data-kh-value="' + v + '" data-kh-circ="' + c.toFixed(2) + '" style="display:inline-flex;flex-direction:column;align-items:center;gap:6px">'
+    + '<div style="position:relative;width:' + size + 'px;height:' + size + 'px">'
+      + '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" style="transform:rotate(-90deg)">'
+        + '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="' + track + '" stroke-width="' + stroke + '"/>'
+        + '<circle data-kh-arc cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="' + accent + '" stroke-width="' + stroke + '" stroke-linecap="round"'
+          + ' stroke-dasharray="' + c.toFixed(2) + '" stroke-dashoffset="' + c.toFixed(2) + '"'
+          + ' style="transition:stroke-dashoffset 900ms cubic-bezier(.22,1,.36,1)"/>'
+      + '</svg>'
+      + '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:\'DM Sans\',sans-serif">'
+        + '<div data-kh-count="' + v + '" style="font-size:' + Math.round(size*0.32) + 'px;font-weight:900;color:' + textColor + ';line-height:1">0</div>'
+        + (sub ? '<div style="font-size:9px;color:' + subColor + ';font-weight:700;margin-top:2px;letter-spacing:.04em">' + sub + '</div>' : '')
+      + '</div>'
+    + '</div>'
+    + (label ? '<div style="font-size:11px;font-weight:700;color:' + labelColor + ';letter-spacing:.02em">' + label + '</div>' : '')
+    + '</div>';
+}
+
+// Number count-up animation (0 → target) over ~900ms, easing out.
+function _khAnimateCount(node) {
+  if (!node) return;
+  var target = parseInt(node.getAttribute('data-kh-count') || node.textContent, 10);
+  if (!Number.isFinite(target)) return;
+  var start = performance.now();
+  var dur = 900;
+  (function step(t) {
+    var p = Math.min(1, (t - start) / dur);
+    var ease = 1 - Math.pow(1 - p, 3);
+    node.textContent = Math.round(target * ease);
+    if (p < 1) requestAnimationFrame(step);
+  })(start);
+}
+
+// Activate any uninitialized gauges in a scope (or document-wide).
+function _khActivateGauges(scope) {
+  (scope || document).querySelectorAll('[data-kh-gauge]:not([data-kh-active])').forEach(function(g) {
+    g.setAttribute('data-kh-active', '1');
+    var v = parseInt(g.getAttribute('data-kh-value') || '0', 10);
+    var c = parseFloat(g.getAttribute('data-kh-circ') || '0');
+    var arc = g.querySelector('[data-kh-arc]');
+    var countEl = g.querySelector('[data-kh-count]');
+    // Kick the arc + number animations on the next frame so CSS picks up
+    requestAnimationFrame(function() {
+      if (arc) arc.style.strokeDashoffset = (c * (1 - v / 100)).toFixed(2);
+      if (countEl) _khAnimateCount(countEl);
+    });
+  });
+}
+
+// Observe inserted nodes so gauges auto-activate on render.
+(function(){
+  if (typeof MutationObserver === 'undefined') return;
+  var mo = new MutationObserver(function() { _khActivateGauges(); });
+  mo.observe(document.documentElement, { childList: true, subtree: true });
+})();
+
+function _scoreColor(v) {
+  return v >= 80 ? '#16a34a' : v >= 60 ? '#2563eb' : v >= 40 ? '#d97706' : '#dc2626';
+}
+
+function _renderSpeakingScoreCard(s, targetEl) {
+  var el = targetEl || document.getElementById('wm-speak-score-card');
+  if (!el) return;
+  if (!s) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  var duration = (s.duration_ms / 1000).toFixed(1);
+  var wordCount = s.transcript ? s.transcript.split(/\s+/).filter(Boolean).length : 0;
+
+  el.style.display = 'block';
+  el.style.padding = '18px 18px 16px';
+  el.style.border = 'none';
+  el.style.background = 'linear-gradient(145deg,#ffffff,#faf7ff 60%,#f3f1ff)';
+  el.style.borderRadius = '16px';
+  el.style.boxShadow = '0 10px 28px -12px rgba(124,58,237,.22), 0 0 0 1px rgba(124,58,237,.12)';
+
+  var header =
+    '<style>@keyframes kh-speak-chip-in{to{opacity:1;transform:translateY(0)}}@keyframes kh-speak-card-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}</style>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+      + '<div style="display:flex;align-items:center;gap:8px">'
+        + '<div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#6d28d9);display:flex;align-items:center;justify-content:center;color:#fff"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span></div>'
+        + '<div>'
+          + '<div style="font-size:12px;font-weight:800;color:#0f172a;letter-spacing:-.01em">Speaking Analysis</div>'
+          + '<div style="font-size:10px;color:' + (s.model === 'azure' ? '#7c3aed' : '#94a3b8') + ';font-weight:600">'
+            + (s.model === 'azure' ? '✦ Azure AI 발음 평가' : 'AI auto-scored from your recording')
+          + '</div>'
+        + '</div>'
+      + '</div>'
+      + '<div style="font-size:10px;color:#94a3b8;font-weight:700;text-align:right">'
+        + duration + 's · ' + wordCount + ' word' + (wordCount === 1 ? '' : 's')
+      + '</div>'
+    + '</div>';
+
+  var gaugesHtml = '';
+  var wordHtml = '';
+
+  if (s.model === 'azure') {
+    // 4-metric grid: Accuracy, Fluency, Completeness, Overall
+    var metrics = [
+      { v: s.pronunciation,  label: '정확도',    sub: 'Accuracy' },
+      { v: s.fluency_score,  label: '유창성',    sub: 'Fluency' },
+      { v: s.completeness,   label: '완성도',    sub: 'Completeness' },
+      { v: s.overall,        label: '종합',      sub: 'Overall' },
+    ];
+    gaugesHtml = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;animation:kh-speak-card-in .4s ease-out">'
+      + metrics.map(function(m) {
+          var c = _scoreColor(m.v);
+          return '<div style="padding:10px 6px;background:rgba(255,255,255,.7);border:1px solid rgba(124,58,237,.08);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:4px">'
+            + _khRadialGauge({ value: m.v, accent: c, label: m.label, sub: m.sub, size: 70, stroke: 7 })
+            + '</div>';
+        }).join('')
+      + '</div>';
+
+    // Word-level chips from Azure — color by accuracy score + errorType
+    if (s.words && s.words.length) {
+      var azureWordChips = s.words.map(function(w, i) {
+        var score = w.accuracyScore != null ? Math.round(w.accuracyScore) : null;
+        var err = w.errorType || 'None';
+        var isBad = err !== 'None' || (score != null && score < 60);
+        var bg, fg, border;
+        if (err === 'Omission') {
+          bg = 'linear-gradient(135deg,#f1f5f9,#e2e8f0)'; fg = '#475569'; border = 'rgba(100,116,139,.25)';
+        } else if (score == null) {
+          bg = 'linear-gradient(135deg,#f1f5f9,#e2e8f0)'; fg = '#64748b'; border = 'rgba(100,116,139,.2)';
+        } else if (score >= 80) {
+          bg = 'linear-gradient(135deg,#dcfce7,#bbf7d0)'; fg = '#166534'; border = 'rgba(34,197,94,.3)';
+        } else if (score >= 60) {
+          bg = 'linear-gradient(135deg,#fef9c3,#fef08a)'; fg = '#854d0e'; border = 'rgba(202,138,4,.3)';
+        } else {
+          bg = 'linear-gradient(135deg,#fee2e2,#fecaca)'; fg = '#991b1b'; border = 'rgba(239,68,68,.3)';
+        }
+        var scoreTag = score != null ? '<sup style="font-size:9px;font-weight:800;opacity:.7">' + score + '</sup>' : '';
+        var errTag = (err !== 'None' && err !== 'None') ? '<span style="font-size:9px;opacity:.65;margin-left:2px">' + (err === 'Mispronunciation' ? '⚠' : err === 'Omission' ? '—' : err === 'Insertion' ? '+' : '') + '</span>' : '';
+        return '<span style="display:inline-block;padding:5px 11px;margin:3px;border-radius:999px;background:' + bg + ';color:' + fg + ';font-size:13px;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;border:1px solid ' + border + ';opacity:0;transform:translateY(4px);animation:kh-speak-chip-in .35s ease-out ' + (80 + i * 40) + 'ms forwards">' + w.word.replace(/[<>]/g,'') + scoreTag + errTag + '</span>';
+      }).join('');
+      wordHtml = '<div style="margin-top:14px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+          + '<div style="font-size:10px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.06em">단어별 발음 점수</div>'
+          + '<div style="display:flex;gap:6px;font-size:10px;color:#64748b"><span style="color:#16a34a">■ 80+</span><span style="color:#ca8a04">■ 60-79</span><span style="color:#dc2626">■ ~59</span></div>'
+        + '</div>'
+        + '<div style="line-height:1.7">' + azureWordChips + '</div>'
+        + '</div>';
+    }
+
+  } else {
+    // Existing 2-gauge layout for web-speech-api fallback
+    var pron = s.pronunciation;
+    var fluS = s.fluency_score;
+    gaugesHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;animation:kh-speak-card-in .4s ease-out">'
+      + '<div style="padding:14px 12px;background:rgba(255,255,255,.7);border:1px solid rgba(124,58,237,.08);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:6px">'
+        + _khRadialGauge({ value: pron, accent: _scoreColor(pron), label: 'Pronunciation', sub: 'vs target', size: 88, stroke: 8 })
+      + '</div>'
+      + '<div style="padding:14px 12px;background:rgba(255,255,255,.7);border:1px solid rgba(124,58,237,.08);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:6px">'
+        + _khRadialGauge({ value: fluS, accent: _scoreColor(fluS), label: 'Fluency', sub: s.fluency_wpm + ' WPM', size: 88, stroke: 8 })
+      + '</div>'
+      + '</div>';
+
+    var targetWords = (s.target || '').trim().split(/\s+/).filter(Boolean);
+    var saidNorm = _normalizeForScore(s.transcript || '');
+    var hitCount = 0;
+    var diffHTML = targetWords.map(function(w, i) {
+      var n = _normalizeForScore(w);
+      var hit = n && saidNorm.indexOf(n) !== -1;
+      if (hit) hitCount++;
+      var bg = hit ? 'linear-gradient(135deg,#dcfce7,#bbf7d0)' : 'linear-gradient(135deg,#fee2e2,#fecaca)';
+      var fg = hit ? '#166534' : '#991b1b';
+      var border = hit ? 'rgba(34,197,94,.3)' : 'rgba(239,68,68,.3)';
+      return '<span style="display:inline-block;padding:5px 11px;margin:3px;border-radius:999px;background:' + bg + ';color:' + fg + ';font-size:13px;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;border:1px solid ' + border + ';opacity:0;transform:translateY(4px);animation:kh-speak-chip-in .35s ease-out ' + (80 + i * 40) + 'ms forwards">' + w.replace(/[<>]/g,'') + '</span>';
+    }).join('');
+
+    var fillerHtml = s.filler_count
+      ? '<div style="margin-top:10px;padding:7px 11px;border-radius:10px;background:rgba(251,191,36,.12);color:#92400e;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:13px;height:13px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span><span>' + s.filler_count + ' filler word' + (s.filler_count > 1 ? 's' : '') + ' (어·음·그·저)</span></div>'
+      : '';
+
+    var sttUnsupported = !_SpeechRecognitionCtor();
+    var unsupported = sttUnsupported
+      ? '<div style="margin-top:12px;padding:10px 14px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);color:#92400e;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;flex-shrink:0">'+BM_ICON_WARNING+'</span><span>Pronunciation scoring needs Chrome / Edge / Safari. Audio still recorded for coach review.</span></div>'
+      : '';
+
+    wordHtml = fillerHtml
+      + (targetWords.length
+          ? '<div style="margin-top:14px">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+              + '<div style="font-size:10px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.06em">Word match</div>'
+              + '<div style="font-size:11px;font-weight:700;color:#64748b">' + hitCount + ' / ' + targetWords.length + ' hit</div>'
+            + '</div>'
+            + '<div style="line-height:1.7">' + diffHTML + '</div>'
+          + '</div>'
+          : '')
+      + unsupported;
+  }
+
+  el.innerHTML = header + gaugesHtml + wordHtml;
+}
+
+function speakMyWriting() {
+  var ta = document.getElementById('write-area');
+  if (!ta || !ta.value.trim()) { showToast('먼저 글을 작성하세요'); return; }
+  speakHangul(ta.value.trim(), 'female');
+}
+function toggleSpeakRecord() {
+  if (_speakRecorder && _speakRecorder.state === 'recording') {
+    _speakRecorder.stop();
+    if (_speakRecognition) { try { _speakRecognition.stop(); } catch(e) {} }
+    document.getElementById('wm-speak-record').innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span><span>내 목소리 녹음</span></span>';
+    document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.08)';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+    _speakChunks = [];
+    _speakScores = null;
+    _speakStartedAt = Date.now();
+    _speakRecognition = _startSpeakingSTT();   // null if browser unsupported — we still record
+    _speakRecorder = new MediaRecorder(stream);
+    _speakRecorder.ondataavailable = function(e) { if (e.data.size > 0) _speakChunks.push(e.data); };
+    _speakRecorder.onstop = function() {
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      _speakBlob = new Blob(_speakChunks, { type:'audio/webm' });
+      var url = URL.createObjectURL(_speakBlob);
+      var audio = document.getElementById('wm-speak-playback');
+      audio.src = url;
+      audio.style.display = 'block';
+      var row = document.getElementById('wm-speak-submit-row');
+      if (row) row.style.display = 'flex';
+      document.getElementById('wm-speak-status').textContent = 'Recording done! Listen and submit.';
+      _refreshSpeakingCoinBadge();
+
+      // Try Azure pronunciation assessment; fall back to client-side scoring.
+      (async function() {
+        var ta = document.getElementById('write-area');
+        var written = ta ? (ta.value || '').trim() : '';
+        // Use written text if it has enough substance; otherwise use today's example answer
+        var target = written.length >= 15 ? written : (_wmExampleAnswer || written);
+        if (!target) return;
+        var elapsed = Date.now() - _speakStartedAt;
+        document.getElementById('wm-speak-status').textContent = '발음 분석 중...';
+        var azureResult = await _speakAnalyzeAzure(_speakBlob, target, elapsed);
+        if (azureResult) {
+          _speakScores = azureResult;
+        } else {
+          // Azure unavailable — wait briefly for Web Speech API to finish
+          await new Promise(function(r){ setTimeout(r, 300); });
+          var transcript = (_speakSttTranscript || '').trim();
+          _speakScores = _scoreSpeaking(target, transcript, elapsed);
+        }
+        _renderSpeakingScoreCard(_speakScores);
+        document.getElementById('wm-speak-status').textContent = 'Recording done! Listen and submit.';
+      })();
+    };
+    _speakRecorder.start();
+    document.getElementById('wm-speak-record').innerHTML = '⏹️ 녹음 중... (누르면 정지)';
+    document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.2)';
+    document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>';
+  }).catch(function(err) {
+    _showMicPermError('wm-speak-status');
+    console.warn('[Speaking] mic error:', err);
+  });
+}
+function _showMicPermError(statusElId) {
+  var msg = '마이크 접근 실패. 브라우저 주소창의 🔒 아이콘 → 마이크 → 허용 후 새로고침';
+  if (statusElId) {
+    var el = document.getElementById(statusElId);
+    if (el) { el.innerHTML = '<span style="color:#f87171;font-size:11px">' + msg + '</span>'; return; }
+  }
+  showToast(msg);
+}
+async function submitSpeaking() {
+  if (!_speakBlob || !supaUser) { showToast('녹음이 없거나 로그인이 필요합니다'); return; }
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var fileName = 'speaking/' + supaUser.id + '/' + kstDateKey() + '_' + Date.now() + '.webm';
+    var { error: upErr } = await sb.storage.from('avatars').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
+    if (upErr) { showToast('업로드 실패: ' + upErr.message); return; }
+    // Save record to user_submissions
+    var ta = document.getElementById('write-area');
+    await sb.from('user_submissions').insert({
+      user_id: supaUser.id,
+      content_type: 'speaking',
+      study_date: kstDateKey(),
+      writing_text: ta ? ta.value : '',
+      topic_ko: _todayTopic ? _todayTopic.topic_ko : '',
+      topic_en: _todayTopic ? _todayTopic.topic_en : '',
+      level: _currentLevel,
+      status: 'submitted',
+      speaking_scores: _speakScores || null,
+      context_data: JSON.stringify({ audio_path: fileName })
+    });
+    showToast('Recording submitted! Waiting for AI feedback.');
+    var row = document.getElementById('wm-speak-submit-row');
+    if (row) row.style.display = 'none';
+    document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted!</span></span>';
+  } catch(e) {
+    showToast('Submit failed: ' + e.message);
+  }
+}
+
+// ── Coach review submit (Pro tier, daily coin economy) ────────────
+// Char-cap by level: Seed/Sprout 250, Tree 500, Forest → 1:1 redirect.
+var SPEAKING_CHAR_LIMITS = { Starter: 250, Beginner: 250, Intermediate: 500, Advanced: 0 };
+
+function _speakingCharLimit() {
+  return SPEAKING_CHAR_LIMITS[_currentLevel] != null ? SPEAKING_CHAR_LIMITS[_currentLevel] : 250;
+}
+
+async function submitSpeakingToCoach() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!_speakBlob) { showToast('먼저 녹음하세요'); return; }
+
+  // Pro plan gate
+  if (typeof requirePlan === 'function' && !requirePlan('speaking_feedback')) return;
+
+  // Forest → 1:1 tutoring redirect (no coin flow)
+  if (_currentLevel === 'Advanced') { _showForestTutoringModal(); return; }
+
+  // Per-level character cap (writing text the user is reading aloud)
+  var ta   = document.getElementById('write-area');
+  var text = ta ? (ta.value || '').trim() : '';
+  var cap  = _speakingCharLimit();
+  if (text.length > cap) {
+    showToast('글자 수 한도를 초과했어요 (' + text.length + ' / ' + cap + ')');
+    return;
+  }
+
+  var sb = getSupa();
+  if (!sb) return;
+
+  var btn = document.getElementById('wm-speak-coach-submit');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="5"/></svg></span><span>Sending to coach…</span></span>'; }
+
+  try {
+    // 1) Atomic wallet decrement
+    var coinRes = await sb.rpc('consume_speaking_coin', { p_level: _currentLevel });
+    var coin    = coinRes && coinRes.data;
+    if (coinRes.error || !coin || !coin.ok) {
+      var reason = coin && coin.reason;
+      if (reason === 'forest_redirect') { _showForestTutoringModal(); return; }
+      if (reason === 'no_coins') {
+        _showBuySpeakingCoinsModal();
+        return;
+      }
+      showToast('코인 처리 실패: ' + (coinRes.error && coinRes.error.message || 'unknown'));
+      return;
+    }
+
+    // 2) Upload audio
+    var fileName = 'speaking/' + supaUser.id + '/' + kstDateKey() + '_coach_' + Date.now() + '.webm';
+    var up = await sb.storage.from('avatars').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
+    if (up.error) { showToast('업로드 실패: ' + up.error.message); return; }
+
+    // 3) Insert submission marked for coach review
+    var ins = await sb.from('user_submissions').insert({
+      user_id:     supaUser.id,
+      content_type:'speaking',
+      study_date:  kstDateKey(),
+      writing_text: text,
+      topic_ko:    _todayTopic ? _todayTopic.topic_ko : '',
+      topic_en:    _todayTopic ? _todayTopic.topic_en : '',
+      level:       _currentLevel,
+      status:      'submitted',
+      speaking_coach_review: true,
+      speaking_scores: _speakScores || null,
+      context_data: JSON.stringify({ audio_path: fileName, char_count: text.length })
+    });
+    if (ins.error) { showToast('제출 실패: ' + ins.error.message); return; }
+
+    showToast('코치에게 보냈어요! 24시간 내 피드백이 도착합니다. (남은 코인: ' + (coin.balance != null ? coin.balance : coin.remaining) + ')');
+    var row = document.getElementById('wm-speak-submit-row');
+    if (row) row.style.display = 'none';
+    var statusEl = document.getElementById('wm-speak-status');
+    if (statusEl) statusEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>코치에게 전송 완료</span></span>';
+    _refreshSpeakingCoinBadge();
+  } catch(e) {
+    showToast('Submit failed: ' + (e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="5"/></svg></span><span>Send to Human Coach <span style="font-weight:700;opacity:.85">· 1 coin</span></span></span>'; }
+  }
+}
+
+function _showForestTutoringModal() {
+  var existing = document.getElementById('forest-tutor-modal');
+  if (existing) existing.remove();
+  var m = document.createElement('div');
+  m.id = 'forest-tutor-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.78);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px;';
+  m.onclick = function(e){ if (e.target === m) m.remove(); };
+  m.innerHTML =
+    '<div style="background:#fff;border-radius:18px;max-width:420px;width:100%;padding:26px 24px;box-shadow:0 24px 60px rgba(0,0,0,.4);font-family:inherit">'
+    + '<div style="text-align:center;margin-bottom:8px"><span style="display:inline-flex;width:38px;height:38px;color:#16a34a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14v7"/><path d="M7 14v7"/><path d="M12 22V8"/><path d="M19 14a4 4 0 0 0-1-7.9A6 6 0 0 0 6 7a4 4 0 0 0 0 7"/></svg></span></div>'
+    + '<div style="font-size:18px;font-weight:900;color:#0f172a;text-align:center;margin-bottom:6px">Forest Level — 1:1 Tutoring</div>'
+    + '<div style="font-size:13px;color:#64748b;line-height:1.55;text-align:center;margin-bottom:18px">Advanced 레벨은 짧은 코치 피드백보다 1:1 튜터링이 효과적이에요. 원어민 한국어 튜터와 직접 세션을 잡아보세요.</div>'
+    + '<a href="mailto:tutor@korehani.com?subject=Forest%201:1%20Tutoring%20Request" style="display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;padding:12px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;text-decoration:none;border-radius:12px;font-weight:800;font-size:14px;margin-bottom:8px"><span style="display:inline-flex;width:16px;height:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><span>튜터 세션 신청하기</span></a>'
+    + '<button onclick="document.getElementById(\'forest-tutor-modal\').remove()" style="display:block;width:100%;padding:10px;background:#f1f5f9;border:none;border-radius:10px;color:#475569;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">닫기</button>'
+    + '</div>';
+  document.body.appendChild(m);
+}
+
+async function _refreshSpeakingCoinBadge() {
+  var badge = document.getElementById('wm-speak-coin-badge');
+  if (!badge) return;
+  if (!supaUser) { badge.style.display = 'none'; return; }
+  // Only show for Pro users
+  if (typeof canAccess === 'function' && !canAccess('speaking_feedback')) {
+    badge.style.display = 'none';
+    return;
+  }
+  if (_currentLevel === 'Advanced') {
+    badge.style.display = 'inline-block';
+    badge.style.cursor = 'pointer';
+    badge.onclick = _showForestTutoringModal;
+    badge.textContent = 'Forest · 1:1 튜터링';
+    return;
+  }
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var r = await sb.rpc('get_speaking_wallet_status', { p_level: _currentLevel });
+    if (r.error || !r.data) { badge.style.display = 'none'; return; }
+    var s = r.data;
+    var bal = s.balance || 0;
+    badge.style.display = 'inline-block';
+    badge.style.cursor = 'pointer';
+    badge.onclick = _showBuySpeakingCoinsModal;
+    if (bal > 0) {
+      badge.style.background = 'rgba(34,197,94,.12)';
+      badge.style.borderColor = 'rgba(34,197,94,.35)';
+      badge.style.color       = '#166534';
+      badge.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v12M9 8h4.5a2 2 0 0 1 0 4H9M9 12h5a2 2 0 0 1 0 4H9"/></svg></span><span>' + bal + ' coach coin' + (bal === 1 ? '' : 's') + ' · +buy</span></span>';
+    } else {
+      badge.style.background = 'rgba(245,158,11,.12)';
+      badge.style.borderColor = 'rgba(245,158,11,.35)';
+      badge.style.color       = '#b45309';
+      badge.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span><span>Buy coach coins · $1 / coin</span></span>';
+    }
+  } catch(e) {
+    badge.style.display = 'none';
+  }
+}
+
+// Open the coin-pack purchase modal.
+function _showBuySpeakingCoinsModal() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (_currentLevel === 'Advanced') { _showForestTutoringModal(); return; }
+  if (typeof requirePlan === 'function' && !requirePlan('speaking_feedback')) return;
+
+  var existing = document.getElementById('buy-coins-modal');
+  if (existing) existing.remove();
+
+  var packs = [
+    { coins: 5,  price: 5,  tag: 'Minimum',     tagColor:'#64748b', featured:false, note:'Try it out' },
+    { coins: 10, price: 10, tag: 'Most popular',tagColor:'#7c3aed', featured:true,  note:'2 weeks of practice' },
+    { coins: 20, price: 20, tag: 'Best value',  tagColor:'#ea580c', featured:false, note:'Serious learner' }
+  ];
+
+  // Animated coin-stack illustration — 3 stacked coin discs with a shine
+  function coinStack(count, color) {
+    var coins = Math.min(3, count === 5 ? 2 : count === 10 ? 3 : 3);
+    var html = '<div style="position:relative;width:56px;height:56px;margin:0 auto 2px">';
+    for (var i = 0; i < coins; i++) {
+      var top = 4 + i * 8;
+      var z = coins - i;
+      html += '<div style="position:absolute;top:' + top + 'px;left:6px;right:6px;height:14px;border-radius:50%;background:linear-gradient(180deg,#fde68a,#f59e0b 55%,#d97706);box-shadow:0 2px 6px rgba(245,158,11,.5),inset 0 1px 0 rgba(255,255,255,.5);z-index:' + z + '">'
+        + (i === coins - 1 ? '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:#92400e;font-family:\'DM Sans\',sans-serif">$' + (count === 5 ? 5 : count === 10 ? 10 : 20) + '</div>' : '')
+      + '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  var packHTML = packs.map(function(p, i) {
+    var featured = p.featured;
+    var borderColor = featured ? '#7c3aed' : '#e2e8f0';
+    var bg = featured
+      ? 'linear-gradient(155deg,#ffffff,#f5f3ff 45%,#ede9fe)'
+      : '#ffffff';
+    var scale = featured ? '1.0' : '.96';
+    var shadow = featured
+      ? '0 16px 36px -10px rgba(124,58,237,.35), 0 0 0 2px #7c3aed'
+      : '0 4px 12px rgba(15,23,42,.06)';
+    return '<button onclick="_startCoinCheckout(' + p.coins + ')"'
+      + ' style="display:flex;flex-direction:column;align-items:stretch;gap:8px;flex:1;padding:' + (featured ? '18px 14px 16px' : '14px 12px') + ';border:1.5px solid ' + borderColor + ';border-radius:16px;background:' + bg + ';cursor:pointer;font-family:inherit;text-align:center;transition:transform .18s ease,box-shadow .18s ease;box-shadow:' + shadow + ';transform:scale(' + scale + ');opacity:0;animation:kh-coin-pack-in .42s cubic-bezier(.22,1,.36,1) ' + (80 + i * 90) + 'ms forwards;position:relative"'
+      + ' onmouseover="this.style.transform=\'scale(1.03)\';this.style.boxShadow=\'0 20px 40px -8px rgba(124,58,237,.35)' + (featured ? ', 0 0 0 2px #7c3aed' : ', 0 0 0 1.5px #a78bfa') + '\'"'
+      + ' onmouseout="this.style.transform=\'scale(' + scale + ')\';this.style.boxShadow=\'' + shadow + '\'">'
+      + (featured
+          ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);padding:3px 10px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;box-shadow:0 4px 12px rgba(124,58,237,.4)">⭐ ' + p.tag + '</div>'
+          : '')
+      + coinStack(p.coins)
+      + '<div style="font-family:\'DM Sans\',sans-serif;font-size:' + (featured ? '28px' : '24px') + ';font-weight:900;color:#0f172a;line-height:1;letter-spacing:-.02em">' + p.coins + '</div>'
+      + '<div style="font-size:10px;font-weight:800;color:#94a3b8;letter-spacing:.1em;text-transform:uppercase;margin-top:-4px">coins</div>'
+      + '<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(15,23,42,.08),transparent);margin:4px 0"></div>'
+      + '<div style="font-family:\'DM Sans\',sans-serif;font-size:' + (featured ? '22px' : '18px') + ';font-weight:900;color:' + (featured ? '#7c3aed' : '#0f172a') + '">$' + p.price + '</div>'
+      + '<div style="font-size:10px;color:' + (featured ? '#7c3aed' : '#64748b') + ';font-weight:' + (featured ? '700' : '600') + ';line-height:1.3">' + p.note + '</div>'
+      + (!featured ? '<div style="font-size:9px;color:' + p.tagColor + ';font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:2px">' + p.tag + '</div>' : '')
+    + '</button>';
+  }).join('');
+
+  var m = document.createElement('div');
+  m.id = 'buy-coins-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.72);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px;animation:kh-coin-modal-in .25s ease-out';
+  m.onclick = function(e){ if (e.target === m) m.remove(); };
+
+  // Inject keyframes once
+  if (!document.getElementById('kh-coin-modal-css')) {
+    var st = document.createElement('style');
+    st.id = 'kh-coin-modal-css';
+    st.textContent =
+      '@keyframes kh-coin-modal-in { from { opacity:0 } to { opacity:1 } }'
+      + '@keyframes kh-coin-pack-in { from { opacity:0; transform:translateY(14px) scale(.94) } to { opacity:1; transform:translateY(0) scale(1) } }'
+      + '@keyframes kh-coin-pack-in-featured { from { opacity:0; transform:translateY(14px) scale(.98) } to { opacity:1; transform:translateY(0) scale(1) } }';
+    document.head.appendChild(st);
+  }
+
+  m.innerHTML =
+    '<div style="background:#fff;border-radius:22px;max-width:520px;width:100%;padding:28px 22px 22px;box-shadow:0 32px 80px rgba(0,0,0,.45);font-family:inherit;animation:kh-coin-pack-in .3s cubic-bezier(.22,1,.36,1)">'
+      + '<div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px">'
+        + '<div style="width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#7c3aed,#6d28d9);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 12px 28px rgba(124,58,237,.4);margin-bottom:12px"><span style="display:inline-flex;width:30px;height:30px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="5"/></svg></span></div>'
+        + '<div style="font-family:\'DM Sans\',sans-serif;font-size:22px;font-weight:900;color:#0f172a;letter-spacing:-.02em">Coach Coins</div>'
+        + '<div style="font-size:13px;color:#64748b;line-height:1.55;margin-top:4px;max-width:340px">'
+          + '1 coin = 1 recording sent to a Korean coach. Feedback within 24 hours.'
+        + '</div>'
+        + '<div style="display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:4px 12px;border-radius:999px;background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;font-size:11px;font-weight:800">'
+          + '<span style="display:inline-flex;width:14px;height:14px;color:#06b6d4;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 8l10 14L22 8z"/></svg></span>Flat $1 per coin'
+        + '</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:10px;align-items:flex-end;justify-content:center;margin-top:10px;padding:0 4px">' + packHTML + '</div>'
+      + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:20px;padding-top:14px;border-top:1px solid #f1f5f9">'
+        + '<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#64748b;font-weight:600"><span style="display:inline-flex;width:12px;height:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span>Secure Stripe checkout</div>'
+        + '<div style="width:3px;height:3px;border-radius:50%;background:#cbd5e1"></div>'
+        + '<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#64748b;font-weight:600"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_REFRESH+'</span>Coins never expire</div>'
+      + '</div>'
+      + '<button onclick="document.getElementById(\'buy-coins-modal\').remove()" style="display:block;width:100%;margin-top:14px;padding:11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;color:#64748b;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:background .15s"'
+        + ' onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'#f8fafc\'">Maybe later</button>'
+    + '</div>';
+  document.body.appendChild(m);
+}
+
+// Kick off Stripe Checkout for a specific coin count.
+async function _startCoinCheckout(coins) {
+  coins = parseInt(coins, 10);
+  if (!coins || coins < 5) { showToast('최소 5코인부터 구매 가능합니다'); return; }
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (typeof requirePlan === 'function' && !requirePlan('speaking_feedback')) return;
+  showToast('Opening secure checkout…');
+  try {
+    var sb = getSupa();
+    if (!sb) { showToast('Checkout unavailable'); return; }
+    var { data: sessData } = await sb.auth.getSession();
+    var token = sessData && sessData.session && sessData.session.access_token;
+    if (!token) { showToast('Please sign in again'); return; }
+
+    var res = await fetch((SUPA_URL || window.SUPA_URL || '') + '/functions/v1/speaking-pass-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ coins: coins })
+    });
+    var data = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !data.url) {
+      var reason = (data && data.error) || ('HTTP ' + res.status);
+      if (reason === 'pro_plan_required') {
+        if (typeof showUpgradeModal === 'function') showUpgradeModal('speaking_feedback', 'pro');
+        else showToast('Pro 플랜이 필요합니다');
+      } else if (reason === 'min_coins_5') {
+        showToast('최소 5코인부터 구매 가능합니다');
+      } else {
+        showToast('Checkout 생성 실패: ' + reason);
+      }
+      return;
+    }
+    window.location.href = data.url;
+  } catch(e) {
+    showToast('Checkout error: ' + (e.message || e));
+  }
+}
+
+// Back-compat alias — older code paths call _buySpeakingPass()
+function _buySpeakingPass() { _showBuySpeakingCoinsModal(); }
+
+// Handle the ?coach_coins=ok redirect back from Stripe.
+(function _handleCoachCoinsRedirect(){
+  try {
+    var p = new URLSearchParams(window.location.search);
+    var r = p.get('coach_coins') || p.get('coach_pass');   // accept both v2 + v3 param names
+    if (!r) return;
+    p.delete('coach_coins'); p.delete('coach_pass');
+    var newUrl = window.location.pathname + (p.toString() ? '?' + p.toString() : '') + window.location.hash;
+    window.history.replaceState({}, '', newUrl);
+    if (r === 'ok') {
+      setTimeout(function(){
+        if (typeof showToast === 'function') showToast('Coach coins added to your wallet!');
+        if (typeof _refreshSpeakingCoinBadge === 'function') _refreshSpeakingCoinBadge();
+      }, 600);
+    } else if (r === 'cancel') {
+      setTimeout(function(){
+        if (typeof showToast === 'function') showToast('Checkout cancelled.');
+      }, 400);
+    }
+  } catch(e) {}
+})();
+
+function copyHelper(btn) {
+  var ko = btn.dataset.ko;
+  var ta = document.getElementById('write-area');
+  if (!ta) return;
+  ta.value += (ta.value ? '\n' : '') + ko;
+  document.getElementById('wc').textContent = ta.value.length + ' chars';
+  // Heuristic: a blank template ("___") was inserted, not a full
+  // sentence — nudge the learner to fill it in themselves.
+  showToast(/_{2,}/.test(ko) ? '빈칸 템플릿을 넣었어요. 직접 채워보세요!' : 'Copied!');
+}
+
+// Pick a "good" eojeol to hide for fill-in-the-blank helpers. Skips
+// pure particles and punctuation-only tokens, prefers a meaningful
+// content word (≥2 syllables) somewhere in the middle. Returns
+// { display, template, answer } where:
+//   - display  = HTML to show in the panel (blank rendered as a chip)
+//   - template = plain-text version with "___" — safe to drop into
+//                the textarea so the learner finishes the sentence
+//   - answer   = the original word, for the reveal button
+// Returns null if the sentence is too short / no suitable target.
+function _buildHelperCloze(ko) {
+  if (!ko || typeof ko !== 'string') return null;
+  var tokens = ko.trim().split(/\s+/);
+  if (tokens.length < 2) return null;
+  var PARTICLE_ONLY = /^[은는이가을를의에서와과도만으로부터까지에게한테로써]+[.,!?]?$/;
+  var candidates = [];
+  for (var i = 0; i < tokens.length; i++) {
+    var t = tokens[i];
+    var coreLen = t.replace(/[.,!?]+$/,'').length;
+    if (coreLen < 2) continue;
+    if (PARTICLE_ONLY.test(t)) continue;
+    candidates.push({ t: t, i: i });
+  }
+  if (!candidates.length) return null;
+  // Prefer a middle word over edges; tie-break by longer.
+  candidates.sort(function(a, b) {
+    var lastIdx = tokens.length - 1;
+    var aMid = (a.i > 0 && a.i < lastIdx) ? 1 : 0;
+    var bMid = (b.i > 0 && b.i < lastIdx) ? 1 : 0;
+    if (aMid !== bMid) return bMid - aMid;
+    return b.t.length - a.t.length;
+  });
+  var pick = candidates[0];
+  var word = pick.t;
+  var trail = (word.match(/[.,!?]+$/) || [''])[0];
+  var displayTokens = tokens.slice();
+  var templateTokens = tokens.slice();
+  displayTokens[pick.i]  = '<span class="mh-cloze-blank" style="display:inline-block;min-width:46px;text-align:center;background:rgba(167,139,250,.14);border:1px dashed rgba(167,139,250,.55);border-radius:6px;padding:1px 8px;color:#a78bfa;font-weight:700">___</span>' + trail;
+  templateTokens[pick.i] = '___' + trail;
+  return {
+    display:  displayTokens.join(' '),
+    template: templateTokens.join(' '),
+    answer:   word,
+  };
+}
+
+function revealHelperAnswer(btn) {
+  var row = btn.closest('.mhrow');
+  if (!row) return;
+  var ans = row.querySelector('.mh-answer');
+  var ko  = row.querySelector('.mhko');
+  if (!ans) return;
+  if (ans.style.display === 'none') {
+    var word = ans.getAttribute('data-answer') || '';
+    // Show the full original sentence as the answer line so the
+    // learner sees the missing word in context.
+    ans.textContent = '✓ ' + word;
+    ans.style.display = 'block';
+    // Reveal in the cloze line too for instant feedback.
+    if (ko) {
+      var blank = ko.querySelector('.mh-cloze-blank');
+      if (blank) {
+        blank.outerHTML = '<span style="color:#0d6e5a;font-weight:700">' + (word || '___') + '</span>';
+      }
+    }
+    btn.textContent = '🙈 다시 가리기';
+  } else {
+    ans.style.display = 'none';
+    btn.textContent = '👁 정답 보기';
+    // Re-render to put the blank back; cheaper than diffing.
+    if (typeof renderModalContent === 'function') renderModalContent();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UNIFIED WRITING TEMP-SAVE & SUBMIT SYSTEM
+// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// ACTIVITY COMPLETION — return to activity selector
+// ═══════════════════════════════════════════════════════════════
+function returnToActivities(closeFunc) {
+  if (typeof closeFunc === 'function') closeFunc();
+  refreshSubmitBanner();
+  // Re-open the learning selector so user can pick next activity
+  setTimeout(function() { openLearningSelector(); }, 300);
+}
+
+function _writingDraftKey() {
+  return 'kh_drafts_' + (supaUser ? supaUser.id : 'g') + '_' + kstDateKey();
+}
+
+function saveDraft(type, data) {
+  // type: 'writing' | 'topic_writing' | 'grammar' | 'article_study'
+  // data: { text, topic_ko, topic_en, context }
+  try {
+    var all = JSON.parse(localStorage.getItem(_writingDraftKey()) || '{}');
+    if (!all[type]) all[type] = [];
+    // Deduplicate by context (e.g. grammar pattern name, article id)
+    var key = data.context_key || type;
+    all[type] = all[type].filter(function(d){ return (d.context_key||type) !== key; });
+    data.context_key = key;
+    data.savedAt = new Date().toISOString();
+    all[type].push(data);
+    localStorage.setItem(_writingDraftKey(), JSON.stringify(all));
+    refreshSubmitBanner();
+  } catch(e) { console.warn('saveDraft failed', e); }
+}
+
+function getAllDrafts() {
+  try {
+    return JSON.parse(localStorage.getItem(_writingDraftKey()) || '{}');
+  } catch(e) { return {}; }
+}
+
+function countDrafts() {
+  var all = getAllDrafts();
+  var count = 0;
+  Object.keys(all).forEach(function(type) { count += (all[type] || []).length; });
+  return count;
+}
+
+function refreshSubmitBanner() {
+  var banner = document.getElementById('submit-today-banner');
+  if (!banner) return;
+  var n = countDrafts();
+  if (n > 0) {
+    banner.classList.add('visible');
+    var countEl = document.getElementById('submit-today-count');
+    if (countEl) countEl.textContent = n + ' writing drafts saved · Submit for feedback within 24h';
+  } else {
+    banner.classList.remove('visible');
+  }
+}
+
+// ── Submit-all helpers (shared by review modal + actual submit) ──────
+// Friendly metadata so the review modal can show icons/labels and route
+// "Continue editing" back to the right activity opener.
+var _SUBMIT_TYPE_INFO = {
+  'topic_writing':       { label: 'Topic Yum Yum',     icon: 'pen-line', open: 'openWritingModal' },
+  'writing':             { label: 'Writing',           icon: 'pencil', open: 'openWritingModal' },
+  'diary':               { label: 'Diary',             icon: 'notebook', open: 'openWritingModal' },
+  'free_writing':        { label: 'Free Writing',      icon: 'feather', open: 'openWritingModal' },
+  'reading':             { label: 'Reading & Writing', icon: 'book-open', open: 'openWritingModal' },
+  'grammar':             { label: 'Grammar Focus',     icon: 'library', open: 'openGrammarFocusModal' },
+  'picture_description': { label: 'Picture Desc.',     icon: 'image', open: 'openPictureDescription' },
+  'sentence_writing':    { label: 'Sentence Writing',  icon: 'pen-line', open: 'openSentenceWriting' },
+  'sentence':            { label: 'Sentence Writing',  icon: 'pen-line', open: 'openSentenceWriting' },
+  'dictation':           { label: 'Dictation',         icon: 'headphones', open: 'openDictationModal' },
+  'article_study':       { label: 'Article Study',     icon: 'newspaper', open: 'openArticleStudy' },
+  'expressions':         { label: 'Key Expressions',   icon: 'message-circle', open: 'openKeyExpressionsModal' }
+};
+function _submitTypeInfo(type) { return _SUBMIT_TYPE_INFO[type] || { label: type, icon: 'file-text', open: null }; }
+
+// Flatten the per-type drafts dict into one list, including empties so the
+// review modal can show "blank — fill in" entries instead of silently
+// hiding them like submitAllWritingsToday used to.
+function _flattenDrafts() {
+  var all = getAllDrafts();
+  var out = [];
+  Object.keys(all).forEach(function(type) {
+    (all[type] || []).forEach(function(item, idx) {
+      out.push({
+        type: type,
+        contextKey: item.context_key || type,
+        idx: idx,
+        contentId: item.content_id || null,
+        contentTitle: item.content_title || '',
+        topicKo: item.topic_ko || '',
+        topicEn: item.topic_en || '',
+        text: item.text || '',
+        charCount: (item.text || '').trim().length,
+        writingMode: item.writing_mode || type
+      });
+    });
+  });
+  return out;
+}
+
+// Mutate one draft's text in localStorage. Used by the review modal's
+// inline textarea so users don't have to reopen the original activity
+// just to add a few characters.
+function _updateDraftText(type, contextKey, newText) {
+  try {
+    var all = JSON.parse(localStorage.getItem(_writingDraftKey()) || '{}');
+    var arr = all[type] || [];
+    for (var i = 0; i < arr.length; i++) {
+      if ((arr[i].context_key || type) === contextKey) {
+        arr[i].text = newText;
+        arr[i].savedAt = new Date().toISOString();
+        all[type] = arr;
+        localStorage.setItem(_writingDraftKey(), JSON.stringify(all));
+        return true;
+      }
+    }
+  } catch(e) { console.warn('updateDraftText failed', e); }
+  return false;
+}
+
+// Remove a single draft entry (by type + contextKey) from localStorage.
+function _removeDraft(type, contextKey) {
+  try {
+    var all = JSON.parse(localStorage.getItem(_writingDraftKey()) || '{}');
+    if (!all[type]) return;
+    all[type] = all[type].filter(function(d) { return (d.context_key || type) !== contextKey; });
+    if (!all[type].length) delete all[type];
+    localStorage.setItem(_writingDraftKey(), JSON.stringify(all));
+    refreshSubmitBanner();
+  } catch(e) { console.warn('removeDraft failed', e); }
+}
+
+// Show a review modal listing every draft with char-count status, inline
+// edit, remove, and (for too-short ones) a "Continue in activity" shortcut
+// that closes this modal and opens the source activity. Resolves true if
+// the user confirms submit, false if they cancel.
+function _showSubmitReview(limit) {
+  return new Promise(function(resolve) {
+    var existing = document.getElementById('submit-review-overlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'submit-review-overlay';
+    overlay.setAttribute('style',
+      'position:fixed;inset:0;z-index:2400;background:rgba(5,12,28,.78);'
+      + 'display:flex;align-items:flex-end;justify-content:center;'
+      + 'animation:fadeIn .15s ease;'
+    );
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) close(false); });
+
+    var panel = document.createElement('div');
+    panel.setAttribute('style',
+      'background:linear-gradient(160deg,#0d1f4a 0%,#152d6e 100%);'
+      + 'color:#fff;width:100%;max-width:640px;max-height:92dvh;'
+      + 'border-radius:20px 20px 0 0;display:flex;flex-direction:column;'
+      + 'box-shadow:0 -16px 60px rgba(0,0,0,.5);font-family:inherit;'
+    );
+
+    function escapeText(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function render() {
+      var drafts = _flattenDrafts();
+      var min = limit.min;
+      var tooShort = drafts.filter(function(d){ return d.charCount < min; });
+      var ready = drafts.length - tooShort.length;
+
+      var rowsHtml = drafts.map(function(d, i) {
+        var info = _submitTypeInfo(d.type);
+        var shortBy = Math.max(0, min - d.charCount);
+        var ok = shortBy === 0 && d.charCount > 0;
+        var titleText = d.topicKo || d.contentTitle || info.label;
+        var statusHtml = ok
+          ? '<span style="color:#34d399;font-weight:800">✓ Ready</span>'
+          : (d.charCount === 0
+              ? '<span style="color:#f87171;font-weight:800">⚠ Empty — write at least ' + min + ' chars</span>'
+              : '<span style="color:#fbbf24;font-weight:800">⚠ ' + shortBy + ' more chars needed</span>');
+        return '<div data-row-idx="' + i + '" style="background:rgba(255,255,255,.05);border:1px solid ' + (ok ? 'rgba(52,211,153,.25)' : 'rgba(251,191,36,.3)') + ';border-radius:14px;padding:12px 14px;margin-bottom:10px">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">'
+          +   '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">'
+          +     '<span class="kh-ui-icon" style="display:inline-flex;width:18px;height:18px;flex-shrink:0"><i data-lucide="' + info.icon + '" class="kh-ui-icon" aria-hidden="true"></i></span>'
+          +     '<div style="min-width:0">'
+          +       '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.06em">' + escapeText(info.label) + '</div>'
+          +       '<div style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeText(titleText) + '</div>'
+          +     '</div>'
+          +   '</div>'
+          +   '<button data-act="remove" data-i="' + i + '" aria-label="Remove draft" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:14px;font-weight:800;flex-shrink:0;font-family:inherit">✕</button>'
+          + '</div>'
+          + '<textarea data-act="edit" data-i="' + i + '" rows="3" placeholder="Write at least ' + min + ' characters…" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);color:#fff;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;line-height:1.6;resize:vertical;outline:none;box-sizing:border-box">' + escapeText(d.text) + '</textarea>'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:8px;flex-wrap:wrap">'
+          +   '<div style="font-size:11px;color:rgba(255,255,255,.5)">' + d.charCount + ' / ' + min + ' chars</div>'
+          +   '<div style="font-size:11px">' + statusHtml + '</div>'
+          + '</div>'
+          + (info.open && !ok && d.charCount > 0
+              ? '<button data-act="open" data-i="' + i + '" style="margin-top:6px;width:100%;padding:8px;border-radius:8px;border:1px solid rgba(96,165,250,.3);background:rgba(37,99,235,.12);color:#93c5fd;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">↗ Continue in ' + escapeText(info.label) + '</button>'
+              : '')
+          + '</div>';
+      }).join('');
+
+      var header = '<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid rgba(255,255,255,.08)">'
+        + '<div>'
+        +   '<div style="font-size:16px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_NEWSPAPER+'</span><span>Submit today\'s work</span></div>'
+        +   '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">' + ready + ' / ' + drafts.length + ' ready · once per day · feedback within 24h</div>'
+        + '</div>'
+        + '<button data-act="cancel" aria-label="Close" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.7);width:32px;height:32px;border-radius:50%;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span></button>'
+        + '</div>';
+
+      var body = drafts.length
+        ? '<div style="overflow-y:auto;flex:1;padding:14px 18px">' + rowsHtml + '</div>'
+        : '<div style="padding:40px 20px;text-align:center;color:rgba(255,255,255,.55)"><div style="display:inline-flex;width:38px;height:38px;margin-bottom:8px;color:#94a3b8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 13a8 8 0 0 0-16 0"/><polyline points="22 13 17 13 15 16 9 16 7 13 2 13"/><path d="M2 13v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6"/><path d="M5.4 9L2 13"/><path d="M18.6 9L22 13"/></svg></div><div style="font-size:14px;font-weight:700">No drafts saved yet.</div><div style="font-size:12px;margin-top:4px">Complete a writing activity first.</div></div>';
+
+      var blocked = tooShort.length > 0 || drafts.length === 0;
+      var footer = '<div style="display:flex;gap:10px;padding:14px 18px 18px;border-top:1px solid rgba(255,255,255,.08)">'
+        + '<button data-act="cancel" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Cancel</button>'
+        + '<button data-act="submit"' + (blocked ? ' disabled' : '') + ' style="flex:2;padding:12px;border-radius:12px;border:none;background:' + (blocked ? 'rgba(96,165,250,.25);color:rgba(255,255,255,.5);cursor:not-allowed' : '#2563eb;color:#fff;cursor:pointer') + ';font-size:14px;font-weight:800;font-family:inherit">'
+        +   (blocked
+              ? (drafts.length === 0 ? 'Nothing to submit' : 'Submit (' + tooShort.length + ' issue' + (tooShort.length > 1 ? 's' : '') + ')')
+              : 'Submit ' + drafts.length + ' entr' + (drafts.length > 1 ? 'ies' : 'y'))
+        + '</button>'
+        + '</div>';
+
+      panel.innerHTML = header + body + footer;
+      if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+    }
+
+    function close(submit) {
+      overlay.remove();
+      resolve(!!submit);
+    }
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    render();
+
+    // Delegated handler — the row HTML re-renders on every edit/remove,
+    // so live event listeners on each button would be re-bound anyway.
+    panel.addEventListener('click', function(e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var act = btn.getAttribute('data-act');
+      var idx = btn.getAttribute('data-i');
+      if (act === 'cancel') return close(false);
+      if (act === 'submit') return close(true);
+      if (idx == null) return;
+      var drafts = _flattenDrafts();
+      var d = drafts[Number(idx)]; if (!d) return;
+      if (act === 'remove') {
+        _removeDraft(d.type, d.contextKey);
+        render();
+      } else if (act === 'open') {
+        var info = _submitTypeInfo(d.type);
+        close(false);
+        if (info.open && typeof window[info.open] === 'function') {
+          setTimeout(function() { try { window[info.open](); } catch(e) {} }, 50);
+        }
+      }
+    });
+
+    // Keystroke handler on textareas — debounced write so we don't hit
+    // localStorage on every keystroke. Status badges + counters update
+    // immediately for snappy feedback.
+    var liveTimer = null;
+    panel.addEventListener('input', function(e) {
+      if (e.target.tagName !== 'TEXTAREA') return;
+      var idx = Number(e.target.getAttribute('data-i'));
+      var drafts = _flattenDrafts();
+      var d = drafts[idx]; if (!d) return;
+      var text = e.target.value;
+      if (liveTimer) clearTimeout(liveTimer);
+      liveTimer = setTimeout(function() {
+        _updateDraftText(d.type, d.contextKey, text);
+        // Re-render so status badge / submit-button enabled state catch up.
+        var scrollY = panel.querySelector('div[style*="overflow-y"]');
+        var savedScroll = scrollY ? scrollY.scrollTop : 0;
+        render();
+        var newScroll = panel.querySelector('div[style*="overflow-y"]');
+        if (newScroll) newScroll.scrollTop = savedScroll;
+        // Restore focus on the textarea the user was typing in.
+        var ta = panel.querySelector('textarea[data-i="' + idx + '"]');
+        if (ta) {
+          ta.focus();
+          var len = ta.value.length;
+          try { ta.setSelectionRange(len, len); } catch(e) {}
+        }
+      }, 200);
+    });
+
+    // ESC closes
+    var escHandler = function(e) {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        document.removeEventListener('keydown', escHandler);
+        close(false);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  });
+}
+
+async function submitAllWritingsToday() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  var submitKey = 'kh_submitted_' + kstDateKey() + '_' + supaUser.id;
+  if (localStorage.getItem(submitKey)) {
+    showToast('Already submitted today. You can submit once per day (resets at midnight KST).');
+    return;
+  }
+  var limit = getWriteCharLimit();
+  var okSubmit = await _showSubmitReview(limit);
+  if (!okSubmit) return;
+
+  var sb = getSupa(); if (!sb) return;
+  var all = getAllDrafts();
+  var types = Object.keys(all);
+  if (!types.length) { showToast('No work to submit.'); return; }
+
+  var today = kstDateKey();
+
+  // Build unified package — all activities combined
+  var packageItems = [];
+  var allTexts = [];
+  for (var ti = 0; ti < types.length; ti++) {
+    var type = types[ti];
+    var items = all[type] || [];
+    for (var ii = 0; ii < items.length; ii++) {
+      var item = items[ii];
+      if (!item.text || !item.text.trim()) continue;
+      packageItems.push({
+        type: type,
+        content_id: item.content_id || null,
+        content_title: item.content_title || '',
+        topic_ko: item.topic_ko || '',
+        topic_en: item.topic_en || '',
+        text: item.text.trim(),
+        word_count: item.text.trim().length,
+        writing_mode: item.writing_mode || type
+      });
+      allTexts.push('[' + (item.topic_ko || item.content_title || type) + ']\n' + item.text.trim());
+    }
+  }
+
+  if (!packageItems.length) { showToast('No work to submit.'); return; }
+
+  // Defence-in-depth: the review modal already gates on this, but if a
+  // draft was edited concurrently in another tab we re-check at submit.
+  var tooShort = packageItems.filter(function(p){ return p.word_count < limit.min; });
+  if (tooShort.length) {
+    var labels = tooShort.map(function(p){
+      var info = _submitTypeInfo(p.type);
+      var name = p.topic_ko || p.content_title || info.label;
+      return name + ' (' + p.word_count + '/' + limit.min + ')';
+    });
+    showToast('Some entries are below ' + limit.min + ' chars: ' + labels.join(' · '));
+    return;
+  }
+
+  try {
+    // Save as single package row
+    var rec = {
+      user_id: supaUser.id,
+      content_type: 'daily_package',
+      content_id: today,
+      content_title: 'Daily Study Package — ' + today,
+      study_date: today,
+      writing_text: allTexts.join('\n\n---\n\n'),
+      word_count: packageItems.reduce(function(s,p){return s+p.word_count;},0),
+      topic_ko: packageItems[0].topic_ko || '',
+      topic_en: packageItems[0].topic_en || '',
+      writing_mode: 'daily_package',
+      context_data: JSON.stringify({ items: packageItems, item_count: packageItems.length, level: _currentLevel }),
+      level: _currentLevel || '',
+      status: 'submitted'
+    };
+    var r = await sb.from('user_submissions').upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'}).select('id');
+    // Pre-migration fallback: the original CHECK on user_submissions.content_type
+    // only allowed (writing|article_study|conversation|story). Until the
+    // 20260424_user_submissions_daily_package.sql migration lands in
+    // Supabase, 'daily_package' raises 23514 (check_violation). Retry with
+    // 'writing' so the deploy is safe in either order.
+    if (r.error && (r.error.code === '23514' || /content_type_check/.test(r.error.message || ''))) {
+      rec.content_type = 'writing';
+      rec.writing_mode = 'daily_package';
+      r = await sb.from('user_submissions')
+        .upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'})
+        .select('id');
+    }
+    if (r.error) throw r.error;
+
+    // Trigger consolidated AI feedback for entire package
+    if (r.data && r.data[0] && r.data[0].id && allTexts.length) {
+      _triggerPackageFeedback(r.data[0].id, packageItems);
+    }
+
+    localStorage.setItem(submitKey, 'true');
+    localStorage.removeItem(_writingDraftKey());
+    refreshSubmitBanner();
+    showToast('Daily package submitted! (' + packageItems.length + ' items) Feedback within 24 hours.');
+    if (typeof awardXP === 'function') awardXP('writing_submit');
+  } catch(e) {
+    showToast('Submit error: ' + (e.message||e));
+  }
+}
+
+async function _triggerPackageFeedback(submissionId, items) {
+  try {
+    // Per-activity feedback: each draft (Topic Writing, Article Study,
+    // Dictation, Picture, Grammar, Key Expressions, …) gets its OWN
+    // section. Old behaviour bundled everything into one block, so the
+    // article-study text got reviewed against the topic-writing prompt
+    // and the AI complained the article paragraph was 'off-topic'.
+    //
+    // Output schema must match what the admin viewer renders:
+    //   - top-level: overall_assessment, common_patterns, daily_tip,
+    //     encouragement (whole-day rollup)
+    //   - activities[]: type, topic, student_text, score, overall,
+    //     corrected_full, corrections, structure, extra_content,
+    //     spelling, naturalness (per-activity analysis)
+    //
+    // English directive is intentionally repeated and explicit — Claude
+    // tends to mirror the input language otherwise (the input here is
+    // Korean), and the user is an English-speaking learner.
+    var head = 'You are a Korean writing tutor reviewing an English speaker\'s daily Korean study package.\n'
+      + 'CRITICAL LANGUAGE RULE: ALL English-language fields are in ENGLISH. Korean only inside "corrected_full" and the "original" / "corrected" sides of corrections.\n\n'
+      + '── REGISTER AWARENESS (most important rule) ──\n'
+      + 'Korean has multiple valid registers (반말 / 해요체 / 합쇼체). Subject omission and casual particle drop (조사 생략, e.g. 그림 그리기 너무 좋아) are NORMAL in 반말 and informal writing — NOT grammatical errors. A teacher would NOT mark these with a red pen.\n'
+      + '- "corrections" is ONLY for ACTUAL grammatical errors: wrong verb endings, incorrect word order, misspellings (e.g. 나쁘지않아 → 나쁘지 않아), wrong vocab. Things a teacher would clearly mark wrong.\n'
+      + '- Register/style observations (casual mode, particle drop, mixed register, suggested polishing) go in "naturalness.comment" ONLY. Never in corrections.\n'
+      + '- If the topic prompted polite speech (요/습니다) but the student wrote 반말, mention it in naturalness, NOT corrections.\n\n'
+      + '── ANTI-REDUNDANCY ──\n'
+      + 'Do NOT repeat the same issue across fields. If a particle is missing, surface it ONCE — either in corrections OR naturalness.comment, never both. If the issue is already in corrections, naturalness should comment on something different (overall flow, register fit, naturalness of word choice).\n\n'
+      + 'The student completed ' + items.length + ' separate activit' + (items.length > 1 ? 'ies' : 'y') + '. Review them INDEPENDENTLY — do not mix content across activities.\n\n'
+      + 'CONCISENESS — phone-readable:\n'
+      + '- "overall_assessment", "overall", "naturalness.comment": ONE sentence each (≤15 words).\n'
+      + '- "daily_tip" / "encouragement": ONE short sentence each.\n'
+      + '- "common_patterns": empty [] unless the SAME mistake truly repeats across activities.\n'
+      + '- "corrections": at most 3 most important grammatical issues. NEVER pad to fill the slot.\n'
+      + '- "naturalness": null when text is under ~30 Korean chars or nothing meaningful to add.\n'
+      + '- "corrected_full": null when there are no real errors to correct.\n'
+      + 'Quality over quantity. Empty / null is fine.\n\n';
+
+    // Map mode strings (including 'express_practice:essay') back to a
+    // human-readable activity type for the AI prompt.
+    function _activityLabel(item) {
+      var t = String(item.type || item.writing_mode || '').split(':')[0];
+      var labels = {
+        express_practice: 'Express Practice (Topic Yum Yum)',
+        topic_writing: 'Topic Yum Yum',
+        writing: 'Topic Yum Yum',
+        diary: 'Diary',
+        free_writing: 'Free Writing',
+        reading: 'Reading & Writing',
+        article_study: 'Article Study',
+        grammar: 'Grammar Focus',
+        picture_description: 'Picture Description',
+        sentence_writing: 'Sentence Writing',
+        sentence: 'Sentence Writing',
+        dictation: 'Dictation',
+        expressions: 'Key Expressions'
+      };
+      return labels[t] || (t || 'Writing');
+    }
+
+    var blocks = items.map(function(item, i) {
+      return '=== ACTIVITY ' + (i+1) + ' ===\n'
+        + 'type: ' + (String(item.type || item.writing_mode || '').split(':')[0]) + '\n'
+        + 'activity_name: ' + _activityLabel(item) + '\n'
+        + 'topic_or_title: ' + (item.topic_ko || item.content_title || '') + '\n'
+        + 'student_text:\n' + item.text + '\n';
+    }).join('\n');
+
+    var schema = '\n\nReturn ONLY valid JSON (no markdown, no commentary) with this EXACT shape:\n'
+      + '{\n'
+      + '  "overall_assessment": "ONE English sentence (≤15 words) summarizing today",\n'
+      + '  "common_patterns": [],\n'
+      + '  "daily_tip": "ONE short actionable English tip for tomorrow",\n'
+      + '  "encouragement": "ONE short motivating English line",\n'
+      + '  "activities": [\n'
+      + '    {\n'
+      + '      "type": "express_practice|diary|free_writing|article_study|picture_description|dictation",\n'
+      + '      "activity_name": "Express Practice (Topic Writing) | Diary | Free Writing | Article Study | Picture Description | Dictation",\n'
+      + '      "topic": "the topic / title shown to the student",\n'
+      + '      "student_text": "the student\'s original Korean text, copied verbatim",\n'
+      + '      "score": 0-100,\n'
+      + '      "overall": "ONE short English sentence about THIS activity",\n'
+      + '      "corrected_full": "Korean rewrite, OR null if no real errors",\n'
+      + '      "corrections": [{"original":"Korean snippet","corrected":"Korean snippet","reason":"English explanation","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],\n'
+      + '      "naturalness": {"score":0-10,"comment":"ONE English sentence — register / flow / word-choice notes (NOT a repeat of corrections)"} or null\n'
+      + '    }\n'
+      + '  ]\n'
+      + '}\n'
+      + 'Drop the legacy fields "spelling", "structure", "extra_content", "naturalness.suggestions" entirely — do not include them. They were duplicating other sections.';
+
+    var prompt = head + blocks + schema;
+
+    var data = await callClaude({ feature:'daily_package_feedback', model:'claude-haiku-4-5-20251001', max_tokens:2200, messages:[{role:'user',content:prompt}] });
+    var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('').replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(raw);
+    var sb = getSupa();
+    if (sb) {
+      await sb.from('user_submissions').update({
+        ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
+        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_drafted'
+      }).eq('id', submissionId);
+    }
+  } catch(e) { console.warn('Package feedback failed:', e); }
+}
+
+async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
+  try {
+    var prompt = 'You are a Korean writing tutor giving feedback to an English-speaking student learning Korean.\n\nStudent\'s writing:\n"""\n' + text + '\n"""\nTopic: ' + topicOrTitle + '\n\n'
+      + 'Give feedback in ENGLISH. Return ONLY valid JSON:\n'
+      + '{"overall":"1-2 sentence overall assessment in English","corrections":[{"original":"original text","corrected":"corrected text","reason":"English explanation of why","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],"encouragement":"short encouraging message in English"}\nReturn JSON only.';
+    var data = await callClaude({ feature:'unified_writing_feedback', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content:prompt}] });
+    var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('').replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(raw);
+    var sb = getSupa();
+    if (sb) {
+      await sb.from('user_submissions').update({
+        ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
+        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_drafted'
+      }).eq('id', submissionId);
+    }
+    // Log wrong patterns to quiz_results for analytics
+    if (parsed.corrections && parsed.corrections.length && typeof logQuizResult === 'function') {
+      var patterns = {};
+      parsed.corrections.forEach(function(c) {
+        var p = c.pattern || 'OTHER';
+        patterns[p] = (patterns[p] || 0) + 1;
+      });
+      logQuizResult('writing_feedback', {
+        content_type: 'writing', content_id: submissionId,
+        score: Math.max(0, 100 - parsed.corrections.length * 15),
+        max_score: 100,
+        accuracy_pct: Math.max(0, 100 - parsed.corrections.length * 15),
+        wrong_patterns: patterns,
+        details: { corrections_count: parsed.corrections.length, topic: topicOrTitle }
+      });
+    }
+  } catch(e) { console.warn('AI feedback failed:', e); }
+}
+
+async function submitWriting() {
+  if (!supaUser) { openAuthModal('signin'); closeWritingModal(); return; }
+
+  var text = (document.getElementById('write-area').value || '').trim();
+  if (!text) { showToast('Write something first!'); return; }
+
+  // Vocab usage check — skip for diary AND free modes (both are
+  // user-chosen subject; no daily-required vocab to enforce).
+  var requiredVocab = (_aiContent && _aiContent.vocab || []).map(function(v){ return v.ko; }).filter(Boolean);
+  var usedVocab = requiredVocab.filter(function(w){ return text.includes(w); });
+  var skipVocabCheck = (_writingMode === 'diary' || _writingMode === 'free');
+  if (!skipVocabCheck && requiredVocab.length > 0 && usedVocab.length < 2) {
+    showToast('Include at least 2 vocab words in your writing. (' + usedVocab.length + '/2)');
+    return;
+  }
+
+  var isDiary = _writingMode === 'diary';
+  var isFree  = _writingMode === 'free';
+  var diaryPrompts = isDiary ? _getDiaryPrompts() : [];
+  var todayPrompt = isDiary ? diaryPrompts[new Date().getDate() % diaryPrompts.length] : null;
+
+  // Save to daily package draft (not individual DB submission)
+  // writing_mode is compounded with the genre when non-free so the Claude
+  // prompt and Learning Hub know the format (e.g. 'express_practice:essay').
+  var genreSuffix = (_wmGenre && _wmGenre !== 'free') ? (':' + _wmGenre) : '';
+  var draftKey = isDiary ? 'diary' : (isFree ? 'free_writing' : 'express_practice');
+  var ctxKeyPrefix = isDiary ? 'diary_' : (isFree ? 'free_' : 'express_');
+  var topicKo = isDiary
+    ? (todayPrompt ? todayPrompt.ko : '오늘의 일기')
+    : (isFree ? 'Free Writing' : ((_todayTopic && _todayTopic.topic_ko) || ''));
+  var topicEn = isDiary
+    ? (todayPrompt ? todayPrompt.en : 'Daily Diary')
+    : (isFree ? 'Free Writing — student-chosen subject' : ((_todayTopic && _todayTopic.topic_en) || ''));
+  var ctxObj = isDiary
+    ? { type: 'diary', prompt: todayPrompt, genre: _wmGenre || 'free' }
+    : (isFree
+        ? { type: 'free_writing', genre: _wmGenre || 'free' }
+        : { used_vocab: usedVocab, required_vocab: requiredVocab, genre: _wmGenre || 'free' });
+  saveDraft(draftKey, {
+    text: text,
+    topic_ko: topicKo,
+    topic_en: topicEn,
+    writing_mode: (_writingMode || 'topic') + genreSuffix,
+    writing_genre: _wmGenre || 'free',
+    context_key: ctxKeyPrefix + kstDateKey(),
+    context: ctxObj
+  });
+
+  markStageDone('topic');
+  playCorrectSound();
+  showToast('Saved! Use "Submit All" to send your daily package.');
+  refreshSubmitBanner();
+
+  // ── 3D Envelope + Celebration animation ──
+  _playSubmitEnvelopeAnimation(function() {
+    returnToActivities(closeWritingModal);
+  });
+  return; // Skip legacy individual submission below
+
+  var sb = getSupa();
+  if (!sb) return;
+  var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
+  try {
+    var insertRes = await sb.from('user_submissions').insert({
+      user_id:          supaUser.id,
+      content_type:     'writing',
+      study_date:       today,
+      writing_text:     text,
+      word_count:       text.length,
+      topic_ko:         (_todayTopic && _todayTopic.topic_ko) || '',
+      topic_en:         (_todayTopic && _todayTopic.topic_en) || '',
+      writing_mode:     _writingMode || 'topic',
+      context_data:     JSON.stringify({ used_vocab: usedVocab }),
+      level:            _currentLevel || '',
+      status:           'submitted'
+    });
+
+    if (insertRes.error) throw insertRes.error;
+
+    // ── user_topic_history 완료 처리 ──
+    await sb.from('user_topic_history')
+      .update({ completed: true })
+      .eq('user_id', supaUser.id)
+      .eq('assigned_date', today);
+
+    // ── AI 1차 첨삭 (비동기, 백그라운드) ──
+    var submissionId = insertRes.data && insertRes.data[0] && insertRes.data[0].id;
+    if (submissionId) {
+      triggerAIFeedback(submissionId, text, requiredVocab, requiredGrammar);
+    }
+
+    // XP 적립
+    if (typeof awardXP === 'function') awardXP('writing_submit', { topic_ko: _todayTopic && _todayTopic.topic_ko });
+    markStageDone('topic');
+    await sb.from('user_daily_progress').upsert({
+      user_id: supaUser.id,
+      study_date: today,
+      topic_done: !!_studyDone.topic,
+      grammar_done: !!_studyDone.grammar,
+      picture_done: !!_studyDone.picture,
+      sentence_done: !!_studyDone.sentence,
+      submitted: true,
+      submitted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }, { onConflict:'user_id,study_date' });
+
+    var doneEl = document.getElementById('hero-topic-done');
+    if (doneEl) doneEl.style.display = 'flex';
+    showToast('Submitted! Feedback will be ready within 24 hours.');
+    returnToActivities(closeWritingModal);
+
+  } catch(e) {
+    if (e && e.code === '23505') {
+      showToast('You already submitted today!', true);
+      closeWritingModal();
+    } else {
+      showToast('Submit error: ' + (e.message || e), true);
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit for Feedback'; }
+    }
+  }
+}
+
+// AI 1차 첨삭 — 백그라운드 실행
+async function triggerAIFeedback(submissionId, text, vocab, grammar) {
+  try {
+    var wordCount = text.replace(/\s+/g,' ').trim().split(' ').length;
+    var isTooShort = wordCount < 8;
+
+    // Phase 4: genre + register context pulled from the writing modal
+    var genreMeta   = (typeof WRITING_GENRES !== 'undefined' && WRITING_GENRES[_wmGenre || 'free']) || null;
+    var genreLabel  = genreMeta ? genreMeta.label   : 'Free';
+    var genreId     = genreMeta ? genreMeta.id      : 'free';
+    var conventions = genreMeta && genreMeta.conventions ? genreMeta.conventions : null;
+    var registerHint = genreMeta && genreMeta.registerHint ? genreMeta.registerHint : '';
+
+    var genreBlock = conventions
+      ? 'Genre: ' + genreLabel + ' (' + genreId + ')\n'
+        + 'Genre conventions: ' + conventions + '\n'
+        + 'Register note: ' + registerHint + '\n\n'
+      : 'Genre: Free (no genre constraints — just register consistency)\n'
+        + 'Register note: ' + (registerHint || 'Score register on whether the student keeps a consistent style throughout.') + '\n\n';
+
+    var prompt = 'You are an expert Korean writing tutor. Analyze the student\'s Korean writing in detail and provide feedback IN ENGLISH.\n\n'
+      + genreBlock
+      + 'Student writing:\n"""\n' + text + '\n"""\n\n'
+      + 'Required vocab: ' + vocab.join(', ') + '\n'
+      + 'Required grammar: ' + grammar.join(', ') + '\n\n'
+      + 'Return ONLY JSON in this format:\n'
+      + '{\n'
+      + '  "score": 0-100 (integer, overall — MUST equal round(rubric average)),\n'
+      + '  "genre": "' + genreId + '",\n'
+      + '  "rubric": {\n'
+      + '    "accuracy":      0-100,    // Grammar & spelling correctness (조사/어미/시제/맞춤법). 95+ = native-clean, 70-80 = mostly fine with a few slips, <50 = frequent basic errors.\n'
+      + '    "lexical_range": 0-100,    // Vocabulary diversity & appropriateness (approximate TTR × appropriateness). 80+ = varied & level-appropriate, 50-70 = repetitive or overly simple.\n'
+      + '    "cohesion":      0-100,    // Sentence-to-sentence connectors (그러나/따라서/반면에 etc.) and referential consistency.\n'
+      + '    "coherence":     0-100,    // Whole-text logical flow, paragraph structure, staying on topic.\n'
+      + '    "register":      0-100     // Consistency of speech level (-습니다 vs -아/어요 vs -다). 90+ = clean single register fitting the genre; <60 = noticeable mixing or wrong register for the genre.\n'
+      + '  },\n'
+      + '  "rubric_notes": {\n'
+      + '    "accuracy":      "1 sentence in English — what drove the accuracy score",\n'
+      + '    "lexical_range": "1 sentence in English",\n'
+      + '    "cohesion":      "1 sentence in English",\n'
+      + '    "coherence":     "1 sentence in English",\n'
+      + '    "register":      "1 sentence in English — note the register used and any mixing (e.g. \'Mostly 습니다-style but switches to 아/어요 in line 2\')"\n'
+      + '  },\n'
+      + (conventions
+          ? '  "genre_conventions": {\n'
+            + '    "score":    0-100,         // How well the writing follows the genre format above.\n'
+            + '    "met":      ["bullet 1","bullet 2"],   // conventions the student DID meet\n'
+            + '    "missing":  ["bullet 1","bullet 2"]    // conventions the student should add\n'
+            + '  },\n'
+          : '')
+      + '  "overall": "2-3 sentence overall evaluation in English (praise first, then improvements)",\n'
+      + '  "corrected_full": "Full corrected version of the student\'s text (fix errors while keeping their style)",\n'
+      + '  "corrections": [\n'
+      + '    {"original":"incorrect expression","corrected":"corrected expression","reason":"English explanation of why it\'s wrong","pattern":"SPELLING|PARTICLE|TENSE|WORD_ORDER|VOCAB|NUANCE|REGISTER"}\n'
+      + '  ],\n'
+      + '  "spelling": [{"wrong":"misspelled word","correct":"correct spelling","tip":"easy way to remember"}],\n'
+      + '  "naturalness": {"score":0-10,"comment":"How natural it sounds from a native perspective","suggestions":["more natural alternative 1","alternative 2"]},\n'
+      + '  "nuance": {"comment":"Nuance/tone feedback","word_swaps":[{"from":"word used","to":"recommended word","why":"nuance difference"}]},\n'
+      + '  "structure": {"comment":"Sentence structure/word order evaluation","tip":"Improvement tip"},\n'
+      + '  "vocab_feedback": "Vocabulary usage evaluation + recommended additional words",\n'
+      + '  "grammar_feedback": "Grammar usage evaluation + things to watch out for",\n'
+      + '  "extra_content": "2-3 ideas for extending this topic in writing",\n'
+      + '  "mistake_patterns": {"SPELLING":0,"PARTICLE":0,"TENSE":0,"WORD_ORDER":0,"VOCAB":0,"NUANCE":0,"REGISTER":0},\n'
+      + '  "encouragement": "A short encouraging message in English"'
+      + (isTooShort ? ',\n  "example_answer": "Example answer for this topic (3-5 sentences, matched to student level)"' : '')
+      + '\n}\n'
+      + 'IMPORTANT: rubric values are integers 0-100. score must equal round((accuracy+lexical_range+cohesion+coherence+register)/5). ALL feedback text must be in English. Korean only appears in corrected_full, corrections.original/corrected, spelling fields. Return ONLY valid JSON.';
+
+    var data = await callClaude({
+      feature: 'writing_feedback',
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
+    var clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+    var openB = clean.indexOf('{'), closeB = clean.lastIndexOf('}');
+    if (openB < 0 || closeB <= openB) throw new Error('Invalid JSON response');
+    var parsed = JSON.parse(clean.slice(openB, closeB + 1));
+
+    var sb = getSupa();
+    if (sb) {
+      await sb.from('user_submissions').update({
+        ai_feedback:    parsed,
+        ai_feedback_at: new Date().toISOString(),
+        ai_model:       'claude-sonnet-4-20250514',
+        status:         'ai_reviewed'
+      }).eq('id', submissionId);
+    }
+  } catch(e) {
+    console.warn('AI feedback failed:', e);
+  }
+}
+
+// AI 1차 첨삭 — Article Study용 (백그라운드)
+async function triggerArticleAIFeedback(submissionId, text, articleTitle) {
+  try {
+    var prompt = '당신은 한국어 작문 첨삭 선생님입니다.\n\n'
+      + '학생이 기사 "' + articleTitle + '"를 읽고 작성한 글:\n"""\n' + text + '\n"""\n\n'
+      + '다음 형식으로 첨삭해주세요 (JSON):\n'
+      + '{\n'
+      + '  "overall": "전반적인 평가 1-2문장",\n'
+      + '  "corrections": [{"original":"원문","corrected":"수정문","reason":"이유","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],\n'
+      + '  "encouragement": "격려 한마디"\n'
+      + '}\nJSON만 반환하세요.';
+    var data = await callClaude({
+      feature: 'article_study_feedback',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role:'user', content: prompt }]
+    });
+    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
+    var clean = raw.replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(clean);
+    var sb = getSupa();
+    if (sb) {
+      await sb.from('user_submissions').update({
+        ai_feedback: parsed,
+        ai_feedback_at: new Date().toISOString(),
+        ai_model: 'claude-haiku-4-5-20251001',
+        status: 'ai_reviewed'
+      }).eq('id', submissionId);
+    }
+  } catch(e) { console.warn('Article AI feedback failed:', e); }
+}
+
+// ── 피드백 인박스 ─────────────────────────────────────────────
+async function loadFeedbackInbox() {
+  if (!supaUser) return;
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var res = await sb.from('user_submissions')
+      .select('id, study_date, status, admin_feedback, topic_ko, content_type')
+      .eq('user_id', supaUser.id)
+      .order('submitted_at', { ascending: false })
+      .limit(5);
+    if (res.error) return;
+    var items = res.data || [];
+    var latest = items[0];
+    var btnEl   = document.getElementById('feedback-inbox-btn');
+    var labelEl = document.getElementById('feedback-inbox-label');
+    if (!btnEl) return;
+    if (!latest) { btnEl.style.display = 'none'; return; }
+    btnEl.style.display = 'block';
+    if ((latest.status === 'admin_approved' || latest.status === 'sent') && latest.admin_feedback) {
+      btnEl.querySelector('button').style.borderColor = 'rgba(34,197,94,.35)';
+      btnEl.querySelector('button').style.background = 'rgba(34,197,94,.1)';
+      btnEl.querySelector('button').style.color = '#4ade80';
+      if (labelEl) labelEl.textContent = 'New feedback arrived! Tap to view';
+    } else if (latest.status === 'submitted' || latest.status === 'ai_drafted') {
+      if (labelEl) labelEl.textContent = 'Under review · feedback within 24h';
+    } else {
+      if (labelEl) labelEl.textContent = 'View my writing feedback';
+    }
+  } catch(e) {}
+}
+
+function openFeedbackInbox() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  var overlay = document.createElement('div');
+  overlay.id = 'feedback-inbox-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.85);z-index:3000;display:flex;align-items:center;justify-content:center;padding:12px;';
+  overlay.onclick = function(e){ if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML =
+    '<div style="background:#0d1b2e;border:1px solid rgba(255,255,255,.1);border-radius:16px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.4);color:#fff">'
+    + '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#0d1b2e;z-index:1;border-radius:16px 16px 0 0">'
+    + '<div style="font-size:16px;font-weight:800;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_PENCIL+'</span><span>Writing Feedback</span></div>'
+    + '<button onclick="document.getElementById(\'feedback-inbox-overlay\').remove()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span></button>'
+    + '</div>'
+    + '<div id="feedback-inbox-content" style="padding:16px 20px;">'
+    + '<div style="text-align:center;color:rgba(255,255,255,.4);padding:24px">Loading...</div>'
+    + '</div>'
+    + '</div>';
+
+  document.body.appendChild(overlay);
+  renderFeedbackInboxContent();
+}
+
+// ── Feedback rendering helpers ──
+var _fbPatternIcons = { SPELLING:'✏️', PARTICLE:'🔗', TENSE:'⏰', WORD_ORDER:'🔀', VOCAB:'📖', NUANCE:'💬' };
+var _fbPatternLabels = { SPELLING:'Spelling', PARTICLE:'Particle', TENSE:'Tense', WORD_ORDER:'Word Order', VOCAB:'Vocabulary', NUANCE:'Nuance' };
+
+function renderDetailedFeedback(fb, writingText) {
+  if (!fb) return '<div style="color:rgba(255,255,255,.4)">No feedback data available</div>';
+  var h = '';
+
+  // Score badge
+  if (fb.score !== undefined) {
+    var scoreColor = fb.score >= 80 ? '#4ade80' : fb.score >= 60 ? '#fbbf24' : '#f87171';
+    h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
+      + '<div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.06);border:3px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:' + scoreColor + '">' + fb.score + '</div>'
+      + '<div><div style="font-size:14px;font-weight:700">' + (fb.score >= 80 ? 'Great job!' : fb.score >= 60 ? 'Almost there!' : 'Keep practicing!') + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.5">' + (fb.overall || '') + '</div></div></div>';
+  } else if (fb.overall) {
+    h += '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:8px">' + fb.overall + '</div>';
+  }
+
+  // 5-axis rubric (accuracy / lexical range / cohesion / coherence / register)
+  if (fb.rubric && typeof fb.rubric === 'object') {
+    var RUBRIC_ROWS = [
+      { k: 'accuracy',      label: 'Accuracy',      icon: '✍️', color: '#60a5fa' },
+      { k: 'lexical_range', label: 'Lexical range', icon: '📚', color: '#a78bfa' },
+      { k: 'cohesion',      label: 'Cohesion',      icon: '🔗', color: '#34d399' },
+      { k: 'coherence',     label: 'Coherence',     icon: '🧭', color: '#fbbf24' },
+      { k: 'register',      label: 'Register',      icon: '🎭', color: '#f472b6' }
+    ];
+    // Back-compat: rubrics saved before Phase 4 don't have `register` — hide
+    // that gauge gracefully instead of showing a 0.
+    RUBRIC_ROWS = RUBRIC_ROWS.filter(function(r) { return fb.rubric[r.k] != null; });
+    var rubVals = RUBRIC_ROWS.map(function(r){ var v = Number(fb.rubric[r.k]); return Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : 0; });
+    var rubAvg  = rubVals.length ? Math.round(rubVals.reduce(function(a,b){return a+b;},0) / rubVals.length) : 0;
+
+    // Genre label derived from fb.genre id (matches WRITING_GENRES)
+    var GENRE_LABELS = { free:'Free writing', email:'Email ✉️', essay:'Essay 📝', diary:'Diary 📓', news:'News summary 📰' };
+    var genreChip = (fb.genre && GENRE_LABELS[fb.genre])
+      ? '<span style="margin-left:10px;padding:3px 10px;border-radius:999px;background:rgba(167,139,250,.18);color:#c4b5fd;font-size:10px;font-weight:700;letter-spacing:.04em">' + GENRE_LABELS[fb.genre] + '</span>'
+      : '';
+
+    h += '<div style="margin-bottom:18px;padding:16px 16px 14px;background:linear-gradient(145deg,rgba(37,99,235,.08),rgba(124,58,237,.06));border:1px solid rgba(255,255,255,.08);border-radius:14px;backdrop-filter:blur(6px)">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px">'
+        + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+          + '<div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#60a5fa,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 4px 12px rgba(124,58,237,.3)">📊</div>'
+          + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.08em">Writing Rubric</div>'
+          + genreChip
+        + '</div>'
+        + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.55)">Avg ' + rubAvg + '</div>'
+      + '</div>'
+      // Auto-flow grid: 2 cols on mobile, 3 cols when there's room.
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">';
+    RUBRIC_ROWS.forEach(function(r, i) {
+      var v = rubVals[i];
+      var note = fb.rubric_notes && fb.rubric_notes[r.k] ? String(fb.rubric_notes[r.k]) : '';
+      h += '<div style="padding:12px 10px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:8px">'
+        + _khRadialGauge({ value: v, accent: r.color, track: 'rgba(255,255,255,.08)', label: r.icon + ' ' + r.label, size: 72, stroke: 7, dark: true })
+        + (note ? '<div style="font-size:10.5px;color:rgba(255,255,255,.5);line-height:1.5;text-align:center;padding:0 2px">' + note + '</div>' : '')
+      + '</div>';
+    });
+    h += '</div></div>';
+
+    // Genre-conventions card (only when Claude returned it)
+    if (fb.genre_conventions && typeof fb.genre_conventions === 'object') {
+      var gc = fb.genre_conventions;
+      var gcScore = Math.max(0, Math.min(100, Math.round(Number(gc.score) || 0)));
+      var metList    = Array.isArray(gc.met)     ? gc.met.filter(Boolean).slice(0, 5) : [];
+      var missingList= Array.isArray(gc.missing) ? gc.missing.filter(Boolean).slice(0, 5) : [];
+      var gcColor = gcScore >= 80 ? '#4ade80' : gcScore >= 60 ? '#60a5fa' : gcScore >= 40 ? '#fbbf24' : '#f87171';
+      h += '<div style="margin-bottom:18px;padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+          + '<div style="display:flex;align-items:center;gap:8px">'
+            + '<div style="width:22px;height:22px;border-radius:7px;background:rgba(167,139,250,.18);display:flex;align-items:center;justify-content:center;font-size:11px">📐</div>'
+            + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.06em">Genre conventions</div>'
+          + '</div>'
+          + '<div style="font-size:13px;font-weight:900;color:' + gcColor + '">' + gcScore + '</div>'
+        + '</div>'
+        + (metList.length
+            ? '<div style="margin-bottom:' + (missingList.length ? '8px' : '0') + '">'
+                + '<div style="font-size:10px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:inline-flex;align-items:center;gap:4px"><span style="display:inline-flex;width:10px;height:10px">'+BM_ICON_CHECK+'</span><span>Met</span></div>'
+                + metList.map(function(m){ return '<div style="font-size:12px;color:rgba(255,255,255,.72);padding:2px 0">• ' + m + '</div>'; }).join('')
+              + '</div>'
+            : '')
+        + (missingList.length
+            ? '<div>'
+                + '<div style="font-size:10px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:inline-flex;align-items:center;gap:4px"><span style="display:inline-flex;width:10px;height:10px">'+BM_ICON_WARNING+'</span><span>Missing</span></div>'
+                + missingList.map(function(m){ return '<div style="font-size:12px;color:rgba(255,255,255,.72);padding:2px 0">• ' + m + '</div>'; }).join('')
+              + '</div>'
+            : '')
+      + '</div>';
+    }
+  }
+
+  // Corrected full text
+  if (fb.corrected_full) {
+    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Corrected Version</div>'
+      + '<div style="font-size:14px;line-height:1.7;padding:12px 14px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:10px;font-family:\'Noto Sans KR\',sans-serif">' + fb.corrected_full + '</div></div>';
+  }
+
+  // Corrections (main)
+  if (fb.corrections && fb.corrections.length) {
+    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Corrections (' + fb.corrections.length + ')</div>';
+    fb.corrections.forEach(function(c) {
+      var icon = _fbPatternIcons[c.pattern] || '🔧';
+      var label = _fbPatternLabels[c.pattern] || c.pattern;
+      h += '<div style="padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin-bottom:6px">'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:14px">' + icon + '</span><span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(248,113,113,.15);color:#fca5a5">' + label + '</span></div>'
+        + '<div style="font-size:13px;margin-bottom:4px"><span style="text-decoration:line-through;color:#f87171;background:rgba(248,113,113,.1);padding:1px 4px;border-radius:3px">' + (c.original||'') + '</span> → <span style="color:#4ade80;background:rgba(74,222,128,.1);padding:1px 4px;border-radius:3px;font-weight:700">' + (c.corrected||'') + '</span></div>'
+        + '<div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">' + (c.reason||'') + '</div></div>';
+    });
+    h += '</div>';
+  }
+
+  // Spelling
+  if (fb.spelling && fb.spelling.length) {
+    h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">✏️ Spelling</div>';
+    fb.spelling.forEach(function(s) {
+      h += '<div style="font-size:13px;padding:6px 10px;background:rgba(251,191,36,.06);border-left:3px solid #fbbf24;border-radius:0 6px 6px 0;margin-bottom:4px">'
+        + '<span style="text-decoration:line-through;color:#fbbf24">' + (s.wrong||'') + '</span> → <span style="font-weight:700">' + (s.correct||'') + '</span>'
+        + (s.tip ? ' <span style="color:rgba(255,255,255,.4);font-size:11px">(' + s.tip + ')</span>' : '')
+        + '</div>';
+    });
+    h += '</div>';
+  }
+
+  // Naturalness
+  if (fb.naturalness) {
+    h += '<div style="margin-bottom:14px;padding:12px 14px;background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.15);border-radius:10px">'
+      + '<div style="font-size:11px;font-weight:700;color:#60a5fa;margin-bottom:6px">🗣️ 자연스러움 ' + (fb.naturalness.score !== undefined ? fb.naturalness.score + '/10' : '') + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:6px">' + (fb.naturalness.comment||'') + '</div>';
+    if (fb.naturalness.suggestions && fb.naturalness.suggestions.length) {
+      h += '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">추천 표현:</div>';
+      fb.naturalness.suggestions.forEach(function(s) { h += '<div style="font-size:13px;color:#60a5fa;margin-top:2px">• ' + s + '</div>'; });
+    }
+    h += '</div>';
+  }
+
+  // Nuance / Word Swaps
+  if (fb.nuance && (fb.nuance.comment || (fb.nuance.word_swaps && fb.nuance.word_swaps.length))) {
+    h += '<div style="margin-bottom:14px;padding:12px 14px;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.15);border-radius:10px">'
+      + '<div style="font-size:11px;font-weight:700;color:#c4b5fd;margin-bottom:6px">💬 뉘앙스</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:6px">' + (fb.nuance.comment||'') + '</div>';
+    if (fb.nuance.word_swaps && fb.nuance.word_swaps.length) {
+      fb.nuance.word_swaps.forEach(function(ws) {
+        h += '<div style="font-size:12px;padding:4px 0"><span style="color:#c4b5fd;font-weight:700">' + (ws.from||'') + '</span> → <span style="color:#a78bfa;font-weight:700">' + (ws.to||'') + '</span> <span style="color:rgba(255,255,255,.35)">(' + (ws.why||'') + ')</span></div>';
+      });
+    }
+    h += '</div>';
+  }
+
+  // Structure
+  if (fb.structure && fb.structure.comment) {
+    h += '<div style="margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px">'
+      + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:4px">🏗️ 문장 구조</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.5">' + fb.structure.comment + '</div>'
+      + (fb.structure.tip ? '<div style="font-size:12px;color:#fbbf24;margin-top:4px">💡 ' + fb.structure.tip + '</div>' : '')
+      + '</div>';
+  }
+
+  // Extra content ideas
+  if (fb.extra_content) {
+    h += '<div style="margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px">'
+      + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:4px">💡 더 쓸 수 있는 내용</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.6">' + fb.extra_content + '</div></div>';
+  }
+
+  // Example answer (for too-short or off-topic writing)
+  if (fb.example_answer) {
+    h += '<div style="margin-bottom:14px;padding:12px 14px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.15);border-radius:10px">'
+      + '<div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:6px">📝 예시 답변</div>'
+      + '<div style="font-size:14px;color:rgba(255,255,255,.75);line-height:1.7;font-family:\'Noto Sans KR\',sans-serif">' + fb.example_answer + '</div></div>';
+  }
+
+  // Encouragement
+  if (fb.encouragement) {
+    h += '<div style="text-align:center;padding:12px;font-size:14px;color:#4ade80;font-weight:700">' + fb.encouragement + '</div>';
+  }
+
+  return h;
+}
+
+async function renderFeedbackInboxContent() {
+  var content = document.getElementById('feedback-inbox-content');
+  if (!content) return;
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var res = await sb.from('user_submissions')
+      .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, submitted_at, context_data')
+      .eq('user_id', supaUser.id)
+      .order('submitted_at', { ascending: false })
+      .limit(20);
+    if (res.error) throw res.error;
+    var items = res.data || [];
+    if (!items.length) {
+      content.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,.4);padding:24px">No submissions yet.</div>';
+      return;
+    }
+
+    // Group by date
+    var grouped = {};
+    items.forEach(function(item) {
+      var date = item.study_date || (item.submitted_at ? item.submitted_at.slice(0, 10) : 'Unknown');
+      if (!grouped[date]) grouped[date] = [];
+      grouped[date].push(item);
+    });
+
+    var TYPE_LABELS = {
+      daily_package: { icon: '📦', label: 'Daily Package', color: '#60a5fa' },
+      topic: { icon: '✍️', label: 'Topic Yum Yum', color: '#a78bfa' },
+      diary: { icon: '📓', label: 'Diary', color: '#f472b6' },
+      reading: { icon: '📖', label: 'Reading Response', color: '#34d399' },
+      article: { icon: '📰', label: 'Article Writing', color: '#fbbf24' },
+      conversation: { icon: '💬', label: 'Conversation', color: '#38bdf8' },
+      story: { icon: '📚', label: 'Story Writing', color: '#c084fc' }
+    };
+
+    var STATUS_LABELS = {
+      submitted: { label: 'Submitted', color: 'rgba(255,255,255,.35)', bg: 'rgba(255,255,255,.06)' },
+      ai_drafted: { label: 'Under review', color: '#fbbf24', bg: 'rgba(251,191,36,.1)' },
+      reviewed: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
+      admin_approved: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
+      sent: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' }
+    };
+
+    var html = '';
+    var dates = Object.keys(grouped).sort(function(a, b) { return b.localeCompare(a); });
+
+    dates.forEach(function(date) {
+      var dayItems = grouped[date];
+      var reviewed = dayItems.filter(function(i) { return i.status === 'reviewed' || i.status === 'admin_approved' || i.status === 'sent'; }).length;
+
+      // Date header
+      html += '<div style="margin-bottom:16px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+        + '<div style="font-size:14px;font-weight:900;color:#fff">' + date + '</div>'
+        + '<div style="font-size:11px;color:rgba(255,255,255,.35)">' + dayItems.length + ' submitted' + (reviewed > 0 ? ' · ' + reviewed + ' feedback' : '') + '</div>'
+        + '</div>';
+
+      // Submission cards for this date
+      dayItems.forEach(function(item, idx) {
+        var type = TYPE_LABELS[item.content_type] || TYPE_LABELS.topic;
+        var status = STATUS_LABELS[item.status] || STATUS_LABELS.submitted;
+        var fb = null;
+        try { fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; } catch(e) {}
+        var adminFb = null;
+        try { adminFb = typeof item.admin_feedback === 'string' ? JSON.parse(item.admin_feedback) : item.admin_feedback; } catch(e) {}
+        var isReviewed = item.status === 'reviewed' || item.status === 'admin_approved' || item.status === 'sent';
+        var displayFb = isReviewed ? (adminFb || fb) : null;
+        var preview = (item.writing_text || '').slice(0, 50);
+        if ((item.writing_text || '').length > 50) preview += '…';
+        var topicLabel = item.topic_ko || '';
+
+        // Card
+        html += '<div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:8px;overflow:hidden">'
+          // Banner header
+          + '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\'none\';var a=this.querySelector(\'.fb-arrow\');if(a)a.textContent=this.nextElementSibling.style.display===\'none\'?\'▼\':\'▲\'" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);transition:background .15s" onmouseover="this.style.background=\'rgba(255,255,255,.06)\'" onmouseout="this.style.background=\'rgba(255,255,255,.03)\'">'
+          // Type icon
+          + '<div style="width:36px;height:36px;border-radius:10px;background:' + type.color + '22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">' + type.icon + '</div>'
+          // Info
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+          + '<span style="font-size:12px;font-weight:800;color:' + type.color + '">' + type.label + '</span>'
+          + '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:' + status.bg + ';color:' + status.color + ';font-weight:700">' + status.label + '</span>'
+          + '</div>'
+          + (topicLabel ? '<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">' + topicLabel + '</div>' : '')
+          + (preview ? '<div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + preview + '</div>' : '')
+          + '</div>'
+          // Arrow
+          + '<span class="fb-arrow" style="font-size:12px;color:rgba(255,255,255,.2)">▼</span>'
+          + '</div>'
+
+          // Detail body (collapsed by default)
+          + '<div style="display:none;padding:14px;border-top:1px solid rgba(255,255,255,.06)">';
+
+        // Show writing text
+        if (item.writing_text) {
+          html += '<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Your Writing</div>'
+            + '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + item.writing_text + '</div></div>';
+        }
+
+        if (isReviewed && displayFb) {
+          if (adminFb && typeof adminFb === 'object') {
+            html += renderDetailedFeedback(adminFb, item.writing_text);
+          } else if (typeof item.admin_feedback === 'string' && item.admin_feedback.trim()) {
+            html += '<div style="padding:10px 12px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:8px;margin-bottom:12px">'
+              + '<div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:4px">Teacher Feedback</div>'
+              + '<div style="font-size:13px;color:rgba(255,255,255,.75);white-space:pre-wrap;line-height:1.6">' + item.admin_feedback + '</div></div>';
+            if (fb) html += renderDetailedFeedback(fb, item.writing_text);
+          } else {
+            html += renderDetailedFeedback(displayFb, item.writing_text);
+          }
+        } else {
+          html += '<div style="color:rgba(255,255,255,.3);text-align:center;padding:16px;font-size:13px">'
+            + (item.status === 'ai_drafted' ? '⏳ Under review — feedback within 24h' : '📨 Submitted — processing...')
+            + '</div>';
+        }
+
+        html += '</div></div>'; // close detail + card
+      });
+
+      html += '</div>'; // close date group
+    });
+
+    content.innerHTML = html;
+  } catch(e) {
+    content.innerHTML = '<div style="text-align:center;color:#f87171;padding:24px">오류: ' + e.message + '</div>';
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// VOCAB POOL — conv + stories vocab 통합 로드 (4번, 5번)
+// ═══════════════════════════════════════════════════════════════
+var _vocabBankWords = [];
+
+async function loadVocabPool() {
+  if (_vocabPoolLoaded) return;
+  try {
+    var sb = getSupa(); if (!sb) return;
+    var [convRes, storyRes, bankRes] = await Promise.all([
+      sb.from('conversations_data').select('data').limit(50),
+      sb.from('stories_data').select('data').limit(50),
+      sb.from('vocabulary_bank').select('word_ko,word_en,word_rom').limit(200)
+    ]);
+    if (convRes.data) {
+      _convVocab = [];
+      convRes.data.forEach(function(row) {
+        var d = row.data || {};
+        (d.vocab || []).forEach(function(v) {
+          if (v.ko && v.en) _convVocab.push(Object.assign({}, v, { src: 'conv' }));
+        });
+      });
+    }
+    if (storyRes.data) {
+      _storyVocab = [];
+      storyRes.data.forEach(function(row) {
+        var d = row.data || {};
+        (d.vocab || []).forEach(function(v) {
+          if (v.ko && v.en) _storyVocab.push(Object.assign({}, v, { src: 'story' }));
+        });
+      });
+    }
+    if (bankRes.data) {
+      _vocabBankWords = bankRes.data.map(function(r) {
+        return { ko: r.word_ko, en: r.word_en, rom: r.word_rom || '', src: 'news' };
+      }).filter(function(w){ return w.ko && w.en; });
+    }
+    _vocabPoolLoaded = true;
+  } catch(e) { console.warn('loadVocabPool failed:', e); }
+}
+
+function getAllVocabPool() {
+  var wb = typeof getWordBank === 'function' ? getWordBank() : [];
+  // Deduplicate by ko
+  var seen = new Set();
+  var all = [];
+  [].concat(_vocabBankWords, wb, _convVocab, _storyVocab).forEach(function(w) {
+    if (w && w.ko && !seen.has(w.ko)) { seen.add(w.ko); all.push(w); }
+  });
+  return all;
+}
+
+function renderFlashcardFilters() {
+  var el = document.getElementById('fc-filters-left');
+  if (!el) return;
+  el.innerHTML =
+    '<button class="tpill on" onclick="loadFlashcards(\'all\',this)">All</button>'
+    + '<button class="tpill" onclick="loadFlashcards(\'review\',this)" style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+BM_ICON_REFRESH+'</span><span>Review Due</span></button>'
+    + '<button class="tpill" onclick="loadFlashcards(\'news\',this)" style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+BM_ICON_LIBRARY+'</span><span>Vocab Bank</span></button>'
+    + '<button class="tpill" onclick="loadFlashcards(\'conv\',this)" style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span><span>Conv</span></button>'
+    + '<button class="tpill" onclick="loadFlashcards(\'story\',this)" style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+BM_ICON_BOOK+'</span><span>Story</span></button>';
+}
+
+function loadFlashcards(cat, btn) {
+  document.querySelectorAll('#fc-filters-left .tpill').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+
+  // SRS review mode: show words due for review
+  if (cat === 'review') {
+    _loadSRSReviewCards();
+    return;
+  }
+
+  var wb = typeof getWordBank === 'function' ? getWordBank() : [];
+  var pool;
+  if (cat === 'news') {
+    pool = _vocabBankWords.length ? _vocabBankWords : wb;
+  } else if (cat === 'conv') {
+    pool = _convVocab;
+  } else if (cat === 'story') {
+    pool = _storyVocab;
+  } else {
+    pool = getAllVocabPool();
+  }
+  _fcWords = pool;
+
+  var fcGridEl = document.getElementById('fc-grid-left');
+  if (!fcGridEl) return;
+  if (!pool.length && cat !== 'all') {
+    fcGridEl.innerHTML =
+      '<div style="font-size:12px;color:#94a3b8;text-align:center;padding:20px">No words yet — vocab will appear once content is published.</div>';
+    return;
+  }
+  if (!pool.length) {
+    var vkeys = typeof VOCAB !== 'undefined' ? Object.keys(VOCAB).slice(0, 6) : [];
+    pool = vkeys.map(function(k){ return { ko:k, rom:(VOCAB[k]||{}).rom||'', en:(VOCAB[k]||{}).en||'' }; });
+  }
+
+  var cards = pool.slice().sort(function(){ return Math.random() - .5; }).slice(0, 6);
+  fcGridEl.innerHTML = cards.map(function(w) {
+    var srcBadge = w.src === 'conv' ? '<span style="display:inline-flex;width:11px;height:11px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg></span>' : w.src === 'story' ? '<span style="display:inline-flex;width:11px;height:11px">'+BM_ICON_BOOK+'</span>' : '<span style="display:inline-flex;width:11px;height:11px">'+BM_ICON_NEWSPAPER+'</span>';
+    return '<div class="mcard" onclick="this.classList.toggle(\'flipped\')">'
+      + '<div class="mcko">' + w.ko + '<span style="font-size:10px;margin-left:6px;opacity:.5">' + srcBadge + '</span></div>'
+      + '<div class="mcen">' + (w.rom ? '<em style="font-size:11px;color:#7ab8f5;display:block">' + w.rom + '</em>' : '') + (w.en||'')
+      + ' ' + renderSaveWordBtn(w.ko, w.en, w.rom, 'flashcard')
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ── SRS Review Cards (Leitner-inspired) ──
+var _srsReviewQueue = [];
+var _srsReviewIdx = 0;
+
+async function _loadSRSReviewCards() {
+  var fcGridEl = document.getElementById('fc-grid-left');
+  if (!fcGridEl) return;
+  fcGridEl.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:#94a3b8">Loading review queue...</div>';
+
+  if (!supaUser) {
+    fcGridEl.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:#94a3b8">Sign in to use SRS review</div>';
+    return;
+  }
+
+  try {
+    var sb = getSupa();
+    var today = new Date().toISOString().slice(0, 10);
+    var { data } = await sb.from('saved_words')
+      .select('word_ko,word_rom,word_en,srs_interval,srs_ease_factor,srs_next_review,review_count,correct_count,wrong_count')
+      .eq('user_id', supaUser.id)
+      .lte('srs_next_review', today)
+      .order('srs_next_review', { ascending: true })
+      .limit(20);
+
+    _srsReviewQueue = (data || []).map(function(w) {
+      var total = (w.correct_count || 0) + (w.wrong_count || 0);
+      return {
+        ko: w.word_ko, rom: w.word_rom || '', en: w.word_en || '',
+        interval: w.srs_interval || 1, ease: w.srs_ease_factor || 2.5,
+        accuracy: total > 0 ? Math.round((w.correct_count || 0) / total * 100) : -1,
+        reviewCount: w.review_count || 0
+      };
+    });
+    _srsReviewIdx = 0;
+
+    if (!_srsReviewQueue.length) {
+      fcGridEl.innerHTML = '<div style="text-align:center;padding:24px">'
+        + '<div style="display:inline-flex;width:36px;height:36px;margin-bottom:8px;color:#22c55e">'+BM_ICON_CHECK+'</div>'
+        + '<div style="font-size:13px;font-weight:700;color:#4ade80">All caught up!</div>'
+        + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">No words due for review today</div>'
+        + '</div>';
+      return;
+    }
+
+    _renderSRSCard();
+  } catch(e) {
+    fcGridEl.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:#f87171">Failed to load: ' + (e.message||'') + '</div>';
+  }
+}
+
+function _renderSRSCard() {
+  var fcGridEl = document.getElementById('fc-grid-left');
+  if (!fcGridEl || !_srsReviewQueue.length) return;
+  var w = _srsReviewQueue[_srsReviewIdx];
+  if (!w) {
+    fcGridEl.innerHTML = '<div style="text-align:center;padding:24px">'
+      + '<div style="display:inline-flex;width:36px;height:36px;margin-bottom:8px;color:#a78bfa">'+BM_ICON_PARTY+'</div>'
+      + '<div style="font-size:13px;font-weight:700;color:#4ade80">Review complete!</div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-top:4px">' + _srsReviewIdx + ' words reviewed</div>'
+      + '</div>';
+    return;
+  }
+  var accColor = w.accuracy >= 70 ? '#4ade80' : w.accuracy >= 40 ? '#fbbf24' : '#f87171';
+  var accText = w.accuracy >= 0 ? w.accuracy + '%' : 'New';
+
+  fcGridEl.innerHTML =
+    '<div style="font-size:11px;color:#94a3b8;text-align:center;margin-bottom:8px">'
+    + (_srsReviewIdx + 1) + ' / ' + _srsReviewQueue.length + ' · '
+    + '<span style="color:' + accColor + '">' + accText + '</span>'
+    + '</div>'
+    + '<div class="mcard" id="srs-active-card" onclick="this.classList.toggle(\'flipped\')" style="margin:0 auto;max-width:260px">'
+    + '<div class="mcko" style="font-size:22px">' + w.ko + '</div>'
+    + '<div class="mcen">' + (w.rom ? '<em style="font-size:11px;color:#7ab8f5;display:block">' + w.rom + '</em>' : '') + w.en + '</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center;margin-top:10px">'
+    + '<button onclick="_srsRate(0)" style="flex:1;max-width:80px;padding:8px;border:1px solid #fca5a5;border-radius:8px;background:rgba(239,68,68,.08);color:#f87171;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Again</button>'
+    + '<button onclick="_srsRate(3)" style="flex:1;max-width:80px;padding:8px;border:1px solid #fde68a;border-radius:8px;background:rgba(251,191,36,.08);color:#f59e0b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Hard</button>'
+    + '<button onclick="_srsRate(4)" style="flex:1;max-width:80px;padding:8px;border:1px solid #86efac;border-radius:8px;background:rgba(34,197,94,.08);color:#22c55e;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Good</button>'
+    + '<button onclick="_srsRate(5)" style="flex:1;max-width:80px;padding:8px;border:1px solid #93c5fd;border-radius:8px;background:rgba(59,130,246,.08);color:#3b82f6;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Easy</button>'
+    + '</div>';
+}
+
+async function _srsRate(grade) {
+  var w = _srsReviewQueue[_srsReviewIdx];
+  if (!w) return;
+
+  // SM-2 algorithm
+  var interval = w.interval || 1;
+  var ease = w.ease || 2.5;
+  var newInterval, newEase;
+  if (grade === 0) { newInterval = 1; newEase = Math.max(1.3, ease - 0.2); }
+  else if (grade === 3) { newInterval = Math.max(1, Math.round(interval * 1.2)); newEase = Math.max(1.3, ease - 0.15); }
+  else if (grade === 4) { newInterval = Math.round(interval * ease); newEase = ease; }
+  else { newInterval = Math.round(interval * ease * 1.3); newEase = Math.min(4.0, ease + 0.15); }
+
+  // Update DB
+  try {
+    var sb = getSupa();
+    var nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + newInterval);
+    await sb.from('saved_words').update({
+      srs_interval: newInterval,
+      srs_ease_factor: newEase,
+      srs_next_review: nextDate.toISOString().slice(0, 10),
+      srs_last_reviewed: new Date().toISOString()
+    }).eq('user_id', supaUser.id).eq('word_ko', w.ko);
+
+    // Track review via RPC
+    sb.rpc('save_or_update_word', {
+      p_word_key: w.ko, p_word_ko: w.ko, p_word_en: w.en, p_word_rom: w.rom,
+      p_source_kind: 'srs_review', p_review_delta: 1,
+      p_correct_delta: grade >= 3 ? 1 : 0, p_wrong_delta: grade < 3 ? 1 : 0
+    }).catch(function(){});
+  } catch(e) { console.warn('SRS update failed:', e); }
+
+  // If "Again", re-queue at end
+  if (grade === 0) {
+    _srsReviewQueue.push(w);
+  }
+  _srsReviewIdx++;
+  _renderSRSCard();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LISTENING QUIZ (mini, reuses learn page logic)
+// ═══════════════════════════════════════════════════════════════
+var _lqQ = [], _lqIdx = 0, _lqScore = 0, _lqAnswered = false;
+
+function setLQMode(mode, btn) {
+  _lqMode = mode;
+  document.querySelectorAll('#lq-mini .tpill').forEach(function(b){ b.classList.remove('on'); });
+  if (btn) btn.classList.add('on');
+}
+
+async function startLQ() {
+  if (!requirePlan('listening_quiz')) return;
+  var box = document.getElementById('lq-mini');
+  if (box) box.innerHTML = '<div class="ai-loading"><div class="spin" style="display:inline-flex;width:28px;height:28px;color:#a78bfa">'+BM_ICON_SPARKLE+'</div><div style="margin-top:8px;font-size:12px">Loading quiz…</div></div>';
+
+  _lqIdx = 0; _lqScore = 0; _lqQ = [];
+
+  // 1) Try loading from DB (listening_quiz_bank)
+  var sb = getSupa();
+  if (sb) {
+    try {
+      var level = (typeof _currentLevel !== 'undefined') ? _currentLevel : 'Beginner';
+      var q = sb.from('listening_quiz_bank')
+        .select('sentence,correct,wrong1,wrong2,explanation')
+        .eq('active', true)
+        .eq('level', level);
+      if (_lqMode) q = q.eq('mode', _lqMode);
+      var r = await q.limit(20);
+      if (r.data && r.data.length >= 3) {
+        // Shuffle and pick 5
+        var dbQuestions = r.data.sort(function() { return Math.random() - 0.5; }).slice(0, 5);
+        _lqQ = dbQuestions.map(function(q) {
+          return {
+            sentence: q.sentence, correct: q.correct,
+            choices: [q.correct, q.wrong1, q.wrong2].filter(Boolean).sort(function() { return Math.random() - 0.5; }),
+            explanation: q.explanation || ''
+          };
+        });
+        renderLQQ();
+        return;
+      }
+    } catch(e) { console.warn('[LQ] DB load failed, falling back:', e.message); }
+  }
+
+  // 2) Fallback: local quiz from vocab pool (no API call)
+  var pool = getAllVocabPool();
+  if (_aiContent && _aiContent.vocab) pool = _aiContent.vocab.concat(pool);
+  var seen = new Set();
+  var uniq = pool.filter(function(w) {
+    if (!w || !w.ko || seen.has(w.ko)) return false;
+    seen.add(w.ko); return true;
+  });
+  var sample = uniq.sort(function() { return Math.random() - 0.5; }).slice(0, 8);
+  _lqQ = buildLocalListeningQuiz(sample);
+  renderLQQ();
+}
+
+function buildLocalListeningQuiz(words) {
+  var pool = (words || []).slice(0, 8);
+  if (!pool.length) {
+    pool = [
+      { ko:'친구', en:'friend' },{ ko:'학교', en:'school' },{ ko:'음악', en:'music' },
+      { ko:'배우', en:'actor' },{ ko:'여행', en:'trip' },{ ko:'날씨', en:'weather' },
+      { ko:'가족', en:'family' },{ ko:'경제', en:'economy' }
+    ];
+  }
+  // Extended distractor pool for better wrong answers
+  var distractors = [
+    'friend','school','music','actor','trip','weather','family','economy',
+    'food','water','love','time','student','teacher','hospital','market',
+    'book','movie','coffee','phone','morning','night','beautiful','happy'
+  ];
+  var selected = pool.slice(0, 5);
+  return selected.map(function(w) {
+    var correct = w.en || w.ko;
+    // Build wrong choices from pool + distractors, avoiding the correct answer
+    var allWrong = pool.map(function(p){ return p.en; })
+      .concat(distractors)
+      .filter(function(d){ return d && d !== correct; });
+    // Shuffle and pick 2
+    var wrongs = allWrong.sort(function(){ return Math.random() - .5; }).slice(0, 2);
+    // Ensure we always have 3 choices
+    while (wrongs.length < 2) wrongs.push('(unknown)');
+    return {
+      sentence: w.ko,
+      correct: correct,
+      choices: [correct].concat(wrongs).sort(function(){ return Math.random() - .5; }),
+      explanation: w.ko + ' = ' + correct
+    };
+  });
+}
+
+function renderLQQ() {
+  // Route to fullscreen Listening Quiz if available
+  if (window.KHListening && _lqQ && _lqQ.length) {
+    KHListening.open({ questions: _lqQ });
+    return;
+  }
+  var q = _lqQ[_lqIdx];
+  var box = document.getElementById('lq-mini');
+  _lqAnswered = false;
+  box.innerHTML =
+    '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray);margin-bottom:8px">'
+    + '<span>' + (_lqIdx+1) + ' / ' + _lqQ.length + '</span><span>Score: ' + _lqScore + '</span></div>'
+    + '<div style="text-align:center;margin-bottom:10px">'
+    + '<button style="width:60px;height:60px;border-radius:50%;background:#f0f6ff;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#3b82f6" id="lq-spk" onclick="lqSpk()"><span style="display:inline-flex;width:28px;height:28px">'+BM_ICON_VOLUME+'</span></button>'
+    + '<div style="font-size:11px;color:var(--gray);margin-top:4px">tap to listen</div></div>'
+    + '<div style="display:flex;flex-direction:column;gap:6px">'
+    + q.choices.map(function(c){ return '<button style="padding:9px 12px;border:2px solid var(--border);border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit" class="lq-ch" data-ans="' + c.replace(/"/g,'&quot;') + '" onclick="lqAns(this)">' + c + '</button>'; }).join('')
+    + '</div>'
+    + '<div id="lq-fb"></div>';
+  setTimeout(lqSpk, 300);
+}
+
+function lqSpk() {
+  var q = _lqQ[_lqIdx];
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(q.sentence);
+  u.lang='ko-KR'; u.rate=0.82;
+  window.speechSynthesis.speak(u);
+}
+
+function lqAns(btn) {
+  if (_lqAnswered) return;
+  _lqAnswered = true;
+  var q = _lqQ[_lqIdx];
+  var chosen = btn.dataset.ans;
+  var ok = chosen === q.correct;
+  if (ok) _lqScore++;
+  document.querySelectorAll('.lq-ch').forEach(function(b){
+    b.disabled = true;
+    if (b.dataset.ans === q.correct) b.style.borderColor = '#16a34a';
+  });
+  if (!ok) btn.style.borderColor = '#dc2626';
+  // Track wrong words for SRS
+  if (!ok && supaUser && q.sentence) {
+    try {
+      var sb = getSupa();
+      if (sb) sb.rpc('save_or_update_word', {
+        p_word_key: q.sentence, p_word_ko: q.sentence, p_word_en: q.correct,
+        p_source_kind: 'listening_quiz', p_review_delta: 1, p_correct_delta: 0, p_wrong_delta: 1
+      }).catch(function(){});
+    } catch(e) {}
+  }
+  document.getElementById('lq-fb').innerHTML =
+    '<div style="margin-top:8px;padding:9px 11px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;font-size:11px;color:#445566;line-height:1.5">'
+    + '<strong style="color:#d97706;display:inline-flex;align-items:center;gap:5px">' + (ok?'<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span>':'<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Not quite</span>') + '</strong><br>' + q.explanation + '</div>'
+    + '<button style="width:100%;margin-top:8px;padding:9px;background:#2255a4;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer" onclick="lqNext()">' + (_lqIdx<_lqQ.length-1?'Next →':'See Results') + '</button>';
+}
+
+function lqNext() {
+  _lqIdx++;
+  if (_lqIdx >= _lqQ.length) {
+    var pct = Math.round(_lqScore/_lqQ.length*100);
+    var box = document.getElementById('lq-mini');
+    box.innerHTML = '<div style="text-align:center;padding:16px 0">'
+      + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:6px;color:'+(pct>=80?'#fde68a':pct>=60?'#22c55e':'#f87171')+';filter:drop-shadow(0 0 12px '+(pct>=80?'#fde68a':pct>=60?'#22c55e':'#f87171')+'aa)">' + (pct>=80?BM_ICON_TROPHY:pct>=60?BM_ICON_THUMBS_UP:BM_ICON_FLAME) + '</div>'
+      + '<div style="font-size:18px;font-weight:900;color:var(--dark)">' + pct + '%</div>'
+      + '<div style="font-size:12px;color:var(--gray);margin-bottom:12px">' + _lqScore + ' / ' + _lqQ.length + ' correct</div>'
+      + '<button class="lqbtn" onclick="startLQ()">🔄 New Quiz</button>'
+      + '</div>';
+    if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
+    // Save listening quiz results to DB
+    if (typeof logQuizResult === 'function' && supaUser) {
+      try {
+        logQuizResult(getSupa(), {
+          p_skill_type: 'listening',
+          p_quiz_type: 'listening_quiz',
+          p_item_id: 'lq_' + kstDateKey(),
+          p_content_type: 'listening',
+          p_content_id: kstDateKey(),
+          p_grammar_point: '',
+          p_prompt: _lqMode === 'hear' ? 'Hear mode' : 'Meaning mode',
+          p_user_answer: _lqScore + '/' + _lqQ.length,
+          p_correct_answer: _lqQ.length + '/' + _lqQ.length,
+          p_is_correct: pct >= 80,
+          p_score: pct
+        });
+      } catch(e) { console.warn('LQ log failed:', e); }
+    }
+  } else {
+    renderLQQ();
+  }
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════
+// AI LOADING OVERLAY
+// ═══════════════════════════════════════════════════════════════
+// ── Save word to personal wordbank from any study activity ──
+function quickSaveWord(ko, en, rom, source) {
+  if (!supaUser) { showToast('Sign in to save words'); return; }
+  var sb = getSupa(); if (!sb) return;
+  sb.rpc('save_or_update_word', {
+    p_word_key: ko, p_word_ko: ko, p_word_en: en || null, p_word_rom: rom || null,
+    p_source_kind: source || 'study_activity',
+    p_review_delta: 0, p_correct_delta: 0, p_wrong_delta: 0
+  }).then(function() {
+    showToast('📚 "' + ko + '" saved!');
+  }).catch(function(e) {
+    showToast('Already saved or error');
+  });
+}
+
+function renderSaveWordBtn(ko, en, rom, source) {
+  var safeKo = (ko||'').replace(/'/g, "\\'");
+  var safeEn = (en||'').replace(/'/g, "\\'");
+  var safeRom = (rom||'').replace(/'/g, "\\'");
+  // No emoji per design feedback — use a lucide bookmark-plus icon
+  // and a label so the button reads as a real control instead of a
+  // throwaway chip.
+  return '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + safeEn + '\',\'' + safeRom + '\',\'' + (source||'study') + '\')" '
+    + 'style="padding:6px 12px;border:1px solid #dbeafe;border-radius:8px;background:#eff6ff;color:#2563eb;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px" '
+    + 'title="Save to wordbank"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>';
+}
+
+function showAILoading() {
+  var existing = document.getElementById('ai-load-overlay');
+  if (existing) return;
+  var el = document.createElement('div');
+  el.id = 'ai-load-overlay';
+  el.style.cssText = 'position:fixed;inset:0;z-index:400;backdrop-filter:blur(6px);background:rgba(13,27,46,0.45);display:flex;align-items:center;justify-content:center;';
+  el.innerHTML = '<div style="text-align:center;color:#fff">'
+    + '<div style="font-size:52px;animation:spin 1s linear infinite;display:inline-block">✨</div>'
+    + '<div style="margin-top:14px;font-size:15px;font-weight:700">Just a moment</div>'
+    + '<div style="margin-top:6px;font-size:12px;color:rgba(255,255,255,0.5)">Generating vocab, grammar & helpers</div>'
+    + '</div>';
+  document.body.appendChild(el);
+}
+
+function hideAILoading() {
+  var el = document.getElementById('ai-load-overlay');
+  if (el) el.remove();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN WALL
+// ═══════════════════════════════════════════════════════════════
+function showLoginWall() {
+  // Don't show if user is already logged in (session loading delay)
+  if (supaUser) return;
+  // Don't show duplicate
+  if (document.getElementById('login-wall')) return;
+  // 페이지 내용은 그대로 두고 블러 오버레이만 올림
+  // 샘플 토픽 하나 보여줌 (맛보기)
+  var sample = _allTopics[0] || { topic_ko: '오늘 하루 어땠나요?', topic_en: 'How was your day today?' };
+  document.getElementById('hero-topic-ko').textContent  = sample.topic_ko;
+  document.getElementById('hero-topic-en').textContent  = sample.topic_en;
+  document.getElementById('wcard-topic-ko').textContent = sample.topic_ko;
+
+  var wall = document.createElement('div');
+  wall.className = 'login-wall';
+  wall.id = 'login-wall';
+  wall.innerHTML =
+    '<div class="login-wall-blur"></div>'
+    + '<div class="login-wall-box">'
+    + '<div class="lwb-icon">📖</div>'
+    + '<div class="lwb-title">Study Room</div>'
+    + '<div class="lwb-sub">로그인하면 매일 새 토픽, AI 문법·단어, 작문 피드백까지 모두 이용할 수 있어요.<br><br>Sign in to unlock daily topics, AI vocab & grammar, and personal writing feedback.</div>'
+    + '<button class="lwb-btn" onclick="openAuthModal(&apos;signin&apos;)">🔑 Sign In</button>'
+    + '<button class="lwb-btn2" onclick="openAuthModal(&apos;signup&apos;)">✨ Create Free Account</button>'
+    + '</div>';
+  document.body.appendChild(wall);
+}
+
+// 로그인 성공 시 login wall 자동 제거 + 재초기화
+window.addEventListener('kh-auth-signed-in', function() {
+  var wall = document.getElementById('login-wall');
+  if (wall) {
+    wall.style.opacity = '0';
+    wall.style.transition = 'opacity .3s';
+    setTimeout(function(){ wall.remove(); }, 300);
+    // 현재 레벨로 재시작
+    if (typeof loadLevel === 'function' && _currentLevel) {
+      loadLevel(_currentLevel);
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════
+function showToast(msg) {
+  var t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity .4s'; }, 1800);
+  setTimeout(function(){ t.remove(); }, 2200);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXTERNAL PRACTICE (from Conversations / Stories)
+// ═══════════════════════════════════════════════════════════════
+var _externalPracticeData = null;
+var _highlightWords = [];
+
+function openExternalPracticeModal() {
+  if (!_externalPracticeData) return;
+  var d = _externalPracticeData;
+
+  // vocab 키워드 리스트 (highlighting용)
+  _highlightWords = (d.vocab || []).map(function(v){ return v.ko; }).filter(Boolean);
+
+  // writing modal 열기
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  // modal header에 출처 정보
+  var wmhEl = document.querySelector('.wmh-topic');
+  if (wmhEl) {
+    wmhEl.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px">Practice Writing</div>'
+      + '<div style="font-size:16px;font-weight:700;color:var(--dark)">' + (d.title || '') + '</div>';
+  }
+
+  // grammar 패널
+  var gmEl = document.getElementById('wm-grammar');
+  if (gmEl) {
+    gmEl.innerHTML = (d.grammar || []).map(function(g) {
+      return '<div class="mgrb"><div class="mgrname">' + g.point + '</div><div class="mgrexp">' + g.ex + '</div></div>';
+    }).join('') || '<div style="color:#94a3b8;font-size:13px">No grammar notes</div>';
+  }
+
+  // vocab chips
+  var vcEl = document.getElementById('wm-vocab-chips');
+  if (vcEl) {
+    vcEl.innerHTML = (d.vocab || []).map(function(v) {
+      return '<div class="chip" title="' + v.rom + ': ' + v.en + '">' + v.ko + '</div>';
+    }).join('');
+  }
+
+  // grammar chips
+  var gcEl = document.getElementById('wm-grammar-chips');
+  if (gcEl) {
+    gcEl.innerHTML = (d.grammar || []).map(function(g) {
+      return '<div class="chip gc">' + g.point + '</div>';
+    }).join('');
+  }
+
+  // textarea highlight 설정
+  setupHighlight();
+}
+
+function setupHighlight() {
+  var ta = document.getElementById('write-area');
+  if (!ta) return;
+
+  // highlight 오버레이 생성 (textarea 위에 absolute)
+  var wrap = ta.parentElement;
+  if (!document.getElementById('hl-overlay')) {
+    wrap.style.position = 'relative';
+    var ov = document.createElement('div');
+    ov.id = 'hl-overlay';
+    ov.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;padding:14px;font-size:15px;font-family:inherit;line-height:1.75;white-space:pre-wrap;word-wrap:break-word;overflow:hidden;color:transparent;border-radius:10px;';
+    wrap.insertBefore(ov, ta);
+    ta.style.background = 'transparent';
+    ta.style.position = 'relative';
+  }
+
+  ta.addEventListener('input', updateHighlight);
+  ta.addEventListener('scroll', function() {
+    var ov = document.getElementById('hl-overlay');
+    if (ov) ov.scrollTop = ta.scrollTop;
+  });
+}
+
+function updateHighlight() {
+  var ta = document.getElementById('write-area');
+  var ov = document.getElementById('hl-overlay');
+  if (!ta || !ov) return;
+
+  var text = ta.value;
+  var escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // vocab 단어 — 파란색 하이라이트
+  var vocabWords = _aiContent ? (_aiContent.vocab || []).map(function(v){ return v.ko; }).filter(Boolean) : _highlightWords;
+  vocabWords.forEach(function(word) {
+    if (!word) return;
+    var ew = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    escaped = escaped.replace(new RegExp(ew, 'g'),
+      '<mark style="background:rgba(37,99,235,.2);color:transparent;border-radius:3px">' + word + '</mark>');
+  });
+
+  // grammar 패턴 — 보라색 하이라이트
+  if (_aiContent && _aiContent.grammar) {
+    (_aiContent.grammar || []).forEach(function(g) {
+      var pattern = (g.point || '').replace(/^[-\u2013]/,'').replace(/\s*\(.*?\)\s*/g,'').trim();
+      if (!pattern) return;
+      var ew = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      escaped = escaped.replace(new RegExp(ew, 'g'),
+        '<mark style="background:rgba(124,58,237,.2);color:transparent;border-radius:3px">' + pattern + '</mark>');
+    });
+  }
+
+  ov.innerHTML = escaped;
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// WRITING MODE SELECTION (Topic / Reading)
+// ═══════════════════════════════════════════════════════════
+var _writingMode = 'topic';  // 'topic' | 'reading' | 'diary' | 'free'
+// 'free' = Free Writing — user picks their own subject, vocab hints
+// come from their recent user_saved_words + last article they read.
+// Submissions go through the same Growth Lab feedback pipeline as
+// Topic and Diary so the tutor sees them in the same inbox.
+
+function _getDiaryPrompts() {
+  return [
+    { ko:'오늘 가장 기억에 남는 일은?', en:'What was the most memorable thing today?' },
+    { ko:'오늘 뭘 먹었어요?', en:'What did you eat today?' },
+    { ko:'오늘 기분이 어땠어요?', en:'How did you feel today?' },
+    { ko:'오늘 새로 배운 것은?', en:'What did you learn today?' },
+    { ko:'주말에 뭐 할 거예요?', en:'What will you do this weekend?' },
+    { ko:'요즘 빠져있는 것은?', en:'What are you into these days?' },
+    { ko:'오늘 누구를 만났어요?', en:'Who did you meet today?' },
+    { ko:'좋아하는 한국 노래가 있어요?', en:'Do you have a favorite Korean song?' },
+    { ko:'오늘 날씨가 어땠어요?', en:'How was the weather today?' },
+    { ko:'스트레스 받을 때 뭐 해요?', en:'What do you do when you\'re stressed?' },
+    { ko:'최근에 본 드라마나 영화는?', en:'Any drama or movie you watched recently?' },
+    { ko:'한국어 공부하면서 어려운 점은?', en:'What\'s hard about studying Korean?' },
+    { ko:'오늘 감사한 일 3가지를 써보세요', en:'Write 3 things you\'re grateful for today' },
+    { ko:'어제 밤에 꿈을 꿨어요?', en:'Did you have a dream last night?' },
+    { ko:'가장 가고 싶은 한국 여행지는?', en:'Which place in Korea do you want to visit most?' },
+    { ko:'오늘 운동했어요?', en:'Did you exercise today?' },
+    { ko:'요즘 읽고 있는 책이 있어요?', en:'Are you reading any books these days?' },
+    { ko:'친구에게 추천하고 싶은 것은?', en:'What would you recommend to a friend?' },
+    { ko:'오늘 하루를 한 문장으로 표현하면?', en:'Describe your day in one sentence' },
+    { ko:'내일 꼭 하고 싶은 일은?', en:'What do you definitely want to do tomorrow?' },
+    { ko:'가장 좋아하는 한국 음식은?', en:'What\'s your favorite Korean food?' },
+    { ko:'지금 창밖을 보면 뭐가 보여요?', en:'What do you see when you look out the window?' },
+    { ko:'오늘 들은 가장 좋은 말은?', en:'What was the nicest thing someone said to you today?' },
+    { ko:'한국에서 살고 싶어요? 왜요?', en:'Do you want to live in Korea? Why?' },
+    { ko:'오늘 실수한 것이 있어요?', en:'Did you make any mistakes today?' },
+    { ko:'가장 행복했던 순간은 언제예요?', en:'When was your happiest moment?' },
+    { ko:'올해 꼭 이루고 싶은 목표는?', en:'What goal do you want to achieve this year?' },
+    { ko:'오늘 커피를 마셨어요? 차를 마셨어요?', en:'Did you have coffee or tea today?' },
+    { ko:'지금 듣고 있는 음악은?', en:'What music are you listening to right now?' },
+    { ko:'한국 친구가 있어요?', en:'Do you have any Korean friends?' },
+    { ko:'오늘 가장 재미있었던 일은?', en:'What was the funniest thing today?' },
+  ];
+}
+
+// Free Writing hints — pulls the learner's recent saved vocab + last
+// article + recent saved phrases and renders them into the left panel
+// chips / hints area + the free-prompt info card. No AI calls.
+async function _loadFreeWritingHints() {
+  var hintsHost = document.getElementById('wm-free-hints');
+  var chipsEl   = document.getElementById('wm-vocab-chips');
+  var grammarEl = document.getElementById('wm-grammar');
+  if (chipsEl)   chipsEl.innerHTML = '<span style="font-size:11px;color:#94a3b8">Loading your saved words…</span>';
+  if (grammarEl) grammarEl.innerHTML = '';
+
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !supaUser) {
+    if (chipsEl) chipsEl.innerHTML = '<span style="font-size:11px;color:#94a3b8">Sign in to see your saved vocab here.</span>';
+    return;
+  }
+
+  try {
+    var savedRes = await sb.from('user_saved_words')
+      .select('word_ko,word_en,word_rom,created_at')
+      .eq('user_id', supaUser.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    var savedWords = (savedRes && savedRes.data) || [];
+
+    if (chipsEl) {
+      if (!savedWords.length) {
+        chipsEl.innerHTML = '<span style="font-size:11px;color:#94a3b8">No saved words yet — tap ★ on any word while reading and they\'ll show up here.</span>';
+      } else {
+        chipsEl.innerHTML = savedWords.map(function(w) {
+          var ko = (w.word_ko || '').replace(/[<&]/g, '');
+          var en = (w.word_en || '').replace(/[<&]/g, '');
+          return '<span class="chip" title="' + en + '">' + ko + (en ? ' <span style="font-size:10px;color:#94a3b8">(' + en + ')</span>' : '') + '</span>';
+        }).join('');
+      }
+    }
+
+    // Recent article — most recently studied / read by this user. Use
+    // read_articles for the latest entry and fall back to user_submissions
+    // (article_study) if read_articles is empty.
+    var lastArticle = null;
+    try {
+      var readRes = await sb.from('read_articles')
+        .select('article_id,read_at')
+        .eq('user_id', supaUser.id)
+        .order('read_at', { ascending: false })
+        .limit(1);
+      var rrow = readRes && readRes.data && readRes.data[0];
+      if (rrow && rrow.article_id) {
+        var aRes = await sb.from('articles').select('id,title,title_en').eq('id', rrow.article_id).maybeSingle();
+        if (aRes && aRes.data) lastArticle = aRes.data;
+      }
+    } catch(_) {}
+
+    if (hintsHost) {
+      var html = '';
+      if (savedWords.length) {
+        var top6 = savedWords.slice(0, 6).map(function(w){ return (w.word_ko || '').replace(/[<&]/g, ''); }).filter(Boolean);
+        if (top6.length) {
+          html += '<div style="font-size:11px;font-weight:800;color:#1d4ed8;margin-bottom:6px">💡 최근 저장한 단어 ' + top6.length + '개 활용 추천:</div>'
+            + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'
+            + top6.map(function(k){ return '<span style="font-size:12px;padding:3px 10px;background:rgba(255,255,255,.7);border:1px solid #bfdbfe;border-radius:20px;color:#1d4ed8;font-weight:700">' + k + '</span>'; }).join('')
+            + '</div>';
+        }
+      }
+      if (lastArticle) {
+        var lt = (lastArticle.title_en || lastArticle.title || '').replace(/[<&]/g, '');
+        if (lt) {
+          html += '<div style="font-size:11px;color:#1e40af;margin-top:4px">📖 마지막 읽은 기사: <b>' + lt + '</b> — 이 기사 주제로 써봐도 좋아요.</div>';
+        }
+      }
+      hintsHost.innerHTML = html || '<div style="font-size:11px;color:#1e40af">저장한 단어가 없어요 — 기사 읽으면서 ★ 표시해두면 여기에 모여요.</div>';
+    }
+
+    if (grammarEl) {
+      grammarEl.innerHTML = '<div style="font-size:11px;color:#475569;line-height:1.7;padding:6px 8px;background:#f8fafc;border-radius:6px">'
+        + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">🪶 Tip</div>'
+        + 'Free Writing은 채점 규칙이 같은 Topic Yum Yum과 동일해요. 본인이 공부한 단어/문법을 의도적으로 써보면 튜터가 그 부분에 코멘트를 더 깊이 달아줘요.'
+        + '</div>';
+    }
+  } catch (e) {
+    console.warn('[free-writing] hints load failed:', e && e.message);
+    if (chipsEl) chipsEl.innerHTML = '<span style="font-size:11px;color:#94a3b8">Could not load saved vocab.</span>';
+  }
+}
+
+function _loadDiaryVocab() {
+  var level = _currentLevel || 'Beginner';
+  var diaryVocab = {
+    Starter: [
+      { ko:'오늘', en:'today' },{ ko:'어제', en:'yesterday' },{ ko:'내일', en:'tomorrow' },
+      { ko:'아침', en:'morning' },{ ko:'저녁', en:'evening' },{ ko:'좋아요', en:'good' },
+      { ko:'싫어요', en:'dislike' },{ ko:'먹었어요', en:'ate' },{ ko:'했어요', en:'did' },
+      { ko:'갔어요', en:'went' },
+    ],
+    Beginner: [
+      { ko:'기분이 좋았어요', en:'felt good' },{ ko:'피곤했어요', en:'was tired' },
+      { ko:'재미있었어요', en:'was fun' },{ ko:'맛있었어요', en:'was delicious' },
+      { ko:'~하고 싶어요', en:'want to~' },{ ko:'~때문에', en:'because of~' },
+      { ko:'그래서', en:'so/therefore' },{ ko:'그런데', en:'but/however' },
+      { ko:'처음으로', en:'for the first time' },{ ko:'같이', en:'together' },
+    ],
+    Intermediate: [
+      { ko:'~는 바람에', en:'because of~' },{ ko:'~(으)ㄹ 뻔했어요', en:'almost did~' },
+      { ko:'솔직히', en:'honestly' },{ ko:'갑자기', en:'suddenly' },
+      { ko:'~기로 했어요', en:'decided to~' },{ ko:'~는 중이에요', en:'in the middle of~' },
+      { ko:'예상외로', en:'unexpectedly' },{ ko:'결국', en:'eventually' },
+      { ko:'~덕분에', en:'thanks to~' },{ ko:'~에 비해', en:'compared to~' },
+    ],
+    Advanced: [
+      { ko:'~는 셈이다', en:'it amounts to~' },{ ko:'~(으)ㄹ 지경이다', en:'to the point of~' },
+      { ko:'뿌듯하다', en:'feel proud' },{ ko:'허무하다', en:'feel empty' },
+      { ko:'~고자', en:'in order to~' },{ ko:'~에 불과하다', en:'merely/only' },
+      { ko:'~할 수밖에 없다', en:'can\'t help but~' },{ ko:'한편으로는', en:'on the other hand' },
+      { ko:'~을/를 계기로', en:'as a catalyst/occasion' },{ ko:'돌이켜보면', en:'looking back' },
+    ]
+  };
+  var vocab = diaryVocab[level] || diaryVocab.Beginner;
+  var chipsEl = document.getElementById('wm-vocab-chips');
+  if (chipsEl) {
+    chipsEl.innerHTML = vocab.map(function(v) {
+      return '<span class="chip" title="' + v.en + '">' + v.ko + ' <span style="font-size:10px;color:#94a3b8">(' + v.en + ')</span></span>';
+    }).join('');
+  }
+  var grammarEl = document.getElementById('wm-grammar');
+  if (grammarEl) {
+    var tips = {
+      Starter: '~이에요/예요 (is), ~았/었어요 (past tense), ~고 (and)',
+      Beginner: '~아서/어서 (because), ~고 싶어요 (want to), ~(으)ㄹ 거예요 (will)',
+      Intermediate: '~는데 (but/context), ~(으)면서 (while), ~기 때문에 (because)',
+      Advanced: '~(으)ㄴ/는 반면에 (on the other hand), ~(으)ㄹ수록 (the more~), ~는 바람에 (because of~)'
+    };
+    grammarEl.innerHTML = '<div style="font-size:11px;color:#475569;line-height:1.7;padding:6px 8px;background:#f8fafc;border-radius:6px">'
+      + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">📓 Diary Grammar Tips</div>'
+      + (tips[level] || tips.Beginner)
+      + '</div>';
+  }
+}
+var _selectedArticle = null;
+
+function setWritingMode(mode) {
+  _writingMode = mode;
+  var tTopic = document.getElementById('tab-topic');
+  var tReading = document.getElementById('tab-reading');
+  if (tTopic) tTopic.classList.toggle('active', mode === 'topic');
+  if (tReading) tReading.classList.toggle('active', mode === 'reading');
+  var modeText = document.getElementById('wcf-mode-text');
+  if (mode === 'reading') {
+    if (modeText) modeText.textContent = 'Sentence Study & Writing';
+    // Show inline source-picker instead of jumping directly into the modal
+    openReadingSourcePicker();
+  } else {
+    if (modeText) modeText.textContent = 'Open Express Practice';
+  }
+}
+
+function openReadingSourcePicker() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  // Build a lightweight overlay with Article / Conv / Story tabs + dropdown
+  var existing = document.getElementById('rsp-overlay');
+  if (existing) existing.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'rsp-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.8);display:flex;align-items:center;justify-content:center;z-index:1500;padding:16px';
+  overlay.onclick = function(e){ if(e.target===overlay) overlay.remove(); };
+
+  overlay.innerHTML =
+    '<div style="background:#fff;border-radius:20px;width:min(520px,96vw);box-shadow:0 28px 80px rgba(0,0,0,.35);overflow:hidden;animation:mIn .2s ease">'
+    + '<div style="background:linear-gradient(135deg,#0d1b2e,#1a3a6b);padding:20px 24px;display:flex;align-items:center;justify-content:space-between">'
+    + '<div><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.5);margin-bottom:4px">Sentence Study</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#fff;font-family:\'Playfair Display\',serif">Choose Your Reading Source</div></div>'
+    + '<button onclick="document.getElementById(\'rsp-overlay\').remove()" style="background:rgba(255,255,255,.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer">✕</button>'
+    + '</div>'
+    + '<div style="padding:20px 24px">'
+    + '<div style="display:flex;gap:8px;margin-bottom:16px">'
+    + '<button id="rsp-tab-article" onclick="rspSwitchTab(\'article\')" style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #2255a4;background:#eff6ff;color:#2255a4;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">📰 Article</button>'
+    + '<button id="rsp-tab-conv"    onclick="rspSwitchTab(\'conv\')"    style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">💬 Conversation</button>'
+    + '<button id="rsp-tab-story"   onclick="rspSwitchTab(\'story\')"   style="flex:1;padding:9px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">📖 Story</button>'
+    + '</div>'
+    + '<select id="rsp-select" style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;color:#0f172a;background:#fff;margin-bottom:16px"><option value="">Loading…</option></select>'
+    + '<div id="rsp-preview" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;font-size:13px;color:#334155;line-height:1.7;max-height:140px;overflow-y:auto;margin-bottom:16px"></div>'
+    + '<button onclick="rspStartWriting()" style="width:100%;padding:13px;background:linear-gradient(135deg,#0d1b2e,#2255a4);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Start Writing →</button>'
+    + '</div></div>';
+
+  document.body.appendChild(overlay);
+  rspSwitchTab('article');
+}
+
+var _rspSource = 'article';
+var _rspData   = {};   // { article:[], conv:[], story:[] }
+
+function rspSwitchTab(tab) {
+  _rspSource = tab;
+  ['article','conv','story'].forEach(function(t) {
+    var btn = document.getElementById('rsp-tab-' + t);
+    if (!btn) return;
+    var active = t === tab;
+    btn.style.background     = active ? '#eff6ff' : '#fff';
+    btn.style.borderColor    = active ? '#2255a4' : '#e2e8f0';
+    btn.style.color          = active ? '#2255a4' : '#64748b';
+  });
+  var sel = document.getElementById('rsp-select');
+  var prev = document.getElementById('rsp-preview');
+  if (sel) { sel.innerHTML = '<option value="">Loading…</option>'; }
+  if (prev) prev.style.display = 'none';
+
+  if (_rspData[tab] && _rspData[tab].length) {
+    rspPopulateSelect(tab);
+  } else {
+    rspLoadSource(tab);
+  }
+}
+
+async function rspLoadSource(tab) {
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var sel = document.getElementById('rsp-select'); if (!sel) return;
+    if (tab === 'article') {
+      // Articles are stored in the 'articles' table (same table used by admin and shared.js).
+      // 'articles_data' does not exist — this was the root cause of the empty article list.
+      var { data } = await sb.from('articles').select('id,title').eq('status','published').order('created_at',{ascending:false}).limit(40);
+      _rspData.article = (data||[]).map(function(r){ return { id:r.id, title:r.title, body:null }; });
+    } else if (tab === 'conv') {
+      var { data } = await sb.from('conversations_data').select('id,name,data').order('created_at',{ascending:false}).limit(40);
+      _rspData.conv = (data||[]).map(function(r){ var d=r.data||{}; return { id:r.id, title:d.name||r.name||'대화', body:null }; });
+    } else {
+      var { data } = await sb.from('stories_data').select('id,title').order('created_at',{ascending:false}).limit(40);
+      _rspData.story = (data||[]).map(function(r){ return { id:r.id, title:r.title, body:null }; });
+    }
+    rspPopulateSelect(tab);
+  } catch(e) { console.warn('rspLoadSource error', e); }
+}
+
+function rspPopulateSelect(tab) {
+  var sel = document.getElementById('rsp-select'); if (!sel) return;
+  var items = _rspData[tab] || [];
+  sel.innerHTML = '<option value="">— Select —</option>'
+    + items.map(function(r, i){ return '<option value="' + i + '">' + (r.title||'Untitled') + '</option>'; }).join('');
+  sel.onchange = function() {
+    var idx = parseInt(sel.value);
+    if (isNaN(idx)) { document.getElementById('rsp-preview').style.display='none'; return; }
+    var item = (_rspData[tab]||[])[idx];
+    if (!item) return;
+    _rspSelectedItem = item;
+    rspShowPreview(item);
+  };
+}
+
+var _rspSelectedItem = null;
+
+async function rspShowPreview(item) {
+  var prev = document.getElementById('rsp-preview'); if (!prev) return;
+  if (item.body) { prev.innerHTML = item.body.replace(/\n/g,'<br>').slice(0,400)+'…'; prev.style.display='block'; return; }
+  // Fetch full content
+  try {
+    var sb = getSupa(); if (!sb) return;
+    var table = _rspSource === 'article' ? 'articles' : _rspSource === 'conv' ? 'conversations_data' : 'stories_data';
+    var col   = _rspSource === 'article' ? 'body' : 'data';
+    var { data } = await sb.from(table).select(col).eq('id', item.id).single();
+    if (data) {
+      var text = _rspSource === 'article' ? (data.body||'') : JSON.stringify(data.data||{}).slice(0,400);
+      item.body = text;
+      prev.innerHTML = text.replace(/\n/g,'<br>').slice(0,500) + (text.length>500?'…':'');
+      prev.style.display = 'block';
+    }
+  } catch(e) { prev.style.display='none'; }
+}
+
+function rspStartWriting() {
+  if (!_rspSelectedItem) { showToast('Please select a source first.'); return; }
+  var overlay = document.getElementById('rsp-overlay');
+  if (overlay) overlay.remove();
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!canEnterWritingRoom()) return;
+
+  // Set both state vars so the rest of the modal logic is consistent
+  _writingMode = 'reading';
+  _selectedArticle = {
+    id:    _rspSelectedItem.id,
+    title: _rspSelectedItem.title,
+    body:  _rspSelectedItem.body,
+    type:  _rspSelectedItem.type || 'article'
+  };
+  _modalReadingBody  = _rspSelectedItem.body  || '';
+  _modalReadingTitle = _rspSelectedItem.title || '';
+
+  // Open the modal directly in reading mode — skip renderModalContent() which renders topic UI
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  wmMobileInit();
+  switchModalMode('reading');
+
+  // Populate the article body immediately (no setTimeout flash)
+  var bodyEl = document.getElementById('wm-article-body');
+  if (bodyEl && _modalReadingBody) {
+    bodyEl.innerHTML = '<strong style="color:#1e3a5f">' + _modalReadingTitle + '</strong><br><br>'
+      + _modalReadingBody.replace(/\n/g,'<br>').slice(0, 1500)
+      + (_modalReadingBody.length > 1500 ? '…' : '');
+  }
+}
+
+var _modalReadingBody = '';
+var _modalReadingTitle = '';
+
+// 현재 읽기 소스 ('article' | 'conv' | 'story')
+var _readingSource = 'article';
+
+function switchReadingSource(src, btn) {
+  _readingSource = src;
+  _selectedArticle = null;
+  document.querySelectorAll('.wc-src-btn').forEach(function(b) {
+    b.style.background = 'none';
+    b.style.borderColor = 'rgba(255,255,255,.15)';
+    b.style.color = 'rgba(255,255,255,.6)';
+  });
+  if (btn) {
+    btn.style.background = 'rgba(255,255,255,.15)';
+    btn.style.borderColor = 'rgba(255,255,255,.25)';
+    btn.style.color = '#fff';
+  }
+  document.getElementById('wc-article-select').style.display = src === 'article' ? 'block' : 'none';
+  document.getElementById('wc-conv-select').style.display    = src === 'conv'    ? 'block' : 'none';
+  document.getElementById('wc-story-select').style.display   = src === 'story'   ? 'block' : 'none';
+  document.getElementById('wc-article-preview').style.display = 'none';
+
+  if (src === 'article') loadArticlesForReading();
+  if (src === 'conv')    loadConvsForReading();
+  if (src === 'story')   loadStoriesForReading();
+}
+
+async function loadArticlesForReading() {
+  var sel = document.getElementById('wc-article-select');
+  if (sel.options.length > 1) return;
+
+  try {
+    var sb = getSupa();
+    // Use 'articles' table — this is where admin saves articles and shared.js reads from.
+    var { data } = await sb.from('articles')
+      .select('id, title, body, section, level')
+      .eq('status', 'published')
+      .order('created_at', {ascending: false})
+      .limit(40);
+
+    if (data && data.length) {
+      data.forEach(function(a) {
+        var opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = (a.title || 'Untitled') + ' [' + (a.level || a.section || '') + ']';
+        opt.dataset.body  = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 800);
+        opt.dataset.title = a.title || '';
+        opt.dataset.type  = 'article';
+        sel.appendChild(opt);
+      });
+    } else {
+      var opt = document.createElement('option');
+      opt.textContent = 'No articles available';
+      opt.disabled = true;
+      sel.appendChild(opt);
+    }
+  } catch(e) { console.error('article load error:', e); }
+
+  sel.addEventListener('change', function() { onReadingSelectChange(sel); });
+}
+
+async function loadConvsForReading() {
+  var sel = document.getElementById('wc-conv-select');
+  if (sel.options.length > 1) return;
+
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('conversations_data')
+      .select('id, name, ctx, data, lvl')
+      .order('created_at', {ascending: false})
+      .limit(30);
+
+    if (data && data.length) {
+      data.forEach(function(row) {
+        var d = row.data || {};
+        var opt = document.createElement('option');
+        opt.value = row.id;
+        opt.textContent = (d.name || row.name || 'Untitled') + ' [' + (d.lvl || row.lvl || '') + ']';
+        // 대화를 읽기 자료로 — msgs를 텍스트로 변환
+        var msgs = (d.msgs || []).map(function(m) {
+          return (m.who || (m.s==='l'?'A':'B')) + ': ' + m.txt;
+        }).join('\n');
+        var vocab = (d.vocab || []).map(function(v){ return v.ko + ' (' + v.en + ')'; }).join(', ');
+        opt.dataset.body  = msgs + (vocab ? '\n\n[단어] ' + vocab : '');
+        opt.dataset.title = d.name || row.name || '';
+        opt.dataset.type  = 'conv';
+        opt.dataset.ctx   = d.ctx || row.ctx || '';
+        sel.appendChild(opt);
+      });
+    } else {
+      var opt = document.createElement('option');
+      opt.textContent = 'No conversations available';
+      opt.disabled = true;
+      sel.appendChild(opt);
+    }
+  } catch(e) { console.error('conv load error:', e); }
+
+  sel.addEventListener('change', function() { onReadingSelectChange(sel); });
+}
+
+async function loadStoriesForReading() {
+  var sel = document.getElementById('wc-story-select');
+  if (sel.options.length > 1) return;
+
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('stories_data')
+      .select('id, title, title_en, data, lvl, mood')
+      .order('created_at', {ascending: false})
+      .limit(30);
+
+    if (data && data.length) {
+      data.forEach(function(row) {
+        var d = row.data || {};
+        var opt = document.createElement('option');
+        opt.value = row.id;
+        opt.textContent = (d.title || row.title || 'Untitled') + ' [' + (d.lvl || row.lvl || '') + ']';
+        opt.dataset.body  = (d.body || d.preview || '').replace(/<[^>]*>/g, '').slice(0, 800);
+        opt.dataset.title = d.title || row.title || '';
+        opt.dataset.type  = 'story';
+        sel.appendChild(opt);
+      });
+    } else {
+      var opt = document.createElement('option');
+      opt.textContent = 'No stories available';
+      opt.disabled = true;
+      sel.appendChild(opt);
+    }
+  } catch(e) { console.error('story load error:', e); }
+
+  sel.addEventListener('change', function() { onReadingSelectChange(sel); });
+}
+
+function onReadingSelectChange(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var preview = document.getElementById('wc-article-preview');
+  if (opt && opt.dataset.body) {
+    preview.textContent = opt.dataset.body.slice(0, 150) + '…';
+    preview.style.display = 'block';
+    _selectedArticle = {
+      id:    opt.value,
+      title: opt.dataset.title,
+      body:  opt.dataset.body,
+      type:  opt.dataset.type || 'article',
+      ctx:   opt.dataset.ctx || ''
+    };
+  }
+}
+
+function openWritingModalWithMode() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  if (!canEnterWritingRoom()) return;
+  if (_writingMode === 'reading' && !_selectedArticle) {
+    khAlert('Pick something to write about', 'Choose an article, conversation, or story first.');
+    return;
+  }
+  // markStageDone moved to actual submit/finish functions
+  document.getElementById('wmodal').classList.remove('hidden');
+  if (_writingMode === 'reading') {
+    switchModalMode('reading');
+  } else {
+    switchModalMode('topic');
+    if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+    renderModalContent();
+  }
+}
+
+function openDiaryDirect() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  openWritingModal();
+  setTimeout(function(){ switchModalMode('diary'); }, 300);
+}
+
+function switchModalMode(mode) {
+  _writingMode = mode;
+  var tTopic   = document.getElementById('mbtab-topic');
+  var tDiary   = document.getElementById('mbtab-diary');
+  var tReading = document.getElementById('mbtab-reading');
+  var tFree    = document.getElementById('mbtab-free');
+  if (tTopic)   tTopic.classList.toggle('active', mode === 'topic');
+  if (tDiary)   tDiary.classList.toggle('active', mode === 'diary');
+  if (tReading) tReading.classList.toggle('active', mode === 'reading');
+  if (tFree)    tFree.classList.toggle('active', mode === 'free');
+
+  var sourceBar    = document.getElementById('wm-source-bar');
+  var modeLabel    = document.getElementById('wm-mode-label');
+  var subEl        = document.getElementById('wm-topic-sub');
+  var readingBlock = document.getElementById('wm-reading-article');
+  var contextBlock = document.getElementById('wm-context');
+  var helpersBlock = document.getElementById('wm-helpers');
+  var leftPanel    = document.querySelector('.wm-left');
+  var placeholder  = document.getElementById('write-area');
+  var topicContent = document.getElementById('wm-topic-content');
+  var diaryPrompt  = document.getElementById('wm-diary-prompt');
+  var freePrompt   = document.getElementById('wm-free-prompt');
+
+  // Hide both prompts by default; each branch re-shows its own.
+  if (diaryPrompt) diaryPrompt.style.display = 'none';
+  if (freePrompt)  freePrompt.style.display  = 'none';
+
+  if (mode === 'free') {
+    // Free Writing — the user picks their own subject. We don't inject
+    // a "today's topic" or daily prompt; the left panel gets repopulated
+    // with the words they recently saved and the last article they read,
+    // so they can practice the material they've already been studying.
+    if (sourceBar) sourceBar.style.display = 'none';
+    var fModalEl = document.querySelector('.wmodal');
+    if (fModalEl) fModalEl.classList.remove('reading-mode');
+    if (modeLabel) modeLabel.textContent = '🪶 Free Writing';
+    if (subEl) subEl.textContent = 'Pick any subject — use what you\'ve been studying';
+    if (leftPanel)    leftPanel.style.display    = '';
+    if (contextBlock) contextBlock.style.display = 'none';
+    if (helpersBlock) helpersBlock.style.display = 'none';
+    if (readingBlock) readingBlock.style.display = 'none';
+    if (topicContent) topicContent.style.display = 'none';
+    if (placeholder)  placeholder.placeholder    = '한국어로 자유롭게 써보세요.\n\n공부했던 단어나 표현을 활용해 보세요. 무엇이든 좋아요 — 일상, 의견, 상상한 이야기, 최근 읽은 기사에 대한 생각…';
+    // Lazy-create the free-writing prompt card and load hints from the
+    // user's saved words / recent reads.
+    if (!freePrompt) {
+      var fp = document.createElement('div');
+      fp.id = 'wm-free-prompt';
+      fp.style.cssText = 'font-size:12px;color:#1e3a8a;line-height:1.7;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:10px';
+      fp.innerHTML = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#1d4ed8;margin-bottom:6px">🪶 Free Writing</div>'
+        + '<div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:4px">아무 주제나 한국어로 써보세요.</div>'
+        + '<div style="font-size:11px;color:#1e40af">아래 패널에 최근 저장한 단어 + 마지막으로 읽은 기사가 표시돼요 — 그걸 재료로 써보세요.</div>'
+        + '<div id="wm-free-hints" style="margin-top:10px"></div>';
+      var writeAreaElF = document.getElementById('write-area');
+      if (writeAreaElF && writeAreaElF.parentNode) writeAreaElF.parentNode.insertBefore(fp, writeAreaElF);
+      freePrompt = fp;
+    }
+    if (freePrompt) freePrompt.style.display = '';
+    _loadFreeWritingHints();
+    return;
+  }
+
+  if (mode === 'diary') {
+    if (sourceBar) sourceBar.style.display = 'none';
+    var modalEl = document.querySelector('.wmodal');
+    if (modalEl) modalEl.classList.remove('reading-mode');
+    if (modeLabel) modeLabel.textContent = '📓 오늘의 일기';
+    if (subEl) subEl.textContent = 'Write about your day in Korean';
+    if (leftPanel) leftPanel.style.display = '';
+    if (contextBlock) contextBlock.style.display = 'none';
+    if (helpersBlock) helpersBlock.style.display = 'none';
+    if (readingBlock) readingBlock.style.display = 'none';
+    if (topicContent) topicContent.style.display = 'none';
+    if (placeholder) placeholder.placeholder = '오늘 하루를 한국어로 써보세요.\n\n예: 오늘 아침에 커피를 마셨어요. 날씨가 좋아서 산책했어요...\n\nTip: 어려운 부분은 영어로 써도 괜찮아요!';
+    // Show diary-specific prompt
+    if (!diaryPrompt) {
+      var dp = document.createElement('div');
+      dp.id = 'wm-diary-prompt';
+      dp.style.cssText = 'font-size:12px;color:#475569;line-height:1.7;background:linear-gradient(135deg,#fef9c3,#fef3c7);border:1px solid #fde68a;border-radius:10px;padding:12px 14px;margin-bottom:10px';
+      var prompts = _getDiaryPrompts();
+      var todayIdx = new Date().getDate() % prompts.length;
+      dp.innerHTML = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#92400e;margin-bottom:6px">💡 Today\'s Diary Prompt</div>'
+        + '<div style="font-size:14px;font-weight:700;color:#78350f;margin-bottom:4px">' + prompts[todayIdx].ko + '</div>'
+        + '<div style="font-size:12px;color:#92400e">' + prompts[todayIdx].en + '</div>'
+        + '<div style="font-size:11px;color:#a16207;margin-top:8px;font-style:italic">프롬프트는 참고용이에요. 자유롭게 오늘 하루를 써보세요!</div>';
+      var writeAreaEl = document.getElementById('write-area');
+      if (writeAreaEl && writeAreaEl.parentNode) writeAreaEl.parentNode.insertBefore(dp, writeAreaEl);
+      diaryPrompt = dp;
+    }
+    if (diaryPrompt) diaryPrompt.style.display = '';
+    // Show diary-relevant vocab in left panel
+    _loadDiaryVocab();
+    return;
+  }
+
+  // Reset non-diary states
+  if (topicContent) topicContent.style.display = '';
+
+  if (mode === 'reading') {
+    if (sourceBar) { sourceBar.style.display = 'flex'; }
+    var modalEl = document.querySelector('.wmodal');
+    if (modalEl) modalEl.classList.add('reading-mode');
+    if (modeLabel) modeLabel.textContent = '📖 Reading & Writing';
+    // 왼쪽 패널 숨기고 중앙 글쓰기 넓게
+    if (leftPanel)    leftPanel.style.display = 'none';
+    if (contextBlock) contextBlock.style.display = 'none';
+    if (helpersBlock) helpersBlock.style.display = 'none';
+    if (placeholder)  placeholder.placeholder = '읽은 내용을 바탕으로 한국어로 써보세요…\n\nTip: 위의 자료에서 단어와 표현을 활용해 보세요';
+    // 소스 선택 안 됐으면 로드 시작
+    if (!_selectedArticle) {
+      switchModalSource('article', document.getElementById('wsrc-article'));
+    } else {
+      // 이미 선택된 소스 표시
+      if (subEl) subEl.textContent = _selectedArticle.title;
+      showSelectedMaterial();
+    }
+  } else {
+    if (sourceBar) { sourceBar.style.display = 'none'; }
+    var modalEl = document.querySelector('.wmodal');
+    if (modalEl) modalEl.classList.remove('reading-mode');
+    if (modeLabel) modeLabel.textContent = '✍️ Express Practice';
+    if (readingBlock) readingBlock.style.display = 'none';
+    if (contextBlock) contextBlock.style.display = 'block';
+    if (helpersBlock) helpersBlock.style.display = 'block';
+    if (leftPanel)    leftPanel.style.display = '';
+    if (placeholder)  placeholder.placeholder = 'Write in Korean here…\n\nTry to use the vocab and grammar from the left panel.';
+    if (subEl && _todayTopic) subEl.textContent = _todayTopic.topic_ko || '';
+    if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+    renderModalContent();
+  }
+}
+
+async function switchModalSource(src, btn) {
+  _readingSource = src;
+  _selectedArticle = null;
+  // 탭 스타일
+  document.querySelectorAll('.wm-src-tab').forEach(function(b) {
+    b.style.background = 'none';
+    b.style.borderColor = 'rgba(255,255,255,.1)';
+    b.style.color = 'rgba(255,255,255,.5)';
+  });
+  if (btn) {
+    btn.style.background = 'rgba(255,255,255,.15)';
+    btn.style.borderColor = 'rgba(255,255,255,.3)';
+    btn.style.color = '#fff';
+  }
+  // 선택 드롭다운 초기화
+  var sel = document.getElementById('wm-src-select');
+  sel.innerHTML = '<option value="">Loading...</option>';
+
+  if (src === 'article') await loadModalArticles(sel);
+  if (src === 'conv')    await loadModalConvs(sel);
+  if (src === 'story')   await loadModalStories(sel);
+}
+
+async function loadModalArticles(sel) {
+  try {
+    var sb = getSupa();
+    // Use 'articles' table — articles_data is not the correct table name.
+    var { data } = await sb.from('articles')
+      .select('id, title, body, section, level')
+      .eq('status', 'published')
+      .order('created_at', {ascending: false})
+      .limit(40);
+    sel.innerHTML = '<option value="">Select article...</option>';
+    (data || []).forEach(function(a) {
+      var opt = document.createElement('option');
+      opt.value = JSON.stringify({id:a.id, title:a.title, body:(a.body||'').replace(/<[^>]*>/g,'').slice(0,800), type:'article'});
+      opt.textContent = (a.title||'Untitled') + ' [' + (a.level||a.section||'') + ']';
+      sel.appendChild(opt);
+    });
+    if (!data || !data.length) sel.innerHTML = '<option value="">기사 없음</option>';
+  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+}
+
+async function loadModalConvs(sel) {
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('conversations_data')
+      .select('id, name, ctx, data, lvl')
+      .order('created_at', {ascending: false})
+      .limit(30);
+    sel.innerHTML = '<option value="">Select conversation...</option>';
+    (data || []).forEach(function(row) {
+      var d = row.data || {};
+      var msgs = (d.msgs||[]).map(function(m){ return (m.who||'')+'\n'+m.txt; }).join('\n');
+      var vocab = (d.vocab||[]).map(function(v){ return v.ko+' ('+v.en+')'; }).join(', ');
+      var body = msgs + (vocab ? '\n\n[단어] '+vocab : '');
+      var opt = document.createElement('option');
+      opt.value = JSON.stringify({id:row.id, title:d.name||row.name||'대화', body:body, type:'conv'});
+      opt.textContent = (d.name||row.name||'대화') + ' [' + (d.lvl||row.lvl||'') + ']';
+      sel.appendChild(opt);
+    });
+    if (!data || !data.length) sel.innerHTML = '<option value="">No conversations available</option>';
+  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+}
+
+async function loadModalStories(sel) {
+  try {
+    var sb = getSupa();
+    var { data } = await sb.from('stories_data')
+      .select('id, title, data, lvl')
+      .order('created_at', {ascending: false})
+      .limit(30);
+    sel.innerHTML = '<option value="">Select story...</option>';
+    (data || []).forEach(function(row) {
+      var d = row.data || {};
+      var body = (d.body||d.preview||'').replace(/<[^>]*>/g,'').slice(0,800);
+      var opt = document.createElement('option');
+      opt.value = JSON.stringify({id:row.id, title:d.title||row.title||'스토리', body:body, type:'story'});
+      opt.textContent = (d.title||row.title||'스토리') + ' [' + (d.lvl||row.lvl||'') + ']';
+      sel.appendChild(opt);
+    });
+    if (!data || !data.length) sel.innerHTML = '<option value="">No stories available</option>';
+  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+}
+
+function onModalSourceSelect(sel) {
+  var val = sel.value;
+  if (!val) return;
+  try {
+    _selectedArticle = JSON.parse(val);
+    showSelectedMaterial();
+    var subEl = document.getElementById('wm-topic-sub');
+    if (subEl) subEl.textContent = _selectedArticle.title;
+  } catch(e) {}
+}
+
+function showSelectedMaterial() {
+  if (!_selectedArticle) return;
+  var readingBlock = document.getElementById('wm-reading-article');
+  var bodyEl = document.getElementById('wm-article-body');
+  var promptsEl = document.getElementById('wm-reading-prompts');
+  if (!readingBlock) return;
+
+  readingBlock.style.display = 'block';
+  var srcType = _selectedArticle.type || 'article';
+
+  if (srcType === 'conv') {
+    bodyEl.innerHTML = (_selectedArticle.body||'')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\n/g,'<br>')
+      .replace(/(\S+):/g,'<strong>$1</strong>:');
+  } else {
+    bodyEl.textContent = _selectedArticle.body || '';
+  }
+
+  var prompts = {
+    article: '• Write 2-3 sentences about your thoughts after reading this article<br>• Introduce a part of the article that impressed you<br>• Share your opinion on the topic',
+    conv:    '• Create a similar dialogue using expressions from this conversation<br>• Rewrite the situation using your own experience<br>• Write a short paragraph using 3 words from the dialogue',
+    story:   '• Summarize the story briefly after reading it<br>• Write what you would say to the main character<br>• Write about a similar experience in Korean if you have one'
+  };
+  if (promptsEl) promptsEl.innerHTML = prompts[srcType] || prompts.article;
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXTRA STUDY ROOM FEATURES
+// 1) Picture Description
+// 2) Sentence Writing from Articles
+// ═══════════════════════════════════════════════════════════
+function openPictureDescription() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  _pdStep = 1;
+  document.getElementById('pd-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  renderPicturePrompt();
+}
+function closePictureDescription() {
+  document.getElementById('pd-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+  _pdStep = 1;
+}
+
+// ═══════════════════════════════════════════════════════════
+// SPEAKING PRACTICE — standalone pronunciation modal
+// Pulls sentences from Phrase Munch (_bm.sentences) when
+// available; otherwise falls back to today's topic name.
+// ═══════════════════════════════════════════════════════════
+var _spSentences = [];
+var _spIdx = 0;
+var _spMediaRec = null;
+var _spChunks = [];
+var _spBlob = null;
+var _spRecStartedAt = 0;
+
+function openSpeakingPractice() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  _spIdx = 0; _spChunks = []; _spBlob = null;
+
+  // Build sentence list
+  var bmSents = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.sentences)) ? _bm.sentences : [];
+  if (bmSents.length) {
+    _spSentences = bmSents.filter(function(s){ return s && s.ko; }).map(function(s){
+      return { ko: s.ko, en: s.en || '', rom: s.rom || '' };
+    });
+  }
+  if (!_spSentences.length && _wmExampleAnswer) {
+    _spSentences = [{ ko: _wmExampleAnswer, en: '', rom: '' }];
+  }
+  if (!_spSentences.length) {
+    var topicName = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '오늘의 주제';
+    _spSentences = [{ ko: topicName + '에 대해 이야기해 보세요.', en: '', rom: '' }];
+  }
+
+  _spResetUI();
+  _spRenderSentence();
+  document.getElementById('sp-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeSpeakingPractice() {
+  document.getElementById('sp-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+  if (_spMediaRec && _spMediaRec.state === 'recording') { try { _spMediaRec.stop(); } catch(e){} }
+}
+
+function _spResetUI() {
+  var sc = document.getElementById('sp-score-card');
+  var dr = document.getElementById('sp-done-row');
+  var st = document.getElementById('sp-status');
+  var pb = document.getElementById('sp-playback');
+  if (sc) { sc.style.display = 'none'; sc.innerHTML = ''; }
+  if (dr) dr.style.display = 'none';
+  if (st) st.textContent = '';
+  if (pb) { pb.style.display = 'none'; pb.src = ''; }
+  _spSetRecBtn(false);
+}
+
+function _spRenderSentence() {
+  var s = _spSentences[_spIdx] || {};
+  var koEl = document.getElementById('sp-ref-ko');
+  var romEl = document.getElementById('sp-ref-rom');
+  var enEl = document.getElementById('sp-ref-en');
+  var dotsEl = document.getElementById('sp-nav-dots');
+  if (koEl) koEl.textContent = s.ko || '';
+  if (romEl) romEl.textContent = s.rom || '';
+  if (enEl) enEl.textContent = s.en || '';
+  if (dotsEl) {
+    if (_spSentences.length > 1) {
+      dotsEl.innerHTML = _spSentences.map(function(_, i) {
+        return '<button onclick="spGoSentence(' + i + ')" style="width:8px;height:8px;border-radius:50%;border:none;cursor:pointer;padding:0;background:' + (i === _spIdx ? '#a78bfa' : 'rgba(139,92,246,.25)') + '"></button>';
+      }).join('');
+    } else {
+      dotsEl.innerHTML = '';
+    }
+  }
+  _spResetUI();
+}
+
+function spGoSentence(idx) {
+  _spIdx = idx; _spBlob = null; _spChunks = [];
+  _spRenderSentence();
+}
+
+function _spSetRecBtn(recording) {
+  var btn = document.getElementById('sp-record-btn');
+  var lbl = document.getElementById('sp-rec-label');
+  if (!btn) return;
+  if (recording) {
+    btn.style.background = 'rgba(239,68,68,.2)';
+    btn.style.borderColor = 'rgba(239,68,68,.35)';
+    btn.style.color = '#f87171';
+    if (lbl) lbl.textContent = '녹음 중... (누르면 정지)';
+  } else {
+    btn.style.background = 'rgba(124,58,237,.1)';
+    btn.style.borderColor = 'rgba(139,92,246,.3)';
+    btn.style.color = '#a78bfa';
+    if (lbl) lbl.textContent = '녹음 시작';
+  }
+}
+
+function _spListenRef() {
+  var s = _spSentences[_spIdx] || {};
+  if (s.ko) speakHangul(s.ko, 'female');
+}
+
+async function toggleSpRecord() {
+  if (_spMediaRec && _spMediaRec.state === 'recording') {
+    _spMediaRec.stop();
+    return;
+  }
+  var stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e) {
+    _showMicPermError('sp-status');
+    return;
+  }
+  _spChunks = []; _spBlob = null;
+  _spMediaRec = new MediaRecorder(stream);
+  _spMediaRec.ondataavailable = function(e) { if (e.data.size > 0) _spChunks.push(e.data); };
+  _spMediaRec.onstop = async function() {
+    stream.getTracks().forEach(function(t){ t.stop(); });
+    _spBlob = new Blob(_spChunks, { type: 'audio/webm' });
+    var pb = document.getElementById('sp-playback');
+    if (pb) { pb.src = URL.createObjectURL(_spBlob); pb.style.display = ''; }
+    var refText = (_spSentences[_spIdx] || {}).ko || '';
+    var elapsed = Date.now() - _spRecStartedAt;
+    _spSetRecBtn(false);
+    var st = document.getElementById('sp-status');
+    if (st) st.textContent = '발음 분석 중...';
+    var result = await _speakAnalyzeAzure(_spBlob, refText, elapsed);
+    if (!result) {
+      await new Promise(function(r){ setTimeout(r, 300); });
+      result = _scoreSpeaking(refText, '', elapsed);
+    }
+    if (st) st.textContent = '';
+    var sc = document.getElementById('sp-score-card');
+    if (sc) {
+      sc.style.display = '';
+      _renderSpeakingScoreCard(result, sc);
+    }
+    var dr = document.getElementById('sp-done-row');
+    if (dr) dr.style.display = '';
+  };
+  _spRecStartedAt = Date.now();
+  _spMediaRec.start();
+  _spSetRecBtn(true);
+  var st = document.getElementById('sp-status');
+  if (st) st.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>';
+}
+
+function completeSpeakingPractice() {
+  markStageDone('picture');
+  returnToActivities(closeSpeakingPractice);
+}
+
+function renderPicturePrompt() {
+  var img = document.getElementById('pd-image');
+  if (!_picturePrompts.length) {
+    document.getElementById('pd-step1-body').innerHTML =
+      '<div style="text-align:center;padding:24px;color:rgba(255,255,255,.45)">관리자가 아직 이미지를 등록하지 않았습니다.</div>';
+    if (img) { img.src = ''; img.style.display = 'none'; }
+    return;
+  }
+  var item = _picturePrompts[_pictureIndex % _picturePrompts.length];
+  if (img) {
+    if (item.image) { img.src = item.image; img.style.display = ''; }
+    else { img.src = ''; img.style.display = 'none'; }
+  }
+  _pdGoStep(1);
+}
+
+// ── 3-step navigation ──────────────────────────────────────────
+// Picture Description was a writing activity (vocab → arrange → write
+// + AI feedback). Redesigned to drop the writing entirely — it's now
+// a comprehension drill: learn the words, pick the grammatically
+// correct sentence among distractors, then assemble a sentence from
+// shuffled chunks. No textarea, no daily-package submission. The
+// admin already stores incorrect_sentences[] + sample_answer per
+// prompt; we use those directly.
+function _pdGoStep(step) {
+  _pdStep = step;
+  var labels = ['Step 1 / 3 — Key Vocabulary', 'Step 2 / 3 — 맞는 문장 선택', 'Step 3 / 3 — 어절 순서맞추기'];
+  var lbl = document.getElementById('pd-step-label');
+  if (lbl) lbl.textContent = labels[step - 1] || '';
+  [1,2,3].forEach(function(n) {
+    var pip = document.getElementById('pd-pip-' + n);
+    if (pip) pip.className = 'pd-step-pip' + (n < step ? ' pd-step-done' : n === step ? ' pd-step-active' : '');
+  });
+  document.getElementById('pd-step1-body').style.display = step === 1 ? '' : 'none';
+  document.getElementById('pd-step2-body').style.display = step === 2 ? '' : 'none';
+  document.getElementById('pd-step3-body').style.display = step === 3 ? '' : 'none';
+  document.getElementById('pd-nav').innerHTML = '';
+  var item = _picturePrompts[_pictureIndex % _picturePrompts.length];
+  if (step === 1) _pdRenderStep1(item);
+  else if (step === 2) _pdRenderStep2(item);
+  else if (step === 3) _pdRenderStep3(item);
+}
+
+function _pdRenderStep1(item) {
+  var body = document.getElementById('pd-step1-body'); if (!body) return;
+  var vocab = item.vocab_items || [];
+  if (!vocab.length) { _pdGoStep(2); return; }   // skip if admin left blank
+  body.innerHTML =
+    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📚 이미지 관련 어휘</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:12px">단어를 탭해서 뜻을 확인하세요</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+    + vocab.map(function(v) {
+        return '<div class="pd-vocab-card" onclick="this.classList.toggle(\'flipped\')">'
+          + '<div class="pd-vocab-front">' + (v.ko || '') + '</div>'
+          + '<div class="pd-vocab-back">'  + (v.en || '') + '</div>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+  var nav = document.getElementById('pd-nav');
+  if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(2)">Next Step →</button>';
+}
+
+function _pdRenderStep2(item) {
+  var body = document.getElementById('pd-step2-body'); if (!body) return;
+  // Step 2: 맞는 문장 선택 — admin stores 1 correct (sample_answer) +
+  // ≥1 wrong (incorrect_sentences). If either is missing, skip to
+  // Step 3 so the activity flow doesn't deadlock.
+  var correct = (item.sample_answer || '').trim();
+  var wrong = Array.isArray(item.incorrect_sentences)
+    ? item.incorrect_sentences.map(function(s){ return String(s||'').trim(); }).filter(Boolean)
+    : [];
+  if (!correct || !wrong.length) { _pdGoStep(3); return; }
+  // Up to 3 wrong distractors so the choice list stays scannable on
+  // mobile. Shuffle position so the answer isn't always slot 0.
+  var pool = [{ text: correct, correct: true }];
+  wrong.slice(0, 3).forEach(function(w){ pool.push({ text: w, correct: false }); });
+  for (var i = pool.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+  body.innerHTML =
+    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✅ 맞는 문장 선택</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:14px">사진을 가장 자연스럽고 문법에 맞게 묘사한 문장을 고르세요.</div>'
+    + '<div id="pd-pick-options" style="display:flex;flex-direction:column;gap:8px"></div>'
+    + '<div id="pd-pick-result" style="margin-top:12px;display:none"></div>';
+  var opts = document.getElementById('pd-pick-options');
+  pool.forEach(function(o, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pd-sent-btn';
+    b.textContent = String.fromCharCode(65 + i) + '. ' + o.text;
+    b.onclick = function() { _pdCheckCorrectPick(b, o.correct, correct); };
+    opts.appendChild(b);
+  });
+}
+
+function _pdCheckCorrectPick(btn, isCorrect, correctText) {
+  document.querySelectorAll('#pd-pick-options .pd-sent-btn').forEach(function(b){ b.disabled = true; });
+  var result = document.getElementById('pd-pick-result');
+  if (isCorrect) {
+    btn.style.cssText += ';background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.55);color:#86efac';
+    if (result) {
+      result.style.display = '';
+      result.innerHTML = '<div style="padding:12px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);border-radius:10px;color:#86efac;font-size:13px;line-height:1.55">✅ 정답이에요! 자연스럽고 문법에 맞는 묘사예요.</div>';
+    }
+  } else {
+    btn.style.cssText += ';background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.5);color:#fca5a5';
+    // Reveal the actual correct option
+    document.querySelectorAll('#pd-pick-options .pd-sent-btn').forEach(function(b){
+      if (b !== btn && b.textContent.indexOf(correctText) !== -1) {
+        b.style.cssText += ';background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.55);color:#86efac';
+      }
+    });
+    if (result) {
+      result.style.display = '';
+      result.innerHTML = '<div style="padding:12px;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.28);border-radius:10px;color:#fca5a5;font-size:13px;line-height:1.55">❌ 다시 한번 살펴보세요. 정답: <b style="color:#86efac">' + escapeHTML(correctText) + '</b></div>';
+    }
+  }
+  var nav = document.getElementById('pd-nav');
+  if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(3)">Next Step →</button>';
+}
+
+function _pdRenderStep3(item) {
+  // Step 3 was the writing-with-AI step — replaced with the word
+  // arrangement that used to be Step 2. Same core logic
+  // (renderWordOrderActivity / checkWordOrder / resetWordOrder), now
+  // the final step before completion.
+  var body = document.getElementById('pd-step3-body'); if (!body) return;
+  var words = item.word_order_words || [];
+  if (!words.length) { _pdSkipToFinish(); return; }
+  body.innerHTML =
+    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 어절 순서맞추기</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">단어를 클릭해서 올바른 순서로 배치하세요. 첫 단어는 미리 선택되어 있어요.</div>'
+    + '<div id="pd-word-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.07);border-radius:10px;margin-bottom:8px;align-items:center"></div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">내 답:</div>'
+    + '<div id="pd-word-answer" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.04);border:1.5px dashed rgba(255,255,255,.18);border-radius:10px;margin-bottom:10px;align-items:center"></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    + '<button class="sr-activity-btn" onclick="checkWordOrder()">정답 확인</button>'
+    + '<button class="sr-pill" onclick="resetWordOrder()">다시하기</button>'
+    + '</div>'
+    + '<div id="pd-word-result" style="margin-top:8px;display:none"></div>';
+  renderWordOrderActivity(words);
+}
+
+function _pdSkipToFinish() {
+  markStageDone('picture');
+  var body = document.getElementById('pd-step3-body');
+  if (body) body.innerHTML = '<div style="text-align:center;padding:24px;background:rgba(34,197,94,.1);border-radius:12px;color:#86efac;font-weight:800;font-size:16px">🎉 All steps complete!</div>';
+  var nav = document.getElementById('pd-nav');
+  if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
+}
+
+function checkIncorrectSentence(btn, isWrong) {
+  document.querySelectorAll('.pd-sent-btn').forEach(function(b) { b.disabled = true; });
+  var result = document.getElementById('pd-sent-result'); if (!result) return;
+  result.style.display = '';
+  if (isWrong) {
+    btn.style.cssText += ';background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.5);color:#fca5a5';
+    result.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ Correct! 이 문장에 오류가 있어요.</div>';
+    markStageDone('picture');
+    var nav = document.getElementById('pd-nav');
+    if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
+  } else {
+    btn.style.cssText += ';background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.4);color:#fbbf24';
+    result.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5">❌ Incorrect. Try another sentence.</div>';
+    document.querySelectorAll('.pd-sent-btn').forEach(function(b) {
+      if (b !== btn) b.disabled = false;
+    });
+  }
+}
+async function checkPictureDescription() {
+  var input = document.getElementById('pd-input');
+  var result = document.getElementById('pd-result');
+  if (!input || !result) return;
+  var text = (input.value || '').trim();
+  if (!text) { showToast('먼저 문장을 작성해 주세요.'); return; }
+  var item = _picturePrompts[_pictureIndex % _picturePrompts.length];
+  var corrected = text;
+  var feedback = {
+    grammar:'문장 종결 표현과 조사(은/는, 이/가)를 한 번 더 확인해 보세요.',
+    vocab:'장소·행동·감정 단어를 1개씩 더 넣으면 더 풍부해져요.',
+    clarity:'누가 무엇을 하는지 순서대로 쓰면 더 명확해집니다.'
+  };
+  try {
+    var prompt = 'You are a Korean writing coach.\n'
+      + 'Image prompt: ' + item.prompt_ko + '\n'
+      + 'Student text:\n' + text + '\n\n'
+      + 'Return JSON only: {"corrected":"...","grammar":"...","vocab":"...","clarity":"...","sample":"..."}';
+    var data = await callClaude({
+      feature: 'study_room_picture_description',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      messages: [{ role:'user', content: prompt }]
+    });
+    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('').replace(/```json|```/g,'').trim();
+    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    var parsed = JSON.parse(s >= 0 && e > s ? raw.slice(s, e + 1) : raw);
+    corrected = parsed.corrected || corrected;
+    feedback.grammar = parsed.grammar || feedback.grammar;
+    feedback.vocab = parsed.vocab || feedback.vocab;
+    feedback.clarity = parsed.clarity || feedback.clarity;
+    if (parsed.sample) item.sample = parsed.sample;
+  } catch(e) {}
+  result.style.display = 'block';
+  result.innerHTML =
+    '<div><b>✅ Corrected version</b><br>' + escapeHTML(corrected) + '</div>'
+    + '<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0">'
+    + '<div><b>Grammar</b>: ' + escapeHTML(feedback.grammar) + '</div>'
+    + '<div><b>Vocabulary</b>: ' + escapeHTML(feedback.vocab) + '</div>'
+    + '<div><b>Clarity</b>: ' + escapeHTML(feedback.clarity) + '</div>'
+    + (item.sample ? '<div style="margin-top:8px"><b>Sample answer</b>: ' + escapeHTML(item.sample) + '</div>' : '');
+  if (typeof awardXP === 'function') awardXP('study_picture_description', { prompt_id:item.id });
+  // Save to daily package
+  var pdText = (document.getElementById('pd-write-area') || {}).value || text;
+  if (pdText && pdText.trim()) {
+    saveDraft('picture_description', {
+      text: pdText.trim(),
+      content_title: 'Picture Description',
+      topic_ko: item.prompt_ko || '',
+      topic_en: item.prompt_en || '',
+      writing_mode: 'picture_description'
+    });
+    refreshSubmitBanner();
+  }
+  markStageDone('picture');
+  showToast('Feedback ready!');
+}
+
+async function preloadSentenceArticles() {
+  if (_sentencePractice.articles.length) return;
+  var sb = getSupa();
+  if (!sb) return;
+  try {
+    var res = await sb.from('articles')
+      .select('id,title,body')
+      .eq('status','published')
+      .order('created_at', { ascending:false })
+      .limit(50);
+    _sentencePractice.articles = (res.data || []).map(function(a){
+      return { id:a.id, title:a.title || 'Untitled', body:(a.body || '').replace(/<[^>]*>/g,' ') };
+    });
+  } catch(e) {
+    _sentencePractice.articles = [];
+  }
+}
+async function openSentenceWriting() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  document.getElementById('sw-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (!_sentencePractice.articles.length) await preloadSentenceArticles();
+  populateSentenceArticleSelect();
+}
+function closeSentenceWriting() {
+  document.getElementById('sw-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+  clearTimeout(_sentencePractice.hideTimer);
+}
+function populateSentenceArticleSelect() {
+  var sel = document.getElementById('sw-article-select');
+  if (!sel) return;
+  if (!_sentencePractice.articles.length) {
+    sel.innerHTML = '<option value="">No published articles found</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Select article...</option>' + _sentencePractice.articles.map(function(a, i){
+    return '<option value="' + i + '">' + escapeHTML(a.title) + '</option>';
+  }).join('');
+}
+function onSentenceArticleChange(sel) {
+  var idx = Number(sel.value);
+  if (Number.isNaN(idx)) return;
+  var article = _sentencePractice.articles[idx];
+  _sentencePractice.selected = article || null;
+  _sentencePractice.sentences = extractPracticeSentences(article && article.body || '');
+  _sentencePractice.idx = 0;
+  renderSentenceTarget();
+}
+function extractPracticeSentences(text) {
+  return (text || '')
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?。！？])\s+/)
+    .map(function(s){ return s.trim(); })
+    .filter(function(s){ return /[가-힣]/.test(s) && s.length >= 12 && s.length <= 120; })
+    .slice(0, 30);
+}
+function currentSentence() {
+  return _sentencePractice.sentences[_sentencePractice.idx] || '';
+}
+function renderSentenceTarget() {
+  var target = document.getElementById('sw-target');
+  var label = document.getElementById('sw-target-label');
+  var sentence = currentSentence();
+  if (!target || !label) return;
+  if (!sentence) {
+    target.textContent = 'No sentence available. Choose a different article.';
+    label.textContent = 'Target sentence';
+    return;
+  }
+  label.textContent = 'Sentence ' + (_sentencePractice.idx + 1) + ' / ' + _sentencePractice.sentences.length;
+  target.textContent = sentence;
+  if (_sentencePractice.mode === 'hidden') {
+    _sentencePractice.hidden = false;
+    clearTimeout(_sentencePractice.hideTimer);
+    _sentencePractice.hideTimer = setTimeout(function() {
+      _sentencePractice.hidden = true;
+      target.textContent = 'Hidden mode: sentence is hidden. Type from memory.';
+    }, 3000);
+  }
+}
+function setSentenceMode(mode) {
+  _sentencePractice.mode = mode === 'hidden' ? 'hidden' : 'copy';
+  document.getElementById('sw-copy-btn').classList.toggle('on', _sentencePractice.mode === 'copy');
+  document.getElementById('sw-hidden-btn').classList.toggle('on', _sentencePractice.mode === 'hidden');
+  renderSentenceTarget();
+}
+function nextSentencePrompt() {
+  if (!_sentencePractice.sentences.length) return;
+  _sentencePractice.idx = (_sentencePractice.idx + 1) % _sentencePractice.sentences.length;
+  document.getElementById('sw-input').value = '';
+  document.getElementById('sw-result').style.display = 'none';
+  renderSentenceTarget();
+}
+function checkSentenceWriting() {
+  var inputEl = document.getElementById('sw-input');
+  var resultEl = document.getElementById('sw-result');
+  var expected = currentSentence();
+  if (!inputEl || !resultEl || !expected) return;
+  var typed = (inputEl.value || '').trim();
+  if (!typed) { showToast('먼저 문장을 입력해 주세요.'); return; }
+  var normalizedExpected = normalizeSentence(expected);
+  var normalizedTyped = normalizeSentence(typed);
+  var expectedWords = normalizedExpected.split(' ').filter(Boolean);
+  var typedWords = normalizedTyped.split(' ').filter(Boolean);
+  var missing = expectedWords.filter(function(w){ return typedWords.indexOf(w) < 0; });
+  var extra = typedWords.filter(function(w){ return expectedWords.indexOf(w) < 0; });
+  var spacingIssue = normalizedExpected.replace(/\s/g,'') === normalizedTyped.replace(/\s/g,'') && normalizedExpected !== normalizedTyped;
+  var score = Math.max(0, Math.round((1 - levenshtein(normalizedExpected, normalizedTyped) / Math.max(1, normalizedExpected.length)) * 100));
+  var mistakes = [];
+  if (missing.length) mistakes.push('Missing: ' + missing.slice(0, 6).join(', '));
+  if (extra.length) mistakes.push('Extra/typo: ' + extra.slice(0, 6).join(', '));
+  if (spacingIssue) mistakes.push('Spacing issue detected.');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML =
+    '<div><b>Score</b>: ' + score + '%</div>'
+    + '<div><b>Mistakes</b>: ' + (mistakes.length ? escapeHTML(mistakes.join(' · ')) : 'Almost perfect!') + '</div>'
+    + '<div><b>Correct sentence</b>: ' + escapeHTML(expected) + '</div>'
+    + '<div><b>Feedback</b>: ' + (score >= 90 ? 'Excellent. Try hidden mode for harder practice.' : 'Read the correct sentence aloud and type again for muscle memory.') + '</div>';
+  if (typeof awardXP === 'function') awardXP('study_sentence_writing', {
+    article_id: _sentencePractice.selected && _sentencePractice.selected.id,
+    score: score
+  });
+  // Save dictation result to daily package
+  var dctInput = (document.getElementById('dct-write-area') || document.getElementById('dct-input') || {}).value || '';
+  if (dctInput.trim()) {
+    saveDraft('dictation', {
+      text: dctInput.trim(),
+      content_title: 'Dictation Practice',
+      topic_ko: expected || '',
+      writing_mode: 'dictation',
+      context: { score: score, expected: expected }
+    });
+    refreshSubmitBanner();
+  }
+  markStageDone('sentence');
+}
+function normalizeSentence(s) {
+  return String(s || '').replace(/[“”"'.!,?;:()\[\]{}]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+}
+function levenshtein(a, b) {
+  var m = a.length, n = b.length;
+  var dp = new Array(n + 1);
+  for (var j = 0; j <= n; j++) dp[j] = j;
+  for (var i = 1; i <= m; i++) {
+    var prev = dp[0];
+    dp[0] = i;
+    for (var k = 1; k <= n; k++) {
+      var tmp = dp[k];
+      var cost = a[i - 1] === b[k - 1] ? 0 : 1;
+      dp[k] = Math.min(dp[k] + 1, dp[k - 1] + 1, prev + cost);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+function escapeHTML(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── 모바일 Writing 헬퍼 ────────────────────────────────────────────
+var WRITE_CHAR_LIMITS = { Starter:{min:20,max:300}, Beginner:{min:20,max:600}, Intermediate:{min:20,max:1000}, Advanced:{min:20,max:2000} };
+function getWriteCharLimit() { return WRITE_CHAR_LIMITS[_currentLevel] || WRITE_CHAR_LIMITS.Beginner; }
+
+// ── Writing genres (Phase 4) ────────────────────────────────────────
+// Each genre adds a scaffold card + a template the user can insert, and
+// tells the Claude prompt what rubric conventions to score against.
+var WRITING_GENRES = {
+  free: {
+    id: 'free', label: 'Free', emoji: '✍️',
+    sub: 'No format constraints',
+    accent: '#64748b',
+    steps: null, template: '',
+    registerHint: 'Pick the register that matches your audience.',
+    conventions: null
+  },
+  email: {
+    id: 'email', label: 'Email', emoji: '✉️',
+    sub: 'Greeting · Body · Closing',
+    accent: '#2563eb',
+    steps: [
+      'Greeting line (받는 사람 / 인사)',
+      'Main message (1-3 sentences, one thing per paragraph)',
+      'Closing + your name (맺음말, 이름)'
+    ],
+    template: '안녕하세요, ○○님.\n\n(여기에 하고 싶은 말을 써보세요)\n\n감사합니다.\n○○ 드림',
+    registerHint: 'Email defaults to formal (-습니다 / -세요).',
+    conventions: 'Has a greeting line, single main message, and a closing + name.'
+  },
+  essay: {
+    id: 'essay', label: 'Essay', emoji: '📝',
+    sub: 'Intro · Body · Conclusion',
+    accent: '#7c3aed',
+    steps: [
+      'Intro — state your thesis in one sentence',
+      'Body — 2-3 supporting points, one per paragraph, with examples',
+      'Conclusion — restate the thesis or call to action'
+    ],
+    template: '요즘 ○○에 대해 생각이 많아졌다. 나는 ○○이 중요하다고 생각한다.\n\n첫째, ...\n둘째, ...\n\n결론적으로, ...',
+    registerHint: 'Essays use consistent formal written style (-다 / -(는)ㄴ다).',
+    conventions: 'Clear thesis, 2+ supporting paragraphs, a conclusion that echoes the intro.'
+  },
+  diary: {
+    id: 'diary', label: 'Diary', emoji: '📓',
+    sub: 'Today · Feelings · Next',
+    accent: '#d97706',
+    steps: [
+      'Today (오늘) — what happened',
+      'Feelings (느낌) — how it felt',
+      'Next (내일) — what you\'ll do tomorrow'
+    ],
+    template: '오늘은 ○○을/를 했다.\n\n느낌은 ○○이었다.\n\n내일은 ○○ 해볼 생각이다.',
+    registerHint: 'Diary entries use plain style (-다 / -았/었다) — casual is fine.',
+    conventions: 'Written in first person, describes events + feelings + a forward-looking line.'
+  },
+  news: {
+    id: 'news', label: 'News summary', emoji: '📰',
+    sub: '5W1H · Neutral tone',
+    accent: '#059669',
+    steps: [
+      'Lead — who / what / when / where in one sentence',
+      'Why / How — add context in 1-2 sentences',
+      'So what — why it matters / what happens next'
+    ],
+    template: '○○년 ○월 ○일, ○○에서 ○○이/가 발생했다.\n\n이유는 ○○ 때문이다.\n\n이로 인해 ○○이 예상된다.',
+    registerHint: 'News writing uses impersonal formal style (-다 / 되다).',
+    conventions: 'Covers 5W1H, neutral tone, no personal pronouns, complete dates/numbers when relevant.'
+  }
+};
+
+var _wmGenre = 'free';
+
+function _renderGenrePills() {
+  var pills = document.getElementById('wm-genre-pills');
+  var sub   = document.getElementById('wm-genre-sub');
+  if (!pills) return;
+  var genres = ['free', 'email', 'essay', 'diary', 'news'];
+  pills.innerHTML = genres.map(function(g) {
+    var meta = WRITING_GENRES[g];
+    var on = _wmGenre === g;
+    return '<button onclick="_setWritingGenre(\'' + g + '\')" data-genre="' + g + '"'
+      + ' style="padding:7px 13px;border-radius:999px;border:1.5px solid ' + (on ? meta.accent : '#e2e8f0') + ';'
+      + 'background:' + (on ? meta.accent : '#fff') + ';color:' + (on ? '#fff' : '#475569') + ';'
+      + 'font-size:12px;font-weight:' + (on ? '800' : '700') + ';cursor:pointer;font-family:inherit;'
+      + 'display:inline-flex;align-items:center;gap:5px;transition:all .15s;'
+      + (on ? 'box-shadow:0 6px 16px -6px ' + meta.accent + '80;' : '')
+      + '">'
+      + '<span>' + meta.emoji + '</span><span>' + meta.label + '</span>'
+    + '</button>';
+  }).join('');
+  if (sub) sub.textContent = WRITING_GENRES[_wmGenre] ? WRITING_GENRES[_wmGenre].sub : '';
+}
+
+function _renderGenreScaffold() {
+  var wrap = document.getElementById('wm-genre-scaffold');
+  if (!wrap) return;
+  var meta = WRITING_GENRES[_wmGenre];
+  if (!meta || !meta.steps) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  wrap.style.display = 'block';
+  var stepsHTML = meta.steps.map(function(s, i) {
+    return '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">'
+      + '<div style="width:18px;height:18px;border-radius:50%;background:' + meta.accent + ';color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">' + (i+1) + '</div>'
+      + '<div style="font-size:12px;line-height:1.55;color:#334155">' + s + '</div>'
+    + '</div>';
+  }).join('');
+  var safeTpl = meta.template.replace(/'/g,'&#39;').replace(/\n/g,'\\n');
+  wrap.innerHTML =
+    '<div style="padding:14px 14px 12px;border-radius:14px;background:' + meta.accent + '0F;border:1px dashed ' + meta.accent + '66">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+        + '<div style="display:flex;align-items:center;gap:8px">'
+          + '<div style="width:26px;height:26px;border-radius:8px;background:' + meta.accent + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px">' + meta.emoji + '</div>'
+          + '<div>'
+            + '<div style="font-size:12px;font-weight:800;color:' + meta.accent + '">' + meta.label + ' structure</div>'
+            + '<div style="font-size:10px;color:#64748b;margin-top:1px">' + meta.registerHint + '</div>'
+          + '</div>'
+        + '</div>'
+        + '<button onclick="_insertGenreTemplate()" style="padding:6px 12px;border-radius:999px;background:#fff;border:1.5px solid ' + meta.accent + ';color:' + meta.accent + ';font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px" title="Paste a starter template into your writing">'
+          + '<span>⚡</span>Insert template'
+        + '</button>'
+      + '</div>'
+      + '<div style="padding-top:2px">' + stepsHTML + '</div>'
+    + '</div>';
+}
+
+function _setWritingGenre(g) {
+  if (!WRITING_GENRES[g]) return;
+  _wmGenre = g;
+  _renderGenrePills();
+  _renderGenreScaffold();
+}
+
+async function _insertGenreTemplate() {
+  var meta = WRITING_GENRES[_wmGenre];
+  if (!meta || !meta.template) return;
+  var ta = document.getElementById('write-area');
+  if (!ta) return;
+  if (ta.value.trim()) {
+    var ok = await khConfirm(
+      'Replace your writing?',
+      'This will overwrite what you\'ve written so far with the ' + meta.label + ' template.',
+      { okLabel: 'Replace' }
+    );
+    if (!ok) return;
+  }
+  ta.value = meta.template;
+  if (typeof onWriteAreaInput === 'function') onWriteAreaInput();
+  ta.focus();
+  // Scroll cursor to the first placeholder
+  var firstPlaceholder = meta.template.indexOf('○○');
+  if (firstPlaceholder >= 0) ta.setSelectionRange(firstPlaceholder, firstPlaceholder + 2);
+}
+
+function onWriteAreaInput() {
+  var ta = document.getElementById('write-area');
+  var val = ta ? ta.value : '';
+  var limit = getWriteCharLimit();
+  // Enforce max length
+  if (val.length > limit.max) { ta.value = val.slice(0, limit.max); val = ta.value; }
+  var wc = document.getElementById('wc');
+  var remaining = limit.max - val.length;
+  if (wc) {
+    wc.textContent = val.length + ' / ' + limit.max + ' chars';
+    wc.style.color = val.length < limit.min ? '#f59e0b' : remaining < 50 ? '#ef4444' : 'var(--gray)';
+  }
+
+  if (!_aiContent) { _updateWritingTrackerRings(val, 0, 0); updateHighlight(); return; }
+
+  // ── vocab 사용 카운트 + 칩 하이라이트 ──
+  var usedEl = document.getElementById('wm-vocab-used-count');
+  var vocabList = (_aiContent.vocab || []);
+  var usedVocab = vocabList.filter(function(w){ return val.includes(w.ko); });
+  if (usedEl) {
+    if (usedVocab.length >= 2) {
+      usedEl.textContent = '✅ ' + usedVocab.length + '/' + vocabList.length + ' vocab used';
+      usedEl.style.color = '#16a34a';
+    } else {
+      usedEl.textContent = '⚠️ ' + usedVocab.length + '/2 vocab (최소 2개)';
+      usedEl.style.color = '#dc2626';
+    }
+  }
+  document.querySelectorAll('#wm-vocab-chips .chip, #wm-vocab-chips-mobile .chip').forEach(function(chip) {
+    var ko = chip.dataset.ko || chip.textContent.replace(/\s*[\(（].*$/,'').trim();
+    var on = val.includes(ko);
+    chip.style.background   = on ? '#dbeafe' : '';
+    chip.style.borderColor  = on ? '#2563eb' : '';
+    chip.style.color        = on ? '#1d4ed8' : '';
+    chip.style.fontWeight   = on ? '800' : '';
+  });
+
+  // grammar 체크 없음 — 칩은 참고용 표시만
+
+  // ── Canvas tracker ring 업데이트 ──
+  _updateWritingTrackerRings(val, usedVocab.length, vocabList.length);
+
+  updateHighlight();
+}
+
+// ── Writing Tracker Rings (Canvas) ──────────────────────────────
+var _wmRingVocab = null, _wmRingGrammar = null, _wmRingChars = null;
+var _wmRingsInitialized = false;
+
+function _initWritingTrackerRings() {
+  if (_wmRingsInitialized || !window.KHCanvas) return;
+  var cv = document.getElementById('wm-ring-vocab');
+  var cg = document.getElementById('wm-ring-grammar');
+  var cc = document.getElementById('wm-ring-chars');
+  if (!cv || !cg || !cc) return;
+
+  _wmRingVocab = new KHCanvas.Ring(cv, {
+    radius: 20, lineWidth: 5,
+    colors: ['#38bdf8', '#2563eb'],
+    completeColors: ['#34d399', '#22c55e'],
+    showText: true, textFont: 'sans-serif'
+  });
+  _wmRingGrammar = new KHCanvas.Ring(cg, {
+    radius: 20, lineWidth: 5,
+    colors: ['#fbbf24', '#f59e0b'],
+    completeColors: ['#34d399', '#22c55e'],
+    showText: true, textFont: 'sans-serif'
+  });
+  _wmRingChars = new KHCanvas.Ring(cc, {
+    radius: 20, lineWidth: 5,
+    colors: ['#a78bfa', '#7c3aed'],
+    completeColors: ['#34d399', '#22c55e'],
+    showText: false
+  });
+
+  _wmRingVocab.setText('0');
+  _wmRingGrammar.setText('0');
+  _wmRingsInitialized = true;
+}
+
+function _updateWritingTrackerRings(text, vocabUsed, vocabTotal) {
+  if (!_wmRingsInitialized) _initWritingTrackerRings();
+  if (!_wmRingVocab) return;
+
+  var limit = getWriteCharLimit();
+  var charPct = Math.min(1, (text || '').length / limit.min);
+
+  // Vocab ring: target is 2 minimum
+  var vocabTarget = Math.max(2, vocabTotal);
+  var vocabPct = Math.min(1, vocabUsed / vocabTarget);
+  _wmRingVocab.setProgress(vocabPct, vocabUsed >= 2 ? 'complete' : 'normal');
+  _wmRingVocab.setText(vocabUsed + '');
+
+  // Grammar ring: count grammar patterns found in text. Target is "use any 2"
+  // — the daily content may surface 5–8 patterns for reference, but the user
+  // shouldn't feel compelled to cram all of them in (old behaviour showed
+  // "Grammar 0/8" which read like a hard requirement).
+  var grammarUsed = 0;
+  var grammarList = (_aiContent && _aiContent.grammar) ? _aiContent.grammar : [];
+  var grammarTotal = grammarList.length;
+  if (grammarTotal > 0 && text) {
+    grammarList.forEach(function(g) {
+      var pattern = g.pattern || g.ko || '';
+      if (pattern && text.indexOf(pattern) >= 0) grammarUsed++;
+    });
+  }
+  var grammarTarget = Math.min(2, Math.max(1, grammarTotal));
+  var grammarPct = grammarTarget > 0 ? Math.min(1, grammarUsed / grammarTarget) : 0;
+  _wmRingGrammar.setProgress(grammarPct, grammarUsed >= grammarTarget ? 'complete' : 'normal');
+  _wmRingGrammar.setText(grammarUsed + '');
+
+  // Chars ring: progress toward minimum
+  _wmRingChars.setProgress(charPct, charPct >= 1 ? 'complete' : 'normal');
+
+  // Update labels
+  var vl = document.getElementById('wm-ring-vocab-label');
+  var gl = document.getElementById('wm-ring-grammar-label');
+  var cl = document.getElementById('wm-ring-chars-label');
+  if (vl) vl.textContent = 'Vocab ' + vocabUsed + '/' + vocabTarget;
+  if (gl) gl.textContent = 'Grammar ' + grammarUsed + '/' + grammarTarget + (grammarTotal > grammarTarget ? ' (' + grammarTotal + ' avail)' : '');
+  if (cl) cl.textContent = (text || '').length + '/' + limit.min + ' min';
+
+  // Fire particle on reaching vocab goal for the first time
+  if (vocabUsed >= 2 && !_wmRingVocab._celebrated) {
+    _wmRingVocab._celebrated = true;
+    var overlay = KHCanvas.createOverlay(document.getElementById('wm-tracker-row'));
+    if (overlay) {
+      overlay.ps.burstAt(overlay.canvas._khW * 0.15, overlay.canvas._khH / 2, 'SPARKLE', 15);
+      setTimeout(function() { overlay.canvas.remove(); }, 1500);
+    }
+  }
+}
+
+function _resetWritingTrackerRings() {
+  if (_wmRingVocab) { _wmRingVocab.setProgress(0); _wmRingVocab.setText('0'); _wmRingVocab._celebrated = false; }
+  if (_wmRingGrammar) { _wmRingGrammar.setProgress(0); _wmRingGrammar.setText('0'); }
+  if (_wmRingChars) { _wmRingChars.setProgress(0); }
+}
+
+// ── 3D Envelope Submit Animation ──────────────────────────────
+function _playSubmitEnvelopeAnimation(onComplete) {
+  var modal = document.querySelector('#wmodal .wmodal');
+  var center = modal ? modal.querySelector('.wm-center') : null;
+  if (!center || !window.KHCanvas) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  // 1) Add envelope fold class to center area
+  center.classList.add('kh-envelope-seal');
+
+  // 2) Create particle overlay on the modal
+  var overlay = KHCanvas.createOverlay(modal);
+  if (overlay) {
+    var w = overlay.canvas._khW || 400;
+    var h = overlay.canvas._khH || 300;
+    // Celebration burst from center
+    setTimeout(function() {
+      overlay.ps.burstAt(w / 2, h / 2, 'CELEBRATION', 50);
+      overlay.ps.burstAt(w * 0.3, h * 0.4, 'GOLD_BURST', 20);
+      overlay.ps.burstAt(w * 0.7, h * 0.4, 'GOLD_BURST', 20);
+    }, 300);
+  }
+
+  // 3) Wait for animation to finish, then clean up and close
+  setTimeout(function() {
+    center.classList.remove('kh-envelope-seal');
+    // Reset envelope transform
+    center.style.transform = '';
+    center.style.opacity = '';
+    if (overlay) {
+      overlay.ps.destroy();
+      overlay.canvas.remove();
+    }
+    if (onComplete) onComplete();
+  }, 1100);
+}
+
+// ── Speaking Radar Chart ───────────────────────────────────────
+var _speakRadar = null;
+var _speakRadarAxes = ['Accuracy', 'Fluency', 'Intonation', 'Speed', 'Pronunciation'];
+
+/**
+ * Show the radar chart with scores.
+ * @param {number[]} scores — 5 values (0-100)
+ * @param {object[]} [sentences] — [{text, score}] for highlighting
+ */
+function showSpeakingRadar(scores, sentences) {
+  var wrap = document.getElementById('wm-speak-radar-wrap');
+  if (!wrap || !window.KHCanvas) return;
+  wrap.style.display = '';
+
+  // Init radar if needed
+  if (!_speakRadar) {
+    var cv = document.getElementById('wm-speak-radar-canvas');
+    if (!cv) return;
+    _speakRadar = new KHCanvas.Radar(cv, {
+      axes: _speakRadarAxes,
+      size: 80,
+      padding: 36,
+      fillColor: 'rgba(124,58,237,.2)',
+      strokeColor: '#7c3aed',
+      dotColor: '#a78bfa',
+      gridColor: 'rgba(124,58,237,.12)',
+      labelColor: 'rgba(124,58,237,.7)',
+      valueColor: '#7c3aed'
+    });
+  }
+
+  _speakRadar.setValues(scores || [0, 0, 0, 0, 0]);
+
+  // Admin edit panel — show only for admins
+  var adminPanel = document.getElementById('wm-speak-admin-edit');
+  var isAdmin = window.supaUser && window.supaUser.app_metadata && window.supaUser.app_metadata.role === 'admin';
+  if (!isAdmin) {
+    // Also check email-based admin (existing pattern in codebase)
+    var adminEmails = ['enane960819@gmail.com'];
+    isAdmin = window.supaUser && adminEmails.indexOf(window.supaUser.email) >= 0;
+  }
+  if (adminPanel && isAdmin) {
+    adminPanel.style.display = '';
+    var inputsWrap = document.getElementById('wm-speak-admin-inputs');
+    if (inputsWrap) {
+      inputsWrap.innerHTML = _speakRadarAxes.map(function(axis, i) {
+        var val = scores ? Math.round(scores[i] || 0) : 0;
+        return '<div style="display:flex;align-items:center;gap:8px">'
+          + '<label style="font-size:11px;color:rgba(255,255,255,.6);min-width:80px">' + axis + '</label>'
+          + '<input type="range" min="0" max="100" value="' + val + '" '
+          + 'oninput="_onRadarSliderChange()" '
+          + 'data-axis="' + i + '" '
+          + 'style="flex:1;accent-color:#7c3aed">'
+          + '<span style="font-size:11px;color:#a78bfa;font-weight:700;min-width:28px;text-align:right" id="radar-val-' + i + '">' + val + '</span>'
+          + '</div>';
+      }).join('');
+    }
+  }
+
+  // Sentence highlighting
+  if (sentences && sentences.length) {
+    renderSentenceHighlighting(sentences);
+  }
+}
+
+/** Admin slider change → update radar in real-time */
+function _onRadarSliderChange() {
+  if (!_speakRadar) return;
+  var inputs = document.querySelectorAll('#wm-speak-admin-inputs input[type="range"]');
+  var vals = [];
+  inputs.forEach(function(inp) {
+    var idx = parseInt(inp.dataset.axis);
+    var val = parseInt(inp.value);
+    vals[idx] = val;
+    var lbl = document.getElementById('radar-val-' + idx);
+    if (lbl) lbl.textContent = val;
+  });
+  _speakRadar.setValues(vals);
+}
+
+/** Save admin-edited radar scores (placeholder — integrate with your feedback system) */
+function _saveRadarScores() {
+  if (!_speakRadar) return;
+  var scores = _speakRadar.getValues();
+  // Store on the current feedback data so it gets included when feedback is sent
+  window._lastSpeakingRadarScores = scores;
+  showToast('Radar scores saved: ' + scores.map(Math.round).join(', '));
+}
+
+/**
+ * Render sentence-by-sentence color highlighting.
+ * @param {object[]} sentences — [{text, score}] score: 0-100
+ *   score >= 70 = green, 40-69 = yellow, < 40 = red
+ *   Admin can click to cycle colors.
+ */
+function renderSentenceHighlighting(sentences) {
+  var wrap = document.getElementById('wm-speak-sentences');
+  if (!wrap) return;
+
+  var isAdmin = window.supaUser && (
+    (window.supaUser.app_metadata && window.supaUser.app_metadata.role === 'admin') ||
+    window.supaUser.email === 'enane960819@gmail.com'
+  );
+
+  wrap.innerHTML = '<div style="font-size:10px;font-weight:800;color:rgba(124,58,237,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Sentence Analysis' + (isAdmin ? ' <span style="font-size:9px;color:rgba(255,255,255,.3)">(click to edit)</span>' : '') + '</div>'
+    + sentences.map(function(s, i) {
+      var score = s.score || 0;
+      var color = score >= 70 ? '#22c55e' : score >= 40 ? '#eab308' : '#ef4444';
+      var bg = score >= 70 ? 'rgba(34,197,94,.08)' : score >= 40 ? 'rgba(234,179,8,.08)' : 'rgba(239,68,68,.08)';
+      var border = score >= 70 ? 'rgba(34,197,94,.2)' : score >= 40 ? 'rgba(234,179,8,.2)' : 'rgba(239,68,68,.2)';
+      return '<div class="speak-sent" data-idx="' + i + '" data-score="' + score + '" '
+        + 'style="padding:8px 10px;border-radius:8px;margin-bottom:4px;font-size:13px;line-height:1.6;'
+        + 'background:' + bg + ';border-left:3px solid ' + color + ';border:1px solid ' + border + ';'
+        + 'color:' + color + ';cursor:' + (isAdmin ? 'pointer' : 'default') + '"'
+        + (isAdmin ? ' onclick="_cycleSentenceScore(this,' + i + ')"' : '')
+        + '>' + (s.text || '') + '</div>';
+    }).join('');
+
+  // Store for saving
+  window._lastSentenceScores = sentences;
+}
+
+/** Admin: cycle sentence score (green → yellow → red → green) */
+function _cycleSentenceScore(el, idx) {
+  if (!window._lastSentenceScores || !window._lastSentenceScores[idx]) return;
+  var s = window._lastSentenceScores[idx];
+  // Cycle: 80 → 50 → 20 → 80
+  if (s.score >= 70) s.score = 50;
+  else if (s.score >= 40) s.score = 20;
+  else s.score = 80;
+  // Re-render
+  renderSentenceHighlighting(window._lastSentenceScores);
+}
+
+function insertVocabChip(word) {
+  var ta = document.getElementById('write-area');
+  if (!ta) return;
+  var start = ta.selectionStart, end = ta.selectionEnd;
+  var val = ta.value;
+  ta.value = val.slice(0, start) + word + val.slice(end);
+  ta.selectionStart = ta.selectionEnd = start + word.length;
+  ta.focus();
+  onWriteAreaInput();
+}
+// ── END 모바일 Writing 헬퍼 ────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════
+// BEGINNER 4-STEP WRITING SYSTEM
+// Step 1: Read sentences  → Step 2: Order  → Step 3: Fill blanks → Step 4: Write
+// ══════════════════════════════════════════════════════════════════
+var _bm = {
+  step: 0,          // 0=loading, 1=read, 2=order, 3=blank, 4=write
+  sentences: [],    // [{ko, en}]
+  shuffled: [],     // step2용 섞인 순서 인덱스
+  blanks: [],       // step3용 [{sent, blanks:[{word, pos, choices}], filled:{}}]
+  score: { order:0, blank:0 },
+  writing: '',
+  generating: false,
+};
+
+// ── Topic Writing progress save / restore (item 3) ──────────────
+function _bmProgressKey() {
+  return 'kh_bm_' + (supaUser ? supaUser.id : 'g') + '_' + kstDateKey();
+}
+function _bmSaveProgress() {
+  try {
+    var saved = {
+      step:        _bm.step,
+      wordOrderIdx: _bm.wordOrderIdx || 0,
+      wordOrders:   (_bm.wordOrders || []).map(function(wo){ return { result: wo.result || null, selected: wo.selected || [] }; }),
+      writing:      _bm.writing || '',
+      savedAt:      new Date().toISOString()
+    };
+    localStorage.setItem(_bmProgressKey(), JSON.stringify(saved));
+  } catch(e) {}
+}
+function _bmLoadProgress() {
+  try {
+    var raw = localStorage.getItem(_bmProgressKey());
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function openBeginnerModal() {
+  var overlay = document.getElementById('bmodal-overlay');
+  overlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  // Check for saved mid-flow progress from today
+  var saved = _bmLoadProgress();
+  if (saved && saved.step > 1 && _bm.sentences && _bm.sentences.length) {
+    // Restore: sentences already loaded in memory, just go to saved step
+    _bm.step = saved.step;
+    _bm.writing = saved.writing || '';
+    if (saved.wordOrders && saved.wordOrders.length) {
+      _bm.wordOrderIdx = saved.wordOrderIdx || 0;
+    }
+    updateBMHeader();
+    // Route to the correct step
+    if (_bm.step === 2) { goToBMStep2(); return; }
+    if (_bm.step === 3) { goToBMStep3(); return; }
+    if (_bm.step === 4) { goToBMStep4(); return; }
+  }
+
+  _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false, listened:[], snapIdx:0, snapSeen:[], snapSaved:[], snapCards:[] };
+  updateBMHeader();
+  renderBMStep1Loading();
+  generateBeginnerSentences();
+}
+
+function closeBModal() {
+  document.getElementById('bmodal-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+// ══════════════════════════════════════════════════════════════
+// INTERMEDIATE MODULE (IM) — Tree level pre-writing scaffold
+// ══════════════════════════════════════════════════════════════
+// Mirrors the Beginner Module's modal shell so the look-and-feel
+// stays consistent across difficulty tiers, but with a Tree-level
+// flow: Topic Vocab preview → Grammar pattern preview → Writing
+// brief → opens the existing wmodal (Express Practice) writing room.
+// Reuses the AI content already generated by generateAIContent
+// (_aiContent.vocab / .grammar) instead of new round-trips, so the
+// scaffold is essentially free at runtime.
+var _im = {
+  step: 1,                 // 1 vocab, 2 grammar, 3 brief
+  vocabRevealed: {},       // { idx: true } — which cards have been tapped
+  generating: false,
+};
+var _IM_TOTAL_STEPS = 3;
+var _IM_PROGRESS_KEY = 'kh_im_progress_v1';
+
+function _imSaveProgress() {
+  try {
+    var key = _IM_PROGRESS_KEY + '_' + (_todayTopic && _todayTopic.id || 'noid');
+    localStorage.setItem(key, JSON.stringify({ step: _im.step, vocabRevealed: _im.vocabRevealed }));
+  } catch(_) {}
+}
+function _imLoadProgress() {
+  try {
+    var key = _IM_PROGRESS_KEY + '_' + (_todayTopic && _todayTopic.id || 'noid');
+    var raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(_) { return null; }
+}
+
+function openIntermediateModal() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  _writingMode = 'topic';
+  // If today's AI content isn't loaded yet (cold open from Topic Yum
+  // Yum), fire the same generator wmodal would use. Scaffold renders
+  // its loading state until vocab/grammar arrive.
+  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+
+  var saved = _imLoadProgress();
+  _im = { step: 1, vocabRevealed: {}, generating: false };
+  if (saved && saved.step >= 1 && saved.step <= _IM_TOTAL_STEPS) {
+    _im.step = saved.step;
+    _im.vocabRevealed = saved.vocabRevealed || {};
+  }
+
+  document.getElementById('immodal-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  _imRender();
+}
+function closeIMModal() {
+  document.getElementById('immodal-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+window.openIntermediateModal = openIntermediateModal;
+window.closeIMModal = closeIMModal;
+
+function _imUpdateHeader() {
+  var pillsEl = document.getElementById('im-step-pills');
+  if (pillsEl) {
+    var pills = '';
+    for (var i = 1; i <= _IM_TOTAL_STEPS; i++) {
+      var on = i === _im.step;
+      var done = i < _im.step;
+      pills += '<span class="bm-pip' + (on ? ' on' : '') + (done ? ' done' : '') + '"></span>';
+    }
+    pillsEl.innerHTML = pills;
+  }
+  var topicEl = document.getElementById('im-topic-label');
+  if (topicEl && _todayTopic) {
+    topicEl.textContent = _todayTopic.topic_ko || _todayTopic.topic_en || "Today's Topic";
+  }
+  var bar = document.getElementById('im-progress-bar');
+  if (bar) bar.style.width = ((_im.step - 1) / _IM_TOTAL_STEPS * 100) + '%';
+}
+
+function _imRender() {
+  _imUpdateHeader();
+  if (_im.step === 1)      _imRenderVocab();
+  else if (_im.step === 2) _imRenderGrammar();
+  else                     _imRenderBrief();
+}
+
+// ── Step 1 — Topic Vocab preview ──────────────────────────────
+// Pulls 5-8 entries from the AI content already generated for today's
+// topic, filtered to the ones at Intermediate-relevant complexity.
+// Each card is tap-to-reveal so the learner has a moment to guess
+// before the meaning surfaces — same pattern PM uses in its vocab
+// phase, since the user already responds well to it.
+function _imRenderVocab() {
+  var body = document.getElementById('im-body');
+  var footer = document.getElementById('im-footer');
+  if (!body || !footer) return;
+
+  var vocab = ((_aiContent && _aiContent.vocab) || [])
+    .filter(function(v){ return v && v.ko && v.en; })
+    .slice(0, 8);
+
+  if (!vocab.length) {
+    body.innerHTML = '<div class="im-loading">'
+      + '<div class="im-loading-spinner"></div>'
+      + '<div class="im-loading-text">Loading today\'s vocab…</div>'
+      + '<div class="im-loading-sub">If this hangs, the AI content for today\'s topic hasn\'t been generated yet.</div>'
+      + '</div>';
+    footer.innerHTML = '<button class="bm-btn-next" onclick="_imAdvanceStep()">Skip to grammar →</button>';
+    // Re-render once content arrives.
+    setTimeout(function(){ if (_aiContent && _aiContent.vocab) _imRender(); }, 1200);
+    return;
+  }
+
+  var cardsHtml = vocab.map(function(v, i) {
+    var open = !!_im.vocabRevealed[i];
+    var face = open
+      ? ('<div class="im-vocab-en">' + _esc(v.en) + '</div>'
+         + (v.rom ? '<div class="im-vocab-rom">' + _esc(v.rom) + '</div>' : ''))
+      : '<div class="im-vocab-hint">TAP TO REVEAL</div>';
+    return '<button class="im-vocab-card' + (open ? ' open' : '') + '" type="button" onclick="_imRevealVocab(' + i + ')">'
+      +   '<div class="im-vocab-ko">' + _esc(v.ko) + '</div>'
+      +   face
+      + '</button>';
+  }).join('');
+
+  var revealedCount = Object.keys(_im.vocabRevealed).length;
+  var allRevealed = revealedCount >= Math.min(vocab.length, 5);
+
+  body.innerHTML = ''
+    + '<div class="im-step-eyebrow">STEP 1 · TOPIC VOCAB</div>'
+    + '<div class="im-step-title">Today\'s key words</div>'
+    + '<div class="im-step-desc">Tap each card to reveal what it means. You\'ll use these in your writing.</div>'
+    + '<div class="im-vocab-grid">' + cardsHtml + '</div>';
+  footer.innerHTML = ''
+    + '<div class="im-progress-text">' + revealedCount + ' / ' + vocab.length + ' revealed</div>'
+    + '<button class="bm-btn-next' + (allRevealed ? '' : ' disabled') + '" '
+    +   (allRevealed ? '' : 'disabled')
+    +   ' onclick="_imAdvanceStep()">'
+    +   (allRevealed ? 'Continue to grammar →' : 'Reveal at least 5 cards')
+    + '</button>';
+}
+
+window._imRevealVocab = function(i) {
+  _im.vocabRevealed[i] = true;
+  _imSaveProgress();
+  _imRender();
+};
+window._imAdvanceStep = function() {
+  if (_im.step < _IM_TOTAL_STEPS) {
+    _im.step++;
+    _imSaveProgress();
+    _imRender();
+  }
+};
+window._imBackStep = function() {
+  if (_im.step > 1) {
+    _im.step--;
+    _imSaveProgress();
+    _imRender();
+  }
+};
+
+// ── Step 2 — Grammar patterns preview ─────────────────────────
+function _imRenderGrammar() {
+  var body = document.getElementById('im-body');
+  var footer = document.getElementById('im-footer');
+  if (!body || !footer) return;
+
+  var grammar = ((_aiContent && _aiContent.grammar) || [])
+    .filter(function(g){ return g && g.pattern; })
+    .slice(0, 3);
+
+  var cardsHtml;
+  if (grammar.length) {
+    cardsHtml = grammar.map(function(g) {
+      var examples = Array.isArray(g.examples) && g.examples.length
+        ? g.examples.slice(0, 2).map(function(ex) {
+            var ko = (ex && ex.ko) || ex || '';
+            var en = (ex && ex.en) || '';
+            return '<div class="im-grammar-ex">'
+              +   '<div class="im-grammar-ex-ko">' + _esc(String(ko)) + '</div>'
+              +   (en ? '<div class="im-grammar-ex-en">' + _esc(en) + '</div>' : '')
+              + '</div>';
+          }).join('')
+        : '';
+      return '<div class="im-grammar-card">'
+        +   '<div class="im-grammar-pattern">' + _esc(g.pattern) + '</div>'
+        +   (g.exp ? '<div class="im-grammar-exp">' + _esc(g.exp) + '</div>' : '')
+        +   (examples ? '<div class="im-grammar-ex-wrap">' + examples + '</div>' : '')
+        + '</div>';
+    }).join('');
+  } else {
+    cardsHtml = '<div class="im-loading">'
+      + '<div class="im-loading-text">No grammar focus for this topic yet.</div>'
+      + '<div class="im-loading-sub">You can still continue to the writing brief.</div>'
+      + '</div>';
+  }
+
+  body.innerHTML = ''
+    + '<div class="im-step-eyebrow">STEP 2 · GRAMMAR PATTERNS</div>'
+    + '<div class="im-step-title">Patterns you\'ll need</div>'
+    + '<div class="im-step-desc">These are the structures Korean speakers use for this kind of topic. Lean on them when you write.</div>'
+    + '<div class="im-grammar-stack">' + cardsHtml + '</div>';
+  footer.innerHTML = ''
+    + '<button class="bm-btn-back" onclick="_imBackStep()">← Back</button>'
+    + '<button class="bm-btn-next" onclick="_imAdvanceStep()">Continue →</button>';
+}
+
+// ── Step 3 — Writing brief + launch wmodal ────────────────────
+function _imRenderBrief() {
+  var body = document.getElementById('im-body');
+  var footer = document.getElementById('im-footer');
+  if (!body || !footer) return;
+
+  var topic = _todayTopic || {};
+  var topicKo = topic.topic_ko || '';
+  var topicEn = topic.topic_en || '';
+
+  body.innerHTML = ''
+    + '<div class="im-step-eyebrow">STEP 3 · EXPRESS PRACTICE</div>'
+    + '<div class="im-step-title">You\'re ready to write</div>'
+    + '<div class="im-step-desc">Use today\'s vocab + grammar to answer the topic in your own words. Aim for 3-5 sentences.</div>'
+    + '<div class="im-brief-card">'
+    +   '<div class="im-brief-label">TODAY\'S TOPIC</div>'
+    +   '<div class="im-brief-ko">' + _esc(topicKo) + '</div>'
+    +   (topicEn ? '<div class="im-brief-en">' + _esc(topicEn) + '</div>' : '')
+    + '</div>'
+    + '<div class="im-tips">'
+    +   '<div class="im-tip-title">Quick tips</div>'
+    +   '<ul class="im-tip-list">'
+    +     '<li>Pick a clear position or angle in your first sentence.</li>'
+    +     '<li>Pull at least 2 vocab words from Step 1.</li>'
+    +     '<li>Use one of the grammar patterns from Step 2 at least once.</li>'
+    +     '<li>Stretch yourself — this isn\'t Sprout level. Try connectives like ~지만 / ~기 때문에 / ~는데도.</li>'
+    +   '</ul>'
+    + '</div>';
+  footer.innerHTML = ''
+    + '<button class="bm-btn-back" onclick="_imBackStep()">← Back</button>'
+    + '<button class="bm-btn-next im-launch" onclick="_imLaunchWriting()">'
+    +   '<i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
+    +   '<span>Begin writing →</span>'
+    + '</button>';
+  if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+}
+
+window._imLaunchWriting = function() {
+  // Mark the IM scaffold as "done for today" via the existing
+  // _studyDone.topic flag — submitting the writing later still
+  // upgrades it via the actual submit path. This makes the user
+  // feel rewarded for finishing the scaffold even if they bail
+  // before submitting.
+  closeIMModal();
+  // Hand off to the writing room (wmodal) — same path the legacy
+  // openWritingModalForLearning used to take directly.
+  document.getElementById('wmodal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
+  if (typeof renderModalContent === 'function') renderModalContent();
+  setTimeout(function() {
+    if (typeof _initWritingTrackerRings === 'function') _initWritingTrackerRings();
+    if (typeof _resetWritingTrackerRings === 'function') _resetWritingTrackerRings();
+  }, 100);
+  if (typeof wmMobileInit === 'function') wmMobileInit();
+  if (typeof khTrackUser === 'function') {
+    try { khTrackUser('im_finished', { topic_id: (_todayTopic && _todayTopic.id) || null }); } catch(_) {}
+  }
+};
+
+// Inline SVG icons used across the beginner modal (replaces the prior emojis
+// so glyphs render consistently and pick up the theme color).
+var BM_ICON_HEADPHONES = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13a8 8 0 0 1 16 0"/><rect x="3" y="13" width="4.5" height="7" rx="1.4"/><rect x="16.5" y="13" width="4.5" height="7" rx="1.4"/></svg>';
+var BM_ICON_SHUFFLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h4a4 4 0 0 1 3.2 1.6"/><path d="M3 17h4a4 4 0 0 0 3.2-1.6"/><path d="M14 7h7"/><path d="M14 17h7"/><path d="M18 4l3 3-3 3"/><path d="M18 14l3 3-3 3"/></svg>';
+var BM_ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5l5 5L8 21H3v-5z"/><path d="M13 6l5 5"/></svg>';
+var BM_ICON_BULB = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6.5 6.5 0 0 0-4 11.6c.7.6 1 1.2 1 2V16h6v-.4c0-.8.3-1.4 1-2A6.5 6.5 0 0 0 12 3z"/></svg>';
+var BM_ICON_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v5l3 4H6l3-4z"/><path d="M12 13v8"/></svg>';
+var BM_ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 12 10 17 19 7"/></svg>';
+var BM_ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5l13 7-13 7z"/></svg>';
+var BM_ICON_SPARKLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg>';
+var BM_ICON_TROPHY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a2 2 0 0 0 3 3.5"/><path d="M17 6h3a2 2 0 0 1-3 3.5"/><path d="M9 14h6l-1 4h-4z"/><path d="M8 21h8"/></svg>';
+var BM_ICON_STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.95-4.78 4.65 1.13 6.6L12 17.6l-5.85 3.1 1.13-6.6L2.5 9.45 9.1 8.5z"/></svg>';
+var BM_ICON_FLAME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.7-2.5 1.5-3.5C10.5 7 11 5 12 3z"/><path d="M10.5 14c.4 1 1 1.6 1.5 1.6s1.1-.6 1.5-1.6"/></svg>';
+var BM_ICON_PARTY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l4-12 8 8z"/><path d="M14 4c0 2 2 2 2 4"/><path d="M18 7c0 2 2 2 2 4"/><path d="M11 3l1 1"/><path d="M20 14l1 1"/><path d="M16 13l1 1"/></svg>';
+var BM_ICON_WARNING = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>';
+var BM_ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg>';
+var BM_ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 4v4h-4"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 20v-4h4"/></svg>';
+var BM_ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>';
+var BM_ICON_THUMBS_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11v9H4v-9z"/><path d="M7 11l4-7c1.5 0 2.5 1 2.5 2.5V11h5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 21H7"/></svg>';
+var BM_ICON_NEWSPAPER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5a2 2 0 0 1 2-2h12v18H5a2 2 0 0 1-2-2z"/><path d="M17 7h4v12a2 2 0 0 1-2 2"/><path d="M7 7h6M7 11h6M7 15h6"/></svg>';
+var BM_ICON_BOOK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 0-2 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H19"/></svg>';
+var BM_ICON_LIBRARY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4v16M9 4v16"/><path d="M13 4l5 1.3L15.5 19l-5-1.3z"/></svg>';
+var BM_ICON_VOLUME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M16 8a4 4 0 0 1 0 8"/><path d="M19 5a8 8 0 0 1 0 14"/></svg>';
+var BM_ICON_NOTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4.5l5 5L8 21H3v-5z"/><path d="M13 6l5 5"/></svg>';
+var BM_ICON_LIST = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>';
+var BM_ICON_CLIPBOARD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 10h6M9 14h6"/></svg>';
+var BM_ICON_DOC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M9 13h6M9 17h4"/></svg>';
+
+function updateBMHeader() {
+  var pills = document.getElementById('bm-step-pills');
+  var steps = [BM_ICON_HEADPHONES, BM_ICON_SHUFFLE, BM_ICON_PENCIL, BM_ICON_BULB];
+  var labels = ['Listen','Build','Fill','Snap'];
+  pills.innerHTML = steps.map(function(icon, i) {
+    var stepNum = i + 1;
+    var cls = stepNum < _bm.step ? 'done' : stepNum === _bm.step ? 'active' : 'todo';
+    return '<div class="bm-pill ' + cls + '" title="' + labels[i] + '">' +
+      (stepNum < _bm.step ? BM_ICON_CHECK : icon) + '</div>';
+  }).join('');
+
+  var topicEl = document.getElementById('bm-topic-label');
+  if (topicEl && _todayTopic) {
+    var topicText = _todayTopic.topic_ko || _todayTopic.topic_en || 'Today\'s Topic';
+    topicEl.innerHTML = BM_ICON_PIN + '<span></span>';
+    var topicSpan = topicEl.querySelector('span');
+    if (topicSpan) topicSpan.textContent = topicText;
+  }
+
+  var bar = document.getElementById('bm-progress-bar');
+  if (bar) bar.style.width = ((_bm.step - 1) / 4 * 100) + '%';
+}
+
+// Canvas confetti burst inside the modal
+function bmFireConfetti() {
+  var modal = document.getElementById('bmodal');
+  if (!modal) return;
+  var canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:100;border-radius:28px;width:100%;height:100%';
+  modal.appendChild(canvas);
+  canvas.width = modal.offsetWidth || 400;
+  canvas.height = modal.offsetHeight || 600;
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  var colors = ['#a78bfa','#7c3aed','#f59e0b','#60a5fa','#f472b6','#34d399'];
+  var pieces = [];
+  for (var i = 0; i < 55; i++) {
+    pieces.push({
+      x: Math.random() * W, y: -10,
+      vx: (Math.random() - 0.5) * 6, vy: Math.random() * 3 + 1.5,
+      r: Math.random() * 6 + 3, color: colors[i % colors.length],
+      rot: Math.random() * 360, rv: (Math.random() - 0.5) * 10, life: 1
+    });
+  }
+  var frame = 0;
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    var alive = false;
+    pieces.forEach(function(p) {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.rot += p.rv; p.life -= 0.013;
+      if (p.life > 0 && p.y < H + 20) alive = true;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r);
+      ctx.restore();
+    });
+    frame++;
+    if (alive && frame < 160) requestAnimationFrame(tick);
+    else canvas.remove();
+  }
+  tick();
+}
+
+async function generateBeginnerSentences() {
+  if (_bm.generating) return;
+  _bm.generating = true;
+  var topic = _todayTopic;
+  if (!topic) {
+    _bm.sentences = getFallbackSentences();
+    renderBMStep1();
+    _bm.generating = false;
+    return;
+  }
+
+  // ── Priority 1: DB-loaded pre-generated sentences (admin-reviewed) ──
+  var dbSents = _aiContent && Array.isArray(_aiContent.topic_writing_sentences) && _aiContent.topic_writing_sentences;
+  if (dbSents && dbSents.length >= 3) {
+    khLog('[generateBeginnerSentences] using pre-generated DB sentences:', dbSents.length);
+    _bm.sentences = dbSents;
+    _bm.generating = false;
+    renderBMStep1();
+    return;
+  }
+
+  // ── Priority 2: sessionStorage cache (current session) ──
+  var cacheKey = 'bm_sents_' + (topic.id || topic.topic_en || '').replace(/\s/g,'_');
+  var cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    try {
+      _bm.sentences = JSON.parse(cached);
+      _bm.generating = false;
+      renderBMStep1();
+      return;
+    } catch(e) {}
+  }
+
+  if (!supaUser) {
+    _bm.sentences = getFallbackSentences();
+    sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
+    _bm.generating = false;
+    renderBMStep1();
+    return;
+  }
+
+  // ── Priority 2.5: shared DB cache across users ──
+  // Same daily topic → same beginner sentences. Without this, every
+  // signed-in user pays the AI cost on first open even though the topic
+  // is identical.
+  var dbCacheKey = 'beg::' + (topic.id || topic.topic_en || topic.topic_ko || '').toString().slice(0, 80);
+  var dbCached = await _aiCacheGet(dbCacheKey);
+  if (dbCached && Array.isArray(dbCached) && dbCached.length >= 3) {
+    _bm.sentences = dbCached;
+    sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
+    _bm.generating = false;
+    renderBMStep1();
+    return;
+  }
+
+  // ── Priority 3: AI generation (no pre-generated content in DB) ──
+  khLog('[generateBeginnerSentences] no pre-generated sentences in DB — generating live');
+  try {
+    var prompt = '다음 토픽으로 초보자용 한국어 문장 5개를 만들어줘. JSON만 출력해. 다른 말 하지 마.\n\n'
+      + '토픽: ' + (topic.topic_ko || topic.topic_en) + '\n\n'
+      + '조건:\n- 각 문장은 서로 이어지는 짧은 이야기\n- 현재형(~아요/어요/이에요) 위주\n- 문장당 4-8개 어절\n- 기초 어휘만 사용\n'
+      + '- 한국에서 통용되는 외래어/관례 표현을 그대로 써. 영어 복합어를 글자 그대로 번역하지 마.\n'
+      + '  (예: "black coffee" → "블랙커피" ✅ / "검은 커피" ❌, "ice cream" → "아이스크림" ✅, "smart phone" → "스마트폰" ✅)\n\n'
+      + '형식:\n{"sentences":[{"ko":"한국어 문장","en":"English translation"}]}';
+
+    var result = await callClaude({
+      feature: 'beginner-sentences',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var text = (result.content || []).map(function(b){ return b.text||''; }).join('');
+    var clean = text.replace(/```json|```/g, '').trim();
+    var parsed = JSON.parse(clean);
+    _bm.sentences = parsed.sentences || getFallbackSentences();
+
+    // Cache locally (this session) and globally (all users on this topic).
+    sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
+    if (Array.isArray(_bm.sentences) && _bm.sentences.length >= 3) {
+      _aiCacheSet(dbCacheKey, _bm.sentences);
+    }
+  } catch(e) {
+    console.warn('Beginner sentence gen failed:', e);
+    _bm.sentences = getFallbackSentences();
+  }
+  _bm.generating = false;
+  renderBMStep1();
+}
+
+function getFallbackSentences() {
+  var topic = _todayTopic;
+  return [
+    { ko: '오늘 날씨가 맑아요.', en: 'The weather is clear today.' },
+    { ko: '저는 학교에 가요.', en: 'I go to school.' },
+    { ko: '친구를 만나요.', en: 'I meet a friend.' },
+    { ko: '같이 점심을 먹어요.', en: 'We eat lunch together.' },
+    { ko: '집에 돌아와요.', en: 'I come back home.' },
+  ];
+}
+
+// ── STEP 1: LISTEN & READ ──────────────────────────────────────────
+function renderBMStep1Loading() {
+  document.getElementById('bm-body').innerHTML =
+    '<div class="bm-step-label">Step 1 of 4</div>'
+    + '<div class="bm-step-title">' + BM_ICON_HEADPHONES + '<span>Listen & Read</span></div>'
+    + '<div class="bm-step-desc">Generating your sentences...</div>'
+    + '<div style="text-align:center;padding:48px 0;opacity:.7;color:#a78bfa"><span style="display:inline-flex;width:38px;height:38px;animation:spin 1.4s linear infinite">' + BM_ICON_SPARKLE + '</span></div>';
+  document.getElementById('bm-footer').innerHTML =
+    '<button class="bm-btn-next" disabled>Build It →</button>';
+}
+
+function renderBMStep1() {
+  var sents = _bm.sentences;
+  if (!_bm.listened || _bm.listened.length !== sents.length) {
+    _bm.listened = sents.map(function() { return false; });
+  }
+  var listenedCount = _bm.listened.filter(function(v) { return v; }).length;
+  var allListened = listenedCount === sents.length;
+  var pct = sents.length ? (listenedCount / sents.length * 100) : 0;
+
+  var bodyHTML =
+    '<div class="bm-step-label">Step 1 of 4</div>'
+    + '<div class="bm-step-title">' + BM_ICON_HEADPHONES + '<span>Listen & Read</span></div>'
+    + '<div class="bm-step-desc">Tap each sentence to hear it. Follow along and read the Korean aloud.</div>'
+    + '<div class="bm-listen-progress">'
+    + '<span id="bm-listen-prog-text">' + listenedCount + ' / ' + sents.length + ' listened</span>'
+    + '<div class="bm-listen-bar"><div class="bm-listen-bar-fill" id="bm-listen-prog-fill" style="width:' + pct + '%"></div></div>'
+    + '</div>'
+    + '<div class="bm-listen-cards">';
+
+  sents.forEach(function(s, i) {
+    var listened = _bm.listened[i];
+    bodyHTML +=
+      '<div class="bm-listen-card' + (listened ? ' listened' : '') + '" id="bm-lc-' + i + '">'
+      + '<div class="bm-listen-card-top">'
+      + '<div class="bm-listen-num' + (listened ? ' done' : '') + '" id="bm-num-' + i + '">' + (i+1) + '</div>'
+      + '<button class="bm-listen-tts' + (listened ? ' played' : '') + '" id="bm-tts-' + i + '" onclick="bmListenSentence(' + i + ')">'
+      + '<span class="bm-listen-tts-icon">' + (listened ? BM_ICON_CHECK : BM_ICON_PLAY) + '</span>'
+      + '<span>' + (listened ? 'Listened' : 'Tap to Listen') + '</span>'
+      + '</button>'
+      + '</div>'
+      + '<div class="bm-listen-ko">' + s.ko + '</div>'
+      + '<button class="bm-listen-toggle" id="bm-toggle-' + i + '" onclick="bmToggleMeaning(' + i + ')">Show Meaning</button>'
+      + '<div class="bm-listen-en-wrap" id="bm-en-' + i + '">'
+      + '<div class="bm-listen-en">' + s.en + '</div>'
+      + '</div>'
+      + '</div>';
+  });
+
+  bodyHTML += '</div>';
+  document.getElementById('bm-body').innerHTML = bodyHTML;
+  document.getElementById('bm-footer').innerHTML =
+    '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1">Listen to all sentences to continue</span>'
+    + '<button class="bm-btn-next" ' + (allListened ? '' : 'disabled') + ' onclick="goToBMStep2()">Build It →</button>';
+}
+
+function bmListenSentence(idx) {
+  var s = _bm.sentences[idx];
+  if (!s) return;
+  speakKorean(s.ko);
+  if (_bm.listened[idx]) return;
+  _bm.listened[idx] = true;
+
+  var ttsBtn = document.getElementById('bm-tts-' + idx);
+  if (ttsBtn) {
+    ttsBtn.innerHTML = '<span class="bm-listen-tts-icon">' + BM_ICON_CHECK + '</span><span>Listened</span>';
+    ttsBtn.classList.add('played');
+  }
+  var numEl = document.getElementById('bm-num-' + idx);
+  if (numEl) numEl.classList.add('done');
+  var card = document.getElementById('bm-lc-' + idx);
+  if (card) card.classList.add('listened');
+
+  var listenedCount = _bm.listened.filter(function(v) { return v; }).length;
+  var total = _bm.sentences.length;
+  var progText = document.getElementById('bm-listen-prog-text');
+  var progFill = document.getElementById('bm-listen-prog-fill');
+  if (progText) progText.textContent = listenedCount + ' / ' + total + ' listened';
+  if (progFill) progFill.style.width = (listenedCount / total * 100) + '%';
+
+  if (listenedCount === total) {
+    var footerEl = document.getElementById('bm-footer');
+    if (footerEl) {
+      var span = footerEl.querySelector('span');
+      if (span) span.textContent = 'All sentences heard — ready for the next step!';
+      var btn = footerEl.querySelector('.bm-btn-next');
+      if (btn) btn.disabled = false;
+    }
+  }
+}
+
+function bmToggleMeaning(idx) {
+  var wrap = document.getElementById('bm-en-' + idx);
+  var btn  = document.getElementById('bm-toggle-' + idx);
+  if (!wrap || !btn) return;
+  var open = wrap.classList.toggle('open');
+  btn.textContent = open ? 'Hide Meaning' : 'Show Meaning';
+}
+
+// ── STEP 2: ORDER ─────────────────────────────────────────────────
+// ── STEP 2: 어절 순서 맞추기 (문장 내 단어 순서) ──────────────────
+function goToBMStep2() {
+  _bm.step = 2;
+  updateBMHeader();
+  _bmSaveProgress();
+  // 각 문장별로 어절을 섞어서 저장
+  _bm.wordOrders = _bm.sentences.map(function(s) {
+    var words = s.ko.replace(/[.!?]/g, '').trim().split(/\s+/);
+    var shuffled = words.slice();
+    for (var i = shuffled.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+    }
+    // 원본과 같으면 첫/마지막 교환
+    if (words.length > 1 && shuffled.every(function(w, i){ return w === words[i]; })) {
+      var t = shuffled[0]; shuffled[0] = shuffled[shuffled.length-1]; shuffled[shuffled.length-1] = t;
+    }
+    // Pre-select the first word of the intended order so the user knows where
+    // to start. Korean often allows multiple grammatical orderings of the same
+    // sentence (e.g. "친구들이 제 사진을 좋아해요" vs "제 사진을 친구들이
+    // 좋아해요"); anchoring the start eliminates that ambiguity.
+    var preselected = words.length ? [words[0]] : [];
+    return { original: words, shuffled: shuffled, selected: preselected };
+  });
+  _bm.wordOrderIdx = 0;  // 현재 문장 인덱스
+  renderBMStep2();
+}
+
+function goToBMStep1Back() { _bm.step = 1; updateBMHeader(); renderBMStep1(); }
+
+function renderBMStep2() {
+  var idx   = _bm.wordOrderIdx;
+  var total = _bm.wordOrders.length;
+  var wo    = _bm.wordOrders[idx];
+  var s     = _bm.sentences[idx];
+
+  var bodyHTML =
+    '<div class="bm-step-label">Step 2 of 4 · Sentence ' + (idx+1) + ' / ' + total + '</div>'
+    + '<div class="bm-step-title">' + BM_ICON_SHUFFLE + '<span>Build the Sentence</span></div>'
+    + '<div class="bm-step-desc">Tap words in the correct Korean order. Subject → Object → Verb.</div>'
+
+    + '<div class="bm-build-hint"><span class="bm-build-hint-icon">' + BM_ICON_BULB + '</span>' + s.en + '</div>'
+
+    + '<div style="margin-bottom:16px">'
+    + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Your Answer</div>'
+    + '<div id="bm-answer-zone" class="bm-answer-zone">'
+    + (wo.selected.length
+        ? wo.selected.map(function(w, i) {
+            return '<button class="bm-word-chip bm-word-selected" onclick="bmDeselectWord(' + idx + ',' + i + ')">' + w + ' ×</button>';
+          }).join('')
+        : '<span class="bm-answer-empty">Tap words below to build the sentence</span>')
+    + '</div></div>'
+
+    + '<div>'
+    + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Words</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
+    + wo.shuffled.map(function(w, i) {
+        var usedCount  = wo.selected.filter(function(x){ return x === w; }).length;
+        var totalCount = wo.shuffled.filter(function(x){ return x === w; }).length;
+        var isUsed = usedCount >= totalCount;
+        return '<button class="bm-word-chip' + (isUsed ? ' bm-word-used' : '') + '" onclick="bmSelectWord(' + idx + ',' + i + ')" ' + (isUsed ? 'disabled' : '') + '>' + w + '</button>';
+      }).join('')
+    + '</div></div>';
+
+  document.getElementById('bm-body').innerHTML = bodyHTML;
+
+  var allSelected = wo.selected.length === wo.original.length;
+  document.getElementById('bm-footer').innerHTML =
+    '<button class="bm-btn-back" onclick="goToBMStep1Back()">← Listen</button>'
+    + '<button class="bm-btn-back" onclick="bmClearAnswer(' + idx + ')" style="margin-right:auto"><span class="bm-btn-icon">' + BM_ICON_REFRESH + '</span><span>Reset</span></button>'
+    + '<button class="bm-btn-next" ' + (allSelected ? '' : 'disabled') + ' onclick="checkBMWordOrder()">Check ✓</button>';
+}
+
+function bmSelectWord(sentIdx, wordPos) {
+  var wo = _bm.wordOrders[sentIdx];
+  var word = wo.shuffled[wordPos];
+  // 사용 횟수 체크
+  var usedCount = wo.selected.filter(function(x){ return x === word; }).length;
+  var totalCount = wo.shuffled.filter(function(x){ return x === word; }).length;
+  if (usedCount >= totalCount) return;
+  wo.selected.push(word);
+  try { if (typeof ttsSpeak === 'function') ttsSpeak(word); } catch(_){}
+  renderBMStep2();
+}
+
+function bmDeselectWord(sentIdx, selIdx) {
+  var word = _bm.wordOrders[sentIdx].selected[selIdx];
+  _bm.wordOrders[sentIdx].selected.splice(selIdx, 1);
+  try { if (word && typeof ttsSpeak === 'function') ttsSpeak(word); } catch(_){}
+  renderBMStep2();
+}
+
+function bmClearAnswer(sentIdx) {
+  var wo = _bm.wordOrders[sentIdx];
+  // Reset back to the first-word-anchored state, not fully empty.
+  wo.selected = wo.original && wo.original.length ? [wo.original[0]] : [];
+  renderBMStep2();
+}
+
+function checkBMWordOrder() {
+  var idx = _bm.wordOrderIdx;
+  var wo  = _bm.wordOrders[idx];
+  var answer = wo.selected.join(' ');
+  var correct = wo.original.join(' ');
+  // Check acceptable alternative orders from admin-edited data
+  var s = _bm.sentences && _bm.sentences[idx];
+  var acceptable = (s && Array.isArray(s.acceptable_orders))
+    ? s.acceptable_orders.map(function(a){ return Array.isArray(a) ? a.join(' ') : String(a); })
+    : [];
+  var isCorrect = answer === correct;
+  // Korean has flexible word order — adverbs (특히, 정말, 자주, 가장 …) can sit
+  // at the start OR before the verb without changing meaning. If the user
+  // used every required word AND ended with the same verb/predicate, treat
+  // it as correct rather than failing on a strict join() match.
+  if (!isCorrect && wo.original.length >= 3) {
+    var lastOrigWord = wo.original[wo.original.length - 1];
+    var lastSelWord  = wo.selected[wo.selected.length - 1];
+    var sortedOrig = wo.original.slice().sort();
+    var sortedSel  = wo.selected.slice().sort();
+    var sameWords  = sortedOrig.length === sortedSel.length
+      && sortedOrig.every(function(w, i){ return w === sortedSel[i]; });
+    if (lastOrigWord === lastSelWord && sameWords) isCorrect = true;
+  }
+  var isPartial = !isCorrect && acceptable.indexOf(answer) >= 0;
+  wo.result = isCorrect ? 'correct' : isPartial ? 'partial' : 'wrong';
+  _bmSaveProgress();
+
+  var bodyEl = document.getElementById('bm-body');
+
+  var ansZone = document.getElementById('bm-answer-zone');
+  if (ansZone) {
+    ansZone.classList.remove('correct','wrong','partial');
+    ansZone.classList.add(isCorrect ? 'correct' : isPartial ? 'partial' : 'wrong');
+  }
+  if (isCorrect) bmFireConfetti();
+
+  var fb = document.createElement('div');
+  fb.className = 'bm-feedback ' + wo.result;
+  if (isCorrect) {
+    fb.innerHTML = '<div class="bm-feedback-emoji">' + BM_ICON_PARTY + '</div>'
+      + '<div class="bm-feedback-msg" style="color:#a78bfa">Perfect!</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.6);margin-top:4px">Great — the word order is exactly right.</div>';
+  } else if (isPartial) {
+    var customExp = (s && s.explanation) || '';
+    fb.innerHTML = '<div class="bm-feedback-emoji">' + BM_ICON_WARNING + '</div>'
+      + '<div class="bm-feedback-msg" style="color:#fbbf24">Acceptable — but a more natural order exists</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:4px;line-height:1.6">' + (customExp || 'This order works, but the standard order below sounds more natural in Korean.') + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#fbbf24;margin-top:6px">Most natural: <span style="font-family:\'Noto Sans KR\',sans-serif">' + wo.original.join(' ') + '</span></div>';
+  } else {
+    var sel = wo.selected;
+    var orig = wo.original;
+    var hint = '';
+    var lastOrig = orig[orig.length - 1];
+    var lastSel  = sel[sel.length - 1];
+    var verbEndings = ['요','다','어','아','죠','네','해','가','나'];
+    var isVerbEnd = lastOrig && verbEndings.some(function(e){ return lastOrig.endsWith(e); });
+    if (isVerbEnd && lastSel !== lastOrig) {
+      hint = 'In Korean, the verb always comes at the end. Make sure <b>' + lastOrig + '</b> is placed last.';
+    } else if (orig[0] !== sel[0]) {
+      hint = 'The topic or subject usually comes first. Try starting with "' + orig[0] + '".';
+    } else if (sel.length === orig.length) {
+      var firstWrong = orig.findIndex(function(w, i){ return w !== sel[i]; });
+      if (firstWrong >= 0) hint = 'First ' + firstWrong + ' word' + (firstWrong===1?'':'s') + ' correct — order breaks at position ' + (firstWrong+1) + '. Time expressions and adverbs come before the verb.';
+    }
+    if (!hint) hint = 'Korean order: Subject → Object → Verb. Particles stay attached to their word.';
+    fb.innerHTML = '<div class="bm-feedback-emoji">' + BM_ICON_SEARCH + '</div>'
+      + '<div class="bm-feedback-msg" style="color:#f87171">Not quite</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin:6px 0 4px;line-height:1.6">' + hint + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#f87171;margin-top:6px">Correct order: <span style="font-family:\'Noto Sans KR\',sans-serif">' + orig.join(' ') + '</span></div>';
+  }
+  bodyEl.appendChild(fb);
+
+  var isLast = idx + 1 >= _bm.wordOrders.length;
+  document.getElementById('bm-footer').innerHTML =
+    (isLast
+      ? '<button class="bm-btn-next" onclick="finishBMWordOrders()">Fill Blanks →</button>'
+      : '<button class="bm-btn-next" onclick="bmNextWordOrder()">Next Sentence →</button>');
+}
+
+function bmNextWordOrder() {
+  _bm.wordOrderIdx++;
+  renderBMStep2();
+}
+
+function finishBMWordOrders() {
+  var correct = _bm.wordOrders.filter(function(wo){ return wo.result; }).length;
+  _bm.score.order = Math.round(correct / _bm.wordOrders.length * 100);
+  goToBMStep3();
+}
+
+// ── STEP 3: FILL BLANKS ───────────────────────────────────────────
+function goToBMStep3() {
+  _bm.step = 3;
+  updateBMHeader();
+  _bmSaveProgress();
+  buildBMBlanks();
+  renderBMStep3();
+}
+
+function buildBMBlanks() {
+  // Common Korean particles / short fillers that make terrible distractors
+  var BAD_DISTRACTORS = {'은':1,'는':1,'이':1,'가':1,'을':1,'를':1,'의':1,'에':1,'도':1,'만':1,'과':1,'와':1,'나':1};
+
+  _bm.blanks = _bm.sentences.map(function(s, sentIdx) {
+    var words = s.ko.replace(/[.!?]/g, '').split(/\s+/);
+    if (words.length < 2) return { sent: s.ko, en: s.en, blanks: [], filled: {} };
+
+    // Admin-override path: sentence carries its own BLANK answer + DISTRACT list
+    var pickWord;
+    if (s.blank_answer && s.ko.indexOf(s.blank_answer) !== -1) {
+      pickWord = s.blank_answer;
+    } else {
+      var candidates = words.map(function(w, i){ return {w:w, i:i}; })
+        .filter(function(x){ return x.i > 0 && x.w.length >= 2; });
+      if (!candidates.length) candidates = [{ w: words[1], i: 1 }];
+      pickWord = candidates[Math.floor(Math.random() * candidates.length)].w;
+    }
+
+    var wrongs;
+    if (Array.isArray(s.distractors) && s.distractors.length >= 2) {
+      wrongs = s.distractors.slice(0, 2);
+    } else {
+      var wrongPool = [];
+      _bm.sentences.forEach(function(os, oi) {
+        if (oi === sentIdx) return;
+        (os.ko || '').replace(/[.!?]/g, '').split(/\s+/).forEach(function(w){
+          if (w.length >= 2 && w !== pickWord && !BAD_DISTRACTORS[w]) wrongPool.push(w);
+        });
+      });
+      wrongPool = wrongPool.filter(function(w, i, a){ return a.indexOf(w) === i; });
+      wrongs = wrongPool.sort(function(){ return Math.random()-.5; }).slice(0, 2);
+      var fallback = ['있어요', '없어요', '해요', '가요'];
+      var fi = 0;
+      while (wrongs.length < 2 && fi < fallback.length) {
+        if (fallback[fi] !== pickWord && wrongs.indexOf(fallback[fi]) < 0) wrongs.push(fallback[fi]);
+        fi++;
+      }
+    }
+    var choices = [pickWord].concat(wrongs).sort(function(){ return Math.random()-.5; });
+    var displaySent = s.ko.replace(pickWord, '___');
+
+    return {
+      sent: s.ko, display: displaySent, en: s.en,
+      answer: pickWord, choices: choices,
+      filled: null, correct: null,
+    };
+  });
+}
+
+function renderBMStep3() {
+  var bodyHTML =
+    '<div class="bm-step-label">Step 3 of 4</div>'
+    + '<div class="bm-step-title">' + BM_ICON_PENCIL + '<span>Fill in the Blanks</span></div>'
+    + '<div class="bm-step-desc">Choose the correct word to complete each sentence.</div>'
+    + '<div class="bm-blank-list" id="bm-blank-list">';
+
+  _bm.blanks.forEach(function(b, i) {
+    if (!b.answer) { return; } // 빈칸 없는 문장 스킵
+    bodyHTML += '<div class="bm-blank-item" id="bm-bi' + i + '">'
+      + '<div class="bm-blank-sent" id="bm-bsent' + i + '">'
+      + '<span style="font-size:11px;font-weight:700;color:#94a3b8;margin-right:6px">' + (i+1) + '</span>'
+      + b.display.replace('___', '<span class="bm-blank-btn" id="bm-blank' + i + '" onclick="void(0)">___</span>')
+      + '</div>'
+      + '<div style="font-size:12px;color:#94a3b8;margin-bottom:8px">' + b.en + '</div>'
+      + '<div class="bm-choices" id="bm-choices' + i + '">'
+      + b.choices.map(function(ch) {
+          return '<button class="bm-choice-btn" onclick="selectBMChoice(' + i + ',\'' + ch.replace(/'/g, "\\'") + '\')">' + ch + '</button>';
+        }).join('')
+      + '</div>'
+      + '</div>';
+  });
+  bodyHTML += '</div>';
+
+  document.getElementById('bm-body').innerHTML = bodyHTML;
+  document.getElementById('bm-footer').innerHTML =
+    '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1" id="bm-blank-progress">0 / ' + _bm.blanks.filter(function(b){return b.answer;}).length + ' done</span>'
+    + '<button class="bm-btn-next" id="bm-blank-next-btn" disabled onclick="goToBMStep4()">Word Snap →</button>';
+}
+
+function selectBMChoice(sentIdx, word) {
+  var b = _bm.blanks[sentIdx];
+  if (b.filled !== null) return; // 이미 선택함
+  b.filled = word;
+  b.correct = (word === b.answer);
+
+  var blankEl = document.getElementById('bm-blank' + sentIdx);
+  var choicesEl = document.getElementById('bm-choices' + sentIdx);
+
+  if (blankEl) {
+    blankEl.textContent = word;
+    blankEl.className = 'bm-blank-btn filled ' + (b.correct ? 'correct' : 'wrong');
+  }
+  // 버튼 비활성화
+  if (choicesEl) {
+    Array.from(choicesEl.children).forEach(function(btn) {
+      if (btn.textContent === word) {
+        btn.style.background = b.correct ? '#dcfce7' : '#fee2e2';
+        btn.style.borderColor = b.correct ? '#16a34a' : '#dc2626';
+        btn.style.color = b.correct ? '#15803d' : '#dc2626';
+      } else {
+        btn.style.opacity = '.35';
+      }
+      btn.disabled = true;
+    });
+    // 오답이면 정답 표시
+    if (!b.correct) {
+      Array.from(choicesEl.children).forEach(function(btn) {
+        if (btn.textContent === b.answer) {
+          btn.style.background = '#dcfce7';
+          btn.style.borderColor = '#16a34a';
+          btn.style.color = '#15803d';
+          btn.style.opacity = '1';
+        }
+      });
+    }
+  }
+
+  // 진행도 업데이트
+  var validBlanks = _bm.blanks.filter(function(bb){ return bb.answer; });
+  var filledCount = validBlanks.filter(function(bb){ return bb.filled !== null; }).length;
+  var prog = document.getElementById('bm-blank-progress');
+  if (prog) prog.textContent = filledCount + ' / ' + validBlanks.length + ' done';
+  if (filledCount >= validBlanks.length) {
+    var correctCount = validBlanks.filter(function(bb){ return bb.correct; }).length;
+    _bm.score.blank = Math.round(correctCount / validBlanks.length * 100);
+    var nextBtn = document.getElementById('bm-blank-next-btn');
+    if (nextBtn) nextBtn.disabled = false;
+  }
+}
+
+// ── STEP 4: WORD SNAP ─────────────────────────────────────────────
+function goToBMStep4() {
+  _bm.step = 4;
+  updateBMHeader();
+  _bmSaveProgress();
+  renderBMWordSnap();
+}
+
+function renderBMWordSnap() {
+  var sentenceJoin = (_bm.sentences || []).map(function(s){ return s.ko || ''; }).join(' ');
+  var aiVocab = (_aiContent && Array.isArray(_aiContent.vocab)) ? _aiContent.vocab : [];
+
+  // _isCleanVocab — accept a vocab card only if it's a real dictionary
+  // word with a real English translation. Rejects:
+  //   - empty ko / en
+  //   - ko ending in a copula / particle pattern that means the AI
+  //     emitted a sentence fragment ("명이에요", "친구가", "김민지이고")
+  //     instead of a word
+  //   - en containing Hangul (AI sometimes mirrored Korean back into
+  //     the en field, which then surfaced as "Korean on both sides" in
+  //     Word Association cards)
+  //   - en empty or pure whitespace
+  function _isCleanVocab(v) {
+    if (!v || !v.ko || !v.en) return false;
+    var ko = String(v.ko).trim();
+    var en = String(v.en).trim();
+    if (!ko || !en) return false;
+    // Korean characters in the English field → AI didn't translate
+    if (/[ㄱ-힝]/.test(en)) return false;
+    // ko ends in a sentence-fragment marker (copula, conjunctive,
+    // quotation, question — all signals this is a phrase, not a word)
+    if (/(이에요|예요|이고|이며|이고요|이라고|입니다|이었어요|였어요|이에|이가|에요|어요|아요|해요|돼요)$/.test(ko)) return false;
+    // ko ends in a bare particle attached to a noun — same fragment
+    // class. Single-char ending like "친구가", "방을".
+    if (/[가-힣](을|를|이|가|은|는|도|만|의|에|과|와)$/.test(ko) && ko.length >= 2) return false;
+    return true;
+  }
+
+  var topicRelevant = aiVocab.filter(_isCleanVocab).filter(function(v) {
+    var stem = v.ko.replace(/[을를이가는도에서의하다요]$/g, '');
+    return sentenceJoin.indexOf(stem || v.ko) !== -1 || sentenceJoin.indexOf(v.ko) !== -1;
+  });
+
+  // Strip particles AND copula tails from a scraped word. Expanded
+  // from the previous version to catch "명이에요" → "명", "친구가" →
+  // "친구", etc. — the old regex only caught single-syllable particles
+  // and let copula endings (~이에요, ~예요) through unchanged.
+  function trimParticle(w) {
+    if (!w) return '';
+    return w
+      .replace(/(이에요|예요|이고|이며|이라고|입니다|이었어요|였어요|에요|이라|이가)$/g, '')
+      .replace(/(은|는|이|가|을|를|의|에|도|만|과|와|나|께|부터|까지|로|으로|라고)$/g, '');
+  }
+
+  var vocab = topicRelevant.slice(0, 5);
+  if (vocab.length < 3) {
+    var existing = {};
+    vocab.forEach(function(v){ existing[v.ko] = true; });
+    (_bm.sentences || []).forEach(function(s) {
+      (s.ko || '').replace(/[.,!?。]/g,'').split(/\s+/).forEach(function(w) {
+        var base = trimParticle(w);
+        // Drop ultra-short bases and anything still looking like a
+        // fragment after trim. A real noun/adjective/verb stem is
+        // typically 2+ Hangul syllables.
+        if (base.length < 2) return;
+        if (/[ㄱ-힝]/.test(base) === false) return;
+        if (existing[base]) return;
+        existing[base] = true;
+        // Scraped words have no en translation; mark with a deferred
+        // marker so they still show in dictation (which only needs ko)
+        // but get filtered out of Word Association below (which needs
+        // a real en pair). Without the marker, the previous code shipped
+        // empty-en cards into Word Association where the fallback
+        // `c.en || c.ko` produced Korean on both sides of the grid.
+        vocab.push({ ko: base, rom:'', en:'', _scraped: true });
+      });
+    });
+    vocab = vocab.slice(0, 5);
+  }
+  _bm.snapCards = vocab;
+  _bm.snapIdx   = 0;
+  _bm.snapSeen  = [];
+  _bm.snapSaved = [];
+
+  // Attach an example sentence per card by scanning _bm.sentences
+  // (already loaded for Steps 1-3) for the first one that contains
+  // the card's word. Without context the back of the card was just
+  // a translation; with a real sentence the learner sees how the
+  // word actually behaves — which the user pointed out was the
+  // missing piece for "real learning."
+  function _bmAttachExamples(cards) {
+    var sents = _bm.sentences || [];
+    cards.forEach(function(c) {
+      if (!c || !c.ko) return;
+      var stem = trimParticle(c.ko);
+      var hit = null;
+      for (var i = 0; i < sents.length; i++) {
+        var sko = (sents[i].ko || '');
+        if (sko.indexOf(c.ko) !== -1 || (stem && sko.indexOf(stem) !== -1)) {
+          hit = sents[i];
+          break;
+        }
+      }
+      if (hit) {
+        c.example_ko = hit.ko || '';
+        c.example_en = hit.en || '';
+      }
+    });
+  }
+  _bmAttachExamples(_bm.snapCards);
+
+  // Any card missing EN meaning? Batch-translate via Claude so the back of
+  // the card never matches the front (the original bug: front & back both
+  // showed just the Korean word because en was an empty string).
+  var needsTranslation = vocab.some(function(v){ return !v.en; });
+  if (needsTranslation) {
+    document.getElementById('bm-body').innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.6);font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px"><span style="display:inline-flex;width:18px;height:18px;color:#a78bfa;animation:spin 1.4s linear infinite">' + BM_ICON_SPARKLE + '</span><span>Preparing word cards…</span></div>';
+    var words = vocab.map(function(v){ return v.ko; });
+    callClaude({
+      feature: 'word-snap-translate',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{ role: 'user', content:
+        'Give short English meanings + romanization for these Korean words:\n'
+        + words.map(function(w){ return '- ' + w; }).join('\n')
+        + '\nReturn ONLY a JSON array: [{"ko":"word","rom":"romanization","en":"English meaning (1-4 words)"}]'
+      }]
+    }).then(function(res){
+      try {
+        var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+        txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+        var si = txt.indexOf('['), ei = txt.lastIndexOf(']');
+        if (si >= 0 && ei > si) txt = txt.slice(si, ei+1);
+        var gen = JSON.parse(txt);
+        if (Array.isArray(gen)) {
+          var byKo = {};
+          gen.forEach(function(g){ if (g && g.ko) byKo[g.ko] = g; });
+          _bm.snapCards = vocab.map(function(v){
+            var hit = byKo[v.ko];
+            return {
+              ko: v.ko,
+              rom: v.rom || (hit && hit.rom) || '',
+              en:  v.en  || (hit && hit.en)  || ''
+            };
+          }).filter(function(v){ return v.en; });
+          _bmAttachExamples(_bm.snapCards);
+        }
+      } catch(e){}
+      bmRenderSnapCard();
+    }).catch(function(){ bmStartDictation(); });
+    return;
+  }
+  bmStartDictation();
+}
+
+// ── Step 4: redesigned ── Audio Dictation → Word Association
+// User feedback: "Word Snap is lame" + the old flip-card was passive.
+// Replaced with two graded recall activities. Skip is supported on
+// Dictation for environments where audio isn't usable.
+
+function bmStartDictation() {
+  _bm.snapPhase = 'dictation';
+  _bm.dictIdx = 0;
+  _bm.dictResults = {};
+  bmRenderDictation();
+}
+
+function bmRenderDictation() {
+  var cards = _bm.snapCards || [];
+  var idx = _bm.dictIdx || 0;
+  if (idx >= cards.length) {
+    bmStartAssociation();
+    return;
+  }
+  var card = cards[idx];
+  var safeKo = (card.ko || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+
+  document.getElementById('bm-body').innerHTML =
+      '<div class="bm-step-label">Step 4 of 4 · 받아쓰기 ' + (idx + 1) + ' / ' + cards.length + '</div>'
+    + '<div class="bm-step-title">' + BM_ICON_VOLUME + '<span>Audio Dictation</span></div>'
+    + '<div class="bm-step-desc">단어를 듣고 한국어로 입력해보세요. 듣기가 어려우면 건너뛰세요.</div>'
+    + '<div class="bm-dict-card">'
+    +   '<button type="button" class="bm-dict-play" onclick="ttsSpeak(\'' + safeKo + '\')" aria-label="Play">'
+    +     '<span style="display:inline-flex;width:36px;height:36px;color:#fff">' + BM_ICON_VOLUME + '</span>'
+    +   '</button>'
+    +   '<div class="bm-dict-input-wrap">'
+    +     '<input type="text" id="bm-dict-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
+    +     ' placeholder="들은 단어를 입력..."'
+    +     ' onkeydown="if(event.key===\'Enter\')bmDictCheck()">'
+    +     '<div class="bm-dict-fb" id="bm-dict-fb"></div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="bm-dict-actions">'
+    +   '<button type="button" class="bm-btn-skip" onclick="bmDictSkip()">건너뛰기 →</button>'
+    +   '<button type="button" class="bm-btn-check" onclick="bmDictCheck()">확인</button>'
+    + '</div>';
+
+  document.getElementById('bm-footer').innerHTML =
+      '<button class="bm-btn-back" onclick="goToBMStep3Back()">← Fill In</button>'
+    + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">듣고 쓰면 단어가 기억에 잘 남아요</span>'
+    + '<button class="bm-btn-next" disabled>Complete →</button>';
+
+  // Auto-play TTS shortly after the card mounts so the learner doesn't
+  // have to hunt for the play button on each new word.
+  setTimeout(function() {
+    try { ttsSpeak(card.ko); } catch(_) {}
+  }, 250);
+  setTimeout(function() {
+    var inp = document.getElementById('bm-dict-input');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+function _bmDictNormalize(s) {
+  return String(s || '').replace(/[\s.,!?。·~]/g, '').toLowerCase();
+}
+
+function bmDictCheck() {
+  var cards = _bm.snapCards || [];
+  var idx = _bm.dictIdx || 0;
+  var card = cards[idx];
+  if (!card) return;
+  var inp = document.getElementById('bm-dict-input');
+  var fb  = document.getElementById('bm-dict-fb');
+  if (!inp || !fb) return;
+  var typed = (inp.value || '').trim();
+  if (!typed) return;
+  var isCorrect = _bmDictNormalize(typed) === _bmDictNormalize(card.ko);
+  _bm.dictResults[idx] = { typed: typed, correct: isCorrect };
+  inp.disabled = true;
+  document.querySelectorAll('.bm-dict-actions button').forEach(function(b){ b.disabled = true; });
+  if (isCorrect) {
+    inp.classList.add('correct');
+    fb.innerHTML = '<span class="bm-dict-fb-ok">✓ 정답!</span>';
+    if (typeof playCorrectSound === 'function') playCorrectSound();
+  } else {
+    inp.classList.add('wrong');
+    fb.innerHTML = '<span class="bm-dict-fb-no">정답: <strong>' + (card.ko||'') + '</strong>'
+      + (card.en ? ' <span style="opacity:.6;font-weight:500">(' + card.en + ')</span>' : '') + '</span>';
+    if (typeof playWrongSound === 'function') playWrongSound();
+  }
+  setTimeout(function() {
+    _bm.dictIdx = (_bm.dictIdx || 0) + 1;
+    bmRenderDictation();
+  }, isCorrect ? 1100 : 1700);
+}
+
+function bmDictSkip() {
+  var idx = _bm.dictIdx || 0;
+  _bm.dictResults[idx] = { skipped: true };
+  _bm.dictIdx = (_bm.dictIdx || 0) + 1;
+  bmRenderDictation();
+}
+
+// ── Phase B: Word Association ──
+function bmStartAssociation() {
+  // Word Association needs Korean↔English pairs. Skip cards whose
+  // .en is empty / missing / Korean (the old fallback `c.en || c.ko`
+  // produced Korean on both sides of the grid — that's what the user
+  // was seeing in the broken screenshot). Cards without a real
+  // English translation can't be matched as a Korean/English pair, so
+  // they're filtered out of this phase entirely.
+  var cards = (_bm.snapCards || []).filter(function(c) {
+    if (!c || !c.ko || !c.en) return false;
+    var en = String(c.en).trim();
+    if (!en) return false;
+    if (/[ㄱ-힝]/.test(en)) return false; // en mirrored Korean back
+    return true;
+  });
+  if (!cards.length) {
+    // Nothing pairable — skip directly to the completion screen.
+    finishBeginner();
+    return;
+  }
+  // Independent shuffles so the matching isn't a freebie.
+  _bm.assocKo = cards.map(function(c, i){ return { idx: i, label: c.ko }; }).sort(function(){ return Math.random() - 0.5; });
+  _bm.assocEn = cards.map(function(c, i){ return { idx: i, label: c.en }; }).sort(function(){ return Math.random() - 0.5; });
+  _bm.snapCards = cards; // also narrow the source array so .idx values stay aligned
+  _bm.assocMatched = [];
+  _bm.assocSelKo = null;
+  _bm.assocSelEn = null;
+  _bm.assocFlash = null; // { okKo, okEn } | { wrongKo, wrongEn }
+  _bm.snapPhase = 'association';
+  bmRenderAssociation();
+}
+
+function bmRenderAssociation() {
+  var cards = _bm.snapCards || [];
+  var matched = _bm.assocMatched || [];
+  var allMatched = cards.length > 0 && matched.length === cards.length;
+  var flash = _bm.assocFlash || {};
+
+  function cardCls(item, isKo) {
+    var sel = isKo ? _bm.assocSelKo : _bm.assocSelEn;
+    var cls = 'bm-assoc-card';
+    if (matched.indexOf(item.idx) >= 0)         cls += ' matched';
+    else if (sel === item.idx)                   cls += ' selected';
+    if (flash.wrongKo === item.idx && isKo)      cls += ' wrong';
+    if (flash.wrongEn === item.idx && !isKo)     cls += ' wrong';
+    return cls;
+  }
+
+  var koHtml = (_bm.assocKo || []).map(function(item) {
+    var cls = cardCls(item, true);
+    var disabled = matched.indexOf(item.idx) >= 0 ? 'disabled' : '';
+    return '<button type="button" class="' + cls + '" ' + disabled
+      + ' onclick="bmAssocPickKo(' + item.idx + ')">' + (item.label||'') + '</button>';
+  }).join('');
+
+  var enHtml = (_bm.assocEn || []).map(function(item) {
+    var cls = cardCls(item, false);
+    var disabled = matched.indexOf(item.idx) >= 0 ? 'disabled' : '';
+    return '<button type="button" class="' + cls + '" ' + disabled
+      + ' onclick="bmAssocPickEn(' + item.idx + ')">' + (item.label||'') + '</button>';
+  }).join('');
+
+  document.getElementById('bm-body').innerHTML =
+      '<div class="bm-step-label">Step 4 of 4 · 단어 매칭</div>'
+    + '<div class="bm-step-title">' + BM_ICON_BULB + '<span>Word Association</span></div>'
+    + '<div class="bm-step-desc">한국어를 탭하고 맞는 영어를 탭하세요.</div>'
+    + '<div class="bm-assoc-grid">'
+    +   '<div class="bm-assoc-col">' + koHtml + '</div>'
+    +   '<div class="bm-assoc-col">' + enHtml + '</div>'
+    + '</div>'
+    + '<div class="bm-assoc-progress">' + matched.length + ' / ' + cards.length + ' 매칭 완료</div>';
+
+  document.getElementById('bm-footer').innerHTML =
+      '<button class="bm-btn-back" onclick="bmStartDictation()">← 다시 듣기</button>'
+    + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">'
+    + (allMatched ? '✓ 모든 단어 매칭 완료!' : '짝을 맞춰주세요')
+    + '</span>'
+    + '<button class="bm-btn-next" ' + (allMatched ? '' : 'disabled') + ' onclick="finishBeginner()">Complete →</button>';
+}
+
+// Targeted .selected class toggle — avoids the full bmRenderAssociation
+// re-render that used to fire on the first tap of a Korean/English
+// pair. The full re-render destroyed the DOM mid-interaction; the
+// user's second tap on the partner card landed on a stale node
+// reference and silently no-op'd. Now we just toggle the class on the
+// relevant column and only re-render after BOTH sides are picked
+// (i.e. the match attempt is ready to evaluate).
+function _bmAssocApplyClasses(col, selIdx) {
+  var matched = _bm.assocMatched || [];
+  document.querySelectorAll('.bm-assoc-col' + (col === 'ko' ? ':first-child' : ':last-child') + ' .bm-assoc-card').forEach(function(btn, i) {
+    var items = col === 'ko' ? _bm.assocKo : _bm.assocEn;
+    var item = items && items[i];
+    if (!item) return;
+    btn.classList.remove('selected', 'wrong');
+    if (matched.indexOf(item.idx) >= 0) btn.classList.add('matched');
+    else if (selIdx === item.idx) btn.classList.add('selected');
+  });
+}
+
+function bmAssocPickKo(idx) {
+  if ((_bm.assocMatched || []).indexOf(idx) >= 0) return;
+  _bm.assocSelKo = idx;
+  _bm.assocFlash = null;
+  // If the partner side hasn't been picked yet, update CSS classes
+  // in-place and stop here — no DOM-destroying re-render mid-tap.
+  if (_bm.assocSelEn == null) { _bmAssocApplyClasses('ko', idx); return; }
+  _bmAssocTryMatch();
+}
+
+function bmAssocPickEn(idx) {
+  if ((_bm.assocMatched || []).indexOf(idx) >= 0) return;
+  _bm.assocSelEn = idx;
+  _bm.assocFlash = null;
+  if (_bm.assocSelKo == null) { _bmAssocApplyClasses('en', idx); return; }
+  _bmAssocTryMatch();
+}
+
+function _bmAssocTryMatch() {
+  if (_bm.assocSelKo == null || _bm.assocSelEn == null) {
+    bmRenderAssociation();
+    return;
+  }
+  var won = _bm.assocSelKo === _bm.assocSelEn;
+  if (won) {
+    _bm.assocMatched.push(_bm.assocSelKo);
+    _bm.assocSelKo = null;
+    _bm.assocSelEn = null;
+    if (typeof playCorrectSound === 'function') playCorrectSound();
+    setTimeout(bmRenderAssociation, 250);
+    if (_bm.assocMatched.length === (_bm.snapCards || []).length) {
+      setTimeout(function(){ if (typeof bmFireConfetti === 'function') bmFireConfetti(); }, 350);
+    }
+  } else {
+    _bm.assocFlash = { wrongKo: _bm.assocSelKo, wrongEn: _bm.assocSelEn };
+    _bm.assocSelKo = null;
+    _bm.assocSelEn = null;
+    if (typeof playWrongSound === 'function') playWrongSound();
+    bmRenderAssociation();
+    setTimeout(function() {
+      _bm.assocFlash = null;
+      bmRenderAssociation();
+    }, 600);
+  }
+}
+
+// Legacy — kept so old saved-progress entries that reference these
+// don't blow up. The new flow doesn't call them.
+function bmRenderSnapCard() {
+  var cards = _bm.snapCards || [];
+  var idx   = _bm.snapIdx || 0;
+  var card  = cards[idx];
+  if (!card) return;
+
+  var seen     = _bm.snapSeen || [];
+  var saved    = _bm.snapSaved || [];
+  var isFlipped = seen.indexOf(idx) >= 0;
+  var isSaved   = saved.indexOf(idx) >= 0;
+  var allSeen   = cards.every(function(_, i) { return seen.indexOf(i) >= 0; });
+
+  var dotsHTML = cards.map(function(_, i) {
+    var cls = i === idx ? 'active' : seen.indexOf(i) >= 0 ? 'seen' : '';
+    return '<div class="bm-snap-dot ' + cls + '"></div>';
+  }).join('');
+
+  var bodyHTML =
+    '<div class="bm-step-label">Step 4 of 4 · ' + (idx+1) + ' / ' + cards.length + '</div>'
+    + '<div class="bm-step-title">' + BM_ICON_BULB + '<span>Word Snap</span></div>'
+    + '<div class="bm-step-desc">Tap each card to reveal the meaning. Save the ones you want to remember.</div>'
+
+    + '<div class="bm-snap-card" onclick="bmFlipSnapCard(' + idx + ')">'
+    + '<div class="bm-snap-inner' + (isFlipped ? ' flipped' : '') + '" id="bm-snap-inner">'
+    + '<div class="bm-snap-front">'
+    + '<div class="bm-snap-ko">' + (card.ko||'') + '</div>'
+    + (card.rom ? '<div class="bm-snap-rom">' + card.rom + '</div>' : '')
+    + '<div class="bm-snap-hint">Tap to reveal →</div>'
+    + '</div>'
+    + '<div class="bm-snap-back">'
+    + '<div class="bm-snap-en">' + (card.en || card.ko) + '</div>'
+    + (card.rom ? '<div class="bm-snap-rom" style="color:rgba(167,139,250,.55);margin-top:6px">' + card.rom + '</div>' : '')
+    // Real-world context — show the word in a sentence the learner
+    // already saw earlier in this session, with the headword
+    // highlighted. Without this the back of the card was just a
+    // translation, which the user pointed out wasn't actually
+    // learning. The Listen button reads the FULL sentence so the
+    // word is heard in context.
+    + (card.example_ko
+        ? '<div style="margin-top:14px;padding:10px 12px;background:rgba(124,58,237,.08);border:1px solid rgba(139,92,246,.22);border-radius:10px;text-align:left;font-family:\'Noto Serif KR\',serif;font-size:14px;line-height:1.55;color:#e2e8f0">'
+          +   _bmHighlightWord(card.example_ko, card.ko)
+          +   (card.example_en ? '<div style="margin-top:6px;font-family:inherit;font-size:11px;color:rgba(255,255,255,.45);line-height:1.5;font-style:italic">' + (card.example_en||'').replace(/</g,'&lt;') + '</div>' : '')
+          +   '<button onclick="event.stopPropagation();speakKorean(\'' + (card.example_ko||'').replace(/\\/g,'\\\\').replace(/\'/g,"\\'") + '\')" style="margin-top:8px;padding:5px 12px;border:1px solid rgba(139,92,246,.45);border-radius:999px;background:rgba(124,58,237,.12);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_VOLUME+'</span><span>Listen in context</span></button>'
+          + '</div>'
+        : '')
+    + '<button class="bm-snap-save' + (isSaved ? ' saved' : '') + '" onclick="event.stopPropagation();bmSnapSave(' + idx + ')">'
+    + (isSaved ? '✓ Saved' : '+ Save to Word Book')
+    + '</button>'
+    + '</div>'
+    + '</div></div>'
+
+    + '<div class="bm-snap-nav">'
+    + '<button class="bm-snap-arr" onclick="bmSnapPrev()" ' + (idx === 0 ? 'disabled' : '') + '>‹</button>'
+    + '<div class="bm-snap-dots">' + dotsHTML + '</div>'
+    + '<button class="bm-snap-arr" onclick="bmSnapNext()" ' + (idx >= cards.length-1 ? 'disabled' : '') + '>›</button>'
+    + '</div>';
+
+  document.getElementById('bm-body').innerHTML = bodyHTML;
+  document.getElementById('bm-footer').innerHTML =
+    '<button class="bm-btn-back" onclick="goToBMStep3Back()">← Fill In</button>'
+    + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">'
+    + (allSeen ? '✓ All words revealed!' : 'Flip all cards to finish')
+    + '</span>'
+    + '<button class="bm-btn-next" ' + (allSeen ? '' : 'disabled') + ' onclick="finishBeginner()">Complete →</button>';
+}
+
+// Render an example sentence with the headword (and its naturally-
+// conjugated forms) wrapped in a mint highlight. We try the exact
+// word first, then the particle-stripped stem so 좋아하다 still
+// matches 좋아해요 / 좋아합니다 in the example. HTML-escapes the
+// surrounding text to avoid XSS — Korean has no markup risk but
+// the AI-generated example_ko could in theory include angle
+// brackets.
+function _bmHighlightWord(sentence, headword) {
+  var safe = String(sentence || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  var hw = String(headword || '').trim();
+  if (!hw) return safe;
+  var stripped = hw.replace(/(은|는|이|가|을|를|의|에|도|만|과|와|나|께|부터|까지|로|으로|라고|이라고)$/g, '');
+  function esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  var hl = '<mark style="background:rgba(124,58,237,.22);color:#c4b5fd;padding:0 3px;border-radius:4px;font-weight:800">$1</mark>';
+  // Prefer the exact word; otherwise highlight the stem with up to
+  // 4 trailing Korean syllables (covers most conjugations).
+  if (safe.indexOf(hw) !== -1) {
+    return safe.replace(new RegExp('(' + esc(hw) + ')', 'g'), hl);
+  }
+  if (stripped && stripped.length >= 2 && safe.indexOf(stripped) !== -1) {
+    return safe.replace(new RegExp('(' + esc(stripped) + '[가-힣]{0,4})', 'g'), hl);
+  }
+  return safe;
+}
+
+function bmFlipSnapCard(idx) {
+  var inner = document.getElementById('bm-snap-inner');
+  if (!inner) return;
+  inner.classList.toggle('flipped');
+  if (!_bm.snapSeen) _bm.snapSeen = [];
+  if (_bm.snapSeen.indexOf(idx) === -1) {
+    _bm.snapSeen.push(idx);
+    var allSeen = (_bm.snapCards||[]).every(function(_, i) { return _bm.snapSeen.indexOf(i) >= 0; });
+    if (allSeen) {
+      bmFireConfetti();
+      var footerEl = document.getElementById('bm-footer');
+      if (footerEl) {
+        var span = footerEl.querySelector('span');
+        if (span) span.textContent = '✓ All words revealed!';
+        var btn = footerEl.querySelector('.bm-btn-next');
+        if (btn) btn.disabled = false;
+      }
+    }
+  }
+}
+
+function bmSnapNext() {
+  if (_bm.snapIdx < (_bm.snapCards||[]).length - 1) { _bm.snapIdx++; bmRenderSnapCard(); }
+}
+function bmSnapPrev() {
+  if (_bm.snapIdx > 0) { _bm.snapIdx--; bmRenderSnapCard(); }
+}
+
+function bmSnapSave(idx) {
+  var card = (_bm.snapCards||[])[idx];
+  if (!card || !card.ko) return;
+  if (!_bm.snapSaved) _bm.snapSaved = [];
+  if (_bm.snapSaved.indexOf(idx) >= 0) return;
+  _bm.snapSaved.push(idx);
+  try {
+    if (typeof saveOrUpdateWord === 'function') {
+      saveOrUpdateWord(card.ko, card.en, card.rom, _currentLevel || 'Beginner', 'word_snap');
+    }
+  } catch(e) {}
+  var btn = document.querySelector('.bm-snap-save');
+  if (btn) { btn.textContent = '✓ Saved'; btn.classList.add('saved'); }
+}
+
+function goToBMStep3Back() { _bm.step = 3; updateBMHeader(); renderBMStep3(); }
+
+function finishBeginner() {
+  markStageDone('topic');
+
+  var totalScore = Math.round((_bm.score.order + _bm.score.blank) / 2);
+  var savedCount = (_bm.snapSaved || []).length;
+  var icon, tier, headline, sub;
+  if (totalScore >= 90) {
+    icon = BM_ICON_SPARKLE; tier = 'tier-top'; headline = 'Excellent work!';
+    sub = 'Your accuracy is outstanding — you really nailed it.';
+  } else if (totalScore >= 80) {
+    icon = BM_ICON_TROPHY; tier = 'tier-high'; headline = 'Well done!';
+    sub = 'Strong performance. Keep practicing to ace it every time.';
+  } else if (totalScore >= 50) {
+    icon = BM_ICON_STAR; tier = 'tier-mid'; headline = 'Not bad!';
+    sub = 'Solid effort — more than half right. Keep going!';
+  } else {
+    icon = BM_ICON_FLAME; tier = 'tier-low'; headline = 'Keep at it!';
+    sub = 'Every attempt makes you stronger. Try again to improve.';
+  }
+
+  document.getElementById('bm-body').innerHTML =
+    '<div class="bm-result">'
+    + '<div class="bm-result-emoji ' + tier + '">' + icon + '</div>'
+    + '<div class="bm-result-score">' + totalScore + '%</div>'
+    + '<div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:8px">' + headline + '</div>'
+    + '<div class="bm-result-msg">' + sub + '</div>'
+    + '<div style="display:flex;gap:10px;justify-content:center;margin:20px 0">'
+    + '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#a78bfa">' + _bm.score.order + '%</div><div class="bm-result-stat-lbl">Word Order</div></div>'
+    + '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#a78bfa">' + _bm.score.blank + '%</div><div class="bm-result-stat-lbl">Fill In</div></div>'
+    + (savedCount > 0
+        ? '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#fbbf24">' + savedCount + '</div><div class="bm-result-stat-lbl">Words Saved</div></div>'
+        : '')
+    + '</div>'
+    + '</div>';
+
+  document.getElementById('bm-footer').innerHTML =
+    '<button class="bm-btn-back" onclick="retryBeginner()"><span class="bm-btn-icon">' + BM_ICON_REFRESH + '</span><span>Try Again</span></button>'
+    + '<button class="bm-btn-next" onclick="returnToActivities(closeBModal)">Next Activity</button>';
+
+  bmFireConfetti();
+  if (typeof addXP === 'function') addXP(30);
+  if (typeof dmTrackFill === 'function') dmTrackFill();
+}
+
+function retryBeginner() {
+  _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false, listened:[], snapIdx:0, snapSeen:[], snapSaved:[], snapCards:[] };
+  updateBMHeader();
+  renderBMStep1Loading();
+  generateBeginnerSentences();
+}
+// ══ END BEGINNER 4-STEP SYSTEM ══════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+// STARTER 3-STEP MODAL
+// ═══════════════════════════════════════════════════════════════
+var _sm = { step: 1, words: [], matchPairs: [], quizItems: [], score: { match: 0, quiz: 0 } };
+
+function openStarterModal() {
+  var overlay = document.getElementById('smodal-overlay');
+  overlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  _sm = { step: 1, words: [], matchPairs: [], quizItems: [], score: { match: 0, quiz: 0 }, heardCount: 0 };
+  _smBuildContent();
+  updateSMPips();
+  renderSMStep1();
+}
+
+function closeSModal() {
+  document.getElementById('smodal-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+function updateSMPips() {
+  var pips = document.querySelectorAll('#sm-pips .sm-pip');
+  pips.forEach(function(pip, i) {
+    var stepNum = i + 1;
+    pip.className = 'sm-pip' + (stepNum < _sm.step ? ' done' : stepNum === _sm.step ? ' active' : '');
+  });
+}
+
+function _smBuildContent() {
+  // Grab vocab from AI content or fallback
+  var vocab = (_aiContent && _aiContent.vocab) || [];
+  // Also merge sight_words if available
+  if (_aiContent && Array.isArray(_aiContent.sight_words) && _aiContent.sight_words.length) {
+    var existingKo = {};
+    vocab.forEach(function(w) { existingKo[w.ko] = true; });
+    _aiContent.sight_words.forEach(function(sw) {
+      if (!existingKo[sw.ko]) vocab.push({ ko: sw.ko, rom: sw.rom || '', en: sw.en, level: 'Starter' });
+    });
+  }
+  if (vocab.length < 4) {
+    vocab = [
+      { ko: '안녕하세요', rom: 'an-nyeong-ha-se-yo', en: 'hello' },
+      { ko: '감사합니다', rom: 'gam-sa-ham-ni-da', en: 'thank you' },
+      { ko: '학교', rom: 'hak-gyo', en: 'school' },
+      { ko: '물', rom: 'mul', en: 'water' },
+      { ko: '밥', rom: 'bap', en: 'rice / meal' },
+      { ko: '사람', rom: 'sa-ram', en: 'person' },
+      { ko: '나', rom: 'na', en: 'I / me' }
+    ];
+  }
+  // Pick up to 7 words for Step 1 (Listen & Repeat)
+  _sm.words = vocab.slice(0, Math.min(7, vocab.length));
+
+  // Step 2: Match game — pick up to 5 pairs
+  var matchSrc = vocab.slice(0, Math.min(5, vocab.length));
+  _sm.matchPairs = matchSrc.map(function(w) { return { ko: w.ko, en: w.en }; });
+
+  // Step 3: Quiz — up to 4 questions
+  _sm.quizItems = [];
+  var quizPool = vocab.slice();
+  for (var qi = 0; qi < 4 && qi < quizPool.length; qi++) {
+    var correct = quizPool[qi];
+    var wrongs = quizPool.filter(function(w) { return w.ko !== correct.ko; })
+      .sort(function() { return Math.random() - 0.5; }).slice(0, 2)
+      .map(function(w) { return w.en; });
+    while (wrongs.length < 2) wrongs.push('something');
+    var opts = [correct.en].concat(wrongs).sort(function() { return Math.random() - 0.5; });
+    _sm.quizItems.push({ ko: correct.ko, rom: correct.rom || '', answer: correct.en, options: opts, chosen: null });
+  }
+}
+
+// ── STEP 1: LISTEN & REPEAT ──
+function renderSMStep1() {
+  _sm.step = 1;
+  updateSMPips();
+  var bodyHTML = '<div class="sm-step-label">Step 1 of 3</div>'
+    + '<div class="sm-step-title">Listen & Repeat</div>'
+    + '<div class="sm-step-desc">Listen to each word, then say it out loud. Tap "I said it!" when you are done.</div>';
+
+  _sm.words.forEach(function(w, i) {
+    var safeKo = w.ko.replace(/'/g, "&#39;");
+    bodyHTML += '<div class="sm-word-card" id="sm-wc' + i + '">'
+      + '<button class="sm-tts-btn" onclick="speakKorean(\'' + safeKo + '\')">&#128264;</button>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div class="sm-word-ko">' + w.ko + '</div>'
+      + (w.rom ? '<div class="sm-word-rom">' + w.rom + '</div>' : '')
+      + '</div>'
+      + '<div class="sm-word-en">' + w.en + '</div>'
+      + '<button class="sm-said-btn" id="sm-said' + i + '" onclick="smMarkHeard(' + i + ')">I said it!</button>'
+      + '</div>';
+  });
+
+  document.getElementById('sm-body').innerHTML = bodyHTML;
+  document.getElementById('sm-footer').innerHTML =
+    '<button class="sm-btn" id="sm-step1-next" disabled onclick="goToSMStep2()">Match Game &#8594;</button>';
+}
+
+function smMarkHeard(idx) {
+  var card = document.getElementById('sm-wc' + idx);
+  var btn = document.getElementById('sm-said' + idx);
+  if (card) card.classList.add('heard');
+  if (btn) { btn.textContent = 'Done!'; btn.classList.add('done'); }
+  // Count heard
+  var heard = document.querySelectorAll('.sm-word-card.heard').length;
+  if (heard >= _sm.words.length) {
+    var nextBtn = document.getElementById('sm-step1-next');
+    if (nextBtn) nextBtn.disabled = false;
+  }
+}
+
+// ── STEP 2: MATCH GAME ──
+var _smMatchState = { selectedKo: null, selectedEn: null, matched: 0 };
+
+function goToSMStep2() {
+  _sm.step = 2;
+  updateSMPips();
+  _smMatchState = { selectedKo: null, selectedEn: null, matched: 0 };
+  renderSMStep2();
+}
+
+function renderSMStep2() {
+  var pairs = _sm.matchPairs;
+  // Shuffle ko and en columns independently
+  var koOrder = pairs.map(function(_, i) { return i; }).sort(function() { return Math.random() - 0.5; });
+  var enOrder = pairs.map(function(_, i) { return i; }).sort(function() { return Math.random() - 0.5; });
+
+  var bodyHTML = '<div class="sm-step-label">Step 2 of 3</div>'
+    + '<div class="sm-step-title">Match Game</div>'
+    + '<div class="sm-step-desc">Tap a Korean word, then tap its English meaning to make a match.</div>'
+    + '<div class="sm-match-grid">'
+    + '<div><div class="sm-match-col-label">Korean</div>';
+
+  koOrder.forEach(function(i) {
+    bodyHTML += '<div class="sm-match-item" id="sm-mk' + i + '" onclick="smSelectKo(' + i + ')" style="margin-bottom:8px">' + pairs[i].ko + '</div>';
+  });
+  bodyHTML += '</div><div><div class="sm-match-col-label">English</div>';
+  enOrder.forEach(function(i) {
+    bodyHTML += '<div class="sm-match-item en" id="sm-me' + i + '" onclick="smSelectEn(' + i + ')" style="margin-bottom:8px">' + pairs[i].en + '</div>';
+  });
+  bodyHTML += '</div></div>'
+    + '<div id="sm-match-feedback" style="text-align:center;margin-top:12px;font-size:13px"></div>';
+
+  document.getElementById('sm-body').innerHTML = bodyHTML;
+  document.getElementById('sm-footer').innerHTML =
+    '<button class="sm-btn-back" onclick="renderSMStep1()">&#8592; Listen</button>'
+    + '<button class="sm-btn" id="sm-step2-next" disabled onclick="goToSMStep3()">Quiz &#8594;</button>';
+}
+
+function smSelectKo(idx) {
+  if (document.getElementById('sm-mk' + idx).classList.contains('matched')) return;
+  // Deselect previous ko
+  document.querySelectorAll('.sm-match-item.selected').forEach(function(el) {
+    if (!el.classList.contains('en')) el.classList.remove('selected');
+  });
+  document.getElementById('sm-mk' + idx).classList.add('selected');
+  _smMatchState.selectedKo = idx;
+  if (_smMatchState.selectedEn !== null) smCheckMatch();
+}
+
+function smSelectEn(idx) {
+  if (document.getElementById('sm-me' + idx).classList.contains('matched')) return;
+  document.querySelectorAll('.sm-match-item.en.selected').forEach(function(el) {
+    el.classList.remove('selected');
+  });
+  document.getElementById('sm-me' + idx).classList.add('selected');
+  _smMatchState.selectedEn = idx;
+  if (_smMatchState.selectedKo !== null) smCheckMatch();
+}
+
+function smCheckMatch() {
+  var koIdx = _smMatchState.selectedKo;
+  var enIdx = _smMatchState.selectedEn;
+  var koEl = document.getElementById('sm-mk' + koIdx);
+  var enEl = document.getElementById('sm-me' + enIdx);
+
+  if (koIdx === enIdx) {
+    // Correct match
+    koEl.classList.remove('selected');
+    enEl.classList.remove('selected');
+    koEl.classList.add('matched');
+    enEl.classList.add('matched');
+    _smMatchState.matched++;
+    _smMatchState.selectedKo = null;
+    _smMatchState.selectedEn = null;
+
+    if (_smMatchState.matched >= _sm.matchPairs.length) {
+      _sm.score.match = 100;
+      document.getElementById('sm-match-feedback').innerHTML =
+        '<span style="color:#4ade80;font-weight:700">All matched! Great job!</span>';
+      var nextBtn = document.getElementById('sm-step2-next');
+      if (nextBtn) nextBtn.disabled = false;
+    }
+  } else {
+    // Wrong
+    koEl.classList.add('wrong');
+    enEl.classList.add('wrong');
+    setTimeout(function() {
+      koEl.classList.remove('selected', 'wrong');
+      enEl.classList.remove('selected', 'wrong');
+    }, 600);
+    _smMatchState.selectedKo = null;
+    _smMatchState.selectedEn = null;
+  }
+}
+
+// ── STEP 3: SIMPLE QUIZ ──
+var _smQuizIdx = 0;
+
+function goToSMStep3() {
+  _sm.step = 3;
+  updateSMPips();
+  _smQuizIdx = 0;
+  renderSMStep3();
+}
+
+function renderSMStep3() {
+  var q = _sm.quizItems[_smQuizIdx];
+  if (!q) { finishStarter(); return; }
+
+  var bodyHTML = '<div class="sm-step-label">Step 3 of 3 &middot; Question ' + (_smQuizIdx + 1) + ' / ' + _sm.quizItems.length + '</div>'
+    + '<div class="sm-step-title">Simple Quiz</div>'
+    + '<div class="sm-step-desc">What does this Korean word mean?</div>'
+    + '<div class="sm-quiz-card">'
+    + '<div class="sm-quiz-word">' + q.ko + '</div>'
+    + (q.rom ? '<div class="sm-quiz-rom">' + q.rom + '</div>' : '')
+    + '</div>'
+    + '<div class="sm-quiz-opts" id="sm-quiz-opts">';
+
+  q.options.forEach(function(opt, i) {
+    var safeOpt = opt.replace(/'/g, "&#39;");
+    bodyHTML += '<button class="sm-quiz-opt" id="sm-qo' + i + '" onclick="smPickQuiz(' + _smQuizIdx + ',' + i + ',\'' + safeOpt + '\')">' + opt + '</button>';
+  });
+  bodyHTML += '</div>';
+
+  document.getElementById('sm-body').innerHTML = bodyHTML;
+  document.getElementById('sm-footer').innerHTML =
+    '<button class="sm-btn-back" onclick="goToSMStep2()">&#8592; Match</button>'
+    + '<button class="sm-btn" id="sm-quiz-next" disabled onclick="smNextQuiz()">Next &#8594;</button>';
+}
+
+function smPickQuiz(qIdx, optIdx, chosen) {
+  var q = _sm.quizItems[qIdx];
+  if (q.chosen !== null) return; // already answered
+  q.chosen = chosen;
+  var isCorrect = (chosen === q.answer);
+
+  // Highlight
+  var opts = document.querySelectorAll('#sm-quiz-opts .sm-quiz-opt');
+  opts.forEach(function(btn, i) {
+    btn.style.pointerEvents = 'none';
+    if (btn.textContent === q.answer) btn.classList.add('correct');
+    if (i === optIdx && !isCorrect) btn.classList.add('wrong');
+  });
+
+  var nextBtn = document.getElementById('sm-quiz-next');
+  if (nextBtn) {
+    nextBtn.disabled = false;
+    var isLast = (_smQuizIdx + 1 >= _sm.quizItems.length);
+    nextBtn.textContent = isLast ? 'Finish!' : 'Next \u2192';
+    if (isLast) nextBtn.onclick = function() { finishStarter(); };
+  }
+}
+
+function smNextQuiz() {
+  _smQuizIdx++;
+  if (_smQuizIdx >= _sm.quizItems.length) {
+    finishStarter();
+  } else {
+    renderSMStep3();
+  }
+}
+
+function finishStarter() {
+  markStageDone('topic');
+  var correctCount = _sm.quizItems.filter(function(q) { return q.chosen === q.answer; }).length;
+  _sm.score.quiz = Math.round(correctCount / Math.max(1, _sm.quizItems.length) * 100);
+  var total = Math.round((_sm.score.match + _sm.score.quiz) / 2);
+
+  var emoji, headline, sub;
+  if (total >= 90) { emoji = '\uD83C\uDF1F'; headline = 'Amazing!'; sub = 'You nailed it! Keep up the great work.'; }
+  else if (total >= 60) { emoji = '\u2B50'; headline = 'Well done!'; sub = 'Solid effort. Practice makes perfect!'; }
+  else { emoji = '\uD83D\uDCAA'; headline = 'Keep going!'; sub = 'Every attempt makes you stronger.'; }
+
+  document.getElementById('sm-body').innerHTML =
+    '<div class="sm-result">'
+    + '<div class="sm-result-emoji">' + emoji + '</div>'
+    + '<div class="sm-result-score">' + total + '%</div>'
+    + '<div style="font-size:17px;font-weight:800;margin-bottom:6px">' + headline + '</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-bottom:20px">' + sub + '</div>'
+    + '<div style="display:flex;gap:16px;justify-content:center">'
+    + '<div style="text-align:center;background:rgba(255,255,255,.06);border-radius:12px;padding:12px 18px">'
+    + '<div style="font-size:22px;font-weight:900;color:#c084fc">' + _sm.score.match + '%</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">Match</div></div>'
+    + '<div style="text-align:center;background:rgba(255,255,255,.06);border-radius:12px;padding:12px 18px">'
+    + '<div style="font-size:22px;font-weight:900;color:#4ade80">' + _sm.score.quiz + '%</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">Quiz</div></div>'
+    + '</div></div>';
+
+  document.getElementById('sm-footer').innerHTML =
+    '<button class="sm-btn-back" onclick="closeSModal()">Close</button>'
+    + '<button class="sm-btn" onclick="openStarterModal()">Try Again</button>';
+
+  if (typeof addXP === 'function') addXP(20);
+  if (typeof dmTrackFill === 'function') dmTrackFill();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SENTENCE BUILDER (Beginner sidebar panel)
+// ═══════════════════════════════════════════════════════════════
+var _sbState = { sentence: null, words: [], target: [], helperIdx: 0 };
+
+function initSentenceBuilder() {
+  var box = document.getElementById('sentence-builder-box');
+  if (!box) return;
+  box.style.display = '';
+  _sbState.helperIdx = 0;
+  sbLoadSentence();
+}
+
+function sbLoadSentence() {
+  var helpers = ((_aiContent && _aiContent.helpers) || []).filter(function(h) {
+    return h.ko && h.ko.trim().split(/\s+/).length >= 3;
+  });
+  if (!helpers.length) {
+    // Fallback: try vocab example sentences or topic_writing_sentences
+    var fallback = ((_aiContent && _aiContent.topic_writing_sentences) || []).filter(function(s) {
+      return s.ko && s.ko.trim().split(/\s+/).length >= 3;
+    });
+    if (fallback.length) helpers = fallback;
+  }
+  if (!helpers.length) {
+    document.getElementById('sb-content').innerHTML = '<p style="font-size:12px;color:rgba(255,255,255,.5)">No sentences available yet.</p>';
+    return;
+  }
+  var h = helpers[_sbState.helperIdx % helpers.length];
+  _sbState.sentence = h.ko;
+  _sbState.target = [];
+  // Split into words and shuffle
+  var words = h.ko.replace(/[.!?]/g, '').trim().split(/\s+/);
+  var shuffled = words.slice();
+  for (var i = shuffled.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+  }
+  // Ensure shuffled is different from original
+  if (words.length > 1 && shuffled.every(function(w, i) { return w === words[i]; })) {
+    var t = shuffled[0]; shuffled[0] = shuffled[shuffled.length - 1]; shuffled[shuffled.length - 1] = t;
+  }
+  _sbState.words = shuffled.map(function(w) { return { text: w, placed: false }; });
+  _sbState.original = words;
+  sbRender();
+}
+
+function sbRender() {
+  var targetEl = document.getElementById('sb-target');
+  var poolEl = document.getElementById('sb-pool');
+  var fbEl = document.getElementById('sb-feedback');
+
+  // Render target zone
+  if (_sbState.target.length === 0) {
+    targetEl.innerHTML = '<span style="font-size:11px;color:rgba(255,255,255,.3)">Tap words below to build the sentence</span>';
+  } else {
+    targetEl.innerHTML = _sbState.target.map(function(w, i) {
+      return '<button class="sb-chip in-target" onclick="sbRemoveFromTarget(' + i + ')">' + w + '</button>';
+    }).join('');
+  }
+
+  // Render pool
+  poolEl.innerHTML = _sbState.words.map(function(w, i) {
+    return '<button class="sb-chip' + (w.placed ? ' placed' : '') + '" onclick="sbAddToTarget(' + i + ')">' + w.text + '</button>';
+  }).join('');
+
+  // Auto-check if all words placed
+  var allPlaced = _sbState.words.every(function(w) { return w.placed; });
+  if (allPlaced && _sbState.target.length > 0) {
+    sbAutoCheck();
+  } else {
+    fbEl.innerHTML = '';
+  }
+}
+
+function sbAddToTarget(idx) {
+  if (_sbState.words[idx].placed) return;
+  _sbState.words[idx].placed = true;
+  _sbState.target.push(_sbState.words[idx].text);
+  sbRender();
+}
+
+function sbRemoveFromTarget(idx) {
+  var word = _sbState.target[idx];
+  _sbState.target.splice(idx, 1);
+  // Un-place the first matching word in pool
+  for (var i = 0; i < _sbState.words.length; i++) {
+    if (_sbState.words[i].text === word && _sbState.words[i].placed) {
+      _sbState.words[i].placed = false;
+      break;
+    }
+  }
+  sbRender();
+}
+
+function sbAutoCheck() {
+  var fbEl = document.getElementById('sb-feedback');
+  var answer = _sbState.target.join(' ');
+  var correct = _sbState.original.join(' ');
+  if (answer === correct) {
+    fbEl.innerHTML = '<span style="color:#4ade80;font-weight:700">&#9989; Correct!</span>'
+      + ' <button onclick="sbNextSentence()" style="margin-left:8px;padding:4px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#c084fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Next &#8594;</button>';
+  } else {
+    fbEl.innerHTML = '<span style="color:#f87171;font-weight:700">Try again</span>'
+      + ' <button onclick="sbReset()" style="margin-left:8px;padding:4px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Reset</button>';
+  }
+}
+
+function sbReset() {
+  _sbState.target = [];
+  _sbState.words.forEach(function(w) { w.placed = false; });
+  sbRender();
+}
+
+function sbNextSentence() {
+  _sbState.helperIdx++;
+  sbLoadSentence();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GRAMMAR CURRICULUM SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+var GRAMMAR_CURRICULUM = [
+  // -- Beginner (order 1-15) -----------------------------------
+  { pattern: '은/는 vs 이/가', level: 'Beginner', order: 1, desc: 'Topic marker (은/는) vs Subject marker (이/가) — one of the most common sources of confusion.' },
+  { pattern: 'Verb endings: 아요 / 어요', level: 'Beginner', order: 2, desc: 'Standard polite present-tense ending. Every Korean verb needs a conjugated ending.' },
+  { pattern: '을/를 — Object marker', level: 'Beginner', order: 3, desc: 'Marks the direct object of a verb. Essential for basic sentence construction.' },
+  { pattern: '에 vs 에서', level: 'Beginner', order: 4, desc: '에 = location/destination. 에서 = location where an action takes place.' },
+  { pattern: '도 — Also/Too', level: 'Beginner', order: 5, desc: 'Particle meaning "also". 나도 = me too, 여기도 = here too.' },
+  { pattern: '부터 ~ 까지 — From ~ To', level: 'Beginner', order: 6, desc: 'Time/place range. 9시부터 6시까지 = from 9 to 6.' },
+  { pattern: '고 — And (connecting)', level: 'Beginner', order: 7, desc: 'Connects two actions/states. 먹고 마시다 = eat and drink.' },
+  { pattern: '았/었/였 — Past tense', level: 'Beginner', order: 8, desc: 'Add 았/었 to verb stems to express past tense. 했다 = did.' },
+  { pattern: '(으)ㄹ 거예요 — Future tense', level: 'Beginner', order: 9, desc: 'Expresses future plans or predictions. 갈 거예요 = will go.' },
+  { pattern: '고 싶다 — Want to', level: 'Beginner', order: 10, desc: 'Verb stem + 고 싶다 = "I want to ___". Core expression of desire.' },
+  { pattern: '지 마세요 — Don\'t', level: 'Beginner', order: 11, desc: 'Negative imperative. 걱정하지 마세요 = don\'t worry.' },
+  { pattern: '(으)세요 — Honorific imperative', level: 'Beginner', order: 12, desc: 'Polite request or description of someone respected. 앉으세요 = please sit.' },
+  { pattern: '(으)ㄹ 수 있다/없다 — Can/Cannot', level: 'Beginner', order: 13, desc: 'Express ability or possibility. 할 수 있다 = can do.' },
+  { pattern: '(이)나 — Or / As many as', level: 'Beginner', order: 14, desc: 'Choice or emphasis on amount. 커피나 차 = coffee or tea.' },
+  { pattern: '마다 — Every/Each', level: 'Beginner', order: 15, desc: 'Distribution particle. 날마다 = every day. 사람마다 = each person.' },
+
+  // -- Intermediate (order 1-15) --------------------------------
+  { pattern: '아/어서 — So/Because', level: 'Intermediate', order: 1, desc: 'Cause-and-effect or sequential. 배고파서 밥을 먹었어요 = I was hungry so I ate.' },
+  { pattern: '(으)니까 — Because/Since', level: 'Intermediate', order: 2, desc: 'Cause-reason connector. 추우니까 = because it\'s cold.' },
+  { pattern: '때문에 — Because of', level: 'Intermediate', order: 3, desc: 'Noun + 때문에 or V-기 때문에 for reasons/causes.' },
+  { pattern: '지만 — But/However', level: 'Intermediate', order: 4, desc: 'Contrast connector. 비싸지만 맛있어요 = it\'s expensive but delicious.' },
+  { pattern: '(으)면 — If/When', level: 'Intermediate', order: 5, desc: 'Conditional "if". 비가 오면 = if it rains.' },
+  { pattern: '(으)ㄹ 때 — When', level: 'Intermediate', order: 6, desc: 'Time clause. 어릴 때 = when (I was) young.' },
+  { pattern: '(으)ㄴ/는데 — Background/Contrast', level: 'Intermediate', order: 7, desc: 'Sets up context or soft contrast. 날씨가 좋은데 산책할까요? = the weather is nice, shall we walk?' },
+  { pattern: '(으)면서 — While doing', level: 'Intermediate', order: 8, desc: 'Simultaneous actions. 음악을 들으면서 공부해요 = I study while listening to music.' },
+  { pattern: '아/어 보다 — Try doing', level: 'Intermediate', order: 9, desc: 'Verb + 아/어 보다 = try doing. 먹어 보다 = try eating.' },
+  { pattern: '아/어 주다 — Do for someone', level: 'Intermediate', order: 10, desc: 'Helping verb. 도와주다 = help (do for someone). 사 주다 = buy for someone.' },
+  { pattern: '는 것 — Nominalization', level: 'Intermediate', order: 11, desc: 'Turns verbs into nouns. 먹는 것 = eating (the act of).' },
+  { pattern: '(으)려고 — In order to', level: 'Intermediate', order: 12, desc: 'Purpose clause. 한국어를 배우려고 = in order to learn Korean.' },
+  { pattern: '(으)ㄹ래요 — Shall/Want to', level: 'Intermediate', order: 13, desc: 'Casual intention/suggestion. 갈래요? = shall we go?' },
+  { pattern: '(으)ㄹ까요? — Shall we?', level: 'Intermediate', order: 14, desc: 'Polite suggestion or question about plans. 같이 갈까요? = shall we go together?' },
+  { pattern: '밖에 + negative — Only/Nothing but', level: 'Intermediate', order: 15, desc: 'Used with negatives. 하나밖에 없어요 = there\'s only one.' },
+
+  // -- Advanced (order 1-15) ------------------------------------
+  { pattern: '겠 — Intention/Guess', level: 'Advanced', order: 1, desc: 'Express intention or conjecture. 맛있겠다 = it looks delicious.' },
+  { pattern: '잖아(요) — You know / Obviously', level: 'Advanced', order: 2, desc: 'Implies shared knowledge. 알잖아 = you know, right?' },
+  { pattern: '네요 — Surprise/Realization', level: 'Advanced', order: 3, desc: 'Expresses mild surprise. 맛있네요! = oh, this is delicious!' },
+  { pattern: '(으)ㄴ 적이 있다/없다 — Have done / Never done', level: 'Advanced', order: 4, desc: 'Experience marker. 한국에 간 적이 있어요 = I\'ve been to Korea.' },
+  { pattern: '처럼 / 같이 — Like/As', level: 'Advanced', order: 5, desc: 'Comparison particles. 배우처럼 = like an actor. 나같이 = like me.' },
+  { pattern: '(으)ㄹ 줄 알다/모르다 — Know how to / Don\'t know how to', level: 'Advanced', order: 6, desc: 'Ability from learned skill. 수영할 줄 알아요 = I know how to swim.' },
+  { pattern: '기로 하다 — Decide to', level: 'Advanced', order: 7, desc: 'Making decisions. 유학 가기로 했어요 = I decided to study abroad.' },
+  { pattern: '(이)라서 — Because it is', level: 'Advanced', order: 8, desc: 'Noun + reason. 학생이라서 할인돼요 = because I\'m a student, I get a discount.' },
+  { pattern: '든지 — Whatever/Whenever', level: 'Advanced', order: 9, desc: 'Indifference or any-choice. 언제든지 = whenever. 뭐든지 = whatever.' },
+  { pattern: '말고 — Not that, but', level: 'Advanced', order: 10, desc: 'Rejection/alternative. 이거 말고 저거 = not this, that one.' },
+  { pattern: '(으)ㄹ 뻔하다 — Almost did', level: 'Advanced', order: 11, desc: 'Near-miss situations. 넘어질 뻔했어요 = I almost fell.' },
+  { pattern: '더라(고요) — I noticed that', level: 'Advanced', order: 12, desc: 'Recounting personal observation. 맛있더라고요 = I found it was tasty.' },
+  { pattern: '(으)ㄴ/는 편이다 — Tend to', level: 'Advanced', order: 13, desc: 'Moderate tendency. 매운 걸 잘 먹는 편이에요 = I tend to eat spicy food well.' },
+  { pattern: '(으)ㄹ 텐데 — Probably / I expect', level: 'Advanced', order: 14, desc: 'Expectation or concern. 힘들 텐데 = it must be hard.' },
+  { pattern: '게 되다 — End up / Come to', level: 'Advanced', order: 15, desc: 'Unplanned result. 한국에 살게 되었어요 = I ended up living in Korea.' }
+];
+
+// -- Load curriculum from DB (overrides hardcoded fallback) -----
+var _gcDbLoaded = false;
+async function _loadGrammarCurriculumFromDB() {
+  if (_gcDbLoaded) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  try {
+    var r = await sb.from('grammar_curriculum')
+      .select('pattern, level, sort_order, description, active')
+      .eq('active', true)
+      .order('level').order('sort_order');
+    if (r.data && r.data.length >= 10) {
+      GRAMMAR_CURRICULUM = r.data.map(function(row) {
+        return { pattern: row.pattern, level: row.level, order: row.sort_order, desc: row.description || '' };
+      });
+      _gcDbLoaded = true;
+      // Refresh Grammar Path banner if visible
+      if (typeof renderGrammarPathBanner === 'function') renderGrammarPathBanner();
+    }
+  } catch(e) { console.warn('[Grammar Curriculum] DB load failed, using fallback:', e.message); }
+}
+
+// -- Curriculum localStorage key ------------------------------
+var _GC_STORAGE_KEY = 'kh_grammar_curriculum_progress';
+var _GC_MASTERY_ATTEMPTS = 1;   // min attempts before mastery can be granted
+var _GC_MASTERY_ACCURACY = 0.5; // 50% accuracy required (at least tried)
+
+function _loadGrammarProgress() {
+  try { return JSON.parse(localStorage.getItem(_GC_STORAGE_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+function _saveGrammarProgress(prog) {
+  try { localStorage.setItem(_GC_STORAGE_KEY, JSON.stringify(prog)); } catch(e) {}
+}
+
+// Call this after each grammar exercise to record result
+function updateGrammarMastery(patternName, wasCorrect) {
+  if (!patternName) return;
+  var prog = _loadGrammarProgress();
+  if (!prog[patternName]) {
+    prog[patternName] = { attempts: 0, correct: 0, mastered: false, lastPracticed: null };
+  }
+  var entry = prog[patternName];
+  entry.attempts++;
+  if (wasCorrect) entry.correct++;
+  entry.lastPracticed = new Date().toISOString();
+  // Check mastery threshold
+  if (!entry.mastered && entry.attempts >= _GC_MASTERY_ATTEMPTS) {
+    var accuracy = entry.correct / entry.attempts;
+    if (accuracy >= _GC_MASTERY_ACCURACY) {
+      entry.mastered = true;
+    }
+  }
+  prog[patternName] = entry;
+  _saveGrammarProgress(prog);
+  // Refresh banner if visible
+  renderGrammarPathBanner();
+}
+
+// Returns {total, mastered, inProgress, notStarted}
+function getGrammarMasteryStats() {
+  var prog = _loadGrammarProgress();
+  var total = GRAMMAR_CURRICULUM.length;
+  var mastered = 0, inProgress = 0, notStarted = 0;
+  GRAMMAR_CURRICULUM.forEach(function(item) {
+    var entry = prog[item.pattern];
+    if (!entry || entry.attempts === 0) {
+      notStarted++;
+    } else if (entry.mastered) {
+      mastered++;
+    } else {
+      inProgress++;
+    }
+  });
+  return { total: total, mastered: mastered, inProgress: inProgress, notStarted: notStarted };
+}
+
+// Returns the next unmastered pattern in curriculum order, or null if all mastered
+function getNextCurriculumPattern() {
+  var prog = _loadGrammarProgress();
+  var levelOrder = ['Beginner', 'Intermediate', 'Advanced'];
+  for (var li = 0; li < levelOrder.length; li++) {
+    var level = levelOrder[li];
+    var inLevel = GRAMMAR_CURRICULUM.filter(function(p) { return p.level === level; });
+    inLevel.sort(function(a, b) { return a.order - b.order; });
+    for (var pi = 0; pi < inLevel.length; pi++) {
+      var item = inLevel[pi];
+      var entry = prog[item.pattern];
+      if (!entry || !entry.mastered) return item;
+    }
+  }
+  return null; // All mastered
+}
+
+// Render the Grammar Path banner into #grammar-path-banner
+function renderGrammarPathBanner() {
+  var banner = document.getElementById('grammar-path-banner');
+  if (!banner) return;
+  var stats = getGrammarMasteryStats();
+  var next  = getNextCurriculumPattern();
+  var allDone = stats.mastered >= stats.total;
+
+  if (allDone) {
+    banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px">'
+      + '<span style="display:inline-flex;width:22px;height:22px;color:#fbbf24">' + BM_ICON_TROPHY + '</span>'
+      + '<div><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#15803d">Grammar Path</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#166534">All 45 patterns mastered!</div>'
+      + '</div></div>';
+    return;
+  }
+
+  var nextLabel = next ? next.pattern : '—';
+  var levelTag  = next ? next.level   : '';
+  var levelColors = { Beginner:'#86efac', Intermediate:'#fde68a', Advanced:'#fca5a5' };
+  var lc = levelColors[levelTag] || '#7ab8f5';
+
+  banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openGrammarFocusForCurriculum()">'
+    + '<span style="display:inline-flex;width:20px;height:20px;color:rgba(255,255,255,.7)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3H3v18h7"/><path d="M3 8h18"/><path d="M16 14l-4 8 8-4z"/></svg></span>'
+    + '<div style="flex:1;min-width:0;overflow:hidden">'
+    + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:1px">Grammar Path</div>'
+    + '<div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+    + stats.mastered + '/' + stats.total + ' mastered'
+    + (stats.inProgress ? ' &middot; <span style="color:#facc15">' + stats.inProgress + ' in progress</span>' : '')
+    + '</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+    + 'Next: <span style="color:' + lc + ';font-weight:700">' + nextLabel + '</span>'
+    + (levelTag ? ' <span style="font-size:10px;opacity:.65">(' + levelTag + ')</span>' : '')
+    + '</div>'
+    + '</div>'
+    + '<span style="font-size:12px;color:rgba(255,255,255,.3);flex-shrink:0">&#8250;</span>'
+    + '</div>';
+}
+
+// Open Grammar Focus modal pre-loaded with the next curriculum pattern
+function openGrammarFocusForCurriculum() {
+  var next = getNextCurriculumPattern();
+  if (!next) { openGrammarFocusModal(); return; }
+
+  if (!ensureStudyUnlocked()) return;
+  var modal = document.getElementById('gf-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  switchGFTab('learn', document.getElementById('gft-learn'));
+
+  var el = document.getElementById('gf-examples-content');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">&#10024; Loading grammar…</div>';
+
+  // Remember which curriculum pattern we are studying
+  window._gcCurrentPattern = next.pattern;
+
+  _generateGrammarForCurriculumPattern(next);
+}
+
+async function _generateGrammarForCurriculumPattern(item) {
+  var el = document.getElementById('gf-examples-content');
+  // Cache by pattern name — every user studying "은/는 vs 이/가" gets
+  // the same Claude lesson, so we save it once and serve from DB
+  // forever instead of re-billing for the same pattern on every open.
+  var cacheKey = 'gf-curr::' + (item.pattern || '');
+  if (cacheKey !== 'gf-curr::') {
+    try {
+      var dbHit = await _aiCacheGet(cacheKey);
+      if (dbHit && dbHit.patterns && dbHit.patterns.length) {
+        loadGFPatterns(dbHit.patterns);
+        return;
+      }
+    } catch(_) {}
+  }
+  try {
+    var res = await callClaude({
+      feature: 'grammar-curriculum',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1800,
+      messages: [{ role: 'user', content:
+        'You are a Korean grammar teacher. Create a structured, high-quality lesson for ONE specific grammar pattern.\n'
+        + 'Grammar point: "' + item.pattern + '" (Level: ' + item.level + ')\n'
+        + 'Description: ' + item.desc + '\n\n'
+        + 'Provide ALL of the following fields:\n'
+        + '- name: "' + item.pattern + '" (exactly as given)\n'
+        + '- level: "' + item.level + '"\n'
+        + '- exp: clear English explanation (2-3 sentences) — explain WHEN and WHY to use it\n'
+        + '- structure: grammatical formula (e.g. "Verb stem + 아요/어요")\n'
+        + '- when_to_use: one concrete English tip — give a specific situation\n'
+        + '- watch_out: the #1 most common mistake learners make with this pattern\n'
+        + '- examples: exactly 4 natural Korean sentences [{ko, en}] — vary the subject (I/you/friend/etc.) and context\n'
+        + '- incorrect_examples: exactly 2 [{ko, en, error_type, correction}] — realistic mistakes a Korean learner would actually make. error_type must be one of: CONJUGATION | PARTICLE | TENSE | FORMALITY | WORD_ORDER. correction must be the grammatically fixed Korean sentence.\n\n'
+        + 'IMPORTANT for incorrect_examples: make the error subtle and realistic, not obvious. The correct sentence in "correction" must fix ONLY the grammar error.\n\n'
+        + 'Return ONLY valid JSON:\n'
+        + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}],"incorrect_examples":[{"ko":"...","en":"...","error_type":"...","correction":"..."}]}]}'
+      }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
+    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(oi, ei + 1));
+    if (parsed.patterns && parsed.patterns.length) {
+      loadGFPatterns(parsed.patterns);
+      if (cacheKey !== 'gf-curr::') _aiCacheSet(cacheKey, { patterns: parsed.patterns });
+    } else {
+      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
+    }
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// GRAMMAR FOCUS MODAL
+// ═══════════════════════════════════════════════════════════════
+var _gfPattern = null;
+var _gfExercises = null;
+var _GF_TABS = ['learn','spotit','fill','translate','build'];
+
+function openGrammarFocusModal() {
+  if (!ensureStudyUnlocked()) return;
+  var modal = document.getElementById('gf-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  switchGFTab('learn', document.getElementById('gft-learn'));
+
+  var rawGrammar = (_aiContent && _aiContent.grammar) || [];
+  var patterns = rawGrammar.map(function(g) {
+    return {
+      name: g.pattern || g.name || '',
+      level: g.level || 'Intermediate',
+      exp: g.explanation || g.exp || '',
+      examples: (g.examples && g.examples.length)
+        ? g.examples
+        : [{ ko: g.example_ko || g.ex_ko || '', en: g.example_en || g.ex_en || '' }]
+    };
+  });
+  if (patterns.length) {
+    loadGFPatterns(patterns);
+  } else {
+    generateGFPatterns();
+  }
+}
+
+function closeGrammarFocusModal() {
+  var modal = document.getElementById('gf-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+var _GF_STEP_DONE = {learn:false, spotit:false, fill:false, translate:false, build:false};
+
+function switchGFTab(tabId, btn) {
+  // Enforce sequential completion — block jumping to steps whose prerequisites aren't done
+  var targetIdx = _GF_TABS.indexOf(tabId);
+  if (targetIdx > 0) {
+    for (var gi = 0; gi < targetIdx; gi++) {
+      if (!_GF_STEP_DONE[_GF_TABS[gi]]) {
+        var bar = document.getElementById('gf-step-bar');
+        var msg = document.createElement('div');
+        msg.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#9ca3af;vertical-align:-2px;margin-right:5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span>Complete Step ' + (gi+1) + ' first';
+        msg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:700;z-index:10000;box-shadow:0 8px 24px rgba(0,0,0,.25)';
+        document.body.appendChild(msg);
+        setTimeout(function(){ if(msg.parentNode) msg.parentNode.removeChild(msg); }, 1400);
+        return;
+      }
+    }
+  }
+  _GF_TABS.forEach(function(t) {
+    var pane = document.getElementById('gf-tab-' + t);
+    if (pane) pane.style.display = t === tabId ? 'block' : 'none';
+    var tb = document.getElementById('gft-' + t);
+    if (tb) {
+      tb.style.color            = t === tabId ? '#a78bfa' : '#94a3b8';
+      tb.style.borderBottomColor = t === tabId ? '#a78bfa' : 'transparent';
+      tb.style.fontWeight        = t === tabId ? '800' : '700';
+    }
+  });
+  // Scroll modal body to top on tab switch
+  var body = document.querySelector('.gf-modal-body');
+  if (body) body.scrollTop = 0;
+}
+
+function gfAdvanceTo(tabId) {
+  // Mark the prerequisite step as done so the user can now freely navigate back/forward
+  var idx = _GF_TABS.indexOf(tabId);
+  if (idx > 0) _GF_STEP_DONE[_GF_TABS[idx-1]] = true;
+  switchGFTab(tabId, document.getElementById('gft-' + tabId));
+}
+
+function loadGFPatterns(patterns) {
+  if (!patterns || !patterns.length) return;
+  var first = patterns[0];
+  _gfPattern = first;
+  window._gfPatternList = patterns;
+  // Reset step progression so each new session starts locked beyond Learn
+  _GF_STEP_DONE = {learn:false, spotit:false, fill:false, translate:false, build:false};
+
+  var titleEl = document.getElementById('gf-title');
+  if (titleEl) titleEl.textContent = first.name || 'Grammar Pattern';
+
+  // Pattern selector chips (if multiple patterns)
+  var chipsHtml = '';
+  if (patterns.length > 1) {
+    chipsHtml = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">'
+      + patterns.map(function(p, i) {
+          return '<button onclick="selectGFPattern(' + i + ')" '
+            + 'class="gf-pattern-chip' + (i===0?' gf-chip-on':'') + '" '
+            + 'style="padding:5px 12px;border-radius:999px;border:1.5px solid '
+            + (i===0?'#a78bfa':'rgba(255,255,255,.15)') + ';background:' + (i===0?'#eff6ff':'#fff')
+            + ';color:' + (i===0?'#a78bfa':'#475569')
+            + ';font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">'
+            + (p.name || 'Pattern ' + (i+1)) + '</button>';
+        }).join('')
+      + '</div>';
+  }
+
+  var el = document.getElementById('gf-examples-content');
+  if (el) el.innerHTML = chipsHtml + '<div id="gf-learn-body">' + renderGFLearn(first) + '</div>';
+
+  loadGFSpotIt(first);
+  loadGFFill(first);
+  loadGFTranslate(first);
+  loadGFBuild(first);
+}
+
+function selectGFPattern(idx) {
+  var patterns = window._gfPatternList || [];
+  var p = patterns[idx];
+  if (!p) return;
+  _gfPattern = p;
+  document.querySelectorAll('.gf-pattern-chip').forEach(function(b, i) {
+    var on = i === idx;
+    b.style.borderColor = on ? '#a78bfa' : 'rgba(255,255,255,.15)';
+    b.style.background  = on ? '#eff6ff' : '#fff';
+    b.style.color       = on ? '#a78bfa' : '#475569';
+  });
+  var titleEl = document.getElementById('gf-title');
+  if (titleEl) titleEl.textContent = p.name || '';
+  var body = document.getElementById('gf-learn-body');
+  if (body) body.innerHTML = renderGFLearn(p);
+  loadGFSpotIt(p);
+  loadGFFill(p);
+  loadGFTranslate(p);
+  loadGFBuild(p);
+  switchGFTab('learn', document.getElementById('gft-learn'));
+}
+
+// ── Korean sentence-structure heuristic parser used by Grammar
+//    Focus example tree visualisation. Tags each token with one of
+//    five roles based on suffix:
+//      subject  — ends in 이/가/은/는
+//      object   — ends in 을/를
+//      modifier — ends in 의 / 와/과 / 에/에서/로/으로 / 에게 / 께
+//      verb     — ends in 다/요/까/지/네/어/아/여/세요/ㅂ니다/습니다
+//      misc     — anything else (often nouns / adverbs)
+//    Heuristic, not strict NLP — intentionally simple so it runs
+//    instantly and gives learners a useful colour-coding hint.
+// The previous version checked the SUBJECT particle regex first, which
+// caused two well-known mislabelings:
+//   "많이"   → ends in '이' → flagged subject (it's actually an adverb)
+//   "맑지만" → ends in '만' → flagged modifier (it's a predicate joined
+//             to the next clause via the connective -지만)
+// The fix is (a) consult a small adverb dictionary first so 많이 / 같이 /
+// 천천히 land on 수식, and (b) check connective + final verb endings
+// before the particle suffixes so 맑지만 / 가서 / 먹고 land on 서술어.
+// Particles that mark subject are now the LAST resort.
+function gfParseKorean(ko) {
+  if (!ko) return [];
+  var tokens = String(ko).trim().replace(/[.,!?。]/g, ' ').split(/\s+/).filter(Boolean);
+
+  // Common Korean adverbs / time nouns that act adverbially. The plain
+  // suffix regex would otherwise mis-tag many of these as subject (이/히
+  // endings) or modifier (만 endings).
+  var ADVERBS = {
+    '많이':1,'잘':1,'못':1,'안':1,'아주':1,'정말':1,'진짜':1,'너무':1,'매우':1,
+    '조금':1,'좀':1,'거의':1,'자주':1,'가끔':1,'항상':1,'언제나':1,'늘':1,'더':1,
+    '빨리':1,'천천히':1,'늦게':1,'일찍':1,'먼저':1,'다시':1,'또':1,'바로':1,
+    '같이':1,'함께':1,'혼자':1,'다':1,'모두':1,'전부':1,
+    '벌써':1,'아직':1,'이미':1,'곧':1,'금방':1,'잠깐':1,'잠시':1,
+    '오늘':1,'내일':1,'어제':1,'지금':1,'아까':1,'나중에':1,'요즘':1,'매일':1,'매주':1,'매월':1,
+    '가까이':1,'멀리':1,'높이':1,'쉽게':1,'어렵게':1,'좋게':1,'예쁘게':1,'간단히':1,'분명히':1,
+    '특히':1,'그냥':1,'역시':1,'드디어':1,'결국':1,'아마':1,'혹시':1
+  };
+
+  // Connective verb/adjective endings — these mark the word as the
+  // predicate (서술어) of a clause that joins to the next clause.
+  var CONNECTIVE_END = /(지마는|지만|는데|으니까|니까|으면서|면서|아서|어서|여서|아도|어도|여도|아야|어야|여야|거든|거나|든지|다가|고서|기에|길래|려고|으려고|려면|으면|면|고)$/;
+
+  // Sentence-final verb/adjective endings.
+  var VERB_END = /(세요|ㅂ니다|습니다|네요|을게요|을까요|어요|아요|여요|었어요|았어요|였어요|었다|았다|였다|는다|ㄴ다|구나|군요|네|냐|까|요|다)$/;
+
+  // Particles marking grammatical role — checked LAST so adverbs ending
+  // in 이 (많이) and connective forms (맑지만) don't get swept up first.
+  var OBJECT   = /(을|를)$/;
+  var MODIFIER = /(의|와|과|에서|에게|에|으로|로|께|부터|까지|보다|마다|처럼|만)$/;
+  var SUBJECT  = /(이|가|은|는|께서)$/;
+
+  return tokens.map(function (t) {
+    var role = 'misc';
+    if (ADVERBS[t])                                   role = 'modifier';
+    else if (t.length >= 2 && CONNECTIVE_END.test(t)) role = 'verb';
+    else if (t.length >= 2 && VERB_END.test(t))       role = 'verb';
+    else if (t.length >= 2 && OBJECT.test(t))         role = 'object';
+    else if (t.length >= 2 && MODIFIER.test(t))       role = 'modifier';
+    else if (t.length >= 2 && SUBJECT.test(t))        role = 'subject';
+    return { token: t, role: role };
+  });
+}
+
+function gfRenderSentenceTree(ko) {
+  var ROLE_BG    = { subject:'#fef3c7', object:'#dcfce7', modifier:'rgba(167,139,250,.25)', verb:'#ede9fe', misc:'#f1f5f9' };
+  var ROLE_COLOR = { subject:'#92400e', object:'#15803d', modifier:'#1e40af', verb:'#7c3aed', misc:'#475569' };
+  var ROLE_LABEL = { subject:'주어',    object:'목적어', modifier:'수식',     verb:'서술어', misc:'기타' };
+  var parsed = gfParseKorean(ko);
+  if (!parsed.length) return '';
+  // Each token: chip with role label below.
+  var chips = parsed.map(function (t) {
+    return '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;margin:0 4px 8px 0">'
+      + '<span style="padding:4px 10px;border-radius:8px;background:' + ROLE_BG[t.role] + ';color:' + ROLE_COLOR[t.role] + ';font-family:Noto Serif KR,serif;font-size:15px;font-weight:800">' + escapeHTML(t.token) + '</span>'
+      + '<span style="font-size:9px;font-weight:800;letter-spacing:.04em;color:' + ROLE_COLOR[t.role] + ';opacity:.85">' + ROLE_LABEL[t.role] + '</span>'
+      + '</span>';
+  }).join('');
+  // Legend so learners know what each colour means without hunting.
+  var legend = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">'
+    + ['subject','object','modifier','verb'].map(function (r) {
+        return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:' + ROLE_BG[r] + ';color:' + ROLE_COLOR[r] + ';font-size:9px;font-weight:800;letter-spacing:.04em">●  ' + ROLE_LABEL[r] + '</span>';
+      }).join('')
+    + '</div>';
+  return '<div style="background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.18);border-radius:10px;padding:12px 14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.45);margin-bottom:8px">구조 Structure (heuristic)</div>'
+    + legend
+    + '<div style="display:flex;flex-wrap:wrap;align-items:flex-end">' + chips + '</div>'
+    + '</div>';
+}
+
+function gfToggleTree(id, btn) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var hidden = el.toggleAttribute('hidden');
+  if (btn) btn.textContent = hidden ? '▼ Show structure' : '▲ Hide structure';
+}
+
+function renderGFLearn(p) {
+  var levelColors = { Starter:'#a78bfa', Beginner:'#16a34a', Intermediate:'#d97706', Advanced:'#dc2626' };
+  var levelBgs    = { Starter:'#f5f3ff', Beginner:'#f0fdf4', Intermediate:'#fffbeb', Advanced:'#fff1f2' };
+  var lv = p.level || 'Intermediate';
+  var lc = levelColors[lv] || '#a78bfa';
+  var lb = levelBgs[lv]    || '#f0f4ff';
+
+  // Extract Korean characters from pattern name for highlighting in examples
+  var koChars = (p.name || '').match(/[가-힣~]+/g) || [];
+
+  // Derive structure from pattern name if not provided
+  var structure = p.structure || (p.name ? p.name.replace(/\(.*?\)/g,'').trim() : '');
+
+  // Structure formula box
+  var structureHtml = structure
+    ? '<div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:6px">공식 Structure</div>'
+      + '<p style="font-size:15px;font-weight:800;color:#a78bfa;margin:0;font-family:Noto Serif KR,serif">' + structure + '</p>'
+      + '</div>'
+    : '';
+
+  // Explanation
+  var expHtml = '<div style="background:rgba(255,255,255,.05);border-left:3px solid #a78bfa;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px">'
+    + '<p style="font-size:14px;color:#334155;line-height:1.8;margin:0">' + (p.exp || '') + '</p>'
+    + '</div>';
+
+  // When to use + watch out
+  var tipsHtml = '';
+  if (p.when_to_use || p.watch_out) {
+    tipsHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">';
+    if (p.when_to_use) {
+      tipsHtml += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px">'
+        + '<div style="font-size:10px;font-weight:800;color:#16a34a;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">' + BM_ICON_CHECK + '</span><span>WHEN TO USE</span></div>'
+        + '<p style="font-size:12px;color:#166534;margin:0;line-height:1.6">' + p.when_to_use + '</p>'
+        + '</div>';
+    }
+    if (p.watch_out) {
+      tipsHtml += '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px">'
+        + '<div style="font-size:10px;font-weight:800;color:#ea580c;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">' + BM_ICON_WARNING + '</span><span>WATCH OUT</span></div>'
+        + '<p style="font-size:12px;color:#9a3412;margin:0;line-height:1.6">' + p.watch_out + '</p>'
+        + '</div>';
+    }
+    tipsHtml += '</div>';
+  }
+
+  // Examples with grammar highlighted + (collapsible) sentence-structure tree
+  var examples = p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }];
+  var exHtml = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">예문 Examples</div>'
+    + examples.map(function(ex, i) {
+        var koText = ex.ko || '';
+        // Highlight any token from the pattern name inside the sentence
+        koChars.forEach(function(kc) {
+          var clean = kc.replace(/~/g,'');
+          if (clean && koText.indexOf(clean) !== -1) {
+            koText = koText.split(clean).join('<mark style="background:rgba(167,139,250,.15);color:#a78bfa;border-radius:4px;padding:1px 3px;font-style:normal">' + clean + '</mark>');
+          }
+        });
+        var treeId = 'gf-tree-' + i;
+        var treeBtn = ex.ko
+          ? '<button type="button" onclick="gfToggleTree(\'' + treeId + '\',this)" style="margin-top:8px;padding:4px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">▼ Show structure</button>'
+          + '<div id="' + treeId + '" hidden style="margin-top:10px">' + gfRenderSentenceTree(ex.ko) + '</div>'
+          : '';
+        return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:14px 16px;margin-bottom:10px">'
+          + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:7px">예문 ' + (i+1) + '</div>'
+          + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#fff;line-height:1.7;margin:0 0 8px">' + koText + '</p>'
+          + '<p style="font-size:13px;color:rgba(255,255,255,.55);margin:0;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">' + (ex.en||'') + '</p>'
+          + treeBtn
+          + '</div>';
+      }).join('');
+
+  // "Got it" advance button
+  var advBtn = '<div style="margin-top:20px;text-align:center">'
+    + '<button onclick="gfAdvanceTo(\'spotit\')" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.3px">Got it → Spot It</button>'
+    + '</div>';
+
+  return '<div style="margin-bottom:14px">'
+    + '<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:' + lb + ';color:' + lc + ';margin-bottom:14px">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lv]||lv) + '</span>'
+    + structureHtml + expHtml + tipsHtml
+    + '</div>'
+    + exHtml
+    + advBtn;
+}
+
+async function generateGFPatterns() {
+  var el = document.getElementById('gf-examples-content');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</span><span>Generating grammar patterns…</span></div>';
+
+  var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
+  if (!topic || topic === 'Loading…') {
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Please load today\'s topic first.</div>';
+    return;
+  }
+
+  // Cache the topic-based 3-pattern lesson too. The topic itself is
+  // shared across all users on a given day, so the first user's
+  // generation seeds the cache and everyone else hits DB. Stale-OK:
+  // if the topic gets re-generated for any reason, the cache key
+  // changes naturally because it's keyed off the topic string.
+  var cacheKey = 'gf-topic::' + topic.trim();
+  try {
+    var dbHit = await _aiCacheGet(cacheKey);
+    if (dbHit && dbHit.patterns && dbHit.patterns.length) {
+      loadGFPatterns(dbHit.patterns);
+      return;
+    }
+  } catch(_) {}
+
+  // Growth Lab integration: include user's weak grammar points
+  var weakHint = '';
+  try {
+    var sb = getSupa();
+    if (sb && supaUser) {
+      var wg = await sb.from('user_grammar_stats').select('grammar_point,wrong_count').eq('user_id',supaUser.id).gt('wrong_count',2).order('wrong_count',{ascending:false}).limit(3);
+      if (wg.data && wg.data.length) {
+        weakHint = '\n\nIMPORTANT: The student struggles with these grammar points: ' + wg.data.map(function(g){return g.grammar_point;}).join(', ') + '. Include at least ONE of these in your 3 patterns if relevant to the topic.';
+      }
+    }
+  } catch(e){}
+
+  try {
+    var res = await callClaude({
+      feature: 'grammar-focus',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2500,
+      messages: [{ role: 'user', content:
+        'You are a Korean grammar teacher creating a structured grammar lesson.\n'
+        + 'Topic: "' + topic + '"' + weakHint + '\n\n'
+        + 'Create 3 key grammar patterns to study, all connected to today\'s topic. For each pattern provide:\n'
+        + '- name: pattern name with Korean and romanization (e.g. "~아요/어요 (a-yo/eo-yo)")\n'
+        + '- level: Beginner | Intermediate | Advanced\n'
+        + '- exp: clear English explanation of meaning and usage (2-3 sentences) — explain WHEN and WHY to use it\n'
+        + '- structure: the grammatical formula (e.g. "Verb stem + 아요/어요")\n'
+        + '- when_to_use: one concrete English tip with a specific situation\n'
+        + '- watch_out: the #1 most common learner mistake with this pattern\n'
+        + '- examples: exactly 4 natural Korean sentences [{ko, en}] using today\'s topic — vary the subject and context\n'
+        + '- incorrect_examples: exactly 2 [{ko, en, error_type, correction}] — realistic subtle mistakes a learner would make. error_type: CONJUGATION|PARTICLE|TENSE|FORMALITY|WORD_ORDER. correction: the fixed Korean sentence.\n\n'
+        + 'IMPORTANT: incorrect_examples must be subtle and realistic — not obviously wrong. correction fixes ONLY the grammar error.\n\n'
+        + 'Return ONLY valid JSON:\n'
+        + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}],"incorrect_examples":[{"ko":"...","en":"...","error_type":"...","correction":"..."}]}]}'
+      }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
+    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(oi, ei+1));
+    if (parsed.patterns && parsed.patterns.length) {
+      loadGFPatterns(parsed.patterns);
+      // Persist so the next user on the same daily topic hits DB.
+      _aiCacheSet(cacheKey, { patterns: parsed.patterns });
+    } else {
+      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
+    }
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
+  }
+}
+
+// ─── Generic AI cache helpers ───────────────────────────────
+// Reuses the existing grammar_examples_cache table as a key/value store.
+// Prefix the pattern_name to keep different feature kinds apart, e.g.:
+//   'drill::<grammar>'  → weak-grammar-drill questions
+//   'judge::<grammar>'  → grammar focus "Judge It" incorrect examples
+//   'beg::<topic>'      → beginner-sentences for a daily topic
+// DB hit = free. DB miss = AI generate + fire-and-forget upsert.
+async function _aiCacheGet(key) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !key) return null;
+  try {
+    var r = await sb.from('grammar_examples_cache')
+      .select('patterns_json')
+      .eq('pattern_name', key)
+      .maybeSingle();
+    if (r && r.data && r.data.patterns_json) return JSON.parse(r.data.patterns_json);
+  } catch(e) { console.warn('[aiCache] get error', key, e && e.message); }
+  return null;
+}
+function _aiCacheSet(key, payload) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !key) return;
+  // Don't await — UI shouldn't block on cache writes, and a save
+  // failure (RLS misconfig, etc.) shouldn't break the user flow.
+  sb.from('grammar_examples_cache').upsert({
+    pattern_name:  key,
+    patterns_json: JSON.stringify(payload),
+    updated_at:    new Date().toISOString()
+  }, { onConflict: 'pattern_name' }).then(function(r) {
+    if (r && r.error) console.warn('[aiCache] set failed', key, r.error.message);
+  });
+}
+
+// ─── Weak Grammar Drill (separate from Grammar Focus) ───────
+var _wgDrillState = { questions:[], idx:0, score:0, grammar:'' };
+
+function openWeakGrammarDrill(grammarName) {
+  _wgDrillState = { questions:[], idx:0, score:0, grammar:grammarName };
+  var modal = document.getElementById('wg-drill-modal');
+  var title = document.getElementById('wg-drill-title');
+  var body  = document.getElementById('wg-drill-body');
+  if (!modal || !body) return;
+  if (title) title.textContent = grammarName;
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  body.innerHTML = '<div style="text-align:center;padding:40px"><div style="display:inline-flex;width:32px;height:32px;margin-bottom:10px;color:#a78bfa;animation:spin 1.4s linear infinite">'+BM_ICON_SPARKLE+'</div><div style="font-size:14px;color:rgba(255,255,255,.55)">Generating 5 drill questions for <b>' + grammarName + '</b>…</div></div>';
+  generateWGDrillQuestions(grammarName);
+}
+
+function closeWGDrill() {
+  var modal = document.getElementById('wg-drill-modal');
+  if (modal) modal.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function generateWGDrillQuestions(grammarName, opts) {
+  var body = document.getElementById('wg-drill-body');
+  var force = !!(opts && opts.force);
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  // Cache reuses the existing grammar_examples_cache table; the
+  // 'drill::' prefix keeps it in its own namespace so it doesn't
+  // collide with the Grammar Focus patterns saved under the bare
+  // pattern_name. DB hit = free. DB miss = AI generate + save.
+  // v2 = examples-study phase + no A/B/C prefix in choices.
+  // Old v1 cache entries lacked `examples` and embedded "A) ..."
+  // prefixes in choice text; reusing them would skip the study
+  // phase and re-show the shuffled-prefix bug.
+  var cacheKey = 'drill::v2::' + grammarName;
+
+  // 1) Try cache first (unless caller asked for a fresh set)
+  if (!force && sb) {
+    try {
+      var cached = await sb.from('grammar_examples_cache')
+        .select('patterns_json')
+        .eq('pattern_name', cacheKey)
+        .maybeSingle();
+      if (cached && cached.data && cached.data.patterns_json) {
+        var pkt = JSON.parse(cached.data.patterns_json);
+        var validQ0 = (pkt && pkt.questions || []).filter(function(q) {
+          return q && typeof q.q === 'string' && q.q.trim()
+            && Array.isArray(q.choices) && q.choices.length >= 2
+            && typeof q.correct === 'number';
+        });
+        if (validQ0.length) {
+          _wgDrillState.questions = validQ0;
+          _wgDrillState.examples = Array.isArray(pkt && pkt.examples) ? pkt.examples : [];
+          _wgDrillState.explanation = (pkt && pkt.explanation) || '';
+          _wgDrillState.idx = 0;
+          _wgDrillState.score = 0;
+          _wgDrillState.fromCache = true;
+          renderWGDrillIntro();
+          return;
+        }
+      }
+    } catch(e) { console.warn('[WGDrill] cache read miss/error:', e && e.message); }
+  }
+
+  // 2) Cache miss (or forced) → call Claude
+  try {
+    var res = await callClaude({
+      feature: 'weak-grammar-drill',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1800,
+      messages: [{ role: 'user', content:
+        'Korean grammar drill generator.\n'
+        + 'Grammar point: "' + grammarName + '"\n\n'
+        + 'Return TWO things in one JSON object:\n'
+        + '  1. A short STUDY phase: 3 example sentences with English translation + a tiny analytical note.\n'
+        + '  2. A PRACTICE phase: 5 multiple-choice questions testing this grammar point.\n\n'
+        + 'STUDY phase requirements:\n'
+        + '  - 3 short Korean sentences that clearly demonstrate this pattern in real-world use\n'
+        + '  - Vary the register / context across the three (formal, conversational, narrative)\n'
+        + '  - For each: include the Korean (ko), natural English translation (en), and ONE-line note explaining WHY this is an example of the pattern (e.g. "verb stem 가- + 자마자 → 가자마자")\n\n'
+        + 'PRACTICE phase requirements:\n'
+        + '  - Exactly 5 multiple-choice questions, mixed types: fill-in-blank (use ___ for the blank), error correction, sentence completion, choose-correct-usage\n'
+        + '  - Each question has 1 correct + 2 wrong choices.\n'
+        + '  - **CRITICAL**: each `choices` entry must contain ONLY the answer text — NEVER prefix with "A)", "B)", "C)" or any letter/number. The UI renders the letters itself and shuffles the order, so prefixed text creates a mismatch where the visible label disagrees with the answer order.\n'
+        + '  - `correct` is the zero-based index into `choices`.\n'
+        + '  - `hint` is a one-line English reason why the correct answer is correct.\n\n'
+        + 'Return ONLY valid JSON, no markdown, no preamble:\n'
+        + '{"explanation":"Brief English explanation of this grammar (2 sentences max)",'
+        + '"examples":[{"ko":"...","en":"...","note":"..."}],'
+        + '"questions":[{"q":"question text","choices":["raw answer text","raw answer text","raw answer text"],"correct":0,"hint":"short English hint why correct"}]}'
+      }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || '';
+    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    if (oi < 0 || ei < 0) {
+      console.warn('[WGDrill] No JSON object in Claude response:', raw.slice(0, 200));
+      throw new Error('AI response was not valid JSON.');
+    }
+    var parsed = JSON.parse(raw.slice(oi, ei + 1));
+    // Strip any stray "A) " / "B." / "C)" / "1." prefix from choice
+    // text — older prompts told the model to prefix and some Haiku
+    // outputs still do it. The shuffled-letter mismatch the user saw
+    // (visible "C" button hiding answer "B") originated here.
+    var stripPrefix = function(s) {
+      if (typeof s !== 'string') return s;
+      return s.replace(/^\s*[A-Ca-c1-3][\)\.\:\s\-]+\s*/, '').trim();
+    };
+    var validQuestions = (parsed.questions || []).map(function(q) {
+      if (q && Array.isArray(q.choices)) {
+        q.choices = q.choices.map(stripPrefix);
+      }
+      return q;
+    }).filter(function(q) {
+      return q && typeof q.q === 'string' && q.q.trim()
+        && Array.isArray(q.choices) && q.choices.length >= 2
+        && typeof q.correct === 'number';
+    });
+    var validExamples = Array.isArray(parsed.examples)
+      ? parsed.examples.filter(function(e){ return e && typeof e.ko === 'string' && e.ko.trim(); })
+      : [];
+    if (validQuestions.length) {
+      _wgDrillState.questions = validQuestions;
+      _wgDrillState.examples = validExamples;
+      _wgDrillState.explanation = parsed.explanation || '';
+      _wgDrillState.idx = 0;
+      _wgDrillState.score = 0;
+      _wgDrillState.fromCache = false;
+      // Fire-and-forget upsert. Don't await — UI shouldn't block on the
+      // cache write, and a save failure (e.g. RLS misconfig) shouldn't
+      // break the user's drill session.
+      if (sb) {
+        sb.from('grammar_examples_cache').upsert({
+          pattern_name: cacheKey,
+          patterns_json: JSON.stringify({ explanation: parsed.explanation || '', examples: validExamples, questions: validQuestions }),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'pattern_name' }).then(function(r) {
+          if (r && r.error) console.warn('[WGDrill] cache save failed:', r.error.message);
+        });
+      }
+      renderWGDrillIntro();
+    } else {
+      console.warn('[WGDrill] Got payload but no valid questions:', parsed);
+      var safeNameA = String(grammarName).replace(/'/g, "\\'");
+      body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">No drill questions generated. The AI response was empty or malformed.</div><button onclick="generateWGDrillQuestions(\'' + safeNameA + '\', {force:true})" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
+    }
+  } catch(e) {
+    console.error('[WGDrill] generateWGDrillQuestions error:', e);
+    var safeNameB = String(grammarName).replace(/'/g, "\\'");
+    body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">Error: ' + (e.message||'unknown') + '</div><button onclick="generateWGDrillQuestions(\'' + safeNameB + '\', {force:true})" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
+  }
+}
+
+function renderWGDrillIntro() {
+  var body = document.getElementById('wg-drill-body');
+  if (!body) return;
+  var st = _wgDrillState;
+  var esc = function(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+
+  // Owner-feedback: "예문들 뜻도 좀 알려주고 천천히 배우게 해 — 해당 문법
+  // 공부하면서 예문도 같이 공부를 해야지 이해가지". So the intro is now
+  // a study phase: explanation card + 3 example sentences with English
+  // + a note explaining why each is an example. Drill starts only after
+  // the user taps "I'm ready — Start Drill".
+  var examples = Array.isArray(st.examples) ? st.examples.filter(function(e){ return e && e.ko; }) : [];
+  var examplesHtml = '';
+  if (examples.length) {
+    examplesHtml = '<div style="margin-bottom:18px">'
+      + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#86efac;margin-bottom:8px">📖 Study these first</div>'
+      + examples.map(function(ex) {
+          var note = ex.note ? '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px;line-height:1.5"><span style="color:#86efac;font-weight:800">▸</span> ' + esc(ex.note) + '</div>' : '';
+          return '<div style="padding:12px 14px;margin-bottom:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px">'
+            + '<div style="font-size:15px;font-weight:700;color:#fff;line-height:1.5;font-family:\'Noto Sans KR\',sans-serif">' + esc(ex.ko) + '</div>'
+            + (ex.en ? '<div style="font-size:13px;color:rgba(255,255,255,.65);margin-top:4px;line-height:1.5">' + esc(ex.en) + '</div>' : '')
+            + note
+            + '</div>';
+        }).join('')
+      + '</div>';
+  }
+
+  body.innerHTML =
+    '<div style="background:rgba(251,191,36,.1);border:1px solid rgba(253,230,138,.4);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+    + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#fde68a;margin-bottom:4px">About this grammar</div>'
+    + '<div style="font-size:14px;color:#fef3c7;line-height:1.6">' + esc(st.explanation || st.grammar) + '</div>'
+    + '</div>'
+    + examplesHtml
+    + '<div style="text-align:center">'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:12px">' + st.questions.length + ' questions follow — fill-in / correction / completion</div>'
+    + '<button onclick="renderWGDrillQuestion()" style="padding:12px 28px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">I\'m ready — Start Drill →</button>'
+    + '</div>';
+}
+
+function renderWGDrillQuestion() {
+  var body = document.getElementById('wg-drill-body');
+  if (!body) return;
+  var st = _wgDrillState;
+  if (st.idx >= st.questions.length) { renderWGDrillResult(); return; }
+  var q = st.questions[st.idx];
+  // Guard against malformed question objects so we never silently render
+  // an empty modal body. Skip stub questions and try the next one.
+  if (!q || !q.q || !Array.isArray(q.choices) || q.choices.length < 2) {
+    console.warn('[WGDrill] Skipping malformed question at index', st.idx, q);
+    st.idx++;
+    if (st.idx < st.questions.length) { renderWGDrillQuestion(); return; }
+    var safeGrammar = String(st.grammar || '').replace(/'/g, "\\'");
+    body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:#dc2626;margin-bottom:14px">All drill questions returned empty. Please try regenerating.</div><button onclick="generateWGDrillQuestions(\'' + safeGrammar + '\', {force:true})" style="padding:10px 24px;border-radius:10px;border:none;background:#b45309;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>';
+    return;
+  }
+  var shuffled = (q.choices || []).map(function(c, i){ return { text:c, origIdx:i }; }).sort(function(){ return Math.random()-.5; });
+  body.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+    + '<span style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45)">QUESTION ' + (st.idx+1) + ' / ' + st.questions.length + '</span>'
+    + '<span style="font-size:11px;font-weight:700;color:#b45309">' + st.score + ' correct</span>'
+    + '</div>'
+    + '<div style="font-size:16px;font-weight:700;color:#fff;line-height:1.6;margin-bottom:16px;font-family:\'Noto Sans KR\',sans-serif">' + (q.q||'') + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px" id="wg-choices">'
+    + shuffled.map(function(c) {
+      return '<button class="wg-choice-btn" onclick="pickWGDrillAnswer(this,' + c.origIdx + ',' + (q.correct||0) + ')" style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:14px;font-weight:600;cursor:pointer;text-align:left;font-family:\'Noto Sans KR\',sans-serif;transition:.15s">' + c.text + '</button>';
+    }).join('')
+    + '</div>'
+    + '<div id="wg-feedback" style="margin-top:12px"></div>';
+}
+
+function pickWGDrillAnswer(btn, chosenIdx, correctIdx) {
+  var buttons = document.querySelectorAll('.wg-choice-btn');
+  buttons.forEach(function(b){ b.disabled = true; b.style.cursor = 'default'; });
+  var isCorrect = chosenIdx === correctIdx;
+  if (isCorrect) {
+    _wgDrillState.score++;
+    btn.style.borderColor = '#86efac'; btn.style.background = '#f0fdf4'; btn.style.color = '#15803d';
+  } else {
+    btn.style.borderColor = '#fca5a5'; btn.style.background = '#fff1f2'; btn.style.color = '#b91c1c';
+    buttons.forEach(function(b) {
+      var bIdx = parseInt(b.getAttribute('onclick').match(/pickWGDrillAnswer\(this,(\d+)/)[1]);
+      if (bIdx === correctIdx) { b.style.borderColor = '#86efac'; b.style.background = '#f0fdf4'; b.style.color = '#15803d'; }
+    });
+  }
+  var fb = document.getElementById('wg-feedback');
+  var q = _wgDrillState.questions[_wgDrillState.idx];
+  if (fb) fb.innerHTML =
+    '<div style="padding:10px 14px;border-radius:10px;background:' + (isCorrect ? '#f0fdf4;border:1px solid #bbf7d0' : '#fff1f2;border:1px solid #fecaca') + ';font-size:13px;color:' + (isCorrect ? '#166534' : '#991b1b') + '">'
+    + (isCorrect ? '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span></span>' : '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Incorrect</span></span>') + (q.hint ? ' — ' + q.hint : '')
+    + '</div>';
+  _wgDrillState.idx++;
+  setTimeout(renderWGDrillQuestion, 1500);
+}
+
+function renderWGDrillResult() {
+  var body = document.getElementById('wg-drill-body');
+  if (!body) return;
+  var st = _wgDrillState;
+  var pct = st.questions.length > 0 ? Math.round(st.score / st.questions.length * 100) : 0;
+  var icon = pct >= 80 ? BM_ICON_PARTY : pct >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME;
+  var iconColor = pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171';
+  var msg = pct >= 80 ? 'Great job! This grammar is getting solid.' : pct >= 60 ? 'Good effort! A bit more practice will help.' : 'Keep practicing — you\'ll get there!';
+  var safeGrammarName = String(st.grammar || '').replace(/'/g, "\\'");
+  body.innerHTML =
+    '<div style="text-align:center;padding:20px">'
+    + '<div style="display:inline-flex;width:48px;height:48px;margin-bottom:8px;color:' + iconColor + ';filter:drop-shadow(0 0 12px ' + iconColor + 'aa)">' + icon + '</div>'
+    + '<div style="font-size:32px;font-weight:900;color:#fff;margin-bottom:4px">' + pct + '%</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-bottom:4px">' + st.score + ' / ' + st.questions.length + ' correct</div>'
+    + '<div style="font-size:13px;color:#78350f;background:#fffbeb;border-radius:8px;padding:8px 12px;display:inline-block;margin-bottom:16px">' + msg + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
+    + '<button onclick="_wgDrillState.idx=0;_wgDrillState.score=0;renderWGDrillIntro()" style="padding:10px 18px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try Again</button>'
+    + (st.grammar
+        ? '<button onclick="generateWGDrillQuestions(\'' + safeGrammarName + '\', {force:true})" title="Generate fresh AI questions instead of cached ones" style="padding:10px 18px;border:1px solid rgba(253,230,138,.35);border-radius:10px;background:rgba(180,83,9,.18);color:#fde68a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+BM_ICON_SPARKLE+'</span><span>새 문제 생성</span></button>'
+        : '')
+    + '<button onclick="closeWGDrill()" style="padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>Done</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
+    + '</div></div>';
+  // Track result
+  if (typeof dmTrackQuiz === 'function') dmTrackQuiz();
+}
+
+// ─── Generate grammar patterns for a specific focus point ───
+// Uses grammar_examples_cache table. DB hit = free. DB miss = AI generate + save.
+/*
+  Table: grammar_examples_cache
+  Columns:
+    id            uuid PK default gen_random_uuid()
+    pattern_name  text UNIQUE
+    patterns_json text (JSON string of patterns array)
+    created_at    timestamptz default now()
+    updated_at    timestamptz default now()
+*/
+async function generateGFPatternsForFocus(focusName) {
+  var el = document.getElementById('gf-examples-content');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Loading grammar patterns…</div>';
+
+  var sb = getSupa();
+
+  // 1) Try grammar_curriculum (new: per-pattern examples_json)
+  if (sb) {
+    try {
+      var r = await sb.from('grammar_curriculum')
+        .select('id,pattern,level,description,examples_json')
+        .eq('pattern', focusName)
+        .maybeSingle();
+      if (r.data && r.data.examples_json) {
+        var examples = JSON.parse(r.data.examples_json || '[]');
+        if (examples.length >= 5) {
+          // Build main pattern object
+          var correctEx = examples.filter(function(e) { return e.type !== 'incorrect'; });
+          var incorrectEx = examples.filter(function(e) { return e.type === 'incorrect'; });
+          var mainPattern = {
+            name: r.data.pattern,
+            level: r.data.level,
+            exp: r.data.description || '',
+            structure: '',
+            when_to_use: '',
+            watch_out: '',
+            examples: correctEx.map(function(e) { return { ko: e.ko, en: e.en || '' }; }),
+            incorrect_examples: incorrectEx.map(function(e) { return { ko: e.ko, en: e.en || '', correction: e.correction || '', error_type: e.error_type || 'GRAMMAR' }; })
+          };
+
+          // Fetch 2 related patterns (same level)
+          var relatedRes = await sb.from('grammar_curriculum')
+            .select('id,pattern,level,description,examples_json')
+            .eq('level', r.data.level)
+            .neq('id', r.data.id)
+            .limit(5);
+          var allPatterns = [mainPattern];
+          if (relatedRes.data && relatedRes.data.length) {
+            // Pick 2 random ones with examples
+            var withEx = relatedRes.data.filter(function(row) {
+              try { return (JSON.parse(row.examples_json || '[]') || []).length >= 3; } catch(e) { return false; }
+            });
+            withEx.sort(function() { return Math.random() - 0.5; });
+            withEx.slice(0, 2).forEach(function(row) {
+              var exs = JSON.parse(row.examples_json || '[]');
+              var ce = exs.filter(function(e) { return e.type !== 'incorrect'; });
+              var ie = exs.filter(function(e) { return e.type === 'incorrect'; });
+              allPatterns.push({
+                name: row.pattern,
+                level: row.level,
+                exp: row.description || '',
+                structure: '',
+                when_to_use: '',
+                watch_out: '',
+                examples: ce.map(function(e) { return { ko: e.ko, en: e.en || '' }; }),
+                incorrect_examples: ie.map(function(e) { return { ko: e.ko, en: e.en || '', correction: e.correction || '', error_type: e.error_type || 'GRAMMAR' }; })
+              });
+            });
+          }
+
+          loadGFPatterns(allPatterns);
+          return;
+        }
+      }
+    } catch(e) { console.warn('[GF curriculum] miss:', e.message); }
+  }
+
+  // 2) Fallback: old grammar_examples_cache
+  if (sb) {
+    try {
+      var cached = await sb.from('grammar_examples_cache')
+        .select('patterns_json')
+        .eq('pattern_name', focusName)
+        .maybeSingle();
+      if (cached.data && cached.data.patterns_json) {
+        var patterns = JSON.parse(cached.data.patterns_json);
+        if (patterns && patterns.length) {
+          loadGFPatterns(patterns);
+          return;
+        }
+      }
+    } catch(e) { console.warn('[GF cache] DB miss or error:', e.message); }
+  }
+
+  // 3) DB miss → AI generate
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">✨ Generating grammar patterns for <b>' + focusName + '</b>…</div>';
+
+  try {
+    var res = await callClaude({
+      feature: 'grammar-focus',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2500,
+      messages: [{ role: 'user', content:
+        'You are a Korean grammar teacher creating a structured grammar lesson.\n'
+        + 'The student wants to practice this specific grammar point: "' + focusName + '"\n\n'
+        + 'Create 3 grammar patterns to study. The FIRST pattern MUST be "' + focusName + '". The other 2 should be closely related or commonly confused patterns.\n\n'
+        + 'For each pattern provide:\n'
+        + '- name: pattern name with Korean and romanization (e.g. "~아요/어요 (a-yo/eo-yo)")\n'
+        + '- level: Beginner | Intermediate | Advanced\n'
+        + '- exp: clear English explanation of meaning and usage (2-3 sentences)\n'
+        + '- structure: the grammatical formula (e.g. "Verb stem + 아요/어요")\n'
+        + '- when_to_use: one short English bullet of when to use this\n'
+        + '- watch_out: one short English tip about common mistakes\n'
+        + '- examples: exactly 3 [{ko, en}] correct sentences\n'
+        + '- incorrect_examples: exactly 2 [{ko, en, error_type, correction}] — realistic sentences with a grammar mistake. error_type: CONJUGATION|PARTICLE|TENSE|FORMALITY|WORD_ORDER. correction: the fixed Korean sentence.\n\n'
+        + 'Return ONLY valid JSON:\n'
+        + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}],"incorrect_examples":[{"ko":"...","en":"...","error_type":"...","correction":"..."}]}]}'
+      }]
+    });
+    var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
+    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    var parsed = JSON.parse(raw.slice(oi, ei+1));
+    if (parsed.patterns && parsed.patterns.length) {
+      loadGFPatterns(parsed.patterns);
+      // 3) Save to DB cache
+      if (sb) {
+        try {
+          await sb.from('grammar_examples_cache').upsert({
+            pattern_name: focusName,
+            patterns_json: JSON.stringify(parsed.patterns),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'pattern_name' });
+        } catch(e) { console.warn('[GF cache] Save failed:', e.message); }
+      }
+    } else {
+      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
+    }
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Failed to generate. Please sign in and try again.</div>';
+  }
+}
+
+// ─── Spot It — pattern recognition ──────────────────────────
+var _gfSpotState = { idx:0, total:0, correct:0 };
+
+function loadGFSpotIt(p) {
+  var el = document.getElementById('gf-spotit-content');
+  if (!el || !p) return;
+  var examples = (p.examples || []).filter(function(e){ return e.ko; });
+  if (!examples.length) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.45)">No examples available.</div>';
+    return;
+  }
+  _gfSpotState = { idx:0, total:examples.length, correct:0, p:p, examples:examples };
+  _renderSpotItSentence();
+}
+
+function _renderSpotItSentence() {
+  var el = document.getElementById('gf-spotit-content');
+  if (!el) return;
+  var st = _gfSpotState;
+  var ex = st.examples[st.idx];
+  if (!ex) return;
+
+  // Extract grammar tokens from pattern name (e.g. "~았/었어요" → ["았어요","었어요"], "은/는 vs 이/가" → ["은","는","이","가"])
+  var koTokens = [];
+  (st.p.name || '').split(/[\/\s()]/).forEach(function(part) {
+    var k = part.replace(/~/g,'').replace(/[^가-힣]/g,'');
+    if (k.length >= 1) koTokens.push(k);
+  });
+  // Sort by length DESC so longer tokens match first (e.g. "았어요" before "요")
+  koTokens.sort(function(a,b){ return b.length - a.length; });
+  var targetWord = '';
+  var words = ex.ko.replace(/[.,!?。]/g,'').split(' ').filter(Boolean);
+  // Priority 1: word that ENDS WITH a grammar token (most reliable)
+  words.forEach(function(w) {
+    if (targetWord) return;
+    koTokens.forEach(function(tok) {
+      if (!targetWord && w.endsWith(tok)) targetWord = w;
+    });
+  });
+  // Priority 2: word that CONTAINS a grammar token
+  if (!targetWord) {
+    words.forEach(function(w) {
+      if (targetWord) return;
+      koTokens.forEach(function(tok) {
+        if (!targetWord && w.indexOf(tok) !== -1) targetWord = w;
+      });
+    });
+  }
+  if (!targetWord) targetWord = words[words.length - 1]; // fallback: last word
+
+  var progressHtml = '<div style="display:flex;gap:6px;margin-bottom:16px">'
+    + st.examples.map(function(_, i) {
+        var done = i < st.idx;
+        var active = i === st.idx;
+        return '<div style="flex:1;height:4px;border-radius:2px;background:'
+          + (done ? 'rgba(34,197,94,.7)' : active ? '#a78bfa' : 'rgba(255,255,255,.15)') + '"></div>';
+      }).join('')
+    + '</div>';
+
+  var wordChips = words.map(function(w, wi) {
+    return '<button onclick="checkGFSpotIt(' + wi + ',\'' + w.replace(/'/g,"\\'") + '\',\'' + targetWord.replace(/'/g,"\\'") + '\')" '
+      + 'id="gfsi-w-' + wi + '" '
+      + 'style="padding:8px 14px;margin:4px;border-radius:8px;border:1.5px solid rgba(167,139,250,.25);background:rgba(255,255,255,.06);font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;font-family:inherit">'
+      + w + '</button>';
+  }).join('');
+
+  el.innerHTML = progressHtml
+    + '<div style="margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.65);line-height:1.6">'
+    + '문법 패턴 <strong style="color:#a78bfa">' + (st.p.name||'') + '</strong> 이 사용된 단어를 찾아 탭하세요.'
+    + '</div>'
+    + '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:14px;padding:18px;margin-bottom:16px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">예문 ' + (st.idx+1) + ' / ' + st.total + '</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:14px">' + (ex.en||'') + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:0">' + wordChips + '</div>'
+    + '</div>'
+    + '<div id="gfsi-feedback" style="min-height:24px;font-size:13px;font-weight:700;text-align:center"></div>';
+}
+
+function checkGFSpotIt(wordIdx, word, target) {
+  var fb = document.getElementById('gfsi-feedback');
+  var btn = document.getElementById('gfsi-w-' + wordIdx);
+  var cleanWord = word.replace(/[.,!?。]/g,'');
+  var cleanTarget = target.replace(/[.,!?。]/g,'');
+  var correct = cleanWord === cleanTarget;
+  if (btn) {
+    btn.style.background    = correct ? '#f0fdf4' : '#fff5f5';
+    btn.style.borderColor   = correct ? '#22c55e' : '#f87171';
+    btn.style.color         = correct ? '#15803d' : '#dc2626';
+    btn.style.pointerEvents = 'none';
+  }
+  if (!correct) {
+    if (fb) fb.innerHTML = '<span style="color:#dc2626">Not quite. Try again!</span>';
+    // Un-disable other buttons after shake
+    setTimeout(function() {
+      document.querySelectorAll('[id^="gfsi-w-"]').forEach(function(b) {
+        b.style.pointerEvents = '';
+        b.style.background = '#fff';
+        b.style.borderColor = 'rgba(167,139,250,.25)';
+        b.style.color = '#0f172a';
+      });
+      if (fb) fb.innerHTML = '';
+    }, 900);
+    return;
+  }
+  if (fb) fb.innerHTML = '<span style="color:#16a34a">✓ Correct!</span>';
+  _gfSpotState.correct++;
+  setTimeout(function() {
+    _gfSpotState.idx++;
+    if (_gfSpotState.idx < _gfSpotState.total) {
+      _renderSpotItSentence();
+    } else {
+      // All done — show "Find the Error" bonus then advance button
+      _loadSpotItBonus();
+    }
+  }, 700);
+}
+
+// ─── Find the Error (bonus after Spot It) ───────────────────
+function _loadSpotItBonus() {
+  var el = document.getElementById('gf-spotit-content');
+  var p = _gfPattern;
+  if (!el || !p) { _showSpotItComplete(); return; }
+
+  var incorrects = (p.incorrect_examples || []).filter(function(e){ return e.ko && e.correction; });
+  var corrects = (p.examples || []).filter(function(e){ return e.ko; });
+  if (!incorrects.length || corrects.length < 1) { _showSpotItComplete(); return; }
+
+  // Pick 1 incorrect + 2 correct
+  var wrong = incorrects[Math.floor(Math.random() * incorrects.length)];
+  var rights = corrects.slice(0, 2);
+
+  var options = rights.map(function(e){ return { ko: e.ko, correct: true, correction: null, error_type: null }; });
+  options.push({ ko: wrong.ko, correct: false, correction: wrong.correction, error_type: wrong.error_type || '' });
+  // Shuffle
+  for (var si = options.length - 1; si > 0; si--) {
+    var sj = Math.floor(Math.random() * (si + 1));
+    var tmp = options[si]; options[si] = options[sj]; options[sj] = tmp;
+  }
+
+  // Store for feedback
+  window._gfErrorWrong = wrong;
+
+  el.innerHTML = '<div style="padding:20px">'
+    + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#d97706;margin-bottom:8px">Bonus: Find the Error</div>'
+    + '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:4px">Which sentence has a grammar mistake?</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:16px">Tap the sentence that uses <strong>' + (p.name||'') + '</strong> incorrectly.</div>'
+    + '<div id="gf-error-options">' + options.map(function(o, oi) {
+      return '<button onclick="_checkErrorOption(this,' + (o.correct ? 'false' : 'true') + ',' + oi + ')" '
+        + 'data-correction="' + (o.correction||'').replace(/"/g,'&quot;') + '" '
+        + 'data-error-type="' + (o.error_type||'') + '" '
+        + 'style="display:block;width:100%;text-align:left;padding:14px 16px;margin-bottom:8px;'
+        + 'background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:10px;font-size:15px;'
+        + 'font-family:Noto Serif KR,serif;color:#fff;cursor:pointer;transition:all .15s;line-height:1.7"'
+        + ' onmouseover="this.style.borderColor=\'rgba(167,139,250,.5)\'" onmouseout="this.style.borderColor=\'rgba(167,139,250,.25)\'">'
+        + o.ko + '</button>';
+    }).join('') + '</div>'
+    + '<div id="gf-error-fb" style="margin-top:12px;font-size:13px;font-weight:700"></div>'
+    + '</div>';
+}
+
+function _checkErrorOption(btn, isWrong, idx) {
+  var fb = document.getElementById('gf-error-fb');
+  var w = window._gfErrorWrong || {};
+  document.querySelectorAll('#gf-error-options button').forEach(function(b){ b.disabled = true; b.style.opacity = '.6'; });
+  btn.style.opacity = '1';
+  if (isWrong) {
+    btn.style.borderColor = '#22c55e';
+    btn.style.background = '#f0fdf4';
+    var detail = '<div style="margin-top:10px;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(167,139,250,.2);border-radius:8px;font-size:12px;line-height:1.7">'
+      + (w.error_type ? '<div style="font-weight:800;color:#d97706;margin-bottom:4px">Error type: ' + w.error_type + '</div>' : '')
+      + '<div><span style="color:#dc2626;text-decoration:line-through">' + (w.ko||'') + '</span></div>'
+      + '<div style="color:#16a34a;font-weight:700">→ ' + (w.correction||'') + '</div>'
+      + '</div>';
+    if (fb) fb.innerHTML = '<span style="color:#16a34a">✓ Correct! You found the grammar error.</span>' + detail
+      + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
+  } else {
+    btn.style.borderColor = '#ef4444';
+    btn.style.background = '#fef2f2';
+    if (fb) fb.innerHTML = '<span style="color:#dc2626">✗ That sentence is correct. Look more carefully at the grammar endings!</span>'
+      + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
+  }
+}
+
+function _showSpotItComplete() {
+  var el = document.getElementById('gf-spotit-content');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:30px 20px">'
+    + '<div style="display:inline-flex;width:38px;height:38px;margin-bottom:12px;color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></div>'
+    + '<div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:6px">Pattern recognition complete!</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:22px">' + (_gfSpotState ? _gfSpotState.correct + ' / ' + _gfSpotState.total : '') + ' correct</div>'
+    + '<button onclick="gfAdvanceTo(\'fill\')" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Fill in the Blank →</button>'
+    + '</div>';
+}
+
+// ─── Practice (Multiple Choice — was Fill-in-Blank) ──────────
+function loadGFFill(p) {
+  var el = document.getElementById('gf-fill-content');
+  if (!el || !p) return;
+  var examples = (p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }]).filter(function(e){ return e.ko; });
+  var total = examples.length;
+
+  // Extract Korean grammar tokens from pattern name for blanking
+  var koTokens = (p.name || '').match(/[가-힣~\/]+/g) || [];
+
+  // Build all blanked words first (for distractor pool)
+  var allBlanks = [];
+  examples.forEach(function(ex) {
+    var words = ex.ko.split(' ');
+    var blank = '';
+    for (var ti = 0; ti < koTokens.length && !blank; ti++) {
+      var tok = koTokens[ti].replace(/~/g, '');
+      if (!tok) continue;
+      for (var wi = 0; wi < words.length; wi++) {
+        if (words[wi].endsWith(tok) || words[wi].indexOf(tok) !== -1) {
+          blank = words[wi]; break;
+        }
+      }
+    }
+    if (!blank) blank = words[words.length - 1];
+    allBlanks.push(blank);
+  });
+
+  // Common Korean distractors by type
+  var commonDistractors = ['입니다','이에요','해요','합니다','있어요','없어요','가요','와요','했어요','하고','에서','부터','까지','지만','그래서','그런데','때문에','같이','처럼','보다'];
+
+  var qs = examples.map(function(ex, i) {
+    var koText = ex.ko;
+    var blank = allBlanks[i];
+    var blanked = koText.replace(blank, '<span style="display:inline-block;min-width:70px;border-bottom:2.5px solid #a78bfa;color:rgba(255,255,255,.45);text-align:center">______</span>');
+
+    // Build 4 choices: correct + 3 distractors
+    var distractors = [];
+    // First try other blanks from the same pattern
+    allBlanks.forEach(function(b, j) { if (j !== i && distractors.indexOf(b) < 0 && b !== blank) distractors.push(b); });
+    // Add common distractors
+    commonDistractors.forEach(function(d) { if (distractors.indexOf(d) < 0 && d !== blank) distractors.push(d); });
+    // Shuffle and pick 3
+    distractors.sort(function() { return Math.random() - 0.5; });
+    distractors = distractors.slice(0, 3);
+    // Build choices and shuffle
+    var choices = [blank].concat(distractors);
+    for (var ci = choices.length - 1; ci > 0; ci--) {
+      var cj = Math.floor(Math.random() * (ci + 1));
+      var ct = choices[ci]; choices[ci] = choices[cj]; choices[cj] = ct;
+    }
+
+    return '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gff-card-' + i + '">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">Question ' + (i+1) + ' / ' + total + '</div>'
+      + '<p style="font-size:14px;font-weight:600;color:#334155;margin:0 0 10px;line-height:1.65;background:rgba(251,191,36,.08);border-radius:8px;padding:8px 12px">' + ex.en + '</p>'
+      + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#fff;margin:0 0 14px;line-height:1.8">' + blanked + '</p>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      + choices.map(function(c) {
+          return '<button onclick="checkGFFillMCQ(this,' + i + ',\'' + c.replace(/'/g,"\\'") + '\',\'' + blank.replace(/'/g,"\\'") + '\',' + total + ')" '
+            + 'style="padding:12px 14px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);font-size:15px;font-weight:700;'
+            + 'font-family:Noto Serif KR,serif;cursor:pointer;transition:all .15s;color:#fff"'
+            + ' onmouseover="this.style.borderColor=\'rgba(167,139,250,.5)\';this.style.background=\'#f0f7ff\'"'
+            + ' onmouseout="this.style.borderColor=\'rgba(255,255,255,.15)\';this.style.background=\'#fff\'"'
+            + '>' + c + '</button>';
+        }).join('')
+      + '</div>'
+      + '<div id="gff-res-' + i + '" style="margin-top:10px;font-size:13px;font-weight:700"></div>'
+      + '</div>';
+  }).join('');
+
+  el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:rgba(255,255,255,.65);line-height:1.7">'
+    + 'Choose the correct word to fill in the blank. '
+    + '<span style="font-size:12px;background:rgba(167,139,250,.1);color:#a78bfa;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
+    + '</div>'
+    + qs
+    + '<div id="gff-next-wrap" style="display:none;text-align:center;margin-top:8px">'
+    + '<button onclick="gfAdvanceTo(\'translate\')" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">번역 연습 →</button>'
+    + '</div>';
+
+  window._gffAnswered = {};
+}
+
+function checkGFFillMCQ(btn, idx, answer, correct, total) {
+  var res = document.getElementById('gff-res-' + idx);
+  if (!res || window._gffAnswered[idx]) return;
+
+  var isCorrect = answer === correct;
+  window._gffAnswered[idx] = true;
+
+  // Disable all buttons in this card
+  var card = document.getElementById('gff-card-' + idx);
+  if (card) {
+    card.querySelectorAll('button').forEach(function(b) {
+      b.style.pointerEvents = 'none';
+      if (b.textContent.trim() === correct) {
+        b.style.background = '#f0fdf4';
+        b.style.borderColor = '#86efac';
+        b.style.color = '#166534';
+      } else if (b === btn && !isCorrect) {
+        b.style.background = '#fef2f2';
+        b.style.borderColor = '#fca5a5';
+        b.style.color = '#dc2626';
+      } else {
+        b.style.opacity = '.4';
+      }
+    });
+  }
+
+  res.style.color = isCorrect ? '#16a34a' : '#dc2626';
+  res.innerHTML = isCorrect ? '✓ 정답!' : '✗ 정답: <span style="font-family:Noto Serif KR,serif">' + correct + '</span>';
+
+  // Track mastery
+  var _gffPatternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
+  if (_gffPatternName) updateGrammarMastery(_gffPatternName, isCorrect);
+
+  // Show "Next" once all answered
+  if (Object.keys(window._gffAnswered).length >= total) {
+    var nw = document.getElementById('gff-next-wrap');
+    if (nw) nw.style.display = 'block';
+  }
+}
+
+// ④ Translate — MCQ: pick the correct Korean translation
+function loadGFTranslate(p) {
+  var el = document.getElementById('gf-translate-content');
+  if (!el || !p) return;
+  var examples = (p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }]).filter(function(e){ return e.en && e.ko; });
+  var total = examples.length;
+  window._gftAnswered = {};
+
+  var qs = examples.map(function(ex, i) {
+    // Build 4 choices: correct Korean + 3 distractors from other examples
+    var correct = ex.ko;
+    var distractors = examples.filter(function(e,j){ return j !== i && e.ko !== correct; }).map(function(e){ return e.ko; });
+    var fallbackKo = ['저는 학생이에요','날씨가 좋아요','한국어를 배워요','친구가 왔어요','커피를 마셔요','영화를 봐요'];
+    distractors = distractors.concat(fallbackKo).filter(function(d){ return d !== correct; });
+    distractors.sort(function(){ return Math.random() - 0.5; });
+    var choices = [correct].concat(distractors.slice(0,3));
+    for (var ci = choices.length - 1; ci > 0; ci--) {
+      var cj = Math.floor(Math.random() * (ci + 1));
+      var ct = choices[ci]; choices[ci] = choices[cj]; choices[cj] = ct;
+    }
+
+    return '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gft-card-' + i + '">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">문장 ' + (i+1) + ' / ' + total + '</div>'
+      + '<p style="font-size:15px;font-weight:700;color:#fff;margin:0 0 14px;line-height:1.7;background:rgba(251,191,36,.08);border-radius:8px;padding:10px 12px">' + ex.en + '</p>'
+      + '<div style="display:flex;flex-direction:column;gap:8px">'
+      + choices.map(function(c) {
+          return '<button onclick="checkGFTranslateMCQ(this,' + i + ',\'' + c.replace(/'/g,"\\'") + '\',\'' + correct.replace(/'/g,"\\'") + '\',' + total + ')" '
+            + 'style="width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);font-size:14px;font-weight:700;'
+            + 'font-family:Noto Serif KR,serif;cursor:pointer;text-align:left;transition:all .15s;color:#fff"'
+            + ' onmouseover="this.style.borderColor=\'rgba(167,139,250,.5)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.15)\'"'
+            + '>' + c + '</button>';
+        }).join('')
+      + '</div>'
+      + '<div id="gft-res-' + i + '" style="margin-top:10px;font-size:13px;font-weight:700"></div>'
+      + '</div>';
+  }).join('');
+
+  el.innerHTML = '<div style="margin-bottom:14px;font-size:13px;color:rgba(255,255,255,.65);line-height:1.7">'
+    + 'Choose the correct Korean translation. <span style="background:rgba(167,139,250,.1);color:#a78bfa;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span>'
+    + '</div>'
+    + qs
+    + '<div id="gft-next-wrap" style="display:none;text-align:center;margin-top:8px">'
+    + '<button onclick="gfAdvanceTo(\'build\')" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Judge It →</button>'
+    + '</div>';
+}
+
+function checkGFTranslateMCQ(btn, idx, answer, correct, total) {
+  if (window._gftAnswered && window._gftAnswered[idx]) return;
+  window._gftAnswered = window._gftAnswered || {};
+  window._gftAnswered[idx] = true;
+  var isCorrect = answer === correct;
+  var card = document.getElementById('gft-card-' + idx);
+  if (card) {
+    card.querySelectorAll('button').forEach(function(b) {
+      b.style.pointerEvents = 'none';
+      if (b.textContent.trim() === correct) { b.style.background = '#f0fdf4'; b.style.borderColor = '#86efac'; b.style.color = '#166534'; }
+      else if (b === btn && !isCorrect) { b.style.background = '#fef2f2'; b.style.borderColor = '#fca5a5'; b.style.color = '#dc2626'; }
+      else { b.style.opacity = '.4'; }
+    });
+  }
+  var res = document.getElementById('gft-res-' + idx);
+  if (res) { res.style.color = isCorrect ? '#16a34a' : '#dc2626'; res.innerHTML = isCorrect ? '✓ 정답!' : '✗ 정답: <span style="font-family:Noto Serif KR,serif">' + correct + '</span>'; }
+  var _gftPatternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
+  if (_gftPatternName) updateGrammarMastery(_gftPatternName, isCorrect);
+  if (Object.keys(window._gftAnswered).length >= total) { var nw = document.getElementById('gft-next-wrap'); if (nw) nw.style.display = 'block'; }
+}
+
+// ⑤ Judge It — Identify correct vs incorrect grammar usage
+// Heuristic filter (top-level so all branches can use it):
+// drop "incorrect" examples whose only difference from the correction
+// is a topic↔object particle swap (은/는 ↔ 을/를) — almost always
+// grammatical with a different meaning, not an error. Also drop empty
+// or identical pairs.
+function _gfFilterBadJudgeItems(items) {
+  return (items || []).filter(function(it){
+    if (!it || !it.ko || !it.correction) return false;
+    var a = String(it.ko).replace(/\s+/g,'');
+    var b = String(it.correction).replace(/\s+/g,'');
+    if (!a || !b || a === b) return false;
+    var stripParticles = function(s){ return s.replace(/[은는을를]/g,''); };
+    if (stripParticles(a) === stripParticles(b)) {
+      var hasTopicVsObject = (/[은는]/.test(a) && /[을를]/.test(b)) || (/[을를]/.test(a) && /[은는]/.test(b));
+      if (hasTopicVsObject) return false;
+    }
+    return true;
+  });
+}
+
+function loadGFBuild(p) {
+  var el = document.getElementById('gf-build-content');
+  if (!el || !p) return;
+
+  var correct = (p.examples || []).filter(function(e){ return e.ko; }).slice(0, 3);
+  var incorrect = _gfFilterBadJudgeItems(p.incorrect_examples || []).slice(0, 2);
+
+  if (!incorrect.length) {
+    // Same grammar pattern → same incorrect-example list every time.
+    // Look up cache first; only call Claude on a miss.
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">Generating judge exercises…</div>';
+    var exList = correct.map(function(e){ return e.ko; }).join('\n');
+    // v2 cache key: previous version sometimes returned grammatical
+    // sentences flagged as "incorrect" (e.g., topic vs object particle
+    // swaps where both forms are valid). Bump key to drop stale data.
+    var judgeKey = 'judge::v2::' + (p.name || '');
+    _aiCacheGet(judgeKey).then(function(cached) {
+      if (cached && Array.isArray(cached) && cached.length) {
+        p.incorrect_examples = _gfFilterBadJudgeItems(cached);
+        loadGFBuild(p);
+        return;
+      }
+      callClaude({
+        feature: 'gf-judge-gen',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        messages: [{ role: 'user', content:
+          'Korean grammar pattern: "' + (p.name||'') + '"\n'
+          + 'These sentences use the pattern CORRECTLY:\n' + exList + '\n\n'
+          + 'Generate exactly 2 sentences that are UNAMBIGUOUSLY ungrammatical when used with this pattern — clear, hard errors that any native Korean speaker would mark wrong, not stylistic variants.\n'
+          + 'STRICT RULES:\n'
+          + ' 1. The "ko" sentence MUST be ungrammatical. Do NOT submit sentences that are merely awkward, contextually different, or use a different but valid particle.\n'
+          + ' 2. NEVER swap topic markers (은/는) with object markers (을/를) and call it an error — both are usually grammatical with a meaning shift.\n'
+          + ' 3. The "correction" must DIFFER from "ko" in exactly the part the pattern targets, and must FIX an actual grammar mistake (wrong conjugation, missing required particle, wrong tense form, broken honorific level, scrambled word order that changes meaning).\n'
+          + ' 4. If you cannot produce 2 unambiguously wrong sentences, return [].\n'
+          + 'Return ONLY a JSON array: [{"ko":"incorrect sentence","en":"English translation","error_type":"CONJUGATION|PARTICLE|TENSE|FORMALITY|WORD_ORDER","correction":"correct Korean sentence"}]'
+        }]
+      }).then(function(res) {
+        try {
+          var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+          txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+          var si = txt.indexOf('['), ei = txt.lastIndexOf(']');
+          if (si >= 0 && ei > si) txt = txt.slice(si, ei+1);
+          var parsed = JSON.parse(txt);
+          p.incorrect_examples = _gfFilterBadJudgeItems(Array.isArray(parsed) ? parsed : []);
+          if (p.incorrect_examples.length) _aiCacheSet(judgeKey, p.incorrect_examples);
+        } catch(e) { p.incorrect_examples = []; }
+        loadGFBuild(p);
+      }).catch(function() { loadGFBuild(p); });
+    });
+    return;
+  }
+
+  // Mix correct + incorrect, shuffle
+  var items = correct.map(function(e){ return { ko:e.ko, en:e.en, isCorrect:true, correction:null, error_type:null }; })
+    .concat(incorrect.map(function(e){ return { ko:e.ko, en:e.en, isCorrect:false, correction:e.correction||'', error_type:e.error_type||'' }; }));
+  for (var i = items.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = items[i]; items[i] = items[j]; items[j] = t;
+  }
+
+  window._gfJudgeState = { items:items, answered:{}, total:items.length, score:0, pattern:p };
+
+  el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.65);margin-bottom:14px;line-height:1.7">'
+    + '각 문장이 <span style="background:rgba(167,139,250,.1);color:#a78bfa;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span> 패턴을 올바르게 사용하고 있나요?'
+    + '</div>'
+    + items.map(function(item, i) {
+        return '<div id="gfj-card-' + i + '" style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:12px;padding:16px 18px;margin-bottom:12px">'
+          + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:8px">' + (i+1) + ' / ' + items.length + '</div>'
+          + '<p style="font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#fff;margin:0 0 6px;line-height:1.7">' + item.ko + '</p>'
+          + '<p style="font-size:12px;color:rgba(255,255,255,.55);margin:0 0 12px">' + (item.en||'') + '</p>'
+          + '<div style="display:flex;gap:8px">'
+          + '<button onclick="_gfJudgeAnswer(' + i + ',true)" id="gfj-yes-' + i + '" style="flex:1;padding:10px;border:1.5px solid #86efac;border-radius:10px;background:#f0fdf4;color:#166534;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정문</span></button>'
+          + '<button onclick="_gfJudgeAnswer(' + i + ',false)" id="gfj-no-' + i + '" style="flex:1;padding:10px;border:1.5px solid #fca5a5;border-radius:10px;background:#fef2f2;color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>오문</span></button>'
+          + '</div>'
+          + '<div id="gfj-fb-' + i + '" style="margin-top:8px;min-height:0"></div>'
+          + '</div>';
+      }).join('')
+    + '<div id="gfj-done" style="display:none;text-align:center;margin-top:16px">'
+    + '<button onclick="_gfJudgeFinish()" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">결과 보기 →</button>'
+    + '</div>';
+}
+
+function _gfJudgeAnswer(idx, judgement) {
+  var st = window._gfJudgeState;
+  if (!st || st.answered[idx] !== undefined) return;
+  st.answered[idx] = judgement;
+
+  var yes = document.getElementById('gfj-yes-' + idx);
+  var no  = document.getElementById('gfj-no-' + idx);
+  if (yes) { yes.disabled = true; yes.style.opacity = '.5'; }
+  if (no)  { no.disabled = true;  no.style.opacity  = '.5'; }
+
+  var item = st.items[idx];
+  var isRight = (judgement === item.isCorrect);
+  if (isRight) st.score++;
+
+  var card = document.getElementById('gfj-card-' + idx);
+  var fb   = document.getElementById('gfj-fb-' + idx);
+  if (card) {
+    card.style.borderColor = isRight ? '#86efac' : '#fca5a5';
+    card.style.background  = isRight ? '#f0fdf4'  : '#fef2f2';
+  }
+  if (fb) {
+    var msg = isRight ? '<span style="color:#16a34a;font-size:12px;font-weight:700">✓ 정답!</span>' : '<span style="color:#dc2626;font-size:12px;font-weight:700">✗ 오답</span>';
+    if (!item.isCorrect && item.correction) {
+      msg += '<div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:4px">수정: <span style="color:#7c3aed;font-weight:700;font-family:Noto Serif KR,serif">' + item.correction + '</span>'
+        + (item.error_type ? ' <span style="font-size:10px;background:rgba(167,139,250,.1);color:#a78bfa;padding:1px 6px;border-radius:4px;margin-left:4px">' + item.error_type + '</span>' : '')
+        + '</div>';
+    }
+    fb.innerHTML = msg;
+  }
+
+  if (Object.keys(st.answered).length >= st.total) {
+    var done = document.getElementById('gfj-done');
+    if (done) done.style.display = 'block';
+  }
+}
+
+function _gfJudgeFinish() {
+  var st = window._gfJudgeState;
+  if (!st) return;
+  var pct = Math.round(st.score / st.total * 100);
+  var icon = pct >= 80 ? BM_ICON_PARTY : pct >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME;
+  var iconColor = pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171';
+  var el = document.getElementById('gf-build-content');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:20px 0">'
+    + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:8px;color:' + iconColor + ';filter:drop-shadow(0 0 12px ' + iconColor + 'aa)">' + icon + '</div>'
+    + '<div style="font-size:22px;font-weight:900;color:#fff">' + st.score + ' / ' + st.total + '</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-top:4px">Grammar Detection · ' + pct + '%</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;justify-content:center;margin-top:20px">'
+    + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>완료</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
+    + '</div>';
+  var patternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
+  if (patternName) updateGrammarMastery(patternName, st.score > 0);
+  markStageDone('grammar');
+}
+
+// ══ END GRAMMAR FOCUS MODAL ══════════════════════════════════════
+// ══ END BEGINNER 4-STEP SYSTEM ══════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+// ARTICLE STUDY
+// ═══════════════════════════════════════════════════════════════
+var _asArticles      = [];
+var _asArticlesShown = 0;       // how many cards we've rendered in the picker so far
+var _asPageSize      = 30;      // initial render + each "load more" batch
+var _asGridObserver  = null;    // IntersectionObserver for infinite scroll
+var _asCurrentArt    = null;
+var _asStudyContent  = null;
+var _asStep          = 1;
+var _asStepDone      = [false,false,false,false];
+var _asMatchState    = null;
+var _asWOState       = null;
+var _asQState        = null;
+
+function openArticleStudy() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!requirePlan('article_study')) return;
+  var m = document.getElementById('as-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('as-list-view').classList.remove('as-hidden');
+  document.getElementById('as-study-view').classList.add('as-hidden');
+  if (!_asArticles.length) _asLoadArticles();
+}
+function closeArticleStudy() {
+  var m = document.getElementById('as-modal');
+  if (m) m.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function asBackToList() {
+  document.getElementById('as-list-view').classList.remove('as-hidden');
+  document.getElementById('as-study-view').classList.add('as-hidden');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DICTATION MODAL — listening + word arrangement from daily content
+// ═══════════════════════════════════════════════════════════════
+var _dctStep = 1;   // 1=listen, 2=arrange words, 3=fill blank, 4=listen-pick sentence
+var _dctWOIdx = 0;  // current sentence in arrangement step
+var _dctWOState = null;
+var _dctSpeed = 1.0;          // TTS playback rate: 0.7 | 1.0 | 1.2
+var _dctArticleMode = false;  // true when using article sentences instead of daily
+var _dctArticleSentences = []; // extracted sentences for article dictation
+var _dctListenIdx = 0;         // which sentence is showing in Step 1
+
+function dctGoBack() {
+  // Back arrow: within a step, stay put; between steps, rewind; on step 1, close.
+  // In Phoneme / Connected modes, Back exits to the Topic drill first, then closes.
+  if (_dctMode === 'phoneme' || _dctMode === 'connected') {
+    _dctSwitchMode('topic');
+    return;
+  }
+  if (_dctStep === 4) { _dctStep = 3; _dctFbState = null; _dctRender(); return; }
+  if (_dctStep === 3) { _dctStep = 2; _dctWOIdx = 0; _dctWOState = null; _dctRender(); return; }
+  if (_dctStep === 2) {
+    if (_dctWOIdx > 0) { _dctWOIdx--; _dctWOState = null; _dctRender(); return; }
+    _dctStep = 1; _dctRender(); return;
+  }
+  // Step 1
+  if (_dctListenIdx > 0) { _dctListenIdx--; _dctRender(); return; }
+  closeDictationModal();
+}
+
+var _dctMode = 'topic'; // 'topic' | 'phoneme' | 'connected'
+
+function openDictationModal() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  var m = document.getElementById('dct-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  _dctStep = 1; _dctWOIdx = 0; _dctWOState = null;
+  _dctFbIdx = 0; _dctFbState = null; _dctFbScore = 0;
+  _dctLpIdx = 0; _dctLpState = null; _dctLpScore = 0;
+  _dctArticleMode = false; _dctArticleSentences = [];
+  _dctListenIdx = 0;
+  // Force a fresh shuffle of the master pool. Without this the user
+  // sees the exact same dictation deck every visit; clearing the
+  // memo means each open re-pulls from currently-loaded daily
+  // content (helpers/grammar can shift across days).
+  _dctMasterPool = null;
+  _dctMode = 'topic';
+  _dctSwitchMode('topic');
+}
+
+// Switch between Topic-drill (existing 4-step) / Phoneme / Connected speech.
+function _dctSwitchMode(mode) {
+  _dctMode = mode;
+  // Highlight the active tab
+  document.querySelectorAll('.dct-mode-tab').forEach(function(b) {
+    b.classList.toggle('on', b.getAttribute('data-mode') === mode);
+  });
+  // Pips only make sense for the 4-step Topic drill
+  var pips = document.getElementById('dct-pips');
+  if (pips) pips.style.display = (mode === 'topic') ? 'flex' : 'none';
+
+  if (mode === 'topic') {
+    _dctStep = 1;
+    _dctRender();
+  } else if (mode === 'phoneme') {
+    _dctPhonemeStart();
+  } else if (mode === 'connected') {
+    _dctConnectedStart();
+  }
+}
+function closeDictationModal() {
+  var m = document.getElementById('dct-modal');
+  if (m) m.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function _dctSetPips(step) {
+  [1,2,3,4].forEach(function(n){
+    var el = document.getElementById('dct-pip-'+n);
+    if (!el) {
+      var prev = document.getElementById('dct-pip-'+(n-1));
+      if (prev && prev.parentNode) {
+        el = document.createElement('span');
+        el.id = 'dct-pip-'+n;
+        el.className = 'dct-pip';
+        prev.parentNode.appendChild(el);
+      }
+    }
+    if (el) el.className = 'dct-pip' + (step===n ? ' active' : step>n ? ' done' : '');
+  });
+  var labels = {
+    1: 'Step 1 of 4 — Listening',
+    2: 'Step 2 of 4 — Word Order',
+    3: 'Step 3 of 4 — Fill in the Blank',
+    4: 'Step 4 of 4 — Sentence Match'
+  };
+  var sub = document.getElementById('dct-step-sub');
+  if (sub) sub.textContent = labels[step] || '';
+}
+function _dctRender() {
+  _dctSetPips(_dctStep);
+  if (_dctStep === 1) _dctRenderListen();
+  else if (_dctStep === 2) _dctRenderArrange();
+  else if (_dctStep === 3) _dctRenderFillBlank();
+  else if (_dctStep === 4) _dctRenderListenPick();
+}
+function _dctRenderListen() {
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  if (!body || !foot) return;
+
+  // Topic-staleness check: if the cached dictation sentences don't mention any
+  // keyword from today's topic, treat them as stale and regenerate.
+  if (!_dctArticleMode && Array.isArray(_dailyDictationSentences) && _dailyDictationSentences.length && _todayTopic) {
+    var _topicKo = String(_todayTopic.topic_ko || '').replace(/[.,!?~]/g, '');
+    var _topicKws = _topicKo.split(/\s+/).filter(function(w){ return w.length >= 2; });
+    if (_topicKws.length) {
+      var _sentJoin = _dailyDictationSentences.map(function(s){ return s && (s.ko || ''); }).join(' ');
+      var _anyMatch = _topicKws.some(function(kw){ return _sentJoin.indexOf(kw) !== -1; });
+      if (!_anyMatch) {
+        khLog('[dictation] cached sentences unrelated to today\'s topic — regenerating');
+        _dailyDictationSentences = [];
+      }
+    }
+  }
+
+  // Step 1 (listen) — pull its own slice so the same sentences don't
+  // bleed into steps 2/3/4. Falls back to raw _dailyDictationSentences
+  // only if the master pool is empty (e.g. content not loaded yet) so
+  // the AI fetch path below still has something to compare against.
+  var sents = _dctSliceForStep(1);
+  if (!sents.length && !_dctArticleMode) sents = _dailyDictationSentences || [];
+  if (!sents || !sents.length) {
+    var topicText = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '';
+    if (topicText) {
+      // Skip helpers as fallback — they are response templates like
+      // "저는 [topic]에 대해 이야기하고 싶어요" which produce mangled
+      // dictation prompts. Go straight to Claude for natural sentences.
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">Preparing listening sentences…</div>';
+      foot.innerHTML = '';
+      callClaude({
+        feature: 'dictation-gen',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        messages: [{ role: 'user', content:
+          'Generate 3 natural Korean sentences for listening/dictation practice about the topic: "' + topicText + '".\n'
+          + 'Level: ' + (_currentLevel || 'Beginner') + '.\n\n'
+          + 'Requirements:\n'
+          + '- Each sentence must be a short, natural-sounding standalone statement (not a response template).\n'
+          + '- Do NOT use filler phrases like "저는 ~에 대해 이야기하고 싶어요" or "오늘은 ~에 대해 말해볼게요".\n'
+          + '- Mix declarative / question / descriptive forms across the 3 sentences.\n'
+          + '- 5-10 words each.\n\n'
+          + 'Return ONLY a JSON array: [{"ko":"Korean sentence","en":"English translation"}]\nNo markdown.'
+        }]
+      }).then(function(res) {
+        try {
+          var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
+          txt = txt.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+          var si = txt.indexOf('['), ei = txt.lastIndexOf(']');
+          if (si >= 0 && ei > si) txt = txt.slice(si, ei+1);
+          var gen = JSON.parse(txt);
+          if (Array.isArray(gen) && gen.length) { _dailyDictationSentences = gen; _dctRender(); return; }
+        } catch(e) {}
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Could not load sentences. Try again later.</div>';
+        foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
+      }).catch(function() {
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Could not load sentences. Try again later.</div>';
+        foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
+      });
+      return;
+    }
+    var artBtn = _dctGetArticleBtnHTML();
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">No listening sentences available today.<br><span style="font-size:12px">Content will appear once today\'s topic is generated.</span></div>'
+      + artBtn;
+    foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
+    return;
+  }
+  // Speed control bar
+  var speeds = [{v:0.7,label:'Slow'},{v:1.0,label:'Normal'},{v:1.2,label:'Fast'}];
+  var speedHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
+    + '<span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px;white-space:nowrap">Speed:</span>';
+  speeds.forEach(function(sp) {
+    var active = Math.abs(_dctSpeed - sp.v) < 0.05;
+    speedHTML += '<button id="dct-speed-'+sp.v+'" onclick="_dctSetSpeed('+sp.v+')" style="padding:4px 12px;font-size:12px;font-weight:700;border-radius:20px;cursor:pointer;transition:all .15s;border:1.5px solid '+(active?'#a78bfa':'#e2e8f0')+';background:'+(active?'#a78bfa':'#fff')+';color:'+(active?'#fff':'#64748b')+'">'+sp.label+'</button>';
+  });
+  speedHTML += '</div>';
+
+  // Clamp index in case sentence count changed
+  if (_dctListenIdx >= sents.length) _dctListenIdx = sents.length - 1;
+  if (_dctListenIdx < 0) _dctListenIdx = 0;
+  var curIdx = _dctListenIdx;
+  var s = sents[curIdx] || {};
+  var safeKo = (s.ko||'').replace(/'/g,"&#39;");
+
+  var modeLabel = _dctArticleMode
+    ? '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:20px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:12px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_NEWSPAPER+'</span><span>Article Dictation</span></div>'
+    : '';
+  var progress = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px">문장 '+(curIdx+1)+' / '+sents.length+'</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#a78bfa;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>탭해서 듣기</span></div>'
+    + '</div>';
+  var html = modeLabel + speedHTML + progress
+    + '<div class="dct-sent-card" style="padding:26px 22px;cursor:pointer" onclick="_dctSpeakSentence(\''+safeKo+'\')">'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:12px">Sentence '+(curIdx+1)+'</div>'
+      + '<div class="dct-sent-ko" style="font-size:22px;line-height:1.55;margin-bottom:10px">'+escapeHTML(s.ko||'')+'</div>'
+      + '<div class="dct-sent-en" style="font-size:14px;margin-bottom:18px">'+escapeHTML(s.en||'')+'</div>'
+      + '<div style="display:flex;align-items:center;justify-content:center">'
+        + '<button class="dct-listen-btn" onclick="event.stopPropagation();_dctSpeakSentence(\''+safeKo+'\')" style="padding:14px 28px;border-radius:999px;background:rgba(167,139,250,.1);float:none;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px;color:#a78bfa">'+BM_ICON_VOLUME+'</span><span style="font-size:13px;font-weight:800">Play</span></button>'
+      + '</div>'
+    + '</div>';
+  if (!_dctArticleMode && curIdx === sents.length - 1) {
+    html += _dctGetArticleBtnHTML();
+  }
+  body.innerHTML = html;
+
+  var prevDisabled = curIdx === 0 ? 'disabled' : '';
+  var nextLabel = curIdx < sents.length - 1 ? '다음 →' : '어절 배열하기 →';
+  var nextAction = curIdx < sents.length - 1 ? '_dctListenNext()' : 'dctNext()';
+  foot.innerHTML = '<button class="btn" '+prevDisabled+' onclick="_dctListenPrev()" aria-label="Previous">←</button>'
+    + '<button class="btn btn-g" onclick="'+nextAction+'">'+nextLabel+'</button>';
+}
+
+function _dctListenNext() {
+  var sents = _dctSliceForStep(1);
+  if (!sents.length && !_dctArticleMode) sents = _dailyDictationSentences || [];
+  if (!sents || !sents.length) return;
+  if (_dctListenIdx < sents.length - 1) { _dctListenIdx++; _dctRender(); }
+}
+function _dctListenPrev() {
+  if (_dctListenIdx > 0) { _dctListenIdx--; _dctRender(); }
+}
+
+// Set TTS speed and update speed button styles without full re-render
+function _dctSetSpeed(rate) {
+  _dctSpeed = rate;
+  var speeds = [0.7, 1.0, 1.2];
+  speeds.forEach(function(sp) {
+    var btn = document.getElementById('dct-speed-' + sp);
+    if (!btn) return;
+    var active = Math.abs(_dctSpeed - sp) < 0.05;
+    btn.style.borderColor = active ? '#a78bfa' : '#e2e8f0';
+    btn.style.background  = active ? '#a78bfa' : '#fff';
+    btn.style.color       = active ? '#fff'    : '#64748b';
+  });
+}
+
+// Speak using Web Speech API at selected speed (Edge TTS doesn't support rate control)
+function _dctSpeakSentence(text) {
+  if (!text || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ko-KR';
+  u.rate = _dctSpeed;
+  var voices = window.speechSynthesis.getVoices();
+  var kr = voices.find(function(v){ return v.lang && v.lang.indexOf('ko') === 0; });
+  if (kr) u.voice = kr;
+  window.speechSynthesis.speak(u);
+}
+
+// Build HTML for the article dictation offer button
+function _dctGetArticleBtnHTML() {
+  if (!_asCurrentArt || !_asCurrentArt.body) return '';
+  return '<div style="margin-top:20px;padding:14px 16px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:12px">'
+    + '<div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:6px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_NEWSPAPER+'</span><span>Article Dictation Available</span></div>'
+    + '<div style="font-size:12px;color:#78350f;margin-bottom:10px">Practice dictation using sentences from: <b>' + escapeHTML(_asCurrentArt.title||'') + '</b></div>'
+    + '<button onclick="startArticleDictation()" style="padding:6px 16px;background:#d97706;color:#fff;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Try Article Dictation →</button>'
+    + '</div>';
+}
+
+// Extract 5-7 key sentences from article body for dictation
+function _dctExtractArticleSentences(body) {
+  if (!body) return [];
+  var plain = body.replace(/<[^>]+>/g, ' ').replace(/&[a-zA-Z0-9#]+;/g, ' ');
+  var raw = plain.split(/[.。!！?？\n]+/).map(function(s){ return s.trim(); });
+  var sentences = [];
+  raw.forEach(function(s) {
+    var words = s.split(/\s+/).filter(Boolean);
+    var hasKorean = /[\uAC00-\uD7A3]/.test(s);
+    if (hasKorean && words.length >= 4 && words.length <= 20 && s.length >= 10) {
+      sentences.push({ ko: s, en: '' });
+    }
+  });
+  var seen = {};
+  var unique = [];
+  sentences.forEach(function(s) {
+    if (!seen[s.ko]) { seen[s.ko] = true; unique.push(s); }
+  });
+  if (unique.length <= 7) return unique;
+  var picked = [];
+  var step = unique.length / 6;
+  for (var i = 0; i < 7 && Math.round(i * step) < unique.length; i++) {
+    picked.push(unique[Math.round(i * step)]);
+  }
+  return picked;
+}
+
+// Start article dictation mode — opens modal and loads extracted sentences
+function startArticleDictation() {
+  if (!_asCurrentArt || !_asCurrentArt.body) { showToast('먼저 기사를 읽어주세요'); return; }
+  var sents = _dctExtractArticleSentences(_asCurrentArt.body);
+  if (!sents.length) { showToast('기사에서 문장을 찾을 수 없습니다'); return; }
+  _dctArticleMode = true;
+  _dctArticleSentences = sents;
+  _dctStep = 1; _dctWOIdx = 0; _dctWOState = null;
+  _dctFbIdx = 0; _dctFbState = null; _dctFbScore = 0;
+  _dctLpIdx = 0; _dctLpState = null; _dctLpScore = 0;
+  _dctListenIdx = 0;
+  var m = document.getElementById('dct-modal');
+  if (m) {
+    m.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+  _dctRender();
+}
+function _dctRenderArrange() {
+  // Step 2 (arrange) — its own master-pool slice so we're not asking
+  // the learner to rebuild the same 3 sentences they just heard in
+  // step 1.
+  var sents = _dctSliceForStep(2);
+  if (!sents.length && !_dctArticleMode) sents = _dailyDictationSentences || [];
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  if (!body || !foot || !sents || !sents.length) return;
+  if (_dctWOIdx >= sents.length) {
+    // Move to Step 3: fill-in-the-blank
+    _dctStep = 3;
+    _dctFbIdx = 0; _dctFbState = null; _dctFbScore = 0;
+    _dctLpIdx = 0; _dctLpState = null; _dctLpScore = 0;
+    _dctRender();
+    return;
+  }
+  var s = sents[_dctWOIdx];
+  var words = (s.ko||'').replace(/[.!?。！？]/g,'').trim().split(/\s+/).filter(Boolean);
+  if (!_dctWOState || _dctWOState.sentIdx !== _dctWOIdx) {
+    var shuffled = words.slice();
+    for (var i=shuffled.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1));var t=shuffled[i];shuffled[i]=shuffled[j];shuffled[j]=t; }
+    if(words.length>1&&shuffled.every(function(w,i){return w===words[i];})){var t=shuffled[0];shuffled[0]=shuffled[shuffled.length-1];shuffled[shuffled.length-1]=t;}
+    // Pre-select the first word of the intended order so the learner
+    // knows where to start. Korean often allows multiple grammatical
+    // orderings of the same chunks (e.g. "친구들이 제 사진을 좋아해요"
+    // vs "제 사진을 친구들이 좋아해요"); anchoring the start removes
+    // that ambiguity and avoids the "where do I begin" pause.
+    var preselected = words.length ? [words[0]] : [];
+    _dctWOState = { sentIdx:_dctWOIdx, original:words, pool:shuffled, selected:preselected, result:null };
+  }
+  var wo = _dctWOState;
+  // Dictation modal uses a LIGHT theme; the shared .bm-word-chip class is
+  // dark-themed (white text on transparent white bg) so chips rendered
+  // invisible on the white dictation background. Inline light-theme styles:
+  var poolChipBase = 'padding:10px 16px;border-radius:12px;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s';
+  var poolChipUsed = poolChipBase + ';opacity:.25;cursor:not-allowed';
+  var selChip      = 'padding:10px 16px;border-radius:12px;border:none;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(14,168,143,.3)';
+
+  var poolHTML = wo.pool.map(function(w,pi){
+    var usedCount=wo.selected.filter(function(x){return x===w;}).length;
+    var totalCount=wo.pool.filter(function(x){return x===w;}).length;
+    var isUsed=usedCount>=totalCount;
+    return '<button '+(isUsed?'disabled':'')+' onclick="dctWOPick('+pi+')" style="'+(isUsed?poolChipUsed:poolChipBase)+'">'+escapeHTML(w)+'</button>';
+  }).join('');
+  var ansHTML = wo.selected.length
+    ? wo.selected.map(function(w,si){return '<button onclick="dctWORemove('+si+')" style="'+selChip+'">'+escapeHTML(w)+' ×</button>';}).join('')
+    : '<span style="font-size:12px;color:rgba(255,255,255,.45)">단어를 선택해서 문장을 만드세요</span>';
+  var allSel = wo.selected.length === wo.original.length;
+  body.innerHTML = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">문장 '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
+    // English hint card — replace the cheap light-blue/dark-text panel
+    // with a mint-accented dark surface so it sits inside the dark
+    // dictation modal instead of fighting it.
+    + '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25);border-radius:12px;padding:11px 14px;margin-bottom:18px;font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:8px;line-height:1.5"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24;flex-shrink:0">'+BM_ICON_BULB+'</span><span>'+escapeHTML(s.en||'')+'</span></div>'
+    + '<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">내 답</div>'
+    // Answer zone — dark transparent so chips read clearly against it
+    // (was a near-white panel that broke the dark theme).
+    + '<div id="dct-answer-zone" style="min-height:54px;border:2px dashed rgba(167,139,250,.35);border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:rgba(167,139,250,.05)">'+ansHTML+'</div></div>'
+    + '<div><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">단어 목록</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px">'+poolHTML+'</div></div>'
+    + '<div id="dct-wo-msg" style="margin-top:14px;font-size:13px;font-weight:700"></div>';
+  foot.innerHTML = '<button class="btn" onclick="dctWOClear()" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시</span></button>'
+    + '<button class="btn btn-g" '+(allSel?'':'disabled')+' onclick="dctWOCheck()">확인 ✓</button>';
+}
+function dctWOPick(pi) {
+  if(!_dctWOState) return;
+  var w=_dctWOState.pool[pi];
+  var used=_dctWOState.selected.filter(function(x){return x===w;}).length;
+  var total=_dctWOState.pool.filter(function(x){return x===w;}).length;
+  if(used>=total) return;
+  _dctWOState.selected.push(w);
+  try { _dctSpeakSentence(w); } catch(_){}
+  _dctRenderArrange();
+}
+function dctWORemove(si) {
+  if(!_dctWOState) return;
+  // Anchor (selected[0]) is the pre-selected first word — disallow
+  // removing it, same as the other word-arrange drills.
+  if (si <= 0) return;
+  var w = _dctWOState.selected[si];
+  _dctWOState.selected.splice(si,1);
+  if (w) { try { _dctSpeakSentence(w); } catch(_){} }
+  _dctRenderArrange();
+}
+function dctWOClear() {
+  if (!_dctWOState) return;
+  // Reset to first-word-anchored state instead of fully empty so the
+  // pre-selected start chunk persists through "다시" the same way it
+  // does in BM Build / Picture Description / Sentence Build.
+  var first = _dctWOState.original && _dctWOState.original.length ? _dctWOState.original[0] : null;
+  _dctWOState.selected = first ? [first] : [];
+  _dctRenderArrange();
+}
+function dctWOCheck() {
+  if(!_dctWOState) return;
+  var ok=_dctWOState.selected.join(' ')===_dctWOState.original.join(' ');
+  var msg=document.getElementById('dct-wo-msg');
+  var zone=document.getElementById('dct-answer-zone');
+  if(ok){
+    if(msg) msg.innerHTML='<span style="color:#16a34a;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정답! 잘 했어요.</span></span>';
+    if(zone){zone.style.border='2px solid #22c55e';zone.style.background='#f0fdf4';}
+    var foot=document.getElementById('dct-foot');
+    if(foot){ foot.innerHTML='<button class="btn btn-g" onclick="_dctWONext()">다음 →</button>'; }
+  } else {
+    if(msg) msg.innerHTML='<span style="color:#dc2626;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>다시 해보세요. 정답: <span style="font-family:\'Noto Serif KR\',serif;font-weight:700">'
+      +escapeHTML(_dctWOState.original.join(' '))+'</span></span>';
+    if(zone){zone.style.border='2px solid #f87171';zone.style.background='#fff5f5';}
+  }
+}
+function _dctWONext() { _dctWOIdx++; _dctWOState=null; _dctRenderArrange(); }
+function dctNext() {
+  if (_dctStep===1) { _dctStep=2; _dctWOIdx=0; _dctWOState=null; _dctRender(); }
+}
+
+// ── Step 3 & 4: Fill-in-blank + Listen-and-pick ─────────────
+var _dctFbIdx = 0, _dctFbScore = 0, _dctFbState = null;
+var _dctLpIdx = 0, _dctLpScore = 0, _dctLpState = null;
+
+// Master pool memo — built once per dictation session so all four
+// steps draw from the same shuffled deck without overlap. Reset by
+// openDictationModal() so re-opening the modal in a new session
+// rebuilds with whatever fresh daily content is loaded.
+var _dctMasterPool = null;
+
+function _dctBuildMasterPool() {
+  if (_dctArticleMode) return _dctArticleSentences || [];
+  var seen = {};                // dedupe by ko text
+  var out  = [];
+  function add(ko, en) {
+    if (!ko) return;
+    var k = String(ko).trim();
+    if (!k || seen[k]) return;
+    seen[k] = 1;
+    out.push({ ko: k, en: String(en || '').trim() });
+  }
+  // Sources, in priority order. Front of the pool gets used first
+  // (Step 1 listen), so put the most "listenable" content first.
+  (_dailyDictationSentences || []).forEach(function(s){ add(s.ko, s.en); });
+  // Helper sentences — natural conversational bridges, perfect for
+  // listening + word arrangement.
+  if (_aiContent && Array.isArray(_aiContent.helpers)) {
+    _aiContent.helpers.forEach(function(h){ add(h.ko, h.en); });
+  }
+  // Grammar example sentences — used for fill-in-the-blank and
+  // listen-pick because they're pattern-rich.
+  if (_aiContent && Array.isArray(_aiContent.grammar)) {
+    _aiContent.grammar.forEach(function(g){ add(g.example_ko, g.example_en); });
+  }
+  // Topic writing sentences (advanced levels) — bonus variety.
+  if (_aiContent && Array.isArray(_aiContent.topic_writing_sentences)) {
+    _aiContent.topic_writing_sentences.forEach(function(t){ add(t.ko, t.en); });
+  }
+  // Daily dictation questions — convert to {ko,en} shape.
+  (_dailyDictationQuestions || []).forEach(function(q){
+    add(q.question_ko || q.ko, q.hint_en || q.en);
+  });
+  return out;
+}
+
+function _dctEnsureMasterPool() {
+  if (_dctArticleMode) return _dctArticleSentences || [];
+  if (!_dctMasterPool || !_dctMasterPool.length) {
+    _dctMasterPool = _dctBuildMasterPool();
+  }
+  return _dctMasterPool;
+}
+
+// Per-step slice. Each step gets its own distinct window into the
+// master pool so the learner doesn't see the same sentence reused
+// across listen → arrange → fill → pick.
+function _dctSliceForStep(step) {
+  if (_dctArticleMode) return _dctArticleSentences || [];
+  var master = _dctEnsureMasterPool();
+  if (!master.length) return [];
+  var perStep = 3;
+  var start = (Math.max(1, step) - 1) * perStep;
+  // If the master pool is smaller than 4×3=12, fall back to wrap-around
+  // slicing so every step still gets `perStep` items, but offset so
+  // they land on different sentences when possible.
+  if (start + perStep > master.length) {
+    var slice = [];
+    for (var i = 0; i < perStep; i++) {
+      slice.push(master[(start + i) % master.length]);
+    }
+    return slice;
+  }
+  return master.slice(start, start + perStep);
+}
+
+function _dctPool() {
+  // Backwards-compat shim: fill-blank and listen-pick already call
+  // this without args. Resolve the current step from _dctStep so they
+  // get the right slice automatically.
+  return _dctSliceForStep(_dctStep || 1);
+}
+
+function _dctEmptyState(body, foot) {
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,.45)">No dictation content available.</div>';
+  foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done</button>';
+}
+
+// Save dictation score to localStorage history
+function _dctSaveScore(pct, sentenceCount) {
+  try {
+    var key = 'kh_dictation_scores';
+    var existing = [];
+    try { existing = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) {}
+    if (!Array.isArray(existing)) existing = [];
+    existing.push({
+      date: kstDateKey(),
+      score: pct,
+      sentenceCount: sentenceCount,
+      mode: _dctArticleMode ? 'article' : 'daily'
+    });
+    if (existing.length > 90) existing = existing.slice(existing.length - 90);
+    localStorage.setItem(key, JSON.stringify(existing));
+  } catch(e) {}
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Phase 5 — Phoneme discrimination mini-drill
+// ════════════════════════════════════════════════════════════════════
+// Each pair is the trickiest contrast for the "left" vowel/consonant.
+// `words` are minimal pairs — when played, user picks which side was said.
+var PHONEME_PAIRS = [
+  { a: 'ㅓ', b: 'ㅗ', colorA: '#60a5fa', colorB: '#f472b6',
+    words: [
+      { a: '너 (you)',       b: '노 (no)' },
+      { a: '허리 (waist)',   b: '호리 (slim)' },
+      { a: '거기 (there)',   b: '고기 (meat)' },
+      { a: '서 (stand)',     b: '소 (cow)' }
+    ] },
+  { a: 'ㅡ', b: 'ㅜ', colorA: 'rgba(167,139,250,.55)', colorB: '#34d399',
+    words: [
+      { a: '드 (particle)',  b: '두 (two)' },
+      { a: '금 (gold)',      b: '굼 (cave)' },
+      { a: '블 (block)',     b: '불 (fire)' },
+      { a: '크다 (big)',     b: '쿠다 (none)' }
+    ] },
+  { a: 'ㅅ', b: 'ㅆ', colorA: '#fbbf24', colorB: '#ef4444',
+    words: [
+      { a: '사다 (buy)',     b: '싸다 (cheap)' },
+      { a: '살 (flesh)',     b: '쌀 (rice)' },
+      { a: '손 (hand)',      b: '쏜 (shot)' },
+      { a: '세다 (count)',   b: '쎄다 (strong)' }
+    ] },
+  { a: 'ㄱ', b: 'ㄲ', colorA: '#06b6d4', colorB: '#8b5cf6',
+    words: [
+      { a: '가 (go)',        b: '까 (peel)' },
+      { a: '개 (dog)',       b: '깨 (sesame)' },
+      { a: '기 (energy)',    b: '끼 (talent)' },
+      { a: '길 (road)',      b: '낄 (wedge)' }
+    ] },
+  { a: 'ㄷ', b: 'ㄸ', colorA: '#10b981', colorB: '#f97316',
+    words: [
+      { a: '다 (all)',       b: '따 (pluck)' },
+      { a: '덕 (virtue)',    b: '떡 (rice cake)' },
+      { a: '달 (moon)',      b: '딸 (daughter)' },
+      { a: '더 (more)',      b: '떠 (rise)' }
+    ] }
+];
+
+var _dctPhState = null; // { pairIdx, wordIdx, answer, round, correct, total, picks[] }
+
+// Phoneme drill done-today key — the drill is short and there's no
+// SRS yet, so once-per-day is the right pacing. Reopening shows a
+// "Completed today" splash with the option to retry, instead of
+// starting a fresh round silently and confusing the user.
+function _dctPhDoneKey() {
+  var uid = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : 'anon';
+  return 'kh_dct_phoneme_done_' + uid + '_' + (typeof kstDateKey === 'function' ? kstDateKey() : new Date().toISOString().slice(0,10));
+}
+function _dctPhIsDoneToday() {
+  try { return !!localStorage.getItem(_dctPhDoneKey()); } catch(_) { return false; }
+}
+function _dctPhMarkDoneToday(score, total) {
+  try { localStorage.setItem(_dctPhDoneKey(), JSON.stringify({ score: score, total: total, at: Date.now() })); } catch(_){}
+}
+
+function _dctPhonemeStart(forceFresh) {
+  // If today's drill is already done and the caller didn't ask for a
+  // forced re-roll, show the completed state instead of silently
+  // generating a new 10-round set.
+  if (!forceFresh && _dctPhIsDoneToday()) {
+    _dctPhRenderDoneSplash();
+    return;
+  }
+  // Build a 10-round sequence: random pair + random word per round
+  var rounds = [];
+  var poolPairs = PHONEME_PAIRS.slice();
+  for (var i = 0; i < 10; i++) {
+    var pair = poolPairs[Math.floor(Math.random() * poolPairs.length)];
+    var word = pair.words[Math.floor(Math.random() * pair.words.length)];
+    var answerIsA = Math.random() < 0.5;
+    rounds.push({ pair: pair, word: word, answerIsA: answerIsA });
+  }
+  _dctPhState = { rounds: rounds, idx: 0, correct: 0, picks: [] };
+  _dctPhRender();
+}
+
+function _dctPhRenderDoneSplash() {
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  var sub  = document.getElementById('dct-step-sub');
+  if (sub) sub.textContent = 'Phoneme discrimination · ear training';
+  if (!body || !foot) return;
+  var prev = null;
+  try { prev = JSON.parse(localStorage.getItem(_dctPhDoneKey()) || 'null'); } catch(_){}
+  var pct = (prev && prev.total) ? Math.round(prev.score / prev.total * 100) : 0;
+  body.innerHTML =
+    '<div style="text-align:center;padding:30px 16px">'
+    + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:10px;color:#22c55e;filter:drop-shadow(0 0 12px rgba(34,197,94,.4))">'+BM_ICON_CHECK+'</div>'
+    + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px">Already done today</div>'
+    + (prev ? '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:16px">Today\'s score · '+(prev.score||0)+' / '+(prev.total||0)+' ('+pct+'%)</div>' : '')
+    + '<div style="font-size:13px;color:rgba(255,255,255,.65);line-height:1.55;max-width:320px;margin:0 auto">Phoneme contrasts cycle daily — come back tomorrow for a fresh set, or try again now if you want extra reps.</div>'
+    + '</div>';
+  foot.innerHTML =
+      '<button class="btn" onclick="_dctSwitchMode(\'topic\')">← Topic drill</button>'
+    + '<button class="btn btn-g" onclick="_dctPhonemeStart(true)" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Try again</span></button>';
+}
+
+function _dctPhRender() {
+  if (!_dctPhState) return;
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  var sub  = document.getElementById('dct-step-sub');
+  if (sub) sub.textContent = 'Phoneme discrimination · ear training';
+
+  var st = _dctPhState;
+  if (st.idx >= st.rounds.length) { _dctPhFinish(); return; }
+
+  var r = st.rounds[st.idx];
+  var currentWord = r.answerIsA ? r.word.a : r.word.b;
+  var currentWordKo = currentWord.split(' ')[0]; // "너 (you)" → "너"
+  var safeKo = currentWordKo.replace(/'/g, "&#39;");
+
+  // Score dots — filled for completed rounds, colored for correct/wrong
+  var dotsHTML = '';
+  for (var i = 0; i < st.rounds.length; i++) {
+    var state = i < st.idx ? (st.picks[i] ? 'ok' : 'no') : (i === st.idx ? 'cur' : 'up');
+    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#a78bfa' : '#e2e8f0';
+    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(167,139,250,.2);' : '';
+    dotsHTML += '<div style="width:8px;height:8px;border-radius:50%;background:' + bg + ';' + ring + 'transition:all .2s"></div>';
+  }
+
+  body.innerHTML =
+    '<style>@keyframes kh-ph-chip-in{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}</style>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+      + '<div>'
+        + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em">Round ' + (st.idx+1) + ' / ' + st.rounds.length + '</div>'
+        + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">Which one did you hear?</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:5px;align-items:center">' + dotsHTML + '</div>'
+    + '</div>'
+    // Phoneme contrast visual — two big chars with vs.
+    + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:10px 0 18px">'
+      + '<div style="font-family:\'Noto Serif KR\',serif;font-size:56px;font-weight:900;color:' + r.pair.colorA + ';line-height:1;animation:kh-ph-chip-in .25s ease-out">' + r.pair.a + '</div>'
+      + '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.45);letter-spacing:.2em">VS</div>'
+      + '<div style="font-family:\'Noto Serif KR\',serif;font-size:56px;font-weight:900;color:' + r.pair.colorB + ';line-height:1;animation:kh-ph-chip-in .35s ease-out">' + r.pair.b + '</div>'
+    + '</div>'
+    // Big Play button
+    + '<div style="display:flex;justify-content:center;margin-bottom:22px">'
+      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:999px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;border:none;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 12px 28px -8px rgba(167,139,250,.55);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'scale(1)\'">'
+        + '<span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_VOLUME+'</span><span>Play</span>'
+      + '</button>'
+    + '</div>'
+    // Two choice cards
+    + '<div id="dct-ph-choices" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      + '<button id="dct-ph-a" onclick="_dctPhPick(true)" style="padding:16px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);cursor:pointer;font-family:\'Noto Serif KR\',serif;font-size:18px;font-weight:800;color:#fff;transition:all .18s;text-align:center">'
+        + r.word.a
+      + '</button>'
+      + '<button id="dct-ph-b" onclick="_dctPhPick(false)" style="padding:16px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);cursor:pointer;font-family:\'Noto Serif KR\',serif;font-size:18px;font-weight:800;color:#fff;transition:all .18s;text-align:center">'
+        + r.word.b
+      + '</button>'
+    + '</div>';
+
+  foot.innerHTML = '<button class="btn" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px" onclick="_dctPhRender()"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시 듣기</span></button>';
+
+  // Auto-play once on landing
+  setTimeout(function(){ _dctSpeakSentence(currentWordKo); }, 300);
+}
+
+function _dctPhPick(pickedA) {
+  if (!_dctPhState) return;
+  var st = _dctPhState;
+  var r  = st.rounds[st.idx];
+  var correct = pickedA === r.answerIsA;
+  st.picks.push(correct);
+  if (correct) st.correct++;
+
+  var pickedBtn = document.getElementById(pickedA ? 'dct-ph-a' : 'dct-ph-b');
+  var otherBtn  = document.getElementById(pickedA ? 'dct-ph-b' : 'dct-ph-a');
+  var correctBtn = document.getElementById(r.answerIsA ? 'dct-ph-a' : 'dct-ph-b');
+  if (pickedBtn) {
+    pickedBtn.style.borderColor = correct ? '#22c55e' : '#ef4444';
+    pickedBtn.style.background  = correct ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.08)';
+    pickedBtn.style.color       = correct ? '#166534' : '#991b1b';
+  }
+  if (!correct && correctBtn) {
+    correctBtn.style.borderColor = '#22c55e';
+    correctBtn.style.background  = 'rgba(34,197,94,.08)';
+    correctBtn.style.color       = '#166534';
+  }
+  if (pickedBtn) pickedBtn.style.transform = 'scale(1.03)';
+  document.querySelectorAll('#dct-ph-choices button').forEach(function(b){ b.disabled = true; });
+
+  var foot = document.getElementById('dct-foot');
+  foot.innerHTML = '<button class="btn btn-g" style="min-width:140px" onclick="_dctPhNext()">'
+    + (st.idx + 1 >= st.rounds.length ? 'See result →' : 'Next →') + '</button>';
+}
+
+function _dctPhNext() {
+  if (!_dctPhState) return;
+  _dctPhState.idx++;
+  _dctPhRender();
+}
+
+function _dctPhFinish() {
+  var st = _dctPhState;
+  if (!st) return;
+  var pct = Math.round(st.correct / st.rounds.length * 100);
+  var color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#2563eb' : pct >= 40 ? '#d97706' : '#dc2626';
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  body.innerHTML =
+    '<div style="text-align:center;padding:24px 12px">'
+      + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:10px;color:'+(pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(pct >= 80 ? '#a78bfa' : pct >= 60 ? '#22c55e' : '#f87171')+'aa)">' + (pct >= 80 ? BM_ICON_PARTY : pct >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
+      + '<div style="font-family:\'DM Sans\',sans-serif;font-size:56px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:6px">' + pct + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:18px">Phoneme accuracy · ' + st.correct + ' / ' + st.rounds.length + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.6;max-width:340px;margin:0 auto">'
+        + (pct >= 80 ? 'Great ear! You caught the subtle contrasts.'
+         : pct >= 60 ? 'Solid — keep practicing the tricky pairs.'
+         : 'These phoneme contrasts are hard. Try slowing down and playing each pair a few times.')
+      + '</div>'
+    + '</div>';
+  foot.innerHTML = '<button class="btn" onclick="_dctSwitchMode(\'topic\')">← Topic drill</button>'
+    + '<button class="btn btn-g" onclick="_dctPhonemeStart(true)" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Try again</span></button>';
+
+  // Mark today as done so reopening the modal lands on the splash
+  // instead of silently rolling fresh rounds.
+  _dctPhMarkDoneToday(st.correct, st.rounds.length);
+
+  // Persist for Listening axis (reuses existing quiz_results table)
+  if (typeof supaUser !== 'undefined' && supaUser) {
+    try {
+      var sb = getSupa();
+      if (sb) sb.from('user_quiz_results').insert({
+        user_id:   supaUser.id,
+        quiz_type: 'phoneme',
+        score:     st.correct,
+        max_score: st.rounds.length,
+        metadata:  { pct: pct, picks: st.picks }
+      });
+    } catch(e) {}
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Phase 5 — Connected-speech dictation
+// ════════════════════════════════════════════════════════════════════
+// Each entry: textbook (full form) and spoken (how a native actually
+// says it — contracted/elided). TTS reads the spoken form; user types
+// what they hear; reveal shows both side-by-side.
+var CONNECTED_SPEECH_BANK = [
+  { textbook:'그것은 무엇이에요?', spoken:'그건 뭐예요?',    hint:'그것은→그건, 무엇→뭐' },
+  { textbook:'이것이 뭐예요?',     spoken:'이게 뭐야?',      hint:'이것이→이게, 뭐예요→뭐야' },
+  { textbook:'나는 학교에 가요.',  spoken:'난 학교 가.',      hint:'나는→난, dropped particle/ending' },
+  { textbook:'지금 뭐 하고 있어요?', spoken:'지금 뭐 해?',    hint:'하고 있어요→해 (contracted)' },
+  { textbook:'이것을 주세요.',     spoken:'이거 주세요.',     hint:'이것을→이거 (object particle drop)' },
+  { textbook:'저것은 무엇입니까?', spoken:'저건 뭐예요?',     hint:'저것은→저건, formal→polite' },
+  { textbook:'그 사람이 누구예요?', spoken:'그 사람 누구야?', hint:'subject particle drop, 예요→야' },
+  { textbook:'무엇을 먹었어요?',   spoken:'뭐 먹었어?',       hint:'무엇을→뭐, -어요→-어' }
+];
+
+var _dctCsState = null; // { rounds[], idx, correct, picks[] }
+
+function _dctConnectedStart() {
+  var rounds = CONNECTED_SPEECH_BANK.slice();
+  // Shuffle + take 6
+  for (var i = rounds.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = rounds[i]; rounds[i] = rounds[j]; rounds[j] = tmp;
+  }
+  rounds = rounds.slice(0, 6);
+  _dctCsState = { rounds: rounds, idx: 0, correct: 0, picks: [] };
+  _dctCsRender();
+}
+
+function _dctCsRender() {
+  if (!_dctCsState) return;
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  var sub  = document.getElementById('dct-step-sub');
+  if (sub) sub.textContent = 'Connected speech · contractions & elisions';
+
+  var st = _dctCsState;
+  if (st.idx >= st.rounds.length) { _dctCsFinish(); return; }
+  var r = st.rounds[st.idx];
+  var safeKo = r.spoken.replace(/'/g, "&#39;");
+
+  // Progress dots
+  var dotsHTML = '';
+  for (var i = 0; i < st.rounds.length; i++) {
+    var state = i < st.idx ? (st.picks[i] >= 60 ? 'ok' : 'no') : (i === st.idx ? 'cur' : 'up');
+    var bg = state === 'ok' ? '#22c55e' : state === 'no' ? '#f87171' : state === 'cur' ? '#a78bfa' : '#e2e8f0';
+    var ring = state === 'cur' ? 'box-shadow:0 0 0 3px rgba(167,139,250,.2);' : '';
+    dotsHTML += '<div style="width:8px;height:8px;border-radius:50%;background:' + bg + ';' + ring + 'transition:all .2s"></div>';
+  }
+
+  body.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+      + '<div>'
+        + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em">Sentence ' + (st.idx+1) + ' / ' + st.rounds.length + '</div>'
+        + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">Type what you hear (casual / contracted form)</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:5px;align-items:center">' + dotsHTML + '</div>'
+    + '</div>'
+    // Big play button + waveform accent
+    + '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin:10px 0 18px;padding:22px 16px;border-radius:18px;background:linear-gradient(145deg,#f8fafc,#eef2ff);border:1px solid #e0e7ff">'
+      + '<div style="display:flex;align-items:center;gap:6px">'
+        + '<div style="width:3px;height:12px;background:#a78bfa;border-radius:2px;opacity:.4"></div>'
+        + '<div style="width:3px;height:20px;background:#a78bfa;border-radius:2px;opacity:.6"></div>'
+        + '<div style="width:3px;height:28px;background:#a78bfa;border-radius:2px;opacity:.85"></div>'
+        + '<div style="width:3px;height:18px;background:#a78bfa;border-radius:2px;opacity:.55"></div>'
+        + '<div style="width:3px;height:24px;background:#a78bfa;border-radius:2px;opacity:.75"></div>'
+        + '<div style="width:3px;height:14px;background:#a78bfa;border-radius:2px;opacity:.45"></div>'
+        + '<div style="width:3px;height:22px;background:#a78bfa;border-radius:2px;opacity:.7"></div>'
+      + '</div>'
+      + '<button onclick="_dctSpeakSentence(\'' + safeKo + '\')" style="display:inline-flex;align-items:center;gap:10px;padding:12px 24px;border-radius:999px;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 10px 24px -8px rgba(167,139,250,.5);transition:transform .15s" onmouseover="this.style.transform=\'scale(1.03)\'" onmouseout="this.style.transform=\'scale(1)\'">'
+        + '<span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_VOLUME+'</span><span>Play</span><span style="font-size:10px;opacity:.7;font-weight:700">· normal speed</span>'
+      + '</button>'
+    + '</div>'
+    // Input
+    + '<input type="text" id="dct-cs-input" placeholder="여기에 받아쓰기…" autocomplete="off"'
+      + ' style="width:100%;padding:14px 16px;border:1.5px solid rgba(255,255,255,.15);border-radius:14px;font-family:\'Noto Sans KR\',sans-serif;font-size:16px;font-weight:600;color:#fff;box-sizing:border-box;outline:none;transition:border-color .15s"'
+      + ' onfocus="this.style.borderColor=\'#a78bfa\'" onblur="this.style.borderColor=\'#e2e8f0\'"'
+      + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();_dctCsCheck()}">'
+    + '<div id="dct-cs-result" style="margin-top:14px"></div>';
+
+  foot.innerHTML = '<button class="btn" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px" onclick="_dctSpeakSentence(\'' + safeKo + '\')"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시 듣기</span></button>'
+    + '<button class="btn btn-g" style="min-width:120px" onclick="_dctCsCheck()">Check ✓</button>';
+
+  // Auto-play + focus input
+  setTimeout(function(){ _dctSpeakSentence(r.spoken); }, 250);
+  setTimeout(function(){ var ip = document.getElementById('dct-cs-input'); if (ip) ip.focus(); }, 400);
+}
+
+// Lightweight similarity for Korean text: Levenshtein on normalized chars.
+function _dctCsSimilarity(a, b) {
+  function norm(s) { return (s || '').replace(/[\s.,?!~。！？]/g, '').toLowerCase(); }
+  a = norm(a); b = norm(b);
+  if (!a || !b) return 0;
+  if (a.length > 200) a = a.slice(0, 200);
+  if (b.length > 200) b = b.slice(0, 200);
+  var prev = new Array(b.length + 1), curr = new Array(b.length + 1);
+  for (var j = 0; j <= b.length; j++) prev[j] = j;
+  for (var i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    for (var k = 1; k <= b.length; k++) {
+      var cost = a.charCodeAt(i-1) === b.charCodeAt(k-1) ? 0 : 1;
+      curr[k] = Math.min(curr[k-1]+1, prev[k]+1, prev[k-1]+cost);
+    }
+    var tmp = prev; prev = curr; curr = tmp;
+  }
+  var d = prev[b.length];
+  return Math.max(0, Math.round((1 - d / Math.max(a.length, b.length)) * 100));
+}
+
+function _dctCsCheck() {
+  if (!_dctCsState) return;
+  var st = _dctCsState;
+  var r  = st.rounds[st.idx];
+  var ip = document.getElementById('dct-cs-input');
+  if (!ip) return;
+  var typed = ip.value.trim();
+  if (!typed) { showToast('Type what you heard first'); return; }
+
+  // Accept either spoken or textbook form — both are "correct".
+  var simSpoken   = _dctCsSimilarity(typed, r.spoken);
+  var simTextbook = _dctCsSimilarity(typed, r.textbook);
+  var sim = Math.max(simSpoken, simTextbook);
+  st.picks.push(sim);
+  if (sim >= 60) st.correct++;
+
+  var iconHtml = sim >= 90 ? '<span style="display:inline-flex;width:18px;height:18px;color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></span>' : sim >= 60 ? '<span style="display:inline-flex;width:18px;height:18px;color:#22c55e">'+BM_ICON_CHECK+'</span>' : '<span style="display:inline-flex;width:18px;height:18px;color:#dc2626">'+BM_ICON_X+'</span>';
+  var icon = iconHtml;
+  var banner = sim >= 90 ? 'Near-perfect!' : sim >= 60 ? 'Got the gist.' : 'Close — listen for these parts.';
+  var bannerColor = sim >= 90 ? '#16a34a' : sim >= 60 ? '#2563eb' : '#dc2626';
+
+  var result = document.getElementById('dct-cs-result');
+  result.innerHTML =
+    '<div style="padding:14px 16px;border-radius:14px;background:' + (sim >= 60 ? 'linear-gradient(145deg,#f0fdf4,#dcfce7)' : 'linear-gradient(145deg,#fef2f2,#fee2e2)') + ';border:1px solid ' + (sim >= 60 ? 'rgba(34,197,94,.3)' : 'rgba(239,68,68,.3)') + '">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+        + '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">' + icon + '</span><span style="font-size:14px;font-weight:800;color:' + bannerColor + '">' + banner + '</span></div>'
+        + '<div style="font-family:\'DM Sans\',sans-serif;font-size:20px;font-weight:900;color:' + bannerColor + '">' + sim + '%</div>'
+      + '</div>'
+      + '<div style="display:grid;gap:8px">'
+        + '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.06)">'
+          + '<div style="font-size:10px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M16 8c2 1 2 7 0 8"/></svg></span><span>Spoken (what you heard)</span></div>'
+          + '<div style="font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;color:#fff">' + r.spoken + '</div>'
+        + '</div>'
+        + '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.6);border:1px solid rgba(15,23,42,.06)">'
+          + '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BOOK+'</span><span>Textbook (full form)</span></div>'
+          + '<div style="font-family:\'Noto Serif KR\',serif;font-size:16px;font-weight:700;color:#334155">' + r.textbook + '</div>'
+        + '</div>'
+        + (r.hint ? '<div style="padding:8px 12px;border-radius:10px;background:rgba(251,191,36,.12);font-size:11px;color:#92400e;font-weight:600;display:flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BULB+'</span><span>' + r.hint + '</span></div>' : '')
+      + '</div>'
+    + '</div>';
+
+  ip.disabled = true;
+  ip.style.opacity = '.6';
+  var foot = document.getElementById('dct-foot');
+  foot.innerHTML = '<button class="btn btn-g" style="min-width:140px" onclick="_dctCsNext()">'
+    + (st.idx + 1 >= st.rounds.length ? 'See result →' : 'Next sentence →') + '</button>';
+}
+
+function _dctCsNext() {
+  if (!_dctCsState) return;
+  _dctCsState.idx++;
+  _dctCsRender();
+}
+
+function _dctCsFinish() {
+  var st = _dctCsState;
+  if (!st) return;
+  var avg = Math.round(st.picks.reduce(function(a,b){return a+b;},0) / (st.picks.length || 1));
+  var color = avg >= 80 ? '#22c55e' : avg >= 60 ? '#2563eb' : avg >= 40 ? '#d97706' : '#dc2626';
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  body.innerHTML =
+    '<div style="text-align:center;padding:24px 12px">'
+      + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:10px;color:'+(avg >= 80 ? '#a78bfa' : avg >= 60 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(avg >= 80 ? '#a78bfa' : avg >= 60 ? '#22c55e' : '#f87171')+'aa)">' + (avg >= 80 ? BM_ICON_PARTY : avg >= 60 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
+      + '<div style="font-family:\'DM Sans\',sans-serif;font-size:56px;font-weight:900;color:' + color + ';line-height:1;margin-bottom:6px">' + avg + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:18px">Connected-speech accuracy · avg over ' + st.picks.length + ' sentences</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.6;max-width:360px;margin:0 auto">'
+        + (avg >= 80 ? 'Impressive! Your ear is tuned to natural Korean speed.'
+         : avg >= 60 ? 'Good progress. Contractions are half of natural Korean.'
+         : 'Contractions take reps. Try the same sentences again slowly.')
+      + '</div>'
+    + '</div>';
+  foot.innerHTML = '<button class="btn" onclick="_dctSwitchMode(\'topic\')">← Topic drill</button>'
+    + '<button class="btn btn-g" onclick="_dctConnectedStart()" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Try again</span></button>';
+
+  // Persist
+  if (typeof supaUser !== 'undefined' && supaUser) {
+    try {
+      var sb = getSupa();
+      if (sb) sb.from('user_quiz_results').insert({
+        user_id:   supaUser.id,
+        quiz_type: 'connected_speech',
+        score:     st.correct,
+        max_score: st.picks.length,
+        metadata:  { avg_similarity: avg, picks: st.picks }
+      });
+    } catch(e) {}
+  }
+}
+
+// ── Step 3: 빈칸 채우기 (fill in the missing word) ────────────
+function _buildFbState(idx, pool) {
+  var s = pool[idx] || {};
+  var words = (s.ko || '').replace(/[.!?。！？]/g, '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) words = [s.ko || ''];
+  // Blank the longest content word — avoids blanking tiny particles
+  var blankIdx = 0, maxLen = 0;
+  for (var i = 0; i < words.length; i++) {
+    if (words[i].length > maxLen) { maxLen = words[i].length; blankIdx = i; }
+  }
+  var answer = words[blankIdx];
+  // Distractor pool: words from other sentences, dedupe, exclude answer
+  var bag = {};
+  pool.forEach(function(x, xi){
+    if (xi === idx) return;
+    (x.ko || '').replace(/[.!?。！？]/g, '').trim().split(/\s+/).filter(Boolean).forEach(function(w){
+      if (w && w !== answer) bag[w] = 1;
+    });
+  });
+  var dists = Object.keys(bag).sort(function(){ return Math.random() - 0.5; });
+  var picked = [];
+  // Prefer distractors close in length first
+  dists.sort(function(a,b){ return Math.abs(a.length - answer.length) - Math.abs(b.length - answer.length); });
+  for (var k = 0; k < dists.length && picked.length < 3; k++) picked.push(dists[k]);
+  while (picked.length < 3) picked.push(answer.slice(0, Math.max(1, answer.length - 1)) + '요');
+  var choices = [answer].concat(picked).sort(function(){ return Math.random() - 0.5; });
+  return { sentIdx: idx, words: words, blankIdx: blankIdx, answer: answer, choices: choices, picked: null, answered: false };
+}
+
+function _dctRenderFillBlank() {
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  if (!body || !foot) return;
+  var pool = _dctPool();
+  if (!pool.length) { _dctEmptyState(body, foot); return; }
+  if (_dctFbIdx >= pool.length) {
+    _dctStep = 4; _dctLpIdx = 0; _dctLpState = null;
+    _dctRender();
+    return;
+  }
+  if (!_dctFbState || _dctFbState.sentIdx !== _dctFbIdx) _dctFbState = _buildFbState(_dctFbIdx, pool);
+  var st = _dctFbState;
+  if (!('eliminated' in st)) st.eliminated = [];   // indices of choices the hint button has dimmed
+  if (!('hintsUsed' in st))  st.hintsUsed = 0;
+  var s = pool[_dctFbIdx];
+  var sentHTML = st.words.map(function(w, i){
+    if (i === st.blankIdx) {
+      var blankBg = 'rgba(167,139,250,.08)', blankColor = '#a78bfa', blankText = '___';
+      if (st.answered) {
+        blankBg = '#dcfce7'; blankColor = '#15803d'; blankText = st.answer;
+      }
+      return '<span style="display:inline-block;padding:3px 14px;margin:0 3px;border:2px dashed ' + blankColor + ';border-radius:8px;background:' + blankBg + ';color:' + blankColor + ';font-weight:800;min-width:60px;text-align:center">' + escapeHTML(blankText) + '</span>';
+    }
+    return '<span style="margin:0 2px">' + escapeHTML(w) + '</span>';
+  }).join(' ');
+  var choicesHTML = st.choices.map(function(c, ci){
+    var isEliminated = st.eliminated.indexOf(ci) !== -1;
+    var disabled = (st.answered || isEliminated) ? 'disabled' : '';
+    var bg = '#fff', color = '#0f172a', border = '#e2e8f0';
+    if (st.answered) {
+      if (c === st.answer) { bg = '#dcfce7'; color = '#15803d'; border = '#22c55e'; }
+      else if (st.picked === c) { bg = '#fee2e2'; color = '#dc2626'; border = '#f87171'; }
+    } else if (isEliminated) {
+      // Hint dimmed this choice — keep visible but visually struck-through
+      bg = '#f1f5f9'; color = '#94a3b8'; border = '#e2e8f0';
+    }
+    var extraStyle = isEliminated ? 'text-decoration:line-through;opacity:.55;cursor:not-allowed' : 'cursor:pointer';
+    return '<button ' + disabled + ' onclick="_dctFbPick(' + ci + ')" style="padding:12px 18px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:10px;font-size:15px;font-weight:700;font-family:\'Noto Serif KR\',serif;' + extraStyle + '">' + escapeHTML(c) + '</button>';
+  }).join('');
+  var hintEn = s.en ? '<div style="text-align:center;margin:0 0 12px;padding:8px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:12px;color:#78350f;font-style:italic;display:flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BULB+'</span><span>' + escapeHTML(s.en) + '</span></div>' : '';
+  // Hint affordance: max 2 hints per question (eliminates wrong
+  // answers one at a time). Disabled once 2 wrong are out, since
+  // any further hint would just point at the answer.
+  var maxHints = Math.min(2, Math.max(0, st.choices.length - 2));
+  var hintsLeft = maxHints - st.hintsUsed;
+  var hintBtn = !st.answered && hintsLeft > 0
+    ? '<button onclick="_dctFbHint()" style="padding:6px 14px;border-radius:999px;border:1.5px solid #fcd34d;background:#fef3c7;color:#92400e;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BULB+'</span><span>Hint (-' + hintsLeft + ')</span></button>'
+    : '';
+  body.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px">'
+    +   '<div style="font-size:13px;color:rgba(255,255,255,.55)">듣고 빈칸에 알맞은 단어를 고르세요. (' + (_dctFbIdx + 1) + '/' + pool.length + ')</div>'
+    +   hintBtn
+    + '</div>'
+    + '<div style="text-align:center;margin-bottom:14px">'
+    + '<button onclick="_dctFbSpeak()" style="width:66px;height:66px;border-radius:50%;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:30px;height:30px;color:#a78bfa">'+BM_ICON_VOLUME+'</span></button>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">클릭해서 듣기</div>'
+    + '</div>'
+    + hintEn
+    + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px;margin-bottom:16px;font-family:\'Noto Serif KR\',serif;font-size:17px;text-align:center;line-height:2;word-break:keep-all">' + sentHTML + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">' + choicesHTML + '</div>';
+  foot.innerHTML = st.answered
+    ? '<button class="btn btn-g" onclick="_dctFbNext()">다음 →</button>'
+    : '<div style="font-size:12px;color:rgba(255,255,255,.45);padding:6px 0">단어를 골라주세요</div>';
+  if (!st.answered) setTimeout(_dctFbSpeak, 300);
+}
+
+// Eliminate one wrong choice. Picks among non-eliminated wrong
+// answers — the correct answer is always preserved.
+function _dctFbHint() {
+  if (!_dctFbState || _dctFbState.answered) return;
+  var st = _dctFbState;
+  var maxHints = Math.min(2, Math.max(0, st.choices.length - 2));
+  if (st.hintsUsed >= maxHints) return;
+  var wrongIdxs = [];
+  for (var i = 0; i < st.choices.length; i++) {
+    if (st.choices[i] === st.answer) continue;
+    if (st.eliminated.indexOf(i) !== -1) continue;
+    wrongIdxs.push(i);
+  }
+  if (!wrongIdxs.length) return;
+  st.eliminated.push(wrongIdxs[Math.floor(Math.random() * wrongIdxs.length)]);
+  st.hintsUsed++;
+  _dctRenderFillBlank();
+}
+
+function _dctFbSpeak() {
+  var pool = _dctPool();
+  var s = pool[_dctFbIdx];
+  if (s) _dctSpeakSentence(s.ko);
+}
+
+function _dctFbPick(ci) {
+  if (!_dctFbState || _dctFbState.answered) return;
+  _dctFbState.picked = _dctFbState.choices[ci];
+  _dctFbState.answered = true;
+  if (_dctFbState.picked === _dctFbState.answer) _dctFbScore++;
+  _dctRenderFillBlank();
+}
+
+function _dctFbNext() {
+  _dctFbIdx++;
+  _dctFbState = null;
+  _dctRenderFillBlank();
+}
+
+// ── Step 4: 듣고 맞는 문장 찾기 ─────────────────────────────
+function _buildLpState(idx, pool) {
+  var correct = pool[idx];
+  var others = pool.filter(function(_, i){ return i !== idx; }).slice();
+  others.sort(function(){ return Math.random() - 0.5; });
+  var choices = [correct].concat(others.slice(0, 3));
+  choices.sort(function(){ return Math.random() - 0.5; });
+  return { sentIdx: idx, choices: choices, picked: null, answered: false };
+}
+
+function _dctRenderListenPick() {
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  if (!body || !foot) return;
+  var pool = _dctPool();
+  if (!pool.length) { _dctEmptyState(body, foot); return; }
+  if (_dctLpIdx >= pool.length) {
+    var total = pool.length * 2;
+    var score = _dctFbScore + _dctLpScore;
+    var pct = total > 0 ? Math.round(score / total * 100) : 0;
+    _dctSaveScore(pct, total);
+    var modeTag = _dctArticleMode ? '<div style="font-size:11px;color:#d97706;margin-bottom:8px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_NEWSPAPER+'</span><span>Article Dictation</span></div>' : '';
+    body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
+      + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:12px;color:'+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+'aa)">' + (pct >= 80 ? BM_ICON_TROPHY : pct >= 50 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
+      + '<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:4px">' + pct + '%</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:6px">빈칸 ' + _dctFbScore + '/' + pool.length + ' · 문장 ' + _dctLpScore + '/' + pool.length + '</div>'
+      + modeTag
+      + '<div style="font-size:12px;color:rgba(255,255,255,.45)">받아쓰기 완료!</div>'
+      + '</div>';
+    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done ✓ Next Activity</button>';
+    if (!_dctArticleMode && typeof logQuizResult === 'function' && supaUser) {
+      try {
+        logQuizResult(getSupa(), {
+          p_skill_type: 'listening', p_quiz_type: 'dictation',
+          p_item_id: 'dct_' + kstDateKey(), p_content_type: 'dictation',
+          p_content_id: kstDateKey(), p_is_correct: pct >= 80, p_score: pct
+        });
+      } catch(e) {}
+    }
+    return;
+  }
+  if (!_dctLpState || _dctLpState.sentIdx !== _dctLpIdx) _dctLpState = _buildLpState(_dctLpIdx, pool);
+  var st = _dctLpState;
+  var correctKo = pool[_dctLpIdx].ko;
+  var choicesHTML = st.choices.map(function(c, ci){
+    var isCorrect = c.ko === correctKo;
+    var disabled = st.answered ? 'disabled' : '';
+    var bg = '#fff', color = '#0f172a', border = '#e2e8f0';
+    if (st.answered) {
+      if (isCorrect) { bg = '#dcfce7'; color = '#15803d'; border = '#22c55e'; }
+      else if (st.picked && st.picked.ko === c.ko) { bg = '#fee2e2'; color = '#dc2626'; border = '#f87171'; }
+    }
+    return '<button ' + disabled + ' onclick="_dctLpPick(' + ci + ')" style="width:100%;text-align:left;padding:14px 16px;margin-bottom:10px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:\'Noto Serif KR\',serif;line-height:1.5">' + escapeHTML(c.ko || '') + '</button>';
+  }).join('');
+  body.innerHTML =
+      '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:16px">듣고 맞는 문장을 고르세요. (' + (_dctLpIdx + 1) + '/' + pool.length + ')</div>'
+    + '<div style="text-align:center;margin-bottom:18px">'
+    + '<button onclick="_dctLpSpeak()" style="width:80px;height:80px;border-radius:50%;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:36px;height:36px;color:#a78bfa">'+BM_ICON_VOLUME+'</span></button>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px">클릭해서 듣기</div>'
+    + '</div>'
+    + choicesHTML;
+  foot.innerHTML = st.answered
+    ? '<button class="btn btn-g" onclick="_dctLpNext()">다음 →</button>'
+    : '<div style="font-size:12px;color:rgba(255,255,255,.45);padding:6px 0">소리를 듣고 맞는 문장을 고르세요</div>';
+  if (!st.answered) setTimeout(_dctLpSpeak, 300);
+}
+
+function _dctLpSpeak() {
+  var pool = _dctPool();
+  var s = pool[_dctLpIdx];
+  if (s) _dctSpeakSentence(s.ko);
+}
+
+function _dctLpPick(ci) {
+  if (!_dctLpState || _dctLpState.answered) return;
+  var pool = _dctPool();
+  _dctLpState.picked = _dctLpState.choices[ci];
+  _dctLpState.answered = true;
+  if (_dctLpState.picked && _dctLpState.picked.ko === pool[_dctLpIdx].ko) _dctLpScore++;
+  _dctRenderListenPick();
+}
+
+function _dctLpNext() {
+  _dctLpIdx++;
+  _dctLpState = null;
+  _dctRenderListenPick();
+}
+
+// ═══════════════════════════════════════════════════════════
+// NUANCE QUIZ (Forest only) — replaces Picture Description
+// ═══════════════════════════════════════════════════════════
+var _nqQuestions = [];
+var _nqIdx = 0;
+var _nqScore = 0;
+var _nqState = null;
+
+function _nqCacheKey() {
+  var topicId = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en || '')).slice(0, 32);
+  return 'kh_nuance_' + kstDateKey() + '_' + (_currentLevel || 'Advanced') + '_' + topicId;
+}
+
+function openNuanceQuiz() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (!ensureStudyUnlocked()) return;
+  var m = document.getElementById('nq-modal');
+  if (!m) return;
+  m.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  _nqIdx = 0; _nqScore = 0; _nqState = null;
+  _nqLoadOrGenerate();
+}
+
+function closeNuanceQuiz() {
+  var m = document.getElementById('nq-modal');
+  if (m) m.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function _nqLoadOrGenerate() {
+  var body = document.getElementById('nq-body');
+  var foot = document.getElementById('nq-foot');
+  if (!body || !foot) return;
+
+  try {
+    var cached = JSON.parse(localStorage.getItem(_nqCacheKey()) || 'null');
+    if (cached && Array.isArray(cached.questions) && cached.questions.length >= 3) {
+      _nqQuestions = cached.questions.slice(0, 3);
+      _nqRender();
+      return;
+    }
+  } catch(e) {}
+
+  body.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Generating nuance quiz…</div></div>';
+  foot.innerHTML = '';
+  var topic = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '한국 사회';
+  var prompt = 'You are a Korean TOPIK 5-6 instructor. Create a 3-question nuance-discrimination quiz on topic "' + topic + '".\n\n'
+    + 'Each question MUST test discrimination between NEAR-SYNONYMS — e.g. 추진하다 vs 진행하다 vs 실행하다 vs 수행하다, or 초래하다 vs 야기하다 vs 유발하다 vs 불러일으키다. Never test beginner-level vocabulary.\n\n'
+    + 'All four choices must be real, Advanced-register Korean words in dictionary/base form, all plausible at first glance, but only ONE is the most natural given collocation / nuance / register.\n\n'
+    + 'Return ONLY JSON (no markdown, no preamble):\n{\n'
+    + '  "questions": [\n'
+    + '    {\n'
+    + '      "sentence_ko": "Korean sentence (formal/~습니다 or written register) with one word replaced by _____ ",\n'
+    + '      "sentence_en": "Natural English translation",\n'
+    + '      "choices": ["word1","word2","word3","word4"],\n'
+    + '      "correct_index": 0,\n'
+    + '      "explanation_ko": "왜 정답이 가장 자연스러운지 1-2문장 (collocation, nuance, register 중심으로)"\n'
+    + '    }\n'
+    + '  ]\n'
+    + '}\n\nExactly 3 questions. correct_index is 0-3.';
+
+  try {
+    var res = await callClaude({
+      feature: 'nuance-quiz-gen',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1400,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var txt = (res && res.content || []).map(function(b){ return b.text||''; }).join('');
+    txt = txt.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+    txt = txt.replace(/^\s*json\b[:\s]*/i, '').trim();
+    var si = txt.indexOf('{'), ei = txt.lastIndexOf('}');
+    if (si >= 0 && ei > si) txt = txt.slice(si, ei + 1);
+    var parsed = JSON.parse(txt);
+    if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length < 3) {
+      throw new Error('Quiz data invalid');
+    }
+    _nqQuestions = parsed.questions.slice(0, 3);
+    try { localStorage.setItem(_nqCacheKey(), JSON.stringify({ questions: _nqQuestions })); } catch(e) {}
+    _nqRender();
+  } catch(e) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">퀴즈를 불러올 수 없습니다.<br><span style="font-size:12px">' + escapeHTML(e.message || '') + '</span></div>';
+    foot.innerHTML = '<button class="btn" onclick="closeNuanceQuiz()">닫기</button>';
+  }
+}
+
+function _nqRender() {
+  var body = document.getElementById('nq-body');
+  var foot = document.getElementById('nq-foot');
+  var sub = document.getElementById('nq-step-sub');
+  if (!body || !foot) return;
+
+  if (_nqIdx >= _nqQuestions.length) {
+    var pct = _nqQuestions.length > 0 ? Math.round(_nqScore / _nqQuestions.length * 100) : 0;
+    body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
+      + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:12px;color:'+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+'aa)">' + (pct >= 80 ? BM_ICON_TROPHY : pct >= 50 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
+      + '<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
+      + '<div style="font-size:13px;color:#64748b;margin-bottom:6px">' + _nqScore + ' / ' + _nqQuestions.length + ' correct</div>'
+      + '<div style="font-size:12px;color:#94a3b8">Nuance Quiz 완료!</div>'
+      + '</div>';
+    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'picture\');returnToActivities(closeNuanceQuiz)">Done ✓ Next Activity</button>';
+    if (sub) sub.textContent = 'Complete';
+    if (typeof logQuizResult === 'function' && supaUser) {
+      try {
+        logQuizResult(getSupa(), {
+          p_skill_type: 'vocabulary', p_quiz_type: 'nuance',
+          p_item_id: 'nq_' + kstDateKey(), p_content_type: 'nuance',
+          p_content_id: kstDateKey(), p_is_correct: pct >= 80, p_score: pct
+        });
+      } catch(e) {}
+    }
+    return;
+  }
+
+  if (sub) sub.textContent = 'Question ' + (_nqIdx + 1) + ' of ' + _nqQuestions.length;
+  if (!_nqState) _nqState = { picked: null, answered: false };
+  var q = _nqQuestions[_nqIdx] || {};
+  var rawSent = (q.sentence_ko || '').replace(/_+/g, '_____');
+  var sentenceHTML = escapeHTML(rawSent).replace(/_____/g, '<span style="display:inline-block;padding:2px 14px;margin:0 3px;border:2px dashed #7c3aed;border-radius:8px;background:#faf5ff;color:#7c3aed;font-weight:800">___</span>');
+  var enHTML = q.sentence_en ? '<div style="text-align:center;margin:0 0 12px;padding:8px 14px;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;font-size:12px;color:#78350f;font-style:italic;display:flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_BULB+'</span><span>' + escapeHTML(q.sentence_en) + '</span></div>' : '';
+  var choicesHTML = (q.choices || []).map(function(c, ci){
+    var disabled = _nqState.answered ? 'disabled' : '';
+    var bg = '#fff', color = '#0f172a', border = '#e2e8f0';
+    if (_nqState.answered) {
+      if (ci === q.correct_index) { bg = '#dcfce7'; color = '#15803d'; border = '#22c55e'; }
+      else if (_nqState.picked === ci) { bg = '#fee2e2'; color = '#dc2626'; border = '#f87171'; }
+    }
+    return '<button ' + disabled + ' onclick="_nqPick(' + ci + ')" style="padding:12px 18px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif;min-width:110px">' + escapeHTML(c) + '</button>';
+  }).join('');
+  var explHTML = (_nqState.answered && q.explanation_ko)
+    ? '<div style="margin-top:14px;padding:12px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;font-size:13px;color:#0c4a6e;line-height:1.6;display:flex;align-items:flex-start;gap:6px"><span style="display:inline-flex;width:14px;height:14px;flex-shrink:0;margin-top:3px">'+BM_ICON_BOOK+'</span><span>' + escapeHTML(q.explanation_ko) + '</span></div>'
+    : '';
+  body.innerHTML =
+      '<div style="font-size:13px;color:#64748b;margin-bottom:12px">문맥에 가장 어울리는 단어를 고르세요. (' + (_nqIdx + 1) + '/' + _nqQuestions.length + ')</div>'
+    + enHTML
+    + '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin-bottom:18px;font-family:\'Noto Serif KR\',serif;font-size:17px;text-align:center;line-height:2;word-break:keep-all">' + sentenceHTML + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">' + choicesHTML + '</div>'
+    + explHTML;
+  foot.innerHTML = _nqState.answered
+    ? '<button class="btn btn-g" onclick="_nqNext()">' + (_nqIdx + 1 >= _nqQuestions.length ? '완료 →' : '다음 →') + '</button>'
+    : '<div style="font-size:12px;color:#94a3b8;padding:6px 0">단어를 골라주세요</div>';
+}
+
+function _nqPick(ci) {
+  if (!_nqState || _nqState.answered) return;
+  var q = _nqQuestions[_nqIdx] || {};
+  _nqState.picked = ci;
+  _nqState.answered = true;
+  if (ci === q.correct_index) _nqScore++;
+  _nqRender();
+}
+
+function _nqNext() {
+  _nqIdx++;
+  _nqState = null;
+  _nqRender();
+}
+
+var _asFilter = 'latest'; // 'latest' | 'saved'
+function _asSetFilter(mode) {
+  _asFilter = mode;
+  document.querySelectorAll('.as-filter-pill').forEach(function(b) {
+    var on = b.getAttribute('data-as-filter') === mode;
+    b.classList.toggle('active', on);
+    b.style.background = on ? '#0b1626' : '#fff';
+    b.style.color      = on ? '#fff' : '#475569';
+  });
+  _asLoadArticles();
+}
+
+// localStorage cache for the Article Study picker. The 'Loading articles...'
+// spinner used to fire on every modal open because the picker re-fetched
+// the full article list each time. With ~300 published articles + their
+// lite columns that's ~50–100 KB of network and noticeable lag.
+// Stale-while-revalidate: paint cached list immediately, then fetch
+// fresh in the background and re-render only if the row set changed.
+var _AS_PICKER_CACHE_KEY     = 'kh_as_picker_v1';
+var _AS_PICKER_CACHE_TTL_MS  = 30 * 60 * 1000;  // 30 min — articles list changes infrequently
+
+function _asLoadPickerCache() {
+  try {
+    var raw = localStorage.getItem(_AS_PICKER_CACHE_KEY);
+    if (!raw) return null;
+    var p = JSON.parse(raw);
+    if (!p || !Array.isArray(p.rows) || !p.ts) return null;
+    if (Date.now() - p.ts > _AS_PICKER_CACHE_TTL_MS) return null;
+    return p.rows;
+  } catch(_) { return null; }
+}
+function _asSavePickerCache(rows) {
+  try { localStorage.setItem(_AS_PICKER_CACHE_KEY, JSON.stringify({ ts: Date.now(), rows: rows })); } catch(_) {}
+}
+
+async function _asLoadArticles() {
+  var sb = getSupa();
+  var g = document.getElementById('as-article-grid'); if (!g) return;
+  if (!sb) {
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">Cannot connect — please reload the page.</div>';
+    return;
+  }
+
+  // Stale-while-revalidate from localStorage when on the Latest tab.
+  // Saved tab can't be cached this way because it's per-user bookmarks.
+  if (_asFilter !== 'saved') {
+    var cached = _asLoadPickerCache();
+    if (cached && cached.length) {
+      _asArticles = cached.filter(function(a){
+        if (a.status && a.status !== 'published') return false;
+        return !!a.title;
+      });
+      try { await _asLoadStudiedSet(); } catch(_) {}
+      _asRenderGrid();
+      // Fire background revalidation. If the new row set differs from
+      // what we painted, swap in the fresh one. Otherwise it's a no-op.
+      (async function () {
+        try {
+          var fresh = await _asFetchArticles({});
+          if (!Array.isArray(fresh)) return;
+          var oldIds = cached.map(function(a){ return String(a.id); }).join(',');
+          var newIds = fresh.map(function(a){ return String(a.id); }).join(',');
+          _asSavePickerCache(fresh);
+          if (oldIds !== newIds) {
+            _asArticles = fresh.filter(function(a){
+              if (a.status && a.status !== 'published') return false;
+              return !!a.title;
+            });
+            try { await _asLoadStudiedSet(); } catch(_) {}
+            _asRenderGrid();
+          }
+        } catch(_) {}
+      })();
+      return;
+    }
+  }
+
+  // Cache miss → spinner + network fetch (the previous default path).
+  g.innerHTML = '<div class="as-loading"><div class="as-spinner"></div><div>Loading articles…</div></div>';
+  try {
+    if (_asFilter === 'saved') {
+      if (!supaUser) {
+        g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center">Sign in to see your saved articles.</div>';
+        _asArticles = [];
+        return;
+      }
+      var bm = await sb.from('bookmarks')
+        .select('article_id')
+        .eq('user_id', supaUser.id)
+        .order('id', { ascending:false });
+      if (bm.error) throw bm.error;
+      var ids = (bm.data || []).map(function(b){ return b.article_id; }).filter(Boolean);
+      if (!ids.length) {
+        g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:24px;text-align:center;line-height:1.6">No saved articles yet.<br><span style="font-size:11px;color:#cbd5e1">Tap the bookmark icon on any article to save it for later.</span></div>';
+        _asArticles = [];
+        return;
+      }
+      var savedRows = await _asFetchArticles({ ids: ids });
+      var bmOrder = {}; ids.forEach(function(id, i){ bmOrder[String(id)] = i; });
+      _asArticles = savedRows
+        .filter(function(a){ return a.title; })
+        .sort(function(a, b){ return (bmOrder[String(a.id)] || 0) - (bmOrder[String(b.id)] || 0); });
+      await _asLoadStudiedSet();
+      _asRenderGrid();
+      return;
+    }
+
+    // Replicate the home page's proven query pattern instead of the
+    // ad-hoc one that was failing here:
+    //   · order by `created_at` (matches loadArticlesFromDB) — `date`
+    //     can be null on rows where the admin didn't backfill it,
+    //     and a NULL-sorted column drops those rows behind a long
+    //     tail that the limit cuts off.
+    //   · NO `.eq('status','published')` server-side — instead filter
+    //     in JS after the fetch. Letting the WHERE clause hit the
+    //     status column triggered a PostgREST schema-cache miss for
+    //     some article rows, which surfaced as the "Could not load
+    //     the article" error.
+    //   · Try the lite column list first; on column-missing error,
+    //     fall back to '*' (same shape as home page's loader).
+    var rows = await _asFetchArticles({});
+    _asSavePickerCache(rows);
+    _asArticles = rows.filter(function(a){
+      // Apply status filter client-side: hide drafts but keep rows
+      // where status came back null/missing (production has been
+      // through enough migrations that some rows lack the column).
+      if (a.status && a.status !== 'published') return false;
+      return !!a.title;
+    });
+    await _asLoadStudiedSet();
+    _asRenderGrid();
+  } catch(e) {
+    console.error('[Article Study] picker load failed:', e);
+    var msg = (e && e.message) ? String(e.message).slice(0, 160) : 'unknown error';
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;line-height:1.5">Could not load articles.<br><span style="font-size:11px;color:#cbd5e1">' + msg.replace(/[<&]/g, '') + '</span><br><button onclick="_asLoadArticles()" style="margin-top:10px;padding:6px 14px;font-size:12px;font-weight:700;background:#0b1626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit">Retry</button></div>';
+  }
+}
+
+// Fetch articles using the same lite-then-* column pattern that the
+// home page's loadArticlesFromDB uses. Returns an array of rows
+// (possibly empty) on success; throws on hard failures so the
+// caller's catch can surface a real error message.
+async function _asFetchArticles(opts) {
+  opts = opts || {};
+  var sb = getSupa();
+  var lite = 'id,title,title_en,section,level,image,status,date,created_at';
+  var selects = [lite, '*'];
+  var lastErr = null;
+  for (var i = 0; i < selects.length; i++) {
+    var q = sb.from('articles').select(selects[i]);
+    if (opts.ids) q = q.in('id', opts.ids).limit(200);
+    else q = q.order('created_at', { ascending: false }).limit(500);
+    var res;
+    try { res = await q; }
+    catch(err) { lastErr = err; continue; }
+    if (res.error) {
+      lastErr = res.error;
+      var m = String((res.error && res.error.message) || '');
+      // Drop to '*' if PostgREST complains about a missing column —
+      // production schema has drifted from the codebase a few times.
+      if (i < selects.length - 1 && /column|does not exist|could not find/i.test(m)) continue;
+      throw res.error;
+    }
+    return res.data || [];
+  }
+  throw (lastErr || new Error('article fetch failed'));
+}
+var _asStudiedSet = null;
+async function _asLoadStudiedSet() {
+  // Mark articles the learner has already finished studying so unstudied
+  // ones stand out. We treat any article_study row whose progress_data
+  // has completed:true as "studied". Rows with progress but no completion
+  // flag are treated as "in-progress" so the user still sees them at
+  // full opacity.
+  _asStudiedSet = { done: {}, started: {} };
+  if (!supaUser) return;
+  try {
+    var sb = getSupa(); if (!sb) return;
+    var res = await sb.from('user_read_history')
+      .select('content_id,progress_data')
+      .eq('user_id', supaUser.id)
+      .eq('content_type', 'article_study')
+      .limit(500);
+    if (res.error) return;
+    (res.data || []).forEach(function(r) {
+      var pd = r.progress_data;
+      if (typeof pd === 'string') { try { pd = JSON.parse(pd); } catch(_) { pd = null; } }
+      var id = String(r.content_id || '');
+      if (!id) return;
+      if (pd && pd.completed) _asStudiedSet.done[id] = true;
+      else _asStudiedSet.started[id] = true;
+    });
+  } catch(_){}
+}
+
+// sectionLabel() (from korehan-shared.js) maps Korean section keys
+// (국제 / 문화 / 사회 / …) to their English labels (World / Culture
+// / Society / …) so the picker stays English-first.
+function _asCardHtml(a) {
+  var labelOf = (typeof sectionLabel === 'function') ? sectionLabel : function(k){ return k || 'Article'; };
+  var studied = _asStudiedSet || { done:{}, started:{} };
+  // loading="lazy" + decoding="async" prevent the picker from firing
+  // hundreds of image requests at once. Without this, opening the
+  // picker on mobile locked the main thread long enough for Chrome to
+  // pop "페이지에서 응답이 없습니다".
+  var imgHtml = a.image
+    ? '<img src="' + a.image + '" alt="" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">'
+    : '<div class="asc-img-ph"><span style="display:inline-flex;width:24px;height:24px">' + BM_ICON_NEWSPAPER + '</span></div>';
+  var displayTitle = a.title_en || a.title || '';
+  var displaySection = labelOf(a.section) || 'Article';
+  var idStr = String(a.id);
+  var isDone = !!studied.done[idStr];
+  var inProg = !isDone && !!studied.started[idStr];
+  var studiedCls = isDone ? ' as-studied' : (inProg ? ' as-inprogress' : '');
+  var badge = isDone
+    ? '<div class="asc-badge asc-badge-done">Studied</div>'
+    : (inProg ? '<div class="asc-badge asc-badge-prog">In progress</div>' : '');
+  return '<div class="as-article-card' + studiedCls + '" onclick="asSelectArticle(\'' + idStr.replace(/'/g,"\\'") + '\')">'
+    + imgHtml
+    + badge
+    + '<div class="asc-body">'
+    + '<div class="asc-cat">' + displaySection + '</div>'
+    + '<div class="asc-title">' + displayTitle + '</div>'
+    + (a.level ? '<div class="asc-meta">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) + '</div>' : '')
+    + '</div></div>';
+}
+
+// Append the next _asPageSize cards onto the grid. Called once at
+// initial render and again every time the IntersectionObserver
+// sentinel scrolls into view.
+function _asAppendBatch() {
+  var g = document.getElementById('as-article-grid'); if (!g) return;
+  var sent = document.getElementById('as-grid-sentinel');
+  if (sent && sent.parentNode === g) g.removeChild(sent);
+
+  var end = Math.min(_asArticlesShown + _asPageSize, _asArticles.length);
+  var html = '';
+  for (var i = _asArticlesShown; i < end; i++) html += _asCardHtml(_asArticles[i]);
+  g.insertAdjacentHTML('beforeend', html);
+  _asArticlesShown = end;
+
+  // Re-attach the sentinel so the observer can fire again. When we run
+  // out of articles, drop it so the observer doesn't keep callback-ing.
+  if (_asArticlesShown < _asArticles.length) {
+    if (!sent) {
+      sent = document.createElement('div');
+      sent.id = 'as-grid-sentinel';
+      sent.style.cssText = 'grid-column:1/-1;height:1px;width:100%';
+    }
+    g.appendChild(sent);
+    if (_asGridObserver) _asGridObserver.observe(sent);
+  }
+}
+
+function _asRenderGrid() {
+  var g = document.getElementById('as-article-grid'); if (!g) return;
+  // Tear down any previous observer so re-entering the picker doesn't
+  // pile up listeners. The .observe() call below recreates one.
+  if (_asGridObserver) { try { _asGridObserver.disconnect(); } catch(_) {} _asGridObserver = null; }
+  _asArticlesShown = 0;
+  if (!_asArticles.length) {
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">No articles available.</div>';
+    return;
+  }
+  // Reset the grid container then append the first batch. Splitting
+  // into batches keeps the initial DOM cost ~30 cards instead of 500,
+  // which is what was freezing the picker on first open.
+  g.innerHTML = '';
+  if ('IntersectionObserver' in window) {
+    _asGridObserver = new IntersectionObserver(function(entries) {
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].isIntersecting) { _asAppendBatch(); break; }
+      }
+    }, { root: g.closest('.su-modal-body') || null, rootMargin: '400px' });
+  }
+  _asAppendBatch();
+}
+
+async function asSelectArticle(id) {
+  var art = _asArticles.find(function(a){ return String(a.id)===String(id); });
+  if (!art) return;
+  _asCurrentArt = art; _asStep = 1; _asStepDone = [false,false,false,false];
+  _asStudyContent = null; _asMatchState = null; _asWOState = null; _asQState = null;
+
+  // Switch the view IMMEDIATELY so the tap feels responsive. Previously
+  // we awaited body + progress fetches BEFORE switching, which left
+  // the picker frozen for the duration — long enough that Chrome
+  // would pop "페이지에서 응답이 없습니다" on slower connections.
+  document.getElementById('as-list-view').classList.add('as-hidden');
+  document.getElementById('as-study-view').classList.remove('as-hidden');
+  document.getElementById('as-article-title').textContent = art.title || 'Article Study';
+  _asRenderPips();
+
+  // Body cache: the picker query is lite (no body), so every article
+  // tap used to fetch body fresh — adding ~500ms-2s per first open.
+  // localStorage layer eliminates that on repeat visits to the SAME
+  // article on the SAME device.
+  var bodyLsKey = 'kh_as_body_' + art.id;
+  if (!art.body) {
+    try { var cachedBody = localStorage.getItem(bodyLsKey); if (cachedBody) art.body = cachedBody; } catch(_) {}
+  }
+
+  document.getElementById('as-article-content').innerHTML =
+    '<p class="as-section-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_BOOK + '</span><span>Read the article</span></p>'
+    + '<div class="as-article-text" id="as-article-text-host">'
+    + (art.body ? _asFormatBody(art.body) : '<div style="color:#94a3b8;font-size:13px">⏳ Loading article…</div>')
+    + '</div>';
+  document.getElementById('as-activity-area').innerHTML =
+    '<div class="su-loading"><div class="su-spinner"></div><div id="as-loading-msg">Preparing your study session…</div></div>';
+  _asSetNav('none','none','none');
+
+  // Body + progress in parallel — both fast (cached / small). Render
+  // the step immediately after those resolve so the user sees vocab
+  // cards (from sessionStorage/localStorage cache if any) or an empty
+  // "still loading" placeholder rather than a 15-second blank
+  // "Loading saved content…" spinner. The DB / AI study-content
+  // fetch runs in the BACKGROUND and re-renders the step when it
+  // finishes. Owner-reported "saved content 로딩에 15초는 개에바지".
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  await Promise.all([
+    (async function () {
+      if (art.body || !sb) return;
+      try {
+        var bodyRes = await sb.from('articles').select('body').eq('id', art.id).maybeSingle();
+        if (bodyRes && bodyRes.data && bodyRes.data.body) {
+          art.body = bodyRes.data.body;
+          try { localStorage.setItem(bodyLsKey, art.body); } catch(_) {}
+          var host = document.getElementById('as-article-text-host');
+          if (host) host.innerHTML = _asFormatBody(art.body);
+        }
+      } catch(_) {}
+    })(),
+    (async function () {
+      if (_asRestoreProgress()) return;
+      try { await _asLoadProgressFromDB(); } catch(_) {}
+    })(),
+  ]);
+  // Synchronously pull from sessionStorage / localStorage so cache
+  // hits paint instantly without waiting for the DB at all. Only
+  // when both miss do we end up in the slow path below.
+  _asLoadContentFromCacheSync();
+  _asRenderStep();
+  // Fire the rest of _asLoadContent (DB + AI fallback) in the
+  // background. If it ends up with vocab the cache didn't have, the
+  // re-render swaps the placeholder out for real cards.
+  _asLoadContent().then(function () {
+    try { _asRenderStep(); } catch(_){}
+  });
+}
+
+// Synchronous slice of _asLoadContent — checks the two local caches
+// only. Used by _asSelectArticle so the initial paint never has to
+// await anything. Mirrors the cache-check half of _asLoadContent.
+function _asLoadContentFromCacheSync() {
+  if (!_asCurrentArt) return false;
+  var key   = 'as_c3_' + _asCurrentArt.id;
+  var lsKey = 'kh_as_content_' + _asCurrentArt.id;
+  try {
+    var c = sessionStorage.getItem(key);
+    if (c) {
+      var parsedSS = JSON.parse(c);
+      if (parsedSS && Array.isArray(parsedSS.vocab) && parsedSS.vocab.length > 0) {
+        _asStudyContent = parsedSS; return true;
+      }
+    }
+  } catch(_) {}
+  try {
+    var lsRaw = localStorage.getItem(lsKey);
+    if (lsRaw) {
+      var parsedLS = JSON.parse(lsRaw);
+      if (parsedLS && Array.isArray(parsedLS.vocab) && parsedLS.vocab.length > 0) {
+        _asStudyContent = parsedLS;
+        try { sessionStorage.setItem(key, lsRaw); } catch(_) {}
+        return true;
+      }
+    }
+  } catch(_) {}
+  return false;
+}
+
+function _asFormatBody(b) {
+  return b.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n\n+/g,'</p><p style="margin-top:10px" class="as-article-text">').replace(/\n/g,'<br>');
+}
+function _asSetNav(check, next, done) {
+  var nb = document.getElementById('as-next-btn'), db = document.getElementById('as-done-btn');
+  if (nb) nb.style.display = (next === undefined || next === null) ? 'none' : next;
+  if (db) db.style.display = (done === undefined || done === null) ? 'none' : done;
+}
+function asGoToStep(step) {
+  // Only allow going to completed steps or current
+  if (step < 1 || step > 4) return;
+  if (step > _asStep && !_asStepDone[step-2]) return;
+  _asStep = step; _asRenderStep();
+}
+function asPrevStep() {
+  if (_asStep > 1) { _asStep--; _asSaveProgress(); _asRenderStep(); }
+}
+
+async function _asLoadContent() {
+  if (!_asCurrentArt) return;
+  // Cache keys. sessionStorage was the original layer (lost on tab
+  // close → user re-hit DB / AI on every fresh session). Added
+  // localStorage on top so repeat visits — even days later — hit a
+  // local copy with zero network. Both keys mirror the same payload.
+  var key   = 'as_c3_' + _asCurrentArt.id;
+  var lsKey = 'kh_as_content_' + _asCurrentArt.id;
+  // 1. sessionStorage — fastest, current tab only.
+  try {
+    var c = sessionStorage.getItem(key);
+    if (c) {
+      var parsedSS = JSON.parse(c);
+      if (parsedSS && Array.isArray(parsedSS.vocab) && parsedSS.vocab.length > 0) {
+        _asStudyContent = parsedSS;
+        return;
+      }
+    }
+  } catch(_) {}
+  // 2. localStorage — survives tab close + browser restart.
+  try {
+    var lsRaw = localStorage.getItem(lsKey);
+    if (lsRaw) {
+      var parsedLS = JSON.parse(lsRaw);
+      if (parsedLS && Array.isArray(parsedLS.vocab) && parsedLS.vocab.length > 0) {
+        _asStudyContent = parsedLS;
+        try { sessionStorage.setItem(key, lsRaw); } catch(_) {}
+        return;
+      }
+    }
+  } catch(_) {}
+  var lm0 = document.getElementById('as-loading-msg');
+  if (lm0) lm0.textContent = 'Loading saved content…';
+  if (!supaUser) return;
+  // 3. DB. Owner-reported root-cause cleanup: DO NOT fall through to
+  // a per-user Claude call on miss/timeout. Every user who happened
+  // to be first on a fresh article was paying for Haiku to generate
+  // study content (and every cache wipe / timeout re-paid). Admin
+  // has explicit "Gen Study" + "Gen All Missing" buttons in the
+  // admin panel — that's the only path that should ever hit Claude.
+  //
+  // On DB miss: leave _asStudyContent empty. The render path shows
+  // "Study content not ready yet" + an admin-only "Generate" button.
+  // No more cost leak.
+  try {
+    var sb = getSupa();
+    var dbPromise = sb.from('article_study_content').select('*').eq('article_id', String(_asCurrentArt.id)).maybeSingle();
+    var timeoutPromise = new Promise(function (_, reject) {
+      setTimeout(function () { reject(new Error('article_study_content fetch timeout (10s)')); }, 10000);
+    });
+    var dr = await Promise.race([dbPromise, timeoutPromise]);
+    var dbRow = dr.data;
+    // If the row exists with vocab, use it. Don't filter on
+    // prompt_version / admin_edited — that previously caused valid
+    // pre-migration rows to re-generate every visit.
+    var hasVocab = dbRow && Array.isArray(dbRow.vocab) && dbRow.vocab.length > 0;
+    if (hasVocab) {
+      _asStudyContent = {
+        vocab:         dbRow.vocab         || [],
+        phrases:       dbRow.phrases       || [],
+        wrong_phrases: dbRow.wrong_phrases || [],
+        word_order:    dbRow.word_order    || [],
+        questions:     dbRow.questions     || [],
+        custom_highlights: dbRow.custom_highlights || null
+      };
+      var payload = JSON.stringify(_asStudyContent);
+      try { sessionStorage.setItem(key, payload); } catch(_) {}
+      try { localStorage.setItem(lsKey, payload);  } catch(_) {}
+      return;
+    }
+    // DB returned no row (or empty vocab). Mark so the render path
+    // shows the "not ready" placeholder instead of pretending we
+    // have content.
+    _asStudyContent = null;
+  } catch(e) {
+    console.warn('[AS] DB read failed:', e && e.message);
+    if (typeof kh_log_error === 'function') {
+      kh_log_error('article_study_content fetch failed', { article_id: _asCurrentArt.id, msg: e && e.message });
+    }
+    _asStudyContent = null;
+  }
+}
+
+// "← Browse articles" — clears the current article and reopens the
+// picker. Used by the "not ready" placeholder so users can recover
+// without page reload.
+function _asGoBackToPicker() {
+  _asCurrentArt = null;
+  _asStudyContent = null;
+  if (typeof _asLoadArticles === 'function') _asLoadArticles();
+}
+
+// Admin-only one-shot gen. Reuses the admin-panel's bulk generator
+// for a single article id so the admin doesn't have to leave Study
+// Room to prep content. Falls back to a Claude call if the admin
+// gen helper isn't loaded.
+async function _asAdminGenerate() {
+  if (!_asCurrentArt) return;
+  if (!window._isAdmin) return;
+  var btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  try {
+    if (typeof aseGenAndSaveOne === 'function') {
+      // The admin-panel gen helper writes directly to article_study_content
+      // and returns when done. We then re-run _asLoadContent.
+      await aseGenAndSaveOne(_asCurrentArt.id);
+    } else {
+      // Inline fallback for when the admin helper isn't loaded on this
+      // page. Admin-side only, so the cost concern doesn't apply.
+      var prompt = 'Korean news article study content. Title: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
+        + '\n\nReturn ONLY JSON: {"vocab":[{"ko":"","en":"","rom":""}], "phrases":[{"ko":"","en":""}], "wrong_phrases":[{"ko":"","en":""}], "word_order":[{"chunks":["",""]}], "questions":[{"q":"","options":["","","",""],"correct":0}]} — 6 vocab, 3 phrases, 3 wrong_phrases, 3 word_order, 3 questions.';
+      var data = await callClaude({ feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:1800, messages:[{role:'user',content:prompt}] });
+      var raw = (data.content||[]).map(function(c){return c.text||'';}).join('');
+      var cl = raw.replace(/```json|```/g,'').trim();
+      var s = cl.indexOf('{'), e = cl.lastIndexOf('}');
+      if (s >= 0 && e > s) cl = cl.slice(s, e + 1);
+      var parsed = JSON.parse(cl);
+      await _asSaveContentToDB(_asCurrentArt.id, parsed);
+    }
+    // Re-fetch from DB so we use whatever was actually persisted.
+    try { sessionStorage.removeItem('as_c3_' + _asCurrentArt.id); } catch(_) {}
+    try { localStorage.removeItem('kh_as_content_' + _asCurrentArt.id); } catch(_) {}
+    await _asLoadContent();
+    _asRenderStep();
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Generate (admin)'; }
+    alert('Generate failed: ' + (e && e.message || 'unknown'));
+  }
+}
+
+async function _asSaveContentToDB(articleId, content) {
+  try {
+    var sb = getSupa();
+    if (!sb) return;
+    var qs = content.questions || [];
+    if (Array.isArray(qs)) qs = qs.slice(); else qs = [];
+    var row = {
+      article_id: String(articleId),
+      vocab: content.vocab || [],
+      phrases: content.phrases || [],
+      wrong_phrases: content.wrong_phrases || [],
+      word_order: content.word_order || [],
+      questions: qs,
+      prompt_version: 2,
+      admin_edited: false
+    };
+    // Robust upsert: retry by stripping ANY column the DB rejects, not
+    // just prompt_version. Previous version only handled prompt_version;
+    // a missing wrong_phrases / word_order / etc. would silently kill
+    // the entire save. The retry loop bounded to 6 attempts (one per
+    // possible missing column) so a permanent failure mode can't spin.
+    //
+    // Owner-reported: article_study_content was empty in production
+    // even though every learner triggered the AI gen path. This
+    // strict-prompt_version retry was the reason saves were rolling
+    // back on installs missing wrong_phrases (the 20260424 migration
+    // wasn't applied) — admin saw 0 rows after weeks of Haiku spend.
+    var res;
+    for (var attempt = 0; attempt < 6; attempt++) {
+      res = await sb.from('article_study_content').upsert(row, { onConflict: 'article_id' });
+      if (!res || !res.error) break;
+      var msg = String((res.error && res.error.message) || '');
+      var badCol = (msg.match(/column [\\"']?(\w+)[\\"']?/i) || [])[1];
+      if (badCol && (badCol in row)) {
+        console.warn('[ArticleStudy] dropping unknown column', badCol, '— retrying');
+        delete row[badCol];
+        continue;
+      }
+      // Not a column error — bail and surface so admin sees it.
+      console.warn('[ArticleStudy] DB save failed:', msg);
+      if (window._isAdmin && typeof showToast === 'function') {
+        showToast('💾 article_study_content save ERROR: ' + msg.slice(0, 120));
+      }
+      return;
+    }
+    if (res && !res.error) {
+      console.log('[ArticleStudy] DB save ok for article', articleId);
+      if (window._isAdmin && typeof showToast === 'function') {
+        showToast('💾 article_study_content ✓ saved (' + articleId + ')');
+      }
+    }
+  } catch(e) {
+    console.warn('[ArticleStudy] DB save threw', e);
+    if (window._isAdmin && typeof showToast === 'function') {
+      showToast('💾 article_study_content THREW: ' + (e && e.message ? e.message.slice(0, 120) : 'unknown'));
+    }
+  }
+}
+
+var _asStepLabels = ['Step 1 / 4 — Vocabulary','Step 2 / 4 — Phrases','Step 3 / 4 — Reading','Step 4 / 4 — Quiz'];
+var _asStepTabLabels = ['Vocab','Phrases','Reading','Quiz'];
+function _asRenderPips() {
+  // Update step tabs
+  var tabs = document.querySelectorAll('#as-step-tabs .su-step');
+  tabs.forEach(function(tab, i) {
+    tab.className = 'su-step';
+    if (i + 1 < _asStep) tab.classList.add('done');
+    else if (i + 1 === _asStep) tab.classList.add('active');
+  });
+  // Update step label
+  var lbl = document.getElementById('as-step-label');
+  if (lbl) lbl.textContent = _asStepLabels[_asStep-1] || '';
+  // Update progress bar
+  var pct = Math.round(((_asStep - 1) / 4) * 100);
+  var fill = document.getElementById('as-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+  // Update nav
+  var prevBtn = document.getElementById('as-prev-btn');
+  if (prevBtn) prevBtn.style.display = _asStep > 1 ? '' : 'none';
+}
+function _asRenderStep() {
+  _asRenderPips();
+  var art=document.getElementById('as-article-content'), act=document.getElementById('as-activity-area');
+  if (!art||!act) return;
+  _asSetNav('none','none','none');
+  // Writing step (case 5) was removed — free-form writing moved to
+  // Express Practice's "Free Writing" mode where users get AI feedback
+  // and a sustained writing journal. The article flow now ends at Quiz.
+  switch(_asStep) {
+    case 1: _asStep1(art,act); break; case 2: _asStep2(art,act); break;
+    case 3: _asStep3(art,act); break; case 4: _asStep4(art,act); break;
+  }
+}
+
+// ── Step 1: Vocab matching ──
+function _asStep1(art,act) {
+  var vocab=(_asStudyContent&&_asStudyContent.vocab)||[];
+  var body=_asCurrentArt&&_asCurrentArt.body?_asFormatBody(_asCurrentArt.body):'';
+  var hlWords = (_asStudyContent&&_asStudyContent.custom_highlights&&_asStudyContent.custom_highlights.vocab)
+    ? _asStudyContent.custom_highlights.vocab
+    : vocab.map(function(v){return v.ko;});
+  hlWords.forEach(function(w){ if(w) body=body.replace(new RegExp(_asEsc(w),'g'),'<mark>'+w+'</mark>'); });
+  // Article card (reference style)
+  var imgHtml = _asCurrentArt.image
+    ? '<img class="su-article-img" src="' + _asCurrentArt.image + '" alt="" onerror="this.className=\'su-article-img-ph\';this.innerHTML=window.BM_ICON_NEWSPAPER||\'\';this.removeAttribute(\'src\')">'
+    : '<div class="su-article-img-ph">📰</div>';
+  art.innerHTML = '<div class="su-instruction">Select the meaning of highlighted words</div>'
+    + '<div class="su-article-card" id="as-article-passage">'
+    + '<div class="su-article-inner">' + imgHtml
+    + '<div class="su-article-body">'
+    + '<div class="su-article-title">' + (_asCurrentArt.title || '') + '</div>'
+    + '<div class="su-article-meta"><span class="su-article-cat">' + (_asCurrentArt.section || 'News') + '</span></div>'
+    + '<div class="su-article-text">' + body + '</div>'
+    + '</div></div>'
+    + '<div class="su-article-footer">'
+    + '<button onclick="speakHangul(_asCurrentArt.body.slice(0,200),\'female\')" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_VOLUME + '</span><span>Listen</span></button>'
+    + '<button onclick="asToggleTranslation()" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_CLIPBOARD + '</span><span>Translation</span></button>'
+    + '</div>'
+    + '<div id="as-translation" style="display:none;padding:12px 16px;font-size:13px;color:#475569;line-height:1.7;border-top:1px solid #f1f5f9;font-family:\'DM Sans\',sans-serif"></div>'
+    + '<button class="su-article-toggle" onclick="asTogglePassage()" type="button"><span class="su-art-tog-arrow">▲</span><span id="as-art-tog-label">접기</span></button>'
+    + '</div>';
+  if (!vocab.length) {
+    // No content for this article yet. Owner-side: surface a one-tap
+    // "Generate" so the admin can pre-warm from any device. User-
+    // side: explain rather than show a blank panel. We DO NOT auto-
+    // generate from the user path — that was a cost leak.
+    var isAdmin = !!window._isAdmin;
+    act.innerHTML =
+        '<div style="padding:40px 20px;text-align:center">'
+      + '<div style="font-size:38px;margin-bottom:10px">📝</div>'
+      + '<div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:6px">Study content not ready yet</div>'
+      + '<div style="font-size:13px;color:#64748b;margin-bottom:18px;line-height:1.55">This article hasn\'t been prepared for study. Try another article — we have over 200 ready.</div>'
+      + (isAdmin
+          ? '<button onclick="_asAdminGenerate()" style="padding:10px 22px;border:0;border-radius:999px;background:#1d4ed8;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Generate (admin)</button>'
+          : '<button onclick="_asGoBackToPicker()" style="padding:10px 22px;border:0;border-radius:999px;background:#1d4ed8;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">← Browse articles</button>')
+      + '</div>';
+    _asSetNav('none','none','none');
+    return;
+  }
+  var eng=_asShuffle(vocab.map(function(v,i){return{t:v.en,i:i};}));
+  _asMatchState={pairs:vocab,eng:eng,matched:[],sel:{l:null,r:null}};
+  act.innerHTML='<div class="su-substep"><div class="su-substep-fill" id="as-substep-fill" style="width:0%"></div></div>'
+    + '<div class="su-match-grid" id="as-mg"></div>'
+    + '<div id="as-mm" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8;text-align:center"></div>';
+  _asRenderMatch(); _asSetNav('none','none','none');
+  // Update nav counter
+  var cnt = document.getElementById('as-nav-counter');
+  if (cnt) cnt.textContent = _asMatchState.matched.length + ' / ' + vocab.length;
+}
+function asTogglePassage() {
+  var card = document.getElementById('as-article-passage');
+  if (!card) return;
+  card.classList.toggle('collapsed');
+  var lbl = document.getElementById('as-art-tog-label');
+  if (lbl) lbl.textContent = card.classList.contains('collapsed') ? '펼치기' : '접기';
+}
+function _asRenderMatch() {
+  var g=document.getElementById('as-mg'); if(!g||!_asMatchState) return;
+  var m=_asMatchState;
+  // Interleave KO/EN items so each row of the 2-col grid contains one
+  // Korean and one English card. Combined with align-items:stretch + height:100%
+  // on .su-match-item this equalises the heights across the row even when
+  // English meanings wrap to two lines and Korean words are short.
+  var n = Math.max(m.pairs.length, m.eng.length);
+  var html = '<div class="su-match-col-head">한국어</div><div class="su-match-col-head">English</div>';
+  for (var i=0; i<n; i++) {
+    if (i < m.pairs.length) {
+      var v = m.pairs[i];
+      var isDoneL = m.matched.indexOf(i)>=0;
+      var clsL = 'su-match-item'+(isDoneL?' matched':m.sel.l===i?' sel':'');
+      html += '<div class="'+clsL+'" data-li="'+i+'" onclick="asML('+i+')"><div class="su-match-ko">'+v.ko+'</div></div>';
+    } else { html += '<div></div>'; }
+    if (i < m.eng.length) {
+      var item = m.eng[i];
+      var isDoneR = m.matched.indexOf(item.i)>=0;
+      var clsR = 'su-match-item'+(isDoneR?' matched':m.sel.r===i?' sel':'');
+      html += '<div class="'+clsR+'" data-ri="'+i+'" onclick="asMR('+i+')"><div class="su-match-en">'+item.t+'</div></div>';
+    } else { html += '<div></div>'; }
+  }
+  g.innerHTML = html;
+  // Update counter + sub-step progress bar
+  var cnt=document.getElementById('as-nav-counter');
+  if(cnt) cnt.textContent=m.matched.length+' / '+m.pairs.length;
+  var bar=document.getElementById('as-substep-fill');
+  if(bar) bar.style.width = (m.pairs.length ? (m.matched.length/m.pairs.length*100) : 0) + '%';
+}
+function asML(i) {
+  if(!_asMatchState||_asMatchState.matched.indexOf(i)>=0) return;
+  _asMatchState.sel.l=(_asMatchState.sel.l===i?null:i); _asCheckMatchPair(); _asRenderMatch();
+}
+function asMR(ri) {
+  if(!_asMatchState) return;
+  _asMatchState.sel.r=(_asMatchState.sel.r===ri?null:ri); _asCheckMatchPair(); _asRenderMatch();
+}
+function _asCheckMatchPair() {
+  var m=_asMatchState; if(!m||m.sel.l===null||m.sel.r===null) return;
+  var correct=m.eng[m.sel.r].i===m.sel.l;
+  if (correct) {
+    var g=document.getElementById('as-mg');
+    // Burst animation on both cards before marking matched
+    if (g) {
+      var bl=g.querySelector('[data-li="'+m.sel.l+'"]'), br=g.querySelector('[data-ri="'+m.sel.r+'"]');
+      if(bl){ bl.classList.add('burst'); _asSpawnParticles(bl); }
+      if(br){ br.classList.add('burst'); _asSpawnParticles(br); }
+    }
+    playCorrectSound();
+    m.matched.push(m.sel.l); m.sel={l:null,r:null};
+    var msg=document.getElementById('as-mm');
+    if(msg){
+      msg.innerHTML='<span style="color:#16a34a;font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Matched! '+m.matched.length+'/'+m.pairs.length+'</span></span>'
+        +(m.matched.length===m.pairs.length?' <span style="color:#7c3aed;font-weight:800">All done!</span>':'');
+    }
+    setTimeout(_asRenderMatch, 80);
+    if (m.matched.length===m.pairs.length) setTimeout(function(){ _asSetNav('none',''); },500);
+  } else {
+    playWrongSound();
+    var g=document.getElementById('as-mg');
+    if (g) {
+      var wl=g.querySelector('[data-li="'+m.sel.l+'"]'), wr=g.querySelector('[data-ri="'+m.sel.r+'"]');
+      if(wl){wl.classList.add('wrong');setTimeout(function(){wl.classList.remove('wrong');},400);}
+      if(wr){wr.classList.add('wrong');setTimeout(function(){wr.classList.remove('wrong');},400);}
+    }
+    m.sel={l:null,r:null}; setTimeout(_asRenderMatch,420);
+  }
+}
+
+function _asSpawnParticles(el) {
+  if (!el) return;
+  var rect = el.getBoundingClientRect();
+  var cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  var colors = ['#22c55e','#4ade80','#86efac','#7ab8f5','#fbbf24','#a78bfa'];
+  for (var i=0; i<10; i++) {
+    var p = document.createElement('div');
+    p.className = 'as-particle';
+    var size = 6 + Math.random()*6;
+    var angle = (i/10)*Math.PI*2;
+    var dist = 40+Math.random()*40;
+    p.style.cssText = 'width:'+size+'px;height:'+size+'px;background:'+colors[i%colors.length]
+      +';left:'+(cx-size/2)+'px;top:'+(cy-size/2)+'px'
+      +';--dx:'+(Math.cos(angle)*dist)+'px;--dy:'+(Math.sin(angle)*dist)+'px';
+    document.body.appendChild(p);
+    setTimeout(function(){ if(p.parentNode) p.parentNode.removeChild(p); }, 750);
+  }
+}
+
+// ── Step 2: Phrase matching ──
+function _asStep2(art,act) {
+  var phrases=(_asStudyContent&&_asStudyContent.phrases)||[];
+  var body=_asCurrentArt&&_asCurrentArt.body?_asFormatBody(_asCurrentArt.body):'';
+  // Highlight strategy: prefer admin-curated custom_highlights when set;
+  // otherwise highlight each phrase IN FULL when it appears verbatim in
+  // the body. The previous fallback sliced p.ko to 12 characters, which
+  // cut Korean strings mid-word (e.g. "미국의 뱅크 오브 아메리카" became
+  // "미국의 뱅크 오브 아메" — the broken-looking yellow highlight users
+  // were complaining about). If the verbatim phrase doesn't appear in
+  // the body (the AI condensed it), fall back to highlighting the
+  // longest contiguous substring that does match — never an arbitrary
+  // character slice.
+  var hlPhrases;
+  if (_asStudyContent && _asStudyContent.custom_highlights && _asStudyContent.custom_highlights.phrases) {
+    hlPhrases = _asStudyContent.custom_highlights.phrases;
+  } else {
+    hlPhrases = phrases.map(function(p) {
+      var ko = (p && p.ko) || '';
+      if (!ko) return null;
+      if (body.indexOf(ko) !== -1) return ko;
+      // Fallback: longest contiguous chunk of ko (split on whitespace)
+      // that also appears in body. Beats a hardcoded character slice.
+      var parts = ko.split(/\s+/).filter(Boolean);
+      for (var len = parts.length; len > 0; len--) {
+        for (var start = 0; start + len <= parts.length; start++) {
+          var chunk = parts.slice(start, start + len).join(' ');
+          if (chunk.length >= 3 && body.indexOf(chunk) !== -1) return chunk;
+        }
+      }
+      return null;
+    }).filter(Boolean);
+  }
+  hlPhrases.forEach(function(s){ if(s) body=body.replace(new RegExp(_asEsc(s),'g'),'<mark class="ph-mark">'+s+'</mark>'); });
+  var imgHtml = _asCurrentArt.image
+    ? '<img class="su-article-img" src="' + _asCurrentArt.image + '" alt="" onerror="this.style.display=\'none\'">'
+    : '<div class="su-article-img-ph">📰</div>';
+  art.innerHTML = '<div class="su-instruction">Match phrases with their meanings</div>'
+    + '<div class="su-article-card"><div class="su-article-inner">' + imgHtml
+    + '<div class="su-article-body"><div class="su-article-title">' + (_asCurrentArt.title||'') + '</div>'
+    + '<div class="su-article-text">' + body + '</div></div></div></div>';
+  if (!phrases.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No phrases available.</div>'; _asSetNav('none',''); return; }
+  var eng=_asShuffle(phrases.map(function(p,i){return{t:p.en,i:i};}));
+  _asMatchState={pairs:phrases,eng:eng,matched:[],sel:{l:null,r:null}};
+  act.innerHTML='<div class="su-match-grid" id="as-mg"></div><div id="as-mm" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8"></div>';
+  _asRenderMatch(); _asSetNav('none','none','none');
+}
+
+// ── Step 3: Fill-in-blank (blanks inside full article text) ──
+function _asStep3(art,act) {
+  var vocab=(_asStudyContent&&_asStudyContent.vocab)||[];
+  var body=_asCurrentArt&&_asCurrentArt.body?_asCurrentArt.body:'';
+  if (!vocab.length||!body) { art.innerHTML=''; act.innerHTML='<div style="color:#94a3b8;font-size:13px">콘텐츠가 없습니다.</div>'; _asSetNav('none',''); return; }
+  // Pick words to blank out (use vocab words that appear in article)
+  var blankWords=[];
+  vocab.forEach(function(v){
+    if(v.ko && body.indexOf(v.ko)>=0 && blankWords.length<5) blankWords.push(v.ko);
+  });
+  if(blankWords.length<2){
+    // Fallback: pick random eojeols from article
+    var eojeols=body.split(/\s+/).filter(function(w){return w.length>=2;});
+    var shuffled=_asShuffle(eojeols.slice());
+    for(var i=0;i<shuffled.length&&blankWords.length<4;i++){
+      if(blankWords.indexOf(shuffled[i])<0) blankWords.push(shuffled[i]);
+    }
+  }
+  _asWOState={blankWords:blankWords,filledBlanks:{},originalBody:body,selectedBlank:null};
+  // Pre-compute heavy stuff ONCE per step entry. Old renderBlankUI
+  // ran _asFormatBody (5 regex passes) + per-blank regex.replace
+  // + per-blank split/join on the entire article body on EVERY
+  // click. Now the slow regex path runs ONCE at step entry;
+  // renderBlankUI only swaps placeholder tokens for current slot
+  // state via split().join() — pure string ops, no regex per click.
+  var _preFormatted=_asFormatBody(body);
+  var _sortedBiInit=blankWords.map(function(_,i){return i;}).sort(function(a,b){return blankWords[b].length-blankWords[a].length;});
+  _sortedBiInit.forEach(function(bi){
+    var escaped=_asEsc(blankWords[bi]);
+    _preFormatted=_preFormatted.replace(new RegExp(escaped),'\u0000GFB'+bi+'\u0000');
+  });
+  _asWOState._tokenizedBody=_preFormatted;
+  // Same one-shot prep for the word pool. Re-shuffling on every
+  // click also visually jumbled the grid mid-quiz.
+  var _allEojeolsInit=body.split(/\s+/).filter(function(w){return w.length>=2&&blankWords.indexOf(w)<0;});
+  var _distractorsInit=_asShuffle(_allEojeolsInit).slice(0,2);
+  _asWOState._poolItems=_asShuffle(
+    blankWords.map(function(w,bi){return{text:w,bi:bi};})
+      .concat(_distractorsInit.map(function(d){return{text:d,bi:-1};}))
+  );
+  _asRenderBlankUI();
+}
+function _asRenderBlankUI() {
+  var art=document.getElementById('as-article-content');
+  var act=document.getElementById('as-activity-area');
+  if(!art||!act||!_asWOState) return;
+  var bw=_asWOState.blankWords;
+  var fb=_asWOState.filledBlanks;
+  var sel=_asWOState.selectedBlank;
+  // Cheap render: start from pre-tokenised body and split/join each
+  // \u0000GFB<i>\u0000 placeholder into the current
+  // slot HTML. No regex per click.
+  var formatted=_asWOState._tokenizedBody;
+  bw.forEach(function(w,bi){
+    var filled=fb[bi];
+    var html;
+    if(filled!==undefined&&filled!==null){
+      var cls=filled===w?'su-blank filled correct':'su-blank filled wrong';
+      html='<span class="'+cls+'" data-bi="'+bi+'" onclick="asBlankClear('+bi+')">'+filled+'</span>';
+    } else {
+      var selCls=sel===bi?'su-blank selected':'su-blank';
+      html='<span class="'+selCls+'" data-bi="'+bi+'" onclick="asBlankSelect('+bi+')" style="'+(sel===bi?'border-color:#2563eb;background:#eff6ff;':'')+'cursor:pointer">____</span>';
+    }
+    formatted=formatted.split('\u0000GFB'+bi+'\u0000').join(html);
+  });
+  art.innerHTML='<div class="su-instruction">빈칸을 먼저 클릭하고, 아래에서 단어를 선택하세요</div>'
+    +'<div class="su-blank-article">'+formatted+'</div>';
+  // Pool: pre-shuffled order persists for the whole step so the
+  // grid doesn't jump as the user fills in answers.
+  var pool=_asWOState._poolItems||[];
+  var poolHTML=pool.map(function(item){
+    var isUsed=Object.values(fb).indexOf(item.text)>=0;
+    return '<div class="su-pool-word'+(isUsed?' used':'')+'" '+(isUsed?'':'onclick="asBlankFillWord(\''+item.text.replace(/'/g,"\\'")+'\')"')+'>'+item.text+'</div>';
+  }).join('');
+  act.innerHTML='<div class="su-pool">'+poolHTML+'</div>'
+    +'<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px">'+(sel!==null?'<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>빈칸 #'+(sel+1)+' 선택됨 — 아래에서 단어를 고르세요</span>':'<span>👆 위 문장에서 빈칸을 먼저 클릭하세요</span>')+'</div>';
+  // Show Next ONLY when every blank is filled. Owner-reported a bug
+  // where Next was visible from step entry (0/N filled) and clicking
+  // it advanced to step 4 with the activity skipped — that was the
+  // un-conditional `_asSetNav('none','')` in the else branch.
+  var allFilled=bw.every(function(w,bi){return fb[bi]!==undefined&&fb[bi]!==null;});
+  if(allFilled) {
+    var allCorrect=bw.every(function(w,i){return fb[i]===w;});
+    if(allCorrect) _asStepDone[2]=true;
+    _asSetNav('none','');
+  } else {
+    _asSetNav('none','none');
+  }
+}
+function asBlankSelect(bi) {
+  if(!_asWOState) return;
+  _asWOState.selectedBlank=bi;
+  _asRenderBlankUI();
+}
+function asBlankFillWord(text) {
+  if(!_asWOState) return;
+  var sel=_asWOState.selectedBlank;
+  if(sel===null||sel===undefined){
+    var msg=document.getElementById('as-wo-msg');
+    if(msg) msg.innerHTML='<span style="color:#f59e0b;font-weight:700">먼저 위에서 빈칸을 클릭하세요!</span>';
+    setTimeout(function(){if(msg)msg.innerHTML='';},1500);
+    return;
+  }
+  // Check if distractor
+  if(_asWOState.blankWords.indexOf(text)<0){
+    var msg=document.getElementById('as-wo-msg');
+    if(msg) msg.innerHTML='<span style="color:#dc2626;font-weight:700">이 단어는 정답이 아니에요!</span>';
+    setTimeout(function(){if(msg)msg.innerHTML='';},1500);
+    return;
+  }
+  _asWOState.filledBlanks[sel]=text;
+  _asWOState.selectedBlank=null;
+  _asRenderBlankUI();
+  var bw=_asWOState.blankWords;
+  var allFilled=bw.every(function(w,i){return _asWOState.filledBlanks[i]!==undefined&&_asWOState.filledBlanks[i]!==null;});
+  if(allFilled){
+    var allCorrect=bw.every(function(w,i){return _asWOState.filledBlanks[i]===w;});
+    var msg=document.getElementById('as-wo-msg');
+    if(msg) msg.innerHTML=allCorrect
+      ?'<span style="color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:6px"><span>모두 정답! 잘했어요</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_PARTY+'</span></span>'
+      :'<span style="color:#dc2626;font-weight:700">Some answers are wrong. Tap the red ones to retry.</span>';
+    if(allCorrect) { _asStepDone[2]=true; }
+    // Next always visible when all filled (correct or not)
+    _asSetNav('none','');
+  }
+}
+function asBlankClear(bi) {
+  if(!_asWOState) return;
+  _asWOState.filledBlanks[bi]=null;
+  var msg=document.getElementById('as-wo-msg'); if(msg) msg.innerHTML='';
+  _asRenderBlankUI();
+}
+function asBlankFill(pi) { /* legacy compat */ }
+function asWOPool(i) {}
+function asWOAns(i) {}
+
+// ── Step 4: Comprehension questions ──
+function _asStep4(art,act) {
+  var bodyHtml=_asCurrentArt?_asFormatBody(_asCurrentArt.body||''):'';
+  art.innerHTML='<div class="su-instruction">Test your comprehension</div>'
+    +'<details style="margin:0 20px 16px"><summary style="cursor:pointer;font-size:13px;color:#7c3aed;font-weight:700;padding:8px 0;user-select:none;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_BOOK+'</span><span>Review article</span></summary>'
+    +'<div class="su-article-card" style="margin:8px 0 0"><div class="su-article-body"><div class="su-article-text">'+bodyHtml+'</div></div></div></details>';
+  var qs=(_asStudyContent&&_asStudyContent.questions)||[];
+  if (!qs.length) { act.innerHTML='<div style="color:#94a3b8;font-size:13px;padding:20px">No questions available.</div>'; _asSetNav('none',''); return; }
+  _asQState={qs:qs,ans:new Array(qs.length).fill(null),current:0};
+  _asRenderQuiz();
+}
+function _asRenderQuiz() {
+  var act=document.getElementById('as-activity-area'); if(!act||!_asQState) return;
+  var qi=_asQState.current; var q=_asQState.qs[qi]; if(!q) return;
+  var cnt=document.getElementById('as-nav-counter');
+  if(cnt) cnt.textContent=(qi+1)+' / '+_asQState.qs.length;
+  var html='<div class="su-instruction" style="font-size:16px;padding:16px 20px 8px">'+(q.q||'')+'</div><div class="su-mcq">';
+  (q.options||[]).forEach(function(opt,oi){
+    var state='';
+    if(_asQState.ans[qi]!==null){
+      if(oi===q.correct) state=' correct';
+      else if(oi===_asQState.ans[qi]) state=' wrong';
+      else state=' dim';
+    }
+    html+='<div class="su-mcq-opt'+state+'" id="as-mc-'+qi+'-'+oi+'" onclick="asQAns('+qi+','+oi+')">'
+      +'<div class="su-mcq-num">'+(oi+1)+'</div><div class="su-mcq-text">'+opt+'</div></div>';
+  });
+  html+='</div>';
+  if(_asQState.ans[qi]!==null){
+    html+='<div class="su-explain"><div class="su-explain-icon" style="display:inline-flex;width:18px;height:18px;color:#fbbf24">'+BM_ICON_BULB+'</div><div class="su-explain-body">'
+      +'<div class="su-explain-title">Answer</div>'
+      +'<div class="su-explain-text"><b>'+(q.options[q.correct]||'')+'</b></div></div></div>';
+  }
+  act.innerHTML=html;
+}
+function asQAns(qi,oi) {
+  if(!_asQState||_asQState.ans[qi]!==null) return;
+  _asQState.ans[qi]=oi;
+  _asRenderQuiz();
+  // Auto-advance to next question after delay
+  setTimeout(function(){
+    if(_asQState.current<_asQState.qs.length-1){
+      _asQState.current++;
+      _asRenderQuiz();
+    } else if(_asQState.ans.every(function(a){return a!==null;})) {
+      _asTempSaveStep4(_asQState.ans);
+      // Show sentence quiz bonus before advancing
+      _asShowSentenceQuiz();
+    }
+  },1200);
+}
+
+function _asShowSentenceQuiz() {
+  var act = document.getElementById('as-activity-area'); if (!act) return;
+  var vocab = (_asStudyContent && _asStudyContent.vocab) || [];
+  var phrases = (_asStudyContent && _asStudyContent.phrases) || [];
+  var wrongPhrases = (_asStudyContent && _asStudyContent.wrong_phrases) || [];
+  if (!phrases.length && !vocab.length) { _asSetNav('none',''); return; }
+
+  // Use actual phrases from article content as correct sentences
+  var correct = phrases.slice(0,2).map(function(p){ return { text: p.ko || p, isCorrect: true }; });
+  if (!correct.length) {
+    correct = vocab.slice(0,2).map(function(v){ return { text: v.example || (v.ko + ' — ' + v.en), isCorrect: true }; });
+  }
+
+  // Wrong distractors: prefer admin/AI-curated ones from DB. Old behaviour
+  // synthesised them from vocab at runtime ('vocab.ko + 를 + vocab[0].ko +
+  // 했어요'), which produced obvious nonsense like '재료를 반려동물 했어요'.
+  // If we don't have curated ones we now SKIP the bonus instead of showing
+  // garbage — admins can fill them in via the Article Study Editor.
+  var incorrect = wrongPhrases.slice(0, 2).map(function(p){ return { text: p.ko || p, isCorrect: false }; });
+  if (!incorrect.length) {
+    _asSetNav('none','');
+    return;
+  }
+
+  var all = correct.concat(incorrect).sort(function(){ return Math.random() - .5; });
+  window._asSentState = { total: all.length, correctTotal: correct.length, picked: 0, correctPicked: 0 };
+
+  // Headline reflects that there can be multiple correct answers; progress
+  // counter helps the user understand the goal ("find ALL of them") instead
+  // of stopping after the first ✅.
+  var headline = correct.length > 1
+    ? '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_SEARCH + '</span><span>Bonus: 맞는 문장을 <b>모두</b> 골라보세요 (' + correct.length + '개)</span></span>'
+    : '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_SEARCH + '</span><span>Bonus: 맞는 문장을 골라보세요</span></span>';
+  act.innerHTML = '<div class="su-instruction" style="font-size:14px;padding:16px 20px 8px">' + headline + '</div>'
+    + '<div id="as-sent-progress" style="padding:0 20px 8px;font-size:12px;color:#64748b;font-weight:700">0 / ' + correct.length + ' correct</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;padding:0 20px">'
+    + all.map(function(s){
+      return '<button class="as-sent-btn" data-correct="' + (s.isCorrect ? '1' : '0') + '" onclick="_asCheckSentence(this)" style="padding:12px 16px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit;transition:.2s">' + _escapeHtmlAS(s.text) + '</button>';
+    }).join('')
+    + '</div>'
+    + '<div id="as-sent-fb" style="padding:0 20px;margin-top:10px"></div>';
+}
+
+// Local HTML escaper used by the bonus quiz so user-visible phrases can't
+// inject markup if a vocab.example ever contains '<' / '&'.
+function _escapeHtmlAS(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function _asCheckSentence(btn) {
+  btn.disabled = true;
+  var isCorrect = btn.getAttribute('data-correct') === '1';
+  if (isCorrect) {
+    btn.style.borderColor = '#86efac'; btn.style.background = '#f0fdf4'; btn.style.color = '#166534';
+    btn.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#16a34a;vertical-align:-2px;margin-right:6px">' + BM_ICON_CHECK + '</span>' + btn.innerHTML;
+    if (window._asSentState) window._asSentState.correctPicked++;
+  } else {
+    btn.style.borderColor = '#fca5a5'; btn.style.background = '#fef2f2'; btn.style.color = '#991b1b';
+    btn.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#dc2626;vertical-align:-2px;margin-right:6px">' + BM_ICON_X + '</span>' + btn.innerHTML;
+  }
+  if (window._asSentState) window._asSentState.picked++;
+  var st = window._asSentState;
+  var prog = document.getElementById('as-sent-progress');
+  if (prog && st) prog.textContent = st.correctPicked + ' / ' + st.correctTotal + ' correct';
+
+  // Completion: all correct found, or user has tried every option.
+  var remaining = document.querySelectorAll('.as-sent-btn:not([disabled])');
+  if (!remaining.length || (st && st.correctPicked >= st.correctTotal)) {
+    // Reveal any correct options the user didn't tap so they know what they
+    // missed — old behaviour silently locked the quiz with no feedback.
+    var missed = 0;
+    remaining.forEach(function(b) {
+      b.disabled = true;
+      if (b.getAttribute('data-correct') === '1') {
+        b.style.borderColor = '#fbbf24'; b.style.background = '#fffbeb'; b.style.color = '#92400e';
+        b.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#d97706;vertical-align:-2px;margin-right:6px">' + BM_ICON_WARNING + '</span>' + b.innerHTML + ' <span style="font-size:10px;font-weight:700">(also correct)</span>';
+        missed++;
+      } else {
+        b.style.opacity = '0.5';
+      }
+    });
+    var fb = document.getElementById('as-sent-fb');
+    if (fb) {
+      var allFound = st && st.correctPicked === st.correctTotal && missed === 0;
+      fb.innerHTML = '<div style="text-align:center;padding:12px;border-radius:8px;font-weight:700;font-size:13px;'
+        + (allFound ? 'background:#f0fdf4;color:#166534;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">' + BM_ICON_PARTY + '</span><span>Bonus complete — perfect!</span>' : 'background:#fffbeb;color:#92400e">Bonus done — ' + (st ? st.correctPicked : 0) + ' of ' + (st ? st.correctTotal : 0) + ' correct found.')
+        + '</div>';
+    }
+    _asSetNav('none','');
+  }
+}
+
+// Step 5 (Writing) was removed. Free-form writing now lives in Express
+// Practice's "Free Writing" mode (writingMode='free') where the AI
+// tutor scores submissions in Growth Lab — same feedback loop as Topic
+// Yum Yum, but the user picks their own prompt instead of using the
+// daily rotation. Removing the inline textarea from the article flow
+// trims a stretch that ~80% of users skipped anyway and ships writing
+// into the dedicated practice module.
+
+// ── Nav actions ──
+function asCheckAnswer() {
+  if (_asStep===3) _asCheckWO();
+  else _asSetNav('none','');
+}
+function _asCheckWO() {
+  // Step 3 now auto-checks in asBlankFill3 — this is a no-op for compat
+  if(!_asWOState) return;
+}
+function asNextStep() {
+  _asStepDone[_asStep-1]=true; _asSaveProgress();
+  // Step 4 (Quiz) is now the final step — clicking Next there transitions
+  // straight to the completion screen instead of looping back on itself
+  // (previously this advanced to Step 5 Writing, which has been retired).
+  if (_asStep >= 4) { asMarkDone(); return; }
+  _asStep = _asStep + 1; _asRenderStep();
+}
+
+// ── Translation toggle (loads from article_cache DB) ──
+var _asTranslationCache = null;
+async function asToggleTranslation() {
+  var el = document.getElementById('as-translation');
+  if (!el) return;
+  if (el.style.display === 'block') { el.style.display = 'none'; return; }
+  if (_asTranslationCache) { el.innerHTML = _asTranslationCache; el.style.display = 'block'; return; }
+  el.innerHTML = '<span style="color:#94a3b8">Loading translation...</span>';
+  el.style.display = 'block';
+  try {
+    if (typeof getFromCache === 'function' && _asCurrentArt) {
+      var cached = await getFromCache('article', _asCurrentArt.id, 'translation_en');
+      if (cached && cached.translations && cached.translations.length) {
+        _asTranslationCache = cached.translations.join('<br><br>');
+        el.innerHTML = _asTranslationCache;
+        return;
+      }
+    }
+    // Fallback: generate via AI
+    if (!supaUser) { el.innerHTML = '<span style="color:#94a3b8">Sign in to translate</span>'; return; }
+    var body = _asCurrentArt.body || '';
+    var data = await callClaude({ feature:'translation', model:'claude-haiku-4-5-20251001', max_tokens:1000, messages:[{role:'user',content:'Translate to natural English. Return ONLY the translation, no explanations:\n\n'+body.slice(0,1500)}] });
+    var text = (data.content||[]).map(function(c){return c.text||'';}).join('');
+    _asTranslationCache = text.replace(/\n/g,'<br>');
+    el.innerHTML = _asTranslationCache;
+  } catch(e) {
+    el.innerHTML = '<span style="color:#ef4444">Translation failed</span>';
+  }
+}
+function asMarkDone() {
+  try {
+  _asStepDone[_asStep-1]=true; _asSaveProgress(); _asTmpCompletion();
+  // Step 5 (writing textarea) was removed — no per-article writing to
+  // persist here anymore; free writing now lives in Express Practice.
+  if (typeof _khMarkArticleStudied === 'function' && _asCurrentArt) _khMarkArticleStudied(_asCurrentArt.id);
+  if (_asCurrentArt && _asStudiedSet) _asStudiedSet.done[String(_asCurrentArt.id)] = true;
+  } catch(e) { console.warn('asMarkDone save error:', e); }
+  document.getElementById('as-article-content').innerHTML='';
+  document.getElementById('as-activity-area').innerHTML=
+    '<div class="su-complete">'
+    +'<div class="su-complete-icon" style="display:inline-flex;width:48px;height:48px;color:#a78bfa">'+BM_ICON_PARTY+'</div>'
+    +'<div class="su-complete-title">Article Study Complete!</div>'
+    +'<div class="su-complete-sub">You\'ve completed all learning steps for this article.</div>'
+    +'<div class="su-complete-stars"><div class="su-complete-stars-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+BM_ICON_SPARKLE+'</span><span>Words you just reviewed</span></div><canvas id="as-complete-canvas" class="su-complete-canvas"></canvas></div>'
+    +'<button class="su-nav-next" onclick="asSubmitWork()" style="margin:0 auto 10px;display:flex">Save Progress</button>'
+    +'<button class="su-nav-next" onclick="asStudyNextArticle()" style="margin:0 auto 10px;display:flex;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3)">Study Next Article →</button>'
+    +'<button class="su-nav-prev" onclick="returnToActivities(closeArticleStudy)" style="margin:0 auto;display:flex">Next Activity</button>'
+    +'</div>';
+  _asSetNav('none','none','none');
+  _asRefreshSubmitBanner();
+  setTimeout(_asDrawCompleteConstellation, 50);
+}
+
+function asStudyNextArticle() {
+  var curIdx = _asArticles.findIndex(function(a){ return _asCurrentArt && String(a.id) === String(_asCurrentArt.id); });
+  var nextIdx = (curIdx >= 0 && curIdx + 1 < _asArticles.length) ? curIdx + 1 : -1;
+  if (nextIdx >= 0) {
+    asSelectArticle(String(_asArticles[nextIdx].id));
+  } else {
+    // Reached the end — go back to list so user can pick another article
+    asBackToList();
+  }
+}
+
+// ── Mini vocab constellation on completion screen ──
+function _asDrawCompleteConstellation() {
+  var canvas = document.getElementById('as-complete-canvas');
+  if (!canvas || !canvas.getContext) return;
+  var vocab = (_asStudyContent && _asStudyContent.vocab) || [];
+  if (!vocab.length) { canvas.style.display='none'; return; }
+
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var W = canvas.clientWidth || 320;
+  var H = 180;
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.height = H + 'px';
+  var ctx = canvas.getContext('2d');
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // Layout — jittered grid
+  var count = Math.min(vocab.length, 12);
+  var cols  = Math.ceil(Math.sqrt(count * (W / H)));
+  var rows  = Math.ceil(count / cols);
+  var cellW = W / (cols + 1);
+  var cellH = H / (rows + 1);
+  var positions = [];
+  for (var i = 0; i < count; i++) {
+    var col = i % cols, row = Math.floor(i / cols);
+    positions.push({
+      x: cellW * (col + 1) + (Math.random() - 0.5) * cellW * 0.45,
+      y: cellH * (row + 1) + (Math.random() - 0.5) * cellH * 0.35,
+      label: vocab[i].ko || vocab[i].word || ''
+    });
+  }
+
+  var state = { t: 0, running: true };
+  function draw() {
+    if (!state.running) return;
+    state.t += 0.02;
+    ctx.clearRect(0, 0, W, H);
+
+    // Connections between nearby stars
+    var threshold = Math.max(cellW, cellH) * 1.6;
+    for (var i = 0; i < positions.length; i++) {
+      for (var j = i + 1; j < positions.length; j++) {
+        var dx = positions[j].x - positions[i].x;
+        var dy = positions[j].y - positions[i].y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < threshold) {
+          var alpha = 0.18 * (1 - dist / threshold);
+          ctx.strokeStyle = 'rgba(167,139,250,' + alpha + ')';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(positions[i].x, positions[i].y);
+          ctx.lineTo(positions[j].x, positions[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Stars with gold twinkle (all considered "learned")
+    for (var k = 0; k < positions.length; k++) {
+      var p = positions[k];
+      var twinkle = 0.65 + 0.35 * (0.5 + 0.5 * Math.sin(state.t * 1.2 + k * 0.7));
+      // Glow halo
+      var glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 20);
+      glow.addColorStop(0, 'rgba(244,209,132,' + (0.55 * twinkle) + ')');
+      glow.addColorStop(0.5, 'rgba(244,169,60,' + (0.15 * twinkle) + ')');
+      glow.addColorStop(1, 'rgba(244,169,60,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(p.x - 20, p.y - 20, 40, 40);
+      // Core dot
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3 + twinkle * 0.8, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,231,176,' + (0.85 * twinkle) + ')';
+      ctx.fill();
+      // Label
+      ctx.font = '700 10px "Noto Sans KR",sans-serif';
+      ctx.fillStyle = 'rgba(244,209,132,' + (0.78 * twinkle) + ')';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.label, p.x, p.y + 18);
+    }
+    requestAnimationFrame(draw);
+  }
+
+  // Pause animation when the completion card leaves the viewport
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting && !state.running) { state.running = true; draw(); }
+        else if (!e.isIntersecting) { state.running = false; }
+      });
+    });
+    io.observe(canvas);
+  }
+  draw();
+}
+
+// ── Temp save ──
+function _asTmpKey() { return 'kh_as_'+(supaUser?supaUser.id:'g')+'_'+kstDateKey(); }
+function _asGetTmp() {
+  if(!_asCurrentArt) return null;
+  try { var d=JSON.parse(localStorage.getItem(_asTmpKey())||'{}'); return d[_asCurrentArt.id]||null; } catch(e){return null;}
+}
+function _asUpdateTmp(patch) {
+  if(!_asCurrentArt) return;
+  try {
+    var k=_asTmpKey(),d={}; try{d=JSON.parse(localStorage.getItem(k)||'{}');}catch(e){}
+    d[_asCurrentArt.id]=Object.assign({article_id:String(_asCurrentArt.id),article_title:_asCurrentArt.title||'',savedAt:new Date().toISOString()},d[_asCurrentArt.id]||{},patch);
+    localStorage.setItem(k,JSON.stringify(d));
+  } catch(e){}
+}
+function _asTmpStep4(a) { _asUpdateTmp({step4_answers:a}); }
+// _asTmpStep5 removed — Step 5 (Writing) was deleted. Free writing
+// moved to Express Practice's Free Writing mode, which uses its own
+// saveDraft / Growth Lab pipeline.
+function _asTmpCompletion() { _asUpdateTmp({completed:true,completedAt:new Date().toISOString()}); }
+function _asSaveProgress() {
+  var patch = {step:_asStep, stepDone:_asStepDone.slice()};
+  if (_asWOState) {
+    patch.wo_idx = _asWOState.idx || 0;
+    patch.wo_filledBlanks = Array.isArray(_asWOState.filledBlanks) ? _asWOState.filledBlanks.slice() : [];
+  }
+  _asUpdateTmp(patch);
+  // Also save to DB for cross-device sync
+  _asSaveProgressToDB(patch);
+}
+function _asRestoreProgress() {
+  var saved = _asGetTmp();
+  if (saved && saved.step && !saved.completed) {
+    _asStep = saved.step;
+    _asStepDone = saved.stepDone || [false,false,false,false];
+    if (saved.wo_filledBlanks && saved.wo_idx !== undefined) {
+      _asWOState = _asWOState || {};
+      _asWOState.idx = saved.wo_idx;
+      _asWOState.filledBlanks = saved.wo_filledBlanks;
+    }
+    return true;
+  }
+  return false;
+}
+// ── Cross-device sync: save/load progress from DB ──
+var _asDbSaveTimer = null;
+function _asSaveProgressToDB(patch) {
+  if (!supaUser || !_asCurrentArt) return;
+  // Debounce: save at most once per 3 seconds
+  clearTimeout(_asDbSaveTimer);
+  _asDbSaveTimer = setTimeout(function() {
+    var sb = getSupa(); if (!sb) return;
+    sb.from('user_read_history').upsert({
+      user_id: supaUser.id,
+      content_type: 'article_study',
+      content_id: String(_asCurrentArt.id),
+      progress_data: JSON.stringify(patch),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,content_type,content_id' }).then(function(r) {
+      if (r.error) console.warn('[AS] DB progress save failed:', r.error.message);
+    });
+  }, 3000);
+}
+async function _asLoadProgressFromDB() {
+  if (!supaUser || !_asCurrentArt) return false;
+  try {
+    var sb = getSupa(); if (!sb) return false;
+    var { data } = await sb.from('user_read_history')
+      .select('progress_data')
+      .eq('user_id', supaUser.id)
+      .eq('content_type', 'article_study')
+      .eq('content_id', String(_asCurrentArt.id))
+      .maybeSingle();
+    if (data && data.progress_data) {
+      var saved = typeof data.progress_data === 'string' ? JSON.parse(data.progress_data) : data.progress_data;
+      if (saved && saved.step && !saved.completed) {
+        _asStep = saved.step;
+        _asStepDone = saved.stepDone || [false,false,false,false];
+        // Also cache locally
+        _asUpdateTmp(saved);
+        return true;
+      }
+    }
+  } catch(e) { console.warn('[AS] DB progress load failed:', e); }
+  return false;
+}
+// alias
+var _asTempSaveStep4=_asTmpStep4;
+
+// ── Submit ──
+async function asSubmitWork() {
+  if(!_asCurrentArt){ showToast('No article loaded'); return; }
+  if(!supaUser){ showToast('Please sign in to save progress'); openAuthModal('signin'); return; }
+  var sb=getSupa(); if(!sb){ showToast('Connection error. Try again.'); return; }
+  // Show loading state on the Save button so the user gets immediate feedback
+  var saveBtn=document.querySelector('#as-activity-area button.su-nav-next');
+  if(saveBtn){ saveBtn.disabled=true; saveBtn.style.opacity='.6'; saveBtn.textContent='Saving…'; }
+  var saved=_asGetTmp()||{};
+  try {
+    // writing_text + AI feedback path removed alongside Step 5. The
+    // user_submissions row is still written so the activity log keeps
+    // tracking article completions, but writing_text is empty.
+    var r=await sb.from('user_submissions').upsert({
+      user_id:supaUser.id, content_type:'article_study',
+      content_id:String(_asCurrentArt.id), content_title:_asCurrentArt.title||'',
+      study_date:kstDateKey(), writing_text:'', word_count:0,
+      context_data:JSON.stringify({step4_answers:saved.step4_answers||[]}),
+      level:_currentLevel||'', status:'submitted'
+    },{onConflict:'user_id,content_type,study_date,content_id'}).select();
+    if(r.error) throw r.error;
+    showToast('Submitted!');
+    _asUpdateTmp({submitted:true});
+    document.getElementById('as-activity-area').innerHTML=
+      '<div class="as-done-banner"><div style="display:inline-flex;width:36px;height:36px;margin-bottom:8px;color:#22c55e">' + BM_ICON_CHECK + '</div>'
+      +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">Submitted!</div>'
+      +'<div style="font-size:13px;color:rgba(255,255,255,.75)">Today\'s study has been submitted successfully.</div>'
+      +'<button onclick="returnToActivities(closeArticleStudy)" style="margin-top:14px;padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>완료</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button></div>';
+    _asRefreshSubmitBanner();
+  } catch(err) {
+    if(saveBtn){ saveBtn.disabled=false; saveBtn.style.opacity='1'; saveBtn.textContent='Save Progress'; }
+    showToast('Submit failed: '+(err.message||''));
+  }
+}
+
+// Submit all today's work at once (from banner button)
+async function asSubmitTodayAll() {
+  if(!supaUser) return;
+  var sb=getSupa(); if(!sb) return;
+  var today=kstDateKey(), key='kh_as_'+supaUser.id+'_'+today;
+  try { var d=JSON.parse(localStorage.getItem(key)||'{}');
+    var ids=Object.keys(d); var submitted=0;
+    for(var i=0;i<ids.length;i++){
+      var item=d[ids[i]]; if(!item||item.submitted) continue;
+      var r=await sb.from('user_submissions').upsert({
+        user_id:supaUser.id, content_type:'article_study',
+        content_id:String(ids[i]), content_title:item.article_title||'',
+        study_date:today, writing_text:'', word_count:0,
+        context_data:JSON.stringify({step4_answers:item.step4_answers||[]}),
+        status:'submitted'
+      },{onConflict:'user_id,content_type,study_date,content_id'});
+      if(!r.error){item.submitted=true;submitted++;}
+    }
+    localStorage.setItem(key,JSON.stringify(d));
+    if(submitted) showToast(submitted+'개 Submitted!');
+    _asRefreshSubmitBanner();
+  } catch(e){ showToast('Submit failed'); }
+}
+
+// Auto-submit previous days' unsaved work on page load
+async function asAutoSubmitOldWork() {
+  if(!supaUser) return;
+  var sb=getSupa(); if(!sb) return;
+  var today=kstDateKey(), prefix='kh_as_'+supaUser.id+'_';
+  var keys=[]; for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(k&&k.startsWith(prefix)&&k.replace(prefix,'')< today) keys.push(k); }
+  for(var ki=0;ki<keys.length;ki++){
+    var date=keys[ki].replace(prefix,''); var d={}; try{d=JSON.parse(localStorage.getItem(keys[ki])||'{}');}catch(e){continue;}
+    var ids=Object.keys(d); var changed=false;
+    for(var ai=0;ai<ids.length;ai++){
+      var item=d[ids[ai]]; if(!item||item.submitted) continue;
+      var r=await sb.from('user_submissions').upsert({
+        user_id:supaUser.id, content_type:'article_study',
+        content_id:String(ids[ai]), content_title:item.article_title||'',
+        study_date:date, writing_text:'', word_count:0,
+        context_data:JSON.stringify({step4_answers:item.step4_answers||[]}),
+        status:'submitted'
+      },{onConflict:'user_id,content_type,study_date,content_id'});
+      if(!r.error){item.submitted=true;changed=true;}
+    }
+    if(changed) localStorage.setItem(keys[ki],JSON.stringify(d));
+  }
+}
+
+function _asRefreshSubmitBanner() {
+  refreshSubmitBanner();
+}
+
+// ── Utilities ──
+function _asShuffle(a) {
+  var arr=a.slice(); for(var i=arr.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=arr[i];arr[i]=arr[j];arr[j]=t;} return arr;
+}
+function _asEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+
+// Early stubs — the real implementations live in a later <script>
+// block (openConvStudy at line 17251). If a user clicks the button
+// before that block runs, these fall back to something honest:
+//  - Conversation Study: show a toast and retry on the next tick
+//    so the real modal opens as soon as the later block registers.
+//  - Story Study: there is no separate "Story Study" modal yet, so
+//    this is the permanent implementation — it just navigates to
+//    the stories page. Kept here so both buttons have a definition
+//    at parse time.
+if (typeof openConvStudy === 'undefined') {
+  window.openConvStudy = function _openConvStudyStub() {
+    if (typeof showToast === 'function') showToast('Opening Conversation Study…');
+    // The real implementation registers later in the page; try again
+    // on the next tick so a premature click still opens the modal.
+    setTimeout(function(){
+      if (window.openConvStudy && window.openConvStudy !== _openConvStudyStub) window.openConvStudy();
+    }, 400);
+  };
+}
+if (typeof openStoryStudy === 'undefined') {
+  window.openStoryStudy = function() { window.location.assign('korehan-stories.html'); };
+}
+
+// ═══ Completed Studies Tracker ═══════════════════════════════
+function renderCompletedStudies() {
+  var section = document.getElementById('sr-completed-section');
+  var list = document.getElementById('sr-completed-list');
+  if (!section || !list) return;
+  var items = [];
+  // Collect completed articles from localStorage
+  try {
+    var tmpKey = 'kh_sr_article_tmp';
+    var data = JSON.parse(localStorage.getItem(tmpKey) || '{}');
+    Object.keys(data).forEach(function(id) {
+      var d = data[id];
+      if (d && d.completed) {
+        items.push({ type:'article', id:id, title:d.article_title||'Article', date:d.completedAt||d.savedAt, data:d });
+      }
+    });
+  } catch(e){}
+  // Collect completed conversations
+  try {
+    var convKey = 'kh_sr_conv_tmp';
+    var cdata = JSON.parse(localStorage.getItem(convKey) || '{}');
+    Object.keys(cdata).forEach(function(id) {
+      var d = cdata[id];
+      if (d && d.completed) {
+        items.push({ type:'conv', id:id, title:d.title||'Conversation', date:d.completedAt||d.savedAt, data:d });
+      }
+    });
+  } catch(e){}
+  if (!items.length) { section.style.display = 'none'; return; }
+  items.sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
+  section.style.display = '';
+  list.innerHTML = items.slice(0,10).map(function(it) {
+    var icon = it.type === 'article' ? '<span style="display:inline-flex;width:18px;height:18px">' + BM_ICON_NEWSPAPER + '</span>' : '<span style="display:inline-flex;width:18px;height:18px">' + BM_ICON_LIBRARY + '</span>';
+    var ago = it.date ? timeSince(new Date(it.date)) : '';
+    return '<div style="flex-shrink:0;min-width:140px;padding:10px 12px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;cursor:pointer" onclick="'+(it.type==='article'?'openArticleStudy()':'openConvStudy()')+'">'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+      + icon
+      + '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:99px;background:rgba(34,197,94,.2);color:#4ade80;display:inline-flex;align-items:center;gap:4px"><span style="display:inline-flex;width:11px;height:11px">'+BM_ICON_CHECK+'</span><span>Done</span></span>'
+      + '</div>'
+      + '<div style="font-size:11px;font-weight:700;color:#fff;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (it.title||'').slice(0,25) + '</div>'
+      + '<div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">' + ago + '</div>'
+      + '</div>';
+  }).join('');
+}
+function timeSince(d) {
+  var s = Math.floor((Date.now()-d.getTime())/1000);
+  if(s<60) return 'just now'; if(s<3600) return Math.floor(s/60)+'m ago'; if(s<86400) return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago';
+}
+function toggleCompletedPanel() {
+  var list = document.getElementById('sr-completed-list');
+  if (!list) return;
+  var isExpanded = list.style.maxHeight && list.style.maxHeight !== 'none';
+  if (isExpanded) { list.style.maxHeight=''; list.style.flexWrap=''; }
+  else { list.style.maxHeight='none'; list.style.flexWrap='wrap'; }
+}
+// Render on page load
+setTimeout(renderCompletedStudies, 500);
+
