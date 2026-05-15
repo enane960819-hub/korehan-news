@@ -1826,16 +1826,47 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
     var stem = String(target).replace(/[다요죠어아]$/, '');
     return stem.length >= 2 && ko.indexOf(stem) >= 0;
   }
+  // Track which vocab / expressions / grammar have already been
+  // surfaced in an earlier paragraph. Owner-reported "단어만 있는데
+  // 그마저도 중복이네" — '시장' was repeated in every paragraph that
+  // contained the word. Now show each entry ONCE, in the first
+  // paragraph where it appears, so each card has fresh content.
+  var _shownVocab = Object.create(null);
+  var _shownExpr  = Object.create(null);
+  var _shownGramm = Object.create(null);
   return koParas.map(function (ko, i) {
     var en = enParas[i] || '';
     var sentBreakdown = sentMap ? _stRenderSentenceAnalysis(ko, sentMap) : '';
-    var paraVocab = storyVocab.filter(function(v){ return v && v.ko && _stKoMatches(ko, v.ko); });
+    var paraVocab = storyVocab.filter(function(v){
+      if (!v || !v.ko) return false;
+      if (_shownVocab[v.ko]) return false;
+      if (!_stKoMatches(ko, v.ko)) return false;
+      _shownVocab[v.ko] = true;
+      return true;
+    });
     var paraGrammar = storyGrammar.filter(function(g){
       var pat = (g && (g.pattern || g.label)) || '';
       var key = String(pat).replace(/^~|\(.*$/g, '').trim();
-      return key && ko.indexOf(key.split(/[\/·,]/)[0]) >= 0;
+      if (!key) return false;
+      if (_shownGramm[pat]) return false;
+      // Match by ex chunk if available (most accurate), else by
+      // pattern marker substring as fallback.
+      var ex = (g.ex || g.example || '').replace(/\s+/g, '').trim();
+      var koCompact = ko.replace(/\s+/g, '');
+      var matches = ex
+        ? koCompact.indexOf(ex) >= 0
+        : ko.indexOf(key.split(/[\/·,]/)[0]) >= 0;
+      if (!matches) return false;
+      _shownGramm[pat] = true;
+      return true;
     });
-    var paraExprs = storyKeyExprs.filter(function(k){ return k && k.ko && _stKoMatches(ko, k.ko); });
+    var paraExprs = storyKeyExprs.filter(function(k){
+      if (!k || !k.ko) return false;
+      if (_shownExpr[k.ko]) return false;
+      if (!_stKoMatches(ko, k.ko)) return false;
+      _shownExpr[k.ko] = true;
+      return true;
+    });
     var paraAnalysisHTML = '';
     if (paraVocab.length || paraGrammar.length || paraExprs.length) {
       paraAnalysisHTML = '<div class="st-para-analysis">';
