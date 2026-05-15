@@ -1296,11 +1296,21 @@ async function signUpWithGoogle() {
     return;
   }
   try {
+    // SECURITY: state token for session-fixation protection (see
+    // korehan-shared.js signInWithGoogle for the full reasoning).
+    var stateBytes = new Uint8Array(16);
+    try { crypto.getRandomValues(stateBytes); } catch (_) {
+      for (var i = 0; i < 16; i++) stateBytes[i] = (Math.random() * 256) | 0;
+    }
+    var oauthState = Array.prototype.map.call(stateBytes, function (b) {
+      return ('0' + b.toString(16)).slice(-2);
+    }).join('');
+    try { sessionStorage.setItem('kh_oauth_state', oauthState); } catch (_) {}
     var { error } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin + '/korehan-onboarding.html?finish=1',
-        queryParams: { access_type: 'offline', prompt: 'select_account' }
+        queryParams: { access_type: 'offline', prompt: 'select_account', state: oauthState }
       }
     });
     if (error) throw error;
