@@ -5702,6 +5702,13 @@ async function goTitleBackfill() {
         break;
       }
     }
+    // Codex P2: silent stop at the cap was reintroducing the same
+    // "you don't know which rows are missing" pattern this code
+    // was supposed to fix. Push an explicit warning into
+    // scanErrors so the admin sees it on the dashboard.
+    if (offset >= SCAN_HARD_CAP) {
+      scanErrors.push(table + ': scan hit SCAN_HARD_CAP (' + SCAN_HARD_CAP + ' rows) — rows beyond that are NOT counted in the missing total. Raise SCAN_HARD_CAP or scan in batches.');
+    }
   }
 
   await _scanPaged('articles', function (r) {
