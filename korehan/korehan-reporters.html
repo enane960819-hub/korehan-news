@@ -72,6 +72,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     var ref = document.referrer || '';
     if (ref && !/korehan-reporter(s)?\.html/.test(ref)) {
       sessionStorage.setItem('kh_rp_pre_list', ref);
+    } else {
+      // Codex P2: when ref is empty (bookmark / new-tab) OR
+      // already inside the reporter flow, CLEAR the stored entry
+      // so rpGoBack() doesn't fall back to a stale value from an
+      // earlier session.
+      sessionStorage.removeItem('kh_rp_pre_list');
     }
   } catch (_) {}
 

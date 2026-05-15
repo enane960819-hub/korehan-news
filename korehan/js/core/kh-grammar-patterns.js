@@ -74,7 +74,12 @@
     { re: /(아서|어서|여서|봐서|와서|줘서|둬서|매서|깨서|떼서|째서|쳐서|쪄서|져서|돼서|해서|펴서|켜서|셔서|쒀서|폐서)/, label: '~아/어서 (cause / sequence)', hint: 'reason or sequence. "because / and then". Includes vowel-contracted forms: 넘어지다→넘어져서, 보다→봐서, 되다→돼서, 하다→해서' },
     { re: /(니까|으니까)/, label: '~(으)니까 (reason)', hint: 'reason (more conversational than ~아서)' },
     { re: /기\s*때문(에|이|이다)/, label: '~기 때문에 (because)', hint: 'because. <stem> + 기 때문에' },
-    { re: /(?<!기)[가-힣]\s*때문(에|이|이다)/, label: '~ 때문에 (because of N)', hint: 'because of (noun). <noun> + 때문에 = "because of / due to". 세균 때문에 = "because of the bacteria"' },
+    // Noun + 때문에. Codex P2: previous lookbehind `(?<!기)` checked
+    // the char BEFORE the matched [가-힣], but in 먹기 때문에 the
+    // matched char IS 기 (with 먹 before it). So 기 itself was
+    // matched as the noun. Fix: lookbehind ON the matched char,
+    // i.e. assert the matched [가-힣] isn't 기.
+    { re: /[가-힣](?<!기)\s*때문(에|이|이다)/, label: '~ 때문에 (because of N)', hint: 'because of (noun). <noun> + 때문에 = "because of / due to". 세균 때문에 = "because of the bacteria"' },
     // ~(으)면 must NOT swallow ~(으)면서 — the 서 alternative used to
     // be in the lookahead, which made every "가면서" / "들어가면서" fire
     // both ~(으)면 AND ~(으)면서. Now require the next char to be end-
@@ -124,7 +129,15 @@
     // surfaced as `~게 (adverbializer suffix)` with chunk "그녀에게").
     // Similarly exclude 께 / 한테(게) edge cases by anchoring on the
     // exact 에게 sequence.
-    { re: /(?<!에)[가-힣]게(?=\s+[가-힣]|[.,!?])/, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly).' },
+    // Codex P2: previous match fired on '가게 되었어요' / '~게 되다'
+    // patterns (verb stem + 게 + 되/하다/만들다 causative) which
+    // aren't the adverbializer. Negative lookaheads exclude:
+    //   ~게 되<korean>   (became / happened to)
+    //   ~게 하다         (caused to)
+    //   ~게 만들<korean> (made to)
+    // Active forms like '쉽게 했다' (조 was active) still match
+    // since '했' starts with 했 not '하다'.
+    { re: /(?<!에)[가-힣]게(?=\s+(?!되[가-힣]|하다|만들[가-힣])[가-힣]|[.,!?])/, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly).' },
 
     // ── Derivational suffixes (sibling family of ~게) ───────────
     // Same exp-policy as ~게: explain the morpheme role and show a
@@ -167,7 +180,7 @@
     { re: /[가-힣]밖에(?=[^가-힣]|$)/, label: '~밖에 (only / nothing but) [+negative]', hint: 'exclusive — pairs with negative verb (안/없/모르). <noun> + 밖에 + neg = "only / nothing but". 천 원밖에 없어요 (I only have 1000 won).' },
     { re: /[가-힣]씩(?=[^가-힣]|$)/, label: '~씩 (each / per)', hint: 'distributive. <number/amount> + 씩 = "each / per". 한 명씩 (one by one); 매일 한 시간씩 (an hour each day).' },
     { _check: function(t) {
-      var m = t.match(/[가-힣]이나(?=\s|[.,!?])/);
+      var m = t.match(/[가-힣]이나(?=\s|[.,!])/);
       if (m) return m[0];
       // Bare ~나 after a vowel-ending syllable (no batchim, jong=0) followed
       // by space/punct. The vowel-ending requirement excludes verb stems like
@@ -175,11 +188,15 @@
       // "one") — 하 ends in vowel + 나 + space matches the pattern but in
       // surface form 하나 is almost always the numeral, not the ~(이)나
       // particle. False-positive carrier especially for "X 중 하나" / "한 개".
+      // Codex P2: also drop '?' from terminators. A vowel-stem + 나 + ?
+      // pattern is almost always a verb question ending (가나?, 하나?,
+      // 오나?), not the alternation particle (which connects to another
+      // noun, not a sentence-final ?).
       for (var i = 0; i < t.length - 1; i++) {
         if (_jong(t.charAt(i)) !== 0) continue;
         if (t.charAt(i + 1) !== '나') continue;
         var nxt = t.charAt(i + 2) || '';
-        if (!(nxt === '' || /[\s.,!?]/.test(nxt))) continue;
+        if (!(nxt === '' || /[\s.,!]/.test(nxt))) continue;
         var pair = t.charAt(i) + '나';
         if (pair === '하나') continue; // numeral, not particle
         // Skip when preceded by 중/한/한두/두/세/네/몇 + space — these mark
