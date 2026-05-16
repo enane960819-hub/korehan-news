@@ -921,7 +921,11 @@ body.kh-neon-on .hero-dot {
       clearInterval(_tipTimer);
       setTimeout(function() {
         var el = document.getElementById('kh-loader');
-        if (el) { el.style.opacity = '0'; setTimeout(function(){ el.remove(); }, 400); }
+        if (el) {
+          el.style.pointerEvents = 'none';
+          el.style.opacity = '0';
+          setTimeout(function(){ try { el.remove(); } catch(_) {} }, 400);
+        }
       }, 150);
     }
   };

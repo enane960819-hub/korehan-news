@@ -2939,7 +2939,7 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
      gestures because the card had `position: relative` + onclick
      but no explicit touch-action — the engine got confused
      between tap, drag, and pinch. */
-  touch-action: manipulation;
+  touch-action: pan-y;
 }
 /* Absolute-positioned overlay children don't need their own touch
    handlers — let touch pass to the card. pointer-events: none on
