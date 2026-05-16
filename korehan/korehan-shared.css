@@ -2925,21 +2925,19 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
 
 /* home latest overlay cards */
 .nc.nc-overlay {
+  /* Now rendered as <a href> instead of <div onclick> — anchor is
+     the canonical mobile-tappable container. Multiple prior
+     hotfixes (#505, #508, #518, #522, #525) tried tweaking
+     touch-action on the div+onclick combo and all failed; Chrome
+     on Android + Samsung Internet were silently eating tap +
+     scroll on the absolutely-positioned children layout. Anchor
+     fixes this at the browser-default level — no touch-action
+     override needed. */
+  display: block; text-decoration: none; color: inherit;
   position: relative; min-height: 300px;
   border-radius: 18px; overflow: hidden;
   box-shadow: 0 14px 28px rgba(13,27,46,.12);
   background:#0b1626;
-  /* Chrome on Android — owner-reported tap + scroll DEAD on
-     article cards ("크롬 기사카드 위에선 터치 스크롤 전부 무반응").
-     `touch-action: manipulation` tells Blink the element accepts
-     tap + pan and removes the 300ms tap delay. With explicit
-     manipulation, pan-x (rail horizontal scroll) and pan-y (page
-     vertical scroll) both work and tap fires the onclick. Without
-     this, certain Chrome builds were silently eating both
-     gestures because the card had `position: relative` + onclick
-     but no explicit touch-action — the engine got confused
-     between tap, drag, and pinch. */
-  touch-action: pan-y;
 }
 /* Absolute-positioned overlay children don't need their own touch
    handlers — let touch pass to the card. pointer-events: none on
