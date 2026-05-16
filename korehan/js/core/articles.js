@@ -307,6 +307,21 @@ async function loadArticlesFromDB(options) {
         }
         throw res.error;
       }
+      // Silent-empty fallback. The lite select can come back with
+      // error=null AND data=[] when column-level grants / RLS hide
+      // a column referenced in the select list — PostgREST returns
+      // 0 rows instead of a 400 in that case, so the error-only
+      // fallback above never fires and the home rail stalls on the
+      // "Loading today's articles…" message forever. Verified in
+      // production: manual `select('*')` returns 15 rows for anon,
+      // while `select(HOME_ARTICLE_SELECT)` returns 0 with no error.
+      // Retry with the next select in the list (FULL_ARTICLE_SELECT
+      // = '*') so we always render *something* when the table has
+      // data.
+      if ((!res.data || res.data.length === 0) && i < selects.length - 1) {
+        console.warn('articles select returned 0 rows — retrying with *');
+        continue;
+      }
       // Pass merge flag so homeOptimized refreshes don't clobber
       // a warm full cache. Other call sites (All News, regular list)
       // use the default replace behavior.
