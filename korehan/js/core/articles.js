@@ -46,7 +46,18 @@ var LIST_ARTICLE_SELECT = 'id,title,title_en,title_ko,body,image,section,level,d
 // roughly halves the home payload size and the time-to-first-paint
 // drops from ~8s to ~3-4s. Background refresh below picks up the
 // missing columns for any later use.
-var HOME_ARTICLE_SELECT = 'id,title,title_en,image,section,level,date,created_at,status,featured';
+// Schema-drift-immune select. Earlier we tried explicit column lists
+// (HOME_ARTICLE_SELECT) to trim payload on LTE, but the column list
+// kept drifting from the live production schema — adding a column like
+// `source_url` to the codebase before the DB migration ran would make
+// PostgREST silently return `{data:[], error:null}` for the entire
+// query, and the home rail would stall forever on "Loading today's
+// articles…". Stories and Conversations use `select('*')` and have
+// never had this class of bug. Adopting the same pattern here: a few
+// extra KB on LTE is an acceptable cost for a bug we kept re-hitting.
+// HOME_ARTICLE_SELECT kept as '*' (rather than removed) so any caller
+// passing { homeOptimized: true } still works without a code-path change.
+var HOME_ARTICLE_SELECT = '*';
 var FULL_ARTICLE_SELECT = '*';
 
 // 이미지 없는 기사용 placeholder — SVG inline data URI (깨지지 않음)
