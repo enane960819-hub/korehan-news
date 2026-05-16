@@ -2607,58 +2607,20 @@ function _khShowAuthFailureBanner() {
   document.body.appendChild(bar);
 }
 
-function _khRenderHeroEmptyState() {
-  var heroEl = document.getElementById('dyn-hero');
-  if (!heroEl) return;
-  // If real articles arrived between the timeout and this call, leave
-  // them alone — _heroSlides being non-empty means renderHeroSlide
-  // already painted them.
-  if (_heroSlides && _heroSlides.length) return;
-  heroEl.className = '';
-  heroEl.style.cssText = 'display:flex;align-items:center;justify-content:center;min-height:260px;border-radius:18px;background:#f8fbff;border:1px solid #e7eef8;padding:24px;text-align:center;';
-  // Quiet recovery panel. The retries + safety net at startup mean
-  // this only paints when fetches are truly stuck — not on a slow
-  // LTE blip. Owner: "삼성브라우저 저딴거 넣지말고 로딩되게 근본 문제를
-  // 해결하라고" — UA-specific copy removed; root cause is fixed via
-  // the articles RLS migration (20260515_articles_anon_select_rls.sql).
-  heroEl.innerHTML =
-      '<div style="max-width:340px">'
-    + '<div style="font-size:14px;font-weight:700;color:#334155;margin:0 0 10px;line-height:1.5">Still loading the latest articles…</div>'
-    + '<button onclick="location.reload()" style="padding:9px 18px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#0f172a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Refresh</button>'
-    + '</div>';
-}
+// _khRenderHeroEmptyState used to paint a "Still loading… Refresh"
+// dead-end panel after 3 failed fetch attempts. Removed — see the
+// stub below for the empty no-op that replaces it.
 
-// Belt-and-suspenders safety net: if the hero is still on the
-// skeleton 15s after the page became interactive, force the empty
-// state. This is for the truly-wedged case where the fetch never
-// resolves and splash + main code paths all silently fail; under
-// normal conditions the splash holds for up to 8s waiting for the
-// hero, then the in-flight fetch's then/catch fires the empty
-// state itself. 15s gives the splash + late-arriving fetch every
-// chance to win first so the alarming red Reset button only
-// appears when the user is genuinely stuck.
-(function _khArmHeroSafetyNet() {
-  if (typeof document === 'undefined') return;
-  function arm() {
-    var heroEl = document.getElementById('dyn-hero');
-    if (!heroEl) return;
-    setTimeout(function() {
-      if (_heroSlides && _heroSlides.length) return;
-      // Detect the still-skeleton case by class — initial markup has
-      // home-hero-loading; a successful render replaces className.
-      // 12s ceiling: past the 3-attempt retry window (~8s + fetch
-      // latency) but not so long the user gives up and closes the tab.
-      if (/home-hero-loading/.test(heroEl.className || '')) {
-        try { _khRenderHeroEmptyState(); } catch(_){}
-      }
-    }, 12000);
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', arm, { once: true });
-  } else {
-    arm();
-  }
-})();
+// Hero safety-net removed. Previously a 12-second timer painted the
+// "Still loading… Refresh" empty state if the hero was still on the
+// skeleton. That panel was a UX dead-end — manual Refresh just looped
+// to the same broken state when the fetch was failing for a stale-
+// deploy / schema-drift reason. _khTryLoadArticles now retries
+// forever with exponential backoff (max 30s), so the skeleton stays
+// until articles actually load, and the page auto-recovers the moment
+// a fix deploys. _khRenderHeroEmptyState is kept as a no-op-callable
+// stub in case any external code path still references it.
+function _khRenderHeroEmptyState() { /* intentionally empty — see comment above */ }
 
 function renderHomePage() {
   var all      = published();
@@ -2688,16 +2650,14 @@ function renderHomePage() {
     heroEl.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:0;align-items:stretch;border-radius:18px;overflow:hidden;box-shadow:0 14px 50px rgba(13,27,46,.18);background:#fff;';
     renderHeroSlide(heroEl);
     resetHeroTimer();
-  } else if (heroEl && /home-hero-loading/.test(heroEl.className || '') && window._khHomeFetchTried) {
-    // Empty-state guard. Only fire AFTER loadArticlesFromDB has at
-    // least been attempted. The previous version of this rule fired
-    // on every renderHomePage call — including the synchronous first
-    // paint before any fetch had run — so first-visit users with no
-    // localStorage cache saw the red 'Reset' panel even though
-    // articles were about to load fine. The _khHomeFetchTried flag
-    // is set by the loadArticlesFromDB.then/catch path.
-    try { _khRenderHeroEmptyState(); } catch(_){}
   }
+  // No empty-state fallback here anymore. _khTryLoadArticles retries
+  // forever with exponential backoff, so the skeleton stays visible
+  // until articles arrive. Previously we painted a "Still loading…
+  // Refresh" panel after 3 failed attempts, but that was a UX dead-end:
+  // if the fetch was failing for a stale-deploy reason, clicking
+  // Refresh just reloaded into the same broken state. Keeping the
+  // skeleton lets the page auto-recover the moment a fix lands.
 
   // TOP STORIES
   var topEl = document.getElementById('dyn-top-stories');
@@ -8389,38 +8349,33 @@ document.addEventListener('DOMContentLoaded', async function() {
               try { renderHomePage(); } catch(_){}
               return;
             }
-            // 0 rows. Empty isn't necessarily fatal (RLS warmup,
-            // network blip), so retry 3 times. On the LAST attempt,
-            // log it so the owner can see in /korehan-x9f4k2m7-errors
-            // whether the articles fetch is silently returning empty
-            // for real users — that's almost always an RLS issue
-            // and points at the right migration to apply.
-            if (attempt < 3) setTimeout(function(){ _khTryLoadArticles(attempt + 1); }, attempt * 1500 + 1500);
-            else {
-              // Codex P2: previously we logged but didn't render. The
-              // 25s safety net would eventually paint the empty state,
-              // but the user stared at the skeleton for 25 seconds.
-              // Fire the empty state immediately on the 3rd empty
-              // result — the safety net stays as a fallback for the
-              // case where retries never even resolve.
-              if (typeof kh_log_error === 'function') {
-                kh_log_error('home articles fetch returned 0 rows after 3 attempts (likely articles RLS denies anon)', {
-                  feature: 'home_hero',
-                  authed: !!(typeof supaUser !== 'undefined' && supaUser),
-                  ua: (navigator && navigator.userAgent || '').slice(0, 200),
-                });
-              }
-              try { _khRenderHeroEmptyState(); } catch (_) {}
+            // 0 rows — keep retrying forever with exponential backoff
+            // capped at 30s. The previous "give up after 3 attempts and
+            // show a Refresh button" path was a UX dead-end: when the
+            // fetch was failing for a stale-deploy / schema-drift reason,
+            // hitting Refresh just reloaded into the same broken state.
+            // Continuous retry lets the page auto-recover the moment a
+            // fix actually deploys, with no user action needed. Log once
+            // on attempt 3 so we still get telemetry for the silent-empty
+            // case, but never give up.
+            if (attempt === 3 && typeof kh_log_error === 'function') {
+              kh_log_error('home articles fetch returned 0 rows after 3 attempts (continuing to retry)', {
+                feature: 'home_hero',
+                authed: !!(typeof supaUser !== 'undefined' && supaUser),
+                ua: (navigator && navigator.userAgent || '').slice(0, 200),
+              });
             }
+            var delay = Math.min(30000, attempt * 1500 + 1500);
+            setTimeout(function(){ _khTryLoadArticles(attempt + 1); }, delay);
           })
           .catch(function (e) {
             window._khHomeFetchTried = true;
             console.warn('home articles fetch failed (attempt ' + attempt + '):', e && e.message || e);
-            if (attempt < 3) setTimeout(function(){ _khTryLoadArticles(attempt + 1); }, attempt * 1500 + 1500);
-            else {
-              if (typeof kh_log_error === 'function') kh_log_error(e || 'home articles fetch failed after 3 attempts', { feature: 'home_hero', attempt: attempt });
-              try { _khRenderHeroEmptyState(); } catch (_) {}
+            if (attempt === 3 && typeof kh_log_error === 'function') {
+              kh_log_error(e || 'home articles fetch failed (continuing to retry)', { feature: 'home_hero', attempt: attempt });
             }
+            var delay = Math.min(30000, attempt * 1500 + 1500);
+            setTimeout(function(){ _khTryLoadArticles(attempt + 1); }, delay);
           });
       }
       _khTryLoadArticles(1);
