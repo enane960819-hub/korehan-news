@@ -2241,11 +2241,15 @@
     //     full phrases get cut)
     var rawWords = opts.words || [];
     var filtered = rawWords.filter(function (w) {
-      var ko = (w && (w.ko || w.word || '')) + '';
+      // Codex P2: callers pass varied shapes — saved_words use `ko`,
+      // Growth Lab passes `word_ko`, some legacy paths use `word`.
+      // Read all three before applying the phrase/sentence filter,
+      // otherwise word_ko rows look empty and the universe lands
+      // with zero stars even when the user has saved words.
+      var ko = (w && (w.ko || w.word || w.word_ko || '')) + '';
       if (!ko) return false;
       if (/\s/.test(ko)) return false;
       if (/[.?!]/.test(ko)) return false;
-      // Korean syllable count cap
       var hangulCount = (ko.match(/[가-힣]/g) || []).length;
       if (hangulCount > 8) return false;
       return true;

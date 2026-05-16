@@ -1831,62 +1831,64 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
   // 그마저도 중복이네" — '시장' was repeated in every paragraph that
   // contained the word. Now show each entry ONCE, in the first
   // paragraph where it appears, so each card has fresh content.
+  // Codex P2: mark shown only AFTER applying the per-paragraph
+  // display cap (slice). Otherwise if a paragraph matched 10 vocab
+  // items but only the first 6 render, the other 4 still got
+  // marked "shown" and were suppressed in every later paragraph —
+  // making analysis look sparse in long stories.
   var _shownVocab = Object.create(null);
   var _shownExpr  = Object.create(null);
   var _shownGramm = Object.create(null);
+  var VOCAB_CAP = 6, EXPR_CAP = 5, GRAMM_CAP = 4;
   return koParas.map(function (ko, i) {
     var en = enParas[i] || '';
     var sentBreakdown = sentMap ? _stRenderSentenceAnalysis(ko, sentMap) : '';
+    // Two-phase: (1) collect candidates that match the paragraph AND
+    // aren't already shown, (2) slice to the display cap, (3) THEN
+    // mark the surviving items as shown.
     var paraVocab = storyVocab.filter(function(v){
-      if (!v || !v.ko) return false;
-      if (_shownVocab[v.ko]) return false;
-      if (!_stKoMatches(ko, v.ko)) return false;
-      _shownVocab[v.ko] = true;
-      return true;
-    });
+      return v && v.ko && !_shownVocab[v.ko] && _stKoMatches(ko, v.ko);
+    }).slice(0, VOCAB_CAP);
+    paraVocab.forEach(function (v) { _shownVocab[v.ko] = true; });
     var paraGrammar = storyGrammar.filter(function(g){
       var pat = (g && (g.pattern || g.label)) || '';
+      if (!pat || _shownGramm[pat]) return false;
       var key = String(pat).replace(/^~|\(.*$/g, '').trim();
       if (!key) return false;
-      if (_shownGramm[pat]) return false;
-      // Match by ex chunk if available (most accurate), else by
-      // pattern marker substring as fallback.
       var ex = (g.ex || g.example || '').replace(/\s+/g, '').trim();
       var koCompact = ko.replace(/\s+/g, '');
-      var matches = ex
+      return ex
         ? koCompact.indexOf(ex) >= 0
         : ko.indexOf(key.split(/[\/·,]/)[0]) >= 0;
-      if (!matches) return false;
+    }).slice(0, GRAMM_CAP);
+    paraGrammar.forEach(function (g) {
+      var pat = (g && (g.pattern || g.label)) || '';
       _shownGramm[pat] = true;
-      return true;
     });
     var paraExprs = storyKeyExprs.filter(function(k){
-      if (!k || !k.ko) return false;
-      if (_shownExpr[k.ko]) return false;
-      if (!_stKoMatches(ko, k.ko)) return false;
-      _shownExpr[k.ko] = true;
-      return true;
-    });
+      return k && k.ko && !_shownExpr[k.ko] && _stKoMatches(ko, k.ko);
+    }).slice(0, EXPR_CAP);
+    paraExprs.forEach(function (k) { _shownExpr[k.ko] = true; });
     var paraAnalysisHTML = '';
     if (paraVocab.length || paraGrammar.length || paraExprs.length) {
       paraAnalysisHTML = '<div class="st-para-analysis">';
       if (paraVocab.length) {
         paraAnalysisHTML += '<div class="st-para-section"><div class="st-para-section-h">📚 Vocab</div><ul class="st-para-list">'
-          + paraVocab.slice(0,6).map(function(v){
+          + paraVocab.map(function(v){
               return '<li><b>' + escapeHtml(v.ko) + '</b>' + (v.en ? ' · ' + escapeHtml(v.en) : '') + '</li>';
             }).join('')
           + '</ul></div>';
       }
       if (paraExprs.length) {
         paraAnalysisHTML += '<div class="st-para-section"><div class="st-para-section-h">⭐ Key Expressions</div><ul class="st-para-list">'
-          + paraExprs.slice(0,5).map(function(k){
+          + paraExprs.map(function(k){
               return '<li><b>' + escapeHtml(k.ko) + '</b>' + (k.en ? ' · ' + escapeHtml(k.en) : '') + '</li>';
             }).join('')
           + '</ul></div>';
       }
       if (paraGrammar.length) {
         paraAnalysisHTML += '<div class="st-para-section"><div class="st-para-section-h">📝 Grammar</div><ul class="st-para-list">'
-          + paraGrammar.slice(0,4).map(function(g){
+          + paraGrammar.map(function(g){
               var pat = escapeHtml(g.pattern || g.label || '');
               var exp = escapeHtml(g.exp || g.explanation || '');
               return '<li><b>' + pat + '</b>' + (exp ? ' — ' + exp : '') + '</li>';
