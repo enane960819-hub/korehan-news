@@ -17783,6 +17783,14 @@ function asBlankSelect(bi) {
 }
 function asBlankFillWord(text) {
   if(!_asWOState) return;
+  // Codex P2: reject taps on chips that are already placed in another
+  // blank. The new per-click render only toggles the `.used` class
+  // but leaves onclick attached, so the same token could fill
+  // multiple blanks — breaking the one-chip-per-use validation.
+  var fb = _asWOState.filledBlanks || {};
+  var alreadyUsed = false;
+  for (var _k in fb) { if (fb[_k] === text) { alreadyUsed = true; break; } }
+  if (alreadyUsed) return;
   var sel=_asWOState.selectedBlank;
   if(sel===null||sel===undefined){
     var msg=document.getElementById('as-wo-msg');
