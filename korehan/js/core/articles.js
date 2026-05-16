@@ -277,57 +277,57 @@ async function loadArticlesFromDB(options) {
   options = options || {};
   var sb = getSupa();
   if (!sb) return getCachedArticles();
-  var shouldForceRefresh = !!options.force;
-  var useHomeOptimizedQuery = !!options.homeOptimized;
-  var useAllArticles = !!options.all;
-  if (!shouldForceRefresh && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
+  if (!options.force && _articlesCache && (Date.now() - _articlesCacheTime) < CACHE_TTL) {
     return _articlesCache;
   }
-  // All News browse uses metadata-only columns. With body excluded
-  // each row is ~300 bytes — 1000 rows ≈ 300KB, vs the old 500 ×
-  // body-included ~1MB+. Plenty of headroom for growth (~260 published
-  // currently). Search now goes through searchArticlesServer() (a
-  // server-side ilike on title / title_en / body / full) so we don't
-  // need to ship lede text to every visitor up front.
-  // homeOptimized: home page shows hero (5) + top stories (4) +
-  // news rail (6 visible). 15 covers all of it with headroom; was
-  // 30 which doubled the payload for no visible benefit.
-  var lim = useHomeOptimizedQuery ? 15 : useAllArticles ? 1000 : 80;
-  // Try the lite column list first; fall back to '*' if PostgREST
-  // rejects an unknown column (production schemas can lag behind the
-  // codebase). Without this fallback any missing column on the lite
-  // list (e.g. video_kind, source_url) would drop the home page to
-  // an empty hero and leave "Loading today's articles…" forever.
-  var primary = (useHomeOptimizedQuery || useAllArticles) ? HOME_ARTICLE_SELECT : LIST_ARTICLE_SELECT;
-  var selects = [primary, FULL_ARTICLE_SELECT];
-  for (var i = 0; i < selects.length; i++) {
-    try {
-      var res = await sb.from('articles').select(selects[i])
-        .order('created_at', { ascending: false }).limit(lim);
-      if (res.error) {
-        // ALWAYS fall back to '*' on any error short of the last
-        // attempt. Earlier we restricted this to "column does not
-        // exist" wording, but PostgREST surfaces missing columns in
-        // many shapes (column does not exist / could not find /
-        // 42703 / generic 400) and any one of those would silently
-        // strand the home page on an empty hero. The fallback to
-        // SELECT * is cheap, so any retry is worth it.
-        if (i < selects.length - 1) {
-          console.warn('articles select retry — dropping to *:', res.error.message || res.error);
-          continue;
-        }
-        throw res.error;
-      }
-      // Pass merge flag so homeOptimized refreshes don't clobber
-      // a warm full cache. Other call sites (All News, regular list)
-      // use the default replace behavior.
-      return applyArticlesCache(normalizeArticles(res.data || []), { merge: useHomeOptimizedQuery });
-    } catch(e) {
-      console.warn('articles load error', e);
-      if (i >= selects.length - 1) return getCachedArticles();
+  var lim = options.homeOptimized ? 15 : options.all ? 1000 : 80;
+  // Inline implementation — no normalizeArticles / applyArticlesCache
+  // helpers. Earlier the function went through those helpers and somehow
+  // returned 0 rows in production even when the exact same query ran
+  // inline returned 15. Removed the indirection so the function does
+  // literally the same thing the inline call does, with section
+  // normalization + sort done in-place. Verified manually that this
+  // query shape works for anon.
+  try {
+    var res = await sb.from('articles').select('*')
+      .order('created_at', { ascending: false }).limit(lim);
+    if (res.error) {
+      console.warn('articles fetch error:', res.error.message || res.error);
+      return getCachedArticles();
     }
+    var rows = (res.data || []).filter(function (item) {
+      return item && typeof item === 'object';
+    });
+    // Section alias: tech/etc → beauty (legacy mapping).
+    for (var k = 0; k < rows.length; k++) {
+      var sec = String(rows[k].section || '').trim();
+      var low = sec.toLowerCase();
+      if (low === 'tech' || low === 'it과학' || low === 'technology' || low === 'tech/science') {
+        rows[k].section = 'beauty';
+      } else {
+        rows[k].section = sec;
+      }
+    }
+    rows.sort(function (a, b) {
+      var da = String((a && (a.date || a.published_at || a.created_at || a.updated_at)) || '');
+      var db = String((b && (b.date || b.published_at || b.created_at || b.updated_at)) || '');
+      if (da > db) return -1;
+      if (da < db) return 1;
+      return String((b && b.id) || '').localeCompare(String((a && a.id) || ''));
+    });
+    _articlesCache = rows;
+    _articlesCacheTime = Date.now();
+    try {
+      if (rows.length) {
+        localStorage.setItem(ARTICLES_STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), items: rows }));
+      }
+    } catch (_) {}
+    document.dispatchEvent(new Event('khArticlesLoaded'));
+    return _articlesCache;
+  } catch (e) {
+    console.warn('articles load exception:', e && e.message || e);
+    return getCachedArticles();
   }
-  return getCachedArticles();
 }
 
 // Fetch one full article (with `full` body) by id and merge it into the
