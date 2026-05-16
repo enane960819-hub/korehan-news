@@ -288,21 +288,29 @@ async function loadArticlesFromDB(options) {
   // list (e.g. video_kind, source_url) would drop the home page to
   // an empty hero and leave "Loading today's articles…" forever.
   var primary = (useHomeOptimizedQuery || useAllArticles) ? HOME_ARTICLE_SELECT : LIST_ARTICLE_SELECT;
-  var selects = [primary, FULL_ARTICLE_SELECT];
-  for (var i = 0; i < selects.length; i++) {
+  // Each attempt is [selectCols, orderCol]. PostgREST returns 400 for a
+  // missing column in either the SELECT list OR the ORDER BY clause —
+  // and production schemas can lag the codebase on either axis. The
+  // chain falls back from lite-cols + created_at to SELECT * + created_at
+  // (handles missing select col), to SELECT * + date (handles missing
+  // order col), to SELECT * unordered (last resort). Any one of these
+  // succeeding gives the home page real data instead of empty hero.
+  var attempts = [
+    [primary, 'created_at'],
+    [FULL_ARTICLE_SELECT, 'created_at'],
+    [FULL_ARTICLE_SELECT, 'date'],
+    [FULL_ARTICLE_SELECT, null]
+  ];
+  for (var i = 0; i < attempts.length; i++) {
+    var cols = attempts[i][0];
+    var orderCol = attempts[i][1];
     try {
-      var res = await sb.from('articles').select(selects[i])
-        .order('created_at', { ascending: false }).limit(lim);
+      var q = sb.from('articles').select(cols);
+      if (orderCol) q = q.order(orderCol, { ascending: false });
+      var res = await q.limit(lim);
       if (res.error) {
-        // ALWAYS fall back to '*' on any error short of the last
-        // attempt. Earlier we restricted this to "column does not
-        // exist" wording, but PostgREST surfaces missing columns in
-        // many shapes (column does not exist / could not find /
-        // 42703 / generic 400) and any one of those would silently
-        // strand the home page on an empty hero. The fallback to
-        // SELECT * is cheap, so any retry is worth it.
-        if (i < selects.length - 1) {
-          console.warn('articles select retry — dropping to *:', res.error.message || res.error);
+        if (i < attempts.length - 1) {
+          console.warn('articles select retry [' + cols.slice(0,40) + ' / ' + orderCol + ']:', res.error.message || res.error);
           continue;
         }
         throw res.error;
@@ -313,7 +321,7 @@ async function loadArticlesFromDB(options) {
       return applyArticlesCache(normalizeArticles(res.data || []), { merge: useHomeOptimizedQuery });
     } catch(e) {
       console.warn('articles load error', e);
-      if (i >= selects.length - 1) return getCachedArticles();
+      if (i >= attempts.length - 1) return getCachedArticles();
     }
   }
   return getCachedArticles();
@@ -378,10 +386,20 @@ async function searchArticlesServer(query, limit) {
       // schema even though the codebase reads them defensively) doesn't
       // 400 the whole search. Result count is bounded by limit so the
       // payload bloat is negligible.
-      var res = await sb.from('articles').select('*')
-        .or(orFilter)
-        .order('created_at', { ascending: false })
-        .limit(lim);
+      // Try created_at → date → unordered to survive whichever
+      // timestamp column the production schema has. The order column
+      // is the same 400-source as a missing select column.
+      var orderCandidates = ['created_at', 'date', null];
+      var res = null;
+      for (var oi = 0; oi < orderCandidates.length; oi++) {
+        var qq = sb.from('articles').select('*').or(orFilter);
+        if (orderCandidates[oi]) qq = qq.order(orderCandidates[oi], { ascending: false });
+        res = await qq.limit(lim);
+        if (!res.error) break;
+        var em = String(res.error.message || '');
+        if (oi < orderCandidates.length - 1 && /column|does not exist|find|reference/i.test(em)) continue;
+        break;
+      }
       if (res.error) {
         var msg = String(res.error.message || '');
         var m = msg.match(/column [^.]*\.(\w+) does not exist/i);
