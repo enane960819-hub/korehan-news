@@ -8294,14 +8294,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     if (hadCache) {
       renderHomePage();
-      _ldr(92);
-      // Cache-hit path: hero paints synchronously, so the splash
-      // resolves in ~0ms. Phrase wait stays at 4s but yields fast
-      // when cache exists. Net result: splash dismisses immediately.
-      Promise.all([_khAwaitTodaysPhrase(2500), _khAwaitHero(1500)]).then(function () {
-        if (window._khLoaderClearAuto) window._khLoaderClearAuto();
-        _ldr(100);
-      });
+      // Splash dismisses immediately — renderHomePage already painted
+      // the cached articles synchronously, so there's nothing to wait
+      // for. Previously we held the splash for up to 2.5s polling the
+      // phrase banner DOM node, which added a regression on top of
+      // an otherwise <1s page paint. Owner: "원래 3초 이하 걸렸음".
+      // The phrase + background article refresh continue async; they
+      // fill in their slots when they arrive without blocking paint.
+      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+      _ldr(100);
       // Always fire a small homeOptimized refresh so newly published
       // articles surface within seconds instead of waiting up to an
       // hour for the localStorage cache TTL. Earlier we relied on the
@@ -8379,16 +8380,16 @@ document.addEventListener('DOMContentLoaded', async function() {
           });
       }
       _khTryLoadArticles(1);
-      _ldr(92);
-      // No-cache path: shorter splash ceiling so the page paints
-      // sooner. If the fetch hasn't completed by 2.5s, the splash
-      // dismisses onto the skeleton — that's friendlier than a 5s
-      // blank-loader hold. Owner: "걍 오래 안걸리게 하면 저딴거
-      // 필요없잖아".
-      Promise.all([_khAwaitTodaysPhrase(2500), _khAwaitHero(2500)]).then(function () {
-        if (window._khLoaderClearAuto) window._khLoaderClearAuto();
-        _ldr(100);
-      });
+      // No-cache path: also dismiss splash immediately. renderHomePage
+      // above already painted the skeleton, which is a fine landing
+      // surface while the fetch is in flight (typically 200-800ms).
+      // The previous Promise.all held the splash for up to 2.5s polling
+      // the phrase banner — that turned a normal sub-second paint into
+      // a perceived 2.5s wait. Owner: "원래 3초 이하 걸렸음" — yes,
+      // and this restores it. Phrase and articles paint into their
+      // own slots as they arrive.
+      if (window._khLoaderClearAuto) window._khLoaderClearAuto();
+      _ldr(100);
     }
 
     // Prefetch the full 1000-row dataset in idle time so when the user
