@@ -3053,7 +3053,7 @@ function _buildNewsCardHTML(a) {
     ? '<img class="nc-img" src="' + thumbSrc + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/\'+encodeURIComponent(this.dataset.fb||\'kh\')+\'/400/260\'" data-fb="' + escapeHtml(a.id || 'kh') + '">'
     : '<div class="nc-img nc-img-fallback"></div>';
   var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-  return '<div class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" onclick="location.href=\'' + articleUrl(a.id) + '\'">'
+  return '<a class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" href="' + articleUrl(a.id) + '">'
     + img
     + '<div class="nc-overlay-grad"></div>'
     + '<div class="nc-overlay-body">'
@@ -3061,7 +3061,7 @@ function _buildNewsCardHTML(a) {
     + '<div class="nc-title" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + escapeHtml(a.title_en || a.title || '') + '</div>'
     + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
     + '</div>'
-    + '</div>';
+    + '</a>';
 }
 
 function renderAllList(listEl, articles, opts) {
