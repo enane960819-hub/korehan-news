@@ -256,6 +256,15 @@
     return vocabList.find(function(v){ return v.word_ko === word; }) || null;
   }
 
+  // Expose the merged dictionary to other surfaces (e.g. story
+  // paragraph analysis pulls these words when they appear in body
+  // text, so the recurring high-value vocab the admin curated /
+  // vocabulary_bank holds doesn't just live behind a hover —
+  // it surfaces in the per-paragraph list too).
+  window.khGetHoverVocab = getVocab;
+  window.khGetHoverVocabList = function() { return vocabList.slice(); };
+  window.khGetHoverVocabWords = function() { return vocabWords.slice(); };
+
   function shouldSkipNode(node) {
     if (!node || !node.parentNode) return true;
     var parent = node.parentNode;
