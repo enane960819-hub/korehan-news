@@ -1141,33 +1141,14 @@ function renderStories() {
     return;
   }
 
-  // Netflix-style genre rails when no filter is active. Continue Reading
-  // and Saved sit on top (when relevant), then every story shows up in its
-  // genre rail. No spotlight rails — categorisation is the navigation.
+  // Netflix-style genre rails when no filter is active. Saved sits on
+  // top (when relevant), then every story shows up in its genre rail.
   var noFilter = activeGenre === 'all' && activeLvl === 'all' && activePerspective === 'all' && !activeSearchSt;
   if (noFilter) {
     grid.className = 'st-rails';
     grid.style.display = 'block';
 
-    // 0a) 📖 Continue Reading — only when the signed-in user has
-    // in-progress stories (last_position < 95) cached from
-    // khStoryProgressRecent. Does NOT remove items from other rails.
-    var contHTML = '';
-    var contRecent = window._khStoryProgressRecent || [];
-    if (contRecent.length) {
-      var byId = {};
-      list.forEach(function (s) { byId[String(s.id)] = s; });
-      var contStories = contRecent
-        .map(function (r) { return byId[String(r.story_id)]; })
-        .filter(Boolean)
-        .slice(0, 8);
-      if (contStories.length) {
-        contHTML = '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="book-open" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Continue Reading</span></div></div>'
-          + '<div class="st-rail-scroll">' + contStories.map(renderStoryCard).join('') + '</div></div>';
-      }
-    }
-
-    // 0b) ❤️ Saved — user's bookmarked stories. Skipped when empty
+    // 0) ❤️ Saved — user's bookmarked stories. Skipped when empty
     // or when the user isn't signed in.
     var savedHTML = '';
     if (_khStorySavedSet && _khStorySavedSet.size) {
@@ -1208,7 +1189,7 @@ function renderStories() {
       + '</div>';
     }).join('');
 
-    grid.innerHTML = contHTML + savedHTML + genreRailsHTML;
+    grid.innerHTML = savedHTML + genreRailsHTML;
     if (window.renderKhLucideIcons) renderKhLucideIcons();
     return;
   }
