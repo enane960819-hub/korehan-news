@@ -1117,10 +1117,31 @@ function _filterStSearch(q) {
   renderStories();
 }
 
+// Resolve a story's genre. Falls back to title-based detection when
+// genre/mood weren't set in DB — admin used to leave both blank, so
+// every story without a stamped category landed in 'slice_of_life'
+// regardless of subject. This auto-classifier catches the obvious
+// fairytale / folktale / aesop cases so they show up in the right
+// rail without the admin having to backfill every row.
+function _khStoryGenre(s) {
+  if (s && s.genre) return s.genre;
+  if (s && s.mood) return s.mood;
+  var title = String((s && (s.title || s.title_en)) || '');
+  // Korean folktales (proper-noun characters / titles)
+  if (/효녀|흥부|놀부|콩쥐|팥쥐|심청|단군|도깨비|선녀|나무꾼|산신령|해와 달|은혜 갚/.test(title)) return 'folktale';
+  // Aesop fables (check before fairytale — Aesop pairs animals too)
+  if (/이솝|aesop|fable/i.test(title)) return 'aesop';
+  // Western fairytales — Korean translated titles
+  if (/백설|신데|잭과|라푼젤|헨젤|그레텔|빨간 모자|잠자는 숲|미녀와 야수|피노키오|아기 돼지|콩나무|황금알|마법|공주|왕자|마녀|요정/.test(title)) return 'fairytale';
+  // Western fairytales — English titles
+  if (/snow white|cinderella|rapunzel|hansel|gretel|sleeping beauty|beauty and|pinocchio|three little|beanstalk|princess|prince|witch|magic|fairy/i.test(title)) return 'fairytale';
+  return 'slice_of_life';
+}
+
 function renderStories() {
   var grid = document.getElementById('st-grid');
   var list = STORIES.filter(function(s) {
-    var genre = s.genre || s.mood || 'slice_of_life';
+    var genre = _khStoryGenre(s);
     var persp = s.perspective || 'third';
     var genreOk = activeGenre === 'all' || genre === activeGenre || s.mood === activeGenre;
     var lvlOk = activeLvl === 'all' || s.lvl === activeLvl;
@@ -1141,33 +1162,14 @@ function renderStories() {
     return;
   }
 
-  // Netflix-style genre rails when no filter is active. Continue Reading
-  // and Saved sit on top (when relevant), then every story shows up in its
-  // genre rail. No spotlight rails — categorisation is the navigation.
+  // Netflix-style genre rails when no filter is active. Saved sits on
+  // top (when relevant), then every story shows up in its genre rail.
   var noFilter = activeGenre === 'all' && activeLvl === 'all' && activePerspective === 'all' && !activeSearchSt;
   if (noFilter) {
     grid.className = 'st-rails';
     grid.style.display = 'block';
 
-    // 0a) 📖 Continue Reading — only when the signed-in user has
-    // in-progress stories (last_position < 95) cached from
-    // khStoryProgressRecent. Does NOT remove items from other rails.
-    var contHTML = '';
-    var contRecent = window._khStoryProgressRecent || [];
-    if (contRecent.length) {
-      var byId = {};
-      list.forEach(function (s) { byId[String(s.id)] = s; });
-      var contStories = contRecent
-        .map(function (r) { return byId[String(r.story_id)]; })
-        .filter(Boolean)
-        .slice(0, 8);
-      if (contStories.length) {
-        contHTML = '<div class="st-rail"><div class="st-rail-head"><div class="st-rail-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="book-open" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Continue Reading</span></div></div>'
-          + '<div class="st-rail-scroll">' + contStories.map(renderStoryCard).join('') + '</div></div>';
-      }
-    }
-
-    // 0b) ❤️ Saved — user's bookmarked stories. Skipped when empty
+    // 0) ❤️ Saved — user's bookmarked stories. Skipped when empty
     // or when the user isn't signed in.
     var savedHTML = '';
     if (_khStorySavedSet && _khStorySavedSet.size) {
@@ -1181,7 +1183,7 @@ function renderStories() {
     // Genre rails — every story appears in its own genre section
     var byGenre = {};
     list.forEach(function(s) {
-      var g = s.genre || s.mood || 'slice_of_life';
+      var g = _khStoryGenre(s);
       if (!byGenre[g]) byGenre[g] = [];
       byGenre[g].push(s);
     });
@@ -1208,7 +1210,7 @@ function renderStories() {
       + '</div>';
     }).join('');
 
-    grid.innerHTML = contHTML + savedHTML + genreRailsHTML;
+    grid.innerHTML = savedHTML + genreRailsHTML;
     if (window.renderKhLucideIcons) renderKhLucideIcons();
     return;
   }
@@ -1250,7 +1252,7 @@ function stFilterGenre(genre) {
 
 function renderStoryCard(s) {
   var author = resolveStoryAuthor(s);
-  var genre = s.genre || s.mood || 'slice_of_life';
+  var genre = _khStoryGenre(s);
   var genreLabel = GENRE_LABELS[genre] || genre;
   var genreColor = GENRE_COLORS[genre] || '#7c3aed';
   var thumbBg = GENRE_BG[genre] || GENRE_BG[s.mood] || 'linear-gradient(135deg,#f5f3ff,#ede9fe)';
