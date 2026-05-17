@@ -362,6 +362,7 @@ body.sb-open .sb-backdrop{display:block}
     <button class="sb-btn" id="sb-site-settings" onclick="goSiteSettings()"><span class="ico">⚙️</span>사이트 설정</button>
     <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>Edit Onboarding</button>
     <button class="sb-btn" id="sb-char-reporters" onclick="goCharReporters()"><span class="ico">🎭</span>캐릭터 기자</button>
+    <button class="sb-btn" id="sb-char-cast" onclick="goCharCast()"><span class="ico">👥</span>대화 캐릭터</button>
     <button class="sb-btn" id="sb-shop" onclick="goShopContent()"><span class="ico">🛍️</span>상점 & 코인</button>
     <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기</button>
     <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기</button>
@@ -16040,6 +16041,216 @@ async function goVocabContent(tab) {
     { key:'vocab',     label:'✏️ 단어 뜻 수정', fn:"goVocabContent('vocab')" },
     { key:'phrases',   label:'🌟 오늘의 표현',  fn:"goVocabContent('phrases')" }
   ], tab);
+}
+
+// ── Conversation Cast + Role NPC admin ──────────────────────────
+//
+// Two tables managed in one page:
+//   - cast_characters: 20 fixed recurring conversation characters.
+//     Identity = name + age_band + gender + image. Occupation /
+//     relationship per scene is set by the conv-generation prompt.
+//   - role_characters: role-keyed NPC pool (의사, 경찰, 선생님, …).
+//     Created on demand from convs; reused across future convs.
+//
+// Avatars live in the character-avatars Supabase Storage bucket.
+// Uploads use _seDirectUpload (admin anon-key + RLS bypass).
+
+async function goCharCast() {
+  setSbOn('sb-char-cast');
+  document.getElementById('main').innerHTML = '<div style="max-width:1100px">'
+    + '<div class="pg-hd" style="margin-bottom:14px">'
+    +   '<div><h1>👥 대화 캐릭터</h1>'
+    +   '<p style="margin:4px 0 0;color:#64748b;font-size:14px">Cast (20 main) + Role NPCs (doctor, police, …). Used in conversation generation.</p></div>'
+    + '</div>'
+    + '<div class="infobox" style="margin-bottom:16px">'
+    +   '💡 <strong>Cast</strong>: 20 recurring people. Identity (name/age/gender/image) is fixed — occupation and relationship are set per-scene by the AI prompt. '
+    +   '<strong>Role NPCs</strong>: reusable role-based characters. First conv with a doctor creates one here; later convs reuse the same face.'
+    + '</div>'
+    + '<div style="display:flex;gap:0;border-bottom:1px solid #e2e8f0;margin-bottom:18px">'
+    +   '<button class="ccast-tab on" data-tab="cast" onclick="_ccastTab(\'cast\')">Cast (20)</button>'
+    +   '<button class="ccast-tab" data-tab="role" onclick="_ccastTab(\'role\')">Role NPCs</button>'
+    + '</div>'
+    + '<div id="ccast-body"><div style="color:#94a3b8;padding:20px">Loading…</div></div>'
+    + '</div>';
+  // Inject styles once per page load.
+  if (!document.getElementById('ccast-styles')) {
+    var s = document.createElement('style');
+    s.id = 'ccast-styles';
+    s.textContent = ''
+      + '.ccast-tab{padding:10px 18px;border:0;background:none;font-size:13px;font-weight:700;color:#94a3b8;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;transition:all .12s}'
+      + '.ccast-tab.on{color:#7c3aed;border-bottom-color:#7c3aed}'
+      + '.ccast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}'
+      + '.ccast-card{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#fff;display:flex;flex-direction:column;gap:6px}'
+      + '.ccast-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#f1f5f9;display:block}'
+      + '.ccast-img-empty{width:100%;aspect-ratio:1;border-radius:8px;background:linear-gradient(135deg,#e2e8f0,#f1f5f9);display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;font-weight:600}'
+      + '.ccast-name{font-size:14px;font-weight:800;color:#0f172a;margin-top:4px}'
+      + '.ccast-meta{font-size:11px;color:#64748b}'
+      + '.ccast-role{font-size:10px;color:#7c3aed;font-weight:800;letter-spacing:.3px;text-transform:uppercase}'
+      + '.ccast-btn{font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#0f172a;cursor:pointer;font-family:inherit;font-weight:700}'
+      + '.ccast-btn:hover{background:#f8fafc}'
+      + '.ccast-btn-del{color:#dc2626;border-color:#fecaca}'
+      + '.ccast-btn-del:hover{background:#fef2f2}'
+      + '.ccast-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}';
+    document.head.appendChild(s);
+  }
+  _ccastTab('cast');
+}
+
+function _ccastTab(which) {
+  document.querySelectorAll('.ccast-tab').forEach(function(t){
+    t.classList.toggle('on', t.dataset.tab === which);
+  });
+  if (which === 'cast') _ccastRenderCast();
+  else _ccastRenderRole();
+}
+
+async function _ccastRenderCast() {
+  var sb = getSupa();
+  var body = document.getElementById('ccast-body');
+  if (!body) return;
+  body.innerHTML = '<div style="color:#94a3b8;padding:20px">Loading cast…</div>';
+  var res = await sb.from('cast_characters').select('*').eq('active', true).order('sort_order', { ascending: true });
+  if (res.error) { body.innerHTML = '<div style="color:#dc2626;padding:20px">' + (res.error.message || res.error) + '</div>'; return; }
+  var rows = res.data || [];
+  if (!rows.length) {
+    body.innerHTML = '<div style="color:#94a3b8;padding:40px;text-align:center">No cast in DB. Run the cast_characters seed migration.</div>';
+    return;
+  }
+  body.innerHTML = '<div class="ccast-grid">' + rows.map(function(c){ return _ccastCardHTML(c, 'cast'); }).join('') + '</div>';
+}
+
+async function _ccastRenderRole() {
+  var sb = getSupa();
+  var body = document.getElementById('ccast-body');
+  if (!body) return;
+  body.innerHTML = '<div style="color:#94a3b8;padding:20px">Loading role NPCs…</div>';
+  var res = await sb.from('role_characters').select('*').eq('active', true).order('role', { ascending: true });
+  if (res.error) { body.innerHTML = '<div style="color:#dc2626;padding:20px">' + (res.error.message || res.error) + '</div>'; return; }
+  var rows = res.data || [];
+  var header = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+    + '<div style="font-size:12px;color:#64748b">' + rows.length + ' role NPC' + (rows.length === 1 ? '' : 's') + ' in pool</div>'
+    + '<button class="btn btn-g" onclick="_ccastNewRole()">＋ Add Role NPC</button>'
+    + '</div>';
+  body.innerHTML = header + (rows.length
+    ? '<div class="ccast-grid">' + rows.map(function(c){ return _ccastCardHTML(c, 'role'); }).join('') + '</div>'
+    : '<div style="color:#94a3b8;text-align:center;padding:40px;border:1px dashed #e2e8f0;border-radius:10px">No role NPCs yet. Convs will start a pool here — or add one manually with the button above.</div>');
+}
+
+function _ccastCardHTML(c, type) {
+  var imgHTML = c.image_url
+    ? '<img class="ccast-img" src="' + _khEsc(c.image_url) + '" alt="' + _khEsc(c.name || '') + '" onerror="this.outerHTML=\'<div class=&quot;ccast-img-empty&quot;>No image</div>\'">'
+    : '<div class="ccast-img-empty">No image</div>';
+  var roleHTML = (type === 'role' && c.role) ? '<div class="ccast-role">' + _khEsc(c.role) + '</div>' : '';
+  var gender = c.gender === 'm' ? '남' : c.gender === 'f' ? '여' : '';
+  var meta = [c.age_band || '', gender].filter(Boolean).join(' · ');
+  var delBtn = (type === 'role')
+    ? '<button class="ccast-btn ccast-btn-del" onclick="_ccastDeleteRole(\'' + _khEsc(c.id) + '\')">Delete</button>'
+    : '';
+  var editBtn = (type === 'role')
+    ? '<button class="ccast-btn" onclick="_ccastEditRole(\'' + _khEsc(c.id) + '\')">Edit</button>'
+    : '<button class="ccast-btn" onclick="_ccastEditCast(\'' + _khEsc(c.id) + '\')">Edit</button>';
+  return '<div class="ccast-card">'
+    + imgHTML
+    + roleHTML
+    + '<div class="ccast-name">' + _khEsc(c.name || '') + '</div>'
+    + '<div class="ccast-meta">' + _khEsc(meta) + '</div>'
+    + '<div class="ccast-actions">'
+    +   '<label class="ccast-btn" style="cursor:pointer">📷 Upload'
+    +     '<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none" onchange="_ccastUpload(\'' + type + '\',\'' + _khEsc(c.id) + '\',this)">'
+    +   '</label>'
+    +   editBtn
+    +   delBtn
+    + '</div>'
+    + '</div>';
+}
+
+function _khEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function _ccastUpload(type, id, input) {
+  var file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('Max 2MB — pixel art avatars should be tiny.'); return; }
+  var ext = (file.name.split('.').pop() || 'png').toLowerCase();
+  if (['png','jpg','jpeg','webp','gif'].indexOf(ext) < 0) { alert('PNG / JPG / WEBP / GIF only.'); return; }
+  var path = type + '/' + id + '.' + ext;
+  try {
+    var publicUrl = await _seDirectUpload('character-avatars', path, file);
+    // Append a cache-buster so the freshly-uploaded image replaces any
+    // cached version in the admin grid.
+    publicUrl = publicUrl + (publicUrl.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+    var sb = getSupa();
+    var table = type === 'cast' ? 'cast_characters' : 'role_characters';
+    var upd = await sb.from(table).update({ image_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', id);
+    if (upd.error) { alert('DB update failed: ' + upd.error.message); return; }
+    if (type === 'cast') _ccastRenderCast(); else _ccastRenderRole();
+  } catch (e) {
+    alert('Upload failed: ' + (e && e.message || e));
+  }
+}
+
+async function _ccastNewRole() {
+  var role = prompt('직업 (예: 의사, 경찰, 선생님, 점원, 기사):');
+  if (!role || !role.trim()) return;
+  var name = prompt('이름 (예: 김의사):');
+  if (!name || !name.trim()) return;
+  var gender = prompt('성별 (m / f):', 'f');
+  if (gender !== 'm' && gender !== 'f') gender = 'f';
+  var age_band = prompt('나이대 (teens / twenties / thirties / forties / fifties / sixties+):', 'thirties');
+  var sb = getSupa();
+  var ins = await sb.from('role_characters').insert({
+    role: role.trim(), name: name.trim(), gender: gender, age_band: age_band
+  });
+  if (ins.error) { alert('Insert failed: ' + ins.error.message); return; }
+  _ccastRenderRole();
+}
+
+async function _ccastEditRole(id) {
+  var sb = getSupa();
+  var r = await sb.from('role_characters').select('*').eq('id', id).maybeSingle();
+  if (r.error || !r.data) { alert('Load failed.'); return; }
+  var c = r.data;
+  var name = prompt('이름:', c.name || '');
+  if (name === null) return;
+  var role = prompt('직업:', c.role || '');
+  if (role === null) return;
+  var gender = prompt('성별 (m/f):', c.gender || 'f');
+  var age_band = prompt('나이대:', c.age_band || 'thirties');
+  var upd = await sb.from('role_characters').update({
+    name: name, role: role, gender: gender, age_band: age_band, updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (upd.error) { alert('Update failed: ' + upd.error.message); return; }
+  _ccastRenderRole();
+}
+
+async function _ccastEditCast(id) {
+  var sb = getSupa();
+  var r = await sb.from('cast_characters').select('*').eq('id', id).maybeSingle();
+  if (r.error || !r.data) { alert('Load failed.'); return; }
+  var c = r.data;
+  var name = prompt('이름:', c.name || '');
+  if (name === null) return;
+  var age_band = prompt('나이대:', c.age_band || 'twenties');
+  var gender = prompt('성별 (m/f):', c.gender || 'm');
+  var upd = await sb.from('cast_characters').update({
+    name: name, age_band: age_band, gender: gender, updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (upd.error) { alert('Update failed: ' + upd.error.message); return; }
+  _ccastRenderCast();
+}
+
+async function _ccastDeleteRole(id) {
+  if (!confirm('Delete this role NPC? It will be removed from the pool.')) return;
+  var sb = getSupa();
+  // Soft delete via active=false so existing conv references stay
+  // resolvable. Hard delete would orphan refs.
+  var upd = await sb.from('role_characters').update({ active: false, updated_at: new Date().toISOString() }).eq('id', id);
+  if (upd.error) { alert('Delete failed: ' + upd.error.message); return; }
+  _ccastRenderRole();
 }
 
 async function goShopContent(tab) {
