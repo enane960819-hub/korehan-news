@@ -8407,54 +8407,6 @@ function _stStyleHintForShape(shape) {
   return '커뮤니티 게시글 풍. 친근한 톤.';
 }
 
-// Stage-2 helper: given a story object with `body` already filled,
-// generate per-sentence translation + targeted vocab + grammar.
-// Uses Haiku because the input is the already-written body — no
-// creative work, just structured analysis. Runs in parallel for
-// multi-story batches and stays well under the edge function's
-// timeout because each call covers only one story.
-async function _genStorySentenceAnalysis(story, levelLabel) {
-  if (!story || !story.body) return [];
-  // Split the body into sentences (skip empty fragments). Korean uses
-  // .!? and 다/요 sentence-enders; we use the simpler Han punctuation
-  // split here — Claude tolerates over-split inputs and matches what
-  // it can.
-  var sentences = String(story.body)
-    .split(/\n\s*\n/)
-    .flatMap(function(p) { return p.split(/(?<=[.!?。！？])\s+/); })
-    .map(function(s) { return s.trim(); })
-    .filter(Boolean);
-  if (!sentences.length) return [];
-  var enumerated = sentences.map(function(s, i) { return '[' + (i+1) + '] ' + s; }).join('\n');
-  var prompt =
-      'Analyze each Korean sentence below for a TOPIK ' + levelLabel + ' learner.\n\n'
-    + 'STORY TITLE: ' + (story.title || '') + '\n'
-    + 'PARAGRAPH-LEVEL EN (use as context to keep subjects + tense consistent):\n'
-    + (story.body_en || '') + '\n\n'
-    + 'SENTENCES TO ANALYZE (numbered, in body order):\n'
-    + enumerated + '\n\n'
-    + 'Return ONLY a JSON object:\n'
-    + '{"sentences":[{"ko":"<exact sentence text>","en":"natural translation","vocab":[{"ko":"<dict form>","en":"<short meaning>"}],"grammar":[{"pattern":"~기 위해 / ~게 되다 / etc","exp":"<1-line English explanation>"}]}]}\n\n'
-    + 'Rules:\n'
-    + '- One object per input sentence, in same order. ko MUST be the exact sentence text — copy/paste, do NOT paraphrase.\n'
-    + '- TRANSLATION: stay consistent with the paragraph EN above. PRESERVE the original subject — do NOT inject "I/we" if the Korean omitted it.\n'
-    + '- VOCAB: max 3 per sentence, skip beginner words. Empty array allowed when nothing useful.\n'
-    + '- GRAMMAR: max 2, EMPTY ARRAY [] PREFERRED when no teachable structure beyond basics. Pattern field must be a morpheme/connective/ending only — never glue a noun on (WRONG: "~ㄴ 동물"). For ' + levelLabel + ' learners do NOT teach ~는/ㄴ noun modifier, ~다 declarative, ~요/습니다 endings, ~았/었 past, ~을/를 object marker.\n'
-    + '- Output JSON only.';
-  var res = await callClaude({
-    feature: 'story-sentence-analysis',
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 4000,
-    messages: [{ role: 'user', content: prompt }]
-  });
-  var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
-  var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
-  var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
-  if (oi < 0 || ei <= oi) return [];
-  var data = JSON.parse(clean.slice(oi, ei + 1));
-  return Array.isArray(data.sentences) ? data.sentences.filter(function(s) { return s && s.ko; }) : [];
-}
-
 async function generateStories() {
   var mood   = document.getElementById('st-mood').value;
   var lvl    = document.getElementById('st-lvl').value;
@@ -8534,20 +8486,13 @@ async function generateStories() {
       if (sourceText) s.source_excerpt = sourceText.slice(0, 500);
     });
 
-    // Stage 2 — for each generated story, fire a separate Haiku call
-    // that produces sentence_analysis from the already-generated body.
-    // Run in parallel so total wall time scales with the slowest call,
-    // not the sum. Failures are non-fatal — the story still saves
-    // without sentence breakdown.
-    res.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">⏳ Adding sentence analysis (' + stories.length + ' ' + (stories.length === 1 ? 'story' : 'stories') + ')…</div>';
-    await Promise.all(stories.map(async function(s) {
-      try {
-        s.sentence_analysis = await _genStorySentenceAnalysis(s, lvlMap[lvl] || 'Tree');
-      } catch(e) {
-        console.warn('[story sentence_analysis] failed for', s.title, e && e.message);
-        s.sentence_analysis = [];
-      }
-    }));
+    // Stage-2 sentence_analysis Haiku call removed — owner-decided to
+    // run on paragraph-level analysis only (built from the vocab /
+    // grammar / key_expressions arrays already produced by Stage 1).
+    // Saves one Haiku call per generated story. Frontend's
+    // _stBuildSentenceMap returns null when sentence_analysis is empty
+    // and the paragraph card render falls through to the analysis
+    // arrays — graceful degrade, no UI gap.
 
     var html = '<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
       + '<span style="font-size:14px;font-weight:700;color:#0f172a">Generated ' + stories.length + ' stories</span>'
