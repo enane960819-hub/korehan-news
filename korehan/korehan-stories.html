@@ -340,7 +340,7 @@
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
 <script src="korehan-shared.js?v=20260516c"></script>
-<script src="korehan-hover-tooltips.js?v=20260509r"></script>
+<script src="korehan-hover-tooltips.js?v=20260517a"></script>
 <script>
 // ── Story progress + favorites helpers (Phase 2) ────────────────
 // Both backed by Supabase tables created in the Phase 2 migration.
@@ -1863,12 +1863,29 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
   return koParas.map(function (ko, i) {
     var en = enParas[i] || '';
     var sentBreakdown = sentMap ? _stRenderSentenceAnalysis(ko, sentMap) : '';
-    // Two-phase: (1) collect candidates that match the paragraph AND
-    // aren't already shown, (2) slice to the display cap, (3) THEN
-    // mark the surviving items as shown.
-    var paraVocab = storyVocab.filter(function(v){
-      return v && v.ko && _stKoMatches(ko, v.ko);
-    }).slice(0, VOCAB_CAP);
+    // Two-phase: (1) collect story.vocab + hover-master matches that
+    // appear in this paragraph, (2) slice to the display cap.
+    // story.vocab is per-story (AI extraction); the hover pool unions
+    // hover_vocab_master + vocabulary_bank (the Learn tab's curated
+    // dictionary). Combining means a high-value word the admin added
+    // to Vocab Bank shows up in story analysis too, not just on hover.
+    var hoverPool = (typeof window.khGetHoverVocabList === 'function') ? window.khGetHoverVocabList() : [];
+    var paraVocabSeenKo = Object.create(null);
+    var paraVocab = [];
+    storyVocab.forEach(function (v) {
+      if (!v || !v.ko || paraVocabSeenKo[v.ko]) return;
+      if (!_stKoMatches(ko, v.ko)) return;
+      paraVocab.push(v);
+      paraVocabSeenKo[v.ko] = true;
+    });
+    hoverPool.forEach(function (h) {
+      if (!h || !h.word_ko || h.word_ko.length < 2) return;
+      if (paraVocabSeenKo[h.word_ko]) return;
+      if (ko.indexOf(h.word_ko) < 0) return;
+      paraVocab.push({ ko: h.word_ko, en: h.meaning_en || '', rom: h.reading || '' });
+      paraVocabSeenKo[h.word_ko] = true;
+    });
+    paraVocab = paraVocab.slice(0, VOCAB_CAP);
     var paraGrammar = storyGrammar.filter(function(g){
       var pat = (g && (g.pattern || g.label)) || '';
       if (!pat) return false;
