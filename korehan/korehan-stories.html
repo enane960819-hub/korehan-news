@@ -339,6 +339,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260515c"></script>
 <script src="korehan-shared.js?v=20260516c"></script>
 <script src="korehan-hover-tooltips.js?v=20260517a"></script>
 <script>
@@ -1802,6 +1803,37 @@ function _stRenderSentenceAnalysis(koPara, sentenceMap) {
     + '</div>';
 }
 
+// Run the same canonical-pattern enforcement the news/article reader
+// uses. story.grammar is one AI shot — patterns the model missed
+// (especially in long stories with many beats) end up not surfacing
+// at all. KH_GRAMMAR.enforceDetectedPatterns scans the paragraph
+// text against the regex catalog and back-fills any pattern that
+// actually appears, with its canonical label + 1-sentence hint +
+// example chunk. Zero AI calls, same accuracy bump news already has.
+var _STORY_LVL_LABEL = { s:'Seed', b:'Sprout', i:'Tree', a:'Forest' };
+function _stEnforceGrammar(paraKo, storyLvl) {
+  if (!window.KH_GRAMMAR || typeof window.KH_GRAMMAR.enforceDetectedPatterns !== 'function') return [];
+  var label = _STORY_LVL_LABEL[storyLvl] || 'Tree';
+  var sents = String(paraKo).split(/(?<=[.!?。！？])\s+/).map(function(s){ return s.trim(); }).filter(Boolean);
+  if (!sents.length) sents = [paraKo];
+  var sentFinal = sents.map(function(t){ return { text: t, analysis: [] }; });
+  try { window.KH_GRAMMAR.enforceDetectedPatterns(sentFinal, label); } catch(_) { return []; }
+  var seen = Object.create(null);
+  var patterns = [];
+  sentFinal.forEach(function(s) {
+    (s.analysis || []).forEach(function(a) {
+      if (!a || !a.label || seen[a.label]) return;
+      seen[a.label] = true;
+      patterns.push({
+        pattern: a.label,
+        exp: a.exp || '',
+        ex: a.example_in_sentence || ''
+      });
+    });
+  });
+  return patterns;
+}
+
 function _stBuildSentenceMap(sentenceAnalysis) {
   if (!Array.isArray(sentenceAnalysis) || !sentenceAnalysis.length) return null;
   var map = {};
@@ -1886,17 +1918,31 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
       paraVocabSeenKo[h.word_ko] = true;
     });
     paraVocab = paraVocab.slice(0, VOCAB_CAP);
-    var paraGrammar = storyGrammar.filter(function(g){
-      var pat = (g && (g.pattern || g.label)) || '';
-      if (!pat) return false;
+    var paraGrammarSeen = Object.create(null);
+    var paraGrammar = [];
+    storyGrammar.forEach(function(g) {
+      var pat = (g && (g.pattern || g.label || g.point)) || '';
+      if (!pat || paraGrammarSeen[pat]) return;
       var key = String(pat).replace(/^~|\(.*$/g, '').trim();
-      if (!key) return false;
+      if (!key) return;
       var ex = (g.ex || g.example || '').replace(/\s+/g, '').trim();
       var koCompact = ko.replace(/\s+/g, '');
-      return ex
+      var matched = ex
         ? koCompact.indexOf(ex) >= 0
         : ko.indexOf(key.split(/[\/·,]/)[0]) >= 0;
-    }).slice(0, GRAMM_CAP);
+      if (!matched) return;
+      paraGrammar.push(g);
+      paraGrammarSeen[pat] = true;
+    });
+    // Canonical-pattern back-fill — same KH_GRAMMAR enforcement the
+    // news reader runs. Catches patterns the story-gen AI missed.
+    var canonical = _stEnforceGrammar(ko, story && story.lvl);
+    canonical.forEach(function(cp) {
+      if (!cp || !cp.pattern || paraGrammarSeen[cp.pattern]) return;
+      paraGrammar.push(cp);
+      paraGrammarSeen[cp.pattern] = true;
+    });
+    paraGrammar = paraGrammar.slice(0, GRAMM_CAP);
     var paraExprs = storyKeyExprs.filter(function(k){
       return k && k.ko && _stKoMatches(ko, k.ko);
     }).slice(0, EXPR_CAP);
