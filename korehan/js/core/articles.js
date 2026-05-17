@@ -281,16 +281,27 @@ async function loadArticlesFromDB(options) {
     return _articlesCache;
   }
   var lim = options.homeOptimized ? 15 : options.all ? 1000 : 80;
-  // Inline implementation — no normalizeArticles / applyArticlesCache
-  // helpers. Earlier the function went through those helpers and somehow
-  // returned 0 rows in production even when the exact same query ran
-  // inline returned 15. Removed the indirection so the function does
-  // literally the same thing the inline call does, with section
-  // normalization + sort done in-place. Verified manually that this
-  // query shape works for anon.
-  try {
-    var res = await sb.from('articles').select('*')
+  // Select strategy:
+  // - home (15 rows) and All News (1000 rows) → '*' — payload is small
+  //   per-row × few rows for home, and All News needs every column for
+  //   the body-search filter
+  // - section / news list path (80 rows) → LIST_ARTICLE_SELECT (metadata
+  //   only, no body). Body dominates LTE payload at 80 rows and the
+  //   list view never displays it. Falls back to '*' if any column in
+  //   LIST_ARTICLE_SELECT is missing in the live schema.
+  var useLite = !options.homeOptimized && !options.all;
+  async function runQuery(sel) {
+    return sb.from('articles').select(sel)
       .order('created_at', { ascending: false }).limit(lim);
+  }
+  try {
+    var res = await runQuery(useLite ? LIST_ARTICLE_SELECT : '*');
+    // Lite select can silently return [] when a column is missing in
+    // production (PostgREST returns data:[] error:null in some shapes).
+    // Retry with '*' so the list never silently empties.
+    if (useLite && (res.error || !(res.data && res.data.length))) {
+      res = await runQuery('*');
+    }
     if (res.error) {
       console.warn('articles fetch error:', res.error.message || res.error);
       return getCachedArticles();
@@ -307,6 +318,17 @@ async function loadArticlesFromDB(options) {
       } else {
         rows[k].section = sec;
       }
+    }
+    // Merge with warm cache when this fetch is smaller. Stops a
+    // homeOptimized (15-row) background refresh from clobbering a
+    // 80-row All News cache that the prefetch warmed earlier — without
+    // this merge, navigating to All News right after a home refresh
+    // re-fetches the full list. New rows override existing by id.
+    if (_articlesCache && _articlesCache.length > rows.length) {
+      var byId = Object.create(null);
+      _articlesCache.forEach(function (a) { if (a && a.id != null) byId[a.id] = a; });
+      rows.forEach(function (a) { if (a && a.id != null) byId[a.id] = a; });
+      rows = Object.keys(byId).map(function (k) { return byId[k]; });
     }
     rows.sort(function (a, b) {
       var da = String((a && (a.date || a.published_at || a.created_at || a.updated_at)) || '');
