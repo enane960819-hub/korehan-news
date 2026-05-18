@@ -4,7 +4,7 @@
 -- Generated offline; saves into stories_data exactly like the admin's
 -- "Save All to DB" button.
 
-INSERT INTO stories_data (data, mood, genre, lvl, title, title_en, preview, read_time, source_kind, source_excerpt, created_at)
+INSERT INTO stories_data (data, mood, lvl, title, title_en, preview, read_time, created_at)
 VALUES (
   $json${
     "title": "사자와 생쥐",
@@ -98,13 +98,10 @@ VALUES (
     ]
   }$json$::jsonb,
   'aesop',
-  'aesop',
   'i',
   '사자와 생쥐',
   'The Lion and the Mouse',
   '옛날 옛적에 큰 사자 한 마리가 깊은 숲속에서 살고 있었어요. 어느 날, 사자는 따뜻한 햇볕을 받으며 깊이 잠들어 있었어요.',
   '4 min',
-  'aesop',
-  NULL,
   NOW()
 );
