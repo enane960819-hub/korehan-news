@@ -398,13 +398,34 @@ if (document.readyState === 'loading') {
   _khStudyRoomInit();
 }
 
+// Derive a fallback word_order_words from the picture's sample_answer
+// when the column is empty. Earlier the activity would silently fail to
+// render in that case ("어 왜 안 보이지?"). Splitting the first sentence
+// of the sample answer on whitespace gives a perfectly serviceable
+// arrangement target. Mirrors the same fallback Phrase Munch /
+// Sentence Builder use when the curated tokens list is missing.
+// Audit 2026-05-18 (#4 — don't allow the empty state to exist).
+function _deriveWordOrderFromSample(sampleAnswer) {
+  if (!sampleAnswer) return [];
+  // Take the first sentence (split on Korean / Western terminators) and
+  // strip the terminator before tokenising on whitespace.
+  var firstSent = String(sampleAnswer).split(/[.!?。！？]/)[0] || '';
+  var tokens = firstSent.trim().split(/\s+/).filter(Boolean);
+  // Require at least 3 tokens — anything shorter isn't worth a
+  // word-order drill and would just frustrate the learner.
+  return tokens.length >= 3 ? tokens : [];
+}
+
 function _mapPicturePrompt(x) {
+  var serverWords = Array.isArray(x.word_order_words) ? x.word_order_words : [];
+  var sample = x.sample_answer || '';
+  var derivedWords = serverWords.length ? serverWords : _deriveWordOrderFromSample(sample);
   return {
     id:                  x.id,
     image:               x.image_url || '',
     prompt_ko:           x.prompt_ko || '',
-    sample:              x.sample_answer || '',
-    word_order_words:    Array.isArray(x.word_order_words)    ? x.word_order_words    : [],
+    sample:              sample,
+    word_order_words:    derivedWords,
     vocab_items:         Array.isArray(x.vocab_items)         ? x.vocab_items         : [],
     incorrect_sentences: Array.isArray(x.incorrect_sentences) ? x.incorrect_sentences : [],
     custom_prompt:       x.custom_prompt || ''
@@ -519,6 +540,7 @@ function renderWordOrderActivity(words) {
   }
   _wordOrderState.pool = shuffled;
   _wordOrderState.answer = [];
+  _wordOrderState._logged = false;  // Reset per-sentence logging flag
   // Pre-select the first word of the intended order — anchors the start so
   // alternative valid orderings don't leave the user guessing.
   if (_wordOrderState.pool.length && _wordOrderState.correct.length) {
@@ -589,6 +611,24 @@ function checkWordOrder() {
     if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
   } else {
     res.innerHTML = '<div style="padding:10px;background:rgba(239,68,68,.1);border-radius:8px;color:#fca5a5;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Incorrect. Try again!</span></div>';
+  }
+  // Log to user_quiz_results so Learning Hub gets word-order accuracy
+  // data — previously omitted, so the Hub couldn't surface "weak at
+  // word ordering" insights. Only log the FIRST attempt per sentence so
+  // retries don't inflate the wrong-count when a learner self-corrects.
+  // Audit 2026-05-18 (logQuizResult coverage).
+  if (!_wordOrderState._logged && typeof logQuizResult === 'function' && supaUser) {
+    _wordOrderState._logged = true;
+    try {
+      logQuizResult('word_order', {
+        content_type: 'picture_description',
+        content_id: kstDateKey(),
+        score: isCorrect ? 1 : 0,
+        max_score: 1,
+        accuracy_pct: isCorrect ? 100 : 0,
+        details: { sentence: correct.join(' '), first_attempt: !isCorrect ? 'wrong' : 'correct' }
+      });
+    } catch(e) { console.warn('[wordOrder] logQuizResult failed:', e); }
   }
 }
 
@@ -4829,9 +4869,25 @@ function showSlangDetailAll(idx) {
 // ── Slang Quiz ──
 function startSlangQuiz() {
   _slangView = 'quiz';
+  // Need at least 4 slangs (1 correct + 3 distractors). Guard the
+  // happy path so a sparse _KOREAN_SLANGS doesn't render a quiz with
+  // <4 options. Audit 2026-05-18 (B2).
+  if (!Array.isArray(_KOREAN_SLANGS) || _KOREAN_SLANGS.length < 4) {
+    var el = document.getElementById('slang-content');
+    if (el) el.innerHTML = '<div style="text-align:center;padding:30px 20px;color:rgba(255,255,255,.5);font-size:13px">Loading more slangs… Try again in a moment.</div>';
+    setTimeout(loadSlangsFromDB, 600);
+    return;
+  }
   var pool = _KOREAN_SLANGS.slice().sort(function() { return Math.random() - 0.5; }).slice(0, 5);
   _slangQuiz = { questions: pool.map(function(s) {
-    var wrong = _KOREAN_SLANGS.filter(function(x){ return x.ko !== s.ko; }).sort(function(){ return Math.random()-0.5; }).slice(0,3).map(function(x){ return x.en; });
+    // Distractors must differ from the answer in BOTH ko AND en. Without
+    // the en check, two slangs that share the same English meaning would
+    // both render as "correct" in the 4-option grid. Audit 2026-05-18 (B1).
+    var wrong = _KOREAN_SLANGS
+      .filter(function(x){ return x.ko !== s.ko && x.en !== s.en; })
+      .sort(function(){ return Math.random()-0.5; })
+      .slice(0,3)
+      .map(function(x){ return x.en; });
     var opts = wrong.concat([s.en]).sort(function(){ return Math.random()-0.5; });
     return { slang: s, options: opts, answered: false, correct: false };
   }), current: 0, score: 0 };
@@ -4841,6 +4897,21 @@ function startSlangQuiz() {
 function renderSlangQuiz(el) {
   var q = _slangQuiz;
   if (q.current >= q.questions.length) {
+    // Log to user_quiz_results once per quiz completion. Audit 2026-05-18
+    // (logQuizResult coverage). Flag prevents double-logging if the user
+    // re-renders the completion screen (e.g. by re-opening the modal).
+    if (!q._logged && typeof logQuizResult === 'function' && supaUser) {
+      q._logged = true;
+      try {
+        logQuizResult('slang_quiz', {
+          content_type: 'slang',
+          content_id: kstDateKey(),
+          score: q.score,
+          max_score: q.questions.length,
+          accuracy_pct: q.questions.length > 0 ? Math.round((q.score / q.questions.length) * 100) : 0
+        });
+      } catch(e) { console.warn('[slangQuiz] logQuizResult failed:', e); }
+    }
     // Score thresholds expressed as ratios so increasing the question
     // count later (e.g. 5 → 8) doesn't silently turn "잘했어요!" into
     // "다시 도전". Audit 2026-05-18, item #16.
@@ -4898,8 +4969,15 @@ function slangQuizAnswer(optIdx) {
     fb.style.display = 'block';
     fb.style.background = correct ? 'rgba(5,150,105,.1)' : 'rgba(220,38,38,.08)';
     fb.style.border = '1px solid ' + (correct ? 'rgba(5,150,105,.2)' : 'rgba(220,38,38,.15)');
+    // Surface the slang's description on wrong answers so the learner
+    // walks away knowing WHY — previously we just showed the meaning
+    // again, missing the teaching moment. Audit 2026-05-18 (B4).
+    var descBlock = (!correct && item.slang.desc)
+      ? '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px;line-height:1.6;font-style:italic">' + item.slang.desc + '</div>'
+      : '';
     fb.innerHTML = '<div style="font-size:14px;font-weight:700;color:' + (correct?'#34d399':'#ef4444') + ';margin-bottom:4px">' + (correct ? '정답!' : '오답!') + '</div>'
       + '<div style="font-size:12px;color:rgba(255,255,255,.5)">' + item.slang.ko + ' = ' + item.slang.en + '</div>'
+      + descBlock
       + '<button onclick="_slangQuiz.current++;renderSlangQuiz(document.getElementById(\'slang-content\'))" style="margin-top:10px;padding:8px 20px;border-radius:8px;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">다음 →</button>';
   }
 }
@@ -9633,20 +9711,19 @@ function lqNext() {
     // Save listening quiz results to DB
     if (typeof logQuizResult === 'function' && supaUser) {
       try {
-        logQuizResult(getSupa(), {
-          p_skill_type: 'listening',
-          p_quiz_type: 'listening_quiz',
-          p_item_id: 'lq_' + kstDateKey(),
-          p_content_type: 'listening',
-          p_content_id: kstDateKey(),
-          p_grammar_point: '',
-          p_prompt: _lqMode === 'hear' ? 'Hear mode' : 'Meaning mode',
-          p_user_answer: _lqScore + '/' + _lqQ.length,
-          p_correct_answer: _lqQ.length + '/' + _lqQ.length,
-          p_is_correct: pct >= 80,
-          p_score: pct
+        // Was calling with the wrong signature (getSupa() as quizType,
+        // RPC-style p_* params). Empty catch swallowed every throw, so
+        // listening-quiz scores never reached user_quiz_results.
+        // Audit 2026-05-18 (logQuizResult standardisation).
+        logQuizResult('listening_quiz', {
+          content_type: 'listening',
+          content_id: kstDateKey(),
+          score: _lqScore,
+          max_score: _lqQ.length,
+          accuracy_pct: Math.round((_lqScore / Math.max(1, _lqQ.length)) * 100),
+          details: { mode: _lqMode === 'hear' ? 'hear' : 'meaning' }
         });
-      } catch(e) { console.warn('LQ log failed:', e); }
+      } catch(e) { console.warn('[listeningQuiz] logQuizResult failed:', e); }
     }
   } else {
     renderLQQ();
@@ -11086,6 +11163,20 @@ async function checkPictureDescription() {
     refreshSubmitBanner();
   }
   markStageDone('picture');
+  // Log so Learning Hub can track picture-description engagement.
+  // Audit 2026-05-18 (logQuizResult coverage). No traditional score
+  // (AI gives qualitative feedback), so we log a completion event with
+  // score=1/max=1 and the prompt id in details.
+  if (typeof logQuizResult === 'function' && supaUser) {
+    try {
+      logQuizResult('picture_description', {
+        content_type: 'picture_description',
+        content_id: item.id ? String(item.id) : null,
+        score: 1, max_score: 1, accuracy_pct: 100,
+        details: { prompt_ko: item.prompt_ko, word_count: text.length }
+      });
+    } catch(e) { console.warn('[pictureDescription] logQuizResult failed:', e); }
+  }
   showToast('Feedback ready!');
 }
 
@@ -12378,7 +12469,16 @@ function goToBMStep2() {
     // to start. Korean often allows multiple grammatical orderings of the same
     // sentence (e.g. "친구들이 제 사진을 좋아해요" vs "제 사진을 친구들이
     // 좋아해요"); anchoring the start eliminates that ambiguity.
-    var preselected = words.length ? [words[0]] : [];
+    // Splice the anchor out of the shuffled pool — earlier the code only
+    // added it to `selected` while leaving the shuffled copy in place,
+    // so the same word appeared twice on screen (once in the answer
+    // zone, once greyed-out in the word bank). Audit 2026-05-18 (A2
+    // sitewide cleanup).
+    var preselected = [];
+    if (words.length) {
+      var firstIdx = shuffled.indexOf(words[0]);
+      if (firstIdx >= 0) preselected.push(shuffled.splice(firstIdx, 1)[0]);
+    }
     return { original: words, shuffled: shuffled, selected: preselected };
   });
   _bm.wordOrderIdx = 0;  // 현재 문장 인덱스
@@ -13626,6 +13726,21 @@ function sbLoadSentence() {
   }
   _sbState.words = shuffled.map(function(w) { return { text: w, placed: false }; });
   _sbState.original = words;
+  // Pre-place the first word of the intended order so the learner
+  // knows where to start. Korean accepts multiple grammatical
+  // orderings, so anchoring the start removes the "where do I begin"
+  // pause without giving the answer away. Same convention as Word
+  // Order, Phrase Munch Assemble, BM Build, and Dictation Word Order.
+  // Audit 2026-05-18 (A2 sitewide).
+  if (words.length) {
+    for (var pi = 0; pi < _sbState.words.length; pi++) {
+      if (_sbState.words[pi].text === words[0] && !_sbState.words[pi].placed) {
+        _sbState.words[pi].placed = true;
+        _sbState.target.push(words[0]);
+        break;
+      }
+    }
+  }
   sbRender();
 }
 
@@ -15374,6 +15489,12 @@ function openArticleStudy() {
   if (!_asArticles.length) _asLoadArticles();
 }
 function closeArticleStudy() {
+  // Cancel any in-flight TTS playback so a long sentence reader doesn't
+  // keep speaking after the modal closes. Reset transient activity
+  // state so re-opening doesn't inherit a stale step or quiz position.
+  // Audit 2026-05-18 (C1, D2 patterns).
+  try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(_) {}
+  _asQState = null; _asWOState = null; _asMatchState = null;
   var m = document.getElementById('as-modal');
   if (m) m.classList.add('hidden');
   document.body.style.overflow = '';
@@ -15725,7 +15846,14 @@ function _dctRenderArrange() {
     // orderings of the same chunks (e.g. "친구들이 제 사진을 좋아해요"
     // vs "제 사진을 친구들이 좋아해요"); anchoring the start removes
     // that ambiguity and avoids the "where do I begin" pause.
-    var preselected = words.length ? [words[0]] : [];
+    // Splice the anchor out of the shuffled pool so it doesn't appear
+    // twice on screen (greyed-out in the bank + active in the answer).
+    // Audit 2026-05-18 (A2 sitewide cleanup).
+    var preselected = [];
+    if (words.length) {
+      var firstIdx = shuffled.indexOf(words[0]);
+      if (firstIdx >= 0) preselected.push(shuffled.splice(firstIdx, 1)[0]);
+    }
     _dctWOState = { sentIdx:_dctWOIdx, original:words, pool:shuffled, selected:preselected, result:null };
   }
   var wo = _dctWOState;
@@ -16522,12 +16650,17 @@ function _dctRenderListenPick() {
     foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done ✓ Next Activity</button>';
     if (!_dctArticleMode && typeof logQuizResult === 'function' && supaUser) {
       try {
-        logQuizResult(getSupa(), {
-          p_skill_type: 'listening', p_quiz_type: 'dictation',
-          p_item_id: 'dct_' + kstDateKey(), p_content_type: 'dictation',
-          p_content_id: kstDateKey(), p_is_correct: pct >= 80, p_score: pct
+        // Wrong signature → silent fail; dictation scores never logged.
+        // Audit 2026-05-18 (logQuizResult standardisation).
+        logQuizResult('dictation', {
+          content_type: 'dictation',
+          content_id: kstDateKey(),
+          score: score,
+          max_score: total,
+          accuracy_pct: pct,
+          details: { fill_blank: _dctFbScore, listen_pick: _dctLpScore, pool_size: pool.length }
         });
-      } catch(e) {}
+      } catch(e) { console.warn('[dictation] logQuizResult failed:', e); }
     }
     return;
   }
@@ -16683,12 +16816,16 @@ function _nqRender() {
     if (sub) sub.textContent = 'Complete';
     if (typeof logQuizResult === 'function' && supaUser) {
       try {
-        logQuizResult(getSupa(), {
-          p_skill_type: 'vocabulary', p_quiz_type: 'nuance',
-          p_item_id: 'nq_' + kstDateKey(), p_content_type: 'nuance',
-          p_content_id: kstDateKey(), p_is_correct: pct >= 80, p_score: pct
+        // Wrong signature → silent fail; nuance-quiz scores never logged.
+        // Audit 2026-05-18 (logQuizResult standardisation).
+        logQuizResult('nuance', {
+          content_type: 'nuance',
+          content_id: kstDateKey(),
+          score: _nqScore || 0,
+          max_score: _nqQuestions ? _nqQuestions.length : 1,
+          accuracy_pct: pct
         });
-      } catch(e) {}
+      } catch(e) { console.warn('[nuanceQuiz] logQuizResult failed:', e); }
     }
     return;
   }
@@ -17788,9 +17925,19 @@ function _asRenderQuiz() {
   });
   html+='</div>';
   if(_asQState.ans[qi]!==null){
+    // Show the AI-generated explanation when present (admin prompt was
+    // updated to include `explanation` per question), otherwise fall
+    // back to just the correct option. Pure "Answer: X" was too thin
+    // pedagogically — learner could see what's right but not why.
+    // Audit 2026-05-18 (C2).
+    var _explainText = q.explanation && String(q.explanation).trim()
+      ? '<div class="su-explain-text" style="margin-top:6px;line-height:1.55;font-style:italic;opacity:.85">' + _escapeHtmlAS(q.explanation) + '</div>'
+      : '';
     html+='<div class="su-explain"><div class="su-explain-icon" style="display:inline-flex;width:18px;height:18px;color:#fbbf24">'+BM_ICON_BULB+'</div><div class="su-explain-body">'
       +'<div class="su-explain-title">Answer</div>'
-      +'<div class="su-explain-text"><b>'+(q.options[q.correct]||'')+'</b></div></div></div>';
+      +'<div class="su-explain-text"><b>'+(q.options[q.correct]||'')+'</b></div>'
+      + _explainText
+      + '</div></div>';
   }
   act.innerHTML=html;
 }
@@ -17798,17 +17945,55 @@ function asQAns(qi,oi) {
   if(!_asQState||_asQState.ans[qi]!==null) return;
   _asQState.ans[qi]=oi;
   _asRenderQuiz();
-  // Auto-advance to next question after delay
+  // Inject a "Next →" button alongside the answer reveal so learners
+  // can drive the pace. Auto-advance still fires after 3.5s as a
+  // safety net so the activity doesn't stall, but is long enough to
+  // read the explanation. Was 1.2s — too short to register why a
+  // chosen option was wrong. Audit 2026-05-18 (C3).
   setTimeout(function(){
-    if(_asQState.current<_asQState.qs.length-1){
-      _asQState.current++;
-      _asRenderQuiz();
-    } else if(_asQState.ans.every(function(a){return a!==null;})) {
+    var explainEl = document.querySelector('#as-activity-area .su-explain');
+    if (explainEl && !document.getElementById('as-q-next-btn')) {
+      var btn = document.createElement('button');
+      btn.id = 'as-q-next-btn';
+      btn.textContent = qi < _asQState.qs.length - 1 ? 'Next →' : 'Finish →';
+      btn.style.cssText = 'margin-top:10px;padding:8px 18px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit';
+      btn.onclick = function(){ _asAdvanceQuiz(qi); };
+      explainEl.appendChild(btn);
+    }
+  }, 50);
+  setTimeout(function(){ _asAdvanceQuiz(qi); }, 3500);
+}
+
+// Extracted so both the manual Next button and the auto-advance
+// timer converge on the same code path — and so a second call is a
+// no-op (current can only advance once per question).
+function _asAdvanceQuiz(qi) {
+  if (!_asQState || _asQState.current !== qi) return;
+  if(_asQState.current<_asQState.qs.length-1){
+    _asQState.current++;
+    _asRenderQuiz();
+  } else if(_asQState.ans.every(function(a){return a!==null;})) {
       _asTempSaveStep4(_asQState.ans);
+      // Log quiz score so Learning Hub gets reading-comprehension data
+      // for this article. Audit 2026-05-18 (logQuizResult coverage).
+      if (typeof logQuizResult === 'function' && supaUser) {
+        try {
+          var _correct = _asQState.ans.reduce(function(n, ans, i) {
+            return n + (ans === _asQState.qs[i].correct ? 1 : 0);
+          }, 0);
+          var _total = _asQState.qs.length;
+          logQuizResult('article_comprehension', {
+            content_type: 'article',
+            content_id: _asCurrentArt ? String(_asCurrentArt.id) : null,
+            score: _correct,
+            max_score: _total,
+            accuracy_pct: _total > 0 ? Math.round((_correct / _total) * 100) : 0
+          });
+        } catch(e) { console.warn('[articleStudyQuiz] logQuizResult failed:', e); }
+      }
       // Show sentence quiz bonus before advancing
       _asShowSentenceQuiz();
-    }
-  },1200);
+  }
 }
 
 function _asShowSentenceQuiz() {

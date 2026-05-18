@@ -15756,12 +15756,12 @@ async function aseGenFromAI() {
     + '"phrases":[{"ko":"COMPLETE Korean sentence taken VERBATIM from the article body (or a faithful condensation that preserves all particles + the verb ending). Must be unambiguously TRUE per the article.","en":"translation"}],'
     + '"wrong_phrases":[{"ko":"a grammatically VALID Korean sentence that is FALSE about this article (wrong subject / wrong action / contradicts a fact in the article). Must NOT be obvious nonsense — proper particles + verb agreement, only the meaning is wrong.","en":"translation"}],'
     + '"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],'
-    + '"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0}]}\n'
+    + '"questions":[{"q":"question in Korean","options":["A","B","C","D"],"correct":0,"explanation":"1-2 sentence English reason the correct option is right, citing the article."}]}\n'
     + 'vocab: 6 key words appropriate for the level. '
     + 'phrases: 3 TRUE key sentences (max 8 eojeol each, keep particles + verb endings exactly as in the article). '
     + 'wrong_phrases: 3 PLAUSIBLE-LOOKING but FALSE sentences for distractors (grammatical Korean — subject + object + verb with correct particles; only the meaning is wrong). '
     + 'word_order: 3 sentences (chunks appropriate for level). '
-    + 'questions: 3 comprehension questions (difficulty matching level).';
+    + 'questions: 3 comprehension questions (difficulty matching level). EVERY question MUST include an "explanation" field — a short English sentence telling the learner WHY the correct option is right (cite the relevant article fact).';
   try {
     var data = await callClaude({ feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] });
     var raw = ((data.content)||[]).map(function(c){return c.text||'';}).join('');
@@ -15801,8 +15801,8 @@ async function aseGenAndSaveOne(articleId) {
       + '"phrases":[{"ko":"REUSABLE Korean expression or pattern that appears VERBATIM in the article","en":"translation"}],'
       + '"wrong_phrases":[{"ko":"grammatical Korean sentence that is FALSE about this article","en":"translation"}],'
       + '"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],'
-      + '"questions":[{"q":"comprehension question in Korean","options":["A","B","C","D"],"correct":0}]}\n'
-      + 'vocab: 6 key words. phrases: 3 reusable expressions. wrong_phrases: 3 plausible distractors. word_order: 3 sentences. questions: 3 comprehension questions.';
+      + '"questions":[{"q":"comprehension question in Korean","options":["A","B","C","D"],"correct":0,"explanation":"1-2 sentence English reason the correct option is right, citing the article. Mention why the wrong options miss."}]}\n'
+      + 'vocab: 6 key words. phrases: 3 reusable expressions. wrong_phrases: 3 plausible distractors. word_order: 3 sentences. questions: 3 comprehension questions. EVERY question MUST include an "explanation" field — a short English sentence that tells the learner WHY the correct answer is right (e.g., "The article says the price rose 3%, so option B is right; option A is the past number from the previous paragraph.").';
     var data = await callClaude({ feature: 'article-study-admin', model: 'claude-haiku-4-5-20251001', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] });
     var raw = ((data.content) || []).map(function(c){ return c.text || ''; }).join('');
     var cl = raw.replace(/```json|```/g, '').trim();
