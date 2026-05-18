@@ -1,0 +1,5 @@
+data/articles.json
+data/prompts/*.txt
+data/prompts/*.json
+data/responses/*.json
+data/backfill.sql
