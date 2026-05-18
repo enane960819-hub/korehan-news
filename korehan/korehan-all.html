@@ -25,7 +25,10 @@
 <div class="container">
   <div class="two-col">
     <div>
-      <div id="dyn-search-bar"></div>
+      <!-- (Removed duplicate #dyn-search-bar — the hero already carries
+           it on line 21. getElementById returns only the first match, so
+           this second copy was an invisible no-op that also broke HTML
+           validity. Audit 2026-05-18, item #13.) -->
       <div class="hero" id="dyn-hero"></div>
       <div id="dyn-article-list">
         <!-- Skeleton placeholders — visible until renderAllPage()

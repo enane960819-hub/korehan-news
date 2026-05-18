@@ -205,21 +205,26 @@ function canEnterWritingRoom() {
 
 ---
 
-### 10. 🏷️ "Topic Yum Yum" vs "Express Practice" 명명 충돌
+### 10. 🏷️ wmodal 타이틀이 "Topic Yum Yum"으로 진입해도 "Express Practice"로 표시 (CORRECTED)
 
-같은 기능을 다섯 군데서 다른 이름으로 부름:
+**정정 (2026-05-18):** 처음에는 "Topic Yum Yum = Express Practice"라고 봤는데 잘못된 분석. 실제 관계:
 
-| 위치 | 라벨 |
-|------|------|
-| `korehan-study-room.html:181` | `Topic Yum Yum` (탭) |
-| `korehan-study-room.html:1090` | `Topic Yum Yum` (학습 선택 노드) |
-| `korehan-study-room.js:602` | `Express Practice` (체크리스트) |
-| `korehan-study-room.js:2444` | `Topic Yum Yum` (에러 메시지) |
-| `korehan-study-room.js:8257` | `Topic Yum Yum` (label map) |
+| | Topic Yum Yum | Express Practice |
+|--|--|--|
+| 위치 | 펜타곤 5개 위성 중 하나 | 펜타곤 중앙 (orb) |
+| 게이트 | 없음 (바로 진입) | 5개 중 1개 완료 필요 |
+| 레벨 분기 | ✅ Starter/Beg/Int 각각 다른 스캐폴딩 모달 | ❌ 분기 없음, 바로 #wmodal |
+| 의도 | 오늘의 토픽 학습 + 작문 (스캐폴딩 포함) | 학습한 거 정리해서 자유 작문 |
 
-**문제:** 사용자가 어디 누르는지 헷갈림. "Topic Yum Yum → Express Practice 들어가" — 두 개가 같은 거인 줄 모름.
+**진짜 문제:** wmodal(`#wm-mode-label` line 570)의 타이틀이 두 진입 경로 모두 "Express Practice"로 박혀있음 → 사용자가 같은 곳인 줄 헷갈림.
 
-**수정:** PM 결정 → 한 이름으로 통일. (개인적 의견: "Express Practice"가 더 학습자 친화적 — Topic Yum Yum은 귀엽긴 한데 의미 불분명)
+**수정:** 진입 함수에서 `wm-mode-label` 텍스트를 동적으로:
+- `openWritingModalForLearning()` (Topic Yum Yum 경로) → "📝 Topic Yum Yum"
+- `lsStartWriting()` (Express Practice 경로) → "✍️ Express Practice"
+
+### #9 게이트 정정
+
+`canEnterWritingRoom()`은 **Express Practice 중앙 진입에만 적용**됨. Topic Yum Yum은 게이트 없이 진입. 실제 의도는 명확하지만 "5개 중 1개"는 약함 → 3개 정도가 적절.
 
 ---
 

@@ -111,9 +111,17 @@
    notes on right) made the page feel like two competing columns instead
    of one focused study flow, so we collapsed it. The mobile-only tab
    strip became the global tab strip. */
-.detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.72);z-index:5000;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;}
+/* Mobile-scroll fix (Audit 2026-05-18, item #8). Three changes:
+   1. -webkit-overflow-scrolling:touch — restores iOS Safari momentum
+      scrolling on the overlay (older WebKit needs the hint).
+   2. overscroll-behavior:contain — stops the scroll chain bouncing
+      out to the page body when the overlay reaches its top/bottom.
+   3. .detail-panel allows its own vertical scroll (overflow:hidden auto)
+      bounded by max-height, so tall analysis content can scroll inside
+      the panel even when the overlay scroller fights it on iOS. */
+.detail-overlay{position:fixed;inset:0;background:rgba(5,12,24,.72);z-index:5000;display:flex;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 .detail-overlay.hidden{display:none;}
-.detail-panel{width:100%;max-width:780px;background:#fff;border-radius:28px;overflow:hidden;box-shadow:0 32px 80px rgba(5,12,24,.3);display:flex;flex-direction:column;animation:panelIn .22s cubic-bezier(.22,1,.36,1);}
+.detail-panel{width:100%;max-width:780px;background:#fff;border-radius:28px;overflow:hidden auto;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 40px);box-shadow:0 32px 80px rgba(5,12,24,.3);display:flex;flex-direction:column;animation:panelIn .22s cubic-bezier(.22,1,.36,1);}
 @keyframes panelIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes spin{to{transform:rotate(360deg)}}
 .dp-left{background:#fff;display:flex;flex-direction:column;}
