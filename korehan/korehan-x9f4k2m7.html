@@ -9850,15 +9850,71 @@ async function goConvManager() {
   setSidebarActive('conv-mgr');
   var main = document.getElementById('main');
   main.innerHTML = '<div style="max-width:960px">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap">'
     + '<div><h2 style="font-size:22px;font-weight:800;margin:0">💬 Conversations Management</h2>'
     + '<p style="color:#64748b;font-size:13px;margin:4px 0 0">conversations_data 테이블 — 조회/수정/삭제/추가</p></div>'
-    + '<button onclick="openConvCreateModal()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 대화 추가</button>'
-    + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +   '<button onclick="bulkGenConvSentenceAnalysis()" style="background:#faf5ff;color:#7c3aed;border:1.5px solid #ddd6fe;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit" title="모든 conv에 sentence_analysis 캐시 생성 (Haiku · 약 $0.005/conv)">💬 Bulk Sent</button>'
+    +   '<button onclick="openConvCreateModal()" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 새 대화 추가</button>'
+    + '</div></div>'
     + '<div id="conv-mgr-list">⏳ 불러오는 중...</div>'
     + '</div>';
-  
+
   await loadConvList();
+}
+
+// One-click: generate sentence_analysis for every conv that doesn't
+// have a cached row yet. Reader-side tap on an uncached conv currently
+// shows "Analysis in progress" forever per the owner directive
+// "fallback할 상황을 안만들면 되는거 아닌가" — admin pre-bakes, no
+// reader-triggered AI. This button is the pre-bake.
+//
+// Cost: ~one Haiku call per conv (~$0.005). 100 convs ≈ $0.5.
+// Throttled at 500ms between calls so the edge function isn't hammered.
+async function bulkGenConvSentenceAnalysis() {
+  if (!confirm('모든 conversations에 sentence_analysis 생성? Haiku 호출 × conv 수 (약 $0.005/conv). 이미 캐시된 conv는 건너뜀.')) return;
+  var sb = getSb();
+  var listRes = await sb.from('conversations_data').select('id').order('created_at', { ascending: true });
+  if (listRes.error || !listRes.data || !listRes.data.length) {
+    alert('Load failed or no convs.');
+    return;
+  }
+  var allIds = listRes.data.map(function(r){ return r.id; });
+
+  // Skip convs whose article_cache row already exists. content_id is
+  // stored as TEXT so cast every id to string for the IN filter.
+  var cached = {};
+  var cacheRes = await sb.from('article_cache')
+    .select('content_id')
+    .eq('content_type', 'conversation')
+    .eq('cache_key', 'sentence_analysis')
+    .in('content_id', allIds.map(String));
+  if (!cacheRes.error && cacheRes.data) {
+    cacheRes.data.forEach(function(c){ cached[c.content_id] = true; });
+  }
+  var todo = allIds.filter(function(id){ return !cached[String(id)]; });
+
+  if (!todo.length) { alert('All ' + allIds.length + ' convs already cached.'); return; }
+  if (!confirm(todo.length + ' / ' + allIds.length + ' need generation. Continue?')) return;
+
+  var bar = document.createElement('div');
+  bar.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#0f172a;color:#fff;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:700;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.3);font-family:inherit;';
+  document.body.appendChild(bar);
+
+  var done = 0, failed = 0;
+  for (var i = 0; i < todo.length; i++) {
+    bar.textContent = '💬 ' + (i + 1) + ' / ' + todo.length + '  (✓ ' + done + ' · ✗ ' + failed + ')';
+    try {
+      await autoGenConvSentenceAnalysis(todo[i], null);
+      done++;
+    } catch (e) {
+      failed++;
+      console.warn('bulk conv sent fail', todo[i], e && e.message);
+    }
+    await new Promise(function(r){ setTimeout(r, 500); });
+  }
+  bar.textContent = '✅ Done — ' + done + ' generated, ' + failed + ' failed';
+  setTimeout(function(){ try { bar.remove(); } catch(_){} }, 6000);
 }
 
 async function loadConvList() {
@@ -9871,7 +9927,28 @@ async function loadConvList() {
       + (error ? 'Error: ' + error.message : 'conversations_data 테이블에 데이터 없음') + '</div>';
     return;
   }
-  
+
+  // Inject mobile-friendly styles once. Cards used to use inline flex
+  // which squeezed the title column down to ~30px on phones (owner
+  // screenshot: ASCII art "지\n민,\n수\n진" rendered char-per-line
+  // because the 4 action buttons hogged the row). Now: column layout
+  // ≤760px, actions wrap onto their own row below the body.
+  if (!document.getElementById('cm-mgr-styles')) {
+    var s = document.createElement('style');
+    s.id = 'cm-mgr-styles';
+    s.textContent = ''
+      + '.cm-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;}'
+      + '.cm-card-body{flex:1;min-width:0;}'
+      + '.cm-card-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;}'
+      + '.cm-card-actions button{font-family:inherit;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}'
+      + '@media(max-width:760px){'
+      +   '.cm-card{flex-direction:column;align-items:stretch;}'
+      +   '.cm-card-body{width:100%;}'
+      +   '.cm-card-actions{width:100%;justify-content:flex-start;}'
+      + '}';
+    document.head.appendChild(s);
+  }
+
   var html = data.map(function(row) {
     var d = row.data || {};
     var name = d.name || row.name || '(이름 없음)';
@@ -9883,21 +9960,21 @@ async function loadConvList() {
     var vocabCount = (d.vocab || []).length;
     var grammarCount = (d.grammar || []).length;
     var missionCount = (d.mission || []).length;
-    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px">'
-      + '<div style="font-size:26px">' + (d.avi || '💬') + '</div>'
-      + '<div style="flex:1;min-width:0">'
-      + '<div style="font-size:14px;font-weight:700;color:#0f172a">' + name + '</div>'
+    return '<div class="cm-card">'
+      + '<div style="font-size:26px;flex-shrink:0">' + (d.avi || '💬') + '</div>'
+      + '<div class="cm-card-body">'
+      + '<div style="font-size:14px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</div>'
       + '<div style="font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + ctx + '</div>'
       + '<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">'
       + '<span style="background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px">' + (lvlMap[lvl]||lvl) + '</span>'
       + '<span style="background:#f1f5f9;color:#475569;font-size:11px;padding:2px 8px;border-radius:999px">' + cat + '</span>'
       + '<span style="background:#f0fdf4;color:#15803d;font-size:11px;padding:2px 8px;border-radius:999px">' + msgCount + ' msgs · ' + vocabCount + ' vocab · ' + grammarCount + ' grammar · ' + missionCount + ' mission</span>'
       + '</div></div>'
-      + '<div style="display:flex;gap:8px;flex-shrink:0;">'
-      + '<button onclick="regenConvAI(' + row.id + ')" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" title="AI로 vocab/grammar/mission 자동 생성">🤖 AI</button>'
-      + '<button onclick="autoGenConvSentenceAnalysis(' + row.id + ', null)" style="background:#faf5ff;color:#7c3aed;border:1px solid #ddd6fe;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit" title="회화체 패턴(~네/~지/~잖아/~ㄹ게, 호격, 반말/존댓말) 기준 문장별 분석 생성">💬 Sent</button>'
-      + '<button onclick="openConvEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">✏️ Edit</button>'
-      + '<button onclick="deleteConv(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🗑 Delete</button>'
+      + '<div class="cm-card-actions">'
+      + '<button onclick="regenConvAI(' + row.id + ')" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe" title="AI로 vocab/grammar/mission 자동 생성">🤖 AI</button>'
+      + '<button onclick="autoGenConvSentenceAnalysis(' + row.id + ', null)" style="background:#faf5ff;color:#7c3aed;border:1px solid #ddd6fe" title="회화체 패턴 기준 문장별 분석 생성">💬 Sent</button>'
+      + '<button onclick="openConvEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none">✏️ Edit</button>'
+      + '<button onclick="deleteConv(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none">🗑 Delete</button>'
       + '</div></div>';
   }).join('');
   el.innerHTML = html;
