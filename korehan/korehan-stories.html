@@ -1834,6 +1834,25 @@ function _stEnforceGrammar(paraKo, storyLvl) {
   return patterns;
 }
 
+// Canonical grammar-label key for dedupe across the user-authored
+// story.grammar array and the KH_GRAMMAR-detected canonical patterns.
+// Mirrors _khCanonGrammarKey in korehan-x9f4k2m7.html so a story-author
+// label "~고 있다" and the canonical "~고 있다 (continuous)" collapse to
+// the same key — previously the renderer deduped by literal label
+// string and rendered both as separate cards, which surfaced as
+// duplicate Grammar entries in the paragraph panel ("같은 패턴 2번씩
+// 보임" — owner feedback 2026-05-18).
+function _stCanonGrammarKey(label) {
+  if (!label) return '';
+  var s = String(label).trim();
+  // Strip trailing English gloss in parens: "~에 따라 (according to)" → "~에 따라"
+  s = s.replace(/\s*\([^)]*[a-zA-Z][^)]*\)\s*$/, '').trim();
+  // Optional trailing 서: "~에 따라서" / "~에 따라(서)" → "~에 따라"
+  s = s.replace(/\(서\)$/, '').replace(/서$/, '').trim();
+  s = s.replace(/\s+/g, ' ').toLowerCase();
+  return s;
+}
+
 function _stBuildSentenceMap(sentenceAnalysis) {
   if (!Array.isArray(sentenceAnalysis) || !sentenceAnalysis.length) return null;
   var map = {};
@@ -1918,29 +1937,37 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
       paraVocabSeenKo[h.word_ko] = true;
     });
     paraVocab = paraVocab.slice(0, VOCAB_CAP);
+    // Dedupe by canonical key (not literal label) so a story-author
+    // pattern "~고 있다" and the catalog's "~고 있다 (continuous)" collapse
+    // to one card — keeping the user-authored entry's richer exp when
+    // both exist (storyGrammar is processed first).
     var paraGrammarSeen = Object.create(null);
     var paraGrammar = [];
     storyGrammar.forEach(function(g) {
       var pat = (g && (g.pattern || g.label || g.point)) || '';
-      if (!pat || paraGrammarSeen[pat]) return;
-      var key = String(pat).replace(/^~|\(.*$/g, '').trim();
-      if (!key) return;
+      if (!pat) return;
+      var canonKey = _stCanonGrammarKey(pat);
+      if (!canonKey || paraGrammarSeen[canonKey]) return;
+      var matchKey = String(pat).replace(/^~|\(.*$/g, '').trim();
+      if (!matchKey) return;
       var ex = (g.ex || g.example || '').replace(/\s+/g, '').trim();
       var koCompact = ko.replace(/\s+/g, '');
       var matched = ex
         ? koCompact.indexOf(ex) >= 0
-        : ko.indexOf(key.split(/[\/·,]/)[0]) >= 0;
+        : ko.indexOf(matchKey.split(/[\/·,]/)[0]) >= 0;
       if (!matched) return;
       paraGrammar.push(g);
-      paraGrammarSeen[pat] = true;
+      paraGrammarSeen[canonKey] = true;
     });
     // Canonical-pattern back-fill — same KH_GRAMMAR enforcement the
     // news reader runs. Catches patterns the story-gen AI missed.
     var canonical = _stEnforceGrammar(ko, story && story.lvl);
     canonical.forEach(function(cp) {
-      if (!cp || !cp.pattern || paraGrammarSeen[cp.pattern]) return;
+      if (!cp || !cp.pattern) return;
+      var canonKey = _stCanonGrammarKey(cp.pattern);
+      if (!canonKey || paraGrammarSeen[canonKey]) return;
       paraGrammar.push(cp);
-      paraGrammarSeen[cp.pattern] = true;
+      paraGrammarSeen[canonKey] = true;
     });
     paraGrammar = paraGrammar.slice(0, GRAMM_CAP);
     var paraExprs = storyKeyExprs.filter(function(k){
