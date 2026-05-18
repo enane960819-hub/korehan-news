@@ -363,6 +363,7 @@ body.sb-open .sb-backdrop{display:block}
     <button class="sb-btn" id="sb-onb-settings" onclick="goOnboardingSettings()"><span class="ico">🧭</span>Edit Onboarding</button>
     <button class="sb-btn" id="sb-char-reporters" onclick="goCharReporters()"><span class="ico">🎭</span>캐릭터 기자</button>
     <button class="sb-btn" id="sb-char-cast" onclick="goCharCast()"><span class="ico">👥</span>대화 캐릭터</button>
+    <button class="sb-btn" id="sb-conv-migrate" onclick="goConvMigrate()"><span class="ico">🔄</span>Conv 화자 마이그레이션</button>
     <button class="sb-btn" id="sb-shop" onclick="goShopContent()"><span class="ico">🛍️</span>상점 & 코인</button>
     <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기</button>
     <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기</button>
@@ -16250,6 +16251,233 @@ async function _ccastDeleteRole(id) {
   var upd = await sb.from('role_characters').update({ active: false, updated_at: new Date().toISOString() }).eq('id', id);
   if (upd.error) { alert('Delete failed: ' + upd.error.message); return; }
   _ccastRenderRole();
+}
+
+// ── Conv Speaker Migration ─────────────────────────────────────
+// One-time tool: rewrite existing conversations_data.data.msgs[].who
+// + .name from the random AI-invented names the old conv-gen prompt
+// produced (형준, 민수, 지영, …) over to the fixed cast_characters
+// roster (박지훈, 김민아, …). One-off roles (의사, 경찰, 선생님)
+// map to role_characters, creating new rows when no pool entry yet
+// matches. Owner: "지금 이미 있는 conversations 대화 화자들은 지금있는
+// 랜덤 화자들 말고 우리가 만든 캐릭터들중에 적당한 캐릭터들로 넣어줘".
+
+async function goConvMigrate() {
+  setSbOn('sb-conv-migrate');
+  document.getElementById('main').innerHTML = '<div style="max-width:1100px">'
+    + '<div class="pg-hd" style="margin-bottom:14px"><div>'
+    +   '<h1>🔄 Conv 화자 마이그레이션</h1>'
+    +   '<p style="margin:4px 0 0;color:#64748b;font-size:14px">기존 conversations 화자를 cast / role NPC 로 재매핑.</p>'
+    + '</div></div>'
+    + '<div class="infobox" style="margin-bottom:16px">💡 1) Load → 모든 conv + cast + role 가져옴. 2) Auto-match → Haiku batch 호출로 화자 매칭. 3) Review → 매핑 검토. 4) Apply → DB 업데이트. 안전망: 적용 전 매번 backup snapshot 가능 (Export 메뉴).</div>'
+    + '<div style="display:flex;gap:10px;margin-bottom:18px">'
+    +   '<button class="btn btn-b" onclick="_cmLoad()">1) Load</button>'
+    +   '<button class="btn" id="cm-match-btn" onclick="_cmAutoMatch()" disabled>2) Auto-match</button>'
+    +   '<button class="btn btn-g" id="cm-apply-btn" onclick="_cmApply()" disabled>4) Apply</button>'
+    + '</div>'
+    + '<div id="cm-body">Load 누르세요.</div>'
+    + '</div>';
+  window._cmState = { convs: [], cast: [], roles: [], mappings: {} };
+}
+
+async function _cmLoad() {
+  var body = document.getElementById('cm-body');
+  body.innerHTML = '<div style="color:#94a3b8;padding:18px">Loading…</div>';
+  var sb = getSupa();
+  var [cv, ca, ro] = await Promise.all([
+    sb.from('conversations_data').select('id, name, data, created_at').order('created_at', { ascending: true }),
+    sb.from('cast_characters').select('*').eq('active', true).order('sort_order'),
+    sb.from('role_characters').select('*').eq('active', true).order('role')
+  ]);
+  if (cv.error || ca.error || ro.error) {
+    body.innerHTML = '<div style="color:#dc2626;padding:18px">Load failed: ' + (cv.error?.message || ca.error?.message || ro.error?.message) + '</div>';
+    return;
+  }
+  if (!ca.data || !ca.data.length) {
+    body.innerHTML = '<div style="color:#dc2626;padding:18px">cast_characters 비어있음 — 먼저 cast seed migration 실행.</div>';
+    return;
+  }
+  window._cmState.convs = cv.data || [];
+  window._cmState.cast  = ca.data || [];
+  window._cmState.roles = ro.data || [];
+  window._cmState.mappings = {};
+  document.getElementById('cm-match-btn').disabled = !window._cmState.convs.length;
+  _cmRender();
+}
+
+function _cmExtractSpeakers(conv) {
+  var msgs = (conv && conv.data && Array.isArray(conv.data.msgs)) ? conv.data.msgs : [];
+  var seen = Object.create(null);
+  msgs.forEach(function(m) { if (m && m.who) seen[m.who] = true; });
+  return Object.keys(seen);
+}
+
+function _cmRender() {
+  var st = window._cmState;
+  var body = document.getElementById('cm-body');
+  if (!st.convs.length) { body.innerHTML = '<div>No conversations.</div>'; return; }
+  var html = '<div style="font-size:13px;color:#64748b;margin-bottom:10px">'
+    + st.convs.length + ' conversations · '
+    + st.cast.length + ' cast · '
+    + st.roles.length + ' role NPCs</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+  html += '<thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">'
+    +     '<th style="text-align:left;padding:8px">Conv name</th>'
+    +     '<th style="text-align:left;padding:8px">Cat/Lvl</th>'
+    +     '<th style="text-align:left;padding:8px">Old speakers</th>'
+    +     '<th style="text-align:left;padding:8px">Proposed mapping</th>'
+    +   '</tr></thead><tbody>';
+  st.convs.forEach(function(conv) {
+    var data = conv.data || {};
+    var speakers = _cmExtractSpeakers(conv);
+    var mapping = st.mappings[conv.id] || {};
+    var mapStr = speakers.map(function(sp) {
+      var m = mapping[sp];
+      if (!m) return _khEsc(sp) + ' → <span style="color:#94a3b8">(unmapped)</span>';
+      if (m.kind === 'cast') return _khEsc(sp) + ' → <b style="color:#2563eb">' + _khEsc(m.name) + '</b>';
+      if (m.kind === 'role') return _khEsc(sp) + ' → <b style="color:#7c3aed">' + _khEsc(m.role) + ': ' + _khEsc(m.name) + '</b>';
+      return _khEsc(sp) + ' → ?';
+    }).join('<br>');
+    html += '<tr style="border-bottom:1px solid #f1f5f9">'
+      +   '<td style="padding:8px">' + _khEsc(data.name || conv.name || '(no name)') + '</td>'
+      +   '<td style="padding:8px;color:#64748b">' + _khEsc((data.cat || '') + ' / ' + (data.lvl || '')) + '</td>'
+      +   '<td style="padding:8px;color:#64748b">' + speakers.map(_khEsc).join(', ') + '</td>'
+      +   '<td style="padding:8px">' + mapStr + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+async function _cmAutoMatch() {
+  var st = window._cmState;
+  if (!st.convs.length) return;
+  document.getElementById('cm-match-btn').disabled = true;
+  var body = document.getElementById('cm-body');
+
+  var castRoster = st.cast.map(function(c) {
+    return '- ' + c.name + ' (' + (c.gender === 'm' ? 'M' : 'F') + ', ' + c.age_band + ')';
+  }).join('\n');
+  var roleRoster = st.roles.length
+    ? st.roles.map(function(r) { return '- ' + r.role + ' / ' + r.name + ' (' + (r.gender === 'm' ? 'M' : 'F') + ', ' + r.age_band + ')'; }).join('\n')
+    : '(empty pool — propose new ones for clear role characters)';
+
+  var BATCH = 8;
+  for (var i = 0; i < st.convs.length; i += BATCH) {
+    var batch = st.convs.slice(i, i + BATCH);
+    body.innerHTML = '<div style="padding:18px;color:#64748b">Matching ' + (i + 1) + '–' + Math.min(i + BATCH, st.convs.length) + ' of ' + st.convs.length + ' …</div>';
+
+    var prompt = 'Match each conversation\'s speakers to a CAST member, or to a ROLE NPC if the speaker is clearly a one-off profession (doctor, police, teacher, salesperson, taxi driver, etc.).\n\n'
+      + 'CAST (recurring, identity = name + age + gender):\n' + castRoster + '\n\n'
+      + 'EXISTING ROLE NPCs:\n' + roleRoster + '\n\n'
+      + 'CONVERSATIONS:\n'
+      + batch.map(function(c, idx) {
+          var data = c.data || {};
+          var speakers = _cmExtractSpeakers(c);
+          return '[' + idx + '] cat=' + (data.cat || 'everyday')
+              + ' lvl=' + (data.lvl || '')
+              + ' name=' + (data.name || '')
+              + ' ctx=' + (data.ctx || data.topic || '')
+              + ' speakers=' + speakers.join(' & ');
+        }).join('\n') + '\n\n'
+      + 'For each conversation, pick the most fitting cast/role for each speaker. Match by gender (guess from Korean given name), age range hinted by cat (work=20s-40s, family=mixed, dating=20s-30s, friends=peers), and the relationship/topic context.\n'
+      + 'Use the SAME cast member if the speaker fits — recurring faces are the goal. Only use role NPC when the speaker is clearly defined by their profession in the scene.\n'
+      + 'If a needed role NPC doesn\'t exist in the pool, propose one with kind="new_role".\n\n'
+      + 'Return ONLY a JSON array, one object per conv:\n'
+      + '[{"idx":0,"speakers":{"oldSpeakerName":{"kind":"cast","name":"박지훈"}|{"kind":"role","role":"의사","name":"김의사"}|{"kind":"new_role","role":"의사","name":"김의사","gender":"f","age_band":"thirties"}}},...]';
+
+    try {
+      var resp = await callClaude({
+        feature: 'conv-speaker-migration',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: prompt }]
+      });
+      var raw = (resp && resp.content && resp.content[0] && resp.content[0].text) || '';
+      raw = raw.replace(/^```json?/, '').replace(/```$/, '').trim();
+      var oi = raw.indexOf('['); var ei = raw.lastIndexOf(']');
+      if (oi < 0 || ei <= oi) continue;
+      var arr = JSON.parse(raw.slice(oi, ei + 1));
+      arr.forEach(function(item) {
+        var conv = batch[item.idx];
+        if (!conv || !item.speakers) return;
+        st.mappings[conv.id] = item.speakers;
+      });
+    } catch (e) {
+      console.warn('batch failed', e);
+    }
+  }
+
+  document.getElementById('cm-apply-btn').disabled = false;
+  document.getElementById('cm-match-btn').disabled = false;
+  _cmRender();
+}
+
+async function _cmApply() {
+  var st = window._cmState;
+  if (!Object.keys(st.mappings).length) { alert('No mappings yet. Run Auto-match first.'); return; }
+  if (!confirm('Apply ' + Object.keys(st.mappings).length + ' conv migrations? This rewrites conversations_data rows. Make sure you have a backup (Export menu).')) return;
+
+  var sb = getSupa();
+  var body = document.getElementById('cm-body');
+  body.innerHTML = '<div style="padding:18px;color:#64748b">Applying…</div>';
+
+  // 1) First, create any new_role NPCs in role_characters (collect unique).
+  var newRoles = {};
+  Object.values(st.mappings).forEach(function(speakers) {
+    Object.values(speakers).forEach(function(m) {
+      if (m && m.kind === 'new_role' && m.role && m.name) {
+        var key = m.role + '|' + m.name;
+        if (!newRoles[key]) newRoles[key] = m;
+      }
+    });
+  });
+  var roleNameIndex = {};
+  st.roles.forEach(function(r) { roleNameIndex[r.role + '|' + r.name] = r; });
+  for (var key in newRoles) {
+    if (roleNameIndex[key]) continue;
+    var nr = newRoles[key];
+    var ins = await sb.from('role_characters').insert({
+      role: nr.role, name: nr.name, gender: nr.gender || 'f', age_band: nr.age_band || 'thirties'
+    }).select().single();
+    if (!ins.error && ins.data) roleNameIndex[key] = ins.data;
+  }
+
+  // 2) For each conv, rewrite data.msgs[].who + data.name + data.cast.
+  var done = 0, failed = 0;
+  for (var i = 0; i < st.convs.length; i++) {
+    var conv = st.convs[i];
+    var mapping = st.mappings[conv.id];
+    if (!mapping) continue;
+    var data = JSON.parse(JSON.stringify(conv.data || {}));
+    var msgs = data.msgs || [];
+    var castInUse = [];
+    var seenCast = {};
+    msgs.forEach(function(m) {
+      if (!m || !m.who) return;
+      var target = mapping[m.who];
+      if (!target) return;
+      var newName = target.name;
+      m.who = newName;
+      if (!seenCast[newName]) {
+        seenCast[newName] = true;
+        castInUse.push({ kind: target.kind, name: newName, role: target.role || null });
+      }
+    });
+    if (castInUse.length >= 2) {
+      data.name = castInUse.slice(0, 2).map(function(x){ return x.name; }).join(' & ');
+    } else if (castInUse.length === 1) {
+      data.name = castInUse[0].name;
+    }
+    data.cast = castInUse;
+    var u = await sb.from('conversations_data').update({
+      data: data,
+      name: data.name || conv.name
+    }).eq('id', conv.id);
+    if (u.error) { failed++; console.warn('conv', conv.id, u.error.message); }
+    else { done++; }
+  }
+  body.innerHTML = '<div style="padding:18px;color:#0f172a">Migration complete — ' + done + ' updated, ' + failed + ' failed. Reload to verify.</div>';
 }
 
 async function goShopContent(tab) {
