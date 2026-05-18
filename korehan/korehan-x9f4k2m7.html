@@ -8301,15 +8301,41 @@ async function saveAllConvs() {
       created_at: new Date().toISOString()
     };
   });
-  var {error} = await sb.from('conversations_data').insert(rows);
-  if (error) {
-    alert('Save error: ' + error.message);
-  } else {
-    var msg = '✅ ' + rows.length + ' conversations saved/published!\n\nCheck in Conversations management.';
-    alert(msg);
-    window._generatedConvs = [];  // 초기화
-    goConvManager();  // 저장 후 관리 화면으로 이동
+  // Insert with RETURNING so we get the new IDs back and can immediately
+  // pre-bake sentence_analysis for each row. Previously rows shipped
+  // without analysis cached and every reader-side tap got the
+  // "Sentence analysis is being prepared" panel forever — admin had
+  // to manually click 💬 Sent on each conv (or Bulk Sent on all of
+  // them). Auto-bake closes that gap.
+  var ins = await sb.from('conversations_data').insert(rows).select('id');
+  if (ins.error) {
+    alert('Save error: ' + ins.error.message);
+    return;
   }
+  var newIds = (ins.data || []).map(function(r){ return r.id; });
+  if (newIds.length) {
+    var bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#0f172a;color:#fff;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:700;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,.3);font-family:inherit;';
+    document.body.appendChild(bar);
+    var done = 0, failed = 0;
+    for (var i = 0; i < newIds.length; i++) {
+      bar.textContent = '💬 Auto-baking sentence analysis ' + (i + 1) + ' / ' + newIds.length;
+      try {
+        await autoGenConvSentenceAnalysis(newIds[i], null);
+        done++;
+      } catch (e) {
+        failed++;
+        console.warn('auto-bake fail', newIds[i], e && e.message);
+      }
+      await new Promise(function(r){ setTimeout(r, 400); });
+    }
+    bar.textContent = '✅ ' + done + ' baked, ' + failed + ' failed';
+    setTimeout(function(){ try { bar.remove(); } catch(_){} }, 4000);
+  }
+  var msg = '✅ ' + rows.length + ' conversations saved/published + analysis baked!\n\nCheck in Conversations management.';
+  alert(msg);
+  window._generatedConvs = [];  // 초기화
+  goConvManager();  // 저장 후 관리 화면으로 이동
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -9977,6 +10003,23 @@ async function loadConvList() {
     return;
   }
 
+  // Cross-check article_cache to flag which conv already has
+  // sentence_analysis cached. Admin used to have no way to tell
+  // without clicking 💬 Sent on each card — owner: "AI 분석 같이 생성
+  // 한다며 뭐 안되는거같은데? 그리고 생성여부도 확인이 안됨".
+  var ids = data.map(function(r){ return String(r.id); });
+  var cached = {};
+  try {
+    var cacheRes = await sb.from('article_cache')
+      .select('content_id')
+      .eq('content_type', 'conversation')
+      .eq('cache_key', 'sentence_analysis')
+      .in('content_id', ids);
+    if (!cacheRes.error && cacheRes.data) {
+      cacheRes.data.forEach(function(c){ cached[String(c.content_id)] = true; });
+    }
+  } catch(_) {}
+
   // Inject mobile-friendly styles once. Cards used to use inline flex
   // which squeezed the title column down to ~30px on phones (owner
   // screenshot: ASCII art "지\n민,\n수\n진" rendered char-per-line
@@ -10009,6 +10052,13 @@ async function loadConvList() {
     var vocabCount = (d.vocab || []).length;
     var grammarCount = (d.grammar || []).length;
     var missionCount = (d.mission || []).length;
+    var hasSent = !!cached[String(row.id)];
+    var sentChip = hasSent
+      ? '<span style="background:#dcfce7;color:#15803d;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px" title="sentence_analysis 캐시 있음">✓ Sent</span>'
+      : '<span style="background:#fef9c3;color:#a16207;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px" title="sentence_analysis 캐시 없음 — 💬 Sent 버튼으로 생성">⚠ No Sent</span>';
+    var sentBtnStyle = hasSent
+      ? 'background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0'
+      : 'background:#faf5ff;color:#7c3aed;border:1px solid #ddd6fe';
     return '<div class="cm-card">'
       + '<div style="font-size:26px;flex-shrink:0">' + (d.avi || '💬') + '</div>'
       + '<div class="cm-card-body">'
@@ -10018,10 +10068,11 @@ async function loadConvList() {
       + '<span style="background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px">' + (lvlMap[lvl]||lvl) + '</span>'
       + '<span style="background:#f1f5f9;color:#475569;font-size:11px;padding:2px 8px;border-radius:999px">' + cat + '</span>'
       + '<span style="background:#f0fdf4;color:#15803d;font-size:11px;padding:2px 8px;border-radius:999px">' + msgCount + ' msgs · ' + vocabCount + ' vocab · ' + grammarCount + ' grammar · ' + missionCount + ' mission</span>'
+      + sentChip
       + '</div></div>'
       + '<div class="cm-card-actions">'
       + '<button onclick="regenConvAI(' + row.id + ')" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe" title="AI로 vocab/grammar/mission 자동 생성">🤖 AI</button>'
-      + '<button onclick="autoGenConvSentenceAnalysis(' + row.id + ', null)" style="background:#faf5ff;color:#7c3aed;border:1px solid #ddd6fe" title="회화체 패턴 기준 문장별 분석 생성">💬 Sent</button>'
+      + '<button onclick="autoGenConvSentenceAnalysis(' + row.id + ', null)" style="' + sentBtnStyle + '" title="회화체 패턴 기준 문장별 분석 생성">' + (hasSent ? '✓ Sent' : '💬 Sent') + '</button>'
       + '<button onclick="openConvEditModal(' + row.id + ')" style="background:#f1f5f9;color:#334155;border:none">✏️ Edit</button>'
       + '<button onclick="deleteConv(' + row.id + ')" style="background:#fee2e2;color:#b91c1c;border:none">🗑 Delete</button>'
       + '</div></div>';
