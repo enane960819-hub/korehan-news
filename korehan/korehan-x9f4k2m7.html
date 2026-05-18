@@ -364,6 +364,7 @@ body.sb-open .sb-backdrop{display:block}
     <button class="sb-btn" id="sb-char-reporters" onclick="goCharReporters()"><span class="ico">🎭</span>캐릭터 기자</button>
     <button class="sb-btn" id="sb-char-cast" onclick="goCharCast()"><span class="ico">👥</span>대화 캐릭터</button>
     <button class="sb-btn" id="sb-conv-migrate" onclick="goConvMigrate()"><span class="ico">🔄</span>Conv 화자 마이그레이션</button>
+    <button class="sb-btn" id="sb-essential-exprs" onclick="goEssentialExpressions()"><span class="ico">📝</span>필수표현</button>
     <button class="sb-btn" id="sb-shop" onclick="goShopContent()"><span class="ico">🛍️</span>상점 & 코인</button>
     <button class="sb-btn" onclick="doExport()"><span class="ico">💾</span>내보내기</button>
     <button class="sb-btn" onclick="document.getElementById('imp').click()"><span class="ico">📂</span>가져오기</button>
@@ -16603,6 +16604,110 @@ async function _cmApply() {
     else { done++; }
   }
   body.innerHTML = '<div style="padding:18px;color:#0f172a">Migration complete — ' + done + ' updated, ' + failed + ' failed. Reload to verify.</div>';
+}
+
+// ── Essential Expressions admin ────────────────────────────────
+// CRUD for the essential_expressions pool. The conv-gen prompt pulls
+// from this table when generating new conversations, so adding /
+// editing here changes the variety of expressions learners encounter.
+async function goEssentialExpressions() {
+  setSbOn('sb-essential-exprs');
+  document.getElementById('main').innerHTML = '<div style="max-width:1100px">'
+    + '<div class="pg-hd" style="margin-bottom:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">'
+    +   '<div><h1>📝 필수표현</h1>'
+    +   '<p style="margin:4px 0 0;color:#64748b;font-size:14px">essential_expressions 테이블 — conv 생성 prompt에 weave 됨.</p></div>'
+    +   '<button class="btn btn-g" onclick="_eeAdd()">＋ Add Expression</button>'
+    + '</div>'
+    + '<div class="infobox" style="margin-bottom:16px">💡 Each expression: 한국어 + 영어 의미 + level (s/b/i/a) + category (greeting, gratitude, idiom, …). Conv 생성 시 그 level 매칭 표현 중 1-2개를 자연스럽게 대화에 박음. Soft delete (active=false) — 기존 conv에 영향 없음.</div>'
+    + '<div id="ee-body"><div style="color:#94a3b8;padding:20px">Loading…</div></div>'
+    + '</div>';
+  await _eeRender();
+}
+
+async function _eeRender() {
+  var sb = getSupa();
+  var res = await sb.from('essential_expressions')
+    .select('*')
+    .eq('active', true)
+    .order('level', { ascending: true })
+    .order('sort_order', { ascending: true });
+  var body = document.getElementById('ee-body');
+  if (!body) return;
+  if (res.error) { body.innerHTML = '<div style="color:#dc2626;padding:18px">' + (res.error.message || res.error) + '</div>'; return; }
+  var rows = res.data || [];
+  if (!rows.length) { body.innerHTML = '<div style="color:#94a3b8;padding:40px;text-align:center;border:1px dashed #e2e8f0;border-radius:10px">No expressions yet. Click ＋ Add Expression to seed.</div>'; return; }
+
+  var LVL_LABEL = { s:'Seed', b:'Sprout', i:'Tree', a:'Forest' };
+  var LVL_COLOR = { s:'#7b5cff', b:'#16a34a', i:'#f59e0b', a:'#dc2626' };
+  var groups = { s:[], b:[], i:[], a:[] };
+  rows.forEach(function(r) { if (groups[r.level]) groups[r.level].push(r); });
+  var html = '';
+  ['s','b','i','a'].forEach(function(lv) {
+    if (!groups[lv].length) return;
+    html += '<div style="margin-bottom:22px">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="background:' + LVL_COLOR[lv] + ';color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:5px">' + LVL_LABEL[lv] + '</span><span style="color:#64748b;font-size:12px">' + groups[lv].length + ' expressions</span></div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">';
+    groups[lv].forEach(function(r) {
+      html += '<div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;background:#fff">'
+        + '<div style="font-size:14px;font-weight:800;color:#0f172a">' + _khEsc(r.ko) + '</div>'
+        + '<div style="font-size:12px;color:#475569;line-height:1.45;margin-top:2px">' + _khEsc(r.en) + '</div>'
+        + (r.category ? '<div style="font-size:10px;color:#7c3aed;font-weight:700;margin-top:6px;text-transform:uppercase;letter-spacing:.04em">' + _khEsc(r.category) + '</div>' : '')
+        + (r.context_hint ? '<div style="font-size:11px;color:#64748b;margin-top:2px;font-style:italic">' + _khEsc(r.context_hint) + '</div>' : '')
+        + '<div style="display:flex;gap:6px;margin-top:8px">'
+        +   '<button onclick="_eeEdit(\'' + _khEsc(r.id) + '\')" style="font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid #e2e8f0;background:#fff;color:#0f172a;cursor:pointer;font-family:inherit;font-weight:700">Edit</button>'
+        +   '<button onclick="_eeDelete(\'' + _khEsc(r.id) + '\')" style="font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid #fecaca;background:#fff;color:#dc2626;cursor:pointer;font-family:inherit;font-weight:700">Delete</button>'
+        + '</div>'
+        + '</div>';
+    });
+    html += '</div></div>';
+  });
+  body.innerHTML = html;
+}
+
+async function _eeAdd() {
+  var ko = prompt('한국어 표현 (예: 잘 부탁드립니다):');
+  if (!ko || !ko.trim()) return;
+  var en = prompt('English meaning:');
+  if (!en || !en.trim()) return;
+  var level = prompt('Level (s / b / i / a):', 'i');
+  if (!['s','b','i','a'].includes(level)) { alert('Level must be s/b/i/a.'); return; }
+  var category = prompt('Category (greeting / gratitude / emotion / idiom / filler / …) — optional:', '') || null;
+  var context_hint = prompt('Usage hint (optional):', '') || null;
+  var sb = getSupa();
+  var ins = await sb.from('essential_expressions').insert({
+    ko: ko.trim(), en: en.trim(), level: level, category: category, context_hint: context_hint
+  });
+  if (ins.error) { alert('Insert failed: ' + ins.error.message); return; }
+  _eeRender();
+}
+
+async function _eeEdit(id) {
+  var sb = getSupa();
+  var r = await sb.from('essential_expressions').select('*').eq('id', id).maybeSingle();
+  if (r.error || !r.data) { alert('Load failed.'); return; }
+  var c = r.data;
+  var ko = prompt('한국어:', c.ko || '');
+  if (ko === null) return;
+  var en = prompt('English:', c.en || '');
+  if (en === null) return;
+  var level = prompt('Level (s/b/i/a):', c.level || 'i');
+  if (!['s','b','i','a'].includes(level)) { alert('Level must be s/b/i/a.'); return; }
+  var category = prompt('Category:', c.category || '') || null;
+  var context_hint = prompt('Usage hint:', c.context_hint || '') || null;
+  var upd = await sb.from('essential_expressions').update({
+    ko: ko.trim(), en: en.trim(), level: level, category: category, context_hint: context_hint,
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (upd.error) { alert('Update failed: ' + upd.error.message); return; }
+  _eeRender();
+}
+
+async function _eeDelete(id) {
+  if (!confirm('Delete this expression? Soft delete — won\'t break existing convs.')) return;
+  var sb = getSupa();
+  var upd = await sb.from('essential_expressions').update({ active: false, updated_at: new Date().toISOString() }).eq('id', id);
+  if (upd.error) { alert('Delete failed: ' + upd.error.message); return; }
+  _eeRender();
 }
 
 async function goShopContent(tab) {
