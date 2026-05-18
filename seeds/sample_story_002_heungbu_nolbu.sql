@@ -1,0 +1,103 @@
+-- Sample story: 흥부와 놀부 (Heungbu and Nolbu)
+-- Genre: folktale (Korean folktale) / Level: Intermediate
+-- Classic Korean folktale, adapted to intermediate Korean.
+-- Schema-drift-safe: drops genre/source_kind/source_excerpt columns.
+
+INSERT INTO stories_data (data, mood, lvl, title, title_en, preview, read_time, created_at)
+VALUES (
+  $json${
+    "title": "흥부와 놀부",
+    "title_en": "Heungbu and Nolbu",
+    "mood": "folktale",
+    "genre": "folktale",
+    "lvl": "i",
+    "readTime": "5 min",
+    "preview": "옛날 옛적 어느 마을에 형제가 살고 있었어요. 형 놀부는 욕심이 많고 마음이 나빴지만, 동생 흥부는 가난해도 마음이 따뜻한 사람이었어요.",
+    "body": "옛날 옛적 어느 마을에 형제가 살고 있었어요. 형 놀부는 욕심이 많고 마음이 나빴지만, 동생 흥부는 가난해도 마음이 따뜻한 사람이었어요.\n\n부모님이 돌아가신 후, 놀부는 부모님이 남긴 재산을 모두 차지하고 동생 흥부를 집에서 쫓아냈어요. 흥부는 아내와 많은 자식들을 데리고 길거리로 나앉게 되었어요.\n\n흥부 가족은 다 쓰러져 가는 작은 초가집에서 겨우 살아갔어요. 굶는 날도 많았고, 추운 겨울에도 따뜻한 옷이 없었어요. 그래도 흥부는 늘 웃음을 잃지 않았어요.\n\n어느 봄날, 흥부는 마당에서 제비 한 마리가 다리를 다쳐 떨어진 것을 발견했어요. 흥부는 제비를 정성껏 치료해서 다시 날 수 있게 해 주었어요.\n\n가을이 되자, 그 제비가 다시 흥부를 찾아왔어요. 제비는 작은 박씨 하나를 떨어뜨리고 날아갔어요. 흥부는 그 박씨를 마당에 심었어요.\n\n박씨에서 자란 박을 가을에 톱으로 자르자, 안에서 금은보화가 끝없이 쏟아져 나왔어요. 흥부 가족은 하루아침에 부자가 되었답니다.\n\n이 소식을 들은 놀부는 욕심이 끓어올랐어요. 놀부도 부자가 되고 싶어서 일부러 제비의 다리를 부러뜨리고는 고쳐 주는 척했어요.\n\n놀부의 제비도 박씨를 물어다 주었어요. 하지만 놀부의 박에서는 금은보화가 아니라 도깨비들이 쏟아져 나와 놀부의 재산을 다 빼앗아 갔어요.\n\n결국 빈털터리가 된 놀부는 그제야 자신의 잘못을 깨닫고 흥부에게 용서를 빌었어요. 마음이 너그러운 흥부는 형을 받아들이고 함께 살았답니다.\n\n이 이야기의 교훈은 욕심을 부리면 화를 부르고, 착한 마음으로 살면 복이 찾아온다는 것입니다.",
+    "body_en": "Long, long ago, in a certain village, there lived two brothers. The elder brother Nolbu was greedy and mean-hearted, but the younger brother Heungbu was a warm-hearted person, even though he was poor.\n\nAfter their parents passed away, Nolbu took all the inheritance for himself and drove Heungbu out of the house. Heungbu was left out on the street with his wife and many children.\n\nHeungbu's family barely got by in a small, run-down thatched hut. There were many days when they went hungry, and even in the cold winter they had no warm clothes. Still, Heungbu never lost his smile.\n\nOne spring day, Heungbu found a swallow with a broken leg that had fallen in his yard. Heungbu carefully nursed the swallow back to health so it could fly again.\n\nWhen autumn came, that same swallow returned to find Heungbu. The swallow dropped a small gourd seed and flew away. Heungbu planted the seed in his yard.\n\nWhen autumn came, he cut open the gourd that had grown from the seed with a saw, and gold and treasures poured out endlessly from inside. Heungbu's family became rich overnight.\n\nWhen Nolbu heard the news, greed boiled up inside him. Wanting to become rich too, Nolbu deliberately broke a swallow's leg and then pretended to heal it.\n\nNolbu's swallow also brought him a gourd seed. But from Nolbu's gourd, instead of gold and treasures, dokkaebi (goblins) poured out and took away all of Nolbu's wealth.\n\nIn the end, having lost everything, Nolbu finally realized his mistake and begged Heungbu for forgiveness. Generous-hearted Heungbu welcomed his older brother back, and they lived together.\n\nThe moral of this story is that being greedy invites disaster, but living with a kind heart brings good fortune.",
+    "vocab": [
+      {"ko":"형제","rom":"hyeong-je","en":"brothers"},
+      {"ko":"욕심","rom":"yok-sim","en":"greed"},
+      {"ko":"가난하다","rom":"ga-nan-ha-da","en":"to be poor"},
+      {"ko":"따뜻하다","rom":"tta-tteut-ha-da","en":"to be warm (heart, weather)"},
+      {"ko":"돌아가시다","rom":"do-ra-ga-si-da","en":"to pass away (honorific)"},
+      {"ko":"재산","rom":"jae-san","en":"property, wealth"},
+      {"ko":"차지하다","rom":"cha-ji-ha-da","en":"to take/occupy"},
+      {"ko":"쫓아내다","rom":"jjo-cha-nae-da","en":"to drive out, expel"},
+      {"ko":"길거리","rom":"gil-geo-ri","en":"the streets"},
+      {"ko":"초가집","rom":"cho-ga-jip","en":"thatched-roof house"},
+      {"ko":"굶다","rom":"gum-da","en":"to starve"},
+      {"ko":"잃다","rom":"il-ta","en":"to lose"},
+      {"ko":"제비","rom":"je-bi","en":"swallow (bird)"},
+      {"ko":"다리","rom":"da-ri","en":"leg"},
+      {"ko":"다치다","rom":"da-chi-da","en":"to get hurt"},
+      {"ko":"정성껏","rom":"jeong-seong-kkeot","en":"with utmost care"},
+      {"ko":"치료하다","rom":"chi-ryo-ha-da","en":"to treat, heal"},
+      {"ko":"박씨","rom":"bak-ssi","en":"gourd seed"},
+      {"ko":"심다","rom":"sim-da","en":"to plant"},
+      {"ko":"톱","rom":"top","en":"saw (tool)"},
+      {"ko":"자르다","rom":"ja-reu-da","en":"to cut"},
+      {"ko":"금은보화","rom":"geum-eun-bo-hwa","en":"gold and treasures"},
+      {"ko":"쏟아지다","rom":"sso-da-ji-da","en":"to pour out"},
+      {"ko":"부자","rom":"bu-ja","en":"rich person"},
+      {"ko":"하루아침","rom":"ha-ru-a-chim","en":"overnight, in one morning"},
+      {"ko":"끓어오르다","rom":"kkeu-reo-o-reu-da","en":"to boil over (emotion)"},
+      {"ko":"일부러","rom":"il-bu-reo","en":"on purpose"},
+      {"ko":"부러뜨리다","rom":"bu-reo-tteu-ri-da","en":"to break (snap)"},
+      {"ko":"척하다","rom":"cheok-ha-da","en":"to pretend"},
+      {"ko":"도깨비","rom":"do-kkae-bi","en":"goblin (Korean folklore)"},
+      {"ko":"빼앗다","rom":"ppae-at-da","en":"to take away by force"},
+      {"ko":"빈털터리","rom":"bin-teol-teo-ri","en":"penniless person"},
+      {"ko":"깨닫다","rom":"kkae-dat-da","en":"to realize"},
+      {"ko":"용서를 빌다","rom":"yong-seo-reul bil-da","en":"to beg forgiveness"},
+      {"ko":"너그럽다","rom":"neo-geu-reop-da","en":"to be generous, lenient"},
+      {"ko":"교훈","rom":"gyo-hun","en":"moral, lesson"},
+      {"ko":"부르다","rom":"bu-reu-da","en":"to invite, summon"},
+      {"ko":"복","rom":"bok","en":"good fortune, blessing"}
+    ],
+    "hover_extras": [
+      {"ko":"옛날 옛적","rom":"yet-nal yet-jeok","en":"once upon a time"},
+      {"ko":"마을","rom":"ma-eul","en":"village"},
+      {"ko":"부모님","rom":"bu-mo-nim","en":"parents (honorific)"},
+      {"ko":"아내","rom":"a-nae","en":"wife"},
+      {"ko":"자식","rom":"ja-sik","en":"children, offspring"},
+      {"ko":"마당","rom":"ma-dang","en":"yard, courtyard"},
+      {"ko":"발견하다","rom":"bal-gyeon-ha-da","en":"to discover, find"},
+      {"ko":"날다","rom":"nal-da","en":"to fly"},
+      {"ko":"가을","rom":"ga-eul","en":"autumn"},
+      {"ko":"소식","rom":"so-sik","en":"news"},
+      {"ko":"고치다","rom":"go-chi-da","en":"to fix, repair"},
+      {"ko":"잘못","rom":"jal-mot","en":"mistake, wrongdoing"},
+      {"ko":"받아들이다","rom":"ba-da-deu-ri-da","en":"to accept"},
+      {"ko":"화를 부르다","rom":"hwa-reul bu-reu-da","en":"to invite disaster"},
+      {"ko":"찾아오다","rom":"cha-ja-o-da","en":"to come visit, come find"}
+    ],
+    "grammar": [
+      {"pattern":"~고 있다 (continuous)","exp":"Progressive aspect: 'is V-ing'. 살다 → 살고 있다 = 'is living'. <stem> + 고 있다.","ex":"형제가 살고 있었어요"},
+      {"pattern":"~지만 (but)","exp":"Contrast: 'but / however'. 나빴다 → 나빴지만 = 'was bad, but ~'. <stem> + 지만.","ex":"마음이 나빴지만, 동생 흥부는 가난해도 마음이 따뜻한 사람이었어요"},
+      {"pattern":"~아/어도 (even if)","exp":"Concessive: 'even though / even if'. 가난하다 → 가난해도 = 'even though (he was) poor'.","ex":"가난해도 마음이 따뜻한"},
+      {"pattern":"~ㄴ/은 후에 (after V-ing)","exp":"Time sequence: 'after V-ing'. 돌아가시다 → 돌아가신 후에 = 'after passing away'. <past-modifier> + 후에.","ex":"부모님이 돌아가신 후"},
+      {"pattern":"~게 되다 (come to / passive)","exp":"Circumstantial change: 'comes to / ends up'. 나앉다 → 나앉게 되다 = 'ends up being out on'.","ex":"길거리로 나앉게 되었어요"},
+      {"pattern":"~아/어 주다 (do for)","exp":"Doing as a favor. 치료하다 → 치료해 주다 = 'to treat (for someone)'. 날 수 있게 → 날 수 있게 해 주다.","ex":"다시 날 수 있게 해 주었어요"},
+      {"pattern":"~(으)ㄹ 수 있다/없다 (ability/possibility)","exp":"Ability. 날다 → 날 수 있다 = 'can fly'. <stem> + (으)ㄹ 수 있다.","ex":"다시 날 수 있게 해 주었어요"},
+      {"pattern":"~자 (as soon as)","exp":"Temporal: 'as soon as / when'. 자르다 → 자르자 = 'as soon as (he) cut'. <stem> + 자.","ex":"톱으로 자르자, 안에서 금은보화가 끝없이 쏟아져 나왔어요"},
+      {"pattern":"~ㄴ/은 척하다 (pretend)","exp":"Pretense: 'pretend to V'. 고치다 → 고쳐 주는 척하다 = 'pretend to heal'. <modifier> + 척하다.","ex":"고쳐 주는 척했어요"},
+      {"pattern":"~(이)나 (instead of / not but)","exp":"Substitution emphasis: 'not X but Y / instead of X, Y'. 금은보화가 아니라 도깨비들이 = 'not gold, but goblins'.","ex":"금은보화가 아니라 도깨비들이 쏟아져 나와"},
+      {"pattern":"~(으)면 (if/when)","exp":"Conditional. 부리다 → 부리면 = 'if (one) wields/uses'. <stem> + (으)면.","ex":"욕심을 부리면 화를 부르고"},
+      {"pattern":"~ㄴ/는다는 것","exp":"Nominalized reported clause: 'the fact that ~'. 찾아온다 → 찾아온다는 것 = 'the fact that (it) comes'. <plain-form> + ㄴ/는다는 것.","ex":"복이 찾아온다는 것입니다"}
+    ],
+    "key_expressions": [
+      {"ko":"옛날 옛적","en":"once upon a time"},
+      {"ko":"마음이 따뜻하다","en":"to be warm-hearted"},
+      {"ko":"웃음을 잃지 않다","en":"to never lose one's smile"},
+      {"ko":"하루아침에","en":"overnight, suddenly"},
+      {"ko":"욕심을 부리다","en":"to be greedy"},
+      {"ko":"화를 부르다","en":"to invite trouble/disaster"},
+      {"ko":"용서를 빌다","en":"to beg forgiveness"},
+      {"ko":"이 이야기의 교훈은","en":"the moral of this story is"}
+    ]
+  }$json$::jsonb,
+  'folktale', 'i', '흥부와 놀부', 'Heungbu and Nolbu',
+  '옛날 옛적 어느 마을에 형제가 살고 있었어요. 형 놀부는 욕심이 많고 마음이 나빴지만, 동생 흥부는 가난해도 마음이 따뜻한 사람이었어요.',
+  '5 min', NOW()
+);
