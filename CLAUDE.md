@@ -132,6 +132,7 @@ Deno Edge Function that:
 | `cast_characters` | Fixed 20-person cast for conversations. Identity = name + age_band + gender + image only. Occupation / relationship / personality colour are set per-conversation by the AI prompt. Avatars live in the `character-avatars` Storage bucket. |
 | `role_characters` | Pool of role-based NPCs (의사, 경찰, 선생님, 점원, …) that recur across conversations. First conv that needs the role creates the entry; later convs reuse it from DB so learners recognise the same face. Shares the `character-avatars` Storage bucket. |
 | `character_reporters` | Reporter cast — reserved for stories / news / webnovel. Do NOT mix into conversation casting. |
+| `essential_expressions` | High-value Korean phrases / idioms / formulas (multi-word). Woven into generated conversations by the conv-gen prompt so learners encounter the same expressions naturally across many scenes. |
 | `vocabulary_bank` | Master vocabulary pool for daily assignments |
 | `hover_vocab_master` | Hover definitions (word → definition mapping) |
 | `article_cache` | Cached AI analysis (vocab, grammar, mission per article) |
