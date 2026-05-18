@@ -518,6 +518,47 @@ async function _loadReporters() {
     }
   } catch(e) {}
 }
+
+// Build name → character object lookup so resolveConversationCast can
+// pull the cast/role avatars from DB. Stored on window to share with
+// any other surface that needs the same map.
+window._khCastByName = {};
+async function _loadCharacterPools() {
+  var sb = getSupa();
+  if (!sb) return;
+  try {
+    var calls = [
+      sb.from('cast_characters').select('name, image_url, age_band, gender').eq('active', true),
+      sb.from('role_characters').select('name, image_url, role, age_band, gender').eq('active', true)
+    ];
+    var results = await Promise.all(calls);
+    var byName = {};
+    var cast = results[0] && results[0].data || [];
+    var roles = results[1] && results[1].data || [];
+    cast.forEach(function(c) {
+      if (!c || !c.name) return;
+      byName[c.name] = {
+        slug: c.name, name: c.name, name_ko: c.name,
+        img: c.image_url || null, role: '',
+        color: _charInitialColor(c.name)
+      };
+    });
+    roles.forEach(function(c) {
+      if (!c || !c.name) return;
+      // Role NPCs take precedence when both pools have the same name
+      // (rare — but cast names are deduped via slug, role names aren't).
+      byName[c.name] = {
+        slug: c.name, name: c.name, name_ko: c.name,
+        img: c.image_url || null, role: c.role || '',
+        color: _charInitialColor(c.name)
+      };
+      // Also key by role title so a conv whose `who` is literally
+      // "의사" still maps to the role NPC's avatar.
+      if (c.role && !byName[c.role]) byName[c.role] = byName[c.name];
+    });
+    window._khCastByName = byName;
+  } catch(e) {}
+}
 function _reporterFromMap(id) {
   var r = _reporterMap[id];
   if (!r) return null;
@@ -538,6 +579,12 @@ function resolveConversationCast(c) {
   var rightMsg = msgs.find(function(m){ return m.s === 'r' || m.s === 'right'; });
   var leftName  = (leftMsg  && (leftMsg.who  || leftMsg.name)) || 'A';
   var rightName = (rightMsg && (rightMsg.who || rightMsg.name)) || 'B';
+  // After speaker migration most rows match cast_characters /
+  // role_characters by Korean name. Cache populated by
+  // _loadCharacterPools(); falls back to color-circle when missing.
+  var castMap = window._khCastByName || {};
+  if (!leftChar  && castMap[leftName])  leftChar  = castMap[leftName];
+  if (!rightChar && castMap[rightName]) rightChar = castMap[rightName];
   var left = leftChar || {
     slug: leftSlug || 'left',
     name: leftName, name_ko: leftName,
@@ -2410,6 +2457,7 @@ function _convRowToObj(row) {
 
     // 기자 캐릭터는 카드 클릭(openDetail) 시에만 필요
     if (typeof _loadReporters === 'function') _loadReporters().catch(function(){});
+    if (typeof _loadCharacterPools === 'function') _loadCharacterPools().catch(function(){});
 
     var grid = document.getElementById('conv-cards-grid');
     // 캐시가 없을 때만 로딩 표시 (캐시 있으면 이미 카드가 보임)

@@ -8183,7 +8183,55 @@ async function generateConvs() {
   if (genBtn) { genBtn.disabled = true; genBtn.textContent = '⏳ Generating…'; }
   res.innerHTML = '<div style="padding:28px;text-align:center;color:#64748b;background:#fff;border-radius:16px;border:1px solid #e2e8f0"><div style="font-size:32px;margin-bottom:10px">⏳</div><div style="font-size:14px;font-weight:600">Generating ' + count + ' conversation' + (count>1?'s':'') + '…</div><div style="font-size:12px;margin-top:6px;color:#94a3b8">This may take 10–30 seconds</div></div>';
 
-  var prompt = 'You are creating Korean language learning content for KoreHani.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"key_expressions":[{"ko":"multi-word phrase","en":"natural English meaning"}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3-5 key_expressions, 3 missions. EVERY msg MUST have "en" field with natural English translation. key_expressions MUST be multi-word phrases or idioms (2+ words with a space) that actually appear in the dialogue (conjugated form ok). They should NOT overlap with vocab. ' + lvlMap[lvl] + ' level Korean.\n\nCRITICAL REALISM RULES (violations will be rejected):\n- Every situation must be 100% realistic and logically consistent. If the setting is a pharmacy, people buy medicine — not hats or groceries.\n- ALL vocab words in the vocab list MUST appear naturally in the dialogue messages. Never add vocab that is not in the text.\n- The conversation topic and location must match real Korean daily life — do not mix unrelated settings or objects.\n- Vocab distractors should come from words actually used; do not include unrelated meanings.';
+  // Pull cast roster + leveled essential expressions so the prompt
+  // enforces recurring characters and naturally weaves curated
+  // expressions into the dialogue. Both are best-effort — if the
+  // tables aren't seeded yet the prompt falls back to its old
+  // behavior (random names, free-form expressions).
+  var sb = getSb();
+  var castRoster = '';
+  var expressionPool = '';
+  try {
+    var castRes = await sb.from('cast_characters').select('name, age_band, gender').eq('active', true).order('sort_order');
+    if (!castRes.error && castRes.data && castRes.data.length) {
+      castRoster = castRes.data.map(function(c) {
+        return '- ' + c.name + ' (' + (c.gender === 'm' ? 'M' : 'F') + ', ' + c.age_band + ')';
+      }).join('\n');
+    }
+  } catch (_) {}
+  try {
+    // Pull expressions matching this level + the level just below (so
+    // intermediate convs can still use a beginner staple). Up to 12
+    // candidates, randomized so consecutive gens don't reuse the same
+    // 2 picks.
+    var lvlChain = lvl === 'a' ? ['a', 'i'] : lvl === 'i' ? ['i', 'b'] : lvl === 'b' ? ['b'] : ['s', 'b'];
+    var expRes = await sb.from('essential_expressions')
+      .select('ko, en, category, context_hint')
+      .eq('active', true)
+      .in('level', lvlChain)
+      .order('sort_order');
+    if (!expRes.error && expRes.data && expRes.data.length) {
+      var pool = expRes.data.slice();
+      // Shuffle so repeated calls surface different expressions
+      for (var k = pool.length - 1; k > 0; k--) {
+        var j = Math.floor(Math.random() * (k + 1));
+        var tmp = pool[k]; pool[k] = pool[j]; pool[j] = tmp;
+      }
+      pool = pool.slice(0, 12);
+      expressionPool = pool.map(function(e) {
+        return '- "' + e.ko + '" — ' + e.en + (e.context_hint ? '  (' + e.context_hint + ')' : '');
+      }).join('\n');
+    }
+  } catch (_) {}
+
+  var castBlock = castRoster
+    ? '\n\nCAST — pick 2 speakers for this conversation from this list ONLY (do NOT invent new names). Use them in the `name` field as "X & Y" and in every msg.who:\n' + castRoster + '\n\nIf the scene clearly requires a one-off professional role (doctor / police / teacher / cashier / etc.) AND that role isn\'t fittable from the cast, you may use that role title in plain Korean (e.g. "의사", "경찰관") as the who field — the admin will map it to a role NPC later.'
+    : '';
+  var expBlock = expressionPool
+    ? '\n\nESSENTIAL EXPRESSIONS — weave 1-2 of these into the dialogue NATURALLY (don\'t force more than 2). They must also appear in the key_expressions output array verbatim:\n' + expressionPool
+    : '';
+
+  var prompt = 'You are creating Korean language learning content for KoreHani.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + castBlock + expBlock + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"key_expressions":[{"ko":"multi-word phrase","en":"natural English meaning"}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3-5 key_expressions, 3 missions. EVERY msg MUST have "en" field with natural English translation. key_expressions MUST be multi-word phrases or idioms (2+ words with a space) that actually appear in the dialogue (conjugated form ok). They should NOT overlap with vocab. ' + lvlMap[lvl] + ' level Korean.\n\nCRITICAL REALISM RULES (violations will be rejected):\n- Every situation must be 100% realistic and logically consistent. If the setting is a pharmacy, people buy medicine — not hats or groceries.\n- ALL vocab words in the vocab list MUST appear naturally in the dialogue messages. Never add vocab that is not in the text.\n- The conversation topic and location must match real Korean daily life — do not mix unrelated settings or objects.\n- Vocab distractors should come from words actually used; do not include unrelated meanings.';
 
   try {
     var resp = await callClaude({
