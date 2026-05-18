@@ -2447,11 +2447,16 @@ function openWritingModal() {
 }
 
 function canEnterWritingRoom() {
-  var hasDoneStep = !!(_studyDone.topic || _studyDone.grammar || _studyDone.picture || _studyDone.sentence || _studyDone.expressions);
-  if (hasDoneStep) return true;
+  // Express Practice is meant as the culmination of the day's 5 learning
+  // steps. The old gate (any 1 of 5 done) made it feel like just one more
+  // activity instead of a wrap-up — owner decision 2026-05-18 set the
+  // threshold to 4/5. Audit item #9.
+  var stages = ['topic','grammar','picture','sentence','expressions'];
+  var doneCount = stages.reduce(function(n, k){ return n + (_studyDone[k] ? 1 : 0); }, 0);
+  if (doneCount >= 4) return true;
   khAlert(
-    'Finish one step first',
-    'Complete at least one learning step (Topic Yum Yum, Grammar Focus, Picture Description, Dictation, or Key Expressions) before entering Express Practice.'
+    'Almost there!',
+    'Complete at least 4 of the 5 daily learning steps (Topic Yum Yum, Phrase Munch, Speaking Practice, Dictation, Key Expressions) before entering Express Practice. (' + doneCount + '/5 done)'
   );
   return false;
 }
@@ -7828,7 +7833,11 @@ async function submitSpeaking() {
     var sb = getSupa();
     if (!sb) return;
     var fileName = 'speaking/' + supaUser.id + '/' + kstDateKey() + '_' + Date.now() + '.webm';
-    var { error: upErr } = await sb.storage.from('avatars').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
+    // Audit 2026-05-18 #5: moved off the 'avatars' bucket to a dedicated
+    // 'speaking-recordings' bucket — see migrations/20260518_speaking_recordings_bucket.sql
+    // for the RLS policies. Old recordings still live under avatars but
+    // aren't readable here; they age out.
+    var { error: upErr } = await sb.storage.from('speaking-recordings').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
     if (upErr) { showToast('업로드 실패: ' + upErr.message); return; }
     // Save record to user_submissions
     var ta = document.getElementById('write-area');
