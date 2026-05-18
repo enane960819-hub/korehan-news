@@ -114,7 +114,16 @@ async function syncStudyProgress(stage) {
   if (stage === 'picture') patch.picture_done = true;
   if (stage === 'sentence') patch.sentence_done = true;
   if (stage === 'expressions') patch.expressions_done = true;
-  try { await sb.from('user_daily_progress').upsert(patch, { onConflict:'user_id,study_date' }); } catch(e) {}
+  try {
+    var r = await sb.from('user_daily_progress').upsert(patch, { onConflict:'user_id,study_date' });
+    if (r && r.error) throw r.error;
+  } catch(e) {
+    // Was silent — DB sync failures left learners with localStorage-only
+    // progress and no cross-device sync, with no signal to anyone.
+    // Audit 2026-05-18, item #20.
+    console.warn('[syncStudyProgress] DB upsert failed for stage', stage, e);
+    if (typeof kh_log_error === 'function') kh_log_error(e || 'sync_study_progress_failed', { feature: 'study_room_sync', stage: stage });
+  }
   if (stage === 'grammar') {
     var focus = new URLSearchParams(window.location.search).get('focus') || ((_gfPattern && _gfPattern.name) || '');
     if (focus) {
@@ -2423,6 +2432,7 @@ function openWritingModal() {
   document.body.style.overflow = 'hidden';
   if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
   renderModalContent();
+  _wmApplyEntryTitle();
   // Phase 2: load common-mistakes panel for the current topic.
   if (typeof khLoadCommonMistakes === 'function') khLoadCommonMistakes();
   // Canvas tracker rings 초기화
@@ -4826,10 +4836,19 @@ function startSlangQuiz() {
 function renderSlangQuiz(el) {
   var q = _slangQuiz;
   if (q.current >= q.questions.length) {
+    // Score thresholds expressed as ratios so increasing the question
+    // count later (e.g. 5 → 8) doesn't silently turn "잘했어요!" into
+    // "다시 도전". Audit 2026-05-18, item #16.
+    var _pct = q.questions.length > 0 ? (q.score / q.questions.length) : 0;
+    var _isMaster = _pct >= 0.8;
+    var _isGood   = _pct >= 0.5;
+    var _color    = _isMaster ? '#a78bfa' : _isGood ? '#22c55e' : '#f87171';
+    var _icon     = _isMaster ? BM_ICON_PARTY : _isGood ? BM_ICON_THUMBS_UP : BM_ICON_FLAME;
+    var _label    = _isMaster ? '슬랭 마스터!' : _isGood ? '잘했어요!' : '다시 도전해보세요!';
     el.innerHTML = '<div style="text-align:center;padding:20px">'
-      + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:12px;color:'+(q.score >= 4 ? '#a78bfa' : q.score >= 2 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(q.score >= 4 ? '#a78bfa' : q.score >= 2 ? '#22c55e' : '#f87171')+'aa)">' + (q.score >= 4 ? BM_ICON_PARTY : q.score >= 2 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
+      + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:12px;color:'+_color+';filter:drop-shadow(0 0 12px '+_color+'aa)">' + _icon + '</div>'
       + '<div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:4px">' + q.score + ' / ' + q.questions.length + '</div>'
-      + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px">' + (q.score >= 4 ? '슬랭 마스터!' : q.score >= 2 ? '잘했어요!' : '다시 도전해보세요!') + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px">' + _label + '</div>'
       + '<button onclick="startSlangQuiz()" style="padding:10px 24px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:8px">다시 도전</button>'
       + '<button onclick="switchSlangView(\'daily\')" style="padding:10px 24px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">돌아가기</button>'
       + '</div>';
@@ -7172,6 +7191,7 @@ function openWritingModalForLearning() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
   _writingMode = 'topic';
+  _wmEntrySource = 'topic_yum_yum';
   // markStageDone('topic') moved to actual submit/finish functions
   // Starter (Seed) + Beginner both use the 4-step writing flow so the activity is actually
   // about writing. The Starter vocab-only modal is a separate entry point.
@@ -7194,6 +7214,7 @@ function openWritingModalForLearning() {
   document.body.style.overflow = 'hidden';
   if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
   if (typeof renderModalContent === 'function') renderModalContent();
+  _wmApplyEntryTitle();
   setTimeout(function() { _initWritingTrackerRings(); _resetWritingTrackerRings(); }, 100);
   wmMobileInit();
 }
@@ -7204,10 +7225,12 @@ function lsStartWriting() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
   if (!canEnterWritingRoom()) return;
+  _wmEntrySource = 'express_practice';
   document.getElementById('wmodal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
   renderModalContent();
+  _wmApplyEntryTitle();
   // Phase 2: load common-mistakes panel for the current topic.
   if (typeof khLoadCommonMistakes === 'function') khLoadCommonMistakes();
   wmMobileInit();
@@ -7301,6 +7324,32 @@ function injectMobPanelClose(panelEl) {
   panelEl.insertBefore(btn, panelEl.firstChild);
 }
 function closeWritingModal() {
+  // Stop any in-flight speaking recorder / recognition / media stream
+  // before hiding the modal. Without this the mic LED stayed on after
+  // close, the recognition listener leaked, and the next session
+  // inherited stale state. Audit 2026-05-18, item #7.
+  try {
+    if (_speakRecorder && _speakRecorder.state === 'recording') {
+      _speakRecorder.stop();
+    }
+  } catch(_) {}
+  try {
+    if (_speakRecognition) _speakRecognition.stop();
+  } catch(_) {}
+  // The MediaRecorder's onstop handler already calls
+  // stream.getTracks().forEach(stop) and creates the blob, so we don't
+  // double-stop tracks here — calling .stop() above is enough to
+  // trigger that path. We DO revoke any preview URL set on the audio
+  // element so the Blob can be GC'd.
+  try {
+    var audio = document.getElementById('wm-speak-playback');
+    if (audio && audio.src && audio.src.indexOf('blob:') === 0) {
+      URL.revokeObjectURL(audio.src);
+      audio.removeAttribute('src');
+      audio.style.display = 'none';
+    }
+  } catch(_) {}
+
   document.getElementById('wmodal').classList.add('hidden');
   document.body.style.overflow = '';
   // 모바일 탭 리셋
@@ -7795,7 +7844,11 @@ async function submitSpeaking() {
       speaking_scores: _speakScores || null,
       context_data: JSON.stringify({ audio_path: fileName })
     });
-    showToast('Recording submitted! Waiting for AI feedback.');
+    // No AI-feedback pipeline is wired for content_type='speaking' yet
+    // (writing path runs via submitAllWritingsToday → _triggerPackageFeedback,
+    // which does not pick up speaking rows). Toast no longer promises
+    // feedback — was misleading. Audit 2026-05-18, item #4.
+    showToast('Recording submitted!');
     var row = document.getElementById('wm-speak-submit-row');
     if (row) row.style.display = 'none';
     document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted!</span></span>';
@@ -8793,197 +8846,21 @@ async function submitWriting() {
   _playSubmitEnvelopeAnimation(function() {
     returnToActivities(closeWritingModal);
   });
-  return; // Skip legacy individual submission below
-
-  var sb = getSupa();
-  if (!sb) return;
-  var today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10);
-  try {
-    var insertRes = await sb.from('user_submissions').insert({
-      user_id:          supaUser.id,
-      content_type:     'writing',
-      study_date:       today,
-      writing_text:     text,
-      word_count:       text.length,
-      topic_ko:         (_todayTopic && _todayTopic.topic_ko) || '',
-      topic_en:         (_todayTopic && _todayTopic.topic_en) || '',
-      writing_mode:     _writingMode || 'topic',
-      context_data:     JSON.stringify({ used_vocab: usedVocab }),
-      level:            _currentLevel || '',
-      status:           'submitted'
-    });
-
-    if (insertRes.error) throw insertRes.error;
-
-    // ── user_topic_history 완료 처리 ──
-    await sb.from('user_topic_history')
-      .update({ completed: true })
-      .eq('user_id', supaUser.id)
-      .eq('assigned_date', today);
-
-    // ── AI 1차 첨삭 (비동기, 백그라운드) ──
-    var submissionId = insertRes.data && insertRes.data[0] && insertRes.data[0].id;
-    if (submissionId) {
-      triggerAIFeedback(submissionId, text, requiredVocab, requiredGrammar);
-    }
-
-    // XP 적립
-    if (typeof awardXP === 'function') awardXP('writing_submit', { topic_ko: _todayTopic && _todayTopic.topic_ko });
-    markStageDone('topic');
-    await sb.from('user_daily_progress').upsert({
-      user_id: supaUser.id,
-      study_date: today,
-      topic_done: !!_studyDone.topic,
-      grammar_done: !!_studyDone.grammar,
-      picture_done: !!_studyDone.picture,
-      sentence_done: !!_studyDone.sentence,
-      submitted: true,
-      submitted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }, { onConflict:'user_id,study_date' });
-
-    var doneEl = document.getElementById('hero-topic-done');
-    if (doneEl) doneEl.style.display = 'flex';
-    showToast('Submitted! Feedback will be ready within 24 hours.');
-    returnToActivities(closeWritingModal);
-
-  } catch(e) {
-    if (e && e.code === '23505') {
-      showToast('You already submitted today!', true);
-      closeWritingModal();
-    } else {
-      showToast('Submit error: ' + (e.message || e), true);
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit for Feedback'; }
-    }
-  }
+  // (Legacy individual-submission path removed — replaced by daily-package
+  // submission via submitAllWritingsToday(). The old triggerAIFeedback
+  // call site lived in the unreachable block and referenced a variable
+  // that was never defined in this scope; deleting kept readers from
+  // tracing dead code.)
 }
 
-// AI 1차 첨삭 — 백그라운드 실행
-async function triggerAIFeedback(submissionId, text, vocab, grammar) {
-  try {
-    var wordCount = text.replace(/\s+/g,' ').trim().split(' ').length;
-    var isTooShort = wordCount < 8;
-
-    // Phase 4: genre + register context pulled from the writing modal
-    var genreMeta   = (typeof WRITING_GENRES !== 'undefined' && WRITING_GENRES[_wmGenre || 'free']) || null;
-    var genreLabel  = genreMeta ? genreMeta.label   : 'Free';
-    var genreId     = genreMeta ? genreMeta.id      : 'free';
-    var conventions = genreMeta && genreMeta.conventions ? genreMeta.conventions : null;
-    var registerHint = genreMeta && genreMeta.registerHint ? genreMeta.registerHint : '';
-
-    var genreBlock = conventions
-      ? 'Genre: ' + genreLabel + ' (' + genreId + ')\n'
-        + 'Genre conventions: ' + conventions + '\n'
-        + 'Register note: ' + registerHint + '\n\n'
-      : 'Genre: Free (no genre constraints — just register consistency)\n'
-        + 'Register note: ' + (registerHint || 'Score register on whether the student keeps a consistent style throughout.') + '\n\n';
-
-    var prompt = 'You are an expert Korean writing tutor. Analyze the student\'s Korean writing in detail and provide feedback IN ENGLISH.\n\n'
-      + genreBlock
-      + 'Student writing:\n"""\n' + text + '\n"""\n\n'
-      + 'Required vocab: ' + vocab.join(', ') + '\n'
-      + 'Required grammar: ' + grammar.join(', ') + '\n\n'
-      + 'Return ONLY JSON in this format:\n'
-      + '{\n'
-      + '  "score": 0-100 (integer, overall — MUST equal round(rubric average)),\n'
-      + '  "genre": "' + genreId + '",\n'
-      + '  "rubric": {\n'
-      + '    "accuracy":      0-100,    // Grammar & spelling correctness (조사/어미/시제/맞춤법). 95+ = native-clean, 70-80 = mostly fine with a few slips, <50 = frequent basic errors.\n'
-      + '    "lexical_range": 0-100,    // Vocabulary diversity & appropriateness (approximate TTR × appropriateness). 80+ = varied & level-appropriate, 50-70 = repetitive or overly simple.\n'
-      + '    "cohesion":      0-100,    // Sentence-to-sentence connectors (그러나/따라서/반면에 etc.) and referential consistency.\n'
-      + '    "coherence":     0-100,    // Whole-text logical flow, paragraph structure, staying on topic.\n'
-      + '    "register":      0-100     // Consistency of speech level (-습니다 vs -아/어요 vs -다). 90+ = clean single register fitting the genre; <60 = noticeable mixing or wrong register for the genre.\n'
-      + '  },\n'
-      + '  "rubric_notes": {\n'
-      + '    "accuracy":      "1 sentence in English — what drove the accuracy score",\n'
-      + '    "lexical_range": "1 sentence in English",\n'
-      + '    "cohesion":      "1 sentence in English",\n'
-      + '    "coherence":     "1 sentence in English",\n'
-      + '    "register":      "1 sentence in English — note the register used and any mixing (e.g. \'Mostly 습니다-style but switches to 아/어요 in line 2\')"\n'
-      + '  },\n'
-      + (conventions
-          ? '  "genre_conventions": {\n'
-            + '    "score":    0-100,         // How well the writing follows the genre format above.\n'
-            + '    "met":      ["bullet 1","bullet 2"],   // conventions the student DID meet\n'
-            + '    "missing":  ["bullet 1","bullet 2"]    // conventions the student should add\n'
-            + '  },\n'
-          : '')
-      + '  "overall": "2-3 sentence overall evaluation in English (praise first, then improvements)",\n'
-      + '  "corrected_full": "Full corrected version of the student\'s text (fix errors while keeping their style)",\n'
-      + '  "corrections": [\n'
-      + '    {"original":"incorrect expression","corrected":"corrected expression","reason":"English explanation of why it\'s wrong","pattern":"SPELLING|PARTICLE|TENSE|WORD_ORDER|VOCAB|NUANCE|REGISTER"}\n'
-      + '  ],\n'
-      + '  "spelling": [{"wrong":"misspelled word","correct":"correct spelling","tip":"easy way to remember"}],\n'
-      + '  "naturalness": {"score":0-10,"comment":"How natural it sounds from a native perspective","suggestions":["more natural alternative 1","alternative 2"]},\n'
-      + '  "nuance": {"comment":"Nuance/tone feedback","word_swaps":[{"from":"word used","to":"recommended word","why":"nuance difference"}]},\n'
-      + '  "structure": {"comment":"Sentence structure/word order evaluation","tip":"Improvement tip"},\n'
-      + '  "vocab_feedback": "Vocabulary usage evaluation + recommended additional words",\n'
-      + '  "grammar_feedback": "Grammar usage evaluation + things to watch out for",\n'
-      + '  "extra_content": "2-3 ideas for extending this topic in writing",\n'
-      + '  "mistake_patterns": {"SPELLING":0,"PARTICLE":0,"TENSE":0,"WORD_ORDER":0,"VOCAB":0,"NUANCE":0,"REGISTER":0},\n'
-      + '  "encouragement": "A short encouraging message in English"'
-      + (isTooShort ? ',\n  "example_answer": "Example answer for this topic (3-5 sentences, matched to student level)"' : '')
-      + '\n}\n'
-      + 'IMPORTANT: rubric values are integers 0-100. score must equal round((accuracy+lexical_range+cohesion+coherence+register)/5). ALL feedback text must be in English. Korean only appears in corrected_full, corrections.original/corrected, spelling fields. Return ONLY valid JSON.';
-
-    var data = await callClaude({
-      feature: 'writing_feedback',
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: prompt }]
-    });
-
-    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
-    var clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
-    var openB = clean.indexOf('{'), closeB = clean.lastIndexOf('}');
-    if (openB < 0 || closeB <= openB) throw new Error('Invalid JSON response');
-    var parsed = JSON.parse(clean.slice(openB, closeB + 1));
-
-    var sb = getSupa();
-    if (sb) {
-      await sb.from('user_submissions').update({
-        ai_feedback:    parsed,
-        ai_feedback_at: new Date().toISOString(),
-        ai_model:       'claude-sonnet-4-20250514',
-        status:         'ai_reviewed'
-      }).eq('id', submissionId);
-    }
-  } catch(e) {
-    console.warn('AI feedback failed:', e);
-  }
-}
-
-// AI 1차 첨삭 — Article Study용 (백그라운드)
-async function triggerArticleAIFeedback(submissionId, text, articleTitle) {
-  try {
-    var prompt = '당신은 한국어 작문 첨삭 선생님입니다.\n\n'
-      + '학생이 기사 "' + articleTitle + '"를 읽고 작성한 글:\n"""\n' + text + '\n"""\n\n'
-      + '다음 형식으로 첨삭해주세요 (JSON):\n'
-      + '{\n'
-      + '  "overall": "전반적인 평가 1-2문장",\n'
-      + '  "corrections": [{"original":"원문","corrected":"수정문","reason":"이유","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],\n'
-      + '  "encouragement": "격려 한마디"\n'
-      + '}\nJSON만 반환하세요.';
-    var data = await callClaude({
-      feature: 'article_study_feedback',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
-      messages: [{ role:'user', content: prompt }]
-    });
-    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('');
-    var clean = raw.replace(/```json|```/g,'').trim();
-    var parsed = JSON.parse(clean);
-    var sb = getSupa();
-    if (sb) {
-      await sb.from('user_submissions').update({
-        ai_feedback: parsed,
-        ai_feedback_at: new Date().toISOString(),
-        ai_model: 'claude-haiku-4-5-20251001',
-        status: 'ai_reviewed'
-      }).eq('id', submissionId);
-    }
-  } catch(e) { console.warn('Article AI feedback failed:', e); }
-}
+// (Removed: triggerAIFeedback + triggerArticleAIFeedback. Both were
+// only referenced from a single dead-code site inside submitWriting()
+// — never reached at runtime. The active path is
+// submitAllWritingsToday() → _triggerPackageFeedback(), which sends
+// the consolidated daily-package feedback with its own writing-tutor
+// prompt. If a future per-submission feedback flow is needed, grow it
+// off _triggerPackageFeedback instead of resurrecting these. Audit
+// 2026-05-18, items #2/#3.)
 
 // ── 피드백 인박스 ─────────────────────────────────────────────
 async function loadFeedbackInbox() {
@@ -9985,6 +9862,28 @@ function updateHighlight() {
 // WRITING MODE SELECTION (Topic / Reading)
 // ═══════════════════════════════════════════════════════════
 var _writingMode = 'topic';  // 'topic' | 'reading' | 'diary' | 'free'
+// Distinguishes "Topic Yum Yum" satellite entry from "Express Practice"
+// center entry. Both share the wmodal in 'topic' mode but represent two
+// different UX intents — Topic Yum Yum (scaffolded daily-topic practice)
+// vs Express Practice (free expression of what was learned). Both
+// previously surfaced the same "Express Practice" title which made the
+// learning selector feel like it had two buttons doing the same thing.
+// Audit 2026-05-18, item #10. Values: 'topic_yum_yum' | 'express_practice' | null.
+var _wmEntrySource = null;
+
+// Sets the wmodal title to reflect _wmEntrySource. Safe to call any
+// time after the modal element is in the DOM. Called from each direct
+// wmodal-open path (Advanced Topic Yum Yum, Express Practice center).
+// switchModalMode() also reads _wmEntrySource for the same effect when
+// it re-paints the title.
+function _wmApplyEntryTitle() {
+  if (_writingMode !== 'topic') return;
+  var modeLabel = document.getElementById('wm-mode-label');
+  if (!modeLabel) return;
+  modeLabel.textContent = _wmEntrySource === 'topic_yum_yum'
+    ? '📝 Topic Yum Yum'
+    : '✍️ Express Practice';
+}
 // 'free' = Free Writing — user picks their own subject, vocab hints
 // come from their recent user_saved_words + last article they read.
 // Submissions go through the same Growth Lab feedback pipeline as
@@ -10623,7 +10522,14 @@ function switchModalMode(mode) {
     if (sourceBar) { sourceBar.style.display = 'none'; }
     var modalEl = document.querySelector('.wmodal');
     if (modalEl) modalEl.classList.remove('reading-mode');
-    if (modeLabel) modeLabel.textContent = '✍️ Express Practice';
+    // Title reflects entry source — Topic Yum Yum (satellite) and
+    // Express Practice (center) both land here in 'topic' mode but
+    // are conceptually different journeys. Audit 2026-05-18, item #10.
+    if (modeLabel) {
+      modeLabel.textContent = _wmEntrySource === 'topic_yum_yum'
+        ? '📝 Topic Yum Yum'
+        : '✍️ Express Practice';
+    }
     if (readingBlock) readingBlock.style.display = 'none';
     if (contextBlock) contextBlock.style.display = 'block';
     if (helpersBlock) helpersBlock.style.display = 'block';
@@ -11135,10 +11041,23 @@ async function checkPictureDescription() {
     feedback.vocab = parsed.vocab || feedback.vocab;
     feedback.clarity = parsed.clarity || feedback.clarity;
     if (parsed.sample) item.sample = parsed.sample;
-  } catch(e) {}
+  } catch(e) {
+    // Previously a silent catch — every Claude failure (network blip,
+    // rate-limit, schema drift) resulted in every user seeing the same
+    // hard-coded fallback feedback, making the AI look like it was
+    // giving cookie-cutter advice. Now surface the failure so the user
+    // knows it wasn't a real AI review, and so we get error logs.
+    // Audit 2026-05-18, item #6.
+    console.warn('[checkPictureDescription] Claude call failed; showing fallback feedback:', e);
+    if (typeof kh_log_error === 'function') kh_log_error(e || 'picture_description_failed', { feature: 'study_room_picture_description' });
+  }
   result.style.display = 'block';
+  var _aiFailedBanner = !corrected || corrected === text
+    ? '<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#b45309;padding:8px 10px;border-radius:8px;font-size:11px;margin-bottom:8px">⚠️ AI feedback temporarily unavailable — showing general guidance.</div>'
+    : '';
   result.innerHTML =
-    '<div><b>✅ Corrected version</b><br>' + escapeHTML(corrected) + '</div>'
+    _aiFailedBanner
+    + '<div><b>✅ Corrected version</b><br>' + escapeHTML(corrected) + '</div>'
     + '<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0">'
     + '<div><b>Grammar</b>: ' + escapeHTML(feedback.grammar) + '</div>'
     + '<div><b>Vocabulary</b>: ' + escapeHTML(feedback.vocab) + '</div>'

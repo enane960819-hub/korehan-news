@@ -911,6 +911,14 @@ body.kh-neon-on .hero-dot {
     if (tip) { tip.style.opacity = '0'; setTimeout(function(){ tip.textContent = tips[tipIdx]; tip.style.opacity = ''; }, 200); }
   }, 3000);
 
+  // Minimum loader display time — prevents the splash from disappearing
+  // before users can register it on cache hits / instant localStorage
+  // paints (was sub-300ms, owner-reported "내 로딩페이지 어디갔냐"
+  // 2026-05-18). 800ms is short enough to feel snappy on fast loads,
+  // long enough to read the KoreHanı logo + brand tagline.
+  var _khLoaderStart = Date.now();
+  var _khLoaderMinMs = 800;
+
   window._khLoaderSet = function(v) {
     if (done) return;
     current = Math.max(current, Math.min(v, 100));
@@ -919,6 +927,8 @@ body.kh-neon-on .hero-dot {
     if (current >= 100) {
       done = true;
       clearInterval(_tipTimer);
+      var elapsed = Date.now() - _khLoaderStart;
+      var holdFor = Math.max(0, _khLoaderMinMs - elapsed);
       setTimeout(function() {
         var el = document.getElementById('kh-loader');
         if (el) {
@@ -926,7 +936,7 @@ body.kh-neon-on .hero-dot {
           el.style.opacity = '0';
           setTimeout(function(){ try { el.remove(); } catch(_) {} }, 400);
         }
-      }, 150);
+      }, holdFor + 150);
     }
   };
 
