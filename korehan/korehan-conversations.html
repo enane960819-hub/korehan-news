@@ -271,9 +271,12 @@
 .dp-pr-start.dp-pr-secondary{background:#fff;color:#475569;border:1.5px solid #e2e8f0;}
 .dp-pr-start.dp-pr-secondary:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155;}
 /* Expression Match */
-.dp-pr-em-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
-.dp-pr-em-col{display:flex;flex-direction:column;gap:8px;}
-.dp-pr-pill{padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#0f172a;cursor:pointer;font-family:inherit;text-align:left;transition:background .12s,border-color .12s,opacity .12s;line-height:1.4;font-weight:600;}
+/* Interleaved grid: pills render in order L0 R0 L1 R1 …; each grid row's
+   height is the max of its two pills, so the left and right columns stay
+   visually balanced even when English wraps to two lines and Korean
+   doesn't. min-height keeps pills tap-friendly on mobile (~44pt). */
+.dp-pr-em-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-bottom:6px;align-items:stretch;}
+.dp-pr-pill{padding:10px 12px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#0f172a;cursor:pointer;font-family:inherit;text-align:left;transition:background .12s,border-color .12s,opacity .12s;line-height:1.4;font-weight:600;min-height:48px;display:flex;align-items:center;}
 .dp-pr-pill:hover:not(:disabled){background:#eff6ff;border-color:#bfdbfe;}
 .dp-pr-pill.sel{background:#dbeafe;border-color:#2563eb;color:#1d4ed8;}
 .dp-pr-pill.wrong{background:#fee2e2;border-color:#ef4444;color:#b91c1c;}
@@ -1774,7 +1777,11 @@ function goToStudyRoomConv() {
 var _emState = null;
 function startExpressionMatch() {
   var c = window._currentConv; if (!c) return;
-  var pairs = (c.key_expressions || []).filter(function(e){ return e && e.ko && e.en; }).slice(0, 5);
+  var pairs = (c.key_expressions || []).filter(function(e){
+    return e
+      && typeof e.ko === 'string' && e.ko.trim()
+      && typeof e.en === 'string' && e.en.trim();
+  }).slice(0, 5);
   if (pairs.length < 2) {
     document.getElementById('dp-pr-em').innerHTML = '<div class="dp-pr-empty">Need at least 2 key expressions.</div>';
     return;
@@ -1790,20 +1797,37 @@ function startExpressionMatch() {
 }
 function _emRender() {
   var s = _emState; if (!s) return;
-  var leftHTML = s.leftOrder.map(function(i, slot) {
-    var locked = s.locked[i];
-    var sel = (s.leftSel === slot);
-    var cls = 'dp-pr-pill' + (locked ? ' locked' : sel ? ' sel' : '');
-    return '<button class="' + cls + '" data-slot="' + slot + '" data-idx="' + i + '" onclick="_emPick(\'l\',' + slot + ')"' + (locked ? ' disabled' : '') + '>'
-      + escapeHtml(s.pairs[i].ko) + '</button>';
-  }).join('');
-  var rightHTML = s.rightOrder.map(function(i, slot) {
-    var locked = s.locked[i];
-    var sel = (s.rightSel === slot);
-    var cls = 'dp-pr-pill' + (locked ? ' locked' : sel ? ' sel' : '');
-    return '<button class="' + cls + '" data-slot="' + slot + '" data-idx="' + i + '" onclick="_emPick(\'r\',' + slot + ')"' + (locked ? ' disabled' : '') + '>'
-      + escapeHtml(s.pairs[i].en) + '</button>';
-  }).join('');
+  // Interleave pills as (L0, R0, L1, R1, …) into a single 2-col grid.
+  // Each grid ROW pairs one slot from each side so its height equals
+  // max(L_height, R_height) — when English wraps to 2 lines but Korean
+  // is 1 line, the Korean pill stretches to match, keeping columns
+  // visually balanced.
+  var rows = '';
+  var nL = s.leftOrder.length;
+  var nR = s.rightOrder.length;
+  var rowCount = Math.max(nL, nR);
+  for (var slot = 0; slot < rowCount; slot++) {
+    if (slot < nL) {
+      var li = s.leftOrder[slot];
+      var lLocked = s.locked[li];
+      var lSel = (s.leftSel === slot);
+      var lCls = 'dp-pr-pill em-l' + (lLocked ? ' locked' : lSel ? ' sel' : '');
+      rows += '<button class="' + lCls + '" data-side="l" data-slot="' + slot + '" data-idx="' + li + '" onclick="_emPick(\'l\',' + slot + ')"' + (lLocked ? ' disabled' : '') + '>'
+        + escapeHtml(s.pairs[li].ko) + '</button>';
+    } else {
+      rows += '<span></span>';
+    }
+    if (slot < nR) {
+      var ri = s.rightOrder[slot];
+      var rLocked = s.locked[ri];
+      var rSel = (s.rightSel === slot);
+      var rCls = 'dp-pr-pill em-r' + (rLocked ? ' locked' : rSel ? ' sel' : '');
+      rows += '<button class="' + rCls + '" data-side="r" data-slot="' + slot + '" data-idx="' + ri + '" onclick="_emPick(\'r\',' + slot + ')"' + (rLocked ? ' disabled' : '') + '>'
+        + escapeHtml(s.pairs[ri].en) + '</button>';
+    } else {
+      rows += '<span></span>';
+    }
+  }
   var done = Object.keys(s.locked).length;
   var total = s.pairs.length;
   var doneBanner = (done === total)
@@ -1811,10 +1835,7 @@ function _emRender() {
     : '<div class="dp-pr-progress">' + done + ' / ' + total + ' matched</div>';
   document.getElementById('dp-pr-em').innerHTML =
       doneBanner
-    + '<div class="dp-pr-em-grid">'
-    +   '<div class="dp-pr-em-col">' + leftHTML + '</div>'
-    +   '<div class="dp-pr-em-col">' + rightHTML + '</div>'
-    + '</div>'
+    + '<div class="dp-pr-em-grid">' + rows + '</div>'
     + (done === total
         ? '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="dp-pr-start dp-pr-secondary" onclick="startExpressionMatch()">Play again</button><button class="dp-pr-start" onclick="convPracticeAdvance()">Next drill →</button></div>'
         : '');
@@ -1832,10 +1853,10 @@ window._emPick = function(side, slot) {
       _emRender();
     } else {
       // Wrong pair → flash red briefly, then clear selections.
+      // We can't precisely target the original wrong pills after the
+      // re-render (DOM was replaced), so we tag every still-selected
+      // pill with .wrong and let the 600ms re-render clear it.
       _emRender();
-      var wrongL = document.querySelector('#dp-pr-em .dp-pr-em-col:first-child .dp-pr-pill[data-slot="' + slot + '"]');
-      // We don't know the actual wrong button after re-render, just flash
-      // both selected pills via a new render with .wrong class.
       var board = document.getElementById('dp-pr-em');
       if (board) {
         var pills = board.querySelectorAll('.dp-pr-pill.sel');
