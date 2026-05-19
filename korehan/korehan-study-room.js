@@ -199,7 +199,18 @@ function _khStudyRoomInit() {
         console.error('[loadDailyContent] uncaught:', e);
         _applyFallbackTopic(kstDateKey());
       });
-      loadFeedbackInbox();
+      loadFeedbackInbox().then(function(){
+        // ?openInbox=1 deep-link from external surfaces (My Page chip,
+        // future global nav). Opens the inbox automatically once it
+        // loaded so the user doesn't have to find the button.
+        try {
+          if (new URLSearchParams(window.location.search).get('openInbox') === '1') {
+            setTimeout(function(){ if (typeof openFeedbackInbox === 'function') openFeedbackInbox(); }, 250);
+            // Clean the URL so refreshes don't re-open.
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        } catch(_) {}
+      });
       asAutoSubmitOldWork();
       _asRefreshSubmitBanner();
       setTimeout(function() {
