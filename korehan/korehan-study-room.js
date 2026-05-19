@@ -9379,15 +9379,32 @@ async function renderFeedbackInboxContent() {
         }
 
         if (isReviewed && displayFb) {
-          if (adminFb && typeof adminFb === 'object') {
+          // Source banner — make clear when admin reviewed vs. AI-only.
+          // Audit flagged that admin overwriting AI silently hid the
+          // Claude analysis entirely, so users couldn't compare.
+          var hasAdminJson = adminFb && typeof adminFb === 'object';
+          var hasAdminText = typeof item.admin_feedback === 'string' && item.admin_feedback.trim();
+          var hasAdmin     = hasAdminJson || hasAdminText;
+          if (hasAdmin) {
+            html += '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);color:#86efac;font-size:11px;font-weight:800;margin-bottom:10px">👩‍🏫 Reviewed by your teacher</div>';
+          }
+          if (hasAdminText) {
+            html += '<div style="padding:10px 12px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.18);border-radius:8px;margin-bottom:12px">'
+              + '<div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:4px">Teacher\'s note</div>'
+              + '<div style="font-size:13px;color:rgba(255,255,255,.85);white-space:pre-wrap;line-height:1.6">' + item.admin_feedback + '</div></div>';
+          }
+          if (hasAdminJson) {
             html += renderDetailedFeedback(adminFb, item.writing_text);
-          } else if (typeof item.admin_feedback === 'string' && item.admin_feedback.trim()) {
-            html += '<div style="padding:10px 12px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:8px;margin-bottom:12px">'
-              + '<div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:4px">Teacher Feedback</div>'
-              + '<div style="font-size:13px;color:rgba(255,255,255,.75);white-space:pre-wrap;line-height:1.6">' + item.admin_feedback + '</div></div>';
-            if (fb) html += renderDetailedFeedback(fb, item.writing_text);
-          } else {
-            html += renderDetailedFeedback(displayFb, item.writing_text);
+            // Also surface the AI version below — collapsed by default
+            // so the teacher's take stays primary but the Claude
+            // analysis isn't silently dropped.
+            if (fb) {
+              html += '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:11px;font-weight:700;color:rgba(125,211,252,.7);padding:6px 10px;border-radius:6px;background:rgba(56,189,248,.06);display:inline-block">🤖 Show Claude\'s original analysis</summary><div style="margin-top:8px;opacity:.85">'
+                + renderDetailedFeedback(fb, item.writing_text)
+                + '</div></details>';
+            }
+          } else if (fb) {
+            html += renderDetailedFeedback(fb, item.writing_text);
           }
         } else {
           html += '<div style="color:rgba(255,255,255,.3);text-align:center;padding:16px;font-size:13px">'
@@ -9406,16 +9423,29 @@ async function renderFeedbackInboxContent() {
     // from the private speaking-recordings bucket. Failure is silent —
     // the player just doesn't load and the user sees the writing /
     // feedback below as usual.
-    var audios = content.querySelectorAll('.kh-fb-audio[data-audio-path]');
-    audios.forEach(function(audio) {
-      var path = audio.getAttribute('data-audio-path');
-      if (!path) return;
-      sb.storage.from('speaking-recordings').createSignedUrl(path, 3600).then(function(r) {
-        if (r && r.data && r.data.signedUrl) {
-          audio.src = r.data.signedUrl;
-        }
-      }).catch(function(){});
-    });
+    // Batch the signed-URL requests so a single inbox open with many
+    // speaking submissions doesn't N+1 the storage endpoint. Supabase
+    // accepts createSignedUrls (plural) which returns one row per
+    // requested path in order. Falls back to per-audio calls if the
+    // bulk variant errors (older SDKs).
+    var audios = Array.prototype.slice.call(content.querySelectorAll('.kh-fb-audio[data-audio-path]'));
+    if (audios.length) {
+      var paths = audios.map(function(el){ return el.getAttribute('data-audio-path'); });
+      sb.storage.from('speaking-recordings').createSignedUrls(paths, 3600).then(function(r) {
+        var rows = (r && r.data) || [];
+        audios.forEach(function(audio, i) {
+          if (rows[i] && rows[i].signedUrl) audio.src = rows[i].signedUrl;
+        });
+      }).catch(function() {
+        // Per-audio fallback for older SDKs without createSignedUrls.
+        audios.forEach(function(audio) {
+          var path = audio.getAttribute('data-audio-path');
+          sb.storage.from('speaking-recordings').createSignedUrl(path, 3600).then(function(r2) {
+            if (r2 && r2.data && r2.data.signedUrl) audio.src = r2.data.signedUrl;
+          }).catch(function(){});
+        });
+      });
+    }
   } catch(e) {
     content.innerHTML = '<div style="text-align:center;color:#f87171;padding:24px">오류: ' + e.message + '</div>';
   }
