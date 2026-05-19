@@ -4653,11 +4653,19 @@ async function _fetchHeadlinesFromBackend(sourceIds) {
     headers['apikey'] = SUPA_KEY_ADMIN;
     headers['authorization'] = 'Bearer ' + SUPA_KEY_ADMIN;
   }
+  // 28 s — per-source RSS fetches now cap at 8 s each (Promise.all in
+  // parallel) and the two image-fill passes each have their own 3-4 s
+  // per-target timeouts at 4-8 concurrency. The function is also
+  // bounded by the Cloudflare 30 s execution ceiling, so 28 s here
+  // leaves a 2 s buffer for transport before the ceiling kicks in
+  // — and dropping that timeout from 18 s removed the false-positive
+  // "소스 수집 서버 호출에 실패했습니다" errors users were hitting on
+  // larger source selections.
   const res = await fetch(endpoint, {
     method:'POST',
     headers,
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(18000),
+    signal: AbortSignal.timeout(28000),
   });
   const json = await res.json().catch(function(){ return {}; });
   if (!res.ok || !json?.ok) {
