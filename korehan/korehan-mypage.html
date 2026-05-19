@@ -720,6 +720,108 @@ body.room-lights-off .room-time-overlay{background:linear-gradient(180deg,rgba(8
    non-interactive cosmetic strip across the bottom 32% of the room. */
 .room-floor-layer{position:absolute;left:0;right:0;bottom:0;height:32%;pointer-events:none;z-index:2;background-size:cover;background-position:center bottom;transition:opacity .35s ease,background .4s ease}
 
+/* ── Room FX layer — ambient overlay effects ───────────────────────
+   Driven by owned shop items of item_type='room_fx' (cash_fx_sakura,
+   cash_fx_snow, cash_fx_fireflies, cash_fx_rain, cash_fx_moonlight,
+   cash_fx_fireworks). renderRoomFx() in JS populates child particles
+   based on which effects the user owns. CSS animations only — JS
+   only places the particles, doesn't tick them. */
+.room-fx-layer{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+.room-fx-particle{position:absolute;will-change:transform,opacity}
+
+/* Sakura petals — pink, drift diagonally, gentle rotation */
+.room-fx-sakura .room-fx-particle{
+  width:12px;height:12px;border-radius:50% 0 50% 50%;
+  background:radial-gradient(circle at 35% 35%,#ffd6e7,#ff8fbd 70%,#e63d83);
+  opacity:.85;
+  animation:roomFxSakuraFall var(--d,9s) linear infinite;
+}
+@keyframes roomFxSakuraFall {
+  0%{transform:translate3d(0,-12%,0) rotate(0)}
+  100%{transform:translate3d(40px,110%,0) rotate(520deg)}
+}
+
+/* Snow — white, drift straight down with tiny side sway, varied sizes */
+.room-fx-snow .room-fx-particle{
+  background:#fff;border-radius:50%;opacity:.85;box-shadow:0 0 4px rgba(255,255,255,.8);
+  animation:roomFxSnowFall var(--d,7s) linear infinite;
+}
+@keyframes roomFxSnowFall {
+  0%{transform:translate3d(0,-10%,0)}
+  50%{transform:translate3d(6px,55%,0)}
+  100%{transform:translate3d(-4px,110%,0)}
+}
+
+/* Fireflies — small yellow glow, float up + side-to-side, pulse opacity */
+.room-fx-fireflies .room-fx-particle{
+  width:6px;height:6px;border-radius:50%;
+  background:#fff6b3;box-shadow:0 0 10px 2px rgba(255,232,120,.85),0 0 22px 4px rgba(255,200,80,.45);
+  animation:roomFxFireflyFloat var(--d,9s) ease-in-out infinite, roomFxFireflyBlink calc(var(--d,9s) / 3) ease-in-out infinite;
+}
+@keyframes roomFxFireflyFloat {
+  0%{transform:translate3d(0,90%,0)}
+  25%{transform:translate3d(20px,55%,0)}
+  50%{transform:translate3d(-15px,30%,0)}
+  75%{transform:translate3d(18px,15%,0)}
+  100%{transform:translate3d(0,90%,0)}
+}
+@keyframes roomFxFireflyBlink {
+  0%,100%{opacity:.25} 50%{opacity:1}
+}
+
+/* Window-rain — re-use existing room-window-rain CSS pattern but
+   scoped to the FX layer so it stretches the full room (not just
+   inside a window asset). */
+.room-fx-rain{
+  background-image:repeating-linear-gradient(105deg,rgba(125,211,252,0) 0 9px,rgba(125,211,252,.18) 9px 11px);
+  background-size:40px 80px;
+  animation:roomFxRain .65s linear infinite;
+  opacity:.7;
+}
+@keyframes roomFxRain { to { background-position:-40px 80px } }
+
+/* Moonlight — soft blue wash + drifting tiny stars */
+.room-fx-moonlight{
+  background:radial-gradient(ellipse at 70% 25%,rgba(189,224,255,.28),transparent 55%),
+             linear-gradient(180deg,rgba(60,100,180,.12),rgba(20,30,80,.05));
+  mix-blend-mode:screen;
+}
+.room-fx-moonlight .room-fx-particle{
+  width:2px;height:2px;border-radius:50%;background:#fff;
+  box-shadow:0 0 4px rgba(255,255,255,.9);
+  animation:roomFxStarDrift var(--d,12s) linear infinite;
+}
+@keyframes roomFxStarDrift {
+  0%{transform:translate3d(-20px,0,0);opacity:0}
+  10%,90%{opacity:.9}
+  100%{transform:translate3d(120%,0,0);opacity:0}
+}
+
+/* Fireworks — single burst element, JS triggers a class-toggle on a
+   timer to replay the animation. Keep modest so it's celebratory not
+   distracting. */
+.room-fx-fireworks{}
+.room-fx-firework-burst{
+  position:absolute;width:6px;height:6px;border-radius:50%;
+  background:radial-gradient(circle,#fff 0,#ffd56b 35%,transparent 70%);
+  box-shadow:0 0 0 0 rgba(255,213,107,.9);
+  opacity:0;
+}
+.room-fx-firework-burst.go{animation:roomFxFireworkBurst 1.4s ease-out forwards}
+@keyframes roomFxFireworkBurst {
+  0%{opacity:0;transform:scale(.2);box-shadow:0 0 0 0 rgba(255,213,107,.9)}
+  20%{opacity:1}
+  100%{opacity:0;transform:scale(1);box-shadow:0 0 0 70px rgba(255,213,107,0)}
+}
+
+/* Reduce motion: hide ambient effects entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .room-fx-layer .room-fx-particle,
+  .room-fx-rain,
+  .room-fx-firework-burst { animation: none !important; }
+  .room-fx-moonlight { mix-blend-mode: normal; }
+}
+
 /* ── Progress section: Up Next badges + activity heatmap ── */
 .mp-up-next-title{font-size:11px;font-weight:800;color:#64748b;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
 .mp-up-next-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9}
@@ -1014,6 +1116,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
     <div id="miniroom-container" style="position:relative;width:100%;max-width:600px;aspect-ratio:10/9;margin:0 auto;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat;border-radius:16px;border:1px solid rgba(0,0,0,.12);overflow:hidden;touch-action:auto">
       <div id="miniroom-items"></div>
       <div id="room-floor-layer" class="room-floor-layer" aria-hidden="true"></div>
+      <div id="room-fx-layer" class="room-fx-layer" aria-hidden="true"></div>
       <div id="room-time-overlay" class="room-time-overlay" aria-hidden="true"></div>
       <div id="room-light-switch" class="room-light-switch" onclick="toggleRoomLights()"
            style="background-image:url(assets/file_000000000f1c720bbe419c8601e6fb5e-removebg-preview.png)"
@@ -3310,10 +3413,105 @@ async function loadRoomLayout() {
 
     renderRoomItems();
     updateRoomSizeUI();
+    // Ambient room_fx items (sakura petals, snow, fireflies, etc.) live
+    // separately from placed items — they apply to the whole room, not
+    // a coordinate. Failure here is non-fatal; the room renders without
+    // effects if the owned_items query fails.
+    try { await renderRoomFx(); } catch (e) { console.warn('renderRoomFx failed', e && e.message); }
   } finally {
     _showRoomLoading(false);
   }
 }
+
+// ── Room FX renderer ────────────────────────────────────────────────
+// Reads the current user's owned shop items with item_type='room_fx'
+// and populates #room-fx-layer with particles for each active effect.
+// One DOM rebuild per call; CSS animations carry the visuals from
+// there. Safe to call multiple times — wipes the layer first.
+window.renderRoomFx = async function renderRoomFx() {
+  var layer = document.getElementById('room-fx-layer');
+  if (!layer) return;
+  layer.innerHTML = '';
+  layer.className = 'room-fx-layer';
+  if (window._roomFxFireworkTimer) { try { clearInterval(window._roomFxFireworkTimer); } catch(_){} window._roomFxFireworkTimer = null; }
+
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb || !window.supaUser) return;
+
+  var ownedFx = [];
+  try {
+    var r = await sb.from('owned_items')
+      .select('item_id, quantity')
+      .eq('user_id', window.supaUser.id);
+    if (r && r.data) {
+      ownedFx = r.data
+        .filter(function(o){ return o && o.item_id && /^cash_fx_/.test(o.item_id) && (o.quantity == null || o.quantity > 0); })
+        .map(function(o){ return o.item_id; });
+    }
+  } catch (_) { return; }
+
+  // The cash_fx_bundle ("Weather Pack") grants all 5 individual effects;
+  // expand it so the renderer doesn't need to know about bundles.
+  if (ownedFx.indexOf('cash_fx_bundle') >= 0) {
+    ['cash_fx_sakura','cash_fx_snow','cash_fx_fireflies','cash_fx_rain','cash_fx_moonlight'].forEach(function(id){
+      if (ownedFx.indexOf(id) < 0) ownedFx.push(id);
+    });
+  }
+  if (!ownedFx.length) return;
+
+  function _spawnParticles(cls, n, dRange) {
+    layer.classList.add(cls);
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < n; i++) {
+      var p = document.createElement('div');
+      p.className = 'room-fx-particle';
+      var d = dRange[0] + Math.random() * (dRange[1] - dRange[0]);
+      var sz = 6 + Math.floor(Math.random() * 6);
+      p.style.left = Math.floor(Math.random() * 100) + '%';
+      p.style.top = Math.floor(Math.random() * 100) + '%';
+      p.style.width = sz + 'px';
+      p.style.height = sz + 'px';
+      p.style.setProperty('--d', d.toFixed(2) + 's');
+      p.style.animationDelay = (-Math.random() * d).toFixed(2) + 's';
+      frag.appendChild(p);
+    }
+    layer.appendChild(frag);
+  }
+
+  if (ownedFx.indexOf('cash_fx_sakura') >= 0)    _spawnParticles('room-fx-sakura', 14, [7, 12]);
+  if (ownedFx.indexOf('cash_fx_snow') >= 0)      _spawnParticles('room-fx-snow', 24, [5, 11]);
+  if (ownedFx.indexOf('cash_fx_fireflies') >= 0) _spawnParticles('room-fx-fireflies', 10, [7, 13]);
+  if (ownedFx.indexOf('cash_fx_moonlight') >= 0) {
+    layer.classList.add('room-fx-moonlight');
+    _spawnParticles('room-fx-moonlight', 8, [10, 16]); // drifting stars
+  }
+  if (ownedFx.indexOf('cash_fx_rain') >= 0) {
+    var rain = document.createElement('div');
+    rain.className = 'room-fx-rain';
+    rain.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+    layer.appendChild(rain);
+  }
+  if (ownedFx.indexOf('cash_fx_fireworks') >= 0) {
+    layer.classList.add('room-fx-fireworks');
+    function _firework() {
+      var b = document.createElement('div');
+      b.className = 'room-fx-firework-burst';
+      // Burst in the upper window region (top 45% of the room).
+      b.style.left = (15 + Math.random() * 70) + '%';
+      b.style.top = (5 + Math.random() * 35) + '%';
+      // Random warm-palette tint.
+      var hues = ['255,213,107', '255,150,180', '180,200,255', '180,255,210'];
+      var h = hues[Math.floor(Math.random() * hues.length)];
+      b.style.background = 'radial-gradient(circle,#fff 0,rgba(' + h + ',1) 35%,transparent 70%)';
+      b.style.boxShadow = '0 0 0 0 rgba(' + h + ',.9)';
+      layer.appendChild(b);
+      requestAnimationFrame(function(){ b.classList.add('go'); });
+      setTimeout(function(){ try { b.remove(); } catch(_){} }, 1600);
+    }
+    window._roomFxFireworkTimer = setInterval(_firework, 4500 + Math.random() * 2500);
+    setTimeout(_firework, 600); // first burst quickly so user sees it
+  }
+};
 
 function _showRoomLoading(on) {
   var host = document.getElementById('miniroom-container');
