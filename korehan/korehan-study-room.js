@@ -7931,11 +7931,11 @@ async function submitSpeaking() {
       speaking_scores: _speakScores || null,
       context_data: JSON.stringify({ audio_path: fileName })
     });
-    // No AI-feedback pipeline is wired for content_type='speaking' yet
-    // (writing path runs via submitAllWritingsToday → _triggerPackageFeedback,
-    // which does not pick up speaking rows). Toast no longer promises
-    // feedback — was misleading. Audit 2026-05-18, item #4.
-    showToast('Recording submitted!');
+    // AI feedback for speaking is not auto-generated yet; admin reviews
+    // recordings manually. The user now sees the recording + auto scores
+    // + admin feedback (when it lands) in the Feedback inbox on study
+    // room load.
+    showToast('Recording submitted — view it in My Feedback');
     var row = document.getElementById('wm-speak-submit-row');
     if (row) row.style.display = 'none';
     document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted!</span></span>';
@@ -8990,7 +8990,7 @@ function openFeedbackInbox() {
   overlay.innerHTML =
     '<div style="background:#0d1b2e;border:1px solid rgba(255,255,255,.1);border-radius:16px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.4);color:#fff">'
     + '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#0d1b2e;z-index:1;border-radius:16px 16px 0 0">'
-    + '<div style="font-size:16px;font-weight:800;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_PENCIL+'</span><span>Writing Feedback</span></div>'
+    + '<div style="font-size:16px;font-weight:800;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_PENCIL+'</span><span>My Feedback</span></div>'
     + '<button onclick="document.getElementById(\'feedback-inbox-overlay\').remove()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span></button>'
     + '</div>'
     + '<div id="feedback-inbox-content" style="padding:16px 20px;">'
@@ -9214,7 +9214,8 @@ async function renderFeedbackInboxContent() {
       reading: { icon: '📖', label: 'Reading Response', color: '#34d399' },
       article: { icon: '📰', label: 'Article Writing', color: '#fbbf24' },
       conversation: { icon: '💬', label: 'Conversation', color: '#38bdf8' },
-      story: { icon: '📚', label: 'Story Writing', color: '#c084fc' }
+      story: { icon: '📚', label: 'Story Writing', color: '#c084fc' },
+      speaking: { icon: '🎙️', label: 'Speaking', color: '#fb923c' }
     };
 
     var STATUS_LABELS = {
@@ -9275,9 +9276,33 @@ async function renderFeedbackInboxContent() {
           // Detail body (collapsed by default)
           + '<div style="display:none;padding:14px;border-top:1px solid rgba(255,255,255,.06)">';
 
-        // Show writing text
+        // Speaking submissions: render audio playback + scores at the top.
+        // Audio path is stored in context_data.audio_path (private bucket).
+        // The <audio> placeholder is hydrated with a signed URL in a
+        // post-render pass below so the await stays out of the html string.
+        if (item.content_type === 'speaking') {
+          var ctxRaw = item.context_data;
+          var ctx = {};
+          try { ctx = typeof ctxRaw === 'string' ? JSON.parse(ctxRaw) : (ctxRaw || {}); } catch(_) {}
+          if (ctx.audio_path) {
+            html += '<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Your Recording</div>'
+              + '<audio controls preload="none" class="kh-fb-audio" data-audio-path="' + ctx.audio_path + '" style="width:100%;height:38px"></audio></div>';
+          }
+          if (item.speaking_scores && typeof item.speaking_scores === 'object') {
+            var sc = item.speaking_scores;
+            html += '<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Auto Scores</div>'
+              + '<div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px">'
+              + ['fluency','accuracy','pronunciation','overall'].filter(function(k){return sc[k]!=null;}).map(function(k){
+                return '<div style="padding:6px 10px;background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.25);border-radius:8px"><span style="color:rgba(255,255,255,.6);text-transform:capitalize">' + k + '</span> <b style="color:#fb923c">' + Math.round(Number(sc[k])) + '</b></div>';
+              }).join('')
+              + '</div></div>';
+          }
+        }
+
+        // Show writing text (for speaking, this is the script the user spoke from)
         if (item.writing_text) {
-          html += '<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Your Writing</div>'
+          var writingLabel = (item.content_type === 'speaking') ? 'Your Script' : 'Your Writing';
+          html += '<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' + writingLabel + '</div>'
             + '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + item.writing_text + '</div></div>';
         }
 
@@ -9305,6 +9330,20 @@ async function renderFeedbackInboxContent() {
     });
 
     content.innerHTML = html;
+    // Hydrate any speaking audio elements with short-lived signed URLs
+    // from the private speaking-recordings bucket. Failure is silent —
+    // the player just doesn't load and the user sees the writing /
+    // feedback below as usual.
+    var audios = content.querySelectorAll('.kh-fb-audio[data-audio-path]');
+    audios.forEach(function(audio) {
+      var path = audio.getAttribute('data-audio-path');
+      if (!path) return;
+      sb.storage.from('speaking-recordings').createSignedUrl(path, 3600).then(function(r) {
+        if (r && r.data && r.data.signedUrl) {
+          audio.src = r.data.signedUrl;
+        }
+      }).catch(function(){});
+    });
   } catch(e) {
     content.innerHTML = '<div style="text-align:center;color:#f87171;padding:24px">오류: ' + e.message + '</div>';
   }
