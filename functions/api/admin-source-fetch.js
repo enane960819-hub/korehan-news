@@ -142,7 +142,7 @@ async function fetchRss(source) {
       source: source.label,
       url,
       published_at,
-      summary: summary.slice(0, 280),
+      summary: summary.slice(0, 2400),
       category: source.category,
       image: extractRssImage(block) || null,
     }
@@ -260,6 +260,67 @@ async function fetchOgImage(url, timeoutMs = 3000) {
   }
 }
 
+// Body-text enrichment for items whose RSS / Reddit summary was too
+// thin to feed the article-gen prompt. Pulls og:description + the
+// first ~5 <p> blocks of the page body, stripping nav / script / style
+// noise. Capped at 3 KB so we don't blow the Cloudflare request size.
+// Owner reported "내용이 알맹이가 하나도 없어" — the Claude prompt
+// was getting only a 280-char headline summary, so it had nothing to
+// say beyond meta-narration. This pulls the actual article facts.
+async function fetchArticleBody(url, timeoutMs = 5000) {
+  if (!url || !/^https?:\/\//i.test(url)) return ''
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; KoreHanNewsBot/1.0)',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+    })
+    if (!res.ok) return ''
+    const ct = res.headers.get('content-type') || ''
+    if (!/html/i.test(ct)) return ''
+    // Read only the first ~200 KB — long-form pages occasionally have
+    // 1 MB of comments / nav after the body and we don't need that.
+    const html = (await res.text()).slice(0, 200000)
+    // Try og:description first — it's the publisher's curated lead.
+    let parts = []
+    const headSlice = (html.match(/<head[^>]*>([\s\S]{0,80000})<\/head>/i) || [null, html.slice(0, 80000)])[1] || ''
+    const ogDescPatterns = [
+      /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i,
+    ]
+    for (const re of ogDescPatterns) {
+      const m = headSlice.match(re)
+      if (m && m[1]) {
+        const desc = decodeEntities(m[1].trim())
+        if (desc.length > 30) { parts.push(desc); break }
+      }
+    }
+    // Prefer the main / article container if present — narrows the
+    // <p> search to actual body copy and skips header/footer/nav junk.
+    const articleMatch = html.match(/<(article|main)[^>]*>([\s\S]{0,150000})<\/(article|main)>/i)
+    const body = articleMatch ? articleMatch[2] : html
+    const pMatches = body.match(/<p[^>]*>([\s\S]{0,2000}?)<\/p>/gi) || []
+    for (const p of pMatches) {
+      const txt = stripHtml(p).trim()
+      if (txt.length < 40) continue          // skip captions / one-liners
+      if (/^(advertisement|sponsored|sign up|subscribe)/i.test(txt)) continue
+      parts.push(txt)
+      if (parts.join(' ').length >= 2400) break
+    }
+    return parts.join(' ').slice(0, 3000).trim()
+  } catch {
+    return ''
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function fetchHn(source) {
   const res = await fetch('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=20', {
     signal: AbortSignal.timeout(8000),
@@ -271,7 +332,7 @@ async function fetchHn(source) {
     source: source.label,
     url: h.url || `https://news.ycombinator.com/item?id=${h.objectID}`,
     published_at: toIso(h.created_at),
-    summary: stripHtml(h.story_text || h.comment_text || '').slice(0, 280),
+    summary: stripHtml(h.story_text || h.comment_text || '').slice(0, 2400),
     category: source.category,
     image: null,
   }))
@@ -299,7 +360,7 @@ async function fetchReddit(source) {
       source: source.label,
       url: sourceUrl,
       published_at: d.created_utc ? new Date(d.created_utc * 1000).toISOString() : '',
-      summary: stripHtml(d.selftext || '').slice(0, 280),
+      summary: stripHtml(d.selftext || '').slice(0, 3000),
       category: source.category,
       image: extractRedditImage(d),
       video_url: video.url,
@@ -576,6 +637,29 @@ export async function onRequest({ request }) {
         await Promise.all(slice.map(async (it) => {
           const img = await fetchTopicImage(it.title)
           if (img) it.image = img
+        }))
+      }
+    }
+
+    // Fourth-pass: body enrichment for items whose RSS / Reddit
+    // summary came back too thin (< 280 chars) to feed the article
+    // generator's anti-hallucination prompt. Without this, Claude
+    // gets only a headline + 1-sentence blurb and the only honest
+    // article it can write is "X happened, people reacted" meta-
+    // narration (owner: "내용이 알맹이가 하나도 없어"). Cap at 16
+    // items × 5 s timeout × 4 concurrent ≈ 20 s worst case, sits
+    // comfortably under the 30 s Cloudflare ceiling alongside the
+    // image passes above.
+    const needBody = items.filter((it) => it.url && (it.summary || '').length < 280).slice(0, 16)
+    if (needBody.length) {
+      const concurrency = 4
+      for (let i = 0; i < needBody.length; i += concurrency) {
+        const slice = needBody.slice(i, i + concurrency)
+        await Promise.all(slice.map(async (it) => {
+          const body = await fetchArticleBody(it.url)
+          if (body && body.length > (it.summary || '').length) {
+            it.summary = body
+          }
         }))
       }
     }
