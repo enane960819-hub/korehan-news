@@ -63,6 +63,17 @@ body { font-family: 'Happy Monkey', 'Jua', 'Inter', 'Noto Sans KR', sans-serif; 
 .kh-frame-rainbow.is-on       { background: conic-gradient(from 0deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #6366f1, #d946ef, #ef4444); animation-duration:6s; }
 .kh-frame-galaxy.is-on        { background: conic-gradient(from 0deg, #1e1b4b, #7c3aed, #d946ef, #1e1b4b); animation-duration:10s; }
 .kh-frame-holo.is-on          { background: conic-gradient(from 0deg, #c4b5fd, #f5d0fe, #bae6fd, #d9f99d, #fde68a, #c4b5fd); animation-duration:4s; filter:saturate(1.4); }
+
+/* Equipped title pill — small chip below the username on the hero, also
+   reused as a preview tile inside the Cosmetics modal. Tone classes set
+   the palette per cosmetic family. */
+.mp-title-pill{display:inline-flex;align-items:center;padding:3px 11px;border-radius:999px;font-family:'Noto Sans KR',sans-serif;font-size:11px;font-weight:800;letter-spacing:.01em;line-height:1.4;margin-top:6px;border:1px solid transparent;white-space:nowrap}
+.kh-title-mint     { background:rgba(52,211,153,.18);  color:#a7f3d0; border-color:rgba(52,211,153,.32); }
+.kh-title-forest   { background:rgba(34,197,94,.18);   color:#bbf7d0; border-color:rgba(34,197,94,.32); }
+.kh-title-navy     { background:rgba(96,165,250,.16);  color:#bfdbfe; border-color:rgba(96,165,250,.32); }
+.kh-title-warm     { background:rgba(251,146,60,.18);  color:#fed7aa; border-color:rgba(251,146,60,.34); }
+.kh-title-regal    { background:rgba(167,139,250,.20); color:#ddd6fe; border-color:rgba(167,139,250,.38); }
+.kh-title-legendary{ background:linear-gradient(135deg,#fde68a,#f59e0b 70%); color:#1c1917; border-color:#f59e0b; font-weight:900; box-shadow:0 0 0 1px rgba(251,191,36,.5); }
 .mp-avatar-img  { width:76px; height:76px; border-radius:50%; border:2px solid rgba(255,255,255,.3); object-fit:cover; display:block; }
 .mp-initials { width:76px; height:76px; border-radius:50%; background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,.07)); border:2px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800; color:#fff; font-family:'Inter',sans-serif; letter-spacing:-.02em; }
 .mp-avatar-edit { position:absolute; inset:0; border-radius:50%; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; }
@@ -1137,6 +1148,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
     <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="handleAvatarUpload(this)">
     <div style="flex:1;min-width:0">
       <div class="mypage-name" id="mp-name" title="Click to edit">Loading…</div>
+      <span class="mp-title-pill" id="mp-title-pill" style="display:none"></span>
       <div class="mypage-email" id="mp-email"></div>
       <div class="mp-member-since" id="mp-member-since"></div>
       <div class="hero-actions">
@@ -2180,6 +2192,30 @@ var KH_FRAME_CLASS_MAP = {
   'cash_frame_ink':           'kh-frame-inkwash'
 };
 
+// Title slot — item_id → { label, tone }. Tone drives the pill color
+// scheme (warm/cool/regal/legendary). Missing entries render no title.
+var KH_TITLE_DEFS = {
+  // Coin shop titles (TOPIK growth ladder)
+  'title_seed':         { label:'새싹',           tone:'mint' },
+  'title_sprout':       { label:'떡잎',           tone:'mint' },
+  'title_tree':         { label:'나무',           tone:'forest' },
+  'title_forest':       { label:'숲',             tone:'forest' },
+  'title_scholar':      { label:'학자',           tone:'navy' },
+  'title_word_master':  { label:'단어 마스터',     tone:'navy' },
+  'title_news_addict':  { label:'뉴스 중독자',     tone:'warm' },
+  'title_night_owl':    { label:'야행성',         tone:'navy' },
+  'title_early_bird':   { label:'아침형 인간',     tone:'warm' },
+  'title_polyglot':     { label:'Polyglot',      tone:'regal' },
+  'title_kimchi_lover': { label:'김치 러버',       tone:'warm' },
+  'title_seoulite':     { label:'서울러',         tone:'navy' },
+  // Gacha pool titles
+  'gacha_title_newbie':       { label:'새내기',           tone:'mint' },
+  'gacha_title_explorer':     { label:'탐험가',           tone:'forest' },
+  'gacha_title_polyglot_g':   { label:'다국어 마스터',     tone:'regal' },
+  'gacha_title_seoulite_g':   { label:'서울 토박이',       tone:'navy' },
+  'gacha_title_dokkaebi_g':   { label:'전설의 도깨비',     tone:'legendary' }
+};
+
 window._equippedCosmetics = {};
 
 function applyEquippedFrame(itemId) {
@@ -2196,6 +2232,16 @@ function applyEquippedFrame(itemId) {
   el.classList.add('is-on');
 }
 
+function applyEquippedTitle(itemId) {
+  var host = document.getElementById('mp-title-pill');
+  if (!host) return;
+  if (!itemId || !KH_TITLE_DEFS[itemId]) { host.style.display = 'none'; host.textContent = ''; return; }
+  var def = KH_TITLE_DEFS[itemId];
+  host.className = 'mp-title-pill kh-title-' + def.tone;
+  host.textContent = def.label;
+  host.style.display = '';
+}
+
 async function loadEquippedCosmetics() {
   if (!window.supaUser) return;
   var sb = getSupa(); if (!sb) return;
@@ -2204,16 +2250,17 @@ async function loadEquippedCosmetics() {
     var eq = (r && r.data && r.data.equipped_cosmetics) || {};
     window._equippedCosmetics = eq;
     applyEquippedFrame(eq.frame || null);
+    applyEquippedTitle(eq.title || null);
   } catch (e) {
     console.warn('loadEquippedCosmetics failed', e && e.message);
   }
 }
 
 // ── Cosmetics modal ─────────────────────────────────────────────────
-// Lists every frame the user owns (across shop owned_items and
-// gacha_owned_items) and lets them equip one. Uses the same frame
-// classes defined above for previews, so the modal matches what the
-// avatar will look like.
+// Lists every frame + title the user owns (across shop owned_items and
+// gacha_owned_items) and lets them equip one per slot. Uses the same
+// frame classes / title pill classes defined above for previews, so the
+// modal matches what the avatar will look like.
 window.openCosmeticsModal = async function openCosmeticsModal() {
   if (!window.supaUser) { if (typeof openAuthModal === 'function') openAuthModal('signup'); return; }
   var sb = getSupa(); if (!sb) return;
@@ -2222,78 +2269,106 @@ window.openCosmeticsModal = async function openCosmeticsModal() {
   overlay.className = 'kh-cosmetics-modal';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(8,12,28,.72);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px';
   overlay.innerHTML = '<div style="background:#fff;border-radius:18px;padding:24px;max-width:520px;width:100%;max-height:88vh;overflow:auto;font-family:inherit">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div style="font-size:17px;font-weight:900;color:#0b1626">✨ Equip a Frame</div><button onclick="this.closest(\'.kh-cosmetics-modal\').remove()" style="background:none;border:0;font-size:22px;color:#64748b;cursor:pointer;line-height:1">×</button></div>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div style="font-size:17px;font-weight:900;color:#0b1626">✨ Cosmetics</div><button onclick="this.closest(\'.kh-cosmetics-modal\').remove()" style="background:none;border:0;font-size:22px;color:#64748b;cursor:pointer;line-height:1">×</button></div>'
+    + '<div class="kh-cos-tabs" style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid #e2e8f0">'
+    +   '<button data-cos-tab="frame" class="kh-cos-tab is-on" style="padding:8px 14px;background:none;border:0;border-bottom:2px solid #0d1b35;color:#0d1b35;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Frames</button>'
+    +   '<button data-cos-tab="title" class="kh-cos-tab" style="padding:8px 14px;background:none;border:0;border-bottom:2px solid transparent;color:#64748b;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Titles</button>'
+    + '</div>'
     + '<div id="kh-cosmetics-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;min-height:120px"><div style="grid-column:1/-1;text-align:center;color:#94a3b8;font-size:13px;padding:24px">Loading…</div></div>'
     + '</div>';
   overlay.addEventListener('click', function(e){ if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
 
-  // Pull owned items from both buckets.
-  var ownedFrames = [];
+  // Pull owned items once; filter per-tab on render.
+  var owned = [];
   try {
     var shopRes = await sb.from('owned_items').select('item_id, quantity').eq('user_id', supaUser.id);
     (shopRes.data || []).forEach(function(o){
-      if (o && o.item_id && KH_FRAME_CLASS_MAP[o.item_id] && (o.quantity == null || o.quantity > 0)) {
-        ownedFrames.push(o.item_id);
-      }
+      if (o && o.item_id && (o.quantity == null || o.quantity > 0)) owned.push(o.item_id);
     });
   } catch (_) {}
   try {
     var gRes = await sb.from('gacha_owned_items').select('item_id, quantity').eq('user_id', supaUser.id);
     (gRes.data || []).forEach(function(o){
-      if (o && o.item_id && KH_FRAME_CLASS_MAP[o.item_id] && (o.quantity == null || o.quantity > 0) && ownedFrames.indexOf(o.item_id) < 0) {
-        ownedFrames.push(o.item_id);
-      }
+      if (o && o.item_id && (o.quantity == null || o.quantity > 0) && owned.indexOf(o.item_id) < 0) owned.push(o.item_id);
     });
-  } catch (_) { /* gacha table may not exist yet */ }
+  } catch (_) {}
 
-  var current = (window._equippedCosmetics && window._equippedCosmetics.frame) || null;
-  var grid = document.getElementById('kh-cosmetics-grid');
-  if (!grid) return;
-  if (!ownedFrames.length) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#64748b;font-size:13px;padding:24px;line-height:1.5">No frames in your collection yet.<br><a href="korehan-shop.html" style="color:#2563eb;font-weight:700">Browse the shop →</a></div>';
-    return;
-  }
-  // "None" tile first so user can unequip.
-  var tiles = ['<button data-frame="" class="kh-cos-tile' + (current ? '' : ' is-current') + '" style="background:#fff;border:2px solid ' + (current ? '#e2e8f0' : '#0d1b35') + ';border-radius:14px;padding:14px 8px 10px;cursor:pointer;font-family:inherit"><div style="width:54px;height:54px;border-radius:50%;background:#f1f5f9;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#94a3b8">∅</div><div style="font-size:11px;font-weight:700;color:#64748b">None</div></button>'];
-  ownedFrames.forEach(function(id){
-    var cls = KH_FRAME_CLASS_MAP[id];
-    var isCur = (id === current);
-    var label = id.replace(/^(gacha_|cosmetic_|cash_)/, '').replace(/_frame.*$/, '').replace(/_/g, ' ');
-    tiles.push(
-      '<button data-frame="' + id + '" class="kh-cos-tile' + (isCur ? ' is-current' : '') + '" style="background:#fff;border:2px solid ' + (isCur ? '#0d1b35' : '#e2e8f0') + ';border-radius:14px;padding:14px 8px 10px;cursor:pointer;font-family:inherit">'
-      +   '<div style="position:relative;width:54px;height:54px;margin:0 auto 8px">'
-      +     '<div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#cbd5e1,#94a3b8)"></div>'
-      +     '<div class="mp-avatar-frame is-on ' + cls + '" style="position:absolute;inset:-7px;border-radius:50%;pointer-events:none;z-index:0"></div>'
-      +   '</div>'
-      +   '<div style="font-size:11px;font-weight:700;color:#0b1626;text-transform:capitalize">' + label + '</div>'
-      + '</button>'
-    );
-  });
-  grid.innerHTML = tiles.join('');
+  function _renderTab(slot) {
+    var grid = document.getElementById('kh-cosmetics-grid');
+    if (!grid) return;
+    var current = (window._equippedCosmetics && window._equippedCosmetics[slot]) || null;
+    var items, emptyMsg, renderTile;
+    if (slot === 'frame') {
+      items = owned.filter(function(id){ return KH_FRAME_CLASS_MAP[id]; });
+      emptyMsg = 'No frames in your collection yet.';
+      renderTile = function(id, isCur) {
+        var cls = KH_FRAME_CLASS_MAP[id];
+        var label = id.replace(/^(gacha_|cosmetic_|cash_)/, '').replace(/_frame.*$/, '').replace(/_/g, ' ');
+        return '<button data-id="' + id + '" class="kh-cos-tile' + (isCur ? ' is-current' : '') + '" style="background:#fff;border:2px solid ' + (isCur ? '#0d1b35' : '#e2e8f0') + ';border-radius:14px;padding:14px 8px 10px;cursor:pointer;font-family:inherit">'
+          +   '<div style="position:relative;width:54px;height:54px;margin:0 auto 8px">'
+          +     '<div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#cbd5e1,#94a3b8)"></div>'
+          +     '<div class="mp-avatar-frame is-on ' + cls + '" style="position:absolute;inset:-7px;border-radius:50%;pointer-events:none;z-index:0"></div>'
+          +   '</div>'
+          +   '<div style="font-size:11px;font-weight:700;color:#0b1626;text-transform:capitalize">' + label + '</div>'
+          + '</button>';
+      };
+    } else {
+      items = owned.filter(function(id){ return KH_TITLE_DEFS[id]; });
+      emptyMsg = 'No titles in your collection yet.';
+      renderTile = function(id, isCur) {
+        var def = KH_TITLE_DEFS[id];
+        return '<button data-id="' + id + '" class="kh-cos-tile' + (isCur ? ' is-current' : '') + '" style="background:#fff;border:2px solid ' + (isCur ? '#0d1b35' : '#e2e8f0') + ';border-radius:14px;padding:18px 8px 12px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:88px">'
+          +   '<span class="mp-title-pill kh-title-' + def.tone + '" style="position:static">' + def.label + '</span>'
+          +   '<div style="font-size:10px;font-weight:700;color:#64748b">' + (id.indexOf('gacha_') === 0 ? 'Gacha' : 'Shop') + '</div>'
+          + '</button>';
+      };
+    }
+    if (!items.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#64748b;font-size:13px;padding:24px;line-height:1.5">' + emptyMsg + '<br><a href="korehan-shop.html" style="color:#2563eb;font-weight:700">Browse the shop →</a></div>';
+      return;
+    }
+    var tiles = ['<button data-id="" class="kh-cos-tile' + (current ? '' : ' is-current') + '" style="background:#fff;border:2px solid ' + (current ? '#e2e8f0' : '#0d1b35') + ';border-radius:14px;padding:14px 8px 10px;cursor:pointer;font-family:inherit;min-height:88px"><div style="width:54px;height:54px;border-radius:50%;background:#f1f5f9;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#94a3b8">∅</div><div style="font-size:11px;font-weight:700;color:#64748b">None</div></button>'];
+    items.forEach(function(id){ tiles.push(renderTile(id, id === current)); });
+    grid.innerHTML = tiles.join('');
 
-  grid.querySelectorAll('.kh-cos-tile').forEach(function(btn){
-    btn.addEventListener('click', async function() {
-      var id = btn.getAttribute('data-frame') || '';
-      btn.disabled = true;
-      try {
-        var r = await sb.rpc('set_equipped_cosmetic', { p_slot: 'frame', p_item_id: id || null });
-        if (r.error || !r.data || !r.data.ok) {
-          var err = (r.data && r.data.error) || (r.error && r.error.message) || 'FAILED';
-          if (typeof toast === 'function') toast('Equip failed: ' + err, 'error');
-          return;
+    grid.querySelectorAll('.kh-cos-tile').forEach(function(btn){
+      btn.addEventListener('click', async function() {
+        var id = btn.getAttribute('data-id') || '';
+        btn.disabled = true;
+        try {
+          var r = await sb.rpc('set_equipped_cosmetic', { p_slot: slot, p_item_id: id || null });
+          if (r.error || !r.data || !r.data.ok) {
+            var err = (r.data && r.data.error) || (r.error && r.error.message) || 'FAILED';
+            if (typeof toast === 'function') toast('Equip failed: ' + err, 'error');
+            return;
+          }
+          window._equippedCosmetics = r.data.equipped || {};
+          if (slot === 'frame') applyEquippedFrame(window._equippedCosmetics.frame || null);
+          else                  applyEquippedTitle(window._equippedCosmetics.title || null);
+          if (typeof toast === 'function') toast(id ? (slot === 'frame' ? 'Frame' : 'Title') + ' equipped.' : (slot === 'frame' ? 'Frame' : 'Title') + ' removed.', 'success');
+          overlay.remove();
+        } catch (e) {
+          if (typeof toast === 'function') toast('Equip failed: ' + (e.message || e), 'error');
+        } finally {
+          btn.disabled = false;
         }
-        window._equippedCosmetics = r.data.equipped || {};
-        applyEquippedFrame(window._equippedCosmetics.frame || null);
-        if (typeof toast === 'function') toast(id ? 'Frame equipped.' : 'Frame removed.', 'success');
-        overlay.remove();
-      } catch (e) {
-        if (typeof toast === 'function') toast('Equip failed: ' + (e.message || e), 'error');
-      } finally {
-        btn.disabled = false;
-      }
+      });
+    });
+  }
+
+  overlay.querySelectorAll('.kh-cos-tab').forEach(function(tabBtn) {
+    tabBtn.addEventListener('click', function() {
+      overlay.querySelectorAll('.kh-cos-tab').forEach(function(t){
+        var on = (t === tabBtn);
+        t.classList.toggle('is-on', on);
+        t.style.borderBottomColor = on ? '#0d1b35' : 'transparent';
+        t.style.color = on ? '#0d1b35' : '#64748b';
+      });
+      _renderTab(tabBtn.getAttribute('data-cos-tab'));
     });
   });
+  _renderTab('frame');
 };
 
 // ── Init ───────────────────────────────────────────────────────
