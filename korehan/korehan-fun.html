@@ -49,6 +49,9 @@
     .cv-sentorder{background:linear-gradient(135deg,#fbbf24,#f97316)}
     .cv-sentorder .sw{position:absolute;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.85);font-size:13px;font-weight:800;font-family:'Noto Sans KR',sans-serif;animation:soDrift 4s ease-in-out infinite}
     @keyframes soDrift{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-6px) rotate(2deg)}}
+    .cv-dictation{background:linear-gradient(135deg,#34d399,#06b6d4)}
+    .cv-dictation .dw{position:absolute;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.24);color:rgba(255,255,255,.9);font-size:14px;font-weight:900;animation:dwPulse 2.6s ease-in-out infinite}
+    @keyframes dwPulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.18);opacity:1}}
     .cv-tetris{background:linear-gradient(135deg,#d946ef,#f97316)}
     .cv-tetris .tb{position:absolute;width:32px;height:32px;border-radius:6px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);animation:tFall linear infinite;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:rgba(255,255,255,.2);font-family:'Noto Sans KR',sans-serif}
     @keyframes tFall{0%{transform:translateY(-40px)}100%{transform:translateY(300px)}}
@@ -132,6 +135,8 @@
      anim:function(){var j=['ㅎ','ㅏ','ㄴ','ㄱ','ㅜ','ㄹ','ㅁ','ㅣ'];var h='';for(var i=0;i<8;i++)h+='<div class="tb" style="left:'+((i*14+3)%85)+'%;animation-duration:'+(2+i*.3)+'s;animation-delay:-'+(i*.5)+'s">'+j[i]+'</div>';return h;}},
     {id:'sentence-order',title:'문장 순서',sub:'Build sentences in order',href:'korehan-fun-sentence-order.html',cv:'cv-sentorder',
      anim:function(){var w=['저는','한국어를','배워요','오늘','날씨가','좋아요','커피','한 잔','주세요'];var h='';for(var i=0;i<9;i++)h+='<div class="sw" style="left:'+(8+(i%3)*32)+'%;top:'+(12+Math.floor(i/3)*30)+'%;animation-delay:'+(i*.25)+'s">'+w[i]+'</div>';return h;}},
+    {id:'dictation',title:'받아쓰기',sub:'Listen & type Korean',href:'korehan-fun-dictation.html',cv:'cv-dictation',
+     anim:function(){var icons=['🔊','🎧','♪','♫','◐','◑'];var h='';for(var i=0;i<8;i++)h+='<div class="dw" style="left:'+(8+(i%4)*22)+'%;top:'+(14+Math.floor(i/4)*40)+'%;animation-delay:'+(i*.32)+'s">'+icons[i%icons.length]+'</div>';return h;}},
     {id:'ox-quiz',title:'Korea OX Quiz',sub:'True or false?',href:'korehan-fun-ox.html',cv:'cv-ox',
      anim:function(){var h='';for(var i=0;i<6;i++){var s=i%2===0?'⭕':'❌';h+='<div class="oxf" style="left:'+(8+i*16)+'%;top:'+(15+((i*20)%55))+'%;animation-delay:'+(i*.5)+'s;font-size:'+(22+i%3*8)+'px">'+s+'</div>';}return h;}},
     {id:'name-generator',title:'Korean Name Generator',sub:'Get your Korean name',href:'korehan-fun-name.html',cv:'cv-name',

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
+<title>받아쓰기 — KoreHan Playground</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Inter:wght@600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css?v=20260516a">
+<style>
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { margin:0; padding:0; background:#0a0e1a; color:#fff; font-family:'Inter','Noto Sans KR',sans-serif; min-height:100vh; overflow-x:hidden; }
+.wrap { max-width:520px; margin:0 auto; padding:18px 16px 32px; }
+.back { display:inline-flex; align-items:center; gap:6px; color:#94a3b8; font-size:12px; font-weight:700; text-decoration:none; margin-bottom:14px; padding:6px 10px; border-radius:8px; background:rgba(255,255,255,.04); }
+.back:hover { background:rgba(255,255,255,.08); color:#fff; }
+h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; margin:0 0 4px; background:linear-gradient(135deg,#34d399,#06b6d4); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sub { font-size:13px; color:#94a3b8; margin-bottom:18px; }
+
+.menu { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:22px 18px; text-align:center; }
+.menu-title { font-size:22px; font-weight:900; margin-bottom:6px; }
+.menu-sub { font-size:13px; color:#94a3b8; margin-bottom:16px; }
+.menu-section { margin-bottom:14px; text-align:left; }
+.menu-label { font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+.diff-btns { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.diff-btn { padding:14px 8px; border:2px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.03); color:#94a3b8; font-size:13px; font-weight:800; cursor:pointer; text-align:center; transition:.15s; font-family:inherit; min-height:56px; }
+.diff-btn.on { border-color:#34d399; background:rgba(52,211,153,.15); color:#a7f3d0; }
+.start-btn { width:100%; margin-top:10px; padding:14px; background:linear-gradient(135deg,#34d399,#06b6d4); color:#0a0e1a; border:0; border-radius:14px; font-size:15px; font-weight:900; cursor:pointer; font-family:inherit; min-height:48px; }
+.best-row { font-size:12px; color:#94a3b8; margin-top:14px; }
+.best-row strong { color:#a7f3d0; }
+.notice { font-size:11px; color:#fbbf24; background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.18); border-radius:10px; padding:9px 12px; margin-top:10px; line-height:1.5; display:none; }
+.notice.is-on { display:block; }
+
+.gs-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; font-size:12px; font-weight:800; color:#94a3b8; }
+.gs-bar .gs-score { color:#a7f3d0; font-size:15px; }
+.gs-bar .gs-prog { color:#7dd3fc; }
+.gs-listen-row { display:flex; align-items:center; gap:10px; padding:14px 16px; background:rgba(52,211,153,.06); border:1px solid rgba(52,211,153,.18); border-radius:14px; margin-bottom:14px; }
+.gs-listen-btn { width:54px; height:54px; min-width:54px; border-radius:50%; border:0; background:linear-gradient(135deg,#34d399,#06b6d4); color:#0a0e1a; font-size:22px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:inherit; }
+.gs-listen-btn:disabled { opacity:.4; cursor:not-allowed; }
+.gs-listen-info { flex:1; min-width:0; font-size:12px; color:rgba(255,255,255,.7); line-height:1.45; }
+.gs-listen-info b { color:#a7f3d0; display:block; font-size:13px; font-weight:900; margin-bottom:2px; }
+.gs-input { width:100%; padding:13px 14px; border-radius:12px; border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); color:#fff; font-family:'Noto Sans KR',sans-serif; font-size:16px; line-height:1.5; margin-bottom:10px; min-height:48px; }
+.gs-input:focus { outline:0; border-color:#34d399; background:rgba(52,211,153,.06); }
+.gs-actions { display:flex; gap:8px; }
+.gs-btn { flex:1; padding:13px; border:0; border-radius:12px; font-size:14px; font-weight:900; cursor:pointer; font-family:inherit; min-height:48px; }
+.gs-check { background:#34d399; color:#0a0e1a; }
+.gs-check:disabled { opacity:.4; cursor:not-allowed; }
+.gs-skip { background:rgba(255,255,255,.06); color:#94a3b8; border:1px solid rgba(255,255,255,.1); }
+.gs-fb { margin-top:14px; padding:13px 14px; border-radius:12px; font-size:13px; line-height:1.55; }
+.gs-fb.is-right { background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.3); color:#86efac; }
+.gs-fb.is-close { background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.3); color:#fde68a; }
+.gs-fb.is-wrong { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.3); color:#fca5a5; }
+.gs-fb b { color:#fff; font-weight:900; display:block; margin-bottom:3px; }
+.gs-fb-correct { margin-top:6px; font-family:'Noto Sans KR',sans-serif; font-size:15px; color:#fff; font-weight:700; }
+.gs-fb-yours { margin-top:4px; font-family:'Noto Sans KR',sans-serif; font-size:13px; color:rgba(255,255,255,.55); }
+
+.end { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:24px 18px; text-align:center; }
+.end-emoji { font-size:58px; margin-bottom:10px; }
+.end-title { font-size:22px; font-weight:900; margin-bottom:4px; }
+.end-score { font-size:36px; font-weight:900; color:#a7f3d0; margin:8px 0; }
+.end-stats { font-size:13px; color:#94a3b8; margin-bottom:6px; }
+.end-newbest { font-size:13px; font-weight:800; color:#34d399; margin:6px 0 14px; min-height:18px; }
+.end-actions { display:flex; gap:10px; margin-top:14px; }
+.end-actions .start-btn { flex:1; }
+.end-actions .secondary { flex:1; padding:14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); color:#94a3b8; border-radius:14px; font-size:14px; font-weight:800; cursor:pointer; font-family:inherit; min-height:48px; text-decoration:none; display:flex; align-items:center; justify-content:center; }
+.lb { margin-top:18px; text-align:left; }
+.lb-title { font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+.lb-row { display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-radius:8px; background:rgba(255,255,255,.03); margin-bottom:4px; font-size:13px; }
+.lb-row.is-me { background:rgba(52,211,153,.12); border:1px solid rgba(52,211,153,.32); }
+.lb-rank { font-weight:900; color:#34d399; width:30px; }
+.lb-name { flex:1; color:#cbd5e1; font-weight:700; }
+.lb-score { font-weight:900; color:#a7f3d0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="korehan-fun.html" class="back">&larr; Playground</a>
+  <h1>🎧 받아쓰기</h1>
+  <div class="sub">Listen to the Korean phrase and type what you hear.</div>
+
+  <div class="menu" id="menu">
+    <div class="menu-title">Dictation Mini</div>
+    <div class="menu-sub">8 phrases. Higher accuracy + speed = higher score.</div>
+    <div class="menu-section">
+      <div class="menu-label">Difficulty</div>
+      <div class="diff-btns">
+        <button type="button" class="diff-btn on" data-diff="easy">🌱 Easy<br><span style="font-size:11px;font-weight:600;opacity:.7">3–4 words</span></button>
+        <button type="button" class="diff-btn" data-diff="medium">🌳 Medium<br><span style="font-size:11px;font-weight:600;opacity:.7">5–7 words</span></button>
+        <button type="button" class="diff-btn" data-diff="hard">🌲 Hard<br><span style="font-size:11px;font-weight:600;opacity:.7">8+ words</span></button>
+      </div>
+    </div>
+    <button type="button" class="start-btn" onclick="startGame()">START</button>
+    <div class="best-row" id="best-row" style="display:none">Your best: <strong id="best-score">0</strong> pts</div>
+    <div class="notice" id="tts-warn">⚠️ Your browser may not support Korean speech. Try Chrome or Edge for the best experience.</div>
+  </div>
+
+  <div id="game" style="display:none">
+    <div class="gs-bar">
+      <div>Score <span class="gs-score" id="gs-score">0</span></div>
+      <div class="gs-prog" id="gs-prog">1 / 8</div>
+      <div>⏱ <span id="gs-timer">0</span>s</div>
+    </div>
+    <div class="gs-listen-row">
+      <button type="button" class="gs-listen-btn" id="gs-play" onclick="playPhrase()" title="Play (or replay) the phrase" aria-label="Play phrase">🔊</button>
+      <div class="gs-listen-info"><b>Listen</b>Tap to play again. Plays up to 3 times per phrase.</div>
+    </div>
+    <input type="text" class="gs-input" id="gs-input" placeholder="여기에 들은 대로 입력…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" lang="ko">
+    <div class="gs-actions">
+      <button type="button" class="gs-btn gs-skip" onclick="skipQ()">Skip</button>
+      <button type="button" class="gs-btn gs-check" id="gs-check" onclick="checkAnswer()">Check</button>
+    </div>
+    <div id="gs-fb-host"></div>
+  </div>
+
+  <div class="end" id="end" style="display:none">
+    <div class="end-emoji" id="end-emoji">🏆</div>
+    <div class="end-title" id="end-title">Round complete</div>
+    <div class="end-score" id="end-score">0 pts</div>
+    <div class="end-stats" id="end-stats">0 correct · 0s</div>
+    <div class="end-newbest" id="end-newbest"></div>
+    <div class="lb" id="lb-host"></div>
+    <div class="end-actions">
+      <a href="korehan-fun.html" class="secondary">Playground</a>
+      <button type="button" class="start-btn" onclick="restart()">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js?v=20260519a"></script>
+<script src="playground-scores-client.js?v=20260519a"></script>
+<script>
+// Curated phrase pool — short Korean phrases the TTS can pronounce
+// cleanly. Easy = TOPIK 1 single-clause; Medium = TOPIK 2-3 two-clause;
+// Hard = TOPIK 3-4 longer connectives.
+var POOLS = {
+  easy: [
+    '오늘 날씨가 좋아요',
+    '저는 학생 입니다',
+    '커피 한 잔 주세요',
+    '내일 학교에 가요',
+    '저는 한국어를 배워요',
+    '이 음식이 맛있어요',
+    '주말에 영화를 봐요',
+    '친구를 만나러 가요',
+    '책을 읽고 있어요',
+    '집에 일찍 가요'
+  ],
+  medium: [
+    '저는 매일 아침 운동을 해요',
+    '한국 드라마를 보면서 공부 해요',
+    '주말에는 친구들이랑 카페에 가요',
+    '비가 와서 우산을 가져 갔어요',
+    '오늘 저녁에 무엇을 먹을지 모르겠어요',
+    '한국에 처음 왔을 때는 정말 신기 했어요',
+    '내일 시험이 있어서 일찍 자야 해요',
+    '이번 주말에 부모님을 뵈러 가요',
+    '오랜만에 만난 친구가 정말 반가웠어요',
+    '새로 산 신발이 너무 작아요'
+  ],
+  hard: [
+    '아무리 노력해도 결과가 좋지 않아서 속상 합니다',
+    '한국어를 잘하면 잘할수록 더 재미있어 지더라고요',
+    '회의가 길어지는 바람에 약속에 늦을 뻔 했어요',
+    '오랫동안 연락을 못 했는데 이번에 꼭 만나고 싶습니다',
+    '시간이 없어서 인사도 못 드리고 떠나서 죄송 합니다',
+    '그렇게 어려운 문제를 혼자서 해결 하다니 정말 대단 하네요',
+    '친구가 추천해 준 책을 읽다가 어느새 새벽이 되었어요',
+    '새로운 기술이 도입 되면서 업무 방식이 완전히 바뀌었어요'
+  ]
+};
+
+var _state = null;
+var _diff = 'easy';
+var ROUND_LEN = 8;
+var MAX_PLAYS = 3;
+
+window.startGame = async function() {
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('end').style.display = 'none';
+  document.getElementById('game').style.display = '';
+  document.getElementById('gs-fb-host').innerHTML = '';
+  var pool = POOLS[_diff].slice();
+  shuffle(pool);
+  _state = {
+    items:    pool.slice(0, ROUND_LEN),
+    idx:      0,
+    score:    0,
+    correct:  0,
+    started:  Date.now(),
+    qStarted: Date.now(),
+    plays:    0
+  };
+  _tick();
+  renderQ();
+  setTimeout(playPhrase, 350); // auto-play the first prompt
+};
+
+function _tick() {
+  if (!_state) return;
+  var el = document.getElementById('gs-timer');
+  if (!el) return;
+  el.textContent = Math.floor((Date.now() - _state.started) / 1000);
+  if (document.getElementById('game').style.display !== 'none') {
+    setTimeout(_tick, 500);
+  }
+}
+
+function renderQ() {
+  var s = _state; if (!s) return;
+  if (s.idx >= s.items.length) { endRound(); return; }
+  s.qStarted = Date.now();
+  s.plays = 0;
+  document.getElementById('gs-score').textContent = s.score;
+  document.getElementById('gs-prog').textContent = (s.idx + 1) + ' / ' + s.items.length;
+  document.getElementById('gs-fb-host').innerHTML = '';
+  document.getElementById('gs-check').disabled = false;
+  var input = document.getElementById('gs-input');
+  input.value = '';
+  input.disabled = false;
+  input.focus();
+  document.getElementById('gs-play').disabled = false;
+}
+
+window.playPhrase = function() {
+  var s = _state; if (!s) return;
+  if (s.plays >= MAX_PLAYS) return;
+  s.plays++;
+  var phrase = s.items[s.idx];
+  if (typeof ttsSpeak === 'function') {
+    try { ttsSpeak(phrase); }
+    catch(_) { _ttsFallback(phrase); }
+  } else {
+    _ttsFallback(phrase);
+  }
+  if (s.plays >= MAX_PLAYS) document.getElementById('gs-play').disabled = true;
+};
+
+function _ttsFallback(text) {
+  if (!window.speechSynthesis) return;
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ko-KR';
+  u.rate = 0.95;
+  try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch(_) {}
+}
+
+window.checkAnswer = function() {
+  var s = _state; if (!s) return;
+  var phrase = s.items[s.idx];
+  var typed  = (document.getElementById('gs-input').value || '').trim();
+  var normGot = _norm(typed);
+  var normExp = _norm(phrase);
+  var elapsed = (Date.now() - s.qStarted) / 1000;
+  var fbHost = document.getElementById('gs-fb-host');
+  var grade, bonus = 0, fbClass = '', fbLead = '';
+  if (normGot === normExp) {
+    grade = 'right';
+    bonus = Math.max(0, Math.floor(60 * (1 - Math.min(1, (elapsed - 5) / 30))));
+    s.score += 100 + bonus;
+    s.correct++;
+    fbClass = 'is-right'; fbLead = '✓ Perfect! +' + (100 + bonus) + ' pts';
+  } else {
+    // Close match: ≥80% character overlap → partial credit. Otherwise wrong.
+    var sim = _similarity(normGot, normExp);
+    if (sim >= 0.8 && normGot.length > 0) {
+      grade = 'close';
+      s.score += 40;
+      fbClass = 'is-close'; fbLead = '~ Close — +40 pts';
+    } else {
+      grade = 'wrong';
+      s.score = Math.max(0, s.score - 10);
+      fbClass = 'is-wrong'; fbLead = '✗ Not quite';
+    }
+  }
+  document.getElementById('gs-input').disabled = true;
+  document.getElementById('gs-check').disabled = true;
+  document.getElementById('gs-play').disabled = true;
+  fbHost.innerHTML = '<div class="gs-fb ' + fbClass + '"><b>' + fbLead + '</b>'
+    + (grade !== 'right' ? '<div class="gs-fb-correct">정답: ' + escapeHtml(phrase) + '</div>' : '')
+    + (grade !== 'right' && typed ? '<div class="gs-fb-yours">You wrote: ' + escapeHtml(typed) + '</div>' : '')
+    + '</div>';
+  document.getElementById('gs-score').textContent = s.score;
+  setTimeout(function() { s.idx++; renderQ(); if (s.idx < s.items.length) setTimeout(playPhrase, 250); }, grade === 'right' ? 1000 : 2200);
+};
+
+window.skipQ = function() {
+  var s = _state; if (!s) return;
+  var phrase = s.items[s.idx];
+  document.getElementById('gs-fb-host').innerHTML =
+    '<div class="gs-fb is-wrong"><b>Skipped</b><div class="gs-fb-correct">정답: ' + escapeHtml(phrase) + '</div></div>';
+  document.getElementById('gs-input').disabled = true;
+  document.getElementById('gs-check').disabled = true;
+  document.getElementById('gs-play').disabled = true;
+  setTimeout(function() { s.idx++; renderQ(); if (s.idx < s.items.length) setTimeout(playPhrase, 250); }, 1500);
+};
+
+async function endRound() {
+  var s = _state; if (!s) return;
+  var elapsed = Math.floor((Date.now() - s.started) / 1000);
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('end').style.display = '';
+  var pct = Math.round(s.correct / ROUND_LEN * 100);
+  var emoji = pct >= 80 ? '🏆' : pct >= 60 ? '⭐' : pct >= 40 ? '👍' : '💪';
+  document.getElementById('end-emoji').textContent = emoji;
+  document.getElementById('end-title').textContent = pct >= 80 ? '귀가 좋네요!' : pct >= 60 ? 'Nice work!' : 'Keep listening!';
+  document.getElementById('end-score').textContent = s.score + ' pts';
+  document.getElementById('end-stats').textContent = s.correct + ' / ' + ROUND_LEN + ' correct · ' + elapsed + 's · ' + _diff;
+  var lsKey = 'kh_dictation_best';
+  var bests = {};
+  try { bests = JSON.parse(localStorage.getItem(lsKey) || '{}'); } catch(_){}
+  var prev = bests[_diff] || 0;
+  var isLocalBest = s.score > prev;
+  if (isLocalBest) { bests[_diff] = s.score; try { localStorage.setItem(lsKey, JSON.stringify(bests)); } catch(_){} }
+  var serverBestMsg = '';
+  if (window.playgroundScores) {
+    var r = await playgroundScores.submit('dictation-mini', s.score, { difficulty:_diff, correct:s.correct, total:ROUND_LEN, elapsed:elapsed });
+    if (r && r.new_best) serverBestMsg = '🎊 New personal best!';
+  }
+  document.getElementById('end-newbest').textContent = serverBestMsg || (isLocalBest ? '🎉 New local best!' : '');
+  if (window.playgroundScores) {
+    var top = await playgroundScores.getTop('dictation-mini', 5);
+    if (top && top.length) {
+      var rows = top.map(function(t){
+        var isMe = (window.supaUser && t.user_id === window.supaUser.id);
+        var label = isMe ? 'You' : ('Player · ' + (t.user_id || '').slice(0, 6));
+        return '<div class="lb-row' + (isMe ? ' is-me' : '') + '"><span class="lb-rank">#' + t.rank + '</span><span class="lb-name">' + label + '</span><span class="lb-score">' + t.best_score + '</span></div>';
+      }).join('');
+      document.getElementById('lb-host').innerHTML = '<div class="lb-title">Top 5 (all difficulties)</div>' + rows;
+    }
+  }
+  _state = null;
+}
+
+window.restart = function() {
+  document.getElementById('end').style.display = 'none';
+  document.getElementById('menu').style.display = '';
+  _loadLocalBest();
+};
+
+function _loadLocalBest() {
+  var bests = {};
+  try { bests = JSON.parse(localStorage.getItem('kh_dictation_best') || '{}'); } catch(_){}
+  var b = bests[_diff] || 0;
+  var row = document.getElementById('best-row');
+  if (b > 0) {
+    row.style.display = '';
+    document.getElementById('best-score').textContent = b;
+  } else {
+    row.style.display = 'none';
+  }
+}
+
+// Normalize for comparison: lower-case, strip whitespace, remove sentence-
+// final punctuation. We DON'T strip 받침-level differences — the point of
+// dictation is to get those right.
+function _norm(s) {
+  return String(s == null ? '' : s)
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[.!?,?！?。、，；：]+$/g, '');
+}
+
+// Levenshtein-based similarity 0..1. Used for "close enough" partial credit
+// so a single missing syllable doesn't feel punishing.
+function _similarity(a, b) {
+  if (a === b) return 1;
+  if (!a || !b) return 0;
+  var m = a.length, n = b.length;
+  if (Math.abs(m - n) / Math.max(m, n) > 0.4) return 0; // length too different
+  var dp = [];
+  for (var i = 0; i <= m; i++) { dp[i] = [i]; }
+  for (var j = 0; j <= n; j++) { dp[0][j] = j; }
+  for (i = 1; i <= m; i++) {
+    for (j = 1; j <= n; j++) {
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  return 1 - dp[m][n] / Math.max(m, n);
+}
+
+function shuffle(arr) {
+  for (var i = arr.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.diff-btn').forEach(function(b) {
+    b.addEventListener('click', function() {
+      _diff = b.dataset.diff;
+      document.querySelectorAll('.diff-btn').forEach(function(x){ x.classList.toggle('on', x === b); });
+      _loadLocalBest();
+    });
+  });
+  _loadLocalBest();
+  // Surface a TTS warning if the browser has zero Korean voices.
+  setTimeout(function() {
+    try {
+      var voices = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+      var hasKo = voices.some(function(v){ return /^ko/i.test(v.lang || ''); });
+      if (!voices.length || !hasKo) document.getElementById('tts-warn').classList.add('is-on');
+    } catch(_) {}
+  }, 800);
+  // Enter to check
+  var input = document.getElementById('gs-input');
+  if (input) input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !document.getElementById('gs-check').disabled) {
+      e.preventDefault();
+      checkAnswer();
+    }
+  });
+});
+</script>
+</body>
+</html>
