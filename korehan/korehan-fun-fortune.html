@@ -64,7 +64,7 @@ h1{font-size:28px;font-weight:900;margin:0 0 4px;background:linear-gradient(135d
   <a href="korehan-fun.html" class="back">&larr; Playground</a>
   <h1>🔮 Today's Fortune</h1>
   <div class="sub">Tap the card to reveal your destiny</div>
-  <div class="tarot" id="tarot" onclick="revealFortune()">
+  <div class="tarot" id="tarot" role="button" tabindex="0" aria-label="Reveal today's fortune" onclick="revealFortune()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();revealFortune();}">
     <div class="tarot-inner">
       <div class="tarot-face tarot-back"><span>🔮</span><div class="hint">Tap to reveal</div></div>
       <div class="tarot-face tarot-front"><div class="tarot-emoji" id="t-emoji">✨</div><div class="tarot-label" id="t-label">Overall</div><div class="tarot-msg" id="t-msg"></div></div>
