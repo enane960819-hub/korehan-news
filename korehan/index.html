@@ -913,18 +913,46 @@ body.kh-neon-on .hero-dot {
 
   // Minimum loader display time — prevents the splash from disappearing
   // before users can register it on cache hits / instant localStorage
-  // paints (was sub-300ms, owner-reported "내 로딩페이지 어디갔냐"
-  // 2026-05-18). 800ms is short enough to feel snappy on fast loads,
-  // long enough to read the KoreHanı logo + brand tagline.
+  // paints. 1500ms is short enough to feel snappy on fast loads, long
+  // enough to read the KoreHanı logo + brand tagline.
   var _khLoaderStart = Date.now();
-  var _khLoaderMinMs = 800;
+  var _khLoaderMinMs = 1500;
+
+  // Owner: "지금은 로딩화면 장식임" — true. The previous auto-stepper
+  // drove the bar toward 99 % on a fixed timer regardless of whether
+  // articles had actually loaded, and the cache-hit path called
+  // _khLoaderSet(100) inside renderHomePage so the splash often
+  // dismissed onto a *skeleton* hero before the real cards painted.
+  // The new contract: the bar only moves on real milestones, AND
+  // _khLoaderSet(100) holds the dismiss until #dyn-hero is actually
+  // showing cards (skeleton class gone). _isHeroPainted() does the
+  // check; we poll up to a 12 s ceiling so a genuinely wedged fetch
+  // still lets the user see the home shell.
+  function _isHeroPainted() {
+    var el = document.getElementById('dyn-hero');
+    if (!el) return false;
+    // Skeleton wrapper is removed when renderHomePage finishes
+    // painting from real data — either the class is gone or the
+    // child element is no longer the skeleton.
+    if (el.classList.contains('home-hero-loading')) {
+      return !el.querySelector('.home-hero-skeleton-main');
+    }
+    return el.children && el.children.length > 0;
+  }
 
   window._khLoaderSet = function(v) {
     if (done) return;
     current = Math.max(current, Math.min(v, 100));
     if (bar) bar.style.width = current + '%';
     if (pct) pct.textContent = Math.round(current) + '%';
-    if (current >= 100) {
+    if (current < 100) return;
+
+    // Reached 100: hold the dismiss until the hero is actually
+    // visible OR a 12 s ceiling from page start, whichever is first.
+    var dismissed = false;
+    function _dismiss() {
+      if (dismissed) return;
+      dismissed = true;
       done = true;
       clearInterval(_tipTimer);
       var elapsed = Date.now() - _khLoaderStart;
@@ -938,16 +966,22 @@ body.kh-neon-on .hero-dot {
         }
       }, holdFor + 150);
     }
+    if (_isHeroPainted()) { _dismiss(); return; }
+    // Poll for hero paint. 200 ms cadence; 12 s ceiling from
+    // _khLoaderStart so we never strand the user.
+    var watch = setInterval(function() {
+      if (_isHeroPainted() || (Date.now() - _khLoaderStart) > 12000) {
+        clearInterval(watch);
+        _dismiss();
+      }
+    }, 200);
   };
 
-  // 감속 곡선 — 절대 멈추지 않음, 99%까지 점근적 접근
-  // 속도: (99 - current) * 0.04 → 현재값이 높을수록 느려짐
-  var _autoStep = setInterval(function() {
-    if (done || current >= 99) return;
-    var increment = Math.max(0.3, (99 - current) * 0.04);
-    window._khLoaderSet(current + increment);
-  }, 400);
-  window._khLoaderClearAuto = function() { clearInterval(_autoStep); };
+  // Auto-stepper removed. Bar only progresses on real signals from
+  // shared.js (header rendered, sections fetched, articles cached,
+  // hero painted). If those milestones don't fire within 12 s the
+  // hard ceiling below dismisses the splash anyway.
+  window._khLoaderClearAuto = function() { /* no-op — kept for caller compat */ };
 
   // Hard ceiling — if the page-init chain wedges (e.g. Samsung
   // Internet's Supabase fetch hangs past every internal timeout we
