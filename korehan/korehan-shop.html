@@ -112,6 +112,16 @@ body{margin:0;background:#f8fafc;font-family:'Happy Monkey','Jua','DM Sans',Inte
 .btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.btn{border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer;transition:opacity .15s}
 .btn.coin{background:#0f766e;color:#fff}.btn.cash{background:#6d28d9;color:#fff}.btn:hover{opacity:.85}.btn:disabled{opacity:.4;cursor:not-allowed}
 .owned{font-size:11px;color:#16a34a;font-weight:800}
+
+/* Mobile tap targets — audit flagged these as sub-44 px. Bump shop tabs
+   and purchase buttons to comply with iOS HIG / Material guidelines.
+   The .btn flex:1 lets the two CTAs share the row at full width rather
+   than each shrinking to fit its label. */
+@media (max-width: 768px) {
+  .shop-tab { padding:13px 18px; font-size:13px; min-height:48px; }
+  .btn      { padding:11px 14px; font-size:13px; min-height:44px; flex:1 1 calc(50% - 6px); }
+  .btns     { gap:8px; }
+}
 /* ── Sections ── */
 .sec-header{display:flex;align-items:center;gap:10px;margin:28px 0 8px}
 .sec-header h2{font-size:18px;font-weight:900;margin:0}
