@@ -8120,6 +8120,9 @@ async function goConvEditor() {
               <option value="shopping">🛍️ Shopping</option>
               <option value="school">🎓 School / Study</option>
               <option value="health">🏥 Health</option>
+              <option value="service">🛎️ Service</option>
+              <option value="korean-culture">🇰🇷 Korean Culture</option>
+              <option value="conflict">⚡ Conflict / Drama</option>
             </select>
           </div>
           <div>
@@ -8158,7 +8161,11 @@ async function goConvEditor() {
         </div>
         <div style="margin-bottom:16px">
           <label style="font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Topic / Situation (optional)</label>
-          <input id="cv-topic" placeholder="e.g. 카페에서 친구를 만나기, 병원 예약하기, 취업 면접 준비..." style="width:100%;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:inherit;font-size:13px;box-sizing:border-box">
+          <div style="display:flex;gap:8px;align-items:stretch">
+            <input id="cv-topic" placeholder="e.g. 카페에서 친구를 만나기, 병원 예약하기, 취업 면접 준비..." style="flex:1;padding:9px 12px;border-radius:10px;border:1.5px solid #e2e8f0;font-family:inherit;font-size:13px;box-sizing:border-box">
+            <button onclick="pickConvScenarioFromPool()" id="cv-pool-btn" title="Pick least-used scenario at the current level from conv_scenario_pool" style="white-space:nowrap;padding:9px 14px;border-radius:10px;border:1.5px solid #cbd5e1;background:#fff;color:#0f172a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🎲 Pick from pool</button>
+          </div>
+          <div id="cv-pool-hint" style="font-size:11px;color:#94a3b8;margin-top:4px;display:none"></div>
         </div>
         <!-- Quick topic chips -->
         <div style="margin-bottom:18px">
@@ -8182,6 +8189,52 @@ async function goConvEditor() {
   if (chipBox) chipBox.innerHTML = topics.map(function(t){
     return '<button onclick="document.getElementById(\'cv-topic\').value=\'' + t + '\'" style="padding:5px 11px;border-radius:999px;border:1.5px solid #e2e8f0;background:#f8faff;color:#374151;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor=\'#2563eb\';this.style.color=\'#2563eb\'" onmouseout="this.style.borderColor=\'#e2e8f0\';this.style.color=\'#374151\'">' + t + '</button>';
   }).join('');
+}
+
+// Picks the least-used active scenario at the currently selected level
+// from conv_scenario_pool, fills the topic input + auto-switches the
+// category dropdown to match. Slug is stashed on the topic input so
+// saveAllConvs() can call mark_conv_scenario_used after a successful
+// insert (one bump per pick, not per generated conv).
+async function pickConvScenarioFromPool() {
+  var btn   = document.getElementById('cv-pool-btn');
+  var input = document.getElementById('cv-topic');
+  var hint  = document.getElementById('cv-pool-hint');
+  var lvl   = document.getElementById('cv-lvl').value;
+  if (!btn || !input) return;
+  var origLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Picking…';
+  try {
+    var sb = getSb();
+    var r = await sb.rpc('pick_conv_scenario', { p_level: lvl });
+    if (r.error) throw r.error;
+    var row = (r.data && r.data[0]) || null;
+    if (!row) {
+      if (hint) { hint.textContent = 'No active scenarios for this level — try another.'; hint.style.display = 'block'; hint.style.color = '#b91c1c'; }
+      return;
+    }
+    input.value = row.ko_context;
+    input.dataset.poolSlug = row.slug;
+    var catSel = document.getElementById('cv-cat');
+    if (catSel) {
+      var ok = false;
+      for (var i = 0; i < catSel.options.length; i++) {
+        if (catSel.options[i].value === row.category) { catSel.selectedIndex = i; ok = true; break; }
+      }
+      // If the scenario's category isn't in the dropdown (shouldn't happen
+      // after the 3 new options ship), surface it so the admin knows.
+      if (!ok && hint) { hint.textContent = 'Note: scenario category "' + row.category + '" missing from dropdown.'; hint.style.color = '#b45309'; hint.style.display = 'block'; }
+    }
+    if (hint && hint.style.color !== 'rgb(180, 83, 9)') {
+      hint.textContent = '✓ ' + row.slug + ' (used ' + row.use_count + '× — will be counted on save)';
+      hint.style.color = '#16a34a';
+      hint.style.display = 'block';
+    }
+  } catch (e) {
+    if (hint) { hint.textContent = 'Pool error: ' + (e.message || e); hint.style.color = '#b91c1c'; hint.style.display = 'block'; }
+  } finally {
+    btn.disabled = false; btn.textContent = origLabel;
+  }
 }
 
 async function generateConvs() {
@@ -8345,6 +8398,18 @@ async function saveAllConvs() {
     bar.textContent = '✅ ' + done + ' baked, ' + failed + ' failed';
     setTimeout(function(){ try { bar.remove(); } catch(_){} }, 4000);
   }
+  // If this batch came from a conv_scenario_pool pick, bump the
+  // counter exactly once so the next pick at the same level rotates.
+  // Failure here is non-fatal — saves already succeeded.
+  var topicInput = document.getElementById('cv-topic');
+  var slug = topicInput && topicInput.dataset && topicInput.dataset.poolSlug;
+  if (slug) {
+    try { await sb.rpc('mark_conv_scenario_used', { p_slug: slug }); } catch (e) {
+      console.warn('mark_conv_scenario_used failed', slug, e && e.message);
+    }
+    try { delete topicInput.dataset.poolSlug; } catch (_) {}
+  }
+
   var msg = '✅ ' + rows.length + ' conversations saved/published + analysis baked!\n\nCheck in Conversations management.';
   alert(msg);
   window._generatedConvs = [];  // 초기화
