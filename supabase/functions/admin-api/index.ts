@@ -42,6 +42,11 @@ const ALLOWED_RPCS = new Set([
   'claim_streak_award','consume_streak_freeze',
   // Study room generators (admin pre-gen tooling)
   'assign_daily_vocab',
+  // Conversation scenario pool — admin's "🎲 Pick from pool" + the
+  // batch generator hit these. Missing from the allowlist was the
+  // reason owner reported "pool 에서 가져오는거 안되는데" — the
+  // proxy returned 400 "RPC not allowed: pick_conv_scenario".
+  'pick_conv_scenario','mark_conv_scenario_used',
   // Read-only reporting
   'get_blocked_users',
 ])
