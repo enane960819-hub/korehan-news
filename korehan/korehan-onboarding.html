@@ -1307,7 +1307,10 @@ async function signUpWithGoogle() {
   } catch (e) {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<span>Sign-in error: ' + (e.message || 'unknown') + '</span>';
+      // Bilingual error so Korean-only users aren't stuck on an English
+      // stack-trace string from Supabase. Keep the original message in
+      // small text for debugging without burying it.
+      btn.innerHTML = '<span style="display:flex;flex-direction:column;align-items:center;gap:2px"><span>로그인 실패 · Sign-in failed</span><span style="font-size:10px;opacity:.7">' + (e.message || 'unknown') + '</span></span>';
     }
   }
 }
