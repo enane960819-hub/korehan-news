@@ -7907,14 +7907,54 @@ async function autoGenConvSentenceAnalysis(convId, convObj) {
     var resp = await callClaude({
       feature: 'admin-conv-sentence-analyze',
       model: 'claude-sonnet-4-6',
-      max_tokens: Math.min(12000, 280 * talk.length + 800),
+      // 280 t/line was tight for chatty convs — vocab + analysis +
+      // translation per line averages closer to 380 t once the
+      // CASUAL-register prompt expansion above lands every required
+      // pattern. Truncation surfaced as JSON parse error at the cut
+      // boundary ("Expected ',' or ']' after array element in JSON
+      // at position 6773"). Bump headroom + raise the cap.
+      max_tokens: Math.min(16000, 420 * talk.length + 1500),
       messages: [{ role: 'user', content: prompt }]
     });
     var rawTxt = (resp && resp.content && resp.content[0] && resp.content[0].text) || '';
     var clean = rawTxt.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
     var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
     if (oi < 0 || ei <= oi) throw new Error('JSON not found in response');
-    var parsed = JSON.parse(clean.slice(oi, ei + 1));
+    var parsed;
+    try {
+      parsed = JSON.parse(clean.slice(oi, ei + 1));
+    } catch (parseErr) {
+      // Truncation repair — when Claude runs out of tokens mid-array,
+      // strip the partial trailing entry and close the structure. Find
+      // the last complete `}` inside the lines[] array, drop anything
+      // after it, then re-close the array + outer object. Better to
+      // save N-1 lines than fail the whole batch item.
+      var body = clean.slice(oi, ei + 1);
+      var linesStart = body.indexOf('"lines"');
+      if (linesStart < 0) throw parseErr;
+      var arrOpen = body.indexOf('[', linesStart);
+      if (arrOpen < 0) throw parseErr;
+      // Scan from end of body backwards for the last "},\n" or "}\n"
+      // boundary inside the lines array.
+      var depth = 0;
+      var lastCloseAt = -1;
+      for (var k = arrOpen + 1; k < body.length; k++) {
+        var ch = body[k];
+        if (ch === '{') depth++;
+        else if (ch === '}') {
+          if (depth > 0) depth--;
+          if (depth === 0) lastCloseAt = k;
+        }
+      }
+      if (lastCloseAt < 0) throw parseErr;
+      var repaired = body.slice(0, lastCloseAt + 1) + ']}';
+      try {
+        parsed = JSON.parse(repaired);
+        console.warn('autoGenConvSentenceAnalysis: repaired truncated JSON, ' + (parsed.lines || []).length + ' / ' + talk.length + ' lines salvaged');
+      } catch (_) {
+        throw parseErr; // original error wins
+      }
+    }
     var arr = parsed && Array.isArray(parsed.lines) ? parsed.lines : null;
     if (!arr || !arr.length) throw new Error('empty lines[]');
 
