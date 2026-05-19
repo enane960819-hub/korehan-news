@@ -7979,6 +7979,94 @@ function _showMicPermError(statusElId) {
   }
   showToast(msg);
 }
+// ── Speaking-feedback generator ────────────────────────────────────
+// Mirrors _triggerUnifiedAIFeedback for the speaking path. Until this
+// shipped, speaking submissions hit the inbox with audio + auto-scores
+// only — no Claude analysis, so users got numbers without "why."
+// Now Claude reads the script (writing_text) + auto-scored transcript
+// and returns corrections + naturalness + a fluency note.
+//
+// Output shape matches the writing rubric so renderDetailedFeedback
+// already handles it. Pattern labels reuse the same enum as writing
+// corrections so they aggregate into Growth Lab's wrong_patterns.
+async function _triggerSpeakingFeedback(submissionId, script, scores) {
+  try {
+    if (!submissionId) return;
+    var transcript = (scores && scores.transcript) || '';
+    var pronN  = (scores && Number.isFinite(scores.pronunciation)) ? Math.round(scores.pronunciation) : null;
+    var fluN   = (scores && Number.isFinite(scores.fluency_score))  ? Math.round(scores.fluency_score)  : null;
+    var wpm    = (scores && Number.isFinite(scores.fluency_wpm))    ? Math.round(scores.fluency_wpm)    : null;
+    var fillerCount = (scores && Number.isFinite(scores.filler_count)) ? scores.filler_count : null;
+
+    var prompt = 'You are a Korean speaking coach reviewing an English-speaking learner.\n\n'
+      + 'They read this script aloud:\n"""\n' + (script || '(no script provided)') + '\n"""\n\n'
+      + (transcript ? ('What our speech-recognition heard:\n"""\n' + transcript + '\n"""\n\n') : 'No transcript was captured.\n\n')
+      + (pronN != null || fluN != null || wpm != null
+          ? ('Auto-scores: pronunciation ' + (pronN != null ? pronN : '—')
+              + ', fluency ' + (fluN != null ? fluN : '—')
+              + (wpm != null ? ', WPM ' + wpm : '')
+              + (fillerCount != null ? ', fillers ' + fillerCount : '')
+              + '.\n\n')
+          : '')
+      + 'Give feedback in ENGLISH. Focus on what the LEARNER can act on tomorrow:\n'
+      + '- corrections: only real mistakes, NOT casual particle drops in informal contexts. Use the patterns PARTICLE | TENSE | WORD_ORDER | SPELLING | VOCAB | NUANCE (consistent with the writing feedback path so the Growth Lab error-pattern panel aggregates both sources).\n'
+      + '- If the transcript differs from the script in a way that suggests a pronunciation slip (받침 dropped, ㅂ/ㅍ confused, etc.), surface ONE pronunciation note in "naturalness.comment" — do not over-correct; speech rarely matches a script verbatim.\n'
+      + '- "fluency_note": ONE short English sentence about pace / fillers / pausing. Use the WPM number if it\'s outside 70-130 (slow / rushed); otherwise praise it.\n'
+      + '- "encouragement": ONE short motivating English line — tied to something specific the learner did well.\n\n'
+      + 'Return ONLY valid JSON, no markdown:\n'
+      + '{\n'
+      + '  "overall": "ONE English sentence (≤15 words) summarizing the attempt",\n'
+      + '  "corrections": [{"original":"Korean phrase as written","corrected":"Korean phrase corrected","reason":"English explanation","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],\n'
+      + '  "naturalness": {"score":0-10, "comment":"ONE English sentence — pronunciation slip or register polish"},\n'
+      + '  "fluency_note": "ONE English sentence about pace / fillers",\n'
+      + '  "encouragement": "ONE short motivating English line"\n'
+      + '}';
+
+    if (typeof callClaude !== 'function') return;
+    var data = await callClaude({
+      feature: 'speaking_feedback',
+      model:   'claude-haiku-4-5-20251001',
+      max_tokens: 700,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (data.content || []).map(function(c){ return c.text || ''; }).join('').replace(/```json?|```/g, '').trim();
+    var parsed = JSON.parse(raw);
+
+    var sb = getSupa();
+    if (!sb) return;
+    await sb.from('user_submissions').update({
+      ai_feedback: parsed,
+      ai_feedback_at: new Date().toISOString(),
+      ai_model: 'claude-haiku-4-5-20251001',
+      status: 'ai_reviewed'
+    }).eq('id', submissionId);
+
+    // Log wrong patterns into user_quiz_results so the Growth Lab
+    // error-pattern aggregator sees speaking mistakes alongside
+    // writing + quiz failures.
+    if (parsed.corrections && parsed.corrections.length && typeof logQuizResult === 'function') {
+      var patterns = {};
+      parsed.corrections.forEach(function(c) {
+        var p = (c && c.pattern) ? c.pattern : 'OTHER';
+        patterns[p] = (patterns[p] || 0) + 1;
+      });
+      try {
+        logQuizResult('speaking_feedback', {
+          content_type: 'speaking',
+          content_id:   submissionId,
+          score:        Math.max(0, 100 - parsed.corrections.length * 15),
+          max_score:    100,
+          accuracy_pct: Math.max(0, 100 - parsed.corrections.length * 15),
+          wrong_patterns: patterns,
+          details: { corrections_count: parsed.corrections.length, transcript: transcript ? transcript.slice(0, 200) : null }
+        });
+      } catch (_) {}
+    }
+  } catch (e) {
+    console.warn('Speaking feedback generation failed:', e && e.message);
+  }
+}
+
 async function submitSpeaking() {
   if (!_speakBlob || !supaUser) { showToast('녹음이 없거나 로그인이 필요합니다'); return; }
   // Show loading state on the submit button immediately — the storage
@@ -8000,28 +8088,40 @@ async function submitSpeaking() {
     // aren't readable here; they age out.
     var { error: upErr } = await sb.storage.from('speaking-recordings').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
     if (upErr) { showToast('업로드 실패: ' + upErr.message); return; }
-    // Save record to user_submissions
+    // Save record to user_submissions — .select('id') so we get the
+    // new row back and can fire the AI-feedback path inline.
     var ta = document.getElementById('write-area');
-    await sb.from('user_submissions').insert({
+    var scriptText = ta ? (ta.value || '') : '';
+    var insRes = await sb.from('user_submissions').insert({
       user_id: supaUser.id,
       content_type: 'speaking',
       study_date: kstDateKey(),
-      writing_text: ta ? ta.value : '',
+      writing_text: scriptText,
       topic_ko: _todayTopic ? _todayTopic.topic_ko : '',
       topic_en: _todayTopic ? _todayTopic.topic_en : '',
       level: _currentLevel,
       status: 'submitted',
       speaking_scores: _speakScores || null,
       context_data: JSON.stringify({ audio_path: fileName })
-    });
-    // AI feedback for speaking is not auto-generated yet; admin reviews
-    // recordings manually. The user now sees the recording + auto scores
-    // + admin feedback (when it lands) in the Feedback inbox on study
-    // room load.
-    showToast('Recording submitted — view it in My Feedback');
+    }).select('id');
+    if (insRes.error) throw insRes.error;
+    var newId = insRes.data && insRes.data[0] && insRes.data[0].id;
+    // Kick the speaking-feedback generator. It runs fire-and-forget
+    // alongside the user's confirmation toast so the UI returns
+    // immediately. The arrival poller (Item 3J) catches the status
+    // graduation once Claude is done.
+    if (newId) {
+      _triggerSpeakingFeedback(newId, scriptText, _speakScores)
+        .catch(function(e){ console.warn('speaking feedback failed', e && e.message); });
+    }
+    showToast('Recording submitted — feedback usually ready in about a minute.');
     var row = document.getElementById('wm-speak-submit-row');
     if (row) row.style.display = 'none';
-    document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted!</span></span>';
+    document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted! AI is reviewing…</span></span>';
+    // Make the arrival poller pick this row up.
+    if (typeof _startFeedbackArrivalPoll === 'function') {
+      setTimeout(function(){ _startFeedbackArrivalPoll(); }, 800);
+    }
   } catch(e) {
     showToast('Submit failed: ' + e.message);
   } finally {
