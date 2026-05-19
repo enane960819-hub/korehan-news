@@ -8850,6 +8850,37 @@ async function _triggerPackageFeedback(submissionId, items) {
         ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
       }).eq('id', submissionId);
     }
+    // Mirror what _triggerUnifiedAIFeedback does for single writes:
+    // aggregate per-activity corrections into wrong_patterns + log to
+    // user_quiz_results so the Growth Lab error-pattern panel sees
+    // mistakes from daily-package submissions too. Without this, the
+    // package path's corrections were write-once / read-once and the
+    // Growth Lab only ever reflected quiz failures, not writing
+    // mistakes.
+    if (parsed && Array.isArray(parsed.activities) && typeof logQuizResult === 'function') {
+      var pkgPatterns = {};
+      var pkgCount = 0;
+      parsed.activities.forEach(function(a) {
+        (a && Array.isArray(a.corrections) ? a.corrections : []).forEach(function(c) {
+          var p = (c && c.pattern) ? c.pattern : 'OTHER';
+          pkgPatterns[p] = (pkgPatterns[p] || 0) + 1;
+          pkgCount++;
+        });
+      });
+      if (pkgCount > 0) {
+        try {
+          logQuizResult('writing_feedback', {
+            content_type: 'daily_package',
+            content_id: submissionId,
+            score: Math.max(0, 100 - pkgCount * 12),
+            max_score: 100,
+            accuracy_pct: Math.max(0, 100 - pkgCount * 12),
+            wrong_patterns: pkgPatterns,
+            details: { corrections_count: pkgCount, activity_count: parsed.activities.length }
+          });
+        } catch (_) {}
+      }
+    }
   } catch(e) { console.warn('Package feedback failed:', e); }
 }
 
@@ -9062,8 +9093,12 @@ function renderDetailedFeedback(fb, writingText) {
         + '</div>'
         + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.55)">Avg ' + rubAvg + '</div>'
       + '</div>'
-      // Auto-flow grid: 2 cols on mobile, 3 cols when there's room.
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px">';
+      // Auto-flow grid — minmax 88 px so 3 cols fit on iPhone SE
+      // (320 px wide minus modal padding ≈ 280 px usable). Avoids the
+      // "single column scroll" mobile failure the feedback audit
+      // flagged: 110 px min was forcing 2 cols max on narrow phones,
+      // pushing rubric gauges off the visible row.
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px">';
     RUBRIC_ROWS.forEach(function(r, i) {
       var v = rubVals[i];
       var note = fb.rubric_notes && fb.rubric_notes[r.k] ? String(fb.rubric_notes[r.k]) : '';
