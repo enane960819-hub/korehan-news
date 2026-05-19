@@ -169,6 +169,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
 <script src="korehan-shared.js?v=20260516c"></script>
+<script src="playground-scores-client.js?v=20260519a"></script>
 <script>
 (function(){
 var _FALLBACK_TOPICS={
@@ -383,6 +384,7 @@ function endGame(){
   gameRunning=false;if(animFrame)cancelAnimationFrame(animFrame);
   words.forEach(function(w){w.el.remove();});words=[];
   if(score>bestScore){bestScore=score;localStorage.setItem('kh_worddrop_best',String(bestScore));}
+  if(window.playgroundScores){playgroundScores.submit('worddrop',score,{mode:_mode,speed:_speed,topics:_selectedTopics.slice()});}
   var emoji=score>=500?'🏆':score>=200?'⭐':score>=100?'👍':'💪';
   document.getElementById('end-emoji').textContent=emoji;
   document.getElementById('end-score').textContent=score+' pts';
