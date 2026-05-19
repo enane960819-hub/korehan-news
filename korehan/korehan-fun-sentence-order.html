@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
+<title>문장 순서 — KoreHan Playground</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Inter:wght@600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css?v=20260516a">
+<style>
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { margin:0; padding:0; background:#0a0e1a; color:#fff; font-family:'Inter','Noto Sans KR',sans-serif; min-height:100vh; overflow-x:hidden; }
+.wrap { max-width:520px; margin:0 auto; padding:18px 16px 32px; }
+.back { display:inline-flex; align-items:center; gap:6px; color:#94a3b8; font-size:12px; font-weight:700; text-decoration:none; margin-bottom:14px; padding:6px 10px; border-radius:8px; background:rgba(255,255,255,.04); }
+.back:hover { background:rgba(255,255,255,.08); color:#fff; }
+h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; margin:0 0 4px; background:linear-gradient(135deg,#fbbf24,#f97316); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sub { font-size:13px; color:#94a3b8; margin-bottom:18px; }
+
+/* Menu screen */
+.menu { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:22px 18px; text-align:center; }
+.menu-title { font-size:22px; font-weight:900; margin-bottom:6px; }
+.menu-sub { font-size:13px; color:#94a3b8; margin-bottom:16px; }
+.menu-section { margin-bottom:14px; text-align:left; }
+.menu-label { font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+.diff-btns { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.diff-btn { padding:14px 8px; border:2px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.03); color:#94a3b8; font-size:13px; font-weight:800; cursor:pointer; text-align:center; transition:.15s; font-family:inherit; min-height:56px; }
+.diff-btn.on { border-color:#fbbf24; background:rgba(251,191,36,.15); color:#fde68a; }
+.start-btn { width:100%; margin-top:10px; padding:14px; background:linear-gradient(135deg,#fbbf24,#f97316); color:#0a0e1a; border:0; border-radius:14px; font-size:15px; font-weight:900; cursor:pointer; font-family:inherit; min-height:48px; }
+.best-row { font-size:12px; color:#94a3b8; margin-top:14px; }
+.best-row strong { color:#fde68a; }
+
+/* Game screen */
+.gs-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; font-size:12px; font-weight:800; color:#94a3b8; }
+.gs-bar .gs-score { color:#fde68a; font-size:15px; }
+.gs-bar .gs-prog { color:#7dd3fc; }
+.gs-hint { background:rgba(125,211,252,.08); border:1px solid rgba(125,211,252,.2); color:#bae6fd; padding:11px 14px; border-radius:12px; font-size:13px; font-weight:600; margin-bottom:14px; line-height:1.5; }
+.gs-tray { min-height:64px; padding:11px 12px; background:rgba(255,255,255,.04); border:1.5px dashed rgba(125,211,252,.3); border-radius:14px; display:flex; flex-wrap:wrap; gap:7px; align-items:center; margin-bottom:14px; }
+.gs-tray-empty { font-size:12px; color:#64748b; text-align:center; width:100%; padding:6px 0; }
+.gs-pool { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:16px; min-height:44px; }
+.gs-chip { padding:11px 15px; border-radius:10px; border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:#fff; font-family:'Noto Sans KR',sans-serif; font-size:15px; font-weight:700; cursor:pointer; transition:.12s; min-height:44px; }
+.gs-chip:hover { background:rgba(255,255,255,.12); border-color:rgba(251,191,36,.4); }
+.gs-chip-on { background:linear-gradient(135deg,#fbbf24,#f97316); color:#0a0e1a; border-color:transparent; }
+.gs-actions { display:flex; gap:8px; }
+.gs-btn { flex:1; padding:13px; border:0; border-radius:12px; font-size:14px; font-weight:900; cursor:pointer; font-family:inherit; min-height:48px; }
+.gs-check { background:#fbbf24; color:#0a0e1a; }
+.gs-check:disabled { opacity:.4; cursor:not-allowed; }
+.gs-skip { background:rgba(255,255,255,.06); color:#94a3b8; border:1px solid rgba(255,255,255,.1); }
+.gs-fb { margin-top:14px; padding:13px 14px; border-radius:12px; font-size:13px; line-height:1.55; }
+.gs-fb.is-right { background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.3); color:#86efac; }
+.gs-fb.is-wrong { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.3); color:#fca5a5; }
+.gs-fb b { color:#fff; font-weight:900; display:block; margin-bottom:3px; }
+.gs-fb-correct { margin-top:6px; font-family:'Noto Sans KR',sans-serif; font-size:14px; color:#fff; font-weight:600; }
+
+/* End screen */
+.end { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:18px; padding:24px 18px; text-align:center; }
+.end-emoji { font-size:58px; margin-bottom:10px; }
+.end-title { font-size:22px; font-weight:900; margin-bottom:4px; }
+.end-score { font-size:36px; font-weight:900; color:#fde68a; margin:8px 0; }
+.end-stats { font-size:13px; color:#94a3b8; margin-bottom:6px; }
+.end-newbest { font-size:13px; font-weight:800; color:#fbbf24; margin:6px 0 14px; min-height:18px; }
+.end-actions { display:flex; gap:10px; margin-top:14px; }
+.end-actions .start-btn { flex:1; }
+.end-actions .secondary { flex:1; padding:14px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); color:#94a3b8; border-radius:14px; font-size:14px; font-weight:800; cursor:pointer; font-family:inherit; min-height:48px; text-decoration:none; display:flex; align-items:center; justify-content:center; }
+.lb { margin-top:18px; text-align:left; }
+.lb-title { font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+.lb-row { display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-radius:8px; background:rgba(255,255,255,.03); margin-bottom:4px; font-size:13px; }
+.lb-row.is-me { background:rgba(251,191,36,.12); border:1px solid rgba(251,191,36,.3); }
+.lb-rank { font-weight:900; color:#fbbf24; width:30px; }
+.lb-name { flex:1; color:#cbd5e1; font-weight:700; }
+.lb-score { font-weight:900; color:#fde68a; }
+
+@media (max-width: 420px) {
+  h1 { font-size:24px; }
+  .menu { padding:18px 14px; }
+  .gs-chip { font-size:14px; padding:10px 13px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="korehan-fun.html" class="back">&larr; Playground</a>
+  <h1>📚 문장 순서</h1>
+  <div class="sub">Tap the words in the right order to build the Korean sentence.</div>
+
+  <!-- Menu -->
+  <div class="menu" id="menu">
+    <div class="menu-title">Sentence Order</div>
+    <div class="menu-sub">5 sentences. Faster + cleaner = higher score.</div>
+    <div class="menu-section">
+      <div class="menu-label">Difficulty</div>
+      <div class="diff-btns">
+        <button type="button" class="diff-btn on" data-diff="easy">🌱 Easy<br><span style="font-size:11px;font-weight:600;opacity:.7">TOPIK 1–2</span></button>
+        <button type="button" class="diff-btn" data-diff="medium">🌳 Medium<br><span style="font-size:11px;font-weight:600;opacity:.7">TOPIK 3–4</span></button>
+        <button type="button" class="diff-btn" data-diff="hard">🌲 Hard<br><span style="font-size:11px;font-weight:600;opacity:.7">TOPIK 5+</span></button>
+      </div>
+    </div>
+    <button type="button" class="start-btn" onclick="startGame()">START</button>
+    <div class="best-row" id="best-row" style="display:none">Your best: <strong id="best-score">0</strong> pts</div>
+  </div>
+
+  <!-- Game -->
+  <div id="game" style="display:none">
+    <div class="gs-bar">
+      <div>Score <span class="gs-score" id="gs-score">0</span></div>
+      <div class="gs-prog" id="gs-prog">1 / 5</div>
+      <div>⏱ <span id="gs-timer">0</span>s</div>
+    </div>
+    <div class="gs-hint" id="gs-hint">English translation here.</div>
+    <div class="gs-tray" id="gs-tray"></div>
+    <div class="gs-pool" id="gs-pool"></div>
+    <div class="gs-actions">
+      <button type="button" class="gs-btn gs-skip" onclick="skipQ()">Skip</button>
+      <button type="button" class="gs-btn gs-check" id="gs-check" disabled onclick="checkAnswer()">Check</button>
+    </div>
+    <div id="gs-fb-host"></div>
+  </div>
+
+  <!-- End -->
+  <div class="end" id="end" style="display:none">
+    <div class="end-emoji" id="end-emoji">🏆</div>
+    <div class="end-title" id="end-title">Round complete</div>
+    <div class="end-score" id="end-score">0 pts</div>
+    <div class="end-stats" id="end-stats">0 correct · 0s</div>
+    <div class="end-newbest" id="end-newbest"></div>
+    <div class="lb" id="lb-host"></div>
+    <div class="end-actions">
+      <a href="korehan-fun.html" class="secondary">Playground</a>
+      <button type="button" class="start-btn" onclick="restart()">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-shared.js?v=20260516c"></script>
+<script src="playground-scores-client.js?v=20260519a"></script>
+<script>
+// Curated pool — ~12 sentences per difficulty. Each tuple = [Korean,
+// English]. Korean is space-split into the chip pool, so make sure
+// the spacing matches natural reading (particles attach to nouns).
+var POOLS = {
+  easy: [
+    ['저는 학생 입니다',                       'I am a student.'],
+    ['오늘 날씨가 좋아요',                     'The weather is nice today.'],
+    ['커피 한 잔 주세요',                      'One cup of coffee, please.'],
+    ['저는 한국어를 배워요',                    'I am learning Korean.'],
+    ['주말에 친구를 만나요',                    'I meet my friend on the weekend.'],
+    ['지금 책을 읽고 있어요',                   'I am reading a book now.'],
+    ['저는 매일 운동을 해요',                   'I exercise every day.'],
+    ['이 음식이 정말 맛있어요',                  'This food is really delicious.'],
+    ['내일 학교에 안 가요',                     'I am not going to school tomorrow.'],
+    ['언니가 노래를 잘 불러요',                  'My older sister sings well.'],
+    ['저는 영화 보는 것을 좋아해요',              'I like watching movies.'],
+    ['우리 집은 학교에서 멀어요',                'My house is far from the school.']
+  ],
+  medium: [
+    ['비가 와서 집에 일찍 들어 갔어요',                  'I went home early because it rained.'],
+    ['친구가 한국에 살고 있어서 자주 연락 해요',          'My friend lives in Korea so we contact often.'],
+    ['저는 매일 아침 6시에 일어나서 운동을 해요',         'I wake up at 6 AM every morning and exercise.'],
+    ['이번 주말에는 부모님을 뵈러 갈 거예요',             'This weekend I am going to visit my parents.'],
+    ['한국 드라마를 보면서 한국어를 공부 하고 있어요',    'I am studying Korean while watching K-dramas.'],
+    ['저녁에 무엇을 먹을지 아직 결정 하지 못했어요',      'I still haven\'t decided what to eat for dinner.'],
+    ['오랜만에 친구를 만나서 정말 반가웠어요',            'It was really nice to meet my friend after a long time.'],
+    ['선생님께서 학생들에게 숙제를 많이 주셨어요',         'The teacher gave the students a lot of homework.'],
+    ['이 영화는 제가 본 영화 중에서 가장 슬퍼요',         'This movie is the saddest of the movies I have seen.'],
+    ['바쁘지 않으면 같이 점심을 먹으러 갈래요',           'If you\'re not busy, want to go grab lunch together?'],
+    ['새로 산 신발이 너무 작아서 환불 받고 싶어요',       'The shoes I just bought are too small so I want a refund.'],
+    ['한국에 처음 왔을 때는 모든 것이 신기 했어요',        'When I first came to Korea, everything was fascinating.']
+  ],
+  hard: [
+    ['아무리 노력해도 결과가 좋지 않으면 너무 속상 합니다',                       'No matter how much you try, it\'s really upsetting when the result isn\'t good.'],
+    ['그 사람이 그렇게 말 했을 줄은 정말 상상도 못 했어요',                       'I really couldn\'t even imagine that person would say something like that.'],
+    ['회의가 길어 지는 바람에 약속에 늦을 뻔 했어요',                            'The meeting dragged on so I almost was late for my appointment.'],
+    ['한국어 실력이 늘면 늘수록 한국 문화에 대한 관심도 커지 더라고요',            'The better my Korean gets, the more my interest in Korean culture grows.'],
+    ['오랫동안 연락을 못 했는데 이번 기회에 꼭 만나 뵙고 싶습니다',               'We haven\'t been in touch for a long time, but I really hope to meet you this time.'],
+    ['그렇게 어려운 문제를 혼자서 해결 하다니 정말 대단 하네요',                  'To solve such a difficult problem all by yourself — that\'s really impressive.'],
+    ['시간이 없어서 제대로 인사도 못 드리고 떠나서 죄송 합니다',                  'I\'m sorry I had to leave without even saying a proper goodbye because of time.'],
+    ['새로운 기술이 도입 되면서 업무 방식이 완전히 바뀌었어요',                  'With the introduction of new technology, the way we work has completely changed.'],
+    ['그 식당은 예약을 하지 않으면 들어 가기가 거의 불가능 합니다',               'It\'s almost impossible to get into that restaurant without a reservation.'],
+    ['친구가 추천해 준 책을 읽다 보니 어느새 새벽이 되었어요',                    'Reading the book my friend recommended, I noticed dawn had come.']
+  ]
+};
+
+var _state = null;
+var _diff = 'easy';
+var ROUND_LEN = 5;
+
+window.startGame = async function() {
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('end').style.display = 'none';
+  document.getElementById('game').style.display = '';
+  document.getElementById('gs-fb-host').innerHTML = '';
+  var pool = POOLS[_diff].slice();
+  shuffle(pool);
+  _state = {
+    items:    pool.slice(0, ROUND_LEN),
+    idx:      0,
+    score:    0,
+    correct:  0,
+    started:  Date.now(),
+    qStarted: Date.now(),
+    answer:   [],
+    poolWords:[]
+  };
+  _tick();
+  renderQ();
+};
+
+function _tick() {
+  if (!_state) return;
+  var el = document.getElementById('gs-timer');
+  if (!el) return;
+  el.textContent = Math.floor((Date.now() - _state.started) / 1000);
+  if (document.getElementById('game').style.display !== 'none') {
+    setTimeout(_tick, 500);
+  }
+}
+
+function renderQ() {
+  var s = _state; if (!s) return;
+  if (s.idx >= s.items.length) { endRound(); return; }
+  var pair = s.items[s.idx];
+  document.getElementById('gs-hint').textContent = pair[1];
+  document.getElementById('gs-score').textContent = s.score;
+  document.getElementById('gs-prog').textContent = (s.idx + 1) + ' / ' + s.items.length;
+  document.getElementById('gs-fb-host').innerHTML = '';
+  // Word pool — preserve original index so dupe words still resolve.
+  s.poolWords = pair[0].split(' ').map(function(w, i){ return { w:w, i:i }; });
+  shuffle(s.poolWords);
+  s.answer = [];
+  s.qStarted = Date.now();
+  _renderChips();
+}
+
+function _renderChips() {
+  var s = _state; if (!s) return;
+  var tray = document.getElementById('gs-tray');
+  var pool = document.getElementById('gs-pool');
+  if (!s.answer.length) {
+    tray.innerHTML = '<div class="gs-tray-empty">Tap the chips below to build the sentence.</div>';
+  } else {
+    tray.innerHTML = s.answer.map(function(o, pos) {
+      return '<button type="button" class="gs-chip gs-chip-on" onclick="window._so_remove(' + pos + ')">' + escapeHtml(o.w) + ' ×</button>';
+    }).join('');
+  }
+  pool.innerHTML = s.poolWords.map(function(o) {
+    return '<button type="button" class="gs-chip" onclick="window._so_pick(' + o.i + ')">' + escapeHtml(o.w) + '</button>';
+  }).join('');
+  // Enable check only when every word has been placed.
+  var origCount = s.items[s.idx][0].split(' ').length;
+  document.getElementById('gs-check').disabled = (s.answer.length !== origCount);
+}
+
+window._so_pick = function(origIdx) {
+  var s = _state; if (!s) return;
+  var k = -1;
+  for (var i = 0; i < s.poolWords.length; i++) {
+    if (s.poolWords[i].i === origIdx) { k = i; break; }
+  }
+  if (k < 0) return;
+  s.answer.push(s.poolWords.splice(k, 1)[0]);
+  _renderChips();
+};
+
+window._so_remove = function(pos) {
+  var s = _state; if (!s) return;
+  var removed = s.answer.splice(pos, 1)[0];
+  if (removed) s.poolWords.push(removed);
+  _renderChips();
+};
+
+window.checkAnswer = function() {
+  var s = _state; if (!s) return;
+  var origWords = s.items[s.idx][0].split(' ');
+  var got = s.answer.map(function(o){ return o.w; });
+  var ok = got.join(' ') === origWords.join(' ');
+  var elapsed = (Date.now() - s.qStarted) / 1000;
+  var fbHost = document.getElementById('gs-fb-host');
+  if (ok) {
+    s.correct++;
+    // Base 100 + speed bonus (max 60 for under 5s, decays to 0 by 30s).
+    var bonus = Math.max(0, Math.floor(60 * (1 - Math.min(1, (elapsed - 5) / 25))));
+    s.score += 100 + bonus;
+    fbHost.innerHTML = '<div class="gs-fb is-right"><b>✓ Correct! +' + (100 + bonus) + ' pts</b>' + (bonus > 0 ? '<div style="font-size:12px;opacity:.8;margin-top:3px">' + bonus + ' speed bonus</div>' : '') + '</div>';
+  } else {
+    s.score = Math.max(0, s.score - 10);
+    fbHost.innerHTML = '<div class="gs-fb is-wrong"><b>✗ Not quite</b><div class="gs-fb-correct">정답: ' + escapeHtml(origWords.join(' ')) + '</div></div>';
+  }
+  document.getElementById('gs-score').textContent = s.score;
+  // Lock chips until the user advances.
+  document.getElementById('gs-check').disabled = true;
+  setTimeout(function() {
+    s.idx++;
+    renderQ();
+  }, ok ? 900 : 2000);
+};
+
+window.skipQ = function() {
+  var s = _state; if (!s) return;
+  var origWords = s.items[s.idx][0].split(' ');
+  document.getElementById('gs-fb-host').innerHTML =
+    '<div class="gs-fb is-wrong"><b>Skipped</b><div class="gs-fb-correct">정답: ' + escapeHtml(origWords.join(' ')) + '</div></div>';
+  document.getElementById('gs-check').disabled = true;
+  setTimeout(function() { s.idx++; renderQ(); }, 1500);
+};
+
+async function endRound() {
+  var s = _state; if (!s) return;
+  var elapsed = Math.floor((Date.now() - s.started) / 1000);
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('end').style.display = '';
+  var pct = Math.round(s.correct / ROUND_LEN * 100);
+  var emoji = pct >= 80 ? '🏆' : pct >= 60 ? '⭐' : pct >= 40 ? '👍' : '💪';
+  document.getElementById('end-emoji').textContent = emoji;
+  document.getElementById('end-title').textContent = pct >= 80 ? '완벽해요!' : pct >= 60 ? 'Nice work!' : 'Keep going!';
+  document.getElementById('end-score').textContent = s.score + ' pts';
+  document.getElementById('end-stats').textContent = s.correct + ' / ' + ROUND_LEN + ' correct · ' + elapsed + 's · ' + _diff;
+  // localStorage best (per-difficulty)
+  var lsKey = 'kh_sentence_order_best';
+  var bests = {};
+  try { bests = JSON.parse(localStorage.getItem(lsKey) || '{}'); } catch(_){}
+  var prev = bests[_diff] || 0;
+  var isLocalBest = s.score > prev;
+  if (isLocalBest) { bests[_diff] = s.score; try { localStorage.setItem(lsKey, JSON.stringify(bests)); } catch(_){} }
+  // Server best + leaderboard
+  var serverBestMsg = '';
+  if (window.playgroundScores) {
+    var r = await playgroundScores.submit('sentence-order', s.score, { difficulty:_diff, correct:s.correct, total:ROUND_LEN, elapsed:elapsed });
+    if (r && r.new_best) serverBestMsg = '🎊 New personal best!';
+  }
+  document.getElementById('end-newbest').textContent = serverBestMsg || (isLocalBest ? '🎉 New local best!' : '');
+  // Top 5 leaderboard
+  if (window.playgroundScores) {
+    var top = await playgroundScores.getTop('sentence-order', 5);
+    if (top && top.length) {
+      var rows = top.map(function(t){
+        var isMe = (window.supaUser && t.user_id === window.supaUser.id);
+        var label = isMe ? 'You' : ('Player · ' + (t.user_id || '').slice(0, 6));
+        return '<div class="lb-row' + (isMe ? ' is-me' : '') + '"><span class="lb-rank">#' + t.rank + '</span><span class="lb-name">' + label + '</span><span class="lb-score">' + t.best_score + '</span></div>';
+      }).join('');
+      document.getElementById('lb-host').innerHTML = '<div class="lb-title">Top 5 (all difficulties)</div>' + rows;
+    }
+  }
+  _state = null;
+}
+
+window.restart = function() {
+  document.getElementById('end').style.display = 'none';
+  document.getElementById('menu').style.display = '';
+  _loadLocalBest();
+};
+
+function _loadLocalBest() {
+  var bests = {};
+  try { bests = JSON.parse(localStorage.getItem('kh_sentence_order_best') || '{}'); } catch(_){}
+  var b = bests[_diff] || 0;
+  var row = document.getElementById('best-row');
+  if (b > 0) {
+    row.style.display = '';
+    document.getElementById('best-score').textContent = b;
+  } else {
+    row.style.display = 'none';
+  }
+}
+
+function shuffle(arr) {
+  for (var i = arr.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.diff-btn').forEach(function(b) {
+    b.addEventListener('click', function() {
+      _diff = b.dataset.diff;
+      document.querySelectorAll('.diff-btn').forEach(function(x){ x.classList.toggle('on', x === b); });
+      _loadLocalBest();
+    });
+  });
+  _loadLocalBest();
+});
+</script>
+</body>
+</html>
