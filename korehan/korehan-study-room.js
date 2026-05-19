@@ -9182,6 +9182,32 @@ function renderDetailedFeedback(fb, writingText) {
   return h;
 }
 
+// ── Feedback-view XP bonus ──
+// Audit gap: writing/speaking XP is awarded at SUBMIT, so the user gets
+// nothing for actually opening the feedback 24h later. This grants +5 XP
+// the first time a reviewed card is expanded. Server-side idempotent via
+// feedback_viewed_at — second tap awards nothing.
+window.khMaybeAwardFeedbackView = async function(cardEl) {
+  if (!cardEl || !supaUser) return;
+  if (cardEl.getAttribute('data-reviewed') !== '1') return;
+  if (cardEl.dataset.fbAwarded === '1') return;            // already handled this session
+  cardEl.dataset.fbAwarded = '1';
+  var id = cardEl.getAttribute('data-submission-id');
+  if (!id) return;
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var r = await sb.rpc('mark_feedback_viewed', { p_submission_id: Number(id) });
+    if (r && r.data && r.data.ok && r.data.awarded && r.data.xp > 0) {
+      if (typeof showToast === 'function') {
+        showToast('+' + r.data.xp + ' XP for reviewing your feedback ✨');
+      }
+      // Best-effort kick to refresh any hero XP widgets without a full
+      // reload — same pattern other XP grants use.
+      try { if (typeof refreshUserStats === 'function') refreshUserStats(); } catch(_) {}
+    }
+  } catch (_) {}
+};
+
 async function renderFeedbackInboxContent() {
   var content = document.getElementById('feedback-inbox-content');
   if (!content) return;
@@ -9254,10 +9280,10 @@ async function renderFeedbackInboxContent() {
         if ((item.writing_text || '').length > 50) preview += '…';
         var topicLabel = item.topic_ko || '';
 
-        // Card
-        html += '<div style="border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:8px;overflow:hidden">'
+        // Card. data-submission-id powers the first-view XP bonus.
+        html += '<div class="kh-fb-card" data-submission-id="' + item.id + '" data-reviewed="' + (isReviewed ? '1' : '0') + '" style="border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:8px;overflow:hidden">'
           // Banner header
-          + '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\'none\';var a=this.querySelector(\'.fb-arrow\');if(a)a.textContent=this.nextElementSibling.style.display===\'none\'?\'▼\':\'▲\'" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);transition:background .15s" onmouseover="this.style.background=\'rgba(255,255,255,.06)\'" onmouseout="this.style.background=\'rgba(255,255,255,.03)\'">'
+          + '<div class="kh-fb-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\'none\';var a=this.querySelector(\'.fb-arrow\');if(a)a.textContent=this.nextElementSibling.style.display===\'none\'?\'▼\':\'▲\';if(typeof khMaybeAwardFeedbackView===\'function\')khMaybeAwardFeedbackView(this.closest(\'.kh-fb-card\'));" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);transition:background .15s" onmouseover="this.style.background=\'rgba(255,255,255,.06)\'" onmouseout="this.style.background=\'rgba(255,255,255,.03)\'">'
           // Type icon
           + '<div style="width:36px;height:36px;border-radius:10px;background:' + type.color + '22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">' + type.icon + '</div>'
           // Info
