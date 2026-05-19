@@ -15,6 +15,11 @@ const ALLOWED_TABLES = new Set([
   'listening_quiz_bank','grammar_examples_cache','grammar_curriculum',
   'newsletter_campaigns','newsletter_sends','study_topic_schedule',
   'profiles','user_blocks',
+  // Conversation scenario pool — admin's 🪄 Batch from pool modal
+  // queries this table directly via the admin proxy. Without it the
+  // select returned "Table not allowed" and the modal hung on
+  // "Loading scenarios…" (owner: "ㅡㅡ 무한로딩").
+  'conv_scenario_pool',
   // AI usage telemetry — admin-only dashboard reads this to break
   // down Claude spend by user / feature / model. Not user-writable.
   'claude_api_usage',
