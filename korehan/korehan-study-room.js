@@ -9337,8 +9337,15 @@ function openFeedbackInbox() {
   // Don't stack modals on rapid re-open.
   var existing = document.getElementById('feedback-inbox-overlay');
   if (existing) existing.remove();
+  // Snapshot the element that had focus so we can return it on close —
+  // standard a11y pattern for keyboard / screen-reader users so focus
+  // doesn't fly to the top of the document when the modal closes.
+  var _prevFocus = document.activeElement;
   var overlay = document.createElement('div');
   overlay.id = 'feedback-inbox-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'My Feedback');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.85);z-index:3000;display:flex;align-items:center;justify-content:center;padding:12px;';
   // Lock background scroll so the dual-scroll (modal vs. page) the
   // UX audit flagged stops happening on iOS / Android.
@@ -9348,6 +9355,8 @@ function openFeedbackInbox() {
     overlay.remove();
     document.body.style.overflow = _prevBodyOverflow;
     document.removeEventListener('keydown', _onKey);
+    // Return focus to whatever opened the modal (button / chip).
+    try { if (_prevFocus && typeof _prevFocus.focus === 'function') _prevFocus.focus(); } catch(_){}
   }
   function _onKey(e) {
     if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); _closeOverlay(); }
@@ -9371,6 +9380,13 @@ function openFeedbackInbox() {
     + '</div>';
 
   document.body.appendChild(overlay);
+  // Move focus into the modal so a Tab / Esc keyboard user is
+  // immediately inside the dialog. Default to the close button —
+  // a familiar "I can leave" anchor.
+  try {
+    var closeBtn = overlay.querySelector('button[aria-label="Close"]');
+    if (closeBtn && typeof closeBtn.focus === 'function') closeBtn.focus({ preventScroll: true });
+  } catch(_) {}
   renderFeedbackInboxContent();
 }
 
@@ -9743,9 +9759,13 @@ async function renderFeedbackInboxContent() {
         var topicLabel = item.topic_ko || '';
 
         // Card. data-submission-id powers the first-view XP bonus.
+        // role="button" + tabindex="0" + onkeydown make the expand
+        // toggle keyboard-accessible (Enter / Space). Previously it
+        // was a bare <div onclick>, so screen-reader / keyboard
+        // users couldn't open feedback at all.
         html += '<div class="kh-fb-card" data-submission-id="' + item.id + '" data-reviewed="' + (isReviewed ? '1' : '0') + '" style="border:1px solid rgba(255,255,255,.08);border-radius:12px;margin-bottom:8px;overflow:hidden">'
           // Banner header
-          + '<div class="kh-fb-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\'none\';var a=this.querySelector(\'.fb-arrow\');if(a)a.textContent=this.nextElementSibling.style.display===\'none\'?\'▼\':\'▲\';if(typeof khMaybeAwardFeedbackView===\'function\')khMaybeAwardFeedbackView(this.closest(\'.kh-fb-card\'));" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);transition:background .15s" onmouseover="this.style.background=\'rgba(255,255,255,.06)\'" onmouseout="this.style.background=\'rgba(255,255,255,.03)\'">'
+          + '<div class="kh-fb-toggle" role="button" tabindex="0" aria-expanded="false" aria-label="Toggle feedback details" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\'none\';var a=this.querySelector(\'.fb-arrow\');if(a)a.textContent=this.nextElementSibling.style.display===\'none\'?\'▼\':\'▲\';this.setAttribute(\'aria-expanded\',this.nextElementSibling.style.display===\'none\'?\'false\':\'true\');if(typeof khMaybeAwardFeedbackView===\'function\')khMaybeAwardFeedbackView(this.closest(\'.kh-fb-card\'));" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click();}" style="padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);transition:background .15s" onmouseover="this.style.background=\'rgba(255,255,255,.06)\'" onmouseout="this.style.background=\'rgba(255,255,255,.03)\'">'
           // Type icon
           + '<div style="width:36px;height:36px;border-radius:10px;background:' + type.color + '22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">' + type.icon + '</div>'
           // Info
