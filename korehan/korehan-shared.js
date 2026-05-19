@@ -1341,7 +1341,15 @@ function updateAuthUI() {
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
         + '<a href="korehan-friends.html" class="kh-user-dropdown-link">' + khIcon('users', 'Friends', 'kh-ui-icon-sm') + '</a>'
-        + '<a href="korehan-notes.html" class="kh-user-dropdown-link">' + khIcon('bookmark', 'My Notes', 'kh-ui-icon-sm') + '</a>'
+        // Owner: the old "My Notes" duplicated the Word Universe vocab
+        // surface inside the profile dropdown — same saved_words data,
+        // but a flat list instead of the constellation. Pointing the
+        // dropdown at the Growth Lab Universe consolidates them. The
+        // #gl-universe-hero anchor scrolls users straight to the
+        // constellation card on click. Bookmarked-articles surface
+        // (the other tab on the old My Notes page) remains reachable
+        // via the per-article bookmark icon.
+        + '<a href="korehan-learning-overview.html#gl-universe-hero" class="kh-user-dropdown-link">' + khIcon('sparkles', 'Word Universe', 'kh-ui-icon-sm') + '</a>'
         + (isAdmin ? '<a href="korehan-x9f4k2m7.html" class="kh-user-dropdown-link">' + khIcon('settings', 'Admin CMS', 'kh-ui-icon-sm') + '</a>' : '')
         + (isTutor ? '<a href="korehan-tutor-7v3ca.html" class="kh-user-dropdown-link">' + khIcon('graduation-cap', 'Tutor Dashboard', 'kh-ui-icon-sm') + '</a>' : '')
         + '<button type="button" class="kh-user-dropdown-link kh-user-dropdown-btn" onclick="signOut();closeTopbarUserMenu()">' + khIcon('log-out', 'Sign Out', 'kh-ui-icon-sm') + '</button>';
