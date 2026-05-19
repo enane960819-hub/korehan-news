@@ -8172,9 +8172,12 @@ async function goConvEditor() {
           <div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Quick Topics</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px" id="cv-chips"></div>
         </div>
-        <div style="display:flex;align-items:center;gap:12px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <button onclick="generateConvs()" id="cv-gen-btn" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:11px 26px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px">
             🤖 Generate Conversations
+          </button>
+          <button onclick="openConvBatchModal()" id="cv-batch-btn" style="background:#fff;color:#0b1626;border:1.5px solid #0b1626;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px">
+            🪄 Batch from pool
           </button>
           <div style="font-size:12px;color:#94a3b8">Results will appear below. Review before saving.</div>
         </div>
@@ -8353,6 +8356,172 @@ async function generateConvs() {
 }
 
 
+// ── Conversation batch generator ────────────────────────────────────
+// Opens a modal listing every active scenario in conv_scenario_pool
+// (least-used first), grouped by level. Admin selects a subset, hits
+// Generate, and we loop through them sequentially:
+//   1) set cv-cat / cv-lvl / cv-topic to the scenario row
+//   2) await generateConvs() with count=1
+//   3) await saveAllConvs() — that path also calls mark_conv_scenario_used
+//   4) wait the rate-limit cool-down, advance
+// Progress + per-item status streams into the modal. Abort button stops
+// the loop after the current item completes (no half-saved state).
+
+var _convBatchAbort = false;
+
+window.openConvBatchModal = async function openConvBatchModal() {
+  var sb = getSb(); if (!sb) return;
+  _convBatchAbort = false;
+  var overlay = document.createElement('div');
+  overlay.id = 'cv-batch-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(8,12,28,.72);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = '<div style="background:#fff;border-radius:16px;padding:22px;max-width:720px;width:100%;max-height:90vh;overflow:auto;font-family:inherit">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div style="font-size:17px;font-weight:900;color:#0b1626">🪄 Batch generate from scenario pool</div><button onclick="this.closest(\'#cv-batch-overlay\').remove()" style="background:none;border:0;font-size:24px;color:#64748b;cursor:pointer;line-height:1">×</button></div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px;line-height:1.5">Pick scenarios to generate sequentially. Each one runs the existing single-conv pipeline (generate → review → save → sentence-bake → mark used). The loop pauses <b>30 s</b> between calls so you stay under the Claude rate limit.</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:11px;color:#64748b">'
+    +   '<button onclick="window._cvBatchSelectAll(true)" style="padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;cursor:pointer;font-family:inherit;font-weight:700;font-size:11px">Select all unused</button>'
+    +   '<button onclick="window._cvBatchSelectAll(false)" style="padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;cursor:pointer;font-family:inherit;font-weight:700;font-size:11px">Clear</button>'
+    +   '<span style="margin-left:auto;align-self:center"><span id="cv-batch-count">0</span> selected</span>'
+    + '</div>'
+    + '<div id="cv-batch-list" style="border:1px solid #e2e8f0;border-radius:10px;padding:10px;max-height:380px;overflow:auto;background:#fafbfc"><div style="text-align:center;color:#94a3b8;padding:20px;font-size:12px">Loading scenarios…</div></div>'
+    + '<div id="cv-batch-progress" style="display:none;margin-top:14px;padding:12px;border-radius:10px;background:#0f172a;color:#fff;font-size:12px;font-family:ui-monospace,monospace;line-height:1.6;max-height:200px;overflow:auto"></div>'
+    + '<div style="display:flex;gap:10px;margin-top:14px">'
+    +   '<button id="cv-batch-run" onclick="window._cvBatchRun()" style="flex:1;padding:13px;background:#0b1626;color:#fff;border:0;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Generate selected</button>'
+    +   '<button id="cv-batch-stop" onclick="window._cvBatchAbortNow()" style="padding:13px 18px;background:#fff;color:#b91c1c;border:1.5px solid #fecaca;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:none">Stop after current</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+
+  var listRes = await sb.from('conv_scenario_pool')
+    .select('slug, category, level, ko_context, use_count')
+    .eq('active', true)
+    .order('level').order('use_count').order('slug');
+  if (listRes.error) {
+    document.getElementById('cv-batch-list').innerHTML = '<div style="color:#b91c1c;padding:16px;font-size:13px">Pool not seeded yet — run delivery/D2_CONV_SCENARIO_POOL.sql.</div>';
+    return;
+  }
+  var rows = listRes.data || [];
+  window._cvBatchRows = rows;
+  var byLevel = { s:[], b:[], i:[], a:[] };
+  rows.forEach(function(r){ if (byLevel[r.level]) byLevel[r.level].push(r); });
+  var LEVEL_LABEL = { s:'🌰 Seed (TOPIK 1)', b:'🌱 Sprout (TOPIK 2)', i:'🌳 Tree (TOPIK 3-4)', a:'🌲 Forest (TOPIK 5+)' };
+  var html = '';
+  ['b','i','a','s'].forEach(function(L) {
+    if (!byLevel[L].length) return;
+    html += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:900;color:#475569;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px">' + LEVEL_LABEL[L]
+         + '<button onclick="window._cvBatchSelectLevel(\'' + L + '\',true)" style="margin-left:auto;font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:700">All unused</button></div>';
+    byLevel[L].forEach(function(r) {
+      var used = r.use_count > 0;
+      html += '<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:' + (used ? '#f1f5f9' : '#fff') + ';border:1px solid #e2e8f0;margin-bottom:5px;cursor:pointer;font-size:12px">'
+            + '<input type="checkbox" class="cv-batch-cb" data-slug="' + r.slug + '" data-used="' + (used ? '1' : '0') + '" onchange="window._cvBatchTallyCount()" style="margin:0">'
+            + '<span style="font-weight:700;color:#0b1626;min-width:170px">' + r.slug + '</span>'
+            + '<span style="flex:1;color:#475569">' + r.ko_context + '</span>'
+            + '<span style="font-size:10px;color:' + (used ? '#94a3b8' : '#16a34a') + ';font-weight:700">' + (used ? 'used ' + r.use_count + '×' : 'new') + '</span>'
+            + '</label>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('cv-batch-list').innerHTML = html || '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:12px">No active scenarios.</div>';
+};
+
+window._cvBatchTallyCount = function() {
+  var n = document.querySelectorAll('.cv-batch-cb:checked').length;
+  var el = document.getElementById('cv-batch-count');
+  if (el) el.textContent = n;
+};
+
+window._cvBatchSelectAll = function(unusedOnly) {
+  document.querySelectorAll('.cv-batch-cb').forEach(function(cb) {
+    cb.checked = unusedOnly ? (cb.dataset.used === '0') : false;
+  });
+  window._cvBatchTallyCount();
+};
+
+window._cvBatchSelectLevel = function(level, unusedOnly) {
+  var rows = window._cvBatchRows || [];
+  var slugsAtLevel = {};
+  rows.forEach(function(r){ if (r.level === level && (!unusedOnly || r.use_count === 0)) slugsAtLevel[r.slug] = true; });
+  document.querySelectorAll('.cv-batch-cb').forEach(function(cb) {
+    if (slugsAtLevel[cb.dataset.slug]) cb.checked = true;
+  });
+  window._cvBatchTallyCount();
+};
+
+window._cvBatchAbortNow = function() {
+  _convBatchAbort = true;
+  var stopBtn = document.getElementById('cv-batch-stop');
+  if (stopBtn) stopBtn.textContent = 'Stopping…';
+};
+
+window._cvBatchRun = async function() {
+  var slugs = [];
+  document.querySelectorAll('.cv-batch-cb:checked').forEach(function(cb) { slugs.push(cb.dataset.slug); });
+  if (!slugs.length) { alert('Select at least one scenario.'); return; }
+  var rows = window._cvBatchRows || [];
+  var rowsBySlug = {};
+  rows.forEach(function(r){ rowsBySlug[r.slug] = r; });
+
+  var runBtn = document.getElementById('cv-batch-run');
+  var stopBtn = document.getElementById('cv-batch-stop');
+  var progEl = document.getElementById('cv-batch-progress');
+  runBtn.disabled = true;
+  runBtn.textContent = 'Running…';
+  stopBtn.style.display = '';
+  progEl.style.display = 'block';
+  progEl.innerHTML = '';
+  window._cvBatchInProgress = true;
+  function log(line, color) {
+    progEl.innerHTML += '<div style="color:' + (color || '#cbd5e1') + '">' + line + '</div>';
+    progEl.scrollTop = progEl.scrollHeight;
+  }
+  log('Starting batch — ' + slugs.length + ' scenarios.');
+
+  var done = 0, failed = 0;
+  for (var i = 0; i < slugs.length; i++) {
+    if (_convBatchAbort) { log('⏹ Aborted by user.', '#fbbf24'); break; }
+    var r = rowsBySlug[slugs[i]];
+    if (!r) continue;
+    log('— [' + (i + 1) + '/' + slugs.length + '] ' + r.slug + ' (' + r.level + ' / ' + r.category + ')');
+    try {
+      // Set the existing single-conv form values + stash slug so
+      // saveAllConvs() will fire mark_conv_scenario_used on success.
+      var catSel = document.getElementById('cv-cat');
+      for (var k = 0; k < catSel.options.length; k++) if (catSel.options[k].value === r.category) { catSel.selectedIndex = k; break; }
+      document.getElementById('cv-lvl').value = r.level;
+      document.getElementById('cv-count').value = '1';
+      var topicInput = document.getElementById('cv-topic');
+      topicInput.value = r.ko_context;
+      topicInput.dataset.poolSlug = r.slug;
+      log('  · generating…');
+      await generateConvs();
+      if (!window._generatedConvs || !window._generatedConvs.length) {
+        log('  ✗ generation produced no convs', '#f87171');
+        failed++;
+        continue;
+      }
+      log('  · saving + auto-baking analysis…');
+      await saveAllConvs();
+      done++;
+      log('  ✓ done.', '#86efac');
+    } catch (e) {
+      failed++;
+      log('  ✗ ' + (e && e.message ? e.message : e), '#f87171');
+    }
+    if (i < slugs.length - 1 && !_convBatchAbort) {
+      log('  · cooling down 30 s…');
+      for (var s = 30; s > 0 && !_convBatchAbort; s--) {
+        await new Promise(function(r){ setTimeout(r, 1000); });
+      }
+    }
+  }
+  log('Finished — ' + done + ' saved, ' + failed + ' failed.', '#bae6fd');
+  runBtn.disabled = false;
+  runBtn.textContent = 'Generate selected';
+  stopBtn.style.display = 'none';
+  stopBtn.textContent = 'Stop after current';
+  window._cvBatchInProgress = false;
+};
+
 async function saveAllConvs() {
   if (!window._generatedConvs || !window._generatedConvs.length) return;
   var sb = getSb();
@@ -8410,10 +8579,15 @@ async function saveAllConvs() {
     try { delete topicInput.dataset.poolSlug; } catch (_) {}
   }
 
-  var msg = '✅ ' + rows.length + ' conversations saved/published + analysis baked!\n\nCheck in Conversations management.';
-  alert(msg);
   window._generatedConvs = [];  // 초기화
-  goConvManager();  // 저장 후 관리 화면으로 이동
+  // In batch mode (driven by openConvBatchModal) skip the alert + nav
+  // so the loop can advance silently. Standalone Save still alerts +
+  // jumps to the manager screen as before.
+  if (!window._cvBatchInProgress) {
+    var msg = '✅ ' + rows.length + ' conversations saved/published + analysis baked!\n\nCheck in Conversations management.';
+    alert(msg);
+    goConvManager();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
