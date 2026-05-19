@@ -2009,13 +2009,13 @@
     // daily_missions → today's progress
     try {
       var { data: dm } = await sb.from('daily_missions')
-        .select('articles, words, quizzes, fill')
+        .select('*')
         .eq('user_id', userId).eq('date', today).maybeSingle();
       if (dm) {
         snap.today.articles_read = dm.articles || 0;
         snap.today.words_learned = dm.words    || 0;
         snap.today.quizzes_done  = dm.quizzes  || 0;
-        snap.today.xp_earned = ((dm.articles||0)*10) + ((dm.words||0)*2) + ((dm.quizzes||0)*5) + ((dm.fill||0)*5);
+        snap.today.xp_earned = ((dm.articles||0)*10) + ((dm.words||0)*2) + ((dm.quizzes||0)*5) + ((dm.fill||0)*5) + ((dm.feedback_views||0)*5);
       }
     } catch(e) {}
 
@@ -2199,19 +2199,24 @@
     try {
       var fourteenAgo = new Date(Date.now() - 14*86400000).toISOString().slice(0,10);
       var sevenAgo    = new Date(Date.now() -  7*86400000).toISOString().slice(0,10);
+      // select('*') here so older deploys without feedback_views still
+      // work (those columns just come back undefined and contribute 0).
       var { data: weekDMs } = await sb.from('daily_missions')
-        .select('date, articles, words, quizzes, fill')
+        .select('*')
         .eq('user_id', userId)
         .gte('date', fourteenAgo)
         .order('date', { ascending: true });
       if (weekDMs && weekDMs.length) {
-        function dmXP(d){ return ((d.articles||0)*10)+((d.words||0)*2)+((d.quizzes||0)*5)+((d.fill||0)*5); }
+        function dmXP(d){ return ((d.articles||0)*10)+((d.words||0)*2)+((d.quizzes||0)*5)+((d.fill||0)*5)+((d.feedback_views||0)*5); }
         snap.weekly_progress = weekDMs.filter(function(d){ return d.date >= sevenAgo; })
           .map(function(d){ return { date:d.date, xp_earned: dmXP(d) }; });
         snap.last_week_progress = weekDMs.filter(function(d){ return d.date < sevenAgo; })
           .map(function(d){ return { date:d.date, xp_earned: dmXP(d) }; });
+        // Feedback-review now counts as a streak-keeping daily activity
+        // (Item 3B) so users don't lose their streak on days they only
+        // came back to read what admin sent.
         snap.activity_days = weekDMs.filter(function(d){
-          return (d.articles||0)+(d.words||0)+(d.quizzes||0) > 0;
+          return (d.articles||0)+(d.words||0)+(d.quizzes||0)+(d.feedback_views||0) > 0;
         }).length;
       }
     } catch(e) {}
@@ -2219,20 +2224,20 @@
     // ALL daily_missions → compute total XP + activity streak, sync to user_stats
     try {
       var { data: allDMs } = await sb.from('daily_missions')
-        .select('date, articles, words, quizzes, fill')
+        .select('*')
         .eq('user_id', userId)
         .order('date', { ascending: false });
       if (allDMs && allDMs.length) {
-        // Total XP
+        // Total XP — feedback views worth 5 each, matching Item 3B grant.
         var totalXP = allDMs.reduce(function(s, d) {
-          return s + ((d.articles||0)*10) + ((d.words||0)*2) + ((d.quizzes||0)*5) + ((d.fill||0)*5);
+          return s + ((d.articles||0)*10) + ((d.words||0)*2) + ((d.quizzes||0)*5) + ((d.fill||0)*5) + ((d.feedback_views||0)*5);
         }, 0);
         snap.total_xp = totalXP;
 
-        // Activity streak: count consecutive days (from today/yesterday back) with any activity
+        // Activity streak: feedback-review now keeps the streak alive too.
         var activeDateSet = {};
         allDMs.forEach(function(d) {
-          if ((d.articles||0) + (d.words||0) + (d.quizzes||0) + (d.fill||0) > 0) {
+          if ((d.articles||0) + (d.words||0) + (d.quizzes||0) + (d.fill||0) + (d.feedback_views||0) > 0) {
             activeDateSet[d.date] = true;
           }
         });
