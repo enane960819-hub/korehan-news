@@ -9055,19 +9055,39 @@ async function loadFeedbackInbox() {
 
 function openFeedbackInbox() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  // Don't stack modals on rapid re-open.
+  var existing = document.getElementById('feedback-inbox-overlay');
+  if (existing) existing.remove();
   var overlay = document.createElement('div');
   overlay.id = 'feedback-inbox-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(5,12,24,.85);z-index:3000;display:flex;align-items:center;justify-content:center;padding:12px;';
-  overlay.onclick = function(e){ if (e.target === overlay) overlay.remove(); };
+  // Lock background scroll so the dual-scroll (modal vs. page) the
+  // UX audit flagged stops happening on iOS / Android.
+  var _prevBodyOverflow = document.body.style.overflow;
+  document.body.style.overflow = 'hidden';
+  function _closeOverlay() {
+    overlay.remove();
+    document.body.style.overflow = _prevBodyOverflow;
+    document.removeEventListener('keydown', _onKey);
+  }
+  function _onKey(e) {
+    if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); _closeOverlay(); }
+  }
+  document.addEventListener('keydown', _onKey);
+  overlay.onclick = function(e){ if (e.target === overlay) _closeOverlay(); };
+  // Expose so any in-modal button (the new CTA "Write another", the X)
+  // can hit a single cleanup path instead of bare .remove() that
+  // forgets to unlock body scroll.
+  window._khCloseFeedbackInbox = _closeOverlay;
 
   overlay.innerHTML =
     '<div style="background:#0d1b2e;border:1px solid rgba(255,255,255,.1);border-radius:16px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.4);color:#fff">'
     + '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#0d1b2e;z-index:1;border-radius:16px 16px 0 0">'
     + '<div style="font-size:16px;font-weight:800;display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_PENCIL+'</span><span>My Feedback</span></div>'
-    + '<button onclick="document.getElementById(\'feedback-inbox-overlay\').remove()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span></button>'
+    + '<button onclick="window._khCloseFeedbackInbox && window._khCloseFeedbackInbox()" aria-label="Close" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:16px;height:16px">'+BM_ICON_X+'</span></button>'
     + '</div>'
     + '<div id="feedback-inbox-content" style="padding:16px 20px;">'
-    + '<div style="text-align:center;color:rgba(255,255,255,.4);padding:24px">Loading...</div>'
+    + '<div style="text-align:center;color:rgba(255,255,255,.4);padding:24px">Loading…</div>'
     + '</div>'
     + '</div>';
 
@@ -9076,22 +9096,63 @@ function openFeedbackInbox() {
 }
 
 // ── Feedback rendering helpers ──
-var _fbPatternIcons = { SPELLING:'✏️', PARTICLE:'🔗', TENSE:'⏰', WORD_ORDER:'🔀', VOCAB:'📖', NUANCE:'💬' };
-var _fbPatternLabels = { SPELLING:'Spelling', PARTICLE:'Particle', TENSE:'Tense', WORD_ORDER:'Word Order', VOCAB:'Vocabulary', NUANCE:'Nuance' };
+// Tooltip text shows up on hover (desktop) and is also surfaced inline
+// on small screens via the title attribute so learners who don't know
+// what "PARTICLE" means at a glance have a one-line gloss.
+var _fbPatternIcons = { SPELLING:'✏️', PARTICLE:'🔗', TENSE:'⏰', WORD_ORDER:'🔀', VOCAB:'📖', NUANCE:'💬', OTHER:'📝' };
+var _fbPatternLabels = {
+  SPELLING:   'Spelling',
+  PARTICLE:   'Particle',
+  TENSE:      'Tense',
+  WORD_ORDER: 'Word Order',
+  VOCAB:      'Vocabulary',
+  NUANCE:     'Nuance',
+  OTHER:      'Other'
+};
+var _fbPatternHelp = {
+  SPELLING:   '맞춤법 — typo / 받침 mismatch / spacing.',
+  PARTICLE:   '조사 — wrong subject/object/topic particle (이/가, 을/를, 은/는, etc.).',
+  TENSE:      '시제 — present / past / future or aspect (었/았, 고 있다, 게 되다).',
+  WORD_ORDER: '어순 — subject / object / modifier placement.',
+  VOCAB:      '어휘 — better word choice for this context.',
+  NUANCE:     '뉘앙스 — register / politeness / connotation polish.',
+  OTHER:      '기타 — see the reason for details.'
+};
+// Pattern → Study Room focus query so "Practice this pattern" deep-links
+// into the right drill instead of the room landing page.
+var _fbPatternFocus = {
+  SPELLING:   'spelling',
+  PARTICLE:   'particle',
+  TENSE:      'tense',
+  WORD_ORDER: 'word-order',
+  VOCAB:      'vocab',
+  NUANCE:     'nuance',
+  OTHER:      ''
+};
 
 function renderDetailedFeedback(fb, writingText) {
   if (!fb) return '<div style="color:rgba(255,255,255,.4)">No feedback data available</div>';
   var h = '';
 
-  // Score badge
-  if (fb.score !== undefined) {
-    var scoreColor = fb.score >= 80 ? '#4ade80' : fb.score >= 60 ? '#fbbf24' : '#f87171';
-    h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'
-      + '<div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.06);border:3px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:' + scoreColor + '">' + fb.score + '</div>'
-      + '<div><div style="font-size:14px;font-weight:700">' + (fb.score >= 80 ? 'Great job!' : fb.score >= 60 ? 'Almost there!' : 'Keep practicing!') + '</div>'
-      + '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.5">' + (fb.overall || '') + '</div></div></div>';
-  } else if (fb.overall) {
-    h += '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:8px">' + fb.overall + '</div>';
+  // Header — encouragement leads (audit HIGH #5: score-first hierarchy
+  // hits the user with a red circle before they read anything).
+  // Compact score chip moved to the right, half the previous size, so
+  // the eye lands on the praise/overall comment first.
+  if (fb.score !== undefined || fb.encouragement || fb.overall) {
+    var scoreColor = fb.score === undefined ? '#94a3b8'
+      : fb.score >= 80 ? '#4ade80' : fb.score >= 60 ? '#fbbf24' : '#f87171';
+    var leadLine = fb.encouragement
+      ? fb.encouragement
+      : (fb.score === undefined ? '' : (fb.score >= 80 ? 'Great job!' : fb.score >= 60 ? 'Almost there!' : 'Keep going — every submission moves you forward.'));
+    h += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;padding:14px;border-radius:10px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.18)">'
+      + '<div style="flex:1;min-width:0">'
+      +   (leadLine ? '<div style="font-size:14px;font-weight:800;color:#86efac;line-height:1.45;margin-bottom:' + (fb.overall ? '6px' : '0') + '">' + leadLine + '</div>' : '')
+      +   (fb.overall ? '<div style="font-size:13px;color:rgba(255,255,255,.72);line-height:1.55">' + fb.overall + '</div>' : '')
+      + '</div>'
+      + (fb.score !== undefined
+          ? '<div title="Score (this submission only)" style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.06);border:2px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:' + scoreColor + '">' + fb.score + '</div>'
+          : '')
+      + '</div>';
   }
 
   // 5-axis rubric (accuracy / lexical range / cohesion / coherence / register)
@@ -9177,16 +9238,32 @@ function renderDetailedFeedback(fb, writingText) {
       + '<div style="font-size:14px;line-height:1.7;padding:12px 14px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:10px;font-family:\'Noto Sans KR\',sans-serif">' + fb.corrected_full + '</div></div>';
   }
 
-  // Corrections (main)
+  // Corrections (main) — badge now gets a title= gloss so learners
+  // who don't recognise "PARTICLE" / "TENSE" jargon get a one-line
+  // explanation on hover (or via long-press on mobile). Each
+  // correction also gets a "Practice this pattern" deep-link to
+  // Study Room with ?focus=<pattern>, so the user has a clear next
+  // action instead of a dead-end read.
   if (fb.corrections && fb.corrections.length) {
     h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Corrections (' + fb.corrections.length + ')</div>';
     fb.corrections.forEach(function(c) {
       var icon = _fbPatternIcons[c.pattern] || '🔧';
       var label = _fbPatternLabels[c.pattern] || c.pattern;
+      var help  = _fbPatternHelp[c.pattern] || '';
+      var focus = _fbPatternFocus[c.pattern] || '';
+      var practiceLink = focus
+        ? '<a href="korehan-study-room.html?focus=' + focus + '&source=feedback" style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;background:rgba(125,211,252,.14);color:#bae6fd;text-decoration:none;border:1px solid rgba(125,211,252,.3);margin-left:auto">Practice →</a>'
+        : '';
       h += '<div style="padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin-bottom:6px">'
-        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:14px">' + icon + '</span><span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(248,113,113,.15);color:#fca5a5">' + label + '</span></div>'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+        +   '<span style="font-size:14px">' + icon + '</span>'
+        +   '<span title="' + (help.replace(/"/g, '&quot;')) + '" style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(248,113,113,.15);color:#fca5a5;cursor:help">' + label + '</span>'
+        +   practiceLink
+        + '</div>'
         + '<div style="font-size:13px;margin-bottom:4px"><span style="text-decoration:line-through;color:#f87171;background:rgba(248,113,113,.1);padding:1px 4px;border-radius:3px">' + (c.original||'') + '</span> → <span style="color:#4ade80;background:rgba(74,222,128,.1);padding:1px 4px;border-radius:3px;font-weight:700">' + (c.corrected||'') + '</span></div>'
-        + '<div style="font-size:12px;color:rgba(255,255,255,.45);line-height:1.5">' + (c.reason||'') + '</div></div>';
+        + '<div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.55">' + (c.reason||'') + '</div>'
+        + (help ? '<div style="font-size:11px;color:rgba(255,255,255,.42);font-style:italic;line-height:1.5;margin-top:4px">' + help + '</div>' : '')
+        + '</div>';
     });
     h += '</div>';
   }
@@ -9251,9 +9328,29 @@ function renderDetailedFeedback(fb, writingText) {
       + '<div style="font-size:14px;color:rgba(255,255,255,.75);line-height:1.7;font-family:\'Noto Sans KR\',sans-serif">' + fb.example_answer + '</div></div>';
   }
 
-  // Encouragement
-  if (fb.encouragement) {
-    h += '<div style="text-align:center;padding:12px;font-size:14px;color:#4ade80;font-weight:700">' + fb.encouragement + '</div>';
+  // Encouragement — already surfaced in the lead banner at the top
+  // for psychological priority. Skip the duplicate footer block.
+
+  // Next-action CTAs — audit HIGH #7: feedback used to dead-end.
+  // Give the user something to do with what they just read.
+  // 1) Aggregate the unique pattern slugs from this submission so the
+  //    primary practice CTA targets the most-frequent one.
+  // 2) Secondary CTA closes the modal and points them back at the
+  //    writing pad to try again right now.
+  var _patternTally = {};
+  (fb.corrections || []).forEach(function(c) {
+    var p = c && c.pattern; if (!p) return;
+    _patternTally[p] = (_patternTally[p] || 0) + 1;
+  });
+  var _topPattern = null, _topCount = 0;
+  Object.keys(_patternTally).forEach(function(k) { if (_patternTally[k] > _topCount) { _topPattern = k; _topCount = _patternTally[k]; } });
+  var _ctas = [];
+  if (_topPattern && _fbPatternFocus[_topPattern]) {
+    _ctas.push('<a href="korehan-study-room.html?focus=' + _fbPatternFocus[_topPattern] + '&source=feedback" style="flex:1;padding:11px 14px;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;font-size:13px;font-weight:800;text-align:center;text-decoration:none">🎯 Practice ' + (_fbPatternLabels[_topPattern] || _topPattern) + '</a>');
+  }
+  _ctas.push('<button onclick="window._khCloseFeedbackInbox && window._khCloseFeedbackInbox()" style="flex:1;padding:11px 14px;border-radius:10px;background:rgba(255,255,255,.06);color:#cbd5e1;font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,.12);cursor:pointer;font-family:inherit">✍️ Write another</button>');
+  if (_ctas.length) {
+    h += '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">' + _ctas.join('') + '</div>';
   }
 
   return h;
