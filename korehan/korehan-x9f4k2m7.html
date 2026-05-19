@@ -3736,6 +3736,21 @@ async function loadTopics() {
     const res = await sb.from('writing_topics').select('*').order('sort_order').order('created_at');
     if (res.error) throw res.error;
     window._topicsAll = res.data || [];
+    // Owner: "뭐가 저장되고 뭐가 저장안된 토픽인지 구분이 불가능."
+    // Pre-fetch the set of (topic_ko, level) pairs that exist in
+    // study_daily_content so the row renderer can show a ✓ cached /
+    // ✗ not-cached badge. Single roundtrip, columns-only. Failure is
+    // non-fatal — the badge just shows "?" if the query couldn't run.
+    try {
+      var cacheRes = await sb.from('study_daily_content').select('topic_ko, level');
+      var seen = {};
+      (cacheRes.data || []).forEach(function(r) {
+        if (r && r.topic_ko && r.level) seen[r.topic_ko + '::' + r.level] = true;
+      });
+      window._topicCacheKeys = seen;
+    } catch (_) {
+      window._topicCacheKeys = {};
+    }
     renderTopicsTable(window._topicsAll);
   } catch(e) {
     document.getElementById('topics-wrap').innerHTML = '<div class="infobox" style="color:#c33">⚠️ ' + (e.message||e) + '</div>';
@@ -3950,6 +3965,16 @@ function renderTopicsTable(list) {
     rows += '<td style="padding:7px 8px;font-weight:600">' + t.topic_ko + '</td>';
     rows += '<td style="padding:7px 8px;color:var(--gray);font-size:12px">' + t.topic_en + '</td>';
     rows += '<td style="padding:7px 8px">' + usedLabel + '</td>';
+    // Cache badge — green ✓ when the topic has a study_daily_content
+    // row for its level; grey ✗ when not yet generated. Lets admin
+    // scan the list and know which topics already have AI-cooked
+    // vocab/grammar/example-answer cached.
+    var _cKey = (t.topic_ko || '') + '::' + (t.level || '');
+    var _hasCache = !!(window._topicCacheKeys && window._topicCacheKeys[_cKey]);
+    var _cBadge = _hasCache
+      ? '<span title="study_daily_content에 캐시 있음 — Edit에서 바로 로드됨" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;background:#dcfce7;color:#166534">✓ 캐시</span>'
+      : '<span title="아직 학습요소 생성되지 않음. 🤖 AI 버튼으로 생성." style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;background:#f1f5f9;color:#64748b">✗ 없음</span>';
+    rows += '<td style="padding:7px 8px;text-align:center">' + _cBadge + '</td>';
     rows += '<td style="padding:7px 8px;white-space:nowrap">';
     rows += '<button data-id="'+t.id+'" onclick="editTopicById(this.dataset.id)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:3px">Edit</button>';
     rows += '<button id="ai-btn-'+t.id+'" data-id="'+t.id+'" onclick="pregenAI(\''+t.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid #c7d2fe;background:#eef2ff;color:#4f46e5;cursor:pointer;margin-right:3px">🤖 AI</button>';
@@ -3962,7 +3987,10 @@ function renderTopicsTable(list) {
   for (var pi = 0; pi < list.length; pi++) {
     if (pinnedTopicIds[list[pi].id]) pinnedCount++;
   }
-  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 핀 <b>' + pinnedCount + '</b>개 · Day ' + daysSince + ' (기준일 2026-04-15)</div>'
+  var _cachedCount = list.filter(function(t){
+    return window._topicCacheKeys && window._topicCacheKeys[(t.topic_ko||'') + '::' + (t.level||'')];
+  }).length;
+  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 핀 <b>' + pinnedCount + '</b>개 · <span title="study_daily_content에 학습요소가 저장된 토픽 수">캐시 <b style="color:#16a34a">' + _cachedCount + '</b>/' + list.length + '</span> · Day ' + daysSince + ' (기준일 2026-04-15)</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
     + '<th style="padding:7px 8px;text-align:center">#</th>'
@@ -3971,6 +3999,7 @@ function renderTopicsTable(list) {
     + '<th style="padding:7px 8px;text-align:left">토픽 (한국어)</th>'
     + '<th style="padding:7px 8px;text-align:left">토픽 (영어)</th>'
     + '<th style="padding:7px 8px">사용일</th>'
+    + '<th style="padding:7px 8px;text-align:center" title="study_daily_content 캐시 보유 여부">캐시</th>'
     + '<th style="padding:7px 8px"></th>'
     + '</tr></thead><tbody>' + rows + '</tbody></table>';
 }
@@ -4233,6 +4262,12 @@ async function pregenAI(topicId) {
     await sb.from('writing_topics').update({used_date: targetDate}).eq('id', topicId);
 
     if (btn) { btn.textContent='✅ ' + targetDate; btn.style.background='#dcfce7'; btn.style.color='#16a34a'; btn.style.borderColor='#86efac'; }
+    // Flip the row's cache badge from ✗ → ✓ without a full refetch.
+    try {
+      window._topicCacheKeys = window._topicCacheKeys || {};
+      window._topicCacheKeys[t.topic_ko + '::' + t.level] = true;
+      renderTopicsTable(window._topicsAll);
+    } catch (_) {}
     toast('✅ '+t.topic_ko+' → '+targetDate+' 학습요소 생성 완료');
   } catch(e) {
     if (btn) { btn.textContent='❌ 실패'; btn.style.background='#fee2e2'; btn.style.color='#dc2626'; }
