@@ -6231,7 +6231,67 @@ async function goAICache() {
         : '')
     + '</div>';
 
-  articles.forEach(function(a) {
+  // Filter chips — owner: surface "분석 보류" articles quickly so
+  // thin-source pieces saved by #7K-#7L can be edited + re-baked
+  // without scrolling through the whole list. State lives on
+  // window._aiCacheFilter so it survives the row-level rerender +
+  // the goAICache() reload triggered by clicking a chip.
+  (function() {
+    var cur = window._aiCacheFilter || 'all';
+    function _chipBtn(key, label, count, color) {
+      var on = (cur === key);
+      return '<button class="btn" onclick="window._aiCacheFilter=\'' + key + '\';goAICache()" style="font-size:12px;padding:6px 12px;border-radius:999px;border:1.5px solid ' + (on ? color : '#e2e8f0') + ';background:' + (on ? color : '#fff') + ';color:' + (on ? '#fff' : '#475569') + ';font-weight:700;font-family:inherit;cursor:pointer">' + label + ' <b style="opacity:.85">' + count + '</b></button>';
+    }
+    var missingN = articles.filter(function(a) {
+      var cc = existingCache[String(a.id)] || {};
+      return !cc.vocab && !cc.grammar && !cc.quiz && !cc.expressions;
+    }).length;
+    var partialN = articles.filter(function(a) {
+      var cc = existingCache[String(a.id)] || {};
+      var hasAny = !!cc.vocab || !!cc.grammar || !!cc.quiz || !!cc.expressions;
+      var hasAll = !!cc.vocab && !!cc.grammar && !!cc.quiz;
+      return hasAny && !hasAll;
+    }).length;
+    var fullN = articles.filter(function(a) {
+      var cc = existingCache[String(a.id)] || {};
+      return !!cc.vocab && !!cc.grammar && !!cc.quiz;
+    }).length;
+    html += '<div style="margin-bottom:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+      + '<span style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-right:4px">Filter</span>'
+      + _chipBtn('all',     '전체',         articles.length, '#475569')
+      + _chipBtn('missing', '⏭ 분석 보류',  missingN,        '#dc2626')
+      + _chipBtn('partial', '⚠️ 부분 캐시', partialN,        '#d97706')
+      + _chipBtn('full',    '✓ 완료',       fullN,           '#16a34a')
+      + '</div>';
+  })();
+
+  // Apply the chip filter before the row render so the "분석 보류"
+  // view actually narrows the list.
+  var _aiFilter = window._aiCacheFilter || 'all';
+  var renderArticles = articles.filter(function(a) {
+    if (_aiFilter === 'all') return true;
+    var cc = existingCache[String(a.id)] || {};
+    var hasAny = !!cc.vocab || !!cc.grammar || !!cc.quiz || !!cc.expressions;
+    var hasAll = !!cc.vocab && !!cc.grammar && !!cc.quiz;
+    if (_aiFilter === 'missing') return !hasAny;
+    if (_aiFilter === 'partial') return hasAny && !hasAll;
+    if (_aiFilter === 'full')    return hasAll;
+    return true;
+  });
+
+  if (!renderArticles.length) {
+    html += '<div style="padding:36px;text-align:center;color:#94a3b8;font-size:13px;background:#fff;border-radius:12px;border:1px dashed #e2e8f0">'
+      + (_aiFilter === 'missing'
+          ? '🎉 분석 보류된 기사가 없습니다. 모두 처리됨.'
+          : _aiFilter === 'partial'
+            ? '부분 캐시 기사 없음.'
+            : _aiFilter === 'full'
+              ? '완료된 기사 없음.'
+              : '기사 없음.')
+      + '</div>';
+  }
+
+  renderArticles.forEach(function(a) {
     const c = existingCache[String(a.id)] || {};
     const hasT = !!c.translation, hasV = !!c.vocab, hasG = !!c.grammar, hasQ = !!c.quiz;
     const hasE = !!c.expressions;
