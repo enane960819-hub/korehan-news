@@ -119,7 +119,16 @@ function isRecent(iso, days=9) {
 }
 
 async function fetchRss(source) {
-  const res = await fetch(source.url, { headers: { 'user-agent': 'KoreHanNewsBot/1.0' } })
+  // Per-source timeout — without this, a single hung upstream (rare but
+  // happens — Soompi / Google News occasionally take >30 s) blew past
+  // the client's 18 s wait and surfaced as "소스 수집 서버 호출에
+  // 실패했습니다." even though most sources had returned fine.
+  // 8 s × Promise.allSettled in the caller means the slowest 5% drops
+  // out cleanly instead of poisoning the whole batch.
+  const res = await fetch(source.url, {
+    headers: { 'user-agent': 'KoreHanNewsBot/1.0' },
+    signal: AbortSignal.timeout(8000),
+  })
   if (!res.ok) throw new Error('upstream_not_ok')
   const xml = await res.text()
   const itemMatches = xml.match(/<item[\s\S]*?<\/item>/gi) || xml.match(/<entry[\s\S]*?<\/entry>/gi) || []
@@ -252,7 +261,9 @@ async function fetchOgImage(url, timeoutMs = 3000) {
 }
 
 async function fetchHn(source) {
-  const res = await fetch('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=20')
+  const res = await fetch('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=20', {
+    signal: AbortSignal.timeout(8000),
+  })
   if (!res.ok) throw new Error('upstream_not_ok')
   const json = await res.json()
   return (json?.hits || []).map((h) => ({
@@ -268,7 +279,8 @@ async function fetchHn(source) {
 
 async function fetchReddit(source) {
   const res = await fetch(`https://www.reddit.com/r/${source.subreddit}/hot.json?limit=20`, {
-    headers: { 'user-agent': 'KoreHanNewsBot/1.0' }
+    headers: { 'user-agent': 'KoreHanNewsBot/1.0' },
+    signal: AbortSignal.timeout(8000),
   })
   if (!res.ok) throw new Error('upstream_not_ok')
   const json = await res.json()
@@ -319,7 +331,10 @@ async function fetchWikinews(source) {
   //    분류:정식기사 (ko). cmsort=timestamp + cmdir=desc puts the newest first.
   const cmTitle = lang === 'ko' ? '분류:정식기사' : 'Category:Published'
   const listUrl = `${apiBase}?action=query&list=categorymembers&cmtitle=${encodeURIComponent(cmTitle)}&cmsort=timestamp&cmdir=desc&cmlimit=20&cmprop=ids|title|timestamp&format=json&origin=*`
-  const listRes = await fetch(listUrl, { headers: { 'user-agent': 'KoreHanNewsBot/1.0' } })
+  const listRes = await fetch(listUrl, {
+    headers: { 'user-agent': 'KoreHanNewsBot/1.0' },
+    signal: AbortSignal.timeout(8000),
+  })
   if (!listRes.ok) throw new Error('upstream_not_ok')
   const listJson = await listRes.json()
   const pages = listJson?.query?.categorymembers || []
@@ -329,7 +344,10 @@ async function fetchWikinews(source) {
   //    pageids is comma-separated; piprop=original gives the full-size image.
   const pageIds = pages.map((p) => p.pageid).join('|')
   const detailUrl = `${apiBase}?action=query&pageids=${pageIds}&prop=extracts|pageimages|info&exintro=1&explaintext=1&piprop=original&inprop=url&format=json&origin=*`
-  const detailRes = await fetch(detailUrl, { headers: { 'user-agent': 'KoreHanNewsBot/1.0' } })
+  const detailRes = await fetch(detailUrl, {
+    headers: { 'user-agent': 'KoreHanNewsBot/1.0' },
+    signal: AbortSignal.timeout(8000),
+  })
   if (!detailRes.ok) throw new Error('upstream_not_ok')
   const detailJson = await detailRes.json()
   const detailMap = detailJson?.query?.pages || {}
