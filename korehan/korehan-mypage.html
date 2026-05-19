@@ -3907,11 +3907,12 @@ function roomDragMove(e) {
 function roomDragEnd(e) {
   if (_dragItem) {
     var wasItem = _dragItem;
+    var didMove = _dragMoved;
     _dragItem.classList.remove('room-dragging');
     _dragItem.style.cursor = 'grab';
     _dragItem = null;
     // If user didn't move (tap), trigger selection (fixes mobile tap)
-    if (!_dragMoved && _roomEditing && wasItem.dataset.itemId) {
+    if (!didMove && _roomEditing && wasItem.dataset.itemId) {
       _selectedRoomItemId = wasItem.dataset.itemId;
       document.querySelectorAll('.room-placed-item').forEach(function(el) {
         el.classList.toggle('room-selected', el.dataset.itemId === _selectedRoomItemId);
@@ -3920,8 +3921,57 @@ function roomDragEnd(e) {
       var rmBtn = document.getElementById('room-remove-btn');
       if (rmBtn) rmBtn.style.display = '';
     }
+    // Auto-save on every successful drag. Users reported items
+    // "snapping back" because the manual Save button was the only
+    // persistence path — navigating away or backgrounding the tab
+    // lost the new positions. Persist immediately so the layout is
+    // safe even if the user never taps Save.
+    if (didMove) {
+      try { _autoSaveRoomLayout(); } catch (e) { console.warn('auto-save failed', e && e.message); }
+    }
   }
   _unbindDragListeners();
+}
+
+// Silent variant of saveRoomLayout() — no toast, no edit-mode toggle.
+// Reads current DOM positions, writes localStorage + debounces a
+// server sync. Stays in sync with saveRoomLayout() if that function's
+// coordinate math changes.
+function _autoSaveRoomLayout() {
+  var container = document.getElementById('miniroom-container');
+  if (!container) return;
+  var cW = container.offsetWidth || 400;
+  var cH = container.offsetHeight || 360;
+  var items = [];
+  document.querySelectorAll('.room-placed-item').forEach(function(el) {
+    var saved = getPlacedState(el.dataset.itemId) || {};
+    var curLeft = parseFloat(el.style.left) || 0;
+    var curTop  = parseFloat(el.style.top) || 0;
+    var sizePct = parseFloat(el.dataset.sizePct) || 0;
+    var hitboxRatio = parseFloat(el.dataset.hitboxRatio) || 0.7;
+    var hitboxPct = sizePct * hitboxRatio;
+    var offsetPct = (sizePct - hitboxPct) / 2;
+    var rawLeftPct = curLeft - offsetPct;
+    var rawTopPct  = curTop  - offsetPct;
+    var x, y;
+    if (String(el.style.left).indexOf('%') >= 0) {
+      x = Math.round((rawLeftPct / 100) * 400);
+      y = Math.round((rawTopPct  / 100) * 360);
+    } else {
+      x = Math.round((curLeft / cW) * 400);
+      y = Math.round((curTop  / cH) * 360);
+    }
+    var spriteEl = el.querySelector('.room-placed-sprite');
+    items.push({
+      id: el.dataset.itemId,
+      x: Math.max(0, Math.min(380, x)),
+      y: Math.max(0, Math.min(340, y)),
+      scale: Math.max(70, Math.min(170, Number(saved.scale || 100))),
+      flipped: !!(spriteEl && spriteEl.dataset.flipped === '1')
+    });
+  });
+  setRoomLayout(items);
+  _syncRoomToServer();
 }
 
 function getPlacedState(itemId) {
@@ -3975,6 +4025,7 @@ function moveSelectedLayer(dir) {
   layout[idx] = layout[newIdx];
   layout[newIdx] = tmp;
   setRoomLayout(layout);
+  _syncRoomToServer();
   renderRoomItems();
 }
 
@@ -4083,6 +4134,7 @@ function applySelectedItemScale(scaleValue) {
     return next;
   });
   setRoomLayout(layout);
+  _syncRoomToServer();
 
   var selectedEl = document.querySelector('.room-placed-item.room-selected');
   if (selectedEl) {
@@ -4325,6 +4377,7 @@ function placeRoomItem(itemId) {
   var y = 140 + Math.floor(Math.random() * 100);
   layout.push({id: itemId, x: x, y: y, scale:100});
   setRoomLayout(layout);
+  _syncRoomToServer();
 
   renderRoomItems();
   updateRoomSizeUI();
@@ -4345,6 +4398,7 @@ function removeRoomItem(itemId) {
     return true;
   });
   setRoomLayout(nextLayout);
+  _syncRoomToServer();
 
   renderRoomItems();
   if (_selectedRoomItemId === itemId) _selectedRoomItemId = null;
