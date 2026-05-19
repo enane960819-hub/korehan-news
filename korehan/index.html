@@ -1670,7 +1670,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         .select('id')
         .eq('user_id', window.supaUser.id)
         .is('feedback_viewed_at', null)
-        .in('status', ['ai_reviewed','admin_approved','sent'])
+        .in('status', ['admin_approved','sent'])
         .limit(50);
       var n = (r && r.data) ? r.data.length : 0;
       if (n <= 0) return;
