@@ -921,18 +921,53 @@ function splitWordEnMeaning(en) {
   return { meaning: en.slice(0, i).trim(), exKo: parts[0] || '', exEn: parts[1] || '' };
 }
 
+// ── Save a feedback correction to the word book ────────────────────
+// Wraps saveToWordBook with the correction-specific shape: corrected
+// text is the headword, original goes in exampleKo, pattern + reason
+// in the en/meaning slot. The button calling this also flips itself
+// to a "Saved ✓" state so the user can't double-save and gets visual
+// confirmation. encodeURIComponent on the inline args keeps Korean +
+// quotes out of the HTML attribute serialization.
+window.khSaveCorrection = async function(originalEnc, correctedEnc, patternEnc, reasonEnc, btnEl) {
+  if (!supaUser) { if (typeof openAuthModal === 'function') openAuthModal('signin'); return; }
+  var original  = decodeURIComponent(originalEnc || '');
+  var corrected = decodeURIComponent(correctedEnc || '');
+  var pattern   = decodeURIComponent(patternEnc || '');
+  var reason    = decodeURIComponent(reasonEnc || '');
+  if (!corrected) return;
+  var label = (_fbPatternLabels && _fbPatternLabels[pattern]) || pattern || 'Correction';
+  var meaning = label + (reason ? ' — ' + reason : '');
+  try {
+    await saveToWordBook(corrected, meaning, '', 'correction', { exampleKo: original, exampleEn: pattern });
+    if (btnEl) {
+      btnEl.disabled = true;
+      btnEl.style.opacity = '.7';
+      btnEl.style.background = 'rgba(74,222,128,.18)';
+      btnEl.style.borderColor = 'rgba(74,222,128,.45)';
+      btnEl.style.color = '#86efac';
+      btnEl.innerHTML = 'Saved ✓';
+    }
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('Save failed: ' + (e.message || e));
+  }
+};
+
 async function saveToWordBook(ko, en, rom, category, opts) {
   if (!ko) return;
   if (!supaUser) { showToast('Sign in to save words'); return; }
   try {
     var sb = getSupa();
     if (!sb) return;
-    // category: 'word' (default), 'slang', 'expression'
+    // category: 'word' (default), 'slang', 'expression', 'correction'
+    // 'correction' carries an AI-feedback fix — ko is the *corrected*
+    // form; opts.exampleKo is the original wrong form so the flashcard
+    // renderer can show a strike-through "from → to" pair.
     var cat = category || 'word';
     var enWithCat = en || '';
     // Prefix category marker if not already present
     if (cat === 'slang' && enWithCat.indexOf('[슬랭]') < 0) enWithCat = '[슬랭] ' + enWithCat;
     if (cat === 'expression' && enWithCat.indexOf('[표현]') < 0) enWithCat = '[표현] ' + enWithCat;
+    if (cat === 'correction' && enWithCat.indexOf('[교정]') < 0) enWithCat = '[교정] ' + enWithCat;
     // Attach example sentence, if any, so the vocab notebook can offer contextual practice
     if (opts && (opts.exampleKo || opts.exampleEn)) {
       enWithCat = enWithCat + '  ' + WORDBOOK_EX_DELIM
@@ -6824,6 +6859,7 @@ async function loadWordBook() {
         var cat = 'word';
         if (en.indexOf('[슬랭]') === 0) { cat = 'slang'; en = en.replace('[슬랭] ',''); }
         else if (en.indexOf('[표현]') === 0) { cat = 'expression'; en = en.replace('[표현] ',''); }
+        else if (en.indexOf('[교정]') === 0) { cat = 'correction'; en = en.replace('[교정] ',''); }
         var total = (w.correct_count||0) + (w.wrong_count||0);
         var accuracy = total > 0 ? Math.round((w.correct_count||0) / total * 100) : -1;
         results.push({ ko:w.word_ko, rom:w.word_rom||'', en:en, date:w.created_at, cat:cat,
@@ -6849,9 +6885,9 @@ function setWbCategory(cat, btn) {
   filterWordBook(q ? q.value : '');
 }
 function renderWbCounts() {
-  var counts = { all:_wbData.length, word:0, slang:0, expression:0 };
+  var counts = { all:_wbData.length, word:0, slang:0, expression:0, correction:0 };
   _wbData.forEach(function(w){ counts[w.cat] = (counts[w.cat]||0) + 1; });
-  ['all','word','slang','expression'].forEach(function(k){
+  ['all','word','slang','expression','correction'].forEach(function(k){
     var el = document.getElementById('wb-cnt-' + k);
     if (el) el.textContent = counts[k];
   });
@@ -6860,17 +6896,41 @@ function renderWordBook(data) {
   var list = document.getElementById('wb-list');
   var filtered = _wbCategory === 'all' ? data : data.filter(function(w){ return w.cat === _wbCategory; });
   if (!filtered.length) {
-    var catNames = { all:'words', word:'words', slang:'slang', expression:'expressions' };
-    list.innerHTML = '<div class="wb-empty">No saved '+catNames[_wbCategory]+' yet<br><span style="font-size:12px;margin-top:8px;display:block;color:rgba(255,255,255,.2)">Tap words while studying to save them here</span></div>';
+    var catNames = { all:'words', word:'words', slang:'slang', expression:'expressions', correction:'corrections' };
+    var hint = _wbCategory === 'correction'
+      ? 'Open any feedback card, tap 🔖 on a correction. They\'ll land here for spaced review.'
+      : 'Tap words while studying to save them here';
+    list.innerHTML = '<div class="wb-empty">No saved '+catNames[_wbCategory]+' yet<br><span style="font-size:12px;margin-top:8px;display:block;color:rgba(255,255,255,.2)">' + hint + '</span></div>';
     return;
   }
-  var catBadge = { word:'', slang:'<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(139,92,246,.15);color:#c4b5fd;font-size:9px;font-weight:700;margin-left:6px">SLANG</span>', expression:'<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(5,150,105,.12);color:#34d399;font-size:9px;font-weight:700;margin-left:6px">EXPR</span>' };
+  var catBadge = {
+    word:'',
+    slang:      '<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(139,92,246,.15);color:#c4b5fd;font-size:9px;font-weight:700;margin-left:6px">SLANG</span>',
+    expression: '<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(5,150,105,.12);color:#34d399;font-size:9px;font-weight:700;margin-left:6px">EXPR</span>',
+    correction: '<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(251,191,36,.18);color:#fde68a;font-size:9px;font-weight:700;margin-left:6px">🔖 FIX</span>'
+  };
   list.innerHTML = filtered.map(function(w) {
     var dateStr = w.date ? new Date(w.date).toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
+    // For corrections, surface the original (wrong) form as a small
+    // strike-through hint above the corrected headword so the
+    // flashcard reads "wrong → right" at a glance. exKo is parsed
+    // from word_en via splitWordEnMeaning.
+    var parsedEx = (typeof splitWordEnMeaning === 'function') ? splitWordEnMeaning(w.en) : null;
+    var origLine = '';
+    var displayEn = w.en;
+    if (w.cat === 'correction' && parsedEx) {
+      displayEn = parsedEx.meaning || w.en;
+      if (parsedEx.exKo) {
+        origLine = '<div style="font-size:11px;color:#f87171;text-decoration:line-through;font-family:\'Noto Sans KR\',sans-serif;margin-bottom:2px;opacity:.85">' + escapeHtml(parsedEx.exKo) + '</div>';
+      }
+    }
     return '<div class="wb-entry">'
-      + '<div style="min-width:0"><div class="wb-entry-ko">' + escapeHtml(w.ko) + (catBadge[w.cat]||'') + '</div>'
-      + (w.rom ? '<div class="wb-entry-rom">' + escapeHtml(w.rom) + '</div>' : '') + '</div>'
-      + '<div class="wb-entry-en">' + escapeHtml(w.en)
+      + '<div style="min-width:0">'
+      +   origLine
+      +   '<div class="wb-entry-ko">' + escapeHtml(w.ko) + (catBadge[w.cat]||'') + '</div>'
+      +   (w.rom ? '<div class="wb-entry-rom">' + escapeHtml(w.rom) + '</div>' : '')
+      + '</div>'
+      + '<div class="wb-entry-en">' + escapeHtml(displayEn)
       + (w.accuracy >= 0 ? '<div style="font-size:9px;margin-top:2px;color:'+(w.accuracy>=70?'#4ade80':w.accuracy>=40?'#fbbf24':'#f87171')+'">'+w.accuracy+'% accuracy</div>' : '')
       + '</div>'
       + (dateStr ? '<div class="wb-entry-date">' + dateStr + '</div>' : '')
@@ -9321,13 +9381,22 @@ function renderDetailedFeedback(fb, writingText) {
       var help  = _fbPatternHelp[c.pattern] || '';
       var focus = _fbPatternFocus[c.pattern] || '';
       var practiceLink = focus
-        ? '<a href="korehan-study-room.html?focus=' + focus + '&source=feedback" style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;background:rgba(125,211,252,.14);color:#bae6fd;text-decoration:none;border:1px solid rgba(125,211,252,.3);margin-left:auto">Practice →</a>'
+        ? '<a href="korehan-study-room.html?focus=' + focus + '&source=feedback" style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;background:rgba(125,211,252,.14);color:#bae6fd;text-decoration:none;border:1px solid rgba(125,211,252,.3)">Practice →</a>'
         : '';
+      // Encode every arg to survive the inline attribute serialization
+      // — Korean text + apostrophes would otherwise break the onclick.
+      var saveBtn = '<button onclick="khSaveCorrection(\''
+        + encodeURIComponent(c.original || '') + '\',\''
+        + encodeURIComponent(c.corrected || '') + '\',\''
+        + encodeURIComponent(c.pattern || 'OTHER') + '\',\''
+        + encodeURIComponent(c.reason || '') + '\',this)" '
+        + 'title="Save this correction to your Word Book — it joins your spaced-repetition deck" '
+        + 'style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;background:rgba(251,191,36,.14);color:#fde68a;border:1px solid rgba(251,191,36,.32);cursor:pointer;font-family:inherit">🔖 Save</button>';
       h += '<div style="padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin-bottom:6px">'
-        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">'
         +   '<span style="font-size:14px">' + icon + '</span>'
         +   '<span title="' + (help.replace(/"/g, '&quot;')) + '" style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(248,113,113,.15);color:#fca5a5;cursor:help">' + label + '</span>'
-        +   practiceLink
+        +   '<span style="margin-left:auto;display:inline-flex;gap:6px">' + saveBtn + practiceLink + '</span>'
         + '</div>'
         + '<div style="font-size:13px;margin-bottom:4px"><span style="text-decoration:line-through;color:#f87171;background:rgba(248,113,113,.1);padding:1px 4px;border-radius:3px">' + (c.original||'') + '</span> → <span style="color:#4ade80;background:rgba(74,222,128,.1);padding:1px 4px;border-radius:3px;font-weight:700">' + (c.corrected||'') + '</span></div>'
         + '<div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.55">' + (c.reason||'') + '</div>'
