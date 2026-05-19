@@ -116,6 +116,13 @@
 .lq-mode-btn { padding:10px 22px; border-radius:99px; border:2px solid var(--border); background:#fff; font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; color:var(--accent); }
 .lq-mode-btn.on, .lq-mode-btn:hover { background:var(--bright); color:#fff; border-color:var(--bright); }
 
+/* Mobile tap targets — bumps the quiz mode toggle + filter chips
+   to >= 44 px iOS HIG / 48 px Material on phones. Choice cards are
+   already 50 px tall. */
+@media (max-width: 768px) {
+  .lq-mode-btn { padding:13px 22px; font-size:14px; min-height:44px; }
+}
+
 
 
 /* upgraded example sentence tools */
