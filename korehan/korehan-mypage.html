@@ -1153,6 +1153,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
       <div class="mp-member-since" id="mp-member-since"></div>
       <div class="hero-actions">
         <div id="mp-tier-hero"></div>
+        <a id="mp-feedback-chip" class="mp-action-btn" style="display:none;text-decoration:none" href="korehan-study-room.html?openInbox=1" title="View your latest writing & speaking feedback"></a>
         <button class="mp-action-btn" onclick="openCosmeticsModal()" title="Equip frames from your shop & gacha collection">✨ Cosmetics</button>
         <button class="mp-action-btn" onclick="signOut()">Sign Out</button>
       </div>
@@ -2242,6 +2243,36 @@ function applyEquippedTitle(itemId) {
   host.style.display = '';
 }
 
+// Counts reviewed-but-unviewed feedback submissions and surfaces a chip
+// in the hero. Tapping the chip deep-links into Study Room with
+// ?openInbox=1, which auto-opens the inbox modal (handled in
+// korehan-study-room.js). Falls back gracefully if feedback_viewed_at
+// column doesn't exist yet (returns 0).
+async function loadFeedbackChip() {
+  var chip = document.getElementById('mp-feedback-chip');
+  if (!chip || !window.supaUser) return;
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var r = await sb.from('user_submissions')
+      .select('id, feedback_viewed_at', { count: 'exact', head: false })
+      .eq('user_id', supaUser.id)
+      .is('feedback_viewed_at', null)
+      .in('status', ['reviewed','admin_approved','sent']);
+    var count = (r && r.data) ? r.data.length : 0;
+    if (count > 0) {
+      chip.style.display = '';
+      chip.style.background = 'rgba(34,197,94,.18)';
+      chip.style.borderColor = 'rgba(74,222,128,.45)';
+      chip.style.color = '#86efac';
+      chip.innerHTML = '📨 ' + count + ' new feedback';
+    } else {
+      chip.style.display = 'none';
+    }
+  } catch (_) {
+    chip.style.display = 'none';
+  }
+}
+
 async function loadEquippedCosmetics() {
   if (!window.supaUser) return;
   var sb = getSupa(); if (!sb) return;
@@ -2409,6 +2440,9 @@ async function initMyPage() {
   }
   // Equipped frame (best-effort — silent if user_stats lacks the column yet)
   try { await loadEquippedCosmetics(); } catch(_) {}
+  // Feedback chip — surface unread reviewed feedback so users can find
+  // it from My Page, not only by visiting Study Room.
+  try { await loadFeedbackChip(); } catch(_) {}
 
   // Load in parallel
   var results = await Promise.all([ dbGetUserStats(), dbGetOwnedAndGifts() ]);
