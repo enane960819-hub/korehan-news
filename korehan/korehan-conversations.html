@@ -325,12 +325,21 @@
 .dp-pr-opt.wrong{background:#fee2e2;border-color:#ef4444;color:#b91c1c;font-weight:700;}
 .dp-pr-opt:disabled{cursor:default;}
 /* Study Room deep-dive CTA */
-.dp-pr-deep{background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%)!important;border:none!important;color:#fff;}
-.dp-pr-deep .dp-pr-deep-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:6px;}
-.dp-pr-deep .dp-pr-deep-title{font-size:17px;font-weight:900;color:#fff;margin-bottom:6px;font-family:'Playfair Display',serif;}
-.dp-pr-deep .dp-pr-deep-sub{font-size:13px;color:rgba(255,255,255,.8);line-height:1.5;margin-bottom:14px;}
-.dp-pr-deep .dp-pr-deep-btn{width:100%;padding:11px 16px;background:#fff;color:#1d4ed8;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:transform .12s;}
-.dp-pr-deep .dp-pr-deep-btn:hover{transform:translateY(-1px);}
+.dp-pr-deep{background:var(--cream,#FAF6F0)!important;border:1px solid var(--border,#d4dce8)!important;color:var(--navy,#0d1b35);padding:18px 18px 16px!important;border-radius:14px!important;}
+.dp-pr-deep .dp-pr-deep-eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gray,#445566);margin-bottom:8px;}
+.dp-pr-deep .dp-pr-deep-title{font-size:18px;font-weight:900;color:var(--navy,#0d1b35);margin-bottom:6px;font-family:'Playfair Display',serif;line-height:1.25;}
+.dp-pr-deep .dp-pr-deep-sub{font-size:13px;color:var(--gray,#445566);line-height:1.55;margin-bottom:14px;}
+.dp-pr-deep .dp-pr-deep-btn{width:100%;padding:13px 16px;background:var(--navy,#0d1b35);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:transform .12s,background .12s;min-height:48px;}
+.dp-pr-deep .dp-pr-deep-btn:hover{transform:translateY(-1px);background:#13284d;}
+
+/* Mobile tap targets — Samsung browser on Android was losing some taps on
+   small chips. Bump everything to >=44px and add inline padding. */
+@media (max-width: 768px) {
+  .dp-pr-opt{padding:14px 16px;font-size:14px;min-height:48px;line-height:1.45;}
+  .dp-pr-chip{padding:12px 16px;font-size:15px;min-height:44px;}
+  .dp-pr-build-tray{padding:11px 12px;gap:8px;}
+  .dp-pr-build-pool{gap:8px;}
+}
 
 /* ── Character Avatar ── */
 .kh-char-av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;flex-shrink:0;overflow:hidden;}
@@ -2186,7 +2195,10 @@ function _sbRender() {
     + '</div>';
 }
 
-function _sbPick(origIdx) {
+// Exposed on window so inline onclick="" attributes in the dynamically
+// generated chip HTML can resolve them — Samsung browser on Android
+// failed to find bare top-level function declarations from inline handlers.
+window._sbPick = function(origIdx) {
   var s = _sbState; if (!s) return;
   var idx = -1;
   for (var i = 0; i < s.pool.length; i++) {
@@ -2197,27 +2209,27 @@ function _sbPick(origIdx) {
   s.answer.push(picked);
   try { if (typeof ttsSpeak === 'function') ttsSpeak(picked.word); } catch(_) {}
   _sbRender();
-}
+};
 
-function _sbRemove(pos) {
+window._sbRemove = function(pos) {
   var s = _sbState; if (!s) return;
   if (pos <= 0) return; // can't remove the anchor
   var removed = s.answer.splice(pos, 1)[0];
   if (removed) s.pool.push(removed);
   try { if (removed && typeof ttsSpeak === 'function') ttsSpeak(removed.word); } catch(_) {}
   _sbRender();
-}
+};
 
-function _sbReset() {
+window._sbReset = function() {
   var s = _sbState; if (!s) return;
   // Restore the start anchor; everything else goes back to the pool.
   var keep = s.answer.slice(0, 1);
   s.pool = s.pool.concat(s.answer.slice(1));
   s.answer = keep;
   _sbRender();
-}
+};
 
-function _sbCheck() {
+window._sbCheck = function() {
   var s = _sbState; if (!s) return;
   var ans = s.answer.map(function(o){ return o.word; });
   var ok = ans.join(' ') === s.original.join(' ');
@@ -2233,7 +2245,7 @@ function _sbCheck() {
   if (ok) {
     try { if (typeof ttsSpeak === 'function') ttsSpeak(s.original.join(' ')); } catch(_) {}
   }
-}
+};
 
 function closeDetail() {
   document.getElementById('detail-overlay').classList.add('hidden');
