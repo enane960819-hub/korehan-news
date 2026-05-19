@@ -5242,19 +5242,58 @@ async function runAutoGenerate(){
         + '  - COMPOUND / COHESIVE CONSTRUCTIONS: when a sentence demonstrates a multi-token rhetorical structure (e.g. "X도 중요하지만 Y(이/가) 더 ~" comparative-contrast, "~기도 하고 ~기도 하다" both-and, "~ㄴ/는 데다(가) ~기까지 하다" on-top-of, "~지 않을 뿐(만) 아니라 ~까지 하다" not-only-but-also), surface the WHOLE construction as ONE expression entry with the multi-token chunk as example_in_sentence — not the individual particles split apart. Learners need to see the rhetorical unit, not three ~의 / ~도 / ~이 atoms when the sentence is really one comparison. Atomic particles (~의, ~이/가, ~을/를, ~도) are STILL surfaced separately as type="grammar" entries by the regex enforce layer; the compound is an ADDITIONAL type="expression" entry on top.\n';
       var fullPrompt = prompt + _khCatalog + _khLabels;
 
-      _autoGenSetItemStatus(si, '⏳ 기사 + 분석 생성 중…');
-      // max_tokens 8000 → 16000: long source articles + full per-sentence
-      // analysis routinely hit the cap and produced truncated JSON. Per
-      // user feedback: "기사 길어지더라도 중간에 짜르면 유저 이탈 직격원인이다.
-      // 자르지마". Raising the cap is the only way to honour that on long
-      // sources; cost rises linearly with output length, which is fine — we
-      // explicitly want long, complete articles.
-      const res = await callClaude({
-        feature: 'generate-article-combined',
-        model: 'claude-sonnet-4-6',
-        max_tokens: 16000,
-        messages: [{ role:'user', content: fullPrompt }]
-      });
+      // Thin-source cost branch — owner: "절감 해야지." When the
+      // source (post-#7J body-fetch enrichment) is still under 120
+      // chars, the full Sonnet combined-gen prompt is wasteful: we
+      // can't produce trustworthy paragraph_translations / per-
+      // sentence analysis without facts, AND the existing #7K guard
+      // throws those arrays away on save. So short-circuit to a
+      // cheaper Haiku body-only call. Per-article cost drops from
+      // ~$0.07 (Sonnet 16k cap) to ~$0.004 (Haiku 2k cap) — about
+      // 95 % savings on the thin-source path while preserving the
+      // article row + the existing "edit body manually → 🤖 Gen
+      // Study to rebuild analysis" workflow.
+      var _thinSrcLen = ((h && (h.desc || h.summary)) || '').length;
+      var _thinPath = _thinSrcLen < 120;
+
+      var _claudeArgs;
+      if (_thinPath) {
+        _autoGenSetItemStatus(si, '⏳ 빈약 소스 — 본문만 생성 중…');
+        var thinPrompt = '원본 뉴스의 본문이 빈약합니다 (' + _thinSrcLen + '자). 학습자용 한국어 기사를 짧고 정직하게 각색하세요.\n\n'
+          + '[원본]\n'
+          + '제목: ' + (h.title || '') + '\n'
+          + '내용: ' + (h.desc || h.summary || '(요약 없음)') + '\n'
+          + '카테고리: ' + secKey + '\n'
+          + '난이도: ' + diffInfo.ko + ' (' + diffInfo.level + ')\n\n'
+          + '규칙:\n'
+          + '- 알맹이 강제: 원본에 있는 이름 / 숫자 / 장소 / 직업 / 기간 / 단체명은 살아남을 것. 학습자 레벨에 맞게 단순화하되 추상화 금지.\n'
+          + '- 메타 서술 금지: "논란이 되고 있어요" / "주목받고 있어요" / "이런 사람이 있어요" / "온라인에서 반응이 ~" 같이 분위기만 묘사하는 패턴 사용 금지.\n'
+          + '- 최대 2~3단락. 알맹이 없으면 짧고 정직하게. 절대 분량 채우기로 단락 늘리지 말 것.\n'
+          + '- 본문은 학습자 난이도에 맞는 자연스러운 한국어 뉴스체로.\n\n'
+          + 'ONLY JSON, no markdown:\n'
+          + '{"title":"한국어 제목","title_en":"English headline","body":"한국어 본문 (2-3 단락)","summary":"한 줄 요약"}';
+        _claudeArgs = {
+          feature: 'generate-article-thin-body-only',
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 2000,
+          messages: [{ role: 'user', content: thinPrompt }]
+        };
+      } else {
+        _autoGenSetItemStatus(si, '⏳ 기사 + 분석 생성 중…');
+        // max_tokens 8000 → 16000: long source articles + full per-sentence
+        // analysis routinely hit the cap and produced truncated JSON. Per
+        // user feedback: "기사 길어지더라도 중간에 짜르면 유저 이탈 직격원인이다.
+        // 자르지마". Raising the cap is the only way to honour that on long
+        // sources; cost rises linearly with output length, which is fine — we
+        // explicitly want long, complete articles.
+        _claudeArgs = {
+          feature: 'generate-article-combined',
+          model: 'claude-sonnet-4-6',
+          max_tokens: 16000,
+          messages: [{ role: 'user', content: fullPrompt }]
+        };
+      }
+      const res = await callClaude(_claudeArgs);
 
       const text = res.content && res.content[0] && res.content[0].text || '';
       if (!text) throw new Error('빈 응답');
