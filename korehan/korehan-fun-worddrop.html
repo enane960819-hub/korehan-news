@@ -113,16 +113,16 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     <div class="menu-section">
       <div class="menu-label">Mode</div>
       <div class="mode-btns">
-        <div class="mode-btn on" data-mode="ko2en" onclick="setMode('ko2en')">🇰🇷→🇺🇸<br><span style="font-size:11px">한→영</span></div>
-        <div class="mode-btn" data-mode="en2ko" onclick="setMode('en2ko')">🇺🇸→🇰🇷<br><span style="font-size:11px">영→한</span></div>
+        <button type="button" class="mode-btn on" data-mode="ko2en" onclick="setMode('ko2en')">🇰🇷→🇺🇸<br><span style="font-size:11px">한→영</span></button>
+        <button type="button" class="mode-btn" data-mode="en2ko" onclick="setMode('en2ko')">🇺🇸→🇰🇷<br><span style="font-size:11px">영→한</span></button>
       </div>
     </div>
     <div class="menu-section">
       <div class="menu-label">Speed</div>
       <div class="speed-btns">
-        <div class="speed-btn" data-spd="slow" onclick="setSpeed('slow')">🐢 Slow</div>
-        <div class="speed-btn on" data-spd="normal" onclick="setSpeed('normal')">🏃 Normal</div>
-        <div class="speed-btn" data-spd="fast" onclick="setSpeed('fast')">⚡ Fast</div>
+        <button type="button" class="speed-btn" data-spd="slow" onclick="setSpeed('slow')">🐢 Slow</button>
+        <button type="button" class="speed-btn on" data-spd="normal" onclick="setSpeed('normal')">🏃 Normal</button>
+        <button type="button" class="speed-btn" data-spd="fast" onclick="setSpeed('fast')">⚡ Fast</button>
       </div>
     </div>
     <div class="menu-section">
@@ -258,7 +258,7 @@ function renderTopics(){
   var el=document.getElementById('topic-grid');
   el.innerHTML=Object.keys(TOPICS).map(function(k){
     var t=TOPICS[k],on=_selectedTopics.indexOf(k)>=0?' on':'';
-    return '<div class="topic-btn'+on+'" onclick="toggleTopic(\''+k+'\')"><span class="ico">'+t.icon+'</span>'+t.label+'</div>';
+    return '<button type="button" class="topic-btn'+on+'" onclick="toggleTopic(\''+k+'\')"><span class="ico">'+t.icon+'</span>'+t.label+'</button>';
   }).join('');
 }
 window.setMode=function(m){_mode=m;document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.toggle('on',b.dataset.mode===m);});};

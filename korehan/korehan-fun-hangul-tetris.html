@@ -294,14 +294,22 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
       if (e.key === 'ArrowLeft') paddle.x = Math.max(0, paddle.x - 40);
       if (e.key === 'ArrowRight') paddle.x = Math.min(canvas._w - paddle.w, paddle.x + 40);
     });
-    // Touch
+    // Touch — single shared interval per button, cleared on touchend AND
+    // touchcancel (otherwise paddle keeps drifting if the gesture is
+    // interrupted by an incoming call / system gesture / scroll).
     var holdL = null, holdR = null;
     function moveL(){ paddle.x = Math.max(0, paddle.x - 6); }
     function moveR(){ paddle.x = Math.min(canvas._w - paddle.w, paddle.x + 6); }
-    document.getElementById('btn-left').addEventListener('touchstart', function(e){ e.preventDefault(); holdL = setInterval(moveL, 30); moveL(); });
-    document.getElementById('btn-left').addEventListener('touchend', function(){ clearInterval(holdL); });
-    document.getElementById('btn-right').addEventListener('touchstart', function(e){ e.preventDefault(); holdR = setInterval(moveR, 30); moveR(); });
-    document.getElementById('btn-right').addEventListener('touchend', function(){ clearInterval(holdR); });
+    function clearL(){ if (holdL) { clearInterval(holdL); holdL = null; } }
+    function clearR(){ if (holdR) { clearInterval(holdR); holdR = null; } }
+    var btnL = document.getElementById('btn-left');
+    var btnR = document.getElementById('btn-right');
+    btnL.addEventListener('touchstart', function(e){ e.preventDefault(); clearL(); holdL = setInterval(moveL, 45); moveL(); }, {passive:false});
+    btnL.addEventListener('touchend', clearL);
+    btnL.addEventListener('touchcancel', clearL);
+    btnR.addEventListener('touchstart', function(e){ e.preventDefault(); clearR(); holdR = setInterval(moveR, 45); moveR(); }, {passive:false});
+    btnR.addEventListener('touchend', clearR);
+    btnR.addEventListener('touchcancel', clearR);
   }
 
   function resize() {
