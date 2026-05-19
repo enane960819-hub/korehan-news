@@ -22,6 +22,47 @@ body { font-family: 'Happy Monkey', 'Jua', 'Inter', 'Noto Sans KR', sans-serif; 
 .mypage-hero-inner { max-width:960px; margin:0 auto; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
 .mp-avatar-wrap { position:relative; flex-shrink:0; cursor:pointer; }
 .mp-avatar-wrap:hover .mp-avatar-edit { opacity:1; }
+
+/* Equipped cosmetic frame — sits around the 76 px avatar, purely
+   decorative (pointer-events:none) so the click target stays the
+   .mp-avatar-wrap above. JS adds .is-on + the per-frame variant
+   class on init. Static frames are a box-shadow ring; animated
+   ones use a rotating conic gradient masked to a ring. */
+.mp-avatar-frame{position:absolute;inset:-7px;border-radius:50%;pointer-events:none;z-index:0;display:none}
+.mp-avatar-frame.is-on{display:block}
+@keyframes khFrameSpin { to { transform: rotate(360deg); } }
+@keyframes khFramePulse {
+  0%,100% { box-shadow: var(--frame-shadow-a); }
+  50%     { box-shadow: var(--frame-shadow-b); }
+}
+
+/* Solid / gradient rings (static) */
+.kh-frame-neon.is-on     { box-shadow:0 0 0 2px #00ff95, 0 0 16px 3px rgba(0,255,149,.55); }
+.kh-frame-sakura.is-on   { box-shadow:0 0 0 3px #ff9bc6, 0 0 14px 4px rgba(255,155,198,.5); }
+.kh-frame-hanbok.is-on   { box-shadow:0 0 0 3px #b91c1c, inset 0 0 0 1px #fff7e6, 0 0 10px 2px rgba(185,28,28,.4); }
+.kh-frame-gold.is-on     { box-shadow:0 0 0 2px #fbbf24, 0 0 14px 3px rgba(251,191,36,.6); }
+.kh-frame-mint.is-on     { box-shadow:0 0 0 2px #34d399, 0 0 10px 2px rgba(52,211,153,.45); }
+.kh-frame-coral.is-on    { box-shadow:0 0 0 2px #fb7185, 0 0 10px 2px rgba(251,113,133,.45); }
+.kh-frame-royal.is-on    { box-shadow:0 0 0 2px #7c3aed, 0 0 12px 3px rgba(124,58,237,.5); }
+.kh-frame-chuseok.is-on  { box-shadow:0 0 0 3px #c2410c, 0 0 14px 3px rgba(255,196,77,.55); }
+.kh-frame-seollal.is-on  { box-shadow:0 0 0 3px #1d4ed8, inset 0 0 0 1px #fff, 0 0 10px 2px rgba(29,78,216,.4); }
+.kh-frame-pastel.is-on   { box-shadow:0 0 0 3px #fcd5ce, 0 0 0 5px #cdb4db; }
+.kh-frame-inkwash.is-on  { box-shadow:0 0 0 3px #1f2937, 0 0 0 5px rgba(31,41,55,.25); }
+
+/* Animated gradient rings — render a rotating conic gradient on the
+   frame element, mask to a ring so the avatar shows through. */
+.kh-frame-aurora.is-on, .kh-frame-rainbow.is-on, .kh-frame-rainbow-lite.is-on,
+.kh-frame-galaxy.is-on, .kh-frame-holo.is-on {
+  background-origin:border-box;
+  -webkit-mask:radial-gradient(circle at 50% 50%, transparent 0 calc(50% - 5px), #000 calc(50% - 4px));
+          mask:radial-gradient(circle at 50% 50%, transparent 0 calc(50% - 5px), #000 calc(50% - 4px));
+  animation: khFrameSpin 8s linear infinite;
+}
+.kh-frame-aurora.is-on        { background: conic-gradient(from 0deg, #93c5fd, #c4b5fd, #a7f3d0, #fde68a, #93c5fd); }
+.kh-frame-rainbow-lite.is-on  { background: conic-gradient(from 0deg, #f87171, #fbbf24, #34d399, #60a5fa, #a78bfa, #f87171); animation-duration:12s; }
+.kh-frame-rainbow.is-on       { background: conic-gradient(from 0deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #6366f1, #d946ef, #ef4444); animation-duration:6s; }
+.kh-frame-galaxy.is-on        { background: conic-gradient(from 0deg, #1e1b4b, #7c3aed, #d946ef, #1e1b4b); animation-duration:10s; }
+.kh-frame-holo.is-on          { background: conic-gradient(from 0deg, #c4b5fd, #f5d0fe, #bae6fd, #d9f99d, #fde68a, #c4b5fd); animation-duration:4s; filter:saturate(1.4); }
 .mp-avatar-img  { width:76px; height:76px; border-radius:50%; border:2px solid rgba(255,255,255,.3); object-fit:cover; display:block; }
 .mp-initials { width:76px; height:76px; border-radius:50%; background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,.07)); border:2px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800; color:#fff; font-family:'Inter',sans-serif; letter-spacing:-.02em; }
 .mp-avatar-edit { position:absolute; inset:0; border-radius:50%; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; }
@@ -1084,6 +1125,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <div class="mypage-hero">
   <div class="mypage-hero-inner">
     <div class="mp-avatar-wrap" onclick="triggerAvatarUpload()" title="Change profile photo">
+      <div class="mp-avatar-frame" id="mp-avatar-frame" aria-hidden="true"></div>
       <div class="mp-initials" id="mp-initials">?</div>
       <div class="mp-avatar-edit">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1099,6 +1141,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
       <div class="mp-member-since" id="mp-member-since"></div>
       <div class="hero-actions">
         <div id="mp-tier-hero"></div>
+        <button class="mp-action-btn" onclick="openCosmeticsModal()" title="Equip frames from your shop & gacha collection">✨ Cosmetics</button>
         <button class="mp-action-btn" onclick="signOut()">Sign Out</button>
       </div>
     </div>
@@ -2107,6 +2150,152 @@ function _setAvatarDisplay(url) {
   }
 }
 
+// ── Equipped cosmetic frame ─────────────────────────────────────────
+// Maps a shop/gacha item_id to a CSS class on #mp-avatar-frame. Items
+// not in the map render no frame (graceful fallback if the user
+// somehow equips a slug we don't have art for yet).
+var KH_FRAME_CLASS_MAP = {
+  // Gacha pool
+  'gacha_frame_pastel':       'kh-frame-pastel',
+  'gacha_frame_rainbow_lite': 'kh-frame-rainbow-lite',
+  'gacha_frame_inkwash':      'kh-frame-inkwash',
+  'gacha_frame_aurora':       'kh-frame-aurora',
+  'gacha_frame_sakura_petal': 'kh-frame-sakura',
+  'gacha_frame_holo_secret':  'kh-frame-holo',
+  // Coin shop frames
+  'cosmetic_neon_frame':      'kh-frame-neon',
+  'cosmetic_sakura_frame':    'kh-frame-sakura',
+  'cosmetic_hanbok_frame':    'kh-frame-hanbok',
+  'cosmetic_gold_frame':      'kh-frame-gold',
+  'cosmetic_aurora_frame':    'kh-frame-aurora',
+  'cosmetic_mint_frame':      'kh-frame-mint',
+  'cosmetic_coral_frame':     'kh-frame-coral',
+  'cosmetic_royal_frame':     'kh-frame-royal',
+  'cosmetic_chuseok_frame':   'kh-frame-chuseok',
+  'cosmetic_seollal_frame':   'kh-frame-seollal',
+  // Cash shop frames
+  'cash_frame_holographic':   'kh-frame-holo',
+  'cash_frame_rainbow':       'kh-frame-rainbow',
+  'cash_frame_galaxy':        'kh-frame-galaxy',
+  'cash_frame_ink':           'kh-frame-inkwash'
+};
+
+window._equippedCosmetics = {};
+
+function applyEquippedFrame(itemId) {
+  var el = document.getElementById('mp-avatar-frame');
+  if (!el) return;
+  // Strip any existing kh-frame-* class + is-on.
+  var keep = [];
+  el.className.split(/\s+/).forEach(function(c){ if (c && c !== 'is-on' && c.indexOf('kh-frame-') !== 0) keep.push(c); });
+  el.className = keep.join(' ');
+  if (!itemId) return;
+  var cls = KH_FRAME_CLASS_MAP[itemId];
+  if (!cls) return;
+  el.classList.add(cls);
+  el.classList.add('is-on');
+}
+
+async function loadEquippedCosmetics() {
+  if (!window.supaUser) return;
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var r = await sb.from('user_stats').select('equipped_cosmetics').eq('user_id', supaUser.id).maybeSingle();
+    var eq = (r && r.data && r.data.equipped_cosmetics) || {};
+    window._equippedCosmetics = eq;
+    applyEquippedFrame(eq.frame || null);
+  } catch (e) {
+    console.warn('loadEquippedCosmetics failed', e && e.message);
+  }
+}
+
+// ── Cosmetics modal ─────────────────────────────────────────────────
+// Lists every frame the user owns (across shop owned_items and
+// gacha_owned_items) and lets them equip one. Uses the same frame
+// classes defined above for previews, so the modal matches what the
+// avatar will look like.
+window.openCosmeticsModal = async function openCosmeticsModal() {
+  if (!window.supaUser) { if (typeof openAuthModal === 'function') openAuthModal('signup'); return; }
+  var sb = getSupa(); if (!sb) return;
+
+  var overlay = document.createElement('div');
+  overlay.className = 'kh-cosmetics-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(8,12,28,.72);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = '<div style="background:#fff;border-radius:18px;padding:24px;max-width:520px;width:100%;max-height:88vh;overflow:auto;font-family:inherit">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div style="font-size:17px;font-weight:900;color:#0b1626">✨ Equip a Frame</div><button onclick="this.closest(\'.kh-cosmetics-modal\').remove()" style="background:none;border:0;font-size:22px;color:#64748b;cursor:pointer;line-height:1">×</button></div>'
+    + '<div id="kh-cosmetics-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;min-height:120px"><div style="grid-column:1/-1;text-align:center;color:#94a3b8;font-size:13px;padding:24px">Loading…</div></div>'
+    + '</div>';
+  overlay.addEventListener('click', function(e){ if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  // Pull owned items from both buckets.
+  var ownedFrames = [];
+  try {
+    var shopRes = await sb.from('owned_items').select('item_id, quantity').eq('user_id', supaUser.id);
+    (shopRes.data || []).forEach(function(o){
+      if (o && o.item_id && KH_FRAME_CLASS_MAP[o.item_id] && (o.quantity == null || o.quantity > 0)) {
+        ownedFrames.push(o.item_id);
+      }
+    });
+  } catch (_) {}
+  try {
+    var gRes = await sb.from('gacha_owned_items').select('item_id, quantity').eq('user_id', supaUser.id);
+    (gRes.data || []).forEach(function(o){
+      if (o && o.item_id && KH_FRAME_CLASS_MAP[o.item_id] && (o.quantity == null || o.quantity > 0) && ownedFrames.indexOf(o.item_id) < 0) {
+        ownedFrames.push(o.item_id);
+      }
+    });
+  } catch (_) { /* gacha table may not exist yet */ }
+
+  var current = (window._equippedCosmetics && window._equippedCosmetics.frame) || null;
+  var grid = document.getElementById('kh-cosmetics-grid');
+  if (!grid) return;
+  if (!ownedFrames.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#64748b;font-size:13px;padding:24px;line-height:1.5">No frames in your collection yet.<br><a href="korehan-shop.html" style="color:#2563eb;font-weight:700">Browse the shop →</a></div>';
+    return;
+  }
+  // "None" tile first so user can unequip.
+  var tiles = ['<button data-frame="" class="kh-cos-tile' + (current ? '' : ' is-current') + '" style="background:#fff;border:2px solid ' + (current ? '#e2e8f0' : '#0d1b35') + ';border-radius:14px;padding:14px 8px 10px;cursor:pointer;font-family:inherit"><div style="width:54px;height:54px;border-radius:50%;background:#f1f5f9;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#94a3b8">∅</div><div style="font-size:11px;font-weight:700;color:#64748b">None</div></button>'];
+  ownedFrames.forEach(function(id){
+    var cls = KH_FRAME_CLASS_MAP[id];
+    var isCur = (id === current);
+    var label = id.replace(/^(gacha_|cosmetic_|cash_)/, '').replace(/_frame.*$/, '').replace(/_/g, ' ');
+    tiles.push(
+      '<button data-frame="' + id + '" class="kh-cos-tile' + (isCur ? ' is-current' : '') + '" style="background:#fff;border:2px solid ' + (isCur ? '#0d1b35' : '#e2e8f0') + ';border-radius:14px;padding:14px 8px 10px;cursor:pointer;font-family:inherit">'
+      +   '<div style="position:relative;width:54px;height:54px;margin:0 auto 8px">'
+      +     '<div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#cbd5e1,#94a3b8)"></div>'
+      +     '<div class="mp-avatar-frame is-on ' + cls + '" style="position:absolute;inset:-7px;border-radius:50%;pointer-events:none;z-index:0"></div>'
+      +   '</div>'
+      +   '<div style="font-size:11px;font-weight:700;color:#0b1626;text-transform:capitalize">' + label + '</div>'
+      + '</button>'
+    );
+  });
+  grid.innerHTML = tiles.join('');
+
+  grid.querySelectorAll('.kh-cos-tile').forEach(function(btn){
+    btn.addEventListener('click', async function() {
+      var id = btn.getAttribute('data-frame') || '';
+      btn.disabled = true;
+      try {
+        var r = await sb.rpc('set_equipped_cosmetic', { p_slot: 'frame', p_item_id: id || null });
+        if (r.error || !r.data || !r.data.ok) {
+          var err = (r.data && r.data.error) || (r.error && r.error.message) || 'FAILED';
+          if (typeof toast === 'function') toast('Equip failed: ' + err, 'error');
+          return;
+        }
+        window._equippedCosmetics = r.data.equipped || {};
+        applyEquippedFrame(window._equippedCosmetics.frame || null);
+        if (typeof toast === 'function') toast(id ? 'Frame equipped.' : 'Frame removed.', 'success');
+        overlay.remove();
+      } catch (e) {
+        if (typeof toast === 'function') toast('Equip failed: ' + (e.message || e), 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+};
+
 // ── Init ───────────────────────────────────────────────────────
 async function initMyPage() {
   if (!supaUser) { window.location.href = 'index.html'; return; }
@@ -2143,6 +2332,8 @@ async function initMyPage() {
       }
     } catch(e) {}
   }
+  // Equipped frame (best-effort — silent if user_stats lacks the column yet)
+  try { await loadEquippedCosmetics(); } catch(_) {}
 
   // Load in parallel
   var results = await Promise.all([ dbGetUserStats(), dbGetOwnedAndGifts() ]);
