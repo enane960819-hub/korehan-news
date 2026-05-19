@@ -7918,9 +7918,18 @@ function _showMicPermError(statusElId) {
 }
 async function submitSpeaking() {
   if (!_speakBlob || !supaUser) { showToast('녹음이 없거나 로그인이 필요합니다'); return; }
+  // Show loading state on the submit button immediately — the storage
+  // upload + insert takes 1–3 s on slow mobile and the old UX gave
+  // zero feedback for that window.
+  var _sbtn = document.getElementById('wm-speak-submit');
+  var _sbtnHtml = _sbtn ? _sbtn.innerHTML : '';
+  if (_sbtn) { _sbtn.disabled = true; _sbtn.style.opacity = '.65'; _sbtn.style.cursor = 'wait'; _sbtn.innerHTML = '<span>Uploading…</span>'; }
+  function _restoreSpeakBtn() {
+    if (_sbtn) { _sbtn.disabled = false; _sbtn.style.opacity = ''; _sbtn.style.cursor = ''; _sbtn.innerHTML = _sbtnHtml; }
+  }
   try {
     var sb = getSupa();
-    if (!sb) return;
+    if (!sb) { _restoreSpeakBtn(); return; }
     var fileName = 'speaking/' + supaUser.id + '/' + kstDateKey() + '_' + Date.now() + '.webm';
     // Audit 2026-05-18 #5: moved off the 'avatars' bucket to a dedicated
     // 'speaking-recordings' bucket — see migrations/20260518_speaking_recordings_bucket.sql
@@ -7952,6 +7961,8 @@ async function submitSpeaking() {
     document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted!</span></span>';
   } catch(e) {
     showToast('Submit failed: ' + e.message);
+  } finally {
+    _restoreSpeakBtn();
   }
 }
 
@@ -8662,6 +8673,20 @@ async function submitAllWritingsToday() {
   var types = Object.keys(all);
   if (!types.length) { showToast('No work to submit.'); return; }
 
+  // Submit-button loading state — audit flagged that pressing Submit
+  // gave zero visual feedback for the 1–3 s upload window. Disable
+  // the button and swap the label so users don't double-tap or assume
+  // the request failed.
+  var _submitBtn = document.getElementById('kh-submit-all-btn');
+  var _submitLabel = _submitBtn && _submitBtn.querySelector('.kh-submit-label');
+  var _origLabel = _submitLabel ? _submitLabel.textContent : '';
+  if (_submitBtn) { _submitBtn.disabled = true; _submitBtn.style.opacity = '.65'; _submitBtn.style.cursor = 'wait'; }
+  if (_submitLabel) _submitLabel.textContent = 'Submitting…';
+  function _restoreSubmit() {
+    if (_submitBtn) { _submitBtn.disabled = false; _submitBtn.style.opacity = ''; _submitBtn.style.cursor = ''; }
+    if (_submitLabel) _submitLabel.textContent = _origLabel || 'Submit All';
+  }
+
   var today = kstDateKey();
 
   // Build unified package — all activities combined
@@ -8742,10 +8767,16 @@ async function submitAllWritingsToday() {
     localStorage.setItem(submitKey, 'true');
     localStorage.removeItem(_writingDraftKey());
     refreshSubmitBanner();
-    showToast('Daily package submitted! (' + packageItems.length + ' items) Feedback within 24 hours.');
+    // Toast timeline matches reality: AI feedback usually lands in
+    // 30–60 s now that the package path actually persists (#581 fix).
+    // The old "24 hours" copy was the legacy teacher-review SLA and
+    // wildly misaligned with the AI path.
+    showToast('Submitted! AI feedback usually ready in about a minute — check the inbox.');
     if (typeof awardXP === 'function') awardXP('writing_submit');
   } catch(e) {
     showToast('Submit error: ' + (e.message||e));
+  } finally {
+    _restoreSubmit();
   }
 }
 
