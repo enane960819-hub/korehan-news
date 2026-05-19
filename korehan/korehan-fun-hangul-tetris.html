@@ -143,6 +143,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
 <script src="korehan-shared.js?v=20260516c"></script>
+<script src="playground-scores-client.js?v=20260519a"></script>
 <script>
 (function(){
   var CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
@@ -590,6 +591,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
       bestScore = score;
       localStorage.setItem('kh_hangul_tetris_best', String(bestScore));
     }
+    if (window.playgroundScores) playgroundScores.submit('hangul-tetris', score, { wordsCleared: typeof wordsCleared !== 'undefined' ? wordsCleared : null, level: typeof level !== 'undefined' ? level : null });
     var emoji = score >= 500 ? '🏆' : score >= 200 ? '⭐' : score >= 100 ? '👍' : '💪';
     document.getElementById('end-emoji').textContent = emoji;
     document.getElementById('end-score').textContent = score + ' pts';
