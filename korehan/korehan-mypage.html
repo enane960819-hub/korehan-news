@@ -2257,7 +2257,7 @@ async function loadFeedbackChip() {
       .select('id, feedback_viewed_at', { count: 'exact', head: false })
       .eq('user_id', supaUser.id)
       .is('feedback_viewed_at', null)
-      .in('status', ['reviewed','admin_approved','sent']);
+      .in('status', ['ai_reviewed','admin_approved','sent']);
     var count = (r && r.data) ? r.data.length : 0;
     if (count > 0) {
       chip.style.display = '';

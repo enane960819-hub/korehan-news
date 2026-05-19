@@ -8847,7 +8847,7 @@ async function _triggerPackageFeedback(submissionId, items) {
     if (sb) {
       await sb.from('user_submissions').update({
         ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
-        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_drafted'
+        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
       }).eq('id', submissionId);
     }
   } catch(e) { console.warn('Package feedback failed:', e); }
@@ -8865,7 +8865,7 @@ async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
     if (sb) {
       await sb.from('user_submissions').update({
         ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
-        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_drafted'
+        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
       }).eq('id', submissionId);
     }
     // Log wrong patterns to quiz_results for analytics
@@ -8983,7 +8983,7 @@ async function loadFeedbackInbox() {
       btnEl.querySelector('button').style.background = 'rgba(34,197,94,.1)';
       btnEl.querySelector('button').style.color = '#4ade80';
       if (labelEl) labelEl.textContent = 'New feedback arrived! Tap to view';
-    } else if (latest.status === 'submitted' || latest.status === 'ai_drafted') {
+    } else if (latest.status === 'submitted' || latest.status === 'ai_reviewed') {
       if (labelEl) labelEl.textContent = 'Under review · feedback within 24h';
     } else {
       if (labelEl) labelEl.textContent = 'View my writing feedback';
@@ -9257,7 +9257,7 @@ async function renderFeedbackInboxContent() {
 
     var STATUS_LABELS = {
       submitted: { label: 'Submitted', color: 'rgba(255,255,255,.35)', bg: 'rgba(255,255,255,.06)' },
-      ai_drafted: { label: 'Under review', color: '#fbbf24', bg: 'rgba(251,191,36,.1)' },
+      ai_reviewed: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
       reviewed: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
       admin_approved: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
       sent: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' }
@@ -9268,7 +9268,7 @@ async function renderFeedbackInboxContent() {
 
     dates.forEach(function(date) {
       var dayItems = grouped[date];
-      var reviewed = dayItems.filter(function(i) { return i.status === 'reviewed' || i.status === 'admin_approved' || i.status === 'sent'; }).length;
+      var reviewed = dayItems.filter(function(i) { return i.status === 'ai_reviewed' || i.status === 'admin_approved' || i.status === 'sent'; }).length;
 
       // Date header
       html += '<div style="margin-bottom:16px">'
@@ -9285,7 +9285,7 @@ async function renderFeedbackInboxContent() {
         try { fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; } catch(e) {}
         var adminFb = null;
         try { adminFb = typeof item.admin_feedback === 'string' ? JSON.parse(item.admin_feedback) : item.admin_feedback; } catch(e) {}
-        var isReviewed = item.status === 'reviewed' || item.status === 'admin_approved' || item.status === 'sent';
+        var isReviewed = item.status === 'ai_reviewed' || item.status === 'admin_approved' || item.status === 'sent';
         var displayFb = isReviewed ? (adminFb || fb) : null;
         var preview = (item.writing_text || '').slice(0, 50);
         if ((item.writing_text || '').length > 50) preview += '…';
@@ -9356,7 +9356,7 @@ async function renderFeedbackInboxContent() {
           }
         } else {
           html += '<div style="color:rgba(255,255,255,.3);text-align:center;padding:16px;font-size:13px">'
-            + (item.status === 'ai_drafted' ? '⏳ Under review — feedback within 24h' : '📨 Submitted — processing...')
+            + '📨 Submitted — feedback usually ready within a minute. Check back shortly.'
             + '</div>';
         }
 

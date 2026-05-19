@@ -13680,8 +13680,8 @@ async function srLoadFeedbackDashboard() {
         var statsEl = document.getElementById('fb-stats');
         if (statsEl) statsEl.innerHTML =
           '<div onclick="document.getElementById(\'fb-status\').value=\'submitted\';srLoadFeedbackDashboard()" style="padding:12px;border-radius:10px;background:#fef9c3;text-align:center;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 0 0 2px #fbbf24\'" onmouseout="this.style.boxShadow=\'none\'"><div style="font-size:22px;font-weight:900;color:#854d0e">' + counts.submitted + '</div><div style="font-size:10px;color:#92400e;font-weight:700">⏳ Submitted</div></div>'
-          + '<div onclick="document.getElementById(\'fb-status\').value=\'ai_reviewed\';srLoadFeedbackDashboard()" style="padding:12px;border-radius:10px;background:#eff6ff;text-align:center;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 0 0 2px #93c5fd\'" onmouseout="this.style.boxShadow=\'none\'"><div style="font-size:22px;font-weight:900;color:#1d4ed8">' + (counts.ai_drafted + counts.ai_reviewed) + '</div><div style="font-size:10px;color:#1e40af;font-weight:700">🤖 AI ready</div></div>'
-          + '<div onclick="document.getElementById(\'fb-status\').value=\'reviewed\';srLoadFeedbackDashboard()" style="padding:12px;border-radius:10px;background:#f0fdf4;text-align:center;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 0 0 2px #86efac\'" onmouseout="this.style.boxShadow=\'none\'"><div style="font-size:22px;font-weight:900;color:#15803d">' + (counts.reviewed + counts.admin_approved) + '</div><div style="font-size:10px;color:#166534;font-weight:700">✅ Approved</div></div>'
+          + '<div onclick="document.getElementById(\'fb-status\').value=\'ai_reviewed\';srLoadFeedbackDashboard()" style="padding:12px;border-radius:10px;background:#eff6ff;text-align:center;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 0 0 2px #93c5fd\'" onmouseout="this.style.boxShadow=\'none\'"><div style="font-size:22px;font-weight:900;color:#1d4ed8">' + ((counts.ai_drafted || 0) + (counts.ai_reviewed || 0)) + '</div><div style="font-size:10px;color:#1e40af;font-weight:700">🤖 AI ready</div></div>'
+          + '<div onclick="document.getElementById(\'fb-status\').value=\'admin_approved\';srLoadFeedbackDashboard()" style="padding:12px;border-radius:10px;background:#f0fdf4;text-align:center;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 0 0 2px #86efac\'" onmouseout="this.style.boxShadow=\'none\'"><div style="font-size:22px;font-weight:900;color:#15803d">' + ((counts.reviewed || 0) + (counts.admin_approved || 0)) + '</div><div style="font-size:10px;color:#166534;font-weight:700">✅ Approved</div></div>'
           + '<div onclick="document.getElementById(\'fb-status\').value=\'sent\';srLoadFeedbackDashboard()" style="padding:12px;border-radius:10px;background:#dcfce7;text-align:center;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 0 0 2px #4ade80\'" onmouseout="this.style.boxShadow=\'none\'"><div style="font-size:22px;font-weight:900;color:#166534">' + counts.sent + '</div><div style="font-size:10px;color:#166534;font-weight:700">📨 Sent</div></div>'
           + '<div onclick="document.getElementById(\'fb-status\').value=\'\';srLoadFeedbackDashboard()" style="padding:12px;border-radius:10px;background:#f8fafc;text-align:center;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 0 0 2px #cbd5e1\'" onmouseout="this.style.boxShadow=\'none\'"><div style="font-size:22px;font-weight:900;color:#334155">' + counts.total + '</div><div style="font-size:10px;color:#64748b;font-weight:700">All</div></div>';
       }
@@ -13695,8 +13695,8 @@ async function srLoadFeedbackDashboard() {
       .gte('study_date', date)
       .order('submitted_at', { ascending: false })
       .limit(200);
-    if (status === 'ai_reviewed') q = q.in('status', ['ai_drafted','ai_reviewed']);
-    else if (status === 'reviewed') q = q.in('status', ['reviewed','admin_approved']);
+    if (status === 'ai_reviewed') q = q.eq('status', 'ai_reviewed');
+    else if (status === 'reviewed' || status === 'admin_approved') q = q.eq('status', 'admin_approved');
     else if (status) q = q.eq('status', status);
     if (type)   q = q.eq('content_type', type);
 
@@ -14527,7 +14527,7 @@ async function fbModalApprove() {
   var score = parseInt(document.getElementById('fb-modal-score').value) || null;
   var r = await sb.from('user_submissions').update({
     admin_feedback: fb || null, score: score,
-    status: 'reviewed', reviewed_at: new Date().toISOString()
+    status: 'admin_approved', reviewed_at: new Date().toISOString()
   }).eq('id', _fbModalRow.id);
   if (r.error) { toast('Error: ' + r.error.message); return; }
   toast('승인 완료');
@@ -14734,7 +14734,7 @@ async function srBulkApprove() {
       fb = (parsed.overall||'') + (parsed.encouragement ? '\n\n' + parsed.encouragement : '');
     } catch(e) { fb = String(row.ai_feedback); }
     var r = await sb.from('user_submissions').update({
-      admin_feedback: fb, status: 'reviewed', reviewed_at: new Date().toISOString()
+      admin_feedback: fb, status: 'admin_approved', reviewed_at: new Date().toISOString()
     }).eq('id', row.id);
     if (!r.error) ok++;
   }
