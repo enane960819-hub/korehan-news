@@ -961,6 +961,7 @@ body.kh-neon-on .hero-dot {
 </script>
 <div id="kh-header"></div>
 <div id="kh-welcome-banner" style="display:none"></div>
+<div id="kh-feedback-pill" style="display:none"></div>
 
 <div class="container">
   <!-- ONBOARDING / BEGINNER BANNER — 히어로 위에 눈에 띄게 -->
@@ -1553,6 +1554,39 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 document.addEventListener('DOMContentLoaded', async function() {
+  // Unread-feedback pill — surfaces reviewed submissions the user
+  // hasn't opened yet. Deep-links into Study Room via ?openInbox=1
+  // which auto-opens the inbox modal (handled in study-room.js).
+  // Best-effort; failure is silent.
+  (async function showFeedbackPill() {
+    try {
+      var pill = document.getElementById('kh-feedback-pill');
+      if (!pill) return;
+      // Wait for auth to settle — supaUser may not be set on first tick.
+      for (var i = 0; i < 20 && !window.supaUser; i++) {
+        await new Promise(function(r){ setTimeout(r, 100); });
+      }
+      if (!window.supaUser) return;
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      if (!sb) return;
+      var r = await sb.from('user_submissions')
+        .select('id')
+        .eq('user_id', window.supaUser.id)
+        .is('feedback_viewed_at', null)
+        .in('status', ['reviewed','admin_approved','sent'])
+        .limit(50);
+      var n = (r && r.data) ? r.data.length : 0;
+      if (n <= 0) return;
+      pill.style.cssText = 'display:block;max-width:1280px;margin:14px auto 0;padding:0 20px';
+      pill.innerHTML =
+          '<a href="korehan-study-room.html?openInbox=1" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:14px;background:linear-gradient(135deg,rgba(34,197,94,.18),rgba(20,83,45,.4));border:1px solid rgba(74,222,128,.4);color:#bbf7d0;font-size:13px;font-weight:800;text-decoration:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">'
+        +   '<span style="font-size:20px">📨</span>'
+        +   '<span style="flex:1">You have <b style="color:#86efac">' + n + '</b> new feedback ready to view.</span>'
+        +   '<span style="font-size:12px;color:#bbf7d0">Open inbox →</span>'
+        + '</a>';
+    } catch (_) {}
+  })();
+
   // ── Conversations: localStorage 캐시 즉시 렌더 → 백그라운드 DB 갱신 ──
   var _HOME_CONV_CACHE_KEY = 'kh_home_convs_v1';
   var _cachedConvs = null;
