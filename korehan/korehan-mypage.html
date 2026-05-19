@@ -2697,6 +2697,70 @@ async function loadRoomItemsFromDB() {
   return ROOM_ITEMS;
 }
 
+// ── Gacha → Room sync ────────────────────────────────────────────────
+// Gacha pulls that yielded a pet / room item land in gacha_owned_items
+// but the room renderer only knows about ROOM_ITEMS + kh_room_owned.
+// This sync pulls every gacha_pet_* / gacha_room_* the user owns,
+// injects metadata into ROOM_ITEMS so getRoomItemDef resolves them,
+// and adds the ids to kh_room_owned so the My Items shelf surfaces
+// them as placeable. Idempotent.
+var KH_GACHA_ROOM_DEFS = {
+  // Pets
+  'gacha_pet_chick':       { name:'병아리',           size:120, category:'pet' },
+  'gacha_pet_pup':         { name:'포메 강아지',       size:140, category:'pet' },
+  'gacha_pet_redpanda':    { name:'레서판다',          size:150, category:'pet' },
+  'gacha_pet_kpop_pup':    { name:'아이돌 강아지',     size:140, category:'pet' },
+  'gacha_pet_gold_dragon': { name:'황금 미니 용',      size:160, category:'pet' },
+  'gacha_pet_jade_phoenix':{ name:'옥빛 봉황',         size:170, category:'pet' },
+  // Room items
+  'gacha_room_easel_rare': { name:'화가의 이젤',       size:150, category:'deco' },
+  'gacha_room_lantern':    { name:'전통 등불',         size:130, category:'deco' },
+  'gacha_room_neon_namsan':{ name:'네온 남산타워',     size:160, category:'deco' }
+};
+
+async function syncGachaRoomItems() {
+  if (!window.supaUser) return;
+  var sb = getSupa(); if (!sb) return;
+  var gachaSlugs = [];
+  try {
+    var r = await sb.from('gacha_owned_items').select('item_id, quantity').eq('user_id', supaUser.id);
+    (r && r.data || []).forEach(function(o) {
+      if (o && o.item_id && KH_GACHA_ROOM_DEFS[o.item_id] && (o.quantity == null || o.quantity > 0)) {
+        gachaSlugs.push(o.item_id);
+      }
+    });
+  } catch (_) { return; /* gacha_owned_items missing in this env */ }
+  if (!gachaSlugs.length) return;
+
+  // Augment ROOM_ITEMS catalog with gacha entries (filter dupes by id).
+  var seen = {};
+  ROOM_ITEMS.forEach(function(it){ seen[it.id] = true; });
+  gachaSlugs.forEach(function(slug) {
+    if (seen[slug]) return;
+    var meta = KH_GACHA_ROOM_DEFS[slug];
+    ROOM_ITEMS.push({
+      id:        slug,
+      name:      meta.name,
+      price:     0,                                  // owned via gacha, not coin
+      img:       'assets/gacha/' + slug.replace(/_/g, '-') + '.png',
+      size:      meta.size,
+      effect:    'none',
+      thumbnail: 'assets/gacha/' + slug.replace(/_/g, '-') + '.png',
+      category:  meta.category
+    });
+  });
+
+  // Auto-grant in kh_room_owned so the items appear in the My Items
+  // shelf without a manual "place" step.
+  var owned = getRoomOwned();
+  var added = 0;
+  gachaSlugs.forEach(function(slug) {
+    if (owned.indexOf(slug) === -1) { owned.push(slug); added++; }
+  });
+  if (added > 0) setRoomOwned(owned);
+}
+
+
 // Turn each earned badge into a virtual ROOM_ITEMS entry so it can be placed
 // in My Room just like purchased decorations. Badge icons are pixel-art SVG
 // strings (from pxBadge); we convert them to data URLs on demand so the
@@ -3694,6 +3758,9 @@ async function loadRoomLayout() {
   try {
     // Load room item catalog from DB (replaces hardcoded array)
     await loadRoomItemsFromDB();
+    // Pull gacha pets/items the user owns into ROOM_ITEMS + auto-grant
+    // them in kh_room_owned so they appear in the My Items shelf.
+    try { await syncGachaRoomItems(); } catch(_) {}
     // Try loading from server first (cross-device sync)
     await _loadRoomFromServer();
 
