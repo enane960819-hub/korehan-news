@@ -1128,6 +1128,12 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 /* Normal mode: ensure all text is visible */
 .xp-log-reason, .inv-name, .room-shop-name { color:#0b1626; }
 #room-edit-btn { color:#334155; }
+
+/* Mobile tap-target sweep — bumps hero pill buttons (Sign Out,
+   ✨ Cosmetics, 📨 feedback chip) to ≥44 px. */
+@media (max-width: 768px) {
+  .mp-action-btn { padding: 11px 18px; min-height: 44px; font-size: 13px; }
+}
 </style>
 </head>
 <body>

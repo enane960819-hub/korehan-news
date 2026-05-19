@@ -432,6 +432,12 @@
   .dp-keyexpr-ko{font-size:18px!important;}
   .dp-keyexpr-en{font-size:14px!important;}
 }
+
+/* Mobile tap-target sweep — owner-flagged chronic issue.
+   Bumps small chips / "more" buttons to ≥44 px iOS HIG min. */
+@media (max-width: 768px) {
+  .cv-rail-more { padding: 12px 14px; min-height: 44px; font-size: 13px; }
+}
 </style>
 </head>
 <body class="kh-page-conv">

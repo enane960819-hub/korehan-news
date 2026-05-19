@@ -276,6 +276,12 @@
   .st-container{padding:0 14px 48px;}
 }
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* Mobile tap-target sweep — bumps story-card Open button to ≥44 px. */
+@media (max-width: 768px) {
+  .sc-open { padding: 11px 18px; min-height: 44px; font-size: 13px; }
+  .st-pill { padding: 8px 14px; font-size: 12px; }
+}
 </style>
 </head>
 <body class="kh-page-stories">
