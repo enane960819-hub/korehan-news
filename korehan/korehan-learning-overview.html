@@ -587,9 +587,9 @@
       </div>
       <div class="gl-stat" title="Consecutive days you've studied. Breaks if you skip a day.">
         <div class="gl-stat-label">Streak</div>
-        <div class="gl-stat-num" id="stat-streak" style="color:#ea580c">0</div>
+        <div class="gl-stat-num" id="stat-streak" style="color:var(--korea,#cc2200)">0</div>
         <!-- Manual freeze button removed: freezes are auto-applied on
-             missed days now. Trigger lives in refreshFreezeBtn(). -->
+             missed days now (shop-inventory model). -->
       </div>
       <div class="gl-stat" title="Active time spent in the app today. Counts minutes while the tab is visible and you've interacted within the last minute.">
         <div class="gl-stat-label">Time today</div>
@@ -2359,18 +2359,13 @@
 
   // ── Streak freeze: manual prompt removed ─────────────────────
   // The old weekly button + confirm dialog was confusing learners
-  // into spending freezes on days they didn't need them. New contract
-  // (per the product spec): freezes come from the shop as inventory
-  // items and auto-apply to a missed day with just a notification.
-  // Until the shop-inventory wire-up + missed-day detection RPC ship,
-  // the manual UX is simply hidden; the existing weekly grant in
-  // khFreezeSync still ticks but no longer surfaces a button.
-  function refreshFreezeBtn() { /* no-op until auto-apply lands */ }
-  window.khOpenFreezeDialog = function () { /* shim — button is gone */ };
+  // The manual streak-freeze UX was retired (button removed) in favor of
+  // the shop-inventory + auto-apply model. No callers remain for the
+  // refresh / open shims, so they're gone — re-add them if/when the
+  // auto-apply flow surfaces a manual override.
 
   // fallback: RPC 없을 때 localStorage에서 가능한 것만 표시
   function loadHubFallback() {
-    refreshFreezeBtn();
     var streak = typeof getCurrentStreak === 'function' ? getCurrentStreak() : 0;
     var xp     = typeof getXP === 'function' ? getXP() : 0;
     setText('stat-xp', xp);
