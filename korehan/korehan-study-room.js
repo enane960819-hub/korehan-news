@@ -7998,7 +7998,15 @@ async function _triggerSpeakingFeedback(submissionId, script, scores) {
     var wpm    = (scores && Number.isFinite(scores.fluency_wpm))    ? Math.round(scores.fluency_wpm)    : null;
     var fillerCount = (scores && Number.isFinite(scores.filler_count)) ? scores.filler_count : null;
 
-    var prompt = 'You are a Korean speaking coach reviewing an English-speaking learner.\n\n'
+    var lvl = (_currentLevel || 'Beginner').toString();
+    var topikBand = ({
+      'Seed':'TOPIK I level 1','Starter':'TOPIK I level 1',
+      'Beginner':'TOPIK I level 1','Sprout':'TOPIK I level 2',
+      'Tree':'TOPIK II level 3-4','Intermediate':'TOPIK II level 3-4',
+      'Forest':'TOPIK II level 5-6','Advanced':'TOPIK II level 5-6'
+    })[lvl] || 'TOPIK II level 3-4';
+    var prompt = 'You are a Korean speaking coach reviewing an English-speaking learner at ' + lvl + ' (' + topikBand + ').\n'
+      + 'Grade against this level\'s bar — TOPIK-1 vocab from a Beginner is fine; an Advanced learner needs idiomatic chunks. Pronunciation expectations also scale (a Beginner with mostly-correct 받침 is excellent; an Advanced learner with sloppy 받침 needs the note).\n\n'
       + 'They read this script aloud:\n"""\n' + (script || '(no script provided)') + '\n"""\n\n'
       + (transcript ? ('What our speech-recognition heard:\n"""\n' + transcript + '\n"""\n\n') : 'No transcript was captured.\n\n')
       + (pronN != null || fluN != null || wpm != null
@@ -8964,11 +8972,42 @@ async function _triggerPackageFeedback(submissionId, items) {
     //     corrected_full, corrections, structure, extra_content,
     //     spelling, naturalness (per-activity analysis)
     //
+    // The scoring is anchored to the STUDENT'S TOPIK level so a Beginner
+    // doesn't get a clinically-low score for using simple vocab. See
+    // the level rubric block in `head`.
+    //
     // English directive is intentionally repeated and explicit — Claude
     // tends to mirror the input language otherwise (the input here is
     // Korean), and the user is an English-speaking learner.
+    // Level rubric anchor — without this the model assigned vibe-based
+    // scores (e.g. a Beginner using TOPIK-1 vocab got 60s "accuracy"
+    // because the model implicitly graded against advanced criteria).
+    // Audit HIGH: TOPIK-level grounding makes the score actually mean
+    // something to the learner.
+    var lvl = (_currentLevel || 'Beginner').toString();
+    var LEVEL_RUBRIC = {
+      'Seed':         { topik: 'TOPIK I, beginning level (1)',  accFloor: 'present-tense verb endings (-아요/-어요/-이에요), basic Hangul spelling', lexical: 'core 500 vocab (인사, 가족, 음식, 시간) — repetition is OK at this level', cohesion: 'mostly single-sentence answers; sentence-to-sentence flow not expected yet', register: 'consistent 해요체 (or 합쇼체 if prompted)' },
+      'Beginner':     { topik: 'TOPIK I, beginning level (1)',  accFloor: 'present-tense verb endings (-아요/-어요/-이에요), basic Hangul spelling', lexical: 'core 500 vocab (인사, 가족, 음식, 시간) — repetition is OK at this level', cohesion: 'mostly single-sentence answers; sentence-to-sentence flow not expected yet', register: 'consistent 해요체 (or 합쇼체 if prompted)' },
+      'Sprout':       { topik: 'TOPIK I, advanced level (2)',   accFloor: 'present + past + future tenses, basic particles (이/가, 을/를, 에/에서), basic connectors (-고, -지만)', lexical: '1,500-2,000 word range, 3-4 distinct verb stems per piece', cohesion: '2-3 sentence paragraphs with -고 / -아서 / -지만 connectors', register: 'matches the prompt (informal diary OK; polite for emails)' },
+      'Tree':         { topik: 'TOPIK II, intermediate (3-4)',   accFloor: 'no particle errors, no tense errors, correct word order', lexical: '3,000+ vocab, idiomatic chunks (-기 위해, -ㄴ/는 김에, -다 보니), at least one TOPIK-3 grammar pattern per piece', cohesion: 'paragraph-level flow with 그래서 / 또한 / 그런데 / 한편 connectors', register: 'register match + no register mixing within a piece' },
+      'Forest':       { topik: 'TOPIK II, advanced (5-6)',       accFloor: 'no errors of any kind; if any appear, score drops fast', lexical: '6,000+ vocab including 한자어, idiomatic / academic phrases (-에 의하면, -ㄴ/는 만큼, -기는커녕)', cohesion: 'argument-level cohesion with thesis → support → conclusion', register: 'sustained 합쇼체 / academic register, no casual leakage' },
+      'Advanced':     { topik: 'TOPIK II, advanced (5-6)',       accFloor: 'no errors of any kind; if any appear, score drops fast', lexical: '6,000+ vocab including 한자어, idiomatic / academic phrases (-에 의하면, -ㄴ/는 만큼, -기는커녕)', cohesion: 'argument-level cohesion with thesis → support → conclusion', register: 'sustained 합쇼체 / academic register, no casual leakage' },
+      'Intermediate': { topik: 'TOPIK II, intermediate (3-4)',   accFloor: 'no particle errors, no tense errors, correct word order', lexical: '3,000+ vocab, idiomatic chunks (-기 위해, -ㄴ/는 김에, -다 보니), at least one TOPIK-3 grammar pattern per piece', cohesion: 'paragraph-level flow with 그래서 / 또한 / 그런데 / 한편 connectors', register: 'register match + no register mixing within a piece' },
+      'Starter':      { topik: 'TOPIK I, beginning level (1)',  accFloor: 'present-tense verb endings (-아요/-어요/-이에요), basic Hangul spelling', lexical: 'core 500 vocab (인사, 가족, 음식, 시간) — repetition is OK at this level', cohesion: 'mostly single-sentence answers; sentence-to-sentence flow not expected yet', register: 'consistent 해요체 (or 합쇼체 if prompted)' }
+    };
+    var rubric = LEVEL_RUBRIC[lvl] || LEVEL_RUBRIC['Tree'];
+
     var head = 'You are a Korean writing tutor reviewing an English speaker\'s daily Korean study package.\n'
       + 'CRITICAL LANGUAGE RULE: ALL English-language fields are in ENGLISH. Korean only inside "corrected_full" and the "original" / "corrected" sides of corrections.\n\n'
+      + '── STUDENT LEVEL: ' + lvl + ' (' + rubric.topik + ') ──\n'
+      + 'Score the rubric against THIS level\'s expectations, not absolute fluency. A perfect ' + lvl + ' piece is a 90+, even if it would be a 60 for an Advanced learner.\n'
+      + 'Score 80+ on each axis means the piece clears that level\'s bar:\n'
+      + '  • accuracy 80+    → ' + rubric.accFloor + '.\n'
+      + '  • lexical_range 80+ → ' + rubric.lexical + '.\n'
+      + '  • cohesion 80+    → ' + rubric.cohesion + '.\n'
+      + '  • coherence 80+   → ideas flow logically and the topic answer is on-target.\n'
+      + '  • register 80+    → ' + rubric.register + '.\n'
+      + 'Below-floor scores (≤60) must come with a concrete reason in "naturalness.comment" — not just a vibe.\n\n'
       + '── REGISTER AWARENESS (most important rule) ──\n'
       + 'Korean has multiple valid registers (반말 / 해요체 / 합쇼체). Subject omission and casual particle drop (조사 생략, e.g. 그림 그리기 너무 좋아) are NORMAL in 반말 and informal writing — NOT grammatical errors. A teacher would NOT mark these with a red pen.\n'
       + '- "corrections" is ONLY for ACTUAL grammatical errors: wrong verb endings, incorrect word order, misspellings (e.g. 나쁘지않아 → 나쁘지 않아), wrong vocab. Things a teacher would clearly mark wrong.\n'
@@ -9086,7 +9125,18 @@ async function _triggerPackageFeedback(submissionId, items) {
 
 async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
   try {
-    var prompt = 'You are a Korean writing tutor giving feedback to an English-speaking student learning Korean.\n\nStudent\'s writing:\n"""\n' + text + '\n"""\nTopic: ' + topicOrTitle + '\n\n'
+    // Level-aware framing so corrections are calibrated to the
+    // learner's TOPIK band — matches the daily-package path.
+    var lvl = (_currentLevel || 'Beginner').toString();
+    var topikBand = ({
+      'Seed':'TOPIK I level 1','Starter':'TOPIK I level 1',
+      'Beginner':'TOPIK I level 1','Sprout':'TOPIK I level 2',
+      'Tree':'TOPIK II level 3-4','Intermediate':'TOPIK II level 3-4',
+      'Forest':'TOPIK II level 5-6','Advanced':'TOPIK II level 5-6'
+    })[lvl] || 'TOPIK II level 3-4';
+    var prompt = 'You are a Korean writing tutor giving feedback to an English-speaking learner at ' + lvl + ' (' + topikBand + ').\n'
+      + 'Grade against this level\'s bar, NOT absolute fluency — simple TOPIK-1 vocab from a Beginner is fine; an Advanced learner needs idiomatic chunks.\n\n'
+      + 'Student\'s writing:\n"""\n' + text + '\n"""\nTopic: ' + topicOrTitle + '\n\n'
       + 'Give feedback in ENGLISH. Return ONLY valid JSON:\n'
       + '{"overall":"1-2 sentence overall assessment in English","corrections":[{"original":"original text","corrected":"corrected text","reason":"English explanation of why","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],"encouragement":"short encouraging message in English"}\nReturn JSON only.';
     var data = await callClaude({ feature:'unified_writing_feedback', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content:prompt}] });
