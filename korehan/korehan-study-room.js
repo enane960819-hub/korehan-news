@@ -8122,10 +8122,10 @@ async function submitSpeaking() {
       _triggerSpeakingFeedback(newId, scriptText, _speakScores)
         .catch(function(e){ console.warn('speaking feedback failed', e && e.message); });
     }
-    showToast('Recording submitted — feedback usually ready in about a minute.');
+    showToast('Recording submitted! Your tutor will review within 24 hours.');
     var row = document.getElementById('wm-speak-submit-row');
     if (row) row.style.display = 'none';
-    document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted! AI is reviewing…</span></span>';
+    document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted! Tutor will review within 24h.</span></span>';
     // Make the arrival poller pick this row up.
     if (typeof _startFeedbackArrivalPoll === 'function') {
       setTimeout(function(){ _startFeedbackArrivalPoll(); }, 800);
@@ -8938,15 +8938,18 @@ async function submitAllWritingsToday() {
     localStorage.setItem(submitKey, 'true');
     localStorage.removeItem(_writingDraftKey());
     refreshSubmitBanner();
-    // Toast timeline matches reality: AI feedback usually lands in
-    // 30–60 s now that the package path actually persists (#581 fix).
-    // The old "24 hours" copy was the legacy teacher-review SLA and
-    // wildly misaligned with the AI path.
-    showToast('Submitted! AI feedback usually ready in about a minute — check the inbox.');
+    // Toast wording matches the actual flow: AI drafts feedback in
+    // about a minute internally, but the user only sees feedback
+    // after the tutor has reviewed it — usually within 24 hours.
+    // Promising "ready in a minute" was wrong; users would open the
+    // inbox and find their card still "Under review".
+    showToast('Submitted! Your tutor will review within 24 hours.');
     if (typeof awardXP === 'function') awardXP('writing_submit');
     // Kick the arrival poll so the user gets a toast the moment AI
-    // feedback graduates this row from 'submitted' → 'ai_reviewed',
-    // without having to refresh manually.
+    // feedback graduates this row to admin_approved (when the tutor
+    // signs off). The 10 min ceiling means most reviews land outside
+    // the poll window — that's fine; the next page load picks up the
+    // chip via loadFeedbackInbox / mp-feedback-chip / kh-feedback-pill.
     if (typeof _startFeedbackArrivalPoll === 'function') {
       setTimeout(function(){ _startFeedbackArrivalPoll(); }, 800);
     }
@@ -9281,15 +9284,20 @@ async function _startFeedbackArrivalPoll() {
       var r = await sb.from('user_submissions')
         .select('id, status')
         .in('id', ids);
+      // Only "Feedback ready" when the TUTOR has signed off. AI draft
+      // (ai_reviewed) is intermediate state for the admin queue; the
+      // user shouldn't be told their feedback is ready until a human
+      // has reviewed it. Most reviews land outside the 10 min poll
+      // window — that's fine; the chip surfaces on next page load.
       var graduated = (r && r.data || []).filter(function(row){
-        return row && row.status && row.status !== 'submitted';
+        return row && (row.status === 'admin_approved' || row.status === 'sent');
       });
       if (graduated.length) {
         graduated.forEach(function(row){ _khFbPollPending.delete(row.id); });
         // Refresh the badge label and surface a toast.
         try { await loadFeedbackInbox(); } catch(_){}
         if (typeof showToast === 'function') {
-          showToast('✅ Feedback ready — tap My Feedback to read it.');
+          showToast('✅ Tutor reviewed your feedback — tap My Feedback to read it.');
         }
         // Visual nudge on the inbox button so users on Study Room can
         // see something changed without reading the toast.
@@ -9723,11 +9731,15 @@ async function renderFeedbackInboxContent() {
     };
 
     var STATUS_LABELS = {
-      submitted: { label: 'Submitted', color: 'rgba(255,255,255,.35)', bg: 'rgba(255,255,255,.06)' },
-      ai_reviewed: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
-      reviewed: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
-      admin_approved: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' },
-      sent: { label: '✅ Feedback ready', color: '#4ade80', bg: 'rgba(74,222,128,.1)' }
+      submitted:      { label: 'Submitted',         color: 'rgba(255,255,255,.35)', bg: 'rgba(255,255,255,.06)' },
+      // AI draft has landed in the admin queue. The tutor hasn't
+      // signed off yet, so the user-facing label is still "Under
+      // review" — they shouldn't expect to read feedback at this
+      // stage. The green "Feedback ready" tier only fires once the
+      // tutor approves (admin_approved) or sends.
+      ai_reviewed:    { label: '⏳ Under review',    color: '#fbbf24',               bg: 'rgba(251,191,36,.1)' },
+      admin_approved: { label: '✅ Feedback ready',  color: '#4ade80',               bg: 'rgba(74,222,128,.1)' },
+      sent:           { label: '✅ Feedback ready',  color: '#4ade80',               bg: 'rgba(74,222,128,.1)' }
     };
 
     var html = '';
@@ -9735,7 +9747,9 @@ async function renderFeedbackInboxContent() {
 
     dates.forEach(function(date) {
       var dayItems = grouped[date];
-      var reviewed = dayItems.filter(function(i) { return i.status === 'ai_reviewed' || i.status === 'admin_approved' || i.status === 'sent'; }).length;
+      // "Feedback ready" count = tutor-approved only. AI drafts are
+      // queue state, not consumer state.
+      var reviewed = dayItems.filter(function(i) { return i.status === 'admin_approved' || i.status === 'sent'; }).length;
 
       // Date header
       html += '<div style="margin-bottom:16px">'
@@ -9752,7 +9766,10 @@ async function renderFeedbackInboxContent() {
         try { fb = typeof item.ai_feedback === 'string' ? JSON.parse(item.ai_feedback) : item.ai_feedback; } catch(e) {}
         var adminFb = null;
         try { adminFb = typeof item.admin_feedback === 'string' ? JSON.parse(item.admin_feedback) : item.admin_feedback; } catch(e) {}
-        var isReviewed = item.status === 'ai_reviewed' || item.status === 'admin_approved' || item.status === 'sent';
+        // Render feedback content only when the TUTOR has reviewed.
+        // ai_reviewed stays in the queue card (status pill shows
+        // "Under review") so the user knows it's being worked on.
+        var isReviewed = item.status === 'admin_approved' || item.status === 'sent';
         var displayFb = isReviewed ? (adminFb || fb) : null;
         var preview = (item.writing_text || '').slice(0, 50);
         if ((item.writing_text || '').length > 50) preview += '…';
@@ -9843,8 +9860,15 @@ async function renderFeedbackInboxContent() {
             html += renderDetailedFeedback(fb, item.writing_text);
           }
         } else {
-          html += '<div style="color:rgba(255,255,255,.3);text-align:center;padding:16px;font-size:13px">'
-            + '📨 Submitted — feedback usually ready within a minute. Check back shortly.'
+          // Placeholder when the tutor hasn't approved yet. ai_reviewed
+          // means AI has drafted; submitted means even that hasn't run
+          // yet. Either way, the next signal the USER gets is the
+          // tutor sign-off — usually within 24 h.
+          var placeholderTxt = (item.status === 'ai_reviewed')
+            ? '⏳ AI draft prepared. Your tutor will review within 24 hours.'
+            : '📨 Submitted. Your tutor will review within 24 hours.';
+          html += '<div style="color:rgba(255,255,255,.5);text-align:center;padding:16px;font-size:13px;line-height:1.5">'
+            + placeholderTxt
             + '</div>';
         }
 
