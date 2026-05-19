@@ -5318,6 +5318,21 @@ async function runAutoGenerate(){
       const _row   = { article_id: String(articleId) };
       let   _ok    = 0;
 
+      // Thin-source guard — owner: "빈약한거는 바로 AI 분석 돌리지말고
+      // 각색만 해. 내가 내용 추가하고 Ai 재분석 돌릴수 있게." When the
+      // source summary was short enough that the body-fetch enrichment
+      // (Item 7J) still left us with < 120 chars of context, skip the
+      // analysis cache writes entirely. The article row already saved
+      // above; admin can edit the body in the manager and then click
+      // the existing "🤖 Gen Study" / "💬 Sent" buttons to rebuild
+      // the analysis from the corrected body.
+      var _srcLen = ((h && (h.desc || h.summary)) || '').length;
+      if (_srcLen < 120) {
+        _autoGenSetItemStatus(si, '⏭ 분석 보류 (본문 보강 후 재생성)');
+        showToastAdmin('⚠️ 소스 ' + _srcLen + '자 — 본문만 저장. Admin Manager에서 본문 편집 후 🤖 Gen Study로 분석 생성하세요.');
+        continue; // next headline; skip cache pass + Haiku quiz pass
+      }
+
       // JSON-safe extractor (kept for the Haiku quiz call below).
       function _json(text) {
         const ai = text.indexOf('['), bi = text.lastIndexOf(']');
