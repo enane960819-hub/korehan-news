@@ -210,6 +210,9 @@ function _khStudyRoomInit() {
             window.history.replaceState({}, '', window.location.pathname);
           }
         } catch(_) {}
+        // Start the arrival poller. Cheap (one count() query every 30s)
+        // and short-circuits when no submissions are pending review.
+        if (typeof _startFeedbackArrivalPoll === 'function') _startFeedbackArrivalPoll();
       });
       asAutoSubmitOldWork();
       _asRefreshSubmitBanner();
@@ -8773,6 +8776,12 @@ async function submitAllWritingsToday() {
     // wildly misaligned with the AI path.
     showToast('Submitted! AI feedback usually ready in about a minute — check the inbox.');
     if (typeof awardXP === 'function') awardXP('writing_submit');
+    // Kick the arrival poll so the user gets a toast the moment AI
+    // feedback graduates this row from 'submitted' → 'ai_reviewed',
+    // without having to refresh manually.
+    if (typeof _startFeedbackArrivalPoll === 'function') {
+      setTimeout(function(){ _startFeedbackArrivalPoll(); }, 800);
+    }
   } catch(e) {
     showToast('Submit error: ' + (e.message||e));
   } finally {
@@ -9023,6 +9032,66 @@ async function submitWriting() {
 // 2026-05-18, items #2/#3.)
 
 // ── 피드백 인박스 ─────────────────────────────────────────────
+// ── Feedback arrival poller ────────────────────────────────────────
+// Audit gap: arrival was pull-only. Now while the user has any
+// submission in 'submitted' state (AI gen pending) we re-query every
+// 30 s. If any of those rows graduates to 'ai_reviewed' (or higher)
+// during the session, a toast tells the user immediately and the
+// inbox button updates without a page refresh. Stops itself once
+// nothing is pending to keep the network quiet.
+var _khFbPollHandle = null;
+var _khFbPollPending = null; // set of pending submission ids snapshotted at start
+
+async function _startFeedbackArrivalPoll() {
+  if (!supaUser) return;
+  if (_khFbPollHandle) { try { clearInterval(_khFbPollHandle); } catch(_){} _khFbPollHandle = null; }
+  var sb = getSupa(); if (!sb) return;
+  try {
+    var snap = await sb.from('user_submissions')
+      .select('id')
+      .eq('user_id', supaUser.id)
+      .eq('status', 'submitted')
+      .gte('submitted_at', new Date(Date.now() - 30 * 60 * 1000).toISOString());  // last 30 min
+    var ids = (snap && snap.data || []).map(function(r){ return r.id; });
+    if (!ids.length) return; // nothing to wait for
+    _khFbPollPending = new Set(ids);
+  } catch(_) { return; }
+
+  var _tries = 0;
+  _khFbPollHandle = setInterval(async function() {
+    _tries++;
+    if (_tries > 20 || !_khFbPollPending || !_khFbPollPending.size) {
+      // 10 minutes of polling is plenty; if nothing arrived, give up.
+      try { clearInterval(_khFbPollHandle); } catch(_){}
+      _khFbPollHandle = null;
+      return;
+    }
+    try {
+      var ids = Array.from(_khFbPollPending);
+      var r = await sb.from('user_submissions')
+        .select('id, status')
+        .in('id', ids);
+      var graduated = (r && r.data || []).filter(function(row){
+        return row && row.status && row.status !== 'submitted';
+      });
+      if (graduated.length) {
+        graduated.forEach(function(row){ _khFbPollPending.delete(row.id); });
+        // Refresh the badge label and surface a toast.
+        try { await loadFeedbackInbox(); } catch(_){}
+        if (typeof showToast === 'function') {
+          showToast('✅ Feedback ready — tap My Feedback to read it.');
+        }
+        // Visual nudge on the inbox button so users on Study Room can
+        // see something changed without reading the toast.
+        try {
+          var btn = document.getElementById('feedback-inbox-btn');
+          if (btn) { btn.style.animation = 'kh-fb-pulse 1.2s ease-in-out 3'; }
+        } catch(_){}
+      }
+    } catch(_) {}
+  }, 30000);
+}
+
 async function loadFeedbackInbox() {
   if (!supaUser) return;
   var sb = getSupa(); if (!sb) return;
