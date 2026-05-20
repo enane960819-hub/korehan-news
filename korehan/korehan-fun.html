@@ -124,6 +124,21 @@
   <script src="korehan-shared.js?v=20260520a"></script>
   <script>
 (function(){
+  // Inline-SVG wrapper for decorative card animations. The emoji sweep
+  // landed in PR #7S covered the individual game pages, but the hub
+  // (this file) still painted emoji into each card's animation overlay.
+  // PR #7AJ swaps those emojis for `KH_ICON_*` SVGs from `js/core/icons.js`.
+  // Returns an empty string if the named icon isn't in the catalog, so
+  // the layout stays intact even when no SVG replacement exists.
+  function _hubIcon(name, size, color, opacity){
+    var ico = (window['KH_ICON_' + String(name).toUpperCase()]) || '';
+    if (!ico) return '';
+    var sty = 'display:inline-flex;align-items:center;justify-content:center;'
+            + 'width:' + size + 'px;height:' + size + 'px;color:' + (color||'currentColor') + ';'
+            + 'opacity:' + (opacity != null ? opacity : 1);
+    return '<span style="' + sty + '">' + ico + '</span>';
+  }
+
   var games = [
     {id:'word-drop',title:'Word Drop',sub:'Type before they fall',href:'korehan-fun-worddrop.html',cv:'cv-worddrop',
      anim:function(){var w=['친구','학교','사랑','음식','여행','커피','영화','행복'];var h='';for(var i=0;i<8;i++)h+='<div class="fl" style="left:'+((i*13+5)%90)+'%;animation-duration:'+(2.5+i*.4)+'s;animation-delay:-'+(i*.6)+'s">'+w[i]+'</div>';return h;}},
@@ -136,15 +151,67 @@
     {id:'sentence-order',title:'문장 순서',sub:'Build sentences in order',href:'korehan-fun-sentence-order.html',cv:'cv-sentorder',
      anim:function(){var w=['저는','한국어를','배워요','오늘','날씨가','좋아요','커피','한 잔','주세요'];var h='';for(var i=0;i<9;i++)h+='<div class="sw" style="left:'+(8+(i%3)*32)+'%;top:'+(12+Math.floor(i/3)*30)+'%;animation-delay:'+(i*.25)+'s">'+w[i]+'</div>';return h;}},
     {id:'dictation',title:'받아쓰기',sub:'Listen & type Korean',href:'korehan-fun-dictation.html',cv:'cv-dictation',
-     anim:function(){var icons=['🔊','🎧','♪','♫','◐','◑'];var h='';for(var i=0;i<8;i++)h+='<div class="dw" style="left:'+(8+(i%4)*22)+'%;top:'+(14+Math.floor(i/4)*40)+'%;animation-delay:'+(i*.32)+'s">'+icons[i%icons.length]+'</div>';return h;}},
+     anim:function(){
+       // Dictation card: headphones / volume SVG plus the existing
+       // ♪♫◐◑ Unicode music glyphs (not emoji — those are kept).
+       var ico=['volume','headphones','music'];
+       var glyphs=['♪','♫','◐','◑'];
+       var h='';
+       for(var i=0;i<8;i++){
+         var cell;
+         if (i % 2 === 0) cell = _hubIcon(ico[(i/2)%ico.length], 18, 'rgba(255,255,255,.9)', .85);
+         else cell = '<span style="color:rgba(255,255,255,.85);font-size:14px;font-weight:900">'+glyphs[i%glyphs.length]+'</span>';
+         h+='<div class="dw" style="left:'+(8+(i%4)*22)+'%;top:'+(14+Math.floor(i/4)*40)+'%;animation-delay:'+(i*.32)+'s">'+cell+'</div>';
+       }
+       return h;
+     }},
     {id:'ox-quiz',title:'Korea OX Quiz',sub:'True or false?',href:'korehan-fun-ox.html',cv:'cv-ox',
-     anim:function(){var h='';for(var i=0;i<6;i++){var s=i%2===0?'⭕':'❌';h+='<div class="oxf" style="left:'+(8+i*16)+'%;top:'+(15+((i*20)%55))+'%;animation-delay:'+(i*.5)+'s;font-size:'+(22+i%3*8)+'px">'+s+'</div>';}return h;}},
+     anim:function(){
+       // OX card: alternating CHECK (✓ for the ⭕ side) and X icons.
+       // The actual game retains ⭕/❌ on the click targets (those are
+       // functional and stay per #7S decision); decoration here is SVG.
+       var h='';
+       for(var i=0;i<6;i++){
+         var name = i % 2 === 0 ? 'check' : 'x';
+         var color = i % 2 === 0 ? '#86efac' : '#fca5a5';
+         var sz = 22 + (i%3)*8;
+         h+='<div class="oxf" style="left:'+(8+i*16)+'%;top:'+(15+((i*20)%55))+'%;animation-delay:'+(i*.5)+'s">'+_hubIcon(name, sz, color, .25)+'</div>';
+       }
+       return h;
+     }},
     {id:'name-generator',title:'Korean Name Generator',sub:'Get your Korean name',href:'korehan-fun-name.html',cv:'cv-name',
-     anim:function(){var e=['✨','🪪','가','나','🌟','한','💫','이'];var h='';for(var i=0;i<8;i++)h+='<div class="sp" style="left:'+(5+i*12)+'%;top:'+(10+((i*19)%65))+'%;animation-delay:'+(i*.35)+'s">'+e[i]+'</div>';return h;}},
+     anim:function(){
+       // Name-generator card: alternating SPARKLE + STAR SVGs and the
+       // existing 가/나/한/이 hangul syllables (those are text, kept).
+       var slots=['sparkle','syl-가','sparkle','syl-나','star','syl-한','sparkle','syl-이'];
+       var h='';
+       for(var i=0;i<8;i++){
+         var v=slots[i];
+         var cell;
+         if (v.indexOf('syl-')===0) cell='<span style="color:rgba(255,255,255,.85);font-size:18px;font-weight:900;font-family:\'Noto Sans KR\',sans-serif">'+v.slice(4)+'</span>';
+         else cell=_hubIcon(v, 16, '#c4b5fd', .85);
+         h+='<div class="sp" style="left:'+(5+i*12)+'%;top:'+(10+((i*19)%65))+'%;animation-delay:'+(i*.35)+'s">'+cell+'</div>';
+       }
+       return h;
+     }},
     {id:'ideal-worldcup',title:'Ideal Type World Cup',sub:'Tournament brackets',href:'korehan-fun-worldcup.html',cv:'cv-worldcup',
-     anim:function(){var e=['🏆','⚔️','👑','🎖️','🥇','💥'];var h='';for(var i=0;i<6;i++)h+='<div class="wp" style="left:'+(10+i*16)+'%;top:'+(12+((i*22)%55))+'%;animation-delay:'+(i*.4)+'s">'+e[i]+'</div>';return h;}},
+     anim:function(){
+       // Worldcup card: trophy / swords / crown SVG rotation.
+       var slots=['trophy','swords','crown','trophy','swords','sparkle'];
+       var h='';
+       for(var i=0;i<6;i++) h+='<div class="wp" style="left:'+(10+i*16)+'%;top:'+(12+((i*22)%55))+'%;animation-delay:'+(i*.4)+'s">'+_hubIcon(slots[i],22,'#fbbf24',.28)+'</div>';
+       return h;
+     }},
     {id:'daily-fortune',title:"Today's Fortune",sub:'Daily luck check',href:'korehan-fun-fortune.html',cv:'cv-fortune',
-     anim:function(){var h='';for(var i=0;i<4;i++)h+='<div class="fg" style="width:'+(60+i*20)+'px;height:'+(60+i*20)+'px;left:'+(10+i*22)+'%;top:'+(15+i*18)+'%;animation-delay:'+(i*.6)+'s"></div>';h+='<div style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font-size:42px;opacity:.25;animation:fGlow 3s ease-in-out infinite">🔮</div>';return h;}}
+     anim:function(){
+       // Fortune card: keep the radial-glow circles. The center 🔮
+       // had no SVG equivalent in icons.js — swap to SPARKLE (large)
+       // so the card still has a centred ornament.
+       var h='';
+       for(var i=0;i<4;i++) h+='<div class="fg" style="width:'+(60+i*20)+'px;height:'+(60+i*20)+'px;left:'+(10+i*22)+'%;top:'+(15+i*18)+'%;animation-delay:'+(i*.6)+'s"></div>';
+       h+='<div style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);opacity:.28;animation:fGlow 3s ease-in-out infinite">'+_hubIcon('sparkle',42,'#a78bfa',1)+'</div>';
+       return h;
+     }}
   ];
 
   function render(){
