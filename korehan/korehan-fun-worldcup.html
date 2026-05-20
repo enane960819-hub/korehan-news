@@ -20,6 +20,10 @@ body{margin:0;background:#0b0f1a;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .battle{display:flex;gap:12px;align-items:stretch;min-height:280px}
 .fighter{flex:1;border-radius:18px;cursor:pointer;padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:all .2s;border:2px solid transparent;position:relative;overflow:hidden}
 .fighter:hover{transform:scale(1.03);z-index:1}
+/* Click-feedback (PR #7AI) — brief scale-down on press so the card
+   reads as a tactile button. Hover still scales up; the active state
+   wins via specificity for the moment of touchdown. */
+.fighter:active{transform:scale(.97);transition:transform .08s ease}
 .fighter.left{background:linear-gradient(135deg,#1e3a8a,#1d4ed8)}
 .fighter.left:hover{border-color:#3b82f6;box-shadow:0 0 30px rgba(59,130,246,.3)}
 .fighter.right{background:linear-gradient(135deg,#7f1d1d,#dc2626)}
@@ -27,6 +31,10 @@ body{margin:0;background:#0b0f1a;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .fighter.win{animation:winPop .5s ease}
 .fighter.lose{opacity:.3;transform:scale(.9);pointer-events:none}
 @keyframes winPop{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+/* Confetti for the champion screen — fixed-position particles raining
+   down briefly when the winner is revealed. */
+.wc-confetti{position:fixed;top:-10px;width:8px;height:14px;pointer-events:none;z-index:80;border-radius:2px;animation:wcConfettiFall var(--wc-conf-dur, 2400ms) linear forwards}
+@keyframes wcConfettiFall{0%{transform:translateY(-20px) rotateZ(0deg);opacity:1}100%{transform:translateY(105vh) rotateZ(720deg);opacity:.85}}
 .fighter-emoji{font-size:48px;margin-bottom:12px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.3))}
 .fighter-title{font-size:17px;font-weight:900;margin-bottom:6px;line-height:1.3}
 .fighter-desc{font-size:12px;color:rgba(255,255,255,.6);line-height:1.5}
@@ -143,8 +151,16 @@ function showMatch(){
   var a=_pool[idx],b=_pool[idx+1];
   var matchNum=_next.length+1,matchTotal=_round/2;
   var pct=Math.round(_done/_total*100);
+  // PR #7AI: more evocative round labels for the latter stages so the
+  // tournament feels like one. Numeric "Round of N" for early rounds;
+  // named labels for quarterfinals → final because that's how the
+  // player thinks about progress at the end of the bracket.
+  var roundLabel = _round === 2 ? 'Final'
+    : _round === 4 ? 'Semifinals'
+    : _round === 8 ? 'Quarterfinals'
+    : 'Round of ' + _round;
   var el=document.getElementById('game');
-  el.innerHTML='<div class="header"><h1 style="display:inline-flex;align-items:center;gap:8px;justify-content:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:#f97316;-webkit-text-fill-color:#f97316">'+(window.KH_ICON_SWORDS||'')+'</span>Ideal Type World Cup</h1><div class="round-info">Round of '+_round+' — Match '+matchNum+'/'+matchTotal+'</div></div>'
+  el.innerHTML='<div class="header"><h1 style="display:inline-flex;align-items:center;gap:8px;justify-content:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:#f97316;-webkit-text-fill-color:#f97316">'+(window.KH_ICON_SWORDS||'')+'</span>Ideal Type World Cup</h1><div class="round-info">'+roundLabel+(_round>2?' — Match '+matchNum+'/'+matchTotal:'')+'</div></div>'
     +'<div class="progress"><div class="progress-fill" style="width:'+pct+'%"></div></div>'
     +'<div style="position:relative"><div class="battle">'
     +'<div class="fighter left" id="fa" onclick="pick(0)"><div class="fighter-emoji" style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;color:#bfdbfe">'+(window['KH_ICON_'+a.emoji.toUpperCase()]||'')+'</div><div class="fighter-title">'+a.title+'</div><div class="fighter-desc">'+a.desc+'</div><div class="fighter-ko">'+a.ko+'</div></div>'
@@ -164,6 +180,21 @@ window.pick=function(idx){
 function showWinner(item){
   document.getElementById('game').innerHTML='<div class="winner"><div class="winner-emoji" style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;color:#fbbf24">'+(window.KH_ICON_TROPHY||'')+'</div><h2>Champion!</h2><div class="winner-title" style="display:inline-flex;align-items:center;gap:8px;justify-content:center">'+khSvg(item.emoji,{size:22,color:'#fbbf24'})+item.title+'</div><div class="winner-ko">'+item.ko+'</div><div class="winner-desc">'+item.desc+'</div>'
     +'<div class="btn-row"><button class="btn btn-ghost" onclick="showStart()">Menu</button><button class="btn btn-primary" onclick="startWC()" style="display:inline-flex;align-items:center;gap:8px;justify-content:center">Play Again'+khSvg('swords',{size:18})+'</button></div></div>';
+  // Confetti burst (PR #7AI). 60 particles staggered across the
+  // viewport width with randomised colour / duration / horizontal
+  // drift via CSS variable. Self-cleans after the longest fall.
+  var colors=['#fbbf24','#f97316','#ec4899','#a78bfa','#60a5fa','#34d399'];
+  for(var i=0;i<60;i++){
+    var c=document.createElement('div');
+    c.className='wc-confetti';
+    var dur=1800+Math.random()*1800;
+    c.style.left=Math.random()*100+'vw';
+    c.style.background=colors[i%colors.length];
+    c.style.setProperty('--wc-conf-dur',dur+'ms');
+    c.style.animationDelay=(Math.random()*400)+'ms';
+    document.body.appendChild(c);
+    (function(el,dur){ setTimeout(function(){ try{ el.remove(); }catch(_){} }, dur+600); })(c,dur);
+  }
 }
 showStart();
 })();
