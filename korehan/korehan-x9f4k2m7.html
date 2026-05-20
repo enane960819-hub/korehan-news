@@ -4823,11 +4823,36 @@ function _renderHeadlinePanel() {
         var hasVideo = !!(h.video_url && h.video_kind);
         var hasImage = !!(h.image);
         var isGif = !!h.is_gif;
-        var videoBadge = isGif
-          ? '<span title="Silent looping GIF (' + (h.video_duration || '?') + 's) — great short hero" style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:10px;font-weight:800;vertical-align:middle">🎞️ GIF</span>'
+        // PR #7AS: empty-source warning. The AI generator falls back to
+        // "(요약 없음)" and writes the article from the headline alone
+        // when neither summary nor desc is present — quality suffers.
+        // Surface this in the headline list so the admin notices before
+        // hitting Generate.
+        var hasSourceContent = !!((h.summary && h.summary.trim()) || (h.desc && h.desc.trim()));
+        var noSourceBadge = !hasSourceContent
+          ? '<span title="원본 요약/본문 비어있음 — 제목만으로 생성됩니다. 품질 저하 가능." style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fee2e2;color:#991b1b;font-size:10px;font-weight:800;vertical-align:middle">⚠ 요약 없음</span>'
+          : '';
+        // PR #7AS: GIF badge honesty. Owner: "gif 가져오지도 못할거면
+        // gif 있다고는 왜 표시하는거야?" — `h.is_gif` was a hint flag
+        // that didn't verify the URL was reachable / had a sensible
+        // extension. Common breakage: Reddit gifv URLs that 404 or
+        // hotlink-block from our domain. Cheap pre-check: video_url
+        // must be https + end in .gif/.mp4 to claim a fetchable GIF.
+        // Otherwise downgrade the badge to a warning so the admin
+        // knows the GIF promise is shaky.
+        var gifUrlPath = (isGif && h.video_url) ? (h.video_url.split('?')[0] || '') : '';
+        var gifLooksFetchable = isGif
+          && h.video_url
+          && /^https:\/\//i.test(h.video_url)
+          && /\.(gif|mp4|webm)$/i.test(gifUrlPath);
+        var videoBadge =
+          (isGif && gifLooksFetchable)
+            ? '<span title="Silent looping GIF (' + (h.video_duration || '?') + 's) — fetchable URL" style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:10px;font-weight:800;vertical-align:middle">🎞️ GIF</span>'
+          : isGif
+            ? '<span title="원본은 GIF로 표시되었지만 URL이 사용 불가능합니다 (https + .gif/.mp4/.webm 형식 아님). 폴백 이미지로 처리됩니다." style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fed7aa;color:#9a3412;font-size:10px;font-weight:800;vertical-align:middle">🎞️ GIF · 불가</span>'
           : hasVideo
             ? '<span title="Video available (' + esc(h.video_kind) + (h.video_duration ? ', ' + h.video_duration + 's' : '') + ')" style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fef2f2;color:#b91c1c;font-size:10px;font-weight:800;vertical-align:middle">🎬 ' + esc(h.video_kind) + '</span>'
-            : '';
+          : '';
         var videoToggle = hasVideo
           ? '<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#7c3aed;font-weight:700;margin-top:4px;cursor:pointer">'
               + '<input type="checkbox" class="hl-vid" data-idx="'+i+'" checked style="width:13px;height:13px"> Use video instead of image'
@@ -4852,8 +4877,8 @@ function _renderHeadlinePanel() {
           + '<input type="checkbox" class="hl-chk" data-idx="'+i+'" checked style="margin-top:22px;width:15px;height:15px;flex-shrink:0" onchange="_updateHLCount()">'
           + thumbCell
           + '<div style="flex:1;min-width:0">'
-          + '<div style="font-weight:600;font-size:13px;line-height:1.4">' + esc(h.title) + videoBadge + '</div>'
-          + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">' + metaBits.join(' · ') + ((h.summary || h.desc) ? ' · ' + esc((h.summary || h.desc).slice(0,90)) + '…' : '') + '</div>'
+          + '<div style="font-weight:600;font-size:13px;line-height:1.4">' + esc(h.title) + videoBadge + noSourceBadge + '</div>'
+          + '<div style="font-size:11px;color:#94a3b8;margin-top:2px">' + metaBits.join(' · ') + (hasSourceContent ? ' · ' + esc((h.summary || h.desc).slice(0,90)) + '…' : ' · <span style="color:#b91c1c;font-weight:700">원본 요약 비어있음</span>') + '</div>'
           + videoToggle
           + '</div>'
           + '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
@@ -5146,9 +5171,9 @@ async function runAutoGenerate(){
         // ~았습니다, Tree: 합쇼체 + 중급 패턴, Forest: 합쇼체 + 한자어).
         + (
             diffInfo.level === 'Starter'
-              ? '    Seed (입문): **합쇼체 (~입니다, ~ㅂ니다/~습니다)**. ~입니다, ~ㅂ니다, ~습니다 위주. 단순 SVO. 패턴 stack 금지. 해요체(~예요/어요) X, 평어체(~다/~한다) 절대 X.\n'
+              ? '    Seed (입문): **해요체 (~예요/~이에요/~어요) 또는 합쇼체 (~ㅂ니다/~습니다) — 둘 다 OK**. 한 기사 안에서는 하나만 골라 일관되게. 단순 SVO. 패턴 stack 금지. 평어체(~다/~한다) 절대 X.\n'
             : diffInfo.level === 'Beginner'
-              ? '    Sprout (TOPIK 1~2): **합쇼체 (~ㅂ니다/~습니다)** 기반. ~았/었습니다, ~지 않습니다, ~ㄹ/을 수 있습니다, ~고, ~지만, ~기 전에/후에, ~려고 합니다. ~기 위해 / ~게 되다 / 사역 / 피동 금지. 평어체(~다/~한다) 절대 X.\n'
+              ? '    Sprout (TOPIK 1~2): **해요체 (~았/었어요, ~지 않아요, ~ㄹ/을 수 있어요) 또는 합쇼체 (~았/었습니다, ~지 않습니다, ~ㄹ/을 수 있습니다) — 둘 다 OK**. 한 기사 안에서는 일관되게. ~고, ~지만, ~기 전에/후에, ~려고 하다. ~기 위해 / ~게 되다 / 사역 / 피동 금지. 평어체(~다/~한다) 절대 X.\n'
             : diffInfo.level === 'Intermediate'
               ? '    Tree (TOPIK 3~4): **합쇼체 (~ㅂ니다/~습니다) 우선**. 본문 전체를 ~았/었습니다만으로 채우지 마세요. 8단락 중 최소 절반에 다음 중급 패턴을 자연스럽게 사용:\n'
                 + '      필수 노출 (한 기사에 최소 4개 이상 등장): ~기 위해, ~게 되었습니다, ~다고 합니다 (전언), ~(으)면서, ~ㄴ/은/는 것 같습니다, ~ㄹ/을 텐데, 불규칙 활용 (ㄷ/ㅂ/르/ㅎ), ~기 때문입니다, ~려고 합니다, ~ㄴ/은 후에.\n'
