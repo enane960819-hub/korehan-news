@@ -88,7 +88,7 @@ body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua'
 <div class="wrap">
   <a href="korehan-fun.html" class="back">&larr; Playground</a>
   <div class="game-header">
-    <div class="game-title"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:currentColor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg></span>초성 Quiz</div>
+    <div class="game-title"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:currentColor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg></span>Chosung Quiz</div>
     <div style="display:flex;gap:8px">
       <div class="stat">Score <span class="stat-val" id="g-score">0</span></div>
       <div class="stat" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;color:#f97316"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.7-2.5 1.5-3.5C10.5 7 11 5 12 3z"/><path d="M10.5 14c.4 1 1 1.6 1.5 1.6s1.1-.6 1.5-1.6"/></svg></span><span class="stat-val" id="g-streak">0</span></div>
@@ -104,8 +104,8 @@ body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua'
       <div class="timer-num" id="timer-num">10</div>
     </div>
     <div class="input-area">
-      <input id="g-input" type="text" placeholder="한국어로 입력..." autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send">
-      <button onclick="submitAnswer()">확인</button>
+      <input id="g-input" type="text" placeholder="Type in Korean..." autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="send">
+      <button onclick="submitAnswer()">Submit</button>
     </div>
     <div id="answer-reveal" style="display:none"></div>
   </div>
@@ -113,8 +113,8 @@ body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua'
   <div class="start-screen" id="start-screen">
     <a href="korehan-fun.html" class="back" style="position:absolute;top:16px;left:16px">&larr; Playground</a>
     <div style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;color:#7dd3fc;margin-bottom:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg></div>
-    <div style="font-size:28px;font-weight:900;margin-bottom:8px">초성 Quiz</div>
-    <div style="font-size:14px;color:#94a3b8;max-width:320px;text-align:center;line-height:1.6">초성(첫 글자)과 영어 힌트를 보고 한국어 단어를 맞춰보세요!</div>
+    <div style="font-size:28px;font-weight:900;margin-bottom:8px">Chosung Quiz</div>
+    <div style="font-size:14px;color:#94a3b8;max-width:320px;text-align:center;line-height:1.6">Guess the Korean word from its initial consonants (chosung) and the English hint!</div>
     <div style="font-size:12px;color:#64748b;margin-top:12px">20 questions · 10 seconds each</div>
     <button class="start-btn" onclick="startGame()">START</button>
   </div>
@@ -329,7 +329,7 @@ body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua'
   function showAnswer() {
     var reveal = document.getElementById('answer-reveal');
     reveal.style.display = 'block';
-    reveal.innerHTML = '<div class="answer-reveal">정답: <span class="correct-word">' + currentWord.ko + '</span></div>';
+    reveal.innerHTML = '<div class="answer-reveal">Answer: <span class="correct-word">' + currentWord.ko + '</span></div>';
     document.getElementById('g-input').disabled = true;
     setTimeout(nextQuestion, 2000);
   }
@@ -341,8 +341,8 @@ body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua'
     var fb = document.createElement('div');
     fb.className = 'feedback ' + (correct ? 'fb-correct' : 'fb-wrong');
     fb.innerHTML = (correct
-      ? khSvg('check', {size:26, color:'#10b981', marginRight:8}) + '정답!'
-      : khSvg('x', {size:26, color:'#ef4444', marginRight:8}) + '틀림!');
+      ? khSvg('check', {size:26, color:'#10b981', marginRight:8}) + 'Correct!'
+      : khSvg('x', {size:26, color:'#ef4444', marginRight:8}) + 'Wrong!');
     document.body.appendChild(fb);
     setTimeout(function(){ fb.remove(); }, 800);
 
