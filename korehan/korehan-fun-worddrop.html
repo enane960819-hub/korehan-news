@@ -109,12 +109,12 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     <a href="korehan-fun.html" class="back" style="position:absolute;top:16px;left:16px">&larr; Playground</a>
     <div style="margin-bottom:10px;display:flex;justify-content:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;color:#fbbf24"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></span></div>
     <div class="menu-title">Word Drop</div>
-    <div class="menu-sub">단어가 떨어지기 전에 정답을 입력하세요!</div>
+    <div class="menu-sub">Type the answer before the word hits the bottom!</div>
     <div class="menu-section">
       <div class="menu-label">Mode</div>
       <div class="mode-btns">
-        <button type="button" class="mode-btn on" data-mode="ko2en" onclick="setMode('ko2en')">KO → EN<br><span style="font-size:11px">한→영</span></button>
-        <button type="button" class="mode-btn" data-mode="en2ko" onclick="setMode('en2ko')">EN → KO<br><span style="font-size:11px">영→한</span></button>
+        <button type="button" class="mode-btn on" data-mode="ko2en" onclick="setMode('ko2en')">KO → EN</button>
+        <button type="button" class="mode-btn" data-mode="en2ko" onclick="setMode('en2ko')">EN → KO</button>
       </div>
     </div>
     <div class="menu-section">
@@ -290,7 +290,7 @@ window.startGame=function(){
   areaEl=document.getElementById('game-area');areaEl.style.display='block';areaEl.innerHTML='';
   document.getElementById('bottom-panel').style.display='block';
   var inp=document.getElementById('g-input');
-  inp.placeholder=_mode==='ko2en'?'Type English meaning...':'한국어로 입력...';
+  inp.placeholder=_mode==='ko2en'?'Type English meaning...':'Type in Korean...';
   words=[];score=0;combo=0;maxCombo=0;lives=5;level=1;correctCount=0;lastSpawn=0;
   updateUI();gameRunning=true;
   areaH=areaEl.offsetHeight;areaW=areaEl.offsetWidth;
