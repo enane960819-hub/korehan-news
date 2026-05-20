@@ -455,16 +455,18 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
   function spawnBlock() {
     var needed = targetParts[buildIdx];
     if (needed === undefined || needed === null) return; // No more parts to build
-    // PR #7AK: dial spawn density DOWN. The previous min=2/max=5 batches
-    // accumulated quickly when blocks persist across phases (PR #7U
-    // persistence), which was the visual "ㅈㄴ 대충" complaint — screen
-    // looked random because too many irrelevant jamo were on screen at
-    // once. New: min=1, max=2 (+1 per ~level 3) so each wave is a clean
-    // forced choice between the correct jamo and at most one distractor
-    // early game, growing to 2-3 distractors at higher levels.
-    var minCount = 1;
-    var maxCount = Math.min(3, 1 + Math.floor(level / 3));
-    var count = Math.max(1, Math.min(maxCount, minCount + Math.floor(Math.random() * (maxCount - minCount + 1)) + 1));
+    // PR #7AL bug fix: #7AK's `maxCount = min(3, 1 + level/3)` evaluated
+    // to maxCount=1 at level 1, which meant `count` collapsed to exactly
+    // 1 every wave — only the correct jamo, no distractors, no choice.
+    // Owner-reported "ㄱ만 나오는데 뭐임?" with screenshot showing 5 ㄱ
+    // blocks falling for a "개" target.
+    // New formula: always at least 2 (1 correct + 1 distractor) so every
+    // wave is a real decision. Scales up to 4 by mid-game. Still well
+    // under the pre-7AK 2-5 cap so the field stays uncluttered with
+    // persistence on.
+    var minCount = 2;
+    var maxCount = Math.min(4, 2 + Math.floor(level / 3));
+    var count = minCount + Math.floor(Math.random() * (maxCount - minCount + 1));
     var jamos = [needed];
     // `phaseClass` is the jamo CLASS this block belongs to. Persisting
     // blocks whose class doesn't match the current build slot will fade
