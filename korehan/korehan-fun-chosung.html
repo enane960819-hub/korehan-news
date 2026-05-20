@@ -74,6 +74,15 @@ body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua'
 /* Score popup */
 .score-pop{position:fixed;pointer-events:none;z-index:15;font-size:20px;font-weight:900;color:#fbbf24;text-shadow:0 0 20px rgba(251,191,36,.5);animation:scorePop .8s ease forwards}
 @keyframes scorePop{0%{opacity:0;transform:translateY(0) scale(.7)}30%{opacity:1;transform:translateY(-10px) scale(1.1)}100%{opacity:0;transform:translateY(-40px) scale(1)}}
+/* Game-feel additions (PR #7AE) — wrong-answer input shake +
+   score-pill bump + streak-pill highlight ≥2 + combo flash on milestones. */
+.input-area input.cs-shake{animation:csInputShake .42s ease;border-color:rgba(239,68,68,.7)!important;background:rgba(239,68,68,.06)!important}
+@keyframes csInputShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
+.stat-val.cs-bump{animation:csScoreBump .35s ease;display:inline-block}
+@keyframes csScoreBump{0%{transform:scale(1)}50%{transform:scale(1.22);color:#fbbf24}100%{transform:scale(1)}}
+.stat.cs-streak-on{background:linear-gradient(135deg,rgba(245,158,11,.18),rgba(220,38,38,.18))!important;border-color:rgba(245,158,11,.4)!important}
+.cs-combo-flash{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;color:#fbbf24;text-shadow:0 0 40px rgba(251,191,36,.55);pointer-events:none;animation:csComboFlash .85s cubic-bezier(.2,.7,.3,1) forwards;z-index:30;white-space:nowrap}
+@keyframes csComboFlash{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-65%) scale(1)}}
 
 @media(max-width:500px){
   .chosung-display{font-size:48px;letter-spacing:16px}
@@ -316,11 +325,28 @@ body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua'
       if (elapsed < 3000) pts += 5; // speed bonus
       score += pts;
       showFeedback(true, pts);
+      // Combo flash on milestones (every 5-in-a-row).
+      if (streak >= 5 && streak % 5 === 0) {
+        var cf = document.createElement('div');
+        cf.className = 'cs-combo-flash';
+        cf.innerHTML = khSvg('flame', {size:36, color:'#f97316', marginRight:8}) + streak + ' streak!';
+        document.body.appendChild(cf);
+        setTimeout(function(){ try { cf.remove(); } catch(_){} }, 900);
+      }
       updateUI();
       setTimeout(nextQuestion, 800);
     } else {
       streak = 0;
       showFeedback(false);
+      // Shake the input — visible "you got it wrong" beat alongside the
+      // floating ✗ feedback element.
+      var inp = document.getElementById('g-input');
+      if (inp) {
+        inp.classList.remove('cs-shake');
+        void inp.offsetWidth;
+        inp.classList.add('cs-shake');
+        setTimeout(function(){ inp.classList.remove('cs-shake'); }, 460);
+      }
       showAnswer();
     }
     updateUI();
@@ -359,9 +385,26 @@ body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua'
   }
 
   function updateUI() {
-    document.getElementById('g-score').textContent = score;
+    var scEl = document.getElementById('g-score');
+    var prev = parseInt(scEl.textContent || '0', 10);
+    scEl.textContent = score;
+    // Bump the score pill whenever the value moves up — gives the
+    // header a brief amber pulse that confirms the increment even when
+    // the player's eyes are on the input.
+    if (score > prev) {
+      scEl.classList.remove('cs-bump');
+      void scEl.offsetWidth;
+      scEl.classList.add('cs-bump');
+    }
     document.getElementById('g-streak').textContent = streak;
     document.getElementById('g-qnum').textContent = qIdx;
+    // Streak pill: subtle highlight at ≥2 so the player notices when
+    // the chain starts paying bonus points. Removes when streak resets.
+    var streakPill = document.getElementById('g-streak') && document.getElementById('g-streak').closest('.stat');
+    if (streakPill) {
+      if (streak >= 2) streakPill.classList.add('cs-streak-on');
+      else streakPill.classList.remove('cs-streak-on');
+    }
   }
 
   function endGame() {

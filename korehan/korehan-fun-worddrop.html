@@ -38,6 +38,19 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 
 .combo-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:48px;font-weight:900;color:#fbbf24;text-shadow:0 0 40px rgba(251,191,36,.5);pointer-events:none;animation:comboIn .6s ease forwards;z-index:20}
 @keyframes comboIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
+/* Game-feel additions (PR #7AE):
+   - wd-shake: stronger input shake on no-match (border-color blip
+     was too subtle).
+   - wd-bump: score-pill scale-pulse on increment.
+   - wd-popup: +N floating popup over the matched word (per-action
+     feedback; combo-flash only fires every 3 catches so individual
+     catches need their own signal). */
+.input-area input.wd-shake{animation:wdShake .42s ease;border-color:rgba(239,68,68,.7)!important;background:rgba(239,68,68,.06)!important}
+@keyframes wdShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
+.stat-val.wd-bump{animation:wdScoreBump .35s ease;display:inline-block}
+@keyframes wdScoreBump{0%{transform:scale(1)}50%{transform:scale(1.22);color:#fbbf24}100%{transform:scale(1)}}
+.wd-popup{position:absolute;pointer-events:none;font-size:22px;font-weight:900;color:#fbbf24;text-shadow:0 0 22px rgba(251,191,36,.55);z-index:30;animation:wdPopup .85s cubic-bezier(.2,.7,.3,1) forwards;font-family:'Source Sans 3','DM Sans',sans-serif;white-space:nowrap}
+@keyframes wdPopup{0%{opacity:0;transform:translate(-50%,0) scale(.6)}20%{opacity:1;transform:translate(-50%,-6px) scale(1.1)}100%{opacity:0;transform:translate(-50%,-58px) scale(1)}}
 
 /* Particle */
 .particle{position:absolute;border-radius:50%;pointer-events:none;z-index:3}
@@ -346,10 +359,18 @@ window.checkAnswer=function(){
   });
   if(matched){
     combo++;if(combo>maxCombo)maxCombo=combo;correctCount++;
-    score+=10*Math.min(combo,10);
-    // Particles
+    var pts = 10*Math.min(combo,10);
+    score += pts;
+    // Per-catch +N popup positioned over the matched word.
     var rect=matched.el.getBoundingClientRect(),aRect=areaEl.getBoundingClientRect();
     var cx=rect.left-aRect.left+rect.width/2,cy=rect.top-aRect.top+rect.height/2;
+    var wp=document.createElement('div');
+    wp.className='wd-popup';
+    wp.textContent='+'+pts;
+    wp.style.left=cx+'px';
+    wp.style.top=cy+'px';
+    areaEl.appendChild(wp);
+    setTimeout((function(el){return function(){ try { el.remove(); } catch(_){} };})(wp), 900);
     var colors=['#7dd3fc','#60a5fa','#a78bfa','#34d399','#fbbf24'];
     for(var p=0;p<10;p++){
       var dot=document.createElement('div');dot.className='particle';
@@ -369,13 +390,25 @@ window.checkAnswer=function(){
     if(correctCount%5===0){level++;baseSpeed=Math.min(baseSpeed+.08,2.5);spawnInterval=Math.max(spawnInterval-120,800);}
     updateUI();
   } else {
-    inp.style.borderColor='#ef4444';setTimeout(function(){inp.style.borderColor='rgba(125,211,252,.3)';},300);
+    // PR #7AE: replace the border-color blink with a proper shake +
+    // red-tint flash — same pattern as Dictation/Chosung/OX.
+    inp.classList.remove('wd-shake');
+    void inp.offsetWidth;
+    inp.classList.add('wd-shake');
+    setTimeout(function(){ inp.classList.remove('wd-shake'); }, 460);
   }
   inp.focus();
 };
 
 function updateUI(){
-  document.getElementById('g-score').textContent=score;
+  var scEl=document.getElementById('g-score');
+  var prev=parseInt(scEl.textContent||'0',10);
+  scEl.textContent=score;
+  if(score>prev){
+    scEl.classList.remove('wd-bump');
+    void scEl.offsetWidth;
+    scEl.classList.add('wd-bump');
+  }
   document.getElementById('g-combo').textContent='x'+Math.max(1,combo);
   document.getElementById('g-lives').textContent=lives;
   document.getElementById('g-level').textContent=level;
