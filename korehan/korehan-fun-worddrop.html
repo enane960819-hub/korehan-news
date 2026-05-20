@@ -160,7 +160,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/security.js?v=20260502a"></script>
 <script src="js/core/storage.js?v=20260502a"></script>
-<script src="js/core/icons.js?v=20260502a"></script>
+<script src="js/core/icons.js?v=20260520a"></script>
 <script src="js/core/modals.js?v=20260502a"></script>
 <script src="js/core/ui-states.js?v=20260502a"></script>
 <script src="js/core/analytics.js?v=20260502a"></script>
@@ -185,6 +185,14 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 <script src="playground-scores-client.js?v=20260519a"></script>
 <script>
 (function(){
+// PR #7AN: defensive guard. The Emotion topic icon was originally
+// `khSvg('heart', ...)` evaluated at parse time. If a user's browser
+// caches an OLD icons.js (pre-#7S) that doesn't define khSvg, the
+// reference throws ReferenceError → the whole IIFE bails → topic
+// grid stays empty + START GAME button does nothing. Guard with
+// typeof so the page still works during the cache-bump rollout window
+// (#7AN bumped the cache-buster from ?v=20260502a → ?v=20260520a).
+var _safeKhSvg = (typeof khSvg === 'function') ? khSvg : function(){ return ''; };
 var _FALLBACK_TOPICS={
   daily:{icon:'',label:'Daily',words:[
     {ko:'친구',en:'friend'},{ko:'가족',en:'family'},{ko:'학교',en:'school'},{ko:'회사',en:'company'},
@@ -201,7 +209,7 @@ var _FALLBACK_TOPICS={
     {ko:'별',en:'star'},{ko:'달',en:'moon'},{ko:'해',en:'sun'},{ko:'비',en:'rain'},
     {ko:'눈',en:'snow'},{ko:'날씨',en:'weather'},{ko:'봄',en:'spring'},{ko:'여름',en:'summer'},
     {ko:'가을',en:'autumn'},{ko:'겨울',en:'winter'},{ko:'길',en:'road'},{ko:'강',en:'river'}]},
-  emotion:{icon:khSvg('heart',{size:18,color:'#a78bfa'}),label:'Emotion',words:[
+  emotion:{icon:_safeKhSvg('heart',{size:18,color:'#a78bfa'}),label:'Emotion',words:[
     {ko:'사랑',en:'love'},{ko:'행복',en:'happiness'},{ko:'희망',en:'hope'},{ko:'꿈',en:'dream'},
     {ko:'마음',en:'heart'},{ko:'건강',en:'health'},{ko:'미래',en:'future'},{ko:'자유',en:'freedom'},
     {ko:'평화',en:'peace'},{ko:'감사',en:'gratitude'},{ko:'노력',en:'effort'},{ko:'성공',en:'success'},
