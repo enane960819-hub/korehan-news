@@ -40,6 +40,23 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
 .gs-listen-info b { color:#a7f3d0; display:block; font-size:13px; font-weight:900; margin-bottom:2px; }
 .gs-input { width:100%; padding:13px 14px; border-radius:12px; border:1.5px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); color:#fff; font-family:'Noto Sans KR',sans-serif; font-size:16px; line-height:1.5; margin-bottom:10px; min-height:48px; }
 .gs-input:focus { outline:0; border-color:#34d399; background:rgba(52,211,153,.06); }
+/* Shake when the wrong-answer flow fires. Also briefly flashes the
+   border red so the wrong-state reads even without the feedback box. */
+.gs-input.gs-shake { animation: gsShake .42s ease; border-color:rgba(239,68,68,.7)!important; background:rgba(239,68,68,.06)!important; }
+@keyframes gsShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 50%{transform:translateX(6px)} 75%{transform:translateX(-4px)} }
+/* Streak chip pulse — same animation pattern as Memory's mm-streak.on. */
+.gs-streak.on { display:inline-flex!important; animation: gsStreakPulse .55s ease; }
+@keyframes gsStreakPulse { 0%{transform:scale(.85)} 50%{transform:scale(1.12)} 100%{transform:scale(1)} }
+/* Score popup — floats up over the input on a correct/close answer. */
+.gs-popup { position:absolute; left:50%; top:8px; transform:translateX(-50%); pointer-events:none; font-size:22px; font-weight:900; text-shadow:0 2px 14px currentColor, 0 0 22px rgba(255,255,255,.15); animation: gsPopup .9s cubic-bezier(.2,.7,.3,1) forwards; font-family:'Source Sans 3','DM Sans',sans-serif; z-index:30; white-space:nowrap; }
+.gs-popup.is-right { color:#fbbf24; }
+.gs-popup.is-close { color:#a78bfa; }
+.gs-popup.is-wrong { color:#ef4444; }
+@keyframes gsPopup { 0%{opacity:0;transform:translate(-50%, 8px) scale(.6)} 20%{opacity:1;transform:translate(-50%, -2px) scale(1.1)} 100%{opacity:0;transform:translate(-50%, -64px) scale(1)} }
+/* Brief amber scale-pulse on the score number so the increment reads
+   even when the player's eyes are on the input. */
+.gs-score.gs-bump { animation: gsScoreBump .35s ease; display:inline-block; }
+@keyframes gsScoreBump { 0%{transform:scale(1)} 50%{transform:scale(1.22);color:#fbbf24} 100%{transform:scale(1)} }
 .gs-actions { display:flex; gap:8px; }
 .gs-btn { flex:1; padding:13px; border:0; border-radius:12px; font-size:14px; font-weight:900; cursor:pointer; font-family:inherit; min-height:48px; }
 .gs-check { background:#34d399; color:#0a0e1a; }
@@ -96,9 +113,17 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
   <div id="game" style="display:none">
     <div class="gs-bar">
       <div>Score <span class="gs-score" id="gs-score">0</span></div>
+      <!-- Streak chip — hidden until streak ≥ 2. Same pattern as the
+           Memory Match streak pill: flame icon + count, scale-pulse
+           on every increment. -->
+      <div class="gs-streak" id="gs-streak" style="display:none;align-items:center;gap:4px;font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;background:linear-gradient(135deg,#f59e0b,#dc2626);color:#fff;box-shadow:0 0 14px rgba(245,158,11,.4)"><span style="display:inline-flex;width:13px;height:13px;color:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.7-2.5 1.5-3.5C10.5 7 11 5 12 3z"/></svg></span><span id="gs-streak-val">0</span></div>
       <div class="gs-prog" id="gs-prog">1 / 8</div>
       <div style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;color:currentColor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span><span id="gs-timer">0</span>s</div>
     </div>
+    <!-- Score-popup host. Positioned inside the input wrapper so
+         popups can float over the input area. Cleared on every
+         renderQ() so old popups don't linger across questions. -->
+    <div id="gs-popup-host" style="position:relative;height:0;pointer-events:none"></div>
     <div class="gs-listen-row">
       <button type="button" class="gs-listen-btn" id="gs-play" onclick="playPhrase()" title="Play (or replay) the phrase" aria-label="Play phrase"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;color:currentColor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M16 8a4 4 0 0 1 0 8"/><path d="M19 5a8 8 0 0 1 0 14"/></svg></span></button>
       <div class="gs-listen-info"><b>Listen</b>Tap to play again. Plays up to 3 times per phrase.</div>
@@ -187,6 +212,11 @@ window.startGame = async function() {
     idx:      0,
     score:    0,
     correct:  0,
+    // streak: consecutive 'right' answers (resets on close/wrong/skip).
+    // streakBest: highest streak hit this round — surfaced on the end
+    // screen so the player can chase it next round.
+    streak:     0,
+    streakBest: 0,
     started:  Date.now(),
     qStarted: Date.now(),
     plays:    0
@@ -253,23 +283,39 @@ window.checkAnswer = function() {
   var elapsed = (Date.now() - s.qStarted) / 1000;
   var fbHost = document.getElementById('gs-fb-host');
   var grade, bonus = 0, fbClass = '', fbLead = '';
+  // Streak bonus: every consecutive 'right' beyond the first adds +20
+  // per step on top of the base + speed bonus. Three-in-a-row earns
+  // a small noticeable boost; a perfect 8/8 run is a meaningful
+  // outscore over playing it correctly without chaining.
+  var streakBonus = 0;
   if (normGot === normExp) {
     grade = 'right';
     bonus = Math.max(0, Math.floor(60 * (1 - Math.min(1, (elapsed - 5) / 30))));
-    s.score += 100 + bonus;
+    s.streak++;
+    if (s.streak > s.streakBest) s.streakBest = s.streak;
+    streakBonus = Math.max(0, (s.streak - 1)) * 20;
+    var totalGain = 100 + bonus + streakBonus;
+    s.score += totalGain;
     s.correct++;
-    fbClass = 'is-right'; fbLead = khSvg('check', {size:16, color:'#10b981', marginRight:6}) + 'Perfect! +' + (100 + bonus) + ' pts';
+    fbClass = 'is-right';
+    fbLead = khSvg('check', {size:16, color:'#10b981', marginRight:6}) + 'Perfect! +' + totalGain + ' pts'
+      + (streakBonus ? ' <span style="color:#fbbf24;font-weight:900">(+' + streakBonus + ' streak)</span>' : '');
+    _gsPopup('+' + totalGain, 'is-right');
   } else {
-    // Close match: ≥80% character overlap → partial credit. Otherwise wrong.
     var sim = _similarity(normGot, normExp);
     if (sim >= 0.8 && normGot.length > 0) {
       grade = 'close';
       s.score += 40;
+      s.streak = 0; // close still breaks the streak — only perfect chains count
       fbClass = 'is-close'; fbLead = '~ Close — +40 pts';
+      _gsPopup('+40', 'is-close');
     } else {
       grade = 'wrong';
       s.score = Math.max(0, s.score - 10);
+      s.streak = 0;
       fbClass = 'is-wrong'; fbLead = khSvg('x', {size:16, color:'#ef4444', marginRight:6}) + 'Not quite';
+      _gsPopup('-10', 'is-wrong');
+      _gsShakeInput();
     }
   }
   document.getElementById('gs-input').disabled = true;
@@ -279,13 +325,62 @@ window.checkAnswer = function() {
     + (grade !== 'right' ? '<div class="gs-fb-correct">Answer: ' + escapeHtml(phrase) + '</div>' : '')
     + (grade !== 'right' && typed ? '<div class="gs-fb-yours">You wrote: ' + escapeHtml(typed) + '</div>' : '')
     + '</div>';
-  document.getElementById('gs-score').textContent = s.score;
+  var scoreEl = document.getElementById('gs-score');
+  scoreEl.textContent = s.score;
+  // Score-number scale-pulse on every change so the new total reads
+  // even when eyes are on the input.
+  scoreEl.classList.remove('gs-bump');
+  void scoreEl.offsetWidth;
+  scoreEl.classList.add('gs-bump');
+  _gsUpdateStreakUI();
   setTimeout(function() { s.idx++; renderQ(); if (s.idx < s.items.length) setTimeout(playPhrase, 250); }, grade === 'right' ? 1000 : 2200);
 };
+
+// Streak chip: hide when streak < 2; show + pulse otherwise.
+function _gsUpdateStreakUI() {
+  var s = _state; if (!s) return;
+  var chip = document.getElementById('gs-streak');
+  var val = document.getElementById('gs-streak-val');
+  if (!chip || !val) return;
+  if (s.streak >= 2) {
+    val.textContent = s.streak;
+    chip.classList.remove('on');
+    void chip.offsetWidth;
+    chip.classList.add('on');
+  } else {
+    chip.classList.remove('on');
+    chip.style.display = 'none';
+  }
+}
+
+// Floating +N popup inside #gs-popup-host. Self-removes after the
+// CSS animation finishes.
+function _gsPopup(text, gradeClass) {
+  var host = document.getElementById('gs-popup-host');
+  if (!host) return;
+  var p = document.createElement('div');
+  p.className = 'gs-popup ' + (gradeClass || '');
+  p.textContent = text;
+  host.appendChild(p);
+  setTimeout(function(){ try { p.remove(); } catch(_){} }, 950);
+}
+
+// Shake the input on a wrong answer. Class is restamped via reflow
+// hack so consecutive wrong answers each get their own animation.
+function _gsShakeInput() {
+  var inp = document.getElementById('gs-input');
+  if (!inp) return;
+  inp.classList.remove('gs-shake');
+  void inp.offsetWidth;
+  inp.classList.add('gs-shake');
+  setTimeout(function(){ inp.classList.remove('gs-shake'); }, 480);
+}
 
 window.skipQ = function() {
   var s = _state; if (!s) return;
   var phrase = s.items[s.idx];
+  s.streak = 0;
+  _gsUpdateStreakUI();
   document.getElementById('gs-fb-host').innerHTML =
     '<div class="gs-fb is-wrong"><b>Skipped</b><div class="gs-fb-correct">Answer: ' + escapeHtml(phrase) + '</div></div>';
   document.getElementById('gs-input').disabled = true;
@@ -316,7 +411,9 @@ async function endRound() {
   }
   document.getElementById('end-title').textContent = pct >= 80 ? 'Great ear!' : pct >= 60 ? 'Nice work!' : 'Keep listening!';
   document.getElementById('end-score').textContent = s.score + ' pts';
-  document.getElementById('end-stats').textContent = s.correct + ' / ' + ROUND_LEN + ' correct · ' + elapsed + 's · ' + _diff;
+  var statsLine = s.correct + ' / ' + ROUND_LEN + ' correct · ' + elapsed + 's · ' + _diff;
+  if (s.streakBest >= 2) statsLine += ' · best streak ' + s.streakBest;
+  document.getElementById('end-stats').textContent = statsLine;
   var lsKey = 'kh_dictation_best';
   var bests = {};
   try { bests = JSON.parse(localStorage.getItem(lsKey) || '{}'); } catch(_){}
