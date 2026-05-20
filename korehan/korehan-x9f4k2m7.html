@@ -5242,66 +5242,58 @@ async function runAutoGenerate(){
         // Korean-output path in the codebase, and pre-7Z it had no grammar
         // enforcement (only "natural" guidance + the post-process
         // enforceDetectedPatterns pattern-coverage layer, which doesn't
-        // validate correctness, only presence). Mirrors the rule block added
-        // in supabase/functions/daily-content-gen/index.ts (#7Q), with the
-        // formality rule rewritten for news body — Korean news standard
-        // register is 평어체 (~한다/~했다/~이다), NOT the ~ㅂ니다 / ~아요 forms
-        // appropriate for textbook helpers.
+        // validate correctness, only presence).
+        //
+        // PR #7AQ trimmed the rule block down from the original 6-rule
+        // version after the owner reported article generation flattening
+        // into textbook prose ("1921년은 약 100년 전이다" / "그 사진은
+        // 역사적인 기록이다"). Two rules removed because they conflicted
+        // with the existing per-level [본문 톤] guidance in the prompt
+        // body ABOVE: the forced-평어체 formality rule, and the public-
+        // figures honorifics rule. All remaining rules show examples
+        // in BOTH 해요체 and 평어체 so the rule itself doesn't bias the
+        // model toward one register — register choice stays with the
+        // level guidance.
         + 'KOREAN GRAMMAR RULES — apply to EVERY Korean sentence in the body AND every example_in_sentence / fuller_example in the analysis:\n'
         + '  1. PSYCH-VERB 1st/3rd PERSON ASYMMETRY (do not violate):\n'
         + '     • 1st-person subject (저/나/우리) — use the "feeling" form directly:\n'
         + '       ✓ 저는 가고 싶어요 / 저는 슬퍼요 / 저는 무서워요\n'
         + '     • 3rd-person subject (이름/그/그녀/사람들/아이들/우리 가족/일반 사람/대중):\n'
-        + '       MUST use the "-아/어 하다" form, NOT the bare adjective form:\n'
-        + '       ✓ 아이들은 만들고 싶어 한다    ✗ 아이들은 만들고 싶다\n'
-        + '       ✓ 동생은 슬퍼한다              ✗ 동생은 슬프다\n'
-        + '       ✓ 그는 무서워한다              ✗ 그는 무섭다\n'
+        + '       MUST use the "-아/어 하다" form, NOT the bare adjective form.\n'
+        + '       Register-neutral examples (both 해요체 and 평어체 forms shown):\n'
+        + '       ✓ 아이들은 만들고 싶어 해요 / 아이들은 만들고 싶어 한다\n'
+        + '       ✗ 아이들은 만들고 싶어요 / 아이들은 만들고 싶다\n'
+        + '       ✓ 동생은 슬퍼해요 / 동생은 슬퍼한다\n'
+        + '       ✗ 동생은 슬퍼요 / 동생은 슬프다\n'
         + '       Same rule for: 싶다→싶어 하다, 슬프다→슬퍼하다, 기쁘다→기뻐하다,\n'
         + '       무섭다→무서워하다, 싫다→싫어하다, 부끄럽다→부끄러워하다, 좋다→좋아하다.\n'
-        + '       News articles describe 3rd-person actors constantly — this rule\n'
-        + '       will trigger many times per body. Get it right.\n'
+        + '       (Pick the register — 해요체 or 평어체 — from the [본문 톤] guidance\n'
+        + '       in the prompt body above, not from these examples.)\n'
         + '  2. SUBJECT-PARTICLE CONSISTENCY: a single clause must not flip 은/는\n'
         + '     ↔ 이/가 mid-clause for the same referent. Pick one per referent and\n'
         + '     stick with it across the clause.\n'
-        + '  3. FORMALITY (news body register): Korean news article BODY uses\n'
-        + '     평어체 / 해라체 endings — ~한다 / ~했다 / ~이다 / ~다 — NOT 해요체\n'
-        + '     (~아요/어요) and NOT 합쇼체 (~ㅂ니다/습니다). Stay in 평어체 across\n'
-        + '     the entire body. Direct quotes inside the body can carry the\n'
-        + '     speaker\'s original register (and SHOULD — that\'s news convention).\n'
-        + '     The analysis "fuller_example" / "example_in_sentence" fields stay\n'
-        + '     in 평어체 too when quoting body sentences; standalone teaching\n'
-        + '     examples in vocab/grammar can use whichever register matches the\n'
-        + '     level guidance, but each example sentence stays internally\n'
-        + '     consistent.\n'
-        + '  4. TENSE AGREEMENT: every verb in the same clause must agree with\n'
+        // PR #7AQ — REMOVED rule 3 (FORMALITY forced 평어체) and rule 6
+        // (HONORIFICS for public figures). The forced 평어체 rule from #7Z
+        // collided with the existing per-level [본문 톤] guidance ABOVE in
+        // the prompt body (Seed/Sprout/Tree use 해요체, only Forest mixes
+        // 격식체). Result: every level got flattened to "~다 / ~했다 / ~이다"
+        // textbook sentences ("1921년은 약 100년 전이다", "그 사진은 역사적인
+        // 기록이다") instead of natural news copy at the learner's level.
+        // The honorific rule was also pulling weight without payoff for
+        // foreign-figure articles. Drop both — let the in-prompt [문체]
+        // level guidance be authoritative for register. Keep psych-verb,
+        // particle, tense, and spacing rules — those don't conflict with
+        // the level guidance.
+        + '  3. TENSE AGREEMENT: every verb in the same clause must agree with\n'
         + '     the sentence\'s temporal anchor (어제/지난주/내년/지금/…). Past-tense\n'
-        + '     news narration is the default for completed events; future and\n'
+        + '     narration is the default for completed events; future and\n'
         + '     habitual present each get their own consistent forms.\n'
-        + '  5. SPACING (띄어쓰기): keep a single space between an auxiliary verb\n'
+        + '  4. SPACING (띄어쓰기): keep a single space between an auxiliary verb\n'
         + '     and its lexical verb — do not concatenate.\n'
         + '     ✓ 가고 싶다 / 먹어 보다 / 읽고 있다 / 만들어 주다\n'
         + '     ✗ 가고싶다 / 먹어보다 / 읽고있다 / 만들어주다\n'
         + '     Tense/aspect endings (~았/었/는/ㄴ) attach DIRECTLY to the stem\n'
         + '     with NO space: ✓ 갔다, 읽었다, 했다 (✗ 가았다, 읽 었다, 하 았다).\n'
-        // Deeper rules added 2026-05-20 (PR #7AH). Honorifics are
-        // domain-relevant to article body because news copy frequently
-        // references public figures who require honorific marking.
-        + '  6. HONORIFICS (~시-, 께서) for public figures: when the subject is a\n'
-        + '     person whose title outranks the average citizen (대통령 / 장관 /\n'
-        + '     의원 / 회장 / 교수 / 박사 / 검사장 / 위원장 / 회장 / 사장 …) and the\n'
-        + '     verb describes their action, insert the honorific infix `-시-`\n'
-        + '     into the verb and OPTIONALLY use the honorific subject marker\n'
-        + '     `께서` instead of `이/가`.\n'
-        + '     ✓ 대통령이 말씀하셨다 / 대통령께서 말씀하셨다 (both OK).\n'
-        + '     ✓ 회장이 참석하셨다.\n'
-        + '     ✗ 대통령이 말했다. (drops the -시- → reads as disrespectful in news prose.)\n'
-        + '     DO NOT apply honorifics to:\n'
-        + '       - INANIMATE subjects (보고서, 정책, 회사 …).\n'
-        + '       - 1st-person subjects (저는, 우리는).\n'
-        + '       - Foreign individuals named without a Korean title (Biden은\n'
-        + '         말했다 is fine; 바이든이 말씀하셨다 is over-honorific).\n'
-        + '       - Verbs that have no honorific form (계시다 = 있다 honorific;\n'
-        + '         apply only to verbs with a standard honorific equivalent).\n'
         + 'CRITICAL guardrails for ANALYSIS:\n'
         + '  - Only include a pattern if its marker actually appears in the sentence (the post-process enforce layer verifies this and drops items whose example_in_sentence is not a literal substring). When in doubt, omit.\n'
         + '  - For type="expression" / "idiom" (where regex doesn\'t apply and you are the judge): only surface a phrase if it is CENTRAL to that specific sentence\'s meaning — the learner could not paraphrase the sentence without grasping it. SKIP tangential / generic fillers (정말, 그런, 새로운, 이런 식으로 …), phrases the learner already knows at this level, and semantic duplicates of a grammar entry already in the same analysis array (e.g. don\'t list both ~다고 하다 AND ~다고 해요 — pick the canonical one).\n'
