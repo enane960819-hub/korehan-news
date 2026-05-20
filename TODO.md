@@ -10,21 +10,25 @@ doesn't keep reminding about closed work.
 
 ---
 
-## Open PRs (need GitHub merge)
+## Recently merged into main 2026-05-20
 
-- **#7P** `claude/item7p-study-room-timeouts` — Study Room "Loading…"
-  stuck. Root-cause fix: init now wraps synchronous renderers in
-  `_safe()`, registers the 12s topic-fallback `setTimeout` as the
-  very first statement of the IIFE, and the call site
-  (`_khStudyRoomInitSafe`) catches both sync throws and async
-  rejections so silent failures trigger `_applyFallbackTopic`. Cache
-  buster bumped to `v=20260520a`.
-- **#7Q** `claude/item7q-psych-verb-grammar-rule` — adds the Korean
-  psych-verb 1st/3rd-person rule (`~고 싶다` vs `~고 싶어 하다`,
-  `슬프다` vs `슬퍼하다`, …) to the daily-content prompt in BOTH the
-  server cron (`daily-content-gen` Edge Function) and the client
-  fallback (`_generateAndSaveDailyContent`). Fixes the
-  "아이들은 만들고 싶어요" class bug. Cache buster `v=20260520b`.
+- #7P Study Room "Loading…" stuck — root-cause fix
+- #7Q psych-verb 1st/3rd-person rule in daily-content prompt
+- session-todo-reminder — this file's SessionStart hook
+- #7R 🔴 My Room data-loss fix (starter-grant no longer wipes
+  purchased items)
+- #7S playground emoji → SVG icon sweep (9 files, 115 emojis +
+  `js/core/icons.js` with 24 inline-SVG constants & `khSvg()` helper)
+- #7T playground UI Korean → English (40 strings; learning content
+  stays Korean)
+- #7U Hangul Tetris jamo persistence — blocks no longer wipe between
+  syllables; + floating "+N" popups, shake on wrong
+- #7V Memory Match game-feel — running Score pill, +N popups, pairs
+  progress bar
+- #7W Dictation game-feel — streak system, score popup, input shake
+- #7X Sentence Order game-feel — streak, popup, tray shake
+- #7Y this PR — daily-content-gen Sonnet model id bumped to
+  `claude-sonnet-4-6` (deprecated dated id removed)
 
 ## Edge Function deploys (must run locally — Cloudflare doesn't deploy these)
 
@@ -33,8 +37,9 @@ doesn't keep reminding about closed work.
   and `conv_scenario_pool` to ALLOWED_TABLES. Without this deploy,
   pool RPCs return 403 and admin conversation gen can't pick
   scenarios from the pool.
-- `supabase functions deploy daily-content-gen` — after #7Q merges,
-  to activate the psych-verb grammar rule on the server cron.
+- `supabase functions deploy daily-content-gen` — to activate BOTH
+  the psych-verb grammar rule (#7Q) AND the Sonnet model-id fix
+  (#7Y) on the server cron.
 
 ## Stale data cleanup
 
@@ -78,8 +83,3 @@ classify the actual error patterns living in the live DB and use that
 to prioritize prompt patches across the 16 remaining paths. See
 session transcript for the full SQL.
 
-## Minor
-
-- `supabase/functions/daily-content-gen/index.ts` line 80 still uses
-  `claude-sonnet-4-20250514` (deprecated). Should be
-  `claude-sonnet-4-6`.
