@@ -137,18 +137,35 @@ Skipped:
 - Translation features (`translate`, `translation`,
   `word-snap-translate`) — output is the translation itself.
 
-## Deeper grammar categories (next pass)
+## Deeper grammar categories (PR #7AH)
 
-Beyond the 5-rule block, these categories are not yet enforced
-anywhere. Add per-feature when the path's typical output makes them
-relevant:
-- **Honorifics** (`께서` / `-시-`): most relevant in story_gen
-  (royalty / elders), conv_gen (formal scenarios), article body gen
-  (public figures).
-- **Vowel harmony** (`아/어/여`): model usually gets this from
-  training; only add rule if specific errors observed.
-- **Counters** (`마리` / `명` / `잔` / `권` / `병` / `개`): most
-  relevant in conv_gen (shopping), article body gen (statistics).
+PR #7AH adds the high-leverage deeper rules per-feature:
+
+- **Honorifics** (`-시-` / `께서`) landed in three high-volume paths:
+  - Article body gen — for public figures (대통령 / 회장 / 의원 /
+    교수 / 박사 / 사장 / 위원장 / 검사장 / 장관 / …) with explicit
+    DO-NOT cases for inanimate subjects, 1st-person, and foreign
+    figures named without a Korean title.
+  - Story gen — for elevated characters (왕 / 왕비 / 황제 / 신령 /
+    조부모 / 부모님 / 존경받는 어른) with explicit exemptions for
+    antagonists, animal fable characters, and peer characters.
+  - Conv gen — for formal scenarios (직원→손님 / 학생→선생님 /
+    사원→상사 / 자녀→부모님) — higher-status interlocutor as subject
+    triggers `-시-`.
+
+- **Counters** (`마리` / `명` / `잔` / `권` / `병` / `개` / `대` /
+  `장`) landed in:
+  - Story gen — narrative descriptions of characters (명) and
+    animals (마리), with explicit counter-class matrix.
+  - Conv gen — shopping / restaurant / quantity scenarios where
+    counter-class confusion is the most common learner error
+    (사람 두 명 vs 사람 두 마리, 커피 한 잔 vs 한 개 etc.). Also
+    notes that NATIVE numbers (한/두/세) pair with counters, not
+    Sino-Korean numbers (일/이/삼).
+
+- **Vowel harmony** (`아/어/여`): still NOT enforced anywhere.
+  Model usually gets this from training. Add only if a specific
+  error pattern surfaces from the data audit.
 
 Server cron (`daily-content-gen`) still needs `supabase functions
 deploy` to activate the server-side rules (#7Q + #7AB).
