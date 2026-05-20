@@ -5148,6 +5148,26 @@ async function runAutoGenerate(){
         + '- **분량 — 원본 길이에 맞춰 4~8단락 사이, 단락당 2~4문장. 절대 중간에 끊고 마무리하지 마세요.**\n'
         + '    원본이 짧으면 4단락. 원본이 풍부하면 최대 8단락까지 채우되, 그 안에서 모든 핵심 정보가 담기도록 압축. 핵심을 빠뜨리느니 문장당 정보 밀도를 높여서 8단락 안에 다 담을 것.\n'
         + '    원본이 너무 길어서 8단락에 안 들어갈 것 같으면 → 디테일을 압축/요약 (예: 비슷한 사례 3개 → "여러 사례" 한 문장으로). 핵심 사실/숫자/인물 발언은 절대 누락 X.\n'
+        // PR #7AT: Seed/Sprout length floor.
+        // Owner: "seed 랑 sprout 레벨 말도안되게 짧게 만드는거 수정한거임?"
+        // The "단락당 2~4문장" + Seed's "단순 SVO" + Sprout's basic patterns
+        // collapsed total article body to ~80~120 chars on the smaller
+        // levels because each sentence was 5-10 words tops. Beginners
+        // got penny-sized articles with the same headline as the
+        // intermediate one. Fix: at Seed/Sprout, raise the per-paragraph
+        // sentence count to compensate — same TOTAL substance, just
+        // simpler grammar.
+        + '    **레벨별 최소 분량 floor (Seed/Sprout 더 짧게 쓰면 안 됨):**\n'
+        + (
+            diffInfo.level === 'Starter'
+              ? '      Seed: **최소 6단락 × 단락당 4~6문장 = 본문 총 24~36문장**. 한 문장이 짧으니 문장 수로 분량 채워 — 짧은 문장이라고 단락도 짧으면 학습할 거리가 사라짐.\n'
+            : diffInfo.level === 'Beginner'
+              ? '      Sprout: **최소 6단락 × 단락당 4~5문장 = 본문 총 24~30문장**. 짧은 문장 × 많은 문장 = 충실한 본문. ~았/었어요/습니다 단순 반복이 아니라 다른 동사/주어로 변주.\n'
+            : diffInfo.level === 'Intermediate'
+              ? '      Tree: 5~8단락 × 단락당 2~4문장 (중급 패턴 자체가 문장을 길게 만들어서 문장 수 적어도 분량 충분).\n'
+            : '      Forest: 5~8단락 × 단락당 2~4문장 (한자어 + 복문으로 한 문장이 길어 분량 자동 확보).\n'
+          )
+        + '    **Seed/Sprout 레벨 = 더 쉬운 문법, 같은 분량.** 짧은 본문 = 학습 가치 없음. 같은 사건을 더 많은 짧은 문장으로 풀어 쓰면 됨.\n'
         + '    환각 없이 분량 채우는 방법:\n'
         + '      1. 원본 사실을 자연스러운 한국어 문장으로 풀어 다시 쓰기\n'
         + '      2. 원본의 시간 순서/인과 구조를 명확히 풀어 쓰기 (단, 원본에 없는 인과 추가 X)\n'
@@ -5184,7 +5204,7 @@ async function runAutoGenerate(){
           )
         + '- **괄호 보충 설명 금지**: "기준금리(돈을 빌릴 때 ...)", "인공지능(AI)" 같이 원어/일반-지식 괄호 추가하지 마세요. 본문은 일반 한국어 뉴스처럼 깔끔하게. 단어 의미 설명은 vocab 패널이 담당함.\n'
         + '- **한자 절대 금지**. 完全變態 X — 그냥 "완전변태"만.\n'
-        + '- **분량: 4~8단락, 단락당 2~4문장**. 길면 압축, 짧으면 늘리지 말 것. 위 [지시사항]의 분량 룰을 따르고 **마지막 단락은 자연스러운 마무리 문장으로 끝낼 것 (중간 cut 절대 금지)**.\n'
+        + '- **분량은 위 [지시사항]의 레벨별 최소 분량 floor를 따르세요** (Seed/Sprout는 6단락 × 4~6문장, Tree/Forest는 5~8단락 × 2~4문장). 짧으면 늘리지 말되 floor 아래로 떨어지지도 마세요. **마지막 단락은 자연스러운 마무리 문장으로 끝낼 것 (중간 cut 절대 금지)**.\n'
         + '- 제목: 15~25자\n\n'
         + '[중요표현]\n'
         + '- 본문에 등장한 **고정 표현** 0~3개. 적합 없으면 [] (가장 흔한 결과).\n'
