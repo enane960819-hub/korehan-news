@@ -86,21 +86,57 @@ Top 5 to harden, by output volume × current weakness:
     labels (여행 계획, 식사 예절 etc.), not sentences. Rule block
     doesn't apply meaningfully.
 
-## Top-5 AI grammar audit: COMPLETE
+## AI grammar audit — broader sweep (PR #7AD)
 
-All 5 prioritized paths now carry the same 5-rule block (psych-verb
-1st/3rd, subject-particle consistency, formality, tense agreement,
-spacing) adapted per context. Server cron (`daily-content-gen`)
-still needs `supabase functions deploy` to activate the server-side
-rules (#7Q + #7AB).
+Beyond the top-5, all admin-side content-generation prompts now also
+carry the 5-rule block via a shared `_srGrammarRulesBlock()` helper:
 
-Next: per-feature deeper rules — honorifics, vowel harmony, counters
-— added only where the path's typical output makes them relevant.
+- **`korehan-x9f4k2m7.html`** (main admin CMS, 11 call sites):
+  - `_srBuildPrompt` (daily-admin full content)
+  - `study-room-grammar-admin` (regenerate grammar field)
+  - `study-room-helpers-admin` (regenerate helpers)
+  - `study-room-dictation-sentences-admin`
+  - `study-room-dictation-questions-admin`
+  - `study-room-topic-writing-admin`
+  - `study-room-picture-admin`
+  - `admin-pregen-pm` (Phrase Munch bundle pre-gen)
+  - `admin-pregen-ke` (Key Expressions bundle pre-gen)
+  - `phrase-bulk-pregen` (Sonnet, bulk phrase add)
+  - `key-expressions-pregen` (live KE pre-gen)
+- **`korehan-x9f4k2m7-phrases.html`** (phrase admin standalone,
+  doesn't share JS scope — local helper copy):
+  - `phrase-bulk-pregen` (bulk phrase generation)
+  - `generate` (single-phrase polish)
 
-Uncovered grammar categories across all paths (add per-feature
-when the path's typical output makes them relevant): honorifics
-(`께서` / `-시-`), vowel harmony (`아/어/여`), counters (`마리` /
-`명` / `잔` / …). Spacing now covered in Paths 1-3.
+Tally: top-5 (#7Z/#7AA/#7AB/#7AC) + server cron (#7Q) + admin sweep
+(#7AD) = 16+ generation paths now have grammar guards. The "16 of 18
+remaining" line item in the original audit is essentially closed.
+
+Outstanding feature-specific paths (lower priority, add if a bug
+report surfaces):
+- `weak-grammar-drill`, `grammar-focus`, `quiz`, `tutor-feedback`,
+  `summary-check`, `admin-lq-gen`, `article-analyze`,
+  `article-study-admin` — produce Korean but lower per-impression
+  volume than the paths above.
+- Translation features (`translate`, `translation`,
+  `word-snap-translate`) — output is the translation itself, the
+  rules don't apply in the same way.
+
+## Deeper grammar categories (next pass)
+
+Beyond the 5-rule block, these categories are not yet enforced
+anywhere. Add per-feature when the path's typical output makes them
+relevant:
+- **Honorifics** (`께서` / `-시-`): most relevant in story_gen
+  (royalty / elders), conv_gen (formal scenarios), article body gen
+  (public figures).
+- **Vowel harmony** (`아/어/여`): model usually gets this from
+  training; only add rule if specific errors observed.
+- **Counters** (`마리` / `명` / `잔` / `권` / `병` / `개`): most
+  relevant in conv_gen (shopping), article body gen (statistics).
+
+Server cron (`daily-content-gen`) still needs `supabase functions
+deploy` to activate the server-side rules (#7Q + #7AB).
 
 ## Data audit (pending — needs user to run SQL in Supabase)
 

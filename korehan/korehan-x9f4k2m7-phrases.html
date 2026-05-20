@@ -140,6 +140,27 @@ label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6
 <script src="js/features/fill-blank.js?v=20260502a"></script>
 <script src="korehan-shared.js?v=20260520a"></script>
 <script>
+// Korean grammar rules block — local copy of the helper defined in
+// `korehan-x9f4k2m7.html` (PR #7AD). Mirrors the rule set on the
+// server cron (`daily-content-gen`, #7Q) and the top-5 audit
+// (#7Z/#7AA/#7AB/#7AC). Replicated here because this phrases-admin
+// page is loaded standalone — it doesn't share JS scope with the
+// main admin file.
+function _srGrammarRulesBlock() {
+  return '\n\nKOREAN GRAMMAR RULES (apply to every Korean sentence in the output):\n'
+    + '1. PSYCH-VERB 1st/3rd PERSON:\n'
+    + '   1st-person (저/나/우리) → bare feeling form: 저는 슬퍼요 / 저는 가고 싶어요.\n'
+    + '   3rd-person (그/그녀/이름/사람들/아이들) → MUST use "-아/어 하다":\n'
+    + '   ✓ 동생은 슬퍼해요 / 아이들은 만들고 싶어 해요\n'
+    + '   ✗ 동생은 슬퍼요 / 아이들은 만들고 싶어요\n'
+    + '   Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다.\n'
+    + '2. SUBJECT-PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flipping for same referent.\n'
+    + '3. FORMALITY: pick ONE register per example sentence and stay consistent.\n'
+    + '4. TENSE AGREEMENT inside a clause vs the temporal anchor.\n'
+    + '5. SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach directly to the stem\n'
+    + '   (갔다 ✓ / 가았다 ✗).\n';
+}
+
 var phrases = [];
 var currentIndex = 0;
 function loadPhraseAdmin() {
@@ -265,7 +286,7 @@ async function runAIGenerate() {
     + '{"ko":"","rom":"","en":"","intro":"2-3 sentence explanation in English","nuance":"2-3 sentence usage note in English","related":["","",""],"examples":[{"ko":"","en":""},{"ko":"","en":""},{"ko":"","en":""}]}'
     + '\nMake examples natural Korean, varied, and suitable for beginner-intermediate learners.';
   try {
-    var res = await callClaude({ feature:'generate', model:'claude-haiku-4-5-20251001', max_tokens: 900, messages:[{role:'user', content: prompt}] });
+    var res = await callClaude({ feature:'generate', model:'claude-haiku-4-5-20251001', max_tokens: 900, messages:[{role:'user', content: prompt + _srGrammarRulesBlock()}] });
     var raw = (res.content && res.content[0] && res.content[0].text) ? res.content[0].text : (res.text || '');
     var clean = raw.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
     clean = clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1);
@@ -355,7 +376,7 @@ async function bulkGenPhrases() {
       feature: 'phrase-bulk-pregen',
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,
-      messages: [{ role: 'user', content: prompt }]
+      messages: [{ role: 'user', content: prompt + _srGrammarRulesBlock() }]
     });
     var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
     var clean = raw.replace(/^```json\n?/, '').replace(/^```/, '').replace(/```$/, '').trim();
