@@ -202,7 +202,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   </div>
   <!-- Countdown bar shown during memorize phase -->
   <div class="mm-countdown-bar" id="mm-cdown-bar">
-    <span class="mm-countdown-label">외울 시간</span>
+    <span class="mm-countdown-label">Memorize</span>
     <span class="mm-countdown-num" id="mm-cdown-num">5</span>
     <div class="mm-countdown-track"><div class="mm-countdown-fill" id="mm-cdown-fill" style="width:100%"></div></div>
   </div>
@@ -234,34 +234,34 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 <!-- Mode Screen: Play Now vs Study First -->
 <div class="mm-overlay hidden" id="mm-mode-screen">
   <div class="mm-icon" style="display:flex;align-items:center;justify-content:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 1.7-2.5 3.5"/><circle cx="12" cy="16.5" r=".8" fill="currentColor"/></svg></span></div>
-  <div class="mm-screen-title">어떻게 할까요?</div>
-  <div class="mm-screen-sub">단어를 먼저 보고 시작할 수도 있어요</div>
+  <div class="mm-screen-title">Choose Mode</div>
+  <div class="mm-screen-sub">You can preview the words before playing.</div>
   <div class="mm-mode-btns">
     <button class="mm-mode-btn play" onclick="MEM.goPlay()">
       <div class="mm-mb-icon" style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;color:#60a5fa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19a4 4 0 0 1-4-4l1-5a4 4 0 0 1 4-3h10a4 4 0 0 1 4 3l1 5a4 4 0 0 1-4 4c-1.5 0-2.5-1.5-3-2.5h-6C8 18 7 19 6 19z"/><line x1="7" y1="11" x2="7" y2="14"/><line x1="5.5" y1="12.5" x2="8.5" y2="12.5"/><circle cx="15.5" cy="12" r=".8" fill="currentColor"/><circle cx="17.5" cy="14" r=".8" fill="currentColor"/></svg></div>
       <div>
-        <div class="mm-mb-label">바로 시작</div>
-        <div class="mm-mb-desc">카드 5초 공개 후 게임 시작</div>
+        <div class="mm-mb-label">Play Now</div>
+        <div class="mm-mb-desc">Cards revealed for 5 seconds, then play.</div>
       </div>
     </button>
     <button class="mm-mode-btn study" onclick="MEM.goStudy()">
       <div class="mm-mb-icon" style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 0-2 2z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H19"/></svg></div>
       <div>
-        <div class="mm-mb-label">단어 먼저 보기</div>
-        <div class="mm-mb-desc">이번 라운드 단어쌍을 미리 확인</div>
+        <div class="mm-mb-label">Study First</div>
+        <div class="mm-mb-desc">Preview this round's word pairs</div>
       </div>
     </button>
   </div>
-  <button class="mm-back" style="margin-top:20px" onclick="MEM.showStart()">← 난이도 선택으로</button>
+  <button class="mm-back" style="margin-top:20px" onclick="MEM.showStart()">← Back to Difficulty</button>
 </div>
 
 <!-- Practice Screen: Word List -->
 <div class="mm-overlay hidden" id="mm-practice-screen">
-  <div class="mm-screen-title" style="margin-bottom:6px">이번 라운드 단어</div>
-  <div class="mm-screen-sub" style="margin-bottom:16px">잘 외웠으면 게임 시작!</div>
+  <div class="mm-screen-title" style="margin-bottom:6px">This Round's Words</div>
+  <div class="mm-screen-sub" style="margin-bottom:16px">Ready? Start the game!</div>
   <div class="mm-practice-list" id="mm-practice-list"></div>
-  <button class="mm-play-btn" style="margin-top:0;display:inline-flex;align-items:center;justify-content:center;gap:8px" onclick="MEM.goPlay()">게임 시작! <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19a4 4 0 0 1-4-4l1-5a4 4 0 0 1 4-3h10a4 4 0 0 1 4 3l1 5a4 4 0 0 1-4 4c-1.5 0-2.5-1.5-3-2.5h-6C8 18 7 19 6 19z"/><line x1="7" y1="11" x2="7" y2="14"/><line x1="5.5" y1="12.5" x2="8.5" y2="12.5"/><circle cx="15.5" cy="12" r=".8" fill="currentColor"/><circle cx="17.5" cy="14" r=".8" fill="currentColor"/></svg></span></button>
-  <button class="mm-back" style="margin-top:12px" onclick="MEM.showMode()">← 뒤로</button>
+  <button class="mm-play-btn" style="margin-top:0;display:inline-flex;align-items:center;justify-content:center;gap:8px" onclick="MEM.goPlay()">Start Game <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 19a4 4 0 0 1-4-4l1-5a4 4 0 0 1 4-3h10a4 4 0 0 1 4 3l1 5a4 4 0 0 1-4 4c-1.5 0-2.5-1.5-3-2.5h-6C8 18 7 19 6 19z"/><line x1="7" y1="11" x2="7" y2="14"/><line x1="5.5" y1="12.5" x2="8.5" y2="12.5"/><circle cx="15.5" cy="12" r=".8" fill="currentColor"/><circle cx="17.5" cy="14" r=".8" fill="currentColor"/></svg></span></button>
+  <button class="mm-back" style="margin-top:12px" onclick="MEM.showMode()">← Back</button>
 </div>
 
 <!-- End Screen -->
@@ -277,12 +277,12 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   <!-- Word list + save -->
   <div class="mm-end-words" id="mm-end-words-section">
     <div class="mm-end-words-title">
-      <span>이번 라운드 단어</span>
-      <span class="mm-end-words-sel" id="mm-sel-all-btn" onclick="MEM.toggleSelectAll()">전체 선택</span>
+      <span>This Round's Words</span>
+      <span class="mm-end-words-sel" id="mm-sel-all-btn" onclick="MEM.toggleSelectAll()">Select All</span>
     </div>
     <div class="mm-word-rows" id="mm-word-rows"></div>
     <div class="mm-save-row">
-      <button class="mm-save-btn" id="mm-save-btn" onclick="MEM.saveSelectedWords()">선택 단어 저장</button>
+      <button class="mm-save-btn" id="mm-save-btn" onclick="MEM.saveSelectedWords()">Save Selected</button>
     </div>
     <div class="mm-save-note" id="mm-save-note"></div>
   </div>
@@ -738,7 +738,7 @@ var MEM = (function(){
     var rows = document.getElementById('mm-word-rows');
     rows.innerHTML = '';
     allSelected = false;
-    document.getElementById('mm-sel-all-btn').textContent = '전체 선택';
+    document.getElementById('mm-sel-all-btn').textContent = 'Select All';
     document.getElementById('mm-save-note').textContent = '';
     document.getElementById('mm-save-btn').disabled = false;
 
@@ -759,7 +759,7 @@ var MEM = (function(){
     document.getElementById('mm-save-btn').style.display = loggedIn ? '' : 'none';
     document.getElementById('mm-end-words-section').querySelector('.mm-save-row').style.display = loggedIn ? '' : 'none';
     if (!loggedIn) {
-      document.getElementById('mm-save-note').textContent = '로그인하면 단어를 저장할 수 있어요';
+      document.getElementById('mm-save-note').textContent = 'Log in to save words to your vocabulary.';
     }
   }
 
@@ -768,7 +768,7 @@ var MEM = (function(){
     row.querySelector('.mm-word-chk').innerHTML = row.classList.contains('checked') ? khSvg('check', {size:12, color:'#fff'}) : '';
     var checked = document.querySelectorAll('#mm-word-rows .mm-word-row.checked');
     document.getElementById('mm-sel-all-btn').textContent =
-      checked.length === currentWords.length ? '전체 해제' : '전체 선택';
+      checked.length === currentWords.length ? 'Deselect All' : 'Select All';
   }
 
   function toggleSelectAll() {
@@ -782,7 +782,7 @@ var MEM = (function(){
         row.querySelector('.mm-word-chk').textContent = '';
       }
     });
-    document.getElementById('mm-sel-all-btn').textContent = allSelected ? '전체 해제' : '전체 선택';
+    document.getElementById('mm-sel-all-btn').textContent = allSelected ? 'Deselect All' : 'Select All';
   }
 
   async function saveSelectedWords() {
@@ -791,13 +791,13 @@ var MEM = (function(){
 
     var checkedRows = document.querySelectorAll('#mm-word-rows .mm-word-row.checked');
     if (!checkedRows.length) {
-      document.getElementById('mm-save-note').textContent = '저장할 단어를 선택해주세요';
+      document.getElementById('mm-save-note').textContent = 'Please select words to save.';
       return;
     }
 
     var btn = document.getElementById('mm-save-btn');
     btn.disabled = true;
-    btn.textContent = '저장 중...';
+    btn.textContent = 'Saving...';
     document.getElementById('mm-save-note').textContent = '';
 
     var toSave = [];
@@ -824,17 +824,17 @@ var MEM = (function(){
       } catch(e) { errors++; }
     }
 
-    btn.textContent = '선택 단어 저장';
+    btn.textContent = 'Save Selected';
     btn.disabled = false;
     if (errors === 0) {
-      document.getElementById('mm-save-note').innerHTML = toSave.length + '개 단어가 내 단어장에 저장됐어요 ' + khSvg('check', {size:12, color:'#10b981', marginRight:0});
+      document.getElementById('mm-save-note').innerHTML = 'Saved ' + toSave.length + ' words to your vocabulary ' + khSvg('check', {size:12, color:'#10b981', marginRight:0});
       // Mark rows as saved
       checkedRows.forEach(function(row) {
         row.style.opacity = '.5';
         row.style.pointerEvents = 'none';
       });
     } else {
-      document.getElementById('mm-save-note').textContent = '저장 중 오류가 발생했어요 (' + errors + '개 실패)';
+      document.getElementById('mm-save-note').textContent = 'Save error (' + errors + ' failed)';
     }
   }
 
