@@ -148,43 +148,80 @@ async function syncStudyProgress(stage) {
 // immediately; otherwise register a listener.
 function _khStudyRoomInit() {
   return (async function() {
+  // ROOT-CAUSE SAFETY NET — register the topic fallback IMMEDIATELY, before
+  // anything else can throw. Previously this was registered ~90 lines down,
+  // so if any synchronous render call (renderGrammarPathBanner,
+  // _startBtnIdleGlow, renderPhrase…) or the awaited loadStudyAccessGate()
+  // threw, the setTimeout never got installed AND loadDailyContent never
+  // ran AND the unhandled promise rejection from the IIFE was eaten by
+  // the bare _khStudyRoomInit() call site (no .catch). Result: user
+  // stuck on "Loading…" forever with no visible error path. This guard
+  // is the absolute last-ditch: at 12s, if hero is still the bare
+  // placeholder, paint local fallback content so the page is usable.
+  setTimeout(function() {
+    try {
+      var heroKo = document.getElementById('hero-topic-ko');
+      if (!heroKo) return;
+      var t = (heroKo.textContent || '').trim();
+      if (t === 'Loading…' || t === 'Loading...' || t === 'Loading') {
+        console.warn('[STUDY-ROOM SAFETY] hero still placeholder after 12s — init must have thrown. Forcing fallback.');
+        if (typeof _applyFallbackTopic === 'function') _applyFallbackTopic(kstDateKey());
+      }
+    } catch(e) { console.error('[STUDY-ROOM SAFETY] fallback paint failed:', e); }
+  }, 12000);
+
+  // Non-essential pre-init renders. Wrapped so a single broken renderer
+  // (missing DOM, undefined helper after a refactor, throw in third-party
+  // svg lib, etc.) cannot block the awaited init chain below — which is
+  // what feeds loadDailyContent. Each call gets its own try so siblings
+  // still run.
+  function _safe(label, fn) {
+    try { fn(); }
+    catch(e) { console.error('[STUDY-ROOM init] ' + label + ' threw:', e); }
+  }
+
   // Safety net: render static <i data-lucide> icons right away. updateAuthUI
   // calls renderKhLucideIcons too, but that waits for the auth session round-
   // trip. On a slow signed-out page load the top tabs (Study / Help / Exercise
   // / Word Book) rendered as invisible inline stubs until auth resolved — this
   // surfaces them immediately.
-  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+  _safe('renderKhLucideIcons', function(){ if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons(); });
 
   // ── Mobile layout restructure ──
   // Move hero block outside tab panel so it stays visible across all tabs
   // Move tab bar between hero block and activity cards
-  (function() {
+  _safe('mobile-layout-restructure', function(){
     if (window.innerWidth > 860) return;
     var heroBlock = document.querySelector('.sr-hero-block');
     var tabsWrap = document.querySelector('.sr-top-tabs-wrap');
     var levelBar = document.getElementById('sr-level-bar');
     if (!heroBlock || !tabsWrap || !levelBar) return;
-    // Move hero block after level bar (outside sr-panel-study)
     levelBar.after(heroBlock);
-    // Move tabs after hero block (between Daily Review and Activity cards)
     heroBlock.after(tabsWrap);
-  })();
+  });
 
-  loadStudyDoneState();
-  renderStudyChecklist();
+  _safe('loadStudyDoneState', loadStudyDoneState);
+  _safe('renderStudyChecklist', renderStudyChecklist);
   // Load grammar curriculum from DB (then refresh banner)
-  _loadGrammarCurriculumFromDB().then(function() { renderGrammarPathBanner(); }).catch(function() { renderGrammarPathBanner(); });
-  renderGrammarPathBanner();
-  renderPhrase();
+  _safe('_loadGrammarCurriculumFromDB', function(){
+    _loadGrammarCurriculumFromDB().then(function() {
+      _safe('renderGrammarPathBanner (post-DB)', renderGrammarPathBanner);
+    }).catch(function() {
+      _safe('renderGrammarPathBanner (DB-failed)', renderGrammarPathBanner);
+    });
+  });
+  _safe('renderGrammarPathBanner', renderGrammarPathBanner);
+  _safe('renderPhrase', renderPhrase);
 
   // ── START button idle canvas glow ──
-  _startBtnIdleGlow();
+  _safe('_startBtnIdleGlow', _startBtnIdleGlow);
 
   // ── OPTIMIZED: Only 2 essential DB calls at page load ──
   // 1) Access gate (subscription check)
   // 2) Daily content (includes vocab, grammar, helpers — no separate calls)
   // Everything else loads AFTER session is confirmed, or lazily.
-  await loadStudyAccessGate();
+  try { await loadStudyAccessGate(); }
+  catch(e) { console.error('[STUDY-ROOM init] loadStudyAccessGate threw:', e); }
 
   // Wait for auth session, then load daily content (single call)
   var waited = 0;
@@ -235,15 +272,10 @@ function _khStudyRoomInit() {
     }
   }
   waitForSession();
-
-  // HARD FALLBACK: If topic STILL shows "Loading" after 15 seconds, force fallback content
-  setTimeout(function() {
-    var heroKo = document.getElementById('hero-topic-ko');
-    if (heroKo && (heroKo.textContent === 'Loading…' || heroKo.textContent === 'Loading...')) {
-      console.warn('[HARD FALLBACK] Topic still loading after 15s — forcing fallback');
-      _applyFallbackTopic(kstDateKey());
-    }
-  }, 15000);
+  // Hard fallback used to live here at 15s, but it was registered
+  // INSIDE the async body — meaning any throw above it never installed
+  // the timer. The replacement guard is now the very first statement
+  // of the IIFE at the top of this function (12s).
   // Removed: loadPicturePromptsFromDB, loadDBHelpers, loadDBGrammar, loadAllTopics, preloadSentenceArticles
   // These are now covered by loadDailyContent or deferred to when actually needed
   if (window._isAdmin) {
@@ -406,10 +438,30 @@ function _khStudyRoomInit() {
   }
   })();
 }
+// _khStudyRoomInit returns a promise (it's an async IIFE wrapper). Without
+// a .catch handler at the call site, any rejection inside init was
+// completely silent — no error toast, no visible failure, just a forever
+// "Loading…" placeholder. Surface the failure and force the fallback so
+// the user gets a usable page either way.
+function _khStudyRoomInitSafe() {
+  var p;
+  try { p = _khStudyRoomInit(); }
+  catch (e) {
+    console.error('[STUDY-ROOM init] synchronous throw:', e);
+    try { if (typeof _applyFallbackTopic === 'function') _applyFallbackTopic(kstDateKey()); } catch(_) {}
+    return;
+  }
+  if (p && typeof p.catch === 'function') {
+    p.catch(function(e) {
+      console.error('[STUDY-ROOM init] async rejection:', e);
+      try { if (typeof _applyFallbackTopic === 'function') _applyFallbackTopic(kstDateKey()); } catch(_) {}
+    });
+  }
+}
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _khStudyRoomInit);
+  document.addEventListener('DOMContentLoaded', _khStudyRoomInitSafe);
 } else {
-  _khStudyRoomInit();
+  _khStudyRoomInitSafe();
 }
 
 // Derive a fallback word_order_words from the picture's sample_answer
