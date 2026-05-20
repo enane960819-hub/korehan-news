@@ -112,10 +112,20 @@ Tally: top-5 (#7Z/#7AA/#7AB/#7AC) + server cron (#7Q) + admin sweep
 (#7AD) = 16+ generation paths now have grammar guards. The "16 of 18
 remaining" line item in the original audit is essentially closed.
 
+Additional study-room.js paths covered in PR #7AF via a parallel
+`_skrGrammarRulesBlock()` helper:
+- `phrase-munch` (lesson example + practice generation)
+- `speaking_feedback` (corrections[].corrected output)
+- `dictation-gen` (Korean dictation sentences)
+- `nuance-quiz-gen` (TOPIK 5-6 near-synonym quiz Korean)
+- Plus added rule #5 (spacing) to the existing `study-room-daily`
+  inline block (it only had rules 1-4 from #7Q).
+
 Outstanding feature-specific paths (lower priority, add if a bug
 report surfaces):
-- `weak-grammar-drill`, `grammar-focus`, `quiz`, `tutor-feedback`,
-  `summary-check`, `admin-lq-gen`, `article-analyze`,
+- `topic-common-mistakes`, `key-expr-situation-quiz`,
+  `ke-situations*`, `beginner-sentences`, `grammar-curriculum`,
+  `grammar-focus` × 2, `weak-grammar-drill`, `gf-judge-gen`,
   `article-study-admin` — produce Korean but lower per-impression
   volume than the paths above.
 - Translation features (`translate`, `translation`,
