@@ -1460,6 +1460,29 @@ function _skrGrammarRulesBlock() {
     + '   (갔다 ✓ / 가았다 ✗).\n';
 }
 
+// Scoped variant for prompts that intentionally produce BOTH correct and
+// incorrect Korean output (grammar-focus / grammar-curriculum / article-
+// study-admin / topic-common-mistakes / weak-grammar-drill / gf-judge-gen).
+// The rules apply only to the "correct"-labeled fields; the wrong/
+// incorrect_examples fields are explicitly exempt so the model can still
+// produce realistic, varied error examples for the learner to study.
+function _skrGrammarRulesScopedBlock() {
+  return '\n\nKOREAN GRAMMAR RULES — apply to CORRECT-Korean output ONLY '
+    + '(examples[].ko, correction fields, "right" fields, phrases[].ko, '
+    + 'and any teacher-modeled answer):\n'
+    + '1. PSYCH-VERB 1st/3rd PERSON: 1st-person (저/나/우리) → bare form (저는 슬퍼요);\n'
+    + '   3rd-person → MUST use "-아/어 하다" (✓ 동생은 슬퍼해요 / ✗ 동생은 슬퍼요).\n'
+    + '   Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다.\n'
+    + '2. SUBJECT-PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flipping in correct examples.\n'
+    + '3. FORMALITY: pick ONE register per correct example sentence; do not mix.\n'
+    + '4. TENSE AGREEMENT inside a correct-example clause.\n'
+    + '5. SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach directly (갔다 ✓).\n'
+    + 'INTENTIONALLY-WRONG fields (incorrect_examples[].ko, "wrong" / "wrong_phrases[].ko",\n'
+    + 'error-demonstration output) are EXEMPT — those are MEANT to violate the rules\n'
+    + 'and teach learners what to avoid. The paired "correction" / "right" field for\n'
+    + 'each wrong example MUST itself satisfy the rules above.\n';
+}
+
 async function _generateAndSaveDailyContent(date, opts) {
   if (!supaUser) { showLoginWall(); return; }
   var silent = !!(opts && opts.silent);
@@ -2571,6 +2594,7 @@ async function khLoadCommonMistakes() {
         + 'CRITICAL: "wrong" and "right" MUST differ. The "wrong" version must contain the actual error (e.g. the wrong particle). Do NOT return the same sentence for both.\n\n'
         + 'Return ONLY a JSON array — no markdown, no commentary.\n'
         + 'Format: [{"label":"...","wrong":"...","right":"...","why":"..."}]'
+        + _skrGrammarRulesScopedBlock()
       }]
     });
     var txt = (res && res.content && res.content[0] && res.content[0].text) || '[]';
@@ -13083,7 +13107,8 @@ async function generateBeginnerSentences() {
       + '조건:\n- 각 문장은 서로 이어지는 짧은 이야기\n- 현재형(~아요/어요/이에요) 위주\n- 문장당 4-8개 어절\n- 기초 어휘만 사용\n'
       + '- 한국에서 통용되는 외래어/관례 표현을 그대로 써. 영어 복합어를 글자 그대로 번역하지 마.\n'
       + '  (예: "black coffee" → "블랙커피" ✅ / "검은 커피" ❌, "ice cream" → "아이스크림" ✅, "smart phone" → "스마트폰" ✅)\n\n'
-      + '형식:\n{"sentences":[{"ko":"한국어 문장","en":"English translation"}]}';
+      + '형식:\n{"sentences":[{"ko":"한국어 문장","en":"English translation"}]}'
+      + _skrGrammarRulesBlock();
 
     var result = await callClaude({
       feature: 'beginner-sentences',
@@ -14835,6 +14860,7 @@ async function _generateGrammarForCurriculumPattern(item) {
         + 'IMPORTANT for incorrect_examples: make the error subtle and realistic, not obvious. The correct sentence in "correction" must fix ONLY the grammar error.\n\n'
         + 'Return ONLY valid JSON:\n'
         + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}],"incorrect_examples":[{"ko":"...","en":"...","error_type":"...","correction":"..."}]}]}'
+        + _skrGrammarRulesScopedBlock()
       }]
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
@@ -15223,6 +15249,7 @@ async function generateGFPatterns() {
         + 'IMPORTANT: incorrect_examples must be subtle and realistic — not obviously wrong. correction fixes ONLY the grammar error.\n\n'
         + 'Return ONLY valid JSON:\n'
         + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}],"incorrect_examples":[{"ko":"...","en":"...","error_type":"...","correction":"..."}]}]}'
+        + _skrGrammarRulesScopedBlock()
       }]
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
@@ -15363,6 +15390,7 @@ async function generateWGDrillQuestions(grammarName, opts) {
         + '{"explanation":"Brief English explanation of this grammar (2 sentences max)",'
         + '"examples":[{"ko":"...","en":"...","note":"..."}],'
         + '"questions":[{"q":"question text","choices":["raw answer text","raw answer text","raw answer text"],"correct":0,"hint":"short English hint why correct"}]}'
+        + _skrGrammarRulesScopedBlock()
       }]
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || '';
@@ -15663,6 +15691,7 @@ async function generateGFPatternsForFocus(focusName) {
         + '- incorrect_examples: exactly 2 [{ko, en, error_type, correction}] — realistic sentences with a grammar mistake. error_type: CONJUGATION|PARTICLE|TENSE|FORMALITY|WORD_ORDER. correction: the fixed Korean sentence.\n\n'
         + 'Return ONLY valid JSON:\n'
         + '{"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}],"incorrect_examples":[{"ko":"...","en":"...","error_type":"...","correction":"..."}]}]}'
+        + _skrGrammarRulesScopedBlock()
       }]
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || res.text || '';
@@ -16127,6 +16156,7 @@ function loadGFBuild(p) {
           + ' 3. The "correction" must DIFFER from "ko" in exactly the part the pattern targets, and must FIX an actual grammar mistake (wrong conjugation, missing required particle, wrong tense form, broken honorific level, scrambled word order that changes meaning).\n'
           + ' 4. If you cannot produce 2 unambiguously wrong sentences, return [].\n'
           + 'Return ONLY a JSON array: [{"ko":"incorrect sentence","en":"English translation","error_type":"CONJUGATION|PARTICLE|TENSE|FORMALITY|WORD_ORDER","correction":"correct Korean sentence"}]'
+          + _skrGrammarRulesScopedBlock()
         }]
       }).then(function(res) {
         try {
@@ -18160,7 +18190,8 @@ async function _asAdminGenerate(ev) {
       // Inline fallback for when the admin helper isn't loaded on this
       // page. Admin-side only, so the cost concern doesn't apply.
       var prompt = 'Korean news article study content. Title: ' + (_asCurrentArt.title||'') + '\nBody:\n' + (_asCurrentArt.body||'').slice(0,1600)
-        + '\n\nReturn ONLY JSON: {"vocab":[{"ko":"","en":"","rom":""}], "phrases":[{"ko":"","en":""}], "wrong_phrases":[{"ko":"","en":""}], "word_order":[{"chunks":["",""]}], "questions":[{"q":"","options":["","","",""],"correct":0}]} — 6 vocab, 3 phrases, 3 wrong_phrases, 3 word_order, 3 questions.';
+        + '\n\nReturn ONLY JSON: {"vocab":[{"ko":"","en":"","rom":""}], "phrases":[{"ko":"","en":""}], "wrong_phrases":[{"ko":"","en":""}], "word_order":[{"chunks":["",""]}], "questions":[{"q":"","options":["","","",""],"correct":0}]} — 6 vocab, 3 phrases, 3 wrong_phrases, 3 word_order, 3 questions.'
+        + _skrGrammarRulesScopedBlock();
       var data = await callClaude({ feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:1800, messages:[{role:'user',content:prompt}] });
       var raw = (data.content||[]).map(function(c){return c.text||'';}).join('');
       var cl = raw.replace(/```json|```/g,'').trim();
