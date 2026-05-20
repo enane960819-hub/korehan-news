@@ -9081,6 +9081,43 @@ async function _triggerPackageFeedback(submissionId, items) {
       + '- If the topic prompted polite speech (요/습니다) but the student wrote 반말, mention it in naturalness, NOT corrections.\n\n'
       + '── ANTI-REDUNDANCY ──\n'
       + 'Do NOT repeat the same issue across fields. If a particle is missing, surface it ONCE — either in corrections OR naturalness.comment, never both. If the issue is already in corrections, naturalness should comment on something different (overall flow, register fit, naturalness of word choice).\n\n'
+      // KOREAN GRAMMAR RULES — added 2026-05-20 (PR #7AA, AI grammar audit
+      // Path 2). Writing feedback returns Korean to the student in
+      // `corrected_full` and `corrections[].corrected`. Pre-7AA these
+      // Korean strings had no grammar guarantees beyond the model's own
+      // judgement — bugs like "동생은 슬퍼요" (3rd-person bare adjective)
+      // could leak through as "corrected" output and the student would
+      // learn the wrong form. Mirrors the rule block landed in article-
+      // body gen (#7Z) and daily-content-gen (#7Q), with the formality
+      // rule rewritten for writing feedback: match the student's original
+      // register, do NOT promote/demote it.
+      + '── KOREAN GRAMMAR RULES (Korean strings ONLY: "corrected_full" + every "corrected" snippet) ──\n'
+      + 'These are what the student LEARNS FROM. They must be correct.\n'
+      + '1. PSYCH-VERB 1st/3rd PERSON ASYMMETRY (do not violate):\n'
+      + '   • 1st-person (저/나/우리) — bare feeling form: ✓ 저는 가고 싶어요 / 저는 슬퍼요 / 저는 무서워요.\n'
+      + '   • 3rd-person (이름/그/그녀/사람들/아이들/우리 가족) — MUST use "-아/어 하다":\n'
+      + '     ✓ 동생은 슬퍼해요    ✗ 동생은 슬퍼요\n'
+      + '     ✓ 그는 무서워해요    ✗ 그는 무서워요\n'
+      + '     ✓ 아이들은 만들고 싶어 해요    ✗ 아이들은 만들고 싶어요\n'
+      + '   Applies to: 싶다→싶어 하다, 슬프다→슬퍼하다, 기쁘다→기뻐하다,\n'
+      + '   무섭다→무서워하다, 싫다→싫어하다, 부끄럽다→부끄러워하다, 좋다→좋아하다.\n'
+      + '2. SUBJECT-PARTICLE CONSISTENCY: a clause must not flip 은/는 ↔ 이/가 for the\n'
+      + '   same referent mid-clause.\n'
+      + '3. FORMALITY MATCH (critical here — different from generic news text):\n'
+      + '   Match the register of the STUDENT\'S original. 해요체 in → 해요체 out;\n'
+      + '   반말 in → 반말 out; 합쇼체 in → 합쇼체 out. DO NOT promote a casual piece\n'
+      + '   into 합쇼체 or demote a formal piece into 반말 — that is a register\n'
+      + '   CHANGE, not a correction. Register suggestions belong in\n'
+      + '   naturalness.comment, never inside corrected_full. Within one\n'
+      + '   corrected_full / corrected snippet, do not mix registers.\n'
+      + '4. TENSE AGREEMENT: every verb in the same clause must agree with the\n'
+      + '   sentence\'s temporal anchor (어제/지금/내일/…).\n'
+      + '5. SPACING (띄어쓰기): keep auxiliary verbs separate from the lexical verb\n'
+      + '   (✓ 가고 싶다, 읽고 있다, 만들어 주다 / ✗ 가고싶다, 읽고있다, 만들어주다).\n'
+      + '   Tense/aspect endings (~았/었/는/ㄴ) attach directly to the stem with no\n'
+      + '   space (✓ 갔다, 했다, 읽었다 / ✗ 가았다, 하 았다, 읽 었다). When the student\'s\n'
+      + '   ACTUAL mistake is a spacing error, fix it in the corrected snippet.\n'
+      + '   Do NOT invent spacing "corrections" for text that\'s already spaced fine.\n\n'
       + 'The student completed ' + items.length + ' separate activit' + (items.length > 1 ? 'ies' : 'y') + '. Review them INDEPENDENTLY — do not mix content across activities.\n\n'
       + 'CONCISENESS — phone-readable:\n'
       + '- "overall_assessment", "overall", "naturalness.comment": ONE sentence each (≤15 words).\n'
@@ -11773,9 +11810,29 @@ async function checkPictureDescription() {
     clarity:'누가 무엇을 하는지 순서대로 쓰면 더 명확해집니다.'
   };
   try {
+    // Picture-description prompt previously had no grammar guardrails —
+    // just a single-line "Korean writing coach" role string. AI-grammar
+    // audit Path 3 (PR #7AA) adds the same 5-rule block landed in
+    // article body gen (#7Z) + writing feedback (Path 2 of #7AA).
+    // The Korean outputs here are `corrected` (rewrite of student text)
+    // and `sample` (model answer); both must be grammatically clean
+    // because students see them as the "correct" version.
     var prompt = 'You are a Korean writing coach.\n'
       + 'Image prompt: ' + item.prompt_ko + '\n'
       + 'Student text:\n' + text + '\n\n'
+      + 'KOREAN GRAMMAR RULES — apply to "corrected" and "sample" Korean output:\n'
+      + '1. PSYCH-VERB 1st/3rd PERSON:\n'
+      + '   1st-person (저/나/우리) → bare form: 저는 슬퍼요, 저는 가고 싶어요.\n'
+      + '   3rd-person (그/그녀/이름/사람들/아이들) → "-아/어 하다" form:\n'
+      + '   ✓ 동생은 슬퍼해요, 아이들은 만들고 싶어 해요.\n'
+      + '   ✗ 동생은 슬퍼요, 아이들은 만들고 싶어요.\n'
+      + '   Same for: 싶다/슬프다/기쁘다/무섭다/싫다/부끄럽다/좋다.\n'
+      + '2. PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flipping for same referent.\n'
+      + '3. FORMALITY MATCH the student\'s register. 해요체 in → 해요체 out; 반말 in → 반말 out.\n'
+      + '   "sample" should also match the level\'s expected register, not promote/demote.\n'
+      + '4. TENSE: verbs in a clause agree with the temporal anchor.\n'
+      + '5. SPACING: auxiliary verbs stay separate (가고 싶다 ✓, 가고싶다 ✗); tense endings\n'
+      + '   attach directly to the stem (갔다 ✓, 가았다 ✗).\n\n'
       + 'Return JSON only: {"corrected":"...","grammar":"...","vocab":"...","clarity":"...","sample":"..."}';
     var data = await callClaude({
       feature: 'study_room_picture_description',
