@@ -41,15 +41,29 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 /* Target display — now shows the WHOLE WORD, with one syllable
    highlighted as the one being built. The build-progress slots show the
    current syllable's jamo state. */
-.target-area{display:flex;align-items:center;justify-content:center;gap:14px;padding:8px 0;flex-shrink:0;flex-wrap:wrap}
-.target-word{display:flex;flex-direction:column;align-items:center;gap:2px}
-.target-char{font-size:42px;font-weight:900;color:#fff;text-shadow:0 0 28px rgba(125,211,252,.5),0 0 56px rgba(125,211,252,.18);font-family:'Noto Sans KR',sans-serif;transition:all .3s;display:flex;gap:6px;line-height:1.05}
-.target-char.done{animation:targetPop .5s ease}
-.target-char .tg-syl{display:inline-block;transition:color .2s,text-shadow .2s,opacity .2s,transform .2s}
-.target-char .tg-syl.done{color:#4ade80;text-shadow:0 0 18px rgba(74,222,128,.55)}
-.target-char .tg-syl.current{color:#fff;text-shadow:0 0 32px rgba(125,211,252,.8),0 0 60px rgba(125,211,252,.35);transform:scale(1.04)}
-.target-char .tg-syl.pending{color:rgba(255,255,255,.32);text-shadow:none}
-.target-mean{font-size:13px;font-weight:700;color:#94a3b8;font-family:'DM Sans','Noto Sans KR',sans-serif;letter-spacing:.02em}
+.target-area{display:flex;align-items:center;justify-content:center;gap:18px;padding:10px 0 6px;flex-shrink:0;flex-wrap:wrap}
+.target-word{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:160px}
+/* Romanization — the player's PRIMARY clue. Large, bright, italic so it
+   reads as the prompt-to-decode rather than chrome text. */
+.target-rom{font-size:30px;font-weight:900;letter-spacing:.04em;color:#fff;text-shadow:0 0 22px rgba(125,211,252,.55),0 0 40px rgba(124,58,237,.25);font-family:'DM Sans','Source Sans 3',sans-serif;font-style:italic;line-height:1.1}
+.target-mean{font-size:13px;font-weight:700;color:#cbd5e1;font-family:'DM Sans','Noto Sans KR',sans-serif;letter-spacing:.02em;text-shadow:0 0 12px rgba(0,0,0,.5)}
+/* Syllable placeholder row. Each box represents ONE syllable in the
+   target word; sized smaller than the build-progress slots since those
+   are per-jamo. Each placeholder is "◯" by default and animates to the
+   Korean character when revealed (timer/life loss/syllable done). */
+.target-syllables{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:4px}
+.ts-syl{min-width:30px;height:30px;padding:0 6px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1.5px solid rgba(125,211,252,.22);background:rgba(125,211,252,.04);font-family:'Noto Sans KR',sans-serif;font-size:18px;font-weight:900;color:rgba(255,255,255,.7);transition:color .35s ease,background .35s ease,border-color .35s ease,text-shadow .35s ease,transform .35s ease}
+.ts-syl.locked{color:rgba(125,211,252,.45)}
+.ts-syl.current{border-color:rgba(125,211,252,.6);background:rgba(125,211,252,.10);animation:tsPulse 1.4s ease-in-out infinite}
+.ts-syl.revealed{color:#fff;text-shadow:0 0 16px rgba(125,211,252,.7);background:rgba(125,211,252,.14);border-color:rgba(125,211,252,.55)}
+.ts-syl.done{color:#4ade80;text-shadow:0 0 16px rgba(74,222,128,.6);background:rgba(74,222,128,.10);border-color:rgba(74,222,128,.5);transform:scale(1.05)}
+@keyframes tsPulse{0%,100%{box-shadow:0 0 0 rgba(125,211,252,0)}50%{box-shadow:0 0 14px rgba(125,211,252,.4)}}
+/* Time bar — visualises per-word time pressure. Fill drains from 100%
+   to 0%; colour shifts from cyan → amber → red as it crosses the
+   urgent threshold (≤35%). */
+.target-timebar{width:100%;max-width:200px;height:4px;border-radius:999px;background:rgba(255,255,255,.05);overflow:hidden;margin-top:6px}
+.target-timebar-fill{height:100%;width:100%;background:linear-gradient(90deg,#22d3ee,#7dd3fc);transition:width .25s linear,background .35s ease;border-radius:999px}
+.target-timebar-fill.urgent{background:linear-gradient(90deg,#f59e0b,#ef4444);box-shadow:0 0 14px rgba(239,68,68,.5)}
 @keyframes targetPop{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
 .build-progress{display:flex;gap:6px;align-items:center;font-size:22px;font-weight:900;font-family:'Noto Sans KR',sans-serif}
 .bp-slot{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:2px solid rgba(125,211,252,.3);color:#7dd3fc;font-size:20px;transition:all .2s}
@@ -82,11 +96,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 
 @media(max-width:500px){
   .game-title{font-size:15px}
-  .target-char{font-size:34px}
-  .target-char .tg-syl{display:inline-block}
+  .target-rom{font-size:24px}
   .target-mean{font-size:11px}
+  .ts-syl{min-width:26px;height:26px;font-size:15px;padding:0 5px}
   .bp-slot{width:30px;height:30px;font-size:17px}
-  .target-area{gap:10px;padding:6px 0}
+  .target-area{gap:12px;padding:6px 0}
+  .target-word{min-width:130px}
 }
 #kh-daily-mission,#vocab-admin-bar,.mobile-bottom-nav,.mobile-sticky-study,#kh-header,#kh-footer{display:none!important}
 </style>
@@ -103,10 +118,29 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
     </div>
   </div>
 
+  <!-- Target area, redesigned in PR #7AM:
+       - The Korean word is no longer shown by default. Player sees the
+         English meaning + romanization + a row of syllable placeholders
+         (one per syllable) and has to DEDUCE which jamo to catch.
+       - Each placeholder reveals its Korean character only when the
+         syllable is completed, OR when the per-word time bar dips into
+         the urgent zone, OR when the player loses a life on this word.
+       - Build slots for the CURRENT syllable show "?" until a jamo is
+         caught (then they reveal what was caught). No more pre-display
+         of the answer jamo. -->
   <div class="target-area">
     <div class="target-word">
-      <div class="target-char" id="target-char">한</div>
+      <!-- target-rom is the PRIMARY hint — large romanization with
+           subtle glow. target-mean is the English meaning below. -->
+      <div class="target-rom" id="target-rom">···</div>
       <div class="target-mean" id="target-mean"></div>
+      <!-- target-syllables is the row of one-box-per-syllable Korean
+           placeholders. Each box stays "◯" until revealed. -->
+      <div class="target-syllables" id="target-syllables"></div>
+      <!-- target-timebar is the per-word time pressure indicator. The
+           fill drains as the word ages out; tint shifts to amber/red
+           in the urgent zone. -->
+      <div class="target-timebar"><div class="target-timebar-fill" id="target-timebar-fill"></div></div>
     </div>
     <div class="build-progress" id="build-progress">
       <div class="bp-slot empty" id="bp-0">?</div>
@@ -230,6 +264,32 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
     return syllables;
   }
 
+  // PR #7AM Revised-Romanization tables. Only cho/jung/jong values the
+  // game can actually feature appear here — diphthongs and compound
+  // finals are filtered out by `_wordIsBuildable` before a word reaches
+  // the play pool. Slight liberties for player-friendliness:
+  //   - ㅇ at chosung is silent (omit from output).
+  //   - ㄹ chosung romanizes to 'r' (Revised) rather than 'l'.
+  //   - All jong consonants use their pronunciation-stop forms (ㄱ→k,
+  //     ㅂ→p, etc.) since that's what the player would sound out.
+  var _ROM_CHO = {'ㄱ':'g','ㄲ':'kk','ㄴ':'n','ㄷ':'d','ㄸ':'tt','ㄹ':'r','ㅁ':'m','ㅂ':'b','ㅃ':'pp','ㅅ':'s','ㅆ':'ss','ㅇ':'','ㅈ':'j','ㅉ':'jj','ㅊ':'ch','ㅋ':'k','ㅌ':'t','ㅍ':'p','ㅎ':'h'};
+  var _ROM_JUNG = {'ㅏ':'a','ㅐ':'ae','ㅑ':'ya','ㅒ':'yae','ㅓ':'eo','ㅔ':'e','ㅕ':'yeo','ㅖ':'ye','ㅗ':'o','ㅘ':'wa','ㅙ':'wae','ㅚ':'oe','ㅛ':'yo','ㅜ':'u','ㅝ':'wo','ㅞ':'we','ㅟ':'wi','ㅠ':'yu','ㅡ':'eu','ㅢ':'ui','ㅣ':'i'};
+  var _ROM_JONG = {'ㄱ':'k','ㄲ':'k','ㄴ':'n','ㄷ':'t','ㄹ':'l','ㅁ':'m','ㅂ':'p','ㅅ':'t','ㅆ':'t','ㅇ':'ng','ㅈ':'t','ㅊ':'t','ㅋ':'k','ㅌ':'t','ㅍ':'p','ㅎ':'h'};
+  function _romSyllable(syl) {
+    var d = decompose(syl);
+    if (!d) return '';
+    var s = (_ROM_CHO[d.cho] || '') + (_ROM_JUNG[d.jung] || '');
+    if (d.jong) s += (_ROM_JONG[d.jong] || '');
+    // ㅇ chosung followed by a vowel produces empty string + vowel — fine,
+    // but if the whole syllable started with ㅇ and result begins with a
+    // vowel the joining via '-' still reads naturally.
+    return s;
+  }
+  function _romWord(syls) {
+    if (!syls || !syls.length) return '';
+    return syls.map(_romSyllable).join('-');
+  }
+
   // Skip diphthongs (ㅘ/ㅙ/ㅚ/ㅝ/ㅞ/ㅟ/ㅢ/ㅒ/ㅖ) and compound finals so we
   // can always catch every syllable with a single falling block.
   var _SIMPLE_JUNG_SET = {'ㅏ':1,'ㅐ':1,'ㅑ':1,'ㅓ':1,'ㅔ':1,'ㅕ':1,'ㅗ':1,'ㅛ':1,'ㅜ':1,'ㅠ':1,'ㅡ':1,'ㅣ':1};
@@ -328,6 +388,20 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
   var stars = [];
   var bgPulse = 0;
   var paddleGlowDir = 0;
+  // PR #7AM hide-the-answer state:
+  //   wordStartTime  — Date.now() snapshot when pickWord() ran.
+  //   wordTimeLimit  — total ms the player gets to complete the word.
+  //                    Scales with syllable count (longer words → more
+  //                    time, but still under pressure).
+  //   revealedSyls   — Set of syllable indices whose Korean character
+  //                    has been revealed to the player. Once revealed,
+  //                    sticky for the rest of the word; reset on
+  //                    pickWord(). Sources of reveal: time bar dipping
+  //                    into the urgent zone, a wrong catch on the
+  //                    current syllable, or losing a life.
+  var wordStartTime = 0;
+  var wordTimeLimit = 0;
+  var revealedSyls = Object.create(null);
 
   function init() {
     canvas = document.getElementById('game-canvas');
@@ -370,7 +444,6 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
   function pickWord() {
     var pool = level <= 3 ? WORDS_EASY : level <= 7 ? WORDS_MED : WORDS_HARD;
     if (!pool || !pool.length) pool = WORDS_EASY.length ? WORDS_EASY : _FALLBACK_WORDS_EASY;
-    // Avoid repeating the same word back-to-back.
     var pick;
     for (var t = 0; t < 8; t++) {
       pick = pool[Math.floor(Math.random() * pool.length)];
@@ -380,6 +453,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
     currentWord = pick || pool[0];
     currentWordSyls = _extractSyllables(currentWord.ko);
     currentSylIdx = 0;
+    // PR #7AM: reset per-word reveal state and start the time bar.
+    revealedSyls = Object.create(null);
+    wordStartTime = Date.now();
+    // Time budget: 9s per syllable + 4s baseline. Scales DOWN at higher
+    // levels so the player feels time pressure ramp up alongside speed.
+    var perSyl = Math.max(5500, 9000 - (level - 1) * 400);
+    wordTimeLimit = 4000 + perSyl * currentWordSyls.length;
     startSyllable();
   }
 
@@ -405,32 +485,53 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
     updateTargetUI();
   }
 
-  // Render the *whole word* with one syllable highlighted as "currently
-  // being built" (shown as the jamo build slots). Syllables before the
-  // current one are locked in green; syllables after it are dimmed.
+  // PR #7AM: target UI no longer reveals the Korean word or the
+  // expected jamo for each slot. The player sees the romanization +
+  // English meaning + per-syllable placeholders (showing "?" until
+  // each syllable is revealed or completed). They MUST decode the
+  // sound → Korean mapping themselves. Build slots show "?" until a
+  // jamo is caught; only then do they reveal what was caught.
   function updateTargetUI() {
-    var targetEl = document.getElementById('target-char');
-    if (!targetEl) return;
-    targetEl.className = 'target-char';
-    if (currentWordSyls && currentWordSyls.length > 1) {
-      // Render each syllable as a span — done / current / pending state.
-      var html = '';
-      for (var s = 0; s < currentWordSyls.length; s++) {
-        var cls = 'tg-syl';
-        if (s < currentSylIdx) cls += ' done';
-        else if (s === currentSylIdx) cls += ' current';
-        else cls += ' pending';
-        html += '<span class="' + cls + '">' + currentWordSyls[s] + '</span>';
-      }
-      targetEl.innerHTML = html;
-    } else {
-      targetEl.textContent = currentTarget || '';
-    }
-    // Show the English meaning of the word as a small subtitle.
+    // Romanization — the player's primary clue.
+    var romEl = document.getElementById('target-rom');
+    if (romEl) romEl.textContent = (currentWordSyls && currentWordSyls.length) ? _romWord(currentWordSyls) : '···';
+
+    // English meaning subtitle.
     var meanEl = document.getElementById('target-mean');
     if (meanEl) meanEl.textContent = (currentWord && currentWord.en) ? currentWord.en : '';
 
-    // Build slots for the current syllable.
+    // Per-syllable placeholder row. Each placeholder shows the Korean
+    // character when:
+    //   - that syllable is already completed (.done),
+    //   - that syllable is current AND has been revealed (timer ran
+    //     into the urgent zone, a wrong catch happened, or a life
+    //     was lost on this word),
+    //   - that syllable is locked AND its index is in revealedSyls
+    //     (currently no path sets this for non-current locked syls,
+    //     but the check stays general for forward-compat).
+    var sylEl = document.getElementById('target-syllables');
+    if (sylEl) {
+      var html = '';
+      for (var s = 0; s < currentWordSyls.length; s++) {
+        var ch = currentWordSyls[s];
+        var isDone = s < currentSylIdx;
+        var isCurrent = s === currentSylIdx;
+        var isRevealed = isDone || revealedSyls[s];
+        var cls = 'ts-syl';
+        if (isDone) cls += ' done';
+        else if (isCurrent) cls += isRevealed ? ' current revealed' : ' current';
+        else cls += isRevealed ? ' revealed' : ' locked';
+        var content = isRevealed ? ch : '?';
+        html += '<span class="' + cls + '">' + content + '</span>';
+      }
+      sylEl.innerHTML = html;
+    }
+
+    // Build slots for the CURRENT syllable. The owner explicitly called
+    // out that pre-showing the answer jamo (the old "?" rows secretly
+    // hinting via slot order + count) was too easy — this version shows
+    // ONLY "?" for uncaught slots, and reveals what the player caught
+    // ONCE they catch it. Slot count = current syllable's jamo count.
     for (var i = 0; i < 3; i++) {
       var el = document.getElementById('bp-' + i);
       if (!el) continue;
@@ -452,20 +553,29 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
     }
   }
 
+  // PR #7AM helper: force-reveal the current syllable's Korean
+  // character. Triggered by wrong catches, life loss, and the time-bar
+  // urgent-zone threshold. Sticky for the rest of the word — once
+  // revealed it stays revealed.
+  function _revealCurrentSyllable() {
+    if (currentSylIdx >= 0 && currentSylIdx < currentWordSyls.length) {
+      if (!revealedSyls[currentSylIdx]) {
+        revealedSyls[currentSylIdx] = true;
+        updateTargetUI();
+      }
+    }
+  }
+
   function spawnBlock() {
     var needed = targetParts[buildIdx];
     if (needed === undefined || needed === null) return; // No more parts to build
-    // PR #7AL bug fix: #7AK's `maxCount = min(3, 1 + level/3)` evaluated
-    // to maxCount=1 at level 1, which meant `count` collapsed to exactly
-    // 1 every wave — only the correct jamo, no distractors, no choice.
-    // Owner-reported "ㄱ만 나오는데 뭐임?" with screenshot showing 5 ㄱ
-    // blocks falling for a "개" target.
-    // New formula: always at least 2 (1 correct + 1 distractor) so every
-    // wave is a real decision. Scales up to 4 by mid-game. Still well
-    // under the pre-7AK 2-5 cap so the field stays uncluttered with
-    // persistence on.
-    var minCount = 2;
-    var maxCount = Math.min(4, 2 + Math.floor(level / 3));
+    // PR #7AM: more variety per wave — owner: "다양하게 떨궈야지 무슨소리야."
+    // Each wave now spawns the correct jamo + 2-4 distinct distractors.
+    // Combined with the stale-fade logic, multiple recent waves'
+    // distractors persist on screen briefly, so the player sees a busy
+    // mix of jamo at any moment rather than the same letter repeated.
+    var minCount = 3;
+    var maxCount = Math.min(5, 3 + Math.floor(level / 3));
     var count = minCount + Math.floor(Math.random() * (maxCount - minCount + 1));
     var jamos = [needed];
     // `phaseClass` is the jamo CLASS this block belongs to. Persisting
@@ -606,9 +716,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
             }
           }
         } else {
-          // Wrong catch — life lost + shake the field.
+          // Wrong catch — life lost + shake + reveal the current
+          // syllable's Korean as a hint so the player can recover.
           lives--;
           shakeMs = 220;
+          _revealCurrentSyllable();
           updateUI();
           if (lives <= 0) endGame();
         }
@@ -652,6 +764,24 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
     // bgPulse exponential decay — catch spikes it to 1, every frame
     // multiplies by ~0.94 so it bleeds out over ~30 frames (~500ms).
     if (bgPulse > 0) bgPulse = Math.max(0, bgPulse * 0.94 - 0.005);
+    // PR #7AM: update the per-word time bar + auto-reveal Korean of
+    // the current syllable when the bar dips below 35% (urgent zone).
+    if (currentWord && wordTimeLimit > 0) {
+      var elapsed = Date.now() - wordStartTime;
+      var remain = Math.max(0, 1 - elapsed / wordTimeLimit);
+      var tbFill = document.getElementById('target-timebar-fill');
+      if (tbFill) {
+        tbFill.style.width = (remain * 100).toFixed(1) + '%';
+        if (remain <= 0.35) tbFill.classList.add('urgent');
+        else tbFill.classList.remove('urgent');
+      }
+      // Auto-reveal current syllable when urgent threshold hits, and
+      // again when time fully expires (reveal as gentle assist before
+      // the player just runs the clock down for free).
+      if (remain <= 0.35 && currentSylIdx < currentWordSyls.length && !revealedSyls[currentSylIdx]) {
+        _revealCurrentSyllable();
+      }
+    }
     // paddleGlowDir decays toward 0 so the directional bias fades when
     // the player stops moving.
     if (paddleGlowDir !== 0) {
@@ -753,59 +883,45 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
     ctx.beginPath();
     ctx.roundRect(px, py, pw, 14, 7);
     ctx.stroke();
-    // Blocks. Three-layer rendering (drop shadow → fill gradient → text
-    // with subtle glow) + dynamic opacity for stale-class blocks fading
-    // out per PR #7AK's staleness logic.
-    var liveNeeded = targetParts[buildIdx];
+    // Blocks. PR #7AM: removed the live-correct highlight.
+    // Owner: "떨어지는 자모 카드들 정답을 하이라이트 해주지 말라고."
+    // ALL blocks now render with the SAME neon-cyan gradient — the
+    // player has to recognise the correct jamo themselves from the
+    // romanization clue. Stale-class blocks still fade out per the
+    // staleness logic so phase transitions stay clean.
     blocks.forEach(function(b) {
       ctx.save();
-      var isLiveCorrect = (b.jamo === liveNeeded);
       var staleFade = b.staleMs > 0 ? Math.max(0, 1 - b.staleMs / 800) : 1;
       ctx.globalAlpha = staleFade;
-      // Drop shadow
-      if (isLiveCorrect && staleFade > 0.7) {
-        ctx.shadowColor = 'rgba(125,211,252,.7)';
-        ctx.shadowBlur = 22;
-      } else {
-        ctx.shadowColor = 'rgba(0,0,0,.4)';
-        ctx.shadowBlur = 8;
-      }
-      // Body — gradient fill so blocks have depth.
-      var bg;
-      if (isLiveCorrect) {
-        bg = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
-        bg.addColorStop(0, 'rgba(125,211,252,.35)');
-        bg.addColorStop(1, 'rgba(56,189,248,.55)');
-      } else {
-        bg = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
-        bg.addColorStop(0, 'rgba(255,255,255,.06)');
-        bg.addColorStop(1, 'rgba(255,255,255,.02)');
-      }
+      // Drop shadow — neon cyan for every block, fade with staleness.
+      ctx.shadowColor = 'rgba(125,211,252,.5)';
+      ctx.shadowBlur = 16;
+      // Body — uniform gradient fill so no block looks more correct.
+      var bg = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+      bg.addColorStop(0, 'rgba(125,211,252,.22)');
+      bg.addColorStop(1, 'rgba(56,189,248,.34)');
       ctx.fillStyle = bg;
       ctx.beginPath();
       ctx.roundRect(b.x, b.y, b.w, b.h, 12);
       ctx.fill();
       ctx.shadowBlur = 0;
-      // Border
-      ctx.strokeStyle = isLiveCorrect ? 'rgba(125,211,252,.85)' : 'rgba(255,255,255,.15)';
-      ctx.lineWidth = isLiveCorrect ? 2 : 1.5;
+      // Border — same colour and thickness for every block.
+      ctx.strokeStyle = 'rgba(125,211,252,.55)';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
-      // Inner highlight stroke (top edge) for a subtle 3D pop.
-      if (isLiveCorrect) {
-        ctx.strokeStyle = 'rgba(255,255,255,.45)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(b.x + 6, b.y + 1.5);
-        ctx.lineTo(b.x + b.w - 6, b.y + 1.5);
-        ctx.stroke();
-      }
-      // Jamo glyph
+      // Inner top-edge highlight stroke for the 3D rim — applied to
+      // every block so they all read with the same depth.
+      ctx.strokeStyle = 'rgba(255,255,255,.28)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(b.x + 6, b.y + 1.5);
+      ctx.lineTo(b.x + b.w - 6, b.y + 1.5);
+      ctx.stroke();
+      // Jamo glyph — bright white text on every block.
       ctx.font = 'bold 24px "Noto Sans KR", sans-serif';
-      ctx.fillStyle = isLiveCorrect ? '#ffffff' : 'rgba(224,242,254,.55)';
-      if (isLiveCorrect) {
-        ctx.shadowColor = 'rgba(125,211,252,.7)';
-        ctx.shadowBlur = 10;
-      }
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(125,211,252,.55)';
+      ctx.shadowBlur = 8;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(b.jamo, b.x + b.w/2, b.y + b.h/2);
