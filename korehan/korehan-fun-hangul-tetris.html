@@ -72,7 +72,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 <div class="wrap">
   <a href="korehan-fun.html" class="back">&larr; Playground</a>
   <div class="game-header">
-    <div class="game-title">🧱 Hangul Tetris</div>
+    <div class="game-title" style="display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;color:#7dd3fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg></span>Hangul Tetris</div>
     <div style="display:flex;gap:6px">
       <div class="stat">Score <span class="stat-val" id="g-score">0</span></div>
       <div class="stat">Lv <span class="stat-val" id="g-level">1</span></div>
@@ -101,7 +101,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 
   <div class="start-screen" id="start-screen">
     <a href="korehan-fun.html" class="back" style="position:absolute;top:16px;left:16px">&larr; Playground</a>
-    <div style="font-size:64px;margin-bottom:16px">🧱</div>
+    <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;color:#7dd3fc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg></span></div>
     <div style="font-size:26px;font-weight:900;margin-bottom:8px">Hangul Tetris</div>
     <div style="font-size:14px;color:#94a3b8;max-width:320px;text-align:center;line-height:1.6">자모 블록을 캐치해서 단어를 완성하세요! 한 글자씩 초성→중성→종성 순서대로, 단어 전체를 만들면 보너스 +점수.</div>
     <div style="font-size:12px;color:#64748b;margin-top:10px">← → or touch to move</div>
@@ -109,7 +109,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   </div>
 
   <div class="end-screen" id="end-screen" style="display:none">
-    <div style="font-size:64px;margin-bottom:16px" id="end-emoji">🏆</div>
+    <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:center" id="end-emoji"><span style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;color:#fbbf24"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a2 2 0 0 0 3 3.5"/><path d="M17 6h3a2 2 0 0 1-3 3.5"/><path d="M9 14h6l-1 4h-4z"/><path d="M8 21h8"/></svg></span></div>
     <div style="font-size:26px;font-weight:900;margin-bottom:4px">Game Over</div>
     <div style="font-size:38px;font-weight:900;color:#7dd3fc;margin:8px 0" id="end-score">0</div>
     <div style="font-size:14px;color:#94a3b8;margin-bottom:4px" id="end-stats"></div>
@@ -531,7 +531,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
               score += wordBonus;
               var fl = document.createElement('div');
               fl.className = 'combo-flash';
-              fl.textContent = currentWord.ko + ' ' + '+' + wordBonus;
+              fl.innerHTML = currentWord.ko + ' ' + khSvg('sparkle', {size:36, color:'#a78bfa', marginRight:6}) + '+' + wordBonus;
               document.body.appendChild(fl);
               setTimeout(function(){ fl.remove(); }, 800);
               // Word boundary IS a celebration moment — flash + clear is OK
@@ -658,8 +658,14 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
       localStorage.setItem('kh_hangul_tetris_best', String(bestScore));
     }
     if (window.playgroundScores) playgroundScores.submit('hangul-tetris', score, { wordsCleared: typeof wordsCleared !== 'undefined' ? wordsCleared : null, level: typeof level !== 'undefined' ? level : null });
-    var emoji = score >= 500 ? '🏆' : score >= 200 ? '⭐' : score >= 100 ? '👍' : '💪';
-    document.getElementById('end-emoji').textContent = emoji;
+    var iconHtml = score >= 500
+      ? khSvg('trophy', {size:64, color:'#fbbf24'})
+      : score >= 200
+        ? khSvg('star', {size:64, color:'#fbbf24'})
+        : score >= 100
+          ? khSvg('thumbs_up', {size:64, color:'#7dd3fc'})
+          : khSvg('sparkle', {size:64, color:'#a78bfa'});
+    document.getElementById('end-emoji').innerHTML = iconHtml;
     document.getElementById('end-score').textContent = score + ' pts';
     document.getElementById('end-stats').textContent = completed + ' syllables · level ' + level;
     document.getElementById('end-best').textContent = 'Best: ' + bestScore + ' pts';

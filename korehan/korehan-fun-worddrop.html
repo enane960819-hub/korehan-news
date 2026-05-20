@@ -86,11 +86,11 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 <div class="wrap" style="position:relative;z-index:1">
   <a href="korehan-fun.html" class="back">&larr; Playground</a>
   <div class="game-header" id="game-header" style="display:none">
-    <div class="game-title">🎯 Word Drop</div>
+    <div class="game-title"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:#fbbf24"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></span>Word Drop</div>
     <div style="display:flex;gap:5px">
       <div class="stat">Score <span class="stat-val" id="g-score">0</span></div>
       <div class="stat">Combo <span class="stat-val" id="g-combo">x1</span></div>
-      <div class="stat">&hearts; <span class="stat-val" id="g-lives">5</span></div>
+      <div class="stat" style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;color:#ef4444"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-7-4.6-9.2-9A5 5 0 0 1 12 6a5 5 0 0 1 9.2 5.5C19 15.9 12 20.5 12 20.5z"/></svg></span><span class="stat-val" id="g-lives">5</span></div>
       <div class="stat">Lv <span class="stat-val" id="g-level">1</span></div>
     </div>
   </div>
@@ -107,22 +107,22 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 
   <div class="menu-screen" id="menu-screen">
     <a href="korehan-fun.html" class="back" style="position:absolute;top:16px;left:16px">&larr; Playground</a>
-    <div style="font-size:52px;margin-bottom:10px">🎯</div>
+    <div style="margin-bottom:10px;display:flex;justify-content:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;color:#fbbf24"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/></svg></span></div>
     <div class="menu-title">Word Drop</div>
     <div class="menu-sub">단어가 떨어지기 전에 정답을 입력하세요!</div>
     <div class="menu-section">
       <div class="menu-label">Mode</div>
       <div class="mode-btns">
-        <button type="button" class="mode-btn on" data-mode="ko2en" onclick="setMode('ko2en')">🇰🇷→🇺🇸<br><span style="font-size:11px">한→영</span></button>
-        <button type="button" class="mode-btn" data-mode="en2ko" onclick="setMode('en2ko')">🇺🇸→🇰🇷<br><span style="font-size:11px">영→한</span></button>
+        <button type="button" class="mode-btn on" data-mode="ko2en" onclick="setMode('ko2en')">KO → EN<br><span style="font-size:11px">한→영</span></button>
+        <button type="button" class="mode-btn" data-mode="en2ko" onclick="setMode('en2ko')">EN → KO<br><span style="font-size:11px">영→한</span></button>
       </div>
     </div>
     <div class="menu-section">
       <div class="menu-label">Speed</div>
       <div class="speed-btns">
-        <button type="button" class="speed-btn" data-spd="slow" onclick="setSpeed('slow')">🐢 Slow</button>
-        <button type="button" class="speed-btn on" data-spd="normal" onclick="setSpeed('normal')">🏃 Normal</button>
-        <button type="button" class="speed-btn" data-spd="fast" onclick="setSpeed('fast')">⚡ Fast</button>
+        <button type="button" class="speed-btn" data-spd="slow" onclick="setSpeed('slow')">Slow</button>
+        <button type="button" class="speed-btn on" data-spd="normal" onclick="setSpeed('normal')">Normal</button>
+        <button type="button" class="speed-btn" data-spd="fast" onclick="setSpeed('fast')">Fast</button>
       </div>
     </div>
     <div class="menu-section">
@@ -133,7 +133,7 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   </div>
 
   <div class="end-screen" id="end-screen" style="display:none">
-    <div style="font-size:64px;margin-bottom:12px" id="end-emoji">🏆</div>
+    <div style="margin-bottom:12px;display:flex;justify-content:center" id="end-emoji"><span style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;color:#fbbf24"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a2 2 0 0 0 3 3.5"/><path d="M17 6h3a2 2 0 0 1-3 3.5"/><path d="M9 14h6l-1 4h-4z"/><path d="M8 21h8"/></svg></span></div>
     <div style="font-size:28px;font-weight:900;margin-bottom:4px">Game Over</div>
     <div style="font-size:36px;font-weight:900;color:#7dd3fc;margin-bottom:4px" id="end-score">0</div>
     <div style="font-size:14px;color:#94a3b8;margin-bottom:4px" id="end-stats"></div>
@@ -173,32 +173,32 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 <script>
 (function(){
 var _FALLBACK_TOPICS={
-  daily:{icon:'🏠',label:'Daily',words:[
+  daily:{icon:'',label:'Daily',words:[
     {ko:'친구',en:'friend'},{ko:'가족',en:'family'},{ko:'학교',en:'school'},{ko:'회사',en:'company'},
     {ko:'집',en:'house'},{ko:'시간',en:'time'},{ko:'사람',en:'person'},{ko:'이름',en:'name'},
     {ko:'약속',en:'promise'},{ko:'선물',en:'gift'},{ko:'생일',en:'birthday'},{ko:'학생',en:'student'},
     {ko:'선생님',en:'teacher'},{ko:'오늘',en:'today'},{ko:'내일',en:'tomorrow'},{ko:'주말',en:'weekend'}]},
-  food:{icon:'🍜',label:'Food',words:[
+  food:{icon:'',label:'Food',words:[
     {ko:'음식',en:'food'},{ko:'김치',en:'kimchi'},{ko:'빵',en:'bread'},{ko:'커피',en:'coffee'},
     {ko:'물',en:'water'},{ko:'맛',en:'taste'},{ko:'밥',en:'rice'},{ko:'고기',en:'meat'},
     {ko:'과일',en:'fruit'},{ko:'라면',en:'ramen'},{ko:'치킨',en:'chicken'},{ko:'김밥',en:'kimbap'},
     {ko:'떡볶이',en:'tteokbokki'},{ko:'삼겹살',en:'pork belly'},{ko:'소주',en:'soju'},{ko:'비빔밥',en:'bibimbap'}]},
-  nature:{icon:'🌿',label:'Nature',words:[
+  nature:{icon:'',label:'Nature',words:[
     {ko:'바다',en:'sea'},{ko:'산',en:'mountain'},{ko:'꽃',en:'flower'},{ko:'하늘',en:'sky'},
     {ko:'별',en:'star'},{ko:'달',en:'moon'},{ko:'해',en:'sun'},{ko:'비',en:'rain'},
     {ko:'눈',en:'snow'},{ko:'날씨',en:'weather'},{ko:'봄',en:'spring'},{ko:'여름',en:'summer'},
     {ko:'가을',en:'autumn'},{ko:'겨울',en:'winter'},{ko:'길',en:'road'},{ko:'강',en:'river'}]},
-  emotion:{icon:'💜',label:'Emotion',words:[
+  emotion:{icon:khSvg('heart',{size:18,color:'#a78bfa'}),label:'Emotion',words:[
     {ko:'사랑',en:'love'},{ko:'행복',en:'happiness'},{ko:'희망',en:'hope'},{ko:'꿈',en:'dream'},
     {ko:'마음',en:'heart'},{ko:'건강',en:'health'},{ko:'미래',en:'future'},{ko:'자유',en:'freedom'},
     {ko:'평화',en:'peace'},{ko:'감사',en:'gratitude'},{ko:'노력',en:'effort'},{ko:'성공',en:'success'},
     {ko:'실패',en:'failure'},{ko:'슬픔',en:'sadness'},{ko:'기쁨',en:'joy'},{ko:'용기',en:'courage'}]},
-  culture:{icon:'🎭',label:'Culture',words:[
+  culture:{icon:'',label:'Culture',words:[
     {ko:'영화',en:'movie'},{ko:'음악',en:'music'},{ko:'노래',en:'song'},{ko:'춤',en:'dance'},
     {ko:'예술',en:'art'},{ko:'문화',en:'culture'},{ko:'역사',en:'history'},{ko:'여행',en:'travel'},
     {ko:'운동',en:'exercise'},{ko:'공부',en:'study'},{ko:'책',en:'book'},{ko:'게임',en:'game'},
     {ko:'한복',en:'hanbok'},{ko:'태권도',en:'taekwondo'},{ko:'불고기',en:'bulgogi'},{ko:'막걸리',en:'makgeolli'}]},
-  work:{icon:'💼',label:'Work',words:[
+  work:{icon:'',label:'Work',words:[
     {ko:'경제',en:'economy'},{ko:'과학',en:'science'},{ko:'기술',en:'technology'},{ko:'정치',en:'politics'},
     {ko:'돈',en:'money'},{ko:'일',en:'work'},{ko:'계획',en:'plan'},{ko:'회의',en:'meeting'},
     {ko:'컴퓨터',en:'computer'},{ko:'인터넷',en:'internet'},{ko:'전화기',en:'telephone'},{ko:'도서관',en:'library'},
@@ -385,8 +385,14 @@ function endGame(){
   words.forEach(function(w){w.el.remove();});words=[];
   if(score>bestScore){bestScore=score;localStorage.setItem('kh_worddrop_best',String(bestScore));}
   if(window.playgroundScores){playgroundScores.submit('worddrop',score,{mode:_mode,speed:_speed,topics:_selectedTopics.slice()});}
-  var emoji=score>=500?'🏆':score>=200?'⭐':score>=100?'👍':'💪';
-  document.getElementById('end-emoji').textContent=emoji;
+  var iconHtml=score>=500
+    ?khSvg('trophy',{size:64,color:'#fbbf24'})
+    :score>=200
+      ?khSvg('star',{size:64,color:'#fbbf24'})
+      :score>=100
+        ?khSvg('thumbs_up',{size:64,color:'#7dd3fc'})
+        :'';
+  document.getElementById('end-emoji').innerHTML=iconHtml;
   document.getElementById('end-score').textContent=score+' pts';
   document.getElementById('end-stats').textContent=correctCount+' words · combo x'+maxCombo+' · level '+level;
   document.getElementById('end-best').textContent='Best: '+bestScore+' pts';
