@@ -5135,18 +5135,27 @@ async function runAutoGenerate(){
         + '[문체]\n'
         + '- 짧고 명확한 문장 (20~35자)\n'
         + '- 본문 톤 (레벨별 필수 — 가장 중요):\n'
+        // PR #7AR: switched the level guidance from 해요체 / 격식체 평어체
+        // (~한다 / ~했다) to 합쇼체 (~ㅂ니다 / ~습니다 / ~입니다) across the
+        // board, per owner: "습니다 이런거 왜 없앰? 평어를 왜써."
+        // 합쇼체 is the Korean broadcast-news standard and what learners
+        // hear in real TV / radio news — the right baseline for articles
+        // on a learning platform. 평어체 (~다) is print-newspaper style
+        // and reads cold; 해요체 (~어요) is too casual for news. 합쇼체
+        // also progresses naturally across levels (Seed: ~입니다, Sprout:
+        // ~았습니다, Tree: 합쇼체 + 중급 패턴, Forest: 합쇼체 + 한자어).
         + (
             diffInfo.level === 'Starter'
-              ? '    Seed (입문): ~예요, ~이에요, ~어요. 단순 SVO. 패턴 stack 금지. 다른 종결 어미 X.\n'
+              ? '    Seed (입문): **합쇼체 (~입니다, ~ㅂ니다/~습니다)**. ~입니다, ~ㅂ니다, ~습니다 위주. 단순 SVO. 패턴 stack 금지. 해요체(~예요/어요) X, 평어체(~다/~한다) 절대 X.\n'
             : diffInfo.level === 'Beginner'
-              ? '    Sprout (TOPIK 1~2): ~았/었어요, ~지 않다, ~ㄹ/을 수 있다, ~고, ~지만, ~기 전에/후에, ~려고 하다. ~기 위해 / ~게 되다 / 사역 / 피동 금지.\n'
+              ? '    Sprout (TOPIK 1~2): **합쇼체 (~ㅂ니다/~습니다)** 기반. ~았/었습니다, ~지 않습니다, ~ㄹ/을 수 있습니다, ~고, ~지만, ~기 전에/후에, ~려고 합니다. ~기 위해 / ~게 되다 / 사역 / 피동 금지. 평어체(~다/~한다) 절대 X.\n'
             : diffInfo.level === 'Intermediate'
-              ? '    Tree (TOPIK 3~4): **본문 전체를 ~었어요/이에요만으로 채우지 마세요.** 8단락 중 최소 절반에 다음 중급 패턴을 자연스럽게 사용:\n'
-                + '      필수 노출 (한 기사에 최소 4개 이상 등장): ~기 위해, ~게 되다, ~다고 하다 (전언), ~(으)면서, ~ㄴ/은/는 것 같다, ~ㄹ/을 텐데, 불규칙 활용 (ㄷ/ㅂ/르/ㅎ), ~기 때문이다, ~려고 하다, ~ㄴ/은 후에.\n'
-                + '      이런 패턴 노출 자체가 TOPIK 3~4 학습자의 핵심 학습 가치임. ~었어요만 반복하면 Tree 레벨이 아니라 Sprout임.\n'
-            : '    Forest (TOPIK 5~6): **격식체 (~다, ~ㄴ다) 우선 + 정중체 혼합.** 통사적 복잡성 필수:\n'
-                + '      필수 노출: ~기에 이르렀다, ~는 데 그쳤다, ~을 비롯한, ~로 인하여, ~기 마련이다, 사역 (~게 하다, ~시키다), 피동 (~아/어지다, ~게 되다), ~(으)ㄴ/는 만큼, ~기는커녕, ~에 대하여, ~ㄴ/는다고 한다.\n'
-                + '      TOPIK 5~6 수준의 한자어 활용. 본문 전체가 ~했어요 일변도면 Forest가 아니라 Sprout임.\n'
+              ? '    Tree (TOPIK 3~4): **합쇼체 (~ㅂ니다/~습니다) 우선**. 본문 전체를 ~았/었습니다만으로 채우지 마세요. 8단락 중 최소 절반에 다음 중급 패턴을 자연스럽게 사용:\n'
+                + '      필수 노출 (한 기사에 최소 4개 이상 등장): ~기 위해, ~게 되었습니다, ~다고 합니다 (전언), ~(으)면서, ~ㄴ/은/는 것 같습니다, ~ㄹ/을 텐데, 불규칙 활용 (ㄷ/ㅂ/르/ㅎ), ~기 때문입니다, ~려고 합니다, ~ㄴ/은 후에.\n'
+                + '      이런 패턴 노출 자체가 TOPIK 3~4 학습자의 핵심 학습 가치임. ~했습니다만 반복하면 Tree 레벨이 아니라 Sprout임. 평어체(~다/~했다) 절대 X.\n'
+            : '    Forest (TOPIK 5~6): **합쇼체 (~ㅂ니다/~습니다) 정중체 위주**. 통사적 복잡성 필수:\n'
+                + '      필수 노출: ~기에 이르렀습니다, ~는 데 그쳤습니다, ~을 비롯한, ~로 인하여, ~기 마련입니다, 사역 (~게 합니다, ~시킵니다), 피동 (~아/어집니다, ~게 됩니다), ~(으)ㄴ/는 만큼, ~기는커녕, ~에 대하여, ~ㄴ/는다고 합니다.\n'
+                + '      TOPIK 5~6 수준의 한자어 활용. 본문 전체가 ~했습니다 일변도면 Forest가 아니라 Sprout임. 평어체(~다/~한다) 절대 X.\n'
           )
         + '- **괄호 보충 설명 금지**: "기준금리(돈을 빌릴 때 ...)", "인공지능(AI)" 같이 원어/일반-지식 괄호 추가하지 마세요. 본문은 일반 한국어 뉴스처럼 깔끔하게. 단어 의미 설명은 vocab 패널이 담당함.\n'
         + '- **한자 절대 금지**. 完全變態 X — 그냥 "완전변태"만.\n'
@@ -5260,15 +5269,17 @@ async function runAutoGenerate(){
         + '       ✓ 저는 가고 싶어요 / 저는 슬퍼요 / 저는 무서워요\n'
         + '     • 3rd-person subject (이름/그/그녀/사람들/아이들/우리 가족/일반 사람/대중):\n'
         + '       MUST use the "-아/어 하다" form, NOT the bare adjective form.\n'
-        + '       Register-neutral examples (both 해요체 and 평어체 forms shown):\n'
-        + '       ✓ 아이들은 만들고 싶어 해요 / 아이들은 만들고 싶어 한다\n'
-        + '       ✗ 아이들은 만들고 싶어요 / 아이들은 만들고 싶다\n'
-        + '       ✓ 동생은 슬퍼해요 / 동생은 슬퍼한다\n'
-        + '       ✗ 동생은 슬퍼요 / 동생은 슬프다\n'
+        + '       Register-neutral examples — same psych-verb rule, all 3 endings shown:\n'
+        + '       ✓ 아이들은 만들고 싶어 합니다 / 만들고 싶어 해요 / 만들고 싶어 한다\n'
+        + '       ✗ 아이들은 만들고 싶습니다 / 만들고 싶어요 / 만들고 싶다\n'
+        + '       ✓ 동생은 슬퍼합니다 / 동생은 슬퍼해요 / 동생은 슬퍼한다\n'
+        + '       ✗ 동생은 슬픕니다 / 동생은 슬퍼요 / 동생은 슬프다\n'
         + '       Same rule for: 싶다→싶어 하다, 슬프다→슬퍼하다, 기쁘다→기뻐하다,\n'
         + '       무섭다→무서워하다, 싫다→싫어하다, 부끄럽다→부끄러워하다, 좋다→좋아하다.\n'
-        + '       (Pick the register — 해요체 or 평어체 — from the [본문 톤] guidance\n'
-        + '       in the prompt body above, not from these examples.)\n'
+        + '       (Pick the register — Korean news article body should default to\n'
+        + '       합쇼체 ~ㅂ니다/~습니다 per the [본문 톤] guidance in the prompt\n'
+        + '       body above. Use 해요체 / 평어체 only when the level guidance\n'
+        + '       explicitly calls for them.)\n'
         + '  2. SUBJECT-PARTICLE CONSISTENCY: a single clause must not flip 은/는\n'
         + '     ↔ 이/가 mid-clause for the same referent. Pick one per referent and\n'
         + '     stick with it across the clause.\n'
