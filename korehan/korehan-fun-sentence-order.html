@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
-<title>문장 순서 — KoreHan Playground</title>
+<title>Sentence Order — KoreHan Playground</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Inter:wght@600;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20260516a">
 <style>
@@ -79,7 +79,7 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
 <body>
 <div class="wrap">
   <a href="korehan-fun.html" class="back">&larr; Playground</a>
-  <h1><span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;vertical-align:middle;color:currentColor;margin-right:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4v16M9 4v16"/><path d="M13 4l5 1.3L15.5 19l-5-1.3z"/></svg></span>문장 순서</h1>
+  <h1><span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;vertical-align:middle;color:currentColor;margin-right:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4v16M9 4v16"/><path d="M13 4l5 1.3L15.5 19l-5-1.3z"/></svg></span>Sentence Order</h1>
   <div class="sub">Tap the words in the right order to build the Korean sentence.</div>
 
   <!-- Menu -->
@@ -284,7 +284,7 @@ window.checkAnswer = function() {
     fbHost.innerHTML = '<div class="gs-fb is-right"><b>' + khSvg('check', {size:14, color:'#10b981', marginRight:6}) + 'Correct! +' + (100 + bonus) + ' pts</b>' + (bonus > 0 ? '<div style="font-size:12px;opacity:.8;margin-top:3px">' + bonus + ' speed bonus</div>' : '') + '</div>';
   } else {
     s.score = Math.max(0, s.score - 10);
-    fbHost.innerHTML = '<div class="gs-fb is-wrong"><b>' + khSvg('x', {size:14, color:'#ef4444', marginRight:6}) + 'Not quite</b><div class="gs-fb-correct">정답: ' + escapeHtml(origWords.join(' ')) + '</div></div>';
+    fbHost.innerHTML = '<div class="gs-fb is-wrong"><b>' + khSvg('x', {size:14, color:'#ef4444', marginRight:6}) + 'Not quite</b><div class="gs-fb-correct">Answer: ' + escapeHtml(origWords.join(' ')) + '</div></div>';
   }
   document.getElementById('gs-score').textContent = s.score;
   // Lock chips until the user advances.
@@ -299,7 +299,7 @@ window.skipQ = function() {
   var s = _state; if (!s) return;
   var origWords = s.items[s.idx][0].split(' ');
   document.getElementById('gs-fb-host').innerHTML =
-    '<div class="gs-fb is-wrong"><b>Skipped</b><div class="gs-fb-correct">정답: ' + escapeHtml(origWords.join(' ')) + '</div></div>';
+    '<div class="gs-fb is-wrong"><b>Skipped</b><div class="gs-fb-correct">Answer: ' + escapeHtml(origWords.join(' ')) + '</div></div>';
   document.getElementById('gs-check').disabled = true;
   setTimeout(function() { s.idx++; renderQ(); }, 1500);
 };
@@ -318,7 +318,7 @@ async function endRound() {
         ? khSvg('thumbs_up', {size:58, color:'#7dd3fc'})
         : '';
   document.getElementById('end-emoji').innerHTML = iconHtml;
-  document.getElementById('end-title').textContent = pct >= 80 ? '완벽해요!' : pct >= 60 ? 'Nice work!' : 'Keep going!';
+  document.getElementById('end-title').textContent = pct >= 80 ? 'Perfect!' : pct >= 60 ? 'Nice work!' : 'Keep going!';
   document.getElementById('end-score').textContent = s.score + ' pts';
   document.getElementById('end-stats').textContent = s.correct + ' / ' + ROUND_LEN + ' correct · ' + elapsed + 's · ' + _diff;
   // localStorage best (per-difficulty)
