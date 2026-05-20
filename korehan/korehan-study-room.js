@@ -1436,6 +1436,30 @@ function _applyDailyContent(rec) {
 
 var _approvedTopicForGen = null;
 
+// Korean grammar rules block — appended to study-room.js prompts that
+// emit Korean to the student. Mirrors the rule set on the server cron
+// (`daily-content-gen`, #7Q) and the helper `_srGrammarRulesBlock()`
+// in `korehan-x9f4k2m7.html` (admin sweep #7AD). Centralised so all
+// study-room.js call sites pull the same canonical rule string.
+// PR #7AF extends coverage to phrase-munch, speaking_feedback,
+// dictation-gen, and nuance-quiz-gen using this helper.
+function _skrGrammarRulesBlock() {
+  return '\n\nKOREAN GRAMMAR RULES (apply to every Korean sentence in the output):\n'
+    + '1. PSYCH-VERB 1st/3rd PERSON:\n'
+    + '   1st-person (저/나/우리) → bare feeling form: 저는 슬퍼요 / 저는 가고 싶어요.\n'
+    + '   3rd-person (그/그녀/이름/사람들/아이들) → MUST use "-아/어 하다":\n'
+    + '   ✓ 동생은 슬퍼해요 / 아이들은 만들고 싶어 해요\n'
+    + '   ✗ 동생은 슬퍼요 / 아이들은 만들고 싶어요\n'
+    + '   Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다.\n'
+    + '2. SUBJECT-PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flipping for same referent.\n'
+    + '3. FORMALITY: pick ONE register per example sentence and stay consistent.\n'
+    + '   Match the level\'s register (Starter/Beginner → 해요체; Intermediate/Advanced\n'
+    + '   may use 합쇼체 or 평어체) and never mix in one sentence.\n'
+    + '4. TENSE AGREEMENT inside a clause vs the temporal anchor.\n'
+    + '5. SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach directly to the stem\n'
+    + '   (갔다 ✓ / 가았다 ✗).\n';
+}
+
 async function _generateAndSaveDailyContent(date, opts) {
   if (!supaUser) { showLoginWall(); return; }
   var silent = !!(opts && opts.silent);
@@ -1544,7 +1568,8 @@ async function _generateAndSaveDailyContent(date, opts) {
     + '   Same rule for: 싶다→싶어 하다, 슬프다→슬퍼하다, 기쁘다→기뻐하다, 무섭다→무서워하다, 싫다→싫어하다, 부끄럽다→부끄러워하다, 좋다→좋아하다.\n'
     + '2) SUBJECT-PARTICLE CONSISTENCY: one sentence must not flip 은/는 ↔ 이/가 mid-clause for the same referent.\n'
     + '3) FORMALITY CONSISTENCY: one sentence must not mix 합쇼체 (~ㅂ니다) with 해요체 (~아요/어요) or with 반말.\n'
-    + '4) TENSE AGREEMENT: if the topic implies past/future ("어제…", "내일…"), all verbs in the same clause must match.\n\n'
+    + '4) TENSE AGREEMENT: if the topic implies past/future ("어제…", "내일…"), all verbs in the same clause must match.\n'
+    + '5) SPACING (띄어쓰기): auxiliary verbs stay separate from the lexical verb (가고 싶다 ✓ / 가고싶다 ✗; 읽고 있다 ✓ / 읽고있다 ✗); tense/aspect endings (~았/었/는/ㄴ) attach DIRECTLY to the stem (갔다 ✓ / 가았다 ✗, 했다 ✓ / 하 았다 ✗).\n\n'
     + 'Return ONLY valid JSON (no markdown, no extra text):\n'
     + '{\n'
     + '  "topic_ko": "주제 한국어 (2-5 words)",\n'
@@ -3329,7 +3354,8 @@ async function _pmGenerateLessons(topic) {
     + '{"lessons":[{\n'
     + '  "example":{"ko":"...","en":"...","parts":[{"ko":"...","en":"..."}],"grammar_note":"..."},\n'
     + '  "practice":{"ko":"...","en":"...","parts":[{"ko":"...","en":"..."}],"choices":["correct","wrong1","wrong2","wrong3"]}\n'
-    + '}]}\n';
+    + '}]}\n'
+    + _skrGrammarRulesBlock();
 
   var res = await callClaude({
     feature: 'phrase-munch',
@@ -8115,7 +8141,8 @@ async function _triggerSpeakingFeedback(submissionId, script, scores) {
       + '  "naturalness": {"score":0-10, "comment":"ONE English sentence — pronunciation slip or register polish"},\n'
       + '  "fluency_note": "ONE English sentence about pace / fillers",\n'
       + '  "encouragement": "ONE short motivating English line"\n'
-      + '}';
+      + '}'
+      + _skrGrammarRulesBlock();
 
     if (typeof callClaude !== 'function') return;
     var data = await callClaude({
@@ -16402,6 +16429,7 @@ function _dctRenderListen() {
           + '- Mix declarative / question / descriptive forms across the 3 sentences.\n'
           + '- 5-10 words each.\n\n'
           + 'Return ONLY a JSON array: [{"ko":"Korean sentence","en":"English translation"}]\nNo markdown.'
+          + _skrGrammarRulesBlock()
         }]
       }).then(function(res) {
         try {
@@ -17516,7 +17544,8 @@ async function _nqLoadOrGenerate() {
     + '      "explanation_ko": "왜 정답이 가장 자연스러운지 1-2문장 (collocation, nuance, register 중심으로)"\n'
     + '    }\n'
     + '  ]\n'
-    + '}\n\nExactly 3 questions. correct_index is 0-3.';
+    + '}\n\nExactly 3 questions. correct_index is 0-3.'
+    + _skrGrammarRulesBlock();
 
   try {
     var res = await callClaude({
