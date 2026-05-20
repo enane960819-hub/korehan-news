@@ -2922,10 +2922,24 @@ function _isMissingRelation(err) {
 }
 
 async function _loadRoomFromServer() {
-  if (!supaUser) return;
-  var sb = getSupa(); if (!sb) return;
+  // Returns { loaded, foundRow } so the caller can distinguish three states
+  // that previously all looked the same to it:
+  //   { loaded:false }              — network/RLS/auth failure; DO NOT
+  //                                   speculate, server state is unknown
+  //   { loaded:true, foundRow:false } — server reachable, no row for this
+  //                                   user yet → true first-time visitor
+  //   { loaded:true, foundRow:true }  — row exists; localStorage was updated
+  //                                   from it (or row was empty-but-present
+  //                                   meaning user intentionally cleared)
+  // The starter-grant block in loadRoomLayout() was firing on
+  // {loaded:false} too, then upserting `['character','plant']` over the
+  // user's real `user_room_state.owned` array — wiping purchased items
+  // every time the server load silently failed. See PR #7R commit msg.
+  if (!supaUser) return { loaded: false, foundRow: false };
+  var sb = getSupa(); if (!sb) return { loaded: false, foundRow: false };
   try {
     var d = null;
+    var sawRow = false;
     if (_roomUseUserTable) {
       var r = await sb.from('user_room_state')
         .select('layout, owned')
@@ -2933,14 +2947,23 @@ async function _loadRoomFromServer() {
         .maybeSingle();
       if (r.error && _isMissingRelation(r.error)) {
         _roomUseUserTable = false;
+      } else if (r.error) {
+        // Any other error (network, RLS, etc.) — treat as "unknown server
+        // state" so the starter-grant block stays gated.
+        return { loaded: false, foundRow: false };
       } else if (r.data) {
+        sawRow = true;
         d = { room_layout: r.data.layout, room_owned: r.data.owned };
       }
     }
-    if (!d) {
+    if (!d && !sawRow) {
       var key = _roomServerKey();
       var r2 = await sb.from('app_settings').select('value').eq('key', key).maybeSingle();
+      if (r2.error && !_isMissingRelation(r2.error)) {
+        return { loaded: false, foundRow: false };
+      }
       if (r2.data && r2.data.value) {
+        sawRow = true;
         d = typeof r2.data.value === 'string' ? JSON.parse(r2.data.value) : r2.data.value;
       }
     }
@@ -2951,7 +2974,11 @@ async function _loadRoomFromServer() {
       } catch(e) { /* private mode */ }
       console.log('room loaded from server');
     }
-  } catch(e) { console.warn('room load from server failed:', e); }
+    return { loaded: true, foundRow: sawRow };
+  } catch(e) {
+    console.warn('room load from server failed:', e);
+    return { loaded: false, foundRow: false };
+  }
 }
 
 function isItemPlaced(id) {
@@ -3762,13 +3789,31 @@ async function loadRoomLayout() {
     // them in kh_room_owned so they appear in the My Items shelf.
     try { await syncGachaRoomItems(); } catch(_) {}
     // Try loading from server first (cross-device sync)
-    await _loadRoomFromServer();
+    var _srvResult = await _loadRoomFromServer();
 
     var owned = getRoomOwned();
     var layout = getRoomLayout();
 
-    // First-time setup: give starter items
-    if (owned.length === 0 && layout.length === 0) {
+    // First-time setup: give starter items.
+    //
+    // CRITICAL — must only fire when the server confirms there is no row
+    // for this user. Previously this block fired whenever local arrays
+    // were empty, which silently overwrote real purchased items every
+    // time _loadRoomFromServer hit a network/RLS/auth error: server load
+    // returned nothing → local stayed empty → starter grant ran →
+    // _syncRoomToServer upserted ['character','plant'] over the user's
+    // real owned array on the server. Result: purchased items kept
+    // disappearing across reloads.
+    //
+    // Now: require loadResult.loaded === true AND loadResult.foundRow ===
+    // false (genuine first-time visitor). If the server load failed
+    // (loaded:false) we leave local untouched and skip the grant — the
+    // worst case is an empty room until the next reload, which is far
+    // better than wiping real purchases.
+    var _shouldGrantStarter = _srvResult && _srvResult.loaded === true
+      && _srvResult.foundRow === false
+      && owned.length === 0 && layout.length === 0;
+    if (_shouldGrantStarter) {
       var starterOwned = ['character', 'plant'];
       var starterLayout = [
         {id:'character', x:150, y:160, scale:100},
