@@ -8395,7 +8395,7 @@ async function generateConvs() {
     ? '\n\nESSENTIAL EXPRESSIONS — weave 1-2 of these into the dialogue NATURALLY (don\'t force more than 2). They must also appear in the key_expressions output array verbatim:\n' + expressionPool
     : '';
 
-  var prompt = 'You are creating Korean language learning content for KoreHani.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + castBlock + expBlock + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"key_expressions":[{"ko":"multi-word phrase","en":"natural English meaning"}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3-5 key_expressions, 3 missions. EVERY msg MUST have "en" field with natural English translation. key_expressions MUST be multi-word phrases or idioms (2+ words with a space) that actually appear in the dialogue (conjugated form ok). They should NOT overlap with vocab. ' + lvlMap[lvl] + ' level Korean.\n\nCRITICAL REALISM RULES (violations will be rejected):\n- Every situation must be 100% realistic and logically consistent. If the setting is a pharmacy, people buy medicine — not hats or groceries.\n- ALL vocab words in the vocab list MUST appear naturally in the dialogue messages. Never add vocab that is not in the text.\n- The conversation topic and location must match real Korean daily life — do not mix unrelated settings or objects.\n- Vocab distractors should come from words actually used; do not include unrelated meanings.';
+  var prompt = 'You are creating Korean language learning content for KoreHani.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + castBlock + expBlock + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"key_expressions":[{"ko":"multi-word phrase","en":"natural English meaning"}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3-5 key_expressions, 3 missions. EVERY msg MUST have "en" field with natural English translation. key_expressions MUST be multi-word phrases or idioms (2+ words with a space) that actually appear in the dialogue (conjugated form ok). They should NOT overlap with vocab. ' + lvlMap[lvl] + ' level Korean.\n\nCRITICAL REALISM RULES (violations will be rejected):\n- Every situation must be 100% realistic and logically consistent. If the setting is a pharmacy, people buy medicine — not hats or groceries.\n- ALL vocab words in the vocab list MUST appear naturally in the dialogue messages. Never add vocab that is not in the text.\n- The conversation topic and location must match real Korean daily life — do not mix unrelated settings or objects.\n- Vocab distractors should come from words actually used; do not include unrelated meanings.\n\nKOREAN GRAMMAR RULES (applies to msgs[].txt, vocab[].ko, grammar[].ex, key_expressions[].ko):\n- PSYCH-VERB 1st/3rd. 1st-person speaker (저/나/우리) talking about own feeling → bare form: 저는 슬퍼요 / 가고 싶어요. Speaker talking ABOUT a 3rd-person (이름/그/그녀/사람들/아이들) → MUST use "-아/어 하다": ✓ 동생은 슬퍼해요 / 아이들은 만들고 싶어 해요. ✗ 동생은 슬퍼요 / 아이들은 만들고 싶어요. Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다. KakaoTalk dialogue switches speaker frequently — apply the rule per speaker per message.\n- SUBJECT-PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flip for the same referent inside one message.\n- FORMALITY CONSISTENCY: each speaker stays in one register (반말 / 해요체 / 합쇼체) across the whole dialogue. Two speakers MAY have different registers (e.g. 친구 ↔ 친구 = 반말 each side; 손님 ↔ 점원 = 해요체 each side; 학생 ↔ 선생님 = 학생 uses 합쇼체 / 선생님 uses 해요체). Within ONE msg.txt, do not mix registers.\n- TENSE AGREEMENT inside one message vs its temporal anchor.\n- SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach directly (갔다 ✓, 가았다 ✗).';
 
   try {
     var resp = await callClaude({
@@ -8882,6 +8882,30 @@ async function generateStories() {
     + '- key_expressions: 5-10 multi-word phrases or idiomatic chunks from the body that a learner would benefit from memorising as a unit (e.g. "옛날 옛적에", "발 없는 말이 천 리 간다", "마음에 들다"). Each item: ko (the chunk as it appears in the body, verbatim substring) + en (natural English). Different from vocab[] which is single dictionary-form words.\n'
     + '- body_en MUST exist and be paragraph-aligned with body — readers tap a Korean paragraph to reveal its English translation, so paragraph counts MUST match.\n'
     + '- ALL Korean text MUST follow the difficulty level rules above.\n'
+    // PR #7AC (AI grammar audit Path 5): stories are mostly 3rd-person
+    // narration ("백설공주는 슬퍼했다" / "잭은 무서워했다"), so the bare
+    // adjective psych-verb form leaks easily. Mirror the rule block
+    // landed in #7Q / #7Z / #7AA / #7AB.
+    + '- KOREAN GRAMMAR RULES (body, vocab[].ko, grammar[].ex, key_expressions[].ko):\n'
+    + '  1. PSYCH-VERB 1st/3rd. 1st-person narrator (저/나/우리) → bare form:\n'
+    + '     저는 슬펐다 / 저는 가고 싶었다. 3rd-person character (백설공주/잭/그/이름):\n'
+    + '     MUST use "-아/어 하다": ✓ 백설공주는 슬퍼했다 / 잭은 무서워했다 /\n'
+    + '     공주는 만나고 싶어 했다. ✗ 백설공주는 슬펐다 / 잭은 무서웠다.\n'
+    + '     Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다.\n'
+    + '     Folktale + novel narration almost always uses 3rd-person — this\n'
+    + '     rule will trigger many times per story.\n'
+    + '  2. SUBJECT-PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flipping for the\n'
+    + '     same referent inside one sentence.\n'
+    + '  3. FORMALITY (story body): narration register is 평어체 (~한다 / ~했다 /\n'
+    + '     ~이다 / ~다) — standard for Korean storytelling and folktales.\n'
+    + '     Direct quotes inside the story carry the SPEAKER\'s register (a\n'
+    + '     princess may speak 합쇼체 to the king; villagers speak 반말 / 해요체\n'
+    + '     among themselves). Within the narration itself stay in 평어체.\n'
+    + '  4. TENSE AGREEMENT: stories default to past-tense narration (~았/었다);\n'
+    + '     reflexive present (~ㄴ다) is OK for general statements; future-in-\n'
+    + '     the-past stays past-marked. Don\'t mix past + present arbitrarily.\n'
+    + '  5. SPACING: 가고 싶었다 ✓ / 가고싶었다 ✗; tense endings attach directly\n'
+    + '     (갔다 ✓ / 가았다 ✗).\n'
     + (sourceText ? '- STAY FAITHFUL to the source — do not invent characters or events that aren\'t in it. Reproduce every plot beat from the source.\n' : '');
 
   try {

@@ -72,9 +72,30 @@ Top 5 to harden, by output volume × current weakness:
   ~line 3837) — DONE in #7AB. 5-rule block in BOTH paths. Cache
   versions bumped: `ke_v3_` → `ke_v4_` (localStorage), `kex3::` →
   `kex4::` (DB cache) — old cached entries may carry pre-rule bugs.
-- [ ] **Path 5 — admin conv_gen / story_gen / topic-gen** in
-  `korehan-x9f4k2m7.html` — full prompts not yet exposed in the
-  code audit; need to read & patch each.
+- [x] **Path 5 — admin conv_gen / story_gen** in
+  `korehan-x9f4k2m7.html` — DONE in #7AC.
+  - `conv_gen` (~line 8398): 5-rule block applied per-speaker
+    (KakaoTalk dialogue switches speaker each message). Formality
+    rule notes that two speakers MAY use different registers across
+    the dialogue but each speaker stays internally consistent.
+  - `story_gen` (~line 8884): 5-rule block applied to body narration.
+    Formality rule says narration uses 평어체 (~한다 / ~했다 / ~다)
+    and direct quotes carry the speaker's register. Stories are
+    mostly 3rd-person — psych-verb rule fires often.
+  - `topic-gen` (~line 4019): skipped — output is short noun-phrase
+    labels (여행 계획, 식사 예절 etc.), not sentences. Rule block
+    doesn't apply meaningfully.
+
+## Top-5 AI grammar audit: COMPLETE
+
+All 5 prioritized paths now carry the same 5-rule block (psych-verb
+1st/3rd, subject-particle consistency, formality, tense agreement,
+spacing) adapted per context. Server cron (`daily-content-gen`)
+still needs `supabase functions deploy` to activate the server-side
+rules (#7Q + #7AB).
+
+Next: per-feature deeper rules — honorifics, vowel harmony, counters
+— added only where the path's typical output makes them relevant.
 
 Uncovered grammar categories across all paths (add per-feature
 when the path's typical output makes them relevant): honorifics
