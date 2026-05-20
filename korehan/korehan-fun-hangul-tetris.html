@@ -10,14 +10,33 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20260516a">
 <style>
-body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua','DM Sans',Inter,Pretendard,sans-serif;overflow:hidden}
-.wrap{max-width:600px;margin:0 auto;padding:12px 16px;position:relative;height:100dvh;height:100vh;display:flex;flex-direction:column}
+/* Hangul Tetris visual overhaul (PR #7AK) — neon-synth aesthetic.
+   Owner: "배경이랑 카드들이랑 저거 슬라이드랑 버튼이랑 전부 게임느낌 안나
+   아직도. 아니 어디 레퍼런스라도 찾아보고 하지 왜 이래 디자인이 너무 구려."
+   Reference vibe: Beat Saber / Geometry Dash / synthwave —
+   deep-purple-to-cyan radial backdrop, neon glow on every interactive
+   element, animated paddle, subtle starfield. */
+body{margin:0;color:#e0f2fe;font-family:'Happy Monkey','Jua','DM Sans',Inter,Pretendard,sans-serif;overflow:hidden;
+  background:#04060f;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,.30), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(34,211,238,.22), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 10% 90%, rgba(236,72,153,.18), transparent 60%),
+    linear-gradient(180deg, #04060f 0%, #0a0e22 50%, #04060f 100%);
+}
+/* Subtle animated noise grain across the whole page — gives the static
+   gradient a sense of motion even when nothing else is happening. */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background-image:radial-gradient(circle at 20% 30%,rgba(125,211,252,.05) 1px,transparent 1px),radial-gradient(circle at 70% 60%,rgba(167,139,250,.04) 1px,transparent 1px),radial-gradient(circle at 50% 85%,rgba(244,114,182,.04) 1px,transparent 1px);background-size:200px 200px,180px 180px,220px 220px;animation:bgDrift 18s linear infinite;opacity:.5}
+@keyframes bgDrift{0%{transform:translate(0,0)}100%{transform:translate(-200px,-180px)}}
+.wrap{max-width:600px;margin:0 auto;padding:12px 16px;position:relative;height:100dvh;height:100vh;display:flex;flex-direction:column;z-index:1}
 @supports(height:100dvh){.wrap{height:100dvh}}
-.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:6px}
+.back{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#cbd5e1;text-decoration:none;font-size:12px;font-weight:700;margin-bottom:6px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .game-header{display:flex;justify-content:space-between;align-items:center;padding:6px 0;flex-shrink:0}
-.game-title{font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px}
-.stat{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
-.stat-val{color:#7dd3fc}
+.game-title{font-size:18px;font-weight:900;display:flex;align-items:center;gap:8px;color:#fff;text-shadow:0 0 18px rgba(125,211,252,.5)}
+/* Header stat pills — gradient + neon edge glow so they read as
+   in-game HUD chips rather than flat text. */
+.stat{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;background:linear-gradient(135deg,rgba(125,211,252,.12),rgba(167,139,250,.08));border:1px solid rgba(125,211,252,.32);box-shadow:0 0 14px rgba(125,211,252,.18),inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.stat-val{color:#7dd3fc;text-shadow:0 0 10px rgba(125,211,252,.6)}
 
 /* Target display — now shows the WHOLE WORD, with one syllable
    highlighted as the one being built. The build-progress slots show the
@@ -39,19 +58,23 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .bp-slot.empty.current{border-color:#7dd3fc;background:rgba(125,211,252,.08);animation:bpPulse 1.1s ease-in-out infinite}
 @keyframes bpPulse{0%,100%{box-shadow:0 0 0 rgba(125,211,252,0)}50%{box-shadow:0 0 16px rgba(125,211,252,.45)}}
 
-/* Canvas */
-#game-canvas{flex:1;width:100%;border-radius:12px;background:#0a1325;border:1px solid rgba(255,255,255,.06)}
+/* Canvas — deep gradient backdrop + neon edge glow so the play
+   field reads as a game arena rather than a flat rectangle. */
+#game-canvas{flex:1;width:100%;border-radius:14px;background:linear-gradient(180deg,#08081a 0%,#0d0a26 40%,#0a081e 100%);border:1px solid rgba(125,211,252,.22);box-shadow:0 0 32px rgba(125,211,252,.18),inset 0 0 60px rgba(124,58,237,.08)}
 
-/* Touch controls */
-.touch-controls{display:none;padding:8px 0;gap:10px;flex-shrink:0}
-.touch-btn{flex:1;padding:14px;border:2px solid rgba(125,211,252,.2);border-radius:14px;background:rgba(255,255,255,.04);color:#7dd3fc;font-size:20px;font-weight:900;cursor:pointer;text-align:center;user-select:none;-webkit-user-select:none;touch-action:manipulation}
-.touch-btn:active{background:rgba(125,211,252,.15);border-color:#7dd3fc}
+/* Touch controls — gradient + glow, distinct from header chips so the
+   tap targets feel pressable. */
+.touch-controls{display:none;padding:10px 0 6px;gap:12px;flex-shrink:0}
+.touch-btn{flex:1;padding:16px;border:1px solid rgba(125,211,252,.32);border-radius:16px;background:linear-gradient(180deg,rgba(125,211,252,.10),rgba(124,58,237,.10));color:#7dd3fc;font-size:22px;font-weight:900;cursor:pointer;text-align:center;user-select:none;-webkit-user-select:none;touch-action:manipulation;box-shadow:0 4px 18px rgba(125,211,252,.18),inset 0 1px 0 rgba(255,255,255,.08);text-shadow:0 0 12px rgba(125,211,252,.6);transition:transform .08s ease,box-shadow .15s ease,background .15s ease}
+.touch-btn:active{transform:scale(.95);background:linear-gradient(180deg,rgba(125,211,252,.32),rgba(124,58,237,.22));border-color:#7dd3fc;box-shadow:0 0 28px rgba(125,211,252,.5),inset 0 0 14px rgba(125,211,252,.25)}
 @media(max-width:768px){.touch-controls{display:flex}}
 
-/* Screens */
-.start-screen,.end-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,11,21,.94);z-index:10;border-radius:12px}
-.big-btn{padding:16px 40px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:20px;box-shadow:0 8px 32px rgba(37,99,235,.4);transition:transform .15s}
-.big-btn:hover{transform:scale(1.05)}
+/* Screens — gradient backdrop matching the game backdrop so the
+   start / end overlays feel part of the same world. */
+.start-screen,.end-screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 60% at 50% 30%,rgba(124,58,237,.25),transparent 70%),rgba(4,6,15,.95);z-index:10;border-radius:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.big-btn{padding:16px 42px;border:none;border-radius:14px;background:linear-gradient(135deg,#2563eb,#7c3aed,#ec4899);background-size:200% 200%;color:#fff;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:20px;box-shadow:0 8px 32px rgba(124,58,237,.45),0 0 28px rgba(125,211,252,.3);transition:transform .15s,background-position .6s ease;text-shadow:0 0 14px rgba(255,255,255,.45);letter-spacing:.02em;animation:bigBtnShimmer 4s ease-in-out infinite}
+.big-btn:hover{transform:scale(1.05);background-position:100% 0}
+@keyframes bigBtnShimmer{0%,100%{background-position:0% 0}50%{background-position:100% 0}}
 
 /* Combo flash */
 .combo-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;color:#fbbf24;text-shadow:0 0 40px rgba(251,191,36,.5);pointer-events:none;animation:comboIn .7s ease forwards;z-index:20}
@@ -292,6 +315,19 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   //              render-time translate by a small random offset
   var popups = [];
   var shakeMs = 0;
+  // PR #7AK visual overhaul state.
+  // stars[] — canvas-rendered twinkling starfield. Each star has its
+  //   own slow drift speed + brightness oscillation. Initialised lazily
+  //   on first render once we know canvas size.
+  // bgPulse — float in [0,1]. Spikes to 1 on every correct catch and
+  //   decays exponentially. Drives a subtle bloom on the canvas
+  //   background so the field "breathes" with successful play.
+  // paddleGlowDir — -1/0/+1 mirrors the player's last movement so the
+  //   paddle's directional glow biases toward the trailing edge for a
+  //   sense of motion.
+  var stars = [];
+  var bgPulse = 0;
+  var paddleGlowDir = 0;
 
   function init() {
     canvas = document.getElementById('game-canvas');
@@ -300,15 +336,12 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     window.addEventListener('resize', resize);
     document.addEventListener('keydown', function(e) {
       if (!gameRunning) return;
-      if (e.key === 'ArrowLeft') paddle.x = Math.max(0, paddle.x - 40);
-      if (e.key === 'ArrowRight') paddle.x = Math.min(canvas._w - paddle.w, paddle.x + 40);
+      if (e.key === 'ArrowLeft')  { paddle.x = Math.max(0, paddle.x - 40); paddleGlowDir = -1; }
+      if (e.key === 'ArrowRight') { paddle.x = Math.min(canvas._w - paddle.w, paddle.x + 40); paddleGlowDir = 1; }
     });
-    // Touch — single shared interval per button, cleared on touchend AND
-    // touchcancel (otherwise paddle keeps drifting if the gesture is
-    // interrupted by an incoming call / system gesture / scroll).
     var holdL = null, holdR = null;
-    function moveL(){ paddle.x = Math.max(0, paddle.x - 6); }
-    function moveR(){ paddle.x = Math.min(canvas._w - paddle.w, paddle.x + 6); }
+    function moveL(){ paddle.x = Math.max(0, paddle.x - 6); paddleGlowDir = -1; }
+    function moveR(){ paddle.x = Math.min(canvas._w - paddle.w, paddle.x + 6); paddleGlowDir = 1; }
     function clearL(){ if (holdL) { clearInterval(holdL); holdL = null; } }
     function clearR(){ if (holdR) { clearInterval(holdR); holdR = null; } }
     var btnL = document.getElementById('btn-left');
@@ -422,34 +455,43 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   function spawnBlock() {
     var needed = targetParts[buildIdx];
     if (needed === undefined || needed === null) return; // No more parts to build
-    // Spawn 2-4 blocks: 1 correct + distractors. Number itself jitters so
-    // some waves are sparse and some are crowded — feels less metronome-y.
-    var minCount = 2 + Math.floor(level / 4);
-    var maxCount = Math.min(5, 3 + Math.floor(level / 2));
-    var count = Math.max(2, Math.min(maxCount, minCount + Math.floor(Math.random() * (maxCount - minCount + 1))));
+    // PR #7AK: dial spawn density DOWN. The previous min=2/max=5 batches
+    // accumulated quickly when blocks persist across phases (PR #7U
+    // persistence), which was the visual "ㅈㄴ 대충" complaint — screen
+    // looked random because too many irrelevant jamo were on screen at
+    // once. New: min=1, max=2 (+1 per ~level 3) so each wave is a clean
+    // forced choice between the correct jamo and at most one distractor
+    // early game, growing to 2-3 distractors at higher levels.
+    var minCount = 1;
+    var maxCount = Math.min(3, 1 + Math.floor(level / 3));
+    var count = Math.max(1, Math.min(maxCount, minCount + Math.floor(Math.random() * (maxCount - minCount + 1)) + 1));
     var jamos = [needed];
+    // `phaseClass` is the jamo CLASS this block belongs to. Persisting
+    // blocks whose class doesn't match the current build slot will fade
+    // out via the staleness logic in update().
+    var phaseClass = buildIdx === 0 ? 'cho' : buildIdx === 1 ? 'jung' : 'jong';
     var allJamo = buildIdx === 0 ? CHO : buildIdx === 1 ? SIMPLE_JUNG : SIMPLE_JONG;
     while (jamos.length < count) {
       var rj = allJamo[Math.floor(Math.random() * allJamo.length)];
       if (jamos.indexOf(rj) < 0) jamos.push(rj);
     }
-    // Shuffle the order so the correct jamo isn't always at a predictable slot.
     jamos.sort(function(){ return Math.random() - .5; });
-    // Random horizontal placement: divide the canvas into N lanes, then
-    // jitter each block within its lane so positions don't line up neatly.
     var lanes = jamos.length;
     var laneW = canvas._w / lanes;
     jamos.forEach(function(j, i) {
-      var jitterX = (Math.random() - 0.5) * laneW * 0.5; // ±25% of lane width
+      var jitterX = (Math.random() - 0.5) * laneW * 0.5;
       var x = laneW * i + (laneW - 44) / 2 + jitterX;
       x = Math.max(4, Math.min(canvas._w - 48, x));
       blocks.push({
         jamo: j,
+        phaseClass: phaseClass,     // class this block was spawned for
+        spawnSyl: currentSylIdx,    // which syllable index spawned it
         isCorrect: j === needed,
+        staleMs: 0,                 // ms since the block became wrong-class
         x: x,
-        y: -30 - Math.random() * 80,           // staggered vertical entry
+        y: -30 - Math.random() * 80,
         w: 44, h: 44,
-        speed: baseSpeed * (0.75 + Math.random() * 0.6) // ±wider speed jitter
+        speed: baseSpeed * (0.75 + Math.random() * 0.6)
       });
     });
   }
@@ -460,6 +502,10 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     blocks = [];
     popups = [];
     shakeMs = 0;
+    // PR #7AK: don't wipe stars[] — they're decoration only and
+    // re-running startGame() shouldn't blink the starfield off.
+    bgPulse = 0;
+    paddleGlowDir = 0;
     score = 0; lives = 5; level = 1; completed = 0;
     baseSpeed = 1.2; spawnInterval = 1700; lastSpawn = 0;
     gameRunning = true;
@@ -512,6 +558,9 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
           // Correct catch — jamo locks in.
           buildIdx++;
           score += 10;
+          // Spike the background pulse so a clean catch makes the whole
+          // arena flash subtly — Beat-Saber-style reward signal.
+          bgPulse = 1;
           // Floating "+10" popup so the catch has weight.
           popups.push({ x: b.x + b.w/2, y: b.y, text: '+10', life: 0, color: '#7dd3fc' });
           updateTargetUI();
@@ -575,6 +624,45 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
       popups[pi].y -= 1.2;
       if (popups[pi].life > 36) popups.splice(pi, 1);
     }
+    // PR #7AK staleness fix: blocks whose phaseClass no longer matches
+    // the current build slot get a fade-out timer. Once it expires the
+    // block is removed even if it hasn't hit the bottom. This stops
+    // the field accumulating wrong-class jamo (the "ㅈㄴ 대충" complaint —
+    // user sees CHO consonants still falling while they're trying to
+    // catch a JUNG vowel). Persistence within the SAME phase is preserved
+    // — only cross-phase blocks fade.
+    var currentClass = buildIdx === 0 ? 'cho' : buildIdx === 1 ? 'jung' : 'jong';
+    for (var si = blocks.length - 1; si >= 0; si--) {
+      var sb = blocks[si];
+      if (sb.phaseClass && sb.phaseClass !== currentClass) {
+        sb.staleMs += 16;
+        // 800ms fade-out window — long enough that an in-flight block
+        // about to be caught isn't yanked away suddenly, short enough
+        // that the arena clears visibly between phases.
+        if (sb.staleMs > 800) blocks.splice(si, 1);
+      } else if (sb.staleMs > 0) {
+        // Edge case: a block's class became "stale" then the player
+        // back-stepped a phase somehow (currently impossible, but be
+        // safe). Reset the fade timer if class matches again.
+        sb.staleMs = 0;
+      }
+    }
+    // bgPulse exponential decay — catch spikes it to 1, every frame
+    // multiplies by ~0.94 so it bleeds out over ~30 frames (~500ms).
+    if (bgPulse > 0) bgPulse = Math.max(0, bgPulse * 0.94 - 0.005);
+    // paddleGlowDir decays toward 0 so the directional bias fades when
+    // the player stops moving.
+    if (paddleGlowDir !== 0) {
+      paddleGlowDir = paddleGlowDir * 0.85;
+      if (Math.abs(paddleGlowDir) < 0.05) paddleGlowDir = 0;
+    }
+    // Tick starfield drift — each star moves slowly downward and twinkles.
+    for (var st = 0; st < stars.length; st++) {
+      var s = stars[st];
+      s.y += s.spd;
+      if (s.y > canvas._h) { s.y = -4; s.x = Math.random() * canvas._w; }
+      s.tw += s.twSpd;
+    }
     // Tick shake timer (assume ~16ms per update frame).
     if (shakeMs > 0) shakeMs = Math.max(0, shakeMs - 16);
   }
@@ -582,9 +670,21 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   function render() {
     var w = canvas._w, h = canvas._h;
     ctx.clearRect(0, 0, w, h);
-    // Shake on wrong-catch. Bias the whole frame by a small jittered
-    // translate while shakeMs > 0; the magnitude tapers as the timer
-    // runs out so the last few frames are subtle.
+    // Lazy-init starfield once the canvas has real dimensions.
+    if (!stars.length && w > 0 && h > 0) {
+      for (var sn = 0; sn < 70; sn++) {
+        stars.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: 0.4 + Math.random() * 1.4,
+          spd: 0.08 + Math.random() * 0.32,
+          tw: Math.random() * Math.PI * 2,
+          twSpd: 0.02 + Math.random() * 0.04,
+          hue: Math.random() < 0.7 ? 200 + Math.random() * 40 : 280 + Math.random() * 40
+        });
+      }
+    }
+    // Shake on wrong-catch — same as before.
     var shakeX = 0, shakeY = 0;
     if (shakeMs > 0) {
       var mag = (shakeMs / 220) * 6;
@@ -593,37 +693,117 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
       ctx.save();
       ctx.translate(shakeX, shakeY);
     }
-    // Grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    // Background bloom — radial gradient from the centre, intensity
+    // modulated by bgPulse so correct catches make the arena breathe.
+    var grad = ctx.createRadialGradient(w/2, h*0.55, 0, w/2, h*0.55, Math.max(w, h) * 0.7);
+    var bloomStrength = 0.05 + bgPulse * 0.18;
+    grad.addColorStop(0, 'rgba(125,211,252,' + bloomStrength + ')');
+    grad.addColorStop(0.55, 'rgba(124,58,237,' + (bloomStrength * 0.5) + ')');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    // Starfield — sparse, slowly drifting downward, each star
+    // independently twinkling via its tw phase.
+    stars.forEach(function(s) {
+      var twAmp = 0.55 + 0.45 * Math.sin(s.tw);
+      ctx.fillStyle = 'hsla(' + s.hue + ',80%,75%,' + (0.35 * twAmp) + ')';
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r * twAmp, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    // Horizontal scan lines — much fainter than the previous grid,
+    // arcade-monitor vibe rather than spreadsheet grid.
+    ctx.strokeStyle = 'rgba(125,211,252,0.04)';
     ctx.lineWidth = 1;
-    for (var gy = 0; gy < h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
-    // Paddle
-    ctx.fillStyle = 'rgba(125,211,252,0.3)';
+    for (var gy = 0; gy < h; gy += 56) {
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke();
+    }
+    // Paddle — gradient body + directional glow that biases toward the
+    // trailing edge of the player's last move. Wider hit-area indicator
+    // (the brighter inner gradient extends slightly beyond the paddle
+    // body so the player gets a generous visual reference).
+    var py = h - 22;
+    var pw = paddle.w, px = paddle.x;
+    var dirShift = paddleGlowDir * 18; // shift glow center opposite movement
+    var paddleGrad = ctx.createLinearGradient(px - 12, py, px + pw + 12, py);
+    paddleGrad.addColorStop(0, paddleGlowDir < 0 ? 'rgba(125,211,252,.7)' : 'rgba(125,211,252,.15)');
+    paddleGrad.addColorStop(0.5, 'rgba(125,211,252,.5)');
+    paddleGrad.addColorStop(1, paddleGlowDir > 0 ? 'rgba(125,211,252,.7)' : 'rgba(125,211,252,.15)');
+    // Drop shadow / glow under the paddle.
+    ctx.save();
+    ctx.shadowColor = 'rgba(125,211,252,.55)';
+    ctx.shadowBlur = 24;
+    ctx.fillStyle = paddleGrad;
     ctx.beginPath();
-    ctx.roundRect(paddle.x, h - 20, paddle.w, 12, 6);
+    ctx.roundRect(px, py, pw, 14, 7);
     ctx.fill();
+    ctx.restore();
+    // Bright top edge — gives the paddle a neon-strip top surface that
+    // reads as the "rail" the jamo slide into.
+    var topGrad = ctx.createLinearGradient(px, py - 1, px, py + 4);
+    topGrad.addColorStop(0, 'rgba(255,255,255,.7)');
+    topGrad.addColorStop(1, 'rgba(125,211,252,0)');
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(px + 4 + dirShift * 0.4, py, pw - 8, 5);
+    // Outline
     ctx.strokeStyle = '#7dd3fc';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(px, py, pw, 14, 7);
     ctx.stroke();
-    // Blocks. Glow/border colour reflects LIVE correctness against the
-    // current syllable's next needed jamo (not the spawn-time
-    // b.isCorrect flag) so blocks falling across a syllable transition
-    // visually re-classify in place. Same source of truth as the catch
-    // handler in update().
+    // Blocks. Three-layer rendering (drop shadow → fill gradient → text
+    // with subtle glow) + dynamic opacity for stale-class blocks fading
+    // out per PR #7AK's staleness logic.
     var liveNeeded = targetParts[buildIdx];
     blocks.forEach(function(b) {
       ctx.save();
       var isLiveCorrect = (b.jamo === liveNeeded);
-      var glow = isLiveCorrect ? 'rgba(125,211,252,.15)' : 'rgba(255,255,255,.05)';
-      ctx.fillStyle = glow;
+      var staleFade = b.staleMs > 0 ? Math.max(0, 1 - b.staleMs / 800) : 1;
+      ctx.globalAlpha = staleFade;
+      // Drop shadow
+      if (isLiveCorrect && staleFade > 0.7) {
+        ctx.shadowColor = 'rgba(125,211,252,.7)';
+        ctx.shadowBlur = 22;
+      } else {
+        ctx.shadowColor = 'rgba(0,0,0,.4)';
+        ctx.shadowBlur = 8;
+      }
+      // Body — gradient fill so blocks have depth.
+      var bg;
+      if (isLiveCorrect) {
+        bg = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+        bg.addColorStop(0, 'rgba(125,211,252,.35)');
+        bg.addColorStop(1, 'rgba(56,189,248,.55)');
+      } else {
+        bg = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+        bg.addColorStop(0, 'rgba(255,255,255,.06)');
+        bg.addColorStop(1, 'rgba(255,255,255,.02)');
+      }
+      ctx.fillStyle = bg;
       ctx.beginPath();
-      ctx.roundRect(b.x, b.y, b.w, b.h, 10);
+      ctx.roundRect(b.x, b.y, b.w, b.h, 12);
       ctx.fill();
-      ctx.strokeStyle = isLiveCorrect ? 'rgba(125,211,252,.4)' : 'rgba(255,255,255,.12)';
-      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 0;
+      // Border
+      ctx.strokeStyle = isLiveCorrect ? 'rgba(125,211,252,.85)' : 'rgba(255,255,255,.15)';
+      ctx.lineWidth = isLiveCorrect ? 2 : 1.5;
       ctx.stroke();
-      ctx.font = 'bold 22px "Noto Sans KR", sans-serif';
-      ctx.fillStyle = '#e0f2fe';
+      // Inner highlight stroke (top edge) for a subtle 3D pop.
+      if (isLiveCorrect) {
+        ctx.strokeStyle = 'rgba(255,255,255,.45)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(b.x + 6, b.y + 1.5);
+        ctx.lineTo(b.x + b.w - 6, b.y + 1.5);
+        ctx.stroke();
+      }
+      // Jamo glyph
+      ctx.font = 'bold 24px "Noto Sans KR", sans-serif';
+      ctx.fillStyle = isLiveCorrect ? '#ffffff' : 'rgba(224,242,254,.55)';
+      if (isLiveCorrect) {
+        ctx.shadowColor = 'rgba(125,211,252,.7)';
+        ctx.shadowBlur = 10;
+      }
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(b.jamo, b.x + b.w/2, b.y + b.h/2);
