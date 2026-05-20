@@ -3796,7 +3796,11 @@ async function openKeyExpressionsModal() {
   //    pattern instantiations like "그림을 잘 해요" (slot V was
   //    locked to 해요 instead of the actual action verb). New prompt
   //    is explicit that the verb is part of the slot.
-  var cacheKey = 'ke_v3_' + topicKey;
+  // Bumped v3 → v4 in PR #7AB: prompt now carries grammar rules
+  // (psych-verb / particle / formality / tense / spacing), so any
+  // cached v3 expressions may have been generated under the laxer
+  // prompt and could contain "동생은 슬퍼요"-class bugs. Force regen.
+  var cacheKey = 'ke_v4_' + topicKey;
   try {
     var cached = localStorage.getItem(cacheKey);
     if (cached) {
@@ -3811,7 +3815,7 @@ async function openKeyExpressionsModal() {
 
   // 3) Cross-user DB cache. Same v3 bump as the localStorage key —
   //    DB rows seeded under the old prompt are stale.
-  var dbCacheKey = 'kex3::' + topicKoKey + '_' + levelKey;
+  var dbCacheKey = 'kex4::' + topicKoKey + '_' + levelKey;
   try {
     if (typeof _aiCacheGet === 'function') {
       var hit = await _aiCacheGet(dbCacheKey);
@@ -3858,7 +3862,27 @@ async function openKeyExpressionsModal() {
       + '4. examples: 2 sentences that REUSE the pattern with DIFFERENT content words in the slot. They must demonstrate variability — e.g. for "~하는 것이 취미다" use "운동하는 것이 취미예요" + "영화 보는 것이 취미예요", NOT two sentences both about reading books. Each example must be GRAMMATICALLY VALID Korean a native would actually say.\n'
       + '5. NEVER generate redundant Korean. Specifically forbidden: "독서 읽는 것을 좋아하다" (독서 already means "reading"; can\'t pair it with 읽다). "음식 먹는 것" same issue. Use either the noun form (독서를 좋아하다) OR the verbal form (책 읽는 것을 좋아하다), never both.\n'
       + '6. Mix expression types across the 6: grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다, ~ㄹ 때마다), collocations (시간이 나다, 손이 크다, 기분이 좋아지다), set phrases (오랜만이에요, 시간 가는 줄 모르다).\n'
-      + '7. Each expression must be naturally usable when talking about today\'s topic — not generic filler.'
+      + '7. Each expression must be naturally usable when talking about today\'s topic — not generic filler.\n\n'
+      // KOREAN GRAMMAR RULES — added as part of AI grammar audit Path 4
+      // (PR #7AB). examples[].ko strings are the Korean sentences the
+      // student LEARNS FROM; pre-7AB this prompt had no rule layer
+      // beyond the redundancy filter, so 3rd-person bare-adjective
+      // bugs ("동생은 슬퍼요") and formality-mix bugs could leak through.
+      // Same shape as the rule blocks in #7Q / #7Z / #7AA.
+      + 'KOREAN GRAMMAR RULES for every examples[].ko sentence:\n'
+      + '1. PSYCH-VERB 1st/3rd:\n'
+      + '   1st-person (저/나/우리) → bare feeling form: 저는 슬퍼요 / 저는 가고 싶어요.\n'
+      + '   3rd-person (그/그녀/이름/사람들/아이들) → "-아/어 하다" form:\n'
+      + '   ✓ 동생은 슬퍼해요 / 아이들은 만들고 싶어 해요\n'
+      + '   ✗ 동생은 슬퍼요 / 아이들은 만들고 싶어요\n'
+      + '   Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다.\n'
+      + '2. SUBJECT-PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flipping for same referent.\n'
+      + '3. FORMALITY: match the level\'s register (Starter/Beginner → 해요체;\n'
+      + '   Intermediate/Advanced may use 합쇼체 or 평어체) — and within ONE example\n'
+      + '   sentence do not mix registers.\n'
+      + '4. TENSE AGREEMENT within a clause vs the temporal anchor.\n'
+      + '5. SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach to the stem\n'
+      + '   (갔다 ✓, 가았다 ✗).'
     }]
   }).then(function(res) {
     try {
