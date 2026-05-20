@@ -284,6 +284,14 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
   var currentTarget = null, targetParts = [], buildIdx = 0;
   var baseSpeed = 1.2, spawnInterval = 1700, lastSpawn = 0;
   var bestScore = parseInt(localStorage.getItem('kh_hangul_tetris_best') || '0');
+  // Game-feel state (PR #7U):
+  //   popups[] — floating "+N" score numbers that drift up + fade out
+  //              on correct catches and syllable bonuses
+  //   shakeMs  — countdown timer (ms) for the canvas-wrapper shake
+  //              effect on a wrong catch; non-zero values bias the
+  //              render-time translate by a small random offset
+  var popups = [];
+  var shakeMs = 0;
 
   function init() {
     canvas = document.getElementById('game-canvas');
@@ -450,6 +458,8 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     document.getElementById('start-screen').style.display = 'none';
     document.getElementById('end-screen').style.display = 'none';
     blocks = [];
+    popups = [];
+    shakeMs = 0;
     score = 0; lives = 5; level = 1; completed = 0;
     baseSpeed = 1.2; spawnInterval = 1700; lastSpawn = 0;
     gameRunning = true;
@@ -488,15 +498,28 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
       // Check paddle collision
       if (b.y + b.h >= py && b.y + b.h <= py + 20 && b.x + b.w > px && b.x < px + pw) {
         blocks.splice(i, 1);
-        if (b.isCorrect) {
+        // Re-evaluate correctness at CATCH time against the CURRENT needed
+        // jamo. Previously blocks were stamped with `b.isCorrect` at spawn
+        // time and the whole field got nuked between syllables to keep
+        // that flag honest — which is the "글자 초기화" bug the owner
+        // flagged. Now blocks persist across syllable boundaries and
+        // their correctness is decided live: same jamo as the current
+        // build slot wins; anything else is a wrong catch (regardless
+        // of whether it was spawned as a correct-for-old-syllable or
+        // distractor block).
+        var correctNow = (b.jamo === targetParts[buildIdx]);
+        if (correctNow) {
           // Correct catch — jamo locks in.
           buildIdx++;
           score += 10;
+          // Floating "+10" popup so the catch has weight.
+          popups.push({ x: b.x + b.w/2, y: b.y, text: '+10', life: 0, color: '#7dd3fc' });
           updateTargetUI();
           if (buildIdx >= targetParts.length) {
             // Syllable complete — bonus, then move on to next syllable
             // OR finish the whole word if this was the last syllable.
             score += 50;
+            popups.push({ x: w/2, y: 60, text: '+50', life: 0, color: '#a78bfa' });
             completed++;
             var targetEl = document.getElementById('target-char');
             if (targetEl) targetEl.className = 'target-char done';
@@ -508,9 +531,11 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
               score += wordBonus;
               var fl = document.createElement('div');
               fl.className = 'combo-flash';
-              fl.textContent = currentWord.ko + ' ✨ +' + wordBonus;
+              fl.textContent = currentWord.ko + ' ' + '+' + wordBonus;
               document.body.appendChild(fl);
               setTimeout(function(){ fl.remove(); }, 800);
+              // Word boundary IS a celebration moment — flash + clear is OK
+              // here. Just on syllable boundaries we keep blocks falling.
               blocks = [];
               if (completed % 4 === 0) {
                 level++;
@@ -520,17 +545,19 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
               updateUI();
               setTimeout(function(){ pickWord(); }, 700);
             } else {
-              // Mid-word — clear stale falling blocks, brief pause, then
-              // start the next syllable. Keeps the rhythm smooth without
-              // letting old jamo confuse the next round.
-              blocks = [];
+              // Mid-word — DO NOT clear falling blocks. They keep coming
+              // and get re-evaluated against the new targetParts[buildIdx]
+              // by the live-correctness check above. Snappier transition
+              // (200ms vs the old 350ms) so the rhythm doesn't feel
+              // paused between syllables.
               updateUI();
-              setTimeout(function(){ startSyllable(); }, 350);
+              setTimeout(function(){ startSyllable(); }, 200);
             }
           }
         } else {
-          // Wrong catch
+          // Wrong catch — life lost + shake the field.
           lives--;
+          shakeMs = 220;
           updateUI();
           if (lives <= 0) endGame();
         }
@@ -541,11 +568,31 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
         blocks.splice(i, 1);
       }
     }
+    // Tick popups (life is just a counter of update frames, ~60/s).
+    // 36 frames ≈ 600ms before they fade out.
+    for (var pi = popups.length - 1; pi >= 0; pi--) {
+      popups[pi].life++;
+      popups[pi].y -= 1.2;
+      if (popups[pi].life > 36) popups.splice(pi, 1);
+    }
+    // Tick shake timer (assume ~16ms per update frame).
+    if (shakeMs > 0) shakeMs = Math.max(0, shakeMs - 16);
   }
 
   function render() {
     var w = canvas._w, h = canvas._h;
     ctx.clearRect(0, 0, w, h);
+    // Shake on wrong-catch. Bias the whole frame by a small jittered
+    // translate while shakeMs > 0; the magnitude tapers as the timer
+    // runs out so the last few frames are subtle.
+    var shakeX = 0, shakeY = 0;
+    if (shakeMs > 0) {
+      var mag = (shakeMs / 220) * 6;
+      shakeX = (Math.random() - 0.5) * mag * 2;
+      shakeY = (Math.random() - 0.5) * mag * 2;
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
+    }
     // Grid
     ctx.strokeStyle = 'rgba(255,255,255,0.03)';
     ctx.lineWidth = 1;
@@ -558,15 +605,21 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
     ctx.strokeStyle = '#7dd3fc';
     ctx.lineWidth = 2;
     ctx.stroke();
-    // Blocks
+    // Blocks. Glow/border colour reflects LIVE correctness against the
+    // current syllable's next needed jamo (not the spawn-time
+    // b.isCorrect flag) so blocks falling across a syllable transition
+    // visually re-classify in place. Same source of truth as the catch
+    // handler in update().
+    var liveNeeded = targetParts[buildIdx];
     blocks.forEach(function(b) {
       ctx.save();
-      var glow = b.isCorrect ? 'rgba(125,211,252,.15)' : 'rgba(255,255,255,.05)';
+      var isLiveCorrect = (b.jamo === liveNeeded);
+      var glow = isLiveCorrect ? 'rgba(125,211,252,.15)' : 'rgba(255,255,255,.05)';
       ctx.fillStyle = glow;
       ctx.beginPath();
       ctx.roundRect(b.x, b.y, b.w, b.h, 10);
       ctx.fill();
-      ctx.strokeStyle = b.isCorrect ? 'rgba(125,211,252,.4)' : 'rgba(255,255,255,.12)';
+      ctx.strokeStyle = isLiveCorrect ? 'rgba(125,211,252,.4)' : 'rgba(255,255,255,.12)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.font = 'bold 22px "Noto Sans KR", sans-serif';
@@ -576,6 +629,19 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
       ctx.fillText(b.jamo, b.x + b.w/2, b.y + b.h/2);
       ctx.restore();
     });
+    // Score popups (drift up + fade)
+    popups.forEach(function(p) {
+      var alpha = Math.max(0, 1 - p.life / 36);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color || '#7dd3fc';
+      ctx.font = 'bold 18px "Source Sans 3", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.text, p.x, p.y);
+      ctx.restore();
+    });
+    if (shakeMs > 0) ctx.restore();
   }
 
   function updateUI() {
