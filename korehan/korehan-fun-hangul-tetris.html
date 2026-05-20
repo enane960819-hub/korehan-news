@@ -107,7 +107,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 #kh-daily-mission,#vocab-admin-bar,.mobile-bottom-nav,.mobile-sticky-study,#kh-header,#kh-footer{display:none!important}
 </style>
 </head>
-<body>
+<body style="background:#04060f !important;color:#e0f2fe !important">
 <div class="wrap">
   <a href="korehan-fun.html" class="back">&larr; Playground</a>
   <div class="game-header">
@@ -484,6 +484,16 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
     if (d.jong) targetParts.push(d.jong);
     buildIdx = 0;
     updateTargetUI();
+    // PR #7AP: kick a spawn IMMEDIATELY when the new phase / syllable
+    // starts. Without this, `lastSpawn` was set on the previous wave
+    // (often <100ms ago) so the next phase had to wait up to a full
+    // `spawnInterval` (1700ms) before any block appeared. Owner felt
+    // it as "한글자 나오고 다음 글자 안 내려와" — one letter and then
+    // dead time. Resetting `lastSpawn` to a value old enough to trip
+    // the spawn condition immediately on the next loop tick (rather
+    // than calling spawnBlock() directly here, which would race with
+    // any in-flight stale-fade cleanup).
+    lastSpawn = 0;
   }
 
   // PR #7AM: target UI no longer reveals the Korean word or the
