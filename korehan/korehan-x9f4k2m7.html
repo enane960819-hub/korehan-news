@@ -3340,7 +3340,7 @@ async function runBulkPhraseAdminGen(){
       feature: 'phrase-bulk-pregen',
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,
-      messages: [{ role:'user', content: prompt }]
+      messages: [{ role:'user', content: prompt + _srGrammarRulesBlock() }]
     });
     const raw = (res && res.content && res.content[0] && res.content[0].text) || '';
     const clean = raw.replace(/^```json\n?/, '').replace(/^```/, '').replace(/```$/, '').trim();
@@ -4311,6 +4311,7 @@ async function _pregenKeyExpressions(topicKo, topicEn, level) {
         + '4. Mix grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다), collocations, and common phrasal verbs.\n\n'
         + 'Return ONLY a JSON array of 6 items, no markdown:\n'
         + '[{"ko":"multi-word Korean phrase","rom":"romanization","en":"English meaning","examples":[{"ko":"natural Korean sentence 1","en":"English translation 1"},{"ko":"natural Korean sentence 2","en":"English translation 2"}]}]'
+        + _srGrammarRulesBlock()
       }]
     });
     var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
@@ -12821,6 +12822,34 @@ async function _srPickTopicFromDB(sb, level, date) {
 }
 
 // ── Shared AI generation prompt builder ──
+
+// Korean grammar rules block — appended to every admin-side Korean
+// generation prompt under the `study-room-*-admin` feature family.
+// Mirrors the rule set landed on the server cron (`daily-content-gen`,
+// PR #7Q) and the top-5 audit paths (#7Z / #7AA / #7AB / #7AC). Each
+// admin "regenerate one field" path produces Korean sentences shown to
+// students; without these rules, 3rd-person bare-adjective bugs
+// ("동생은 슬퍼요"), particle drift, register mixing, tense disagreement,
+// and spacing errors all leak through.
+// Centralised here so the rules stay in sync across all 8 admin
+// prompts — _srBuildPrompt + 7 single-field regenerators.
+function _srGrammarRulesBlock() {
+  return '\n\nKOREAN GRAMMAR RULES (apply to every Korean sentence in the output):\n'
+    + '1. PSYCH-VERB 1st/3rd PERSON:\n'
+    + '   1st-person (저/나/우리) → bare feeling form: 저는 슬퍼요 / 저는 가고 싶어요.\n'
+    + '   3rd-person (그/그녀/이름/사람들/아이들) → MUST use "-아/어 하다":\n'
+    + '   ✓ 동생은 슬퍼해요 / 아이들은 만들고 싶어 해요\n'
+    + '   ✗ 동생은 슬퍼요 / 아이들은 만들고 싶어요\n'
+    + '   Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다.\n'
+    + '2. SUBJECT-PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flipping for same referent.\n'
+    + '3. FORMALITY: pick ONE register per example sentence and stay consistent.\n'
+    + '   Match the level guidance (Starter/Beginner → 해요체; Intermediate/Advanced\n'
+    + '   may use 합쇼체 or 평어체 — but never mix in one sentence).\n'
+    + '4. TENSE AGREEMENT inside a clause vs the temporal anchor.\n'
+    + '5. SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach directly to the stem\n'
+    + '   (갔다 ✓ / 가았다 ✗).\n';
+}
+
 function _srBuildPrompt(level, topicHint) {
   var levelGuide = {
     Starter:      'STARTER: Ultra-basic. Daily life, family, food. Vocab: 1-2 syllable words. Grammar: ~이에요/예요, ~있어요/없어요. Sentences max 4 words.',
@@ -12863,7 +12892,8 @@ function _srBuildPrompt(level, topicHint) {
     + '\n- Vary subjects: rotate between 저는 / 우리는 / 친구가 / 가족이 / 동생이 / 선생님이 / [topic-specific actor], not "저는" in every line.'
     + '\n- Vary verbs/predicates: don\'t use 좋아해요 four times — span across 좋아해요 / 자주 가요 / 만들어요 / 먹어요 / 배워요 / 봐요 / 들어요 (etc., as appropriate to the topic).'
     + '\n- Each example must illustrate a DIFFERENT facet of the topic (e.g. for "Korean food": 1 about cooking, 1 about eating out, 1 about preference, 1 about ingredients — not all four about "I like X food").'
-    + '\n- A learner reading the 4 helpers + 3 grammar examples + 3 dictation sentences should see 8-10 distinct sentence shapes, not the same template with one word swapped.';
+    + '\n- A learner reading the 4 helpers + 3 grammar examples + 3 dictation sentences should see 8-10 distinct sentence shapes, not the same template with one word swapped.'
+    + _srGrammarRulesBlock();
 }
 
 // ── Pre-gen helpers — Phrase Munch + Key Expressions ─────────────
@@ -12905,7 +12935,7 @@ async function _srGenerateBundlePM(topic) {
     + '- practice MUST also include a `parts` array breaking down EVERY content word in the practice sentence (especially new words not in the example). Without this the learner has no way to look up unfamiliar words and the activity becomes a guessing game.\n'
     + '- Wrong choices must be plausible (different particles, different verbs, different subjects) but clearly wrong.\n'
     + '- The first item in choices is the correct answer; the frontend will shuffle.\n';
-  var res = await callClaude({ feature: 'admin-pregen-pm', model: 'claude-haiku-4-5-20251001', max_tokens: 2400, messages: [{ role: 'user', content: prompt }] });
+  var res = await callClaude({ feature: 'admin-pregen-pm', model: 'claude-haiku-4-5-20251001', max_tokens: 2400, messages: [{ role: 'user', content: prompt + _srGrammarRulesBlock() }] });
   var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
   var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
   if (oi < 0 || ei <= oi) throw new Error('PM JSON missing');
@@ -12941,7 +12971,7 @@ async function _srGenerateBundleKE(topicKo, topicEn, level) {
     + '4. NEVER generate redundant Korean. Specifically forbidden: "독서 읽는 것을 좋아하다" (독서 already means "reading"; can\'t pair it with 읽다).\n'
     + '5. Mix expression types across the 6: grammar patterns, collocations, set phrases.\n'
     + '6. Each expression must be naturally usable when talking about today\'s topic — not generic filler.';
-  var res = await callClaude({ feature: 'admin-pregen-ke', model: 'claude-haiku-4-5-20251001', max_tokens: 1800, messages: [{ role: 'user', content: prompt }] });
+  var res = await callClaude({ feature: 'admin-pregen-ke', model: 'claude-haiku-4-5-20251001', max_tokens: 1800, messages: [{ role: 'user', content: prompt + _srGrammarRulesBlock() }] });
   var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
   var clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
   var s = clean.indexOf('['), e = clean.lastIndexOf(']');
@@ -13105,7 +13135,7 @@ async function srGenGrammar() {
     + 'Return ONLY valid JSON (no markdown):\n'
     + '{"grammar":[{"pattern":"~pattern","explanation":"English explanation","example_ko":"Korean example","example_en":"English translation"}]}';
   try {
-    var resp = await callClaude({ feature:'study-room-grammar-admin', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content:prompt}] });
+    var resp = await callClaude({ feature:'study-room-grammar-admin', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
     var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
     var parsed = JSON.parse(raw.slice(s, e+1));
@@ -13138,7 +13168,7 @@ async function srGenHelpers() {
     + 'Return ONLY valid JSON (no markdown):\n'
     + '{"helpers":[{"ko":"Korean sentence","en":"English translation"}]}';
   try {
-    var resp = await callClaude({ feature:'study-room-helpers-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompt}] });
+    var resp = await callClaude({ feature:'study-room-helpers-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
     var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
     var parsed = JSON.parse(raw.slice(s, e+1));
@@ -13171,7 +13201,7 @@ async function srGenDictationSentences() {
     + 'Return ONLY valid JSON (no markdown):\n'
     + '{"dictation_sentences":[{"ko":"Korean sentence","en":"English translation"}]}';
   try {
-    var resp = await callClaude({ feature:'study-room-dictation-sentences-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompt}] });
+    var resp = await callClaude({ feature:'study-room-dictation-sentences-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
     var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
     var parsed = JSON.parse(raw.slice(s, e+1));
@@ -13204,7 +13234,7 @@ async function srGenDictationQuestions() {
     + 'Return ONLY valid JSON (no markdown):\n'
     + '{"dictation_questions":[{"question_ko":"Korean question","answer_ko":"Korean answer","hint_en":"English hint"}]}';
   try {
-    var resp = await callClaude({ feature:'study-room-dictation-questions-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompt}] });
+    var resp = await callClaude({ feature:'study-room-dictation-questions-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
     var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
     var parsed = JSON.parse(raw.slice(s, e+1));
@@ -13237,7 +13267,7 @@ async function srGenTopicWriting() {
     + 'Return ONLY valid JSON (no markdown):\n'
     + '{"topic_writing_sentences":[{"ko":"Korean sentence","en":"English translation"}]}';
   try {
-    var resp = await callClaude({ feature:'study-room-topic-writing-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompt}] });
+    var resp = await callClaude({ feature:'study-room-topic-writing-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
     var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
     var parsed = JSON.parse(raw.slice(s, e+1));
@@ -15604,7 +15634,7 @@ async function srAIGeneratePicture() {
     + '}';
 
   try {
-    var resp = await callClaude({ feature:'study-room-picture-admin', model:'claude-haiku-4-5-20251001', max_tokens:800, messages:[{role:'user',content:prompt}] });
+    var resp = await callClaude({ feature:'study-room-picture-admin', model:'claude-haiku-4-5-20251001', max_tokens:800, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
     var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
     var parsed = JSON.parse(raw.slice(s, e+1));
