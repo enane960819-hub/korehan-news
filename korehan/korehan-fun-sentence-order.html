@@ -74,6 +74,18 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
   .menu { padding:18px 14px; }
   .gs-chip { font-size:14px; padding:10px 13px; }
 }
+
+/* Game-feel additions (PR #7X) — mirrors the Dictation pattern. */
+.gs-streak.on { display:inline-flex!important; animation: gsStreakPulse .55s ease; }
+@keyframes gsStreakPulse { 0%{transform:scale(.85)} 50%{transform:scale(1.12)} 100%{transform:scale(1)} }
+.gs-popup { position:absolute; left:50%; top:8px; transform:translateX(-50%); pointer-events:none; font-size:22px; font-weight:900; text-shadow:0 2px 14px currentColor, 0 0 22px rgba(255,255,255,.15); animation: gsPopup .9s cubic-bezier(.2,.7,.3,1) forwards; font-family:'Source Sans 3','DM Sans',sans-serif; z-index:30; white-space:nowrap; }
+.gs-popup.is-right { color:#fbbf24; }
+.gs-popup.is-wrong { color:#ef4444; }
+@keyframes gsPopup { 0%{opacity:0;transform:translate(-50%, 8px) scale(.6)} 20%{opacity:1;transform:translate(-50%, -2px) scale(1.1)} 100%{opacity:0;transform:translate(-50%, -64px) scale(1)} }
+.gs-score.gs-bump { animation: gsScoreBump .35s ease; display:inline-block; }
+@keyframes gsScoreBump { 0%{transform:scale(1)} 50%{transform:scale(1.22);color:#fbbf24} 100%{transform:scale(1)} }
+.gs-tray.gs-shake { animation: gsTrayShake .45s ease; border-color:rgba(239,68,68,.55)!important; box-shadow:0 0 20px rgba(239,68,68,.25); border-radius:10px; }
+@keyframes gsTrayShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 50%{transform:translateX(6px)} 75%{transform:translateX(-4px)} }
 </style>
 </head>
 <body>
@@ -102,10 +114,16 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
   <div id="game" style="display:none">
     <div class="gs-bar">
       <div>Score <span class="gs-score" id="gs-score">0</span></div>
+      <!-- Streak chip — hidden until streak ≥ 2. Matches the
+           Memory/Dictation pattern. -->
+      <div class="gs-streak" id="gs-streak" style="display:none;align-items:center;gap:4px;font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;background:linear-gradient(135deg,#f59e0b,#dc2626);color:#fff;box-shadow:0 0 14px rgba(245,158,11,.4)"><span style="display:inline-flex;width:13px;height:13px;color:#fff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 4 4 5 4 9a4 4 0 0 1-8 0c0-1.5.7-2.5 1.5-3.5C10.5 7 11 5 12 3z"/></svg></span><span id="gs-streak-val">0</span></div>
       <div class="gs-prog" id="gs-prog">1 / 5</div>
       <div style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;color:currentColor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span><span id="gs-timer">0</span>s</div>
     </div>
     <div class="gs-hint" id="gs-hint">English translation here.</div>
+    <!-- Score-popup host positioned over the tray so popups float
+         above the user's current sentence build. -->
+    <div id="gs-popup-host" style="position:relative;height:0;pointer-events:none"></div>
     <div class="gs-tray" id="gs-tray"></div>
     <div class="gs-pool" id="gs-pool"></div>
     <div class="gs-actions">
@@ -197,6 +215,9 @@ window.startGame = async function() {
     idx:      0,
     score:    0,
     correct:  0,
+    // Streak: consecutive correct sentences. Resets on wrong/skip.
+    streak:     0,
+    streakBest: 0,
     started:  Date.now(),
     qStarted: Date.now(),
     answer:   [],
@@ -278,15 +299,33 @@ window.checkAnswer = function() {
   var fbHost = document.getElementById('gs-fb-host');
   if (ok) {
     s.correct++;
-    // Base 100 + speed bonus (max 60 for under 5s, decays to 0 by 30s).
+    s.streak++;
+    if (s.streak > s.streakBest) s.streakBest = s.streak;
     var bonus = Math.max(0, Math.floor(60 * (1 - Math.min(1, (elapsed - 5) / 25))));
-    s.score += 100 + bonus;
-    fbHost.innerHTML = '<div class="gs-fb is-right"><b>' + khSvg('check', {size:14, color:'#10b981', marginRight:6}) + 'Correct! +' + (100 + bonus) + ' pts</b>' + (bonus > 0 ? '<div style="font-size:12px;opacity:.8;margin-top:3px">' + bonus + ' speed bonus</div>' : '') + '</div>';
+    var streakBonus = Math.max(0, (s.streak - 1)) * 20;
+    var totalGain = 100 + bonus + streakBonus;
+    s.score += totalGain;
+    fbHost.innerHTML = '<div class="gs-fb is-right"><b>'
+      + khSvg('check', {size:14, color:'#10b981', marginRight:6})
+      + 'Correct! +' + totalGain + ' pts'
+      + (streakBonus ? ' <span style="color:#fbbf24;font-weight:900">(+' + streakBonus + ' streak)</span>' : '')
+      + '</b>'
+      + (bonus > 0 ? '<div style="font-size:12px;opacity:.8;margin-top:3px">' + bonus + ' speed bonus</div>' : '')
+      + '</div>';
+    _gsPopup('+' + totalGain, 'is-right');
   } else {
     s.score = Math.max(0, s.score - 10);
+    s.streak = 0;
     fbHost.innerHTML = '<div class="gs-fb is-wrong"><b>' + khSvg('x', {size:14, color:'#ef4444', marginRight:6}) + 'Not quite</b><div class="gs-fb-correct">Answer: ' + escapeHtml(origWords.join(' ')) + '</div></div>';
+    _gsPopup('-10', 'is-wrong');
+    _gsShakeTray();
   }
-  document.getElementById('gs-score').textContent = s.score;
+  var scoreEl = document.getElementById('gs-score');
+  scoreEl.textContent = s.score;
+  scoreEl.classList.remove('gs-bump');
+  void scoreEl.offsetWidth;
+  scoreEl.classList.add('gs-bump');
+  _gsUpdateStreakUI();
   // Lock chips until the user advances.
   document.getElementById('gs-check').disabled = true;
   setTimeout(function() {
@@ -297,12 +336,48 @@ window.checkAnswer = function() {
 
 window.skipQ = function() {
   var s = _state; if (!s) return;
+  s.streak = 0;
+  _gsUpdateStreakUI();
   var origWords = s.items[s.idx][0].split(' ');
   document.getElementById('gs-fb-host').innerHTML =
     '<div class="gs-fb is-wrong"><b>Skipped</b><div class="gs-fb-correct">Answer: ' + escapeHtml(origWords.join(' ')) + '</div></div>';
   document.getElementById('gs-check').disabled = true;
   setTimeout(function() { s.idx++; renderQ(); }, 1500);
 };
+
+// Game-feel helpers — same pattern as PR #7W in Dictation.
+function _gsUpdateStreakUI() {
+  var s = _state; if (!s) return;
+  var chip = document.getElementById('gs-streak');
+  var val = document.getElementById('gs-streak-val');
+  if (!chip || !val) return;
+  if (s.streak >= 2) {
+    val.textContent = s.streak;
+    chip.classList.remove('on');
+    void chip.offsetWidth;
+    chip.classList.add('on');
+  } else {
+    chip.classList.remove('on');
+    chip.style.display = 'none';
+  }
+}
+function _gsPopup(text, gradeClass) {
+  var host = document.getElementById('gs-popup-host');
+  if (!host) return;
+  var p = document.createElement('div');
+  p.className = 'gs-popup ' + (gradeClass || '');
+  p.textContent = text;
+  host.appendChild(p);
+  setTimeout(function(){ try { p.remove(); } catch(_){} }, 950);
+}
+function _gsShakeTray() {
+  var tray = document.getElementById('gs-tray');
+  if (!tray) return;
+  tray.classList.remove('gs-shake');
+  void tray.offsetWidth;
+  tray.classList.add('gs-shake');
+  setTimeout(function(){ tray.classList.remove('gs-shake'); }, 500);
+}
 
 async function endRound() {
   var s = _state; if (!s) return;
@@ -320,7 +395,9 @@ async function endRound() {
   document.getElementById('end-emoji').innerHTML = iconHtml;
   document.getElementById('end-title').textContent = pct >= 80 ? 'Perfect!' : pct >= 60 ? 'Nice work!' : 'Keep going!';
   document.getElementById('end-score').textContent = s.score + ' pts';
-  document.getElementById('end-stats').textContent = s.correct + ' / ' + ROUND_LEN + ' correct · ' + elapsed + 's · ' + _diff;
+  var statsLine = s.correct + ' / ' + ROUND_LEN + ' correct · ' + elapsed + 's · ' + _diff;
+  if (s.streakBest >= 2) statsLine += ' · best streak ' + s.streakBest;
+  document.getElementById('end-stats').textContent = statsLine;
   // localStorage best (per-difficulty)
   var lsKey = 'kh_sentence_order_best';
   var bests = {};
