@@ -121,16 +121,21 @@ Additional study-room.js paths covered in PR #7AF via a parallel
 - Plus added rule #5 (spacing) to the existing `study-room-daily`
   inline block (it only had rules 1-4 from #7Q).
 
-Outstanding feature-specific paths (lower priority, add if a bug
-report surfaces):
-- `topic-common-mistakes`, `key-expr-situation-quiz`,
-  `ke-situations*`, `beginner-sentences`, `grammar-curriculum`,
+Final study-room.js sweep landed in PR #7AG. Adds:
+- `_skrGrammarRulesBlock()` (5 rules, all-Korean-output) used by
+  `beginner-sentences`.
+- New `_skrGrammarRulesScopedBlock()` (rules apply ONLY to
+  correct/right/correction fields; intentionally-wrong fields are
+  exempt) used by `topic-common-mistakes`, `grammar-curriculum`,
   `grammar-focus` × 2, `weak-grammar-drill`, `gf-judge-gen`,
-  `article-study-admin` — produce Korean but lower per-impression
-  volume than the paths above.
+  `article-study-admin`.
+
+Skipped:
+- `key-expr-situation-quiz`, `ke-situations-prefetch`,
+  `ke-situations` — outputs are English situation descriptions, no
+  Korean sentences generated.
 - Translation features (`translate`, `translation`,
-  `word-snap-translate`) — output is the translation itself, the
-  rules don't apply in the same way.
+  `word-snap-translate`) — output is the translation itself.
 
 ## Deeper grammar categories (next pass)
 
