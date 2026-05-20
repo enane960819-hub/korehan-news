@@ -67,10 +67,11 @@ Top 5 to harden, by output volume × current weakness:
   (`korehan-study-room.js` ~line 11813) — DONE in #7AA. Compact
   5-rule block; rules cover `corrected` rewrite + `sample` model
   answer.
-- [ ] **Path 4 — key-expressions** (server pre-gen
-  `daily-content-gen` ~line 190 + client `korehan-study-room.js`
-  ~line 3821) — multi-word constraint only. Add psych-verb
-  + formality rules at minimum.
+- [x] **Path 4 — key-expressions** (server pre-gen
+  `daily-content-gen` ~line 213 + client `korehan-study-room.js`
+  ~line 3837) — DONE in #7AB. 5-rule block in BOTH paths. Cache
+  versions bumped: `ke_v3_` → `ke_v4_` (localStorage), `kex3::` →
+  `kex4::` (DB cache) — old cached entries may carry pre-rule bugs.
 - [ ] **Path 5 — admin conv_gen / story_gen / topic-gen** in
   `korehan-x9f4k2m7.html` — full prompts not yet exposed in the
   code audit; need to read & patch each.
