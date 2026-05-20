@@ -439,10 +439,10 @@ var MEM = (function(){
     }
   }
 
-  function showCombo(text) {
+  function showCombo(html) {
     var fl = document.createElement('div');
     fl.className = 'mm-combo-flash';
-    fl.textContent = text;
+    fl.innerHTML = html;
     document.body.appendChild(fl);
     setTimeout(function(){ fl.remove(); }, 800);
   }
@@ -629,7 +629,7 @@ var MEM = (function(){
     streak++;
     updateStats();
     updateStreakUI();
-    if (streak >= 3) showCombo('🔥 ' + streak + ' streak!');
+    if (streak >= 3) showCombo(khSvg('flame', {size:36, color:'#f97316', marginRight:8}) + streak + ' streak!');
     setTimeout(function() {
       firstCard.classList.remove('match-flash');
       secondCard.classList.remove('match-flash');
@@ -708,7 +708,11 @@ var MEM = (function(){
       playgroundScores.submit('memory', score, { difficulty: difficulty, flips: flips, stars: stars, elapsed: elapsed });
     }
 
-    document.getElementById('mm-end-icon').textContent = stars === 3 ? '🏆' : stars === 2 ? '🎉' : '👏';
+    document.getElementById('mm-end-icon').innerHTML = stars === 3
+      ? khSvg('trophy', {size:64, color:'#fbbf24'})
+      : stars === 2
+        ? khSvg('party', {size:64, color:'#a78bfa'})
+        : khSvg('star', {size:64, color:'#fbbf24'});
     document.getElementById('mm-end-stars').innerHTML = renderStars(stars);
     document.getElementById('mm-end-flips').textContent = flips;
     document.getElementById('mm-end-time').textContent = fmtTime(elapsed);
@@ -716,7 +720,7 @@ var MEM = (function(){
 
     var bestEl = document.getElementById('mm-end-best');
     if (isNew) {
-      bestEl.textContent = '🎊 New best score!';
+      bestEl.innerHTML = khSvg('party', {size:16, color:'#fbbf24', marginRight:6}) + 'New best score!';
       bestEl.style.color = '#fbbf24';
     } else if (best) {
       bestEl.textContent = 'Best: ' + best + ' flips';
@@ -761,7 +765,7 @@ var MEM = (function(){
 
   function toggleWordRow(row) {
     row.classList.toggle('checked');
-    row.querySelector('.mm-word-chk').textContent = row.classList.contains('checked') ? '✓' : '';
+    row.querySelector('.mm-word-chk').innerHTML = row.classList.contains('checked') ? khSvg('check', {size:12, color:'#fff'}) : '';
     var checked = document.querySelectorAll('#mm-word-rows .mm-word-row.checked');
     document.getElementById('mm-sel-all-btn').textContent =
       checked.length === currentWords.length ? '전체 해제' : '전체 선택';
@@ -772,7 +776,7 @@ var MEM = (function(){
     document.getElementById('mm-word-rows').querySelectorAll('.mm-word-row').forEach(function(row) {
       if (allSelected) {
         row.classList.add('checked');
-        row.querySelector('.mm-word-chk').textContent = '✓';
+        row.querySelector('.mm-word-chk').innerHTML = khSvg('check', {size:12, color:'#fff'});
       } else {
         row.classList.remove('checked');
         row.querySelector('.mm-word-chk').textContent = '';
@@ -823,7 +827,7 @@ var MEM = (function(){
     btn.textContent = '선택 단어 저장';
     btn.disabled = false;
     if (errors === 0) {
-      document.getElementById('mm-save-note').textContent = toSave.length + '개 단어가 내 단어장에 저장됐어요 ✓';
+      document.getElementById('mm-save-note').innerHTML = toSave.length + '개 단어가 내 단어장에 저장됐어요 ' + khSvg('check', {size:12, color:'#10b981', marginRight:0});
       // Mark rows as saved
       checkedRows.forEach(function(row) {
         row.style.opacity = '.5';

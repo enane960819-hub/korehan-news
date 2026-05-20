@@ -19,7 +19,7 @@ h1{font-size:28px;font-weight:900;margin:0 0 4px;background:linear-gradient(135d
 .tarot.flipped .tarot-inner{transform:rotateY(180deg)}
 .tarot-face{position:absolute;inset:0;border-radius:18px;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
 .tarot-back{background:linear-gradient(135deg,#1e1b4b,#312e81);border:2px solid rgba(167,139,250,.3);box-shadow:0 0 40px rgba(139,92,246,.2),inset 0 0 60px rgba(139,92,246,.1)}
-.tarot-back::before{content:'🔮';font-size:48px;animation:tbFloat 3s ease-in-out infinite}
+.tarot-back::before{content:'';animation:tbFloat 3s ease-in-out infinite}
 @keyframes tbFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 .tarot-back .hint{font-size:12px;color:rgba(167,139,250,.6);margin-top:12px}
 .tarot-front{background:linear-gradient(180deg,#1e1b4b,#0f0a2e);border:2px solid rgba(167,139,250,.4);transform:rotateY(180deg);box-shadow:0 0 60px rgba(139,92,246,.3)}
@@ -62,18 +62,18 @@ h1{font-size:28px;font-weight:900;margin:0 0 4px;background:linear-gradient(135d
 <div class="sparkle" id="sparkles"></div>
 <div class="wrap">
   <a href="korehan-fun.html" class="back">&larr; Playground</a>
-  <h1>🔮 Today's Fortune</h1>
+  <h1>Today's Fortune</h1>
   <div class="sub">Tap the card to reveal your destiny</div>
   <div class="tarot" id="tarot" role="button" tabindex="0" aria-label="Reveal today's fortune" onclick="revealFortune()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();revealFortune();}">
     <div class="tarot-inner">
-      <div class="tarot-face tarot-back"><span>🔮</span><div class="hint">Tap to reveal</div></div>
-      <div class="tarot-face tarot-front"><div class="tarot-emoji" id="t-emoji">✨</div><div class="tarot-label" id="t-label">Overall</div><div class="tarot-msg" id="t-msg"></div></div>
+      <div class="tarot-face tarot-back"><span></span><div class="hint">Tap to reveal</div></div>
+      <div class="tarot-face tarot-front"><div class="tarot-emoji" id="t-emoji"><span style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;color:#a78bfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span></div><div class="tarot-label" id="t-label">Overall</div><div class="tarot-msg" id="t-msg"></div></div>
     </div>
   </div>
   <div class="stats-grid" id="stats-grid"></div>
   <div class="lucky-word" id="lucky-word"></div>
   <div class="fortune-msg" id="fortune-msg"></div>
-  <button class="restart-btn" id="restart-btn" onclick="resetFortune()">🔄 New Reading</button>
+  <button class="restart-btn" id="restart-btn" onclick="resetFortune()" style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;color:currentColor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 4v4h-4"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 20v-4h4"/></svg></span>New Reading</button>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/security.js?v=20260502a"></script>
@@ -115,10 +115,10 @@ var LUCKY=[
   {ko:'도전',en:'challenge'},{ko:'인연',en:'destiny'},{ko:'기쁨',en:'joy'},{ko:'자유',en:'freedom'}
 ];
 var CATS=[
-  {key:'overall',icon:'✨',label:'Overall',color:'#c084fc'},
-  {key:'study',icon:'📚',label:'Study Luck',color:'#60a5fa'},
-  {key:'social',icon:'💜',label:'Social',color:'#f472b6'},
-  {key:'money',icon:'💰',label:'Fortune',color:'#fbbf24'}
+  {key:'overall',icon:khSvg('sparkle',{size:24,color:'#c084fc'}),label:'Overall',color:'#c084fc'},
+  {key:'study',icon:khSvg('book',{size:24,color:'#60a5fa'}),label:'Study Luck',color:'#60a5fa'},
+  {key:'social',icon:khSvg('heart',{size:24,color:'#f472b6'}),label:'Social',color:'#f472b6'},
+  {key:'money',icon:'',label:'Fortune',color:'#fbbf24'}
 ];
 function seed(){var d=new Date();return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();}
 function rng(s,m){return 35+((s*m+7)%66);}
@@ -133,8 +133,12 @@ window.revealFortune=function(){
   var s=seed();
   var scores=CATS.map(function(c,i){return{cat:c,val:rng(s,i*3+2)};});
   var best=scores.reduce(function(a,b){return a.val>b.val?a:b;});
-  var emoji=best.val>=80?'🌟':best.val>=60?'✨':'🌙';
-  document.getElementById('t-emoji').textContent=emoji;
+  var iconHtml=best.val>=80
+    ?khSvg('star',{size:64,color:'#fbbf24'})
+    :best.val>=60
+      ?khSvg('sparkle',{size:64,color:'#a78bfa'})
+      :'';
+  document.getElementById('t-emoji').innerHTML=iconHtml;
   document.getElementById('t-label').textContent=best.cat.label+' is strongest';
   document.getElementById('t-msg').textContent=best.val+'% energy today';
   // Stats
@@ -153,7 +157,7 @@ window.revealFortune=function(){
   setTimeout(function(){lwEl.classList.add('show');},1200);
   // Message
   var msgEl=document.getElementById('fortune-msg');
-  msgEl.textContent='💬 '+MSGS[s%MSGS.length];
+  msgEl.innerHTML=khSvg('chat',{size:14,color:'#94a3b8',marginRight:6})+MSGS[s%MSGS.length];
   setTimeout(function(){msgEl.classList.add('show');document.getElementById('restart-btn').classList.add('show');},1500);
 };
 window.resetFortune=function(){

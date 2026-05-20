@@ -92,33 +92,33 @@ body{margin:0;background:#0b0f1a;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 <script>
 (function(){
 var CATS={
-  date:{label:'🫶 Date Ideas',items:[
-    {emoji:'☕',title:'Cafe in Hongdae',desc:'Chill vibes, Korean music BGM',ko:'홍대 카페 데이트'},
-    {emoji:'🌉',title:'Han River Night Walk',desc:'City lights + deep talk',ko:'한강 야경 산책'},
-    {emoji:'🎤',title:'Noraebang Session',desc:'Sing K-pop duets together',ko:'노래방'},
-    {emoji:'🛍️',title:'Myeongdong Shopping',desc:'Try on hanbok + street food',ko:'명동 쇼핑'},
-    {emoji:'🎬',title:'Korean Movie Night',desc:'Watch with Korean subs',ko:'한국 영화 감상'},
-    {emoji:'🍜',title:'Cooking Korean Food',desc:'Make bibimbap together',ko:'한식 요리'},
-    {emoji:'📸',title:'Photo Booth Tour',desc:'Cute photos at every stop',ko:'인생네컷 투어'},
-    {emoji:'🎡',title:'Lotte World',desc:'Theme park thrill date',ko:'롯데월드'}]},
-  food:{label:'🍜 Korean Food',items:[
-    {emoji:'🥩',title:'Samgyeopsal',desc:'Grilled pork belly + soju',ko:'삼겹살'},
-    {emoji:'🍲',title:'Kimchi Jjigae',desc:'Spicy, warm, comfort food',ko:'김치찌개'},
-    {emoji:'🍛',title:'Bibimbap',desc:'Colorful mixed rice bowl',ko:'비빔밥'},
-    {emoji:'🍗',title:'Korean Fried Chicken',desc:'Crispy + yangnyeom sauce',ko:'치킨'},
-    {emoji:'🍜',title:'Budae Jjigae',desc:'Army stew with everything',ko:'부대찌개'},
-    {emoji:'🥟',title:'Mandu',desc:'Handmade Korean dumplings',ko:'만두'},
-    {emoji:'🧊',title:'Bingsu',desc:'Shaved ice dessert heaven',ko:'빙수'},
-    {emoji:'🌮',title:'Tteokbokki',desc:'Spicy rice cakes street style',ko:'떡볶이'}]},
-  kpop:{label:'🎵 K-pop Vibes',items:[
-    {emoji:'🎤',title:'BTS Concert',desc:'Army vibes, lightstick ready',ko:'BTS 콘서트'},
-    {emoji:'🖤',title:'BLACKPINK Stage',desc:'Pink venom energy',ko:'블랙핑크'},
-    {emoji:'💫',title:'NewJeans Music Video',desc:'Y2K aesthetic, catchy hooks',ko:'뉴진스 뮤비'},
-    {emoji:'👑',title:'BIGBANG Reunion',desc:'Legendary comeback moment',ko:'빅뱅 컴백'},
-    {emoji:'🌸',title:'IU Solo Concert',desc:'Emotional ballad queen',ko:'아이유 콘서트'},
-    {emoji:'🔥',title:'Stray Kids Performance',desc:'Intense dance + rap',ko:'스트레이 키즈'},
-    {emoji:'✨',title:'aespa AI Stage',desc:'Futuristic virtual world',ko:'에스파'},
-    {emoji:'🎭',title:'SEVENTEEN Show',desc:'13 members, endless energy',ko:'세븐틴 공연'}]}
+  date:{labelIcon:'heart',labelText:'Date Ideas',items:[
+    {emoji:'coffee',title:'Cafe in Hongdae',desc:'Chill vibes, Korean music BGM',ko:'홍대 카페 데이트'},
+    {emoji:'bridge',title:'Han River Night Walk',desc:'City lights + deep talk',ko:'한강 야경 산책'},
+    {emoji:'mic',title:'Noraebang Session',desc:'Sing K-pop duets together',ko:'노래방'},
+    {emoji:'shopping_bag',title:'Myeongdong Shopping',desc:'Try on hanbok + street food',ko:'명동 쇼핑'},
+    {emoji:'film',title:'Korean Movie Night',desc:'Watch with Korean subs',ko:'한국 영화 감상'},
+    {emoji:'bowl',title:'Cooking Korean Food',desc:'Make bibimbap together',ko:'한식 요리'},
+    {emoji:'camera',title:'Photo Booth Tour',desc:'Cute photos at every stop',ko:'인생네컷 투어'},
+    {emoji:'ferris',title:'Lotte World',desc:'Theme park thrill date',ko:'롯데월드'}]},
+  food:{labelIcon:'bowl',labelText:'Korean Food',items:[
+    {emoji:'utensils',title:'Samgyeopsal',desc:'Grilled pork belly + soju',ko:'삼겹살'},
+    {emoji:'bowl',title:'Kimchi Jjigae',desc:'Spicy, warm, comfort food',ko:'김치찌개'},
+    {emoji:'bowl',title:'Bibimbap',desc:'Colorful mixed rice bowl',ko:'비빔밥'},
+    {emoji:'chicken',title:'Korean Fried Chicken',desc:'Crispy + yangnyeom sauce',ko:'치킨'},
+    {emoji:'bowl',title:'Budae Jjigae',desc:'Army stew with everything',ko:'부대찌개'},
+    {emoji:'dumpling',title:'Mandu',desc:'Handmade Korean dumplings',ko:'만두'},
+    {emoji:'bowl',title:'Bingsu',desc:'Shaved ice dessert heaven',ko:'빙수'},
+    {emoji:'utensils',title:'Tteokbokki',desc:'Spicy rice cakes street style',ko:'떡볶이'}]},
+  kpop:{labelIcon:'music',labelText:'K-pop Vibes',items:[
+    {emoji:'mic',title:'BTS Concert',desc:'Army vibes, lightstick ready',ko:'BTS 콘서트'},
+    {emoji:'heart',title:'BLACKPINK Stage',desc:'Pink venom energy',ko:'블랙핑크'},
+    {emoji:'sparkle',title:'NewJeans Music Video',desc:'Y2K aesthetic, catchy hooks',ko:'뉴진스 뮤비'},
+    {emoji:'crown',title:'BIGBANG Reunion',desc:'Legendary comeback moment',ko:'빅뱅 컴백'},
+    {emoji:'star',title:'IU Solo Concert',desc:'Emotional ballad queen',ko:'아이유 콘서트'},
+    {emoji:'flame',title:'Stray Kids Performance',desc:'Intense dance + rap',ko:'스트레이 키즈'},
+    {emoji:'sparkle',title:'aespa AI Stage',desc:'Futuristic virtual world',ko:'에스파'},
+    {emoji:'stage',title:'SEVENTEEN Show',desc:'13 members, endless energy',ko:'세븐틴 공연'}]}
 };
 var _cat='date',_pool=[],_next=[],_round=8,_total=0,_done=0;
 
@@ -126,9 +126,9 @@ function shuffle(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.flo
 
 window.showStart=function(){
   var el=document.getElementById('game');
-  el.innerHTML='<div class="start"><div class="start-emoji">⚔️</div><h2>Ideal Type World Cup</h2><p>Pick your favorite in each matchup! Tournament bracket until one winner remains.</p>'
-    +'<div class="category-btns">'+Object.keys(CATS).map(function(k){return '<div class="cat-btn'+(k===_cat?' on':'')+'" onclick="setCat(\''+k+'\')">'+CATS[k].label+'</div>';}).join('')+'</div>'
-    +'<button class="btn btn-primary" onclick="startWC()">START ⚔️</button></div>';
+  el.innerHTML='<div class="start"><div class="start-emoji" style="display:inline-flex;align-items:center;justify-content:center;width:72px;height:72px;color:#f97316">'+(window.KH_ICON_SWORDS||'')+'</div><h2>Ideal Type World Cup</h2><p>Pick your favorite in each matchup! Tournament bracket until one winner remains.</p>'
+    +'<div class="category-btns">'+Object.keys(CATS).map(function(k){var c=CATS[k];return '<div class="cat-btn'+(k===_cat?' on':'')+'" onclick="setCat(\''+k+'\')" style="display:inline-flex;align-items:center;gap:6px">'+khSvg(c.labelIcon,{size:14})+c.labelText+'</div>';}).join('')+'</div>'
+    +'<button class="btn btn-primary" onclick="startWC()" style="display:inline-flex;align-items:center;gap:8px;justify-content:center">START'+khSvg('swords',{size:18,marginRight:0})+'</button></div>';
 }
 window.setCat=function(c){_cat=c;showStart();};
 window.startWC=function(){
@@ -144,11 +144,11 @@ function showMatch(){
   var matchNum=_next.length+1,matchTotal=_round/2;
   var pct=Math.round(_done/_total*100);
   var el=document.getElementById('game');
-  el.innerHTML='<div class="header"><h1>⚔️ Ideal Type World Cup</h1><div class="round-info">Round of '+_round+' — Match '+matchNum+'/'+matchTotal+'</div></div>'
+  el.innerHTML='<div class="header"><h1 style="display:inline-flex;align-items:center;gap:8px;justify-content:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;color:#f97316;-webkit-text-fill-color:#f97316">'+(window.KH_ICON_SWORDS||'')+'</span>Ideal Type World Cup</h1><div class="round-info">Round of '+_round+' — Match '+matchNum+'/'+matchTotal+'</div></div>'
     +'<div class="progress"><div class="progress-fill" style="width:'+pct+'%"></div></div>'
     +'<div style="position:relative"><div class="battle">'
-    +'<div class="fighter left" id="fa" onclick="pick(0)"><div class="fighter-emoji">'+a.emoji+'</div><div class="fighter-title">'+a.title+'</div><div class="fighter-desc">'+a.desc+'</div><div class="fighter-ko">'+a.ko+'</div></div>'
-    +'<div class="fighter right" id="fb" onclick="pick(1)"><div class="fighter-emoji">'+b.emoji+'</div><div class="fighter-title">'+b.title+'</div><div class="fighter-desc">'+b.desc+'</div><div class="fighter-ko">'+b.ko+'</div></div>'
+    +'<div class="fighter left" id="fa" onclick="pick(0)"><div class="fighter-emoji" style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;color:#bfdbfe">'+(window['KH_ICON_'+a.emoji.toUpperCase()]||'')+'</div><div class="fighter-title">'+a.title+'</div><div class="fighter-desc">'+a.desc+'</div><div class="fighter-ko">'+a.ko+'</div></div>'
+    +'<div class="fighter right" id="fb" onclick="pick(1)"><div class="fighter-emoji" style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;color:#fecaca">'+(window['KH_ICON_'+b.emoji.toUpperCase()]||'')+'</div><div class="fighter-title">'+b.title+'</div><div class="fighter-desc">'+b.desc+'</div><div class="fighter-ko">'+b.ko+'</div></div>'
     +'</div><div class="vs-badge">VS</div></div>';
 }
 window.pick=function(idx){
@@ -162,8 +162,8 @@ window.pick=function(idx){
   },600);
 };
 function showWinner(item){
-  document.getElementById('game').innerHTML='<div class="winner"><div class="winner-emoji">🏆</div><h2>Champion!</h2><div class="winner-title">'+item.emoji+' '+item.title+'</div><div class="winner-ko">'+item.ko+'</div><div class="winner-desc">'+item.desc+'</div>'
-    +'<div class="btn-row"><button class="btn btn-ghost" onclick="showStart()">Menu</button><button class="btn btn-primary" onclick="startWC()">Play Again ⚔️</button></div></div>';
+  document.getElementById('game').innerHTML='<div class="winner"><div class="winner-emoji" style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;color:#fbbf24">'+(window.KH_ICON_TROPHY||'')+'</div><h2>Champion!</h2><div class="winner-title" style="display:inline-flex;align-items:center;gap:8px;justify-content:center">'+khSvg(item.emoji,{size:22,color:'#fbbf24'})+item.title+'</div><div class="winner-ko">'+item.ko+'</div><div class="winner-desc">'+item.desc+'</div>'
+    +'<div class="btn-row"><button class="btn btn-ghost" onclick="showStart()">Menu</button><button class="btn btn-primary" onclick="startWC()" style="display:inline-flex;align-items:center;gap:8px;justify-content:center">Play Again'+khSvg('swords',{size:18})+'</button></div></div>';
 }
 showStart();
 })();
