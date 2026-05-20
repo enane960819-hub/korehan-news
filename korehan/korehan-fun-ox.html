@@ -16,7 +16,18 @@ body{margin:0;background:#050b15;color:#e0f2fe;font-family:'Happy Monkey','Jua',
 .stat-val{color:#7dd3fc}
 .game-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
 .cat-badge{font-size:11px;font-weight:800;padding:4px 12px;border-radius:999px;background:rgba(96,165,250,.15);color:#60a5fa;text-transform:uppercase;letter-spacing:.08em}
-.q-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px 24px;text-align:center;width:100%;max-width:460px}
+.q-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:28px 24px;text-align:center;width:100%;max-width:460px;transition:box-shadow .2s}
+/* Game-feel additions (PR #7AE) — wrong-answer shake on the q-card,
+   score-pill bump, lives-pill red-flash when a life is lost, +N popup
+   on every correct catch. */
+.q-card.ox-shake{animation:oxQShake .45s ease;border-color:rgba(239,68,68,.55)!important;box-shadow:0 0 26px rgba(239,68,68,.3)}
+@keyframes oxQShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}50%{transform:translateX(7px)}75%{transform:translateX(-4px)}}
+.stat-val.ox-bump{animation:oxScoreBump .35s ease;display:inline-block}
+@keyframes oxScoreBump{0%{transform:scale(1)}50%{transform:scale(1.22);color:#fbbf24}100%{transform:scale(1)}}
+.stat.ox-life-flash{animation:oxLifeFlash .55s ease;border-color:rgba(239,68,68,.6)!important;background:rgba(239,68,68,.12)!important}
+@keyframes oxLifeFlash{0%,100%{transform:scale(1)}30%{transform:scale(1.14)}}
+.ox-popup{position:fixed;left:50%;top:38%;transform:translateX(-50%);pointer-events:none;font-size:26px;font-weight:900;color:#fbbf24;text-shadow:0 0 22px rgba(251,191,36,.55);z-index:30;animation:oxPopup .9s cubic-bezier(.2,.7,.3,1) forwards;font-family:'Source Sans 3','DM Sans',sans-serif}
+@keyframes oxPopup{0%{opacity:0;transform:translate(-50%,8px) scale(.6)}20%{opacity:1;transform:translate(-50%,-2px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-64px) scale(1)}}
 .q-text{font-size:20px;font-weight:800;line-height:1.5;color:#fff;font-family:'Noto Sans KR',sans-serif}
 .timer-wrap{width:100%;max-width:460px;height:5px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden}
 .timer-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,#2563eb,#7dd3fc);transition:width .1s linear}
@@ -235,9 +246,32 @@ window.answer=function(picked){
   if(isCorrect){
     correctCount++;streak++;
     if(streak>maxStreak)maxStreak=streak;
-    score+=10+Math.min(streak*5,50);
+    var pts = 10+Math.min(streak*5,50);
+    score += pts;
+    // +N popup on correct
+    var p = document.createElement('div');
+    p.className = 'ox-popup';
+    p.textContent = '+' + pts;
+    document.body.appendChild(p);
+    setTimeout(function(){ try { p.remove(); } catch(_){} }, 950);
   } else {
     streak=0;lives--;
+    // Shake the question card + flash the lives pill red so the lost-
+    // life beat reads even when eyes are on the answer explanation.
+    var qc = document.querySelector('.q-card');
+    if (qc) {
+      qc.classList.remove('ox-shake');
+      void qc.offsetWidth;
+      qc.classList.add('ox-shake');
+      setTimeout(function(){ qc.classList.remove('ox-shake'); }, 480);
+    }
+    var lp = document.getElementById('g-lives') && document.getElementById('g-lives').closest('.stat');
+    if (lp) {
+      lp.classList.remove('ox-life-flash');
+      void lp.offsetWidth;
+      lp.classList.add('ox-life-flash');
+      setTimeout(function(){ lp.classList.remove('ox-life-flash'); }, 580);
+    }
   }
   updateUI();
   showExp(q,isCorrect);
@@ -252,7 +286,14 @@ function showExp(q,isCorrect){
 }
 
 function updateUI(){
-  document.getElementById('g-score').textContent=score;
+  var scEl = document.getElementById('g-score');
+  var prev = parseInt(scEl.textContent || '0', 10);
+  scEl.textContent = score;
+  if (score > prev) {
+    scEl.classList.remove('ox-bump');
+    void scEl.offsetWidth;
+    scEl.classList.add('ox-bump');
+  }
   document.getElementById('g-streak').textContent=streak;
   document.getElementById('g-lives').textContent=lives;
 }
