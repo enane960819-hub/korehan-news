@@ -13,7 +13,7 @@
 /* Force the dark backdrop with !important + a full-viewport overlay because
    shared.css applies its own light body background which was bleeding
    through and turning the chosung glyphs (white) invisible on cream. */
-body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua','DM Sans','Noto Sans KR',Inter,Pretendard,sans-serif;overflow-x:hidden;background:#050b15!important;background-image:radial-gradient(ellipse at top,#0c1a36 0%,#050b15 65%)!important;min-height:100vh}
+html body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey','Jua','DM Sans','Noto Sans KR',Inter,Pretendard,sans-serif;overflow-x:hidden;background:#050b15!important;background-image:radial-gradient(ellipse at top,#0c1a36 0%,#050b15 65%)!important;min-height:100vh}
 .wrap{max-width:600px;margin:0 auto;padding:12px 16px 40px;min-height:100dvh;min-height:100vh;display:flex;flex-direction:column}
 @supports(min-height:100dvh){.wrap{min-height:100dvh}}
 .game-header{display:flex;justify-content:space-between;align-items:center;padding:10px 0;flex-shrink:0}
