@@ -911,12 +911,14 @@ body.kh-neon-on .hero-dot {
     if (tip) { tip.style.opacity = '0'; setTimeout(function(){ tip.textContent = tips[tipIdx]; tip.style.opacity = ''; }, 200); }
   }, 3000);
 
-  // Minimum loader display time — prevents the splash from disappearing
-  // before users can register it on cache hits / instant localStorage
-  // paints. 1500ms is short enough to feel snappy on fast loads, long
-  // enough to read the KoreHanı logo + brand tagline.
+  // Minimum loader display time. PR #7BC: dropped 1500 → 600 ms after
+  // owner: "로딩 시간 이게 최선맞음?". On the cache-hit fast path the
+  // hero paints essentially synchronously, so 1500 ms was a pure
+  // artificial floor — the splash sat at "ready" for 1.5 s on every
+  // revisit. 600 ms is still long enough to read the KoreHanı logo
+  // without feeling like a flash of unstyled content.
   var _khLoaderStart = Date.now();
-  var _khLoaderMinMs = 1500;
+  var _khLoaderMinMs = 600;
 
   // Owner: "지금은 로딩화면 장식임" — true. The previous auto-stepper
   // drove the bar toward 99 % on a fixed timer regardless of whether
@@ -987,14 +989,15 @@ body.kh-neon-on .hero-dot {
       }, Math.max(holdFor, 250) + 150);
     }
     if (_isHeroPainted()) { _dismiss(); return; }
-    // Poll for hero paint. 200 ms cadence; 12 s ceiling from
-    // _khLoaderStart so we never strand the user.
+    // Poll for hero paint. PR #7BC: 200 → 80 ms so the splash closes
+    // within ~one frame of actual paint instead of up to 200 ms after.
+    // Still a 12 s ceiling so we never strand the user.
     var watch = setInterval(function() {
       if (_isHeroPainted() || (Date.now() - _khLoaderStart) > 12000) {
         clearInterval(watch);
         _dismiss();
       }
-    }, 200);
+    }, 80);
   };
 
   // Auto-stepper removed. Bar only progresses on real signals from
