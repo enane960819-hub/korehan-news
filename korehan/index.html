@@ -942,9 +942,25 @@ body.kh-neon-on .hero-dot {
 
   window._khLoaderSet = function(v) {
     if (done) return;
+    // PR #7BC: cap the BAR at 92% until the hero is actually painted,
+    // so the visual progress matches reality. Previously the bar hit
+    // 100% the moment all upstream milestones fired, then the splash
+    // sat at "100%" for 5-6s polling for hero paint — the owner saw it
+    // as fake/cheating progress.
+    // The internal `current` keeps the requested value so we still
+    // know the milestone was reached and can branch on it; only the
+    // RENDERED bar/pct is held at 92 until paint completes.
     current = Math.max(current, Math.min(v, 100));
-    if (bar) bar.style.width = current + '%';
-    if (pct) pct.textContent = Math.round(current) + '%';
+    var renderedPct;
+    if (current >= 100 && !_isHeroPainted()) {
+      renderedPct = 92; // hold visual at 92% during the post-milestone
+                        // "waiting for hero paint" phase
+      if (tip) tip.textContent = '거의 다 됐어요 — 콘텐츠 가져오는 중…';
+    } else {
+      renderedPct = current;
+    }
+    if (bar) bar.style.width = renderedPct + '%';
+    if (pct) pct.textContent = Math.round(renderedPct) + '%';
     if (current < 100) return;
 
     // Reached 100: hold the dismiss until the hero is actually
@@ -955,6 +971,10 @@ body.kh-neon-on .hero-dot {
       dismissed = true;
       done = true;
       clearInterval(_tipTimer);
+      // PR #7BC: animate the bar from 92 → 100 right before fade so
+      // the visual closes honestly. Then short hold + fade.
+      if (bar) bar.style.width = '100%';
+      if (pct) pct.textContent = '100%';
       var elapsed = Date.now() - _khLoaderStart;
       var holdFor = Math.max(0, _khLoaderMinMs - elapsed);
       setTimeout(function() {
@@ -964,7 +984,7 @@ body.kh-neon-on .hero-dot {
           el.style.opacity = '0';
           setTimeout(function(){ try { el.remove(); } catch(_) {} }, 400);
         }
-      }, holdFor + 150);
+      }, Math.max(holdFor, 250) + 150);
     }
     if (_isHeroPainted()) { _dismiss(); return; }
     // Poll for hero paint. 200 ms cadence; 12 s ceiling from

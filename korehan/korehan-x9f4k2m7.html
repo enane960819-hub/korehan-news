@@ -6554,45 +6554,44 @@ async function goAICache() {
     // Single Haiku call per article (~$0.003), saves to DB so every
     // learner of that article hits cache from then on.
     var studyGenBtn = _scOk ? '' :
-      '<button class="btn" id="asgenbtn-' + a.id + '" style="font-size:13px;padding:7px 14px;border-radius:8px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;cursor:pointer;font-family:inherit;font-weight:700" onclick="aseGenAndSaveOne(\'' + a.id + '\')" title="이 기사의 Study Room 학습 콘텐츠(vocab/phrases/questions)를 한 번에 생성+저장. Haiku 1회 호출, ~$0.003 / 약 5초.">📚 Study Room 콘텐츠 생성</button>';
+      '<button class="btn" id="asgenbtn-' + a.id + '" style="font-size:13px;padding:7px 14px;border-radius:8px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;cursor:pointer;font-family:inherit;font-weight:700" onclick="aseGenAndSaveOne(\'' + a.id + '\')" title="Study Room의 학습 활동(vocab/phrases/문제)을 한 번에 생성. Haiku 1회, ~$0.003 / 약 5초.">📚 Study Room 활동 만들기</button>';
 
-    // PR #7BA: row layout redesign.
-    // Owner: "버튼 ㅈㄴ 헷갈림. 뭐가 뭐임? 레이아웃 신경좀 쓰자."
-    // The previous flex-row tried to cram title + badges + 3 buttons
-    // onto one line, which wrapped messy and made it impossible to
-    // tell which button did what. Now the row is a card with three
-    // stacked sections:
-    //   1. title + meta
-    //   2. status badges (translation / vocab / grammar / quiz /
-    //      sentences / study / version / error)
-    //   3. action buttons (right-aligned), each with explicit Korean
-    //      labels describing what they DO, and hidden when not useful.
+    // PR #7BC: labels rewritten in plain Korean — drop the "Reader
+    // 캐시" / "(구버전)" jargon the owner flagged as opaque. Buttons
+    // now say what GETS MADE, not what internal cache slot fills.
     //
-    // Action buttons:
-    //   🧠 Reader 캐시 채우기   — fills missing reader caches
-    //                            (translation/vocab/grammar/quiz).
-    //                            Shown only when something is missing.
-    //                            Replaced with a "✅ Reader 캐시 완료"
-    //                            chip when allDone.
-    //   📚 Study Room 콘텐츠 생성 — generates study activities
-    //                              (vocab/phrases/questions). Shown
-    //                              only when missing.
-    //   🔄 문장 분석 재생성 (구버전) — purple solid; when sentence
-    //                                  cache is on an older prompt
-    //                                  version. Otherwise:
-    //   📝 문장 분석 새로 생성   — purple outline; manual refresh.
+    //   🧠 단어·문법·퀴즈 만들기   — fills the missing reader-side
+    //                              tap-to-reveal data (translation /
+    //                              vocab / grammar / quiz). Replaced
+    //                              with "✅ 단어·문법·퀴즈 완료" green
+    //                              chip when all four are present.
+    //   📚 Study Room 활동 만들기  — generates Study Room learning
+    //                              activities (vocab/phrases/문제).
+    //                              Hidden when already done.
+    //   🔄 문장 분석 업데이트      — re-runs sentence-by-sentence
+    //                              analysis. Amber-border + bold
+    //                              when the cache is on an older
+    //                              prompt version (the badge row
+    //                              already shows the actual version
+    //                              tag, so the button label doesn't
+    //                              need to repeat "구버전").
+    //   📝 문장 분석 다시         — neutral-outline variant when the
+    //                              current version is already on the
+    //                              row but the admin wants to refresh.
 
     var readerCacheBtn = allDone
-      ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700">✅ Reader 캐시 완료</span>'
-      : '<button class="btn btn-g" style="font-size:13px;padding:7px 14px;font-weight:700" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')" title="이 기사의 빠진 Reader 캐시(번역/단어/문법/퀴즈)를 채웁니다. 본문에 의존하는 Haiku 호출 — 약 $0.01/기사.">🧠 Reader 캐시 채우기</button>';
+      ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700">✅ 단어·문법·퀴즈 완료</span>'
+      : '<button class="btn btn-g" style="font-size:13px;padding:7px 14px;font-weight:700" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')" title="학습자가 본문 위를 탭했을 때 뜨는 번역/단어/문법/퀴즈를 만듭니다. 빠진 항목만 채움. Haiku 호출 ~$0.01/기사.">🧠 단어·문법·퀴즈 만들기</button>';
 
     var sentenceAnalysisBtn =
         '<button class="btn" style="font-size:12px;padding:6px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;'
       + (isStaleSent
-          ? 'background:#7c3aed;color:#fff;border:1.5px solid #6d28d9'
+          ? 'background:#fff7ed;color:#9a3412;border:1.5px solid #f97316'
           : 'background:#fff;color:#7c3aed;border:1.5px solid #c4b5fd')
-      + '" id="sbtn-' + a.id + '" onclick="backfillOneSentenceAnalysis(\'' + a.id + '\',\'' + (_schema||'') + '\')" title="문장별 분석(Sonnet)을 다시 돌립니다. 본문이 수정됐거나 캐시가 옛 프롬프트 버전일 때 사용. ~$0.02/기사.">'
-      + (isStaleSent ? '🔄 문장 분석 재생성 (구버전)' : '📝 문장 분석 새로 생성')
+      + '" id="sbtn-' + a.id + '" onclick="backfillOneSentenceAnalysis(\'' + a.id + '\',\'' + (_schema||'') + '\')" title="' + (isStaleSent
+          ? '현재 캐시가 이전 프롬프트 버전입니다 (위 v뱃지 참고). 새 분석으로 업데이트. Sonnet 1회, ~$0.02.'
+          : '문장별 분석을 다시 만듭니다 (본문 수정 후 등). Sonnet 1회, ~$0.02.') + '">'
+      + (isStaleSent ? '🔄 문장 분석 업데이트' : '📝 문장 분석 다시')
       + '</button>';
 
     html += '<div id="crow-' + a.id + '" style="background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:10px;overflow:hidden' + (articleErrs.length ? ';border-color:#f59e0b' : '') + '">'
@@ -6847,7 +6846,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     else if (e && e.message) { try { _msg = JSON.stringify(e.message); } catch(_) { _msg = String(e.message); } }
     else { try { _msg = JSON.stringify(e); } catch(_) { _msg = String(e); } }
     if (stEl) stEl.textContent = '❌ ' + (_msg || 'failed');
-    if (btn) { btn.disabled = false; btn.textContent = '📝 문장 분석 새로 생성'; }
+    if (btn) { btn.disabled = false; btn.textContent = '📝 문장 분석 다시'; }
     if (!silent) toast('실패: ' + _msg, true);
     if (silent) throw e;
   }
@@ -16533,7 +16532,7 @@ async function aseGenAndSaveOne(articleId) {
     return true;
   } catch(err) {
     console.warn('[aseGenAndSaveOne]', articleId, err && err.message);
-    if (btn) { btn.disabled = false; btn.textContent = origLabel || '📚 Study Room 콘텐츠 생성'; }
+    if (btn) { btn.disabled = false; btn.textContent = origLabel || '📚 Study Room 활동 만들기'; }
     if (typeof toast === 'function') toast('❌ ' + (err && err.message || 'gen failed').slice(0, 120), true);
     return false;
   }
