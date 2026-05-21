@@ -100,8 +100,17 @@ Deno.serve(async (req) => {
     // ── DB Operations ──
     if (action === 'db') {
       const { table, method, params } = body
-      if (!table || !ALLOWED_TABLES.has(table)) {
-        return json({ error: 'Table not allowed: ' + table }, 400, cors)
+      // RPC calls use the sentinel `table: '_rpc'` (the client proxy
+      // has no real table for an rpc) and are gated separately by the
+      // ALLOWED_RPCS check inside the rpc branch below. Skip the
+      // ALLOWED_TABLES gate for those so we don't 400 with
+      // "Table not allowed: _rpc" before ever reaching the rpc branch.
+      // This was the cause of "Pool error: Admin API 400:
+      // Table not allowed: _rpc" on the 🎲 Pick from pool button.
+      if (method !== 'rpc') {
+        if (!table || !ALLOWED_TABLES.has(table)) {
+          return json({ error: 'Table not allowed: ' + table }, 400, cors)
+        }
       }
 
       let query = sb.from(table)
@@ -122,28 +131,50 @@ Deno.serve(async (req) => {
         return json(result, result.error ? 400 : 200, cors)
       }
 
+      // `params.returning` (set by the client proxy when the caller
+      // chained `.select(cols)` after a mutation) tells us to ask the
+      // mutation for the affected rows. Without this, supabase-js
+      // returns null `data` and the caller's `.select('id')` is silently
+      // dropped — exactly the bug behind "batch from pool 1개 생성
+      // 하는데 문장분석 1/74". `.single()` / `.maybeSingle()` modifiers
+      // are likewise honoured so calls like
+      //   `.upsert(rec).select('*').maybeSingle()` (newsletter campaigns)
+      // return one row instead of an array.
+      const applyReturning = (q: any) => {
+        if (params.returning) q = q.select(params.returning)
+        if (params.single) q = q.single()
+        else if (params.maybeSingle) q = q.maybeSingle()
+        return q
+      }
+
       if (method === 'insert') {
-        const result = await query.insert(params.data)
+        let q: any = query.insert(params.data)
+        q = applyReturning(q)
+        const result = await q
         return json(result, result.error ? 400 : 200, cors)
       }
 
       if (method === 'update') {
-        query = query.update(params.data)
-        query = applyFilters(query, params)
-        const result = await query
+        let q: any = query.update(params.data)
+        q = applyFilters(q, params)
+        q = applyReturning(q)
+        const result = await q
         return json(result, result.error ? 400 : 200, cors)
       }
 
       if (method === 'upsert') {
         const opts = params.onConflict ? { onConflict: params.onConflict } : undefined
-        const result = await query.upsert(params.data, opts)
+        let q: any = query.upsert(params.data, opts)
+        q = applyReturning(q)
+        const result = await q
         return json(result, result.error ? 400 : 200, cors)
       }
 
       if (method === 'delete') {
-        query = query.delete()
-        query = applyFilters(query, params)
-        const result = await query
+        let q: any = query.delete()
+        q = applyFilters(q, params)
+        q = applyReturning(q)
+        const result = await q
         return json(result, result.error ? 400 : 200, cors)
       }
 
