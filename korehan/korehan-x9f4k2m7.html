@@ -5419,6 +5419,16 @@ async function runAutoGenerate(){
         si: si,
         level: diffInfo.level,
         saveStatus: saveStatus,
+        // PR #7AY: carry the body Sonnet's secondary outputs forward so
+        // Phase B can write them into the cache row without re-asking
+        // Sonnet. Both are tied to the body the admin reviewed; passing
+        // them by value (not by re-fetch) keeps Phase B authoritative.
+        paragraph_translations: Array.isArray(bodyJson.paragraph_translations)
+          ? bodyJson.paragraph_translations.filter(function(t){ return typeof t === 'string'; })
+          : [],
+        key_expressions: Array.isArray(bodyJson.key_expressions)
+          ? bodyJson.key_expressions
+          : [],
       });
 
       _autoGenSetItemStatus(si,
@@ -5587,11 +5597,12 @@ window.runPendingAnalysisAll = async function() {
       var _ok = 0;
 
       try {
-        var _paraTrans = []; // Phase A bodyJson.paragraph_translations was lost
-                              // when we trimmed `article` to {sentences:[]}. The
-                              // analysis call doesn't redo translations either.
-                              // The renderer falls back to per-sentence
-                              // translation from analysisJson — that's enough.
+        // PR #7AY: paragraph_translations now flows through the
+        // pending-analysis context from Phase A → Phase B. The
+        // body-Sonnet call returned them; pendingAnalysis stashed
+        // them per-article. Phase B writes them into the cache row's
+        // `texts` field alongside the Haiku-generated `sentences[]`.
+        var _paraTrans = Array.isArray(ctx.paragraph_translations) ? ctx.paragraph_translations : [];
         var _sentRaw = Array.isArray(analysisJson.sentences) ? analysisJson.sentences : [];
         var _sentList = _khSplitSentencesForCache(_body);
         var _sentFinal = _sentList.map(function(text, idx) {
@@ -5642,7 +5653,23 @@ window.runPendingAnalysisAll = async function() {
         _ok++;
       } catch(e) { console.warn('Phase B quiz failed', e.message); }
 
-      // Save cache row
+      // PR #7AY: key_expressions written into article_cache.expressions.
+      // Flows through pendingAnalysis context from Phase A's body call.
+      // Filtered to entries whose ko literally appears in the (possibly
+      // admin-edited) body, capped at 3, and reshaped into the
+      // {phrase, note, color} shape the frontend phrases admin
+      // consumes.
+      var _exprPayload = null;
+      try {
+        var rawKE = Array.isArray(ctx.key_expressions) ? ctx.key_expressions : [];
+        var keyExprs = rawKE
+          .filter(function(e){ return e && e.ko && _body.indexOf(e.ko) !== -1; })
+          .slice(0, 3)
+          .map(function(e){ return { phrase: String(e.ko).trim(), note: String(e.en || '').trim(), color: 'amber' }; });
+        if (keyExprs.length) _exprPayload = JSON.stringify(keyExprs);
+      } catch(e) { console.warn('Phase B key_expressions parse failed', e); }
+
+      // Save cache row (core fields: translation/vocab/grammar/quiz)
       if (_ok > 0) {
         try {
           var _saveErr = null;
@@ -5663,6 +5690,18 @@ window.runPendingAnalysisAll = async function() {
           }
           if (_saveErr) console.warn('Phase B cache upsert failed:', _saveErr.message || _saveErr);
         } catch(e) { console.warn('Phase B upsert failed', e); }
+      }
+      // Expressions write happens in a separate try so a missing
+      // `expressions` column can fail without taking the core save down.
+      if (_exprPayload) {
+        try {
+          await getSb().from('article_cache').upsert(
+            { article_id: String(articleId), expressions: _exprPayload },
+            { onConflict: 'article_id' }
+          );
+        } catch (e) {
+          console.warn('Phase B expressions write skipped:', e && e.message || e);
+        }
       }
 
       var statusLabel = saveStatus === 'published' ? 'Published' : 'Saved as draft';
