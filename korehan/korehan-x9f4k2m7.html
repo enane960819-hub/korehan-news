@@ -873,6 +873,19 @@ function _createAdminProxy() {
     return this;
   };
   QueryBuilder.prototype.select = function(cols, opts) {
+    // If select() is being chained AFTER a mutation method (the
+    // supabase-js "return inserted rows" idiom —
+    // `.insert(rows).select('id')` or `.upsert(rows).select('*')`),
+    // treat it as a `returning` clause rather than overwriting
+    // _method back to 'select'. Without this guard, the proxy turned
+    // `insert().select('id')` into a plain SELECT against the whole
+    // table — observed as the "batch from pool 1개 생성하는데 문장
+    // 분석 1/74" bug where the INSERT silently became a SELECT and
+    // returned every row's id in the table.
+    if (this._method === 'insert' || this._method === 'upsert' || this._method === 'update' || this._method === 'delete') {
+      this._params.returning = cols || '*';
+      return this;
+    }
     this._method = 'select';
     this._params.columns = cols || '*';
     if (opts && opts.count) this._params.count = true;
