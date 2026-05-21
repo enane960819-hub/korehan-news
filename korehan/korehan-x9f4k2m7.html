@@ -4914,6 +4914,9 @@ function _renderHeadlinePanel() {
     document.querySelectorAll('.hl-lvl').forEach(function(s){ s.value = lvl; });
   })();
   _updateHLCount();
+  // PR #7AZ: rehydrate any persisted Phase B queue and re-render the
+  // review banner if the admin navigated away after a Phase A run.
+  try { _maybeRestorePendingAnalysisBanner(); } catch(_) {}
 }
 
 // When the global difficulty changes, propagate to any row whose
@@ -5430,6 +5433,9 @@ async function runAutoGenerate(){
           ? bodyJson.key_expressions
           : [],
       });
+      // PR #7AZ: snapshot to localStorage after every push so a page
+      // refresh / nav-away mid-Phase-A doesn't lose what's already queued.
+      _persistPendingAnalysis();
 
       _autoGenSetItemStatus(si,
         '<span style="color:#0d6efd;font-weight:700">📝 본문 완료 — 분석 대기 중 · </span>'
@@ -5454,6 +5460,51 @@ async function runAutoGenerate(){
     toast('📝 본문 ' + pendingN + '개 생성 완료. 검수 후 [🧠 분석 시작] 버튼을 누르세요.');
   } else {
     toast('⚠ 본문 생성 실패. pending 큐가 비어있어 분석 진행 불가.', true);
+  }
+}
+
+// PR #7AZ: localStorage persistence for the Phase B analysis queue.
+// Owner-reported gap — if the admin navigates away from the auto-gen
+// page after Phase A (or refreshes), the pendingAnalysis array stored
+// in `window._autoGenJob` disappears, and the only way to run analysis
+// for those articles becomes the per-article "재분석" button on AI
+// Cache Management (one-by-one). With persistence, returning to the
+// auto-gen page re-renders the review banner and the queue resumes.
+var _PENDING_ANALYSIS_LS_KEY = 'kh_admin_pending_analysis_v1';
+function _persistPendingAnalysis() {
+  try {
+    var pending = (window._autoGenJob && window._autoGenJob.pendingAnalysis) || [];
+    if (pending.length) {
+      localStorage.setItem(_PENDING_ANALYSIS_LS_KEY, JSON.stringify(pending));
+    } else {
+      localStorage.removeItem(_PENDING_ANALYSIS_LS_KEY);
+    }
+  } catch(_) {}
+}
+function _restorePendingAnalysis() {
+  try {
+    var raw = localStorage.getItem(_PENDING_ANALYSIS_LS_KEY);
+    if (!raw) return [];
+    var arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch(_) { return []; }
+}
+// Call once on admin page load (right before / right after auto-gen
+// panel renders). If there's a non-empty restored queue, hydrate
+// window._autoGenJob.pendingAnalysis and re-render the review banner
+// so the admin sees the "🧠 분석 시작" CTA again.
+function _maybeRestorePendingAnalysisBanner() {
+  var restored = _restorePendingAnalysis();
+  if (!restored.length) return;
+  if (!window._autoGenJob) window._autoGenJob = { pendingAnalysis: [] };
+  window._autoGenJob.pendingAnalysis = restored;
+  // Try to render the banner if the headline list anchor exists yet.
+  // If not (page hasn't rendered the headline-fetch panel), skip silently —
+  // a subsequent fetch / render will hit this path again when the anchor
+  // appears, or the admin will navigate to auto-gen and see it via the
+  // explicit restore-on-anchor handler below.
+  if (document.getElementById('hl-list')) {
+    _autoGenShowReviewBanner(restored.length);
   }
 }
 
@@ -5717,8 +5768,9 @@ window.runPendingAnalysisAll = async function() {
     }
   }
 
-  // Done — clear pending + remove banner
+  // Done — clear pending + remove banner + clear the localStorage snapshot.
   window._autoGenJob.pendingAnalysis = [];
+  _persistPendingAnalysis();
   if (banner) banner.remove();
   toast('✨ 분석 완료! ' + done + '개 기사 캐시 + 퀴즈 생성됨.');
 };
@@ -6301,7 +6353,14 @@ async function goAICache() {
     } catch(e) {}
   }
 
-  const articles = DB.filter(function(a){ return a.status === 'published'; });
+  // PR #7AZ: include drafts in the AI Cache list. Owner-reported
+  // gap — articles freshly generated via the Phase A/B auto-gen flow
+  // sit as DRAFT until the admin publishes them, so they never showed
+  // up here and admins couldn't find them to run the per-article
+  // "재분석" trigger after a Phase A run.
+  // Both 'published' and 'draft' articles count; archived/etc. stay
+  // filtered out.
+  const articles = DB.filter(function(a){ return a.status === 'published' || a.status === 'draft'; });
   const wrap = document.getElementById('cache-wrap');
   if (!articles.length) { wrap.innerHTML = '<p style="padding:24px;color:var(--gr)">발행된 기사가 없어요.</p>'; return; }
 
@@ -6420,8 +6479,12 @@ async function goAICache() {
     + _vbadge('없음',           versionCounts.missing || 0, '#fee2e2', '#991b1b')
     + '</span>';
 
+  // PR #7AZ: count drafts separately so admins can see the body-only
+  // queue from the Phase A/B auto-gen flow at a glance.
+  var _pubN   = articles.filter(function(a){ return a.status === 'published'; }).length;
+  var _draftN = articles.filter(function(a){ return a.status === 'draft'; }).length;
   let html = '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
-    + '<span style="font-size:13px;color:var(--gr)">발행 기사 <b>' + articles.length + '</b>개 · Reader 캐시 <b>' + cacheComplete + '</b>개 · <span title="Article Study(Study Room) 학습 콘텐츠 — vocab + phrases + questions가 모두 있을 때 카운트. 없으면 첫 학습자가 들어갈 때 Haiku 호출 발생.">Study 캐시 <b>' + studyComplete + '</b>개</span></span>'
+    + '<span style="font-size:13px;color:var(--gr)">발행 기사 <b>' + _pubN + '</b>개 · 드래프트 <b>' + _draftN + '</b>개 · Reader 캐시 <b>' + cacheComplete + '</b>개 · <span title="Article Study(Study Room) 학습 콘텐츠 — vocab + phrases + questions가 모두 있을 때 카운트. 없으면 첫 학습자가 들어갈 때 Haiku 호출 발생.">Study 캐시 <b>' + studyComplete + '</b>개</span></span>'
     + schemaNote
     + failCountNote
     + versionChip
