@@ -6523,7 +6523,6 @@ async function goAICache() {
         }
       } catch(_) {}
     }
-    const allDone = hasT && hasV && hasG && hasQ;
     function badge(ok, label) {
       return '<span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + (ok?'#dcfce7':'#fee2e2') + ';color:' + (ok?'#166534':'#991b1b') + '">' + (ok?'✓':'✗') + ' ' + label + '</span>';
     }
@@ -6569,32 +6568,32 @@ async function goAICache() {
     var studyGenBtn = _scOk ? '' :
       '<button class="btn" id="asgenbtn-' + a.id + '" style="font-size:13px;padding:7px 14px;border-radius:8px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;cursor:pointer;font-family:inherit;font-weight:700" onclick="aseGenAndSaveOne(\'' + a.id + '\')" title="Study Room의 학습 활동(vocab/phrases/문제)을 한 번에 생성. Haiku 1회, ~$0.003 / 약 5초.">📚 Study Room 활동 만들기</button>';
 
-    // PR #7BC: labels rewritten in plain Korean — drop the "Reader
-    // 캐시" / "(구버전)" jargon the owner flagged as opaque. Buttons
-    // now say what GETS MADE, not what internal cache slot fills.
+    // Manual button row — 3 buttons, each owns one cache slot:
+    //   📝 / 🔄 문장 분석       — runs sentence-by-sentence analysis
+    //                            and writes translation + sentences[]
+    //                            + derived vocab + derived grammar.
+    //                            Amber "🔄 업데이트" when stale, purple
+    //                            "📝 다시" when current.
+    //   🎯 퀴즈 만들기          — 15 fill-in-the-blank questions for
+    //                            the article-end quiz. Independent of
+    //                            sentence analysis — quiz can't be
+    //                            derived from per-sentence breakdown.
+    //                            Replaced with "✅ 퀴즈 완료" chip when
+    //                            cache row has quiz.
+    //   📚 Study Room 활동 만들기 — generates Study Room mini-game
+    //                            activities (vocab/phrases/문제). Writes
+    //                            to a different table (article_study_content),
+    //                            so it stays as its own button. Hidden
+    //                            when already done.
     //
-    //   🧠 단어·문법·퀴즈 만들기   — fills the missing reader-side
-    //                              tap-to-reveal data (translation /
-    //                              vocab / grammar / quiz). Replaced
-    //                              with "✅ 단어·문법·퀴즈 완료" green
-    //                              chip when all four are present.
-    //   📚 Study Room 활동 만들기  — generates Study Room learning
-    //                              activities (vocab/phrases/문제).
-    //                              Hidden when already done.
-    //   🔄 문장 분석 업데이트      — re-runs sentence-by-sentence
-    //                              analysis. Amber-border + bold
-    //                              when the cache is on an older
-    //                              prompt version (the badge row
-    //                              already shows the actual version
-    //                              tag, so the button label doesn't
-    //                              need to repeat "구버전").
-    //   📝 문장 분석 다시         — neutral-outline variant when the
-    //                              current version is already on the
-    //                              row but the admin wants to refresh.
+    // The old 🧠 단어·문법·퀴즈 button was retired: vocab + grammar
+    // are now derived from sentence analysis (📝), and quiz is its own
+    // button (🎯). Background auto-gen on article publish still uses
+    // genCache() to bake all three in one pass.
 
-    var readerCacheBtn = allDone
-      ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700">✅ 단어·문법·퀴즈 완료</span>'
-      : '<button class="btn btn-g" style="font-size:13px;padding:7px 14px;font-weight:700" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')" title="학습자가 본문 위를 탭했을 때 뜨는 번역/단어/문법/퀴즈를 만듭니다. 빠진 항목만 채움. Haiku 호출 ~$0.01/기사.">🧠 단어·문법·퀴즈 만들기</button>';
+    var quizCacheBtn = hasQ
+      ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700">✅ 퀴즈 완료</span>'
+      : '<button class="btn btn-g" style="font-size:13px;padding:7px 14px;font-weight:700" id="qbtn-' + a.id + '" onclick="genQuizOnly(\'' + a.id + '\',\'' + (_schema||'') + '\')" title="기사 끝의 15문제 빈칸 퀴즈를 만듭니다. 단어·문법은 📝 문장 분석 버튼이 함께 채우므로 따로 만들 필요 없음. Haiku 호출 ~$0.003/기사.">🎯 퀴즈 만들기</button>';
 
     var sentenceAnalysisBtn =
         '<button class="btn" style="font-size:12px;padding:6px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;'
@@ -6625,9 +6624,9 @@ async function goAICache() {
       + '</div>'
       // Action buttons row (right-aligned, clear labels)
       + '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center">'
-      +   readerCacheBtn
-      +   studyGenBtn
       +   sentenceAnalysisBtn
+      +   quizCacheBtn
+      +   studyGenBtn
       + '</div>'
       + '<div id="cst-' + a.id + '" style="font-size:12px;color:var(--gr);margin-top:8px;text-align:right"></div>'
       + '</div>'
@@ -6862,6 +6861,84 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     if (btn) { btn.disabled = false; btn.textContent = '📝 문장 분석 다시'; }
     if (!silent) toast('실패: ' + _msg, true);
     if (silent) throw e;
+  }
+}
+
+// Generate ONLY the article_cache.quiz row. Extracted from genCache so
+// the manual button row can refresh quiz without re-running translation
+// + sentence analysis (the slow + expensive steps). 단어·문법 used to
+// be bundled with quiz behind the legacy 🧠 button; they now ride on
+// 📝 문장 분석 instead (derived from sentence vocab/grammar), so this
+// function only touches the quiz slot. Background auto-gen on publish
+// + retryFailedCaches still call genCache() to bake everything at once.
+async function genQuizOnly(articleId, schema, opts) {
+  opts = opts || {};
+  const silent = !!opts.silent;
+  if (!schema) { if (!silent) toast('스키마 미감지', true); return false; }
+  const a = DB.find(function(x){ return String(x.id) === String(articleId); });
+  if (!a) { if (!silent) toast('기사를 찾을 수 없음', true); return false; }
+  const btn = silent ? null : document.getElementById('qbtn-' + articleId);
+  const stEl = silent ? null : document.getElementById('cst-' + articleId);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 퀴즈 생성 중…'; }
+  if (stEl) stEl.textContent = '퀴즈 생성 중…';
+
+  const _body  = a.body  || '';
+  const _title = a.title || '';
+  const _level = a.level || 'Intermediate';
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  try {
+    if (!_body.trim()) throw new Error('빈 본문');
+    const instr = 'Create 15 fill-in-the-blank questions from this article, covering different sentences and vocabulary. Return ONLY: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English with _____","blank":"correct answer word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.';
+    const r = await callClaude({
+      feature: 'generate-quiz',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2500,
+      messages: [{ role: 'user', content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\nBODY START\n' + _body.slice(0, 3000) + '\nBODY END\n\n---\n' + instr }]
+    });
+    const raw = (r && r.content && r.content[0] && r.content[0].text) || '';
+    if (!raw) throw new Error('empty response');
+    const oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('JSON 응답 없음');
+    const parsed = JSON.parse(raw.slice(oi, ei + 1));
+    const qCount = Array.isArray(parsed.questions) ? parsed.questions.length : 0;
+    if (!qCount) throw new Error('빈 questions[]');
+    const quizStr = JSON.stringify(parsed);
+
+    if (schema === 'kv') {
+      await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+        content_type: 'article', content_id: String(articleId),
+        cache_key: 'quiz', cache_value: quizStr,
+      });
+    } else if (schema === 'wide') {
+      const chk = await supaAdminGet('article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=article_id');
+      const chkData = Array.isArray(chk) ? chk : [];
+      if (chkData.length > 0) {
+        await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(articleId), { quiz: quizStr });
+      } else {
+        await supaAdminPost('article_cache', { article_id: String(articleId), quiz: quizStr });
+      }
+    } else {
+      throw new Error('스키마 감지 실패');
+    }
+
+    await _logCacheGen(articleId, 'quiz', 'ok', null, (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+    if (stEl) stEl.textContent = '✓ 퀴즈 ' + qCount + '문제 저장됨';
+    if (!silent) toast('✓ 퀴즈 ' + qCount + '문제 저장됨');
+    if (btn) { btn.style.display = 'none'; }
+    if (!silent) setTimeout(function(){ goAICache(); }, 800);
+    return true;
+  } catch(e) {
+    await _logCacheGen(articleId, 'quiz', 'error', (e && e.message) || '', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+    console.warn('quiz gen failed', e);
+    var _msg = '';
+    if (e instanceof Error && typeof e.message === 'string') _msg = e.message;
+    else if (e && typeof e.message === 'string') _msg = e.message;
+    else { try { _msg = JSON.stringify(e); } catch(_) { _msg = String(e); } }
+    if (stEl) stEl.textContent = '❌ ' + (_msg || 'failed');
+    if (btn) { btn.disabled = false; btn.textContent = '🎯 퀴즈 만들기'; }
+    if (!silent) toast('실패: ' + _msg, true);
+    if (silent) throw e;
+    return false;
   }
 }
 
