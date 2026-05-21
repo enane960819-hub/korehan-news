@@ -32,11 +32,20 @@ doesn't keep reminding about closed work.
 
 ## Edge Function deploys (must run locally — Cloudflare doesn't deploy these)
 
-- `supabase functions deploy admin-api` — earlier PRs added
-  `pick_conv_scenario` / `mark_conv_scenario_used` to ALLOWED_RPCS
-  and `conv_scenario_pool` to ALLOWED_TABLES. Without this deploy,
-  pool RPCs return 403 and admin conversation gen can't pick
-  scenarios from the pool.
+- `supabase functions deploy admin-api` — **NOW URGENT** after PR #7BE.
+  This deploy carries TWO fixes the admin tooling needs:
+    (a) ALLOWED_TABLES gate now skipped when `method === 'rpc'`, so
+        `🎲 Pick from pool` stops 400'ing with
+        "Table not allowed: _rpc".
+    (b) insert/upsert/update/delete now honour `params.returning` and
+        `params.single` / `maybeSingle`, so `.insert().select('id')`
+        actually inserts (the bug that made "batch from pool 1개" run
+        a ghost "Auto-baking sentence analysis 1 / 74" against every
+        existing conv).
+  Pre-existing reason for this deploy still applies: ALLOWED_RPCS
+  was earlier extended with `pick_conv_scenario` /
+  `mark_conv_scenario_used`, and ALLOWED_TABLES with
+  `conv_scenario_pool`.
 - `supabase functions deploy daily-content-gen` — to activate BOTH
   the psych-verb grammar rule (#7Q) AND the Sonnet model-id fix
   (#7Y) on the server cron.
