@@ -5083,6 +5083,13 @@ async function runAutoGenerate(){
     processed: 0,
     total: selected.length,
     saveStatus: saveStatus,
+    // PR #7AX: two-phase batch flow. Phase A populates this list with
+    // each successfully-bodied article's context; Phase B (triggered
+    // by the admin clicking "🧠 분석 시작" after reviewing all bodies)
+    // iterates and runs the Haiku analysis + cache build + quiz per
+    // entry. Phase B re-fetches the article body from DB so admin
+    // edits applied in the review pause are picked up.
+    pendingAnalysis: [],
     items: selected.map(function(it, i){
       var _h = it.headline;
       var _sec = AUTO_SECTIONS.find(function(s){ return s.key === it.section; }) || AUTO_SECTIONS[0];
@@ -5355,85 +5362,14 @@ async function runAutoGenerate(){
       const bodyJson = JSON.parse(bodyClean);
       if (!bodyJson.title || !bodyJson.body) throw new Error('Invalid body format');
 
-      // ── STEP 2: ANALYSIS (Haiku 4.5) ──────────────────────────
-      // Takes the body Sonnet just produced as input. Per-sentence
-      // vocab + grammar/expression/idiom analysis. Schema-heavy +
-      // body is FIXED → Haiku is the right model.
-      var analysisPrompt =
-          '당신은 한국어 학습자를 위한 문장 단위 분석가입니다. 아래 한국어 기사 본문에 대해 문장별로 vocab + 문법/표현 분석을 생성해 주세요.\n\n'
-        + '[기사 제목]\n' + bodyJson.title + '\n\n'
-        + '[기사 본문 (단락 \\n\\n 구분)]\n' + bodyJson.body + '\n\n'
-        + '[학습자 레벨]\n' + diffInfo.ko + ' (' + diffInfo.level + ')\n\n'
-        + '[문장별 분석 — 가장 중요]\n'
-        + '- 본문에 등장하는 모든 한국어 문장을 등장 순서대로 추출.\n'
-        + '- text: 본문에 EXACTLY 등장한 형태 그대로 (마침표/물음표 포함).\n'
-        + '- translation: 폴리시된 영어 번역 (같은 주어, 같은 시제, 같은 격식).\n'
-        + '- vocab: max 4. 사전형으로 (보다, 흔하다, 키우다 — 단음절 어간 절대 X). ' + (
-            (diffInfo.level === 'Starter' || diffInfo.level === 'Beginner')
-              ? '입문/초급 단어도 포함 OK. 조사(이/가/을/를/도/는)와 단독 이다/있다만 제외.'
-              : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵. 학습자가 찾아볼 만한 단어만.'
-) + ' 빈 배열 OK.\n'
-        + '- analysis: ' + (
-            (diffInfo.level === 'Starter' || diffInfo.level === 'Beginner')
-              ? 'max 6 items. EVERY conjugation step must be explained — beginners need to see the chain from dictionary form to the surface form.'
-              : 'max 4 items. 빈 배열 OK.'
-) + ' 각 항목:\n'
-        + '    type: "grammar" | "expression" | "idiom"\n'
-        + '    label: 패턴/표현 자체. grammar는 형태소/연결어미/활용 종류만 (~기 위해, ~게 되다, ~ㄴ/는 것 같다, ~(으)면서, ㄷ 불규칙, ㅂ 불규칙). 명사 X.\n'
-        + '    exp: 1-2줄 영어 설명. **morpheme이 무엇을 하는지 + 사전형 → 활용형 chain 필수**. 활용형 chunk의 영어 번역만 적으면 안 됨.\n'
-        + '         WRONG: label="~게", exp="easily; in an easy manner" ← 이건 chunk(쉽게)의 의미일 뿐, morpheme(~게)이 뭘 하는지 설명 X.\n'
-        + '         RIGHT: label="~게", exp="adverbializer suffix. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 → 다르게 (differently)."\n'
-        + '         RIGHT: "negation. 보이다 (to be seen) → 보이지 않다 → 보이지 않았어요" / "continuous past. 일을 하다 → 일을 하고 있다 → 일을 하고 있었어요" / "ㄷ-irregular: 듣다 → 들어 → 들었어요 (ㄷ받침이 모음 어미 앞에서 ㄹ로 바뀜)".\n'
-        + '    example_in_sentence: 이 문장에서 발췌한 chunk (해당 패턴이 사용된 부분).\n'
-        + '- 분석 우선순위 (under-include 금지 — 의심되면 포함):\n'
-        + '    grammar — 학습 가치 있는 문법 패턴, 활용 (불규칙 활용은 vocab에 있는 동사라도 무조건 grammar 항목으로 추가)\n'
-        + '    expression — collocation/굳어진 표현. **2-3음절 동사+조사 chunk라도 학습 가치 있으면 포함**. 예: ~에도 불구하고, ~에 따르면, ~을/를 통해, ~로 이어지다, ~에 대한 관심, ~을 위한 N, ~중 하나, ~는 것이 좋다, 자리잡다, 관심이 높아지다, ~을 보이다, ~기 마련이다.\n'
-        + '    idiom — 관용구/사자성어 (발이 넓다, 우후죽순)\n'
-        + '- ' + (
-            (diffInfo.level === 'Starter' || diffInfo.level === 'Beginner')
-              ? '**기초 grammar 무조건 포함**: ~지 않다 (부정), ~았/었어요 (과거 정중), ~고 있다 (진행), ~기 시작하다 (start V-ing), ~ㄴ/은/는 + noun (수식), ~을/를 (목적격). 두 패턴이 한 동사에 쌓이면 (예: 보이지 않았어요 = ~지 않다 + ~았어요, 일을 하고 있었어요 = ~고 있다 + ~었어요) **둘 다 별도 항목으로** 분리해서 단계별로 설명. 절대 합치지 말 것.'
-              : '기초 markers(~는/ㄴ noun modifier, ~다, ~요/습니다, ~을/를) 스킵. **단 다음 케이스는 무조건 grammar 항목으로 포함**:\n'
-                + '    a. 불규칙 활용 (ㄷ/ㅂ/ㅅ/르/ㅎ/ㅡ-탈락/ㄹ-탈락) — vocab에 있는 동사라도 활용이 불규칙이면 별도 항목. 예: 듣다 → 들었어요, 돕다 → 도와요, 모르다 → 몰라요.\n'
-                + '    b. ~았/었어요가 다른 패턴(~지 않다, ~고 있다, ~기 시작하다, ~게 되다 등)과 stack되는 경우 — 둘 다 별도 항목. 예: 보이지 않았어요 = ~지 않다 + ~았어요 두 entry.\n'
-                + '    c. 단순 ~았/었어요만 있을 때는 스킵 OK.'
-) + '\n'
-        + '- 만들지 말 것: 본문에 없는 패턴 절대 금지. label에 있는 markers가 sentence text에 안 보이면 그 항목 자체를 빼세요.\n'
-        + '- VOCAB ↔ ANALYSIS 교차 보장: analysis chunk 안의 모든 content word(명사/형용사/내용 동사)는 같은 문장 vocab[]에도 사전형으로 등록해야 함. 예: analysis가 "비교해 보면" chunk를 ~아/어 보다로 surface하면 vocab에 "비교하다" 필수. 면제: 조사 (을/를/이/가/은/는/의), 패턴 morpheme 자체 (~게, ~로, 중 하나), 가장 기본 동사 (있다/하다/되다/이다). 학습자가 모르는 단어가 분석에는 나오는데 vocab에 없으면 학습자는 어디서도 뜻을 못 봄.\n\n'
-        + '[출력 — JSON ONLY, no preamble, no code fences]\n'
-        + '{\n'
-        + '  "sentences": [\n'
-        + '    {\n'
-        + '      "text": "<exact KO sentence from body>",\n'
-        + '      "translation": "<EN>",\n'
-        + '      "vocab": [{"ko":"<dict form>","en":"...","note":"..."}],\n'
-        + '      "analysis": [{"type":"grammar","label":"~기 위해","exp":"...","example_in_sentence":"..."}]\n'
-        + '    }\n'
-        + '  ]\n'
-        + '}';
-      var analysisFullPrompt = analysisPrompt + _khAnalysisCatalog + _khLabels;
-      _autoGenSetItemStatus(si, '🧠 분석 생성 중… (Haiku)');
-      const analysisRes = await callClaude({
-        feature: 'generate-article-analysis',
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 8000,
-        messages: [{ role:'user', content: analysisFullPrompt }]
-      });
-      const analysisText = analysisRes.content && analysisRes.content[0] && analysisRes.content[0].text || '';
-      var analysisJson = { sentences: [] };
-      if (analysisText) {
-        const analysisClean = analysisText.replace(/^```json?/,'').replace(/^```/,'').replace(/```$/,'').trim();
-        try {
-          analysisJson = JSON.parse(analysisClean);
-        } catch(e) {
-          console.warn('[autoGen] analysis JSON parse failed — article saved without per-sentence analysis:', e);
-          analysisJson = { sentences: [] };
-        }
-      }
-      // Merge — downstream code expects a single `article` object with
-      // body + title + key_expressions + paragraph_translations from the
-      // Sonnet step, plus the sentences[] array from the Haiku step.
-      const article = Object.assign({}, bodyJson, analysisJson);
-      if (!article.title || !article.body) throw new Error('Invalid format');
+      // PR #7AX: Phase A only — body call is done above. The Haiku
+      // analysis call is DEFERRED until the admin clicks "🧠 분석 시작"
+      // after reviewing all bodies. The article gets saved now with an
+      // empty sentences[] placeholder; Phase B will re-fetch the body
+      // (so admin edits are honoured) and update both the article and
+      // its cache row with the analysis output.
+      const article = Object.assign({}, bodyJson, { sentences: [] });
+      if (!article.title || !article.body) throw new Error('Invalid body format');
 
       const articleId = uid();
       const hasSrcVideo = !!(h.video_url && h.video_kind);
@@ -5474,208 +5410,20 @@ async function runAutoGenerate(){
       await dbSaveArticle(newArticle);
       DB.unshift(newArticle); refreshCounts();
 
-      // ── 캐시 생성 — 통합 Sonnet 응답에서 직접 추출 ──
-      // 위 combined Sonnet call already produced paragraph_translations
-      // + per-sentence analysis. We just shape it into the cache row,
-      // derive Vocab + Grammar tabs, and only call Haiku for the quiz
-      // (intentionally separate — quiz quality from Haiku is fine and
-      // it keeps the Sonnet output JSON shorter).
-      _autoGenSetItemStatus(si, '🧠 캐시 정리 중…');
+      // PR #7AX Phase A: body is saved (sentences:[] placeholder). Push
+      // context to pendingAnalysis so the admin can review/edit each
+      // body in the queue before triggering the Haiku analysis batch.
+      // Skip the cache+quiz block here — that's all Phase B work.
+      window._autoGenJob.pendingAnalysis.push({
+        articleId: articleId,
+        si: si,
+        level: diffInfo.level,
+        saveStatus: saveStatus,
+      });
 
-      const _body  = article.body  || '';
-      const _title = article.title || '';
-      const _level = diffInfo.level;
-      const _sb    = getSb();
-      // updated_at intentionally omitted — production article_cache
-      // lacks that column; including it makes every upsert fail.
-      const _row   = { article_id: String(articleId) };
-      let   _ok    = 0;
-
-      // JSON-safe extractor (kept for the Haiku quiz call below).
-      function _json(text) {
-        const ai = text.indexOf('['), bi = text.lastIndexOf(']');
-        const oi = text.indexOf('{'), ei = text.lastIndexOf('}');
-        if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
-        if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
-        throw new Error('no JSON found');
-      }
-
-      // ── Translation + sentence analysis (from combined Sonnet) ──
-      try {
-        const _paraTrans = Array.isArray(article.paragraph_translations)
-          ? article.paragraph_translations.filter(function(t){ return typeof t === 'string'; })
-          : [];
-        const _sentRaw = Array.isArray(article.sentences) ? article.sentences : [];
-        // Sanity: align per-sentence array length with the body's
-        // actual sentence split. Sonnet sometimes drops/merges a
-        // sentence at the boundary; we fall back to the body-split
-        // text + empty analysis for any mismatched entry so the
-        // reader still has a complete sentence list.
-        const _sentList = _khSplitSentencesForCache(_body);
-        const _sentFinal = _sentList.map(function(text, i) {
-          // Try matching by text first (admin edits or whitespace may
-          // shift index), then fall back to positional.
-          var match = null;
-          for (var k = 0; k < _sentRaw.length; k++) {
-            var t = (_sentRaw[k] && _sentRaw[k].text || '').trim();
-            if (t && (t === text || text.indexOf(t) >= 0 || t.indexOf(text) >= 0)) { match = _sentRaw[k]; break; }
-          }
-          if (!match) match = _sentRaw[i] || {};
-          // Normalise analysis array — accept new shape {type,label,...}
-          // OR legacy grammar shape {pattern,...} just in case Sonnet
-          // mixes the two.
-          var analysis = [];
-          if (Array.isArray(match.analysis)) {
-            analysis = match.analysis.slice(0, 8).filter(function(a){ return a && (a.label || a.pattern); }).map(function(a){
-              return {
-                type: a.type || 'grammar',
-                label: a.label || a.pattern || '',
-                exp: a.exp || '',
-                example_in_sentence: a.example_in_sentence || '',
-              };
-            });
-          } else if (Array.isArray(match.grammar)) {
-            analysis = match.grammar.slice(0, 8).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
-              return {
-                type: 'grammar',
-                label: g.pattern || g.label || '',
-                exp: g.exp || '',
-                example_in_sentence: g.example_in_sentence || '',
-              };
-            });
-          }
-          return {
-            text: text,
-            translation: typeof match.translation === 'string' ? match.translation : '',
-            vocab: Array.isArray(match.vocab) ? match.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
-            analysis: analysis,
-          };
-        });
-
-        // Code-level enforcement of must-include grammar patterns. Combined
-        // Sonnet emits richer entries when it does include a pattern, but it
-        // routinely omits common ones (~고 있다, ~ㄹ 수 있다, ~ 때문에) on
-        // judgment — and sometimes hallucinates patterns not in the body.
-        // This gate fills any KH_GRAMMAR-detected pattern the AI skipped
-        // using the canonical hint as the explanation, with a chunk lifted
-        // from the actual sentence as example_in_sentence (so the article
-        // renderer's marker-check filter actually keeps the entry).
-        if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns) {
-          window.KH_GRAMMAR.enforceDetectedPatterns(_sentFinal, _level);
-        }
-
-        if (_paraTrans.length || _sentFinal.length) {
-          _row.translation = JSON.stringify({
-            texts: _paraTrans,
-            sentences: _sentFinal,
-            version: SENT_CACHE_CURRENT,
-          });
-          _ok++;
-        }
-
-        // Derive Vocab + Grammar tab payloads.
-        if (_sentFinal.length) {
-          const _derived = _khDeriveVocabGrammarFromSentences(_sentFinal, _level);
-          if (_derived.vocab.length)            { _row.vocab   = JSON.stringify(_derived.vocab);   _ok++; }
-          if (_derived.grammar.patterns.length) { _row.grammar = JSON.stringify(_derived.grammar); _ok++; }
-        }
-      } catch(e) { console.warn('combined Sonnet response shape error', e.message); }
-
-      // ── Quiz (Haiku, separate by design) ──
-      try {
-        _autoGenSetItemStatus(si, '🧠 퀴즈 생성 중…');
-        const r = await callClaude({
-          feature: 'generate-quiz',
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1200,
-          messages: [{
-            role: 'user',
-            content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\nBODY START\n' + _body.slice(0, 3000) + '\nBODY END\n\n---\n'
-              + 'Create 5 fill-in-the-blank questions from this article. Return ONLY a JSON object: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English translation with _____","blank":"correct word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.'
-          }]
-        });
-        const _qText = (r.content && r.content[0] && r.content[0].text) || '';
-        _row.quiz = JSON.stringify(_json(_qText));
-        _ok++;
-      } catch(e) { console.warn('quiz failed', e.message); }
-
-      // Key expressions come back as part of the main article JSON
-      // (same Claude call that produced the title + body) so no extra
-      // API call. We cap at 3, drop anything that doesn't literally
-      // appear in the body, and store in the shape the frontend
-      // phrases admin expects: [{phrase, note, color}]. Empty array
-      // is valid — the prompt explicitly allows skipping when nothing
-      // natural fits.
-      try {
-        var rawKE = Array.isArray(article.key_expressions) ? article.key_expressions : [];
-        var keyExprs = rawKE
-          .filter(function(e){ return e && e.ko && _body.indexOf(e.ko) !== -1; })
-          .slice(0, 3)
-          .map(function(e){ return { phrase: String(e.ko).trim(), note: String(e.en || '').trim(), color: 'amber' }; });
-        if (keyExprs.length) _row.expressions = JSON.stringify(keyExprs);
-      } catch(e) { console.warn('key_expressions parse failed', e); }
-
-      if (_ok > 0 || _row.expressions) {
-        try {
-          // Schema-aware write — earlier this just did .upsert with
-          // article_id, which silently failed against the KV-shaped
-          // table that production actually uses. Try wide first, fall
-          // back to KV if the column doesn't exist. Surfaces a toast
-          // on total failure so the admin doesn't keep paying for AI
-          // calls that never get cached.
-          // Split expressions out so a missing `expressions` column
-          // doesn't tank the whole save — translations/vocab/grammar
-          // are the expensive parts to lose.
-          var _exprPayload = _row.expressions;
-          var _coreRow = Object.assign({}, _row);
-          delete _coreRow.expressions;
-
-          var _saveErr = null;
-          try {
-            const _wideRes = await getSb().from('article_cache').upsert(_coreRow, { onConflict: 'article_id' });
-            if (_wideRes.error) _saveErr = _wideRes.error;
-          } catch (e) { _saveErr = e; }
-          // KV fallback: one row per cache_key.
-          if (_saveErr && /article_id|column.*does not exist|relation/i.test(String(_saveErr.message || _saveErr))) {
-            _saveErr = null;
-            for (const k of ['translation', 'vocab', 'grammar', 'quiz']) {
-              if (!_coreRow[k]) continue;
-              try {
-                await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
-                  content_type: 'article',
-                  content_id:   String(articleId),
-                  cache_key:    k,
-                  cache_value:  _coreRow[k],
-                });
-              } catch (e) { _saveErr = e; console.warn('[cache] kv save ' + k + ' failed:', e); }
-            }
-          }
-          // Expressions write happens in a separate try so it can
-          // fail (column missing) without taking the rest down.
-          if (_exprPayload) {
-            try {
-              await getSb().from('article_cache').upsert(
-                { article_id: String(articleId), expressions: _exprPayload },
-                { onConflict: 'article_id' }
-);
-            } catch (e) {
-              console.warn('expressions write skipped:', e && e.message || e);
-            }
-          }
-          if (_saveErr) {
-            console.warn('cache upsert failed:', _saveErr.message || _saveErr);
-            try { toast('⚠️ 캐시 저장 실패: ' + (_saveErr.message || _saveErr).slice(0, 120), true); } catch(_) {}
-          }
-        } catch(e) {
-          console.warn('upsert failed', e);
-          try { toast('⚠️ 캐시 저장 실패: ' + (e.message || e), true); } catch(_) {}
-        }
-      }
-
-      const statusLabel = saveStatus === 'published' ? 'Published' : 'Saved as draft';
       _autoGenSetItemStatus(si,
-        '<span style="color:#28a745;font-weight:700">✅ ' + statusLabel + ' (cache '+_ok+'/4) — </span>'
-        +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">Review &amp; edit →</a>");
+        '<span style="color:#0d6efd;font-weight:700">📝 본문 완료 — 분석 대기 중 · </span>'
+        + '<a href="#" onclick="openModal(\'' + articleId + '\')" style="color:var(--a);font-weight:700">검수/수정 →</a>');
 
     } catch(err) {
       _autoGenSetItemStatus(si, '<span style="color:#dc3545">❌ Failed: '+err.message+'</span>');
@@ -5690,8 +5438,251 @@ async function runAutoGenerate(){
     window._autoGenJob.running = false;
     _autoGenPillRender();
   }
-  toast('✨ Adaptation complete! ' + selected.length + ' articles generated.');
+  var pendingN = (window._autoGenJob && window._autoGenJob.pendingAnalysis || []).length;
+  if (pendingN > 0) {
+    _autoGenShowReviewBanner(pendingN);
+    toast('📝 본문 ' + pendingN + '개 생성 완료. 검수 후 [🧠 분석 시작] 버튼을 누르세요.');
+  } else {
+    toast('⚠ 본문 생성 실패. pending 큐가 비어있어 분석 진행 불가.', true);
+  }
 }
+
+// PR #7AX: review-pause banner rendered after Phase A (body batch)
+// completes. Owner-requested pause point — admin reviews & edits each
+// article's body via the existing per-item "검수/수정 →" link, then
+// clicks the "🧠 분석 시작" button here to fan out the deferred Haiku
+// analysis calls. The banner injects itself above the headline list
+// so it's hard to miss.
+function _autoGenShowReviewBanner(pendingN) {
+  var anchor = document.getElementById('hl-list');
+  if (!anchor) return;
+  var existing = document.getElementById('autogen-review-banner');
+  if (existing) existing.remove();
+  var banner = document.createElement('div');
+  banner.id = 'autogen-review-banner';
+  banner.style.cssText = 'background:linear-gradient(135deg,#dbeafe,#bfdbfe);border:2px solid #2563eb;border-radius:14px;padding:14px 18px;margin:14px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap';
+  banner.innerHTML =
+      '<div style="flex:1;min-width:200px">'
+    +   '<div style="font-weight:900;font-size:15px;color:#1e40af;margin-bottom:4px">📝 본문 ' + pendingN + '개 생성 완료 — 검수 대기 중</div>'
+    +   '<div style="font-size:12px;color:#1e3a8a;line-height:1.5">각 항목의 <b>검수/수정 →</b> 링크를 눌러 본문을 확인하고 필요하면 수정하세요. 검수가 끝나면 <b>[🧠 분석 시작]</b> 버튼을 누르면 됩니다.</div>'
+    + '</div>'
+    + '<button onclick="runPendingAnalysisAll()" style="background:linear-gradient(135deg,#2563eb,#1e40af);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(37,99,235,.3);white-space:nowrap">🧠 분석 시작 (' + pendingN + '개)</button>';
+  anchor.parentNode.insertBefore(banner, anchor);
+}
+
+// PR #7AX Phase B: runs deferred Haiku analysis + cache + quiz for
+// every pending article. Re-fetches the body from DB so admin edits
+// applied in the review pause are honoured. Sequential to keep the
+// edge-function rate-limit happy.
+window.runPendingAnalysisAll = async function() {
+  if (!window._autoGenJob || !Array.isArray(window._autoGenJob.pendingAnalysis) || !window._autoGenJob.pendingAnalysis.length) {
+    toast('처리 대기 중인 본문이 없습니다.', true);
+    return;
+  }
+  var banner = document.getElementById('autogen-review-banner');
+  if (banner) banner.querySelector('button').disabled = true;
+
+  var pending = window._autoGenJob.pendingAnalysis.slice();
+  var done = 0;
+
+  // JSON-safe extractor matching the old single-call flow.
+  function _json(text) {
+    const ai = text.indexOf('['), bi = text.lastIndexOf(']');
+    const oi = text.indexOf('{'), ei = text.lastIndexOf('}');
+    if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
+    if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
+    throw new Error('no JSON found');
+  }
+
+  // Rebuild the same KH_GRAMMAR labels + analysis catalog used by the
+  // analysis prompt in Phase A. Capture once outside the loop.
+  var _khLabels = (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.formatLabelCatalog === 'function')
+    ? '\n\n[CANONICAL PATTERN LABELS — use these EXACT label strings]\n'
+      + 'Use the EXACT label strings below for any matching grammar entry — the post-process enforce + label normalizer layer matches on these canonical forms. You don\'t need to use every pattern; only the ones that genuinely appear in your sentences.\n\n'
+      + window.KH_GRAMMAR.formatLabelCatalog()
+    : '';
+  var _khAnalysisCatalog = '\n\n'
+    + 'CRITICAL guardrails for ANALYSIS:\n'
+    + '  - Only include a pattern if its marker actually appears in the sentence (the post-process enforce layer verifies this and drops items whose example_in_sentence is not a literal substring). When in doubt, omit.\n'
+    + '  - For type="expression" / "idiom": only surface a phrase if it is CENTRAL to that specific sentence\'s meaning. SKIP tangential fillers and semantic duplicates of a grammar entry already in the same analysis array.\n'
+    + '  - COMPOUND / COHESIVE CONSTRUCTIONS: surface multi-token rhetorical structures as ONE expression entry rather than splitting into atomic particles.\n';
+
+  for (var i = 0; i < pending.length; i++) {
+    var ctx = pending[i];
+    var articleId = ctx.articleId;
+    var si = ctx.si;
+    var level = ctx.level;
+    var saveStatus = ctx.saveStatus;
+
+    // Find the article in the in-memory DB array (Phase A pushed it
+    // there). Falls back to a Supabase fetch if it's been pruned.
+    var article = null;
+    for (var k = 0; k < DB.length; k++) {
+      if (String(DB[k].id) === String(articleId)) { article = DB[k]; break; }
+    }
+    if (!article) {
+      try {
+        var res = await getSb().from('articles').select('*').eq('id', articleId).maybeSingle();
+        article = res.data || null;
+      } catch(_) {}
+    }
+    if (!article || !article.body) {
+      _autoGenSetItemStatus(si, '<span style="color:#dc3545">❌ Phase B 실패: article ' + articleId + ' 조회 안 됨</span>');
+      done++;
+      continue;
+    }
+
+    var diffKoMap = { Starter:'씨앗', Beginner:'새싹', Intermediate:'나무', Advanced:'숲' };
+    var ko = diffKoMap[level] || level;
+
+    try {
+      _autoGenSetItemStatus(si, '🧠 분석 생성 중… (Haiku)');
+
+      var analysisPrompt =
+          '당신은 한국어 학습자를 위한 문장 단위 분석가입니다. 아래 한국어 기사 본문에 대해 문장별로 vocab + 문법/표현 분석을 생성해 주세요.\n\n'
+        + '[기사 제목]\n' + (article.title || '') + '\n\n'
+        + '[기사 본문 (단락 \\n\\n 구분)]\n' + article.body + '\n\n'
+        + '[학습자 레벨]\n' + ko + ' (' + level + ')\n\n'
+        + '[문장별 분석 — 가장 중요]\n'
+        + '- 본문에 등장하는 모든 한국어 문장을 등장 순서대로 추출.\n'
+        + '- text: 본문에 EXACTLY 등장한 형태 그대로 (마침표/물음표 포함).\n'
+        + '- translation: 폴리시된 영어 번역 (같은 주어, 같은 시제, 같은 격식).\n'
+        + '- vocab: max 4. 사전형으로. ' + (
+            (level === 'Starter' || level === 'Beginner')
+              ? '입문/초급 단어도 포함 OK.'
+              : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵. 학습자가 찾아볼 만한 단어만.'
+) + ' 빈 배열 OK.\n'
+        + '- analysis: ' + ((level === 'Starter' || level === 'Beginner') ? 'max 6 items.' : 'max 4 items.') + ' 각 항목:\n'
+        + '    type: "grammar" | "expression" | "idiom"\n'
+        + '    label: 패턴/표현 자체. grammar는 형태소/연결어미/활용 종류만. 명사 X.\n'
+        + '    exp: 1-2줄 영어 설명. morpheme이 무엇을 하는지 + 사전형 → 활용형 chain 필수.\n'
+        + '    example_in_sentence: 이 문장에서 발췌한 chunk.\n'
+        + '- 만들지 말 것: 본문에 없는 패턴 절대 금지.\n\n'
+        + '[출력 — JSON ONLY, no preamble, no code fences]\n'
+        + '{\n'
+        + '  "sentences": [\n'
+        + '    {"text":"<exact KO sentence>","translation":"<EN>","vocab":[{"ko":"...","en":"..."}],"analysis":[{"type":"grammar","label":"...","exp":"...","example_in_sentence":"..."}]}\n'
+        + '  ]\n'
+        + '}';
+
+      var analysisRes = await callClaude({
+        feature: 'generate-article-analysis',
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 8000,
+        messages: [{ role:'user', content: analysisPrompt + _khAnalysisCatalog + _khLabels }]
+      });
+      var analysisText = analysisRes.content && analysisRes.content[0] && analysisRes.content[0].text || '';
+      var analysisJson = { sentences: [] };
+      if (analysisText) {
+        try {
+          analysisJson = JSON.parse(analysisText.replace(/^```json?/,'').replace(/^```/,'').replace(/```$/,'').trim());
+        } catch(e) { console.warn('[Phase B] analysis JSON parse failed:', e); }
+      }
+
+      // Build cache row — same logic as the original combined-call code.
+      _autoGenSetItemStatus(si, '🧠 캐시 정리 중…');
+      var _body = article.body;
+      var _title = article.title || '';
+      var _row = { article_id: String(articleId) };
+      var _ok = 0;
+
+      try {
+        var _paraTrans = []; // Phase A bodyJson.paragraph_translations was lost
+                              // when we trimmed `article` to {sentences:[]}. The
+                              // analysis call doesn't redo translations either.
+                              // The renderer falls back to per-sentence
+                              // translation from analysisJson — that's enough.
+        var _sentRaw = Array.isArray(analysisJson.sentences) ? analysisJson.sentences : [];
+        var _sentList = _khSplitSentencesForCache(_body);
+        var _sentFinal = _sentList.map(function(text, idx) {
+          var match = null;
+          for (var k = 0; k < _sentRaw.length; k++) {
+            var t = (_sentRaw[k] && _sentRaw[k].text || '').trim();
+            if (t && (t === text || text.indexOf(t) >= 0 || t.indexOf(text) >= 0)) { match = _sentRaw[k]; break; }
+          }
+          if (!match) match = _sentRaw[idx] || {};
+          var analysis = [];
+          if (Array.isArray(match.analysis)) {
+            analysis = match.analysis.slice(0, 8).filter(function(a){ return a && (a.label || a.pattern); }).map(function(a){
+              return { type: a.type || 'grammar', label: a.label || a.pattern || '', exp: a.exp || '', example_in_sentence: a.example_in_sentence || '' };
+            });
+          }
+          return {
+            text: text,
+            translation: typeof match.translation === 'string' ? match.translation : '',
+            vocab: Array.isArray(match.vocab) ? match.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
+            analysis: analysis,
+          };
+        });
+
+        if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns) {
+          window.KH_GRAMMAR.enforceDetectedPatterns(_sentFinal, level);
+        }
+
+        if (_sentFinal.length) {
+          _row.translation = JSON.stringify({ texts: _paraTrans, sentences: _sentFinal, version: SENT_CACHE_CURRENT });
+          _ok++;
+          var _derived = _khDeriveVocabGrammarFromSentences(_sentFinal, level);
+          if (_derived.vocab.length)            { _row.vocab   = JSON.stringify(_derived.vocab);   _ok++; }
+          if (_derived.grammar.patterns.length) { _row.grammar = JSON.stringify(_derived.grammar); _ok++; }
+        }
+      } catch(e) { console.warn('Phase B cache shape', e.message); }
+
+      // Quiz (Haiku)
+      try {
+        _autoGenSetItemStatus(si, '🧠 퀴즈 생성 중…');
+        var r = await callClaude({
+          feature: 'generate-quiz',
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1200,
+          messages: [{ role:'user', content: 'Korean article (level: ' + level + ')\nTitle: ' + _title + '\n\nBODY START\n' + _body.slice(0, 3000) + '\nBODY END\n\n---\nCreate 5 fill-in-the-blank questions from this article. Return ONLY a JSON object: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English translation with _____","blank":"correct word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.' }]
+        });
+        var _qText = (r.content && r.content[0] && r.content[0].text) || '';
+        _row.quiz = JSON.stringify(_json(_qText));
+        _ok++;
+      } catch(e) { console.warn('Phase B quiz failed', e.message); }
+
+      // Save cache row
+      if (_ok > 0) {
+        try {
+          var _saveErr = null;
+          try {
+            var _wideRes = await getSb().from('article_cache').upsert(_row, { onConflict: 'article_id' });
+            if (_wideRes.error) _saveErr = _wideRes.error;
+          } catch(e) { _saveErr = e; }
+          if (_saveErr && /article_id|column.*does not exist|relation/i.test(String(_saveErr.message || _saveErr))) {
+            _saveErr = null;
+            for (const kk of ['translation', 'vocab', 'grammar', 'quiz']) {
+              if (!_row[kk]) continue;
+              try {
+                await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+                  content_type: 'article', content_id: String(articleId), cache_key: kk, cache_value: _row[kk],
+                });
+              } catch (e) { _saveErr = e; console.warn('[cache] kv save ' + kk + ' failed:', e); }
+            }
+          }
+          if (_saveErr) console.warn('Phase B cache upsert failed:', _saveErr.message || _saveErr);
+        } catch(e) { console.warn('Phase B upsert failed', e); }
+      }
+
+      var statusLabel = saveStatus === 'published' ? 'Published' : 'Saved as draft';
+      _autoGenSetItemStatus(si,
+        '<span style="color:#28a745;font-weight:700">✅ ' + statusLabel + ' (cache '+_ok+'/4) — </span>'
+        +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">Review &amp; edit →</a>");
+    } catch(err) {
+      _autoGenSetItemStatus(si, '<span style="color:#dc3545">❌ Phase B failed: '+(err.message||err)+'</span>');
+    }
+    done++;
+    if (banner) {
+      banner.querySelector('button').textContent = '🧠 분석 중… (' + done + '/' + pending.length + ')';
+    }
+  }
+
+  // Done — clear pending + remove banner
+  window._autoGenJob.pendingAnalysis = [];
+  if (banner) banner.remove();
+  toast('✨ 분석 완료! ' + done + '개 기사 캐시 + 퀴즈 생성됨.');
+};
 
 function today_date(){
   return new Date().toISOString().split('T')[0];
