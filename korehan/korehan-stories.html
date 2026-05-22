@@ -1894,6 +1894,52 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
     var stem = String(target).replace(/[다요죠어아]$/, '');
     return stem.length >= 2 && ko.indexOf(stem) >= 0;
   }
+  // Drop AI-emitted vocab entries that are clearly inflected forms
+  // instead of dictionary forms. The story_gen prompt asks for dict-
+  // forms (작다, not 작은; 잡다, not 잡았어요) but the model leaks
+  // surface forms — and the screenshot showed "작은 [jageun] small"
+  // in vocab alongside the correct "작다" entry. Heuristic catches:
+  //   - polite/plain conjugation endings (~어요/았어요/았다/세요/…)
+  //   - past-contracted stems (갔다/봤다/했다 — ㅆ batchim + 다/어/어요)
+  //   - vowel-stem modifier forms (큰/한/본/슬픈 — last char has ㄴ
+  //     batchim AND total length ≤ 3)
+  //   - batchim-stem modifiers (작은/좋은/같은 — ends in 은/는)
+  //   - fossil determiners (모든/다른/어떤/여러/무슨)
+  // Keeps legitimate noun entries (사람, 책, 손님, 사진, 학원, etc.).
+  var _ST_FOSSIL_DETS = { '모든':1, '다른':1, '어떤':1, '여러':1, '무슨':1, '어느':1, '온갖':1, '아무':1 };
+  function _stHangulJong(ch) {
+    if (!ch) return -1;
+    var c = ch.charCodeAt(0);
+    if (c < 0xAC00 || c > 0xD7A3) return -1;
+    return (c - 0xAC00) % 28;
+  }
+  function _stLooksInflected(ko) {
+    if (!ko || typeof ko !== 'string') return false;
+    if (_ST_FOSSIL_DETS[ko]) return true;
+    if (/(았|었|였)어요$|(았|었|였)습니다$|(았|었|였)다$|(았|었|였)어$|어요$|아요$|여요$|으세요$|세요$|ㅂ니다$|습니다$/.test(ko)) return true;
+    // Past-contracted: 갔다 / 봤다 / 했다 / 왔다 / 줬다 / 돼다 / 됐다 …
+    // Last char is 다/어/어요 and the preceding syllable has ㅆ batchim.
+    var m = ko.match(/^([가-힣]+?)(다|어|어요|어|네|어서)$/);
+    if (m) {
+      var stem = m[1];
+      var last = stem.charAt(stem.length - 1);
+      if (_stHangulJong(last) === 20) return true; // ㅆ jongseong = contracted past
+    }
+    // Short 2-3 char modifier forms ending in 은/는 (batchim-stem) OR
+    // ending in a syllable with ㄴ batchim and length ≤ 3 (vowel-stem
+    // modifiers 큰/한/본/슬픈). 4+ syllable words with ㄴ batchim are
+    // mostly legitimate nouns (사진→3 char, 학원→2 char would be caught
+    // — but 사진 ends in 진 (ㄴ batchim) and is a legit noun, so the
+    // length cap of 3 is intentionally strict; legitimate ㄴ-batchim
+    // nouns in this short range are rare enough to accept the few
+    // false negatives over flooding with 작은/큰/슬픈 noise).
+    if (ko.length >= 2 && ko.length <= 3) {
+      if (/[은는]$/.test(ko)) return true;
+      // Skip the ㄴ-batchim modifier check — it would drop 사진 / 학원 /
+      // 친구 etc. The 은/는 check above catches the common cases.
+    }
+    return false;
+  }
   // Track which vocab / expressions / grammar have already been
   // surfaced in an earlier paragraph. Owner-reported "단어만 있는데
   // 그마저도 중복이네" — '시장' was repeated in every paragraph that
@@ -1937,6 +1983,7 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
     storyVocab.forEach(function (v) {
       if (!v || !v.ko || paraVocabSeenKo[v.ko]) return;
       if (_stInKeyExpr(v.ko)) return;
+      if (_stLooksInflected(v.ko)) return;
       if (!_stKoMatches(ko, v.ko)) return;
       paraVocab.push(v);
       paraVocabSeenKo[v.ko] = true;

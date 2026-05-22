@@ -143,7 +143,27 @@
     //   ~게 만들<korean> (made to)
     // Active forms like '쉽게 했다' (조 was active) still match
     // since '했' starts with 했 not '하다'.
-    { re: /(?<!에)[가-힣]게(?=\s+(?!되[가-힣]|하다|만들[가-힣])[가-힣]|[.,!?])/, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly).' },
+    //
+    // Fossil demonstratives — 그렇게 / 이렇게 / 저렇게 / 어떻게 — surface in
+    // virtually every story and article. Technically derived from
+    // 그렇다/이렇다/저렇다/어떻다 + 게, but they're so fossilized that
+    // surfacing "~게 (adverbializer)" on every one floods the Grammar
+    // tab with a card the learner has already seen. Skip them via the
+    // same widen-then-fossil-check approach as ~히.
+    { _check: function(t) {
+        if (!t) return '';
+        var FOSSIL = { '그렇게': 1, '이렇게': 1, '저렇게': 1, '어떻게': 1 };
+        var re = /(?<!에)[가-힣]게(?=\s+(?!되[가-힣]|하다|만들[가-힣])[가-힣]|[.,!?])/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          var ws = m.index;
+          while (ws > 0 && /[가-힣]/.test(t.charAt(ws - 1))) ws--;
+          var word = t.substring(ws, m.index + 2);
+          if (FOSSIL[word]) continue;
+          return word;
+        }
+        return '';
+      }, label: '~게 (adverbializer suffix)', hint: 'forms adverbs from adjectives. <adj-stem> + 게 = adverb. 쉽다 (easy) → 쉽게 (easily); 다르다 (different) → 다르게 (differently); 빠르다 → 빠르게 (quickly).' },
 
     // ── Derivational suffixes (sibling family of ~게) ───────────
     // Same exp-policy as ~게: explain the morpheme role and show a
@@ -170,10 +190,52 @@
         }
         return '';
       }, label: '~히 (adverb suffix, Sino-Korean)', hint: 'adverbializer for Sino-Korean and a few native bases. 정확하다 → 정확히 (accurately); 조용하다 → 조용히 (quietly); 천천히 (slowly); 분명히 (clearly); 충분히 (sufficiently). Sibling of ~게 — different surface but same role.' },
-    { re: /[가-힣](답다|답게|답고|답다고|답습니다|다워|다워요|다웠)/, label: '~답다 (befits / characteristic of)', hint: 'noun → adjective: <noun> + 답다 = "befits / acts like the role of". 학생답다 → 학생답게 (in a student-like way); 사람답다 (humanly); 봄답다 (spring-like).' },
-    { re: /[가-힣](롭다|롭게|로워|로워요|로웠|로운)/, label: '~롭다 (-ous / adjective formative)', hint: 'noun → adjective for abstract qualities. 자유 → 자유롭다 → 자유롭게 (freely); 새 → 새롭다 → 새롭게 (newly); 여유롭다 (relaxed); 평화롭다 (peaceful).' },
+    // ~답다 — skip 아름답다 family. 아름 isn't a productive noun in
+    // modern Korean (an archaic root), so 아름답다 is a frozen base-form
+    // adjective, not a 아름 + 답다 derivation. Same widen-then-check
+    // approach as ~히 / ~게.
+    { _check: function(t) {
+        if (!t) return '';
+        var re = /[가-힣](답다|답게|답고|답다고|답습니다|다워|다워요|다웠)/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          var ws = m.index;
+          while (ws > 0 && /[가-힣]/.test(t.charAt(ws - 1))) ws--;
+          var we = m.index + m[0].length;
+          while (we < t.length && /[가-힣]/.test(t.charAt(we))) we++;
+          var word = t.substring(ws, we);
+          if (/^아름/.test(word)) continue;
+          return word;
+        }
+        return '';
+      }, label: '~답다 (befits / characteristic of)', hint: 'noun → adjective: <noun> + 답다 = "befits / acts like the role of". 학생답다 → 학생답게 (in a student-like way); 사람답다 (humanly); 봄답다 (spring-like).' },
+    // ~롭다 — skip the high-frequency frozen adjective base-forms
+    // (괴롭다, 외롭다, 날카롭다). These look like X + 롭다 but the X
+    // (괴, 외, 날카) isn't a productively-used noun in modern Korean.
+    // 새롭다 / 자유롭다 / 평화롭다 / 여유롭다 etc. still fire normally.
+    { _check: function(t) {
+        if (!t) return '';
+        var re = /[가-힣](롭다|롭게|로워|로워요|로웠|로운)/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          var ws = m.index;
+          while (ws > 0 && /[가-힣]/.test(t.charAt(ws - 1))) ws--;
+          var we = m.index + m[0].length;
+          while (we < t.length && /[가-힣]/.test(t.charAt(we))) we++;
+          var word = t.substring(ws, we);
+          if (/^(괴|외|날카)롭/.test(word) || /^(괴로|외로|날카로)/.test(word)) continue;
+          return word;
+        }
+        return '';
+      }, label: '~롭다 (-ous / adjective formative)', hint: 'noun → adjective for abstract qualities. 자유 → 자유롭다 → 자유롭게 (freely); 새 → 새롭다 → 새롭게 (newly); 여유롭다 (relaxed); 평화롭다 (peaceful).' },
     { re: /[가-힣](스럽다|스럽게|스러워|스러워요|스러웠|스러운)/, label: '~스럽다 (seems / has the quality of)', hint: 'noun/stem → adjective for evident qualities. 자연 → 자연스럽다 → 자연스럽게 (naturally); 조심 → 조심스럽다 → 조심스럽게 (carefully); 사랑스럽다 (lovely).' },
-    { re: /[가-힣]적(이다|이에요|입니다|이|인|으로|으로\s)/, label: '~적 (-ic / -al adjective suffix)', hint: 'Sino-Korean noun → adjective. <noun> + 적 = "-ic / -al / -ive". Forms: 적이다 (predicate), 적인 N (modifier), 적으로 (adverb). 일반적 (general); 효과적 (effective); 경제적 (economic).' },
+    // Dropped the bare `이` alternative — it caused 정적이 / 흔적이 / 인적이
+    // (noun + 이 subject particle) to surface as `~적 (-ic/-al adj suffix)`.
+    // 정적/흔적/인적/행적/사적/자취/적 are NOUNS not -적 adjectives. The
+    // remaining alternatives (이다 / 이에요 / 입니다 / 인 / 으로) all carry the
+    // adjective predicate or modifier shape, so we only fire when the
+    // surface form genuinely uses 적 as the adj-suffix.
+    { re: /[가-힣]적(이다|이에요|입니다|인|으로|으로\s)/, label: '~적 (-ic / -al adjective suffix)', hint: 'Sino-Korean noun → adjective. <noun> + 적 = "-ic / -al / -ive". Forms: 적이다 (predicate), 적인 N (modifier), 적으로 (adverb). 일반적 (general); 효과적 (effective); 경제적 (economic).' },
     { re: /[가-힣]화(되|하|된|한|돼|됨|함|되었|되었어|되어|됩니다|합니다)/, label: '~화하다/~화되다 (-ization / -ize)', hint: 'Sino-Korean noun → verb. <noun> + 화 = "-ization"; + 하다/되다 = "-ize / become -ized". 디지털화 (digitalization), 산업화 (industrialization), 자동화하다 (automate).' },
 
     // ── Modal / aspectual collocations ──────────────────────────
