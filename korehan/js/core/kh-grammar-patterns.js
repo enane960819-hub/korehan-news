@@ -317,7 +317,25 @@
 
     // ── Particles ─────────────────────────────────────────────
     { re: /[가-힣](을|를)(?:\s|[가-힣])/, label: '~을/를 (object marker)', hint: 'direct object particle. attaches to noun' },
-    { re: /[가-힣](이|가)\s/, label: '~이/가 (subject marker)', hint: 'subject particle. attaches to noun' },
+    // ~이/가 subject marker. Excludes common adverbial -이 suffix forms
+    // (많이, 같이, 깊이, 높이, 길이, 일찍이, 굳이, 곰곰이) — those are
+    // adverbs derived from adjective stems + 이, not noun + 이 subject.
+    { _check: function(t) {
+        if (!t) return '';
+        var FOSSIL_ADV = { '많이': 1, '같이': 1, '깊이': 1, '높이': 1, '길이': 1, '일찍이': 1, '굳이': 1, '곰곰이': 1, '일일이': 1, '낱낱이': 1 };
+        var re = /[가-힣](이|가)\s/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          // Widen leftward to find the full 2-3 syllable word that hits 이/가
+          var endIdx = m.index + 2;
+          var ws = m.index;
+          while (ws > 0 && /[가-힣]/.test(t.charAt(ws - 1))) ws--;
+          var word = t.substring(ws, endIdx);
+          if (FOSSIL_ADV[word]) continue;
+          return m[0];
+        }
+        return '';
+      }, label: '~이/가 (subject marker)', hint: 'subject particle. attaches to noun' },
     { re: /[가-힣](은|는)\s/, label: '~은/는 (topic marker)', hint: 'topic particle. attaches to noun (contrastive or topical)' },
     { re: /[가-힣]에서(?=[^가-힣]|$)/, label: '~에서 (location/source)', hint: 'at/in (location of action) or from (source)' },
     { re: /[가-힣]에게(?=[^가-힣]|$)|[가-힣]한테(?=[^가-힣]|$)/, label: '~에게/한테 (to person)', hint: 'indirect object marker for animate' },
