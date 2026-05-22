@@ -44,6 +44,21 @@
     // the back-fill emit the duplicate label was the bug that surfaced
     // 했어요 and ~았/었/였어요 as two separate cards on the same paragraph.
     { re: /[가-힣](았|었|였)어요(?=[^가-힣]|$)/, label: '~았/었/였어요 (past polite)', hint: 'past polite ending. <stem> + 았/었/였어요. Vowel harmony: ㅏ/ㅗ → 았; else → 었; 하 → 했/하였. Vowel contraction: 보+았→봤, 오+았→왔, 되+았→됐, 마시+었→마셨' },
+    // Plain-style present indicative (평어체) — verbs only, not adjectives.
+    // Vowel-stem verbs add ㄴ as batchim of the stem syllable (가다 → 간다,
+    // 오다 → 온다, 하다 → 한다, 보다 → 본다). Consonant-stem verbs insert
+    // 는 (먹다 → 먹는다, 읽다 → 읽는다). Critical for story narration —
+    // without it 평어체 sentences had NO finite-verb pattern detected.
+    // Adjectives use the bare dict form (좋다, 빠르다) in 평어체 — so a
+    // matching word like 좋다 should NOT trigger this pattern. We avoid
+    // this by requiring ㄴ-batchim on the stem syllable (verb 간다 fires
+    // via _hasJongFollowedBy; adjective 좋다 doesn't, since 좋 has ㅎ).
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 4, ['다', '다.', '다,', '다!', '다?']);
+        if (c) return c;
+        var m = t.match(/[가-힣]는다(?=[^가-힣]|$)/);
+        return m ? m[0] : '';
+      }, label: '~ㄴ다/~는다 (plain present indicative — verbs only)', hint: 'plain-style present-tense ending for verbs (평어체, narration register). Vowel-stem verbs: 가다→간다, 오다→온다, 하다→한다, 보다→본다 (ㄴ becomes the stem batchim). Consonant-stem verbs: 먹다→먹는다, 읽다→읽는다, 받는다 (는 inserted before 다). Adjectives use the bare 다 form (좋다, 빠르다), NOT ~ㄴ다.' },
     { _check: function(t) { return _hasContractedPastEnding(t, '어요'); }, label: '~았/었/였어요 (past polite)', hint: 'past polite (vowel-contracted form). 보다→봤어요, 오다→왔어요, 되다→됐어요, 마시다→마셨어요. Stem vowel + 았/었 collapses into one syllable with ㅆ batchim.' },
     { re: /[가-힣](았|었|였)습니다(?=[^가-힣]|$)/, label: '~았/었/였습니다 (past formal)', hint: 'past formal-polite ending' },
     { _check: function(t) { return _hasContractedPastEnding(t, '습니다'); }, label: '~았/었/였습니다 (past formal)', hint: 'past formal-polite (vowel-contracted form). 보+았+습니다→봤습니다' },
@@ -190,41 +205,38 @@
         }
         return '';
       }, label: '~히 (adverb suffix, Sino-Korean)', hint: 'adverbializer for Sino-Korean and a few native bases. 정확하다 → 정확히 (accurately); 조용하다 → 조용히 (quietly); 천천히 (slowly); 분명히 (clearly); 충분히 (sufficiently). Sibling of ~게 — different surface but same role.' },
-    // ~답다 — skip 아름답다 family. 아름 isn't a productive noun in
-    // modern Korean (an archaic root), so 아름답다 is a frozen base-form
-    // adjective, not a 아름 + 답다 derivation. Same widen-then-check
-    // approach as ~히 / ~게.
+    // ~답다 — skip 아름다 family. 아름 isn't a productive modern Korean
+    // noun (frozen archaic root), so 아름답다/아름다워요/아름다웠다 are
+    // base-form adjectives, not 아름+답다 derivations. We check the 2
+    // chars at [m.index-1, m.index+1] for "아름" — this works for both
+    // raw text AND whitespace-stripped text (where the widen-leftward
+    // approach would over-walk into the previous word).
     { _check: function(t) {
         if (!t) return '';
         var re = /[가-힣](답다|답게|답고|답다고|답습니다|다워|다워요|다웠)/g;
         var m;
         while ((m = re.exec(t)) !== null) {
-          var ws = m.index;
-          while (ws > 0 && /[가-힣]/.test(t.charAt(ws - 1))) ws--;
-          var we = m.index + m[0].length;
-          while (we < t.length && /[가-힣]/.test(t.charAt(we))) we++;
-          var word = t.substring(ws, we);
-          if (/^아름/.test(word)) continue;
-          return word;
+          var ctx = t.substring(Math.max(0, m.index - 1), m.index + 1);
+          if (ctx === '아름') continue;
+          return m[0];
         }
         return '';
       }, label: '~답다 (befits / characteristic of)', hint: 'noun → adjective: <noun> + 답다 = "befits / acts like the role of". 학생답다 → 학생답게 (in a student-like way); 사람답다 (humanly); 봄답다 (spring-like).' },
     // ~롭다 — skip the high-frequency frozen adjective base-forms
-    // (괴롭다, 외롭다, 날카롭다). These look like X + 롭다 but the X
-    // (괴, 외, 날카) isn't a productively-used noun in modern Korean.
-    // 새롭다 / 자유롭다 / 평화롭다 / 여유롭다 etc. still fire normally.
+    // (괴롭다, 외롭다, 날카롭다). Check chars immediately before the
+    // matched [가-힣] (which is X in X + 롭다). For 1-char prefix
+    // fossils (괴, 외), X itself IS the fossil. For 2-char (날카),
+    // X='카' AND chars[m.index-1]='날'. Works in stripped text too.
     { _check: function(t) {
         if (!t) return '';
+        var ONE = { '괴': 1, '외': 1 };
         var re = /[가-힣](롭다|롭게|로워|로워요|로웠|로운)/g;
         var m;
         while ((m = re.exec(t)) !== null) {
-          var ws = m.index;
-          while (ws > 0 && /[가-힣]/.test(t.charAt(ws - 1))) ws--;
-          var we = m.index + m[0].length;
-          while (we < t.length && /[가-힣]/.test(t.charAt(we))) we++;
-          var word = t.substring(ws, we);
-          if (/^(괴|외|날카)롭/.test(word) || /^(괴로|외로|날카로)/.test(word)) continue;
-          return word;
+          var x = t.charAt(m.index);
+          if (ONE[x]) continue;
+          if (x === '카' && t.charAt(m.index - 1) === '날') continue;
+          return m[0];
         }
         return '';
       }, label: '~롭다 (-ous / adjective formative)', hint: 'noun → adjective for abstract qualities. 자유 → 자유롭다 → 자유롭게 (freely); 새 → 새롭다 → 새롭게 (newly); 여유롭다 (relaxed); 평화롭다 (peaceful).' },
@@ -286,6 +298,11 @@
         if (!(nxt === '' || /[\s.,!]/.test(nxt))) continue;
         var pair = t.charAt(i) + '나';
         if (pair === '하나') continue; // numeral, not particle
+        // 구나 at end-of-sentence or before ! is the realization marker
+        // (맛있구나!, 좋구나!, 슬프구나!) — covered by the separate
+        // ~군요/~구나 pattern. Without this skip the bare ~나 branch fires
+        // alongside ~구나 and surfaces two grammar cards on one trigger.
+        if (pair === '구나' && (nxt === '' || nxt === '!' || nxt === '.')) continue;
         // Skip when preceded by 중/한/한두/두/세/네/몇 + space — these mark
         // "one of N" / counting contexts where 나 is the numeral suffix,
         // not the particle. e.g. "중 하나", "한 개나 두 개나" — the latter
@@ -337,8 +354,30 @@
     { _check: function(t) {
         var c = _hasJongFollowedBy(t, 4, ['대요', '대.', '대,', '대?', '대!', '답니다', '답니까', '대네', '대네요', '대지', '대지요']);
         if (c) return c;
-        var m = t.match(/[가-힣](랍니다|랍니까|래요|래\.|래,|래\?|랜다|냬요|냬\.|냬\?|쟤요|쟤\.|쟤\?)/);
-        return m ? m[0] : '';
+        // 그래 / 이래 / 저래 are fossil from 그러하다/이러하다/저러하다 →
+        // 그렇다 → 그래 etc. NOT contracted reported speech. But only
+        // when STANDALONE — "학생이래요" is the legit contracted reported
+        // speech (학생이라고 해요), where 이래요 follows a noun.
+        // detect() calls _check twice (raw text + whitespace-stripped),
+        // which would let 그래 sneak through on the stripped pass because
+        // the preceding space is gone — "왜그래?" matches with prev='왜'
+        // (hangul) and the fossil check falsely lets it fire. Defensive:
+        // when t has NO whitespace at all, treat it as the stripped retry
+        // and skip ALL 그/이/저+래 entries (legit cases like 학생이래요
+        // already matched on the raw pass, which detect() prefers first).
+        var re = /([가-힣])(랍니다|랍니까|래요|래\.|래,|래\?|랜다|냬요|냬\.|냬\?|쟤요|쟤\.|쟤\?)/g;
+        var isStrippedRetry = !/\s/.test(t);
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          var x = m[1];
+          if ((x === '그' || x === '이' || x === '저') && m[2].charAt(0) === '래') {
+            if (isStrippedRetry) continue;
+            var prev = m.index > 0 ? t.charAt(m.index - 1) : '';
+            if (!/[가-힣]/.test(prev)) continue;
+          }
+          return m[0];
+        }
+        return '';
       }, label: '~다고 해(요) → ~대(요) (contracted reported speech)', hint: 'contracted reported speech (extremely common in news headlines and casual Korean). ~ㄴ다고 해요 → ~ㄴ대요 (한다고 해요 → 한대요), ~ㄴ다고 합니다 → ~ㄴ답니다, ~라고 해요 → ~래요 (학생이라고 해요 → 학생이래요), ~냐고 해요 → ~냬요, ~자고 해요 → ~재요. Always relays what someone else said. 만든대요 = 만든다고 해요 ("they say it makes"); 한답니다 = 한다고 합니다.' },
 
     // ── Nominalizers ───────────────────────────────────────────
@@ -358,7 +397,11 @@
         var m = t.match(/([가-힣])기\s*(가|를|에|로|보다|쉽|어렵|좋|싫)/);
         if (!m) return '';
         var prev = m[1];
-        var NOUN_KI_STARTERS = '모일시향학인단식자토사정장무부호용연세야분후초위공동우만환임';
+        // Single hangul chars that, when followed by 기, make a fossil
+        // NOUN (모기, 일기, 시기, 향기, 학기, 인기, …) instead of a
+        // verb-stem + 기 nominalizer. Including 여/거/저 here covers
+        // the fossil place adverbs 여기/거기/저기 (here/there).
+        var NOUN_KI_STARTERS = '모일시향학인단식자토사정장무부호용연세야분후초위공동우만환임여거저';
         if (NOUN_KI_STARTERS.indexOf(prev) >= 0) return '';
         return m[0];
       }, label: '~기 (nominalizer)', hint: 'verbal noun. <stem> + 기 used as noun' },
@@ -532,7 +575,22 @@
     { re: /(ㄴ|은)\s*끝에(?=[^가-힣]|$)/, label: '~ㄴ/은 끝에 (after / finally as a result)', hint: 'culmination after extended effort. <stem> + ㄴ/은 끝에 = "after (finally) / at the end of". 고민한 끝에 (after long deliberation); 토론한 끝에 결정됐다.' },
     { re: /(ㄴ|은)\s*결과(?=[^가-힣]|\s|[,.])/, label: '~ㄴ/은 결과 (as a result)', hint: 'outcome of action. <stem> + ㄴ/은 결과 = "as a result of having V-ed". 조사한 결과 (as a result of investigating); 노력한 결과 성공했다.' },
     { re: /(ㄴ|은)\s*나머지(?=[^가-힣]|$)/, label: '~ㄴ/은 나머지 (as a consequence of being so)', hint: 'extreme-state consequence. <stem> + ㄴ/은 나머지 = "as a result of being so / so X that …". 흥분한 나머지 (in his excitement); 놀란 나머지 말을 잃었다.' },
-    { re: /[가-힣]기에\s+[가-힣]/, label: '~기에 (formal because — written register)', hint: 'formal cause connector. <stem> + 기에 = "because / since (formal)". 학생이기에 (because he\'s a student); 비싸기에 사지 않았다.' },
+    // ~기에 vs locative 기+에 — fossil place adverbs 여기에/거기에/저기에
+    // would match [가-힣]기에\s+[가-힣] (e.g. "여기에 앉으세요"), but the
+    // 기 there is part of the demonstrative noun, not the nominalizer.
+    // Skip when chars before the matched [가-힣] are 여/거/저 + the
+    // [가-힣] itself is 기 (i.e. 여기/거기/저기 + 에).
+    { _check: function(t) {
+        if (!t) return '';
+        var re = /[가-힣]기에\s+[가-힣]/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          var x = t.charAt(m.index);
+          if (x === '여' || x === '거' || x === '저') continue;
+          return m[0];
+        }
+        return '';
+      }, label: '~기에 (formal because — written register)', hint: 'formal cause connector. <stem> + 기에 = "because / since (formal)". 학생이기에 (because he\'s a student); 비싸기에 사지 않았다.' },
     { re: /[가-힣]길래(?=[^가-힣]|\s|[,.])/, label: '~길래 (because — colloquial / spoken)', hint: 'spoken/informal cause connector, often after observing something. <stem> + 길래 = "since / because (I saw/heard)". 비가 오길래 (since it was raining); 맛있다길래 사봤다.' },
 
     // ── Concession / contrast ───────────────────────────────────
@@ -643,7 +701,11 @@
     { re: /(을|를)\s*차지(하|한|했|할|함|해)/, label: '~을/를 차지하다 (account for / occupy)', hint: 'occupy/take-up marker. <noun> + 을/를 차지하다 = "accounts for / occupies / takes up". 절반을 차지하다 (accounts for half); 1위를 차지했다 (took 1st place).' },
     { re: /(다는|라는)\s*입장(이|이다|입니다|을|에서)/, label: '~다는/라는 입장이다 (the position that)', hint: 'stated stance via reported speech. <quote> + 다는/라는 입장이다 = "(holds the) position that". 반대한다는 입장이다 (holds the position of opposing); 문제없다는 입장입니다.' },
     { re: /(으로|로)\s*전해(져|졌|진|지)/, label: '~(으)로 전해지다 (be reported / passed down)', hint: 'passive of 전하다 — informational passive. <noun/clause> + (으)로 전해지다 = "is reported / handed down as". 사실로 전해진다 (is reported as fact).' },
-    { re: /[가-힣]\s*기록(하|되|된|될|했|됐|할|함)/, label: '기록하다 / 기록되다 (record / be recorded)', hint: 'news-statistic verb. <noun> + 기록하다 / 기록되다 = "(X) records / is recorded as". 신기록을 기록하다 (sets a new record); 역대 최고로 기록됐다 (was recorded as the highest ever).' },
+    // Removed: 기록하다/기록되다. A specific verb lemma doesn't belong
+    // in a GRAMMAR pattern detector — it's a vocabulary item, not a
+    // morphological/syntactic pattern. Surfacing it as a "grammar
+    // pattern" misleads the learner ("기록하다 means record" is a
+    // dictionary entry, not a pattern to study).
     { re: /의\s*일종(이|이다|입니다|으로|이라)/, label: '~의 일종이다 (is a kind / type of)', hint: 'classification marker. <noun> + 의 일종이다 = "is a kind / type of (X)". 운동의 일종이다 (is a kind of exercise); 사기의 일종으로 분류된다 (is classified as a kind of fraud).' },
 
     // ── Honorifics ──────────────────────────────────────────────
