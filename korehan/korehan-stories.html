@@ -339,7 +339,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="js/core/kh-grammar-patterns.js?v=20260515c"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260522a"></script>
 <script src="korehan-shared.js?v=20260520a"></script>
 <script src="korehan-hover-tooltips.js?v=20260517a"></script>
 <script>
@@ -1921,10 +1921,22 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
     // dictionary). Combining means a high-value word the admin added
     // to Vocab Bank shows up in story analysis too, not just on hover.
     var hoverPool = (typeof window.khGetHoverVocabList === 'function') ? window.khGetHoverVocabList() : [];
+    // Drop vocab entries already covered by key_expressions. The AI
+    // sometimes emits the same multi-word chunk (e.g. "화를 내다") in
+    // BOTH vocab[] and key_expressions[], which then surfaces twice on
+    // the same paragraph card — VOCAB lists 화를 내다, KEY EXPRESSIONS
+    // also lists 화를 내다. Whitespace-stripped compare so "화를 내다"
+    // in vocab dedupes with "화를내다" in key_expressions and vice versa.
+    var keyExprKoSet = Object.create(null);
+    storyKeyExprs.forEach(function(k) {
+      if (k && k.ko) keyExprKoSet[String(k.ko).replace(/\s+/g, '')] = 1;
+    });
+    function _stInKeyExpr(ko) { return ko && !!keyExprKoSet[String(ko).replace(/\s+/g, '')]; }
     var paraVocabSeenKo = Object.create(null);
     var paraVocab = [];
     storyVocab.forEach(function (v) {
       if (!v || !v.ko || paraVocabSeenKo[v.ko]) return;
+      if (_stInKeyExpr(v.ko)) return;
       if (!_stKoMatches(ko, v.ko)) return;
       paraVocab.push(v);
       paraVocabSeenKo[v.ko] = true;
@@ -1932,6 +1944,7 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
     hoverPool.forEach(function (h) {
       if (!h || !h.word_ko || h.word_ko.length < 2) return;
       if (paraVocabSeenKo[h.word_ko]) return;
+      if (_stInKeyExpr(h.word_ko)) return;
       if (ko.indexOf(h.word_ko) < 0) return;
       paraVocab.push({ ko: h.word_ko, en: h.meaning_en || '', rom: h.reading || '' });
       paraVocabSeenKo[h.word_ko] = true;

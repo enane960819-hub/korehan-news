@@ -36,8 +36,14 @@
     { re: /(?:^|\s|[.,?!])못\s+[가-힣]/, label: '못 + V', hint: 'short-form inability. 못 + verb = "cannot"' },
 
     // ── Tense (sentence enders, past first since most specific) ─
-    { re: /했어요(?=[^가-힣]|$)/, label: '했어요 (하다 past polite)', hint: '하다 verb past polite. 하다 → 했어요' },
-    { re: /[가-힣](았|었|였)어요(?=[^가-힣]|$)/, label: '~았/었/였어요 (past polite)', hint: 'past polite ending. <stem> + 았/었/였어요. Vowel harmony: ㅏ/ㅗ → 았; else → 었; 하 → 했/하였. Vowel contraction: 보+았→봤, 오+았→왔, 되+었→됐, 마시+었→마셨' },
+    // NOTE: no separate `했어요 (하다 past polite)` entry. 했어요 is just
+    // 하 + 였 contracted to 했, and the contracted-past _check on line 41
+    // already catches it (했 carries ㅆ batchim, followed by 어요). The
+    // story_gen and article-gen prompts explicitly say "list ONLY the
+    // canonical ~았/었/였어요 entry, never 했어요 alongside it" — having
+    // the back-fill emit the duplicate label was the bug that surfaced
+    // 했어요 and ~았/었/였어요 as two separate cards on the same paragraph.
+    { re: /[가-힣](았|었|였)어요(?=[^가-힣]|$)/, label: '~았/었/였어요 (past polite)', hint: 'past polite ending. <stem> + 았/었/였어요. Vowel harmony: ㅏ/ㅗ → 았; else → 었; 하 → 했/하였. Vowel contraction: 보+았→봤, 오+았→왔, 되+았→됐, 마시+었→마셨' },
     { _check: function(t) { return _hasContractedPastEnding(t, '어요'); }, label: '~았/었/였어요 (past polite)', hint: 'past polite (vowel-contracted form). 보다→봤어요, 오다→왔어요, 되다→됐어요, 마시다→마셨어요. Stem vowel + 았/었 collapses into one syllable with ㅆ batchim.' },
     { re: /[가-힣](았|었|였)습니다(?=[^가-힣]|$)/, label: '~았/었/였습니다 (past formal)', hint: 'past formal-polite ending' },
     { _check: function(t) { return _hasContractedPastEnding(t, '습니다'); }, label: '~았/었/였습니다 (past formal)', hint: 'past formal-polite (vowel-contracted form). 보+았+습니다→봤습니다' },
@@ -144,7 +150,26 @@
     // dictionary→surface chain. The AI keeps defaulting to "translate
     // the chunk" for these short suffixes, so the canonical hint here
     // serves as the ground truth when enforce auto-injects them.
-    { re: /[가-힣]히(?=\s|[.,!?]|$)/, label: '~히 (adverb suffix, Sino-Korean)', hint: 'adverbializer for Sino-Korean and a few native bases. 정확하다 → 정확히 (accurately); 조용하다 → 조용히 (quietly); 천천히 (slowly); 분명히 (clearly); 충분히 (sufficiently). Sibling of ~게 — different surface but same role.' },
+    // ~히 adverbializer. Standalone fossil adverbs (감히, …) are NOT
+    // derived from a 하다-stem and shouldn't surface as a ~히 pattern.
+    // Widen each regex hit to the full Korean word boundary and skip
+    // when the resulting word is on the fossil list — that way
+    // "감히 잠을 깨우다니" no longer emits a spurious ~히 card while
+    // "용감히" / "정확히" / "천천히" still register normally.
+    { _check: function(t) {
+        if (!t) return '';
+        var FOSSIL_STANDALONE = { '감히': 1 };
+        var re = /[가-힣]히(?=\s|[.,!?]|$)/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          var ws = m.index;
+          while (ws > 0 && /[가-힣]/.test(t.charAt(ws - 1))) ws--;
+          var word = t.substring(ws, m.index + 2);
+          if (FOSSIL_STANDALONE[word]) continue;
+          return word;
+        }
+        return '';
+      }, label: '~히 (adverb suffix, Sino-Korean)', hint: 'adverbializer for Sino-Korean and a few native bases. 정확하다 → 정확히 (accurately); 조용하다 → 조용히 (quietly); 천천히 (slowly); 분명히 (clearly); 충분히 (sufficiently). Sibling of ~게 — different surface but same role.' },
     { re: /[가-힣](답다|답게|답고|답다고|답습니다|다워|다워요|다웠)/, label: '~답다 (befits / characteristic of)', hint: 'noun → adjective: <noun> + 답다 = "befits / acts like the role of". 학생답다 → 학생답게 (in a student-like way); 사람답다 (humanly); 봄답다 (spring-like).' },
     { re: /[가-힣](롭다|롭게|로워|로워요|로웠|로운)/, label: '~롭다 (-ous / adjective formative)', hint: 'noun → adjective for abstract qualities. 자유 → 자유롭다 → 자유롭게 (freely); 새 → 새롭다 → 새롭게 (newly); 여유롭다 (relaxed); 평화롭다 (peaceful).' },
     { re: /[가-힣](스럽다|스럽게|스러워|스러워요|스러웠|스러운)/, label: '~스럽다 (seems / has the quality of)', hint: 'noun/stem → adjective for evident qualities. 자연 → 자연스럽다 → 자연스럽게 (naturally); 조심 → 조심스럽다 → 조심스럽게 (carefully); 사랑스럽다 (lovely).' },
