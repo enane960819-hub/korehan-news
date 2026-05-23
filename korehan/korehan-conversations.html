@@ -1062,6 +1062,26 @@ function _appendConvCards() {
 }
 
 // Highlight key expressions in bubble text
+// Drop vocab entries already covered by key_expressions[]. The AI
+// sometimes emits the same multi-word chunk (e.g. "화를 내다") in BOTH
+// c.vocab[] and c.key_expressions[]; surfacing it twice (Vocabulary
+// card AND Key Expressions card) was the same dup bug we fixed in
+// stories. Whitespace-stripped compare so "화를 내다" in vocab matches
+// "화를내다" in key_expressions and vice versa.
+function _convVocabFilteredByKeyExprs(c) {
+  var vocab = Array.isArray(c && c.vocab) ? c.vocab : [];
+  var keyExprs = Array.isArray(c && c.key_expressions) ? c.key_expressions : [];
+  if (!keyExprs.length) return vocab;
+  var keyExprSet = Object.create(null);
+  keyExprs.forEach(function(k){
+    if (k && k.ko) keyExprSet[String(k.ko).replace(/\s+/g, '')] = 1;
+  });
+  return vocab.filter(function(v){
+    if (!v || !v.ko) return true;
+    return !keyExprSet[String(v.ko).replace(/\s+/g, '')];
+  });
+}
+
 function highlightKeyExprs(text, keyExprs) {
   if (!keyExprs || !keyExprs.length) return escapeHtml(text);
   var escaped = escapeHtml(text);
@@ -1389,7 +1409,8 @@ async function openDetail(idx) {
     }
   }).join('');
 
-  var vocab = c.vocab.map(function(v) {
+  var _convVocab = _convVocabFilteredByKeyExprs(c);
+  var vocab = _convVocab.map(function(v) {
     var _sk=(v.ko||'').split('"').join('&quot;'),_sr=(v.rom||'').split('"').join('&quot;'),_se=(v.en||'').split('"').join('&quot;');
     return '<div class="dp-vocab-item" data-ko="'+_sk+'" data-rom="'+_sr+'" data-en="'+_se+'">'
       +'<span class="dp-vi-ko">'+v.ko+'</span>'
@@ -1407,7 +1428,7 @@ async function openDetail(idx) {
     return '<div class="dp-grammar-item">'+_IC.target+' '+escapeHtml(m.task||m||'')+'</div>';
   }).join('');
 
-  var keywords = c.vocab.map(function(v) {
+  var keywords = _convVocab.map(function(v) {
     return '<span class="dp-keyword">'+escapeHtml(v.ko || '')+'</span>';
   }).join('');
 
@@ -1513,7 +1534,8 @@ function renderStudyNotes(c) {
   var el = document.getElementById('dp-study-sections');
   if (!el) return;
   var isAdm = window._isAdmin;
-  var vocab = (c.vocab||[]).map(function(v, vi) {
+  var _convVocab = _convVocabFilteredByKeyExprs(c);
+  var vocab = _convVocab.map(function(v, vi) {
     var _sk=(v.ko||'').split('"').join('&quot;'),_sr=(v.rom||'').split('"').join('&quot;'),_se=(v.en||'').split('"').join('&quot;');
     return '<div class="dp-vocab-item" data-ko="'+_sk+'" data-rom="'+_sr+'" data-en="'+_se+'">'
       +'<span class="dp-vi-ko">'+v.ko+'</span>'
@@ -1528,7 +1550,7 @@ function renderStudyNotes(c) {
       +(isAdm ? '<button class="dp-gi-del" onclick="convDelGrammar('+gi+')" title="삭제">✕</button>' : '')
       +'</div>';
   }).join('');
-  var keywords = (c.vocab||[]).map(function(v){ return '<span class="dp-keyword">'+escapeHtml(v.ko || '')+'</span>'; }).join('');
+  var keywords = _convVocab.map(function(v){ return '<span class="dp-keyword">'+escapeHtml(v.ko || '')+'</span>'; }).join('');
   var mission = (c.mission||[]).map(function(m){ return '<div class="dp-grammar-item">'+_IC.target+' '+escapeHtml(m.task||m||'')+'</div>'; }).join('');
   var addVocabBtn = isAdm ? '<button class="admin-add-btn" onclick="convAddVocab()">+ Add vocab</button>' : '';
   var addGrammarBtn = isAdm ? '<button class="admin-add-btn" onclick="convAddGrammar()">+ Add grammar</button>' : '';

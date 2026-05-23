@@ -301,7 +301,7 @@ body.sb-open .sb-backdrop{display:block}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="learning_hub_vocab_data.js"></script>
 <script src="js/kh-vocab-prompt.js?v=20260420z"></script>
-<script src="js/core/kh-grammar-patterns.js?v=20260515c"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260522c"></script>
 </head>
 <body>
 
@@ -6523,7 +6523,6 @@ async function goAICache() {
         }
       } catch(_) {}
     }
-    const allDone = hasT && hasV && hasG && hasQ;
     function badge(ok, label) {
       return '<span style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + (ok?'#dcfce7':'#fee2e2') + ';color:' + (ok?'#166534':'#991b1b') + '">' + (ok?'✓':'✗') + ' ' + label + '</span>';
     }
@@ -6569,32 +6568,32 @@ async function goAICache() {
     var studyGenBtn = _scOk ? '' :
       '<button class="btn" id="asgenbtn-' + a.id + '" style="font-size:13px;padding:7px 14px;border-radius:8px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;cursor:pointer;font-family:inherit;font-weight:700" onclick="aseGenAndSaveOne(\'' + a.id + '\')" title="Study Room의 학습 활동(vocab/phrases/문제)을 한 번에 생성. Haiku 1회, ~$0.003 / 약 5초.">📚 Study Room 활동 만들기</button>';
 
-    // PR #7BC: labels rewritten in plain Korean — drop the "Reader
-    // 캐시" / "(구버전)" jargon the owner flagged as opaque. Buttons
-    // now say what GETS MADE, not what internal cache slot fills.
+    // Manual button row — 3 buttons, each owns one cache slot:
+    //   📝 / 🔄 문장 분석       — runs sentence-by-sentence analysis
+    //                            and writes translation + sentences[]
+    //                            + derived vocab + derived grammar.
+    //                            Amber "🔄 업데이트" when stale, purple
+    //                            "📝 다시" when current.
+    //   🎯 퀴즈 만들기          — 15 fill-in-the-blank questions for
+    //                            the article-end quiz. Independent of
+    //                            sentence analysis — quiz can't be
+    //                            derived from per-sentence breakdown.
+    //                            Replaced with "✅ 퀴즈 완료" chip when
+    //                            cache row has quiz.
+    //   📚 Study Room 활동 만들기 — generates Study Room mini-game
+    //                            activities (vocab/phrases/문제). Writes
+    //                            to a different table (article_study_content),
+    //                            so it stays as its own button. Hidden
+    //                            when already done.
     //
-    //   🧠 단어·문법·퀴즈 만들기   — fills the missing reader-side
-    //                              tap-to-reveal data (translation /
-    //                              vocab / grammar / quiz). Replaced
-    //                              with "✅ 단어·문법·퀴즈 완료" green
-    //                              chip when all four are present.
-    //   📚 Study Room 활동 만들기  — generates Study Room learning
-    //                              activities (vocab/phrases/문제).
-    //                              Hidden when already done.
-    //   🔄 문장 분석 업데이트      — re-runs sentence-by-sentence
-    //                              analysis. Amber-border + bold
-    //                              when the cache is on an older
-    //                              prompt version (the badge row
-    //                              already shows the actual version
-    //                              tag, so the button label doesn't
-    //                              need to repeat "구버전").
-    //   📝 문장 분석 다시         — neutral-outline variant when the
-    //                              current version is already on the
-    //                              row but the admin wants to refresh.
+    // The old 🧠 단어·문법·퀴즈 button was retired: vocab + grammar
+    // are now derived from sentence analysis (📝), and quiz is its own
+    // button (🎯). Background auto-gen on article publish still uses
+    // genCache() to bake all three in one pass.
 
-    var readerCacheBtn = allDone
-      ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700">✅ 단어·문법·퀴즈 완료</span>'
-      : '<button class="btn btn-g" style="font-size:13px;padding:7px 14px;font-weight:700" id="cbtn-' + a.id + '" onclick="genCache(\'' + a.id + '\',\'' + (_schema||'') + '\')" title="학습자가 본문 위를 탭했을 때 뜨는 번역/단어/문법/퀴즈를 만듭니다. 빠진 항목만 채움. Haiku 호출 ~$0.01/기사.">🧠 단어·문법·퀴즈 만들기</button>';
+    var quizCacheBtn = hasQ
+      ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:#166534;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700">✅ 퀴즈 완료</span>'
+      : '<button class="btn btn-g" style="font-size:13px;padding:7px 14px;font-weight:700" id="qbtn-' + a.id + '" onclick="genQuizOnly(\'' + a.id + '\',\'' + (_schema||'') + '\')" title="기사 끝의 15문제 빈칸 퀴즈를 만듭니다. 단어·문법은 📝 문장 분석 버튼이 함께 채우므로 따로 만들 필요 없음. Haiku 호출 ~$0.003/기사.">🎯 퀴즈 만들기</button>';
 
     var sentenceAnalysisBtn =
         '<button class="btn" style="font-size:12px;padding:6px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;'
@@ -6625,9 +6624,9 @@ async function goAICache() {
       + '</div>'
       // Action buttons row (right-aligned, clear labels)
       + '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center">'
-      +   readerCacheBtn
-      +   studyGenBtn
       +   sentenceAnalysisBtn
+      +   quizCacheBtn
+      +   studyGenBtn
       + '</div>'
       + '<div id="cst-' + a.id + '" style="font-size:12px;color:var(--gr);margin-top:8px;text-align:right"></div>'
       + '</div>'
@@ -6728,6 +6727,9 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
             ? '입문/초급 동사·형용사 포함 OK. 조사와 단독 이다/있다만 제외.'
             : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵.'
 ) + ' 빈 배열 OK. note는 1줄 또는 빈 문자열.\n'
+      + '- vocab DICTIONARY-FORM 강제: 동사/형용사는 무조건 ~다 형태 (✓잡다 ✗잡았어요; ✓작다 ✗작은; ✓듣다 ✗들었어요). 명사는 bare (✓사람 ✓책). 본문에 "작은 생쥐"가 있어도 vocab 항목은 "작다"만 등록 — "작은"은 emit 금지.\n'
+      + '- vocab fossil 제외: 모든, 다른, 어떤, 여러, 무슨, 어느, 그런, 이런, 저런, 같은, 감히, 그렇게, 이렇게, 저렇게, 어떻게 — 이들은 vocab에 절대 X (학습자 사전에 안 들어가는 fossil).\n'
+      + '- vocab vs analysis 중복 금지: vocab[].ko에 emit한 단어는 analysis[].label / example_in_sentence에 다시 등록 X. 단일 단어는 vocab, multi-word chunk만 analysis[type=expression].\n'
       + '- analysis:\n'
       + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사** (예: "~는 (present verb modifier)" 그대로. 절대 "~는 개" 같이 명사를 붙이지 말 것). exp = 1줄 영어, **반드시 사전형 → 활용형 변형을 보여주기** (예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요").\n'
       + '    2. 추가로 idiom (사자성어/관용구) / expression (~에도 불구하고, ~을 통해 같은 굳어진 표현) 발견하면 entry 더 추가 (type=idiom 또는 expression).\n'
@@ -6862,6 +6864,84 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     if (btn) { btn.disabled = false; btn.textContent = '📝 문장 분석 다시'; }
     if (!silent) toast('실패: ' + _msg, true);
     if (silent) throw e;
+  }
+}
+
+// Generate ONLY the article_cache.quiz row. Extracted from genCache so
+// the manual button row can refresh quiz without re-running translation
+// + sentence analysis (the slow + expensive steps). 단어·문법 used to
+// be bundled with quiz behind the legacy 🧠 button; they now ride on
+// 📝 문장 분석 instead (derived from sentence vocab/grammar), so this
+// function only touches the quiz slot. Background auto-gen on publish
+// + retryFailedCaches still call genCache() to bake everything at once.
+async function genQuizOnly(articleId, schema, opts) {
+  opts = opts || {};
+  const silent = !!opts.silent;
+  if (!schema) { if (!silent) toast('스키마 미감지', true); return false; }
+  const a = DB.find(function(x){ return String(x.id) === String(articleId); });
+  if (!a) { if (!silent) toast('기사를 찾을 수 없음', true); return false; }
+  const btn = silent ? null : document.getElementById('qbtn-' + articleId);
+  const stEl = silent ? null : document.getElementById('cst-' + articleId);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 퀴즈 생성 중…'; }
+  if (stEl) stEl.textContent = '퀴즈 생성 중…';
+
+  const _body  = a.body  || '';
+  const _title = a.title || '';
+  const _level = a.level || 'Intermediate';
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  try {
+    if (!_body.trim()) throw new Error('빈 본문');
+    const instr = 'Create 15 fill-in-the-blank questions from this article, covering different sentences and vocabulary. Return ONLY: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English with _____","blank":"correct answer word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.';
+    const r = await callClaude({
+      feature: 'generate-quiz',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2500,
+      messages: [{ role: 'user', content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\nBODY START\n' + _body.slice(0, 3000) + '\nBODY END\n\n---\n' + instr }]
+    });
+    const raw = (r && r.content && r.content[0] && r.content[0].text) || '';
+    if (!raw) throw new Error('empty response');
+    const oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('JSON 응답 없음');
+    const parsed = JSON.parse(raw.slice(oi, ei + 1));
+    const qCount = Array.isArray(parsed.questions) ? parsed.questions.length : 0;
+    if (!qCount) throw new Error('빈 questions[]');
+    const quizStr = JSON.stringify(parsed);
+
+    if (schema === 'kv') {
+      await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+        content_type: 'article', content_id: String(articleId),
+        cache_key: 'quiz', cache_value: quizStr,
+      });
+    } else if (schema === 'wide') {
+      const chk = await supaAdminGet('article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=article_id');
+      const chkData = Array.isArray(chk) ? chk : [];
+      if (chkData.length > 0) {
+        await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(articleId), { quiz: quizStr });
+      } else {
+        await supaAdminPost('article_cache', { article_id: String(articleId), quiz: quizStr });
+      }
+    } else {
+      throw new Error('스키마 감지 실패');
+    }
+
+    await _logCacheGen(articleId, 'quiz', 'ok', null, (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+    if (stEl) stEl.textContent = '✓ 퀴즈 ' + qCount + '문제 저장됨';
+    if (!silent) toast('✓ 퀴즈 ' + qCount + '문제 저장됨');
+    if (btn) { btn.style.display = 'none'; }
+    if (!silent) setTimeout(function(){ goAICache(); }, 800);
+    return true;
+  } catch(e) {
+    await _logCacheGen(articleId, 'quiz', 'error', (e && e.message) || '', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+    console.warn('quiz gen failed', e);
+    var _msg = '';
+    if (e instanceof Error && typeof e.message === 'string') _msg = e.message;
+    else if (e && typeof e.message === 'string') _msg = e.message;
+    else { try { _msg = JSON.stringify(e); } catch(_) { _msg = String(e); } }
+    if (stEl) stEl.textContent = '❌ ' + (_msg || 'failed');
+    if (btn) { btn.disabled = false; btn.textContent = '🎯 퀴즈 만들기'; }
+    if (!silent) toast('실패: ' + _msg, true);
+    if (silent) throw e;
+    return false;
   }
 }
 
@@ -7171,6 +7251,9 @@ async function genCache(articleId, schema, opts) {
                 ? '입문/초급 동사·형용사 포함 OK. 조사와 단독 이다/있다만 제외.'
                 : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵.'
 ) + ' 빈 배열 OK. note는 1줄 또는 빈 문자열.\n'
+          + '- vocab DICTIONARY-FORM 강제: 동사/형용사는 무조건 ~다 형태 (✓잡다 ✗잡았어요; ✓작다 ✗작은; ✓듣다 ✗들었어요). 명사는 bare (✓사람 ✓책). 본문에 "작은 생쥐"가 있어도 vocab 항목은 "작다"만 등록 — "작은"은 emit 금지.\n'
+          + '- vocab fossil 제외: 모든, 다른, 어떤, 여러, 무슨, 어느, 그런, 이런, 저런, 같은, 감히, 그렇게, 이렇게, 저렇게, 어떻게 — 이들은 vocab에 절대 X (학습자 사전에 안 들어가는 fossil).\n'
+          + '- vocab vs analysis 중복 금지: vocab[].ko에 emit한 단어는 analysis[].label / example_in_sentence에 다시 등록 X. 단일 단어는 vocab, multi-word chunk만 analysis[type=expression].\n'
           + '- analysis:\n'
           + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사**. exp = 1줄 영어, **morpheme이 무엇을 하는지 + 사전형 → 활용형 chain 필수**. 활용형 chunk의 영어 번역만 적으면 안 됨.\n'
           + '         WRONG: label="~게", exp="easily" (chunk 번역). RIGHT: label="~게", exp="adverbializer. <adj-stem> + 게 = adverb. 쉽다 → 쉽게; 다르다 → 다르게."\n'
@@ -8203,6 +8286,9 @@ async function autoGenConvSentenceAnalysis(convId, convObj) {
       + 'CRITICAL — this is CONVERSATIONAL Korean, NOT news. Tune the analysis accordingly:\n'
       + '- TRANSLATION: natural, idiomatic chat English. PRESERVE the original subject — do NOT inject "I/we" if Korean omitted it.\n'
       + '- VOCAB: max 3 per line. Dictionary form (보다, 흔하다, 살다). Skip particles (이/가/을/를/의/에/도/는) and the most basic copula (이다/있다 alone). Casual contractions count — list 떨리다 (not 떨려), 챙기다 (not 챙겨줘), etc.\n'
+      + '- VOCAB fossil 제외: 모든, 다른, 어떤, 여러, 무슨, 어느, 그런, 이런, 저런, 같은, 감히, 그렇게, 이렇게, 저렇게, 어떻게 — fossil 한정사/부사는 vocab에 절대 X.\n'
+      + '- VOCAB vs ANALYSIS 중복 금지: vocab[].ko로 emit한 단어를 analysis[].label / example_in_sentence에 다시 등록 X. 단일 단어는 vocab, 2단어 이상 chunk만 analysis[type=expression].\n'
+      + '- ANALYSIS[].label canonical morpheme 형태만 (예: "~았/었/였어요 (past polite)"). 활용 surface form (예: "했어요 (하다 past polite)", "갔어요") emit 절대 X — 같은 canonical 패턴은 하나의 entry로 통합.\n'
       + '- ANALYSIS: be EXHAUSTIVE for CONVERSATIONAL patterns. The article-style analyser overweights formal connectors; this prompt overrides that. Surface every casual pattern you see.\n'
       + '    MUST INCLUDE when present:\n'
       + '    · VOCATIVES (호격): ~야 (close, intimate), ~아 (close, after consonant), ~씨 (polite acquaintance), ~님 (formal). Almost never in news; central in chat.\n'
@@ -8332,7 +8418,9 @@ async function autoGenStoryAI(storyId, storyObj) {
       + '2. vocab: 15-20 items. Each entry MUST be a SINGLE WORD (one noun, verb, or adjective) in dictionary form. No phrases, no multi-word units, no particles attached. Example: if body has "갔어요", list it as 가다.\n'
       + '3. key_expressions: 5-8 items. Each entry MUST be a multi-word phrase or idiom (2+ words with a space). No single words. Example: "정신이 없다", "손이 가다".\n'
       + '4. vocab and key_expressions must NOT overlap.\n'
-      + '5. grammar: 3-5 items. comprehension: 3 items. body_en: natural full translation.\n'
+      + '5. vocab NEVER include fossil determiners/adverbs: 모든, 다른, 어떤, 여러, 무슨, 어느, 온갖, 아무, 그런, 이런, 저런, 같은, 감히, 그렇게, 이렇게, 저렇게, 어떻게.\n'
+      + '6. grammar[].pattern canonical form ONLY (e.g. "~았/었/였어요"). NEVER emit surface forms like "했어요 (하다 past polite)" alongside the canonical — collapse all 했어요/갔어요/들었어요 instances into ONE "~았/었/였어요" entry.\n'
+      + '7. grammar: 3-5 items. comprehension: 3 items. body_en: natural full translation.\n'
       + 'JSON only.';
 
     var result = await callAdminClaude(prompt);
@@ -8669,7 +8757,7 @@ async function generateConvs() {
     ? '\n\nESSENTIAL EXPRESSIONS — weave 1-2 of these into the dialogue NATURALLY (don\'t force more than 2). They must also appear in the key_expressions output array verbatim:\n' + expressionPool
     : '';
 
-  var prompt = 'You are creating Korean language learning content for KoreHani.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + castBlock + expBlock + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"key_expressions":[{"ko":"multi-word phrase","en":"natural English meaning"}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3-5 key_expressions, 3 missions. EVERY msg MUST have "en" field with natural English translation. key_expressions MUST be multi-word phrases or idioms (2+ words with a space) that actually appear in the dialogue (conjugated form ok). They should NOT overlap with vocab. ' + lvlMap[lvl] + ' level Korean.\n\nCRITICAL REALISM RULES (violations will be rejected):\n- Every situation must be 100% realistic and logically consistent. If the setting is a pharmacy, people buy medicine — not hats or groceries.\n- ALL vocab words in the vocab list MUST appear naturally in the dialogue messages. Never add vocab that is not in the text.\n- The conversation topic and location must match real Korean daily life — do not mix unrelated settings or objects.\n- Vocab distractors should come from words actually used; do not include unrelated meanings.\n\nKOREAN GRAMMAR RULES (applies to msgs[].txt, vocab[].ko, grammar[].ex, key_expressions[].ko):\n- PSYCH-VERB 1st/3rd. 1st-person speaker (저/나/우리) talking about own feeling → bare form: 저는 슬퍼요 / 가고 싶어요. Speaker talking ABOUT a 3rd-person (이름/그/그녀/사람들/아이들) → MUST use "-아/어 하다": ✓ 동생은 슬퍼해요 / 아이들은 만들고 싶어 해요. ✗ 동생은 슬퍼요 / 아이들은 만들고 싶어요. Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다. KakaoTalk dialogue switches speaker frequently — apply the rule per speaker per message.\n- SUBJECT-PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flip for the same referent inside one message.\n- FORMALITY CONSISTENCY: each speaker stays in one register (반말 / 해요체 / 합쇼체) across the whole dialogue. Two speakers MAY have different registers (e.g. 친구 ↔ 친구 = 반말 each side; 손님 ↔ 점원 = 해요체 each side; 학생 ↔ 선생님 = 학생 uses 합쇼체 / 선생님 uses 해요체). Within ONE msg.txt, do not mix registers.\n- TENSE AGREEMENT inside one message vs its temporal anchor.\n- SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach directly (갔다 ✓, 가았다 ✗).\n- HONORIFICS in formal scenarios (PR #7AH): when one speaker addresses a higher-status interlocutor (직원→손님, 학생→선생님, 사원→상사, 자녀→부모님 in serious context), they use 합쇼체 and apply -시- when the verb takes the senior as subject. 손님께서 주문하셨어요 ✓ / 선생님 가십니다 ✓. The higher-status speaker uses 해요체 to the lower-status, no -시-. Peers / friends use 반말 to each other; no -시-. Inanimate subjects + 1st-person subjects never carry -시-.\n- COUNTERS (PR #7AH) for shopping/restaurant/quantity scenarios — match the counter to the noun class: 사람/학생/명 (사람 두 명 ✓ / 학생 세 명 ✓; never 두 마리), 동물/마리 (개 한 마리 ✓ / 고양이 두 마리 ✓; never 한 명), 음료/잔 (커피 한 잔 ✓), 책/권 (책 두 권 ✓), 병 (술 한 병 ✓), 일반 사물/개 (사과 두 개 ✓), 자동차/대 (차 한 대 ✓), 종이/장 (서류 두 장 ✓). 일/이/삼/사/… (Sino-Korean) or 한/두/세/네/… (Native-Korean) numbers: use NATIVE numbers with counters (두 마리, not 이 마리).';
+  var prompt = 'You are creating Korean language learning content for KoreHani.\n\nGenerate ' + count + ' KakaoTalk-style Korean conversations.\nCategory: ' + catMap[cat] + '\nLevel: ' + lvlMap[lvl] + '\nLevel guidance: ' + ({s:'STARTER: 아주 짧은 2~4단어 문장만. 기초 인사/숫자. ~이에요/예요 체만.',b:'BEGINNER: 짧고 쉬운 문장. 기본 조사. 현재형 위주.',i:'INTERMEDIATE: 연결어미, 과거형 자연스럽게.',a:'ADVANCED: 복잡한 문장, 격식체, 고급 문법.'}[lvl]||'') + '\nTopic: ' + (topic || 'any natural Korean daily life situation') + castBlock + expBlock + '\n\nReturn ONLY a valid JSON array. No markdown, no backticks.\n\nEach object:\n{"name":"Names","ctx":"context","cat":"' + cat + '","lvl":"' + lvl + '","catLabel":"' + catMap[cat] + '","topic":"topic","avi":"emoji","msgs":[{"s":"l or r","who":"name","txt":"Korean","en":"English translation of txt"}],"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"key_expressions":[{"ko":"multi-word phrase","en":"natural English meaning"}],"mission":["task1","task2","task3"]}\n\nRules: 6-9 msgs, 5-7 vocab, 2-3 grammar, 3-5 key_expressions, 3 missions. EVERY msg MUST have "en" field with natural English translation. key_expressions MUST be multi-word phrases or idioms (2+ words with a space) that actually appear in the dialogue (conjugated form ok). They should NOT overlap with vocab. vocab[].ko MUST be dictionary form (✓잡다 ✗잡았어요; ✓작다 ✗작은; ✓듣다 ✗들었어요) — never inflected. vocab NEVER include fossils: 모든, 다른, 어떤, 여러, 무슨, 어느, 그런, 이런, 저런, 같은, 감히, 그렇게, 이렇게, 저렇게, 어떻게. grammar[].point canonical form only (e.g. ~았/었/였어요) — never surface forms like "했어요 (하다 past polite)" alongside the canonical.' + lvlMap[lvl] + ' level Korean.\n\nCRITICAL REALISM RULES (violations will be rejected):\n- Every situation must be 100% realistic and logically consistent. If the setting is a pharmacy, people buy medicine — not hats or groceries.\n- ALL vocab words in the vocab list MUST appear naturally in the dialogue messages. Never add vocab that is not in the text.\n- The conversation topic and location must match real Korean daily life — do not mix unrelated settings or objects.\n- Vocab distractors should come from words actually used; do not include unrelated meanings.\n\nKOREAN GRAMMAR RULES (applies to msgs[].txt, vocab[].ko, grammar[].ex, key_expressions[].ko):\n- PSYCH-VERB 1st/3rd. 1st-person speaker (저/나/우리) talking about own feeling → bare form: 저는 슬퍼요 / 가고 싶어요. Speaker talking ABOUT a 3rd-person (이름/그/그녀/사람들/아이들) → MUST use "-아/어 하다": ✓ 동생은 슬퍼해요 / 아이들은 만들고 싶어 해요. ✗ 동생은 슬퍼요 / 아이들은 만들고 싶어요. Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다. KakaoTalk dialogue switches speaker frequently — apply the rule per speaker per message.\n- SUBJECT-PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flip for the same referent inside one message.\n- FORMALITY CONSISTENCY: each speaker stays in one register (반말 / 해요체 / 합쇼체) across the whole dialogue. Two speakers MAY have different registers (e.g. 친구 ↔ 친구 = 반말 each side; 손님 ↔ 점원 = 해요체 each side; 학생 ↔ 선생님 = 학생 uses 합쇼체 / 선생님 uses 해요체). Within ONE msg.txt, do not mix registers.\n- TENSE AGREEMENT inside one message vs its temporal anchor.\n- SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach directly (갔다 ✓, 가았다 ✗).\n- HONORIFICS in formal scenarios (PR #7AH): when one speaker addresses a higher-status interlocutor (직원→손님, 학생→선생님, 사원→상사, 자녀→부모님 in serious context), they use 합쇼체 and apply -시- when the verb takes the senior as subject. 손님께서 주문하셨어요 ✓ / 선생님 가십니다 ✓. The higher-status speaker uses 해요체 to the lower-status, no -시-. Peers / friends use 반말 to each other; no -시-. Inanimate subjects + 1st-person subjects never carry -시-.\n- COUNTERS (PR #7AH) for shopping/restaurant/quantity scenarios — match the counter to the noun class: 사람/학생/명 (사람 두 명 ✓ / 학생 세 명 ✓; never 두 마리), 동물/마리 (개 한 마리 ✓ / 고양이 두 마리 ✓; never 한 명), 음료/잔 (커피 한 잔 ✓), 책/권 (책 두 권 ✓), 병 (술 한 병 ✓), 일반 사물/개 (사과 두 개 ✓), 자동차/대 (차 한 대 ✓), 종이/장 (서류 두 장 ✓). 일/이/삼/사/… (Sino-Korean) or 한/두/세/네/… (Native-Korean) numbers: use NATIVE numbers with counters (두 마리, not 이 마리).';
 
   try {
     var resp = await callClaude({
@@ -9149,7 +9237,11 @@ async function generateStories() {
         : '')
     + '- body length: ' + (meta.shape === 'fable' ? '8-12 paragraphs (fables stay short but DO include every plot beat — beginning, conflict, turning point, resolution, lesson)' : '12-20 paragraphs (novels / web novels — keep every important scene, do NOT compress two scenes into one paragraph)') + '\n'
     + '- PLOT FIDELITY: this is the most important rule. DO NOT skip plot points. DO NOT summarize "and then many things happened". DO NOT compress major scenes. Every key turn (introduction → inciting incident → rising action → climax → resolution) must be on the page in its own paragraph. A learner who reads only this story should understand the WHOLE plot without needing to read the source. Even at lower TOPIK levels, simplify the LANGUAGE not the STORY.\n'
-    + '- vocab: 25-40 hover-worthy content words from the body (proper nouns, less-common verbs/nouns, idiomatic expressions). Include ko + rom + en for each. Spread coverage ACROSS the whole story — every paragraph should have at least 2-3 entries pulling from it. Owner-reported "단어만 있는데 그마저도 중복이네" — sparse per-paragraph vocab makes the analysis feel empty. MORE is better than fewer.\n'
+    + '- vocab: 25-40 hover-worthy content words from the body (proper nouns, less-common verbs/nouns). Include ko + rom + en for each. Spread coverage ACROSS the whole story — every paragraph should have at least 2-3 entries pulling from it. Owner-reported "단어만 있는데 그마저도 중복이네" — sparse per-paragraph vocab makes the analysis feel empty. MORE is better than fewer.\n'
+    + '- vocab DICTIONARY-FORM ONLY: `ko` MUST be the dictionary/lemma form. Verbs/adjectives end in 다 (작다, 크다, 좋다, 슬프다, 깨우다, 잡다, 내다). NEVER list inflected/modifier forms (✗ 작은, ✗ 큰, ✗ 좋은, ✗ 슬픈, ✗ 잡았어요). Nouns are bare (사자, 생쥐, 발, 잠). If the body uses "작은 생쥐", the vocab entry is 작다 (not 작은). If the body uses "잡았어요", the vocab entry is 잡다 (not 잡았어요).\n'
+    + '- vocab vs key_expressions MUST NOT OVERLAP: a single dictionary-form word (사자, 잡다, 화) belongs in vocab[]. A multi-word collocation or idiomatic chunk (화를 내다, 정신이 없다, 마음에 들다) belongs ONLY in key_expressions[], NEVER also in vocab[]. The story render dedupes these two lists, so emitting the same chunk in both silently drops one — defeating the purpose of listing it.\n'
+    + '- vocab NEVER include fossil determiners/adverbs: 모든, 다른, 어떤, 여러, 무슨, 어느, 온갖, 아무, 그런, 이런, 저런, 같은, 감히, 그렇게, 이렇게, 저렇게, 어떻게. These are syntactic function words, not learner-vocabulary content words.\n'
+    + '- grammar[].pattern canonical morpheme form ONLY. NEVER emit surface forms (✗ "했어요 (하다 past polite)", ✗ "갔어요", ✗ "들었어요") as separate patterns when the canonical "~았/었/였어요" already covers them. If the body uses both 했어요 and 들었어요, that is ONE entry "~았/었/였어요", not two.\n'
     + '- hover_extras: another 10-15 supporting words that appear in the body but didn\'t make the headline vocab list. Same shape (ko/rom/en). These also become hover tooltips. Combined with vocab, every uncommon word in the body should be lookup-able.\n'
     + '- grammar: 8-14 patterns. Each entry MUST have all three fields: `pattern` (canonical form with morpheme markers, e.g. "~았/었어요", "~ㄴ/은 후에", "~기 위해"), `exp` (a 1-2 sentence English explanation of what the pattern means and when to use it — write this for a learner who has never seen the pattern), and `ex` (the exact chunk from the body where the pattern appears, verbatim substring of the Korean text). DO NOT omit `exp` — sparse grammar cards with only the pattern name and an example were the #1 owner complaint ("grammar point 너무 불친절하고 정보가 없음"). Spread coverage so different paragraphs surface different patterns.\n'
     + '- grammar DEDUPE (critical — owner caught duplicates in production): conjugated surface forms are NOT separate patterns. 했어요 / 갔어요 / 들었어요 / 봤어요 are all instances of the canonical "~았/었/였어요" — list ONLY the canonical entry, NOT a separate "했어요 (하다 past polite)" item alongside it. Same for ~다고 하다 vs ~다고 해요, ~ㄴ 것 같다 vs ~는 것 같아요, etc. Always use the canonical morpheme-marker form in `pattern`, and never emit two grammar entries whose `pattern` fields reduce to the same canonical pattern. If the body uses both 했어요 and 들었어요, that is ONE pattern entry (~았/었/였어요), not two.\n'

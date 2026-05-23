@@ -280,7 +280,7 @@ function ensureKhGrammar() {
       return;
     }
     var script = document.createElement('script');
-    script.src = 'js/core/kh-grammar-patterns.js?v=20260515c';
+    script.src = 'js/core/kh-grammar-patterns.js?v=20260522c';
     script.defer = true;
     script.setAttribute('data-kh-grammar', '1');
     script.onload = function() { resolve(window.KH_GRAMMAR); };
@@ -4828,7 +4828,11 @@ async function _khTriggerFullConvAnalyze(convId) {
       + 'Rules:\n'
       + '- TRANSLATION: natural conversational English. Preserve original speakers/subjects — do NOT inject "I/we" if Korean omitted them.\n'
       + '- VOCAB: max 3 per line. Skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone).\n'
+      + '- VOCAB DICTIONARY-FORM 강제: 동사/형용사는 ~다 형태만 (✓잡다 ✗잡았어요; ✓작다 ✗작은; ✓듣다 ✗들었어요). 명사는 bare. 본문에 활용형이 나와도 vocab은 사전형으로 emit.\n'
+      + '- VOCAB fossil 제외: 모든, 다른, 어떤, 여러, 무슨, 어느, 그런, 이런, 저런, 같은, 감히, 그렇게, 이렇게, 저렇게, 어떻게는 vocab에 X.\n'
+      + '- VOCAB vs GRAMMAR 중복 금지: vocab[].ko 단어를 grammar[].example_in_sentence에 다시 등록 X.\n'
       + '- GRAMMAR: max 2 per line. Skip if just a noun phrase. Don\'t pick patterns that are just a vocab word\'s conjugation.\n'
+      + '- GRAMMAR[].pattern canonical morpheme 형태만 (예: "~았/었/였어요"). 활용 surface (예: "했어요 (하다 past polite)") emit 절대 X — 같은 canonical 패턴은 entry 1개로 통합.\n'
       + '- Return EXACTLY ' + sentences.length + ' entries in lines[].';
     var res = await callClaude({
       feature: 'conv-sentence-analyze-bulk',
