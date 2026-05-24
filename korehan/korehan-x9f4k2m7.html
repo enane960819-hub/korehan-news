@@ -6562,11 +6562,14 @@ async function goAICache() {
       ? ('article_study_content: vocab ' + _scVocabN + ' · phrases ' + _scPhrN + ' · wrong_phrases ' + _scWrN + ' · questions ' + _scQN + (_scAdminEdit ? ' · admin_edited' : '') + (_sc.prompt_version ? ' · v' + _sc.prompt_version : ''))
       : 'article_study_content row 없음 — 첫 학습자가 Haiku 호출 발생';
     var studyBadge = '<span title="' + _scTip.replace(/"/g,'&quot;') + '" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;margin-right:4px;background:' + (_scOk?'#dcfce7':'#fee2e2') + ';color:' + (_scOk?'#166534':'#991b1b') + ';cursor:help">' + (_scOk?'✓':'✗') + ' Study' + (_sc ? '' : ' (없음)') + '</span>';
-    // Per-row generate button for missing article_study_content.
-    // Single Haiku call per article (~$0.003), saves to DB so every
-    // learner of that article hits cache from then on.
-    var studyGenBtn = _scOk ? '' :
-      '<button class="btn" id="asgenbtn-' + a.id + '" style="font-size:13px;padding:7px 14px;border-radius:8px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;cursor:pointer;font-family:inherit;font-weight:700" onclick="aseGenAndSaveOne(\'' + a.id + '\')" title="Study Room의 학습 활동(vocab/phrases/문제)을 한 번에 생성. Haiku 1회, ~$0.003 / 약 5초.">📚 Study Room 활동 만들기</button>';
+    // Per-row generate button for missing article_study_content, OR
+    // 편집기 button when content already exists (lets admin view all 5
+    // sections — vocab / phrases / wrong_phrases / word_order /
+    // questions — and re-run any single section without re-doing the
+    // whole bundle).
+    var studyGenBtn = _scOk
+      ? '<button class="btn" style="font-size:12px;padding:6px 12px;border-radius:8px;background:#f3e8ff;color:#5b21b6;border:1.5px solid #c4b5fd;cursor:pointer;font-family:inherit;font-weight:700" onclick="openStudyEditor(\'' + a.id + '\')" title="Study Room 활동 편집기 — 섹션별 재생성">📚 Study 편집</button>'
+      : '<button class="btn" id="asgenbtn-' + a.id + '" style="font-size:13px;padding:7px 14px;border-radius:8px;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;cursor:pointer;font-family:inherit;font-weight:700" onclick="aseGenAndSaveOne(\'' + a.id + '\')" title="Study Room의 학습 활동(vocab/phrases/문제)을 한 번에 생성. Haiku 1회, ~$0.003 / 약 5초.">📚 Study Room 활동 만들기</button>';
 
     // Manual button row — 3 buttons, each owns one cache slot:
     //   📝 / 🔄 문장 분석       — runs sentence-by-sentence analysis
@@ -7394,6 +7397,189 @@ async function reanalyzeSingleQuestion(idx) {
   } catch(e) {
     console.warn('reanalyzeSingleQuestion failed', e);
     if (statusEl) statusEl.textContent = '❌ ' + (e.message || '실패');
+  }
+}
+
+// ── Study Room editor (modal) + per-section regenerate ───────────
+// article_study_content has FIVE sections (vocab / phrases /
+// wrong_phrases / word_order / questions). Per-item regen doesn't
+// make sense because items in each section are independent of each
+// other — but regenerating a whole section IS useful when, say, the
+// questions are weak but the vocab is fine. The editor shows all
+// five sections and gives each a [🔄 재생성] button that re-runs
+// Claude with a focused single-section prompt.
+
+var _stCurrent = null; // { articleId, art, content:{...} }
+
+async function openStudyEditor(articleId) {
+  var sb = (typeof getSb === 'function') ? getSb() : null;
+  if (!sb) { toast('Supabase 미연결', true); return; }
+  toast('Study Room 편집기 로딩 중…');
+  var art, row;
+  try {
+    var artRow = await sb.from('articles').select('id,title,body,level').eq('id', articleId).maybeSingle();
+    art = artRow && artRow.data;
+    if (!art) throw new Error('기사를 찾을 수 없음');
+    var rowRes = await sb.from('article_study_content').select('*').eq('article_id', String(articleId)).maybeSingle();
+    row = (rowRes && rowRes.data) || null;
+    if (!row) throw new Error('article_study_content row 없음 — 먼저 📚 Study Room 활동 만들기 눌러서 생성');
+  } catch(e) { toast('로드 실패: ' + e.message, true); return; }
+
+  _stCurrent = {
+    articleId: String(articleId),
+    art: art,
+    content: {
+      vocab:         Array.isArray(row.vocab)         ? row.vocab         : [],
+      phrases:       Array.isArray(row.phrases)       ? row.phrases       : [],
+      wrong_phrases: Array.isArray(row.wrong_phrases) ? row.wrong_phrases : [],
+      word_order:    Array.isArray(row.word_order)    ? row.word_order    : [],
+      questions:     Array.isArray(row.questions)     ? row.questions     : [],
+    },
+  };
+
+  var ov = document.getElementById('st-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'st-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
+    ov.onclick = function(e){ if (e.target === ov) closeStudyEditor(); };
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = ''
+    + '<div style="background:#fff;max-width:900px;width:100%;max-height:90vh;overflow:auto;border-radius:16px;padding:18px 22px;box-shadow:0 30px 60px rgba(0,0,0,.4)">'
+    +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    +     '<div><div style="font-weight:800;font-size:16px;color:#0f172a">📚 Study Room 편집 — ' + (art.title || '').replace(/</g,'&lt;') + '</div>'
+    +       '<div style="font-size:12px;color:#64748b">5개 섹션 — 섹션별로 [🔄 재생성] 가능. 저장은 즉시.</div></div>'
+    +     '<button onclick="closeStudyEditor()" style="background:#f1f5f9;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit">닫기</button>'
+    +   '</div>'
+    +   '<div id="st-body">' + _stRenderAll(_stCurrent.content) + '</div>'
+    + '</div>';
+}
+
+function closeStudyEditor() {
+  var ov = document.getElementById('st-overlay');
+  if (ov) ov.remove();
+  _stCurrent = null;
+}
+
+function _stEscape(s) { return String(s||'').replace(/</g,'&lt;'); }
+function _stRenderAll(c) {
+  return _stSection('vocab',         '📚 Vocab',         c.vocab,         _stRenderVocab)
+       + _stSection('phrases',       '💬 Phrases',       c.phrases,       _stRenderPhrase)
+       + _stSection('wrong_phrases', '🎭 Wrong Phrases', c.wrong_phrases, _stRenderPhrase)
+       + _stSection('word_order',    '🧩 Word Order',    c.word_order,    _stRenderWordOrder)
+       + _stSection('questions',     '❓ Questions',     c.questions,     _stRenderQuestion);
+}
+function _stSection(key, label, items, renderItem) {
+  return '<div id="st-sec-' + key + '" style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:12px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    +   '<div style="font-weight:800;font-size:14px;color:#1e3a5f">' + label + ' <span style="color:#94a3b8;font-weight:600;font-size:12px">(' + items.length + ')</span></div>'
+    +   '<button onclick="regenStudySection(\'' + key + '\')" style="background:#fff;color:#7c3aed;border:1.5px solid #c4b5fd;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">🔄 섹션 재생성 (Haiku)</button>'
+    + '</div>'
+    + '<div>' + items.map(renderItem).join('') + (items.length ? '' : '<div style="font-size:12px;color:#94a3b8;font-style:italic">비어 있음</div>') + '</div>'
+    + '<div id="st-sec-status-' + key + '" style="font-size:11px;color:#64748b;margin-top:8px;min-height:14px"></div>'
+    + '</div>';
+}
+function _stRenderVocab(v) {
+  return '<div style="margin-bottom:4px;font-size:13px"><b style="color:#0f172a">' + _stEscape(v.ko) + '</b>'
+    + (v.rom ? ' <span style="color:#94a3b8;font-size:11px">[' + _stEscape(v.rom) + ']</span>' : '')
+    + ' <span style="color:#475569">' + _stEscape(v.en) + '</span></div>';
+}
+function _stRenderPhrase(p) {
+  return '<div style="margin-bottom:4px;font-size:13px;background:#f8fafc;border-radius:6px;padding:6px 10px">'
+    + '<div style="color:#0f172a">' + _stEscape(p.ko) + '</div>'
+    + '<div style="color:#475569;font-size:11px;font-style:italic">' + _stEscape(p.en) + '</div>'
+    + '</div>';
+}
+function _stRenderWordOrder(w) {
+  var chunks = Array.isArray(w.chunks) ? w.chunks : [];
+  return '<div style="margin-bottom:4px;font-size:13px;background:#f8fafc;border-radius:6px;padding:6px 10px">'
+    + chunks.map(function(c){ return '<span style="background:#e0e7ff;color:#3730a3;border-radius:5px;padding:2px 8px;margin:2px 4px 2px 0;display:inline-block;font-size:12px">' + _stEscape(c) + '</span>'; }).join('')
+    + '</div>';
+}
+function _stRenderQuestion(q) {
+  var opts = Array.isArray(q.options) ? q.options : [];
+  var correctIdx = typeof q.correct === 'number' ? q.correct : -1;
+  return '<div style="margin-bottom:8px;font-size:13px;background:#f8fafc;border-radius:6px;padding:8px 12px">'
+    + '<div style="font-weight:600;color:#0f172a;margin-bottom:4px">Q. ' + _stEscape(q.q) + '</div>'
+    + '<div style="margin-bottom:4px">' + opts.map(function(o, idx){
+        var isCorrect = idx === correctIdx;
+        var bg = isCorrect ? '#dcfce7' : '#f1f5f9';
+        var fg = isCorrect ? '#166534' : '#475569';
+        return '<span style="background:' + bg + ';color:' + fg + ';border-radius:5px;padding:2px 8px;margin:2px 4px 2px 0;display:inline-block;font-size:11px;font-weight:' + (isCorrect ? '700' : '500') + '">' + (isCorrect ? '✓ ' : '') + _stEscape(o) + '</span>';
+      }).join('') + '</div>'
+    + (q.explanation ? '<div style="font-size:11px;color:#64748b;font-style:italic">' + _stEscape(q.explanation) + '</div>' : '')
+    + '</div>';
+}
+
+async function regenStudySection(sectionKey) {
+  if (!_stCurrent) return;
+  var snapshot = _stCurrent;
+  var statusEl = document.getElementById('st-sec-status-' + sectionKey);
+  if (statusEl) statusEl.textContent = '⏳ Haiku ' + sectionKey + ' 재생성 중…';
+
+  var sectionPrompts = {
+    vocab:         'Return ONLY: {"vocab":[{"ko":"word","en":"meaning","rom":"romanization"}]}. 6 key content words from the article appropriate for the level. Dictionary form (사전형) only — no 작은/잡았어요. Skip fossils (모든/다른/어떤).',
+    phrases:       'Return ONLY: {"phrases":[{"ko":"REUSABLE Korean expression or pattern that appears VERBATIM in the article","en":"natural English"}]}. 3 reusable phrases. Each MUST be a multi-word chunk that learners can lift and reuse, not single words. ko must be a verbatim substring of the article (or a faithful condensation that preserves particles).',
+    wrong_phrases: 'Return ONLY: {"wrong_phrases":[{"ko":"grammatically VALID Korean sentence that is FALSE about this article","en":"natural English"}]}. 3 plausible-looking but FALSE sentences for distractor use. Proper particles + correct verb agreement; only the MEANING is wrong (wrong subject / wrong action / contradicts an article fact). Not obvious nonsense.',
+    word_order:    'Return ONLY: {"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}]}. 3 sentences from / about the article, each broken into 3-5 chunks for a sentence-ordering exercise. Chunks should be meaningful eojeol-level pieces.',
+    questions:     'Return ONLY: {"questions":[{"q":"Korean comprehension question","options":["A","B","C","D"],"correct":0,"explanation":"1-2 sentence English reason the correct option is right, citing the article. Mention why the wrong options miss."}]}. 3 comprehension questions at the article\'s level. EVERY question MUST include an "explanation" field — short English explanation of WHY the correct option wins and where the distractors come from.',
+  };
+  if (!sectionPrompts[sectionKey]) { if (statusEl) statusEl.textContent = '❌ unknown section'; return; }
+
+  try {
+    var artLevel = snapshot.art.level || 'Beginner';
+    var levelPrompt = (typeof getLevelPrompt === 'function') ? getLevelPrompt(artLevel) : '';
+    var prompt = 'Korean news article study content for language learners.\n' + levelPrompt
+      + '\n\nTitle: ' + (snapshot.art.title || '')
+      + '\nBody:\n' + (snapshot.art.body || '').slice(0, 1600)
+      + '\n\nGenerate ONLY the section listed below. No markdown, no preamble.\n\n'
+      + sectionPrompts[sectionKey];
+
+    var data = await callClaude({
+      feature: 'study-section-regen',
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = ((data && data.content) || []).map(function(c){ return c.text || ''; }).join('');
+    var cl = raw.replace(/```json|```/g, '').trim();
+    var s = cl.indexOf('{'), e = cl.lastIndexOf('}');
+    if (s >= 0 && e > s) cl = cl.slice(s, e + 1);
+    var parsed;
+    try { parsed = JSON.parse(cl); }
+    catch(parseErr) {
+      var stop = data && data.stop_reason;
+      throw new Error(stop === 'max_tokens' ? 'AI 응답 잘림 (max_tokens)' : 'JSON 파싱 실패: ' + parseErr.message);
+    }
+
+    var newItems = Array.isArray(parsed[sectionKey]) ? parsed[sectionKey] : [];
+    if (!newItems.length) throw new Error('빈 ' + sectionKey + ' 배열');
+    snapshot.content[sectionKey] = newItems;
+
+    // Save the whole row back (only the affected section changed)
+    var sb = getSb();
+    var patch = {};
+    patch[sectionKey] = newItems;
+    patch.admin_edited = false; // AI-regenerated, not manual
+    var res = await sb.from('article_study_content').update(patch).eq('article_id', snapshot.articleId);
+    if (res && res.error) throw new Error(res.error.message || res.error);
+
+    // Re-render the section in place
+    var secEl = document.getElementById('st-sec-' + sectionKey);
+    if (secEl) {
+      var temp = document.createElement('div');
+      var sectionLabels = { vocab: '📚 Vocab', phrases: '💬 Phrases', wrong_phrases: '🎭 Wrong Phrases', word_order: '🧩 Word Order', questions: '❓ Questions' };
+      var renderers = { vocab: _stRenderVocab, phrases: _stRenderPhrase, wrong_phrases: _stRenderPhrase, word_order: _stRenderWordOrder, questions: _stRenderQuestion };
+      temp.innerHTML = _stSection(sectionKey, sectionLabels[sectionKey], newItems, renderers[sectionKey]);
+      var fresh = temp.firstChild;
+      if (fresh) secEl.replaceWith(fresh);
+    }
+    var newStatusEl = document.getElementById('st-sec-status-' + sectionKey);
+    if (newStatusEl) newStatusEl.textContent = '✓ ' + newItems.length + '개 ' + sectionKey + ' 재생성 + 저장';
+  } catch(err) {
+    console.warn('regenStudySection failed', err);
+    if (statusEl) statusEl.textContent = '❌ ' + (err.message || '실패');
   }
 }
 
