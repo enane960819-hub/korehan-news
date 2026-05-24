@@ -65,7 +65,55 @@
     { re: /[가-힣](았|었)었/, label: '~았/었었 (past perfect)', hint: 'past perfect / earlier past. doubled past for "had done"' },
     { re: /[가-힣]ㄹ\s*거예요|[가-힣](을|ㄹ)\s*거예요/, label: '~ㄹ/을 거예요 (future)', hint: 'future tense polite. <stem> + ㄹ/을 거예요 = "will"' },
     { re: /[가-힣]겠(어요|습니다|네요|구나|지)/, label: '~겠 (intention/conjecture)', hint: 'THREE uses depending on context. (a) SPEAKER INTENTION — 가겠다 / 가겠습니다 (I will go), 알겠습니다 (understood). (b) CONJECTURE about others/things — 좋겠다 (must be nice), 비가 오겠어요 (it\'ll probably rain), 힘들겠어요 (must be hard). (c) POLITE softening / formal "I will" — 잘 모르겠어요 (I don\'t really know), 그렇게 하겠습니다 (will do so). Context + subject determine which.' },
-    { re: /[가-힣](아|어|여)요(?=[^가-힣]|$)/, label: '~아/어/여요 (present polite)', hint: 'present polite informal ending' },
+    // ~아/어/여요 present polite — must NOT match past-contracted X요
+    // forms (갔어요 / 봤어요 / 했어요 / 됐어요 / 마셨어요), where the
+    // preceding syllable X carries ㅆ jongseong = past tense already.
+    // Without this exclusion every past-polite sentence in the corpus
+    // surfaced BOTH "~아/어/여요 (present polite)" AND "~았/었/였어요
+    // (past polite)" as duplicate cards on the same chunk.
+    { _check: function(t) {
+        if (!t) return '';
+        // 있다 / 없다 are stative verbs whose stem carries ㅆ batchim in
+        // the LEMMA (not from past contraction). 있어요 / 없어요 ARE
+        // present polite and must still fire here — exempt them from
+        // the ㅆ-batchim exclusion below.
+        var STATIVE_SS = { '있': 1, '없': 1 };
+        var re = /[가-힣](아|어|여)요(?=[^가-힣]|$)/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          var x = t.charAt(m.index);
+          if (STATIVE_SS[x]) return m[0];
+          var pc = x.charCodeAt(0);
+          if (pc >= 0xAC00 && pc <= 0xD7A3) {
+            if ((pc - 0xAC00) % 28 === 20) continue; // ㅆ jongseong = past contraction, not present
+          }
+          return m[0];
+        }
+        return '';
+      }, label: '~아/어/여요 (present polite)', hint: 'present polite informal ending. <stem> + 아/어/여요. 먹다→먹어요, 있다→있어요, 없다→없어요, 받다→받아요, 좋다→좋아요. Vowel harmony picks 아 (after ㅏ/ㅗ stems) vs 어 (after others). Contracted vowel-merger forms (가요, 와요, 봐요, 해요, 줘요, 마셔요, 돼요) are covered by the separate "present polite — contracted" entry.' },
+    // Contracted present polite — covers stems whose vowel merges with
+    // 아/어/여 into a single syllable (오 + 아 → 와, 보 + 아 → 봐, 하 +
+    // 여 → 해, etc.). The bare [가-힣](아|어|여)요 regex above can\'t
+    // see these because the contracted syllable isn\'t literal 아/어/여.
+    // Whitelist of syllables that genuinely arise from this contraction
+    // — restricted to unambiguously verbal forms to avoid noun + 요
+    // false positives (e.g. 가요 as music genre, 자요 ambiguous with
+    // 남자요). 가요/사요/자요 etc. accepted as a coverage gap.
+    { _check: function(t) {
+        if (!t) return '';
+        var SYL = { '와':1, '봐':1, '해':1, '줘':1, '둬':1, '셔':1, '켜':1, '펴':1, '매':1, '깨':1, '떼':1, '째':1, '쳐':1, '쪄':1, '져':1, '돼':1, '꿔':1, '쒀':1 };
+        for (var i = 0; i + 1 < t.length; i++) {
+          if (t.charAt(i + 1) !== '요') continue;
+          if (!SYL[t.charAt(i)]) continue;
+          // Boundary: 요 must be at end OR followed by non-hangul / space / punct
+          var nxt = t.charAt(i + 2) || '';
+          if (nxt !== '' && /[가-힣]/.test(nxt)) continue;
+          // Also skip if preceded by another hangul that would make this
+          // a different morpheme boundary (e.g. avoiding mid-word matches).
+          return t.charAt(i) + '요';
+        }
+        return '';
+      }, label: '~아/어/여요 (present polite — contracted)', hint: 'present polite for stems whose vowel contracts with 아/어/여 into one syllable. 오다 → 오아요 → 와요; 보다 → 보아요 → 봐요; 하다 → 하여요 → 해요; 주다 → 주어요 → 줘요; 마시다 → 마시어요 → 마셔요; 되다 → 되어요 → 돼요. Same meaning as the uncontracted ~아/어/여요 — just merged form.' },
     { re: /[가-힣](ㅂ니다|습니다)(?=[^가-힣]|$)/, label: '~ㅂ/습니다 (present formal)', hint: 'present formal-polite ending' },
     { re: /[가-힣]네요(?=[^가-힣]|$)/, label: '~네요 (discovery)', hint: 'discovery / mild surprise on noticing something new — speaker realizes for the first time. 예쁘네요 (oh, it\'s pretty), 비가 오네요 (oh, it\'s raining), 정말이네요 (it really is). Common when seeing/hearing something fresh. Banmal variant: ~네 (우리 집에 오네 = "huh, coming to our house").' },
     { re: /[가-힣]군요(?=[^가-힣]|$)|[가-힣]구나(?=[^가-힣]|$)/, label: '~군요/~구나 (realization)', hint: 'realization / acknowledgement of new info. ~군요 (polite) / ~구나 (banmal). Different from ~네요: ~네요 is fresh surprise, ~군요/~구나 is "aha, NOW I get it" — accepting info just given. 그렇군요 (oh, I see), 그랬구나 (oh, so that\'s what happened), 맛있구나 (so it\'s tasty).' },
@@ -750,7 +798,24 @@
     { re: /의\s*일종(이|이다|입니다|으로|이라)/, label: '~의 일종이다 (is a kind / type of)', hint: 'classification marker. <noun> + 의 일종이다 = "is a kind / type of (X)". 운동의 일종이다 (is a kind of exercise); 사기의 일종으로 분류된다 (is classified as a kind of fraud).' },
 
     // ── Honorifics ──────────────────────────────────────────────
-    { re: /(으셨|셨)(어요|습니다|네|군|는)/, label: '~(으)셨 (honorific past)', hint: 'subject honorific past tense' },
+    // ~(으)셨 honorific past — false-fires on 시-stem verbs whose
+    // 시+었 contracts to 셨 (마시다 → 마셨, 모시다 → 모셨). Those are
+    // just past tense, not honorific. Exclude X=마 (마셨 = drank) —
+    // the most common false positive. 모셨 left in (often legitimately
+    // honorific in context, "served the elder").
+    { _check: function(t) {
+        if (!t) return '';
+        var re = /(으셨|셨)(어요|습니다|네|군|는)/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          if (m[1] === '셨' && m.index > 0) {
+            var prev = t.charAt(m.index - 1);
+            if (prev === '마') continue; // 마셨다 = 마시+었, not honorific
+          }
+          return m[0];
+        }
+        return '';
+      }, label: '~(으)셨 (honorific past)', hint: 'subject honorific past tense. <stem> + (으)시 + 었 → contracts to (으)셨. 가시다 → 가셨다 / 가셨어요 (went, honorific); 받으셨다 (received, honorific). ⚠️ Distinct from 시-stem verbs that incidentally produce 셨 — 마시다 → 마셨다 (drank) is plain past, not honorific.' },
     { re: /(으십시오|십시오)(?=[^가-힣]|$)/, label: '~(으)십시오 (formal imperative)', hint: 'highly formal command' },
 
     // ── Irregular conjugations ──────────────────────────────────
