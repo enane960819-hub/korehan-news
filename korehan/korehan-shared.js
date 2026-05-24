@@ -280,7 +280,7 @@ function ensureKhGrammar() {
       return;
     }
     var script = document.createElement('script');
-    script.src = 'js/core/kh-grammar-patterns.js?v=20260523a';
+    script.src = 'js/core/kh-grammar-patterns.js?v=20260523b';
     script.defer = true;
     script.setAttribute('data-kh-grammar', '1');
     script.onload = function() { resolve(window.KH_GRAMMAR); };

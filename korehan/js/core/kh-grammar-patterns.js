@@ -363,7 +363,14 @@
     { re: /[가-힣](으로부터|로부터)(?=[^가-힣]|$)/, label: '~(으)로부터 (from / from origin)', hint: 'origin/source marker. <noun> + (으)로부터 = "from the source / received from". After consonant: 지금으로부터 (from now), 학생으로부터 (from the student). After vowel: 친구로부터 (from a friend). Different from bare ~부터 — (으)로부터 stresses provenance/source rather than a sequence start.' },
     { re: /[가-힣]까지(?=[^가-힣]|$)/, label: '~까지 (until)', hint: 'up to / until' },
     { re: /[가-힣]만\s|[가-힣]만\.|[가-힣]만$/, label: '~만 (only)', hint: 'limiter. "only / just"' },
-    { re: /[가-힣]도\s|[가-힣]도\.|[가-힣]도$/, label: '~도 (also)', hint: 'inclusive. "also / too"' },
+    // ~도 has TWO uses — explain BOTH so the AI doesn't force-fit
+    // the wrong reading onto a temporal/emphatic example:
+    //   (a) inclusive "also/too": 나도 갈게요, 책도 샀어요
+    //   (b) emphatic "even": 한 번도 못 들었어요, 100년도 훨씬 이전, 천 원도 없다
+    // Without (b) the AI was writing "100년 + 도 = 'even 100 years'" on
+    // examples that clearly use the emphatic reading, producing cards
+    // whose hint and example didn't match.
+    { re: /[가-힣]도\s|[가-힣]도\.|[가-힣]도$/, label: '~도 (also / even)', hint: 'inclusive particle with TWO uses depending on context. (a) ADDITIVE "also/too" — A도 B도, listing or adding items: 나도 갈게요 (I\'ll go too); 친구도 왔다 (the friend also came). (b) EMPHATIC "even/as much as" — used with extremes, negation, or temporal/quantity contrasts: 한 번도 못 들었어요 (haven\'t heard even once); 천 원도 없다 (don\'t even have 1000 won); 100년도 훨씬 이전 (way more than even 100 years ago). When the example shows a quantity / time pushed to an extreme, it\'s reading (b), not (a) — explain it as "even" not "also".' },
     { re: /[가-힣]의\s/, label: '~의 (possessive)', hint: 'possessive / attributive' },
     { re: /[가-힣]보다(?=[^가-힣]|$)/, label: '~보다 (comparison)', hint: 'comparative. "than / more than"' },
 
