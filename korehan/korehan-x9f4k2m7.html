@@ -6683,7 +6683,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
   const btn = silent ? null : document.getElementById('sbtn-' + articleId);
   const stEl = silent ? null : document.getElementById('cst-' + articleId);
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 분석 중…'; }
-  if (stEl) stEl.textContent = 'Sonnet 재분석 중…';
+  if (stEl) stEl.textContent = '(1/4) Sonnet 분석 요청 중…';
 
   const _body = a.body || '';
   const _title = a.title || '';
@@ -6747,6 +6747,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
       max_tokens: 7000,
       messages: [{ role:'user', content: _sentPrompt }]
     });
+    if (stEl) stEl.textContent = '(2/4) 응답 파싱 + 패턴 enforce 중…';
     const raw = (r && r.content && r.content[0] && r.content[0].text) || '';
     const clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
     const oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
@@ -6819,6 +6820,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     const _bfVocabStr   = _bfDerived.vocab.length            ? JSON.stringify(_bfDerived.vocab)   : null;
     const _bfGrammarStr = _bfDerived.grammar.patterns.length ? JSON.stringify(_bfDerived.grammar) : null;
 
+    if (stEl) stEl.textContent = '(3/4) DB 저장 중 (translation + vocab + grammar)…';
     if (schema === 'kv') {
       await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
         content_type: 'article', content_id: String(articleId),
@@ -6837,13 +6839,56 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
         });
       }
     } else {
+      // Wide-schema: PATCH a non-existent row silently updates 0 rows
+      // and the save vanishes (user re-runs analysis, refresh shows ✗
+      // for all badges, repeat forever). Mirror genCache's logic —
+      // check first, then PATCH or POST. Without this, brand-new
+      // articles (no article_cache row yet) never get their first
+      // sentence analysis saved on the wide-schema project.
       const _patch = { translation: newTransStr };
       if (_bfVocabStr)   _patch.vocab   = _bfVocabStr;
       if (_bfGrammarStr) _patch.grammar = _bfGrammarStr;
-      await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(articleId), _patch);
+      const _chk = await supaAdminGet('article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=article_id');
+      const _chkData = Array.isArray(_chk) ? _chk : [];
+      if (_chkData.length > 0) {
+        await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(articleId), _patch);
+      } else {
+        _patch.article_id = String(articleId);
+        await supaAdminPost('article_cache', _patch);
+      }
     }
 
-    if (stEl) stEl.textContent = '✓ 문장분석 ' + sentFinal.length + '개 생성됨';
+    // Verify-after-write: PATCH against the wrong row, RLS dropping
+    // the write, or a column-strip mid-retry can all leave the badges
+    // unchanged. Read the rows back through the same admin path and
+    // surface whether each slot actually landed.
+    if (stEl) stEl.textContent = '(4/4) 저장 확인 중…';
+    let _verified = { translation: false, vocab: false, grammar: false };
+    try {
+      if (schema === 'kv') {
+        const _rows = await supaAdminGet('article_cache?content_type=eq.article&content_id=eq.' + encodeURIComponent(articleId) + '&select=cache_key');
+        const _keys = (Array.isArray(_rows) ? _rows : []).map(function(r){ return r.cache_key; });
+        _verified.translation = _keys.indexOf('translation') >= 0;
+        _verified.vocab       = !_bfVocabStr || _keys.indexOf('vocab') >= 0;
+        _verified.grammar     = !_bfGrammarStr || _keys.indexOf('grammar') >= 0;
+      } else {
+        const _row = await supaAdminGet('article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=translation,vocab,grammar');
+        const _r = (Array.isArray(_row) && _row[0]) || {};
+        _verified.translation = !!_r.translation;
+        _verified.vocab       = !_bfVocabStr || !!_r.vocab;
+        _verified.grammar     = !_bfGrammarStr || !!_r.grammar;
+      }
+    } catch(_) { /* verify is best-effort; don't fail the whole save on it */ }
+
+    const _missing = Object.keys(_verified).filter(function(k){ return !_verified[k]; });
+    if (_missing.length) {
+      if (stEl) stEl.textContent = '⚠️ 저장 미반영 슬롯: ' + _missing.join(', ') + ' (RLS / admin-api deploy 확인 필요)';
+      if (!silent) toast('⚠️ 저장 검증 실패 — ' + _missing.join(', '), true);
+      if (btn) { btn.disabled = false; btn.textContent = '📝 문장 분석 다시'; }
+      return;
+    }
+
+    if (stEl) stEl.textContent = '✓ 문장분석 ' + sentFinal.length + '개 저장 + 검증 완료';
     if (!silent) toast('✓ ' + sentFinal.length + '개 문장 분석 저장됨');
     if (btn) { btn.style.display = 'none'; }
     // In single-article mode, refresh the page so the badge flips
