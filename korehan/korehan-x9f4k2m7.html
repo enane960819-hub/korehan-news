@@ -6693,7 +6693,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
   const btn = silent ? null : document.getElementById('sbtn-' + articleId);
   const stEl = silent ? null : document.getElementById('cst-' + articleId);
   if (btn) { btn.disabled = true; btn.textContent = '⏳ 분석 중…'; }
-  if (stEl) stEl.textContent = '(1/4) Sonnet 분석 요청 중…';
+  if (stEl) stEl.textContent = '(1/4) Haiku 분석 요청 중…';
 
   const _body = a.body || '';
   const _title = a.title || '';
