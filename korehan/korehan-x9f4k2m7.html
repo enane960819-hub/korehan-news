@@ -301,7 +301,7 @@ body.sb-open .sb-backdrop{display:block}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="learning_hub_vocab_data.js"></script>
 <script src="js/kh-vocab-prompt.js?v=20260420z"></script>
-<script src="js/core/kh-grammar-patterns.js?v=20260523e"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20260524a"></script>
 </head>
 <body>
 
@@ -6750,10 +6750,19 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
       + '- vocab fossil 제외: 모든, 다른, 어떤, 여러, 무슨, 어느, 그런, 이런, 저런, 같은, 감히, 그렇게, 이렇게, 저렇게, 어떻게 — 이들은 vocab에 절대 X (학습자 사전에 안 들어가는 fossil).\n'
       + '- vocab vs analysis 중복 금지: vocab[].ko에 emit한 단어는 analysis[].label / example_in_sentence에 다시 등록 X. 단일 단어는 vocab, multi-word chunk만 analysis[type=expression].\n'
       + '- analysis:\n'
-      + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사** (예: "~는 (present verb modifier)" 그대로. 절대 "~는 개" 같이 명사를 붙이지 말 것). exp = 1줄 영어, **반드시 사전형 → 활용형 변형을 보여주기** (예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요").\n'
-      + '    2. 추가로 idiom (사자성어/관용구) / expression (~에도 불구하고, ~을 통해 같은 굳어진 표현) 발견하면 entry 더 추가 (type=idiom 또는 expression).\n'
-      + '    3. example_in_sentence: 해당 패턴이 사용된 문장 내 chunk.\n'
-      + '    4. 본문에 없는 패턴 절대 추가 X — detected list에 없는 grammar 항목 만들지 말 것 (idiom/expression은 OK).\n\n'
+      + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사** (예: "~는 (present verb modifier)" 그대로. 절대 "~는 개" 같이 명사를 붙이지 말 것).\n'
+      + '    2. analysis[].exp 작성 룰 (CRITICAL):\n'
+      + '       - hint는 reference. AI는 hint 안에서 이 chunk가 어떤 reading인지 골라서 그 하나만 explain.\n'
+      + '       - **절대 hint의 (a)/(b)/(c) breakdown 전체 복붙 X** — 사용자한테 5개 use 다 보이면 noise.\n'
+      + '       - 1-2 문장. 사전형 → 활용형 chain은 유지하되 다른 use 언급 X.\n'
+      + '       - 예시: hint가 "~에: (a) location (b) time (c) direction (d) target..." 인데 chunk가 "학교에 가다"면 → exp는 "destination marker. 학교 → 학교에 (to school)" — (a)/(b)/(d) 언급 X. 예시 정확히 1-2개만.\n'
+      + '       - 활용형 chain 예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요".\n'
+      + '    3. **추가 expression / idiom 적극 발견 (under-include 금지)**. type 기준:\n'
+      + '       - **expression** (type="expression"): 학습자가 통째로 외울 가치 있는 collocation. 예: ~를 가리키는 표현이다, ~에 적합하다, ~을 통해, ~에 따르면, ~에도 불구하고, ~로 이어지다, ~중 하나, ~는 것이 좋다, ~기 마련이다, 자리잡다, ~을 보이다, 관심이 높아지다, ~으로 판단되다, ~로 알려지다 등. **2-3음절 동사+조사 chunk라도 학습 가치 있으면 무조건 포함**. 의심되면 포함.\n'
+      + '       - **idiom** (type="idiom"): 사자성어/관용구 (발이 넓다, 우후죽순, 마음에 들다, 손이 가다).\n'
+      + '       - **grammar** (type="grammar", additional): code list에 빠진 어미/연결어/조사 패턴 — 본문에 있는데 list에 없으면 추가 OK.\n'
+      + '    4. example_in_sentence: 해당 패턴이 사용된 문장 내 chunk.\n'
+      + '    5. 본문에 없는 패턴 절대 추가 X — label에 적은 markers가 sentence text에 실제로 보여야 함.\n\n'
       + '[출력 — JSON ONLY]\n'
       + '{\n'
       + '  "sentences": [\n'
@@ -7151,7 +7160,10 @@ async function reanalyzeSingleSentence(idx, modelChoice) {
       + '- text: 위 문장 그대로 (마침표 포함).\n'
       + '- translation: 자연스러운 영어. 한국어가 주어 생략하면 문맥에 맞는 he/she/the X 등 채워. "I/we" 함부로 X.\n'
       + '- vocab: max 4 dictionary forms (사전형). 활용형 X (✗작은 ✗잡았어요). fossil 제외 (모든/다른/어떤/그렇게/이렇게/감히 등).\n'
-      + '- analysis: detected patterns 다 출력 (type=grammar, label은 list 그대로 복사). exp = 1줄 영어 with 사전형 → 활용형 chain. 추가로 idiom/expression 발견 시 entry 더 추가.\n\n'
+      + '- analysis: detected patterns 다 출력 (type="grammar", label은 list 그대로 복사). exp 작성 룰:\n'
+      + '   • hint 안에서 이 chunk에 해당하는 reading 하나만 골라서 1-2 문장으로 explain. **hint의 (a)/(b)/(c) breakdown 전체 복붙 X** (사용자한테 noise).\n'
+      + '   • 사전형 → 활용형 chain 유지. 예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요".\n'
+      + '- **expression / idiom 적극 추가** (type="expression" 또는 "idiom"): 학습자가 통째로 외울 가치 있는 collocation. 예: ~를 가리키는 표현이다, ~에 적합하다, ~을 통해, ~중 하나, ~기 마련이다, 발이 넓다 등. **의심되면 포함** (under-include 금지).\n\n'
       + '[출력 — JSON ONLY]\n'
       + '{ "text": "...", "translation": "...", "vocab": [{"ko","en","note"}], "analysis": [{"type","label","exp","example_in_sentence"}] }';
 
@@ -7893,8 +7905,9 @@ async function genCache(articleId, schema, opts) {
           + '- vocab fossil 제외: 모든, 다른, 어떤, 여러, 무슨, 어느, 그런, 이런, 저런, 같은, 감히, 그렇게, 이렇게, 저렇게, 어떻게 — 이들은 vocab에 절대 X (학습자 사전에 안 들어가는 fossil).\n'
           + '- vocab vs analysis 중복 금지: vocab[].ko에 emit한 단어는 analysis[].label / example_in_sentence에 다시 등록 X. 단일 단어는 vocab, multi-word chunk만 analysis[type=expression].\n'
           + '- analysis:\n'
-          + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사**. exp = 1줄 영어, **morpheme이 무엇을 하는지 + 사전형 → 활용형 chain 필수**. 활용형 chunk의 영어 번역만 적으면 안 됨.\n'
+          + '    1. detected patterns 위에 listed된 항목 EVERY ONE 출력 (type=grammar). label은 list의 텍스트를 **한 글자도 바꾸지 말고 그대로 복사**. exp = 1-2 문장 영어, **morpheme이 무엇을 하는지 + 사전형 → 활용형 chain 필수**. 활용형 chunk의 영어 번역만 적으면 안 됨.\n'
           + '         WRONG: label="~게", exp="easily" (chunk 번역). RIGHT: label="~게", exp="adverbializer. <adj-stem> + 게 = adverb. 쉽다 → 쉽게; 다르다 → 다르게."\n'
+          + '         **CRITICAL — hint dump 금지**: hint에 (a)/(b)/(c) breakdown 여러 use가 있어도, exp에는 **이 chunk에 해당하는 reading 하나만** explain. hint를 그대로 복붙하면 학습자한테 noise. 예: hint="~에: (a) location (b) time (c) direction"이고 chunk가 "학교에 가다" → exp는 "destination marker. 학교 → 학교에 (to school)" — (a)/(b) 언급 X.\n'
           + '         RIGHT 예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요" / "ㄷ-irregular: 듣다 → 들어 → 들었어요".\n'
           + '    2. **추가 entry는 매우 적극적으로 추가 (under-include 금지)**. type 기준:\n'
           + '         - expression: 학습자가 통째로 외울 가치 있는 collocation/굳어진 표현. 예: ~로 이어지다, ~에 대한 관심, ~을 통해, ~에 따르면, ~에도 불구하고, ~을 위한 N, ~중 하나, ~는 것이 좋다, ~기 마련이다, 자리잡다, ~을 보이다, 관심이 높아지다 등. **2-3음절 동사+조사 chunk라도 학습 가치 있으면 무조건 포함**. 의심되면 포함 (over-include이 under-include보다 100x 낫다).\n'
