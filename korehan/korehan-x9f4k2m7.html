@@ -16606,11 +16606,20 @@ async function aseGenFromAI() {
     + 'word_order: 3 sentences (chunks appropriate for level). '
     + 'questions: 3 comprehension questions (difficulty matching level). EVERY question MUST include an "explanation" field — a short English sentence telling the learner WHY the correct option is right (cite the relevant article fact).';
   try {
-    var data = await callClaude({ feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:1500, messages:[{role:'user',content:prompt}] });
+    var data = await callClaude({ feature:'article-study-admin', model:'claude-haiku-4-5-20251001', max_tokens:3000, messages:[{role:'user',content:prompt}] });
     var raw = ((data.content)||[]).map(function(c){return c.text||'';}).join('');
     var cl = raw.replace(/```json|```/g,'').trim();
     var s=cl.indexOf('{'),e=cl.lastIndexOf('}'); if(s>=0&&e>s) cl=cl.slice(s,e+1);
-    var parsed = JSON.parse(cl);
+    var parsed;
+    try {
+      parsed = JSON.parse(cl);
+    } catch(parseErr) {
+      var stop = data && data.stop_reason;
+      var truncated = stop === 'max_tokens' || cl.length < 200 || cl.charAt(cl.length - 1) !== '}';
+      throw new Error(truncated
+        ? 'AI 응답 잘림 (stop=' + (stop || '?') + ', len=' + cl.length + '). max_tokens 부족.'
+        : 'JSON 파싱 실패: ' + parseErr.message);
+    }
     // Re-render editor with the freshly-parsed AI data. Pass it as
     // prefetchedContent so aseOpenEditor doesn't re-fetch DB and
     // clobber the parsed result with the still-empty saved row.
@@ -16646,12 +16655,21 @@ async function aseGenAndSaveOne(articleId) {
       + '"word_order":[{"chunks":["chunk1","chunk2","chunk3"]}],'
       + '"questions":[{"q":"comprehension question in Korean","options":["A","B","C","D"],"correct":0,"explanation":"1-2 sentence English reason the correct option is right, citing the article. Mention why the wrong options miss."}]}\n'
       + 'vocab: 6 key words. phrases: 3 reusable expressions. wrong_phrases: 3 plausible distractors. word_order: 3 sentences. questions: 3 comprehension questions. EVERY question MUST include an "explanation" field — a short English sentence that tells the learner WHY the correct answer is right (e.g., "The article says the price rose 3%, so option B is right; option A is the past number from the previous paragraph.").';
-    var data = await callClaude({ feature: 'article-study-admin', model: 'claude-haiku-4-5-20251001', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] });
+    var data = await callClaude({ feature: 'article-study-admin', model: 'claude-haiku-4-5-20251001', max_tokens: 3000, messages: [{ role: 'user', content: prompt }] });
     var raw = ((data.content) || []).map(function(c){ return c.text || ''; }).join('');
     var cl = raw.replace(/```json|```/g, '').trim();
     var s = cl.indexOf('{'), e = cl.lastIndexOf('}');
     if (s >= 0 && e > s) cl = cl.slice(s, e + 1);
-    var parsed = JSON.parse(cl);
+    var parsed;
+    try {
+      parsed = JSON.parse(cl);
+    } catch(parseErr) {
+      var stop = data && data.stop_reason;
+      var truncated = stop === 'max_tokens' || cl.length < 200 || cl.charAt(cl.length - 1) !== '}';
+      throw new Error(truncated
+        ? 'AI 응답 잘림 (stop=' + (stop || '?') + ', len=' + cl.length + '). max_tokens 부족 — 코드의 max_tokens 값 더 올려야 함. raw: ' + cl.slice(-200)
+        : 'JSON 파싱 실패: ' + parseErr.message + ' — raw 끝: ' + cl.slice(-200));
+    }
     if (!Array.isArray(parsed.wrong_phrases)) parsed.wrong_phrases = [];
     // Upsert directly (admin auth bypasses RLS via the global Supabase
     // client this page uses). Same column-strip retry pattern as the
