@@ -584,6 +584,114 @@
     { re: /(이|가)\s*돋보(이|여|이는|인다|입니다|이며|이고|였)/, label: '~이/가 돋보이다 (stand out)', hint: 'visual / qualitative prominence. <subj> + 이/가 돋보이다 = "stands out / is striking / is noticeable". 디자인이 돋보인다 (the design stands out); 그의 활약이 돋보였다 (his performance was striking).' },
     { re: /(이|가)\s*눈에\s*띄(다|어|었|는|네|며|고)/, label: '~이/가 눈에 띄다 (catch the eye / be noticeable)', hint: 'idiomatic "catches the eye". <subj> + 이/가 눈에 띄다 = "catches the eye / is noticeable / stands out". 변화가 눈에 띈다 (the change is noticeable); 눈에 띄게 늘었다 (increased noticeably).' },
     { re: /(이|가)\s*화제(다|이다|가\s*되|를\s*모|를\s*불러)/, label: '~이/가 화제이다 / 화제가 되다 (be a hot topic)', hint: 'buzz / trending. <subj> + 이/가 화제이다 / 화제가 되다 / 화제를 모으다 = "is a hot topic / is going viral / is drawing attention". 신곡이 화제다 (the new song is the talk of the town); 화제를 모으고 있다 (is drawing attention).' },
+
+    // ── Round 2 collocations (added 2026-05-24, big batch) ───────────
+
+    // PUBLIC REACTION / ATTENTION
+    { re: /(을|를)\s*받(다|아|아서|았|는|네|으면|으니|으며|고|으세|아요)/, label: '~을/를 받다 (receive — generic collocation host)', hint: 'extremely common host verb. Specific collocations: 사랑을 받다 (be loved), 관심을 받다 (get attention), 인기를 받다, 도움을 받다 (receive help), 영향을 받다 (be influenced), 치료를 받다 (receive treatment), 진단을 받다 (be diagnosed), 비판을 받다 (be criticized). Always pair the noun + 받다 mentally as one unit.' },
+    { re: /관심(을|이)\s*(끌|모|많|높|높아|보이|받)/, label: '~관심을 끌다 / 관심이 높다 (draw attention / be of high interest)', hint: 'attention collocations. 관심을 끌다 = "draw attention"; 관심을 모으다 = "gather attention"; 관심이 높다 / 많다 = "interest is high / abundant"; 관심이 높아지다 = "interest is rising". 새 정책이 큰 관심을 끌고 있다 (the new policy is drawing big attention).' },
+    { re: /인기(가|를)\s*(많|높|좋|끌|얻|모|있)/, label: '~인기가 많다 / 인기를 얻다 (be popular / gain popularity)', hint: 'popularity collocations. 인기가 많다 / 높다 / 좋다 = "is popular"; 인기를 얻다 / 끌다 / 모으다 = "gain / draw popularity"; 인기가 있다 = "has popularity". K팝이 세계적인 인기를 얻고 있다 (K-pop is gaining worldwide popularity).' },
+    { re: /주목(을|이|받)/, label: '~주목을 받다 / 주목을 끌다 (draw attention / be noted)', hint: '주목 = focused attention (stronger than 관심). 주목을 받다 / 끌다 / 모으다 = "be in the spotlight / be noted". 새 발견이 학계의 주목을 받고 있다 (the new discovery is being noted by academia). News-register; signals importance.' },
+    { re: /충격(을\s*주|을\s*받|을\s*안|이\s*크|적이|적인)/, label: '~충격을 주다 / 충격을 받다 (give / receive a shock)', hint: 'impact collocation. 충격을 주다 = "give / deal a shock"; 충격을 받다 = "be shocked"; 충격이 크다 = "shock is great"; 충격적이다 = "is shocking". 사건이 큰 충격을 주었다 (the incident caused a big shock).' },
+
+    // EVALUATION / OPINION
+    { re: /(을|를)\s*평가(하|한|할|했|함|받|받았)/, label: '~을/를 평가하다 / 평가받다 (evaluate / be evaluated)', hint: 'judgement verb. <noun> + 을/를 평가하다 = "evaluates / judges / rates"; 평가받다 = "be rated as". 높이 평가하다 (rate highly); 긍정적으로 평가되고 있다 (is being evaluated positively).' },
+    { re: /(을|를)\s*비판(하|한|할|했|함|받|받았)/, label: '~을/를 비판하다 / 비판을 받다 (criticize / be criticized)', hint: 'critique verb. 비판하다 / 비판받다 / 비판이 거세지다 / 비판이 일다 = "criticize / be criticized / criticism intensifies / criticism arises". 정부 정책을 비판하다 (criticize gov policy); 비판이 거세지고 있다.' },
+    { re: /(을|를)\s*칭찬(하|한|할|했|함|받|받았)/, label: '~을/를 칭찬하다 / 칭찬을 받다 (praise / be praised)', hint: 'praise verb. <noun> + 을/를 칭찬하다 = "praises"; 칭찬을 받다 = "be praised". 노력을 칭찬받았다 (was praised for the effort). Often paired with a description: 따뜻한 마음을 칭찬받다.' },
+    { re: /(을|를)\s*지지(하|한|할|했|함|받|받았)/, label: '~을/를 지지하다 / 지지를 받다 (support / be supported)', hint: 'endorsement verb. 지지하다 = "support / endorse"; 지지받다 = "be supported"; 지지율이 오르다 / 떨어지다 = "approval rating rises/falls". Political and policy news pervasive.' },
+    { re: /(을|를)\s*반대(하|한|할|했|함)/, label: '~을/를 반대하다 (oppose)', hint: 'opposition verb. <noun> + 을/를 반대하다 = "oppose / object to". 정책을 반대하다 (oppose the policy); 반대 의견을 표명하다 (express opposing opinion). Often paired with 찬성하다 (support).' },
+
+    // ACHIEVEMENT / RESULT
+    { re: /(을|를)\s*달성(하|한|할|했|함|되|된)/, label: '~을/를 달성하다 (achieve / attain)', hint: 'goal-achievement verb. <noun> + 을/를 달성하다 = "achieve / attain / reach". 목표를 달성하다 (achieve the goal); 매출 1조 원을 달성했다 (attained 1 trillion won in sales). Business and policy news.' },
+    { re: /(을|를)\s*이루(다|어|었|는|어\s*내|며|어서|어\s*낸|어\s*낼)/, label: '~을/를 이루다 / 이루어 내다 (achieve / accomplish)', hint: 'accomplishment verb. <noun> + 을/를 이루다 = "achieve / form / realize". 꿈을 이루다 (realize a dream); 합의를 이루다 (reach an agreement); 성과를 이루어 냈다 (achieved a notable result).' },
+    { re: /(을|를)\s*거두(다|어|었|는|어들|며|어서|었\s*다)/, label: '~을/를 거두다 (attain / harvest / reap)', hint: 'attainment verb (results, victories). <noun> + 을/를 거두다 = "attain / reap / harvest". 좋은 성적을 거두다 (attain good grades); 우승을 거두다 (win the championship); 큰 성과를 거두었다 (reaped great results).' },
+    // (~을/를 기록하다 — earlier removed as lexical-not-grammar. Keep
+    // out: 기록 is just a vocab word, surfaces via vocab[] naturally.)
+    { re: /(이|가)\s*증가(하|한|할|했|함)|(이|가)\s*감소(하|한|할|했|함)/, label: '~이/가 증가하다 / 감소하다 (increase / decrease — formal)', hint: 'formal trend verbs (vs colloquial 늘어나다/줄어들다). <subj> + 이/가 증가하다 = "increases" / 감소하다 = "decreases". 매출이 증가하고 있다 (sales are increasing); 인구가 감소하는 추세다 (population is on a decreasing trend). News/business register.' },
+
+    // STRUGGLE / DIFFICULTY
+    { re: /어려움(을|이)\s*(겪|겪다|겪었|겪는|있|있다)/, label: '어려움을 겪다 (face / undergo difficulty)', hint: 'hardship collocation. 어려움을 겪다 = "face / undergo / experience hardship". 경영 어려움을 겪고 있다 (is facing managerial difficulty); 어려움이 있지만 (although there are difficulties).' },
+    { re: /위기(에|를|가)\s*(처|맞|봉착|닥|있)/, label: '위기에 처하다 / 위기를 맞다 (face a crisis)', hint: 'crisis collocation. 위기에 처하다 / 위기를 맞다 / 위기에 봉착하다 / 위기가 닥치다 = "face / encounter / be in a crisis". 회사가 위기에 처했다 (the company is in crisis); 경제 위기를 맞다 (face an economic crisis).' },
+    { re: /피해(를|가)\s*(입|입었|입는|보|발생|커|크)/, label: '피해를 입다 / 피해가 발생하다 (suffer damage)', hint: 'damage collocation. 피해를 입다 = "suffer / sustain damage"; 피해가 발생하다 = "damage occurs"; 피해가 커지다 / 크다 = "damage grows / is large". 태풍으로 큰 피해를 입었다 (sustained big damage from the typhoon).' },
+    { re: /(을|를)\s*막(다|아|아서|았|는|네|기|기\s*위해|으면|으려|아\s*내)/, label: '~을/를 막다 / 막아 내다 (prevent / block)', hint: 'prevention verb. <noun> + 을/를 막다 = "prevent / block / fend off". 사고를 막다 (prevent an accident); 확산을 막아 내다 (fend off the spread); 막기 위해 노력하다 (work to prevent).' },
+
+    // DECISION / DETERMINATION
+    { re: /(을|를)\s*결정(하|한|할|했|함|되|된|됐|돼)/, label: '~을/를 결정하다 / 결정되다 (decide / be decided)', hint: 'decision verb. <noun> + 을/를 결정하다 = "decides"; 결정되다 = "is decided". 정책을 결정하다 (decide the policy); 다음 회의에서 결정될 예정이다 (will be decided at the next meeting).' },
+    { re: /(을|를)\s*판단(하|한|할|했|함|되|된)/, label: '~을/를 판단하다 / 판단되다 (judge / determine)', hint: 'judgement verb. <noun/clause> + 을/를 판단하다 = "judges / determines"; 판단되다 = "is judged / determined". 적절성을 판단하다 (judge the appropriateness); 사실로 판단된다 (is judged to be true).' },
+    { re: /(을|를)\s*선택(하|한|할|했|함|되|된)/, label: '~을/를 선택하다 / 선택되다 (choose / be chosen)', hint: 'choice verb. <noun> + 을/를 선택하다 = "chooses / selects"; 선택되다 = "is chosen". 옵션을 선택하다 (choose an option); 후보로 선택되었다 (was chosen as a candidate).' },
+
+    // POLICY / LAW / REGULATION
+    { re: /(을|를)\s*시행(하|한|할|했|함|되|된)/, label: '~을/를 시행하다 / 시행되다 (implement / take effect)', hint: 'policy enactment verb. <noun> + 을/를 시행하다 = "implements / enforces"; 시행되다 = "takes effect". 법안이 시행되다 (the bill takes effect); 새 정책을 시행하다 (implement a new policy). Heavy news register.' },
+    { re: /(을|를)\s*도입(하|한|할|했|함|되|된)/, label: '~을/를 도입하다 / 도입되다 (introduce / adopt)', hint: 'adoption verb. <noun> + 을/를 도입하다 = "introduces / adopts / brings in". 새 시스템을 도입하다 (introduce a new system); 한국에 도입된 기술 (technology introduced to Korea). Common in tech and policy.' },
+    { re: /(을|를)\s*강화(하|한|할|했|함|되|된)/, label: '~을/를 강화하다 / 강화되다 (strengthen / be reinforced)', hint: 'strengthening verb. <noun> + 을/를 강화하다 = "strengthens / reinforces / tightens". 규제를 강화하다 (tighten regulations); 보안이 강화되었다 (security was strengthened). Policy and security news.' },
+    { re: /(을|를)\s*완화(하|한|할|했|함|되|된)/, label: '~을/를 완화하다 / 완화되다 (ease / loosen)', hint: 'opposite of 강화. <noun> + 을/를 완화하다 = "eases / relaxes / loosens". 규제를 완화하다 (ease regulations); 통증이 완화되었다 (pain was relieved). Common in economic and medical contexts.' },
+
+    // INVESTIGATION / INQUIRY
+    { re: /(을|를)\s*조사(하|한|할|했|함|중|되|된)/, label: '~을/를 조사하다 / 조사 중 (investigate / be investigating)', hint: 'investigation verb. <noun> + 을/를 조사하다 = "investigates / studies / surveys". 사건을 조사하다 (investigate an incident); 원인을 조사하고 있다 (is investigating the cause); 조사 결과 (investigation result).' },
+    { re: /(을|를)\s*확인(하|한|할|했|함|되|된)/, label: '~을/를 확인하다 / 확인되다 (confirm / verify)', hint: 'confirmation verb. <noun/clause> + 을/를 확인하다 = "confirms / verifies"; 확인되다 = "is confirmed". 사실을 확인하다 (confirm a fact); 양성으로 확인되었다 (was confirmed positive). Critical in journalism.' },
+    { re: /(을|를)\s*발견(하|한|할|했|함|되|된)/, label: '~을/를 발견하다 / 발견되다 (discover / be found)', hint: 'discovery verb. <noun> + 을/를 발견하다 = "discovers / finds"; 발견되다 = "is discovered / found". 새 종을 발견하다 (discover a new species); 시신이 발견되었다 (a body was found).' },
+
+    // SPEECH / COMMUNICATION
+    { re: /의견(을|이)\s*(내|내놓|제시|보이|모이|밝|있)/, label: '~의견을 내다 / 의견을 제시하다 (offer / present an opinion)', hint: 'opinion verb. 의견을 내다 / 내놓다 / 제시하다 / 보이다 / 밝히다 = "offer / present / express an opinion". 다양한 의견이 나왔다 (various opinions emerged); 의견을 모으다 (gather opinions).' },
+    { re: /(을|를)\s*주장(하|한|할|했|함)/, label: '~을/를 주장하다 (assert / claim)', hint: 'assertion verb. <noun/clause> + 을/를 주장하다 = "asserts / argues / claims". 무죄를 주장하다 (claim innocence); 개혁을 주장하다 (advocate reform). Stronger than 의견을 내다.' },
+    { re: /(을|를)\s*강조(하|한|할|했|함)/, label: '~을/를 강조하다 (emphasize)', hint: 'emphasis verb. <noun/clause> + 을/를 강조하다 = "emphasizes / stresses / highlights". 중요성을 강조하다 (emphasize the importance); 필요성을 강조했다 (emphasized the need). News-quoting register.' },
+    { re: /(을|를)\s*제기(하|한|할|했|함|되|된)/, label: '~을/를 제기하다 / 제기되다 (raise / be raised — formal)', hint: 'formal "raise" verb. <noun> + 을/를 제기하다 = "raises / brings up"; 제기되다 = "is raised". 문제를 제기하다 (raise an issue); 의혹이 제기되었다 (suspicions were raised). Legal / journalistic.' },
+
+    // ROLE / RESPONSIBILITY
+    { re: /역할(을|이)\s*(하|한|할|했|함|맡|있|있다|크|중요)/, label: '~역할을 하다 / 역할을 맡다 (play / take on a role)', hint: 'role collocation. 역할을 하다 = "plays a role"; 역할을 맡다 = "takes on a role"; 역할이 크다 / 중요하다 = "the role is big / important". 중요한 역할을 한다 (plays an important role).' },
+    { re: /책임(을|이)\s*(지|있|있다|있는|다|진다|졌|맡)/, label: '책임을 지다 / 책임이 있다 (take responsibility / be responsible)', hint: 'responsibility collocation. 책임을 지다 = "take responsibility"; 책임이 있다 = "be responsible"; 책임을 다하다 = "fulfill responsibility"; 책임을 묻다 = "hold accountable". 사고에 책임을 지다 (take responsibility for the accident).' },
+
+    // CHANGE / DEVELOPMENT
+    { re: /변화(가|이|를)\s*(있|있다|많|크|일|일었|일어|보이|나|나타|시작)/, label: '~변화가 있다 / 변화를 보이다 (there is / shows change)', hint: 'change noun collocations. 변화가 있다 / 일다 / 일어나다 = "change occurs / arises"; 변화를 보이다 = "shows change". 큰 변화가 일고 있다 (big change is unfolding); 변화의 필요성 (need for change).' },
+    { re: /발전(을|이|에|을\s*이|이\s*되|된|시키)/, label: '~발전을 이루다 / 발전이 되다 (develop / make progress)', hint: 'development collocation. 발전을 이루다 / 거두다 = "achieve development"; 발전하다 / 발전되다 = "develop / be developed"; 발전에 기여하다 = "contribute to development". 기술 발전이 빠르다 (technology development is fast).' },
+    { re: /(을|를)\s*개선(하|한|할|했|함|되|된)/, label: '~을/를 개선하다 / 개선되다 (improve)', hint: 'improvement verb. <noun> + 을/를 개선하다 = "improves / enhances"; 개선되다 = "is improved". 환경을 개선하다 (improve the environment); 성능이 개선되었다 (performance was improved).' },
+
+    // BUSINESS / ECONOMY
+    { re: /시장(을|이|에|에서)\s*(공략|진출|형성|확대|개척|점유|선도)/, label: '~시장을 공략하다 / 시장에 진출하다 (target / enter a market)', hint: 'market collocations. 시장을 공략하다 = "target the market"; 시장에 진출하다 = "enter the market"; 시장을 형성하다 = "form a market"; 시장을 점유하다 = "occupy market share". Heavy business register.' },
+    { re: /매출(이|을|이\s*늘|이\s*줄|을\s*올|을\s*올렸)/, label: '매출이 늘다 / 매출을 올리다 (sales rise / boost sales)', hint: 'sales collocation. 매출이 늘다 / 증가하다 / 오르다 = "sales rise"; 매출이 줄다 / 감소하다 = "sales fall"; 매출을 올리다 = "boost sales". 매출이 사상 최고를 기록했다 (sales recorded all-time high).' },
+    { re: /(이|가)\s*늘어나(?!나)|(이|가)\s*증가세(를|에)/, label: '~증가세를 보이다 (show an upward trend)', hint: 'trend description. 증가세를 보이다 = "show an upward trend"; 감소세를 보이다 = "show a downward trend"; 상승세 / 하락세를 보이다 = "show rising / falling trend". 매출이 증가세를 보이고 있다.' },
+
+    // SCIENCE / TECH
+    { re: /(을|를)\s*개발(하|한|할|했|함|되|된|중)/, label: '~을/를 개발하다 / 개발되다 (develop / be developed)', hint: 'tech/product development verb. <noun> + 을/를 개발하다 = "develops"; 개발되다 = "is developed". 백신을 개발하다 (develop a vaccine); 신기술이 개발되었다 (a new tech was developed).' },
+    // (~을/를 상용화하다 dropped — already covered by the broader
+    // ~화하다/~화되다 (-ization / -ize) pattern at line ~511.)
+    { re: /(을|를)\s*적용(하|한|할|했|함|되|된)/, label: '~을/를 적용하다 / 적용되다 (apply / be applied)', hint: 'application verb. <noun> + 을/를 적용하다 = "applies"; 적용되다 = "is applied". 새 기준을 적용하다 (apply new standards); 모든 사용자에게 적용된다 (applies to all users).' },
+
+    // CRIME / ACCIDENT
+    { re: /(이|가)\s*발생(하|한|할|했|함|되|된)/, label: '~이/가 발생하다 (occur / happen — formal)', hint: 'formal occurrence verb (vs colloquial 일어나다 / 나다). <subj> + 이/가 발생하다 = "occurs / happens / is generated". 사고가 발생했다 (an accident occurred); 문제가 발생할 가능성 (possibility that a problem arises). Heavy news register.' },
+    { re: /(을|를)\s*저지르(다|어|었|는|네|며|기)/, label: '~을/를 저지르다 (commit — wrongdoing)', hint: 'crime-collocation verb. <crime> + 을/를 저지르다 = "commit (a crime/wrongdoing)". 범죄를 저지르다 (commit a crime); 실수를 저지르다 (make a mistake — negative connotation).' },
+
+    // HEALTH / TREATMENT
+    { re: /(을|를)\s*치료(하|한|할|했|함|되|된|받|받았)/, label: '~을/를 치료하다 / 치료받다 (treat / be treated)', hint: 'medical treatment verb. <noun> + 을/를 치료하다 = "treat"; 치료받다 = "receive treatment"; 치료되다 = "be treated". 환자를 치료하다 (treat a patient); 암을 치료할 수 있다 (can treat cancer).' },
+    { re: /진단(을\s*받|을\s*내리|을\s*하|하|한|할|했|함|받|받았|받는|받은)|(으로|로)\s*진단(받|되|된)/, label: '~을/를 진단하다 / 진단받다 (diagnose / be diagnosed)', hint: 'diagnosis verb. <noun> + 을/를 진단하다 = "diagnoses"; 진단받다 = "be diagnosed"; X(으)로 진단받다 = "be diagnosed AS X". 암으로 진단받다 (be diagnosed with cancer); 정확한 진단을 받다 (receive an accurate diagnosis).' },
+    { re: /증상(이|을)\s*(나|나타|보이|있|호소|완화)/, label: '~증상이 나타나다 / 증상을 보이다 (show / develop symptoms)', hint: 'symptom collocation. 증상이 나타나다 / 보이다 = "symptoms appear / show"; 증상을 호소하다 = "complain of symptoms"; 증상이 완화되다 = "symptoms are relieved". 발열 증상이 나타났다 (fever symptoms appeared).' },
+
+    // PURPOSE / GOAL
+    { re: /목표(를|로|가|이)\s*(삼|두|달|이|있|세우|향)/, label: '~목표로 삼다 / 목표를 세우다 (set / aim for a goal)', hint: 'goal collocation. 목표로 삼다 = "set as a goal"; 목표를 세우다 = "set a goal"; 목표를 달성하다 = "achieve a goal"; 목표가 있다 = "have a goal". 1조 원을 목표로 한다 (aims for 1 trillion won).' },
+
+    // OPPORTUNITY / RISK
+    { re: /기회(가|를)\s*(있|많|얻|놓|잡|마련|제공)/, label: '~기회가 있다 / 기회를 잡다 (have / seize an opportunity)', hint: 'opportunity collocation. 기회가 있다 / 많다 = "there is / many opportunities"; 기회를 얻다 / 잡다 = "get / seize an opportunity"; 기회를 놓치다 = "miss an opportunity"; 기회를 제공하다 = "provide an opportunity". 좋은 기회를 잡았다 (seized a good chance).' },
+
+    // GENERIC ACTION FRAMERS — extremely common
+    { re: /노력(을|이)\s*(하|기울|들이|기울이|있|많|보이|크)/, label: '노력을 하다 / 노력을 기울이다 (make an effort)', hint: 'effort collocation. 노력을 하다 = "make an effort"; 노력을 기울이다 / 들이다 = "put in effort"; 노력이 필요하다 = "effort is needed"; 노력이 보이다 = "effort is visible". 큰 노력을 기울이고 있다 (is putting in big effort).' },
+    { re: /(을|를)\s*기울이(다|어|었|는|며|기)/, label: '~을/를 기울이다 (devote / put forth — formal)', hint: 'formal "devote" host verb. <noun (often abstract: 노력/관심/열정)> + 을/를 기울이다 = "devote / dedicate / put forth". 노력을 기울이다 (devote effort); 관심을 기울이다 (pay attention). News and formal register only.' },
+    { re: /(을|를)\s*벌이(다|어|었|는|며|기|어\s*놓|어\s*나)/, label: '~을/를 벌이다 (carry out / wage)', hint: 'large-scale action verb. <noun> + 을/를 벌이다 = "carry out / wage / hold". 캠페인을 벌이다 (run a campaign); 토론을 벌이다 (hold a debate); 수사를 벌이다 (conduct an investigation). Often for events with multiple participants.' },
+    { re: /(을|를)\s*나서(다|어|었|는|며)/, label: '~에 나서다 (step forward / take action)', hint: 'initiative verb. <noun> + 에 나서다 = "step forward to / take the lead in / undertake". 수사에 나서다 (step into the investigation); 구조에 나서다 (move in for rescue); 회담에 나서다 (enter into talks).' },
+    { re: /(을|를)\s*제공(하|한|할|했|함|되|된)/, label: '~을/를 제공하다 / 제공되다 (provide / be provided)', hint: 'provision verb. <noun> + 을/를 제공하다 = "provides / offers"; 제공되다 = "is provided". 정보를 제공하다 (provide info); 무료로 제공된다 (is provided for free). Business and service register.' },
+    { re: /(을|를)\s*제공받|를\s*받는다는|을\s*받는다는/, label: '~을/를 제공받다 (be provided with)', hint: 'passive of 제공하다. <noun> + 을/를 제공받다 = "be provided with / receive". 무료로 식사를 제공받다 (be provided with a free meal); 정부 지원을 제공받았다.' },
+
+    // EDUCATION-SPECIFIC
+    { re: /도움(을|이)\s*(되|된|돼|돼서|됩|많|크|받|받았|주|주는|주었)/, label: '도움이 되다 / 도움을 받다 (be helpful / receive help)', hint: 'help collocation. 도움이 되다 = "is helpful / useful"; 도움을 주다 = "give help"; 도움을 받다 = "receive help"; 큰 도움이 되다 = "is a big help". 학습에 도움이 된다 (is helpful for learning); 친구에게 도움을 청하다 (ask a friend for help).' },
+    { re: /효과(가|를|이|적)\s*(있|크|좋|적|적인|많|보이|발휘|얻|기대|뛰어)/, label: '효과가 있다 / 효과를 보이다 (be effective)', hint: 'effectiveness collocation. 효과가 있다 = "is effective"; 효과가 크다 / 뛰어나다 = "is highly effective"; 효과를 보이다 = "shows effect"; 효과를 발휘하다 = "exhibits effect"; 효과적이다 = "is effective". Common in product / health / education claims.' },
+    { re: /의미(가|를)\s*(있|있다|크|보이|두|지|지니|찾|있는|없)/, label: '의미가 있다 / 의미를 두다 (be meaningful / find meaning)', hint: 'meaning collocation. 의미가 있다 = "is meaningful"; 의미가 크다 = "is highly significant"; 의미를 두다 = "place importance on"; 의미를 찾다 = "find meaning"; 의미를 지니다 = "carry meaning".' },
+
+    // SPATIAL / CHRONOLOGICAL ANCHORING
+    { re: /(은|는|이|가)\s*물론(?=[\s,.!?]|이|$)/, label: '~은/는 물론(이고) (of course / not to mention)', hint: 'inclusive emphasis. A는 물론(이고) B도 = "A is of course, and B too / not only A but also B". 학생은 물론이고 직장인도 (not only students but also office workers); 가격은 물론 품질도 좋다 (quality is good, let alone the price).' },
+    // BUG FIX: previous regex `이|가\s*뿐만\s*아니라|뿐만\s*아니라` had
+    // no parens, so it matched bare `이` (subject particle) alone — half
+    // of all Korean sentences fired this pattern. Now requires literal
+    // 뿐만 아니라.
+    { re: /뿐만\s*아니라/, label: '~뿐만 아니라 (not only / on top of)', hint: 'additive emphasis. A뿐만 아니라 B도 = "not only A but also B". 한국에서뿐만 아니라 세계적으로도 인기다 (popular not only in Korea but worldwide). Slightly more formal than ~만이 아니라.' },
     { re: /(으로|로)\s*이어(지|졌|진|져)/, label: '~(으)로 이어지다 (lead to / result in)', hint: 'causation/result. <noun> + (으)로 이어지다 = "lead to / result in / be linked to". 노력이 결과로 이어졌어요 = "efforts led to results"' },
     { re: /(으로|로)\s*인(해|한|하여)/, label: '~(으)로 인해/인한 (due to)', hint: 'causation. <noun> + (으)로 인해 = "due to / because of"' },
     { re: /에\s*대한\s*[가-힣]/, label: '~에 대한 N (about/regarding N) [adnominal]', hint: 'attributive form. <noun> + 에 대한 + <noun> = "the X about Y". ~에 대한 관심 = "interest in"' },
