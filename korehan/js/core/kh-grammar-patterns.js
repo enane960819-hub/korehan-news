@@ -922,16 +922,27 @@
   // learners (they'd appear in nearly every sentence panel and flood the
   // Grammar tab). Past-polite stays IN — users explicitly want to see it
   // even when it's the only finite verb on the sentence.
+  //
+  // ⚠️ Keys MUST match the current `label` strings exactly. When you
+  // rename a label (e.g. ~의 → ~의 (possessive / relational)), update
+  // the key here too — otherwise the skip silently stops working and
+  // Intermediate/Advanced users get every basic particle as a card on
+  // every sentence (user-reported 2026-05-24).
   var INTERMEDIATE_SKIP_LABELS = {
     '~을/를 (object marker)': 1,
     '~이/가 (subject marker)': 1,
     '~은/는 (topic marker)': 1,
-    '~의 (possessive)': 1,
-    '~에 (location/time)': 1,
+    '~의 (possessive / relational)': 1,
+    '~에 (location / time / direction / target)': 1,
     '~아/어/여요 (present polite)': 1,
+    '~아/어/여요 (present polite — contracted)': 1,
     '~ㅂ/습니다 (present formal)': 1,
     '~는 (present verb modifier)': 1,
     '~ㄴ/은 (past verb / present adj modifier)': 1,
+    // Also noisy at Intermediate+ — but kept OUT of skip list for now
+    // because the dual-meaning expansion makes them less repetitive
+    // (e.g. ~도 'also' vs 'even', ~까지 'until' vs 'even'):
+    //   ~도 (also / even), ~까지 (until / even / as much as), ~만 (only / just)
   };
 
   // Level-aware variant of detect — strips trivial labels so the
