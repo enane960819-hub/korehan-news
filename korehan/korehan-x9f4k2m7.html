@@ -6601,10 +6601,19 @@ async function goAICache() {
           ? 'background:#fff7ed;color:#9a3412;border:1.5px solid #f97316'
           : 'background:#fff;color:#7c3aed;border:1.5px solid #c4b5fd')
       + '" id="sbtn-' + a.id + '" onclick="backfillOneSentenceAnalysis(\'' + a.id + '\',\'' + (_schema||'') + '\')" title="' + (isStaleSent
-          ? '현재 캐시가 이전 프롬프트 버전입니다 (위 v뱃지 참고). 새 분석으로 업데이트. Sonnet 1회, ~$0.02.'
-          : '문장별 분석을 다시 만듭니다 (본문 수정 후 등). Sonnet 1회, ~$0.02.') + '">'
+          ? '현재 캐시가 이전 프롬프트 버전입니다 (위 v뱃지 참고). 새 분석으로 업데이트. Haiku 1회, ~$0.003 / 20-30초.'
+          : '문장별 분석을 다시 만듭니다 (본문 수정 후 등). Haiku 1회, ~$0.003 / 20-30초.') + '">'
       + (isStaleSent ? '🔄 문장 분석 업데이트' : '📝 문장 분석 다시')
       + '</button>';
+
+    // Per-sentence editor — opens a modal that lists every sentence
+    // with the current Haiku-generated analysis + per-row [🔄 Haiku] /
+    // [✨ Sonnet] re-run buttons. Lets admins fix one bad sentence
+    // without re-running the whole article (the bulk path now defaults
+    // to Haiku for speed; the Sonnet escalation lives here per-row).
+    var sentenceEditBtn = hasS
+      ? '<button class="btn" style="font-size:12px;padding:6px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;background:#fff;color:#0369a1;border:1.5px solid #7dd3fc" onclick="openSentenceEditor(\'' + a.id + '\',\'' + (_schema||'') + '\')" title="문장 하나하나 검토 / Haiku 또는 Sonnet으로 재분석">📝 문장 편집 (' + sCount + ')</button>'
+      : '';
 
     html += '<div id="crow-' + a.id + '" style="background:#fff;border:1px solid var(--bo);border-radius:10px;margin-bottom:10px;overflow:hidden' + (articleErrs.length ? ';border-color:#f59e0b' : '') + '">'
       + '<div style="padding:14px 16px">'
@@ -6625,6 +6634,7 @@ async function goAICache() {
       // Action buttons row (right-aligned, clear labels)
       + '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;align-items:center">'
       +   sentenceAnalysisBtn
+      +   sentenceEditBtn
       +   quizCacheBtn
       +   studyGenBtn
       + '</div>'
@@ -6741,9 +6751,14 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
       + '    { "text": "...", "translation": "...", "vocab": [{"ko","en","note"}], "analysis": [{"type","label","exp","example_in_sentence"}] }\n'
       + '  ]\n'
       + '}';
+    // Bulk backfill defaults to Haiku now (3-4× faster, ~7× cheaper).
+    // Per-sentence quality misses can be escalated individually via the
+    // 📝 문장 편집 modal — its "✨ Sonnet 재분석" button re-runs the one
+    // bad sentence with Sonnet. That trades the rare quality dip for
+    // dramatically better wall-clock time on the common case.
     const r = await callClaude({
       feature: 'generate-article-analysis-backfill',
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 7000,
       messages: [{ role:'user', content: _sentPrompt }]
     });
@@ -6987,6 +7002,218 @@ async function genQuizOnly(articleId, schema, opts) {
     if (!silent) toast('실패: ' + _msg, true);
     if (silent) throw e;
     return false;
+  }
+}
+
+// ── Per-sentence editor (modal) + per-sentence re-analyze ─────────
+// Bulk backfill now uses Haiku for speed (3-4× faster). For rare
+// sentences where Haiku output is sparse or wrong, this modal lets
+// the admin re-run just THAT one sentence with either Haiku (fix
+// transient hiccup) or Sonnet (escalate to higher quality). The
+// editor reads / writes article_cache.translation.sentences[i] in
+// place so the bulk run + per-sentence escalation co-exist on the
+// same cache row.
+
+var _seCurrent = null; // { articleId, schema, sentences:[...] }
+
+async function openSentenceEditor(articleId, schema) {
+  if (!schema) { toast('스키마 미감지', true); return; }
+  var sb = (typeof getSb === 'function') ? getSb() : null;
+  if (!sb) { toast('Supabase 미연결', true); return; }
+  toast('문장 편집기 로딩 중…');
+
+  // Load the article body + sentence-analysis cache
+  var art, transStr = '';
+  try {
+    var artRow = await sb.from('articles').select('id,title,body,level').eq('id', articleId).maybeSingle();
+    art = artRow && artRow.data;
+    if (!art) throw new Error('기사를 찾을 수 없음');
+    if (schema === 'kv') {
+      var kv = await supaAdminGet('article_cache?content_type=eq.article&content_id=eq.' + encodeURIComponent(articleId) + '&cache_key=eq.translation&select=cache_value');
+      transStr = (Array.isArray(kv) && kv[0] && kv[0].cache_value) || '';
+    } else {
+      var wide = await supaAdminGet('article_cache?article_id=eq.' + encodeURIComponent(articleId) + '&select=translation');
+      transStr = (Array.isArray(wide) && wide[0] && wide[0].translation) || '';
+    }
+  } catch(e) { toast('로드 실패: ' + e.message, true); return; }
+
+  var transObj = {};
+  try { transObj = JSON.parse(transStr); } catch(_) { transObj = {}; }
+  var sentences = Array.isArray(transObj.sentences) ? transObj.sentences : [];
+  if (!sentences.length) { toast('이 기사에는 sentence_analysis가 없음. 먼저 📝 문장 분석 다시 누르세요.', true); return; }
+
+  _seCurrent = { articleId: String(articleId), schema: schema, art: art, transObj: transObj, sentences: sentences };
+
+  var ov = document.getElementById('se-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'se-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
+    ov.onclick = function(e){ if (e.target === ov) closeSentenceEditor(); };
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = ''
+    + '<div style="background:#fff;max-width:880px;width:100%;max-height:90vh;overflow:auto;border-radius:16px;padding:18px 22px;box-shadow:0 30px 60px rgba(0,0,0,.4)">'
+    +   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    +     '<div><div style="font-weight:800;font-size:16px;color:#0f172a">📝 문장 편집 — ' + (art.title || '').replace(/</g,'&lt;') + '</div>'
+    +       '<div style="font-size:12px;color:#64748b">총 ' + sentences.length + ' 문장. 한 문장만 [🔄 Haiku] 또는 [✨ Sonnet] 으로 재분석. 저장은 즉시.</div></div>'
+    +     '<button onclick="closeSentenceEditor()" style="background:#f1f5f9;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit">닫기</button>'
+    +   '</div>'
+    +   '<div id="se-list">' + _seRenderList(sentences) + '</div>'
+    + '</div>';
+}
+
+function closeSentenceEditor() {
+  var ov = document.getElementById('se-overlay');
+  if (ov) ov.remove();
+  _seCurrent = null;
+}
+
+function _seRenderList(sentences) {
+  return sentences.map(function(s, i) {
+    var vocabHtml = (s.vocab||[]).map(function(v){
+      return '<span style="background:#f1f5f9;border-radius:6px;padding:2px 8px;font-size:11px;margin:2px 4px 2px 0;display:inline-block"><b>' + (v.ko||'') + '</b> ' + (v.en||'') + '</span>';
+    }).join('');
+    var analHtml = (s.analysis||[]).map(function(a){
+      var bg = a.type === 'grammar' ? '#ede9fe' : (a.type === 'idiom' ? '#fef3c7' : '#dbeafe');
+      var fg = a.type === 'grammar' ? '#5b21b6' : (a.type === 'idiom' ? '#92400e' : '#1e3a8a');
+      return '<span style="background:' + bg + ';color:' + fg + ';border-radius:6px;padding:2px 8px;font-size:11px;margin:2px 4px 2px 0;display:inline-block" title="' + (a.exp||'').replace(/"/g,'&quot;') + '"><b>' + (a.label||'') + '</b> · ' + (a.type||'?') + (a.example_in_sentence ? ' · ' + a.example_in_sentence : '') + '</span>';
+    }).join('');
+    return '<div id="se-row-' + i + '" style="border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">'
+      +   '<div style="font-size:11px;color:#94a3b8;font-weight:700">#' + (i+1) + '</div>'
+      +   '<div>'
+      +     '<button onclick="reanalyzeSingleSentence(' + i + ',\'haiku\')" style="background:#fff;color:#7c3aed;border:1.5px solid #c4b5fd;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:4px">🔄 Haiku 재분석</button>'
+      +     '<button onclick="reanalyzeSingleSentence(' + i + ',\'sonnet\')" style="background:#fffbeb;color:#92400e;border:1.5px solid #fcd34d;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">✨ Sonnet 재분석</button>'
+      +   '</div>'
+      + '</div>'
+      + '<div style="font-size:14px;color:#0f172a;margin-bottom:4px;font-weight:600">' + (s.text||'').replace(/</g,'&lt;') + '</div>'
+      + '<div style="font-size:12px;color:#475569;margin-bottom:8px;font-style:italic">' + (s.translation||'').replace(/</g,'&lt;') + '</div>'
+      + (vocabHtml ? '<div style="margin-bottom:4px"><span style="font-size:10px;color:#64748b;font-weight:700;margin-right:6px">VOCAB</span>' + vocabHtml + '</div>' : '')
+      + (analHtml ? '<div><span style="font-size:10px;color:#64748b;font-weight:700;margin-right:6px">ANALYSIS</span>' + analHtml + '</div>' : '')
+      + '<div id="se-row-status-' + i + '" style="font-size:11px;color:#64748b;margin-top:6px;min-height:14px"></div>'
+      + '</div>';
+  }).join('');
+}
+
+async function reanalyzeSingleSentence(idx, modelChoice) {
+  if (!_seCurrent) return;
+  var s = _seCurrent.sentences[idx]; if (!s) return;
+  var statusEl = document.getElementById('se-row-status-' + idx);
+  var modelId = modelChoice === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
+  var modelLabel = modelChoice === 'sonnet' ? 'Sonnet' : 'Haiku';
+
+  if (statusEl) statusEl.textContent = '⏳ ' + modelLabel + ' 분석 중…';
+
+  try {
+    var hits = (window.KH_GRAMMAR && window.KH_GRAMMAR.detectForLevel)
+      ? window.KH_GRAMMAR.detectForLevel(s.text, _seCurrent.art.level || 'Intermediate')
+      : [];
+    var listText = hits.length
+      ? '\n  MUST-INCLUDE detected patterns (one analysis entry per item):\n' + window.KH_GRAMMAR.formatPromptList(hits)
+      : '';
+
+    var prompt =
+        '당신은 외국인 한국어 학습자를 위한 Korean 튜터입니다.\n'
+      + '아래 단일 문장에 번역/단어/분석을 달아주세요.\n\n'
+      + '[기사 정보] 제목: ' + (_seCurrent.art.title || '') + ' / 난이도: ' + (_seCurrent.art.level || 'Intermediate') + '\n\n'
+      + '[문장]\n' + s.text + listText + '\n\n'
+      + '[출력 규칙]\n'
+      + '- text: 위 문장 그대로 (마침표 포함).\n'
+      + '- translation: 자연스러운 영어. 한국어가 주어 생략하면 문맥에 맞는 he/she/the X 등 채워. "I/we" 함부로 X.\n'
+      + '- vocab: max 4 dictionary forms (사전형). 활용형 X (✗작은 ✗잡았어요). fossil 제외 (모든/다른/어떤/그렇게/이렇게/감히 등).\n'
+      + '- analysis: detected patterns 다 출력 (type=grammar, label은 list 그대로 복사). exp = 1줄 영어 with 사전형 → 활용형 chain. 추가로 idiom/expression 발견 시 entry 더 추가.\n\n'
+      + '[출력 — JSON ONLY]\n'
+      + '{ "text": "...", "translation": "...", "vocab": [{"ko","en","note"}], "analysis": [{"type","label","exp","example_in_sentence"}] }';
+
+    var resp = await callClaude({
+      feature: 'sentence-reanalyze-' + modelChoice,
+      model: modelId,
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    var raw = (resp && resp.content && resp.content[0] && resp.content[0].text) || '';
+    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
+    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
+    if (oi < 0 || ei <= oi) throw new Error('JSON 응답 없음');
+    var parsed = JSON.parse(clean.slice(oi, ei + 1));
+
+    var newEntry = {
+      text: s.text,
+      translation: typeof parsed.translation === 'string' ? parsed.translation : '',
+      vocab: Array.isArray(parsed.vocab) ? parsed.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
+      analysis: Array.isArray(parsed.analysis)
+        ? parsed.analysis.slice(0, 8).filter(function(a){ return a && (a.label || a.pattern); }).map(function(a){
+            return { type: a.type || 'grammar', label: a.label || a.pattern || '', exp: a.exp || '', example_in_sentence: a.example_in_sentence || '' };
+          })
+        : [],
+    };
+
+    if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns) {
+      window.KH_GRAMMAR.enforceDetectedPatterns([newEntry], _seCurrent.art.level || 'Intermediate');
+    }
+
+    // Replace in array, persist
+    _seCurrent.sentences[idx] = newEntry;
+    _seCurrent.transObj.sentences = _seCurrent.sentences;
+    var newTransStr = JSON.stringify(_seCurrent.transObj);
+
+    if (_seCurrent.schema === 'kv') {
+      await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+        content_type: 'article', content_id: _seCurrent.articleId,
+        cache_key: 'translation', cache_value: newTransStr,
+      });
+    } else {
+      var chk = await supaAdminGet('article_cache?article_id=eq.' + encodeURIComponent(_seCurrent.articleId) + '&select=article_id');
+      var chkData = Array.isArray(chk) ? chk : [];
+      if (chkData.length > 0) {
+        await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(_seCurrent.articleId), { translation: newTransStr });
+      } else {
+        await supaAdminPost('article_cache', { article_id: _seCurrent.articleId, translation: newTransStr });
+      }
+    }
+
+    // Re-derive Vocab + Grammar tab payloads from the updated sentences[]
+    if (typeof _khDeriveVocabGrammarFromSentences === 'function') {
+      var derived = _khDeriveVocabGrammarFromSentences(_seCurrent.sentences, _seCurrent.art.level || 'Intermediate');
+      try {
+        if (_seCurrent.schema === 'kv') {
+          if (derived.vocab.length) {
+            await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+              content_type: 'article', content_id: _seCurrent.articleId,
+              cache_key: 'vocab', cache_value: JSON.stringify(derived.vocab),
+            });
+          }
+          if (derived.grammar.patterns.length) {
+            await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
+              content_type: 'article', content_id: _seCurrent.articleId,
+              cache_key: 'grammar', cache_value: JSON.stringify(derived.grammar),
+            });
+          }
+        } else {
+          var patch = {};
+          if (derived.vocab.length) patch.vocab = JSON.stringify(derived.vocab);
+          if (derived.grammar.patterns.length) patch.grammar = JSON.stringify(derived.grammar);
+          if (Object.keys(patch).length) {
+            await supaAdminPatch('article_cache?article_id=eq.' + encodeURIComponent(_seCurrent.articleId), patch);
+          }
+        }
+      } catch(e) { console.warn('derive save failed', e); }
+    }
+
+    // Re-render just this row in the modal
+    var rowEl = document.getElementById('se-row-' + idx);
+    if (rowEl) {
+      var temp = document.createElement('div');
+      temp.innerHTML = _seRenderList([newEntry]).replace('se-row-0', 'se-row-' + idx).replace('se-row-status-0', 'se-row-status-' + idx);
+      var fresh = temp.firstChild;
+      if (fresh) rowEl.replaceWith(fresh);
+    }
+    var newStatusEl = document.getElementById('se-row-status-' + idx);
+    if (newStatusEl) newStatusEl.textContent = '✓ ' + modelLabel + ' 재분석 저장됨';
+  } catch(e) {
+    console.warn('reanalyzeSingleSentence failed', e);
+    if (statusEl) statusEl.textContent = '❌ ' + (e.message || '실패');
   }
 }
 
