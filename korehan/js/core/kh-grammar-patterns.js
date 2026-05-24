@@ -502,6 +502,88 @@
     { re: /을\s*통해서?(?=[^가-힣]|$)|를\s*통해서?(?=[^가-힣]|$)/, label: '~을/를 통해(서) (through)', hint: 'medium / channel. "through / by way of"' },
     { re: /을\s*위해서?(?=[^가-힣]|$)|를\s*위해서?(?=[^가-힣]|$)/, label: '~을/를 위해(서) (for the sake of)', hint: 'beneficiary / purpose' },
     { re: /을\s*위한(?=[^가-힣]|\s)|를\s*위한(?=[^가-힣]|\s)/, label: '~을/를 위한 (for) [adnominal]', hint: 'attributive form of ~을 위해. modifies a following noun. "for the sake of N". 학생들을 위한 책 = "books for students"' },
+
+    // ── High-value collocation expressions (added 2026-05-24) ────────
+    // These are news/article-register chunks that the AI consistently
+    // skips when they\'re NOT in MUST-INCLUDE. Adding them via regex
+    // forces every analysis run to surface them with the canonical
+    // explanation below, instead of relying on AI to spot them.
+
+    // POSSIBILITY / EXPECTATION — must catch BOTH the "X을 가능성" form
+    // (consonant-batchim stem + 을: 먹을 가능성) AND the "Xㄹ 가능성" form
+    // (vowel-stem with ㄹ-batchim collapsed onto stem syllable: 갈/할/볼/
+    // 될 가능성). _hasJongFollowedBy with jong=8 catches the ㄹ-batchim
+    // case; the literal-regex 을 branch catches the other.
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['가능성']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*가능성/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 가능성이 있다 / 높다 (possibility)', hint: 'modal expression of possibility. <stem> + ㄹ/을 가능성이 있다 = "there is a possibility that". 가능성이 높다 / 낮다 / 크다 vary the degree. 치료될 가능성이 있다 (there is a possibility of being treated); 비가 올 가능성이 높다 (likely to rain).' },
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['우려']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*우려/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 우려가 있다 (concern that / fear of)', hint: 'modal expression of concern / negative possibility. <stem> + ㄹ/을 우려가 있다 = "there is a concern / fear that". 부작용이 발생할 우려가 있다 (there is a concern about side effects); 우려가 제기되다 / 우려가 커지다 (concerns are raised / grow).' },
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 8, ['필요']);
+        if (c) return c;
+        var m = t.match(/[가-힣]을\s*필요/);
+        return m ? m[0] : '';
+      }, label: '~(으)ㄹ 필요(가) 있다 / 없다 (need to)', hint: 'necessity. <stem> + ㄹ/을 필요가 있다 = "need to" / 없다 = "no need to". 검토할 필요가 있다 (need to review); 걱정할 필요가 없다 (no need to worry); 필요성이 제기되다 (need is being raised).' },
+    // (Note: ~(으)ㄹ 전망이다 was added separately, but the broader
+    // ~(으)ㄹ 전망이다 / 계획이다 / 방침이다 / 예정이다 below already
+    // covers it via _hasJongFollowedBy + 전망/계획/방침/예정.)
+
+    // METHOD / MEANS (이용/사용/활용/바탕/토대)
+    { re: /을\s*이용(해|해서|하여|한|하)|를\s*이용(해|해서|하여|한|하)/, label: '~을/를 이용해(서) (using / by means of)', hint: 'utilization. <noun> + 을/를 이용해(서) = "using / by means of / through the use of". 인터넷을 이용해서 검색한다 (search by using the internet); 이러한 원리를 이용해 (utilizing this principle). Strong news/article register.' },
+    { re: /을\s*사용(해|해서|하여|한|하)|를\s*사용(해|해서|하여|한|하)/, label: '~을/를 사용해(서) (using)', hint: 'usage. <noun> + 을/를 사용해(서) = "using / with". 한국어를 사용해서 쓰다 (write using Korean); 신용카드를 사용해 결제 (pay using a credit card). Slightly less formal than 이용해.' },
+    { re: /을\s*활용(해|해서|하여|한|하)|를\s*활용(해|해서|하여|한|하)/, label: '~을/를 활용해(서) (utilizing / leveraging)', hint: 'leverage / put to use. <noun> + 을/를 활용해(서) = "by utilizing / leveraging". 자원을 활용하여 (leveraging resources); 데이터를 활용해서 분석한다. Stronger than ~이용해 — implies strategic / creative use.' },
+    { re: /(으로|로)\s*활용(되|된|될|되었|되어|돼|됨|됩|하|함)/, label: '~(으)로 활용되다 (be utilized as)', hint: 'passive of 활용하다. <noun> + (으)로 활용되다 = "be utilized / used as / put to use as". 치료에 활용되다 (be utilized in treatment); 교재로 활용되어 왔다 (has been used as teaching material).' },
+    { re: /을\s*바탕(으로|으로\s*한|으로\s*하)|를\s*바탕(으로|으로\s*한|으로\s*하)/, label: '~을/를 바탕으로 (based on / on the basis of)', hint: 'basis / foundation. <noun> + 을/를 바탕으로 = "based on / on the basis of / drawing on". 연구를 바탕으로 (based on the research); 경험을 바탕으로 한 조언 (advice based on experience).' },
+    { re: /을\s*토대(로|로\s*한|로\s*하)|를\s*토대(로|로\s*한|로\s*하)/, label: '~을/를 토대로 (on the basis of)', hint: 'foundation / underpinning. <noun> + 을/를 토대로 = "on the basis of / built on / underpinned by". 자료를 토대로 분석한다 (analyse on the basis of data). Near-synonym of ~을 바탕으로 — both work in most contexts.' },
+
+    // INFLUENCE / EFFECT / CAUSE
+    // Loosened to match the noun "영향" + any common particle, since
+    // 영향과 받다/끼치다/미치다 are often separated by adverbs in real
+    // sentences (영향을 많이 받는다, 영향을 크게 미치다). Renders as the
+    // same card explaining the full collocation family.
+    { re: /영향(을|이|으로|에\s*따라)/, label: '~의 영향 (influence / effect)', hint: 'effect / impact collocation. ~의 영향을 받다 = "be influenced/affected by"; ~의 영향을 끼치다 / 미치다 = "have an influence/effect on"; ~의 영향으로 = "due to the influence of". 환경의 영향을 많이 받는다 (greatly influenced by environment); 경제에 영향을 미치다 (has an effect on the economy).' },
+    { re: /을\s*야기(하|한|할|했|함)|를\s*야기(하|한|할|했|함)|을\s*초래(하|한|할|했|함)|를\s*초래(하|한|할|했|함)/, label: '~을/를 야기하다 / 초래하다 (cause / give rise to)', hint: 'causation verb collocation (formal / written register). <noun> + 을/를 야기하다 / 초래하다 = "cause / give rise to / bring about". 문제를 야기하다 (cause a problem); 갈등을 초래하다 (give rise to conflict).' },
+
+    // REFERENCE / DEFINITION
+    { re: /을\s*가리키(는|다|어|며|기|ㄴ다|ㅂ니다)|를\s*가리키(는|다|어|며|기|ㄴ다|ㅂ니다)/, label: '~을/를 가리키다 (refer to / point to / denote)', hint: 'reference verb. <noun/clause> + 을/를 가리키다 = "refers to / points to / denotes". X를 가리키는 표현이다 = "is an expression that refers to X". 이 단어는 ~를 가리킨다 (this word refers to ~). Almost always followed by 표현/말/용어 in definitions.' },
+    { re: /을\s*의미(하|한|할|했|함|함이|합니다)|를\s*의미(하|한|할|했|함|함이|합니다)/, label: '~을/를 의미하다 (mean / signify)', hint: 'semantic equivalence. <noun/clause> + 을/를 의미하다 = "means / signifies / denotes". 이는 ~을 의미한다 (this means ~). Same register as 가리키다 but for abstract meaning rather than physical pointing.' },
+    { re: /(이라고|라고)\s*(부르|불리|불렀|불렀다|부른다|부릅니다|불린다|불립니다)/, label: '~(이)라고 부르다 / 불리다 (be called)', hint: 'naming. <noun> + (이)라고 부르다 = "call X as Y" (active); 불리다 = "be called as" (passive). 이 현상을 ~라고 부른다 (this phenomenon is called ~); ~라고 불리는 작품 (the work called ~).' },
+
+    // TARGET / SUBJECT / DEMOGRAPHIC
+    { re: /을\s*대상(으로|으로\s*한|으로\s*하)|를\s*대상(으로|으로\s*한|으로\s*하)/, label: '~을/를 대상으로 (targeting / aimed at)', hint: 'target population / scope. <noun> + 을/를 대상으로 = "targeting / aimed at / with X as the subject". 청소년을 대상으로 한 조사 (survey targeting teenagers); 직장인을 대상으로 (aimed at office workers). Common in survey / policy / marketing news.' },
+    { re: /을\s*상대(로|로\s*한|로\s*하)|를\s*상대(로|로\s*한|로\s*하)/, label: '~을/를 상대로 (against / vis-à-vis)', hint: 'opponent / counterparty. <noun> + 을/를 상대로 = "against / facing / vis-à-vis". 정부를 상대로 소송 (lawsuit against the government); 외국인을 상대로 한 사업 (business aimed at foreigners). Often confrontational.' },
+
+    // SUITABILITY / FIT
+    { re: /에\s*적합(하|한|할|했|합니다|함)/, label: '~에 적합하다 (suitable for / appropriate to)', hint: 'fit / appropriateness. <noun> + 에 적합하다 = "suitable for / appropriate to / right for". 어린이에 적합한 콘텐츠 (content suitable for children); 이 일에 적합하다 (suited for this job). Common in product / education contexts.' },
+    { re: /에\s*어울리(는|다|어|어서|며|기|ㄴ다)/, label: '~에 어울리다 (match / go well with)', hint: 'aesthetic / functional fit. <noun> + 에 어울리다 = "matches / goes well with / suits". 옷이 너에게 잘 어울린다 (those clothes suit you well); 분위기에 어울리는 음악 (music that matches the mood).' },
+    { re: /에\s*알맞(는|은|다|아|아서|게)/, label: '~에 알맞다 (appropriate for / right for)', hint: 'right amount / right kind. <noun> + 에 알맞다 = "appropriate for / right for / fitting". 수준에 알맞은 책 (a book appropriate for the level); 계절에 알맞은 옷 (clothes appropriate for the season).' },
+
+    // STATUS / POSITION ESTABLISHMENT
+    { re: /(으로|로)\s*자리(잡|잡았|잡은|잡을|잡고|잡는|잡혔|잡혀|매김)/, label: '~(으)로 자리잡다 / 자리매김하다 (establish itself as)', hint: 'become established / take root as. <noun> + (으)로 자리잡다 / 자리매김하다 = "establish itself as / take root as / become known as". 명품으로 자리잡았다 (has established itself as a luxury brand); 새 표준으로 자리매김하다 (set itself as the new standard).' },
+    { re: /(으로|로)\s*손꼽(히|혀|혔|히는|힌|힐)/, label: '~(으)로 손꼽히다 (be counted among / be regarded as)', hint: 'be ranked / counted among the best of a category. <noun> + (으)로 손꼽히다 = "be counted as / be regarded as one of". 명소로 손꼽히는 곳 (a place counted among famous spots); 최고로 손꼽힌다 (is regarded as the best). News-register superlative.' },
+
+    // QUANTITY DYNAMICS
+    { re: /이\s*늘어(나|났|난|날|남|납니다|나는|나고)|가\s*늘어(나|났|난|날|남|납니다|나는|나고)/, label: '~이/가 늘어나다 (increase / grow)', hint: 'trend verb — quantity rises. <subj> + 이/가 늘어나다 = "increases / grows". 인구가 늘어났다 (the population grew); 관심이 늘어나고 있다 (interest is growing). Pairs with 줄어들다 (decrease) for contrast.' },
+    { re: /이\s*줄어(들|들었|든|들|듭니다|드는|들고)|가\s*줄어(들|들었|든|들|듭니다|드는|들고)/, label: '~이/가 줄어들다 (decrease / shrink)', hint: 'trend verb — quantity falls. <subj> + 이/가 줄어들다 = "decreases / shrinks / drops". 매출이 줄어들었다 (sales dropped); 인구가 줄어들고 있다 (population is shrinking).' },
+
+    // ACTION COLLOCATIONS (news verbs)
+    { re: /을\s*추진(하|한|할|했|함|합니다|중)|를\s*추진(하|한|할|했|함|합니다|중)/, label: '~을/를 추진하다 (push forward / drive)', hint: 'agenda verb. <noun> + 을/를 추진하다 = "push forward / drive / promote". 정책을 추진하다 (push a policy forward); 사업을 추진 중이다 (is in the process of driving the business). Very common in policy/business news.' },
+    { re: /을\s*시사(하|한|할|했|함|합니다)|를\s*시사(하|한|할|했|함|합니다)/, label: '~을/를 시사하다 (suggest / imply / hint at)', hint: 'inferential reporting verb. <noun/clause> + 을/를 시사하다 = "suggest / imply / hint at". 변화를 시사하는 결과 (a result that suggests change); 정책 전환을 시사했다 (hinted at a policy shift). Formal news register.' },
+    { re: /(으로|로)\s*분류(되|된|될|됐|되어|돼|됩|함|하)/, label: '~(으)로 분류되다 (be classified as)', hint: 'taxonomic placement. <noun> + (으)로 분류되다 = "is classified / categorized as". 1급 발암물질로 분류되다 (classified as a Group 1 carcinogen); 멸종위기종으로 분류된다 (is classified as endangered).' },
+    { re: /(으로|로)\s*판단(되|된|될|됐|되어|돼|됩|함|하)/, label: '~(으)로 판단되다 (be judged / determined as)', hint: 'official judgement passive. <noun/clause> + (으)로 판단되다 = "is judged / determined / assessed as". 적절한 조치로 판단된다 (is judged to be an appropriate measure); 사실로 판단되다 (is determined to be true). Formal / legal / news register.' },
+
+    // EVALUATIVE / FRAMING
+    { re: /(이|가)\s*돋보(이|여|이는|인다|입니다|이며|이고|였)/, label: '~이/가 돋보이다 (stand out)', hint: 'visual / qualitative prominence. <subj> + 이/가 돋보이다 = "stands out / is striking / is noticeable". 디자인이 돋보인다 (the design stands out); 그의 활약이 돋보였다 (his performance was striking).' },
+    { re: /(이|가)\s*눈에\s*띄(다|어|었|는|네|며|고)/, label: '~이/가 눈에 띄다 (catch the eye / be noticeable)', hint: 'idiomatic "catches the eye". <subj> + 이/가 눈에 띄다 = "catches the eye / is noticeable / stands out". 변화가 눈에 띈다 (the change is noticeable); 눈에 띄게 늘었다 (increased noticeably).' },
+    { re: /(이|가)\s*화제(다|이다|가\s*되|를\s*모|를\s*불러)/, label: '~이/가 화제이다 / 화제가 되다 (be a hot topic)', hint: 'buzz / trending. <subj> + 이/가 화제이다 / 화제가 되다 / 화제를 모으다 = "is a hot topic / is going viral / is drawing attention". 신곡이 화제다 (the new song is the talk of the town); 화제를 모으고 있다 (is drawing attention).' },
     { re: /(으로|로)\s*이어(지|졌|진|져)/, label: '~(으)로 이어지다 (lead to / result in)', hint: 'causation/result. <noun> + (으)로 이어지다 = "lead to / result in / be linked to". 노력이 결과로 이어졌어요 = "efforts led to results"' },
     { re: /(으로|로)\s*인(해|한|하여)/, label: '~(으)로 인해/인한 (due to)', hint: 'causation. <noun> + (으)로 인해 = "due to / because of"' },
     { re: /에\s*대한\s*[가-힣]/, label: '~에 대한 N (about/regarding N) [adnominal]', hint: 'attributive form. <noun> + 에 대한 + <noun> = "the X about Y". ~에 대한 관심 = "interest in"' },
