@@ -344,7 +344,23 @@
     { re: /[가-힣](으로|로)\s/, label: '~(으)로 (means/direction)', hint: 'instrument / direction / means' },
     { re: /[가-힣](과|와)\s/, label: '~과/와 (with/and)', hint: 'with / and (formal)' },
     { re: /[가-힣]하고\s/, label: '~하고 (with/and, conv)', hint: 'with / and (conversational)' },
-    { re: /[가-힣]부터(?=[^가-힣]|$)/, label: '~부터 (from)', hint: 'starting from (time / sequence)' },
+    // ~부터 vs ~(으)로부터 — both end in "부터" so the bare `[가-힣]부터`
+    // regex matched the "로부터" tail of 지금으로부터 / 친구로부터 with
+    // X=로, then the AI got the canonical label "~부터" injected and
+    // wrote an explanation about ~(으)로부터 anyway, producing cards
+    // where the label / exp / example don't match. Exclude X=로 here;
+    // the next entry covers ~(으)로부터 with its own canonical label.
+    { _check: function(t) {
+        if (!t) return '';
+        var re = /[가-힣]부터(?=[^가-힣]|$)/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          if (t.charAt(m.index) === '로') continue;
+          return m[0];
+        }
+        return '';
+      }, label: '~부터 (from)', hint: 'starting point in time or sequence. <noun> + 부터 = "from / starting from". 지금부터 (from now); 월요일부터 (from Monday); 처음부터 (from the start). Different from ~(으)로부터 — bare 부터 marks the start of a range, (으)로부터 emphasises origin/source.' },
+    { re: /[가-힣](으로부터|로부터)(?=[^가-힣]|$)/, label: '~(으)로부터 (from / from origin)', hint: 'origin/source marker. <noun> + (으)로부터 = "from the source / received from". After consonant: 지금으로부터 (from now), 학생으로부터 (from the student). After vowel: 친구로부터 (from a friend). Different from bare ~부터 — (으)로부터 stresses provenance/source rather than a sequence start.' },
     { re: /[가-힣]까지(?=[^가-힣]|$)/, label: '~까지 (until)', hint: 'up to / until' },
     { re: /[가-힣]만\s|[가-힣]만\.|[가-힣]만$/, label: '~만 (only)', hint: 'limiter. "only / just"' },
     { re: /[가-힣]도\s|[가-힣]도\.|[가-힣]도$/, label: '~도 (also)', hint: 'inclusive. "also / too"' },

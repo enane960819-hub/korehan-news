@@ -48,6 +48,16 @@
         opacity:1;
         transform:translateY(0);
       }
+      .kh-hover-tip .kh-tip-close{
+        position:absolute;top:6px;right:8px;
+        width:24px;height:24px;
+        display:flex;align-items:center;justify-content:center;
+        background:rgba(255,255,255,.12);color:#cbd5e1;
+        border:none;border-radius:50%;cursor:pointer;
+        font-size:14px;font-weight:700;font-family:inherit;
+        padding:0;line-height:1;
+      }
+      .kh-hover-tip .kh-tip-close:hover{ background:rgba(255,255,255,.22);color:#fff; }
       .kh-hover-tip .ko{
         font-size:16px;
         font-weight:800;
@@ -488,7 +498,8 @@
     }
 
     t.innerHTML =
-      '<div class="ko">' + word + '</div>'
+      '<button class="kh-tip-close" aria-label="Close" onclick="window._khTipClose && window._khTipClose()">✕</button>'
+      + '<div class="ko">' + word + '</div>'
       + (reading ? '<div class="rom">' + reading + '</div>' : '')
       + '<div class="en">' + meaning + '</div>'
       + inflBlock
@@ -549,19 +560,43 @@
     _installOutsideTapCloser();
   }
 
+  // Exposed for the ✕ close button on the tooltip — gives mobile users
+  // a guaranteed dismiss path even when iOS Safari swallows the outside-
+  // tap closer.
+  window._khTipClose = function() {
+    hideTooltip();
+    if (_outsideTapHandler) {
+      document.removeEventListener('click', _outsideTapHandler, true);
+      document.removeEventListener('touchstart', _outsideTapHandler, true);
+      _outsideTapHandler = null;
+      _outsideTapInstalled = false;
+    }
+  };
+
   var _outsideTapInstalled = false;
+  var _outsideTapHandler = null;
   function _installOutsideTapCloser() {
     if (_outsideTapInstalled) return;
     _outsideTapInstalled = true;
-    var handler = function(ev) {
+    _outsideTapHandler = function(ev) {
       if (!tip) return;
       if (tip.contains(ev.target)) return;
       if (ev.target && ev.target.closest && ev.target.closest('.kh-hover-word')) return;
       hideTooltip();
-      document.removeEventListener('click', handler, true);
+      document.removeEventListener('click', _outsideTapHandler, true);
+      document.removeEventListener('touchstart', _outsideTapHandler, true);
+      _outsideTapHandler = null;
       _outsideTapInstalled = false;
     };
-    setTimeout(function(){ document.addEventListener('click', handler, true); }, 0);
+    // Listen for BOTH click and touchstart. iOS Safari often doesn't
+    // fire click on non-interactive elements (body, plain text, images
+    // without click handlers), which left the tooltip stuck open after
+    // tapping outside. touchstart fires reliably on every tap and gives
+    // the dismiss a guaranteed second path on mobile.
+    setTimeout(function(){
+      document.addEventListener('click', _outsideTapHandler, true);
+      document.addEventListener('touchstart', _outsideTapHandler, true);
+    }, 0);
   }
 
   function moveTooltip(e) {
