@@ -30,7 +30,7 @@
   //         have to guess the meaning of the pattern.
   var PATTERNS = [
     // ── Negation ─────────────────────────────────────────────────
-    { re: /지\s*않(았|아|아요|았어요|았습니다|네|군|는|아도)/, label: '~지 않다', hint: 'long-form negation. <stem> + 지 않다 = "do not / be not"' },
+    { re: /지\s*않(았|아|아요|았어요|았습니다|네|군|는|아도)/, label: '~지 않다', hint: 'long-form negation. <stem> + 지 않다 = "do not / be not". 가다 → 가지 않다 (don\'t go), 좋다 → 좋지 않다 (not good), 예쁘다 → 예쁘지 않아요 (not pretty). More formal / emphatic than the short ~안 + V form (안 가다); also handles long stems and ㅂ/ㄷ-irregular verbs that get awkward with 안.' },
     { re: /지\s*못(했|해|해요|했어요|했습니다|하)/, label: '~지 못하다', hint: 'long-form inability. <stem> + 지 못하다 = "cannot do"' },
     { re: /(?:^|\s|[.,?!])안\s+[가-힣]/, label: '안 + V/A', hint: 'short-form negation. 안 + verb/adjective = "not"' },
     { re: /(?:^|\s|[.,?!])못\s+[가-힣]/, label: '못 + V', hint: 'short-form inability. 못 + verb = "cannot"' },
@@ -64,17 +64,65 @@
     { _check: function(t) { return _hasContractedPastEnding(t, '습니다'); }, label: '~았/었/였습니다 (past formal)', hint: 'past formal-polite (vowel-contracted form). 보+았+습니다→봤습니다' },
     { re: /[가-힣](았|었)었/, label: '~았/었었 (past perfect)', hint: 'past perfect / earlier past. doubled past for "had done"' },
     { re: /[가-힣]ㄹ\s*거예요|[가-힣](을|ㄹ)\s*거예요/, label: '~ㄹ/을 거예요 (future)', hint: 'future tense polite. <stem> + ㄹ/을 거예요 = "will"' },
-    { re: /[가-힣]겠(어요|습니다|네요|구나|지)/, label: '~겠 (intention/conjecture)', hint: 'intention or conjecture. "I will / probably is"' },
-    { re: /[가-힣](아|어|여)요(?=[^가-힣]|$)/, label: '~아/어/여요 (present polite)', hint: 'present polite informal ending' },
+    { re: /[가-힣]겠(어요|습니다|네요|구나|지)/, label: '~겠 (intention/conjecture)', hint: 'THREE uses depending on context. (a) SPEAKER INTENTION — 가겠다 / 가겠습니다 (I will go), 알겠습니다 (understood). (b) CONJECTURE about others/things — 좋겠다 (must be nice), 비가 오겠어요 (it\'ll probably rain), 힘들겠어요 (must be hard). (c) POLITE softening / formal "I will" — 잘 모르겠어요 (I don\'t really know), 그렇게 하겠습니다 (will do so). Context + subject determine which.' },
+    // ~아/어/여요 present polite — must NOT match past-contracted X요
+    // forms (갔어요 / 봤어요 / 했어요 / 됐어요 / 마셨어요), where the
+    // preceding syllable X carries ㅆ jongseong = past tense already.
+    // Without this exclusion every past-polite sentence in the corpus
+    // surfaced BOTH "~아/어/여요 (present polite)" AND "~았/었/였어요
+    // (past polite)" as duplicate cards on the same chunk.
+    { _check: function(t) {
+        if (!t) return '';
+        // 있다 / 없다 are stative verbs whose stem carries ㅆ batchim in
+        // the LEMMA (not from past contraction). 있어요 / 없어요 ARE
+        // present polite and must still fire here — exempt them from
+        // the ㅆ-batchim exclusion below.
+        var STATIVE_SS = { '있': 1, '없': 1 };
+        var re = /[가-힣](아|어|여)요(?=[^가-힣]|$)/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          var x = t.charAt(m.index);
+          if (STATIVE_SS[x]) return m[0];
+          var pc = x.charCodeAt(0);
+          if (pc >= 0xAC00 && pc <= 0xD7A3) {
+            if ((pc - 0xAC00) % 28 === 20) continue; // ㅆ jongseong = past contraction, not present
+          }
+          return m[0];
+        }
+        return '';
+      }, label: '~아/어/여요 (present polite)', hint: 'present polite informal ending. <stem> + 아/어/여요. 먹다→먹어요, 있다→있어요, 없다→없어요, 받다→받아요, 좋다→좋아요. Vowel harmony picks 아 (after ㅏ/ㅗ stems) vs 어 (after others). Contracted vowel-merger forms (가요, 와요, 봐요, 해요, 줘요, 마셔요, 돼요) are covered by the separate "present polite — contracted" entry.' },
+    // Contracted present polite — covers stems whose vowel merges with
+    // 아/어/여 into a single syllable (오 + 아 → 와, 보 + 아 → 봐, 하 +
+    // 여 → 해, etc.). The bare [가-힣](아|어|여)요 regex above can\'t
+    // see these because the contracted syllable isn\'t literal 아/어/여.
+    // Whitelist of syllables that genuinely arise from this contraction
+    // — restricted to unambiguously verbal forms to avoid noun + 요
+    // false positives (e.g. 가요 as music genre, 자요 ambiguous with
+    // 남자요). 가요/사요/자요 etc. accepted as a coverage gap.
+    { _check: function(t) {
+        if (!t) return '';
+        var SYL = { '와':1, '봐':1, '해':1, '줘':1, '둬':1, '셔':1, '켜':1, '펴':1, '매':1, '깨':1, '떼':1, '째':1, '쳐':1, '쪄':1, '져':1, '돼':1, '꿔':1, '쒀':1 };
+        for (var i = 0; i + 1 < t.length; i++) {
+          if (t.charAt(i + 1) !== '요') continue;
+          if (!SYL[t.charAt(i)]) continue;
+          // Boundary: 요 must be at end OR followed by non-hangul / space / punct
+          var nxt = t.charAt(i + 2) || '';
+          if (nxt !== '' && /[가-힣]/.test(nxt)) continue;
+          // Also skip if preceded by another hangul that would make this
+          // a different morpheme boundary (e.g. avoiding mid-word matches).
+          return t.charAt(i) + '요';
+        }
+        return '';
+      }, label: '~아/어/여요 (present polite — contracted)', hint: 'present polite for stems whose vowel contracts with 아/어/여 into one syllable. 오다 → 오아요 → 와요; 보다 → 보아요 → 봐요; 하다 → 하여요 → 해요; 주다 → 주어요 → 줘요; 마시다 → 마시어요 → 마셔요; 되다 → 되어요 → 돼요. Same meaning as the uncontracted ~아/어/여요 — just merged form.' },
     { re: /[가-힣](ㅂ니다|습니다)(?=[^가-힣]|$)/, label: '~ㅂ/습니다 (present formal)', hint: 'present formal-polite ending' },
-    { re: /[가-힣]네요(?=[^가-힣]|$)/, label: '~네요 (discovery)', hint: 'realization / mild surprise. "oh, it is"' },
-    { re: /[가-힣]군요(?=[^가-힣]|$)|[가-힣]구나(?=[^가-힣]|$)/, label: '~군요/~구나 (realization)', hint: 'realization / acknowledgement' },
-    { re: /[가-힣]잖아요?(?=[^가-힣]|$)/, label: '~잖아(요) (as you know)', hint: 'asserting shared knowledge. "you know / obviously"' },
-    { re: /[가-힣]지요?(?=[^가-힣]|$)|[가-힣]죠(?=[^가-힣]|$)/, label: '~지요/~죠 (confirming)', hint: 'seeking agreement / soft confirmation' },
+    { re: /[가-힣]네요(?=[^가-힣]|$)/, label: '~네요 (discovery)', hint: 'discovery / mild surprise on noticing something new — speaker realizes for the first time. 예쁘네요 (oh, it\'s pretty), 비가 오네요 (oh, it\'s raining), 정말이네요 (it really is). Common when seeing/hearing something fresh. Banmal variant: ~네 (우리 집에 오네 = "huh, coming to our house").' },
+    { re: /[가-힣]군요(?=[^가-힣]|$)|[가-힣]구나(?=[^가-힣]|$)/, label: '~군요/~구나 (realization)', hint: 'realization / acknowledgement of new info. ~군요 (polite) / ~구나 (banmal). Different from ~네요: ~네요 is fresh surprise, ~군요/~구나 is "aha, NOW I get it" — accepting info just given. 그렇군요 (oh, I see), 그랬구나 (oh, so that\'s what happened), 맛있구나 (so it\'s tasty).' },
+    { re: /[가-힣]잖아요?(?=[^가-힣]|$)/, label: '~잖아(요) (you know / obviously)', hint: 'asserting shared/obvious info — speaker presents the clause as something the listener should already know or accept. Tone varies. (a) FRIENDLY reminder: 비가 오잖아요 (it\'s raining, you know!), 우리 친구잖아 (we\'re friends, right). (b) MILD accusation / "but obviously": 내가 말했잖아 (I told you!), 그렇게 하면 안 되잖아요 (you can\'t do it that way, obviously). Always relies on a shared frame; never used for brand-new info.' },
+    { re: /[가-힣]지요?(?=[^가-힣]|$)|[가-힣]죠(?=[^가-힣]|$)/, label: '~지요/~죠 (confirming/asserting)', hint: 'tone determines meaning. (a) RISING (?) = seeking agreement — 맛있죠? (tasty, right?), 그렇지요? (isn\'t it?). (b) FALLING (.) = asserting shared knowledge / "of course" — 당연하지요 (of course it is), 그렇죠 (that\'s right). Very common conversational ending; speaker assumes listener already knows or will agree.' },
     { re: /[가-힣]ㄹ까요\?|[가-힣]을까요\?/, label: '~ㄹ까요? (shall we / I wonder)', hint: 'suggestion or wondering. "shall we / do you think"' },
     { re: /[가-힣]ㄹ게요(?=[^가-힣]|$)|[가-힣]을게요(?=[^가-힣]|$)/, label: '~ㄹ게요 (I will, intent to listener)', hint: 'speaker promise / intention with listener awareness' },
     { re: /[가-힣]나요\?/, label: '~나요? (gentle question)', hint: 'soft polite question form' },
-    { re: /[가-힣](으세요|세요)(?=[^가-힣]|$)/, label: '~(으)세요 (polite imperative/honorific)', hint: 'polite request OR subject honorific present' },
+    { re: /[가-힣](으세요|세요)(?=[^가-힣]|$)/, label: '~(으)세요 (polite imperative / honorific present)', hint: 'TWO uses, distinguished by context. (a) POLITE IMPERATIVE (request / command): 가세요 (please go), 드세요 (please eat), 여기 앉으세요 (please sit here). (b) HONORIFIC PRESENT — describing what an elder/superior does (often as question): 할머니는 어디 가세요? (where is grandma going?), 선생님 오세요 (the teacher is coming). Same surface form — verb subject + intonation distinguish.' },
 
     // ── Auxiliary verbs (보조용언) ────────────────────────────────
     { re: /기\s*시작(했|해|하)/, label: '~기 시작하다 (start V-ing)', hint: 'begin doing. <stem> + 기 시작하다' },
@@ -83,7 +131,7 @@
     { re: /게\s*되(었|어|네|는|었어요|었습니다)/, label: '~게 되다 (come to / passive)', hint: 'become so / circumstance change. "comes to / ends up"' },
     { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*보(았|았어요|아|아요|세요|니|는|기|면|면서)/, label: '~아/어 보다 (try doing)', hint: 'attempt or experience. "try V-ing / have done". Includes vowel-contracted: 고려하다→고려해 보다, 보다→봐 보다, 가다→가 보다' },
     { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*주(었|어|어요|세요|시|니|는|기)/, label: '~아/어 주다 (do for)', hint: 'do as a favor for someone. Includes contracted: 도와주다→도와줘요, 해 주다' },
-    { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*버리(었|어|네|기|어요)/, label: '~아/어 버리다 (do completely / regret)', hint: 'finish off / end up doing (often regret)' },
+    { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*버리(었|어|네|기|어요)/, label: '~아/어 버리다 (do completely / regret / clean finish)', hint: 'completion auxiliary with TWO emotional shades depending on context. (a) NEUTRAL clean completion — finished entirely, nothing left: 다 먹어 버렸어요 (ate it all up), 끝나 버렸다 (it\'s totally over). (b) REGRET / unintended — happened despite the speaker\'s wish: 잊어버렸어요 (I forgot — oops), 가 버렸어요 (he just left, and I miss him), 깨져 버렸다 (it broke, dammit). Negative-affect verbs (잊다/깨다/도망가다) usually lean (b); achievement verbs (끝내다/먹다) usually lean (a).' },
     { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*놓(았|아|네|아요|기|는다)/, label: '~아/어 놓다 (do in advance)', hint: 'do and leave the result for later' },
     { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*두(었|어|네|기|어요)/, label: '~아/어 두다 (do for later)', hint: 'do and store the result' },
     { re: /(아야|어야|여야|봐야|와야|줘야|둬야|매야|깨야|떼야|째야|쳐야|쪄야|져야|돼야|해야|펴야|켜야|셔야|쒀야|폐야)\s*(하|되|돼|한다|했|해|됐|됨|함)/, label: '~아/어야 하다/되다 (must)', hint: 'obligation. "have to / must". Includes vowel-contracted forms: 꿰매다→꿰매야 했어요, 하다→해야 해요, 되다→돼야 해요' },
@@ -93,7 +141,7 @@
 
     // ── Connectives ─────────────────────────────────────────────
     { re: /(아서|어서|여서|봐서|와서|줘서|둬서|매서|깨서|떼서|째서|쳐서|쪄서|져서|돼서|해서|펴서|켜서|셔서|쒀서|폐서)/, label: '~아/어서 (cause / sequence)', hint: 'reason or sequence. "because / and then". Includes vowel-contracted forms: 넘어지다→넘어져서, 보다→봐서, 되다→돼서, 하다→해서' },
-    { re: /(니까|으니까)/, label: '~(으)니까 (reason)', hint: 'reason (more conversational than ~아서)' },
+    { re: /(니까|으니까)/, label: '~(으)니까 (reason / temporal discovery)', hint: 'TWO uses. (a) REASON (more conversational than ~아서): 시간이 없으니까 빨리 가요 (no time, so hurry), 비가 오니까 우산을 챙겨 (it\'s raining, so bring an umbrella). (b) TEMPORAL DISCOVERY — finding out the result of doing X: 문을 여니까 친구가 있었다 (when I opened the door, the friend was there). Often pairs with past tense in (b). Different from ~아서 — ~(으)니까 can carry honorifics; ~아서 cannot.' },
     { re: /기\s*때문(에|이|이다)/, label: '~기 때문에 (because)', hint: 'because. <stem> + 기 때문에' },
     // Noun + 때문에. Codex P2: previous lookbehind `(?<!기)` checked
     // the char BEFORE the matched [가-힣], but in 먹기 때문에 the
@@ -106,9 +154,9 @@
     // both ~(으)면 AND ~(으)면서. Now require the next char to be end-
     // of-string, whitespace, or punctuation (any continuation Hangul
     // including 서 lets the dedicated ~(으)면서 pattern win instead).
-    { re: /(?:^|[가-힣])면(?:$|\s|[.,?!])/, label: '~(으)면 (if/when)', hint: 'conditional. "if / when"' },
+    { re: /(?:^|[가-힣])면(?:$|\s|[.,?!])/, label: '~(으)면 (if / when / whenever)', hint: 'TWO uses. (a) CONDITIONAL "if": 비가 오면 안 가요 (if it rains, I won\'t go), 시간이 없으면 다음에 (if no time, next time). (b) TEMPORAL HABIT "when / whenever": 시간이 있으면 책을 읽어요 (when I have time, I read), 봄이 오면 꽃이 핀다 (when spring comes, flowers bloom). Context: hypothetical vs recurring habit.' },
     { re: /(다면)/, label: '~다면 (hypothetical if)', hint: 'hypothetical conditional. "if it were that"' },
-    { re: /(면서|으면서)/, label: '~(으)면서 (while)', hint: 'simultaneous action. "while / as"' },
+    { re: /(면서|으면서)/, label: '~(으)면서 (while / and at the same time / yet)', hint: 'TWO uses. (a) SIMULTANEOUS — same speaker does X and Y at once: 먹으면서 이야기하다 (talk while eating), 음악을 들으면서 공부한다 (study while listening to music). (b) CONTRAST / "yet, even though" — same subject has two seemingly contradictory states: 학생이면서도 일한다 (works although a student), 알면서 모르는 척한다 (pretends not to know even though he does). Reading (b) usually adds 도 (~면서도) for stronger contrast.' },
     { re: /다가(?=[^가-힣]|$)/, label: '~다가 (mid-action shift)', hint: 'doing X then Y / interrupted action' },
     { re: /(거나)/, label: '~거나 (or)', hint: 'alternative connective. "or"' },
     { re: /(려고|으려고)/, label: '~(으)려고 (intention)', hint: 'in order to / intending to' },
@@ -116,7 +164,7 @@
     { re: /(러|으러)\s*(가|오|와|왔|갔|간|온|갈|올|갑|옵|감|옴|다니|다녔|다녀)/, label: '~(으)러 (purpose with movement)', hint: 'purpose verb + movement verb. <stem> + 러/으러 + 가다/오다 = "go/come to do". 보다 → 보러 가다, 보러 와요' },
     { re: /도록(?=[^가-힣]|$)/, label: '~도록 (so that / until)', hint: 'so that / extent / until' },
     { re: /[가-힣]지만(?=[^가-힣]|$)/, label: '~지만 (but)', hint: 'contrast. "but / however"' },
-    { re: /(는데|ㄴ데|은데)(?=[^가-힣]|$)/, label: '~ㄴ/는데 (background/contrast)', hint: 'background or mild contrast (sets up next clause)' },
+    { re: /(는데|ㄴ데|은데)(?=[^가-힣]|$)/, label: '~ㄴ/는데 (background / contrast / softening)', hint: 'THREE uses depending on what follows. (a) BACKGROUND for next clause: 학교에 가는데 우산이 없어요 (I\'m going to school but I have no umbrella). (b) CONTRAST: 좋은데 비싸요 (it\'s good, but expensive). (c) EXPLANATION / softening (often trailing): 배가 고픈데… (I\'m hungry…), 좀 모르는데요 (I kinda don\'t know). The same morpheme — clause that follows determines which sense.' },
     { re: /(아도|어도|여도)(?=[^가-힣]|$)/, label: '~아/어도 (even if/though)', hint: 'concessive. "even if / even though"' },
     { re: /기는커녕/, label: '~기는커녕 (far from)', hint: 'far from doing. emphatic negation' },
     { re: /ㄹ수록|을수록/, label: '~(으)ㄹ수록 (the more)', hint: 'comparative correlation. "the more X, the more Y"' },
@@ -337,19 +385,42 @@
         return '';
       }, label: '~이/가 (subject marker)', hint: 'subject particle. attaches to noun' },
     { re: /[가-힣](은|는)\s/, label: '~은/는 (topic marker)', hint: 'topic particle. attaches to noun (contrastive or topical)' },
-    { re: /[가-힣]에서(?=[^가-힣]|$)/, label: '~에서 (location/source)', hint: 'at/in (location of action) or from (source)' },
+    { re: /[가-힣]에서(?=[^가-힣]|$)/, label: '~에서 (action-location / source / starting point)', hint: 'THREE uses. (a) LOCATION OF AN ACTION (NOT static existence — ~에 covers that): 학교에서 공부해요 (study AT school), 한국에서 일해요 (work IN Korea). The verb is dynamic, not 있다/없다. (b) SOURCE / origin: 미국에서 왔다 (came FROM America), 사장에서 회장으로 (from CEO to chairman). (c) STARTING POINT in time (less common, paired with 부터 or alone in news): 9시에서 11시까지 (from 9 to 11). Distinguish carefully from ~에 — ~에서 needs an action verb; ~에 takes 있다/가다/오다.' },
     { re: /[가-힣]에게(?=[^가-힣]|$)|[가-힣]한테(?=[^가-힣]|$)/, label: '~에게/한테 (to person)', hint: 'indirect object marker for animate' },
     { re: /[가-힣]께(?:서)?(?=[^가-힣]|$)/, label: '~께(서) (honorific dative/subject)', hint: 'honorific marker for elders/superiors' },
-    { re: /[가-힣]에\s/, label: '~에 (location/time)', hint: 'static location / time / direction' },
-    { re: /[가-힣](으로|로)\s/, label: '~(으)로 (means/direction)', hint: 'instrument / direction / means' },
-    { re: /[가-힣](과|와)\s/, label: '~과/와 (with/and)', hint: 'with / and (formal)' },
-    { re: /[가-힣]하고\s/, label: '~하고 (with/and, conv)', hint: 'with / and (conversational)' },
-    { re: /[가-힣]부터(?=[^가-힣]|$)/, label: '~부터 (from)', hint: 'starting from (time / sequence)' },
-    { re: /[가-힣]까지(?=[^가-힣]|$)/, label: '~까지 (until)', hint: 'up to / until' },
-    { re: /[가-힣]만\s|[가-힣]만\.|[가-힣]만$/, label: '~만 (only)', hint: 'limiter. "only / just"' },
-    { re: /[가-힣]도\s|[가-힣]도\.|[가-힣]도$/, label: '~도 (also)', hint: 'inclusive. "also / too"' },
-    { re: /[가-힣]의\s/, label: '~의 (possessive)', hint: 'possessive / attributive' },
-    { re: /[가-힣]보다(?=[^가-힣]|$)/, label: '~보다 (comparison)', hint: 'comparative. "than / more than"' },
+    { re: /[가-힣]에\s/, label: '~에 (location / time / direction / target)', hint: 'MULTIPLE uses with one surface form — pick based on context. (a) STATIC LOCATION: 학교에 있다 (at school). (b) TIME POINT: 3시에 만나요 (at 3), 월요일에 (on Monday). (c) DIRECTION / destination: 학교에 가다 (to school), 위에 올려라 (up onto). (d) TARGET of effect: 건강에 좋다 (good for health), 사람에게 (to a person — animate uses ~에게/한테). (e) RATE / PER (rare): 100원에 (per 100 won). Pick the one that matches the verb / context.' },
+    { re: /[가-힣](으로|로)\s/, label: '~(으)로 (means / direction / transformation)', hint: 'MANY uses with one form — pick based on context. (a) INSTRUMENT / TOOL: 연필로 쓰다 (write with a pencil), 칼로 자르다 (cut with a knife). (b) METHOD / MANNER: 한국어로 말하다 (speak in Korean), 큰 소리로 (loudly). (c) DIRECTION / destination: 서울로 가다 (go toward Seoul), 위로 (upward). (d) TRANSFORMATION / CATEGORY: 학생에서 의사로 (from student into doctor), 영어로 번역 (translate INTO English). (e) MATERIAL: 나무로 만든 (made OF wood), 쌀로 만든 (made FROM rice). Specialised collocations (~로 인해 / ~로 이어지다 / ~로 보이다 / ~로 알려지다) are handled by their own entries.' },
+    { re: /[가-힣](과|와)\s/, label: '~과/와 (with — comitative / and — listing)', hint: 'TWO uses (formal register). Same form, different role determined by following clause. (a) WITH (comitative — accompaniment): 친구와 같이 (together with friend), 너와 결혼하다 (marry you), 부모님과 의논하다 (discuss with parents). (b) AND (listing — connects noun phrases): 사과와 배 (apple and pear), 한국과 일본 (Korea and Japan), 학생과 교사 (students and teachers). If a following verb implies togetherness (같이, 함께, 만나다, 결혼하다) it\'s (a); if it just connects nouns in a list it\'s (b). After consonant: 과; after vowel: 와.' },
+    { re: /[가-힣]하고\s/, label: '~하고 (with — comitative / and — listing, conversational)', hint: 'colloquial equivalent of ~과/와 — same TWO uses. (a) WITH: 친구하고 갔어 (went with a friend). (b) AND: 사과하고 배 (apple and pear). Used freely with any noun (no consonant/vowel agreement needed). More common in spoken Korean than 과/와.' },
+    // ~부터 vs ~(으)로부터 — both end in "부터" so the bare `[가-힣]부터`
+    // regex matched the "로부터" tail of 지금으로부터 / 친구로부터 with
+    // X=로, then the AI got the canonical label "~부터" injected and
+    // wrote an explanation about ~(으)로부터 anyway, producing cards
+    // where the label / exp / example don't match. Exclude X=로 here;
+    // the next entry covers ~(으)로부터 with its own canonical label.
+    { _check: function(t) {
+        if (!t) return '';
+        var re = /[가-힣]부터(?=[^가-힣]|$)/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          if (t.charAt(m.index) === '로') continue;
+          return m[0];
+        }
+        return '';
+      }, label: '~부터 (from)', hint: 'starting point in time or sequence. <noun> + 부터 = "from / starting from". 지금부터 (from now); 월요일부터 (from Monday); 처음부터 (from the start). Different from ~(으)로부터 — bare 부터 marks the start of a range, (으)로부터 emphasises origin/source.' },
+    { re: /[가-힣](으로부터|로부터)(?=[^가-힣]|$)/, label: '~(으)로부터 (from / from origin)', hint: 'origin/source marker. <noun> + (으)로부터 = "from the source / received from". After consonant: 지금으로부터 (from now), 학생으로부터 (from the student). After vowel: 친구로부터 (from a friend). Different from bare ~부터 — (으)로부터 stresses provenance/source rather than a sequence start.' },
+    { re: /[가-힣]까지(?=[^가-힣]|$)/, label: '~까지 (until / even / as much as)', hint: 'TWO uses. (a) ENDPOINT — temporal or spatial "until / up to": 5시까지 기다려요 (wait until 5), 서울까지 가요 (go all the way to Seoul). (b) EMPHATIC "even / as much as" — pushes a quantity / time / scope to its extreme: 저까지도 알아요 (even I know), 30년까지 걸렸다 (took as much as 30 years), 너까지 그러니? (even you?!). When the chunk expresses an unexpected extreme, it\'s reading (b), not (a).' },
+    { re: /[가-힣]만\s|[가-힣]만\.|[가-힣]만$/, label: '~만 (only / just)', hint: 'limiter / restriction. <noun> + 만 = "only / just". 한 명만 왔다 (only one came), 너만 있으면 돼 (I only need you), 오늘만 (today only — exclusive emphasis), 저만 모릅니다 (only I don\'t know). Distinct from ~만에 (after a duration — "after X time gap"), ~만 해도 (X alone is enough), and ~다 만 (almost but not quite). Pure ~만 is the simple "only" / "just" reading.' },
+    // ~도 has TWO uses — explain BOTH so the AI doesn't force-fit
+    // the wrong reading onto a temporal/emphatic example:
+    //   (a) inclusive "also/too": 나도 갈게요, 책도 샀어요
+    //   (b) emphatic "even": 한 번도 못 들었어요, 100년도 훨씬 이전, 천 원도 없다
+    // Without (b) the AI was writing "100년 + 도 = 'even 100 years'" on
+    // examples that clearly use the emphatic reading, producing cards
+    // whose hint and example didn't match.
+    { re: /[가-힣]도\s|[가-힣]도\.|[가-힣]도$/, label: '~도 (also / even)', hint: 'inclusive particle with TWO uses depending on context. (a) ADDITIVE "also/too" — A도 B도, listing or adding items: 나도 갈게요 (I\'ll go too); 친구도 왔다 (the friend also came). (b) EMPHATIC "even/as much as" — used with extremes, negation, or temporal/quantity contrasts: 한 번도 못 들었어요 (haven\'t heard even once); 천 원도 없다 (don\'t even have 1000 won); 100년도 훨씬 이전 (way more than even 100 years ago). When the example shows a quantity / time pushed to an extreme, it\'s reading (b), not (a) — explain it as "even" not "also".' },
+    { re: /[가-힣]의\s/, label: '~의 (possessive / relational)', hint: 'genitive marker — multiple uses with one form. (a) POSSESSION: 나의 책 (my book), 그의 차 (his car). (b) RELATION / origin: 한국의 수도 (the capital OF Korea), 그 문제의 원인 (the cause of that problem). (c) DESCRIPTIVE attribution: 사랑의 의미 (meaning of love), 미래의 꿈 (dream of/for the future). Note: often dropped in casual Korean (나 책 = my book). Pronunciation: usually [에] not [의].' },
+    { re: /[가-힣]보다(?=[^가-힣]|$)/, label: '~보다 (comparison: than)', hint: 'comparative particle. <noun> + 보다 = "than / more than X". 친구보다 키가 크다 (taller than friend), 어제보다 추워요 (colder than yesterday), 다른 곳보다 비싸요 (more expensive than other places). ⚠️ Distinct from the verb 보다 (to see) — comparative 보다 attaches directly to a noun without conjugation and is followed by an adjective/state.' },
 
     // ── Quoted speech ───────────────────────────────────────────
     { re: /(다고|ㄴ다고|는다고)\s*(하|했|해|말|알려|전해|보도|밝혀|밝혔|밝히|강조|지적|주장|발표|언급|덧붙|평가|설명|판단|진단|분석|예측|전망|호소|토로|항변|반박|시인|부인)/, label: '~다고 하다 / ~다고 밝히다 / ~다고 강조하다 (indirect declarative + news reporting verbs)', hint: 'reported speech (declarative) — the news-paper "(X) said / stated / emphasized / pointed out / argued / announced / revealed / explained / analyzed / projected (that)" frame. <quote> + 다고 + {하다 / 밝히다 / 강조하다 / 지적하다 / 주장하다 / 발표하다 / 언급하다 / 덧붙이다 / 평가하다 / 설명하다 / 분석하다 / 전망하다}. Polite: ~다고 해요 / ~다고 밝혔어요. 만든다고 해요 = "they say it makes …"; 발표할 것이라고 밝혔다 = "(they) revealed that they will announce".' },
@@ -437,7 +508,7 @@
     { re: /을\s*비롯한(?=[^가-힣]|$)|를\s*비롯한(?=[^가-힣]|$)/, label: '~을/를 비롯한 (including)', hint: 'inclusive listing. "including / starting with"' },
     { re: /과\s*관련(된|하여|해서)(?=[^가-힣]|$)|와\s*관련(된|하여|해서)(?=[^가-힣]|$)/, label: '~과/와 관련된 (related to)', hint: 'connection. "related to / regarding"' },
     { re: /의\s*경우(?=[^가-힣]|$)/, label: '~의 경우 (in the case of)', hint: 'case-specifying. "in the case of"' },
-    { re: /만에(?=[^가-힣]|$)/, label: '~만에 (after a duration)', hint: 'time-elapsed pattern. "after X time"' },
+    { re: /만에(?=[^가-힣]|$)/, label: '~만에 (after a (long) gap of)', hint: 'time-elapsed pattern with emphasis on how long it has been. <time> + 만에 = "after X time / for the first time in X". 3년 만에 만났다 (met for the first time in 3 years / met after 3 years apart), 일주일 만에 다 끝냈다 (finished it in just a week — emphasising speed). ⚠️ Distinct from ~만 (only) — ~만 attaches with no space and means restriction; ~만에 needs a time expression and implies a notable gap.' },
     { re: /(ㄴ|은)\s*채(로)?(?=[^가-힣]|$)/, label: '~ㄴ/은 채(로) (while in state)', hint: 'remaining state. "while still / leaving as"' },
     { re: /에도\s*불구하고(?=[^가-힣]|$)/, label: '~에도 불구하고 (despite)', hint: 'concession. "despite / in spite of"' },
     { re: /에\s*따라서?(?=[^가-힣]|$)/, label: '~에 따라(서) (depending on / as)', hint: 'variation/dependence. "depending on / according to"' },
@@ -727,7 +798,24 @@
     { re: /의\s*일종(이|이다|입니다|으로|이라)/, label: '~의 일종이다 (is a kind / type of)', hint: 'classification marker. <noun> + 의 일종이다 = "is a kind / type of (X)". 운동의 일종이다 (is a kind of exercise); 사기의 일종으로 분류된다 (is classified as a kind of fraud).' },
 
     // ── Honorifics ──────────────────────────────────────────────
-    { re: /(으셨|셨)(어요|습니다|네|군|는)/, label: '~(으)셨 (honorific past)', hint: 'subject honorific past tense' },
+    // ~(으)셨 honorific past — false-fires on 시-stem verbs whose
+    // 시+었 contracts to 셨 (마시다 → 마셨, 모시다 → 모셨). Those are
+    // just past tense, not honorific. Exclude X=마 (마셨 = drank) —
+    // the most common false positive. 모셨 left in (often legitimately
+    // honorific in context, "served the elder").
+    { _check: function(t) {
+        if (!t) return '';
+        var re = /(으셨|셨)(어요|습니다|네|군|는)/g;
+        var m;
+        while ((m = re.exec(t)) !== null) {
+          if (m[1] === '셨' && m.index > 0) {
+            var prev = t.charAt(m.index - 1);
+            if (prev === '마') continue; // 마셨다 = 마시+었, not honorific
+          }
+          return m[0];
+        }
+        return '';
+      }, label: '~(으)셨 (honorific past)', hint: 'subject honorific past tense. <stem> + (으)시 + 었 → contracts to (으)셨. 가시다 → 가셨다 / 가셨어요 (went, honorific); 받으셨다 (received, honorific). ⚠️ Distinct from 시-stem verbs that incidentally produce 셨 — 마시다 → 마셨다 (drank) is plain past, not honorific.' },
     { re: /(으십시오|십시오)(?=[^가-힣]|$)/, label: '~(으)십시오 (formal imperative)', hint: 'highly formal command' },
 
     // ── Irregular conjugations ──────────────────────────────────
