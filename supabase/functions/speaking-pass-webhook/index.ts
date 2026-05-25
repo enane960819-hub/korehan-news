@@ -81,8 +81,28 @@ serve(async (req) => {
     return new Response('rpc error: ' + error.message, { status: 500 });
   }
 
-  console.log('[speaking-pass-webhook] granted', { user_id, coins, data });
-  return new Response(JSON.stringify({ ok: true, grant: data }), {
+  // Idempotency hardening (audit F5). Stripe retries
+  // checkout.session.completed for up to 3 days; the RPC's UNIQUE
+  // constraint on stripe_session_id is the only thing stopping each
+  // retry from re-granting coins. Detect "already_granted" replies
+  // (RPC contract: data = { ok:true, reason?:'duplicate'|'ok',
+  // granted_coins:N, balance:N }) and log them as warnings rather
+  // than silent success — so an operator can spot a runaway retry
+  // loop or a constraint that got dropped. Defensive: tolerate the
+  // RPC returning a bare integer / null too (older deploys).
+  const grantInfo = data as
+    | { ok?: boolean; reason?: string; granted_coins?: number; balance?: number }
+    | number
+    | null;
+  const reason = grantInfo && typeof grantInfo === 'object' ? grantInfo.reason : null;
+  if (reason === 'duplicate' || reason === 'already_granted') {
+    console.warn('[speaking-pass-webhook] duplicate webhook (idempotent skip)', {
+      user_id, session_id: session.id, coins,
+    });
+  } else {
+    console.log('[speaking-pass-webhook] granted', { user_id, coins, data });
+  }
+  return new Response(JSON.stringify({ ok: true, grant: data, idempotent: reason === 'duplicate' || reason === 'already_granted' }), {
     status: 200,
     headers: { 'content-type': 'application/json' },
   });

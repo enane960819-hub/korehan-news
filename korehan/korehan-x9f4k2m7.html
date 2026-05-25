@@ -16075,7 +16075,10 @@ async function srRetriggerAI(id) {
         + '}\nReminder: every English-language field MUST be in English.';
     }
 
-    var data = await callClaude({ feature:'admin_retrigger_feedback', model:'claude-sonnet-4-6', max_tokens:2200, messages:[{role:'user',content:prompt}] });
+    // Schema-following English-feedback gen, structurally identical
+    // to the daily article-analysis path already on Haiku 4.5 for
+    // months without quality regression. ~7x cheaper than Sonnet.
+    var data = await callClaude({ feature:'admin_retrigger_feedback', model:'claude-haiku-4-5-20251001', max_tokens:2200, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('');
     var clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
     var ob = clean.indexOf('{'), cb = clean.lastIndexOf('}');
@@ -16083,7 +16086,7 @@ async function srRetriggerAI(id) {
     var parsed = JSON.parse(clean.slice(ob, cb+1));
     await sb.from('user_submissions').update({
       ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
-      ai_model: 'claude-sonnet-4-6', status: 'ai_reviewed'
+      ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
     }).eq('id', id);
     toast('AI feedback ready');
     await srLoadFeedbackDashboard();
