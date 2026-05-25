@@ -17,7 +17,7 @@
     a{text-decoration:none;color:inherit}
     /* ── Hero: fullscreen background ── */
     .bg-hero{position:relative;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:#0a1423}
-    .bg-hero-img{position:absolute;inset:0;background:url('img/guide/hero-universe.png') center/cover no-repeat;opacity:.3;filter:blur(2px)}
+    .bg-hero-img{position:absolute;inset:0;background: image-set(url('img/guide/hero-universe.webp') type('image/webp'), url('img/guide/hero-universe.png') type('image/png')) center/cover no-repeat;opacity:.3;filter:blur(2px)}
     .bg-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,20,35,.7) 0%,rgba(10,20,35,.85) 50%,rgba(10,20,35,.95) 100%)}
     .bg-hero-content{position:relative;z-index:2;text-align:center;padding:60px 24px 40px;max-width:720px}
     .bg-hero-eyebrow{font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--sky);margin-bottom:16px}
@@ -119,7 +119,7 @@
   <div class="steps-grid">
     <a href="#step1" class="step-card" data-reveal>
       <div class="step-img">
-        <img src="img/guide/step1-article-mobile.png" alt="Read an article and tap any sentence" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder loading="lazy" decoding="async">Screenshot: Article Page</div>'">
+        <picture><source srcset="img/guide/step1-article-mobile.webp" type="image/webp"><img src="img/guide/step1-article-mobile.png" alt="Read an article and tap any sentence" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder loading="lazy" decoding="async"></picture>Screenshot: Article Page</div>'">
         <div class="step-num">1</div>
       </div>
       <div class="step-body">
@@ -130,7 +130,7 @@
     </a>
     <a href="#step2" class="step-card" data-reveal>
       <div class="step-img">
-        <img src="img/guide/step2-vocab.png" alt="4-step Article Study flow" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder loading="lazy" decoding="async">Screenshot: Article Study</div>'">
+        <picture><source srcset="img/guide/step2-vocab.webp" type="image/webp"><img src="img/guide/step2-vocab.png" alt="4-step Article Study flow" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder loading="lazy" decoding="async"></picture>Screenshot: Article Study</div>'">
         <div class="step-num">2</div>
       </div>
       <div class="step-body">
@@ -141,7 +141,7 @@
     </a>
     <a href="#step3" class="step-card" data-reveal>
       <div class="step-img">
-        <img src="img/guide/hero-universe.png" alt="Vocabulary Universe — saved words become stars" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder loading="lazy" decoding="async">Screenshot: Vocabulary Universe</div>'">
+        <picture><source srcset="img/guide/hero-universe.webp" type="image/webp"><img src="img/guide/hero-universe.png" alt="Vocabulary Universe — saved words become stars" onerror="this.style.display='none';this.parentElement.innerHTML+='<div class=img-placeholder loading="lazy" decoding="async"></picture>Screenshot: Vocabulary Universe</div>'">
         <div class="step-num">3</div>
       </div>
       <div class="step-body">
@@ -174,8 +174,8 @@
       </div>
     </div>
     <div class="detail-showcase">
-      <img class="ss-main" src="img/guide/step1-tap-analysis.jpg" alt="Tap a sentence — translation, vocab, and grammar appear inline" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px loading="lazy" decoding="async">Screenshot: Article with tap analysis</div>'">
-      <img class="ss-float top-right" src="img/guide/step1-conversation.png" alt="Conversation scene map" onerror="this.style.display='none'" loading="lazy" decoding="async">
+      <picture><source srcset="img/guide/step1-tap-analysis.webp" type="image/webp"><img class="ss-main" src="img/guide/step1-tap-analysis.jpg" alt="Tap a sentence — translation, vocab, and grammar appear inline" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px loading="lazy" decoding="async"></picture>Screenshot: Article with tap analysis</div>'">
+      <picture><source srcset="img/guide/step1-conversation.webp" type="image/webp"><img class="ss-float top-right" src="img/guide/step1-conversation.png" alt="Conversation scene map" onerror="this.style.display='none'" loading="lazy" decoding="async"></picture>
     </div>
   </section>
 
@@ -198,8 +198,8 @@
       </div>
     </div>
     <div class="detail-showcase">
-      <img class="ss-main" src="img/guide/step2-reading.png" alt="Reading: fill blanks back into the article" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px loading="lazy" decoding="async">Screenshot: Reading fill-in step</div>'">
-      <img class="ss-float bottom-left" src="img/guide/step2-writing.png" alt="Writing: free-write your reaction" onerror="this.style.display='none'" loading="lazy" decoding="async">
+      <picture><source srcset="img/guide/step2-reading.webp" type="image/webp"><img class="ss-main" src="img/guide/step2-reading.png" alt="Reading: fill blanks back into the article" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px loading="lazy" decoding="async"></picture>Screenshot: Reading fill-in step</div>'">
+      <picture><source srcset="img/guide/step2-writing.webp" type="image/webp"><img class="ss-float bottom-left" src="img/guide/step2-writing.png" alt="Writing: free-write your reaction" onerror="this.style.display='none'" loading="lazy" decoding="async"></picture>
     </div>
   </section>
 
@@ -222,8 +222,8 @@
       </div>
     </div>
     <div class="detail-showcase">
-      <img class="ss-main" src="img/guide/hero-growth-lab.png" alt="Growth Lab dashboard" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px loading="lazy" decoding="async">Screenshot: Growth Lab</div>'">
-      <img class="ss-float top-right" src="img/guide/step3-trend.png" alt="XP Trend and weekly improvement" onerror="this.style.display='none'" loading="lazy" decoding="async">
+      <picture><source srcset="img/guide/hero-growth-lab.webp" type="image/webp"><img class="ss-main" src="img/guide/hero-growth-lab.png" alt="Growth Lab dashboard" onerror="this.outerHTML='<div class=img-placeholder style=min-height:320px loading="lazy" decoding="async"></picture>Screenshot: Growth Lab</div>'">
+      <picture><source srcset="img/guide/step3-trend.webp" type="image/webp"><img class="ss-float top-right" src="img/guide/step3-trend.png" alt="XP Trend and weekly improvement" onerror="this.style.display='none'" loading="lazy" decoding="async"></picture>
     </div>
   </section>
 
