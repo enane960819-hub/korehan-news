@@ -416,6 +416,23 @@
             btn.disabled = _glWords.length === 0;
             btn.style.opacity = _glWords.length ? '1' : '.55';
           }
+          // Empty-state CTA — when the user hasn't saved any words yet,
+          // surface a tap-to-start guide INSIDE the hero card instead of
+          // leaving them staring at "0 stars" + a disabled button. Day-1
+          // user retention #1 fix.
+          var hero = document.getElementById('gl-universe-hero');
+          var existingCta = document.getElementById('gl-uh-empty-cta');
+          if (_glWords.length === 0 && hero && !existingCta) {
+            var cta = document.createElement('div');
+            cta.id = 'gl-uh-empty-cta';
+            cta.style.cssText = 'position:relative;z-index:3;margin:0 22px 18px;padding:12px 14px;background:rgba(255,255,255,.07);border:1px solid rgba(167,139,250,.3);border-radius:10px;color:rgba(220,210,255,.92);font-size:12px;line-height:1.55;backdrop-filter:blur(4px)';
+            cta.innerHTML = '<div style="font-weight:700;color:#fff;margin-bottom:4px">✨ Start your galaxy</div>'
+              + '<div style="margin-bottom:8px">Tap any word while reading an article to save it. Each saved word becomes a star here.</div>'
+              + '<a href="index.html" style="display:inline-block;padding:6px 12px;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;text-decoration:none;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.02em">📰 Browse articles →</a>';
+            hero.appendChild(cta);
+          } else if (_glWords.length > 0 && existingCta) {
+            existingCta.remove();
+          }
           renderConstellation(canvas, _glWords);
         } catch(e) { console.warn('[gl-universe-hero]', e); }
       }
