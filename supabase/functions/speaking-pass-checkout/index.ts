@@ -23,26 +23,42 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const MIN_COINS = 5;
 const MAX_COINS = 200;   // sanity cap — Stripe quantity is bounded anyway
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+const ALLOWED_ORIGINS = [
+  'https://korehani.com',
+  'https://www.korehani.com',
+  'https://korehannews.com',
+  'https://www.korehannews.com',
+  'http://localhost:3000',
+  'http://localhost:8888',
+];
 
-function json(body: unknown, status = 200) {
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') || '';
+  const matched = ALLOWED_ORIGINS.includes(origin) ? origin : null;
+  const h: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+  if (matched) h['Access-Control-Allow-Origin'] = matched;
+  return h;
+}
+
+function json(body: unknown, status = 200, cors: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json', ...CORS },
+    headers: { 'content-type': 'application/json', ...cors },
   });
 }
 
 serve(async (req) => {
+  const CORS = corsHeaders(req);
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
-  if (req.method !== 'POST')    return json({ error: 'method not allowed' }, 405);
+  if (req.method !== 'POST')    return json({ error: 'method not allowed' }, 405, CORS);
 
   try {
     const auth = req.headers.get('authorization') || '';
-    if (!auth.startsWith('Bearer ')) return json({ error: 'auth required' }, 401);
+    if (!auth.startsWith('Bearer ')) return json({ error: 'auth required' }, 401, CORS);
 
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -50,7 +66,7 @@ serve(async (req) => {
       { global: { headers: { Authorization: auth } } },
     );
     const { data: userData, error: userErr } = await sb.auth.getUser();
-    if (userErr || !userData?.user) return json({ error: 'invalid session' }, 401);
+    if (userErr || !userData?.user) return json({ error: 'invalid session' }, 401, CORS);
     const user = userData.user;
 
     // Pro-tier gate
@@ -60,16 +76,16 @@ serve(async (req) => {
       .maybeSingle();
     const isPro = sub && sub.status === 'active' && sub.plan === 'pro'
       && (!sub.expires_at || new Date(sub.expires_at) > new Date());
-    if (!isPro) return json({ error: 'pro_plan_required' }, 403);
+    if (!isPro) return json({ error: 'pro_plan_required' }, 403, CORS);
 
     const body = await req.json().catch(() => ({} as any));
     const coins = Math.floor(Number(body.coins));
-    if (!Number.isFinite(coins)) return json({ error: 'coins_required' }, 400);
-    if (coins < MIN_COINS)       return json({ error: 'min_coins_5' }, 400);
-    if (coins > MAX_COINS)       return json({ error: 'max_coins_' + MAX_COINS }, 400);
+    if (!Number.isFinite(coins)) return json({ error: 'coins_required' }, 400, CORS);
+    if (coins < MIN_COINS)       return json({ error: 'min_coins_5' }, 400, CORS);
+    if (coins > MAX_COINS)       return json({ error: 'max_coins_' + MAX_COINS }, 400, CORS);
 
     const priceId = Deno.env.get('STRIPE_PRICE_COACH_COIN');
-    if (!priceId) return json({ error: 'stripe_price_not_configured' }, 500);
+    if (!priceId) return json({ error: 'stripe_price_not_configured' }, 500, CORS);
 
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
       apiVersion: '2023-10-16',
@@ -92,9 +108,9 @@ serve(async (req) => {
       cancel_url:  `${appBase}/korehan-study-room.html?coach_coins=cancel`,
     });
 
-    return json({ url: session.url, coins });
+    return json({ url: session.url, coins }, 200, CORS);
   } catch (e) {
     console.error('[speaking-pass-checkout]', e);
-    return json({ error: String((e as Error)?.message || e) }, 500);
+    return json({ error: String((e as Error)?.message || e) }, 500, CORS);
   }
 });

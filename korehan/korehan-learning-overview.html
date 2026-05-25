@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KoreHani Growth Lab</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;800&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="korehan-shared.css?v=20260516a">
+  <link rel="stylesheet" href="korehan-shared.css?v=20260525i">
   <style>
     :root{
       --navy:#0b1626; --blue:#1a3a6b; --bright:#2563eb; --sky:#7ab8f5;
@@ -391,10 +391,28 @@
     // ── Growth Lab universe hero: pull saved words + paint constellation ──
     (function(){
       var _glWords = [];
+      // kh-universe.js (~117KB) lazy-loaded on first click — same as
+      // study-room. See openUniverseView() there for the rationale.
+      var _glUniverseLoading = null;
+      function _glEnsureUniverse() {
+        if (window.KHUniverse && window.KHUniverse.open) return Promise.resolve();
+        if (_glUniverseLoading) return _glUniverseLoading;
+        _glUniverseLoading = new Promise(function (resolve, reject) {
+          var s = document.createElement('script');
+          s.src = 'js/kh-universe.js?v=20260525c';
+          s.async = false;
+          s.onload = function () { resolve(); };
+          s.onerror = function () { _glUniverseLoading = null; reject(new Error('universe load failed')); };
+          document.head.appendChild(s);
+        });
+        return _glUniverseLoading;
+      }
       window.glOpenUniverse = function() {
-        if (!window.KHUniverse || !KHUniverse.open) return;
         if (!_glWords.length) return;
-        KHUniverse.open({ words: _glWords.slice(), title: 'Your Vocabulary Universe' });
+        _glEnsureUniverse().then(function () {
+          if (!window.KHUniverse || !KHUniverse.open) return;
+          KHUniverse.open({ words: _glWords.slice(), title: 'Your Vocabulary Universe' });
+        }).catch(function () {});
       };
 
       async function loadUniverseStars() {
@@ -1303,8 +1321,8 @@
   <script src="js/features/analyze-mode.js?v=20260502a"></script>
   <script src="js/features/translation.js?v=20260502a"></script>
   <script src="js/features/fill-blank.js?v=20260502a"></script>
-  <script src="korehan-shared.js?v=20260525a"></script>
-  <script src="js/kh-universe.js?v=20260515b"></script>
+  <script src="korehan-shared.js?v=20260525n"></script>
+  <!-- kh-universe.js (~117KB) lazy-loaded by _glEnsureUniverse() above on first click. -->
   <script src="js/kh-curriculum.js?v=20260420y"></script>
   <script src="learning_hub_vocab_data.js"></script>
   <script>

@@ -49,12 +49,12 @@
         transform:translateY(0);
       }
       .kh-hover-tip .kh-tip-close{
-        position:absolute;top:6px;right:8px;
-        width:24px;height:24px;
+        position:absolute;top:4px;right:4px;
+        width:32px;height:32px;
         display:flex;align-items:center;justify-content:center;
         background:rgba(255,255,255,.12);color:#cbd5e1;
         border:none;border-radius:50%;cursor:pointer;
-        font-size:14px;font-weight:700;font-family:inherit;
+        font-size:16px;font-weight:700;font-family:inherit;
         padding:0;line-height:1;
       }
       .kh-hover-tip .kh-tip-close:hover{ background:rgba(255,255,255,.22);color:#fff; }

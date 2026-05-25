@@ -5683,6 +5683,41 @@ function _ttsCacheSet(k, v) {
     try { if (oldestVal && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(oldestVal); } catch(_) {}
   }
 }
+// Drain the cache + revoke every blob URL. Call on sign-out, on
+// long-modal close, and on visibilitychange→hidden. Without this, the
+// 60-entry cap holds ~4.8MB of pinned Blob URLs for the entire tab
+// lifetime — Safari iOS often kills the tab around 80MB total.
+function _ttsCacheClear() {
+  try {
+    _ttsCache.forEach(function (v) {
+      try { if (v && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(v); } catch (_) {}
+    });
+  } catch (_) {}
+  _ttsCache.clear();
+}
+window._ttsCacheClear = _ttsCacheClear;
+// Auto-clear on sign-out so the next user (kiosk / shared device)
+// doesn't inherit pinned audio. Sign-out events from shared.js bubble
+// via supabase auth state — listen here when the client exists.
+(function _wireTtsAutoClear() {
+  if (window._ttsAutoClearWired) return;
+  window._ttsAutoClearWired = true;
+  // Pagehide is the most reliable signal across mobile back-nav + tab
+  // suspension; covers the iOS Safari case where unload doesn't fire.
+  try { window.addEventListener('pagehide', _ttsCacheClear); } catch (_) {}
+  // Hook the supabase client if available later — the auth client is
+  // created lazily, so poll once for it.
+  setTimeout(function () {
+    try {
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      if (sb && sb.auth && typeof sb.auth.onAuthStateChange === 'function') {
+        sb.auth.onAuthStateChange(function (event) {
+          if (event === 'SIGNED_OUT') _ttsCacheClear();
+        });
+      }
+    } catch (_) {}
+  }, 2000);
+})();
 function speakHangul(text, voice) {
   if (!text) return;
   // Try Edge TTS first (natural AI voice), fall back to Web Speech API
@@ -5692,7 +5727,7 @@ async function speakEdgeTTS(text, voice) {
   try {
     var cacheKey = text + '_' + voice;
     var hit = _ttsCacheGet(cacheKey);
-    if (hit) { playTTSAudio(hit); return; }
+    if (hit) { playTTSAudio(hit, text); return; }
     var supaUrl = typeof SUPA_URL !== 'undefined' ? SUPA_URL : '';
     if (!supaUrl) { speakFallback(text); return; }
     var headers = { 'Content-Type': 'application/json' };
@@ -5721,15 +5756,27 @@ async function speakEdgeTTS(text, voice) {
     if (blob.size < 100) throw new Error('empty audio');
     var url = URL.createObjectURL(blob);
     _ttsCacheSet(cacheKey, url);
-    playTTSAudio(url);
+    playTTSAudio(url, text);
   } catch(e) {
     console.warn('[TTS] Edge TTS failed, using fallback:', e.message);
     speakFallback(text);
   }
 }
-function playTTSAudio(url) {
+// Stop ALL audio singletons on the page before starting a new one.
+// Without this, TTS clip + picture-call recording playback +
+// score-card playback can layer on top of each other; on iOS the
+// system audio session reads the metadata of whichever started
+// last while the others keep eating CPU. (audit F20.)
+function _khStopAllAudio() {
+  try { if (_ttsAudio) { _ttsAudio.pause(); } } catch(_) {}
+  try { if (typeof _pcAudio !== 'undefined' && _pcAudio) { _pcAudio.pause(); } } catch(_) {}
+  try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(_) {}
+}
+window._khStopAllAudio = _khStopAllAudio;
+
+function playTTSAudio(url, originalText) {
+  _khStopAllAudio();
   if (_ttsAudio) {
-    try { _ttsAudio.pause(); } catch(_) {}
     // If the previous Audio was playing a one-shot URL we minted directly
     // (not a cached blob:), revoke it so it doesn't leak. Cached entries
     // are revoked by _ttsCacheEvict; we tag the latter to avoid a
@@ -5746,7 +5793,16 @@ function playTTSAudio(url) {
   // Mark blob URLs that came from the LRU cache so we don't revoke them
   // out from under the cache (the cache owns their lifecycle).
   try { _ttsAudio._khCached = !!(typeof _ttsCache !== 'undefined' && url && Array.from(_ttsCache.values()).indexOf(url) >= 0); } catch(_) {}
-  _ttsAudio.play().catch(function(){});
+  // Autoplay rejection (iOS Safari muted, no user gesture yet) used to
+  // silently swallow the error and leave the user thinking the speaker
+  // is broken. Fall back to Web Speech API when we have the original
+  // text — speechSynthesis often works where Audio.play() doesn't.
+  // (audit F19.)
+  _ttsAudio.play().catch(function() {
+    if (originalText && typeof speakFallback === 'function') {
+      try { speakFallback(originalText); } catch (_) {}
+    }
+  });
 }
 function speakFallback(text) {
   if (!window.speechSynthesis) return;
@@ -7016,6 +7072,10 @@ function pcAnimLoop() {
 var _pcDemoTimer = null;
 var _pcDemoTime = 0;
 function pcDemoPlay() {
+  // Clear any previous interval before reassigning — a quick double-tap
+  // on play (or play → seek → play) used to orphan the previous timer,
+  // which would keep mutating DOM elements every 100ms forever.
+  if (_pcDemoTimer) { clearInterval(_pcDemoTimer); _pcDemoTimer = null; }
   _pcDemoTime = 0;
   var dur = _pcCurrentCall.duration_seconds || 30;
   _pcDemoTimer = setInterval(function() {
@@ -7848,7 +7908,16 @@ function _startSpeakingSTT() {
         }
       }
     };
-    r.onerror = function(err) { console.warn('[Speaking STT] error:', err && err.error); };
+    r.onerror = function(err) {
+      console.warn('[Speaking STT] error:', err && err.error);
+      // Abort + drop the global so the next _startSpeakingSTT call
+      // doesn't accumulate orphaned recognition instances. Chrome
+      // applies a per-tab SpeechRecognition rate limit; without this,
+      // ~5 'no-speech' / 'network' errors over a session quietly bricks
+      // the STT path.
+      try { r.abort(); } catch (_) {}
+      if (_speakRecognition === r) _speakRecognition = null;
+    };
     r.start();
     return r;
   } catch(e) {
@@ -7957,8 +8026,12 @@ function _scoreSpeaking(targetText, transcript, durationMs) {
   else if (wpm <= 250)       fluency_score = Math.max(60, Math.round(100 - (wpm - 180) * 20 / 70));
   else                       fluency_score = 60;
 
-  // Filler penalty (어/음/그/저)
-  var fillers = (String(transcript || '').match(/\b(어|음|그|저)\b/g) || []).length;
+  // Filler penalty (어/음/그/저). JS \b is ASCII-only — `\b` between
+  // two Hangul code points NEVER matches, so the previous /\b(...)\b/
+  // form returned null on every Korean transcript and the filler
+  // counter was permanently 0. Use whitespace / start / end boundaries
+  // instead — Korean transcripts always whitespace-separate words.
+  var fillers = (String(transcript || '').match(/(?:^|\s)(어|음|그|저)(?=\s|$)/g) || []).length;
   var filler_penalty = Math.min(15, fillers * 3);
   pronunciation = Math.max(0, pronunciation - filler_penalty);
 
@@ -8184,7 +8257,7 @@ function _renderSpeakingScoreCard(s, targetEl) {
         }
         var scoreTag = score != null ? '<sup style="font-size:9px;font-weight:800;opacity:.7">' + score + '</sup>' : '';
         var errTag = (err !== 'None' && err !== 'None') ? '<span style="font-size:9px;opacity:.65;margin-left:2px">' + (err === 'Mispronunciation' ? '⚠' : err === 'Omission' ? '—' : err === 'Insertion' ? '+' : '') + '</span>' : '';
-        return '<span style="display:inline-block;padding:5px 11px;margin:3px;border-radius:999px;background:' + bg + ';color:' + fg + ';font-size:13px;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;border:1px solid ' + border + ';opacity:0;transform:translateY(4px);animation:kh-speak-chip-in .35s ease-out ' + (80 + i * 40) + 'ms forwards">' + w.word.replace(/[<>]/g,'') + scoreTag + errTag + '</span>';
+        return '<span style="display:inline-block;padding:5px 11px;margin:3px;border-radius:999px;background:' + bg + ';color:' + fg + ';font-size:13px;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;border:1px solid ' + border + ';opacity:0;transform:translateY(4px);animation:kh-speak-chip-in .35s ease-out ' + (80 + i * 40) + 'ms forwards">' + _esc(w.word) + scoreTag + errTag + '</span>';
       }).join('');
       wordHtml = '<div style="margin-top:14px">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
@@ -8313,6 +8386,22 @@ function toggleSpeakRecord() {
     document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.08)';
     return;
   }
+  // Feature-check before getUserMedia. KakaoTalk / Naver / WeChat
+  // in-app browsers expose getUserMedia but lack MediaRecorder, and
+  // throwing inside `new MediaRecorder()` lands the user on the
+  // generic "마이크 접근 실패" toast which blames mic permissions.
+  // Catch the unsupported case here and give a clear "open in
+  // Safari/Chrome" message instead.
+  if (typeof MediaRecorder === 'undefined'
+      || (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported('audio/webm'))) {
+    var statusEl = document.getElementById('wm-speak-status');
+    if (statusEl) {
+      statusEl.textContent = '이 브라우저는 녹음을 지원하지 않아요. Chrome 또는 Safari에서 열어주세요. / This browser does not support recording — please open in Chrome or Safari.';
+    } else {
+      try { showToast && showToast('이 브라우저는 녹음을 지원하지 않아요. Chrome/Safari로 열어주세요.', true); } catch(_) {}
+    }
+    return;
+  }
   navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
     _speakChunks = [];
     _speakScores = null;
@@ -8355,6 +8444,12 @@ function toggleSpeakRecord() {
         _renderSpeakingScoreCard(_speakScores);
         document.getElementById('wm-speak-status').textContent = 'Recording done! Listen and submit.';
       })();
+      // Drop the recorder reference now that the blob is captured —
+      // otherwise the MediaStream tracks are held alive by the
+      // recorder, and a session with 5+ attempts accumulates 5 idle
+      // recorders + audio graphs (Safari iOS kills the tab ~80MB).
+      _speakRecorder = null;
+      _speakChunks = [];
     };
     _speakRecorder.start();
     // 2-minute hard cap — if the user walks away mid-recording, this stops
@@ -8388,17 +8483,39 @@ function toggleSpeakRecord() {
     var waveCanvas = document.getElementById('wm-speak-waveform');
     if (waveCanvas) _stopWaveform = _khStartWaveform(stream, waveCanvas);
   }).catch(function(err) {
-    _showMicPermError('wm-speak-status');
+    _showMicPermError('wm-speak-status', err);
     console.warn('[Speaking] mic error:', err);
   });
 }
-function _showMicPermError(statusElId) {
-  var msg = '마이크 접근 실패. 브라우저 주소창의 🔒 아이콘 → 마이크 → 허용 후 새로고침';
+function _showMicPermError(statusElId, err) {
+  // Branch on the actual DOMException name so the user sees a fixable
+  // instruction instead of a generic "permissions" line. iOS Safari is
+  // also called out separately because the recovery path is in OS
+  // Settings, not the address-bar lock icon.
+  var name = (err && (err.name || err.message)) || '';
+  var ua = (navigator.userAgent || '').toLowerCase();
+  var isIOS = /iphone|ipad|ipod/.test(ua);
+  var isInApp = /kakaotalk|naver\(inapp;|line\/|fb_iab|fbav|instagram|wv\)/.test(ua);
+  var msg;
+  if (isInApp) {
+    msg = '내장 브라우저는 녹음을 지원하지 않아요. 우상단 ⋮ → Chrome/Safari로 열어주세요.\nThis in-app browser does not support recording — open in Chrome or Safari.';
+  } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+    msg = '마이크 장치를 찾을 수 없어요. 외부 마이크가 연결돼 있다면 시스템 설정을 확인해주세요.\nNo microphone detected. Check your system audio settings.';
+  } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+    msg = '다른 앱이 마이크를 사용 중이에요. Zoom/Discord/통화 등을 닫고 다시 시도하세요.\nMicrophone is in use by another app — close Zoom/Discord/etc. and retry.';
+  } else if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    msg = isIOS
+      ? '마이크 권한이 차단됐어요. iOS 설정 → Safari → 마이크 → 허용 후 페이지 새로고침.\nMicrophone blocked — iOS Settings → Safari → Microphone → Allow, then refresh.'
+      : '마이크 권한이 차단됐어요. 주소창의 🔒 아이콘 → 마이크 → 허용 후 새로고침.\nMicrophone blocked — click the 🔒 in the address bar → Microphone → Allow, then refresh.';
+  } else {
+    // Unknown / dismissed prompt
+    msg = '마이크 접근 실패 (' + (name || 'unknown') + '). 다시 시도하거나 브라우저 권한을 확인하세요.\nMicrophone access failed (' + (name || 'unknown') + '). Retry or check browser permissions.';
+  }
   if (statusElId) {
     var el = document.getElementById(statusElId);
-    if (el) { el.innerHTML = '<span style="color:#f87171;font-size:11px">' + msg + '</span>'; return; }
+    if (el) { el.innerHTML = '<span style="color:#f87171;font-size:11px;white-space:pre-line;display:block;line-height:1.6">' + msg + '</span>'; return; }
   }
-  showToast(msg);
+  showToast(msg, true);
 }
 // ── Speaking-feedback generator ────────────────────────────────────
 // Mirrors _triggerUnifiedAIFeedback for the speaking path. Until this
@@ -8548,6 +8665,14 @@ async function submitSpeaking() {
     var row = document.getElementById('wm-speak-submit-row');
     if (row) row.style.display = 'none';
     document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted! Tutor will review within 24h.</span></span>';
+    // Drop the captured blob now that it's safely on the server —
+    // a stale _speakBlob made it past the early guard if the user
+    // re-opened the submit row from a tab toggle, double-charging a
+    // coin or double-uploading the same audio. Make resubmit
+    // require a fresh recording.
+    _speakBlob = null;
+    _speakChunks = [];
+    _speakScores = null;
     // Make the arrival poller pick this row up.
     if (typeof _startFeedbackArrivalPoll === 'function') {
       setTimeout(function(){ _startFeedbackArrivalPoll(); }, 800);
@@ -8614,26 +8739,65 @@ async function submitSpeakingToCoach() {
     // Coin has been spent — commit the UI to "sending" state now.
     if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="5"/></svg></span><span>Sending to coach…</span></span>'; }
 
+    // From here on the coin is GONE from the wallet. Any failure path
+    // before the insert lands MUST be loud — the user paid and didn't
+    // get the service, and we can't automatically refund without a
+    // dedicated RPC. Surface a recovery error_id the user can quote to
+    // support, and log the same id to client_errors with enough
+    // context to manually credit a coin back via the wallet table.
+    function _coinStuckRecovery(stage, detail) {
+      var errId = 'sp-coach-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+      try {
+        if (typeof kh_log_error === 'function') {
+          kh_log_error('speaking_coin_unredeemed', {
+            error_id: errId,
+            user_id:  supaUser && supaUser.id,
+            level:    _currentLevel,
+            stage:    stage,
+            detail:   String(detail || '').slice(0, 500),
+            balance_after_consume: (coin && (coin.balance != null ? coin.balance : coin.remaining)),
+          });
+        }
+      } catch (_) {}
+      showToast(
+        '코인이 차감됐는데 ' + stage + '에서 실패했어요 (' + (detail || '') + '). '
+        + '에러 ID: ' + errId + ' — hello@korehani.com 으로 ID 보내주시면 코인 복구해드려요.',
+        true
+      );
+    }
+
     // 2) Upload audio
     var fileName = 'speaking/' + supaUser.id + '/' + kstDateKey() + '_coach_' + Date.now() + '.webm';
-    var up = await sb.storage.from('avatars').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
-    if (up.error) { showToast('업로드 실패: ' + up.error.message); return; }
+    var up;
+    try {
+      up = await sb.storage.from('avatars').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
+    } catch (uploadEx) {
+      _coinStuckRecovery('업로드', uploadEx && uploadEx.message);
+      return;
+    }
+    if (up && up.error) { _coinStuckRecovery('업로드', up.error.message); return; }
 
     // 3) Insert submission marked for coach review
-    var ins = await sb.from('user_submissions').insert({
-      user_id:     supaUser.id,
-      content_type:'speaking',
-      study_date:  kstDateKey(),
-      writing_text: text,
-      topic_ko:    _todayTopic ? _todayTopic.topic_ko : '',
-      topic_en:    _todayTopic ? _todayTopic.topic_en : '',
-      level:       _currentLevel,
-      status:      'submitted',
-      speaking_coach_review: true,
-      speaking_scores: _speakScores || null,
-      context_data: JSON.stringify({ audio_path: fileName, char_count: text.length })
-    });
-    if (ins.error) { showToast('제출 실패: ' + ins.error.message); return; }
+    var ins;
+    try {
+      ins = await sb.from('user_submissions').insert({
+        user_id:     supaUser.id,
+        content_type:'speaking',
+        study_date:  kstDateKey(),
+        writing_text: text,
+        topic_ko:    _todayTopic ? _todayTopic.topic_ko : '',
+        topic_en:    _todayTopic ? _todayTopic.topic_en : '',
+        level:       _currentLevel,
+        status:      'submitted',
+        speaking_coach_review: true,
+        speaking_scores: _speakScores || null,
+        context_data: JSON.stringify({ audio_path: fileName, char_count: text.length })
+      });
+    } catch (insertEx) {
+      _coinStuckRecovery('제출 기록', insertEx && insertEx.message);
+      return;
+    }
+    if (ins && ins.error) { _coinStuckRecovery('제출 기록', ins.error.message); return; }
 
     // Compute the reply deadline so the user has a concrete time, not
     // just "within 24 hours". Local timezone — they'll know whether
@@ -8665,6 +8829,14 @@ async function submitSpeakingToCoach() {
         + '</div>';
     }
     _refreshSpeakingCoinBadge();
+    _broadcastSpeakingWalletChange();
+    // Drop the captured blob so a re-open of the submit row (mobile tab
+    // toggle, modal close+reopen) can't trigger another coin charge on
+    // the same audio. submit-row was already hidden above; this is
+    // defence-in-depth.
+    _speakBlob = null;
+    _speakChunks = [];
+    _speakScores = null;
   } catch(e) {
     showToast('Submit failed: ' + (e.message || e));
   } finally {
@@ -8688,6 +8860,25 @@ function _showForestTutoringModal() {
     + '<button onclick="document.getElementById(\'forest-tutor-modal\').remove()" style="display:block;width:100%;padding:10px;background:#f1f5f9;border:none;border-radius:10px;color:#475569;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">닫기</button>'
     + '</div>';
   document.body.appendChild(m);
+}
+
+// Cross-tab wallet sync. Without a BroadcastChannel, opening two tabs
+// and spending in tab A leaves tab B showing a stale balance — and the
+// stale-balance tab will confidently call consume_speaking_coin
+// expecting it to succeed, get a 'no_coins' reason, and surface a
+// generic "코인 처리 실패" toast. Broadcast on every consume / refresh
+// so every tab refetches.
+var _speakingWalletChan = null;
+try {
+  if (typeof BroadcastChannel === 'function') {
+    _speakingWalletChan = new BroadcastChannel('kh-speaking-wallet');
+    _speakingWalletChan.onmessage = function () {
+      if (typeof _refreshSpeakingCoinBadge === 'function') _refreshSpeakingCoinBadge();
+    };
+  }
+} catch (_) {}
+function _broadcastSpeakingWalletChange() {
+  try { if (_speakingWalletChan) _speakingWalletChan.postMessage({ at: Date.now() }); } catch (_) {}
 }
 
 async function _refreshSpeakingCoinBadge() {
@@ -11997,11 +12188,19 @@ async function toggleSpRecord() {
     _spMediaRec.stop();
     return;
   }
+  // Same feature-check as toggleSpeakRecord — in-app browsers expose
+  // getUserMedia but not MediaRecorder, and would otherwise dead-end
+  // on a misleading "mic access failed" toast.
+  if (typeof MediaRecorder === 'undefined'
+      || (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported('audio/webm'))) {
+    _showMicPermError('sp-status', { name: 'UnsupportedBrowser' });
+    return;
+  }
   var stream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) {
-    _showMicPermError('sp-status');
+    _showMicPermError('sp-status', e);
     return;
   }
   _spChunks = []; _spBlob = null;

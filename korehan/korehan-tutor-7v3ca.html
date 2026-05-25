@@ -856,14 +856,19 @@ body{padding-bottom:0 !important}
 <script src="js/features/analyze-mode.js?v=20260428a-tutor"></script>
 <script src="js/features/translation.js?v=20260428a-tutor"></script>
 <script src="js/features/fill-blank.js?v=20260428a-tutor"></script>
-<script src="korehan-shared.js?v=20260525a"></script>
+<script src="korehan-shared.js?v=20260525n"></script>
 <script>
 (function(){
   'use strict';
 
-  // Mirror of korehan-shared.js TUTOR_EMAILS — kept here so the gate can run
-  // independently of any shared.js init ordering. Update both lists together.
-  var TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com'];
+  // TUTOR_EMAILS is the single source-of-truth in korehan-shared.js
+  // (exported as window.KH_TUTOR_EMAILS). Fall back to a hardcoded
+  // minimal list ONLY if shared.js failed to load — the fallback
+  // intentionally denies everyone except the platform owner so a
+  // broken script-load doesn't grant access to the wider tutor team.
+  var TUTOR_EMAILS = (window.KH_TUTOR_EMAILS && window.KH_TUTOR_EMAILS.length)
+    ? window.KH_TUTOR_EMAILS.slice()
+    : ['enane960819@gmail.com'];
 
   function setGate(html) {
     var card = document.getElementById('gate-card');

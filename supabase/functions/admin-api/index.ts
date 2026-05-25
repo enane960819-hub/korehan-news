@@ -25,6 +25,11 @@ const ALLOWED_TABLES = new Set([
   // Signup notification history — admin "Signup Notification Log"
   // page (page-views sibling) reads this for an audit trail.
   'signup_notifications_log',
+  // Client error log — admin "Client Errors" aux page reads + deletes
+  // >7d rows. Without this entry the delete had to route through the
+  // user-JWT supabase client, which depended entirely on RLS for
+  // safety.
+  'client_errors',
 ])
 
 // Whitelist of RPCs the admin client is allowed to call. Without this
@@ -54,13 +59,14 @@ const ALLOWED_RPCS = new Set([
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || ''
   const allowed = ['https://korehani.com','https://www.korehani.com','https://korehannews.com','https://www.korehannews.com','http://localhost:3000','http://localhost:8888']
-  const matched = allowed.includes(origin) ? origin : allowed[0]
-  return {
-    'Access-Control-Allow-Origin': matched,
+  const matched = allowed.includes(origin) ? origin : null
+  const h: Record<string, string> = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   }
+  if (matched) h['Access-Control-Allow-Origin'] = matched
+  return h
 }
 
 Deno.serve(async (req) => {
@@ -70,8 +76,14 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    // SUPABASE_ANON_KEY may not be auto-injected in all environments
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs'
+    // SUPABASE_ANON_KEY should be auto-injected by Supabase Functions
+    // runtime; if it's missing, fail loudly rather than masking the
+    // misconfig with a hardcoded fallback that won't rotate when the
+    // anon key is regenerated.
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+    if (!anonKey) {
+      return json({ error: 'Server misconfigured: SUPABASE_ANON_KEY missing' }, 500, cors)
+    }
 
     // 1. Verify JWT and admin status
     const authHeader = req.headers.get('Authorization')
@@ -81,7 +93,7 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '')
     const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey || serviceKey }
+      headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey }
     })
     if (!userRes.ok) return json({ error: 'Invalid token' }, 401, cors)
 
@@ -155,6 +167,9 @@ Deno.serve(async (req) => {
       }
 
       if (method === 'update') {
+        if (!hasMutationFilter(params)) {
+          return json({ error: 'update requires at least one filter (eq/in/etc.)' }, 400, cors)
+        }
         let q: any = query.update(params.data)
         q = applyFilters(q, params)
         q = applyReturning(q)
@@ -171,6 +186,9 @@ Deno.serve(async (req) => {
       }
 
       if (method === 'delete') {
+        if (!hasMutationFilter(params)) {
+          return json({ error: 'delete requires at least one filter (eq/in/etc.)' }, 400, cors)
+        }
         let q: any = query.delete()
         q = applyFilters(q, params)
         q = applyReturning(q)
@@ -227,8 +245,14 @@ Deno.serve(async (req) => {
       if (!restPath || !restPath.startsWith('/rest/v1/')) {
         return json({ error: 'Invalid REST path' }, 400, cors)
       }
-      // Verify table name from path is allowed
-      const tableName = restPath.split('/rest/v1/')[1]?.split('?')[0]
+      // Strict table-name extraction. The previous split-on-? was
+      // bypassable: a path like /rest/v1/articles/../auth/v1/admin/users
+      // produces tableName='articles/../auth/v1/admin/users' which
+      // ALLOWED_TABLES rejects, but the FETCH still hits the literal
+      // path which Supabase normalizes. Lock the extraction to a
+      // bare identifier-shaped table segment before any /, ?, or end.
+      const m = restPath.match(/^\/rest\/v1\/([a-z_][a-z0-9_]*)(?:\?|$)/)
+      const tableName = m && m[1]
       if (!tableName || !ALLOWED_TABLES.has(tableName)) {
         return json({ error: 'Table not allowed' }, 400, cors)
       }
@@ -253,12 +277,27 @@ Deno.serve(async (req) => {
   }
 })
 
+// A buggy admin client sending update/delete with no filter would
+// otherwise execute against EVERY row of the target table. PostgREST
+// itself blocks bare DELETE without WHERE, but supabase-js with
+// service role bypasses that — this is the last line of defence.
+function hasMutationFilter(params: any): boolean {
+  if (!params) return false
+  const filterKeys = ['eq','neq','gte','gt','lte','lt','like','ilike','is','not','in']
+  for (const k of filterKeys) {
+    if (Array.isArray(params[k]) && params[k].length) return true
+  }
+  return false
+}
+
 function applyFilters(query: any, params: any) {
   if (!params) return query
   if (params.eq) params.eq.forEach((f: any) => { query = query.eq(f.col, f.val) })
   if (params.neq) params.neq.forEach((f: any) => { query = query.neq(f.col, f.val) })
   if (params.gte) params.gte.forEach((f: any) => { query = query.gte(f.col, f.val) })
+  if (params.gt)  params.gt.forEach((f: any)  => { query = query.gt(f.col, f.val) })
   if (params.lte) params.lte.forEach((f: any) => { query = query.lte(f.col, f.val) })
+  if (params.lt)  params.lt.forEach((f: any)  => { query = query.lt(f.col, f.val) })
   if (params.like) params.like.forEach((f: any) => { query = query.like(f.col, f.val) })
   if (params.ilike) params.ilike.forEach((f: any) => { query = query.ilike(f.col, f.val) })
   if (params.is) params.is.forEach((f: any) => { query = query.is(f.col, f.val) })

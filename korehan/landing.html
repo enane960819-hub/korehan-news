@@ -61,8 +61,8 @@ button{font:inherit;cursor:pointer}
 /* ─────────────────────────────────────────────────────────
    HERO
 ───────────────────────────────────────────────────────── */
-.hero{position:relative;min-height:100vh;background:var(--navy);overflow:hidden;display:flex;align-items:center;padding:clamp(80px,12vh,140px) clamp(20px,5vw,60px) clamp(40px,6vh,80px)}
-.hero-stars{position:absolute;inset:0;background:url('img/guide/hero-universe.png') center/cover no-repeat;opacity:.32;filter:saturate(1.2)}
+.hero{position:relative;min-height:100vh;min-height:100dvh;background:var(--navy);overflow:hidden;display:flex;align-items:center;padding:clamp(80px,12vh,140px) clamp(20px,5vw,60px) clamp(40px,6vh,80px)}
+.hero-stars{position:absolute;inset:0;background: image-set(url('img/guide/hero-universe.webp') type('image/webp'), url('img/guide/hero-universe.png') type('image/png')) center/cover no-repeat;opacity:.32;filter:saturate(1.2)}
 .hero-veil{position:absolute;inset:0;background:radial-gradient(ellipse at 60% 40%,rgba(56,189,248,.12) 0%,transparent 50%),linear-gradient(180deg,rgba(10,20,35,.55) 0%,rgba(10,20,35,.7) 50%,var(--navy) 100%)}
 .hero-grid{position:relative;z-index:2;max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1.1fr 1fr;gap:80px;align-items:center;width:100%}
 .hero-copy{color:#fff}
@@ -144,7 +144,7 @@ button{font:inherit;cursor:pointer}
    ASPIRATION (Vocabulary Universe)
 ───────────────────────────────────────────────────────── */
 .universe{position:relative;background:#070d1a;color:#fff;padding:clamp(80px,12vw,160px) clamp(20px,5vw,60px) clamp(60px,8vw,120px);overflow:hidden}
-.universe-bg{position:absolute;inset:0;background:url('img/guide/hero-universe.png') center/cover no-repeat;opacity:.85;filter:saturate(1.15)}
+.universe-bg{position:absolute;inset:0;background: image-set(url('img/guide/hero-universe.webp') type('image/webp'), url('img/guide/hero-universe.png') type('image/png')) center/cover no-repeat;opacity:.85;filter:saturate(1.15)}
 .universe-veil{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 0%,rgba(7,13,26,.65) 60%,#070d1a 100%)}
 .universe-content{position:relative;z-index:2;max-width:780px;margin:0 auto;text-align:center}
 .universe-content h2{color:#fff;margin-bottom:18px;text-shadow:0 4px 30px rgba(0,0,0,.6)}
@@ -272,7 +272,7 @@ button{font:inherit;cursor:pointer}
    FINAL CTA
 ───────────────────────────────────────────────────────── */
 .fcta{position:relative;background:var(--navy);color:#fff;padding:clamp(80px,12vw,160px) 24px;text-align:center;overflow:hidden}
-.fcta-bg{position:absolute;inset:0;background:url('img/guide/hero-universe.png') center/cover no-repeat;opacity:.4}
+.fcta-bg{position:absolute;inset:0;background: image-set(url('img/guide/hero-universe.webp') type('image/webp'), url('img/guide/hero-universe.png') type('image/png')) center/cover no-repeat;opacity:.4}
 .fcta-veil{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 0%,rgba(10,20,35,.85) 100%)}
 .fcta-content{position:relative;z-index:2;max-width:680px;margin:0 auto}
 .fcta h2{color:#fff;margin-bottom:18px;text-shadow:0 4px 30px rgba(0,0,0,.6)}
@@ -314,7 +314,7 @@ button{font:inherit;cursor:pointer}
       <div class="hero-device">
         <div class="hero-device-glow"></div>
         <div class="hero-device-screen">
-          <img src="img/guide/step1-tap-analysis.jpg" alt="Article reader on mobile with the tap-to-analyze panel open">
+          <picture><source srcset="img/guide/step1-tap-analysis.webp" type="image/webp"><img src="img/guide/step1-tap-analysis.jpg" alt="Article reader on mobile with the tap-to-analyze panel open" width="540" height="1040" fetchpriority="high" decoding="async"></picture>
         </div>
       </div>
     </div>
@@ -405,19 +405,19 @@ button{font:inherit;cursor:pointer}
   </div>
   <div class="fivestep-rail">
     <div class="fivestep-card" data-reveal>
-      <div class="fivestep-img"><span class="fivestep-card-num">1</span><img src="img/guide/step2-vocab.png" alt="Vocab step"></div>
+      <div class="fivestep-img"><span class="fivestep-card-num">1</span><picture><source srcset="img/guide/step2-vocab.webp" type="image/webp"><img src="img/guide/step2-vocab.png" alt="Vocab step" loading="lazy" decoding="async" width="480" height="900"></picture></div>
       <div class="fivestep-body"><h4>Vocab</h4><p>Image-anchored word study with audio and translations.</p></div>
     </div>
     <div class="fivestep-card" data-reveal>
-      <div class="fivestep-img"><span class="fivestep-card-num">2</span><img src="img/guide/step2-grammar.png" alt="Phrases step"></div>
+      <div class="fivestep-img"><span class="fivestep-card-num">2</span><picture><source srcset="img/guide/step2-grammar.webp" type="image/webp"><img src="img/guide/step2-grammar.png" alt="Phrases step" loading="lazy" decoding="async" width="480" height="900"></picture></div>
       <div class="fivestep-body"><h4>Phrases</h4><p>Recognize the natural chunks Koreans actually use.</p></div>
     </div>
     <div class="fivestep-card" data-reveal>
-      <div class="fivestep-img"><span class="fivestep-card-num">3</span><img src="img/guide/step2-reading.png" alt="Reading step"></div>
+      <div class="fivestep-img"><span class="fivestep-card-num">3</span><picture><source srcset="img/guide/step2-reading.webp" type="image/webp"><img src="img/guide/step2-reading.png" alt="Reading step" loading="lazy" decoding="async" width="480" height="900"></picture></div>
       <div class="fivestep-body"><h4>Reading</h4><p>Fill blanks back into the article from the word bank.</p></div>
     </div>
     <div class="fivestep-card" data-reveal>
-      <div class="fivestep-img"><span class="fivestep-card-num">4</span><img src="img/guide/step2-quiz.png" alt="Quiz step"></div>
+      <div class="fivestep-img"><span class="fivestep-card-num">4</span><picture><source srcset="img/guide/step2-quiz.webp" type="image/webp"><img src="img/guide/step2-quiz.png" alt="Quiz step" loading="lazy" decoding="async" width="480" height="900"></picture></div>
       <div class="fivestep-body"><h4>Quiz</h4><p>Multiple-choice or type-the-answer — both modes available.</p></div>
     </div>
   </div>
@@ -442,7 +442,7 @@ button{font:inherit;cursor:pointer}
     <div class="fblock-visual" data-reveal>
       <div class="visual-phone">
         <div class="visual-phone-screen">
-          <img src="img/guide/step1-conversation.png" alt="A conversation scene-map on mobile">
+          <picture><source srcset="img/guide/step1-conversation.webp" type="image/webp"><img src="img/guide/step1-conversation.png" alt="A conversation scene-map on mobile" loading="lazy" decoding="async" width="540" height="1040"></picture>
         </div>
       </div>
     </div>
@@ -467,7 +467,7 @@ button{font:inherit;cursor:pointer}
     </div>
     <div class="fblock-visual" data-reveal>
       <div class="visual-card">
-        <img src="img/guide/feat-jamo.png" alt="Stories grid (placeholder — provide screenshot)" style="background:#0f172a">
+        <picture><source srcset="img/guide/feat-jamo.webp" type="image/webp"><img src="img/guide/feat-jamo.png" alt="Stories grid (placeholder — provide screenshot)" style="background:#0f172a" loading="lazy" decoding="async" width="540" height="540"></picture>
       </div>
     </div>
   </div>
@@ -487,12 +487,12 @@ button{font:inherit;cursor:pointer}
         <li><strong>AI + tutor feedback</strong> — instant AI scoring on grammar, naturalness, and vocab; a human tutor reviews every submission before it ships</li>
         <li><strong>Stage-up animation</strong> when you cross thresholds</li>
       </ul>
-      <a href="index.html#sprout" class="fblock-cta">Try Sprout writing →</a>
+      <a href="korehan-study-room.html" class="fblock-cta">Try Sprout writing →</a>
     </div>
     <div class="fblock-visual" data-reveal>
       <div class="visual-phone">
         <div class="visual-phone-screen">
-          <img src="img/guide/step2-writing.png" alt="Sprout writing input on mobile">
+          <picture><source srcset="img/guide/step2-writing.webp" type="image/webp"><img src="img/guide/step2-writing.png" alt="Sprout writing input on mobile" loading="lazy" decoding="async" width="540" height="1040"></picture>
         </div>
       </div>
     </div>
@@ -517,7 +517,7 @@ button{font:inherit;cursor:pointer}
     </div>
     <div class="fblock-visual" data-reveal>
       <div class="visual-card">
-        <img src="img/guide/hero-express.png" alt="Express Practice node graph">
+        <picture><source srcset="img/guide/hero-express.webp" type="image/webp"><img src="img/guide/hero-express.png" alt="Express Practice node graph" loading="lazy" decoding="async" width="540" height="540"></picture>
       </div>
     </div>
   </div>
@@ -541,7 +541,7 @@ button{font:inherit;cursor:pointer}
     </div>
     <div class="fblock-visual" data-reveal>
       <div class="visual-card">
-        <img src="img/guide/feat-slang.png" alt="FAST TRACK slang card">
+        <picture><source srcset="img/guide/feat-slang.webp" type="image/webp"><img src="img/guide/feat-slang.png" alt="FAST TRACK slang card" loading="lazy" decoding="async" width="540" height="540"></picture>
       </div>
     </div>
   </div>
@@ -565,7 +565,7 @@ button{font:inherit;cursor:pointer}
     </div>
     <div class="fblock-visual" data-reveal>
       <div class="visual-card">
-        <img src="img/guide/hero-growth-lab.png" alt="Growth Lab dashboard">
+        <picture><source srcset="img/guide/hero-growth-lab.webp" type="image/webp"><img src="img/guide/hero-growth-lab.png" alt="Growth Lab dashboard" loading="lazy" decoding="async" width="540" height="540"></picture>
       </div>
     </div>
   </div>
@@ -589,7 +589,7 @@ button{font:inherit;cursor:pointer}
     </div>
     <div class="fblock-visual" data-reveal>
       <div class="visual-card">
-        <img src="img/guide/feat-shop.png" alt="Shop catalog">
+        <picture><source srcset="img/guide/feat-shop.webp" type="image/webp"><img src="img/guide/feat-shop.png" alt="Shop catalog" loading="lazy" decoding="async" width="540" height="540"></picture>
       </div>
     </div>
   </div>
@@ -618,16 +618,17 @@ button{font:inherit;cursor:pointer}
       </ul>
     </div>
     <div class="pricing-card featured" data-reveal>
-      <span class="ptag">Premium</span>
+      <span class="ptag">Standard</span>
       <h3>Power Learner</h3>
-      <div class="price">From ₩9,900<span> · / month</span></div>
+      <div class="price">$8.99<span> · / month</span></div>
       <ul>
         <li>Everything in Free, plus —</li>
         <li>Unlimited live AI sentence analysis</li>
         <li>Deep AI writing feedback (paragraph-level)</li>
         <li>Premium courses + slang &amp; culture pack</li>
-        <li>1:1 tutoring sessions</li>
+        <li>Pro tier ($24.99/mo) adds 1:1 coaching &amp; speaking scenarios</li>
       </ul>
+      <a href="korehan-courses.html" style="display:inline-block;margin-top:14px;color:var(--bright);font-weight:700;font-size:13px;text-decoration:underline">Compare Standard vs. Pro →</a>
     </div>
   </div>
 </section>

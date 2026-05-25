@@ -445,6 +445,20 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   if (resp.status === 401) {
     throw new Error('Authentication error — please sign in again.');
   }
+  // claude-proxy returns 403 + code:'email_unverified' when the
+  // user's account exists but they haven't clicked the verification
+  // email yet. Without a UI for this, callers used to throw an
+  // opaque "Please verify your email" string into the void. Pop a
+  // toast + offer a resend instead. (Audit P1 #12.)
+  if (resp.status === 403) {
+    var efjson = await resp.json().catch(function(){ return {}; });
+    if (efjson && efjson.code === 'email_unverified') {
+      try { _khShowResendVerificationToast(); } catch (_) {}
+      var efErr = new Error(efjson.error || 'Please verify your email before using AI features.');
+      efErr.code = 'email_unverified';
+      throw efErr;
+    }
+  }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
     var errMsg;
@@ -459,6 +473,42 @@ async function callClaude({ feature, model, max_tokens, messages }) {
     throw new Error(errMsg);
   }
   return resp.json();
+}
+
+// "Verify your email" toast with a resend CTA. Fires from the
+// claude-proxy 403 branch above. Throttled so a rapid burst of AI
+// calls (e.g. analysis loop) only nags the user once per minute.
+function _khShowResendVerificationToast() {
+  var now = Date.now();
+  if (window._khVerifyToastAt && now - window._khVerifyToastAt < 60_000) return;
+  window._khVerifyToastAt = now;
+  var existing = document.getElementById('kh-verify-toast');
+  if (existing) try { existing.remove(); } catch (_) {}
+  var t = document.createElement('div');
+  t.id = 'kh-verify-toast';
+  t.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;background:#fef3c7;color:#78350f;padding:14px 16px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.28);max-width:360px;line-height:1.45;border:1px solid #fde68a;display:flex;flex-direction:column;gap:8px;';
+  t.innerHTML =
+    '<div><strong>Verify your email</strong> to use AI features. Check your inbox (and spam folder).</div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +   '<button id="kh-verify-resend" style="padding:6px 12px;border-radius:8px;background:#f59e0b;color:#fff;border:none;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Resend email</button>'
+    +   '<button id="kh-verify-dismiss" style="padding:6px 12px;border-radius:8px;background:transparent;color:#78350f;border:none;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">Dismiss</button>'
+    + '</div>';
+  document.body.appendChild(t);
+  document.getElementById('kh-verify-dismiss').addEventListener('click', function () { t.remove(); });
+  document.getElementById('kh-verify-resend').addEventListener('click', async function () {
+    var btn = this; btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      var sb = getSupa();
+      var email = (supaUser && supaUser.email) || '';
+      if (!sb || !email) { btn.textContent = 'Sign in needed'; return; }
+      var { error } = await sb.auth.resend({ type: 'signup', email: email });
+      if (error) { btn.textContent = 'Failed — retry'; btn.disabled = false; return; }
+      btn.textContent = 'Sent! Check inbox';
+      setTimeout(function () { try { t.remove(); } catch (_) {} }, 3000);
+    } catch (e) {
+      btn.textContent = 'Failed — retry'; btn.disabled = false;
+    }
+  });
 }
 
 // Noun-form filter for learner-facing vocab lists. Used by the article
@@ -497,6 +547,20 @@ var _sessionWarningShown = false;
 async function refreshSessionSafely() {
   var sb = getSupa();
   if (!sb) return;
+  // If we already know this is an implicit-flow session with no
+  // refresh token, there is nothing to refresh — once the access
+  // token expires (~1h), sign the user out cleanly and prompt re-auth
+  // rather than spamming refresh failures.
+  if (window._khImplicitNoRefresh) {
+    if (!_sessionWarningShown) {
+      _sessionWarningShown = true;
+      if (typeof toast === 'function') {
+        toast('Your sign-in expired. Please sign in again to keep going.', true);
+      }
+      try { await sb.auth.signOut({ scope: 'local' }); } catch (_) {}
+    }
+    return;
+  }
   var { error } = await sb.auth.refreshSession();
   if (error) {
     if (!_sessionWarningShown) {
@@ -507,8 +571,12 @@ async function refreshSessionSafely() {
     }
   }
 }
-// 15분마다 세션 자동 갱신
-setInterval(refreshSessionSafely, 15 * 60 * 1000);
+// 15분마다 세션 자동 갱신 — but only when logged in. Avoids waking
+// the timer + scheduling a network round-trip every 15 min on
+// anonymous tabs that idle for hours.
+setInterval(function () {
+  if (typeof supaUser !== 'undefined' && supaUser) refreshSessionSafely();
+}, 15 * 60 * 1000);
 
 // Google 로그인
 async function signInWithGoogle() {
@@ -679,11 +747,13 @@ function _authSwitchTab(tab) {
   var signinForm = document.getElementById('kh-signin-form');
   var signupForm = document.getElementById('kh-signup-form');
   var resetForm  = document.getElementById('kh-reset-form');
+  var newpwForm  = document.getElementById('kh-newpw-form');
   [signinTab, signupTab].forEach(function(t){ if(t) t.classList.remove('on'); });
-  [signinForm, signupForm, resetForm].forEach(function(f){ if(f) f.style.display='none'; });
+  [signinForm, signupForm, resetForm, newpwForm].forEach(function(f){ if(f) f.style.display='none'; });
   if (tab === 'signin')  { if(signinTab) signinTab.classList.add('on'); if(signinForm) signinForm.style.display='block'; }
   if (tab === 'signup')  { if(signupTab) signupTab.classList.add('on'); if(signupForm) signupForm.style.display='block'; _khMountTurnstile(); }
   if (tab === 'reset')   { if(resetForm) resetForm.style.display='block'; }
+  if (tab === 'newpw')   { if(newpwForm) newpwForm.style.display='block'; }
   _authClearErrors();
 }
 
@@ -811,7 +881,10 @@ var _KH_DISPOSABLE_DOMAINS = {
   'vomoto.com':1, 'meltmail.com':1, 'tempmailaddress.com':1,
   'tempinbox.com':1, 'spamgourmet.com':1, 'ezztt.com':1,
   'emailfake.com':1, 'fakemail.net':1, 'temporary-mail.net':1,
-  'generator.email':1, 'mailbox.org':1
+  'generator.email':1
+  // mailbox.org REMOVED — it's a real paid German privacy-focused
+  // email provider (not disposable). Listing it here was rejecting
+  // legitimate paying users at signup. (Audit P3 #23.)
 };
 function _khIsDisposableEmail(email) {
   var at = email.lastIndexOf('@');
@@ -961,6 +1034,43 @@ async function authResetPassword() {
   _authShowOk('Password reset link sent! Check your email.');
 }
 
+// Recovery-link landing handler. Called from onAuthStateChange when
+// the user clicks the recovery email and Supabase fires
+// PASSWORD_RECOVERY. Without this, the previous code dead-ended on a
+// misleading "password updated" banner — the user never actually
+// entered a new password and "Sign in with new password" failed.
+async function authSubmitNewPassword() {
+  var pw  = (document.getElementById('kh-newpw-pw')  || {}).value || '';
+  var pw2 = (document.getElementById('kh-newpw-pw2') || {}).value || '';
+  var btn = document.getElementById('kh-newpw-btn');
+  _authClearErrors();
+
+  if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) {
+    _authShowError('Password must be at least 8 characters with letters and numbers.');
+    return;
+  }
+  if (pw !== pw2) { _authShowError('Passwords do not match.'); return; }
+
+  _authSetLoading(btn, true);
+  var sb = getSupa();
+  if (!sb) { _authShowError('Auth not ready, please reload.'); _authSetLoading(btn, false); return; }
+  var { error } = await sb.auth.updateUser({ password: pw });
+  _authSetLoading(btn, false);
+  if (error) { _authShowError(error.message); return; }
+
+  _authShowOk('Password updated. You are signed in.');
+  // Clear the stale ?reset=1 query if present so a future refresh
+  // doesn't re-trigger the recovery flow.
+  try {
+    var url = new URL(window.location.href);
+    if (url.searchParams.get('reset') === '1') {
+      url.searchParams.delete('reset');
+      window.history.replaceState(null, '', url.pathname + url.search);
+    }
+  } catch (_) {}
+  setTimeout(closeAuthModal, 1200);
+}
+
 // ── 모달 HTML 주입 ────────────────────────────────────────────
 function _injectAuthModal() {
   var div = document.createElement('div');
@@ -970,7 +1080,7 @@ function _injectAuthModal() {
 
     <!-- 헤더 -->
     <div style="background:linear-gradient(135deg,#07122a,#0e2554);padding:26px 28px 22px;position:relative">
-      <button onclick="closeAuthModal()" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">${KH_ICON_X}</span></button>
+      <button onclick="closeAuthModal()" aria-label="Close" style="position:absolute;top:10px;right:10px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:18px;height:18px">${KH_ICON_X}</span></button>
       <div style="font-size:24px;color:#fff;margin-bottom:3px"><span class="kh-logo-text">KoreHan<span class="kh-logo-i">ı</span></span></div>
       <div style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.8px;text-transform:uppercase">Your Korean learning journey</div>
     </div>
@@ -990,14 +1100,14 @@ function _injectAuthModal() {
       <div style="margin-bottom:14px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Email</label>
         <input id="kh-auth-email" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')document.getElementById('kh-auth-pw').focus()"
-          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
+          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
       <div style="margin-bottom:8px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Password</label>
         <div style="position:relative">
           <input id="kh-auth-pw" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSignIn()"
-            style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
+            style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
           <button onclick="var i=document.getElementById('kh-auth-pw');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
         </div>
@@ -1026,20 +1136,20 @@ function _injectAuthModal() {
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Full Name</label>
         <input id="kh-auth-name" type="text" placeholder="Your name" onkeydown="if(event.key==='Enter')document.getElementById('kh-auth-email2').focus()"
-          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
+          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Email</label>
         <input id="kh-auth-email2" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')document.getElementById('kh-auth-pw2').focus()"
-          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
+          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Password <span style="font-size:11px;color:#94a3b8;font-weight:400">(min 8 chars, letters + numbers)</span></label>
         <div style="position:relative">
           <input id="kh-auth-pw2" type="password" placeholder="••••••••" oninput="_authCheckPwStrength(this.value)" onkeydown="if(event.key==='Enter')document.getElementById('kh-auth-pw3').focus()"
-            style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
+            style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
           <button onclick="var i=document.getElementById('kh-auth-pw2');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
         </div>
@@ -1057,7 +1167,7 @@ function _injectAuthModal() {
       <div style="margin-bottom:18px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Confirm Password</label>
         <input id="kh-auth-pw3" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSignUp()"
-          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
+          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
       <div id="kh-turnstile-signup" style="margin-bottom:14px;min-height:0"></div>
@@ -1087,11 +1197,38 @@ function _injectAuthModal() {
       <div style="margin-bottom:16px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Email</label>
         <input id="kh-auth-reset-email" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')authResetPassword()"
-          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:border-color .15s"
+          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
       <button id="kh-reset-btn" onclick="authResetPassword()" style="display:block;width:100%;padding:13px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;margin-bottom:12px">Send Reset Link →</button>
       <button onclick="_authSwitchTab('signin')" style="display:block;width:100%;padding:11px;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:#445566">← Back to Sign In</button>
+    </div>
+
+    <!-- ── 새 비밀번호 설정 폼 (recovery flow) ── -->
+    <!-- Opens automatically when Supabase fires PASSWORD_RECOVERY
+         (i.e. the user just clicked the recovery email link). Calls
+         sb.auth.updateUser({password}) — previously the codebase had
+         NO update-password UI anywhere; recovery emails dead-ended on
+         a misleading "password updated" banner. -->
+    <div id="kh-newpw-form" style="display:none;padding:22px 28px 28px">
+      <div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:6px">Set a new password</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:18px;line-height:1.6">You're signed in via the recovery link. Choose a new password below — minimum 8 characters with letters and numbers.</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">New password</label>
+        <div style="position:relative">
+          <input id="kh-newpw-pw" type="password" placeholder="••••••••" oninput="_authCheckPwStrength(this.value,'newpw-')"
+            style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
+            onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
+          <button onclick="var i=document.getElementById('kh-newpw-pw');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
+        </div>
+      </div>
+      <div style="margin-bottom:18px">
+        <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Confirm new password</label>
+        <input id="kh-newpw-pw2" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSubmitNewPassword()"
+          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
+          onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
+      </div>
+      <button id="kh-newpw-btn" onclick="authSubmitNewPassword()" style="display:block;width:100%;padding:13px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit">Update password →</button>
     </div>
 
   </div>
@@ -1266,6 +1403,16 @@ async function checkSession() {
       updateAuthUI();
       updateCommentForm();
       window.dispatchEvent(new Event('kh-auth-signed-out'));
+    } else if (event === 'PASSWORD_RECOVERY') {
+      // User just clicked the recovery email link — Supabase put them
+      // in a temporary recovery session. Open the auth modal in the
+      // "set new password" view so they can actually finish the flow.
+      // (Previously the recovery flow dead-ended on a misleading
+      // banner — see audit P0 #1.)
+      window._khPwRecoveryActive = true;
+      try {
+        if (typeof openAuthModal === 'function') openAuthModal('newpw');
+      } catch (_) {}
     } else if (event === 'SIGNED_IN') {
       supaUser = session ? session.user : null;
       _sessionWarningShown = false;
@@ -1324,6 +1471,30 @@ async function checkSession() {
   var hasCode = window.location.search.includes('code=');
   var hasHash = window.location.hash && window.location.hash.includes('access_token');
 
+  // OAuth provider can also return an error (user cancelled the
+  // Google chooser, third-party cookies blocked, etc.). Surface it
+  // as a toast instead of silently leaving the user on the page
+  // wondering why the sign-in flow disappeared. (Audit P1 #9.)
+  try {
+    var oauthErrParams = new URLSearchParams(window.location.search);
+    var oauthErr = oauthErrParams.get('error');
+    var oauthErrDesc = oauthErrParams.get('error_description') || oauthErrParams.get('error_code');
+    if (oauthErr && !hasCode) {
+      console.warn('[auth] OAuth callback error:', oauthErr, oauthErrDesc);
+      if (typeof toast === 'function') {
+        toast('Sign-in cancelled or failed: ' + (oauthErrDesc || oauthErr).replace(/[+_]/g, ' '), true);
+      }
+      // Strip the error params so a refresh doesn't re-show the toast.
+      try {
+        var cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('error');
+        cleanUrl.searchParams.delete('error_description');
+        cleanUrl.searchParams.delete('error_code');
+        window.history.replaceState(null, '', cleanUrl.pathname + (cleanUrl.search || ''));
+      } catch (_) {}
+    }
+  } catch (_) {}
+
   if (hasCode) {
     // PKCE flow: code → token 교환
     var urlParams = new URLSearchParams(window.location.search);
@@ -1369,20 +1540,30 @@ async function checkSession() {
         'access_token=', accessToken ? '<' + accessToken.length + ' chars>' : 'MISSING',
         'refresh_token=', refreshToken ? '<' + refreshToken.length + ' chars>' : 'MISSING');
       if (accessToken) {
-        // setSession requires both tokens. If Supabase didn't
-        // return a refresh_token (some providers, some configs),
-        // pass the access_token as refresh_token too — that
-        // satisfies the SDK's input validation, and the session
-        // still works for the access_token's lifetime (~1 hour).
-        // The user re-authenticates after that instead of getting
-        // a silent failure now.
+        // setSession requires both tokens. If Supabase didn't return
+        // a refresh_token (older implicit flow, certain provider
+        // configs), DO NOT fake one by passing the access_token —
+        // the SDK then tries to use it as a refresh token an hour
+        // later, fails silently, and the user starts seeing 401s
+        // with no re-prompt (audit P0 #3). Without a refresh token
+        // the session is single-use; warn the user up-front and
+        // expire local state cleanly when the access token dies.
         try {
-          var setRes = await sb.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || accessToken,
-          });
-          if (setRes && setRes.error) {
-            console.warn('setSession returned error:', setRes.error.message || setRes.error);
+          if (!refreshToken) {
+            console.warn('[auth] no refresh_token in OAuth response — session will expire in ~1h with no auto-refresh');
+            // Single-use: skip setSession entirely. The user can keep
+            // using the page until the access_token expires; on next
+            // refresh-cycle attempt they'll be cleanly signed out
+            // rather than spammed with silent 401s.
+            window._khImplicitNoRefresh = true;
+          } else {
+            var setRes = await sb.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            if (setRes && setRes.error) {
+              console.warn('setSession returned error:', setRes.error.message || setRes.error);
+            }
           }
         } catch(setErr) {
           console.warn('setSession threw:', setErr.message || setErr);
@@ -1451,7 +1632,10 @@ function updateAuthUI() {
 
   // Tutor dashboard allowlist — admin + Alicia (Preply tutor).
   // Mirror this list in supabase/migrations/20260428_tutor_dashboard.sql is_tutor_user().
+  // Expose on window so the tutor page IIFE can consume it instead of
+  // duplicating the list (drift caused stale gates in the past).
   var TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com'];
+  window.KH_TUTOR_EMAILS = TUTOR_EMAILS.slice();
   var isTutor = supaUser && TUTOR_EMAILS.includes((supaUser.email || '').toLowerCase());
   window._isTutor = isTutor;
 
@@ -1776,9 +1960,12 @@ function _khTimeAgo(iso) {
 window.khToggleNotifDropdown = function (ev) {
   if (ev) { ev.preventDefault(); ev.stopPropagation(); }
   var drop = document.getElementById('topbar-notif-dropdown');
+  var btn  = document.getElementById('topbar-notif-btn');
   if (!drop) return;
   var nowOn = !drop.classList.contains('on');
   drop.classList.toggle('on', nowOn);
+  // a11y: surface menu state to screen readers (WCAG 4.1.2).
+  if (btn) btn.setAttribute('aria-expanded', nowOn ? 'true' : 'false');
   if (nowOn) {
     // Refresh on open so the dropdown is never stale.
     khLoadNotifications();
@@ -1791,6 +1978,7 @@ function _khNotifMaybeCloseDropdown(ev) {
   if (!drop || !drop.classList.contains('on')) return;
   if (drop.contains(ev.target) || (btn && btn.contains(ev.target))) return;
   drop.classList.remove('on');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
 window.khMarkAllNotifsRead = async function () {
@@ -1921,13 +2109,17 @@ function showSignupNudge() {
 function toggleTopbarUserMenu(evt) {
   if (evt) evt.preventDefault();
   var drop = document.getElementById('topbar-user-dropdown');
+  var btn  = document.getElementById('topbar-user-avatar');
   if (!drop) return;
   drop.classList.toggle('on');
+  if (btn) btn.setAttribute('aria-expanded', drop.classList.contains('on') ? 'true' : 'false');
 }
 
 function closeTopbarUserMenu() {
   var drop = document.getElementById('topbar-user-dropdown');
+  var btn  = document.getElementById('topbar-user-avatar');
   if (drop) drop.classList.remove('on');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
 document.addEventListener('click', function(evt){
@@ -2037,15 +2229,38 @@ function getOpinions()  { return lsGet(K_OPINIONS,  []);            }
 
 
 
+// Lazy-create a single visually-hidden aria-live region. Screen
+// readers announce text changes here; the toast / kh_log helpers
+// mirror their text into it so SR users hear "Word saved" / "Submit
+// failed" instead of silence. WCAG 4.1.3.
+function _khSrAnnounce(msg, polite) {
+  var el = document.getElementById('kh-sr-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'kh-sr-status';
+    el.setAttribute('aria-live', polite === false ? 'assertive' : 'polite');
+    el.setAttribute('aria-atomic', 'true');
+    el.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);';
+    document.body.appendChild(el);
+  }
+  // Clear-and-set so successive toasts with similar text still
+  // trigger an announcement (most SRs dedupe identical strings).
+  el.textContent = '';
+  setTimeout(function () { el.textContent = String(msg || ''); }, 30);
+}
+
 function toast(msg, typeOrBool) {
   var bg = '#1a3a6b';
-  if (typeOrBool === true || typeOrBool === 'error') bg = '#cc2200';
+  var isError = (typeOrBool === true || typeOrBool === 'error');
+  if (isError) bg = '#cc2200';
   else if (typeOrBool === 'warn')    bg = '#b45309';
   else if (typeOrBool === 'success') bg = '#15803d';
   var d = document.createElement('div');
   d.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;background:'+bg+';color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.28);max-width:340px;line-height:1.4;transition:opacity .2s;';
   d.textContent = msg;
   document.body.appendChild(d);
+  // Mirror to SR live region — errors as assertive, info as polite.
+  try { _khSrAnnounce(msg, !isError); } catch (_) {}
   setTimeout(function(){ d.style.opacity='0'; setTimeout(function(){ d.remove(); },200); }, 3500);
 }
 
@@ -2927,9 +3142,25 @@ function heroNext() { heroGoTo(_heroIdx + 1); }
 
 function resetHeroTimer() {
   if (_heroTimer) clearInterval(_heroTimer);
-  if (_heroSlides.length > 1) {
+  // Don't auto-advance while the tab is hidden — saves CPU + battery
+  // on long-lived tabs and stops the carousel from sprinting through
+  // 20 slides when the user comes back after lunch.
+  if (_heroSlides.length > 1 && document.visibilityState !== 'hidden') {
     _heroTimer = setInterval(function(){ heroNext(); }, 5200);
   }
+}
+
+// Pause / resume the hero carousel on visibility changes. Idempotent —
+// resetHeroTimer clears the existing handle before scheduling.
+if (typeof document !== 'undefined' && !window._heroVisHookInstalled) {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      if (_heroTimer) { clearInterval(_heroTimer); _heroTimer = null; }
+    } else if (_heroSlides && _heroSlides.length > 1) {
+      resetHeroTimer();
+    }
+  });
+  window._heroVisHookInstalled = true;
 }
 
 function updateHeroSlideUI(heroEl) {
@@ -3804,6 +4035,53 @@ function _khWrapSentences(paragraph) {
     var idx = parseInt(sent.dataset.sentIdx, 10);
     if (isNaN(idx)) return;
     analyzeSentence(idx, sent);
+  });
+  // Keyboard activation: .art-sent declares role="button" tabindex="0"
+  // so screen readers + keyboard users can focus it, but without an
+  // Enter/Space handler the sentence-analysis flagship feature was
+  // unreachable for every keyboard user. WCAG 2.1.1.
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    if (!e.target || !e.target.closest) return;
+    if (e.target.closest('.art-sent-panel')) return;
+    var sent = e.target.closest('.art-sent');
+    if (!sent) return;
+    if (typeof analyzeSentence !== 'function') return;
+    var idx = parseInt(sent.dataset.sentIdx, 10);
+    if (isNaN(idx)) return;
+    e.preventDefault();
+    analyzeSentence(idx, sent);
+  });
+})();
+
+// Generic keyboard activation for any element marked
+// role="button" tabindex="0" with an inline onclick (e.g. study-room
+// learning-mode cards, word-bank rows). Fires the click handler on
+// Enter / Space so keyboard users can launch the same things mouse
+// users can. (WCAG 2.1.1, audit A11y #10 / #19.)
+(function _khInstallGenericKbdActivation() {
+  if (typeof document === 'undefined') return;
+  if (window._khGenericKbdActivationBound) return;
+  window._khGenericKbdActivationBound = true;
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    var t = e.target;
+    if (!t || t.tagName === 'BUTTON' || t.tagName === 'A' ||
+        t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' ||
+        t.tagName === 'SELECT') return;
+    if (t.getAttribute('role') !== 'button') return;
+    // Skip if .art-sent (already handled above) — avoid double-fire.
+    if (t.classList && t.classList.contains('art-sent')) return;
+    // Skip the comment-drawer scrim/handle — those have their own
+    // keydown handler in the focus-trap (different close path).
+    if (t.classList && (t.classList.contains('kh-cdr-scrim') ||
+                         t.classList.contains('kh-cdr-handle'))) return;
+    // Only fire if the element has a click intent (inline onclick or
+    // an attached listener registered before us is a near-impossible
+    // check; the onclick attribute presence is the practical proxy).
+    if (!t.hasAttribute('onclick')) return;
+    e.preventDefault();
+    t.click();
   });
 })();
 
@@ -7479,7 +7757,7 @@ function renderHeader() {
   // ── Logo bar (white) ─────────────────────────────────────────
   var logoBar = '<div class="kh-header-bar">'
     + '<div class="kh-header-inner">'
-    + '<button class="kh-ham" onclick="khSbOpen()" aria-label="Menu">&#9776;</button>'
+    + '<button class="kh-ham" onclick="khSbOpen()" aria-label="Menu" aria-haspopup="menu" aria-expanded="false">&#9776;</button>'
     + '<a class="kh-logo" href="index.html">'
     + '<span class="kh-logo-text">KoreHan<span class="kh-logo-i">ı</span></span>'
     + '</a>'
@@ -7489,14 +7767,14 @@ function renderHeader() {
     + '<button id="topbar-neon-toggle" class="kh-neon-toggle" type="button" aria-pressed="false" onclick="toggleKhNeon(event)">' + khIcon('zap', 'Neon OFF', 'kh-ui-icon-sm') + '</button>'
     + (isHome ? '<div class="kh-diff-ctrl" id="kh-diff-ctrl"><span class="kh-diff-dot" id="kh-diff-dot"></span><select class="kh-diff-sel" id="kh-diff-select" onchange="khSetDiff(this.value)"><option value="all">All Levels</option><option value="Starter">Seed</option><option value="Beginner">Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select><span class="kh-diff-arr">&#9662;</span></div>' : '')
     + '<div id="topbar-notif-wrap" class="kh-notif-wrap" style="display:none">'
-    + '<button id="topbar-notif-btn" class="kh-notif-btn" type="button" aria-label="Notifications" onclick="khToggleNotifDropdown(event)">'
+    + '<button id="topbar-notif-btn" class="kh-notif-btn" type="button" aria-label="Notifications" aria-haspopup="menu" aria-expanded="false" onclick="khToggleNotifDropdown(event)">'
     +   '<i data-lucide="bell" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
     +   '<span id="topbar-notif-count" class="kh-notif-count" hidden>0</span>'
     + '</button>'
     + '<div id="topbar-notif-dropdown" class="kh-notif-dropdown"></div>'
     + '</div>'
     + '<div id="topbar-auth-menu" class="kh-auth-menu" style="display:none">'
-    + '<button id="topbar-user-avatar" class="kh-avatar-btn" type="button" aria-label="Open profile menu" onclick="toggleTopbarUserMenu(event)" style="display:none"></button>'
+    + '<button id="topbar-user-avatar" class="kh-avatar-btn" type="button" aria-label="Open profile menu" aria-haspopup="menu" aria-expanded="false" onclick="toggleTopbarUserMenu(event)" style="display:none"></button>'
     + '<div id="topbar-user-dropdown" class="kh-user-dropdown"></div>'
     + '</div>'
     + '<a href="#" id="topbar-signin-btn" class="kh-hbtn kh-hbtn-out" onclick="event.preventDefault();openAuthModal(\'signin\')">Sign In</a>'
@@ -7997,6 +8275,7 @@ async function hydrateMostReadSidebar() {
 function startClock() {
   var days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var _clockTimer = null;
   function tick() {
     var now    = new Date();
     var dateEl = document.getElementById('date-str');
@@ -8004,7 +8283,21 @@ function startClock() {
     if (dateEl) dateEl.textContent = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear() + ' ';
     if (clockEl) clockEl.textContent = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
   }
-  tick(); setInterval(tick, 1000);
+  function start() {
+    if (_clockTimer) return;
+    tick();
+    _clockTimer = setInterval(tick, 1000);
+  }
+  function stop() {
+    if (_clockTimer) { clearInterval(_clockTimer); _clockTimer = null; }
+  }
+  // Don't run a 1-second timer on a hidden tab — it adds up to 3,600
+  // wake-ups per hour on background tabs of a long-running session.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') stop();
+    else start();
+  });
+  start();
 }
 
 
@@ -8326,11 +8619,58 @@ document.addEventListener('DOMContentLoaded', async function() {
   _ldr(20); // Scripts loaded
   initKhNeonTheme();
   markShellReady();
+  // Inject a skip-to-content link as the first focusable element on
+  // every page. WCAG 2.4.1 — keyboard users would otherwise have to
+  // Tab through the entire top nav + notif dropdown + user menu
+  // before reaching content on every page load. The link only
+  // appears on :focus, so it never affects the visual design.
+  if (!document.getElementById('kh-skip-link')) {
+    var skip = document.createElement('a');
+    skip.id = 'kh-skip-link';
+    skip.href = '#main-content';
+    skip.textContent = 'Skip to main content';
+    skip.style.cssText = 'position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:99999;background:#fff;color:#0d1b35;padding:8px 16px;border-radius:0 0 8px 0;font-weight:800;text-decoration:none;font-size:14px;';
+    // Reveal on focus — JS rather than :focus CSS so the off-screen
+    // position can be reset without a separate stylesheet rule.
+    skip.addEventListener('focus', function(){
+      skip.style.left = '0'; skip.style.top = '0';
+      skip.style.width = 'auto'; skip.style.height = 'auto';
+    });
+    skip.addEventListener('blur', function(){
+      skip.style.left = '-9999px'; skip.style.width = '1px'; skip.style.height = '1px';
+    });
+    document.body.insertBefore(skip, document.body.firstChild);
+  }
+  // Tag the first non-header content block as the skip target. Run
+  // after the header is injected so the skip target lands on the
+  // first real content node rather than the header itself.
+  function _khTagMainContent() {
+    if (document.getElementById('main-content')) return;
+    var hdr = document.getElementById('kh-header');
+    if (!hdr) return;
+    var node = hdr.nextElementSibling;
+    // Walk past empty wrappers (welcome banner, nudge, etc.) that
+    // may be display:none on first paint.
+    while (node && node.children && node.children.length === 0 &&
+           (node.id === 'kh-welcome-banner' || node.id === 'kh-day2-pill' || node.id === 'kh-feedback-pill')) {
+      node = node.nextElementSibling;
+    }
+    if (node && !node.id) node.id = 'main-content';
+    else if (node) {
+      // Element already has an id — attach a synthetic <span> anchor
+      // before it so the skip link still works without renaming.
+      var anchor = document.createElement('span');
+      anchor.id = 'main-content';
+      anchor.tabIndex = -1;
+      node.parentNode.insertBefore(anchor, node);
+    }
+  }
   var headerEl  = document.getElementById('kh-header');
   var footerEl  = document.getElementById('kh-footer');
   var sidebarEl = document.getElementById('kh-sidebar');
 
   if (headerEl)  headerEl.innerHTML  = renderHeader();
+  _khTagMainContent();
   _ldr(35); // Header rendered
   // Run updateAuthUI() immediately after the header is in DOM so
   // the IIFE-injected #kh-auth-flash-guard <style> gets removed on
@@ -10657,12 +10997,17 @@ function openCommentDrawer() {
   if (!drawer) {
     drawer = document.createElement('div');
     drawer.id = 'kh-comment-drawer';
+    // a11y: aria-modal so SR users know the drawer takes focus,
+    // aria-labelledby pointing at the visible "댓글" title so the
+    // dialog name matches what's on screen. Handle + scrim get
+    // role=button + tabindex so keyboard users can dismiss the
+    // same way as click users; explicit aria-label on each.
     drawer.innerHTML =
-        '<div class="kh-cdr-scrim" onclick="closeCommentDrawer()"></div>'
-      + '<div class="kh-cdr-panel" role="dialog" aria-label="Comments">'
-      +   '<div class="kh-cdr-handle" onclick="closeCommentDrawer()"></div>'
+        '<div class="kh-cdr-scrim" role="button" tabindex="0" aria-label="Close comments" onclick="closeCommentDrawer()"></div>'
+      + '<div class="kh-cdr-panel" role="dialog" aria-modal="true" aria-labelledby="kh-cdr-title-text">'
+      +   '<div class="kh-cdr-handle" role="button" tabindex="0" aria-label="Close comments" onclick="closeCommentDrawer()"></div>'
       +   '<div class="kh-cdr-header">'
-      +     '<span class="kh-cdr-title"><span>댓글</span><span class="kh-cdr-count" id="kh-cdr-count">0</span></span>'
+      +     '<span class="kh-cdr-title"><span id="kh-cdr-title-text">댓글</span><span class="kh-cdr-count" id="kh-cdr-count">0</span></span>'
       +     '<button class="kh-cdr-close" onclick="closeCommentDrawer()" aria-label="Close">&times;</button>'
       +   '</div>'
       +   '<div class="kh-cdr-body" id="kh-comment-drawer-body"></div>'
@@ -10696,8 +11041,53 @@ function openCommentDrawer() {
     ta.addEventListener('input', grow);
     requestAnimationFrame(grow);
   }
+  // a11y: remember the opener so focus returns when the drawer closes,
+  // then move focus into the drawer (close button is the safest first
+  // stop — Tab from there cycles through the comment form).
+  try { window._khCdrOpener = document.activeElement; } catch (_) { window._khCdrOpener = null; }
+  // Keyboard scaffolding (focus trap + Escape close + scrim Enter/Space).
+  // Bind once; idempotent on re-open thanks to the _khCdrA11yBound flag.
+  if (!window._khCdrA11yBound) {
+    window._khCdrA11yBound = true;
+    document.addEventListener('keydown', function (e) {
+      var dr = document.getElementById('kh-comment-drawer');
+      if (!dr || !dr.classList.contains('open')) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeCommentDrawer();
+        return;
+      }
+      // Activate scrim / handle on Enter or Space (they're role=button).
+      if ((e.key === 'Enter' || e.key === ' ') &&
+          e.target && (e.target.classList.contains('kh-cdr-scrim') ||
+                       e.target.classList.contains('kh-cdr-handle'))) {
+        e.preventDefault();
+        closeCommentDrawer();
+        return;
+      }
+      // Focus trap — keep Tab cycling inside the drawer panel.
+      if (e.key !== 'Tab') return;
+      var panel = dr.querySelector('.kh-cdr-panel');
+      if (!panel) return;
+      var focusables = panel.querySelectorAll(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusables.length) return;
+      var first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+    });
+  }
   // rAF so the CSS transition fires from the off-screen state.
-  requestAnimationFrame(function() { drawer.classList.add('open'); });
+  requestAnimationFrame(function() {
+    drawer.classList.add('open');
+    // Move focus into the drawer once the CSS transition has begun.
+    var closeBtn = drawer.querySelector('.kh-cdr-close');
+    if (closeBtn) { try { closeBtn.focus(); } catch (_) {} }
+  });
   document.body.classList.add('kh-cdr-open');
 }
 
@@ -10706,6 +11096,13 @@ function closeCommentDrawer() {
   if (!drawer) return;
   drawer.classList.remove('open');
   document.body.classList.remove('kh-cdr-open');
+  // Return focus to whatever opened the drawer (the article-page
+  // "댓글" button on most paths). Without this the keyboard user
+  // lands back at <body> with no obvious next focus target.
+  if (window._khCdrOpener && typeof window._khCdrOpener.focus === 'function') {
+    try { window._khCdrOpener.focus(); } catch (_) {}
+  }
+  window._khCdrOpener = null;
 }
 
 // Vertical feed navigation — "swipe up for next article" pattern.

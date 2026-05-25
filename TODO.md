@@ -12,6 +12,148 @@ doesn't keep reminding about closed work.
 
 ## In progress on `claude/new-session-KCAZ7`
 
+- 3차 오딧 P0+P1 (4 commits on `claude/new-session-KCAZ7`):
+  - **Edge Functions** — tts-proxy auth (F1), claude-proxy input-size
+    cap + feature str cap + failed-call counter (F3/F10/F11),
+    notify-signup Discord injection sanitizer (F4), daily-content-gen
+    weak CRON_SECRET reject + app_settings mutex (F5/F6), admin-api
+    REST path traversal + mutation-filter required + hardcoded anon
+    key removal (F7/F8/F14), speaking-pass-checkout origin-bound CORS
+    (F12), proxy CORS now omits ACAO for unknown origins across 7
+    proxies (F9).
+  - **Admin CMS** — admin gate (korehan-admin-gate.js) on 4 aux pages
+    (AD-F1); double-click guards on regenAllStoriesAI / saveAllConvs /
+    saveAllStories / gcAdminPregenAll (AD-F2/F3); abort button +
+    cost-aware confirm on gcAdminPregenAll + retryFailedCaches
+    (AD-F4/F8); _ccastEditRole/Cast prompt Cancel null fix (AD-F6);
+    saveTopic hidden Claude alert + skip-pregen on no-change (AD-F9);
+    _aiCacheInFlight `|| 0` normalisation (AD-F15); client_errors
+    delete routed through admin-api (AD-F14).
+  - **Mobile UX** — auth + comment inputs font-size 14 → 16 (MO-1);
+    bottom-nav safe-area-inset (MO-2); article action 28 → 40 (MO-3);
+    auth modal close 30 → 44 (MO-4); hover-tooltip / sentence-hint /
+    sentence-panel / comment-drawer close all ≥ 32 (MO-5/7/13); iOS
+    100vh → 100vh + 100dvh on 9 pages (MO-10).
+  - **Performance** — kh-universe.js (~117KB) lazy-loaded on click
+    (was eager on study-room + learning-overview, PF-P0-4); article
+    thumbnails get loading="lazy" + width/height (PF-P1-7); hero
+    carousel pauses on tab hidden, no-op for empty slides (PF-P1-10);
+    1-second clock tick stops on tab hidden (3,600 wake-ups/hour on
+    background tabs eliminated, PF-P1-9); session refresh skips
+    anonymous sessions (PF-P3-19); Word-Drop background video
+    respects prefers-reduced-motion (PF-P1-8).
+  - **Edge Functions deployed 2026-05-25** ✅: all 8 functions
+    (claude-proxy, admin-api, daily-content-gen, notify-signup,
+    tts-proxy, image-search, speech-proxy, speaking-pass-checkout)
+    pushed to prod via supabase CLI. Verified each returns 401
+    without auth (tts-proxy now correctly rejects unauthed callers).
+  - **Audit F2 closed 2026-05-25** ✅: RLS enabled on
+    `user_quota_overrides` with a `service_only` policy
+    (`FOR ALL TO authenticated USING (false) WITH CHECK (false)`).
+    Verified anon writes return `42501: new row violates row-level
+    security policy`. service_role bypasses RLS by design so
+    claude-proxy's per-user quota override lookup keeps working.
+  - **3차 오딧 P2 batch (this commit)**:
+    - **AD-F10** Article body prompt caching: claude-proxy now
+      forwards `cache_control` blocks + sends the prompt-caching
+      beta header when any message block carries cache_control. Admin
+      autoGenArticle body call restructured so the static
+      `_khLabels + _khBodyCatalog` prefix (~12K input tokens) is the
+      cached block, with the per-article `bodyPrompt + _khSoftSuggest`
+      as the dynamic suffix. Usage logger folds cache_creation /
+      cache_read tokens into `input_tokens` at their pricing weights
+      so the monthly-USD calc stays accurate without DB schema
+      changes. Expected ~$70/mo saved at 100 articles/day.
+    - **AD-F11** Sonnet → Haiku swaps (2 safe sites, conservative
+      pass): conv_analyze + vocab-sanity-check both moved to
+      Haiku 4.5 (~7× cheaper, schema-following shape proven by
+      neighbouring admin paths already on Haiku).
+    - **AD-F13** srForceRegenerateScheduled + srRegenerate now use a
+      new _srSafeRegenerate helper that snapshots the row → deletes →
+      generates → restores the snapshot on any failure path. Previous
+      DELETE-before-generate left learners with no content for that
+      (date, level) on any Claude / network failure.
+  - **Out of scope / deferred** (lower-priority items from the same
+    audits): defer/lazy-split of korehan-shared.js + study-room.js,
+    @import → link migration in shared.css (40+ HTMLs touched, risk
+    high without verify), Sonnet → Haiku audit on remaining ~10 call
+    sites (need quality verify), CSS critical-path extraction, SW
+    font caching, deeper grammar audit (#7AI).
+
+- 4차 오딧 P0+P1 (4 commits on `claude/new-session-KCAZ7`):
+  - **Speaking vertical** (af21da5) — coin-stuck recovery on upload/
+    insert fail (F1), tts-proxy drop service-role-key anon fallback
+    (F2), pcDemoPlay clear-before-reassign (F3), TUTOR_EMAILS single
+    source of truth via window.KH_TUTOR_EMAILS (F4 partial), filler
+    regex actually matches Korean now (F13 — was permanently 0),
+    _speakRecorder/_speakBlob/_speakChunks null on stop+submit
+    (F9/F10), SpeechRecognition abort on error (F8), MediaRecorder
+    feature-check before getUserMedia for in-app browsers (F7),
+    bilingual + UA-branched mic permission errors (F6), TTS LRU
+    auto-clear on pagehide + SIGNED_OUT (F12), BroadcastChannel
+    cross-tab wallet sync (F11), word-chip XSS proper escape (F17).
+  - **Onboarding funnel** (612b309) — broken
+    korehan-section-news.html link fixed (404 on every business-goal
+    user's first action), index.html#sprout dead anchor re-targeted
+    to korehan-study-room.html in 3 places, pricing aligned (landing
+    ₩9,900 → $8.99 matching courses canonical Standard/Pro tiers),
+    onboarding state persists to localStorage on every step (was
+    only on goStep4 → OAuth), Step 4 gets secondary "Sign up with
+    email" button, refund-policy email han@→hello@, og:image →
+    real hero JPG (was 404 og-default.png on 4 pages), legal anchor
+    href +.html, placement test "~3 min" estimate.
+  - **Performance** (1735e1f) — 11 landing images get
+    loading="lazy" + width/height (3.2MB deferred off cold path),
+    hero JPG gets fetchpriority="high", 9 beginner-guide images
+    same treatment, _headers: HTML now public/max-age=0/
+    s-maxage=60/SWR=86400 so Cloudflare edge-caches HTML (TTFB
+    150ms → ~15ms on warm CF).
+  - **A11y** (this commit) — global :focus-visible 2px outline
+    rule (was missing entirely), global prefers-reduced-motion
+    guard for all transitions/animations, .art-sent Enter/Space
+    keyboard activation (sentence analysis was keyboard-locked),
+    contrast swap #94a3b8 → #64748b on 3 critical light-bg uses
+    (article-meta-time, notif-empty, notif-item-time), kh-wb-save-
+    icon #cbd5e1 → #64748b (was 1.61:1), skip-to-content link
+    injected on every page with auto-tagged #main-content target,
+    notif bell + user avatar + hamburger get aria-haspopup +
+    aria-expanded that toggle on open/close, toast() mirrors text
+    into a global aria-live region for SR users.
+
+  - **4차 deploys** ✅: tts-proxy redeployed (F2).
+  - **4차 verify still needed**: tutor_students / tutor_lessons
+    RLS check in Supabase SQL editor:
+    `SELECT polname, polcmd FROM pg_policy
+     WHERE polrelid IN ('public.tutor_students'::regclass,
+                        'public.tutor_lessons'::regclass);`
+    If missing per-tutor isolation policies, add them.
+
+  - **4th audit followups (this round, closed)**:
+    - PNG → WebP for 17 landing/beginner-guide images (~5.1 MB →
+      ~1.2 MB wire, 77% cut). <picture> + WebP source + PNG fallback
+      pattern; image-set() for CSS background uses. Combined with
+      lazy-loading: home cold-cache ~4.2 MB → ~1 MB.
+    - Comment drawer focus trap + Escape + return-focus (A11y #8).
+    - Study-room 9 master-card divs gained role=button + tabindex=0;
+      generic shared.js delegate fires .click() on Enter/Space for
+      any role=button + onclick element so keyboard users can launch
+      learning modes + word-bank rows (A11y #10/#19).
+    - Webhook idempotency logging — duplicate Stripe retries now
+      surface as WARN + idempotent:true in response (F5 partial;
+      RPC contract alignment still TODO).
+    - admin_retrigger_feedback Sonnet → Haiku 4.5 (3rd safe swap,
+      same shape as the daily article-analysis path on Haiku).
+  - **Still deferred** (sandbox-blocking or large refactor):
+    - Picture-Call game state + audio cleanup (F18-F20 polish)
+    - Onboarding pricing reflow (Pro+Standard side-by-side card)
+    - Google Fonts payload reduction (decide weights first)
+    - The remaining 46 `<div onclick>` patterns in study-room.html
+      that aren't master-cards (non-launch UI, lower priority)
+    - 11 lang attribute pages need ko/en consistency sweep (A11y #11)
+    - grant_speaking_coins SQL contract: return
+      `{ ok, reason, granted_coins, balance }` so the new webhook
+      idempotency logging actually distinguishes duplicates from
+      first-time grants. Owner to align in the migration.
 - 1차 오딧 픽스: anon saved-words → DB migration on signup; goal/level-aware
   welcome banner; coach button no-flash; saved-word pending-save retry hook
 - 2차 오딧 픽스 (P0+P1, 10 items):
@@ -51,25 +193,14 @@ doesn't keep reminding about closed work.
 - #7Y this PR — daily-content-gen Sonnet model id bumped to
   `claude-sonnet-4-6` (deprecated dated id removed)
 
-## Edge Function deploys (must run locally — Cloudflare doesn't deploy these)
+## Edge Function deploys
 
-- `supabase functions deploy admin-api` — **NOW URGENT** after PR #7BE.
-  This deploy carries TWO fixes the admin tooling needs:
-    (a) ALLOWED_TABLES gate now skipped when `method === 'rpc'`, so
-        `🎲 Pick from pool` stops 400'ing with
-        "Table not allowed: _rpc".
-    (b) insert/upsert/update/delete now honour `params.returning` and
-        `params.single` / `maybeSingle`, so `.insert().select('id')`
-        actually inserts (the bug that made "batch from pool 1개" run
-        a ghost "Auto-baking sentence analysis 1 / 74" against every
-        existing conv).
-  Pre-existing reason for this deploy still applies: ALLOWED_RPCS
-  was earlier extended with `pick_conv_scenario` /
-  `mark_conv_scenario_used`, and ALLOWED_TABLES with
-  `conv_scenario_pool`.
-- `supabase functions deploy daily-content-gen` — to activate BOTH
-  the psych-verb grammar rule (#7Q) AND the Sonnet model-id fix
-  (#7Y) on the server cron.
+All 8 Edge Functions deployed to prod 2026-05-25 (claude-proxy,
+admin-api, daily-content-gen, notify-signup, tts-proxy, image-search,
+speech-proxy, speaking-pass-checkout). This includes the PR #7BE
+admin-api fixes (RPC gate / returning / single) and the
+daily-content-gen psych-verb + Sonnet model-id changes that had
+been waiting on a deploy.
 
 ## Stale data cleanup
 

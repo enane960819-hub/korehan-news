@@ -25,14 +25,27 @@ const ALLOWED_ORIGINS = [
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || ''
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-  return {
-    'Access-Control-Allow-Origin': allowed,
+  const matched = ALLOWED_ORIGINS.includes(origin) ? origin : null
+  const h: Record<string, string> = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
   }
+  if (matched) h['Access-Control-Allow-Origin'] = matched
+  return h
+}
+
+// Sanitize a user-supplied value before interpolating into the
+// Discord / Slack webhook message. user_metadata.full_name is set by
+// the user at signup (Google OAuth display name or signUp.options.data)
+// so a malicious name can:
+//   1. Inject \n@everyone @here — Discord pings every member.
+//   2. Inject ``` to break out of code-block formatting and forge UI.
+//   3. Embed long markdown links that look like our own URLs.
+// Strip newlines, backticks, @/# mention triggers, and length-cap.
+function safeWebhookText(s: string): string {
+  return String(s || '').replace(/[`\n\r@#]/g, ' ').slice(0, 120).trim()
 }
 
 function jsonResponse(body: unknown, status: number, cors: Record<string, string>) {
@@ -103,19 +116,29 @@ Deno.serve(async (req) => {
     const webhookUrl = (setting?.value || '').trim()
 
     const meta = (u.user_metadata || {}) as Record<string, unknown>
-    const name = String(meta.full_name || meta.name || '').trim()
+    const rawName = String(meta.full_name || meta.name || '').trim()
     const provider = String((u.app_metadata as Record<string, unknown> | undefined)?.provider || 'email')
     const emailConfirmed = !!u.email_confirmed_at
 
+    // u.email and provider come from the auth server side (not the
+    // request body) so they're trusted, but we still strip backticks /
+    // newlines defensively in case a malformed value slips through.
+    const safeEmail = safeWebhookText(u.email || '(none)')
+    const safeName = safeWebhookText(rawName)
+    const safeProvider = safeWebhookText(provider)
+    const safeId = safeWebhookText(u.id)
+    const safeCreated = safeWebhookText(u.created_at || '')
+
     const lines = [
       `🎉 **New KoreHani signup**`,
-      `• Email: \`${u.email || '(none)'}\``,
-      name ? `• Name: ${name}` : '',
-      `• Provider: ${provider}${emailConfirmed ? ' (verified)' : ' (pending verification)'}`,
-      `• User ID: \`${u.id}\``,
-      `• At: ${u.created_at}`,
+      `• Email: \`${safeEmail}\``,
+      safeName ? `• Name: ${safeName}` : '',
+      `• Provider: ${safeProvider}${emailConfirmed ? ' (verified)' : ' (pending verification)'}`,
+      `• User ID: \`${safeId}\``,
+      `• At: ${safeCreated}`,
     ].filter(Boolean)
     const messageContent = lines.join('\n')
+    const name = rawName // kept for the log insert below — DB column is plain text
 
     let webhookOk = false
     let webhookStatus: number | null = null

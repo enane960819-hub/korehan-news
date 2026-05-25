@@ -20,33 +20,18 @@ const ALLOWED_ORIGINS = [
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || ''
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-  return {
-    'Access-Control-Allow-Origin': allowed,
+  const matched = ALLOWED_ORIGINS.includes(origin) ? origin : null
+  const h: Record<string, string> = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   }
+  if (matched) h['Access-Control-Allow-Origin'] = matched
+  return h
 }
 
 function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-async function getAuthToken(): Promise<string> {
-  // Get a fresh auth token for Microsoft's speech service
-  const res = await fetch('https://eastus.api.cognitive.microsoft.com/sts/v1.0/issueToken', {
-    method: 'POST',
-    headers: {
-      'Ocp-Apim-Subscription-Key': 'dummy',
-    },
-  })
-  // Fallback: use the edge token endpoint
-  const tokenRes = await fetch(
-    'https://eastus.tts.speech.microsoft.com/cognitiveservices/voices/list',
-    { headers: { 'Accept': 'application/json' } }
-  )
-  return ''
 }
 
 async function synthesize(text: string, voiceName: string): Promise<Uint8Array> {
@@ -140,6 +125,40 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
   try {
+    // Without JWT verification any caller could drive unlimited WSS
+    // synthesis through this function — each call holds an outbound
+    // socket for ~12s and burns the project's Edge Function CPU
+    // budget. The 500-char cap below is only useful AFTER we've
+    // already established that the caller is a logged-in user.
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'No auth' }), {
+        status: 401, headers: { ...cors, 'Content-Type': 'application/json' }
+      })
+    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    // Do NOT fall back to SUPABASE_SERVICE_ROLE_KEY here — leaking the
+    // service-role key to /auth/v1/user as the `apikey` header would
+    // surface in intermediate proxy / CDN access logs. If anon key is
+    // unset (project re-provisioned, typo, env wipe), fail loud so the
+    // operator sees the 500 instead of silently authenticating with
+    // service-role privileges.
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+    if (!anonKey) {
+      console.error('[tts-proxy] SUPABASE_ANON_KEY missing')
+      return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
+        status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
+      })
+    }
+    const authCheck = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { 'Authorization': authHeader, 'apikey': anonKey },
+    })
+    if (!authCheck.ok) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...cors, 'Content-Type': 'application/json' }
+      })
+    }
+
     const body = await req.json()
     const text = String(body.text || '').slice(0, 500)
     if (!text) {

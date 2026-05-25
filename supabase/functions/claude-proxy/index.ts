@@ -11,9 +11,8 @@ const ALLOWED_ORIGINS = [
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || ''
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-  return {
-    'Access-Control-Allow-Origin': allowed,
+  const matched = ALLOWED_ORIGINS.includes(origin) ? origin : null
+  const h: Record<string, string> = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Max-Age': '86400',
@@ -22,6 +21,13 @@ function getCorsHeaders(req: Request) {
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
   }
+  // Returning an ACAO header for unlisted origins makes CDN-cached
+  // responses leak across origins (the cache keys by Vary:Origin but
+  // we'd still echo back the wrong allowlisted origin). Omit ACAO
+  // entirely for unknown origins so the browser blocks the response
+  // and the CDN stores nothing reusable cross-origin.
+  if (matched) h['Access-Control-Allow-Origin'] = matched
+  return h
 }
 
 // Admins bypass all quotas + email verification.
@@ -60,6 +66,14 @@ const DEFAULT_PRICING = { input: 3.00, output: 15.00 }
 // itself in the worst case. Fast Track scenario generation needs
 // ~10-12K tokens for 25-node JSON, so the cap sits at 16K.
 const MAX_TOKENS_PER_CALL = 16384
+
+// Per-call max INPUT bytes (UTF-8). Anthropic input is the dominant
+// cost driver in this codebase — a single 200K-token Sonnet input
+// burns ~$0.60, which is 6% of the free monthly cap. The biggest
+// legitimate prompt we send is the article-body gen (~12K tokens =
+// ~50KB JSON). 80KB leaves comfortable headroom while killing the
+// "stuff entire HTML pages into messages" attack class.
+const MAX_INPUT_BYTES = 80_000
 
 // Anthropic call timeout. Above this we abort the connection so the
 // client doesn't hang on a stalled upstream and we don't keep the
@@ -228,18 +242,65 @@ Deno.serve(async (req) => {
       claudeBody.max_tokens = MAX_TOKENS_PER_CALL
     }
 
+    // Input size cap — protects the monthly cost budget from a single
+    // request stuffing 200K tokens into messages. Admins bypass since
+    // article-cache regeneration legitimately approaches this ceiling.
+    if (!isAdmin) {
+      const msgBytes = new TextEncoder().encode(JSON.stringify(claudeBody.messages || [])).length
+      if (msgBytes > MAX_INPUT_BYTES) {
+        return jsonResponse({
+          error: 'Input too large',
+          detail: `Request is ${Math.round(msgBytes / 1024)}KB; per-call limit is ${Math.round(MAX_INPUT_BYTES / 1024)}KB.`,
+          code: 'input_too_large',
+        }, 413, cors)
+      }
+    }
+
+    // Cap feature string length — it's user-supplied and lands
+    // verbatim in claude_api_usage. Without a cap, a hostile client
+    // can balloon the log table with multi-KB feature names.
+    const featureStr = (typeof feature === 'string' && feature.length)
+      ? feature.slice(0, 64)
+      : null
+
     // ── 6. Anthropic call with timeout ───────────────────────────
     const ctrl = new AbortController()
     const timeoutId = setTimeout(() => ctrl.abort(), ANTHROPIC_TIMEOUT_MS)
     let response: Response
     try {
+      // Detect whether the client wants prompt caching — any content
+      // block on any message that carries a cache_control field signals
+      // intent. Caching is GA on Claude 4.x but sending the explicit
+      // beta header is a no-op when not needed and lights the feature
+      // up on older API surfaces, so we send it whenever requested.
+      let wantsPromptCaching = false
+      const msgs = (claudeBody as { messages?: unknown }).messages
+      if (Array.isArray(msgs)) {
+        for (const m of msgs) {
+          const content = (m as { content?: unknown })?.content
+          if (Array.isArray(content)) {
+            for (const block of content) {
+              if (block && typeof block === 'object' && 'cache_control' in block) {
+                wantsPromptCaching = true
+                break
+              }
+            }
+          }
+          if (wantsPromptCaching) break
+        }
+      }
+
+      const anthropicHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      }
+      if (wantsPromptCaching) {
+        anthropicHeaders['anthropic-beta'] = 'prompt-caching-2024-07-31'
+      }
       response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
+        headers: anthropicHeaders,
         body: JSON.stringify(claudeBody),
         signal: ctrl.signal,
       })
@@ -263,17 +324,38 @@ Deno.serve(async (req) => {
     }
 
     // ── 7. Log usage (fire-and-forget) ───────────────────────────
-    if (response.ok && data?.usage) {
-      sb.from('claude_api_usage').insert({
-        user_id: userId,
-        feature: feature || null,
-        model: typeof claudeBody.model === 'string' ? claudeBody.model : null,
-        input_tokens:  data.usage.input_tokens ?? 0,
-        output_tokens: data.usage.output_tokens ?? 0,
-      }).then(({ error }: { error: { message: string } | null }) => {
-        if (error) console.error('[claude-proxy] usage insert failed:', error.message)
-      })
-    }
+    // We log EVERY call — including failures — so the daily counter
+    // can't be gamed by deliberately producing 4xx/5xx responses to
+    // avoid quota deduction. Token counts are 0 for non-200 paths
+    // since Anthropic didn't bill us, but the row still counts toward
+    // the daily call limit on the next request.
+    //
+    // Prompt caching: Anthropic returns three input figures when the
+    // request uses cache_control — input_tokens (non-cached portion),
+    // cache_creation_input_tokens (1.25x cost), cache_read_input_tokens
+    // (0.1x cost). The monthly-cost computation in this proxy only
+    // reads `input_tokens`, so we fold the cache portions into it
+    // using their pricing weights so priceUsd() returns the actual
+    // dollars spent. (Schema-friendly: no new columns needed.)
+    const usage = data?.usage as {
+      input_tokens?: number
+      output_tokens?: number
+      cache_creation_input_tokens?: number
+      cache_read_input_tokens?: number
+    } | undefined
+    const baseInput   = usage?.input_tokens ?? 0
+    const cacheCreate = usage?.cache_creation_input_tokens ?? 0
+    const cacheRead   = usage?.cache_read_input_tokens ?? 0
+    const effectiveInput = baseInput + Math.round(cacheCreate * 1.25) + Math.round(cacheRead * 0.1)
+    sb.from('claude_api_usage').insert({
+      user_id: userId,
+      feature: featureStr,
+      model: typeof claudeBody.model === 'string' ? claudeBody.model : null,
+      input_tokens:  response.ok ? effectiveInput : 0,
+      output_tokens: response.ok ? (usage?.output_tokens ?? 0) : 0,
+    }).then(({ error }: { error: { message: string } | null }) => {
+      if (error) console.error('[claude-proxy] usage insert failed:', error.message)
+    })
 
     return new Response(JSON.stringify(data), {
       status: response.status,
