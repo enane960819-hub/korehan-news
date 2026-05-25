@@ -7974,11 +7974,24 @@ async function _speakAnalyzeAzure(blob, referenceText, durationMs) {
     fd.append('contentType', blob.type || 'audio/webm');
     fd.append('language', 'ko-KR');
 
-    var res = await fetch(funcUrl, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token },
-      body: fd,
-    });
+    // 30s hard timeout. Azure occasionally stalls mid-analysis and the
+    // call would otherwise never resolve, leaving the caller stuck on
+    // "발음 분석 중..." with no way back to the Submit button.
+    var _ac = (typeof AbortController === 'function') ? new AbortController() : null;
+    var _to = _ac ? setTimeout(function(){ try { _ac.abort(); } catch(_){} }, 30000) : null;
+    var res;
+    try {
+      res = await fetch(funcUrl, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: fd,
+        signal: _ac ? _ac.signal : undefined,
+      });
+    } catch(_fetchErr) {
+      if (_to) clearTimeout(_to);
+      return null;
+    }
+    if (_to) clearTimeout(_to);
     if (!res.ok) return null;
     var data = await res.json();
     if (!data || data.error || data.pronunciationScore == null) return null;
@@ -8328,6 +8341,25 @@ function toggleSpeakRecord() {
       })();
     };
     _speakRecorder.start();
+    // 2-minute hard cap — if the user walks away mid-recording, this stops
+    // the recorder automatically so we don't upload tens of MB of audio
+    // (which fails the speech-proxy size limit anyway) and we don't leave
+    // the mic active forever. Cleared by toggleSpeakRecord's manual stop.
+    try { clearTimeout(window._speakMaxTimer); } catch(_) {}
+    window._speakMaxTimer = setTimeout(function() {
+      try {
+        if (_speakRecorder && _speakRecorder.state === 'recording') {
+          showToast && showToast('Recording auto-stopped at 2 min');
+          _speakRecorder.stop();
+          if (_speakRecognition) { try { _speakRecognition.stop(); } catch(e) {} }
+          var rec = document.getElementById('wm-speak-record');
+          if (rec) {
+            rec.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span><span>내 목소리 녹음</span></span>';
+            rec.style.background = 'rgba(239,68,68,.08)';
+          }
+        }
+      } catch(_) {}
+    }, 120000);
     document.getElementById('wm-speak-record').innerHTML = '⏹️ 녹음 중... (누르면 정지)';
     document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.2)';
     var statusEl = document.getElementById('wm-speak-status');
@@ -8542,7 +8574,12 @@ async function submitSpeakingToCoach() {
   if (!sb) return;
 
   var btn = document.getElementById('wm-speak-coach-submit');
-  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="5"/></svg></span><span>Sending to coach…</span></span>'; }
+  // NOTE: don't disable the button yet. If consume_speaking_coin returns
+  // forest_redirect or no_coins, the upsell modal opens INSTEAD of a real
+  // submission; the user closes that modal and would otherwise see the
+  // coach button briefly greyed-out (finally restores it but the flash
+  // reads as "broken"). Only flip the button into "Sending…" state once
+  // the wallet RPC has actually committed a coin to this submission.
 
   try {
     // 1) Atomic wallet decrement
@@ -8558,6 +8595,8 @@ async function submitSpeakingToCoach() {
       showToast('코인 처리 실패: ' + (coinRes.error && coinRes.error.message || 'unknown'));
       return;
     }
+    // Coin has been spent — commit the UI to "sending" state now.
+    if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="5"/></svg></span><span>Sending to coach…</span></span>'; }
 
     // 2) Upload audio
     var fileName = 'speaking/' + supaUser.id + '/' + kstDateKey() + '_coach_' + Date.now() + '.webm';
@@ -11951,6 +11990,17 @@ async function toggleSpRecord() {
   };
   _spRecStartedAt = Date.now();
   _spMediaRec.start();
+  // 2-minute hard cap (see toggleSpeakRecord above for rationale).
+  try { clearTimeout(window._spMaxTimer); } catch(_) {}
+  window._spMaxTimer = setTimeout(function() {
+    try {
+      if (_spMediaRec && _spMediaRec.state === 'recording') {
+        showToast && showToast('Recording auto-stopped at 2 min');
+        _spMediaRec.stop();
+        _spSetRecBtn(false);
+      }
+    } catch(_) {}
+  }, 120000);
   _spSetRecBtn(true);
   var st = document.getElementById('sp-status');
   if (st) st.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>';

@@ -10,6 +10,23 @@ doesn't keep reminding about closed work.
 
 ---
 
+## In progress on `claude/new-session-KCAZ7`
+
+- 1차 오딧 픽스: anon saved-words → DB migration on signup; goal/level-aware
+  welcome banner; coach button no-flash; saved-word pending-save retry hook
+- 2차 오딧 픽스 (P0+P1, 10 items):
+  - #4 P0 — sign-out localStorage cleanup with prefs whitelist
+  - #5 streak celebration key now per-user
+  - #11 saved-word remove via dual `.eq()` (PostgREST .or() quote bug)
+  - #1 coach button only disables after wallet RPC commits
+  - #2 home news rail dispatches `khArticlesLoaded` on error paths
+  - #3 cross-tab sync via `storage` event (saved words / XP / streak)
+  - #6 auth modal a11y — Escape, focus trap, aria-modal, return focus
+  - #7 speech-proxy fetch 30s AbortController timeout
+  - #8 429 surfaces `code` + `detail` (monthly cap vs daily cap)
+  - #9 MediaRecorder 2-min auto-stop cap (both speak paths)
+- Cache busters bumped: saved-words / streak / articles / shared / study-room
+
 ## Recently merged into main 2026-05-20
 
 - #7P Study Room "Loading…" stuck — root-cause fix

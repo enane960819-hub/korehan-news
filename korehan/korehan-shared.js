@@ -429,7 +429,19 @@ async function callClaude({ feature, model, max_tokens, messages }) {
     }
   }
 
-  if (resp.status === 429) throw new Error('Too many requests. Please try again shortly.');
+  if (resp.status === 429) {
+    // The Edge Function returns structured { error, detail, code, quota }
+    // — surface the actual message ("monthly USD cap reached") rather than
+    // collapsing to "try again shortly". Attach code so feature UI can
+    // show an Upgrade CTA for monthly cap, vs. a wait-and-retry hint for
+    // daily limits.
+    var qjson = await resp.json().catch(function(){ return {}; });
+    var qmsg = qjson.detail || qjson.error || 'Too many requests. Please try again shortly.';
+    var qerr = new Error(qmsg);
+    qerr.code  = qjson.code  || 'rate_limited';
+    qerr.quota = qjson.quota || null;
+    throw qerr;
+  }
   if (resp.status === 401) {
     throw new Error('Authentication error — please sign in again.');
   }
@@ -617,13 +629,33 @@ function openAuthModal(defaultTab) {
     _injectAuthModal();
   }
   var modal = document.getElementById('kh-auth-modal');
+  // a11y — make assistive tech recognise the dialog and announce it.
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-label', 'Sign in to KoreHani');
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
+  // Remember the element that opened the modal so we can return focus on
+  // close — keyboard users would otherwise be dumped to the page <body>.
+  try { window._khAuthOpener = document.activeElement; } catch(_) {}
   _authSwitchTab(defaultTab || 'signin');
   setTimeout(function(){
-    var inp = document.getElementById('kh-auth-email');
-    if (inp) inp.focus();
+    var first = document.querySelector('#kh-' + (defaultTab||'signin') + '-form input, #kh-signin-form input, #kh-signup-form input, #kh-reset-form input');
+    if (first) first.focus();
   }, 120);
+  // Escape closes; Tab cycles within the dialog (focus trap).
+  if (!modal._khKeydownBound) {
+    modal._khKeydownBound = true;
+    modal.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { e.preventDefault(); closeAuthModal(); return; }
+      if (e.key !== 'Tab') return;
+      var focusables = modal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+      if (!focusables.length) return;
+      var first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+  }
 }
 
 function closeAuthModal() {
@@ -631,6 +663,13 @@ function closeAuthModal() {
   if (modal) modal.style.display = 'none';
   document.body.style.overflow = '';
   _authClearErrors();
+  // Hand focus back to whatever opened the modal (a Sign-in button, link,
+  // etc.) so keyboard users don't lose their place in the page.
+  try {
+    var opener = window._khAuthOpener;
+    if (opener && typeof opener.focus === 'function') opener.focus();
+    window._khAuthOpener = null;
+  } catch(_) {}
 }
 
 function _authSwitchTab(tab) {
@@ -1099,6 +1138,32 @@ async function signOut(options) {
   var scope = options.scope || 'global';
   var message = options.message || (scope === 'global' ? 'Signed out on all devices' : 'Signed out successfully');
 
+  // Per-user state stored under kh_* / korehan_* prefixes is dropped on
+  // sign-out so a shared device doesn't leak the previous user's saved
+  // words, drafts, streak history, etc. A short whitelist of true
+  // device-prefs survives (theme, first-visit marker, cookie consent).
+  function _khClearUserState() {
+    var PRESERVE = {
+      kh_visited: 1, kh_neon: 1, kh_cookie_consent: 1, kh_debug: 1,
+      kh_dm_collapsed: 1, kh_ls_mobile_mode_v1: 1, kh_conv_mobile_tab: 1
+    };
+    [localStorage, sessionStorage].forEach(function(storage) {
+      try {
+        Object.keys(storage).forEach(function(key) {
+          if (key.startsWith('sb-') || key.includes('supabase')) {
+            storage.removeItem(key);
+            return;
+          }
+          if (PRESERVE[key]) return;
+          if (key.indexOf('kh_') === 0 || key.indexOf('kh-') === 0
+              || key.indexOf('korehan_') === 0 || key.indexOf('korehan-') === 0) {
+            storage.removeItem(key);
+          }
+        });
+      } catch (e) {}
+    });
+  }
+
   // Pages where the entire view assumes an authenticated user (My Page,
   // Study Room, Notes, …). After signOut these pages would otherwise keep
   // rendering stale user data for ~1s while updateAuthUI() runs — the
@@ -1122,15 +1187,7 @@ async function signOut(options) {
     // the cleared session on its own load.
     var sb = getSupa();
     if (sb) { try { sb.auth.signOut({ scope: scope }); } catch(_) {} }
-    [localStorage, sessionStorage].forEach(function(storage) {
-      try {
-        Object.keys(storage).forEach(function(key) {
-          if (key.startsWith('sb-') || key.includes('supabase')) {
-            storage.removeItem(key);
-          }
-        });
-      } catch (e) {}
-    });
+    _khClearUserState();
     window.location.replace('index.html');
     return;
   }
@@ -1139,20 +1196,60 @@ async function signOut(options) {
   if (sb) {
     await sb.auth.signOut({ scope: scope });
   }
-  // 현재 브라우저에 남은 세션 흔적은 scope와 관계없이 정리
-  [localStorage, sessionStorage].forEach(function(storage) {
-    try {
-      Object.keys(storage).forEach(function(key) {
-        if (key.startsWith('sb-') || key.includes('supabase')) {
-          storage.removeItem(key);
-        }
-      });
-    } catch (e) {}
-  });
+  _khClearUserState();
   supaUser = null;
   updateAuthUI();
   toast(message);
 }
+
+// Cross-tab data sync. When the same user has My Page open in tab A and
+// is studying in tab B, every write that lands in tab B (XP, coin balance,
+// saved word, streak) needs to wake tab A so it can re-render with fresh
+// numbers — otherwise the stale tab silently misleads the user. The
+// storage event only fires in OTHER tabs (not the originating one), so
+// listening here is enough. Specific reads are debounced to one frame
+// per category to avoid thrash when bulk-saves trigger many keys at once.
+(function _wireCrossTabSync() {
+  if (typeof window === 'undefined' || window._khStorageSyncWired) return;
+  window._khStorageSyncWired = true;
+  var pending = { ui: 0, saved: 0, streak: 0 };
+  function schedule(kind, fn) {
+    if (pending[kind]) return;
+    pending[kind] = 1;
+    setTimeout(function() {
+      pending[kind] = 0;
+      try { fn(); } catch(_) {}
+    }, 80);
+  }
+  window.addEventListener('storage', function(e) {
+    if (!e || !e.key) return;
+    var k = e.key;
+    // Auth invalidation — peer tab signed out. Reload to drop stale UI.
+    if ((k.indexOf('sb-') === 0 && k.indexOf('-auth-token') > 0) && e.newValue === null) {
+      try { window.location.reload(); } catch(_) {}
+      return;
+    }
+    // Saved-words list changed in another tab.
+    if (k === 'korehan_saved_words') {
+      schedule('saved', function() {
+        if (typeof _syncSavedWordsFromDB === 'function') _syncSavedWordsFromDB();
+        if (typeof restoreSaveButtons === 'function') restoreSaveButtons();
+      });
+      return;
+    }
+    // XP / coins / streak / daily progress — re-render the user chip and
+    // any visible counters. Each page mounts its own re-renderer behind
+    // these well-known event names.
+    if (k.indexOf('kh_xp') === 0 || k === 'kh_coin_history' || k.indexOf('kh_streak') === 0
+        || k.indexOf('kh_daily_') === 0 || k.indexOf('kh_last_') === 0) {
+      schedule('ui', function() {
+        try { if (typeof updateAuthUI === 'function') updateAuthUI(); } catch(_) {}
+        try { window.dispatchEvent(new Event('kh-user-stats-changed')); } catch(_) {}
+      });
+      return;
+    }
+  });
+})();
 
 // 세션 확인
 async function checkSession() {

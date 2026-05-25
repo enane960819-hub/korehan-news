@@ -304,6 +304,12 @@ async function loadArticlesFromDB(options) {
     }
     if (res.error) {
       console.warn('articles fetch error:', res.error.message || res.error);
+      // Even on error we must dispatch so consumers (home rail, etc.) can
+      // flip out of their "Loading…" skeleton and show whatever's cached.
+      // Without this the rail spins forever on a flaky network — same UX
+      // class as the May-16 outage but triggered by network rather than
+      // schema drift.
+      try { document.dispatchEvent(new Event('khArticlesLoaded')); } catch(_) {}
       return getCachedArticles();
     }
     var rows = (res.data || []).filter(function (item) {
@@ -348,6 +354,7 @@ async function loadArticlesFromDB(options) {
     return _articlesCache;
   } catch (e) {
     console.warn('articles load exception:', e && e.message || e);
+    try { document.dispatchEvent(new Event('khArticlesLoaded')); } catch(_) {}
     return getCachedArticles();
   }
 }

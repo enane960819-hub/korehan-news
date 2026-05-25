@@ -176,8 +176,15 @@ async function dbRemoveWord(ko) {
   if (!supaUser) return { ok: true, source: 'local' };
   var sb = getSupa();
   if (!sb) return { ok: true, source: 'local' };
+  // PostgREST's .or() parser doesn't handle embedded quotes — and saved
+  // words can legitimately contain them (`"안녕"` dialogue snippets, etc.).
+  // Issue two separate eq() deletes instead; PostgREST treats a 0-row
+  // delete as success so this is safe even when only one column exists.
   try {
-    await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq."' + ko.replace(/"/g, '\\"') + '",ko.eq."' + ko.replace(/"/g, '\\"') + '"');
+    await Promise.all([
+      sb.from('user_saved_words').delete().eq('user_id', supaUser.id).eq('word_ko', ko),
+      sb.from('user_saved_words').delete().eq('user_id', supaUser.id).eq('ko', ko)
+    ]);
     return { ok: true, source: 'supabase' };
   } catch(e) {
     return { ok: false, source: 'local', error: e };
