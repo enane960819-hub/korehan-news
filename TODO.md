@@ -12,6 +12,25 @@ doesn't keep reminding about closed work.
 
 ## In progress on `claude/new-session-KCAZ7`
 
+- 3차 오딧 (Edge Functions / Admin CMS / Mobile UX / Performance):
+  - **Edge Functions P0+P1 (this commit)** — tts-proxy auth (F1),
+    claude-proxy input-size cap + feature str cap + failed-call counter
+    (F3/F10/F11), notify-signup Discord injection sanitizer (F4),
+    daily-content-gen weak CRON_SECRET reject + app_settings mutex (F5/F6),
+    admin-api REST path traversal lockdown + mutation-filter required +
+    hardcoded anon key removal (F7/F8/F14), speaking-pass-checkout
+    origin-bound CORS (F12), proxy CORS fallback now omits ACAO for
+    unknown origins (F9, applied to claude / tts / notify / image /
+    speech / admin-api / speaking-pass-checkout).
+  - **Pending deploy**: `supabase functions deploy claude-proxy
+    admin-api daily-content-gen notify-signup tts-proxy image-search
+    speech-proxy speaking-pass-checkout`
+  - Verification still needed (F2): RLS on `user_quota_overrides`
+    must block authenticated writes — run
+    `SELECT polname, polcmd FROM pg_policy WHERE polrelid =
+    'public.user_quota_overrides'::regclass;` in Supabase SQL editor.
+    If no INSERT/UPDATE policy denies authenticated role, add
+    `service-only` policy.
 - 1차 오딧 픽스: anon saved-words → DB migration on signup; goal/level-aware
   welcome banner; coach button no-flash; saved-word pending-save retry hook
 - 2차 오딧 픽스 (P0+P1, 10 items):
