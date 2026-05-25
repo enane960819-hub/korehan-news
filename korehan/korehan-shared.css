@@ -1796,10 +1796,12 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 .art-sent-hint .ash-text { flex: 1; color: #2e1065; }
 .art-sent-hint .ash-dismiss {
   flex-shrink: 0;
-  width: 26px; height: 26px;
+  /* 44×44 on mobile (iOS HIG min); the hint is the flagship feature
+     and was the most-mis-tapped control of the article reader. */
+  width: 40px; height: 40px;
   border: none; border-radius: 50%;
   background: rgba(124,58,237,.18); color: #4c1d95;
-  font-weight: 800; font-size: 16px;
+  font-weight: 800; font-size: 18px;
   cursor: pointer; line-height: 1;
 }
 .art-sent-hint .ash-dismiss:hover { background: rgba(124,58,237,.32); color: #2e1065; }
@@ -1833,12 +1835,12 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 .art-sent-panel .asp-close {
   position: absolute;
-  top: 10px; right: 12px;
-  width: 28px; height: 28px;
+  top: 8px; right: 8px;
+  width: 40px; height: 40px;
   border: none; border-radius: 50%;
   background: #f3f0fc;
   color: #6d28d9;
-  font-weight: 800; font-size: 16px;
+  font-weight: 800; font-size: 18px;
   cursor: pointer;
   line-height: 1;
   transition: all .15s;
@@ -2223,7 +2225,11 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
   background: transparent;
   resize: none;
   font: inherit;
-  font-size: 14px;
+  /* 16px to prevent iOS Safari auto-zoom on focus. The visual size
+     stays in the same ballpark thanks to the slightly tighter
+     line-height; the previous 14px caused the entire article reader
+     to zoom to 200% on every comment-textarea focus. */
+  font-size: 16px;
   line-height: 1.5;
   color: var(--dark);
   padding: 6px 0;
@@ -3546,9 +3552,12 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
   body.mobile-redesign .art-date{white-space:nowrap;font-size:11px;flex-shrink:0;}
   body.mobile-redesign .art-readtime,
   body.mobile-redesign .art-dot{color:var(--m-muted) !important;}
-  body.mobile-redesign .art-actions-inline{margin-left:auto;gap:2px !important;flex-shrink:0;}
-  body.mobile-redesign .art-action-icon{width:28px !important;height:28px !important;background:rgba(255,255,255,.08) !important;border-color:rgba(255,255,255,.15) !important;color:rgba(255,255,255,.7) !important;}
-  body.mobile-redesign .art-action-icon svg{width:14px;height:14px;}
+  body.mobile-redesign .art-actions-inline{margin-left:auto;gap:4px !important;flex-shrink:0;}
+  /* 28px violates the iOS HIG 44×44 min; bumped to 40 so Bookmark and
+     Share stop swapping when fat-fingered. Still fits 4×40 + gaps in a
+     358px-wide row. */
+  body.mobile-redesign .art-action-icon{width:40px !important;height:40px !important;background:rgba(255,255,255,.08) !important;border-color:rgba(255,255,255,.15) !important;color:rgba(255,255,255,.7) !important;}
+  body.mobile-redesign .art-action-icon svg{width:18px;height:18px;}
   body.mobile-redesign .art-action-icon:hover{background:rgba(255,255,255,.15) !important;color:#fff !important;}
   body.mobile-redesign .art-action-icon.active{background:rgba(255,200,50,.15) !important;border-color:rgba(255,200,50,.4) !important;color:#fcd34d !important;}
   body.mobile-redesign .art-tabs{background:rgba(255,255,255,.06) !important;border-radius:12px !important;padding:4px !important;margin-bottom:16px !important;}
@@ -3579,8 +3588,13 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
   body.mobile-redesign .dp-study-card,
   body.mobile-redesign .st-card{background:#101a2b !important;border-color:rgba(255,255,255,.08) !important;}
 
-  body.mobile-redesign .mobile-bottom-nav{position:fixed;left:12px;right:12px;bottom:12px;z-index:1600;background:rgba(8,16,31,.92);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.09);border-radius:22px;display:grid;grid-template-columns:repeat(5,1fr);padding:8px 6px;box-shadow:0 18px 36px rgba(0,0,0,.35);}
-  body.mobile-redesign .mobile-bottom-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border-radius:16px;color:#9fb0ca;text-decoration:none;font-size:11px;font-weight:700;}
+  /* Bottom-nav needs safe-area-inset on notched iPhones — the home
+     indicator gesture zone is 34px tall and otherwise overlaps the
+     bottom half of the nav chips, hijacking taps to "swipe up to home"
+     instead of the link. Padding + bottom both consume the inset so
+     the nav clears the indicator visually and physically. */
+  body.mobile-redesign .mobile-bottom-nav{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:1600;background:rgba(8,16,31,.92);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.09);border-radius:22px;display:grid;grid-template-columns:repeat(5,1fr);padding:8px 6px;box-shadow:0 18px 36px rgba(0,0,0,.35);}
+  body.mobile-redesign .mobile-bottom-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border-radius:16px;color:#9fb0ca;text-decoration:none;font-size:11px;font-weight:700;min-height:44px;}
   body.mobile-redesign .mobile-bottom-nav a svg{stroke-width:1.8;}
   body.mobile-redesign .mobile-bottom-nav a.on{background:rgba(255,255,255,.1);color:#fff;}
   body.mobile-redesign .mobile-bottom-nav a.on svg{fill:currentColor;stroke-width:2;opacity:1;}
@@ -4660,12 +4674,12 @@ body.kh-reading-page #kh-rs-study svg { width: 22px; height: 22px; }
   border-radius: 999px;
 }
 #kh-comment-drawer .kh-cdr-close {
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   border: none;
   background: transparent;
   color: #94a3b8;
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1;
   cursor: pointer;
   font-family: inherit;
