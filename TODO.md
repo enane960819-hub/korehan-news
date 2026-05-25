@@ -79,6 +79,68 @@ doesn't keep reminding about closed work.
     high without verify), Sonnet → Haiku audit on remaining ~10 call
     sites (need quality verify), CSS critical-path extraction, SW
     font caching, deeper grammar audit (#7AI).
+
+- 4차 오딧 P0+P1 (4 commits on `claude/new-session-KCAZ7`):
+  - **Speaking vertical** (af21da5) — coin-stuck recovery on upload/
+    insert fail (F1), tts-proxy drop service-role-key anon fallback
+    (F2), pcDemoPlay clear-before-reassign (F3), TUTOR_EMAILS single
+    source of truth via window.KH_TUTOR_EMAILS (F4 partial), filler
+    regex actually matches Korean now (F13 — was permanently 0),
+    _speakRecorder/_speakBlob/_speakChunks null on stop+submit
+    (F9/F10), SpeechRecognition abort on error (F8), MediaRecorder
+    feature-check before getUserMedia for in-app browsers (F7),
+    bilingual + UA-branched mic permission errors (F6), TTS LRU
+    auto-clear on pagehide + SIGNED_OUT (F12), BroadcastChannel
+    cross-tab wallet sync (F11), word-chip XSS proper escape (F17).
+  - **Onboarding funnel** (612b309) — broken
+    korehan-section-news.html link fixed (404 on every business-goal
+    user's first action), index.html#sprout dead anchor re-targeted
+    to korehan-study-room.html in 3 places, pricing aligned (landing
+    ₩9,900 → $8.99 matching courses canonical Standard/Pro tiers),
+    onboarding state persists to localStorage on every step (was
+    only on goStep4 → OAuth), Step 4 gets secondary "Sign up with
+    email" button, refund-policy email han@→hello@, og:image →
+    real hero JPG (was 404 og-default.png on 4 pages), legal anchor
+    href +.html, placement test "~3 min" estimate.
+  - **Performance** (1735e1f) — 11 landing images get
+    loading="lazy" + width/height (3.2MB deferred off cold path),
+    hero JPG gets fetchpriority="high", 9 beginner-guide images
+    same treatment, _headers: HTML now public/max-age=0/
+    s-maxage=60/SWR=86400 so Cloudflare edge-caches HTML (TTFB
+    150ms → ~15ms on warm CF).
+  - **A11y** (this commit) — global :focus-visible 2px outline
+    rule (was missing entirely), global prefers-reduced-motion
+    guard for all transitions/animations, .art-sent Enter/Space
+    keyboard activation (sentence analysis was keyboard-locked),
+    contrast swap #94a3b8 → #64748b on 3 critical light-bg uses
+    (article-meta-time, notif-empty, notif-item-time), kh-wb-save-
+    icon #cbd5e1 → #64748b (was 1.61:1), skip-to-content link
+    injected on every page with auto-tagged #main-content target,
+    notif bell + user avatar + hamburger get aria-haspopup +
+    aria-expanded that toggle on open/close, toast() mirrors text
+    into a global aria-live region for SR users.
+
+  - **4차 deploys** ✅: tts-proxy redeployed (F2).
+  - **4차 verify still needed**: tutor_students / tutor_lessons
+    RLS check in Supabase SQL editor:
+    `SELECT polname, polcmd FROM pg_policy
+     WHERE polrelid IN ('public.tutor_students'::regclass,
+                        'public.tutor_lessons'::regclass);`
+    If missing per-tutor isolation policies, add them.
+
+  - **Out of scope / deferred from 4th audit**:
+    - Speaking F5 webhook idempotency RPC return-value verification
+      (needs DB-side change)
+    - Picture-Call game state + audio cleanup (F18-F20 polish)
+    - Sonnet→Haiku admin_retrigger_feedback swap (audit suggested
+      but not blocking)
+    - Onboarding pricing reflow (Pro+Standard side-by-side card)
+    - PNG → WebP/AVIF re-encoding (needs image tools sandbox lacks)
+    - Google Fonts payload reduction (decide weights first)
+    - 57 `<div onclick>` study-room learning-mode cards → `<button>`
+      (A11y #10 — large refactor)
+    - Comment drawer focus trap + Escape + return-focus (A11y #8)
+    - 11 lang attribute pages need ko/en consistency sweep (A11y #11)
 - 1차 오딧 픽스: anon saved-words → DB migration on signup; goal/level-aware
   welcome banner; coach button no-flash; saved-word pending-save retry hook
 - 2차 오딧 픽스 (P0+P1, 10 items):

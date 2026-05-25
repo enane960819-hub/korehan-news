@@ -4,6 +4,33 @@
    KoreHani — Shared CSS  v6  (clean rewrite)
    ============================================================ */
 
+/* ── A11y: visible focus ring (WCAG 2.4.7) ────────────────────
+   Many components scatter `outline:none` to remove the default
+   browser focus ring. Without a replacement, keyboard users
+   cannot see where focus is. Global :focus-visible rule paints
+   a 2px outline ONLY for keyboard navigation (not mouse clicks),
+   so the visual noise is contained but the a11y guarantee is
+   preserved. Dark themes get a brighter ring at the bottom of
+   the file (see body.kh-neon-on rule). */
+:focus-visible {
+  outline: 2px solid var(--bright, #2255a4);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respect motion preferences across the whole site. WCAG 2.3.3 —
+   prior coverage was spotty (only word-drop video + a few specific
+   keyframes); this sweeps every transition/animation so vestibular-
+   sensitive users get a near-instant UI instead of slides. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 :root {
   color-scheme: light only;
   --accent:  #1a3a6b;
@@ -200,7 +227,7 @@ body.kh-neon-on .kh-diff-sel option { color:var(--dark); background:#fff; }
 .kh-notif-head-title { font-size: 14px; font-weight: 800; color: #0f172a; }
 .kh-notif-mark-all { background: none; border: 0; color: #2563eb; font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
 .kh-notif-mark-all:hover { background: #eff6ff; }
-.kh-notif-empty { padding: 36px 20px; text-align: center; color: #94a3b8; font-size: 13px; }
+.kh-notif-empty { padding: 36px 20px; text-align: center; color: #64748b; font-size: 13px; }
 .kh-notif-list { display: flex; flex-direction: column; }
 .kh-notif-item { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; display: flex; gap: 10px; align-items: flex-start; }
 .kh-notif-item:last-child { border-bottom: 0; }
@@ -211,7 +238,7 @@ body.kh-neon-on .kh-diff-sel option { color:var(--dark); background:#fff; }
 .kh-notif-item-text { font-size: 13px; color: #0f172a; line-height: 1.4; }
 .kh-notif-item-text a { color: #2563eb; font-weight: 700; text-decoration: none; }
 .kh-notif-item-text a:hover { text-decoration: underline; }
-.kh-notif-item-time { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+.kh-notif-item-time { font-size: 11px; color: #64748b; margin-top: 3px; }
 .kh-notif-item-actions { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
 .kh-notif-item-btn { padding: 5px 12px; border-radius: 999px; border: 0; font-size: 11px; font-weight: 800; cursor: pointer; font-family: inherit; }
 .kh-notif-item-btn-primary { background: #2563eb; color: #fff; }
@@ -853,7 +880,7 @@ body.mobile-redesign .kh-page-hero-inner { padding: 0 !important; }
    isn't orphaned at the bottom of the card. */
 .article-row .article-info { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
 .article-row .article-meta-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.article-row .article-meta-time { color: #94a3b8; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+.article-row .article-meta-time { color: #64748b; font-size: 11px; font-weight: 600; flex-shrink: 0; }
 @media (max-width: 640px) { .article-row { grid-template-columns: 1fr; } .article-row img { width: 100%; height: 180px; min-height: 0; } }
 
 /* ── ALL-ARTICLES PAGE ──────────────────────────────────── */
@@ -1040,7 +1067,7 @@ body.mobile-redesign .two-col > div:first-child { min-width: 0; }
 .kh-wb-rom { font-size: 11px; color: #889; font-style: italic; }
 .kh-wb-right { display: flex; align-items: center; gap: 8px; }
 .kh-wb-en { font-size: 12px; color: var(--gray); }
-.kh-wb-save-icon { display: flex; flex-shrink: 0; color: #cbd5e1; transition: color .15s; }
+.kh-wb-save-icon { display: flex; flex-shrink: 0; color: #64748b; transition: color .15s; }
 .kh-wb-save-icon svg { width: 14px; height: 14px; }
 .kh-wb-row:hover .kh-wb-save-icon { color: var(--bright); }
 .kh-wb-row.saving .kh-wb-save-icon { color: var(--bright); }

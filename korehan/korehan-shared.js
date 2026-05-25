@@ -1783,9 +1783,12 @@ function _khTimeAgo(iso) {
 window.khToggleNotifDropdown = function (ev) {
   if (ev) { ev.preventDefault(); ev.stopPropagation(); }
   var drop = document.getElementById('topbar-notif-dropdown');
+  var btn  = document.getElementById('topbar-notif-btn');
   if (!drop) return;
   var nowOn = !drop.classList.contains('on');
   drop.classList.toggle('on', nowOn);
+  // a11y: surface menu state to screen readers (WCAG 4.1.2).
+  if (btn) btn.setAttribute('aria-expanded', nowOn ? 'true' : 'false');
   if (nowOn) {
     // Refresh on open so the dropdown is never stale.
     khLoadNotifications();
@@ -1798,6 +1801,7 @@ function _khNotifMaybeCloseDropdown(ev) {
   if (!drop || !drop.classList.contains('on')) return;
   if (drop.contains(ev.target) || (btn && btn.contains(ev.target))) return;
   drop.classList.remove('on');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
 window.khMarkAllNotifsRead = async function () {
@@ -1928,13 +1932,17 @@ function showSignupNudge() {
 function toggleTopbarUserMenu(evt) {
   if (evt) evt.preventDefault();
   var drop = document.getElementById('topbar-user-dropdown');
+  var btn  = document.getElementById('topbar-user-avatar');
   if (!drop) return;
   drop.classList.toggle('on');
+  if (btn) btn.setAttribute('aria-expanded', drop.classList.contains('on') ? 'true' : 'false');
 }
 
 function closeTopbarUserMenu() {
   var drop = document.getElementById('topbar-user-dropdown');
+  var btn  = document.getElementById('topbar-user-avatar');
   if (drop) drop.classList.remove('on');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
 document.addEventListener('click', function(evt){
@@ -2044,15 +2052,38 @@ function getOpinions()  { return lsGet(K_OPINIONS,  []);            }
 
 
 
+// Lazy-create a single visually-hidden aria-live region. Screen
+// readers announce text changes here; the toast / kh_log helpers
+// mirror their text into it so SR users hear "Word saved" / "Submit
+// failed" instead of silence. WCAG 4.1.3.
+function _khSrAnnounce(msg, polite) {
+  var el = document.getElementById('kh-sr-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'kh-sr-status';
+    el.setAttribute('aria-live', polite === false ? 'assertive' : 'polite');
+    el.setAttribute('aria-atomic', 'true');
+    el.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);';
+    document.body.appendChild(el);
+  }
+  // Clear-and-set so successive toasts with similar text still
+  // trigger an announcement (most SRs dedupe identical strings).
+  el.textContent = '';
+  setTimeout(function () { el.textContent = String(msg || ''); }, 30);
+}
+
 function toast(msg, typeOrBool) {
   var bg = '#1a3a6b';
-  if (typeOrBool === true || typeOrBool === 'error') bg = '#cc2200';
+  var isError = (typeOrBool === true || typeOrBool === 'error');
+  if (isError) bg = '#cc2200';
   else if (typeOrBool === 'warn')    bg = '#b45309';
   else if (typeOrBool === 'success') bg = '#15803d';
   var d = document.createElement('div');
   d.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;background:'+bg+';color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.28);max-width:340px;line-height:1.4;transition:opacity .2s;';
   d.textContent = msg;
   document.body.appendChild(d);
+  // Mirror to SR live region — errors as assertive, info as polite.
+  try { _khSrAnnounce(msg, !isError); } catch (_) {}
   setTimeout(function(){ d.style.opacity='0'; setTimeout(function(){ d.remove(); },200); }, 3500);
 }
 
@@ -3826,6 +3857,22 @@ function _khWrapSentences(paragraph) {
     if (typeof analyzeSentence !== 'function') return;
     var idx = parseInt(sent.dataset.sentIdx, 10);
     if (isNaN(idx)) return;
+    analyzeSentence(idx, sent);
+  });
+  // Keyboard activation: .art-sent declares role="button" tabindex="0"
+  // so screen readers + keyboard users can focus it, but without an
+  // Enter/Space handler the sentence-analysis flagship feature was
+  // unreachable for every keyboard user. WCAG 2.1.1.
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    if (!e.target || !e.target.closest) return;
+    if (e.target.closest('.art-sent-panel')) return;
+    var sent = e.target.closest('.art-sent');
+    if (!sent) return;
+    if (typeof analyzeSentence !== 'function') return;
+    var idx = parseInt(sent.dataset.sentIdx, 10);
+    if (isNaN(idx)) return;
+    e.preventDefault();
     analyzeSentence(idx, sent);
   });
 })();
@@ -7502,7 +7549,7 @@ function renderHeader() {
   // ── Logo bar (white) ─────────────────────────────────────────
   var logoBar = '<div class="kh-header-bar">'
     + '<div class="kh-header-inner">'
-    + '<button class="kh-ham" onclick="khSbOpen()" aria-label="Menu">&#9776;</button>'
+    + '<button class="kh-ham" onclick="khSbOpen()" aria-label="Menu" aria-haspopup="menu" aria-expanded="false">&#9776;</button>'
     + '<a class="kh-logo" href="index.html">'
     + '<span class="kh-logo-text">KoreHan<span class="kh-logo-i">ı</span></span>'
     + '</a>'
@@ -7512,14 +7559,14 @@ function renderHeader() {
     + '<button id="topbar-neon-toggle" class="kh-neon-toggle" type="button" aria-pressed="false" onclick="toggleKhNeon(event)">' + khIcon('zap', 'Neon OFF', 'kh-ui-icon-sm') + '</button>'
     + (isHome ? '<div class="kh-diff-ctrl" id="kh-diff-ctrl"><span class="kh-diff-dot" id="kh-diff-dot"></span><select class="kh-diff-sel" id="kh-diff-select" onchange="khSetDiff(this.value)"><option value="all">All Levels</option><option value="Starter">Seed</option><option value="Beginner">Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select><span class="kh-diff-arr">&#9662;</span></div>' : '')
     + '<div id="topbar-notif-wrap" class="kh-notif-wrap" style="display:none">'
-    + '<button id="topbar-notif-btn" class="kh-notif-btn" type="button" aria-label="Notifications" onclick="khToggleNotifDropdown(event)">'
+    + '<button id="topbar-notif-btn" class="kh-notif-btn" type="button" aria-label="Notifications" aria-haspopup="menu" aria-expanded="false" onclick="khToggleNotifDropdown(event)">'
     +   '<i data-lucide="bell" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
     +   '<span id="topbar-notif-count" class="kh-notif-count" hidden>0</span>'
     + '</button>'
     + '<div id="topbar-notif-dropdown" class="kh-notif-dropdown"></div>'
     + '</div>'
     + '<div id="topbar-auth-menu" class="kh-auth-menu" style="display:none">'
-    + '<button id="topbar-user-avatar" class="kh-avatar-btn" type="button" aria-label="Open profile menu" onclick="toggleTopbarUserMenu(event)" style="display:none"></button>'
+    + '<button id="topbar-user-avatar" class="kh-avatar-btn" type="button" aria-label="Open profile menu" aria-haspopup="menu" aria-expanded="false" onclick="toggleTopbarUserMenu(event)" style="display:none"></button>'
     + '<div id="topbar-user-dropdown" class="kh-user-dropdown"></div>'
     + '</div>'
     + '<a href="#" id="topbar-signin-btn" class="kh-hbtn kh-hbtn-out" onclick="event.preventDefault();openAuthModal(\'signin\')">Sign In</a>'
@@ -8364,11 +8411,58 @@ document.addEventListener('DOMContentLoaded', async function() {
   _ldr(20); // Scripts loaded
   initKhNeonTheme();
   markShellReady();
+  // Inject a skip-to-content link as the first focusable element on
+  // every page. WCAG 2.4.1 — keyboard users would otherwise have to
+  // Tab through the entire top nav + notif dropdown + user menu
+  // before reaching content on every page load. The link only
+  // appears on :focus, so it never affects the visual design.
+  if (!document.getElementById('kh-skip-link')) {
+    var skip = document.createElement('a');
+    skip.id = 'kh-skip-link';
+    skip.href = '#main-content';
+    skip.textContent = 'Skip to main content';
+    skip.style.cssText = 'position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:99999;background:#fff;color:#0d1b35;padding:8px 16px;border-radius:0 0 8px 0;font-weight:800;text-decoration:none;font-size:14px;';
+    // Reveal on focus — JS rather than :focus CSS so the off-screen
+    // position can be reset without a separate stylesheet rule.
+    skip.addEventListener('focus', function(){
+      skip.style.left = '0'; skip.style.top = '0';
+      skip.style.width = 'auto'; skip.style.height = 'auto';
+    });
+    skip.addEventListener('blur', function(){
+      skip.style.left = '-9999px'; skip.style.width = '1px'; skip.style.height = '1px';
+    });
+    document.body.insertBefore(skip, document.body.firstChild);
+  }
+  // Tag the first non-header content block as the skip target. Run
+  // after the header is injected so the skip target lands on the
+  // first real content node rather than the header itself.
+  function _khTagMainContent() {
+    if (document.getElementById('main-content')) return;
+    var hdr = document.getElementById('kh-header');
+    if (!hdr) return;
+    var node = hdr.nextElementSibling;
+    // Walk past empty wrappers (welcome banner, nudge, etc.) that
+    // may be display:none on first paint.
+    while (node && node.children && node.children.length === 0 &&
+           (node.id === 'kh-welcome-banner' || node.id === 'kh-day2-pill' || node.id === 'kh-feedback-pill')) {
+      node = node.nextElementSibling;
+    }
+    if (node && !node.id) node.id = 'main-content';
+    else if (node) {
+      // Element already has an id — attach a synthetic <span> anchor
+      // before it so the skip link still works without renaming.
+      var anchor = document.createElement('span');
+      anchor.id = 'main-content';
+      anchor.tabIndex = -1;
+      node.parentNode.insertBefore(anchor, node);
+    }
+  }
   var headerEl  = document.getElementById('kh-header');
   var footerEl  = document.getElementById('kh-footer');
   var sidebarEl = document.getElementById('kh-sidebar');
 
   if (headerEl)  headerEl.innerHTML  = renderHeader();
+  _khTagMainContent();
   _ldr(35); // Header rendered
   // Run updateAuthUI() immediately after the header is in DOM so
   // the IIFE-injected #kh-auth-flash-guard <style> gets removed on
