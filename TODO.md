@@ -42,10 +42,11 @@ doesn't keep reminding about closed work.
     background tabs eliminated, PF-P1-9); session refresh skips
     anonymous sessions (PF-P3-19); Word-Drop background video
     respects prefers-reduced-motion (PF-P1-8).
-  - **Pending deploys**:
-    - `supabase functions deploy claude-proxy admin-api daily-content-gen
-      notify-signup tts-proxy image-search speech-proxy
-      speaking-pass-checkout`
+  - **Edge Functions deployed 2026-05-25** ✅: all 8 functions
+    (claude-proxy, admin-api, daily-content-gen, notify-signup,
+    tts-proxy, image-search, speech-proxy, speaking-pass-checkout)
+    pushed to prod via supabase CLI. Verified each returns 401
+    without auth (tts-proxy now correctly rejects unauthed callers).
   - **Verification still needed (audit F2)**: RLS on
     `user_quota_overrides` must block authenticated writes — run
     `SELECT polname, polcmd FROM pg_policy WHERE polrelid =
@@ -117,25 +118,14 @@ doesn't keep reminding about closed work.
 - #7Y this PR — daily-content-gen Sonnet model id bumped to
   `claude-sonnet-4-6` (deprecated dated id removed)
 
-## Edge Function deploys (must run locally — Cloudflare doesn't deploy these)
+## Edge Function deploys
 
-- `supabase functions deploy admin-api` — **NOW URGENT** after PR #7BE.
-  This deploy carries TWO fixes the admin tooling needs:
-    (a) ALLOWED_TABLES gate now skipped when `method === 'rpc'`, so
-        `🎲 Pick from pool` stops 400'ing with
-        "Table not allowed: _rpc".
-    (b) insert/upsert/update/delete now honour `params.returning` and
-        `params.single` / `maybeSingle`, so `.insert().select('id')`
-        actually inserts (the bug that made "batch from pool 1개" run
-        a ghost "Auto-baking sentence analysis 1 / 74" against every
-        existing conv).
-  Pre-existing reason for this deploy still applies: ALLOWED_RPCS
-  was earlier extended with `pick_conv_scenario` /
-  `mark_conv_scenario_used`, and ALLOWED_TABLES with
-  `conv_scenario_pool`.
-- `supabase functions deploy daily-content-gen` — to activate BOTH
-  the psych-verb grammar rule (#7Q) AND the Sonnet model-id fix
-  (#7Y) on the server cron.
+All 8 Edge Functions deployed to prod 2026-05-25 (claude-proxy,
+admin-api, daily-content-gen, notify-signup, tts-proxy, image-search,
+speech-proxy, speaking-pass-checkout). This includes the PR #7BE
+admin-api fixes (RPC gate / returning / single) and the
+daily-content-gen psych-verb + Sonnet model-id changes that had
+been waiting on a deploy.
 
 ## Stale data cleanup
 
