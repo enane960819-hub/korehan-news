@@ -3877,6 +3877,37 @@ function _khWrapSentences(paragraph) {
   });
 })();
 
+// Generic keyboard activation for any element marked
+// role="button" tabindex="0" with an inline onclick (e.g. study-room
+// learning-mode cards, word-bank rows). Fires the click handler on
+// Enter / Space so keyboard users can launch the same things mouse
+// users can. (WCAG 2.1.1, audit A11y #10 / #19.)
+(function _khInstallGenericKbdActivation() {
+  if (typeof document === 'undefined') return;
+  if (window._khGenericKbdActivationBound) return;
+  window._khGenericKbdActivationBound = true;
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    var t = e.target;
+    if (!t || t.tagName === 'BUTTON' || t.tagName === 'A' ||
+        t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' ||
+        t.tagName === 'SELECT') return;
+    if (t.getAttribute('role') !== 'button') return;
+    // Skip if .art-sent (already handled above) — avoid double-fire.
+    if (t.classList && t.classList.contains('art-sent')) return;
+    // Skip the comment-drawer scrim/handle — those have their own
+    // keydown handler in the focus-trap (different close path).
+    if (t.classList && (t.classList.contains('kh-cdr-scrim') ||
+                         t.classList.contains('kh-cdr-handle'))) return;
+    // Only fire if the element has a click intent (inline onclick or
+    // an attached listener registered before us is a near-impossible
+    // check; the onclick attribute presence is the practical proxy).
+    if (!t.hasAttribute('onclick')) return;
+    e.preventDefault();
+    t.click();
+  });
+})();
+
 function formatArticleBody(text) {
   if (!text) return '';
   // Strip dangerous tags but keep basic formatting
@@ -10789,12 +10820,17 @@ function openCommentDrawer() {
   if (!drawer) {
     drawer = document.createElement('div');
     drawer.id = 'kh-comment-drawer';
+    // a11y: aria-modal so SR users know the drawer takes focus,
+    // aria-labelledby pointing at the visible "댓글" title so the
+    // dialog name matches what's on screen. Handle + scrim get
+    // role=button + tabindex so keyboard users can dismiss the
+    // same way as click users; explicit aria-label on each.
     drawer.innerHTML =
-        '<div class="kh-cdr-scrim" onclick="closeCommentDrawer()"></div>'
-      + '<div class="kh-cdr-panel" role="dialog" aria-label="Comments">'
-      +   '<div class="kh-cdr-handle" onclick="closeCommentDrawer()"></div>'
+        '<div class="kh-cdr-scrim" role="button" tabindex="0" aria-label="Close comments" onclick="closeCommentDrawer()"></div>'
+      + '<div class="kh-cdr-panel" role="dialog" aria-modal="true" aria-labelledby="kh-cdr-title-text">'
+      +   '<div class="kh-cdr-handle" role="button" tabindex="0" aria-label="Close comments" onclick="closeCommentDrawer()"></div>'
       +   '<div class="kh-cdr-header">'
-      +     '<span class="kh-cdr-title"><span>댓글</span><span class="kh-cdr-count" id="kh-cdr-count">0</span></span>'
+      +     '<span class="kh-cdr-title"><span id="kh-cdr-title-text">댓글</span><span class="kh-cdr-count" id="kh-cdr-count">0</span></span>'
       +     '<button class="kh-cdr-close" onclick="closeCommentDrawer()" aria-label="Close">&times;</button>'
       +   '</div>'
       +   '<div class="kh-cdr-body" id="kh-comment-drawer-body"></div>'
@@ -10828,8 +10864,53 @@ function openCommentDrawer() {
     ta.addEventListener('input', grow);
     requestAnimationFrame(grow);
   }
+  // a11y: remember the opener so focus returns when the drawer closes,
+  // then move focus into the drawer (close button is the safest first
+  // stop — Tab from there cycles through the comment form).
+  try { window._khCdrOpener = document.activeElement; } catch (_) { window._khCdrOpener = null; }
+  // Keyboard scaffolding (focus trap + Escape close + scrim Enter/Space).
+  // Bind once; idempotent on re-open thanks to the _khCdrA11yBound flag.
+  if (!window._khCdrA11yBound) {
+    window._khCdrA11yBound = true;
+    document.addEventListener('keydown', function (e) {
+      var dr = document.getElementById('kh-comment-drawer');
+      if (!dr || !dr.classList.contains('open')) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeCommentDrawer();
+        return;
+      }
+      // Activate scrim / handle on Enter or Space (they're role=button).
+      if ((e.key === 'Enter' || e.key === ' ') &&
+          e.target && (e.target.classList.contains('kh-cdr-scrim') ||
+                       e.target.classList.contains('kh-cdr-handle'))) {
+        e.preventDefault();
+        closeCommentDrawer();
+        return;
+      }
+      // Focus trap — keep Tab cycling inside the drawer panel.
+      if (e.key !== 'Tab') return;
+      var panel = dr.querySelector('.kh-cdr-panel');
+      if (!panel) return;
+      var focusables = panel.querySelectorAll(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusables.length) return;
+      var first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+    });
+  }
   // rAF so the CSS transition fires from the off-screen state.
-  requestAnimationFrame(function() { drawer.classList.add('open'); });
+  requestAnimationFrame(function() {
+    drawer.classList.add('open');
+    // Move focus into the drawer once the CSS transition has begun.
+    var closeBtn = drawer.querySelector('.kh-cdr-close');
+    if (closeBtn) { try { closeBtn.focus(); } catch (_) {} }
+  });
   document.body.classList.add('kh-cdr-open');
 }
 
@@ -10838,6 +10919,13 @@ function closeCommentDrawer() {
   if (!drawer) return;
   drawer.classList.remove('open');
   document.body.classList.remove('kh-cdr-open');
+  // Return focus to whatever opened the drawer (the article-page
+  // "댓글" button on most paths). Without this the keyboard user
+  // lands back at <body> with no obvious next focus target.
+  if (window._khCdrOpener && typeof window._khCdrOpener.focus === 'function') {
+    try { window._khCdrOpener.focus(); } catch (_) {}
+  }
+  window._khCdrOpener = null;
 }
 
 // Vertical feed navigation — "swipe up for next article" pattern.
