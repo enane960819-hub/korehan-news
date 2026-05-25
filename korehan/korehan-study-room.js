@@ -5728,8 +5728,24 @@ async function speakEdgeTTS(text, voice) {
   }
 }
 function playTTSAudio(url) {
-  if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio = null; }
+  if (_ttsAudio) {
+    try { _ttsAudio.pause(); } catch(_) {}
+    // If the previous Audio was playing a one-shot URL we minted directly
+    // (not a cached blob:), revoke it so it doesn't leak. Cached entries
+    // are revoked by _ttsCacheEvict; we tag the latter to avoid a
+    // double-revoke here.
+    try {
+      var prev = _ttsAudio.src;
+      if (prev && prev.indexOf('blob:') === 0 && !_ttsAudio._khCached) {
+        URL.revokeObjectURL(prev);
+      }
+    } catch(_) {}
+    _ttsAudio = null;
+  }
   _ttsAudio = new Audio(url);
+  // Mark blob URLs that came from the LRU cache so we don't revoke them
+  // out from under the cache (the cache owns their lifecycle).
+  try { _ttsAudio._khCached = !!(typeof _ttsCache !== 'undefined' && url && Array.from(_ttsCache.values()).indexOf(url) >= 0); } catch(_) {}
   _ttsAudio.play().catch(function(){});
 }
 function speakFallback(text) {
@@ -9782,6 +9798,33 @@ async function _startFeedbackArrivalPoll() {
       }
     } catch(_) {}
   }, 30000);
+
+  // Pause polling while the tab is hidden — the user can't see toasts
+  // and the only thing the poll achieves in the background is Supabase
+  // egress cost. Resume on return. Wire once per session.
+  if (!window._khFbPollLifecycleWired) {
+    window._khFbPollLifecycleWired = true;
+    document.addEventListener('visibilitychange', function() {
+      if (!_khFbPollHandle) return;
+      if (document.hidden) {
+        try { clearInterval(_khFbPollHandle); } catch(_){}
+        _khFbPollHandle = null;
+        window._khFbPollPaused = true;
+      }
+    });
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden || !window._khFbPollPaused) return;
+      window._khFbPollPaused = false;
+      if (_khFbPollPending && _khFbPollPending.size) {
+        try { _startFeedbackArrivalPoll(); } catch(_){}
+      }
+    });
+    // Final stop on navigation away — clear the interval so the browser
+    // doesn't keep firing it after the bfcache evicts the page.
+    window.addEventListener('pagehide', function() {
+      if (_khFbPollHandle) { try { clearInterval(_khFbPollHandle); } catch(_){} _khFbPollHandle = null; }
+    });
+  }
 }
 
 async function loadFeedbackInbox() {

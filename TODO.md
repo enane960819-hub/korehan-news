@@ -25,6 +25,10 @@ doesn't keep reminding about closed work.
   - #7 speech-proxy fetch 30s AbortController timeout
   - #8 429 surfaces `code` + `detail` (monthly cap vs daily cap)
   - #9 MediaRecorder 2-min auto-stop cap (both speak paths)
+- 2차 오딧 P2 (3 items):
+  - #10 Word-Drop background video pauses on visibilitychange
+  - #12 Feedback poller pauses on hidden, clears on pagehide
+  - Bonus: TTS playTTSAudio revokes prior non-cached blob: URLs
 - Cache busters bumped: saved-words / streak / articles / shared / study-room
 
 ## Recently merged into main 2026-05-20
