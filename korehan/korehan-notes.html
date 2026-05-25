@@ -219,10 +219,15 @@ async function _loadBookmarks() {
 }
 
 async function _loadSavedWords() {
-  if (_ntWordsLoaded) return;
   var listEl = document.getElementById('nt-w-list');
   var countEl = document.getElementById('nt-w-count');
-  listEl.innerHTML = khLoadingHTML('Loading your words', 'Pulling words you\'ve saved while reading.');
+  // Refresh every time the tab opens so words saved on another tab/page
+  // appear without a manual reload. The previous _ntWordsLoaded guard
+  // turned the list into a stale snapshot once visited. Skeleton only
+  // shows when we don't already have something to display.
+  if (!window._ntSavedWords || !window._ntSavedWords.length) {
+    listEl.innerHTML = khLoadingHTML('Loading your words', 'Pulling words you\'ve saved while reading.');
+  }
 
   if (!supaUser) {
     listEl.innerHTML = khEmptyState({
@@ -262,7 +267,8 @@ async function _loadSavedWords() {
     _ntWordsLoaded = true;
 
     var search = document.getElementById('nt-w-search');
-    if (search) {
+    if (search && !search.dataset.bound) {
+      search.dataset.bound = '1';
       search.addEventListener('input', function() {
         var q = (search.value || '').trim().toLowerCase();
         if (!q) { _renderSavedWordList(window._ntSavedWords); return; }

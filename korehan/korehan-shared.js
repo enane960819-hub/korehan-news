@@ -1098,6 +1098,43 @@ async function signOut(options) {
   options = options || {};
   var scope = options.scope || 'global';
   var message = options.message || (scope === 'global' ? 'Signed out on all devices' : 'Signed out successfully');
+
+  // Pages where the entire view assumes an authenticated user (My Page,
+  // Study Room, Notes, …). After signOut these pages would otherwise keep
+  // rendering stale user data for ~1s while updateAuthUI() runs — the
+  // "logout flash" bug. Pre-clear the user-state and bounce to home BEFORE
+  // doing the network sign-out so the flash window is zero.
+  var AUTH_GATED_PAGES = [
+    'korehan-mypage.html',
+    'korehan-study-room.html',
+    'notes.html',
+    'korehan-learning-overview.html',
+    'korehan-onboarding.html'
+  ];
+  var path = (window.location.pathname || '').split('/').pop() || '';
+  var isGated = AUTH_GATED_PAGES.indexOf(path) >= 0;
+
+  if (isGated) {
+    supaUser = null;
+    try { window._savedWordsSet = null; } catch(_) {}
+    try { window._isAdmin = false; window._isTutor = false; } catch(_) {}
+    // Fire the network signOut without awaiting — index.html will pick up
+    // the cleared session on its own load.
+    var sb = getSupa();
+    if (sb) { try { sb.auth.signOut({ scope: scope }); } catch(_) {} }
+    [localStorage, sessionStorage].forEach(function(storage) {
+      try {
+        Object.keys(storage).forEach(function(key) {
+          if (key.startsWith('sb-') || key.includes('supabase')) {
+            storage.removeItem(key);
+          }
+        });
+      } catch (e) {}
+    });
+    window.location.replace('index.html');
+    return;
+  }
+
   var sb = getSupa();
   if (sb) {
     await sb.auth.signOut({ scope: scope });
