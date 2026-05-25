@@ -5364,7 +5364,31 @@ async function runAutoGenerate(){
       // No per-sentence analysis here — that's the Haiku follow-up
       // call below, which is cheaper for schema-following and runs
       // against a frozen body.
-      var bodyFullPrompt = bodyPrompt + _khBodyCatalog;
+      //
+      // SOFT-suggest a sample of KH_GRAMMAR labels so newly generated
+      // articles naturally CONTAIN the patterns we want to teach.
+      // Patterns are passed as suggestions (NOT must-include) — the
+      // prompt above explicitly says "awkward forced grammar is worse
+      // than missing coverage", so the model is free to skip any that
+      // don't fit. Smaller sample (15) keeps the prompt under timeout
+      // budget; randomisation across runs means different articles
+      // surface different patterns over the long run.
+      var _khSoftSuggest = '';
+      try {
+        if (window.KH_GRAMMAR && Array.isArray(window.KH_GRAMMAR._PATTERNS)) {
+          var allP = window.KH_GRAMMAR._PATTERNS.slice();
+          for (var i = allP.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var tmp = allP[i]; allP[i] = allP[j]; allP[j] = tmp;
+          }
+          var sample = allP.slice(0, 15).map(function(p, k){ return '  ' + (k+1) + '. ' + p.label; }).join('\n');
+          if (sample) {
+            _khSoftSuggest = '\n\nSUGGESTED grammar patterns to weave naturally into the body if they fit the topic (NOT a requirement — never force; awkward usage is worse than skipping):\n' + sample;
+          }
+        }
+      } catch(_) { _khSoftSuggest = ''; }
+
+      var bodyFullPrompt = bodyPrompt + _khBodyCatalog + _khSoftSuggest;
       _autoGenSetItemStatus(si, '⏳ 본문 생성 중… (Sonnet)');
       const bodyRes = await callClaude({
         feature: 'generate-article-body',
