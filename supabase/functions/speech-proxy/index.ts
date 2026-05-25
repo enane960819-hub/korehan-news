@@ -28,6 +28,39 @@ function json(body: unknown, status = 200, cors: Record<string, string>) {
   })
 }
 
+// Warm-instance cache for Azure Speech credentials so we don't hit
+// app_settings on every pronunciation request. The Azure key + region
+// only change when an admin rotates them via the admin CMS; a 5-minute
+// TTL is short enough to pick up rotations without per-request load.
+type AzureCreds = { key: string; region: string };
+let _azureCredsCache: { value: AzureCreds; expiresAt: number } | null = null;
+const AZURE_CREDS_TTL_MS = 5 * 60 * 1000;
+
+async function getAzureCreds(
+  sbUrl: string,
+  serviceKey: string,
+): Promise<AzureCreds | null> {
+  const now = Date.now();
+  if (_azureCredsCache && _azureCredsCache.expiresAt > now) {
+    return _azureCredsCache.value;
+  }
+  const sb = createClient(sbUrl, serviceKey);
+  const { data: settings, error } = await sb
+    .from('app_settings')
+    .select('key, value')
+    .in('key', ['azure_speech_key', 'azure_speech_region']);
+  if (error) {
+    console.error('[speech-proxy] app_settings error:', error.message);
+    return null;
+  }
+  const key = settings?.find((s: { key: string; value: string }) => s.key === 'azure_speech_key')?.value;
+  const region = settings?.find((s: { key: string; value: string }) => s.key === 'azure_speech_region')?.value;
+  if (!key || !region) return null;
+  const creds = { key, region };
+  _azureCredsCache = { value: creds, expiresAt: now + AZURE_CREDS_TTL_MS };
+  return creds;
+}
+
 Deno.serve(async (req: Request) => {
   const cors = getCorsHeaders(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -65,24 +98,13 @@ Deno.serve(async (req: Request) => {
       return json({ error: 'Missing audio or referenceText' }, 400, cors)
     }
 
-    // ── 3. Azure credentials from app_settings ───────────────────
-    const sb = createClient(supabaseUrl, supabaseServiceKey)
-    const { data: settings, error: settErr } = await sb
-      .from('app_settings')
-      .select('key, value')
-      .in('key', ['azure_speech_key', 'azure_speech_region'])
-
-    if (settErr) {
-      console.error('[speech-proxy] app_settings error:', settErr.message)
-      return json({ error: 'Configuration unavailable' }, 503, cors)
-    }
-
-    const azureKey = settings?.find((s: { key: string; value: string }) => s.key === 'azure_speech_key')?.value
-    const azureRegion = settings?.find((s: { key: string; value: string }) => s.key === 'azure_speech_region')?.value
-
-    if (!azureKey || !azureRegion) {
+    // ── 3. Azure credentials from app_settings (cached 5 min) ────
+    const creds = await getAzureCreds(supabaseUrl, supabaseServiceKey)
+    if (!creds) {
       return json({ error: 'Azure Speech not configured' }, 503, cors)
     }
+    const azureKey = creds.key
+    const azureRegion = creds.region
 
     // ── 4. Build Pronunciation Assessment header ─────────────────
     const pronConfig = btoa(JSON.stringify({

@@ -5659,7 +5659,30 @@ function _renderAwRoundComplete() {
 }
 
 var _ttsAudio = null;
-var _ttsCache = {};
+// LRU-capped TTS audio cache. Each entry is a blob URL kept alive by
+// the cache; long study sessions used to accumulate dozens of cached
+// clips and silently leak memory on mobile. Map preserves insertion
+// order so the "oldest entry first" pattern below is real LRU.
+var _ttsCache = new Map();
+var _TTS_CACHE_MAX = 60;
+function _ttsCacheGet(k) {
+  if (!_ttsCache.has(k)) return null;
+  var v = _ttsCache.get(k);
+  // Touch → move to most-recent end of insertion order.
+  _ttsCache.delete(k);
+  _ttsCache.set(k, v);
+  return v;
+}
+function _ttsCacheSet(k, v) {
+  if (_ttsCache.has(k)) _ttsCache.delete(k);
+  _ttsCache.set(k, v);
+  while (_ttsCache.size > _TTS_CACHE_MAX) {
+    var oldestKey = _ttsCache.keys().next().value;
+    var oldestVal = _ttsCache.get(oldestKey);
+    _ttsCache.delete(oldestKey);
+    try { if (oldestVal && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(oldestVal); } catch(_) {}
+  }
+}
 function speakHangul(text, voice) {
   if (!text) return;
   // Try Edge TTS first (natural AI voice), fall back to Web Speech API
@@ -5668,7 +5691,8 @@ function speakHangul(text, voice) {
 async function speakEdgeTTS(text, voice) {
   try {
     var cacheKey = text + '_' + voice;
-    if (_ttsCache[cacheKey]) { playTTSAudio(_ttsCache[cacheKey]); return; }
+    var hit = _ttsCacheGet(cacheKey);
+    if (hit) { playTTSAudio(hit); return; }
     var supaUrl = typeof SUPA_URL !== 'undefined' ? SUPA_URL : '';
     if (!supaUrl) { speakFallback(text); return; }
     var headers = { 'Content-Type': 'application/json' };
@@ -5696,7 +5720,7 @@ async function speakEdgeTTS(text, voice) {
     var blob = await res.blob();
     if (blob.size < 100) throw new Error('empty audio');
     var url = URL.createObjectURL(blob);
-    _ttsCache[cacheKey] = url;
+    _ttsCacheSet(cacheKey, url);
     playTTSAudio(url);
   } catch(e) {
     console.warn('[TTS] Edge TTS failed, using fallback:', e.message);
@@ -6531,8 +6555,12 @@ function showDialogue(node) {
   var player = document.getElementById('ft-player');
   document.getElementById('ftp-scene').textContent = node.scene || '';
   document.getElementById('ftp-npc').textContent = node.npc || '';
+  // NPC line + a 🔊 replay button so the learner can re-hear the line at
+  // their own pace instead of just the one-shot auto-play.
+  var npcKoEscaped = String(node.text || '').replace(/'/g, "\\'");
   document.getElementById('ftp-text').innerHTML =
     '<span class="ft-ko">' + node.text + '</span>'
+    + '<button onclick="speakHangul(\'' + npcKoEscaped + '\')" aria-label="Replay" style="margin-left:6px;padding:3px 8px;border:1px solid rgba(15,23,42,.15);background:#fff;border-radius:999px;font-size:11px;cursor:pointer;font-family:inherit;color:#475569;vertical-align:2px">🔊</button>'
     + '<span class="ft-en">' + (node.textEn || '') + '</span>';
   var choicesEl = document.getElementById('ftp-choices');
   choicesEl.innerHTML = (node.choices || []).map(function(c, i) {
@@ -6541,6 +6569,20 @@ function showDialogue(node) {
       + (c.textEn ? '<div class="ft-choice-en">' + c.textEn + '</div>' : '')
       + '</button>';
   }).join('');
+  // Speaking-practice row — only if there are response choices to match
+  // against. Speech recognition is gated to Chrome/Edge/Safari via
+  // _SpeechRecognitionCtor; if unavailable we hide the button entirely
+  // so learners on Firefox / older mobile browsers don't see a dead UI.
+  if (node.choices && node.choices.length && typeof _SpeechRecognitionCtor === 'function' && _SpeechRecognitionCtor()) {
+    choicesEl.insertAdjacentHTML('beforeend',
+      '<div id="ftp-speak-row" style="margin-top:10px;display:flex;flex-direction:column;align-items:stretch;gap:6px">'
+      + '<button id="ftp-speak-btn" onclick="_ftSpeakReply()" style="padding:9px 14px;border:1.5px dashed rgba(99,102,241,.4);background:rgba(238,242,255,.6);border-radius:10px;font-size:12px;font-weight:700;color:#4338ca;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px">'
+      +   '<span aria-hidden="true">🎤</span><span>Speak your reply</span>'
+      + '</button>'
+      + '<div id="ftp-speak-status" style="font-size:11px;color:#64748b;min-height:16px;text-align:center"></div>'
+      + '</div>'
+    );
+  }
   // Show collected phrases
   var phrasesEl = document.getElementById('ftp-phrases');
   var phrasesList = document.getElementById('ftp-phrases-list');
@@ -6551,8 +6593,97 @@ function showDialogue(node) {
     phrasesEl.style.display = 'none';
   }
   player.classList.add('open');
-  // Speak NPC line
+  // Speak NPC line (auto-play once on enter)
   speakHangul(node.text);
+}
+
+// Listen to the user's spoken reply and auto-pick the choice whose text
+// best matches the transcript. Uses the existing jamo-decomposed
+// Levenshtein for fuzzy match so partial / accented attempts still
+// resolve. Falls back silently if STT can't start.
+function _ftSpeakReply() {
+  var btn = document.getElementById('ftp-speak-btn');
+  var status = document.getElementById('ftp-speak-status');
+  var node = _ftState.scenario && _ftState.scenario.nodes[_ftState.nodeId];
+  if (!node || !node.choices || !node.choices.length) return;
+
+  var Ctor = _SpeechRecognitionCtor();
+  if (!Ctor) {
+    if (status) status.textContent = 'Speech recognition not supported in this browser.';
+    return;
+  }
+
+  // Tap-again-to-stop semantics.
+  if (window._ftRec) {
+    try { window._ftRec.stop(); } catch(_) {}
+    window._ftRec = null;
+    return;
+  }
+
+  var r;
+  try { r = new Ctor(); } catch(e) {
+    if (status) status.textContent = 'Could not start microphone.';
+    return;
+  }
+  r.lang = 'ko-KR';
+  r.continuous = false;
+  r.interimResults = false;
+  r.maxAlternatives = 1;
+
+  var transcript = '';
+  r.onresult = function(e) {
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) transcript += e.results[i][0].transcript;
+    }
+  };
+  r.onerror = function(err) {
+    if (status) status.textContent = 'Mic error: ' + ((err && err.error) || 'unknown');
+    if (btn) { btn.innerHTML = '<span aria-hidden="true">🎤</span><span>Speak your reply</span>'; btn.style.background = 'rgba(238,242,255,.6)'; }
+    window._ftRec = null;
+  };
+  r.onend = function() {
+    window._ftRec = null;
+    if (btn) { btn.innerHTML = '<span aria-hidden="true">🎤</span><span>Speak your reply</span>'; btn.style.background = 'rgba(238,242,255,.6)'; }
+    if (!transcript) {
+      if (status) status.textContent = 'Didn\'t catch that — try again.';
+      return;
+    }
+    var said = _normalizeForScore(transcript);
+    var saidJamo = _decomposeHangul(said);
+    var bestIdx = -1, bestSim = 0;
+    (node.choices || []).forEach(function(c, i) {
+      var target = _normalizeForScore(c.text || '');
+      if (!target) return;
+      var tj = _decomposeHangul(target);
+      var dist = _levenshtein(saidJamo, tj);
+      var maxLen = Math.max(saidJamo.length, tj.length) || 1;
+      var sim = 1 - dist / maxLen;
+      if (sim > bestSim) { bestSim = sim; bestIdx = i; }
+    });
+    if (bestIdx >= 0 && bestSim >= 0.55) {
+      if (status) {
+        status.innerHTML = 'Heard: <b>' + transcript.replace(/[<>]/g,'') + '</b> · '
+          + Math.round(bestSim * 100) + '% match → picking choice ' + (bestIdx + 1);
+      }
+      setTimeout(function(){ pickChoice(_ftState.nodeId, bestIdx); }, 700);
+    } else {
+      if (status) {
+        status.innerHTML = 'Heard: <b>' + transcript.replace(/[<>]/g,'') + '</b> — no good match. Tap a choice or try again.';
+      }
+    }
+  };
+
+  try {
+    r.start();
+    window._ftRec = r;
+    if (btn) {
+      btn.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>Listening… tap to stop</span>';
+      btn.style.background = 'rgba(254,226,226,.6)';
+    }
+    if (status) status.textContent = 'Say one of the choices above.';
+  } catch(e) {
+    if (status) status.textContent = 'Could not start microphone.';
+  }
 }
 
 function _ftPhraseObj(p) {
