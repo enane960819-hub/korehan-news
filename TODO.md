@@ -47,12 +47,12 @@ doesn't keep reminding about closed work.
     tts-proxy, image-search, speech-proxy, speaking-pass-checkout)
     pushed to prod via supabase CLI. Verified each returns 401
     without auth (tts-proxy now correctly rejects unauthed callers).
-  - **Verification still needed (audit F2)**: RLS on
-    `user_quota_overrides` must block authenticated writes — run
-    `SELECT polname, polcmd FROM pg_policy WHERE polrelid =
-    'public.user_quota_overrides'::regclass;` in Supabase SQL editor.
-    If no INSERT/UPDATE policy denies authenticated role, add a
-    `service-only` policy.
+  - **Audit F2 closed 2026-05-25** ✅: RLS enabled on
+    `user_quota_overrides` with a `service_only` policy
+    (`FOR ALL TO authenticated USING (false) WITH CHECK (false)`).
+    Verified anon writes return `42501: new row violates row-level
+    security policy`. service_role bypasses RLS by design so
+    claude-proxy's per-user quota override lookup keeps working.
   - **3차 오딧 P2 batch (this commit)**:
     - **AD-F10** Article body prompt caching: claude-proxy now
       forwards `cache_control` blocks + sends the prompt-caching
