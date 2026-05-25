@@ -1455,7 +1455,10 @@ function updateAuthUI() {
 
   // Tutor dashboard allowlist — admin + Alicia (Preply tutor).
   // Mirror this list in supabase/migrations/20260428_tutor_dashboard.sql is_tutor_user().
+  // Expose on window so the tutor page IIFE can consume it instead of
+  // duplicating the list (drift caused stale gates in the past).
   var TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com'];
+  window.KH_TUTOR_EMAILS = TUTOR_EMAILS.slice();
   var isTutor = supaUser && TUTOR_EMAILS.includes((supaUser.email || '').toLowerCase());
   window._isTutor = isTutor;
 

@@ -137,7 +137,19 @@ Deno.serve(async (req) => {
       })
     }
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    // Do NOT fall back to SUPABASE_SERVICE_ROLE_KEY here — leaking the
+    // service-role key to /auth/v1/user as the `apikey` header would
+    // surface in intermediate proxy / CDN access logs. If anon key is
+    // unset (project re-provisioned, typo, env wipe), fail loud so the
+    // operator sees the 500 instead of silently authenticating with
+    // service-role privileges.
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+    if (!anonKey) {
+      console.error('[tts-proxy] SUPABASE_ANON_KEY missing')
+      return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
+        status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
+      })
+    }
     const authCheck = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: { 'Authorization': authHeader, 'apikey': anonKey },
     })
