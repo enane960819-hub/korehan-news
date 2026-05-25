@@ -3328,7 +3328,12 @@ function renderArticlePage() {
     +     '<div class="rv-check-body"><div id="art-listening-quiz"><button onclick="startArticleListeningQuiz()" class="rv-start-btn">Start Listening Quiz</button></div></div>'
     +   '</div>'
 
-    +   '<div class="rv-deeper" data-step="4" style="display:none">'
+    +   '<div class="rv-check" data-step="4">'
+    +     '<div class="rv-check-head"><span>🔨 Build (Hangul jamo keyboard)</span><span class="rv-check-hint">Active recall</span></div>'
+    +     '<div class="rv-check-body"><div id="art-build-quiz"><button onclick="startArticleBuildQuiz()" class="rv-start-btn">Start Build Quiz</button></div></div>'
+    +   '</div>'
+
+    +   '<div class="rv-deeper" data-step="5" style="display:none">'
     +     '<div class="rv-deeper-title">Ready for deeper study?</div>'
     +     '<div class="rv-deeper-sub">The Study Room takes this article into a full session — Vocab, Phrases, Read-aloud, Quiz, and Writing — on its own page.</div>'
     +     '<button class="rv-deeper-btn" onclick="openArticleStudyFromReader()">Open Study Room →</button>'
@@ -5026,13 +5031,19 @@ function switchArtTab(tab, btn) {
 var _reviewFlow = null;
 
 function _reviewFlowInit() {
-  _reviewFlow = { step: 0, done: { 0:false, 1:false, 2:false, 3:false } };
+  _reviewFlow = { step: 0, done: { 0:false, 1:false, 2:false, 3:false, 4:false } };
   _reviewFlowApply();
 }
 
-// Step 0–3 are the four practice cards; step 4 is the Ready-for-deeper-
-// study CTA. Only the current step is visible — step 4 only reveals
-// once all four practice cards have been completed.
+// Steps 0–4 are the five practice cards; step 5 is the Ready-for-deeper-
+// study CTA. Only the current step is visible — step 5 only reveals
+// once all five practice cards have been completed.
+//   0 — Vocab multiple-choice
+//   1 — Comprehension (True/False)
+//   2 — Fill in the Blank (AI-generated)
+//   3 — Listening (audio quiz)
+//   4 — Build (Hangul jamo keyboard — active recall)
+//   5 — Deeper Study CTA
 function _reviewFlowApply() {
   var nodes = document.querySelectorAll('#art-tab-quiz [data-step]');
   if (!nodes || !nodes.length || !_reviewFlow) return;
@@ -5063,11 +5074,10 @@ function _reviewFlowApply() {
 function _reviewFlowAdvance(stepDone) {
   if (!_reviewFlow) _reviewFlowInit();
   _reviewFlow.done[stepDone] = true;
-  // Cap at 4 so finishing Listening (step 3) reveals the Deeper Study
-  // CTA (step 4). Earlier code capped at 3, leaving the CTA gated
-  // forever via no-data-step and shown from page load — we now own
-  // the CTA's visibility through the flow state.
-  _reviewFlow.step = Math.min(stepDone + 1, 4);
+  // Cap at 5 so finishing Build (step 4) reveals the Deeper Study CTA
+  // (step 5). Earlier the cap was 4 (Listening was the last step before
+  // CTA); bumped to 5 when the Build step landed between them.
+  _reviewFlow.step = Math.min(stepDone + 1, 5);
   _reviewFlowApply();
   var active = document.querySelector('#art-tab-quiz [data-step="' + _reviewFlow.step + '"]');
   if (active) setTimeout(function(){ try { active.scrollIntoView({ behavior:'smooth', block:'center' }); } catch(e) {} }, 250);

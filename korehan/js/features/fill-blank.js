@@ -100,6 +100,118 @@ function startArticleListeningQuiz() {
   renderQ();
 }
 
+// ── Build Quiz (Hangul jamo keyboard — active recall) ───────────────
+// Step 4 of the Review flow. Takes the article's Vocab list and asks
+// the learner to BUILD each word from scratch using the on-screen
+// jamo keyboard. Tests active production (much stronger than passive
+// recall in MC). Reuses the same DOM source as the Listening Quiz —
+// #art-vocab-list .art-vocab-item — and the global khAttachJamoKeyboard
+// from js/core/hangul-jamo-input.js (already used by daily review's
+// "typed" question type).
+function startArticleBuildQuiz() {
+  var el = document.getElementById('art-build-quiz');
+  if (!el) return;
+  var vocabItems = [];
+  document.querySelectorAll('#art-vocab-list .art-vocab-item').forEach(function(item){
+    var ko  = item.querySelector('.art-vocab-ko');
+    var en  = item.querySelector('.art-vocab-en');
+    var rom = item.querySelector('.art-vocab-rom');
+    if (ko && en) vocabItems.push({
+      ko:  ko.textContent.trim(),
+      en:  en.textContent.trim(),
+      rom: rom ? rom.textContent.trim() : ''
+    });
+  });
+  if (!vocabItems.length) {
+    el.innerHTML = '<div style="color:#94a3b8;font-size:13px">No vocabulary available. Switch to the Vocab tab first to load it.</div>';
+    return;
+  }
+  if (typeof window.khAttachJamoKeyboard !== 'function') {
+    el.innerHTML = '<div style="color:#dc2626;font-size:13px">Jamo keyboard module not loaded.</div>';
+    return;
+  }
+  // Shuffle + take up to 8 — short enough to finish in 2-3 min.
+  var pool = vocabItems.slice();
+  for (var i = pool.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+  var items = pool.slice(0, 8);
+  var qi = 0;
+  var score = 0;
+  var jamoKbd = null;
+  function destroyKbd() {
+    if (jamoKbd && typeof jamoKbd.destroy === 'function') {
+      try { jamoKbd.destroy(); } catch(_) {}
+    }
+    jamoKbd = null;
+  }
+  function renderQ() {
+    destroyKbd();
+    if (qi >= items.length) {
+      el.innerHTML = '<div style="text-align:center;padding:16px">'
+        + '<div style="font-size:18px;font-weight:800;color:#16a34a;margin-bottom:4px">🎉 Build Complete!</div>'
+        + '<div style="font-size:14px;color:#475569;margin-bottom:14px">Score: <b>' + score + ' / ' + items.length + '</b></div>'
+        + '<button onclick="startArticleBuildQuiz()" style="padding:8px 18px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700">Build Again</button>'
+        + '</div>';
+      if (typeof _reviewFlowAdvance === 'function') _reviewFlowAdvance(4);
+      return;
+    }
+    var v = items[qi];
+    var hint = (v.en || '') + (v.rom ? ' <span style="color:#94a3b8;font-size:14px;font-weight:500">[' + v.rom + ']</span>' : '');
+    el.innerHTML = '<div style="text-align:center">'
+      + '<div style="font-size:12px;color:#64748b;margin-bottom:8px">Build the Korean word for (' + (qi+1) + ' / ' + items.length + ') · Score: ' + score + '</div>'
+      + '<div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:14px">' + hint + '</div>'
+      + '<input id="art-build-input" type="text" readonly placeholder="(tap jamo below)" style="width:100%;max-width:280px;font-size:22px;font-weight:700;text-align:center;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-family:\'Noto Serif KR\',serif;background:#fff;color:#0f172a;letter-spacing:1px" />'
+      + '<div id="art-build-status" style="font-size:13px;min-height:20px;margin-top:8px;color:#64748b"></div>'
+      + '<div style="margin-top:8px;display:flex;gap:8px;justify-content:center">'
+      +   '<button onclick="window._artBuildCheck()" style="padding:8px 18px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700">Check</button>'
+      +   '<button onclick="window._artBuildSkip()" style="padding:8px 18px;background:#f1f5f9;color:#64748b;border:none;border-radius:8px;cursor:pointer;font-family:inherit">Skip</button>'
+      + '</div>'
+      + '</div>';
+    var input = document.getElementById('art-build-input');
+    if (input) jamoKbd = window.khAttachJamoKeyboard(input);
+  }
+  window._artBuildCheck = function() {
+    var input = document.getElementById('art-build-input');
+    var status = document.getElementById('art-build-status');
+    if (!input || !status) return;
+    var v = items[qi];
+    var typed = (input.value || '').trim();
+    var target = (v.ko || '').trim();
+    if (!typed) { status.textContent = 'Tap jamo to build the word.'; return; }
+    if (typed === target) {
+      status.innerHTML = '<span style="color:#16a34a;font-weight:700">✓ Correct! → ' + target + '</span>';
+      input.style.borderColor = '#22c55e';
+      score++;
+      qi++;
+      setTimeout(renderQ, 1100);
+    } else {
+      status.innerHTML = '<span style="color:#dc2626">Not quite. You typed: <b>' + typed + '</b></span>';
+      input.style.borderColor = '#ef4444';
+      input.classList.add('art-build-shake');
+      setTimeout(function(){ input.classList.remove('art-build-shake'); input.style.borderColor = ''; }, 600);
+    }
+  };
+  window._artBuildSkip = function() {
+    var v = items[qi];
+    var status = document.getElementById('art-build-status');
+    if (status) status.innerHTML = '<span style="color:#64748b">Skipped. Answer was: <b>' + v.ko + '</b></span>';
+    qi++;
+    setTimeout(renderQ, 1400);
+  };
+  renderQ();
+}
+
+// CSS for the shake-on-wrong feedback — injected once on first use.
+(function() {
+  if (typeof document === 'undefined' || document.getElementById('art-build-shake-css')) return;
+  var s = document.createElement('style');
+  s.id = 'art-build-shake-css';
+  s.textContent = '@keyframes artBuildShake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} } .art-build-shake { animation: artBuildShake .4s ease; }';
+  document.head.appendChild(s);
+})();
+
 function startFillExercise() {
   // teaser 숨기고 로딩 시작
   var teaser = document.getElementById('fill-teaser');
