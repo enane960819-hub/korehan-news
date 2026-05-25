@@ -7722,27 +7722,64 @@ function _normalizeForScore(s) {
     .toLowerCase();
 }
 
-// Levenshtein distance — char-level. For long inputs (>400 chars) we
-// chunk to keep the DP table bounded.
+// Decompose a Hangul syllable string into its jamo sequence so the edit
+// distance counts WHICH part of the syllable was wrong (cho / jung /
+// jong), not just "the syllable is different". Char-level Levenshtein
+// scores 합 vs 합 (same) but treats 합 vs 학 as fully different even though
+// only the jung diffs — that exaggerates penalties for tiny mispronunciations.
+// Non-Hangul chars pass through unchanged so romaji / digits still compare.
+function _decomposeHangul(s) {
+  if (!s) return [];
+  var out = [];
+  for (var i = 0; i < s.length; i++) {
+    var cc = s.charCodeAt(i);
+    if (cc >= 0xAC00 && cc <= 0xD7A3) {
+      var idx  = cc - 0xAC00;
+      var cho  = Math.floor(idx / 588);
+      var jung = Math.floor((idx % 588) / 28);
+      var jong = idx % 28;
+      // Encode each jamo slot with a tag so identical jamo indexes from
+      // different slots don't accidentally match (cho ㄱ ≠ jong ㄱ for
+      // edit-distance purposes; learners hear them very differently).
+      out.push('C' + cho);
+      out.push('V' + jung);
+      if (jong > 0) out.push('T' + jong);
+    } else {
+      out.push(s[i]);
+    }
+  }
+  return out;
+}
+
+// Token-array Levenshtein. Accepts strings (legacy) or arrays of tokens.
+// For long inputs (>1200 tokens) we truncate to keep the DP table bounded
+// — speech samples almost never exceed ~400 syllables which is ~1000 jamo.
 function _levenshtein(a, b) {
-  if (a === b) return 0;
-  if (!a) return b.length;
-  if (!b) return a.length;
-  // Limit explosion: speech is rarely >400 chars per recording.
-  if (a.length > 400) a = a.slice(0, 400);
-  if (b.length > 400) b = b.slice(0, 400);
-  var prev = new Array(b.length + 1);
-  var curr = new Array(b.length + 1);
-  for (var j = 0; j <= b.length; j++) prev[j] = j;
-  for (var i = 1; i <= a.length; i++) {
+  var aArr = Array.isArray(a) ? a : String(a || '').split('');
+  var bArr = Array.isArray(b) ? b : String(b || '').split('');
+  if (aArr.length === bArr.length) {
+    var same = true;
+    for (var z = 0; z < aArr.length; z++) {
+      if (aArr[z] !== bArr[z]) { same = false; break; }
+    }
+    if (same) return 0;
+  }
+  if (!aArr.length) return bArr.length;
+  if (!bArr.length) return aArr.length;
+  if (aArr.length > 1200) aArr = aArr.slice(0, 1200);
+  if (bArr.length > 1200) bArr = bArr.slice(0, 1200);
+  var prev = new Array(bArr.length + 1);
+  var curr = new Array(bArr.length + 1);
+  for (var j = 0; j <= bArr.length; j++) prev[j] = j;
+  for (var i = 1; i <= aArr.length; i++) {
     curr[0] = i;
-    for (var k = 1; k <= b.length; k++) {
-      var cost = a.charCodeAt(i - 1) === b.charCodeAt(k - 1) ? 0 : 1;
+    for (var k = 1; k <= bArr.length; k++) {
+      var cost = aArr[i - 1] === bArr[k - 1] ? 0 : 1;
       curr[k] = Math.min(curr[k - 1] + 1, prev[k] + 1, prev[k - 1] + cost);
     }
     var tmp = prev; prev = curr; curr = tmp;
   }
-  return prev[b.length];
+  return prev[bArr.length];
 }
 
 function _scoreSpeaking(targetText, transcript, durationMs) {
@@ -7750,9 +7787,13 @@ function _scoreSpeaking(targetText, transcript, durationMs) {
   var said   = _normalizeForScore(transcript);
   var pronunciation = 0;
   if (target.length) {
-    var dist = _levenshtein(target, said);
-    var maxLen = Math.max(target.length, said.length);
-    pronunciation = Math.max(0, Math.round((1 - dist / maxLen) * 100));
+    // Compare on the jamo sequence, not the syllable sequence — a single
+    // wrong batchim should cost ~1/3 of a syllable, not a whole syllable.
+    var targetJamo = _decomposeHangul(target);
+    var saidJamo   = _decomposeHangul(said);
+    var dist = _levenshtein(targetJamo, saidJamo);
+    var maxLen = Math.max(targetJamo.length, saidJamo.length);
+    pronunciation = maxLen ? Math.max(0, Math.round((1 - dist / maxLen) * 100)) : 0;
   }
 
   var wordsInTranscript = String(transcript || '').trim().split(/\s+/).filter(Boolean).length;
@@ -8050,6 +8091,60 @@ function speakMyWriting() {
   if (!ta || !ta.value.trim()) { showToast('먼저 글을 작성하세요'); return; }
   speakHangul(ta.value.trim(), 'female');
 }
+// Web Audio waveform helper. Renders a live time-domain wave to a
+// canvas so the learner has visual feedback that the mic is hearing
+// them. Returns a stop() fn that disconnects the audio graph and
+// cancels the animation frame. Silent failure if Web Audio is
+// unavailable — recording still works without the visual.
+function _khStartWaveform(stream, canvas) {
+  if (!canvas || !stream) return function(){};
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return function(){};
+  var ctx;
+  var src;
+  var analyser;
+  var rafId = 0;
+  var stopped = false;
+  try {
+    ctx = new AC();
+    src = ctx.createMediaStreamSource(stream);
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    src.connect(analyser);
+  } catch(e) { return function(){}; }
+  var bufLen = analyser.frequencyBinCount;
+  var data = new Uint8Array(bufLen);
+  var c2d = canvas.getContext('2d');
+  function draw() {
+    if (stopped) return;
+    rafId = requestAnimationFrame(draw);
+    analyser.getByteTimeDomainData(data);
+    var w = canvas.width, h = canvas.height;
+    c2d.clearRect(0, 0, w, h);
+    c2d.lineWidth = 2;
+    c2d.strokeStyle = '#ef4444';
+    c2d.beginPath();
+    var slice = w / bufLen;
+    var x = 0;
+    for (var i = 0; i < bufLen; i++) {
+      var v = data[i] / 128.0;
+      var y = (v * h) / 2;
+      if (i === 0) c2d.moveTo(x, y);
+      else c2d.lineTo(x, y);
+      x += slice;
+    }
+    c2d.lineTo(w, h / 2);
+    c2d.stroke();
+  }
+  draw();
+  return function stop() {
+    stopped = true;
+    if (rafId) cancelAnimationFrame(rafId);
+    try { src.disconnect(); } catch(_) {}
+    try { ctx.close(); } catch(_) {}
+  };
+}
+
 function toggleSpeakRecord() {
   if (_speakRecorder && _speakRecorder.state === 'recording') {
     _speakRecorder.stop();
@@ -8065,7 +8160,9 @@ function toggleSpeakRecord() {
     _speakRecognition = _startSpeakingSTT();   // null if browser unsupported — we still record
     _speakRecorder = new MediaRecorder(stream);
     _speakRecorder.ondataavailable = function(e) { if (e.data.size > 0) _speakChunks.push(e.data); };
+    var _stopWaveform = null;
     _speakRecorder.onstop = function() {
+      if (_stopWaveform) { try { _stopWaveform(); } catch(_) {} _stopWaveform = null; }
       stream.getTracks().forEach(function(t){ t.stop(); });
       _speakBlob = new Blob(_speakChunks, { type:'audio/webm' });
       var url = URL.createObjectURL(_speakBlob);
@@ -8102,7 +8199,15 @@ function toggleSpeakRecord() {
     _speakRecorder.start();
     document.getElementById('wm-speak-record').innerHTML = '⏹️ 녹음 중... (누르면 정지)';
     document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.2)';
-    document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>';
+    var statusEl = document.getElementById('wm-speak-status');
+    if (statusEl) {
+      statusEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:8px">'
+        + '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>'
+        + '<canvas id="wm-speak-waveform" width="280" height="46" style="width:100%;max-width:280px;height:46px;border-radius:10px;background:linear-gradient(180deg,#fff5f5,#fff);border:1px solid #fecaca"></canvas>'
+        + '</div>';
+    }
+    var waveCanvas = document.getElementById('wm-speak-waveform');
+    if (waveCanvas) _stopWaveform = _khStartWaveform(stream, waveCanvas);
   }).catch(function(err) {
     _showMicPermError('wm-speak-status');
     console.warn('[Speaking] mic error:', err);
