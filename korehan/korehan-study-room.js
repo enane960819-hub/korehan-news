@@ -5727,7 +5727,7 @@ async function speakEdgeTTS(text, voice) {
   try {
     var cacheKey = text + '_' + voice;
     var hit = _ttsCacheGet(cacheKey);
-    if (hit) { playTTSAudio(hit); return; }
+    if (hit) { playTTSAudio(hit, text); return; }
     var supaUrl = typeof SUPA_URL !== 'undefined' ? SUPA_URL : '';
     if (!supaUrl) { speakFallback(text); return; }
     var headers = { 'Content-Type': 'application/json' };
@@ -5756,15 +5756,27 @@ async function speakEdgeTTS(text, voice) {
     if (blob.size < 100) throw new Error('empty audio');
     var url = URL.createObjectURL(blob);
     _ttsCacheSet(cacheKey, url);
-    playTTSAudio(url);
+    playTTSAudio(url, text);
   } catch(e) {
     console.warn('[TTS] Edge TTS failed, using fallback:', e.message);
     speakFallback(text);
   }
 }
-function playTTSAudio(url) {
+// Stop ALL audio singletons on the page before starting a new one.
+// Without this, TTS clip + picture-call recording playback +
+// score-card playback can layer on top of each other; on iOS the
+// system audio session reads the metadata of whichever started
+// last while the others keep eating CPU. (audit F20.)
+function _khStopAllAudio() {
+  try { if (_ttsAudio) { _ttsAudio.pause(); } } catch(_) {}
+  try { if (typeof _pcAudio !== 'undefined' && _pcAudio) { _pcAudio.pause(); } } catch(_) {}
+  try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(_) {}
+}
+window._khStopAllAudio = _khStopAllAudio;
+
+function playTTSAudio(url, originalText) {
+  _khStopAllAudio();
   if (_ttsAudio) {
-    try { _ttsAudio.pause(); } catch(_) {}
     // If the previous Audio was playing a one-shot URL we minted directly
     // (not a cached blob:), revoke it so it doesn't leak. Cached entries
     // are revoked by _ttsCacheEvict; we tag the latter to avoid a
@@ -5781,7 +5793,16 @@ function playTTSAudio(url) {
   // Mark blob URLs that came from the LRU cache so we don't revoke them
   // out from under the cache (the cache owns their lifecycle).
   try { _ttsAudio._khCached = !!(typeof _ttsCache !== 'undefined' && url && Array.from(_ttsCache.values()).indexOf(url) >= 0); } catch(_) {}
-  _ttsAudio.play().catch(function(){});
+  // Autoplay rejection (iOS Safari muted, no user gesture yet) used to
+  // silently swallow the error and leave the user thinking the speaker
+  // is broken. Fall back to Web Speech API when we have the original
+  // text — speechSynthesis often works where Audio.play() doesn't.
+  // (audit F19.)
+  _ttsAudio.play().catch(function() {
+    if (originalText && typeof speakFallback === 'function') {
+      try { speakFallback(originalText); } catch (_) {}
+    }
+  });
 }
 function speakFallback(text) {
   if (!window.speechSynthesis) return;
