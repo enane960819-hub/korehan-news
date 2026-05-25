@@ -128,19 +128,32 @@ doesn't keep reminding about closed work.
                         'public.tutor_lessons'::regclass);`
     If missing per-tutor isolation policies, add them.
 
-  - **Out of scope / deferred from 4th audit**:
-    - Speaking F5 webhook idempotency RPC return-value verification
-      (needs DB-side change)
+  - **4th audit followups (this round, closed)**:
+    - PNG → WebP for 17 landing/beginner-guide images (~5.1 MB →
+      ~1.2 MB wire, 77% cut). <picture> + WebP source + PNG fallback
+      pattern; image-set() for CSS background uses. Combined with
+      lazy-loading: home cold-cache ~4.2 MB → ~1 MB.
+    - Comment drawer focus trap + Escape + return-focus (A11y #8).
+    - Study-room 9 master-card divs gained role=button + tabindex=0;
+      generic shared.js delegate fires .click() on Enter/Space for
+      any role=button + onclick element so keyboard users can launch
+      learning modes + word-bank rows (A11y #10/#19).
+    - Webhook idempotency logging — duplicate Stripe retries now
+      surface as WARN + idempotent:true in response (F5 partial;
+      RPC contract alignment still TODO).
+    - admin_retrigger_feedback Sonnet → Haiku 4.5 (3rd safe swap,
+      same shape as the daily article-analysis path on Haiku).
+  - **Still deferred** (sandbox-blocking or large refactor):
     - Picture-Call game state + audio cleanup (F18-F20 polish)
-    - Sonnet→Haiku admin_retrigger_feedback swap (audit suggested
-      but not blocking)
     - Onboarding pricing reflow (Pro+Standard side-by-side card)
-    - PNG → WebP/AVIF re-encoding (needs image tools sandbox lacks)
     - Google Fonts payload reduction (decide weights first)
-    - 57 `<div onclick>` study-room learning-mode cards → `<button>`
-      (A11y #10 — large refactor)
-    - Comment drawer focus trap + Escape + return-focus (A11y #8)
+    - The remaining 46 `<div onclick>` patterns in study-room.html
+      that aren't master-cards (non-launch UI, lower priority)
     - 11 lang attribute pages need ko/en consistency sweep (A11y #11)
+    - grant_speaking_coins SQL contract: return
+      `{ ok, reason, granted_coins, balance }` so the new webhook
+      idempotency logging actually distinguishes duplicates from
+      first-time grants. Owner to align in the migration.
 - 1차 오딧 픽스: anon saved-words → DB migration on signup; goal/level-aware
   welcome banner; coach button no-flash; saved-word pending-save retry hook
 - 2차 오딧 픽스 (P0+P1, 10 items):
