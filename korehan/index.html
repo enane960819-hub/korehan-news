@@ -1323,12 +1323,12 @@ body.kh-neon-on .hero-dot {
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
 <script src="js/core/phrases.js?v=20260512c"></script>
-<script src="js/core/saved-words.js?v=20260505b"></script>
+<script src="js/core/saved-words.js?v=20260525a"></script>
 <script src="js/core/hangul-jamo-input.js?v=20260509r"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
-<script src="js/core/articles.js?v=20260516e"></script>
+<script src="js/core/articles.js?v=20260525a"></script>
 <script src="js/core/reporters.js?v=20260502a"></script>
-<script src="js/features/streak.js?v=20260502a" defer></script>
+<script src="js/features/streak.js?v=20260525a" defer></script>
 <script src="js/features/daily-mission.js?v=20260515a" defer></script>
 <script src="js/features/reading-tracker.js?v=20260502a" defer></script>
 <script src="js/features/bookmarks.js?v=20260502a" defer></script>
@@ -1337,7 +1337,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260520a"></script>
+<script src="korehan-shared.js?v=20260525a"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
@@ -1513,15 +1513,46 @@ async function _khBackfillConvCtxEn(rows) {
         _wFirst = String(_fn).split(/[\s.]/)[0] || '';
       } catch(_) {}
       var _wEyebrow = _wFirst ? ('Welcome, ' + _wFirst).slice(0, 32) : 'Welcome to KoreHani';
+
+      // Personalize the primary CTA from the goals + level the user just
+      // picked in onboarding. A Sprout-level K-pop fan and an Intermediate
+      // business reader should land on different first-step pages — sending
+      // both to the Beginner Guide is a wasted moment of momentum.
+      var _wLevel = '';
+      var _wGoals = [];
+      try {
+        var _uid = (window.supaUser && window.supaUser.id) || '';
+        _wLevel = localStorage.getItem('kh_onboarding_level_' + _uid)
+               || localStorage.getItem('kh_onboarding_level_') || '';
+        var _gRaw = localStorage.getItem('kh_onboarding_goals_' + _uid)
+                 || localStorage.getItem('kh_onboarding_goals_') || '[]';
+        _wGoals = JSON.parse(_gRaw) || [];
+      } catch(_) {}
+
+      var _firstGoal = (_wGoals && _wGoals[0]) || '';
+      var _primaryCta = { href: 'beginner-guide.html', label: 'Open Beginner Guide →', msg: 'shows you how the whole platform fits together.' };
+      if (_wLevel === 'Starter') {
+        _primaryCta = { href: 'beginner-guide.html', label: 'Start Hangul basics →', msg: 'starts with Hangul + your first 100 words.' };
+      } else if (_firstGoal === 'travel' || _firstGoal === 'immigration') {
+        _primaryCta = { href: 'korehan-conversations.html', label: 'Try a real conversation →', msg: 'real Korean conversations matching your goal.' };
+      } else if (_firstGoal === 'kpop') {
+        _primaryCta = { href: 'korehan-stories.html', label: 'Open today\'s story →', msg: 'short Korean stories — perfect for K-content fans.' };
+      } else if (_firstGoal === 'business') {
+        _primaryCta = { href: 'korehan-section-news.html', label: 'Read today\'s news →', msg: 'real Korean news with hover vocab + grammar notes.' };
+      } else if (_wLevel === 'Intermediate' || _wLevel === 'Advanced') {
+        _primaryCta = { href: 'korehan-study-room.html', label: 'Open Study Room →', msg: 'jump into a focused daily session.' };
+      }
+
       banner.style.cssText = 'display:block;background:linear-gradient(135deg,#0f2342,#1e3a5f);border:2px solid rgba(125,211,252,.45);border-radius:20px;margin:16px auto 0;max-width:1280px;padding:0 20px;box-shadow:0 4px 24px rgba(15,35,66,.35),0 0 0 1px rgba(125,211,252,.12)';
       banner.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0;flex-wrap:wrap">'
         + '<div style="display:flex;align-items:center;gap:14px;min-width:0">'
         + '<div style="width:46px;height:46px;border-radius:14px;background:rgba(125,211,252,.15);border:1px solid rgba(125,211,252,.22);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>'
         + '<div><div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#7dd3fc;margin-bottom:3px">' + _wEyebrow + '</div>'
-        + '<div style="font-size:15px;font-weight:800;color:#fff;line-height:1.3">Start here — the <span style="color:#7dd3fc">Beginner Guide</span> shows you how the whole platform fits together.</div></div>'
+        + '<div style="font-size:15px;font-weight:800;color:#fff;line-height:1.3">Start here — ' + _primaryCta.msg + '</div></div>'
         + '</div>'
-        + '<div style="display:flex;gap:10px;flex-shrink:0">'
-        + '<a href="beginner-guide.html" onclick="try{localStorage.setItem(\'kh_welcome_dismissed\',\'1\')}catch(e){}" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:12px;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;font-size:13px;font-weight:900;text-decoration:none;white-space:nowrap">Open Beginner Guide →</a>'
+        + '<div style="display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap">'
+        + '<a href="' + _primaryCta.href + '" onclick="try{localStorage.setItem(\'kh_welcome_dismissed\',\'1\')}catch(e){}" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:12px;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;font-size:13px;font-weight:900;text-decoration:none;white-space:nowrap">' + _primaryCta.label + '</a>'
+        + (_primaryCta.href === 'beginner-guide.html' ? '' : '<a href="beginner-guide.html" onclick="try{localStorage.setItem(\'kh_welcome_dismissed\',\'1\')}catch(e){}" style="display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap">Beginner Guide</a>')
         + '<button onclick="try{localStorage.setItem(\'kh_welcome_dismissed\',\'1\')}catch(e){};this.closest(\'#kh-welcome-banner\').style.display=\'none\'" style="padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);font-size:13px;font-weight:700;cursor:pointer">Dismiss</button>'
         + '</div>'
         + '</div>';

@@ -16,6 +16,48 @@
 var K_SAVED = 'korehan_saved_words';
 var _savedWordsSet = null; // Set of ko strings, populated from DB on auth
 
+// Push localStorage saved-words into Supabase right after first SIGNED_IN.
+// Anonymous users accumulate words in K_SAVED while logged-out; without this
+// migration those rows would never reach the DB and the user would see an
+// empty Notes/Saved list after signup. Safe to call repeatedly — uses upsert
+// on the (user_id, word_key) unique index so it's a no-op for already-synced
+// rows. Returns the number of rows pushed (mainly for debugging/telemetry).
+async function migrateAnonSavedWords() {
+  if (!supaUser) return 0;
+  var sb = getSupa();
+  if (!sb) return 0;
+  var local = lsGet(K_SAVED, []);
+  if (!local || !local.length) return 0;
+  var rows = local
+    .map(function(w){
+      var ko = w && (w.ko || w.word_ko || w.word) || '';
+      if (!ko) return null;
+      return {
+        user_id: supaUser.id,
+        word_key: ko,
+        word_ko: ko,
+        word_rom: w.rom || w.word_rom || w.reading || '',
+        word_en:  w.en  || w.word_en  || w.meaning || ''
+      };
+    })
+    .filter(Boolean);
+  if (!rows.length) return 0;
+  try {
+    var res = await sb.from('user_saved_words').upsert(rows, { onConflict: 'user_id,word_key' });
+    if (res.error) {
+      console.warn('[migrateAnonSavedWords]', res.error.message);
+      return 0;
+    }
+    // Refresh in-memory mirror so hover tooltips & Save buttons reflect the
+    // merged set without waiting for the next DB sync tick.
+    await _syncSavedWordsFromDB();
+    return rows.length;
+  } catch(e) {
+    console.warn('[migrateAnonSavedWords] exception', e);
+    return 0;
+  }
+}
+
 // Fetch saved words from DB and populate _savedWordsSet (call after auth ready)
 async function _syncSavedWordsFromDB() {
   if (!supaUser) { _savedWordsSet = null; return; }
@@ -134,8 +176,15 @@ async function dbRemoveWord(ko) {
   if (!supaUser) return { ok: true, source: 'local' };
   var sb = getSupa();
   if (!sb) return { ok: true, source: 'local' };
+  // PostgREST's .or() parser doesn't handle embedded quotes — and saved
+  // words can legitimately contain them (`"안녕"` dialogue snippets, etc.).
+  // Issue two separate eq() deletes instead; PostgREST treats a 0-row
+  // delete as success so this is safe even when only one column exists.
   try {
-    await sb.from('user_saved_words').delete().eq('user_id', supaUser.id).or('word_ko.eq."' + ko.replace(/"/g, '\\"') + '",ko.eq."' + ko.replace(/"/g, '\\"') + '"');
+    await Promise.all([
+      sb.from('user_saved_words').delete().eq('user_id', supaUser.id).eq('word_ko', ko),
+      sb.from('user_saved_words').delete().eq('user_id', supaUser.id).eq('ko', ko)
+    ]);
     return { ok: true, source: 'supabase' };
   } catch(e) {
     return { ok: false, source: 'local', error: e };

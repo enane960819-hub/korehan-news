@@ -37,8 +37,12 @@ function maybeShowStreakMilestone(newStreak, prevStreak) {
     if (newStreak >= m && prevStreak < m) { crossed = m; break; }
   }
   if (!crossed) return;
-  // Gate: one celebration per milestone per user-local browser
-  var key = 'kh_streak_celebrated_' + crossed;
+  // Gate: one celebration per milestone per (user, device). The user-id
+  // suffix is what makes the second account on a shared device still get
+  // their celebration moment — without it, the FIRST account to cross 7d
+  // silently mutes everyone else on that machine.
+  var _uid = (window.supaUser && window.supaUser.id) || 'anon';
+  var key = 'kh_streak_celebrated_' + crossed + '_' + _uid;
   try { if (localStorage.getItem(key) === '1') return; } catch(_) {}
   try { localStorage.setItem(key, '1'); } catch(_) {}
   setTimeout(function(){ showStreakCosmicBurst(crossed); }, 1200);

@@ -5659,7 +5659,30 @@ function _renderAwRoundComplete() {
 }
 
 var _ttsAudio = null;
-var _ttsCache = {};
+// LRU-capped TTS audio cache. Each entry is a blob URL kept alive by
+// the cache; long study sessions used to accumulate dozens of cached
+// clips and silently leak memory on mobile. Map preserves insertion
+// order so the "oldest entry first" pattern below is real LRU.
+var _ttsCache = new Map();
+var _TTS_CACHE_MAX = 60;
+function _ttsCacheGet(k) {
+  if (!_ttsCache.has(k)) return null;
+  var v = _ttsCache.get(k);
+  // Touch → move to most-recent end of insertion order.
+  _ttsCache.delete(k);
+  _ttsCache.set(k, v);
+  return v;
+}
+function _ttsCacheSet(k, v) {
+  if (_ttsCache.has(k)) _ttsCache.delete(k);
+  _ttsCache.set(k, v);
+  while (_ttsCache.size > _TTS_CACHE_MAX) {
+    var oldestKey = _ttsCache.keys().next().value;
+    var oldestVal = _ttsCache.get(oldestKey);
+    _ttsCache.delete(oldestKey);
+    try { if (oldestVal && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(oldestVal); } catch(_) {}
+  }
+}
 function speakHangul(text, voice) {
   if (!text) return;
   // Try Edge TTS first (natural AI voice), fall back to Web Speech API
@@ -5668,7 +5691,8 @@ function speakHangul(text, voice) {
 async function speakEdgeTTS(text, voice) {
   try {
     var cacheKey = text + '_' + voice;
-    if (_ttsCache[cacheKey]) { playTTSAudio(_ttsCache[cacheKey]); return; }
+    var hit = _ttsCacheGet(cacheKey);
+    if (hit) { playTTSAudio(hit); return; }
     var supaUrl = typeof SUPA_URL !== 'undefined' ? SUPA_URL : '';
     if (!supaUrl) { speakFallback(text); return; }
     var headers = { 'Content-Type': 'application/json' };
@@ -5696,7 +5720,7 @@ async function speakEdgeTTS(text, voice) {
     var blob = await res.blob();
     if (blob.size < 100) throw new Error('empty audio');
     var url = URL.createObjectURL(blob);
-    _ttsCache[cacheKey] = url;
+    _ttsCacheSet(cacheKey, url);
     playTTSAudio(url);
   } catch(e) {
     console.warn('[TTS] Edge TTS failed, using fallback:', e.message);
@@ -5704,8 +5728,24 @@ async function speakEdgeTTS(text, voice) {
   }
 }
 function playTTSAudio(url) {
-  if (_ttsAudio) { _ttsAudio.pause(); _ttsAudio = null; }
+  if (_ttsAudio) {
+    try { _ttsAudio.pause(); } catch(_) {}
+    // If the previous Audio was playing a one-shot URL we minted directly
+    // (not a cached blob:), revoke it so it doesn't leak. Cached entries
+    // are revoked by _ttsCacheEvict; we tag the latter to avoid a
+    // double-revoke here.
+    try {
+      var prev = _ttsAudio.src;
+      if (prev && prev.indexOf('blob:') === 0 && !_ttsAudio._khCached) {
+        URL.revokeObjectURL(prev);
+      }
+    } catch(_) {}
+    _ttsAudio = null;
+  }
   _ttsAudio = new Audio(url);
+  // Mark blob URLs that came from the LRU cache so we don't revoke them
+  // out from under the cache (the cache owns their lifecycle).
+  try { _ttsAudio._khCached = !!(typeof _ttsCache !== 'undefined' && url && Array.from(_ttsCache.values()).indexOf(url) >= 0); } catch(_) {}
   _ttsAudio.play().catch(function(){});
 }
 function speakFallback(text) {
@@ -6531,8 +6571,12 @@ function showDialogue(node) {
   var player = document.getElementById('ft-player');
   document.getElementById('ftp-scene').textContent = node.scene || '';
   document.getElementById('ftp-npc').textContent = node.npc || '';
+  // NPC line + a 🔊 replay button so the learner can re-hear the line at
+  // their own pace instead of just the one-shot auto-play.
+  var npcKoEscaped = String(node.text || '').replace(/'/g, "\\'");
   document.getElementById('ftp-text').innerHTML =
     '<span class="ft-ko">' + node.text + '</span>'
+    + '<button onclick="speakHangul(\'' + npcKoEscaped + '\')" aria-label="Replay" style="margin-left:6px;padding:3px 8px;border:1px solid rgba(15,23,42,.15);background:#fff;border-radius:999px;font-size:11px;cursor:pointer;font-family:inherit;color:#475569;vertical-align:2px">🔊</button>'
     + '<span class="ft-en">' + (node.textEn || '') + '</span>';
   var choicesEl = document.getElementById('ftp-choices');
   choicesEl.innerHTML = (node.choices || []).map(function(c, i) {
@@ -6541,6 +6585,20 @@ function showDialogue(node) {
       + (c.textEn ? '<div class="ft-choice-en">' + c.textEn + '</div>' : '')
       + '</button>';
   }).join('');
+  // Speaking-practice row — only if there are response choices to match
+  // against. Speech recognition is gated to Chrome/Edge/Safari via
+  // _SpeechRecognitionCtor; if unavailable we hide the button entirely
+  // so learners on Firefox / older mobile browsers don't see a dead UI.
+  if (node.choices && node.choices.length && typeof _SpeechRecognitionCtor === 'function' && _SpeechRecognitionCtor()) {
+    choicesEl.insertAdjacentHTML('beforeend',
+      '<div id="ftp-speak-row" style="margin-top:10px;display:flex;flex-direction:column;align-items:stretch;gap:6px">'
+      + '<button id="ftp-speak-btn" onclick="_ftSpeakReply()" style="padding:9px 14px;border:1.5px dashed rgba(99,102,241,.4);background:rgba(238,242,255,.6);border-radius:10px;font-size:12px;font-weight:700;color:#4338ca;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px">'
+      +   '<span aria-hidden="true">🎤</span><span>Speak your reply</span>'
+      + '</button>'
+      + '<div id="ftp-speak-status" style="font-size:11px;color:#64748b;min-height:16px;text-align:center"></div>'
+      + '</div>'
+    );
+  }
   // Show collected phrases
   var phrasesEl = document.getElementById('ftp-phrases');
   var phrasesList = document.getElementById('ftp-phrases-list');
@@ -6551,8 +6609,97 @@ function showDialogue(node) {
     phrasesEl.style.display = 'none';
   }
   player.classList.add('open');
-  // Speak NPC line
+  // Speak NPC line (auto-play once on enter)
   speakHangul(node.text);
+}
+
+// Listen to the user's spoken reply and auto-pick the choice whose text
+// best matches the transcript. Uses the existing jamo-decomposed
+// Levenshtein for fuzzy match so partial / accented attempts still
+// resolve. Falls back silently if STT can't start.
+function _ftSpeakReply() {
+  var btn = document.getElementById('ftp-speak-btn');
+  var status = document.getElementById('ftp-speak-status');
+  var node = _ftState.scenario && _ftState.scenario.nodes[_ftState.nodeId];
+  if (!node || !node.choices || !node.choices.length) return;
+
+  var Ctor = _SpeechRecognitionCtor();
+  if (!Ctor) {
+    if (status) status.textContent = 'Speech recognition not supported in this browser.';
+    return;
+  }
+
+  // Tap-again-to-stop semantics.
+  if (window._ftRec) {
+    try { window._ftRec.stop(); } catch(_) {}
+    window._ftRec = null;
+    return;
+  }
+
+  var r;
+  try { r = new Ctor(); } catch(e) {
+    if (status) status.textContent = 'Could not start microphone.';
+    return;
+  }
+  r.lang = 'ko-KR';
+  r.continuous = false;
+  r.interimResults = false;
+  r.maxAlternatives = 1;
+
+  var transcript = '';
+  r.onresult = function(e) {
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) transcript += e.results[i][0].transcript;
+    }
+  };
+  r.onerror = function(err) {
+    if (status) status.textContent = 'Mic error: ' + ((err && err.error) || 'unknown');
+    if (btn) { btn.innerHTML = '<span aria-hidden="true">🎤</span><span>Speak your reply</span>'; btn.style.background = 'rgba(238,242,255,.6)'; }
+    window._ftRec = null;
+  };
+  r.onend = function() {
+    window._ftRec = null;
+    if (btn) { btn.innerHTML = '<span aria-hidden="true">🎤</span><span>Speak your reply</span>'; btn.style.background = 'rgba(238,242,255,.6)'; }
+    if (!transcript) {
+      if (status) status.textContent = 'Didn\'t catch that — try again.';
+      return;
+    }
+    var said = _normalizeForScore(transcript);
+    var saidJamo = _decomposeHangul(said);
+    var bestIdx = -1, bestSim = 0;
+    (node.choices || []).forEach(function(c, i) {
+      var target = _normalizeForScore(c.text || '');
+      if (!target) return;
+      var tj = _decomposeHangul(target);
+      var dist = _levenshtein(saidJamo, tj);
+      var maxLen = Math.max(saidJamo.length, tj.length) || 1;
+      var sim = 1 - dist / maxLen;
+      if (sim > bestSim) { bestSim = sim; bestIdx = i; }
+    });
+    if (bestIdx >= 0 && bestSim >= 0.55) {
+      if (status) {
+        status.innerHTML = 'Heard: <b>' + transcript.replace(/[<>]/g,'') + '</b> · '
+          + Math.round(bestSim * 100) + '% match → picking choice ' + (bestIdx + 1);
+      }
+      setTimeout(function(){ pickChoice(_ftState.nodeId, bestIdx); }, 700);
+    } else {
+      if (status) {
+        status.innerHTML = 'Heard: <b>' + transcript.replace(/[<>]/g,'') + '</b> — no good match. Tap a choice or try again.';
+      }
+    }
+  };
+
+  try {
+    r.start();
+    window._ftRec = r;
+    if (btn) {
+      btn.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>Listening… tap to stop</span>';
+      btn.style.background = 'rgba(254,226,226,.6)';
+    }
+    if (status) status.textContent = 'Say one of the choices above.';
+  } catch(e) {
+    if (status) status.textContent = 'Could not start microphone.';
+  }
 }
 
 function _ftPhraseObj(p) {
@@ -7722,27 +7869,64 @@ function _normalizeForScore(s) {
     .toLowerCase();
 }
 
-// Levenshtein distance — char-level. For long inputs (>400 chars) we
-// chunk to keep the DP table bounded.
+// Decompose a Hangul syllable string into its jamo sequence so the edit
+// distance counts WHICH part of the syllable was wrong (cho / jung /
+// jong), not just "the syllable is different". Char-level Levenshtein
+// scores 합 vs 합 (same) but treats 합 vs 학 as fully different even though
+// only the jung diffs — that exaggerates penalties for tiny mispronunciations.
+// Non-Hangul chars pass through unchanged so romaji / digits still compare.
+function _decomposeHangul(s) {
+  if (!s) return [];
+  var out = [];
+  for (var i = 0; i < s.length; i++) {
+    var cc = s.charCodeAt(i);
+    if (cc >= 0xAC00 && cc <= 0xD7A3) {
+      var idx  = cc - 0xAC00;
+      var cho  = Math.floor(idx / 588);
+      var jung = Math.floor((idx % 588) / 28);
+      var jong = idx % 28;
+      // Encode each jamo slot with a tag so identical jamo indexes from
+      // different slots don't accidentally match (cho ㄱ ≠ jong ㄱ for
+      // edit-distance purposes; learners hear them very differently).
+      out.push('C' + cho);
+      out.push('V' + jung);
+      if (jong > 0) out.push('T' + jong);
+    } else {
+      out.push(s[i]);
+    }
+  }
+  return out;
+}
+
+// Token-array Levenshtein. Accepts strings (legacy) or arrays of tokens.
+// For long inputs (>1200 tokens) we truncate to keep the DP table bounded
+// — speech samples almost never exceed ~400 syllables which is ~1000 jamo.
 function _levenshtein(a, b) {
-  if (a === b) return 0;
-  if (!a) return b.length;
-  if (!b) return a.length;
-  // Limit explosion: speech is rarely >400 chars per recording.
-  if (a.length > 400) a = a.slice(0, 400);
-  if (b.length > 400) b = b.slice(0, 400);
-  var prev = new Array(b.length + 1);
-  var curr = new Array(b.length + 1);
-  for (var j = 0; j <= b.length; j++) prev[j] = j;
-  for (var i = 1; i <= a.length; i++) {
+  var aArr = Array.isArray(a) ? a : String(a || '').split('');
+  var bArr = Array.isArray(b) ? b : String(b || '').split('');
+  if (aArr.length === bArr.length) {
+    var same = true;
+    for (var z = 0; z < aArr.length; z++) {
+      if (aArr[z] !== bArr[z]) { same = false; break; }
+    }
+    if (same) return 0;
+  }
+  if (!aArr.length) return bArr.length;
+  if (!bArr.length) return aArr.length;
+  if (aArr.length > 1200) aArr = aArr.slice(0, 1200);
+  if (bArr.length > 1200) bArr = bArr.slice(0, 1200);
+  var prev = new Array(bArr.length + 1);
+  var curr = new Array(bArr.length + 1);
+  for (var j = 0; j <= bArr.length; j++) prev[j] = j;
+  for (var i = 1; i <= aArr.length; i++) {
     curr[0] = i;
-    for (var k = 1; k <= b.length; k++) {
-      var cost = a.charCodeAt(i - 1) === b.charCodeAt(k - 1) ? 0 : 1;
+    for (var k = 1; k <= bArr.length; k++) {
+      var cost = aArr[i - 1] === bArr[k - 1] ? 0 : 1;
       curr[k] = Math.min(curr[k - 1] + 1, prev[k] + 1, prev[k - 1] + cost);
     }
     var tmp = prev; prev = curr; curr = tmp;
   }
-  return prev[b.length];
+  return prev[bArr.length];
 }
 
 function _scoreSpeaking(targetText, transcript, durationMs) {
@@ -7750,9 +7934,13 @@ function _scoreSpeaking(targetText, transcript, durationMs) {
   var said   = _normalizeForScore(transcript);
   var pronunciation = 0;
   if (target.length) {
-    var dist = _levenshtein(target, said);
-    var maxLen = Math.max(target.length, said.length);
-    pronunciation = Math.max(0, Math.round((1 - dist / maxLen) * 100));
+    // Compare on the jamo sequence, not the syllable sequence — a single
+    // wrong batchim should cost ~1/3 of a syllable, not a whole syllable.
+    var targetJamo = _decomposeHangul(target);
+    var saidJamo   = _decomposeHangul(said);
+    var dist = _levenshtein(targetJamo, saidJamo);
+    var maxLen = Math.max(targetJamo.length, saidJamo.length);
+    pronunciation = maxLen ? Math.max(0, Math.round((1 - dist / maxLen) * 100)) : 0;
   }
 
   var wordsInTranscript = String(transcript || '').trim().split(/\s+/).filter(Boolean).length;
@@ -7802,11 +7990,24 @@ async function _speakAnalyzeAzure(blob, referenceText, durationMs) {
     fd.append('contentType', blob.type || 'audio/webm');
     fd.append('language', 'ko-KR');
 
-    var res = await fetch(funcUrl, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token },
-      body: fd,
-    });
+    // 30s hard timeout. Azure occasionally stalls mid-analysis and the
+    // call would otherwise never resolve, leaving the caller stuck on
+    // "발음 분석 중..." with no way back to the Submit button.
+    var _ac = (typeof AbortController === 'function') ? new AbortController() : null;
+    var _to = _ac ? setTimeout(function(){ try { _ac.abort(); } catch(_){} }, 30000) : null;
+    var res;
+    try {
+      res = await fetch(funcUrl, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: fd,
+        signal: _ac ? _ac.signal : undefined,
+      });
+    } catch(_fetchErr) {
+      if (_to) clearTimeout(_to);
+      return null;
+    }
+    if (_to) clearTimeout(_to);
     if (!res.ok) return null;
     var data = await res.json();
     if (!data || data.error || data.pronunciationScore == null) return null;
@@ -8050,6 +8251,60 @@ function speakMyWriting() {
   if (!ta || !ta.value.trim()) { showToast('먼저 글을 작성하세요'); return; }
   speakHangul(ta.value.trim(), 'female');
 }
+// Web Audio waveform helper. Renders a live time-domain wave to a
+// canvas so the learner has visual feedback that the mic is hearing
+// them. Returns a stop() fn that disconnects the audio graph and
+// cancels the animation frame. Silent failure if Web Audio is
+// unavailable — recording still works without the visual.
+function _khStartWaveform(stream, canvas) {
+  if (!canvas || !stream) return function(){};
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return function(){};
+  var ctx;
+  var src;
+  var analyser;
+  var rafId = 0;
+  var stopped = false;
+  try {
+    ctx = new AC();
+    src = ctx.createMediaStreamSource(stream);
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    src.connect(analyser);
+  } catch(e) { return function(){}; }
+  var bufLen = analyser.frequencyBinCount;
+  var data = new Uint8Array(bufLen);
+  var c2d = canvas.getContext('2d');
+  function draw() {
+    if (stopped) return;
+    rafId = requestAnimationFrame(draw);
+    analyser.getByteTimeDomainData(data);
+    var w = canvas.width, h = canvas.height;
+    c2d.clearRect(0, 0, w, h);
+    c2d.lineWidth = 2;
+    c2d.strokeStyle = '#ef4444';
+    c2d.beginPath();
+    var slice = w / bufLen;
+    var x = 0;
+    for (var i = 0; i < bufLen; i++) {
+      var v = data[i] / 128.0;
+      var y = (v * h) / 2;
+      if (i === 0) c2d.moveTo(x, y);
+      else c2d.lineTo(x, y);
+      x += slice;
+    }
+    c2d.lineTo(w, h / 2);
+    c2d.stroke();
+  }
+  draw();
+  return function stop() {
+    stopped = true;
+    if (rafId) cancelAnimationFrame(rafId);
+    try { src.disconnect(); } catch(_) {}
+    try { ctx.close(); } catch(_) {}
+  };
+}
+
 function toggleSpeakRecord() {
   if (_speakRecorder && _speakRecorder.state === 'recording') {
     _speakRecorder.stop();
@@ -8065,7 +8320,9 @@ function toggleSpeakRecord() {
     _speakRecognition = _startSpeakingSTT();   // null if browser unsupported — we still record
     _speakRecorder = new MediaRecorder(stream);
     _speakRecorder.ondataavailable = function(e) { if (e.data.size > 0) _speakChunks.push(e.data); };
+    var _stopWaveform = null;
     _speakRecorder.onstop = function() {
+      if (_stopWaveform) { try { _stopWaveform(); } catch(_) {} _stopWaveform = null; }
       stream.getTracks().forEach(function(t){ t.stop(); });
       _speakBlob = new Blob(_speakChunks, { type:'audio/webm' });
       var url = URL.createObjectURL(_speakBlob);
@@ -8100,9 +8357,36 @@ function toggleSpeakRecord() {
       })();
     };
     _speakRecorder.start();
+    // 2-minute hard cap — if the user walks away mid-recording, this stops
+    // the recorder automatically so we don't upload tens of MB of audio
+    // (which fails the speech-proxy size limit anyway) and we don't leave
+    // the mic active forever. Cleared by toggleSpeakRecord's manual stop.
+    try { clearTimeout(window._speakMaxTimer); } catch(_) {}
+    window._speakMaxTimer = setTimeout(function() {
+      try {
+        if (_speakRecorder && _speakRecorder.state === 'recording') {
+          showToast && showToast('Recording auto-stopped at 2 min');
+          _speakRecorder.stop();
+          if (_speakRecognition) { try { _speakRecognition.stop(); } catch(e) {} }
+          var rec = document.getElementById('wm-speak-record');
+          if (rec) {
+            rec.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span><span>내 목소리 녹음</span></span>';
+            rec.style.background = 'rgba(239,68,68,.08)';
+          }
+        }
+      } catch(_) {}
+    }, 120000);
     document.getElementById('wm-speak-record').innerHTML = '⏹️ 녹음 중... (누르면 정지)';
     document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.2)';
-    document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>';
+    var statusEl = document.getElementById('wm-speak-status');
+    if (statusEl) {
+      statusEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:8px">'
+        + '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>'
+        + '<canvas id="wm-speak-waveform" width="280" height="46" style="width:100%;max-width:280px;height:46px;border-radius:10px;background:linear-gradient(180deg,#fff5f5,#fff);border:1px solid #fecaca"></canvas>'
+        + '</div>';
+    }
+    var waveCanvas = document.getElementById('wm-speak-waveform');
+    if (waveCanvas) _stopWaveform = _khStartWaveform(stream, waveCanvas);
   }).catch(function(err) {
     _showMicPermError('wm-speak-status');
     console.warn('[Speaking] mic error:', err);
@@ -8306,7 +8590,12 @@ async function submitSpeakingToCoach() {
   if (!sb) return;
 
   var btn = document.getElementById('wm-speak-coach-submit');
-  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="5"/></svg></span><span>Sending to coach…</span></span>'; }
+  // NOTE: don't disable the button yet. If consume_speaking_coin returns
+  // forest_redirect or no_coins, the upsell modal opens INSTEAD of a real
+  // submission; the user closes that modal and would otherwise see the
+  // coach button briefly greyed-out (finally restores it but the flash
+  // reads as "broken"). Only flip the button into "Sending…" state once
+  // the wallet RPC has actually committed a coin to this submission.
 
   try {
     // 1) Atomic wallet decrement
@@ -8322,6 +8611,8 @@ async function submitSpeakingToCoach() {
       showToast('코인 처리 실패: ' + (coinRes.error && coinRes.error.message || 'unknown'));
       return;
     }
+    // Coin has been spent — commit the UI to "sending" state now.
+    if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="5"/></svg></span><span>Sending to coach…</span></span>'; }
 
     // 2) Upload audio
     var fileName = 'speaking/' + supaUser.id + '/' + kstDateKey() + '_coach_' + Date.now() + '.webm';
@@ -8344,11 +8635,35 @@ async function submitSpeakingToCoach() {
     });
     if (ins.error) { showToast('제출 실패: ' + ins.error.message); return; }
 
-    showToast('코치에게 보냈어요! 24시간 내 피드백이 도착합니다. (남은 코인: ' + (coin.balance != null ? coin.balance : coin.remaining) + ')');
+    // Compute the reply deadline so the user has a concrete time, not
+    // just "within 24 hours". Local timezone — they'll know whether
+    // that means "by tomorrow morning" or "tomorrow evening".
+    var etaDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    var etaLabel = etaDate.toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
+    var remaining = coin.balance != null ? coin.balance : coin.remaining;
+
+    showToast('코치에게 보냈어요! ' + etaLabel + '까지 회신 예정. (남은 코인: ' + remaining + ')');
     var row = document.getElementById('wm-speak-submit-row');
     if (row) row.style.display = 'none';
     var statusEl = document.getElementById('wm-speak-status');
-    if (statusEl) statusEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>코치에게 전송 완료</span></span>';
+    if (statusEl) {
+      // Persistent confirmation card — sticks around so the learner has
+      // visibility into the SLA + queue position long after the toast
+      // fades. Mirrors the inbox state in My Page → Coach Feedback.
+      statusEl.innerHTML =
+        '<div style="margin-top:6px;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:1px solid rgba(34,197,94,.3);text-align:left">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+        +   '<span style="display:inline-flex;width:16px;height:16px;color:#16a34a">'+BM_ICON_CHECK+'</span>'
+        +   '<span style="font-size:13px;font-weight:800;color:#065f46">Sent to your coach</span>'
+        + '</div>'
+        + '<div style="font-size:11px;color:#047857;line-height:1.55">Expected reply by <b>' + etaLabel + '</b>. '
+        +   'You\'ll get a notification + see it in <a href="korehan-mypage.html?tab=writing" style="color:#047857;font-weight:700;text-decoration:underline">My Page → Coach Feedback</a>.</div>'
+        + '<div style="font-size:10px;color:#10b981;margin-top:6px">Coins remaining: ' + remaining + '</div>'
+        + '</div>';
+    }
     _refreshSpeakingCoinBadge();
   } catch(e) {
     showToast('Submit failed: ' + (e.message || e));
@@ -9483,6 +9798,33 @@ async function _startFeedbackArrivalPoll() {
       }
     } catch(_) {}
   }, 30000);
+
+  // Pause polling while the tab is hidden — the user can't see toasts
+  // and the only thing the poll achieves in the background is Supabase
+  // egress cost. Resume on return. Wire once per session.
+  if (!window._khFbPollLifecycleWired) {
+    window._khFbPollLifecycleWired = true;
+    document.addEventListener('visibilitychange', function() {
+      if (!_khFbPollHandle) return;
+      if (document.hidden) {
+        try { clearInterval(_khFbPollHandle); } catch(_){}
+        _khFbPollHandle = null;
+        window._khFbPollPaused = true;
+      }
+    });
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden || !window._khFbPollPaused) return;
+      window._khFbPollPaused = false;
+      if (_khFbPollPending && _khFbPollPending.size) {
+        try { _startFeedbackArrivalPoll(); } catch(_){}
+      }
+    });
+    // Final stop on navigation away — clear the interval so the browser
+    // doesn't keep firing it after the bfcache evicts the page.
+    window.addEventListener('pagehide', function() {
+      if (_khFbPollHandle) { try { clearInterval(_khFbPollHandle); } catch(_){} _khFbPollHandle = null; }
+    });
+  }
 }
 
 async function loadFeedbackInbox() {
@@ -11691,6 +12033,17 @@ async function toggleSpRecord() {
   };
   _spRecStartedAt = Date.now();
   _spMediaRec.start();
+  // 2-minute hard cap (see toggleSpeakRecord above for rationale).
+  try { clearTimeout(window._spMaxTimer); } catch(_) {}
+  window._spMaxTimer = setTimeout(function() {
+    try {
+      if (_spMediaRec && _spMediaRec.state === 'recording') {
+        showToast && showToast('Recording auto-stopped at 2 min');
+        _spMediaRec.stop();
+        _spSetRecBtn(false);
+      }
+    } catch(_) {}
+  }, 120000);
   _spSetRecBtn(true);
   var st = document.getElementById('sp-status');
   if (st) st.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>';

@@ -131,6 +131,9 @@
 .dp-left-sub{font-size:13px;color:rgba(255,255,255,.75);}
 .detail-close{position:absolute;top:18px;right:18px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;font-family:inherit;line-height:1;}
 .detail-close:hover{background:rgba(255,255,255,.28);}
+/* Floating close — desktop hides it (in-panel close is enough). Shown
+   only on mobile where the in-panel close was unreliable on iOS. */
+.detail-close-floating{display:none;position:fixed;top:calc(env(safe-area-inset-top, 0px) + 12px);right:14px;width:44px;height:44px;border-radius:999px;background:rgba(15,23,42,.82);color:#fff;border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);cursor:pointer;align-items:center;justify-content:center;z-index:5100;font-family:inherit;padding:0;box-shadow:0 6px 20px rgba(0,0,0,.25);}
 .dp-pills{display:flex;gap:8px;flex-wrap:wrap;padding:14px 24px 12px;border-bottom:1px solid #f0f4fa;}
 .dp-pill{font-size:12px;font-weight:700;padding:5px 13px;border-radius:999px;}
 .dp-pill-blue{background:#eff6ff;color:#1d4ed8;}
@@ -400,19 +403,10 @@
     box-shadow:none!important;
     max-width:none!important;
   }
-  /* Close button → article-style back arrow, top-left, pill
-     shaped with blur backdrop (matches .kh-article-back). */
-  .detail-close{
-    position:fixed!important; top:16px; left:16px; right:auto!important;
-    width:40px; height:40px;
-    border-radius:999px!important;
-    background:rgba(15,23,42,.8)!important;
-    color:#fff!important;
-    font-size:18px!important;
-    backdrop-filter:blur(8px);
-    -webkit-backdrop-filter:blur(8px);
-    z-index:20;
-  }
+  /* In-panel close stays hidden on mobile — the floating one outside the
+     scrolling panel is the reliable target on iOS. */
+  .detail-close{ display:none!important; }
+  .detail-close-floating{ display:flex; }
 }
 
 /* ── Mobile ≤600px — stacked vocab, bigger text ── */
@@ -463,6 +457,14 @@
   </div>
 </div>
 <div class="detail-overlay hidden" id="detail-overlay" onclick="if(event.target===this)closeDetail()">
+  <!-- Mobile-only floating close. Sits OUTSIDE the scrolling .detail-panel
+       because iOS Safari treats position:fixed inside overflow:auto
+       ancestors as position:absolute relative to the scroller, which made
+       the in-panel close button disappear once the conversation was
+       scrolled. Hidden on desktop where the in-panel close is reliable. -->
+  <button id="detail-close-floating" class="detail-close-floating" onclick="closeDetail()" aria-label="Close conversation">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
   <div class="detail-panel" id="detail-panel"></div>
 </div>
 <div id="kh-footer"></div>
@@ -477,11 +479,11 @@
 <script src="js/core/plans.js?v=20260502a"></script>
 <script src="js/core/article-cache.js?v=20260505b"></script>
 <script src="js/core/phrases.js?v=20260512c"></script>
-<script src="js/core/saved-words.js?v=20260505b"></script>
+<script src="js/core/saved-words.js?v=20260525a"></script>
 <script src="js/features/video-player.js?v=20260502a"></script>
-<script src="js/core/articles.js?v=20260516e"></script>
+<script src="js/core/articles.js?v=20260525a"></script>
 <script src="js/core/reporters.js?v=20260502a"></script>
-<script src="js/features/streak.js?v=20260502a"></script>
+<script src="js/features/streak.js?v=20260525a"></script>
 <script src="js/features/daily-mission.js?v=20260515a"></script>
 <script src="js/features/reading-tracker.js?v=20260502a"></script>
 <script src="js/features/bookmarks.js?v=20260502a"></script>
@@ -490,7 +492,7 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260520a"></script>
+<script src="korehan-shared.js?v=20260525a"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
