@@ -1148,7 +1148,18 @@ async function checkSession() {
       if (supaUser && supaUser.id) _khNotifySignup(supaUser.id);
       // DB 동기화는 idle 시점으로 지연
       var _deferSI = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 200); };
-      _deferSI(function() {
+      _deferSI(async function() {
+        // Push any anon-session localStorage words into the DB BEFORE the
+        // first sync so the merged set is what gets cached locally. If the
+        // user retried a save while the auth modal was open, replay it now.
+        try { await migrateAnonSavedWords(); } catch(_) {}
+        try {
+          if (window._pendingSaveWord) {
+            var p = window._pendingSaveWord;
+            window._pendingSaveWord = null;
+            if (typeof dbSaveWord === 'function') await dbSaveWord(p.ko, p.rom, p.en);
+          }
+        } catch(_) {}
         _syncSavedWordsFromDB();
         _rehydrateUserState();
         loadUserPlan();
