@@ -986,15 +986,16 @@
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260525c"></script>
+<script src="korehan-shared.js?v=20260525d"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260502a"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>
 <script src="js/kh-listening.js?v=20260416"></script>
 <script src="js/kh-grammar-tree.js?v=20260416"></script>
-<script src="js/kh-universe.js?v=20260515b"></script>
+<!-- kh-universe.js (~117KB) is now lazy-loaded by _ensureKHUniverse()
+     on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260416"></script>
-<script src="korehan-study-room.js?v=20260525a" defer></script>
+<script src="korehan-study-room.js?v=20260525c" defer></script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->
@@ -1207,11 +1208,25 @@
 <script>
 // Open the 3D vocabulary galaxy from the Word Bank modal.
 // Pulls from _wbAllWords which is loaded on Study Room init.
+// kh-universe.js is ~117KB; we defer loading it until the first
+// time the user actually clicks "Universe" — Three.js itself is
+// lazy-imported inside kh-universe.js so the dependency chain only
+// materialises on user intent.
+var _khUniverseLoading = null;
+function _ensureKHUniverse() {
+  if (window.KHUniverse && window.KHUniverse.open) return Promise.resolve();
+  if (_khUniverseLoading) return _khUniverseLoading;
+  _khUniverseLoading = new Promise(function (resolve, reject) {
+    var s = document.createElement('script');
+    s.src = 'js/kh-universe.js?v=20260525c';
+    s.async = false;
+    s.onload = function () { resolve(); };
+    s.onerror = function () { _khUniverseLoading = null; reject(new Error('universe load failed')); };
+    document.head.appendChild(s);
+  });
+  return _khUniverseLoading;
+}
 function openUniverseView() {
-  if (typeof KHUniverse === 'undefined' || !KHUniverse.open) {
-    if (typeof toast === 'function') toast('Universe engine not ready', true);
-    return;
-  }
   // Prefer the Word Book panel's full dataset (_wbData) over the compact
   // modal preview (_wbAllWords) when both exist.
   var source = [];
@@ -1222,7 +1237,15 @@ function openUniverseView() {
     toast('Save some words first to build your galaxy', 'warn');
     return;
   }
-  KHUniverse.open({ words: words, title: 'Your Vocabulary Universe' });
+  _ensureKHUniverse().then(function () {
+    if (!window.KHUniverse || !KHUniverse.open) {
+      if (typeof toast === 'function') toast('Universe engine not ready', true);
+      return;
+    }
+    KHUniverse.open({ words: words, title: 'Your Vocabulary Universe' });
+  }).catch(function () {
+    if (typeof toast === 'function') toast('Universe engine load failed', true);
+  });
 }
 </script>
 

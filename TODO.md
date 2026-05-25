@@ -12,25 +12,52 @@ doesn't keep reminding about closed work.
 
 ## In progress on `claude/new-session-KCAZ7`
 
-- 3차 오딧 (Edge Functions / Admin CMS / Mobile UX / Performance):
-  - **Edge Functions P0+P1 (this commit)** — tts-proxy auth (F1),
-    claude-proxy input-size cap + feature str cap + failed-call counter
-    (F3/F10/F11), notify-signup Discord injection sanitizer (F4),
-    daily-content-gen weak CRON_SECRET reject + app_settings mutex (F5/F6),
-    admin-api REST path traversal lockdown + mutation-filter required +
-    hardcoded anon key removal (F7/F8/F14), speaking-pass-checkout
-    origin-bound CORS (F12), proxy CORS fallback now omits ACAO for
-    unknown origins (F9, applied to claude / tts / notify / image /
-    speech / admin-api / speaking-pass-checkout).
-  - **Pending deploy**: `supabase functions deploy claude-proxy
-    admin-api daily-content-gen notify-signup tts-proxy image-search
-    speech-proxy speaking-pass-checkout`
-  - Verification still needed (F2): RLS on `user_quota_overrides`
-    must block authenticated writes — run
+- 3차 오딧 P0+P1 (4 commits on `claude/new-session-KCAZ7`):
+  - **Edge Functions** — tts-proxy auth (F1), claude-proxy input-size
+    cap + feature str cap + failed-call counter (F3/F10/F11),
+    notify-signup Discord injection sanitizer (F4), daily-content-gen
+    weak CRON_SECRET reject + app_settings mutex (F5/F6), admin-api
+    REST path traversal + mutation-filter required + hardcoded anon
+    key removal (F7/F8/F14), speaking-pass-checkout origin-bound CORS
+    (F12), proxy CORS now omits ACAO for unknown origins across 7
+    proxies (F9).
+  - **Admin CMS** — admin gate (korehan-admin-gate.js) on 4 aux pages
+    (AD-F1); double-click guards on regenAllStoriesAI / saveAllConvs /
+    saveAllStories / gcAdminPregenAll (AD-F2/F3); abort button +
+    cost-aware confirm on gcAdminPregenAll + retryFailedCaches
+    (AD-F4/F8); _ccastEditRole/Cast prompt Cancel null fix (AD-F6);
+    saveTopic hidden Claude alert + skip-pregen on no-change (AD-F9);
+    _aiCacheInFlight `|| 0` normalisation (AD-F15); client_errors
+    delete routed through admin-api (AD-F14).
+  - **Mobile UX** — auth + comment inputs font-size 14 → 16 (MO-1);
+    bottom-nav safe-area-inset (MO-2); article action 28 → 40 (MO-3);
+    auth modal close 30 → 44 (MO-4); hover-tooltip / sentence-hint /
+    sentence-panel / comment-drawer close all ≥ 32 (MO-5/7/13); iOS
+    100vh → 100vh + 100dvh on 9 pages (MO-10).
+  - **Performance** — kh-universe.js (~117KB) lazy-loaded on click
+    (was eager on study-room + learning-overview, PF-P0-4); article
+    thumbnails get loading="lazy" + width/height (PF-P1-7); hero
+    carousel pauses on tab hidden, no-op for empty slides (PF-P1-10);
+    1-second clock tick stops on tab hidden (3,600 wake-ups/hour on
+    background tabs eliminated, PF-P1-9); session refresh skips
+    anonymous sessions (PF-P3-19); Word-Drop background video
+    respects prefers-reduced-motion (PF-P1-8).
+  - **Pending deploys**:
+    - `supabase functions deploy claude-proxy admin-api daily-content-gen
+      notify-signup tts-proxy image-search speech-proxy
+      speaking-pass-checkout`
+  - **Verification still needed (audit F2)**: RLS on
+    `user_quota_overrides` must block authenticated writes — run
     `SELECT polname, polcmd FROM pg_policy WHERE polrelid =
     'public.user_quota_overrides'::regclass;` in Supabase SQL editor.
-    If no INSERT/UPDATE policy denies authenticated role, add
+    If no INSERT/UPDATE policy denies authenticated role, add a
     `service-only` policy.
+  - **Out of scope / deferred** (lower-priority items from the same
+    audits): defer/lazy-split of korehan-shared.js + study-room.js,
+    @import → link migration in shared.css (40+ HTMLs touched, risk
+    high without verify), Sonnet → Haiku audit across 11 admin call
+    sites, prompt-caching wiring for article-body gen, CSS critical-
+    path extraction, SW font caching, deeper grammar audit (#7AI).
 - 1차 오딧 픽스: anon saved-words → DB migration on signup; goal/level-aware
   welcome banner; coach button no-flash; saved-word pending-save retry hook
 - 2차 오딧 픽스 (P0+P1, 10 items):

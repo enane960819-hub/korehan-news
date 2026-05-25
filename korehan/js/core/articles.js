@@ -151,7 +151,10 @@ function khArticleHeroMedia(article) {
         return '<video data-kh-hls="" data-kh-fallback="" data-kh-permalink="' + _khEsc(perma3) + '" data-kh-image-fallback="' + _khEsc(img3) + '" controls playsinline preload="metadata"></video>';
       }
       // No permalink recoverable → render the thumbnail directly.
-      return '<img src="' + _khEsc(img3) + '" alt="" onerror="this.style.display=\'none\'">';
+      // loading=lazy + intrinsic dimensions: defer fetch of below-the-fold
+      // article thumbnails and reserve the box so the cards don't shift
+      // when each image arrives (CLS).
+      return '<img src="' + _khEsc(img3) + '" alt="" loading="lazy" decoding="async" width="600" height="400" onerror="this.style.display=\'none\'">';
     }
     if (kind === 'reddit-hls') {
       // Reddit stores audio on a separate track. The HLS manifest
@@ -188,7 +191,7 @@ function khArticleHeroMedia(article) {
     }
   }
   var img = khArticleThumb(article, 600, 400);
-  return '<img src="' + _khEsc(img) + '" alt="" onerror="this.style.display=\'none\'">';
+  return '<img src="' + _khEsc(img) + '" alt="" loading="lazy" decoding="async" width="600" height="400" onerror="this.style.display=\'none\'">';
 }
 
 

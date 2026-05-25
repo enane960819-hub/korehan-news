@@ -99,9 +99,17 @@ html body{margin:0;background:#050b15!important;background-color:#050b15!importa
 <script>
 // Pause the looping background video when the tab is hidden so it stops
 // burning battery and decode bandwidth on mobile. Resume on return.
+// Also respect prefers-reduced-motion — users with motion sensitivity
+// or low-spec devices get a static fallback (the video itself stays
+// removed; the body's background colour is the visible result).
 (function() {
   var v = document.getElementById('kh-bg-video');
   if (!v) return;
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) {
+    try { v.pause(); v.removeAttribute('autoplay'); v.style.display = 'none'; } catch(_) {}
+    return;
+  }
   document.addEventListener('visibilitychange', function() {
     try {
       if (document.hidden) v.pause();
@@ -195,7 +203,7 @@ html body{margin:0;background:#050b15!important;background-color:#050b15!importa
 <script src="js/features/analyze-mode.js?v=20260502a"></script>
 <script src="js/features/translation.js?v=20260502a"></script>
 <script src="js/features/fill-blank.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260525c"></script>
+<script src="korehan-shared.js?v=20260525d"></script>
 <script src="playground-scores-client.js?v=20260519a"></script>
 <script>
 (function(){

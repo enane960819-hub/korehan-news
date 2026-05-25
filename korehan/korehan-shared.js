@@ -507,8 +507,12 @@ async function refreshSessionSafely() {
     }
   }
 }
-// 15분마다 세션 자동 갱신
-setInterval(refreshSessionSafely, 15 * 60 * 1000);
+// 15분마다 세션 자동 갱신 — but only when logged in. Avoids waking
+// the timer + scheduling a network round-trip every 15 min on
+// anonymous tabs that idle for hours.
+setInterval(function () {
+  if (typeof supaUser !== 'undefined' && supaUser) refreshSessionSafely();
+}, 15 * 60 * 1000);
 
 // Google 로그인
 async function signInWithGoogle() {
@@ -2927,9 +2931,25 @@ function heroNext() { heroGoTo(_heroIdx + 1); }
 
 function resetHeroTimer() {
   if (_heroTimer) clearInterval(_heroTimer);
-  if (_heroSlides.length > 1) {
+  // Don't auto-advance while the tab is hidden — saves CPU + battery
+  // on long-lived tabs and stops the carousel from sprinting through
+  // 20 slides when the user comes back after lunch.
+  if (_heroSlides.length > 1 && document.visibilityState !== 'hidden') {
     _heroTimer = setInterval(function(){ heroNext(); }, 5200);
   }
+}
+
+// Pause / resume the hero carousel on visibility changes. Idempotent —
+// resetHeroTimer clears the existing handle before scheduling.
+if (typeof document !== 'undefined' && !window._heroVisHookInstalled) {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      if (_heroTimer) { clearInterval(_heroTimer); _heroTimer = null; }
+    } else if (_heroSlides && _heroSlides.length > 1) {
+      resetHeroTimer();
+    }
+  });
+  window._heroVisHookInstalled = true;
 }
 
 function updateHeroSlideUI(heroEl) {
@@ -7997,6 +8017,7 @@ async function hydrateMostReadSidebar() {
 function startClock() {
   var days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var _clockTimer = null;
   function tick() {
     var now    = new Date();
     var dateEl = document.getElementById('date-str');
@@ -8004,7 +8025,21 @@ function startClock() {
     if (dateEl) dateEl.textContent = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear() + ' ';
     if (clockEl) clockEl.textContent = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
   }
-  tick(); setInterval(tick, 1000);
+  function start() {
+    if (_clockTimer) return;
+    tick();
+    _clockTimer = setInterval(tick, 1000);
+  }
+  function stop() {
+    if (_clockTimer) { clearInterval(_clockTimer); _clockTimer = null; }
+  }
+  // Don't run a 1-second timer on a hidden tab — it adds up to 3,600
+  // wake-ups per hour on background tabs of a long-running session.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') stop();
+    else start();
+  });
+  start();
 }
 
 
