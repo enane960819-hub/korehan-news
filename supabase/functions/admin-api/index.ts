@@ -25,6 +25,11 @@ const ALLOWED_TABLES = new Set([
   // Signup notification history — admin "Signup Notification Log"
   // page (page-views sibling) reads this for an audit trail.
   'signup_notifications_log',
+  // Client error log — admin "Client Errors" aux page reads + deletes
+  // >7d rows. Without this entry the delete had to route through the
+  // user-JWT supabase client, which depended entirely on RLS for
+  // safety.
+  'client_errors',
 ])
 
 // Whitelist of RPCs the admin client is allowed to call. Without this
@@ -278,7 +283,7 @@ Deno.serve(async (req) => {
 // service role bypasses that — this is the last line of defence.
 function hasMutationFilter(params: any): boolean {
   if (!params) return false
-  const filterKeys = ['eq','neq','gte','lte','like','ilike','is','not','in']
+  const filterKeys = ['eq','neq','gte','gt','lte','lt','like','ilike','is','not','in']
   for (const k of filterKeys) {
     if (Array.isArray(params[k]) && params[k].length) return true
   }
@@ -290,7 +295,9 @@ function applyFilters(query: any, params: any) {
   if (params.eq) params.eq.forEach((f: any) => { query = query.eq(f.col, f.val) })
   if (params.neq) params.neq.forEach((f: any) => { query = query.neq(f.col, f.val) })
   if (params.gte) params.gte.forEach((f: any) => { query = query.gte(f.col, f.val) })
+  if (params.gt)  params.gt.forEach((f: any)  => { query = query.gt(f.col, f.val) })
   if (params.lte) params.lte.forEach((f: any) => { query = query.lte(f.col, f.val) })
+  if (params.lt)  params.lt.forEach((f: any)  => { query = query.lt(f.col, f.val) })
   if (params.like) params.like.forEach((f: any) => { query = query.like(f.col, f.val) })
   if (params.ilike) params.ilike.forEach((f: any) => { query = query.ilike(f.col, f.val) })
   if (params.is) params.is.forEach((f: any) => { query = query.is(f.col, f.val) })

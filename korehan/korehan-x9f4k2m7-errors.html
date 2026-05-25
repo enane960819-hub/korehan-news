@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Client Errors — Admin</title>
-<link rel="stylesheet" href="korehan-shared.css?v=20260516a">
+<link rel="stylesheet" href="korehan-shared.css?v=20260525c">
 <style>
 .ce-wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; font-family: 'Source Sans 3', system-ui, sans-serif; }
 .ce-head { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
@@ -49,9 +49,10 @@
 </div>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="korehan-admin-gate.js?v=20260525c"></script>
 <script src="js/core/security.js?v=20260502a"></script>
 <script src="js/core/storage.js?v=20260502a"></script>
-<script src="korehan-shared.js?v=20260525a"></script>
+<script src="korehan-shared.js?v=20260525c"></script>
 <script>
 var _ceRangeDays = 1;
 function $(id) { return document.getElementById(id); }
@@ -136,17 +137,56 @@ window.ceLoadRange = function (days) {
   ceRefresh();
 };
 
+// Route the destructive delete through admin-api (service-role) instead
+// of the user-JWT client. The previous path depended entirely on
+// client_errors RLS to stop a non-admin from wiping the table after
+// guessing the obscured URL.
+async function _ceAdminToken() {
+  try {
+    var raw = localStorage.getItem('sb-samghztrdvtxmrmawneu-auth-token');
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.access_token) {
+        var exp = parsed.expires_at || 0;
+        if (exp > Math.floor(Date.now() / 1000) + 60) return parsed.access_token;
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
 window.ceClearOlder = async function (days) {
   if (!confirm('Delete error rows older than ' + days + ' day(s)?')) return;
-  var sb = (typeof getSupa === 'function') ? getSupa() : null;
-  if (!sb) return;
   var cutoff = new Date(Date.now() - days * 86400000).toISOString();
-  var r = await sb.from('client_errors').delete().lt('created_at', cutoff);
-  if (r.error) alert('Delete failed: ' + (r.error.message || 'unknown'));
-  else ceRefresh();
+  var token = await _ceAdminToken();
+  if (!token) { alert('Not signed in as admin.'); return; }
+  try {
+    var resp = await fetch('https://samghztrdvtxmrmawneu.supabase.co/functions/v1/admin-api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        action: 'db',
+        table: 'client_errors',
+        method: 'delete',
+        params: { lt: [{ col: 'created_at', val: cutoff }] },
+      }),
+    });
+    if (!resp.ok) {
+      var err = await resp.json().catch(function () { return { error: 'unknown' }; });
+      alert('Delete failed: ' + (err.error || resp.status));
+      return;
+    }
+    ceRefresh();
+  } catch (e) {
+    alert('Delete failed: ' + (e.message || 'network error'));
+  }
 };
 
 document.addEventListener('DOMContentLoaded', function () {
+  // Skip auto-refresh on blocked pages — admin gate replaced the body
+  // and ceRefresh would only fire a wasted query against a non-existent
+  // target element.
+  if (window._adminGateBlocked) return;
   setTimeout(ceRefresh, 400);
 });
 </script>
