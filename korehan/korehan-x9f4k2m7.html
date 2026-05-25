@@ -5404,13 +5404,32 @@ async function runAutoGenerate(){
         }
       } catch(_) { _khSoftSuggest = ''; }
 
-      var bodyFullPrompt = bodyPrompt + _khBodyCatalog + _khSoftSuggest;
+      // Prompt-caching split (PR #7AY): the label catalog +
+      // _khBodyCatalog combine to ~12K input tokens of fully static
+      // content that's identical across every article in a batch.
+      // Anthropic's cache_control: 'ephemeral' breakpoint caches the
+      // prefix block for 5 minutes; back-to-back article generation
+      // hits the cache and pays ~10% of normal input cost on those
+      // tokens. _khSoftSuggest is shuffled per call (so NOT cacheable)
+      // and bodyPrompt embeds the per-article headline / section /
+      // difficulty so it's also dynamic. Order: static FIRST so the
+      // cached prefix matches; dynamic SECOND. Saves roughly
+      // $0.024/article on Sonnet ($0.027 → $0.003 on the cached
+      // portion) — ~$70/month at 100 articles/day.
+      var _khStaticPrefix = _khLabels + _khBodyCatalog;
+      var _khDynamicSuffix = bodyPrompt + _khSoftSuggest;
       _autoGenSetItemStatus(si, '⏳ 본문 생성 중… (Sonnet)');
       const bodyRes = await callClaude({
         feature: 'generate-article-body',
         model: 'claude-sonnet-4-6',
         max_tokens: 6000,
-        messages: [{ role:'user', content: bodyFullPrompt }]
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: _khStaticPrefix, cache_control: { type: 'ephemeral' } },
+            { type: 'text', text: _khDynamicSuffix }
+          ]
+        }]
       });
       const bodyText = bodyRes.content && bodyRes.content[0] && bodyRes.content[0].text || '';
       if (!bodyText) throw new Error('빈 응답 (body)');
@@ -11983,7 +12002,11 @@ async function aiAnalyzeConv() {
   try {
     var resp = await callClaude({
       feature: 'conv_analyze',
-      model: 'claude-sonnet-4-6',
+      // Re-analyze a single conv with structured per-line schema —
+      // same shape as the article-analysis backfill path which has
+      // already been on Haiku 4.5 for months without quality regression.
+      // ~7× cheaper than Sonnet per call.
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
       messages: [{role:'user', content: prompt}]
     });
@@ -13784,34 +13807,86 @@ async function srSaveDailyContent() {
 // topic. Used when the existing study_daily_content row's topic drifted
 // off the active writing_topics schedule (e.g. topics were reordered or
 // inactivated after the row was created).
-async function srForceRegenerateScheduled() {
+// Snapshot the existing row, delete it, run srLoadDailyContent (which
+// will detect the empty state and auto-generate via AI), then verify a
+// new row landed. If anything fails along the way, restore the snapshot
+// so learners on that date+level don't see an empty study page until
+// the next manual recovery.
+async function _srSafeRegenerate(date, level) {
   var sb = getSb();
+  var msgEl = document.getElementById('srt-msg');
+
+  // 1. Snapshot the current row so we can restore on any downstream failure.
+  var prevRes = await sb.from('study_daily_content').select('*')
+    .eq('scheduled_date', date).eq('level', level).maybeSingle();
+  if (prevRes.error) {
+    if (msgEl) msgEl.textContent = '백업 실패: ' + prevRes.error.message;
+    return false;
+  }
+  var prev = prevRes.data || null;
+
+  // 2. Delete the row so srLoadDailyContent enters its auto-gen branch.
+  if (prev) {
+    var del = await sb.from('study_daily_content').delete()
+      .eq('scheduled_date', date).eq('level', level);
+    if (del.error) {
+      if (msgEl) msgEl.textContent = '삭제 실패: ' + del.error.message;
+      return false;
+    }
+  }
+
+  // 3. Trigger regen.
+  var regenError = null;
+  try {
+    await srLoadDailyContent();
+  } catch (e) {
+    regenError = e && e.message || String(e);
+  }
+
+  // 4. Verify a row exists. If not (Claude failure, parse error, network),
+  //    restore the backup so the (date, level) slot isn't left empty.
+  var afterRes = await sb.from('study_daily_content').select('id')
+    .eq('scheduled_date', date).eq('level', level).maybeSingle();
+  var landed = !!(afterRes && afterRes.data && afterRes.data.id);
+  if (!landed && prev) {
+    // Strip server-managed id so upsert assigns a fresh one if necessary;
+    // schedule_date + level is the natural key.
+    var restore = { ...prev };
+    delete restore.id;
+    var rest = await sb.from('study_daily_content').upsert(restore, {
+      onConflict: 'scheduled_date,level',
+    });
+    if (rest.error) {
+      if (msgEl) msgEl.textContent = '⚠️ 재생성 실패 + 백업 복원 실패: ' + rest.error.message;
+    } else {
+      if (msgEl) msgEl.textContent = '⚠️ 재생성 실패 — 기존 데이터 복원됨' + (regenError ? ' (' + regenError + ')' : '');
+    }
+    return false;
+  }
+  return true;
+}
+
+async function srForceRegenerateScheduled() {
   var msgEl = document.getElementById('srt-msg');
   var sch = window._srSchedTopic;
   if (!sch) {
     if (msgEl) msgEl.textContent = 'No scheduled topic captured. Reload first.';
     return;
   }
-  if (!confirm('Day 별 예정 토픽 "' + sch.topic_ko + '"으로 ' + sch.date + ' / ' + sch.level + ' 콘텐츠를 새로 생성합니다. 기존 행은 삭제됩니다. 진행?')) return;
-  if (msgEl) msgEl.textContent = '🗑️ 기존 행 삭제 중…';
-  var del = await sb.from('study_daily_content').delete().eq('scheduled_date', sch.date).eq('level', sch.level);
-  if (del.error) { if (msgEl) msgEl.textContent = '삭제 실패: ' + del.error.message; return; }
+  if (!confirm('Day 별 예정 토픽 "' + sch.topic_ko + '"으로 ' + sch.date + ' / ' + sch.level + ' 콘텐츠를 새로 생성합니다. 기존 행은 삭제됩니다. 생성 실패 시 기존 데이터로 자동 복원됩니다. 진행?')) return;
+  if (msgEl) msgEl.textContent = '🗑️ 기존 행 백업 + 삭제 중…';
   window._srSchedTopic = null;
-  // Re-enter the normal Load path; with the row gone, it will auto-AI-generate
-  // using the scheduled topic.
-  await srLoadDailyContent();
+  await _srSafeRegenerate(sch.date, sch.level);
 }
 
 async function srRegenerate() {
-  var sb = getSb();
   var date  = (document.getElementById('srt-date').value  || '').trim();
   var level = (document.getElementById('srt-level').value || '').trim();
   if (!date || !level) return;
-  if (!confirm('현재 콘텐츠를 삭제하고 AI로 재생성합니다. 계속?')) return;
-  await sb.from('study_daily_content').delete().eq('scheduled_date', date).eq('level', level);
+  if (!confirm('현재 콘텐츠를 삭제하고 AI로 재생성합니다. 생성 실패 시 기존 데이터로 자동 복원됩니다. 계속?')) return;
   var regenBtn = document.getElementById('srt-regen-btn');
   if (regenBtn) regenBtn.style.display = 'none';
-  await srLoadDailyContent();
+  await _srSafeRegenerate(date, level);
 }
 
 // One-shot: generate + save today's content for all 4 levels in
@@ -19396,7 +19471,11 @@ async function vsScanBatch(batch) {
     + batch.map(function(r, i) { return (i + 1) + '. ' + r.ko + ' → "' + (r.current || '').replace(/"/g, '\\"') + '"'; }).join('\n');
   var res = await callClaude({
     feature: 'vocab-sanity-check',
-    model: 'claude-sonnet-4-6',
+    // Batch validates a list of vocab → translation pairs and returns
+    // structured {ok, fix?} per entry. Same shape class as topic-gen /
+    // bulk-topic-add (already Haiku) — schema-following with no
+    // creative writing involved.
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 3000,
     messages: [{ role: 'user', content: prompt }],
   });

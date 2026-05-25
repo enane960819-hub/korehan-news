@@ -52,12 +52,32 @@ doesn't keep reminding about closed work.
     'public.user_quota_overrides'::regclass;` in Supabase SQL editor.
     If no INSERT/UPDATE policy denies authenticated role, add a
     `service-only` policy.
+  - **3차 오딧 P2 batch (this commit)**:
+    - **AD-F10** Article body prompt caching: claude-proxy now
+      forwards `cache_control` blocks + sends the prompt-caching
+      beta header when any message block carries cache_control. Admin
+      autoGenArticle body call restructured so the static
+      `_khLabels + _khBodyCatalog` prefix (~12K input tokens) is the
+      cached block, with the per-article `bodyPrompt + _khSoftSuggest`
+      as the dynamic suffix. Usage logger folds cache_creation /
+      cache_read tokens into `input_tokens` at their pricing weights
+      so the monthly-USD calc stays accurate without DB schema
+      changes. Expected ~$70/mo saved at 100 articles/day.
+    - **AD-F11** Sonnet → Haiku swaps (2 safe sites, conservative
+      pass): conv_analyze + vocab-sanity-check both moved to
+      Haiku 4.5 (~7× cheaper, schema-following shape proven by
+      neighbouring admin paths already on Haiku).
+    - **AD-F13** srForceRegenerateScheduled + srRegenerate now use a
+      new _srSafeRegenerate helper that snapshots the row → deletes →
+      generates → restores the snapshot on any failure path. Previous
+      DELETE-before-generate left learners with no content for that
+      (date, level) on any Claude / network failure.
   - **Out of scope / deferred** (lower-priority items from the same
     audits): defer/lazy-split of korehan-shared.js + study-room.js,
     @import → link migration in shared.css (40+ HTMLs touched, risk
-    high without verify), Sonnet → Haiku audit across 11 admin call
-    sites, prompt-caching wiring for article-body gen, CSS critical-
-    path extraction, SW font caching, deeper grammar audit (#7AI).
+    high without verify), Sonnet → Haiku audit on remaining ~10 call
+    sites (need quality verify), CSS critical-path extraction, SW
+    font caching, deeper grammar audit (#7AI).
 - 1차 오딧 픽스: anon saved-words → DB migration on signup; goal/level-aware
   welcome banner; coach button no-flash; saved-word pending-save retry hook
 - 2차 오딧 픽스 (P0+P1, 10 items):

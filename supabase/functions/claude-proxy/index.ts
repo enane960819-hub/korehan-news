@@ -268,13 +268,39 @@ Deno.serve(async (req) => {
     const timeoutId = setTimeout(() => ctrl.abort(), ANTHROPIC_TIMEOUT_MS)
     let response: Response
     try {
+      // Detect whether the client wants prompt caching — any content
+      // block on any message that carries a cache_control field signals
+      // intent. Caching is GA on Claude 4.x but sending the explicit
+      // beta header is a no-op when not needed and lights the feature
+      // up on older API surfaces, so we send it whenever requested.
+      let wantsPromptCaching = false
+      const msgs = (claudeBody as { messages?: unknown }).messages
+      if (Array.isArray(msgs)) {
+        for (const m of msgs) {
+          const content = (m as { content?: unknown })?.content
+          if (Array.isArray(content)) {
+            for (const block of content) {
+              if (block && typeof block === 'object' && 'cache_control' in block) {
+                wantsPromptCaching = true
+                break
+              }
+            }
+          }
+          if (wantsPromptCaching) break
+        }
+      }
+
+      const anthropicHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      }
+      if (wantsPromptCaching) {
+        anthropicHeaders['anthropic-beta'] = 'prompt-caching-2024-07-31'
+      }
       response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
+        headers: anthropicHeaders,
         body: JSON.stringify(claudeBody),
         signal: ctrl.signal,
       })
@@ -303,12 +329,29 @@ Deno.serve(async (req) => {
     // avoid quota deduction. Token counts are 0 for non-200 paths
     // since Anthropic didn't bill us, but the row still counts toward
     // the daily call limit on the next request.
-    const usage = data?.usage as { input_tokens?: number; output_tokens?: number } | undefined
+    //
+    // Prompt caching: Anthropic returns three input figures when the
+    // request uses cache_control — input_tokens (non-cached portion),
+    // cache_creation_input_tokens (1.25x cost), cache_read_input_tokens
+    // (0.1x cost). The monthly-cost computation in this proxy only
+    // reads `input_tokens`, so we fold the cache portions into it
+    // using their pricing weights so priceUsd() returns the actual
+    // dollars spent. (Schema-friendly: no new columns needed.)
+    const usage = data?.usage as {
+      input_tokens?: number
+      output_tokens?: number
+      cache_creation_input_tokens?: number
+      cache_read_input_tokens?: number
+    } | undefined
+    const baseInput   = usage?.input_tokens ?? 0
+    const cacheCreate = usage?.cache_creation_input_tokens ?? 0
+    const cacheRead   = usage?.cache_read_input_tokens ?? 0
+    const effectiveInput = baseInput + Math.round(cacheCreate * 1.25) + Math.round(cacheRead * 0.1)
     sb.from('claude_api_usage').insert({
       user_id: userId,
       feature: featureStr,
       model: typeof claudeBody.model === 'string' ? claudeBody.model : null,
-      input_tokens:  response.ok ? (usage?.input_tokens ?? 0) : 0,
+      input_tokens:  response.ok ? effectiveInput : 0,
       output_tokens: response.ok ? (usage?.output_tokens ?? 0) : 0,
     }).then(({ error }: { error: { message: string } | null }) => {
       if (error) console.error('[claude-proxy] usage insert failed:', error.message)
