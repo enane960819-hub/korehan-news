@@ -29,26 +29,16 @@
 /korehan-x9f4k2m7.html
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://static.cloudflareinsights.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://samghztrdvtxmrmawneu.supabase.co wss://samghztrdvtxmrmawneu.supabase.co https://api.open-meteo.com https://cdn.jsdelivr.net https://v.redd.it https://*.redd.it https://images.pexels.com https://cloudflareinsights.com https://*.cloudflareinsights.com; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://www.redditmedia.com https://embed.reddit.com https://challenges.cloudflare.com; media-src 'self' blob: https://v.redd.it https://*.redd.it https://samghztrdvtxmrmawneu.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
 
-# HTML pages: short edge cache (Cloudflare) + browser revalidate.
-#
-# Previously `no-cache` on HTML returned `cf-cache-status: DYNAMIC`
-# every visit, paying an 80-300ms origin round-trip per navigation.
-# Real-measurement audit (2026-05-25) clocked TTFB at 78-300ms on
-# home / study-room / mypage.
-#
-#   s-maxage=60        Cloudflare edge caches the HTML for 60s.
-#                      After a deploy, new HTML lands at the edge
-#                      within 60s anyway; safe given the per-asset
-#                      ?v=YYYYMMDDx cache busters protect JS/CSS.
-#   max-age=0          Browser still revalidates every navigation
-#                      (so the user sees the new HTML the moment the
-#                      edge serves it, no client-side staleness).
-#   stale-while-revalidate=86400
-#                      If the edge cache is just expired, CF serves
-#                      the stale version while async-fetching the
-#                      fresh one — keeps TTFB tight during deploys.
+# HTML pages: revalidate every visit.
+# REVERTED 2026-05-25 — the s-maxage=60 + stale-while-revalidate=86400
+# variant merged into the cascaded header value AS A SECOND
+# Cache-Control (the global `/*` rule's `no-cache` didn't get
+# overridden) and prod users reported hero + article rails stuck
+# loading forever. Reverting to plain `no-cache` to restore the known
+# stable behaviour; the TTFB optimisation needs to be re-attempted
+# via a Cloudflare Page Rule rather than `_headers` cascading.
 /*.html
-  Cache-Control: public, max-age=0, s-maxage=60, stale-while-revalidate=86400
+  Cache-Control: no-cache
 
 # JS / CSS: every URL has a `?v=YYYYMMDDx` cache-buster so a published
 # byte change always lands at a new URL. Tell the browser to cache the

@@ -38,18 +38,25 @@ const ALLOWED_ORIGINS = [
 ]
 const ADMIN_EMAILS = ['enane960819@gmail.com']
 const SITE_BASE = 'https://korehani.com'
+// One-click POST endpoint per RFC 8058. Browser-clicked GET on this
+// URL 302-redirects to /unsubscribe.html for the friendly page.
+const UNSUB_ENDPOINT = `${Deno.env.get('SUPABASE_URL') || 'https://samghztrdvtxmrmawneu.supabase.co'}/functions/v1/newsletter-unsubscribe`
 const DEFAULT_FROM = 'KoreHani <hello@korehani.com>'
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || ''
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
-  return {
-    'Access-Control-Allow-Origin': allowed,
+  const matched = ALLOWED_ORIGINS.includes(origin) ? origin : null
+  const h: Record<string, string> = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
     'X-Content-Type-Options': 'nosniff',
   }
+  // CORS hardening — match the rest of the proxy fleet (3rd-audit F9).
+  // Don't echo a default ACAO for unlisted origins so CDN-cached
+  // responses can't leak across origins.
+  if (matched) h['Access-Control-Allow-Origin'] = matched
+  return h
 }
 
 function jsonResponse(body: unknown, status: number, cors: Record<string, string>) {
@@ -211,13 +218,22 @@ async function handleSubscribe(
     : `${SITE_BASE}/unsubscribe.html`
   const html = confirmEmailHtml({ confirmUrl, unsubUrl, name: (row?.name as string | null) || null })
 
+  // List-Unsubscribe header points at the Edge Function so RFC 8058
+  // POST works for confirm emails too (mail clients may unsubscribe
+  // before the user even confirms — fine, it's a clear "no thanks").
+  const headerUnsubUrl = row?.unsubscribe_token
+    ? `${UNSUB_ENDPOINT}?t=${encodeURIComponent(row.unsubscribe_token as string)}`
+    : UNSUB_ENDPOINT
   const send = await sendViaResend(apiKey, {
     from: DEFAULT_FROM,
     to: email,
     subject: 'Confirm your KoreHani subscription',
     html,
     text: `Confirm your KoreHani subscription:\n${confirmUrl}\n\nDidn't sign up? You can ignore this email.\n\nUnsubscribe: ${unsubUrl}`,
-    headers: { 'List-Unsubscribe': `<${unsubUrl}>` },
+    headers: {
+      'List-Unsubscribe': `<${headerUnsubUrl}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
   })
 
   if (!send.ok) {
@@ -252,8 +268,14 @@ async function handleSendCampaign(
   // Test send: one-shot to the supplied address, do not log to
   // newsletter_sends and don't flip campaign status. Lets the admin
   // proof the email before broadcasting.
+  //
+  // Token is namespaced (`test-<campaignId>`) so the newsletter_unsubscribe
+  // RPC can recognise + reject it (audit P1 #5). The plain literal
+  // 'test' the previous code used could collide with a real token row
+  // if anyone ever inserted one for QA.
   if (body.test_to) {
-    const html = withUnsubFooter(campaign.body_html, `${SITE_BASE}/unsubscribe.html?t=test`)
+    const testToken = `test-${campaignId}`
+    const html = withUnsubFooter(campaign.body_html, `${SITE_BASE}/unsubscribe.html?t=${testToken}`)
     const send = await sendViaResend(apiKey, {
       from: `${campaign.from_name} <${campaign.from_email}>`,
       to: body.test_to,
@@ -264,7 +286,25 @@ async function handleSendCampaign(
     return jsonResponse({ ok: send.ok, error: send.error, message_id: send.id }, send.ok ? 200 : 502, cors)
   }
 
-  await sb.from('newsletter_campaigns').update({ status: 'sending' }).eq('id', campaignId)
+  // Atomic transition draft|failed → sending. Two admin tabs hitting
+  // "전체 발송" simultaneously would otherwise both pass the read-side
+  // 'sent' check and both run the full send loop (audit P1 #16). The
+  // .eq('status', ...) condition + .select() count tells us whether
+  // we actually won the transition.
+  const { data: lockedRows, error: lockErr } = await sb.from('newsletter_campaigns')
+    .update({ status: 'sending' })
+    .eq('id', campaignId)
+    .in('status', ['draft', 'failed'])
+    .select('id')
+  if (lockErr) {
+    return jsonResponse({ ok: false, error: 'lock_failed: ' + lockErr.message }, 500, cors)
+  }
+  if (!lockedRows || lockedRows.length === 0) {
+    // Another invocation already grabbed the campaign (or it was
+    // moved to 'sending' / 'sent' by something else). Bail cleanly
+    // so the loser doesn't broadcast the same campaign in parallel.
+    return jsonResponse({ ok: false, error: 'campaign_already_in_progress' }, 409, cors)
+  }
 
   // Pull confirmed subscribers + their unsubscribe tokens.
   const { data: subs, error: sErr } = await sb.from('newsletter_subs')
@@ -288,52 +328,78 @@ async function handleSendCampaign(
 
   let sentCount = 0
   let failCount = 0
+  let crashed = false
   // Resend free tier rate limit is ~10/sec. We trickle by inserting
   // a 120ms delay between calls — well under the cap and short enough
   // that 500 subs finish in ~60s, inside the function's wall budget.
-  for (const sub of (subs || [])) {
-    const unsubUrl = sub.unsubscribe_token
-      ? `${SITE_BASE}/unsubscribe.html?t=${encodeURIComponent(sub.unsubscribe_token as string)}`
-      : `${SITE_BASE}/unsubscribe.html`
-    const html = withUnsubFooter(campaign.body_html, unsubUrl)
+  try {
+    for (const sub of (subs || [])) {
+      const unsubUrl = sub.unsubscribe_token
+        ? `${SITE_BASE}/unsubscribe.html?t=${encodeURIComponent(sub.unsubscribe_token as string)}`
+        : `${SITE_BASE}/unsubscribe.html`
+      const html = withUnsubFooter(campaign.body_html, unsubUrl)
 
-    if (alreadySent.has(sub.id as string)) continue
+      if (alreadySent.has(sub.id as string)) continue
 
-    const send = await sendViaResend(apiKey, {
-      from: `${campaign.from_name} <${campaign.from_email}>`,
-      to: sub.email,
-      subject: campaign.subject,
-      html,
-      text: campaign.body_text || undefined,
-      headers: { 'List-Unsubscribe': `<${unsubUrl}>` },
-    })
+      // List-Unsubscribe per RFC 8058. URL points at the Edge Function
+      // (not the static HTML page) because RFC 8058 requires the URL
+      // to accept POST with body `List-Unsubscribe=One-Click`. The EF
+      // 302-redirects GETs to the friendly /unsubscribe.html so a
+      // browser-clicked link still lands on the visible page.
+      const headerToken = sub.unsubscribe_token as string | undefined
+      const headerUrl = headerToken
+        ? `${UNSUB_ENDPOINT}?t=${encodeURIComponent(headerToken)}`
+        : UNSUB_ENDPOINT
+      const send = await sendViaResend(apiKey, {
+        from: `${campaign.from_name} <${campaign.from_email}>`,
+        to: sub.email,
+        subject: campaign.subject,
+        html,
+        text: campaign.body_text || undefined,
+        headers: {
+          'List-Unsubscribe': `<${headerUrl}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      })
 
-    await sb.from('newsletter_sends').upsert({
-      campaign_id: campaignId,
-      sub_id: sub.id,
-      email: sub.email,
-      status: send.ok ? 'sent' : 'failed',
-      provider_id: send.id || null,
-      error: send.error || null,
-      sent_at: send.ok ? new Date().toISOString() : null,
-    }, { onConflict: 'campaign_id,sub_id' })
+      await sb.from('newsletter_sends').upsert({
+        campaign_id: campaignId,
+        sub_id: sub.id,
+        email: sub.email,
+        status: send.ok ? 'sent' : 'failed',
+        provider_id: send.id || null,
+        error: send.error || null,
+        sent_at: send.ok ? new Date().toISOString() : null,
+      }, { onConflict: 'campaign_id,sub_id' })
 
-    if (send.ok) {
-      sentCount++
-      await sb.from('newsletter_subs').update({ last_sent_at: new Date().toISOString() }).eq('id', sub.id)
-    } else {
-      failCount++
+      if (send.ok) {
+        sentCount++
+        await sb.from('newsletter_subs').update({ last_sent_at: new Date().toISOString() }).eq('id', sub.id)
+      } else {
+        failCount++
+      }
+      await new Promise((r) => setTimeout(r, 120))
     }
-    await new Promise((r) => setTimeout(r, 120))
+  } catch (loopErr) {
+    crashed = true
+    console.error('[newsletter-send] loop crashed:', (loopErr as Error).message)
   }
 
+  // Always update final status — even on crash, mark as 'failed' so
+  // the admin can see + retry. Without this, a wall-time kill or
+  // unhandled throw left status='sending' permanently and the
+  // campaign was unrelaunchable (audit P1 #17).
+  const finalStatus = crashed ? 'failed' : 'sent'
   await sb.from('newsletter_campaigns').update({
-    status: 'sent',
-    sent_at: new Date().toISOString(),
+    status: finalStatus,
+    sent_at: !crashed ? new Date().toISOString() : null,
     recipient_count: sentCount,
   }).eq('id', campaignId)
 
-  return jsonResponse({ ok: true, sent: sentCount, failed: failCount }, 200, cors)
+  return jsonResponse({
+    ok: !crashed, sent: sentCount, failed: failCount,
+    ...(crashed ? { error: 'loop_crashed_partial_send' } : {}),
+  }, crashed ? 500 : 200, cors)
 }
 
 // ── Entry ───────────────────────────────────────────────────────────────────
