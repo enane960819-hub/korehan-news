@@ -473,6 +473,10 @@ function saveOnboardingLocal(done) {
       localStorage.setItem(getWelcomeTipStorageKey(userId), '1');
       if (state.level) localStorage.setItem(getOnboardingStorageKey('level', userId), state.level);
       if (state.goals && state.goals.length) localStorage.setItem(getOnboardingStorageKey('goals', userId), JSON.stringify(state.goals));
+      // Onboarding finished — the draft is now obsolete; pruning it
+      // here means a returning user (different account / re-onboard)
+      // doesn't see stale half-completed state pop back.
+      try { localStorage.removeItem(ONBOARDING_DRAFT_KEY); } catch(_) {}
     } else {
       localStorage.setItem(getOnboardingStorageKey('started', userId), '1');
     }
@@ -555,7 +559,8 @@ function wireStepInteractions() {
     'next-test': nextTestQ,
     'finish': finishOnboarding,
     'skip': skipOnboarding,
-    'signup-google': signUpWithGoogle
+    'signup-google': signUpWithGoogle,
+    'signup-email': signUpWithEmail
   };
   root.querySelectorAll('[data-action]').forEach(function(el){
     var fn = actionMap[el.dataset.action];
@@ -565,6 +570,8 @@ function wireStepInteractions() {
 }
 
 function renderStep1() {
+  state.step = 1;
+  saveOnboardingDraft();
   updateProgress(1);
   saveOnboardingLocal(false);
   document.getElementById('ob-content').innerHTML = cardWrap(
@@ -618,6 +625,8 @@ function toggleGoal(id) {
 function goStep2() { renderStep2(); }
 
 function renderStep2() {
+  state.step = 2;
+  saveOnboardingDraft();
   updateProgress(2);
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
@@ -660,6 +669,8 @@ function selectTime(min) {
 function goStep3() { renderStep3Choice(); }
 
 function renderStep3Choice() {
+  state.step = 3;
+  saveOnboardingDraft();
   updateProgress(3);
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
@@ -669,7 +680,7 @@ function renderStep3Choice() {
       + '<p class="ob-desc">If you already know your level, pick it directly and skip the test. If you are unsure, take a randomized placement test with mixed answer positions.</p>'
       + '<div class="ob-choice-grid">'
       + '<button class="ob-choice-card' + (state.levelChoice === 'self' ? ' selected' : '') + '" data-choice="self"><span class="ob-check">✓</span><span class="ob-choice-badge">Fast start</span><h3>Pick my level myself</h3><p>Skip the quiz and start right away with Seed, Sprout, Tree, or Forest.</p></button>'
-      + '<button class="ob-choice-card' + (state.levelChoice === 'test' ? ' selected' : '') + '" data-choice="test"><span class="ob-check">✓</span><span class="ob-choice-badge">Recommended if unsure</span><h3>Take the placement test</h3><p>Answer 20 randomized questions pulled from starter, beginner, intermediate, and advanced pools.</p></button>'
+      + '<button class="ob-choice-card' + (state.levelChoice === 'test' ? ' selected' : '') + '" data-choice="test"><span class="ob-check">✓</span><span class="ob-choice-badge">Recommended if unsure · ~3 min</span><h3>Take the placement test</h3><p>Answer 20 randomized questions pulled from starter, beginner, intermediate, and advanced pools.</p></button>'
       + '</div>'
       + (state.levelChoice === 'self' ? renderSelfSelectHTML() : renderTestIntroHTML())
     + '</div>'
@@ -1157,6 +1168,8 @@ function selectRecommendedLevel(level) {
 }
 
 function goStep4() {
+  state.step = 4;
+  saveOnboardingDraft();
   updateProgress(4);
   // Stash the in-progress state so it survives the Google OAuth
   // round-trip. When the user comes back signed in, the page's
@@ -1222,6 +1235,10 @@ function goStep4() {
     + '<div>'
       + '<div class="ob-btn-row">'
       + primaryCTA
+      // Secondary email-signup path for users without Google or who
+      // prefer email auth. Without this, signed-out users only had a
+      // single Google CTA and no path forward.
+      + (isSignedIn ? '' : '<button class="ob-btn ob-btn-full" id="signup-email-btn" data-action="signup-email" type="button" style="margin-top:10px;background:transparent;border:1.5px solid rgba(255,255,255,.18);color:inherit;font-weight:700">Or sign up with email →</button>')
       + '</div>'
     + '</div>'
   );
@@ -1280,6 +1297,19 @@ async function persistOnboardingState() {
 // kh_onboarding_pending_state we stashed in goStep4(), pushes
 // it into user_stats, and redirects to study-room. The redirect
 // target is the same page so the OAuth round-trip lands here.
+// Email signup path — opens the global auth modal in signup mode.
+// The pre-OAuth state stash (kh_onboarding_pending_state, line 1167)
+// also covers email signups since both paths refresh the page after
+// confirming email.
+function signUpWithEmail() {
+  saveOnboardingLocal(false);
+  if (typeof window.openAuthModal === 'function') {
+    try { window.openAuthModal('signup'); return; } catch (_) {}
+  }
+  // Fallback if shared.js hasn't injected the helper yet.
+  alert('Sign-up modal unavailable. Please refresh and try again.');
+}
+
 async function signUpWithGoogle() {
   var btn = document.getElementById('signup-btn');
   if (btn) {
@@ -1348,9 +1378,62 @@ async function skipOnboarding() {
   window.location.href = 'index.html';
 }
 
+// Persist the current in-progress state to localStorage so a tab
+// close mid-onboarding doesn't blow away the user's answers. The
+// pre-OAuth `kh_onboarding_pending_state` (line 1167) was the only
+// persistence point before — closing during step 1/2/3 forced a
+// full restart. Save on every render and step transition.
+var ONBOARDING_DRAFT_KEY = 'kh_onboarding_draft';
+function saveOnboardingDraft() {
+  try {
+    localStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify({
+      step:         state.step,
+      goals:        state.goals,
+      minutes:      state.minutes,
+      levelChoice:  state.levelChoice,
+      level:        state.level,
+      testScore:    state.testScore,
+      testAnswers:  state.testAnswers,
+      // testQuestions are regenerated; persisting them would also
+      // pin a 20-item array per save (overkill).
+      savedAt:      Date.now(),
+    }));
+  } catch (_) {}
+}
+function clearOnboardingDraft() {
+  try { localStorage.removeItem(ONBOARDING_DRAFT_KEY); } catch (_) {}
+}
+function restoreOnboardingDraft() {
+  try {
+    var raw = localStorage.getItem(ONBOARDING_DRAFT_KEY);
+    if (!raw) return false;
+    var saved = JSON.parse(raw);
+    // Expire drafts after 7 days so a stale half-completed flow
+    // doesn't pop back up months later.
+    if (!saved || !saved.savedAt || Date.now() - saved.savedAt > 7 * 24 * 60 * 60 * 1000) {
+      clearOnboardingDraft();
+      return false;
+    }
+    if (saved.goals)       state.goals       = saved.goals;
+    if (saved.minutes)     state.minutes     = saved.minutes;
+    if (saved.levelChoice) state.levelChoice = saved.levelChoice;
+    if (saved.level)       state.level       = saved.level;
+    if (saved.testScore)   state.testScore   = saved.testScore;
+    if (saved.testAnswers) state.testAnswers = saved.testAnswers;
+    if (saved.step)        state.step        = saved.step;
+    return true;
+  } catch (_) { clearOnboardingDraft(); return false; }
+}
+
 function startOnboarding() {
   if (!state.level) state.level = 'Beginner';
-  renderStep1();
+  restoreOnboardingDraft();
+  // Resume from the step the user was on, defaulting to step 1. Note:
+  // step 4 is the signup CTA — goStep4 is idempotent + safe to re-run.
+  if (state.step === 2)        renderStep2();
+  else if (state.step === 3)   renderStep3Choice();
+  else if (state.step === 4)   goStep4();
+  else                         renderStep1();
 }
 
 // Two-phase init so the page paints + becomes interactive immediately:
