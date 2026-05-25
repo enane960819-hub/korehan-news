@@ -134,9 +134,30 @@
     { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*버리(었|어|네|기|어요)/, label: '~아/어 버리다 (do completely / regret / clean finish)', hint: 'completion auxiliary with TWO emotional shades depending on context. (a) NEUTRAL clean completion — finished entirely, nothing left: 다 먹어 버렸어요 (ate it all up), 끝나 버렸다 (it\'s totally over). (b) REGRET / unintended — happened despite the speaker\'s wish: 잊어버렸어요 (I forgot — oops), 가 버렸어요 (he just left, and I miss him), 깨져 버렸다 (it broke, dammit). Negative-affect verbs (잊다/깨다/도망가다) usually lean (b); achievement verbs (끝내다/먹다) usually lean (a).' },
     { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*놓(았|아|네|아요|기|는다)/, label: '~아/어 놓다 (do in advance)', hint: 'do and leave the result for later' },
     { re: /(아|어|여|봐|와|줘|둬|매|깨|떼|째|쳐|쪄|져|돼|해|펴|켜|셔|쒀|폐)\s*두(었|어|네|기|어요)/, label: '~아/어 두다 (do for later)', hint: 'do and store the result' },
-    { re: /(아야|어야|여야|봐야|와야|줘야|둬야|매야|깨야|떼야|째야|쳐야|쪄야|져야|돼야|해야|펴야|켜야|셔야|쒀야|폐야)\s*(하|되|돼|한다|했|해|됐|됨|함)/, label: '~아/어야 하다/되다 (must)', hint: 'obligation. "have to / must". Includes vowel-contracted forms: 꿰매다→꿰매야 했어요, 하다→해야 해요, 되다→돼야 해요' },
-    { re: /기로\s*하(다|기로\s*했|었|기로\s*해)/, label: '~기로 하다 (decide to)', hint: 'decide to do. "plan / decide"' },
-    { re: /ㄴ\s*적(이|이\s*있|이\s*없)|은\s*적(이|이\s*있|이\s*없)/, label: '~ㄴ/은 적이 있다/없다 (have done before)', hint: 'experiential past. "have V-ed / never V-ed"' },
+    // ~아/어야 하다/되다 — needs to match (a) 2-syllable contracted
+    // forms in the alternation list (해야, 봐야, 와야 …) AND (b) bare
+    // X+야 for verbs whose stem ends in vowel ㅏ that absorbs the 아
+    // (가야 / 사야 / 만나야). Plus the trailing 하/되 conjugation can
+    // be ANY common form including ~ㅂ니다/~습니다 (가야 합니다, 해야
+    // 됩니다). Switched to a broader second alternation covering all
+    // common 하다/되다 conjugations.
+    { re: /(?:야|아야|어야|여야|봐야|와야|줘야|둬야|매야|깨야|떼야|째야|쳐야|쪄야|져야|돼야|해야|펴야|켜야|셔야|쒀야|폐야)\s+(하다|한다|할|해|해요|해서|해야|함|합|합니다|합니까|했|했다|했어|했어요|했습니다|되다|된다|되|돼|돼요|돼서|돼야|됐|됐다|됐어|됐어요|됐습니다|됨|됩|됩니다|됩니까)/, label: '~아/어야 하다/되다 (must)', hint: 'obligation. <stem> + 아/어야 하다/되다 = "have to / must". 가야 합니다 / 가야 한다 / 가야 해요 / 해야 됩니다 / 받아야 한다. Includes vowel-contracted forms (해야, 봐야, 와야, 돼야, 줘야, 둬야 …) and the bare X+야 form for vowel-stem verbs (가야, 사야, 만나야).' },
+    // ~기로 하다 — previous regex `기로\s*하(다|기로\s*했|었|기로\s*해)`
+    // missed the contracted past 했/했다/했어요 (하+았 collapses to 했).
+    // Broader alternation that lists each common follow-on directly.
+    { re: /기로\s*(하다|한다|할|하기|하면|하고|했|했다|했어|했어요|했습니다|해서|해야|해|해라|함|합)/, label: '~기로 하다 (decide to)', hint: 'decide to do. <stem> + 기로 하다 = "decide / plan to". 가기로 하다 (decide to go); 만나기로 했어요 (decided to meet); 결혼하기로 했다 (decided to marry). The 기로 chunk is fixed; only the trailing 하다 conjugates.' },
+    // ~ㄴ/은 적이 있다/없다 — previous regex required literal ㄴ jamo
+    // (U+3134) which only appears as a separate character in rare
+    // pedagogical contexts. Real Korean uses ㄴ as the batchim of the
+    // preceding syllable (한 적, 본 적, 간 적). Use _hasJongFollowedBy
+    // with jong=4 (ㄴ) for vowel-stem verbs; keep the literal 은 branch
+    // for consonant-stem verbs (받은 적, 먹은 적).
+    { _check: function(t) {
+        var c = _hasJongFollowedBy(t, 4, ['적']);
+        if (c) return c;
+        var m = t.match(/[가-힣]은\s*적/);
+        return m ? m[0] : '';
+      }, label: '~ㄴ/은 적이 있다/없다 (have done before)', hint: 'experiential past. <stem> + ㄴ/은 적이 있다 / 없다 = "have V-ed before / never V-ed". 가다 → 간 적이 있다 (have been); 먹다 → 먹은 적이 없다 (never eaten); 한 적이 있어요 (I have done that).' },
     { re: /[가-힣]\s*수\s*(있|없)/, label: '~(으)ㄹ 수 있다/없다 (ability/possibility)', hint: 'ability or possibility. <stem> + ㄹ/을 수 있다 = "can"; 없다 = "cannot". 옮기다 → 옮길 수 없다 = "cannot transmit"' },
 
     // ── Connectives ─────────────────────────────────────────────
