@@ -8580,11 +8580,35 @@ async function submitSpeakingToCoach() {
     });
     if (ins.error) { showToast('제출 실패: ' + ins.error.message); return; }
 
-    showToast('코치에게 보냈어요! 24시간 내 피드백이 도착합니다. (남은 코인: ' + (coin.balance != null ? coin.balance : coin.remaining) + ')');
+    // Compute the reply deadline so the user has a concrete time, not
+    // just "within 24 hours". Local timezone — they'll know whether
+    // that means "by tomorrow morning" or "tomorrow evening".
+    var etaDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    var etaLabel = etaDate.toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
+    var remaining = coin.balance != null ? coin.balance : coin.remaining;
+
+    showToast('코치에게 보냈어요! ' + etaLabel + '까지 회신 예정. (남은 코인: ' + remaining + ')');
     var row = document.getElementById('wm-speak-submit-row');
     if (row) row.style.display = 'none';
     var statusEl = document.getElementById('wm-speak-status');
-    if (statusEl) statusEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>코치에게 전송 완료</span></span>';
+    if (statusEl) {
+      // Persistent confirmation card — sticks around so the learner has
+      // visibility into the SLA + queue position long after the toast
+      // fades. Mirrors the inbox state in My Page → Coach Feedback.
+      statusEl.innerHTML =
+        '<div style="margin-top:6px;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:1px solid rgba(34,197,94,.3);text-align:left">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+        +   '<span style="display:inline-flex;width:16px;height:16px;color:#16a34a">'+BM_ICON_CHECK+'</span>'
+        +   '<span style="font-size:13px;font-weight:800;color:#065f46">Sent to your coach</span>'
+        + '</div>'
+        + '<div style="font-size:11px;color:#047857;line-height:1.55">Expected reply by <b>' + etaLabel + '</b>. '
+        +   'You\'ll get a notification + see it in <a href="korehan-mypage.html?tab=writing" style="color:#047857;font-weight:700;text-decoration:underline">My Page → Coach Feedback</a>.</div>'
+        + '<div style="font-size:10px;color:#10b981;margin-top:6px">Coins remaining: ' + remaining + '</div>'
+        + '</div>';
+    }
     _refreshSpeakingCoinBadge();
   } catch(e) {
     showToast('Submit failed: ' + (e.message || e));
