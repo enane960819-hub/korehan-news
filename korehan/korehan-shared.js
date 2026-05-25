@@ -445,6 +445,20 @@ async function callClaude({ feature, model, max_tokens, messages }) {
   if (resp.status === 401) {
     throw new Error('Authentication error — please sign in again.');
   }
+  // claude-proxy returns 403 + code:'email_unverified' when the
+  // user's account exists but they haven't clicked the verification
+  // email yet. Without a UI for this, callers used to throw an
+  // opaque "Please verify your email" string into the void. Pop a
+  // toast + offer a resend instead. (Audit P1 #12.)
+  if (resp.status === 403) {
+    var efjson = await resp.json().catch(function(){ return {}; });
+    if (efjson && efjson.code === 'email_unverified') {
+      try { _khShowResendVerificationToast(); } catch (_) {}
+      var efErr = new Error(efjson.error || 'Please verify your email before using AI features.');
+      efErr.code = 'email_unverified';
+      throw efErr;
+    }
+  }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
     var errMsg;
@@ -459,6 +473,42 @@ async function callClaude({ feature, model, max_tokens, messages }) {
     throw new Error(errMsg);
   }
   return resp.json();
+}
+
+// "Verify your email" toast with a resend CTA. Fires from the
+// claude-proxy 403 branch above. Throttled so a rapid burst of AI
+// calls (e.g. analysis loop) only nags the user once per minute.
+function _khShowResendVerificationToast() {
+  var now = Date.now();
+  if (window._khVerifyToastAt && now - window._khVerifyToastAt < 60_000) return;
+  window._khVerifyToastAt = now;
+  var existing = document.getElementById('kh-verify-toast');
+  if (existing) try { existing.remove(); } catch (_) {}
+  var t = document.createElement('div');
+  t.id = 'kh-verify-toast';
+  t.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;background:#fef3c7;color:#78350f;padding:14px 16px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.28);max-width:360px;line-height:1.45;border:1px solid #fde68a;display:flex;flex-direction:column;gap:8px;';
+  t.innerHTML =
+    '<div><strong>Verify your email</strong> to use AI features. Check your inbox (and spam folder).</div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +   '<button id="kh-verify-resend" style="padding:6px 12px;border-radius:8px;background:#f59e0b;color:#fff;border:none;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Resend email</button>'
+    +   '<button id="kh-verify-dismiss" style="padding:6px 12px;border-radius:8px;background:transparent;color:#78350f;border:none;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">Dismiss</button>'
+    + '</div>';
+  document.body.appendChild(t);
+  document.getElementById('kh-verify-dismiss').addEventListener('click', function () { t.remove(); });
+  document.getElementById('kh-verify-resend').addEventListener('click', async function () {
+    var btn = this; btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      var sb = getSupa();
+      var email = (supaUser && supaUser.email) || '';
+      if (!sb || !email) { btn.textContent = 'Sign in needed'; return; }
+      var { error } = await sb.auth.resend({ type: 'signup', email: email });
+      if (error) { btn.textContent = 'Failed — retry'; btn.disabled = false; return; }
+      btn.textContent = 'Sent! Check inbox';
+      setTimeout(function () { try { t.remove(); } catch (_) {} }, 3000);
+    } catch (e) {
+      btn.textContent = 'Failed — retry'; btn.disabled = false;
+    }
+  });
 }
 
 // Noun-form filter for learner-facing vocab lists. Used by the article
@@ -497,6 +547,20 @@ var _sessionWarningShown = false;
 async function refreshSessionSafely() {
   var sb = getSupa();
   if (!sb) return;
+  // If we already know this is an implicit-flow session with no
+  // refresh token, there is nothing to refresh — once the access
+  // token expires (~1h), sign the user out cleanly and prompt re-auth
+  // rather than spamming refresh failures.
+  if (window._khImplicitNoRefresh) {
+    if (!_sessionWarningShown) {
+      _sessionWarningShown = true;
+      if (typeof toast === 'function') {
+        toast('Your sign-in expired. Please sign in again to keep going.', true);
+      }
+      try { await sb.auth.signOut({ scope: 'local' }); } catch (_) {}
+    }
+    return;
+  }
   var { error } = await sb.auth.refreshSession();
   if (error) {
     if (!_sessionWarningShown) {
@@ -683,11 +747,13 @@ function _authSwitchTab(tab) {
   var signinForm = document.getElementById('kh-signin-form');
   var signupForm = document.getElementById('kh-signup-form');
   var resetForm  = document.getElementById('kh-reset-form');
+  var newpwForm  = document.getElementById('kh-newpw-form');
   [signinTab, signupTab].forEach(function(t){ if(t) t.classList.remove('on'); });
-  [signinForm, signupForm, resetForm].forEach(function(f){ if(f) f.style.display='none'; });
+  [signinForm, signupForm, resetForm, newpwForm].forEach(function(f){ if(f) f.style.display='none'; });
   if (tab === 'signin')  { if(signinTab) signinTab.classList.add('on'); if(signinForm) signinForm.style.display='block'; }
   if (tab === 'signup')  { if(signupTab) signupTab.classList.add('on'); if(signupForm) signupForm.style.display='block'; _khMountTurnstile(); }
   if (tab === 'reset')   { if(resetForm) resetForm.style.display='block'; }
+  if (tab === 'newpw')   { if(newpwForm) newpwForm.style.display='block'; }
   _authClearErrors();
 }
 
@@ -815,7 +881,10 @@ var _KH_DISPOSABLE_DOMAINS = {
   'vomoto.com':1, 'meltmail.com':1, 'tempmailaddress.com':1,
   'tempinbox.com':1, 'spamgourmet.com':1, 'ezztt.com':1,
   'emailfake.com':1, 'fakemail.net':1, 'temporary-mail.net':1,
-  'generator.email':1, 'mailbox.org':1
+  'generator.email':1
+  // mailbox.org REMOVED — it's a real paid German privacy-focused
+  // email provider (not disposable). Listing it here was rejecting
+  // legitimate paying users at signup. (Audit P3 #23.)
 };
 function _khIsDisposableEmail(email) {
   var at = email.lastIndexOf('@');
@@ -965,6 +1034,43 @@ async function authResetPassword() {
   _authShowOk('Password reset link sent! Check your email.');
 }
 
+// Recovery-link landing handler. Called from onAuthStateChange when
+// the user clicks the recovery email and Supabase fires
+// PASSWORD_RECOVERY. Without this, the previous code dead-ended on a
+// misleading "password updated" banner — the user never actually
+// entered a new password and "Sign in with new password" failed.
+async function authSubmitNewPassword() {
+  var pw  = (document.getElementById('kh-newpw-pw')  || {}).value || '';
+  var pw2 = (document.getElementById('kh-newpw-pw2') || {}).value || '';
+  var btn = document.getElementById('kh-newpw-btn');
+  _authClearErrors();
+
+  if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/\d/.test(pw)) {
+    _authShowError('Password must be at least 8 characters with letters and numbers.');
+    return;
+  }
+  if (pw !== pw2) { _authShowError('Passwords do not match.'); return; }
+
+  _authSetLoading(btn, true);
+  var sb = getSupa();
+  if (!sb) { _authShowError('Auth not ready, please reload.'); _authSetLoading(btn, false); return; }
+  var { error } = await sb.auth.updateUser({ password: pw });
+  _authSetLoading(btn, false);
+  if (error) { _authShowError(error.message); return; }
+
+  _authShowOk('Password updated. You are signed in.');
+  // Clear the stale ?reset=1 query if present so a future refresh
+  // doesn't re-trigger the recovery flow.
+  try {
+    var url = new URL(window.location.href);
+    if (url.searchParams.get('reset') === '1') {
+      url.searchParams.delete('reset');
+      window.history.replaceState(null, '', url.pathname + url.search);
+    }
+  } catch (_) {}
+  setTimeout(closeAuthModal, 1200);
+}
+
 // ── 모달 HTML 주입 ────────────────────────────────────────────
 function _injectAuthModal() {
   var div = document.createElement('div');
@@ -1096,6 +1202,33 @@ function _injectAuthModal() {
       </div>
       <button id="kh-reset-btn" onclick="authResetPassword()" style="display:block;width:100%;padding:13px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;margin-bottom:12px">Send Reset Link →</button>
       <button onclick="_authSwitchTab('signin')" style="display:block;width:100%;padding:11px;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:#445566">← Back to Sign In</button>
+    </div>
+
+    <!-- ── 새 비밀번호 설정 폼 (recovery flow) ── -->
+    <!-- Opens automatically when Supabase fires PASSWORD_RECOVERY
+         (i.e. the user just clicked the recovery email link). Calls
+         sb.auth.updateUser({password}) — previously the codebase had
+         NO update-password UI anywhere; recovery emails dead-ended on
+         a misleading "password updated" banner. -->
+    <div id="kh-newpw-form" style="display:none;padding:22px 28px 28px">
+      <div style="font-size:14px;font-weight:700;color:#0b1626;margin-bottom:6px">Set a new password</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:18px;line-height:1.6">You're signed in via the recovery link. Choose a new password below — minimum 8 characters with letters and numbers.</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">New password</label>
+        <div style="position:relative">
+          <input id="kh-newpw-pw" type="password" placeholder="••••••••" oninput="_authCheckPwStrength(this.value,'newpw-')"
+            style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
+            onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
+          <button onclick="var i=document.getElementById('kh-newpw-pw');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
+        </div>
+      </div>
+      <div style="margin-bottom:18px">
+        <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Confirm new password</label>
+        <input id="kh-newpw-pw2" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSubmitNewPassword()"
+          style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
+          onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
+      </div>
+      <button id="kh-newpw-btn" onclick="authSubmitNewPassword()" style="display:block;width:100%;padding:13px;background:linear-gradient(135deg,#2d6be4,#1e4fa3);color:#fff;border:none;border-radius:11px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit">Update password →</button>
     </div>
 
   </div>
@@ -1270,6 +1403,16 @@ async function checkSession() {
       updateAuthUI();
       updateCommentForm();
       window.dispatchEvent(new Event('kh-auth-signed-out'));
+    } else if (event === 'PASSWORD_RECOVERY') {
+      // User just clicked the recovery email link — Supabase put them
+      // in a temporary recovery session. Open the auth modal in the
+      // "set new password" view so they can actually finish the flow.
+      // (Previously the recovery flow dead-ended on a misleading
+      // banner — see audit P0 #1.)
+      window._khPwRecoveryActive = true;
+      try {
+        if (typeof openAuthModal === 'function') openAuthModal('newpw');
+      } catch (_) {}
     } else if (event === 'SIGNED_IN') {
       supaUser = session ? session.user : null;
       _sessionWarningShown = false;
@@ -1328,6 +1471,30 @@ async function checkSession() {
   var hasCode = window.location.search.includes('code=');
   var hasHash = window.location.hash && window.location.hash.includes('access_token');
 
+  // OAuth provider can also return an error (user cancelled the
+  // Google chooser, third-party cookies blocked, etc.). Surface it
+  // as a toast instead of silently leaving the user on the page
+  // wondering why the sign-in flow disappeared. (Audit P1 #9.)
+  try {
+    var oauthErrParams = new URLSearchParams(window.location.search);
+    var oauthErr = oauthErrParams.get('error');
+    var oauthErrDesc = oauthErrParams.get('error_description') || oauthErrParams.get('error_code');
+    if (oauthErr && !hasCode) {
+      console.warn('[auth] OAuth callback error:', oauthErr, oauthErrDesc);
+      if (typeof toast === 'function') {
+        toast('Sign-in cancelled or failed: ' + (oauthErrDesc || oauthErr).replace(/[+_]/g, ' '), true);
+      }
+      // Strip the error params so a refresh doesn't re-show the toast.
+      try {
+        var cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('error');
+        cleanUrl.searchParams.delete('error_description');
+        cleanUrl.searchParams.delete('error_code');
+        window.history.replaceState(null, '', cleanUrl.pathname + (cleanUrl.search || ''));
+      } catch (_) {}
+    }
+  } catch (_) {}
+
   if (hasCode) {
     // PKCE flow: code → token 교환
     var urlParams = new URLSearchParams(window.location.search);
@@ -1373,20 +1540,30 @@ async function checkSession() {
         'access_token=', accessToken ? '<' + accessToken.length + ' chars>' : 'MISSING',
         'refresh_token=', refreshToken ? '<' + refreshToken.length + ' chars>' : 'MISSING');
       if (accessToken) {
-        // setSession requires both tokens. If Supabase didn't
-        // return a refresh_token (some providers, some configs),
-        // pass the access_token as refresh_token too — that
-        // satisfies the SDK's input validation, and the session
-        // still works for the access_token's lifetime (~1 hour).
-        // The user re-authenticates after that instead of getting
-        // a silent failure now.
+        // setSession requires both tokens. If Supabase didn't return
+        // a refresh_token (older implicit flow, certain provider
+        // configs), DO NOT fake one by passing the access_token —
+        // the SDK then tries to use it as a refresh token an hour
+        // later, fails silently, and the user starts seeing 401s
+        // with no re-prompt (audit P0 #3). Without a refresh token
+        // the session is single-use; warn the user up-front and
+        // expire local state cleanly when the access token dies.
         try {
-          var setRes = await sb.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || accessToken,
-          });
-          if (setRes && setRes.error) {
-            console.warn('setSession returned error:', setRes.error.message || setRes.error);
+          if (!refreshToken) {
+            console.warn('[auth] no refresh_token in OAuth response — session will expire in ~1h with no auto-refresh');
+            // Single-use: skip setSession entirely. The user can keep
+            // using the page until the access_token expires; on next
+            // refresh-cycle attempt they'll be cleanly signed out
+            // rather than spammed with silent 401s.
+            window._khImplicitNoRefresh = true;
+          } else {
+            var setRes = await sb.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            if (setRes && setRes.error) {
+              console.warn('setSession returned error:', setRes.error.message || setRes.error);
+            }
           }
         } catch(setErr) {
           console.warn('setSession threw:', setErr.message || setErr);
