@@ -149,7 +149,6 @@ doesn't keep reminding about closed work.
     - Google Fonts payload reduction (decide weights first)
     - The remaining 46 `<div onclick>` patterns in study-room.html
       that aren't master-cards (non-launch UI, lower priority)
-    - 11 lang attribute pages need ko/en consistency sweep (A11y #11)
     - grant_speaking_coins SQL contract: return
       `{ ok, reason, granted_coins, balance }` so the new webhook
       idempotency logging actually distinguishes duplicates from
@@ -172,6 +171,19 @@ doesn't keep reminding about closed work.
   - #12 Feedback poller pauses on hidden, clears on pagehide
   - Bonus: TTS playTTSAudio revokes prior non-cached blob: URLs
 - Cache busters bumped: saved-words / streak / articles / shared / study-room
+
+## Recently merged into main 2026-05-26
+
+- **#605 HOTFIX 3: minified-bundle isolation v2** — re-introduces
+  IIFE wrap (fixes esbuild keepNames helper collision that caused
+  home/study-room infinite loading) with a getter/setter footer so
+  `var supaUser` mutations propagate cross-file (was the v1
+  regression where study-room said "please log in" while logged in).
+- **A11y #11**: lang attribute consistency sweep —
+  korehan-study-room.html, refund-policy.html (`ko-KR` → `en`,
+  English UI), onboarding-preview-compact.html (`ko` → `en`,
+  English content). Korean-content pages (cards, reporter,
+  reporters) kept at `lang="ko"`.
 
 ## Recently merged into main 2026-05-20
 
