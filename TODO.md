@@ -12,6 +12,35 @@ doesn't keep reminding about closed work.
 
 ## In progress on `claude/audit-8-payments`
 
+> **⚠️ STATUS UPDATE (owner confirmed 2026-05-26): Speaking Coach
+> v3 wallet feature is NOT used in production.** The `_startCoinCheckout`
+> / `_showBuySpeakingCoinsModal` code paths in `korehan-study-room.js`
+> and the `speaking-pass-webhook` / `speaking-pass-checkout` Edge
+> Functions exist in the codebase but are not operationally live
+> (no migrations applied → `speaking_coin_purchases` /
+> `user_speaking_coins` tables do not exist in production →
+> attempting to apply `20260526_audit_8_refund_handler.sql` errors
+> with `42P01: relation "public.speaking_coin_purchases" does not
+> exist`).
+>
+> All 8th-audit fixes (PAY-F1/F3/F4/F6/F15) have **landed in code
+> as defensive scaffolding** and will activate IF/WHEN the feature
+> launches. The 2 migrations that *did* apply cleanly (PAY-F2
+> coin TOCTOU locks, AN-F3 client_errors severity) are about
+> tables that ALREADY EXIST in production and are operational —
+> those benefit the live shop / nyang / hover-vocab paths.
+>
+> **Migrations pending feature launch (do NOT apply unless turning
+> on Speaking Coach v3):**
+> - `20260422_speaking_coach_wallet.sql` (the prerequisite — creates
+>   the tables + grant_speaking_coins RPC)
+> - `20260526_audit_8_refund_handler.sql` (the audit-8 follow-up —
+>   adds refund columns + revoke_speaking_coins RPC)
+>
+> If Speaking Coach v3 is being formally deprecated, a follow-up
+> PR should remove the dormant UI / JS / Edge Function code to
+> shrink the codebase. Awaiting owner confirmation before touching.
+
 - **8차 오딧 — Payments + Stripe reliability (2026-05-26)**:
   - **Code fixes landed this PR (frontend + edge function)**:
     - **PAY-F4 (P0)** `_startCoinCheckout` now wraps the Stripe
