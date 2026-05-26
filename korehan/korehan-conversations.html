@@ -1206,6 +1206,22 @@ async function openDetail(idx) {
   if (!c) return;
   // Remember which conversation is active for feed-style swipe nav.
   _convDetailIdx = idx;
+  // SEO-F5: dynamic OG meta so social shares of
+  // /korehan-conversations.html?id=X surface THIS conversation's
+  // title / intro / image instead of the generic placeholder.
+  try {
+    if (typeof khUpdatePageMeta === 'function') {
+      khUpdatePageMeta({
+        title:       (c.title || 'Conversation') + ' — KoreHani',
+        description: String(c.intro_en || c.intro || c.subtitle || c.title_en || c.title || '').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0, 155),
+        image:       (c.thumb && /^https?:\/\//.test(c.thumb)) ? c.thumb
+                   : (c.image && /^https?:\/\//.test(c.image)) ? c.image
+                   : 'https://korehani.com/img/guide/hero-express.png',
+        url:         'https://korehani.com/korehan-conversations.html?id=' + encodeURIComponent(c._id || ''),
+        type:        'article',
+      });
+    }
+  } catch(_) {}
   // Reuse the article reader's immersive chrome (header/footer/bottom
   // nav hide) — shared.js CSS rules on body.kh-reading-page cover the
   // whole page, not just the article route.

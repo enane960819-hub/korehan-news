@@ -1455,6 +1455,22 @@ function openStory(id) {
   _hydrateStoryAiFromCache(s);
   var author = resolveStoryAuthor(s);
   window._currentStory = s;  // 전역 저장
+  // SEO-F5: now that we know which story is open, rewrite the page
+  // meta so social shares of /korehan-stories.html?id=X show this
+  // story's title / intro / image, not the generic placeholder.
+  try {
+    if (typeof khUpdatePageMeta === 'function') {
+      khUpdatePageMeta({
+        title:       (s.title || 'Story') + ' — KoreHani',
+        description: String(s.intro_en || s.intro || s.title_en || s.title || '').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0, 155),
+        image:       (s.thumb && /^https?:\/\//.test(s.thumb)) ? s.thumb
+                   : (s.image && /^https?:\/\//.test(s.image)) ? s.image
+                   : 'https://korehani.com/img/guide/hero-express.png',
+        url:         'https://korehani.com/korehan-stories.html?id=' + encodeURIComponent(s.id),
+        type:        'article',
+      });
+    }
+  } catch(_) {}
   // Reuse the article reader's immersive chrome (header/footer/bottom
   // nav hide) while a story is open — shared.js CSS targets
   // body.kh-reading-page regardless of which page it's on.

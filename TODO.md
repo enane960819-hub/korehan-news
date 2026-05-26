@@ -10,7 +10,45 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-9-cron`
+## In progress on `claude/cron-f6-prompt-cache`
+
+- **CRON-F6 — prompt-caching on `daily-content-gen` (2026-05-26)**:
+  Refactored `buildPrompt()` to return `{staticPrefix, dynamicSuffix}`
+  instead of a single string. The static prefix (~1800–2200 tokens
+  of grammar rules + JSON schema + counts — identical for every
+  call of the same level) is now sent with
+  `cache_control: {type: 'ephemeral'}` as the first content block;
+  the dynamic suffix (per-call topic hint) follows after the cache
+  boundary.
+  - Concurrent `Promise.allSettled` fan-out (8 items per run) still
+    pays full price on the first wave because all calls hit
+    Anthropic before any cache write commits — per
+    `shared/prompt-caching.md`'s docs on parallel requests.
+  - Real wins: admin retries within 5-min TTL pay ~10% of full
+    input cost; future serialization (e.g. moving to single-fire-
+    then-fan-out pattern) becomes a 1-line config flip.
+  - Expression / situation prompt caching in `pregenKeyExpressions`
+    skipped — those calls also run concurrent in the same fan-out,
+    so caching them would add complexity for no realistic gain
+    until the serialization refactor lands.
+
+- **SEO-F5 extension — stories + conversations dynamic OG (2026-05-26)**:
+  Built on top of the `khUpdatePageMeta()` utility shipped in
+  PR #616. Now `openStory(id)` and `openDetail(idx)` (conversation
+  detail open) both rewrite `document.title` / meta description /
+  og:* / twitter:* / canonical to reflect the actual story or
+  conversation that's open. Social shares of
+  `/korehan-stories.html?id=X` and `/korehan-conversations.html?id=Y`
+  no longer show the generic placeholder OG card.
+  Sections (`korehan-section.html?s=...`) still use static placeholder
+  — those are list views (not single items) so the SEO win is
+  smaller; deferred.
+
+---
+
+## Recently merged
+
+### `claude/audit-9-cron` (PR #616 merged 2026-05-26)
 
 - **9차 오딧 — Cron / scheduler reliability (2026-05-26)**:
   Background audit found **15 findings**. The headline ones:
