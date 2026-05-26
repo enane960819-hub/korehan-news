@@ -131,6 +131,45 @@ var _khErrLogged = 0;
 var _KH_ERR_LOG_CAP = 25; // per page-load
 var _khErrSeen = Object.create(null);
 var _KH_VALID_SEVERITY = { debug:1, info:1, warn:1, error:1, critical:1 };
+
+// PRIV-F7: scrub PII-shaped tokens from a string before persisting.
+// Stack traces frequently leak: UUIDs (article/user IDs), emails
+// (when a fetch URL contained ?email=...), bearer tokens / JWTs
+// (when an Authorization header was logged), and Supabase access
+// tokens (eyJ...). Conservative substitution — replace with a
+// recognizable redaction marker so debugging is still possible.
+function _khScrubPII(s) {
+  if (typeof s !== 'string' || !s) return s;
+  return s
+    // Bearer / JWT-shaped: eyJ... (header.payload.signature)
+    .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '<jwt-redacted>')
+    // Bearer tokens in Authorization-header-like strings
+    .replace(/Bearer\s+[A-Za-z0-9._\-]+/gi, 'Bearer <redacted>')
+    // Email addresses
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '<email-redacted>')
+    // UUID v4 (most user_id / article_id values)
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<uuid-redacted>');
+}
+function _khScrubContext(ctx) {
+  if (!ctx || typeof ctx !== 'object') return ctx;
+  // Shallow-walk: scrub string values; leave numeric/boolean alone.
+  // Stop at depth 2 — deep recursion is unbounded and contexts shouldn't be deep.
+  var out = {};
+  Object.keys(ctx).forEach(function(k) {
+    var v = ctx[k];
+    if (typeof v === 'string')         out[k] = _khScrubPII(v);
+    else if (Array.isArray(v))         out[k] = v.map(function(x){ return typeof x === 'string' ? _khScrubPII(x) : x; });
+    else if (v && typeof v === 'object') {
+      var inner = {};
+      Object.keys(v).forEach(function(k2){
+        inner[k2] = typeof v[k2] === 'string' ? _khScrubPII(v[k2]) : v[k2];
+      });
+      out[k] = inner;
+    } else out[k] = v;
+  });
+  return out;
+}
+
 function kh_log_error(msgOrErr, context, severity) {
   try {
     var message = '';
@@ -142,6 +181,12 @@ function kh_log_error(msgOrErr, context, severity) {
       message = String(msgOrErr || '').slice(0, 500);
     }
     if (!message) return;
+    // PRIV-F7: scrub PII patterns (UUIDs, emails, JWTs, bearer
+    // tokens) from message + stack before persisting. Stack traces
+    // commonly contain failed-fetch URLs that captured per-user IDs
+    // or query-string credentials.
+    message = _khScrubPII(message);
+    stack   = _khScrubPII(stack);
     var sev = (severity && _KH_VALID_SEVERITY[severity]) ? severity : 'error';
     // De-dupe within this page-load: same message text only logged
     // once. Stops a 60Hz scroll loop from filling the table.
@@ -166,13 +211,16 @@ function kh_log_error(msgOrErr, context, severity) {
     // For critical-severity rows we need the new id back so we can
     // fire AN-F2 notify-critical-error. .select('id').single() makes
     // PostgREST return the inserted row instead of an empty body.
+    var scrubbedContext = (context && typeof context === 'object')
+      ? _khScrubContext(context)
+      : (context ? { value: _khScrubPII(String(context)) } : {});
     var insertPromise = sb.from('client_errors').insert({
       user_id:    u ? u.id : null,
       message:    message,
       stack:      stack || null,
       url:        safeUrl,
       user_agent: (typeof navigator !== 'undefined') ? (navigator.userAgent || '').slice(0, 500) : null,
-      context:    (context && typeof context === 'object') ? context : (context ? { value: String(context) } : {}),
+      context:    scrubbedContext,
       severity:   sev,
     });
     if (sev === 'critical') {
