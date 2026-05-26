@@ -53,6 +53,10 @@ function jsonResponse(body: unknown, status: number, cors: Record<string, string
 // error which we collect and log but don't fail-fast on — partial
 // success is fine for an erasure request; the auth row removal is
 // what makes the operation legally meaningful.
+//
+// PRIV-F2: newsletter_subs is INTENTIONALLY EXCLUDED — that table is
+// keyed by email, not user_id, so the .eq('user_id', userId) clause
+// silently no-ops. It's handled separately below via email lookup.
 const USER_KEYED_TABLES: ReadonlyArray<string> = [
   'saved_words',
   'user_saved_words',
@@ -70,13 +74,20 @@ const USER_KEYED_TABLES: ReadonlyArray<string> = [
   'read_articles',
   'bookmarks',
   'comments',
-  'newsletter_subs',
   'signup_notifications_log',
   'claude_api_usage',
   'user_quota_overrides',
   'notifications',
   'profiles',
   'tutor_students',
+]
+
+// PRIV-F1: storage buckets that hold per-user files. The bucket
+// loop deletes everything under `<prefix>/<userId>/` so audio /
+// avatar binaries are erased alongside row data.
+const USER_STORAGE_BUCKETS: ReadonlyArray<{ bucket: string; prefix: string }> = [
+  { bucket: 'speaking-recordings', prefix: 'speaking' }, // speaking/<userId>/<file>.webm
+  { bucket: 'avatars',             prefix: '' },         // <userId>/avatar.jpg
 ]
 
 Deno.serve(async (req) => {
@@ -104,6 +115,9 @@ Deno.serve(async (req) => {
     if (!userRes.ok) return jsonResponse({ error: 'Unauthorized' }, 401, cors)
     const userData = await userRes.json()
     const userId = userData?.id as string | undefined
+    // PRIV-F2: capture email BEFORE the auth row is deleted so we can
+    // purge email-keyed tables (newsletter_subs is the known one).
+    const userEmail = (userData?.email as string | undefined) || null
     if (!userId) return jsonResponse({ error: 'Unauthorized' }, 401, cors)
 
     // Service-role client for the actual deletion work.
@@ -123,6 +137,50 @@ Deno.serve(async (req) => {
         }
       } catch (e) {
         tableResults.push({ table, ok: false, error: (e as Error).message })
+      }
+    }
+
+    // 1a. PRIV-F2: newsletter_subs is keyed by email, not user_id.
+    // Delete the row by the email captured above. No-op if the user
+    // never subscribed or already unsubscribed.
+    let newsletterResult: { ok: boolean; deleted_email?: boolean; error?: string } = { ok: true }
+    if (userEmail) {
+      try {
+        const { error: nlErr } = await sb.from('newsletter_subs').delete().eq('email', userEmail)
+        newsletterResult = nlErr
+          ? { ok: false, error: nlErr.message }
+          : { ok: true, deleted_email: true }
+      } catch (e) {
+        newsletterResult = { ok: false, error: (e as Error).message }
+      }
+    }
+
+    // 1b. PRIV-F1: storage bucket cleanup. Right-to-erasure must
+    // remove voice recordings + avatars in addition to row data.
+    // Each bucket holds `<prefix?>/<userId>/<file>` — list then remove.
+    const storageResults: Array<{ bucket: string; ok: boolean; deleted: number; error?: string }> = []
+    for (const { bucket, prefix } of USER_STORAGE_BUCKETS) {
+      try {
+        const dir = prefix ? `${prefix}/${userId}` : userId
+        const { data: listing, error: listErr } = await sb.storage.from(bucket).list(dir, { limit: 1000 })
+        if (listErr) {
+          // Bucket might not exist in this project — log and continue.
+          storageResults.push({ bucket, ok: false, deleted: 0, error: listErr.message })
+          continue
+        }
+        const paths = (listing || []).map((f) => `${dir}/${f.name}`)
+        if (!paths.length) {
+          storageResults.push({ bucket, ok: true, deleted: 0 })
+          continue
+        }
+        const { error: rmErr } = await sb.storage.from(bucket).remove(paths)
+        if (rmErr) {
+          storageResults.push({ bucket, ok: false, deleted: 0, error: rmErr.message })
+        } else {
+          storageResults.push({ bucket, ok: true, deleted: paths.length })
+        }
+      } catch (e) {
+        storageResults.push({ bucket, ok: false, deleted: 0, error: (e as Error).message })
       }
     }
 
@@ -151,6 +209,8 @@ Deno.serve(async (req) => {
         ok: false,
         user_id: userId,
         tables: tableResults,
+        newsletter: newsletterResult,
+        storage: storageResults,
         auth_delete: { ok: false, error: authDeleteError },
         message: 'Data tables cleared, but the auth row could not be removed. Please contact hello@korehani.com so we can finish the deletion.',
       }, 200, cors)
@@ -160,6 +220,8 @@ Deno.serve(async (req) => {
       ok: true,
       user_id: userId,
       tables: tableResults,
+      newsletter: newsletterResult,
+      storage: storageResults,
       auth_delete: { ok: true },
     }, 200, cors)
   } catch (e) {

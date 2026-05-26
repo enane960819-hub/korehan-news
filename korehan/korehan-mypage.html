@@ -2083,23 +2083,35 @@ async function confirmDeleteAccount() {
   var sb = getSupa();
   if (!sb || !supaUser) return;
   try {
-    await Promise.all([
-      sb.from('saved_words').delete().eq('user_id', supaUser.id),
-      sb.from('user_stats').delete().eq('user_id', supaUser.id),
-      sb.from('xp_log').delete().eq('user_id', supaUser.id),
-    ]);
+    // PRIV-F10: do NOT pre-delete client-side. The Edge Function is
+    // the authoritative cleanup (it also handles storage buckets +
+    // newsletter_subs by email). Pre-deleting raced the function
+    // call: when the function returned 500, the frontend still
+    // showed "Data deleted" — user thinks the account is gone while
+    // auth.users + every cascaded child remains.
     var res = await fetch('https://samghztrdvtxmrmawneu.supabase.co/functions/v1/delete-account', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ((await sb.auth.getSession()).data.session?.access_token || '') }
     });
+    var body = await res.json().catch(function(){ return {}; });
+    var fullySucceeded = res.ok && body && body.ok === true && body.auth_delete && body.auth_delete.ok === true;
+
+    if (!fullySucceeded) {
+      // Don't sign out yet — the user's session may still be needed
+      // for a retry, and signing out + showing a misleading success
+      // hides the failure.
+      var detail = (body && body.message) ? body.message
+                 : (body && body.error)   ? body.error
+                 : 'Deletion did not complete. Please contact hello@korehani.com so we can finish removing your account.';
+      await khAlert('Deletion incomplete', detail);
+      return;
+    }
+
     await sb.auth.signOut();
-    await khAlert(
-      res.ok ? 'Account deleted' : 'Data deleted',
-      res.ok ? 'Thank you for using KoreHani.' : 'Your data has been deleted. For full account removal, please contact support.'
-    );
+    await khAlert('Account deleted', 'Thank you for using KoreHani.');
     window.location.href = 'index.html';
   } catch(e) {
-    await khAlert('Something went wrong', e.message || 'Please try again.');
+    await khAlert('Something went wrong', (e && e.message) || 'Please try again or contact hello@korehani.com.');
   }
 }
 

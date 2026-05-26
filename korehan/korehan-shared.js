@@ -715,7 +715,11 @@ async function signInWithGoogle() {
     options: {
       redirectTo: window.location.origin + window.location.pathname,
       queryParams: {
-        access_type: 'offline',
+        // PRIV-F13: dropped `access_type: 'offline'`. That requests a
+        // long-lived refresh token from Google — we only need a
+        // one-shot login + identity, so the refresh token was
+        // collecting more access than disclosed in the privacy
+        // policy. GDPR Art 5(1)(c) data minimisation.
         prompt: 'select_account'
       }
     }
