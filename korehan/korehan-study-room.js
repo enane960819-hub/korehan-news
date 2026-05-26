@@ -6933,6 +6933,10 @@ function closePhoneModal() {
   document.getElementById('phone-overlay').classList.remove('open');
   document.body.style.overflow = '';
   pcStop();
+  // Reset selection so a re-open lands on the call list, not on the
+  // (now-stale) player view from the previous session.
+  _pcCurrentCall = null;
+  _pcDemoTime = 0;
 }
 
 function renderPhoneCallList() {
@@ -7032,7 +7036,18 @@ function pcTogglePlay() {
   }
   if (_pcAudio) {
     if (_pcPlaying) { _pcAudio.pause(); _pcPlaying = false; }
-    else { _pcAudio.play(); _pcPlaying = true; pcAnimLoop(); }
+    else {
+      // play() returns a Promise — autoplay policies, switched-away
+      // tabs, or denied media permissions can reject it. Without the
+      // catch, _pcPlaying stays true and the play button stays in
+      // "pause" mode forever even though nothing is playing.
+      var p = _pcAudio.play();
+      if (p && typeof p.catch === 'function') {
+        p.catch(function() { _pcPlaying = false; pcUpdatePlayBtn(); });
+      }
+      _pcPlaying = true;
+      pcAnimLoop();
+    }
   } else {
     // Demo mode (no audio file) — simulate playback
     _pcPlaying = !_pcPlaying;
@@ -7071,12 +7086,14 @@ function pcAnimLoop() {
 // Demo playback (no real audio, simulates timeline)
 var _pcDemoTimer = null;
 var _pcDemoTime = 0;
-function pcDemoPlay() {
+function pcDemoPlay(startAt) {
   // Clear any previous interval before reassigning — a quick double-tap
   // on play (or play → seek → play) used to orphan the previous timer,
   // which would keep mutating DOM elements every 100ms forever.
   if (_pcDemoTimer) { clearInterval(_pcDemoTimer); _pcDemoTimer = null; }
-  _pcDemoTime = 0;
+  // Honour an explicit start position from pcSeekTo so seeking in
+  // demo mode (no audio file) doesn't snap back to 0.
+  _pcDemoTime = typeof startAt === 'number' ? startAt : 0;
   var dur = _pcCurrentCall.duration_seconds || 30;
   _pcDemoTimer = setInterval(function() {
     if (!_pcPlaying) { clearInterval(_pcDemoTimer); return; }
@@ -7103,7 +7120,7 @@ function pcSeekTo(t) {
     document.getElementById('pc-progress-dot').style.left = pct + '%';
     document.getElementById('pc-time-cur').textContent = Math.floor(t/60) + ':' + String(Math.floor(t%60)).padStart(2,'0');
     pcHighlightLine(t);
-    if (!_pcPlaying) { _pcPlaying = true; pcDemoPlay(); pcUpdatePlayBtn(); }
+    if (!_pcPlaying) { _pcPlaying = true; pcDemoPlay(t); pcUpdatePlayBtn(); }
   }
 }
 

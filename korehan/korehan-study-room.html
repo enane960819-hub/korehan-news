@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko-KR">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
@@ -55,7 +55,7 @@
 <!-- ── LEFT SIDEBAR (desktop/tablet only) ── -->
 <div class="sr-sidebar sr-sidebar-left">
   <!-- 단어장 (클릭 시 단어장 탭 열기) -->
-  <div class="sr-sb-panel" style="padding:14px 16px;cursor:pointer;background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(124,58,237,.04));border:1px solid rgba(124,58,237,.15)" onclick="switchSrTab('wordbook')">
+  <div role="button" tabindex="0" class="sr-sb-panel" style="padding:14px 16px;cursor:pointer;background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(124,58,237,.04));border:1px solid rgba(124,58,237,.15)" onclick="switchSrTab('wordbook')">
     <div style="display:flex;align-items:center;gap:10px">
       <i data-lucide="book-open" class="kh-ui-icon" style="width:22px;height:22px;color:#c4b5fd" aria-hidden="true"></i>
       <div style="flex:1">
@@ -109,7 +109,7 @@
     <!-- REVIEW NOTIFICATION BANNERS -->
     <div id="sr-review-notifications" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
       <!-- Daily Review Banner -->
-      <div id="sr-notif-daily" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(34,197,94,.15),rgba(16,185,129,.1));border:1px solid rgba(34,197,94,.25);cursor:pointer" onclick="openDailyReview()">
+      <div role="button" tabindex="0" id="sr-notif-daily" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(34,197,94,.15),rgba(16,185,129,.1));border:1px solid rgba(34,197,94,.25);cursor:pointer" onclick="openDailyReview()">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:32px;height:32px;border-radius:8px;background:rgba(34,197,94,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#4ade80"><i data-lucide="clipboard-list" class="kh-ui-icon" style="width:16px;height:16px" aria-hidden="true"></i></div>
           <div style="flex:1;min-width:0">
@@ -120,7 +120,7 @@
         </div>
       </div>
       <!-- Weekly Review Banner -->
-      <div id="sr-notif-weekly" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(37,99,235,.15),rgba(59,130,246,.1));border:1px solid rgba(37,99,235,.3);cursor:pointer" onclick="openWeeklyReview()">
+      <div role="button" tabindex="0" id="sr-notif-weekly" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(37,99,235,.15),rgba(59,130,246,.1));border:1px solid rgba(37,99,235,.3);cursor:pointer" onclick="openWeeklyReview()">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:32px;height:32px;border-radius:8px;background:rgba(37,99,235,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#60a5fa"><i data-lucide="chart-column" class="kh-ui-icon" style="width:16px;height:16px" aria-hidden="true"></i></div>
           <div style="flex:1;min-width:0">
@@ -131,7 +131,7 @@
         </div>
       </div>
       <!-- Monthly Review Banner -->
-      <div id="sr-notif-monthly" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(124,58,237,.1));border:1px solid rgba(139,92,246,.3);cursor:pointer" onclick="openMonthlyReview()">
+      <div role="button" tabindex="0" id="sr-notif-monthly" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(124,58,237,.1));border:1px solid rgba(139,92,246,.3);cursor:pointer" onclick="openMonthlyReview()">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:32px;height:32px;border-radius:8px;background:rgba(139,92,246,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#c4b5fd"><i data-lucide="trophy" class="kh-ui-icon" style="width:16px;height:16px" aria-hidden="true"></i></div>
           <div style="flex:1;min-width:0">
@@ -332,7 +332,7 @@
   <!-- GRAMMAR PATH BANNER -->
   <div class="sr-sb-panel" style="padding:12px 14px">
     <div id="grammar-path-banner">
-      <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openGrammarFocusForCurriculum()">
+      <div role="button" tabindex="0" style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openGrammarFocusForCurriculum()">
         <i data-lucide="ruler" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i>
         <div style="flex:1;min-width:0;overflow:hidden">
           <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:1px">Grammar Path</div>
@@ -395,7 +395,7 @@
   </div>
 
   <!-- HANGUL ALPHABET (desktop sidebar) -->
-  <div class="sr-sb-panel" style="padding:0;overflow:hidden;cursor:pointer;border:1px solid rgba(56,189,248,.2)" onclick="openAlphaModal()">
+  <div role="button" tabindex="0" class="sr-sb-panel" style="padding:0;overflow:hidden;cursor:pointer;border:1px solid rgba(56,189,248,.2)" onclick="openAlphaModal()">
     <div style="padding:18px 16px;background:linear-gradient(135deg,rgba(12,74,110,.4),rgba(3,105,161,.25));text-align:center">
       <div style="font-size:32px;margin-bottom:8px">🇰🇷</div>
       <div style="font-size:15px;font-weight:900;color:#7dd3fc;margin-bottom:4px">Korean Alphabet</div>
@@ -562,7 +562,7 @@
 </div><!-- /sr-page -->
 
 <!-- ═══ WRITING MODAL ══════════════════════════════════════════ -->
-<div class="woverlay hidden" id="wmodal" onclick="if(event.target===this)closeWritingModal()">
+<div role="button" tabindex="0" class="woverlay hidden" id="wmodal" onclick="if(event.target===this)closeWritingModal()">
   <div class="wmodal">
 
     <!-- HEADER -->
@@ -752,7 +752,7 @@
 </div>
 
 <!-- Picture Description modal — 3-step flow -->
-<div class="woverlay hidden" id="pd-modal" onclick="if(event.target===this)closePictureDescription()">
+<div role="button" tabindex="0" class="woverlay hidden" id="pd-modal" onclick="if(event.target===this)closePictureDescription()">
   <div class="wmodal" style="max-width:620px;grid-template-columns:1fr;height:auto;max-height:calc(100vh - 32px);">
     <!-- Header -->
     <div class="wm-header">
@@ -783,7 +783,7 @@
 </div>
 
 <!-- Speaking Practice modal -->
-<div class="woverlay hidden" id="sp-modal" onclick="if(event.target===this)closeSpeakingPractice()">
+<div role="button" tabindex="0" class="woverlay hidden" id="sp-modal" onclick="if(event.target===this)closeSpeakingPractice()">
   <div class="wmodal" style="max-width:480px;grid-template-columns:1fr;height:auto;max-height:calc(100vh - 32px);">
     <div class="wm-header">
       <div class="wm-title">
@@ -827,7 +827,7 @@
 </div>
 
 <!-- Sentence writing modal -->
-<div class="woverlay hidden" id="sw-modal" onclick="if(event.target===this)closeSentenceWriting()">
+<div role="button" tabindex="0" class="woverlay hidden" id="sw-modal" onclick="if(event.target===this)closeSentenceWriting()">
   <div class="wmodal" style="max-width:980px;grid-template-columns:1fr;height:auto;max-height:calc(100vh - 32px);">
     <div class="wm-header">
       <div>
@@ -860,7 +860,7 @@
 </div>
 
 <!-- ═══ WEAK GRAMMAR DRILL MODAL ═══════════════════════════════ -->
-<div class="woverlay hidden" id="wg-drill-modal" onclick="if(event.target===this)closeWGDrill()">
+<div role="button" tabindex="0" class="woverlay hidden" id="wg-drill-modal" onclick="if(event.target===this)closeWGDrill()">
   <div style="background:#1a1040;border-radius:22px;width:min(560px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.55)">
     <div style="background:linear-gradient(135deg,#92400e,#b45309);padding:20px 24px;border-radius:22px 22px 0 0;display:flex;align-items:center;justify-content:space-between">
       <div>
@@ -878,7 +878,7 @@
      sentence" flow. Replaces the old cold-start translation sprint.
      Slot key in the learning selector is still `grammar` (storage
      compat); only the visible activity changed. -->
-<div class="woverlay hidden" id="pm-modal" onclick="if(event.target===this)closePhraseMunch()">
+<div role="button" tabindex="0" class="woverlay hidden" id="pm-modal" onclick="if(event.target===this)closePhraseMunch()">
   <div style="background:linear-gradient(180deg,#0f1d3a 0%,#0a1428 100%);border-radius:22px;width:min(560px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.55);display:flex;flex-direction:column;color:#fff;border:1px solid rgba(255,255,255,.06)">
     <div style="padding:18px 22px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)">
       <div>
@@ -893,7 +893,7 @@
 </div>
 
 <!-- ═══ GRAMMAR FOCUS MODAL ══════════════════════════════════════ -->
-<div class="woverlay hidden" id="gf-modal" onclick="if(event.target===this)closeGrammarFocusModal()">
+<div role="button" tabindex="0" class="woverlay hidden" id="gf-modal" onclick="if(event.target===this)closeGrammarFocusModal()">
   <div class="gf-modal-panel" style="background:#0d1b35;border-radius:22px;width:min(680px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.5);display:flex;flex-direction:column;color:#fff;border:1px solid rgba(255,255,255,.06)">
     <!-- Header — transparent over the panel gradient so the modal
          reads as a single surface (Phrase Munch parity). -->
@@ -999,7 +999,7 @@
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->
-<div id="bmodal-overlay" class="bmodal-overlay hidden" onclick="if(event.target===this)closeBModal()">
+<div role="button" tabindex="0" id="bmodal-overlay" class="bmodal-overlay hidden" onclick="if(event.target===this)closeBModal()">
   <div class="bmodal" id="bmodal">
     <!-- HEADER -->
     <div class="bm-header">
@@ -1022,7 +1022,7 @@
      Grammar patterns, Writing brief. Reuses .bmodal CSS so it slots
      into the same modal-shell aesthetic without new chrome work.
 ═══════════════════════════════════════════════════════════════ -->
-<div id="immodal-overlay" class="bmodal-overlay hidden" onclick="if(event.target===this)closeIMModal()">
+<div role="button" tabindex="0" id="immodal-overlay" class="bmodal-overlay hidden" onclick="if(event.target===this)closeIMModal()">
   <div class="bmodal" id="immodal">
     <div class="bm-header">
       <div class="bm-step-pills" id="im-step-pills"></div>
@@ -1038,7 +1038,7 @@
 <!-- ══════════════════════════════════════════════════════════════
      STARTER 3-STEP MODAL
 ═══════════════════════════════════════════════════════════════ -->
-<div id="smodal-overlay" class="smodal-overlay hidden" onclick="if(event.target===this)closeSModal()">
+<div role="button" tabindex="0" id="smodal-overlay" class="smodal-overlay hidden" onclick="if(event.target===this)closeSModal()">
   <div class="smodal" id="smodal">
     <div class="sm-header">
       <div class="sm-pips" id="sm-pips">
@@ -1055,7 +1055,7 @@
 <!-- ══════════════════════════════════════════════════════════════
      LEARNING SELECTOR MODAL  (opened by START button)
 ═══════════════════════════════════════════════════════════════ -->
-<div id="ls-modal" class="ls-overlay hidden" onclick="if(event.target===this)closeLearningSelector()">
+<div role="button" tabindex="0" id="ls-modal" class="ls-overlay hidden" onclick="if(event.target===this)closeLearningSelector()">
   <div class="ls-panel">
     <!-- header -->
     <div class="ls-header">
@@ -1071,7 +1071,7 @@
 
       <!-- Center Orb (Canvas) -->
       <div class="ls-orb-wrap">
-        <div class="ls-orb" id="ls-orb" onclick="lsStartWriting()">
+        <div role="button" tabindex="0" class="ls-orb" id="ls-orb" onclick="lsStartWriting()">
           <canvas id="ls-orb-canvas" width="240" height="240"></canvas>
           <div class="ls-orb-label">
             <div class="ls-orb-count" id="ls-orb-count">0</div>
@@ -1082,7 +1082,7 @@
       </div>
 
       <!-- Activity Nodes -->
-      <div class="ls-node" id="ls-card-topic" data-pos="top" onclick="lsStart('topic')">
+      <div role="button" tabindex="0" class="ls-node" id="ls-card-topic" data-pos="top" onclick="lsStart('topic')">
         <div class="ls-node-circle">
           <svg class="ls-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M14.5 4.5l5 5L8 21H3v-5z"/>
@@ -1096,7 +1096,7 @@
            compat — _studyDone.grammar, line-done flags, localStorage
            keys all reference it. The activity itself is now Translation
            Sprint; grammar lessons live in the Skill Tree now. -->
-      <div class="ls-node" id="ls-card-grammar" data-pos="tr" onclick="lsStart('grammar')">
+      <div role="button" tabindex="0" class="ls-node" id="ls-card-grammar" data-pos="tr" onclick="lsStart('grammar')">
         <div class="ls-node-circle">
           <svg class="ls-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m5 8 6 6"/>
@@ -1110,7 +1110,7 @@
         </div>
         <div class="ls-node-name">Phrase Munch</div>
       </div>
-      <div class="ls-node" id="ls-card-picture" data-pos="br" onclick="lsStart('picture')">
+      <div role="button" tabindex="0" class="ls-node" id="ls-card-picture" data-pos="br" onclick="lsStart('picture')">
         <div class="ls-node-circle">
           <svg class="ls-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect x="9" y="3" width="6" height="12" rx="3"/>
@@ -1121,7 +1121,7 @@
         </div>
         <div class="ls-node-name">Speaking</div>
       </div>
-      <div class="ls-node" id="ls-card-sentence" data-pos="bl" onclick="lsStart('sentence')">
+      <div role="button" tabindex="0" class="ls-node" id="ls-card-sentence" data-pos="bl" onclick="lsStart('sentence')">
         <div class="ls-node-circle">
           <svg class="ls-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M4 13a8 8 0 0 1 16 0"/>
@@ -1132,7 +1132,7 @@
         </div>
         <div class="ls-node-name">Dictation</div>
       </div>
-      <div class="ls-node" id="ls-card-expressions" data-pos="tl" onclick="lsStart('expressions')">
+      <div role="button" tabindex="0" class="ls-node" id="ls-card-expressions" data-pos="tl" onclick="lsStart('expressions')">
         <div class="ls-node-circle">
           <svg class="ls-node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M9 18h6"/>
@@ -1181,7 +1181,7 @@
 <!-- ══════════════════════════════════════════
      MY WORD BANK MODAL
 ═══════════════════════════════════════════ -->
-<div class="woverlay hidden" id="wb-modal" onclick="if(event.target===this)closeWordBankModal()">
+<div role="button" tabindex="0" class="woverlay hidden" id="wb-modal" onclick="if(event.target===this)closeWordBankModal()">
   <div style="background:#0d1b2e;border-radius:18px;max-width:620px;width:95%;margin:auto;padding:28px 24px;color:#fff;max-height:85vh;overflow-y:auto;position:relative">
     <button onclick="closeWordBankModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;display:inline-flex;align-items:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     <i data-lucide="library" class="kh-ui-icon" style="width:24px;height:24px;margin-bottom:6px;color:#c4b5fd" aria-hidden="true"></i>
@@ -1252,7 +1252,7 @@ function openUniverseView() {
 <!-- ══════════════════════════════════════════
      KEY EXPRESSIONS MODAL
 ═══════════════════════════════════════════ -->
-<div class="woverlay hidden" id="ke-modal" onclick="if(event.target===this)closeKeyExpressionsModal()">
+<div role="button" tabindex="0" class="woverlay hidden" id="ke-modal" onclick="if(event.target===this)closeKeyExpressionsModal()">
   <!-- Phrase-Munch parity panel: gradient surface, bordered, with a
        header bar and step pips. Modal body is the only scrolling area.
        The old loose markup (eyebrow + h2 + count chip floating directly
@@ -1279,7 +1279,7 @@ function openUniverseView() {
      choice: "When can you use this expression?" with one correct
      situation and three plausible-but-wrong distractors.
 ═════════════════════════════════════════════════════════════ -->
-<div class="woverlay hidden" id="ke-quiz-modal" onclick="if(event.target===this)keCloseSituationQuiz()">
+<div role="button" tabindex="0" class="woverlay hidden" id="ke-quiz-modal" onclick="if(event.target===this)keCloseSituationQuiz()">
   <div style="max-width:480px;width:95%;margin:auto;color:#fff;max-height:90vh;overflow-y:auto;position:relative">
     <button onclick="keCloseSituationQuiz()" aria-label="Close" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;z-index:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     <div class="kh-shell-eyebrow">Situation Quiz</div>
@@ -1292,7 +1292,7 @@ function openUniverseView() {
 <!-- ══════════════════════════════════════════
      NUANCE QUIZ MODAL (Forest only)
 ═══════════════════════════════════════════ -->
-<div class="woverlay hidden" id="nq-modal" onclick="if(event.target===this)closeNuanceQuiz()">
+<div role="button" tabindex="0" class="woverlay hidden" id="nq-modal" onclick="if(event.target===this)closeNuanceQuiz()">
   <div class="dct-panel">
     <div class="dct-header">
       <div>
@@ -1311,7 +1311,7 @@ function openUniverseView() {
 <!-- ══════════════════════════════════════════
      DICTATION MODAL
 ═══════════════════════════════════════════ -->
-<div class="woverlay hidden" id="dct-modal" onclick="if(event.target===this)closeDictationModal()">
+<div role="button" tabindex="0" class="woverlay hidden" id="dct-modal" onclick="if(event.target===this)closeDictationModal()">
   <div class="dct-panel">
     <div class="dct-header">
       <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
@@ -1347,7 +1347,7 @@ function openUniverseView() {
 <!-- ══════════════════════════════════════════
      CONVERSATION STUDY MODAL
 ═══════════════════════════════════════════ -->
-<div class="su-overlay hidden" id="cs-modal" onclick="if(event.target===this)closeConvStudy()">
+<div role="button" tabindex="0" class="su-overlay hidden" id="cs-modal" onclick="if(event.target===this)closeConvStudy()">
   <div class="su-panel">
     <!-- LIST VIEW -->
     <div id="cs-list-view">
@@ -1373,10 +1373,10 @@ function openUniverseView() {
         <button class="su-close" onclick="closeConvStudy()">&#10005;</button>
       </div>
       <div class="su-steps" id="cs-step-tabs">
-        <div class="su-step active" onclick="csGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Dialogue</span></div>
-        <div class="su-step" onclick="csGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Cards</span></div>
-        <div class="su-step" onclick="csGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Response</span></div>
-        <div class="su-step" onclick="csGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Build</span></div>
+        <div role="button" tabindex="0" class="su-step active" onclick="csGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Dialogue</span></div>
+        <div role="button" tabindex="0" class="su-step" onclick="csGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Cards</span></div>
+        <div role="button" tabindex="0" class="su-step" onclick="csGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Response</span></div>
+        <div role="button" tabindex="0" class="su-step" onclick="csGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Build</span></div>
       </div>
       <div class="su-progress"><div class="su-progress-fill" id="cs-progress-fill" style="width:0%"></div></div>
       <div class="su-body">
@@ -1431,7 +1431,7 @@ async function _csLoadConversations() {
     grid.innerHTML = _csConvs.length ? _csConvs.map(function(c,i){
       var lvlColors = {b:'#dcfce7',i:'#fef9c3',a:'#fee2e2'};
       var lvlNames = {b:'Beginner',i:'Intermediate',a:'Advanced'};
-      return '<div class="as-article-card" onclick="_csStartConv('+i+')">'
+      return '<div role="button" tabindex="0" class="as-article-card" onclick="_csStartConv('+i+')">'
         +'<div class="asc-img-ph" style="height:60px;display:flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:24px;height:24px">'+BM_ICON_LIBRARY+'</span></div>'
         +'<div class="asc-body"><div class="asc-cat">'+escapeHtml(c.cat||'')+'</div>'
         +'<div class="asc-title">'+escapeHtml(c.name)+'</div>'
@@ -1648,7 +1648,7 @@ function _csRenderFlash(act) {
     +'<span style="font-size:11px;font-weight:800;color:var(--accent);background:rgba(37,99,235,.1);padding:4px 10px;border-radius:8px">'+(st.idx+1)+'/'+st.vocab.length+'</span>'
     +'<span style="font-size:13px;font-weight:700;color:var(--dark)">Tap the card to flip</span></div>'
     // Card
-    +'<div id="cs-flash-card" onclick="_csFlashFlip()" style="cursor:pointer;min-height:180px;border-radius:20px;border:2px solid #e2e8f0;background:linear-gradient(135deg,#f8fafc,#f0f4ff);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;transition:all .2s;box-shadow:0 4px 16px rgba(0,0,0,.06)" onmouseover="this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.1)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.06)\';this.style.transform=\'none\'">'
+    +'<div role="button" tabindex="0" id="cs-flash-card" onclick="_csFlashFlip()" style="cursor:pointer;min-height:180px;border-radius:20px;border:2px solid #e2e8f0;background:linear-gradient(135deg,#f8fafc,#f0f4ff);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 24px;transition:all .2s;box-shadow:0 4px 16px rgba(0,0,0,.06)" onmouseover="this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.1)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.06)\';this.style.transform=\'none\'">'
     +'<div style="font-size:32px;font-weight:900;color:#0f172a;font-family:\'Noto Sans KR\',sans-serif;margin-bottom:8px">'+escapeHtml(v.ko||'')+'</div>'
     +(v.rom?'<div style="font-size:14px;color:#7c3aed;font-style:italic">'+escapeHtml(v.rom)+'</div>':'')
     +'<div style="font-size:12px;color:#94a3b8;margin-top:12px">tap to see meaning</div>'
@@ -1922,7 +1922,7 @@ function _csBuildCheck() {
 <!-- ══════════════════════════════════════════
      ARTICLE STUDY MODAL
 ═══════════════════════════════════════════ -->
-<div class="su-overlay hidden" id="as-modal" onclick="if(event.target===this)closeArticleStudy()">
+<div role="button" tabindex="0" class="su-overlay hidden" id="as-modal" onclick="if(event.target===this)closeArticleStudy()">
   <div class="su-panel">
 
     <!-- ── LIST VIEW ── -->
@@ -1962,10 +1962,10 @@ function _csBuildCheck() {
       </div>
       <!-- Step tabs (Writing step removed — Free Writing lives in Express Practice now) -->
       <div class="su-steps" id="as-step-tabs">
-        <div class="su-step active" onclick="asGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Vocab</span></div>
-        <div class="su-step" onclick="asGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Phrases</span></div>
-        <div class="su-step" onclick="asGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Reading</span></div>
-        <div class="su-step" onclick="asGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Quiz</span></div>
+        <div role="button" tabindex="0" class="su-step active" onclick="asGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Vocab</span></div>
+        <div role="button" tabindex="0" class="su-step" onclick="asGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Phrases</span></div>
+        <div role="button" tabindex="0" class="su-step" onclick="asGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Reading</span></div>
+        <div role="button" tabindex="0" class="su-step" onclick="asGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Quiz</span></div>
       </div>
       <!-- Progress bar -->
       <div class="su-progress">
@@ -2030,7 +2030,7 @@ body.kh-dr-active #sr-notif-daily { display:none !important; }
 .dr-feedback-box.wrong{background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.30);color:#fca5a5}
 </style>
 
-<div class="dr-overlay hidden" id="dr-overlay" onclick="if(event.target===this)closeDailyReview()">
+<div role="button" tabindex="0" class="dr-overlay hidden" id="dr-overlay" onclick="if(event.target===this)closeDailyReview()">
   <div class="dr-modal">
     <div class="dr-header">
       <div>
@@ -2436,7 +2436,7 @@ function drShowScore(){
 <!-- ═══════════════════════════════════════════════════════
      WEEKLY / MONTHLY REVIEW MODAL
 ═══════════════════════════════════════════════════════ -->
-<div id="review-modal-overlay" onclick="if(event.target===this)rvHandleClose()" style="display:none;position:fixed;inset:0;background:rgba(5,12,24,.9);z-index:3000;align-items:center;justify-content:center;padding:14px">
+<div role="button" tabindex="0" id="review-modal-overlay" onclick="if(event.target===this)rvHandleClose()" style="display:none;position:fixed;inset:0;background:rgba(5,12,24,.9);z-index:3000;align-items:center;justify-content:center;padding:14px">
   <div style="background:#0f1f38;border-radius:14px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;border:1px solid rgba(255,255,255,.1)">
     <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08)">
       <div>
@@ -3607,7 +3607,7 @@ function closeReviewModal() {
 </div>
 
 <!-- ═══ SLANG MODAL ═══ -->
-<div class="feat-overlay" id="slang-overlay" onclick="if(event.target===this)closeSlangModal()">
+<div role="button" tabindex="0" class="feat-overlay" id="slang-overlay" onclick="if(event.target===this)closeSlangModal()">
 <div class="feat-modal">
   <button class="feat-close" onclick="closeSlangModal()">&times;</button>
   <div style="padding:24px 20px 12px">
@@ -3623,7 +3623,7 @@ function closeReviewModal() {
 </div>
 
 <!-- ═══ WORD BUILDER MODAL ═══ -->
-<div class="feat-overlay" id="alpha-overlay" onclick="if(event.target===this)closeAlphaModal()">
+<div role="button" tabindex="0" class="feat-overlay" id="alpha-overlay" onclick="if(event.target===this)closeAlphaModal()">
 <div class="feat-modal alpha-modal">
   <button class="feat-close" onclick="closeAlphaModal()">&times;</button>
   <div style="padding:20px 20px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -3662,7 +3662,7 @@ function closeReviewModal() {
 </div>
 
 <!-- ═══ PHONE CALL MODAL ═══ -->
-<div class="feat-overlay" id="phone-overlay" onclick="if(event.target===this)closePhoneModal()">
+<div role="button" tabindex="0" class="feat-overlay" id="phone-overlay" onclick="if(event.target===this)closePhoneModal()">
 <div class="feat-modal" style="max-width:560px">
   <button class="feat-close" onclick="closePhoneModal()">&times;</button>
   <div style="padding:24px 20px 16px">
@@ -3694,7 +3694,7 @@ function closeReviewModal() {
         <button class="pc-play-btn" id="pc-play-btn" onclick="pcTogglePlay()">&#9654;</button>
         <div class="pc-progress-wrap">
           <span class="pc-time" id="pc-time-cur">0:00</span>
-          <div class="pc-progress-bar" id="pc-progress-bar" onclick="pcProgressClick(event)">
+          <div role="button" tabindex="0" class="pc-progress-bar" id="pc-progress-bar" onclick="pcProgressClick(event)">
             <div class="pc-progress-fill" id="pc-progress-fill"></div>
             <div class="pc-progress-dot" id="pc-progress-dot" style="left:0%"></div>
           </div>
