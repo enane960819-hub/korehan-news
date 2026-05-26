@@ -3351,7 +3351,7 @@ async function runBulkPhraseAdminGen(){
   try {
     const res = await callClaude({
       feature: 'phrase-bulk-pregen',
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 8000,
       messages: [{ role:'user', content: prompt + _srGrammarRulesBlock() }]
     });
@@ -12300,7 +12300,7 @@ async function slangBulkGenerate() {
   try {
     var result = await callClaude({
       feature: 'slang-bulk-generate',
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 4000,
       messages: [{ role: 'user', content: '한국어 슬랭/신조어를 정확히 10개 생성해주세요. 실제 한국 MZ세대가 사용하는 현재 유행하는 슬랭만 포함하세요.\n\n이미 있는 슬랭 (중복 제외): ' + existingKo.join(', ') + '\n\n각 슬랭마다 다음 JSON 형식으로 반환:\n```json\n[\n  {\n    "ko": "슬랭 한국어",\n    "en": "English translation",\n    "desc_text": "한국어로 상세 설명 (어원, 뉘앙스 포함)",\n    "tag": "카테고리 (일상/MZ세대/음식/사회생활/리액션/투자/혼족문화/귀여움/메타/소비문화 중 택1)",\n    "warn": false,\n    "warn_text": "",\n    "difficulty": "Beginner 또는 Intermediate 또는 Advanced",\n    "chat": [\n      {"me": false, "name": "친구이름", "msg": "대화 시작"},\n      {"me": true, "msg": "여기에 <hl>슬랭</hl> 사용"},\n      {"me": false, "name": "친구이름", "msg": "반응"},\n      {"me": true, "msg": "마무리"}\n    ]\n  }\n]\n```\n\n규칙:\n1. 실제 사용되는 진짜 슬랭만 (만들어내지 마세요)\n2. 대화 예문은 자연스러운 카톡 대화처럼\n3. <hl>태그</hl>로 슬랭 하이라이트\n4. 비속어 포함 시 warn: true + warn_text 추가\n5. JSON만 반환 (설명 텍스트 없이)' }]
     });
@@ -12473,7 +12473,7 @@ async function phoneBulkGenerate() {
   try {
     var result = await callClaude({
       feature: 'phone-call-generate',
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 6000,
       messages: [{ role: 'user', content: '한국어 전화 통화 스크립트를 정확히 3개 생성해주세요. 실제 한국에서 일어나는 전화 상황으로 만들어주세요.\n\n이미 있는 제목 (중복 제외): ' + existingTitles.join(', ') + '\n\n각 Phone Call마다 다음 JSON 형식으로 반환:\n```json\n[\n  {\n    "title": "한국어 제목",\n    "title_en": "English Title",\n    "description": "상황 설명 (한국어)",\n    "category": "Daily 또는 Business 또는 Emergency",\n    "difficulty": "Beginner 또는 Intermediate 또는 Advanced",\n    "duration_seconds": 90,\n    "speakers": {"A":{"name":"화자A이름","color":"#34d399"},"B":{"name":"화자B이름","color":"#60a5fa"}},\n    "script": [\n      {"speaker":"A","start":0.0,"end":2.5,"ko":"한국어 대사","en":"English translation"},\n      {"speaker":"B","start":3.0,"end":5.5,"ko":"한국어 대사","en":"English translation"}\n    ]\n  }\n]\n```\n\n규칙:\n1. 각 통화는 6~10문장\n2. start/end 타임스탬프는 대사 길이에 맞게 자연스럽게\n3. 존댓말 위주 (비즈니스/공식), 반말 가능 (친구 간)\n4. 카테고리 다양하게: 일상(Daily), 비즈니스(Business), 긴급(Emergency)\n5. 난이도 다양하게 섞기\n6. 화자 이름은 한국 이름 (예: 민수, 지영) 또는 역할 (예: 직원, 의사)\n7. JSON만 반환 (설명 텍스트 없이)' }]
     });
