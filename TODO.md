@@ -10,7 +10,36 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-9-next`
+## In progress on `claude/seo-p1-mechanical`
+
+- **SEO P1 leftovers landed this PR (2026-05-26)** — mechanical
+  fixes to the 4 remaining structural findings from the 7th audit:
+  - **SEO-F4**: `korehan-mypage.html` + `korehan-learning-overview.html`
+    got their `<meta name="description">` and a hidden `<h1>` (sr-only).
+    Both pages were SEO-invisible before (no description, no h1).
+  - **SEO-F6**: index / news / article / character / reporter all had
+    zero `<h1>` — added one hidden h1 to each. Hero `<div>`s are
+    untouched (no visual change).
+  - **SEO-F7**: `korehan-courses.html` had 2× h1. Demoted the
+    "Weekly Live Review" section title (line 606) from h1 to h2;
+    matching CSS selector updated accordingly.
+  - **SEO-F10**: `index.html` title (78 chars Korean + English) +
+    description (240 chars bilingual) exceeded SERP truncation
+    limits. Trimmed title to "KoreHani — Learn Korean Through Real
+    News" (44 chars) and description to 155 chars English-only.
+    Korean discoverability is preserved through other pages with
+    `lang="ko"`.
+  - **`.kh-sr-only` utility class** added to `korehan-shared.css` —
+    standard visually-hidden / screen-reader-readable pattern that
+    doesn't break flow or focus. Will be reusable for future hidden
+    h1 / form-label needs.
+  - **Cache-buster bumped** on `korehan-shared.css` from `?v=20260525i`
+    → `?v=20260526a` across all 41 HTML pages that include it
+    (lessons from PR #526 / CLAUDE.md "Past Incidents").
+
+---
+
+## On `claude/audit-9-next` (PR #613 merged)
 
 - **AN-F2 (7차 P0) — Discord webhook on critical client_errors (2026-05-26)**:
   Now that AN-F3's `severity` column is live, critical-severity
