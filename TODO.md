@@ -10,7 +10,69 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/new-session-KCAZ7`
+## In progress on `claude/audit-8-payments`
+
+- **8차 오딧 — Payments + Stripe reliability (2026-05-26)**:
+  - **Code fixes landed this PR (frontend + edge function)**:
+    - **PAY-F4 (P0)** `_startCoinCheckout` now wraps the Stripe
+      checkout fetch in an `AbortController` with a 20s timeout.
+      Without it a wedged Edge Function left the user staring at
+      "Opening secure checkout…" forever and second-clicking could
+      double-fire two Stripe sessions.
+    - **PAY-F15 (P2)** `?coach_coins=ok` redirect handler no longer
+      blindly claims success. It now snapshots wallet balance before
+      the refresh and only shows "Coach coins added!" if the balance
+      actually went up (defense against phishing referral-bonus
+      scam links). Falls back to neutral "Wallet refreshed" otherwise.
+    - **PAY-F6 (P1)** `speaking-pass-webhook` now persists
+      signature failures, missing-metadata events, and RPC errors
+      to `client_errors` (severity='critical'). They survive past
+      the Supabase 1-7 day log retention window so the operator
+      can actually see them.
+    - **PAY-F3 (P0)** `speaking-pass-webhook` catches PostgREST
+      error code `23503` (FK violation) when `auth.users` row has
+      been deleted and returns 200 + critical-severity client_error
+      row with `action_required: 'refund or hand-grant after
+      restoring user'` instead of 500 (which made Stripe retry for
+      3 days then dead-letter the payment).
+    - **AN-F3 (7차 P0)** `kh_log_error()` now accepts a third
+      `severity` argument (debug/info/warn/error/critical). Default
+      'error' preserves existing call sites. `speaking_coin_unredeemed`
+      now logs as 'critical' — that's the textbook revenue-loss
+      case (user charged for coin but didn't get the service).
+  - **DB migrations OWNER MUST APPLY (Supabase SQL editor / `supabase db push`)**:
+    - **`20260526_audit_7_client_errors_severity.sql`** — adds
+      `severity` column with CHECK constraint + partial index on
+      error/critical rows. Frontend writes to this column on every
+      `kh_log_error()` call, so the migration MUST land before the
+      next korehan-shared.js deploy or all error logging will fail
+      (INSERT with unknown column).
+    - **`20260526_audit_8_coin_toctou_locks.sql`** — adds
+      `FOR UPDATE` row locks to `purchase_coin_shop_item` and
+      `admin_adjust_coin`. Without it, two concurrent purchase
+      calls from the same user can both succeed on the same
+      balance (double-spend with 100 coins → two 100-coin items).
+      The audit also flagged `send_reporter_gift` and the room-state
+      RPC but on second inspection they already use `FOR UPDATE` —
+      only those two needed fixing. Idempotent — safe to re-run.
+  - **PAY-F1 (P0) — STILL OPEN, no refund webhook handler**:
+    `supabase/functions/speaking-pass-webhook/index.ts` ignores
+    `charge.refunded`, `charge.dispute.created`,
+    `payment_intent.canceled`, `customer.subscription.deleted` —
+    refunded customers keep their coins. Direct revenue leak via
+    chargeback + retain. The DB even reserves a `status='refunded'`
+    column that nothing writes to. Needs careful design (idempotency
+    on event.id, reversal RPC `revoke_speaking_coins`, edge case
+    where coins were already spent). Next PR.
+  - **PAY-F5 P1 (email case mismatch), PAY-F7 P1 (no checkout
+    funnel tracking — duplicates AN-F7), PAY-F9 P2 (no user-visible
+    purchase history, PIPA risk), PAY-F11 P2 (event.id dedup),
+    PAY-F12 P2 (USD/KRW currency clarity), PAY-F13 P2 (no
+    consumption ledger)** — left as P1/P2 TODOs.
+
+---
+
+## Recently merged (claude/new-session-KCAZ7 — PR #608, #609)
 
 - **7차 오딧 — SEO + Analytics + Sonnet→Haiku plan (2026-05-26)**:
   - **SEO fixes landed this PR (mechanical, low-risk)**:

@@ -122,11 +122,16 @@ window.kh_t = kh_t;
 // failing to log a failure shouldn't crash the page.
 //
 //   kh_log_error('descriptive message', { extra: 'context' });
-//   kh_log_error(err);  // passes err.message + err.stack
+//   kh_log_error(err);                              // severity 'error' (default)
+//   kh_log_error('auth bypass attempt', { ... }, 'critical');
+// Severity must be one of debug|info|warn|error|critical — matches
+// the CHECK constraint in 20260526_audit_7_client_errors_severity.
+// Anything outside that set is coerced to 'error'.
 var _khErrLogged = 0;
 var _KH_ERR_LOG_CAP = 25; // per page-load
 var _khErrSeen = Object.create(null);
-function kh_log_error(msgOrErr, context) {
+var _KH_VALID_SEVERITY = { debug:1, info:1, warn:1, error:1, critical:1 };
+function kh_log_error(msgOrErr, context, severity) {
   try {
     var message = '';
     var stack = '';
@@ -137,6 +142,7 @@ function kh_log_error(msgOrErr, context) {
       message = String(msgOrErr || '').slice(0, 500);
     }
     if (!message) return;
+    var sev = (severity && _KH_VALID_SEVERITY[severity]) ? severity : 'error';
     // De-dupe within this page-load: same message text only logged
     // once. Stops a 60Hz scroll loop from filling the table.
     var key = message + '|' + (typeof context === 'object' && context ? JSON.stringify(context).slice(0, 200) : '');
@@ -164,6 +170,7 @@ function kh_log_error(msgOrErr, context) {
       url:        safeUrl,
       user_agent: (typeof navigator !== 'undefined') ? (navigator.userAgent || '').slice(0, 500) : null,
       context:    (context && typeof context === 'object') ? context : (context ? { value: String(context) } : {}),
+      severity:   sev,
     }).then(function(){}, function(){});
   } catch (_) {}
 }
