@@ -10,7 +10,75 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-10-gdpr-pipa`
+## In progress on `claude/priv-fixes-p0`
+
+- **10차 오딧 — GDPR + PIPA compliance (2026-05-26)**:
+  15 findings. P0 items (5): missing voice/avatar erasure, newsletter
+  persistence post-delete, no data-export endpoint, Discord PII
+  cross-border transfer, signup_notifications_log retention.
+  - **PRIV-F1 — LANDED THIS PR**: `delete-account` now enumerates
+    and removes per-user files from `speaking-recordings/speaking/<userId>/`
+    (voice recordings) and `avatars/<userId>/` (avatar images).
+    Right-to-erasure now covers binaries, not just rows. Per-bucket
+    error tolerant — won't fail-fast on a missing bucket.
+  - **PRIV-F2 — LANDED THIS PR**: `newsletter_subs` is keyed by
+    email, not user_id. The previous USER_KEYED_TABLES loop was
+    silently no-opping (.eq('user_id', userId) on a non-existent
+    column). Captured `userData.email` from the JWT verification
+    response and added an explicit email-keyed delete. Removed
+    `newsletter_subs` from the user-id loop to avoid confusion.
+  - **PRIV-F10 — LANDED THIS PR**: `confirmDeleteAccount()` in
+    `korehan-mypage.html` was pre-deleting 3 tables client-side
+    then showing "Data deleted" even when the Edge Function
+    returned 500. Removed the pre-delete (Edge Function is the
+    authoritative cleanup) and the success message now only fires
+    on `res.ok && body.ok === true && body.auth_delete.ok === true`.
+    Sign-out is also gated on full success so a partial failure
+    leaves the user signed in for retry.
+  - **PRIV-F13 — LANDED THIS PR**: dropped `access_type: 'offline'`
+    from Google OAuth signInWithOAuth queryParams. KoreHani only
+    needs one-shot login, not a long-lived refresh token. Aligns
+    with GDPR Art 5(1)(c) data minimisation.
+  - **PRIV-F4 — LANDED THIS PR (partial)**: `notify-signup` Discord
+    webhook now sends only an obfuscated email hint (`a***@gmail.com`)
+    + provider + user_id + verified status + timestamp. Raw email
+    and name no longer cross-border to US-hosted Discord. The
+    signup_notifications_log row still carries email+name for
+    admin dashboard purposes (local DB, not cross-border).
+
+  **STILL OPEN P0/P1 (need owner decisions or non-trivial work):**
+  - **PRIV-F3 (P0)**: no data-export endpoint exists, but privacy
+    policy promises Art 15 / Art 20. Needs Edge Function
+    `export-my-data` that JSON-dumps the same set of tables
+    `delete-account` touches.
+  - **PRIV-F5 (P0)**: `signup_notifications_log` retains email+name
+    indefinitely. Needs a retention job (depends on CRON-F1
+    scheduler) or null-the-PII trigger.
+  - **PRIV-F6 (P1)**: no re-auth before account deletion. Stolen
+    active session = account destruction. Needs UX flow: password
+    re-entry for email users, email-confirm token round-trip for
+    Google OAuth.
+  - **PRIV-F7 (P1)**: `client_errors.stack` + `context` likely
+    carry PII; ON DELETE SET NULL leaves orphaned data. Needs
+    stack-trace scrubber + cascade-delete on user removal.
+  - **PRIV-F8 (P1)**: no Korean-language privacy policy. PIPA
+    Art 30 requires it for KR-targeting services.
+  - **PRIV-F9 (P1)**: onboarding has no age gate. PIPA Art 22-2
+    requires ≥14 confirmation; GDPR Art 8 ≥16 in most EU.
+  - **PRIV-F11 (P1)**: 30-day deletion promise unenforceable (no
+    cron for dormant accounts). Drop the promise or implement it.
+  - **PRIV-F12 (P1)**: payment retention conflict (5y per PIPA
+    transaction record vs immediate delete in code). Owner needs
+    to decide: hash+keep in `payment_audit` table, or update
+    policy to match code.
+  - **PRIV-F14 (P2)**: cookie banner suppressed on onboarding.
+    Move to onboarding step 1.
+  - **PRIV-F15 (P2)**: no EU/UK GDPR Art 27 representative listed
+    despite EU users.
+
+---
+
+## On `claude/audit-10-gdpr-pipa` (PR #618 merged 2026-05-26)
 
 - **CRON-F7 — LANDED THIS PR**: `daily-content-gen` lock TTL
   raised from 5 min to 15 min. The old 5 min was shorter than

@@ -129,10 +129,17 @@ Deno.serve(async (req) => {
     const safeId = safeWebhookText(u.id)
     const safeCreated = safeWebhookText(u.created_at || '')
 
+    // PRIV-F4: the Discord webhook is a US-hosted third party.
+    // Sending raw email+name there is a cross-border PII transfer
+    // never disclosed in the consent flow (PIPA Art 17 + 27).
+    // Drop both from the webhook payload. The signup_notifications_log
+    // row inserted below still carries email+name for the admin's
+    // own dashboard — that's local DB inside the existing Supabase
+    // workspace, not a cross-border push.
+    const emailHint = safeEmail.replace(/^([^@]).+@(.+)$/, '$1***@$2')
     const lines = [
       `🎉 **New KoreHani signup**`,
-      `• Email: \`${safeEmail}\``,
-      safeName ? `• Name: ${safeName}` : '',
+      `• Email: \`${emailHint}\``,
       `• Provider: ${safeProvider}${emailConfirmed ? ' (verified)' : ' (pending verification)'}`,
       `• User ID: \`${safeId}\``,
       `• At: ${safeCreated}`,
