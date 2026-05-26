@@ -32,6 +32,34 @@
 // we don't keep trying obviously-missing columns / tables on retry.
 var _khCmFeatures = { parentChecked: false, parentOk: true, reactChecked: false, reactOk: true };
 
+// Audit DB-F6: previously the comment author fallback was the raw
+// `supaUser.email`, which means every commenter's email was being
+// written to comments.user_name and then served back to every reader
+// of the thread. Use the local-part as a safer fallback so we leak
+// only the username, not the domain — and prefer any actual
+// display_name set by the user. Long-term fix is to drop user_name
+// from `comments` entirely and JOIN to user_stats.display_name
+// server-side, which needs a DB migration (see TODO.md).
+function _khCommentAuthor(u) {
+  if (!u) return 'User';
+  var meta = u.user_metadata || {};
+  var name = meta.full_name || meta.name;
+  if (name) return String(name);
+  try {
+    var saved = localStorage.getItem('kh_display_name');
+    if (saved) return saved;
+  } catch (_) {}
+  var em = u.email || '';
+  var at = em.indexOf('@');
+  if (at > 0) return em.slice(0, at);
+  return 'User';
+}
+function _khCommentAvatar(u) {
+  if (!u) return null;
+  var meta = u.user_metadata || {};
+  return meta.avatar_url || null;
+}
+
 function updateCommentForm() {
   var formEl   = document.getElementById('comment-form');
   var noticeEl = document.getElementById('comment-login-notice');
@@ -290,8 +318,8 @@ async function khCmSubmitReply(parentId) {
   var payload = {
     article_id:  articleId,
     user_id:     supaUser.id,
-    user_name:   supaUser.user_metadata && supaUser.user_metadata.full_name || supaUser.email,
-    avatar_url:  supaUser.user_metadata && supaUser.user_metadata.avatar_url || null,
+    user_name:   _khCommentAuthor(supaUser),
+    avatar_url:  _khCommentAvatar(supaUser),
     content:     content,
     parent_id:   parentId
   };
@@ -477,8 +505,8 @@ async function submitComment(articleId) {
   var { error } = await sb.from('comments').insert({
     article_id:  articleId,
     user_id:     supaUser.id,
-    user_name:   supaUser.user_metadata && supaUser.user_metadata.full_name || supaUser.email,
-    avatar_url:  supaUser.user_metadata && supaUser.user_metadata.avatar_url || null,
+    user_name:   _khCommentAuthor(supaUser),
+    avatar_url:  _khCommentAvatar(supaUser),
     content:     content,
   });
 
