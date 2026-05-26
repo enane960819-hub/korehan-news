@@ -1630,12 +1630,9 @@ function updateAuthUI() {
   var isAdmin = supaUser && ADMIN_EMAILS.includes(supaUser.email);
   window._isAdmin = isAdmin; // 다른 파일에서 참조용
 
-  // Tutor dashboard allowlist — admin + Alicia (Preply tutor).
-  // Mirror this list in supabase/migrations/20260428_tutor_dashboard.sql is_tutor_user().
-  // Expose on window so the tutor page IIFE can consume it instead of
-  // duplicating the list (drift caused stale gates in the past).
-  var TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com'];
-  window.KH_TUTOR_EMAILS = TUTOR_EMAILS.slice();
+  // Tutor dashboard allowlist — single source of truth is
+  // window.KH_TUTOR_EMAILS, defined at top level (see top of file).
+  var TUTOR_EMAILS = window.KH_TUTOR_EMAILS || ['enane960819@gmail.com'];
   var isTutor = supaUser && TUTOR_EMAILS.includes((supaUser.email || '').toLowerCase());
   window._isTutor = isTutor;
 
@@ -2127,6 +2124,19 @@ document.addEventListener('click', function(evt){
   if (!wrap || wrap.contains(evt.target)) return;
   closeTopbarUserMenu();
 });
+
+// Tutor dashboard allowlist — exposed at TOP LEVEL so the tutor page
+// can read it synchronously at script-load time. (Previously this
+// lived inside updateAuthUI() which only runs after the session check
+// resolves; the tutor page's gate IIFE then fell through to the
+// owner-only fallback and locked Alicia out. Real-world incident
+// 2026-05-26.)
+//
+// Keep this in sync with:
+//   - the same const inside updateAuthUI() below (it builds isTutor)
+//   - supabase/migrations/20260428_tutor_dashboard.sql is_tutor_user()
+//   - korehan-tutor-7v3ca.html's fallback
+window.KH_TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com'];
 
 const DB_KEY          = 'korehan_db';
 const K_PHRASES       = 'korehan_phrases';
