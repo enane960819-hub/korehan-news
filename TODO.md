@@ -144,11 +144,13 @@ doesn't keep reminding about closed work.
     - admin_retrigger_feedback Sonnet → Haiku 4.5 (3rd safe swap,
       same shape as the daily article-analysis path on Haiku).
   - **Still deferred** (sandbox-blocking or large refactor):
-    - Picture-Call game state + audio cleanup (F18-F20 polish)
     - Onboarding pricing reflow (Pro+Standard side-by-side card)
     - Google Fonts payload reduction (decide weights first)
-    - The remaining 46 `<div onclick>` patterns in study-room.html
-      that aren't master-cards (non-launch UI, lower priority)
+    - aria-label on icon-only role=button cards in study-room
+      (openDailyReview / openWeeklyReview / openMonthlyReview,
+      openFastTrack / openSlangModal / openPhoneModal, etc.) —
+      keyboard-focusable now, but screen-reader users hear only
+      "button" without context.
     - grant_speaking_coins SQL contract: return
       `{ ok, reason, granted_coins, balance }` so the new webhook
       idempotency logging actually distinguishes duplicates from
@@ -184,6 +186,20 @@ doesn't keep reminding about closed work.
   English UI), onboarding-preview-compact.html (`ko` → `en`,
   English content). Korean-content pages (cards, reporter,
   reporters) kept at `lang="ko"`.
+- **#606 A11y + Picture-Call polish**:
+  - 46 clickable `<div>`s in study-room.html got
+    `role="button" tabindex="0"` so keyboard users can Tab to /
+    Enter-activate notification banners, mode cards, flashcard
+    rows, jamo tiles, etc. Existing global Enter/Space handler in
+    shared.js already wired up the activation; the divs just
+    weren't marked.
+  - Picture-Call modal (F18-F20):
+    `pcDemoPlay(startAt)` accepts a seek target so demo-mode
+    seeking no longer snaps back to 0; `pcTogglePlay` catches the
+    `_pcAudio.play()` Promise rejection (autoplay / tab-suspension)
+    so the button doesn't lock in "pause" mode forever;
+    `closePhoneModal` resets `_pcCurrentCall` + `_pcDemoTime` so a
+    re-open starts on the call list.
 
 ## Recently merged into main 2026-05-20
 
