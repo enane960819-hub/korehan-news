@@ -1979,7 +1979,7 @@ function openNicknameModal() {
     + '<p>Changing your nickname costs <strong>' + NICKNAME_COST + ' nyang</strong>. You have: <strong>' + _userCoin.toLocaleString() + ' nyang</strong>.</p>'
     + (canAfford
       ? '<div class="nn-cost-badge" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>' + NICKNAME_COST + ' nyang deducted</span></div>'
-        + '<input class="nn-input" id="nn-input" type="text" maxlength="30" placeholder="New nickname" value="' + currentName + '">'
+        + '<input class="nn-input" id="nn-input" type="text" maxlength="30" placeholder="New nickname" value="' + _escapeHtml(currentName) + '">'
         + '<div class="nn-actions">'
         + '<button class="nn-btn-cancel" onclick="closeNicknameModal()">Cancel</button>'
         + '<button class="nn-btn-confirm" id="nn-confirm-btn" onclick="confirmNicknameChange()">Change — ' + NICKNAME_COST + ' nyang</button>'
