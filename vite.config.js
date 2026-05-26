@@ -43,29 +43,24 @@ async function minifyOrCopy(srcPath, distPath) {
         keepNames: true,
         target: 'es2017',
       });
-      // CRITICAL: rename the per-file keepNames helper so it can't
-      // collide with helpers from sibling minified files.
+      // CRITICAL: wrap the minified bundle in an IIFE so esbuild's
+      // keepNames helper (and any other minifier-emitted single-letter
+      // top-level `var`s) stay file-local and can't clobber sibling
+      // files loaded onto the same `window`.
       //
-      // esbuild's `keepNames` injects a helper at the top of each
-      // output like:
-      //   var U = Object.defineProperty;
-      //   var a = (e,t) => U(e, "name", {value:t, configurable:true});
+      // Cross-file globals the source code expects (top-level
+      // function declarations, top-level `var`/`let`/`const` from
+      // the SOURCE — not the minifier's helpers) get explicitly
+      // re-exported onto `window` via a generated footer.
       //
-      // The two short single-letter names are different per file
-      // (esbuild picks the shortest unused name in that file's local
-      // scope) — but because these files load as <script src> rather
-      // than ES modules, every top-level `var` declaration lands on
-      // `window`. Names collide across files, and a later-loaded
-      // file's `var a = Object.defineProperty` overwrites an
-      // earlier-loaded file's `var a = (e,t) => …`. The next call to
-      // `a(fn, "name")` then routes to Object.defineProperty with
-      // only two arguments → "Property description must be an
-      // object: undefined" → DOMContentLoaded aborts → infinite
-      // loader on home. Real-world incident 2026-05-26.
-      //
-      // Fix: rename both helper vars to a per-file-unique pair so
-      // late binding still hits THIS file's helper. We use the dist
-      // filename as the suffix because it's stable across rebuilds.
+      // For source-level `var` declarations we use a getter/setter
+      // pair so that REASSIGNMENTS inside the IIFE propagate to
+      // window readers. This was the source of incident #2 on
+      // 2026-05-26: shared.js mutates `supaUser` after the session
+      // check, but the previous flat re-export captured the value
+      // ONCE (always null), so cross-file readers in study-room.js
+      // saw `window.supaUser = null` forever. The getter pattern
+      // re-reads the live IIFE-local on every external access.
       writeFileSync(distPath, isolateMinifiedBundle(res.code, src));
       return;
     } catch (e) {
@@ -84,77 +79,77 @@ async function minifyOrCopy(srcPath, distPath) {
   copyFileSync(srcPath, distPath);
 }
 
-// Wrap the minified bundle so esbuild's keepNames helper (and any
-// other top-level `var` declarations from minification) can't escape
-// into `window` and clobber siblings.
+// Wrap the minified output in an IIFE so all minifier-emitted top-
+// level vars (especially the keepNames helper which esbuild picks
+// short single-letter names for) stay file-local. Then re-export
+// cross-file globals onto `window` via a generated footer.
 //
-// Why: esbuild's `keepNames` injects this helper at the top of every
-// output:
-//   var U = Object.defineProperty;
-//   var a = (e,t) => U(e, "name", {value:t, configurable:true});
-// The two short single-letter names differ per file. Because these
-// files load as <script src> (not ES modules), every top-level `var`
-// declaration lands on `window`. Sibling files with the same letter
-// (e.g. shared.js's `a` vs reading-tracker.js's `a = Object.define-
-// Property`) overwrite each other. Then when shared.js's
-// DOMContentLoaded handler calls `a(fn, "_khTagMainContent")`, the
-// helper is no longer the helper — it's Object.defineProperty being
-// invoked with 2 args → "Property description must be an object:
-// undefined" → DOMContentLoaded aborts → home hero + article rail
-// infinite loading. Real-world incident 2026-05-26.
-//
-// Fix: wrap the whole minified output in an IIFE so all those vars
-// stay file-local. Top-level `function NAME() {}` declarations also
-// become local inside the IIFE — we re-export them onto `window` via
-// a generated footer so inline HTML handlers (`onclick="foo()"`)
-// keep working. The footer is built from the ORIGINAL source's
-// top-level function names because the minifier may rename inner
-// bindings even with keepNames (keepNames preserves the .name
-// property, not necessarily the variable name).
+// - Top-level FUNCTION declarations from source → `window.X = X`
+//   (simple assign; functions don't get reassigned externally).
+// - Top-level `const`/`let` declarations from source → `window.X = X`
+//   (one-shot capture is correct; these are immutable bindings).
+// - Top-level `var` declarations from source → getter/setter pair
+//   so internal reassignments inside the IIFE propagate to external
+//   readers. Without this, `var supaUser = null` followed by a later
+//   `supaUser = user` inside shared.js leaves window.supaUser stuck
+//   at the initial null forever (incident #2 on 2026-05-26).
 function isolateMinifiedBundle(minified, originalSrc) {
-  const names = collectTopLevelFunctionNames(originalSrc);
-  // Comment-aware: never `var FOO =` re-exports — keep it strictly
-  // to functions. Other globals the code expects (like `KH_ICON_*`
-  // string constants in icons.js, `_articlesCache` cache state in
-  // articles.js, etc.) get explicitly re-exported via the
-  // `top-level var FOO = ...` collector below.
-  const vars = collectTopLevelVarNames(originalSrc);
-  const allExports = [...new Set([...names, ...vars])];
-  if (!allExports.length) return `(function(){${minified}})();`;
-  const exportFooter = `;(function(W){var __kh_g=W||(typeof globalThis!=="undefined"?globalThis:this);${allExports.map(n => `try{if(typeof ${n}!=="undefined")__kh_g.${n}=${n}}catch(e){}`).join('')}})(typeof window!=="undefined"?window:null);`;
-  return `(function(){${minified}${exportFooter}})();`;
-}
-
-function collectTopLevelFunctionNames(src) {
-  // Only catch `function NAME(` at the start of a line (after optional
-  // whitespace) and `\nasync function NAME(`. Conservative: misses
-  // some valid declarations but won't false-positive on strings.
-  const out = new Set();
-  const re = /^[ \t]*(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/gm;
-  let m;
-  while ((m = re.exec(src))) out.add(m[1]);
-  return [...out];
-}
-
-function collectTopLevelVarNames(src) {
-  // `var FOO = ...` declared at the start of a logical line (no
-  // leading non-space chars). Catches single-name var declarations
-  // only (good enough for the constants we need to re-export).
-  const out = new Set();
-  const re = /^[ \t]*(?:var|let|const)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=/gm;
-  let m;
-  while ((m = re.exec(src))) {
-    // Skip obvious one-letter variables — they're almost certainly
-    // local helpers (and esbuild may emit them in the minified output).
-    if (m[1].length === 1) continue;
-    // Skip names that are clearly module-internal by convention.
-    if (m[1].startsWith('_')) {
-      // …but allow underscore-prefix exports that other modules need.
-      // E.g. _articlesCache (read by article-cache.js). Keep these.
-    }
-    out.add(m[1]);
+  const decls = collectTopLevelDeclarations(originalSrc);
+  const fnRe = decls.functions;
+  const constLetRe = decls.constLet;
+  const varRe = decls.vars;
+  const totalExports = fnRe.length + constLetRe.length + varRe.length;
+  if (!totalExports) return `(function(){${minified}})();`;
+  const parts = [];
+  parts.push(';(function(W){if(!W)return;');
+  for (const f of fnRe) {
+    parts.push(`try{if(typeof ${f}==="function")W.${f}=${f}}catch(e){}`);
   }
-  return [...out];
+  for (const v of constLetRe) {
+    parts.push(`try{if(typeof ${v}!=="undefined")W.${v}=${v}}catch(e){}`);
+  }
+  // Getter/setter for `var` so reassignments propagate. Fall back to
+  // a plain assign if defineProperty throws (e.g. a sibling file
+  // already installed a non-configurable property under the same name).
+  for (const v of varRe) {
+    parts.push(`try{Object.defineProperty(W,"${v}",{configurable:true,get:function(){return ${v}},set:function(_v){${v}=_v}})}catch(e){try{W.${v}=${v}}catch(_){}}`);
+  }
+  parts.push('})(typeof window!=="undefined"?window:null);');
+  const footer = parts.join('');
+  return `(function(){${minified}${footer}})();`;
+}
+
+function collectTopLevelDeclarations(src) {
+  const functions = new Set();
+  const constLet = new Set();
+  const vars = new Set();
+  // Top-level only: declaration must start at column 0 (no leading
+  // whitespace). Indented declarations are function-locals — they
+  // don't exist at IIFE-top-level scope, and exporting them via
+  // getter/setter would recurse infinitely (the getter resolves the
+  // name through `window`, calling itself). 2026-05-26 incident #4.
+  //
+  // function NAME( — sync or async.
+  const fnRe = /^(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/gm;
+  let m;
+  while ((m = fnRe.exec(src))) functions.add(m[1]);
+  // var|let|const NAME = ... — only catches single-name declarations.
+  // Skips single-character names (build-tool internal) and the
+  // `__kh_` prefix reserved for our own renames.
+  const declRe = /^(var|let|const)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=/gm;
+  while ((m = declRe.exec(src))) {
+    const kind = m[1];
+    const name = m[2];
+    if (name.length === 1) continue;
+    if (name.startsWith('__kh_')) continue;
+    if (kind === 'var') vars.add(name);
+    else constLet.add(name);
+  }
+  return {
+    functions: [...functions],
+    constLet: [...constLet],
+    vars: [...vars],
+  };
 }
 
 // Plugin: copy + minify static files Vite doesn't process.
