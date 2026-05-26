@@ -13,9 +13,9 @@
 <meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="Conversations — KoreHani">
 <meta property="og:description" content="원어민이 실제 사용하는 한국어 대화 패턴.">
-<meta property="og:image" content="https://korehani.com/og-default.png">
+<meta property="og:image" content="https://korehani.com/img/guide/hero-express.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://korehani.com/og-default.png">
+<meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
@@ -2782,7 +2782,7 @@ function renderQuizQuestion() {
     + '<div style="font-size:11px;font-weight:700;opacity:.8;letter-spacing:.08em;text-transform:uppercase;">' + (_quizMode==='blank'?'Blank Fill':'Word Order') + '</div>'
     + '<div style="font-size:15px;font-weight:700;margin-top:2px">' + (_quizCurrent+1) + ' / ' + _quizTotal + '</div>'
     + '</div>'
-    + '<button onclick="closeQuiz()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
+    + '<button aria-label="Close" onclick="closeQuiz()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
     + '</div>'
     + '<div style="height:4px;background:#e2e8f0;"><div style="height:4px;background:#3b82f6;width:'+progress+'%;transition:width .3s"></div></div>';
 
@@ -3045,7 +3045,7 @@ function openInlineEditModal(c) {
   overlay.innerHTML = '<div style="background:#fff;border-radius:18px;width:100%;max-width:700px;padding:26px 28px;max-height:90vh;overflow-y:auto">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
     + '<h3 style="font-size:17px;font-weight:800;margin:0;display:inline-flex;align-items:center;gap:6px"><i data-lucide="pencil" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Edit Conversation</span></h3>'
-    + '<button onclick="closeInlineEdit()" style="background:none;border:none;cursor:pointer;color:#64748b;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
+    + '<button aria-label="Close" onclick="closeInlineEdit()" style="background:none;border:none;cursor:pointer;color:#64748b;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
     + '</div>'
     + inpField('ie-name', 'Title', c.name || '')
     + inpField('ie-ctx',  'Context', c.ctx  || '')
@@ -3059,7 +3059,7 @@ function openInlineEditModal(c) {
     + '<input id="ie-thumb" value="' + (c.thumb||'').replace(/"/g,'&quot;') + '" placeholder="Image URL or upload below" style="flex:1;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box">'
     + '<label style="background:#2563eb;color:#fff;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">📁 Upload<input type="file" id="ie-thumb-file" accept="image/*" style="display:none" onchange="uploadConvThumb(this)"></label>'
     + '</div>'
-    + (c.thumb ? '<img src="'+escapeHtml(c.thumb)+'" style="margin-top:6px;max-height:80px;border-radius:8px;object-fit:cover">' : '')
+    + (c.thumb ? '<img alt="Conversation thumbnail" src="'+escapeHtml(c.thumb)+'" style="margin-top:6px;max-height:80px;border-radius:8px;object-fit:cover">' : '')
     + '</label>'
     + '<label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:14px">💬 Dialogue (A: left / B: right)<textarea id="ie-msgs" rows="6" style="display:block;width:100%;margin-top:4px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">' + msgsText.replace(/</g,'&lt;') + '</textarea></label>'
     + '<div id="ie-error" style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px"></div>'

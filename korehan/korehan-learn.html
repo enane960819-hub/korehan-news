@@ -13,9 +13,9 @@
 <meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="Learn Korean — KoreHani | 한국어 단어 학습">
 <meta property="og:description" content="플래시카드와 SRS로 한국어 단어 학습. 매일 새 단어 20개.">
-<meta property="og:image" content="https://korehani.com/og-default.png">
+<meta property="og:image" content="https://korehani.com/img/guide/hero-express.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://korehani.com/og-default.png">
+<meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20260525i">
 <style>
@@ -1135,7 +1135,7 @@ function srsShowModal() {
   el.innerHTML = '<div class="srs-modal" id="srs-modal">'
     + '<div class="srs-modal-head">'
     + '<div class="srs-modal-title">🗂️ 단어 복습 — SRS</div>'
-    + '<button class="srs-modal-close" onclick="srsCloseModal()">×</button>'
+    + '<button aria-label="Close" class="srs-modal-close" onclick="srsCloseModal()">×</button>'
     + '</div>'
     + '<div class="srs-progress-bar"><div class="srs-progress-fill" id="srs-prog" style="width:0%"></div></div>'
     + '<div class="srs-modal-body" id="srs-body"></div>'

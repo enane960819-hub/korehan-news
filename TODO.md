@@ -12,6 +12,98 @@ doesn't keep reminding about closed work.
 
 ## In progress on `claude/new-session-KCAZ7`
 
+- **7차 오딧 — SEO + Analytics + Sonnet→Haiku plan (2026-05-26)**:
+  - **SEO fixes landed this PR (mechanical, low-risk)**:
+    - **SEO-F1** og-default.png was 404 on 7 pages → repointed all
+      `og:image` / `twitter:image` from
+      `https://korehani.com/og-default.png` →
+      `https://korehani.com/img/guide/hero-express.png` (existing
+      asset). Share previews now render.
+    - **SEO-F2** robots.txt expanded the default-policy Disallow
+      list: admin (-errors, -schema), tutor (-7v3ca), auth-gated
+      (mypage, profile, onboarding, confirm/unsubscribe), preview
+      (onboarding-preview-compact).
+    - **SEO-F3** landing.html (the most-shared marketing URL) got
+      canonical + full OG + twitter card + theme-color + author.
+    - **SEO-F8** sitemap.xml: added `<lastmod>` to every entry,
+      added landing/reporters/shop, removed auth-gated
+      study-room from the public index.
+    - **SEO-F11** korehan-reporters, korehan-reporter, korehan-cards
+      (all `lang="ko"` content pages) got SEO trio + OG card.
+    - **SEO-F15** korehan-conversations.html: added `alt=` to the
+      JS-injected thumbnail `<img>`.
+  - **A11y finishing landed this PR**: 46 close-style `<button>`s
+    across study-room / admin-CMS / mypage / learn / overview /
+    conversations gained `aria-label="Close"`. 4 nav arrows got
+    Back / Previous / Next labels. Phone-call play button +
+    seekable progress-bar got their own labels.
+  - **SEO follow-ups still open (P1, need owner JS or content work)**:
+    - **SEO-F4** korehan-mypage / korehan-learning-overview have no
+      meta description and no `<h1>` — minor but worth one pass.
+    - **SEO-F5** dynamic OG for `?id=X` deep links (article /
+      section / stories / conversations) — needs JS that updates
+      `document.title` + og:* after fetching the content.
+    - **SEO-F6** index.html / news / article / character / reporter
+      have zero `<h1>` (hero `<div>` styled as headline). Demote one
+      level or wrap in `<h1>`.
+    - **SEO-F7** korehan-courses.html has 2× `<h1>` — demote one.
+    - **SEO-F9** Add JSON-LD: `Organization` + `WebSite` on
+      index/landing, `Article` on article pages, `Course` on
+      courses, `LearningResource` on stories/conversations.
+    - **SEO-F10** index.html title (78 chars) + description (240
+      chars) exceed SERP truncation limits.
+  - **Analytics audit (`add363bdb`, 16 findings) — OWNER ACTION**:
+    - **AN-F1 (P0)** Plausible + Sentry are wired in
+      `js/core/analytics.js` but `window.KH_PLAUSIBLE_DOMAIN` and
+      `window.KH_SENTRY_DSN` are NEVER set in any HTML — both
+      integrations no-op silently. **Set them once and traffic
+      data starts flowing.** Probably want
+      `window.KH_PLAUSIBLE_DOMAIN = "korehani.com"` injected via
+      a tiny `<script>` block in every HTML, or via
+      `korehan-shared.js` head injection.
+    - **AN-F2 (P0)** `client_errors` has no notification path —
+      critical errors sit silently until owner opens admin. Add
+      `AFTER INSERT` trigger + `pg_net.http_post` to Discord, or
+      a 5-min polling Edge Function. CLAUDE.md already noted this
+      as outstanding from incident #526.
+    - **AN-F3 (P0)** `client_errors` missing `severity` column —
+      can't filter critical from noise. Migration:
+      `ALTER TABLE client_errors ADD COLUMN severity text
+      DEFAULT 'error' CHECK (severity IN ('debug','info','warn',
+      'error','critical'));` + pass it from `kh_log_error()`.
+    - **AN-F4 (P0)** Signup is untracked. Add
+      `khTrack('signup_success',{method})` at shared.js:603 (OAuth)
+      and shared.js:986 (email).
+    - **AN-F5 (P0)** Payment funnel untracked (checkout_started /
+      _failed / _succeeded). Stripe webhook errors only `console.error`,
+      never persisted — broken webhook is invisible until users
+      complain. Add `khTrack` + `client_errors` writes in
+      `speaking-pass-webhook/index.ts`.
+    - **AN-F6/F7/F8/F9 (P1)**: onboarding step funnel, quiz
+      complete events, streak/coin events, speaking submission
+      tracking — all missing.
+    - **AN-F10 (P1)**: Plausible is gated behind `consent === 'all'`
+      but Plausible is cookieless and doesn't need consent. Drop
+      the gate or split it.
+    - **AN-F11 (P2)**: PII risk — `user_quiz_results.details`
+      stores raw transcript snippets. Redact or move.
+    - **AN-F13 (P2)**: no Core Web Vitals telemetry.
+    - **AN-F14 (P2)**: `navigator.doNotTrack === '1'` not honored.
+    - **AN-F16**: `claude-proxy-index.ts` in `korehan/` is a static-
+      bundled "reference" file — should be moved out of the public
+      bundle.
+  - **Sonnet → Haiku swap plan** delivered as
+    `docs/sonnet-haiku-swap-plan.md`. 14 Sonnet sites mapped + 1
+    Opus + 1 cron branch. Classification: **4 SWAP-SAFE**
+    (phrase-bulk-pregen ×2, slang-bulk, phone-call-gen — ~$8–17/mo
+    save, zero verify), **3 SWAP-RISKY** (ft-scenario branching
+    graph, tutor screenshot OCR, fill-blank quiz — ~$9–18/mo
+    if verify passes), **7 KEEP-SONNET** (article body, conv_gen,
+    story_gen, bulk-seed siblings, admin-conv-sentence-analyze,
+    sentence-reanalyze toggle, daily-content-gen Intermediate/
+    Advanced — quality-critical user-facing content). User asked
+    for suggestions only (no code change) — doc is the deliverable.
+
 - **6차 오딧 — DB schema + RLS (2026-05-26)**:
   - Client-side fixes landed this PR:
     - **DB-F6** comments author fallback no longer uses

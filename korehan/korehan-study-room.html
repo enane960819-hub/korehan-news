@@ -15,9 +15,9 @@
 <meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="Study Room — KoreHani | 매일 한국어 작문 연습">
 <meta property="og:description" content="TOPIK 레벨별 맞춤 한국어 작문 연습. 매일 새로운 토픽 + AI 피드백.">
-<meta property="og:image" content="https://korehani.com/og-default.png">
+<meta property="og:image" content="https://korehani.com/img/guide/hero-express.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://korehani.com/og-default.png">
+<meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20260525i">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
@@ -579,7 +579,7 @@
           <button class="wm-mode-btn" id="mbtab-diary" onclick="switchModalMode('diary')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="notebook" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Diary</span></button>
         </div>
       </div>
-      <button class="wmh-close" onclick="closeWritingModal()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+      <button aria-label="Close" class="wmh-close" onclick="closeWritingModal()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
 
     <!-- 모바일 탭 (JS가 .wmodal에 추가하거나 HTML에 포함) -->
@@ -760,7 +760,7 @@
         <div class="wmh-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="image" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Picture Description</span></div>
         <div class="wmh-sub" id="pd-step-label">Step 1 / 3 — Key Vocabulary</div>
       </div>
-      <button class="wmh-close" onclick="closePictureDescription()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+      <button aria-label="Close" class="wmh-close" onclick="closePictureDescription()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
     <!-- Step progress pips -->
     <div style="display:flex;gap:6px;padding:0 16px 14px;flex-shrink:0">
@@ -790,7 +790,7 @@
         <span style="display:inline-flex;width:20px;height:20px;color:#a78bfa;vertical-align:-4px;margin-right:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span>
         스피킹 연습
       </div>
-      <button class="wmh-close" onclick="closeSpeakingPractice()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+      <button aria-label="Close" class="wmh-close" onclick="closeSpeakingPractice()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
     <div class="wm-body" style="padding:18px 20px 20px;overflow-y:auto">
       <!-- Reference text box -->
@@ -834,7 +834,7 @@
         <div class="wmh-title" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="pen-line" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Sentence Writing from Articles</span></div>
         <div class="wmh-sub">Article-window style drills: word order, fill-in-the-blank, and writing with English support.</div>
       </div>
-      <button class="wmh-close" onclick="closeSentenceWriting()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+      <button aria-label="Close" class="wmh-close" onclick="closeSentenceWriting()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
     <div class="wm-center" style="padding:16px;gap:12px;">
       <div class="sr-practice-box">
@@ -867,7 +867,7 @@
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.5);margin-bottom:4px">WEAK GRAMMAR DRILL</div>
         <div style="font-size:18px;font-weight:900;color:#fff;font-family:'Noto Serif KR',serif" id="wg-drill-title"></div>
       </div>
-      <button onclick="closeWGDrill()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">&times;</button>
+      <button aria-label="Close" onclick="closeWGDrill()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">&times;</button>
     </div>
     <div id="wg-drill-body" style="padding:20px 24px"></div>
   </div>
@@ -886,7 +886,7 @@
         <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25">Munch on today's phrases</div>
         <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:3px">Learn the breakdown, then translate a similar sentence</div>
       </div>
-      <button onclick="closePhraseMunch()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+      <button aria-label="Close" onclick="closePhraseMunch()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
     <div id="pm-body" style="padding:20px 22px 24px;flex:1;overflow-y:auto"></div>
   </div>
@@ -903,7 +903,7 @@
         <div id="gf-title" style="font-size:19px;font-weight:900;color:#fff;line-height:1.3">Grammar Practice</div>
         <div id="gf-subtitle" style="font-size:12px;color:rgba(255,255,255,.55);margin-top:3px">Today's focused grammar study</div>
       </div>
-      <button onclick="closeGrammarFocusModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+      <button aria-label="Close" onclick="closeGrammarFocusModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
 
     <!-- Step progress bar -->
@@ -1005,7 +1005,7 @@
     <div class="bm-header">
       <div class="bm-step-pills" id="bm-step-pills"></div>
       <div class="bm-topic" id="bm-topic-label">Today's Topic</div>
-      <button class="bm-close" onclick="closeBModal()" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
+      <button aria-label="Close" class="bm-close" onclick="closeBModal()" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
     </div>
     <!-- PROGRESS BAR -->
     <div class="bm-progress-track"><div class="bm-progress-bar" id="bm-progress-bar"></div></div>
@@ -1027,7 +1027,7 @@
     <div class="bm-header">
       <div class="bm-step-pills" id="im-step-pills"></div>
       <div class="bm-topic" id="im-topic-label">Today's Topic</div>
-      <button class="bm-close" onclick="closeIMModal()" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
+      <button aria-label="Close" class="bm-close" onclick="closeIMModal()" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
     </div>
     <div class="bm-progress-track"><div class="bm-progress-bar" id="im-progress-bar"></div></div>
     <div class="bm-body" id="im-body"></div>
@@ -1045,7 +1045,7 @@
         <div class="sm-pip"></div><div class="sm-pip"></div><div class="sm-pip"></div>
       </div>
       <div class="sm-title" id="sm-title">Starter Activity</div>
-      <button class="sm-close" onclick="closeSModal()">&#10005;</button>
+      <button aria-label="Close" class="sm-close" onclick="closeSModal()">&#10005;</button>
     </div>
     <div class="sm-body" id="sm-body"></div>
     <div class="sm-footer" id="sm-footer"></div>
@@ -1061,7 +1061,7 @@
     <div class="ls-header">
       <div class="ls-header-title">What do you want to learn?</div>
       <div class="ls-header-sub">Tap a node to start learning</div>
-      <button onclick="closeLearningSelector()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;line-height:1;display:inline-flex;align-items:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+      <button aria-label="Close" onclick="closeLearningSelector()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.35);cursor:pointer;line-height:1;display:inline-flex;align-items:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
 
     <!-- Mind Map -->
@@ -1183,7 +1183,7 @@
 ═══════════════════════════════════════════ -->
 <div role="button" tabindex="0" class="woverlay hidden" id="wb-modal" onclick="if(event.target===this)closeWordBankModal()">
   <div style="background:#0d1b2e;border-radius:18px;max-width:620px;width:95%;margin:auto;padding:28px 24px;color:#fff;max-height:85vh;overflow-y:auto;position:relative">
-    <button onclick="closeWordBankModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;display:inline-flex;align-items:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
+    <button aria-label="Close" onclick="closeWordBankModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;display:inline-flex;align-items:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     <i data-lucide="library" class="kh-ui-icon" style="width:24px;height:24px;margin-bottom:6px;color:#c4b5fd" aria-hidden="true"></i>
     <h2 style="margin:0 0 4px;font-size:18px;font-weight:900">My Word Book</h2>
     <p style="margin:0 0 14px;font-size:13px;color:rgba(255,255,255,.5)">Your saved words — tap any word to see its meaning</p>
@@ -1299,7 +1299,7 @@ function openUniverseView() {
         <div style="font-size:13px;font-weight:800;letter-spacing:.5px;display:inline-flex;align-items:center;gap:6px"><i data-lucide="target" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Nuance Quiz</span></div>
         <div style="font-size:11px;opacity:.65;margin-top:2px" id="nq-step-sub">유의어 구별 · Forest</div>
       </div>
-      <button onclick="closeNuanceQuiz()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;display:inline-flex;align-items:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
+      <button aria-label="Close" onclick="closeNuanceQuiz()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;display:inline-flex;align-items:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
     </div>
     <div class="dct-body" id="nq-body">
       <div class="as-loading"><div class="as-spinner"></div><div>Loading…</div></div>
@@ -1356,7 +1356,7 @@ function openUniverseView() {
           <div class="su-header-eyebrow">Conversation Study</div>
           <div class="su-header-title">Select a Conversation</div>
         </div>
-        <button class="su-close" onclick="closeConvStudy()">&#10005;</button>
+        <button aria-label="Close" class="su-close" onclick="closeConvStudy()">&#10005;</button>
       </div>
       <div style="padding:16px;overflow-y:auto;flex:1">
         <div id="cs-conv-grid" class="as-article-grid"><div class="su-loading"><div class="su-spinner"></div><div>Loading conversations...</div></div></div>
@@ -1365,12 +1365,12 @@ function openUniverseView() {
     <!-- STUDY VIEW -->
     <div id="cs-study-view" class="as-hidden" style="display:flex;flex-direction:column;flex:1;min-height:0">
       <div class="su-header">
-        <button class="su-back" onclick="csBackToList()">&#8592;</button>
+        <button aria-label="Back" class="su-back" onclick="csBackToList()">&#8592;</button>
         <div class="su-header-info">
           <div class="su-header-eyebrow" id="cs-step-label">Step 1 / 4 — Dialogue</div>
           <div class="su-header-title" id="cs-conv-title">Conversation Study</div>
         </div>
-        <button class="su-close" onclick="closeConvStudy()">&#10005;</button>
+        <button aria-label="Close" class="su-close" onclick="closeConvStudy()">&#10005;</button>
       </div>
       <div class="su-steps" id="cs-step-tabs">
         <div role="button" tabindex="0" class="su-step active" onclick="csGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Dialogue</span></div>
@@ -1932,7 +1932,7 @@ function _csBuildCheck() {
           <div class="su-header-eyebrow">Article Study</div>
           <div class="su-header-title">Select an Article</div>
         </div>
-        <button class="su-close" onclick="closeArticleStudy()">&#10005;</button>
+        <button aria-label="Close" class="su-close" onclick="closeArticleStudy()">&#10005;</button>
       </div>
       <div style="padding:16px;overflow-y:auto;flex:1">
         <!-- Saved-only toggle: when 'Saved' is active, the picker shows
@@ -1953,12 +1953,12 @@ function _csBuildCheck() {
     <div id="as-study-view" class="as-hidden" style="display:flex;flex-direction:column;flex:1;min-height:0">
       <!-- Header -->
       <div class="su-header">
-        <button class="su-back" onclick="asBackToList()">&#8592;</button>
+        <button aria-label="Back" class="su-back" onclick="asBackToList()">&#8592;</button>
         <div class="su-header-info">
           <div class="su-header-eyebrow" id="as-step-label">Step 1 / 4 — Vocabulary</div>
           <div class="su-header-title" id="as-article-title">Article Study</div>
         </div>
-        <button class="su-close" onclick="closeArticleStudy()">&#10005;</button>
+        <button aria-label="Close" class="su-close" onclick="closeArticleStudy()">&#10005;</button>
       </div>
       <!-- Step tabs (Writing step removed — Free Writing lives in Express Practice now) -->
       <div class="su-steps" id="as-step-tabs">
@@ -2041,7 +2041,7 @@ body.kh-dr-active #sr-notif-daily { display:none !important; }
         <div class="dr-progress-track"><div class="dr-progress-fill" id="dr-progress" style="width:0%"></div></div>
         <span id="dr-q-counter" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4)">0/0</span>
       </div>
-      <button onclick="closeDailyReview()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;margin-left:8px;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
+      <button aria-label="Close" onclick="closeDailyReview()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;margin-left:8px;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
     </div>
     <div class="dr-body" id="dr-body">
       <div style="text-align:center;padding:30px 0"><div style="font-size:14px;color:#8b8b8b">Generating questions...</div></div>
@@ -2447,7 +2447,7 @@ function drShowScore(){
         <div id="rv-timer" style="font-size:14px;font-weight:800;color:#f59e0b;display:none">15s</div>
         <div style="flex:1;min-width:80px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden"><div id="rv-progress" style="width:0%;height:100%;background:var(--bright,#2563eb);border-radius:2px;transition:width .3s"></div></div>
         <span id="rv-counter" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4)">0/0</span>
-        <button onclick="rvHandleClose()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
+        <button aria-label="Close" onclick="rvHandleClose()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
       </div>
     </div>
     <div id="rv-body" style="padding:20px;min-height:200px"></div>
@@ -3572,7 +3572,7 @@ function closeReviewModal() {
 <!-- ═══ FAST TRACK OVERLAY ═══ -->
 <div class="ft-overlay" id="ft-overlay">
   <div class="ft-bg"></div>
-  <button class="ft-close-btn" onclick="closeFastTrack()">&times;</button>
+  <button aria-label="Close" class="ft-close-btn" onclick="closeFastTrack()">&times;</button>
   <div class="ft-top">
     <div>
       <div class="ft-title" id="ft-title">THE CAFE</div>
@@ -3609,7 +3609,7 @@ function closeReviewModal() {
 <!-- ═══ SLANG MODAL ═══ -->
 <div role="button" tabindex="0" class="feat-overlay" id="slang-overlay" onclick="if(event.target===this)closeSlangModal()">
 <div class="feat-modal">
-  <button class="feat-close" onclick="closeSlangModal()">&times;</button>
+  <button aria-label="Close" class="feat-close" onclick="closeSlangModal()">&times;</button>
   <div style="padding:24px 20px 12px">
     <div style="font-size:24px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px"><i data-lucide="flame" class="kh-ui-icon" style="width:24px;height:24px;color:#fb923c" aria-hidden="true"></i><span>Korean Slang</span></div>
     <div style="display:flex;gap:6px;margin-top:10px">
@@ -3625,7 +3625,7 @@ function closeReviewModal() {
 <!-- ═══ WORD BUILDER MODAL ═══ -->
 <div role="button" tabindex="0" class="feat-overlay" id="alpha-overlay" onclick="if(event.target===this)closeAlphaModal()">
 <div class="feat-modal alpha-modal">
-  <button class="feat-close" onclick="closeAlphaModal()">&times;</button>
+  <button aria-label="Close" class="feat-close" onclick="closeAlphaModal()">&times;</button>
   <div style="padding:20px 20px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
     <div>
       <div style="font-size:20px;font-weight:900;color:#fff">단어 만들기</div>
@@ -3664,7 +3664,7 @@ function closeReviewModal() {
 <!-- ═══ PHONE CALL MODAL ═══ -->
 <div role="button" tabindex="0" class="feat-overlay" id="phone-overlay" onclick="if(event.target===this)closePhoneModal()">
 <div class="feat-modal" style="max-width:560px">
-  <button class="feat-close" onclick="closePhoneModal()">&times;</button>
+  <button aria-label="Close" class="feat-close" onclick="closePhoneModal()">&times;</button>
   <div style="padding:24px 20px 16px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <i data-lucide="phone" class="kh-ui-icon" style="width:24px;height:24px;color:#7dd3fc" aria-hidden="true"></i>
@@ -3679,7 +3679,7 @@ function closeReviewModal() {
   <!-- Player (shown when a call is selected) -->
   <div class="pc-player" id="phone-call-player">
     <div class="pc-player-head">
-      <button class="pc-back-btn" onclick="pcBackToList()">&#8592;</button>
+      <button aria-label="Back" class="pc-back-btn" onclick="pcBackToList()">&#8592;</button>
       <div style="flex:1">
         <div class="pc-player-title" id="pc-title"></div>
         <div class="pc-player-desc" id="pc-desc"></div>
@@ -3691,10 +3691,10 @@ function closeReviewModal() {
     <div class="pc-audio-box">
       <div class="pc-wave-visual" id="pc-wave-visual"></div>
       <div class="pc-controls">
-        <button class="pc-play-btn" id="pc-play-btn" onclick="pcTogglePlay()">&#9654;</button>
+        <button aria-label="Play or pause" class="pc-play-btn" id="pc-play-btn" onclick="pcTogglePlay()">&#9654;</button>
         <div class="pc-progress-wrap">
           <span class="pc-time" id="pc-time-cur">0:00</span>
-          <div role="button" tabindex="0" class="pc-progress-bar" id="pc-progress-bar" onclick="pcProgressClick(event)">
+          <div role="button" tabindex="0" aria-label="Seek phone call audio" class="pc-progress-bar" id="pc-progress-bar" onclick="pcProgressClick(event)">
             <div class="pc-progress-fill" id="pc-progress-fill"></div>
             <div class="pc-progress-dot" id="pc-progress-dot" style="left:0%"></div>
           </div>
