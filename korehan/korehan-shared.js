@@ -211,6 +211,74 @@ function kh_log_error(msgOrErr, context, severity) {
 }
 window.kh_log_error = kh_log_error;
 
+// SEO-F5: update page meta (title / description / canonical / og:* /
+// twitter:*) after the page has fetched its content. Used by detail
+// pages (article, story, conversation, section) whose static head
+// can only show a generic placeholder until JS knows which item
+// loaded.
+//
+// Usage:
+//   khUpdatePageMeta({
+//     title: 'Article title — KoreHani',
+//     description: 'one-line summary',
+//     image: 'https://... absolute URL',  // optional
+//     url:   'https://korehani.com/...',  // canonical
+//     type:  'article',                   // optional og:type
+//   });
+//
+// Safe to call before DOMContentLoaded — uses defensive
+// document.querySelector + creates missing tags inside <head>.
+function khUpdatePageMeta(meta) {
+  if (!meta || typeof meta !== 'object') return;
+  try {
+    var head = document.head || document.getElementsByTagName('head')[0];
+    if (!head) return;
+
+    function setOrCreateMeta(selector, attrName, attrValue, contentValue) {
+      var el = document.querySelector(selector);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute(attrName, attrValue);
+        head.appendChild(el);
+      }
+      el.setAttribute('content', contentValue);
+    }
+
+    if (meta.title) {
+      try { document.title = String(meta.title).slice(0, 200); } catch (_) {}
+      setOrCreateMeta('meta[property="og:title"]',      'property', 'og:title',      String(meta.title).slice(0, 200));
+      setOrCreateMeta('meta[name="twitter:title"]',     'name',     'twitter:title', String(meta.title).slice(0, 200));
+    }
+    if (meta.description) {
+      var desc = String(meta.description).slice(0, 300);
+      setOrCreateMeta('meta[name="description"]',           'name',     'description',           desc);
+      setOrCreateMeta('meta[property="og:description"]',    'property', 'og:description',        desc);
+      setOrCreateMeta('meta[name="twitter:description"]',   'name',     'twitter:description',   desc);
+    }
+    if (meta.image) {
+      var img = String(meta.image);
+      setOrCreateMeta('meta[property="og:image"]',  'property', 'og:image',  img);
+      setOrCreateMeta('meta[name="twitter:image"]', 'name',     'twitter:image', img);
+    }
+    if (meta.url) {
+      var url = String(meta.url);
+      setOrCreateMeta('meta[property="og:url"]', 'property', 'og:url', url);
+      // canonical isn't a meta — handle separately
+      var canon = document.querySelector('link[rel="canonical"]');
+      if (!canon) {
+        canon = document.createElement('link');
+        canon.setAttribute('rel', 'canonical');
+        head.appendChild(canon);
+      }
+      canon.setAttribute('href', url);
+    }
+    if (meta.type) {
+      setOrCreateMeta('meta[property="og:type"]', 'property', 'og:type', String(meta.type));
+    }
+  } catch (_) { /* meta-update failure shouldn't crash the page */ }
+}
+window.khUpdatePageMeta = khUpdatePageMeta;
+
 // Global uncaught error / unhandled promise listeners — the safety
 // net that catches everything no try/catch noticed. Same rate-limit
 // applies.
@@ -3665,6 +3733,30 @@ function renderArticlePage() {
       + '</div>';
     return;
   }
+
+  // SEO-F5: now that we know which article this is, update the page's
+  // title/description/og:*/twitter:*/canonical to reflect THIS article
+  // instead of the generic "KoreHani — Article" placeholder. Without
+  // this, every shared link to /korehan-article.html?id=X shows the
+  // same generic OG card on Slack/Twitter/KakaoTalk.
+  try {
+    var artUrl = 'https://korehani.com/korehan-article.html?id=' + encodeURIComponent(a.id);
+    var artDesc = String(a.summary || a.body || a.title_en || a.title || '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 155);
+    var artImg = (a.image && /^https?:\/\//.test(a.image)) ? a.image
+               : (a.thumbnail && /^https?:\/\//.test(a.thumbnail)) ? a.thumbnail
+               : 'https://korehani.com/img/guide/hero-express.png';
+    khUpdatePageMeta({
+      title:       (a.title || 'Article') + ' — KoreHani',
+      description: artDesc,
+      image:       artImg,
+      url:         artUrl,
+      type:        'article',
+    });
+  } catch (_) {}
 
   var heroMedia = khArticleHeroMedia(a);
   // Compact date — "2026. 4. 22." (short Korean locale) fits better next to
@@ -9439,12 +9531,20 @@ function getCurrentStreak() {
   // freeze_used_week at sign-in) so the walk stays sync.
   var freezeDay = lsGet('kh_streak_freeze_day', '');
   if (freezeDay) allDays[freezeDay] = true;
+  // CRON-F5: walk in KST, not UTC. Activity is recorded under
+  // YYYY-MM-DD KST keys (every other site uses `new Date(Date.now()
+  // + 9*3600000)` for date keys — e.g. lines ~10083, ~11966).
+  // Before this fix the walker used `new Date()` then
+  // `.toISOString().slice(0,10)` which is UTC, so between
+  // 15:00-23:59 UTC (00:00-08:59 KST) the walker thought "today"
+  // was one day behind reality and silently dropped the streak by
+  // a day for any Korean user who opened the app in the morning.
   var streak = 0;
-  var d = new Date();
+  var d = new Date(Date.now() + 9 * 3600000); // shift to KST
   for (var i = 0; i < 400; i++) {
     var key = d.toISOString().slice(0,10);
-    if (allDays[key]) { streak++; d.setDate(d.getDate()-1); }
-    else if (i === 0) { d.setDate(d.getDate()-1); } // 오늘 아직 안 했어도 어제부터
+    if (allDays[key]) { streak++; d = new Date(d.getTime() - 86400000); }
+    else if (i === 0) { d = new Date(d.getTime() - 86400000); } // 오늘 아직 안 했어도 어제부터
     else break;
   }
   return Math.max(streak, lsGet('kh_synced_activity_streak', 0));
