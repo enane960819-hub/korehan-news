@@ -89,6 +89,17 @@ img { max-width: 100%; display: block; }
 a { color: inherit; text-decoration: none; }
 h1, h2, h3, h4 { word-break: keep-all; overflow-wrap: break-word; }
 
+/* SEO-F6: visually-hidden but screen-reader / search-engine readable
+   h1 for pages whose visible hero uses a styled <div>. Standard
+   "sr-only" rule that doesn't break flow or focus. */
+.kh-sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+
 /* ── HEADER ─────────────────────────────────────────────── */
 /* ── HEADER (white logo bar) ───────────────────────────── */
 .kh-header-bar { background: #fff; border-bottom: 1px solid var(--border); }
