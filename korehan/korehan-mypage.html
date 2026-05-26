@@ -1244,6 +1244,13 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
     <div id="mp-profile-fields"></div>
   </div>
 
+  <!-- PRIV-F3: data-export UI (GDPR Art 15 / 20, PIPA Art 35 열람권) -->
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;margin-bottom:14px">
+    <h3 style="font-size:14px;font-weight:900;margin:0 0 10px">Export My Data</h3>
+    <p style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.6">Download a JSON file containing all your KoreHani data — saved words, reading history, quiz results, submissions, comments, and file manifests.</p>
+    <button onclick="exportMyData()" id="export-my-data-btn" style="padding:9px 20px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Download my data</button>
+  </div>
+
   <div class="danger-zone">
     <h3 style="font-size:14px;font-weight:900;margin:0 0 10px">Danger Zone</h3>
     <p style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.6">Your account and all learning data will be permanently deleted and cannot be recovered.</p>
@@ -2066,6 +2073,43 @@ async function sendPasswordReset() {
   }
 }
 
+// PRIV-F3: download a JSON dump of every row + storage manifest the
+// user owns. Calls the export-my-data Edge Function and triggers a
+// browser download of the response.
+async function exportMyData() {
+  var sb = getSupa();
+  if (!sb || !supaUser) { khAlert('Sign in required', 'Please sign in first.'); return; }
+  var btn = document.getElementById('export-my-data-btn');
+  var origLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Preparing…'; }
+  try {
+    var sess = await sb.auth.getSession();
+    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    if (!token) { khAlert('Sign in required', 'Please sign in again.'); return; }
+    var res = await fetch('https://samghztrdvtxmrmawneu.supabase.co/functions/v1/export-my-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    });
+    if (!res.ok) {
+      var errBody = await res.json().catch(function(){ return {}; });
+      khAlert('Export failed', (errBody && errBody.error) || ('HTTP ' + res.status));
+      return;
+    }
+    var blob = await res.blob();
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'korehani-data-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1000);
+  } catch (e) {
+    khAlert('Export failed', (e && e.message) || 'Please try again later.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = origLabel; }
+  }
+}
+
 async function confirmDeleteAccount() {
   var ok1 = await khConfirm(
     'Delete your account?',
@@ -2079,6 +2123,26 @@ async function confirmDeleteAccount() {
     { okLabel: 'Delete account', destructive: true }
   );
   if (!ok2) return;
+
+  // PRIV-F6: identity verification before destructive action.
+  // A stolen device with an active session could otherwise click
+  // through the two confirm dialogs and destroy the account. The
+  // user types their own email address, we verify it matches
+  // supaUser.email (case-insensitive). Wrong email → abort.
+  // window.prompt is intentional — khConfirm is button-only and a
+  // bespoke modal here would be a lot of code for one rare action.
+  var typed = window.prompt(
+    'To confirm, type your account email address (' +
+    ((supaUser && supaUser.email) || 'you@example.com') +
+    '):'
+  );
+  if (typed === null) return; // user clicked Cancel
+  var typedNorm = String(typed || '').trim().toLowerCase();
+  var actualNorm = String((supaUser && supaUser.email) || '').trim().toLowerCase();
+  if (!typedNorm || !actualNorm || typedNorm !== actualNorm) {
+    await khAlert('Email did not match', 'Account deletion cancelled. The email you typed does not match the one on the account.');
+    return;
+  }
 
   var sb = getSupa();
   if (!sb || !supaUser) return;
