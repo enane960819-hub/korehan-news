@@ -823,7 +823,7 @@
           +         '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:20px;font-weight:900;line-height:1.15;margin-top:2px">' + _netEsc(line.name_ko) + '</div>'
           +         '<div style="font-size:11px;color:rgba(220,210,255,.6);margin-top:5px;line-height:1.45">' + _netEsc(line.description || '') + '</div>'
           +       '</div>'
-          +       '<button onclick="document.getElementById(\'net-line-modal\').remove()" style="background:rgba(255,255,255,.08);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>'
+          +       '<button aria-label="Close" onclick="document.getElementById(\'net-line-modal\').remove()" style="background:rgba(255,255,255,.08);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>'
           +     '</div>'
           +     '<div style="display:flex;gap:10px;align-items:center;margin-top:12px">'
           +       '<div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,' + line.color + ',' + line.color + 'cc)"></div></div>'
@@ -1067,7 +1067,7 @@
         +     '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.75)">K-Express</div>'
         +     '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:26px;font-weight:900">한국어 노선도 (전체 ' + all.length + '개 역)</div>'
         +   '</div>'
-        +   '<button onclick="this.parentElement.parentElement.parentElement.style.display=\'none\';" style="width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(20,24,48,.8);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
+        +   '<button aria-label="Close" onclick="this.parentElement.parentElement.parentElement.style.display=\'none\';" style="width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(20,24,48,.8);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
         + '</div>'
         + '<div id="gl-fullmap-body" style="color:rgba(220,210,255,.8);font-size:14px;line-height:1.6;padding:32px 12px;text-align:center">'
         +   '<div style="display:inline-flex;width:46px;height:46px;margin-bottom:10px;color:#fbbf24"><i data-lucide="construction" class="kh-ui-icon" style="width:46px;height:46px" aria-hidden="true"></i></div>'
@@ -1137,9 +1137,9 @@
       <!-- Tab: Calendar -->
       <div id="htab-body-calendar" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <button onclick="calNavMonth(-1)" style="padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px">←</button>
+          <button aria-label="Previous month" onclick="calNavMonth(-1)" style="padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px">←</button>
           <span id="cal-month-label" style="font-weight:800;font-size:13px"></span>
-          <button onclick="calNavMonth(1)" style="padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px">→</button>
+          <button aria-label="Next month" onclick="calNavMonth(1)" style="padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px">→</button>
         </div>
         <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center"></div>
         <div style="display:flex;gap:12px;justify-content:center;align-items:center;margin-top:8px;font-size:11px;color:#64748b;flex-wrap:wrap">

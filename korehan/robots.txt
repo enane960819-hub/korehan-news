@@ -155,8 +155,21 @@ Disallow: /
 
 # --- Default policy ---
 User-agent: *
+# Admin CMS (obscured URL — keep out of search regardless).
 Disallow: /korehan-x9f4k2m7
 Disallow: /korehan-x9f4k2m7.html
 Disallow: /korehan-x9f4k2m7-hover-vocab.html
 Disallow: /korehan-x9f4k2m7-phrases.html
+Disallow: /korehan-x9f4k2m7-errors.html
+Disallow: /korehan-x9f4k2m7-schema.html
+# Tutor dashboard (obscured URL, gated to tutor accounts).
+Disallow: /korehan-tutor-7v3ca.html
+# Auth-gated user pages — no value in search, and they 302 to login.
+Disallow: /korehan-mypage.html
+Disallow: /korehan-profile.html
+Disallow: /korehan-onboarding.html
+Disallow: /confirm-subscription.html
+Disallow: /unsubscribe.html
+# Dev / preview routes — not user-facing.
+Disallow: /onboarding-preview-compact.html
 Allow: /

@@ -378,7 +378,7 @@ body.sb-open .sb-backdrop{display:block}
 <!-- ARTICLE MODAL -->
 <div class="ov" id="ov" style="display:none">
   <div class="mbox">
-    <div class="m-hd"><h2 id="m-ttl">Article</h2><button class="m-x" id="m-x" onclick="closeModal()">✕</button></div>
+    <div class="m-hd"><h2 id="m-ttl">Article</h2><button aria-label="Close" class="m-x" id="m-x" onclick="closeModal()">✕</button></div>
     <div class="m-bd" id="m-bd"></div>
     <div class="m-ft">
       <button class="btn btn-gh" id="m-del-from-modal" style="background:#c33;color:#fff;margin-right:auto;display:none" onclick="deleteFromModal()">🗑 Delete</button>
@@ -2415,7 +2415,7 @@ function renderQwTips(tips) {
       ${tips.map((t, i) => `<div class="sf-card" style="position:relative;display:flex;gap:12px;align-items:flex-start">
         <div style="min-width:22px;padding-top:10px;font-size:12px;color:#94a3b8;font-weight:700">#${i+1}</div>
         <textarea class="inp inp-ta qw-tip" style="flex:1;min-height:68px;resize:vertical">${esc(t)}</textarea>
-        <button class="btn btn-gh row-del" onclick="this.closest('.sf-card').remove()" style="flex-shrink:0;padding:6px 10px">✕</button>
+        <button aria-label="Close" class="btn btn-gh row-del" onclick="this.closest('.sf-card').remove()" style="flex-shrink:0;padding:6px 10px">✕</button>
       </div>`).join('')}
     </div>
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
@@ -2434,7 +2434,7 @@ function qwAddTip() {
   d.style.cssText = 'position:relative;display:flex;gap:12px;align-items:flex-start';
   d.innerHTML = '<div style="min-width:22px;padding-top:10px;font-size:12px;color:#94a3b8;font-weight:700">#'+count+'</div>'
     + '<textarea class="inp inp-ta qw-tip" style="flex:1;min-height:68px;resize:vertical" placeholder="새 학습 팁 입력…"></textarea>'
-    + '<button class="btn btn-gh row-del" onclick="this.closest(\'.sf-card\').remove()" style="flex-shrink:0;padding:6px 10px">✕</button>';
+    + '<button aria-label="Close" class="btn btn-gh row-del" onclick="this.closest(\'.sf-card\').remove()" style="flex-shrink:0;padding:6px 10px">✕</button>';
   list.appendChild(d);
 }
 
@@ -3220,7 +3220,7 @@ function renderPhraseExampleRows(examples){
         <label class="inp-label">예문 ${i+1} (영어)</label>
         <textarea class="inp phrase-ex-en" style="min-height:72px">${esc(ex.en || '')}</textarea>
       </div>
-      <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>
+      <button aria-label="Close" class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>
     </div>`).join('');
 }
 function addPhraseExampleRow(){
@@ -3233,7 +3233,7 @@ function addPhraseExampleRow(){
   d.innerHTML = `
     <div><label class="inp-label">예문 ${n} (한국어)</label><textarea class="inp phrase-ex-ko" style="min-height:72px"></textarea></div>
     <div><label class="inp-label">예문 ${n} (영어)</label><textarea class="inp phrase-ex-en" style="min-height:72px"></textarea></div>
-    <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>`;
+    <button aria-label="Close" class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>`;
   box.appendChild(d);
 }
 function collectPhraseAdminForm(){
@@ -4499,7 +4499,7 @@ function renderWbRows(items){
       <div><label class="inp-label">한국어</label><input class="inp inp-sm wb-ko" value="${esc(w.ko)}" placeholder="뉴스" style="font-size:20px;font-weight:900"></div>
       <div><label class="inp-label">로마자</label><input class="inp inp-sm wb-rom" value="${esc(w.rom)}" placeholder="nyu-seu"></div>
       <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm wb-en" value="${esc(w.en)}" placeholder="news"></div>
-      <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>
+      <button aria-label="Close" class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>
     </div>`).join('');
 }
 function addWbRow(){
@@ -4508,7 +4508,7 @@ function addWbRow(){
   d.innerHTML=`<div><label class="inp-label">한국어</label><input class="inp inp-sm wb-ko" placeholder="한국어" style="font-size:20px;font-weight:900"></div>
     <div><label class="inp-label">로마자</label><input class="inp inp-sm wb-rom" placeholder="romanization"></div>
     <div><label class="inp-label">영어 뜻</label><input class="inp inp-sm wb-en" placeholder="meaning"></div>
-    <button class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>`;
+    <button aria-label="Close" class="row-del" style="align-self:flex-end" onclick="this.closest('.row-editor').remove()">✕</button>`;
   el.appendChild(d);
 }
 function saveWordBank(){
@@ -4553,7 +4553,7 @@ function renderSentRows(items){
       +'<input class="inp inp-sm sent-ko" value="'+esc(s.ko)+'" placeholder="한국어 문장"></div>'
       +'<div><label class="inp-label">영어 번역</label>'
       +'<input class="inp inp-sm sent-en" value="'+esc(s.en)+'" placeholder="English translation"></div>'
-      +'<button class="row-del" style="align-self:flex-end" onclick="this.closest(\'.row-editor\').remove()\">✕</button>'
+      +'<button aria-label="Close" class="row-del" style="align-self:flex-end" onclick="this.closest(\'.row-editor\').remove()\">✕</button>'
       +'</div>';
   }).join('');
 }
@@ -4570,7 +4570,7 @@ function addSentRow(){
     +'<input class="inp inp-sm sent-ko" placeholder="한국어 문장"></div>'
     +'<div><label class="inp-label">영어 번역</label>'
     +'<input class="inp inp-sm sent-en" placeholder="English translation"></div>'
-    +'<button class="row-del" style="align-self:flex-end" onclick="this.closest(\'.row-editor\').remove()\">✕</button>';
+    +'<button aria-label="Close" class="row-del" style="align-self:flex-end" onclick="this.closest(\'.row-editor\').remove()\">✕</button>';
   el.appendChild(d);
 }
 function saveSentences(){
@@ -7668,7 +7668,7 @@ function renderExpressionsEditor(articleId, existingJson) {
       + ['blue','green','amber','rose'].map(function(c){ return '<option value="'+c+'"'+(ex.color===c?' selected':'')+'>'+c+'</option>'; }).join('')
       + '</select>'
       + '<input class="expr-note" style="flex:2;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit" placeholder="Note (optional)…" value="' + (ex.note||'').replace(/"/g,'&quot;') + '">'
-      + '<button onclick="this.closest(\'.expr-row\').remove()" style="padding:5px 9px;border:none;background:#fee2e2;color:#991b1b;border-radius:6px;cursor:pointer;font-size:13px">✕</button>'
+      + '<button aria-label="Close" onclick="this.closest(\'.expr-row\').remove()" style="padding:5px 9px;border:none;background:#fee2e2;color:#991b1b;border-radius:6px;cursor:pointer;font-size:13px">✕</button>'
       + '</div>';
   }).join('');
   return '<div style="padding-top:14px">'
@@ -7700,7 +7700,7 @@ function addExprRow(articleId) {
     + ['blue','green','amber','rose'].map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('')
     + '</select>'
     + '<input class="expr-note" style="flex:2;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit" placeholder="Note (optional)…">'
-    + '<button onclick="this.closest(\'.expr-row\').remove()" style="padding:5px 9px;border:none;background:#fee2e2;color:#991b1b;border-radius:6px;cursor:pointer;font-size:13px">✕</button>';
+    + '<button aria-label="Close" onclick="this.closest(\'.expr-row\').remove()" style="padding:5px 9px;border:none;background:#fee2e2;color:#991b1b;border-radius:6px;cursor:pointer;font-size:13px">✕</button>';
   container.appendChild(div);
   div.querySelector('.expr-phrase').focus();
 }
@@ -8462,7 +8462,7 @@ async function openNlCampaignEditor(campaignId) {
   var alreadySent = existing && existing.status === 'sent';
   var ov = document.createElement('div');
   ov.className = 'ov';
-  ov.innerHTML = '<div class="mbox" style="max-width:720px"><div class="m-hd"><h2>' + (isNew ? '새 캠페인' : (alreadySent ? '발송된 캠페인' : '캠페인 편집')) + '</h2><button class="m-x" onclick="this.closest(\'.ov\').remove()">×</button></div>'
+  ov.innerHTML = '<div class="mbox" style="max-width:720px"><div class="m-hd"><h2>' + (isNew ? '새 캠페인' : (alreadySent ? '발송된 캠페인' : '캠페인 편집')) + '</h2><button aria-label="Close" class="m-x" onclick="this.closest(\'.ov\').remove()">×</button></div>'
     + '<div class="m-bd">'
     + '<div class="fg"><label>제목 (Subject)</label><input id="nlc-subject" ' + (alreadySent?'readonly':'') + ' value="' + esc((existing && existing.subject) || '') + '" placeholder="이번 주 한국어 학습 팁"></div>'
     + '<div class="fg"><label>프리헤더 (메일 미리보기 한 줄)</label><input id="nlc-preheader" ' + (alreadySent?'readonly':'') + ' value="' + esc((existing && existing.preheader) || '') + '" placeholder="새 단어 7개와 오늘의 문장"></div>'
@@ -9571,7 +9571,7 @@ window.openConvBatchModal = async function openConvBatchModal() {
   overlay.id = 'cv-batch-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(8,12,28,.72);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px';
   overlay.innerHTML = '<div style="background:#fff;border-radius:16px;padding:22px;max-width:720px;width:100%;max-height:90vh;overflow:auto;font-family:inherit">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div style="font-size:17px;font-weight:900;color:#0b1626">🪄 Batch generate from scenario pool</div><button onclick="this.closest(\'#cv-batch-overlay\').remove()" style="background:none;border:0;font-size:24px;color:#64748b;cursor:pointer;line-height:1">×</button></div>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div style="font-size:17px;font-weight:900;color:#0b1626">🪄 Batch generate from scenario pool</div><button aria-label="Close" onclick="this.closest(\'#cv-batch-overlay\').remove()" style="background:none;border:0;font-size:24px;color:#64748b;cursor:pointer;line-height:1">×</button></div>'
     + '<div style="font-size:12px;color:#64748b;margin-bottom:14px;line-height:1.5">Pick scenarios to generate sequentially. Each one runs the existing single-conv pipeline (generate → review → save → sentence-bake → mark used). The loop pauses <b>30 s</b> between calls so you stay under the Claude rate limit.</div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:11px;color:#64748b">'
     +   '<button onclick="window._cvBatchSelectAll(true)" style="padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;cursor:pointer;font-family:inherit;font-weight:700;font-size:11px">Select all unused</button>'
@@ -11648,7 +11648,7 @@ async function openConvEditModal(rowId, existingData) {
 
       + '<div style="background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;min-width:0;">'
       +   '<div style="padding:20px 22px;background:linear-gradient(135deg,#2550b7 0%,#3a72ea 100%);color:#fff;position:relative;">'
-      +     '<button onclick="closeConvEditOverlay()" style="position:absolute;right:16px;top:16px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer">✕</button>'
+      +     '<button aria-label="Close" onclick="closeConvEditOverlay()" style="position:absolute;right:16px;top:16px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer">✕</button>'
       +     '<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.82;margin-bottom:10px">' + (isNew ? 'New Conversation' : 'Conversation Editor') + '</div>'
       +     '<div id="ce-preview-name" style="font-family:\'Noto Serif KR\',serif;font-size:34px;font-weight:900;line-height:1.1;letter-spacing:-0.03em;">' + ((d.name || 'New Conversation').replace(/</g,'&lt;')) + '</div>'
       +     '<div id="ce-preview-ctx" style="font-size:13px;opacity:.88;margin-top:8px;line-height:1.6;">' + ((d.ctx || 'Edit the dialogue below, then run AI Update.').replace(/</g,'&lt;')) + '</div>'
@@ -12921,7 +12921,7 @@ async function openStoryEditModal(rowId) {
   overlay.innerHTML = '<div style="background:#fff;border-radius:18px;width:100%;max-width:780px;padding:28px 30px;box-shadow:0 24px 60px rgba(0,0,0,.2);">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
     + '<h3 style="font-size:18px;font-weight:800;margin:0">' + (isNew ? '✨ 새 스토리 추가' : '✏️ 스토리 수정') + '</h3>'
-    + '<button onclick="closeStoryEditOverlay()" style="background:none;border:none;font-size:20px;cursor:pointer">✕</button>'
+    + '<button aria-label="Close" onclick="closeStoryEditOverlay()" style="background:none;border:none;font-size:20px;cursor:pointer">✕</button>'
     + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
     + ceField('se-title',    '제목 (한국어)', 'text', d.title||'', '예: 서울의 봄')
@@ -13171,7 +13171,7 @@ function openShopItemEditor(itemId) {
   var ov = document.createElement('div');
   ov.className = 'ov';
   var cleanId = itemId || '';
-  ov.innerHTML = `<div class="mbox"><div class="m-hd"><h2>Shop Item</h2><button class="m-x" onclick="this.closest('.ov').remove()">×</button></div>
+  ov.innerHTML = `<div class="mbox"><div class="m-hd"><h2>Shop Item</h2><button aria-label="Close" class="m-x" onclick="this.closest('.ov').remove()">×</button></div>
     <div class="m-bd">
     <div class="fg"><label>ID</label><input id="si-id" value="${esc(item.id||'')}" ${itemId ? 'disabled' : ''}></div>
     <div class="fg"><label>Name</label><input id="si-name" value="${esc(item.name||'')}"></div>
