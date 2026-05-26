@@ -163,7 +163,10 @@ function kh_log_error(msgOrErr, context, severity) {
         safeUrl = location.origin + location.pathname;
       }
     } catch (_) {}
-    sb.from('client_errors').insert({
+    // For critical-severity rows we need the new id back so we can
+    // fire AN-F2 notify-critical-error. .select('id').single() makes
+    // PostgREST return the inserted row instead of an empty body.
+    var insertPromise = sb.from('client_errors').insert({
       user_id:    u ? u.id : null,
       message:    message,
       stack:      stack || null,
@@ -171,7 +174,39 @@ function kh_log_error(msgOrErr, context, severity) {
       user_agent: (typeof navigator !== 'undefined') ? (navigator.userAgent || '').slice(0, 500) : null,
       context:    (context && typeof context === 'object') ? context : (context ? { value: String(context) } : {}),
       severity:   sev,
-    }).then(function(){}, function(){});
+    });
+    if (sev === 'critical') {
+      insertPromise.select('id').single().then(function(res){
+        var rowId = res && res.data && res.data.id;
+        if (!rowId) return;
+        // Fire-and-forget POST to the notify-critical-error Edge
+        // Function. Server-side it re-fetches the row, atomically
+        // marks notified_at, and posts to the configured Discord
+        // webhook. Failures are swallowed — the row is already
+        // persisted, the operator can still find it in the admin
+        // Errors dashboard.
+        try {
+          var supaUrl = (typeof SUPA_URL !== 'undefined') ? SUPA_URL : (window.SUPA_URL || '');
+          var supaKey = (typeof SUPA_KEY !== 'undefined') ? SUPA_KEY : (window.SUPA_KEY || '');
+          if (!supaUrl || !supaKey) return;
+          fetch(supaUrl + '/functions/v1/notify-critical-error', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              // Anon key clears the Supabase gateway's JWT check; the
+              // function itself trusts ONLY the row id and re-fetches
+              // server-side via service-role.
+              'apikey': supaKey,
+              'Authorization': 'Bearer ' + supaKey,
+            },
+            body: JSON.stringify({ id: rowId }),
+            keepalive: true,
+          }).catch(function(){});
+        } catch (_) {}
+      }, function(){});
+    } else {
+      insertPromise.then(function(){}, function(){});
+    }
   } catch (_) {}
 }
 window.kh_log_error = kh_log_error;

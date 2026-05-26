@@ -27,7 +27,8 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
 // PAY-F6: Persist webhook errors to public.client_errors so they survive
 // past the Supabase log retention window (1-7 days). Severity follows
 // the column added in 20260526_audit_7_client_errors_severity.sql —
-// 'critical' fires the future Discord webhook (AN-F2 follow-up).
+// 'critical' fires the Discord webhook via AN-F2's notify-critical-error
+// Edge Function.
 async function logServerError(
   sb: SupabaseClient,
   message: string,
@@ -35,13 +36,36 @@ async function logServerError(
   severity: 'warn' | 'error' | 'critical' = 'critical',
 ): Promise<void> {
   try {
-    await sb.from('client_errors').insert({
-      message: message.slice(0, 500),
-      context: { ...context, source: 'speaking-pass-webhook' },
-      url:      null,
-      user_agent: 'edge-function/speaking-pass-webhook',
-      severity,
-    });
+    const { data, error } = await sb.from('client_errors')
+      .insert({
+        message: message.slice(0, 500),
+        context: { ...context, source: 'speaking-pass-webhook' },
+        url:      null,
+        user_agent: 'edge-function/speaking-pass-webhook',
+        severity,
+      })
+      .select('id')
+      .single();
+    if (error || !data?.id) return;
+    if (severity !== 'critical') return;
+    // Fire-and-forget — same Edge Function the frontend calls. We
+    // do NOT await it; the webhook should return to Stripe quickly
+    // and a stalled Discord webhook shouldn't extend our latency.
+    const supaUrl  = Deno.env.get('SUPABASE_URL') || '';
+    const supaKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    if (!supaUrl) return;
+    try {
+      void fetch(`${supaUrl}/functions/v1/notify-critical-error`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Edge-function-to-edge-function calls need an Authorization
+          // header. The service-role key bypasses RLS / JWT checks.
+          'Authorization': `Bearer ${supaKey}`,
+        },
+        body: JSON.stringify({ id: data.id }),
+      }).catch(() => {});
+    } catch (_) { /* swallow */ }
   } catch (_) {
     // logging-of-logging failure swallowed — last-ditch
   }

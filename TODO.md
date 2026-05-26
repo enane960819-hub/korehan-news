@@ -10,6 +10,48 @@ doesn't keep reminding about closed work.
 
 ---
 
+## In progress on `claude/audit-9-next`
+
+- **AN-F2 (7차 P0) — Discord webhook on critical client_errors (2026-05-26)**:
+  Now that AN-F3's `severity` column is live, critical-severity
+  rows (currently emitted by `speaking_coin_unredeemed`,
+  speaking-pass-webhook signature failures, refund-shortfall events,
+  and any future server-side error site) fire a real-time Discord
+  alert via a new `notify-critical-error` Edge Function.
+  - Flow: critical INSERT → frontend `kh_log_error` (or webhook
+    `logServerError`) captures the new row id via `.select('id')
+    .single()` → fire-and-forget POST to `/functions/v1/
+    notify-critical-error` with `{id:N}` → that function atomically
+    claims the row via `UPDATE ... WHERE id=N AND severity='critical'
+    AND notified_at IS NULL RETURNING *` (so concurrent retries
+    can't double-notify) → POSTs sanitized payload to the configured
+    Discord webhook.
+  - Defense-in-depth: caller only supplies the row id. The function
+    re-fetches the row server-side and refuses to notify on
+    anything that isn't severity='critical', so a forged caller
+    can't spam the operator by passing a low-severity row's id.
+  - **OWNER MUST DO** (in order):
+    1. Apply migration `20260526_audit_7_client_errors_notified_at.sql`
+       (adds `notified_at` column + partial index for unnotified
+       critical rows).
+    2. Create a Discord webhook URL (Discord server → Settings →
+       Integrations → Webhooks → New) and copy the URL.
+    3. Insert into `app_settings`:
+       ```sql
+       INSERT INTO app_settings (key, value)
+       VALUES ('error_notify_webhook', '<https://discord.com/api/webhooks/...>')
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+       ```
+    4. Deploy: `supabase functions deploy notify-critical-error`
+    5. Redeploy `speaking-pass-webhook` (the `logServerError`
+       helper was updated to fire the notification too).
+  - Future critical-severity sites to instrument (suggested):
+    auth-bypass attempts, OAuth signature mismatches, daily-content-gen
+    cron failures, payments webhook signature failures (already
+    instrumented), admin RLS bypass attempts.
+
+---
+
 ## In progress on `claude/audit-8-payments`
 
 > **⚠️ STATUS UPDATE (owner confirmed 2026-05-26): Speaking Coach
