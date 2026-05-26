@@ -12,6 +12,42 @@ doesn't keep reminding about closed work.
 
 ## In progress on `claude/new-session-KCAZ7`
 
+- **6차 오딧 — DB schema + RLS (2026-05-26)**:
+  - Client-side fixes landed this PR:
+    - **DB-F6** comments author fallback no longer uses
+      `supaUser.email` (was leaking emails on every comment via the
+      `comments.user_name` column). Falls back through user_metadata
+      → localStorage display_name → email local-part → "User".
+    - **DB-F15** `kh_log_error` strips `?query` and `#hash` from
+      `location.href` before persisting to `client_errors.url`
+      (OAuth flows pass tokens via query/hash; never log them).
+  - **DB migration `20260526_audit_6_db_rls_hardening.sql`** —
+    OWNER MUST APPLY via Supabase SQL editor or `supabase db push`.
+    Covers DB-F1 (app_settings write-lock to user-scoped keys),
+    DB-F2 (user_stats: revoke direct UPDATE on xp / coin_balance /
+    etc.), DB-F3 (shop_items / gacha_items catalog write-lock),
+    DB-F4 (payment_orders + shop_purchases server-only writes),
+    DB-F5 (atomic `increment_article_view` RPC), DB-F6 (RLS
+    WITH CHECK user_id = auth.uid()), DB-F10 (weekly_live_*
+    own-row only), DB-F11 (client_errors user_id constraint),
+    DB-F12 (weekly_live_sessions admin-create only), DB-F13
+    (coin_transactions append-only), DB-F14 (column-level revoke
+    on user_submissions.score / rubric / status).
+  - **DB-F7 (P1) needs owner action OUTSIDE this PR**: the
+    `award_xp(p_user_id, ...)` and `purchase_coin_shop_item(p_user_id, ...)`
+    SECURITY DEFINER RPCs accept caller-supplied user_id. Their
+    bodies live in production-only migrations (not checked in) so
+    we can't patch them here — owner must edit and re-deploy so
+    each function uses `auth.uid()` instead of the parameter
+    (or raises if `p_user_id <> auth.uid()`).
+  - **DB-F8 (FALSE POSITIVE)**: inspect_table_columns already
+    has the admin-email gate inside the function body
+    (`20260515_schema_inspect_rpc.sql`). Noted in the migration.
+  - **DB-F9 (P1) needs schema-review with owner**: split
+    `user_stats` into a public-readable view (display_name, xp,
+    streak, articles_read) and a private table (email, prefs).
+    Bigger than this PR's scope.
+
 - 3차 오딧 P0+P1 (4 commits on `claude/new-session-KCAZ7`):
   - **Edge Functions** — tts-proxy auth (F1), claude-proxy input-size
     cap + feature str cap + failed-call counter (F3/F10/F11),

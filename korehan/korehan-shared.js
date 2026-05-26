@@ -146,11 +146,22 @@ function kh_log_error(msgOrErr, context) {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb) return;
     var u  = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null;
+    // Strip query string + hash before persisting. URLs in this
+    // codebase carry things like ?id=ARTICLE, ?focus=GRAMMAR,
+    // ?openInbox=1 — most are harmless, but reset / OAuth flows
+    // pass tokens (e.g. ?code=, #access_token=) that should NEVER
+    // end up in a server-side error log. Audit DB-F15.
+    var safeUrl = null;
+    try {
+      if (typeof location !== 'undefined') {
+        safeUrl = location.origin + location.pathname;
+      }
+    } catch (_) {}
     sb.from('client_errors').insert({
       user_id:    u ? u.id : null,
       message:    message,
       stack:      stack || null,
-      url:        (typeof location !== 'undefined') ? location.href : null,
+      url:        safeUrl,
       user_agent: (typeof navigator !== 'undefined') ? (navigator.userAgent || '').slice(0, 500) : null,
       context:    (context && typeof context === 'object') ? context : (context ? { value: String(context) } : {}),
     }).then(function(){}, function(){});
