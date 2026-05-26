@@ -1279,7 +1279,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/features/daily-mission.js?v=20260525r"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
 <script src="js/features/bookmarks.js?v=20260525r"></script>
-<script src="js/features/comments.js?v=20260525r"></script>
+<script src="js/features/comments.js?v=20260526b"></script>
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20260525r"></script>
@@ -2184,11 +2184,31 @@ function triggerAvatarUpload() {
   document.getElementById('avatar-file-input').click();
 }
 
+// MOD-F4: avatar upload with server-side defense + EXIF strip.
+//
+// Previously this function:
+//   1. Trusted client-side `accept` for MIME (bypassable via curl)
+//   2. Had no EXIF stripping (iPhone GPS leaked on every upload)
+//   3. Fell back to a `data:` URL stored in JWT user_metadata on
+//      upload failure — JWT balloons, data URL renders on every
+//      comment row site-wide.
+//
+// Now: re-encode via canvas (strips EXIF, normalizes MIME, caps
+// dimensions). Upload to storage. On failure, NO data-URL fallback —
+// surface a retry toast and bail.
 async function handleAvatarUpload(input) {
   var file = input.files && input.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) { // 2 MB limit
+  if (file.size > 2 * 1024 * 1024) { // 2 MB limit — matches bucket cap
     toast('Image must be under 2 MB', 'warn');
+    return;
+  }
+  // Server-side allowlist: image/jpeg / png / webp. Client-side type
+  // check is best-effort (don't trust the file.type either; the
+  // bucket's allowed_mime_types catches the rest).
+  var allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (file.type && allowedTypes.indexOf(file.type) === -1) {
+    toast('Only JPEG / PNG / WebP images are allowed.', 'warn');
     return;
   }
 
@@ -2198,37 +2218,64 @@ async function handleAvatarUpload(input) {
   var sb = getSupa();
   var avatarUrl = null;
 
-  // Try Supabase Storage first
+  // MOD-F4: re-encode via canvas to strip EXIF (and GPS coords
+  // iPhone photos carry) + normalize to JPEG + cap dimensions
+  // at 512×512 (avatars are displayed at most ~120px). Saves
+  // bandwidth + obliterates location metadata.
+  var processedBlob = null;
   try {
-    var path = supaUser.id + '/avatar';
-    var ext  = file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' : '.jpg';
-    var fullPath = path + ext;
-    var { error: upErr } = await sb.storage.from('avatars').upload(fullPath, file, { upsert: true, contentType: file.type });
-    if (!upErr) {
-      var { data: urlData } = sb.storage.from('avatars').getPublicUrl(fullPath);
-      avatarUrl = urlData && urlData.publicUrl;
+    var bmp = await createImageBitmap(file);
+    var w = bmp.width, h = bmp.height;
+    var maxDim = 512;
+    if (w > maxDim || h > maxDim) {
+      var scale = maxDim / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
     }
-  } catch(e) {}
+    var canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(bmp, 0, 0, w, h);
+    bmp.close && bmp.close();
+    processedBlob = await new Promise(function(resolve, reject){
+      canvas.toBlob(function(b){ b ? resolve(b) : reject(new Error('canvas.toBlob returned null')); }, 'image/jpeg', 0.88);
+    });
+  } catch (e) {
+    if (wrap) wrap.style.opacity = '1';
+    if (typeof toast === 'function') toast('Could not process this image. Try a different file.', true);
+    input.value = '';
+    return;
+  }
 
-  // Fallback: data URL stored in auth metadata (small images only)
-  if (!avatarUrl) {
-    try {
-      avatarUrl = await new Promise(function(resolve, reject) {
-        var reader = new FileReader();
-        reader.onload = function(e) { resolve(e.target.result); };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    } catch(e) {}
+  // Upload the re-encoded JPEG. Single path — no data-URL fallback.
+  try {
+    var fullPath = supaUser.id + '/avatar.jpg';
+    var { error: upErr } = await sb.storage.from('avatars').upload(fullPath, processedBlob, {
+      upsert: true,
+      contentType: 'image/jpeg',
+    });
+    if (upErr) throw upErr;
+    var { data: urlData } = sb.storage.from('avatars').getPublicUrl(fullPath);
+    avatarUrl = urlData && urlData.publicUrl;
+    // Bust CDN cache for the new file (Supabase returns the same
+    // URL on upsert).
+    if (avatarUrl) avatarUrl += (avatarUrl.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now();
+  } catch(e) {
+    if (wrap) wrap.style.opacity = '1';
+    if (typeof toast === 'function') toast('Upload failed — please try again.', true);
+    input.value = '';
+    return;
   }
 
   if (!avatarUrl) {
     if (wrap) wrap.style.opacity = '1';
-    if (typeof toast === 'function') toast('Upload failed — please try again');
+    if (typeof toast === 'function') toast('Upload failed — please try again.', true);
+    input.value = '';
     return;
   }
 
-  // Save to auth metadata + user_stats
+  // Save to auth metadata + user_stats. avatarUrl is a clean https
+  // URL from storage now, never a multi-megabyte data: URL.
   try {
     await sb.auth.updateUser({ data: { avatar_url: avatarUrl } });
     await sb.from('user_stats').update({ avatar_url: avatarUrl }).eq('user_id', supaUser.id);
@@ -2246,7 +2293,9 @@ function _setAvatarDisplay(url) {
   var wrap = document.querySelector('.mp-avatar-wrap');
   if (!wrap) return;
   var existing = wrap.querySelector('.mp-initials, .mp-avatar-img');
-  if (url && url.length < 500000) { // skip huge data URLs
+  // MOD-F4: drop the data: URL guard since we no longer create
+  // data URLs. Any url reaching here is from Supabase Storage.
+  if (url) {
     var img = document.createElement('img');
     img.className = 'mp-avatar-img';
     img.src = url;
