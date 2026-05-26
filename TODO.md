@@ -10,7 +10,71 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/seo-p1-mechanical`
+## In progress on `claude/audit-9-cron`
+
+- **9차 오딧 — Cron / scheduler reliability (2026-05-26)**:
+  Background audit found **15 findings**. The headline ones:
+  - **CRON-F1 (P0) — STILL OPEN, OWNER ACTION**: there is **no
+    cron scheduler at all**. No `pg_cron`, no GitHub Actions cron,
+    no Cloudflare scheduled function, no external scheduler.
+    `daily-content-gen` only fires when admin clicks a button in
+    `korehan-x9f4k2m7.html`. Any day admin forgets, every learner
+    across all 4 TOPIK levels sees zero new content. The function's
+    own header comment says "runs on cron schedule" but the
+    schedule was never installed. **Fix shape:** migration that
+    installs pg_cron + `cron.schedule('daily-content-gen', '0 15
+    * * *', $$ select net.http_post(...) $$)` (15:00 UTC =
+    00:00 KST). Needs CRON_SECRET in vault.
+  - **CRON-F2 (P0) — STILL OPEN, OWNER ACTION**:
+    `assign_daily_vocab()` RPC referenced by `learning_hub_client.js`
+    and CLAUDE.md does not exist in any migration. Every call
+    silently returns "function does not exist" → learners never
+    get their 20-word daily pool. Needs owner clarification on
+    intended schema/behavior before writing.
+  - **CRON-F3 (P1) — DEFERRED (Discord)**: `daily-content-gen`
+    swallows per-item failures, never writes to `client_errors`.
+    notify-critical-error plumbing exists but doesn't get called.
+    Owner asked to hold Discord work.
+  - **CRON-F4 (P1) — STILL OPEN, NEEDS OWNER SCHEMA INFO**:
+    `claim_streak_award` trusts client-supplied `p_streak`.
+    Exploit: user calls with `p_streak: 365` → instant 3 freezes
+    + permanent reward-lockout. Server-side recompute needs the
+    `user_read_history` schema which isn't in the in-tree
+    migrations.
+  - **CRON-F5 (P1) — LANDED THIS PR**: `getCurrentStreak()` at
+    `korehan-shared.js:9520` walked dates in UTC, not KST.
+    Between 15:00–23:59 UTC (= 00:00–08:59 KST) the walker's
+    "today" was one day behind the activity tracker, so every
+    Korean user who opened the app in the morning silently
+    dropped their streak by a day. Walker now starts from
+    `Date.now() + 9*3600000` and steps in 24-hour millisecond
+    increments.
+  - **CRON-F9** — investigated, turned out theoretical. No
+    periodic re-render driver exists in the home or study-room
+    pages; the day-hash compute happens once on DOMContentLoaded
+    so the midnight-race scenario doesn't materialize. Skipped.
+  - **CRON-F6/F7/F8/F10/F11/F12/F13/F14/F15** — P1/P2 items
+    documented for later rounds (prompt-caching, lock TTL,
+    notify retry-driver, retention jobs, cron_runs observability
+    table, hardcoded epoch, KST envelope docs, consistency helper).
+
+- **SEO-F5 (7차 P1) — LANDED THIS PR**: dynamic OG meta for the
+  article-detail page. Previously every `?id=X` link shared the
+  same generic "KoreHani — Article" preview card on
+  Slack/Twitter/KakaoTalk. Added a `khUpdatePageMeta()` utility
+  in `korehan-shared.js` that rewrites `document.title`,
+  `<meta name="description">`, all `og:*` / `twitter:*`, and
+  `<link rel="canonical">`. `renderArticlePage()` now calls it
+  with the actual article's title/summary/image/URL right after
+  the fetch resolves. Stories / conversations / sections still
+  use the static placeholder — follow-up can add the same call
+  to their render paths.
+
+---
+
+## Recently merged
+
+### `claude/seo-p1-mechanical` (PR #614 merged 2026-05-26)
 
 - **SEO P1 leftovers landed this PR (2026-05-26)** — mechanical
   fixes to the 4 remaining structural findings from the 7th audit:
