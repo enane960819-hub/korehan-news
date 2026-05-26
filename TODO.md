@@ -10,7 +10,41 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/mod-fixes-reports`
+## In progress on `claude/mod-fixes-read-filtering`
+
+- **11차 batch B2 — Block-filtered reads + nickname attr-XSS (2026-05-26)**:
+  - **MOD-F6 (P1) — LANDED**: replaced `comments` SELECT policy
+    `USING (true)` with one that filters by `user_blocks`
+    bidirectionally for authenticated viewers. Anon still sees
+    everything (SEO requirement). Push-down via RLS means every
+    existing frontend SELECT inherits the filter without code
+    change.
+  - **MOD-F9 (P1) — LANDED**: tightened `user_stats` SELECT
+    policy to authenticated-only + block filter. Defensively DROPs
+    any drift policy (production had an "anon read" policy NOT
+    in the in-tree migration history). Anonymous visitors viewing
+    `/korehan-profile.html?id=X` now see "profile not available"
+    instead of full xp/streak. Authenticated viewers see own row
+    + non-blocked rows.
+  - **MOD-F11 (P1) — LANDED**: `_escapeHtml(currentName)` applied
+    at `korehan-mypage.html:1982` Change-Nickname modal. Was
+    interpolating raw textContent into `value="..."` attribute —
+    attribute-context XSS if a display_name ever contained `"`.
+    Display-name trigger (MOD-F3) blocks zero-width / RTL / admin
+    impersonation but NOT quote chars in legitimate names like
+    `He said "hi"`.
+
+  **STILL OPEN from 11차**:
+  - **MOD-F12 (P2)**: admin UGC queue beyond comments — guestbook,
+    reporter_posts, user_submissions, recently-changed
+    display_names. Owner-defined "Recent UGC" sweep tab. Lower
+    priority since the report-queue (batch B1) already surfaces
+    flagged content.
+  - NSFW scan (paid external service): deferred.
+
+---
+
+## On `claude/mod-fixes-reports` (PR #624 merged 2026-05-26)
 
 - **11차 batch B1 — Report pipeline + Soft-delete (2026-05-26)**:
   - **MOD-F2 (P0) — LANDED**: full report pipeline. New
