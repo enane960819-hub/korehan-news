@@ -8622,7 +8622,12 @@ async function _triggerSpeakingFeedback(submissionId, script, scores) {
           max_score:    100,
           accuracy_pct: Math.max(0, 100 - parsed.corrections.length * 15),
           wrong_patterns: patterns,
-          details: { corrections_count: parsed.corrections.length, transcript: transcript ? transcript.slice(0, 200) : null }
+          // AN-F11: do NOT include the raw transcript here. user_quiz_results is
+          // an analytics surface and a PIPA right-to-erasure liability if it
+          // carries user-spoken Korean. The full transcript already lives in
+          // user_submissions.context_data (line ~8669 below) which has explicit
+          // RLS + deletion paths. Just store the length so we can correlate.
+          details: { corrections_count: parsed.corrections.length, transcript_len: transcript ? transcript.length : 0 }
         });
       } catch (_) {}
     }
