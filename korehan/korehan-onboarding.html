@@ -1233,6 +1233,16 @@ function goStep4() {
       + '<div class="ob-footer-note">Your onboarding state is also saved locally so you do not get bounced back into onboarding again if the database response is slow.</div>'
     + '</div>'
     + '<div>'
+      // PRIV-F9: age gate. PIPA Art 22-2 prohibits collecting
+      // personal info from under-14 without legal guardian consent;
+      // GDPR Art 8 sets the equivalent bar at ≥16 in most EU
+      // jurisdictions. Single checkbox is the lightweight version
+      // recommended by KISA. Persisted to user_stats.age_confirmed_at
+      // by persistOnboardingState() when the checkbox is checked.
+      + '<label style="display:flex;align-items:flex-start;gap:8px;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:14px;cursor:pointer;font-size:13px;line-height:1.5;color:#475569">'
+        + '<input type="checkbox" id="ob-age-confirm" style="margin-top:2px;flex-shrink:0">'
+        + '<span>I confirm I am <strong>14 or older</strong>, and if I am located in the EU/EEA, I am <strong>16 or older</strong>. (PIPA Art 22-2 / GDPR Art 8.) <a href="privacy-policy.html" target="_blank" style="color:#2563eb">Privacy Policy</a></span>'
+      + '</label>'
       + '<div class="ob-btn-row">'
       + primaryCTA
       // Secondary email-signup path for users without Google or who
@@ -1346,11 +1356,32 @@ async function signUpWithGoogle() {
 }
 
 async function finishOnboarding() {
+  // PRIV-F9: enforce the age-confirmation checkbox before any
+  // setup persists. Without this the disclaimer is purely cosmetic.
+  var ageOk = document.getElementById('ob-age-confirm');
+  if (ageOk && !ageOk.checked) {
+    // Visually nudge the checkbox label + focus it. Don't proceed.
+    var lbl = ageOk.closest('label');
+    if (lbl) {
+      lbl.style.borderColor = '#dc2626';
+      lbl.style.background = '#fef2f2';
+    }
+    ageOk.focus();
+    if (typeof showToast === 'function') {
+      showToast('Please confirm your age before continuing.', true);
+    } else {
+      alert('Please confirm your age (14+ / 16+ EU) before continuing.');
+    }
+    return;
+  }
   var btn = document.getElementById('finish-btn');
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Saving your setup…';
   }
+  // Stamp the age confirmation for audit purposes. The actual DOB
+  // is not collected — only the user's self-attestation.
+  try { localStorage.setItem('kh_age_confirmed_at', new Date().toISOString()); } catch (_) {}
   saveOnboardingLocal(true);
   await persistOnboardingState();
   // Land on home after onboarding completes. The user reported the
