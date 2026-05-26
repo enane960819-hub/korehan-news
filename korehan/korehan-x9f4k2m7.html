@@ -354,6 +354,7 @@ body.sb-open .sb-backdrop{display:block}
     <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>User Management</button>
     <button class="sb-btn" onclick="goComments()"><span class="ico">🗨️</span>Comment Management</button>
     <button class="sb-btn" onclick="goReports()"><span class="ico">🚩</span>Report Queue</button>
+    <button class="sb-btn" onclick="goRecentUGC()"><span class="ico">🔍</span>Recent UGC</button>
     <button class="sb-btn" id="sb-speaking" onclick="goSpeakingReviews()"><span class="ico">🎙️</span>Speaking Reviews</button>
     <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
     <button class="sb-btn" id="sb-analytics" onclick="goAnalytics()"><span class="ico">📊</span>통계</button>
@@ -8294,6 +8295,125 @@ async function adminResolveReport(reportId, action) {
     return;
   }
   loadAllReports();
+}
+
+// MOD-F12: admin "Recent UGC" sweep tab. Surfaces the latest N
+// rows across guestbook / reporter_posts / user_submissions /
+// display_name changes so the admin can proactively scan for
+// abuse without waiting for user reports (MOD-F2 queue).
+// Unified timeline — most recent first.
+function goRecentUGC() {
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>🔍 Recent UGC</h1>'
+   +'<p>Last 24 hours of user-generated content across guestbook, reporter posts, writing submissions, and nickname changes. Use this to sweep for abuse pro-actively.</p></div></div>'
+   +'<div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">'
+   +'  <label style="font-size:12px"><input type="checkbox" class="ugc-filter" value="guestbook" checked> Guestbook</label>'
+   +'  <label style="font-size:12px"><input type="checkbox" class="ugc-filter" value="reporter_posts" checked> Reporter Posts</label>'
+   +'  <label style="font-size:12px"><input type="checkbox" class="ugc-filter" value="user_submissions" checked> Writing</label>'
+   +'  <label style="font-size:12px"><input type="checkbox" class="ugc-filter" value="display_name" checked> Nickname changes</label>'
+   +'</div>'
+   +'<div id="ugc-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading…</div></div>';
+  document.querySelectorAll('.ugc-filter').forEach(function(el){ el.addEventListener('change', loadRecentUGC); });
+  loadRecentUGC();
+}
+
+async function loadRecentUGC() {
+  var wrap = document.getElementById('ugc-wrap');
+  if (!wrap) return;
+  var sb = getSb();
+  if (!sb) { wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ Admin client missing</div>'; return; }
+  var enabled = {};
+  document.querySelectorAll('.ugc-filter').forEach(function(el){ if (el.checked) enabled[el.value] = true; });
+  var since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+
+  try {
+    // Fan-out to all 4 surfaces in parallel. Each may fail independently
+    // (table doesn't exist on this project, RLS-blocked, etc.) — collect
+    // errors but don't fail the whole render.
+    var queries = [];
+    if (enabled.guestbook) {
+      queries.push(sb.from('guestbook').select('id,host_id,author_id,message,created_at').gte('created_at', since).order('created_at', { ascending: false }).limit(50).then(function(r){ return { type:'guestbook', data:r.data, error:r.error }; }));
+    }
+    if (enabled.reporter_posts) {
+      queries.push(sb.from('reporter_posts').select('id,reporter_id,author_user_id,content,post_type,created_at').gte('created_at', since).order('created_at', { ascending: false }).limit(50).then(function(r){ return { type:'reporter_posts', data:r.data, error:r.error }; }));
+    }
+    if (enabled.user_submissions) {
+      queries.push(sb.from('user_submissions').select('id,user_id,content_type,writing_text,topic_ko,submitted_at,status').gte('submitted_at', since).order('submitted_at', { ascending: false }).limit(50).then(function(r){ return { type:'user_submissions', data:r.data, error:r.error }; }));
+    }
+    if (enabled.display_name) {
+      // user_stats.updated_at also fires for other field changes (xp/streak),
+      // but display_name CHANGES will always touch updated_at. Pull recent
+      // rows + display the nickname. False positives (xp tick triggering
+      // updated_at without a name change) are acceptable for a sweep view.
+      queries.push(sb.from('user_stats').select('user_id,display_name,updated_at').gte('updated_at', since).order('updated_at', { ascending: false }).limit(50).then(function(r){ return { type:'display_name', data:r.data, error:r.error }; }));
+    }
+    var results = await Promise.all(queries);
+
+    // Merge into one timeline.
+    var merged = [];
+    results.forEach(function(r){
+      if (r.error) { merged.push({ type: r.type, error: r.error.message }); return; }
+      (r.data || []).forEach(function(row){
+        var ts = row.created_at || row.submitted_at || row.updated_at;
+        var snippet = '';
+        var author = '';
+        if (r.type === 'guestbook') {
+          snippet = row.message || '';
+          author = row.author_id;
+        } else if (r.type === 'reporter_posts') {
+          snippet = row.content || '';
+          author = row.author_user_id;
+        } else if (r.type === 'user_submissions') {
+          snippet = (row.topic_ko ? '[Topic: ' + row.topic_ko + '] ' : '') + (row.writing_text || '');
+          author = row.user_id;
+        } else if (r.type === 'display_name') {
+          snippet = row.display_name || '(empty)';
+          author = row.user_id;
+        }
+        merged.push({ type: r.type, ts: ts, snippet: String(snippet).slice(0, 240), author: author, id: row.id || row.user_id });
+      });
+    });
+    merged.sort(function(a, b){ return (b.ts || '').localeCompare(a.ts || ''); });
+
+    if (!merged.length) {
+      wrap.innerHTML = '<div style="padding:32px;text-align:center;color:var(--gr)">No UGC in the last 24 hours.</div>';
+      return;
+    }
+
+    var typeColors = {
+      guestbook:        { bg:'#fef3c7', fg:'#92400e' },
+      reporter_posts:   { bg:'#dbeafe', fg:'#1e40af' },
+      user_submissions: { bg:'#dcfce7', fg:'#166534' },
+      display_name:     { bg:'#fce7f3', fg:'#9d174d' },
+    };
+    var typeLabels = {
+      guestbook: 'Guestbook',
+      reporter_posts: 'Reporter Post',
+      user_submissions: 'Writing',
+      display_name: 'Nickname',
+    };
+
+    wrap.innerHTML =
+      '<div style="font-size:13px;color:var(--gr);margin-bottom:12px">'+merged.length+' items in the last 24 hours</div>'
+      + merged.map(function(m){
+          if (m.error) {
+            return '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px;color:#991b1b">'
+              + '⚠ '+esc(m.type)+' load error: '+esc(m.error)+'</div>';
+          }
+          var col = typeColors[m.type] || { bg:'#f1f5f9', fg:'#0f172a' };
+          return '<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:12px 14px;margin-bottom:8px">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">'
+            +'<span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:'+col.bg+';color:'+col.fg+';text-transform:uppercase">'+esc(typeLabels[m.type] || m.type)+'</span>'
+            +'<span style="font-size:11px;color:var(--gr);white-space:nowrap">'+(m.ts ? new Date(m.ts).toLocaleString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '')+'</span>'
+            +'</div>'
+            +'<div style="font-size:14px;color:#0f172a;white-space:pre-wrap;line-height:1.5">'+esc(m.snippet)+'</div>'
+            +'<div style="font-size:11px;color:#94a3b8;margin-top:6px">author: <code>'+esc(m.author)+'</code></div>'
+            +'</div>';
+        }).join('');
+  } catch(e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패: '+esc(e.message||e)+'</div>';
+  }
 }
 
 // ══ SPEAKING COACH REVIEW QUEUE ══════════════════════════════════════
