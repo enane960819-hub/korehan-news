@@ -407,6 +407,13 @@ body.sb-open .sb-backdrop{display:block}
 <script>
 'use strict';
 
+// CRON-F13: writing-topic rotation epoch — was hardcoded in 5 spots
+// across this file plus 2 spots in supabase/functions/daily-content-gen
+// /index.ts (WRITING_TOPICS_EPOCH_ISO). Drift between the literals
+// would silently desync admin "preview today's topic" from cron
+// generation. Extracted to one constant per file; keep them in sync.
+var KH_WRITING_TOPICS_EPOCH = '2026-04-15T00:00:00+09:00';
+
 // ══ ADMIN AUTH GATE ════════════════════════════════════════
 // 1차: localStorage 토큰 빠른 체크 (페이지 깜빡임 방지)
 // 2차: Supabase SDK 실시간 세션 검증 (조작 방지)
@@ -3926,7 +3933,7 @@ function renderTopicsTable(list) {
   //     실제 생성에서 쓰는 active 카운트와 어긋남
   // 결과: 핀이 실제 study room이 오늘 보여줄 토픽과 다른 행을 가리켜
   // 어드민이 "오늘 토픽"이라고 본 게 사이트의 진짜 오늘 토픽이 아니었음.
-  var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
+  var epoch = new Date(KH_WRITING_TOPICS_EPOCH).getTime();
   var nowMs = Date.now() + 9*3600000;
   var daysSince = Math.max(0, Math.floor((nowMs - epoch) / 86400000));
   // Compute today's topic ID per level, using the same active-only,
@@ -4214,7 +4221,7 @@ async function pregenAI(topicId) {
     for (var ti=0; ti<levelTopics.length; ti++) { if (levelTopics[ti].id===topicId) { topicIdx=ti; break; } }
     if (topicIdx < 0) topicIdx = 0;
 
-    var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
+    var epoch = new Date(KH_WRITING_TOPICS_EPOCH).getTime();
     var kstNow = new Date(Date.now() + 9*3600000);
     var todayStr = kstNow.toISOString().slice(0,10);
     var todayMs = new Date(todayStr + 'T00:00:00+09:00').getTime();
@@ -13495,7 +13502,7 @@ async function srLoadDailyContent() {
   }
 
   // 해당 날짜에 어떤 토픽이 배정되는지 계산
-  var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
+  var epoch = new Date(KH_WRITING_TOPICS_EPOCH).getTime();
   var selMs = new Date(date + 'T00:00:00+09:00').getTime();
   var daysSince = Math.max(0, Math.floor((selMs - epoch) / 86400000));
   var topicRes2 = await sb.from('writing_topics').select('*').eq('level',level).eq('active',true).order('sort_order').order('created_at');
@@ -14035,7 +14042,7 @@ async function _srPickTopicFromDB(sb, level, date) {
   // Deterministic date-based rotation: same logic as study room
   // Day 0 (2026-04-14) = topic #1, Day 1 = topic #2, ...
   if (!date) date = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
-  var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
+  var epoch = new Date(KH_WRITING_TOPICS_EPOCH).getTime();
   var now = new Date(date + 'T00:00:00+09:00').getTime();
   var daysSinceEpoch = Math.max(0, Math.floor((now - epoch) / 86400000));
   var todayIdx = daysSinceEpoch % allTopics.length;
@@ -14714,7 +14721,7 @@ async function srPregenerate10Days() {
       if (mi > 0) await new Promise(function(r){ setTimeout(r, 1500); });
       var date = missing[mi];
       // Deterministic date-based rotation (same as study room + _srPickTopicFromDB)
-      var _epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
+      var _epoch = new Date(KH_WRITING_TOPICS_EPOCH).getTime();
       var _now = new Date(date + 'T00:00:00+09:00').getTime();
       var _dayIdx = Math.max(0, Math.floor((_now - _epoch) / 86400000)) % (allTopics.length || 1);
       var topic = allTopics.length ? allTopics[_dayIdx] : null;
@@ -16412,7 +16419,7 @@ function srPictureFormHTML() {
 // AI 학습요소 생성은 개별로(기존 🤖 AI 전체 생성 버튼).
 
 var _srpbCells = []; // [{date, level, topic_ko, topic_en, candidates:[], pickedIdx, existing}]
-var _srpbBulkEpoch = '2026-04-15T00:00:00+09:00';
+var _srpbBulkEpoch = KH_WRITING_TOPICS_EPOCH; // CRON-F13: consolidated
 
 async function srBulkSearch() {
   var sb = getSb();

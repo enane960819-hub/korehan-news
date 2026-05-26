@@ -15,6 +15,14 @@ type Level = typeof ALL_LEVELS[number]
 
 const ADMIN_EMAIL = 'enane960819@gmail.com'
 
+// CRON-F13: writing-topic rotation epoch. Previously hardcoded in
+// 2 spots in this file + 5 spots in korehan-x9f4k2m7.html. A
+// maintainer who tweaks one (e.g. to skip a corrupted topic batch)
+// will silently desync admin "preview today's topic" from cron
+// generation. Extracted to one place per file; the admin page has
+// its own KH_WRITING_TOPICS_EPOCH near the top — keep them in sync.
+const WRITING_TOPICS_EPOCH_ISO = '2026-04-15T00:00:00+09:00'
+
 // KST date helpers
 function kstToday(): string {
   const d = new Date(Date.now() + 9 * 3600_000)
@@ -396,7 +404,16 @@ Deno.serve(async (req) => {
     // supabase-js RPC opens a fresh session per call, which makes the
     // built-in pg_try_advisory_lock useless from this code path.
     const LOCK_KEY = 'daily_content_gen_lock'
-    const LOCK_TTL_MS = 5 * 60 * 1000
+    // CRON-F7: TTL was 5 min, which is shorter than the worst-case
+    // Anthropic latency × 8 concurrent calls (Promise.allSettled in
+    // the main loop). Sonnet calls on Advanced at 3,000 tokens have
+    // observed 30–60s tails; a retry from pg_cron after 5 minutes
+    // (the typical retry pattern) would see a "stale" lock,
+    // overwrite it, and we'd get two concurrent generations both
+    // upserting to the same (scheduled_date, level) rows.
+    // 15 min covers the worst case while still releasing if the
+    // function actually crashed (no `finally` to clean up).
+    const LOCK_TTL_MS = 15 * 60 * 1000
     let lockHeld = false
     try {
       const { data: lockRow } = await sb
@@ -467,7 +484,7 @@ Deno.serve(async (req) => {
       const allTopics = topics || []
       for (const date of dates) {
         if (allTopics.length) {
-          const epoch = new Date('2026-04-15T00:00:00+09:00').getTime()
+          const epoch = new Date(WRITING_TOPICS_EPOCH_ISO).getTime()
           const now = new Date(date + 'T00:00:00+09:00').getTime()
           const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
           expectedTopics[`${date}_${level}`] = allTopics[idx].topic_ko
@@ -512,7 +529,7 @@ Deno.serve(async (req) => {
 
       const allTopics = topics || []
       if (allTopics.length) {
-        const epoch = new Date('2026-04-15T00:00:00+09:00').getTime()
+        const epoch = new Date(WRITING_TOPICS_EPOCH_ISO).getTime()
         const now = new Date(item.date + 'T00:00:00+09:00').getTime()
         const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
         const t = allTopics[idx]
