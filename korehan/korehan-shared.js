@@ -5848,10 +5848,29 @@ async function loadGrammarGuide() {
 
   el.innerHTML = '<div style="color:#aaa;padding:20px 0;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:inline-flex;width:16px;height:16px;color:#a78bfa;animation:spin 1.4s linear infinite">'+KH_ICON_SPARKLE+'</span><span>Analyzing grammar...</span></div>';
 
+  // Safety net — if the whole load chain hasn't rendered anything
+  // useful after 8s, surface an error + retry button. Without this,
+  // users with a wedged cache fetch / failing Claude call sat on
+  // "Analyzing grammar..." indefinitely (reported 2026-05-26).
+  var _grammarLoadStartedAt = Date.now();
+  var _grammarLoadTimer = setTimeout(function () {
+    if (el.dataset.source === 'ai') return; // already rendered
+    if (!el.innerHTML.includes('Analyzing')) return; // moved past loading text
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:13px;line-height:1.6">'
+      + '<div style="font-weight:700;color:#475569;margin-bottom:6px">Grammar guide didn\'t load.</div>'
+      + '<div style="margin-bottom:14px">Check your connection or try again.</div>'
+      + '<button onclick="(function(){var e=document.getElementById(\'grammar-content\');if(e){e.dataset.loadedId=\'\';e.dataset.source=\'\';loadGrammarGuide();}})()" '
+      +   'style="padding:8px 18px;border-radius:8px;background:#2255a4;color:#fff;border:none;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit">'
+      +   '↻ Retry'
+      + '</button>'
+      + '</div>';
+  }, 8000);
+
   // ── DB 캐시 확인 ──────────────────────────────────────────
   try {
     var cached = await getFromCache('article', a.id, 'grammar_guide');
     if (cached && cached.patterns && cached.patterns.length) {
+      clearTimeout(_grammarLoadTimer);
       el.dataset.source = 'ai';
       renderGrammarGuideHTML(el, cached.patterns);
       return;
@@ -5890,6 +5909,7 @@ async function loadGrammarGuide() {
     var guides = parsed.patterns || [];
     el.dataset.source = 'ai';
 
+    clearTimeout(_grammarLoadTimer);
     renderGrammarGuideHTML(el, guides);
 
     // ── DB에 캐시 저장 ────────────────────────────────────
@@ -5899,6 +5919,7 @@ async function loadGrammarGuide() {
       }
     } catch(e) {}
   } catch(e) {
+    clearTimeout(_grammarLoadTimer);
     if (e && (e.message === 'Not signed in' || e.message === 'unauthorized')) {
       el.dataset.source = ''; // allow retry
       if (supaUser) {
