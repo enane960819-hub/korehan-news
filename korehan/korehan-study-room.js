@@ -8773,7 +8773,7 @@ async function submitSpeakingToCoach() {
             stage:    stage,
             detail:   String(detail || '').slice(0, 500),
             balance_after_consume: (coin && (coin.balance != null ? coin.balance : coin.remaining)),
-          });
+          }, 'critical');
         }
       } catch (_) {}
       showToast(
@@ -9051,11 +9051,25 @@ async function _startCoinCheckout(coins) {
     var token = sessData && sessData.session && sessData.session.access_token;
     if (!token) { showToast('Please sign in again'); return; }
 
-    var res = await fetch((SUPA_URL || window.SUPA_URL || '') + '/functions/v1/speaking-pass-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ coins: coins })
-    });
+    // PAY-F4: 20s timeout — without it a wedged Edge Function leaves
+    // the user staring at "Opening secure checkout…" indefinitely;
+    // they retry → click-through-on-second-attempt could double-fire
+    // if both windows make it to Stripe. Every other study-room AI
+    // call already uses 8-35s timeouts via AbortController; the paid
+    // checkout call should be no different.
+    var ctrl = new AbortController();
+    var timeoutId = setTimeout(function(){ ctrl.abort(); }, 20000);
+    var res;
+    try {
+      res = await fetch((SUPA_URL || window.SUPA_URL || '') + '/functions/v1/speaking-pass-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ coins: coins }),
+        signal: ctrl.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
     var data = await res.json().catch(function(){ return {}; });
     if (!res.ok || !data.url) {
       var reason = (data && data.error) || ('HTTP ' + res.status);
@@ -9079,6 +9093,11 @@ async function _startCoinCheckout(coins) {
 function _buySpeakingPass() { _showBuySpeakingCoinsModal(); }
 
 // Handle the ?coach_coins=ok redirect back from Stripe.
+// PAY-F15: the success toast used to fire on any `?coach_coins=ok`
+// URL — meaning a malicious link could trigger a fake "Coach coins
+// added!" toast (phishing referral-bonus scam). The fix verifies
+// the wallet balance actually increased server-side before claiming
+// success; otherwise it shows neutral "Wallet refreshed" wording.
 (function _handleCoachCoinsRedirect(){
   try {
     var p = new URLSearchParams(window.location.search);
@@ -9088,9 +9107,34 @@ function _buySpeakingPass() { _showBuySpeakingCoinsModal(); }
     var newUrl = window.location.pathname + (p.toString() ? '?' + p.toString() : '') + window.location.hash;
     window.history.replaceState({}, '', newUrl);
     if (r === 'ok') {
-      setTimeout(function(){
-        if (typeof showToast === 'function') showToast('Coach coins added to your wallet!');
+      // Snapshot pre-redirect balance, then re-query after badge
+      // refresh. Only claim success if delta > 0.
+      setTimeout(async function(){
+        var balBefore = null, balAfter = null;
+        try {
+          var sb = (typeof getSupa === 'function') ? getSupa() : null;
+          if (sb && supaUser) {
+            var pre = await sb.rpc('get_speaking_wallet_status', { p_level: _currentLevel || 'Beginner' });
+            if (pre && pre.data && typeof pre.data.balance === 'number') balBefore = pre.data.balance;
+          }
+        } catch (_) {}
         if (typeof _refreshSpeakingCoinBadge === 'function') _refreshSpeakingCoinBadge();
+        try {
+          var sb2 = (typeof getSupa === 'function') ? getSupa() : null;
+          if (sb2 && supaUser) {
+            // Give the webhook a moment to land if redirect raced it.
+            await new Promise(function(res){ setTimeout(res, 1200); });
+            var post = await sb2.rpc('get_speaking_wallet_status', { p_level: _currentLevel || 'Beginner' });
+            if (post && post.data && typeof post.data.balance === 'number') balAfter = post.data.balance;
+          }
+        } catch (_) {}
+        if (typeof showToast === 'function') {
+          if (balBefore != null && balAfter != null && balAfter > balBefore) {
+            showToast('Coach coins added to your wallet! (+' + (balAfter - balBefore) + ')');
+          } else {
+            showToast('Wallet refreshed.');
+          }
+        }
       }, 600);
     } else if (r === 'cancel') {
       setTimeout(function(){

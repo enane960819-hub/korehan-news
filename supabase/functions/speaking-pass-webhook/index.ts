@@ -17,18 +17,55 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 });
 
+// PAY-F6: Persist webhook errors to public.client_errors so they survive
+// past the Supabase log retention window (1-7 days). Severity follows
+// the column added in 20260526_audit_7_client_errors_severity.sql —
+// 'critical' fires the future Discord webhook (AN-F2 follow-up).
+async function logServerError(
+  sb: SupabaseClient,
+  message: string,
+  context: Record<string, unknown>,
+  severity: 'warn' | 'error' | 'critical' = 'critical',
+): Promise<void> {
+  try {
+    await sb.from('client_errors').insert({
+      message: message.slice(0, 500),
+      context: { ...context, source: 'speaking-pass-webhook' },
+      url:      null,
+      user_agent: 'edge-function/speaking-pass-webhook',
+      severity,
+    });
+  } catch (_) {
+    // logging-of-logging failure swallowed — last-ditch
+  }
+}
+
 serve(async (req) => {
   if (req.method !== 'POST') return new Response('method not allowed', { status: 405 });
 
+  // PAY-F6: instantiate the service-role client early so failure paths
+  // can persist diagnostics to client_errors instead of relying on
+  // Supabase log retention.
+  const sb = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+
   const sig = req.headers.get('stripe-signature');
-  if (!sig) return new Response('missing stripe-signature', { status: 400 });
+  if (!sig) {
+    await logServerError(sb, 'missing stripe-signature header', {
+      method: req.method,
+      ip: req.headers.get('x-forwarded-for') || null,
+    });
+    return new Response('missing stripe-signature', { status: 400 });
+  }
 
   const raw = await req.text();
   let event: Stripe.Event;
@@ -40,6 +77,10 @@ serve(async (req) => {
     );
   } catch (e) {
     console.error('[speaking-pass-webhook] signature verification failed', e);
+    await logServerError(sb, 'stripe signature verification failed', {
+      error: e instanceof Error ? e.message : String(e),
+      ip: req.headers.get('x-forwarded-for') || null,
+    });
     return new Response('invalid signature', { status: 400 });
   }
 
@@ -61,13 +102,12 @@ serve(async (req) => {
 
   if (!user_id || !Number.isFinite(coins) || coins <= 0) {
     console.error('[speaking-pass-webhook] missing/invalid metadata', session.metadata);
+    await logServerError(sb, 'webhook metadata missing/invalid', {
+      session_id: session.id,
+      metadata: session.metadata,
+    });
     return new Response('missing metadata', { status: 400 });
   }
-
-  const sb = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
 
   const { data, error } = await sb.rpc('grant_speaking_coins', {
     p_user_id:           user_id,
@@ -77,7 +117,36 @@ serve(async (req) => {
   });
 
   if (error) {
+    // PAY-F3: when the auth.users row has been deleted, the RPC's
+    // INSERT INTO speaking_coin_purchases (FK to auth.users) fails
+    // with PostgREST code 23503 (foreign_key_violation). Returning
+    // 500 makes Stripe retry for 3 days, then dead-letter — money
+    // was captured but never reconciled. Instead, return 200 (don't
+    // retry) AND persist a critical row so the operator can refund
+    // or hand-grant.
+    const code = (error as { code?: string }).code;
+    const isOrphanedUser =
+      code === '23503' ||
+      /foreign key|violates foreign key constraint/i.test(error.message || '');
+    if (isOrphanedUser) {
+      console.error('[speaking-pass-webhook] payment for deleted user', {
+        user_id, session_id: session.id, amount, coins,
+      });
+      await logServerError(sb, 'payment received for deleted user', {
+        user_id, session_id: session.id, amount, coins,
+        action_required: 'refund or hand-grant after restoring user',
+      });
+      return new Response(
+        JSON.stringify({ ok: false, orphaned: true, action: 'manual_reconcile' }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }
     console.error('[speaking-pass-webhook] grant error', error);
+    await logServerError(sb, 'grant_speaking_coins RPC failed', {
+      session_id: session.id, user_id, coins,
+      error_code: code || null,
+      error_msg:  error.message,
+    });
     return new Response('rpc error: ' + error.message, { status: 500 });
   }
 
