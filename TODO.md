@@ -10,7 +10,29 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/cron-f6-prompt-cache`
+## In progress on `claude/audit-10-gdpr-pipa`
+
+- **CRON-F7 — LANDED THIS PR**: `daily-content-gen` lock TTL
+  raised from 5 min to 15 min. The old 5 min was shorter than
+  worst-case Anthropic latency × 8 concurrent calls (Sonnet at
+  3,000 tokens on Advanced has observed 30–60s tails). A pg_cron
+  retry after 5 min would have seen a "stale" lock, overwritten
+  it, and fired a second concurrent generation that races the
+  first on the same `(scheduled_date, level)` upserts.
+
+- **CRON-F13 — LANDED THIS PR**: writing-topics rotation epoch
+  was hardcoded in 7 places (2 in `daily-content-gen/index.ts`,
+  5 in `korehan-x9f4k2m7.html`). A maintainer tweaking one (e.g.
+  to skip a corrupted topic batch) would silently desync admin
+  "preview today's topic" from cron generation. Extracted to a
+  single constant per file:
+  - `WRITING_TOPICS_EPOCH_ISO` in `daily-content-gen/index.ts:24`
+  - `KH_WRITING_TOPICS_EPOCH` in `korehan-x9f4k2m7.html:415`
+  Keep them in sync if the epoch ever needs to move.
+
+---
+
+## On `claude/cron-f6-prompt-cache` (PR #617 merged 2026-05-26)
 
 - **CRON-F6 — prompt-caching on `daily-content-gen` (2026-05-26)**:
   Refactored `buildPrompt()` to return `{staticPrefix, dynamicSuffix}`
