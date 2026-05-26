@@ -10,7 +10,75 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-11-moderation`
+## In progress on `claude/mod-fixes-storage`
+
+- **11차 batch A — Storage + Validation + Rate-limit (2026-05-26)**:
+  Six 11th-audit findings bundled (DB-heavy surfaces) — all owner-
+  applicable without UX decisions.
+  - **MOD-F4 (P0) — LANDED**: avatars bucket migration sets
+    `allowed_mime_types = ['image/jpeg','image/jpg','image/png',
+    'image/webp']` + `file_size_limit = 2 MB`. Frontend now
+    re-encodes uploaded images via `createImageBitmap` + canvas
+    (strips ALL EXIF including iPhone GPS coords; normalizes to
+    JPEG; caps at 512×512). The data: URL fallback (which used
+    to balloon JWT and render multi-MB inline images everywhere)
+    is REMOVED — upload failure now shows a retry toast and bails.
+  - **MOD-F8 (P0) — LANDED**: reporter-images bucket migration
+    same shape (`allowed_mime_types` + `5 MB cap`). Previously
+    any authenticated user could upload arbitrary binaries
+    (mp4/exe/SVG with embedded JS) and link to them via
+    `public: true` — KoreHani's domain was a free file-hosting
+    CDN. Locked to image MIME only.
+  - **MOD-F5 (P0) — LANDED**: new `submit_comment(article_id,
+    content, parent_id)` SECURITY DEFINER RPC. Enforces server-
+    side 15-second cooldown via `max(created_at) where user_id =
+    auth.uid()` — un-bypassable from a second tab. Strips
+    zero-width / RTL-override chars as a backstop. Pulls
+    display_name + avatar from user_stats canonically. Frontend
+    `submitComment` + `khCmSubmitReply` rewritten to call this
+    instead of direct INSERT.
+  - **MOD-F3 (P0) — LANDED**: `_validate_display_name()` trigger
+    on user_stats INSERT/UPDATE of display_name. Rejects reserved
+    impersonation patterns (관리자 / 운영자 / Admin / KoreHani
+    Staff / etc.) case-insensitively. Strips zero-width + RTL
+    chars. Length-caps at 30. Profanity wordlist intentionally
+    deferred — owner should curate Korean profanity content;
+    impersonation block is the highest-value part.
+  - **MOD-F13 (P1) — LANDED**: `notify_comment_reply` now skips
+    the notification insert when either side has blocked the
+    other (bidirectional `user_blocks` join). Previously a
+    blocked user could "ping-bomb" the target by replying to
+    their old comments.
+  - **MOD-F14 (P2) — LANDED**: `post_guestbook` no longer stores
+    `left(msg, 80)` preview in `notifications.payload`. Now just
+    `guestbook_id` — bell-dropdown UI fetches the message live
+    (deletes propagate, no leak path if push notifications
+    are ever wired).
+  - **MOD-F10 (P1) — LANDED**: frontend `_khStripInvisible()` in
+    comments.js removes zero-width / RTL-override / BOM chars
+    before length / spam checks. Backstop for the server-side
+    strip inside `submit_comment` RPC.
+
+  **STILL OPEN from 11차 (batch B planned):**
+  - **MOD-F2 (P0)**: report/flag pipeline (no DB table yet).
+  - **MOD-F6 (P1)**: blocked-user visibility in comment / profile /
+    search reads.
+  - **MOD-F7 (P1)**: comments hard-delete loses audit trail —
+    needs soft-delete (deleted_at, deleted_by, content_original).
+  - **MOD-F9 (P1)**: `user_stats` anon SELECT enables PII scrape.
+  - **MOD-F11 (P1)**: nickname attr-context XSS (mostly covered
+    by MOD-F3 now; verify no remaining sites use innerHTML on
+    raw display_name).
+  - **MOD-F12 (P2)**: admin UGC queue beyond comments (guestbook,
+    reporter_posts, writing submissions).
+  - **MOD-F15 (P2)**: avatar `data:` URL fallback unbounded —
+    **fixed in this PR via MOD-F4 (removed the fallback entirely)**.
+  - NSFW scan (Sightengine / Cloudflare Images): deferred —
+    paid external service.
+
+---
+
+## On `claude/audit-11-moderation` (PR #622 merged 2026-05-26)
 
 - **11차 오딧 — Content moderation + UGC safety (2026-05-26)**:
   Background audit found **15 findings**. Headline: stored XSS in

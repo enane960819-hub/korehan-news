@@ -298,7 +298,8 @@ async function khCmSubmitReply(parentId) {
   var formEl = document.getElementById('cm-reply-form-' + parentId);
   if (!formEl) return;
   var ta = formEl.querySelector('textarea');
-  var content = (ta.value || '').trim();
+  // MOD-F10: strip invisible chars before validation.
+  var content = _khStripInvisible(ta.value || '').trim();
   if (!content || content.length < COMMENT_MIN_LENGTH) { toast('댓글이 너무 짧아요.', true); return; }
   if (content.length > COMMENT_MAX_LENGTH)            { toast('댓글이 너무 길어요.', true); return; }
   if (isSpamComment(content))                          { toast('스팸으로 보여요. 내용을 다시 확인해 주세요.', true); return; }
@@ -312,35 +313,36 @@ async function khCmSubmitReply(parentId) {
   if (!sb) return;
 
   // articleId is on the parent row (and we need it for the insert).
-  var parentEl = document.getElementById('cm-' + parentId);
   var articleId = (new URLSearchParams(window.location.search)).get('id');
 
-  var payload = {
-    article_id:  articleId,
-    user_id:     supaUser.id,
-    user_name:   _khCommentAuthor(supaUser),
-    avatar_url:  _khCommentAvatar(supaUser),
-    content:     content,
-    parent_id:   parentId
-  };
-  var res = await sb.from('comments').insert(payload).select('id').maybeSingle();
-  if (res.error) {
-    var msg = String(res.error.message || '');
-    // parent_id column missing → retry without; user gets a flat comment
-    // instead of a hard error so the post isn't lost.
-    if (/parent_id/i.test(msg) || /column .* does not exist/i.test(msg)) {
-      _khCmFeatures.parentChecked = true;
-      _khCmFeatures.parentOk = false;
-      delete payload.parent_id;
-      res = await sb.from('comments').insert(payload).select('id').maybeSingle();
+  // MOD-F5: call submit_comment RPC. Handles cooldown server-side
+  // (un-bypassable from a second tab), returns the new row id so
+  // we can fire notify_comment_reply.
+  var rpc = await sb.rpc('submit_comment', {
+    p_article_id: articleId,
+    p_content:    content,
+    p_parent_id:  parentId,
+  });
+  if (rpc.error || (rpc.data && rpc.data.ok === false)) {
+    var why = (rpc.data && rpc.data.error) || (rpc.error && rpc.error.message) || 'unknown';
+    if (why === 'rate_limited') {
+      var w = (rpc.data && rpc.data.wait_seconds) || 15;
+      toast(w + '초 후 다시 시도해 주세요.', true);
+    } else if (why === 'invalid_length') {
+      toast('답글 길이가 올바르지 않습니다.', true);
+    } else {
+      toast('답글 등록 실패: ' + why, true);
     }
+    return;
   }
-  if (res.error) { toast('답글 등록 실패: ' + res.error.message, true); return; }
+  var childId = rpc.data && rpc.data.id;
+
   // Notify the parent comment's author. RPC is fire-and-forget — if
   // it fails (table missing, RLS), the reply still went through.
+  // MOD-F13 inside the RPC now skips when blocker / blocked pair
+  // exists either direction.
   try {
-    var childId = res.data && res.data.id;
-    if (parentId && _khCmFeatures.parentOk !== false) {
+    if (parentId) {
       sb.rpc('notify_comment_reply', { p_parent_id: parentId, p_child_id: childId || null })
         .then(function(){})
         .catch(function(){});
@@ -466,7 +468,7 @@ function _khShowHiddenComments() {
 
 // 댓글 rate limit: 유저별 마지막 작성 시간 추적
 var _commentLastTime = {};
-var COMMENT_COOLDOWN_MS = 30000; // 30초
+var COMMENT_COOLDOWN_MS = 30000; // 30초 — backstop only; server enforces 15s via submit_comment RPC
 var COMMENT_MAX_LENGTH  = 500;
 var COMMENT_MIN_LENGTH  = 2;
 
@@ -478,10 +480,25 @@ function isSpamComment(text) {
   return false;
 }
 
+// MOD-F10: strip zero-width / RTL-override / BOM characters before
+// any spam check or insert. These are normally invisible but enable
+// "이상한사람‮@adminkorehan" → reads as "이상한사람korehanadmin@" in
+// the rendered comment, impersonating staff. Server-side
+// submit_comment RPC also does this as a backstop.
+//   ​-‏  zero-width + LRM/RLM
+//   ‪-‮  embedding / override controls
+//   ﻿         BOM
+function _khStripInvisible(text) {
+  return String(text || '').replace(/[​-‏‪-‮﻿]/g, '');
+}
+
 async function submitComment(articleId) {
   if (!supaUser) { openAuthModal("signin"); return; }
   var input = document.getElementById('comment-input');
-  var content = input ? input.value.trim() : '';
+  // MOD-F10: strip invisible characters BEFORE trim / length /
+  // spam checks. Otherwise an attacker could pad the message with
+  // zero-width chars to bypass min-length or fake length.
+  var content = _khStripInvisible(input ? input.value : '').trim();
 
   if (!content || content.length < COMMENT_MIN_LENGTH) {
     toast('댓글이 너무 짧아요.', true); return;
@@ -492,6 +509,9 @@ async function submitComment(articleId) {
   if (isSpamComment(content)) {
     toast('스팸으로 보여요. 내용을 다시 확인해 주세요.', true); return;
   }
+  // Client-side cooldown is kept as a UX backstop (avoids a round
+  // trip), but the server-side 15s rate-limit inside submit_comment
+  // RPC is the authoritative one. Two tabs can't bypass that.
   var now = Date.now();
   var last = _commentLastTime[supaUser.id] || 0;
   if (now - last < COMMENT_COOLDOWN_MS) {
@@ -502,15 +522,26 @@ async function submitComment(articleId) {
   var sb = getSupa();
   if (!sb) return;
 
-  var { error } = await sb.from('comments').insert({
-    article_id:  articleId,
-    user_id:     supaUser.id,
-    user_name:   _khCommentAuthor(supaUser),
-    avatar_url:  _khCommentAvatar(supaUser),
-    content:     content,
+  // MOD-F5: call submit_comment RPC instead of direct INSERT. RPC
+  // enforces server-side cooldown, length, invisible-char strip,
+  // and pulls display_name/avatar from user_stats canonically.
+  var rpc = await sb.rpc('submit_comment', {
+    p_article_id: articleId,
+    p_content:    content,
+    p_parent_id:  null,
   });
-
-  if (error) { toast('댓글 등록 실패: ' + error.message, true); return; }
+  if (rpc.error || (rpc.data && rpc.data.ok === false)) {
+    var why = (rpc.data && rpc.data.error) || (rpc.error && rpc.error.message) || 'unknown';
+    if (why === 'rate_limited') {
+      var w = (rpc.data && rpc.data.wait_seconds) || 15;
+      toast(w + '초 후 다시 시도해 주세요.', true);
+    } else if (why === 'invalid_length') {
+      toast('댓글 길이가 올바르지 않습니다.', true);
+    } else {
+      toast('댓글 등록 실패: ' + why, true);
+    }
+    return;
+  }
   _commentLastTime[supaUser.id] = Date.now();
   input.value = '';
   toast('댓글이 등록되었습니다.');
