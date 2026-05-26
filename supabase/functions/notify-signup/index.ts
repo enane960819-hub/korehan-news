@@ -130,19 +130,21 @@ Deno.serve(async (req) => {
     const safeCreated = safeWebhookText(u.created_at || '')
 
     // PRIV-F4: the Discord webhook is a US-hosted third party.
-    // Sending raw email+name there is a cross-border PII transfer
-    // never disclosed in the consent flow (PIPA Art 17 + 27).
-    // Drop both from the webhook payload. The signup_notifications_log
-    // row inserted below still carries email+name for the admin's
-    // own dashboard — that's local DB inside the existing Supabase
-    // workspace, not a cross-border push.
-    const emailHint = safeEmail.replace(/^([^@]).+@(.+)$/, '$1***@$2')
+    // Sending ANY PII there is a cross-border transfer never
+    // disclosed in the consent flow (PIPA Art 17 + 27). Even the
+    // earlier obfuscated email hint (`a***@gmail.com`) is still
+    // arguably linkable info. Drop everything PII-shaped from the
+    // payload: just say a signup happened, surface the provider +
+    // verified status + user_id (UUID, opaque on its own) +
+    // timestamp. The signup_notifications_log row still carries
+    // full email+name for the admin's local Supabase dashboard —
+    // that's the SAME data-controller workspace, not cross-border.
     const lines = [
       `🎉 **New KoreHani signup**`,
-      `• Email: \`${emailHint}\``,
       `• Provider: ${safeProvider}${emailConfirmed ? ' (verified)' : ' (pending verification)'}`,
       `• User ID: \`${safeId}\``,
       `• At: ${safeCreated}`,
+      `• Lookup in admin → signup_notifications_log for the full email/name.`,
     ].filter(Boolean)
     const messageContent = lines.join('\n')
     const name = rawName // kept for the log insert below — DB column is plain text

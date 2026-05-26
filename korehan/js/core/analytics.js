@@ -131,7 +131,12 @@ function _khShowCookieBanner() {
     if (path.indexOf('terms-of-service') !== -1) return;
     if (path.indexOf('refund-policy')   !== -1) return;
     if (path.indexOf('korehan-x9f4k2m7') !== -1) return;
-    if (path.indexOf('korehan-onboarding') !== -1) return;
+    // PRIV-F14: previously suppressed on onboarding too. That meant
+    // the highest-engagement step (signup → preferences) ran without
+    // ever asking the user for analytics consent, and the banner only
+    // appeared on the NEXT page. Now shows on onboarding as well —
+    // the welcome banner deferral below (1.2s setTimeout) gives the
+    // page time to mount before the consent banner stacks on top.
     // Defer slightly so it doesn't fight with onboarding redirects /
     // welcome banner mounting.
     setTimeout(_khShowCookieBanner, 1200);

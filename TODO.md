@@ -10,7 +10,81 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/priv-fixes-p0`
+## In progress on `claude/priv-fixes-batch-2`
+
+- **10차 GDPR/PIPA batch 2 (2026-05-26)** — second round closing
+  the remaining big-ticket items from audit 10:
+  - **PRIV-F3 (P0) — LANDED**: new `export-my-data` Edge Function
+    + "Download my data" button in My Page. Returns a JSON blob
+    of every user-owned row across the same table set
+    `delete-account` touches, plus storage manifests (filenames +
+    sizes only; raw audio/avatar bytes not embedded). Documents
+    what's NOT included in a `notes` array. GDPR Art 15/20 + PIPA
+    Art 35 열람권 satisfied.
+  - **PRIV-F4 (P0) — FULLY CLOSED**: previous PR sent obfuscated
+    email hint to Discord (`a***@gmail.com`). Still arguably
+    linkable. This PR drops the email field entirely; Discord
+    payload is now just provider + user_id + verified + timestamp.
+    Admin can look up full email/name in the local
+    signup_notifications_log (not cross-border).
+  - **PRIV-F5 (P0) — LANDED (manual purge for now)**:
+    `purge_old_signup_pii(p_age_days int)` stored procedure that
+    nulls `email + name` on `signup_notifications_log` rows older
+    than N days (default 90, minimum 30). service_role-only. Owner
+    runs ad-hoc via `SELECT public.purge_old_signup_pii();` until
+    pg_cron is installed (CRON-F1 still open).
+  - **PRIV-F6 (P1) — LANDED**: account-deletion flow now requires
+    typing the account email to confirm. Stolen-active-session
+    attackers must know the email — they often do, so this isn't
+    bulletproof, but it adds friction beyond click-through and
+    catches accidental clicks. Native `window.prompt` (intentional
+    — a bespoke modal would be a lot of code for one rare flow).
+  - **PRIV-F8 (P1) — LANDED**: new `privacy-policy-ko.html`
+    covering all PIPA Art 30 required sections in Korean
+    (수집항목, 이용목적, 보유기간, 처리위탁, 국외이전, 이용자
+    권리, 14세 미만 처리, 안전성 조치, 보호책임자 + KISA/Privacy
+    Commission contact list). Cross-linked from English policy
+    header. Note: this is a focused first draft — owner may want
+    legal-review refinement.
+  - **PRIV-F11 (P1) — LANDED**: dropped the unenforceable
+    "deleted within 30 days" promise from privacy-policy.html
+    (lines 355 + 440). Changed to GDPR Art 17(1)'s "without
+    undue delay" language. Response-time promises ("we respond
+    within 30 days to your request") are kept — those are
+    GDPR Art 12(3)'s actual requirement.
+  - **PRIV-F12 (P1) — LANDED**: corrected the inconsistent
+    payment-retention statement ("7 years" was wrong for KR
+    users — Korean E-Commerce Act Art 6 mandates 5 years).
+    Updated to "5 years per the Korean E-Commerce Act / Act on
+    Consumer Protection in Electronic Commerce, Article 6".
+    Speaking Coach v3 currently unused so no actual rows exist;
+    if/when payments go live the deletion path needs to
+    anonymize-in-place instead of cascade-delete.
+  - **PRIV-F14 (P2) — LANDED**: cookie/consent banner now fires
+    on `korehan-onboarding` too. Previously suppressed there —
+    meaning the highest-engagement step ran without ever asking
+    for consent and the banner only appeared on the NEXT page.
+  - **PRIV-F15 (P2) — LANDED (minimum-effort)**: Owner doesn't
+    have EU/UK contacts to designate as Art 27 representative.
+    Added a section to the English privacy policy explaining
+    that EU/UK residents may contact `hello@korehani.com`
+    directly and we commit to the statutory 30-day response.
+    NOT fully compliant — a designated rep is the proper fix
+    (e.g. VeraSafe paid service) — but reduces exposure until
+    owner picks a service.
+
+- **STILL OPEN from 10차**:
+  - **PRIV-F7 (P1)**: `client_errors.stack` + `context` scrubbing.
+    Non-trivial — needs a stack-trace scrubber + cascade-delete
+    on user removal (currently ON DELETE SET NULL leaves orphan).
+  - **PRIV-F9 (P1)**: age gate on onboarding (≥14 PIPA, ≥16 GDPR).
+    UX decision pending.
+  - **PRIV-F15 follow-up**: when feasible, designate a real EU/UK
+    Art 27 representative via VeraSafe / Bird & Bird / etc.
+
+---
+
+## On `claude/priv-fixes-p0` (PR #619 merged 2026-05-26)
 
 - **10차 오딧 — GDPR + PIPA compliance (2026-05-26)**:
   15 findings. P0 items (5): missing voice/avatar erasure, newsletter

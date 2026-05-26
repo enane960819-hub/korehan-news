@@ -143,9 +143,11 @@
 <body>
   <div id="kh-header"></div>
 
-  <div class="legal-hero">
+  <div class="legal-hero" style="position:relative">
+    <!-- PRIV-F8: Korean-language version (PIPA Art 30) -->
+    <div style="position:absolute;top:16px;right:24px"><a href="privacy-policy-ko.html" style="color:#fff;font-size:13px;text-decoration:underline">한국어</a></div>
     <h1>Privacy Policy</h1>
-    <p class="last-updated">Last updated: May 7, 2026</p>
+    <p class="last-updated">Last updated: May 26, 2026</p>
   </div>
 
   <div class="legal-wrap">
@@ -350,7 +352,12 @@
       <h2>8. Data Retention</h2>
       <ul>
         <li><strong>Active accounts:</strong> We retain your personal data and learning history for as long as your account is active.</li>
-        <li><strong>Deleted accounts:</strong> When you delete your account, we will delete or anonymise your personal data within 30 days, except where we are required to retain it for legal or financial compliance (e.g., payment records retained for 7 years).</li>
+        <!-- PRIV-F11 + PRIV-F12: "30 days" was unenforceable (no scheduled
+             purge yet) and "7 years payment retention" was incorrect for
+             Korean users (the Korean E-Commerce Act mandates 5 years).
+             Switched to GDPR Art 17(1)'s "without undue delay" language and
+             corrected the payment retention period to 5 years where required. -->
+        <li><strong>Deleted accounts:</strong> When you delete your account, we delete or anonymise your personal data <strong>without undue delay</strong>, except where we are required to retain certain records for legal or financial compliance (e.g., payment-transaction records retained for 5 years per the Korean E-Commerce Act / Act on Consumer Protection in Electronic Commerce, Article 6).</li>
         <li><strong>Server logs:</strong> Technical access logs are retained for up to 90 days for security purposes.</li>
         <li><strong>AI cache:</strong> Cached AI-generated content associated with articles may persist indefinitely as it is not personally identifiable.</li>
       </ul>
@@ -380,6 +387,14 @@
       </ul>
 
       <p>To exercise any GDPR rights, please contact us at <a href="mailto:privacy@korehani.com" style="color:var(--bright);font-weight:600">privacy@korehani.com</a>. We will respond within 30 days.</p>
+
+      <!-- PRIV-F15: Art 27 EU/UK representative — we have not yet
+           designated a paid representative service. As a minimum, EU
+           and UK residents may contact us directly at the address
+           below; we will respond to access / erasure / rectification
+           requests within the statutory 30 days. -->
+      <h3>EU &amp; UK Representative</h3>
+      <p>KoreHani currently does not have a designated EU/UK representative under GDPR Article 27. EU and UK residents may exercise their rights by contacting us directly at <a href="mailto:hello@korehani.com" style="color:var(--bright);font-weight:600">hello@korehani.com</a>; we commit to responding within the statutory 30-day period. If a designated representative is required for your specific request, please indicate so in your message and we will arrange one before processing.</p>
     </div>
 
     <!-- 8 -->
@@ -430,7 +445,7 @@
 
       <h3>11.3 Retention period (보유 기간)</h3>
       <ul>
-        <li>Account and learning data: while the account is active; deleted within 30 days of account closure.</li>
+        <li>Account and learning data: while the account is active; deleted without undue delay after account closure.</li>
         <li>Payment records: 5 years (Korean Commercial Code 통신판매법).</li>
         <li>Server access logs: 90 days.</li>
         <li>Newsletter subscription history: 12 months after unsubscribe (audit trail).</li>
