@@ -55,15 +55,25 @@ doesn't keep reminding about closed work.
       The audit also flagged `send_reporter_gift` and the room-state
       RPC but on second inspection they already use `FOR UPDATE` —
       only those two needed fixing. Idempotent — safe to re-run.
-  - **PAY-F1 (P0) — STILL OPEN, no refund webhook handler**:
-    `supabase/functions/speaking-pass-webhook/index.ts` ignores
-    `charge.refunded`, `charge.dispute.created`,
-    `payment_intent.canceled`, `customer.subscription.deleted` —
-    refunded customers keep their coins. Direct revenue leak via
-    chargeback + retain. The DB even reserves a `status='refunded'`
-    column that nothing writes to. Needs careful design (idempotency
-    on event.id, reversal RPC `revoke_speaking_coins`, edge case
-    where coins were already spent). Next PR.
+  - **PAY-F1 (P0) — LANDED in follow-up PR (claude/audit-8-payments-refund)**:
+    `speaking-pass-webhook` now subscribes to `charge.refunded` +
+    `charge.dispute.created` + `payment_intent.canceled`.
+    `charge.refunded` looks up the originating Checkout Session via
+    Stripe API, then calls the new `revoke_speaking_coins` RPC
+    (atomic, FOR UPDATE on purchase + wallet, idempotent on
+    `stripe_refund_event_id`). Handles full + partial refunds and
+    the "user already spent coins" edge case — deducts what we can
+    and logs `shortfall > 0` as a critical client_errors row for
+    operator reconciliation. `charge.dispute.created` logs critical
+    (no coin movement yet — that fires when the dispute concludes
+    as a refund). `payment_intent.canceled` is a no-op (we never
+    granted coins on a pre-completion cancel).
+    Companion migration: `20260526_audit_8_refund_handler.sql` —
+    adds `refunded_at`, `refunded_amount_cents`,
+    `stripe_refund_event_id`, `refund_note`, `coins_revoked`,
+    `coins_shortfall` columns + `revoke_speaking_coins` RPC.
+    OWNER MUST APPLY migration + redeploy webhook + register the
+    new events in the Stripe dashboard endpoint settings.
   - **PAY-F5 P1 (email case mismatch), PAY-F7 P1 (no checkout
     funnel tracking — duplicates AN-F7), PAY-F9 P2 (no user-visible
     purchase history, PIPA risk), PAY-F11 P2 (event.id dedup),
