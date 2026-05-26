@@ -353,6 +353,7 @@ body.sb-open .sb-backdrop{display:block}
     <div class="sb-lbl">👥 커뮤니티</div>
     <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>User Management</button>
     <button class="sb-btn" onclick="goComments()"><span class="ico">🗨️</span>Comment Management</button>
+    <button class="sb-btn" onclick="goReports()"><span class="ico">🚩</span>Report Queue</button>
     <button class="sb-btn" id="sb-speaking" onclick="goSpeakingReviews()"><span class="ico">🎙️</span>Speaking Reviews</button>
     <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
     <button class="sb-btn" id="sb-analytics" onclick="goAnalytics()"><span class="ico">📊</span>통계</button>
@@ -8188,6 +8189,111 @@ function goComments() {
     '<div class="pg-hd"><div><h1>💬 Comment Management</h1><p>View and reply to comments on all articles.</p></div></div>'
    +'<div id="comments-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
   loadAllComments();
+}
+
+// MOD-F2: report queue. Shows pending content_reports with action
+// buttons (Dismiss / Mark Reviewed / Hide Comment). Reads via
+// service-role context (the admin gate provides that); the
+// admin_resolve_report RPC enforces is_admin_email() server-side
+// regardless.
+function goReports() {
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>🚩 Report Queue</h1><p>User-submitted moderation reports awaiting review.</p></div>'
+   +'<div><label style="font-size:12px;color:var(--gr);margin-right:8px"><input type="checkbox" id="rpt-show-resolved"> Show resolved</label></div></div>'
+   +'<div id="reports-admin-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
+  var chk = document.getElementById('rpt-show-resolved');
+  if (chk) chk.addEventListener('change', loadAllReports);
+  loadAllReports();
+}
+
+async function loadAllReports() {
+  var wrap = document.getElementById('reports-admin-wrap');
+  if (!wrap) return;
+  var sb = getSb();
+  if (!sb) { wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ Admin client missing</div>'; return; }
+  var showResolved = (document.getElementById('rpt-show-resolved')||{}).checked;
+  try {
+    var q = sb.from('content_reports').select('*').order('created_at', { ascending: false }).limit(200);
+    if (!showResolved) q = q.eq('status', 'pending');
+    var res = await q;
+    if (res.error) throw res.error;
+    var rows = res.data || [];
+    if (!rows.length) {
+      wrap.innerHTML = '<div style="padding:32px;text-align:center;color:var(--gr)">'+(showResolved ? 'No reports found.' : 'No pending reports — nice.')+'</div>';
+      return;
+    }
+    // Pre-fetch comment bodies for comment-typed reports so we can
+    // show a snippet inline. One bulk fetch instead of N round-trips.
+    var commentIds = rows.filter(function(r){ return r.target_type === 'comment'; }).map(function(r){ return r.target_id; });
+    var commentMap = {};
+    if (commentIds.length) {
+      var cRes = await sb.from('comments').select('id,article_id,content,content_original,deleted_at,user_id,user_name').in('id', commentIds);
+      (cRes.data || []).forEach(function(c){ commentMap[c.id] = c; });
+    }
+
+    wrap.innerHTML =
+      '<div style="font-size:13px;color:var(--gr);margin-bottom:12px">'+rows.length+' report'+(rows.length===1?'':'s')+' ('+rows.filter(function(r){return r.status==='pending';}).length+' pending)</div>'
+      + rows.map(function(r){
+          var c = commentMap[r.target_id] || null;
+          var contentSnippet = '';
+          if (r.target_type === 'comment' && c) {
+            var body = c.content_original || c.content || '';
+            contentSnippet = '<div style="background:#f8fafc;border-left:3px solid #94a3b8;padding:8px 12px;margin:8px 0;font-size:13px;white-space:pre-wrap">'
+              + (c.deleted_at ? '<span style="color:#dc2626;font-size:11px;font-weight:800">[ALREADY HIDDEN] </span>' : '')
+              + esc((body || '').slice(0, 400))
+              + (c.user_name ? '<div style="font-size:11px;color:var(--gr);margin-top:4px">— '+esc(c.user_name)+'</div>' : '')
+              + '</div>';
+          } else if (r.target_type === 'comment') {
+            contentSnippet = '<div style="background:#fef2f2;border-left:3px solid #dc2626;padding:8px 12px;margin:8px 0;font-size:13px;color:#991b1b">⚠ Target comment row not found (may have been hard-deleted before soft-delete migration landed).</div>';
+          }
+          var actions;
+          if (r.status === 'pending') {
+            actions = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'
+              + (r.target_type === 'comment'
+                  ? '<button onclick="adminResolveReport('+r.id+',\'hide_comment\')" style="padding:6px 12px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">🚫 Hide Comment</button>'
+                  : '')
+              + '<button onclick="adminResolveReport('+r.id+',\'reviewed\')" style="padding:6px 12px;background:#f1f5f9;color:#0f172a;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">✓ Mark Reviewed</button>'
+              + '<button onclick="adminResolveReport('+r.id+',\'dismiss\')" style="padding:6px 12px;background:#fff;color:#64748b;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Dismiss</button>'
+              + '</div>';
+          } else {
+            actions = '<div style="font-size:11px;color:var(--gr);margin-top:8px">'
+              + '✓ ' + esc(r.status) + ' — ' + (r.resolved_at ? new Date(r.resolved_at).toLocaleString('ko-KR') : '')
+              + (r.resolver_note ? ' · '+esc(r.resolver_note) : '')
+              + '</div>';
+          }
+          return '<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+            +'<div>'
+            +'<span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#92400e;text-transform:uppercase">'+esc(r.target_type)+'</span>'
+            +' <span style="font-size:13px;color:#0f172a;font-weight:700">'+esc(r.reason)+'</span>'
+            +(r.detail ? '<div style="font-size:12px;color:#475569;margin-top:4px">'+esc(r.detail)+'</div>' : '')
+            +'</div>'
+            +'<div style="font-size:11px;color:var(--gr);white-space:nowrap">'+new Date(r.created_at).toLocaleString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</div>'
+            +'</div>'
+            + contentSnippet
+            + actions
+            +'<div style="font-size:11px;color:#94a3b8;margin-top:6px">target: <code>'+esc(r.target_id)+'</code> · reporter: <code>'+esc(r.reporter_id||'(anon)')+'</code></div>'
+            +'</div>';
+        }).join('');
+  } catch(e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패: '+esc(e.message||e)+'</div>';
+  }
+}
+
+async function adminResolveReport(reportId, action) {
+  var note = null;
+  if (action === 'hide_comment') {
+    if (!confirm('Hide this comment AND mark report actioned?')) return;
+  }
+  var sb = getSb();
+  if (!sb) return;
+  var r = await sb.rpc('admin_resolve_report', { p_report_id: reportId, p_action: action, p_note: note });
+  if (r.error || (r.data && r.data.ok === false)) {
+    alert('Resolve failed: ' + ((r.data && r.data.error) || (r.error && r.error.message) || 'unknown'));
+    return;
+  }
+  loadAllReports();
 }
 
 // ══ SPEAKING COACH REVIEW QUEUE ══════════════════════════════════════

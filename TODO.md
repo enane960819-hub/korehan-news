@@ -10,7 +10,53 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/mod-fixes-storage`
+## In progress on `claude/mod-fixes-reports`
+
+- **11차 batch B1 — Report pipeline + Soft-delete (2026-05-26)**:
+  - **MOD-F2 (P0) — LANDED**: full report pipeline. New
+    `content_reports` table + `report_content(target_type,
+    target_id, reason, detail)` SECURITY DEFINER RPC + new admin
+    "🚩 Report Queue" tab in `korehan-x9f4k2m7.html`. Reports
+    dedup on `(target_type, target_id, reporter_id)`. Admin
+    queue shows pending reports with the original comment snippet
+    inline (pulled via the new `content_original` column from
+    MOD-F7), plus three actions: Dismiss / Mark Reviewed / Hide
+    Comment (the last cascades into `soft_delete_comment`).
+    Self-reports are rejected at the RPC. Frontend
+    `reportComment()` in `comments.js` rewritten to call the
+    RPC; the localStorage hide is kept as a UX backstop so the
+    reporter doesn't keep seeing the offending content while
+    admin reviews.
+  - **MOD-F7 (P1) — LANDED**: comments now soft-delete via
+    `soft_delete_comment(id)` SECURITY DEFINER RPC instead of
+    hard DELETE. Adds `deleted_at`, `deleted_by`,
+    `content_original` columns to `comments`. Author self-delete
+    replaces content with `[Deleted by author]`; admin delete
+    replaces with `[Removed by moderator]`; original text is
+    preserved in `content_original` for the admin queue (so a
+    harasser can't delete-then-deny). Replies stay coherent.
+  - **`admin_resolve_report(report_id, action, note)`** RPC —
+    admin gate via `is_admin_email()`. Action ∈ dismiss /
+    reviewed / hide_comment. The hide_comment action cascades
+    into `soft_delete_comment`.
+
+  **STILL OPEN from 11차 (batch B2 planned):**
+  - **MOD-F6 (P1)**: blocked-user visibility in comment / profile /
+    search reads. Needs RPC wrappers (`get_visible_comments`,
+    `search_users`) that JOIN against `user_blocks`.
+  - **MOD-F9 (P1)**: `user_stats` anon SELECT scrape risk. Revoke
+    anon SELECT + introduce `get_public_profile(user_id)` RPC.
+  - **MOD-F11 (P1)**: residual nickname XSS sites — verify no
+    remaining HTML interpolations use raw `display_name` (the
+    DB trigger from batch A blocks new bad names, but existing
+    rows + other display surfaces still need an audit).
+  - **MOD-F12 (P2)**: admin UGC queue beyond comments
+    (guestbook / reporter_posts / writing submissions).
+  - NSFW scan: deferred (paid external service).
+
+---
+
+## On `claude/mod-fixes-storage` (PR #623 merged 2026-05-26)
 
 - **11차 batch A — Storage + Validation + Rate-limit (2026-05-26)**:
   Six 11th-audit findings bundled (DB-heavy surfaces) — all owner-

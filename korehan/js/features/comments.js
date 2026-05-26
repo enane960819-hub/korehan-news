@@ -443,18 +443,45 @@ function _khHiddenComments() {
 function _khSaveHiddenComments(h) {
   try { localStorage.setItem(_KH_HIDDEN_COMMENTS_KEY, JSON.stringify(h || {})); } catch(_) {}
 }
+// MOD-F2: report flows through report_content RPC + content_reports
+// table now (not just localStorage). User picks a reason; the row
+// lands in the admin queue. Local hide is kept as a UX backstop so
+// the reporter doesn't keep seeing the offending content while admin
+// reviews.
 async function reportComment(commentId) {
   if (!supaUser) { openAuthModal('signin'); return; }
-  var ok = await khConfirm(
-    '이 댓글을 신고할까요?',
-    '본인 화면에서 가리고 검토 대기열로 표시됩니다.',
-    { okLabel: '신고' }
+  // Native prompt is intentional — full reason picker would be a
+  // bespoke modal for marginal value. Owner can upgrade to a chip
+  // selector later.
+  var reason = window.prompt(
+    '이 댓글을 신고하는 이유를 한 줄로 입력해 주세요\n(스팸 / 욕설 / 사칭 / 부적절 / 광고 등):'
   );
-  if (!ok) return;
+  if (reason === null) return;
+  reason = String(reason || '').trim().slice(0, 100);
+  if (!reason) { toast('신고 사유를 입력해 주세요.', true); return; }
+
+  var sb = getSupa();
+  if (!sb) return;
+  var rpc = await sb.rpc('report_content', {
+    p_target_type: 'comment',
+    p_target_id:   String(commentId),
+    p_reason:      reason,
+    p_detail:      null,
+  });
+  if (rpc.error || (rpc.data && rpc.data.ok === false)) {
+    var why = (rpc.data && rpc.data.error) || (rpc.error && rpc.error.message) || 'unknown';
+    if (why === 'cannot_report_self') {
+      toast('본인 댓글은 신고할 수 없습니다.', true);
+    } else {
+      toast('신고 실패: ' + why, true);
+    }
+    return;
+  }
+  // Local-hide backstop so the reporter stops seeing it instantly.
   var h = _khHiddenComments();
   h[commentId] = Date.now();
   _khSaveHiddenComments(h);
-  toast('신고 완료. 본인 화면에서 가렸습니다.', 'success');
+  toast('신고가 접수되었습니다. 검토 대기열에 추가됨.', 'success');
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
   if (id) loadComments(id);
@@ -550,13 +577,23 @@ async function submitComment(articleId) {
 
 async function deleteComment(commentId) {
   if (!supaUser) return;
-  var ok = await khConfirm('이 댓글을 삭제할까요?', '되돌릴 수 없어요.', { okLabel: '삭제', destructive: true });
+  var ok = await khConfirm('이 댓글을 삭제할까요?', '댓글이 "[Deleted by author]"로 표시되며 답글들은 유지됩니다.', { okLabel: '삭제', destructive: true });
   if (!ok) return;
   var sb = getSupa();
   if (!sb) return;
-  var { error } = await sb.from('comments').delete().eq('id', commentId).eq('user_id', supaUser.id);
-  if (error) { toast('삭제 실패', true); return; }
-  // Reload so any reply tree under it disappears together (CASCADE deletes).
+  // MOD-F7: soft-delete via RPC. Original content is preserved in
+  // content_original for admin investigation (a harasser can't
+  // delete-then-deny anymore). Replies stay visible.
+  var rpc = await sb.rpc('soft_delete_comment', { p_id: commentId });
+  if (rpc.error || (rpc.data && rpc.data.ok === false)) {
+    var why = (rpc.data && rpc.data.error) || (rpc.error && rpc.error.message) || 'unknown';
+    if (why === 'not_authorized') {
+      toast('본인 댓글만 삭제할 수 있습니다.', true);
+    } else {
+      toast('삭제 실패: ' + why, true);
+    }
+    return;
+  }
   var articleId = (new URLSearchParams(window.location.search)).get('id');
   if (articleId) loadComments(articleId);
   toast('삭제 완료');
