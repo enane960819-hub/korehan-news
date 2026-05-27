@@ -33,29 +33,69 @@ function safeParseJSON(v, fallback) {
   }
 }
 
+// PERF-F10: cache the schema-detect result across tab loads.
+// The schema is static (set by which migration shipped) — checking
+// once per session is harmless but unnecessary. localStorage cache
+// makes it once per project lifetime, with a 7-day expiry so a
+// schema migration eventually invalidates the cache without code
+// changes. Falls through to live probe on any storage failure.
+var _KH_ARTC_SCHEMA_KEY = 'kh_artcache_schema_v1';
+var _KH_ARTC_SCHEMA_TTL_MS = 7 * 24 * 3600 * 1000;
+function _readCachedArtCacheSchema() {
+  try {
+    var raw = localStorage.getItem(_KH_ARTC_SCHEMA_KEY);
+    if (!raw) return null;
+    var obj = JSON.parse(raw);
+    if (!obj || !obj.schema || !obj.ts) return null;
+    if (Date.now() - obj.ts > _KH_ARTC_SCHEMA_TTL_MS) return null;
+    if (obj.schema !== 'kv' && obj.schema !== 'wide' && obj.schema !== 'none') return null;
+    return obj.schema;
+  } catch (_) { return null; }
+}
+function _writeCachedArtCacheSchema(schema) {
+  try {
+    localStorage.setItem(_KH_ARTC_SCHEMA_KEY, JSON.stringify({ schema: schema, ts: Date.now() }));
+  } catch (_) { /* swallow — localStorage full or disabled */ }
+}
+
 async function _detectArtCacheSchema() {
   if (_artCacheSchemaDone) return _artCacheSchema;
+  // Try localStorage memo first.
+  var cached = _readCachedArtCacheSchema();
+  if (cached) {
+    _artCacheSchema = cached;
+    _artCacheSchemaDone = true;
+    return cached;
+  }
   var sb = getSupa();
   if (!sb) { _artCacheSchema = 'none'; return 'none'; }
+  // PERF-F10: every successful detect path also writes to
+  // localStorage so future tab loads / refreshes skip the probe.
+  function _commit(schema) {
+    _artCacheSchemaDone = true;
+    _artCacheSchema = schema;
+    _writeCachedArtCacheSchema(schema);
+    return schema;
+  }
   // 먼저 실제 행으로 컬럼 감지
   try {
     var r0 = await sb.from('article_cache').select('*').limit(1);
     if (!r0.error && r0.data && r0.data.length > 0) {
       var cols = Object.keys(r0.data[0]);
-      if (cols.indexOf('cache_key') >= 0) { _artCacheSchemaDone = true; _artCacheSchema = 'kv'; return 'kv'; }
-      if (cols.indexOf('article_id') >= 0 && cols.indexOf('vocab') >= 0) { _artCacheSchemaDone = true; _artCacheSchema = 'wide'; return 'wide'; }
+      if (cols.indexOf('cache_key') >= 0) return _commit('kv');
+      if (cols.indexOf('article_id') >= 0 && cols.indexOf('vocab') >= 0) return _commit('wide');
       console.warn('[cache] 알 수 없는 컬럼:', cols);
-      _artCacheSchemaDone = true; _artCacheSchema = 'none'; return 'none';
+      return _commit('none');
     }
   } catch(e) {}
   // 빈 테이블이면 컬럼 유효성으로 감지
   try {
     var r1 = await sb.from('article_cache').select('content_type,content_id,cache_key,cache_value').limit(0);
-    if (!r1.error) { _artCacheSchemaDone = true; _artCacheSchema = 'kv'; return 'kv'; }
+    if (!r1.error) return _commit('kv');
   } catch(e) {}
   try {
     var r2 = await sb.from('article_cache').select('article_id,vocab,grammar').limit(0);
-    if (!r2.error) { _artCacheSchemaDone = true; _artCacheSchema = 'wide'; return 'wide'; }
+    if (!r2.error) return _commit('wide');
   } catch(e) {}
   // Don't set _artCacheSchemaDone — allow retry after auth is restored
   console.warn('[cache] schema detection failed — will retry after auth');

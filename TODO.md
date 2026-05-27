@@ -10,7 +10,45 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-13-cost-monitoring`
+## In progress on `claude/audit-14-i18n`
+
+- **14차 i18n + browser compat (2026-05-27)** — 15 findings. This
+  PR ships the safe targeted 5 (F3 / F5 / F4 / F7 / F9) +
+  PERF-F10/F12 bonuses. Big i18n framework (F1 / F6 / F12 —
+  i18n strings) deferred for owner decision.
+  - **I18N-F3 (P0)**: auth inputs now have `autocomplete` +
+    `name` + `inputmode` attributes — password managers
+    autofill correctly across all 7 auth fields.
+  - **I18N-F5 (P0)**: new `khImeActive(event)` helper. Every
+    Enter handler in auth flow now skips submission while the
+    Korean IME is mid-composition. Exported as `window.khImeActive`.
+  - **I18N-F4 (P1)**: 7 Korean-primary content pages flipped from
+    `lang="en"` to `lang="ko"` (korehan-article,
+    korehan-conversations, korehan-stories, korehan-fun-chosung,
+    korehan-fun-dictation, korehan-fun-worddrop,
+    korehan-fun-sentence-order).
+  - **I18N-F7 (P1)**: new `KH_KO_COLL = Intl.Collator('ko',
+    {numeric: true, sensitivity: 'base'})` helper in shared.js
+    for stable Hangul-aware sort.
+  - **I18N-F9 (P1)**: `createImageBitmap` in avatar upload now
+    falls back to `Image()` + canvas on iOS 14.
+  - **PERF-F10 — bonus**: article-cache schema-detect probe now
+    memoized in localStorage with 7-day TTL.
+  - **PERF-F12 — bonus**: new `docs/db-performance.md` monthly
+    slow-query review playbook.
+
+  **STILL OPEN from 14차**:
+  - **I18N-F1 / F6 / F12 (i18n strings)**: every UI string in
+    shared.js is hardcoded English. Needs central KH_LOCALE +
+    KH_T() lookup-table refactor. Biggest i18n project remaining.
+  - **I18N-F2**: `new Date(iso)` Safari quirk. Targeted spot-fix
+    if a real bug surfaces.
+  - **I18N-F10/F13/F14 (P2)**: PWA manifest, `:has()` `@supports`
+    guard, hreflang on index/landing.
+
+---
+
+## On `claude/audit-13-cost-monitoring` (PR #628 merged 2026-05-27)
 
 - **13차 batch B — Anthropic cost monitoring (PERF-F7/F9/F13)**:
   - **Migration `20260527_audit_13_cost_monitoring.sql`** adds:

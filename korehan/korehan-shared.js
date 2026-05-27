@@ -327,6 +327,34 @@ function khUpdatePageMeta(meta) {
 }
 window.khUpdatePageMeta = khUpdatePageMeta;
 
+// I18N-F7: stable Korean-aware string comparator. Plain
+// `String.prototype.localeCompare(other)` falls back to whatever
+// the browser's default locale is — unstable across Chrome / Safari
+// / Firefox for Hangul. Reuse this single instance:
+//   list.sort(function(a, b){ return KH_KO_COLL.compare(a.name, b.name); });
+// Falls back to byte-order compare in environments without Intl
+// (very old browsers — should never hit in practice).
+var KH_KO_COLL;
+try {
+  KH_KO_COLL = (typeof Intl !== 'undefined' && Intl.Collator)
+    ? new Intl.Collator('ko', { numeric: true, sensitivity: 'base' })
+    : { compare: function(a, b){ a = String(a); b = String(b); return a < b ? -1 : a > b ? 1 : 0; } };
+} catch (_) {
+  KH_KO_COLL = { compare: function(a, b){ a = String(a); b = String(b); return a < b ? -1 : a > b ? 1 : 0; } };
+}
+window.KH_KO_COLL = KH_KO_COLL;
+
+// I18N-F5: Korean IME composition guard for keydown handlers. When
+// the user is typing 한글, every keystroke fires keydown — including
+// while the composition is mid-flight. Wrapping handlers with this
+// makes sure submitting on Enter only happens AFTER the IME has
+// committed the syllable.
+//   if (khImeActive(event)) return;
+function khImeActive(e) {
+  return !!(e && (e.isComposing || e.keyCode === 229));
+}
+window.khImeActive = khImeActive;
+
 // Global uncaught error / unhandled promise listeners — the safety
 // net that catches everything no try/catch noticed. Same rate-limit
 // applies.
@@ -1272,14 +1300,14 @@ function _injectAuthModal() {
     <div id="kh-signin-form" style="padding:22px 28px 28px">
       <div style="margin-bottom:14px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Email</label>
-        <input id="kh-auth-email" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')document.getElementById('kh-auth-pw').focus()"
+        <input id="kh-auth-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)document.getElementById('kh-auth-pw').focus()"
           style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
       <div style="margin-bottom:8px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Password</label>
         <div style="position:relative">
-          <input id="kh-auth-pw" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSignIn()"
+          <input id="kh-auth-pw" name="password" type="password" autocomplete="current-password" placeholder="••••••••" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)authSignIn()"
             style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
           <button onclick="var i=document.getElementById('kh-auth-pw');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
@@ -1308,20 +1336,20 @@ function _injectAuthModal() {
     <div id="kh-signup-form" style="display:none;padding:22px 28px 28px">
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Full Name</label>
-        <input id="kh-auth-name" type="text" placeholder="Your name" onkeydown="if(event.key==='Enter')document.getElementById('kh-auth-email2').focus()"
+        <input id="kh-auth-name" name="name" type="text" autocomplete="name" placeholder="Your name" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)document.getElementById('kh-auth-email2').focus()"
           style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Email</label>
-        <input id="kh-auth-email2" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')document.getElementById('kh-auth-pw2').focus()"
+        <input id="kh-auth-email2" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)document.getElementById('kh-auth-pw2').focus()"
           style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Password <span style="font-size:11px;color:#94a3b8;font-weight:400">(min 8 chars, letters + numbers)</span></label>
         <div style="position:relative">
-          <input id="kh-auth-pw2" type="password" placeholder="••••••••" oninput="_authCheckPwStrength(this.value)" onkeydown="if(event.key==='Enter')document.getElementById('kh-auth-pw3').focus()"
+          <input id="kh-auth-pw2" name="new-password" type="password" autocomplete="new-password" placeholder="••••••••" oninput="_authCheckPwStrength(this.value)" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)document.getElementById('kh-auth-pw3').focus()"
             style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
           <button onclick="var i=document.getElementById('kh-auth-pw2');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
@@ -1339,7 +1367,7 @@ function _injectAuthModal() {
       </div>
       <div style="margin-bottom:18px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Confirm Password</label>
-        <input id="kh-auth-pw3" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSignUp()"
+        <input id="kh-auth-pw3" name="new-password-confirm" type="password" autocomplete="new-password" placeholder="••••••••" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)authSignUp()"
           style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
@@ -1369,7 +1397,7 @@ function _injectAuthModal() {
       <div style="font-size:13px;color:#64748b;margin-bottom:18px;line-height:1.6">Enter your email and we'll send you a link to reset your password.</div>
       <div style="margin-bottom:16px">
         <label style="font-size:12px;font-weight:700;color:#445566;display:block;margin-bottom:5px">Email</label>
-        <input id="kh-auth-reset-email" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')authResetPassword()"
+        <input id="kh-auth-reset-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)authResetPassword()"
           style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
           onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
       </div>
