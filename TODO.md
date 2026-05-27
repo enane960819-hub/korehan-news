@@ -10,6 +10,43 @@ doesn't keep reminding about closed work.
 
 ---
 
+## ✅ Auto-applied 2026-05-27 (no more owner action for these)
+
+Migrations applied via Supabase Management API + cron jobs registered.
+Verified in prod via SQL.
+
+**Migrations applied to prod**:
+- `20260526_audit_7_client_errors_notified_at` ✓
+- `20260526_audit_7_redact_quiz_transcripts` ✓
+- `20260526_audit_8_coin_toctou_locks` ✓
+- `20260526_audit_10_client_errors_pii_scrub` ✓
+- `20260526_audit_10_signup_log_retention` ✓
+- `20260526_audit_11_moderation_storage_rate` ✓
+- `20260526_audit_11_reports_and_soft_delete` ✓
+- `20260526_audit_11_block_filtering_reads` ✓
+- `20260527_audit_12_email_hardening` ✓
+- `20260527_audit_13_cost_monitoring` ✓
+- `20260527_audit_13_db_size_visibility` ✓
+- `20260527_audit_13_missing_indexes` ✓
+- `20260527_articles_rls_cleanup` ✓ (Planning Time 24→2.6 ms)
+- `20260527_audit_21_fk_and_constraints` ✓ — all 7 FKs VALIDATED (0 orphan rows)
+
+**Cron jobs registered (`cron.job`)**:
+| jobid | name | schedule (UTC) |
+|---|---|---|
+| 5 | `daily-content-gen` | 0 17 * * * (02:00 KST) |
+| 6 | `kh_warm_postgrest` | */4 * * * * (PostgREST keep-warm) |
+| 7 | `kh_purge_old_claude_api_usage` | 15 18 * * * (03:15 KST) |
+| 8 | `kh_purge_old_signup_pii` | 30 18 * * * (03:30 KST) |
+| 9 | `kh_cleanup_old_read_notifications` | 45 18 * * * (03:45 KST) |
+
+**Migration NOT applied (intentionally skipped)**:
+- `20260526_audit_8_refund_handler` — depends on Speaking Coach v3
+  wallet schema; owner confirmed v3 is unused ("뭔지도 까먹음"). Skip
+  until v3 is dead-deleted in a future cleanup PR.
+
+---
+
 ## In progress on `claude/audit-22-killfallbacks`
 
 - **22차 silent fallback hunt (2026-05-27)** — 15 findings. Owner
