@@ -78,7 +78,7 @@ async function getResendKey(sb: ReturnType<typeof createClient>): Promise<string
 async function sendViaResend(
   apiKey: string,
   payload: { from: string; to: string; subject: string; html: string; text?: string; reply_to?: string; headers?: Record<string, string> }
-): Promise<{ ok: boolean; id?: string; error?: string }> {
+): Promise<{ ok: boolean; id?: string; error?: string; rateLimited?: boolean; retryable?: boolean; retryAfterMs?: number }> {
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -89,34 +89,67 @@ async function sendViaResend(
       body: JSON.stringify(payload),
     })
     const data = await r.json().catch(() => ({}))
-    if (!r.ok) return { ok: false, error: data?.message || `HTTP ${r.status}` }
+    if (!r.ok) {
+      // EMAIL-F8: surface 429 / 5xx so the caller can retry.
+      const retryAfterHdr = r.headers.get('Retry-After')
+      const retryAfterMs = retryAfterHdr ? (Number(retryAfterHdr) * 1000 || undefined) : undefined
+      return {
+        ok: false,
+        error: data?.message || `HTTP ${r.status}`,
+        rateLimited: r.status === 429,
+        retryable:   r.status === 429 || (r.status >= 500 && r.status < 600),
+        retryAfterMs,
+      }
+    }
     return { ok: true, id: data?.id }
   } catch (e) {
-    return { ok: false, error: (e as Error).message }
+    // Network-level errors are treated as retryable — could be a
+    // transient DNS hiccup, not a permanent reject.
+    return { ok: false, error: (e as Error).message, retryable: true }
   }
 }
 
 // ── Templates ──────────────────────────────────────────────────────────────
 
-function confirmEmailHtml(opts: { confirmUrl: string; unsubUrl: string; name?: string | null }) {
-  const greeting = opts.name ? `Hi ${escapeHtml(opts.name)},` : 'Hi there,'
+function confirmEmailHtml(opts: { confirmUrl: string; unsubUrl: string; email: string; name?: string | null; locale?: 'ko' | 'en' }) {
+  // EMAIL-F13: Korean template for ko locale. Subscribers from the
+  // KR footer form expect Korean copy; an all-English confirmation
+  // raises "not relevant" complaints (= sender-reputation penalty).
+  const isKo = opts.locale === 'ko'
+  const safeEmail = escapeHtml(opts.email)
+  const greeting = isKo
+    ? (opts.name ? `안녕하세요, ${escapeHtml(opts.name)} 님,` : '안녕하세요,')
+    : (opts.name ? `Hi ${escapeHtml(opts.name)},` : 'Hi there,')
+  const title    = isKo ? '구독을 확인해 주세요' : 'Confirm your subscription'
+  const body1    = isKo ? '아래 버튼을 눌러 KoreHani 주간 한국어 학습 팁과 새 콘텐츠 업데이트를 받아보세요.'
+                        : 'Tap the button below to start receiving weekly Korean learning tips and new content updates from KoreHani.'
+  const btn      = isKo ? '구독 확인' : 'Confirm subscription'
+  const safeFoot = isKo ? '신청하지 않으셨다면 이 메일은 무시하셔도 됩니다.' : "If you didn't sign up, you can safely ignore this email."
+  const pasteHint = isKo ? '버튼이 작동하지 않으면 아래 링크를 브라우저에 붙여넣으세요:' : 'Or paste this link into your browser:'
+  // EMAIL-F2: the previous template had the literal `${'this email'}`
+  // (a templating-bug-shaped string visible to every recipient).
+  // Echo the actual email back to confirm legitimacy.
+  const ledger   = isKo
+    ? `누군가(아마도 본인)가 korehani.com 에서 <strong>${safeEmail}</strong> 주소를 입력했기 때문에 이 메일을 받으셨습니다.`
+    : `You're receiving this because someone (hopefully you) entered <strong>${safeEmail}</strong> on korehani.com.`
+  const unsubLabel = isKo ? '구독 취소' : 'Unsubscribe'
   return `<!doctype html><html><body style="margin:0;background:#f3f7fc;font-family:'Source Sans 3',system-ui,sans-serif;color:#0f172a">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;margin-top:24px;box-shadow:0 8px 24px rgba(15,23,42,.08)">
     <div style="background:linear-gradient(135deg,#0b1f3f,#1e3a8a);color:#fff;padding:28px 28px 22px">
       <div style="font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(167,139,250,.85);margin-bottom:6px">KoreHani</div>
-      <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;line-height:1.2">Confirm your subscription</div>
+      <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:900;line-height:1.2">${title}</div>
     </div>
     <div style="padding:24px 28px 8px">
       <p style="font-size:15px;line-height:1.6;margin:0 0 12px">${greeting}</p>
-      <p style="font-size:15px;line-height:1.6;margin:0 0 20px">Tap the button below to start receiving weekly Korean learning tips and new content updates from KoreHani.</p>
-      <p style="margin:0 0 24px"><a href="${opts.confirmUrl}" style="display:inline-block;padding:12px 26px;background:#2563eb;color:#fff;text-decoration:none;border-radius:999px;font-weight:800;font-size:14px">Confirm subscription</a></p>
-      <p style="font-size:12px;color:#64748b;line-height:1.6;margin:0 0 6px">If you didn't sign up, you can safely ignore this email.</p>
-      <p style="font-size:12px;color:#64748b;line-height:1.6;margin:0 0 6px">Or paste this link into your browser:</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 20px">${body1}</p>
+      <p style="margin:0 0 24px"><a href="${opts.confirmUrl}" style="display:inline-block;padding:12px 26px;background:#2563eb;color:#fff;text-decoration:none;border-radius:999px;font-weight:800;font-size:14px">${btn}</a></p>
+      <p style="font-size:12px;color:#64748b;line-height:1.6;margin:0 0 6px">${safeFoot}</p>
+      <p style="font-size:12px;color:#64748b;line-height:1.6;margin:0 0 6px">${pasteHint}</p>
       <p style="font-size:12px;color:#475569;word-break:break-all;margin:0 0 18px">${opts.confirmUrl}</p>
     </div>
     <div style="padding:14px 28px 22px;border-top:1px solid #eef2f7;font-size:11px;color:#94a3b8;line-height:1.6">
-      You're receiving this because someone (hopefully you) entered ${'this email'} on korehani.com.
-      <br><a href="${opts.unsubUrl}" style="color:#94a3b8">Unsubscribe</a>
+      ${ledger}
+      <br><a href="${opts.unsubUrl}" style="color:#94a3b8">${unsubLabel}</a>
     </div>
   </div>
 </body></html>`
@@ -126,6 +159,64 @@ function escapeHtml(s: string) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+
+// EMAIL-F6: hidden preheader text. Gmail / Apple Mail render the
+// first ~90 chars of body text as the preview snippet next to the
+// subject in the inbox list. Without an explicit preheader the
+// preview is whatever's in the first visible block (usually the
+// logo alt or "View in browser"). The conventional trick is a
+// zero-height span at the very top with display:none + a few
+// trailing whitespace chars to push junk preview text out.
+function prependPreheader(html: string, preheader: string | null | undefined): string {
+  const trimmed = String(preheader || '').trim()
+  if (!trimmed) return html
+  const safe = escapeHtml(trimmed.slice(0, 200))
+  const span = `<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all">${safe}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>`
+  // Insert immediately after <body> if present, else prepend.
+  const m = html.match(/<body[^>]*>/i)
+  if (m) {
+    const idx = (m.index ?? 0) + m[0].length
+    return html.slice(0, idx) + span + html.slice(idx)
+  }
+  return span + html
+}
+
+// EMAIL-F14: ensure a plain-text alternative. Mail filters treat
+// HTML-only emails as more spammy. If campaign.body_text is empty,
+// build one by stripping HTML tags + collapsing whitespace.
+function htmlToPlainText(html: string): string {
+  return String(html || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/(h1|h2|h3|h4|h5|h6|li|tr)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+// EMAIL-F8: retry once on 429 / 5xx with Retry-After header (or
+// 2-second default). Resend's 10 req/s free-tier limit + our 120ms
+// gap usually keeps us under, but a burst can still 429; the loop
+// then loses one delivery per 429 with no retry.
+async function sendViaResendWithRetry(
+  apiKey: string,
+  payload: { from: string; to: string; subject: string; html: string; text?: string; reply_to?: string; headers?: Record<string, string> },
+): Promise<{ ok: boolean; id?: string; error?: string; rateLimited?: boolean }> {
+  const first = await sendViaResend(apiKey, payload)
+  if (first.ok) return first
+  if (!first.rateLimited && !first.retryable) return first
+  // Backoff per the header if Resend gave one; default 2s.
+  const delayMs = Math.max(500, Math.min(10_000, (first.retryAfterMs ?? 2000)))
+  await new Promise((r) => setTimeout(r, delayMs))
+  const second = await sendViaResend(apiKey, payload)
+  return second
 }
 
 function withUnsubFooter(html: string, unsubUrl: string) {
@@ -198,7 +289,7 @@ async function handleSubscribe(
   // in the email. RPC didn't return it (it doesn't change per request)
   // — service-role select is fine here.
   const { data: row } = await sb.from('newsletter_subs')
-    .select('unsubscribe_token, name')
+    .select('unsubscribe_token, name, locale')
     .eq('email', email)
     .maybeSingle()
 
@@ -216,7 +307,10 @@ async function handleSubscribe(
   const unsubUrl   = row?.unsubscribe_token
     ? `${SITE_BASE}/unsubscribe.html?t=${encodeURIComponent(row.unsubscribe_token as string)}`
     : `${SITE_BASE}/unsubscribe.html`
-  const html = confirmEmailHtml({ confirmUrl, unsubUrl, name: (row?.name as string | null) || null })
+  // EMAIL-F13: pick locale. Defaults to 'en' so existing rows
+  // without locale set still get English.
+  const locale: 'ko' | 'en' = (row?.locale as 'ko' | 'en') === 'ko' ? 'ko' : 'en'
+  const html = confirmEmailHtml({ confirmUrl, unsubUrl, email, name: (row?.name as string | null) || null, locale })
 
   // List-Unsubscribe header points at the Edge Function so RFC 8058
   // POST works for confirm emails too (mail clients may unsubscribe
@@ -224,12 +318,19 @@ async function handleSubscribe(
   const headerUnsubUrl = row?.unsubscribe_token
     ? `${UNSUB_ENDPOINT}?t=${encodeURIComponent(row.unsubscribe_token as string)}`
     : UNSUB_ENDPOINT
+  const subject = locale === 'ko' ? 'KoreHani 구독을 확인해 주세요' : 'Confirm your KoreHani subscription'
+  const textBody = locale === 'ko'
+    ? `KoreHani 구독을 확인해 주세요:\n${confirmUrl}\n\n신청하지 않으셨다면 무시하셔도 됩니다.\n\n구독 취소: ${unsubUrl}`
+    : `Confirm your KoreHani subscription:\n${confirmUrl}\n\nDidn't sign up? You can ignore this email.\n\nUnsubscribe: ${unsubUrl}`
   const send = await sendViaResend(apiKey, {
     from: DEFAULT_FROM,
     to: email,
-    subject: 'Confirm your KoreHani subscription',
+    // EMAIL-F7: explicit Reply-To so MTAs route human replies to
+    // the shared mailbox rather than inferring from `From`.
+    reply_to: 'hello@korehani.com',
+    subject,
     html,
-    text: `Confirm your KoreHani subscription:\n${confirmUrl}\n\nDidn't sign up? You can ignore this email.\n\nUnsubscribe: ${unsubUrl}`,
+    text: textBody,
     headers: {
       'List-Unsubscribe': `<${headerUnsubUrl}>`,
       'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
@@ -275,13 +376,28 @@ async function handleSendCampaign(
   // if anyone ever inserted one for QA.
   if (body.test_to) {
     const testToken = `test-${campaignId}`
-    const html = withUnsubFooter(campaign.body_html, `${SITE_BASE}/unsubscribe.html?t=${testToken}`)
+    // EMAIL-F6: prepend hidden preheader for inbox preview.
+    // EMAIL-F10: test sends MUST include List-Unsubscribe — without
+    // it spam filters dock the message, defeating the purpose of
+    // proofing what real subscribers will see.
+    // EMAIL-F14: always include a plain-text alternative.
+    let testHtml = withUnsubFooter(campaign.body_html, `${SITE_BASE}/unsubscribe.html?t=${testToken}`)
+    testHtml = prependPreheader(testHtml, campaign.preheader as string | null)
+    const testText = (campaign.body_text && String(campaign.body_text).trim())
+      ? (campaign.body_text as string)
+      : htmlToPlainText(testHtml)
+    const testHeaderUrl = `${UNSUB_ENDPOINT}?t=${encodeURIComponent(testToken)}`
     const send = await sendViaResend(apiKey, {
       from: `${campaign.from_name} <${campaign.from_email}>`,
       to: body.test_to,
+      reply_to: 'hello@korehani.com',
       subject: `[TEST] ${campaign.subject}`,
-      html,
-      text: campaign.body_text || undefined,
+      html: testHtml,
+      text: testText,
+      headers: {
+        'List-Unsubscribe': `<${testHeaderUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     })
     return jsonResponse({ ok: send.ok, error: send.error, message_id: send.id }, send.ok ? 200 : 502, cors)
   }
@@ -337,7 +453,15 @@ async function handleSendCampaign(
       const unsubUrl = sub.unsubscribe_token
         ? `${SITE_BASE}/unsubscribe.html?t=${encodeURIComponent(sub.unsubscribe_token as string)}`
         : `${SITE_BASE}/unsubscribe.html`
-      const html = withUnsubFooter(campaign.body_html, unsubUrl)
+      // EMAIL-F6: prepend hidden preheader so the inbox preview shows
+      // the campaign-set teaser instead of incidental text.
+      // EMAIL-F14: always include a plain-text alternative — falls
+      // back to stripped-HTML if admin didn't write body_text.
+      let html = withUnsubFooter(campaign.body_html, unsubUrl)
+      html = prependPreheader(html, campaign.preheader as string | null)
+      const textBody = (campaign.body_text && String(campaign.body_text).trim())
+        ? (campaign.body_text as string)
+        : htmlToPlainText(html)
 
       if (alreadySent.has(sub.id as string)) continue
 
@@ -350,12 +474,17 @@ async function handleSendCampaign(
       const headerUrl = headerToken
         ? `${UNSUB_ENDPOINT}?t=${encodeURIComponent(headerToken)}`
         : UNSUB_ENDPOINT
-      const send = await sendViaResend(apiKey, {
+      // EMAIL-F8: use retry wrapper. 429 / 5xx → wait Retry-After
+      // (or 2s default) → retry once. Real-world Resend hiccups stop
+      // burning subscriber slots; permanent failures still record.
+      const send = await sendViaResendWithRetry(apiKey, {
         from: `${campaign.from_name} <${campaign.from_email}>`,
         to: sub.email,
+        // EMAIL-F7: explicit Reply-To.
+        reply_to: 'hello@korehani.com',
         subject: campaign.subject,
         html,
-        text: campaign.body_text || undefined,
+        text: textBody,
         headers: {
           'List-Unsubscribe': `<${headerUrl}>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
