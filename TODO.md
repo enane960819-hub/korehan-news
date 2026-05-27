@@ -10,7 +10,65 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-12-email`
+## In progress on `claude/audit-13-db-perf`
+
+- **13차 audit batch A — Missing indexes + admin bulk-upsert + LIMITs (2026-05-27)**:
+  Audit found 15 findings; this PR ships the safe high-impact P0+P1
+  (indexes + N+1 fix + admin limits). PR-B (cost monitoring) and
+  PR-F4 (articles select narrowing — high-risk per PR #526 schema
+  drift lesson) deferred.
+  - **PERF-F1 — LANDED**: `user_saved_words(user_id, created_at DESC)`
+    index. Notes / Word Bank / Study Room reads on every page.
+  - **PERF-F2 — LANDED**: `xp_log(user_id, created_at DESC)` index.
+    My Page recent-XP read.
+  - **PERF-F3 — LANDED**: FK indexes on `coin_transactions`,
+    `owned_items`, `shop_purchases`, `payment_orders`. Account
+    deletion's ON DELETE CASCADE was O(table_size) seq scan per
+    referencing table.
+  - **PERF-F11 — LANDED**: `user_stats(xp DESC NULLS LAST)` index
+    for the admin leaderboard.
+  - **PERF-F5 — LANDED**: admin vocab "Save All" bulk-upserts in
+    one call. Previously 500-word edit session was 500 sequential
+    round-trips (~25s); now <1s.
+  - **PERF-F6 — LANDED**: `getArticleCacheVocab()` N+1 fix. Was
+    one `getFromCache` call per article (80 round-trips per Learn
+    page render). Now one `.in()` bulk query, grouped client-side.
+    Per-article fallback retained for `wide` schema and on error.
+  - **PERF-F8 + F14 + F11 — LANDED**: `.limit()` added to 5 admin
+    listing queries (`articles`, `user_stats`, `daily_missions`,
+    `newsletter_subs` at 2000, `newsletter_campaigns` at 200,
+    `stories_data` bulk-translate at 500). Prevents 10k+ row
+    sorts on every admin page-open.
+
+  **STILL OPEN — batch B (cost monitoring):**
+  - **PERF-F7 (P1)**: no aggregate Anthropic budget alert. Needs
+    a daily Edge Function aggregating `claude_api_usage` →
+    `claude_cost_daily` table + threshold webhook.
+  - **PERF-F9 (P1)**: no per-feature cost rollup. Materialized
+    view `claude_cost_by_feature_month` refresh-nightly.
+  - **PERF-F13 (P2)**: `claude_api_usage` no retention policy.
+    Monthly partitioning or 12-month rolling delete.
+  - **PERF-F15 (P2)**: no Supabase free-tier usage visibility.
+    Weekly cron via Supabase Management API.
+  - All four blocked on CRON-F1 (no scheduler installed yet).
+    Code can be written + admin button to manually trigger.
+
+  **DEFERRED — needs careful design:**
+  - **PERF-F4 (P1)**: `articles` table `select('*')` reverted to
+    avoid the PR #526 schema-drift incident. Narrowing the
+    explicit column list requires either (a) the post-deploy
+    smoke test from incident-followups (P0 from CLAUDE.md), or
+    (b) the schema-vs-code lint (P2 there). Wait for those.
+
+  **STILL OPEN — minor:**
+  - **PERF-F10 (P2)**: schema-detect probe memoization via
+    localStorage. Trivial future win.
+  - **PERF-F12 (P2)**: `docs/db-performance.md` checklist for
+    `pg_stat_statements`-based monthly slow-query review.
+
+---
+
+## On `claude/audit-12-email`
 
 - **12차 오딧 — Email deliverability + Resend integration (2026-05-27)**:
   Background audit found **15 findings**. Headline: no documented

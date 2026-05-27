@@ -997,7 +997,10 @@ async function dbLoadFromSupabase() {
   const sb = getSb();
   if (!sb) { console.warn('Supabase not available'); goList(); return; }
   try {
-    const res = await sb.from('articles').select('*').order('date', { ascending: false });
+    // PERF-F8: cap admin article list at 1000 most recent. The
+    // bigger 'All news' listing for the public side has its own
+    // pagination; this is just for admin sweep.
+    const res = await sb.from('articles').select('*').order('date', { ascending: false }).limit(1000);
     if (res.error) throw res.error;
     DB = (res.data || []).map(function(row){
       var clone = Object.assign({}, row);
@@ -1995,8 +1998,12 @@ async function goUserStats() {
     // 병렬로 데이터 로드
     var today = new Date(Date.now() + 9*3600000).toISOString().slice(0,10); // KST
     var [usersRes, allDMsRes, missionsRes, viewsRes] = await Promise.all([
-      sb.from('user_stats').select('*').order('xp', { ascending: false }),
-      sb.from('daily_missions').select('user_id, date, articles, words, quizzes, fill').order('date', { ascending: false }),
+      // PERF-F11 / PERF-F14: admin leaderboards capped at 500 each.
+      // ORDER BY xp DESC uses user_stats_xp_desc_idx from audit-13
+      // migration. The .limit() prevents a 10k-row sort + transfer
+      // on every admin page-open.
+      sb.from('user_stats').select('*').order('xp', { ascending: false }).limit(500),
+      sb.from('daily_missions').select('user_id, date, articles, words, quizzes, fill').order('date', { ascending: false }).limit(500),
       sb.from('daily_missions').select('user_id, completed').eq('date', today),
       sb.from('article_views').select('*').order('view_count', { ascending: false }).limit(10)
     ]);
@@ -4479,8 +4486,12 @@ async function veSaveAll() {
   try {
     var sb=getSb();
     var upsertData=data.map(function(r){return{word:r.word,en:r.en,rom:r.rom};});
-    for(var vi=0;vi<upsertData.length;vi++){
-      await sb.from('vocab_overrides').upsert(upsertData[vi],{onConflict:'word'});
+    // PERF-F5: bulk upsert in one round-trip instead of N. A 500-word
+    // edit session used to fire 500 sequential awaits — at 50ms each
+    // = 25 seconds. Single call lands in <1s.
+    if (upsertData.length) {
+      var bulk = await sb.from('vocab_overrides').upsert(upsertData, { onConflict: 'word' });
+      if (bulk && bulk.error) throw bulk.error;
     }
     toast('✅ 저장됨! 기사 페이지에 즉시 반영돼요.'); goVocabEditor();
     if(false) { toast('placeholder',true); }
@@ -8624,7 +8635,10 @@ async function loadNewsletter() {
   var wrap = document.getElementById('nl-admin-wrap');
   try {
     var sb = getSb();
-    var r = await sb.from('newsletter_subs').select('*').order('subscribed_at',{ascending:false});
+    // PERF-F8: cap at 2000 most-recent subscribers. CSV export uses
+    // the same backing query; if the list grows past 2k, switch to
+    // a server-side CSV stream via Edge Function.
+    var r = await sb.from('newsletter_subs').select('*').order('subscribed_at',{ascending:false}).limit(2000);
     var rows = (r.data||[]);
     if(!rows.length) { wrap.innerHTML='<div class="infobox">아직 구독자가 없어요.</div>'; return; }
     wrap.innerHTML =
@@ -8682,7 +8696,9 @@ async function loadNewsletterCampaigns() {
   var wrap = document.getElementById('nl-admin-wrap');
   try {
     var sb = getSb();
-    var r = await sb.from('newsletter_campaigns').select('*').order('created_at',{ascending:false});
+    // PERF-F8: 200 most-recent campaigns. At one campaign/week that's
+    // ~4 years of history — plenty.
+    var r = await sb.from('newsletter_campaigns').select('*').order('created_at',{ascending:false}).limit(200);
     var rows = (r && r.data) || [];
     var newBtn = '<button class="btn btn-g" onclick="openNlCampaignEditor()">+ 새 캠페인</button>';
     if (!rows.length) {
@@ -9521,7 +9537,9 @@ async function regenAllStoriesAI() {
   const progress = document.getElementById('regen-all-progress');
   if (progress) { progress.style.display = 'block'; progress.textContent = '⏳ 스토리 목록 불러오는 중…'; }
   try {
-    const res = await sb.from('stories_data').select('id, data').order('created_at', {ascending:true});
+    // PERF-F8: cap at 500. story bulk-translate flow; at one story/day
+    // ~1.5 years before it hits.
+    const res = await sb.from('stories_data').select('id, data').order('created_at', {ascending:true}).limit(500);
     if (res.error || !res.data || !res.data.length) {
       if (progress) progress.textContent = '❌ 스토리가 없습니다';
       return;
