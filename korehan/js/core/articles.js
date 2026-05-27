@@ -21,7 +21,13 @@ var _articlesCache = null;
 var _articlesCacheTime = 0;
 var CACHE_TTL = 300000; // 5분 (메모리 캐시)
 var ARTICLES_STORAGE_KEY = 'kh_articles_cache_v2';
-var ARTICLES_STORAGE_MAX_AGE = 60 * 60 * 1000; // 1시간 (localStorage — stale-while-revalidate로 항상 백그라운드 갱신)
+// 7일 (localStorage). 진단으로 DB는 0.5ms로 빨랐고 — 6-10s wait는 Supabase
+// Free tier cold-start (PostgREST/loadbalancer wake-up). 재방문자가 1시간
+// 안에 다시 안 들어오면 매번 cold-start를 다시 맞이함. TTL을 7일로 늘려서
+// 재방문자는 거의 항상 즉시 cached 페인트 → BG fetch로 갱신.
+// 첫 방문자(localStorage 비어있음)는 여전히 cold-start 영향 받음 — 그건
+// cron ping 또는 Supabase Pro 업그레이드로 해결해야 함.
+var ARTICLES_STORAGE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 // Lightweight column set for list/feed fetches. Excludes the long `full`
 // body — cards/excerpts only need `body` (lede). On LTE this can shrink
 // the home/section payload from MBs to KBs. The full body is fetched on
