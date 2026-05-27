@@ -992,9 +992,15 @@ body.kh-neon-on .hero-dot {
     if (_isHeroPainted()) { _dismiss(); return; }
     // Poll for hero paint. PR #7BC: 200 → 80 ms so the splash closes
     // within ~one frame of actual paint instead of up to 200 ms after.
-    // Still a 12 s ceiling so we never strand the user.
+    // Soft ceiling: 2.5 s after _ldr(100) fires. If the home articles
+    // fetch is slow (owner-reported 6-10 s sit at 92 %), don't strand
+    // the user staring at the splash — dismiss onto the skeleton; the
+    // hero rail upgrades from skeleton → real cards in place when the
+    // fetch returns. Previously the ceiling was 12 s from page start
+    // which on no-cache fast paths effectively never fired.
+    var hundredAt = Date.now();
     var watch = setInterval(function() {
-      if (_isHeroPainted() || (Date.now() - _khLoaderStart) > 12000) {
+      if (_isHeroPainted() || (Date.now() - hundredAt) > 2500) {
         clearInterval(watch);
         _dismiss();
       }
