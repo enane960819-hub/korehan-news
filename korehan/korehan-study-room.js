@@ -9554,6 +9554,14 @@ function _showSubmitReview(limit) {
 
 async function submitAllWritingsToday() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  // RACE-F1: an in-flight flag at the very top blocks rapid double-clicks
+  // that previously slipped through the `_submitBtn.disabled = true` line
+  // because the disable happened AFTER `await _showSubmitReview(limit)`.
+  // The user could mash the button during the modal-open window and
+  // double-submit before the disable landed.
+  if (window._khSubmitAllInFlight) return;
+  window._khSubmitAllInFlight = true;
+  try {
   var submitKey = 'kh_submitted_' + kstDateKey() + '_' + supaUser.id;
   if (localStorage.getItem(submitKey)) {
     showToast('Already submitted today. You can submit once per day (resets at midnight KST).');
@@ -9681,6 +9689,9 @@ async function submitAllWritingsToday() {
     showToast('Submit error: ' + (e.message||e));
   } finally {
     _restoreSubmit();
+  }
+  } finally {
+    window._khSubmitAllInFlight = false;
   }
 }
 
@@ -10075,19 +10086,20 @@ async function _startFeedbackArrivalPoll() {
   // egress cost. Resume on return. Wire once per session.
   if (!window._khFbPollLifecycleWired) {
     window._khFbPollLifecycleWired = true;
+    // RACE-F5: a single visibilitychange listener handles both
+    // pause-on-hide and resume-on-show. Was two separate listeners
+    // that fired sequentially — redundant.
     document.addEventListener('visibilitychange', function() {
-      if (!_khFbPollHandle) return;
       if (document.hidden) {
+        if (!_khFbPollHandle) return;
         try { clearInterval(_khFbPollHandle); } catch(_){}
         _khFbPollHandle = null;
         window._khFbPollPaused = true;
-      }
-    });
-    document.addEventListener('visibilitychange', function() {
-      if (document.hidden || !window._khFbPollPaused) return;
-      window._khFbPollPaused = false;
-      if (_khFbPollPending && _khFbPollPending.size) {
-        try { _startFeedbackArrivalPoll(); } catch(_){}
+      } else if (window._khFbPollPaused) {
+        window._khFbPollPaused = false;
+        if (_khFbPollPending && _khFbPollPending.size) {
+          try { _startFeedbackArrivalPoll(); } catch(_){}
+        }
       }
     });
     // Final stop on navigation away — clear the interval so the browser
