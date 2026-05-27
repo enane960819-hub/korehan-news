@@ -10,7 +10,56 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-21-dbintegrity`
+## In progress on `claude/audit-22-killfallbacks`
+
+- **22차 silent fallback hunt (2026-05-27)** — 15 findings. Owner
+  directive: "fallback 푸씨 마인드 갖다버려라". This PR DELETES the
+  worst silent-fallback patterns instead of adding logging on top.
+  - **F1 — KILLED**: `getFallbackTopics()` (14-line hardcoded
+    topic pool) and `loadAllTopics()` (also fully dead — never
+    called per the comment at line 282). Plus the `_allTopics`
+    var. Login-wall sample topic is now inlined as an honest
+    hardcoded marketing teaser (it's the only consumer).
+  - **F5 — PARTIAL KILL**: `_applyFallbackTopic()` body deleted.
+    Was 65 lines of level-specific hardcoded topic pools +
+    fake-vocab/grammar via `buildStudyRoomFallbackContent`. Now
+    just calls the existing `_setTopicLoadError('Please refresh
+    the page')`. Users hit by daily-content failure now see the
+    error UI instead of getting served the same "My Daily
+    Routine" topic forever.
+  - **F15 — KILLED**: `daily-content-gen` empty-topics fallback.
+    Was a hardcoded `['daily life', 'food & cooking', …]`
+    category list used when `writing_topics` table is empty.
+    Now throws — admin must seed topics before cron runs.
+
+  **NOT KILLED (still open)**:
+  - **F2**: articles.js `useLite → '*' SELECT fallback` on empty.
+    This IS the PR #526 institutional contract — CLAUDE.md "Past
+    Incidents" explicitly says: "always pair [explicit columns]
+    with a `*` fallback that triggers on `empty AND no error`".
+    Owner override required to remove.
+  - **F4**: `loadReporterPosts` `_postMode='fallback'` subsystem
+    — threaded through 6 functions in `korehan-reporter.html`.
+    Surgery too big for one PR.
+  - **F5 remainder**: `buildStudyRoomFallbackContent` (~100-line
+    hardcoded vocab/grammar pool) still used by 3 other call
+    sites in study-room.js (1721, 1772, 1839). Audit shows these
+    are vocab/grammar-only fallbacks — separate concern from the
+    topic fallback I killed.
+  - **F3, F6–F14**: audit's recommendation was "keep fallback,
+    add `kh_log_error`". That's still defensive. Re-examine when
+    user gives explicit "OK to keep with logging" direction.
+
+  **OWNER ACTIONS for 22차**:
+  - Deploy `daily-content-gen` Edge Function (F15 lives there +
+    19차 F8 lock-leak fix still pending deploy).
+  - **Important**: after deploy, if `writing_topics` table is
+    empty for any level, the cron will now throw. Seed the table
+    before deploy.
+
+---
+
+## On `claude/audit-21-dbintegrity` (PR #636 merged 2026-05-27)
 
 - **21차 DB integrity + FK gaps (2026-05-27)** — 15 findings. This
   PR ships ONE consolidated migration

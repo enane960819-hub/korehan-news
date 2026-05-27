@@ -537,19 +537,21 @@ Deno.serve(async (req) => {
         .order('sort_order')
         .order('created_at')
 
+      // 22차 audit: refuse to generate content if writing_topics is empty
+      // for this level. Previously this fell back to a hardcoded category
+      // hint ("daily life", "food & cooking", …) and Claude generated
+      // generic content the admin never curated. Better to fail loud so
+      // the operator notices and seeds the topics table.
       const allTopics = topics || []
-      if (allTopics.length) {
-        const epoch = new Date(WRITING_TOPICS_EPOCH_ISO).getTime()
-        const now = new Date(item.date + 'T00:00:00+09:00').getTime()
-        const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
-        const t = allTopics[idx]
-        topicHint = `Use EXACTLY this topic: "${t.topic_ko}" (${t.topic_en}). Category: ${t.category || ''}.`
-        forceTopic = { ko: t.topic_ko, en: t.topic_en }
-      } else {
-        const cats = ['daily life', 'food & cooking', 'K-pop & music', 'travel in Korea', 'Korean seasons', 'school & studying', 'hobbies', 'Korean culture']
-        const h = item.date.split('-').reduce((a, b) => a + parseInt(b), 0)
-        topicHint = `Pick a specific topic within: "${cats[h % cats.length]}"`
+      if (!allTopics.length) {
+        throw new Error(`writing_topics table is empty for level ${item.level} — seed topics before running daily-content-gen`)
       }
+      const epoch = new Date(WRITING_TOPICS_EPOCH_ISO).getTime()
+      const now = new Date(item.date + 'T00:00:00+09:00').getTime()
+      const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
+      const t = allTopics[idx]
+      topicHint = `Use EXACTLY this topic: "${t.topic_ko}" (${t.topic_en}). Category: ${t.category || ''}.`
+      forceTopic = { ko: t.topic_ko, en: t.topic_en }
 
       const prompt = buildPrompt(item.level, topicHint)
       const parsed = await callAnthropic(apiKey, prompt, item.level)
