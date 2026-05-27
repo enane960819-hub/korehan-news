@@ -33,6 +33,21 @@ function getCorsHeaders(req: Request) {
 // Admins bypass all quotas + email verification.
 const ADMIN_EMAILS = ['enane960819@gmail.com']
 
+// Tutors are admin-adjacent users with elevated payload limits for
+// legitimate tutor-only flows (e.g. Preply screenshot OCR, which
+// sends 1–5 base64 images per request → ~5 MB total). Keep in sync
+// with `korehan-shared.js#KH_TUTOR_EMAILS` and
+// `supabase/migrations/20260428_tutor_dashboard.sql#is_tutor_user`.
+const TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com']
+
+// Tutor-only feature prefix that's allowed to bypass MAX_INPUT_BYTES.
+// Image-OCR features legitimately need multi-MB payloads. Any feature
+// not on this prefix list (even from a tutor) still hits the 80 KB
+// cost-protection cap.
+const TUTOR_LARGE_PAYLOAD_PREFIXES = ['tutor-import-']
+// 15 MB: 5 screenshots × ~2.5 MB resized PNG × 1.33 base64 overhead ≈ 13 MB worst-case.
+const TUTOR_MAX_INPUT_BYTES = 15 * 1024 * 1024
+
 // ── Tier defaults ───────────────────────────────────────────────
 // Both checks must pass — daily count protects against burst /
 // dictionary-attack patterns, monthly USD protects against the
@@ -242,15 +257,31 @@ Deno.serve(async (req) => {
       claudeBody.max_tokens = MAX_TOKENS_PER_CALL
     }
 
+    // Tutor large-payload carve-out. The Preply screenshot importer sends
+    // 1–5 base64 images per request; even one resized 1600px PNG is well
+    // past the 80 KB default cap. Tutors are identified by hardcoded
+    // email allowlist (mirrors is_tutor_user RPC + KH_TUTOR_EMAILS).
+    // The carve-out ONLY applies to features that prefix-match
+    // TUTOR_LARGE_PAYLOAD_PREFIXES, so a tutor's regular learning-flow
+    // calls still hit the standard cap.
+    const isTutor = !isAdmin
+      && !!userData.email
+      && TUTOR_EMAILS.includes(userData.email.toLowerCase())
+    const featureIsTutorLarge = typeof feature === 'string'
+      && TUTOR_LARGE_PAYLOAD_PREFIXES.some((p) => feature.startsWith(p))
+
     // Input size cap — protects the monthly cost budget from a single
     // request stuffing 200K tokens into messages. Admins bypass since
     // article-cache regeneration legitimately approaches this ceiling.
+    // Verified tutors on tutor-only features get a higher cap for the
+    // image-OCR flows (TUTOR_MAX_INPUT_BYTES).
     if (!isAdmin) {
       const msgBytes = new TextEncoder().encode(JSON.stringify(claudeBody.messages || [])).length
-      if (msgBytes > MAX_INPUT_BYTES) {
+      const cap = (isTutor && featureIsTutorLarge) ? TUTOR_MAX_INPUT_BYTES : MAX_INPUT_BYTES
+      if (msgBytes > cap) {
         return jsonResponse({
           error: 'Input too large',
-          detail: `Request is ${Math.round(msgBytes / 1024)}KB; per-call limit is ${Math.round(MAX_INPUT_BYTES / 1024)}KB.`,
+          detail: `Request is ${Math.round(msgBytes / 1024)}KB; per-call limit is ${Math.round(cap / 1024)}KB.`,
           code: 'input_too_large',
         }, 413, cors)
       }
