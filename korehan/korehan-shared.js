@@ -1737,9 +1737,6 @@ async function checkSession() {
       // access_token in the fragment AND Supabase's setSession to
       // accept that token — Supabase's own signature/issuer check
       // is the real defense, not our local state token.
-      console.log('[auth] implicit hash:',
-        'access_token=', accessToken ? '<' + accessToken.length + ' chars>' : 'MISSING',
-        'refresh_token=', refreshToken ? '<' + refreshToken.length + ' chars>' : 'MISSING');
       if (accessToken) {
         // setSession requires both tokens. If Supabase didn't return
         // a refresh_token (older implicit flow, certain provider
@@ -4643,9 +4640,6 @@ async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
     // Update the in-memory shared cache so other taps in this session
     // hit it instead of going live.
     window._khArtSentSharedCache[articleId] = { sentences: stitched, version: KH_SENT_CACHE_VERSION };
-    // Also drop a one-off log so the admin can confirm the trigger
-    // fired (the user pointed out it wasn't actually wired before).
-    console.log('[sent-bg] cached ' + stitched.length + ' sentences for article ' + articleId);
   } catch(err) {
     console.warn('[sent-bg] failed:', err && err.message || err);
   } finally {
@@ -5539,7 +5533,6 @@ async function _khTriggerFullConvAnalyze(convId) {
       } catch(e) { console.warn('[conv-sent-bg] persist failed:', e); }
     }
     window._khConvSentSharedCache[convId] = { messages: stitched };
-    console.log('[conv-sent-bg] cached ' + stitched.length + ' lines for conv ' + convId);
   } catch(err) {
     console.warn('[conv-sent-bg] failed:', err && err.message || err);
   } finally {
@@ -7525,7 +7518,6 @@ async function _detectXPLogCols() {
     console.warn('[xp] xp_log probe exception, disable remote xp_log writes:', e);
     return;
   }
-  console.log('[xp] xp_log cols:', _xpLogAmtCol, _xpLogSrcCol);
 }
 
 async function _insertXPLog(sb, userId, actionKey, amount, reason, contentId) {
@@ -7568,8 +7560,6 @@ async function _insertXPLog(sb, userId, actionKey, amount, reason, contentId) {
       } else {
         console.warn('[xp] log insert error:', r.error);
       }
-    } else {
-      console.log('[xp] logged', actionKey, amount, 'XP (col=' + _xpLogAmtCol + ')');
     }
   } catch(e) { console.warn('[xp] log insert exception:', e); }
 }

@@ -10,7 +10,61 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-16-dr`
+## In progress on `claude/audit-17-deadcode`
+
+- **17차 dead-code + arch consolidation (2026-05-27)** — 12 findings.
+  This PR ships 4 low-risk cleanup items; Speaking Coach v3
+  deletion + unused-RPC sweep deferred for owner schema confirmation.
+  - **F2 — LANDED**: `escapeHTML` duplicate in `korehan-study-room.js`
+    deleted (the shared 5-char version in `js/core/security.js`
+    loads first and is strictly safer than the 3-char local copy).
+    BONUS: `korehan-grammar-tooltips.js` deleted entirely — zero
+    references anywhere in the repo, fully dead file.
+  - **F3 — LANDED**: 4 truly-orphan images deleted
+    (`feat-sprout.{png,webp}`, `feat-review.{png,webp}` in
+    `korehan/img/guide/`). Audit also flagged 4 others but those
+    turned out to be referenced from `kh-universe.js` / `phrases.js`
+    — kept.
+  - **F4 — LANDED**: 8 stale cache-busters bumped to `v=20260527f`
+    on `korehan-study-room.html`, `korehan-learning-overview.html`,
+    `korehan-mypage.html`, `korehan-x9f4k2m7.html`. All 8 underlying
+    scripts (`kh-canvas-engine.js`, `kh-flashcards.js`,
+    `kh-listening.js`, `kh-grammar-tree.js`, `kh-sentence-builder.js`,
+    `kh-curriculum.js`, `kh-badges.js`, `kh-vocab-prompt.js`) were
+    actually modified in PR #589 — classic PR #526 stale-buster bug.
+  - **F6 — LANDED**: 6 unconditional debug `console.log` calls
+    removed: `[auth] implicit hash`, `[sent-bg] cached`,
+    `[conv-sent-bg] cached`, `[xp] xp_log cols`, `[xp] logged`,
+    `[save_daily_content] RPC ok`. All `console.warn` error
+    handlers preserved.
+
+  **STILL OPEN from 17차 (owner sign-off needed)**:
+  - **F1 (P1)**: Speaking Coach v3 dead surface — delete
+    `20260422_speaking_coach_wallet.sql` + dependent
+    `20260526_audit_8_refund_handler.sql` + `speaking-pass-checkout`
+    Edge Function. Owner confirmed v3 unused ("미사용임"); deletion
+    is straightforward but irreversible.
+  - **F5 (P2)**: 12 unused RPCs (`are_friends`, `is_blocked`,
+    `is_tutor_user`, `purchase_streak_freeze`, etc.). Needs
+    per-RPC audit to confirm none are called by admin tools
+    or cron.
+  - **F8 (P2)**: unfinished admin filter at
+    `korehan-x9f4k2m7.html:6584` ("TODO: not yet wired"). Needs
+    owner intent — finish or remove.
+  - **F9 (P2)**: `speaking-pass-webhook` Edge Function references
+    v3 schema. Coordinate with F1 — confirm Stripe webhook config
+    before deletion.
+  - **F12 (P1)**: Migration version mismatch — code references v3
+    RPCs but prod is on v2. Document or fix; depends on F1.
+
+  **AUDIT MISCLASSIFICATIONS** (skipped):
+  - F7 (newsletter RPC comment): comment was actually correct —
+    audit misread it. No action.
+  - F10/F11: stable code / future-refactor — no action this round.
+
+---
+
+## On `claude/audit-16-dr` (PR #631 merged 2026-05-27)
 
 - **16차 DR / Backup / Runbook (2026-05-27)** — 15 findings. This
   PR ships the documentation half of the audit (runbooks +
