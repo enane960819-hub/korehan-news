@@ -10,7 +10,60 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-19-errors`
+## In progress on `claude/audit-20-races`
+
+- **20차 frontend race conditions (2026-05-27)** — 12 findings.
+  This PR ships 4 fixes (1 P1 + 3 P2). Lifecycle / multi-tab /
+  realtime cleanup items deferred.
+  - **F1 (P1) — LANDED**: `submitAllWritingsToday()` in
+    `korehan-study-room.js` — was disabling the submit button
+    only AFTER `await _showSubmitReview(limit)`, so a rapid
+    double-click during the modal-open window could
+    double-submit. Added `window._khSubmitAllInFlight` flag
+    checked at the very top + try/finally wrapper to clear.
+  - **F2/F9 (P2) — LANDED**: `sendPasswordReset()` in
+    `korehan-mypage.html` — was firing
+    `sb.auth.resetPasswordForEmail()` with no button-disable +
+    no cooldown. Now: 60-second client-side cooldown + button
+    locked during the in-flight call. Spam-clicking the Reset
+    button no longer floods the user's mailbox.
+  - **F6 (P2) — LANDED**: `khCmSubmitReply()` in
+    `js/features/comments.js` — was firing `submit_comment` RPC
+    with no button-disable. Server-side cooldown caught the race
+    but DB still saw the duplicate calls. Now the "등록" button
+    is disabled during the RPC inside a try/finally.
+  - **F5 (P2) — LANDED**: feedback-poll visibilitychange handler
+    in `korehan-study-room.js` — was wiring TWO separate
+    `addEventListener('visibilitychange', …)` callbacks for pause
+    vs resume. Merged into one handler that branches on
+    `document.hidden`.
+
+  **STILL OPEN from 20차**:
+  - **F4 (P2)**: `pcDemoPlay()` setInterval reads stale
+    `_pcDemoTime` after `pcSeekTo()` — UI clock glitch (not data
+    loss).
+  - **F7 (P2)**: `sb.auth.onAuthStateChange` listener in
+    `korehan-study-room.js` doesn't save the unsubscribe fn —
+    accumulates on revisit. Need unsubscribe plumbing.
+  - **F8 (P2)**: multi-tab localStorage draft race in
+    `saveDraft()` — last-write-wins. Needs IndexedDB or merge
+    strategy.
+  - **F10 (P2)**: `onAuthStateChange` listeners in 3 places
+    (`shared.js`, `x9f4k2m7.html`, `admin-gate.js`) accumulate
+    across page navigations.
+  - **F11 (P2)**: nickname TOCTOU — server guard catches it, UX
+    message could be more actionable.
+
+  **AUDIT MISCLASSIFICATIONS** (skipped):
+  - F3: audit claimed `_currentLevel === lvl` comparison reads
+    "stale" current, but that's the correct guard — if level
+    switched, the else branch updates cache without applying to
+    DOM. Code is correct.
+  - F12: audit itself said "already fixed". No action.
+
+---
+
+## On `claude/audit-19-errors` (PR #634 merged 2026-05-27)
 
 - **19차 error handling + observability (2026-05-27)** — 18 findings.
   This PR ships 7 high-impact fixes (1 P0 + 6 P1). The rest of the

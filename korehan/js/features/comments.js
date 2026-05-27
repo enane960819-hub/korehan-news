@@ -315,14 +315,27 @@ async function khCmSubmitReply(parentId) {
   // articleId is on the parent row (and we need it for the insert).
   var articleId = (new URLSearchParams(window.location.search)).get('id');
 
+  // RACE-F6: disable the reply-submit button during the RPC so rapid
+  // taps on "등록" don't post duplicate replies. The server-side
+  // cooldown in submit_comment catches the race too, but the duplicate
+  // calls still hit the DB and waste round-trips.
+  var submitBtn = formEl.querySelector('button[onclick*="khCmSubmitReply"]');
+  var origLabel = submitBtn ? submitBtn.textContent : '';
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '...'; }
+
   // MOD-F5: call submit_comment RPC. Handles cooldown server-side
   // (un-bypassable from a second tab), returns the new row id so
   // we can fire notify_comment_reply.
-  var rpc = await sb.rpc('submit_comment', {
-    p_article_id: articleId,
-    p_content:    content,
-    p_parent_id:  parentId,
-  });
+  var rpc;
+  try {
+    rpc = await sb.rpc('submit_comment', {
+      p_article_id: articleId,
+      p_content:    content,
+      p_parent_id:  parentId,
+    });
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origLabel || '등록'; }
+  }
   if (rpc.error || (rpc.data && rpc.data.ok === false)) {
     var why = (rpc.data && rpc.data.error) || (rpc.error && rpc.error.message) || 'unknown';
     if (why === 'rate_limited') {
