@@ -355,6 +355,7 @@ body.sb-open .sb-backdrop{display:block}
     <button class="sb-btn" onclick="goComments()"><span class="ico">🗨️</span>Comment Management</button>
     <button class="sb-btn" onclick="goReports()"><span class="ico">🚩</span>Report Queue</button>
     <button class="sb-btn" onclick="goRecentUGC()"><span class="ico">🔍</span>Recent UGC</button>
+    <button class="sb-btn" onclick="goCostMonitor()"><span class="ico">💵</span>Anthropic Cost</button>
     <button class="sb-btn" id="sb-speaking" onclick="goSpeakingReviews()"><span class="ico">🎙️</span>Speaking Reviews</button>
     <button class="sb-btn" onclick="goNewsletter()"><span class="ico">📬</span>뉴스레터</button>
     <button class="sb-btn" id="sb-analytics" onclick="goAnalytics()"><span class="ico">📊</span>통계</button>
@@ -8424,6 +8425,130 @@ async function loadRecentUGC() {
         }).join('');
   } catch(e) {
     wrap.innerHTML = '<div class="infobox" style="color:#c33">⚠️ 로드 실패: '+esc(e.message||e)+'</div>';
+  }
+}
+
+// PERF-F7 + F9: Anthropic cost monitor admin tab.
+function goCostMonitor() {
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>💵 Anthropic Cost Monitor</h1>'
+   +'<p>Daily roll-up of Claude API spend. Run the aggregation periodically; once pg_cron is installed it can fire nightly automatically.</p></div></div>'
+   +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
+   +'  <button class="btn-soft" onclick="runCostAggregation()" id="cost-agg-btn">⚙️ Run aggregation now</button>'
+   +'  <button class="btn-soft" onclick="runCostRefresh()" id="cost-refresh-btn">🔄 Refresh feature rollup</button>'
+   +'  <button class="btn-soft" onclick="runCostAlert()" id="cost-alert-btn">🚨 Check budget alert</button>'
+   +'</div>'
+   +'<div id="cost-status" style="font-size:12px;color:var(--gr);margin-bottom:14px"></div>'
+   +'<div id="cost-summary"></div>'
+   +'<div id="cost-features" style="margin-top:24px"></div>'
+   +'<div id="cost-daily" style="margin-top:24px"></div>';
+  loadCostMonitor();
+}
+
+async function loadCostMonitor() {
+  var sb = getSb();
+  if (!sb) { document.getElementById('cost-status').innerHTML = '<span style="color:#c33">⚠️ Admin client missing</span>'; return; }
+  document.getElementById('cost-status').textContent = '⏳ Loading…';
+  try {
+    var dailyRes = await sb.from('claude_cost_daily')
+      .select('date, feature, model, calls, input_tokens, output_tokens, cost_usd')
+      .gte('date', new Date(Date.now() - 14 * 86400000).toISOString().slice(0,10))
+      .order('date', { ascending: false });
+    var daily = (dailyRes.data || []);
+
+    var featRes = await sb.from('claude_cost_by_feature_month')
+      .select('month, feature, model, calls, input_tokens, output_tokens, cost_usd')
+      .gte('month', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10))
+      .order('cost_usd', { ascending: false })
+      .limit(50);
+    var features = (featRes.data || []);
+
+    var mtdStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0,10);
+    var mtdTotal = daily.filter(function(r){ return r.date >= mtdStart; })
+                       .reduce(function(s, r){ return s + parseFloat(r.cost_usd || 0); }, 0);
+    var todayStr = new Date(Date.now() + 9*3600000).toISOString().slice(0,10);
+    var todayTotal = daily.filter(function(r){ return r.date === todayStr; })
+                          .reduce(function(s, r){ return s + parseFloat(r.cost_usd || 0); }, 0);
+
+    document.getElementById('cost-summary').innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px">'
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:14px"><div style="font-size:11px;color:var(--gr);font-weight:800;text-transform:uppercase;letter-spacing:.05em">Month to date</div><div style="font-size:28px;font-weight:900;color:#0f172a;margin-top:4px">$'+mtdTotal.toFixed(2)+'</div></div>'
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:14px"><div style="font-size:11px;color:var(--gr);font-weight:800;text-transform:uppercase;letter-spacing:.05em">Today (KST)</div><div style="font-size:28px;font-weight:900;color:#0f172a;margin-top:4px">$'+todayTotal.toFixed(2)+'</div></div>'
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:14px"><div style="font-size:11px;color:var(--gr);font-weight:800;text-transform:uppercase;letter-spacing:.05em">14-day rows</div><div style="font-size:28px;font-weight:900;color:#0f172a;margin-top:4px">'+daily.length+'</div></div>'
+      +'</div>';
+
+    var byDate = {};
+    daily.forEach(function(r){ byDate[r.date] = (byDate[r.date] || 0) + parseFloat(r.cost_usd || 0); });
+    var dateRows = Object.keys(byDate).sort().reverse();
+    document.getElementById('cost-daily').innerHTML =
+      '<h3 style="font-size:16px;margin-bottom:8px">Last 14 days</h3>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--bo)"><th style="padding:8px 10px;text-align:left;color:var(--gr)">Date (KST)</th><th style="padding:8px 10px;text-align:right;color:var(--gr)">Cost</th></tr></thead><tbody>'
+      + dateRows.map(function(d){ return '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px 10px">'+esc(d)+'</td><td style="padding:6px 10px;text-align:right;font-family:monospace">$'+byDate[d].toFixed(4)+'</td></tr>'; }).join('')
+      + '</tbody></table>';
+
+    if (features.length) {
+      document.getElementById('cost-features').innerHTML =
+        '<h3 style="font-size:16px;margin-bottom:8px">Top features this month</h3>'
+        + '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--bo)"><th style="padding:8px 10px;text-align:left;color:var(--gr)">Feature</th><th style="padding:8px 10px;text-align:left;color:var(--gr)">Model</th><th style="padding:8px 10px;text-align:right;color:var(--gr)">Calls</th><th style="padding:8px 10px;text-align:right;color:var(--gr)">Cost</th></tr></thead><tbody>'
+        + features.map(function(r){ return '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px 10px;font-weight:700">'+esc(r.feature||'(none)')+'</td><td style="padding:6px 10px;color:var(--gr);font-size:11px">'+esc(r.model||'')+'</td><td style="padding:6px 10px;text-align:right">'+(r.calls||0)+'</td><td style="padding:6px 10px;text-align:right;font-family:monospace">$'+(parseFloat(r.cost_usd||0)).toFixed(4)+'</td></tr>'; }).join('')
+        + '</tbody></table>';
+    } else {
+      document.getElementById('cost-features').innerHTML = '<div style="padding:12px;color:var(--gr);font-size:13px">No materialized-view rows yet. Click "Refresh feature rollup" after running the aggregation.</div>';
+    }
+
+    document.getElementById('cost-status').innerHTML = 'Loaded.';
+  } catch(e) {
+    document.getElementById('cost-status').innerHTML = '<span style="color:#c33">⚠️ Load failed: '+esc(e.message||e)+'</span>';
+  }
+}
+
+async function runCostAggregation() {
+  var btn = document.getElementById('cost-agg-btn');
+  var st  = document.getElementById('cost-status');
+  if (btn) btn.disabled = true;
+  st.textContent = '⏳ Aggregating…';
+  try {
+    var sb = getSb();
+    var r = await sb.rpc('aggregate_claude_costs_daily', { p_days_back: 7 });
+    if (r.error || (r.data && r.data.ok === false)) {
+      st.innerHTML = '<span style="color:#c33">⚠️ '+esc((r.data && r.data.error) || (r.error && r.error.message))+'</span>';
+    } else {
+      st.textContent = '✅ Aggregated ' + (r.data && r.data.aggregated_rows) + ' rows.';
+      loadCostMonitor();
+    }
+  } catch(e) {
+    st.innerHTML = '<span style="color:#c33">⚠️ '+esc(e.message||e)+'</span>';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function runCostRefresh() {
+  alert('Run this in the Supabase SQL editor:\n\nREFRESH MATERIALIZED VIEW CONCURRENTLY public.claude_cost_by_feature_month;\n\n(PostgREST does not expose REFRESH MATERIALIZED VIEW. Once pg_cron lands, schedule it.)');
+}
+
+async function runCostAlert() {
+  var btn = document.getElementById('cost-alert-btn');
+  var st  = document.getElementById('cost-status');
+  if (btn) btn.disabled = true;
+  st.textContent = '⏳ Checking…';
+  try {
+    var sb = getSb();
+    var r = await sb.rpc('check_anthropic_budget_alert');
+    if (r.error || (r.data && r.data.ok === false)) {
+      st.innerHTML = '<span style="color:#c33">⚠️ '+esc((r.data && r.data.error) || (r.error && r.error.message))+'</span>';
+    } else {
+      var d = r.data || {};
+      st.innerHTML = (d.breach ? '🚨 ' : '✅ ')
+        + 'MTD $'+(d.mtd||0).toFixed(2)+' / budget $'+(d.budget||0).toFixed(2)
+        + ' · yesterday $'+(d.yesterday||0).toFixed(2)+' (7-day avg $'+(d.avg7||0).toFixed(2)+')'
+        + (d.breach ? ' — alert row inserted to client_errors.' : '');
+    }
+  } catch(e) {
+    st.innerHTML = '<span style="color:#c33">⚠️ '+esc(e.message||e)+'</span>';
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 

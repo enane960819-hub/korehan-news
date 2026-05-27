@@ -10,7 +10,47 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-13-db-perf`
+## In progress on `claude/audit-13-cost-monitoring`
+
+- **13차 batch B — Anthropic cost monitoring (PERF-F7/F9/F13)**:
+  - **Migration `20260527_audit_13_cost_monitoring.sql`** adds:
+    - `claude_cost_daily` (date, feature, model) aggregate table
+    - `_kh_claude_price_usd()` SQL function mirroring the TS
+      MODEL_PRICING constants in claude-proxy
+    - `aggregate_claude_costs_daily(days_back)` RPC — incremental
+      upsert from claude_api_usage into claude_cost_daily
+    - `claude_cost_by_feature_month` materialized view
+    - `check_anthropic_budget_alert()` — MTD vs budget +
+      3× daily-spike → critical client_errors row (= AN-F2
+      Discord ping once owner deploys notify-critical-error)
+    - `purge_old_claude_api_usage(days)` — retention, min 90d
+      default 365d
+  - **New admin tab "💵 Anthropic Cost Monitor"** (sidebar):
+    - MTD + today's spend + 14-day timeline
+    - Top features this month
+    - Buttons: Run aggregation / Refresh feature rollup
+      (alert-only, REFRESH MATERIALIZED VIEW can't go through
+      PostgREST) / Check budget alert
+  - Budget threshold: `app_settings.anthropic_monthly_budget_usd`
+    defaults to $200 if not set. Owner can override:
+    `INSERT INTO app_settings (key, value) VALUES
+     ('anthropic_monthly_budget_usd', '50') ON CONFLICT
+     (key) DO UPDATE SET value = EXCLUDED.value;`
+  - **OWNER MUST**:
+    1. Apply 20260527_audit_13_cost_monitoring.sql
+    2. (Optional) set anthropic_monthly_budget_usd in app_settings
+    3. After deploy, click "Run aggregation now" once to backfill
+       (covers last 7 days)
+    4. Run `REFRESH MATERIALIZED VIEW CONCURRENTLY
+       public.claude_cost_by_feature_month;` in SQL editor to
+       fill the per-feature view
+  - **PERF-F15 (Supabase usage)**: deferred. Needs a Supabase
+    Management API call from an Edge Function; not in scope this
+    PR. Note in TODO for batch C.
+
+---
+
+## On `claude/audit-13-db-perf` (PR #627 merged 2026-05-27)
 
 - **13차 audit batch A — Missing indexes + admin bulk-upsert + LIMITs (2026-05-27)**:
   Audit found 15 findings; this PR ships the safe high-impact P0+P1
