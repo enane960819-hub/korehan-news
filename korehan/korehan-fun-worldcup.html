@@ -178,7 +178,7 @@ window.pick=function(idx){
   },600);
 };
 function showWinner(item){
-  document.getElementById('game').innerHTML='<div class="winner"><div class="winner-emoji" style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;color:#fbbf24">'+(window.KH_ICON_TROPHY||'')+'</div><h2>Champion!</h2><div class="winner-title" style="display:inline-flex;align-items:center;gap:8px;justify-content:center">'+khSvg(item.emoji,{size:22,color:'#fbbf24'})+item.title+'</div><div class="winner-ko">'+item.ko+'</div><div class="winner-desc">'+item.desc+'</div>'
+  document.getElementById('game').innerHTML='<div class="winner"><div class="winner-emoji" style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;color:#fbbf24">'+(window.KH_ICON_TROPHY||'')+'</div><h2>Champion!</h2><div class="winner-title" style="display:inline-flex;align-items:center;gap:8px;justify-content:center">'+khSvg(item.emoji,{size:22,color:'#fbbf24'})+escapeHTML(item.title)+'</div><div class="winner-ko">'+escapeHTML(item.ko)+'</div><div class="winner-desc">'+escapeHTML(item.desc)+'</div>'
     +'<div class="btn-row"><button class="btn btn-ghost" onclick="showStart()">Menu</button><button class="btn btn-primary" onclick="startWC()" style="display:inline-flex;align-items:center;gap:8px;justify-content:center">Play Again'+khSvg('swords',{size:18})+'</button></div></div>';
   // Confetti burst (PR #7AI). 60 particles staggered across the
   // viewport width with randomised colour / duration / horizontal

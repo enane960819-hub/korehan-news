@@ -153,7 +153,7 @@ window.revealFortune=function(){
   // Lucky word
   var lw=LUCKY[s%LUCKY.length];
   var lwEl=document.getElementById('lucky-word');
-  lwEl.innerHTML='<div class="stat-label">Lucky Korean Word</div><div class="lucky-ko">'+lw.ko+'</div><div class="lucky-en">'+lw.en+'</div>';
+  lwEl.innerHTML='<div class="stat-label">Lucky Korean Word</div><div class="lucky-ko">'+escapeHTML(lw.ko)+'</div><div class="lucky-en">'+escapeHTML(lw.en)+'</div>';
   setTimeout(function(){lwEl.classList.add('show');},1200);
   // Message
   var msgEl=document.getElementById('fortune-msg');

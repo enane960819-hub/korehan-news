@@ -2325,12 +2325,12 @@ function drShowQuestion() {
   _drAnswered=false;
 
   if(q.type==='meaning'){
-    body.innerHTML='<div class="dr-q-label">What does this mean?</div><div class="dr-q-title">'+q.word_ko+'</div>'
+    body.innerHTML='<div class="dr-q-label">What does this mean?</div><div class="dr-q-title">'+escapeHtml(q.word_ko)+'</div>'
       +(q.word_rom?'<div class="dr-q-hint">'+q.word_rom+'</div>':'')
       +'<div class="dr-choices">'+q.choices.map(function(c){return '<button class="dr-choice" onclick="drSelectMC(this,\''+c.replace(/'/g,"\\'")+'\')">'+c+'</button>';}).join('')+'</div>'
       +'<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>';
   } else if(q.type==='order'){
-    body.innerHTML='<div class="dr-q-label">Arrange into a correct sentence</div><div class="dr-q-hint">'+q.en+'</div>'
+    body.innerHTML='<div class="dr-q-label">Arrange into a correct sentence</div><div class="dr-q-hint">'+escapeHtml(q.en)+'</div>'
       +'<div id="dr-order-selected" style="min-height:42px;border:1.5px dashed rgba(167,139,250,.35);background:rgba(167,139,250,.05);border-radius:10px;padding:8px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center"></div>'
       +'<div id="dr-order-pool" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'+q.words.map(function(w,i){return '<button id="drow_'+i+'" class="dr-choice" style="display:inline-flex;padding:8px 12px;font-family:\'Noto Serif KR\',serif" onclick="drSelectOrder(this,'+i+',\''+w.replace(/'/g,"\\'")+'\')">'+w+'</button>';}).join('')+'</div>'
       +'<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>'
@@ -2358,7 +2358,7 @@ function drShowQuestion() {
       +'<div class="dr-choices">'+q.choices.map(function(c){return '<button class="dr-choice" onclick="drSelectMC(this,\''+c.replace(/'/g,"\\'")+'\')">'+c+'</button>';}).join('')+'</div>'
       +'<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>';
   } else if(q.type==='typed'){
-    body.innerHTML='<div class="dr-q-label">Write in Korean</div><div class="dr-q-title">'+q.word_en+'</div>'
+    body.innerHTML='<div class="dr-q-label">Write in Korean</div><div class="dr-q-title">'+escapeHtml(q.word_en)+'</div>'
       +(q.word_rom?'<div class="dr-q-hint">Hint: '+q.word_rom+'</div>':'')
       +'<input class="dr-typed-input" id="dr-typed" placeholder="한국어로 입력..." onkeydown="if(event.key===\'Enter\')drCheckTyped()" autocomplete="off" lang="ko" spellcheck="false" />'
       +'<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>'
