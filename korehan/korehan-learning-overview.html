@@ -2296,10 +2296,14 @@
 
         // Sync both xp and streak to user_stats
         var { data: curStats } = await sb.from('user_stats').select('user_id').eq('user_id', userId).maybeSingle();
+        var statsRes;
         if (curStats) {
-          await sb.from('user_stats').update({ xp: totalXP, streak: actStreak, mission_streak: actStreak }).eq('user_id', userId);
+          statsRes = await sb.from('user_stats').update({ xp: totalXP, streak: actStreak, mission_streak: actStreak }).eq('user_id', userId);
         } else {
-          await sb.from('user_stats').insert({ user_id: userId, xp: totalXP, streak: actStreak, mission_streak: actStreak });
+          statsRes = await sb.from('user_stats').insert({ user_id: userId, xp: totalXP, streak: actStreak, mission_streak: actStreak });
+        }
+        if (statsRes && statsRes.error && typeof kh_log_error === 'function') {
+          kh_log_error('user_stats xp/streak write failed', { xp: totalXP, streak: actStreak, op: curStats ? 'update' : 'insert', error: statsRes.error.message });
         }
       }
     } catch(e) {}
@@ -2757,10 +2761,13 @@
       var correct = _drScores.reduce(function(a,b){return a+b;},0);
       var total = _drQuestions.length;
       var pct = total > 0 ? Math.round(correct / total * 100) : 0;
-      await sb.from('daily_reviews').upsert(
+      var drRes = await sb.from('daily_reviews').upsert(
         { user_id: supaUser.id, date: today, score: { correct: correct, total: total }, updated_at: new Date().toISOString() },
         { onConflict: 'user_id,date' }
       );
+      if (drRes && drRes.error && typeof kh_log_error === 'function') {
+        kh_log_error('daily_reviews upsert failed', { correct: correct, total: total, error: drRes.error.message });
+      }
       // Log to learning hub pipeline
       if (typeof logQuizResult === 'function') {
         logQuizResult('daily_review', { score: correct, max_score: total, accuracy_pct: pct });

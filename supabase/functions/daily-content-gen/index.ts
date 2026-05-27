@@ -349,6 +349,16 @@ async function pregenKeyExpressions(
 }
 
 Deno.serve(async (req) => {
+  // Hoisted across the outer try/catch so the catch block can release
+  // the lock + persist to client_errors. The lock-leak (DR-19-F8) bug:
+  // before, an Anthropic 429/timeout / DB hiccup inside the main work
+  // would skip the happy-path lock cleanup at the bottom of try {} and
+  // exit the catch without releasing. Next pg_cron pass within 15 min
+  // saw "another generation already in progress" and quietly skipped,
+  // leaving daily content stale until someone noticed.
+  let lockHeld = false
+  let sbForCleanup: ReturnType<typeof createClient> | null = null
+  const LOCK_KEY = 'daily_content_gen_lock'
   try {
     // ── Auth ───────────────────────────────────────────────────
     // Three ways in (any one passes):
@@ -391,6 +401,7 @@ Deno.serve(async (req) => {
     }
 
     const sb = createClient(supabaseUrl, serviceKey)
+    sbForCleanup = sb
 
     // Lock-via-app_settings — prevents pg_cron and a manual admin
     // "Generate now" click from running concurrently. Without this,
@@ -403,18 +414,17 @@ Deno.serve(async (req) => {
     // advisory locks would be cleaner but they're session-bound and
     // supabase-js RPC opens a fresh session per call, which makes the
     // built-in pg_try_advisory_lock useless from this code path.
-    const LOCK_KEY = 'daily_content_gen_lock'
-    // CRON-F7: TTL was 5 min, which is shorter than the worst-case
-    // Anthropic latency × 8 concurrent calls (Promise.allSettled in
-    // the main loop). Sonnet calls on Advanced at 3,000 tokens have
-    // observed 30–60s tails; a retry from pg_cron after 5 minutes
-    // (the typical retry pattern) would see a "stale" lock,
-    // overwrite it, and we'd get two concurrent generations both
+    // LOCK_KEY is hoisted to function scope above (so the outer catch
+    // can clean up). CRON-F7: TTL was 5 min, which is shorter than the
+    // worst-case Anthropic latency × 8 concurrent calls
+    // (Promise.allSettled in the main loop). Sonnet calls on Advanced
+    // at 3,000 tokens have observed 30–60s tails; a retry from pg_cron
+    // after 5 minutes (the typical retry pattern) would see a "stale"
+    // lock, overwrite it, and we'd get two concurrent generations both
     // upserting to the same (scheduled_date, level) rows.
     // 15 min covers the worst case while still releasing if the
     // function actually crashed (no `finally` to clean up).
     const LOCK_TTL_MS = 15 * 60 * 1000
-    let lockHeld = false
     try {
       const { data: lockRow } = await sb
         .from('app_settings')
@@ -629,7 +639,25 @@ Deno.serve(async (req) => {
       headers: { 'Content-Type': 'application/json' },
     })
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
+    const msg = (e as Error).message || String(e)
+    console.error('[daily-content-gen] critical failure:', msg)
+    // Always release the lock on error — otherwise the next pg_cron run
+    // sees the lock held within TTL and skips, leaving stale daily content
+    // until someone manually clears the lock row. (DR-19-F8.)
+    if (sbForCleanup && lockHeld) {
+      await sbForCleanup.from('app_settings').delete().eq('key', LOCK_KEY).then(() => {}, () => {})
+    }
+    // Persist to client_errors so the operator sees this in the Discord
+    // alarm + admin dashboard. Without this, the cron silently dies and
+    // topics stay stale until someone notices. (DR-19-F9.)
+    if (sbForCleanup) {
+      await sbForCleanup.from('client_errors').insert({
+        message: msg.slice(0, 500),
+        context: { source: 'daily-content-gen-cron' },
+        severity: 'critical',
+      }).then(() => {}, () => {})
+    }
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })
