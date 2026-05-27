@@ -19,9 +19,9 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260527d">
+<link rel="stylesheet" href="korehan-shared.css?v=20260527g">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260527f">
-<link rel="stylesheet" href="korehan-study-room.css?v=20260519a">
+<link rel="stylesheet" href="korehan-study-room.css?v=20260527g">
 </head>
 <body>
 <div id="kh-header"></div>
@@ -556,7 +556,7 @@
         <button class="wb-cat-btn" onclick="setWbCategory('expression',this)">Expressions</button>
         <button class="wb-cat-btn" onclick="setWbCategory('correction',this)">🔖 Corrections</button>
       </div>
-      <input class="wb-search" type="text" placeholder="Search words..." oninput="filterWordBook(this.value)">
+      <input class="wb-search" type="text" placeholder="Search words..." oninput="filterWordBook(this.value)" lang="ko" autocomplete="off" spellcheck="false">
       <div id="wb-list" style="max-height:60vh;overflow-y:auto;padding-right:4px">
         <div class="wb-empty">Loading your saved words…</div>
       </div>
@@ -1203,7 +1203,7 @@
       <span style="margin-left:auto;font-size:14px;color:rgba(255,255,255,.6)">→</span>
     </button>
     <div id="wb-search-wrap" style="margin-bottom:14px">
-      <input type="text" id="wb-search" placeholder="Search words..." oninput="filterWordBank()" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-family:inherit;outline:none">
+      <input type="text" id="wb-search" placeholder="Search words..." oninput="filterWordBank()" lang="ko" autocomplete="off" spellcheck="false" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-family:inherit;outline:none">
     </div>
     <div id="wb-full-list" style="display:flex;flex-direction:column;gap:6px">
       <div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">Loading...</div>
@@ -2360,7 +2360,7 @@ function drShowQuestion() {
   } else if(q.type==='typed'){
     body.innerHTML='<div class="dr-q-label">Write in Korean</div><div class="dr-q-title">'+q.word_en+'</div>'
       +(q.word_rom?'<div class="dr-q-hint">Hint: '+q.word_rom+'</div>':'')
-      +'<input class="dr-typed-input" id="dr-typed" placeholder="한국어로 입력..." onkeydown="if(event.key===\'Enter\')drCheckTyped()" autocomplete="off" />'
+      +'<input class="dr-typed-input" id="dr-typed" placeholder="한국어로 입력..." onkeydown="if(event.key===\'Enter\')drCheckTyped()" autocomplete="off" lang="ko" spellcheck="false" />'
       +'<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>'
       +'<button onclick="drCheckTyped()" style="padding:8px 16px;background:var(--bright,#2563eb);color:#fff;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;margin-top:8px">Check</button>';
     setTimeout(function(){var el=document.getElementById('dr-typed');if(el)el.focus();},60);
@@ -3283,7 +3283,7 @@ function renderReviewQuestion() {
       + '<div style="font-size:24px;font-weight:800;color:#fff">' + q.prompt + '</div>'
       + '</div>'
       + '<div style="text-align:center">'
-      + '<input id="rv-typed-input" type="text" placeholder="한국어로 입력..." style="width:80%;max-width:300px;padding:12px 16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;font-size:16px;font-family:\'Noto Sans KR\',sans-serif;text-align:center;outline:none" onkeydown="if(event.key===\'Enter\')rvCheckTyped()">'
+      + '<input id="rv-typed-input" type="text" placeholder="한국어로 입력..." lang="ko" autocomplete="off" spellcheck="false" style="width:80%;max-width:300px;padding:12px 16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;font-size:16px;font-family:\'Noto Sans KR\',sans-serif;text-align:center;outline:none" onkeydown="if(event.key===\'Enter\')rvCheckTyped()">'
       + '<button onclick="rvCheckTyped()" style="display:block;margin:12px auto 0;padding:10px 24px;background:#2563eb;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Check</button>'
       + '<div id="rv-typed-fb" style="margin-top:10px;font-size:13px"></div>'
       + '</div>';
