@@ -52,21 +52,26 @@
     var btn = $('kh-unsub-confirm');
     if (btn) { btn.disabled = true; btn.textContent = 'Working…'; }
   }
-  function showResult(ok, email) {
+  // EMAIL-F12: three states instead of two — "unsubscribed now",
+  // "already unsubscribed" (don't say 'expired'!), and "invalid".
+  function showResult(state, email) {
     var icon = $('kh-unsub-icon');
-    if (ok) {
+    if (state === 'ok' || state === 'already') {
       icon.className = 'icon ok';
       icon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-      $('kh-unsub-title').textContent = 'You\'re unsubscribed';
+      $('kh-unsub-title').textContent = state === 'already' ? "You're already unsubscribed" : "You're unsubscribed";
+      var leadVerb = state === 'already' ? 'is not subscribed to' : "won't receive";
+      var followupOk = "We're sorry to see you go.";
+      var followupAlready = 'No further action needed — you can ignore future emails from this address as well, in case any are still queued for delivery.';
       $('kh-unsub-body').innerHTML = email
-        ? '<span class="email">' + escapeHtml(email) + '</span> won\'t receive KoreHani updates anymore. We\'re sorry to see you go.'
-        : 'You won\'t receive KoreHani updates anymore. We\'re sorry to see you go.';
+        ? '<span class="email">' + escapeHtml(email) + '</span> ' + leadVerb + " KoreHani updates anymore. " + (state === 'already' ? followupAlready : followupOk)
+        : (state === 'already' ? "This email is already unsubscribed. " + followupAlready : "You won't receive KoreHani updates anymore. " + followupOk);
       $('kh-unsub-actions').innerHTML = '<a class="btn btn-ghost" href="index.html">Back to home</a>';
     } else {
       icon.className = 'icon err';
       icon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-      $('kh-unsub-title').textContent = 'Link expired';
-      $('kh-unsub-body').innerHTML = 'This unsubscribe link is no longer valid. Please use the link from a recent email.';
+      $('kh-unsub-title').textContent = 'Link not recognized';
+      $('kh-unsub-body').innerHTML = 'This unsubscribe link doesn\'t match any record on file. Please use the link from a recent email, or contact <a href="mailto:hello@korehani.com">hello@korehani.com</a>.';
       $('kh-unsub-actions').innerHTML = '<a class="btn btn-ghost" href="index.html">Back to home</a>';
     }
   }
@@ -74,17 +79,24 @@
   window.khRunUnsubscribe = async function () {
     var p = new URLSearchParams(location.search);
     var token = p.get('t') || p.get('token') || '';
-    if (!token) { showResult(false); return; }
+    if (!token) { showResult('err'); return; }
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
-    if (!sb) { showResult(false); return; }
+    if (!sb) { showResult('err'); return; }
     lock();
     try {
-      var r = await sb.rpc('newsletter_unsubscribe', { p_token: token });
+      // RPC renamed to newsletter_unsubscribe_by_token (audit 12).
+      // Old name kept as a wrapper for backwards compat if needed.
+      var r = await sb.rpc('newsletter_unsubscribe_by_token', { p_token: token });
+      if (r.error) {
+        // Fallback to the legacy name if the new one isn't deployed yet.
+        r = await sb.rpc('newsletter_unsubscribe', { p_token: token });
+      }
       var data = r && r.data;
-      if (r.error || !data || !data.ok) { showResult(false); return; }
-      showResult(true, data.email || '');
+      if (r.error || !data || !data.ok) { showResult('err'); return; }
+      if (data.status === 'already_unsubscribed') { showResult('already', data.email || ''); return; }
+      showResult('ok', data.email || '');
     } catch (_) {
-      showResult(false);
+      showResult('err');
     }
   };
 

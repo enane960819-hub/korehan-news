@@ -10,7 +10,80 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/mod-fixes-read-filtering`
+## In progress on `claude/audit-12-email`
+
+- **12차 오딧 — Email deliverability + Resend integration (2026-05-27)**:
+  Background audit found **15 findings**. Headline: no documented
+  DKIM/SPF/DMARC, no bounce/complaint webhook (= reputation collapse
+  within weeks), confirm tokens never expire, no demonstrable
+  consent fields, English-only templates for KR subscribers.
+
+  **CODE FIXES LANDED THIS PR (10 of 15):**
+  - **EMAIL-F2 (P0)** confirm email had literal `${'this email'}`
+    bug (looks like a templating crash = spam signal). Template
+    now echoes the actual subscribed address.
+  - **EMAIL-F4 (P1)** confirm tokens now have **48-hour TTL**
+    (`confirm_token_expires_at` column + check in
+    `newsletter_confirm` RPC). Existing rows backfilled.
+  - **EMAIL-F5 (P1)** added GDPR Art 7(1) / PIPA Art 22
+    demonstrable-consent fields: `consent_ip`,
+    `consent_user_agent`, `consent_text_version`.
+  - **EMAIL-F6 (P1)** hidden preheader prepended to campaign
+    HTML so Gmail inbox preview shows the teaser instead of
+    incidental text.
+  - **EMAIL-F7 (P1)** explicit `Reply-To: hello@korehani.com`
+    on every send.
+  - **EMAIL-F8 (P1)** Resend 429 / 5xx now triggers a retry once
+    with `Retry-After` (or 2-second default).
+  - **EMAIL-F10 (P1)** test sends now include `List-Unsubscribe`
+    + `Reply-To` — they were missing, which landed `[TEST]` sends
+    in spam (defeating the purpose).
+  - **EMAIL-F12 (P2)** unsubscribe.html distinguishes "already
+    unsubscribed" from "link not recognized". RPC renamed to
+    `newsletter_unsubscribe_by_token` with explicit status code.
+  - **EMAIL-F13 (P2)** confirm email is now **bilingual** —
+    picks locale from `newsletter_subs.locale`. KR subscribers
+    get a fully translated message.
+  - **EMAIL-F14 (P2)** plain-text fallback enforced via
+    `htmlToPlainText(body_html)` at send time.
+
+  **NEW EDGE FUNCTION (owner deploys):**
+  - **EMAIL-F3 (P0)** `supabase/functions/resend-webhook/` —
+    Svix-signed Resend webhook handler. Suppresses bounced /
+    complained emails; logs critical to `client_errors`.
+
+  **OWNER ACTION (DNS + dashboard, OUTSIDE the repo):**
+  - **EMAIL-F1 (P0)** DKIM / SPF / DMARC. Full checklist in
+    `docs/email-deliverability.md`. Without this, transactional
+    emails (signup confirm, password reset) hit spam.
+  - **EMAIL-F9 (P1)** move `RESEND_API_KEY` from
+    `app_settings.resend_key` (admin-readable) to Supabase
+    Function secret.
+
+  **DEPLOY ORDER:**
+  1. Apply `20260527_audit_12_email_hardening.sql`
+  2. Configure DNS + Resend domain verification (docs/email-deliverability.md §1-2)
+  3. `supabase secrets set RESEND_WEBHOOK_SECRET=whsec_...`
+  4. `supabase functions deploy resend-webhook --no-verify-jwt`
+  5. `supabase functions deploy newsletter-send`
+  6. Smoke-test per docs/email-deliverability.md §5
+
+  **STILL OPEN:**
+  - **EMAIL-F11 (P2)** account-deletion email round-trip
+    confirmation. PRIV-F6's "type your email" check is enough
+    friction for most cases; full email confirmation needs new
+    `delete_request` table + Edge Function. Worth doing
+    eventually.
+  - **EMAIL-F15 (P2)** SRI on jsdelivr Supabase SDK. Skipped —
+    every SDK upgrade requires recomputing the hash; defensive
+    value low on public landing pages.
+
+- **MOD-F12** also landed on this branch in an earlier commit.
+  See PR description for the full Recent UGC sweep tab.
+
+---
+
+## On `claude/mod-fixes-read-filtering`
 
 - **11차 batch B2 — Block-filtered reads + nickname attr-XSS (2026-05-26)**:
   - **MOD-F6 (P1) — LANDED**: replaced `comments` SELECT policy
