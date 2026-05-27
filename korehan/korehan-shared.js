@@ -1310,7 +1310,7 @@ function _injectAuthModal() {
           <input id="kh-auth-pw" name="password" type="password" autocomplete="current-password" placeholder="••••••••" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)authSignIn()"
             style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
-          <button onclick="var i=document.getElementById('kh-auth-pw');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
+          <button type="button" aria-label="Show or hide password" onclick="var i=document.getElementById('kh-auth-pw');i.type=i.type===&apos;password&apos;?&apos;text&apos;:&apos;password&apos;" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
         </div>
       </div>
       <div style="text-align:right;margin-bottom:18px">
@@ -1352,7 +1352,7 @@ function _injectAuthModal() {
           <input id="kh-auth-pw2" name="new-password" type="password" autocomplete="new-password" placeholder="••••••••" oninput="_authCheckPwStrength(this.value)" onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)document.getElementById('kh-auth-pw3').focus()"
             style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
-          <button onclick="var i=document.getElementById('kh-auth-pw2');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
+          <button type="button" aria-label="Show or hide password" onclick="var i=document.getElementById('kh-auth-pw2');i.type=i.type===&apos;password&apos;?&apos;text&apos;:&apos;password&apos;" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
         </div>
         <!-- 비밀번호 강도 표시 -->
         <div id="kh-pw-strength" style="margin-top:6px;display:none">
@@ -1420,7 +1420,7 @@ function _injectAuthModal() {
           <input id="kh-newpw-pw" type="password" placeholder="••••••••" oninput="_authCheckPwStrength(this.value,'newpw-')"
             style="width:100%;padding:11px 40px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:16px;font-family:inherit;outline:none;transition:border-color .15s"
             onfocus="this.style.borderColor='#1e4fa3'" onblur="this.style.borderColor='#e2e8f0'">
-          <button onclick="var i=document.getElementById('kh-newpw-pw');i.type=i.type==='password'?'text':'password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
+          <button type="button" aria-label="Show or hide password" onclick="var i=document.getElementById('kh-newpw-pw');i.type=i.type===&apos;password&apos;?&apos;text&apos;:&apos;password&apos;" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);border:none;background:transparent;cursor:pointer;color:#94a3b8;display:inline-flex;align-items:center"><span style="display:inline-flex;width:16px;height:16px">${KH_ICON_EYE}</span></button>
         </div>
       </div>
       <div style="margin-bottom:18px">
@@ -2467,6 +2467,13 @@ function toast(msg, typeOrBool) {
   else if (typeOrBool === 'warn')    bg = '#b45309';
   else if (typeOrBool === 'success') bg = '#15803d';
   var d = document.createElement('div');
+  // A11Y-F8: role=status so screen-magnifier users (who may have
+  // the corner of the page cropped out of view) AND assistive tech
+  // both perceive the toast. aria-live=polite makes SR announce
+  // without interrupting; the existing _khSrAnnounce below is
+  // belt-and-suspenders for assertive-error cases.
+  d.setAttribute('role', 'status');
+  d.setAttribute('aria-live', isError ? 'assertive' : 'polite');
   d.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;background:'+bg+';color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.28);max-width:340px;line-height:1.4;transition:opacity .2s;';
   d.textContent = msg;
   document.body.appendChild(d);

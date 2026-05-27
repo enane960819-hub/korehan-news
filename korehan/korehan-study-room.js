@@ -7184,9 +7184,17 @@ function _mirrorHelpTabContent() {
 
 // ── Study Room Tab Switching ──
 function switchSrTab(tab, btn) {
-  document.querySelectorAll('.sr-top-tab').forEach(function(b){ b.classList.remove('on'); });
+  // A11Y-F1: keep aria-selected in sync with the visible state so
+  // screen-reader users hear "Tab 1 of 4, Study, selected" etc.
+  document.querySelectorAll('.sr-top-tab').forEach(function(b){
+    b.classList.remove('on');
+    b.setAttribute('aria-selected', 'false');
+  });
   document.querySelectorAll('.sr-tab-panel').forEach(function(p){ p.classList.remove('active'); });
-  if (btn) btn.classList.add('on');
+  if (btn) {
+    btn.classList.add('on');
+    btn.setAttribute('aria-selected', 'true');
+  }
   var panel = document.getElementById('sr-panel-' + tab);
   if (panel) panel.classList.add('active');
   if (tab === 'wordbook') loadWordBook();
