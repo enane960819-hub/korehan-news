@@ -40,7 +40,6 @@ function playWrongSound() {
 var _currentLevel   = 'Beginner';
 var _todayTopic     = null;   // {id, topic_ko, topic_en, category, level}
 var _aiContent      = null;   // {vocab:[], grammar:[], helpers:[]}
-var _allTopics      = [];     // all from DB
 var _doneTopicIds   = new Set();
 var _lqMode         = 'hear';
 var _fcWords        = [];
@@ -1129,39 +1128,6 @@ async function reassignTopicForLevel(level) {
 // ═══════════════════════════════════════════════════════════════
 // TOPICS — load all from DB
 // ═══════════════════════════════════════════════════════════════
-async function loadAllTopics() {
-  try {
-    var controller = new AbortController();
-    var timer = setTimeout(function(){ controller.abort(); }, 5000);
-    var res = await fetch(SUPA_URL + '/rest/v1/writing_topics?select=*&active=eq.true&order=category.asc', {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY },
-      signal: controller.signal
-    });
-    clearTimeout(timer);
-    if (!res.ok) throw new Error('writing_topics HTTP ' + res.status);
-    var data = await res.json();
-    _allTopics = Array.isArray(data) && data.length ? data : getFallbackTopics();
-  } catch(e) {
-    _allTopics = getFallbackTopics();
-    if (typeof kh_log_error === 'function') kh_log_error('writing_topics fetch failed', { error: e && e.message || String(e) });
-  }
-}
-
-function getFallbackTopics() {
-  return [
-    {id:1001, topic_ko:'가보고 싶은 나라가 있나요?', topic_en:'Is there a country you want to visit?', category:'travel', level:'Beginner',  active:true},
-    {id:1002, topic_ko:'좋아하는 계절은 무엇인가요?', topic_en:'What is your favorite season?',         category:'daily',  level:'Beginner',  active:true},
-    {id:1003, topic_ko:'오늘 기분이 어때요?',          topic_en:'How do you feel today?',               category:'daily',  level:'Beginner',  active:true},
-    {id:1004, topic_ko:'한국 음식 중 좋아하는 음식은?', topic_en:'What Korean food do you like?',       category:'food',   level:'Beginner',  active:true},
-    {id:1005, topic_ko:'주말에 주로 뭐 해요?',          topic_en:'What do you usually do on weekends?', category:'daily',  level:'Beginner',  active:true},
-    {id:1006, topic_ko:'한국어를 공부하는 이유는?',     topic_en:'Why are you studying Korean?',        category:'study',  level:'Intermediate', active:true},
-    {id:1007, topic_ko:'최근에 본 드라마나 영화는?',    topic_en:'What drama or movie did you watch recently?', category:'culture', level:'Intermediate', active:true},
-    {id:1008, topic_ko:'서울에서 꼭 가봐야 할 곳은?',  topic_en:'Where should you visit in Seoul?',    category:'travel', level:'Intermediate', active:true},
-    {id:1009, topic_ko:'한국 문화에서 가장 인상적인 점은?', topic_en:'What impresses you most about Korean culture?', category:'culture', level:'Advanced', active:true},
-    {id:1010, topic_ko:'글로벌 시대에 언어 공부의 중요성', topic_en:'Importance of language learning in a global era', category:'opinion', level:'Advanced', active:true},
-  ];
-}
-
 // ═══════════════════════════════════════════════════════════════
 // LOAD DAILY CONTENT — from study_daily_content (AI-generated + admin-editable)
 // ═══════════════════════════════════════════════════════════════
@@ -1322,72 +1288,14 @@ function _pregenTomorrow() {
   }, 10000);
 }
 
+// 22차 audit: previously this returned a hardcoded "My Daily Routine"-tier
+// topic pool with synthetic vocab/grammar when the real daily content RPC
+// failed. Users saw the same rotating set of fake content every time the
+// cron broke. Now: surface the error directly so the operator notices,
+// don't pretend yesterday's content is today's.
 function _applyFallbackTopic(date) {
   hideAILoading();
-  try {
-    // Level-aware fallback topic pools. The original implementation used
-    // a single beginner-style list ("나의 하루", "좋아하는 음식"…) for
-    // every level, so Advanced learners hit the offline fallback and
-    // were handed a kindergarten prompt. Each level now has its own
-    // pool tuned to the level's writing complexity.
-    var poolByLevel = {
-      Starter: [
-        { ko:'나의 하루', en:'My Daily Routine' },
-        { ko:'좋아하는 음식', en:'My Favorite Food' },
-        { ko:'좋아하는 색깔', en:'My Favorite Color' },
-        { ko:'우리 가족', en:'My Family' },
-        { ko:'오늘 날씨', en:'Today\'s Weather' },
-        { ko:'좋아하는 동물', en:'My Favorite Animal' },
-        { ko:'주말 계획', en:'Weekend Plans' }
-      ],
-      Beginner: [
-        { ko:'나의 하루', en:'My Daily Routine' },
-        { ko:'좋아하는 음식', en:'My Favorite Food' },
-        { ko:'주말 계획', en:'Weekend Plans' },
-        { ko:'한국 여행', en:'Traveling in Korea' },
-        { ko:'좋아하는 계절', en:'My Favorite Season' },
-        { ko:'가족 소개', en:'Introducing My Family' },
-        { ko:'취미 생활', en:'My Hobbies' }
-      ],
-      Intermediate: [
-        { ko:'한국어를 공부하는 이유', en:'Why I Study Korean' },
-        { ko:'최근에 본 드라마나 영화', en:'A Drama or Movie I Watched Recently' },
-        { ko:'서울에서 꼭 가봐야 할 곳', en:'Must-visit Places in Seoul' },
-        { ko:'스트레스를 푸는 방법', en:'How I Relieve Stress' },
-        { ko:'기억에 남는 여행', en:'A Memorable Trip' },
-        { ko:'한국 음식과 우리나라 음식 비교', en:'Comparing Korean and My Country\'s Food' },
-        { ko:'10년 후의 나의 모습', en:'My Life Ten Years from Now' }
-      ],
-      Advanced: [
-        { ko:'한국 문화에서 가장 인상적인 점', en:'What Impresses Me Most About Korean Culture' },
-        { ko:'글로벌 시대에 언어 공부의 중요성', en:'The Importance of Language Learning in a Global Era' },
-        { ko:'SNS가 인간관계에 미치는 영향', en:'How Social Media Affects Human Relationships' },
-        { ko:'AI 기술과 노동 시장의 미래', en:'AI Technology and the Future of the Labor Market' },
-        { ko:'전통과 현대 사이의 균형', en:'Balancing Tradition and Modernity' },
-        { ko:'한국 사회의 빠른 변화에 대한 생각', en:'Thoughts on the Rapid Changes in Korean Society' },
-        { ko:'환경 문제와 개인의 책임', en:'Environmental Issues and Personal Responsibility' }
-      ]
-    };
-    var cats = poolByLevel[_currentLevel] || poolByLevel.Beginner;
-    var dateHash = date.split('-').reduce(function(a,b){ return a + parseInt(b); }, 0);
-    var topic = cats[dateHash % cats.length];
-    var fb = buildStudyRoomFallbackContent({ topic_ko: topic.ko, topic_en: topic.en }, _currentLevel);
-    _applyDailyContent({
-      scheduled_date: date,
-      level: _currentLevel,
-      topic_ko: topic.ko,
-      topic_en: topic.en,
-      vocab: fb.vocab,
-      grammar: fb.grammar,
-      helpers: fb.helpers,
-      dictation_sentences: [],
-      dictation_questions: [],
-      __fallback: true
-    });
-  } catch(e) {
-    console.error('[_applyFallbackTopic] failed:', e);
-    _setTopicLoadError('Please refresh the page');
-  }
+  _setTopicLoadError('Please refresh the page');
 }
 
 function _setTopicLoadError(msg) {
@@ -11191,11 +11099,10 @@ function showLoginWall() {
   // Don't show duplicate
   if (document.getElementById('login-wall')) return;
   // 페이지 내용은 그대로 두고 블러 오버레이만 올림
-  // 샘플 토픽 하나 보여줌 (맛보기)
-  var sample = _allTopics[0] || { topic_ko: '오늘 하루 어땠나요?', topic_en: 'How was your day today?' };
-  document.getElementById('hero-topic-ko').textContent  = sample.topic_ko;
-  document.getElementById('hero-topic-en').textContent  = sample.topic_en;
-  document.getElementById('wcard-topic-ko').textContent = sample.topic_ko;
+  // 비로그인 유저용 마케팅 샘플 — 실제 토픽 DB 가져오지 않음
+  document.getElementById('hero-topic-ko').textContent  = '오늘 하루 어땠나요?';
+  document.getElementById('hero-topic-en').textContent  = 'How was your day today?';
+  document.getElementById('wcard-topic-ko').textContent = '오늘 하루 어땠나요?';
 
   var wall = document.createElement('div');
   wall.className = 'login-wall';
