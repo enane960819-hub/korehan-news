@@ -10,6 +10,60 @@ doesn't keep reminding about closed work.
 
 ---
 
+## In progress on `claude/audit-16-dr`
+
+- **16차 DR / Backup / Runbook (2026-05-27)** — 15 findings. This
+  PR ships the documentation half of the audit (runbooks +
+  inventory + env template) plus the standalone PERF-F15 DB-size
+  visibility migration that piggybacked on this branch.
+  - **PERF-F15 — LANDED**: admin `kh_db_size_overview()` RPC
+    + DB-size panel in the Cost Monitor tab. Owner can see
+    total DB size, top 20 tables, top 10 indexes.
+  - **DR-F1 — LANDED**: `docs/runbook-backup-restore.md`. Manual
+    `pg_dump` weekly snapshot procedure + quarterly restore drill
+    + PITR notes.
+  - **DR-F2 — LANDED**: `docs/runbook-incident-response.md`.
+    Step-by-step triage tree (alarm check → 4 dashboards →
+    smoke-detectors → rollback procedures → comms → post-mortem).
+  - **DR-F4 — LANDED**: `docs/runbook-storage-backup.md`. Manual
+    `rclone` weekly bucket copy + future GitHub Actions cron
+    template.
+  - **DR-F5 — LANDED**: `docs/secrets-inventory.md`. Where every
+    secret lives + monthly verification queries.
+  - **DR-F10 — LANDED**: `docs/runbook-data-recovery.md`. Three
+    named scenarios (single-user regret / bulk-loss / logical
+    corruption) with concrete pg_dump / PITR recipes.
+  - **DR-F11 — LANDED**: `docs/runbook-key-rotation.md`. Per-key
+    rotation procedure + yearly checklist + compromise response.
+  - **DR-F12 — LANDED**: `.env.example` + README first-time-setup
+    section. New contributor can clone → set up local dev in
+    minutes.
+
+  **STILL OPEN from 16차**:
+  - **DR-F3 (P1)**: Automated weekly pg_dump → off-site. Blocked
+    on owner picking a destination (R2 vs B2) + setting up the
+    GitHub Action with stored credentials.
+  - **DR-F6 (P1)**: Discord webhook URL not yet in
+    `app_settings.error_notify_webhook`. Owner action: paste it.
+  - **DR-F7 (P2)**: status.korehani.com — no infra; future work.
+  - **DR-F8 (P2)**: Auto-postmortem template not enforced via CI.
+  - **DR-F9 (P2)**: Audit-log table for admin SQL actions.
+  - **DR-F13 (P2)**: Migration dry-run convention not codified
+    (CONTRIBUTING.md missing).
+  - **DR-F14 (P2)**: BEFORE DELETE row-count guard on big tables.
+  - **DR-F15 (P2)**: Disaster recovery time objective (RTO/RPO)
+    not formally written down — implicit in runbooks.
+
+  **OWNER ACTIONS for 16차**:
+  - Confirm Supabase tier (Free vs Pro); upgrade if PITR matters.
+  - Apply migration `20260527_audit_13_db_size_visibility.sql` to
+    enable the DB-size panel.
+  - Set up off-site backup destination (R2 recommended) and run
+    the first manual `pg_dump` + `rclone` per the runbooks.
+  - Schedule the quarterly restore drill.
+
+---
+
 ## In progress on `claude/audit-15-a11y-deep`
 
 - **15차 a11y deep dive (2026-05-27)** — 15 findings. This PR

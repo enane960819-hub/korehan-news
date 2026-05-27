@@ -8442,8 +8442,61 @@ function goCostMonitor() {
    +'<div id="cost-status" style="font-size:12px;color:var(--gr);margin-bottom:14px"></div>'
    +'<div id="cost-summary"></div>'
    +'<div id="cost-features" style="margin-top:24px"></div>'
-   +'<div id="cost-daily" style="margin-top:24px"></div>';
+   +'<div id="cost-daily" style="margin-top:24px"></div>'
+   +'<div id="cost-dbsize" style="margin-top:24px"></div>';
   loadCostMonitor();
+  loadDbSizeOverview();
+}
+
+// PERF-F15: admin DB-size visibility. Calls kh_db_size_overview()
+// RPC and renders total + top-20 table breakdown. Owner notices
+// when a single table (e.g. articles.body) is eating the Free
+// tier 500 MB before writes start failing silently.
+async function loadDbSizeOverview() {
+  var wrap = document.getElementById('cost-dbsize');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="padding:12px;color:var(--gr);font-size:13px">⏳ Loading DB size…</div>';
+  try {
+    var sb = getSb();
+    var r = await sb.rpc('kh_db_size_overview');
+    if (r.error || (r.data && r.data.ok === false)) {
+      wrap.innerHTML = '<div class="infobox" style="color:#c33;font-size:13px">⚠️ DB size load failed: '+esc((r.data && r.data.error) || (r.error && r.error.message) || 'unknown')+'</div>';
+      return;
+    }
+    var d = r.data || {};
+    var pct = Math.min(100, Math.round((d.total_mb || 0) * 100 / (d.free_tier_mb || 500)));
+    var color = pct > 80 ? '#dc2626' : pct > 50 ? '#f59e0b' : '#16a34a';
+    wrap.innerHTML =
+      '<h3 style="font-size:16px;margin-bottom:8px">DB size <span style="font-size:11px;color:var(--gr);font-weight:600">(PERF-F15)</span></h3>'
+      +'<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:14px;margin-bottom:14px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline">'
+      +'<div><span style="font-size:24px;font-weight:900;color:#0f172a">'+(d.total_mb||0).toFixed(2)+' MB</span>'
+      +'<span style="font-size:12px;color:var(--gr);margin-left:8px">/ '+(d.free_tier_mb||500)+' MB free tier</span></div>'
+      +'<div style="font-size:13px;font-weight:700;color:'+color+'">'+pct+'%</div>'
+      +'</div>'
+      +'<div style="height:8px;background:#f1f5f9;border-radius:4px;margin-top:8px;overflow:hidden">'
+      +'<div style="height:100%;background:'+color+';width:'+pct+'%"></div>'
+      +'</div>'
+      +'</div>'
+      +'<h3 style="font-size:14px;margin:18px 0 6px">Top tables by size</h3>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--bo)"><th style="padding:6px 10px;text-align:left;color:var(--gr)">Table</th><th style="padding:6px 10px;text-align:right;color:var(--gr)">Total</th><th style="padding:6px 10px;text-align:right;color:var(--gr)">Indexes</th><th style="padding:6px 10px;text-align:right;color:var(--gr)">Rows</th></tr></thead><tbody>'
+      + (d.tables || []).map(function(t){
+          var mb = (t.total_bytes / 1024 / 1024).toFixed(2);
+          var imb = (t.index_bytes / 1024 / 1024).toFixed(2);
+          return '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px 10px;font-weight:700">'+esc(t.table_name)+'</td><td style="padding:6px 10px;text-align:right;font-family:monospace">'+mb+' MB</td><td style="padding:6px 10px;text-align:right;font-family:monospace;color:var(--gr)">'+imb+' MB</td><td style="padding:6px 10px;text-align:right">'+(t.approx_rows||0).toLocaleString()+'</td></tr>';
+        }).join('')
+      +'</tbody></table>'
+      +'<h3 style="font-size:14px;margin:18px 0 6px">Top indexes by size</h3>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:2px solid var(--bo)"><th style="padding:6px 10px;text-align:left;color:var(--gr)">Index</th><th style="padding:6px 10px;text-align:left;color:var(--gr)">Table</th><th style="padding:6px 10px;text-align:right;color:var(--gr)">Size</th><th style="padding:6px 10px;text-align:right;color:var(--gr)">Scans</th></tr></thead><tbody>'
+      + (d.indexes || []).map(function(i){
+          var mb = (i.size_bytes / 1024 / 1024).toFixed(2);
+          return '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px 10px;font-family:monospace;font-size:11px">'+esc(i.index_name)+'</td><td style="padding:6px 10px">'+esc(i.on_table)+'</td><td style="padding:6px 10px;text-align:right;font-family:monospace">'+mb+' MB</td><td style="padding:6px 10px;text-align:right">'+(i.scans||0).toLocaleString()+'</td></tr>';
+        }).join('')
+      +'</tbody></table>'
+      +'<div style="font-size:11px;color:var(--gr);margin-top:8px">📊 Egress + function-invocations available in the Supabase dashboard → Settings → Usage.</div>';
+  } catch (e) {
+    wrap.innerHTML = '<div class="infobox" style="color:#c33;font-size:13px">⚠️ '+esc(e.message||e)+'</div>';
+  }
 }
 
 async function loadCostMonitor() {
