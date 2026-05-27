@@ -225,11 +225,53 @@ async function getArticleCacheVocab() {
   }
   try {
     var arts = getCachedArticles ? getCachedArticles() : [];
-    for (var i = 0; i < arts.length; i++) {
-      var art = arts[i];
-      var cached = await getFromCache('article', art.id, 'ai_analysis');
-      (cached && cached.vocab || []).forEach(function(v){ pushWord(v); });
-      ((art.data && art.data.vocab) || []).forEach(function(v){ pushWord(v); });
+    // PERF-F6: was N+1 — one getFromCache call per article = 80
+    // sequential PostgREST round-trips on every Learn-page render.
+    // Replaced with one .in() call that pulls every (article, cache_key)
+    // pair in a single query, grouped client-side. Falls back to the
+    // per-article loop only if the bulk query schema-detect fails.
+    var artIds = arts.map(function(a){ return String(a.id); }).filter(Boolean);
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    var schema = sb ? await _detectArtCacheSchema() : 'none';
+    if (sb && artIds.length && schema === 'kv') {
+      try {
+        var bulk = await sb.from('article_cache')
+          .select('content_id, cache_key, cache_value')
+          .eq('content_type', 'article')
+          .in('content_id', artIds)
+          .in('cache_key', ['translation', 'vocab', 'grammar', 'quiz']);
+        if (bulk.error) throw bulk.error;
+        var perArt = {};
+        (bulk.data || []).forEach(function(r){
+          if (r.cache_key !== 'vocab') return;
+          var parsed = safeParseJSON(r.cache_value, null);
+          if (Array.isArray(parsed)) {
+            (perArt[r.content_id] = perArt[r.content_id] || []).push.apply(perArt[r.content_id], parsed);
+          }
+        });
+        for (var i = 0; i < arts.length; i++) {
+          var art = arts[i];
+          (perArt[String(art.id)] || []).forEach(function(v){ pushWord(v); });
+          ((art.data && art.data.vocab) || []).forEach(function(v){ pushWord(v); });
+        }
+      } catch (e) {
+        // Bulk path failed (schema mismatch / RLS / etc.) — fall back
+        // to the per-article loop so the page still renders.
+        for (var j = 0; j < arts.length; j++) {
+          var art2 = arts[j];
+          var cached = await getFromCache('article', art2.id, 'ai_analysis');
+          (cached && cached.vocab || []).forEach(function(v){ pushWord(v); });
+          ((art2.data && art2.data.vocab) || []).forEach(function(v){ pushWord(v); });
+        }
+      }
+    } else {
+      // 'wide' schema or no Supabase — keep the per-article loop.
+      for (var k = 0; k < arts.length; k++) {
+        var art3 = arts[k];
+        var cached2 = await getFromCache('article', art3.id, 'ai_analysis');
+        (cached2 && cached2.vocab || []).forEach(function(v){ pushWord(v); });
+        ((art3.data && art3.data.vocab) || []).forEach(function(v){ pushWord(v); });
+      }
     }
     var sb = getSupa();
     if (sb) {
