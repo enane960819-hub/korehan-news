@@ -10,7 +10,76 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-18-mobile`
+## In progress on `claude/audit-19-errors`
+
+- **19차 error handling + observability (2026-05-27)** — 18 findings.
+  This PR ships 7 high-impact fixes (1 P0 + 6 P1). The rest of the
+  silent-failure surface (`.then() no .catch`, polling-loop logs,
+  JSON.parse context, submit-button no-timeout) deferred for
+  careful work.
+  - **F8 (P0) — LANDED**: `daily-content-gen` lock-leak on the
+    outer catch path. Before: an Anthropic 429 / timeout / DB
+    hiccup inside the main work would skip the happy-path lock
+    cleanup and exit the catch without releasing. Next pg_cron
+    pass within 15 min saw "another generation already in
+    progress" and silently skipped → stale daily content until
+    someone noticed. Fixed by hoisting `lockHeld` + `LOCK_KEY`
+    + `sbForCleanup` to function scope so the catch block can
+    release.
+  - **F9 (P1) — LANDED**: same Edge Function — outer catch now
+    persists to `client_errors` with `severity='critical'`, which
+    fires the Discord webhook via `notify-critical-error`.
+    Previously the cron silently 500'd with no operator trace.
+  - **F1 (P1) — LANDED**: `loadAllTopics()` in
+    `korehan-study-room.js` — added `res.ok` check before
+    `res.json()` so a 401/403/500 from Supabase doesn't try to
+    JSON-parse an error page. Also logs the underlying error to
+    `kh_log_error` instead of silently falling back to dummy
+    topics.
+  - **F2 (P1) — LANDED**: `study_grammar_progress` upsert in
+    `korehan-study-room.js` now checks `.error` and logs. Cross-
+    device grammar-progress sync no longer silently breaks.
+  - **F3 (P1) — LANDED**: `daily_reviews` upsert in
+    `korehan-learning-overview.html` checks `.error` and logs.
+    Daily-review analytics no longer silently corrupted.
+  - **F4 (P1) — LANDED**: reporter gift coin-deduct in
+    `korehan-reporter.html` — was firing the `coin_transactions`
+    insert even when the `user_stats` balance update failed,
+    causing ledger-vs-balance drift. Now aborts with
+    `BALANCE_UPDATE_FAILED` + critical alarm.
+  - **F6 (P1) — LANDED**: `user_stats` XP/streak write in
+    `korehan-learning-overview.html` checks `.error` on both the
+    update and insert branches. XP loss no longer silent.
+
+  **STILL OPEN from 19차**:
+  - **F5 (P2)**: feedback poll-loop swallows errors silently —
+    no operator visibility when polling fails for 10 min.
+  - **F7 (P2)**: reporter gift_history insert only handles
+    "missing table" error, swallows all others.
+  - **F10 (P2)**: `grammar_examples_cache` upsert in
+    daily-content-gen — already in a try/catch but errors not
+    logged (acceptable best-effort, low priority).
+  - **F11 (P2)**: `.then(function(){})` chains lacking `.catch()`
+    in study-room.js — audit's line ref was wrong; needs re-scan
+    to find real instances.
+  - **F13 (P2)**: empty `catch(e) {}` on XP/streak save needs
+    user-visible feedback.
+  - **F14 (P2)**: submit-all button has no network timeout —
+    stays disabled forever on hung request.
+  - **F17 (P2)**: `JSON.parse(clean)` in `korehan-learn.html`
+    catches but loses context for debugging.
+  - **F18 (P2)**: `korehan-hover-tooltips.js` loader hygiene —
+    not yet inspected.
+
+  **AUDIT MISCLASSIFICATIONS** (skipped):
+  - F12: duplicate of F1, same finding.
+  - F15: audit said "actually LOW because the RPC has the
+    constraint" — no action needed.
+  - F16: audit said "this is correct" — no action needed.
+
+---
+
+## On `claude/audit-18-mobile` (PR #633 merged 2026-05-27)
 
 - **18차 mobile + responsive UX (2026-05-27)** — 18 findings. This
   PR ships 6 safe-and-targeted fixes; device-test-heavy items

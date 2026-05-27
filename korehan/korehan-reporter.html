@@ -1262,7 +1262,13 @@ async function sendGiftFallbackNoRpc(sb, reporterId, itemId) {
       var bal = Number(statsRes.data && statsRes.data.coin_balance || 0);
       if (bal < cost) return { data:{ ok:false, error:'INSUFFICIENT_NYANG' } };
       var nextBal = bal - cost;
-      await sb.from('user_stats').update({ coin_balance: nextBal }).eq('user_id', supaUser.id);
+      var balRes = await sb.from('user_stats').update({ coin_balance: nextBal }).eq('user_id', supaUser.id);
+      if (balRes && balRes.error) {
+        if (typeof kh_log_error === 'function') {
+          kh_log_error('reporter gift: coin deduct failed', { cost: cost, error: balRes.error.message }, 'critical');
+        }
+        return { data:{ ok:false, error:'BALANCE_UPDATE_FAILED' } };
+      }
       try {
         await sb.from('coin_transactions').insert({
           user_id:supaUser.id, tx_type:'spend', amount:-cost, balance_after:nextBal,

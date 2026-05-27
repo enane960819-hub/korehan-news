@@ -127,7 +127,7 @@ async function syncStudyProgress(stage) {
   if (stage === 'grammar') {
     var focus = new URLSearchParams(window.location.search).get('focus') || ((_gfPattern && _gfPattern.name) || '');
     if (focus) {
-      await sb.from('study_grammar_progress').upsert({
+      var gpRes = await sb.from('study_grammar_progress').upsert({
         user_id: supaUser.id,
         grammar_key: focus,
         completed_at: new Date().toISOString(),
@@ -135,6 +135,9 @@ async function syncStudyProgress(stage) {
         attempt_count: 1,
         updated_at: new Date().toISOString()
       }, { onConflict:'user_id,grammar_key' });
+      if (gpRes && gpRes.error && typeof kh_log_error === 'function') {
+        kh_log_error('study_grammar_progress upsert failed', { grammar_key: focus, error: gpRes.error.message });
+      }
     }
   }
 }
@@ -1135,9 +1138,13 @@ async function loadAllTopics() {
       signal: controller.signal
     });
     clearTimeout(timer);
+    if (!res.ok) throw new Error('writing_topics HTTP ' + res.status);
     var data = await res.json();
     _allTopics = Array.isArray(data) && data.length ? data : getFallbackTopics();
-  } catch(e) { _allTopics = getFallbackTopics(); }
+  } catch(e) {
+    _allTopics = getFallbackTopics();
+    if (typeof kh_log_error === 'function') kh_log_error('writing_topics fetch failed', { error: e && e.message || String(e) });
+  }
 }
 
 function getFallbackTopics() {
