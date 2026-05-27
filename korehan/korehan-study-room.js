@@ -1685,7 +1685,6 @@ async function _generateAndSaveDailyContent(date, opts) {
           }
         } else {
           var pkt = r && r.data;
-          console.log('[save_daily_content] RPC ok:', pkt, 'date=', date, 'level=', _currentLevel);
           if (window._isAdmin && typeof showToast === 'function') {
             // pkt is { ok: true, inserted: bool } | { ok: true, skipped: 'already_filled' } | etc.
             var tag = (pkt && (pkt.inserted ? '✓ inserted' : (pkt.skipped ? '⏭ ' + pkt.skipped : '?'))) || '?';
@@ -12759,9 +12758,8 @@ function levenshtein(a, b) {
   }
   return dp[n];
 }
-function escapeHTML(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+// escapeHTML lives in js/core/security.js — loaded before this file in the HTML
+// (escapes 5 chars: & < > " ' — stricter than the previous 3-char local copy).
 
 // ── 모바일 Writing 헬퍼 ────────────────────────────────────────────
 var WRITE_CHAR_LIMITS = { Starter:{min:20,max:300}, Beginner:{min:20,max:600}, Intermediate:{min:20,max:1000}, Advanced:{min:20,max:2000} };
