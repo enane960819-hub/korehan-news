@@ -249,7 +249,7 @@ html body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey',
 
     document.getElementById('chosung-display').textContent = spaced;
     document.getElementById('chosung-display').className = 'chosung-display';
-    document.getElementById('hint-text').innerHTML = 'Hint: <em>' + currentWord.en + '</em>';
+    document.getElementById('hint-text').innerHTML = 'Hint: <em>' + escapeHTML(currentWord.en) + '</em>';
     document.getElementById('g-input').value = '';
     document.getElementById('g-input').disabled = false;
     document.getElementById('g-input').focus();
@@ -355,7 +355,7 @@ html body{margin:0!important;color:#e0f2fe!important;font-family:'Happy Monkey',
   function showAnswer() {
     var reveal = document.getElementById('answer-reveal');
     reveal.style.display = 'block';
-    reveal.innerHTML = '<div class="answer-reveal">Answer: <span class="correct-word">' + currentWord.ko + '</span></div>';
+    reveal.innerHTML = '<div class="answer-reveal">Answer: <span class="correct-word">' + escapeHTML(currentWord.ko) + '</span></div>';
     document.getElementById('g-input').disabled = true;
     setTimeout(nextQuestion, 2000);
   }

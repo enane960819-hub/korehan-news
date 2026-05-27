@@ -2924,7 +2924,7 @@ function showFeedback(correct, answer, next) {
   fb.style.cssText = 'padding:20px 22px;background:' + (correct?'#f0fdf4':'#fef2f2') + ';border-top:1px solid ' + (correct?'#bbf7d0':'#fecaca') + ';text-align:center;';
   fb.innerHTML = '<div style="display:inline-flex;width:32px;height:32px;color:'+(correct?'#a78bfa':'#fbbf24')+'"><i data-lucide="' + (correct?'party-popper':'frown') + '" class="kh-ui-icon" style="width:32px;height:32px" aria-hidden="true"></i></div>'
     + '<div style="font-size:16px;font-weight:700;color:' + (correct?'#15803d':'#b91c1c') + ';margin:6px 0">' + (correct?'Correct!':'Not quite') + '</div>'
-    + (answer && !correct ? '<div style="font-size:14px;color:#64748b;">Answer: <b>' + answer + '</b></div>' : '')
+    + (answer && !correct ? '<div style="font-size:14px;color:#64748b;">Answer: <b>' + escapeHtml(answer) + '</b></div>' : '')
     + '<button onclick="nextQuizQuestion()" style="margin-top:14px;padding:10px 24px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Next →</button>';
 
   // 기존 버튼 비활성화
@@ -3264,7 +3264,7 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
     var q = _quizQuestions[_quizCurrent]; if (!q) return;
     var answerEl = document.getElementById('order-answer'); if (!answerEl) return;
     var selectedWords = (q._selected || []).map(function(i){ return q._shuffled[i]; });
-    answerEl.innerHTML = selectedWords.length ? selectedWords.map(function(word){ return '<span style="display:inline-flex;padding:9px 12px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:14px;font-weight:800;">' + word + '</span>'; }).join('') : '<div style="font-size:13px;color:#94a3b8;">Your answer will appear here.</div>';
+    answerEl.innerHTML = selectedWords.length ? selectedWords.map(function(word){ return '<span style="display:inline-flex;padding:9px 12px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:14px;font-weight:800;">' + escapeHtml(word) + '</span>'; }).join('') : '<div style="font-size:13px;color:#94a3b8;">Your answer will appear here.</div>';
     (q._shuffled || []).forEach(function(_, i){
       var btn = document.getElementById('order-word-' + i); if (!btn) return;
       var used = (q._selected || []).indexOf(i) !== -1; btn.disabled = used; btn.style.opacity = used ? '.45' : '1';
@@ -3332,7 +3332,7 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
     fb.style.cssText = 'padding:20px 22px;background:' + (correct?'#f0fdf4':'#fef2f2') + ';border-top:1px solid ' + (correct?'#bbf7d0':'#fecaca') + ';text-align:center;';
     fb.innerHTML = '<div style="display:inline-flex;width:32px;height:32px;color:'+(correct?'#a78bfa':'#fbbf24')+'"><i data-lucide="' + (correct?'party-popper':'frown') + '" class="kh-ui-icon" style="width:32px;height:32px" aria-hidden="true"></i></div>'
       + '<div style="font-size:16px;font-weight:800;color:' + (correct?'#15803d':'#b91c1c') + ';margin:6px 0">' + (correct?'Correct!':'Not quite.') + '</div>'
-      + (answer && !correct ? '<div style="font-size:14px;color:#64748b;">Answer: <b>' + answer + '</b></div>' : '')
+      + (answer && !correct ? '<div style="font-size:14px;color:#64748b;">Answer: <b>' + escapeHtml(answer) + '</b></div>' : '')
       + (correctSentence && !correct ? '<div style="font-size:14px;color:#475569;margin-top:6px;">Correct order: <b>' + correctSentence + '</b></div>' : '')
       + (explanation && !correct ? '<div style="margin-top:12px;padding:12px 14px;background:#fff;border:1px solid #fecaca;border-radius:12px;font-size:13px;line-height:1.7;color:#7f1d1d;text-align:left;"><b style="display:block;margin-bottom:4px;">Why this order works</b>' + explanation + '</div>' : '')
       + '<button onclick="nextQuizQuestion()" style="margin-top:14px;padding:10px 24px;border-radius:12px;background:#2563eb;color:#fff;border:none;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">Next</button>';

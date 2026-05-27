@@ -703,7 +703,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
               score += wordBonus;
               var fl = document.createElement('div');
               fl.className = 'combo-flash';
-              fl.innerHTML = currentWord.ko + ' ' + khSvg('sparkle', {size:36, color:'#a78bfa', marginRight:6}) + '+' + wordBonus;
+              fl.innerHTML = escapeHTML(currentWord.ko) + ' ' + khSvg('sparkle', {size:36, color:'#a78bfa', marginRight:6}) + '+' + wordBonus;
               document.body.appendChild(fl);
               setTimeout(function(){ fl.remove(); }, 800);
               // Word boundary IS a celebration moment — flash + clear is OK
