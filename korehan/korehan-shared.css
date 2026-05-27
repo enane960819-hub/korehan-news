@@ -1059,7 +1059,7 @@ body.mobile-redesign .kh-page-hero-inner { padding: 0 !important; }
 .two-col > div { min-width: 0; }
 body.mobile-redesign .two-col > div:first-child { min-width: 0; }
 .all-empty {
-  padding: 50px 20px; text-align: center; color: #94a3b8;
+  padding: 50px 20px; text-align: center; color: #64748b;
   display: flex; flex-direction: column; align-items: center; font-size: 14px;
   grid-column: 1 / -1;
 }
@@ -1352,7 +1352,7 @@ body.kh-neon-on .kh-wb-row:hover { background: rgba(0,255,214,.04) !important; }
 }
 .ge-label {
   font-size: 10px; font-weight: 800; text-transform: uppercase;
-  letter-spacing: 1.2px; color: #94a3b8; margin-bottom: 10px;
+  letter-spacing: 1.2px; color: #64748b; margin-bottom: 10px;
 }
 .ge-ko {
   font-family: 'Noto Serif KR', serif;
@@ -1503,6 +1503,17 @@ body.kh-neon-on .kh-wb-row:hover { background: rgba(0,255,214,.04) !important; }
 @keyframes brk-scroll {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+/* A11Y-F15: the global prefers-reduced-motion rule sets every
+   animation-duration to 0.01ms but the .brk-track also has a
+   transform that finishes at -50% — at 0.01ms the ticker snaps
+   to half-translated which still looks jarring. Explicit opt-out
+   stops the animation entirely and removes the transform. */
+@media (prefers-reduced-motion: reduce) {
+  .brk-track {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 .brk-item {
   color: #fff !important;
@@ -1975,7 +1986,7 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   display: block;
   margin-top: 3px;
   font-size: 12.5px;
-  color: #94a3b8;
+  color: #64748b;
   font-style: italic;
   font-weight: 400;
 }
@@ -2078,7 +2089,7 @@ body.mobile-redesign .art-sent-panel .asp-vocab-ko { color: #c4b5fd; }
 body.dark-mode .art-sent-panel .asp-vocab-en,
 body.mobile-redesign .art-sent-panel .asp-vocab-en { color: #e2e8f0; }
 body.dark-mode .art-sent-panel .asp-vocab-note,
-body.mobile-redesign .art-sent-panel .asp-vocab-note { color: #94a3b8; }
+body.mobile-redesign .art-sent-panel .asp-vocab-note { color: #64748b; }
 body.dark-mode .art-sent-panel .asp-grammar-block,
 body.mobile-redesign .art-sent-panel .asp-grammar-block {
   background: rgba(167,139,250,.10);
@@ -2104,7 +2115,7 @@ body.mobile-redesign .art-sent-panel .asp-grammar-ex {
   padding:20px 22px; margin:28px 0; background:#fff;
 }
 .art-vocab-title {
-  font-size:11px; font-weight:800; color:#94a3b8;
+  font-size:11px; font-weight:800; color:#64748b;
   margin-bottom:16px; text-transform:uppercase; letter-spacing:1.2px;
 }
 .art-vocab-list { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -2146,7 +2157,7 @@ body.mobile-redesign .art-sent-panel .asp-grammar-ex {
   font-weight: 700;
 }
 .art-vocab-pager .avp-range { color: #1e293b; font-size: 14px; }
-.art-vocab-pager .avp-sep   { color: #94a3b8; font-weight: 500; }
+.art-vocab-pager .avp-sep   { color: #64748b; font-weight: 500; }
 .art-vocab-pager .avp-total { color: #64748b; font-size: 12.5px; font-weight: 600; }
 body.dark-mode .art-vocab-pager,
 body.mobile-redesign .art-vocab-pager { color: #cbd5e1; }
@@ -2163,7 +2174,7 @@ body.mobile-redesign .art-vocab-pager .avp-btn:hover:not(:disabled) {
 body.dark-mode .art-vocab-pager .avp-range,
 body.mobile-redesign .art-vocab-pager .avp-range { color: #f1f5f9; }
 body.dark-mode .art-vocab-pager .avp-total,
-body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
+body.mobile-redesign .art-vocab-pager .avp-total { color: #64748b; }
 .art-vocab-item {
   display:flex; align-items:center; gap:12px;
   padding:12px 14px; border-radius:12px;
@@ -2173,7 +2184,7 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
 .art-vocab-item:hover { border-color:#bfdbfe; box-shadow:0 2px 10px rgba(34,85,164,.06); }
 .avi-main { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; flex:1; min-width:0; }
 .art-vocab-ko  { font-family:'Noto Serif KR',serif; font-size:19px; font-weight:900; color:#0f172a; flex-shrink:0; }
-.art-vocab-rom { font-size:11px; font-style:italic; color:#94a3b8; flex-shrink:0; }
+.art-vocab-rom { font-size:11px; font-style:italic; color:#64748b; flex-shrink:0; }
 .art-vocab-en  { font-size:13px; font-weight:600; color:#334155; flex:1 1 100%; min-width:0; word-break:keep-all; overflow-wrap:break-word; }
 .avi-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
 .avi-save-btn {
@@ -2272,7 +2283,7 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
   color: var(--dark);
   padding: 6px 0;
 }
-.comment-form textarea::placeholder { color: #94a3b8; }
+.comment-form textarea::placeholder { color: #64748b; }
 .comment-submit-btn {
   background: #2255a4;
   color: #fff;
@@ -3792,7 +3803,7 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #94a3b8; }
   font-weight:800;
   letter-spacing:.08em;
   text-transform:uppercase;
-  color:#94a3b8;
+  color:#64748b;
   margin-bottom:7px;
 }
 .hlp-stat-value{
@@ -4052,11 +4063,11 @@ body.kh-neon-on [style*="color:#475569"],
 body.kh-neon-on [style*="color:#64748b"],
 body.kh-neon-on [style*="color: #475569"],
 body.kh-neon-on [style*="color: #64748b"] {
-  color: #94a3b8 !important;
+  color: #64748b !important;
 }
 
-body.kh-neon-on [style*="color:#94a3b8"],
-body.kh-neon-on [style*="color: #94a3b8"] {
+body.kh-neon-on [style*="color:#64748b"],
+body.kh-neon-on [style*="color: #64748b"] {
   color: rgba(255,255,255,.45) !important;
 }
 
@@ -4295,7 +4306,7 @@ body.kh-neon-on .gf-structure-box h4 { color: #7dd3fc !important; }
     color: #64748b !important;
   }
   body.mobile-light .ds-label {
-    color: #94a3b8 !important;
+    color: #64748b !important;
   }
 
   /* ── Article titles & text ── */
@@ -4716,7 +4727,7 @@ body.kh-reading-page #kh-rs-study svg { width: 22px; height: 22px; }
   height: 44px;
   border: none;
   background: transparent;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 24px;
   line-height: 1;
   cursor: pointer;
@@ -4779,7 +4790,7 @@ body.kh-cdr-open #kh-feed-next-pill { display: none !important; }
 
 .cm-empty {
   font-size: 13px;
-  color: #94a3b8;
+  color: #64748b;
   padding: 28px 4px;
   text-align: center;
   margin: 0;
@@ -4833,7 +4844,7 @@ body.kh-cdr-open #kh-feed-next-pill { display: none !important; }
 .cm-av-link { display: inline-block; }
 .cm-av-link:hover .cm-av { transform: translateY(-1px); box-shadow: 0 6px 12px rgba(0,0,0,.12); }
 .cm-dot  { color: #cbd5e1; font-size: 12px; line-height: 1; margin: 0 -1px; }
-.cm-time { font-size: 12px; color: #94a3b8; }
+.cm-time { font-size: 12px; color: #64748b; }
 
 .cm-body {
   font-size: 14px;
@@ -4872,7 +4883,7 @@ body.kh-cdr-open #kh-feed-next-pill { display: none !important; }
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;
-  color: #94a3b8;
+  color: #64748b;
   line-height: 1;
   transition: background .12s, color .12s;
 }
@@ -4886,7 +4897,7 @@ body.kh-cdr-open #kh-feed-next-pill { display: none !important; }
   border: 0;
   font-size: 12px;
   font-weight: 700;
-  color: #94a3b8;
+  color: #64748b;
   cursor: pointer;
   font-family: inherit;
   padding: 4px 8px;
@@ -4935,7 +4946,7 @@ body.kh-cdr-open #kh-feed-next-pill { display: none !important; }
 
 .cm-hidden-note {
   font-size: 11px;
-  color: #94a3b8;
+  color: #64748b;
   padding: 12px 0 4px;
   text-align: center;
 }
@@ -5065,10 +5076,10 @@ body.kh-cdr-open #kh-feed-prev-pill { display: none !important; }
 .rv-check-icon { font-size: 15px; }
 .rv-check-hint {
   margin-left: auto; font-size: 10px; font-weight: 700;
-  letter-spacing: .06em; text-transform: uppercase; color: #94a3b8;
+  letter-spacing: .06em; text-transform: uppercase; color: #64748b;
 }
 .rv-check-body { padding: 14px; }
-.rv-empty { color: #94a3b8; font-size: 13px; padding: 6px 2px; }
+.rv-empty { color: #64748b; font-size: 13px; padding: 6px 2px; }
 .rv-start-btn {
   width: 100%; padding: 12px; background: #2563eb; color: #fff;
   border: none; border-radius: 10px; font-size: 13px; font-weight: 700;
@@ -5086,7 +5097,7 @@ body.kh-cdr-open #kh-feed-prev-pill { display: none !important; }
 .rv-vocab-card:last-child { margin-bottom: 0; }
 .rv-vocab-face { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .rv-vocab-ko { font-size: 18px; font-weight: 900; color: #0f172a; font-family: 'Noto Serif KR', serif; }
-.rv-vocab-rom { font-size: 12px; color: #94a3b8; font-style: italic; }
+.rv-vocab-rom { font-size: 12px; color: #64748b; font-style: italic; }
 .rv-vocab-back {
   font-size: 13px; color: #2563eb; font-weight: 700; margin-top: 8px;
   padding-top: 8px; border-top: 1px dashed #e5e7eb;
@@ -5124,14 +5135,14 @@ body.kh-cdr-open #kh-feed-prev-pill { display: none !important; }
    format across the site instead of a flashcard here and an MCQ there. */
 .rv-vq-card { display: flex; flex-direction: column; gap: 10px; }
 .rv-vq-progress {
-  font-size: 11px; font-weight: 800; color: #94a3b8;
+  font-size: 11px; font-weight: 800; color: #64748b;
   letter-spacing: .05em; text-transform: uppercase;
 }
 .rv-vq-ko {
   font-size: 26px; font-weight: 900; color: #0f172a;
   font-family: 'Noto Serif KR', serif; line-height: 1.2;
 }
-.rv-vq-rom { font-size: 12px; color: #94a3b8; font-style: italic; margin-top: -4px; }
+.rv-vq-rom { font-size: 12px; color: #64748b; font-style: italic; margin-top: -4px; }
 .rv-vq-prompt { font-size: 12px; color: #475569; margin-top: 4px; }
 .rv-vq-options { display: flex; flex-direction: column; gap: 8px; }
 .rv-vq-opt {
@@ -5164,7 +5175,7 @@ body.kh-cdr-open #kh-feed-prev-pill { display: none !important; }
 .rv-fill-teaser-copy { font-size: 13px; color: #475569; line-height: 1.5; }
 .rv-fill-teaser-meta {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  font-size: 11px; color: #94a3b8;
+  font-size: 11px; color: #64748b;
 }
 .rv-fill-level {
   font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px;
@@ -5310,7 +5321,7 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
   letter-spacing: -.01em;
 }
 .kh-loading-sub {
-  font-size: 11px; color: #94a3b8; max-width: 280px; line-height: 1.5;
+  font-size: 11px; color: #64748b; max-width: 280px; line-height: 1.5;
 }
 @keyframes kh-spin { to { transform: rotate(360deg); } }
 

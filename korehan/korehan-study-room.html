@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
@@ -19,7 +19,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20260526a">
+<link rel="stylesheet" href="korehan-shared.css?v=20260527d">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260416">
 <link rel="stylesheet" href="korehan-study-room.css?v=20260519a">
 </head>
@@ -40,11 +40,17 @@
 
 <!-- TAB BAR (mobile/tablet only — outside all panels so it persists) -->
 <div class="sr-top-tabs-wrap">
-<div class="sr-top-tabs">
-  <button class="sr-top-tab on" onclick="switchSrTab('study',this)"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Study</button>
-  <button class="sr-top-tab" onclick="switchSrTab('help',this)"><i data-lucide="book-marked" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Help</button>
-  <button class="sr-top-tab" onclick="switchSrTab('master',this)"><i data-lucide="target" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Exercise</button>
-  <button class="sr-top-tab" onclick="switchSrTab('wordbook',this)"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Word Book</button>
+<!-- A11Y-F1: study-room top tabs now carry full ARIA tab semantics.
+     role="tablist" on the wrapper; role="tab" + aria-selected +
+     aria-controls per button. The corresponding panel divs in this
+     page (sr-tab-study / -help / -master / -wordbook) need
+     role="tabpanel" + aria-labelledby — switchSrTab() syncs
+     aria-selected on click. -->
+<div class="sr-top-tabs" role="tablist" aria-label="Study room sections">
+  <button id="sr-tab-btn-study" class="sr-top-tab on" role="tab" aria-selected="true"  aria-controls="sr-tab-study"    onclick="switchSrTab('study',this)"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Study</button>
+  <button id="sr-tab-btn-help"   class="sr-top-tab"    role="tab" aria-selected="false" aria-controls="sr-tab-help"     onclick="switchSrTab('help',this)"><i data-lucide="book-marked" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Help</button>
+  <button id="sr-tab-btn-master" class="sr-top-tab"    role="tab" aria-selected="false" aria-controls="sr-tab-master"   onclick="switchSrTab('master',this)"><i data-lucide="target" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Exercise</button>
+  <button id="sr-tab-btn-wordbook" class="sr-top-tab"  role="tab" aria-selected="false" aria-controls="sr-tab-wordbook" onclick="switchSrTab('wordbook',this)"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Word Book</button>
 </div>
 </div>
 
@@ -986,7 +992,7 @@
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20260525r"></script>
 <script src="js/features/fill-blank.js?v=20260525r"></script>
-<script src="korehan-shared.js?v=20260527c"></script>
+<script src="korehan-shared.js?v=20260527e"></script>
 <script src="js/kh-canvas-engine.js?v=20260416"></script>
 <script src="js/kh-quiz-arena.js?v=20260502a"></script>
 <script src="js/kh-flashcards.js?v=20260416"></script>

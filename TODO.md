@@ -10,7 +10,62 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-14-i18n`
+## In progress on `claude/audit-15-a11y-deep`
+
+- **15차 a11y deep dive (2026-05-27)** — 15 findings. This PR
+  ships 7 safe-and-targeted fixes; complex modal focus-trap
+  retrofits (F4 / F6) and the notif-menu arrow-nav (F9) deferred
+  for careful work.
+  - **A11Y-F1 (P0) — LANDED**: Study Room top tabs now have
+    full ARIA tab semantics (`role="tablist"` + `role="tab"` +
+    `aria-selected` + `aria-controls`). `switchSrTab()` syncs
+    `aria-selected` on click so SR users hear which tab is
+    active.
+  - **A11Y-F2 (P0) — LANDED**: 4 more KR-heavy pages flipped
+    `lang="en"` → `lang="ko"`: `index.html`,
+    `korehan-study-room.html`, `korehan-onboarding.html`,
+    `korehan-mypage.html`. VoiceOver / TalkBack now use the
+    Korean speech engine.
+  - **A11Y-F3 (P0) — LANDED**: onboarding "Skip setup for now"
+    is now a real `<button type="button">` instead of a `<div>`.
+    Focusable + Enter/Space-activatable.
+  - **A11Y-F5 (P1) — LANDED**: password eye-toggle buttons in
+    auth modal now have `type="button"` (no accidental form
+    submit) + `aria-label="Show or hide password"`.
+  - **A11Y-F8 (P1) — LANDED**: visible toast now carries
+    `role="status"` + `aria-live="polite"` (or `assertive` for
+    errors). Screen-magnifier users + SR users both perceive
+    toasts.
+  - **A11Y-F11 (P1) — LANDED**: 27 instances of `color: #94a3b8`
+    in shared.css (contrast 2.85:1 — fails WCAG AA 4.5:1) bumped
+    to `#64748b` (4.78:1 PASS) globally. Affects every "muted /
+    secondary text" surface.
+  - **A11Y-F15 (P2) — LANDED**: `.brk-track` breaking-news
+    ticker now has an explicit `prefers-reduced-motion: reduce`
+    opt-out that sets `animation: none` + `transform: none`
+    (was relying on the global 0.01ms duration rule which left
+    the ticker snapped mid-transform).
+
+  **STILL OPEN from 15차**:
+  - **A11Y-F4 (P0)**: Phone / Slang feature modals — no
+    Escape, no focus trap, no opener restoration. Needs
+    a per-modal retrofit (~6 feature modals to audit).
+  - **A11Y-F6 (P1)**: `khAlert` / `khConfirm` / `khPrompt`
+    lack focus trap + opener restore. Port the auth-modal
+    pattern (sets `_khOpener` + Tab cycling).
+  - **A11Y-F7 (P1)**: "Loading…" placeholders aren't in
+    `role="status"` / `aria-live="polite"` regions. SR users
+    sit silent during 5-30s Claude waits.
+  - **A11Y-F9 (P1)**: Notif / profile dropdowns advertise
+    `aria-haspopup="menu"` but the panels lack `role="menu"`
+    + arrow-key nav. Either drop the haspopup hint or
+    implement real menu semantics.
+  - **A11Y-F10/F12/F13/F14**: touch-target 44×44, forced-colors,
+    Turnstile timeout, data-action kbd activation. Defensive.
+
+---
+
+## On `claude/audit-14-i18n`
 
 - **14차 i18n + browser compat (2026-05-27)** — 15 findings. This
   PR ships the safe targeted 5 (F3 / F5 / F4 / F7 / F9) +

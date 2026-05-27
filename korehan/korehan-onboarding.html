@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- sync marker -->
-<html lang="en">
+<html lang="ko">
 <head>
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
@@ -602,7 +602,7 @@ function renderStep1() {
       + '<div class="ob-btn-row">'
       + '<button class="ob-btn ob-btn-primary ob-btn-full" id="step1-next" data-action="go-step2"' + (state.goals.length ? '' : ' disabled') + '>Continue →</button>'
       + '</div>'
-      + '<div class="skip-link" data-action="skip">Skip setup for now</div>'
+      + '<button type="button" class="skip-link" data-action="skip" style="background:none;border:none;font:inherit;color:inherit;padding:inherit;cursor:pointer">Skip setup for now</button>'
     + '</div>'
   );
   wireStepInteractions();
