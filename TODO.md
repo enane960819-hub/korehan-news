@@ -10,7 +10,75 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-20-races`
+## In progress on `claude/audit-21-dbintegrity`
+
+- **21차 DB integrity + FK gaps (2026-05-27)** — 15 findings. This
+  PR ships ONE consolidated migration
+  (`20260527_audit_21_fk_and_constraints.sql`) closing 5 findings
+  (F1, F2, F3, F11, F13). Migration uses `NOT VALID` + idempotent
+  `DO $$ IF NOT EXISTS $$` blocks so the owner can apply safely
+  without rejecting any legacy orphan rows.
+  - **F1 — STAGED**: FK added on `coin_transactions.user_id`,
+    `shop_purchases.user_id`, `owned_items.user_id`,
+    `payment_orders.user_id` (last one table-existence-gated since
+    Speaking Coach v3 wasn't applied). All `ON DELETE CASCADE`.
+  - **F2 — STAGED**: FK added on `reporter_gift_history.user_id`
+    and `reporter_user_affinity.user_id` (both `ON DELETE CASCADE`).
+  - **F3 — STAGED**: FK added on `user_submissions.admin_user_id`
+    with `ON DELETE SET NULL` (nullable column, preserves audit
+    trail when admin account deleted).
+  - **F11 — STAGED**: `newsletter_campaigns.created_by` FK
+    dropped + re-added with `ON DELETE SET NULL`. The original
+    had no ON DELETE clause (default NO ACTION) which would have
+    BLOCKED admin account deletion entirely.
+  - **F13 — STAGED**: `comments` RLS policy `visible_to_caller`
+    tightened to filter `deleted_at IS NULL`. Soft-deleted comments
+    no longer leak via direct `SELECT *`.
+  - **BONUS — STAGED**: `kh_orphan_user_rows` view to count orphans
+    per table before owner runs `VALIDATE CONSTRAINT`.
+
+  **OWNER ACTIONS for 21차** (in order):
+  1. Apply `20260527_audit_21_fk_and_constraints.sql` (idempotent).
+  2. Run `SELECT * FROM kh_orphan_user_rows;` to count orphans.
+  3. Decide per-table whether to delete orphans or keep FKs in
+     `NOT VALID` mode. Cleanup query template:
+     ```sql
+     DELETE FROM public.coin_transactions c
+     WHERE NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = c.user_id);
+     ```
+  4. After cleanup: `ALTER TABLE … VALIDATE CONSTRAINT …` for each
+     newly-added FK.
+
+  **STILL OPEN from 21차**:
+  - **F4/F5/F7 (P0/P1)**: `comments` table has NO `CREATE TABLE`
+    migration in tree — it lives in prod only. New deployments
+    can't bootstrap. Needs reverse-engineering from audit
+    migrations + RLS history. Big undertaking; defer to a
+    dedicated PR.
+  - **F12 (P2)**: missing indexes on FK columns for
+    `user_activity_log`, `user_badges`, etc. May overlap with
+    13차 `audit_13_missing_indexes.sql` — needs cross-check.
+  - **F15 (P2)**: audit hygiene — some early migrations use
+    `CREATE FUNCTION` instead of `CREATE OR REPLACE FUNCTION`.
+    Doesn't affect prod (only matters on re-apply); low-priority
+    cleanup.
+
+  **AUDIT MISCLASSIFICATIONS** (skipped):
+  - F6: audit recommended `CHECK (amount >= 0)` on
+    `coin_transactions.amount`, but `tx_type='spend'` inserts
+    NEGATIVE amounts intentionally (see reporter.html:1273,
+    mypage.html:2035). Constraint would break every existing
+    spend record. Skipped.
+  - F8/F9: audit itself flagged as "already good, no action
+    needed".
+  - F10: audit claimed `newsletter_subs.email` lacks UNIQUE,
+    but it's declared `text not null unique` at
+    `20260412_newsletter_subs.sql:4`. Already in place.
+  - F14: audit itself said "no action needed".
+
+---
+
+## On `claude/audit-20-races` (PR #635 merged 2026-05-27)
 
 - **20차 frontend race conditions (2026-05-27)** — 12 findings.
   This PR ships 4 fixes (1 P1 + 3 P2). Lifecycle / multi-tab /
