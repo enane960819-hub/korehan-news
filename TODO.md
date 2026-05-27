@@ -10,7 +10,68 @@ doesn't keep reminding about closed work.
 
 ---
 
-## In progress on `claude/audit-17-deadcode`
+## In progress on `claude/audit-18-mobile`
+
+- **18차 mobile + responsive UX (2026-05-27)** — 18 findings. This
+  PR ships 6 safe-and-targeted fixes; device-test-heavy items
+  (iOS Safari sticky / 100vh sweep / keyboard-covers-input)
+  deferred.
+  - **F1 — LANDED**: Removed `maximum-scale=1, user-scalable=no`
+    from `korehan-fun-dictation.html` and
+    `korehan-fun-sentence-order.html`. Pinch-zoom is now allowed
+    on both games — WCAG 2.1 Resize Text (1.4.4) compliance.
+  - **F2 — LANDED**: `.pc-back-btn` in `korehan-study-room.css`
+    bumped from 32×32 to 44×44 (icon size 14→16). Now meets the
+    iOS/Android OS-recommended 44px touch-target minimum.
+  - **F3 — LANDED**: Top-nav dropdown (`.has-drop`) now reveals
+    via `:focus-within` in addition to `:hover`. Keyboard users
+    and (eventually-Tab-able) mobile users can now access submenus
+    that were previously hover-only.
+  - **F6 — LANDED**: 4 Korean-text inputs in study-room.html
+    (`.wb-search`, `#wb-search`, `#dr-typed`, `#rv-typed-input`)
+    now have `lang="ko" autocomplete="off" spellcheck="false"` —
+    triggers the correct hangul IME on iOS/Android without
+    spell-check underlines.
+  - **F8 — LANDED**: Admin CMS `.mbox` mobile rule changed from
+    `100vw/100vh` to `100%/100dvh`. Eliminates horizontal-scroll
+    bug on phones (where `100vw` can include the scrollbar) and
+    fixes iOS Safari bottom-toolbar trap via `100dvh`.
+  - **F14 — LANDED**: Mobile notification bell bumped from 34×34
+    to 44×44 (icon 16→18). Notification action buttons
+    (`.kh-notif-item-btn`) bumped from `padding 5px 12px / font
+    11px` to `padding 8px 14px / min-height 36px / font 12px`
+    desktop, `padding 10px 16px / min-height 44px / font 13px`
+    on mobile.
+
+  **STILL OPEN from 18차**:
+  - **F4 (P1)**: `.dp-vi-del / .dp-gi-del` delete buttons on
+    vocab/grammar items — padding 2px 6px / font 11px. Bump
+    needed but careful — adjacent layout dense.
+  - **F5 (P2)**: `.detail-close` (34×34) — already swapped to
+    floating 44×44 via media query, so likely no fix needed; the
+    audit didn't catch the existing swap.
+  - **F7 (P2)**: Inputs covered by on-screen keyboard. Needs JS
+    `scrollIntoView` on focus + iOS device test.
+  - **F10 (P2)**: `100vh` sweep — need to find all remaining
+    bare-100vh uses and add `100dvh` fallback (1 confirmed in
+    `learning-overview.html:3943`, more likely).
+  - **F11 (P2)**: `position: sticky` inside
+    `-webkit-overflow-scrolling: touch` containers — needs real
+    iOS Safari testing.
+  - **F12 (P2)**: `overscroll-behavior-y: contain` on game pages
+    — needs gameplay testing to confirm it's actually disruptive.
+  - **F13 (P2)**: `.dp-pr-step` tabs (icon 13px / padding 6px
+    10px) — touch-target bump; same density concern as F4.
+  - **F18 (P2)**: Tiny 11–12px labels/badges on mobile —
+    enhancement.
+
+  **AUDIT MISCLASSIFICATIONS** (no action):
+  - F9, F15, F16, F17: audit itself said "already compliant ✓"
+    or "already addressed". No new work needed.
+
+---
+
+## On `claude/audit-17-deadcode` (PR #632 merged 2026-05-27)
 
 - **17차 dead-code + arch consolidation (2026-05-27)** — 12 findings.
   This PR ships 4 low-risk cleanup items; Speaking Coach v3
