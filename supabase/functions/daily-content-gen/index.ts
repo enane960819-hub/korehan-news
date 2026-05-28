@@ -139,10 +139,15 @@ async function callAnthropic(
   // arrays) overshoots the original 1500-token ceiling and gets
   // truncated mid-JSON — that was the real cause of the parse errors,
   // not malformed output. Give each tier enough headroom.
+  // 2026-05-27: Beginner 1500 was still truncating around 3.6KB output
+  // (parse error at position 3627), and Advanced 3000 was truncating
+  // around 6.7KB (parse error at 6735). Bumped both with comfortable
+  // headroom — the marginal cost is small compared to the cost of
+  // a whole-level generation failing and the user seeing stale content.
   const maxTokens =
-    level === 'Advanced'     ? 3000 :
-    level === 'Intermediate' ? 2200 :
-    1500
+    level === 'Advanced'     ? 4000 :
+    level === 'Intermediate' ? 2500 :
+    2000
 
   // CRON-F6: prompt-caching via cache_control on the static prefix.
   // The grammar rules + schema (~2k tokens) are identical for every
@@ -194,9 +199,16 @@ async function callAnthropic(
   const repaired = clean
     .replace(/,(\s*[}\]])/g, '$1')           // trailing comma before } or ]
     .replace(/[ -]+/g, ' ')       // control chars inside strings
-  try { return JSON.parse(repaired) } catch (err) {
-    throw new Error(`JSON parse failed even after repair: ${(err as Error).message}`)
+  try { return JSON.parse(repaired) } catch (_) { /* try truncation repair */ }
+  // Last-resort: response was truncated mid-element. Strip back to the
+  // last comma at top-level scope and close the outer object. Caller
+  // receives a partial object (some fields missing) — better than the
+  // whole-level generation failing and stranding users on stale content.
+  const tail = repaired.lastIndexOf(',')
+  if (tail > 0) {
+    try { return JSON.parse(repaired.slice(0, tail) + '}') } catch (_) { /* fall through */ }
   }
+  throw new Error(`JSON parse failed even after repair (response likely truncated past max_tokens at ${clean.length} chars)`)
 }
 
 // Parse an Anthropic response that's expected to start/end with [ ... ].
