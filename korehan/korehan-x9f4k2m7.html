@@ -2,10 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- Defense-in-depth against the "0 0 0 silently failing because the
+     browser served an HTML version from 2026-05-26" class of caching
+     bug. _headers already sets Cache-Control: no-cache for all routes,
+     but mobile browsers (Samsung Internet, Chrome on Android) routinely
+     ignore that for HTML and keep an aggressive ~1-day cached copy.
+     The three meta tags below repeat the no-cache + no-store signal
+     where mobile browsers actually look. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KoreHani Admin CMS</title>
+<!-- Build stamp: incremented on every shipped admin-HTML change so the
+     check at the bottom of the file can detect "browser is serving an
+     old cached HTML" and force a hard reload exactly once. -->
+<meta name="kh-admin-build" content="20260528a">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -21468,6 +21482,42 @@ async function currGenExtra(level) {
     await currAdminLoad();
   } catch(e) { toast('AI generation failed: ' + e.message); }
 }
+
+// ── Stale-HTML auto-recovery ────────────────────────────────────────
+// Mobile browsers (Samsung Internet, Android Chrome) routinely serve
+// an HTML version that's 12-48 hours old even with no-cache. The page
+// then runs old JS that misses critical hotfixes — owner sees "0 0 0"
+// silently and can't tell whether the merge actually shipped.
+//
+// On every page load: read the build stamp in the served HTML, fetch
+// the live HTML head from network, compare. If they differ, force one
+// hard reload that bypasses the cache. The check itself is cheap (~1KB
+// HEAD-like fetch) and only fires once per page load.
+(function checkStaleHtml(){
+  try {
+    var localStamp = (document.querySelector('meta[name="kh-admin-build"]') || {}).content || '';
+    if (!localStamp) return;
+    // Reload guard so we don't loop if the network keeps returning the
+    // stale copy too (CDN cached, etc.).
+    var reloadKey = '_kh_admin_stale_reloaded_for_' + localStamp;
+    if (sessionStorage.getItem(reloadKey)) return;
+    // Cache-busted fetch of own URL. Servers honour the query string;
+    // browsers can't reuse a cached entry whose URL doesn't match.
+    var bust = location.pathname + '?_kh_stale_check=' + Date.now();
+    fetch(bust, { cache: 'no-store', credentials: 'same-origin' })
+      .then(function(r){ return r.ok ? r.text() : null; })
+      .then(function(html){
+        if (!html) return;
+        var m = html.match(/<meta\s+name="kh-admin-build"\s+content="([^"]+)"/);
+        var liveStamp = m ? m[1] : '';
+        if (!liveStamp || liveStamp === localStamp) return;
+        sessionStorage.setItem(reloadKey, '1');
+        // Reload bypassing the cache — query param + true arg
+        location.replace(location.pathname + '?_kh_admin_refresh=' + Date.now() + location.hash);
+      })
+      .catch(function(){ /* network blip — leave as is */ });
+  } catch(_) { /* sessionStorage / fetch missing — old browser, skip */ }
+})();
 
 </script>
 </body>
