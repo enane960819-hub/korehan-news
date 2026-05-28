@@ -425,35 +425,76 @@ var KH_WRITING_TOPICS_EPOCH = '2026-04-15T00:00:00+09:00';
   var ADMIN_EMAIL = 'enane960819@gmail.com';
 
   function blockAccess(reason) {
+    var expired = /expired/i.test(reason || '');
+    var ctaLabel = expired ? 'Sign in again' : '← Back to Home';
+    var ctaHref  = expired ? 'index.html#auth=signin' : 'index.html';
     document.body.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0b1220;font-family:sans-serif">'
       + '<div style="text-align:center;color:#fff;padding:40px;max-width:360px">'
-      + '<div style="font-size:56px;margin-bottom:16px">🔒</div>'
-      + '<div style="font-size:20px;font-weight:900;margin-bottom:8px">Admin Access Only</div>'
+      + '<div style="font-size:56px;margin-bottom:16px">' + (expired ? '⏱️' : '🔒') + '</div>'
+      + '<div style="font-size:20px;font-weight:900;margin-bottom:8px">' + (expired ? 'Session Expired' : 'Admin Access Only') + '</div>'
       + '<div style="font-size:13px;color:#7a9ac0;margin-bottom:24px">' + (reason||'This page is restricted.') + '</div>'
-      + '<a href="index.html" style="padding:10px 24px;background:#2255a4;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">← Back to Home</a>'
+      + '<a href="' + ctaHref + '" style="padding:10px 24px;background:#2255a4;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">' + ctaLabel + '</a>'
       + '</div></div>';
   }
 
-  // 1차: 빠른 localStorage 체크
-  function getStoredEmail() {
+  // 1차: 빠른 localStorage 체크. user.email + access_token 만료 둘 다 봄.
+  // expires_at 체크 빠뜨리면 토큰 만료 후에도 사이드바만 렌더되고 모든
+  // 데이터 fetch가 "Admin not authenticated" 로 silent fail → 화면에 0개로
+  // 표시. 명시적 expired 상태가 더 honest UX.
+  // Returns: { email: string, expired: boolean } | null
+  function getStoredAdmin() {
     try {
       var keys = Object.keys(localStorage);
       for (var i = 0; i < keys.length; i++) {
         if (keys[i].startsWith('sb-') && keys[i].includes('-auth-token')) {
           var val = JSON.parse(localStorage.getItem(keys[i]));
-          if (val && val.user && val.user.email) return val.user.email;
+          if (val && val.user && val.user.email) {
+            var exp = Number(val.expires_at || 0);
+            // 60s buffer matches _getAdminToken below — anything inside
+            // that window is treated as expired so we don't catch a
+            // mid-fetch expiry race.
+            var expired = !exp || (exp <= Math.floor(Date.now() / 1000) + 60);
+            return { email: val.user.email, expired: expired };
+          }
         }
       }
     } catch(e) {}
     return null;
   }
 
-  var storedEmail = getStoredEmail();
-  if (!storedEmail || storedEmail !== ADMIN_EMAIL) {
+  var stored = getStoredAdmin();
+  if (!stored || stored.email !== ADMIN_EMAIL) {
     document.addEventListener('DOMContentLoaded', function(){ blockAccess('You are not signed in as admin.'); });
     if (document.readyState !== 'loading') blockAccess('You are not signed in as admin.');
-    return; // 스크립트 나머지 실행 방지
+    return;
+  }
+  if (stored.expired) {
+    // Token expired — every admin-api fetch will fail with "Admin not
+    // authenticated" and the sidebar will render with 0 counts. Surface
+    // it explicitly. Try a one-shot refresh first; if it doesn't restore
+    // the session, show the block screen with a re-login CTA.
+    var tryRefresh = (async function() {
+      try {
+        if (typeof supabase === 'undefined') return false;
+        var c = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, { auth: { persistSession: true } });
+        var r = await c.auth.refreshSession();
+        return !!(r && r.data && r.data.session);
+      } catch (_) { return false; }
+    });
+    document.addEventListener('DOMContentLoaded', function(){
+      tryRefresh().then(function(ok){
+        if (ok) { location.reload(); return; }
+        blockAccess('Session expired. Please sign in again.');
+      });
+    });
+    if (document.readyState !== 'loading') {
+      tryRefresh().then(function(ok){
+        if (ok) { location.reload(); return; }
+        blockAccess('Session expired. Please sign in again.');
+      });
+    }
+    return;
   }
 
   // Mobile sidebar drawer: auto-close when a nav button is tapped on
