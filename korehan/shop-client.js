@@ -3,12 +3,35 @@
   var K_SHOP_ITEMS_FALLBACK_DB = 'shop_items_fallback';
   // Image convention: assets/shop/<slug>.png — drop files with those names in
   // /korehan/assets/shop/ and they'll show up automatically. Missing images
-  // fall back to picsum placeholders.
+  // fall back to a category-coloured emoji card (NOT a random picsum photo,
+  // which previously made every unlaunched item look like a stock-photo
+  // placeholder masquerading as a real item).
   function shopImg(slug) { return 'assets/shop/' + slug + '.png'; }
+
+  // Category → emoji + gradient. Picked to feel intentional: badges look
+  // like a medal, titles look like a star, room items look like a plant, etc.
+  var SHOP_TYPE_VISUAL = {
+    profile_badge:    { emoji: '🏅', bg: 'linear-gradient(135deg,#fbbf24,#f59e0b)' },
+    profile_title:    { emoji: '⭐', bg: 'linear-gradient(135deg,#a78bfa,#7c3aed)' },
+    profile_cosmetic: { emoji: '✨', bg: 'linear-gradient(135deg,#f0abfc,#c026d3)' },
+    reporter_item:    { emoji: '📸', bg: 'linear-gradient(135deg,#fbcfe8,#ec4899)' },
+    room_item:        { emoji: '🪴', bg: 'linear-gradient(135deg,#86efac,#22c55e)' },
+    sticker_pack:     { emoji: '🎨', bg: 'linear-gradient(135deg,#fda4af,#ef4444)' },
+    consumable:       { emoji: '💊', bg: 'linear-gradient(135deg,#93c5fd,#3b82f6)' },
+  };
+  function renderShopThumb(it) {
+    if (it && it.image_url) {
+      return '<img src="' + it.image_url + '" alt="' + ((it.name||'').replace(/"/g,'&quot;')) + '">';
+    }
+    var v = SHOP_TYPE_VISUAL[it && it.item_type] || { emoji: '🎁', bg: 'linear-gradient(135deg,#cbd5e1,#94a3b8)' };
+    return '<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:' + v.bg + ';font-size:48px;line-height:1" aria-label="' + ((it && it.name) || 'Item') + '">' + v.emoji + '</div>';
+  }
   function _mk(o) {
     return Object.assign({
       slug: o.id.replace(/_/g, '-'),
-      image_url: o.image_url || shopImg(o.id.replace(/_/g, '-')),
+      // Leave image_url null when the seed didn't supply one — renderShopThumb
+      // will paint a category-emoji card instead of a 404 broken image.
+      image_url: o.image_url || null,
       cash_price: 0,
       is_active: true,
       can_buy_with_coin: true,
@@ -285,7 +308,7 @@
         : (it.item_type === 'profile_badge' || it.item_type === 'profile_cosmetic') ? 'profile'
         : it.can_buy_with_cash ? 'cash' : 'all';
       return '<article class="card" data-tab-type="' + tabType + '">'
-        + '<div class="thumb"><img src="' + (it.image_url || 'https://picsum.photos/seed/shop-'+it.id+'/640/360') + '" alt="' + (it.name||'') + '"></div>'
+        + '<div class="thumb">' + renderShopThumb(it) + '</div>'
         + '<div class="body">'
         + '<div class="title">' + (it.name || 'Item') + '</div>'
         + '<div class="desc">' + (it.description || '') + '</div>'

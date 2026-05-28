@@ -8,12 +8,36 @@
 // the file exists the card falls back to a placeholder.
 
 (function(){
-  function gachaImg(slug) { return 'assets/gacha/' + slug + '.png'; }
+  // Was: 'assets/gacha/<slug>.png' — but /korehan/assets/gacha/ folder
+  // doesn't exist, so every gacha item rendered a broken-image icon
+  // fallback (opacity 0.15). Render a rarity-coloured emoji card instead
+  // until real art is uploaded.
+  function gachaImg(_slug) { return ''; }
+
+  // Rarity → emoji + gradient. Picked to feel intentional and to read at
+  // a glance: SSR is gold-fire, SR is purple-magic, R is teal, C is gray.
+  var GACHA_RARITY_VISUAL = {
+    SSR: { emoji: '🔥', bg: 'linear-gradient(135deg,#fde68a,#f59e0b,#dc2626)' },
+    SR:  { emoji: '✨', bg: 'linear-gradient(135deg,#c4b5fd,#7c3aed)' },
+    R:   { emoji: '🎁', bg: 'linear-gradient(135deg,#67e8f9,#0891b2)' },
+    C:   { emoji: '🎨', bg: 'linear-gradient(135deg,#e2e8f0,#94a3b8)' },
+  };
+  function renderGachaThumb(it, opts) {
+    opts = opts || {};
+    if (it && it.image_url) {
+      return '<img src="' + it.image_url + '" alt="' + ((it.name||'').replace(/"/g,'&quot;')) + '" onerror="this.style.opacity=\'.15\'">';
+    }
+    var v = GACHA_RARITY_VISUAL[it && it.rarity] || GACHA_RARITY_VISUAL.C;
+    var size = opts.big ? '56px' : '36px';
+    return '<div style="aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:' + v.bg + ';font-size:' + size + ';line-height:1;border-radius:8px" aria-label="' + ((it && it.name) || 'Item') + '">' + v.emoji + '</div>';
+  }
 
   function _g(o) {
     return Object.assign({
       slug:        o.id.replace(/_/g, '-'),
-      image_url:   o.image_url || gachaImg(o.id.replace(/_/g, '-')),
+      // image_url stays null when the seed didn't supply one — the
+      // category emoji card renders instead of a 404 broken image.
+      image_url:   o.image_url || null,
       dupe_refund: ({ C: 20, R: 50, SR: 120, SSR: 400 })[o.rarity] || 30,
       weight:      ({ C: 60, R: 25, SR: 12, SSR: 3 })[o.rarity] || 10,
       is_active:   true
@@ -132,6 +156,13 @@
     var bal = (stats && stats.coin_balance) || 0;
     var balEl = document.getElementById('gacha-coin');
     if (balEl) balEl.textContent = bal.toLocaleString();
+    // S4: pre-disable Draw 1/5 when balance < cost so user sees they can't
+    // draw instead of mashing the button and getting INSUFFICIENT_COIN
+    // after a round-trip.
+    var btn1 = document.getElementById('gc-btn-1');
+    var btn5 = document.getElementById('gc-btn-5');
+    if (btn1) btn1.disabled = (bal < 100);
+    if (btn5) btn5.disabled = (bal < 450);
 
     var ownedMap = {};
     (owned || []).forEach(function(o){ ownedMap[o.item_id] = o.quantity || 0; });
@@ -155,9 +186,8 @@
     if (grid) {
       grid.innerHTML = catalog.map(function(it){
         var owned = ownedMap[it.id] || 0;
-        var img = it.image_url || gachaImg((it.id || '').replace(/_/g, '-'));
         return '<div class="gc-card ' + rarityClass(it.rarity) + (owned ? '' : ' is-locked') + '">'
-          + '<div class="gc-thumb"><img src="' + img + '" alt="' + (it.name || '') + '" onerror="this.style.opacity=\'.15\'"></div>'
+          + '<div class="gc-thumb">' + renderGachaThumb(it) + '</div>'
           + '<div class="gc-rar">' + (it.rarity || 'C') + '</div>'
           + '<div class="gc-name">' + (owned ? (it.name || '') : '???') + '</div>'
           + (owned > 1 ? '<div class="gc-qty">×' + owned + '</div>' : '')
@@ -175,9 +205,10 @@
       ? '<div class="gc-modal-sub">+' + payload.refund_total + ' 냥 refunded for duplicates</div>'
       : '';
     var cards = (payload.items || []).map(function(r){
-      var img = r.image_url || gachaImg((r.item_id || '').replace(/_/g, '-'));
+      // r has rarity but no item_type; pass as a partial it-like object to
+      // renderGachaThumb so it picks the rarity gradient.
       return '<div class="gc-result-card ' + rarityClass(r.rarity) + (r.is_dupe ? ' is-dupe' : '') + '">'
-        + '<div class="gc-result-thumb"><img src="' + img + '" alt="" onerror="this.style.opacity=\'.15\'"></div>'
+        + '<div class="gc-result-thumb">' + renderGachaThumb({ image_url: r.image_url, rarity: r.rarity, name: r.name }, { big: true }) + '</div>'
         + '<div class="gc-result-rar">' + (r.rarity || 'C') + '</div>'
         + '<div class="gc-result-name">' + (r.name || '') + '</div>'
         + (r.is_dupe ? '<div class="gc-result-dupe">Duplicate +' + (r.refund || 0) + ' 냥</div>' : '<div class="gc-result-new">NEW!</div>')
