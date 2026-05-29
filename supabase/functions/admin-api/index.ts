@@ -73,21 +73,46 @@ Deno.serve(async (req) => {
   const cors = getCorsHeaders(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
+  // ── DEBUG: temporary diagnostic logger ─────────────────────────
+  // Writes one short row to client_errors per invocation so we can
+  // see, from outside the function, exactly what state every call
+  // reached. Owner reports admin CMS shows 0 counts and we can't get
+  // function_edge_logs via the management API SQL endpoint. Remove
+  // this block in a follow-up PR once we know the root cause.
+  const debugRows: Array<{ stage: string; detail: unknown }> = []
+  const debug = (stage: string, detail: unknown) => debugRows.push({ stage, detail })
+  const flushDebug = async (sbForDebug: ReturnType<typeof createClient> | null) => {
+    if (!sbForDebug || !debugRows.length) return
+    try {
+      await sbForDebug.from('client_errors').insert({
+        message: 'admin-api debug ' + debugRows[debugRows.length - 1].stage,
+        context: { source: 'admin-api-debug', steps: debugRows } as Record<string, unknown>,
+        severity: 'warn',
+        user_agent: req.headers.get('user-agent') || 'unknown',
+      })
+    } catch (_) {}
+  }
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    // SUPABASE_ANON_KEY should be auto-injected by Supabase Functions
-    // runtime; if it's missing, fail loudly rather than masking the
-    // misconfig with a hardcoded fallback that won't rotate when the
-    // anon key is regenerated.
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
     if (!anonKey) {
       return json({ error: 'Server misconfigured: SUPABASE_ANON_KEY missing' }, 500, cors)
     }
 
+    debug('entry', {
+      method: req.method,
+      origin: req.headers.get('Origin') || null,
+      hasAuth: !!req.headers.get('Authorization'),
+      hasApikey: !!req.headers.get('apikey'),
+    })
+
     // 1. Verify JWT and admin status
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      const debugSb = createClient(supabaseUrl, serviceKey)
+      await flushDebug(debugSb)
       return json({ error: 'No authorization header' }, 401, cors)
     }
 
@@ -95,10 +120,22 @@ Deno.serve(async (req) => {
     const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: { 'Authorization': `Bearer ${token}`, 'apikey': anonKey }
     })
-    if (!userRes.ok) return json({ error: 'Invalid token' }, 401, cors)
+    debug('auth_user_fetch', { status: userRes.status, ok: userRes.ok })
+    if (!userRes.ok) {
+      const debugSb = createClient(supabaseUrl, serviceKey)
+      await flushDebug(debugSb)
+      return json({ error: 'Invalid token' }, 401, cors)
+    }
 
     const user = await userRes.json()
+    debug('user_check', {
+      hasEmail: !!user?.email,
+      emailDomain: user?.email ? String(user.email).split('@')[1] : null,
+      isAdmin: !!(user?.email && ADMIN_EMAILS.includes(user.email)),
+    })
     if (!user?.email || !ADMIN_EMAILS.includes(user.email)) {
+      const debugSb = createClient(supabaseUrl, serviceKey)
+      await flushDebug(debugSb)
       return json({ error: 'Not an admin' }, 403, cors)
     }
 
@@ -108,6 +145,7 @@ Deno.serve(async (req) => {
 
     // 3. Execute with service role
     const sb = createClient(supabaseUrl, serviceKey)
+    debug('parsed_body', { action, table: body.table, method: body.method, hasParams: !!body.params })
 
     // ── DB Operations ──
     if (action === 'db') {
@@ -140,6 +178,14 @@ Deno.serve(async (req) => {
         query = query.select(params.columns || '*', selectOpts)
         query = applyFilters(query, params)
         const result = await query
+        debug('select_result', {
+          table,
+          dataLen: Array.isArray(result.data) ? result.data.length : null,
+          hasError: !!result.error,
+          errorMsg: result.error ? String((result.error as { message?: unknown }).message || result.error) : null,
+          status: result.status,
+        })
+        await flushDebug(sb)
         return json(result, result.error ? 400 : 200, cors)
       }
 
