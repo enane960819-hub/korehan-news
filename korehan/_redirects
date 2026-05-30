@@ -1,11 +1,22 @@
 # Cloudflare Pages redirects.
-# Old domain → new domain. Cloudflare's "Bulk Redirects" or a Workers
-# rule can also handle host-level redirects, but Pages also honours
-# this _redirects file at the dist root for path-level rules. Host-
-# level redirect (apex korehannews.com → korehani.com) lives in the
-# Cloudflare dashboard under the old zone's rules.
+# Format: /from /to status   (full https://host/* sources are allowed for
+# host-level rules; first match wins, top to bottom).
+
+# ── Retire korehannews.com → korehani.com (host-level 301) ───────────
+# korehani.com is the canonical domain. Every old-domain URL should
+# permanently redirect to the same path on the new domain so existing
+# links, bookmarks and search rankings keep working.
 #
-# Format: /from /to status
+# IMPORTANT: Cloudflare Pages' _redirects only does best-effort matching
+# on the incoming hostname — the AUTHORITATIVE host-level redirect is a
+# zone-level "Redirect Rule" in the Cloudflare dashboard on the
+# korehannews.com zone (see repo PR description / chat for steps). These
+# lines are a belt-and-suspenders fallback and require korehannews.com +
+# www.korehannews.com to remain attached as custom domains on this Pages
+# project. www.korehani.com → apex normalisation is safe to keep here.
+https://korehannews.com/*      https://korehani.com/:splat      301!
+https://www.korehannews.com/*  https://korehani.com/:splat      301!
+https://www.korehani.com/*     https://korehani.com/:splat      301!
 
 # Legacy paths from the korehannews.com era — not strictly redirects,
 # but explicit so any old bookmarks or shared links that include
