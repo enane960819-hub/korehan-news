@@ -5551,7 +5551,7 @@ async function runAutoGenerate(){
         // Repair trailing commas + control chars before retry.
         const repaired = bodyClean
           .replace(/,(\s*[}\]])/g, '$1')
-          .replace(/[ -]+/g, ' ');
+          .replace(/[\x00-\x1f]+/g, ' ');
         try {
           bodyJson = JSON.parse(repaired);
         } catch (_repairErr) {
