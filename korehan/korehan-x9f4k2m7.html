@@ -5529,20 +5529,37 @@ async function runAutoGenerate(){
       });
       const bodyText = bodyRes.content && bodyRes.content[0] && bodyRes.content[0].text || '';
       if (!bodyText) throw new Error('빈 응답 (body)');
-      // Robust JSON extraction. Previous version stripped markdown
-      // fences then JSON.parse'd directly — broke when Sonnet
-      // appended explanatory prose after the closing brace
-      // ("Unexpected non-whitespace character after JSON at position
-      // 1398 line 13 column 1"). Mirror the daily-content-gen pattern:
-      // find the first `{` and last `}`, slice between, then try
-      // parse → repair → parse before giving up. Catches:
-      //   - trailing prose / markdown fence remnants
+      // Robust JSON extraction. Previous versions sliced from the first
+      // `{` to the LAST `}` in the whole response — which broke when
+      // Sonnet appended explanatory prose that itself contained a `}`
+      // (an emoji, a `${...}`, or a normal sentence). lastIndexOf then
+      // grabbed that stray brace and pulled the prose into the slice,
+      // giving "Unexpected non-whitespace character after JSON at
+      // position N". Instead, scan from the first `{` and stop at its
+      // MATCHING close brace via a string-aware brace counter (so braces
+      // inside JSON string values, and any trailing prose, are ignored).
+      // Then try parse → repair → parse before giving up. Catches:
+      //   - trailing prose / markdown fence remnants (even with braces)
       //   - leading "Here is the JSON:" or similar preamble
       //   - trailing commas (`,}` / `,]`)
       let bodyClean = bodyText.replace(/```json?/g, '').replace(/```/g, '').trim();
       const _s = bodyClean.indexOf('{');
-      const _e = bodyClean.lastIndexOf('}');
-      if (_s < 0 || _e <= _s) throw new Error('No JSON object in body response');
+      if (_s < 0) throw new Error('No JSON object in body response');
+      let _depth = 0, _inStr = false, _escaped = false, _e = -1;
+      for (let _i = _s; _i < bodyClean.length; _i++) {
+        const _ch = bodyClean[_i];
+        if (_inStr) {
+          if (_escaped) { _escaped = false; }
+          else if (_ch === '\\') { _escaped = true; }
+          else if (_ch === '"') { _inStr = false; }
+        } else if (_ch === '"') { _inStr = true; }
+        else if (_ch === '{') { _depth++; }
+        else if (_ch === '}') { _depth--; if (_depth === 0) { _e = _i; break; } }
+      }
+      // Fall back to lastIndexOf if the braces never balanced (truncated
+      // response) so the repair pass below still gets a shot at it.
+      if (_e < 0) _e = bodyClean.lastIndexOf('}');
+      if (_e <= _s) throw new Error('No JSON object in body response');
       bodyClean = bodyClean.slice(_s, _e + 1);
       let bodyJson;
       try {
