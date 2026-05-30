@@ -723,6 +723,42 @@ function khArticleThumb(article, w, h) {
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function today(){ return new Date().toISOString().slice(0,10); }
 function fdate(d){ try{return new Date(d+'T00:00:00').toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'});}catch(e){return d||'';} }
+// Robust JSON extractor for AI responses. Strips markdown fences + a leading
+// bare "json" label, finds the first top-level `{` or `[`, then scans to its
+// MATCHING close via a string-aware brace/bracket counter — so braces inside
+// JSON string values, and any trailing prose (even prose containing a `}`),
+// are ignored. This kills the "Unexpected non-whitespace character after JSON
+// at position N" class of bug that bit indexOf/lastIndexOf slicing. One repair
+// pass (trailing commas + stray control chars) before giving up. Returns the
+// parsed value; throws on no-JSON or unrecoverable parse error. Array-aware:
+// prefers `[...]` when it starts before `{...}`. Does NOT salvage truncated
+// responses — callers needing max_tokens diagnostics keep their own logic.
+function khExtractJson(raw) {
+  var s = String(raw == null ? '' : raw);
+  s = s.replace(/```json\s*([\s\S]*?)```/gi, '$1').replace(/```/g, '').replace(/^\s*json\b[:\s]*/i, '').trim();
+  var oi = s.indexOf('{'), ai = s.indexOf('[');
+  var start = (ai >= 0 && (oi < 0 || ai < oi)) ? ai : oi;
+  if (start < 0) throw new Error('No JSON found in AI response: ' + s.slice(0, 120));
+  var depth = 0, inStr = false, esc = false, end = -1;
+  for (var i = start; i < s.length; i++) {
+    var ch = s.charAt(i);
+    if (inStr) {
+      if (esc) { esc = false; }
+      else if (ch === '\\') { esc = true; }
+      else if (ch === '"') { inStr = false; }
+    } else if (ch === '"') { inStr = true; }
+    else if (ch === '{' || ch === '[') { depth++; }
+    else if (ch === '}' || ch === ']') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (end < 0) end = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
+  if (end <= start) throw new Error('No JSON found in AI response: ' + s.slice(0, 120));
+  var slice = s.slice(start, end + 1);
+  try {
+    return JSON.parse(slice);
+  } catch (_e1) {
+    return JSON.parse(slice.replace(/,(\s*[}\]])/g, '$1').replace(/[\x00-\x1f]+/g, ' '));
+  }
+}
 function toast(msg,isErr){
   const el=document.createElement('div');
   el.className='t'+(isErr?' err':'');
@@ -3736,12 +3772,8 @@ Keep intro and nuance concise but useful. Make examples natural Korean for begin
     const raw = (res && res.content && res.content[0] && res.content[0].text) ? res.content[0].text : (res && res.text) ? res.text : '';
     if (!raw) throw new Error('AI returned empty response');
     const clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
-    var openBrace = clean.indexOf('{');
-    var closeBrace = clean.lastIndexOf('}');
-    if (openBrace < 0 || closeBrace <= openBrace) throw new Error('AI response not valid JSON: ' + clean.slice(0, 100));
-    const jsonText = clean.slice(openBrace, closeBrace + 1);
     var data;
-    try { data = JSON.parse(jsonText); } catch(pe) { throw new Error('JSON parse failed: ' + pe.message + ' — raw: ' + jsonText.slice(0, 200)); }
+    try { data = khExtractJson(clean); } catch(pe) { throw new Error('JSON parse failed: ' + pe.message + ' — raw: ' + clean.slice(0, 200)); }
     phraseAdminItems[phraseAdminCurrentIndex] = normalizePhraseAdmin(data);
     renderPhraseAdminForm(phraseAdminCurrentIndex);
     renderPhraseAdminTable();
@@ -5759,13 +5791,7 @@ window.runPendingAnalysisAll = async function() {
   var done = 0;
 
   // JSON-safe extractor matching the old single-call flow.
-  function _json(text) {
-    const ai = text.indexOf('['), bi = text.lastIndexOf(']');
-    const oi = text.indexOf('{'), ei = text.lastIndexOf('}');
-    if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
-    if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
-    throw new Error('no JSON found');
-  }
+  function _json(text) { return khExtractJson(text); }
 
   // Rebuild the same KH_GRAMMAR labels + analysis catalog used by the
   // analysis prompt in Phase A. Capture once outside the loop.
@@ -6986,9 +7012,7 @@ async function backfillOneSentenceAnalysis(articleId, schema, opts) {
     if (stEl) stEl.textContent = '(2/4) 응답 파싱 + 패턴 enforce 중…';
     const raw = (r && r.content && r.content[0] && r.content[0].text) || '';
     const clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    const oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
-    if (oi < 0 || ei <= oi) throw new Error('JSON 응답 없음');
-    const parsed = JSON.parse(clean.slice(oi, ei+1));
+    const parsed = khExtractJson(clean);
 
     const _sentRaw = Array.isArray(parsed.sentences) ? parsed.sentences : [];
     const _sentList = _khSplitSentencesForCache(_body);
@@ -7190,9 +7214,7 @@ async function genQuizOnly(articleId, schema, opts) {
     });
     const raw = (r && r.content && r.content[0] && r.content[0].text) || '';
     if (!raw) throw new Error('empty response');
-    const oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
-    if (oi < 0 || ei <= oi) throw new Error('JSON 응답 없음');
-    const parsed = JSON.parse(raw.slice(oi, ei + 1));
+    const parsed = khExtractJson(raw);
     const qCount = Array.isArray(parsed.questions) ? parsed.questions.length : 0;
     if (!qCount) throw new Error('빈 questions[]');
     const quizStr = JSON.stringify(parsed);
@@ -7378,9 +7400,7 @@ async function reanalyzeSingleSentence(idx, modelChoice) {
     });
     var raw = (resp && resp.content && resp.content[0] && resp.content[0].text) || '';
     var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
-    if (oi < 0 || ei <= oi) throw new Error('JSON 응답 없음');
-    var parsed = JSON.parse(clean.slice(oi, ei + 1));
+    var parsed = khExtractJson(clean);
 
     var newEntry = {
       text: s.text,
@@ -7575,9 +7595,7 @@ async function reanalyzeSingleQuestion(idx) {
     });
     var raw = (resp && resp.content && resp.content[0] && resp.content[0].text) || '';
     var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
-    if (oi < 0 || ei <= oi) throw new Error('JSON 응답 없음');
-    var parsed = JSON.parse(clean.slice(oi, ei + 1));
+    var parsed = khExtractJson(clean);
     if (!parsed.sentence || !parsed.blank || !Array.isArray(parsed.choices)) throw new Error('필수 필드 누락');
 
     snapshot.questions[idx] = parsed;
@@ -7988,13 +8006,7 @@ async function genCache(articleId, schema, opts) {
     return (r.content && r.content[0] && r.content[0].text) || '';
   }
 
-  function _json(text) {
-    const ai = text.indexOf('['), bi = text.lastIndexOf(']');
-    const oi = text.indexOf('{'), ei = text.lastIndexOf('}');
-    if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
-    if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
-    throw new Error('no JSON');
-  }
+  function _json(text) { return khExtractJson(text); }
 
   // Run one Claude-generated cache step end-to-end: call, parse, shape.
   // On any failure, log the exact kind (claude_error / empty / parse_error)
@@ -9400,15 +9412,10 @@ var ADMIN_CUR_LESSONS = {
 // Extract a JSON object from a Claude response that may include a ```json fence,
 // a bare "json" label, or prose around the payload. Throws if no object is found.
 function extractAdminJson(raw) {
-  var s = String(raw || '');
-  s = s.replace(/```json\s*([\s\S]*?)```/gi, '$1').replace(/```/g, '').trim();
-  s = s.replace(/^\s*json\b[:\s]*/i, '').trim();
-  var first = s.indexOf('{');
-  var last  = s.lastIndexOf('}');
-  if (first === -1 || last === -1 || last <= first) {
-    throw new Error('No JSON object in AI response: ' + s.slice(0, 120));
-  }
-  return JSON.parse(s.slice(first, last + 1));
+  // Thin wrapper kept for existing callers — delegates to the shared
+  // balanced-brace extractor so trailing prose / stray braces no longer
+  // corrupt the slice.
+  return khExtractJson(raw);
 }
 
 // Service role key removed — callAdminClaude now uses JWT auth
@@ -11275,13 +11282,7 @@ async function _bulkGenerateArticleCache(articleId, title, body, levelKey, combi
     });
     return (r && r.content && r.content[0] && r.content[0].text) || '';
   }
-  function _json(text) {
-    var ai = text.indexOf('['), bi = text.lastIndexOf(']');
-    var oi = text.indexOf('{'), ei = text.lastIndexOf('}');
-    if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
-    if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
-    throw new Error('no JSON');
-  }
+  function _json(text) { return khExtractJson(text); }
 
   // Quiz — separate Haiku call (translation/vocab/grammar already
   // shaped above from the combined Sonnet response).
@@ -11547,9 +11548,7 @@ async function _bulkGenerateOneConv(seed, levelKey) {
   var raw = (resp && resp.content || []).map(function(b){ return b.text||''; }).join('');
   raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
   // Tolerate stray array wrapping
-  var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
-  if (oi < 0 || ei <= oi) throw new Error('no JSON in response');
-  var conv = JSON.parse(raw.slice(oi, ei+1));
+  var conv = khExtractJson(raw);
   if (!conv.msgs || !conv.msgs.length) throw new Error('conv missing msgs');
   // Patch any missing metadata
   conv.cat = conv.cat || seed.cat;
@@ -11809,9 +11808,7 @@ async function _bulkGenerateOneStory(seed, levelKey) {
   });
   var raw = (resp && resp.content || []).map(function(b){ return b.text||''; }).join('');
   raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-  var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
-  if (oi < 0 || ei <= oi) throw new Error('no JSON in response');
-  var story = JSON.parse(raw.slice(oi, ei+1));
+  var story = khExtractJson(raw);
   if (!story.title || !story.body) throw new Error('story missing title/body');
   story.mood = story.mood || seed.mood;
   story.lvl  = story.lvl  || lvlCode;
@@ -14716,9 +14713,7 @@ async function _srGenerateBundlePM(topic) {
     + '- The first item in choices is the correct answer; the frontend will shuffle.\n';
   var res = await callClaude({ feature: 'admin-pregen-pm', model: 'claude-haiku-4-5-20251001', max_tokens: 2400, messages: [{ role: 'user', content: prompt + _srGrammarRulesBlock() }] });
   var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
-  var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
-  if (oi < 0 || ei <= oi) throw new Error('PM JSON missing');
-  var parsed = JSON.parse(raw.slice(oi, ei + 1));
+  var parsed = khExtractJson(raw);
   return Array.isArray(parsed.lessons) ? parsed.lessons : [];
 }
 
@@ -14866,7 +14861,7 @@ async function _srAutoFillVocabTextarea(textareaId, msgId, hasRom) {
         var rawTxt = (resp.content || []).map(function(c){ return c.text || ''; }).join('');
         var s = rawTxt.indexOf('{'), e = rawTxt.lastIndexOf('}');
         if (s >= 0 && e > s) {
-          var parsedJson = JSON.parse(rawTxt.slice(s, e + 1));
+          var parsedJson = khExtractJson(rawTxt);
           hit = { rom: parsedJson.reading || '', en: parsedJson.meaning || '' };
         }
       } catch(eAI) {
@@ -14916,8 +14911,7 @@ async function srGenGrammar() {
   try {
     var resp = await callClaude({ feature:'study-room-grammar-admin', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
-    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
-    var parsed = JSON.parse(raw.slice(s, e+1));
+    var parsed = khExtractJson(raw);
     if (parsed.grammar && parsed.grammar.length) {
       if (ta) ta.value = parsed.grammar.map(function(g){ return (g.pattern||'')+'|'+(g.explanation||'')+'|'+(g.example_ko||'')+'|'+(g.example_en||''); }).join('\n');
       if (msgEl) msgEl.textContent = '✅ 문법 ' + parsed.grammar.length + '개 생성됨. 수정 후 저장하세요.';
@@ -14949,8 +14943,7 @@ async function srGenHelpers() {
   try {
     var resp = await callClaude({ feature:'study-room-helpers-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
-    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
-    var parsed = JSON.parse(raw.slice(s, e+1));
+    var parsed = khExtractJson(raw);
     if (parsed.helpers && parsed.helpers.length) {
       if (ta) ta.value = parsed.helpers.map(function(h){ return (h.ko||'')+'|'+(h.en||''); }).join('\n');
       if (msgEl) msgEl.textContent = '✅ 도움말 ' + parsed.helpers.length + '개 생성됨. 수정 후 저장하세요.';
@@ -14982,8 +14975,7 @@ async function srGenDictationSentences() {
   try {
     var resp = await callClaude({ feature:'study-room-dictation-sentences-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
-    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
-    var parsed = JSON.parse(raw.slice(s, e+1));
+    var parsed = khExtractJson(raw);
     if (parsed.dictation_sentences && parsed.dictation_sentences.length) {
       if (ta) ta.value = parsed.dictation_sentences.map(function(d){ return (d.ko||'')+'|'+(d.en||''); }).join('\n');
       if (msgEl) msgEl.textContent = '✅ 예문 ' + parsed.dictation_sentences.length + '개 생성됨. 수정 후 저장하세요.';
@@ -15015,8 +15007,7 @@ async function srGenDictationQuestions() {
   try {
     var resp = await callClaude({ feature:'study-room-dictation-questions-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
-    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
-    var parsed = JSON.parse(raw.slice(s, e+1));
+    var parsed = khExtractJson(raw);
     if (parsed.dictation_questions && parsed.dictation_questions.length) {
       if (ta) ta.value = parsed.dictation_questions.map(function(d){ return (d.question_ko||'')+'|'+(d.answer_ko||'')+'|'+(d.hint_en||''); }).join('\n');
       if (msgEl) msgEl.textContent = '✅ 질문 ' + parsed.dictation_questions.length + '개 생성됨. 수정 후 저장하세요.';
@@ -15048,8 +15039,7 @@ async function srGenTopicWriting() {
   try {
     var resp = await callClaude({ feature:'study-room-topic-writing-admin', model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
-    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
-    var parsed = JSON.parse(raw.slice(s, e+1));
+    var parsed = khExtractJson(raw);
     if (parsed.topic_writing_sentences && parsed.topic_writing_sentences.length) {
       window._twCards = parsed.topic_writing_sentences.map(function(s) {
         return { ko: s.ko || '', en: s.en || '', blank_answer: '', distractors: ['', ''], explanation: '' };
@@ -16638,9 +16628,7 @@ async function srRetriggerAI(id) {
     var data = await callClaude({ feature:'admin_retrigger_feedback', model:'claude-haiku-4-5-20251001', max_tokens:2200, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('');
     var clean = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
-    var ob = clean.indexOf('{'), cb = clean.lastIndexOf('}');
-    if (ob < 0 || cb <= ob) throw new Error('Invalid JSON response');
-    var parsed = JSON.parse(clean.slice(ob, cb+1));
+    var parsed = khExtractJson(clean);
     await sb.from('user_submissions').update({
       ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
       ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
@@ -17418,8 +17406,7 @@ async function srAIGeneratePicture() {
   try {
     var resp = await callClaude({ feature:'study-room-picture-admin', model:'claude-haiku-4-5-20251001', max_tokens:800, messages:[{role:'user',content: prompt + _srGrammarRulesBlock()}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
-    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
-    var parsed = JSON.parse(raw.slice(s, e+1));
+    var parsed = khExtractJson(raw);
 
     // Fill form fields
     if (parsed.image_prompt) {
@@ -17475,8 +17462,7 @@ async function srAIGenPictureField(field) {
   try {
     var resp = await callClaude({ feature:'picture-field-'+field, model:'claude-haiku-4-5-20251001', max_tokens:500, messages:[{role:'user',content:prompts[field]}] });
     var raw = (resp.content||[]).map(function(c){ return c.text||''; }).join('');
-    var s = raw.indexOf('{'), e = raw.lastIndexOf('}');
-    var p = JSON.parse(raw.slice(s, e+1));
+    var p = khExtractJson(raw);
 
     if (field === 'vocab' && p.vocab_items) {
       document.getElementById('srp-vocab').value = p.vocab_items.map(function(v){ return (v.ko||'')+'|'+(v.en||''); }).join('\n');
@@ -20887,8 +20873,7 @@ async function lqAdminAIGenerate() {
     var data = await callClaude({ feature: 'admin-lq-gen', model: 'claude-haiku-4-5-20251001', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] });
     var raw = (data.content || []).map(function(c) { return c.text || ''; }).join('');
     var clean = raw.replace(/```json|```/g, '').trim();
-    var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
-    var parsed = JSON.parse(clean.slice(s, e + 1));
+    var parsed = khExtractJson(clean);
     var questions = parsed.questions || [];
 
     var sb = getSb(); if (!sb) return;
@@ -21031,8 +21016,7 @@ async function gcAdminPregenAll() {
           messages: [{ role: 'user', content: 'Korean grammar lesson for: "' + name + '". Create 3 patterns (first MUST be "' + name + '"). Return ONLY JSON: {"patterns":[{"name":"...","level":"...","exp":"...","structure":"...","when_to_use":"...","watch_out":"...","examples":[{"ko":"...","en":"..."}],"incorrect_examples":[{"ko":"...","en":"...","error_type":"...","correction":"..."}]}]}' }]
         });
         var raw = (res.content && res.content[0] && res.content[0].text) || '';
-        var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
-        var parsed = JSON.parse(raw.slice(oi, ei+1));
+        var parsed = khExtractJson(raw);
         if (parsed.patterns && parsed.patterns.length) {
           await sb.from('grammar_examples_cache').upsert({ pattern_name: name, patterns_json: JSON.stringify(parsed.patterns), updated_at: new Date().toISOString() }, { onConflict: 'pattern_name' });
           generated++;
@@ -21356,8 +21340,7 @@ async function _currExGenAI() {
       }]
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || '';
-    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
-    var parsed = JSON.parse(raw.slice(oi, ei + 1));
+    var parsed = khExtractJson(raw);
     var newEx = (parsed.examples || []).filter(function(e) { return e.ko; });
     if (!newEx.length) { toast('AI 생성 실패'); return; }
     _currExState.examples = _currExState.examples.concat(newEx);
@@ -21427,8 +21410,7 @@ async function currGenExamples(scope) {
         }]
       });
       var raw = (res.content && res.content[0] && res.content[0].text) || '';
-      var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
-      var parsed = JSON.parse(raw.slice(oi, ei + 1));
+      var parsed = khExtractJson(raw);
       var examples = (parsed.examples || []).filter(function(e) { return e.ko; });
       if (examples.length) {
         await sb.from('grammar_curriculum').update({
@@ -21479,8 +21461,7 @@ async function currGenExtra(level) {
       }]
     });
     var raw = (res.content && res.content[0] && res.content[0].text) || '';
-    var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
-    var parsed = JSON.parse(raw.slice(oi, ei + 1));
+    var parsed = khExtractJson(raw);
     var newPatterns = parsed.patterns || [];
     var added = 0;
     for (var i = 0; i < newPatterns.length; i++) {
