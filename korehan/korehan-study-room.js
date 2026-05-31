@@ -12216,13 +12216,31 @@ async function toggleSpRecord() {
     var st = document.getElementById('sp-status');
     if (st) st.textContent = '발음 분석 중...';
     var result = await _speakAnalyzeAzure(_spBlob, refText, elapsed);
-    if (!result) {
-      await new Promise(function(r){ setTimeout(r, 300); });
-      result = _scoreSpeaking(refText, '', elapsed);
-    }
     if (st) st.textContent = '';
     var sc = document.getElementById('sp-score-card');
-    if (sc) {
+    // This modal runs no client-side STT, so we cannot honestly score a
+    // recording when Azure assessment is unavailable. Scoring with an empty
+    // transcript would always yield a fabricated 0/0 — never show that.
+    // Instead surface an explicit "scoring unavailable" state; the audio was
+    // still captured and the learner can move on.
+    if (!result) {
+      if (sc) {
+        sc.style.display = '';
+        sc.style.padding = '16px 18px';
+        sc.style.border = 'none';
+        sc.style.background = 'linear-gradient(145deg,#ffffff,#fef2f2 70%,#fff1f2)';
+        sc.style.borderRadius = '16px';
+        sc.style.boxShadow = '0 10px 28px -12px rgba(220,38,38,.18), 0 0 0 1px rgba(220,38,38,.12)';
+        sc.innerHTML =
+          '<div style="display:flex;align-items:center;gap:10px">'
+          + '<span style="display:inline-flex;width:18px;height:18px;color:#dc2626;flex:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>'
+          + '<div>'
+            + '<div style="font-size:12px;font-weight:800;color:#0f172a">발음 평가를 일시적으로 사용할 수 없어요</div>'
+            + '<div style="font-size:11px;color:#64748b;margin-top:2px">Pronunciation scoring is temporarily unavailable — your recording was saved. Try again in a moment.</div>'
+          + '</div>'
+          + '</div>';
+      }
+    } else if (sc) {
       sc.style.display = '';
       _renderSpeakingScoreCard(result, sc);
     }

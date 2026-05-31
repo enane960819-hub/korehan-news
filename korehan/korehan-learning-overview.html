@@ -2381,9 +2381,20 @@
       renderGrowthLineChart(snap);
       renderWeeklyImprovements(snap);
 
-      // 스피킹 노트
+      // 스피킹 노트 — reflect the real RPC-derived score when present
+      // (set above from get_recent_speaking_scores); only fall back to the
+      // "not scored yet" copy when there genuinely are no graded samples.
       const speakEl = document.getElementById('speaking-note');
-      if (speakEl) speakEl.innerHTML = '<strong>Speaking:</strong> Not scored yet — treat as practice activity until audio recording + STT are added.';
+      if (speakEl) {
+        if (snap.speaking_scores && snap.speaking_scores.samples > 0) {
+          const sp = snap.speaking_scores;
+          speakEl.innerHTML = '<strong>Speaking:</strong> ' + Math.round(sp.overall)
+            + '/100 from ' + sp.samples + ' recent recording' + (sp.samples === 1 ? '' : 's')
+            + ' — pronunciation + fluency.';
+        } else {
+          speakEl.innerHTML = '<strong>Speaking:</strong> Not scored yet — record a speaking practice to start tracking pronunciation + fluency.';
+        }
+      }
 
       // 단어 배정: 직접 쿼리
       loadAndRenderInterests();
