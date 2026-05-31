@@ -749,6 +749,17 @@ async function refreshSessionSafely() {
   // token expires (~1h), sign the user out cleanly and prompt re-auth
   // rather than spamming refresh failures.
   if (window._khImplicitNoRefresh) {
+    // Refresh-less implicit session: nothing to refresh. But the access
+    // token is still perfectly usable until it actually expires (~1h), so
+    // only sign the user out once it's (nearly) dead — signing out on the
+    // first 15-min tick would cut a working login short.
+    try {
+      var _sres = await sb.auth.getSession();
+      var _sess = _sres && _sres.data && _sres.data.session;
+      var _now = Math.floor(Date.now() / 1000);
+      var _expired = !_sess || (_sess.expires_at && _sess.expires_at <= _now + 60);
+      if (!_expired) return; // still valid — let the user keep going
+    } catch (_) {}
     if (!_sessionWarningShown) {
       _sessionWarningShown = true;
       if (typeof toast === 'function') {
@@ -1748,12 +1759,26 @@ async function checkSession() {
         // expire local state cleanly when the access token dies.
         try {
           if (!refreshToken) {
-            console.warn('[auth] no refresh_token in OAuth response — session will expire in ~1h with no auto-refresh');
-            // Single-use: skip setSession entirely. The user can keep
-            // using the page until the access_token expires; on next
-            // refresh-cycle attempt they'll be cleanly signed out
-            // rather than spammed with silent 401s.
+            console.warn('[auth] no refresh_token in OAuth response — establishing single-use session (expires ~1h, no auto-refresh)');
+            // Mark this as a refresh-less session so refreshSessionSafely()
+            // short-circuits to a clean local sign-out at expiry instead
+            // of retrying a refresh it can never satisfy.
             window._khImplicitNoRefresh = true;
+            // We MUST still establish the session. detectSessionInUrl is
+            // false, so if we skip setSession here the SDK holds NO session
+            // at all — getSession() returns null, supaUser stays null, and
+            // the user lands right back on the Sign In / Join Free banner
+            // despite a successful provider login ("re-login does nothing",
+            // owner-reported). setSession requires a refresh_token argument,
+            // so pass the access_token as a placeholder; our refresh path is
+            // guarded by _khImplicitNoRefresh and never actually uses it.
+            var setRes0 = await sb.auth.setSession({
+              access_token: accessToken,
+              refresh_token: accessToken,
+            });
+            if (setRes0 && setRes0.error) {
+              console.warn('setSession (no-refresh) returned error:', setRes0.error.message || setRes0.error);
+            }
           } else {
             var setRes = await sb.auth.setSession({
               access_token: accessToken,
