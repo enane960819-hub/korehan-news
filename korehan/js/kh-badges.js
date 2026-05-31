@@ -724,8 +724,78 @@ function trackSectionRead(section) {
   lsSet(K_READ_SECTIONS, sc);
 }
 
+// ── 서버 user_badges → localStorage 하이드레이트 ────────────────────────────
+// 'earned' lives in localStorage (kh_earned_badges), which is per-origin.
+// After the korehannews.com -> korehani.com migration (or any cache
+// clear / new device / incognito) that map is empty even though the
+// account already earned badges, so every one-time badge re-toasts and
+// re-syncs. We pull the durable server record into localStorage BEFORE
+// evaluating any badge, and queue checkBadges calls until that resolves.
+var _badgeHydrationDone = false;
+var _badgeEventQueue = [];
+
+function _flushBadgeQueue() {
+  if (!_badgeEventQueue.length) return;
+  var q = _badgeEventQueue.splice(0);
+  q.forEach(function(it){ checkBadges(it.event, it.payload); });
+}
+
+async function hydrateBadgesFromServer() {
+  try {
+    if (typeof supaUser !== 'undefined' && supaUser) {
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      if (sb) {
+        var res = await sb.from('user_badges')
+          .select('badge_id, earned_at').eq('user_id', supaUser.id);
+        if (res && res.data && res.data.length) {
+          var earned = getEarnedBadges();
+          var changed = false;
+          res.data.forEach(function(r){
+            if (r && r.badge_id && !earned[r.badge_id]) {
+              earned[r.badge_id] = { earnedAt: r.earned_at || new Date().toISOString() };
+              changed = true;
+            }
+          });
+          if (changed) lsSet(K_BADGES, earned);
+        }
+      }
+    }
+  } catch(e) {}
+  _badgeHydrationDone = true;
+  _flushBadgeQueue();
+}
+
+(function _initBadgeHydration(){
+  var waited = 0;
+  (function tick(){
+    if (typeof window !== 'undefined' && window._sessionChecked) {
+      hydrateBadgesFromServer();              // anon → no-op, logged-in → merge
+    } else if (waited < 30) {                  // up to ~3s for the session
+      waited++; setTimeout(tick, 100);
+    } else {
+      _badgeHydrationDone = true; _flushBadgeQueue();   // never block badges forever
+    }
+  })();
+})();
+
+// A late sign-in (logging in mid-session) should re-reconcile before the
+// next badge evaluation, so we don't toast something the account already has.
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('kh-auth-signed-in', function(){
+    _badgeHydrationDone = false;
+    hydrateBadgesFromServer();
+  });
+}
+
 // ── 뱃지 체크 메인 함수 ─────────────────────────────────────────────────────
 function checkBadges(event, payload) {
+  // Defer until the server's badge record has been merged in (see
+  // hydrateBadgesFromServer), otherwise a wiped per-origin localStorage
+  // re-awards every one-time badge.
+  if (!_badgeHydrationDone) {
+    _badgeEventQueue.push({ event: event, payload: payload });
+    return [];
+  }
   var earned = getEarnedBadges();
   var newBadges = [];
 

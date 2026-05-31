@@ -7620,8 +7620,13 @@ async function awardXP(actionKey, meta) {
       if (res.data.leveled_up) {
         showToast('Level Up! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
-      var gained = res.data.xp_gained || amount;
-      showXPToast(gained);
+      // Trust the server's reported grant. When award_xp dedupes a
+      // repeat action it returns xp_gained:0 — the old `|| amount`
+      // fallback turned that 0 into the full amount, so a duplicate
+      // still flashed "+15 XP" even though nothing was granted. Only
+      // toast when XP was actually awarded.
+      var gained = (typeof res.data.xp_gained === 'number') ? res.data.xp_gained : amount;
+      if (gained > 0) showXPToast(gained);
       var coinGained = (typeof res.data.coin_gained === 'number') ? res.data.coin_gained : coinAmt;
       if (coinGained > 0) {
         var coinBalanceAfter = res.data.coin_balance || null;
@@ -12175,7 +12180,65 @@ function _fjDoneCount() {
 function _fjAllDone() {
   return _fjDoneCount() >= _FJ_STEPS.length;
 }
+// First Journey state lives ONLY in localStorage, which is per-origin.
+// The korehannews.com -> korehani.com migration (and any cache clear /
+// new device / incognito) therefore presents an established account
+// with an empty journey, re-showing the widget AND — worse —
+// re-granting the per-step nyang via the direct coin upsert in
+// _fjMarkDoneNow. Before any step can be (re)marked we reconcile against
+// durable server state: if the account already has real activity, the
+// journey is silently completed with NO rewards. Until that reconcile
+// resolves, step marks are queued so a coin grant can't slip through.
+var _fjHydrated = false;
+var _fjMarkQueue = [];
+
 function _fjMarkDone(stepId) {
+  if (!_fjHydrated && typeof supaUser !== 'undefined' && supaUser) {
+    _fjMarkQueue.push(stepId);
+    return;
+  }
+  _fjMarkDoneNow(stepId);
+}
+
+function _fjFlushMarkQueue() {
+  if (!_fjMarkQueue.length) return;
+  var q = _fjMarkQueue.splice(0);
+  q.forEach(function(id){ _fjMarkDone(id); });
+}
+
+async function _fjHydrateFromServer() {
+  try {
+    if (typeof supaUser === 'undefined' || !supaUser) return;     // anon: nothing to reconcile
+    if (_fjAllDone()) return;                                       // already complete locally
+    var sb = getSupa(); if (!sb) return;
+    var established = false;
+    try {
+      var r = await sb.from('user_stats')
+        .select('articles_read, words_saved, quizzes_done')
+        .eq('user_id', supaUser.id).maybeSingle();
+      var st = r && r.data;
+      established = !!(st && ((st.articles_read || 0) >= 1
+        || (st.words_saved || 0) >= 1 || (st.quizzes_done || 0) >= 1));
+    } catch(_) {}
+    if (!established) {
+      try {
+        var b = await sb.from('user_badges').select('badge_id')
+          .eq('user_id', supaUser.id).limit(1);
+        established = !!(b && b.data && b.data.length);
+      } catch(_) {}
+    }
+    if (established) {
+      // Mark every step done WITHOUT routing through _fjMarkDoneNow,
+      // so no coins/XP are re-granted. Also suppress the widget.
+      var d = _fjGet();
+      _FJ_STEPS.forEach(function(s){ if (!d[s.id]) d[s.id] = Date.now(); });
+      _fjSet(d);
+      try { localStorage.setItem('kh_fj_dismissed', '1'); } catch(_) {}
+    }
+  } catch(e) {}
+}
+
+function _fjMarkDoneNow(stepId) {
   if (_fjIsComplete(stepId) || _fjAllDone()) return;
   var d = _fjGet();
   d[stepId] = Date.now();
@@ -12364,13 +12427,39 @@ function _fjShowResumeBtn() {
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     if (window._isAdmin) return;
-    _fjAutoCheck();
-    if (_fjAllDone()) return;
-    if (localStorage.getItem('kh_fj_dismissed')) {
-      _fjShowResumeBtn(); // dismissed → 작은 🎯 버튼만
-    } else {
-      _fjRenderWidget();  // 처음 → 전체 위젯
-    }
+    // Reconcile with durable server state first (see _fjHydrateFromServer)
+    // so a returning user whose per-origin localStorage was wiped doesn't
+    // re-see the widget or re-earn the step rewards. Anon / brand-new
+    // users resolve instantly to the normal flow.
+    var _fjProceed = function() {
+      _fjHydrated = true;
+      _fjFlushMarkQueue();
+      _fjAutoCheck();
+      if (_fjAllDone()) return;
+      if (localStorage.getItem('kh_fj_dismissed')) {
+        _fjShowResumeBtn(); // dismissed → 작은 🎯 버튼만
+      } else {
+        _fjRenderWidget();  // 처음 → 전체 위젯
+      }
+    };
+    // Wait for the auth session to resolve before deciding anon-vs-user,
+    // otherwise a logged-in user whose session lands late is treated as
+    // anon and the queued step marks flush (and can grant) before we
+    // reconcile. Poll _sessionChecked briefly (same pattern as the rest
+    // of the app), then hydrate if signed in.
+    var _fjWait = 0;
+    (function _fjGate() {
+      if (window._sessionChecked || _fjWait >= 30) {
+        if (typeof supaUser !== 'undefined' && supaUser) {
+          _fjHydrateFromServer().then(_fjProceed, _fjProceed);
+        } else {
+          _fjProceed();
+        }
+      } else {
+        _fjWait++;
+        setTimeout(_fjGate, 100);
+      }
+    })();
   }, 1500);
   // Belt-and-suspenders — if the admin flag arrives AFTER the
   // 1500ms init and the FAB / widget already rendered, sweep them
