@@ -158,8 +158,12 @@ async function awardXP(actionKey, meta) {
       if (res.data.leveled_up) {
         showToast('🎉 Level Up! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
-      var gained = res.data.xp_gained || amount;
-      showXPToast(gained);
+      // Trust the server's reported grant — a deduped repeat returns
+      // xp_gained:0, and the old `|| amount` fallback turned that into a
+      // phantom "+XP" toast. (Mirror of the fix in korehan-shared.js;
+      // this duplicate awardXP loads on mypage/profile/overview.)
+      var gained = (typeof res.data.xp_gained === 'number') ? res.data.xp_gained : amount;
+      if (gained > 0) showXPToast(gained);
       var coinGained = (typeof res.data.coin_gained === 'number') ? res.data.coin_gained : coinAmt;
       if (coinGained > 0) {
         var coinBalanceAfter = res.data.coin_balance || null;
