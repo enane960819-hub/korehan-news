@@ -1699,7 +1699,7 @@ function openStory(id) {
         + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
           + '<div style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:.04em">Tap any paragraph to reveal English ↓</div>'
           + '<div class="st-settings-wrap">'
-            + '<button onclick="sbOpen(\'' + String(s.id).replace(/'/g,"\\'") + '\')" title="Read as a storybook" style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:999px;border:none;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">📖 <span>Storybook</span></button>'
+            + ((Array.isArray(s.pages) && s.pages.length) ? '<button onclick="sbOpen(\'' + String(s.id).replace(/'/g,"\\'") + '\')" title="Read as a storybook" style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:999px;border:none;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">📖 <span>Storybook</span></button>' : '')
             + (hasEnBody ? '<button id="st-body-lang-ko" onclick="stToggleBodyLang(\'ko\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid #2255a4;background:#2255a4;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇰🇷 KO</button><button id="st-body-lang-en" onclick="stToggleBodyLang(\'en\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇺🇸 EN</button>' : '')
             + '<button class="st-settings-btn" onclick="stToggleSettings(event)" aria-label="Reading settings" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="settings" class="kh-ui-icon" aria-hidden="true"></i></button>'
             + '<div class="st-settings-pop" id="st-settings-pop" hidden>'
@@ -2462,10 +2462,13 @@ function _sbNormHotspot(h) {
   if (x > 1.5) x = x / 100;
   if (y > 1.5) y = y / 100;
   function arr(v){ return Array.isArray(v) ? v : []; }
+  var KINDS = { person:1, object:1, emotion:1, place:1, action:1, animal:1, food:1 };
+  var kind = String(h.kind || h.type || 'object').toLowerCase();
+  if (!KINDS[kind]) kind = 'object';
   return {
     x: Math.max(0.04, Math.min(0.96, x)),
     y: Math.max(0.05, Math.min(0.95, y)),
-    kind: h.kind || h.type || 'object',
+    kind: kind,
     label_ko: h.label_ko || h.ko || h.label || '',
     label_en: h.label_en || h.en || '',
     vocab: arr(h.vocab),
@@ -2684,7 +2687,9 @@ var _stSwipeStartT = 0;
 var _stSwipeValid  = false;
 (function hookStoryFeedSwipe() {
   document.addEventListener('touchstart', function(e) {
-    if (!_stOverlayOpen) { _stSwipeValid = false; return; }
+    // Storybook overlay sits above the reader — don't let swipes inside it
+    // flip the story underneath.
+    if (!_stOverlayOpen || (typeof _sbState !== 'undefined' && _sbState.open)) { _stSwipeValid = false; return; }
     // Pinch-to-zoom uses two fingers and each drifts vertically while
     // just resizing — treating that as a swipe was causing iPhone
     // users to keep jumping stories accidentally.
@@ -2698,6 +2703,7 @@ var _stSwipeValid  = false;
     if (!_stSwipeValid) return;
     _stSwipeValid = false;
     if (!_stOverlayOpen) return;
+    if (typeof _sbState !== 'undefined' && _sbState.open) return;
     if (!window._currentStory) return;
     if (!e.changedTouches || !e.changedTouches.length) return;
     // Other fingers still down? Mid-pinch, skip.
