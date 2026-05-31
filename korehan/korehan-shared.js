@@ -1683,6 +1683,20 @@ async function checkSession() {
   var hasCode = window.location.search.includes('code=');
   var hasHash = window.location.hash && window.location.hash.includes('access_token');
 
+  // ── Auth diagnostic (additive — records, never changes behavior) ──
+  // Mobile has no usable console, so when login misbehaves we capture
+  // exactly where the OAuth round-trip breaks and surface it on-screen.
+  // Shown automatically after an OAuth return; also viewable later on
+  // any page via ?authdebug=1 (reads the last stored capture).
+  var _diag = { t: new Date().toISOString(), page: window.location.pathname, hasHash: !!hasHash, hasCode: !!hasCode };
+  window._khAuthDiag = _diag;
+  if (/[?&]authdebug=1/.test(window.location.search) && !hasCode && !hasHash) {
+    try {
+      var _stored = JSON.parse(localStorage.getItem('kh_auth_diag_last') || 'null');
+      if (_stored) setTimeout(function(){ if (typeof _khShowAuthDiag === 'function') _khShowAuthDiag(_stored, true); }, 400);
+    } catch(_) {}
+  }
+
   // OAuth provider can also return an error (user cancelled the
   // Google chooser, third-party cookies blocked, etc.). Surface it
   // as a toast instead of silently leaving the user on the page
@@ -1719,6 +1733,7 @@ async function checkSession() {
       } catch(e) {
         exchangeErr = e;
       }
+      _diag.exchangeErr = exchangeErr ? (exchangeErr.message || String(exchangeErr)) : null;
       if (exchangeErr) {
         console.warn('exchangeCodeForSession failed:', exchangeErr.message || exchangeErr);
       }
@@ -1731,6 +1746,8 @@ async function checkSession() {
       var hashParams = new URLSearchParams(window.location.hash.slice(1));
       var accessToken = hashParams.get('access_token');
       var refreshToken = hashParams.get('refresh_token');
+      _diag.at = accessToken ? (String(accessToken).slice(0,6) + '…len=' + String(accessToken).length) : 'MISSING';
+      _diag.rt = refreshToken ? ('present len=' + String(refreshToken).length) : 'MISSING';
       // State validation removed. Three separate problems pushed me
       // off the validation path:
       //   1. Owner-reported: Samsung Internet privacy mode wipes
@@ -1776,6 +1793,9 @@ async function checkSession() {
               access_token: accessToken,
               refresh_token: accessToken,
             });
+            _diag.setSession = 'no-refresh(placeholder)';
+            _diag.setSessionErr = (setRes0 && setRes0.error) ? (setRes0.error.message || String(setRes0.error)) : null;
+            _diag.setSessionGotSession = !!(setRes0 && setRes0.data && setRes0.data.session);
             if (setRes0 && setRes0.error) {
               console.warn('setSession (no-refresh) returned error:', setRes0.error.message || setRes0.error);
             }
@@ -1784,11 +1804,15 @@ async function checkSession() {
               access_token: accessToken,
               refresh_token: refreshToken,
             });
+            _diag.setSession = 'with-refresh';
+            _diag.setSessionErr = (setRes && setRes.error) ? (setRes.error.message || String(setRes.error)) : null;
+            _diag.setSessionGotSession = !!(setRes && setRes.data && setRes.data.session);
             if (setRes && setRes.error) {
               console.warn('setSession returned error:', setRes.error.message || setRes.error);
             }
           }
         } catch(setErr) {
+          _diag.setSessionThrew = setErr.message || String(setErr);
           console.warn('setSession threw:', setErr.message || setErr);
         }
       }
@@ -1804,6 +1828,8 @@ async function checkSession() {
       new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('getSession timeout')); }, 8000); })
     ]);
     var data = _getSessionResult.data;
+    _diag.getSession = !!(data && data.session);
+    _diag.email = (data && data.session && data.session.user) ? data.session.user.email : null;
     if (data && data.session && data.session.user) {
       supaUser = data.session.user;
       updateAuthUI();
@@ -1831,11 +1857,61 @@ async function checkSession() {
       try { _khShowAuthFailureBanner(); } catch(_) {}
     }
   } catch(e) {
+    _diag.getSessionErr = e.message || String(e);
     console.warn('getSession failed or timed out:', e.message || e);
   }
   window._sessionChecked = true;
   updateAuthUI();
+
+  // Persist + surface the diagnostic. Auto-shows right after an OAuth
+  // return so the user can screenshot exactly where the flow broke.
+  try { localStorage.setItem('kh_auth_diag_last', JSON.stringify(_diag)); } catch(_) {}
+  if ((hasHash || hasCode) && typeof _khShowAuthDiag === 'function') {
+    try { _khShowAuthDiag(_diag, false); } catch(_) {}
+  }
 }
+
+// On-screen auth diagnostic panel (mobile has no console). Pure display.
+function _khShowAuthDiag(d, fromStored) {
+  try {
+    d = d || {};
+    var old = document.getElementById('kh-auth-diag'); if (old) old.remove();
+    var lines = [
+      'page:    ' + (d.page || ''),
+      'time:    ' + (d.t || '') + (fromStored ? '  (last saved)' : ''),
+      'hasHash: ' + d.hasHash + '    hasCode: ' + d.hasCode,
+      'access_token:  ' + (d.at != null ? d.at : '(n/a)'),
+      'refresh_token: ' + (d.rt != null ? d.rt : '(n/a)'),
+      'setSession:    ' + (d.setSession || '(not called)')
+        + (d.setSessionErr ? '  ⚠ERROR=' + d.setSessionErr : (d.setSession ? '  ok' : ''))
+        + (d.setSessionGotSession != null ? '  gotSession=' + d.setSessionGotSession : ''),
+      (d.setSessionThrew ? 'setSession THREW: ' + d.setSessionThrew : ''),
+      (d.exchangeErr ? 'exchangeCode ⚠ERROR: ' + d.exchangeErr : ''),
+      '➜ getSession.session: ' + (d.getSession === true ? 'YES' : (d.getSession === false ? 'NO' : '(unknown)'))
+        + (d.email ? '  (' + d.email + ')' : ''),
+      (d.getSessionErr ? 'getSession ⚠ERROR: ' + d.getSessionErr : '')
+    ].filter(Boolean);
+    var txt = '🔐 KOREHANI AUTH DIAGNOSTIC\n' + lines.join('\n');
+    var box = document.createElement('div');
+    box.id = 'kh-auth-diag';
+    box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:100000;background:#0f172a;color:#e2e8f0;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;padding:12px 14px;border-radius:12px;box-shadow:0 12px 44px rgba(0,0,0,.55);max-height:62vh;overflow:auto';
+    box.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      + '<b style="color:#7dd3fc;font-size:12px">🔐 AUTH DIAGNOSTIC</b>'
+      + '<button id="kh-diag-copy" style="margin-left:auto;border:0;background:#2563eb;color:#fff;padding:5px 12px;border-radius:7px;font-weight:800;cursor:pointer;font-family:inherit">Copy</button>'
+      + '<button id="kh-diag-x" style="border:0;background:#475569;color:#fff;padding:5px 11px;border-radius:7px;cursor:pointer;font-family:inherit">✕</button>'
+      + '</div>'
+      + '<div id="kh-diag-body" style="white-space:pre-wrap;word-break:break-all"></div>';
+    document.body.appendChild(box);
+    box.querySelector('#kh-diag-body').textContent = lines.join('\n');
+    box.querySelector('#kh-diag-x').onclick = function(){ box.remove(); };
+    box.querySelector('#kh-diag-copy').onclick = function(){
+      try { navigator.clipboard.writeText(txt); this.textContent = 'Copied ✓'; }
+      catch(_) { this.textContent = 'select+copy'; }
+    };
+  } catch(_) {}
+}
+window._khShowAuthDiag = _khShowAuthDiag;
 
 // UI 업데이트
 function updateAuthUI() {
