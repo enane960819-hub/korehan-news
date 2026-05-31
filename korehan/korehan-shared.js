@@ -763,6 +763,31 @@ setInterval(function () {
   if (typeof supaUser !== 'undefined' && supaUser) refreshSessionSafely();
 }, 15 * 60 * 1000);
 
+// Auth-UI reconciler. The implicit OAuth return + the SDK's async session
+// hand-off mean the topbar sometimes renders one state behind, so a fresh
+// login or sign-out looked like "nothing happened until I refresh". This
+// re-reads the real session and repaints the header whenever it could have
+// changed: right after load, on window focus, and on bfcache restore. It's
+// cheap (getSession reads from memory/storage) and idempotent — repaints
+// only when the user actually changed (always once on first run).
+var _khReconciledOnce = false;
+function _khAuthUIReconcile() {
+  var sb = getSupa();
+  if (!sb) return;
+  sb.auth.getSession().then(function (r) {
+    var sess = r && r.data && r.data.session;
+    var newUser = (sess && sess.user) ? sess.user : null;
+    var was = supaUser;
+    var changed = (!!newUser) !== (!!was) || (newUser && was && newUser.id !== was.id);
+    supaUser = newUser;
+    if (changed || !_khReconciledOnce) { _khReconciledOnce = true; try { updateAuthUI(); } catch (_) {} }
+  }).catch(function () {});
+}
+window.addEventListener('focus', _khAuthUIReconcile);
+window.addEventListener('pageshow', _khAuthUIReconcile);
+window.addEventListener('kh-auth-signed-in', _khAuthUIReconcile);
+window.addEventListener('kh-auth-signed-out', _khAuthUIReconcile);
+
 // Google 로그인
 async function signInWithGoogle() {
   var sb = getSupa();
@@ -1518,14 +1543,16 @@ async function signOut(options) {
     return;
   }
 
+  // Optimistic: flip the UI to signed-out immediately, THEN do the network
+  // sign-out. Awaiting the revoke round-trip first made the header sit on
+  // the old (signed-in) state until the request returned — "logout doesn't
+  // show until I refresh". The local session is cleared either way.
   var sb = getSupa();
-  if (sb) {
-    await sb.auth.signOut({ scope: scope });
-  }
-  _khClearUserState();
   supaUser = null;
+  _khClearUserState();
   updateAuthUI();
   toast(message);
+  if (sb) { try { sb.auth.signOut({ scope: scope }).catch(function(){}); } catch(_) {} }
 }
 
 // Cross-tab data sync. When the same user has My Page open in tab A and
@@ -1605,7 +1632,7 @@ async function checkSession() {
     } else if (event === 'SIGNED_IN') {
       supaUser = session ? session.user : null;
       _sessionWarningShown = false;
-      closeAuthModal();
+      try { closeAuthModal(); } catch(_) {}
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
@@ -1722,6 +1749,10 @@ async function checkSession() {
   }
   window._sessionChecked = true;
   updateAuthUI();
+  // Belt-and-suspenders: if the SDK delivers the session a beat late
+  // (common right after an OAuth redirect), these cheap re-checks repaint
+  // the header so the user never has to refresh to see they're signed in.
+  [350, 1000, 2500].forEach(function (ms) { setTimeout(_khAuthUIReconcile, ms); });
 }
 
 // UI 업데이트
