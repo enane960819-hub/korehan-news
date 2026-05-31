@@ -276,6 +276,91 @@
   .st-container{padding:0 14px 48px;}
 }
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══════════════════════════════════════════════════════════════
+   STORYBOOK READER — paginated picture-book mode. Each page shows a
+   full illustration with tappable pins (people/objects/emotions);
+   tapping a pin reveals related Korean words / expressions / feelings.
+   Lives in its own full-screen overlay (#sb-overlay) so it doesn't
+   entangle with the scroll/progress/hover wiring on the classic reader.
+   ══════════════════════════════════════════════════════════════ */
+.sb-overlay{position:fixed;inset:0;z-index:9500;background:radial-gradient(120% 120% at 50% 0%,#2a2342 0%,#16121f 60%,#0c0a12 100%);display:flex;flex-direction:column;animation:sbFade .2s ease-out;}
+.sb-overlay.hidden{display:none;}
+@keyframes sbFade{from{opacity:0}to{opacity:1}}
+.sb-topbar{display:flex;align-items:center;gap:12px;padding:14px 18px;color:#fff;flex:0 0 auto;}
+.sb-topbar .sb-title{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f3eafe;}
+.sb-icon-btn{width:38px;height:38px;flex:0 0 auto;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;line-height:1;transition:background .15s;}
+.sb-icon-btn:hover{background:rgba(255,255,255,.2);}
+.sb-counter{font-size:12px;font-weight:700;color:rgba(243,234,254,.7);letter-spacing:.04em;flex:0 0 auto;}
+
+/* Stage = the book spread. A soft "page" frame holds the illustration. */
+.sb-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 16px 0;overflow:hidden;}
+.sb-book{position:relative;width:100%;max-width:680px;height:100%;display:flex;flex-direction:column;}
+.sb-art-wrap{position:relative;width:100%;border-radius:18px 18px 0 0;overflow:hidden;background:#1b1726;flex:0 0 auto;aspect-ratio:4/3;box-shadow:0 -1px 0 rgba(255,255,255,.06) inset;}
+.sb-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+.sb-art-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;gap:8px;background:#1b1726;}
+.sb-art-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 55%,rgba(0,0,0,.28) 100%);pointer-events:none;}
+
+/* Pins — pulsing dots positioned by normalized x/y over the art. */
+.sb-pin{position:absolute;width:30px;height:30px;transform:translate(-50%,-50%);border-radius:50%;border:none;cursor:pointer;padding:0;z-index:3;background:transparent;}
+.sb-pin::before{content:'';position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,.92);box-shadow:0 2px 10px rgba(0,0,0,.5);}
+.sb-pin::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,255,255,.8);animation:sbPulse 1.8s ease-out infinite;}
+@keyframes sbPulse{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+.sb-pin .sb-pin-emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;z-index:2;}
+.sb-pin.kind-person::before{background:#fde68a;}
+.sb-pin.kind-object::before{background:#bfdbfe;}
+.sb-pin.kind-emotion::before{background:#fbcfe8;}
+.sb-pin.kind-place::before{background:#bbf7d0;}
+.sb-pin.kind-action::before{background:#ddd6fe;}
+.sb-pin.is-open::after{animation:none;border-color:#7c3aed;}
+.sb-pin.is-open{z-index:6;}
+
+/* Hotspot popup card — anchored near the tapped pin, clamped to stage. */
+.sb-pop{position:absolute;z-index:7;width:min(280px,82vw);background:#fff;border-radius:16px;box-shadow:0 18px 48px rgba(0,0,0,.4);padding:14px 15px;animation:sbPopIn .16s cubic-bezier(.22,1,.36,1);}
+@keyframes sbPopIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+.sb-pop-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.sb-pop-kind{font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;color:#fff;flex:0 0 auto;}
+.kind-person .sb-pop-kind,.sb-pop-kind.person{background:#d97706;}
+.kind-object .sb-pop-kind,.sb-pop-kind.object{background:#2563eb;}
+.kind-emotion .sb-pop-kind,.sb-pop-kind.emotion{background:#db2777;}
+.kind-place .sb-pop-kind,.sb-pop-kind.place{background:#16a34a;}
+.kind-action .sb-pop-kind,.sb-pop-kind.action{background:#7c3aed;}
+.sb-pop-label{font-family:'Noto Serif KR',serif;font-size:16px;font-weight:800;color:#0f172a;line-height:1.2;}
+.sb-pop-label .sb-pop-en{display:block;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:#94a3b8;margin-top:1px;}
+.sb-pop-close{margin-left:auto;border:none;background:#f1f5f9;color:#64748b;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:13px;line-height:1;flex:0 0 auto;}
+.sb-pop-sec{margin-top:10px;}
+.sb-pop-sec-h{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#94a3b8;margin-bottom:5px;display:flex;align-items:center;gap:5px;}
+.sb-pop-item{display:flex;align-items:baseline;gap:7px;padding:5px 8px;border-radius:8px;background:#f8fafc;margin-bottom:4px;}
+.sb-pop-item:last-child{margin-bottom:0;}
+.sb-pop-ko{font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:700;color:#7c3aed;flex:0 0 auto;}
+.sb-pop-rom{font-size:10px;color:#cbd5e1;font-style:italic;flex:0 0 auto;}
+.sb-pop-mean{font-size:12px;color:#475569;flex:1;line-height:1.4;}
+.sb-pop-save{margin-left:auto;border:none;background:#ede9fe;color:#6d28d9;width:22px;height:22px;border-radius:50%;font-size:14px;font-weight:800;cursor:pointer;line-height:1;flex:0 0 auto;}
+.sb-pop-save.is-saved{background:#7c3aed;color:#fff;}
+
+/* Text panel below the art — the page's paragraph, KO with EN reveal. */
+.sb-textpanel{flex:1;min-height:0;overflow-y:auto;background:#fbf7ef;border-radius:0 0 18px 18px;padding:16px 18px 18px;-webkit-overflow-scrolling:touch;}
+.sb-text-ko{font-family:'Noto Serif KR',serif;font-size:16px;line-height:1.95;color:#2c2417;white-space:pre-line;}
+.sb-text-en{margin-top:12px;padding-top:12px;border-top:1px dashed #d6c8a8;font-size:13px;line-height:1.65;color:#7a6a4a;white-space:pre-line;display:none;}
+.sb-textpanel.show-en .sb-text-en{display:block;}
+.sb-text-toggle{margin-top:12px;border:1.5px solid #e3d8bf;background:#fff;color:#8a7a55;font-size:11px;font-weight:800;border-radius:999px;padding:6px 14px;cursor:pointer;font-family:inherit;}
+.sb-hint{font-size:10px;font-weight:700;color:#b8a884;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+
+/* Footer nav — prev / dots / next. */
+.sb-nav{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:16px;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));}
+.sb-nav-btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:background .15s,opacity .15s;}
+.sb-nav-btn:hover{background:rgba(255,255,255,.22);}
+.sb-nav-btn:disabled{opacity:.32;cursor:default;}
+.sb-dots{display:flex;align-items:center;gap:6px;max-width:42vw;overflow-x:auto;scrollbar-width:none;}
+.sb-dots::-webkit-scrollbar{display:none;}
+.sb-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.28);border:none;cursor:pointer;flex:0 0 auto;padding:0;transition:background .15s,transform .15s;}
+.sb-dot.on{background:#f3eafe;transform:scale(1.35);}
+@media(max-width:600px){
+  .sb-stage{padding:2px 10px 0;}
+  .sb-text-ko{font-size:15px;}
+  .sb-nav-btn{padding:9px 15px;font-size:12px;}
+  .sb-topbar{padding:10px 14px;}
+}
 </style>
 </head>
 <body class="kh-page-stories">
@@ -308,6 +393,26 @@
   </div>
   <!-- Story grid -->
   <div class="st-grid" id="st-grid"></div>
+</div>
+
+<!-- Storybook (picture-book) reader overlay — populated by sbOpen(). -->
+<div class="sb-overlay hidden" id="sb-overlay">
+  <div class="sb-topbar">
+    <button class="sb-icon-btn" onclick="sbClose()" aria-label="Close storybook">✕</button>
+    <div class="sb-title" id="sb-title"></div>
+    <div class="sb-counter" id="sb-counter"></div>
+  </div>
+  <div class="sb-stage">
+    <div class="sb-book">
+      <div class="sb-art-wrap" id="sb-art-wrap"></div>
+      <div class="sb-textpanel" id="sb-textpanel"></div>
+    </div>
+  </div>
+  <div class="sb-nav">
+    <button class="sb-nav-btn" id="sb-prev" onclick="sbPrev()">‹ Prev</button>
+    <div class="sb-dots" id="sb-dots"></div>
+    <button class="sb-nav-btn" id="sb-next" onclick="sbNext()">Next ›</button>
+  </div>
 </div>
 
 <div class="st-overlay hidden" id="st-overlay" onclick="if(event.target===this)closeSt()">
@@ -1594,6 +1699,7 @@ function openStory(id) {
         + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
           + '<div style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:.04em">Tap any paragraph to reveal English ↓</div>'
           + '<div class="st-settings-wrap">'
+            + '<button onclick="sbOpen(\'' + String(s.id).replace(/'/g,"\\'") + '\')" title="Read as a storybook" style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:999px;border:none;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">📖 <span>Storybook</span></button>'
             + (hasEnBody ? '<button id="st-body-lang-ko" onclick="stToggleBodyLang(\'ko\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid #2255a4;background:#2255a4;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇰🇷 KO</button><button id="st-body-lang-en" onclick="stToggleBodyLang(\'en\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇺🇸 EN</button>' : '')
             + '<button class="st-settings-btn" onclick="stToggleSettings(event)" aria-label="Reading settings" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="settings" class="kh-ui-icon" aria-hidden="true"></i></button>'
             + '<div class="st-settings-pop" id="st-settings-pop" hidden>'
@@ -2285,7 +2391,286 @@ function closeSt(fromPop) {
   }
 }
 window.addEventListener('popstate', function() {
+  // The storybook sits ABOVE the classic reader in the history stack.
+  // _sbSuppressPop is set when the storybook's own ✕ calls history.back()
+  // so that self-triggered pop doesn't also tear down the reader beneath.
+  if (typeof _sbSuppressPop !== 'undefined' && _sbSuppressPop) { _sbSuppressPop = false; return; }
+  if (typeof _sbState !== 'undefined' && _sbState.open) { sbClose(true); return; }
   if (_stOverlayOpen) closeSt(true);
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   STORYBOOK READER — picture-book mode.
+
+   Consumes story.pages (authored by the Phase-2 AI pipeline):
+     pages: [{ text_ko, text_en, image_url, image_prompt,
+               hotspots:[{ x, y, kind, label_ko, label_en,
+                           vocab:[{ko,rom,en}], expressions:[{ko,en}],
+                           emotions:[{ko,en}] }] }]
+   When a story has no authored pages yet, _sbDerivePages() builds a
+   usable book from the existing body + thumbnail + vocab so the mode
+   works for every story today; the AI pipeline later replaces the
+   placeholder art + roughly-placed pins with real illustrations and
+   vision-detected hotspot coordinates.
+   ══════════════════════════════════════════════════════════════════ */
+var _sbState = { story: null, pages: [], idx: 0, open: false, openPin: -1 };
+var _sbSuppressPop = false;
+var SB_KIND_EMOJI = { person:'🧑', object:'🧳', emotion:'😊', place:'🏞️', action:'🏃', animal:'🐾', food:'🍚' };
+
+function sbOpen(id) {
+  var s = (typeof STORIES !== 'undefined' ? STORIES : []).find(function(x){ return String(x.id) === String(id); })
+        || window._currentStory;
+  if (!s) return;
+  if (typeof _hydrateStoryAiFromCache === 'function') { try { _hydrateStoryAiFromCache(s); } catch(e){} }
+  var pages = _sbBuildPages(s);
+  if (!pages.length) return;
+  _sbState = { story: s, pages: pages, idx: 0, open: true, openPin: -1 };
+
+  document.getElementById('sb-title').textContent = s.title || s.title_en || 'Storybook';
+  document.getElementById('sb-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  document.body.classList.add('kh-reading-page');
+
+  // Back button closes the storybook (not the page) — push a history entry.
+  if (!history.state || !history.state.sbOverlay) {
+    try { history.pushState({ sbOverlay: true }, '', window.location.pathname + window.location.search + '#sb=' + encodeURIComponent(s.id)); } catch(e) {}
+  }
+  sbGoto(0);
+}
+
+function _sbBuildPages(s) {
+  if (s && Array.isArray(s.pages) && s.pages.length) {
+    return s.pages.map(function(p, i){
+      return {
+        text_ko: p.text_ko || p.ko || p.text || '',
+        text_en: p.text_en || p.en || '',
+        image_url: p.image_url || p.image || '',
+        hotspots: (Array.isArray(p.hotspots) ? p.hotspots : []).map(_sbNormHotspot).filter(Boolean),
+        _idx: i
+      };
+    });
+  }
+  return _sbDerivePages(s);
+}
+
+function _sbNormHotspot(h) {
+  if (!h) return null;
+  var x = Number(h.x), y = Number(h.y);
+  if (!isFinite(x)) x = 0.5;
+  if (!isFinite(y)) y = 0.5;
+  // Accept 0–100 ints too.
+  if (x > 1.5) x = x / 100;
+  if (y > 1.5) y = y / 100;
+  function arr(v){ return Array.isArray(v) ? v : []; }
+  return {
+    x: Math.max(0.04, Math.min(0.96, x)),
+    y: Math.max(0.05, Math.min(0.95, y)),
+    kind: h.kind || h.type || 'object',
+    label_ko: h.label_ko || h.ko || h.label || '',
+    label_en: h.label_en || h.en || '',
+    vocab: arr(h.vocab),
+    expressions: arr(h.expressions || h.expr),
+    emotions: arr(h.emotions || h.feelings)
+  };
+}
+
+// Fallback book from existing data — paragraphs become pages, the story
+// thumbnail is the placeholder illustration, and a few of the page's
+// vocab terms become pins at preset spots so the tap-to-learn flow is
+// demonstrable before real art exists.
+function _sbDerivePages(s) {
+  var koParas = String(s.body || '').split(/\n\s*\n/).map(function(t){ return t.trim(); }).filter(Boolean);
+  if (!koParas.length && s.body) koParas = [String(s.body).trim()];
+  var enSrc = s.body_en || s.body_english || s.translation || '';
+  var enParas = String(enSrc).split(/\n\s*\n/).map(function(t){ return t.trim(); }).filter(Boolean);
+  var thumb = s.thumbnail_url || s.thumbnail || s.image_url || s.image || s.thumb || '';
+  var vocab = Array.isArray(s.vocab) ? s.vocab.slice() : [];
+  var POS = [[0.30,0.40],[0.68,0.52],[0.50,0.30],[0.40,0.66],[0.74,0.34]];
+  return koParas.map(function(ko, i){
+    // Pins: vocab terms whose word appears in this paragraph (best match),
+    // else round-robin from the story vocab list.
+    var hits = vocab.filter(function(v){ var w = v && (v.ko||v.word); return w && ko.indexOf(w) !== -1; });
+    if (!hits.length) hits = vocab.slice(i*2, i*2+2);
+    hits = hits.slice(0, 3);
+    var hotspots = hits.map(function(v, j){
+      var ko_ = v.ko || v.word || '';
+      var en_ = v.en || v.meaning || '';
+      var rom_ = v.rom || v.reading || '';
+      return _sbNormHotspot({
+        x: POS[j % POS.length][0], y: POS[j % POS.length][1],
+        kind: 'object', label_ko: ko_, label_en: en_,
+        vocab: [{ ko: ko_, rom: rom_, en: en_ }]
+      });
+    });
+    return { text_ko: ko, text_en: enParas[i] || '', image_url: thumb, hotspots: hotspots, _idx: i };
+  });
+}
+
+function sbGoto(i) {
+  if (!_sbState.open) return;
+  var n = _sbState.pages.length;
+  _sbState.idx = Math.max(0, Math.min(n - 1, i));
+  sbClosePop();
+  sbRender();
+}
+function sbNext() { sbGoto(_sbState.idx + 1); }
+function sbPrev() { sbGoto(_sbState.idx - 1); }
+
+function sbRender() {
+  var p = _sbState.pages[_sbState.idx];
+  if (!p) return;
+  var n = _sbState.pages.length;
+
+  // Counter + nav state
+  document.getElementById('sb-counter').textContent = (_sbState.idx + 1) + ' / ' + n;
+  var prevB = document.getElementById('sb-prev'), nextB = document.getElementById('sb-next');
+  prevB.disabled = _sbState.idx === 0;
+  nextB.disabled = _sbState.idx === n - 1;
+
+  // Dots
+  var dots = '';
+  for (var d = 0; d < n; d++) dots += '<button class="sb-dot' + (d === _sbState.idx ? ' on' : '') + '" onclick="sbGoto(' + d + ')" aria-label="Page ' + (d+1) + '"></button>';
+  document.getElementById('sb-dots').innerHTML = dots;
+
+  // Art + pins
+  var wrap = document.getElementById('sb-art-wrap');
+  var art = p.image_url
+    ? '<img class="sb-art" src="' + escapeHtml(p.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
+    : '<div class="sb-art-loading">🎨 삽화 준비 중…</div>';
+  var pins = (p.hotspots || []).map(function(h, hi){
+    var emoji = SB_KIND_EMOJI[h.kind] || '';
+    return '<button class="sb-pin kind-' + escapeHtml(h.kind) + '" style="left:' + (h.x*100).toFixed(2) + '%;top:' + (h.y*100).toFixed(2) + '%" onclick="sbPinTap(' + hi + ',event)" aria-label="' + escapeHtml(h.label_en || h.label_ko || 'detail') + '">'
+      + (emoji ? '<span class="sb-pin-emoji">' + emoji + '</span>' : '')
+      + '</button>';
+  }).join('');
+  wrap.innerHTML = art + '<div class="sb-art-scrim"></div>' + pins;
+
+  // Text panel
+  var panel = document.getElementById('sb-textpanel');
+  panel.classList.remove('show-en');
+  panel.scrollTop = 0;
+  var hasPins = (p.hotspots || []).length;
+  panel.innerHTML =
+    '<div class="sb-hint">' + (hasPins ? '✨ Tap the glowing pins on the picture' : '📖 Read the page') + '</div>'
+    + '<div class="sb-text-ko" data-hover-skip="1">' + escapeHtml(p.text_ko || '') + '</div>'
+    + (p.text_en ? '<div class="sb-text-en">' + escapeHtml(p.text_en) + '</div>'
+                   + '<button class="sb-text-toggle" onclick="sbToggleEn(this)">🇺🇸 Show English</button>' : '');
+}
+
+function sbToggleEn(btn) {
+  var panel = document.getElementById('sb-textpanel');
+  var on = panel.classList.toggle('show-en');
+  if (btn) btn.textContent = on ? '🇰🇷 Hide English' : '🇺🇸 Show English';
+}
+
+function sbPinTap(hi, ev) {
+  if (ev) ev.stopPropagation();
+  var p = _sbState.pages[_sbState.idx];
+  var h = p && p.hotspots && p.hotspots[hi];
+  if (!h) return;
+  var wrap = document.getElementById('sb-art-wrap');
+  var wasOpen = (_sbState.openPin === hi);
+  sbClosePop();
+  if (wasOpen) return;  // tapping the open pin again closes it
+  _sbState.openPin = hi;
+  var pinEls = wrap.querySelectorAll('.sb-pin');
+  if (pinEls[hi]) pinEls[hi].classList.add('is-open');
+
+  function section(title, emoji, items, mapper) {
+    if (!items || !items.length) return '';
+    return '<div class="sb-pop-sec"><div class="sb-pop-sec-h">' + emoji + ' ' + title + '</div>' + items.map(mapper).join('') + '</div>';
+  }
+  function esc(v){ return String(v == null ? '' : v).replace(/'/g, "\\'").replace(/"/g,'&quot;'); }
+  var vocabHtml = section('Words', '📚', h.vocab, function(v){
+    var ko = v.ko || v.word || '', rom = v.rom || v.reading || '', en = v.en || v.meaning || '';
+    return '<div class="sb-pop-item"><span class="sb-pop-ko">' + escapeHtml(ko) + '</span>'
+      + (rom ? '<span class="sb-pop-rom">' + escapeHtml(rom) + '</span>' : '')
+      + '<span class="sb-pop-mean">' + escapeHtml(en) + '</span>'
+      + '<button class="sb-pop-save" title="Save word" onclick="sbSaveWord(this,\'' + esc(ko) + '\',\'' + esc(rom) + '\',\'' + esc(en) + '\')">+</button></div>';
+  });
+  var exprHtml = section('Expressions', '⭐', h.expressions, function(e){
+    var ko = e.ko || e.expression || '', en = e.en || e.meaning || '';
+    return '<div class="sb-pop-item"><span class="sb-pop-ko">' + escapeHtml(ko) + '</span><span class="sb-pop-mean">' + escapeHtml(en) + '</span></div>';
+  });
+  var emoHtml = section('Feelings', '💗', h.emotions, function(e){
+    var ko = e.ko || e.emotion || '', en = e.en || e.meaning || '';
+    return '<div class="sb-pop-item"><span class="sb-pop-ko">' + escapeHtml(ko) + '</span><span class="sb-pop-mean">' + escapeHtml(en) + '</span></div>';
+  });
+  var body = vocabHtml + exprHtml + emoHtml
+    || '<div class="sb-pop-sec"><div class="sb-pop-mean" style="padding:4px 0">No notes for this element yet.</div></div>';
+
+  var pop = document.createElement('div');
+  pop.className = 'sb-pop kind-' + h.kind;
+  pop.innerHTML =
+    '<div class="sb-pop-head">'
+      + '<span class="sb-pop-kind ' + escapeHtml(h.kind) + '">' + escapeHtml(h.kind) + '</span>'
+      + '<div class="sb-pop-label">' + escapeHtml(h.label_ko || h.label_en || '') + (h.label_en && h.label_ko ? '<span class="sb-pop-en">' + escapeHtml(h.label_en) + '</span>' : '') + '</div>'
+      + '<button class="sb-pop-close" onclick="sbClosePop()" aria-label="Close">✕</button>'
+    + '</div>' + body;
+  // Append to the overlay (not the overflow-hidden art box) so a tall
+  // popup never gets clipped; position it from the pin's real on-screen
+  // rect. #sb-overlay is position:fixed inset:0, so viewport coords map
+  // directly to absolute coords inside it.
+  var overlay = document.getElementById('sb-overlay');
+  overlay.appendChild(pop);
+  requestAnimationFrame(function(){
+    var pinEl = (wrap.querySelectorAll('.sb-pin'))[hi];
+    if (!pinEl) return;
+    var r = pinEl.getBoundingClientRect();
+    var pw = pop.offsetWidth, ph = pop.offsetHeight;
+    var vw = overlay.clientWidth, vh = overlay.clientHeight;
+    var cx = r.left + r.width / 2;
+    var left = Math.max(8, Math.min(vw - pw - 8, cx - pw / 2));
+    var below = r.bottom + 12, above = r.top - ph - 12;
+    var top = (below + ph + 8 <= vh) ? below : above;   // prefer below, flip up if no room
+    top = Math.max(8, Math.min(vh - ph - 8, top));
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+  });
+}
+
+function sbClosePop() {
+  var overlay = document.getElementById('sb-overlay');
+  if (!overlay) return;
+  var pop = overlay.querySelector('.sb-pop');
+  if (pop) pop.remove();
+  overlay.querySelectorAll('.sb-pin.is-open').forEach(function(el){ el.classList.remove('is-open'); });
+  _sbState.openPin = -1;
+}
+
+// Save a word from a hotspot popup — reuses the classic reader's saver
+// when present, and reflects saved state on the little + button.
+function sbSaveWord(btn, ko, rom, en) {
+  if (typeof toggleStorySave === 'function') {
+    try { toggleStorySave(btn, ko, rom, en); } catch(e) {}
+  }
+  btn.classList.toggle('is-saved');
+  btn.textContent = btn.classList.contains('is-saved') ? '✓' : '+';
+}
+
+function sbClose(fromPop) {
+  _sbState.open = false;
+  sbClosePop();
+  document.getElementById('sb-overlay').classList.add('hidden');
+  // The classic reader may still be open underneath; only release the
+  // body lock if it isn't.
+  if (!_stOverlayOpen) {
+    document.body.style.overflow = '';
+    document.body.classList.remove('kh-reading-page');
+  }
+  if (!fromPop && history.state && history.state.sbOverlay) {
+    _sbSuppressPop = true;   // consume the pop our own back() triggers
+    try { history.back(); } catch(e) { _sbSuppressPop = false; }
+  }
+}
+
+// Esc / arrow keys for the storybook. (Back-button handling lives in the
+// unified popstate listener above so it can coordinate with the reader.)
+document.addEventListener('keydown', function(e) {
+  if (!_sbState.open) return;
+  if (e.key === 'Escape') { sbClosePop(); sbClose(); }
+  else if (e.key === 'ArrowRight') sbNext();
+  else if (e.key === 'ArrowLeft') sbPrev();
 });
 
 // Feed-style swipe nav between stories — mirror of conversations.
