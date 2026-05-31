@@ -28,6 +28,9 @@
         if (v && v.indexOf('"access_token"') > 0) { hasSession = true; break; }
       }
     }
+    // Expose for updateAuthUI so it can defer painting the signed-out
+    // header/nav while a stored session is still being confirmed.
+    window._khHasStoredSession = hasSession;
     if (hasSession) {
       // Inject a style that hides auth buttons until JS confirms state
       var s = document.createElement('style');
@@ -1757,6 +1760,16 @@ async function checkSession() {
 
 // UI 업데이트
 function updateAuthUI() {
+  // Anti-flash: if we have a stored session but haven't confirmed it yet,
+  // do NOT paint the signed-out header/nav — that's what made the profile
+  // briefly drop to "Sign In / Join Free" on every page load / navigation
+  // (worst on heavy pages like the study room). Keep the flash-guard up and
+  // bail; a later call (session resolved, or the reconciler) repaints. If
+  // the session check genuinely finishes signed-out, _sessionChecked flips
+  // and we fall through to paint the real signed-out state.
+  if (!supaUser && !window._sessionChecked && window._khHasStoredSession) {
+    return;
+  }
   // Remove flash guard now that we know the real auth state
   var guard = document.getElementById('kh-auth-flash-guard');
   if (guard) guard.remove();
