@@ -9769,6 +9769,133 @@ async function autoGenStoryAI(storyId, storyObj) {
   }
 }
 
+// ── Storybook generation ────────────────────────────────────────────
+// Turns a story into a paginated picture-book: splits the body into pages,
+// generates an illustration per page (gpt-image-1 via the story-illustrate
+// edge fn), then uses Claude vision to locate each learning element in the
+// image so the reader can pin tappable hotspots. Result saved to
+// stories_data.data.pages (consumed by the storybook reader on the site).
+function _sbProgress() {
+  var id = 'sb-gen-progress';
+  var el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:100000;background:#0f172a;color:#e2e8f0;padding:14px 20px;border-radius:12px;box-shadow:0 12px 44px rgba(0,0,0,.4);font-size:14px;font-weight:700;max-width:90vw;text-align:center';
+    document.body.appendChild(el);
+  }
+  return function(msg, done) {
+    el.textContent = msg;
+    if (done) setTimeout(function(){ try { el.remove(); } catch(_){} }, 2600);
+  };
+}
+
+async function generateStorybook(storyId, opts) {
+  opts = opts || {};
+  var maxPages = opts.maxPages || 10;
+  if (!confirm('📖 이 스토리를 그림책(페이지별 삽화+핀)으로 생성할까요?\n페이지당 삽화 생성 + 비전 분석이라 1~3분 걸리고 OpenAI 비용이 발생합니다.')) return;
+  var prog = _sbProgress();
+  try {
+    var sb = getSb();
+    var res = await sb.from('stories_data').select('*').eq('id', storyId).single();
+    if (!res.data) { prog('스토리를 찾을 수 없음', true); return; }
+    var story = res.data.data || res.data;
+    var bodyText = String(story.body || '').replace(/<[^>]*>/g, '').trim();
+    if (!bodyText) { prog('본문이 없음', true); return; }
+
+    // 1) PLAN — pages with verbatim text, an English scene prompt, and the
+    //    learning elements (people/objects/emotions) to pin on each page.
+    prog('📖 페이지 분할 + 학습요소 계획 중…');
+    var planPrompt =
+      'You are designing an interactive Korean picture-book from the story below.\n'
+      + 'Split it into ' + Math.min(maxPages, 10) + ' or fewer pages (1 short paragraph each, in reading order).\n'
+      + 'Return ONLY valid JSON, no prose:\n'
+      + '{"pages":[{'
+      + '"text_ko":"the EXACT Korean text of this page, copied verbatim from the body",'
+      + '"text_en":"natural English translation of this page",'
+      + '"image_prompt":"a vivid ENGLISH description of one illustration for this page — describe the people, their actions/emotions, the setting and key objects, concrete and visual",'
+      + '"hotspots":[{"kind":"person|object|emotion|place|action","label_ko":"단어","label_en":"English label",'
+      + '"vocab":[{"ko":"단어","rom":"romanization","en":"meaning"}],'
+      + '"expressions":[{"ko":"표현","en":"meaning"}],'
+      + '"emotions":[{"ko":"감정","en":"meaning"}]}]'
+      + '}]}\n\n'
+      + 'RULES:\n'
+      + '1. text_ko must be copied verbatim from the body (do not paraphrase).\n'
+      + '2. 2-4 hotspots per page — the people, objects, or feelings actually shown in image_prompt for that page.\n'
+      + '3. Each hotspot: fill whichever of vocab/expressions/emotions fit (a person/object → vocab; an idiom → expressions; a feeling → emotions). Korean words must relate to that page.\n'
+      + '4. image_prompt: no text/letters in the image; describe a single clear scene.\n\n'
+      + 'Title: ' + (story.title || '') + '\nBody:\n' + bodyText.slice(0, 4000) + '\n\nJSON only.';
+    var planEnv = await callClaude({ feature: 'storybook-plan', model: 'claude-sonnet-4-6', max_tokens: 8000, messages: [{ role: 'user', content: planPrompt }] });
+    var planText = (planEnv && planEnv.content || []).map(function (b) { return b.text || ''; }).join('');
+    var plan = khExtractJson(planText) || {};
+    var pages = Array.isArray(plan.pages) ? plan.pages.slice(0, maxPages) : [];
+    if (!pages.length) { prog('계획 생성 실패 (JSON 비어있음)', true); return; }
+
+    var token = await _getAdminToken();
+    var POS = [[0.30, 0.40], [0.68, 0.52], [0.50, 0.30], [0.40, 0.66], [0.74, 0.34]];
+    var out = [];
+    for (var i = 0; i < pages.length; i++) {
+      var p = pages[i] || {};
+      var hotspots = Array.isArray(p.hotspots) ? p.hotspots : [];
+
+      // 2) IMAGE — generate + upload via the edge function.
+      prog('🎨 삽화 ' + (i + 1) + '/' + pages.length + ' 생성 중… (최대 1분)');
+      var imageUrl = '';
+      try {
+        var imgResp = await fetch(SUPA_URL_ADMIN + '/functions/v1/story-illustrate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || ''), 'apikey': SUPA_KEY_ADMIN },
+          body: JSON.stringify({ prompt: p.image_prompt || p.text_ko || '', story_id: storyId, page_idx: i })
+        });
+        var imgJson = await imgResp.json().catch(function () { return {}; });
+        if (imgResp.ok && imgJson.image_url) imageUrl = imgJson.image_url;
+        else console.warn('story-illustrate failed:', imgResp.status, imgJson.error || '');
+      } catch (e) { console.warn('image gen threw', e); }
+
+      // 3) LOCATE — ask Claude vision where each element sits in the image.
+      if (imageUrl && hotspots.length) {
+        prog('🔎 핀 위치 분석 ' + (i + 1) + '/' + pages.length + '…');
+        try {
+          var labels = hotspots.map(function (h, idx) { return idx + ': ' + (h.label_en || h.label_ko || ''); }).join('\n');
+          var visionPrompt = 'This illustration is page ' + (i + 1) + ' of a Korean storybook. For each numbered element, give the CENTER where it appears as normalized coordinates (x and y each 0..1, origin top-left). Return ONLY JSON: {"coords":[{"i":0,"x":0.42,"y":0.6}]}. Omit elements not visible.\n\nElements:\n' + labels;
+          var visEnv = await callClaude({ feature: 'storybook-locate', model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'url', url: imageUrl } }, { type: 'text', text: visionPrompt }] }] });
+          var visText = (visEnv && visEnv.content || []).map(function (b) { return b.text || ''; }).join('');
+          var coords = (khExtractJson(visText) || {}).coords || [];
+          coords.forEach(function (c) {
+            var h = hotspots[c.i];
+            if (h && isFinite(c.x) && isFinite(c.y)) { h.x = Math.max(0.04, Math.min(0.96, +c.x)); h.y = Math.max(0.05, Math.min(0.95, +c.y)); }
+          });
+        } catch (e) { console.warn('locate threw', e); }
+      }
+      // Any hotspot the vision pass couldn't place gets a sensible default.
+      hotspots.forEach(function (h, idx) {
+        if (h.x == null || h.y == null) { h.x = POS[idx % POS.length][0]; h.y = POS[idx % POS.length][1]; }
+      });
+
+      out.push({
+        text_ko: p.text_ko || '', text_en: p.text_en || '',
+        image_url: imageUrl, image_prompt: p.image_prompt || '', hotspots: hotspots
+      });
+    }
+
+    // SAVE pages[] into stories_data.data
+    prog('💾 저장 중…');
+    var cur = await sb.from('stories_data').select('data').eq('id', storyId).single();
+    var curData = (cur.data && cur.data.data) ? cur.data.data : story;
+    var updated = Object.assign({}, curData, { pages: out });
+    var upd = await sb.from('stories_data').update({ data: updated }).eq('id', storyId);
+    if (upd.error) throw upd.error;
+
+    var withArt = out.filter(function (x) { return x.image_url; }).length;
+    prog('✅ 완료! ' + out.length + '페이지 (삽화 ' + withArt + ')', true);
+    showToastAdmin('📖 스토리북 ' + out.length + '페이지 생성 완료 (삽화 ' + withArt + ')');
+  } catch (e) {
+    console.error('generateStorybook failed:', e);
+    prog('⚠️ 실패: ' + (e.message || String(e)), true);
+    showToastAdmin('⚠️ 스토리북 생성 실패: ' + (e.message || String(e)));
+  }
+}
+
 // 수동 AI 재생성 버튼 (conv/story 목록에서 사용)
 async function regenConvAI(convId) {
   showToastAdmin('🤖 AI regenerating...');
@@ -13513,6 +13640,7 @@ async function openStoryEditModal(rowId) {
     + '<div id="se-error" style="background:#fee2e2;border-radius:8px;padding:10px;color:#b91c1c;font-size:13px;display:none;margin-bottom:12px"></div>'
     + '<div style="display:flex;gap:10px;justify-content:flex-end">'
     + '<button onclick="closeStoryEditOverlay()" style="background:#f1f5f9;color:#334155;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">취소</button>'
+    + (rowId ? '<button onclick="generateStorybook(' + rowId + ')" style="background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:none;border-radius:10px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📖 Storybook 생성</button>' : '')
     + '<button onclick="saveStoryEdit(' + (rowId||'null') + ')" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">💾 Save</button>'
     + '</div>'
     + '</div>';
