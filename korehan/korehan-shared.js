@@ -47,21 +47,23 @@ var _supa = null;
 function getSupa() {
   if (_supa) return _supa;
   if (window.supabase) {
+    // OAuth flow = IMPLICIT, handled by the SDK (detectSessionInUrl:true).
+    // Why implicit and not PKCE: PKCE stashes a code_verifier in
+    // localStorage and reads it back after the round-trip to Google.
+    // Samsung Internet (and some mobile privacy modes) drop that key
+    // during the cross-site redirect, so exchangeCodeForSession can never
+    // complete → "Google succeeds but you come back signed out". Implicit
+    // puts the tokens directly in the URL fragment, so there's no stored
+    // secret to lose — that's why first-time implicit logins always
+    // worked here. detectSessionInUrl:true lets the SDK parse that
+    // fragment (access_token + Supabase's own refresh_token) and persist
+    // a real, refreshable session. No manual hash parsing, no placeholder
+    // refresh tokens — that hand-rolled layer is what kept breaking login.
     _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
       auth: {
-        detectSessionInUrl: false,  // hash/code는 checkSession에서 수동 처리
+        detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true,
-        // 'implicit' so OAuth returns the access_token in the URL
-        // hash directly. Drops the dependency on localStorage-stored
-        // PKCE codeVerifier surviving the redirect — Mobile Chrome's
-        // recent privacy hardening was clearing that key during the
-        // round-trip in regular mode (incognito worked because no
-        // stored state to confuse it). Trade-off: implicit flow
-        // doesn't return a long-lived refresh token, so users will
-        // re-authenticate when the access token expires (~1 hour
-        // for Supabase). Acceptable cost for OAuth that actually
-        // works for the average mobile user.
         flowType: 'implicit',
       }
     });
@@ -744,31 +746,6 @@ var _sessionWarningShown = false;
 async function refreshSessionSafely() {
   var sb = getSupa();
   if (!sb) return;
-  // If we already know this is an implicit-flow session with no
-  // refresh token, there is nothing to refresh — once the access
-  // token expires (~1h), sign the user out cleanly and prompt re-auth
-  // rather than spamming refresh failures.
-  if (window._khImplicitNoRefresh) {
-    // Refresh-less implicit session: nothing to refresh. But the access
-    // token is still perfectly usable until it actually expires (~1h), so
-    // only sign the user out once it's (nearly) dead — signing out on the
-    // first 15-min tick would cut a working login short.
-    try {
-      var _sres = await sb.auth.getSession();
-      var _sess = _sres && _sres.data && _sres.data.session;
-      var _now = Math.floor(Date.now() / 1000);
-      var _expired = !_sess || (_sess.expires_at && _sess.expires_at <= _now + 60);
-      if (!_expired) return; // still valid — let the user keep going
-    } catch (_) {}
-    if (!_sessionWarningShown) {
-      _sessionWarningShown = true;
-      if (typeof toast === 'function') {
-        toast('Your sign-in expired. Please sign in again to keep going.', true);
-      }
-      try { await sb.auth.signOut({ scope: 'local' }); } catch (_) {}
-    }
-    return;
-  }
   var { error } = await sb.auth.refreshSession();
   if (error) {
     if (!_sessionWarningShown) {
@@ -1678,10 +1655,10 @@ async function checkSession() {
     }
   });
 
-  // OAuth 콜백 처리 — ?code= 파라미터 (PKCE) 또는 #access_token (implicit)
-  // OAuth 콜백 처리 — detectSessionInUrl:false 이므로 수동으로만 처리
+  // OAuth return: the SDK auto-exchanges ?code= (detectSessionInUrl:true).
+  // We only check for the param to decide whether to show a failure hint
+  // if no session ends up materialising.
   var hasCode = window.location.search.includes('code=');
-  var hasHash = window.location.hash && window.location.hash.includes('access_token');
 
   // OAuth provider can also return an error (user cancelled the
   // Google chooser, third-party cookies blocked, etc.). Surface it
@@ -1707,96 +1684,10 @@ async function checkSession() {
     }
   } catch (_) {}
 
-  if (hasCode) {
-    // PKCE flow: code → token 교환
-    var urlParams = new URLSearchParams(window.location.search);
-    var code = urlParams.get('code');
-    if (code) {
-      var exchangeErr = null;
-      try {
-        var exchRes = await sb.auth.exchangeCodeForSession(code);
-        if (exchRes.error) exchangeErr = exchRes.error;
-      } catch(e) {
-        exchangeErr = e;
-      }
-      if (exchangeErr) {
-        console.warn('exchangeCodeForSession failed:', exchangeErr.message || exchangeErr);
-      }
-    }
-    // URL에서 code 파라미터 제거 (재사용 방지)
-    window.history.replaceState(null, '', window.location.pathname);
-  } else if (hasHash) {
-    // Implicit flow: hash에서 access_token 추출
-    try {
-      var hashParams = new URLSearchParams(window.location.hash.slice(1));
-      var accessToken = hashParams.get('access_token');
-      var refreshToken = hashParams.get('refresh_token');
-      // State validation removed. Three separate problems pushed me
-      // off the validation path:
-      //   1. Owner-reported: Samsung Internet privacy mode wipes
-      //      sessionStorage during the OAuth redirect, so every
-      //      legit sign-in failed the state check.
-      //   2. Codex P2: only signInWithGoogle / signInWithOAuth
-      //      pre-seed kh_oauth_state. authSignUp() email-confirm and
-      //      authResetPassword() recovery flows also land here with
-      //      access_token in the hash but NO pre-seeded state — the
-      //      validation would silently reject every recovery sign-in.
-      //   3. Owner: "이전에는 왜 잘됐냐고 그딴거 신경 안써도".
-      // Reverting to the pre-PR #511 behavior: trust the token. The
-      // theoretical session-fixation vector requires an attacker to
-      // get a victim to open a crafted URL with the attacker's
-      // access_token in the fragment AND Supabase's setSession to
-      // accept that token — Supabase's own signature/issuer check
-      // is the real defense, not our local state token.
-      if (accessToken) {
-        // setSession requires both tokens. If Supabase didn't return
-        // a refresh_token (older implicit flow, certain provider
-        // configs), DO NOT fake one by passing the access_token —
-        // the SDK then tries to use it as a refresh token an hour
-        // later, fails silently, and the user starts seeing 401s
-        // with no re-prompt (audit P0 #3). Without a refresh token
-        // the session is single-use; warn the user up-front and
-        // expire local state cleanly when the access token dies.
-        try {
-          if (!refreshToken) {
-            console.warn('[auth] no refresh_token in OAuth response — establishing single-use session (expires ~1h, no auto-refresh)');
-            // Mark this as a refresh-less session so refreshSessionSafely()
-            // short-circuits to a clean local sign-out at expiry instead
-            // of retrying a refresh it can never satisfy.
-            window._khImplicitNoRefresh = true;
-            // We MUST still establish the session. detectSessionInUrl is
-            // false, so if we skip setSession here the SDK holds NO session
-            // at all — getSession() returns null, supaUser stays null, and
-            // the user lands right back on the Sign In / Join Free banner
-            // despite a successful provider login ("re-login does nothing",
-            // owner-reported). setSession requires a refresh_token argument,
-            // so pass the access_token as a placeholder; our refresh path is
-            // guarded by _khImplicitNoRefresh and never actually uses it.
-            var setRes0 = await sb.auth.setSession({
-              access_token: accessToken,
-              refresh_token: accessToken,
-            });
-            if (setRes0 && setRes0.error) {
-              console.warn('setSession (no-refresh) returned error:', setRes0.error.message || setRes0.error);
-            }
-          } else {
-            var setRes = await sb.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-            if (setRes && setRes.error) {
-              console.warn('setSession returned error:', setRes.error.message || setRes.error);
-            }
-          }
-        } catch(setErr) {
-          console.warn('setSession threw:', setErr.message || setErr);
-        }
-      }
-    } catch(e) {
-      console.warn('implicit flow session failed:', e);
-    }
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  }
+  // The OAuth return (?code=) is handled by the SDK itself because
+  // detectSessionInUrl:true — by the time we await getSession() below the
+  // code has already been exchanged for a persisted session and SIGNED_IN
+  // has fired. Nothing to parse by hand.
 
   try {
     var _getSessionResult = await Promise.race([
@@ -1820,14 +1711,10 @@ async function checkSession() {
           checkOnboardingStatus();
         }
       });
-    } else if (hasCode || hasHash) {
-      // We came back from an OAuth round-trip but no session materialised.
-      // Most common cause on Samsung Internet phone: the PKCE codeVerifier
-      // entry in localStorage (sb-{ref}-auth-token-code-verifier) got
-      // cleared during the redirect to accounts.google.com and back, so
-      // exchangeCodeForSession can't complete. Surface a visible hint so
-      // the user knows what's happening instead of seeing the page go
-      // back to "Sign In" silently after Google said success.
+    } else if (hasCode) {
+      // Came back from an OAuth round-trip but no session materialised.
+      // Surface a visible hint + Reset-Data button instead of silently
+      // dropping back to the signed-out banner.
       try { _khShowAuthFailureBanner(); } catch(_) {}
     }
   } catch(e) {
