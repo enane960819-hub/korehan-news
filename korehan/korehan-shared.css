@@ -2015,6 +2015,28 @@ body.dark-mode .kh-footer     { background: #0b1220; }
   font-size: 13px;
   line-height: 1.5;
 }
+/* Long reference-style explanations (esp. the canonical pattern hints
+   injected by KH_GRAMMAR) are paragraph-length and turned each card into
+   a wall of text. Clamp to 3 lines by default; the 더보기 toggle below
+   expands the full text on demand. */
+.art-sent-panel .asp-grammar-exp.asp-exp-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.art-sent-panel .asp-exp-more {
+  background: none;
+  border: none;
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 3px 0 0;
+  font-family: inherit;
+}
+body.dark-mode .art-sent-panel .asp-exp-more,
+body.mobile-redesign .art-sent-panel .asp-exp-more { color: #a78bfa; }
 .art-sent-panel .asp-grammar-ex {
   color: #7c3aed;
   font-size: 12.5px;

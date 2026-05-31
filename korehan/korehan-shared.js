@@ -5185,7 +5185,7 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
              +   '<span style="font-size:9px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:6px;background:' + meta.bg + ';color:' + meta.color + '">' + meta.label + '</span>'
              +   '<span>' + escapeHTML(item.label) + '</span>'
              + '</div>'
-             + (item.exp ? '<div class="asp-grammar-exp">' + escapeHTML(item.exp) + '</div>' : '')
+             + _khRenderExp(item.exp)
              + (item.example_in_sentence ? '<div class="asp-grammar-ex">→ "' + escapeHTML(item.example_in_sentence) + '"</div>' : '')
              + '</div>';
       });
@@ -5193,6 +5193,31 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
   }
   panel.innerHTML = html;
 }
+
+// Grammar explanations range from a one-line AI gloss to the
+// paragraph-length canonical hints injected by KH_GRAMMAR (conjugation
+// tables, multiple usage notes). The long ones made each analysis card
+// a wall of text. Render a 3-line CSS clamp by default and, only when
+// the text actually overflows that, append a 더보기/접기 toggle. Short
+// explanations render unchanged with no toggle.
+function _khRenderExp(exp) {
+  if (!exp) return '';
+  var txt = escapeHTML(exp);
+  // ~3 lines at this font size ≈ 130 chars; below that it won't clamp,
+  // so don't add the toggle. Korean counts heavier, so keep it modest.
+  if (String(exp).trim().length <= 110) {
+    return '<div class="asp-grammar-exp">' + txt + '</div>';
+  }
+  return '<div class="asp-grammar-exp asp-exp-clamp">' + txt + '</div>'
+       + '<button type="button" class="asp-exp-more" onclick="khToggleExpMore(this)">더보기</button>';
+}
+function khToggleExpMore(btn) {
+  var exp = btn.previousElementSibling;
+  if (!exp) return;
+  var stillClamped = exp.classList.toggle('asp-exp-clamp');
+  btn.textContent = stillClamped ? '더보기' : '접기';
+}
+
 async function analyzeSentence(idx, el) {
   if (!el) return;
   // First successful interaction is enough — don't keep nagging.
