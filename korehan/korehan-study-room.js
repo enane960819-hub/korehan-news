@@ -38,6 +38,26 @@ function playWrongSound() {
 // STATE
 // ═══════════════════════════════════════════════════════════════
 var _currentLevel   = 'Beginner';
+
+// Daily-package generation model + token budget, mirroring the server-side
+// daily-content-gen routing (supabase/functions/daily-content-gen/index.ts).
+// The cron pre-generates content with Sonnet for Intermediate/Advanced
+// because Haiku was unreliable on the schema-heavy payload, and with
+// per-level token headroom because Korean tokenizes 2-3x heavier than
+// English and the package was truncating mid-JSON at lower ceilings.
+// This client fallback (used on cache miss / stale content) MUST match,
+// or the hardest levels silently get the weak model at a starved token
+// budget — exactly when the learner is already seeing degraded content.
+function _khDailyGenModel(level) {
+  return (level === 'Intermediate' || level === 'Advanced')
+    ? 'claude-sonnet-4-6'
+    : 'claude-haiku-4-5-20251001';
+}
+function _khDailyGenMaxTokens(level) {
+  return level === 'Advanced'     ? 4000 :
+         level === 'Intermediate' ? 2500 :
+         2000;
+}
 var _todayTopic     = null;   // {id, topic_ko, topic_en, category, level}
 var _aiContent      = null;   // {vocab:[], grammar:[], helpers:[]}
 var _doneTopicIds   = new Set();
@@ -1533,8 +1553,8 @@ async function _generateAndSaveDailyContent(date, opts) {
     var data = await Promise.race([
       callClaude({
         feature:    'study-room-daily',
-        model:      'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
+        model:      _khDailyGenModel(_currentLevel),
+        max_tokens: _khDailyGenMaxTokens(_currentLevel),
         messages:   [{ role: 'user', content: prompt }]
       }),
       timeoutPromise
@@ -1727,8 +1747,8 @@ async function generateAIContent(topic) {
     var data = await Promise.race([
       callClaude({
         feature: 'study-room',
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: _currentLevel === 'Starter' ? 1200 : 900,
+        model: _khDailyGenModel(_currentLevel),
+        max_tokens: _khDailyGenMaxTokens(_currentLevel),
         messages: [{ role: 'user', content: prompt }]
       }),
       _aiTimeoutPromise
