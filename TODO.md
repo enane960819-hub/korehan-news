@@ -10,6 +10,23 @@ doesn't keep reminding about closed work.
 
 ---
 
+## 🔧 Owner action — Storybook (picture-book reader) go-live
+
+Code is merged (reader + admin generator + edge fn). Three one-time
+provisioning steps before it works end-to-end:
+
+1. **`app_settings` row**: `key='openai_key'`, `value=<OpenAI API key>`
+   (used by the `story-illustrate` edge fn for gpt-image-1).
+2. **Storage bucket** `story-illustrations` — create it, public read.
+3. **Deploy the edge fn**: `supabase functions deploy story-illustrate`
+
+Then in admin → open a story → **📖 Storybook 생성** (1–3 min, OpenAI cost
+per page). The site reader shows a **📖 Storybook** button only on stories
+that have generated `pages[]`. Data model + flow documented in
+`korehan/storybook_guide.md`.
+
+---
+
 ## ✅ Auto-applied 2026-05-27 (no more owner action for these)
 
 Migrations applied via Supabase Management API + cron jobs registered.
