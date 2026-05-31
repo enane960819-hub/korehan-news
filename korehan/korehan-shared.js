@@ -47,22 +47,18 @@ var _supa = null;
 function getSupa() {
   if (_supa) return _supa;
   if (window.supabase) {
+    // Standard Supabase auth — let the SDK do the whole OAuth round-trip.
+    // detectSessionInUrl:true means the client itself parses the ?code=
+    // (PKCE) on return, exchanges it for a real access + refresh token,
+    // persists it, fires SIGNED_IN, and strips the URL. No manual hash
+    // parsing, no placeholder refresh tokens, no implicit-flow special
+    // cases — that hand-rolled layer is exactly what kept breaking login.
     _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
       auth: {
-        detectSessionInUrl: false,  // hash/code는 checkSession에서 수동 처리
+        detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true,
-        // 'implicit' so OAuth returns the access_token in the URL
-        // hash directly. Drops the dependency on localStorage-stored
-        // PKCE codeVerifier surviving the redirect — Mobile Chrome's
-        // recent privacy hardening was clearing that key during the
-        // round-trip in regular mode (incognito worked because no
-        // stored state to confuse it). Trade-off: implicit flow
-        // doesn't return a long-lived refresh token, so users will
-        // re-authenticate when the access token expires (~1 hour
-        // for Supabase). Acceptable cost for OAuth that actually
-        // works for the average mobile user.
-        flowType: 'implicit',
+        flowType: 'pkce',
       }
     });
     return _supa;
@@ -744,31 +740,6 @@ var _sessionWarningShown = false;
 async function refreshSessionSafely() {
   var sb = getSupa();
   if (!sb) return;
-  // If we already know this is an implicit-flow session with no
-  // refresh token, there is nothing to refresh — once the access
-  // token expires (~1h), sign the user out cleanly and prompt re-auth
-  // rather than spamming refresh failures.
-  if (window._khImplicitNoRefresh) {
-    // Refresh-less implicit session: nothing to refresh. But the access
-    // token is still perfectly usable until it actually expires (~1h), so
-    // only sign the user out once it's (nearly) dead — signing out on the
-    // first 15-min tick would cut a working login short.
-    try {
-      var _sres = await sb.auth.getSession();
-      var _sess = _sres && _sres.data && _sres.data.session;
-      var _now = Math.floor(Date.now() / 1000);
-      var _expired = !_sess || (_sess.expires_at && _sess.expires_at <= _now + 60);
-      if (!_expired) return; // still valid — let the user keep going
-    } catch (_) {}
-    if (!_sessionWarningShown) {
-      _sessionWarningShown = true;
-      if (typeof toast === 'function') {
-        toast('Your sign-in expired. Please sign in again to keep going.', true);
-      }
-      try { await sb.auth.signOut({ scope: 'local' }); } catch (_) {}
-    }
-    return;
-  }
   var { error } = await sb.auth.refreshSession();
   if (error) {
     if (!_sessionWarningShown) {
@@ -1678,24 +1649,10 @@ async function checkSession() {
     }
   });
 
-  // OAuth 콜백 처리 — ?code= 파라미터 (PKCE) 또는 #access_token (implicit)
-  // OAuth 콜백 처리 — detectSessionInUrl:false 이므로 수동으로만 처리
+  // OAuth return: the SDK auto-exchanges ?code= (detectSessionInUrl:true).
+  // We only check for the param to decide whether to show a failure hint
+  // if no session ends up materialising.
   var hasCode = window.location.search.includes('code=');
-  var hasHash = window.location.hash && window.location.hash.includes('access_token');
-
-  // ── Auth diagnostic (additive — records, never changes behavior) ──
-  // Mobile has no usable console, so when login misbehaves we capture
-  // exactly where the OAuth round-trip breaks and surface it on-screen.
-  // Shown automatically after an OAuth return; also viewable later on
-  // any page via ?authdebug=1 (reads the last stored capture).
-  var _diag = { t: new Date().toISOString(), page: window.location.pathname, hasHash: !!hasHash, hasCode: !!hasCode };
-  window._khAuthDiag = _diag;
-  if (/[?&]authdebug=1/.test(window.location.search) && !hasCode && !hasHash) {
-    try {
-      var _stored = JSON.parse(localStorage.getItem('kh_auth_diag_last') || 'null');
-      if (_stored) setTimeout(function(){ if (typeof _khShowAuthDiag === 'function') _khShowAuthDiag(_stored, true); }, 400);
-    } catch(_) {}
-  }
 
   // OAuth provider can also return an error (user cancelled the
   // Google chooser, third-party cookies blocked, etc.). Surface it
@@ -1721,106 +1678,10 @@ async function checkSession() {
     }
   } catch (_) {}
 
-  if (hasCode) {
-    // PKCE flow: code → token 교환
-    var urlParams = new URLSearchParams(window.location.search);
-    var code = urlParams.get('code');
-    if (code) {
-      var exchangeErr = null;
-      try {
-        var exchRes = await sb.auth.exchangeCodeForSession(code);
-        if (exchRes.error) exchangeErr = exchRes.error;
-      } catch(e) {
-        exchangeErr = e;
-      }
-      _diag.exchangeErr = exchangeErr ? (exchangeErr.message || String(exchangeErr)) : null;
-      if (exchangeErr) {
-        console.warn('exchangeCodeForSession failed:', exchangeErr.message || exchangeErr);
-      }
-    }
-    // URL에서 code 파라미터 제거 (재사용 방지)
-    window.history.replaceState(null, '', window.location.pathname);
-  } else if (hasHash) {
-    // Implicit flow: hash에서 access_token 추출
-    try {
-      var hashParams = new URLSearchParams(window.location.hash.slice(1));
-      var accessToken = hashParams.get('access_token');
-      var refreshToken = hashParams.get('refresh_token');
-      _diag.at = accessToken ? (String(accessToken).slice(0,6) + '…len=' + String(accessToken).length) : 'MISSING';
-      _diag.rt = refreshToken ? ('present len=' + String(refreshToken).length) : 'MISSING';
-      // State validation removed. Three separate problems pushed me
-      // off the validation path:
-      //   1. Owner-reported: Samsung Internet privacy mode wipes
-      //      sessionStorage during the OAuth redirect, so every
-      //      legit sign-in failed the state check.
-      //   2. Codex P2: only signInWithGoogle / signInWithOAuth
-      //      pre-seed kh_oauth_state. authSignUp() email-confirm and
-      //      authResetPassword() recovery flows also land here with
-      //      access_token in the hash but NO pre-seeded state — the
-      //      validation would silently reject every recovery sign-in.
-      //   3. Owner: "이전에는 왜 잘됐냐고 그딴거 신경 안써도".
-      // Reverting to the pre-PR #511 behavior: trust the token. The
-      // theoretical session-fixation vector requires an attacker to
-      // get a victim to open a crafted URL with the attacker's
-      // access_token in the fragment AND Supabase's setSession to
-      // accept that token — Supabase's own signature/issuer check
-      // is the real defense, not our local state token.
-      if (accessToken) {
-        // setSession requires both tokens. If Supabase didn't return
-        // a refresh_token (older implicit flow, certain provider
-        // configs), DO NOT fake one by passing the access_token —
-        // the SDK then tries to use it as a refresh token an hour
-        // later, fails silently, and the user starts seeing 401s
-        // with no re-prompt (audit P0 #3). Without a refresh token
-        // the session is single-use; warn the user up-front and
-        // expire local state cleanly when the access token dies.
-        try {
-          if (!refreshToken) {
-            console.warn('[auth] no refresh_token in OAuth response — establishing single-use session (expires ~1h, no auto-refresh)');
-            // Mark this as a refresh-less session so refreshSessionSafely()
-            // short-circuits to a clean local sign-out at expiry instead
-            // of retrying a refresh it can never satisfy.
-            window._khImplicitNoRefresh = true;
-            // We MUST still establish the session. detectSessionInUrl is
-            // false, so if we skip setSession here the SDK holds NO session
-            // at all — getSession() returns null, supaUser stays null, and
-            // the user lands right back on the Sign In / Join Free banner
-            // despite a successful provider login ("re-login does nothing",
-            // owner-reported). setSession requires a refresh_token argument,
-            // so pass the access_token as a placeholder; our refresh path is
-            // guarded by _khImplicitNoRefresh and never actually uses it.
-            var setRes0 = await sb.auth.setSession({
-              access_token: accessToken,
-              refresh_token: accessToken,
-            });
-            _diag.setSession = 'no-refresh(placeholder)';
-            _diag.setSessionErr = (setRes0 && setRes0.error) ? (setRes0.error.message || String(setRes0.error)) : null;
-            _diag.setSessionGotSession = !!(setRes0 && setRes0.data && setRes0.data.session);
-            if (setRes0 && setRes0.error) {
-              console.warn('setSession (no-refresh) returned error:', setRes0.error.message || setRes0.error);
-            }
-          } else {
-            var setRes = await sb.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-            _diag.setSession = 'with-refresh';
-            _diag.setSessionErr = (setRes && setRes.error) ? (setRes.error.message || String(setRes.error)) : null;
-            _diag.setSessionGotSession = !!(setRes && setRes.data && setRes.data.session);
-            if (setRes && setRes.error) {
-              console.warn('setSession returned error:', setRes.error.message || setRes.error);
-            }
-          }
-        } catch(setErr) {
-          _diag.setSessionThrew = setErr.message || String(setErr);
-          console.warn('setSession threw:', setErr.message || setErr);
-        }
-      }
-    } catch(e) {
-      console.warn('implicit flow session failed:', e);
-    }
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  }
+  // The OAuth return (?code=) is handled by the SDK itself because
+  // detectSessionInUrl:true — by the time we await getSession() below the
+  // code has already been exchanged for a persisted session and SIGNED_IN
+  // has fired. Nothing to parse by hand.
 
   try {
     var _getSessionResult = await Promise.race([
@@ -1828,8 +1689,6 @@ async function checkSession() {
       new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('getSession timeout')); }, 8000); })
     ]);
     var data = _getSessionResult.data;
-    _diag.getSession = !!(data && data.session);
-    _diag.email = (data && data.session && data.session.user) ? data.session.user.email : null;
     if (data && data.session && data.session.user) {
       supaUser = data.session.user;
       updateAuthUI();
@@ -1846,72 +1705,18 @@ async function checkSession() {
           checkOnboardingStatus();
         }
       });
-    } else if (hasCode || hasHash) {
-      // We came back from an OAuth round-trip but no session materialised.
-      // Most common cause on Samsung Internet phone: the PKCE codeVerifier
-      // entry in localStorage (sb-{ref}-auth-token-code-verifier) got
-      // cleared during the redirect to accounts.google.com and back, so
-      // exchangeCodeForSession can't complete. Surface a visible hint so
-      // the user knows what's happening instead of seeing the page go
-      // back to "Sign In" silently after Google said success.
+    } else if (hasCode) {
+      // Came back from an OAuth round-trip but no session materialised.
+      // Surface a visible hint + Reset-Data button instead of silently
+      // dropping back to the signed-out banner.
       try { _khShowAuthFailureBanner(); } catch(_) {}
     }
   } catch(e) {
-    _diag.getSessionErr = e.message || String(e);
     console.warn('getSession failed or timed out:', e.message || e);
   }
   window._sessionChecked = true;
   updateAuthUI();
-
-  // Persist + surface the diagnostic. Auto-shows right after an OAuth
-  // return so the user can screenshot exactly where the flow broke.
-  try { localStorage.setItem('kh_auth_diag_last', JSON.stringify(_diag)); } catch(_) {}
-  if ((hasHash || hasCode) && typeof _khShowAuthDiag === 'function') {
-    try { _khShowAuthDiag(_diag, false); } catch(_) {}
-  }
 }
-
-// On-screen auth diagnostic panel (mobile has no console). Pure display.
-function _khShowAuthDiag(d, fromStored) {
-  try {
-    d = d || {};
-    var old = document.getElementById('kh-auth-diag'); if (old) old.remove();
-    var lines = [
-      'page:    ' + (d.page || ''),
-      'time:    ' + (d.t || '') + (fromStored ? '  (last saved)' : ''),
-      'hasHash: ' + d.hasHash + '    hasCode: ' + d.hasCode,
-      'access_token:  ' + (d.at != null ? d.at : '(n/a)'),
-      'refresh_token: ' + (d.rt != null ? d.rt : '(n/a)'),
-      'setSession:    ' + (d.setSession || '(not called)')
-        + (d.setSessionErr ? '  ⚠ERROR=' + d.setSessionErr : (d.setSession ? '  ok' : ''))
-        + (d.setSessionGotSession != null ? '  gotSession=' + d.setSessionGotSession : ''),
-      (d.setSessionThrew ? 'setSession THREW: ' + d.setSessionThrew : ''),
-      (d.exchangeErr ? 'exchangeCode ⚠ERROR: ' + d.exchangeErr : ''),
-      '➜ getSession.session: ' + (d.getSession === true ? 'YES' : (d.getSession === false ? 'NO' : '(unknown)'))
-        + (d.email ? '  (' + d.email + ')' : ''),
-      (d.getSessionErr ? 'getSession ⚠ERROR: ' + d.getSessionErr : '')
-    ].filter(Boolean);
-    var txt = '🔐 KOREHANI AUTH DIAGNOSTIC\n' + lines.join('\n');
-    var box = document.createElement('div');
-    box.id = 'kh-auth-diag';
-    box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:100000;background:#0f172a;color:#e2e8f0;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;padding:12px 14px;border-radius:12px;box-shadow:0 12px 44px rgba(0,0,0,.55);max-height:62vh;overflow:auto';
-    box.innerHTML =
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-      + '<b style="color:#7dd3fc;font-size:12px">🔐 AUTH DIAGNOSTIC</b>'
-      + '<button id="kh-diag-copy" style="margin-left:auto;border:0;background:#2563eb;color:#fff;padding:5px 12px;border-radius:7px;font-weight:800;cursor:pointer;font-family:inherit">Copy</button>'
-      + '<button id="kh-diag-x" style="border:0;background:#475569;color:#fff;padding:5px 11px;border-radius:7px;cursor:pointer;font-family:inherit">✕</button>'
-      + '</div>'
-      + '<div id="kh-diag-body" style="white-space:pre-wrap;word-break:break-all"></div>';
-    document.body.appendChild(box);
-    box.querySelector('#kh-diag-body').textContent = lines.join('\n');
-    box.querySelector('#kh-diag-x').onclick = function(){ box.remove(); };
-    box.querySelector('#kh-diag-copy').onclick = function(){
-      try { navigator.clipboard.writeText(txt); this.textContent = 'Copied ✓'; }
-      catch(_) { this.textContent = 'select+copy'; }
-    };
-  } catch(_) {}
-}
-window._khShowAuthDiag = _khShowAuthDiag;
 
 // UI 업데이트
 function updateAuthUI() {
