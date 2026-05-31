@@ -225,6 +225,30 @@ function _khStudyRoomInit() {
   try { await loadStudyAccessGate(); }
   catch(e) { console.error('[STUDY-ROOM init] loadStudyAccessGate threw:', e); }
 
+  // Instant paint from the localStorage cache BEFORE waiting on auth.
+  // Today's lesson content only needs localStorage (the cache key embeds
+  // today's date + level); the auth session is required for *saving*
+  // progress and the background DB revalidate, not for *rendering*. The
+  // old flow gated the very first paint behind waitForSession's up-to-12s
+  // poll, so a slow auth round-trip left the hero stuck on "Loading…"
+  // with no content even though a valid cache entry was sitting right
+  // there. Paint it now; waitForSession still runs and loadDailyContent
+  // re-runs once the session resolves to revalidate (idempotent — a
+  // re-paint with identical cached content is a no-op for the user).
+  try {
+    var _pToday = kstDateKey();
+    var _pKey = 'sr_daily_' + _pToday + '_' + _currentLevel;
+    var _pCached = localStorage.getItem(_pKey);
+    if (_pCached) {
+      var _pRec = JSON.parse(_pCached);
+      if (_pRec && _pRec.topic_ko && _pRec.vocab && _pRec.vocab.length > 0
+          && typeof _applyDailyContent === 'function') {
+        khLog('[STUDY-ROOM init] instant cache paint before session wait');
+        _applyDailyContent(_pRec);
+      }
+    }
+  } catch(_) {}
+
   // Wait for auth session, then load daily content (single call)
   var waited = 0;
   var _dailyContentStarted = false;
