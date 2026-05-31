@@ -791,6 +791,47 @@ window.addEventListener('pageshow', _khAuthUIReconcile);
 window.addEventListener('kh-auth-signed-in', _khAuthUIReconcile);
 window.addEventListener('kh-auth-signed-out', _khAuthUIReconcile);
 
+// Opt-in auth status readout — only appears when the URL has ?authdebug=1.
+// Gives a definitive "are you actually signed in?" answer (the topbar can be
+// subtle/ambiguous), and is screenshot-friendly for debugging. Normal users
+// never see it.
+function _khAuthStatusReadout() {
+  try {
+    var old = document.getElementById('kh-auth-status'); if (old) old.remove();
+    var hasStored = !!window._khHasStoredSession;
+    var sb = getSupa();
+    function paint(sessUser) {
+      var inn = !!sessUser;
+      var box = document.createElement('div');
+      box.id = 'kh-auth-status';
+      box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:100001;padding:14px 16px;border-radius:12px;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;box-shadow:0 12px 40px rgba(0,0,0,.45);'
+        + (inn ? 'background:#052e16;color:#bbf7d0' : 'background:#450a0a;color:#fecaca');
+      box.innerHTML = '<div style="display:flex;align-items:center;gap:8px">'
+        + '<b style="font-size:14px">' + (inn ? '✅ SIGNED IN' : '⛔ SIGNED OUT') + '</b>'
+        + '<button id="kh-as-copy" style="margin-left:auto;border:0;background:rgba(255,255,255,.18);color:inherit;padding:5px 11px;border-radius:7px;font-weight:700;cursor:pointer;font-family:inherit">Copy</button>'
+        + '<button onclick="this.closest(\'#kh-auth-status\').remove()" style="border:0;background:rgba(255,255,255,.18);color:inherit;padding:5px 11px;border-radius:7px;cursor:pointer;font-family:inherit">✕</button>'
+        + '</div><div id="kh-as-body" style="margin-top:7px;white-space:pre-wrap;word-break:break-all"></div>';
+      var lines =
+        'user:           ' + (sessUser ? (sessUser.email || sessUser.id) : '(none)') + '\n'
+        + 'supaUser(global): ' + (supaUser ? (supaUser.email || 'set') : 'null') + '\n'
+        + 'stored token:   ' + (hasStored ? 'yes' : 'NO') + '\n'
+        + 'sessionChecked: ' + (!!window._sessionChecked) + '\n'
+        + 'page:           ' + window.location.pathname;
+      document.body.appendChild(box);
+      box.querySelector('#kh-as-body').textContent = lines;
+      box.querySelector('#kh-as-copy').onclick = function () {
+        try { navigator.clipboard.writeText((inn ? 'SIGNED IN\n' : 'SIGNED OUT\n') + lines); this.textContent = 'Copied'; } catch (_) {}
+      };
+    }
+    if (sb) sb.auth.getSession().then(function (r) { paint(r && r.data && r.data.session && r.data.session.user); }).catch(function () { paint(supaUser); });
+    else paint(supaUser);
+  } catch (_) {}
+}
+window._khAuthStatusReadout = _khAuthStatusReadout;
+if (/[?&]authdebug=1/.test(window.location.search)) {
+  window.addEventListener('load', function () { setTimeout(_khAuthStatusReadout, 1200); });
+}
+
 // Google 로그인
 async function signInWithGoogle() {
   var sb = getSupa();
