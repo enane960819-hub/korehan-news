@@ -47,18 +47,24 @@ var _supa = null;
 function getSupa() {
   if (_supa) return _supa;
   if (window.supabase) {
-    // Standard Supabase auth — let the SDK do the whole OAuth round-trip.
-    // detectSessionInUrl:true means the client itself parses the ?code=
-    // (PKCE) on return, exchanges it for a real access + refresh token,
-    // persists it, fires SIGNED_IN, and strips the URL. No manual hash
-    // parsing, no placeholder refresh tokens, no implicit-flow special
-    // cases — that hand-rolled layer is exactly what kept breaking login.
+    // OAuth flow = IMPLICIT, handled by the SDK (detectSessionInUrl:true).
+    // Why implicit and not PKCE: PKCE stashes a code_verifier in
+    // localStorage and reads it back after the round-trip to Google.
+    // Samsung Internet (and some mobile privacy modes) drop that key
+    // during the cross-site redirect, so exchangeCodeForSession can never
+    // complete → "Google succeeds but you come back signed out". Implicit
+    // puts the tokens directly in the URL fragment, so there's no stored
+    // secret to lose — that's why first-time implicit logins always
+    // worked here. detectSessionInUrl:true lets the SDK parse that
+    // fragment (access_token + Supabase's own refresh_token) and persist
+    // a real, refreshable session. No manual hash parsing, no placeholder
+    // refresh tokens — that hand-rolled layer is what kept breaking login.
     _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {
       auth: {
         detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true,
-        flowType: 'pkce',
+        flowType: 'implicit',
       }
     });
     return _supa;
