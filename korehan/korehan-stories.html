@@ -15,9 +15,9 @@
 <meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="Stories — KoreHani | 한국어 단편 스토리">
 <meta property="og:description" content="레벨별 한국어 단편 스토리로 자연스럽게 학습.">
-<meta property="og:image" content="https://korehani.com/img/guide/hero-express.png">
+<meta property="og:image" content="https://korehani.com/img/guide/hero-universe.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
+<meta name="twitter:image" content="https://korehani.com/img/guide/hero-universe.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20260527g">
 <style>
@@ -1465,7 +1465,7 @@ function openStory(id) {
         description: String(s.intro_en || s.intro || s.title_en || s.title || '').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0, 155),
         image:       (s.thumb && /^https?:\/\//.test(s.thumb)) ? s.thumb
                    : (s.image && /^https?:\/\//.test(s.image)) ? s.image
-                   : 'https://korehani.com/img/guide/hero-express.png',
+                   : 'https://korehani.com/img/guide/hero-universe.png',
         url:         'https://korehani.com/korehan-stories.html?id=' + encodeURIComponent(s.id),
         type:        'article',
       });
