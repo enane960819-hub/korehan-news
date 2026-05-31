@@ -4634,15 +4634,18 @@ function _keShowFinalScore() {
   var exps = window._keExpressions || [];
   var situations = _keSituations || [];
 
-  var recogScore = window._keQuizScore || 0;
+  // The live flow is Study -> Fill -> Situation. The Recognition (MCQ)
+  // phase (_keStartQuiz/_keRenderQuiz) is dead — nothing calls it ("연습
+  // 시작" goes straight to _keStartFillQuiz), so _keQuizScore is always 0.
+  // Reporting a "Recognition 0/N" row here was a phantom score that also
+  // dragged the Overall % down. Score only the two phases actually played.
   var fillScore = window._keFillScore || 0;
   var sitScore = window._keSitScore || 0;
-  var recogTotal = exps.length;
   var fillTotal = exps.length;
   var sitTotal = situations.length;
 
-  var totalScore = recogScore + fillScore + sitScore;
-  var totalMax = recogTotal + fillTotal + sitTotal;
+  var totalScore = fillScore + sitScore;
+  var totalMax = fillTotal + sitTotal;
   var totalPct = totalMax > 0 ? Math.round(totalScore / totalMax * 100) : 0;
 
   // No emoji on the celebration line per design feedback. The score
@@ -4656,10 +4659,6 @@ function _keShowFinalScore() {
     + '<div style="font-size:13px;color:#94a3b8;margin-bottom:18px">Here\'s how you did:</div>'
     + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">'
-    + '<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
-    + '<div><div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:.5px">Recognition (MCQ)</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Pick the right expression</div></div>'
-    + '<div style="font-size:18px;font-weight:900;color:#fbbf24">' + recogScore + '/' + recogTotal + '</div>'
-    + '</div>'
     + '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
     + '<div><div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.5px">Production Score</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Fill in the blank</div></div>'
     + '<div style="font-size:18px;font-weight:900;color:#a78bfa">' + fillScore + '/' + fillTotal + '</div>'
