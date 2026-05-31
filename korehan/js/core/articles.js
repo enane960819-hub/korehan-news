@@ -291,14 +291,20 @@ async function loadArticlesFromDB(options) {
   }
   var lim = options.homeOptimized ? 15 : options.all ? 1000 : 80;
   // Select strategy:
-  // - home (15 rows) and All News (1000 rows) → '*' — payload is small
-  //   per-row × few rows for home, and All News needs every column for
-  //   the body-search filter
-  // - section / news list path (80 rows) → LIST_ARTICLE_SELECT (metadata
-  //   only, no body). Body dominates LTE payload at 80 rows and the
-  //   list view never displays it. Falls back to '*' if any column in
-  //   LIST_ARTICLE_SELECT is missing in the live schema.
-  var useLite = !options.homeOptimized && !options.all;
+  // - home (15 rows) → '*' — tiny payload (few rows) and the home
+  //   prefetch doubles as a warm cache for the reader fast-path, so it's
+  //   worth pulling every column once.
+  // - section / news list (80 rows) AND All News (1000 rows) →
+  //   LIST_ARTICLE_SELECT (metadata + short lede, NO `full` body).
+  //   Cards never render the article body, and All News search is
+  //   server-side now (searchArticlesServer runs its own '*' ilike
+  //   query), so the bulk fetch has no reason to ship the full body.
+  //   Shipping `full` for up to 1000 rows was a multi-MB LTE payload —
+  //   the cause of All News sitting on its loading skeleton for many
+  //   seconds. The runQuery('*') fallback below still fires on
+  //   error-or-empty, so dropping to the lite select stays
+  //   schema-drift-safe (see 2026-05-16 incident in CLAUDE.md).
+  var useLite = !options.homeOptimized;
   async function runQuery(sel) {
     return sb.from('articles').select(sel)
       .order('created_at', { ascending: false }).limit(lim);

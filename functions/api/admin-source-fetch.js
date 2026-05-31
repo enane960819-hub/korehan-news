@@ -3,6 +3,18 @@
 // else (Reddit's public JSON, aggregator RSS, international publisher
 // RSS) stays in. Source URL is preserved on every article for
 // attribution.
+
+// Upstreams that gate on User-Agent. Reddit and Google News both
+// aggressively rate-limit / 403 generic bot UAs (the old
+// 'KoreHanNewsBot/1.0' was getting throttled to empty responses from
+// our datacenter egress), so we present a current desktop-browser UA
+// plus the headers a real browser sends. This is the single most
+// common reason a source silently returns 0 items. NOTE: Reddit also
+// blocks some datacenter IP ranges outright regardless of UA — if a
+// subreddit still returns 0 after this, the egress IP is the cause and
+// needs an authenticated Reddit API token or a proxy, not a UA tweak.
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+
 const SOURCE_CATALOG = [
   // ── International news (publisher-provided RSS) ─────────────────
   { id:'bbc-world', label:'BBC World', kind:'rss', category:'국제', url:'https://feeds.bbci.co.uk/news/world/rss.xml' },
@@ -126,7 +138,11 @@ async function fetchRss(source) {
   // 8 s × Promise.allSettled in the caller means the slowest 5% drops
   // out cleanly instead of poisoning the whole batch.
   const res = await fetch(source.url, {
-    headers: { 'user-agent': 'KoreHanNewsBot/1.0' },
+    headers: {
+      'user-agent': BROWSER_UA,
+      'accept': 'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5',
+      'accept-language': 'en-US,en;q=0.9',
+    },
     signal: AbortSignal.timeout(8000),
   })
   if (!res.ok) throw new Error('upstream_not_ok')
@@ -194,7 +210,7 @@ async function fetchTopicImage(title, timeoutMs = 4000) {
   try {
     const res = await fetch(rssUrl, {
       signal: controller.signal,
-      headers: { 'user-agent': 'KoreHanNewsBot/1.0', 'accept': 'application/rss+xml,application/xml,text/xml' },
+      headers: { 'user-agent': BROWSER_UA, 'accept': 'application/rss+xml,application/xml,text/xml', 'accept-language': 'en-US,en;q=0.9' },
     })
     if (!res.ok) return ''
     const xml = await res.text()
@@ -278,13 +294,26 @@ async function fetchHn(source) {
 }
 
 async function fetchReddit(source) {
-  const res = await fetch(`https://www.reddit.com/r/${source.subreddit}/hot.json?limit=20`, {
-    headers: { 'user-agent': 'KoreHanNewsBot/1.0' },
+  const res = await fetch(`https://www.reddit.com/r/${source.subreddit}/hot.json?limit=20&raw_json=1`, {
+    headers: {
+      'user-agent': BROWSER_UA,
+      'accept': 'application/json,text/javascript,*/*;q=0.1',
+      'accept-language': 'en-US,en;q=0.9',
+    },
     signal: AbortSignal.timeout(8000),
   })
+  // 403/429 → throw so the per-source line honestly shows "(일부 실패)".
   if (!res.ok) throw new Error('upstream_not_ok')
-  const json = await res.json()
-  return (json?.data?.children || []).map((c) => {
+  const json = await res.json().catch(() => null)
+  // Reddit's rate limiter frequently answers 200 with a JSON error body
+  // ({"message":"Too Many Requests","error":429}) and no `data.children`.
+  // The old code returned [] here, so the admin saw a silent "0개" with
+  // no "(일부 실패)" hint and assumed the subreddit was just empty. Treat
+  // a missing children array as a failure so it's reported accurately.
+  if (!json || !Array.isArray(json?.data?.children)) {
+    throw new Error(json?.error ? `reddit_${json.error}` : 'reddit_blocked')
+  }
+  return (json.data.children || []).map((c) => {
     const d = c?.data || {}
     const video = extractRedditVideo(d)
     // For video posts, prefer the permalink (reddit.com/r/.../comments/ID/)
@@ -538,8 +567,11 @@ export async function onRequest({ request }) {
         else if (source.kind === 'wikinews') rows = await fetchWikinews(source)
         bySource.push({ id: source.id, label: source.label, count: rows.length })
         merged = merged.concat(rows)
-      } catch {
-        bySource.push({ id: source.id, label: source.label, count: 0, error: 'unavailable' })
+      } catch (err) {
+        // Surface the real reason in the JSON (visible in the admin's
+        // network tab) so a recurring failure can be diagnosed without
+        // redeploying — the UI still just renders "(일부 실패)".
+        bySource.push({ id: source.id, label: source.label, count: 0, error: String(err?.message || err || 'unavailable') })
       }
     }))
 
