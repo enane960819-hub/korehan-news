@@ -1197,6 +1197,29 @@ async function loadDailyContent() {
 
   // _sessionChecked is guaranteed true before this function is called (waitForSession ensures it)
   if (!supaUser) {
+    // ...but _sessionChecked can be force-set to true while supaUser is
+    // still null: the 12s waitForSession fallback flips it, and
+    // checkSession itself flips it after an 8s getSession race-timeout.
+    // In both cases a logged-in user would be shown the login wall over
+    // the topic loader and never recover (no kh-auth-signed-in fires
+    // because the session was already present, just not yet read). Do
+    // one authoritative getSession re-check before walling.
+    try {
+      var _sbAuth = getSupa();
+      if (_sbAuth) {
+        var _sres = await Promise.race([
+          _sbAuth.auth.getSession(),
+          new Promise(function(r){ setTimeout(function(){ r({ data: {} }); }, 3000); })
+        ]);
+        if (_sres && _sres.data && _sres.data.session && _sres.data.session.user) {
+          supaUser = _sres.data.session.user;
+          khLog('[loadDailyContent] session recovered on re-check — skipping login wall');
+          try { window.dispatchEvent(new Event('kh-auth-signed-in')); } catch(_) {}
+        }
+      }
+    } catch(_) {}
+  }
+  if (!supaUser) {
     khLog('[loadDailyContent] no user — showing login wall');
     var subEl = document.getElementById('wm-topic-sub');
     if (subEl) subEl.textContent = 'Today\'s Topic';
