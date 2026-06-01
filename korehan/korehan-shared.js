@@ -5,6 +5,18 @@
 // ── Neon/dark mode + auth flash prevention: apply IMMEDIATELY ──
 (function() {
   try {
+    // Capture OAuth implicit tokens from the URL fragment IMMEDIATELY —
+    // before anything creates the Supabase client (detectSessionInUrl strips
+    // the hash on client init). checkSession() uses this as a deterministic
+    // fallback to setSession() with the REAL tokens if the SDK's own
+    // auto-detect doesn't end up establishing the session.
+    if (window.location.hash && window.location.hash.indexOf('access_token') !== -1) {
+      var _hp = new URLSearchParams(window.location.hash.slice(1));
+      window._khOAuthHash = {
+        access_token: _hp.get('access_token') || '',
+        refresh_token: _hp.get('refresh_token') || ''
+      };
+    }
     // Neon theme
     var neon = localStorage.getItem('korehan_neon_theme');
     if (neon === '1') {
@@ -1759,6 +1771,29 @@ async function checkSession() {
   // detectSessionInUrl:true — by the time we await getSession() below the
   // code has already been exchanged for a persisted session and SIGNED_IN
   // has fired. Nothing to parse by hand.
+
+  // Deterministic fallback: if the SDK's auto-detect did NOT end up with a
+  // session, but we captured real implicit tokens from the URL fragment at
+  // page top, establish the session by hand with BOTH real tokens (never a
+  // placeholder). This closes any timing/edge case where detectSessionInUrl
+  // didn't take — guaranteeing login lands once Google returned tokens.
+  try {
+    var _preGet = await sb.auth.getSession();
+    var _have = _preGet && _preGet.data && _preGet.data.session;
+    if (!_have && window._khOAuthHash && window._khOAuthHash.access_token && window._khOAuthHash.refresh_token) {
+      try {
+        await sb.auth.setSession({
+          access_token: window._khOAuthHash.access_token,
+          refresh_token: window._khOAuthHash.refresh_token
+        });
+        console.info('[auth] established session via manual hash fallback');
+      } catch (_e) {
+        console.warn('[auth] manual setSession fallback failed:', _e && (_e.message || _e));
+      }
+      try { window._khOAuthHash = null; } catch (_) {}
+      try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_) {}
+    }
+  } catch (_) {}
 
   try {
     var _getSessionResult = await Promise.race([
