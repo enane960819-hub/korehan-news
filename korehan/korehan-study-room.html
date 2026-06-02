@@ -1001,7 +1001,7 @@
 <!-- kh-universe.js (~117KB) is now lazy-loaded by _ensureKHUniverse()
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
-<script src="korehan-study-room.js?v=20260531h" defer></script>
+<script src="korehan-study-room.js?v=20260531i" defer></script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->
@@ -2053,7 +2053,7 @@ body.kh-dr-active #sr-notif-daily { display:none !important; }
       <div style="text-align:center;padding:30px 0"><div style="font-size:14px;color:#8b8b8b">Generating questions...</div></div>
     </div>
     <div class="dr-footer" id="dr-footer" style="display:none">
-      <button style="padding:8px 16px;background:#f0f0f0;border:none;border-radius:6px;color:#555;font-weight:600;cursor:pointer;font-family:inherit;font-size:12px" onclick="closeDailyReview()">Close</button>
+      <button id="dr-footer-close" style="padding:8px 16px;background:#f0f0f0;border:none;border-radius:6px;color:#555;font-weight:600;cursor:pointer;font-family:inherit;font-size:12px" onclick="closeDailyReview()">Close</button>
       <button id="dr-next-btn" style="padding:8px 16px;background:var(--bright,#2563eb);border:none;border-radius:6px;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:12px" onclick="drNext()" disabled>Next →</button>
     </div>
   </div>
@@ -2321,6 +2321,7 @@ function drShowQuestion() {
   if(title) title.textContent='Daily Review';
   if(sub) sub.textContent='Question '+(_drIndex+1)+' of '+total;
   if(footer) footer.style.display='flex';
+  var _fc=document.getElementById('dr-footer-close'); if(_fc) _fc.style.display='';
   if(nextBtn){nextBtn.disabled=true;nextBtn.textContent='Next →';nextBtn.onclick=drNext;}
   _drAnswered=false;
 
@@ -2421,6 +2422,9 @@ function drShowScore(){
   if(body) body.innerHTML='<div style="text-align:center;padding:20px 0"><div style="display:inline-flex;width:48px;height:48px;margin-bottom:8px;color:'+iconColor+';filter:drop-shadow(0 0 12px '+iconColor+'88)">'+icon+'</div>'
     +'<div style="font-size:36px;font-weight:800;color:#1a1a1a;margin-bottom:4px">'+pct+'%</div>'
     +'<div style="font-size:14px;color:#8b8b8b">'+correct+' / '+total+' correct</div></div>';
+  // Score screen: the primary button becomes the only "Close". Hide the
+  // footer's standing Close so we don't show two identical Close buttons.
+  var _fc=document.getElementById('dr-footer-close'); if(_fc) _fc.style.display='none';
   var nextBtn=document.getElementById('dr-next-btn');
   if(nextBtn){nextBtn.disabled=false;nextBtn.textContent='Close';nextBtn.onclick=closeDailyReview;}
   document.getElementById('dr-progress').style.width='100%';

@@ -12130,9 +12130,29 @@ function openSpeakingPractice() {
   if (!_spSentences.length && _wmExampleAnswer) {
     _spSentences = [{ ko: _wmExampleAnswer, en: '', rom: '' }];
   }
+  // Prefer REAL Korean sentences from today's daily content — they're
+  // written at the learner's level and about the topic, which is exactly
+  // what pronunciation practice needs.
+  if (!_spSentences.length && typeof _dailyDictationSentences !== 'undefined'
+      && Array.isArray(_dailyDictationSentences) && _dailyDictationSentences.length) {
+    _spSentences = _dailyDictationSentences.filter(function(s){ return s && s.ko; })
+      .map(function(s){ return { ko: s.ko, en: s.en || '', rom: '' }; });
+  }
+  if (!_spSentences.length && _todayTopic && Array.isArray(_todayTopic.topic_writing_sentences)
+      && _todayTopic.topic_writing_sentences.length) {
+    _spSentences = _todayTopic.topic_writing_sentences.filter(function(s){ return s && s.ko; })
+      .map(function(s){ return { ko: s.ko, en: s.en || '', rom: '' }; });
+  }
   if (!_spSentences.length) {
+    // Last resort: speak the topic itself. If it's already a full sentence
+    // or question (e.g. "지금 행복한가요?") use it verbatim — do NOT append
+    // "에 대해 이야기해 보세요" onto a question, which produced the broken
+    // "지금 행복한가요?에 대해 이야기해 보세요." Only wrap bare noun-phrase
+    // topics (e.g. "음식", "여행") in the talk-about instruction.
     var topicName = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '오늘의 주제';
-    _spSentences = [{ ko: topicName + '에 대해 이야기해 보세요.', en: '', rom: '' }];
+    var t = String(topicName).trim();
+    var looksLikeSentence = /[.?!]$/.test(t) || /[다요죠까네][?!]?$/.test(t);
+    _spSentences = [{ ko: looksLikeSentence ? t : (t + '에 대해 이야기해 보세요.'), en: '', rom: '' }];
   }
 
   _spResetUI();
