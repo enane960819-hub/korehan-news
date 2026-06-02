@@ -4932,11 +4932,26 @@ async function fetchHeadlines() {
       return;
     }
 
+    // Breakdown recomputed from the items we actually KEEP, so it always
+    // sums to the headline count shown below. resp.by_source reports RAW
+    // backend counts (before the client dedupe + 10-day recency filter
+    // above), which is why "20개 수집 완료" could sit next to a breakdown
+    // adding up to 40 — the owner saw the shown list not match the tallies.
+    var finalBySource = {};
+    _fetchedHeadlines.forEach(function(it){ var k = (it.source || '기타'); finalBySource[k] = (finalBySource[k] || 0) + 1; });
+    var _bdLabels = [];
+    perSource.forEach(function(p){ if (_bdLabels.indexOf(p.label) < 0) _bdLabels.push(p.label); });
+    Object.keys(finalBySource).forEach(function(k){ if (_bdLabels.indexOf(k) < 0) _bdLabels.push(k); });
+    var _bdErr = {}; perSource.forEach(function(p){ if (p.error) _bdErr[p.label] = true; });
+    var _breakdown = _bdLabels
+      .map(function(l){ return l + ': ' + (finalBySource[l] || 0) + '개' + (_bdErr[l] ? ' (일부 실패)' : ''); })
+      .join(' · ');
+
     statusEl.innerHTML = '✅ ' + _fetchedHeadlines.length + '개 Headline 수집 완료'
       + '<div style="margin-top:6px;color:#94a3b8;font-size:12px">'
-      + perSource.map(function(p){ return p.label + ': ' + p.count + '개' + (p.error ? ' (일부 실패)' : ''); }).join(' · ')
+      + _breakdown
       + '</div>'
-      + '<div style="margin-top:4px;color:#a0aec0;font-size:11px">※ 서버에서 최근성/중복/유효성 필터링 완료</div>';
+      + '<div style="margin-top:4px;color:#a0aec0;font-size:11px">※ 서버 필터링(최근성/중복/유효성) 후 · 위 숫자는 실제 표시된 결과 기준</div>';
     _renderHeadlinePanel();
   } catch (e) {
     statusEl.innerHTML = '❌ 소스 수집 서버 호출에 실패했습니다. 잠시 후 다시 시도하세요.';
