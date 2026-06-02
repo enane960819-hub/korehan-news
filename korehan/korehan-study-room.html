@@ -2067,13 +2067,16 @@ var _drQuestions = [];
 var _drIndex = 0;
 var _drAnswered = false;
 var _drScores = [];
+// Answer-blind mode: per-question detail captured so the score screen can
+// show what you got wrong. Correct/incorrect is NOT revealed mid-quiz.
+var _drDetails = [];
 
 function openDailyReview() {
   if (!supaUser) { openAuthModal('signin'); return; }
   document.body.classList.add('kh-dr-active'); // hides Daily Quest / mission panel via CSS
   var overlay = document.getElementById('dr-overlay');
   if (overlay) overlay.classList.remove('hidden');
-  _drQuestions = []; _drIndex = 0; _drScores = []; _drAnswered = false;
+  _drQuestions = []; _drIndex = 0; _drScores = []; _drDetails = []; _drAnswered = false;
   document.getElementById('dr-body').innerHTML = '<div style="text-align:center;padding:30px"><div style="font-size:14px;color:#8b8b8b">Loading your review...</div></div>';
   drGenerateQuestions();
 }
@@ -2089,6 +2092,85 @@ function _drShuffle(arr) {
   for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
   return a;
 }
+
+// ── Reusable Hangul jamo composer ──────────────────────────────
+// Decompose a Korean string into base jamo tiles, and re-assemble a
+// tapped jamo sequence back into Hangul (IME-style automaton, handles
+// compound vowels ㅘ/ㅢ…, compound batchim ㄳ/ㄺ…, and batchim→onset
+// migration). Round-trip verified against 닭/괜찮아요/값/없다/읽다/의사…
+// Exposed as window.KHJamo so other input drills can reuse it later.
+window.KHJamo = (function(){
+  var CHO=['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+  var JUNG=['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+  var JONG=['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+  var JUNG_SPLIT={'ㅘ':['ㅗ','ㅏ'],'ㅙ':['ㅗ','ㅐ'],'ㅚ':['ㅗ','ㅣ'],'ㅝ':['ㅜ','ㅓ'],'ㅞ':['ㅜ','ㅔ'],'ㅟ':['ㅜ','ㅣ'],'ㅢ':['ㅡ','ㅣ']};
+  var JONG_SPLIT={'ㄳ':['ㄱ','ㅅ'],'ㄵ':['ㄴ','ㅈ'],'ㄶ':['ㄴ','ㅎ'],'ㄺ':['ㄹ','ㄱ'],'ㄻ':['ㄹ','ㅁ'],'ㄼ':['ㄹ','ㅂ'],'ㄽ':['ㄹ','ㅅ'],'ㄾ':['ㄹ','ㅌ'],'ㄿ':['ㄹ','ㅍ'],'ㅀ':['ㄹ','ㅎ'],'ㅄ':['ㅂ','ㅅ']};
+  var JUNG_COMBINE={'ㅗ':{'ㅏ':'ㅘ','ㅐ':'ㅙ','ㅣ':'ㅚ'},'ㅜ':{'ㅓ':'ㅝ','ㅔ':'ㅞ','ㅣ':'ㅟ'},'ㅡ':{'ㅣ':'ㅢ'}};
+  var JONG_COMBINE={'ㄱ':{'ㅅ':'ㄳ'},'ㄴ':{'ㅈ':'ㄵ','ㅎ':'ㄶ'},'ㄹ':{'ㄱ':'ㄺ','ㅁ':'ㄻ','ㅂ':'ㄼ','ㅅ':'ㄽ','ㅌ':'ㄾ','ㅍ':'ㄿ','ㅎ':'ㅀ'},'ㅂ':{'ㅅ':'ㅄ'}};
+  function isCho(j){return CHO.indexOf(j)>=0;}
+  function isJung(j){return JUNG.indexOf(j)>=0;}
+  function decompose(str){
+    var out=[]; str=String(str||'');
+    for(var i=0;i<str.length;i++){
+      var code=str.charCodeAt(i);
+      if(code>=0xAC00&&code<=0xD7A3){
+        var s=code-0xAC00, jo=s%28, ju=((s-jo)/28)%21, ch=(((s-jo)/28-ju)/21);
+        out.push(CHO[ch]);
+        var jv=JUNG[ju]; (JUNG_SPLIT[jv]||[jv]).forEach(function(x){out.push(x);});
+        if(jo>0){ var jc=JONG[jo]; (JONG_SPLIT[jc]||[jc]).forEach(function(x){out.push(x);}); }
+      } else if(str[i].trim()){ out.push(str[i]); }
+    }
+    return out;
+  }
+  function assemble(seq){
+    var out='', cho=-1, jung=-1, jong=-1;
+    function flush(){
+      if(cho<0&&jung<0&&jong<0)return;
+      if(cho>=0&&jung>=0){ out+=String.fromCharCode(0xAC00+(cho*21+jung)*28+(jong>=0?jong:0)); }
+      else { if(cho>=0)out+=CHO[cho]; if(jung>=0)out+=JUNG[jung]; if(jong>=0)out+=JONG[jong]; }
+      cho=-1; jung=-1; jong=-1;
+    }
+    for(var i=0;i<seq.length;i++){
+      var j=seq[i];
+      if(isCho(j)){
+        if(cho<0&&jung<0){ cho=CHO.indexOf(j); }
+        else if(cho>=0&&jung<0){ flush(); cho=CHO.indexOf(j); }
+        else if(jung>=0&&jong<0){ var ji=JONG.indexOf(j); if(ji>0){jong=ji;} else {flush(); cho=CHO.indexOf(j);} }
+        else if(jong>=0){ var base=JONG[jong], comb=JONG_COMBINE[base]&&JONG_COMBINE[base][j]; if(comb){jong=JONG.indexOf(comb);} else {flush(); cho=CHO.indexOf(j);} }
+      } else if(isJung(j)){
+        if(jung<0){ jung=JUNG.indexOf(j); }
+        else if(jong<0){ var b=JUNG[jung], cv=JUNG_COMBINE[b]&&JUNG_COMBINE[b][j]; if(cv){jung=JUNG.indexOf(cv);} else {flush(); jung=JUNG.indexOf(j);} }
+        else { var moved=JONG[jong]; jong=-1; flush(); cho=CHO.indexOf(moved); jung=JUNG.indexOf(j); }
+      } else { flush(); out+=j; }
+    }
+    flush();
+    return out;
+  }
+  return { decompose:decompose, assemble:assemble };
+})();
+
+// Daily Review jamo-tile input state (build the answer from shuffled jamo).
+var _drJamoTiles=[]; var _drJamoUsed=[];
+function _drJamoInit(answer){
+  _drJamoTiles=_drShuffle(KHJamo.decompose(answer)).map(function(j){return {jamo:j,used:false};});
+  _drJamoUsed=[];
+}
+function _drJamoRenderTiles(){
+  return _drJamoTiles.map(function(t,i){
+    return '<button type="button" onclick="_drJamoTap('+i+')" style="min-width:44px;padding:11px 13px;border:1.5px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:19px;font-weight:800;font-family:\'Noto Serif KR\',serif;cursor:pointer">'+t.jamo+'</button>';
+  }).join('');
+}
+function _drJamoSync(){
+  var seq=_drJamoUsed.map(function(i){return _drJamoTiles[i].jamo;});
+  var txt=KHJamo.assemble(seq);
+  var disp=document.getElementById('dr-jamo-display'); if(disp)disp.textContent=txt||'·';
+  var hid=document.getElementById('dr-typed'); if(hid)hid.value=txt;
+  var tiles=document.getElementById('dr-jamo-tiles');
+  if(tiles){var bs=tiles.querySelectorAll('button');for(var i=0;i<bs.length;i++){bs[i].style.opacity=_drJamoTiles[i]&&_drJamoTiles[i].used?'.22':'1';bs[i].disabled=_drAnswered||(_drJamoTiles[i]&&_drJamoTiles[i].used);}}
+}
+function _drJamoTap(i){ if(_drAnswered)return; if(!_drJamoTiles[i]||_drJamoTiles[i].used)return; _drJamoTiles[i].used=true; _drJamoUsed.push(i); _drJamoSync(); }
+function _drJamoBack(){ if(_drAnswered)return; var i=_drJamoUsed.pop(); if(i==null)return; if(_drJamoTiles[i])_drJamoTiles[i].used=false; _drJamoSync(); }
+function _drJamoClear(){ if(_drAnswered)return; _drJamoUsed=[]; _drJamoTiles.forEach(function(t){t.used=false;}); _drJamoSync(); }
 
 async function drGenerateQuestions() {
   var sb = getSupa();
@@ -2359,21 +2441,38 @@ function drShowQuestion() {
       +'<div class="dr-choices">'+q.choices.map(function(c){return '<button class="dr-choice" onclick="drSelectMC(this,\''+c.replace(/'/g,"\\'")+'\')">'+c+'</button>';}).join('')+'</div>'
       +'<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>';
   } else if(q.type==='typed'){
+    // Jamo-tile composer instead of the system keyboard: the answer is
+    // broken into shuffled jamo blocks and the learner taps them in order
+    // to build the word. #dr-typed stays as a hidden field so drCheckTyped
+    // reads the composed value unchanged.
+    _drJamoInit(q.correct);
     body.innerHTML='<div class="dr-q-label">Write in Korean</div><div class="dr-q-title">'+escapeHtml(q.word_en)+'</div>'
       +(q.word_rom?'<div class="dr-q-hint">Hint: '+q.word_rom+'</div>':'')
-      +'<input class="dr-typed-input" id="dr-typed" placeholder="한국어로 입력..." onkeydown="if(event.key===\'Enter\')drCheckTyped()" autocomplete="off" lang="ko" spellcheck="false" />'
+      +'<input type="hidden" id="dr-typed" />'
+      +'<div id="dr-jamo-display" style="min-height:56px;display:flex;align-items:center;justify-content:center;font-family:\'Noto Serif KR\',serif;font-size:30px;font-weight:800;color:#fff;background:rgba(255,255,255,.05);border:1.5px solid rgba(167,139,250,.35);border-radius:12px;margin-bottom:14px;letter-spacing:2px;padding:6px 10px">·</div>'
+      +'<div id="dr-jamo-tiles" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:14px">'+_drJamoRenderTiles()+'</div>'
+      +'<div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px">'
+        +'<button type="button" onclick="_drJamoBack()" style="padding:8px 16px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">⌫ 지우기</button>'
+        +'<button type="button" onclick="_drJamoClear()" style="padding:8px 16px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">초기화</button>'
+      +'</div>'
       +'<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>'
-      +'<button onclick="drCheckTyped()" style="padding:8px 16px;background:var(--bright,#2563eb);color:#fff;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;margin-top:8px">Check</button>';
-    setTimeout(function(){var el=document.getElementById('dr-typed');if(el)el.focus();},60);
+      +'<button onclick="drCheckTyped()" style="padding:11px 18px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;width:100%">Check ✓</button>';
   }
 }
 
+function _drRecord(prompt,your,correct,ok){
+  _drDetails.push({ prompt:String(prompt||''), your:String(your||''), correct:String(correct||''), ok:!!ok });
+}
 function drSelectMC(btn,choice){
   if(_drAnswered)return; _drAnswered=true;
   var q=_drQuestions[_drIndex], correct=(choice===q.correct);
   _drScores.push(correct?1:0);
-  document.querySelectorAll('#dr-body .dr-choice').forEach(function(b){b.disabled=true;if(b===btn)b.classList.add(correct?'correct':'wrong');if(b.textContent===q.correct)b.classList.add('correct');});
-  drShowFeedback(correct,q.correct); drEnableNext();
+  _drRecord(q.word_ko||q.template||q.word_en||'', choice, q.correct, correct);
+  // Answer-blind: lock choices and highlight ONLY the user's pick (neutral
+  // purple). Right/wrong stays hidden until the final score screen.
+  document.querySelectorAll('#dr-body .dr-choice').forEach(function(b){b.disabled=true;});
+  btn.style.borderColor='#a78bfa'; btn.style.background='rgba(167,139,250,.18)'; btn.style.color='#fff';
+  drEnableNext();
 }
 function drSelectOrder(btn,idx,word){
   if(_drAnswered)return; btn.style.display='none';
@@ -2399,7 +2498,9 @@ function drCheckOrder(){
   if(_drAnswered)return; _drAnswered=true;
   var q=_drQuestions[_drIndex], selected=(window._drOrderSelected||[]).map(function(x){return x.word;});
   var correct=selected.length===q.correct.length&&selected.every(function(w,i){return w===q.correct[i];});
-  _drScores.push(correct?1:0); drShowFeedback(correct,q.correct.join(' ')); drEnableNext();
+  _drScores.push(correct?1:0);
+  _drRecord(q.en||'', selected.join(' '), q.correct.join(' '), correct);
+  drEnableNext();
 }
 function drCheckTyped(){
   if(_drAnswered)return;
@@ -2407,8 +2508,10 @@ function drCheckTyped(){
   if(!answer)return; _drAnswered=true;
   var q=_drQuestions[_drIndex],correct=(answer===q.correct);
   _drScores.push(correct?1:0);
-  if(inp){inp.disabled=true;inp.style.borderColor=correct?'#16a34a':'#dc2626';}
-  drShowFeedback(correct,q.correct); drEnableNext();
+  _drRecord(q.word_en||'', answer, q.correct, correct);
+  if(inp){inp.disabled=true;inp.style.borderColor='#a78bfa';}
+  var ti=document.getElementById('dr-jamo-tiles'); if(ti){ti.querySelectorAll('button').forEach(function(b){b.disabled=true;});}
+  drEnableNext();
 }
 function drShowFeedback(correct,ans){var fb=document.getElementById('dr-feedback');if(!fb)return;fb.style.display='block';fb.className='dr-feedback-box '+(correct?'correct':'wrong');fb.textContent=correct?'Correct!':'Answer: '+ans;if(correct)playCorrectSound();else playWrongSound();}
 function drEnableNext(){var b=document.getElementById('dr-next-btn');if(b){b.disabled=false;b.textContent=(_drIndex+1<_drQuestions.length)?'Next →':'See Results';}}
@@ -2419,9 +2522,25 @@ function drShowScore(){
   var icon=pct>=90?BM_ICON_SPARKLE:pct>=75?BM_ICON_TROPHY:pct>=50?BM_ICON_STAR:BM_ICON_FLAME;
   var iconColor=pct>=90?'#fbbf24':pct>=75?'#fde68a':pct>=50?'#a78bfa':'#a78bfa';
   var body=document.getElementById('dr-body');
-  if(body) body.innerHTML='<div style="text-align:center;padding:20px 0"><div style="display:inline-flex;width:48px;height:48px;margin-bottom:8px;color:'+iconColor+';filter:drop-shadow(0 0 12px '+iconColor+'88)">'+icon+'</div>'
-    +'<div style="font-size:36px;font-weight:800;color:#1a1a1a;margin-bottom:4px">'+pct+'%</div>'
-    +'<div style="font-size:14px;color:#8b8b8b">'+correct+' / '+total+' correct</div></div>';
+  // Answer-blind reveal: show the score AND a review of what was missed —
+  // this is the first time correct/incorrect is disclosed.
+  var wrong=_drDetails.filter(function(d){return !d.ok;});
+  var reviewHtml;
+  if(wrong.length){
+    reviewHtml='<div style="text-align:left;margin-top:20px;border-top:1px solid rgba(255,255,255,.1);padding-top:16px">'
+      +'<div style="font-size:11px;font-weight:800;color:#fca5a5;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Review · 틀린 문제 '+wrong.length+'개</div>'
+      +wrong.map(function(d){return '<div style="margin-bottom:14px;font-size:13px;line-height:1.5">'
+        +(d.prompt?'<div style="color:rgba(255,255,255,.5);margin-bottom:3px">'+escapeHtml(d.prompt)+'</div>':'')
+        +'<div style="color:#f87171">✗ '+escapeHtml(d.your||'(빈 답)')+'</div>'
+        +'<div style="color:#4ade80">✓ '+escapeHtml(d.correct)+'</div></div>';}).join('')
+      +'</div>';
+  } else {
+    reviewHtml='<div style="margin-top:14px;font-size:14px;color:#4ade80;font-weight:700">전부 정답! 🎉</div>';
+  }
+  if(body) body.innerHTML='<div style="text-align:center;padding:8px 0"><div style="display:inline-flex;width:48px;height:48px;margin-bottom:8px;color:'+iconColor+';filter:drop-shadow(0 0 12px '+iconColor+'88)">'+icon+'</div>'
+    +'<div style="font-size:36px;font-weight:800;color:#fff;margin-bottom:4px">'+pct+'%</div>'
+    +'<div style="font-size:14px;color:rgba(255,255,255,.6)">'+correct+' / '+total+' correct</div></div>'
+    +reviewHtml;
   // Score screen: the primary button becomes the only "Close". Hide the
   // footer's standing Close so we don't show two identical Close buttons.
   var _fc=document.getElementById('dr-footer-close'); if(_fc) _fc.style.display='none';
