@@ -8890,7 +8890,15 @@ async function khTagArticleObject(article) {
 
 // ── INIT ──────────────────────────────────────────────────────
 function markShellReady() {
-  if (document.body) document.body.classList.add('kh-ready');
+  if (!document.body) return;
+  document.body.classList.add('kh-ready');
+  // CRITICAL: also clear the leaving-fade. `kh-leaving` sets
+  // `opacity:0 !important`; it's added on pagehide so the page fades out
+  // during navigation. On a bfcache back/forward restore the DOM comes
+  // back WITH that class still on it and `load` does NOT fire — so without
+  // removing it here on pageshow the restored page stays invisible /
+  // appears frozen ("All News won't scroll / nothing happens").
+  document.body.classList.remove('kh-leaving');
 }
 
 function markShellLeaving() {
@@ -8900,6 +8908,19 @@ function markShellLeaving() {
 window.addEventListener('load', markShellReady);
 window.addEventListener('beforeunload', markShellLeaving);
 window.addEventListener('pagehide', markShellLeaving);
+// bfcache restore: pageshow (not load) fires. Un-fade the shell AND clear
+// any scroll-lock (body overflow:hidden) a modal/overlay left set when we
+// navigated away, unless a modal or the immersive reader is genuinely open.
+window.addEventListener('pageshow', function () {
+  markShellReady();
+  try {
+    var m = document.getElementById('kh-auth-modal');
+    var modalOpen = m && m.style.display && m.style.display !== 'none';
+    if (!modalOpen && !document.body.classList.contains('kh-reading-page')) {
+      document.body.style.overflow = '';
+    }
+  } catch (_) {}
+});
 
 document.addEventListener('DOMContentLoaded', async function() {
   var _ldr = window._khLoaderSet || function(){};
