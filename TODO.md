@@ -10,6 +10,31 @@ doesn't keep reminding about closed work.
 
 ---
 
+## 🔴 Owner action — APPLY user_room_state migration (My Room save / item loss)
+
+Owner reported: room won't save ("Room not saved — check connection"),
+purchased items vanish while 냥 was still deducted, and flip / front-back
+edits don't persist. Root cause is almost certainly that
+`supabase/migrations/20260424_user_room_state.sql` (the `user_room_state`
+table + its RLS select/insert/update policies + the atomic `buy_room_item`
+RPC) is NOT fully applied in prod — so the client's upsert to
+`user_room_state` is rejected (not a missing-relation error, so it doesn't
+fall back), coins get spent via the separate `user_stats` path, and owned
+never persists. **Fix: run that migration in the Supabase SQL editor**
+(table, 3 RLS policies, and `buy_room_item`). Verify:
+
+```sql
+select * from pg_policies where tablename='user_room_state';
+select proname from pg_proc where proname='buy_room_item';
+```
+
+Frontend was hardened in the meantime (PR this session): server load now
+UNIONs owned (never wipes local purchases) and won't let an empty server
+layout clobber a non-empty local one. But cross-device persistence still
+needs the migration applied.
+
+---
+
 ## 🟡 Optional — REDEPLOY claude-proxy (safety net for Phase-B analysis)
 
 The "AI timeout" on article gen was ROOT-fixed in the frontend (Phase-A

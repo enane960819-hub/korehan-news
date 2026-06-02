@@ -3162,8 +3162,28 @@ async function _loadRoomFromServer() {
     }
     if (d) {
       try {
-        if (Array.isArray(d.room_layout)) localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(d.room_layout));
-        if (Array.isArray(d.room_owned))  localStorage.setItem(K_ROOM_OWNED,  JSON.stringify(d.room_owned));
+        if (Array.isArray(d.room_layout)) {
+          // Don't let an empty/stale server layout wipe a non-empty local one
+          // (e.g. while layout writes are being rejected — placements, flips
+          // and front/back changes would otherwise vanish on reload). If the
+          // server genuinely has a layout it wins; if it's empty but we have
+          // local placements, keep them.
+          var _localLayout = getRoomLayout();
+          if (d.room_layout.length || !_localLayout.length) {
+            localStorage.setItem(K_ROOM_LAYOUT, JSON.stringify(d.room_layout));
+          }
+        }
+        if (Array.isArray(d.room_owned)) {
+          // Owned is append-only: UNION the server list with anything already
+          // known locally. A stale or empty server row — e.g. after a write
+          // that was silently rejected (RLS / missing table) — must never wipe
+          // items the user already purchased on this device. This is the
+          // safety net behind the "냥 spent but items gone" report.
+          var _localOwned = getRoomOwned();
+          var _merged = d.room_owned.slice();
+          _localOwned.forEach(function(id){ if (_merged.indexOf(id) === -1) _merged.push(id); });
+          localStorage.setItem(K_ROOM_OWNED, JSON.stringify(_merged));
+        }
       } catch(e) { /* private mode */ }
       console.log('room loaded from server');
     }
@@ -4570,7 +4590,9 @@ function applySelectedItemScale(scaleValue) {
 // ownedOnly = true → "My Items" drawer (only items the user owns, for placing
 //              into the room). Triggered from the MY ROOM controls.
 // ownedOnly = false → full Item Shop (kept around for backwards-compat links).
+var _roomShopOwnedOnly = false; // remembers the current drawer mode so refreshes don't flip My Items → full Shop
 async function openRoomShop(ownedOnly) {
+  _roomShopOwnedOnly = !!ownedOnly;
   await loadRoomItemsFromDB();
   var existing = document.querySelector('.room-shop-overlay');
   if (existing) existing.remove();
@@ -4798,9 +4820,12 @@ function placeRoomItem(itemId) {
   if (typeof toast === 'function') toast(def.name + ' placed! Use Edit to move it.');
   if (typeof _fjMarkDone === 'function') _fjMarkDone('room');
 
-  // Refresh shop
+  // Refresh shop — preserve the drawer mode (My Items vs full Shop). Calling
+  // openRoomShop() with no arg here was the bug that flipped the owned-items
+  // drawer into the full catalog the moment you tapped "Place in Room".
+  var shopOpen = !!document.querySelector('.room-shop-overlay');
   closeRoomShop();
-  openRoomShop();
+  if (shopOpen) openRoomShop(_roomShopOwnedOnly);
 }
 
 // ── Remove item from room ────────────────────────────────────
