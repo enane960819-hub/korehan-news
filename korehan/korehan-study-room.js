@@ -4127,11 +4127,14 @@ function _keRenderStudyPhase(list) {
     // final card jumps directly to the Fill quiz; the old Recognition
     // MCQ between Study and Fill was redundant with the Situation quiz
     // and got cut.
-    + '<div style="display:flex;gap:8px;justify-content:center;align-items:center">'
-    + '<button onclick="window._keStudyIdx=Math.max(0,window._keStudyIdx-1);_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;visibility:' + (idx > 0 ? 'visible' : 'hidden') + '">&larr; 이전</button>'
+    // Nav row. Buttons are flex:1 so the primary action is full-width on the
+    // first card (no orphaned, off-centre pill) and splits 50/50 with 이전
+    // once there's a previous card to go back to.
+    + '<div style="display:flex;gap:8px;align-items:center">'
+    + (idx > 0 ? '<button onclick="window._keStudyIdx=Math.max(0,window._keStudyIdx-1);_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="flex:1;padding:11px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&larr; 이전</button>' : '')
     + (idx < exps.length - 1
-      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">다음 표현 &rarr;</button>'
-      : '<button onclick="_keStartFillQuiz()" style="padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">연습 시작 &rarr;</button>')
+      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="flex:1;padding:11px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">다음 표현 &rarr;</button>'
+      : '<button onclick="_keStartFillQuiz()" style="flex:1;padding:11px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">연습 시작 &rarr;</button>')
     + '</div>';
   // Re-render lucide icons that were just injected (Save button).
   if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
