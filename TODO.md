@@ -10,12 +10,13 @@ doesn't keep reminding about closed work.
 
 ---
 
-## 🔴 Owner action — REDEPLOY claude-proxy (fixes "AI timeout" on article gen)
+## 🟡 Optional — REDEPLOY claude-proxy (safety net for Phase-B analysis)
 
-Raised `ANTHROPIC_TIMEOUT_MS` 90s → 140s in `supabase/functions/claude-proxy/index.ts`.
-A cold-cache article generation (Sonnet body + Haiku analysis, 6–8k tokens)
-was exceeding the old 90s cap → "AI service timed out". Takes effect only
-after redeploy:
+The "AI timeout" on article gen was ROOT-fixed in the frontend (Phase-A
+body call capped from 6000 → 4000 max_tokens — it deploys automatically, no
+edge redeploy needed). Separately, `ANTHROPIC_TIMEOUT_MS` was raised 90s →
+140s as a safety net for the longer Phase-B (🧠 분석) Haiku call. Optional —
+redeploy only if Phase-B analysis ever times out:
 
 ```
 supabase functions deploy claude-proxy
