@@ -1772,35 +1772,37 @@ async function checkSession() {
   // code has already been exchanged for a persisted session and SIGNED_IN
   // has fired. Nothing to parse by hand.
 
-  // Deterministic fallback: if the SDK's auto-detect did NOT end up with a
-  // session, but we captured real implicit tokens from the URL fragment at
-  // page top, establish the session by hand with BOTH real tokens (never a
-  // placeholder). This closes any timing/edge case where detectSessionInUrl
-  // didn't take — guaranteeing login lands once Google returned tokens.
+  // Timed getSession so a wedged SDK init / refresh can never stall the
+  // page (a previous untimed call here caused an ~8s desktop first-load
+  // hang). Resolves with an empty session on timeout instead of throwing.
+  function _khGetSessionTimed(ms) {
+    return Promise.race([
+      sb.auth.getSession(),
+      new Promise(function (resolve) { setTimeout(function () { resolve({ data: { session: null }, _timeout: true }); }, ms); })
+    ]);
+  }
+
   try {
-    var _preGet = await sb.auth.getSession();
-    var _have = _preGet && _preGet.data && _preGet.data.session;
-    if (!_have && window._khOAuthHash && window._khOAuthHash.access_token && window._khOAuthHash.refresh_token) {
+    var _getSessionResult = await _khGetSessionTimed(4000);
+    var data = _getSessionResult && _getSessionResult.data;
+    // Deterministic fallback: the SDK didn't end up with a session, but we
+    // captured real implicit tokens at page top — establish it by hand with
+    // BOTH real tokens (never a placeholder), then re-read once.
+    if ((!data || !data.session) && window._khOAuthHash && window._khOAuthHash.access_token && window._khOAuthHash.refresh_token) {
       try {
-        await sb.auth.setSession({
-          access_token: window._khOAuthHash.access_token,
-          refresh_token: window._khOAuthHash.refresh_token
-        });
+        await Promise.race([
+          sb.auth.setSession({ access_token: window._khOAuthHash.access_token, refresh_token: window._khOAuthHash.refresh_token }),
+          new Promise(function (res) { setTimeout(res, 4000); })
+        ]);
         console.info('[auth] established session via manual hash fallback');
       } catch (_e) {
         console.warn('[auth] manual setSession fallback failed:', _e && (_e.message || _e));
       }
       try { window._khOAuthHash = null; } catch (_) {}
       try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_) {}
+      var _r2 = await _khGetSessionTimed(4000);
+      data = _r2 && _r2.data;
     }
-  } catch (_) {}
-
-  try {
-    var _getSessionResult = await Promise.race([
-      sb.auth.getSession(),
-      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('getSession timeout')); }, 8000); })
-    ]);
-    var data = _getSessionResult.data;
     if (data && data.session && data.session.user) {
       supaUser = data.session.user;
       updateAuthUI();
