@@ -10,6 +10,19 @@ doesn't keep reminding about closed work.
 
 ---
 
+## 🔴 Owner action — REDEPLOY claude-proxy (fixes "AI timeout" on article gen)
+
+Raised `ANTHROPIC_TIMEOUT_MS` 90s → 140s in `supabase/functions/claude-proxy/index.ts`.
+A cold-cache article generation (Sonnet body + Haiku analysis, 6–8k tokens)
+was exceeding the old 90s cap → "AI service timed out". Takes effect only
+after redeploy:
+
+```
+supabase functions deploy claude-proxy
+```
+
+---
+
 ## 🔧 Owner action — Storybook (picture-book reader) go-live
 
 Code is merged (reader + admin generator + edge fn). Three one-time

@@ -92,11 +92,12 @@ const MAX_INPUT_BYTES = 80_000
 
 // Anthropic call timeout. Above this we abort the connection so the
 // client doesn't hang on a stalled upstream and we don't keep the
-// function billed alive. Bumped to 90s — the combined Sonnet article-
-// generation call (verbose Beginner-level analysis with conjugation
-// chains) routinely runs 40-60s, leaving little headroom at the
-// previous 45s cap.
-const ANTHROPIC_TIMEOUT_MS = 90_000
+// function billed alive. Set to 140s: the article-generation calls
+// (cold-cache Sonnet body + verbose Haiku per-sentence analysis, 6–8k
+// output tokens) can exceed 90s on a cache-cold first run — owner saw
+// "AI timeout" on a single low-difficulty article. 140s aborts cleanly
+// just under Supabase's ~150s edge wall-clock limit.
+const ANTHROPIC_TIMEOUT_MS = 140_000
 
 function jsonResponse(body: unknown, status: number, cors: Record<string, string>) {
   return new Response(JSON.stringify(body), {
