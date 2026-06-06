@@ -602,15 +602,26 @@ async function _getAdminToken() {
 async function adminAPI(body) {
   var token = await _getAdminToken();
   if (!token) throw new Error('Admin not authenticated');
-  var resp = await fetch(ADMIN_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token,
-      'apikey': SUPA_KEY_ADMIN
-    },
-    body: JSON.stringify(body)
-  });
+  var ctrl = new AbortController();
+  var tid = setTimeout(function(){ ctrl.abort(); }, 25000);
+  var resp;
+  try {
+    resp = await fetch(ADMIN_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPA_KEY_ADMIN
+      },
+      body: JSON.stringify(body),
+      signal: ctrl.signal
+    });
+  } catch(fetchErr) {
+    clearTimeout(tid);
+    if (fetchErr && fetchErr.name === 'AbortError') throw new Error('Admin API timeout (25s) — Edge Function cold start or network issue');
+    throw fetchErr;
+  }
+  clearTimeout(tid);
   if (!resp.ok) {
     // Edge function can return the error in multiple shapes. Unpack all of
     // them so callers see an actionable message instead of "[object Object]".
@@ -9248,7 +9259,7 @@ async function loadStats() {
 function goUsers(){
   setSbOn(null);
   document.getElementById('main').innerHTML =
-    '<div class="pg-hd"><div><h1>👥 가입 회원</h1><p>구글 로그인으로 가입한 회원 목록입니다.</p></div></div>'
+    '<div class="pg-hd"><div><h1>👥 가입 회원</h1><p>가입한 모든 회원 목록입니다 (구글, 이메일 등 로그인 방식 무관).</p></div></div>'
    +'<div id="users-wrap"><div style="padding:24px;color:var(--gray);text-align:center">⏳ Loading...</div></div>';
   loadUsers();
 }
