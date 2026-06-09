@@ -277,6 +277,37 @@
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* ── Fairytale / Fables dedicated section ── */
+.st-fairytale-section{margin-bottom:36px;}
+.st-fairytale-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding:0 4px;}
+.st-fairytale-head-title{font-size:20px;font-weight:900;color:#0f172a;letter-spacing:-.01em;font-family:'DM Sans','Noto Sans KR',sans-serif;display:flex;align-items:center;gap:8px;}
+.st-fairytale-scroll{display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;padding:4px 4px 16px;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}
+.st-fairytale-scroll::-webkit-scrollbar{height:6px;}
+.st-fairytale-scroll::-webkit-scrollbar-thumb{background:#e9d5ff;border-radius:4px;}
+/* Book-cover fairy card */
+.sfc{flex:0 0 150px;min-height:225px;border-radius:14px;overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s;display:flex;flex-direction:column;box-shadow:2px 4px 18px rgba(90,40,160,.12);border:1.5px solid rgba(200,160,255,.3);}
+.sfc:hover{transform:translateY(-6px) rotate(-1.5deg);box-shadow:4px 18px 36px rgba(90,40,160,.22);}
+.sfc-art{flex:0 0 58%;position:relative;overflow:hidden;background:linear-gradient(135deg,#faf5ff,#e9d5ff);}
+.sfc-art > img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+.sfc-art-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;}
+.sfc-cover{flex:1;background:#fbf7ef;padding:10px 11px;display:flex;flex-direction:column;border-top:2px solid #e8d5a8;}
+.sfc-badge{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px;display:inline-block;margin-bottom:6px;align-self:flex-start;}
+.sfc-badge-fairytale{background:#f5f3ff;color:#7c3aed;}
+.sfc-badge-folktale{background:#f0fdf4;color:#166534;}
+.sfc-badge-aesop{background:#fff7ed;color:#c2410c;}
+.sfc-title-ko{font-family:'Noto Serif KR',serif;font-size:12px;font-weight:900;color:#1c1409;line-height:1.45;margin-bottom:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.sfc-title-en{font-size:9px;color:#7a6a4a;line-height:1.4;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;}
+.sfc-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:6px;}
+.sfc-lvl{font-size:8px;font-weight:800;color:#92400e;background:#fde68a;border-radius:4px;padding:2px 5px;}
+.sfc-open-lbl{font-size:9px;font-weight:800;color:#a855f7;}
+@media(max-width:600px){
+  .st-fairytale-scroll{gap:10px;padding:2px 2px 12px;}
+  .sfc{flex:0 0 128px;min-height:192px;}
+  .sfc-cover{padding:8px 9px;}
+  .sfc-title-ko{font-size:11px;}
+  .st-fairytale-head-title{font-size:15px;}
+}
+
 /* ══════════════════════════════════════════════════════════════
    STORYBOOK READER — paginated picture-book mode. Each page shows a
    full illustration with tappable pins (people/objects/emotions);
@@ -386,6 +417,8 @@
 </div>
 
 <div class="st-container">
+  <!-- Fairy-tale section — populated in no-filter mode, hidden when a filter is active -->
+  <div id="st-fairytale-section" style="display:none"></div>
   <!-- Series section -->
   <div id="st-series-section" style="margin-bottom:28px;display:none">
     <div style="font-size:18px;font-weight:900;color:#0f172a;margin-bottom:14px;font-family:'DM Sans','Noto Sans KR',sans-serif">Ongoing Series</div>
@@ -1294,10 +1327,28 @@ function renderStories() {
       }
     }
 
-    // Genre rails — every story appears in its own genre section
+    // Fairytale section — book-cover cards in their own dedicated strip above the genre rails
+    var _FTGENRES = ['fairytale','folktale','aesop'];
+    var _ftSection = document.getElementById('st-fairytale-section');
+    var _ftList = list.filter(function(s) { return _FTGENRES.indexOf(_khStoryGenre(s)) !== -1; });
+    if (_ftSection) {
+      if (_ftList.length) {
+        _ftSection.style.display = '';
+        _ftSection.innerHTML = '<div class="st-fairytale-section">'
+          + '<div class="st-fairytale-head"><div class="st-fairytale-head-title"><span>✨</span><span>동화 &amp; 우화</span>'
+          + '<span style="font-size:13px;font-weight:500;color:#94a3b8;margin-left:6px">Fairy Tales &amp; Fables</span></div></div>'
+          + '<div class="st-fairytale-scroll">' + _ftList.slice(0, 12).map(renderFairytaleCard).join('') + '</div>'
+          + '</div>';
+      } else {
+        _ftSection.style.display = 'none'; _ftSection.innerHTML = '';
+      }
+    }
+
+    // Genre rails — exclude fairytale-family (shown in the dedicated section above)
     var byGenre = {};
     list.forEach(function(s) {
       var g = _khStoryGenre(s);
+      if (_FTGENRES.indexOf(g) !== -1) return;
       if (!byGenre[g]) byGenre[g] = [];
       byGenre[g].push(s);
     });
@@ -1330,6 +1381,8 @@ function renderStories() {
   }
 
   // Filtered view — flat grid (current behaviour)
+  var _ftSec = document.getElementById('st-fairytale-section');
+  if (_ftSec) { _ftSec.style.display = 'none'; _ftSec.innerHTML = ''; }
   grid.className = 'st-grid';
   grid.style.display = '';
   var standalone = list.filter(function(s) { return !s.series_id; });
@@ -1402,6 +1455,35 @@ function renderStoryCard(s) {
       + '<div class="sc-foot">'
         + '<span class="sc-meta">' + (s.readTime||'3 min') + ' · ' + (LVL_LABEL[s.lvl]||'') + (perspLabel ? ' · ' + perspIcon + ' ' + perspLabel : '') + '</span>'
         + '<button class="sc-open">Read →</button>'
+      + '</div>'
+    + '</div>'
+  + '</div>';
+}
+
+var _SFC_BADGE_CLS = {fairytale:'sfc-badge-fairytale',folktale:'sfc-badge-folktale',aesop:'sfc-badge-aesop'};
+var _SFC_ICON = {fairytale:'✨',folktale:'🏔️',aesop:'🦁'};
+
+function renderFairytaleCard(s) {
+  var genre = _khStoryGenre(s);
+  var genreLabel = GENRE_LABELS[genre] || genre;
+  var badgeCls = _SFC_BADGE_CLS[genre] || 'sfc-badge-fairytale';
+  var icon = _SFC_ICON[genre] || '📖';
+  var thumbUrl = s.thumbnail_url || s.thumbnail || s.image_url || '';
+  var imgHtml = thumbUrl
+    ? '<img src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+    : '';
+  return '<div class="sfc" data-hover-skip="1" data-story-id="' + String(s.id) + '" onclick="sbOpen(\'' + String(s.id).replace(/'/g,"\\'") + '\')">'
+    + '<div class="sfc-art">'
+      + '<div class="sfc-art-icon">' + icon + '</div>'
+      + imgHtml
+    + '</div>'
+    + '<div class="sfc-cover">'
+      + '<span class="sfc-badge ' + badgeCls + '">' + escapeHtml(genreLabel) + '</span>'
+      + '<div class="sfc-title-ko">' + escapeHtml(s.title || '') + '</div>'
+      + (s.title_en ? '<div class="sfc-title-en">' + escapeHtml(s.title_en) + '</div>' : '')
+      + '<div class="sfc-foot">'
+        + '<span class="sfc-lvl">' + (LVL_LABEL[s.lvl] || '') + '</span>'
+        + '<span class="sfc-open-lbl">📖 Read</span>'
       + '</div>'
     + '</div>'
   + '</div>';
@@ -1557,6 +1639,8 @@ async function generateStoryAI(id) {
 function openStory(id) {
   var s = STORIES.find(function(x){ return String(x.id) === String(id); });
   if (!s) return;
+  // Fairytale-family stories always open in the storybook reader
+  if (['fairytale','folktale','aesop'].indexOf(_khStoryGenre(s)) !== -1) { sbOpen(id); return; }
   _hydrateStoryAiFromCache(s);
   var author = resolveStoryAuthor(s);
   window._currentStory = s;  // 전역 저장
@@ -1699,7 +1783,6 @@ function openStory(id) {
         + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
           + '<div style="font-size:11px;color:#94a3b8;font-weight:700;letter-spacing:.04em">Tap any paragraph to reveal English ↓</div>'
           + '<div class="st-settings-wrap">'
-            + '<button onclick="sbOpen(\'' + String(s.id).replace(/'/g,"\\'") + '\')" title="Read as a storybook" style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:999px;border:none;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">📖 <span>Storybook</span></button>'
             + (hasEnBody ? '<button id="st-body-lang-ko" onclick="stToggleBodyLang(\'ko\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid #2255a4;background:#2255a4;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇰🇷 KO</button><button id="st-body-lang-en" onclick="stToggleBodyLang(\'en\')" style="padding:6px 12px;border-radius:999px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🇺🇸 EN</button>' : '')
             + '<button class="st-settings-btn" onclick="stToggleSettings(event)" aria-label="Reading settings" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="settings" class="kh-ui-icon" aria-hidden="true"></i></button>'
             + '<div class="st-settings-pop" id="st-settings-pop" hidden>'
