@@ -12,26 +12,59 @@
 // common reason a source silently returns 0 items. NOTE: Reddit also
 // blocks some datacenter IP ranges outright regardless of UA — if a
 // subreddit still returns 0 after this, the egress IP is the cause and
-// needs an authenticated Reddit API token or a proxy, not a UA tweak.
+// needs an authenticated Reddit API token (set REDDIT_CLIENT_ID /
+// REDDIT_CLIENT_SECRET as Cloudflare Pages environment variables).
 const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+
+// ── Reddit OAuth (app-only) ────────────────────────────────────────
+// When REDDIT_CLIENT_ID + REDDIT_CLIENT_SECRET are set as Cloudflare
+// Pages environment variables, we exchange them for a bearer token and
+// hit oauth.reddit.com instead of www.reddit.com. Authenticated requests
+// bypass the IP-level blocking that Cloudflare datacenter egress IPs
+// consistently hit against the public /hot.json endpoint.
+// Token is cached in module scope across requests within the same worker
+// isolate (up to ~1 h expiry) to avoid an extra round-trip per batch.
+let _redditToken = null
+let _redditTokenExpiry = 0
+
+async function getRedditToken(clientId, clientSecret) {
+  if (_redditToken && Date.now() < _redditTokenExpiry) return _redditToken
+  const res = await fetch('https://www.reddit.com/api/v1/access_token', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret),
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'KoreHanNewsBot/2.0',
+    },
+    body: 'grant_type=client_credentials',
+    signal: AbortSignal.timeout(8000),
+  })
+  if (!res.ok) throw new Error('reddit_oauth_failed_' + res.status)
+  const json = await res.json().catch(() => null)
+  if (!json?.access_token) throw new Error('reddit_oauth_no_token')
+  _redditToken = json.access_token
+  // Expire 60 s before Reddit's actual expiry to avoid using a stale token
+  _redditTokenExpiry = Date.now() + Math.max(0, (Number(json.expires_in || 3600) - 60)) * 1000
+  return _redditToken
+}
 
 const SOURCE_CATALOG = [
   // ── International news (publisher-provided RSS) ─────────────────
   { id:'bbc-world', label:'BBC World', kind:'rss', category:'국제', url:'https://feeds.bbci.co.uk/news/world/rss.xml' },
   { id:'bbc-tech', label:'BBC Tech', kind:'rss', category:'문화', url:'https://feeds.bbci.co.uk/news/technology/rss.xml' },
   { id:'bbc-sport', label:'BBC Sport', kind:'rss', category:'스포츠', url:'https://feeds.bbci.co.uk/sport/rss.xml' },
-  { id:'npr-news', label:'NPR News', kind:'rss', category:'국제', url:'https://feeds.npr.org/1001/rss.xml' },
+  { id:'npr-news', label:'NPR News', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:npr.org&hl=en-US&gl=US&ceid=US:en' },
   { id:'reuters-world', label:'Reuters World', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:reuters.com+world&hl=en-US&gl=US&ceid=US:en' },
   { id:'ap-top', label:'AP Top News', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:apnews.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'guardian-world', label:'Guardian World', kind:'rss', category:'국제', url:'https://www.theguardian.com/world/rss' },
+  { id:'guardian-world', label:'Guardian World', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:theguardian.com+world&hl=en-US&gl=US&ceid=US:en' },
   { id:'aljazeera', label:'Al Jazeera English', kind:'rss', category:'국제', url:'https://www.aljazeera.com/xml/rss/all.xml' },
   { id:'cnn-top', label:'CNN Top Stories', kind:'rss', category:'국제', url:'http://rss.cnn.com/rss/edition.rss' },
 
   // ── Tech / Trends (RSS) ─────────────────────────────────────────
   { id:'techcrunch', label:'TechCrunch', kind:'rss', category:'문화', url:'https://techcrunch.com/feed/' },
-  { id:'theverge', label:'The Verge', kind:'rss', category:'문화', url:'https://www.theverge.com/rss/index.xml' },
-  { id:'arstechnica', label:'Ars Technica', kind:'rss', category:'문화', url:'https://feeds.arstechnica.com/arstechnica/index' },
-  { id:'wired', label:'WIRED', kind:'rss', category:'문화', url:'https://www.wired.com/feed/rss' },
+  { id:'theverge', label:'The Verge', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:theverge.com&hl=en-US&gl=US&ceid=US:en' },
+  { id:'arstechnica', label:'Ars Technica', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:arstechnica.com&hl=en-US&gl=US&ceid=US:en' },
+  { id:'wired', label:'WIRED', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:wired.com&hl=en-US&gl=US&ceid=US:en' },
   { id:'gtrends-us', label:'Google Trends US', kind:'rss', category:'국제', url:'https://trends.google.com/trending/rss?geo=US' },
   { id:'gtrends-kr', label:'Google Trends KR', kind:'rss', category:'문화', url:'https://trends.google.com/trending/rss?geo=KR' },
 
@@ -40,8 +73,8 @@ const SOURCE_CATALOG = [
   { id:'gn-beauty', label:'Beauty Trends', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=beauty+trend+OR+skincare+OR+makeup&hl=en-US&gl=US&ceid=US:en' },
   { id:'gn-travel', label:'Travel Trends', kind:'rss', category:'travel', url:'https://news.google.com/rss/search?q=travel+trend+OR+destination+viral+OR+tourism&hl=en-US&gl=US&ceid=US:en' },
   { id:'gn-food', label:'Food Trends', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=food+trend+OR+recipe+OR+restaurant+viral&hl=en-US&gl=US&ceid=US:en' },
-  { id:'allure', label:'Allure Beauty', kind:'rss', category:'beauty', url:'https://www.allure.com/feed/rss' },
-  { id:'cnet-travel', label:'CNET Travel', kind:'rss', category:'travel', url:'https://www.cnet.com/rss/news/' },
+  { id:'allure', label:'Allure Beauty', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=site:allure.com&hl=en-US&gl=US&ceid=US:en' },
+  { id:'cnet-travel', label:'CNET Travel', kind:'rss', category:'travel', url:'https://news.google.com/rss/search?q=site:cnet.com+travel+OR+lifestyle&hl=en-US&gl=US&ceid=US:en' },
   { id:'gn-health', label:'Health Trends', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=health+OR+wellness+OR+nutrition+trend&hl=en-US&gl=US&ceid=US:en' },
   { id:'gn-fashion', label:'Fashion Trends', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=fashion+trend+OR+streetwear+OR+runway&hl=en-US&gl=US&ceid=US:en' },
 
@@ -293,15 +326,14 @@ async function fetchHn(source) {
   }))
 }
 
-async function fetchReddit(source) {
-  const res = await fetch(`https://www.reddit.com/r/${source.subreddit}/hot.json?limit=20&raw_json=1`, {
-    headers: {
-      'user-agent': BROWSER_UA,
-      'accept': 'application/json,text/javascript,*/*;q=0.1',
-      'accept-language': 'en-US,en;q=0.9',
-    },
-    signal: AbortSignal.timeout(8000),
-  })
+async function fetchReddit(source, redditToken) {
+  const url = redditToken
+    ? `https://oauth.reddit.com/r/${source.subreddit}/hot?limit=20&raw_json=1`
+    : `https://www.reddit.com/r/${source.subreddit}/hot.json?limit=20&raw_json=1`
+  const headers = redditToken
+    ? { 'Authorization': 'Bearer ' + redditToken, 'User-Agent': 'KoreHanNewsBot/2.0' }
+    : { 'user-agent': BROWSER_UA, 'accept': 'application/json,text/javascript,*/*;q=0.1', 'accept-language': 'en-US,en;q=0.9' }
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) })
   // 403/429 → throw so the per-source line honestly shows "(일부 실패)".
   if (!res.ok) throw new Error('upstream_not_ok')
   const json = await res.json().catch(() => null)
@@ -541,7 +573,7 @@ function normalizeAndFilter(rows, seenDb) {
   return out
 }
 
-export async function onRequest({ request }) {
+export async function onRequest({ request, env }) {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors() })
   if (request.method !== 'POST') return new Response('', { status: 405, headers: cors() })
   try {
@@ -555,6 +587,19 @@ export async function onRequest({ request }) {
     const apikey = request.headers.get('apikey') || ''
     const dbSet = await loadExistingDedupSet(supaUrl, { authorization: auth, apikey })
 
+    // Attempt Reddit OAuth app-only token if credentials are configured.
+    // Falls back to unauthenticated (which may be blocked by IP) if not.
+    const redditClientId = env?.REDDIT_CLIENT_ID || ''
+    const redditClientSecret = env?.REDDIT_CLIENT_SECRET || ''
+    let redditToken = null
+    if (redditClientId && redditClientSecret) {
+      try {
+        redditToken = await getRedditToken(redditClientId, redditClientSecret)
+      } catch {
+        // No token — unauthenticated fallback below
+      }
+    }
+
     const bySource = []
     let merged = []
 
@@ -563,7 +608,7 @@ export async function onRequest({ request }) {
         let rows = []
         if (source.kind === 'rss') rows = await fetchRss(source)
         else if (source.kind === 'hn') rows = await fetchHn(source)
-        else if (source.kind === 'reddit') rows = await fetchReddit(source)
+        else if (source.kind === 'reddit') rows = await fetchReddit(source, redditToken)
         else if (source.kind === 'wikinews') rows = await fetchWikinews(source)
         bySource.push({ id: source.id, label: source.label, count: rows.length })
         merged = merged.concat(rows)
