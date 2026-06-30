@@ -4757,26 +4757,21 @@ const NEWS_SOURCES = [
   { id:'gn-movies',      label:'Movies & TV',            icon:'🎬' },
   { id:'soompi',         label:'Soompi (K-content)',     icon:'⭐' },
   { id:'gn-gaming',      label:'Gaming News',            icon:'🎮' },
-  // Reddit
-  { id:'reddit-world',     label:'r/worldnews',           icon:'🌐' },
-  { id:'reddit-korea',     label:'r/korea',                icon:'🇰🇷' },
-  { id:'reddit-kpop',      label:'r/kpop',                 icon:'🎵' },
-  { id:'reddit-kdrama',    label:'r/KDRAMA',               icon:'📺' },
-  { id:'reddit-koreanfood',label:'r/KoreanFood',           icon:'🍲' },
-  // Reddit GIF-rich (auto-pulls preview image; Use Video opt-in for the loop)
-  { id:'reddit-edugif',    label:'r/educationalgifs',      icon:'🎬' },
-  { id:'reddit-aww',       label:'r/aww',                  icon:'🥺' },
-  { id:'reddit-awwduc',    label:'r/Awwducational',        icon:'🦊' },
-  { id:'reddit-mademesmile',label:'r/MadeMeSmile',         icon:'😊' },
-  { id:'reddit-bros',      label:'r/HumansBeingBros',      icon:'🤝' },
-  { id:'reddit-magic',     label:'r/blackmagicfuckery',    icon:'✨' },
-  { id:'reddit-sports',    label:'r/sports',               icon:'🏆' },
+  // Interesting / Viral (RSS-based replacements for Reddit)
+  { id:'smithsonianmag',   label:'Smithsonian Mag',        icon:'🏛️' },
+  { id:'sciencealert',     label:'ScienceAlert',           icon:'🔬' },
+  { id:'iflscience',       label:'IFLScience',             icon:'🧪' },
+  { id:'mentalfloss',      label:'Mental Floss',           icon:'🧠' },
+  { id:'atlasobscura',     label:'Atlas Obscura',          icon:'🗺️' },
+  { id:'odditycentral',    label:'Oddity Central',         icon:'👀' },
+  { id:'natgeo',           label:'National Geographic',    icon:'🌿' },
+  { id:'ladbible',         label:'LADbible',               icon:'😂' },
+  { id:'popsci',           label:'Popular Science',        icon:'🔭' },
+  { id:'espn',             label:'ESPN',                   icon:'🏆' },
+  // K-content
+  { id:'allkpop',          label:'AllKpop',                icon:'🎵' },
+  { id:'koreaboo',         label:'Koreaboo',               icon:'⭐' },
   // Clickbait / Viral
-  { id:'reddit-til',         label:'r/todayilearned',       icon:'💡' },
-  { id:'reddit-interesting', label:'r/interestingasfuck',   icon:'🤯' },
-  { id:'reddit-oddly',       label:'r/oddlysatisfying',     icon:'😌' },
-  { id:'reddit-noway',       label:'r/Damnthatsinteresting',icon:'😱' },
-  { id:'reddit-mildly',      label:'r/mildlyinteresting',   icon:'🧐' },
   { id:'gn-clickbait',       label:'Viral Clickbait',       icon:'🎣' },
   { id:'gn-listicle',        label:'Listicles',             icon:'📋' },
   { id:'boredpanda',         label:'BoredPanda',            icon:'🐼' },
@@ -11076,13 +11071,14 @@ function bulkResetCounters() {
 // within a single press. The canonical catalog lives in admin-source-fetch.js.
 var BULK_ART_SOURCES_BY_SECTION = {
   '사회':      ['yonhap'],
-  '국제':      ['bbc-world','reddit-world','gtrends-us'],
-  '문화':      ['gn-viral','reddit-til','reddit-interesting','reddit-oddly','reddit-noway','reddit-mildly','gn-clickbait','gn-listicle','boredpanda'],
-  'K-pop':     ['reddit-kpop'],
-  'Korea':     ['reddit-korea'],
+  '국제':      ['bbc-world','reuters-world','ap-top','gtrends-us'],
+  '문화':      ['gn-viral','smithsonianmag','sciencealert','iflscience','mentalfloss','atlasobscura','odditycentral','natgeo','ladbible','gn-clickbait','gn-listicle','boredpanda'],
+  'K-pop':     ['allkpop','koreaboo','soompi','gn-kdrama'],
+  'Korea':     ['koreaboo','allkpop'],
+  '스포츠':    ['espn','bbc-sport'],
   'beauty':    ['gn-beauty','allure'],
   'travel':    ['gn-travel'],
-  '오피니언':  []  // Opinion pieces are adapted from viral / op-ed-ish feeds on demand
+  '오피니언':  []
 };
 var BULK_ART_ALL_SOURCES = Object.keys(BULK_ART_SOURCES_BY_SECTION).reduce(function(a,k){ return a.concat(BULK_ART_SOURCES_BY_SECTION[k]); }, []);
 
