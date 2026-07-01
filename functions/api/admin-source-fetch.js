@@ -61,16 +61,17 @@ const SOURCE_CATALOG = [
   { id:'gn-listicle', label:'Listicles', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=top+10+OR+best+of+OR+reasons+why&hl=en-US&gl=US&ceid=US:en' },
   { id:'boredpanda', label:'BoredPanda', kind:'rss', category:'문화', url:'https://www.boredpanda.com/feed/' },
 
-  // ── Interesting / Viral (replacing Reddit interest subs) ────────
-  { id:'smithsonianmag', label:'Smithsonian Mag', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:smithsonianmag.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'sciencealert', label:'ScienceAlert', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:sciencealert.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'iflscience', label:'IFLScience', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:iflscience.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'mentalfloss', label:'Mental Floss', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:mentalfloss.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'atlasobscura', label:'Atlas Obscura', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:atlasobscura.com&hl=en-US&gl=US&ceid=US:en' },
+  // ── Social Viral (Reddit 대체 — SNS 바이럴 콘텐츠) ──────────────
+  { id:'buzzfeed', label:'BuzzFeed', kind:'rss', category:'문화', url:'https://www.buzzfeed.com/index.xml' },
+  { id:'thedodo', label:'The Dodo', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:thedodo.com&hl=en-US&gl=US&ceid=US:en' },
+  { id:'goodnewsnetwork', label:'Good News Network', kind:'rss', category:'문화', url:'https://www.goodnewsnetwork.org/feed/' },
+  { id:'mashable', label:'Mashable', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:mashable.com&hl=en-US&gl=US&ceid=US:en' },
+  { id:'unilad', label:'UNILAD', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:unilad.com&hl=en-US&gl=US&ceid=US:en' },
+  { id:'upworthy', label:'Upworthy', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:upworthy.com&hl=en-US&gl=US&ceid=US:en' },
   { id:'odditycentral', label:'Oddity Central', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:odditycentral.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'natgeo', label:'National Geographic', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:nationalgeographic.com&hl=en-US&gl=US&ceid=US:en' },
   { id:'ladbible', label:'LADbible', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:ladbible.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'popsci', label:'Popular Science', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:popsci.com&hl=en-US&gl=US&ceid=US:en' },
+  { id:'atlasobscura', label:'Atlas Obscura', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:atlasobscura.com&hl=en-US&gl=US&ceid=US:en' },
+  { id:'iflscience', label:'IFLScience', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:iflscience.com&hl=en-US&gl=US&ceid=US:en' },
 
   // ── K-content (replacing reddit-kpop / reddit-korea) ─────────────
   { id:'allkpop', label:'AllKpop', kind:'rss', category:'K-pop', url:'https://news.google.com/rss/search?q=site:allkpop.com&hl=en-US&gl=US&ceid=US:en' },
