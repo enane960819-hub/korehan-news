@@ -37,7 +37,7 @@ var ARTICLES_STORAGE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 // with 400 (column does not exist), wiping the section/home rails.
 // Removed so the query parses; if/when we add a source-URL field we
 // should also create the column in a migration.
-var LIST_ARTICLE_SELECT = 'id,title,title_en,title_ko,body,image,section,level,date,published_at,created_at,updated_at,status,view_count,featured,reporter_id,reporter,video_url,use_video,video_kind,video_fallback_url';
+var LIST_ARTICLE_SELECT = '*';
 // Home cards only need metadata + image — `body` was the dominant cost
 // (often >80% of payload) and made the LTE first-paint waterfall stall
 // while the loader sat at ~86%. All News still uses LIST_ARTICLE_SELECT
