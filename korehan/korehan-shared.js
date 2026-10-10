@@ -5355,6 +5355,13 @@ async function analyzeSentence(idx, el) {
       if (!hit || (hit.text || '').trim() !== sentenceText) {
         hit = sharedCache.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
       }
+      // Loose match — whitespace / curly-vs-straight quote drift between
+      // the cached text and the rendered body (admin re-saved the body,
+      // NBSP from a paste) used to orphan an otherwise valid row.
+      if (!hit) {
+        var _normTarget = _khSentNorm(sentenceText);
+        hit = sharedCache.sentences.find(function(s){ return s && _khSentNorm(s.text) === _normTarget; });
+      }
       var _hitGrammarMissing = !hit || !hit.grammar || !Array.isArray(hit.grammar) || !hit.grammar.length;
       var _hitGrammarBad = hit && _khSentGrammarLooksBad(hit);
       // Codex P2: empty grammar is LEGITIMATE for noun phrases /
@@ -5407,11 +5414,19 @@ async function analyzeSentence(idx, el) {
   // re-bake from the AI Cache Management page. Either way, we don't
   // charge tokens silently on the reader's tap — we show a friendly
   // "preparing" panel and stop.
+  // Admins get a one-tap bake button right here instead of having to
+  // hunt the article down on AI Cache Management. One Haiku call for the
+  // whole article; the result is persisted so every reader hits cache.
+  var _adminBakeBtn = window._isAdmin
+    ? '<button class="asp-admin-bake" onclick="_khAdminBakeArticle(' + idx + ')" style="margin-top:12px;padding:8px 16px;border-radius:999px;border:0;background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">⚡ Analyze this article now (admin)</button>'
+    : '';
   panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
     + '<div class="asp-prep" style="padding:14px 16px;text-align:center;color:#475569;font-size:13px;line-height:1.55">'
     +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">Analysis in progress</div>'
     +   'Sentence analysis is being prepared. Please try again in a moment.'
+    +   (_adminBakeBtn ? '<div>' + _adminBakeBtn + '</div>' : '')
     + '</div>';
+  if (window._isAdmin) return; // admin can bake directly — no self-notification
   // Ring the admin's bell on the next macrotask so the RPC round-trip
   // can never extend this tap-handler turn. Server-side RPC dedupes
   // per (content_id, 10min) so multi-tap on the same uncached article
@@ -5419,6 +5434,39 @@ async function analyzeSentence(idx, el) {
   setTimeout(function () {
     try { _khNotifyAdminCacheMiss('article', articleId, sentenceText); } catch (_) {}
   }, 0);
+}
+
+// Whitespace- and quote-insensitive form of a sentence, used only as a
+// last-resort match between cached sentence text and the rendered body.
+function _khSentNorm(t) {
+  return String(t || '').replace(/[\s\u00a0]+/g, '').replace(/[\u2018\u2019\u201c\u201d'"`]/g, '');
+}
+
+// Admin-only: bake sentence analysis for the current article from the
+// reader's "Analysis in progress" panel, then re-open the tapped sentence.
+async function _khAdminBakeArticle(idx) {
+  if (!window._isAdmin) return;
+  var articleId = '';
+  try {
+    articleId = new URLSearchParams(window.location.search).get('id')
+      || (window._currentArticle && window._currentArticle.id) || '';
+  } catch(_) {}
+  if (!articleId) return;
+  var btn = document.querySelector('.art-sent-panel .asp-admin-bake');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Analyzing… (20-40s)'; }
+  var level = (window._currentArticle && window._currentArticle.level) || 'Beginner';
+  // Drop the cached "no row" result so the trigger + re-tap re-read state.
+  window._khArtSentSharedCache[articleId] = undefined;
+  try { sessionStorage.removeItem('kh_artfull_running_' + articleId); } catch(_) {}
+  await _khTriggerFullArticleAnalyze(articleId, level);
+  var baked = window._khArtSentSharedCache[articleId];
+  if (!baked || !baked.sentences) {
+    if (btn) { btn.disabled = false; btn.textContent = '⚠ Failed — tap to retry (see console)'; }
+    return;
+  }
+  var el = document.querySelector('.art-sent[data-sent-idx="' + idx + '"]');
+  closeSentPanel();
+  if (el) analyzeSentence(idx, el);
 }
 
 // Posts an admin-targeted bell notification when a reader hits an
