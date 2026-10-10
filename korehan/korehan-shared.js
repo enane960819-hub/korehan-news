@@ -5464,6 +5464,16 @@ async function _khAdminBakeArticle(idx) {
     if (btn) { btn.disabled = false; btn.textContent = '⚠ Failed — tap to retry (see console)'; }
     return;
   }
+  // The trigger sets the in-memory cache even when the DB write fails,
+  // which is exactly how "first reader bakes for everyone" silently broke
+  // before. Re-read from the DB to prove the row actually landed.
+  window._khArtSentSharedCache[articleId] = undefined;
+  var persisted = await _khLoadArticleSentenceCache(articleId);
+  if (!persisted) {
+    window._khArtSentSharedCache[articleId] = baked; // still show it to the admin
+    if (typeof toast === 'function') toast('⚠ Analyzed, but NOT saved to DB — check console', true);
+    else alert('Analyzed, but NOT saved to DB — check console');
+  }
   var el = document.querySelector('.art-sent[data-sent-idx="' + idx + '"]');
   closeSentPanel();
   if (el) analyzeSentence(idx, el);
