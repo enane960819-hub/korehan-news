@@ -194,7 +194,6 @@ const FEEDS: Array<{ id: string; label: string; section: string; url: string }> 
   { id: 'aljazeera', label: 'Al Jazeera', section: '국제', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
   { id: 'dw', label: 'DW', section: '국제', url: 'https://rss.dw.com/rdf/rss-en-all' },
   { id: 'france24', label: 'France 24', section: '국제', url: 'https://www.france24.com/en/rss' },
-  { id: 'wikinews', label: 'Wikinews', section: '국제', url: 'https://en.wikinews.org/w/index.php?title=Special:NewsFeed&feed=atom&categories=Published' },
   // Society / good news / explainers
   { id: 'goodnews', label: 'Good News Network', section: '사회', url: 'https://www.goodnewsnetwork.org/feed/' },
   { id: 'conversation', label: 'The Conversation', section: '사회', url: 'https://theconversation.com/global/articles.atom' },
@@ -220,7 +219,6 @@ const FEEDS: Array<{ id: string; label: string; section: string; url: string }> 
   { id: 'bbc-ent', label: 'BBC Entertainment', section: '해외연예', url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml' },
   { id: 'variety', label: 'Variety', section: '해외연예', url: 'https://variety.com/feed/' },
   { id: 'soompi', label: 'Soompi', section: 'K-pop', url: 'https://www.soompi.com/feed' },
-  { id: 'allkpop', label: 'allkpop', section: 'K-pop', url: 'https://www.allkpop.com/rss' },
   { id: 'koreaboo', label: 'Koreaboo', section: 'K-pop', url: 'https://www.koreaboo.com/feed/' },
   // Viral / quirky / feel-good (clickbait-style is fine — learners love these)
   { id: 'boredpanda', label: 'Bored Panda', section: '문화', url: 'https://www.boredpanda.com/feed/' },
