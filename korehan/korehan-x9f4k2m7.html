@@ -1350,8 +1350,75 @@ function goFilter(sec){
   renderList();
 }
 
+// ── Daily auto-drafts (supabase/functions/daily-article-draft) ──
+// pg_cron builds 4 drafts every morning (06:00 KST). This banner on the
+// Article List shows today's queue so the admin can review → publish.
+var AUTODRAFT_LEVEL = { Starter:'🌱 Seed', Beginner:'🌿 Sprout', Intermediate:'🌳 Tree', Advanced:'🌲 Forest' };
+async function renderAutoDraftBanner() {
+  var el = document.getElementById('autodraft-banner');
+  if (!el) return;
+  var q = null;
+  try {
+    var r = await getSb().from('app_settings').select('value').eq('key', 'daily_article_draft_queue').maybeSingle();
+    var v = r && r.data && r.data.value;
+    q = v ? (typeof v === 'string' ? JSON.parse(v) : v) : null;
+  } catch(_) {}
+  var todayKst = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+  var isToday = q && q.date === todayKst;
+  var rows = isToday ? (q.picks || []).map(function(p) {
+    var a = p.article_id ? DB.find(function(x){ return String(x.id) === String(p.article_id); }) : null;
+    var state = p.status === 'done'
+      ? (a && a.status === 'published' ? '<span style="color:#059669;font-weight:800">✓ Published</span>'
+         : '<button class="btn" style="font-size:12px;padding:5px 12px;background:#2563eb;color:#fff" onclick="autoDraftPublish(\'' + p.article_id + '\')">🚀 Publish</button>'
+           + ' <button class="btn" style="font-size:12px;padding:5px 12px;background:#f1f5f9;color:#334155" onclick="openModal(\'' + p.article_id + '\')">✏️ Review</button>')
+      : p.status === 'failed'
+        ? '<span style="color:#dc2626;font-size:12px" title="' + esc(p.error || '') + '">❌ failed</span>'
+        : '<span style="color:#64748b;font-size:12px">⏳ queued</span>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #e2e8f0;flex-wrap:wrap">'
+      + '<div style="min-width:0"><span style="font-size:11px;font-weight:800;color:#5b21b6">' + (AUTODRAFT_LEVEL[p.level] || p.level) + '</span> · <span style="font-size:11px;color:#64748b">' + esc(p.section) + '</span>'
+      + '<div style="font-size:14px;font-weight:700;color:#0f172a">' + esc(p.title_ko || p.headline.title) + '</div>'
+      + '<div style="font-size:11px;color:#94a3b8">' + esc(p.headline.source || '') + (p.title_ko ? ' · ' + esc(p.headline.title) : '') + '</div></div>'
+      + '<div style="white-space:nowrap">' + state + '</div></div>';
+  }).join('') : '';
+  el.innerHTML = '<div class="infobox" style="background:#faf5ff;border:1px solid #ddd6fe;margin-bottom:14px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">'
+    +   '<strong>🤖 Today\'s auto-drafts' + (isToday ? '' : ' — none yet') + '</strong>'
+    +   '<button class="btn" id="autodraft-run" style="font-size:12px;padding:5px 12px;background:#fff;color:#7c3aed;border:1.5px solid #c4b5fd" onclick="autoDraftRunNow()">▶ Build next draft now</button>'
+    + '</div>'
+    + (isToday ? rows : '<div style="font-size:12px;color:#64748b;margin-top:6px">매일 06:00 KST에 자동 생성됩니다 (분석·퀴즈 캐시 포함). 지금 바로 만들려면 ▶ 버튼.</div>')
+    + '</div>';
+}
+async function autoDraftPublish(id) {
+  var res = await getSb().from('articles').update({ status: 'published' }).eq('id', id);
+  if (res && res.error) { toast('Publish failed: ' + (res.error.message || res.error), true); return; }
+  var a = DB.find(function(x){ return String(x.id) === String(id); });
+  if (a) a.status = 'published';
+  toast('🚀 Published');
+  renderList();
+}
+async function autoDraftRunNow() {
+  var btn = document.getElementById('autodraft-run');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Building… (~1-2 min)'; }
+  try {
+    var token = await _getAdminToken();
+    var r = await fetch(SUPA_URL_ADMIN + '/functions/v1/daily-article-draft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPA_KEY_ADMIN },
+      body: '{}',
+    });
+    var out = await r.json().catch(function(){ return {}; });
+    if (r.status === 404) toast('daily-article-draft 함수가 아직 배포되지 않았습니다', true);
+    else if (out.built) { toast('✅ Draft built: ' + out.built.title); await dbLoadFromSupabase(); return; }
+    else if (out.idle) toast('오늘 큐가 모두 처리됐습니다');
+    else if (out.skipped) toast('다른 생성이 진행 중입니다 — 잠시 후 다시', true);
+    else toast('실패: ' + (out.error || r.status), true);
+  } catch (e) { toast('실패: ' + (e.message || e), true); }
+  renderList();
+}
+
 function renderList(){
   refreshCounts();
+  setTimeout(renderAutoDraftBanner, 0);
   const pub   = DB.filter(a=>a.status==='published').length;
   const draft = DB.filter(a=>a.status==='draft').length;
 
@@ -1366,6 +1433,7 @@ function renderList(){
       <div class="stat"><div class="stat-n">${draft}</div><div class="stat-l">Draft</div></div>
       <div class="stat"><div class="stat-n">${DB.filter(a=>a.featured).length}</div><div class="stat-l">Featured</div></div>
     </div>
+    <div id="autodraft-banner"></div>
     <div class="infobox" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <span>💡 Click an article to edit, or, <strong>Featured</strong>to feature it on the main hero.</span>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
