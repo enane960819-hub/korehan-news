@@ -1898,6 +1898,36 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 .art-sent-panel .asp-close:hover { background: #e0d4f7; transform: rotate(90deg); }
 
+/* Report a wrong / awkward analysis — quiet footer, expands to a form. */
+.art-sent-panel .asp-report { margin-top: 14px; padding-top: 10px; border-top: 1px solid #ede9fe; }
+.art-sent-panel .asp-report-btn {
+  background: none; border: 0; padding: 6px 0; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 600; color: #94a3b8;
+  transition: color .15s;
+}
+.art-sent-panel .asp-report-btn:hover { color: #7c3aed; }
+.art-sent-panel .asp-report-title { font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
+.art-sent-panel .asp-report-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.art-sent-panel .asp-report-chip {
+  padding: 7px 12px; border-radius: 999px; border: 1.5px solid #ddd6fe;
+  background: #fff; color: #5b21b6; font: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: all .15s;
+}
+.art-sent-panel .asp-report-chip.on { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.art-sent-panel .asp-report-detail {
+  width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 10px;
+  border: 1.5px solid #e2e8f0; font: inherit; font-size: 13px; resize: vertical;
+}
+.art-sent-panel .asp-report-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.art-sent-panel .asp-report-cancel,
+.art-sent-panel .asp-report-send {
+  padding: 8px 16px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer;
+}
+.art-sent-panel .asp-report-cancel { background: #fff; border: 1.5px solid #e2e8f0; color: #64748b; }
+.art-sent-panel .asp-report-send { background: #7c3aed; border: 0; color: #fff; }
+.art-sent-panel .asp-report-send:disabled { opacity: .45; cursor: default; }
+.art-sent-panel .asp-report-done { font-size: 13px; font-weight: 700; color: #059669; padding: 4px 0; }
+
 /* Section titles — small uppercase eyebrow with an icon dot. */
 .art-sent-panel .asp-section-title {
   display: flex;
@@ -2073,6 +2103,20 @@ body.mobile-redesign .art-sent-panel {
   color: #e5edf9;
   box-shadow: 0 8px 24px rgba(0,0,0,.35);
 }
+body.dark-mode .art-sent-panel .asp-report,
+body.mobile-redesign .art-sent-panel .asp-report { border-top-color: rgba(167,139,250,.22); }
+body.dark-mode .art-sent-panel .asp-report-title,
+body.mobile-redesign .art-sent-panel .asp-report-title { color: #f5f3ff; }
+body.dark-mode .art-sent-panel .asp-report-chip,
+body.mobile-redesign .art-sent-panel .asp-report-chip { background: transparent; border-color: rgba(196,181,253,.45); color: #ddd6fe; }
+body.dark-mode .art-sent-panel .asp-report-chip.on,
+body.mobile-redesign .art-sent-panel .asp-report-chip.on { background: #a78bfa; border-color: #a78bfa; color: #1e1b4b; }
+body.dark-mode .art-sent-panel .asp-report-detail,
+body.mobile-redesign .art-sent-panel .asp-report-detail { background: rgba(15,10,35,.6); border-color: rgba(167,139,250,.3); color: #e5edf9; }
+body.dark-mode .art-sent-panel .asp-report-cancel,
+body.mobile-redesign .art-sent-panel .asp-report-cancel { background: transparent; border-color: rgba(167,139,250,.3); color: #c4b5fd; }
+body.dark-mode .art-sent-panel .asp-report-done,
+body.mobile-redesign .art-sent-panel .asp-report-done { color: #34d399; }
 body.dark-mode .art-sent-panel .asp-close,
 body.mobile-redesign .art-sent-panel .asp-close {
   background: rgba(167,139,250,.20);

@@ -5225,8 +5225,95 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
       });
     }
   }
+  if (panel && panel.dataset && panel.dataset.contentId) {
+    html += '<div class="asp-report"><button type="button" class="asp-report-btn" onclick="_khOpenSentReport(this)">🚩 Something wrong or awkward? Report</button></div>';
+  }
   panel.innerHTML = html;
 }
+
+// ── Report a wrong / awkward sentence analysis ─────────────────
+// Inline form inside the analysis panel. Writes via the
+// report_sentence_analysis RPC (20261010_sentence_analysis_reports.sql);
+// if that migration isn't applied yet, falls back to client_errors so
+// the report still reaches the admin.
+var KH_SENT_REPORT_REASONS = [
+  ['translation', 'Wrong translation'],
+  ['grammar',     'Wrong grammar explanation'],
+  ['vocab',       'Wrong vocab meaning'],
+  ['awkward',     'Awkward / unnatural'],
+  ['other',       'Other'],
+];
+function _khOpenSentReport(btn) {
+  var box = btn && btn.closest('.asp-report');
+  if (!box) return;
+  if (typeof supaUser === 'undefined' || !supaUser) {
+    if (typeof openAuthModal === 'function') openAuthModal('signin');
+    return;
+  }
+  box.innerHTML = '<div class="asp-report-title">What\'s wrong?</div>'
+    + '<div class="asp-report-reasons">'
+    + KH_SENT_REPORT_REASONS.map(function(r) {
+        return '<button type="button" class="asp-report-chip" data-reason="' + r[0] + '" onclick="_khPickSentReportReason(this)">' + r[1] + '</button>';
+      }).join('')
+    + '</div>'
+    + '<textarea class="asp-report-detail" maxlength="500" rows="2" placeholder="Optional: tell us what it should be"></textarea>'
+    + '<div class="asp-report-actions">'
+    +   '<button type="button" class="asp-report-cancel" onclick="_khCancelSentReport(this)">Cancel</button>'
+    +   '<button type="button" class="asp-report-send" onclick="_khSendSentReport(this)" disabled>Send report</button>'
+    + '</div>';
+}
+function _khPickSentReportReason(chip) {
+  var box = chip.closest('.asp-report');
+  box.querySelectorAll('.asp-report-chip').forEach(function(c){ c.classList.remove('on'); });
+  chip.classList.add('on');
+  box.dataset.reason = chip.dataset.reason;
+  var send = box.querySelector('.asp-report-send');
+  if (send) send.disabled = false;
+}
+function _khCancelSentReport(btn) {
+  var box = btn.closest('.asp-report');
+  box.innerHTML = '<button type="button" class="asp-report-btn" onclick="_khOpenSentReport(this)">🚩 Something wrong or awkward? Report</button>';
+}
+async function _khSendSentReport(btn) {
+  var box = btn.closest('.asp-report');
+  var panel = btn.closest('.art-sent-panel');
+  if (!box || !panel || !box.dataset.reason) return;
+  var detailEl = box.querySelector('.asp-report-detail');
+  var payload = {
+    p_content_type: panel.dataset.contentType || 'article',
+    p_content_id:   panel.dataset.contentId || '',
+    p_sent_idx:     parseInt(panel.dataset.sentIdx || panel.dataset.msgIdx, 10),
+    p_sentence:     String(panel.dataset.sentence || '').slice(0, 1000),
+    p_reason:       box.dataset.reason,
+    p_detail:       detailEl ? detailEl.value.trim().slice(0, 500) : '',
+  };
+  if (isNaN(payload.p_sent_idx)) payload.p_sent_idx = null;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  var ok = false, errCode = '';
+  try {
+    var sb = getSupa();
+    var res = await sb.rpc('report_sentence_analysis', payload);
+    if (!res.error && res.data && res.data.ok) ok = true;
+    else errCode = (res.data && res.data.error) || (res.error && (res.error.code || res.error.message)) || 'unknown';
+  } catch (e) { errCode = (e && e.message) || 'exception'; }
+  if (!ok && errCode === 'rate_limited') {
+    box.innerHTML = '<div class="asp-report-done">You\'ve sent a lot of reports today — thank you! Please try again tomorrow.</div>';
+    return;
+  }
+  if (!ok) {
+    // Migration not applied / RPC failed → keep the report via client_errors.
+    try {
+      kh_log_error('analysis-report: ' + payload.p_reason, {
+        source: 'analysis-report', rpc_error: String(errCode).slice(0, 200),
+        content_type: payload.p_content_type, content_id: payload.p_content_id,
+        sent_idx: payload.p_sent_idx, sentence: payload.p_sentence, detail: payload.p_detail,
+      }, 'info');
+    } catch (_) {}
+  }
+  box.innerHTML = '<div class="asp-report-done">✓ Thanks! We\'ll review and fix this sentence.</div>';
+}
+
 async function analyzeSentence(idx, el) {
   if (!el) return;
   // First successful interaction is enough — don't keep nagging.
@@ -5267,6 +5354,8 @@ async function analyzeSentence(idx, el) {
     var p = new URLSearchParams(window.location.search);
     articleId = p.get('id') || (window._currentArticle && window._currentArticle.id) || '';
   } catch(_) {}
+  panel.dataset.contentType = 'article';
+  panel.dataset.contentId = String(articleId || '');
   var cacheKey = _khSentCacheKey(articleId, idx, sentenceText);
 
   // In-memory cache (current page) → sessionStorage (current tab) → live call.
@@ -5675,6 +5764,8 @@ async function analyzeConvBubble(convId, msgIdx, el) {
   var panel = document.createElement('div');
   panel.className = 'art-sent-panel conv-sent-panel';
   panel.dataset.msgIdx = String(msgIdx);
+  panel.dataset.contentType = 'conversation';
+  panel.dataset.contentId = String(convId || '');
   panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
     + '<div class="asp-loading">분석 중</div>';
   // Insert as sibling after .dp-bubble-row, before .dp-bubble-en / .dp-time.

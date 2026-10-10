@@ -369,6 +369,7 @@ body.sb-open .sb-backdrop{display:block}
     <button class="sb-btn" onclick="goUsers()"><span class="ico">👥</span>User Management</button>
     <button class="sb-btn" onclick="goComments()"><span class="ico">🗨️</span>Comment Management</button>
     <button class="sb-btn" onclick="goReports()"><span class="ico">🚩</span>Report Queue</button>
+    <button class="sb-btn" onclick="goAnalysisReports()"><span class="ico">🧩</span>Analysis Reports</button>
     <button class="sb-btn" onclick="goRecentUGC()"><span class="ico">🔍</span>Recent UGC</button>
     <button class="sb-btn" onclick="goCostMonitor()"><span class="ico">💵</span>Anthropic Cost</button>
     <button class="sb-btn" id="sb-speaking" onclick="goSpeakingReviews()"><span class="ico">🎙️</span>Speaking Reviews</button>
@@ -8345,6 +8346,110 @@ function goReports() {
   var chk = document.getElementById('rpt-show-resolved');
   if (chk) chk.addEventListener('change', loadAllReports);
   loadAllReports();
+}
+
+// ── Sentence-analysis reports ─────────────────────────────────
+// Learners flag wrong / awkward analyses from the tap-to-analyze panel.
+// Primary source: sentence_analysis_reports (user-JWT client, RLS lets
+// is_admin_email() read/update). Fallback source: client_errors rows
+// logged with message 'analysis-report: …' while the migration was not
+// yet applied.
+var SAR_REASON_LABEL = { translation:'Wrong translation', grammar:'Wrong grammar', vocab:'Wrong vocab', awkward:'Awkward', other:'Other' };
+function goAnalysisReports() {
+  setSbOn(null);
+  document.getElementById('main').innerHTML =
+    '<div class="pg-hd"><div><h1>🧩 Analysis Reports</h1><p>학습자가 신고한 문장 분석 오류. 기사를 열어 해당 문장을 확인하고, AI Cache Management의 📝 문장 편집으로 고친 뒤 ✓ Fixed 처리하세요.</p></div>'
+   +'<div><label style="font-size:12px;color:var(--gr);margin-right:8px"><input type="checkbox" id="sar-show-resolved"> Show resolved</label></div></div>'
+   +'<div id="sar-wrap"><div style="padding:24px;text-align:center;color:var(--gr)">⏳ Loading...</div></div>';
+  var chk = document.getElementById('sar-show-resolved');
+  if (chk) chk.addEventListener('change', loadAnalysisReports);
+  loadAnalysisReports();
+}
+// User-JWT client (RLS: is_admin_email()). admin-api's table allowlist
+// doesn't include sentence_analysis_reports, so we don't go through getSb().
+function _sarClient() {
+  if (!window._adminAuthClient && typeof supabase !== 'undefined') {
+    window._adminAuthClient = supabase.createClient(SUPA_URL_ADMIN, SUPA_KEY_ADMIN, { auth: { persistSession: true } });
+  }
+  return window._adminAuthClient;
+}
+function _sarLink(type, id) {
+  return type === 'conversation'
+    ? 'korehan-conversations.html?id=' + encodeURIComponent(id)
+    : 'korehan-article.html?id=' + encodeURIComponent(id);
+}
+async function loadAnalysisReports() {
+  var wrap = document.getElementById('sar-wrap');
+  if (!wrap) return;
+  var showResolved = (document.getElementById('sar-show-resolved')||{}).checked;
+  var rows = [], tableMissing = false, legacy = [];
+  try {
+    var q = _sarClient().from('sentence_analysis_reports').select('*').order('created_at', { ascending: false }).limit(300);
+    if (!showResolved) q = q.eq('status', 'pending');
+    var res = await q;
+    if (res.error) tableMissing = true; else rows = res.data || [];
+  } catch(_) { tableMissing = true; }
+  try {
+    var lr = await getSb().from('client_errors').select('id,created_at,message,context')
+      .ilike('message', 'analysis-report:%').order('created_at', { ascending: false }).limit(200);
+    legacy = (lr && lr.data) || [];
+  } catch(_) {}
+
+  var html = '';
+  if (tableMissing) {
+    html += '<div class="infobox" style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;margin-bottom:12px">⚠ <b>sentence_analysis_reports</b> 테이블이 없습니다. Supabase SQL editor에서 <code>supabase/migrations/20261010_sentence_analysis_reports.sql</code>을 실행하세요. 그 전까지의 신고는 아래 "Fallback" 목록(client_errors)에 쌓입니다.</div>';
+  }
+  if (!rows.length && !legacy.length) {
+    wrap.innerHTML = html + '<div style="padding:32px;text-align:center;color:var(--gr)">' + (showResolved ? 'No reports found.' : 'No pending reports — nice.') + '</div>';
+    return;
+  }
+  function card(r, isLegacy) {
+    var actions = isLegacy
+      ? '<button onclick="sarDeleteLegacy(' + r.id + ')" style="padding:6px 12px;background:#f1f5f9;color:#0f172a;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">✓ Done (delete)</button>'
+      : (r.status === 'pending'
+          ? '<button onclick="sarResolve(' + r.id + ',\'fixed\')" style="padding:6px 12px;background:#059669;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">✓ Fixed</button>'
+            + '<button onclick="sarResolve(' + r.id + ',\'dismissed\')" style="padding:6px 12px;background:#fff;color:#64748b;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Dismiss</button>'
+          : '<span style="font-size:11px;color:var(--gr)">✓ ' + esc(r.status) + (r.resolved_at ? ' — ' + new Date(r.resolved_at).toLocaleString('ko-KR') : '') + '</span>');
+    return '<div style="background:#fff;border:1px solid var(--bo);border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+      + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'
+      +   '<div><span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:#ede9fe;color:#5b21b6;text-transform:uppercase">' + esc(r.content_type) + '</span> '
+      +   '<span style="font-size:13px;font-weight:700;color:#0f172a">' + esc(SAR_REASON_LABEL[r.reason] || r.reason) + '</span>'
+      +   (isLegacy ? ' <span style="font-size:10px;color:#9a3412;font-weight:800">FALLBACK</span>' : '') + '</div>'
+      +   '<div style="font-size:11px;color:var(--gr);white-space:nowrap">' + new Date(r.created_at).toLocaleString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) + '</div>'
+      + '</div>'
+      + '<div style="background:#f8fafc;border-left:3px solid #a78bfa;padding:8px 12px;margin:8px 0;font-size:14px">' + esc(r.sentence) + '</div>'
+      + (r.detail ? '<div style="font-size:12px;color:#475569;margin-bottom:6px">💬 ' + esc(r.detail) + '</div>' : '')
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+      +   '<a href="' + _sarLink(r.content_type, r.content_id) + '" target="_blank" rel="noopener" style="padding:6px 12px;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">↗ Open</a>'
+      +   actions
+      +   '<span style="font-size:11px;color:#94a3b8">id: <code>' + esc(r.content_id) + '</code>' + (r.sent_idx != null ? ' · #' + esc(r.sent_idx) : '') + '</span>'
+      + '</div></div>';
+  }
+  if (rows.length) {
+    html += '<div style="font-size:13px;color:var(--gr);margin-bottom:12px">' + rows.length + ' report' + (rows.length === 1 ? '' : 's') + '</div>'
+      + rows.map(function(r){ return card(r, false); }).join('');
+  }
+  if (legacy.length) {
+    html += '<h3 style="margin:20px 0 10px;font-size:15px">Fallback (client_errors) — ' + legacy.length + '</h3>'
+      + legacy.map(function(e) {
+          var c = e.context || {};
+          return card({ id: e.id, created_at: e.created_at, content_type: c.content_type || 'article', content_id: c.content_id || '',
+                        sent_idx: c.sent_idx, sentence: c.sentence || '', reason: String(e.message || '').replace('analysis-report: ', ''),
+                        detail: c.detail || '' }, true);
+        }).join('');
+  }
+  wrap.innerHTML = html;
+}
+async function sarResolve(id, status) {
+  var res = await _sarClient().from('sentence_analysis_reports')
+    .update({ status: status, resolved_at: new Date().toISOString() }).eq('id', id);
+  if (res.error) { toast('처리 실패: ' + res.error.message, true); return; }
+  loadAnalysisReports();
+}
+async function sarDeleteLegacy(id) {
+  var res = await getSb().from('client_errors').delete().eq('id', id);
+  if (res && res.error) { toast('삭제 실패: ' + (res.error.message || res.error), true); return; }
+  loadAnalysisReports();
 }
 
 async function loadAllReports() {

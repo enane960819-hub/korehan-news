@@ -10,6 +10,17 @@ doesn't keep reminding about closed work.
 
 ---
 
+## 🔴 Owner action — APPLY sentence_analysis_reports migration
+
+The 🚩 Report link in the sentence-analysis panel writes via the
+`report_sentence_analysis` RPC. Run
+`supabase/migrations/20261010_sentence_analysis_reports.sql` in the Supabase
+SQL editor. Until then reports fall back into `client_errors`
+(message `analysis-report: …`) and still show in admin → 🧩 Analysis Reports
+under "Fallback".
+
+---
+
 ## 🔴 Owner action — APPLY user_room_state migration (My Room save / item loss)
 
 Owner reported: room won't save ("Room not saved — check connection"),
