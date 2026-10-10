@@ -10,6 +10,23 @@ doesn't keep reminding about closed work.
 
 ---
 
+## 🔴 Owner action — TURN ON daily auto-drafts (daily-article-draft)
+
+Every morning 06:00 KST, 4 article drafts (one per level) are built
+automatically: headline fetch → Haiku pick → Sonnet body → Haiku sentence
+analysis + quiz → `article_cache`. Status stays `draft`; publish from the
+CMS Article List banner "🤖 Today's auto-drafts" (🚀 Publish / ✏️ Review).
+
+1. `supabase functions deploy daily-article-draft`
+2. Run `supabase/migrations/20261010_daily_article_draft_cron.sql` in the
+   SQL editor (check the Vault secret name matches daily-content-gen's job).
+3. Test once: CMS → Article List → "▶ Build next draft now".
+
+Cost: ~4 × (Sonnet body + 2 Haiku) ≈ $0.3/day. Logged in `claude_api_usage`
+as `cron:daily-draft-*`.
+
+---
+
 ## 🔴 Owner action — APPLY sentence_analysis_reports migration
 
 The 🚩 Report link in the sentence-analysis panel writes via the
