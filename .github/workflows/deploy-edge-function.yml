@@ -67,11 +67,27 @@ jobs:
         if: ${{ github.event.inputs.invoke == 'true' || contains(github.event.head_commit.message, '[invoke]') }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        # Supabase projects can hold both legacy JWT keys (service_role) and
+        # new sb_secret_ keys; the function's SUPABASE_SERVICE_ROLE_KEY may be
+        # either. Try every non-public key, log only name + HTTP status.
         run: |
-          KEY=$(supabase projects api-keys --project-ref "$PROJECT_REF" -o json | jq -r '.[] | select(.name=="service_role") | .api_key')
-          if [ -z "$KEY" ] || [ "$KEY" = "null" ]; then echo "::error::could not read service_role key"; exit 1; fi
-          echo "::add-mask::$KEY"
+          KEYS=$(supabase projects api-keys --project-ref "$PROJECT_REF" -o json --reveal 2>/dev/null \
+                 || supabase projects api-keys --project-ref "$PROJECT_REF" -o json)
+          echo "Key names: $(echo "$KEYS" | jq -r '[.[] | "\(.name)(\(.type // "legacy"))"] | join(", ")')"
           echo "Invoking $FUNCTION (can take 1-2 min)…"
-          curl -sS -m 170 -w '\nHTTP %{http_code}\n' -X POST \
-            "https://$PROJECT_REF.supabase.co/functions/v1/$FUNCTION" \
-            -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{}'
+          for row in $(echo "$KEYS" | jq -r '.[] | select((.name|test("anon|publishable"))|not) | @base64'); do
+            NAME=$(echo "$row" | base64 -d | jq -r '.name')
+            KEY=$(echo "$row" | base64 -d | jq -r '.api_key')
+            [ -z "$KEY" ] || [ "$KEY" = "null" ] && continue
+            echo "::add-mask::$KEY"
+            CODE=$(curl -sS -m 170 -o /tmp/resp.json -w '%{http_code}' -X POST \
+              "https://$PROJECT_REF.supabase.co/functions/v1/$FUNCTION" \
+              -H "Authorization: Bearer $KEY" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}')
+            echo "key=$NAME → HTTP $CODE"
+            if [ "$CODE" != "401" ]; then
+              cat /tmp/resp.json; echo
+              [ "$CODE" -ge 200 ] && [ "$CODE" -lt 300 ] && exit 0
+              exit 1
+            fi
+          done
+          echo "::error::every key got 401"; exit 1
