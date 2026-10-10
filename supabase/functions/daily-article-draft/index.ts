@@ -93,8 +93,10 @@ type Queue = { date: string; created_at: string; picks: DraftPick[]; source_stat
 function kstToday(): string {
   return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
 }
+// Unicode letters/digits so Japanese/Chinese/Cyrillic titles don't collapse
+// to '' (same result as the old [^\w가-힣] rule for Korean/English).
 function headlineKey(title = ''): string {
-  return String(title).toLowerCase().replace(/[^\w가-힣]+/g, '').slice(0, 140)
+  return String(title).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '').slice(0, 140)
 }
 function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -220,6 +222,28 @@ const FEEDS: Array<{ id: string; label: string; section: string; url: string }> 
   { id: 'soompi', label: 'Soompi', section: 'K-pop', url: 'https://www.soompi.com/feed' },
   { id: 'allkpop', label: 'allkpop', section: 'K-pop', url: 'https://www.allkpop.com/rss' },
   { id: 'koreaboo', label: 'Koreaboo', section: 'K-pop', url: 'https://www.koreaboo.com/feed/' },
+  // Viral / quirky / feel-good (clickbait-style is fine — learners love these)
+  { id: 'boredpanda', label: 'Bored Panda', section: '문화', url: 'https://www.boredpanda.com/feed/' },
+  { id: 'oddity', label: 'Oddity Central', section: '문화', url: 'https://www.odditycentral.com/feed' },
+  { id: 'upworthy', label: 'Upworthy', section: '사회', url: 'https://www.upworthy.com/feeds/feed.rss' },
+  { id: 'dodo', label: 'The Dodo', section: 'nature', url: 'https://www.thedodo.com/rss' },
+  { id: 'mentalfloss', label: 'Mental Floss', section: '역사', url: 'https://www.mentalfloss.com/rss.xml' },
+  { id: 'ie', label: 'Interesting Engineering', section: 'IT과학', url: 'https://interestingengineering.com/feed' },
+  { id: 'digg', label: 'Digg', section: '문화', url: 'https://digg.com/rss/top.rss' },
+  { id: 'nypost-weird', label: 'NY Post Weird', section: '문화', url: 'https://nypost.com/tag/weird-but-true/feed/' },
+  { id: 'mirror-weird', label: 'Mirror Weird News', section: '문화', url: 'https://www.mirror.co.uk/news/weird-news/?service=rss' },
+  { id: 'unilad', label: 'UNILAD', section: '문화', url: 'https://www.unilad.com/rss' },
+  // Non-English sources — Sonnet adapts any language into Korean.
+  { id: 'nhk', label: 'NHK (日本語)', section: '국제', url: 'https://www3.nhk.or.jp/rss/news/cat0.xml' },
+  { id: 'bbc-zh', label: 'BBC 中文', section: '국제', url: 'https://feeds.bbci.co.uk/zhongwen/simp/rss.xml' },
+  { id: 'bbc-ja', label: 'BBC Japan (日本語)', section: '국제', url: 'https://feeds.bbci.co.uk/japanese/rss.xml' },
+  { id: 'elpais', label: 'El País (Español)', section: '국제', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada' },
+  { id: 'bbc-mundo', label: 'BBC Mundo (Español)', section: '국제', url: 'https://feeds.bbci.co.uk/mundo/rss.xml' },
+  { id: 'france24-fr', label: 'France 24 (Français)', section: '국제', url: 'https://www.france24.com/fr/rss' },
+  { id: 'dw-de', label: 'DW (Deutsch)', section: '국제', url: 'https://rss.dw.com/rdf/rss-de-all' },
+  { id: 'spiegel', label: 'Der Spiegel (Deutsch)', section: '국제', url: 'https://www.spiegel.de/schlagzeilen/index.rss' },
+  { id: 'bbc-vi', label: 'BBC Tiếng Việt', section: '국제', url: 'https://feeds.bbci.co.uk/vietnamese/rss.xml' },
+  { id: 'bbc-pt', label: 'BBC Brasil (Português)', section: '국제', url: 'https://feeds.bbci.co.uk/portuguese/rss.xml' },
   // Beauty / wellness
   { id: 'allure', label: 'Allure', section: 'beauty', url: 'https://www.allure.com/feed/rss' },
   { id: 'guardian-wellness', label: 'Guardian Wellness', section: 'beauty', url: 'https://www.theguardian.com/lifeandstyle/health-and-wellbeing/rss' },
@@ -227,8 +251,10 @@ const FEEDS: Array<{ id: string; label: string; section: string; url: string }> 
 
 const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
 const MIN_BODY_CHARS = 600     // shorter than this = teaser / paywall / video page → drop
+const MIN_BODY_CHARS_CJK = 250 // Japanese/Chinese pack ~2.5× more per character
+const CJK = /[\u3040-\u30ff\u4e00-\u9fff]/
 const MAX_BODY_CHARS = 9000    // enough for a full news story, bounded prompt cost
-const FULLTEXT_POOL = 45       // how many candidates get their page fetched
+const FULLTEXT_POOL = 60       // how many candidates get their page fetched
 
 function decodeEntities(s: string): string {
   return String(s || '')
@@ -287,10 +313,10 @@ async function fetchArticle(url: string): Promise<{ text: string; image: string 
     if (art && art.length) scope = art.sort((a, b) => b.length - a.length)[0]
     const paras = (scope.match(/<p[\s>][\s\S]*?<\/p>/gi) || [])
       .map(stripTags)
-      .filter((p) => p.length >= 60 && !/^(sign up|subscribe|advertisement|read more|related:|copyright|©)/i.test(p))
+      .filter((p) => p.length >= (CJK.test(p) ? 25 : 60) && !/^(sign up|subscribe|advertisement|read more|related:|copyright|©)/i.test(p))
     const seenP = new Set<string>()
     const text = paras.filter((p) => !seenP.has(p) && seenP.add(p)).join('\n\n').slice(0, MAX_BODY_CHARS)
-    if (text.length < MIN_BODY_CHARS) return null
+    if (text.length < (CJK.test(text) ? MIN_BODY_CHARS_CJK : MIN_BODY_CHARS)) return null
     return { text, image: og ? decodeEntities(og[1]) : '' }
   } catch (_) { return null }
 }
@@ -325,7 +351,7 @@ async function buildQueue(sb: any, apiKey: string): Promise<Queue> {
   //    first) so one busy feed can't crowd out the rest.
   const threeDays = 3 * 86400_000
   const queues = perFeed.map((items) => items
-    .filter((h) => !seen.has(String(h.url).trim()) && !seen.has(headlineKey(h.title)))
+    .filter((h) => { const k = headlineKey(h.title); return !seen.has(String(h.url).trim()) && !(k && seen.has(k)) })
     .filter((h) => { const t = h.published_at ? new Date(h.published_at).getTime() : Date.now(); return Date.now() - t <= threeDays })
     .sort((a, b) => String(b.published_at).localeCompare(String(a.published_at))))
   const pool: Headline[] = []
@@ -358,13 +384,13 @@ async function buildQueue(sb: any, apiKey: string): Promise<Queue> {
   ).join('\n')
   const selectPrompt =
     'You pick today\'s news stories for a Korean-learning site for foreign learners. Each story will be rewritten in Korean at one TOPIK level.\n\n'
-    + 'Candidates (title + opening of the full article):\n' + list + '\n\n'
+    + 'Candidates (title + opening of the full article; sources may be in any language):\n' + list + '\n\n'
     + 'Pick EXACTLY 4 different stories — one for each level: Starter (absolute beginner), Beginner (TOPIK 1-2), Intermediate (TOPIK 3-4), Advanced (TOPIK 5-6).\n'
     + 'Criteria, in order:\n'
     + '1. Learner interest: surprising, useful, warm or culturally interesting; Korea-related stories are a plus.\n'
     + '2. Level fit: Starter/Beginner get simple concrete topics (animals, food, daily life, light culture). Heavier topics (politics, economy, conflict) only for Intermediate/Advanced.\n'
     + '3. Avoid: graphic violence, death tolls, sexual content, partisan politics framing, gossip, pure listicles/ads/product roundups.\n'
-    + '4. Variety: 4 different sections and different sources. Prefer [img] stories.\n\n'
+    + '4. Variety: 4 different sections and different sources. Prefer [img] stories. Fun viral/quirky stories are welcome, especially for Starter/Beginner.\n\n'
     + 'Sections (use the exact key): ' + SECTIONS.map((s) => `${s.key} (${s.topics})`).join('; ') + '\n\n'
     + 'Return ONLY JSON: {"picks":[{"idx":<number>,"level":"Starter|Beginner|Intermediate|Advanced","section":"<key>"}]}'
   const out = extractJsonObject(await callClaude(sb, apiKey, 'daily-draft-select', MODEL_FAST, 600, selectPrompt, 45_000))
@@ -399,7 +425,7 @@ function bodyPrompt(h: Headline, level: Level, section: string): string {
     + '[원본 뉴스 — 원문 기사 전체]\n제목: ' + h.title + '\n출처: ' + (h.source || '') + '\n본문:\n' + (h.body_text || h.desc || h.summary || '(본문 없음)') + '\n\n'
     + '[각색 방법] 위 원문 전체를 읽고 핵심 사실만 골라 학습자용 한국어 기사로 재구성하세요. 원문의 모든 디테일을 옮길 필요는 없습니다 — 레벨에 맞게 중요한 사실 위주로 압축.\n\n'
     + '[지시사항]\n'
-    + '- 원본의 핵심 사실과 주제 유지. 영어 출처면 한국어로 번역·각색.\n'
+    + '- 원본의 핵심 사실과 주제 유지. 원문이 영어·일본어·중국어·스페인어 등 어떤 언어든 한국어로 번역·각색.\n'
     + '- 독자는 한국어를 배우는 외국인 학습자. 어휘/문법 난이도는 레벨에 맞추되 본문은 일반 한국어 뉴스처럼 자연스럽게.\n'
     + '- ★ 환각 금지 ★ 원본 텍스트에 명시된 것만 사용:\n'
     + '    a. 원본에 없는 사실/숫자/통계/발언/날짜/장소 추가 금지\n'
