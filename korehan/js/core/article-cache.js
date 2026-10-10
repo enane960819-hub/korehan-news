@@ -175,12 +175,24 @@ async function getFromCache(contentType, contentId, cacheKey) {
   return null;
 }
 
+// article_cache RLS only grants SELECT (20260515_all_public_tables_anon_rls.sql),
+// so writes through the user-JWT client are rejected with "new row violates
+// row-level security policy". Admins route writes through the admin-api Edge
+// Function (service role) instead — same path the admin CMS uses.
+function _artCacheAdminWrite(method, data, extraParams) {
+  var params = Object.assign({ data: data }, extraParams || {});
+  return khAdminApi({ action: 'db', table: 'article_cache', method: method, params: params })
+    .then(function(r){ return { error: (r && r.error) || null }; })
+    .catch(function(e){ return { error: { message: (e && e.message) || String(e) } }; });
+}
+
 async function upsertArticleCacheRow(articleId, patch) {
   if (_remoteCacheDisabled || !patch) return;
   var sb = getSupa();
   if (!sb) return;
   var schema = await _detectArtCacheSchema();
   if (schema === 'none') return;
+  var viaAdmin = !!window._isAdmin && typeof khAdminApi === 'function';
 
   if (schema === 'kv') {
     var keys = Object.keys(patch);
@@ -189,12 +201,15 @@ async function upsertArticleCacheRow(articleId, patch) {
       var v = patch[k];
       if (v === undefined || v === null) continue;
       try {
-        var upsRes = await sb.from('article_cache').upsert({
+        var kvRow = {
           content_type: 'article',
           content_id: String(articleId),
           cache_key: k,
           cache_value: typeof v === 'string' ? v : JSON.stringify(v)
-        }, { onConflict: 'content_type,content_id,cache_key' });
+        };
+        var upsRes = viaAdmin
+          ? await _artCacheAdminWrite('upsert', kvRow, { onConflict: 'content_type,content_id,cache_key' })
+          : await sb.from('article_cache').upsert(kvRow, { onConflict: 'content_type,content_id,cache_key' });
         if (upsRes.error) {
           console.warn('[cache] upsert error key=' + k + ':', upsRes.error);
           var msg = String((upsRes.error.message) || upsRes.error.code || '');
@@ -214,12 +229,16 @@ async function upsertArticleCacheRow(articleId, patch) {
       var existing = await sb.from('article_cache').select('article_id').eq('article_id', String(articleId)).maybeSingle();
       if (existing.error) { console.warn('[cache] wide select error:', existing.error); }
       else if (existing && existing.data) {
-        var upRes = await sb.from('article_cache').update(patch).eq('article_id', String(articleId));
+        var upRes = viaAdmin
+          ? await _artCacheAdminWrite('update', patch, { eq: [{ col: 'article_id', val: String(articleId) }] })
+          : await sb.from('article_cache').update(patch).eq('article_id', String(articleId));
         if (upRes.error) console.warn('[cache] wide update error:', upRes.error);
         else console.log('[cache] wide updated articleId=' + articleId, Object.keys(patch));
       } else {
         var wRow = Object.assign({ article_id: String(articleId) }, patch);
-        var insRes = await sb.from('article_cache').insert(wRow);
+        var insRes = viaAdmin
+          ? await _artCacheAdminWrite('insert', wRow)
+          : await sb.from('article_cache').insert(wRow);
         if (insRes.error) console.warn('[cache] wide insert error:', insRes.error);
         else console.log('[cache] wide inserted articleId=' + articleId, Object.keys(patch));
       }

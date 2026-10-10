@@ -5225,8 +5225,95 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
       });
     }
   }
+  if (panel && panel.dataset && panel.dataset.contentId) {
+    html += '<div class="asp-report"><button type="button" class="asp-report-btn" onclick="_khOpenSentReport(this)">🚩 Something wrong or awkward? Report</button></div>';
+  }
   panel.innerHTML = html;
 }
+
+// ── Report a wrong / awkward sentence analysis ─────────────────
+// Inline form inside the analysis panel. Writes via the
+// report_sentence_analysis RPC (20261010_sentence_analysis_reports.sql);
+// if that migration isn't applied yet, falls back to client_errors so
+// the report still reaches the admin.
+var KH_SENT_REPORT_REASONS = [
+  ['translation', 'Wrong translation'],
+  ['grammar',     'Wrong grammar explanation'],
+  ['vocab',       'Wrong vocab meaning'],
+  ['awkward',     'Awkward / unnatural'],
+  ['other',       'Other'],
+];
+function _khOpenSentReport(btn) {
+  var box = btn && btn.closest('.asp-report');
+  if (!box) return;
+  if (typeof supaUser === 'undefined' || !supaUser) {
+    if (typeof openAuthModal === 'function') openAuthModal('signin');
+    return;
+  }
+  box.innerHTML = '<div class="asp-report-title">What\'s wrong?</div>'
+    + '<div class="asp-report-reasons">'
+    + KH_SENT_REPORT_REASONS.map(function(r) {
+        return '<button type="button" class="asp-report-chip" data-reason="' + r[0] + '" onclick="_khPickSentReportReason(this)">' + r[1] + '</button>';
+      }).join('')
+    + '</div>'
+    + '<textarea class="asp-report-detail" maxlength="500" rows="2" placeholder="Optional: tell us what it should be"></textarea>'
+    + '<div class="asp-report-actions">'
+    +   '<button type="button" class="asp-report-cancel" onclick="_khCancelSentReport(this)">Cancel</button>'
+    +   '<button type="button" class="asp-report-send" onclick="_khSendSentReport(this)" disabled>Send report</button>'
+    + '</div>';
+}
+function _khPickSentReportReason(chip) {
+  var box = chip.closest('.asp-report');
+  box.querySelectorAll('.asp-report-chip').forEach(function(c){ c.classList.remove('on'); });
+  chip.classList.add('on');
+  box.dataset.reason = chip.dataset.reason;
+  var send = box.querySelector('.asp-report-send');
+  if (send) send.disabled = false;
+}
+function _khCancelSentReport(btn) {
+  var box = btn.closest('.asp-report');
+  box.innerHTML = '<button type="button" class="asp-report-btn" onclick="_khOpenSentReport(this)">🚩 Something wrong or awkward? Report</button>';
+}
+async function _khSendSentReport(btn) {
+  var box = btn.closest('.asp-report');
+  var panel = btn.closest('.art-sent-panel');
+  if (!box || !panel || !box.dataset.reason) return;
+  var detailEl = box.querySelector('.asp-report-detail');
+  var payload = {
+    p_content_type: panel.dataset.contentType || 'article',
+    p_content_id:   panel.dataset.contentId || '',
+    p_sent_idx:     parseInt(panel.dataset.sentIdx || panel.dataset.msgIdx, 10),
+    p_sentence:     String(panel.dataset.sentence || '').slice(0, 1000),
+    p_reason:       box.dataset.reason,
+    p_detail:       detailEl ? detailEl.value.trim().slice(0, 500) : '',
+  };
+  if (isNaN(payload.p_sent_idx)) payload.p_sent_idx = null;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  var ok = false, errCode = '';
+  try {
+    var sb = getSupa();
+    var res = await sb.rpc('report_sentence_analysis', payload);
+    if (!res.error && res.data && res.data.ok) ok = true;
+    else errCode = (res.data && res.data.error) || (res.error && (res.error.code || res.error.message)) || 'unknown';
+  } catch (e) { errCode = (e && e.message) || 'exception'; }
+  if (!ok && errCode === 'rate_limited') {
+    box.innerHTML = '<div class="asp-report-done">You\'ve sent a lot of reports today — thank you! Please try again tomorrow.</div>';
+    return;
+  }
+  if (!ok) {
+    // Migration not applied / RPC failed → keep the report via client_errors.
+    try {
+      kh_log_error('analysis-report: ' + payload.p_reason, {
+        source: 'analysis-report', rpc_error: String(errCode).slice(0, 200),
+        content_type: payload.p_content_type, content_id: payload.p_content_id,
+        sent_idx: payload.p_sent_idx, sentence: payload.p_sentence, detail: payload.p_detail,
+      }, 'info');
+    } catch (_) {}
+  }
+  box.innerHTML = '<div class="asp-report-done">✓ Thanks! We\'ll review and fix this sentence.</div>';
+}
+
 async function analyzeSentence(idx, el) {
   if (!el) return;
   // First successful interaction is enough — don't keep nagging.
@@ -5267,6 +5354,8 @@ async function analyzeSentence(idx, el) {
     var p = new URLSearchParams(window.location.search);
     articleId = p.get('id') || (window._currentArticle && window._currentArticle.id) || '';
   } catch(_) {}
+  panel.dataset.contentType = 'article';
+  panel.dataset.contentId = String(articleId || '');
   var cacheKey = _khSentCacheKey(articleId, idx, sentenceText);
 
   // In-memory cache (current page) → sessionStorage (current tab) → live call.
@@ -5355,6 +5444,13 @@ async function analyzeSentence(idx, el) {
       if (!hit || (hit.text || '').trim() !== sentenceText) {
         hit = sharedCache.sentences.find(function(s){ return s && (s.text || '').trim() === sentenceText; });
       }
+      // Loose match — whitespace / curly-vs-straight quote drift between
+      // the cached text and the rendered body (admin re-saved the body,
+      // NBSP from a paste) used to orphan an otherwise valid row.
+      if (!hit) {
+        var _normTarget = _khSentNorm(sentenceText);
+        hit = sharedCache.sentences.find(function(s){ return s && _khSentNorm(s.text) === _normTarget; });
+      }
       var _hitGrammarMissing = !hit || !hit.grammar || !Array.isArray(hit.grammar) || !hit.grammar.length;
       var _hitGrammarBad = hit && _khSentGrammarLooksBad(hit);
       // Codex P2: empty grammar is LEGITIMATE for noun phrases /
@@ -5407,11 +5503,19 @@ async function analyzeSentence(idx, el) {
   // re-bake from the AI Cache Management page. Either way, we don't
   // charge tokens silently on the reader's tap — we show a friendly
   // "preparing" panel and stop.
+  // Admins get a one-tap bake button right here instead of having to
+  // hunt the article down on AI Cache Management. One Haiku call for the
+  // whole article; the result is persisted so every reader hits cache.
+  var _adminBakeBtn = window._isAdmin
+    ? '<button class="asp-admin-bake" onclick="_khAdminBakeArticle(' + idx + ')" style="margin-top:12px;padding:8px 16px;border-radius:999px;border:0;background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">⚡ Analyze this article now (admin)</button>'
+    : '';
   panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
     + '<div class="asp-prep" style="padding:14px 16px;text-align:center;color:#475569;font-size:13px;line-height:1.55">'
     +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">Analysis in progress</div>'
     +   'Sentence analysis is being prepared. Please try again in a moment.'
+    +   (_adminBakeBtn ? '<div>' + _adminBakeBtn + '</div>' : '')
     + '</div>';
+  if (window._isAdmin) return; // admin can bake directly — no self-notification
   // Ring the admin's bell on the next macrotask so the RPC round-trip
   // can never extend this tap-handler turn. Server-side RPC dedupes
   // per (content_id, 10min) so multi-tap on the same uncached article
@@ -5419,6 +5523,49 @@ async function analyzeSentence(idx, el) {
   setTimeout(function () {
     try { _khNotifyAdminCacheMiss('article', articleId, sentenceText); } catch (_) {}
   }, 0);
+}
+
+// Whitespace- and quote-insensitive form of a sentence, used only as a
+// last-resort match between cached sentence text and the rendered body.
+function _khSentNorm(t) {
+  return String(t || '').replace(/[\s\u00a0]+/g, '').replace(/[\u2018\u2019\u201c\u201d'"`]/g, '');
+}
+
+// Admin-only: bake sentence analysis for the current article from the
+// reader's "Analysis in progress" panel, then re-open the tapped sentence.
+async function _khAdminBakeArticle(idx) {
+  if (!window._isAdmin) return;
+  var articleId = '';
+  try {
+    articleId = new URLSearchParams(window.location.search).get('id')
+      || (window._currentArticle && window._currentArticle.id) || '';
+  } catch(_) {}
+  if (!articleId) return;
+  var btn = document.querySelector('.art-sent-panel .asp-admin-bake');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Analyzing… (20-40s)'; }
+  var level = (window._currentArticle && window._currentArticle.level) || 'Beginner';
+  // Drop the cached "no row" result so the trigger + re-tap re-read state.
+  window._khArtSentSharedCache[articleId] = undefined;
+  try { sessionStorage.removeItem('kh_artfull_running_' + articleId); } catch(_) {}
+  await _khTriggerFullArticleAnalyze(articleId, level);
+  var baked = window._khArtSentSharedCache[articleId];
+  if (!baked || !baked.sentences) {
+    if (btn) { btn.disabled = false; btn.textContent = '⚠ Failed — tap to retry (see console)'; }
+    return;
+  }
+  // The trigger sets the in-memory cache even when the DB write fails,
+  // which is exactly how "first reader bakes for everyone" silently broke
+  // before. Re-read from the DB to prove the row actually landed.
+  window._khArtSentSharedCache[articleId] = undefined;
+  var persisted = await _khLoadArticleSentenceCache(articleId);
+  if (!persisted) {
+    window._khArtSentSharedCache[articleId] = baked; // still show it to the admin
+    if (typeof toast === 'function') toast('⚠ Analyzed, but NOT saved to DB — check console', true);
+    else alert('Analyzed, but NOT saved to DB — check console');
+  }
+  var el = document.querySelector('.art-sent[data-sent-idx="' + idx + '"]');
+  closeSentPanel();
+  if (el) analyzeSentence(idx, el);
 }
 
 // Posts an admin-targeted bell notification when a reader hits an
@@ -5617,6 +5764,8 @@ async function analyzeConvBubble(convId, msgIdx, el) {
   var panel = document.createElement('div');
   panel.className = 'art-sent-panel conv-sent-panel';
   panel.dataset.msgIdx = String(msgIdx);
+  panel.dataset.contentType = 'conversation';
+  panel.dataset.contentId = String(convId || '');
   panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
     + '<div class="asp-loading">분석 중</div>';
   // Insert as sibling after .dp-bubble-row, before .dp-bubble-en / .dp-time.
