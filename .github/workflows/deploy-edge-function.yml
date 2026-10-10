@@ -74,6 +74,8 @@ jobs:
           KEYS=$(supabase projects api-keys --project-ref "$PROJECT_REF" -o json --reveal 2>/dev/null \
                  || supabase projects api-keys --project-ref "$PROJECT_REF" -o json)
           echo "Key names: $(echo "$KEYS" | jq -r '[.[] | "\(.name)(\(.type // "legacy"))"] | join(", ")')"
+          # A test run rebuilds today's queue so it always exercises the current source logic.
+          FIRST_BODY='{}'; [ "$FUNCTION" = "daily-article-draft" ] && FIRST_BODY='{"force":true}'
           echo "Invoking $FUNCTION (can take 1-2 min)…"
           for row in $(echo "$KEYS" | jq -r '.[] | select((.name|test("anon|publishable"))|not) | @base64'); do
             NAME=$(echo "$row" | base64 -d | jq -r '.name')
@@ -82,12 +84,21 @@ jobs:
             echo "::add-mask::$KEY"
             CODE=$(curl -sS -m 170 -o /tmp/resp.json -w '%{http_code}' -X POST \
               "https://$PROJECT_REF.supabase.co/functions/v1/$FUNCTION" \
-              -H "Authorization: Bearer $KEY" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}')
+              -H "Authorization: Bearer $KEY" -H "apikey: $KEY" -H "Content-Type: application/json" -d "$FIRST_BODY")
             echo "key=$NAME → HTTP $CODE"
             if [ "$CODE" != "401" ]; then
               cat /tmp/resp.json; echo
-              [ "$CODE" -ge 200 ] && [ "$CODE" -lt 300 ] && exit 0
-              exit 1
+              [ "$CODE" -ge 200 ] && [ "$CODE" -lt 300 ] || exit 1
+              # daily-article-draft: tick 1 only builds the queue → call once more to build a draft.
+              if grep -q '"queued"' /tmp/resp.json; then
+                echo "Queue built — invoking again to build one draft…"
+                CODE=$(curl -sS -m 170 -o /tmp/resp.json -w '%{http_code}' -X POST \
+                  "https://$PROJECT_REF.supabase.co/functions/v1/$FUNCTION" \
+                  -H "Authorization: Bearer $KEY" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}')
+                echo "HTTP $CODE"; cat /tmp/resp.json; echo
+                [ "$CODE" -ge 200 ] && [ "$CODE" -lt 300 ] || exit 1
+              fi
+              exit 0
             fi
           done
           echo "::error::every key got 401"; exit 1

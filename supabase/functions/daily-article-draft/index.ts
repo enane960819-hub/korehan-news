@@ -2,14 +2,15 @@
 // pipeline up to (but NOT including) publish.
 //
 // Flow (one pg_cron tick every 5 min, 06:00–06:55 KST):
-//   tick 1   : fetch headlines (Cloudflare /api/admin-source-fetch), drop
-//              ones already in `articles`, ask Haiku to pick 4 (one per
-//              level) + assign a section → queue in app_settings.
-//   tick 2-n : take the next queued pick and build ONE draft:
-//              Sonnet body → save article (status='draft') → Haiku
-//              sentence analysis → Haiku quiz → article_cache rows.
+//   tick 1   : read ~30 publisher RSS feeds directly, drop items already in
+//              `articles`, fetch the FULL text of ~45 fresh candidates
+//              (unreadable pages / failed feeds are dropped), and have Haiku
+//              pick 4 (one per level) + a section → queue in app_settings.
+//   tick 2-5 : take the next queued pick and build ONE draft from the full
+//              source text: Sonnet body → save article (status='draft') →
+//              Haiku sentence analysis → Haiku quiz → article_cache rows.
 //   later    : queue empty → no-op (cheap).
-// One article per invocation keeps every run well under the Edge
+// One unit of work per invocation keeps every run well under the Edge
 // Function wall-clock limit.
 //
 // The admin reviews drafts in the CMS (🤖 banner on the dashboard) and
@@ -27,7 +28,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const ADMIN_EMAIL = 'enane960819@gmail.com'
-const SITE_URL = Deno.env.get('SITE_URL') || 'https://korehani.com'
 const QUEUE_KEY = 'daily_article_draft_queue'
 const LOCK_KEY = 'daily_article_draft_lock'
 const LOCK_TTL_MS = 4 * 60 * 1000
@@ -80,13 +80,14 @@ const LEVEL_INFO: Record<Level, { ko: string; vocab: string; tone: string; label
 type Headline = {
   title: string; url: string; source?: string; desc?: string; summary?: string
   image?: string; published_at?: string; category?: string
+  body_text?: string  // full article text extracted from the source page
 }
 type DraftPick = {
   headline: Headline; level: Level; section: string
   status: 'pending' | 'done' | 'failed'; attempts: number
   article_id?: string; title_ko?: string; error?: string
 }
-type Queue = { date: string; created_at: string; picks: DraftPick[] }
+type Queue = { date: string; created_at: string; picks: DraftPick[]; source_stats?: Record<string, unknown> }
 
 // ── helpers ───────────────────────────────────────────────────
 function kstToday(): string {
@@ -176,20 +177,122 @@ async function callClaude(
   return (data.content || []).map((c: { text?: string }) => c.text || '').join('')
 }
 
-// ── step 1: headlines + AI pick ───────────────────────────────
-async function fetchMetaDescription(url: string): Promise<string> {
+// ── step 1: sources → full article text → AI pick ─────────────
+// Direct publisher RSS only — every item must link to a page we can read
+// in full (Google-News redirect links and paywalls are useless here).
+// A feed that fails, or an article whose body text we can't extract, is
+// simply dropped; per-source counts are stored on the queue for review.
+// Korean major outlets stay excluded (hero-image rights), same as the CMS.
+const FEEDS: Array<{ id: string; label: string; section: string; url: string }> = [
+  // World
+  { id: 'bbc-world', label: 'BBC World', section: '국제', url: 'https://feeds.bbci.co.uk/news/world/rss.xml' },
+  { id: 'bbc-asia', label: 'BBC Asia', section: '국제', url: 'https://feeds.bbci.co.uk/news/world/asia/rss.xml' },
+  { id: 'npr', label: 'NPR', section: '국제', url: 'https://feeds.npr.org/1001/rss.xml' },
+  { id: 'guardian-world', label: 'Guardian World', section: '국제', url: 'https://www.theguardian.com/world/rss' },
+  { id: 'aljazeera', label: 'Al Jazeera', section: '국제', url: 'https://www.aljazeera.com/xml/rss/all.xml' },
+  { id: 'dw', label: 'DW', section: '국제', url: 'https://rss.dw.com/rdf/rss-en-all' },
+  { id: 'france24', label: 'France 24', section: '국제', url: 'https://www.france24.com/en/rss' },
+  { id: 'wikinews', label: 'Wikinews', section: '국제', url: 'https://en.wikinews.org/w/index.php?title=Special:NewsFeed&feed=atom&categories=Published' },
+  // Society / good news / explainers
+  { id: 'goodnews', label: 'Good News Network', section: '사회', url: 'https://www.goodnewsnetwork.org/feed/' },
+  { id: 'conversation', label: 'The Conversation', section: '사회', url: 'https://theconversation.com/global/articles.atom' },
+  // Science / tech
+  { id: 'bbc-tech', label: 'BBC Tech', section: 'IT과학', url: 'https://feeds.bbci.co.uk/news/technology/rss.xml' },
+  { id: 'sciencedaily', label: 'ScienceDaily', section: 'IT과학', url: 'https://www.sciencedaily.com/rss/top/science.xml' },
+  { id: 'phys', label: 'Phys.org', section: 'IT과학', url: 'https://phys.org/rss-feed/' },
+  { id: 'guardian-sci', label: 'Guardian Science', section: 'IT과학', url: 'https://www.theguardian.com/science/rss' },
+  { id: 'techcrunch', label: 'TechCrunch', section: 'IT과학', url: 'https://techcrunch.com/feed/' },
+  { id: 'verge', label: 'The Verge', section: 'IT과학', url: 'https://www.theverge.com/rss/index.xml' },
+  { id: 'ars', label: 'Ars Technica', section: 'IT과학', url: 'https://feeds.arstechnica.com/arstechnica/index' },
+  // Nature
+  { id: 'bbc-sci-env', label: 'BBC Science & Environment', section: 'nature', url: 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml' },
+  { id: 'guardian-env', label: 'Guardian Environment', section: 'nature', url: 'https://www.theguardian.com/environment/rss' },
+  { id: 'mongabay', label: 'Mongabay', section: 'nature', url: 'https://news.mongabay.com/feed/' },
+  // History / culture / travel
+  { id: 'smithsonian', label: 'Smithsonian', section: '역사', url: 'https://www.smithsonianmag.com/rss/latest_articles/' },
+  { id: 'livescience', label: 'Live Science', section: '역사', url: 'https://www.livescience.com/feeds/all' },
+  { id: 'atlasobscura', label: 'Atlas Obscura', section: 'travel', url: 'https://www.atlasobscura.com/feeds/latest' },
+  { id: 'guardian-travel', label: 'Guardian Travel', section: 'travel', url: 'https://www.theguardian.com/travel/rss' },
+  { id: 'guardian-food', label: 'Guardian Food', section: '문화', url: 'https://www.theguardian.com/food/rss' },
+  // Entertainment / K-content
+  { id: 'bbc-ent', label: 'BBC Entertainment', section: '해외연예', url: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml' },
+  { id: 'variety', label: 'Variety', section: '해외연예', url: 'https://variety.com/feed/' },
+  { id: 'soompi', label: 'Soompi', section: 'K-pop', url: 'https://www.soompi.com/feed' },
+  { id: 'allkpop', label: 'allkpop', section: 'K-pop', url: 'https://www.allkpop.com/rss' },
+  { id: 'koreaboo', label: 'Koreaboo', section: 'K-pop', url: 'https://www.koreaboo.com/feed/' },
+  // Beauty / wellness
+  { id: 'allure', label: 'Allure', section: 'beauty', url: 'https://www.allure.com/feed/rss' },
+  { id: 'guardian-wellness', label: 'Guardian Wellness', section: 'beauty', url: 'https://www.theguardian.com/lifeandstyle/health-and-wellbeing/rss' },
+]
+
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
+const MIN_BODY_CHARS = 600     // shorter than this = teaser / paywall / video page → drop
+const MAX_BODY_CHARS = 9000    // enough for a full news story, bounded prompt cost
+const FULLTEXT_POOL = 45       // how many candidates get their page fetched
+
+function decodeEntities(s: string): string {
+  return String(s || '')
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;|&#039;|&apos;/g, "'").replace(/&#8217;|&rsquo;/g, '’')
+    .replace(/&#8216;|&lsquo;/g, '‘').replace(/&#8220;|&ldquo;/g, '“').replace(/&#8221;|&rdquo;/g, '”')
+    .replace(/&#8212;|&mdash;/g, '—').replace(/&#8211;|&ndash;/g, '–').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+}
+function stripTags(s: string): string {
+  return decodeEntities(String(s || '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim()
+}
+function pickTag(block: string, tag: string): string {
+  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'))
+  return m ? stripTags(decodeEntities(m[1])) : ''
+}
+
+async function fetchFeed(f: typeof FEEDS[number]): Promise<Headline[]> {
+  const r = await fetch(f.url, {
+    headers: { 'User-Agent': BROWSER_UA, 'Accept': 'application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.5' },
+    signal: AbortSignal.timeout(8000),
+  })
+  if (!r.ok) throw new Error('HTTP ' + r.status)
+  const xml = await r.text()
+  const blocks = xml.match(/<item[\s\S]*?<\/item>/gi) || xml.match(/<entry[\s\S]*?<\/entry>/gi) || []
+  return blocks.slice(0, 15).map((b) => {
+    let url = pickTag(b, 'link')
+    if (!/^https?:\/\//.test(url)) {
+      const m = b.match(/<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["']/i) || b.match(/<link[^>]*href=["']([^"']+)["']/i)
+      url = m ? decodeEntities(m[1]) : ''
+    }
+    const date = pickTag(b, 'pubDate') || pickTag(b, 'published') || pickTag(b, 'updated') || pickTag(b, 'dc:date')
+    const t = new Date(date).getTime()
+    return {
+      title: pickTag(b, 'title'), url, source: f.label, category: f.section,
+      published_at: Number.isNaN(t) ? '' : new Date(t).toISOString(),
+      summary: (pickTag(b, 'description') || pickTag(b, 'summary')).slice(0, 300),
+    } as Headline
+  }).filter((h) => h.title && /^https?:\/\//.test(h.url))
+}
+
+// Pull the readable body out of an article page: prefer <article>, else
+// the whole document; keep <p> blocks that look like prose.
+async function fetchArticle(url: string): Promise<{ text: string; image: string } | null> {
   try {
     const r = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept': 'text/html' },
-      signal: AbortSignal.timeout(5000),
-      redirect: 'follow',
+      headers: { 'User-Agent': BROWSER_UA, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'en-US,en;q=0.9' },
+      signal: AbortSignal.timeout(7000), redirect: 'follow',
     })
-    if (!r.ok || !/text\/html/.test(r.headers.get('content-type') || '')) return ''
-    const head = (await r.text()).slice(0, 60_000)
-    const m = head.match(/<meta[^>]+(?:property|name)=["'](?:og:description|description|twitter:description)["'][^>]*content=["']([^"']{20,})["']/i)
-      || head.match(/<meta[^>]+content=["']([^"']{20,})["'][^>]*(?:property|name)=["'](?:og:description|description|twitter:description)["']/i)
-    return m ? m[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim().slice(0, 400) : ''
-  } catch (_) { return '' }
+    if (!r.ok || !/html/.test(r.headers.get('content-type') || '')) return null
+    const html = (await r.text()).slice(0, 1_500_000)
+    const og = html.match(/<meta[^>]+property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*property=["']og:image["']/i)
+    let scope = html.replace(/<(script|style|noscript|svg|nav|header|footer|aside|form|figure|figcaption)[\s\S]*?<\/\1>/gi, ' ')
+    const art = scope.match(/<article[\s\S]*?<\/article>/gi)
+    if (art && art.length) scope = art.sort((a, b) => b.length - a.length)[0]
+    const paras = (scope.match(/<p[\s>][\s\S]*?<\/p>/gi) || [])
+      .map(stripTags)
+      .filter((p) => p.length >= 60 && !/^(sign up|subscribe|advertisement|read more|related:|copyright|©)/i.test(p))
+    const seenP = new Set<string>()
+    const text = paras.filter((p) => !seenP.has(p) && seenP.add(p)).join('\n\n').slice(0, MAX_BODY_CHARS)
+    if (text.length < MIN_BODY_CHARS) return null
+    return { text, image: og ? decodeEntities(og[1]) : '' }
+  } catch (_) { return null }
 }
 
 async function buildQueue(sb: any, apiKey: string): Promise<Queue> {
@@ -205,55 +308,63 @@ async function buildQueue(sb: any, apiKey: string): Promise<Queue> {
     if (r?.source_url) seen.add(String(r.source_url).trim())
   })
 
-  const resp = await fetch(`${SITE_URL}/api/admin-source-fetch`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ source_ids: [], limit: 100 }),
-    signal: AbortSignal.timeout(32_000),
-  })
-  if (!resp.ok) throw new Error('source fetch HTTP ' + resp.status)
-  const payload = await resp.json().catch(() => ({}))
-  const raw: Headline[] = Array.isArray(payload?.items) ? payload.items : []
+  // 1. All feeds in parallel; failures are recorded and skipped.
+  const sourceStats: Record<string, { items: number; readable: number; error?: string }> = {}
+  const perFeed = await Promise.all(FEEDS.map(async (f) => {
+    try {
+      const items = await fetchFeed(f)
+      sourceStats[f.id] = { items: items.length, readable: 0 }
+      return items
+    } catch (e) {
+      sourceStats[f.id] = { items: 0, readable: 0, error: String((e as Error).message || e).slice(0, 60) }
+      return [] as Headline[]
+    }
+  }))
 
+  // 2. Fresh + not already published; round-robin across feeds (newest
+  //    first) so one busy feed can't crowd out the rest.
   const threeDays = 3 * 86400_000
-  const fresh = raw.filter((h) => {
-    if (!h?.title || !h?.url) return false
-    if (seen.has(String(h.url).trim()) || seen.has(headlineKey(h.title))) return false
-    const t = h.published_at ? new Date(h.published_at).getTime() : Date.now()
-    return Number.isNaN(t) || Date.now() - t <= threeDays
-  })
-  // Thin sources make the body prompt pad with filler — require a real
-  // summary. Reddit / HN / Google-News items often have none (or just the
-  // title echoed back), so try the target page's og:description first.
-  const summaryOf = (h: Headline) => {
-    const s = String(h.desc || h.summary || '').replace(/\s+/g, ' ').trim()
-    return headlineKey(s).startsWith(headlineKey(h.title).slice(0, 40)) && s.length < h.title.length + 40 ? '' : s
+  const queues = perFeed.map((items) => items
+    .filter((h) => !seen.has(String(h.url).trim()) && !seen.has(headlineKey(h.title)))
+    .filter((h) => { const t = h.published_at ? new Date(h.published_at).getTime() : Date.now(); return Date.now() - t <= threeDays })
+    .sort((a, b) => String(b.published_at).localeCompare(String(a.published_at))))
+  const pool: Headline[] = []
+  for (let round = 0; pool.length < FULLTEXT_POOL && queues.some((q) => q.length > round); round++) {
+    for (const q of queues) if (q[round] && pool.length < FULLTEXT_POOL) pool.push(q[round])
   }
-  const needs = fresh.filter((h) => summaryOf(h).length < 40 && !/news\.google\.com/.test(h.url)).slice(0, 30)
-  for (let i = 0; i < needs.length; i += 8) {
-    await Promise.all(needs.slice(i, i + 8).map(async (h) => {
-      const d = await fetchMetaDescription(h.url)
-      if (d) h.summary = d
-    }))
-  }
-  const candidates = fresh.filter((h) => summaryOf(h).length >= 40).slice(0, 60)
-  const stats = `raw=${raw.length} fresh=${fresh.length} enriched_tried=${needs.length} with_summary=${candidates.length}`
-  console.log('[daily-article-draft] headlines', stats)
-  if (candidates.length < 4) throw new Error(`only ${candidates.length} usable headlines (${stats})`)
 
+  // 3. Read every candidate's full page; drop the ones we can't read.
+  const feedIdByLabel: Record<string, string> = {}
+  FEEDS.forEach((f) => { feedIdByLabel[f.label] = f.id })
+  const candidates: Headline[] = []
+  for (let i = 0; i < pool.length; i += 12) {
+    const got = await Promise.all(pool.slice(i, i + 12).map(async (h) => ({ h, a: await fetchArticle(h.url) })))
+    for (const { h, a } of got) {
+      if (!a) continue
+      h.body_text = a.text
+      if (a.image) h.image = a.image
+      candidates.push(h)
+      const id = feedIdByLabel[h.source || '']
+      if (id && sourceStats[id]) sourceStats[id].readable++
+    }
+  }
+  const stats = `feeds_ok=${Object.values(sourceStats).filter((s) => !s.error).length}/${FEEDS.length} fresh_pool=${pool.length} readable=${candidates.length}`
+  console.log('[daily-article-draft]', stats, JSON.stringify(sourceStats))
+  if (candidates.length < 4) throw new Error(`only ${candidates.length} readable articles (${stats})`)
+
+  // 4. Haiku picks 4 (one per level) from title + opening of the real text.
   const list = candidates.map((h, i) =>
-    `${i}. [${h.source || ''}]${h.image ? ' [img]' : ''} ${h.title}\n   ${String(h.desc || h.summary || '').replace(/\s+/g, ' ').slice(0, 220)}`
+    `${i}. [${h.source}]${h.image ? ' [img]' : ''} ${h.title}\n   ${String(h.body_text).replace(/\s+/g, ' ').slice(0, 260)}`
   ).join('\n')
   const selectPrompt =
     'You pick today\'s news stories for a Korean-learning site for foreign learners. Each story will be rewritten in Korean at one TOPIK level.\n\n'
-    + 'Candidates:\n' + list + '\n\n'
+    + 'Candidates (title + opening of the full article):\n' + list + '\n\n'
     + 'Pick EXACTLY 4 different stories — one for each level: Starter (absolute beginner), Beginner (TOPIK 1-2), Intermediate (TOPIK 3-4), Advanced (TOPIK 5-6).\n'
     + 'Criteria, in order:\n'
-    + '1. Substance: the summary has enough concrete facts to write 4+ paragraphs WITHOUT inventing anything.\n'
-    + '2. Learner interest: surprising, useful, warm or culturally interesting; Korea-related stories are a plus.\n'
-    + '3. Level fit: Starter/Beginner get simple concrete topics (animals, food, daily life, light culture). Heavier topics (politics, economy, conflict) only for Intermediate/Advanced.\n'
-    + '4. Avoid: graphic violence, death tolls, sexual content, partisan politics framing, celebrity gossip without facts, pure listicles/ads.\n'
-    + '5. Variety: 4 different sections. Prefer [img] stories.\n\n'
+    + '1. Learner interest: surprising, useful, warm or culturally interesting; Korea-related stories are a plus.\n'
+    + '2. Level fit: Starter/Beginner get simple concrete topics (animals, food, daily life, light culture). Heavier topics (politics, economy, conflict) only for Intermediate/Advanced.\n'
+    + '3. Avoid: graphic violence, death tolls, sexual content, partisan politics framing, gossip, pure listicles/ads/product roundups.\n'
+    + '4. Variety: 4 different sections and different sources. Prefer [img] stories.\n\n'
     + 'Sections (use the exact key): ' + SECTIONS.map((s) => `${s.key} (${s.topics})`).join('; ') + '\n\n'
     + 'Return ONLY JSON: {"picks":[{"idx":<number>,"level":"Starter|Beginner|Intermediate|Advanced","section":"<key>"}]}'
   const out = extractJsonObject(await callClaude(sb, apiKey, 'daily-draft-select', MODEL_FAST, 600, selectPrompt, 45_000))
@@ -261,15 +372,12 @@ async function buildQueue(sb: any, apiKey: string): Promise<Queue> {
   const sectionKeys = new Set(SECTIONS.map((s) => s.key))
   const usedIdx = new Set<number>(), usedLvl = new Set<string>()
   const picks: DraftPick[] = []
+  const sectionFor = (h: Headline, want?: string) => want && sectionKeys.has(want) ? want : (h.category && sectionKeys.has(h.category) ? h.category : '문화')
   for (const p of (out?.picks || [])) {
     const idx = Number(p?.idx), lvl = String(p?.level || '') as Level
     if (!candidates[idx] || usedIdx.has(idx) || !LEVELS.includes(lvl) || usedLvl.has(lvl)) continue
     usedIdx.add(idx); usedLvl.add(lvl)
-    picks.push({
-      headline: candidates[idx], level: lvl,
-      section: sectionKeys.has(p?.section) ? p.section : (candidates[idx].category && sectionKeys.has(candidates[idx].category!) ? candidates[idx].category! : '문화'),
-      status: 'pending', attempts: 0,
-    })
+    picks.push({ headline: candidates[idx], level: lvl, section: sectionFor(candidates[idx], p?.section), status: 'pending', attempts: 0 })
   }
   // Fill any level the model skipped with the next unused candidate.
   for (const lvl of LEVELS) {
@@ -277,10 +385,9 @@ async function buildQueue(sb: any, apiKey: string): Promise<Queue> {
     const idx = candidates.findIndex((_, i) => !usedIdx.has(i))
     if (idx < 0) break
     usedIdx.add(idx); usedLvl.add(lvl)
-    const cat = candidates[idx].category
-    picks.push({ headline: candidates[idx], level: lvl, section: cat && sectionKeys.has(cat) ? cat : '문화', status: 'pending', attempts: 0 })
+    picks.push({ headline: candidates[idx], level: lvl, section: sectionFor(candidates[idx]), status: 'pending', attempts: 0 })
   }
-  return { date: kstToday(), created_at: new Date().toISOString(), picks }
+  return { date: kstToday(), created_at: new Date().toISOString(), picks, source_stats: sourceStats }
 }
 
 // ── step 2: one draft ─────────────────────────────────────────
@@ -289,7 +396,8 @@ function bodyPrompt(h: Headline, level: Level, section: string): string {
   const today = new Date(Date.now() + 9 * 3600_000)
   const todayKo = `${today.getUTCFullYear()}년 ${today.getUTCMonth() + 1}월 ${today.getUTCDate()}일`
   return '당신은 외국인 한국어 학습자를 위한 뉴스 기사 편집자입니다.\n\n'
-    + '[원본 뉴스]\n제목: ' + h.title + '\n내용: ' + (h.desc || h.summary || '(요약 없음)') + '\n출처: ' + (h.source || '') + '\n\n'
+    + '[원본 뉴스 — 원문 기사 전체]\n제목: ' + h.title + '\n출처: ' + (h.source || '') + '\n본문:\n' + (h.body_text || h.desc || h.summary || '(본문 없음)') + '\n\n'
+    + '[각색 방법] 위 원문 전체를 읽고 핵심 사실만 골라 학습자용 한국어 기사로 재구성하세요. 원문의 모든 디테일을 옮길 필요는 없습니다 — 레벨에 맞게 중요한 사실 위주로 압축.\n\n'
     + '[지시사항]\n'
     + '- 원본의 핵심 사실과 주제 유지. 영어 출처면 한국어로 번역·각색.\n'
     + '- 독자는 한국어를 배우는 외국인 학습자. 어휘/문법 난이도는 레벨에 맞추되 본문은 일반 한국어 뉴스처럼 자연스럽게.\n'
@@ -552,7 +660,11 @@ Deno.serve(async (req) => {
       queue = await buildQueue(sb, apiKey)
       if (opts.dry_run) return json({ ok: true, dry_run: true, queue })
       await saveQueue(queue)
-      // Fall through and build the first draft in this same tick.
+      // Reading ~45 pages already used this tick's budget — drafts start next tick.
+      return json({
+        ok: true, queued: queue.picks.map((p) => ({ level: p.level, section: p.section, source: p.headline.source, title: p.headline.title })),
+        source_stats: queue.source_stats,
+      })
     }
     if (opts.dry_run) return json({ ok: true, dry_run: true, queue })
 
