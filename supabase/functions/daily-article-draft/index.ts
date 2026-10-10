@@ -177,6 +177,21 @@ async function callClaude(
 }
 
 // ── step 1: headlines + AI pick ───────────────────────────────
+async function fetchMetaDescription(url: string): Promise<string> {
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept': 'text/html' },
+      signal: AbortSignal.timeout(5000),
+      redirect: 'follow',
+    })
+    if (!r.ok || !/text\/html/.test(r.headers.get('content-type') || '')) return ''
+    const head = (await r.text()).slice(0, 60_000)
+    const m = head.match(/<meta[^>]+(?:property|name)=["'](?:og:description|description|twitter:description)["'][^>]*content=["']([^"']{20,})["']/i)
+      || head.match(/<meta[^>]+content=["']([^"']{20,})["'][^>]*(?:property|name)=["'](?:og:description|description|twitter:description)["']/i)
+    return m ? m[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim().slice(0, 400) : ''
+  } catch (_) { return '' }
+}
+
 async function buildQueue(sb: any, apiKey: string): Promise<Queue> {
   // Dedupe set: everything already in articles (drafts included).
   // Explicit columns keep this light; fall back if a column is missing
@@ -201,15 +216,30 @@ async function buildQueue(sb: any, apiKey: string): Promise<Queue> {
   const raw: Headline[] = Array.isArray(payload?.items) ? payload.items : []
 
   const threeDays = 3 * 86400_000
-  const candidates = raw.filter((h) => {
+  const fresh = raw.filter((h) => {
     if (!h?.title || !h?.url) return false
     if (seen.has(String(h.url).trim()) || seen.has(headlineKey(h.title))) return false
     const t = h.published_at ? new Date(h.published_at).getTime() : Date.now()
-    if (!Number.isNaN(t) && Date.now() - t > threeDays) return false
-    // Thin sources make the body prompt pad with filler — require a summary.
-    return String(h.desc || h.summary || '').trim().length >= 40
-  }).slice(0, 60)
-  if (candidates.length < 4) throw new Error(`only ${candidates.length} usable headlines`)
+    return Number.isNaN(t) || Date.now() - t <= threeDays
+  })
+  // Thin sources make the body prompt pad with filler — require a real
+  // summary. Reddit / HN / Google-News items often have none (or just the
+  // title echoed back), so try the target page's og:description first.
+  const summaryOf = (h: Headline) => {
+    const s = String(h.desc || h.summary || '').replace(/\s+/g, ' ').trim()
+    return headlineKey(s).startsWith(headlineKey(h.title).slice(0, 40)) && s.length < h.title.length + 40 ? '' : s
+  }
+  const needs = fresh.filter((h) => summaryOf(h).length < 40 && !/news\.google\.com/.test(h.url)).slice(0, 30)
+  for (let i = 0; i < needs.length; i += 8) {
+    await Promise.all(needs.slice(i, i + 8).map(async (h) => {
+      const d = await fetchMetaDescription(h.url)
+      if (d) h.summary = d
+    }))
+  }
+  const candidates = fresh.filter((h) => summaryOf(h).length >= 40).slice(0, 60)
+  const stats = `raw=${raw.length} fresh=${fresh.length} enriched_tried=${needs.length} with_summary=${candidates.length}`
+  console.log('[daily-article-draft] headlines', stats)
+  if (candidates.length < 4) throw new Error(`only ${candidates.length} usable headlines (${stats})`)
 
   const list = candidates.map((h, i) =>
     `${i}. [${h.source || ''}]${h.image ? ' [img]' : ''} ${h.title}\n   ${String(h.desc || h.summary || '').replace(/\s+/g, ' ').slice(0, 220)}`
