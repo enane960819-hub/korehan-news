@@ -158,7 +158,13 @@ async function callClaude(
       body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content }] }),
     })
   } finally { clearTimeout(t) }
-  if (!resp.ok) throw new Error(`Anthropic ${resp.status} (${feature})`)
+  if (!resp.ok) {
+    // Surface Anthropic's own message — e.g. "Your credit balance is too
+    // low to access the Anthropic API" — so the admin sees the real cause.
+    const errBody = await resp.json().catch(() => null)
+    const detail = errBody?.error?.message ? ': ' + String(errBody.error.message).slice(0, 200) : ''
+    throw new Error(`Anthropic ${resp.status} (${feature})${detail}`)
+  }
   const data = await resp.json()
   // Same telemetry table claude-proxy writes, so the cost dashboard sees cron spend.
   const u = data.usage || {}

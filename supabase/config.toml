@@ -11,3 +11,10 @@
 # verification adds nothing here and only breaks the signup-time call.
 [functions.notify-signup]
 verify_jwt = false
+
+# daily-article-draft is called by pg_cron with CRON_SECRET (not a JWT) and
+# by the admin CMS (browser preflight). The function does its own auth
+# (service role / CRON_SECRET / admin email), so gateway JWT checks would
+# only 401 the cron call.
+[functions.daily-article-draft]
+verify_jwt = false
