@@ -26,3 +26,7 @@ https://www.korehani.com/*     https://korehani.com/:splat      301!
 # Trailing-slash → no slash for the article reader URLs (some shared
 # links include them).
 /korehan-article/  /korehan-article.html  301
+
+# Retired playground games (2026-10) → Playground hub.
+/korehan-fun-fortune.html   /korehan-fun.html  301
+/korehan-fun-worldcup.html  /korehan-fun.html  301
