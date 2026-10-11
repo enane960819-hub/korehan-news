@@ -3372,14 +3372,28 @@
         vocabScore = vocabScore > 0 ? Math.round((vocabScore + drPct) / 2) : drPct;
       }
 
-      // ── GRAMMAR: mastery % (from localStorage) + grammar quiz scores ──
+      // ── GRAMMAR: Grammar Path mastery (per account) + grammar quiz scores ──
       var grammarScore = 0;
-      // Mastery from curriculum progress
-      var gcProgress = {};
-      try { gcProgress = JSON.parse(localStorage.getItem('kh_grammar_curriculum_progress') || '{}'); } catch(e) {}
-      var gcTotal = 45;
-      var gcMastered = Object.keys(gcProgress).filter(function(k) { return gcProgress[k] && gcProgress[k].mastered; }).length;
-      var masteryPct = Math.round((gcMastered / gcTotal) * 100);
+      // Mastery = mastered core patterns / core patterns in the open levels
+      // (Forest is paused). Progress lives in study_grammar_progress; the
+      // per-account local cache is the fallback when the query fails.
+      var gcTotal = 0, gcMastered = 0;
+      try {
+        var gcCur = await sb.from('grammar_curriculum').select('pattern')
+          .eq('active', true).eq('tier', 'core').in('level', ['Starter', 'Beginner', 'Intermediate']);
+        var corePats = {};
+        (gcCur.data || []).forEach(function(r) { corePats[r.pattern] = true; });
+        gcTotal = Object.keys(corePats).length;
+        var gcRows = await sb.from('study_grammar_progress').select('grammar_key')
+          .eq('user_id', supaUser.id).eq('mastered', true);
+        if (!gcRows.error) {
+          gcMastered = (gcRows.data || []).filter(function(r) { return corePats[r.grammar_key]; }).length;
+        } else {
+          var gcLocal = JSON.parse(localStorage.getItem('kh_grammar_curriculum_progress::' + supaUser.id) || '{}');
+          gcMastered = Object.keys(gcLocal).filter(function(k) { return corePats[k] && gcLocal[k].mastered; }).length;
+        }
+      } catch(e) { console.warn('[Grammar mastery]', e.message || e); }
+      var masteryPct = gcTotal ? Math.min(100, Math.round((gcMastered / gcTotal) * 100)) : 0;
       // Grammar quiz scores
       var gramRes = await sb.from('user_quiz_results')
         .select('score, max_score')

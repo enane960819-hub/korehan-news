@@ -342,6 +342,8 @@ if __name__ == '__main__':
     print("alter table public.grammar_curriculum")
     print("  add column if not exists unit text,")
     print("  add column if not exists tier text not null default 'core';")
+    print("-- Drop exact-duplicate pattern rows (keep the first) so the unique index can build.")
+    print("delete from public.grammar_curriculum a using public.grammar_curriculum b where a.pattern = b.pattern and a.ctid > b.ctid;")
     print("create unique index if not exists grammar_curriculum_pattern_uq on public.grammar_curriculum (pattern);")
     print()
     print("insert into public.grammar_curriculum (pattern, level, sort_order, description, unit, tier, active)")
