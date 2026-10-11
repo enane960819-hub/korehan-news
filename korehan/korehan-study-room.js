@@ -7078,9 +7078,33 @@ function pcSelectCall(idx) {
   document.getElementById('pc-script-lines').innerHTML = scriptHtml;
   // Setup audio if URL exists
   if (_pcCurrentCall.audio_url) {
-    _pcAudio = new Audio(_pcCurrentCall.audio_url);
+    _pcAudio = _pcMakeAudio(_pcCurrentCall.audio_url);
     _pcAudio.addEventListener('ended', function() { _pcPlaying = false; pcUpdatePlayBtn(); });
   }
+}
+
+// Phone-line sound: band-pass the clip (≈300–3400 Hz) through Web Audio so
+// generated calls sound like a real handset. Only for audio on our own
+// Supabase storage (CORS-enabled); anything else plays untouched, since a
+// cross-origin media element routed into Web Audio would go silent.
+var _pcAudioCtx = null;
+function _pcMakeAudio(url) {
+  var a = new Audio();
+  var ours = /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\//.test(String(url || ''));
+  if (ours) a.crossOrigin = 'anonymous';
+  a.src = url;
+  if (ours && (window.AudioContext || window.webkitAudioContext)) {
+    try {
+      _pcAudioCtx = _pcAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      var src = _pcAudioCtx.createMediaElementSource(a);
+      var hp = _pcAudioCtx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 300;
+      var lp = _pcAudioCtx.createBiquadFilter(); lp.type = 'lowpass';  lp.frequency.value = 3400;
+      var gain = _pcAudioCtx.createGain(); gain.gain.value = 1.25;
+      src.connect(hp); hp.connect(lp); lp.connect(gain); gain.connect(_pcAudioCtx.destination);
+      a.addEventListener('play', function() { if (_pcAudioCtx.state === 'suspended') _pcAudioCtx.resume(); });
+    } catch (_) { /* plain playback */ }
+  }
+  return a;
 }
 
 function pcBackToList() {
@@ -7092,7 +7116,7 @@ function pcBackToList() {
 function pcTogglePlay() {
   if (!_pcCurrentCall) return;
   if (!_pcAudio && _pcCurrentCall.audio_url) {
-    _pcAudio = new Audio(_pcCurrentCall.audio_url);
+    _pcAudio = _pcMakeAudio(_pcCurrentCall.audio_url);
     _pcAudio.addEventListener('ended', function() { _pcPlaying = false; pcUpdatePlayBtn(); });
   }
   if (_pcAudio) {

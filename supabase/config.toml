@@ -40,3 +40,7 @@ verify_jwt = false
 [functions.billing-webhook]
 verify_jwt = false
 
+# phone-call-gen: admin-only (checked in the function against the admin
+# email); gateway check off so the admin CMS preflight passes.
+[functions.phone-call-gen]
+verify_jwt = false
