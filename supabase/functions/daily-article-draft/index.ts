@@ -26,6 +26,7 @@
 //   { "dry_run": true } fetch + pick only, don't write articles
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { harvestGrammar } from './grammar-harvest.ts'
 
 const ADMIN_EMAIL = 'enane960819@gmail.com'
 const QUEUE_KEY = 'daily_article_draft_queue'
@@ -693,7 +694,22 @@ Deno.serve(async (req) => {
     if (opts.dry_run) return json({ ok: true, dry_run: true, queue })
 
     const pick = queue.picks.find((p) => p.status === 'pending' && p.attempts < MAX_ATTEMPTS)
-    if (!pick) return json({ ok: true, idle: true, date: queue.date, picks: queue.picks.map((p) => ({ level: p.level, status: p.status, title: p.title_ko || p.headline.title })) })
+    if (!pick) {
+      // Drafts are done for today → spend an idle tick on the grammar harvest.
+      let harvest: Record<string, unknown> | null = null
+      try {
+        harvest = await harvestGrammar(sb,
+          (prompt) => callClaude(sb, apiKey, 'grammar-harvest', MODEL_BODY, 8000, prompt, 120_000),
+          extractJsonObject, kstToday(), !!opts.harvest)
+      } catch (e) {
+        harvest = { error: String((e as Error).message || e).slice(0, 300) }
+        await sb.from('client_errors').insert({
+          message: 'grammar-harvest: ' + String(harvest.error), severity: 'error',
+          context: { source: 'daily-article-draft' }, user_agent: 'edge-function',
+        }).then(() => {}, () => {})
+      }
+      return json({ ok: true, idle: true, date: queue.date, harvest, picks: queue.picks.map((p) => ({ level: p.level, status: p.status, title: p.title_ko || p.headline.title })) })
+    }
 
     pick.attempts++
     try {
