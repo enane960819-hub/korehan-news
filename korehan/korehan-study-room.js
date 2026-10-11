@@ -7697,8 +7697,34 @@ async function loadWeakGrammarBanner() {
   }
 }
 
+// ── Weekend Live Class card (Premium benefit) ──
+// Shows the next Sunday class with a countdown; Premium members see
+// "Register / Join", free members see the Premium hook. The Zoom link
+// itself is never loaded here (courses page → get_live_zoom_link()).
+async function _srRenderLiveClassCard() {
+  var card = document.getElementById('sr-notif-live'); if (!card) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null; if (!sb) return;
+  try {
+    var r = await sb.from('weekly_live_sessions').select('id, title, scheduled_at, is_cancelled')
+      .gte('scheduled_at', new Date(Date.now() - 90 * 60000).toISOString())
+      .eq('is_cancelled', false).order('scheduled_at').limit(1);
+    var s = r && r.data && r.data[0];
+    if (!s) return;
+    var start = new Date(s.scheduled_at).getTime(), now = Date.now();
+    var live = now >= start && now < start + 90 * 60000;
+    var mins = Math.max(0, Math.round((start - now) / 60000));
+    var when = live ? 'Live now' : (mins < 60 ? 'Starts in ' + mins + ' min' : (mins < 1440 ? 'In ' + Math.round(mins / 60) + ' h' : new Date(start).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })));
+    var premium = typeof getUserPlan === 'function' && getUserPlan() === 'premium';
+    document.getElementById('sr-notif-live-title').textContent = (live ? '🔴 ' : '') + (s.title || 'Weekend Live Class');
+    document.getElementById('sr-notif-live-sub').textContent = when + ' · Zoom · 60 min' + (premium ? '' : ' · Premium');
+    document.getElementById('sr-notif-live-cta').textContent = premium ? (live ? 'Join →' : 'Register →') : 'Try Premium →';
+    card.style.display = '';
+  } catch (_) {}
+}
+
 // ── Review Notification Banners ──
 function showReviewNotifications() {
+  _srRenderLiveClassCard();
   if (typeof kstNow !== 'function') return;
   // Daily: show if user hasn't completed today's review
   var dailyEl = document.getElementById('sr-notif-daily');

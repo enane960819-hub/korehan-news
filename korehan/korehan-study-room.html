@@ -114,6 +114,17 @@
 
     <!-- REVIEW NOTIFICATION BANNERS -->
     <div id="sr-review-notifications" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+      <!-- Weekend Live Class (Premium) — filled by _srRenderLiveClassCard() -->
+      <a id="sr-notif-live" href="korehan-courses.html#live" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(45,140,255,.16),rgba(124,58,237,.12));border:1px solid rgba(45,140,255,.3);cursor:pointer;text-decoration:none">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:8px;background:rgba(45,140,255,.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#93c5fd"><i data-lucide="video" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:800;color:#93c5fd" id="sr-notif-live-title">Weekend Live Class</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.55)" id="sr-notif-live-sub">Sundays 21:00 KST on Zoom</div>
+          </div>
+          <span style="font-size:12px;color:rgba(255,255,255,.4)" id="sr-notif-live-cta">→</span>
+        </div>
+      </a>
       <!-- Daily Review Banner -->
       <div role="button" tabindex="0" id="sr-notif-daily" style="display:none;padding:12px 14px;border-radius:10px;background:linear-gradient(135deg,rgba(34,197,94,.15),rgba(16,185,129,.1));border:1px solid rgba(34,197,94,.25);cursor:pointer" onclick="openDailyReview()">
         <div style="display:flex;align-items:center;gap:10px">
@@ -1002,7 +1013,7 @@
 <!-- kh-universe.js (~117KB) is now lazy-loaded by _ensureKHUniverse()
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
-<script src="korehan-study-room.js?v=20261012c" defer></script>
+<script src="korehan-study-room.js?v=20261012d" defer></script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->

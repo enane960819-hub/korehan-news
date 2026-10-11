@@ -599,7 +599,7 @@
   <div class="live-hero">
     <span class="live-pill"><span class="live-dot"></span> Live on Zoom</span>
     <h2>Weekly <em>Live Review</em></h2>
-    <p>Join Han for a 60-minute live class on Zoom — go through this week's articles, hot vocabulary, and tricky grammar live, with Q&amp;A.</p>
+    <p>Every Sunday 21:00 KST, join Han for a 60-minute live class on Zoom — this week's topic, tricky grammar from the week's articles, and live Q&amp;A. <b>Included with Premium.</b></p>
   </div>
 
   <div class="live-section">
@@ -608,8 +608,8 @@
       <div>
         <div class="live-info-title">How it works</div>
         <div class="live-info-text">
-          1. Pick an upcoming session and tap <b>Register</b>.<br>
-          2. Once registration closes, the Zoom link appears here for registered learners. We'll also email it to your account email.<br>
+          1. Premium members pick the upcoming session and tap <b>Register</b>.<br>
+          2. The <b>Open Zoom</b> button appears here 30 minutes before class (registered members only).<br>
           3. Show up on Zoom at the scheduled time. Sessions are recorded for registered learners.
         </div>
       </div>
@@ -799,7 +799,7 @@ async function cpLoadLiveSessions() {
     // see the session that just ran (and still grab the recording link).
     var fromIso = new Date(Date.now() - 14 * 86400 * 1000).toISOString();
     var res = await sb.from('weekly_live_sessions')
-      .select('id, title, description, scheduled_at, registration_deadline, zoom_link, max_attendees, is_cancelled')
+      .select('id, title, description, scheduled_at, registration_deadline, max_attendees, is_cancelled')
       .gte('scheduled_at', fromIso)
       .order('scheduled_at', { ascending: true });
     if (res.error) {
@@ -872,12 +872,16 @@ function cpRenderLiveCard(s, isRegistered, count) {
   // Zoom link visibility: registered users see it once registration closes,
   // OR when the session is live. Past sessions keep it visible for the
   // recording. Guests / unregistered users never see the raw link.
-  var canSeeZoom = !!(isRegistered && (regClosed || isLive)) || (isRegistered && isPast);
+  // The link itself is private (Premium + registered) and fetched on click
+  // from get_live_zoom_link(); it opens from 30 min before start.
+  var canSeeZoom = !!(isRegistered && (regClosed || isLive || now >= startMs - 30 * 60 * 1000)) || (isRegistered && isPast);
   var zoomBtn = '';
-  if (s.zoom_link && canSeeZoom) {
-    zoomBtn = '<a class="live-btn zoom" href="' + s.zoom_link + '" target="_blank" rel="noopener">'
+  if (canSeeZoom) {
+    zoomBtn = '<button class="live-btn zoom" onclick="cpOpenZoom(\'' + s.id + '\')">'
       + '<i data-lucide="video" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>'
-      + (isLive ? 'Join Now' : (isPast ? 'Recording' : 'Open Zoom')) + '</a>';
+      + (isLive ? 'Join Now' : (isPast ? 'Recording' : 'Open Zoom')) + '</button>';
+  } else if (isRegistered) {
+    zoomBtn = '<button class="live-btn success" disabled>Registered ✓ · link opens 30 min before</button>';
   }
 
   var actionBtn = '';
@@ -916,12 +920,23 @@ function cpRenderLiveCard(s, isRegistered, count) {
     + '</article>';
 }
 
+window.cpOpenZoom = async function(sessionId) {
+  var sb = getSupa(); if (!sb) return;
+  var w = window.open('', '_blank');
+  var r = await sb.rpc('get_live_zoom_link', { p_session: sessionId });
+  if (r && r.data) { if (w) w.location = r.data; else location.href = r.data; return; }
+  if (w) w.close();
+  if (typeof khAlert === 'function') khAlert('Zoom link', 'The Zoom link isn\'t available yet — it opens 30 minutes before class for registered Premium members.', { okLabel: 'OK' });
+};
+
 window.cpRegister = async function(sessionId) {
   if (!window.supaUser) {
     if (typeof openAuthModal === 'function') openAuthModal('signup');
     else if (typeof khAlert === 'function') khAlert('Sign in', 'Sign in or create a free account to register.', { okLabel: 'OK' });
     return;
   }
+  // Weekend Live Class is a Premium benefit (the DB enforces it too).
+  if (typeof requirePlan === 'function' && !requirePlan('live_class')) return;
   var sb = getSupa(); if (!sb) return;
   var res = await sb.from('weekly_live_registrations').insert({
     session_id: sessionId,
@@ -936,7 +951,7 @@ window.cpRegister = async function(sessionId) {
       if (typeof toast === 'function') toast('Couldn\'t register: ' + msg, 'error');
     }
   } else {
-    if (typeof toast === 'function') toast('Registered! We\'ll send the Zoom link once registration closes.', 'success');
+    if (typeof toast === 'function') toast('Registered! The Zoom button appears here 30 minutes before class.', 'success');
   }
   cpLoadLiveSessions();
 };
