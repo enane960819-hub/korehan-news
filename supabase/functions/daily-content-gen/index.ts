@@ -12,6 +12,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const ALL_LEVELS = ['Starter', 'Beginner', 'Intermediate', 'Advanced'] as const
 type Level = typeof ALL_LEVELS[number]
+// Forest (Advanced) is locked in the Study Room UI ("coming soon"), so don't
+// spend nightly Sonnet calls generating content nobody can open. Add it
+// back here when Forest launches; its writing_topics stay in the table.
+const GEN_LEVELS: readonly Level[] = ['Starter', 'Beginner', 'Intermediate']
 
 const ADMIN_EMAIL = 'enane960819@gmail.com'
 
@@ -21,7 +25,9 @@ const ADMIN_EMAIL = 'enane960819@gmail.com'
 // will silently desync admin "preview today's topic" from cron
 // generation. Extracted to one place per file; the admin page has
 // its own KH_WRITING_TOPICS_EPOCH near the top — keep them in sync.
-const WRITING_TOPICS_EPOCH_ISO = '2026-04-15T00:00:00+09:00'
+// Reset 2026-10-11 (launch prep) so the refreshed writing_topics list is
+// used once in full before any topic repeats.
+const WRITING_TOPICS_EPOCH_ISO = '2026-10-12T00:00:00+09:00'
 
 // Natural-Korean rules — same text as _skrNaturalKoreanBlock() in
 // korehan/korehan-study-room.js (keep in sync). Grammar mechanics are in
@@ -495,7 +501,7 @@ Deno.serve(async (req) => {
     // Always generate — upsert overwrites stale/wrong topics
     const toGenerate: Array<{ date: string; level: Level }> = []
     for (const date of dates) {
-      for (const level of ALL_LEVELS) {
+      for (const level of GEN_LEVELS) {
         toGenerate.push({ date, level })
       }
     }
@@ -514,7 +520,7 @@ Deno.serve(async (req) => {
 
     // Pre-fetch expected topics per level to check correctness
     const expectedTopics: Record<string, string> = {}
-    for (const level of ALL_LEVELS) {
+    for (const level of GEN_LEVELS) {
       const { data: topics } = await sb
         .from('writing_topics')
         .select('topic_ko')
