@@ -36,7 +36,7 @@ jobs:
             { echo "set default_transaction_read_only = on;"; cat "$f"; } | jq -Rs '{query: .}' | \
               curl -sS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
                 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data-binary @- \
-              | jq . | head -c 20000
+              | jq -c . | head -c 400000
             echo
             echo "::endgroup::"
           done
