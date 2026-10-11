@@ -1,0 +1,42 @@
+name: DB read-only report
+
+# Runs read-only diagnostic queries against production and prints the
+# result in the job log (Claude Code can't reach api.supabase.com, but can
+# read GitHub Actions logs). Triggered by pushes to main that add/change
+# supabase/reports/*.sql. Each query runs in a session forced to
+# default_transaction_read_only = on, so it cannot modify data.
+#
+# Requires repo secret SUPABASE_ACCESS_TOKEN.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/reports/**.sql'
+
+env:
+  PROJECT_REF: samghztrdvtxmrmawneu
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run reports
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then BEFORE="HEAD~1"; fi
+          for f in $(git diff --name-only --diff-filter=AM "$BEFORE" HEAD -- 'supabase/reports/*.sql' | sort); do
+            echo "::group::$f"
+            { echo "set default_transaction_read_only = on;"; cat "$f"; } | jq -Rs '{query: .}' | \
+              curl -sS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+                -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data-binary @- \
+              | jq . | head -c 20000
+            echo
+            echo "::endgroup::"
+          done
