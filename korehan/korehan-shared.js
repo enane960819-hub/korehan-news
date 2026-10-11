@@ -5524,77 +5524,105 @@ async function analyzeSentence(idx, el) {
     return;
   }
 
-  // No cached analysis for this sentence. User-side AI fallback was
-  // removed by owner directive: "fallback할 상황을 안만들면 되는거
-  // 아닌가". Admin pre-bakes every article via runAutoGenerate before
-  // publish; if a row is missing it means either (a) the article was
-  // imported before combined-Sonnet rolled out, or (b) admin needs to
-  // re-bake from the AI Cache Management page. Either way, we don't
-  // charge tokens silently on the reader's tap — we show a friendly
-  // "preparing" panel and stop.
-  // Admins get a one-tap bake button right here instead of having to
-  // hunt the article down on AI Cache Management. One Haiku call for the
-  // whole article; the result is persisted so every reader hits cache.
-  var _adminBakeBtn = window._isAdmin
-    ? '<button class="asp-admin-bake" onclick="_khAdminBakeArticle(' + idx + ')" style="margin-top:12px;padding:8px 16px;border-radius:999px;border:0;background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">⚡ Analyze this article now (admin)</button>'
+  // No cached analysis yet → the first signed-in reader bakes the whole
+  // article on the server (article-analyze Edge Function): one AI call per
+  // article ever, stored in article_cache so every later reader hits cache.
+  // The server enforces the lock + daily budget; the browser never writes
+  // article_cache and never re-generates an article that already has rows.
+  // Article already baked this page but this one sentence didn't match
+  // (body edited after the bake) — don't loop back to the server.
+  if (window._khArtBakeDone[articleId]) { _khRenderBakePanel(panel, 'no_match'); return; }
+  _khRenderBakePanel(panel, 'running');
+  var bake = await _khServerBakeArticle(articleId);
+  if (!panel.isConnected) return; // reader closed / tapped elsewhere meanwhile
+  if (bake.ok) {
+    window._khArtBakeDone[articleId] = true;
+    _khRetrySent(idx);
+    return;
+  }
+  _khRenderBakePanel(panel, bake.error || 'generation_failed', idx);
+}
+window._khArtBakeDone = window._khArtBakeDone || {};
+function _khRetrySent(idx) {
+  var el = document.querySelector('.art-sent[data-sent-idx="' + idx + '"]');
+  closeSentPanel();
+  if (el) analyzeSentence(idx, el);
+}
+
+// "Generating…" / limit / error states of the sentence panel while an
+// article is baked. Colours inherit from .art-sent-panel so the text stays
+// readable on both the light panel and the dark mobile-redesign panel.
+function _khRenderBakePanel(panel, state, idx) {
+  var MSG = {
+    running:           ['Preparing this article\u2019s analysis\u2026', 'First time anyone opened it — takes about 30\u201360 seconds. Everyone after you gets it instantly.'],
+    daily_limit:       ['Daily limit reached', 'You can prepare analysis for 5 new articles a day. Articles that are already analyzed still work.'],
+    site_limit:        ['Busy today', 'Too many new analyses today. Please try again tomorrow.'],
+    not_signed_in:     ['Sign in to continue', 'Please sign in again to analyze this article.'],
+    generation_failed: ['Couldn\u2019t prepare the analysis', 'Something went wrong. Please try again in a little while.'],
+    no_match:          ['No analysis for this sentence', 'This sentence changed after the article was analyzed. Other sentences still work.'],
+  };
+  var m = MSG[state] || MSG.generation_failed;
+  var retry = (state === 'generation_failed' && idx != null)
+    ? '<div><button onclick="_khRetrySent(' + Number(idx) + ')" style="margin-top:12px;padding:8px 16px;border-radius:999px;border:0;background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Try again</button></div>'
     : '';
   panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
-    + '<div class="asp-prep" style="padding:14px 16px;text-align:center;color:#475569;font-size:13px;line-height:1.55">'
-    +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">Analysis in progress</div>'
-    +   'Sentence analysis is being prepared. Please try again in a moment.'
-    +   (_adminBakeBtn ? '<div>' + _adminBakeBtn + '</div>' : '')
+    + '<div class="asp-prep" style="padding:14px 16px;text-align:center;font-size:13px;line-height:1.55">'
+    +   (state === 'running' ? '<div class="asp-loading" style="margin-bottom:6px"></div>' : '')
+    +   '<div style="font-size:14px;font-weight:700;margin-bottom:4px;color:inherit">' + m[0] + '</div>'
+    +   '<div style="color:inherit;opacity:.72">' + m[1] + '</div>'
+    +   retry
     + '</div>';
-  if (window._isAdmin) return; // admin can bake directly — no self-notification
-  // Ring the admin's bell on the next macrotask so the RPC round-trip
-  // can never extend this tap-handler turn. Server-side RPC dedupes
-  // per (content_id, 10min) so multi-tap on the same uncached article
-  // only fires once. Best-effort; silent failure is fine.
-  setTimeout(function () {
-    try { _khNotifyAdminCacheMiss('article', articleId, sentenceText); } catch (_) {}
-  }, 0);
+}
+
+// One server bake per article per page; concurrent taps share the promise.
+// Resolves {ok:true} once window._khArtSentSharedCache[articleId] holds the
+// sentences, else {ok:false, error}.
+window._khArtBakePending = window._khArtBakePending || {};
+function _khServerBakeArticle(articleId) {
+  if (!articleId) return Promise.resolve({ ok: false, error: 'generation_failed' });
+  if (window._khArtBakePending[articleId]) return window._khArtBakePending[articleId];
+  var p = (async function() {
+    try {
+      var sb = (typeof getSupa === 'function') ? getSupa() : null;
+      var sess = sb ? await sb.auth.getSession() : null;
+      var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+      if (!token) return { ok: false, error: 'not_signed_in' };
+      var call = function() {
+        return fetch(SUPA_URL + '/functions/v1/article-analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPA_KEY },
+          body: JSON.stringify({ article_id: String(articleId) })
+        }).then(function(r) { return r.json().catch(function() { return { ok: false, error: 'generation_failed' }; }); });
+      };
+      var res = await call();
+      // Someone else is baking it right now → wait for their result in the DB.
+      for (var i = 0; res && res.error === 'in_progress' && i < 12; i++) {
+        await new Promise(function(r) { setTimeout(r, 8000); });
+        window._khArtSentSharedCache[articleId] = undefined;
+        var got = await _khLoadArticleSentenceCache(articleId);
+        if (got && got.sentences && got.sentences.length) return { ok: true };
+        if (i === 11) res = await call();
+      }
+      if (res && res.ok && res.translation && Array.isArray(res.translation.sentences) && res.translation.sentences.length) {
+        window._khArtSentSharedCache[articleId] = { sentences: res.translation.sentences, version: res.translation.version || null };
+        return { ok: true };
+      }
+      return { ok: false, error: (res && res.error) || 'generation_failed' };
+    } catch (e) {
+      console.warn('[article-analyze]', e && e.message || e);
+      return { ok: false, error: 'generation_failed' };
+    } finally {
+      delete window._khArtBakePending[articleId];
+    }
+  })();
+  window._khArtBakePending[articleId] = p;
+  return p;
 }
 
 // Whitespace- and quote-insensitive form of a sentence, used only as a
 // last-resort match between cached sentence text and the rendered body.
 function _khSentNorm(t) {
   return String(t || '').replace(/[\s\u00a0]+/g, '').replace(/[\u2018\u2019\u201c\u201d'"`]/g, '');
-}
-
-// Admin-only: bake sentence analysis for the current article from the
-// reader's "Analysis in progress" panel, then re-open the tapped sentence.
-async function _khAdminBakeArticle(idx) {
-  if (!window._isAdmin) return;
-  var articleId = '';
-  try {
-    articleId = new URLSearchParams(window.location.search).get('id')
-      || (window._currentArticle && window._currentArticle.id) || '';
-  } catch(_) {}
-  if (!articleId) return;
-  var btn = document.querySelector('.art-sent-panel .asp-admin-bake');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Analyzing… (20-40s)'; }
-  var level = (window._currentArticle && window._currentArticle.level) || 'Beginner';
-  // Drop the cached "no row" result so the trigger + re-tap re-read state.
-  window._khArtSentSharedCache[articleId] = undefined;
-  try { sessionStorage.removeItem('kh_artfull_running_' + articleId); } catch(_) {}
-  await _khTriggerFullArticleAnalyze(articleId, level);
-  var baked = window._khArtSentSharedCache[articleId];
-  if (!baked || !baked.sentences) {
-    if (btn) { btn.disabled = false; btn.textContent = '⚠ Failed — tap to retry (see console)'; }
-    return;
-  }
-  // The trigger sets the in-memory cache even when the DB write fails,
-  // which is exactly how "first reader bakes for everyone" silently broke
-  // before. Re-read from the DB to prove the row actually landed.
-  window._khArtSentSharedCache[articleId] = undefined;
-  var persisted = await _khLoadArticleSentenceCache(articleId);
-  if (!persisted) {
-    window._khArtSentSharedCache[articleId] = baked; // still show it to the admin
-    if (typeof toast === 'function') toast('⚠ Analyzed, but NOT saved to DB — check console', true);
-    else alert('Analyzed, but NOT saved to DB — check console');
-  }
-  var el = document.querySelector('.art-sent[data-sent-idx="' + idx + '"]');
-  closeSentPanel();
-  if (el) analyzeSentence(idx, el);
 }
 
 // Posts an admin-targeted bell notification when a reader hits an
@@ -5869,8 +5897,8 @@ async function analyzeConvBubble(convId, msgIdx, el) {
   // publish (same as articles). Show a friendly "preparing" panel
   // instead of charging tokens on every reader tap.
   panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
-    + '<div class="asp-prep" style="padding:14px 16px;text-align:center;color:#475569;font-size:13px;line-height:1.55">'
-    +   '<div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px">Analysis in progress</div>'
+    + '<div class="asp-prep" style="padding:14px 16px;text-align:center;font-size:13px;line-height:1.55;opacity:.85">'
+    +   '<div style="font-size:14px;font-weight:700;margin-bottom:4px">Analysis in progress</div>'
     +   'Sentence analysis is being prepared. Please try again in a moment.'
     + '</div>';
   // Defer the admin notification RPC to the next macrotask so its
