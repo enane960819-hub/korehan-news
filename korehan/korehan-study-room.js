@@ -750,11 +750,15 @@ function renderStudyChecklist() {
   var box = document.getElementById('sr-checklist-box');
   if (!box) return;
   var isAdvanced = _currentLevel === 'Advanced';
+  // The week's 5 learning steps (same 5 the writing gate counts —
+  // canEnterWritingRoom needs 4). Rewards were display-only "+냥" labels
+  // with no payout behind them, so they're gone.
   var items = [
-    { k:'topic',    label:'Express Practice',  sub:'Write & speak on this week\'s topic',     pts:'+20 냥' },
-    { k:'grammar',  label:'Review grammar points',     sub:'Quick, light review',       pts:'+10 냥' },
-    { k:'picture',  label:'Speaking Practice',  sub:'발음 & 유창성 평가',  pts:'+15 냥' },
-    { k:'sentence', label:'Dictation practice',         sub:'Accuracy training',         pts:'+10 냥' }
+    { k:'topic',       label:'Topic Yum Yum',      sub:'This week\'s words & grammar' },
+    { k:'grammar',     label:'Phrase Munch',       sub:'Phrases for the topic' },
+    { k:'picture',     label:'Speaking Practice',  sub:'발음 & 유창성' },
+    { k:'sentence',    label:'Dictation',          sub:'Listen & type' },
+    { k:'expressions', label:'Key Expressions',    sub:'Expressions in context' }
   ];
   var doneCnt = items.filter(function(i){ return !!_studyDone[i.k]; }).length;
   var pd = document.getElementById('sr-done-picture');
@@ -770,7 +774,6 @@ function renderStudyChecklist() {
       + '<span class="sr-mission-item-sub" style="' + nameStyle + '">' + i.sub + '</span>'
       + '</div>'
       + '<div class="sr-mission-right">'
-      + '<span class="sr-mission-pts">' + i.pts + '</span>'
       + '<span class="' + (done ? 'sr-mission-status-done' : 'sr-mission-status-todo') + '">' + (done ? 'DONE' : 'TODO') + '</span>'
       + '</div>'
       + '</div>';
@@ -778,7 +781,7 @@ function renderStudyChecklist() {
   // Update quest ring
   _drawQuestRing(doneCnt, items.length);
   var qSub = document.getElementById('sr-quest-sub');
-  if (qSub) qSub.textContent = doneCnt + '/' + items.length + ' · +40 bonus';
+  if (qSub) qSub.textContent = doneCnt + '/' + items.length + ' steps · writing opens at 4';
   // Keep learning selector badges in sync if modal is open
   var lsModal = document.getElementById('ls-modal');
   if (lsModal && !lsModal.classList.contains('hidden')) _updateLSSelectorBadges();
@@ -2750,7 +2753,6 @@ function closeLearningSelector() {
 
 function _updateLSSelectorBadges() {
   var types = ['topic','grammar','picture','sentence','expressions'];
-  var ptsMap = { topic:20, grammar:10, picture:15, sentence:10, expressions:10 };
   var doneCount = 0;
   var totalPts = 0;
   types.forEach(function(t) {
@@ -2759,7 +2761,6 @@ function _updateLSSelectorBadges() {
     if (_studyDone[t]) {
       node.classList.add('ls-node-done');
       doneCount++;
-      totalPts += ptsMap[t] || 0;
     } else {
       node.classList.remove('ls-node-done');
     }
@@ -2768,7 +2769,7 @@ function _updateLSSelectorBadges() {
   var orbCount = document.getElementById('ls-orb-count');
   var orbPts   = document.getElementById('ls-orb-pts');
   if (orbCount) orbCount.textContent = doneCount;
-  if (orbPts)   orbPts.textContent = totalPts + ' 냥';
+  if (orbPts)   orbPts.textContent = doneCount + ' / 5 steps';
   // Update CSS progress variable for the orb halo ring + Tarot top
   // bar (Tarot reads --ls-progress off the .ls-mindmap, not the
   // orb-wrap, so set it on both).
