@@ -73,8 +73,31 @@ function kstDateKey() {
   var day = String(d.getUTCDate()).padStart(2, '0');
   return y + '-' + m + '-' + day;
 }
+// ── Weekly Topic (2026-10) ────────────────────────────────────
+// The Study Room topic and its learning content run for a whole KST week
+// (Mon–Sun). Week key = that Monday's date (YYYY-MM-DD); it is also the
+// study_daily_content.scheduled_date of the week's content row.
+// Rotation: weeks since KH_TOPIC_EPOCH (a Monday) % active topic count —
+// keep in sync with daily-content-gen and the admin CMS.
+var KH_TOPIC_EPOCH = '2026-10-12T00:00:00+09:00';
+function kstWeekKey(dateKey) {
+  var d = dateKey ? new Date(dateKey + 'T00:00:00Z') : kstNow();
+  var back = (d.getUTCDay() + 6) % 7; // days since Monday
+  var m = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back));
+  return m.getUTCFullYear() + '-' + String(m.getUTCMonth() + 1).padStart(2, '0') + '-' + String(m.getUTCDate()).padStart(2, '0');
+}
+function kstAddDays(dateKey, n) {
+  var d = new Date(dateKey + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function khTopicWeekIndex(weekKey, count) {
+  if (!count) return 0;
+  var weeks = Math.floor((new Date(weekKey + 'T00:00:00+09:00') - new Date(KH_TOPIC_EPOCH)) / (7 * 86400000));
+  return ((Math.max(0, weeks) % count) + count) % count;
+}
 function studyDoneKey() {
-  return 'kh_sr_done_' + (supaUser ? supaUser.id : 'guest') + '_' + kstDateKey();
+  return 'kh_sr_done_w_' + (supaUser ? supaUser.id : 'guest') + '_' + kstWeekKey();
 }
 function loadStudyDoneState() {
   try {
@@ -167,7 +190,7 @@ function _khStudyRoomInit() {
       var t = (heroKo.textContent || '').trim();
       if (t === 'Loading…' || t === 'Loading...' || t === 'Loading') {
         console.warn('[STUDY-ROOM SAFETY] hero still placeholder after 12s — init must have thrown. Forcing fallback.');
-        if (typeof _applyFallbackTopic === 'function') _applyFallbackTopic(kstDateKey());
+        if (typeof _applyFallbackTopic === 'function') _applyFallbackTopic(kstWeekKey());
       }
     } catch(e) { console.error('[STUDY-ROOM SAFETY] fallback paint failed:', e); }
   }, 12000);
@@ -236,7 +259,7 @@ function _khStudyRoomInit() {
       loadStudyDoneFromDB();
       loadDailyContent().catch(function(e){
         console.error('[loadDailyContent] uncaught:', e);
-        _applyFallbackTopic(kstDateKey());
+        _applyFallbackTopic(kstWeekKey());
       });
       loadFeedbackInbox().then(function(){
         // ?openInbox=1 deep-link from external surfaces (My Page chip,
@@ -462,13 +485,13 @@ function _khStudyRoomInitSafe() {
   try { p = _khStudyRoomInit(); }
   catch (e) {
     console.error('[STUDY-ROOM init] synchronous throw:', e);
-    try { if (typeof _applyFallbackTopic === 'function') _applyFallbackTopic(kstDateKey()); } catch(_) {}
+    try { if (typeof _applyFallbackTopic === 'function') _applyFallbackTopic(kstWeekKey()); } catch(_) {}
     return;
   }
   if (p && typeof p.catch === 'function') {
     p.catch(function(e) {
       console.error('[STUDY-ROOM init] async rejection:', e);
-      try { if (typeof _applyFallbackTopic === 'function') _applyFallbackTopic(kstDateKey()); } catch(_) {}
+      try { if (typeof _applyFallbackTopic === 'function') _applyFallbackTopic(kstWeekKey()); } catch(_) {}
     });
   }
 }
@@ -522,12 +545,12 @@ async function loadPicturePromptsFromDB() {
   var fieldsBaseOnly = 'id,prompt_ko,image_url,sample_answer,sort_order,word_order_words,custom_prompt,scheduled_date';
 
   async function fetchPrompts(fields) {
-    var today = kstDateKey();
-    // 1. Prefer today's scheduled item
+    // 1. Prefer this week's scheduled item (week key = Monday), else today's
     var r = await sb.from('study_picture_prompts')
       .select(fields)
       .eq('is_active', true)
-      .eq('scheduled_date', today)
+      .in('scheduled_date', [kstWeekKey(), kstDateKey()])
+      .order('scheduled_date')
       .limit(1)
       .maybeSingle();
     if (!r.error && r.data) { _picturePrompts = [_mapPicturePrompt(r.data)]; return true; }
@@ -728,7 +751,7 @@ function renderStudyChecklist() {
   if (!box) return;
   var isAdvanced = _currentLevel === 'Advanced';
   var items = [
-    { k:'topic',    label:'Express Practice',  sub:'Write & speak on today\'s topic',     pts:'+20 냥' },
+    { k:'topic',    label:'Express Practice',  sub:'Write & speak on this week\'s topic',     pts:'+20 냥' },
     { k:'grammar',  label:'Review grammar points',     sub:'Quick, light review',       pts:'+10 냥' },
     { k:'picture',  label:'Speaking Practice',  sub:'발음 & 유창성 평가',  pts:'+15 냥' },
     { k:'sentence', label:'Dictation practice',         sub:'Accuracy training',         pts:'+10 냥' }
@@ -1144,7 +1167,8 @@ async function reassignTopicForLevel(level) {
 // LOAD DAILY CONTENT — from study_daily_content (AI-generated + admin-editable)
 // ═══════════════════════════════════════════════════════════════
 async function loadDailyContent() {
-  var today = kstDateKey();
+  // Weekly Topic: one content row per KST week, keyed by that Monday.
+  var today = kstWeekKey();
   khLog('[loadDailyContent] start — date:', today, 'level:', _currentLevel, 'user:', supaUser ? supaUser.id : 'none');
 
   // Fast path: check localStorage cache first (instant, no network)
@@ -1198,12 +1222,12 @@ async function loadDailyContent() {
     }
   } catch(e) {}
 
-  // Admin preview: ?preview_date=YYYY-MM-DD (up to +6 days)
+  // Admin preview: ?preview_date=YYYY-MM-DD → that date's week (this or next week)
   if (window._isAdmin) {
     var p = new URLSearchParams(window.location.search).get('preview_date');
     if (p && /^\d{4}-\d{2}-\d{2}$/.test(p)) {
-      var maxDate = new Date(new Date(today + 'T00:00:00Z').getTime() + (6 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
-      if (p >= today && p <= maxDate) today = p;
+      var pw = kstWeekKey(p);
+      if (pw >= today && pw <= kstAddDays(today, 7)) today = pw;
     }
   }
 
@@ -1234,10 +1258,10 @@ async function loadDailyContent() {
   if (!supaUser) {
     khLog('[loadDailyContent] no user — showing login wall');
     var subEl = document.getElementById('wm-topic-sub');
-    if (subEl) subEl.textContent = 'Today\'s Topic';
+    if (subEl) subEl.textContent = 'This Week\'s Topic';
     var heroKo = document.getElementById('hero-topic-ko');
     var heroEn = document.getElementById('hero-topic-en');
-    if (heroKo) heroKo.textContent = 'Today\'s Topic';
+    if (heroKo) heroKo.textContent = 'This Week\'s Topic';
     if (heroEn) heroEn.textContent = 'Sign in to start studying';
     showLoginWall();
     return;
@@ -1299,24 +1323,25 @@ async function loadDailyContent() {
   _applyFallbackTopic(today);
 }
 
-// 다음날 콘텐츠 미리 생성 (백그라운드, 지연)
-// Daily content is generated server-side by daily-content-gen Edge Function (cron).
-// Client-side _pregenTomorrow kept as lightweight fallback only for current level.
+// Next week's content, pre-generated in the background (fallback only —
+// daily-content-gen's cron already generates this week + next week).
+// Only from Friday on, so a mid-week visit doesn't spend a call early.
 var _pregenDone = false;
 function _pregenTomorrow() {
   if (_pregenDone) return;
   _pregenDone = true;
+  var dow = kstNow().getUTCDay();
+  if (dow !== 5 && dow !== 6 && dow !== 0) return;
   setTimeout(function() {
     try {
-      var todayMs = new Date(kstDateKey() + 'T00:00:00+09:00').getTime();
-      var tomorrow = new Date(todayMs + 86400000).toISOString().slice(0,10);
+      var nextWeek = kstAddDays(kstWeekKey(), 7);
       var sb = getSupa(); if (!sb || !supaUser) return;
-      sb.from('study_daily_content').select('id,vocab').eq('scheduled_date', tomorrow).eq('level', _currentLevel).maybeSingle()
+      sb.from('study_daily_content').select('id,vocab').eq('scheduled_date', nextWeek).eq('level', _currentLevel).maybeSingle()
         .then(function(r) {
           var hasVocab = r.data && r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : true);
           if (!hasVocab) {
-            khLog('[pregenTomorrow] fallback — generating for', tomorrow, _currentLevel);
-            _generateAndSaveDailyContent(tomorrow, { silent: true });
+            khLog('[pregenNextWeek] fallback — generating for', nextWeek, _currentLevel);
+            _generateAndSaveDailyContent(nextWeek, { silent: true });
           }
         });
     } catch(e) {}
@@ -1527,8 +1552,7 @@ async function _generateAndSaveDailyContent(date, opts) {
     Intermediate: 'INTERMEDIATE: Past tense, conjunctions, modals. Sentences 8-12 words. Topic-specific terms.',
     Advanced:     'ADVANCED: Complex structures, formal style, advanced connectors. Sentences 12+ words. Abstract vocab.'
   };
-  // 작문 토픽 — 날짜 기반 순차 선택 (모든 유저 동일)
-  // 기준일(2026-04-14)부터 매일 1번씩 sort_order 순으로
+  // 작문 토픽 — 주(週) 단위 순차 선택 (모든 유저 동일). date = 그 주 월요일.
   var assignedTopic = null;
   try {
     var sb = getSupa();
@@ -1541,12 +1565,7 @@ async function _generateAndSaveDailyContent(date, opts) {
         .order('created_at');
       var allTopics = topicRes.data || [];
       if (allTopics.length) {
-        // 기준일로부터 며칠째인지 계산 → 인덱스
-        var epoch = new Date('2026-10-12T00:00:00+09:00') /* = WRITING_TOPICS_EPOCH_ISO in daily-content-gen */.getTime();
-        var now = new Date(date + 'T00:00:00+09:00').getTime();
-        var daysSinceEpoch = Math.max(0, Math.floor((now - epoch) / 86400000));
-        var todayIdx = daysSinceEpoch % allTopics.length;
-        assignedTopic = allTopics[todayIdx];
+        assignedTopic = allTopics[khTopicWeekIndex(kstWeekKey(date), allTopics.length)];
       }
     }
   } catch(e) { console.warn('[_generateAndSaveDailyContent] writing_topics fetch failed:', e); }
@@ -1605,7 +1624,7 @@ async function _generateAndSaveDailyContent(date, opts) {
   }
 
   var topicForPrompt = fallbackTopicKo || (assignedTopic && assignedTopic.topic_ko) || '';
-  var prompt = 'You are a Korean language teacher creating complete daily study content.\n\n'
+  var prompt = 'You are a Korean language teacher creating a complete week of study content for one weekly topic.\n\n'
     + (typeof getLevelPrompt === 'function' ? getLevelPrompt(_currentLevel) : 'Level: ' + _currentLevel) + '\n\n'
     + topicHint + '\n\n'
     + 'TOPIC: vocab and helper sentences should be words/sentences a learner would actually need to write or talk about the topic' + (topicForPrompt ? ' "' + topicForPrompt + '"' : '') + '. Do NOT return generic vocabulary (배우, 가수, 드라마, 학생) unless the topic literally is about that. Grammar examples and dictation items should fit the topic when it reads naturally — but NEVER force a topic word into a sentence: a natural everyday sentence beats an awkward on-topic one.\n\n'
@@ -2147,7 +2166,7 @@ function _fallbackGrammarFor(level, topicKo, topicEn, vocab) {
 }
 
 function buildStudyRoomFallbackContent(topic, level) {
-  var topicKo = (topic && (topic.topic_ko || topic.topic_en)) || "Today's Topic";
+  var topicKo = (topic && (topic.topic_ko || topic.topic_en)) || "This Week's Topic";
   var topicEn = (topic && topic.topic_en) || 'today\'s topic';
 
   // Topic-specific pack first — matches keyword families so a "time of day"
@@ -2379,7 +2398,7 @@ function renderModalContent() {
   // empty — without this, mobile users who tap VOCAB / GRAMMAR / AI see a
   // blank screen and can't tell whether the page is broken or still
   // loading.
-  var emptyPlaceholder = '<div style="padding:14px 12px;font-size:11px;color:#94a3b8;font-style:italic;text-align:center">Loading today\'s content…</div>';
+  var emptyPlaceholder = '<div style="padding:14px 12px;font-size:11px;color:#94a3b8;font-style:italic;text-align:center">Loading this week\'s content…</div>';
   if (!_aiContent || !_todayTopic) {
     ['wm-grammar','wm-vocab-chips','wm-vocab-chips-mobile','wm-grammar-chips','wm-helpers'].forEach(function(id) {
       var el = document.getElementById(id);
@@ -2564,7 +2583,7 @@ async function khLoadCommonMistakes() {
   var topicKo = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '';
   if (!topicKo) { details.hidden = true; return; }
   var level   = _currentLevel || 'Beginner';
-  var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+  var dateKey = (typeof kstWeekKey === 'function') ? kstWeekKey() : new Date().toISOString().slice(0,10);
   // Cache key bumped to v2 — the v1 prompt was too loose and was
   // labelling formality choices (-ㅂ니다 vs -어요), vocabulary
   // alternatives (싶어요 vs 좋아해요), subject omission, and
@@ -2696,7 +2715,7 @@ function canEnterWritingRoom() {
   if (doneCount >= 4) return true;
   khAlert(
     'Almost there!',
-    'Complete at least 4 of the 5 daily learning steps (Topic Yum Yum, Phrase Munch, Speaking Practice, Dictation, Key Expressions) before entering Express Practice. (' + doneCount + '/5 done)'
+    'Complete at least 4 of this week\'s 5 learning steps (Topic Yum Yum, Phrase Munch, Speaking Practice, Dictation, Key Expressions) before entering Express Practice. (' + doneCount + '/5 done)'
   );
   return false;
 }
@@ -3331,7 +3350,7 @@ async function openPhraseMunch() {
 
   var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
   if (!topic || topic === 'Loading…') {
-    if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,.5)">Please load today\'s topic first.</div>';
+    if (body) body.innerHTML = '<div style="text-align:center;padding:60px 20px;color:rgba(255,255,255,.5)">Please load this week\'s topic first.</div>';
     return;
   }
 
@@ -3346,7 +3365,7 @@ async function openPhraseMunch() {
   try {
     var sb = getSupa();
     if (sb) {
-      var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+      var dateKey = (typeof kstWeekKey === 'function') ? kstWeekKey() : new Date().toISOString().slice(0,10);
       var lvl = _currentLevel || 'Beginner';
       var preR = await sb.from('study_daily_content')
         .select('phrase_munch_lessons')
@@ -3848,14 +3867,14 @@ async function openKeyExpressionsModal() {
   modal.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   var topicLabel = document.getElementById('ke-topic-label');
-  if (_todayTopic) topicLabel.textContent = (_todayTopic.topic_ko || _todayTopic.topic_en || 'Key expressions for today\'s topic');
+  if (_todayTopic) topicLabel.textContent = (_todayTopic.topic_ko || _todayTopic.topic_en || 'Key expressions for this week\'s topic');
   var list = document.getElementById('ke-expressions-list');
 
   // topicKoKey is the stable text identifier (topic_ko is consistent across days).
   // topicKey includes date for in-memory / localStorage invalidation only.
   var topicKoKey = (_todayTopic && _todayTopic.topic_ko) || 'default';
   var levelKey   = _currentLevel || 'Beginner';
-  var topicKey   = topicKoKey + '_' + levelKey + '_' + kstDateKey();
+  var topicKey   = topicKoKey + '_' + levelKey + '_' + kstWeekKey();
   if (_keCacheKey !== topicKey) { _keCache = null; _keCacheKey = topicKey; }
 
   // 1) In-memory cache (same session, same topic/level/date)
@@ -3870,7 +3889,7 @@ async function openKeyExpressionsModal() {
     if (sbPre) {
       var preRow = await sbPre.from('study_daily_content')
         .select('key_expressions')
-        .eq('scheduled_date', kstDateKey()).eq('level', levelKey).maybeSingle();
+        .eq('scheduled_date', kstWeekKey()).eq('level', levelKey).maybeSingle();
       var storedKE = preRow && preRow.data && preRow.data.key_expressions;
       if (Array.isArray(storedKE) && storedKE.length) {
         _keCache = storedKE;
@@ -4023,7 +4042,7 @@ async function keOpenSituationQuiz(idx) {
   modal.classList.remove('hidden');
   body.innerHTML = '<div style="text-align:center;padding:18px;color:rgba(255,255,255,.5);font-size:13px">⏳ Loading quiz…</div>';
 
-  var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+  var dateKey = (typeof kstWeekKey === 'function') ? kstWeekKey() : new Date().toISOString().slice(0,10);
   // v2: situation quizzes were cached against expression text from the
   // ke_v2 era which had broken patterns; force re-fetch.
   var cacheKey = 'kh_ke_situation_quiz_v3_' + encodeURIComponent(exp.ko) + '_' + dateKey;
@@ -4580,7 +4599,7 @@ var _keSituations = null;
 function _keSitCacheKey() {
   var topicId = (_todayTopic && (_todayTopic.id || _todayTopic.topic_ko)) || 'default';
   var level   = _currentLevel || 'Beginner';
-  var date    = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
+  var date    = (typeof kstWeekKey === 'function') ? kstWeekKey() : new Date().toISOString().slice(0,10);
   return 'kex_sit2::' + topicId + '_' + level + '_' + date;
 }
 
@@ -7804,23 +7823,26 @@ function lsStartWriting() {
   wmMobileInit();
 }
 
-// Read today's user_daily_progress from DB and merge into _studyDone
+// Merge this week's user_daily_progress rows (Mon–Sun) into _studyDone —
+// the 5 steps are weekly; each day's row records what was done that day.
 async function loadStudyDoneFromDB() {
   var sb = getSupa();
   if (!sb || !supaUser) return;
   try {
+    var wk = kstWeekKey();
     var r = await sb.from('user_daily_progress')
       .select('*')
       .eq('user_id', supaUser.id)
-      .eq('study_date', kstDateKey())
-      .maybeSingle();
-    if (r.error || !r.data) return;
-    var d = r.data;
-    if (d.topic_done)       _studyDone.topic       = true;
-    if (d.grammar_done)     _studyDone.grammar     = true;
-    if (d.picture_done)     _studyDone.picture     = true;
-    if (d.sentence_done)    _studyDone.sentence    = true;
-    if (d.expressions_done) _studyDone.expressions = true;
+      .gte('study_date', wk)
+      .lte('study_date', kstAddDays(wk, 6));
+    if (r.error || !r.data || !r.data.length) return;
+    r.data.forEach(function(d) {
+      if (d.topic_done)       _studyDone.topic       = true;
+      if (d.grammar_done)     _studyDone.grammar     = true;
+      if (d.picture_done)     _studyDone.picture     = true;
+      if (d.sentence_done)    _studyDone.sentence    = true;
+      if (d.expressions_done) _studyDone.expressions = true;
+    });
     // Persist merged state to localStorage under correct user key
     try { localStorage.setItem(studyDoneKey(), JSON.stringify(_studyDone)); } catch(e) {}
     renderStudyChecklist();
@@ -8732,7 +8754,7 @@ async function submitSpeaking() {
       _triggerSpeakingFeedback(newId, scriptText, _speakScores)
         .catch(function(e){ console.warn('speaking feedback failed', e && e.message); });
     }
-    showToast('Recording submitted! Your tutor will review within 24 hours.');
+    showToast('Recording submitted! Your AI feedback is on its way.');
     var row = document.getElementById('wm-speak-submit-row');
     if (row) row.style.display = 'none';
     document.getElementById('wm-speak-status').innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#22c55e">'+BM_ICON_CHECK+'</span><span>Submitted! Your AI feedback is on its way.</span></span>';
@@ -8855,7 +8877,7 @@ function returnToActivities(closeFunc) {
 }
 
 function _writingDraftKey() {
-  return 'kh_drafts_' + (supaUser ? supaUser.id : 'g') + '_' + kstDateKey();
+  return 'kh_drafts_w_' + (supaUser ? supaUser.id : 'g') + '_' + kstWeekKey();
 }
 
 function saveDraft(type, data) {
@@ -9156,9 +9178,10 @@ async function submitAllWritingsToday() {
   if (window._khSubmitAllInFlight) return;
   window._khSubmitAllInFlight = true;
   try {
-  var submitKey = 'kh_submitted_' + kstDateKey() + '_' + supaUser.id;
+  // Weekly Topic: one package per KST week (resets Monday 00:00 KST).
+  var submitKey = 'kh_submitted_w_' + kstWeekKey() + '_' + supaUser.id;
   if (localStorage.getItem(submitKey)) {
-    showToast('Already submitted today. You can submit once per day (resets at midnight KST).');
+    showToast('Already submitted this week. You can submit once per week (resets Monday 00:00 KST).');
     return;
   }
   var limit = getWriteCharLimit();
@@ -9184,7 +9207,7 @@ async function submitAllWritingsToday() {
     if (_submitLabel) _submitLabel.textContent = _origLabel || 'Submit All';
   }
 
-  var today = kstDateKey();
+  var today = kstWeekKey(); // package key = this week's Monday
 
   // Build unified package — all activities combined
   var packageItems = [];
@@ -9230,7 +9253,7 @@ async function submitAllWritingsToday() {
       user_id: supaUser.id,
       content_type: 'daily_package',
       content_id: today,
-      content_title: 'Daily Study Package — ' + today,
+      content_title: 'Weekly Study Package — week of ' + today,
       study_date: today,
       writing_text: allTexts.join('\n\n---\n\n'),
       word_count: packageItems.reduce(function(s,p){return s+p.word_count;},0),
@@ -9428,7 +9451,7 @@ async function _triggerPackageFeedback(submissionId, items) {
       + '{\n'
       + '  "overall_assessment": "ONE English sentence (≤15 words) summarizing today",\n'
       + '  "common_patterns": [],\n'
-      + '  "daily_tip": "ONE short actionable English tip for tomorrow",\n'
+      + '  "daily_tip": "ONE short actionable English tip for next week",\n'
       + '  "encouragement": "ONE short motivating English line",\n'
       + '  "activities": [\n'
       + '    {\n'
@@ -9581,7 +9604,7 @@ async function submitWriting() {
     topic_en: topicEn,
     writing_mode: (_writingMode || 'topic') + genreSuffix,
     writing_genre: _wmGenre || 'free',
-    context_key: ctxKeyPrefix + kstDateKey(),
+    context_key: ctxKeyPrefix + kstWeekKey(),
     context: ctxObj
   });
 
@@ -11809,7 +11832,7 @@ function openSpeakingPractice() {
     // "에 대해 이야기해 보세요" onto a question, which produced the broken
     // "지금 행복한가요?에 대해 이야기해 보세요." Only wrap bare noun-phrase
     // topics (e.g. "음식", "여행") in the talk-about instruction.
-    var topicName = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '오늘의 주제';
+    var topicName = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en)) || '이번 주 주제';
     var t = String(topicName).trim();
     var looksLikeSentence = /[.?!]$/.test(t) || /[다요죠까네][?!]?$/.test(t);
     _spSentences = [{ ko: looksLikeSentence ? t : (t + '에 대해 이야기해 보세요.'), en: '', rom: '' }];
@@ -12885,7 +12908,7 @@ var _bm = {
 
 // ── Topic Writing progress save / restore (item 3) ──────────────
 function _bmProgressKey() {
-  return 'kh_bm_' + (supaUser ? supaUser.id : 'g') + '_' + kstDateKey();
+  return 'kh_bm_w_' + (supaUser ? supaUser.id : 'g') + '_' + kstWeekKey();
 }
 function _bmSaveProgress() {
   try {
@@ -13011,7 +13034,7 @@ function _imUpdateHeader() {
   }
   var topicEl = document.getElementById('im-topic-label');
   if (topicEl && _todayTopic) {
-    topicEl.textContent = _todayTopic.topic_ko || _todayTopic.topic_en || "Today's Topic";
+    topicEl.textContent = _todayTopic.topic_ko || _todayTopic.topic_en || "This Week's Topic";
   }
   var bar = document.getElementById('im-progress-bar');
   if (bar) bar.style.width = ((_im.step - 1) / _IM_TOTAL_STEPS * 100) + '%';
@@ -13042,8 +13065,8 @@ function _imRenderVocab() {
   if (!vocab.length) {
     body.innerHTML = '<div class="im-loading">'
       + '<div class="im-loading-spinner"></div>'
-      + '<div class="im-loading-text">Loading today\'s vocab…</div>'
-      + '<div class="im-loading-sub">If this hangs, the AI content for today\'s topic hasn\'t been generated yet.</div>'
+      + '<div class="im-loading-text">Loading this week\'s vocab…</div>'
+      + '<div class="im-loading-sub">If this hangs, the AI content for this week\'s topic hasn\'t been generated yet.</div>'
       + '</div>';
     footer.innerHTML = '<button class="bm-btn-next" onclick="_imAdvanceStep()">Skip to grammar →</button>';
     // Re-render once content arrives.
@@ -13068,7 +13091,7 @@ function _imRenderVocab() {
 
   body.innerHTML = ''
     + '<div class="im-step-eyebrow">STEP 1 · TOPIC VOCAB</div>'
-    + '<div class="im-step-title">Today\'s key words</div>'
+    + '<div class="im-step-title">This week\'s key words</div>'
     + '<div class="im-step-desc">Tap each card to reveal what it means. You\'ll use these in your writing.</div>'
     + '<div class="im-vocab-grid">' + cardsHtml + '</div>';
   footer.innerHTML = ''
@@ -13159,9 +13182,9 @@ function _imRenderBrief() {
   body.innerHTML = ''
     + '<div class="im-step-eyebrow">STEP 3 · EXPRESS PRACTICE</div>'
     + '<div class="im-step-title">You\'re ready to write</div>'
-    + '<div class="im-step-desc">Use today\'s vocab + grammar to answer the topic in your own words. Aim for 3-5 sentences.</div>'
+    + '<div class="im-step-desc">Use this week\'s vocab + grammar to answer the topic in your own words. Aim for 3-5 sentences.</div>'
     + '<div class="im-brief-card">'
-    +   '<div class="im-brief-label">TODAY\'S TOPIC</div>'
+    +   '<div class="im-brief-label">THIS WEEK\'S TOPIC</div>'
     +   '<div class="im-brief-ko">' + _esc(topicKo) + '</div>'
     +   (topicEn ? '<div class="im-brief-en">' + _esc(topicEn) + '</div>' : '')
     + '</div>'
@@ -13247,7 +13270,7 @@ function updateBMHeader() {
 
   var topicEl = document.getElementById('bm-topic-label');
   if (topicEl && _todayTopic) {
-    var topicText = _todayTopic.topic_ko || _todayTopic.topic_en || 'Today\'s Topic';
+    var topicText = _todayTopic.topic_ko || _todayTopic.topic_en || 'This Week\'s Topic';
     topicEl.innerHTML = BM_ICON_PIN + '<span></span>';
     var topicSpan = topicEl.querySelector('span');
     if (topicSpan) topicSpan.textContent = topicText;
@@ -15851,7 +15874,7 @@ async function generateGFPatterns() {
 
   var topic = (document.getElementById('wcard-topic-ko') || {}).textContent || '';
   if (!topic || topic === 'Loading…') {
-    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Please load today\'s topic first.</div>';
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Please load this week\'s topic first.</div>';
     return;
   }
 
@@ -17131,7 +17154,7 @@ function _dctRenderListen() {
       return;
     }
     var artBtn = _dctGetArticleBtnHTML();
-    body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">No listening sentences available today.<br><span style="font-size:12px">Content will appear once today\'s topic is generated.</span></div>'
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">No listening sentences available yet.<br><span style="font-size:12px">Content will appear once today\'s topic is generated.</span></div>'
       + artBtn;
     foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
     return;

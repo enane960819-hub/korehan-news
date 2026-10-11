@@ -63,6 +63,17 @@ function addDays(dateStr: string, n: number): string {
   d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().slice(0, 10)
 }
+// Weekly Topic: content runs Mon–Sun KST; the row's scheduled_date is that
+// Monday (= kstWeekKey() in korehan-study-room.js).
+function weekKey(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00.000Z')
+  return addDays(dateStr, -((d.getUTCDay() + 6) % 7))
+}
+// Weeks since the epoch (a Monday) % topic count — same as khTopicWeekIndex().
+function topicWeekIndex(weekStart: string, count: number): number {
+  const weeks = Math.floor((new Date(weekStart + 'T00:00:00+09:00').getTime() - new Date(WRITING_TOPICS_EPOCH_ISO).getTime()) / (7 * 86400_000))
+  return Math.max(0, weeks) % count
+}
 
 function buildPrompt(level: Level, topicHint: string): { staticPrefix: string; dynamicSuffix: string } {
   // CRON-F6: prompt-caching shape. Returns a static prefix (grammar
@@ -492,10 +503,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'No Anthropic API key' }), { status: 500 })
     }
 
-    // Determine dates: today + tomorrow (KST)
-    const today = kstToday()
-    const tomorrow = addDays(today, 1)
-    const dates = [today, tomorrow]
+    // Determine weeks: this week + next week (rows keyed by Monday, KST)
+    const thisWeek = weekKey(kstToday())
+    const dates = [thisWeek, addDays(thisWeek, 7)]
 
     // Build full generation list: today + tomorrow × all levels
     // Always generate — upsert overwrites stale/wrong topics
@@ -531,10 +541,7 @@ Deno.serve(async (req) => {
       const allTopics = topics || []
       for (const date of dates) {
         if (allTopics.length) {
-          const epoch = new Date(WRITING_TOPICS_EPOCH_ISO).getTime()
-          const now = new Date(date + 'T00:00:00+09:00').getTime()
-          const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
-          expectedTopics[`${date}_${level}`] = allTopics[idx].topic_ko
+          expectedTopics[`${date}_${level}`] = allTopics[topicWeekIndex(date, allTopics.length)].topic_ko
         }
       }
     }
@@ -583,10 +590,7 @@ Deno.serve(async (req) => {
       if (!allTopics.length) {
         throw new Error(`writing_topics table is empty for level ${item.level} — seed topics before running daily-content-gen`)
       }
-      const epoch = new Date(WRITING_TOPICS_EPOCH_ISO).getTime()
-      const now = new Date(item.date + 'T00:00:00+09:00').getTime()
-      const idx = Math.max(0, Math.floor((now - epoch) / 86400_000)) % allTopics.length
-      const t = allTopics[idx]
+      const t = allTopics[topicWeekIndex(item.date, allTopics.length)]
       topicHint = `Use EXACTLY this topic: "${t.topic_ko}" (${t.topic_en}). Category: ${t.category || ''}.`
       forceTopic = { ko: t.topic_ko, en: t.topic_en }
 
