@@ -690,6 +690,8 @@ const CATEGORIES = [
   { key:'beauty',  icon:'💄', label:'Beauty',      topics:'beauty trends, skincare, cosmetics, wellness, self-care routines' },
   { key:'travel',  icon:'✈️', label:'Travel',      topics:'travel destinations, tourism, flights, accommodations, itineraries, travel tips' },
   { key:'오피니언',icon:'✍️', label:'Opinion',     topics:'Korean social commentary, editorial, economic opinion, political analysis' },
+  // Built daily by daily-article-draft/buzz.ts — kept out of AUTO_SECTIONS below.
+  { key:'buzz',    icon:'🔥', label:'Korea Buzz',  topics:'what Korean online communities are talking about' },
 ];
 
 // ══ HELPERS ════════════════════════════════════════════════
@@ -4873,7 +4875,7 @@ function saveSentences(){
 }
 
 // ══ AUTO ARTICLE GENERATION ══════════════════════════════════
-const AUTO_SECTIONS = CATEGORIES;
+const AUTO_SECTIONS = CATEGORIES.filter(c => c.key !== 'buzz');
 
 // ── News & trending sources ───────────────────────────────────
 // NOTE: We don't have an IT / tech section on the site, so BBC Tech,

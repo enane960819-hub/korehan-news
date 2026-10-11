@@ -26,6 +26,10 @@ on:
         description: 'Invoke once after deploy (builds one real draft for daily-article-draft)'
         type: boolean
         default: false
+      body:
+        description: 'Optional JSON body for the invoke (e.g. {"buzz":"dry"}); default {} / {"force":true}'
+        required: false
+        default: ''
   push:
     branches: [main]
     paths:
@@ -72,6 +76,7 @@ jobs:
         if: ${{ github.event.inputs.invoke == 'true' || contains(github.event.head_commit.message, '[invoke]') }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          INVOKE_BODY: ${{ github.event.inputs.body }}
         # Supabase projects can hold both legacy JWT keys (service_role) and
         # new sb_secret_ keys; the function's SUPABASE_SERVICE_ROLE_KEY may be
         # either. Try every non-public key, log only name + HTTP status.
@@ -81,6 +86,7 @@ jobs:
           echo "Key names: $(echo "$KEYS" | jq -r '[.[] | "\(.name)(\(.type // "legacy"))"] | join(", ")')"
           # A test run rebuilds today's queue so it always exercises the current source logic.
           FIRST_BODY='{}'; [ "$FUNCTION" = "daily-article-draft" ] && FIRST_BODY='{"force":true}'
+          [ -n "$INVOKE_BODY" ] && FIRST_BODY="$INVOKE_BODY"
           echo "Invoking $FUNCTION (can take 1-2 min)…"
           for row in $(echo "$KEYS" | jq -r '.[] | select((.name|test("anon|publishable"))|not) | @base64'); do
             NAME=$(echo "$row" | base64 -d | jq -r '.name')

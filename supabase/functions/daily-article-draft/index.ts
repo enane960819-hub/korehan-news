@@ -9,7 +9,10 @@
 //   tick 2-5 : take the next queued pick and build ONE draft from the full
 //              source text: Sonnet body → save article (status='draft') →
 //              Haiku sentence analysis → Haiku quiz → article_cache rows.
-//   later    : queue empty → no-op (cheap).
+//   buzz     : news drafts done → one tick picks today's Korea Buzz topic
+//              from community hot lists (buzz.ts) and queues it; the next
+//              tick writes it like any other draft (section 'buzz').
+//   later    : queue empty → grammar harvest (see grammar-harvest.ts).
 // One unit of work per invocation keeps every run well under the Edge
 // Function wall-clock limit.
 //
@@ -24,9 +27,12 @@
 // admin user's JWT. POST body (all optional):
 //   { "force": true }   rebuild today's queue even if one exists
 //   { "dry_run": true } fetch + pick only, don't write articles
+//   { "buzz": "dry" }   report today's Buzz candidate only
+//   { "buzz": true }    queue a Buzz pick now (even before the news drafts)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { harvestGrammar } from './grammar-harvest.ts'
+import { buzzPrompt, collectBuzz, pexelsImage } from './buzz.ts'
 import { analysisPrompt, deriveTabs, extractJsonObject, SENT_CACHE_VERSION, stitchSentences } from '../_shared/article-analysis.ts'
 
 const ADMIN_EMAIL = 'enane960819@gmail.com'
@@ -87,8 +93,12 @@ type DraftPick = {
   headline: Headline; level: Level; section: string
   status: 'pending' | 'done' | 'failed'; attempts: number
   article_id?: string; title_ko?: string; error?: string
+  kind?: 'news' | 'buzz'
 }
-type Queue = { date: string; created_at: string; picks: DraftPick[]; source_stats?: Record<string, unknown> }
+type Queue = {
+  date: string; created_at: string; picks: DraftPick[]; source_stats?: Record<string, unknown>
+  buzz?: Record<string, unknown>  // set once today's Buzz pick was attempted (see buzz.ts)
+}
 
 // ── helpers ───────────────────────────────────────────────────
 function kstToday(): string {
@@ -473,18 +483,36 @@ async function saveCache(sb: any, articleId: string, row: Record<string, string>
 
 async function buildDraft(sb: any, apiKey: string, pick: DraftPick): Promise<{ id: string; title: string; cacheParts: number }> {
   const h = pick.headline
-  const bodyRaw = await callClaude(sb, apiKey, 'daily-draft-body', MODEL_BODY, 4000, bodyPrompt(h, pick.level, pick.section))
+  const isBuzz = pick.kind === 'buzz'
+  const today = new Date(Date.now() + 9 * 3600_000)
+  const todayKo = `${today.getUTCFullYear()}년 ${today.getUTCMonth() + 1}월 ${today.getUTCDate()}일`
+  const bodyRaw = isBuzz
+    ? await callClaude(sb, apiKey, 'buzz-body', MODEL_BODY, 4000, buzzPrompt(h.title, h.source || '', h.body_text || '', todayKo))
+    : await callClaude(sb, apiKey, 'daily-draft-body', MODEL_BODY, 4000, bodyPrompt(h, pick.level, pick.section))
   const art = extractJsonObject(bodyRaw)
+  if (isBuzz && art?.safe === false) throw new Error('unsafe topic: ' + String(art.reason || '').slice(0, 120))
   if (!art?.title || !art?.body) throw new Error('invalid body JSON')
 
   const id = uid()
-  const image = await persistImage(sb, h.image || '', id)
+  const image = await persistImage(sb, isBuzz ? await pexelsImage(sb, art.image_query) : (h.image || ''), id)
   const titleEn = (typeof art.title_en === 'string' && art.title_en.trim()) || (/[ㄱ-힝]/.test(h.title) ? '' : h.title)
-  await saveArticle(sb, {
+  const row0: Record<string, unknown> = {
     id, section: pick.section, title: art.title, body: art.body, title_en: titleEn,
     date: new Date().toISOString().slice(0, 10), status: 'draft', featured: false,
     level: pick.level, source_url: h.url || '', image,
-  })
+  }
+  if (isBuzz && art.netizen_talk && typeof art.netizen_talk === 'object') {
+    const nt = art.netizen_talk
+    row0.netizen_talk = {
+      summary_en: String(nt.summary_en || '').slice(0, 300),
+      reactions: (Array.isArray(nt.reactions) ? nt.reactions : []).filter((r: any) => r?.ko).slice(0, 5)
+        .map((r: any) => ({ ko: String(r.ko).slice(0, 120), en: String(r.en || '').slice(0, 200) })),
+      slang: (Array.isArray(nt.slang) ? nt.slang : []).filter((x: any) => x?.term).slice(0, 4)
+        .map((x: any) => ({ term: String(x.term).slice(0, 30), meaning: String(x.meaning || '').slice(0, 160),
+          example_ko: String(x.example_ko || '').slice(0, 120), example_en: String(x.example_en || '').slice(0, 200) })),
+    }
+  }
+  await saveArticle(sb, row0)
 
   // Analysis + quiz. A failure here leaves a valid draft; the admin can
   // re-bake from AI Cache Management or the reader's ⚡ button.
@@ -556,6 +584,15 @@ Deno.serve(async (req) => {
     const apiKey = setting?.value
     if (!apiKey) throw new Error('No Anthropic API key in app_settings')
 
+    // {"buzz":"dry"}: report today's Buzz candidate only (no queue, no writes).
+    const pickBuzz = () => collectBuzz(sb,
+      (prompt) => callClaude(sb, apiKey, 'buzz-select', MODEL_FAST, 500, prompt, 45_000), extractJsonObject)
+    if (opts.buzz === 'dry') {
+      const res = await pickBuzz()
+      return json({ ok: true, dry_run: true, buzz: 'candidate' in res
+        ? { ...res.candidate, body_text: res.candidate.body_text.slice(0, 1500), reason: res.reason } : res })
+    }
+
     const { data: qRow } = await sb.from('app_settings').select('value').eq('key', QUEUE_KEY).maybeSingle()
     let queue: Queue | null = null
     try { queue = qRow?.value ? (typeof qRow.value === 'string' ? JSON.parse(qRow.value) : qRow.value) : null } catch (_) { queue = null }
@@ -574,6 +611,26 @@ Deno.serve(async (req) => {
       })
     }
     if (opts.dry_run) return json({ ok: true, dry_run: true, queue })
+
+    // Buzz: once the news drafts are done (or on demand with {"buzz":true}),
+    // spend one tick finding today's community topic → queued as a pick.
+    const newsPending = queue.picks.some((p) => p.status === 'pending' && p.attempts < MAX_ATTEMPTS)
+    if (opts.buzz === true || (!newsPending && !queue.buzz)) {
+      const today = kstToday()
+      const res = await pickBuzz()
+      if ('candidate' in res) {
+        const c = res.candidate
+        queue.picks.push({
+          kind: 'buzz', level: 'Intermediate', section: 'buzz', status: 'pending', attempts: 0,
+          headline: { title: c.title, url: c.url, source: c.source, body_text: c.body_text, category: 'buzz' },
+        })
+        queue.buzz = { date: today, picked: c.title, source: c.source, reason: res.reason }
+      } else {
+        queue.buzz = { date: today, none: res.none, stats: res.stats }
+      }
+      await saveQueue(queue)
+      return json({ ok: true, buzz: queue.buzz })
+    }
 
     const pick = queue.picks.find((p) => p.status === 'pending' && p.attempts < MAX_ATTEMPTS)
     if (!pick) {
