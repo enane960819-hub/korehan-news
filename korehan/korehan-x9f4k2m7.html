@@ -2472,6 +2472,10 @@ async function goSiteSettings(){
         <input id="sc-eleven-key" type="password" placeholder="ElevenLabs API key" class="inp inp-sm" style="flex:1" autocomplete="off">
         <button class="btn btn-g" onclick="saveIntegrationKey('elevenlabs_key','sc-eleven-key',/^.{20,}$/)">Save</button>
       </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:8px">
+        <input id="sc-live-zoom" type="url" placeholder="주말 라이브 클래스 고정 Zoom 링크 (https://…zoom.us/j/…)" class="inp inp-sm" style="flex:1" autocomplete="off">
+        <button class="btn btn-g" onclick="saveLiveZoomLink()">Save</button>
+      </div>
       <div id="sc-integ-status" style="font-size:12px;color:#94a3b8;margin-top:8px;white-space:pre-line"></div>
     </div>
     <div class="sf-card">
@@ -2882,10 +2886,10 @@ async function saveApiKey() {
 async function loadIntegrationStatus() {
   var el = document.getElementById('sc-integ-status'); if (!el) return;
   try {
-    var r = await getSb().from('app_settings').select('key,updated_at').in('key', ['stripe_secret_key','stripe_billing_webhook_secret','elevenlabs_key']);
+    var r = await getSb().from('app_settings').select('key,updated_at').in('key', ['stripe_secret_key','stripe_billing_webhook_secret','elevenlabs_key','live_class_zoom_link']);
     var have = {}; ((r && r.data) || []).forEach(function(x){ have[x.key] = x.updated_at; });
     function line(k, label) { return (have[k] ? '✅ ' : '❌ ') + label + (have[k] ? ' (저장됨 ' + new Date(have[k]).toLocaleDateString('ko-KR') + ')' : ' 없음'); }
-    el.textContent = line('stripe_secret_key', 'Stripe 키') + '\n' + line('stripe_billing_webhook_secret', 'Stripe 웹훅 (자동 설정으로 생성)') + '\n' + line('elevenlabs_key', 'ElevenLabs 키');
+    el.textContent = line('stripe_secret_key', 'Stripe 키') + '\n' + line('stripe_billing_webhook_secret', 'Stripe 웹훅 (자동 설정으로 생성)') + '\n' + line('elevenlabs_key', 'ElevenLabs 키') + '\n' + line('live_class_zoom_link', '라이브 클래스 Zoom 링크 (매주 일요일 21:00 KST 세션에 자동 적용)');
   } catch (e) { el.textContent = '상태 확인 실패: ' + (e.message || e); }
 }
 async function saveIntegrationKey(key, inputId, re) {
@@ -2897,6 +2901,22 @@ async function saveIntegrationKey(key, inputId, re) {
     if (res && res.error) throw res.error;
     input.value = '';
     toast('🔑 저장됨');
+    loadIntegrationStatus();
+  } catch (e) { toast('저장 실패: ' + (e.message || e), true); }
+}
+// Recurring Zoom link for the Sunday class. New weekly sessions copy it
+// (kh_ensure_weekly_live_session); upcoming sessions without a link get it now.
+async function saveLiveZoomLink() {
+  var input = document.getElementById('sc-live-zoom'); if (!input) return;
+  var v = input.value.trim();
+  if (!/^https:\/\/[^\s]+$/.test(v)) { toast('https:// 로 시작하는 Zoom 링크를 넣어주세요', true); return; }
+  try {
+    var res = await getSb().from('app_settings').upsert({ key: 'live_class_zoom_link', value: v, updated_at: new Date().toISOString() });
+    if (res && res.error) throw res.error;
+    await _sarClient().from('weekly_live_sessions').update({ zoom_link: v })
+      .is('zoom_link', null).gte('scheduled_at', new Date().toISOString());
+    input.value = '';
+    toast('🎥 Zoom 링크 저장됨');
     loadIntegrationStatus();
   } catch (e) { toast('저장 실패: ' + (e.message || e), true); }
 }
