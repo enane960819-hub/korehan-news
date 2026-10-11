@@ -1,0 +1,53 @@
+name: Apply SQL migrations
+
+# Runs SQL migrations against the production Supabase project from GitHub's
+# runners via the Management API (Claude Code's sandbox can't reach
+# api.supabase.com). Owner approved auto-apply on 2026-10-11. Only files that
+#   1. live in supabase/migrations/*.sql,
+#   2. were added or changed by this push, and
+#   3. start with the line "-- auto-apply"
+# are executed, in filename order. Older migrations (some deliberately
+# skipped) are never touched. Every auto-apply file must be idempotent.
+#
+# Requires repo secret SUPABASE_ACCESS_TOKEN.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**.sql'
+
+env:
+  PROJECT_REF: samghztrdvtxmrmawneu
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply auto-apply migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "::error::SUPABASE_ACCESS_TOKEN not set"; exit 1; fi
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then BEFORE="HEAD~1"; fi
+          FILES=$(git diff --name-only --diff-filter=AM "$BEFORE" HEAD -- 'supabase/migrations/*.sql' | sort)
+          RAN=0
+          for f in $FILES; do
+            head -n1 "$f" | grep -q '^-- auto-apply' || { echo "skip (no marker): $f"; continue; }
+            echo "::group::apply $f"
+            CODE=$(jq -Rs '{query: .}' "$f" | curl -sS -o /tmp/out.json -w '%{http_code}' -X POST \
+              "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data-binary @-)
+            head -c 2000 /tmp/out.json; echo
+            echo "::endgroup::"
+            echo "$f → HTTP $CODE"
+            [ "$CODE" -ge 200 ] && [ "$CODE" -lt 300 ] || { echo "::error::$f failed (HTTP $CODE)"; exit 1; }
+            RAN=$((RAN+1))
+          done
+          echo "Applied $RAN migration(s)."

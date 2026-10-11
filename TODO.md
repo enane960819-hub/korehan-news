@@ -10,31 +10,18 @@ doesn't keep reminding about closed work.
 
 ---
 
-## 🔴 Owner action — TURN ON daily auto-drafts (daily-article-draft)
+## ℹ️ Automation now in place (2026-10-11)
 
-Every morning 06:00 KST, 4 article drafts (one per level) are built
-automatically: headline fetch → Haiku pick → Sonnet body → Haiku sentence
-analysis + quiz → `article_cache`. Status stays `draft`; publish from the
-CMS Article List banner "🤖 Today's auto-drafts" (🚀 Publish / ✏️ Review).
-
-1. `supabase functions deploy daily-article-draft`
-2. Run `supabase/migrations/20261010_daily_article_draft_cron.sql` in the
-   SQL editor (check the Vault secret name matches daily-content-gen's job).
-3. Test once: CMS → Article List → "▶ Build next draft now".
-
-Cost: ~4 × (Sonnet body + 2 Haiku) ≈ $0.3/day. Logged in `claude_api_usage`
-as `cron:daily-draft-*`.
-
----
-
-## 🔴 Owner action — APPLY sentence_analysis_reports migration
-
-The 🚩 Report link in the sentence-analysis panel writes via the
-`report_sentence_analysis` RPC. Run
-`supabase/migrations/20261010_sentence_analysis_reports.sql` in the Supabase
-SQL editor. Until then reports fall back into `client_errors`
-(message `analysis-report: …`) and still show in admin → 🧩 Analysis Reports
-under "Fallback".
+- **Edge Functions** deploy from GitHub Actions (`deploy-edge-function.yml`):
+  pushes to `main` touching `supabase/functions/daily-article-draft/**`
+  redeploy it; a commit message containing `[invoke]` also test-runs it.
+- **SQL migrations** apply from GitHub Actions (`apply-migrations.yml`,
+  owner-approved): files in `supabase/migrations/` that are added/changed
+  in a push to `main` AND start with `-- auto-apply` run against prod via
+  the Management API. Must be idempotent. Older files are never touched.
+- Both use repo secret `SUPABASE_ACCESS_TOKEN`.
+- daily-article-draft: pg_cron job 10, 06:00–06:55 KST, 4 drafts/day from
+  ~50 publisher feeds (full article text).
 
 ---
 
