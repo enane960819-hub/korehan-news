@@ -5219,8 +5219,9 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
              +   '<span style="font-size:9px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:6px;background:' + meta.bg + ';color:' + meta.color + '">' + meta.label + '</span>'
              +   '<span>' + escapeHTML(item.label) + '</span>'
              + '</div>'
-             + (item.exp ? '<div class="asp-grammar-exp">' + escapeHTML(item.exp) + '</div>' : '')
+             + _khSentExpHtml(item.exp)
              + (item.example_in_sentence ? '<div class="asp-grammar-ex">→ "' + escapeHTML(item.example_in_sentence) + '"</div>' : '')
+             + (typ === 'grammar' ? _khStudyGrammarLink(item.label) : '')
              + '</div>';
       });
     }
@@ -5312,6 +5313,34 @@ async function _khSendSentReport(btn) {
     } catch (_) {}
   }
   box.innerHTML = '<div class="asp-report-done">✓ Thanks! We\'ll review and fix this sentence.</div>';
+}
+
+// Keep the sentence panel scannable: one short line per pattern. Catalog
+// hints injected by KH_GRAMMAR.enforceDetectedPatterns can run 5+ lines
+// ("MANY uses … (a) … (b) …"); the full text stays behind a "More" toggle
+// and deep practice lives in the Study Room's Grammar Focus.
+var KH_SENT_EXP_MAX = 140;
+function _khSentExpHtml(exp) {
+  var s = String(exp || '').replace(/\s+/g, ' ').trim();
+  if (!s) return '';
+  if (s.length <= KH_SENT_EXP_MAX) return '<div class="asp-grammar-exp">' + escapeHTML(s) + '</div>';
+  var cut = s.search(/\s\((a|1)\)\s/);
+  var head = cut > 30 ? s.slice(0, cut) : s;
+  if (head.length > KH_SENT_EXP_MAX) {
+    var dot = head.slice(0, KH_SENT_EXP_MAX).lastIndexOf('. ');
+    head = dot > 40 ? head.slice(0, dot + 1) : head.slice(0, KH_SENT_EXP_MAX - 3).replace(/\s+\S*$/, '') + '…';
+  }
+  return '<div class="asp-grammar-exp">' + escapeHTML(head) + '</div>'
+    + '<details class="asp-more"><summary>More</summary><div class="asp-grammar-exp">' + escapeHTML(s) + '</div></details>';
+}
+// "Practice in Study Room" → opens Grammar Focus (Learn / Spot It / Practice /
+// Translate / Judge It) for this pattern. study_room_grammar is DB-first, so
+// most patterns open without an AI call.
+function _khStudyGrammarLink(label) {
+  var name = String(label || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+  if (!name) return '';
+  return '<a class="asp-study-link" href="korehan-study-room.html?focus=' + encodeURIComponent(name)
+    + '&source=grammar-guide" target="_blank" rel="noopener">📚 Practice in Study Room →</a>';
 }
 
 async function analyzeSentence(idx, el) {
