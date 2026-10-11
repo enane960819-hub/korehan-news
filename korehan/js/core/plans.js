@@ -14,86 +14,51 @@
    - KH_ICON_LOCK        — from js/core/icons.js
    ============================================================ */
 
+// Free / Premium (2026-10). Free keeps all reading + AI feedback so the
+// content stays open; Premium is the study system. Legacy 'standard' and
+// 'pro' rows (manual grants) are treated as Premium.
+var _KH_PREMIUM_FEATURES = {
+  content_read: true, korean_alphabet: true, daily_slang_3: true,
+  daily_review: true, express_writing: true, word_book_basic: true,
+  xp_streak_badges: true, hover_vocab: true, writing_ai_feedback: true,
+  article_study: true, conversation_study: true, story_study: true,
+  slang_full: true, weekly_monthly_review: true, listening_quiz: true,
+  growth_lab: true, word_book_srs: true, monthly_report: true,
+  fast_track: true, phone_call: true, tutor_review: true, live_class: true,
+  personal_recommendation: true,
+  writing_feedback: true, speaking_feedback: true, priority_feedback: true
+};
 var KH_PLANS = {
   free: {
-    name: 'Free', price: 0, label: 'Free Plan',
+    name: 'Free', price: 0, label: 'Free',
     features: {
-      content_read: true,       // Read all articles/conversations/stories
+      content_read: true,       // Read all articles/conversations/stories (+ sentence analysis)
       korean_alphabet: true,    // Alphabet quiz
       daily_slang_3: true,      // Today's 3 slangs
       daily_review: true,       // Daily review (10 questions)
-      express_writing: true,    // Write (no feedback)
-      word_book_basic: true,    // Save up to 30 words
+      express_writing: true,    // Weekly writing + instant AI feedback
+      writing_ai_feedback: true,
+      word_book_basic: true,    // Word book — unlimited
       xp_streak_badges: true,   // Gamification
-      hover_vocab: true,        // Hover tooltips
-      // Locked:
-      article_study: false,
-      conversation_study: false,
-      story_study: false,
-      slang_full: false,
-      weekly_monthly_review: false,
-      listening_quiz: false,
-      writing_feedback: false,
-      growth_lab: false,
-      word_book_srs: false,
-      fast_track: false,
-      phone_call: false,
-      speaking_feedback: false,
-      priority_feedback: false,
-      personal_recommendation: false,
-      monthly_report: false
+      hover_vocab: true         // Hover tooltips
+      // everything else → Premium
     }
   },
-  standard: {
-    name: 'Standard', price: 8.99, label: '$8.99/mo',
-    features: {
-      content_read: true, korean_alphabet: true, daily_slang_3: true,
-      daily_review: true, express_writing: true, word_book_basic: true,
-      xp_streak_badges: true, hover_vocab: true,
-      // Standard unlocks:
-      article_study: true,
-      conversation_study: true,
-      story_study: true,
-      slang_full: true,
-      weekly_monthly_review: true,
-      listening_quiz: true,
-      writing_feedback: true,
-      growth_lab: true,
-      word_book_srs: true,
-      monthly_report: true,
-      // Locked (Pro only):
-      fast_track: false,
-      phone_call: false,
-      speaking_feedback: false,
-      priority_feedback: false,
-      personal_recommendation: false
-    }
-  },
-  pro: {
-    name: 'Pro', price: 24.99, label: '$24.99/mo',
-    features: {
-      content_read: true, korean_alphabet: true, daily_slang_3: true,
-      daily_review: true, express_writing: true, word_book_basic: true,
-      xp_streak_badges: true, hover_vocab: true,
-      article_study: true, conversation_study: true, story_study: true,
-      slang_full: true, weekly_monthly_review: true, listening_quiz: true,
-      writing_feedback: true, growth_lab: true, word_book_srs: true,
-      monthly_report: true,
-      // Pro unlocks:
-      fast_track: true,
-      phone_call: true,
-      speaking_feedback: true,
-      priority_feedback: true,
-      personal_recommendation: true
-    }
+  premium: {
+    name: 'Premium', price: 8.99, priceYear: 69, label: '$8.99/mo',
+    features: _KH_PREMIUM_FEATURES
   }
 };
+KH_PLANS.standard = KH_PLANS.premium; // legacy manual grants
+KH_PLANS.pro = KH_PLANS.premium;
+
+function khNormalizePlan(plan) {
+  return (plan === 'premium' || plan === 'standard' || plan === 'pro') ? 'premium' : 'free';
+}
 
 // Which plan unlocks a given feature? Returns minimum plan name.
 function featureMinPlan(feature) {
-  if (KH_PLANS.free.features[feature]) return 'free';
-  if (KH_PLANS.standard.features[feature]) return 'standard';
-  return 'pro';
+  return KH_PLANS.free.features[feature] ? 'free' : 'premium';
 }
 
 // ── User plan state ──
@@ -130,7 +95,7 @@ async function loadUserPlan() {
       if (data.expires_at && new Date(data.expires_at) < new Date()) {
         _userPlan = 'free'; // Expired
       } else {
-        _userPlan = data.plan || 'free';
+        _userPlan = khNormalizePlan(data.plan);
       }
     } else {
       _userPlan = 'free';
@@ -147,7 +112,7 @@ async function loadUserPlan() {
 function _updatePlanBadges() {
   document.querySelectorAll('[data-plan-badge]').forEach(function(el) {
     var plan = _userPlan;
-    el.textContent = plan === 'free' ? '' : (plan === 'pro' ? 'PRO' : 'STD');
+    el.textContent = plan === 'free' ? '' : 'PREMIUM';
     el.style.display = plan === 'free' ? 'none' : '';
   });
   // Update lock icons on gated elements
@@ -181,6 +146,8 @@ function showUpgradeModal(feature, minPlan) {
     weekly_monthly_review: 'Weekly & Monthly Review',
     listening_quiz: 'Listening Quiz',
     writing_feedback: 'Writing Feedback',
+    tutor_review: 'Tutor Review',
+    live_class: 'Weekend Live Class',
     growth_lab: 'Growth Lab',
     word_book_srs: 'SRS Review',
     fast_track: 'Fast Track',
@@ -192,7 +159,7 @@ function showUpgradeModal(feature, minPlan) {
   };
 
   var fName = featureNames[feature] || feature;
-  var planInfo = KH_PLANS[minPlan] || KH_PLANS.standard;
+  var planInfo = KH_PLANS[minPlan] || KH_PLANS.premium;
 
   var ov = document.createElement('div');
   ov.id = 'kh-upgrade-modal';
@@ -202,12 +169,12 @@ function showUpgradeModal(feature, minPlan) {
   ov.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:400px;width:100%;padding:32px 28px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.2)">'
     + '<div style="width:56px;height:56px;border-radius:16px;background:#faf5ff;display:flex;align-items:center;justify-content:center;color:#7c3aed;margin:0 auto 16px"><span style="display:inline-flex;width:30px;height:30px">' + KH_ICON_LOCK + '</span></div>'
     + '<div style="font-size:20px;font-weight:900;color:#0f172a;margin-bottom:6px">' + planInfo.name + ' Plan Required</div>'
-    + '<div style="font-size:14px;color:#64748b;margin-bottom:20px;line-height:1.5"><b>' + fName + '</b> is available on the ' + planInfo.name + ' plan and above.</div>'
+    + '<div style="font-size:14px;color:#64748b;margin-bottom:20px;line-height:1.5"><b>' + fName + '</b> is part of KoreHani ' + planInfo.name + '. Try it free for 7 days.</div>'
     + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">'
     + '<a href="korehan-courses.html" style="padding:14px 28px;border-radius:14px;border:none;background:#7c3aed;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;text-decoration:none;display:block;box-shadow:0 4px 14px rgba(124,58,237,.25)">View Plans — from ' + planInfo.label + '</a>'
     + '<button onclick="this.closest(\'#kh-upgrade-modal\').remove()" style="padding:12px;border-radius:12px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Maybe Later</button>'
     + '</div>'
-    + '<div style="font-size:11px;color:#94a3b8">Cancel anytime · No commitment</div>'
+    + '<div style="font-size:11px;color:#94a3b8">7-day free trial · Cancel anytime</div>'
     + '</div>';
 
   document.body.appendChild(ov);

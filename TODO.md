@@ -27,6 +27,13 @@ doesn't keep reminding about closed work.
   new grammar to `grammar_curriculum` as Library shells (≤15/day). Lessons
   are generated on first open (`grammar_examples_cache` gf-curr2::<pattern>);
   admin can regenerate one from 🧩 Analysis Reports.
+- **Plans: Free / Premium** (2026-10-12). Premium $8.99/mo or $69/yr, 7-day
+  trial, Stripe via `billing` (checkout / portal / admin `setup`) +
+  `billing-webhook` → `user_subscriptions`. Stripe key lives in app_settings
+  (admin → Settings → 💳). Free: reading, sentence analysis, unlimited word
+  book, weekly writing with instant AI feedback. Premium adds tutor review
+  (`user_submissions.tutor_requested`, set by trigger) + live class + study
+  system. Legacy standard/pro rows = Premium.
 - Study Room is **Weekly Topic** (2026-10-12): one topic + one
   `study_daily_content` row per KST week, keyed by that Monday
   (`kstWeekKey()` / `khWeekKey()` / `weekKey()` — keep in sync; rotation =
@@ -37,6 +44,24 @@ doesn't keep reminding about closed work.
   per article, ≤5 new articles/user/day, ≤60/day site-wide; log +
   lock in `article_analyze_log`). 245/344 published articles had no
   sentence cache on 2026-10-11 — they fill in as people read them.
+
+---
+
+## 🔴 Owner action — turn on Premium payments (Stripe)
+
+1. Stripe dashboard → Developers → API keys → copy the **test** secret key (sk_test_…).
+2. Admin CMS → Settings → 💳 card → paste → Save → **⚙️ 자동 설정**
+   (creates the Premium product, $8.99/mo + $69/yr prices, webhook, customer portal).
+3. Test: korehan-courses.html → Start 7-day free trial → card 4242 4242 4242 4242.
+4. When it works, repeat 1–2 with the **live** key (sk_live_…).
+
+## 🟡 Pending owner decision — claude-proxy / admin-api redeploy
+
+Two small fixes are ready but not shipped because redeploying these functions
+changes their gateway JWT setting: (a) claude-proxy AI quota should read
+user_subscriptions (it reads a nonexistent profiles.plan, so everyone gets the
+free limit); (b) admin-api must allow `notifications` so the tutor-review
+"feedback received" notice reaches learners.
 
 ---
 

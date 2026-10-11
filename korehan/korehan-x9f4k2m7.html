@@ -2461,6 +2461,20 @@ async function goSiteSettings(){
       <div id="sc-api-status" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
     </div>
     <div class="sf-card">
+      <h3>💳 결제 (Stripe) · 🔊 음성 (ElevenLabs)</h3>
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px">키는 서버(app_settings)에만 저장되고 다시 화면에 표시되지 않습니다. Stripe는 <b>테스트 키(sk_test_…)</b>로 먼저 확인한 뒤 라이브 키(sk_live_…)로 바꾸세요. 저장 후 <b>자동 설정</b>을 누르면 Premium 상품·가격($8.99/월, $69/년)·웹훅·고객 포털이 만들어집니다.</p>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+        <input id="sc-stripe-key" type="password" placeholder="Stripe secret key (sk_test_… / sk_live_… / rk_…)" class="inp inp-sm" style="flex:1" autocomplete="off">
+        <button class="btn btn-g" onclick="saveIntegrationKey('stripe_secret_key','sc-stripe-key',/^(sk|rk)_(test|live)_/)">Save</button>
+        <button class="btn" onclick="runStripeSetup()">⚙️ 자동 설정</button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input id="sc-eleven-key" type="password" placeholder="ElevenLabs API key" class="inp inp-sm" style="flex:1" autocomplete="off">
+        <button class="btn btn-g" onclick="saveIntegrationKey('elevenlabs_key','sc-eleven-key',/^.{20,}$/)">Save</button>
+      </div>
+      <div id="sc-integ-status" style="font-size:12px;color:#94a3b8;margin-top:8px;white-space:pre-line"></div>
+    </div>
+    <div class="sf-card">
       <h3>🖼 기자 페이지 배경 이미지</h3>
       <p style="font-size:13px;color:#64748b;margin-bottom:10px">korehan-reporter 페이지 전체 배경에 사용할 이미지를 설정합니다.</p>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -2476,6 +2490,7 @@ async function goSiteSettings(){
     <button class="btn btn-gh" onclick="resetSiteSettings()" style="margin-left:8px">↺ 기본값으로</button>`;
 
   loadApiKeyIntoSettings();
+  loadIntegrationStatus();
   loadReporterBgSetting();
 }
 async function saveSiteSettings(){
@@ -2862,6 +2877,50 @@ async function saveApiKey() {
   }
 }
 
+
+// ── Integration keys (Stripe / ElevenLabs) — write-only from the browser ──
+async function loadIntegrationStatus() {
+  var el = document.getElementById('sc-integ-status'); if (!el) return;
+  try {
+    var r = await getSb().from('app_settings').select('key,updated_at').in('key', ['stripe_secret_key','stripe_billing_webhook_secret','elevenlabs_key']);
+    var have = {}; ((r && r.data) || []).forEach(function(x){ have[x.key] = x.updated_at; });
+    function line(k, label) { return (have[k] ? '✅ ' : '❌ ') + label + (have[k] ? ' (저장됨 ' + new Date(have[k]).toLocaleDateString('ko-KR') + ')' : ' 없음'); }
+    el.textContent = line('stripe_secret_key', 'Stripe 키') + '\n' + line('stripe_billing_webhook_secret', 'Stripe 웹훅 (자동 설정으로 생성)') + '\n' + line('elevenlabs_key', 'ElevenLabs 키');
+  } catch (e) { el.textContent = '상태 확인 실패: ' + (e.message || e); }
+}
+async function saveIntegrationKey(key, inputId, re) {
+  var input = document.getElementById(inputId); if (!input) return;
+  var v = input.value.trim();
+  if (!re.test(v)) { toast('키 형식이 올바르지 않습니다', true); return; }
+  try {
+    var res = await getSb().from('app_settings').upsert({ key: key, value: v, updated_at: new Date().toISOString() });
+    if (res && res.error) throw res.error;
+    input.value = '';
+    toast('🔑 저장됨');
+    loadIntegrationStatus();
+  } catch (e) { toast('저장 실패: ' + (e.message || e), true); }
+}
+async function runStripeSetup() {
+  var el = document.getElementById('sc-integ-status');
+  if (el) el.textContent = '⏳ Stripe 설정 중… (상품·가격·웹훅·포털)';
+  try {
+    var sess = await _sarClient().auth.getSession();
+    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    if (!token) throw new Error('관리자 로그인 세션이 없습니다');
+    var r = await fetch(SUPA_URL_ADMIN + '/functions/v1/billing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPA_KEY_ADMIN },
+      body: JSON.stringify({ action: 'setup' })
+    });
+    var j = await r.json().catch(function(){ return {}; });
+    if (!j.ok) throw new Error(j.detail || j.error || ('HTTP ' + r.status));
+    toast('✅ Stripe 설정 완료 (' + (j.livemode ? 'LIVE' : 'TEST') + ' 모드)');
+    await loadIntegrationStatus();
+    if (el) el.textContent += '\n\n✅ ' + (j.livemode ? 'LIVE' : 'TEST') + ' · 계정 ' + (j.account || '') + ' · 가격 월/년 준비됨 · 웹훅 ' + j.webhook + ' · 포털 ' + j.portal;
+  } catch (e) {
+    if (el) el.textContent = '❌ 설정 실패: ' + (e.message || e);
+  }
+}
 
 // ══ OPINIONS ═════════════════════════════════════════════════
 function goOpinions(){
@@ -9580,8 +9639,7 @@ async function loadUsers(){
             +'<td style="padding:10px 12px">'+(a.streak||0)+'</td>'
             +'<td style="padding:10px 12px"><select onchange="adminChangePlan(\''+u.id+'\',this.value)" style="padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0;font-size:11px;font-weight:700;color:'+planColors[planVal]+';background:#fff;cursor:pointer">'
             +'<option value="free"'+(planVal==='free'?' selected':'')+'>Free</option>'
-            +'<option value="standard"'+(planVal==='standard'?' selected':'')+'>Standard</option>'
-            +'<option value="pro"'+(planVal==='pro'?' selected':'')+'>Pro</option>'
+            +'<option value="premium"'+((planVal==='premium'||planVal==='standard'||planVal==='pro')?' selected':'')+'>Premium</option>'
             +'</select></td>'
             +'<td style="padding:10px 12px">'+
               (suspMap[u.id] && suspMap[u.id].is_suspended
@@ -15937,11 +15995,16 @@ var _fbUserMap = {};
 function srFeedbackDashboardHTML() {
   return '<div class="sf-card" style="margin-bottom:12px">'
     + '<div style="font-weight:800;font-size:15px;margin-bottom:10px">📬 피드백 관리 대시보드</div>'
-    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">유저 제출 → AI 1차 피드백 → 어드민 검토/수정 → 유저 전송</div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">무료: 제출 → AI 피드백 즉시 공개 (어드민 할 일 없음) · Premium: AI 피드백 즉시 + 주 1회 튜터 첨삭 → 승인/전송</div>'
     // Stats cards
     + '<div id="fb-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px"></div>'
     // Filters
     + '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">'
+    + '<div class="fg" style="margin:0"><label>대상</label>'
+    + '<select id="fb-scope" onchange="srLoadFeedbackDashboard()">'
+    + '<option value="tutor" selected>⭐ Premium 튜터 첨삭 대기</option>'
+    + '<option value="all">전체 (AI 피드백만 받은 무료 포함)</option>'
+    + '</select></div>'
     + '<div class="fg" style="margin:0"><label>상태</label>'
     + '<select id="fb-status" onchange="srLoadFeedbackDashboard()">'
     + '<option value="">전체</option>'
@@ -16000,7 +16063,7 @@ async function srLoadFeedbackDashboard() {
     // hung network or unresponsive PostgREST doesn't pin the UI on
     // 'Loading...' forever (was the original repro).
     var q = sb.from('user_submissions')
-      .select('id,user_id,content_type,content_id,content_title,study_date,writing_text,word_count,topic_ko,status,ai_feedback,ai_feedback_at,admin_feedback,reviewed_at,sent_at,level,score,context_data,writing_mode')
+      .select('id,user_id,content_type,content_id,content_title,study_date,writing_text,word_count,topic_ko,status,ai_feedback,ai_feedback_at,admin_feedback,reviewed_at,sent_at,level,score,context_data,writing_mode,tutor_requested')
       .gte('study_date', date)
       .order('submitted_at', { ascending: false })
       .limit(200);
@@ -16008,6 +16071,9 @@ async function srLoadFeedbackDashboard() {
     else if (status === 'reviewed' || status === 'admin_approved') q = q.eq('status', 'admin_approved');
     else if (status) q = q.eq('status', status);
     if (type)   q = q.eq('content_type', type);
+    // Free users get AI feedback automatically; only Premium writing
+    // (tutor_requested, set server-side) needs the tutor.
+    if ((document.getElementById('fb-scope') || {}).value !== 'all') q = q.eq('tutor_requested', true);
 
     var timeoutPromise = new Promise(function(_, reject) {
       setTimeout(function() { reject(new Error('Request timed out (8s). Check Supabase connectivity / RLS.')); }, 8000);

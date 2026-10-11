@@ -8917,7 +8917,7 @@ function refreshSubmitBanner() {
   if (n > 0) {
     banner.classList.add('visible');
     var countEl = document.getElementById('submit-today-count');
-    if (countEl) countEl.textContent = n + ' writing drafts saved · Submit for feedback within 24h';
+    if (countEl) countEl.textContent = n + ' writing drafts saved · Submit once this week for feedback';
   } else {
     banner.classList.remove('visible');
   }
@@ -9072,7 +9072,7 @@ function _showSubmitReview(limit) {
       var header = '<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid rgba(255,255,255,.08)">'
         + '<div>'
         +   '<div style="font-size:16px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px"><span style="display:inline-flex;width:18px;height:18px">'+BM_ICON_NEWSPAPER+'</span><span>Submit today\'s work</span></div>'
-        +   '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">' + ready + ' / ' + drafts.length + ' ready · once per day · feedback within 24h</div>'
+        +   '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">' + ready + ' / ' + drafts.length + ' ready · once per week · instant AI feedback</div>'
         + '</div>'
         + '<button data-act="cancel" aria-label="Close" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.7);width:32px;height:32px;border-radius:50%;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span></button>'
         + '</div>';
@@ -9292,7 +9292,9 @@ async function submitAllWritingsToday() {
     // after the tutor has reviewed it — usually within 24 hours.
     // Promising "ready in a minute" was wrong; users would open the
     // inbox and find their card still "Under review".
-    showToast('Submitted! Your tutor will review within 24 hours.');
+    showToast((typeof getUserPlan === 'function' && getUserPlan() === 'premium')
+      ? 'Submitted! AI feedback in about a minute — your tutor review follows within 48h.'
+      : 'Submitted! Your AI feedback will be ready in about a minute.');
     if (typeof awardXP === 'function') awardXP('writing_submit');
     // Kick the arrival poll so the user gets a toast the moment AI
     // feedback graduates this row to admin_approved (when the tutor
@@ -9673,20 +9675,17 @@ async function _startFeedbackArrivalPoll() {
       var r = await sb.from('user_submissions')
         .select('id, status')
         .in('id', ids);
-      // Only "Feedback ready" when the TUTOR has signed off. AI draft
-      // (ai_reviewed) is intermediate state for the admin queue; the
-      // user shouldn't be told their feedback is ready until a human
-      // has reviewed it. Most reviews land outside the 10 min poll
-      // window — that's fine; the chip surfaces on next page load.
+      // AI feedback (ai_reviewed) is user-visible now; a Premium tutor
+      // review lands later and surfaces on the next page load.
       var graduated = (r && r.data || []).filter(function(row){
-        return row && (row.status === 'admin_approved' || row.status === 'sent');
+        return row && (row.status === 'ai_reviewed' || row.status === 'admin_approved' || row.status === 'sent');
       });
       if (graduated.length) {
         graduated.forEach(function(row){ _khFbPollPending.delete(row.id); });
         // Refresh the badge label and surface a toast.
         try { await loadFeedbackInbox(); } catch(_){}
         if (typeof showToast === 'function') {
-          showToast('✅ Tutor reviewed your feedback — tap My Feedback to read it.');
+          showToast('✅ Your feedback is ready — tap My Feedback to read it.');
         }
         // Visual nudge on the inbox button so users on Study Room can
         // see something changed without reading the toast.
@@ -9732,7 +9731,7 @@ async function loadFeedbackInbox() {
   var sb = getSupa(); if (!sb) return;
   try {
     var res = await sb.from('user_submissions')
-      .select('id, study_date, status, admin_feedback, topic_ko, content_type')
+      .select('id, study_date, status, admin_feedback, topic_ko, content_type, tutor_requested')
       .eq('user_id', supaUser.id)
       .order('submitted_at', { ascending: false })
       .limit(5);
@@ -9744,13 +9743,18 @@ async function loadFeedbackInbox() {
     if (!btnEl) return;
     if (!latest) { btnEl.style.display = 'none'; return; }
     btnEl.style.display = 'block';
-    if ((latest.status === 'admin_approved' || latest.status === 'sent') && latest.admin_feedback) {
+    // Free: AI feedback is the feedback (shown as soon as it lands).
+    // Premium writing (tutor_requested) adds a tutor review on top.
+    var _fbReady = latest.status === 'admin_approved' || latest.status === 'sent' || latest.status === 'ai_reviewed';
+    if (_fbReady) {
       btnEl.querySelector('button').style.borderColor = 'rgba(34,197,94,.35)';
       btnEl.querySelector('button').style.background = 'rgba(34,197,94,.1)';
       btnEl.querySelector('button').style.color = '#4ade80';
-      if (labelEl) labelEl.textContent = 'New feedback arrived! Tap to view';
-    } else if (latest.status === 'submitted' || latest.status === 'ai_reviewed') {
-      if (labelEl) labelEl.textContent = 'Under review · feedback within 24h';
+      if (labelEl) labelEl.textContent = (latest.status === 'ai_reviewed' && latest.tutor_requested)
+        ? 'AI feedback ready · tutor review pending'
+        : (latest.status === 'ai_reviewed' ? 'AI feedback ready! Tap to view' : 'Tutor feedback arrived! Tap to view');
+    } else if (latest.status === 'submitted') {
+      if (labelEl) labelEl.textContent = 'AI feedback on its way…';
     } else {
       if (labelEl) labelEl.textContent = 'View my writing feedback';
     }
@@ -10117,7 +10121,7 @@ async function renderFeedbackInboxContent() {
   var sb = getSupa(); if (!sb) return;
   try {
     var res = await sb.from('user_submissions')
-      .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, submitted_at, context_data')
+      .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, submitted_at, context_data, tutor_requested')
       .eq('user_id', supaUser.id)
       .order('submitted_at', { ascending: false })
       .limit(20);
@@ -10154,9 +10158,9 @@ async function renderFeedbackInboxContent() {
       // review" — they shouldn't expect to read feedback at this
       // stage. The green "Feedback ready" tier only fires once the
       // tutor approves (admin_approved) or sends.
-      ai_reviewed:    { label: '⏳ Under review',    color: '#fbbf24',               bg: 'rgba(251,191,36,.1)' },
-      admin_approved: { label: '✅ Feedback ready',  color: '#4ade80',               bg: 'rgba(74,222,128,.1)' },
-      sent:           { label: '✅ Feedback ready',  color: '#4ade80',               bg: 'rgba(74,222,128,.1)' }
+      ai_reviewed:    { label: '✅ AI feedback',     color: '#4ade80',               bg: 'rgba(74,222,128,.1)' },
+      admin_approved: { label: '⭐ Tutor reviewed',  color: '#fbbf24',               bg: 'rgba(251,191,36,.12)' },
+      sent:           { label: '⭐ Tutor reviewed',  color: '#fbbf24',               bg: 'rgba(251,191,36,.12)' }
     };
 
     var html = '';
@@ -10166,7 +10170,7 @@ async function renderFeedbackInboxContent() {
       var dayItems = grouped[date];
       // "Feedback ready" count = tutor-approved only. AI drafts are
       // queue state, not consumer state.
-      var reviewed = dayItems.filter(function(i) { return i.status === 'admin_approved' || i.status === 'sent'; }).length;
+      var reviewed = dayItems.filter(function(i) { return i.status === 'admin_approved' || i.status === 'sent' || i.status === 'ai_reviewed'; }).length;
 
       // Date header
       html += '<div style="margin-bottom:16px">'
@@ -10186,8 +10190,10 @@ async function renderFeedbackInboxContent() {
         // Render feedback content only when the TUTOR has reviewed.
         // ai_reviewed stays in the queue card (status pill shows
         // "Under review") so the user knows it's being worked on.
-        var isReviewed = item.status === 'admin_approved' || item.status === 'sent';
-        var displayFb = isReviewed ? (adminFb || fb) : null;
+        var tutorDone = item.status === 'admin_approved' || item.status === 'sent';
+        var isReviewed = tutorDone || item.status === 'ai_reviewed';
+        var displayFb = tutorDone ? (adminFb || fb) : (isReviewed ? fb : null);
+        var tutorPending = item.status === 'ai_reviewed' && !!item.tutor_requested;
         var preview = (item.writing_text || '').slice(0, 50);
         if ((item.writing_text || '').length > 50) preview += '…';
         var topicLabel = item.topic_ko || '';
@@ -10252,9 +10258,12 @@ async function renderFeedbackInboxContent() {
           // Source banner — make clear when admin reviewed vs. AI-only.
           // Audit flagged that admin overwriting AI silently hid the
           // Claude analysis entirely, so users couldn't compare.
-          var hasAdminJson = adminFb && typeof adminFb === 'object';
-          var hasAdminText = typeof item.admin_feedback === 'string' && item.admin_feedback.trim();
+          var hasAdminJson = tutorDone && adminFb && typeof adminFb === 'object';
+          var hasAdminText = tutorDone && typeof item.admin_feedback === 'string' && item.admin_feedback.trim();
           var hasAdmin     = hasAdminJson || hasAdminText;
+          if (tutorPending) {
+            html += '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);color:#fcd34d;font-size:11px;font-weight:800;margin-bottom:10px">⭐ Premium · tutor review coming within 48h</div>';
+          }
           if (hasAdmin) {
             html += '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);color:#86efac;font-size:11px;font-weight:800;margin-bottom:10px">👩‍🏫 Reviewed by your teacher</div>';
           }
@@ -10281,9 +10290,7 @@ async function renderFeedbackInboxContent() {
           // means AI has drafted; submitted means even that hasn't run
           // yet. Either way, the next signal the USER gets is the
           // tutor sign-off — usually within 24 h.
-          var placeholderTxt = (item.status === 'ai_reviewed')
-            ? '⏳ AI draft prepared. Your tutor will review within 24 hours.'
-            : '📨 Submitted. Your tutor will review within 24 hours.';
+          var placeholderTxt = '📨 Submitted. Your AI feedback is on its way…';
           html += '<div style="color:rgba(255,255,255,.5);text-align:center;padding:16px;font-size:13px;line-height:1.5">'
             + placeholderTxt
             + '</div>';
