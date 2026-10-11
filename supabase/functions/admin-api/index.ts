@@ -30,6 +30,9 @@ const ALLOWED_TABLES = new Set([
   // user-JWT supabase client, which depended entirely on RLS for
   // safety.
   'client_errors',
+  // Learner notices the admin sends (e.g. "your tutor review is ready").
+  // RLS only lets users insert their own rows, so this goes through here.
+  'notifications',
 ])
 
 // Whitelist of RPCs the admin client is allowed to call. Without this
