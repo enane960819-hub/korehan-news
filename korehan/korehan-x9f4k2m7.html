@@ -8422,7 +8422,7 @@ function goReports() {
 // is_admin_email() read/update). Fallback source: client_errors rows
 // logged with message 'analysis-report: …' while the migration was not
 // yet applied.
-var SAR_REASON_LABEL = { translation:'Wrong translation', grammar:'Wrong grammar', vocab:'Wrong vocab', awkward:'Awkward', other:'Other' };
+var SAR_REASON_LABEL = { translation:'Wrong translation', grammar:'Wrong grammar', vocab:'Wrong vocab', awkward:'Awkward', answer:'Wrong answer', other:'Other' };
 function goAnalysisReports() {
   setSbOn(null);
   document.getElementById('main').innerHTML =
@@ -8442,6 +8442,11 @@ function _sarClient() {
   return window._adminAuthClient;
 }
 function _sarLink(type, id) {
+  // study_room ids look like 'gf:<pattern>:<tab>' → reopen that Grammar Focus lesson.
+  if (type === 'study_room') {
+    var m = String(id || '').match(/^gf:(.*):[a-z]+$/);
+    return 'korehan-study-room.html' + (m ? '?focus=' + encodeURIComponent(m[1]) + '&source=grammar-guide' : '');
+  }
   return type === 'conversation'
     ? 'korehan-conversations.html?id=' + encodeURIComponent(id)
     : 'korehan-article.html?id=' + encodeURIComponent(id);

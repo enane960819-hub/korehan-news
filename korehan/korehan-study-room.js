@@ -1422,6 +1422,84 @@ function _skrGrammarRulesScopedBlock() {
     + 'each wrong example MUST itself satisfy the rules above.\n';
 }
 
+// ═══ Study Room AI quality policy ═══════════════════════════════
+// One place that decides, per feature, (a) which model generates it and
+// (b) whether the shared NATURAL KOREAN rules are appended. Every
+// callClaude() in this file goes through the wrapper below, so a new
+// generator only needs a row here — no per-prompt copy-paste that drifts.
+//
+// Learner-facing output is cached in DB and reused for every user, so one
+// awkward generation used to stick forever. Rules + Sonnet on the
+// highest-stakes generators (lessons, judge items, daily content) cost a
+// little more once per item; the cache keys were versioned (…2:: / v3 /
+// v5) in the same change so stale content regenerates on next open.
+//   natural: 'full'   → every Korean sentence in the output is "correct"
+//   natural: 'scoped' → output also has intentionally-wrong examples
+var _KH_STUDY_AI_POLICY = {
+  'study-room-daily':               { model: 'claude-sonnet-4-6', natural: 'full' },
+  'study-room':                     { natural: 'full' },
+  'topic-common-mistakes':          { natural: 'scoped' },
+  'phrase-munch':                   { natural: 'full' },
+  'key-expressions':                { natural: 'full' },
+  'key-expr-situation-quiz':        { natural: 'full' },
+  'ke-situations-prefetch':         { natural: 'full' },
+  'ke-situations':                  { natural: 'full' },
+  'speaking_feedback':              { natural: 'full' },
+  'daily_package_feedback':         { natural: 'full' },
+  'unified_writing_feedback':       { natural: 'full' },
+  'study_room_picture_description': { natural: 'full' },
+  'beginner-sentences':             { natural: 'full' },
+  'grammar-curriculum':             { model: 'claude-sonnet-4-6', natural: 'scoped' },
+  'grammar-focus':                  { model: 'claude-sonnet-4-6', natural: 'scoped' },
+  'weak-grammar-drill':             { natural: 'scoped' },
+  'gf-judge-gen':                   { model: 'claude-sonnet-4-6', natural: 'scoped' },
+  'dictation-gen':                  { natural: 'full' },
+  'nuance-quiz-gen':                { natural: 'scoped' },
+};
+
+// Grammar mechanics (psych verbs, particles, spacing) live in
+// _skrGrammarRulesBlock; this block is about sounding like a native speaker,
+// which is what learners actually report as "awkward".
+function _skrNaturalKoreanBlock(scoped) {
+  return '\n\nNATURAL KOREAN — highest priority (an awkward sentence is worse than an off-topic one):\n'
+    + '1. Every Korean sentence you write must be something a native speaker would actually say or write. If it sounds translated from English, rewrite it.\n'
+    + '2. Drop the subjects/pronouns Korean leaves implicit — do not start every sentence with 저는/나는/그는/그녀는. Never use 당신 for "you": omit it or use a name/title.\n'
+    + '3. Natural collocations: 사진을 찍다 (not 만들다), 약을 먹다, 결정을 내리다, 샤워를 하다, 시험을 보다, 마음에 들다, 돈을 쓰다.\n'
+    + '4. Native vs Sino-Korean numbers with counters: 사과 세 개, 두 시 삼십 분, 삼 층, 이십 분, 다섯 명.\n'
+    + '5. Topic fit is secondary: a natural everyday sentence beats one that forces the topic word in.\n'
+    + '6. One clear idea per example. Starter/Beginner: short, concrete, high-frequency words only.\n'
+    + '7. Speech level fits the situation: default 해요체 for examples; 반말 only between close friends/family and never mixed with 존댓말 in one line; honorifics (-시-, 께서, 드리다) only toward elders/superiors, never for oneself.\n'
+    + '8. No literal English idioms, invented words or fake Konglish (real loanwords like 핸드폰 are fine).\n'
+    + '9. English translations convey the meaning naturally, not word-for-word.\n'
+    + 'Before answering, re-read every Korean sentence once and replace anything a Korean teacher would mark as awkward.\n'
+    + (scoped
+      ? 'SCOPE: these rules apply to CORRECT-Korean fields only. Each intentionally-wrong example must contain exactly ONE clear error that any Korean teacher would mark wrong — never a rarer-but-valid alternative — and its paired correction must itself be fully natural.\n'
+      : '');
+}
+
+(function _khInstallStudyAiPolicy() {
+  if (typeof callClaude !== 'function' || callClaude._khStudyPolicy) return;
+  var base = callClaude;
+  var wrapped = function(opts) {
+    var pol = opts && _KH_STUDY_AI_POLICY[opts.feature];
+    if (!pol) return base(opts);
+    var o = Object.assign({}, opts);
+    if (pol.model) o.model = pol.model;
+    if (pol.natural && Array.isArray(o.messages) && o.messages.length) {
+      var add = _skrNaturalKoreanBlock(pol.natural === 'scoped');
+      o.messages = o.messages.map(function(m, i) {
+        if (i !== o.messages.length - 1 || m.role !== 'user') return m;
+        if (typeof m.content === 'string') return Object.assign({}, m, { content: m.content + add });
+        if (Array.isArray(m.content)) return Object.assign({}, m, { content: m.content.concat([{ type: 'text', text: add }]) });
+        return m;
+      });
+    }
+    return base(o);
+  };
+  wrapped._khStudyPolicy = true;
+  callClaude = wrapped;
+})();
+
 async function _generateAndSaveDailyContent(date, opts) {
   if (!supaUser) { showLoginWall(); return; }
   var silent = !!(opts && opts.silent);
@@ -1519,7 +1597,7 @@ async function _generateAndSaveDailyContent(date, opts) {
   var prompt = 'You are a Korean language teacher creating complete daily study content.\n\n'
     + (typeof getLevelPrompt === 'function' ? getLevelPrompt(_currentLevel) : 'Level: ' + _currentLevel) + '\n\n'
     + topicHint + '\n\n'
-    + 'CRITICAL: Every vocab word, grammar example, helper sentence, and dictation item MUST be directly about the topic' + (topicForPrompt ? ' "' + topicForPrompt + '"' : '') + '. Do NOT return generic vocabulary (배우, 가수, 드라마, 학생) unless the topic literally is about that. Words must be ones a learner would actually need to write or talk about this specific topic.\n\n'
+    + 'TOPIC: vocab and helper sentences should be words/sentences a learner would actually need to write or talk about the topic' + (topicForPrompt ? ' "' + topicForPrompt + '"' : '') + '. Do NOT return generic vocabulary (배우, 가수, 드라마, 학생) unless the topic literally is about that. Grammar examples and dictation items should fit the topic when it reads naturally — but NEVER force a topic word into a sentence: a natural everyday sentence beats an awkward on-topic one.\n\n'
     + 'KOREAN GRAMMAR RULES — apply to EVERY Korean sentence (grammar examples, helpers, dictation):\n'
     + '1) PSYCH-VERB 1st/3rd PERSON ASYMMETRY (do not violate):\n'
     + '   - Subject is 저/나/우리/I/me/we → use the feeling form directly: 저는 가고 싶어요, 저는 슬퍼요, 저는 좋아요.\n'
@@ -1691,7 +1769,7 @@ async function generateAIContent(topic) {
     renderAIContent(); hideAILoading(); return;
   }
   clearAIContentUI();
-  var cacheKey = 'sr_topic2_' + topic.id + '_' + _currentLevel;
+  var cacheKey = 'sr_topic3_' + topic.id + '_' + _currentLevel;
 
   // 1. sessionStorage (즉시)
   var cached = sessionStorage.getItem(cacheKey);
@@ -1822,7 +1900,7 @@ var STUDY_TOPIC_PACKS = [
     },
     helpers: [
       {ko:'첫 데이트는 영화관에서 했어요.',en:'I had my first date at a movie theater.'},
-      {ko:'우리는 일 년 동안 사귀고 있어요.',en:'We\'ve been dating for a year.'},
+      {ko:'우리는 사귄 지 일 년 됐어요.',en:'We\'ve been dating for a year.'},
       {ko:'이번 주말에 데이트 약속이 있어요.',en:'I have a date this weekend.'},
       {ko:'사귀기 전에 좀 어색했어요.',en:'It was a little awkward before we started dating.'}
     ]
@@ -1867,7 +1945,7 @@ var STUDY_TOPIC_PACKS = [
     },
     helpers: [
       {ko:'저는 아침이 가장 좋아요.',en:'I like mornings the most.'},
-      {ko:'제 가장 좋아하는 시간은 저녁이에요.',en:'My favorite time is evening.'},
+      {ko:'제가 가장 좋아하는 시간은 저녁이에요.',en:'My favorite time is evening.'},
       {ko:'조용한 새벽이 제일 편해요.',en:'The quiet dawn is the most comfortable.'},
       {ko:'하루 중 점심 시간을 제일 기다려요.',en:'I look forward to lunch the most each day.'}
     ]
@@ -1941,7 +2019,7 @@ var STUDY_TOPIC_PACKS = [
       Advanced:     [{ko:'세대 차이',rom:'se-dae cha-i',en:'generation gap'},{ko:'가족애',rom:'ga-jo-gae',en:'family love'},{ko:'돌봄',rom:'dol-bom',en:'care-giving'},{ko:'유산',rom:'yu-san',en:'legacy / inheritance'},{ko:'소통하다',rom:'so-tong-ha-da',en:'to communicate'}]
     },
     helpers: [
-      {ko:'제 가족은 네 명이에요.',en:'My family has four people.'},
+      {ko:'저희 가족은 네 명이에요.',en:'My family has four people.'},
       {ko:'부모님과 자주 통화해요.',en:'I often call my parents.'},
       {ko:'우리 가족은 함께 저녁을 먹어요.',en:'My family eats dinner together.'},
       {ko:'가족과 함께 있을 때 가장 행복해요.',en:'I am happiest when I am with my family.'}
@@ -2011,35 +2089,49 @@ function _matchTopicPack(topicKo, topicEn) {
 
 // Level-appropriate grammar fallback. Example sentences try to reference the
 // matched pack's first vocab word so the grammar at least reads on-topic.
+// Pick the particle form by batchim: _khJosa('사과','을','를') → '사과를'.
+function _khJosa(word, withBatchim, noBatchim) {
+  var c = String(word || '').charCodeAt(String(word || '').length - 1);
+  if (!(c >= 0xAC00 && c <= 0xD7A3)) return word + noBatchim;
+  return word + (((c - 0xAC00) % 28) ? withBatchim : noBatchim);
+}
+
+// Shown only when AI generation fails. Topic words are slotted in ONLY
+// where any noun reads naturally ("저는 N을/를 좋아해요"); everything else
+// uses fixed, natural example sentences. The old templates printed the
+// slash literally ("야식이/가 있어요") and slotted verbs into noun slots
+// ("주문하다을/를 좋아해요").
 function _fallbackGrammarFor(level, topicKo, topicEn, vocab) {
-  var sample = (vocab && vocab[0] && vocab[0].ko) || '';
-  var sample2 = (vocab && vocab[1] && vocab[1].ko) || sample;
+  var nouns = (vocab || []).map(function(v){ return v && v.ko; }).filter(function(w) {
+    return w && /^[가-힣]{1,6}$/.test(w) && !/(다|요)$/.test(w);
+  });
+  var n1 = nouns[0] || '', n2 = nouns[1] || n1;
   if (level === 'Starter') {
     return [
-      { level:'Starter', pattern:'~이에요/예요', explanation:'Use this to say what something is.', example_ko: (sample ? sample + '이에요.' : '학생이에요.'), example_en:'It is ' + (sample ? sample : 'a student') + '.' },
-      { level:'Starter', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko: (sample ? '저는 ' + sample + '을/를 좋아해요.' : '저는 음악을 좋아해요.'), example_en:'I like ' + (sample ? sample : 'music') + '.' },
-      { level:'Starter', pattern:'~이/가 있어요', explanation:'Use this to say something exists or that you have it.', example_ko: (sample2 ? sample2 + '이/가 있어요.' : '시간이 있어요.'), example_en:'There is ' + (sample2 ? sample2 : 'time') + '.' }
+      { level:'Starter', pattern:'~이에요/예요', explanation:'Use this to say what something is.', example_ko: n1 ? '이건 ' + _khJosa(n1, '이에요', '예요') + '.' : '저는 학생이에요.', example_en: n1 ? 'This is ' + n1 + '.' : 'I am a student.' },
+      { level:'Starter', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko: n1 ? '저는 ' + _khJosa(n1, '을', '를') + ' 좋아해요.' : '저는 음악을 좋아해요.', example_en: 'I like ' + (n1 || 'music') + '.' },
+      { level:'Starter', pattern:'~이/가 있어요', explanation:'Use this to say something exists or that you have it.', example_ko: n2 ? _khJosa(n2, '이', '가') + ' 있어요.' : '시간이 있어요.', example_en: n2 ? 'There is ' + n2 + '.' : 'I have time.' }
     ];
   }
   if (level === 'Intermediate') {
     return [
-      { level:'Intermediate', pattern:'~아서/어서', explanation:'Use this to connect a reason with a result.', example_ko: (sample ? sample + '이/가 좋아서 자주 생각나요.' : '이 주제가 좋아서 자주 생각나요.'), example_en:'Because ' + (sample ? sample : 'this topic') + ' is nice, I think of it often.' },
-      { level:'Intermediate', pattern:'~(으)ㄹ 것 같아요', explanation:'Use this to give an opinion or guess politely.', example_ko: '앞으로도 자주 ' + (sample ? sample + '을/를 ' : '') + '생각할 것 같아요.', example_en:'I think I will keep thinking about ' + (sample ? sample : 'it') + '.' },
-      { level:'Intermediate', pattern:'~지만', explanation:'Use this to show contrast.', example_ko: (sample ? sample + '은/는 간단하지만 의미가 커요.' : '간단하지만 의미가 커요.'), example_en:'It is simple, but the meaning is big.' }
+      { level:'Intermediate', pattern:'~아서/어서', explanation:'Use this to connect a reason with a result.', example_ko:'날씨가 좋아서 공원에서 산책했어요.', example_en:'The weather was nice, so I took a walk in the park.' },
+      { level:'Intermediate', pattern:'~(으)ㄹ 것 같아요', explanation:'Use this to give an opinion or guess politely.', example_ko:'하늘을 보니까 곧 비가 올 것 같아요.', example_en:'Looking at the sky, it seems like it will rain soon.' },
+      { level:'Intermediate', pattern:'~지만', explanation:'Use this to show contrast.', example_ko:'이 식당은 조금 비싸지만 정말 맛있어요.', example_en:'This restaurant is a bit expensive, but it is really good.' }
     ];
   }
   if (level === 'Advanced') {
     return [
-      { level:'Advanced', pattern:'~는 반면에', explanation:'Use this to compare two contrasting facts.', example_ko: (sample ? sample + '에는 장점이 많은 반면에 아쉬운 점도 있어요.' : '장점이 많은 반면에 아쉬운 점도 있어요.'), example_en:'There are many strengths, while there are also regrettable points.' },
-      { level:'Advanced', pattern:'~(으)ㄹ수록', explanation:'Use this to say one thing changes as another increases.', example_ko: (sample ? '생각하면 할수록 ' + sample + '의 가치를 느껴요.' : '생각하면 할수록 가치를 느껴요.'), example_en:'The more I think, the more I feel its value.' },
-      { level:'Advanced', pattern:'~다는 점에서', explanation:'Use this to explain in what respect something matters.', example_ko: (sample ? sample + '이/가 일상과 맞닿아 있다는 점에서 의미가 있어요.' : '일상과 맞닿아 있다는 점에서 의미가 있어요.'), example_en:'It is meaningful in that it is connected to daily life.' }
+      { level:'Advanced', pattern:'~는 반면에', explanation:'Use this to compare two contrasting facts.', example_ko:'도시는 생활이 편리한 반면에 집값이 비쌉니다.', example_en:'City life is convenient, whereas housing is expensive.' },
+      { level:'Advanced', pattern:'~(으)ㄹ수록', explanation:'Use this to say one thing changes as another increases.', example_ko:'한국어는 공부하면 할수록 더 재미있어요.', example_en:'The more I study Korean, the more fun it gets.' },
+      { level:'Advanced', pattern:'~다는 점에서', explanation:'Use this to explain in what respect something matters.', example_ko:'이 책은 쉬운 말로 쓰였다는 점에서 초보자에게 좋습니다.', example_en:'This book is good for beginners in that it is written in simple language.' }
     ];
   }
   // Beginner default
   return [
-    { level:'Beginner', pattern:'~이/가 있어요', explanation:'Use this to say someone or something exists.', example_ko: (sample ? '좋아하는 ' + sample + '이/가 있어요.' : '좋아하는 주제가 있어요.'), example_en:'There is ' + (sample ? sample : 'a topic') + ' I like.' },
-    { level:'Beginner', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko: (sample ? '저는 ' + sample + '을/를 좋아해요.' : '저는 이 주제를 좋아해요.'), example_en:'I like ' + (sample ? sample : 'this topic') + '.' },
-    { level:'Beginner', pattern:'~고 싶어요', explanation:'Use this to say what you want to do.', example_ko: (sample ? sample + '에 대해 이야기하고 싶어요.' : '이야기하고 싶어요.'), example_en:'I want to talk about ' + (sample ? sample : 'it') + '.' }
+    { level:'Beginner', pattern:'~이/가 있어요', explanation:'Use this to say someone or something exists.', example_ko: n1 ? '제가 좋아하는 ' + _khJosa(n1, '이', '가') + ' 있어요.' : '오늘은 약속이 있어요.', example_en: n1 ? 'There is a ' + n1 + ' I like.' : 'I have plans today.' },
+    { level:'Beginner', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko: n2 ? '저는 ' + _khJosa(n2, '을', '를') + ' 좋아해요.' : '저는 커피를 좋아해요.', example_en: 'I like ' + (n2 || 'coffee') + '.' },
+    { level:'Beginner', pattern:'~고 싶어요', explanation:'Use this to say what you want to do.', example_ko:'주말에 친구를 만나고 싶어요.', example_en:'I want to meet a friend this weekend.' }
   ];
 }
 
@@ -2468,7 +2560,7 @@ async function khLoadCommonMistakes() {
   // spacing as "mistakes." User pushed back; new prompt limits
   // results to actual grammar errors only. Old v1 cache entries
   // would still display the BS so we invalidate by namespace.
-  var cacheKey = 'kh_topic_common_mistakes_v3_' + encodeURIComponent(topicKo) + '_' + level + '_' + dateKey;
+  var cacheKey = 'kh_topic_common_mistakes_v4_' + encodeURIComponent(topicKo) + '_' + level + '_' + dateKey;
   function paint(items) {
     if (!Array.isArray(items) || !items.length) { details.hidden = true; return; }
     var valid = items.filter(function(it) {
@@ -3234,7 +3326,7 @@ async function openPhraseMunch() {
     return;
   }
 
-  var cacheKey = 'phmunch::' + topic.trim();
+  var cacheKey = 'phmunch2::' + topic.trim();
   var lessons = null;
 
   // Preferred path — admin pre-generates PM lessons alongside the daily
@@ -3788,7 +3880,7 @@ async function openKeyExpressionsModal() {
   // (psych-verb / particle / formality / tense / spacing), so any
   // cached v3 expressions may have been generated under the laxer
   // prompt and could contain "동생은 슬퍼요"-class bugs. Force regen.
-  var cacheKey = 'ke_v4_' + topicKey;
+  var cacheKey = 'ke_v5_' + topicKey;
   try {
     var cached = localStorage.getItem(cacheKey);
     if (cached) {
@@ -3803,7 +3895,7 @@ async function openKeyExpressionsModal() {
 
   // 3) Cross-user DB cache. Same v3 bump as the localStorage key —
   //    DB rows seeded under the old prompt are stale.
-  var dbCacheKey = 'kex4::' + topicKoKey + '_' + levelKey;
+  var dbCacheKey = 'kex5::' + topicKoKey + '_' + levelKey;
   try {
     if (typeof _aiCacheGet === 'function') {
       var hit = await _aiCacheGet(dbCacheKey);
@@ -3925,7 +4017,7 @@ async function keOpenSituationQuiz(idx) {
   var dateKey = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
   // v2: situation quizzes were cached against expression text from the
   // ke_v2 era which had broken patterns; force re-fetch.
-  var cacheKey = 'kh_ke_situation_quiz_v2_' + encodeURIComponent(exp.ko) + '_' + dateKey;
+  var cacheKey = 'kh_ke_situation_quiz_v3_' + encodeURIComponent(exp.ko) + '_' + dateKey;
   var quiz = null;
   try {
     var raw = localStorage.getItem(cacheKey);
@@ -4480,7 +4572,7 @@ function _keSitCacheKey() {
   var topicId = (_todayTopic && (_todayTopic.id || _todayTopic.topic_ko)) || 'default';
   var level   = _currentLevel || 'Beginner';
   var date    = (typeof kstDateKey === 'function') ? kstDateKey() : new Date().toISOString().slice(0,10);
-  return 'kex_sit::' + topicId + '_' + level + '_' + date;
+  return 'kex_sit2::' + topicId + '_' + level + '_' + date;
 }
 
 // Background pre-gen — called as soon as expressions render so the
@@ -6122,12 +6214,12 @@ var _FT_SCENARIOS = [
     clerk_help:{type:'npc',x:36,y:80,label:'직원 도움',npc:'직원',scene:'3번 창구',
       text:'혹시 한국에 처음 오셨어요? 여권 좀 보여주시겠어요?',textEn:'Is this your first time in Korea? Can I see your passport?',
       choices:[
-        {id:'ch1',text:'네, 여기요 (여권 건냄)',textEn:'Yes, here (hands passport)',next:'passport_check',pts:2}
+        {id:'ch1',text:'네, 여기요 (여권 건넴)',textEn:'Yes, here (hands passport)',next:'passport_check',pts:2}
       ]},
     passport_check:{type:'npc',x:50,y:50,label:'여권 확인',npc:'직원',scene:'3번 창구',
       text:'여권 보여주세요.',textEn:'Please show me your passport.',
       choices:[
-        {id:'pc1',text:'여기 있습니다 (여권 건냄)',textEn:'Here it is',next:'address_q',pts:2},
+        {id:'pc1',text:'여기 있습니다 (여권 건넴)',textEn:'Here it is',next:'address_q',pts:2},
         {id:'pc2',text:'어... 여권을 호텔에 두고 왔어요',textEn:'Uh... I left my passport at the hotel',next:'forgot_passport',pts:0}
       ]},
     forgot_passport:{type:'end',x:62,y:20,label:'여권 깜빡 😱',npc:'직원',scene:'3번 창구',
@@ -6257,7 +6349,7 @@ var _FT_SCENARIOS = [
     form:{type:'npc',x:28,y:50,label:'접수서 작성',npc:'간호사',scene:'접수',
       text:'보험 있으세요? 여권이나 외국인등록증 주세요.',textEn:'Do you have insurance? Please give me your passport or ARC.',
       choices:[
-        {id:'f1',text:'네, 보험 있어요 (카드 건냄)',textEn:'Yes I have insurance (hands card)',next:'wait_doc',pts:2,phrase:'보험 있어요'},
+        {id:'f1',text:'네, 보험 있어요 (카드 건넴)',textEn:'Yes I have insurance (hands card)',next:'wait_doc',pts:2,phrase:'보험 있어요'},
         {id:'f2',text:'보험 없어요...',textEn:'I don\'t have insurance...',next:'no_insurance',pts:1}
       ]},
     no_insurance:{type:'npc',x:40,y:75,label:'보험 없음',npc:'간호사',scene:'접수',
@@ -6281,7 +6373,7 @@ var _FT_SCENARIOS = [
       text:'온몸이요?! 간호사! 응급실 준비해주세요! ...환자분 표정이 너무 괜찮아 보이는데요?',textEn:'Whole body?! Nurse! Prep the ER! ...The patient looks surprisingly fine though?',
       choices:[]},
     examine:{type:'npc',x:68,y:50,label:'검사',npc:'의사',scene:'진료실',
-      text:'음, 알겠습니다. 목 좀 벌려보세요. 아~ 해보세요.',textEn:'I see. Open your mouth please. Say ah~.',
+      text:'음, 알겠습니다. 입 좀 벌려 보세요. 아~ 해보세요.',textEn:'I see. Open your mouth please. Say ah~.',
       choices:[
         {id:'ex1',text:'아~~~',textEn:'Ah~~~',next:'prescription',pts:2}
       ]},
@@ -13663,7 +13755,7 @@ async function generateBeginnerSentences() {
   }
 
   // ── Priority 2: sessionStorage cache (current session) ──
-  var cacheKey = 'bm_sents_' + (topic.id || topic.topic_en || '').replace(/\s/g,'_');
+  var cacheKey = 'bm_sents2_' + (topic.id || topic.topic_en || '').replace(/\s/g,'_');
   var cached = sessionStorage.getItem(cacheKey);
   if (cached) {
     try {
@@ -13686,7 +13778,7 @@ async function generateBeginnerSentences() {
   // Same daily topic → same beginner sentences. Without this, every
   // signed-in user pays the AI cost on first open even though the topic
   // is identical.
-  var dbCacheKey = 'beg::' + (topic.id || topic.topic_en || topic.topic_ko || '').toString().slice(0, 80);
+  var dbCacheKey = 'beg2::' + (topic.id || topic.topic_en || topic.topic_ko || '').toString().slice(0, 80);
   var dbCached = await _aiCacheGet(dbCacheKey);
   if (dbCached && Array.isArray(dbCached) && dbCached.length >= 3) {
     _bm.sentences = dbCached;
@@ -15498,8 +15590,8 @@ async function _generateGrammarForCurriculumPattern(item) {
   // Cache by pattern name — every user studying "은/는 vs 이/가" gets
   // the same Claude lesson, so we save it once and serve from DB
   // forever instead of re-billing for the same pattern on every open.
-  var cacheKey = 'gf-curr::' + (item.pattern || '');
-  if (cacheKey !== 'gf-curr::') {
+  var cacheKey = 'gf-curr2::' + (item.pattern || '');
+  if (cacheKey !== 'gf-curr2::') {
     try {
       var dbHit = await _aiCacheGet(cacheKey);
       if (dbHit && dbHit.patterns && dbHit.patterns.length) {
@@ -15537,7 +15629,7 @@ async function _generateGrammarForCurriculumPattern(item) {
     var parsed = JSON.parse(raw.slice(oi, ei + 1));
     if (parsed.patterns && parsed.patterns.length) {
       loadGFPatterns(parsed.patterns);
-      if (cacheKey !== 'gf-curr::') _aiCacheSet(cacheKey, { patterns: parsed.patterns });
+      if (cacheKey !== 'gf-curr2::') _aiCacheSet(cacheKey, { patterns: parsed.patterns });
     } else {
       if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
     }
@@ -15587,6 +15679,78 @@ function closeGrammarFocusModal() {
 }
 
 var _GF_STEP_DONE = {learn:false, spotit:false, fill:false, translate:false, build:false};
+
+// ── 🚩 Report a problem in a Grammar Focus lesson ─────────────
+// Same queue as the article sentence panel (sentence_analysis_reports,
+// content_type 'study_room'); admin sees it under 🧩 Analysis Reports.
+var _GF_REPORT_REASONS = [['awkward', 'Unnatural Korean'], ['answer', 'Wrong answer'], ['grammar', 'Wrong explanation'], ['other', 'Other']];
+function _gfActiveTab() {
+  for (var i = 0; i < _GF_TABS.length; i++) {
+    var pane = document.getElementById('gf-tab-' + _GF_TABS[i]);
+    if (pane && pane.style.display !== 'none' && pane.offsetParent !== null) return _GF_TABS[i];
+  }
+  return 'learn';
+}
+function gfOpenReport() {
+  var box = document.getElementById('gf-report-box');
+  if (!box) return;
+  if (typeof supaUser === 'undefined' || !supaUser) { if (typeof openAuthModal === 'function') openAuthModal('signin'); return; }
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  box.dataset.reason = '';
+  box.innerHTML = '<div style="font-size:13px;font-weight:800;margin-bottom:8px">What\'s wrong on this screen?</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">'
+    + _GF_REPORT_REASONS.map(function(r) {
+        return '<button type="button" class="gf-rpt-chip" data-reason="' + r[0] + '" onclick="gfPickReportReason(this)" style="padding:7px 12px;border-radius:999px;border:1.5px solid rgba(196,181,253,.45);background:transparent;color:#ddd6fe;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">' + r[1] + '</button>';
+      }).join('')
+    + '</div>'
+    + '<textarea id="gf-rpt-detail" maxlength="500" rows="2" placeholder="Optional: which sentence, and what it should be" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:10px;border:1.5px solid rgba(167,139,250,.3);background:rgba(15,10,35,.6);color:#e5edf9;font-size:13px;font-family:inherit;resize:vertical"></textarea>'
+    + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">'
+    +   '<button type="button" onclick="document.getElementById(\'gf-report-box\').style.display=\'none\'" style="padding:8px 16px;border-radius:999px;border:1.5px solid rgba(167,139,250,.3);background:transparent;color:#c4b5fd;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Cancel</button>'
+    +   '<button type="button" id="gf-rpt-send" onclick="gfSendReport()" disabled style="padding:8px 16px;border-radius:999px;border:0;background:#7c3aed;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;opacity:.45">Send report</button>'
+    + '</div>';
+  box.style.display = 'block';
+}
+function gfPickReportReason(chip) {
+  var box = document.getElementById('gf-report-box');
+  box.querySelectorAll('.gf-rpt-chip').forEach(function(c) { c.style.background = 'transparent'; c.style.color = '#ddd6fe'; });
+  chip.style.background = '#a78bfa'; chip.style.color = '#1e1b4b';
+  box.dataset.reason = chip.dataset.reason;
+  var send = document.getElementById('gf-rpt-send');
+  if (send) { send.disabled = false; send.style.opacity = '1'; }
+}
+async function gfSendReport() {
+  var box = document.getElementById('gf-report-box');
+  if (!box || !box.dataset.reason) return;
+  var tab = _gfActiveTab();
+  var pattern = (_gfPattern && _gfPattern.name) || window._gcCurrentPattern || (document.getElementById('gf-title') || {}).textContent || '';
+  var pane = document.getElementById('gf-tab-' + tab);
+  var snippet = String((pane && pane.innerText) || '').replace(/\s+/g, ' ').trim().slice(0, 1000) || pattern;
+  var detailEl = document.getElementById('gf-rpt-detail');
+  var payload = {
+    p_content_type: 'study_room',
+    p_content_id: ('gf:' + pattern + ':' + tab).slice(0, 100),
+    p_sent_idx: null,
+    p_sentence: snippet,
+    p_reason: box.dataset.reason,
+    p_detail: detailEl ? detailEl.value.trim().slice(0, 500) : '',
+  };
+  var send = document.getElementById('gf-rpt-send');
+  if (send) { send.disabled = true; send.textContent = 'Sending…'; }
+  var ok = false;
+  try {
+    var res = await getSupa().rpc('report_sentence_analysis', payload);
+    ok = !res.error && res.data && res.data.ok;
+    if (!ok && res.data && res.data.error === 'rate_limited') {
+      box.innerHTML = '<div style="font-size:13px;font-weight:700;color:#fcd34d">You\'ve sent a lot of reports today — thank you! Please try again tomorrow.</div>';
+      return;
+    }
+  } catch (_) {}
+  if (!ok && typeof kh_log_error === 'function') {
+    kh_log_error('analysis-report: ' + payload.p_reason, { source: 'analysis-report', content_type: 'study_room', content_id: payload.p_content_id, sentence: snippet.slice(0, 300), detail: payload.p_detail }, 'info');
+  }
+  box.innerHTML = '<div style="font-size:13px;font-weight:700;color:#34d399">✓ Thanks! We\'ll review and fix this lesson.</div>';
+  setTimeout(function() { box.style.display = 'none'; }, 2500);
+}
 
 function switchGFTab(tabId, btn) {
   // Enforce sequential completion — block jumping to steps whose prerequisites aren't done
@@ -15877,7 +16041,7 @@ async function generateGFPatterns() {
   // generation seeds the cache and everyone else hits DB. Stale-OK:
   // if the topic gets re-generated for any reason, the cache key
   // changes naturally because it's keyed off the topic string.
-  var cacheKey = 'gf-topic::' + topic.trim();
+  var cacheKey = 'gf-topic2::' + topic.trim();
   try {
     var dbHit = await _aiCacheGet(cacheKey);
     if (dbHit && dbHit.patterns && dbHit.patterns.length) {
@@ -16003,7 +16167,7 @@ async function generateWGDrillQuestions(grammarName, opts) {
   // Old v1 cache entries lacked `examples` and embedded "A) ..."
   // prefixes in choice text; reusing them would skip the study
   // phase and re-show the shuffled-prefix bug.
-  var cacheKey = 'drill::v2::' + grammarName;
+  var cacheKey = 'drill::v3::' + grammarName;
 
   // 1) Try cache first (unless caller asked for a fresh set)
   if (!force && sb) {
@@ -16804,7 +16968,7 @@ function loadGFBuild(p) {
     // v2 cache key: previous version sometimes returned grammatical
     // sentences flagged as "incorrect" (e.g., topic vs object particle
     // swaps where both forms are valid). Bump key to drop stale data.
-    var judgeKey = 'judge::v2::' + (p.name || '');
+    var judgeKey = 'judge::v3::' + (p.name || '');
     _aiCacheGet(judgeKey).then(function(cached) {
       if (cached && Array.isArray(cached) && cached.length) {
         p.incorrect_examples = _gfFilterBadJudgeItems(cached);
@@ -17522,40 +17686,42 @@ function _dctSaveScore(pct, sentenceCount) {
 // Each pair is the trickiest contrast for the "left" vowel/consonant.
 // `words` are minimal pairs — when played, user picks which side was said.
 var PHONEME_PAIRS = [
+  // Every pair is two REAL words (the old list had non-words such as
+  // 굼 / 블 / 쿠다 / 호리 with made-up glosses).
   { a: 'ㅓ', b: 'ㅗ', colorA: '#60a5fa', colorB: '#f472b6',
     words: [
-      { a: '너 (you)',       b: '노 (no)' },
-      { a: '허리 (waist)',   b: '호리 (slim)' },
       { a: '거기 (there)',   b: '고기 (meat)' },
-      { a: '서 (stand)',     b: '소 (cow)' }
+      { a: '섬 (island)',    b: '솜 (cotton)' },
+      { a: '벌 (bee)',       b: '볼 (cheek)' },
+      { a: '정 (affection)', b: '종 (bell)' }
     ] },
   { a: 'ㅡ', b: 'ㅜ', colorA: 'rgba(167,139,250,.55)', colorB: '#34d399',
     words: [
-      { a: '드 (particle)',  b: '두 (two)' },
-      { a: '금 (gold)',      b: '굼 (cave)' },
-      { a: '블 (block)',     b: '불 (fire)' },
-      { a: '크다 (big)',     b: '쿠다 (none)' }
+      { a: '그 (that)',      b: '구 (nine)' },
+      { a: '글 (writing)',   b: '굴 (oyster)' },
+      { a: '들 (field)',     b: '둘 (two)' },
+      { a: '끌 (chisel)',    b: '꿀 (honey)' }
     ] },
   { a: 'ㅅ', b: 'ㅆ', colorA: '#fbbf24', colorB: '#ef4444',
     words: [
       { a: '사다 (buy)',     b: '싸다 (cheap)' },
       { a: '살 (flesh)',     b: '쌀 (rice)' },
-      { a: '손 (hand)',      b: '쏜 (shot)' },
-      { a: '세다 (count)',   b: '쎄다 (strong)' }
+      { a: '시 (poem)',      b: '씨 (seed)' },
+      { a: '서요 (stand)',   b: '써요 (write)' }
     ] },
   { a: 'ㄱ', b: 'ㄲ', colorA: '#06b6d4', colorB: '#8b5cf6',
     words: [
-      { a: '가 (go)',        b: '까 (peel)' },
+      { a: '가다 (go)',      b: '까다 (peel)' },
       { a: '개 (dog)',       b: '깨 (sesame)' },
       { a: '기 (energy)',    b: '끼 (talent)' },
-      { a: '길 (road)',      b: '낄 (wedge)' }
+      { a: '굴 (oyster)',    b: '꿀 (honey)' }
     ] },
   { a: 'ㄷ', b: 'ㄸ', colorA: '#10b981', colorB: '#f97316',
     words: [
-      { a: '다 (all)',       b: '따 (pluck)' },
+      { a: '도 (degree)',    b: '또 (again)' },
       { a: '덕 (virtue)',    b: '떡 (rice cake)' },
       { a: '달 (moon)',      b: '딸 (daughter)' },
-      { a: '더 (more)',      b: '떠 (rise)' }
+      { a: '대 (stand)',     b: '때 (time)' }
     ] }
 ];
 
@@ -18193,7 +18359,7 @@ var _nqState = null;
 
 function _nqCacheKey() {
   var topicId = (_todayTopic && (_todayTopic.topic_ko || _todayTopic.topic_en || '')).slice(0, 32);
-  return 'kh_nuance_' + kstDateKey() + '_' + (_currentLevel || 'Advanced') + '_' + topicId;
+  return 'kh_nuance2_' + kstDateKey() + '_' + (_currentLevel || 'Advanced') + '_' + topicId;
 }
 
 function openNuanceQuiz() {
