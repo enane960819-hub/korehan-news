@@ -1390,7 +1390,7 @@ async function renderAutoDraftBanner() {
         ? '<span style="color:#dc2626;font-size:12px" title="' + esc(p.error || '') + '">❌ failed</span>'
         : '<span style="color:#64748b;font-size:12px">⏳ queued</span>';
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #e2e8f0;flex-wrap:wrap">'
-      + '<div style="min-width:0"><span style="font-size:11px;font-weight:800;color:#5b21b6">' + (AUTODRAFT_LEVEL[p.level] || p.level) + '</span> · <span style="font-size:11px;color:#64748b">' + esc(p.section) + '</span>'
+      + '<div style="min-width:0"><span style="font-size:11px;font-weight:800;color:' + (p.kind === 'buzz' ? '#c2410c' : '#5b21b6') + '">' + (p.kind === 'buzz' ? '🔥 Korea Buzz · 🌳 Tree' : (AUTODRAFT_LEVEL[p.level] || p.level)) + '</span> · <span style="font-size:11px;color:#64748b">' + esc(p.section) + '</span>'
       + '<div style="font-size:14px;font-weight:700;color:#0f172a">' + esc(p.title_ko || p.headline.title) + '</div>'
       + '<div style="font-size:11px;color:#94a3b8">' + esc(p.headline.source || '') + (p.title_ko ? ' · ' + esc(p.headline.title) : '') + '</div></div>'
       + '<div style="white-space:nowrap">' + state + '</div></div>';
