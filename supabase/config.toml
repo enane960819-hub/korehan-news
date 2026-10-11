@@ -18,3 +18,9 @@ verify_jwt = false
 # only 401 the cron call.
 [functions.daily-article-draft]
 verify_jwt = false
+
+# daily-content-gen is called by pg_cron with CRON_SECRET (not a JWT) and
+# authenticates itself (service role / CRON_SECRET / admin email). Keep the
+# gateway check off so a CLI redeploy doesn't 401 the nightly cron.
+[functions.daily-content-gen]
+verify_jwt = false
