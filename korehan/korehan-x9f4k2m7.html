@@ -431,7 +431,7 @@ body.sb-open .sb-backdrop{display:block}
 // /index.ts (WRITING_TOPICS_EPOCH_ISO). Drift between the literals
 // would silently desync admin "preview today's topic" from cron
 // generation. Extracted to one constant per file; keep them in sync.
-var KH_WRITING_TOPICS_EPOCH = '2026-04-15T00:00:00+09:00';
+var KH_WRITING_TOPICS_EPOCH = '2026-10-12T00:00:00+09:00'; // reset at launch prep (2026-10-11) so the refreshed topic list is used once in full before repeating
 
 // ══ ADMIN AUTH GATE ════════════════════════════════════════
 // 1차: localStorage 토큰 빠른 체크 (페이지 깜빡임 방지)
@@ -4111,7 +4111,7 @@ function renderTopicsTable(list) {
   if (!list.length) { el.innerHTML = '<div class="infobox">토픽이 없습니다.</div>'; return; }
   const lvBg = { Starter:'background:#f3e8ff;color:#7c3aed', Beginner:'background:#e8f5e9;color:#2e7d32', Intermediate:'background:#fff8e1;color:#f57f17', Advanced:'background:#fce4ec;color:#c62828' };
   // 오늘의 핀 — study room 생성 로직과 정확히 일치시켜야 함:
-  //   epoch (2026-04-15) 기준 며칠째인지 계산 → 해당 레벨의 active=true
+  //   epoch (KH_WRITING_TOPICS_EPOCH) 기준 며칠째인지 계산 → 해당 레벨의 active=true
   //   topics를 sort_order/created_at 정렬 → daysSince % count.
   // 이전 구현은 화면에 표시되는 list.length로 modulo했는데, 이건
   //   - 'all' 필터일 때는 모든 레벨 합친 길이라 의미 없음
@@ -4168,7 +4168,7 @@ function renderTopicsTable(list) {
   for (var pi = 0; pi < list.length; pi++) {
     if (pinnedTopicIds[list[pi].id]) pinnedCount++;
   }
-  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 핀 <b>' + pinnedCount + '</b>개 · Day ' + daysSince + ' (기준일 2026-04-15)</div>'
+  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 핀 <b>' + pinnedCount + '</b>개 · Day ' + daysSince + ' (기준일 ' + KH_WRITING_TOPICS_EPOCH.slice(0,10) + ')</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
     + '<th style="padding:7px 8px;text-align:center">#</th>'

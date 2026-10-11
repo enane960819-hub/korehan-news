@@ -1531,7 +1531,7 @@ async function _generateAndSaveDailyContent(date, opts) {
       var allTopics = topicRes.data || [];
       if (allTopics.length) {
         // 기준일로부터 며칠째인지 계산 → 인덱스
-        var epoch = new Date('2026-04-15T00:00:00+09:00').getTime();
+        var epoch = new Date('2026-10-12T00:00:00+09:00') /* = WRITING_TOPICS_EPOCH_ISO in daily-content-gen */.getTime();
         var now = new Date(date + 'T00:00:00+09:00').getTime();
         var daysSinceEpoch = Math.max(0, Math.floor((now - epoch) / 86400000));
         var todayIdx = daysSinceEpoch % allTopics.length;
