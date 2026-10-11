@@ -306,7 +306,7 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.get_recent_writing_rubric(int) FROM public;
 GRANT  EXECUTE ON FUNCTION public.get_recent_writing_rubric(int) TO authenticated;
 
-COMMENT ON FUNCTION public.finish_read_event(text, text, int) IS 'Called on reader close — stamps read_seconds + completed on the most recent open event';
+COMMENT ON FUNCTION public.finish_read_event(text, text, int, int) IS 'Called on reader close — stamps read_seconds + completed on the most recent open event';
 COMMENT ON FUNCTION public.get_recent_wpm(int)                IS 'Average WPM over recent completed article reads (feeds Reading axis)';
 COMMENT ON FUNCTION public.get_recent_writing_rubric(int)     IS 'Average rubric subscores from ai_feedback.rubric JSON (feeds Writing axis)';
 
