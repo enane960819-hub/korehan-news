@@ -61,17 +61,6 @@ doesn't keep reminding about closed work.
 3. Test: korehan-courses.html → Start 7-day free trial → card 4242 4242 4242 4242.
 4. When it works, repeat 1–2 with the **live** key (sk_live_…).
 
-## 🟡 Pending owner decision — claude-proxy / admin-api redeploy
-
-Two small fixes are ready but not shipped because redeploying these functions
-changes their gateway JWT setting: (a) claude-proxy AI quota should read
-user_subscriptions (it reads a nonexistent profiles.plan, so everyone gets the
-free limit); (b) admin-api must allow `notifications` so the tutor-review
-"feedback received" notice reaches learners.
-
----
-
-
 ## 🟡 Optional — REDEPLOY claude-proxy (safety net for Phase-B analysis)
 
 The "AI timeout" on article gen was ROOT-fixed in the frontend (Phase-A

@@ -164,26 +164,28 @@ Deno.serve(async (req) => {
 
     // ── 4. Quota: daily call count + monthly USD spend ───────────
     if (!isAdmin) {
-      // Plan resolution. The user's plan is stored in profiles.plan
-      // (free / standard / pro). Override row in user_quota_overrides
-      // wins over plan defaults if set.
+      // Plan resolution. Source of truth is user_subscriptions (written by
+      // billing-webhook): an active, unexpired premium row gets the Premium
+      // limits; legacy standard / pro rows keep their own. Override row in
+      // user_quota_overrides wins over plan defaults if set.
       let dailyCallLimit  = FREE_DAILY_CALLS
       let monthlyUsdLimit = FREE_MONTHLY_USD
       try {
-        const { data: profile } = await sb
-          .from('profiles')
-          .select('plan')
-          .eq('id', userId)
+        const { data: sub } = await sb
+          .from('user_subscriptions')
+          .select('plan, status, expires_at')
+          .eq('user_id', userId)
           .maybeSingle()
-        const plan = profile?.plan || 'free'
-        if (plan === 'standard') {
+        const live = sub && sub.status === 'active' && (!sub.expires_at || new Date(sub.expires_at) > new Date())
+        const plan = live ? String(sub.plan || 'free') : 'free'
+        if (plan === 'premium' || plan === 'standard') {
           dailyCallLimit  = STANDARD_DAILY_CALLS
           monthlyUsdLimit = STANDARD_MONTHLY_USD
         } else if (plan === 'pro') {
           dailyCallLimit  = PRO_DAILY_CALLS
           monthlyUsdLimit = PRO_MONTHLY_USD
         }
-      } catch (_) { /* profile table may not exist yet — keep free defaults */ }
+      } catch (_) { /* keep free defaults */ }
 
       const { data: override } = await sb
         .from('user_quota_overrides')
