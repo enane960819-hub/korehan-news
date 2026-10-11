@@ -110,7 +110,7 @@
   <!-- HERO BLOCK -->
   <div class="sr-hero-block">
     <h1 class="sr-headline">Express yourself in Korean,<br>and watch yourself grow.</h1>
-    <p class="sr-headline-sub">Write and speak on today's topic. Grammar and examples are available on the side for reference.</p>
+    <p class="sr-headline-sub">Write and speak on this week's topic. Grammar and examples are available on the side for reference.</p>
 
     <!-- REVIEW NOTIFICATION BANNERS -->
     <div id="sr-review-notifications" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
@@ -150,19 +150,19 @@
     </div>
 
     <!-- Credit / access banner -->
-    <!-- TODAY'S TOPIC CARD -->
+    <!-- THIS WEEK'S TOPIC CARD -->
     <div class="sr-topic-card2">
       <div class="sr-topic-inner">
 
         <!-- LEFT: topic info + secondary actions -->
         <div class="sr-topic-left">
           <div style="display:flex;align-items:center;gap:8px">
-            <div class="sr-topic-lbl" style="margin-bottom:0">TODAY'S WRITING TOPIC</div>
+            <div class="sr-topic-lbl" style="margin-bottom:0">THIS WEEK'S TOPIC</div>
             <canvas id="sr-quest-ring-mobile" width="40" height="40" class="sr-quest-ring-mob" style="display:none;width:20px;height:20px;flex-shrink:0"></canvas>
           </div>
           <div class="sr-topic-q" id="hero-topic-ko">Loading…</div>
           <div class="sr-topic-en2" id="hero-topic-en"></div>
-          <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:8px;align-items:center;gap:6px"><i data-lucide="check-circle-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Done today</span></div>
+          <div id="hero-topic-done" style="display:none;font-size:11px;color:#7ab8f5;font-weight:700;margin-bottom:8px;align-items:center;gap:6px"><i data-lucide="check-circle-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Done this week</span></div>
           <!-- vocab + grammar chips (desktop only) -->
           <div class="sr-chip-row wc-chips" id="wcard-chips"></div>
         </div>
@@ -172,7 +172,7 @@
           <button class="sr-start-btn" onclick="_startBtnRipple(event);openLearningSelector()">
             <canvas id="sr-start-ripple" style="position:absolute;inset:0;width:100%;height:100%;border-radius:12px;pointer-events:none;z-index:0"></canvas>
             <span class="sr-start-btn-label" style="position:relative;z-index:1">START</span>
-            <span class="sr-start-btn-sub" style="position:relative;z-index:1">Start today's lesson →</span>
+            <span class="sr-start-btn-sub" style="position:relative;z-index:1">Start this week's lesson →</span>
           </button>
         </div>
 
@@ -203,7 +203,7 @@
   <div class="as-submit-today" id="submit-today-banner">
     <i data-lucide="upload" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i>
     <div style="flex:1">
-      <div style="font-size:12px;font-weight:800;color:#22c55e;margin-bottom:2px">Today's writing is ready!</div>
+      <div style="font-size:12px;font-weight:800;color:#22c55e;margin-bottom:2px">This week's writing is ready!</div>
       <div id="submit-today-count" style="font-size:11px;color:rgba(255,255,255,.6)">Submit to receive feedback within 24 hours</div>
     </div>
     <button id="kh-submit-all-btn" class="btn btn-g" onclick="submitAllWritingsToday()" style="font-size:12px;padding:8px 16px;font-weight:800;display:inline-flex;align-items:center;gap:6px;min-height:36px"><i data-lucide="send" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span class="kh-submit-label">Submit All</span></button>
@@ -328,7 +328,7 @@
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <canvas id="sr-quest-ring" width="72" height="72" style="width:36px;height:36px;flex-shrink:0"></canvas>
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:900;color:#fff">Daily Quest</div>
+        <div style="font-size:13px;font-weight:900;color:#fff">Weekly Quest</div>
         <div style="font-size:10px;color:rgba(255,255,255,.38);font-weight:600" id="sr-quest-sub">0/4 · +40 bonus</div>
       </div>
     </div>
@@ -886,7 +886,7 @@
     <div style="padding:18px 22px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06)">
       <div>
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#a78bfa;margin-bottom:4px">Phrase Munch</div>
-        <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25">Munch on today's phrases</div>
+        <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25">Munch on this week's phrases</div>
         <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:3px">Learn the breakdown, then translate a similar sentence</div>
       </div>
       <button aria-label="Close" onclick="closePhraseMunch()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
@@ -1002,7 +1002,7 @@
 <!-- kh-universe.js (~117KB) is now lazy-loaded by _ensureKHUniverse()
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
-<script src="korehan-study-room.js?v=20261012a" defer></script>
+<script src="korehan-study-room.js?v=20261012b" defer></script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->
@@ -1011,7 +1011,7 @@
     <!-- HEADER -->
     <div class="bm-header">
       <div class="bm-step-pills" id="bm-step-pills"></div>
-      <div class="bm-topic" id="bm-topic-label">Today's Topic</div>
+      <div class="bm-topic" id="bm-topic-label">This Week's Topic</div>
       <button aria-label="Close" class="bm-close" onclick="closeBModal()" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
     </div>
     <!-- PROGRESS BAR -->
@@ -1033,7 +1033,7 @@
   <div class="bmodal" id="immodal">
     <div class="bm-header">
       <div class="bm-step-pills" id="im-step-pills"></div>
-      <div class="bm-topic" id="im-topic-label">Today's Topic</div>
+      <div class="bm-topic" id="im-topic-label">This Week's Topic</div>
       <button aria-label="Close" class="bm-close" onclick="closeIMModal()" style="display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
     </div>
     <div class="bm-progress-track"><div class="bm-progress-bar" id="im-progress-bar"></div></div>
@@ -1270,7 +1270,7 @@ function openUniverseView() {
       <div>
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#fde68a;margin-bottom:4px">Key Expressions</div>
         <div style="font-size:18px;font-weight:900;color:#fff;line-height:1.25;display:inline-flex;align-items:center;gap:8px"><i data-lucide="lightbulb" class="kh-ui-icon" style="width:18px;height:18px;color:#fde68a" aria-hidden="true"></i><span>오늘의 핵심 표현</span></div>
-        <div id="ke-topic-label" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:3px">오늘 주제의 표현을 학습합니다</div>
+        <div id="ke-topic-label" style="font-size:12px;color:rgba(255,255,255,.5);margin-top:3px">이번 주 주제의 표현을 학습합니다</div>
       </div>
       <button onclick="closeKeyExpressionsModal()" aria-label="Close" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
@@ -3852,7 +3852,7 @@ function closeReviewModal() {
     <div style="text-align:left;display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
       <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:rgba(255,255,255,.06);border-radius:12px;border:1px solid rgba(255,255,255,.08)">
         <i data-lucide="pen-line" class="kh-ui-icon" style="width:20px;height:20px;flex-shrink:0;color:#7dd3fc" aria-hidden="true"></i>
-        <div><div style="font-size:13px;font-weight:800">Express Practice</div><div style="font-size:11px;color:rgba(255,255,255,.4)">Write and speak on today's topic</div></div>
+        <div><div style="font-size:13px;font-weight:800">Express Practice</div><div style="font-size:11px;color:rgba(255,255,255,.4)">Write and speak on this week's topic</div></div>
       </div>
       <div style="display:flex;gap:12px;align-items:center;padding:10px 14px;background:rgba(255,255,255,.06);border-radius:12px;border:1px solid rgba(255,255,255,.08)">
         <i data-lucide="newspaper" class="kh-ui-icon" style="width:20px;height:20px;flex-shrink:0;color:#86efac" aria-hidden="true"></i>

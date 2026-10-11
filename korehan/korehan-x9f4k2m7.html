@@ -432,6 +432,19 @@ body.sb-open .sb-backdrop{display:block}
 // would silently desync admin "preview today's topic" from cron
 // generation. Extracted to one constant per file; keep them in sync.
 var KH_WRITING_TOPICS_EPOCH = '2026-10-12T00:00:00+09:00'; // reset at launch prep (2026-10-11) so the refreshed topic list is used once in full before repeating
+// Weekly Topic (2026-10): one topic + one content row per KST week (Mon–Sun).
+// study_daily_content.scheduled_date = that week's Monday. Rotation index =
+// weeks since the epoch (a Monday) % active topics — same as kstWeekKey() /
+// khTopicWeekIndex() in korehan-study-room.js and daily-content-gen.
+function khWeekKey(dateStr) {
+  var d = new Date((dateStr || new Date(Date.now() + 9*3600000).toISOString().slice(0,10)) + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0,10);
+}
+function khTopicWeeksSince(dateStr) {
+  var wk = khWeekKey(dateStr);
+  return Math.max(0, Math.floor((new Date(wk + 'T00:00:00+09:00').getTime() - new Date(KH_WRITING_TOPICS_EPOCH).getTime()) / (7*86400000)));
+}
 
 // ══ ADMIN AUTH GATE ════════════════════════════════════════
 // 1차: localStorage 토큰 빠른 체크 (페이지 깜빡임 방지)
@@ -4119,10 +4132,8 @@ function renderTopicsTable(list) {
   //     실제 생성에서 쓰는 active 카운트와 어긋남
   // 결과: 핀이 실제 study room이 오늘 보여줄 토픽과 다른 행을 가리켜
   // 어드민이 "오늘 토픽"이라고 본 게 사이트의 진짜 오늘 토픽이 아니었음.
-  var epoch = new Date(KH_WRITING_TOPICS_EPOCH).getTime();
-  var nowMs = Date.now() + 9*3600000;
-  var daysSince = Math.max(0, Math.floor((nowMs - epoch) / 86400000));
-  // Compute today's topic ID per level, using the same active-only,
+  var daysSince = khTopicWeeksSince(); // weeks since epoch (Weekly Topic)
+  // Compute this week's topic ID per level, using the same active-only,
   // sort_order/created_at-ordered list the generation code uses.
   var pinnedTopicIds = Object.create(null);
   var byLevelActive = Object.create(null);
@@ -4168,7 +4179,7 @@ function renderTopicsTable(list) {
   for (var pi = 0; pi < list.length; pi++) {
     if (pinnedTopicIds[list[pi].id]) pinnedCount++;
   }
-  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 오늘 핀 <b>' + pinnedCount + '</b>개 · Day ' + daysSince + ' (기준일 ' + KH_WRITING_TOPICS_EPOCH.slice(0,10) + ')</div>'
+  el.innerHTML = '<div style="margin-bottom:10px;font-size:13px;color:var(--gray)">총 <b>' + list.length + '</b>개 · 이번 주 핀 <b>' + pinnedCount + '</b>개 · Week ' + daysSince + ' (기준일 ' + KH_WRITING_TOPICS_EPOCH.slice(0,10) + ')</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
     + '<thead><tr style="background:#f8faff;border-bottom:2px solid var(--border)">'
     + '<th style="padding:7px 8px;text-align:center">#</th>'
@@ -4407,14 +4418,12 @@ async function pregenAI(topicId) {
     for (var ti=0; ti<levelTopics.length; ti++) { if (levelTopics[ti].id===topicId) { topicIdx=ti; break; } }
     if (topicIdx < 0) topicIdx = 0;
 
-    var epoch = new Date(KH_WRITING_TOPICS_EPOCH).getTime();
-    var kstNow = new Date(Date.now() + 9*3600000);
-    var todayStr = kstNow.toISOString().slice(0,10);
-    var todayMs = new Date(todayStr + 'T00:00:00+09:00').getTime();
-    var daysSince = Math.max(0, Math.floor((todayMs - epoch) / 86400000));
-    var todayIdx = levelTopics.length ? (daysSince % levelTopics.length) : 0;
-    var daysUntil = (topicIdx - todayIdx + levelTopics.length) % levelTopics.length;
-    var targetDate = new Date(todayMs + daysUntil * 86400000).toISOString().slice(0,10);
+    // Week this topic runs: weeks until its turn, from this week's Monday.
+    var thisWeek = khWeekKey();
+    var weeksSince = khTopicWeeksSince();
+    var todayIdx = levelTopics.length ? (weeksSince % levelTopics.length) : 0;
+    var weeksUntil = (topicIdx - todayIdx + levelTopics.length) % levelTopics.length;
+    var targetDate = new Date(new Date(thisWeek + 'T00:00:00Z').getTime() + weeksUntil * 7 * 86400000).toISOString().slice(0,10);
 
     if (btn) btn.textContent = '⏳ ' + targetDate + ' 생성중...';
 
@@ -14336,10 +14345,10 @@ async function srShowTab(tab) {
 // ── TOPICS tab (daily content — AI-generated + admin-editable) ──────────────────────
 function srTopicsFormHTML() {
   return '<div class="sf-card" style="margin-bottom:12px">'
-    + '<div style="font-weight:800;font-size:15px;margin-bottom:6px">📅 오늘의 주제 편집</div>'
-    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">날짜 + 레벨로 AI 생성 콘텐츠를 불러오거나 직접 수정합니다. 저장하면 <b>모든 사용자</b>에게 동일한 콘텐츠가 표시됩니다.</div>'
+    + '<div style="font-weight:800;font-size:15px;margin-bottom:6px">📅 이번 주 주제 편집</div>'
+    + '<div style="font-size:12px;color:#64748b;margin-bottom:14px">날짜 + 레벨로 AI 생성 콘텐츠를 불러오거나 직접 수정합니다. (주 단위 — 어떤 날짜를 골라도 그 주 월요일 콘텐츠로 맞춰집니다) 저장하면 <b>모든 사용자</b>에게 동일한 콘텐츠가 표시됩니다.</div>'
     + '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">'
-    + '<div class="fg" style="margin:0"><label>날짜</label><input type="date" id="srt-date" value="'+new Date().toISOString().slice(0,10)+'"></div>'
+    + '<div class="fg" style="margin:0"><label>날짜</label><input type="date" id="srt-date" value="'+khWeekKey()+'"></div>'
     + '<div class="fg" style="margin:0"><label>레벨</label>'
     + '<select id="srt-level"><option value="Starter">Seed</option><option value="Beginner" selected>Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select></div>'
     + '<button class="btn btn-g" onclick="srLoadDailyContent()">Load</button>'
@@ -14411,9 +14420,13 @@ async function srLoadDailyContent() {
   var msgEl    = document.getElementById('srt-msg');
   var editorEl = document.getElementById('srt-editor');
   var emptyEl  = document.getElementById('srt-empty');
-  var date  = (document.getElementById('srt-date').value  || '').trim();
+  var date  = khWeekKey((document.getElementById('srt-date').value  || '').trim()); // Weekly Topic row (Monday)
   var level = (document.getElementById('srt-level').value || '').trim();
   if (!date || !level) { if (msgEl) msgEl.textContent = '날짜와 레벨을 선택하세요.'; return; }
+  // Weekly Topic: any date → that week's Monday (the row key). Snap the
+  // picker too so Save writes the same row.
+  date = khWeekKey(date);
+  document.getElementById('srt-date').value = date;
   if (msgEl) msgEl.textContent = 'Loading...';
 
   var r = await sb.from('study_daily_content').select('*')
@@ -14434,10 +14447,8 @@ async function srLoadDailyContent() {
     document.getElementById('srt-admin-badge').style.display = 'none';
   }
 
-  // 해당 날짜에 어떤 토픽이 배정되는지 계산
-  var epoch = new Date(KH_WRITING_TOPICS_EPOCH).getTime();
-  var selMs = new Date(date + 'T00:00:00+09:00').getTime();
-  var daysSince = Math.max(0, Math.floor((selMs - epoch) / 86400000));
+  // 해당 주에 어떤 토픽이 배정되는지 계산 (weeks since epoch)
+  var daysSince = khTopicWeeksSince(date);
   var topicRes2 = await sb.from('writing_topics').select('*').eq('level',level).eq('active',true).order('sort_order').order('created_at');
   var allTopics = (topicRes2.data||[]);
   var scheduledTopic = allTopics.length ? allTopics[daysSince % allTopics.length] : null;
@@ -14497,7 +14508,7 @@ async function srLoadDailyContent() {
   }
 
   var rec = r.data;
-  if (msgEl) msgEl.textContent = '✅ Loaded (Day '+daysSince+')';
+  if (msgEl) msgEl.textContent = '✅ Loaded (Week '+daysSince+', '+date+')';
   // Mismatch detection — if the stored row's topic doesn't match the
   // schedule formula's pick for that date+level, render a yellow alert
   // bar in #srt-mismatch-bar (a dedicated element ABOVE the editor).
@@ -14532,8 +14543,8 @@ async function srLoadDailyContent() {
       ? '<div>📅 예정 토픽: <b>' + (scheduledTopic.topic_ko || '') + '</b> <span style="opacity:.7">— ' + (scheduledTopic.topic_en || '') + '</span></div>'
       : '<div>📅 예정 토픽: <span style="opacity:.6">(이 레벨에 active 토픽 없음)</span></div>';
     var headerLabel = matchOk
-      ? '✅ 스케줄 일치 — Day ' + daysSince + ' (' + level + ')'
-      : '⚠️ 스케줄 불일치 — Day ' + daysSince + ' (' + level + ')';
+      ? '✅ 스케줄 일치 — Week ' + daysSince + ' (' + level + ')'
+      : '⚠️ 스케줄 불일치 — Week ' + daysSince + ' (' + level + ')';
     var regenBtnHtml = mismatch
       ? '<button class="btn" onclick="srForceRegenerateScheduled()" style="margin-top:8px;background:#fde68a;color:#92400e;border:1px solid #f59e0b;font-size:12px;padding:6px 14px;font-weight:800">🔄 예정 토픽으로 새로 생성</button>'
       : '';
@@ -14678,7 +14689,7 @@ function twPickBlank(i, word) {
 async function srSaveDailyContent() {
   var sb = getSb(); if (!sb) return;
   var msgEl = document.getElementById('srt-msg');
-  var date  = (document.getElementById('srt-date').value  || '').trim();
+  var date  = khWeekKey((document.getElementById('srt-date').value  || '').trim()); // Weekly Topic row (Monday)
   var level = (document.getElementById('srt-level').value || '').trim();
   if (!date || !level) { if (msgEl) msgEl.textContent = '날짜와 레벨을 선택하세요.'; return; }
   if (msgEl) msgEl.textContent = '저장 중…';
@@ -14820,7 +14831,7 @@ async function srForceRegenerateScheduled() {
 }
 
 async function srRegenerate() {
-  var date  = (document.getElementById('srt-date').value  || '').trim();
+  var date  = khWeekKey((document.getElementById('srt-date').value  || '').trim()); // Weekly Topic row (Monday)
   var level = (document.getElementById('srt-level').value || '').trim();
   if (!date || !level) return;
   if (!confirm('현재 콘텐츠를 삭제하고 AI로 재생성합니다. 생성 실패 시 기존 데이터로 자동 복원됩니다. 계속?')) return;
@@ -14837,7 +14848,7 @@ async function srRegenerate() {
 // full pre-warm is ~$0.16/day.
 async function srPreWarmTodayAllLevels() {
   var msgEl = document.getElementById('srt-msg');
-  if (!confirm('오늘 날짜에 대해 4개 레벨 (Seed/Sprout/Tree/Forest) 모두 생성 + 저장합니다.\n\n예상: ~40초, ~$0.16 (Haiku × 4).\n이후 학습자는 모두 즉시 DB 캐시 hit (Claude 호출 0).\n\n진행할까요?')) return;
+  if (!confirm('이번 주(월요일 기준)에 대해 4개 레벨 (Seed/Sprout/Tree/Forest) 모두 생성 + 저장합니다.\n\n예상: ~40초, ~$0.16 (Haiku × 4).\n이후 학습자는 모두 즉시 DB 캐시 hit (Claude 호출 0).\n\n진행할까요?')) return;
   var sb = getSb(); if (!sb) { if (msgEl) msgEl.textContent = '❌ Supabase 클라이언트 없음'; return; }
   var levels = ['Starter','Beginner','Intermediate','Advanced'];
   // Use KST date — pre-warming "today" must align with the same
@@ -14845,7 +14856,7 @@ async function srPreWarmTodayAllLevels() {
   // midnight). UTC slice() between 00:00-08:59 KST would write to
   // yesterday's row, and learners loading at 09:00 KST would miss
   // the cache. Codex P2 review flagged.
-  var today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  var today = khWeekKey(); // Weekly Topic: this week's row (Monday)
   var ok = 0, fail = 0;
   for (var i = 0; i < levels.length; i++) {
     var lvl = levels[i];
@@ -14903,6 +14914,7 @@ async function srRegenDailyContent() {
   var date  = (document.getElementById('srt-date').value  || '').trim();
   var level = (document.getElementById('srt-level').value || '').trim();
   if (!date || !level) { if (msgEl) msgEl.textContent = '날짜와 레벨을 선택하세요.'; return; }
+  date = khWeekKey(date); document.getElementById('srt-date').value = date; // Weekly Topic row
   if (!confirm('AI로 콘텐츠를 새로 생성합니다. 현재 내용이 덮어씌워집니다. 계속하시겠어요?')) return;
 
   try {
@@ -14972,14 +14984,9 @@ async function _srPickTopicFromDB(sb, level, date) {
   var allTopics = topicsRes.data || [];
   if (!allTopics.length) return null;
 
-  // Deterministic date-based rotation: same logic as study room
-  // Day 0 (2026-04-14) = topic #1, Day 1 = topic #2, ...
-  if (!date) date = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
-  var epoch = new Date(KH_WRITING_TOPICS_EPOCH).getTime();
-  var now = new Date(date + 'T00:00:00+09:00').getTime();
-  var daysSinceEpoch = Math.max(0, Math.floor((now - epoch) / 86400000));
-  var todayIdx = daysSinceEpoch % allTopics.length;
-  var pick = allTopics[todayIdx];
+  // Deterministic weekly rotation (same as the Study Room): week 0 (the
+  // epoch's week) = topic #1, week 1 = topic #2, ...
+  var pick = allTopics[khTopicWeeksSince(date) % allTopics.length];
   return { topic_ko: pick.topic_ko || '', topic_en: pick.topic_en || '' };
 }
 
@@ -15437,7 +15444,7 @@ async function srGenTopicWriting() {
 }
 
 async function srDeleteDailyContent() {
-  var date  = (document.getElementById('srt-date').value  || '').trim();
+  var date  = khWeekKey((document.getElementById('srt-date').value  || '').trim()); // Weekly Topic row (Monday)
   var level = (document.getElementById('srt-level').value || '').trim();
   if (!date || !level) return;
   if (!confirm(date + ' [' + level + '] 콘텐츠를 삭제하시겠어요?')) return;
@@ -15454,8 +15461,9 @@ async function srLoadTopicSchedule() {
   var sb = getSb();
   var el = document.getElementById('srt-list'); if (!sb || !el) return;
   var today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
-  var past   = new Date(Date.now() + 9 * 3600000 - 3 * 86400000).toISOString().slice(0, 10);
-  var future = new Date(Date.now() + 9 * 3600000 + 14 * 86400000).toISOString().slice(0, 10);
+  // Weekly Topic: last week … 4 weeks ahead (rows keyed by Monday)
+  var past   = new Date(new Date(khWeekKey() + 'T00:00:00Z').getTime() - 7 * 86400000).toISOString().slice(0, 10);
+  var future = new Date(new Date(khWeekKey() + 'T00:00:00Z').getTime() + 28 * 86400000).toISOString().slice(0, 10);
   var r = await sb.from('study_daily_content')
     .select('scheduled_date,level,topic_ko,topic_en,admin_edited,status')
     .gte('scheduled_date', past)
@@ -15520,8 +15528,8 @@ async function _srRunAutoGen(sb, dateMap, allLevels, lvlNames, listEl, days) {
 
   // dateMap이 없으면 DB에서 가져오기
   if (!dateMap) {
-    var kst = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
-    var futureDate = new Date(new Date(kst + 'T00:00:00+09:00').getTime() + days * 86400000).toISOString().slice(0, 10);
+    var kst = khWeekKey(); // this week's Monday — weekly rows start there
+    var futureDate = new Date(new Date(kst + 'T00:00:00+09:00').getTime() + (days + 7) * 86400000).toISOString().slice(0, 10);
     var r = await sb.from('study_daily_content').select('scheduled_date,level').gte('scheduled_date', kst).lte('scheduled_date', futureDate);
     dateMap = {};
     (r.data || []).forEach(function(row) {
@@ -15532,9 +15540,11 @@ async function _srRunAutoGen(sb, dateMap, allLevels, lvlNames, listEl, days) {
 
   var kstNow = new Date(Date.now() + 9 * 3600000);
   var todayKST = kstNow.toISOString().slice(0, 10);
+  // Weekly Topic: the weeks (Mondays) covering the next `days` days.
   var autoGenDates = [];
   for (var di = 0; di < days; di++) {
-    autoGenDates.push(new Date(new Date(todayKST + 'T00:00:00+09:00').getTime() + di * 86400000).toISOString().slice(0, 10));
+    var wk = khWeekKey(new Date(new Date(todayKST + 'T00:00:00Z').getTime() + di * 86400000).toISOString().slice(0, 10));
+    if (autoGenDates.indexOf(wk) < 0) autoGenDates.push(wk);
   }
   var autoGenItems = [];
   autoGenDates.forEach(function(d) {
@@ -15609,17 +15619,18 @@ async function srPregenerate10Days() {
   if (!sb) { if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444">Supabase 연결 실패 — 새로고침 후 다시 시도하세요.</div>'; return; }
   var level = (document.getElementById('srt-level').value || 'Beginner').trim();
   var lvlDisplay = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level;
-  if (!confirm('Generate 10 days of topics for ' + lvlDisplay + '?')) return;
-  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">Generating 10 days for ' + lvlDisplay + '... (30-60초 소요)</div>';
+  if (!confirm('Generate the next 4 weeks of topics for ' + lvlDisplay + '?')) return;
+  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">Generating 4 weeks for ' + lvlDisplay + '... (30-60초 소요)</div>';
 
   try {
     // Check which dates already exist (use KST to match study room)
     var kstNow = new Date(Date.now() + 9 * 3600000);
     var todayKST = kstNow.toISOString().slice(0, 10);
+    // Weekly Topic: this week + the next 3 (rows keyed by Monday).
     var dates = [];
-    for (var i = 0; i < 10; i++) {
-      var d = new Date(new Date(todayKST + 'T00:00:00+09:00').getTime() + i * 86400000);
-      dates.push(d.toISOString().slice(0, 10));
+    var wk0 = khWeekKey(todayKST);
+    for (var i = 0; i < 4; i++) {
+      dates.push(new Date(new Date(wk0 + 'T00:00:00Z').getTime() + i * 7 * 86400000).toISOString().slice(0, 10));
     }
     var existing = await sb.from('study_daily_content').select('scheduled_date').eq('level', level).in('scheduled_date', dates);
     if (existing.error) throw new Error('DB 조회 실패: ' + existing.error.message);
@@ -15627,13 +15638,13 @@ async function srPregenerate10Days() {
     var missing = dates.filter(function(d){ return existingDates.indexOf(d) < 0; });
 
     if (!missing.length) {
-      if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#16a34a">All 10 days already have topics for ' + lvlDisplay + '!</div>';
+      if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#16a34a">All 4 weeks already have topics for ' + lvlDisplay + '!</div>';
       await srLoadTopicSchedule();
       return;
     }
 
     // Get writing_topics for dedup
-    var topicsRes = await sb.from('writing_topics').select('*').eq('level', level).eq('active', true);
+    var topicsRes = await sb.from('writing_topics').select('*').eq('level', level).eq('active', true).order('sort_order').order('created_at');
     var allTopics = topicsRes.data || [];
     var usedRes = await sb.from('study_daily_content').select('topic_ko').eq('level', level).order('scheduled_date',{ascending:false}).limit(365);
     var usedKo = (usedRes.data||[]).map(function(r){return r.topic_ko;});
@@ -15646,10 +15657,8 @@ async function srPregenerate10Days() {
       // Throttle: wait 1.5s between API calls to avoid rate limiting
       if (mi > 0) await new Promise(function(r){ setTimeout(r, 1500); });
       var date = missing[mi];
-      // Deterministic date-based rotation (same as study room + _srPickTopicFromDB)
-      var _epoch = new Date(KH_WRITING_TOPICS_EPOCH).getTime();
-      var _now = new Date(date + 'T00:00:00+09:00').getTime();
-      var _dayIdx = Math.max(0, Math.floor((_now - _epoch) / 86400000)) % (allTopics.length || 1);
+      // Deterministic weekly rotation (same as study room + _srPickTopicFromDB)
+      var _dayIdx = khTopicWeeksSince(date) % (allTopics.length || 1);
       var topic = allTopics.length ? allTopics[_dayIdx] : null;
       var topicKo = topic ? topic.topic_ko : '';
       var topicEn = topic ? topic.topic_en : '';
@@ -15698,6 +15707,7 @@ async function srGenerate1Day1Level() {
   var level = (document.getElementById('srt-level').value || 'Beginner').trim();
   var lvlDisplay = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[level]||level;
   if (!date) { toast('날짜를 선택하세요.'); return; }
+  date = khWeekKey(date); document.getElementById('srt-date').value = date; // Weekly Topic row
 
   // Check if already exists
   var existing = await sb.from('study_daily_content').select('id').eq('scheduled_date', date).eq('level', level).maybeSingle();
@@ -15744,6 +15754,7 @@ async function srGenerate1DayAllLevels() {
   if (!sb) { if (el) el.innerHTML = '<div style="color:#ef4444;padding:12px">Supabase 연결 실패</div>'; return; }
   var date = (document.getElementById('srt-date').value || '').trim();
   if (!date) { toast('날짜를 선택하세요.'); return; }
+  date = khWeekKey(date); document.getElementById('srt-date').value = date; // Weekly Topic row
   var allLevels = ['Starter','Beginner','Intermediate','Advanced'];
   var lvlNames = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
   if (!confirm(date + ' 전체 4레벨 생성합니다. 기존 데이터는 덮어씌워집니다. 계속?')) return;
@@ -15789,24 +15800,19 @@ async function srGenerate1DayAllLevels() {
   await srLoadTopicSchedule();
 }
 
-// ── 3일치 전체 배정 (모든 레벨 × 3일) ─────────────────────────
+// ── 2주치 전체 배정 (모든 레벨 × 이번 주 + 다음 주) ───────────
 async function srAssign3Days() {
   var sb = getSb();
   var el = document.getElementById('srt-list');
   if (!sb) { if (el) el.innerHTML = '<div style="color:#ef4444;padding:12px">Supabase 연결 실패</div>'; return; }
   var allLevels = ['Starter','Beginner','Intermediate','Advanced'];
   var lvlNames = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
-  if (!confirm('3일치 × 4레벨 = 최대 12개 콘텐츠를 생성합니다. 계속?')) return;
-  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">3일치 배정 중… (2-3분 소요)</div>';
+  if (!confirm('이번 주 + 다음 주 × 4레벨 = 최대 8개 콘텐츠를 생성합니다. 계속?')) return;
+  if (el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#475569">2주치 배정 중… (1-2분 소요)</div>';
 
-  // Use KST date to match study room's kstDateKey()
-  var kstNow = new Date(Date.now() + 9 * 3600000);
-  var todayKST = kstNow.toISOString().slice(0, 10);
-  var dates = [];
-  for (var i = 0; i < 3; i++) {
-    var d = new Date(new Date(todayKST + 'T00:00:00+09:00').getTime() + i * 86400000);
-    dates.push(d.toISOString().slice(0, 10));
-  }
+  // Weekly Topic: this week + next week (rows keyed by Monday, KST)
+  var wk0 = khWeekKey();
+  var dates = [wk0, new Date(new Date(wk0 + 'T00:00:00Z').getTime() + 7 * 86400000).toISOString().slice(0, 10)];
 
   var generated = 0; var errors = []; var apiCallCount = 0;
   for (var di = 0; di < dates.length; di++) {
@@ -15862,7 +15868,7 @@ async function srAssign3Days() {
 async function srApproveDailyContent() {
   var sb = getSb(); if (!sb) return;
   var msgEl = document.getElementById('srt-msg');
-  var date = (document.getElementById('srt-date').value || '').trim();
+  var date = khWeekKey((document.getElementById('srt-date').value || '').trim()); // Weekly Topic row (Monday)
   var level = (document.getElementById('srt-level').value || '').trim();
   if (!date || !level) { if (msgEl) msgEl.textContent = '날짜와 레벨을 선택하세요.'; return; }
   // Save first, then approve
@@ -17377,19 +17383,19 @@ async function srBulkSearch() {
     }
 
     // Build cells.
-    var epoch = new Date(_srpbBulkEpoch).getTime();
+    // Weekly Topic: one picture per week (keyed by Monday) per level —
+    // the selected day range is collapsed to the weeks it covers.
     var cells = [];
+    var seenWeeks = {};
     for (var d = 0; d < days; d++) {
-      var dt = new Date(startStr + 'T00:00:00+09:00');
-      dt.setDate(dt.getDate() + d);
-      var dateStr = dt.toISOString().slice(0, 10);
+      var dateStr = khWeekKey(new Date(new Date(startStr + 'T00:00:00Z').getTime() + d * 86400000).toISOString().slice(0, 10));
+      if (seenWeeks[dateStr]) continue;
+      seenWeeks[dateStr] = true;
       for (var lj = 0; lj < levels.length; lj++) {
         var lv = levels[lj];
         var topics = topicsByLevel[lv];
         if (!topics || !topics.length) continue;
-        var selMs = new Date(dateStr + 'T00:00:00+09:00').getTime();
-        var daysSince = Math.max(0, Math.floor((selMs - epoch) / 86400000));
-        var topic = topics[daysSince % topics.length];
+        var topic = topics[khTopicWeeksSince(dateStr) % topics.length];
         cells.push({
           date: dateStr, level: lv,
           topic_ko: topic.topic_ko || '', topic_en: topic.topic_en || '',

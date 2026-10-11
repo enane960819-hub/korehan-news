@@ -27,6 +27,11 @@ doesn't keep reminding about closed work.
   new grammar to `grammar_curriculum` as Library shells (≤15/day). Lessons
   are generated on first open (`grammar_examples_cache` gf-curr2::<pattern>);
   admin can regenerate one from 🧩 Analysis Reports.
+- Study Room is **Weekly Topic** (2026-10-12): one topic + one
+  `study_daily_content` row per KST week, keyed by that Monday
+  (`kstWeekKey()` / `khWeekKey()` / `weekKey()` — keep in sync; rotation =
+  weeks since 2026-10-12 % active topics). The 5 steps and the writing
+  package are weekly; `user_daily_progress` still records the actual day.
 - Sentence analysis: an article with no cache is baked on the first
   signed-in reader's tap by the `article-analyze` Edge Function (Haiku, once
   per article, ≤5 new articles/user/day, ≤60/day site-wide; log +
