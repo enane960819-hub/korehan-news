@@ -67,13 +67,9 @@
     @keyframes sparkle{0%,100%{opacity:.1;transform:scale(.7)}50%{opacity:.35;transform:scale(1.2)}}
 
     /* World Cup: pulsing */
-    .cv-worldcup{background:linear-gradient(135deg,#ea580c,#db2777)}
-    .cv-worldcup .wp{position:absolute;font-size:22px;animation:wpPulse 3s ease-in-out infinite}
     @keyframes wpPulse{0%,100%{opacity:.12;transform:scale(.8) rotate(-5deg)}50%{opacity:.28;transform:scale(1.15) rotate(5deg)}}
 
     /* Fortune: glow */
-    .cv-fortune{background:linear-gradient(135deg,#0f766e,#2563eb)}
-    .cv-fortune .fg{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.15),transparent 70%);animation:fGlow 3s ease-in-out infinite}
     @keyframes fGlow{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:.6;transform:scale(1.3)}}
 
     /* Neon overrides */
@@ -192,24 +188,6 @@
          else cell=_hubIcon(v, 16, '#c4b5fd', .85);
          h+='<div class="sp" style="left:'+(5+i*12)+'%;top:'+(10+((i*19)%65))+'%;animation-delay:'+(i*.35)+'s">'+cell+'</div>';
        }
-       return h;
-     }},
-    {id:'ideal-worldcup',title:'Ideal Type World Cup',sub:'Tournament brackets',href:'korehan-fun-worldcup.html',cv:'cv-worldcup',
-     anim:function(){
-       // Worldcup card: trophy / swords / crown SVG rotation.
-       var slots=['trophy','swords','crown','trophy','swords','sparkle'];
-       var h='';
-       for(var i=0;i<6;i++) h+='<div class="wp" style="left:'+(10+i*16)+'%;top:'+(12+((i*22)%55))+'%;animation-delay:'+(i*.4)+'s">'+_hubIcon(slots[i],22,'#fbbf24',.28)+'</div>';
-       return h;
-     }},
-    {id:'daily-fortune',title:"Today's Fortune",sub:'Daily luck check',href:'korehan-fun-fortune.html',cv:'cv-fortune',
-     anim:function(){
-       // Fortune card: keep the radial-glow circles. The center 🔮
-       // had no SVG equivalent in icons.js — swap to SPARKLE (large)
-       // so the card still has a centred ornament.
-       var h='';
-       for(var i=0;i<4;i++) h+='<div class="fg" style="width:'+(60+i*20)+'px;height:'+(60+i*20)+'px;left:'+(10+i*22)+'%;top:'+(15+i*18)+'%;animation-delay:'+(i*.6)+'s"></div>';
-       h+='<div style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);opacity:.28;animation:fGlow 3s ease-in-out infinite">'+_hubIcon('sparkle',42,'#a78bfa',1)+'</div>';
        return h;
      }}
   ];

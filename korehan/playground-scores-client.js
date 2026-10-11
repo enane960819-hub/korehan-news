@@ -22,7 +22,7 @@
   // pollute the table.
   var KNOWN = {
     'worddrop':1, 'chosung':1, 'memory':1, 'hangul-tetris':1, 'ox':1,
-    'worldcup':1, 'sentence-order':1, 'dictation-mini':1
+    'sentence-order':1, 'dictation-mini':1
   };
 
   window.playgroundScores = {
