@@ -54,7 +54,9 @@ export function analysisPrompt(title: string, body: string, level: Level): strin
     + '    exp: 1-2줄 영어 설명. morpheme이 무엇을 하는지 + 사전형 → 활용형 chain.\n'
     + '    example_in_sentence: 이 문장의 literal substring chunk.\n'
     + '- 본문에 없는 패턴 절대 금지. 확실하지 않으면 생략.\n'
-    + '- expression/idiom은 그 문장 의미에 핵심일 때만.\n\n'
+    + '- expression/idiom은 그 문장 의미에 핵심일 때만.\n'
+    + '- 관계명사 + 조사 덩어리(N 사이에서 / N 가운데 / N 중에서 / N 동안 / N 끝에)는 조사만 따로 쪼개지 말고 덩어리를 type "expression"으로 함께 제시 (예: "젊은층 사이에서" → "~ 사이에서 (among)").\n'
+    + '- 동사·형용사 연어(인기를 얻다, 관심을 끌다, 영향을 미치다 등)는 type "expression". type "grammar"는 어미·조사·보조용언·문법 구문에만.\n\n'
     + '[출력 — JSON ONLY, no preamble, no code fences]\n'
     + '{"sentences":[{"text":"<exact KO sentence>","translation":"<EN>","vocab":[{"ko":"...","en":"..."}],"analysis":[{"type":"grammar","label":"...","exp":"...","example_in_sentence":"..."}]}]}'
 }

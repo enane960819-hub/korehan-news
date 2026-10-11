@@ -524,6 +524,7 @@
     { re: /을\s*위해서?(?=[^가-힣]|$)|를\s*위해서?(?=[^가-힣]|$)/, label: '~을/를 위해(서) (for the sake of)', hint: 'beneficiary / purpose' },
     { re: /을\s*위한(?=[^가-힣]|\s)|를\s*위한(?=[^가-힣]|\s)/, label: '~을/를 위한 (for) [adnominal]', hint: 'attributive form of ~을 위해. modifies a following noun. "for the sake of N". 학생들을 위한 책 = "books for students"' },
 
+    { _kind: 'expression' },  // sections below until the next _kind marker are collocations
     // ── High-value collocation expressions (added 2026-05-24) ────────
     // These are news/article-register chunks that the AI consistently
     // skips when they\'re NOT in MUST-INCLUDE. Adding them via regex
@@ -738,6 +739,7 @@
     { re: /[가-힣]?(는|ㄴ|은|던)\s*(대로|만큼)/, label: '~ㄴ/는/던 대로 / ~만큼 (as / according to / to the extent)', hint: 'manner or extent. <stem> + ㄴ/는/던 대로 = "as / according to what (was)"; <stem> + ㄴ/는/던 만큼 = "as much as". 원했던 대로 ("just as one wished"); 들은 대로 ("as one heard"); 노력한 만큼 ("as much as one tried").' },
     { re: /ㄴ\s*셈이|은\s*셈이/, label: '~ㄴ/은 셈이다 (amounts to)', hint: 'roughly equivalent to. "amounts to / can be counted as"' },
 
+    { _kind: 'grammar' },
     // ── Passive / change-of-state ───────────────────────────────
     // ~아/어지다 (passive, "becomes") attaches to action verbs to form
     // a passive, and to adjectives to mean "becomes X". Extremely common
@@ -991,6 +993,7 @@
     { re: /에\s*한(해|해서|한)(?=[^가-힣]|\s|[,.])/, label: '~에 한해(서) (limited to)', hint: 'restriction marker. <noun> + 에 한해(서) = "limited to / only in the case of". 회원에 한해 (only for members); 오늘에 한해서.' },
     { re: /에\s*상관없이(?=[^가-힣]|\s|[,.])/, label: '~에 상관없이 (regardless of)', hint: 'irrespective-of marker. <noun> + 에 상관없이 = "regardless of / irrespective of". 나이에 상관없이 (regardless of age); 결과에 상관없이.' },
 
+    { _kind: 'expression' },
     // ── Fixed expressions / news (additional) ───────────────────
     { re: /(을|를)\s*향(해|해서|한)(?=[^가-힣]|\s|[,.])/, label: '~을/를 향해(서) / 향한 (toward / aimed at)', hint: 'direction or aim. <noun> + 을/를 향해(서) = "toward / heading to"; ~을/를 향한 + N = "X aimed at". 미래를 향해 (toward the future); 평화를 향한 노력.' },
     { re: /(을|를)\s*막론(하고|한)(?=[^가-힣]|\s|[,.])/, label: '~을/를 막론하고 (regardless of)', hint: 'all-encompassing inclusion. <noun> + 을/를 막론하고 = "regardless of / no matter what". 남녀노소를 막론하고 (regardless of age or gender).' },
@@ -1008,6 +1011,9 @@
     // dictionary entry, not a pattern to study).
     { re: /의\s*일종(이|이다|입니다|으로|이라)/, label: '~의 일종이다 (is a kind / type of)', hint: 'classification marker. <noun> + 의 일종이다 = "is a kind / type of (X)". 운동의 일종이다 (is a kind of exercise); 사기의 일종으로 분류된다 (is classified as a kind of fraud).' },
 
+    { re: /사이에서|사이에(?=[\s,.]|$)/, label: '~ 사이에서 (among / between a group)', hint: 'relation noun 사이 ("between, among") + 에서 (where it happens). <group noun> 사이에서 = "among <group>": 젊은층 사이에서 인기가 많아요 (popular among young people); 친구들 사이에서 유명해요 (famous among friends). Learn it as one chunk — the 에서 is the ordinary location/scope particle.' },
+    { re: /중에서(?=[\s,.]|$)/, label: '~ 중에서 (among / out of)', hint: 'selection from a set: <set> 중에서 = "out of / among <set>". 과일 중에서 사과를 제일 좋아해요 (of all fruits I like apples best); 세 가지 중에서 하나를 고르세요 (choose one of the three). 중에 also works in speech.' },
+    { _kind: 'grammar' },
     // ── Honorifics ──────────────────────────────────────────────
     // ~(으)셨 honorific past — false-fires on 시-stem verbs whose
     // 시+었 contracts to 셨 (마시다 → 마셨, 모시다 → 모셨). Those are
@@ -1037,6 +1043,19 @@
     { re: /(사니|사세요|만드세요|만드니|머시|머세요|아니|아세요|노세요|드세요)/, label: 'ㄹ 탈락 (ㄹ drops before ㄴ/ㅅ/ㅂ)', hint: 'ㄹ-deletion: 살다→사니/사세요, 만들다→만드세요, 알다→아세요' },
     { re: /(파래|파랬|하얘|하얬|까매|까맸|노래|노랬|빨개|빨갰)/, label: 'ㅎ 불규칙 (ㅎ-color adjectives)', hint: 'ㅎ-irregular for color/shape adjs: 파랗다→파래, 하얗다→하얘' },
   ];
+  // Resolve the _kind section markers: collocations / fixed phrases are
+  // type 'expression' (an "EXPRESSION" chip, not "GRAMMAR"). Labels that
+  // start with a jamo or (으) ending stay grammar even inside those sections.
+  (function() {
+    var kind = 'grammar';
+    PATTERNS = PATTERNS.filter(function(p) {
+      if (p._kind) { kind = p._kind; return false; }
+      p.type = (kind === 'expression' && !/^~?\s*[(ㄱ-ㅎ]/.test(p.label)) ? 'expression' : 'grammar';
+      return true;
+    });
+  })();
+  var EXPRESSION_LABELS = {};
+  PATTERNS.forEach(function(p) { if (p.type === 'expression') EXPRESSION_LABELS[p.label] = true; });
 
   // Strip whitespace for relaxed regex matching — lets patterns like
   // "~지 않다" hit "보이지않았어요" too.
@@ -1288,7 +1307,10 @@
       if (!s || !s.text) return;
       var existing = {};
       (s.analysis || []).forEach(function(a) {
-        if (a && a.label) existing[String(a.label).trim()] = true;
+        if (!a || !a.label) return;
+        existing[String(a.label).trim()] = true;
+        // The model copies catalog labels — fix the chip for collocations.
+        if (EXPRESSION_LABELS[String(a.label).trim()]) a.type = 'expression';
       });
       if (!Array.isArray(s.analysis)) s.analysis = [];
       var seenLabels = {};
@@ -1305,7 +1327,7 @@
         var example = _extractExample(s.text, p);
         if (!example) return;  // no chunk → renderer would drop it anyway
         s.analysis.push({
-          type: 'grammar',
+          type: p.type || 'grammar',
           label: p.label,
           exp: p.hint,
           example_in_sentence: example,

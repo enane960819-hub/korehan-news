@@ -127,6 +127,13 @@ jobs:
           if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then BEFORE="HEAD~1"; fi
           FNS=$(git diff --name-only "$BEFORE" HEAD -- 'supabase/functions/' \
                 | awk -F/ 'NF>=4 && $3 != "daily-article-draft" && $3 !~ /^_/ {print $3}' | sort -u)
+          # A change under supabase/functions/_shared/ redeploys every function
+          # that imports from it (daily-article-draft is handled by `deploy`).
+          if git diff --name-only "$BEFORE" HEAD -- 'supabase/functions/_shared/' | grep -q .; then
+            SHARED=$(grep -l "_shared/" supabase/functions/*/index.ts 2>/dev/null \
+                     | awk -F/ '$3 != "daily-article-draft" {print $3}')
+            FNS=$(printf '%s\n%s\n' "$FNS" "$SHARED" | grep -v '^$' | sort -u)
+          fi
           if [ -z "$FNS" ]; then echo "No other functions changed."; exit 0; fi
           for fn in $FNS; do
             test -f "supabase/functions/$fn/index.ts" || { echo "skip $fn (no index.ts)"; continue; }

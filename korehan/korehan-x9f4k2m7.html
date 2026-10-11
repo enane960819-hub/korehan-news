@@ -316,7 +316,7 @@ body.sb-open .sb-backdrop{display:block}
 <script src="learning_hub_vocab_data.js"></script>
 <script src="js/core/security.js?v=20260527j"></script>
 <script src="js/kh-vocab-prompt.js?v=20260527f"></script>
-<script src="js/core/kh-grammar-patterns.js?v=20260525r"></script>
+<script src="js/core/kh-grammar-patterns.js?v=20261012a"></script>
 </head>
 <body>
 
@@ -5585,7 +5585,9 @@ async function runAutoGenerate(){
         + 'CRITICAL guardrails for ANALYSIS:\n'
         + '  - Only include a pattern if its marker actually appears in the sentence (the post-process enforce layer verifies this and drops items whose example_in_sentence is not a literal substring). When in doubt, omit.\n'
         + '  - For type="expression" / "idiom" (where regex doesn\'t apply and you are the judge): only surface a phrase if it is CENTRAL to that specific sentence\'s meaning — the learner could not paraphrase the sentence without grasping it. SKIP tangential / generic fillers (정말, 그런, 새로운, 이런 식으로 …), phrases the learner already knows at this level, and semantic duplicates of a grammar entry already in the same analysis array (e.g. don\'t list both ~다고 하다 AND ~다고 해요 — pick the canonical one).\n'
-        + '  - COMPOUND / COHESIVE CONSTRUCTIONS: when a sentence demonstrates a multi-token rhetorical structure (e.g. "X도 중요하지만 Y(이/가) 더 ~" comparative-contrast, "~기도 하고 ~기도 하다" both-and, "~ㄴ/는 데다(가) ~기까지 하다" on-top-of, "~지 않을 뿐(만) 아니라 ~까지 하다" not-only-but-also), surface the WHOLE construction as ONE expression entry with the multi-token chunk as example_in_sentence — not the individual particles split apart. Learners need to see the rhetorical unit, not three ~의 / ~도 / ~이 atoms when the sentence is really one comparison. Atomic particles (~의, ~이/가, ~을/를, ~도) are STILL surfaced separately as type="grammar" entries by the regex enforce layer; the compound is an ADDITIONAL type="expression" entry on top.\n';
+        + '  - COMPOUND / COHESIVE CONSTRUCTIONS: when a sentence demonstrates a multi-token rhetorical structure (e.g. "X도 중요하지만 Y(이/가) 더 ~" comparative-contrast, "~기도 하고 ~기도 하다" both-and, "~ㄴ/는 데다(가) ~기까지 하다" on-top-of, "~지 않을 뿐(만) 아니라 ~까지 하다" not-only-but-also), surface the WHOLE construction as ONE expression entry with the multi-token chunk as example_in_sentence — not the individual particles split apart. Learners need to see the rhetorical unit, not three ~의 / ~도 / ~이 atoms when the sentence is really one comparison. Atomic particles (~의, ~이/가, ~을/를, ~도) are STILL surfaced separately as type="grammar" entries by the regex enforce layer; the compound is an ADDITIONAL type="expression" entry on top.\n'
+        + '  - RELATION-NOUN CHUNKS: "N 사이에서 / N 가운데 / N 중에서 / N 동안 / N 끝에" — surface the chunk as ONE type="expression" entry (e.g. "젊은층 사이에서" → "~ 사이에서 (among)") rather than only the bare particle.\n'
+        + '  - COLLOCATIONS (인기를 얻다, 관심을 끌다, 영향을 미치다 …) are type="expression", never type="grammar". type="grammar" is only for endings, particles, auxiliaries and grammatical constructions.\n';
 
       // ── STEP 1: BODY (Sonnet 4.6) ─────────────────────────────
       // Body + title + key_expressions + paragraph_translations only.
@@ -5896,7 +5898,9 @@ window.runPendingAnalysisAll = async function() {
     + 'CRITICAL guardrails for ANALYSIS:\n'
     + '  - Only include a pattern if its marker actually appears in the sentence (the post-process enforce layer verifies this and drops items whose example_in_sentence is not a literal substring). When in doubt, omit.\n'
     + '  - For type="expression" / "idiom": only surface a phrase if it is CENTRAL to that specific sentence\'s meaning. SKIP tangential fillers and semantic duplicates of a grammar entry already in the same analysis array.\n'
-    + '  - COMPOUND / COHESIVE CONSTRUCTIONS: surface multi-token rhetorical structures as ONE expression entry rather than splitting into atomic particles.\n';
+    + '  - COMPOUND / COHESIVE CONSTRUCTIONS: surface multi-token rhetorical structures as ONE expression entry rather than splitting into atomic particles.\n'
+    + '  - RELATION-NOUN CHUNKS: "N 사이에서 / N 가운데 / N 중에서 / N 동안 / N 끝에" — surface the chunk as ONE type="expression" entry (e.g. "젊은층 사이에서" → "~ 사이에서 (among)") rather than only the bare particle.\n'
+    + '  - COLLOCATIONS (인기를 얻다, 관심을 끌다, 영향을 미치다 …) are type="expression", never type="grammar". type="grammar" is only for endings, particles, auxiliaries and grammatical constructions.\n';
 
   for (var i = 0; i < pending.length; i++) {
     var ctx = pending[i];
@@ -5948,6 +5952,7 @@ window.runPendingAnalysisAll = async function() {
         + '    label: 패턴/표현 자체. grammar는 형태소/연결어미/활용 종류만. 명사 X.\n'
         + '    exp: 1-2줄 영어 설명. morpheme이 무엇을 하는지 + 사전형 → 활용형 chain 필수.\n'
         + '    example_in_sentence: 이 문장에서 발췌한 chunk.\n'
+        + '- 관계명사 + 조사 덩어리(N 사이에서 / 가운데 / 중에서 / 동안)는 덩어리를 type "expression"으로 함께 제시. 동사 연어(인기를 얻다, 관심을 끌다)도 type "expression". grammar는 어미·조사·보조용언·문법 구문만.\n'
         + '- 만들지 말 것: 본문에 없는 패턴 절대 금지.\n\n'
         + '[출력 — JSON ONLY, no preamble, no code fences]\n'
         + '{\n'
@@ -8498,6 +8503,9 @@ async function loadAnalysisReports() {
       +   (!isLegacy && r.content_type === 'study_room' && /^gf:/.test(r.content_id || '')
             ? '<button onclick="sarRegenLesson(' + r.id + ')" title="Delete the shared cached lesson — the next learner who opens it gets a freshly generated one" style="padding:6px 12px;background:#fef3c7;color:#92400e;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">🔄 Regenerate lesson</button>'
             : '')
+      +   (!isLegacy && r.content_type === 'article' && r.content_id
+            ? '<button onclick="sarReanalyzeArticle(' + r.id + ')" title="Drop this article\'s sentence analysis — the next sentence tap regenerates it with the current prompt" style="padding:6px 12px;background:#fef3c7;color:#92400e;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">🔄 Re-analyze article</button>'
+            : '')
       +   '<span style="font-size:11px;color:#94a3b8">id: <code>' + esc(r.content_id) + '</code>' + (r.sent_idx != null ? ' · #' + esc(r.sent_idx) : '') + '</span>'
       + '</div></div>';
   }
@@ -8546,6 +8554,27 @@ async function sarRegenLesson(id) {
     toast('🔄 Lesson cleared — it regenerates on the next open');
     loadAnalysisReports();
   } catch (e) { toast('Regenerate failed: ' + (e.message || e), true); }
+}
+// Article report → drop the stored sentence analysis (paragraph
+// translations are kept) so the next sentence tap re-bakes it through
+// article-analyze with the current prompt. One AI call.
+async function sarReanalyzeArticle(id) {
+  var r = _sarRows[id];
+  if (!r || !r.content_id) return;
+  if (!confirm('Re-analyze article ' + r.content_id + '?\n\nIts sentence analysis is cleared; the next time you or a reader taps a sentence it is regenerated (one AI call).')) return;
+  try {
+    var cur = await getSb().from('article_cache').select('translation').eq('article_id', r.content_id).maybeSingle();
+    if (cur && cur.error) throw new Error(cur.error.message || cur.error);
+    var t = null;
+    try { t = cur && cur.data && cur.data.translation ? (typeof cur.data.translation === 'string' ? JSON.parse(cur.data.translation) : cur.data.translation) : null; } catch (_) { t = null; }
+    var keep = (t && Array.isArray(t.texts) && t.texts.length) ? JSON.stringify({ texts: t.texts }) : null;
+    var up = await getSb().from('article_cache').update({ translation: keep }).eq('article_id', r.content_id);
+    if (up && up.error) throw new Error(up.error.message || up.error);
+    await _sarClient().from('sentence_analysis_reports')
+      .update({ status: 'fixed', resolved_at: new Date().toISOString() }).eq('id', id);
+    toast('🔄 Cleared — tap a sentence in the article to regenerate');
+    loadAnalysisReports();
+  } catch (e) { toast('Re-analyze failed: ' + (e.message || e), true); }
 }
 async function sarDeleteLegacy(id) {
   var res = await getSb().from('client_errors').delete().eq('id', id);
