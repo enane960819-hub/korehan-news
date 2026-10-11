@@ -13374,7 +13374,8 @@ async function goPhoneCallAdmin() {
     + '<p style="color:#64748b;font-size:13px;margin:4px 0 0">phone_calls 테이블 — 스크립트/오디오/화자 관리</p></div>'
     + '<div style="display:flex;gap:8px">'
     + '<button onclick="openPhoneCreateModal()" style="background:#059669;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">+ 수동 추가</button>'
-    + '<button onclick="phoneBulkGenerate()" id="phone-ai-btn" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🤖 AI 3개 생성</button>'
+    + '<button onclick="phoneBulkGenerate()" id="phone-ai-btn" style="background:#7c3aed;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🤖 AI 3개 생성 (대본만)</button>'
+    + '<button onclick="phoneVoiceGenerate()" id="phone-voice-btn" style="background:#ea580c;color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🎙️ AI 통화 생성 (음성 포함)</button>'
     + '</div>'
     + '</div>'
     + '<div id="phone-admin-list">⏳ 불러오는 중...</div></div>';
@@ -13406,7 +13407,10 @@ async function loadPhoneAdminList() {
       + (spNames ? ' · <span>🎭' + spNames + '</span>' : '')
       + (c.audio_url ? ' · <span style="color:#059669">🔊 오디오 있음</span>' : '')
       + (c.is_active ? '' : ' <span style="background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:6px">비활성</span>')
-      + '</div></div>'
+      + '</div>'
+      + (c.audio_url ? '<audio controls preload="none" src="' + c.audio_url + '" style="width:100%;max-width:420px;height:32px;margin-top:6px"></audio>' : '')
+      + '</div>'
+      + (c.is_active ? '' : '<button onclick="phoneActivate(\'' + c.id + '\')" style="background:#eff6ff;color:#1d4ed8;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✅ 발행</button>')
       + '<button onclick="openPhoneEditModal(\'' + c.id + '\')" style="background:#ecfdf5;color:#059669;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 편집</button>'
       + '<button onclick="deletePhoneCall(\'' + c.id + '\')" style="background:#fef2f2;color:#dc2626;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">🗑</button>'
       + '</div>';
@@ -13416,6 +13420,44 @@ async function loadPhoneAdminList() {
 }
 
 function openPhoneCreateModal() { openPhoneEditModal(null); }
+
+// 🎙️ Scenario → Claude script → ElevenLabs voices → draft row with timed
+// script (phone-call-gen). Needs the ElevenLabs key in Settings → 💳/🔊.
+async function phoneVoiceGenerate() {
+  var scenario = prompt('통화 상황을 입력하세요 (예: 배달 음식 주문 후 메뉴 변경 요청 / 병원 진료 예약 / 집주인에게 보일러 고장 신고)');
+  if (!scenario || !scenario.trim()) return;
+  var lvl = prompt('레벨: Starter / Beginner / Intermediate / Advanced', 'Beginner') || 'Beginner';
+  lvl = ['Starter','Beginner','Intermediate','Advanced'].indexOf(lvl.trim()) >= 0 ? lvl.trim() : 'Beginner';
+  var btn = document.getElementById('phone-voice-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 대본 + 음성 생성 중… (30–90초)'; }
+  try {
+    var sess = await _sarClient().auth.getSession();
+    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    if (!token) throw new Error('관리자 로그인 세션이 없습니다');
+    var r = await fetch(SUPA_URL_ADMIN + '/functions/v1/phone-call-gen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPA_KEY_ADMIN },
+      body: JSON.stringify({ scenario: scenario.trim(), level: lvl, category: 'Daily' })
+    });
+    var j = await r.json().catch(function(){ return {}; });
+    if (!j.ok) {
+      var why = { no_elevenlabs_key: 'ElevenLabs 키가 없습니다 — 설정에서 저장하세요.', no_anthropic_key: 'Anthropic 키가 없습니다.' }[j.error];
+      throw new Error(why || j.detail || j.error || ('HTTP ' + r.status));
+    }
+    showToastAdmin('🎙️ 생성 완료: ' + j.title + ' (' + j.lines + '줄, ' + j.duration + '초) — 들어보고 ✅ 발행');
+    await loadPhoneAdminList();
+  } catch (e) {
+    alert('생성 실패: ' + (e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🎙️ AI 통화 생성 (음성 포함)'; }
+  }
+}
+async function phoneActivate(id) {
+  var res = await getSb().from('phone_calls').update({ is_active: true }).eq('id', id);
+  if (res && res.error) { alert('발행 실패: ' + res.error.message); return; }
+  showToastAdmin('✅ 발행됨');
+  await loadPhoneAdminList();
+}
 
 function openPhoneEditModal(id) {
   var existing = id ? _phoneAdminData.find(function(c){ return c.id === id; }) : null;
