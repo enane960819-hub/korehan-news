@@ -11,7 +11,7 @@
 --                                           in the browser before this
 -- Mastery is decided server-side; the rule mirrors _GC_MASTERY_ATTEMPTS /
 -- _GC_MASTERY_ACCURACY in korehan-study-room.js (keep them in sync).
--- Idempotent.
+-- Idempotent. (applied via apply-migrations.yml)
 
 alter table public.study_grammar_progress
   add column if not exists correct_count     int not null default 0,
