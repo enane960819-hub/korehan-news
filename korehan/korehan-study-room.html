@@ -2190,75 +2190,87 @@ async function drGenerateQuestions() {
   var vocabPool = [];
   var grammarPool = [];
 
-  // 1) saved_words — 유저가 저장한 단어 (최근 50개)
+  // Daily Review = what you learned TODAY (+ a few items from YESTERDAY so
+  // the day-after review happens naturally). Sources, each tagged:
+  //   today     — words saved today, words/grammar of articles read today,
+  //               this week's topic content
+  //   yesterday — words saved / articles read yesterday (KST)
+  //   recent    — fallback only, so a light study day still gets a review
+  var yday = (function(){ var d = new Date(today + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().slice(0,10); })();
+  var todayStartIso = new Date(today + 'T00:00:00+09:00').toISOString();
+  var ydayStartIso  = new Date(yday + 'T00:00:00+09:00').toISOString();
+  function _drPushWord(w, from) {
+    var en = (typeof splitWordEnMeaning === 'function') ? splitWordEnMeaning(w.word_en).meaning : w.word_en;
+    en = (en || '').replace(/^\s*\[(표현|슬랭)\]\s*/,'').trim();
+    if (!en || /^fast track expression$/i.test(en) || !w.word_ko) return;
+    vocabPool.push({ word_ko: w.word_ko, word_en: en, word_rom: w.word_rom || '', from: from });
+  }
+
+  // 1) saved words — today / yesterday first, recent as fallback
   if (sb && supaUser) {
     try {
       var swRes = await sb.from('user_saved_words')
-        .select('word_ko, word_en, word_rom')
+        .select('word_ko, word_en, word_rom, created_at')
         .eq('user_id', supaUser.id)
         .order('created_at', { ascending: false })
-        .limit(50);
-      if (swRes.data) {
-        swRes.data.forEach(function(w) {
-          // Strip embedded example + legacy [표현]/[슬랭] markers so MCQ choices
-          // show the actual English meaning, not "Fast Track expression"-style labels.
-          var en = (typeof splitWordEnMeaning === 'function') ? splitWordEnMeaning(w.word_en).meaning : w.word_en;
-          en = (en || '').replace(/^\s*\[(표현|슬랭)\]\s*/,'').trim();
-          // Skip stale rows that only had the placeholder label
-          if (!en || /^fast track expression$/i.test(en)) return;
-          if (w.word_ko) vocabPool.push({ word_ko: w.word_ko, word_en: en, word_rom: w.word_rom || '' });
-        });
-      }
+        .limit(80);
+      (swRes.data || []).forEach(function(w) {
+        var from = w.created_at >= todayStartIso ? 'today' : (w.created_at >= ydayStartIso ? 'yesterday' : 'recent');
+        _drPushWord(w, from);
+      });
     } catch(e) {}
   }
 
-  // 2) study_daily_content — 오늘의 주제 vocab/grammar
+  // 2) this week's topic content (the 5 steps' vocab/grammar)
   if (typeof _aiContent !== 'undefined' && _aiContent) {
-    if (_aiContent.vocab) {
-      _aiContent.vocab.forEach(function(v) {
-        if (v.ko && v.en) vocabPool.push({ word_ko: v.ko, word_en: v.en, word_rom: v.rom || '' });
-      });
-    }
-    if (_aiContent.grammar) {
-      _aiContent.grammar.forEach(function(g) {
-        if (g.pattern && g.explanation) grammarPool.push(g);
-      });
-    }
+    (_aiContent.vocab || []).forEach(function(v) {
+      if (v.ko && v.en) vocabPool.push({ word_ko: v.ko, word_en: v.en, word_rom: v.rom || '', from: 'today' });
+    });
+    (_aiContent.grammar || []).forEach(function(g) {
+      if (g.pattern && g.explanation) grammarPool.push(Object.assign({ from: 'today' }, g));
+    });
   }
 
-  // 3) article_cache — 오늘 읽은 기사 vocab (read_articles에서)
+  // 3) articles read today / yesterday → their cached vocab + grammar.
+  //    The Grammar tab cache is { patterns:[{name, exp}] } (older rows:
+  //    { points:[{pattern, explanation}] } or an array) — accept all three.
   if (sb && supaUser) {
     try {
       var readRes = await sb.from('read_articles')
-        .select('article_id')
+        .select('article_id, read_at')
         .eq('user_id', supaUser.id)
-        .gte('read_at', today + 'T00:00:00')
-        .limit(5);
-      if (readRes.data && readRes.data.length) {
-        var articleIds = readRes.data.map(function(r) { return String(r.article_id); });
-        for (var ai = 0; ai < articleIds.length; ai++) {
-          try {
-            var cached = await (typeof getFromCache === 'function'
-              ? getFromCache('article', articleIds[ai], 'ai_analysis')
-              : null);
-            if (cached && cached.vocab && Array.isArray(cached.vocab)) {
-              cached.vocab.forEach(function(v) {
-                if (v.ko && v.en) vocabPool.push({ word_ko: v.ko, word_en: v.en, word_rom: v.rom || '' });
-              });
-            }
-            if (cached && cached.grammar) {
-              var gArr = Array.isArray(cached.grammar) ? cached.grammar : (cached.grammar.points || []);
-              gArr.forEach(function(g) {
-                if (g.pattern && g.explanation) grammarPool.push(g);
-              });
-            }
-          } catch(e) {}
-        }
+        .gte('read_at', ydayStartIso)
+        .order('read_at', { ascending: false })
+        .limit(8);
+      var seenArt = {};
+      for (var ai = 0; ai < (readRes.data || []).length; ai++) {
+        var row = readRes.data[ai];
+        var aid = String(row.article_id);
+        if (seenArt[aid]) continue;
+        seenArt[aid] = true;
+        var from = row.read_at >= todayStartIso ? 'today' : 'yesterday';
+        try {
+          var cached = await (typeof getFromCache === 'function' ? getFromCache('article', aid, 'ai_analysis') : null);
+          if (cached && Array.isArray(cached.vocab)) {
+            cached.vocab.forEach(function(v) {
+              if (v.ko && v.en) vocabPool.push({ word_ko: v.ko, word_en: v.en, word_rom: v.rom || '', from: from });
+            });
+          }
+          var g0 = cached && cached.grammar;
+          var gArr = Array.isArray(g0) ? g0 : ((g0 && (g0.patterns || g0.points)) || []);
+          gArr.forEach(function(g) {
+            var pat = g.pattern || g.name || '';
+            var expl = g.explanation || g.exp || '';
+            if (pat && expl) grammarPool.push({ pattern: pat, explanation: expl, example_ko: g.example_ko || g.ex_ko || '', from: from });
+          });
+        } catch(e) {}
       }
     } catch(e) {}
   }
 
-  // Deduplicate vocab
+  // Deduplicate vocab — keep the most "recently learned" tag per word
+  var _drRank = { today: 0, yesterday: 1, recent: 2 };
+  vocabPool.sort(function(a, b) { return (_drRank[a.from] || 2) - (_drRank[b.from] || 2); });
   var seen = new Set();
   vocabPool = vocabPool.filter(function(w) { if (seen.has(w.word_ko)) return false; seen.add(w.word_ko); return true; });
 
@@ -2275,19 +2287,24 @@ async function drGenerateQuestions() {
 
   var pool = _drShuffle(vocabPool);
   var questions = [];
+  function _drByFrom(arr, from) { return _drShuffle(arr.filter(function(x){ return x.from === from; })); }
+  // Question order: up to 2 from yesterday, then today, then recent.
+  var vocabPicks = _drByFrom(vocabPool, 'yesterday').slice(0, 2)
+    .concat(_drByFrom(vocabPool, 'today'), _drByFrom(vocabPool, 'recent'))
+    .slice(0, 5);
 
   // 5 vocab meaning MCQ (from saved_words + article vocab). Tagging
   // with slot='vocab' so the wrong_patterns classifier attributes
   // misses to VOCAB instead of falling back to the OTHER bucket.
-  pool.slice(0, Math.min(5, pool.length)).forEach(function(w) {
+  vocabPicks.forEach(function(w) {
     var wrongs = _drShuffle(pool.filter(function(x){ return x.word_ko !== w.word_ko; })).slice(0, 3).map(function(x){ return x.word_en; });
     if (wrongs.length < 3) return;
-    questions.push({ type:'meaning', word_ko: w.word_ko, word_rom: w.word_rom, correct: w.word_en, choices: _drShuffle([w.word_en].concat(wrongs)), slot: 'vocab' });
+    questions.push({ type:'meaning', word_ko: w.word_ko, word_rom: w.word_rom, correct: w.word_en, choices: _drShuffle([w.word_en].concat(wrongs)), slot: 'vocab', from: w.from });
   });
 
   // 2 grammar fill-in (from today's topic grammar or article grammar)
   if (grammarPool.length >= 2) {
-    _drShuffle(grammarPool).slice(0, 2).forEach(function(g) {
+    _drByFrom(grammarPool, 'yesterday').slice(0, 1).concat(_drByFrom(grammarPool, 'today')).slice(0, 2).forEach(function(g) {
       var pattern = g.pattern || '';
       var explanation = g.explanation || '';
       var exKo = g.example_ko || '';
@@ -2296,7 +2313,7 @@ async function drGenerateQuestions() {
         var wrongGrammars = _drShuffle(grammarPool.filter(function(x){ return x.pattern !== pattern; })).slice(0, 3);
         var choices = [explanation].concat(wrongGrammars.map(function(x){ return x.explanation || ''; })).filter(Boolean);
         if (choices.length >= 4) {
-          questions.push({ type:'meaning', word_ko: pattern, word_rom: exKo, correct: explanation, choices: _drShuffle(choices.slice(0, 4)), slot: 'grammar' });
+          questions.push({ type:'meaning', word_ko: pattern, word_rom: exKo, correct: explanation, choices: _drShuffle(choices.slice(0, 4)), slot: 'grammar', from: g.from });
         }
       }
     });
@@ -2420,7 +2437,7 @@ function drShowQuestion() {
   _drAnswered=false;
 
   if(q.type==='meaning'){
-    body.innerHTML='<div class="dr-q-label">What does this mean?</div><div class="dr-q-title">'+escapeHtml(q.word_ko)+'</div>'
+    body.innerHTML='<div class="dr-q-label">What does this mean?'+(q.from==='yesterday'?' <span style="margin-left:6px;padding:2px 8px;border-radius:999px;background:rgba(251,191,36,.15);color:#fcd34d;font-size:10px;font-weight:800">🔁 From yesterday</span>':'')+'</div><div class="dr-q-title">'+escapeHtml(q.word_ko)+'</div>'
       +(q.word_rom?'<div class="dr-q-hint">'+q.word_rom+'</div>':'')
       +'<div class="dr-choices">'+q.choices.map(function(c){return '<button class="dr-choice" onclick="drSelectMC(this,\''+c.replace(/'/g,"\\'")+'\')">'+c+'</button>';}).join('')+'</div>'
       +'<div id="dr-feedback" style="display:none" class="dr-feedback-box"></div>';
