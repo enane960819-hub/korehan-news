@@ -299,6 +299,17 @@ function _khStudyRoomInit() {
     var _focusWaited = 0;
     function waitAndOpenGFModal() {
       if (window._sessionChecked || _focusWaited >= 30) {
+        // Curriculum match first: same shared lesson (gf-curr2::) as the
+        // Grammar Path, and practice counts toward that pattern's mastery.
+        _loadGrammarCurriculumFromDB().then(function() {
+          var cItem = _gcFindItem(_focusName);
+          if (cItem) { setTimeout(function() { openGrammarFocusForItem(cItem); }, 300); return; }
+          _openFocusLegacy();
+        });
+      } else { _focusWaited++; setTimeout(waitAndOpenGFModal, 150); }
+    }
+    function _openFocusLegacy() {
+      {
         setTimeout(function() {
           // Build a single-pattern object from the focus name
           var pattern = { name: _focusName, level: 'Intermediate', exp: 'Practice this grammar pattern.', examples: [{ ko: '이 문법으로 직접 문장을 만들어 보세요.', en: 'Try making your own sentence with this grammar pattern.' }] };
@@ -325,7 +336,7 @@ function _khStudyRoomInit() {
           if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
           loadGFPatterns(found);
         }, 600);
-      } else { _focusWaited++; setTimeout(waitAndOpenGFModal, 150); }
+      }
     }
     setTimeout(waitAndOpenGFModal, 400);
   }
@@ -15361,24 +15372,150 @@ var GRAMMAR_CURRICULUM = [
 
 // -- Load curriculum from DB (overrides hardcoded fallback) -----
 var _gcDbLoaded = false;
-async function _loadGrammarCurriculumFromDB() {
-  if (_gcDbLoaded) return;
+var _gcDbPromise = null;
+// Curriculum v2 (migration 20261011_grammar_curriculum_v2): Seed→Forest
+// levels (Starter/Beginner/Intermediate/Advanced), grouped into units, with
+// tier 'core' (Grammar Path, mastery tracked) vs 'library' (browse/search,
+// article links). Lessons are generated on first open and shared via
+// grammar_examples_cache 'gf-curr2::<pattern>'.
+function _loadGrammarCurriculumFromDB() {
+  if (_gcDbLoaded) return Promise.resolve();
+  if (_gcDbPromise) return _gcDbPromise;
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
-  if (!sb) return;
-  try {
-    var r = await sb.from('grammar_curriculum')
-      .select('pattern, level, sort_order, description, active')
-      .eq('active', true)
-      .order('level').order('sort_order');
-    if (r.data && r.data.length >= 10) {
-      GRAMMAR_CURRICULUM = r.data.map(function(row) {
-        return { pattern: row.pattern, level: row.level, order: row.sort_order, desc: row.description || '' };
-      });
-      _gcDbLoaded = true;
-      // Refresh Grammar Path banner if visible
-      if (typeof renderGrammarPathBanner === 'function') renderGrammarPathBanner();
+  if (!sb) return Promise.resolve();
+  _gcDbPromise = (async function() {
+    try {
+      var r = await sb.from('grammar_curriculum')
+        .select('pattern, level, sort_order, description, active, unit, tier')
+        .eq('active', true)
+        .order('level').order('sort_order');
+      if (r.error) {
+        // unit/tier columns not there yet → legacy shape
+        r = await sb.from('grammar_curriculum')
+          .select('pattern, level, sort_order, description, active')
+          .eq('active', true).order('level').order('sort_order');
+      }
+      if (r.data && r.data.length >= 10) {
+        GRAMMAR_CURRICULUM = r.data.map(function(row) {
+          return { pattern: row.pattern, level: row.level, order: row.sort_order, desc: row.description || '',
+                   unit: row.unit || '', tier: row.tier || 'core' };
+        });
+        _gcDbLoaded = true;
+        if (typeof renderGrammarPathBanner === 'function') renderGrammarPathBanner();
+      }
+    } catch(e) { console.warn('[Grammar Curriculum] DB load failed, using fallback:', e.message); }
+  })();
+  return _gcDbPromise;
+}
+
+// Levels shown in the Grammar Path, in order. Forest stays visible but
+// locked while the Forest level is "coming soon" site-wide.
+var _GC_LEVELS = [
+  { key: 'Starter',      label: 'Seed',   emoji: '🌱', color: '#86efac' },
+  { key: 'Beginner',     label: 'Sprout', emoji: '🌿', color: '#bef264' },
+  { key: 'Intermediate', label: 'Tree',   emoji: '🌳', color: '#fde68a' },
+  { key: 'Advanced',     label: 'Forest', emoji: '🌲', color: '#fca5a5', locked: true },
+];
+function _gcIsCore(item) { return !item.tier || item.tier === 'core'; }
+function _gcPathItems() {
+  var open = {};
+  _GC_LEVELS.forEach(function(l) { if (!l.locked) open[l.key] = true; });
+  return GRAMMAR_CURRICULUM.filter(function(it) { return _gcIsCore(it) && open[it.level]; });
+}
+// Match a grammar label from the article sentence panel / KH_GRAMMAR
+// ("~아/어서 (so / because)") to a curriculum item ("아/어서 — So/Because").
+function _gcNorm(s) {
+  // English glosses go first — they may contain their own "—".
+  return String(s || '').replace(/\([^)]*[A-Za-z][^)]*\)/g, '').replace(/\[[^\]]*\]/g, '')
+    .replace(/\s+[—–]\s+.*$/, '').replace(/\s+→.*$/, '')
+    .replace(/ㄹ\/을|을\/ㄹ/g, '(으)ㄹ').replace(/ㄴ\/은|은\/ㄴ/g, '(으)ㄴ').replace(/아\/어\/여/g, '아/어')
+    .replace(/ㅂ\/습니다/g, '(스)ㅂ니다').replace(/verb/gi, 'v').replace(/\/a\b/gi, '')
+    .replace(/^~/, '').replace(/[~\s]/g, '').toLowerCase();
+}
+// Analysis-catalog labels that don't share a surface form with their
+// curriculum entry (normalized label → curriculum pattern).
+var _GC_ALIASES = {
+  '다고해(요)': '대요/래요 — They say (contracted)',
+  '냐고하다/냐고해요': '냐고 하다 / 자고 하다 / (으)라고 하다 — Reported question, suggestion, command',
+  '자고하다/자고해요': '냐고 하다 / 자고 하다 / (으)라고 하다 — Reported question, suggestion, command',
+  '과/와': '하고 / 와/과 / (이)랑 — And / With',
+  '하고': '하고 / 와/과 / (이)랑 — And / With',
+  '밖에': '밖에 + negative — Only/Nothing but',
+  '조차': '조차/마저 — Even',
+  '께(서)': '께서/께 — Honorific particles',
+  '(으)ㄴ/는/을것같다': '(으)ㄴ/는/(으)ㄹ 것 같다 — It seems / I think',
+  '에대해(서)/대한': '에 대해(서) / 에 관해(서) — About',
+  '아/어요': 'Verb endings: 아요 / 어요',
+  '(스)ㅂ니다': '(스)ㅂ니다 / (스)ㅂ니까? — Formal polite',
+  'ㄴ다/는다': '(ㄴ/는)다 — Plain written style',
+  '(으)ㄹ거예요': '(으)ㄹ 거예요 — Future tense',
+  '(으)ㄴ적이있다/없다': '(으)ㄴ 적이 있다/없다 — Have done / Never done',
+  '아/어두다': '아/어 놓다/두다 — Do in advance',
+  '안+v': '안 + verb — Not',
+  'ㄴ/는/(으)ㄹ듯하다': '(으)ㄴ/는 듯하다 — It seems (written)',
+  '지요/죠': '지요(죠)? — Right? / Isn’t it?',
+  '는': '(으)ㄴ/는/(으)ㄹ + noun — Noun modifiers',
+  '(으)ㄴ': '(으)ㄴ/는/(으)ㄹ + noun — Noun modifiers',
+  '(으)ㄴ것': '는 것 — Nominalization',
+  '(이)라고하다/(이)라고밝히다': '다고 하다 — Say that',
+  '은/는': '은/는 vs 이/가',
+  '마저': '조차/마저 — Even',
+  '(으)러': '(으)러 가다/오다 — Go/Come to do',
+  '았/었/였습니다': '았/었/였 — Past tense',
+  '아/어놓다': '아/어 놓다/두다 — Do in advance',
+  '을/를위해(서)': '기 위해(서) — In order to',
+  '기위해(서)': '기 위해(서) — In order to',
+  'ㄴ/는데(에)': '는 데 (쓰다/필요하다) — For (use)',
+};
+// Comparison key for the loose step: optional (으)/(스)/(이) dropped so
+// "~ㄹ까요?" meets "(으)ㄹ까요?". (이) stays: (이)나 ≠ (으)나.
+function _gcLoose(n) { return n.replace(/\((으|스)\)/g, ''); }
+// A curriculum pattern can list alternatives ("나 보다 / (으)ㄴ가 보다");
+// each one is matchable on its own.
+function _gcItemKeys(it) {
+  if (it._gcKeys) return it._gcKeys;
+  var head = String(it.pattern).replace(/\s+[—–]\s+.*$/, '');
+  var keys = [_gcNorm(it.pattern)];
+  head.split(/\s+\/\s+/).forEach(function(seg) { var k = _gcNorm(seg); if (k && keys.indexOf(k) < 0) keys.push(k); });
+  it._gcKeys = keys;
+  return keys;
+}
+function _gcFindItem(label) {
+  var n = _gcNorm(label);
+  if (!n) return null;
+  // Labels can list alternatives too ("~다고 하다 / ~다고 밝히다", "~ㄴ/은가 보다, ~나 보다").
+  var alts = [n];
+  String(label).replace(/\([^)]*[A-Za-z][^)]*\)/g, '').split(/\s+\/\s+|,\s*/).forEach(function(seg) {
+    var k = _gcNorm(seg); if (k && alts.indexOf(k) < 0) alts.push(k);
+  });
+  var i, hit;
+  for (i = 0; i < alts.length; i++) {
+    if (_GC_ALIASES[alts[i]]) {
+      hit = GRAMMAR_CURRICULUM.find(function(it) { return it.pattern === _GC_ALIASES[alts[i]]; });
+      if (hit) return hit;
     }
-  } catch(e) { console.warn('[Grammar Curriculum] DB load failed, using fallback:', e.message); }
+  }
+  for (i = 0; i < alts.length; i++) {
+    hit = GRAMMAR_CURRICULUM.find(function(it) { return _gcItemKeys(it).indexOf(alts[i]) >= 0; });
+    if (hit) return hit;
+  }
+  for (i = 0; i < alts.length; i++) {
+    var ln = _gcLoose(alts[i]);
+    hit = GRAMMAR_CURRICULUM.find(function(it) { return _gcItemKeys(it).some(function(k) { return _gcLoose(k) === ln; }); });
+    if (hit) return hit;
+  }
+  // Near-identical forms only: "~을/를 사용해(서)" must not land on the
+  // object-marker lesson. Anything looser falls back to the legacy flow.
+  var best = null, bestD = 99, ln0 = _gcLoose(n);
+  GRAMMAR_CURRICULUM.forEach(function(it) {
+    _gcItemKeys(it).forEach(function(k) {
+      var m = _gcLoose(k), d = Math.abs(m.length - ln0.length);
+      if (Math.min(m.length, ln0.length) >= 3 && d <= 1 && (m.indexOf(ln0) >= 0 || ln0.indexOf(m) >= 0) && d < bestD) {
+        best = it; bestD = d;
+      }
+    });
+  });
+  return best;
 }
 
 // -- Curriculum localStorage key ------------------------------
@@ -15493,36 +15630,30 @@ function updateGrammarMastery(patternName, wasCorrect) {
 // Returns {total, mastered, inProgress, notStarted}
 function getGrammarMasteryStats() {
   var prog = _loadGrammarProgress();
-  var total = GRAMMAR_CURRICULUM.length;
+  var items = _gcPathItems();
   var mastered = 0, inProgress = 0, notStarted = 0;
-  GRAMMAR_CURRICULUM.forEach(function(item) {
+  items.forEach(function(item) {
     var entry = prog[item.pattern];
-    if (!entry || entry.attempts === 0) {
-      notStarted++;
-    } else if (entry.mastered) {
-      mastered++;
-    } else {
-      inProgress++;
-    }
+    if (!entry || entry.attempts === 0) notStarted++;
+    else if (entry.mastered) mastered++;
+    else inProgress++;
   });
-  return { total: total, mastered: mastered, inProgress: inProgress, notStarted: notStarted };
+  return { total: items.length, mastered: mastered, inProgress: inProgress, notStarted: notStarted };
 }
 
-// Returns the next unmastered pattern in curriculum order, or null if all mastered
+// Returns the next unmastered core pattern in level → order, or null if all mastered
 function getNextCurriculumPattern() {
   var prog = _loadGrammarProgress();
-  var levelOrder = ['Beginner', 'Intermediate', 'Advanced'];
-  for (var li = 0; li < levelOrder.length; li++) {
-    var level = levelOrder[li];
-    var inLevel = GRAMMAR_CURRICULUM.filter(function(p) { return p.level === level; });
+  var items = _gcPathItems();
+  for (var li = 0; li < _GC_LEVELS.length; li++) {
+    var inLevel = items.filter(function(p) { return p.level === _GC_LEVELS[li].key; });
     inLevel.sort(function(a, b) { return a.order - b.order; });
     for (var pi = 0; pi < inLevel.length; pi++) {
-      var item = inLevel[pi];
-      var entry = prog[item.pattern];
-      if (!entry || !entry.mastered) return item;
+      var entry = prog[inLevel[pi].pattern];
+      if (!entry || !entry.mastered) return inLevel[pi];
     }
   }
-  return null; // All mastered
+  return null;
 }
 
 // Render the Grammar Path banner into #grammar-path-banner
@@ -15537,17 +15668,17 @@ function renderGrammarPathBanner() {
     banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px">'
       + '<span style="display:inline-flex;width:22px;height:22px;color:#fbbf24">' + BM_ICON_TROPHY + '</span>'
       + '<div><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#15803d">Grammar Path</div>'
-      + '<div style="font-size:12px;font-weight:700;color:#166534">All 45 patterns mastered!</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#166534">All ' + stats.total + ' core patterns mastered!</div>'
       + '</div></div>';
     return;
   }
 
   var nextLabel = next ? next.pattern : '—';
   var levelTag  = next ? next.level   : '';
-  var levelColors = { Beginner:'#86efac', Intermediate:'#fde68a', Advanced:'#fca5a5' };
+  var levelColors = { Starter:'#86efac', Beginner:'#bef264', Intermediate:'#fde68a', Advanced:'#fca5a5' };
   var lc = levelColors[levelTag] || '#7ab8f5';
 
-  banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openGrammarFocusForCurriculum()">'
+  banner.innerHTML = '<div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openGrammarPathModal()">'
     + '<span style="display:inline-flex;width:20px;height:20px;color:rgba(255,255,255,.7)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3H3v18h7"/><path d="M3 8h18"/><path d="M16 14l-4 8 8-4z"/></svg></span>'
     + '<div style="flex:1;min-width:0;overflow:hidden">'
     + '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:1px">Grammar Path</div>'
@@ -15557,17 +15688,130 @@ function renderGrammarPathBanner() {
     + '</div>'
     + '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
     + 'Next: <span style="color:' + lc + ';font-weight:700">' + nextLabel + '</span>'
-    + (levelTag ? ' <span style="font-size:10px;opacity:.65">(' + levelTag + ')</span>' : '')
+    + (levelTag ? ' <span style="font-size:10px;opacity:.65">(' + ((_GC_LEVELS.find(function(l){ return l.key === levelTag; }) || {}).label || levelTag) + ')</span>' : '')
     + '</div>'
     + '</div>'
     + '<span style="font-size:12px;color:rgba(255,255,255,.3);flex-shrink:0">&#8250;</span>'
     + '</div>';
 }
 
+// ── Grammar Path window ──────────────────────────────────────
+// Level tabs → units → patterns with progress. "Path" = core patterns in
+// order; "Library" = every pattern (core + library) with search.
+var _gpState = { level: 'Starter', mode: 'path', q: '' };
+function openGrammarPathModal() {
+  var ov = document.getElementById('gp-modal');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'gp-modal';
+    ov.className = 'woverlay';
+    ov.setAttribute('role', 'dialog');
+    ov.onclick = function(e) { if (e.target === ov) closeGrammarPathModal(); };
+    ov.innerHTML = '<div style="background:#0d1b35;border-radius:22px;width:min(720px,96vw);max-height:90vh;display:flex;flex-direction:column;color:#fff;border:1px solid rgba(255,255,255,.06);box-shadow:0 32px 80px rgba(0,0,0,.5)">'
+      + '<div style="padding:18px 22px 10px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:1px solid rgba(255,255,255,.06)">'
+      +   '<div><div class="kh-shell-eyebrow">Grammar Path</div><div id="gp-summary" style="font-size:13px;color:rgba(255,255,255,.65);margin-top:3px"></div></div>'
+      +   '<button aria-label="Close" onclick="closeGrammarPathModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:16px">×</button>'
+      + '</div>'
+      + '<div style="padding:10px 22px 0;display:flex;flex-wrap:wrap;gap:6px" id="gp-levels"></div>'
+      + '<div style="padding:10px 22px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+      +   '<div style="display:flex;background:rgba(255,255,255,.06);border-radius:999px;padding:3px" id="gp-modes"></div>'
+      +   '<input id="gp-search" type="search" placeholder="Search grammar (e.g. 는데, because)" oninput="_gpState.q=this.value;_gpRender()" style="flex:1;min-width:160px;padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;font-size:13px;font-family:inherit;outline:none">'
+      + '</div>'
+      + '<div id="gp-next" style="padding:0 22px"></div>'
+      + '<div id="gp-list" style="padding:6px 22px 20px;overflow-y:auto;flex:1"></div>'
+      + '</div>';
+    document.body.appendChild(ov);
+  }
+  var next = getNextCurriculumPattern();
+  if (next) _gpState.level = next.level;
+  ov.classList.remove('hidden');
+  ov.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  _gpRender();
+  _loadGrammarCurriculumFromDB().then(_gpRender);
+}
+function closeGrammarPathModal() {
+  var ov = document.getElementById('gp-modal');
+  if (ov) { ov.style.display = 'none'; ov.classList.add('hidden'); }
+  document.body.style.overflow = '';
+}
+function _gpEsc(s) { return String(s || '').replace(/[&<>"']/g, function(c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+function _gpRender() {
+  var prog = _loadGrammarProgress();
+  var stats = getGrammarMasteryStats();
+  var sum = document.getElementById('gp-summary');
+  if (sum) sum.innerHTML = '<b style="color:#fff">' + stats.mastered + '/' + stats.total + '</b> core patterns mastered'
+    + (stats.inProgress ? ' · <span style="color:#facc15">' + stats.inProgress + ' in progress</span>' : '')
+    + ' · ' + GRAMMAR_CURRICULUM.length + ' in the library';
+  var lv = document.getElementById('gp-levels');
+  if (lv) lv.innerHTML = _GC_LEVELS.map(function(l) {
+    var on = _gpState.level === l.key;
+    return '<button onclick="_gpState.level=\'' + l.key + '\';_gpRender()" style="padding:7px 14px;border-radius:999px;border:1.5px solid ' + (on ? l.color : 'rgba(255,255,255,.12)') + ';background:' + (on ? 'rgba(255,255,255,.08)' : 'transparent') + ';color:' + (on ? '#fff' : 'rgba(255,255,255,.6)') + ';font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">' + l.emoji + ' ' + l.label + (l.locked ? ' 🔒' : '') + '</button>';
+  }).join('');
+  var md = document.getElementById('gp-modes');
+  if (md) md.innerHTML = [['path', 'Path'], ['library', 'Library']].map(function(m) {
+    var on = _gpState.mode === m[0];
+    return '<button onclick="_gpState.mode=\'' + m[0] + '\';_gpRender()" style="padding:6px 14px;border-radius:999px;border:0;background:' + (on ? '#7c3aed' : 'transparent') + ';color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">' + m[1] + '</button>';
+  }).join('');
+  var next = getNextCurriculumPattern();
+  var nx = document.getElementById('gp-next');
+  if (nx) nx.innerHTML = (next && _gpState.mode === 'path' && !_gpState.q)
+    ? '<button onclick="_gpOpen(\'' + encodeURIComponent(next.pattern) + '\')" style="width:100%;margin-bottom:8px;padding:12px 14px;border-radius:12px;border:0;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;text-align:left">▶ Continue: ' + _gpEsc(next.pattern) + '</button>'
+    : '';
+
+  var levelMeta = _GC_LEVELS.find(function(l) { return l.key === _gpState.level; }) || _GC_LEVELS[0];
+  var q = _gpState.q.trim().toLowerCase();
+  var items = GRAMMAR_CURRICULUM.filter(function(it) {
+    if (q) return (it.pattern + ' ' + (it.desc || '') + ' ' + (it.unit || '')).toLowerCase().indexOf(q) >= 0;
+    if (it.level !== _gpState.level) return false;
+    return _gpState.mode === 'library' ? true : _gcIsCore(it);
+  }).sort(function(a, b) { return a.order - b.order; });
+
+  var units = [], byUnit = {};
+  items.forEach(function(it) {
+    var u = q ? ((_GC_LEVELS.find(function(l){ return l.key === it.level; }) || {}).label || it.level) + (it.unit ? ' · ' + it.unit : '') : (it.unit || 'Patterns');
+    if (!byUnit[u]) { byUnit[u] = []; units.push(u); }
+    byUnit[u].push(it);
+  });
+  var list = document.getElementById('gp-list');
+  if (!list) return;
+  if (!items.length) { list.innerHTML = '<div style="padding:30px;text-align:center;color:rgba(255,255,255,.45);font-size:13px">No patterns found.</div>'; return; }
+  list.innerHTML = (levelMeta.locked && !q ? '<div style="padding:10px 12px;margin:4px 0 10px;border-radius:10px;background:rgba(252,165,165,.1);color:#fecaca;font-size:12px">🔒 Forest level is coming soon — you can preview the patterns below.</div>' : '')
+    + units.map(function(u) {
+      var rows = byUnit[u];
+      var done = rows.filter(function(it) { var e = prog[it.pattern]; return e && e.mastered; }).length;
+      return '<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px"><span>' + _gpEsc(u) + '</span><span>' + done + '/' + rows.length + '</span></div>'
+        + rows.map(function(it) {
+            var e = prog[it.pattern];
+            var st = e && e.mastered ? '<span style="color:#34d399">✓</span>' : (e && e.attempts ? '<span style="color:#facc15">●</span>' : '<span style="color:rgba(255,255,255,.25)">○</span>');
+            var tag = _gcIsCore(it) ? '' : '<span style="font-size:9px;font-weight:800;padding:1px 6px;border-radius:6px;background:rgba(125,211,252,.15);color:#7dd3fc;margin-left:6px">LIBRARY</span>';
+            return '<button onclick="_gpOpen(\'' + encodeURIComponent(it.pattern) + '\')" style="display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;padding:10px 12px;margin-bottom:4px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);color:#fff;cursor:pointer;font-family:inherit">'
+              + '<span style="font-size:14px;line-height:1.4;width:14px">' + st + '</span>'
+              + '<span style="flex:1;min-width:0"><span style="font-size:14px;font-weight:700">' + _gpEsc(it.pattern) + '</span>' + tag
+              + (it.desc ? '<span style="display:block;font-size:12px;color:rgba(255,255,255,.55);margin-top:2px">' + _gpEsc(it.desc) + '</span>' : '') + '</span></button>';
+          }).join('') + '</div>';
+    }).join('');
+}
+function _gpOpen(encPattern) {
+  var pat = decodeURIComponent(encPattern);
+  var it = GRAMMAR_CURRICULUM.find(function(x) { return x.pattern === pat; });
+  if (!it) return;
+  var lm = _GC_LEVELS.find(function(l) { return l.key === it.level; });
+  if (lm && lm.locked && typeof khForestLockedToast === 'function' && !window._isAdmin) { khForestLockedToast(); return; }
+  closeGrammarPathModal();
+  openGrammarFocusForItem(it);
+}
+
 // Open Grammar Focus modal pre-loaded with the next curriculum pattern
 function openGrammarFocusForCurriculum() {
   var next = getNextCurriculumPattern();
   if (!next) { openGrammarFocusModal(); return; }
+  openGrammarFocusForItem(next);
+}
+
+// Open Grammar Focus for one curriculum item (Path, Library, article link).
+function openGrammarFocusForItem(next) {
+  if (!next) return;
 
   if (!ensureStudyUnlocked()) return;
   var modal = document.getElementById('gf-modal');
@@ -15577,7 +15821,10 @@ function openGrammarFocusForCurriculum() {
   switchGFTab('learn', document.getElementById('gft-learn'));
 
   var el = document.getElementById('gf-examples-content');
-  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">&#10024; Loading grammar…</div>';
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">&#10024; Loading lesson…<div style="font-size:12px;margin-top:6px;color:rgba(255,255,255,.35)">If you\'re the first to open this pattern, it takes ~15 seconds to prepare — then it\'s instant for everyone.</div></div>';
+  var tEl = document.getElementById('gf-title'); if (tEl) tEl.textContent = next.pattern;
+  var sEl = document.getElementById('gf-subtitle');
+  if (sEl) sEl.textContent = ((_GC_LEVELS.find(function(l){ return l.key === next.level; }) || {}).label || next.level) + (next.unit ? ' · ' + next.unit : '');
 
   // Remember which curriculum pattern we are studying
   window._gcCurrentPattern = next.pattern;
@@ -15648,6 +15895,7 @@ var _GF_TABS = ['learn','spotit','fill','translate','build'];
 
 function openGrammarFocusModal() {
   if (!ensureStudyUnlocked()) return;
+  window._gcCurrentPattern = null;
   var modal = document.getElementById('gf-modal');
   if (!modal) return;
   modal.classList.remove('hidden');
