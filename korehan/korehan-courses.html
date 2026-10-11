@@ -6,13 +6,13 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Courses — KoreHani | 한국어 학습 코스</title>
-<meta name="description" content="KoreHani의 학습 플랜과 코스. 무료부터 Pro까지 — 매일 작문 피드백, 발음 연습, 슬랭/문법 마스터 클래스.">
+<meta name="description" content="KoreHani 학습 플랜 — Free와 Premium. 주간 작문 피드백, 튜터 첨삭, 주말 라이브 클래스, 문법 패스.">
 <link rel="canonical" href="https://korehani.com/korehan-courses.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="KoreHani">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="Courses — KoreHani">
-<meta property="og:description" content="KoreHani의 학습 플랜과 코스 — 무료부터 Pro까지.">
+<meta property="og:description" content="KoreHani 학습 플랜 — Free와 Premium (7일 무료 체험).">
 <meta property="og:image" content="https://korehani.com/img/guide/step1-tap-analysis.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/step1-tap-analysis.jpg">
@@ -284,113 +284,109 @@
 
     <!-- BILLING TOGGLE -->
     <div class="billing-toggle">
-      <button class="bt-btn active" onclick="setBilling('monthly',this)">Monthly</button>
-      <button class="bt-btn" onclick="setBilling('6month',this)">6 Months<span class="bt-badge">Save 17%</span></button>
-      <button class="bt-btn" onclick="setBilling('annual',this)">Annual<span class="bt-badge">Save 33%</span></button>
+      <button class="bt-btn active" onclick="setBilling('month',this)">Monthly</button>
+      <button class="bt-btn" onclick="setBilling('year',this)">Annual<span class="bt-badge">Save 36%</span></button>
     </div>
 
     <!-- PRICING CARDS -->
     <div class="pricing-wrap">
       <div class="pricing-grid">
-        <!-- STANDARD -->
+        <!-- FREE -->
         <div class="plan-card">
-          <div class="plan-name">Standard</div>
+          <div class="plan-name">Free</div>
           <div class="plan-price-row">
-            <div class="plan-price" id="std-price">$8.99</div>
-            <div class="plan-per">/month</div>
+            <div class="plan-price">$0</div>
+            <div class="plan-per">forever</div>
           </div>
-          <div class="plan-original" id="std-original">&nbsp;</div>
-          <div class="plan-saving" id="std-saving">&nbsp;</div>
-          <div class="plan-desc">Full self-study access with the complete Growth Lab analytics suite.</div>
+          <div class="plan-original">&nbsp;</div>
+          <div class="plan-saving">&nbsp;</div>
+          <div class="plan-desc">Read real Korean every day and build your word book.</div>
           <ul class="plan-features">
-            <li>Article Study &mdash; 5 interactive steps</li>
-            <li>Conversation &amp; Story Study</li>
-            <li>Full Slang library + Quiz</li>
-            <li>Weekly Topic — 5 learning steps + AI-scored writing</li>
-            <li>Weekly &amp; Monthly Review</li>
-            <li>Listening Quiz</li>
-            <li>Word Book + SRS review</li>
-            <li>Growth Lab &mdash; full skill tracking</li>
-            <li class="dim">Fast Track scenarios</li>
-            <li class="dim">Phone Call Practice</li>
+            <li>All articles, conversations &amp; stories</li>
+            <li>Tap-to-analyze sentences (translation, vocab, grammar)</li>
+            <li>Word book &mdash; unlimited saves</li>
+            <li>Weekly Topic writing with instant AI feedback</li>
+            <li>Daily Review</li>
+            <li>Today&rsquo;s 3 slang words</li>
+            <li class="dim">Tutor review of your writing</li>
+            <li class="dim">Weekend live class</li>
           </ul>
-          <button class="plan-cta secondary" onclick="enroll('standard')">Get Standard &rarr;</button>
+          <button class="plan-cta secondary" onclick="location.href='korehan-study-room.html'">Start for free &rarr;</button>
         </div>
-        <!-- PRO -->
+        <!-- PREMIUM -->
         <div class="plan-card featured">
-          <div class="plan-badge">Best Value</div>
-          <div class="plan-name">Pro</div>
+          <div class="plan-badge">7-day free trial</div>
+          <div class="plan-name">Premium</div>
           <div class="plan-price-row">
-            <div class="plan-price" id="essay-price">$24.99</div>
-            <div class="plan-per">/month</div>
+            <div class="plan-price" id="prem-price">$8.99</div>
+            <div class="plan-per" id="prem-per">/month</div>
           </div>
-          <div class="plan-original" id="essay-original">&nbsp;</div>
-          <div class="plan-saving" id="essay-saving">&nbsp;</div>
-          <div class="plan-desc">Everything in Standard, plus Fast Track real-life scenarios and extended Growth Lab history.</div>
+          <div class="plan-original" id="prem-original">&nbsp;</div>
+          <div class="plan-saving" id="prem-saving">&nbsp;</div>
+          <div class="plan-desc">The full study system &mdash; structured, reviewed, and tracked.</div>
           <ul class="plan-features">
-            <li>Everything in Standard</li>
-            <li>Fast Track &mdash; real-life scenarios</li>
-            <li>Phone Call Practice</li>
-            <li>Personalized study recommendations</li>
-            <li>Extended Growth Lab history</li>
+            <li>Everything in Free</li>
+            <li><b>Tutor review</b> of your weekly writing</li>
+            <li><b>Weekend live class</b> on Zoom</li>
+            <li>Grammar Path &mdash; every level + Grammar Library</li>
+            <li>Article, Conversation &amp; Story Study</li>
+            <li>Weekly &amp; Monthly Review, Listening Quiz</li>
+            <li>Phone-call listening &amp; Fast Track scenarios</li>
+            <li>Full slang library + quiz, Growth Lab analytics</li>
           </ul>
-          <button class="plan-cta primary" onclick="enroll('pro')">Get Pro &rarr;</button>
+          <button class="plan-cta primary" id="prem-cta" onclick="enroll()">Start 7-day free trial &rarr;</button>
         </div>
       </div>
-      <div class="pricing-note">Cancel anytime &middot; Payment setup coming soon &middot; Questions? han@korehani.com</div>
+      <div class="pricing-note" id="pricing-note">Cancel anytime from your account &middot; Secure checkout by Stripe &middot; Questions? han@korehani.com</div>
     </div>
   </div>
 </div>
 
-<!-- STANDARD vs PRO COMPARE -->
+<!-- FREE vs PREMIUM COMPARE -->
 <div class="course-section">
   <div class="sec-eyebrow">Comparison</div>
-  <div class="sec-title">Standard vs. Pro</div>
-  <div class="sec-sub">Exactly what you get at each tier.</div>
+  <div class="sec-title">Free vs. Premium</div>
+  <div class="sec-sub">Reading stays free. Premium is the study system around it.</div>
   <div class="compare-table">
     <div class="ct-h">Feature</div>
-    <div class="ct-h std">Standard &middot; $8.99</div>
-    <div class="ct-h essay">Pro &middot; $24.99</div>
+    <div class="ct-h std">Free</div>
+    <div class="ct-h essay">Premium &middot; $8.99</div>
 
-    <div class="ct-cell feat">Read all content<small>Articles, conversations, stories</small></div>
+    <div class="ct-cell feat">Read all content<small>Articles, conversations, stories + sentence analysis</small></div>
     <div class="ct-cell std-col"><span class="ct-yes">&#10003;</span></div>
     <div class="ct-cell essay-col"><span class="ct-yes">&#10003;</span></div>
 
-    <div class="ct-cell feat">Article / Conversation / Story Study<small>4-step interactive learning</small></div>
-    <div class="ct-cell std-col"><span class="ct-hi">&#10003;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
+    <div class="ct-cell feat">Word book<small>Personal vocabulary list</small></div>
+    <div class="ct-cell std-col"><span class="ct-yes">Unlimited</span></div>
+    <div class="ct-cell essay-col"><span class="ct-yes">Unlimited + SRS review</span></div>
 
-    <div class="ct-cell feat">Weekly Topic<small>One topic per week — 5 steps, then a writing task with feedback</small></div>
-    <div class="ct-cell std-col"><span class="ct-hi">1x / day</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">1x / day</span></div>
+    <div class="ct-cell feat">Weekly Topic writing<small>5 learning steps, then one writing task a week</small></div>
+    <div class="ct-cell std-col"><span class="ct-yes">AI feedback</span></div>
+    <div class="ct-cell essay-col"><span class="ct-hi">AI feedback + tutor review</span></div>
 
-    <div class="ct-cell feat">Fast Track + Phone Call<small>Real-life scenarios</small></div>
+    <div class="ct-cell feat">Weekend live class<small>Sunday 21:00 KST on Zoom</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
 
-    <div class="ct-cell feat">Word saves<small>Personal vocabulary list</small></div>
-    <div class="ct-cell std-col"><span class="ct-hi">Unlimited + export</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">Unlimited + export</span></div>
-
-    <div class="ct-cell feat">Grammar guides<small>Per-article deep dives</small></div>
-    <div class="ct-cell std-col"><span class="ct-hi">All patterns</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">All patterns</span></div>
-
-    <div class="ct-cell feat">Growth Lab analytics<small>Reading / Grammar / Vocabulary skill scores, streak, XP</small></div>
-    <div class="ct-cell std-col"><span class="ct-hi">&#10003;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003; + extended history</span></div>
-
-    <div class="ct-cell feat">Vocabulary Universe<small>Saved words rendered as a constellation you can orbit</small></div>
-    <div class="ct-cell std-col"><span class="ct-hi">&#10003;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
-
-    <div class="ct-cell feat">Personalized study recommendations<small>Weekly grammar focus tied to your weakest areas</small></div>
+    <div class="ct-cell feat">Grammar Path<small>290 patterns, Seed &rarr; Tree, plus Grammar Library</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
 
-    <div class="ct-cell feat">Completion certificate<small>3 &middot; 6 &middot; 12 month milestones</small></div>
+    <div class="ct-cell feat">Article / Conversation / Story Study<small>Interactive step-by-step study</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003; &#127942;</span></div>
+    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
+
+    <div class="ct-cell feat">Weekly &amp; Monthly Review, Listening Quiz<small>Spaced checkpoints</small></div>
+    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
+    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
+
+    <div class="ct-cell feat">Phone-call listening + Fast Track<small>Real-life scenarios</small></div>
+    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
+    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
+
+    <div class="ct-cell feat">Growth Lab analytics<small>Skill scores, streak, XP</small></div>
+    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
+    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
   </div>
 </div>
 
@@ -408,7 +404,7 @@
     <div class="feat-card c-green">
       <span class="feat-ico">&#9997;&#65039;</span>
       <h3>Weekly Topic</h3>
-      <p>One Korean writing prompt every day. Type your answer in the Study Room and get instant grammar / vocab / structure feedback.</p>
+      <p>One topic a week: five short learning steps, then a writing task. Instant AI feedback on grammar, vocab and structure &mdash; Premium adds a tutor review.</p>
     </div>
     <div class="feat-card c-amber">
       <span class="feat-ico">&#128172;</span>
@@ -422,7 +418,7 @@
       <p>Reading, Grammar, and Vocabulary scored from your actual activity. Streak, XP, and a 5-axis skill radar update every time you study.</p>
     </div>
     <div class="feat-card c-purple">
-      <span class="feat-new">Pro</span>
+      <span class="feat-new">Premium</span>
       <span class="feat-ico">&#127756;</span>
       <h3>Vocabulary Universe</h3>
       <p>Every saved word becomes a star in your personal galaxy. Orbit it to see neighbors and rediscover words you&rsquo;ve forgotten.</p>
@@ -456,7 +452,7 @@
       <div class="step">
         <div class="step-num">3</div>
         <h4>Study Room</h4>
-        <p>Open the 4-step Article Study flow (vocab, phrases, reading, quiz) plus Express Practice for writing — Topic, Free Writing, or Diary — all reviewed by a real KoreHan tutor.</p>
+        <p>Open the 4-step Article Study flow (vocab, phrases, reading, quiz) plus Express Practice for writing — Topic, Free Writing, or Diary — with instant AI feedback (Premium: tutor review too).</p>
       </div>
       <div class="step">
         <div class="step-num">4</div>
@@ -559,23 +555,23 @@
     </details>
     <details class="faq-item">
       <summary>What's your refund policy?</summary>
-      <p>Annual and 6-month plans are pro-rated for unused months within the first 30 days. Monthly plans are non-refundable but you can cancel before the next charge. Full details in the <a href="refund-policy.html">Refund Policy</a>.</p>
+      <p>Annual plans are pro-rated for unused months within the first 30 days. Monthly plans are non-refundable but you can cancel before the next charge. Full details in the <a href="refund-policy.html">Refund Policy</a>.</p>
     </details>
     <details class="faq-item">
       <summary>Is there a free trial?</summary>
-      <p>The Free tier gives you ongoing access to read articles, conversations, and stories. Subscribe whenever you're ready for daily writing feedback and the full study program.</p>
+      <p>Yes &mdash; Premium starts with a 7-day free trial. You won&rsquo;t be charged if you cancel before it ends. The Free plan stays free forever.</p>
     </details>
     <details class="faq-item">
       <summary>What happens to my data if I cancel?</summary>
       <p>Your saved words, study history, and Growth Lab stats stay in your account. You can export or delete everything anytime from <a href="korehan-mypage.html">My Page</a>.</p>
     </details>
     <details class="faq-item">
-      <summary>Can I switch between Standard and Pro?</summary>
-      <p>Yes, anytime. Upgrades take effect immediately (pro-rated). Downgrades apply from the next billing period.</p>
+      <summary>Can I switch between monthly and annual?</summary>
+      <p>Yes, anytime from Manage subscription. Changes are pro-rated by Stripe.</p>
     </details>
     <details class="faq-item">
       <summary>How does the writing feedback work?</summary>
-      <p>Weekly Topic in the Study Room is AI-graded the moment you submit &mdash; grammar, vocab, structure, and naturalness, with line-by-line corrections and explanations. No waiting.</p>
+      <p>Your weekly writing is AI-graded the moment you submit &mdash; grammar, vocab, structure and naturalness, with line-by-line corrections. On Premium, a KoreHan tutor also reviews it and adds personal notes.</p>
     </details>
     <details class="faq-item">
       <summary>Does it work on my phone?</summary>
@@ -591,9 +587,9 @@
 <!-- CTA -->
 <div class="cta-section">
   <h2>Ready to actually write Korean?</h2>
-  <p>Start with Standard at $8.99, or go straight to Pro at $24.99. Cancel anytime.</p>
-  <button class="cta-btn" onclick="enroll('pro')">Enroll Now &rarr;</button>
-  <div class="cta-note">Payment setup coming soon &middot; Questions? han@korehani.com</div>
+  <p>Start free, or try Premium free for 7 days. Cancel anytime.</p>
+  <button class="cta-btn" onclick="enroll()">Start 7-day free trial &rarr;</button>
+  <div class="cta-note">Secure checkout by Stripe &middot; Questions? han@korehani.com</div>
 </div>
 
 </div><!-- /#cp-pane-pricing -->
@@ -649,7 +645,7 @@
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20260525r"></script>
 <script src="js/core/user-analytics.js?v=20260525r"></script>
-<script src="js/core/plans.js?v=20260525r"></script>
+<script src="js/core/plans.js?v=20261012a"></script>
 <script src="js/core/article-cache.js?v=20261010a"></script>
 <script src="js/core/phrases.js?v=20260525r"></script>
 <script src="js/core/saved-words.js?v=20260525r"></script>
@@ -667,60 +663,91 @@
 <script src="js/features/fill-blank.js?v=20260525r"></script>
 <script src="korehan-shared.js?v=20261012b"></script>
 <script>
-// Uses KH_PLANS from korehan-shared.js
-const PRICES = {
-  standard: { monthly: 8.99, '6month': 7.49, annual: 5.99 },
-  pro:      { monthly: 24.99, '6month': 20.99, annual: 16.99 }
-};
+// Premium checkout / management via the billing Edge Function (Stripe).
+var _billingInterval = 'month';
+var PREMIUM_PRICES = { month: 8.99, year: 69 };
 
 function setBilling(mode, btn) {
-  document.querySelectorAll('.bt-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  ['standard','pro'].forEach(plan => {
-    const p = PRICES[plan][mode];
-    const orig = PRICES[plan]['monthly'];
-    const pre = plan === 'standard' ? 'std' : 'essay';
-    var priceEl = document.getElementById(pre+'-price');
-    if (priceEl) priceEl.textContent = '$' + (Number.isInteger(p) ? p : p.toFixed(2));
-    if (mode === 'monthly') {
-      var origEl = document.getElementById(pre+'-original');
-      var saveEl = document.getElementById(pre+'-saving');
-      if (origEl) origEl.innerHTML = '&nbsp;';
-      if (saveEl) saveEl.innerHTML = '&nbsp;';
-    } else {
-      var origEl = document.getElementById(pre+'-original');
-      var saveEl = document.getElementById(pre+'-saving');
-      if (origEl) origEl.textContent = '$' + orig.toFixed(2) + '/month';
-      const pct = mode === '6month' ? '17' : '33';
-      const total = (p * (mode === '6month' ? 6 : 12)).toFixed(0);
-      const period = mode === '6month' ? '6 months' : 'year';
-      if (saveEl) saveEl.textContent = 'Save '+pct+'% — billed $'+total+'/'+period;
-    }
+  _billingInterval = mode === 'year' ? 'year' : 'month';
+  document.querySelectorAll('.bt-btn').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var priceEl = document.getElementById('prem-price'), perEl = document.getElementById('prem-per');
+  var origEl = document.getElementById('prem-original'), saveEl = document.getElementById('prem-saving');
+  if (_billingInterval === 'year') {
+    if (priceEl) priceEl.textContent = '$' + (PREMIUM_PRICES.year / 12).toFixed(2);
+    if (perEl) perEl.textContent = '/month';
+    if (origEl) origEl.textContent = '$' + PREMIUM_PRICES.month.toFixed(2) + '/month';
+    if (saveEl) saveEl.textContent = 'Save 36% — billed $' + PREMIUM_PRICES.year + '/year';
+  } else {
+    if (priceEl) priceEl.textContent = '$' + PREMIUM_PRICES.month.toFixed(2);
+    if (perEl) perEl.textContent = '/month';
+    if (origEl) origEl.innerHTML = '&nbsp;';
+    if (saveEl) saveEl.innerHTML = '&nbsp;';
+  }
+}
+
+async function _billingCall(body) {
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  var sess = sb ? await sb.auth.getSession() : null;
+  var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+  if (!token) return { ok: false, error: 'not_signed_in' };
+  var r = await fetch(SUPA_URL + '/functions/v1/billing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPA_KEY },
+    body: JSON.stringify(body)
   });
+  return r.json().catch(function(){ return { ok: false, error: 'billing_error' }; });
 }
 
-function enroll(plan) {
-  khAlert(
-    'Payment coming soon',
-    'Checkout isn\'t live yet. For early access or enterprise pricing, email han@korehani.com.',
-    { okLabel: 'Got it' }
-  );
+async function enroll() {
+  if (typeof supaUser === 'undefined' || !supaUser) {
+    if (typeof openAuthModal === 'function') openAuthModal('signup');
+    return;
+  }
+  if (typeof getUserPlan === 'function' && getUserPlan() === 'premium') { manageSubscription(); return; }
+  var btn = document.getElementById('prem-cta');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening secure checkout…'; }
+  try {
+    var res = await _billingCall({ action: 'checkout', interval: _billingInterval });
+    if (res && res.ok && res.url) { location.href = res.url; return; }
+    var msg = {
+      billing_not_configured: 'Payments are being set up — please check back soon, or email han@korehani.com.',
+      already_subscribed: 'You already have Premium. Opening your subscription settings…'
+    }[res && res.error] || 'Checkout could not be started. Please try again in a moment.';
+    if (res && res.error === 'already_subscribed') { manageSubscription(); return; }
+    khAlert('Checkout', msg, { okLabel: 'OK' });
+  } catch (e) {
+    khAlert('Checkout', 'Checkout could not be started. Please try again in a moment.', { okLabel: 'OK' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Start 7-day free trial &rarr;'; }
+  }
 }
 
-// Show current plan badge
+async function manageSubscription() {
+  var res = await _billingCall({ action: 'portal' });
+  if (res && res.ok && res.url) { location.href = res.url; return; }
+  khAlert('Subscription', res && res.error === 'no_customer'
+    ? 'Your Premium access was granted manually — there is no card subscription to manage. Questions? han@korehani.com'
+    : 'Could not open subscription settings. Please try again.', { okLabel: 'OK' });
+}
+
+// Return from Stripe + current-plan state on the Premium card.
 document.addEventListener('DOMContentLoaded', function() {
+  var q = new URLSearchParams(location.search);
+  var b = q.get('billing');
+  if (b) {
+    q.delete('billing');
+    try { history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); } catch (e) {}
+    if (b === 'ok') khAlert('Welcome to Premium 🎉', 'Your 7-day free trial has started (it can take a few seconds to show up). Head to the Study Room to begin!', { okLabel: 'Let\'s go' });
+  }
   setTimeout(function() {
-    if (typeof getUserPlan === 'function') {
-      var plan = getUserPlan();
-      if (plan !== 'free') {
-        var badge = document.createElement('div');
-        badge.style.cssText = 'position:fixed;top:80px;right:20px;padding:8px 16px;border-radius:10px;font-size:12px;font-weight:800;z-index:100;' +
-          (plan === 'pro' ? 'background:#7c3aed;color:#fff' : 'background:#2563eb;color:#fff');
-        badge.textContent = 'Current: ' + plan.toUpperCase();
-        document.body.appendChild(badge);
-      }
+    if (typeof getUserPlan === 'function' && getUserPlan() === 'premium') {
+      var btn = document.getElementById('prem-cta');
+      if (btn) btn.innerHTML = 'Manage subscription &rarr;';
+      var note = document.getElementById('pricing-note');
+      if (note) note.textContent = 'You are on Premium. Change plan, update your card or cancel anytime.';
     }
-  }, 2000);
+  }, 1500);
 });
 
 // ── Course-page tab switcher ──

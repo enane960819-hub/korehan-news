@@ -30,3 +30,13 @@ verify_jwt = false
 # function verifies the token itself (signed-in readers only).
 [functions.article-analyze]
 verify_jwt = false
+
+# billing: called from the plans page with the user's JWT; verified in the
+# function (gateway check off so CORS preflight passes).
+[functions.billing]
+verify_jwt = false
+
+# billing-webhook: called by Stripe; authenticated by Stripe-Signature.
+[functions.billing-webhook]
+verify_jwt = false
+
