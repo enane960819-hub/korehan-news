@@ -80,7 +80,9 @@ export function parseList(html: string, src: typeof SOURCES[number]): BuzzCandid
     const url = /^https?:/.test(href) ? href : src.base + href
     // First anchor per post is the title; later ones are previews / comment counts.
     if (seen.has(url)) continue
-    const title = stripTags(m[2]).replace(/\[\d+\]$|\(\d+\)$/, '').trim()
+    // Trailing comment counts: "제목 [12]", "제목 (12)"; instiz appends a bare "제목 218".
+    let title = stripTags(m[2]).replace(/\s*(?:\[\d+\]|\(\d+\))$/, '').trim()
+    if (src.id === 'instiz') title = title.replace(/\s+\d{1,5}$/, '').trim()
     if (title.length < 6 || title.length > 120 || /^\d+$/.test(title) || SKIP_TITLE.test(title)) continue
     seen.add(url)
     out.push({ title, url, source: src.label })
@@ -133,7 +135,8 @@ export async function collectBuzz(
     + 'trends, new slang or memes, funny situations, "is this normal?" debates, travel, pets, K-content fandom moments, culture differences.\n'
     + 'NEVER pick: politics or elections, hate / gender or regional wars, accusations or rumours about real named people, '
     + 'crime victims or accidents with injuries, minors in sensitive situations, sexual content, personal information, '
-    + 'self-harm, gambling or stocks/crypto hype, ads, anything mean-spirited, titles that only make sense with an image.\n'
+    + 'self-harm, gambling or stocks/crypto hype, ads, anything mean-spirited, titles that only make sense with an image, '
+    + 'reposts of old news articles (dated stats or years-old stories resurfacing).\n'
     + 'Prefer topics a learner can understand without Korean internet context, and that teach something about Korea.\n\n'
     + 'Return ONLY JSON: {"ranked":[{"idx":<number>,"why":"<10 words>"}]}'
   const out = extractJsonObject(await pickWithAI(prompt))
@@ -155,7 +158,8 @@ export function buzzPrompt(title: string, source: string, pageText: string, toda
     + '[참고 자료 — 커뮤니티 게시글 페이지 텍스트 (메뉴·광고·댓글이 섞여 있을 수 있음)]\n'
     + '게시글 제목: ' + title + '\n커뮤니티: ' + source + '\n페이지 텍스트:\n' + pageText + '\n\n'
     + '[안전 판단] 먼저 판단하세요. 정치, 혐오·성별/지역 갈등, 실존 인물에 대한 비난·루머, 범죄 피해자, 미성년자, 선정적 내용, 개인정보, '
-    + '자해, 도박·코인 같은 주제이거나 글 내용을 이해할 수 없으면 {"safe":false,"reason":"..."} 만 출력하고 끝내세요.\n\n'
+    + '자해, 도박·코인 같은 주제이거나, 몇 년 전 뉴스 기사를 다시 올린 글(오래된 날짜·통계)이거나, 글 내용을 이해할 수 없으면 '
+    + '{"safe":false,"reason":"..."} 만 출력하고 끝내세요.\n\n'
     + '[기사 작성 규칙]\n'
     + '- 게시글 문장을 그대로 옮기지 마세요. 주제와 상황만 가져와 완전히 새로운 문장으로 씁니다. 따옴표 인용 금지.\n'
     + '- 닉네임, 작성자 신상, 구체적 개인 정보, 커뮤니티 고유 은어로 된 사람 지칭 금지. "한 온라인 커뮤니티에 올라온 글"처럼 소개.\n'
