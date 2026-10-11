@@ -15403,6 +15403,10 @@ function _loadGrammarCurriculumFromDB() {
         _gcDbLoaded = true;
         if (typeof renderGrammarPathBanner === 'function') renderGrammarPathBanner();
       }
+      // Article labels the nightly harvest already judged (see
+      // grammar-harvest.ts) → their curriculum pattern.
+      var lm = await sb.from('grammar_label_map').select('label_norm, pattern').neq('verdict', 'skip').limit(5000);
+      (lm.data || []).forEach(function(row) { if (row.pattern) _GC_LABEL_MAP[row.label_norm] = row.pattern; });
     } catch(e) { console.warn('[Grammar Curriculum] DB load failed, using fallback:', e.message); }
   })();
   return _gcDbPromise;
@@ -15480,6 +15484,7 @@ function _gcItemKeys(it) {
   it._gcKeys = keys;
   return keys;
 }
+var _GC_LABEL_MAP = {};
 function _gcFindItem(label) {
   var n = _gcNorm(label);
   if (!n) return null;
@@ -15503,6 +15508,13 @@ function _gcFindItem(label) {
     var ln = _gcLoose(alts[i]);
     hit = GRAMMAR_CURRICULUM.find(function(it) { return _gcItemKeys(it).some(function(k) { return _gcLoose(k) === ln; }); });
     if (hit) return hit;
+  }
+  for (i = 0; i < alts.length; i++) {
+    var mapped = _GC_LABEL_MAP[alts[i]];
+    if (mapped) {
+      hit = GRAMMAR_CURRICULUM.find(function(it) { return it.pattern === mapped; });
+      if (hit) return hit;
+    }
   }
   // Near-identical forms only: "~을/를 사용해(서)" must not land on the
   // object-marker lesson. Anything looser falls back to the legacy flow.
@@ -15970,7 +15982,10 @@ async function gfSendReport() {
   var box = document.getElementById('gf-report-box');
   if (!box || !box.dataset.reason) return;
   var tab = _gfActiveTab();
-  var pattern = (_gfPattern && _gfPattern.name) || window._gcCurrentPattern || (document.getElementById('gf-title') || {}).textContent || '';
+  // Curriculum lessons report by their pattern head (before " — ") so the
+  // admin can regenerate the shared gf-curr2:: lesson from the report.
+  var pattern = (window._gcCurrentPattern ? String(window._gcCurrentPattern).split(' — ')[0] : '')
+    || (_gfPattern && _gfPattern.name) || (document.getElementById('gf-title') || {}).textContent || '';
   var pane = document.getElementById('gf-tab-' + tab);
   var snippet = String((pane && pane.innerText) || '').replace(/\s+/g, ' ').trim().slice(0, 1000) || pattern;
   var detailEl = document.getElementById('gf-rpt-detail');

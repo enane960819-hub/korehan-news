@@ -8495,9 +8495,13 @@ async function loadAnalysisReports() {
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
       +   '<a href="' + _sarLink(r.content_type, r.content_id) + '" target="_blank" rel="noopener" style="padding:6px 12px;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">↗ Open</a>'
       +   actions
+      +   (!isLegacy && r.content_type === 'study_room' && /^gf:/.test(r.content_id || '')
+            ? '<button onclick="sarRegenLesson(' + r.id + ')" title="Delete the shared cached lesson — the next learner who opens it gets a freshly generated one" style="padding:6px 12px;background:#fef3c7;color:#92400e;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">🔄 Regenerate lesson</button>'
+            : '')
       +   '<span style="font-size:11px;color:#94a3b8">id: <code>' + esc(r.content_id) + '</code>' + (r.sent_idx != null ? ' · #' + esc(r.sent_idx) : '') + '</span>'
       + '</div></div>';
   }
+  rows.forEach(function(r) { _sarRows[r.id] = r; });
   if (rows.length) {
     html += '<div style="font-size:13px;color:var(--gr);margin-bottom:12px">' + rows.length + ' report' + (rows.length === 1 ? '' : 's') + '</div>'
       + rows.map(function(r){ return card(r, false); }).join('');
@@ -8518,6 +8522,30 @@ async function sarResolve(id, status) {
     .update({ status: status, resolved_at: new Date().toISOString() }).eq('id', id);
   if (res.error) { toast('처리 실패: ' + res.error.message, true); return; }
   loadAnalysisReports();
+}
+// Study Room report → drop the shared Grammar Path lesson (gf-curr2::<pattern>)
+// so the next open regenerates it with the current prompt/policy. Report
+// ids carry the pattern head ("gf:아/어서:examples"); resolve the full
+// curriculum pattern from it.
+var _sarRows = {};
+async function sarRegenLesson(id) {
+  var r = _sarRows[id];
+  var m = r && String(r.content_id || '').match(/^gf:(.*):[a-z]+$/);
+  if (!m) { toast('Lesson id not found in this report', true); return; }
+  var head = m[1].trim();
+  try {
+    var cur = await getSb().from('grammar_curriculum').select('pattern').eq('active', true);
+    var rows = (cur && cur.data) || [];
+    var hit = rows.find(function(x) { return x.pattern === head || x.pattern.split(' — ')[0].trim() === head; });
+    if (!hit) { toast('No curriculum lesson for "' + head + '" — this report came from an article label lesson (not cached).', true); return; }
+    if (!confirm('Regenerate the shared lesson for "' + hit.pattern + '"?\n\nThe cached lesson is deleted; the next learner who opens it gets a new one (one AI call).')) return;
+    var del = await getSb().from('grammar_examples_cache').delete().eq('pattern_name', 'gf-curr2::' + hit.pattern);
+    if (del && del.error) throw new Error(del.error.message || del.error);
+    await _sarClient().from('sentence_analysis_reports')
+      .update({ status: 'fixed', resolved_at: new Date().toISOString() }).eq('id', id);
+    toast('🔄 Lesson cleared — it regenerates on the next open');
+    loadAnalysisReports();
+  } catch (e) { toast('Regenerate failed: ' + (e.message || e), true); }
 }
 async function sarDeleteLegacy(id) {
   var res = await getSb().from('client_errors').delete().eq('id', id);

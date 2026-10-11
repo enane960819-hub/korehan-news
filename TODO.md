@@ -22,6 +22,11 @@ doesn't keep reminding about closed work.
 - Both use repo secret `SUPABASE_ACCESS_TOKEN`.
 - daily-article-draft: pg_cron job 10, 06:00–06:55 KST, 4 drafts/day from
   ~50 publisher feeds (full article text).
+- Grammar harvest: once the day's drafts are done, an idle daily-article-draft
+  tick judges new article grammar labels (`grammar_label_map`) and adds real
+  new grammar to `grammar_curriculum` as Library shells (≤15/day). Lessons
+  are generated on first open (`grammar_examples_cache` gf-curr2::<pattern>);
+  admin can regenerate one from 🧩 Analysis Reports.
 
 ---
 

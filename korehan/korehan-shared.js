@@ -2973,6 +2973,8 @@ var VOCAB = {
 };
 
 // ── HTML 생성 헬퍼 ────────────────────────────────────────────
+// Relative dates ("3d ago") are no longer shown on article cards — older
+// articles read as stale even though the content is evergreen.
 function relTime(dateStr) {
   if (!dateStr) return '';
   try {
@@ -3003,7 +3005,6 @@ function cardHTML(a, extraTagClass) {
     + '</div>'
     + '<h3 class="vocab-zone" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h3>'
     + '<p class="vocab-zone">' + (a.body || '') + '</p>'
-    + '<div class="meta">' + relTime(a.date) + '</div>'
     + '</div></a>';
 }
 
@@ -3026,7 +3027,7 @@ function storyItemHTML(a) {
     + '<img src="' + img + '" alt="" loading="lazy">'
     + '<div>'
     + '<h4 class="vocab-zone">' + a.title + '</h4>'
-    + '<div class="meta">' + a.section + ' · ' + relTime(a.date) + '</div>'
+    + '<div class="meta">' + a.section + '</div>'
     + '</div></div></a>';
 }
 
@@ -3038,7 +3039,7 @@ function heroSideItemHTML(a) {
     + '<div class="hero-side-item">'
     + '<img src="' + img + '" alt="" loading="lazy" decoding="async" fetchpriority="low">'
     + '<h3 class="vocab-zone" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h3>'
-    + '<p class="meta">' + a.section + ' · ' + relTime(a.date) + '</p>'
+    + '<p class="meta">' + a.section + '</p>'
     + '</div></a>';
 }
 
@@ -3357,7 +3358,7 @@ function renderHeroSlide(heroEl) {
             + '<h1 data-kh-title-id="' + escapeHtml(item.id || '') + '" style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:clamp(22px,3vw,42px);font-weight:900;line-height:1.2;margin:0 0 8px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.5)">' + (item.title_en || item.title) + '</h1>'
             + (excerpt ? '<p style="margin:0 0 10px;font-size:13px;line-height:1.55;color:rgba(255,255,255,.85);font-family:\'Noto Sans KR\',sans-serif;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 1px 6px rgba(0,0,0,.4)">' + excerpt + '</p>' : '')
             + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'
-            +   '<span class="kh-hero-chip-when">' + relTime(item.date) + '</span>'
+            +   '<span></span>'
             +   '<span style="font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#fff;display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.32);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)">Read <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>'
             + '</div>'
             + '</div></article>';
@@ -3432,7 +3433,7 @@ function updateHeroSlideUI(heroEl) {
       return '<a href="' + articleUrl(a.id) + '" style="display:flex;gap:12px;padding:14px 16px;text-decoration:none;color:inherit;border-bottom:1px solid #edf2f7;transition:background .15s" onmouseover="this.style.background=\'#f2f7ff\'" onmouseout="this.style.background=\'\'">'
         + '<img src="' + img + '" alt="" loading="lazy" decoding="async" fetchpriority="low" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
         + '<div style="min-width:0;flex:1">'
-        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + a.section + '</span><span style="font-size:10px;color:#94a3b8">' + relTime(a.date) + '</span></div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + a.section + '</span></div>'
         + '<div data-kh-title-id="' + escapeHtml(a.id || '') + '" style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + (a.title_en || a.title) + '</div>'
         + '</div></a>';
     }).join('');
@@ -3474,7 +3475,6 @@ function buildArticleRowHTML(a) {
     + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : (a.section || '')) + '</span>'
     + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h2>'
     + '<p class="article-excerpt vocab-zone" style="font-size:14px;color:#64748b;line-height:1.6">' + aBody + '</p>'
-    + '<div style="font-size:12px;color:#94a3b8;margin-top:6px">' + relTime(a.date) + '</div>'
     + '</div></div></a>';
 }
 
