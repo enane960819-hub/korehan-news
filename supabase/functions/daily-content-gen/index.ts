@@ -282,6 +282,13 @@ async function callAnthropicArray(apiKey: string, prompt: string, model: string,
 // where topicId = "<date>_<level>" (matches _todayTopic.id format
 // in korehan-study-room.html). Skips work when the keys are
 // already populated so daily reruns are cheap.
+// Key Expressions pre-generation is OFF (2026-10-12): it wrote `kex::…`
+// rows in an older schema the Study Room never reads (the client reads
+// `kex5::<topic>_<level>` with pattern/parts/examples), and the situation
+// quiz built from those expressions didn't match what learners saw. The
+// first learner's client run is cached for everyone instead.
+const PREGEN_KEY_EXPRESSIONS = false
+
 async function pregenKeyExpressions(
   sb: ReturnType<typeof createClient>,
   apiKey: string,
@@ -289,6 +296,7 @@ async function pregenKeyExpressions(
   level: Level,
   topic: { ko: string; en: string },
 ): Promise<{ expressions: boolean; situations: boolean }> {
+  if (!PREGEN_KEY_EXPRESSIONS) return { expressions: false, situations: false }
   const topicId = `${date}_${level}`
   const expressionsKey = `kex::${topicId}_${level}_${date}`
   const situationKey   = `kex_sit2::${topicId}_${level}_${date}` // v2 = natural-Korean rules (client _keSitCacheKey)
