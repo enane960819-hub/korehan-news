@@ -3804,6 +3804,36 @@ function filterAllLevel(level, btn) {
   renderAllList(document.getElementById('dyn-article-list'), filtered, { flat: level !== 'All' });
 }
 
+// Korea Buzz articles carry articles.netizen_talk (daily-article-draft/buzz.ts):
+// paraphrased reactions + a slang glossary. Rendered under the body.
+function _khNetizenTalkHTML(a) {
+  var nt = a && a.netizen_talk;
+  if (typeof nt === 'string') { try { nt = JSON.parse(nt); } catch (e) { nt = null; } }
+  if (!nt || typeof nt !== 'object') return '';
+  var reactions = Array.isArray(nt.reactions) ? nt.reactions.filter(function(r){ return r && r.ko; }) : [];
+  var slang = Array.isArray(nt.slang) ? nt.slang.filter(function(x){ return x && x.term; }) : [];
+  if (!reactions.length && !slang.length) return '';
+  var h = '<section class="art-buzz-box">'
+    + '<div class="art-buzz-title">💬 Netizen Talk</div>'
+    + (nt.summary_en ? '<p class="art-buzz-summary">' + escapeHtml(nt.summary_en) + '</p>' : '');
+  if (reactions.length) {
+    h += '<ul class="art-buzz-reactions">' + reactions.map(function(r){
+      return '<li><span class="art-buzz-ko vocab-zone">' + escapeHtml(r.ko) + '</span>'
+        + (r.en ? '<span class="art-buzz-en">' + escapeHtml(r.en) + '</span>' : '') + '</li>';
+    }).join('') + '</ul>'
+      + '<div class="art-buzz-note">Reactions are paraphrased by KoreHani — not quotes from real users.</div>';
+  }
+  if (slang.length) {
+    h += '<div class="art-buzz-sub">Netizen slang</div><div class="art-buzz-slang">' + slang.map(function(x){
+      return '<div class="art-buzz-term"><b class="vocab-zone">' + escapeHtml(x.term) + '</b>'
+        + (x.meaning ? '<span>' + escapeHtml(x.meaning) + '</span>' : '')
+        + (x.example_ko ? '<em class="vocab-zone">' + escapeHtml(x.example_ko) + '</em>' : '')
+        + (x.example_en ? '<small>' + escapeHtml(x.example_en) + '</small>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  return h + '</section>';
+}
+
 function renderArticlePage() {
   var wrap = document.getElementById('dyn-article');
   if (!wrap) return;
@@ -3931,6 +3961,7 @@ function renderArticlePage() {
     + _khSentHintHTML()
     + '<div class="art-lead vocab-zone">' + formatArticleBody(a.body || '') + '</div>'
     + (a.full ? '<div class="art-full vocab-zone">' + formatArticleBody(a.full) + '</div>' : '')
+    + _khNetizenTalkHTML(a)
     + '<div id="art-phrases-admin" style="display:none"></div>'
     + '</div>'
 
@@ -8811,6 +8842,7 @@ var DEFAULT_SECTIONS = [
   { key:'beauty', label:'Beauty',         icon:'<i data-lucide="sparkles" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',  sort_order:12 },
   { key:'travel', label:'Travel',         icon:'<i data-lucide="plane" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',     sort_order:13 },
   { key:'오피니언',label:'Opinion',       icon:'<i data-lucide="pen-tool" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',  sort_order:14 },
+  { key:'buzz',   label:'Korea Buzz',     icon:'<i data-lucide="flame" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>',     sort_order:2  },
 ];
 
 // Canonical Lucide icon per section key. Overrides whatever the DB
@@ -8832,6 +8864,7 @@ var SECTION_ICON_LUCIDE = {
   '오피니언': 'pen-tool',
   '역사':   'scroll',
   'nature': 'leaf',
+  'buzz':   'flame',
 };
 function _khSectionLucideHtml(name) {
   return '<i data-lucide="' + name + '" class="kh-ui-icon kh-ui-icon-mobile" aria-hidden="true"></i>';

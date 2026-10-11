@@ -27,6 +27,12 @@ doesn't keep reminding about closed work.
   new grammar to `grammar_curriculum` as Library shells (≤15/day). Lessons
   are generated on first open (`grammar_examples_cache` gf-curr2::<pattern>);
   admin can regenerate one from 🧩 Analysis Reports.
+- **Korea Buzz** (2026-10-12): after the 4 news drafts, daily-article-draft
+  picks one community hot topic (`buzz.ts`: Nate Pann, theqoo, instiz, Clien,
+  DC hit, Bobaedream list pages → Haiku safety pick → post page text) and
+  writes an ORIGINAL Tree-level draft in section `buzz` with
+  `articles.netizen_talk` (paraphrased reactions + slang). Image = Pexels
+  (`pexels_key`). Admin reviews/publishes like other drafts.
 - **Plans: Free / Premium** (2026-10-12). Premium $8.99/mo or $69/yr, 7-day
   trial, Stripe via `billing` (checkout / portal / admin `setup`) +
   `billing-webhook` → `user_subscriptions`. Stripe key lives in app_settings
