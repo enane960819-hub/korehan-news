@@ -131,7 +131,7 @@ async function syncStudyProgress(stage) {
         grammar_key: focus,
         completed_at: new Date().toISOString(),
         start_writing_clicked: true,
-        attempt_count: 1,
+        // attempt_count / correct_count are owned by record_grammar_attempt — don't reset them here.
         updated_at: new Date().toISOString()
       }, { onConflict:'user_id,grammar_key' });
       if (gpRes && gpRes.error && typeof kh_log_error === 'function') {
@@ -261,6 +261,7 @@ function _khStudyRoomInit() {
         loadFlashcards('all', document.querySelector('#fc-filters-left .tpill'));
         loadWordBankPreview();
         loadWeakGrammarBanner();
+        _khLoadGrammarProgressFromAccount().catch(function(){});
         showReviewNotifications();
         loadPicturePromptsFromDB();
       }, 1500);
@@ -15293,12 +15294,83 @@ var _GC_STORAGE_KEY = 'kh_grammar_curriculum_progress';
 var _GC_MASTERY_ATTEMPTS = 1;   // min attempts before mastery can be granted
 var _GC_MASTERY_ACCURACY = 0.5; // 50% accuracy required (at least tried)
 
+// Signed-in learners keep a per-account local cache (so two accounts on one
+// device never mix); the bare key holds pre-sign-in progress, which is
+// uploaded to the account once (see _khLoadGrammarProgressFromAccount).
+function _gcKey() {
+  var u = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null;
+  return u ? _GC_STORAGE_KEY + '::' + u.id : _GC_STORAGE_KEY;
+}
 function _loadGrammarProgress() {
-  try { return JSON.parse(localStorage.getItem(_GC_STORAGE_KEY) || '{}'); } catch(e) { return {}; }
+  try { return JSON.parse(localStorage.getItem(_gcKey()) || '{}'); } catch(e) { return {}; }
 }
 
 function _saveGrammarProgress(prog) {
-  try { localStorage.setItem(_GC_STORAGE_KEY, JSON.stringify(prog)); } catch(e) {}
+  try { localStorage.setItem(_gcKey(), JSON.stringify(prog)); } catch(e) {}
+}
+
+// One exercise answer → account (study_grammar_progress via RPC; the server
+// decides mastery with the same rule as _GC_MASTERY_*). Fire-and-forget:
+// the local cache already updated the UI.
+var _khGrammarRpcMissing = false;
+function _khSyncGrammarAttempt(patternName, wasCorrect) {
+  if (_khGrammarRpcMissing || typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  sb.rpc('record_grammar_attempt', { p_key: patternName, p_correct: !!wasCorrect }).then(function(r) {
+    // Migration 20261011_grammar_progress_account not applied yet → stop for this page.
+    if (r && r.error && (r.error.code === 'PGRST202' || /could not find the function/i.test(r.error.message || ''))) { _khGrammarRpcMissing = true; return; }
+    if (r && r.error && typeof kh_log_error === 'function') {
+      kh_log_error('record_grammar_attempt failed', { grammar_key: patternName, error: r.error.message }, 'warn');
+    }
+  }, function() {});
+}
+
+// After sign-in: upload pre-account browser progress once, then pull the
+// account's progress into the local cache so the Grammar Path shows the
+// same state on every device.
+async function _khLoadGrammarProgressFromAccount() {
+  if (typeof supaUser === 'undefined' || !supaUser) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  var prog = _loadGrammarProgress();
+
+  var legacy = {};
+  try { legacy = JSON.parse(localStorage.getItem(_GC_STORAGE_KEY) || '{}') || {}; } catch(_) {}
+  var legacyRows = Object.keys(legacy).filter(function(k) { return legacy[k] && legacy[k].attempts > 0; }).map(function(k) {
+    var e = legacy[k];
+    return { key: k, attempts: e.attempts || 0, correct: e.correct || 0, mastered: !!e.mastered, last: e.lastPracticed || '' };
+  });
+  if (legacyRows.length) {
+    Object.keys(legacy).forEach(function(k) {
+      var e = legacy[k], cur = prog[k];
+      if (!e || !(e.attempts > 0)) return;
+      prog[k] = !cur ? e : {
+        attempts: Math.max(cur.attempts || 0, e.attempts || 0), correct: Math.max(cur.correct || 0, e.correct || 0),
+        mastered: !!(cur.mastered || e.mastered), lastPracticed: cur.lastPracticed || e.lastPracticed,
+      };
+    });
+    var m = await sb.rpc('merge_grammar_progress', { p_rows: legacyRows });
+    if (!m.error && m.data && m.data.ok) {
+      try { localStorage.removeItem(_GC_STORAGE_KEY); } catch(_) {}
+    }
+  }
+
+  var res = await sb.from('study_grammar_progress')
+    .select('grammar_key, attempt_count, correct_count, mastered, last_practiced_at')
+    .eq('user_id', supaUser.id);
+  if (res.error || !Array.isArray(res.data)) return; // migration not applied yet → stay local
+  res.data.forEach(function(row) {
+    var cur = prog[row.grammar_key] || { attempts: 0, correct: 0, mastered: false, lastPracticed: null };
+    prog[row.grammar_key] = {
+      attempts: Math.max(cur.attempts || 0, row.attempt_count || 0),
+      correct: Math.max(cur.correct || 0, row.correct_count || 0),
+      mastered: !!(cur.mastered || row.mastered),
+      lastPracticed: row.last_practiced_at || cur.lastPracticed,
+    };
+  });
+  _saveGrammarProgress(prog);
+  if (typeof renderGrammarPathBanner === 'function') renderGrammarPathBanner();
 }
 
 // Call this after each grammar exercise to record result
@@ -15321,6 +15393,7 @@ function updateGrammarMastery(patternName, wasCorrect) {
   }
   prog[patternName] = entry;
   _saveGrammarProgress(prog);
+  _khSyncGrammarAttempt(patternName, wasCorrect);
   // Refresh banner if visible
   renderGrammarPathBanner();
 }
