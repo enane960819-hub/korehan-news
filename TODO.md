@@ -27,6 +27,11 @@ doesn't keep reminding about closed work.
   new grammar to `grammar_curriculum` as Library shells (≤15/day). Lessons
   are generated on first open (`grammar_examples_cache` gf-curr2::<pattern>);
   admin can regenerate one from 🧩 Analysis Reports.
+- Sentence analysis: an article with no cache is baked on the first
+  signed-in reader's tap by the `article-analyze` Edge Function (Haiku, once
+  per article, ≤5 new articles/user/day, ≤60/day site-wide; log +
+  lock in `article_analyze_log`). 245/344 published articles had no
+  sentence cache on 2026-10-11 — they fill in as people read them.
 
 ---
 

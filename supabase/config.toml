@@ -24,3 +24,9 @@ verify_jwt = false
 # gateway check off so a CLI redeploy doesn't 401 the nightly cron.
 [functions.daily-content-gen]
 verify_jwt = false
+
+# article-analyze is called from the article reader with the user's JWT.
+# Gateway check off so the browser's CORS preflight isn't 401'd; the
+# function verifies the token itself (signed-in readers only).
+[functions.article-analyze]
+verify_jwt = false
