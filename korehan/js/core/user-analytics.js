@@ -180,7 +180,7 @@
       sb.from('user_sessions')
         .update({ ended_at: new Date().toISOString() })
         .eq('id', _sessionId)
-        .eq('user_id', _userId);
+        .eq('user_id', _userId).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){});
     } catch(_) {}
   }
 
@@ -202,7 +202,7 @@
         event: String(eventName),
         props: props || {},
         page_path: (location.pathname + location.search).slice(0, 500),
-      });
+      }).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){});
     } catch(_) {}
   };
 
@@ -221,7 +221,7 @@
     });
     _eventQueue.length = 0;
     if (!rows.length) return;
-    try { sb.from('user_events').insert(rows); } catch(_) {}
+    try { sb.from('user_events').insert(rows).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){}); } catch(_) {}
   }
 
   async function _boot() {

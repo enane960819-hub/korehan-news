@@ -1267,13 +1267,13 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/core/modals.js?v=20260525r"></script>
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20260525r"></script>
-<script src="js/core/user-analytics.js?v=20260525r"></script>
+<script src="js/core/user-analytics.js?v=20261012a"></script>
 <script src="js/core/plans.js?v=20261012a"></script>
 <script src="js/core/article-cache.js?v=20261010a"></script>
 <script src="js/core/phrases.js?v=20260525r"></script>
 <script src="js/core/saved-words.js?v=20260525r"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
-<script src="js/core/articles.js?v=20260531a"></script>
+<script src="js/core/articles.js?v=20261012a"></script>
 <script src="js/core/reporters.js?v=20260525r"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20260525r"></script>
@@ -1283,8 +1283,8 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20260525r"></script>
-<script src="js/features/fill-blank.js?v=20260525r"></script>
-<script src="korehan-shared.js?v=20261012c"></script>
+<script src="js/features/fill-blank.js?v=20261012a"></script>
+<script src="korehan-shared.js?v=20261012d"></script>
 <script src="js/kh-badges.js?v=20260527f"></script>
 <script>
 
@@ -4912,14 +4912,14 @@ async function openSavedWordsModal() {
   var words = [];
   if (sb && supaUser) {
     try {
-      var res = await sb.from('saved_words').select('word_ko, word_en, word_rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(100);
+      var res = await sb.from('user_saved_words').select('word_ko, word_en, word_rom, created_at').eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(100);
       if (res.data) words = res.data;
     } catch(e) {}
   }
   // Also check localStorage
   if (!words.length) {
     try {
-      var lsWords = JSON.parse(localStorage.getItem('kh_saved') || '[]');
+      var lsWords = JSON.parse(localStorage.getItem('korehan_saved_words') || '[]');
       words = lsWords.map(function(w) {
         if (typeof w === 'string') return { word_ko: w, word_en: '', word_rom: '' };
         return w;

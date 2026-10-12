@@ -6937,7 +6937,7 @@ async function saveFtProgress() {
       last_played: new Date().toISOString()
     }, { onConflict: 'user_id,scenario_id' });
     // Increment play_count
-    await sb.rpc('increment_ft_play_count', { p_user_id: supaUser.id, p_scenario_id: _ftState.scenario.id }).catch(function(){});
+    await sb.rpc('increment_ft_play_count', { p_user_id: supaUser.id, p_scenario_id: _ftState.scenario.id }).then(null, function(){});
   } catch(e) { console.warn('[FT] save failed:', e.message); }
 }
 
@@ -7506,7 +7506,7 @@ function _wbSrsRate(ko, rating) {
         p_source_kind: 'review', p_source_content_type: null, p_source_content_id: null,
         p_interest_tag: null, p_review_delta: 1,
         p_correct_delta: isCorrect ? 1 : 0, p_wrong_delta: isCorrect ? 0 : 1
-      }).catch(function(){});
+      }).then(null, function(){});
     } catch(e) {}
   }
   // Update local _wbData so next quiz reflects the change immediately
@@ -10603,7 +10603,7 @@ async function _loadSRSReviewCards() {
   try {
     var sb = getSupa();
     var today = new Date().toISOString().slice(0, 10);
-    var { data } = await sb.from('saved_words')
+    var { data } = await sb.from('user_saved_words')
       .select('word_ko,word_rom,word_en,srs_interval,srs_ease_factor,srs_next_review,review_count,correct_count,wrong_count')
       .eq('user_id', supaUser.id)
       .lte('srs_next_review', today)
@@ -10686,7 +10686,7 @@ async function _srsRate(grade) {
     var sb = getSupa();
     var nextDate = new Date();
     nextDate.setDate(nextDate.getDate() + newInterval);
-    await sb.from('saved_words').update({
+    await sb.from('user_saved_words').update({
       srs_interval: newInterval,
       srs_ease_factor: newEase,
       srs_next_review: nextDate.toISOString().slice(0, 10),
@@ -10698,7 +10698,7 @@ async function _srsRate(grade) {
       p_word_key: w.ko, p_word_ko: w.ko, p_word_en: w.en, p_word_rom: w.rom,
       p_source_kind: 'srs_review', p_review_delta: 1,
       p_correct_delta: grade >= 3 ? 1 : 0, p_wrong_delta: grade < 3 ? 1 : 0
-    }).catch(function(){});
+    }).then(null, function(){});
   } catch(e) { console.warn('SRS update failed:', e); }
 
   // If "Again", re-queue at end
@@ -10851,7 +10851,7 @@ function lqAns(btn) {
       if (sb) sb.rpc('save_or_update_word', {
         p_word_key: q.sentence, p_word_ko: q.sentence, p_word_en: q.correct,
         p_source_kind: 'listening_quiz', p_review_delta: 1, p_correct_delta: 0, p_wrong_delta: 1
-      }).catch(function(){});
+      }).then(null, function(){});
     } catch(e) {}
   }
   document.getElementById('lq-fb').innerHTML =
@@ -17909,8 +17909,8 @@ function _dctPhFinish() {
         quiz_type: 'phoneme',
         score:     st.correct,
         max_score: st.rounds.length,
-        metadata:  { pct: pct, picks: st.picks }
-      });
+        details:   { pct: pct, picks: st.picks }
+      }).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){});
     } catch(e) {}
   }
 }
@@ -18110,8 +18110,8 @@ function _dctCsFinish() {
         quiz_type: 'connected_speech',
         score:     st.correct,
         max_score: st.picks.length,
-        metadata:  { avg_similarity: avg, picks: st.picks }
-      });
+        details:   { avg_similarity: avg, picks: st.picks }
+      }).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){});
     } catch(e) {}
   }
 }

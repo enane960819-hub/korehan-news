@@ -475,13 +475,13 @@
 <script src="js/core/modals.js?v=20260525r"></script>
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20260525r"></script>
-<script src="js/core/user-analytics.js?v=20260525r"></script>
+<script src="js/core/user-analytics.js?v=20261012a"></script>
 <script src="js/core/plans.js?v=20261012a"></script>
 <script src="js/core/article-cache.js?v=20261010a"></script>
 <script src="js/core/phrases.js?v=20260525r"></script>
 <script src="js/core/saved-words.js?v=20260525r"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
-<script src="js/core/articles.js?v=20260531a"></script>
+<script src="js/core/articles.js?v=20261012a"></script>
 <script src="js/core/reporters.js?v=20260525r"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20260525r"></script>
@@ -491,8 +491,8 @@
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20260525r"></script>
-<script src="js/features/fill-blank.js?v=20260525r"></script>
-<script src="korehan-shared.js?v=20261012c"></script>
+<script src="js/features/fill-blank.js?v=20261012a"></script>
+<script src="korehan-shared.js?v=20261012d"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -1356,7 +1356,7 @@ async function openDetail(idx) {
           p_level:        c.lvl  || '',
           p_category:     c.cat  || '',
           p_completed:    false
-        }).catch(function(){});
+        }).then(null, function(){});
       }
     } catch(e) {}
     if (typeof logActivity === 'function') {
@@ -2962,7 +2962,7 @@ function showQuizResult() {
           p_content_type: 'conversation',
           p_content_id:   String(_conv._id || ''),
           p_is_correct:   pct >= 60
-        }).catch(function(){});
+        }).then(null, function(){});
         // 퀴즈까지 풀었으면 completed=true
         _sb.rpc('log_read_event', {
           p_user_id:      supaUser.id,
@@ -2972,7 +2972,7 @@ function showQuizResult() {
           p_level:        _conv.lvl  || '',
           p_category:     _conv.cat  || '',
           p_completed:    true
-        }).catch(function(){});
+        }).then(null, function(){});
       }
     } catch(e) {}
   }
@@ -3360,7 +3360,7 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
             p_content_type: 'story',
             p_content_id:   String(_s.id || ''),
             p_is_correct:   pct >= 60
-          }).catch(function(){});
+          }).then(null, function(){});
           // 퀴즈까지 풀었으면 completed=true
           _sb.rpc('log_read_event', {
             p_user_id:      supaUser.id,
@@ -3370,7 +3370,7 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
             p_level:        _s.lvl   || '',
             p_category:     _s.mood  || '',
             p_completed:    true
-          }).catch(function(){});
+          }).then(null, function(){});
         }
       } catch(e) {}
     }

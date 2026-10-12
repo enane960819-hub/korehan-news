@@ -507,7 +507,7 @@ function checkFillAnswer(qIdx, selected, isTyped) {
           if (_sb) _sb.rpc('log_quiz_result', {
             p_user_id: supaUser.id, p_quiz_type: 'fill_blank',
             p_grammar_point: gKey, p_is_correct: isCorrect
-          });
+          }).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){});
         } catch(e) {}
       }
     }

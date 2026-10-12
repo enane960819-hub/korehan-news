@@ -855,6 +855,9 @@ async function signInWithGoogle() {
   // share the implicit-hash callback path. Supabase's setSession
   // verifies the JWT signature server-side, which is the real
   // defense against tampered tokens.
+  // Google returns to origin+pathname (redirect allow-list), which drops
+  // ?id= / ?s=. Remember the full URL and restore it after sign-in.
+  try { localStorage.setItem('kh_auth_return', JSON.stringify({ u: window.location.href, t: Date.now() })); } catch(_) {}
   var { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -960,6 +963,14 @@ window.addEventListener('kh-auth-signed-in', function() {
 });
 
 // ── Auth Modal (이메일/비밀번호 + Google) ─────────────────────
+// Deep link: any page with ?auth=signup|signin opens the modal (onboarding
+// sends email sign-ups here; the pending onboarding state is restored after).
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    var _a = new URLSearchParams(window.location.search).get('auth');
+    if (_a === 'signup' || _a === 'signin') setTimeout(function(){ if (!supaUser) openAuthModal(_a); }, 600);
+  } catch(_) {}
+});
 
 function openAuthModal(defaultTab) {
   // 모달이 없으면 생성
@@ -1688,7 +1699,21 @@ async function checkSession() {
     } else if (event === 'SIGNED_IN') {
       supaUser = session ? session.user : null;
       _sessionWarningShown = false;
-      try { closeAuthModal(); } catch(_) {}
+      // Back to the page the Google sign-in started from (article, section…).
+      try {
+        var _ret = JSON.parse(localStorage.getItem('kh_auth_return') || 'null');
+        localStorage.removeItem('kh_auth_return');
+        if (_ret && _ret.u && Date.now() - _ret.t < 15 * 60 * 1000) {
+          var _cur = window.location.href.split('#')[0];
+          if (_ret.u.split('#')[0] !== _cur && new URL(_ret.u).origin === window.location.origin) {
+            window.location.replace(_ret.u);
+            return;
+          }
+        }
+      } catch(_) {}
+      // The recovery dialog must survive the SIGNED_IN that supabase-js
+      // re-emits when the tab regains focus.
+      if (!window._khPwRecoveryActive) { try { closeAuthModal(); } catch(_) {} }
       updateAuthUI();
       updateCommentForm();
       renderDailyMission();
@@ -3932,7 +3957,7 @@ function renderArticlePage() {
     + '<div class="art-card">'
     + '<div class="art-hero-img" style="position:relative">' + heroMedia
     + '<div class="art-badges-overlay">'
-    + '<span class="art-section-badge">' + a.section + '</span>'
+    + '<span class="art-section-badge">' + escapeHtml(typeof sectionLabel === 'function' ? sectionLabel(a.section) : a.section) + '</span>'
     + (a.level ? (function(lv){ var c={'Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828','Starter':'#f3e8ff;color:#6b21a8'}; var dn={'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}; return '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;background:'+(c[lv]||'#f0f0f0;color:#666')+'">'+(dn[lv]||lv)+'</span>'; })(a.level) : '')
     + '</div></div>'
     + '<div class="art-card-body">'
@@ -12484,7 +12509,7 @@ function _fjMarkDone(stepId) {
       sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle()
         .then(function(r) {
           var cur = (r.data && r.data.coin_balance) || 0;
-          sb.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: cur + step.nyang }, { onConflict:'user_id' });
+          sb.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: cur + step.nyang }, { onConflict:'user_id' }).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){});
           if (typeof showCoinToast === 'function') showCoinToast(step.nyang);
         }).catch(function(){});
     }
@@ -12498,7 +12523,7 @@ function _fjMarkDone(stepId) {
         sb2.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle()
           .then(function(r) {
             var cur2 = (r.data && r.data.coin_balance) || 0;
-            sb2.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: cur2 + _FJ_BONUS }, { onConflict:'user_id' });
+            sb2.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: cur2 + _FJ_BONUS }, { onConflict:'user_id' }).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){});
             if (typeof showCoinToast === 'function') showCoinToast(_FJ_BONUS);
             if (typeof toast === 'function') toast('🎉 First Journey Complete! +' + _FJ_BONUS + ' nyang!', 'success');
           }).catch(function(){});

@@ -324,7 +324,7 @@
         p_review_delta: 1,
         p_correct_delta: known ? 1 : 0,
         p_wrong_delta: known ? 0 : 1
-      }).catch(function() {});
+      }).then(null, function() {});
     } catch(e) {}
   }
 
