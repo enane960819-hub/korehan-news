@@ -2426,7 +2426,9 @@ function renderModalContent() {
 
   // vocab chips
   var vcEl = document.getElementById('wm-vocab-chips');
-  if (vcEl) vcEl.innerHTML = (_aiContent.vocab || []).map(function(w){ return '<div class="chip">' + w.ko + '</div>'; }).join('');
+  if (vcEl) vcEl.innerHTML = (_aiContent.vocab || []).map(function(w){
+    return '<div class="chip" style="cursor:pointer" title="' + String(w.en || '').replace(/"/g,'&quot;') + ' — tap to insert" onclick="insertVocabChip(\'' + String(w.ko).replace(/'/g,"\\'") + '\')">' + w.ko + '</div>';
+  }).join('');
 
   // 모바일 vocab chips 미러링
   var vcMobile = document.getElementById('wm-vocab-chips-mobile');
@@ -2703,9 +2705,7 @@ function openWritingModal() {
   setTimeout(function() { _initWritingTrackerRings(); _resetWritingTrackerRings(); }, 100);
   // 모바일 탭 초기화
   wmMobileInit();
-  // Paint the genre pills + scaffold for this session
-  if (typeof _renderGenrePills === 'function')    _renderGenrePills();
-  if (typeof _renderGenreScaffold === 'function') _renderGenreScaffold();
+  _wmAfterOpen();
 }
 
 function canEnterWritingRoom() {
@@ -2788,7 +2788,7 @@ function _updateLSSelectorBadges() {
   var wpBtn  = document.getElementById('ls-wp-btn');
   var wpLock = document.getElementById('ls-wp-lock');
   var wpSub  = document.getElementById('ls-wp-sub');
-  var hasAny = doneCount > 0;
+  var hasAny = doneCount >= 4; // same threshold as canEnterWritingRoom()
   var LS_LOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>';
   var LS_UNLOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7a4 4 0 0 1 7.5-1.5"/></svg>';
   if (wpBtn) {
@@ -7855,6 +7855,7 @@ function openWritingModalForLearning() {
   _wmApplyEntryTitle();
   setTimeout(function() { _initWritingTrackerRings(); _resetWritingTrackerRings(); }, 100);
   wmMobileInit();
+  _wmAfterOpen();
 }
 
 // Opens Writing Practice — always opens #wmodal (the writing room), not the Beginner activity flow
@@ -7871,7 +7872,9 @@ function lsStartWriting() {
   _wmApplyEntryTitle();
   // Phase 2: load common-mistakes panel for the current topic.
   if (typeof khLoadCommonMistakes === 'function') khLoadCommonMistakes();
+  setTimeout(function() { _initWritingTrackerRings(); _resetWritingTrackerRings(); }, 100);
   wmMobileInit();
+  _wmAfterOpen();
 }
 
 // Merge this week's user_daily_progress rows (Mon–Sun) into _studyDone —
@@ -7993,6 +7996,12 @@ function closeWritingModal() {
 
   document.getElementById('wmodal').classList.add('hidden');
   document.body.style.overflow = '';
+  _writingMode = 'topic';
+  if (window._wmHeaderOrig) {
+    var _hdr = document.querySelector('.wmh-topic');
+    if (_hdr) _hdr.innerHTML = window._wmHeaderOrig;
+    window._wmHeaderOrig = null;
+  }
   // 모바일 탭 리셋
   var tabBar = document.getElementById('wm-mobile-tabs');
   if (tabBar) tabBar.style.display = 'none';
@@ -8835,7 +8844,7 @@ function copyHelper(btn) {
   var ta = document.getElementById('write-area');
   if (!ta) return;
   ta.value += (ta.value ? '\n' : '') + ko;
-  document.getElementById('wc').textContent = ta.value.length + ' chars';
+  onWriteAreaInput(); // refresh counters, rings and autosave
   // Heuristic: a blank template ("___") was inserted, not a full
   // sentence — nudge the learner to fill it in themselves.
   showToast(/_{2,}/.test(ko) ? '빈칸 템플릿을 넣었어요. 직접 채워보세요!' : 'Copied!');
@@ -8965,7 +8974,7 @@ function refreshSubmitBanner() {
   var banner = document.getElementById('submit-today-banner');
   if (!banner) return;
   var n = countDrafts();
-  if (n > 0) {
+  if (n > 0 && !_wmWeekSubmitted()) {
     banner.classList.add('visible');
     var countEl = document.getElementById('submit-today-count');
     if (countEl) countEl.textContent = n + ' writing drafts saved · Submit once this week for feedback';
@@ -8978,6 +8987,7 @@ function refreshSubmitBanner() {
 // Friendly metadata so the review modal can show icons/labels and route
 // "Continue editing" back to the right activity opener.
 var _SUBMIT_TYPE_INFO = {
+  'express_practice':    { label: 'Express Practice',  icon: 'pencil', open: 'lsStartWriting' },
   'topic_writing':       { label: 'Topic Yum Yum',     icon: 'pen-line', open: 'openWritingModal' },
   'writing':             { label: 'Writing',           icon: 'pencil', open: 'openWritingModal' },
   'diary':               { label: 'Diary',             icon: 'notebook', open: 'openWritingModal' },
@@ -9219,56 +9229,24 @@ function _showSubmitReview(limit) {
   });
 }
 
-async function submitAllWritingsToday() {
-  if (!supaUser) { openAuthModal('signin'); return; }
-  // RACE-F1: an in-flight flag at the very top blocks rapid double-clicks
-  // that previously slipped through the `_submitBtn.disabled = true` line
-  // because the disable happened AFTER `await _showSubmitReview(limit)`.
-  // The user could mash the button during the modal-open window and
-  // double-submit before the disable landed.
-  if (window._khSubmitAllInFlight) return;
-  window._khSubmitAllInFlight = true;
-  try {
-  // Weekly Topic: one package per KST week (resets Monday 00:00 KST).
-  var submitKey = 'kh_submitted_w_' + kstWeekKey() + '_' + supaUser.id;
-  if (localStorage.getItem(submitKey)) {
-    showToast('Already submitted this week. You can submit once per week (resets Monday 00:00 KST).');
-    return;
-  }
+// Weekly Topic: one package per KST week (resets Monday 00:00 KST).
+function _wmSubmitKey() { return 'kh_submitted_w_' + kstWeekKey() + '_' + (supaUser ? supaUser.id : 'g'); }
+function _wmWeekSubmitted() { try { return !!localStorage.getItem(_wmSubmitKey()); } catch(_) { return false; } }
+
+// Upload every non-empty draft of this week as ONE user_submissions row.
+// Shared by the writing room's Submit button and the page "Submit All" banner.
+// Returns { id, items } or throws. Caller handles UI + feedback.
+async function _submitWeeklyPackage(opts) {
+  opts = opts || {};
+  var sb = getSupa(); if (!sb) throw new Error('offline');
   var limit = getWriteCharLimit();
-  var okSubmit = await _showSubmitReview(limit);
-  if (!okSubmit) return;
-
-  var sb = getSupa(); if (!sb) return;
   var all = getAllDrafts();
-  var types = Object.keys(all);
-  if (!types.length) { showToast('No work to submit.'); return; }
-
-  // Submit-button loading state — audit flagged that pressing Submit
-  // gave zero visual feedback for the 1–3 s upload window. Disable
-  // the button and swap the label so users don't double-tap or assume
-  // the request failed.
-  var _submitBtn = document.getElementById('kh-submit-all-btn');
-  var _submitLabel = _submitBtn && _submitBtn.querySelector('.kh-submit-label');
-  var _origLabel = _submitLabel ? _submitLabel.textContent : '';
-  if (_submitBtn) { _submitBtn.disabled = true; _submitBtn.style.opacity = '.65'; _submitBtn.style.cursor = 'wait'; }
-  if (_submitLabel) _submitLabel.textContent = 'Submitting…';
-  function _restoreSubmit() {
-    if (_submitBtn) { _submitBtn.disabled = false; _submitBtn.style.opacity = ''; _submitBtn.style.cursor = ''; }
-    if (_submitLabel) _submitLabel.textContent = _origLabel || 'Submit All';
-  }
-
   var today = kstWeekKey(); // package key = this week's Monday
-
-  // Build unified package — all activities combined
   var packageItems = [];
   var allTexts = [];
-  for (var ti = 0; ti < types.length; ti++) {
-    var type = types[ti];
-    var items = all[type] || [];
-    for (var ii = 0; ii < items.length; ii++) {
-      var item = items[ii];
-      if (!item.text || !item.text.trim()) continue;
+  Object.keys(all).forEach(function(type) {
+    (all[type] || []).forEach(function(item) {
+      if (!item.text || !item.text.trim()) return;
       packageItems.push({
         type: type,
         content_id: item.content_id || null,
@@ -9280,87 +9258,80 @@ async function submitAllWritingsToday() {
         writing_mode: item.writing_mode || type
       });
       allTexts.push('[' + (item.topic_ko || item.content_title || type) + ']\n' + item.text.trim());
-    }
-  }
-
-  if (!packageItems.length) { showToast('No work to submit.'); return; }
-
-  // Defence-in-depth: the review modal already gates on this, but if a
-  // draft was edited concurrently in another tab we re-check at submit.
-  var tooShort = packageItems.filter(function(p){ return p.word_count < limit.min; });
-  if (tooShort.length) {
-    var labels = tooShort.map(function(p){
-      var info = _submitTypeInfo(p.type);
-      var name = p.topic_ko || p.content_title || info.label;
-      return name + ' (' + p.word_count + '/' + limit.min + ')';
     });
-    showToast('Some entries are below ' + limit.min + ' chars: ' + labels.join(' · '));
-    return;
+  });
+  if (!packageItems.length) throw new Error('No work to submit.');
+  var tooShort = packageItems.filter(function(p){ return p.word_count < limit.min; });
+  // Writing room submit: a short draft from another activity shouldn't block
+  // the learner's main writing — leave it out of the package instead.
+  if (tooShort.length && opts.lenient) {
+    packageItems = packageItems.filter(function(p){ return p.word_count >= limit.min; });
+    allTexts = packageItems.map(function(p){ return '[' + (p.topic_ko || p.content_title || p.type) + ']\n' + p.text; });
+    if (!packageItems.length) throw new Error('Write at least ' + limit.min + ' characters.');
+    showToast(tooShort.length + ' short draft(s) from other activities were left out.');
+  } else if (tooShort.length) {
+    throw new Error('Some entries are below ' + limit.min + ' chars: ' + tooShort.map(function(p){
+      return (p.topic_ko || p.content_title || _submitTypeInfo(p.type).label) + ' (' + p.word_count + '/' + limit.min + ')';
+    }).join(' · '));
   }
+  var rec = {
+    user_id: supaUser.id,
+    content_type: 'daily_package',
+    content_id: today,
+    content_title: 'Weekly Study Package — week of ' + today,
+    study_date: today,
+    writing_text: allTexts.join('\n\n---\n\n'),
+    word_count: packageItems.reduce(function(s,p){return s+p.word_count;},0),
+    topic_ko: packageItems[0].topic_ko || '',
+    topic_en: packageItems[0].topic_en || '',
+    writing_mode: 'daily_package',
+    context_data: JSON.stringify({ items: packageItems, item_count: packageItems.length, level: _currentLevel }),
+    level: _currentLevel || '',
+    status: 'submitted'
+  };
+  var r = await sb.from('user_submissions').upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'}).select('id');
+  // Pre-migration fallback: older CHECK only allowed 'writing'.
+  if (r.error && (r.error.code === '23514' || /content_type_check/.test(r.error.message || ''))) {
+    rec.content_type = 'writing';
+    r = await sb.from('user_submissions').upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'}).select('id');
+  }
+  if (r.error) throw r.error;
+  var id = r.data && r.data[0] && r.data[0].id;
+  try { localStorage.setItem(_wmSubmitKey(), 'true'); } catch(_) {}
+  localStorage.removeItem(_writingDraftKey());
+  refreshSubmitBanner();
+  if (typeof awardXP === 'function') awardXP('writing_submit');
+  return { id: id, items: packageItems };
+}
 
+// Page banner "Submit All" — for drafts from other activities (grammar focus,
+// article study, …) when the learner never opens the writing room.
+async function submitAllWritingsToday() {
+  if (!supaUser) { openAuthModal('signin'); return; }
+  if (window._khSubmitAllInFlight) return;
+  window._khSubmitAllInFlight = true;
+  var _submitBtn = document.getElementById('kh-submit-all-btn');
+  var _submitLabel = _submitBtn && _submitBtn.querySelector('.kh-submit-label');
   try {
-    // Save as single package row
-    var rec = {
-      user_id: supaUser.id,
-      content_type: 'daily_package',
-      content_id: today,
-      content_title: 'Weekly Study Package — week of ' + today,
-      study_date: today,
-      writing_text: allTexts.join('\n\n---\n\n'),
-      word_count: packageItems.reduce(function(s,p){return s+p.word_count;},0),
-      topic_ko: packageItems[0].topic_ko || '',
-      topic_en: packageItems[0].topic_en || '',
-      writing_mode: 'daily_package',
-      context_data: JSON.stringify({ items: packageItems, item_count: packageItems.length, level: _currentLevel }),
-      level: _currentLevel || '',
-      status: 'submitted'
-    };
-    var r = await sb.from('user_submissions').upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'}).select('id');
-    // Pre-migration fallback: the original CHECK on user_submissions.content_type
-    // only allowed (writing|article_study|conversation|story). Until the
-    // 20260424_user_submissions_daily_package.sql migration lands in
-    // Supabase, 'daily_package' raises 23514 (check_violation). Retry with
-    // 'writing' so the deploy is safe in either order.
-    if (r.error && (r.error.code === '23514' || /content_type_check/.test(r.error.message || ''))) {
-      rec.content_type = 'writing';
-      rec.writing_mode = 'daily_package';
-      r = await sb.from('user_submissions')
-        .upsert(rec, {onConflict:'user_id,content_type,study_date,content_id'})
-        .select('id');
+    if (_wmWeekSubmitted()) {
+      showToast('Already submitted this week. You can submit once per week (resets Monday 00:00 KST).');
+      return;
     }
-    if (r.error) throw r.error;
-
-    // Trigger consolidated AI feedback for entire package
-    if (r.data && r.data[0] && r.data[0].id && allTexts.length) {
-      _triggerPackageFeedback(r.data[0].id, packageItems);
-    }
-
-    localStorage.setItem(submitKey, 'true');
-    localStorage.removeItem(_writingDraftKey());
-    refreshSubmitBanner();
-    // Toast wording matches the actual flow: AI drafts feedback in
-    // about a minute internally, but the user only sees feedback
-    // after the tutor has reviewed it — usually within 24 hours.
-    // Promising "ready in a minute" was wrong; users would open the
-    // inbox and find their card still "Under review".
+    var okSubmit = await _showSubmitReview(getWriteCharLimit());
+    if (!okSubmit) return;
+    if (_submitBtn) { _submitBtn.disabled = true; _submitBtn.style.opacity = '.65'; }
+    if (_submitLabel) _submitLabel.textContent = 'Submitting…';
+    var res = await _submitWeeklyPackage();
+    if (res.id) _triggerPackageFeedback(res.id, res.items);
     showToast((typeof getUserPlan === 'function' && getUserPlan() === 'premium')
       ? 'Submitted! AI feedback in about a minute — your tutor review follows within 48h.'
       : 'Submitted! Your AI feedback will be ready in about a minute.');
-    if (typeof awardXP === 'function') awardXP('writing_submit');
-    // Kick the arrival poll so the user gets a toast the moment AI
-    // feedback graduates this row to admin_approved (when the tutor
-    // signs off). The 10 min ceiling means most reviews land outside
-    // the poll window — that's fine; the next page load picks up the
-    // chip via loadFeedbackInbox / mp-feedback-chip / kh-feedback-pill.
-    if (typeof _startFeedbackArrivalPoll === 'function') {
-      setTimeout(function(){ _startFeedbackArrivalPoll(); }, 800);
-    }
+    if (typeof _startFeedbackArrivalPoll === 'function') setTimeout(_startFeedbackArrivalPoll, 800);
   } catch(e) {
-    showToast('Submit error: ' + (e.message||e));
+    showToast('Submit error: ' + (e.message || e));
   } finally {
-    _restoreSubmit();
-  }
-  } finally {
+    if (_submitBtn) { _submitBtn.disabled = false; _submitBtn.style.opacity = ''; }
+    if (_submitLabel) _submitLabel.textContent = 'Submit All';
     window._khSubmitAllInFlight = false;
   }
 }
@@ -9565,7 +9536,8 @@ async function _triggerPackageFeedback(submissionId, items) {
         } catch (_) {}
       }
     }
-  } catch(e) { console.warn('Package feedback failed:', e); }
+    return parsed;
+  } catch(e) { console.warn('Package feedback failed:', e); return null; }
 }
 
 async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
@@ -9615,66 +9587,182 @@ async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
 
 async function submitWriting() {
   if (!supaUser) { openAuthModal('signin'); closeWritingModal(); return; }
+  if (window._wmSubmitting) return;
+  if (_wmWeekSubmitted()) { showToast('Already submitted this week — your feedback is below.'); _wmRenderSubmittedState(); return; }
 
   var text = (document.getElementById('write-area').value || '').trim();
   if (!text) { showToast('Write something first!'); return; }
-
-  // Vocab usage check — skip for diary AND free modes (both are
-  // user-chosen subject; no daily-required vocab to enforce).
+  var limit = getWriteCharLimit();
+  if (text.length < limit.min) { showToast('A little more! At least ' + limit.min + ' characters (' + text.length + '/' + limit.min + ').'); return; }
   var requiredVocab = (_aiContent && _aiContent.vocab || []).map(function(v){ return v.ko; }).filter(Boolean);
   var usedVocab = requiredVocab.filter(function(w){ return text.includes(w); });
-  var skipVocabCheck = (_writingMode === 'diary' || _writingMode === 'free');
-  if (!skipVocabCheck && requiredVocab.length > 0 && usedVocab.length < 2) {
-    showToast('Include at least 2 vocab words in your writing. (' + usedVocab.length + '/2)');
+  if (requiredVocab.length > 0 && usedVocab.length < 2) {
+    showToast('Include at least 2 of this week\'s words. (' + usedVocab.length + '/2)');
     return;
   }
 
-  var isDiary = _writingMode === 'diary';
-  var isFree  = _writingMode === 'free';
-  var diaryPrompts = isDiary ? _getDiaryPrompts() : [];
-  var todayPrompt = isDiary ? diaryPrompts[new Date().getDate() % diaryPrompts.length] : null;
-
-  // Save to daily package draft (not individual DB submission)
-  // writing_mode is compounded with the genre when non-free so the Claude
-  // prompt and Learning Hub know the format (e.g. 'express_practice:essay').
+  // writing_mode carries the genre (e.g. 'topic:essay') so feedback knows the format.
   var genreSuffix = (_wmGenre && _wmGenre !== 'free') ? (':' + _wmGenre) : '';
-  var draftKey = isDiary ? 'diary' : (isFree ? 'free_writing' : 'express_practice');
-  var ctxKeyPrefix = isDiary ? 'diary_' : (isFree ? 'free_' : 'express_');
-  var topicKo = isDiary
-    ? (todayPrompt ? todayPrompt.ko : '오늘의 일기')
-    : (isFree ? 'Free Writing' : ((_todayTopic && _todayTopic.topic_ko) || ''));
-  var topicEn = isDiary
-    ? (todayPrompt ? todayPrompt.en : 'Daily Diary')
-    : (isFree ? 'Free Writing — student-chosen subject' : ((_todayTopic && _todayTopic.topic_en) || ''));
-  var ctxObj = isDiary
-    ? { type: 'diary', prompt: todayPrompt, genre: _wmGenre || 'free' }
-    : (isFree
-        ? { type: 'free_writing', genre: _wmGenre || 'free' }
-        : { used_vocab: usedVocab, required_vocab: requiredVocab, genre: _wmGenre || 'free' });
-  saveDraft(draftKey, {
+  saveDraft('express_practice', {
     text: text,
-    topic_ko: topicKo,
-    topic_en: topicEn,
-    writing_mode: (_writingMode || 'topic') + genreSuffix,
+    topic_ko: (_todayTopic && _todayTopic.topic_ko) || '',
+    topic_en: (_todayTopic && _todayTopic.topic_en) || '',
+    writing_mode: 'topic' + genreSuffix,
     writing_genre: _wmGenre || 'free',
-    context_key: ctxKeyPrefix + kstWeekKey(),
-    context: ctxObj
+    context_key: 'express_' + kstWeekKey(),
+    context: { used_vocab: usedVocab, required_vocab: requiredVocab, genre: _wmGenre || 'free' }
   });
 
+  window._wmSubmitting = true;
+  var btn = document.getElementById('wm-submit-btn');
+  var lbl = btn && btn.querySelector('.wm-submit-label');
+  if (btn) btn.disabled = true;
+  if (lbl) lbl.textContent = 'Submitting…';
+  var res;
+  try {
+    res = await _submitWeeklyPackage({ lenient: true });
+  } catch(e) {
+    showToast('Submit error: ' + (e.message || e));
+    if (btn) btn.disabled = false;
+    if (lbl) lbl.textContent = 'Submit & get feedback';
+    window._wmSubmitting = false;
+    return;
+  }
   markStageDone('topic');
   playCorrectSound();
-  showToast('Saved! Use "Submit All" to send your daily package.');
-  refreshSubmitBanner();
+  _wmClearAutosave();
+  _wmSetSubmittedUI();
+  _wmRenderFeedback(null, 'loading');
+  try {
+    var fb = res.id ? await _triggerPackageFeedback(res.id, res.items) : null;
+    _wmRenderFeedback(fb, fb ? 'ok' : 'pending');
+  } finally {
+    window._wmSubmitting = false;
+  }
+}
 
-  // ── 3D Envelope + Celebration animation ──
-  _playSubmitEnvelopeAnimation(function() {
-    returnToActivities(closeWritingModal);
-  });
-  // (Legacy individual-submission path removed — replaced by daily-package
-  // submission via submitAllWritingsToday(). The old triggerAIFeedback
-  // call site lived in the unreachable block and referenced a variable
-  // that was never defined in this scope; deleting kept readers from
-  // tracing dead code.)
+// ── Writing room helpers (2026-10-12) ───────────────────────────────
+// Called by every opener so the room is set up the same way regardless of
+// entry point (Express Practice, Topic Yum Yum, IM scaffold, …).
+function _wmAfterOpen() {
+  _writingMode = 'topic';
+  var ta = document.getElementById('write-area');
+  if (ta && !ta.value) {
+    var saved = _wmLoadAutosave();
+    if (!saved) {
+      var d = (getAllDrafts().express_practice || [])[0];
+      saved = d && d.text || '';
+    }
+    if (saved) ta.value = saved;
+  }
+  if (typeof _renderGenrePills === 'function')    _renderGenrePills();
+  if (typeof _renderGenreScaffold === 'function') _renderGenreScaffold();
+  setTimeout(function(){ try { onWriteAreaInput(); } catch(_) {} }, 150);
+  _wmRenderSubmittedState();
+}
+
+function _wmAutosaveKey() { return 'kh_wm_autosave_' + (supaUser ? supaUser.id : 'g') + '_' + kstWeekKey(); }
+function _wmLoadAutosave() { try { return localStorage.getItem(_wmAutosaveKey()) || ''; } catch(_) { return ''; } }
+function _wmClearAutosave() { try { localStorage.removeItem(_wmAutosaveKey()); } catch(_) {} }
+var _wmAutosaveTimer = null;
+function _wmScheduleAutosave(val) {
+  if (_wmWeekSubmitted()) return;
+  clearTimeout(_wmAutosaveTimer);
+  _wmAutosaveTimer = setTimeout(function() {
+    try {
+      if (val && val.trim()) localStorage.setItem(_wmAutosaveKey(), val);
+      else localStorage.removeItem(_wmAutosaveKey());
+      var n = document.getElementById('wm-autosave-note');
+      if (n) n.textContent = val && val.trim() ? 'Saved on this device · ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+    } catch(_) {}
+  }, 800);
+}
+
+function _wmSetSubmittedUI() {
+  var btn = document.getElementById('wm-submit-btn');
+  var lbl = btn && btn.querySelector('.wm-submit-label');
+  if (btn) btn.disabled = true;
+  if (lbl) lbl.textContent = 'Submitted this week ✓';
+  var note = document.getElementById('wm-submit-note');
+  if (note) note.textContent = 'Next topic opens Monday 00:00 KST';
+}
+
+// Reopen after submitting → show this week's feedback instead of an empty form.
+async function _wmRenderSubmittedState() {
+  var box = document.getElementById('wm-feedback');
+  var btn = document.getElementById('wm-submit-btn');
+  var lbl = btn && btn.querySelector('.wm-submit-label');
+  if (!_wmWeekSubmitted()) {
+    if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+    if (btn && !window._wmSubmitting) btn.disabled = false;
+    if (lbl && !window._wmSubmitting) lbl.textContent = 'Submit & get feedback';
+    var note = document.getElementById('wm-submit-note');
+    if (note) note.textContent = 'One submission per week · AI feedback appears right here';
+    return;
+  }
+  _wmSetSubmittedUI();
+  var sb = getSupa(); if (!sb || !supaUser) return;
+  try {
+    var r = await sb.from('user_submissions')
+      .select('id, status, ai_feedback, writing_text, context_data')
+      .eq('user_id', supaUser.id).eq('study_date', kstWeekKey())
+      .in('content_type', ['daily_package', 'writing'])
+      .order('submitted_at', { ascending: false }).limit(1);
+    var row = r && r.data && r.data[0];
+    if (!row) return;
+    var ta = document.getElementById('write-area');
+    if (ta && !ta.value) {
+      try {
+        var items = (JSON.parse(row.context_data || '{}').items || []);
+        var mine = items.find(function(it){ return it.type === 'express_practice'; }) || items[0];
+        if (mine) { ta.value = mine.text; onWriteAreaInput(); }
+      } catch(_) {}
+    }
+    var fb = row.ai_feedback;
+    if (typeof fb === 'string') { try { fb = JSON.parse(fb); } catch(_) { fb = null; } }
+    _wmRenderFeedback(fb, fb ? 'ok' : 'pending');
+  } catch(_) {}
+}
+
+function _wmRenderFeedback(fb, state) {
+  var box = document.getElementById('wm-feedback');
+  if (!box) return;
+  box.style.display = 'block';
+  var esc = function(x){ return String(x == null ? '' : x).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+  var card = 'border:1px solid rgba(34,197,94,.25);background:rgba(34,197,94,.06);border-radius:14px;padding:14px 16px';
+  if (state === 'loading') {
+    box.innerHTML = '<div style="' + card + ';font-size:13px;color:#86efac">✅ Submitted! Your AI tutor is reading your writing… (about 20 seconds)</div>';
+    return;
+  }
+  var premium = typeof getUserPlan === 'function' && getUserPlan() === 'premium';
+  var tutorLine = premium
+    ? '<div style="margin-top:10px;font-size:12px;color:#fcd34d">⭐ Premium · a human tutor review will arrive within 48h.</div>'
+    : '<div style="margin-top:10px;font-size:12px;color:#94a3b8">Want a real tutor to review your writing? <a href="korehan-courses.html" style="color:#fcd34d;font-weight:700">Premium →</a></div>';
+  if (state !== 'ok' || !fb) {
+    box.innerHTML = '<div style="' + card + ';font-size:13px;color:#cbd5e1">Submitted ✓ Your feedback is still being prepared — check back in a minute (it also appears in Growth Lab).' + tutorLine + '</div>';
+    return;
+  }
+  var acts = Array.isArray(fb.activities) ? fb.activities : [];
+  var a = acts.find(function(x){ return String(x && x.type || '').indexOf('express') === 0; }) || acts[0] || fb;
+  var h = '<div style="' + card + '">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">'
+    + '<div style="font-size:12px;font-weight:800;color:#86efac;text-transform:uppercase;letter-spacing:.06em">AI Feedback</div>'
+    + (a.score != null ? '<div style="font-size:20px;font-weight:900;color:#f1f5f9">' + esc(a.score) + '<span style="font-size:12px;color:#94a3b8">/100</span></div>' : '')
+    + '</div>';
+  if (a.overall || fb.overall_assessment) h += '<div style="font-size:13px;color:#e2e8f0;margin-bottom:10px">' + esc(a.overall || fb.overall_assessment) + '</div>';
+  var cs = Array.isArray(a.corrections) ? a.corrections : [];
+  if (cs.length) {
+    h += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">' + cs.map(function(c){
+      return '<div style="background:rgba(15,23,42,.35);border-radius:10px;padding:9px 11px">'
+        + '<div style="font-size:13px"><span style="color:#fca5a5;text-decoration:line-through">' + esc(c.original) + '</span> → <b style="color:#86efac">' + esc(c.corrected) + '</b></div>'
+        + (c.reason ? '<div style="font-size:12px;color:#94a3b8;margin-top:3px">' + esc(c.reason) + '</div>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  if (a.corrected_full) h += '<details style="margin-bottom:8px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:#93c5fd">See the corrected version</summary><div style="font-size:13px;color:#e2e8f0;line-height:1.7;margin-top:6px;white-space:pre-wrap">' + esc(a.corrected_full) + '</div></details>';
+  if (a.naturalness && a.naturalness.comment) h += '<div style="font-size:12px;color:#cbd5e1;margin-bottom:6px">💬 ' + esc(a.naturalness.comment) + '</div>';
+  if (fb.daily_tip) h += '<div style="font-size:12px;color:#cbd5e1;margin-bottom:6px">💡 ' + esc(fb.daily_tip) + '</div>';
+  if (fb.encouragement || a.encouragement) h += '<div style="font-size:12px;color:#86efac">' + esc(fb.encouragement || a.encouragement) + '</div>';
+  box.innerHTML = h + tutorLine + '</div>';
 }
 
 // (Removed: triggerAIFeedback + triggerArticleAIFeedback. Both were
@@ -9798,9 +9886,9 @@ async function loadFeedbackInbox() {
     // Premium writing (tutor_requested) adds a tutor review on top.
     var _fbReady = latest.status === 'admin_approved' || latest.status === 'sent' || latest.status === 'ai_reviewed';
     if (_fbReady) {
-      btnEl.querySelector('button').style.borderColor = 'rgba(34,197,94,.35)';
-      btnEl.querySelector('button').style.background = 'rgba(34,197,94,.1)';
-      btnEl.querySelector('button').style.color = '#4ade80';
+      btnEl.querySelector('a').style.borderColor = 'rgba(34,197,94,.35)';
+      btnEl.querySelector('a').style.background = 'rgba(34,197,94,.1)';
+      btnEl.querySelector('a').style.color = '#4ade80';
       if (labelEl) labelEl.textContent = (latest.status === 'ai_reviewed' && latest.tutor_requested)
         ? 'AI feedback ready · tutor review pending'
         : (latest.status === 'ai_reviewed' ? 'AI feedback ready! Tap to view' : 'Tutor feedback arrived! Tap to view');
@@ -10931,6 +11019,8 @@ function openExternalPracticeModal() {
 
   // modal header에 출처 정보
   var wmhEl = document.querySelector('.wmh-topic');
+  // Keep the normal header so closeWritingModal() can put it back.
+  if (wmhEl && !window._wmHeaderOrig) window._wmHeaderOrig = wmhEl.innerHTML;
   if (wmhEl) {
     wmhEl.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:4px">Practice Writing</div>'
       + '<div style="font-size:16px;font-weight:700;color:var(--dark)">' + (d.title || '') + '</div>';
@@ -12639,6 +12729,8 @@ function onWriteAreaInput() {
     wc.style.color = val.length < limit.min ? '#f59e0b' : remaining < 50 ? '#ef4444' : 'var(--gray)';
   }
 
+  _wmScheduleAutosave(val);
+
   if (!_aiContent) { _updateWritingTrackerRings(val, 0, 0); updateHighlight(); return; }
 
   // ── vocab 사용 카운트 + 칩 하이라이트 ──
@@ -12680,7 +12772,7 @@ function _initWritingTrackerRings() {
   var cv = document.getElementById('wm-ring-vocab');
   var cg = document.getElementById('wm-ring-grammar');
   var cc = document.getElementById('wm-ring-chars');
-  if (!cv || !cg || !cc) return;
+  if (!cv || !cc) return;
 
   _wmRingVocab = new KHCanvas.Ring(cv, {
     radius: 20, lineWidth: 5,
@@ -12688,7 +12780,7 @@ function _initWritingTrackerRings() {
     completeColors: ['#34d399', '#22c55e'],
     showText: true, textFont: 'sans-serif'
   });
-  _wmRingGrammar = new KHCanvas.Ring(cg, {
+  if (cg) _wmRingGrammar = new KHCanvas.Ring(cg, {
     radius: 20, lineWidth: 5,
     colors: ['#fbbf24', '#f59e0b'],
     completeColors: ['#34d399', '#22c55e'],
@@ -12702,7 +12794,7 @@ function _initWritingTrackerRings() {
   });
 
   _wmRingVocab.setText('0');
-  _wmRingGrammar.setText('0');
+  if (_wmRingGrammar) _wmRingGrammar.setText('0');
   _wmRingsInitialized = true;
 }
 
@@ -12734,8 +12826,10 @@ function _updateWritingTrackerRings(text, vocabUsed, vocabTotal) {
   }
   var grammarTarget = Math.min(2, Math.max(1, grammarTotal));
   var grammarPct = grammarTarget > 0 ? Math.min(1, grammarUsed / grammarTarget) : 0;
-  _wmRingGrammar.setProgress(grammarPct, grammarUsed >= grammarTarget ? 'complete' : 'normal');
-  _wmRingGrammar.setText(grammarUsed + '');
+  if (_wmRingGrammar) {
+    _wmRingGrammar.setProgress(grammarPct, grammarUsed >= grammarTarget ? 'complete' : 'normal');
+    _wmRingGrammar.setText(grammarUsed + '');
+  }
 
   // Chars ring: progress toward minimum
   _wmRingChars.setProgress(charPct, charPct >= 1 ? 'complete' : 'normal');
@@ -13282,6 +13376,7 @@ window._imLaunchWriting = function() {
     if (typeof _resetWritingTrackerRings === 'function') _resetWritingTrackerRings();
   }, 100);
   if (typeof wmMobileInit === 'function') wmMobileInit();
+  _wmAfterOpen();
   if (typeof khTrackUser === 'function') {
     try { khTrackUser('im_finished', { topic_id: (_todayTopic && _todayTopic.id) || null }); } catch(_) {}
   }

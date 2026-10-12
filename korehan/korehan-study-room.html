@@ -267,15 +267,6 @@
     <div role="button" tabindex="0" class="master-card" style="padding:0" data-gate="phone_call" onclick="openPhoneModal()">
       <div class="mc-banner"><img src="assets/ChatGPT Image Apr 11, 2026, 11_17_27 PM.png" alt="Phone Call" onerror="this.parentNode.innerHTML='<div style=\'width:100%;height:100%;min-height:160px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#14532d,#15803d);color:#fff;font-weight:900;font-size:22px;border-radius:14px;letter-spacing:.02em\'>Phone Call</div>'"></div>
     </div>
-    <div role="button" tabindex="0" class="master-card" style="padding:0" data-gate="diary" onclick="openDiaryDirect()">
-      <div class="mc-banner" style="background:linear-gradient(135deg,#1e1b4b,#312e81);display:flex;align-items:center;justify-content:center;height:100%;min-height:160px;border-radius:14px">
-        <div style="text-align:center;color:#fff">
-          <i data-lucide="notebook" class="kh-ui-icon" style="width:36px;height:36px;margin-bottom:8px;color:#94a3b8" aria-hidden="true"></i>
-          <div style="font-size:22px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 2px 12px rgba(139,92,246,.5)">KOREAN DIARY</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px">Write your day in Korean</div>
-        </div>
-      </div>
-    </div>
     <div role="button" tabindex="0" class="master-card" style="padding:0" onclick="openPictureDescription()">
       <div class="mc-banner" style="background:linear-gradient(135deg,#0c4a6e,#0369a1);display:flex;align-items:center;justify-content:center;height:100%;min-height:160px;border-radius:14px">
         <div style="text-align:center;color:#fff">
@@ -579,6 +570,9 @@
 </div><!-- /sr-page -->
 
 <!-- ═══ WRITING MODAL ══════════════════════════════════════════ -->
+<!-- One job: write this week's topic → submit → AI feedback right here.
+     (2026-10-12 cleanup: Free Writing / Diary / Reading modes, the speaking
+     recorder, Article Context and duplicate grammar/vocab blocks removed.) -->
 <div role="button" tabindex="0" class="woverlay hidden" id="wmodal" onclick="if(event.target===this)closeWritingModal()">
   <div class="wmodal">
 
@@ -586,179 +580,96 @@
     <div class="wm-header">
       <div class="wmh-topic">
         <div>
-          <div class="wmh-title" id="wm-mode-label" style="display:inline-flex;align-items:center;gap:8px"><i data-lucide="pencil" class="kh-ui-icon" style="width:18px;height:18px" aria-hidden="true"></i><span>Express Practice</span></div>
-          <div class="wmh-sub" id="wm-topic-sub">Today's topic loading…</div>
-        </div>
-        <!-- 모달 내 모드 탭 -->
-        <div class="wm-mode-toggle" id="wm-mode-toggle">
-          <button class="wm-mode-btn active" id="mbtab-topic" onclick="switchModalMode('topic')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Topic</span></button>
-          <button class="wm-mode-btn" id="mbtab-free" onclick="switchModalMode('free')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="feather" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Free Writing</span></button>
-          <button class="wm-mode-btn" id="mbtab-diary" onclick="switchModalMode('diary')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="notebook" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Diary</span></button>
+          <div class="wmh-title" id="wm-mode-label" style="display:inline-flex;align-items:center;gap:8px">✍️ Express Practice</div>
+          <div class="wmh-sub" id="wm-topic-sub">This week's topic loading…</div>
         </div>
       </div>
       <button aria-label="Close" class="wmh-close" onclick="closeWritingModal()"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>
     </div>
 
-    <!-- 모바일 탭 (JS가 .wmodal에 추가하거나 HTML에 포함) -->
+    <!-- Mobile tabs (side panels are only reachable through these ≤900px) -->
     <div class="wm-mobile-tabs" id="wm-mobile-tabs" style="display:none">
       <button class="wm-mobile-tab active" id="wmtab-write" onclick="wmMobileTab('write')" style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Write</span></button>
-      <button class="wm-mobile-tab" id="wmtab-vocab" onclick="wmMobileTab('vocab')" style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Vocab</span></button>
-      <button class="wm-mobile-tab" id="wmtab-grammar" onclick="wmMobileTab('grammar')" style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Grammar</span></button>
-      <button class="wm-mobile-tab" id="wmtab-feedback" onclick="wmMobileTab('feedback')" style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="bot" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>AI</span></button>
+      <button class="wm-mobile-tab" id="wmtab-vocab" onclick="wmMobileTab('vocab')" style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Words &amp; Grammar</span></button>
+      <button class="wm-mobile-tab" id="wmtab-feedback" onclick="wmMobileTab('feedback')" style="display:inline-flex;align-items:center;justify-content:center;gap:5px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Helpers</span></button>
     </div>
 
-    <!-- Reading 소스 선택 바 (Reading 모드일 때만 표시) -->
-    <div id="wm-source-bar" style="display:none;grid-column:1/-1;background:#0d1b2e;border-bottom:1px solid rgba(255,255,255,.1);padding:10px 20px;gap:10px;align-items:center;flex-wrap:wrap">
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="wm-src-tab active" id="wsrc-article" onclick="switchModalSource('article',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.3);border-radius:20px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><i data-lucide="newspaper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Article</span></button>
-        <button class="wm-src-tab" id="wsrc-conv" onclick="switchModalSource('conv',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Conversation</span></button>
-        <button class="wm-src-tab" id="wsrc-story" onclick="switchModalSource('story',this)" style="padding:5px 14px;border:1px solid rgba(255,255,255,.1);border-radius:20px;background:none;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Story</span></button>
-      </div>
-      <select id="wm-src-select" onchange="onModalSourceSelect(this)" style="flex:1;min-width:200px;padding:6px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-family:inherit">
-        <option value="">Select...</option>
-      </select>
-    </div>
-
-    <!-- LEFT: grammar + vocab chips -->
+    <!-- LEFT: grammar + vocab -->
     <div class="wm-left">
-      <div>
-        <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Grammar — B to A</span></div>
-        <div id="wm-grammar"></div>
-      </div>
       <div>
         <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="pin" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Must-know Vocabulary</span></div>
         <div class="chips" id="wm-vocab-chips"></div>
       </div>
       <div>
-        <div class="plabel">⭐ Must-Use Grammar</div>
-        <div class="chips" id="wm-grammar-chips"></div>
+        <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Grammar to try</span></div>
+        <div id="wm-grammar"></div>
       </div>
     </div>
 
     <!-- CENTER: writing area -->
     <div class="wm-center">
-      <!-- 모바일 빠른 힌트 바 (vocab 칩, 모바일에서만 보임) -->
+      <!-- Quick vocab (mobile only — the left panel is behind a tab there) -->
       <div id="wm-mobile-hint-bar" style="display:none;margin-bottom:10px">
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;margin-bottom:6px;display:inline-flex;align-items:center;gap:5px"><i data-lucide="pin" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Quick Vocab</span></div>
         <div class="chips" id="wm-vocab-chips-mobile"></div>
       </div>
 
       <div>
-        <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="receipt" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Today’s Topic Content</span></div>
+        <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="receipt" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>This Week’s Topic</span></div>
         <div id="wm-topic-content" style="font-size:12px;color:#cbd5e1;line-height:1.7;background:rgba(124,58,237,.05);border:1px solid rgba(139,92,246,.18);border-radius:10px;padding:11px 12px;margin-bottom:10px">Loading topic content…</div>
         <details id="wm-common-mistakes" hidden style="margin-bottom:10px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.04);border-radius:10px;padding:0">
           <summary style="cursor:pointer;list-style:none;padding:10px 12px;font-size:11px;font-weight:800;color:#fca5a5;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px"><i data-lucide="alert-triangle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>자주 틀리는 부분</span> <span id="wm-cm-count" style="opacity:.6;font-weight:700"></span></summary>
           <div id="wm-cm-body" style="padding:0 12px 10px;font-size:12px;color:#fecaca;line-height:1.6"></div>
         </details>
-        <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Your Writing</span></div>
-        <!-- Tracker Rings (Canvas) -->
-        <div class="kh-tracker-row" id="wm-tracker-row">
-          <div class="kh-tracker-item">
-            <canvas id="wm-ring-vocab" width="0" height="0"></canvas>
-            <div class="kh-tracker-label" id="wm-ring-vocab-label">Vocab 0/0</div>
-          </div>
-          <div class="kh-tracker-item">
-            <canvas id="wm-ring-grammar" width="0" height="0"></canvas>
-            <div class="kh-tracker-label" id="wm-ring-grammar-label">Grammar 0/0</div>
-          </div>
-          <div class="kh-tracker-item">
-            <canvas id="wm-ring-chars" width="0" height="0"></canvas>
-            <div class="kh-tracker-label" id="wm-ring-chars-label">0 chars</div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <div class="plabel" style="display:inline-flex;align-items:center;gap:6px;margin:0"><i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Your Writing</span></div>
+          <!-- Progress: vocab used + length (grammar is reviewed in feedback, not counted) -->
+          <div class="kh-tracker-row" id="wm-tracker-row">
+            <div class="kh-tracker-item">
+              <canvas id="wm-ring-vocab" width="0" height="0"></canvas>
+              <div class="kh-tracker-label" id="wm-ring-vocab-label">Vocab 0/2</div>
+            </div>
+            <div class="kh-tracker-item">
+              <canvas id="wm-ring-chars" width="0" height="0"></canvas>
+              <div class="kh-tracker-label" id="wm-ring-chars-label">0 chars</div>
+            </div>
           </div>
         </div>
 
-        <!-- Genre picker (Phase 4) — selects writing style + shows a scaffold -->
-        <div id="wm-genre-section" style="margin:2px 0 12px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <!-- Writing style (genre) — optional scaffold -->
+        <div id="wm-genre-section" style="margin:6px 0 10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Writing style</div>
             <div id="wm-genre-sub" style="font-size:10px;color:#94a3b8;font-weight:600"></div>
           </div>
-          <div id="wm-genre-pills" style="display:flex;gap:6px;flex-wrap:wrap">
-            <!-- _renderGenrePills() fills this -->
-          </div>
-          <div id="wm-genre-scaffold" style="display:none;margin-top:10px">
-            <!-- _renderGenreScaffold() fills this when non-free -->
-          </div>
+          <div id="wm-genre-pills" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+          <div id="wm-genre-scaffold" style="display:none;margin-top:10px"></div>
         </div>
 
         <textarea class="write-area" id="write-area"
-          placeholder="Write in Korean here…&#10;&#10;Try to use the vocab and grammar chips."
+          placeholder="Write in Korean here…&#10;&#10;Use at least 2 of this week's words."
           oninput="onWriteAreaInput()"></textarea>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
           <span id="wc" style="font-size:11px;color:var(--gray)">0 chars</span>
           <span id="wm-vocab-used-count" style="font-size:11px;color:#2255a4;font-weight:700"></span>
+          <button type="button" onclick="speakMyWriting()" style="margin-left:auto;padding:5px 10px;border-radius:8px;border:1px solid rgba(124,58,237,.25);background:rgba(124,58,237,.08);color:#7c3aed;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Listen</span></button>
         </div>
-        <!-- vocab/grammar validation status -->
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-          <span id="wm-grammar-used-count" style="font-size:11px;font-weight:700;color:#94a3b8;display:inline-flex;align-items:center;gap:5px"><i data-lucide="ruler" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Grammar is for reference — corrections reviewed in feedback</span></span>
-        </div>
+        <div id="wm-autosave-note" style="font-size:10px;color:#94a3b8;margin-top:4px;min-height:14px"></div>
       </div>
 
-      <!-- The "Vocab & Grammar" / "AI Feedback" mobile quick-jump
-           buttons used to live here. They duplicated the tab nav
-           at the top of the modal (VOCAB / GRAMMAR / AI / WRITE)
-           and the user pointed out they were just eating writing
-           space without adding navigation that wasn't already
-           reachable in one tap. Removed entirely. -->
+      <button class="submit-btn" id="wm-submit-btn" onclick="submitWriting()" style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="send" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span class="wm-submit-label">Submit &amp; get feedback</span></button>
+      <div class="submit-note" id="wm-submit-note">One submission per week · AI feedback appears right here</div>
 
-      <!-- Speaking practice section -->
-      <div id="wm-speak-section" style="margin-bottom:12px;padding:14px;border-radius:12px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.12)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
-          <div style="font-size:12px;font-weight:700;color:#7c3aed;display:inline-flex;align-items:center;gap:6px"><i data-lucide="mic" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>말하기 연습 (Speaking Practice)</span></div>
-        </div>
-        <div style="font-size:11px;color:#6b7280;margin-bottom:10px;line-height:1.5">Read your writing out loud and get instant AI feedback on pronunciation and fluency.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button id="wm-speak-listen" onclick="speakMyWriting()" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.08);color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>AI가 읽어주기</span></button>
-          <button id="wm-speak-record" onclick="toggleSpeakRecord()" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.08);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="mic" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>내 목소리 녹음</span></button>
-        </div>
-        <div id="wm-speak-status" style="font-size:11px;color:#6b7280;margin-top:8px;min-height:18px"></div>
-        <audio id="wm-speak-playback" style="width:100%;margin-top:8px;display:none" controls></audio>
-        <!-- Auto-generated score card from Web Speech API STT (Phase 2) -->
-        <div id="wm-speak-score-card" style="display:none;margin-top:10px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#fff"></div>
-        <div id="wm-speak-submit-row" style="display:none;margin-top:8px;gap:8px;flex-direction:column">
-          <button id="wm-speak-submit" onclick="submitSpeaking()" style="width:100%;padding:10px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="send" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Submit for AI Feedback (free)</span></button>
-        </div>
-
-        <!-- Speaking Radar Chart (shown after feedback) -->
-        <div id="wm-speak-radar-wrap" style="display:none;margin-top:14px;border-top:1px solid rgba(124,58,237,.15);padding-top:14px">
-          <div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Speaking Analysis</div>
-          <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
-            <canvas id="wm-speak-radar-canvas" style="flex-shrink:0"></canvas>
-            <!-- Admin edit panel (hidden by default) -->
-            <div id="wm-speak-admin-edit" style="display:none;flex:1;min-width:180px">
-              <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Admin: Edit Scores</div>
-              <div id="wm-speak-admin-inputs" style="display:flex;flex-direction:column;gap:6px"></div>
-              <button onclick="_saveRadarScores()" style="margin-top:8px;width:100%;padding:8px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Save Scores</button>
-            </div>
-          </div>
-          <!-- Sentence-by-sentence highlighting -->
-          <div id="wm-speak-sentences" style="margin-top:12px"></div>
-        </div>
-      </div>
-      <button class="submit-btn" onclick="submitWriting()" style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Done — Save to daily package</span></button>
-      <div class="submit-note">Writing + Speaking submissions available · Once per day (KST)</div>
+      <!-- AI feedback (filled after submit, or on reopen once submitted) -->
+      <div id="wm-feedback" style="display:none;margin-top:14px"></div>
     </div>
 
     <!-- RIGHT: helper sentences -->
     <div class="wm-right">
       <div>
-        <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Helper Sentences</span> <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;">tap to copy</span></div>
+        <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="message-circle" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Helper Sentences</span> <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;">tap to use</span></div>
         <div id="wm-helpers"></div>
-      </div>
-      <div style="display:none">
-        <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="newspaper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Article Context</span> <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;">for inspiration</span></div>
-        <div id="wm-context" style="font-size:12px;color:var(--gray);line-height:1.7;background:#f0f4ff;border-radius:8px;padding:11px 12px;">
-          Loading…
-        </div>
-      </div>
-      <!-- Reading Mode: 기사 전문 -->
-      <div id="wm-reading-article" style="display:none">
-        <div class="plabel" style="display:inline-flex;align-items:center;gap:6px"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Reading Material</span></div>
-        <div id="wm-article-body" style="font-size:13px;color:#334155;line-height:1.8;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;max-height:300px;overflow-y:auto">
-          Select a reading source above to begin.
-        </div>
-        <div class="plabel" style="margin-top:12px;display:inline-flex;align-items:center;gap:6px"><i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Writing Prompts</span></div>
-        <div id="wm-reading-prompts" style="font-size:12px;color:#64748b;background:#f0f6ff;border-radius:8px;padding:10px 12px;line-height:1.8"></div>
       </div>
     </div>
 
@@ -1013,7 +924,7 @@
 <!-- kh-universe.js (~117KB) is now lazy-loaded by _ensureKHUniverse()
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
-<script src="korehan-study-room.js?v=20261012f" defer></script>
+<script src="korehan-study-room.js?v=20261012g" defer></script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->
