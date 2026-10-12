@@ -28,11 +28,13 @@
 //   { "force": true }   rebuild today's queue even if one exists
 //   { "dry_run": true } fetch + pick only, don't write articles
 //   { "buzz": "dry" }   report today's Buzz candidate only
+//   { "backfill": true } bake missing sentence analysis (overnight cron)
 //   { "buzz": true }    queue a Buzz pick now (even before the news drafts)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { harvestGrammar } from './grammar-harvest.ts'
 import { buzzPrompt, collectBuzz, pexelsImage } from './buzz.ts'
+import { backfillAnalysis } from './backfill.ts'
 import { analysisPrompt, deriveTabs, extractJsonObject, SENT_CACHE_VERSION, stitchSentences } from '../_shared/article-analysis.ts'
 
 const ADMIN_EMAIL = 'enane960819@gmail.com'
@@ -593,6 +595,14 @@ Deno.serve(async (req) => {
     const { data: setting } = await sb.from('app_settings').select('value').eq('key', 'anthropic_key').single()
     const apiKey = setting?.value
     if (!apiKey) throw new Error('No Anthropic API key in app_settings')
+
+    // {"backfill":true}: overnight cron — bake sentence analysis for published
+    // articles that don't have it yet (see backfill.ts). No draft work.
+    if (opts.backfill) {
+      const r = await backfillAnalysis(sb,
+        (prompt) => callClaude(sb, apiKey, 'analysis-backfill', MODEL_FAST, 8000, prompt, 110_000), kstToday())
+      return json({ ok: true, backfill: r })
+    }
 
     // {"buzz":"dry"}: report today's Buzz candidate only (no queue, no writes).
     const pickBuzz = () => collectBuzz(sb,

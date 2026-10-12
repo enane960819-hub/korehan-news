@@ -7730,6 +7730,9 @@ async function loadWeakGrammarBanner() {
 // Shows the next Sunday class with a countdown; Premium members see
 // "Register / Join", free members see the Premium hook. The Zoom link
 // itself is never loaded here (courses page → get_live_zoom_link()).
+// Re-render plan-dependent cards once the plan is known (Premium users saw
+// "Try Premium" when the plan loaded after the card).
+window.addEventListener('kh-plan-loaded', function() { try { _srRenderLiveClassCard(); } catch(_) {} });
 async function _srRenderLiveClassCard() {
   var card = document.getElementById('sr-notif-live'); if (!card) return;
   var sb = (typeof getSupa === 'function') ? getSupa() : null; if (!sb) return;

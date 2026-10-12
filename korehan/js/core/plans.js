@@ -76,13 +76,30 @@ function canAccess(feature) {
 // Check access and show upgrade modal if locked. Returns true if accessible.
 function requirePlan(feature) {
   if (canAccess(feature)) return true;
+  // Signed in but the plan hasn't loaded yet — don't show a Premium learner
+  // the upgrade modal; ask them to tap again in a moment.
+  if (typeof supaUser !== 'undefined' && supaUser && !_userPlanLoaded) {
+    if (!_userPlanPromise) loadUserPlan();
+    if (typeof toast === 'function') toast('Checking your plan… tap again in a second.');
+    return false;
+  }
   var minPlan = featureMinPlan(feature);
   showUpgradeModal(feature, minPlan);
   return false;
 }
 
-// Load user plan from DB (called after auth)
-async function loadUserPlan() {
+// Load user plan from DB (called after auth). Fires 'kh-plan-loaded' so
+// pages can re-render plan-dependent UI (live class card, pricing CTA).
+var _userPlanPromise = null;
+function loadUserPlan() {
+  if (_userPlanPromise) return _userPlanPromise;
+  _userPlanPromise = _loadUserPlanInner().then(function() {
+    _userPlanPromise = null;
+    try { window.dispatchEvent(new CustomEvent('kh-plan-loaded', { detail: { plan: _userPlan } })); } catch(_) {}
+  });
+  return _userPlanPromise;
+}
+async function _loadUserPlanInner() {
   if (!supaUser) { _userPlan = 'free'; _userPlanLoaded = true; return; }
   try {
     var sb = getSupa(); if (!sb) return;

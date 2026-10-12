@@ -6,7 +6,7 @@
 KoreHan News is a **Korean language learning platform** delivered as a static web application. Users read real Korean news articles, stories, and conversations at different TOPIK levels, and the platform tracks vocabulary, grammar, reading, and quiz progress across five learning axes.
 
 **Live infrastructure:**
-- Frontend: Static HTML/CSS/JS files hosted on **Netlify**
+- Frontend: Static HTML/CSS/JS files hosted on **Cloudflare Pages** (deploys from `main`)
 - Database & Auth: **Supabase** (PostgreSQL + Edge Functions)
 - AI: **Anthropic Claude API** (proxied through Supabase Edge Function — never exposed to client)
 
@@ -31,9 +31,8 @@ korehan-news/
 │   ├── korehan-shared.js           # CORE: Supabase client, auth, Claude proxy, utilities
 │   ├── korehan-shared.css          # CORE: Global theme, CSS variables, components
 │   ├── korehan-hover-tooltips.js   # Hover vocabulary tooltip system
-│   ├── learning_hub_client.js      # Learning hub RPC helpers
 │   ├── claude-proxy-index.ts       # TypeScript reference for Edge Function
-│   ├── _headers                    # Netlify HTTP header configuration
+│   ├── _headers                    # HTTP header configuration (Cloudflare Pages)
 │   └── learning_hub_integration_guide.md  # Learning hub feature documentation
 └── supabase/
     └── functions/
@@ -53,19 +52,19 @@ korehan-news/
 | Auth | Supabase Auth + Google OAuth 2.0 |
 | Edge Functions | Deno (TypeScript) via Supabase |
 | AI | Anthropic Claude (via Edge Function proxy) |
-| Hosting | Netlify (static file serving) |
+| Hosting | Cloudflare Pages (static file serving) |
 | Package manager | None — no build step required |
 
 ---
 
 ## Build & Deployment
 
-**There is no build process.** Files in `korehan/` are deployed directly to Netlify as static assets.
+**There is no build process.** Files in `korehan/` are deployed directly to Cloudflare Pages as static assets.
 
 - Changes to HTML/JS/CSS are effective immediately on deploy
 - No `npm install`, no transpilation, no bundling
-- Deploy by pushing to the connected git remote (Netlify auto-deploys)
-- The `_headers` file controls HTTP caching and security headers on Netlify
+- Deploy by merging to `main` (Cloudflare Pages auto-deploys)
+- The `_headers` file controls HTTP caching and security headers
 
 **Supabase Edge Functions** (in `supabase/functions/`) are deployed separately:
 ```bash
@@ -94,13 +93,11 @@ function getSupa() {
 }
 ```
 
-### `korehan/learning_hub_client.js`
-Wraps all Learning Hub RPC calls. Use these functions instead of calling RPCs directly:
-- `logReadEvent(contentType, contentId, ...)` → `log_read_event()`
-- `saveOrUpdateWord(word, ...)` → `save_or_update_word()`
-- `logQuizResult(...)` → `log_quiz_result()`
-- `getLearningHubSnapshot()` → `get_learning_hub_snapshot()`
-- `assignDailyVocab()` → `assign_daily_vocab()`
+### Learning Hub calls
+There is no `learning_hub_client.js` (removed). Call RPCs / tables directly with `getSupa()`:
+`log_read_event`, `save_or_update_word`, `log_quiz_result` RPCs; `logActivity` / `logQuizResult` /
+`dbSaveWord` helpers live in `korehan-shared.js` / `js/core/saved-words.js`. Saved words live in
+**`user_saved_words`** (with `srs_*` columns) — `saved_words` is dead.
 
 ### `supabase/functions/claude-proxy/index.ts`
 Deno Edge Function that:
@@ -257,10 +254,8 @@ supabase functions deploy claude-proxy
 ```
 
 ### Adding a Learning Hub RPC call
-Use `learning_hub_client.js` helpers if available. If adding a new RPC:
-1. Create the function in Supabase SQL editor
-2. Add a wrapper in `learning_hub_client.js`
-3. Call the wrapper from your page
+1. Add the function in an idempotent `supabase/migrations/*.sql` file starting with `-- auto-apply`
+2. Call it from the page with `getSupa().rpc(...)` and `await` it (see the pitfall below)
 
 ---
 
@@ -271,7 +266,7 @@ Use `learning_hub_client.js` helpers if available. If adding a new RPC:
 - Workflow: feature branch → PR → merge to `main` → Cloudflare auto-deploys
 - `master` branch is deprecated — do not push to it
 - Commit messages should be descriptive and imperative: `Fix vocab quiz button: use tab=vocab`
-- No CI/CD pipeline — push triggers Netlify auto-deploy for frontend
+- CI: `apply-migrations.yml` (auto-apply SQL), `deploy-edge-function.yml`, `db-report.yml` (read-only `supabase/reports/*.sql`), syntax check
 
 ---
 
@@ -285,6 +280,20 @@ Use `learning_hub_client.js` helpers if available. If adding a new RPC:
 - **Timezone handling**: Daily progress calculations use the user's local timezone — ensure date comparisons account for this.
 
 ---
+
+## Rules learned the hard way (2026-10-12 launch audit)
+
+- **A Supabase query only sends when awaited / `.then()`-ed.** `sb.rpc(...).catch(fn)` throws (no
+  `.catch` on the builder) and a bare `sb.from(...).insert(...)` statement never runs. Always
+  `await` or `.then(onOk, onErr)`.
+- **RLS:** client-readable `app_settings` keys are an explicit allow-list
+  (`20261012_app_settings_lockdown.sql`) — secrets (API keys, Stripe, Zoom) must never be added to
+  it. Per-user tables are owner-only; content tables are admin-write
+  (`20261012_rls_lockdown.sql`). New tables need RLS + owner policies from day one.
+- **Explicit column lists must match the live schema** (`LIST_ARTICLE_SELECT`); verify against
+  production before adding a column name.
+- `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
+  (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 
 ## Past Incidents — Read Before Touching Article Fetch / Asset Deploy
 
