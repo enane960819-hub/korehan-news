@@ -412,7 +412,7 @@
       <p>Reading, Grammar, and Vocabulary scored from your actual activity. Streak, XP, and a 5-axis skill radar update every time you study.</p>
     </div>
     <div class="feat-card c-purple">
-      <span class="feat-new">Premium</span>
+      <span class="feat-new">Free</span>
       <span class="feat-ico">&#127756;</span>
       <h3>Vocabulary Universe</h3>
       <p>Every saved word becomes a star in your personal galaxy. Orbit it to see neighbors and rediscover words you&rsquo;ve forgotten.</p>
@@ -713,7 +713,7 @@ async function enroll() {
   } catch (e) {
     khAlert('Checkout', 'Checkout could not be started. Please try again in a moment.', { okLabel: 'OK' });
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = 'Start 7-day free trial &rarr;'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.lbl || 'Start 7-day free trial &rarr;'; }
   }
 }
 
@@ -726,7 +726,26 @@ async function manageSubscription() {
 }
 
 // Return from Stripe + current-plan state on the Premium card.
+// Learners who already used their trial (or had a subscription) are charged
+// immediately — don't advertise a free trial to them.
+var _cpTrialChecked = false;
+async function _cpUpdateTrialCopy() {
+  if (_cpTrialChecked || typeof supaUser === 'undefined' || !supaUser || typeof getSupa !== 'function') return;
+  _cpTrialChecked = true;
+  try {
+    var r = await getSupa().from('user_subscriptions').select('trial_used,payment_provider').eq('user_id', supaUser.id).maybeSingle();
+    var used = r && r.data && (r.data.trial_used || r.data.payment_provider === 'stripe');
+    if (!used || (typeof getUserPlan === 'function' && getUserPlan() === 'premium')) return;
+    document.querySelectorAll('.plan-badge').forEach(function(b){ if (/free trial/i.test(b.textContent)) b.style.display = 'none'; });
+    document.querySelectorAll('#prem-cta, .cta-btn').forEach(function(b){
+      if (/free trial/i.test(b.textContent)) { b.innerHTML = 'Get Premium &rarr;'; b.dataset.lbl = 'Get Premium &rarr;'; }
+    });
+  } catch(_) {}
+}
+window.addEventListener('kh-auth-signed-in', function(){ _cpTrialChecked = false; _cpUpdateTrialCopy(); });
+
 function renderPlanCta() {
+  _cpUpdateTrialCopy();
   var isPremium = typeof getUserPlan === 'function' && getUserPlan() === 'premium';
   if (!isPremium) return false;
   var btn = document.getElementById('prem-cta');

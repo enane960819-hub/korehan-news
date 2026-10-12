@@ -70,13 +70,13 @@ admin CMS → Settings. Check Anthropic usage for anything unusual and keep
 Billing → auto-reload off. If a Stripe webhook for the retired speaking-pass
 exists, delete it in the Stripe dashboard (the function now returns 410).
 
-## 🟡 Pending owner decisions (launch audit)
+## 🔧 Owner action — story covers (C11, decided 2026-10-13)
 
-- E3: one Free/Premium feature table (Vocabulary Universe still shows a
-  Premium badge but isn't gated; trial CTA shows to non-eligible users).
-- F2: auto-publish Korea Buzz drafts, or keep admin review.
-- C11: story covers are random placeholder photos (picsum) — real covers or a
-  cover-less design.
+Story cards no longer show random stock photos (genre-colour card instead).
+To give every story a real cover: admin CMS → Settings → paste an OpenAI key
+→ "🎨 스토리 표지 생성" (~$0.06 per cover, 30–60 s each; re-run retries
+failures). Decided: Vocabulary Universe is Free (E3); Korea Buzz stays
+admin-reviewed before publishing (F2) — revisit after 2–3 weeks of drafts.
 
 ---
 
