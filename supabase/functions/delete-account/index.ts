@@ -90,6 +90,62 @@ const USER_STORAGE_BUCKETS: ReadonlyArray<{ bucket: string; prefix: string }> = 
   { bucket: 'avatars',             prefix: '' },         // <userId>/avatar.jpg
 ]
 
+// Stripe statuses that can still charge (or will charge after a trial).
+const CANCELLABLE_STRIPE_STATUSES = ['trialing', 'active', 'past_due', 'incomplete']
+
+// Immediately cancels every chargeable Stripe subscription of the user's
+// Stripe customer. Uses the Stripe REST API directly (key from app_settings
+// 'stripe_secret_key' or the STRIPE_SECRET_KEY secret, same as `billing`).
+async function cancelStripeSubscriptions(
+  sb: any, userId: string,
+): Promise<{ ok: boolean; customer?: string; canceled: string[]; skipped?: string; error?: string }> {
+  const canceled: string[] = []
+  let customerId = ''
+  const logCritical = (message: string, extra: Record<string, unknown> = {}) =>
+    sb.from('client_errors').insert({
+      message: ('delete-account: ' + message).slice(0, 500), severity: 'critical',
+      context: { source: 'delete-account', user_id: userId, customer: customerId || null, ...extra },
+      user_agent: 'edge-function',
+    }).then(() => {}, () => {})
+  try {
+    const { data: row } = await sb.from('user_subscriptions').select('stripe_customer_id').eq('user_id', userId).maybeSingle()
+    customerId = String(row?.stripe_customer_id || '')
+    if (!customerId) return { ok: true, canceled, skipped: 'no_customer' }
+    const { data: keyRow } = await sb.from('app_settings').select('value').eq('key', 'stripe_secret_key').maybeSingle()
+    const key = String(keyRow?.value || Deno.env.get('STRIPE_SECRET_KEY') || '').trim()
+    if (!key) {
+      await logCritical('stripe customer exists but no Stripe key configured — subscription NOT canceled')
+      return { ok: false, customer: customerId, canceled, error: 'stripe_not_configured' }
+    }
+    const headers = { Authorization: `Bearer ${key}` }
+    const listRes = await fetch(
+      `https://api.stripe.com/v1/subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=100`,
+      { headers },
+    )
+    const list = await listRes.json().catch(() => null)
+    if (!listRes.ok) throw new Error('list failed: ' + (list?.error?.message || listRes.status))
+    const failures: string[] = []
+    for (const s of (list?.data || []) as Array<{ id: string; status: string }>) {
+      if (!CANCELLABLE_STRIPE_STATUSES.includes(s.status)) continue
+      const r = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(s.id)}`, { method: 'DELETE', headers })
+      if (r.ok) canceled.push(s.id)
+      else {
+        const j = await r.json().catch(() => null)
+        failures.push(`${s.id}: ${j?.error?.message || r.status}`)
+      }
+    }
+    if (failures.length) {
+      await logCritical('failed to cancel Stripe subscription(s): ' + failures.join('; '), { canceled })
+      return { ok: false, customer: customerId, canceled, error: failures.join('; ') }
+    }
+    return { ok: true, customer: customerId, canceled }
+  } catch (e) {
+    const msg = String((e as Error)?.message || e)
+    await logCritical('Stripe cancellation error: ' + msg, { canceled })
+    return { ok: false, customer: customerId || undefined, canceled, error: msg }
+  }
+}
+
 Deno.serve(async (req) => {
   const cors = getCorsHeaders(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -122,6 +178,12 @@ Deno.serve(async (req) => {
 
     // Service-role client for the actual deletion work.
     const sb = createClient(supabaseUrl, serviceKey)
+
+    // 0. Cancel any live Stripe subscription BEFORE the user_subscriptions
+    //    row (which holds stripe_customer_id) is deleted — otherwise a
+    //    deleted account would keep being billed. Failures never block the
+    //    erasure, but are logged as critical so the owner can cancel by hand.
+    const stripeResult = await cancelStripeSubscriptions(sb, userId)
 
     // 1. Cascade through every user-keyed table. Per-table errors are
     //    collected but don't stop the cleanup — we want as much data
@@ -168,7 +230,7 @@ Deno.serve(async (req) => {
           storageResults.push({ bucket, ok: false, deleted: 0, error: listErr.message })
           continue
         }
-        const paths = (listing || []).map((f) => `${dir}/${f.name}`)
+        const paths = (listing || []).map((f: { name: string }) => `${dir}/${f.name}`)
         if (!paths.length) {
           storageResults.push({ bucket, ok: true, deleted: 0 })
           continue
@@ -211,6 +273,7 @@ Deno.serve(async (req) => {
         tables: tableResults,
         newsletter: newsletterResult,
         storage: storageResults,
+        stripe: stripeResult,
         auth_delete: { ok: false, error: authDeleteError },
         message: 'Data tables cleared, but the auth row could not be removed. Please contact hello@korehani.com so we can finish the deletion.',
       }, 200, cors)
@@ -222,6 +285,7 @@ Deno.serve(async (req) => {
       tables: tableResults,
       newsletter: newsletterResult,
       storage: storageResults,
+      stripe: stripeResult,
       auth_delete: { ok: true },
     }, 200, cors)
   } catch (e) {

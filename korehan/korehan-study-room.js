@@ -1752,10 +1752,14 @@ async function _generateAndSaveDailyContent(date, opts) {
     }
 
     khLog('[_generateAndSaveDailyContent] AI succeeded — topic:', parsed.topic_ko);
-    _applyDailyContent(rec);
+    // Silent = background pregen of NEXT week's content: save only, never
+    // swap it onto the current screen.
+    if (!silent) _applyDailyContent(rec);
 
   } catch(err) {
     console.error('[_generateAndSaveDailyContent] failed:', err && err.message ? err.message : err);
+    // Background pregen must not apply anything (or throw) on failure.
+    if (silent) return;
     // If no assigned topic is available, rethrow so loadDailyContent's _applyFallbackTopic
     // picks a proper built-in topic instead of showing a placeholder.
     if (!fallbackTopicKo) throw err;
@@ -9500,10 +9504,21 @@ async function _triggerPackageFeedback(submissionId, items) {
     var parsed = JSON.parse(raw);
     var sb = getSupa();
     if (sb) {
-      await sb.from('user_submissions').update({
+      var _pkgUpd = {
         ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
         ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
-      }).eq('id', submissionId);
+      };
+      // Writing axis reads user_submissions.score — roll the per-activity
+      // scores into one 0-100 package score so it isn't stuck at 0.
+      if (parsed && Array.isArray(parsed.activities)) {
+        var _actScores = parsed.activities.map(function(a){ return a ? Number(a.score) : NaN; })
+          .filter(function(n){ return Number.isFinite(n); });
+        if (_actScores.length) {
+          var _avg = Math.round(_actScores.reduce(function(acc,n){ return acc + n; }, 0) / _actScores.length);
+          _pkgUpd.score = Math.max(0, Math.min(100, _avg));
+        }
+      }
+      await sb.from('user_submissions').update(_pkgUpd).eq('id', submissionId);
     }
     // Mirror what _triggerUnifiedAIFeedback does for single writes:
     // aggregate per-activity corrections into wrong_patterns + log to
@@ -9996,6 +10011,48 @@ var _fbPatternFocus = {
 function renderDetailedFeedback(fb, writingText) {
   if (!fb) return '<div style="color:rgba(255,255,255,.4)">No feedback data available</div>';
   var h = '';
+
+  // Weekly package shape: { overall_assessment, common_patterns, daily_tip,
+  // encouragement, activities:[{type, activity_name, topic, student_text,
+  // score, overall, corrected_full, corrections, naturalness}] }.
+  // Render the package summary, then each activity through the existing
+  // single-feedback renderer (recursion — activities carry no `activities`).
+  if (Array.isArray(fb.activities) && fb.activities.length) {
+    var _pkEsc = function(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+    if (fb.overall_assessment) {
+      h += '<div style="margin-bottom:16px;padding:14px;border-radius:10px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.18)">'
+        + '<div style="font-size:11px;font-weight:700;color:#86efac;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">This week\'s overview</div>'
+        + '<div style="font-size:13px;color:rgba(255,255,255,.75);line-height:1.6">' + fb.overall_assessment + '</div></div>';
+    }
+    if (Array.isArray(fb.common_patterns) && fb.common_patterns.length) {
+      h += '<div style="margin-bottom:16px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px">'
+        + '<div style="font-size:11px;font-weight:700;color:#fca5a5;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Common patterns</div>'
+        + fb.common_patterns.map(function(p) {
+            var txt = (p && typeof p === 'object') ? (p.pattern || p.name || p.description || JSON.stringify(p)) : p;
+            return '<div style="font-size:12.5px;color:rgba(255,255,255,.7);padding:2px 0">• ' + _pkEsc(txt) + '</div>';
+          }).join('')
+        + '</div>';
+    }
+    fb.activities.forEach(function(act, i) {
+      if (!act || typeof act !== 'object') return;
+      var title = act.activity_name || act.type || ('Activity ' + (i + 1));
+      h += '<div style="margin:0 0 18px;padding:14px;border-radius:12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08)">'
+        + '<div style="font-size:12px;font-weight:800;color:#bae6fd;margin-bottom:4px">' + (i + 1) + '. ' + _pkEsc(title) + '</div>'
+        + (act.topic ? '<div style="font-size:11.5px;color:rgba(255,255,255,.5);margin-bottom:8px">' + _pkEsc(act.topic) + '</div>' : '')
+        + (act.student_text ? '<div style="font-size:13px;line-height:1.65;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,.04);border-radius:8px;color:rgba(255,255,255,.7);font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _pkEsc(act.student_text) + '</div>' : '')
+        + renderDetailedFeedback(act, act.student_text || '')
+        + '</div>';
+    });
+    if (fb.daily_tip) {
+      h += '<div style="margin-bottom:12px;padding:12px 14px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.15);border-radius:10px">'
+        + '<div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:4px">💡 Tip</div>'
+        + '<div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.6">' + fb.daily_tip + '</div></div>';
+    }
+    if (fb.encouragement) {
+      h += '<div style="margin-bottom:12px;padding:12px 14px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.18);border-radius:10px;font-size:13.5px;font-weight:700;color:#86efac;line-height:1.5">' + fb.encouragement + '</div>';
+    }
+    return h;
+  }
 
   // Header — encouragement leads (audit HIGH #5: score-first hierarchy
   // hits the user with a red circle before they read anything).
@@ -11950,6 +12007,10 @@ function openSpeakingPractice() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
   _spIdx = 0; _spChunks = []; _spBlob = null;
+  // Rebuild from current content every open — otherwise a list built for a
+  // previous level / week stuck around because every branch below is
+  // guarded on `!_spSentences.length`.
+  _spSentences = [];
 
   // Build sentence list
   var bmSents = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.sentences)) ? _bm.sentences : [];
@@ -13221,8 +13282,17 @@ function _imRenderVocab() {
       + '<div class="im-loading-sub">If this hangs, the AI content for this week\'s topic hasn\'t been generated yet.</div>'
       + '</div>';
     footer.innerHTML = '<button class="bm-btn-next" onclick="_imAdvanceStep()">Skip to grammar →</button>';
-    // Re-render once content arrives.
-    setTimeout(function(){ if (_aiContent && _aiContent.vocab) _imRender(); }, 1200);
+    // Poll until content arrives. Stops when the modal is closed or the
+    // learner moved past step 1. `.vocab` alone was truthy for [] and
+    // re-rendered forever (even with the modal closed).
+    if (window._imVocabPoll) clearTimeout(window._imVocabPoll);
+    window._imVocabPoll = setTimeout(function _imPoll(){
+      window._imVocabPoll = null;
+      var ov = document.getElementById('immodal-overlay');
+      if (!ov || ov.classList.contains('hidden') || _im.step !== 1) return;
+      if (_aiContent && Array.isArray(_aiContent.vocab) && _aiContent.vocab.length) { _imRender(); return; }
+      window._imVocabPoll = setTimeout(_imPoll, 1200);
+    }, 1200);
     return;
   }
 
@@ -14536,19 +14606,28 @@ function bmSnapPrev() {
   if (_bm.snapIdx > 0) { _bm.snapIdx--; bmRenderSnapCard(); }
 }
 
-function bmSnapSave(idx) {
+async function bmSnapSave(idx) {
   var card = (_bm.snapCards||[])[idx];
   if (!card || !card.ko) return;
   if (!_bm.snapSaved) _bm.snapSaved = [];
   if (_bm.snapSaved.indexOf(idx) >= 0) return;
-  _bm.snapSaved.push(idx);
-  try {
-    if (typeof saveOrUpdateWord === 'function') {
-      saveOrUpdateWord(card.ko, card.en, card.rom, _currentLevel || 'Beginner', 'word_snap');
-    }
-  } catch(e) {}
+  if (_bm._snapSaving) return;
+  _bm._snapSaving = true;
   var btn = document.querySelector('.bm-snap-save');
-  if (btn) { btn.textContent = '✓ Saved'; btn.classList.add('saved'); }
+  var res = null;
+  try {
+    if (typeof dbSaveWord === 'function') {
+      res = await dbSaveWord(card.ko, card.rom || '', card.en || '');
+    }
+  } catch(e) { res = { ok: false, error: e }; }
+  _bm._snapSaving = false;
+  if (res && res.ok) {
+    _bm.snapSaved.push(idx);
+    if (btn) { btn.textContent = '✓ Saved'; btn.classList.add('saved'); }
+  } else {
+    console.warn('[bmSnapSave] save failed:', res && res.error);
+    if (typeof showToast === 'function') showToast('Could not save this word — please try again');
+  }
 }
 
 function goToBMStep3Back() { _bm.step = 3; updateBMHeader(); renderBMStep3(); }
@@ -20077,11 +20156,25 @@ async function asAutoSubmitOldWork() {
   var sb=getSupa(); if(!sb) return;
   var today=kstDateKey(), prefix='kh_as_'+supaUser.id+'_';
   var keys=[]; for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(k&&k.startsWith(prefix)&&k.replace(prefix,'')< today) keys.push(k); }
+  // Only items with real work (completed, or non-empty step4/step5
+  // answers) are submitted. Items that were merely opened are dropped.
+  // Once every worthwhile item in a past-day key is submitted, the key is
+  // deleted so stale kh_as_* entries don't pile up / re-submit forever.
+  function _asHasAnswers(v){
+    if(v==null) return false;
+    if(typeof v==='string') return v.trim().length>0;
+    if(Array.isArray(v)) return v.some(function(x){ return _asHasAnswers(x); });
+    if(typeof v==='object') return Object.keys(v).some(function(k){ return _asHasAnswers(v[k]); });
+    return v!==false;
+  }
   for(var ki=0;ki<keys.length;ki++){
-    var date=keys[ki].replace(prefix,''); var d={}; try{d=JSON.parse(localStorage.getItem(keys[ki])||'{}');}catch(e){continue;}
-    var ids=Object.keys(d); var changed=false;
+    var date=keys[ki].replace(prefix,''); var d={};
+    try{d=JSON.parse(localStorage.getItem(keys[ki])||'{}')||{};}catch(e){ try{localStorage.removeItem(keys[ki]);}catch(_){} continue; }
+    var ids=Object.keys(d); var failed=false;
     for(var ai=0;ai<ids.length;ai++){
       var item=d[ids[ai]]; if(!item||item.submitted) continue;
+      var worth=!!item.completed||_asHasAnswers(item.step4_answers)||_asHasAnswers(item.step5_answers)||_asHasAnswers(item.step5_text);
+      if(!worth) continue;
       var r=await sb.from('user_submissions').upsert({
         user_id:supaUser.id, content_type:'article_study',
         content_id:String(ids[ai]), content_title:item.article_title||'',
@@ -20089,9 +20182,12 @@ async function asAutoSubmitOldWork() {
         context_data:JSON.stringify({step4_answers:item.step4_answers||[]}),
         status:'submitted'
       },{onConflict:'user_id,content_type,study_date,content_id'});
-      if(!r.error){item.submitted=true;changed=true;}
+      if(!r.error){item.submitted=true;}else{failed=true;}
     }
-    if(changed) localStorage.setItem(keys[ki],JSON.stringify(d));
+    try{
+      if(failed) localStorage.setItem(keys[ki],JSON.stringify(d));  // keep for retry next load
+      else localStorage.removeItem(keys[ki]);
+    }catch(_){}
   }
 }
 

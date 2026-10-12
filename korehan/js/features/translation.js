@@ -20,116 +20,89 @@
 var translateActive = false;
 var translateCache = {};
 
+// Paragraphs of the article body only (lead + long body). Sidebar items,
+// Netizen Talk etc. also carry .vocab-zone and must never be translated
+// into — the old zone list mapped paragraph translations onto them.
+function _trParas() {
+  return Array.prototype.slice.call(document.querySelectorAll('#art-tab-article .art-lead > p, #art-tab-article .art-full > p'))
+    .filter(function(p){ return (p.textContent || '').trim(); });
+}
+function _trText(el) {
+  var clone = el.cloneNode(true);
+  clone.querySelectorAll('.tts-btn').forEach(function(s){ s.remove(); });
+  return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
 async function toggleTranslate() {
   var btn = document.getElementById('translate-btn');
-  // Exclude the article title from the translated zones — it already has
-  // a curated English headline in a.title_en (written by the admin or
-  // back-filled by _khEnsureTitlesEn). Claude translating the title along
-  // with the body was producing misaligned output (title slot got the
-  // first body paragraph because Claude split by \n\n).
-  var zones = document.querySelectorAll('.vocab-zone:not([data-kh-translate-title])');
+  var paras = _trParas();
   var titleEl = document.querySelector('[data-kh-translate-title="1"]');
-  if (!btn || (!zones.length && !titleEl)) return;
+  if (!btn || (!paras.length && !titleEl)) return;
 
   if (translateActive) {
-    // 원문으로 복원
-    zones.forEach(function(z) {
-      if (z.dataset.original) z.innerHTML = z.dataset.original;
-    });
+    paras.forEach(function(p) { if (p.dataset.original != null) p.innerHTML = p.dataset.original; });
     if (titleEl && titleEl.dataset.original) titleEl.innerHTML = titleEl.dataset.original;
     translateActive = false;
-    btn.classList.remove('active');
-    btn.title = 'Translate';
+    _translateMarkIdle(btn);
     return;
   }
 
   btn.classList.add('loading');
   btn.disabled = true;
   btn.title = 'Translating…';
-
-  // Save originals up-front for EVERY visible zone (and the title) so
-  // the user can always toggle back to Korean — previously this only
-  // happened on the Claude path, so a shared-cache or in-memory cache
-  // hit would translate but leave nothing to restore. That's why some
-  // users saw "translation toggle works once, second click does
-  // nothing".
   if (titleEl && !titleEl.dataset.original) titleEl.dataset.original = titleEl.innerHTML;
-  zones.forEach(function(z) { if (!z.dataset.original) z.dataset.original = z.innerHTML; });
+  paras.forEach(function(p) { if (p.dataset.original == null) p.dataset.original = p.innerHTML; });
 
-  // Swap the title to English up-front — doesn't require the Claude call
-  // since title_en is stored per-article. Treat title_en as "missing"
-  // when it still contains Hangul: legacy articles created while Korean
-  // wire-service sources were in the source list copied the Korean
-  // headline straight into title_en, so a naive swap would replace
-  // Korean with Korean. Forcing the empty-fallback path makes those
-  // articles flow through Claude which produces a real English headline.
+  // Title: curated title_en when it is real English.
   var titleEnAttr = titleEl ? titleEl.getAttribute('data-kh-title-en') : '';
   var titleEn = (titleEnAttr && !/[ㄱ-힝]/.test(titleEnAttr)) ? titleEnAttr : '';
-  if (titleEl && titleEn) {
-    var ttsSafe = (titleEn || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    titleEl.innerHTML = titleEn + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe + '\',this)" style="display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_VOLUME+'</span></button>';
+  function setTitle(t) {
+    if (!titleEl || !t) return;
+    var ttsSafe = String(t).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    titleEl.innerHTML = _trEsc(t) + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe + '\',this)" style="display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_VOLUME+'</span></button>';
   }
+  if (titleEn) setTitle(titleEn);
 
-  var params = new URLSearchParams(window.location.search);
-  var id = params.get('id');
+  var id = new URLSearchParams(window.location.search).get('id');
   var cacheKey = 'trans_' + id;
 
-  try {
-    var sharedCached = await getFromCache('article', id, 'translation_en');
-    // Only trust the cache when:
-    //   1) it covers every body zone we need to render (older articles
-    //      were generated under max_tokens=800, which truncated AI output
-    //      to ~1 paragraph — so the cache has a partial translation that
-    //      we don't want to keep serving forever), AND
-    //   2) the title is already in English OR there's no title element to
-    //      swap (so we don't render English body + Korean title).
-    // If either check fails we fall through to the live Claude path below
-    // which regenerates the full translation (and includes the title when
-    // title_en is missing).
-    var titleNeedsTranslate = !!(titleEl && !titleEn);
-    if (
-      sharedCached && sharedCached.translations &&
-      sharedCached.translations.length >= zones.length &&
-      !titleNeedsTranslate
-    ) {
-      translateCache[cacheKey] = sharedCached.translations;
-      applyTranslation(zones, sharedCached.translations);
-      _translateMarkActive(btn);
-      translateActive = true;
-      return;
-    }
-  } catch(e) {}
+  // 1) Shared cache (paragraph array written by the server bake / earlier readers).
+  var have = translateCache[cacheKey] ? translateCache[cacheKey].slice() : [];
+  if (!have.length) {
+    try {
+      var sharedCached = await getFromCache('article', id, 'translation_en');
+      if (sharedCached && Array.isArray(sharedCached.translations)) have = sharedCached.translations.slice();
+    } catch(e) {}
+  }
+  var missing = [];
+  paras.forEach(function(p, i) { if (!have[i]) missing.push(i); });
+  var needTitle = !!(titleEl && !titleEn);
 
-  if (translateCache[cacheKey]) {
-    applyTranslation(zones, translateCache[cacheKey]);
-    _translateMarkActive(btn);
+  if (!missing.length && !needTitle) {
+    translateCache[cacheKey] = have;
+    applyTranslation(paras, have);
     translateActive = true;
+    _translateMarkActive(btn);
     return;
   }
-
   if (!supaUser) {
-    _translateMarkIdle(btn);
-    if (typeof toast === 'function') toast('Please sign in to create a new translation when no shared cache exists.', true);
+    if (have.length) {
+      applyTranslation(paras, have);
+      translateActive = true;
+      _translateMarkActive(btn);
+      if (missing.length && typeof toast === 'function') toast('Sign in to translate the rest of this article.', true);
+    } else {
+      _translateMarkIdle(btn);
+      if (typeof toast === 'function') toast('Sign in to translate this article.', true);
+    }
     return;
   }
 
-  // Collect body segments (title is already handled separately via
-  // title_en swap — see above). If title_en was missing we fall back to
-  // translating the title too by pushing it at the front and remembering
-  // its index.
+  // 2) Claude for the missing paragraphs (+ title when there is no English one).
   var texts = [];
   var titleIdx = -1;
-  if (titleEl && !titleEn) {
-    var titleClone = titleEl.cloneNode(true);
-    titleClone.querySelectorAll('.tts-btn,.kh-hover-word,.kh-word').forEach(function(s){ s.replaceWith(s.textContent || ''); });
-    var tkt = titleClone.textContent.trim();
-    if (tkt) { texts.push(tkt); titleIdx = 0; }
-  }
-  zones.forEach(function(z) {
-    var clone = z.cloneNode(true);
-    clone.querySelectorAll('.kh-hover-word,.kh-word').forEach(function(s){ s.replaceWith(s.textContent); });
-    texts.push(clone.textContent.trim());
-  });
+  if (needTitle) { var tkt = _trText(titleEl); if (tkt) { texts.push(tkt); titleIdx = 0; } }
+  missing.forEach(function(i) { texts.push(_trText(paras[i])); });
 
   // Use explicit delimiters instead of a JSON array. The prior JSON array
   // prompt caused Claude to return only the first paragraph — likely
@@ -229,33 +202,19 @@ async function toggleTranslate() {
     }
     if (lastErr) throw lastErr;
 
-    // Split title off from the body translations if we put it up-front.
-    var bodyTranslations;
-    if (titleIdx === 0) {
-      var titleTrans = allSegs[0] || '';
-      bodyTranslations = allSegs.slice(1);
-      if (titleEl && titleTrans) {
-        var ttsSafe2 = titleTrans.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        titleEl.innerHTML = titleTrans + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe2 + '\',this)" style="display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_VOLUME+'</span></button>';
-      }
-    } else {
-      bodyTranslations = allSegs;
-    }
+    var off = 0;
+    if (titleIdx === 0) { setTitle(allSegs[0] || ''); off = 1; }
+    missing.forEach(function(pi, k) { if (allSegs[k + off]) have[pi] = allSegs[k + off]; });
 
-    translateCache[cacheKey] = bodyTranslations;
-    applyTranslation(zones, bodyTranslations);
+    translateCache[cacheKey] = have;
+    applyTranslation(paras, have);
     translateActive = true;
     _translateMarkActive(btn);
 
-    // Shared cache write-back so the next reader doesn't burn another
-    // Claude call. Original code referenced an undefined `translations`
-    // variable, so the upsert silently threw and every user re-paid for
-    // the same article. Use the parsed bodyTranslations array.
-    try {
-      if (bodyTranslations && bodyTranslations.length) {
-        upsertArticleCacheRow(id, { translation: JSON.stringify({ texts: bodyTranslations }) });
-      }
-    } catch(e) {}
+    // Write back into the shared cache, MERGING into the existing
+    // translation JSON (it also holds the server-baked per-sentence
+    // analysis — overwriting it with {texts} forced a re-bake).
+    try { _trWriteBack(id, have, paras.length); } catch(e) {}
   } catch(e) {
     _translateMarkIdle(btn);
     // Restore the Korean title if we had optimistically swapped it in.
@@ -275,10 +234,28 @@ async function toggleTranslate() {
   btn.disabled = false;
 }
 
-function applyTranslation(zones, translations) {
-  zones.forEach(function(z, i) {
-    if (translations[i]) z.innerHTML = '<p>' + translations[i] + '</p>';
+function _trEsc(t) {
+  return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; });
+}
+// Cached translations come from a table signed-in users can write — always escape.
+function applyTranslation(paras, translations) {
+  paras.forEach(function(p, i) {
+    if (translations[i]) p.innerHTML = _trEsc(translations[i]).replace(/\n\n+/g, '<br><br>');
   });
+}
+
+async function _trWriteBack(articleId, texts, n) {
+  var sb = getSupa();
+  if (!sb || !articleId || !texts || !texts.length) return;
+  var cur = null;
+  try {
+    var r = await sb.from('article_cache').select('translation').eq('article_id', String(articleId)).maybeSingle();
+    if (r && !r.error && r.data && r.data.translation) {
+      cur = typeof r.data.translation === 'string' ? JSON.parse(r.data.translation) : r.data.translation;
+    }
+  } catch(_) { cur = null; }
+  var merged = Object.assign({}, cur || {}, { texts: texts.slice(0, Math.max(n, (cur && cur.texts || []).length)) });
+  upsertArticleCacheRow(articleId, { translation: JSON.stringify(merged) });
 }
 
 // Toggle visual state on the translate button without mutating its

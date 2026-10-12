@@ -6,15 +6,21 @@
 // Stripe-Signature.
 //
 // Mapping (one row per user, UNIQUE user_id):
-//   trialing / active / past_due  → plan 'premium', status 'active',
+//   trialing / active             → plan 'premium', status 'active',
 //                                   expires_at = current_period_end (+1 day grace)
+//   past_due                      → still 'active', but expires_at is capped at
+//                                   max(previous expires_at, now + 3 days)
 //   canceled / unpaid / incomplete_expired → status 'expired'
 //   cancel_at_period_end mirrors Stripe; trial_used flips true once trialing.
+// The subscription is always re-fetched from Stripe (payload not trusted).
+// A non-live event for a subscription other than the stored payment_id never
+// downgrades a currently live row. Deleted users (FK 23503) are acked with 200.
 
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const GRACE_MS = 24 * 3600 * 1000
+const PAST_DUE_GRACE_MS = 3 * 24 * 3600 * 1000
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('method not allowed', { status: 405 })
@@ -57,16 +63,38 @@ Deno.serve(async (req) => {
     return cust?.metadata?.user_id || null
   }
 
-  async function syncSubscription(sub: Stripe.Subscription) {
+  // Never trust the event payload: events can arrive out of order or be
+  // retried hours later, so always re-read the subscription from Stripe.
+  async function syncSubscription(subId: string, userIdHint: string | null = null) {
+    const sub = await stripe.subscriptions.retrieve(subId)
+    if (!sub.metadata?.user_id && userIdHint) sub.metadata = { ...sub.metadata, user_id: userIdHint }
     const userId = await userIdFor(sub)
     if (!userId) { await logErr('subscription without user', { sub: sub.id }); return }
     const live = ['trialing', 'active', 'past_due'].includes(sub.status)
-    const { data: prev } = await sb.from('user_subscriptions').select('trial_used').eq('user_id', userId).maybeSingle()
+    const { data: prev } = await sb.from('user_subscriptions')
+      .select('plan,status,expires_at,payment_id,trial_used').eq('user_id', userId).maybeSingle()
+    const now = Date.now()
+    const prevExp = prev?.expires_at ? new Date(prev.expires_at).getTime() : null
+    const prevLive = !!prev && prev.status === 'active' && ['premium', 'standard', 'pro'].includes(prev.plan) &&
+      prevExp !== null && prevExp > now
+    // A different (stale) subscription ending must not downgrade a user whose
+    // current access comes from another live subscription / grant.
+    if (prev && prev.payment_id !== sub.id && prevLive && !live) {
+      console.log('[billing-webhook] skip: non-live sub', sub.id, 'differs from current', prev.payment_id)
+      return
+    }
+    let expiresMs = sub.current_period_end * 1000 + GRACE_MS
+    if (sub.status === 'past_due') {
+      // Keep Premium while Stripe retries the card, but never extend access
+      // on an unpaid invoice: cap at max(previous expiry, now + 3 days).
+      const cap = Math.max(prevExp ?? 0, now + PAST_DUE_GRACE_MS)
+      expiresMs = Math.min(expiresMs, cap)
+    }
     const row = {
       user_id: userId,
       plan: 'premium',
       status: live ? 'active' : 'expired',
-      expires_at: new Date(sub.current_period_end * 1000 + GRACE_MS).toISOString(),
+      expires_at: new Date(expiresMs).toISOString(),
       payment_provider: 'stripe',
       payment_id: sub.id,
       stripe_customer_id: typeof sub.customer === 'string' ? sub.customer : sub.customer?.id,
@@ -75,7 +103,15 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     }
     const { error } = await sb.from('user_subscriptions').upsert(row, { onConflict: 'user_id' })
-    if (error) throw new Error('upsert: ' + error.message)
+    if (error) {
+      if (error.code === '23503') {
+        // FK violation: the user was deleted. Retrying can never succeed, so
+        // log it and acknowledge the event (no retry storm).
+        await logErr('user no longer exists; event ignored', { sub: sub.id, user_id: userId })
+        return
+      }
+      throw new Error('upsert: ' + error.message)
+    }
   }
 
   try {
@@ -83,16 +119,14 @@ Deno.serve(async (req) => {
       case 'checkout.session.completed': {
         const s = event.data.object as Stripe.Checkout.Session
         if (s.mode === 'subscription' && s.subscription) {
-          const sub = await stripe.subscriptions.retrieve(String(s.subscription))
-          if (!sub.metadata?.user_id && s.client_reference_id) sub.metadata = { ...sub.metadata, user_id: s.client_reference_id }
-          await syncSubscription(sub)
+          await syncSubscription(String(s.subscription), s.client_reference_id || null)
         }
         break
       }
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
-        await syncSubscription(event.data.object as Stripe.Subscription)
+        await syncSubscription((event.data.object as Stripe.Subscription).id)
         break
       case 'invoice.payment_failed': {
         const inv = event.data.object as Stripe.Invoice

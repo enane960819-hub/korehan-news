@@ -274,7 +274,9 @@ function applyArticlesCache(items, opts) {
   if (opts && opts.merge && Array.isArray(_articlesCache) && _articlesCache.length > normalized.length) {
     var byId = Object.create(null);
     _articlesCache.forEach(function (a) { if (a && a.id != null) byId[String(a.id)] = a; });
-    normalized.forEach(function (a) { if (a && a.id != null) byId[String(a.id)] = a; });
+    // Merge, don't replace: a trimmed list row must not wipe columns a full
+    // single-article fetch already loaded (full, netizen_talk, …).
+    normalized.forEach(function (a) { if (a && a.id != null) byId[String(a.id)] = Object.assign({}, byId[String(a.id)] || {}, a); });
     normalized = sortArticlesNewest(Object.keys(byId).map(function (k) { return byId[k]; }));
   }
   _articlesCache = normalized;
@@ -350,7 +352,7 @@ async function loadArticlesFromDB(options) {
     if (_articlesCache && _articlesCache.length > rows.length) {
       var byId = Object.create(null);
       _articlesCache.forEach(function (a) { if (a && a.id != null) byId[a.id] = a; });
-      rows.forEach(function (a) { if (a && a.id != null) byId[a.id] = a; });
+      rows.forEach(function (a) { if (a && a.id != null) byId[a.id] = Object.assign({}, byId[a.id] || {}, a); });
       rows = Object.keys(byId).map(function (k) { return byId[k]; });
     }
     rows.sort(function (a, b) {

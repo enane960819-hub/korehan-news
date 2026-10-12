@@ -3576,6 +3576,30 @@ async function renderSectionPage(section) {
     });
   });
 
+  // The shared cache holds only the newest ~80 articles (or 15 from Home), so
+  // a section could show 1–2 items. Always fetch this section directly; the
+  // cache is just the instant first paint.
+  try {
+    var _sbSec = getSupa();
+    if (_sbSec) {
+      var _secRes = await _sbSec.from('articles').select(typeof LIST_ARTICLE_SELECT === 'string' ? LIST_ARTICLE_SELECT : '*')
+        .in('section', aliases).eq('status', 'published')
+        .order('created_at', { ascending: false }).limit(50);
+      if (_secRes.error || !(_secRes.data || []).length) {
+        _secRes = await _sbSec.from('articles').select('*')
+          .in('section', aliases).eq('status', 'published')
+          .order('created_at', { ascending: false }).limit(50);
+      }
+      if (!_secRes.error && (_secRes.data || []).length) {
+        var _seen = {};
+        articles = (_secRes.data || []).concat(articles).filter(function(a){
+          if (!a || _seen[a.id]) return false; _seen[a.id] = true; return true;
+        });
+      }
+    }
+  } catch(e) {
+    console.warn('[KH] section fetch failed:', e);
+  }
   if (!articles.length) {
     try {
       await loadArticlesFromDB({ force: true });
@@ -3859,6 +3883,35 @@ function _khNetizenTalkHTML(a) {
   return h + '</section>';
 }
 
+function _khRelatedHTML(a) {
+        var all = published().filter(function(r){ return r.id !== a.id; });
+        // 같은 섹션 우선 → 없으면 같은 레벨 → 없으면 최신순
+        var related = all.filter(function(r){ return r.section === a.section; }).slice(0,3);
+        if (related.length < 3) {
+          var more = all.filter(function(r){ return r.level === a.level && r.section !== a.section; });
+          related = related.concat(more).slice(0,3);
+        }
+        if (!related.length) related = all.slice(0,3);
+        if (!related.length) return '';
+        return '<div class="art-related">'
+          + '<div class="art-related-title" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">'+KH_ICON_NEWSPAPER+'</span><span>Related Articles</span></div>'
+          + '<div class="art-related-grid">'
+          + related.map(function(r){
+              var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
+              return '<a href="' + articleUrl(r.id) + '" class="art-related-card">'
+                + '<img src="' + khArticleThumb(r, 300, 200) + '" alt="" loading="lazy" decoding="async" fetchpriority="low">'
+                + '<div class="art-related-info">'
+                + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
+                + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#2255a4">' + r.section + '</span>'
+                + (r.level ? '<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;background:' + (levelColors[r.level]||'#f0f0f0;color:#666') + '">' + ({'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}[r.level]||r.level) + '</span>' : '')
+                + '</div>'
+                + '<div class="art-related-title-text">' + r.title + '</div>'
+                + '</div>'
+                + '</a>';
+            }).join('')
+          + '</div></div>';
+}
+
 function renderArticlePage() {
   var wrap = document.getElementById('dyn-article');
   if (!wrap) return;
@@ -3943,6 +3996,21 @@ function renderArticlePage() {
     }
   }
 
+  // Background refreshes call this again; rebuilding #dyn-article wipes the
+  // open tab, a half-typed comment, the reading timer and the analysis panel.
+  // If nothing visible changed, only refresh the related-articles block.
+  var _artSig = [a.id, a.title, (a.body || '').length, (a.full || '').length,
+                 a.netizen_talk ? JSON.stringify(a.netizen_talk).length : 0, a.reporter_id || '', a.image || ''].join('|');
+  if (wrap.dataset.artSig === _artSig && wrap.querySelector('.kh-article-wrap')) {
+    try {
+      var _oldRel = wrap.querySelector('.art-related');
+      var _newRel = _khRelatedHTML(a);
+      if (_oldRel && _newRel) _oldRel.outerHTML = _newRel;
+      else if (!_oldRel && _newRel) { var _art = wrap.querySelector('article'); if (_art) _art.insertAdjacentHTML('beforeend', _newRel); }
+    } catch(_) {}
+    return;
+  }
+  wrap.dataset.artSig = _artSig;
   wrap.innerHTML =
     '<article class="kh-article-wrap">'
 
@@ -3985,7 +4053,7 @@ function renderArticlePage() {
     + '<div id="art-tab-article">'
     + _khSentHintHTML()
     + '<div class="art-lead vocab-zone">' + formatArticleBody(a.body || '') + '</div>'
-    + (a.full ? '<div class="art-full vocab-zone">' + formatArticleBody(a.full) + '</div>' : '')
+    + (a.full ? '<div class="art-full vocab-zone">' + formatArticleBody(a.full, true) + '</div>' : '')
     + _khNetizenTalkHTML(a)
     + '<div id="art-phrases-admin" style="display:none"></div>'
     + '</div>'
@@ -4067,34 +4135,7 @@ function renderArticlePage() {
     + '</section>'
 
     // 관련 기사 추천
-    + (function() {
-        var all = published().filter(function(r){ return r.id !== a.id; });
-        // 같은 섹션 우선 → 없으면 같은 레벨 → 없으면 최신순
-        var related = all.filter(function(r){ return r.section === a.section; }).slice(0,3);
-        if (related.length < 3) {
-          var more = all.filter(function(r){ return r.level === a.level && r.section !== a.section; });
-          related = related.concat(more).slice(0,3);
-        }
-        if (!related.length) related = all.slice(0,3);
-        if (!related.length) return '';
-        return '<div class="art-related">'
-          + '<div class="art-related-title" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:16px;height:16px">'+KH_ICON_NEWSPAPER+'</span><span>Related Articles</span></div>'
-          + '<div class="art-related-grid">'
-          + related.map(function(r){
-              var levelColors = {'Starter':'#f3e8ff;color:#6b21a8','Beginner':'#e8f5e9;color:#2e7d32','Intermediate':'#fff8e1;color:#f57f17','Advanced':'#fce4ec;color:#c62828'};
-              return '<a href="' + articleUrl(r.id) + '" class="art-related-card">'
-                + '<img src="' + khArticleThumb(r, 300, 200) + '" alt="" loading="lazy" decoding="async" fetchpriority="low">'
-                + '<div class="art-related-info">'
-                + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
-                + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#2255a4">' + r.section + '</span>'
-                + (r.level ? '<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;background:' + (levelColors[r.level]||'#f0f0f0;color:#666') + '">' + ({'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}[r.level]||r.level) + '</span>' : '')
-                + '</div>'
-                + '<div class="art-related-title-text">' + r.title + '</div>'
-                + '</div>'
-                + '</a>';
-            }).join('')
-          + '</div></div>';
-      })()
+    + _khRelatedHTML(a)
 
     + '</article>';
 
@@ -4414,20 +4455,29 @@ function _khWrapSentences(paragraph) {
   });
 })();
 
-function formatArticleBody(text) {
+function formatArticleBody(text, continueNumbering) {
   if (!text) return '';
   // Strip dangerous tags but keep basic formatting
   text = sanitizeHTML(text);
-  _khSentCounter = 0;
+  // The long body (a.full) continues the lead's sentence numbering so a tap
+  // in .art-full never collides with sentence #0..n of the lead.
+  if (!continueNumbering) _khSentCounter = 0;
   // \n\n 기준으로 먼저 분리
   var paras = text.split(/\n\n+/);
   if (paras.length <= 1) {
     // 한국어/영어 마침표 기준으로 문단 나누기
     // 마침표 뒤에 공백이나 줄바꿈이 있으면 단락 구분
+    // Short fragments ("네.", "맞아요.") are merged into the previous piece —
+    // they used to be dropped, silently deleting sentences from the article.
     paras = text
       .replace(/([.!?。다요죠]\s)/g, '$1\n')
       .split('\n')
-      .filter(function(p){ return p.trim().length > 10; }); // 너무 짧은 조각 제거
+      .reduce(function(acc, p) {
+        if (!p.trim()) return acc;
+        if (acc.length && p.trim().length <= 10) acc[acc.length - 1] += ' ' + p.trim();
+        else acc.push(p);
+        return acc;
+      }, []);
   }
   if (paras.length <= 1) {
     // 그래도 1개면 그냥 전체를 하나의 단락으로
@@ -12685,11 +12735,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window._isAdmin) return;
     _fjAutoCheck();
     if (_fjAllDone()) return;
-    if (localStorage.getItem('kh_fj_dismissed')) {
-      _fjShowResumeBtn(); // dismissed → 작은 🎯 버튼만
-    } else {
-      _fjRenderWidget();  // 처음 → 전체 위젯
-    }
+    // First visits were getting a cookie banner + tip + this 300px panel on
+    // top of the content (mobile All News was fully covered). Start as the
+    // small 🎯 chip; the panel opens only when the learner taps it. Never on
+    // the article reader (reading focus; its own buttons sit bottom-right).
+    if (/korehan-article/.test(location.pathname)) return;
+    localStorage.setItem('kh_fj_dismissed', '1');
+    _fjShowResumeBtn();
   }, 1500);
   // Belt-and-suspenders — if the admin flag arrives AFTER the
   // 1500ms init and the FAB / widget already rendered, sweep them

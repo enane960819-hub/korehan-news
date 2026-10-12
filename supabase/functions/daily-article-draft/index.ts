@@ -489,7 +489,17 @@ async function buildDraft(sb: any, apiKey: string, pick: DraftPick): Promise<{ i
   const bodyRaw = isBuzz
     ? await callClaude(sb, apiKey, 'buzz-body', MODEL_BODY, 4000, buzzPrompt(h.title, h.source || '', h.body_text || '', todayKo))
     : await callClaude(sb, apiKey, 'daily-draft-body', MODEL_BODY, 4000, bodyPrompt(h, pick.level, pick.section))
-  const art = extractJsonObject(bodyRaw)
+  // Forest-level bodies + translations can run past 4000 tokens and get cut
+  // mid-JSON ("JSON parse failed after repair"). Retry once with more room
+  // and a stricter reminder instead of failing the day's Advanced draft.
+  let art: any = null
+  try { art = extractJsonObject(bodyRaw) } catch (_) { art = null }
+  if (!art?.body) {
+    const retryPrompt = (isBuzz ? buzzPrompt(h.title, h.source || '', h.body_text || '', todayKo) : bodyPrompt(h, pick.level, pick.section))
+      + '\n\nIMPORTANT: Return ONE complete, valid JSON object only. Keep the body within the paragraph limit so the JSON is not cut off.'
+    const raw2 = await callClaude(sb, apiKey, isBuzz ? 'buzz-body-retry' : 'daily-draft-body-retry', MODEL_BODY, 7000, retryPrompt)
+    art = extractJsonObject(raw2)
+  }
   if (isBuzz && art?.safe === false) throw new Error('unsafe topic: ' + String(art.reason || '').slice(0, 120))
   if (!art?.title || !art?.body) throw new Error('invalid body JSON')
 
