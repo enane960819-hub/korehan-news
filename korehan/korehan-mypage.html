@@ -1212,6 +1212,12 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
   <!-- Stats -->
   <div id="mp-mini-stats"></div>
 
+  <!-- Plan / subscription (manage or cancel in one click) -->
+  <div class="mp-section" id="mp-plan-section" style="display:none">
+    <h3>Your plan</h3>
+    <div id="mp-plan-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"></div>
+  </div>
+
   <!-- Tier progress -->
   <div class="mp-section">
     <h3>Tier Progress</h3>
@@ -1273,7 +1279,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/core/phrases.js?v=20260525r"></script>
 <script src="js/core/saved-words.js?v=20260525r"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
-<script src="js/core/articles.js?v=20261012a"></script>
+<script src="js/core/articles.js?v=20261012b"></script>
 <script src="js/core/reporters.js?v=20260525r"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20260525r"></script>
@@ -1282,9 +1288,9 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/features/comments.js?v=20260527i"></script>
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
-<script src="js/features/translation.js?v=20260525r"></script>
+<script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261012a"></script>
-<script src="korehan-shared.js?v=20261012d"></script>
+<script src="korehan-shared.js?v=20261012e"></script>
 <script src="js/kh-badges.js?v=20260527f"></script>
 <script>
 
@@ -2596,8 +2602,52 @@ window.openCosmeticsModal = async function openCosmeticsModal() {
 };
 
 // ── Init ───────────────────────────────────────────────────────
+// Plan card: current plan + Manage subscription (Stripe portal: change plan,
+// card, invoices, cancel) or an upgrade link.
+async function _mpRenderPlanCard() {
+  var sec = document.getElementById('mp-plan-section');
+  var body = document.getElementById('mp-plan-body');
+  var sb = getSupa();
+  if (!sec || !body || !sb || !supaUser) return;
+  var r = await sb.from('user_subscriptions').select('plan,status,expires_at,payment_provider,cancel_at_period_end').eq('user_id', supaUser.id).maybeSingle();
+  var row = r && r.data;
+  var live = row && row.status === 'active' && ['premium','standard','pro'].indexOf(row.plan) >= 0 && (!row.expires_at || new Date(row.expires_at) > new Date());
+  var esc = function(x){ return String(x).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+  var until = live && row.expires_at ? new Date(row.expires_at).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }) : '';
+  var left = live
+    ? '<div><div style="font-size:18px;font-weight:900;color:#0b1626">⭐ Premium</div><div style="font-size:12px;color:#64748b;margin-top:2px">'
+      + (row.cancel_at_period_end ? 'Cancelled — access until ' + esc(until) : (until ? 'Renews ' + esc(until) : 'Active')) + '</div></div>'
+    : '<div><div style="font-size:18px;font-weight:900;color:#0b1626">Free</div><div style="font-size:12px;color:#64748b;margin-top:2px">Reading, sentence analysis, word book, weekly writing with AI feedback</div></div>';
+  var right = live && row.payment_provider === 'stripe'
+    ? '<button type="button" class="mp-action-btn" onclick="_mpManageSubscription(this)">Manage / cancel subscription</button>'
+    : (live ? '<span style="font-size:12px;color:#64748b">Granted by KoreHani</span>'
+            : '<a class="mp-action-btn" href="korehan-courses.html" style="text-decoration:none">Try Premium free for 7 days →</a>');
+  body.innerHTML = left + right;
+  sec.style.display = '';
+}
+async function _mpManageSubscription(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
+  try {
+    var sb = getSupa();
+    var sess = sb ? await sb.auth.getSession() : null;
+    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    var r = await fetch(SUPA_URL + '/functions/v1/billing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPA_KEY },
+      body: JSON.stringify({ action: 'portal' })
+    });
+    var j = await r.json().catch(function(){ return {}; });
+    if (j && j.ok && j.url) { location.href = j.url; return; }
+    if (typeof toast === 'function') toast('Could not open subscription settings. Please try again or email han@korehani.com', true);
+  } catch(e) {
+    if (typeof toast === 'function') toast('Could not open subscription settings.', true);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Manage / cancel subscription'; }
+}
+
 async function initMyPage() {
   if (!supaUser) { window.location.href = 'index.html'; return; }
+  _mpRenderPlanCard().catch(function(){});
 
   // Hero
   var savedName = localStorage.getItem('kh_display_name');
@@ -5206,9 +5256,15 @@ document.addEventListener('DOMContentLoaded', function() {
     _startMyPage();
   } else {
     window.addEventListener('kh-auth-signed-in', function() { _startMyPage(); }, { once: true });
-    // 세션 체크 완료 후에도 미로그인이면 실행 (게스트 모드)
-    var _fallback = setTimeout(function() { if (!window.supaUser) _startMyPage(); }, 3000);
-    window.addEventListener('kh-auth-signed-in', function() { clearTimeout(_fallback); }, { once: true });
+    // Only give up (→ initMyPage redirects guests home) once the session
+    // check has actually finished — a fixed 3 s timer bounced returning users
+    // whose token refresh was slow. Hard cap 15 s.
+    var _waited = 0;
+    var _poll = setInterval(function() {
+      _waited += 250;
+      if (window.supaUser) { clearInterval(_poll); return; }
+      if (window._sessionChecked || _waited >= 15000) { clearInterval(_poll); if (!window.supaUser) _startMyPage(); }
+    }, 250);
   }
 });
 </script>

@@ -9722,6 +9722,24 @@ async function adminUnsuspendUser(userId) {
 async function adminChangePlan(userId, plan) {
   try {
     var sb = getSb();
+    // Stripe is the source of truth for Stripe-billed users: a manual change
+    // here does not touch their Stripe subscription and is overwritten by the
+    // next billing-webhook event.
+    var cur = await sb.from('user_subscriptions').select('plan,payment_provider').eq('user_id', userId).maybeSingle();
+    if (cur && cur.data && cur.data.payment_provider === 'stripe') {
+      var okGo = confirm('This user is billed through Stripe.\n\n'
+        + 'Changing the plan here will NOT change their Stripe billing (they will keep being charged / their subscription stays as is), '
+        + 'and the next Stripe webhook event will overwrite this manual change.\n\n'
+        + 'To change what they pay, use the Stripe dashboard instead.\n\nChange the plan anyway?');
+      if (!okGo) {
+        var sel = document.querySelector('select[onchange*="adminChangePlan(\'' + userId + '\'"]');
+        if (sel) {
+          var p = cur.data.plan;
+          sel.value = (p === 'premium' || p === 'standard' || p === 'pro') ? 'premium' : 'free';
+        }
+        return;
+      }
+    }
     var row = {
       user_id: userId,
       plan: plan,

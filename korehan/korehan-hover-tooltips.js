@@ -219,21 +219,36 @@
       // is usually shorter / more dictionary-clean).
       var hoverRows = [];
       var bankRows = [];
+      // PostgREST returns at most 1000 rows per request — page through both
+      // tables (vocabulary_bank alone has ~2000 words).
+      async function _allRows(build) {
+        var out = [], from = 0, PAGE = 1000;
+        for (var guard = 0; guard < 20; guard++) {
+          var r = await build().range(from, from + PAGE - 1);
+          var rows = (r && r.data) || [];
+          out = out.concat(rows);
+          if (r.error || rows.length < PAGE) break;
+          from += PAGE;
+        }
+        return out;
+      }
       try {
-        var r1 = await client
-          .from('hover_vocab_master')
-          .select('word_ko, meaning_en, reading, note, is_active, sort_order')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true })
-          .order('word_ko', { ascending: true });
-        hoverRows = r1.data || [];
+        hoverRows = await _allRows(function() {
+          return client.from('hover_vocab_master')
+            .select('word_ko, meaning_en, reading, note, is_active, sort_order')
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true })
+            .order('word_ko', { ascending: true });
+        });
       } catch(_) {}
       try {
-        var r2 = await client
-          .from('vocabulary_bank')
-          .select('word_ko, word_en, word_rom, is_active')
-          .eq('is_active', true);
-        bankRows = (r2.data || []).map(function(b) {
+        var bankRaw = await _allRows(function() {
+          return client.from('vocabulary_bank')
+            .select('word_ko, word_en, word_rom, is_active')
+            .eq('is_active', true)
+            .order('word_ko', { ascending: true });
+        });
+        bankRows = bankRaw.map(function(b) {
           return {
             word_ko: b.word_ko,
             meaning_en: b.word_en,

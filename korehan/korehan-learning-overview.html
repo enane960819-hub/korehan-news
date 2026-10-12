@@ -1312,7 +1312,7 @@
   <script src="js/core/saved-words.js?v=20260525r"></script>
 <script src="js/core/hangul-jamo-input.js?v=20260525r"></script>
   <script src="js/features/video-player.js?v=20260525r"></script>
-  <script src="js/core/articles.js?v=20261012a"></script>
+  <script src="js/core/articles.js?v=20261012b"></script>
   <script src="js/core/reporters.js?v=20260525r"></script>
   <script src="js/features/streak.js?v=20260525r"></script>
   <script src="js/features/daily-mission.js?v=20260525r"></script>
@@ -1321,9 +1321,9 @@
   <script src="js/features/comments.js?v=20260527i"></script>
   <script src="js/features/sidebar.js?v=20260525r"></script>
   <script src="js/features/analyze-mode.js?v=20260525r"></script>
-  <script src="js/features/translation.js?v=20260525r"></script>
+  <script src="js/features/translation.js?v=20261012a"></script>
   <script src="js/features/fill-blank.js?v=20261012a"></script>
-  <script src="korehan-shared.js?v=20261012d"></script>
+  <script src="korehan-shared.js?v=20261012e"></script>
   <!-- kh-universe.js (~117KB) lazy-loaded by _glEnsureUniverse() above on first click. -->
   <script src="js/kh-curriculum.js?v=20260527f"></script>
   <script src="learning_hub_vocab_data.js"></script>
@@ -3314,24 +3314,26 @@
   /*
     Table: user_weekly_snapshot
     user_id, week_start, skill_reading, skill_vocab, skill_grammar,
-    skill_writing, skill_listening, skill_speaking, created_at, updated_at
+    week_end, skill_writing, skill_listening, skill_speaking, created_at
   */
   async function generateWeeklySnapshot() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb || !supaUser) return;
 
-    // Current week start (Monday)
-    var now = new Date();
-    var day = now.getDay();
-    var monday = new Date(now);
-    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
-    var weekStart = monday.toISOString().slice(0, 10);
+    // Current week start = KST (UTC+9) Monday, matching Study Room's
+    // kstWeekKey(). The old local-time + toISOString() combo shifted the
+    // date by a day for users east of UTC early Monday morning.
+    var _kst = new Date(Date.now() + 9 * 3600 * 1000);   // read via getUTC*
+    var _kDay = _kst.getUTCDay();
+    var _kMon = new Date(Date.UTC(_kst.getUTCFullYear(), _kst.getUTCMonth(), _kst.getUTCDate() - (_kDay === 0 ? 6 : _kDay - 1)));
+    var _ymd = function(d) { return d.toISOString().slice(0, 10); };
+    var weekStart = _ymd(_kMon);
+    var weekEndDate = _ymd(new Date(_kMon.getTime() + 6 * 86400000));          // Sunday (inclusive)
+    var weekEndExcl = _ymd(new Date(_kMon.getTime() + 7 * 86400000));          // next Monday
 
-    // Date range for this week
-    var weekEnd = new Date(monday);
-    weekEnd.setDate(monday.getDate() + 7);
-    var startISO = weekStart + 'T00:00:00';
-    var endISO = weekEnd.toISOString().slice(0, 10) + 'T00:00:00';
+    // Date range for this week — KST midnight boundaries
+    var startISO = weekStart + 'T00:00:00+09:00';
+    var endISO = weekEndExcl + 'T00:00:00+09:00';
 
     try {
       // ── READING: quiz scores from article/conv/story study ──
@@ -3450,17 +3452,20 @@
       speakingScore  = Math.max(0, Math.min(100, speakingScore));
 
       // ── Upsert to user_weekly_snapshot ──
-      await sb.from('user_weekly_snapshot').upsert({
+      // week_end is NOT NULL in the table; there is no updated_at column
+      // (sending it made every upsert fail silently).
+      var snapRes = await sb.from('user_weekly_snapshot').upsert({
         user_id: supaUser.id,
         week_start: weekStart,
+        week_end: weekEndDate,
         skill_reading: readingScore,
         skill_vocab: vocabScore,
         skill_grammar: grammarScore,
         skill_writing: writingScore,
         skill_listening: listeningScore,
-        skill_speaking: speakingScore,
-        updated_at: new Date().toISOString()
+        skill_speaking: speakingScore
       }, { onConflict: 'user_id,week_start' });
+      if (snapRes && snapRes.error) console.warn('[generateWeeklySnapshot] upsert failed:', snapRes.error.message || snapRes.error);
 
     } catch(e) {
       console.warn('[generateWeeklySnapshot]', e.message);
@@ -3820,7 +3825,7 @@
   // Module-level TYPE_LABELS so both the list renderer and the modal
   // opener can read from the same map. Icons are Lucide names.
   var TYPE_LABELS = {
-    daily_package: { icon: 'package', label: 'Package', color: '#2563eb' },
+    daily_package: { icon: 'package', label: 'Weekly writing', color: '#2563eb' },
     topic:         { icon: 'pencil',  label: 'Writing', color: '#7c3aed' },
     writing:       { icon: 'pencil',  label: 'Writing', color: '#7c3aed' },
     diary:         { icon: 'notebook', label: 'Diary', color: '#ec4899' },
@@ -3830,6 +3835,22 @@
     conversation:  { icon: 'message-circle', label: 'Convo', color: '#0ea5e9' },
     story:         { icon: 'library', label: 'Story', color: '#a855f7' }
   };
+
+  // Feedback status. 'ai_reviewed' IS the feedback for free users (final),
+  // so it counts as ready — not "under review". admin_approved / sent =
+  // premium tutor review delivered.
+  function _glFbStatus(item) {
+    var st = item && item.status;
+    if (st === 'admin_approved' || st === 'sent') {
+      return { ready: true, text: '피드백 도착', icon: 'check-circle-2', color: '#16a34a' };
+    }
+    if (st === 'ai_reviewed') {
+      return item.tutor_requested
+        ? { ready: true, text: 'AI feedback ready · tutor review coming', icon: 'sparkles', color: '#2563eb' }
+        : { ready: true, text: 'AI feedback ready', icon: 'sparkles', color: '#16a34a' };
+    }
+    return { ready: false, text: '제출됨', icon: 'send', color: '#94a3b8' };
+  }
 
   // Cached map of feedback rows so card clicks can rebuild the modal body
   // without re-parsing the rendered DOM. Populated by loadFeedbackHistory.
@@ -3870,7 +3891,7 @@
       if (fbAi || fbAdminText) {
         html += _glRenderFeedbackBody({ ai:fbAi, adminText:fbAdminText, row:item });
       } else {
-        html += '<div style="text-align:center;padding:18px;font-size:12px;color:#94a3b8">' + (item.status === 'ai_reviewed' ? 'Under review — feedback within 24h' : 'Submitted — processing...') + '</div>';
+        html += '<div style="text-align:center;padding:18px;font-size:12px;color:#94a3b8">' + 'AI feedback is being prepared — usually ready in a few minutes.' + '</div>';
       }
       bodyEl.innerHTML = html;
       if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
@@ -3902,7 +3923,7 @@
   var _glFbActiveBucket = 'all';
   var _GL_FB_BUCKETS = [
     { id: 'all',     label: 'All',     types: null /* no filter */ },
-    { id: 'writing', label: 'Writing', types: ['topic','writing','diary'] },
+    { id: 'writing', label: 'Writing', types: ['daily_package','topic','writing','diary'] },
     { id: 'article', label: 'Article', types: ['article','article_study','reading'] },
     { id: 'convo',   label: 'Convo',   types: ['conversation'] },
     { id: 'story',   label: 'Story',   types: ['story'] },
@@ -3933,9 +3954,9 @@
       html += '<div style="grid-column:1/-1;font-size:11px;font-weight:900;color:#475569;letter-spacing:.06em;text-transform:uppercase;margin:14px 0 4px">' + date + '</div>';
       grouped[date].forEach(function(item) {
         var t = TYPE_LABELS[item.content_type] || TYPE_LABELS.writing;
-        var isReviewed = item.status === 'admin_approved' || item.status === 'sent';
-        var statusText = isReviewed ? '피드백 도착' : item.status === 'ai_reviewed' ? '검토 중' : '제출됨';
-        var statusColor = isReviewed ? '#16a34a' : '#94a3b8';
+        var _st = _glFbStatus(item);
+        var statusText = _st.text;
+        var statusColor = _st.color;
         var preview = (item.writing_text || '').slice(0, 70);
         if ((item.writing_text || '').length > 70) preview += '…';
         var safeId = String(item.id).replace(/'/g, "\\'");
@@ -4073,11 +4094,21 @@
     var countEl = document.getElementById('fb-hist-count-top');
     if (!el) return;
     try {
+      var _fbCols = 'id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, score, submitted_at, context_data, writing_mode';
       var res = await sb.from('user_submissions')
-        .select('id, study_date, status, admin_feedback, ai_feedback, writing_text, topic_ko, content_type, score, submitted_at, context_data, writing_mode')
+        .select(_fbCols + ', tutor_requested')
         .eq('user_id', supaUser.id)
         .order('submitted_at', { ascending: false })
         .limit(60);
+      // tutor_requested comes from the premium_billing migration — fall
+      // back to the base column list if it isn't live yet.
+      if (res.error) {
+        res = await sb.from('user_submissions')
+          .select(_fbCols)
+          .eq('user_id', supaUser.id)
+          .order('submitted_at', { ascending: false })
+          .limit(60);
+      }
       if (res.error) throw res.error;
       var items = res.data || [];
       _glFbAllItems = items;
@@ -4108,7 +4139,7 @@
       var html = '';
       Object.keys(grouped).sort(function(a,b){return b.localeCompare(a);}).forEach(function(date) {
         var dayItems = grouped[date];
-        var fbReady = dayItems.filter(function(i){return i.status==='admin_approved'||i.status==='sent';}).length;
+        var fbReady = dayItems.filter(function(i){ return _glFbStatus(i).ready; }).length;
 
         html += '<div style="margin-bottom:16px">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
@@ -4118,10 +4149,10 @@
 
         dayItems.forEach(function(item) {
           var t = TYPE_LABELS[item.content_type] || TYPE_LABELS.writing;
-          var isReviewed = item.status === 'admin_approved' || item.status === 'sent';
-          var statusText = isReviewed ? '피드백 도착' : item.status === 'ai_reviewed' ? '검토 중' : '제출됨';
-          var statusIcon = isReviewed ? 'check-circle-2' : item.status === 'ai_reviewed' ? 'hourglass' : 'send';
-          var statusColor = isReviewed ? '#16a34a' : '#94a3b8';
+          var _st = _glFbStatus(item);
+          var statusText = _st.text;
+          var statusIcon = _st.icon;
+          var statusColor = _st.color;
           var preview = (item.writing_text||'').slice(0,60);
           if ((item.writing_text||'').length > 60) preview += '…';
 

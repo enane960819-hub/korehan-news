@@ -113,31 +113,58 @@ Deno.serve(async (req) => {
 
     if (action === 'status' || action === 'setup') {
       if (!isAdmin) return json({ ok: false, error: 'forbidden' }, 403)
-      const account = await stripe.accounts.retrieve().catch((e) => ({ error: String(e?.message || e) })) as any
+      const account = await stripe.accounts.retrieve().catch((e: any) => ({ error: String(e?.message || e) })) as any
       if (account?.error) return json({ ok: false, error: 'stripe_key_invalid', detail: account.error }, 400)
-      const out: Record<string, unknown> = {
+      const out: Record<string, any> = {
         ok: true, livemode: sc.live,
         account: account?.settings?.dashboard?.display_name || account?.id,
       }
       if (action === 'setup') {
         out.prices = await ensurePrices(stripe)
-        // Customer portal (cancel / card / invoices) needs a saved configuration.
-        const confs = await stripe.billingPortal.configurations.list({ limit: 1 })
-        if (!confs.data.length) {
-          await stripe.billingPortal.configurations.create({
+        // Customer portal (cancel / card / invoices / switch monthly<->annual)
+        // needs a saved configuration. Its id is stored in app_settings
+        // 'stripe_portal_config_id' and passed to every portal session.
+        const priceObj = await stripe.prices.retrieve(out.prices.month)
+        const productId = typeof priceObj.product === 'string' ? priceObj.product : priceObj.product?.id
+        const subscriptionUpdate = {
+          enabled: true,
+          default_allowed_updates: ['price'],
+          proration_behavior: 'create_prorations',
+          products: [{ product: productId, prices: [out.prices.month, out.prices.year] }],
+        }
+        const { data: storedConf } = await sb.from('app_settings').select('value').eq('key', 'stripe_portal_config_id').maybeSingle()
+        let confId = String(storedConf?.value || '')
+        if (confId) {
+          const c = await stripe.billingPortal.configurations.retrieve(confId).catch(() => null)
+          if (!c || !c.active) confId = ''
+        }
+        if (!confId) {
+          const confs = await stripe.billingPortal.configurations.list({ active: true, limit: 10 })
+          const pick = confs.data.find((c: any) => c.is_default) || confs.data[0]
+          confId = pick?.id || ''
+        }
+        if (!confId) {
+          const created = await stripe.billingPortal.configurations.create({
             business_profile: { headline: 'KoreHani Premium' },
             features: {
               customer_update: { enabled: true, allowed_updates: ['email'] },
               invoice_history: { enabled: true },
               payment_method_update: { enabled: true },
               subscription_cancel: { enabled: true, mode: 'at_period_end' },
+              subscription_update: subscriptionUpdate,
             },
           })
+          confId = created.id
           out.portal = 'created'
-        } else out.portal = 'ok'
+        } else {
+          await stripe.billingPortal.configurations.update(confId, { features: { subscription_update: subscriptionUpdate } })
+          out.portal = 'updated'
+        }
+        await sb.from('app_settings').upsert({ key: 'stripe_portal_config_id', value: confId, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+        out.portal_config_id = confId
         const url = `${supabaseUrl}/functions/v1/billing-webhook`
         const hooks = await stripe.webhookEndpoints.list({ limit: 100 })
-        let hook = hooks.data.find((h) => h.url === url && h.status === 'enabled')
+        let hook = hooks.data.find((h: any) => h.url === url && h.status === 'enabled')
         if (!hook) {
           hook = await stripe.webhookEndpoints.create({ url, enabled_events: WEBHOOK_EVENTS, description: 'KoreHani Premium → user_subscriptions' })
           // The signing secret is only returned at creation time.
@@ -152,7 +179,7 @@ Deno.serve(async (req) => {
             await sb.from('app_settings').upsert({ key: 'stripe_billing_webhook_secret', value: (fresh as any).secret, updated_at: new Date().toISOString() }, { onConflict: 'key' })
             out.webhook = 'recreated'
           } else {
-            const missing = WEBHOOK_EVENTS.filter((e) => !hook!.enabled_events.includes(e) && !hook!.enabled_events.includes('*'))
+            const missing = WEBHOOK_EVENTS.filter((e: string) => !hook!.enabled_events.includes(e) && !hook!.enabled_events.includes('*'))
             if (missing.length) await stripe.webhookEndpoints.update(hook.id, { enabled_events: WEBHOOK_EVENTS })
             out.webhook = 'ok'
           }
@@ -170,6 +197,17 @@ Deno.serve(async (req) => {
       if (active && sub.payment_provider === 'stripe') return json({ ok: false, error: 'already_subscribed' }, 409)
       const prices = await ensurePrices(stripe)
       let customerId = sub?.stripe_customer_id || ''
+      // Trial only on the user's first-ever subscription: our flag AND Stripe's history.
+      let trialEligible = !sub?.trial_used
+      if (customerId) {
+        // Stripe is the source of truth: block a second live subscription even if
+        // our row is stale (e.g. webhook lag or an admin manual plan change).
+        const existing = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 })
+        if (existing.data.some((s: any) => ['trialing', 'active', 'past_due'].includes(s.status))) {
+          return json({ ok: false, error: 'already_subscribed' }, 409)
+        }
+        if (existing.data.length) trialEligible = false
+      }
       if (!customerId) {
         const c = await stripe.customers.create({ email: user.email || undefined, metadata: { user_id: user.id } })
         customerId = c.id
@@ -186,19 +224,21 @@ Deno.serve(async (req) => {
         allow_promotion_codes: true,
         subscription_data: {
           metadata: { user_id: user.id },
-          ...(sub?.trial_used ? {} : { trial_period_days: TRIAL_DAYS }),
+          ...(trialEligible ? { trial_period_days: TRIAL_DAYS } : {}),
         },
         metadata: { user_id: user.id, product: 'kh-premium' },
-        success_url: `${APP_BASE_URL}/korehan-courses.html?billing=ok`,
+        success_url: `${APP_BASE_URL}/korehan-courses.html?billing=ok&trial=${trialEligible ? 1 : 0}`,
         cancel_url: `${APP_BASE_URL}/korehan-courses.html?billing=cancel`,
       })
-      return json({ ok: true, url: session.url })
+      return json({ ok: true, url: session.url, trial: trialEligible })
     }
 
     if (action === 'portal') {
       if (!sub?.stripe_customer_id) return json({ ok: false, error: 'no_customer' }, 404)
+      const { data: pc } = await sb.from('app_settings').select('value').eq('key', 'stripe_portal_config_id').maybeSingle()
       const portal = await stripe.billingPortal.sessions.create({
         customer: sub.stripe_customer_id,
+        ...(pc?.value ? { configuration: String(pc.value) } : {}),
         return_url: `${APP_BASE_URL}/korehan-courses.html`,
       })
       return json({ ok: true, url: portal.url })

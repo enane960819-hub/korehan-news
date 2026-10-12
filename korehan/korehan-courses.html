@@ -328,11 +328,9 @@
             <li>Everything in Free</li>
             <li><b>Tutor review</b> of your weekly writing</li>
             <li><b>Weekend live class</b> on Zoom</li>
-            <li>Grammar Path &mdash; every level + Grammar Library</li>
-            <li>Article, Conversation &amp; Story Study</li>
-            <li>Weekly &amp; Monthly Review, Listening Quiz</li>
-            <li>Phone-call listening &amp; Fast Track scenarios</li>
-            <li>Full slang library + quiz, Growth Lab analytics</li>
+            <li>Fast Track scenarios</li>
+            <li>Article Study &mdash; step-by-step vocab, phrases, reading &amp; quiz</li>
+            <li>Higher daily AI limits &mdash; more AI feedback</li>
           </ul>
           <button class="plan-cta primary" id="prem-cta" onclick="enroll()">Start 7-day free trial &rarr;</button>
         </div>
@@ -358,7 +356,11 @@
 
     <div class="ct-cell feat">Word book<small>Personal vocabulary list</small></div>
     <div class="ct-cell std-col"><span class="ct-yes">Unlimited</span></div>
-    <div class="ct-cell essay-col"><span class="ct-yes">Unlimited + SRS review</span></div>
+    <div class="ct-cell essay-col"><span class="ct-yes">Unlimited</span></div>
+
+    <div class="ct-cell feat">Daily Review<small>Quick questions on your saved words</small></div>
+    <div class="ct-cell std-col"><span class="ct-yes">&#10003;</span></div>
+    <div class="ct-cell essay-col"><span class="ct-yes">&#10003;</span></div>
 
     <div class="ct-cell feat">Weekly Topic writing<small>5 learning steps, then one writing task a week</small></div>
     <div class="ct-cell std-col"><span class="ct-yes">AI feedback</span></div>
@@ -368,25 +370,17 @@
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
 
-    <div class="ct-cell feat">Grammar Path<small>290 patterns, Seed &rarr; Tree, plus Grammar Library</small></div>
+    <div class="ct-cell feat">Fast Track<small>Real-life scenarios</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
 
-    <div class="ct-cell feat">Article / Conversation / Story Study<small>Interactive step-by-step study</small></div>
+    <div class="ct-cell feat">Article Study<small>Interactive step-by-step study</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
 
-    <div class="ct-cell feat">Weekly &amp; Monthly Review, Listening Quiz<small>Spaced checkpoints</small></div>
-    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
-
-    <div class="ct-cell feat">Phone-call listening + Fast Track<small>Real-life scenarios</small></div>
-    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
-
-    <div class="ct-cell feat">Growth Lab analytics<small>Skill scores, streak, XP</small></div>
-    <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
-    <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
+    <div class="ct-cell feat">AI usage<small>Sentence analysis &amp; AI feedback</small></div>
+    <div class="ct-cell std-col"><span class="ct-yes">Daily limit</span></div>
+    <div class="ct-cell essay-col"><span class="ct-hi">Higher daily limit</span></div>
   </div>
 </div>
 
@@ -452,7 +446,7 @@
       <div class="step">
         <div class="step-num">3</div>
         <h4>Study Room</h4>
-        <p>Open the 4-step Article Study flow (vocab, phrases, reading, quiz) plus Express Practice for writing — Topic, Free Writing, or Diary — with instant AI feedback (Premium: tutor review too).</p>
+        <p>Open the 4-step Article Study flow (Premium &mdash; vocab, phrases, reading, quiz) plus Express Practice for writing — Topic, Free Writing, or Diary — with instant AI feedback (Premium: tutor review too).</p>
       </div>
       <div class="step">
         <div class="step-num">4</div>
@@ -559,7 +553,7 @@
     </details>
     <details class="faq-item">
       <summary>Is there a free trial?</summary>
-      <p>Yes &mdash; Premium starts with a 7-day free trial. You won&rsquo;t be charged if you cancel before it ends. The Free plan stays free forever.</p>
+      <p>Yes &mdash; your first Premium subscription starts with a 7-day free trial. You won&rsquo;t be charged if you cancel before it ends. The Free plan stays free forever.</p>
     </details>
     <details class="faq-item">
       <summary>What happens to my data if I cancel?</summary>
@@ -650,7 +644,7 @@
 <script src="js/core/phrases.js?v=20260525r"></script>
 <script src="js/core/saved-words.js?v=20260525r"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
-<script src="js/core/articles.js?v=20261012a"></script>
+<script src="js/core/articles.js?v=20261012b"></script>
 <script src="js/core/reporters.js?v=20260525r"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20260525r"></script>
@@ -659,9 +653,9 @@
 <script src="js/features/comments.js?v=20260527i"></script>
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
-<script src="js/features/translation.js?v=20260525r"></script>
+<script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261012a"></script>
-<script src="korehan-shared.js?v=20261012d"></script>
+<script src="korehan-shared.js?v=20261012e"></script>
 <script>
 // Premium checkout / management via the billing Edge Function (Stripe).
 var _billingInterval = 'month';
@@ -732,22 +726,46 @@ async function manageSubscription() {
 }
 
 // Return from Stripe + current-plan state on the Premium card.
+function renderPlanCta() {
+  var isPremium = typeof getUserPlan === 'function' && getUserPlan() === 'premium';
+  if (!isPremium) return false;
+  var btn = document.getElementById('prem-cta');
+  if (btn) {
+    btn.innerHTML = 'Manage subscription &rarr;';
+    btn.onclick = function() { manageSubscription(); };
+  }
+  var note = document.getElementById('pricing-note');
+  if (note) note.textContent = 'You are on Premium. Change plan, update your card or cancel anytime.';
+  return true;
+}
+
+// After checkout the webhook may land a few seconds after the redirect:
+// re-read the plan every 2s (up to 30s) and flip the CTA once it is Premium.
+function pollPlanAfterCheckout() {
+  var started = Date.now();
+  (async function tick() {
+    try { if (typeof loadUserPlan === 'function') await loadUserPlan(); } catch (e) {}
+    if (renderPlanCta()) return;
+    if (Date.now() - started < 30000) setTimeout(tick, 2000);
+  })();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   var q = new URLSearchParams(location.search);
   var b = q.get('billing');
+  var trial = q.get('trial') === '1';
   if (b) {
     q.delete('billing');
+    q.delete('trial');
     try { history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); } catch (e) {}
-    if (b === 'ok') khAlert('Welcome to Premium 🎉', 'Your 7-day free trial has started (it can take a few seconds to show up). Head to the Study Room to begin!', { okLabel: 'Let\'s go' });
-  }
-  setTimeout(function() {
-    if (typeof getUserPlan === 'function' && getUserPlan() === 'premium') {
-      var btn = document.getElementById('prem-cta');
-      if (btn) btn.innerHTML = 'Manage subscription &rarr;';
-      var note = document.getElementById('pricing-note');
-      if (note) note.textContent = 'You are on Premium. Change plan, update your card or cancel anytime.';
+    if (b === 'ok') {
+      if (trial) khAlert('Welcome to Premium 🎉', 'Your 7-day free trial has started (it can take a few seconds to show up). Head to the Study Room to begin!', { okLabel: 'Let\'s go' });
+      else khAlert('Welcome to Premium! 🎉', 'Your Premium subscription is active (it can take a few seconds to show up). Head to the Study Room to begin!', { okLabel: 'Let\'s go' });
+      pollPlanAfterCheckout();
     }
-  }, 1500);
+  }
+  setTimeout(renderPlanCta, 1500);
+  setTimeout(renderPlanCta, 4000);
 });
 
 // ── Course-page tab switcher ──
