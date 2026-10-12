@@ -446,13 +446,13 @@
 <script src="js/core/modals.js?v=20260525r"></script>
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20260525r"></script>
-<script src="js/core/user-analytics.js?v=20260525r"></script>
+<script src="js/core/user-analytics.js?v=20261012a"></script>
 <script src="js/core/plans.js?v=20261012a"></script>
 <script src="js/core/article-cache.js?v=20261010a"></script>
 <script src="js/core/phrases.js?v=20260525r"></script>
 <script src="js/core/saved-words.js?v=20260525r"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
-<script src="js/core/articles.js?v=20260531a"></script>
+<script src="js/core/articles.js?v=20261012a"></script>
 <script src="js/core/reporters.js?v=20260525r"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20260525r"></script>
@@ -462,8 +462,8 @@
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20260525r"></script>
-<script src="js/features/fill-blank.js?v=20260525r"></script>
-<script src="korehan-shared.js?v=20261012c"></script>
+<script src="js/features/fill-blank.js?v=20261012a"></script>
+<script src="korehan-shared.js?v=20261012d"></script>
 <script>
 const CATEGORIES = {
   'All':null,
@@ -1056,7 +1056,7 @@ async function srsLoadDueWords() {
 
   var today = new Date().toISOString().slice(0, 10);
   var sb = getSupa();
-  var { data, error } = await sb.from('saved_words')
+  var { data, error } = await sb.from('user_saved_words')
     .select('word_ko, word_rom, word_en, srs_interval, srs_ease_factor, srs_next_review, srs_review_count')
     .eq('user_id', supaUser.id)
     .lte('srs_next_review', today)
@@ -1074,7 +1074,7 @@ async function srsLoadDueWords() {
   // No words due today — figure out whether the user has any saved
   // words at all so we can render a suitable empty state instead of
   // hiding the whole banner.
-  var totalRes = await sb.from('saved_words').select('word_ko', { count: 'exact', head: true }).eq('user_id', supaUser.id);
+  var totalRes = await sb.from('user_saved_words').select('word_ko', { count: 'exact', head: true }).eq('user_id', supaUser.id);
   var totalCount = totalRes && typeof totalRes.count === 'number' ? totalRes.count : 0;
 
   banner.style.display = 'flex';
@@ -1104,15 +1104,14 @@ async function srsUpdateWord(wordKo, newInterval, newEase) {
   nextDate.setDate(today.getDate() + newInterval);
   var nextStr = nextDate.toISOString().slice(0, 10);
   var sb = getSupa();
-  await sb.from('saved_words').update({
+  await sb.from('user_saved_words').update({
     srs_interval:      newInterval,
     srs_ease_factor:   newEase,
     srs_next_review:   nextStr,
-    srs_review_count:  getSupa().rpc ? undefined : undefined, // handled below
     srs_last_reviewed: new Date().toISOString()
   }).eq('user_id', supaUser.id).eq('word_ko', wordKo);
   // Increment review_count separately
-  await sb.rpc('increment_srs_review_count', { p_user_id: supaUser.id, p_word_ko: wordKo }).catch(function(){
+  await sb.rpc('increment_srs_review_count', { p_user_id: supaUser.id, p_word_ko: wordKo }).then(null, function(){
     // RPC may not exist yet — silently ignore
   });
 }

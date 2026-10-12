@@ -37,7 +37,9 @@ var ARTICLES_STORAGE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 // with 400 (column does not exist), wiping the section/home rails.
 // Removed so the query parses; if/when we add a source-URL field we
 // should also create the column in a migration.
-var LIST_ARTICLE_SELECT = 'id,title,title_en,title_ko,body,image,section,level,date,published_at,created_at,updated_at,status,view_count,featured,reporter_id,reporter,video_url,use_video,video_kind,video_fallback_url';
+// Must only name columns that exist in production (checked live 2026-10-12);
+// one unknown column = HTTP 400 on every list load (see CLAUDE.md incident).
+var LIST_ARTICLE_SELECT = 'id,title,title_en,body,image,section,level,date,created_at,updated_at,status,featured,breaking,reporter_id,video_url,use_video,video_kind,netizen_talk';
 // Home cards only need metadata + image — `body` was the dominant cost
 // (often >80% of payload) and made the LTE first-paint waterfall stall
 // while the loader sat at ~86%. All News still uses LIST_ARTICLE_SELECT
@@ -249,7 +251,7 @@ function normalizeArticles(items) {
   function normalizeSection(section) {
     var key = String(section || '').trim();
     var low = key.toLowerCase();
-    if (low === 'tech' || low === 'it과학' || low === 'technology' || low === 'tech/science') return 'beauty';
+    if (low === 'tech' || low === 'technology' || low === 'tech/science' || low === 'it과학') return 'IT과학';
     return key;
   }
   return sortArticlesNewest((Array.isArray(items) ? items : []).filter(function(item) {
@@ -330,12 +332,12 @@ async function loadArticlesFromDB(options) {
     var rows = (res.data || []).filter(function (item) {
       return item && typeof item === 'object';
     });
-    // Section alias: tech/etc → beauty (legacy mapping).
+    // Section alias: legacy tech keys → IT과학 (was wrongly → beauty).
     for (var k = 0; k < rows.length; k++) {
       var sec = String(rows[k].section || '').trim();
       var low = sec.toLowerCase();
       if (low === 'tech' || low === 'it과학' || low === 'technology' || low === 'tech/science') {
-        rows[k].section = 'beauty';
+        rows[k].section = 'IT과학';
       } else {
         rows[k].section = sec;
       }
@@ -419,7 +421,7 @@ async function searchArticlesServer(query, limit) {
   var lim = limit || 100;
   var safe = q.replace(/([%_,])/g, '\\$1');
   var pattern = '%' + safe + '%';
-  var orderedCols = ['title', 'title_en', 'title_ko', 'body', 'full', 'section'];
+  var orderedCols = ['title', 'title_en', 'body', 'section'];
   // Cache of columns that have already failed in this session so we
   // don't pay the round-trip for them again on the next search.
   searchArticlesServer._missing = searchArticlesServer._missing || {};

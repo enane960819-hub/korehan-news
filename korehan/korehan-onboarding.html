@@ -314,7 +314,7 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
 
 <script>
 var SUPA_URL = 'https://samghztrdvtxmrmawneu.supabase.co';
-var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI0MzYyODMsImV4cCI6MjA0ODAxMjI4M30.hPRBpCPHDMQFsIQdEFRJJoqSLJbFdnpjKS5fBLOTFSs';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
 var _sb = null;
 var _user = null;
 
@@ -1316,8 +1316,10 @@ function signUpWithEmail() {
   if (typeof window.openAuthModal === 'function') {
     try { window.openAuthModal('signup'); return; } catch (_) {}
   }
-  // Fallback if shared.js hasn't injected the helper yet.
-  alert('Sign-up modal unavailable. Please refresh and try again.');
+  // This page doesn't load korehan-shared.js — use the site sign-up modal
+  // on Home. After sign-up, checkOnboardingStatus() brings the learner back
+  // here and the stashed onboarding state is applied.
+  window.location.href = 'index.html?auth=signup';
 }
 
 async function signUpWithGoogle() {
