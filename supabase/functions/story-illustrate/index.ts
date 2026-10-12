@@ -100,8 +100,28 @@ Deno.serve(async (req) => {
     if (!isAdmin) return jsonResponse({ error: 'Admin only' }, 403, cors)
 
     // ── Parse body ───────────────────────────────────────────────
-    let body: { prompt?: string; story_id?: string | number; page_idx?: number; size?: string }
+    let body: { prompt?: string; story_id?: string | number; page_idx?: number; size?: string; action?: string }
     try { body = await req.json() } catch { return jsonResponse({ error: 'Invalid JSON body' }, 400, cors) }
+
+    // action 'cover': portrait cover for a story list card, built from the
+    // story's own title / preview, saved to stories_data.data.thumbnail_url.
+    // (Story cards showed random placeholder photos.) Admin CMS loops this.
+    let coverStory: any = null
+    if (body.action === 'cover') {
+      const sbc = createClient(supabaseUrl, supabaseServiceKey)
+      const { data: row } = await sbc.from('stories_data').select('id, title, title_en, preview, mood, genre, data').eq('id', body.story_id).maybeSingle()
+      if (!row) return jsonResponse({ error: 'story not found' }, 404, cors)
+      let d: any = row.data
+      if (typeof d === 'string') { try { d = JSON.parse(d) } catch { d = {} } }
+      coverStory = { row, d: d || {} }
+      const titleEn = row.title_en || d?.title_en || ''
+      const preview = String(row.preview || d?.preview || '').slice(0, 400)
+      body.prompt = `Book-cover style scene for a short Korean story titled "${titleEn || row.title}". `
+        + `Mood: ${row.mood || d?.mood || row.genre || 'slice of life'}. Story setup: ${preview}. `
+        + 'Show the setting and main character(s) in one evocative moment, portrait composition, no text.'
+      body.size = '1024x1536'
+      body.page_idx = 'cover' as any
+    }
     const rawPrompt = String(body.prompt || '').trim()
     if (!rawPrompt) return jsonResponse({ error: 'prompt required' }, 400, cors)
     const size = (body.size && ALLOWED_SIZES.includes(body.size)) ? body.size : '1536x1024'
@@ -160,6 +180,11 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Upload failed: ' + upErr.message }, 500, cors)
     }
     const { data: pub } = sb.storage.from(BUCKET).getPublicUrl(path)
+    if (coverStory) {
+      const d2 = { ...coverStory.d, thumbnail_url: pub.publicUrl }
+      const { error: updErr } = await sb.from('stories_data').update({ data: d2 }).eq('id', coverStory.row.id)
+      if (updErr) return jsonResponse({ error: 'Saved image but story update failed: ' + updErr.message, image_url: pub.publicUrl }, 500, cors)
+    }
     return jsonResponse({ image_url: pub.publicUrl, model: 'gpt-image-1', size }, 200, cors)
   } catch (e) {
     console.error('[story-illustrate] uncaught:', (e as Error).message)

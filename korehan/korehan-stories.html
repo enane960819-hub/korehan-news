@@ -1379,8 +1379,13 @@ function renderStoryCard(s) {
   var thumbUrl = s.thumbnail_url || s.thumbnail || s.image_url || '';
   // Always supply an image — picsum fallback keyed to story id so the
   // full-image overlay card always has something behind the gradient.
-  var finalThumb = thumbUrl || ('https://picsum.photos/seed/' + encodeURIComponent('story-' + (s.id || s.title || Math.random())) + '/600/800');
-  var thumbInner = '<img src="' + escapeHtml(finalThumb) + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/kh-story/600/800\'">'
+  // No cover yet → genre-colour card with the story's icon (random stock
+  // photos looked unrelated to the story). Covers come from the admin
+  // "🎨 스토리 표지 생성" button.
+  var _noCover = '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:' + thumbBg + '"><i data-lucide="' + escapeHtml(iconName) + '" style="width:48px;height:48px;color:' + genreColor + ';opacity:.55"></i></div>';
+  var thumbInner = (thumbUrl
+      ? '<img src="' + escapeHtml(thumbUrl) + '" alt="" loading="lazy" onerror="this.outerHTML=this.dataset.fb" data-fb="' + escapeHtml(_noCover) + '">'
+      : _noCover)
     + '<span class="sc-mood-badge" style="background:' + genreColor + '">' + genreLabel + '</span>';
 
   // Saved-state mark — sits on the thumbnail so it's visible even

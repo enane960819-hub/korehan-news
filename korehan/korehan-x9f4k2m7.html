@@ -2478,6 +2478,11 @@ async function goSiteSettings(){
         <input id="sc-live-zoom" type="url" placeholder="주말 라이브 클래스 고정 Zoom 링크 (https://…zoom.us/j/…)" class="inp inp-sm" style="flex:1" autocomplete="off">
         <button class="btn btn-g" onclick="saveLiveZoomLink()">Save</button>
       </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:8px">
+        <input id="sc-openai-key" type="password" placeholder="OpenAI API key (스토리 표지·삽화 생성용)" class="inp inp-sm" style="flex:1" autocomplete="off">
+        <button class="btn btn-g" onclick="saveIntegrationKey('openai_key','sc-openai-key',/^sk-.{20,}$/)">Save</button>
+        <button class="btn" onclick="generateStoryCovers()" title="표지 없는 스토리에 AI 표지 생성 (1장당 약 $0.06)">🎨 스토리 표지 생성</button>
+      </div>
       <div id="sc-integ-status" style="font-size:12px;color:#94a3b8;margin-top:8px;white-space:pre-line"></div>
     </div>
     <div class="sf-card">
@@ -2908,6 +2913,36 @@ async function saveIntegrationKey(key, inputId, re) {
 }
 // Recurring Zoom link for the Sunday class. New weekly sessions copy it
 // (kh_ensure_weekly_live_session); upcoming sessions without a link get it now.
+// Story list cards showed random placeholder photos. Generate a portrait AI
+// cover (story-illustrate action 'cover') for every story without one —
+// one at a time, ~30–60 s each.
+async function generateStoryCovers() {
+  var el = document.getElementById('sc-integ-status');
+  var set = function(t){ if (el) el.textContent = t; };
+  try {
+    var r = await getSb().from('stories_data').select('id,title,data').order('created_at', { ascending: false });
+    if (r.error) throw r.error;
+    var todo = (r.data || []).filter(function(row){
+      var d = row.data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch(_) { d = {}; } }
+      return !(d && (d.thumbnail_url || d.thumbnail || d.image_url));
+    });
+    if (!todo.length) { set('✅ 모든 스토리에 표지가 있습니다'); return; }
+    if (!confirm(todo.length + '개 스토리에 AI 표지를 생성할까요? (약 $' + (todo.length * 0.06).toFixed(2) + ', 장당 30~60초)')) return;
+    var token = await _getAdminToken(), ok = 0, fail = 0;
+    for (var i = 0; i < todo.length; i++) {
+      set('🎨 표지 생성 중 ' + (i + 1) + '/' + todo.length + ' — ' + (todo[i].title || ''));
+      var resp = await fetch(SUPA_URL_ADMIN + '/functions/v1/story-illustrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || ''), 'apikey': SUPA_KEY_ADMIN },
+        body: JSON.stringify({ action: 'cover', story_id: todo[i].id })
+      });
+      var j = await resp.json().catch(function(){ return {}; });
+      if (resp.ok && j.image_url) ok++; else { fail++; console.warn('cover failed', todo[i].id, j.error); if (/openai_key/.test(j.error || '')) { set('❌ OpenAI 키가 없습니다 — 위에 저장 후 다시 시도'); return; } }
+    }
+    set('✅ 표지 생성 완료: ' + ok + '개' + (fail ? ' · 실패 ' + fail + '개 (다시 누르면 실패분만 재시도)' : ''));
+  } catch (e) { set('❌ 표지 생성 실패: ' + (e.message || e)); }
+}
+
 async function saveLiveZoomLink() {
   var input = document.getElementById('sc-live-zoom'); if (!input) return;
   var v = input.value.trim();

@@ -1861,10 +1861,11 @@ document.addEventListener('DOMContentLoaded', async function() {
       var cachedEn = s.id ? _storyTitleEnCacheGet(s.id) : '';
       var title = d.title_en || s.title_en || cachedEn || d.title || s.title || (genreLabel + ' Story');
       var thumbUrl = d.thumbnail_url || d.thumbnail || d.image_url || '';
-      var finalThumb = thumbUrl || ('https://picsum.photos/seed/' + encodeURIComponent('story-' + (s.id || title || Math.random())) + '/600/800');
+
       return '<div class="story-card" data-kh-story-title-id="' + esc(s.id || '') + '" onclick="location.href=\'korehan-stories.html?id=' + encodeURIComponent(s.id) + '\'">'
         + '<div class="story-cover ' + moodClass + '">'
-          + '<img src="' + esc(finalThumb) + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/kh-story/600/800\'">'
+          // No cover yet → the mood-coloured cover block alone (no random stock photo).
+          + (thumbUrl ? '<img src="' + esc(thumbUrl) + '" alt="" loading="lazy" onerror="this.remove()">' : '')
         + '</div>'
         + '<div class="story-overlay-body">'
           + '<div class="story-meta">'
