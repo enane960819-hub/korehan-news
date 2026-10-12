@@ -832,9 +832,9 @@ async function cpLoadLiveSessions() {
     try {
       // Count registrations per session — naive client-side group, fine
       // for low volume. Move to a SQL view if registrations explode.
-      var allRegs = await sb.from('weekly_live_registrations')
-        .select('session_id', { count: 'exact', head: false });
-      (allRegs.data || []).forEach(function(r){ counts[r.session_id] = (counts[r.session_id] || 0) + 1; });
+      // Seat counts via RPC — registrations themselves are private (RLS).
+      var allRegs = await sb.rpc('get_live_registration_counts');
+      (allRegs.data || []).forEach(function(r){ counts[r.session_id] = Number(r.n) || 0; });
     } catch(e) {}
 
     listEl.innerHTML = rows.map(function(s){ return cpRenderLiveCard(s, myRegs[s.id], counts[s.id] || 0); }).join('');

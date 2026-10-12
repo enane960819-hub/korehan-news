@@ -2915,10 +2915,10 @@ async function saveLiveZoomLink() {
   try {
     var res = await getSb().from('app_settings').upsert({ key: 'live_class_zoom_link', value: v, updated_at: new Date().toISOString() });
     if (res && res.error) throw res.error;
-    await _sarClient().from('weekly_live_sessions').update({ zoom_link: v })
-      .is('zoom_link', null).gte('scheduled_at', new Date().toISOString());
+    var fill = await _sarClient().rpc('kh_fill_live_zoom_link', { p_link: v });
+    if (fill && fill.error) throw fill.error;
     input.value = '';
-    toast('🎥 Zoom 링크 저장됨');
+    toast('🎥 Zoom 링크 저장됨' + (fill && fill.data ? ' · 예정된 수업 ' + fill.data + '개에 적용' : ''));
     loadIntegrationStatus();
   } catch (e) { toast('저장 실패: ' + (e.message || e), true); }
 }
