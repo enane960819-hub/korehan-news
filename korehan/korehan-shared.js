@@ -1834,12 +1834,14 @@ async function checkSession() {
       updateCommentForm();
       renderDailyMission();
       window.dispatchEvent(new Event('kh-auth-signed-in'));
+      // Plan decides what the learner can open — load it right away, not at
+      // idle (Premium users were briefly shown locks / "Try Premium").
+      loadUserPlan();
       // DB 동기화는 화면 렌더와 무관 — idle 시점으로 지연 (연결 경쟁 방지)
       var _deferAuth = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 200); };
       _deferAuth(function() {
         _syncSavedWordsFromDB();
         _rehydrateUserState();
-        loadUserPlan();
         if (!window.location.pathname.includes('onboarding')) {
           checkOnboardingStatus();
         }
@@ -3681,8 +3683,6 @@ async function renderAllPage() {
       + '</div>';
   }
 
-  window._allArticlesCache = articles;
-
   if (searchQ) {
     // Server-side ilike across title/body/section. The bulk All News
     // fetch no longer ships body text, so we can't filter locally for
@@ -3721,6 +3721,16 @@ async function renderAllPage() {
     try { _khHydrateTitlesEnFromCache(articles); } catch(e) {}
   }
 
+  // The level filter works on THIS list (search results when searching) —
+  // it used to start from the full list and drop the search.
+  window._allArticlesCache = articles;
+  // A background refresh re-runs this; keep the learner's chosen level.
+  var _lv = window._allLevel;
+  if (_lv && _lv !== 'All') {
+    var _pill = document.querySelector('#all-level-filter [data-level="' + _lv + '"]');
+    filterAllLevel(_lv, _pill);
+    return;
+  }
   // Rails layout when browsing freely; flat grid when searching so results
   // stay in relevance-ranked order instead of being re-grouped by section.
   renderAllList(listEl, articles, { flat: !!searchQ });
@@ -3847,6 +3857,7 @@ function renderAllList(listEl, articles, opts) {
 function filterAllLevel(level, btn) {
   document.querySelectorAll('#all-level-filter .kh-filter-pill').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
+  window._allLevel = level;
   var base = window._allArticlesCache || published();
   var filtered = level === 'All' ? base : base.filter(function(a){ return a.level === level; });
   // Level filter = flat grid so users can compare same-level articles easily.
@@ -3940,6 +3951,12 @@ function renderArticlePage() {
         wrap.dataset.fetchingId = '';
         if (row) {
           renderArticlePage();
+        } else if (window._khArticleLoadFailed) {
+          wrap.innerHTML = '<div style="padding:30px;text-align:center">'
+            + '<h2 style="margin:0 0 8px">Couldn\'t load this article</h2>'
+            + '<p style="color:#64748b;margin:0 0 16px">Check your connection and try again.</p>'
+            + '<button type="button" onclick="renderArticlePage()" style="padding:10px 20px;border-radius:999px;border:none;background:#2563eb;color:#fff;font-weight:800;cursor:pointer;font-family:inherit">Retry</button>'
+            + '</div>';
         } else {
           wrap.innerHTML = '<div style="padding:30px">'
             + '<a href="index.html" style="color:#2255a4;text-decoration:none">← Back to Home</a>'
@@ -9729,7 +9746,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   else if (pageBase === 'korehan-world')     { await renderSectionPage('국제'); }
   else if (pageBase === 'korehan-culture')   { await renderSectionPage('문화'); }
   else if (pageBase === 'korehan-opinion')   { await renderSectionPage('오피니언'); }
-  else if (pageBase === 'korehan-article')   { await _loadReportersIntoKHMap(); renderArticlePage(); }
+  // Paint first; reporter names patch themselves in when the lookup lands
+  // (awaiting it first left the article area blank on slow networks).
+  else if (pageBase === 'korehan-article')   { renderArticlePage(); _loadReportersIntoKHMap().then(function(){ try { if (typeof _reRenderReporterSlots === 'function') _reRenderReporterSlots(); } catch(_) {} }, function(){}); }
 
   // Defer non-critical initializations to avoid blocking first paint on mobile
   var _deferPost = typeof requestIdleCallback === 'function' ? requestIdleCallback : function(cb){ setTimeout(cb, 0); };

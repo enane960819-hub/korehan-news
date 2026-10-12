@@ -385,6 +385,7 @@ async function loadArticleById(id) {
   if (!id) return null;
   var sb = getSupa();
   if (!sb) return null;
+  window._khArticleLoadFailed = false;
   try {
     var res = await sb.from('articles').select(FULL_ARTICLE_SELECT).eq('id', id).limit(1);
     if (res.error) throw res.error;
@@ -397,7 +398,9 @@ async function loadArticleById(id) {
     applyArticlesCache(existing);
     return row;
   } catch(e) {
+    // Network / server error ≠ "not found" — the reader shows a Retry state.
     console.warn('single article load error', e);
+    window._khArticleLoadFailed = true;
     return null;
   }
 }
@@ -421,8 +424,10 @@ async function searchArticlesServer(query, limit) {
   var q = String(query || '').trim();
   if (!sb || !q) return [];
   var lim = limit || 100;
-  var safe = q.replace(/([%_,])/g, '\\$1');
-  var pattern = '%' + safe + '%';
+  // LIKE-escape % _ \ then double-quote the value so PostgREST or() accepts
+  // commas / parentheses ("BTS (방탄)" used to return nothing).
+  var likeSafe = q.replace(/[\\%_]/g, '\\$&');
+  var pattern = '"' + ('%' + likeSafe + '%').replace(/["\\]/g, '\\$&') + '"';
   var orderedCols = ['title', 'title_en', 'body', 'section'];
   // Cache of columns that have already failed in this session so we
   // don't pay the round-trip for them again on the next search.

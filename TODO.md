@@ -61,6 +61,25 @@ doesn't keep reminding about closed work.
 3. Test: korehan-courses.html → Start 7-day free trial → card 4242 4242 4242 4242.
 4. When it works, repeat 1–2 with the **live** key (sk_live_…).
 
+## 🔴 Owner action — rotate exposed keys (2026-10-12)
+
+Until the app_settings lockdown, `anthropic_key` was readable by any
+signed-in user and `pexels_key` / `azure_speech_key` by anyone. Rotate all
+three (console.anthropic.com, Pexels, Azure) and save the new values in the
+admin CMS → Settings. Check Anthropic usage for anything unusual and keep
+Billing → auto-reload off. If a Stripe webhook for the retired speaking-pass
+exists, delete it in the Stripe dashboard (the function now returns 410).
+
+## 🟡 Pending owner decisions (launch audit)
+
+- E3: one Free/Premium feature table (Vocabulary Universe still shows a
+  Premium badge but isn't gated; trial CTA shows to non-eligible users).
+- F2: auto-publish Korea Buzz drafts, or keep admin review.
+- C11: story covers are random placeholder photos (picsum) — real covers or a
+  cover-less design.
+
+---
+
 ## 🟡 Optional — REDEPLOY claude-proxy (safety net for Phase-B analysis)
 
 The "AI timeout" on article gen was ROOT-fixed in the frontend (Phase-A
