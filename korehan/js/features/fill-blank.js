@@ -504,10 +504,19 @@ function checkFillAnswer(qIdx, selected, isTyped) {
       if (supaUser) {
         try {
           var _sb = getSupa();
-          if (_sb) _sb.rpc('log_quiz_result', {
-            p_user_id: supaUser.id, p_quiz_type: 'fill_blank',
-            p_grammar_point: gKey, p_is_correct: isCorrect
-          }).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){});
+          // Use the logQuizResult helper (user_quiz_results). The old
+          // log_quiz_result RPC hits a legacy table and 400s, so these were
+          // never saved. Record the grammar point as a wrong pattern on miss.
+          if (typeof logQuizResult === 'function') {
+            logQuizResult('fill_blank', {
+              content_type:   'grammar',
+              content_id:     gKey,
+              score:          isCorrect ? 100 : 0,
+              max_score:      100,
+              accuracy_pct:   isCorrect ? 100 : 0,
+              wrong_patterns: isCorrect ? {} : (function(){ var o={}; o[gKey]=1; return o; })()
+            });
+          }
         } catch(e) {}
       }
     }
