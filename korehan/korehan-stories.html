@@ -1691,7 +1691,7 @@ function openStory(id) {
           + '<div class="st-head-pills">'
             + '<span class="st-pill ' + moodPillClass + '">' + s.mood.charAt(0).toUpperCase()+s.mood.slice(1) + '</span>'
             + '<span class="st-pill ' + LVL_PILL[s.lvl] + '">' + LVL_LABEL[s.lvl] + '</span>'
-            + '<span class="st-pill st-pill-gray">📖 ' + s.readTime + '</span>'
+            + '<span class="st-pill st-pill-gray">📖 ' + (s.readTime || s.read_time || '3 min') + '</span>'
           + '</div>'
           + (author ? '<a class="st-author-inline" href="' + characterProfileUrl(author.slug) + '">' + renderCharacterAvatar(author, 'kh-character-avatar', 40) + '<div class="st-author-inline-copy"><strong>' + characterDisplayName(author) + '</strong><span>' + escapeHtml(author.role || '') + '</span></div></a>' : '')
         + '</div>'
@@ -2934,6 +2934,7 @@ async function loadStoriesFromDB() {
         if (!story || !story.title) return null;
         return Object.assign({}, story, {
           id: row.id,  // SQL PK only — guarantees home → story deep links match
+          readTime: story.readTime || story.read_time || row.read_time || '3 min',
           genre: row.genre || story.genre || story.mood || 'slice_of_life',
           perspective: row.perspective || story.perspective || 'third',
           series_id: row.series_id || story.series_id || null,
