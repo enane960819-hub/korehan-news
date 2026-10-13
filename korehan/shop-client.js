@@ -7,6 +7,17 @@
   // which previously made every unlaunched item look like a stock-photo
   // placeholder masquerading as a real item).
   function shopImg(slug) { return 'assets/shop/' + slug + '.png'; }
+  // Room-decoration art is dropped into assets/room/ over time; until a
+  // file lands, degrade the missing image to a soft emoji placeholder
+  // instead of a broken-image icon.
+  window._shopRoomImgFallback = function (img) {
+    if (!img || img.dataset.fbk) return;
+    img.dataset.fbk = '1';
+    var t = img.parentNode;
+    if (!t) { img.style.display = 'none'; return; }
+    t.innerHTML = '<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;'
+      + 'background:linear-gradient(135deg,#eef2ff,#e0e7ff);font-size:44px;line-height:1">🛋️</div>';
+  };
 
   // Category → emoji + gradient. Picked to feel intentional: badges look
   // like a medal, titles look like a star, room items look like a plant, etc.
@@ -455,7 +466,7 @@
     grid.innerHTML = ROOM_ITEMS_SHOP.map(function(it){
       var isOwned = owned.indexOf(it.id) >= 0;
       return '<article class="card">'
-        + '<div class="thumb"><img src="'+it.img+'" alt="'+it.name+'"></div>'
+        + '<div class="thumb"><img src="'+it.img+'" alt="'+it.name+'" onerror="window._shopRoomImgFallback&&window._shopRoomImgFallback(this)"></div>'
         + '<div class="body">'
         + '<div class="title">'+it.name+'</div>'
         + '<div class="desc">Room decoration item</div>'
