@@ -118,6 +118,11 @@ async function dbSaveWord(ko, rom, en) {
     saved.push({ko:ko,rom:rom,en:en});
     lsSet(K_SAVED, saved);
   }
+  // O7: a guest who has saved 3 words is the best moment to ask for a free
+  // account (the words are kept and moved over on sign-up).
+  if (!alreadyLocal && !supaUser && saved.length >= 3 && typeof showSignupNudge === 'function') {
+    try { showSignupNudge({ title: 'Keep your ' + saved.length + ' saved words', body: 'Free account — they come back for review tomorrow.' }); } catch(_) {}
+  }
   // Operational analytics — only logs new saves, not re-saves of the
   // same word, so the dashboard's "words saved per session" reflects
   // genuine learning intent.
