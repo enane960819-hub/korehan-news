@@ -491,7 +491,7 @@
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
-<script src="js/features/fill-blank.js?v=20261012a"></script>
+<script src="js/features/fill-blank.js?v=20261013c"></script>
 <script src="korehan-shared.js?v=20261013c"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -2956,13 +2956,18 @@ function showQuizResult() {
       var _sb = getSupa();
       var _conv = window._currentConv;
       if (_sb && _conv) {
-        _sb.rpc('log_quiz_result', {
-          p_user_id:      supaUser.id,
-          p_quiz_type:    'conv_blank',
-          p_content_type: 'conversation',
-          p_content_id:   String(_conv._id || ''),
-          p_is_correct:   pct >= 60
-        }).then(null, function(){});
+        // Route through the logQuizResult helper (writes to user_quiz_results);
+        // the old log_quiz_result RPC targets a legacy table and 400s, so quiz
+        // results were silently dropped from the Grammar learning axis.
+        if (typeof logQuizResult === 'function') {
+          logQuizResult('conv_blank', {
+            content_type: 'conversation',
+            content_id:   String(_conv._id || ''),
+            score:        Math.round(pct),
+            max_score:    100,
+            accuracy_pct: Math.round(pct)
+          });
+        }
         // 퀴즈까지 풀었으면 completed=true
         _sb.rpc('log_read_event', {
           p_user_id:      supaUser.id,
