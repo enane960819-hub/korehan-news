@@ -1407,6 +1407,14 @@ function answerHangulQuiz(btn, chosen, correct) {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+// Deep link: korehan-learn.html#hangul opens the Hangul tab (used by the Beginner Guide).
+document.addEventListener('DOMContentLoaded', function() {
+  if (location.hash !== '#hangul') return;
+  var btn = document.querySelector('#learn-main-tabs .tab-btn');
+  showLearnSection('hangul', btn);
+  var tabs = document.getElementById('learn-main-tabs');
+  if (tabs) tabs.scrollIntoView({ block: 'start' });
+});
 </script>
 <script src="korehan-hover-tooltips.js?v=20261012a"></script>
 </body>
