@@ -1346,7 +1346,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/core/plans.js?v=20261013a"></script>
 <script src="js/core/article-cache.js?v=20261010a"></script>
 <script src="js/core/phrases.js?v=20260525r"></script>
-<script src="js/core/saved-words.js?v=20260525r"></script>
+<script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/core/hangul-jamo-input.js?v=20260525r"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261013a"></script>
@@ -1360,7 +1360,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261012a"></script>
-<script src="korehan-shared.js?v=20261013a"></script>
+<script src="korehan-shared.js?v=20261013b"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
@@ -1704,6 +1704,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           xp        = Number(r.data.xp) || 0;
           goalTypes = Array.isArray(r.data.goal_types) ? r.data.goal_types : null;
           goalType  = r.data.goal_type || null;
+          try { if (goalTypes && goalTypes.length && !localStorage.getItem('kh_goals')) localStorage.setItem('kh_goals', JSON.stringify(goalTypes)); } catch (_) {}
         }
       } catch(_){}
       if (streak < 1 && xp < 50) return;
@@ -2065,8 +2066,25 @@ document.addEventListener('DOMContentLoaded', async function() {
   });
 
   // News grid
+  // O4: onboarding goals (kh_goals) put matching sections first; the
+  // learner's level breaks ties. Newest-first order is kept within groups.
+  var KH_GOAL_SECTIONS = {
+    travel: ['travel', 'Korea', '문화'], kpop: ['K-pop', '연예', '해외연예'],
+    business: ['국제', 'IT과학', '사회'], immigration: ['사회', 'Korea', '문화'], fun: ['buzz', '문화', 'nature']
+  };
+  function _khPersonalize(list) {
+    var goals = [], lvl = '';
+    try { goals = JSON.parse(localStorage.getItem('kh_goals') || '[]') || []; lvl = localStorage.getItem('kh_level') || ''; } catch (_) {}
+    var secs = {};
+    goals.forEach(function(g){ (KH_GOAL_SECTIONS[g] || []).forEach(function(x){ secs[x] = 1; }); });
+    if (!Object.keys(secs).length && !lvl) return list;
+    return list.map(function(a, i){
+      var score = (secs[a.section] ? 2 : 0) + (lvl && a.level === lvl ? 1 : 0);
+      return { a: a, i: i, score: score };
+    }).sort(function(x, y){ return (y.score - x.score) || (x.i - y.i); }).map(function(x){ return x.a; });
+  }
   function renderNewsGrid() {
-    var arts = getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0,12);
+    var arts = _khPersonalize(getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0, 40)).slice(0, 12);
     var grid = document.getElementById('dyn-news-grid');
     if (!grid) return;
     if (!arts.length) {

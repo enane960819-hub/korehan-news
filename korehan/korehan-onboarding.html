@@ -270,30 +270,17 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
   <aside class="ob-side">
     <div class="ob-logo">Start smart <strong>KoreHani</strong></div>
     <div class="ob-side-hero">
-      <h1 class="ob-side-title">Build a Korean routine that actually fits your day.</h1>
-      <p class="ob-side-desc">We will personalize your first learning path, help you choose a realistic schedule, and point you to the fastest wins across News, Study Room, Conversations, Stories, and Growth Lab.</p>
+      <h1 class="ob-side-title">Learn Korean from real news — at your level.</h1>
+      <p class="ob-side-desc">Two quick questions, then your first articles. Tap any sentence for its translation, words and grammar.</p>
     </div>
     <div class="ob-side-card">
-      <small>What changes after setup</small>
-      <h3>You land with a plan, not a blank screen.</h3>
-      <p>Pick more than one goal, choose your study time, set your level directly or take a fresh placement test, then jump into the main page with a highlighted Beginner Guide.</p>
+      <small>How it works</small>
+      <h3>Read → Tap → Save → Review</h3>
       <div class="ob-feature-grid">
-        <div class="ob-mini"><b><i data-lucide="newspaper" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Read real beginner-friendly news with hover vocab.</span></div>
-        <div class="ob-mini"><b><i data-lucide="book-open" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Use Study Room for deeper review and active practice.</span></div>
-        <div class="ob-mini"><b><i data-lucide="bar-chart-3" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Track streaks and progress inside Growth Lab.</span></div>
-        <div class="ob-mini"><b><i data-lucide="message-circle" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Mix in Conversations and Stories for natural input.</span></div>
-      </div>
-    </div>
-    <div class="ob-side-stack">
-      <div class="ob-side-card">
-        <small>Suggested routine</small>
-        <h3>Read → Review → Practice</h3>
-        <p>Start with one article, save a few words, then reinforce with Study Room or a short conversation lesson. Small loops work better than long random sessions.</p>
-      </div>
-      <div class="ob-side-card">
-        <small>Placement note</small>
-        <h3>Self-select or test</h3>
-        <p>If you already know your level, skip the placement test. If not, the quiz now randomizes both the questions and the answer order so it feels less repetitive.</p>
+        <div class="ob-mini"><b><i data-lucide="newspaper" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Short news stories rewritten for your level.</span></div>
+        <div class="ob-mini"><b><i data-lucide="mouse-pointer-click" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Tap a sentence to see what every part means.</span></div>
+        <div class="ob-mini"><b><i data-lucide="bookmark" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Save words — they come back for review the next day.</span></div>
+        <div class="ob-mini"><b><i data-lucide="pen-line" class="kh-ui-icon" style="width:14px;height:14px" aria-hidden="true"></i></b><span>Write once a week and get instant feedback.</span></div>
       </div>
     </div>
   </aside>
@@ -302,7 +289,7 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
     <div class="ob-progress-wrap">
       <div>
         <div class="ob-progress-label">Personal setup</div>
-        <div class="ob-stage" id="ob-stage-copy">Step 1 of 4</div>
+        <div class="ob-stage" id="ob-stage-copy">Step 1 of 3</div>
       </div>
       <div class="ob-progress-track" id="ob-progress">
         <div class="ob-step-dot active" id="dot-1">1</div>
@@ -310,8 +297,6 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
         <div class="ob-step-dot" id="dot-2">2</div>
         <div class="ob-step-line" id="line-2"></div>
         <div class="ob-step-dot" id="dot-3">3</div>
-        <div class="ob-step-line" id="line-3"></div>
-        <div class="ob-step-dot" id="dot-4">4</div>
       </div>
     </div>
 
@@ -495,8 +480,11 @@ function saveOnboardingLocal(done) {
   } catch(e) {}
 }
 
+// Three visible steps (Goals → Level → Start). Internal step numbers stay
+// 1 / 3 / 4 so saved drafts from the old 4-step flow still resume.
 function updateProgress(step) {
   state.step = step;
+  var shown = ({ 1: 1, 2: 1, 3: 2, 4: 3 })[step] || 1;
   // On phones the Continue button sits at the bottom of a long card; the next
   // step used to render scrolled half-way down. Bring the card top into view.
   try {
@@ -504,23 +492,23 @@ function updateProgress(step) {
     if (_main && _main.getBoundingClientRect().top < 0) window.scrollTo(0, Math.max(0, window.scrollY + _main.getBoundingClientRect().top - 8));
   } catch (_) {}
   var stageCopy = document.getElementById('ob-stage-copy');
-  if (stageCopy) stageCopy.textContent = 'Step ' + step + ' of 4';
-  for (var i = 1; i <= 4; i++) {
+  if (stageCopy) stageCopy.textContent = 'Step ' + shown + ' of 3';
+  for (var i = 1; i <= 3; i++) {
     var dot = document.getElementById('dot-' + i);
     if (!dot) continue;
-    if (i < step) {
+    if (i < shown) {
       dot.className = 'ob-step-dot done';
       dot.innerHTML = '✓';
-    } else if (i === step) {
+    } else if (i === shown) {
       dot.className = 'ob-step-dot active';
       dot.textContent = i;
     } else {
       dot.className = 'ob-step-dot';
       dot.textContent = i;
     }
-    if (i < 4) {
+    if (i < 3) {
       var line = document.getElementById('line-' + i);
-      if (line) line.className = 'ob-step-line' + (i < step ? ' done' : '');
+      if (line) line.className = 'ob-step-line' + (i < shown ? ' done' : '');
     }
   }
 }
@@ -569,7 +557,7 @@ function wireStepInteractions() {
     'go-step3': goStep3,
     'go-step4': goStep4,
     'back-step1': renderStep1,
-    'back-step2': renderStep2,
+    'back-step2': renderStep1,
     'back-step3': renderStep3Choice,
     'start-test': startPlacementTest,
     'retake-test': startPlacementTest,
@@ -579,7 +567,8 @@ function wireStepInteractions() {
     'skip': skipOnboarding,
     'signup-google': signUpWithGoogle,
     'signup-email': signUpWithEmail,
-    'explore': function() { saveOnboardingLocal(false); window.location.href = 'index.html'; }
+    'explore': function() { saveOnboardingLocal(false); window.location.href = 'index.html'; },
+    'start-reading': function() { saveOnboardingLocal(true); window.location.href = _obFirstArticleUrl(); }
   };
   root.querySelectorAll('[data-action]').forEach(function(el){
     var fn = actionMap[el.dataset.action];
@@ -600,10 +589,9 @@ function renderStep1() {
       +   '<div class="ob-namepun-en"><span>"Are you doing Korean?"</span><br>'
       +   'The name <b>KoreHani</b> is a pun — <b>하니 (hani)</b> is casual Korean for <i>"are you doing it?"</i> So the brand asks the question; this app helps you say yes.</div>'
       + '</div>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Step 1 · Goals</div><div class="ob-stage">Pick one or more reasons</div></div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Step 1 · Goals</div><div class="ob-stage">Pick one or more</div></div>'
       + '<h2 class="ob-title">Why are you learning Korean?</h2>'
-      + '<p class="ob-desc">Choose every goal that fits. We will use this to shape your suggestions, examples, and first-study recommendations.</p>'
-      + '<div class="ob-helper"><span>💡</span><div><b>Multiple selections are allowed.</b> For example, you can learn for both travel and K-dramas at the same time.</div></div>'
+      + '<p class="ob-desc">We will pick your first articles from these topics.</p>'
       + '<div class="ob-options">'
       + GOALS.map(function(g) {
           var selected = state.goals.indexOf(g.id) > -1;
@@ -641,7 +629,8 @@ function toggleGoal(id) {
   if (nextBtn) nextBtn.disabled = state.goals.length === 0;
 }
 
-function goStep2() { renderStep2(); }
+// Daily-time question removed (it was never used); default stays 15 min.
+function goStep2() { renderStep3Choice(); }
 
 function renderStep2() {
   state.step = 2;
@@ -694,12 +683,12 @@ function renderStep3Choice() {
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
       + '<button class="ob-back-chip" data-action="back-step2" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Back</span></button>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Level</div><div class="ob-stage">Self-select or take a test</div></div>'
-      + '<h2 class="ob-title">Choose how you want to set your level.</h2>'
-      + '<p class="ob-desc">If you already know your level, pick it directly and skip the test. If you are unsure, take a randomized placement test with mixed answer positions.</p>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Step 2 · Level</div><div class="ob-stage">Pick it or take a 1-minute check</div></div>'
+      + '<h2 class="ob-title">How much Korean do you know?</h2>'
+      + '<p class="ob-desc">Articles come in four levels. You can change yours any time.</p>'
       + '<div class="ob-choice-grid">'
-      + '<button class="ob-choice-card' + (state.levelChoice === 'self' ? ' selected' : '') + '" data-choice="self"><span class="ob-check">✓</span><span class="ob-choice-badge">Fast start</span><h3>Pick my level myself</h3><p>Skip the quiz and start right away with Seed, Sprout, Tree, or Forest.</p></button>'
-      + '<button class="ob-choice-card' + (state.levelChoice === 'test' ? ' selected' : '') + '" data-choice="test"><span class="ob-check">✓</span><span class="ob-choice-badge">Recommended if unsure · ~3 min</span><h3>Take the placement test</h3><p>Answer 20 randomized questions pulled from starter, beginner, intermediate, and advanced pools.</p></button>'
+      + '<button class="ob-choice-card' + (state.levelChoice === 'self' ? ' selected' : '') + '" data-choice="self"><span class="ob-check">✓</span><span class="ob-choice-badge">I know my level</span><h3>Pick it myself</h3><p>Seed, Sprout, Tree or Forest.</p></button>'
+      + '<button class="ob-choice-card' + (state.levelChoice === 'test' ? ' selected' : '') + '" data-choice="test"><span class="ob-check">✓</span><span class="ob-choice-badge">Not sure? · ~1 min</span><h3>Quick level check</h3><p>8 short questions that get easier or harder as you answer.</p></button>'
       + '</div>'
       + (state.levelChoice === 'self' ? renderSelfSelectHTML() : renderTestIntroHTML())
     + '</div>'
@@ -731,13 +720,8 @@ function renderSelfSelectHTML() {
 }
 
 function renderTestIntroHTML() {
-  var m = state.testMode || 'balanced';
   return '<div style="margin-top:18px">'
-    + '<div class="ob-helper"><span>🧪</span><div><b>Fresh every time:</b> the quiz now randomizes both questions and answer order, so the correct answer is no longer always the first option.</div></div>'
-    + '<div class="ob-link-grid">'
-    + '<div class="ob-link-card' + (m==='balanced'?' selected':'') + '" data-test-mode="balanced" onclick="_obSelectTestMode(\'balanced\')" style="cursor:pointer"><span>20 questions</span><h3>Balanced mix</h3><p>5 Seed, 5 Sprout, 5 Tree, and 5 Forest items.</p></div>'
-    + '<div class="ob-link-card' + (m==='recommended'?' selected':'') + '" data-test-mode="recommended" onclick="_obSelectTestMode(\'recommended\')" style="cursor:pointer"><span>Fast result</span><h3>Recommended level</h3><p>You will still be able to override the suggested level after the test.</p></div>'
-    + '</div>'
+    + '<div class="ob-helper"><span>🧪</span><div><b>No pressure.</b> It starts easy, adapts to your answers, and you can tap <i>I\'m not sure</i> instead of guessing.</div></div>'
     + '</div>';
 }
 
@@ -869,18 +853,55 @@ function buildTestQuestions() {
   return shuffle(out);
 }
 
+// Adaptive check: 8 questions, start at Sprout; a right answer moves one
+// level up, a wrong / "not sure" one level down. Replaces the fixed
+// 20-question test that made beginners fail 15 hard questions in a row.
+var AD_TOTAL = 8;
+var AD_ORDER = ['Starter','Beginner','Intermediate','Advanced'];
+var _adPools = null, _adTier = 1;
+function _adBuildPools() {
+  var pools = {};
+  AD_ORDER.forEach(function(level) {
+    var qs = (TEST_BANK[level] || []).map(function(q){ return Object.assign({ area: _classifyArea(q) }, q); });
+    (LISTENING_BANK[level] || []).slice(0, 1).forEach(function(q){ qs.push(Object.assign({ area:'listening' }, q)); });
+    pools[level] = shuffle(qs);
+  });
+  return pools;
+}
+function _adPick(tierIdx) {
+  for (var d = 0; d < AD_ORDER.length; d++) {
+    var cands = [tierIdx + d, tierIdx - d].filter(function(t){ return t >= 0 && t < AD_ORDER.length; });
+    for (var i = 0; i < cands.length; i++) {
+      var level = AD_ORDER[cands[i]];
+      var pick = (_adPools[level] || []).shift();
+      if (pick) {
+        var opts = shuffle(pick.choices);
+        return { level: level, area: pick.area, q: pick.q, sentence: pick.sentence, choices: opts, answer: opts.indexOf(pick.answer), exp: pick.exp };
+      }
+    }
+  }
+  return null;
+}
+function _adRecommended() {
+  // Average the levels of the last 5 answers, nudged by right/wrong.
+  var last = state.testAnswers.slice(-5);
+  if (!last.length) return 'Beginner';
+  var sum = last.reduce(function(acc, a){ return acc + AD_ORDER.indexOf(a.level) + (a.correct ? 0.5 : -0.5); }, 0);
+  var idx = Math.round(sum / last.length);
+  return AD_ORDER[Math.max(0, Math.min(3, idx))];
+}
+
 function startPlacementTest() {
   state.levelChoice = 'test';
-  state.testQuestions = buildTestQuestions();
   state.testAnswers = [];
   state.testScore = 0;
+  _adPools = _adBuildPools();
+  _adTier = 1;
+  state.testQuestions = [_adPick(_adTier)];
   _testIdx = 0;
   renderTestQuestion();
 }
 
-// TTS-play helper for listening items. Prefers the Supabase Edge TTS
-// endpoint and falls back to the Web Speech API so this works on any
-// browser that supports either.
 function _obPlayListening(text) {
   if (!text) return;
   try {
@@ -901,7 +922,7 @@ function renderTestQuestion() {
   updateProgress(3);
   var q = state.testQuestions[_testIdx];
   _testAnswered = false;
-  var total = state.testQuestions.length || 20;
+  var total = AD_TOTAL;
   var pct = Math.round((_testIdx / total) * 100);
   var badgeClass = { Starter:'badge-starter', Beginner:'badge-beg', Intermediate:'badge-int', Advanced:'badge-adv' }[q.level] || 'badge-beg';
   var areaLabels = { reading:'📖 Reading', grammar:'🧩 Grammar', vocab:'📚 Vocab', listening:'🎧 Listening' };
@@ -932,6 +953,7 @@ function renderTestQuestion() {
           return '<button class="test-opt" id="topt-' + i + '" data-test-idx="' + i + '">' + choice + '</button>';
         }).join('')
       + '</div>'
+      + '<button type="button" class="test-unsure" id="test-unsure" onclick="answerTest(-1)" style="margin-top:10px;background:none;border:1px dashed rgba(255,255,255,.25);color:rgba(255,255,255,.7);border-radius:12px;padding:10px 14px;font:inherit;font-size:13px;cursor:pointer;width:100%">I\'m not sure</button>'
       + '<div class="test-feedback" id="test-fb"></div>'
     + '</div>'
     + '<div>'
@@ -956,6 +978,8 @@ function answerTest(idx) {
   var opts = document.querySelectorAll('.test-opt');
   opts.forEach(function(btn) { btn.disabled = true; });
   if (opts[idx]) opts[idx].classList.add(correct ? 'correct' : 'wrong');
+  var _uns = document.getElementById('test-unsure'); if (_uns) _uns.style.display = 'none';
+  if (idx < 0 && opts[q.answer]) opts[q.answer].classList.add('correct');
   if (!correct && opts[q.answer]) opts[q.answer].classList.add('reveal');
   var fb = document.getElementById('test-fb');
   fb.className = 'test-feedback show ' + (correct ? 'ok' : 'no');
@@ -1003,101 +1027,16 @@ function _computePlacementScores() {
   return { scores: scores, areaLevels: areaLevels, recommended: recommended, counts: counts };
 }
 
-function showTestResult() {
-  var correct = state.testAnswers.filter(function(item) { return item.correct; }).length;
-  state.testScore = correct;
-  var result = _computePlacementScores();
-  state.placementResult = result; // stash for persistOnboardingState to pick up
-  state.level = result.recommended;
-  var recommended = result.recommended;
-
-  var areaMeta = {
-    reading:   { emoji:'📖', label:'Reading',   accent:'#60a5fa', gradient:'linear-gradient(135deg,#60a5fa,#3b82f6)' },
-    listening: { emoji:'🎧', label:'Listening', accent:'#a78bfa', gradient:'linear-gradient(135deg,#a78bfa,#7c3aed)' },
-    grammar:   { emoji:'🧩', label:'Grammar',   accent:'#34d399', gradient:'linear-gradient(135deg,#34d399,#059669)' },
-    vocab:     { emoji:'📚', label:'Vocab',     accent:'#fbbf24', gradient:'linear-gradient(135deg,#fbbf24,#d97706)' }
-  };
-  var TIER_ORDER = ['Starter','Beginner','Intermediate','Advanced'];
-  var TIER_META  = {
-    Starter:      { ko:'Seed',   emoji:'🌱' },
-    Beginner:     { ko:'Sprout', emoji:'🌿' },
-    Intermediate: { ko:'Tree',   emoji:'🌳' },
-    Advanced:     { ko:'Forest', emoji:'🌲' }
-  };
-  var areaBarsHTML = ['reading','listening','grammar','vocab'].map(function(a, idx) {
-    var s      = result.scores[a] || 0;
-    var lvl    = result.areaLevels[a];
-    var meta   = areaMeta[a];
-    var tierIdx = TIER_ORDER.indexOf(lvl);
-    var lvlKorean = TIER_META[lvl] ? TIER_META[lvl].ko : lvl;
-
-    // Tier stepper: 4 dots, filled up to (and including) the achieved tier.
-    var stepper = TIER_ORDER.map(function(t, ti) {
-      var reached = ti <= tierIdx;
-      var current = ti === tierIdx;
-      return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;position:relative">'
-        + (ti > 0
-            ? '<div style="position:absolute;left:-50%;right:50%;top:8px;height:2px;background:' + (reached ? meta.gradient : 'rgba(255,255,255,.08)') + ';z-index:0"></div>'
-            : '')
-        + '<div style="width:18px;height:18px;border-radius:50%;' + (reached ? 'background:' + meta.gradient + ';box-shadow:0 2px 8px ' + meta.accent + '55;' : 'background:rgba(255,255,255,.06);') + 'border:2px solid ' + (reached ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.15)') + ';position:relative;z-index:1;' + (current ? 'transform:scale(1.18);' : '') + 'transition:all .3s ease"></div>'
-        + '<div style="font-size:9px;font-weight:' + (current ? '800' : '600') + ';color:' + (current ? '#fff' : 'rgba(255,255,255,.45)') + ';letter-spacing:.04em">' + TIER_META[t].ko + '</div>'
-      + '</div>';
-    }).join('');
-
-    return '<div style="padding:14px 16px 16px;background:linear-gradient(145deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:14px;margin-bottom:10px;opacity:0;transform:translateY(8px);animation:kh-area-in .42s cubic-bezier(.22,1,.36,1) ' + (100 + idx * 90) + 'ms forwards">'
-      // Top row — icon, label, score
-      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
-        + '<div style="display:flex;align-items:center;gap:10px">'
-          + '<div style="width:34px;height:34px;border-radius:10px;background:' + meta.gradient + ';display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 4px 14px ' + meta.accent + '44">' + meta.emoji + '</div>'
-          + '<div>'
-            + '<div style="font-size:14px;font-weight:800;color:#fff;line-height:1.2">' + meta.label + '</div>'
-            + '<div style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5);margin-top:1px">Achieved ' + TIER_META[lvl].emoji + ' ' + lvlKorean + '</div>'
-          + '</div>'
-        + '</div>'
-        + '<div style="text-align:right">'
-          + '<div style="font-family:\'DM Sans\',sans-serif;font-size:24px;font-weight:900;color:' + meta.accent + ';line-height:1" data-kh-count="' + s + '">0</div>'
-          + '<div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em">score</div>'
-        + '</div>'
-      + '</div>'
-      // Tier stepper
-      + '<div style="display:flex;align-items:flex-start;justify-content:space-between;position:relative">' + stepper + '</div>'
-    + '</div>';
-  }).join('');
-
-  document.getElementById('ob-content').innerHTML = cardWrap(
-    '<div>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Placement result</div><div class="ob-stage">You can still override the recommendation</div></div>'
-      + '<div class="result-hero">'
-      + '<div class="result-num">' + correct + '<span style="font-size:24px;color:rgba(255,255,255,.45)">/20</span></div>'
-      + '<div class="result-copy"><h3>' + LEVEL_META[recommended].emoji + ' Recommended: ' + LEVEL_META[recommended].ko + '</h3><p>' + LEVEL_META[recommended].desc + ' Pick this level or choose a different one below.</p></div>'
-      + '</div>'
-      + '<div style="margin:18px 0 10px;font-size:11px;font-weight:800;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.08em">Per-area breakdown</div>'
-      + areaBarsHTML
-      + '<div class="ob-level-list">'
-      + Object.keys(LEVEL_META).map(function(key) {
-          var meta = LEVEL_META[key];
-          var selected = state.level === key;
-          return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-recommended-level="' + key + '">'
-            + '<span class="ob-check">✓</span>'
-            + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + meta.ko + (key === recommended ? ' <span class="ob-tag" style="margin-left:8px">Recommended</span>' : '') + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
-            + '</button>';
-        }).join('')
-      + '</div>'
-    + '</div>'
-    + '<div>'
-      + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" data-action="retake-test">Retake test</button>'
-      + '<button class="ob-btn ob-btn-primary" data-action="go-step4">Continue with this level →</button>'
-      + '</div>'
-    + '</div>'
-  );
-  wireStepInteractions();
-}
-
+// (Dead first showTestResult removed — the definition below won.)
 function nextTestQ() {
+  var lastAns = state.testAnswers[state.testAnswers.length - 1];
   _testIdx += 1;
-  if (_testIdx >= state.testQuestions.length) showTestResult();
-  else renderTestQuestion();
+  if (_testIdx >= AD_TOTAL) { showTestResult(); return; }
+  _adTier = Math.max(0, Math.min(3, _adTier + (lastAns && lastAns.correct ? 1 : -1)));
+  var nq = _adPick(_adTier);
+  if (!nq) { showTestResult(); return; }
+  state.testQuestions.push(nq);
+  renderTestQuestion();
 }
 
 async function backToLevelChoice() {
@@ -1114,46 +1053,19 @@ async function backToLevelChoice() {
 function showTestResult() {
   var correct = state.testAnswers.filter(function(item) { return item.correct; }).length;
   state.testScore = correct;
-  var breakdown = {
-    Starter: state.testAnswers.filter(function(item) { return item.level === 'Starter' && item.correct; }).length,
-    Beginner: state.testAnswers.filter(function(item) { return item.level === 'Beginner' && item.correct; }).length,
-    Intermediate: state.testAnswers.filter(function(item) { return item.level === 'Intermediate' && item.correct; }).length,
-    Advanced: state.testAnswers.filter(function(item) { return item.level === 'Advanced' && item.correct; }).length
-  };
-  // Weighted recommendation. Previous heuristic (threshold per tier,
-  // short-circuit from top) could recommend Advanced on a single
-  // Advanced fluke even when Intermediate performance was weak, or
-  // under-recommend when Beginner/Intermediate were strong and
-  // Advanced was a coin flip. Scoring each correct answer by tier
-  // difficulty gives a smoother signal: a learner has to show
-  // consistent competence at the higher band to tip the result up.
-  var weighted =
-      breakdown.Starter      * 1 +
-      breakdown.Beginner     * 2 +
-      breakdown.Intermediate * 4 +
-      breakdown.Advanced     * 8;
-  // Max weighted = 5*(1+2+4+8) = 75. Bands calibrated so a learner
-  // who gets all Starter + half Beginner lands on Beginner, etc.
-  var recommended = 'Starter';
-  if (weighted >= 48)      recommended = 'Advanced';
-  else if (weighted >= 28) recommended = 'Intermediate';
-  else if (weighted >= 12) recommended = 'Beginner';
-  state.testWeighted = weighted;
+  var recommended = _adRecommended();
+  try { var pr = _computePlacementScores(); pr.recommended = recommended; state.placementResult = pr; } catch (_) {}
   state.level = recommended;
+  var reached = state.testAnswers.reduce(function(m, a){ return a.correct ? Math.max(m, AD_ORDER.indexOf(a.level)) : m; }, -1);
 
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Placement result</div><div class="ob-stage">You can still override the recommendation</div></div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Placement result</div><div class="ob-stage">You can change it below</div></div>'
       + '<div class="result-hero">'
-      + '<div class="result-num">' + correct + '<span style="font-size:24px;color:rgba(255,255,255,.45)">/20</span></div>'
+      + '<div class="result-num">' + correct + '<span style="font-size:24px;color:rgba(255,255,255,.45)">/' + state.testAnswers.length + '</span></div>'
       + '<div class="result-copy"><h3>' + LEVEL_META[recommended].emoji + ' Recommended: ' + LEVEL_META[recommended].ko + '</h3><p>' + LEVEL_META[recommended].desc + ' Pick this level or choose a different one below.</p></div>'
       + '</div>'
-      + '<div class="result-breakdown">'
-      + '<div class="rb-item rb-starter"><div class="rb-n">' + breakdown.Starter + '/5</div><div class="rb-l">Seed</div></div>'
-      + '<div class="rb-item rb-beg"><div class="rb-n">' + breakdown.Beginner + '/5</div><div class="rb-l">Sprout</div></div>'
-      + '<div class="rb-item rb-int"><div class="rb-n">' + breakdown.Intermediate + '/5</div><div class="rb-l">Tree</div></div>'
-      + '<div class="rb-item rb-adv"><div class="rb-n">' + breakdown.Advanced + '/5</div><div class="rb-l">Forest</div></div>'
-      + '</div>'
+      + (reached >= 0 ? '<p class="ob-desc" style="margin-top:4px">Hardest level you answered correctly: <b>' + LEVEL_META[AD_ORDER[reached]].emoji + ' ' + LEVEL_META[AD_ORDER[reached]].ko + '</b></p>' : '')
       + '<div class="ob-level-list">'
       + Object.keys(LEVEL_META).map(function(key) {
           var meta = LEVEL_META[key];
@@ -1212,21 +1124,29 @@ function goStep4() {
     var found = GOALS.find(function(g) { return g.id === id; });
     return found ? found.label : id;
   }).join(', ');
+  // Goals + level drive the home feed and first picks (localStorage works
+  // for guests; signed-in users also get them saved to user_stats).
+  try {
+    localStorage.setItem('kh_goals', JSON.stringify(state.goals || []));
+    if (state.level) localStorage.setItem('kh_level', state.level);
+  } catch (_) {}
   var timeData = TIME_OPTIONS.find(function(item) { return item.min === state.minutes; }) || TIME_OPTIONS[1];
   // Branch on auth: signed-out users get a one-tap Google sign-up
   // as the primary CTA (the marketing CTA promised "sign up takes
   // 30 seconds"). Signed-in users see the existing finish flow.
   var isSignedIn = !!_user;
   var primaryCTA = isSignedIn
-    ? '<button class="ob-btn ob-btn-primary ob-btn-full" id="finish-btn" data-action="finish">Go to main page →</button>'
-    : '<button class="ob-google-btn" id="signup-btn" data-action="signup-google" type="button">'
+    ? '<button class="ob-btn ob-btn-primary ob-btn-full" id="finish-btn" data-action="finish">Start reading →</button>'
+    : '<button class="ob-btn ob-btn-primary ob-btn-full" id="start-reading-btn" data-action="start-reading" type="button" style="margin-bottom:10px">Start reading →</button>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.6);text-align:center;margin:4px 0 10px">Save your words and progress — free account</div>'
+      + '<button class="ob-google-btn" id="signup-btn" data-action="signup-google" type="button">'
         + '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
         + '<path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>'
         + '<path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>'
         + '<path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35 26.8 36 24 36c-5.3 0-9.7-3.4-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/>'
         + '<path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2c-.4.4 6.6-4.8 6.6-14.8 0-1.3-.1-2.4-.4-3.5z"/>'
         + '</svg>'
-        + '<span>Sign up with Google · 30 seconds</span>'
+        + '<span>Continue with Google</span>'
       + '</button>';
   var introCopy = isSignedIn
     ? 'We will save your setup, send you to the main page, and highlight the Beginner Guide so first-time users can get oriented right away.'
@@ -1234,25 +1154,10 @@ function goStep4() {
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
       + '<button class="ob-back-chip" data-action="back-step3" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Back</span></button>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Step 4 · Finish</div><div class="ob-stage">' + (isSignedIn ? 'Main page tip is ready' : '30-second sign-up') + '</div></div>'
-      + '<h2 class="ob-title">You are ready to start.</h2>'
-      + '<p class="ob-desc">' + introCopy + '</p>'
-      + '<div class="ob-side-card" style="background:rgba(255,255,255,.05);margin-bottom:18px">'
-      + '<small>Your setup summary</small>'
-      + '<h3 style="margin-bottom:12px">A quick plan for your first session</h3>'
-      + '<div class="ob-journey">'
-      + '<div class="ob-journey-card"><strong>Goals</strong><p>' + (goalsText || 'Not selected') + '</p></div>'
-      + '<div class="ob-journey-card"><strong>Level</strong><p>' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[state.level]||state.level||'Sprout') + (state.levelChoice === 'test' ? ' · From placement test' : ' · Self-selected') + '</p></div>'
-      + '<div class="ob-journey-card"><strong>Daily pace</strong><p>' + timeData.label + '<br>' + timeData.sub + '</p></div>'
-      + '</div>'
-      + '</div>'
-      + (isSignedIn
-          ? '<div class="ob-link-grid">'
-            + '<a class="ob-link-card" href="beginner-guide.html" onclick="saveOnboardingLocal(true);persistOnboardingState()"><span>Tip page</span><h3>Beginner Guide</h3><p>See how News, Study Room, Growth Lab, Stories, and Conversations fit together.</p></a>'
-            + '<a class="ob-link-card" href="korehan-study-room.html" onclick="saveOnboardingLocal(true);persistOnboardingState()"><span>Practice page</span><h3>Study Room</h3><p>Use your reading to review words, grammar, and active practice right away.</p></a>'
-            + '</div>'
-          : '')
-      + '<div class="ob-footer-note">Your onboarding state is also saved locally so you do not get bounced back into onboarding again if the database response is slow.</div>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Start</div><div class="ob-stage">Picked for ' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[state.level]||'Sprout') + '</div></div>'
+      + '<h2 class="ob-title">Your first articles are ready.</h2>'
+      + '<p class="ob-desc">Open one and tap any sentence — you will see its translation, words and grammar.</p>'
+      + '<div id="ob-picks" class="ob-link-grid" style="margin-bottom:16px"><div class="ob-link-card" style="opacity:.6">Finding articles for you…</div></div>'
     + '</div>'
     + '<div>'
       // PRIV-F9: age gate. PIPA Art 22-2 prohibits collecting
@@ -1270,14 +1175,55 @@ function goStep4() {
       // Secondary email-signup path for users without Google or who
       // prefer email auth. Without this, signed-out users only had a
       // single Google CTA and no path forward.
-      + (isSignedIn ? '' : '<button class="ob-btn ob-btn-full" id="signup-email-btn" data-action="signup-email" type="button" style="margin-top:10px;background:transparent;border:1.5px solid rgba(255,255,255,.18);color:inherit;font-weight:700">Or sign up with email →</button>')
+      + (isSignedIn ? '' : '<button class="ob-btn ob-btn-full" id="signup-email-btn" data-action="signup-email" type="button" style="margin-top:10px;background:transparent;border:1.5px solid rgba(255,255,255,.18);color:inherit;font-weight:700">Sign up with email</button>')
       + '</div>'
       // No dead end: browsing first is fine — answers stay saved on this
       // device and are applied when they sign up later.
-      + (isSignedIn ? '' : '<button type="button" class="skip-link" data-action="explore" style="background:none;border:none;font:inherit;color:inherit;padding:inherit;cursor:pointer;display:block;margin:14px auto 0">Explore first — sign up later</button>')
+      + (isSignedIn ? '' : '<button type="button" class="skip-link" data-action="explore" style="background:none;border:none;font:inherit;color:inherit;padding:inherit;cursor:pointer;display:block;margin:14px auto 0">Just look around</button>')
     + '</div>'
   );
   wireStepInteractions();
+  _obLoadPicks();
+}
+
+// O4: first articles matched to goals + level.
+var OB_GOAL_SECTIONS = {
+  travel: ['travel', 'Korea', '문화'],
+  kpop: ['K-pop', '연예', '해외연예'],
+  business: ['국제', 'IT과학', '사회'],
+  immigration: ['사회', 'Korea', '문화'],
+  fun: ['buzz', '문화', 'nature']
+};
+var _obPicks = [];
+function _obFirstArticleUrl() {
+  return _obPicks.length ? 'korehan-article.html?id=' + encodeURIComponent(_obPicks[0].id) + '&from=onboarding' : 'index.html?welcome=1';
+}
+async function _obLoadPicks() {
+  var box = document.getElementById('ob-picks');
+  var sb = getSb();
+  if (!box || !sb) return;
+  var secs = [];
+  (state.goals || []).forEach(function(g){ (OB_GOAL_SECTIONS[g] || []).forEach(function(x){ if (secs.indexOf(x) < 0) secs.push(x); }); });
+  var level = state.level || 'Beginner';
+  var esc = function(x){ return String(x == null ? '' : x).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+  try {
+    var q = sb.from('articles').select('id,title,title_en,section,level,image').eq('status', 'published').eq('level', level);
+    if (secs.length) q = q.in('section', secs);
+    var r = await q.order('created_at', { ascending: false }).limit(3);
+    var rows = (r && r.data) || [];
+    if (rows.length < 3) {
+      var r2 = await sb.from('articles').select('id,title,title_en,section,level,image').eq('status', 'published').eq('level', level)
+        .order('created_at', { ascending: false }).limit(6);
+      (r2.data || []).forEach(function(a){ if (rows.length < 3 && !rows.some(function(x){ return x.id === a.id; })) rows.push(a); });
+    }
+    _obPicks = rows;
+    if (!rows.length) { box.innerHTML = ''; return; }
+    box.innerHTML = rows.map(function(a){
+      return '<a class="ob-link-card" href="korehan-article.html?id=' + encodeURIComponent(a.id) + '&from=onboarding" onclick="saveOnboardingLocal(true)">'
+        + '<span>' + esc(a.section || '') + '</span><h3>' + esc(a.title_en || a.title) + '</h3>'
+        + (a.title_en ? '<p>' + esc(a.title) + '</p>' : '') + '</a>';
+    }).join('');
+  } catch (_) { box.innerHTML = ''; }
 }
 
 async function persistOnboardingState() {
@@ -1433,7 +1379,7 @@ async function finishOnboarding() {
   // optional setup, not a guided tour into a specific page. Home is
   // where they can explore freely; the bottom nav puts Study Room one
   // tap away if they want it.
-  window.location.href = 'index.html?welcome=1';
+  window.location.href = _obFirstArticleUrl();
 }
 
 async function skipOnboarding() {
@@ -1505,8 +1451,7 @@ function startOnboarding() {
   restoreOnboardingDraft();
   // Resume from the step the user was on, defaulting to step 1. Note:
   // step 4 is the signup CTA — goStep4 is idempotent + safe to re-run.
-  if (state.step === 2)        renderStep2();
-  else if (state.step === 3)   renderStep3Choice();
+  if (state.step === 2 || state.step === 3) renderStep3Choice();
   else if (state.step === 4)   goStep4();
   else                         renderStep1();
 }

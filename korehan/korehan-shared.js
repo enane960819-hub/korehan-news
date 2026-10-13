@@ -2311,7 +2311,8 @@ function scheduleSignupNudge() {
   _khSignupNudgeArmed = true;
   setTimeout(showSignupNudge, 30_000);
 }
-function showSignupNudge() {
+function showSignupNudge(opts) {
+  opts = opts || {};
   if (supaUser) return;
   if (document.getElementById('kh-signup-nudge')) return;
   // The article/story content gate already shows a sign-up CTA inline,
@@ -2334,8 +2335,8 @@ function showSignupNudge() {
   el.innerHTML = ''
     + '<div style="display:inline-flex;width:24px;height:24px;flex-shrink:0;color:#a78bfa">'+KH_ICON_LIBRARY+'</div>'
     + '<div style="flex:1;min-width:0">'
-    + '<div style="font-size:13px;font-weight:800;line-height:1.3;color:#fff;margin-bottom:2px">Save your progress for free</div>'
-    + '<div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.4">Sign up to track streaks, save words, and get personalized lessons.</div>'
+    + '<div style="font-size:13px;font-weight:800;line-height:1.3;color:#fff;margin-bottom:2px">' + (opts.title || 'Save your progress for free') + '</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.4">' + (opts.body || 'Sign up to track streaks, save words, and get personalized lessons.') + '</div>'
     + '</div>'
     + '<button id="kh-signup-nudge-cta" style="flex-shrink:0;padding:9px 14px;border-radius:10px;background:linear-gradient(135deg,#38bdf8,#2563eb);border:none;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">Sign up</button>'
     + '<button id="kh-signup-nudge-close" aria-label="Dismiss" style="flex-shrink:0;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.55);font-size:16px;cursor:pointer;font-family:inherit;line-height:1">×</button>';
