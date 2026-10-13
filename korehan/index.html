@@ -1360,7 +1360,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261012a"></script>
-<script src="korehan-shared.js?v=20261013b"></script>
+<script src="korehan-shared.js?v=20261013c"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
@@ -1694,19 +1694,20 @@ document.addEventListener('DOMContentLoaded', async function() {
         var fn = (u.user_metadata && u.user_metadata.full_name) || (u.email && u.email.split('@')[0]) || '';
         first = String(fn).split(/[\s.]/)[0] || '';
       } catch(_) {}
-      // Read streak + xp + goals from user_stats. goal_types is the
-      // onboarding answer (array). goal_type is the primary fallback.
+      // Read streak + xp + primary goal from user_stats. The full goal
+      // list (array) lives in localStorage kh_goals — user_stats only has
+      // the single goal_type column, so selecting goal_types here used to
+      // 400 the whole query and silently drop streak/xp too.
       var streak = 0, xp = 0, goalTypes = null, goalType = null;
       try {
-        var r = await sb.from('user_stats').select('streak, xp, goal_type, goal_types').eq('user_id', u.id).maybeSingle();
+        var r = await sb.from('user_stats').select('streak, xp, goal_type').eq('user_id', u.id).maybeSingle();
         if (r && r.data) {
           streak    = Number(r.data.streak) || 0;
           xp        = Number(r.data.xp) || 0;
-          goalTypes = Array.isArray(r.data.goal_types) ? r.data.goal_types : null;
           goalType  = r.data.goal_type || null;
-          try { if (goalTypes && goalTypes.length && !localStorage.getItem('kh_goals')) localStorage.setItem('kh_goals', JSON.stringify(goalTypes)); } catch (_) {}
         }
       } catch(_){}
+      try { var _g = JSON.parse(localStorage.getItem('kh_goals') || 'null'); if (Array.isArray(_g) && _g.length) goalTypes = _g; } catch (_) {}
       if (streak < 1 && xp < 50) return;
       var GOAL_EMOJI = { travel:'✈️', kpop:'🎤', business:'💼', 'living-in-korea':'🏠', fun:'🎉', kdrama:'🎬', exam:'📝', topik:'📘', culture:'🇰🇷' };
       var GOAL_LABEL = { travel:'Travel', kpop:'K-pop', business:'Business', 'living-in-korea':'Living in Korea', fun:'Fun', kdrama:'K-drama', exam:'Exam prep', topik:'TOPIK', culture:'Culture' };
