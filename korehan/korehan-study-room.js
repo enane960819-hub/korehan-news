@@ -635,6 +635,9 @@ async function loadDBGrammar(level) {
 
 // ─── Word-order activity (어절 순서맞추기) ─────────────────────
 function renderWordOrderActivity(words) {
+  // Drop empty/blank chunks — a few AI-generated word_order rows carry a
+  // trailing "" which would otherwise render as an empty draggable tile.
+  words = (words || []).filter(function(w){ return w != null && String(w).trim() !== ''; });
   _wordOrderState.correct = words.slice();
   var shuffled = words.map(function(w, i){ return { word:w, origIdx:i }; });
   for (var i = shuffled.length - 1; i > 0; i--) {
