@@ -1229,16 +1229,22 @@ async function _obLoadPicks() {
 async function persistOnboardingState() {
   var sb = getSb();
   if (!_user || !sb) return;
+  // complete_onboarding RPC (above) persists level / daily minutes /
+  // test score. This upsert only needs to flag the account onboarded and
+  // store the primary goal. Columns must match the live user_stats schema:
+  // daily_goal_minutes / level_test_score (NOT daily_minutes/test_score),
+  // and there is no goal_types column — the full goal list lives in
+  // localStorage kh_goals. Selecting those non-existent columns used to
+  // 400 this whole upsert, so the onboarded flag never persisted.
   var payload = {
     user_id: _user.id,
     onboarded: true,
     onboarded_at: new Date().toISOString(),
-    level: state.level,
-    daily_minutes: state.minutes,
-    test_score: state.testScore,
-    goal_type: (state.goals[0] || null),
-    goal_types: state.goals
+    daily_goal_minutes: state.minutes,
+    level_test_score: state.testScore,
+    goal_type: (state.goals[0] || null)
   };
+  try { if (Array.isArray(state.goals) && state.goals.length) localStorage.setItem('kh_goals', JSON.stringify(state.goals)); } catch (_) {}
 
   try {
     await sb.rpc('complete_onboarding', {

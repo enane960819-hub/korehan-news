@@ -1290,8 +1290,8 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261012a"></script>
-<script src="korehan-shared.js?v=20261013b"></script>
-<script src="js/kh-badges.js?v=20260527f"></script>
+<script src="korehan-shared.js?v=20261013c"></script>
+<script src="js/kh-badges.js?v=20261013c"></script>
 <script>
 
 // ── Tier SVG mark helper ────────────────────────────────────────
@@ -2331,11 +2331,11 @@ async function handleAvatarUpload(input) {
     return;
   }
 
-  // Save to auth metadata + user_stats. avatarUrl is a clean https
-  // URL from storage now, never a multi-megabyte data: URL.
+  // Save to auth metadata. avatarUrl is a clean https URL from storage
+  // now, never a multi-megabyte data: URL. (user_stats has no avatar_url
+  // column — auth user_metadata is the canonical store.)
   try {
     await sb.auth.updateUser({ data: { avatar_url: avatarUrl } });
-    await sb.from('user_stats').update({ avatar_url: avatarUrl }).eq('user_id', supaUser.id);
   } catch(e) {}
 
   // Update avatar in hero
@@ -2666,21 +2666,9 @@ async function initMyPage() {
   var initialsEl = document.getElementById('mp-initials');
   if (initialsEl) initialsEl.textContent = initials;
 
-  // Show existing profile photo — check auth metadata first, then user_stats
+  // Show existing profile photo from auth metadata (canonical store).
   var existingAvatar = (supaUser.user_metadata && supaUser.user_metadata.avatar_url) || '';
   if (existingAvatar) _setAvatarDisplay(existingAvatar);
-  // Also try loading from user_stats (more reliable across sessions)
-  if (!existingAvatar) {
-    try {
-      var sb = getSupa();
-      if (sb) {
-        var avatarRes = await sb.from('user_stats').select('avatar_url').eq('user_id', supaUser.id).maybeSingle();
-        if (avatarRes.data && avatarRes.data.avatar_url) {
-          _setAvatarDisplay(avatarRes.data.avatar_url);
-        }
-      }
-    } catch(e) {}
-  }
   // Equipped frame (best-effort — silent if user_stats lacks the column yet)
   try { await loadEquippedCosmetics(); } catch(_) {}
   // Feedback chip — surface unread reviewed feedback so users can find
@@ -2714,7 +2702,7 @@ async function dbGetOwnedAndGifts() {
     out.owned = ownedRes.data || [];
   } catch(e) {}
   try {
-    var giftRes = await sb.from('reporter_gift_history').select('*').eq('user_id', supaUser.id).order('gifted_at', { ascending:false }).limit(30);
+    var giftRes = await sb.from('reporter_gift_history').select('*').eq('user_id', supaUser.id).order('created_at', { ascending:false }).limit(30);
     if (!giftRes.error) out.gifts = giftRes.data || [];
   } catch(e) {}
   return out;

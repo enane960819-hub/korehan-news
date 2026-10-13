@@ -1323,7 +1323,7 @@
   <script src="js/features/analyze-mode.js?v=20260525r"></script>
   <script src="js/features/translation.js?v=20261012a"></script>
   <script src="js/features/fill-blank.js?v=20261012a"></script>
-  <script src="korehan-shared.js?v=20261013b"></script>
+  <script src="korehan-shared.js?v=20261013c"></script>
   <!-- kh-universe.js (~117KB) lazy-loaded by _glEnsureUniverse() above on first click. -->
   <script src="js/kh-curriculum.js?v=20260527f"></script>
   <script src="learning_hub_vocab_data.js"></script>
@@ -2207,15 +2207,15 @@
       // 2) Conversations & Stories from user_read_history table
       try {
         var { data: rhHist } = await sb.from('user_read_history')
-          .select('content_type, content_id, title, level, read_at, completed')
+          .select('content_type, content_id, title, level, created_at, completed')
           .eq('user_id', userId)
           .in('content_type', ['conversation', 'story'])
-          .gte('read_at', cutoff)
-          .order('read_at', { ascending: false })
+          .gte('created_at', cutoff)
+          .order('created_at', { ascending: false })
           .limit(20);
         if (rhHist && rhHist.length) {
           rhHist.forEach(function(r){
-            allHistory.push({ content_type:r.content_type, content_id:r.content_id, title:r.title||'', level:r.level||'', read_at:r.read_at, completed:!!r.completed });
+            allHistory.push({ content_type:r.content_type, content_id:r.content_id, title:r.title||'', level:r.level||'', read_at:r.created_at, completed:!!r.completed });
           });
         }
       } catch(e2) {}

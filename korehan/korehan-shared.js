@@ -7843,6 +7843,7 @@ var _XP_ACTION_LABELS = {
 // ── xp_log 컬럼명 감지 (세션당 1회) ─────────────────────────────
 var _xpLogAmtCol  = null;  // 'amount' | 'xp' | 'xp_gained' | 'points' | null
 var _xpLogSrcCol  = null;  // 'source' | 'action' | null
+var _xpLogHasMeta = false;   // xp_log has a jsonb meta column (real schema)
 var _xpLogDisabled = false;
 var _xpLogTriedFallbackInsert = false;
 
@@ -7854,7 +7855,7 @@ function _isXPLogMissingColumnError(err) {
 async function _detectXPLogCols() {
   if (_xpLogAmtCol !== null || _xpLogDisabled) return;
   var sb = getSupa();
-  if (!sb) { _xpLogAmtCol = 'amount'; _xpLogSrcCol = 'source'; return; }
+  if (!sb) { _xpLogAmtCol = 'xp_amount'; _xpLogSrcCol = 'action_key'; _xpLogHasMeta = true; return; }
   try {
     var probe = await sb.from('xp_log').select('*').limit(1);
     if (probe.error) {
@@ -7865,17 +7866,21 @@ async function _detectXPLogCols() {
     var row = (probe.data && probe.data[0]) || null;
     if (row && typeof row === 'object') {
       var keys = Object.keys(row);
-      _xpLogAmtCol = keys.indexOf('amount') >= 0 ? 'amount'
+      _xpLogAmtCol = keys.indexOf('xp_amount') >= 0 ? 'xp_amount'
+        : keys.indexOf('amount') >= 0 ? 'amount'
         : keys.indexOf('xp') >= 0 ? 'xp'
         : keys.indexOf('xp_gained') >= 0 ? 'xp_gained'
         : keys.indexOf('points') >= 0 ? 'points'
-        : 'amount';
-      _xpLogSrcCol = keys.indexOf('source') >= 0 ? 'source'
+        : 'xp_amount';
+      _xpLogSrcCol = keys.indexOf('action_key') >= 0 ? 'action_key'
+        : keys.indexOf('source') >= 0 ? 'source'
         : keys.indexOf('action') >= 0 ? 'action'
-        : 'source';
+        : 'action_key';
+      _xpLogHasMeta = keys.indexOf('meta') >= 0;
     } else {
-      _xpLogAmtCol = 'amount';
-      _xpLogSrcCol = 'source';
+      _xpLogAmtCol = 'xp_amount';
+      _xpLogSrcCol = 'action_key';
+      _xpLogHasMeta = true;
     }
   } catch(e) {
     _xpLogDisabled = true;
@@ -7892,10 +7897,8 @@ async function _insertXPLog(sb, userId, actionKey, amount, reason, contentId) {
   row[_xpLogSrcCol] = actionKey;
   // 공통 컬럼은 있으면 삽입, 없어도 오류 안남
   try {
-    var r = await sb.from('xp_log').insert(Object.assign({}, row, {
-      reason: reason,
-      content_id: contentId
-    }));
+    var _extra = _xpLogHasMeta ? { meta: { reason: reason, content_id: contentId } } : {};
+    var r = await sb.from('xp_log').insert(Object.assign({}, row, _extra));
     if (r.error) {
       // reason/content_id 컬럼 없을 수도 — 최소 행으로 재시도
       if (_isXPLogMissingColumnError(r.error)) {
@@ -9811,7 +9814,7 @@ async function checkOnboardingStatus() {
     if (hasCompletedOnboardingLocal('')) return;
     var sb = getSupa(); if (!sb) return;
     var res = await sb.from('user_stats')
-      .select('onboarded, onboarded_at, created_at')
+      .select('onboarded, onboarded_at')
       .eq('user_id', supaUser.id)
       .maybeSingle();
 
