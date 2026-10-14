@@ -25,7 +25,14 @@
 // SW symptom). v10 + skipWaiting + clients.claim drops the old SW
 // and caches in one tab-close cycle.
 //
-const CACHE_VERSION = 'kh-v12';
+// v13: force-purge after the 2026-10-14 rapid double-deploy (#722→#723).
+// During those back-to-back Cloudflare rebuilds a transient index.html
+// was briefly served WITHOUT its main /assets/*.css <link>, and any SW
+// (or browser) that cached that shell kept painting a fully-unstyled page
+// even after the good build settled. Bumping the version makes activate
+// delete every pre-v13 cache; skipWaiting + clients.claim take over in
+// one navigation so stuck clients self-heal on next load.
+const CACHE_VERSION = 'kh-v13';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
