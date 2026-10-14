@@ -12253,6 +12253,15 @@ function setupFeedNavigation() {
       if (!validSwipe) return;
       validSwipe = false;
       if (document.body.classList.contains('kh-cdr-open')) return;
+      // Feed swipe-nav is a READING gesture only. When the learner is on a
+      // study tab (Grammar / Vocab / Review) the Read article panel is
+      // hidden, and those tabs have their own interactive cards (quiz,
+      // fill-in-the-blank, jamo keyboard) where a small vertical finger
+      // slip must NOT jump to the next article. Only navigate while the
+      // Read panel is actually showing. (Reported: "리뷰탭에서 손가락 살짝
+      // 삐끗하면 다음 기사로 넘어가버린다".)
+      var _readPanel = document.getElementById('art-tab-article');
+      if (_readPanel && _readPanel.style.display === 'none') return;
       // Suppress if any feed transition is mid-flight, otherwise a fast
       // double-flick can fire two navigations against the same article.
       if (document.body.classList.contains('kh-feed-leaving')
