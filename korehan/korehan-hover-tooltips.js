@@ -110,10 +110,22 @@
         display:flex;
         align-items:center;
         justify-content:flex-end;
+        gap:6px;
         margin-top:10px;
         padding-top:8px;
         border-top:1px solid rgba(255,255,255,.1);
       }
+      .kh-tip-speak{
+        display:inline-flex;align-items:center;justify-content:center;
+        width:30px;height:30px;border-radius:999px;
+        border:1.5px solid rgba(255,255,255,.2);
+        background:rgba(255,255,255,.08);
+        font-size:14px;line-height:1;cursor:pointer;transition:all .15s;
+        font-family:inherit;margin-right:auto;
+      }
+      .kh-tip-speak:hover{ border-color:#93c5fd;background:rgba(147,197,253,.15); }
+      .kh-tip-speak.kh-speaking{ border-color:#93c5fd;background:rgba(147,197,253,.22);animation:khTipPulse .9s ease-in-out infinite; }
+      @keyframes khTipPulse{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.12);} }
       .kh-tip-save{
         display:inline-flex;align-items:center;gap:4px;
         padding:5px 12px;border-radius:999px;
@@ -520,6 +532,8 @@
       + inflBlock
       + (note ? '<div class="note">' + note + '</div>' : '')
       + '<div class="tip-footer">'
+      + '<button class="kh-tip-speak" aria-label="Play pronunciation" title="발음 듣기" '
+      + 'data-word="' + word + '" onclick="window._khTipSpeak && window._khTipSpeak(this, event)">🔊</button>'
       + '<button class="kh-tip-save' + (saved ? ' saved' : '') + '" '
       + 'data-word="' + word + '" data-reading="' + reading + '" data-meaning="' + meaning + '" '
       + 'onclick="window._khTipSave && window._khTipSave(this)">'
@@ -530,6 +544,24 @@
     t.classList.add('show');
     moveTooltip(e);
   }
+
+  // 🔊 pronounce the word. Prefer the natural neural voice (khSpeak →
+  // tts-proxy) for signed-in users; khSpeak itself falls back to the
+  // browser ttsSpeak for anon users or on any failure. Don't let the tap
+  // bubble to the sentence-analysis handler or close the tooltip.
+  window._khTipSpeak = function(btn, ev) {
+    if (ev) { try { ev.stopPropagation(); } catch(_) {} }
+    var w = (btn && btn.dataset && btn.dataset.word) || '';
+    if (!w) return;
+    if (typeof window.khSpeak === 'function') { window.khSpeak(w, 'female', btn); return; }
+    if (typeof window.ttsSpeak === 'function') { window.ttsSpeak(w, btn); return; }
+    try {
+      if (window.speechSynthesis) {
+        var u = new SpeechSynthesisUtterance(w); u.lang = 'ko-KR'; u.rate = 0.9;
+        window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+      }
+    } catch(_) {}
+  };
 
   // Exposed globally so the inline onclick can reach it
   window._khTipSave = async function(btn) {

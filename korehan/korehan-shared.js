@@ -5165,8 +5165,16 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
     html += '<div class="asp-section-title">Vocab</div>';
     data.vocab.forEach(function(v) {
       if (!v || !v.ko) return;
+      // 🔊 natural-voice pronunciation (khSpeak → neural tts-proxy, with
+      // browser-TTS fallback for anon/failure). JS-string-safe word in the
+      // onclick; HTML-safe word in the visible label.
+      var koJs = String(v.ko).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       html += '<div class="asp-vocab-row">'
-           + '<span class="asp-vocab-ko">' + escapeHTML(v.ko) + '</span>'
+           + '<span class="asp-vocab-ko">'
+           +   '<button class="asp-vocab-speak" type="button" aria-label="발음 듣기" title="발음 듣기" '
+           +     'onclick="event.stopPropagation();(window.khSpeak?khSpeak(\'' + koJs + '\',\'female\',this):window.ttsSpeak&&ttsSpeak(\'' + koJs + '\',this))">🔊</button>'
+           +   '<span class="asp-vocab-ko-text">' + escapeHTML(v.ko) + '</span>'
+           + '</span>'
            + '<span class="asp-vocab-en">' + escapeHTML(v.en || '')
            + (v.note ? '<span class="asp-vocab-note">' + escapeHTML(v.note) + '</span>' : '')
            + '</span>'
@@ -10759,6 +10767,98 @@ function _ttsReset() {
     _ttsCurrent = null;
   }
 }
+
+// ══ NEURAL TTS (khSpeak) ══════════════════════════════════════════════════════
+// Natural AI pronunciation via the tts-proxy Edge Function (MS Edge Neural TTS,
+// ko-KR-SunHiNeural / InJoonNeural). Self-contained so article/hover pages can
+// use it without loading study-room.js. Signed-in users get the neural voice;
+// anon users (or any failure) fall back to the browser speechSynthesis in
+// ttsSpeak(). Blob URLs are LRU-cached and revoked to avoid leaking on mobile.
+var _khSpeakCache = new Map();
+var _KH_SPEAK_CACHE_MAX = 40;
+var _khSpeakAudio = null;
+function _khSpeakCacheGet(k) {
+  if (!_khSpeakCache.has(k)) return null;
+  var v = _khSpeakCache.get(k);
+  _khSpeakCache.delete(k); _khSpeakCache.set(k, v); // touch → most-recent
+  return v;
+}
+function _khSpeakCacheSet(k, v) {
+  if (_khSpeakCache.has(k)) _khSpeakCache.delete(k);
+  _khSpeakCache.set(k, v);
+  while (_khSpeakCache.size > _KH_SPEAK_CACHE_MAX) {
+    var oldK = _khSpeakCache.keys().next().value;
+    var oldV = _khSpeakCache.get(oldK);
+    _khSpeakCache.delete(oldK);
+    try { if (oldV && URL.revokeObjectURL) URL.revokeObjectURL(oldV); } catch(_) {}
+  }
+}
+function _khSpeakPlay(url, originalText, btnEl) {
+  try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(_) {}
+  if (_khSpeakAudio) {
+    try {
+      var prev = _khSpeakAudio.src;
+      if (prev && prev.indexOf('blob:') === 0 && !_khSpeakAudio._khCached) URL.revokeObjectURL(prev);
+    } catch(_) {}
+    try { _khSpeakAudio.pause(); } catch(_) {}
+    _khSpeakAudio = null;
+  }
+  _khSpeakAudio = new Audio(url);
+  try { _khSpeakAudio._khCached = Array.from(_khSpeakCache.values()).indexOf(url) >= 0; } catch(_) {}
+  if (btnEl) {
+    btnEl.classList.add('kh-speaking');
+    _khSpeakAudio.addEventListener('ended', function(){ try { btnEl.classList.remove('kh-speaking'); } catch(_) {} });
+    _khSpeakAudio.addEventListener('error', function(){ try { btnEl.classList.remove('kh-speaking'); } catch(_) {} });
+  }
+  // Autoplay rejection (iOS, no gesture) → browser-TTS fallback.
+  _khSpeakAudio.play().catch(function() {
+    if (btnEl) { try { btnEl.classList.remove('kh-speaking'); } catch(_) {} }
+    if (originalText) { try { ttsSpeak(originalText, btnEl); } catch(_) {} }
+  });
+}
+// khSpeak(text, [voice], [btnEl]) — voice: 'female' (default) | 'male'
+async function khSpeak(text, voice, btnEl) {
+  text = String(text || '').trim();
+  if (!text) return;
+  voice = voice || 'female';
+  try {
+    var cacheKey = text + '_' + voice;
+    var hit = _khSpeakCacheGet(cacheKey);
+    if (hit) { _khSpeakPlay(hit, text, btnEl); return; }
+    var supaUrl = (typeof SUPA_URL !== 'undefined') ? SUPA_URL : '';
+    if (!supaUrl) { ttsSpeak(text, btnEl); return; }
+    var headers = { 'Content-Type': 'application/json' };
+    try {
+      var sb = getSupa();
+      if (sb && sb.auth) {
+        var sess = await sb.auth.getSession();
+        if (sess && sess.data && sess.data.session) {
+          headers['Authorization'] = 'Bearer ' + sess.data.session.access_token;
+        }
+      }
+    } catch(_) {}
+    // Anon fallback uses the browser voice (tts-proxy rejects anon JWTs).
+    if (!headers['Authorization']) { ttsSpeak(text, btnEl); return; }
+    var res = await fetch(supaUrl + '/functions/v1/tts-proxy', {
+      method: 'POST', headers: headers,
+      body: JSON.stringify({ text: text.slice(0, 200), voice: voice })
+    });
+    if (!res.ok) throw new Error('TTS ' + res.status);
+    var blob = await res.blob();
+    if (blob.size < 100) throw new Error('empty audio');
+    var url = URL.createObjectURL(blob);
+    _khSpeakCacheSet(cacheKey, url);
+    _khSpeakPlay(url, text, btnEl);
+  } catch(e) {
+    try { console.warn('[khSpeak] neural TTS failed, fallback:', e && e.message); } catch(_) {}
+    try { ttsSpeak(text, btnEl); } catch(_) {}
+  }
+}
+window.khSpeak = khSpeak;
+try { window.addEventListener('pagehide', function(){
+  try { _khSpeakCache.forEach(function(v){ try { if (v && URL.revokeObjectURL) URL.revokeObjectURL(v); } catch(_) {} }); } catch(_) {}
+  _khSpeakCache.clear();
+}); } catch(_) {}
 
 // TTS 버튼 HTML 생성 헬퍼
 function ttsBtn(text) {

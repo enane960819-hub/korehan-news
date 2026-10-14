@@ -2005,11 +2005,36 @@ body.dark-mode .kh-footer     { background: #0b1220; }
 }
 .art-sent-panel .asp-vocab-row:last-child { border-bottom: none; padding-bottom: 0; }
 .art-sent-panel .asp-vocab-ko {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 800;
   color: #6d28d9;
   font-size: 15px;
   font-family: 'Noto Sans KR', sans-serif;
 }
+.art-sent-panel .asp-vocab-speak {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1.5px solid #e2d6fb;
+  background: #faf7ff;
+  color: #6d28d9;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: all .15s;
+}
+.art-sent-panel .asp-vocab-speak:hover { border-color: #a78bfa; background: #f1ebfe; }
+.art-sent-panel .asp-vocab-speak.kh-speaking { border-color: #a78bfa; background: #ede4fd; animation: aspSpeakPulse .9s ease-in-out infinite; }
+@keyframes aspSpeakPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+body.dark-mode .art-sent-panel .asp-vocab-speak,
+body.mobile-redesign .art-sent-panel .asp-vocab-speak { border-color: rgba(167,139,250,.35); background: rgba(167,139,250,.12); color: #c4b5fd; }
 .art-sent-panel .asp-vocab-en {
   color: #334155;
   font-weight: 500;
