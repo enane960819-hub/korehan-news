@@ -25,6 +25,25 @@
    need to defensive-check.
    ============================================================ */
 
+// ─────────────────────────────────────────────────────────────
+// SITE CONFIG — paste your keys here (one place for the whole site).
+// Loaded on every page (analytics.js is global). Each only activates
+// when a value is present, so empty = feature off, nothing breaks.
+// ─────────────────────────────────────────────────────────────
+//  • Plausible: privacy-friendly analytics. Domain known, enabled.
+//    (Loads only after the user accepts "all" cookies. If you don't
+//     have a Plausible account for this domain yet, it's a harmless
+//     no-op until you create one — free at plausible.io.)
+window.KH_PLAUSIBLE_DOMAIN = window.KH_PLAUSIBLE_DOMAIN || 'korehani.com';
+//  • Sentry: error monitoring. Paste your project DSN to turn it on.
+//    Get it at sentry.io → Project → Settings → Client Keys (DSN).
+window.KH_SENTRY_DSN = window.KH_SENTRY_DSN || '';   // e.g. 'https://abc123@o123.ingest.sentry.io/456'
+//  • Turnstile (captcha): paste your Cloudflare Turnstile SITE key.
+//    IMPORTANT: also add the matching SECRET key in Supabase →
+//    Authentication → Settings → enable "Captcha protection" (Turnstile),
+//    or signups will break. Leave empty until both sides are set.
+window.KH_TURNSTILE_SITEKEY = window.KH_TURNSTILE_SITEKEY || '';
+
 function _khConsent() {
   try { return localStorage.getItem('kh_cookie_consent') || ''; } catch(_) { return ''; }
 }
