@@ -12652,6 +12652,17 @@ if (typeof _origDbSaveWord === 'function') {
 
 // ── 플로팅 위젯 ──
 function _fjRenderWidget() {
+  // Don't float the First Journey widget on pages that run their own
+  // onboarding / fullscreen flows — it stacked on top of the Study Room
+  // welcome modal and the game screens. (Mirrors the Daily Mission skip.)
+  try {
+    var _fjPage = (typeof pageName === 'function') ? pageName() : '';
+    if (_fjPage === 'korehan-study-room' || _fjPage.indexOf('korehan-fun-') === 0 || _fjPage === 'korehan-onboarding') {
+      var _fjEx = document.getElementById('fj-widget');
+      if (_fjEx) _fjEx.remove();
+      return;
+    }
+  } catch (_) {}
   if (_fjAllDone()) {
     var el = document.getElementById('fj-widget');
     if (el) el.remove();
