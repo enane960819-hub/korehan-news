@@ -4192,28 +4192,11 @@ function renderArticlePage() {
     try { applyHighlightedExpressions(a.id); } catch(_) {}
   }
 
-  // Guest gate: non-signed-in readers get half the article + a sign-up CTA.
-  // Prefer clipping .art-full (the long body) so the lede stays readable;
-  // fall back to clipping .art-lead when the article ships only a short body.
-  function _gateArticle() {
-    if (window._isAdmin) return;
-    var hasFull = !!document.querySelector('.art-card-body .art-full');
-    var sel = hasFull ? '.art-card-body .art-full' : '.art-card-body .art-lead';
-    khApplyGuestGate({
-      bodySel:   sel,
-      anchorSel: sel,
-      ctaTitle:  'Keep reading — free with sign-up',
-      ctaSub:    'Create a free account to finish this article, save vocabulary you tap, and unlock daily review.'
-    });
-  }
-  _gateArticle();
-  if (!window._sessionChecked) {
-    var _gateTries = 0;
-    (function _waitGate(){
-      if (window._sessionChecked || _gateTries >= 60) { _gateArticle(); return; }
-      _gateTries++; setTimeout(_waitGate, 100);
-    })();
-  }
+  // Articles are free to read without an account (owner decision 2026-10-14).
+  // The old guest gate clipped the body to half + a sign-up CTA; removed so
+  // signed-out visitors read the full article. (Study features — tap analysis
+  // save, 4-step study, etc. — still prompt sign-in where they always did.)
+  function _gateArticle() { /* no-op: articles are fully free */ }
 
   // 어드민이면 중요표현 관리 패널 표시 — only when the helper is
   // actually loaded. _renderPhrasesAdmin lives in

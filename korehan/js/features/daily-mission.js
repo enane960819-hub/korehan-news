@@ -285,7 +285,10 @@ async function checkDailyMissionComplete() {
   }
 }
 
-var _dmCollapsed = localStorage.getItem('kh_dm_collapsed') === '1';
+// Default to collapsed (small pill) so the panel doesn't auto-stack on top of
+// the cookie banner / First Journey widget on load. Only expanded when the
+// user explicitly opened it before (stored '0').
+var _dmCollapsed = localStorage.getItem('kh_dm_collapsed') !== '0';
 
 function renderDailyMission() {
   var widget = document.getElementById('kh-daily-mission');
