@@ -5233,7 +5233,12 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
       //      half just got 다-stripped above.
       var out = [];
       String(label).split(/[\/,]/).forEach(function(piece) {
-        var stripped = piece.replace(/[~()\s\-.?!+]/g, '');
+        // Drop whole parenthetical groups FIRST so morphophonemic
+        // optionals don't poison the marker: "(으)" / "(이)" / "(에)" and
+        // the English gloss. Without this, ~(으)로 yielded the marker
+        // "으로", which never appears after a vowel stem (예술가로), so the
+        // card was wrongly filtered out. After the strip it yields "로".
+        var stripped = piece.replace(/\([^)]*\)/g, '').replace(/[~()\s\-.?!+]/g, '');
         var re = /[가-힣]+/g, m;
         while ((m = re.exec(stripped))) {
           var token = m[0];
@@ -5265,36 +5270,48 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
       // example chunk") so Korean past-tense contractions like 봤어요
       // (= 보+았어요) still surface ~았/었어요.
       if ((item.type || 'grammar') === 'grammar') {
-        var markers = _patternMarkers(item.label);
-        if (markers.length) {
-          var hit = false;
-          for (var k = 0; k < markers.length; k++) {
-            if (sentNoWs.indexOf(markers[k]) >= 0) { hit = true; break; }
-          }
-          if (!hit) return false;
-        }
-        // Strict sentence-level revalidation against KH_GRAMMAR.detect.
-        // Catches AI hallucinations like "~기 (nominalizer)" with chunk
-        // "쓰는" (no 기 anywhere) or "이야기를" (이야기 is a noun — the
-        // regex blacklist rejects it, so detect returns nothing for ~기
-        // here). Run detect on the full sentence (not the chunk alone)
-        // because some regexes need trailing context (~게 requires
-        // \s+Hangul or punctuation after) that gets stripped when the
-        // chunk is widened to word boundary.
+        // Strongest guard FIRST: did KH_GRAMMAR.detect confirm this
+        // canonical pattern is in the sentence? If so, trust it and skip
+        // the cruder surface-marker check below. This fixes a whole class
+        // of grammar cards that used to be filtered out of article
+        // analysis: the marker for ~(으)로 / ~(으)면서 / ~(으)니까 is
+        // extracted as "으로"/"으면서"/"으니까", but after a vowel the 으
+        // drops (예술가로, 활동하면서) so the literal marker never matched;
+        // likewise ~았/었/였습니다 contracts (왔습니다 = 오+았), so "았"
+        // never appears. detect() uses the real regexes and already knows
+        // the pattern is present, so its verdict supersedes the marker.
         //
-        // Skipped for contractable patterns where the label contains
-        // Hangul jamo (ㄴ ㄹ ㅂ ㅁ) — those don't surface as literal
-        // characters; the jongseong stays inside its compound syllable.
+        // Skipped for labels that carry a Hangul jamo (ㄴ ㄹ ㅂ ㅁ) — those
+        // don't surface as literal characters (the jongseong stays inside
+        // a compound syllable), so detect's label-core can't be compared
+        // reliably; those fall through to the marker gate.
         var labelHasJamo = /[ㄱ-㆏]/.test(item.label || '');
-        if (!labelHasJamo && _sentDetectedLabels) {
+        var detectConfirmed = false;
+        if (!labelHasJamo && _sentDetectedLabels && _sentDetectedLabels.length) {
           var labelCore = String(item.label).replace(/[~\s()/.\-]/g, '');
-          var foundInSent = _sentDetectedLabels.some(function(detectedCore) {
+          detectConfirmed = _sentDetectedLabels.some(function(detectedCore) {
             // Substring match either direction handles "~기 (nominalizer)"
             // vs "~기 시작하다", "~중 하나 (one of)" vs "~중 하나" etc.
             return (detectedCore && labelCore.indexOf(detectedCore) >= 0) ||
                    (labelCore && detectedCore.indexOf(labelCore) >= 0);
           });
-          if (!foundInSent) return false;
+          // A canonical, non-jamo label that detect does NOT find is an AI
+          // hallucination (e.g. "~기 (nominalizer)" on a 기-less sentence).
+          // Reject it — same anti-hallucination behavior as before.
+          if (!detectConfirmed) return false;
+        }
+        // Surface-marker fallback — only when detect couldn't vouch
+        // (jamo label, or detect returned nothing). Not fatal once detect
+        // has already confirmed the pattern.
+        if (!detectConfirmed) {
+          var markers = _patternMarkers(item.label);
+          if (markers.length) {
+            var hit = false;
+            for (var k = 0; k < markers.length; k++) {
+              if (sentNoWs.indexOf(markers[k]) >= 0) { hit = true; break; }
+            }
+            if (!hit) return false;
+          }
         }
       }
       return true;
