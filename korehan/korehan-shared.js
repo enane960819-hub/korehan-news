@@ -4092,7 +4092,13 @@ function renderArticlePage() {
     // Quiz 탭
     // Review 탭 — 가벼운 4종 리뷰 세트. Summarize는 article-study 모달의
     // Step 5 (Writing)로 이관. 더 깊이 공부하고 싶으면 하단 CTA로 스터디룸.
-    + '<div id="art-tab-quiz" style="display:none">'
+    // data-hover-skip: the Review tab is a QUIZ. Hover tooltips here would
+    // (a) reveal the English meaning the vocab multiple-choice is testing —
+    // the learner could just hover the prompt word to cheat — and (b) make
+    // the hover engine re-wrap all the injected quiz cards on open (part of
+    // the Review-tab slowdown). Grammar/Vocab study tabs keep hover; only
+    // the quiz is excluded.
+    + '<div id="art-tab-quiz" style="display:none" data-hover-skip="1">'
     + '<div class="rv-wrap">'
     +   '<div class="rv-intro">'
     +     '<div class="rv-intro-title">Review</div>'
