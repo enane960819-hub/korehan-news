@@ -388,6 +388,7 @@
     var frag = document.createDocumentFragment();
     if (before) frag.appendChild(document.createTextNode(before));
 
+    var afterNode = null;
     var span = document.createElement('span');
     span.className = 'kh-hover-word';
     span.textContent = target;
@@ -410,13 +411,17 @@
     span.addEventListener('click', onWordTap);
     frag.appendChild(span);
 
-    if (after) frag.appendChild(document.createTextNode(after));
+    if (after) { afterNode = document.createTextNode(after); frag.appendChild(afterNode); }
 
     node.parentNode.replaceChild(frag, node);
 
-    if (after) {
-      wrapAllIn(document.body);
-    }
+    // Continue scanning ONLY the remaining text we just split off — not the
+    // whole document. The previous code called wrapAllIn(document.body) here,
+    // which re-walked every text node on the page after wrapping each word.
+    // On a text-heavy page (article + Review quiz cards) that cascades into
+    // an O(n²) storm — a single tab switch froze the main thread for ~6.6s
+    // (the "페이지 멈춤" bug). Recursing on just afterNode keeps it linear.
+    if (afterNode) wrapTextNode(afterNode);
   }
 
   function walk(root) {
