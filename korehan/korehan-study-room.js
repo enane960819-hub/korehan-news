@@ -37,6 +37,21 @@ function playWrongSound() {
 // ═══════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════
+
+// Neural-first pronunciation for every Study Room play button.
+// khSpeak (korehan-shared.js) uses the tts-proxy neural voice for signed-in
+// users and only falls back to the browser voice on anon/failure. The old
+// ttsSpeak/speakKorean path was browser speechSynthesis ONLY, which is silent
+// on the many devices that have no ko-KR voice installed — that was why
+// learners "couldn't hear" the freshly generated sentences and words.
+function srSpeak(text, btnEl) {
+  text = (text == null) ? '' : String(text);
+  if (!text.trim()) return;
+  if (typeof window.khSpeak === 'function') { window.khSpeak(text, 'female', btnEl); return; }
+  if (typeof window.ttsSpeak === 'function') { window.ttsSpeak(text, btnEl); return; }
+}
+try { window.srSpeak = srSpeak; } catch(_) {}
+
 var _currentLevel   = 'Beginner';
 var _todayTopic     = null;   // {id, topic_ko, topic_en, category, level}
 var _aiContent      = null;   // {vocab:[], grammar:[], helpers:[]}
@@ -596,7 +611,7 @@ async function loadDBHelpers(level) {
     if (r.error || !r.data || !r.data.length) return false;
     var hhtml = r.data.map(function(h) {
       return '<div class="hrow">'
-        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
+        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="srSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
         + '<div class="hen">' + h.en + '</div>'
         + '</div>';
     }).join('');
@@ -2395,7 +2410,7 @@ function renderAIContent() {
     var hhtml = '';
     (_aiContent.helpers || []).forEach(function(h) {
       hhtml += '<div class="hrow">'
-        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
+        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="srSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
         + '<div class="hen">' + h.en + '</div>'
         + '</div>';
     });
@@ -4217,7 +4232,7 @@ function _keRenderStudyPhase(list) {
   }
   var examplesHtml = allExamples.map(function(ex) {
     var safeExKo = (ex.ko||'').replace(/'/g,"\\'");
-    return '<div onclick="var el=this;el.style.opacity=\'.5\';setTimeout(function(){el.style.opacity=\'1\'},400);ttsSpeak(\'' + safeExKo + '\')" style="cursor:pointer;padding:10px 12px;border-radius:10px;transition:opacity .2s;margin-bottom:6px">'
+    return '<div onclick="var el=this;el.style.opacity=\'.5\';setTimeout(function(){el.style.opacity=\'1\'},400);srSpeak(\'' + safeExKo + '\')" style="cursor:pointer;padding:10px 12px;border-radius:10px;transition:opacity .2s;margin-bottom:6px">'
       + '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:2px;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:13px;height:13px;opacity:.55">' + BM_ICON_VOLUME + '</span>' + (ex.ko||'') + '</div>'
       + '<div style="font-size:12px;color:rgba(255,255,255,.42)">' + (ex.en||'') + '</div>'
       + '</div>';
@@ -4260,7 +4275,7 @@ function _keRenderStudyPhase(list) {
         + '</div>' : '')
     // Actions row — Listen expression / Save
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
-    +   '<button onclick="ttsSpeak(\'' + safeKo + '\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
+    +   '<button onclick="srSpeak(\'' + safeKo + '\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
     +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
     + '</div>'
     // Navigation row — straight prev/next through the Study cards. The
@@ -8036,7 +8051,11 @@ function closeWritingModal() {
 }
 
 function speakKorean(text) {
-  if (!text || !window.speechSynthesis) return;
+  if (!text) return;
+  // Neural-first (see srSpeak). The browser-only path below is unreachable
+  // for signed-in users now, but kept as the ultimate fallback.
+  if (typeof srSpeak === 'function') { srSpeak(text); return; }
+  if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   var utt = new SpeechSynthesisUtterance(text);
   utt.lang = 'ko-KR';
@@ -13810,14 +13829,14 @@ function bmSelectWord(sentIdx, wordPos) {
   var totalCount = wo.shuffled.filter(function(x){ return x === word; }).length;
   if (usedCount >= totalCount) return;
   wo.selected.push(word);
-  try { if (typeof ttsSpeak === 'function') ttsSpeak(word); } catch(_){}
+  try { if (typeof ttsSpeak === 'function') srSpeak(word); } catch(_){}
   renderBMStep2();
 }
 
 function bmDeselectWord(sentIdx, selIdx) {
   var word = _bm.wordOrders[sentIdx].selected[selIdx];
   _bm.wordOrders[sentIdx].selected.splice(selIdx, 1);
-  try { if (word && typeof ttsSpeak === 'function') ttsSpeak(word); } catch(_){}
+  try { if (word && typeof ttsSpeak === 'function') srSpeak(word); } catch(_){}
   renderBMStep2();
 }
 
@@ -14241,7 +14260,7 @@ function bmRenderDictation() {
     + '<div class="bm-step-title">' + BM_ICON_VOLUME + '<span>Audio Dictation</span></div>'
     + '<div class="bm-step-desc">단어를 듣고 한국어로 입력해보세요. 듣기가 어려우면 건너뛰세요.</div>'
     + '<div class="bm-dict-card">'
-    +   '<button type="button" class="bm-dict-play" onclick="ttsSpeak(\'' + safeKo + '\')" aria-label="Play">'
+    +   '<button type="button" class="bm-dict-play" onclick="srSpeak(\'' + safeKo + '\')" aria-label="Play">'
     +     '<span style="display:inline-flex;width:36px;height:36px;color:#fff">' + BM_ICON_VOLUME + '</span>'
     +   '</button>'
     +   '<div class="bm-dict-input-wrap">'
@@ -14264,7 +14283,7 @@ function bmRenderDictation() {
   // Auto-play TTS shortly after the card mounts so the learner doesn't
   // have to hunt for the play button on each new word.
   setTimeout(function() {
-    try { ttsSpeak(card.ko); } catch(_) {}
+    try { srSpeak(card.ko); } catch(_) {}
   }, 250);
   setTimeout(function() {
     var inp = document.getElementById('bm-dict-input');
@@ -17654,7 +17673,12 @@ function _dctBuildMasterPool() {
   // Grammar example sentences — used for fill-in-the-blank and
   // listen-pick because they're pattern-rich.
   if (_aiContent && Array.isArray(_aiContent.grammar)) {
-    _aiContent.grammar.forEach(function(g){ add(g.example_ko, g.example_en); });
+    _aiContent.grammar.forEach(function(g){
+      add(g.example_ko, g.example_en);
+      // Extra distinct examples per pattern (daily-content-gen 2026-10-15) —
+      // widens the pool so dictation stops recycling the same handful.
+      if (Array.isArray(g.examples)) g.examples.forEach(function(ex){ add(ex && ex.ko, ex && ex.en); });
+    });
   }
   // Topic writing sentences (advanced levels) — bonus variety.
   if (_aiContent && Array.isArray(_aiContent.topic_writing_sentences)) {

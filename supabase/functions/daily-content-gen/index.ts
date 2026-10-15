@@ -134,12 +134,13 @@ ${NATURAL_KOREAN_RULES}
 Return ONLY valid JSON (strict RFC8259, no markdown, no comments, no trailing commas):
 {"topic_ko":"...","topic_en":"...",
 "vocab":[{"ko":"word","rom":"romanization","en":"meaning","level":"${level}"}],
-"grammar":[{"level":"${level}","pattern":"~grammar pattern","explanation":"English explanation","example_ko":"Korean example","example_en":"English translation"}],
+"grammar":[{"level":"${level}","pattern":"~grammar pattern","explanation":"English explanation","example_ko":"Korean example","example_en":"English translation","examples":[{"ko":"second distinct Korean example of the SAME pattern","en":"English translation"}]}],
 "helpers":[{"ko":"Full Korean example sentence about the topic","en":"English translation"}],
 "dictation_sentences":[{"ko":"","en":""}],
 "dictation_questions":[{"question_ko":"","answer_ko":"","hint_en":""}]${levelExtra}}
-Exact counts: vocab=5, grammar=3, helpers=4, dictation_sentences=3, dictation_questions=3${levelExtraCounts}.
-IMPORTANT: "helpers" are full example SENTENCES (not single words) that a student can reference before writing.`
+Exact counts: vocab=6, grammar=3 (each grammar item needs example_ko PLUS a 2-item "examples" array = 3 distinct sentences per pattern), helpers=7, dictation_sentences=5, dictation_questions=3${levelExtraCounts}.
+IMPORTANT: "helpers" are full example SENTENCES (not single words) that a student can reference before writing.
+NO REPEATS — highest priority for variety: across the ENTIRE response (every vocab example, every grammar example_ko and examples[], every helper, every dictation sentence and question) no two Korean sentences may be identical or near-duplicates (same verb + same object with only a particle or ending swapped). Each sentence must teach something the others don't — vary the subject, the vocabulary, the situation, and the sentence structure. A learner studying this topic for a week should meet ${level === 'Starter' ? '20+' : '25+'} genuinely different example sentences here, not the same handful reworded.`
 
   // Dynamic — changes per call. Topic hint is what the model uses
   // to generate the specific content. Placed AFTER the cache boundary.
@@ -179,10 +180,14 @@ async function callAnthropic(
   // around 6.7KB (parse error at 6735). Bumped both with comfortable
   // headroom — the marginal cost is small compared to the cost of
   // a whole-level generation failing and the user seeing stale content.
+  // Budgets raised 2026-10-15 for the larger, no-repeat pools (vocab 5→6,
+  // helpers 4→7, dictation 3→5, grammar now 3 sentences/pattern). Korean
+  // tokenizes 2-3x heavier than English, so give comfortable headroom —
+  // a truncated mid-JSON response costs a whole level's generation.
   const maxTokens =
-    level === 'Advanced'     ? 4000 :
-    level === 'Intermediate' ? 2500 :
-    2000
+    level === 'Advanced'     ? 4800 :
+    level === 'Intermediate' ? 3200 :
+    2600
 
   // CRON-F6: prompt-caching via cache_control on the static prefix.
   // The grammar rules + schema (~2k tokens) are identical for every
