@@ -9758,10 +9758,14 @@ function _wmRenderFeedback(fb, state) {
     + '</div>';
   if (a.overall || fb.overall_assessment) h += '<div style="font-size:13px;color:#e2e8f0;margin-bottom:10px">' + esc(a.overall || fb.overall_assessment) + '</div>';
   var cs = Array.isArray(a.corrections) ? a.corrections : [];
+  // Original with mistakes marked in place — the "where", above the "what → why" list.
+  if (a.student_text && cs.length) {
+    h += '<div style="font-size:14px;line-height:1.9;padding:10px 12px;margin-bottom:10px;background:rgba(15,23,42,.3);border-radius:10px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _markWritingErrors(a.student_text, cs) + '</div>';
+  }
   if (cs.length) {
-    h += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">' + cs.map(function(c){
+    h += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">' + cs.map(function(c, ci){
       return '<div style="background:rgba(15,23,42,.35);border-radius:10px;padding:9px 11px">'
-        + '<div style="font-size:13px"><span style="color:#fca5a5;text-decoration:line-through">' + esc(c.original) + '</span> → <b style="color:#86efac">' + esc(c.corrected) + '</b></div>'
+        + '<div style="font-size:13px;display:flex;align-items:baseline;gap:6px"><span style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;border-radius:999px;background:#f87171;color:#1e1b1b;font-size:10px;font-weight:900">' + (ci+1) + '</span><span><span style="color:#fca5a5;text-decoration:line-through">' + esc(c.original) + '</span> → <b style="color:#86efac">' + esc(c.corrected) + '</b></span></div>'
         + (c.reason ? '<div style="font-size:12px;color:#94a3b8;margin-top:3px">' + esc(c.reason) + '</div>' : '') + '</div>';
     }).join('') + '</div>';
   }
@@ -10000,7 +10004,47 @@ var _fbPatternFocus = {
   OTHER:      ''
 };
 
-function renderDetailedFeedback(fb, writingText) {
+// Render the learner's ORIGINAL Korean with each corrections[].original
+// snippet marked in place — a red wavy underline + a numbered badge that
+// maps to the numbered Corrections list below. This is the "where exactly
+// is my mistake?" view learners asked for; the list stays the "what → why".
+// Unmatched snippets (AI didn't copy verbatim) are simply left unmarked —
+// they still appear in the list, so nothing is lost.
+function _markWritingErrors(text, corrections) {
+  var esc = function(x){ return String(x == null ? '' : x).replace(/[&<>]/g, function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]; }); };
+  text = String(text == null ? '' : text);
+  if (!text) return '';
+  var cs = Array.isArray(corrections) ? corrections : [];
+  var marks = [];
+  cs.forEach(function(c, i) {
+    var orig = (c && c.original != null) ? String(c.original).trim() : '';
+    if (!orig) return;
+    var from = 0, pos;
+    while ((pos = text.indexOf(orig, from)) !== -1) {
+      var overlaps = false;
+      for (var k = 0; k < marks.length; k++) {
+        if (pos < marks[k].end && (pos + orig.length) > marks[k].start) { overlaps = true; break; }
+      }
+      if (!overlaps) { marks.push({ start: pos, end: pos + orig.length, n: i + 1, c: c }); break; }
+      from = pos + 1;
+    }
+  });
+  if (!marks.length) return esc(text);
+  marks.sort(function(a, b){ return a.start - b.start; });
+  var out = '', cur = 0;
+  marks.forEach(function(m) {
+    if (m.start > cur) out += esc(text.slice(cur, m.start));
+    var tip = (m.c.corrected ? '→ ' + m.c.corrected : '') + (m.c.reason ? '  ·  ' + m.c.reason : '');
+    out += '<span title="' + esc(tip).replace(/"/g, '&quot;') + '" style="background:rgba(248,113,113,.16);text-decoration:underline wavy #f87171;text-underline-offset:3px;border-radius:3px;padding:0 1px">'
+      + esc(text.slice(m.start, m.end))
+      + '<sup style="color:#f87171;font-weight:800;font-size:10px;margin-left:1px">' + m.n + '</sup></span>';
+    cur = m.end;
+  });
+  if (cur < text.length) out += esc(text.slice(cur));
+  return out;
+}
+
+function renderDetailedFeedback(fb, writingText, inPackage) {
   if (!fb) return '<div style="color:rgba(255,255,255,.4)">No feedback data available</div>';
   var h = '';
 
@@ -10031,8 +10075,8 @@ function renderDetailedFeedback(fb, writingText) {
       h += '<div style="margin:0 0 18px;padding:14px;border-radius:12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08)">'
         + '<div style="font-size:12px;font-weight:800;color:#bae6fd;margin-bottom:4px">' + (i + 1) + '. ' + _pkEsc(title) + '</div>'
         + (act.topic ? '<div style="font-size:11.5px;color:rgba(255,255,255,.5);margin-bottom:8px">' + _pkEsc(act.topic) + '</div>' : '')
-        + (act.student_text ? '<div style="font-size:13px;line-height:1.65;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,.04);border-radius:8px;color:rgba(255,255,255,.7);font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _pkEsc(act.student_text) + '</div>' : '')
-        + renderDetailedFeedback(act, act.student_text || '')
+        + (act.student_text ? '<div style="font-size:13px;line-height:1.9;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,.04);border-radius:8px;color:rgba(255,255,255,.7);font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _markWritingErrors(act.student_text, act.corrections) + '</div>' : '')
+        + renderDetailedFeedback(act, act.student_text || '', true)
         + '</div>';
     });
     if (fb.daily_tip) {
@@ -10144,6 +10188,17 @@ function renderDetailedFeedback(fb, writingText) {
     }
   }
 
+  // Your writing, errors marked in place (the "where" — list below is the
+  // "what / why"). Skipped when rendered inside the weekly-package view,
+  // which already prints the marked original above each activity.
+  if (!inPackage) {
+    var _origText = (fb.student_text != null && String(fb.student_text).trim()) ? fb.student_text : (writingText || '');
+    if (_origText && Array.isArray(fb.corrections) && fb.corrections.length) {
+      h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Your writing — mistakes marked</div>'
+        + '<div style="font-size:14px;line-height:1.9;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _markWritingErrors(_origText, fb.corrections) + '</div></div>';
+    }
+  }
+
   // Corrected full text
   if (fb.corrected_full) {
     h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Corrected Version</div>'
@@ -10158,7 +10213,8 @@ function renderDetailedFeedback(fb, writingText) {
   // action instead of a dead-end read.
   if (fb.corrections && fb.corrections.length) {
     h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Corrections (' + fb.corrections.length + ')</div>';
-    fb.corrections.forEach(function(c) {
+    fb.corrections.forEach(function(c, _ci) {
+      var _num = _ci + 1;
       var icon = _fbPatternIcons[c.pattern] || '🔧';
       var label = _fbPatternLabels[c.pattern] || c.pattern;
       var help  = _fbPatternHelp[c.pattern] || '';
@@ -10177,6 +10233,7 @@ function renderDetailedFeedback(fb, writingText) {
         + 'style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;background:rgba(251,191,36,.14);color:#fde68a;border:1px solid rgba(251,191,36,.32);cursor:pointer;font-family:inherit">🔖 Save</button>';
       h += '<div style="padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin-bottom:6px">'
         + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">'
+        +   '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:999px;background:#f87171;color:#1e1b1b;font-size:11px;font-weight:900;padding:0 4px">' + _num + '</span>'
         +   '<span style="font-size:14px">' + icon + '</span>'
         +   '<span title="' + (help.replace(/"/g, '&quot;')) + '" style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(248,113,113,.15);color:#fca5a5;cursor:help">' + label + '</span>'
         +   '<span style="margin-left:auto;display:inline-flex;gap:6px">' + saveBtn + practiceLink + '</span>'
