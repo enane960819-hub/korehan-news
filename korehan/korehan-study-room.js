@@ -16206,8 +16206,8 @@ function renderGFLearn(p) {
     : '';
 
   // Explanation
-  var expHtml = '<div style="background:rgba(255,255,255,.05);border-left:3px solid #a78bfa;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px">'
-    + '<p style="font-size:14px;color:#334155;line-height:1.8;margin:0">' + (p.exp || '') + '</p>'
+  var expHtml = '<div style="background:rgba(255,255,255,.07);border-left:3px solid #a78bfa;border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:16px">'
+    + '<p style="font-size:14px;color:#e5edf9;line-height:1.8;margin:0">' + (p.exp || '') + '</p>'
     + '</div>';
 
   // When to use + watch out
@@ -16958,7 +16958,7 @@ function _checkErrorOption(btn, isWrong, idx) {
   btn.style.opacity = '1';
   if (isWrong) {
     btn.style.borderColor = '#22c55e';
-    btn.style.background = '#f0fdf4';
+    btn.style.background = 'rgba(34,197,94,.14)';
     var detail = '<div style="margin-top:10px;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(167,139,250,.2);border-radius:8px;font-size:12px;line-height:1.7">'
       + (w.error_type ? '<div style="font-weight:800;color:#d97706;margin-bottom:4px">Error type: ' + w.error_type + '</div>' : '')
       + '<div><span style="color:#dc2626;text-decoration:line-through">' + (w.ko||'') + '</span></div>'
@@ -16968,7 +16968,7 @@ function _checkErrorOption(btn, isWrong, idx) {
       + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
   } else {
     btn.style.borderColor = '#ef4444';
-    btn.style.background = '#fef2f2';
+    btn.style.background = 'rgba(248,113,113,.14)';
     if (fb) fb.innerHTML = '<span style="color:#dc2626">✗ That sentence is correct. Look more carefully at the grammar endings!</span>'
       + '<div style="margin-top:16px"><button onclick="_showSpotItComplete()" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Continue to Practice →</button></div>';
   }
@@ -17274,7 +17274,7 @@ function loadGFBuild(p) {
           + '</div>';
       }).join('')
     + '<div id="gfj-done" style="display:none;text-align:center;margin-top:16px">'
-    + '<button onclick="_gfJudgeFinish()" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">결과 보기 →</button>'
+    + '<button onclick="_gfJudgeFinish()" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">See results →</button>'
     + '</div>';
 }
 
@@ -17296,12 +17296,14 @@ function _gfJudgeAnswer(idx, judgement) {
   var fb   = document.getElementById('gfj-fb-' + idx);
   if (card) {
     card.style.borderColor = isRight ? '#86efac' : '#fca5a5';
-    card.style.background  = isRight ? '#f0fdf4'  : '#fef2f2';
+    // Keep the card dark (translucent tint) so the white sentence/translation
+    // text stays readable — switching to an opaque light bg made them vanish.
+    card.style.background  = isRight ? 'rgba(34,197,94,.12)' : 'rgba(248,113,113,.12)';
   }
   if (fb) {
     var msg = isRight ? '<span style="color:#16a34a;font-size:12px;font-weight:700">✓ Correct!</span>' : '<span style="color:#dc2626;font-size:12px;font-weight:700">✗ Wrong</span>';
     if (!item.isCorrect && item.correction) {
-      msg += '<div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:4px">수정: <span style="color:#7c3aed;font-weight:700;font-family:Noto Serif KR,serif">' + item.correction + '</span>'
+      msg += '<div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:4px">Fix: <span style="color:#c4b5fd;font-weight:700;font-family:Noto Serif KR,serif">' + item.correction + '</span>'
         + (item.error_type ? ' <span style="font-size:10px;background:rgba(167,139,250,.1);color:#a78bfa;padding:1px 6px;border-radius:4px;margin-left:4px">' + item.error_type + '</span>' : '')
         + '</div>';
     }
@@ -17802,13 +17804,13 @@ function dctWOCheck() {
   var zone=document.getElementById('dct-answer-zone');
   if(ok){
     if(msg) msg.innerHTML='<span style="color:#16a34a;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct! Nice work.</span></span>';
-    if(zone){zone.style.border='2px solid #22c55e';zone.style.background='#f0fdf4';}
+    if(zone){zone.style.border='2px solid #22c55e';zone.style.background='rgba(34,197,94,.14)';}
     var foot=document.getElementById('dct-foot');
-    if(foot){ foot.innerHTML='<button class="btn btn-g" onclick="_dctWONext()">다음 →</button>'; }
+    if(foot){ foot.innerHTML='<button class="btn btn-g" onclick="_dctWONext()">Next →</button>'; }
   } else {
     if(msg) msg.innerHTML='<span style="color:#dc2626;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Try again. Answer: <span style="font-family:\'Noto Serif KR\',serif;font-weight:700">'
       +escapeHTML(_dctWOState.original.join(' '))+'</span></span>';
-    if(zone){zone.style.border='2px solid #f87171';zone.style.background='#fff5f5';}
+    if(zone){zone.style.border='2px solid #f87171';zone.style.background='rgba(248,113,113,.14)';}
   }
 }
 function _dctWONext() { _dctWOIdx++; _dctWOState=null; _dctRenderArrange(); }
