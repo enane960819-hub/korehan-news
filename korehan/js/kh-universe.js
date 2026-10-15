@@ -335,15 +335,19 @@
 
   // Within a cluster, lay words in a mini 2-arm spiral around the center.
   function clusterWordPosition(center, idx, total, mastery) {
-    var arms = total > 4 ? 2 : 1;
+    // 3+ arms for denser clusters so words don't pile onto one spiral line.
+    var arms = total > 8 ? 3 : (total > 4 ? 2 : 1);
     var t = total ? idx / total : 0;
-    var dist = 2 + Math.pow(t, 0.6) * Math.min(8, 3 + total * 0.25);
+    // Wider base + steeper spread for dense categories (NATURE·11 used to
+    // collapse all labels on top of each other). More spread = less overlap.
+    var dist = 3 + Math.pow(t, 0.55) * Math.min(14, 4 + total * 0.6);
     dist *= (1 - mastery * 0.22);
     var armAngle = ((idx % arms) / arms) * Math.PI * 2;
     var twist = dist * 0.22;
-    var jitter = (Math.random() - 0.5) * 0.9;
+    var jitter = (Math.random() - 0.5) * 1.1;
     var angle = armAngle + twist + jitter + (idx * 0.37);
-    var yOff = (Math.random() - 0.5) * (0.8 + dist * 0.05);
+    // Larger vertical scatter pulls overlapping labels apart in screen space.
+    var yOff = (Math.random() - 0.5) * (1.8 + dist * 0.13);
     return {
       x: center.x + Math.cos(angle) * dist,
       y: center.y + yOff,
