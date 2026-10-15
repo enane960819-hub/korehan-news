@@ -1093,7 +1093,7 @@ async function saveToWordBook(ko, en, rom, category, opts) {
     showToast('Saved to Word Book: ' + ko);
   } catch(e) {
     console.warn('[saveToWordBook]', e);
-    showToast('저장 실패');
+    showToast('Save failed');
   }
 }
 
@@ -2507,7 +2507,7 @@ function renderModalContent() {
         + '</div>'
         + (hasBlank
             ? '<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">'
-              + '<button class="mhbtn" onclick="revealHelperAnswer(this)" type="button">👁 정답 보기</button>'
+              + '<button class="mhbtn" onclick="revealHelperAnswer(this)" type="button">👁 Show answer</button>'
               + '<button class="mhbtn" data-ko="' + dataTpl + '" onclick="copyHelper(this)" type="button">+ 빈칸 템플릿 넣기</button>'
               + '</div>'
             : '<button class="mhbtn" data-ko="' + dataTpl + '" onclick="copyHelper(this)">+ copy to writing</button>')
@@ -3799,7 +3799,7 @@ function _pmRenderAssemble(body, lesson, pipsHtml) {
   if (st.result === 'right') {
     resultLine = '<div class="pm-feedback pm-feedback-win" style="margin-top:14px"><span>완벽! 같은 패턴으로 다음 문제를 풀어볼까요?</span></div>';
   } else if (st.result === 'wrong') {
-    resultLine = '<div class="pm-feedback pm-feedback-lose" style="margin-top:14px"><span>아쉬워요. 정답: <strong>' + _esc(ko) + '</strong></span></div>';
+    resultLine = '<div class="pm-feedback pm-feedback-lose" style="margin-top:14px"><span>So close. Answer: <strong>' + _esc(ko) + '</strong></span></div>';
   }
   body.innerHTML =
       '<div class="pm-pips">' + pipsHtml + '</div>'
@@ -4155,7 +4155,7 @@ function _keQuizAnswer(quiz, picked) {
   var right = picked === quiz.correct;
   result.innerHTML =
     '<div style="padding:12px;border-radius:10px;background:' + (right ? 'rgba(52,211,153,.12)' : 'rgba(248,113,113,.10)') + ';border:1px solid ' + (right ? 'rgba(52,211,153,.32)' : 'rgba(248,113,113,.32)') + ';color:#fff;font-size:13px">'
-    +   '<div style="font-weight:800;color:' + (right ? '#a7f3d0' : '#fca5a5') + ';margin-bottom:4px;display:inline-flex;align-items:center;gap:5px">' + (right ? '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정답!</span>' : '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>다시 생각해봐요.</span>') + '</div>'
+    +   '<div style="font-weight:800;color:' + (right ? '#a7f3d0' : '#fca5a5') + ';margin-bottom:4px;display:inline-flex;align-items:center;gap:5px">' + (right ? '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span>' : '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Try again.</span>') + '</div>'
     +   '<div style="color:rgba(255,255,255,.7);line-height:1.55">' + (quiz.explanation || '') + '</div>'
     + '</div>';
 }
@@ -4419,7 +4419,7 @@ function _keQuizAnswer(btn, correctKo, chosenKo) {
     });
   }
   var fb = document.getElementById('ke-quiz-fb');
-  if (fb) fb.innerHTML = '<div style="font-size:12px;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';font-weight:700;display:flex;align-items:center;gap:5px">' + (isCorrect ? '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정답!</span>' : '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>오답 — 정답: ' + correctKo + '</span>') + '</div>';
+  if (fb) fb.innerHTML = '<div style="font-size:12px;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';font-weight:700;display:flex;align-items:center;gap:5px">' + (isCorrect ? '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span>' : '<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Wrong — answer: ' + correctKo + '</span>') + '</div>';
   setTimeout(function(){ window._keQuizIdx = (window._keQuizIdx||0) + 1; _keRenderQuiz(); }, 1300);
 }
 
@@ -4553,7 +4553,7 @@ function _keCheckFillChoice(btn, chosen, correct) {
     btn.style.borderColor = '#86efac';
     btn.style.background  = 'rgba(34,197,94,.15)';
     btn.style.color       = '#4ade80';
-    if (fb) fb.innerHTML = '<div style="padding:10px 12px;background:rgba(34,197,94,.12);border-radius:8px;color:#4ade80;font-weight:800;font-size:13px">✓ 정답!</div>';
+    if (fb) fb.innerHTML = '<div style="padding:10px 12px;background:rgba(34,197,94,.12);border-radius:8px;color:#4ade80;font-weight:800;font-size:13px">✓ Correct!</div>';
     if (typeof playCorrectSound === 'function') playCorrectSound();
   } else {
     btn.style.borderColor = '#fca5a5';
@@ -4567,8 +4567,8 @@ function _keCheckFillChoice(btn, chosen, correct) {
       }
     });
     if (fb) fb.innerHTML = '<div style="padding:10px 12px;background:rgba(239,68,68,.1);border-radius:8px;font-size:13px">'
-      + '<div style="color:#fca5a5;font-weight:800;margin-bottom:4px">✗ 오답</div>'
-      + '<div style="color:rgba(255,255,255,.6)">정답: <span style="color:#a78bfa;font-weight:800;font-size:15px">' + correct + '</span></div>'
+      + '<div style="color:#fca5a5;font-weight:800;margin-bottom:4px">✗ Wrong</div>'
+      + '<div style="color:rgba(255,255,255,.6)">Answer: <span style="color:#a78bfa;font-weight:800;font-size:15px">' + correct + '</span></div>'
       + '</div>';
     if (typeof playWrongSound === 'function') playWrongSound();
   }
@@ -5259,7 +5259,7 @@ function slangQuizAnswer(optIdx) {
     var descBlock = (!correct && item.slang.desc)
       ? '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px;line-height:1.6;font-style:italic">' + item.slang.desc + '</div>'
       : '';
-    fb.innerHTML = '<div style="font-size:14px;font-weight:700;color:' + (correct?'#34d399':'#ef4444') + ';margin-bottom:4px">' + (correct ? '정답!' : '오답!') + '</div>'
+    fb.innerHTML = '<div style="font-size:14px;font-weight:700;color:' + (correct?'#34d399':'#ef4444') + ';margin-bottom:4px">' + (correct ? 'Correct!' : 'Wrong!') + '</div>'
       + '<div style="font-size:12px;color:rgba(255,255,255,.5)">' + item.slang.ko + ' = ' + item.slang.en + '</div>'
       + descBlock
       + '<button onclick="_slangQuiz.current++;renderSlangQuiz(document.getElementById(\'slang-content\'))" style="margin-top:10px;padding:8px 20px;border-radius:8px;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">다음 →</button>';
@@ -5618,7 +5618,7 @@ function _awCheckAnswer() {
     var slotEls2 = document.querySelectorAll('#aw-slots .aw-slot');
     slotEls2.forEach(function(el){ el.classList.add('wrong'); });
     if (stage) stage.classList.add('aw-shake');
-    if (fb) { fb.textContent = '틀렸어요. 다시 시도하세요 — 정답: ' + w.word; fb.className = 'aw-fb no'; }
+    if (fb) { fb.textContent = 'Not quite. Try again — answer: ' + w.word; fb.className = 'aw-fb no'; }
     setTimeout(function(){
       // Auto-reset so user can try again
       awResetRound();
@@ -5691,7 +5691,7 @@ function _awCheckJamoAnswer() {
     var buildEl2 = document.getElementById('aw-jamo-build');
     if (buildEl2) buildEl2.classList.add('wrong');
     if (stage) stage.classList.add('aw-shake');
-    if (fb) { fb.textContent = '틀렸어요. 다시 시도하세요 — 정답: ' + w.word; fb.className = 'aw-fb no'; }
+    if (fb) { fb.textContent = 'Not quite. Try again — answer: ' + w.word; fb.className = 'aw-fb no'; }
     setTimeout(function(){ awResetRound(); }, 1500);
   }
 }
@@ -5738,7 +5738,7 @@ function _renderAwRoundComplete() {
   var rom = document.getElementById('aw-word-rom');
   var fb = document.getElementById('aw-fb');
   if (meaning) meaning.textContent = 'Round complete!';
-  if (rom) rom.textContent = _awScore + ' / ' + _awRoundTotal + ' 정답';
+  if (rom) rom.textContent = _awScore + ' / ' + _awRoundTotal + ' correct';
   if (slots) slots.innerHTML = '';
   var knownCount = _awGetKnown().length;
   if (pool) {
@@ -7658,7 +7658,7 @@ function renderWordBankList(words) {
       ? '<div style="margin-top:6px;padding:8px 10px;background:rgba(125,211,252,.06);border-left:2px solid rgba(125,211,252,.4);border-radius:4px;font-size:11px;line-height:1.5">'
         + (parsed.exKo ? '<div style="color:rgba(255,255,255,.75)">' + parsed.exKo + '</div>' : '')
         + (parsed.exEn ? '<div style="color:rgba(255,255,255,.4);margin-top:2px">' + parsed.exEn + '</div>' : '')
-        + '<button onclick="wbPracticeExample(' + wi + ')" style="margin-top:6px;padding:4px 10px;border:none;border-radius:6px;background:rgba(125,211,252,.15);color:#7dd3fc;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">예문으로 연습하기 →</button>'
+        + '<button onclick="wbPracticeExample(' + wi + ')" style="margin-top:6px;padding:4px 10px;border:none;border-radius:6px;background:rgba(125,211,252,.15);color:#7dd3fc;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">Practice with examples →</button>'
         + '</div>'
       : '';
     return '<div style="padding:10px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px">'
@@ -7674,7 +7674,7 @@ function wbPracticeExample(idx) {
   var w = (_wbAllWords || [])[idx];
   if (!w) return;
   var parsed = (typeof splitWordEnMeaning === 'function') ? splitWordEnMeaning(w.word_en) : { meaning:'', exKo:'', exEn:'' };
-  if (!parsed.exKo) { showToast('이 항목엔 예문이 없어요'); return; }
+  if (!parsed.exKo) { showToast('No example for this item'); return; }
   var ko = w.word_ko || '';
   var blanked = parsed.exKo.indexOf(ko) >= 0
     ? parsed.exKo.split(ko).join('<span style="display:inline-block;min-width:60px;border-bottom:2px solid #7dd3fc;padding:0 4px;color:#7dd3fc;font-weight:800">______</span>')
@@ -7711,8 +7711,8 @@ function _wbCheckPractice(correctKo) {
   var norm = function(s){ return s.replace(/[\s.,!?~]/g,'').toLowerCase(); };
   var ok = norm(typed) === norm(correctKo);
   fb.innerHTML = ok
-    ? '<span style="color:#4ade80">✓ 정답! (' + correctKo + ')</span>'
-    : '<span style="color:#fca5a5">✗ 정답: ' + correctKo + '</span>';
+    ? '<span style="color:#4ade80">✓ Correct! (' + correctKo + ')</span>'
+    : '<span style="color:#fca5a5">✗ Answer: ' + correctKo + '</span>';
   inp.disabled = true;
 }
 function _wbClosePractice() {
@@ -8572,7 +8572,7 @@ function _renderSpeakingScoreCard(s, targetEl) {
 
 function speakMyWriting() {
   var ta = document.getElementById('write-area');
-  if (!ta || !ta.value.trim()) { showToast('먼저 글을 작성하세요'); return; }
+  if (!ta || !ta.value.trim()) { showToast('Write something first'); return; }
   speakHangul(ta.value.trim(), 'female');
 }
 // Web Audio waveform helper. Renders a live time-domain wave to a
@@ -8649,7 +8649,7 @@ function toggleSpeakRecord() {
     if (statusEl) {
       statusEl.textContent = '이 브라우저는 녹음을 지원하지 않아요. Chrome 또는 Safari에서 열어주세요. / This browser does not support recording — please open in Chrome or Safari.';
     } else {
-      try { showToast && showToast('이 브라우저는 녹음을 지원하지 않아요. Chrome/Safari로 열어주세요.', true); } catch(_) {}
+      try { showToast && showToast('This browser does not support recording. Please use Chrome or Safari.', true); } catch(_) {}
     }
     return;
   }
@@ -8870,7 +8870,7 @@ async function _triggerSpeakingFeedback(submissionId, script, scores) {
 }
 
 async function submitSpeaking() {
-  if (!_speakBlob || !supaUser) { showToast('녹음이 없거나 로그인이 필요합니다'); return; }
+  if (!_speakBlob || !supaUser) { showToast('No recording found, or you need to sign in'); return; }
   // Show loading state on the submit button immediately — the storage
   // upload + insert takes 1–3 s on slow mobile and the old UX gave
   // zero feedback for that window.
@@ -8889,7 +8889,7 @@ async function submitSpeaking() {
     // for the RLS policies. Old recordings still live under avatars but
     // aren't readable here; they age out.
     var { error: upErr } = await sb.storage.from('speaking-recordings').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
-    if (upErr) { showToast('업로드 실패: ' + upErr.message); return; }
+    if (upErr) { showToast('Upload failed: ' + upErr.message); return; }
     // Save record to user_submissions — .select('id') so we get the
     // new row back and can fire the AI-feedback path inline.
     var ta = document.getElementById('write-area');
@@ -9019,7 +9019,7 @@ function revealHelperAnswer(btn) {
     btn.textContent = '🙈 다시 가리기';
   } else {
     ans.style.display = 'none';
-    btn.textContent = '👁 정답 보기';
+    btn.textContent = '👁 Show answer';
     // Re-render to put the blank back; cheaper than diffing.
     if (typeof renderModalContent === 'function') renderModalContent();
   }
@@ -12403,7 +12403,7 @@ function _pdCheckCorrectPick(btn, isCorrect, correctText) {
     btn.style.cssText += ';background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.55);color:#86efac';
     if (result) {
       result.style.display = '';
-      result.innerHTML = '<div style="padding:12px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);border-radius:10px;color:#86efac;font-size:13px;line-height:1.55">✅ 정답이에요! 자연스럽고 문법에 맞는 묘사예요.</div>';
+      result.innerHTML = '<div style="padding:12px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);border-radius:10px;color:#86efac;font-size:13px;line-height:1.55">✅ Correct! A natural, grammatical description.</div>';
     }
   } else {
     btn.style.cssText += ';background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.5);color:#fca5a5';
@@ -12415,7 +12415,7 @@ function _pdCheckCorrectPick(btn, isCorrect, correctText) {
     });
     if (result) {
       result.style.display = '';
-      result.innerHTML = '<div style="padding:12px;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.28);border-radius:10px;color:#fca5a5;font-size:13px;line-height:1.55">❌ 다시 한번 살펴보세요. 정답: <b style="color:#86efac">' + escapeHTML(correctText) + '</b></div>';
+      result.innerHTML = '<div style="padding:12px;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.28);border-radius:10px;color:#fca5a5;font-size:13px;line-height:1.55">❌ Take another look. Answer: <b style="color:#86efac">' + escapeHTML(correctText) + '</b></div>';
     }
   }
   var nav = document.getElementById('pd-nav');
@@ -12437,7 +12437,7 @@ function _pdRenderStep3(item) {
     + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">내 답:</div>'
     + '<div id="pd-word-answer" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.04);border:1.5px dashed rgba(255,255,255,.18);border-radius:10px;margin-bottom:10px;align-items:center"></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
-    + '<button class="sr-activity-btn" onclick="checkWordOrder()">정답 확인</button>'
+    + '<button class="sr-activity-btn" onclick="checkWordOrder()">Check answer</button>'
     + '<button class="sr-pill" onclick="resetWordOrder()">다시하기</button>'
     + '</div>'
     + '<div id="pd-word-result" style="margin-top:8px;display:none"></div>';
@@ -12475,7 +12475,7 @@ async function checkPictureDescription() {
   var result = document.getElementById('pd-result');
   if (!input || !result) return;
   var text = (input.value || '').trim();
-  if (!text) { showToast('먼저 문장을 작성해 주세요.'); return; }
+  if (!text) { showToast('Please write a sentence first.'); return; }
   var item = _picturePrompts[_pictureIndex % _picturePrompts.length];
   var corrected = text;
   var feedback = {
@@ -12676,7 +12676,7 @@ function checkSentenceWriting() {
   var expected = currentSentence();
   if (!inputEl || !resultEl || !expected) return;
   var typed = (inputEl.value || '').trim();
-  if (!typed) { showToast('먼저 문장을 입력해 주세요.'); return; }
+  if (!typed) { showToast('Please enter a sentence first.'); return; }
   var normalizedExpected = normalizeSentence(expected);
   var normalizedTyped = normalizeSentence(typed);
   var expectedWords = normalizedExpected.split(' ').filter(Boolean);
@@ -14486,11 +14486,11 @@ function bmDictCheck() {
   document.querySelectorAll('.bm-dict-actions button').forEach(function(b){ b.disabled = true; });
   if (isCorrect) {
     inp.classList.add('correct');
-    fb.innerHTML = '<span class="bm-dict-fb-ok">✓ 정답!</span>';
+    fb.innerHTML = '<span class="bm-dict-fb-ok">✓ Correct!</span>';
     if (typeof playCorrectSound === 'function') playCorrectSound();
   } else {
     inp.classList.add('wrong');
-    fb.innerHTML = '<span class="bm-dict-fb-no">정답: <strong>' + (card.ko||'') + '</strong>'
+    fb.innerHTML = '<span class="bm-dict-fb-no">Answer: <strong>' + (card.ko||'') + '</strong>'
       + (card.en ? ' <span style="opacity:.6;font-weight:500">(' + card.en + ')</span>' : '') + '</span>';
     if (typeof playWrongSound === 'function') playWrongSound();
   }
@@ -16154,7 +16154,7 @@ function gfParseKorean(ko) {
 function gfRenderSentenceTree(ko) {
   var ROLE_BG    = { subject:'#fef3c7', object:'#dcfce7', modifier:'rgba(167,139,250,.25)', verb:'#ede9fe', misc:'#f1f5f9' };
   var ROLE_COLOR = { subject:'#92400e', object:'#15803d', modifier:'#1e40af', verb:'#7c3aed', misc:'#475569' };
-  var ROLE_LABEL = { subject:'주어',    object:'목적어', modifier:'수식',     verb:'서술어', misc:'기타' };
+  var ROLE_LABEL = { subject:'Subject', object:'Object', modifier:'Modifier', verb:'Predicate', misc:'Other' };
   var parsed = gfParseKorean(ko);
   if (!parsed.length) return '';
   // Each token: chip with role label below.
@@ -16171,7 +16171,7 @@ function gfRenderSentenceTree(ko) {
       }).join('')
     + '</div>';
   return '<div style="background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.18);border-radius:10px;padding:12px 14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.45);margin-bottom:8px">구조 Structure (heuristic)</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.45);margin-bottom:8px">Structure (heuristic)</div>'
     + legend
     + '<div style="display:flex;flex-wrap:wrap;align-items:flex-end">' + chips + '</div>'
     + '</div>';
@@ -16200,7 +16200,7 @@ function renderGFLearn(p) {
   // Structure formula box
   var structureHtml = structure
     ? '<div style="background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-radius:12px;padding:14px 16px;margin-bottom:16px">'
-      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:6px">공식 Structure</div>'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6b7db8;margin-bottom:6px">Structure</div>'
       + '<p style="font-size:15px;font-weight:800;color:#a78bfa;margin:0;font-family:Noto Serif KR,serif">' + structure + '</p>'
       + '</div>'
     : '';
@@ -16231,7 +16231,7 @@ function renderGFLearn(p) {
 
   // Examples with grammar highlighted + (collapsible) sentence-structure tree
   var examples = p.examples || [{ ko: p.ex_ko||'', en: p.ex_en||'' }];
-  var exHtml = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">예문 Examples</div>'
+  var exHtml = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">Examples</div>'
     + examples.map(function(ex, i) {
         var koText = ex.ko || '';
         // Highlight any token from the pattern name inside the sentence
@@ -16247,7 +16247,7 @@ function renderGFLearn(p) {
           + '<div id="' + treeId + '" hidden style="margin-top:10px">' + gfRenderSentenceTree(ex.ko) + '</div>'
           : '';
         return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(167,139,250,.2);border-radius:12px;padding:14px 16px;margin-bottom:10px">'
-          + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:7px">예문 ' + (i+1) + '</div>'
+          + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:7px">Example ' + (i+1) + '</div>'
           + '<p style="font-family:Noto Serif KR,serif;font-size:17px;font-weight:700;color:#fff;line-height:1.7;margin:0 0 8px">' + koText + '</p>'
           + '<p style="font-size:13px;color:rgba(255,255,255,.55);margin:0;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">' + (ex.en||'') + '</p>'
           + treeBtn
@@ -16862,7 +16862,7 @@ function _renderSpotItSentence() {
     + '문법 패턴 <strong style="color:#a78bfa">' + (st.p.name||'') + '</strong> 이 사용된 단어를 찾아 탭하세요.'
     + '</div>'
     + '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:14px;padding:18px;margin-bottom:16px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">예문 ' + (st.idx+1) + ' / ' + st.total + '</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">Example ' + (st.idx+1) + ' / ' + st.total + '</div>'
     + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:14px">' + (ex.en||'') + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:0">' + wordChips + '</div>'
     + '</div>'
@@ -17093,7 +17093,7 @@ function checkGFFillMCQ(btn, idx, answer, correct, total) {
   }
 
   res.style.color = isCorrect ? '#16a34a' : '#dc2626';
-  res.innerHTML = isCorrect ? '✓ 정답!' : '✗ 정답: <span style="font-family:Noto Serif KR,serif">' + correct + '</span>';
+  res.innerHTML = isCorrect ? '✓ Correct!' : '✗ Answer: <span style="font-family:Noto Serif KR,serif">' + correct + '</span>';
 
   // Track mastery
   var _gffPatternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
@@ -17167,7 +17167,7 @@ function checkGFTranslateMCQ(btn, idx, answer, correct, total) {
     });
   }
   var res = document.getElementById('gft-res-' + idx);
-  if (res) { res.style.color = isCorrect ? '#16a34a' : '#dc2626'; res.innerHTML = isCorrect ? '✓ 정답!' : '✗ 정답: <span style="font-family:Noto Serif KR,serif">' + correct + '</span>'; }
+  if (res) { res.style.color = isCorrect ? '#16a34a' : '#dc2626'; res.innerHTML = isCorrect ? '✓ Correct!' : '✗ Answer: <span style="font-family:Noto Serif KR,serif">' + correct + '</span>'; }
   var _gftPatternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
   if (_gftPatternName) updateGrammarMastery(_gftPatternName, isCorrect);
   if (Object.keys(window._gftAnswered).length >= total) { var nw = document.getElementById('gft-next-wrap'); if (nw) nw.style.display = 'block'; }
@@ -17259,7 +17259,7 @@ function loadGFBuild(p) {
   window._gfJudgeState = { items:items, answered:{}, total:items.length, score:0, pattern:p };
 
   el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.65);margin-bottom:14px;line-height:1.7">'
-    + '각 문장이 <span style="background:rgba(167,139,250,.1);color:#a78bfa;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span> 패턴을 올바르게 사용하고 있나요?'
+    + 'Does each sentence use the <span style="background:rgba(167,139,250,.1);color:#a78bfa;padding:2px 8px;border-radius:6px;font-weight:700">' + (p.name||'') + '</span> pattern correctly?'
     + '</div>'
     + items.map(function(item, i) {
         return '<div id="gfj-card-' + i + '" style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:12px;padding:16px 18px;margin-bottom:12px">'
@@ -17267,8 +17267,8 @@ function loadGFBuild(p) {
           + '<p style="font-family:Noto Serif KR,serif;font-size:16px;font-weight:700;color:#fff;margin:0 0 6px;line-height:1.7">' + item.ko + '</p>'
           + '<p style="font-size:12px;color:rgba(255,255,255,.55);margin:0 0 12px">' + (item.en||'') + '</p>'
           + '<div style="display:flex;gap:8px">'
-          + '<button onclick="_gfJudgeAnswer(' + i + ',true)" id="gfj-yes-' + i + '" style="flex:1;padding:10px;border:1.5px solid #86efac;border-radius:10px;background:#f0fdf4;color:#166534;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정문</span></button>'
-          + '<button onclick="_gfJudgeAnswer(' + i + ',false)" id="gfj-no-' + i + '" style="flex:1;padding:10px;border:1.5px solid #fca5a5;border-radius:10px;background:#fef2f2;color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>오문</span></button>'
+          + '<button onclick="_gfJudgeAnswer(' + i + ',true)" id="gfj-yes-' + i + '" style="flex:1;padding:10px;border:1.5px solid #86efac;border-radius:10px;background:#f0fdf4;color:#166534;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct</span></button>'
+          + '<button onclick="_gfJudgeAnswer(' + i + ',false)" id="gfj-no-' + i + '" style="flex:1;padding:10px;border:1.5px solid #fca5a5;border-radius:10px;background:#fef2f2;color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Incorrect</span></button>'
           + '</div>'
           + '<div id="gfj-fb-' + i + '" style="margin-top:8px;min-height:0"></div>'
           + '</div>';
@@ -17299,7 +17299,7 @@ function _gfJudgeAnswer(idx, judgement) {
     card.style.background  = isRight ? '#f0fdf4'  : '#fef2f2';
   }
   if (fb) {
-    var msg = isRight ? '<span style="color:#16a34a;font-size:12px;font-weight:700">✓ 정답!</span>' : '<span style="color:#dc2626;font-size:12px;font-weight:700">✗ 오답</span>';
+    var msg = isRight ? '<span style="color:#16a34a;font-size:12px;font-weight:700">✓ Correct!</span>' : '<span style="color:#dc2626;font-size:12px;font-weight:700">✗ Wrong</span>';
     if (!item.isCorrect && item.correction) {
       msg += '<div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:4px">수정: <span style="color:#7c3aed;font-weight:700;font-family:Noto Serif KR,serif">' + item.correction + '</span>'
         + (item.error_type ? ' <span style="font-size:10px;background:rgba(167,139,250,.1);color:#a78bfa;padding:1px 6px;border-radius:4px;margin-left:4px">' + item.error_type + '</span>' : '')
@@ -17679,9 +17679,9 @@ function _dctExtractArticleSentences(body) {
 
 // Start article dictation mode — opens modal and loads extracted sentences
 function startArticleDictation() {
-  if (!_asCurrentArt || !_asCurrentArt.body) { showToast('먼저 기사를 읽어주세요'); return; }
+  if (!_asCurrentArt || !_asCurrentArt.body) { showToast('Please read the article first'); return; }
   var sents = _dctExtractArticleSentences(_asCurrentArt.body);
-  if (!sents.length) { showToast('기사에서 문장을 찾을 수 없습니다'); return; }
+  if (!sents.length) { showToast('No sentences found in this article'); return; }
   _dctArticleMode = true;
   _dctArticleSentences = sents;
   _dctStep = 1; _dctWOIdx = 0; _dctWOState = null;
@@ -17801,12 +17801,12 @@ function dctWOCheck() {
   var msg=document.getElementById('dct-wo-msg');
   var zone=document.getElementById('dct-answer-zone');
   if(ok){
-    if(msg) msg.innerHTML='<span style="color:#16a34a;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>정답! 잘 했어요.</span></span>';
+    if(msg) msg.innerHTML='<span style="color:#16a34a;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct! Nice work.</span></span>';
     if(zone){zone.style.border='2px solid #22c55e';zone.style.background='#f0fdf4';}
     var foot=document.getElementById('dct-foot');
     if(foot){ foot.innerHTML='<button class="btn btn-g" onclick="_dctWONext()">다음 →</button>'; }
   } else {
-    if(msg) msg.innerHTML='<span style="color:#dc2626;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>다시 해보세요. 정답: <span style="font-family:\'Noto Serif KR\',serif;font-weight:700">'
+    if(msg) msg.innerHTML='<span style="color:#dc2626;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Try again. Answer: <span style="font-family:\'Noto Serif KR\',serif;font-weight:700">'
       +escapeHTML(_dctWOState.original.join(' '))+'</span></span>';
     if(zone){zone.style.border='2px solid #f87171';zone.style.background='#fff5f5';}
   }
@@ -19752,7 +19752,7 @@ function asBlankFillWord(text) {
   // Check if distractor
   if(_asWOState.blankWords.indexOf(text)<0){
     var msg=document.getElementById('as-wo-msg');
-    if(msg) msg.innerHTML='<span style="color:#dc2626;font-weight:700">이 단어는 정답이 아니에요!</span>';
+    if(msg) msg.innerHTML='<span style="color:#dc2626;font-weight:700">That is not the right word!</span>';
     setTimeout(function(){if(msg)msg.innerHTML='';},1500);
     return;
   }
@@ -19765,7 +19765,7 @@ function asBlankFillWord(text) {
     var allCorrect=bw.every(function(w,i){return _asWOState.filledBlanks[i]===w;});
     var msg=document.getElementById('as-wo-msg');
     if(msg) msg.innerHTML=allCorrect
-      ?'<span style="color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:6px"><span>모두 정답! 잘했어요</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_PARTY+'</span></span>'
+      ?'<span style="color:#059669;font-weight:700;display:inline-flex;align-items:center;gap:6px"><span>All correct! Well done</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_PARTY+'</span></span>'
       :'<span style="color:#dc2626;font-weight:700">Some answers are wrong. Tap the red ones to retry.</span>';
     if(allCorrect) { _asStepDone[2]=true; }
     // Next always visible when all filled (correct or not)
