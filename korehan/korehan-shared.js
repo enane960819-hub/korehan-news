@@ -5511,6 +5511,11 @@ async function analyzeSentence(idx, el) {
   var paragraph = el.closest('p') || el;
   var panel = document.createElement('div');
   panel.className = 'art-sent-panel';
+  // The panel already spells out each word's meaning in its Vocab rows, so
+  // the hover-tooltip word-wrapping inside it is redundant clutter (and its
+  // tooltip overlaps the panel). Opt the panel out of the hover engine.
+  // The explicit 🔊 pronunciation buttons are unaffected (they're buttons).
+  panel.setAttribute('data-hover-skip', '1');
   panel.dataset.sentIdx = String(idx);
   panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
     + '<div class="asp-loading">분석 중</div>';
