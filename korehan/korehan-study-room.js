@@ -9561,51 +9561,6 @@ async function _triggerPackageFeedback(submissionId, items) {
   } catch(e) { console.warn('Package feedback failed:', e); return null; }
 }
 
-async function _triggerUnifiedAIFeedback(submissionId, text, topicOrTitle) {
-  try {
-    // Level-aware framing so corrections are calibrated to the
-    // learner's TOPIK band — matches the daily-package path.
-    var lvl = (_currentLevel || 'Beginner').toString();
-    var topikBand = ({
-      'Seed':'TOPIK I level 1','Starter':'TOPIK I level 1',
-      'Beginner':'TOPIK I level 1','Sprout':'TOPIK I level 2',
-      'Tree':'TOPIK II level 3-4','Intermediate':'TOPIK II level 3-4',
-      'Forest':'TOPIK II level 5-6','Advanced':'TOPIK II level 5-6'
-    })[lvl] || 'TOPIK II level 3-4';
-    var prompt = 'You are a Korean writing tutor giving feedback to an English-speaking learner at ' + lvl + ' (' + topikBand + ').\n'
-      + 'Grade against this level\'s bar, NOT absolute fluency — simple TOPIK-1 vocab from a Beginner is fine; an Advanced learner needs idiomatic chunks.\n\n'
-      + 'Student\'s writing:\n"""\n' + text + '\n"""\nTopic: ' + topicOrTitle + '\n\n'
-      + 'Give feedback in ENGLISH. Return ONLY valid JSON:\n'
-      + '{"overall":"1-2 sentence overall assessment in English","corrections":[{"original":"original text","corrected":"corrected text","reason":"English explanation of why","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],"encouragement":"short encouraging message in English"}\nReturn JSON only.';
-    var data = await callClaude({ feature:'unified_writing_feedback', model:'claude-haiku-4-5-20251001', max_tokens:600, messages:[{role:'user',content:prompt}] });
-    var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('').replace(/```json|```/g,'').trim();
-    var parsed = JSON.parse(raw);
-    var sb = getSupa();
-    if (sb) {
-      await sb.from('user_submissions').update({
-        ai_feedback: parsed, ai_feedback_at: new Date().toISOString(),
-        ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
-      }).eq('id', submissionId);
-    }
-    // Log wrong patterns to quiz_results for analytics
-    if (parsed.corrections && parsed.corrections.length && typeof logQuizResult === 'function') {
-      var patterns = {};
-      parsed.corrections.forEach(function(c) {
-        var p = c.pattern || 'OTHER';
-        patterns[p] = (patterns[p] || 0) + 1;
-      });
-      logQuizResult('writing_feedback', {
-        content_type: 'writing', content_id: submissionId,
-        score: Math.max(0, 100 - parsed.corrections.length * 15),
-        max_score: 100,
-        accuracy_pct: Math.max(0, 100 - parsed.corrections.length * 15),
-        wrong_patterns: patterns,
-        details: { corrections_count: parsed.corrections.length, topic: topicOrTitle }
-      });
-    }
-  } catch(e) { console.warn('AI feedback failed:', e); }
-}
-
 async function submitWriting() {
   if (!supaUser) { openAuthModal('signin'); closeWritingModal(); return; }
   if (window._wmSubmitting) return;
