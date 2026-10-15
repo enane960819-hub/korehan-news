@@ -2315,6 +2315,26 @@ function showSignupNudge(opts) {
   opts = opts || {};
   if (supaUser) return;
   if (document.getElementById('kh-signup-nudge')) return;
+  // Never nag a signed-in user. supaUser can still be null here if the
+  // session is restoring slowly (NANO DB 504s) even though the header
+  // already shows the logged-in avatar — so verify against the live
+  // session before showing, and bail if one exists.
+  try {
+    var _sb = (typeof getSupa === 'function') ? getSupa() : null;
+    if (_sb && _sb.auth && typeof _sb.auth.getSession === 'function') {
+      _sb.auth.getSession().then(function(r) {
+        if (r && r.data && r.data.session) return; // logged in → do not show
+        _showSignupNudgeNow(opts);
+      }, function() { _showSignupNudgeNow(opts); });
+      return;
+    }
+  } catch(_) {}
+  _showSignupNudgeNow(opts);
+}
+function _showSignupNudgeNow(opts) {
+  opts = opts || {};
+  if (supaUser) return;
+  if (document.getElementById('kh-signup-nudge')) return;
   // The article/story content gate already shows a sign-up CTA inline,
   // so the floating nudge would be redundant. Skip it on those pages.
   if (document.querySelector('.kh-gate-cta[data-kh-gate="1"]')) return;

@@ -13621,16 +13621,25 @@ async function generateBeginnerSentences() {
   var cached = sessionStorage.getItem(cacheKey);
   if (cached) {
     try {
-      _bm.sentences = JSON.parse(cached);
-      _bm.generating = false;
-      renderBMStep1();
-      return;
+      var _c = JSON.parse(cached);
+      // Discard a cache poisoned by an older build's generic filler so we
+      // fall through to real (topic) content instead of serving it again.
+      if (Array.isArray(_c) && _c.length && !_isGenericFillerSentences(_c)) {
+        _bm.sentences = _c;
+        _bm.generating = false;
+        renderBMStep1();
+        return;
+      }
+      try { sessionStorage.removeItem(cacheKey); } catch(_) {}
     } catch(e) {}
   }
 
   if (!supaUser) {
     _bm.sentences = getFallbackSentences();
-    sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
+    // Only cache when the fallback is real topic content — never cache the
+    // generic filler under a topic key, or it survives into the logged-in
+    // session and the user keeps seeing off-topic sentences.
+    if (!_fallbackIsGeneric()) sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
     _bm.generating = false;
     renderBMStep1();
     return;
@@ -13642,7 +13651,7 @@ async function generateBeginnerSentences() {
   // is identical.
   var dbCacheKey = 'beg2::' + (topic.id || topic.topic_en || topic.topic_ko || '').toString().slice(0, 80);
   var dbCached = await _aiCacheGet(dbCacheKey);
-  if (dbCached && Array.isArray(dbCached) && dbCached.length >= 3) {
+  if (dbCached && Array.isArray(dbCached) && dbCached.length >= 3 && !_isGenericFillerSentences(dbCached)) {
     _bm.sentences = dbCached;
     sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
     _bm.generating = false;
@@ -13670,12 +13679,17 @@ async function generateBeginnerSentences() {
     var text = (result.content || []).map(function(b){ return b.text||''; }).join('');
     var clean = text.replace(/```json|```/g, '').trim();
     var parsed = JSON.parse(clean);
-    _bm.sentences = parsed.sentences || getFallbackSentences();
+    var genOk = parsed && Array.isArray(parsed.sentences) && parsed.sentences.length >= 3;
+    _bm.sentences = genOk ? parsed.sentences : getFallbackSentences();
 
-    // Cache locally (this session) and globally (all users on this topic).
-    sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
-    if (Array.isArray(_bm.sentences) && _bm.sentences.length >= 3) {
-      _aiCacheSet(dbCacheKey, _bm.sentences);
+    // Cache only REAL generated (or topic-derived) sentences — never the
+    // generic filler, which would otherwise be written to the cross-user DB
+    // cache and served to everyone on this topic.
+    if (genOk || !_fallbackIsGeneric()) {
+      sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
+      if (Array.isArray(_bm.sentences) && _bm.sentences.length >= 3) {
+        _aiCacheSet(dbCacheKey, _bm.sentences);
+      }
     }
   } catch(e) {
     console.warn('Beginner sentence gen failed:', e);
@@ -13686,14 +13700,57 @@ async function generateBeginnerSentences() {
 }
 
 function getFallbackSentences() {
-  var topic = _todayTopic;
-  return [
-    { ko: '오늘 날씨가 맑아요.', en: 'The weather is clear today.' },
-    { ko: '저는 학교에 가요.', en: 'I go to school.' },
-    { ko: '친구를 만나요.', en: 'I meet a friend.' },
-    { ko: '같이 점심을 먹어요.', en: 'We eat lunch together.' },
-    { ko: '집에 돌아와요.', en: 'I come back home.' },
-  ];
+  // Prefer the day's ACTUAL topic content (already loaded in _aiContent) so a
+  // failed / skipped live generation still shows TOPIC-RELEVANT sentences
+  // instead of the generic weather/school filler learners complained about.
+  // The hardcoded list is a true last resort — only when no daily content is
+  // loaded at all (e.g. a guest before content loads).
+  var out = [], seen = {};
+  function add(ko, en) {
+    if (!ko) return;
+    var k = String(ko).trim();
+    if (!k || seen[k]) return;
+    seen[k] = 1;
+    out.push({ ko: k, en: String(en || '').trim() });
+  }
+  if (_aiContent) {
+    (_aiContent.helpers || []).forEach(function(h){ add(h.ko, h.en); });
+    (_aiContent.grammar || []).forEach(function(g){
+      add(g.example_ko, g.example_en);
+      if (Array.isArray(g.examples)) g.examples.forEach(function(ex){ add(ex && ex.ko, ex && ex.en); });
+    });
+  }
+  (_dailyDictationSentences || []).forEach(function(s){ add(s.ko, s.en); });
+  if (out.length >= 3) return out.slice(0, 6);
+  return out.concat(_GENERIC_FILLER_SENTENCES).slice(0, 6);
+}
+// Topic-agnostic last-resort filler. Kept as a named constant so the read-side
+// guard below can recognise and DISCARD it if an older build cached it under a
+// topic key (sessionStorage or the cross-user DB cache).
+var _GENERIC_FILLER_SENTENCES = [
+  { ko: '오늘 날씨가 맑아요.', en: 'The weather is clear today.' },
+  { ko: '저는 학교에 가요.', en: 'I go to school.' },
+  { ko: '친구를 만나요.', en: 'I meet a friend.' },
+  { ko: '같이 점심을 먹어요.', en: 'We eat lunch together.' },
+  { ko: '집에 돌아와요.', en: 'I come back home.' },
+];
+function _isGenericFillerSentences(arr) {
+  if (!Array.isArray(arr) || !arr.length) return false;
+  var filler = {};
+  _GENERIC_FILLER_SENTENCES.forEach(function(s){ filler[s.ko] = 1; });
+  var hits = 0;
+  arr.forEach(function(s){ if (s && filler[String(s.ko || '').trim()]) hits++; });
+  return hits >= Math.min(3, arr.length); // mostly/all generic → treat as poisoned
+}
+// True when getFallbackSentences() could only return the hardcoded generic
+// list (no topic content loaded) — used to avoid caching topic-agnostic
+// filler under a topic key, which would poison later loads.
+function _fallbackIsGeneric() {
+  if (!_aiContent) return true;
+  var h = (_aiContent.helpers || []).length;
+  var g = (_aiContent.grammar || []).length;
+  var d = (_dailyDictationSentences || []).length;
+  return (h + g + d) < 3;
 }
 
 // ── STEP 1: LISTEN & READ ──────────────────────────────────────────
