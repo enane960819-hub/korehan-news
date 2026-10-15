@@ -5103,7 +5103,7 @@ function switchSlangView(view) {
 
 function renderSlangDaily(el) {
   var daily = getDailySlang3();
-  var html = '<div style="font-size:13px;color:rgba(255,255,255,.35);margin-bottom:14px">매일 3개씩 새로운 슬랭을 배워보세요</div>';
+  var html = '<div style="font-size:13px;color:rgba(255,255,255,.35);margin-bottom:14px">3 slang expressions to learn today</div>';
   daily.forEach(function(s, i) {
     var tags = '<span class="slang-tag slang-tag-gen">' + (s.tag||'일상') + '</span>';
     if (s.warn) tags += '<span class="slang-tag slang-tag-warn">' + (s.warnText||'주의') + '</span>';
@@ -7683,7 +7683,7 @@ function wbPracticeExample(idx) {
     + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Practice · Fill in the Blank</div>'
     + '<div style="font-size:17px;font-weight:800;color:#fff;line-height:1.6;margin-bottom:6px">' + blanked + '</div>'
     + (parsed.exEn ? '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">' + parsed.exEn + '</div>' : '')
-    + '<input id="wb-prac-input" type="text" placeholder="한국어로 입력" style="width:100%;padding:12px;border-radius:10px;border:1.5px solid rgba(125,211,252,.4);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box" autofocus>'
+    + '<input id="wb-prac-input" type="text" placeholder="Type in Korean" style="width:100%;padding:12px;border-radius:10px;border:1.5px solid rgba(125,211,252,.4);background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;outline:none;box-sizing:border-box" autofocus>'
     + '<div id="wb-prac-fb" style="margin-top:10px;min-height:28px;font-size:13px;font-weight:700"></div>'
     + '<div style="display:flex;gap:8px;margin-top:10px">'
     + '<button onclick="_wbCheckPractice(\'' + ko.replace(/\\/g,"\\\\").replace(/'/g,"\\'") + '\')" style="flex:1;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-weight:800;cursor:pointer;font-family:inherit">Check</button>'
@@ -10322,10 +10322,10 @@ function renderDetailedFeedback(fb, writingText, inPackage) {
   // Naturalness
   if (fb.naturalness) {
     h += '<div style="margin-bottom:14px;padding:12px 14px;background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.15);border-radius:10px">'
-      + '<div style="font-size:11px;font-weight:700;color:#60a5fa;margin-bottom:6px">🗣️ 자연스러움 ' + (fb.naturalness.score !== undefined ? fb.naturalness.score + '/10' : '') + '</div>'
+      + '<div style="font-size:11px;font-weight:700;color:#60a5fa;margin-bottom:6px">🗣️ Naturalness ' + (fb.naturalness.score !== undefined ? fb.naturalness.score + '/10' : '') + '</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:6px">' + (fb.naturalness.comment||'') + '</div>';
     if (fb.naturalness.suggestions && fb.naturalness.suggestions.length) {
-      h += '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">추천 표현:</div>';
+      h += '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">Suggestions:</div>';
       fb.naturalness.suggestions.forEach(function(s) { h += '<div style="font-size:13px;color:#60a5fa;margin-top:2px">• ' + s + '</div>'; });
     }
     h += '</div>';
@@ -10347,7 +10347,7 @@ function renderDetailedFeedback(fb, writingText, inPackage) {
   // Structure
   if (fb.structure && fb.structure.comment) {
     h += '<div style="margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px">'
-      + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:4px">🏗️ 문장 구조</div>'
+      + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:4px">🏗️ Structure</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.5">' + fb.structure.comment + '</div>'
       + (fb.structure.tip ? '<div style="font-size:12px;color:#fbbf24;margin-top:4px">💡 ' + fb.structure.tip + '</div>' : '')
       + '</div>';
@@ -10356,14 +10356,14 @@ function renderDetailedFeedback(fb, writingText, inPackage) {
   // Extra content ideas
   if (fb.extra_content) {
     h += '<div style="margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px">'
-      + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:4px">💡 더 쓸 수 있는 내용</div>'
+      + '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:4px">💡 What else you could add</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.6">' + fb.extra_content + '</div></div>';
   }
 
   // Example answer (for too-short or off-topic writing)
   if (fb.example_answer) {
     h += '<div style="margin-bottom:14px;padding:12px 14px;background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.15);border-radius:10px">'
-      + '<div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:6px">📝 예시 답변</div>'
+      + '<div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:6px">📝 Example answer</div>'
       + '<div style="font-size:14px;color:rgba(255,255,255,.75);line-height:1.7;font-family:\'Noto Sans KR\',sans-serif">' + fb.example_answer + '</div></div>';
   }
 
@@ -12304,7 +12304,7 @@ function renderPicturePrompt() {
   var img = document.getElementById('pd-image');
   if (!_picturePrompts.length) {
     document.getElementById('pd-step1-body').innerHTML =
-      '<div style="text-align:center;padding:24px;color:rgba(255,255,255,.45)">관리자가 아직 이미지를 등록하지 않았습니다.</div>';
+      '<div style="text-align:center;padding:24px;color:rgba(255,255,255,.45)">No images have been added yet.</div>';
     if (img) { img.src = ''; img.style.display = 'none'; }
     return;
   }
@@ -12326,7 +12326,7 @@ function renderPicturePrompt() {
 // prompt; we use those directly.
 function _pdGoStep(step) {
   _pdStep = step;
-  var labels = ['Step 1 / 3 — Key Vocabulary', 'Step 2 / 3 — 맞는 문장 선택', 'Step 3 / 3 — 어절 순서맞추기'];
+  var labels = ['Step 1 / 3 — Key Vocabulary', 'Step 2 / 3 — Pick the correct sentence', 'Step 3 / 3 — Arrange the words'];
   var lbl = document.getElementById('pd-step-label');
   if (lbl) lbl.textContent = labels[step - 1] || '';
   [1,2,3].forEach(function(n) {
@@ -12381,7 +12381,7 @@ function _pdRenderStep2(item) {
     var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
   }
   body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✅ 맞는 문장 선택</div>'
+    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✅ Pick the correct sentence</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:14px">사진을 가장 자연스럽고 문법에 맞게 묘사한 문장을 고르세요.</div>'
     + '<div id="pd-pick-options" style="display:flex;flex-direction:column;gap:8px"></div>'
     + '<div id="pd-pick-result" style="margin-top:12px;display:none"></div>';
@@ -12431,7 +12431,7 @@ function _pdRenderStep3(item) {
   var words = item.word_order_words || [];
   if (!words.length) { _pdSkipToFinish(); return; }
   body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 어절 순서맞추기</div>'
+    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 Arrange the words</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">단어를 클릭해서 올바른 순서로 배치하세요. 첫 단어는 미리 선택되어 있어요.</div>'
     + '<div id="pd-word-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.07);border-radius:10px;margin-bottom:8px;align-items:center"></div>'
     + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">내 답:</div>'
@@ -14433,7 +14433,7 @@ function bmRenderDictation() {
   document.getElementById('bm-body').innerHTML =
       '<div class="bm-step-label">Step 4 of 4 · 받아쓰기 ' + (idx + 1) + ' / ' + cards.length + '</div>'
     + '<div class="bm-step-title">' + BM_ICON_VOLUME + '<span>Audio Dictation</span></div>'
-    + '<div class="bm-step-desc">단어를 듣고 한국어로 입력해보세요. 듣기가 어려우면 건너뛰세요.</div>'
+    + '<div class="bm-step-desc">Listen and type the word in Korean. Skip if too hard.</div>'
     + '<div class="bm-dict-card">'
     +   '<button type="button" class="bm-dict-play" onclick="srSpeak(\'' + safeKo + '\')" aria-label="Play">'
     +     '<span style="display:inline-flex;width:36px;height:36px;color:#fff">' + BM_ICON_VOLUME + '</span>'
