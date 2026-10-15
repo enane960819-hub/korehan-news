@@ -273,135 +273,127 @@ async function callAnthropicArray(apiKey: string, prompt: string, model: string,
   return JSON.parse(repaired)
 }
 
-// Pre-generate Key Expressions + Situation Quiz for a given
-// (date, level, topic) and stash both into grammar_examples_cache
-// under the keys the frontend's _aiCacheGet looks for. Mirrors the
-// frontend cache-key shape exactly:
-//   kex::<topicId>_<level>_<date>      → { expressions: [...] }
-//   kex_sit::<topicId>_<level>_<date>  → { situations:  [...] }
-// where topicId = "<date>_<level>" (matches _todayTopic.id format
-// in korehan-study-room.html). Skips work when the keys are
-// already populated so daily reruns are cheap.
-// Key Expressions pre-generation is OFF (2026-10-12): it wrote `kex::…`
-// rows in an older schema the Study Room never reads (the client reads
-// `kex5::<topic>_<level>` with pattern/parts/examples), and the situation
-// quiz built from those expressions didn't match what learners saw. The
-// first learner's client run is cached for everyone instead.
-const PREGEN_KEY_EXPRESSIONS = false
+// Pre-generate the step-5 "Key Expressions" list for a given
+// (level, topic) and stash it into grammar_examples_cache under the
+// EXACT key + schema the Study Room's openKeyExpressionsModal() reads
+// at its cross-user DB cache step (path 3):
+//   kex5::<topic_ko>_<level>  →  { expressions: [ {ko,rom,en,parts,examples} ×6 ] }
+// (client: `'kex5::' + topicKoKey + '_' + levelKey`, no date — topic_ko
+//  is stable across the week). When this row exists the first learner to
+// open Key Expressions gets it instantly from DB instead of waiting ~15s
+// for a cold Claude generation. One generation serves every learner on
+// that day's topic (audit 2026-10-15, study-room #5).
+//
+// Re-enabled 2026-10-15. The 2026-10-12 OFF note: the old version wrote a
+// `kex::…` key in a flat {ko,rom,en,example_ko,example_en} schema that the
+// client never reads (it looks up `kex5::` and needs parts[] + examples[]),
+// so it burned credit without ever producing a cache hit. This version uses
+// the client's own key, prompt, and quality filter, so a pre-baked row is
+// byte-for-byte the shape openKeyExpressionsModal() expects. The situation
+// quiz is NOT pre-baked here: its client key (_keSitCacheKey) is built from
+// _todayTopic.id, which this cron can't reconstruct, and the client already
+// background-prefetches it the moment expressions render.
+const PREGEN_KEY_EXPRESSIONS = true
+
+// Mirror of the Study Room client's REDUNDANT filter (korehan-study-room.js
+// openKeyExpressionsModal) — rejects AI output with redundant Korean like
+// "독서 읽는 것" (독서 already means "reading"). Kept in sync so a pre-baked
+// row never contains items the client would have filtered out itself.
+const KE_REDUNDANT = /(독서[\s가-힣]*읽|음식[\s가-힣]*먹|영화[\s가-힣]*보는 것을 보)/
 
 async function pregenKeyExpressions(
   sb: ReturnType<typeof createClient>,
   apiKey: string,
-  date: string,
+  _date: string,
   level: Level,
   topic: { ko: string; en: string },
 ): Promise<{ expressions: boolean; situations: boolean }> {
   if (!PREGEN_KEY_EXPRESSIONS) return { expressions: false, situations: false }
-  const topicId = `${date}_${level}`
-  const expressionsKey = `kex::${topicId}_${level}_${date}`
-  const situationKey   = `kex_sit2::${topicId}_${level}_${date}` // v2 = natural-Korean rules (client _keSitCacheKey)
 
+  const expressionsKey = `kex5::${topic.ko}_${level}`
+
+  // Skip if already baked — keeps nightly reruns cheap (prefer DB reuse).
   const { data: existing } = await sb
     .from('grammar_examples_cache')
     .select('pattern_name,patterns_json')
-    .in('pattern_name', [expressionsKey, situationKey])
-  const existingMap: Record<string, string> = {}
-  for (const r of existing || []) existingMap[r.pattern_name] = r.patterns_json
-
-  let expressions: unknown[] | null = null
-  let expressionsCached = !!existingMap[expressionsKey]
-  let situationsCached  = !!existingMap[situationKey]
-
-  // ── 1. Key Expressions ──────────────────────────────────────
-  if (!expressionsCached) {
-    const expPrompt =
-      `You are a Korean language teacher. Generate EXACTLY 6 key Korean EXPRESSIONS ` +
-      `(multi-word phrases, collocations, or fixed sentence patterns) that a student would naturally USE ` +
-      `when speaking or writing about the topic: "${topic.ko}" (${topic.en}). Level: ${level}.\n\n` +
-      `STRICT RULES:\n` +
-      `1. Each "ko" MUST be a multi-word phrase of at least 2 words — NOT a single word.\n` +
-      `2. DO NOT return single nouns or single verbs alone.\n` +
-      `3. Each expression must be directly usable when talking about this specific topic.\n` +
-      `4. Mix grammar patterns, collocations, and common phrasal verbs.\n\n` +
-      // PR #7AB (AI grammar audit Path 4): example_ko sentences are the\n
-      // Korean output users learn from. Same psych-verb / particle /\n
-      // formality / tense / spacing rules as Paths 1-3 (#7Q, #7Z, #7AA).\n
-      // Slim version since this prompt's output is sentence-scale.\n
-      `KOREAN GRAMMAR RULES for example_ko sentences:\n` +
-      `1. PSYCH-VERB 1st/3rd:\n` +
-      `   1st-person (저/나/우리) → bare feeling form: 저는 슬퍼요 / 저는 가고 싶어요.\n` +
-      `   3rd-person (그/그녀/이름/사람들/아이들) → "-아/어 하다" form:\n` +
-      `   ✓ 동생은 슬퍼해요 / 아이들은 만들고 싶어 해요\n` +
-      `   ✗ 동생은 슬퍼요 / 아이들은 만들고 싶어요\n` +
-      `   Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다.\n` +
-      `2. SUBJECT-PARTICLE: no 은/는 ↔ 이/가 flipping for same referent.\n` +
-      `3. FORMALITY: match the level's register (Starter/Beginner → 해요체;\n` +
-      `   Intermediate/Advanced may use 합쇼체 or 평어체 — pick one PER\n` +
-      `   sentence and stay consistent within that sentence).\n` +
-      `4. TENSE AGREEMENT within a clause vs the temporal anchor.\n` +
-      `5. SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach directly\n` +
-      `   to the stem (갔다 ✓, 가았다 ✗).\n\n` +
-      NATURAL_KOREAN_RULES + '\n' +
-      `Return ONLY a JSON array of 6 items, no markdown:\n` +
-      `[{"ko":"multi-word Korean phrase","rom":"romanization","en":"English meaning",` +
-      `"example_ko":"natural Korean sentence about the topic using this exact phrase",` +
-      `"example_en":"English translation of the example"}]`
+    .eq('pattern_name', expressionsKey)
+    .maybeSingle()
+  if (existing?.patterns_json) {
     try {
-      const arr = await callAnthropicArray(apiKey, expPrompt, 'claude-haiku-4-5-20251001', 1200)
-      expressions = (arr || []).filter((x) => {
-        const item = x as { ko?: string }
-        if (!item || typeof item.ko !== 'string') return false
-        const ko = item.ko.trim()
-        return ko.indexOf(' ') !== -1 || ko.length >= 4
-      })
-      if (expressions.length) {
-        await sb.from('grammar_examples_cache').upsert({
-          pattern_name:  expressionsKey,
-          patterns_json: JSON.stringify({ expressions }),
-          updated_at:    new Date().toISOString(),
-        }, { onConflict: 'pattern_name' })
-        expressionsCached = true
+      const parsed = JSON.parse(existing.patterns_json as string)
+      if (Array.isArray(parsed?.expressions) && parsed.expressions.length) {
+        return { expressions: true, situations: false }
       }
-    } catch (_) {
-      // Best-effort: don't break the daily-content pipeline.
-    }
-  } else {
-    try {
-      const parsed = JSON.parse(existingMap[expressionsKey])
-      expressions = Array.isArray(parsed?.expressions) ? parsed.expressions : null
-    } catch (_) { expressions = null }
+    } catch (_) { /* malformed — regenerate below */ }
   }
 
-  // ── 2. Situation Quiz (depends on expressions) ──────────────
-  if (!situationsCached && Array.isArray(expressions) && expressions.length) {
-    const expList = expressions
-      .map((e, i) => {
-        const item = e as { ko?: string; en?: string }
-        return `${i + 1}. ${item.ko || ''} — ${item.en || ''}`
-      })
-      .join('\n')
-    const sitPrompt =
-      `Given these Korean expressions:\n${expList}\n\n` +
-      `Create exactly 3 real-life situational questions. For each, return JSON with: ` +
-      `situation (1-2 sentence English description of a real-life moment), ` +
-      `correct_index (0-based index from the list above of the best expression), ` +
-      `why (brief English reason). Return a JSON array only, no markdown.`
-    try {
-      const sits = await callAnthropicArray(apiKey, sitPrompt, 'claude-haiku-4-5-20251001', 800)
-      if (Array.isArray(sits) && sits.length) {
-        await sb.from('grammar_examples_cache').upsert({
-          pattern_name:  situationKey,
-          patterns_json: JSON.stringify({ situations: sits }),
-          updated_at:    new Date().toISOString(),
-        }, { onConflict: 'pattern_name' })
-        situationsCached = true
-      }
-    } catch (_) {
-      // Best-effort.
-    }
-  }
+  // Prompt is a faithful port of openKeyExpressionsModal()'s client prompt
+  // so the generated schema (ko / rom / en / parts[] / examples[]) matches
+  // exactly what _renderKeyExpressions() consumes.
+  const expPrompt =
+    `You are a Korean language teacher. Generate EXACTLY 6 reusable Korean EXPRESSIONS (sentence patterns / collocations / set phrases) for a learner studying the topic: "${topic.ko}" (${topic.en}). Level: ${level}.\n\n` +
+    `You MUST teach each expression as a PATTERN with explicit breakdown — not a one-off sentence.\n\n` +
+    `OUTPUT FORMAT — return ONLY a JSON array of 6 items, no markdown, no commentary:\n` +
+    `[{\n` +
+    `  "ko": "the expression in PATTERN form (use ~ for variable slots, e.g. \\"~하는 것이 취미다\\", \\"~을/를 자주 V\\", \\"~에 시간이 날 때마다\\")",\n` +
+    `  "rom": "romanization of the pattern",\n` +
+    `  "en": "natural English meaning of the pattern",\n` +
+    `  "parts": [\n` +
+    `    {"ko":"~하는", "en":"V + 는 (present-tense modifier)"},\n` +
+    `    {"ko":"것이",  "en":"the act of (nominalizer + subject)"},\n` +
+    `    {"ko":"취미다","en":"is a hobby"}\n` +
+    `  ],\n` +
+    `  "examples": [\n` +
+    `    {"ko":"NATURAL Korean sentence using the pattern with one specific content word","en":"English translation"},\n` +
+    `    {"ko":"NATURAL Korean sentence using the pattern with a DIFFERENT content word in the slot","en":"English translation"}\n` +
+    `  ]\n` +
+    `}]\n\n` +
+    `STRICT RULES:\n` +
+    `1. ko: pattern form with ~ or V marking the variable slots. NEVER a fully-instantiated single sentence. Good: "~하는 것이 취미다", "~을/를 잘 V". Bad: "책 읽는 것이 취미다" (no variable slot — that's an example, not the pattern).\n` +
+    `2. CRITICAL — the verb is part of the slot, not part of the pattern. If the pattern is about a fixed adverb + any action verb (e.g. "~을/를 잘 V"), examples MUST use the actual action verb, not 해요. WRONG: "그림을 잘 해요" (해요 doesn't belong; the action is 그리다). RIGHT: "그림을 잘 그려요". Never substitute 해요 for an arbitrary verb just to fill the slot.\n` +
+    `3. parts: 2-4 items breaking the pattern into its grammatical pieces, each with a SHORT plain-English explanation of what that piece does. The most important "new" word/grammar must appear here (e.g. for "~을/를 자주 V" the parts MUST include 자주 = "often, frequently").\n` +
+    `4. examples: 2 sentences that REUSE the pattern with DIFFERENT content words in the slot. They must demonstrate variability. Each example must be GRAMMATICALLY VALID Korean a native would actually say.\n` +
+    `5. NEVER generate redundant Korean. Forbidden: "독서 읽는 것을 좋아하다" (독서 already means "reading"). Use either the noun form (독서를 좋아하다) OR the verbal form (책 읽는 것을 좋아하다), never both.\n` +
+    `6. Mix expression types across the 6: grammar patterns (~고 싶다, ~는 편이다, ~(으)ㄴ/는 것 같다, ~ㄹ 때마다), collocations (시간이 나다, 손이 크다, 기분이 좋아지다), set phrases (오랜만이에요, 시간 가는 줄 모르다).\n` +
+    `7. Each expression must be naturally usable when talking about today's topic — not generic filler.\n\n` +
+    `KOREAN GRAMMAR RULES for every examples[].ko sentence:\n` +
+    `1. PSYCH-VERB 1st/3rd:\n` +
+    `   1st-person (저/나/우리) → bare feeling form: 저는 슬퍼요 / 저는 가고 싶어요.\n` +
+    `   3rd-person (그/그녀/이름/사람들/아이들) → "-아/어 하다" form:\n` +
+    `   ✓ 동생은 슬퍼해요 / 아이들은 만들고 싶어 해요\n` +
+    `   ✗ 동생은 슬퍼요 / 아이들은 만들고 싶어요\n` +
+    `   Applies to: 싶다, 슬프다, 기쁘다, 무섭다, 싫다, 부끄럽다, 좋다.\n` +
+    `2. SUBJECT-PARTICLE CONSISTENCY: no 은/는 ↔ 이/가 flipping for same referent.\n` +
+    `3. FORMALITY: match the level's register (Starter/Beginner → 해요체;\n` +
+    `   Intermediate/Advanced may use 합쇼체 or 평어체) — and within ONE example sentence do not mix registers.\n` +
+    `4. TENSE AGREEMENT within a clause vs the temporal anchor.\n` +
+    `5. SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach to the stem (갔다 ✓, 가았다 ✗).`
 
-  return { expressions: expressionsCached, situations: situationsCached }
+  try {
+    const arr = await callAnthropicArray(apiKey, expPrompt, 'claude-haiku-4-5-20251001', 1800)
+    // Same quality filter as the client so a pre-baked row is identical to
+    // what the client would have cached itself.
+    const expressions = (arr || []).filter((x) => {
+      const item = x as { ko?: string; examples?: Array<{ ko?: string }> }
+      if (!item || typeof item.ko !== 'string') return false
+      const ko = item.ko.trim()
+      if (ko.indexOf(' ') === -1 && ko.length < 4) return false
+      if (KE_REDUNDANT.test(ko)) return false
+      if (Array.isArray(item.examples) && item.examples.some((ex) => ex && ex.ko && KE_REDUNDANT.test(ex.ko))) return false
+      return true
+    })
+    if (expressions.length) {
+      await sb.from('grammar_examples_cache').upsert({
+        pattern_name:  expressionsKey,
+        patterns_json: JSON.stringify({ expressions }),
+        updated_at:    new Date().toISOString(),
+      }, { onConflict: 'pattern_name' })
+      return { expressions: true, situations: false }
+    }
+  } catch (_) {
+    // Best-effort: a KE failure must never break the daily-content pipeline.
+  }
+  return { expressions: false, situations: false }
 }
 
 Deno.serve(async (req) => {

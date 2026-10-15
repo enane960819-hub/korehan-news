@@ -97,7 +97,10 @@ function khTopicWeekIndex(weekKey, count) {
   return ((Math.max(0, weeks) % count) + count) % count;
 }
 function studyDoneKey() {
-  return 'kh_sr_done_w_' + (supaUser ? supaUser.id : 'guest') + '_' + kstWeekKey();
+  // Progress is scoped per LEVEL: the 5 steps regenerate different content at
+  // each difficulty, so completing them at one level must not carry over when
+  // the learner switches difficulty (audit 2026-10-15, study-room #6).
+  return 'kh_sr_done_w_' + (supaUser ? supaUser.id : 'guest') + '_' + kstWeekKey() + '_' + (_currentLevel || 'Beginner');
 }
 function loadStudyDoneState() {
   try {
@@ -130,14 +133,14 @@ function markStageDone(stage) {
 async function syncStudyProgress(stage) {
   var sb = getSupa();
   if (!sb || !supaUser) return;
-  var patch = { user_id:supaUser.id, study_date:kstDateKey(), updated_at:new Date().toISOString() };
+  var patch = { user_id:supaUser.id, study_date:kstDateKey(), level:(_currentLevel || 'Beginner'), updated_at:new Date().toISOString() };
   if (stage === 'topic') patch.topic_done = true;
   if (stage === 'grammar') patch.grammar_done = true;
   if (stage === 'picture') patch.picture_done = true;
   if (stage === 'sentence') patch.sentence_done = true;
   if (stage === 'expressions') patch.expressions_done = true;
   try {
-    var r = await sb.from('user_daily_progress').upsert(patch, { onConflict:'user_id,study_date' });
+    var r = await sb.from('user_daily_progress').upsert(patch, { onConflict:'user_id,study_date,level' });
     if (r && r.error) throw r.error;
   } catch(e) {
     // Was silent — DB sync failures left learners with localStorage-only
@@ -1137,6 +1140,14 @@ function setLevel(level, btn) {
   _currentLevel = level;
   document.querySelectorAll('.lv-btn,.lv-pill').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
+
+  // Progress is per-level — re-scope the 5-step checklist to the new level so
+  // completions from the previous difficulty don't carry over (audit #6).
+  // loadStudyDoneState reads this level's localStorage; loadStudyDoneFromDB
+  // (async, guards on supaUser) merges this level's DB rows and re-renders.
+  loadStudyDoneState();
+  renderStudyChecklist();
+  loadStudyDoneFromDB();
 
   // Members only
   if (!supaUser) {
@@ -7897,6 +7908,7 @@ async function loadStudyDoneFromDB() {
     var r = await sb.from('user_daily_progress')
       .select('*')
       .eq('user_id', supaUser.id)
+      .eq('level', (_currentLevel || 'Beginner'))
       .gte('study_date', wk)
       .lte('study_date', kstAddDays(wk, 6));
     if (r.error || !r.data || !r.data.length) return;
