@@ -6554,10 +6554,62 @@ async function _ftLoadFromDB() {
 }
 
 // ── Flowchart Renderer ──
+// Overwrite each node's hand-authored x/y% with a clean layered layout so
+// nodes never pile up (audit: "노드 존나 겹치는데"). Columns = graph depth
+// from the start node; rows = position within the depth layer. Edges keep
+// using x*10 / y*4 against the same %-space, so they still line up. Positions
+// are percentages, so widening the chart below just spreads them out.
+function _ftAutoLayout(scenario) {
+  if (!scenario || !scenario.nodes || scenario._laidOut) return;
+  var nodes = scenario.nodes;
+  var ids = Object.keys(nodes);
+  if (!ids.length) return;
+  var adj = {};
+  ids.forEach(function(id){ adj[id] = []; });
+  (scenario.edges || []).forEach(function(e){ if (adj[e[0]]) adj[e[0]].push(e[1]); });
+  var startId = ids.find(function(id){ return nodes[id].type === 'start'; }) || 'start';
+  if (!nodes[startId]) startId = ids[0];
+  // BFS depth from start.
+  var depth = {}; depth[startId] = 0;
+  var queue = [startId];
+  while (queue.length) {
+    var u = queue.shift();
+    (adj[u] || []).forEach(function(v){ if (depth[v] === undefined) { depth[v] = depth[u] + 1; queue.push(v); } });
+  }
+  // Unreachable nodes → one column past the deepest reachable one.
+  var maxD = 0;
+  ids.forEach(function(id){ if (depth[id] !== undefined && depth[id] > maxD) maxD = depth[id]; });
+  ids.forEach(function(id){ if (depth[id] === undefined) depth[id] = maxD + 1; });
+  maxD = 0;
+  ids.forEach(function(id){ if (depth[id] > maxD) maxD = depth[id]; });
+  // Group by depth, keep a stable within-layer order (original y, then label).
+  var layers = {};
+  ids.forEach(function(id){ (layers[depth[id]] = layers[depth[id]] || []).push(id); });
+  var cols = maxD + 1, maxLayer = 1;
+  Object.keys(layers).forEach(function(d){
+    var layer = layers[d];
+    layer.sort(function(a, b){ return (nodes[a].y || 0) - (nodes[b].y || 0) || String(nodes[a].label).localeCompare(String(nodes[b].label)); });
+    if (layer.length > maxLayer) maxLayer = layer.length;
+    var n = layer.length;
+    layer.forEach(function(id, i){
+      nodes[id].x = cols <= 1 ? 50 : 7 + (Number(d) / (cols - 1)) * 86;
+      nodes[id].y = n <= 1 ? 50 : 14 + (i / (n - 1)) * 72;
+    });
+  });
+  scenario._cols = cols;
+  scenario._maxLayer = maxLayer;
+  scenario._laidOut = true;
+}
+
 function renderFlowchart(scenario, animateEdge) {
   var chart = document.getElementById('ft-chart');
   var svg = document.getElementById('ft-svg');
   if (!chart || !svg) return;
+  _ftAutoLayout(scenario);
+  // Size the canvas to the layout so columns/rows get real breathing room —
+  // overflow-x:auto on the wrapper lets wide graphs scroll horizontally.
+  chart.style.minWidth = Math.max(1200, (scenario._cols || 6) * 190) + 'px';
+  chart.style.height   = Math.max(400, (scenario._maxLayer || 1) * 78) + 'px';
   chart.querySelectorAll('.ft-node').forEach(function(n){ n.remove(); });
   svg.innerHTML = '';
   // Set viewBox to 1000x400 so we use simple coordinates
@@ -6731,8 +6783,14 @@ function showDialogue(node) {
     + '<span class="ft-en">' + (node.textEn || '') + '</span>';
   var choicesEl = document.getElementById('ftp-choices');
   choicesEl.innerHTML = (node.choices || []).map(function(c, i) {
+    var cKo = String(c.text || '').replace(/'/g, "\\'");
+    // 🔊 on the learner's OWN reply options (audit: "내 선택지는 발음도 안나오고").
+    // stopPropagation so tapping the speaker hears the line without selecting it.
     return '<button class="ft-choice" onclick="pickChoice(\'' + _ftState.nodeId + '\',' + i + ')">'
-      + c.text
+      + '<span style="display:inline-flex;align-items:center;gap:6px">'
+      +   '<span>' + c.text + '</span>'
+      +   '<span role="button" tabindex="0" aria-label="Listen" onclick="event.stopPropagation();speakHangul(\'' + cKo + '\')" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;border:1px solid rgba(15,23,42,.15);background:#fff;color:#475569;font-size:12px;cursor:pointer">🔊</span>'
+      + '</span>'
       + (c.textEn ? '<div class="ft-choice-en">' + c.textEn + '</div>' : '')
       + '</button>';
   }).join('');
