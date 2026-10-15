@@ -201,7 +201,7 @@
     <!-- Feedback inbox — redirect to Growth Lab -->
     <div id="feedback-inbox-btn" style="display:none;margin-top:14px;">
       <a href="korehan-learning-overview.html" style="display:flex;width:100%;padding:11px 16px;background:rgba(14,165,233,0.12);border:1.5px solid rgba(14,165,233,0.25);border-radius:10px;font-size:13px;font-weight:800;color:#7dd3fc;cursor:pointer;font-family:inherit;align-items:center;gap:8px;justify-content:center;text-decoration:none">
-        <i data-lucide="inbox" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span id="feedback-inbox-label">Growth Lab에서 피드백 확인 →</span>
+        <i data-lucide="inbox" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span id="feedback-inbox-label">Check your feedback in Growth Lab →</span>
       </a>
     </div>
   </div>
@@ -407,7 +407,7 @@
     <div style="padding:18px 16px;background:linear-gradient(135deg,rgba(12,74,110,.4),rgba(3,105,161,.25));text-align:center">
       <div style="font-size:32px;margin-bottom:8px">🇰🇷</div>
       <div style="font-size:15px;font-weight:900;color:#7dd3fc;margin-bottom:4px">Korean Alphabet</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px">쉬운 한국어 단어로 한글 배우기</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px">Learn Hangul with simple Korean words</div>
       <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
         <span style="padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.12);color:#7dd3fc;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:4px"><i data-lucide="pen-line" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>학습</span></span>
         <span style="padding:3px 10px;border-radius:8px;background:rgba(56,189,248,.12);color:#7dd3fc;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:4px"><i data-lucide="rotate-ccw" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>복습</span></span>
@@ -915,7 +915,7 @@
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261015c"></script>
+<script src="korehan-shared.js?v=20261015d"></script>
 <script src="js/kh-canvas-engine.js?v=20260527f"></script>
 <script src="js/kh-quiz-arena.js?v=20260502a"></script>
 <script src="js/kh-flashcards.js?v=20261012a"></script>
@@ -924,7 +924,7 @@
 <!-- kh-universe.js (~117KB) is now lazy-loaded by _ensureKHUniverse()
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
-<script src="korehan-study-room.js?v=20261015h" defer></script>
+<script src="korehan-study-room.js?v=20261015i" defer></script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->
@@ -3346,7 +3346,7 @@ function renderReviewQuestion() {
       + '<div style="font-size:24px;font-weight:800;color:#fff">' + q.prompt + '</div>'
       + '</div>'
       + '<div style="text-align:center">'
-      + '<input id="rv-typed-input" type="text" placeholder="한국어로 입력..." lang="ko" autocomplete="off" spellcheck="false" style="width:80%;max-width:300px;padding:12px 16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;font-size:16px;font-family:\'Noto Sans KR\',sans-serif;text-align:center;outline:none" onkeydown="if(event.key===\'Enter\')rvCheckTyped()">'
+      + '<input id="rv-typed-input" type="text" placeholder="Type in Korean…" lang="ko" autocomplete="off" spellcheck="false" style="width:80%;max-width:300px;padding:12px 16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;font-size:16px;font-family:\'Noto Sans KR\',sans-serif;text-align:center;outline:none" onkeydown="if(event.key===\'Enter\')rvCheckTyped()">'
       + '<button onclick="rvCheckTyped()" style="display:block;margin:12px auto 0;padding:10px 24px;background:#2563eb;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Check</button>'
       + '<div id="rv-typed-fb" style="margin-top:10px;font-size:13px"></div>'
       + '</div>';

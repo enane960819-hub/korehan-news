@@ -6748,7 +6748,7 @@ window.khArticleVocabRemove = async function (ko) {
     var el2 = document.getElementById('art-vocab-list');
     if (el2) _avRenderPage(el2);
     if (typeof showToast === 'function') showToast('삭제 실패: ' + (e.message || e), true);
-    else alert('삭제 실패: ' + (e.message || e));
+    else alert('Delete failed: ' + (e.message || e));
   }
 };
 function _avPagerHTML(total, page, pages) {
@@ -10741,7 +10741,7 @@ function ttsInit() {
 
 function ttsSpeak(text, btnEl) {
   if (!window.speechSynthesis) {
-    if (typeof toast === 'function') toast('이 브라우저는 음성 재생을 지원하지 않습니다.', true);
+    if (typeof toast === 'function') toast('Your browser does not support audio playback.', true);
     return;
   }
   // Some mobile browsers leave the engine in a paused state after
@@ -10790,7 +10790,7 @@ function ttsSpeak(text, btnEl) {
   utter.onerror = function(ev) {
     console.warn('[TTS] error', ev && ev.error);
     _ttsReset();
-    if (typeof toast === 'function') toast('음성 재생 실패 — 휴대폰 설정에서 한국어 TTS를 활성화했는지 확인해주세요.', true);
+    if (typeof toast === 'function') toast('Audio playback failed — check that Korean TTS is enabled in your device settings.', true);
   };
   // Fallback — Chrome/Edge bug where speak() silently fails after
   // ~15s of utterance time. We don't fight that here, but we DO
