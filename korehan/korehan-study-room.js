@@ -37,6 +37,21 @@ function playWrongSound() {
 // ═══════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════
+
+// Neural-first pronunciation for every Study Room play button.
+// khSpeak (korehan-shared.js) uses the tts-proxy neural voice for signed-in
+// users and only falls back to the browser voice on anon/failure. The old
+// ttsSpeak/speakKorean path was browser speechSynthesis ONLY, which is silent
+// on the many devices that have no ko-KR voice installed — that was why
+// learners "couldn't hear" the freshly generated sentences and words.
+function srSpeak(text, btnEl) {
+  text = (text == null) ? '' : String(text);
+  if (!text.trim()) return;
+  if (typeof window.khSpeak === 'function') { window.khSpeak(text, 'female', btnEl); return; }
+  if (typeof window.ttsSpeak === 'function') { window.ttsSpeak(text, btnEl); return; }
+}
+try { window.srSpeak = srSpeak; } catch(_) {}
+
 var _currentLevel   = 'Beginner';
 var _todayTopic     = null;   // {id, topic_ko, topic_en, category, level}
 var _aiContent      = null;   // {vocab:[], grammar:[], helpers:[]}
@@ -97,7 +112,10 @@ function khTopicWeekIndex(weekKey, count) {
   return ((Math.max(0, weeks) % count) + count) % count;
 }
 function studyDoneKey() {
-  return 'kh_sr_done_w_' + (supaUser ? supaUser.id : 'guest') + '_' + kstWeekKey();
+  // Progress is scoped per LEVEL: the 5 steps regenerate different content at
+  // each difficulty, so completing them at one level must not carry over when
+  // the learner switches difficulty (audit 2026-10-15, study-room #6).
+  return 'kh_sr_done_w_' + (supaUser ? supaUser.id : 'guest') + '_' + kstWeekKey() + '_' + (_currentLevel || 'Beginner');
 }
 function loadStudyDoneState() {
   try {
@@ -130,14 +148,14 @@ function markStageDone(stage) {
 async function syncStudyProgress(stage) {
   var sb = getSupa();
   if (!sb || !supaUser) return;
-  var patch = { user_id:supaUser.id, study_date:kstDateKey(), updated_at:new Date().toISOString() };
+  var patch = { user_id:supaUser.id, study_date:kstDateKey(), level:(_currentLevel || 'Beginner'), updated_at:new Date().toISOString() };
   if (stage === 'topic') patch.topic_done = true;
   if (stage === 'grammar') patch.grammar_done = true;
   if (stage === 'picture') patch.picture_done = true;
   if (stage === 'sentence') patch.sentence_done = true;
   if (stage === 'expressions') patch.expressions_done = true;
   try {
-    var r = await sb.from('user_daily_progress').upsert(patch, { onConflict:'user_id,study_date' });
+    var r = await sb.from('user_daily_progress').upsert(patch, { onConflict:'user_id,study_date,level' });
     if (r && r.error) throw r.error;
   } catch(e) {
     // Was silent — DB sync failures left learners with localStorage-only
@@ -593,7 +611,7 @@ async function loadDBHelpers(level) {
     if (r.error || !r.data || !r.data.length) return false;
     var hhtml = r.data.map(function(h) {
       return '<div class="hrow">'
-        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
+        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="srSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
         + '<div class="hen">' + h.en + '</div>'
         + '</div>';
     }).join('');
@@ -1137,6 +1155,14 @@ function setLevel(level, btn) {
   _currentLevel = level;
   document.querySelectorAll('.lv-btn,.lv-pill').forEach(function(b){ b.classList.remove('on'); });
   if (btn) btn.classList.add('on');
+
+  // Progress is per-level — re-scope the 5-step checklist to the new level so
+  // completions from the previous difficulty don't carry over (audit #6).
+  // loadStudyDoneState reads this level's localStorage; loadStudyDoneFromDB
+  // (async, guards on supaUser) merges this level's DB rows and re-renders.
+  loadStudyDoneState();
+  renderStudyChecklist();
+  loadStudyDoneFromDB();
 
   // Members only
   if (!supaUser) {
@@ -2384,7 +2410,7 @@ function renderAIContent() {
     var hhtml = '';
     (_aiContent.helpers || []).forEach(function(h) {
       hhtml += '<div class="hrow">'
-        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="ttsSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
+        + '<div class="hko">' + h.ko + ' <button class="hbtn" onclick="srSpeak(\'' + h.ko.replace(/'/g,"\\'") + '\',this)" style="display:inline-flex;align-items:center"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span></button></div>'
         + '<div class="hen">' + h.en + '</div>'
         + '</div>';
     });
@@ -4206,7 +4232,7 @@ function _keRenderStudyPhase(list) {
   }
   var examplesHtml = allExamples.map(function(ex) {
     var safeExKo = (ex.ko||'').replace(/'/g,"\\'");
-    return '<div onclick="var el=this;el.style.opacity=\'.5\';setTimeout(function(){el.style.opacity=\'1\'},400);ttsSpeak(\'' + safeExKo + '\')" style="cursor:pointer;padding:10px 12px;border-radius:10px;transition:opacity .2s;margin-bottom:6px">'
+    return '<div onclick="var el=this;el.style.opacity=\'.5\';setTimeout(function(){el.style.opacity=\'1\'},400);srSpeak(\'' + safeExKo + '\')" style="cursor:pointer;padding:10px 12px;border-radius:10px;transition:opacity .2s;margin-bottom:6px">'
       + '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:2px;display:flex;align-items:center;gap:6px"><span style="display:inline-flex;width:13px;height:13px;opacity:.55">' + BM_ICON_VOLUME + '</span>' + (ex.ko||'') + '</div>'
       + '<div style="font-size:12px;color:rgba(255,255,255,.42)">' + (ex.en||'') + '</div>'
       + '</div>';
@@ -4249,7 +4275,7 @@ function _keRenderStudyPhase(list) {
         + '</div>' : '')
     // Actions row — Listen expression / Save
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
-    +   '<button onclick="ttsSpeak(\'' + safeKo + '\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
+    +   '<button onclick="srSpeak(\'' + safeKo + '\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
     +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
     + '</div>'
     // Navigation row — straight prev/next through the Study cards. The
@@ -7897,6 +7923,7 @@ async function loadStudyDoneFromDB() {
     var r = await sb.from('user_daily_progress')
       .select('*')
       .eq('user_id', supaUser.id)
+      .eq('level', (_currentLevel || 'Beginner'))
       .gte('study_date', wk)
       .lte('study_date', kstAddDays(wk, 6));
     if (r.error || !r.data || !r.data.length) return;
@@ -8024,7 +8051,11 @@ function closeWritingModal() {
 }
 
 function speakKorean(text) {
-  if (!text || !window.speechSynthesis) return;
+  if (!text) return;
+  // Neural-first (see srSpeak). The browser-only path below is unreachable
+  // for signed-in users now, but kept as the ultimate fallback.
+  if (typeof srSpeak === 'function') { srSpeak(text); return; }
+  if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   var utt = new SpeechSynthesisUtterance(text);
   utt.lang = 'ko-KR';
@@ -9727,10 +9758,14 @@ function _wmRenderFeedback(fb, state) {
     + '</div>';
   if (a.overall || fb.overall_assessment) h += '<div style="font-size:13px;color:#e2e8f0;margin-bottom:10px">' + esc(a.overall || fb.overall_assessment) + '</div>';
   var cs = Array.isArray(a.corrections) ? a.corrections : [];
+  // Original with mistakes marked in place — the "where", above the "what → why" list.
+  if (a.student_text && cs.length) {
+    h += '<div style="font-size:14px;line-height:1.9;padding:10px 12px;margin-bottom:10px;background:rgba(15,23,42,.3);border-radius:10px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _markWritingErrors(a.student_text, cs) + '</div>';
+  }
   if (cs.length) {
-    h += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">' + cs.map(function(c){
+    h += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">' + cs.map(function(c, ci){
       return '<div style="background:rgba(15,23,42,.35);border-radius:10px;padding:9px 11px">'
-        + '<div style="font-size:13px"><span style="color:#fca5a5;text-decoration:line-through">' + esc(c.original) + '</span> → <b style="color:#86efac">' + esc(c.corrected) + '</b></div>'
+        + '<div style="font-size:13px;display:flex;align-items:baseline;gap:6px"><span style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;border-radius:999px;background:#f87171;color:#1e1b1b;font-size:10px;font-weight:900">' + (ci+1) + '</span><span><span style="color:#fca5a5;text-decoration:line-through">' + esc(c.original) + '</span> → <b style="color:#86efac">' + esc(c.corrected) + '</b></span></div>'
         + (c.reason ? '<div style="font-size:12px;color:#94a3b8;margin-top:3px">' + esc(c.reason) + '</div>' : '') + '</div>';
     }).join('') + '</div>';
   }
@@ -9969,7 +10004,47 @@ var _fbPatternFocus = {
   OTHER:      ''
 };
 
-function renderDetailedFeedback(fb, writingText) {
+// Render the learner's ORIGINAL Korean with each corrections[].original
+// snippet marked in place — a red wavy underline + a numbered badge that
+// maps to the numbered Corrections list below. This is the "where exactly
+// is my mistake?" view learners asked for; the list stays the "what → why".
+// Unmatched snippets (AI didn't copy verbatim) are simply left unmarked —
+// they still appear in the list, so nothing is lost.
+function _markWritingErrors(text, corrections) {
+  var esc = function(x){ return String(x == null ? '' : x).replace(/[&<>]/g, function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]; }); };
+  text = String(text == null ? '' : text);
+  if (!text) return '';
+  var cs = Array.isArray(corrections) ? corrections : [];
+  var marks = [];
+  cs.forEach(function(c, i) {
+    var orig = (c && c.original != null) ? String(c.original).trim() : '';
+    if (!orig) return;
+    var from = 0, pos;
+    while ((pos = text.indexOf(orig, from)) !== -1) {
+      var overlaps = false;
+      for (var k = 0; k < marks.length; k++) {
+        if (pos < marks[k].end && (pos + orig.length) > marks[k].start) { overlaps = true; break; }
+      }
+      if (!overlaps) { marks.push({ start: pos, end: pos + orig.length, n: i + 1, c: c }); break; }
+      from = pos + 1;
+    }
+  });
+  if (!marks.length) return esc(text);
+  marks.sort(function(a, b){ return a.start - b.start; });
+  var out = '', cur = 0;
+  marks.forEach(function(m) {
+    if (m.start > cur) out += esc(text.slice(cur, m.start));
+    var tip = (m.c.corrected ? '→ ' + m.c.corrected : '') + (m.c.reason ? '  ·  ' + m.c.reason : '');
+    out += '<span title="' + esc(tip).replace(/"/g, '&quot;') + '" style="background:rgba(248,113,113,.16);text-decoration:underline wavy #f87171;text-underline-offset:3px;border-radius:3px;padding:0 1px">'
+      + esc(text.slice(m.start, m.end))
+      + '<sup style="color:#f87171;font-weight:800;font-size:10px;margin-left:1px">' + m.n + '</sup></span>';
+    cur = m.end;
+  });
+  if (cur < text.length) out += esc(text.slice(cur));
+  return out;
+}
+
+function renderDetailedFeedback(fb, writingText, inPackage) {
   if (!fb) return '<div style="color:rgba(255,255,255,.4)">No feedback data available</div>';
   var h = '';
 
@@ -10000,8 +10075,8 @@ function renderDetailedFeedback(fb, writingText) {
       h += '<div style="margin:0 0 18px;padding:14px;border-radius:12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08)">'
         + '<div style="font-size:12px;font-weight:800;color:#bae6fd;margin-bottom:4px">' + (i + 1) + '. ' + _pkEsc(title) + '</div>'
         + (act.topic ? '<div style="font-size:11.5px;color:rgba(255,255,255,.5);margin-bottom:8px">' + _pkEsc(act.topic) + '</div>' : '')
-        + (act.student_text ? '<div style="font-size:13px;line-height:1.65;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,.04);border-radius:8px;color:rgba(255,255,255,.7);font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _pkEsc(act.student_text) + '</div>' : '')
-        + renderDetailedFeedback(act, act.student_text || '')
+        + (act.student_text ? '<div style="font-size:13px;line-height:1.9;padding:10px 12px;margin-bottom:10px;background:rgba(255,255,255,.04);border-radius:8px;color:rgba(255,255,255,.7);font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _markWritingErrors(act.student_text, act.corrections) + '</div>' : '')
+        + renderDetailedFeedback(act, act.student_text || '', true)
         + '</div>';
     });
     if (fb.daily_tip) {
@@ -10113,6 +10188,17 @@ function renderDetailedFeedback(fb, writingText) {
     }
   }
 
+  // Your writing, errors marked in place (the "where" — list below is the
+  // "what / why"). Skipped when rendered inside the weekly-package view,
+  // which already prints the marked original above each activity.
+  if (!inPackage) {
+    var _origText = (fb.student_text != null && String(fb.student_text).trim()) ? fb.student_text : (writingText || '');
+    if (_origText && Array.isArray(fb.corrections) && fb.corrections.length) {
+      h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Your writing — mistakes marked</div>'
+        + '<div style="font-size:14px;line-height:1.9;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;font-family:\'Noto Sans KR\',sans-serif;white-space:pre-wrap">' + _markWritingErrors(_origText, fb.corrections) + '</div></div>';
+    }
+  }
+
   // Corrected full text
   if (fb.corrected_full) {
     h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#4ade80;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Corrected Version</div>'
@@ -10127,7 +10213,8 @@ function renderDetailedFeedback(fb, writingText) {
   // action instead of a dead-end read.
   if (fb.corrections && fb.corrections.length) {
     h += '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#f87171;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Corrections (' + fb.corrections.length + ')</div>';
-    fb.corrections.forEach(function(c) {
+    fb.corrections.forEach(function(c, _ci) {
+      var _num = _ci + 1;
       var icon = _fbPatternIcons[c.pattern] || '🔧';
       var label = _fbPatternLabels[c.pattern] || c.pattern;
       var help  = _fbPatternHelp[c.pattern] || '';
@@ -10146,6 +10233,7 @@ function renderDetailedFeedback(fb, writingText) {
         + 'style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;background:rgba(251,191,36,.14);color:#fde68a;border:1px solid rgba(251,191,36,.32);cursor:pointer;font-family:inherit">🔖 Save</button>';
       h += '<div style="padding:10px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;margin-bottom:6px">'
         + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">'
+        +   '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:999px;background:#f87171;color:#1e1b1b;font-size:11px;font-weight:900;padding:0 4px">' + _num + '</span>'
         +   '<span style="font-size:14px">' + icon + '</span>'
         +   '<span title="' + (help.replace(/"/g, '&quot;')) + '" style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;background:rgba(248,113,113,.15);color:#fca5a5;cursor:help">' + label + '</span>'
         +   '<span style="margin-left:auto;display:inline-flex;gap:6px">' + saveBtn + practiceLink + '</span>'
@@ -13533,16 +13621,25 @@ async function generateBeginnerSentences() {
   var cached = sessionStorage.getItem(cacheKey);
   if (cached) {
     try {
-      _bm.sentences = JSON.parse(cached);
-      _bm.generating = false;
-      renderBMStep1();
-      return;
+      var _c = JSON.parse(cached);
+      // Discard a cache poisoned by an older build's generic filler so we
+      // fall through to real (topic) content instead of serving it again.
+      if (Array.isArray(_c) && _c.length && !_isGenericFillerSentences(_c)) {
+        _bm.sentences = _c;
+        _bm.generating = false;
+        renderBMStep1();
+        return;
+      }
+      try { sessionStorage.removeItem(cacheKey); } catch(_) {}
     } catch(e) {}
   }
 
   if (!supaUser) {
     _bm.sentences = getFallbackSentences();
-    sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
+    // Only cache when the fallback is real topic content — never cache the
+    // generic filler under a topic key, or it survives into the logged-in
+    // session and the user keeps seeing off-topic sentences.
+    if (!_fallbackIsGeneric()) sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
     _bm.generating = false;
     renderBMStep1();
     return;
@@ -13554,7 +13651,7 @@ async function generateBeginnerSentences() {
   // is identical.
   var dbCacheKey = 'beg2::' + (topic.id || topic.topic_en || topic.topic_ko || '').toString().slice(0, 80);
   var dbCached = await _aiCacheGet(dbCacheKey);
-  if (dbCached && Array.isArray(dbCached) && dbCached.length >= 3) {
+  if (dbCached && Array.isArray(dbCached) && dbCached.length >= 3 && !_isGenericFillerSentences(dbCached)) {
     _bm.sentences = dbCached;
     sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
     _bm.generating = false;
@@ -13582,12 +13679,17 @@ async function generateBeginnerSentences() {
     var text = (result.content || []).map(function(b){ return b.text||''; }).join('');
     var clean = text.replace(/```json|```/g, '').trim();
     var parsed = JSON.parse(clean);
-    _bm.sentences = parsed.sentences || getFallbackSentences();
+    var genOk = parsed && Array.isArray(parsed.sentences) && parsed.sentences.length >= 3;
+    _bm.sentences = genOk ? parsed.sentences : getFallbackSentences();
 
-    // Cache locally (this session) and globally (all users on this topic).
-    sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
-    if (Array.isArray(_bm.sentences) && _bm.sentences.length >= 3) {
-      _aiCacheSet(dbCacheKey, _bm.sentences);
+    // Cache only REAL generated (or topic-derived) sentences — never the
+    // generic filler, which would otherwise be written to the cross-user DB
+    // cache and served to everyone on this topic.
+    if (genOk || !_fallbackIsGeneric()) {
+      sessionStorage.setItem(cacheKey, JSON.stringify(_bm.sentences));
+      if (Array.isArray(_bm.sentences) && _bm.sentences.length >= 3) {
+        _aiCacheSet(dbCacheKey, _bm.sentences);
+      }
     }
   } catch(e) {
     console.warn('Beginner sentence gen failed:', e);
@@ -13598,14 +13700,57 @@ async function generateBeginnerSentences() {
 }
 
 function getFallbackSentences() {
-  var topic = _todayTopic;
-  return [
-    { ko: '오늘 날씨가 맑아요.', en: 'The weather is clear today.' },
-    { ko: '저는 학교에 가요.', en: 'I go to school.' },
-    { ko: '친구를 만나요.', en: 'I meet a friend.' },
-    { ko: '같이 점심을 먹어요.', en: 'We eat lunch together.' },
-    { ko: '집에 돌아와요.', en: 'I come back home.' },
-  ];
+  // Prefer the day's ACTUAL topic content (already loaded in _aiContent) so a
+  // failed / skipped live generation still shows TOPIC-RELEVANT sentences
+  // instead of the generic weather/school filler learners complained about.
+  // The hardcoded list is a true last resort — only when no daily content is
+  // loaded at all (e.g. a guest before content loads).
+  var out = [], seen = {};
+  function add(ko, en) {
+    if (!ko) return;
+    var k = String(ko).trim();
+    if (!k || seen[k]) return;
+    seen[k] = 1;
+    out.push({ ko: k, en: String(en || '').trim() });
+  }
+  if (_aiContent) {
+    (_aiContent.helpers || []).forEach(function(h){ add(h.ko, h.en); });
+    (_aiContent.grammar || []).forEach(function(g){
+      add(g.example_ko, g.example_en);
+      if (Array.isArray(g.examples)) g.examples.forEach(function(ex){ add(ex && ex.ko, ex && ex.en); });
+    });
+  }
+  (_dailyDictationSentences || []).forEach(function(s){ add(s.ko, s.en); });
+  if (out.length >= 3) return out.slice(0, 6);
+  return out.concat(_GENERIC_FILLER_SENTENCES).slice(0, 6);
+}
+// Topic-agnostic last-resort filler. Kept as a named constant so the read-side
+// guard below can recognise and DISCARD it if an older build cached it under a
+// topic key (sessionStorage or the cross-user DB cache).
+var _GENERIC_FILLER_SENTENCES = [
+  { ko: '오늘 날씨가 맑아요.', en: 'The weather is clear today.' },
+  { ko: '저는 학교에 가요.', en: 'I go to school.' },
+  { ko: '친구를 만나요.', en: 'I meet a friend.' },
+  { ko: '같이 점심을 먹어요.', en: 'We eat lunch together.' },
+  { ko: '집에 돌아와요.', en: 'I come back home.' },
+];
+function _isGenericFillerSentences(arr) {
+  if (!Array.isArray(arr) || !arr.length) return false;
+  var filler = {};
+  _GENERIC_FILLER_SENTENCES.forEach(function(s){ filler[s.ko] = 1; });
+  var hits = 0;
+  arr.forEach(function(s){ if (s && filler[String(s.ko || '').trim()]) hits++; });
+  return hits >= Math.min(3, arr.length); // mostly/all generic → treat as poisoned
+}
+// True when getFallbackSentences() could only return the hardcoded generic
+// list (no topic content loaded) — used to avoid caching topic-agnostic
+// filler under a topic key, which would poison later loads.
+function _fallbackIsGeneric() {
+  if (!_aiContent) return true;
+  var h = (_aiContent.helpers || []).length;
+  var g = (_aiContent.grammar || []).length;
+  var d = (_dailyDictationSentences || []).length;
+  return (h + g + d) < 3;
 }
 
 // ── STEP 1: LISTEN & READ ──────────────────────────────────────────
@@ -13798,14 +13943,14 @@ function bmSelectWord(sentIdx, wordPos) {
   var totalCount = wo.shuffled.filter(function(x){ return x === word; }).length;
   if (usedCount >= totalCount) return;
   wo.selected.push(word);
-  try { if (typeof ttsSpeak === 'function') ttsSpeak(word); } catch(_){}
+  try { if (typeof ttsSpeak === 'function') srSpeak(word); } catch(_){}
   renderBMStep2();
 }
 
 function bmDeselectWord(sentIdx, selIdx) {
   var word = _bm.wordOrders[sentIdx].selected[selIdx];
   _bm.wordOrders[sentIdx].selected.splice(selIdx, 1);
-  try { if (word && typeof ttsSpeak === 'function') ttsSpeak(word); } catch(_){}
+  try { if (word && typeof ttsSpeak === 'function') srSpeak(word); } catch(_){}
   renderBMStep2();
 }
 
@@ -14229,7 +14374,7 @@ function bmRenderDictation() {
     + '<div class="bm-step-title">' + BM_ICON_VOLUME + '<span>Audio Dictation</span></div>'
     + '<div class="bm-step-desc">단어를 듣고 한국어로 입력해보세요. 듣기가 어려우면 건너뛰세요.</div>'
     + '<div class="bm-dict-card">'
-    +   '<button type="button" class="bm-dict-play" onclick="ttsSpeak(\'' + safeKo + '\')" aria-label="Play">'
+    +   '<button type="button" class="bm-dict-play" onclick="srSpeak(\'' + safeKo + '\')" aria-label="Play">'
     +     '<span style="display:inline-flex;width:36px;height:36px;color:#fff">' + BM_ICON_VOLUME + '</span>'
     +   '</button>'
     +   '<div class="bm-dict-input-wrap">'
@@ -14252,7 +14397,7 @@ function bmRenderDictation() {
   // Auto-play TTS shortly after the card mounts so the learner doesn't
   // have to hunt for the play button on each new word.
   setTimeout(function() {
-    try { ttsSpeak(card.ko); } catch(_) {}
+    try { srSpeak(card.ko); } catch(_) {}
   }, 250);
   setTimeout(function() {
     var inp = document.getElementById('bm-dict-input');
@@ -17642,7 +17787,12 @@ function _dctBuildMasterPool() {
   // Grammar example sentences — used for fill-in-the-blank and
   // listen-pick because they're pattern-rich.
   if (_aiContent && Array.isArray(_aiContent.grammar)) {
-    _aiContent.grammar.forEach(function(g){ add(g.example_ko, g.example_en); });
+    _aiContent.grammar.forEach(function(g){
+      add(g.example_ko, g.example_en);
+      // Extra distinct examples per pattern (daily-content-gen 2026-10-15) —
+      // widens the pool so dictation stops recycling the same handful.
+      if (Array.isArray(g.examples)) g.examples.forEach(function(ex){ add(ex && ex.ko, ex && ex.en); });
+    });
   }
   // Topic writing sentences (advanced levels) — bonus variety.
   if (_aiContent && Array.isArray(_aiContent.topic_writing_sentences)) {
