@@ -5044,6 +5044,9 @@ var _dmAvatarColors = ['#7c3aed','#059669','#dc2626','#0284c7','#d97706','#be185
 function getDmColor(name) { var h=0; for(var i=0;i<(name||'').length;i++) h=((h<<5)-h)+(name||'').charCodeAt(i); return _dmAvatarColors[Math.abs(h)%_dmAvatarColors.length]; }
 
 function buildDmChat(chatArr) {
+  // Word-only slang entries have no chat — don't render an empty
+  // "Real Conversation" box for them.
+  if (!Array.isArray(chatArr) || !chatArr.length) return '';
   var html = '<div class="dm-chat"><div class="dm-header">Real Conversation</div>';
   (chatArr || []).forEach(function(m) {
     var bubble = m.msg.replace(/<hl>/g, '<span class="dm-hl">').replace(/<\/hl>/g, '</span>');
