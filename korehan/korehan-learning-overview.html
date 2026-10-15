@@ -401,7 +401,7 @@
         if (_glUniverseLoading) return _glUniverseLoading;
         _glUniverseLoading = new Promise(function (resolve, reject) {
           var s = document.createElement('script');
-          s.src = 'js/kh-universe.js?v=20261015a';
+          s.src = 'js/kh-universe.js?v=20261015b';
           s.async = false;
           s.onload = function () { resolve(); };
           s.onerror = function () { _glUniverseLoading = null; reject(new Error('universe load failed')); };
