@@ -186,7 +186,10 @@
       '<div class="khu-card" id="khu-card" aria-hidden="true">',
       '  <button class="khu-card-close" aria-label="Close" onclick="KHUniverse._clearSelection()">✕</button>',
       '  <div class="khu-card-badge" id="khu-card-badge">—</div>',
-      '  <div class="khu-card-ko" id="khu-card-ko"></div>',
+      '  <div class="khu-card-ko-row">',
+      '    <div class="khu-card-ko" id="khu-card-ko"></div>',
+      '    <button class="khu-card-speak" id="khu-card-speak" type="button" aria-label="Play pronunciation" title="발음 듣기" onclick="var w=(document.getElementById(\'khu-card-ko\')||{}).textContent||\'\';if(window.khSpeak){khSpeak(w,\'female\',this)}else if(window.ttsSpeak){ttsSpeak(w,this)}">&#128266;</button>',
+      '  </div>',
       '  <div class="khu-card-rom" id="khu-card-rom"></div>',
       '  <div class="khu-card-en"  id="khu-card-en"></div>',
       '  <div class="khu-card-related" id="khu-card-related"></div>',
@@ -269,7 +272,14 @@
       '.khu-card-badge.lvl-mastered{background:rgba(244,169,60,.2);color:#ffd089;border:1px solid rgba(244,169,60,.45);}',
       '.khu-card-ko{font-family:\'Noto Serif KR\',serif;font-size:26px;font-weight:900;line-height:1.15;letter-spacing:-.01em;margin-bottom:2px;text-shadow:0 2px 10px rgba(120,100,255,.3);}',
       '.khu-card-rom{font-size:12px;font-style:italic;color:rgba(200,210,255,.5);margin-bottom:6px;}',
+      '.khu-card-ko-row{display:flex;align-items:center;gap:10px;margin-bottom:2px;}',
+      '.khu-card-ko-row .khu-card-ko{margin-bottom:0;}',
+      '.khu-card-speak{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:999px;border:1.5px solid rgba(167,139,250,.4);background:rgba(167,139,250,.14);color:#e0e4ff;font-size:16px;line-height:1;cursor:pointer;padding:0;transition:all .15s;}',
+      '.khu-card-speak:hover{border-color:rgba(196,181,253,.8);background:rgba(167,139,250,.28);}',
+      '.khu-card-speak.kh-speaking{animation:khuSpeakPulse .9s ease-in-out infinite;}',
+      '@keyframes khuSpeakPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.14);}}',
       '.khu-card-en{font-size:14px;font-weight:700;color:#a8c4ff;line-height:1.4;margin-bottom:12px;}',
+      '.khu-related-chip-en{font-size:11px;font-weight:600;color:rgba(200,210,255,.65);margin-left:2px;}',
       '.khu-card-related{display:flex;flex-wrap:wrap;gap:6px;min-height:0;}',
       '.khu-card-related:empty{display:none;}',
       '.khu-related-label{flex:0 0 100%;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(200,210,255,.5);margin:4px 0 4px;}',
@@ -1926,7 +1936,10 @@
   }
 
   // ── Related words (cached forever in localStorage) ─────────
-  var RELATED_KEY = function(ko) { return 'kh_related_' + ko; };
+  // v2: prompt was tightened to reject syllable-only matches (도시→도시락).
+  // Bumping the key prefix invalidates old localStorage caches that may hold
+  // those bad results, so they regenerate with the better prompt.
+  var RELATED_KEY = function(ko) { return 'kh_related_v2_' + ko; };
 
   function readRelatedFromCache(ko) {
     try {
@@ -1966,7 +1979,10 @@
     var prompt = 'Generate exactly 5 Korean vocabulary words that are semantically related to "' + ko + '"'
       + (en ? ' (meaning: ' + en + ')' : '')
       + '. Rules:\n'
-      + '- Related by topic, category, or meaning family (synonyms, antonyms, same domain, common collocations).\n'
+      + '- Related by MEANING ONLY: topic, category, synonyms, antonyms, same semantic domain, or common collocations.\n'
+      + '- CRITICAL: NEVER pick a word just because it shares a syllable or substring with "' + ko + '". '
+      +   'e.g. for 도시 (city) do NOT return 도시락 (lunchbox); for 사과 (apple/apology) do NOT mix the two senses by spelling. '
+      +   'If a candidate is only spelled similarly but means something unrelated, reject it.\n'
       + '- Use the DICTIONARY FORM for verbs and adjectives (ending in -다).\n'
       + '- Avoid trivial high-frequency words (정말, 많이, 너무, 진짜, 아주, 매우, 조금, 좀, 잘, 또, 다, 더, 그냥, 그리고, 그래서, 한국, 사람, 것, 수, 거, 때, 말).\n'
       + '- Include at least 2 intermediate-difficulty words.\n'
@@ -2036,6 +2052,7 @@
       var en  = (r.en || '').replace(/</g,'&lt;').replace(/"/g,'&quot;');
       return '<button class="khu-related-chip" data-idx="' + idx + '" title="' + en + '">'
         + '<span class="khu-related-chip-ko">' + ko + '</span>'
+        + (en ? '<span class="khu-related-chip-en">' + en + '</span>' : '')
         + '<span class="khu-related-chip-plus" aria-hidden="true">＋</span>'
         + '</button>';
     }).join('');
