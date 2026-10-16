@@ -917,7 +917,7 @@
 <script src="js/features/fill-blank.js?v=20261013c"></script>
 <script src="korehan-shared.js?v=20261015d"></script>
 <script src="js/kh-canvas-engine.js?v=20260527f"></script>
-<script src="js/kh-quiz-arena.js?v=20260502a"></script>
+<script src="js/kh-quiz-arena.js?v=20261016a"></script>
 <script src="js/kh-flashcards.js?v=20261012a"></script>
 <script src="js/kh-listening.js?v=20260527f"></script>
 <script src="js/kh-grammar-tree.js?v=20260527f"></script>
@@ -2213,20 +2213,30 @@ async function drGenerateQuestions() {
     questions.push({ type:'meaning', word_ko: w.word_ko, word_rom: w.word_rom, correct: w.word_en, choices: _drShuffle([w.word_en].concat(wrongs)), slot: 'vocab', from: w.from });
   });
 
-  // 2 grammar fill-in (from today's topic grammar or article grammar)
-  if (grammarPool.length >= 2) {
+  // 2 grammar questions — CONCISE "pick the pattern that means this".
+  // Old version made all 4 choices full explanation paragraphs — a wall of
+  // text (user feedback: "문법 설명 한가득"). Now the prompt is a ONE-LINE
+  // meaning (+ the Korean example as subtext) and the 4 choices are short
+  // grammar patterns.
+  if (grammarPool.length >= 4) {
     _drByFrom(grammarPool, 'yesterday').slice(0, 1).concat(_drByFrom(grammarPool, 'today')).slice(0, 2).forEach(function(g) {
       var pattern = g.pattern || '';
       var explanation = g.explanation || '';
       var exKo = g.example_ko || '';
-      if (pattern && explanation) {
-        // Create a "what does this grammar mean?" question
-        var wrongGrammars = _drShuffle(grammarPool.filter(function(x){ return x.pattern !== pattern; })).slice(0, 3);
-        var choices = [explanation].concat(wrongGrammars.map(function(x){ return x.explanation || ''; })).filter(Boolean);
-        if (choices.length >= 4) {
-          questions.push({ type:'meaning', word_ko: pattern, word_rom: exKo, correct: explanation, choices: _drShuffle(choices.slice(0, 4)), slot: 'grammar', from: g.from });
-        }
-      }
+      if (!pattern || !explanation) return;
+      // One-line meaning: first sentence of the explanation, capped short.
+      var meaning = explanation.split(/(?<=[.!?。])\s/)[0].trim();
+      if (meaning.length > 70) meaning = meaning.slice(0, 68).trim() + '…';
+      // Short distractor patterns, de-duplicated, distinct from the answer.
+      var seenPat = {}; seenPat[pattern] = 1;
+      var wrongPatterns = [];
+      _drShuffle(grammarPool).forEach(function(x) {
+        var p = x.pattern || '';
+        if (p && !seenPat[p]) { seenPat[p] = 1; wrongPatterns.push(p); }
+      });
+      if (wrongPatterns.length < 3) return;
+      var choices = _drShuffle([pattern].concat(wrongPatterns.slice(0, 3)));
+      questions.push({ type:'meaning', label:'Which grammar pattern means this?', word_ko: meaning, word_rom: exKo, correct: pattern, choices: choices, slot: 'grammar', from: g.from });
     });
   }
 
