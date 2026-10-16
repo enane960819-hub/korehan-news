@@ -52,6 +52,17 @@ function srSpeak(text, btnEl) {
 }
 try { window.srSpeak = srSpeak; } catch(_) {}
 
+// Shared cancelable auto-advance for exercise answer flows — so the learner
+// never has to tap "Next" after answering. Any manual Next button stays as an
+// optional skip and cancels the pending timer. Correct answers advance faster
+// than wrong ones so the right answer has a beat to register.
+var _srAutoNext = null;
+function _srScheduleNext(fn, correct) {
+  clearTimeout(_srAutoNext);
+  _srAutoNext = setTimeout(function(){ _srAutoNext = null; try { fn(); } catch(_) {} }, correct ? 950 : 1750);
+}
+function _srCancelAutoNext() { clearTimeout(_srAutoNext); _srAutoNext = null; }
+
 var _currentLevel   = 'Beginner';
 var _todayTopic     = null;   // {id, topic_ko, topic_en, category, level}
 var _aiContent      = null;   // {vocab:[], grammar:[], helpers:[]}
@@ -4572,10 +4583,16 @@ function _keCheckFillChoice(btn, chosen, correct) {
       + '</div>';
     if (typeof playWrongSound === 'function') playWrongSound();
   }
-  if (fb) fb.innerHTML += '<button onclick="window._keFillIdx=(window._keFillIdx||0)+1;_keRenderFillQuiz()" '
+  if (fb) fb.innerHTML += '<button onclick="_keFillNext()" '
     + 'style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;'
     + 'background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;'
-    + 'cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(124,58,237,.3)">다음 →</button>';
+    + 'cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(124,58,237,.3)">Next →</button>';
+  _srScheduleNext(_keFillNext, isCorrect);
+}
+function _keFillNext() {
+  _srCancelAutoNext();
+  window._keFillIdx = (window._keFillIdx || 0) + 1;
+  _keRenderFillQuiz();
 }
 
 // Legacy typed-input check — kept so any onclick handler from a
@@ -4805,8 +4822,14 @@ function _keSituationAnswer(btn, chosenIdx, correctIdx, why) {
       + '<div style="font-weight:800;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';margin-bottom:4px">' + (isCorrect ? '&#9989; \uc815\ub2f5!' : '&#10060; \uc624\ub2f5 \u2014 Correct: ' + (correctExp&&correctExp.ko||'')) + '</div>'
       + (why ? '<div style="color:rgba(255,255,255,.5)">' + why + '</div>' : '')
       + '</div>'
-      + '<button onclick="window._keSitIdx=(window._keSitIdx||0)+1;_keRenderSituationQuiz()" style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &#8594;</button>';
+      + '<button onclick="_keSitNext()" style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &#8594;</button>';
   }
+  _srScheduleNext(_keSitNext, isCorrect);
+}
+function _keSitNext() {
+  _srCancelAutoNext();
+  window._keSitIdx = (window._keSitIdx || 0) + 1;
+  _keRenderSituationQuiz();
 }
 
 // ── Final Combined Score Screen ──
@@ -4877,6 +4900,7 @@ async function saveKeyExpr(btn) {
   btn.style.background = 'rgba(251,191,36,.3)';
 }
 function closeKeyExpressionsModal() {
+  _srCancelAutoNext();
   var modal = document.getElementById('ke-modal');
   if (modal) modal.classList.add('hidden');
   document.body.style.overflow = '';
@@ -12096,6 +12120,7 @@ function openPictureDescription() {
   renderPicturePrompt();
 }
 function closePictureDescription() {
+  _srCancelAutoNext();
   document.getElementById('pd-modal').classList.add('hidden');
   document.body.style.overflow = '';
   _pdStep = 1;
@@ -12419,7 +12444,8 @@ function _pdCheckCorrectPick(btn, isCorrect, correctText) {
     }
   }
   var nav = document.getElementById('pd-nav');
-  if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="_pdGoStep(3)">Next Step →</button>';
+  if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="_srCancelAutoNext();_pdGoStep(3)">Next Step →</button>';
+  _srScheduleNext(function(){ _pdGoStep(3); }, isCorrect);
 }
 
 function _pdRenderStep3(item) {
@@ -17450,6 +17476,7 @@ function openDictationModal() {
 
 // Switch between Topic-drill (existing 4-step) / Phoneme / Connected speech.
 function _dctSwitchMode(mode) {
+  _srCancelAutoNext();
   _dctMode = mode;
   // Highlight the active tab
   document.querySelectorAll('.dct-mode-tab').forEach(function(b) {
@@ -17469,6 +17496,7 @@ function _dctSwitchMode(mode) {
   }
 }
 function closeDictationModal() {
+  _srCancelAutoNext();
   var m = document.getElementById('dct-modal');
   if (m) m.classList.add('hidden');
   document.body.style.overflow = '';
@@ -18509,11 +18537,14 @@ function _dctFbPick(ci) {
   if (!_dctFbState || _dctFbState.answered) return;
   _dctFbState.picked = _dctFbState.choices[ci];
   _dctFbState.answered = true;
-  if (_dctFbState.picked === _dctFbState.answer) _dctFbScore++;
+  var right = _dctFbState.picked === _dctFbState.answer;
+  if (right) _dctFbScore++;
   _dctRenderFillBlank();
+  _srScheduleNext(_dctFbNext, right);
 }
 
 function _dctFbNext() {
+  _srCancelAutoNext();
   _dctFbIdx++;
   _dctFbState = null;
   _dctRenderFillBlank();
@@ -18602,11 +18633,14 @@ function _dctLpPick(ci) {
   var pool = _dctPool();
   _dctLpState.picked = _dctLpState.choices[ci];
   _dctLpState.answered = true;
-  if (_dctLpState.picked && _dctLpState.picked.ko === pool[_dctLpIdx].ko) _dctLpScore++;
+  var right = _dctLpState.picked && _dctLpState.picked.ko === pool[_dctLpIdx].ko;
+  if (right) _dctLpScore++;
   _dctRenderListenPick();
+  _srScheduleNext(_dctLpNext, right);
 }
 
 function _dctLpNext() {
+  _srCancelAutoNext();
   _dctLpIdx++;
   _dctLpState = null;
   _dctRenderListenPick();
