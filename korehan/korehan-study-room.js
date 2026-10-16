@@ -15882,6 +15882,9 @@ async function _generateGrammarForCurriculumPattern(item) {
 var _gfPattern = null;
 var _gfExercises = null;
 var _GF_TABS = ['learn','spotit','fill','translate','build'];
+// Stepper labels — the tab bar is a linear progress stepper, not free-nav tabs.
+var _GF_STEP_NUM  = ['①','②','③','④','⑤'];
+var _GF_STEP_NAME = ['Learn','Spot It','Practice','Translate','Judge It'];
 
 function openGrammarFocusModal() {
   if (!ensureStudyUnlocked()) return;
@@ -16009,15 +16012,24 @@ function switchGFTab(tabId, btn) {
       }
     }
   }
-  _GF_TABS.forEach(function(t) {
+  // Render the tab bar as a linear PROGRESS STEPPER (one-task-per-screen):
+  //   current → purple + underline, done → green ✓ (tap to review),
+  //   upcoming/locked → dim + not-allowed. Forward-jump stays blocked above.
+  _GF_TABS.forEach(function(t, ti) {
     var pane = document.getElementById('gf-tab-' + t);
     if (pane) pane.style.display = t === tabId ? 'block' : 'none';
     var tb = document.getElementById('gft-' + t);
-    if (tb) {
-      tb.style.color            = t === tabId ? '#a78bfa' : '#94a3b8';
-      tb.style.borderBottomColor = t === tabId ? '#a78bfa' : 'transparent';
-      tb.style.fontWeight        = t === tabId ? '800' : '700';
-    }
+    if (!tb) return;
+    var isCurrent = (t === tabId);
+    var isDone = !!_GF_STEP_DONE[t];
+    var locked = false;
+    for (var k = 0; k < ti; k++) { if (!_GF_STEP_DONE[_GF_TABS[k]]) { locked = true; break; } }
+    tb.textContent = ((isDone && !isCurrent) ? '✓' : _GF_STEP_NUM[ti]) + ' ' + _GF_STEP_NAME[ti];
+    tb.style.borderBottomColor = isCurrent ? '#a78bfa' : 'transparent';
+    tb.style.fontWeight = isCurrent ? '800' : '700';
+    if (isCurrent)      { tb.style.color = '#a78bfa';             tb.style.opacity = '1';  tb.style.cursor = 'pointer'; }
+    else if (isDone)    { tb.style.color = '#86efac';            tb.style.opacity = '1';  tb.style.cursor = 'pointer'; }
+    else                { tb.style.color = 'rgba(255,255,255,.4)'; tb.style.opacity = locked ? '.45' : '.8'; tb.style.cursor = locked ? 'not-allowed' : 'pointer'; }
   });
   // Scroll modal body to top on tab switch
   var body = document.querySelector('.gf-modal-body');
@@ -16065,6 +16077,9 @@ function loadGFPatterns(patterns) {
   loadGFFill(first);
   loadGFTranslate(first);
   loadGFBuild(first);
+  // Refresh the stepper to the freshly-reset state (Learn current, rest locked)
+  // — _GF_STEP_DONE was reset above, after the modal's initial switchGFTab.
+  switchGFTab('learn', document.getElementById('gft-learn'));
 }
 
 function selectGFPattern(idx) {
