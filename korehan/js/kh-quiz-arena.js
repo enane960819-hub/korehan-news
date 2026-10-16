@@ -31,6 +31,7 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
   var _particleOverlay = null;
   var _onFinish = null;
   var _orderSelected = [];
+  var _advTimer = null;  // auto-advance timer after an answer
   var _reservePool = []; // replacement questions for skipped listening
 
   // ── DOM IDs ──
@@ -413,6 +414,12 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
       nextBtn.textContent = _index >= _questions.length - 1 ? 'Finish' : 'Next →';
     }
     _renderProgressPath();
+
+    // Auto-advance so the learner never has to tap "Next" after answering —
+    // the button stays as an optional skip. A short beat to register the
+    // result (longer when wrong so the correct answer lands).
+    clearTimeout(_advTimer);
+    _advTimer = setTimeout(function() { _advTimer = null; QA.next(); }, correct ? 950 : 1750);
   }
 
   function _showComboBadge() {
@@ -558,6 +565,7 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
   };
 
   QA.next = function() {
+    clearTimeout(_advTimer); _advTimer = null;
     _index++;
     if (_index >= _questions.length) {
       _showScore();
@@ -567,6 +575,7 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
   };
 
   QA.close = function() {
+    clearTimeout(_advTimer); _advTimer = null;
     var overlay = document.getElementById(OVERLAY_ID);
     if (overlay) {
       overlay.classList.remove('active');
