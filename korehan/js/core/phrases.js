@@ -345,13 +345,13 @@ async function saveSharedPhrases(rows, opts) {
     ], { onConflict: 'key' });
     if (res && res.error) {
       try { console.error('[saveSharedPhrases] DB upsert FAILED:', res.error); } catch(_) {}
-      try { if (typeof toast === 'function') toast('⚠ DB 저장 실패: ' + (res.error.message || 'unknown') + ' — 홈에 반영되지 않습니다', true); } catch(_) {}
+      try { if (typeof toast === 'function') toast('⚠ DB save failed: ' + (res.error.message || 'unknown') + ' — won\'t appear on Home', true); } catch(_) {}
     } else {
       try { console.log('[saveSharedPhrases] DB updated, ' + normalized.length + ' phrases, rotation_offset=' + newOffset); } catch(_) {}
     }
   } catch(e) {
     try { console.error('[saveSharedPhrases] DB upsert THREW:', e); } catch(_) {}
-    try { if (typeof toast === 'function') toast('⚠ DB 저장 예외: ' + (e && e.message || e), true); } catch(_) {}
+    try { if (typeof toast === 'function') toast('⚠ DB save exception: ' + (e && e.message || e), true); } catch(_) {}
   }
   return normalized;
 }

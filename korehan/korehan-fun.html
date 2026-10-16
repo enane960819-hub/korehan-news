@@ -103,7 +103,7 @@
 <script src="js/core/user-analytics.js?v=20261014a"></script>
   <script src="js/core/plans.js?v=20261013a"></script>
   <script src="js/core/article-cache.js?v=20261010a"></script>
-  <script src="js/core/phrases.js?v=20260525r"></script>
+  <script src="js/core/phrases.js?v=20261016a"></script>
   <script src="js/core/saved-words.js?v=20261013a"></script>
   <script src="js/features/video-player.js?v=20260525r"></script>
   <script src="js/core/articles.js?v=20261013a"></script>
@@ -112,7 +112,7 @@
   <script src="js/features/daily-mission.js?v=20261014a"></script>
   <script src="js/features/reading-tracker.js?v=20260525r"></script>
   <script src="js/features/bookmarks.js?v=20260525r"></script>
-  <script src="js/features/comments.js?v=20260527i"></script>
+  <script src="js/features/comments.js?v=20261016a"></script>
   <script src="js/features/sidebar.js?v=20260525r"></script>
   <script src="js/features/analyze-mode.js?v=20260525r"></script>
   <script src="js/features/translation.js?v=20261012a"></script>
@@ -138,15 +138,15 @@
   var games = [
     {id:'word-drop',title:'Word Drop',sub:'Type before they fall',href:'korehan-fun-worddrop.html',cv:'cv-worddrop',
      anim:function(){var w=['친구','학교','사랑','음식','여행','커피','영화','행복'];var h='';for(var i=0;i<8;i++)h+='<div class="fl" style="left:'+((i*13+5)%90)+'%;animation-duration:'+(2.5+i*.4)+'s;animation-delay:-'+(i*.6)+'s">'+w[i]+'</div>';return h;}},
-    {id:'chosung-quiz',title:'초성 Quiz',sub:'Guess from consonants',href:'korehan-fun-chosung.html',cv:'cv-chosung',
+    {id:'chosung-quiz',title:'Chosung Quiz',sub:'Guess from consonants',href:'korehan-fun-chosung.html',cv:'cv-chosung',
      anim:function(){var c=['ㅎㄱ','ㅊㄱ','ㅅㄹ','ㅇㅅ','ㅎㅂ','ㄱㅈ','ㅇㅎ'];var h='';for(var i=0;i<7;i++)h+='<div class="ch" style="left:'+(8+i*13)+'%;top:'+(10+((i*17)%60))+'%;animation-delay:'+(i*.3)+'s;font-size:'+(24+i%3*6)+'px">'+c[i]+'</div>';return h;}},
     {id:'memory-match',title:'Memory Match',sub:'Flip & match pairs',href:'korehan-fun-memory.html',cv:'cv-memory',
      anim:function(){var t=['가','나','A','B','다','C','라','D','마','E','바','F'];var h='';for(var i=0;i<12;i++){var r=Math.floor(i/4),col=i%4;h+='<div class="mc" style="left:'+(12+col*22)+'%;top:'+(12+r*32)+'%;animation-delay:'+(i*.25)+'s">'+t[i]+'</div>';}return h;}},
     {id:'hangul-tetris',title:'Hangul Tetris',sub:'Build Korean syllables',href:'korehan-fun-hangul-tetris.html',cv:'cv-tetris',
      anim:function(){var j=['ㅎ','ㅏ','ㄴ','ㄱ','ㅜ','ㄹ','ㅁ','ㅣ'];var h='';for(var i=0;i<8;i++)h+='<div class="tb" style="left:'+((i*14+3)%85)+'%;animation-duration:'+(2+i*.3)+'s;animation-delay:-'+(i*.5)+'s">'+j[i]+'</div>';return h;}},
-    {id:'sentence-order',title:'문장 순서',sub:'Build sentences in order',href:'korehan-fun-sentence-order.html',cv:'cv-sentorder',
+    {id:'sentence-order',title:'Sentence Order',sub:'Build sentences in order',href:'korehan-fun-sentence-order.html',cv:'cv-sentorder',
      anim:function(){var w=['저는','한국어를','배워요','오늘','날씨가','좋아요','커피','한 잔','주세요'];var h='';for(var i=0;i<9;i++)h+='<div class="sw" style="left:'+(8+(i%3)*32)+'%;top:'+(12+Math.floor(i/3)*30)+'%;animation-delay:'+(i*.25)+'s">'+w[i]+'</div>';return h;}},
-    {id:'dictation',title:'받아쓰기',sub:'Listen & type Korean',href:'korehan-fun-dictation.html',cv:'cv-dictation',
+    {id:'dictation',title:'Dictation',sub:'Listen & type Korean',href:'korehan-fun-dictation.html',cv:'cv-dictation',
      anim:function(){
        // Dictation card: headphones / volume SVG plus the existing
        // ♪♫◐◑ Unicode music glyphs (not emoji — those are kept).

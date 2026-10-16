@@ -156,7 +156,7 @@
     var wrap = document.createElement('div');
     wrap.className = 'kh-jamo-kb';
     wrap.setAttribute('role', 'group');
-    wrap.setAttribute('aria-label', '한글 자모 키보드');
+    wrap.setAttribute('aria-label', 'Hangul jamo keyboard');
 
     function sync() {
       inputEl.value = ime.value();

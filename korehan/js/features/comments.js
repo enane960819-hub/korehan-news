@@ -80,10 +80,10 @@ function _khRelTime(iso) {
   if (!iso) return '';
   var d = new Date(iso);
   var diff = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (diff < 60)        return '방금 전';
-  if (diff < 3600)      return Math.floor(diff/60) + '분 전';
-  if (diff < 86400)     return Math.floor(diff/3600) + '시간 전';
-  if (diff < 7*86400)   return Math.floor(diff/86400) + '일 전';
+  if (diff < 60)        return 'just now';
+  if (diff < 3600)      return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400)     return Math.floor(diff/3600) + 'h ago';
+  if (diff < 7*86400)   return Math.floor(diff/86400) + 'd ago';
   return d.toLocaleDateString('ko-KR', { year:'2-digit', month:'numeric', day:'numeric' });
 }
 
@@ -137,7 +137,7 @@ async function loadComments(articleId) {
   var error = sel.error;
 
   if (error || !data || !data.length) {
-    listEl.innerHTML = '<p class="cm-empty">아직 댓글이 없어요. 첫 댓글을 남겨보세요!</p>';
+    listEl.innerHTML = '<p class="cm-empty">No comments yet. Be the first!</p>';
     if (countEl) countEl.textContent = '';
     return;
   }
@@ -205,22 +205,22 @@ async function loadComments(articleId) {
       : '';
 
     var menu = (isOwn || isAdmin)
-      ? '<button class="cm-mini cm-danger" onclick="deleteComment(\'' + escapeAttr(c.id) + '\')" title="삭제">삭제</button>'
+      ? '<button class="cm-mini cm-danger" onclick="deleteComment(\'' + escapeAttr(c.id) + '\')" title="Delete">Delete</button>'
       : (supaUser
-          ? '<button class="cm-mini" onclick="reportComment(\'' + escapeAttr(c.id) + '\')" title="신고하고 가리기">신고</button>'
+          ? '<button class="cm-mini" onclick="reportComment(\'' + escapeAttr(c.id) + '\')" title="Report and hide">Report</button>'
           : '');
 
     var replyBtn = supaUser
-      ? '<button class="cm-mini cm-reply-toggle" onclick="khCmToggleReply(\'' + escapeAttr(c.id) + '\')">답글</button>'
+      ? '<button class="cm-mini cm-reply-toggle" onclick="khCmToggleReply(\'' + escapeAttr(c.id) + '\')">Reply</button>'
       : '';
 
     var actions =
       '<div class="cm-actions">'
-      + '<button class="cm-react' + likeOn    + '" data-type="like"    onclick="khCmReact(\'' + escapeAttr(c.id) + '\', 1)" aria-label="좋아요">'
+      + '<button class="cm-react' + likeOn    + '" data-type="like"    onclick="khCmReact(\'' + escapeAttr(c.id) + '\', 1)" aria-label="Like">'
       +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10v11H4V10z"/><path d="M7 10l4-7c1.5 0 2.5 1 2.5 2.5V10h5a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.3 21H7"/></svg>'
       +   '<span id="cm-like-' + c.id + '">' + agg.like + '</span>'
       + '</button>'
-      + '<button class="cm-react' + dislikeOn + '" data-type="dislike" onclick="khCmReact(\'' + escapeAttr(c.id) + '\', -1)" aria-label="싫어요">'
+      + '<button class="cm-react' + dislikeOn + '" data-type="dislike" onclick="khCmReact(\'' + escapeAttr(c.id) + '\', -1)" aria-label="Dislike">'
       +   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 14V3h3v11z"/><path d="M17 14l-4 7c-1.5 0-2.5-1-2.5-2.5V14h-5a2 2 0 0 1-2-2.3l1.2-6A2 2 0 0 1 6.7 3H17"/></svg>'
       +   '<span id="cm-dislike-' + c.id + '">' + agg.dislike + '</span>'
       + '</button>'
@@ -231,14 +231,14 @@ async function loadComments(articleId) {
 
     var replyForm =
       '<div class="cm-reply-form" id="cm-reply-form-' + c.id + '" hidden>'
-      + '<textarea placeholder="@' + escapeAttr(c.user_name || '') + '에게 답글…" maxlength="500" rows="1"></textarea>'
+      + '<textarea placeholder="Reply to @' + escapeAttr(c.user_name || '') + '…" maxlength="500" rows="1"></textarea>'
       + '<div class="cm-reply-form-row">'
-      +   '<button class="cm-mini" onclick="khCmToggleReply(\'' + escapeAttr(c.id) + '\')">취소</button>'
-      +   '<button class="cm-reply-submit" onclick="khCmSubmitReply(\'' + escapeAttr(c.id) + '\')">등록</button>'
+      +   '<button class="cm-mini" onclick="khCmToggleReply(\'' + escapeAttr(c.id) + '\')">Cancel</button>'
+      +   '<button class="cm-reply-submit" onclick="khCmSubmitReply(\'' + escapeAttr(c.id) + '\')">Post</button>'
       + '</div>'
       + '</div>';
 
-    var nameLabel = escapeHTML(c.user_name || '익명');
+    var nameLabel = escapeHTML(c.user_name || 'Anonymous');
     var nameHtml = profileHref
       ? '<a class="cm-name cm-name-link" href="' + profileHref + '" style="color:inherit;text-decoration:none">' + nameLabel + '</a>'
       : '<span class="cm-name">' + nameLabel + '</span>';
@@ -272,10 +272,10 @@ async function loadComments(articleId) {
   }).join('');
 
   var footer = hiddenCount > 0
-    ? '<div class="cm-hidden-note">' + hiddenCount + '개의 댓글이 가려졌습니다. <button onclick="_khShowHiddenComments()">모두 보기</button></div>'
+    ? '<div class="cm-hidden-note">' + hiddenCount + ' comments hidden. <button onclick="_khShowHiddenComments()">Show all</button></div>'
     : '';
 
-  listEl.innerHTML = (html || '<p class="cm-empty">아직 댓글이 없어요. 첫 댓글을 남겨보세요!</p>') + footer;
+  listEl.innerHTML = (html || '<p class="cm-empty">No comments yet. Be the first!</p>') + footer;
 }
 
 // ── Reply form toggle / submit ────────────────────────────────
@@ -300,14 +300,14 @@ async function khCmSubmitReply(parentId) {
   var ta = formEl.querySelector('textarea');
   // MOD-F10: strip invisible chars before validation.
   var content = _khStripInvisible(ta.value || '').trim();
-  if (!content || content.length < COMMENT_MIN_LENGTH) { toast('댓글이 너무 짧아요.', true); return; }
-  if (content.length > COMMENT_MAX_LENGTH)            { toast('댓글이 너무 길어요.', true); return; }
-  if (isSpamComment(content))                          { toast('스팸으로 보여요. 내용을 다시 확인해 주세요.', true); return; }
+  if (!content || content.length < COMMENT_MIN_LENGTH) { toast('Comment is too short.', true); return; }
+  if (content.length > COMMENT_MAX_LENGTH)            { toast('Comment is too long.', true); return; }
+  if (isSpamComment(content))                          { toast('Looks like spam. Please recheck.', true); return; }
   var now = Date.now();
   var last = _commentLastTime[supaUser.id] || 0;
   if (now - last < COMMENT_COOLDOWN_MS) {
     var wait = Math.ceil((COMMENT_COOLDOWN_MS - (now - last)) / 1000);
-    toast(wait + '초 후 다시 시도해 주세요.', true); return;
+    toast('Try again in ' + wait + 's.', true); return;
   }
   var sb = getSupa();
   if (!sb) return;
@@ -334,17 +334,17 @@ async function khCmSubmitReply(parentId) {
       p_parent_id:  parentId,
     });
   } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origLabel || '등록'; }
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origLabel || 'Post'; }
   }
   if (rpc.error || (rpc.data && rpc.data.ok === false)) {
     var why = (rpc.data && rpc.data.error) || (rpc.error && rpc.error.message) || 'unknown';
     if (why === 'rate_limited') {
       var w = (rpc.data && rpc.data.wait_seconds) || 15;
-      toast(w + '초 후 다시 시도해 주세요.', true);
+      toast('Try again in ' + w + 's.', true);
     } else if (why === 'invalid_length') {
-      toast('답글 길이가 올바르지 않습니다.', true);
+      toast('Reply length is invalid.', true);
     } else {
-      toast('답글 등록 실패: ' + why, true);
+      toast('Failed to post reply: ' + why, true);
     }
     return;
   }
@@ -364,14 +364,14 @@ async function khCmSubmitReply(parentId) {
   _commentLastTime[supaUser.id] = Date.now();
   ta.value = '';
   formEl.setAttribute('hidden', '');
-  toast(_khCmFeatures.parentOk ? '답글 등록' : '답글 (단일)');
+  toast(_khCmFeatures.parentOk ? 'Reply posted' : 'Reply');
   loadComments(articleId);
 }
 
 // ── Like / dislike toggle ────────────────────────────────────
 async function khCmReact(commentId, type) {
   if (!supaUser) { openAuthModal('signin'); return; }
-  if (!_khCmFeatures.reactOk) { toast('잠시 후 다시 시도해 주세요.', true); return; }
+  if (!_khCmFeatures.reactOk) { toast('Please try again shortly.', true); return; }
   var sb = getSupa();
   if (!sb) return;
 
@@ -429,9 +429,9 @@ async function khCmReact(commentId, type) {
     // skip the table. Better than throwing a confusing error.
     if (/comment_reactions/i.test(msg) || /relation .* does not exist/i.test(msg)) {
       _khCmFeatures.reactOk = false;
-      toast('반응 기능이 아직 준비 중이에요.', true);
+      toast('Reactions aren\'t ready yet.', true);
     } else {
-      toast('반응 저장 실패', true);
+      toast('Failed to save reaction', true);
       // Best-effort rollback.
       if (was === type) {
         if (type === 1) agg.like++; else agg.dislike++;
@@ -467,11 +467,11 @@ async function reportComment(commentId) {
   // bespoke modal for marginal value. Owner can upgrade to a chip
   // selector later.
   var reason = window.prompt(
-    '이 댓글을 신고하는 이유를 한 줄로 입력해 주세요\n(스팸 / 욕설 / 사칭 / 부적절 / 광고 등):'
+    'Enter a one-line reason for reporting\n(spam / abuse / impersonation / inappropriate / ads):'
   );
   if (reason === null) return;
   reason = String(reason || '').trim().slice(0, 100);
-  if (!reason) { toast('신고 사유를 입력해 주세요.', true); return; }
+  if (!reason) { toast('Please enter a report reason.', true); return; }
 
   var sb = getSupa();
   if (!sb) return;
@@ -484,9 +484,9 @@ async function reportComment(commentId) {
   if (rpc.error || (rpc.data && rpc.data.ok === false)) {
     var why = (rpc.data && rpc.data.error) || (rpc.error && rpc.error.message) || 'unknown';
     if (why === 'cannot_report_self') {
-      toast('본인 댓글은 신고할 수 없습니다.', true);
+      toast('You cannot report your own comment.', true);
     } else {
-      toast('신고 실패: ' + why, true);
+      toast('Report failed: ' + why, true);
     }
     return;
   }
@@ -494,7 +494,7 @@ async function reportComment(commentId) {
   var h = _khHiddenComments();
   h[commentId] = Date.now();
   _khSaveHiddenComments(h);
-  toast('신고가 접수되었습니다. 검토 대기열에 추가됨.', 'success');
+  toast('Report received. Added to the review queue.', 'success');
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id');
   if (id) loadComments(id);
@@ -541,13 +541,13 @@ async function submitComment(articleId) {
   var content = _khStripInvisible(input ? input.value : '').trim();
 
   if (!content || content.length < COMMENT_MIN_LENGTH) {
-    toast('댓글이 너무 짧아요.', true); return;
+    toast('Comment is too short.', true); return;
   }
   if (content.length > COMMENT_MAX_LENGTH) {
-    toast('댓글이 너무 길어요 (최대 ' + COMMENT_MAX_LENGTH + '자).', true); return;
+    toast('Comment is too long (max ' + COMMENT_MAX_LENGTH + ' chars).', true); return;
   }
   if (isSpamComment(content)) {
-    toast('스팸으로 보여요. 내용을 다시 확인해 주세요.', true); return;
+    toast('Looks like spam. Please recheck.', true); return;
   }
   // Client-side cooldown is kept as a UX backstop (avoids a round
   // trip), but the server-side 15s rate-limit inside submit_comment
@@ -556,7 +556,7 @@ async function submitComment(articleId) {
   var last = _commentLastTime[supaUser.id] || 0;
   if (now - last < COMMENT_COOLDOWN_MS) {
     var wait = Math.ceil((COMMENT_COOLDOWN_MS - (now - last)) / 1000);
-    toast(wait + '초 후 다시 시도해 주세요.', true); return;
+    toast('Try again in ' + wait + 's.', true); return;
   }
 
   var sb = getSupa();
@@ -574,23 +574,23 @@ async function submitComment(articleId) {
     var why = (rpc.data && rpc.data.error) || (rpc.error && rpc.error.message) || 'unknown';
     if (why === 'rate_limited') {
       var w = (rpc.data && rpc.data.wait_seconds) || 15;
-      toast(w + '초 후 다시 시도해 주세요.', true);
+      toast('Try again in ' + w + 's.', true);
     } else if (why === 'invalid_length') {
-      toast('댓글 길이가 올바르지 않습니다.', true);
+      toast('Comment length is invalid.', true);
     } else {
-      toast('댓글 등록 실패: ' + why, true);
+      toast('Failed to post comment: ' + why, true);
     }
     return;
   }
   _commentLastTime[supaUser.id] = Date.now();
   input.value = '';
-  toast('댓글이 등록되었습니다.');
+  toast('Comment posted.');
   loadComments(articleId);
 }
 
 async function deleteComment(commentId) {
   if (!supaUser) return;
-  var ok = await khConfirm('이 댓글을 삭제할까요?', '댓글이 "[Deleted by author]"로 표시되며 답글들은 유지됩니다.', { okLabel: '삭제', destructive: true });
+  var ok = await khConfirm('Delete this comment?', 'It will show as "[Deleted by author]"; replies are kept.', { okLabel: 'Delete', destructive: true });
   if (!ok) return;
   var sb = getSupa();
   if (!sb) return;
@@ -601,15 +601,15 @@ async function deleteComment(commentId) {
   if (rpc.error || (rpc.data && rpc.data.ok === false)) {
     var why = (rpc.data && rpc.data.error) || (rpc.error && rpc.error.message) || 'unknown';
     if (why === 'not_authorized') {
-      toast('본인 댓글만 삭제할 수 있습니다.', true);
+      toast('You can only delete your own comments.', true);
     } else {
-      toast('삭제 실패: ' + why, true);
+      toast('Delete failed: ' + why, true);
     }
     return;
   }
   var articleId = (new URLSearchParams(window.location.search)).get('id');
   if (articleId) loadComments(articleId);
-  toast('삭제 완료');
+  toast('Deleted.');
 }
 
 // Alias for escapeHTML — single entry point for all HTML escaping

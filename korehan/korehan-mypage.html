@@ -1192,7 +1192,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
       <button onclick="saveRoomLayout()" id="room-save-btn" style="padding:8px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:none">Save</button>
     </div>
     <div id="room-size-controls" style="margin-top:10px;text-align:center;display:none">
-      <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px">선택한 아이템 크기</div>
+      <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px">Selected item size</div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
         <button class="room-ctrl-btn room-ctrl-icon" onclick="nudgeSelectedItemScale(-10)" aria-label="Decrease size">−</button>
         <input type="range" id="room-size-slider" min="70" max="170" step="5" value="100" style="width:170px;height:36px" oninput="onRoomSizeSlider(this.value)">
@@ -1205,7 +1205,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
         <button class="room-ctrl-btn" onclick="moveSelectedLayer(-1)" title="Send back">↓ Back</button>
         <button id="room-remove-btn" class="room-ctrl-btn room-ctrl-danger" onclick="removeSelectedRoomItem()" style="display:none">Remove</button>
       </div>
-      <div style="font-size:10px;color:#94a3b8;margin-top:6px">클릭 → 크기/반전/앞뒤 조절 · 꾹 누르기 → 빼기</div>
+      <div style="font-size:10px;color:#94a3b8;margin-top:6px">Tap → resize/flip/layer · Hold → remove</div>
     </div>
   </div>
 
@@ -1276,7 +1276,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/core/user-analytics.js?v=20261014a"></script>
 <script src="js/core/plans.js?v=20261013a"></script>
 <script src="js/core/article-cache.js?v=20261010a"></script>
-<script src="js/core/phrases.js?v=20260525r"></script>
+<script src="js/core/phrases.js?v=20261016a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261013a"></script>
@@ -1285,7 +1285,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/features/daily-mission.js?v=20261014a"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
 <script src="js/features/bookmarks.js?v=20260525r"></script>
-<script src="js/features/comments.js?v=20260527i"></script>
+<script src="js/features/comments.js?v=20261016a"></script>
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
@@ -1575,7 +1575,7 @@ function renderTierGrid(xp) {
     +   '</div>'
     +   (tier.next
           ? '<div class="tier-journey-next">Next · <b>' + Math.max(0, tier.to - xp).toLocaleString() + ' XP</b> to ' + tier.next + '</div>'
-          : '<div class="tier-journey-next" style="display:inline-flex;align-items:center;gap:5px"><span>최고 등급 달성</span><i data-lucide="party-popper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>')
+          : '<div class="tier-journey-next" style="display:inline-flex;align-items:center;gap:5px"><span>Top tier reached</span><i data-lucide="party-popper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>')
     + '</div>'
     + '<div class="tier-journey-canvas-wrap">'
     +   '<canvas id="tier-path-canvas"></canvas>'
@@ -2396,24 +2396,24 @@ var KH_FRAME_CLASS_MAP = {
 // scheme (warm/cool/regal/legendary). Missing entries render no title.
 var KH_TITLE_DEFS = {
   // Coin shop titles (TOPIK growth ladder)
-  'title_seed':         { label:'새싹',           tone:'mint' },
-  'title_sprout':       { label:'떡잎',           tone:'mint' },
-  'title_tree':         { label:'나무',           tone:'forest' },
-  'title_forest':       { label:'숲',             tone:'forest' },
-  'title_scholar':      { label:'학자',           tone:'navy' },
-  'title_word_master':  { label:'단어 마스터',     tone:'navy' },
-  'title_news_addict':  { label:'뉴스 중독자',     tone:'warm' },
-  'title_night_owl':    { label:'야행성',         tone:'navy' },
-  'title_early_bird':   { label:'아침형 인간',     tone:'warm' },
+  'title_seed':         { label:'Sprout',        tone:'mint' },
+  'title_sprout':       { label:'Seedling',      tone:'mint' },
+  'title_tree':         { label:'Tree',          tone:'forest' },
+  'title_forest':       { label:'Forest',        tone:'forest' },
+  'title_scholar':      { label:'Scholar',       tone:'navy' },
+  'title_word_master':  { label:'Word Master',   tone:'navy' },
+  'title_news_addict':  { label:'News Addict',   tone:'warm' },
+  'title_night_owl':    { label:'Night Owl',     tone:'navy' },
+  'title_early_bird':   { label:'Early Bird',    tone:'warm' },
   'title_polyglot':     { label:'Polyglot',      tone:'regal' },
-  'title_kimchi_lover': { label:'김치 러버',       tone:'warm' },
-  'title_seoulite':     { label:'서울러',         tone:'navy' },
+  'title_kimchi_lover': { label:'Kimchi Lover',  tone:'warm' },
+  'title_seoulite':     { label:'Seoulite',      tone:'navy' },
   // Gacha pool titles
-  'gacha_title_newbie':       { label:'새내기',           tone:'mint' },
-  'gacha_title_explorer':     { label:'탐험가',           tone:'forest' },
-  'gacha_title_polyglot_g':   { label:'다국어 마스터',     tone:'regal' },
-  'gacha_title_seoulite_g':   { label:'서울 토박이',       tone:'navy' },
-  'gacha_title_dokkaebi_g':   { label:'전설의 도깨비',     tone:'legendary' }
+  'gacha_title_newbie':       { label:'Newbie',           tone:'mint' },
+  'gacha_title_explorer':     { label:'Explorer',         tone:'forest' },
+  'gacha_title_polyglot_g':   { label:'Polyglot Master',  tone:'regal' },
+  'gacha_title_seoulite_g':   { label:'Seoul Native',     tone:'navy' },
+  'gacha_title_dokkaebi_g':   { label:'Legendary Dokkaebi', tone:'legendary' }
 };
 
 window._equippedCosmetics = {};
@@ -2937,16 +2937,16 @@ async function loadRoomItemsFromDB() {
 // them as placeable. Idempotent.
 var KH_GACHA_ROOM_DEFS = {
   // Pets
-  'gacha_pet_chick':       { name:'병아리',           size:120, category:'pet' },
-  'gacha_pet_pup':         { name:'포메 강아지',       size:140, category:'pet' },
-  'gacha_pet_redpanda':    { name:'레서판다',          size:150, category:'pet' },
-  'gacha_pet_kpop_pup':    { name:'아이돌 강아지',     size:140, category:'pet' },
-  'gacha_pet_gold_dragon': { name:'황금 미니 용',      size:160, category:'pet' },
-  'gacha_pet_jade_phoenix':{ name:'옥빛 봉황',         size:170, category:'pet' },
+  'gacha_pet_chick':       { name:'Chick',             size:120, category:'pet' },
+  'gacha_pet_pup':         { name:'Pomeranian Pup',    size:140, category:'pet' },
+  'gacha_pet_redpanda':    { name:'Red Panda',         size:150, category:'pet' },
+  'gacha_pet_kpop_pup':    { name:'Idol Pup',          size:140, category:'pet' },
+  'gacha_pet_gold_dragon': { name:'Golden Mini Dragon',size:160, category:'pet' },
+  'gacha_pet_jade_phoenix':{ name:'Jade Phoenix',      size:170, category:'pet' },
   // Room items
-  'gacha_room_easel_rare': { name:'화가의 이젤',       size:150, category:'deco' },
-  'gacha_room_lantern':    { name:'전통 등불',         size:130, category:'deco' },
-  'gacha_room_neon_namsan':{ name:'네온 남산타워',     size:160, category:'deco' }
+  'gacha_room_easel_rare': { name:'Painter\'s Easel',  size:150, category:'deco' },
+  'gacha_room_lantern':    { name:'Traditional Lantern',size:130, category:'deco' },
+  'gacha_room_neon_namsan':{ name:'Neon Namsan Tower', size:160, category:'deco' }
 };
 
 async function syncGachaRoomItems() {

@@ -188,7 +188,7 @@
       '  <div class="khu-card-badge" id="khu-card-badge">—</div>',
       '  <div class="khu-card-ko-row">',
       '    <div class="khu-card-ko" id="khu-card-ko"></div>',
-      '    <button class="khu-card-speak" id="khu-card-speak" type="button" aria-label="Play pronunciation" title="발음 듣기" onclick="var w=(document.getElementById(\'khu-card-ko\')||{}).textContent||\'\';if(window.khSpeak){khSpeak(w,\'female\',this)}else if(window.ttsSpeak){ttsSpeak(w,this)}">&#128266;</button>',
+      '    <button class="khu-card-speak" id="khu-card-speak" type="button" aria-label="Play pronunciation" title="Listen to pronunciation" onclick="var w=(document.getElementById(\'khu-card-ko\')||{}).textContent||\'\';if(window.khSpeak){khSpeak(w,\'female\',this)}else if(window.ttsSpeak){ttsSpeak(w,this)}">&#128266;</button>',
       '  </div>',
       '  <div class="khu-card-rom" id="khu-card-rom"></div>',
       '  <div class="khu-card-en"  id="khu-card-en"></div>',

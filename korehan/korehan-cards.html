@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <meta name="color-scheme" content="light">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>기자 카드 컬렉션 — KoreHani</title>
+<title>Reporter Card Collection — KoreHani</title>
 <meta name="description" content="기자 카드 컬렉션 — 한국어 학습을 하면서 모은 기자 카드들을 한곳에서 확인해 보세요.">
 <link rel="canonical" href="https://korehani.com/korehan-cards.html">
 <meta name="theme-color" content="#0a1423">
@@ -229,17 +229,17 @@
 <div id="dyn-header"></div>
 
 <div class="cc-hero">
-  <h1>📇 기자 카드 컬렉션</h1>
-  <p class="cc-sub">호감도를 쌓아 카드를 잠금해제하세요</p>
+  <h1>📇 Reporter Card Collection</h1>
+  <p class="cc-sub">Build affinity to unlock cards</p>
   <div class="cc-stats" id="cc-stats">
-    <span><span class="cc-stat-num" id="cc-unlocked">0</span> / 10 잠금해제</span>
+    <span><span class="cc-stat-num" id="cc-unlocked">0</span> / 10 unlocked</span>
     <span style="color:rgba(255,255,255,.3)">·</span>
-    <span><span class="cc-stat-num" id="cc-managers">0</span> 매니저</span>
+    <span><span class="cc-stat-num" id="cc-managers">0</span> managers</span>
   </div>
 </div>
 
 <div class="cc-grid" id="cc-grid">
-  <div class="cc-loading" style="grid-column:1/-1">⏳ 카드 로딩 중…</div>
+  <div class="cc-loading" style="grid-column:1/-1">⏳ Loading cards…</div>
 </div>
 
 <div id="dyn-footer"></div>
@@ -254,7 +254,7 @@
 <script src="js/core/user-analytics.js?v=20261014a"></script>
 <script src="js/core/plans.js?v=20261013a"></script>
 <script src="js/core/article-cache.js?v=20261010a"></script>
-<script src="js/core/phrases.js?v=20260525r"></script>
+<script src="js/core/phrases.js?v=20261016a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261013a"></script>
@@ -263,7 +263,7 @@
 <script src="js/features/daily-mission.js?v=20261014a"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
 <script src="js/features/bookmarks.js?v=20260525r"></script>
-<script src="js/features/comments.js?v=20260527i"></script>
+<script src="js/features/comments.js?v=20261016a"></script>
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
@@ -280,11 +280,11 @@ var FAV_HIRE_THRESHOLD = 3000;
 
 function ccTier(points) {
   var p = Number(points || 0);
-  if (p >= FAV_HIRE_THRESHOLD) return { key: 'platinum', label: '매니저',     min: FAV_HIRE_THRESHOLD, max: FAV_HIRE_THRESHOLD };
-  if (p >= 200)                return { key: 'gold',     label: '친구',       min: 200,  max: FAV_HIRE_THRESHOLD };
-  if (p >= 80)                 return { key: 'silver',   label: '지인',       min: 80,   max: 200  };
-  if (p >= 1)                  return { key: 'bronze',   label: '모르는 사이', min: 1,    max: 80   };
-  return                              { key: 'locked',   label: '잠금',       min: 0,    max: 1    };
+  if (p >= FAV_HIRE_THRESHOLD) return { key: 'platinum', label: 'Manager',     min: FAV_HIRE_THRESHOLD, max: FAV_HIRE_THRESHOLD };
+  if (p >= 200)                return { key: 'gold',     label: 'Friend',       min: 200,  max: FAV_HIRE_THRESHOLD };
+  if (p >= 80)                 return { key: 'silver',   label: 'Acquaintance', min: 80,   max: 200  };
+  if (p >= 1)                  return { key: 'bronze',   label: 'Stranger',     min: 1,    max: 80   };
+  return                              { key: 'locked',   label: 'Locked',       min: 0,    max: 1    };
 }
 
 function ccCardHTML(reporter, points) {
@@ -312,21 +312,21 @@ function ccCardHTML(reporter, points) {
   if (tier.key === 'locked') {
     lockOverlay = '<div class="cc-lock-overlay">'
       + '<div class="cc-lock-icon">🔒</div>'
-      + '<div>호감도 1+ 필요</div>'
-      + '<div class="cc-lock-text">선물을 보내 시작하세요</div>'
+      + '<div>Affinity 1+ required</div>'
+      + '<div class="cc-lock-text">Send a gift to start</div>'
       + '</div>';
   }
 
   var hiredRibbon = (tier.key === 'platinum')
-    ? '<div class="cc-hired-ribbon">고용됨</div>' : '';
+    ? '<div class="cc-hired-ribbon">Hired</div>' : '';
 
   var cta;
   if (tier.key === 'locked') {
-    cta = '카드 잠금해제하기';
+    cta = 'Unlock card';
   } else if (tier.key === 'platinum') {
-    cta = '매니저 페이지 →';
+    cta = 'Manager page →';
   } else {
-    cta = '호감도 더 쌓기';
+    cta = 'Build more affinity';
   }
 
   var affDisplay = tier.key === 'platinum'
@@ -440,9 +440,9 @@ async function ccLoad() {
   if (!userId) {
     var grid = document.getElementById('cc-grid');
     grid.innerHTML = '<div class="cc-signin" style="grid-column:1/-1">'
-      + '<h2>🔒 로그인이 필요해요</h2>'
-      + '<p>카드 컬렉션을 보려면 로그인하세요.</p>'
-      + '<button onclick="if(typeof openAuthModal===\'function\')openAuthModal(\'signin\')">로그인</button>'
+      + '<h2>🔒 Login required</h2>'
+      + '<p>Log in to view your card collection.</p>'
+      + '<button onclick="if(typeof openAuthModal===\'function\')openAuthModal(\'signin\')">Log in</button>'
       + '</div>';
     return;
   }

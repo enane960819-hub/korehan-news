@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <meta name="color-scheme" content="light">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>기자 소개 — KoreHani</title>
+<title>Reporter Profile — KoreHani</title>
 <meta name="description" content="KoreHani 기자 프로필 — 기자가 쓴 기사 모음, 팬 후기, 매니저로 고용해서 한국어를 1:1로 배워보세요.">
 <link rel="canonical" href="https://korehani.com/korehan-reporter.html">
 <meta name="theme-color" content="#0a1423">
@@ -453,7 +453,7 @@ body {
 <div id="rp-page-bg" class="rp-page-bg"></div>
 <div class="rp-content-layer">
 <div id="dyn-header"></div>
-<div id="rp-root"><div class="rp-loading">⏳ 로딩 중…</div></div>
+<div id="rp-root"><div class="rp-loading">⏳ Loading…</div></div>
 <div id="rp-lb" onclick="this.classList.remove('on')"><img id="rp-lb-img" src="" alt=""></div>
 <div id="dyn-footer"></div>
 </div>
@@ -468,7 +468,7 @@ body {
 <script src="js/core/user-analytics.js?v=20261014a"></script>
 <script src="js/core/plans.js?v=20261013a"></script>
 <script src="js/core/article-cache.js?v=20261010a"></script>
-<script src="js/core/phrases.js?v=20260525r"></script>
+<script src="js/core/phrases.js?v=20261016a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261013a"></script>
@@ -477,7 +477,7 @@ body {
 <script src="js/features/daily-mission.js?v=20261014a"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
 <script src="js/features/bookmarks.js?v=20260525r"></script>
-<script src="js/features/comments.js?v=20260527i"></script>
+<script src="js/features/comments.js?v=20261016a"></script>
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
@@ -526,7 +526,7 @@ function isMissingGiftHistoryTableError(err) {
 document.addEventListener('DOMContentLoaded', async function() {
   var rid  = new URLSearchParams(window.location.search).get('id');
   var root = document.getElementById('rp-root');
-  if (!rid) { root.innerHTML = '<div class="rp-not-found"><h2>기자를 찾을 수 없습니다</h2></div>'; return; }
+  if (!rid) { root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2></div>'; return; }
   _postMode = getPostModePref();
   var sb = getSupa();
 
@@ -570,19 +570,19 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (b) reporter = { id:rid, name:b.name, role:b.role, image:b.img, color:b.color, intro:'', tags:[] };
   }
   if (!reporter || !reporter.name) {
-    root.innerHTML = '<div class="rp-not-found"><h2>기자를 찾을 수 없습니다</h2><p><a href="index.html" style="color:var(--bright)">← 홈으로</a></p></div>';
+    root.innerHTML = '<div class="rp-not-found"><h2>Reporter not found</h2><p><a href="index.html" style="color:var(--bright)">← Home</a></p></div>';
     return;
   }
 
   var color = reporter.color || '#2563eb';
-  document.title = reporter.name + ' 기자 — KoreHani';
+  document.title = reporter.name + ' · Reporter — KoreHani';
 
   _currentReporterId = rid;
   _currentReporter = reporter;
   _canManagePosts = canManageReporterPosts(reporter);
   _currentAffinityXP = favXP;
   var favPct = Math.min(100, Math.round(favXP / FAV_HIRE_THRESHOLD * 100));
-  var favLevel = favXP >= FAV_HIRE_THRESHOLD ? '매니저' : favXP >= 200 ? '친구' : favXP >= 80 ? '지인' : '모르는 사이';
+  var favLevel = favXP >= FAV_HIRE_THRESHOLD ? 'Manager' : favXP >= 200 ? 'Friend' : favXP >= 80 ? 'Acquaintance' : 'Stranger';
 
   var photoHtml = reporter.image
     ? '<img src="' + reporter.image + '" alt="' + reporter.name + '" style="width:100%;height:100%;object-fit:cover;display:block;min-height:320px" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">'
@@ -594,8 +594,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   root.innerHTML =
     '<div class="rp-wrap">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    +   '<a href="#" onclick="rpGoBack(event)" style="color:var(--bright);font-size:14px;font-weight:700;text-decoration:none;opacity:.8">← 뒤로가기</a>'
-    +   '<a href="korehan-reporters.html" style="color:var(--bright);font-size:13px;font-weight:700;text-decoration:none;opacity:.8">전체 기자 보기 →</a>'
+    +   '<a href="#" onclick="rpGoBack(event)" style="color:var(--bright);font-size:14px;font-weight:700;text-decoration:none;opacity:.8">← Back</a>'
+    +   '<a href="korehan-reporters.html" style="color:var(--bright);font-size:13px;font-weight:700;text-decoration:none;opacity:.8">View all reporters →</a>'
     + '</div>'
 
     // ── Profile ──
@@ -608,11 +608,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     +     '<div class="rp-name">' + reporter.name + '</div>'
     +     '<span class="rp-role-badge" style="background:' + color + '">' + (reporter.role||'') + '</span>'
     +     '<div class="rp-stats">'
-    +       (reporter.age ? '<div class="rp-stat"><span class="rp-stat-label">나이</span><span class="rp-stat-val">' + reporter.age + '세</span></div>' : '')
-    +       (reporter.tone ? '<div class="rp-stat"><span class="rp-stat-label">성향</span><span class="rp-stat-val" style="font-size:13px">' + reporter.tone + '</span></div>' : '')
+    +       (reporter.age ? '<div class="rp-stat"><span class="rp-stat-label">Age</span><span class="rp-stat-val">' + reporter.age + '</span></div>' : '')
+    +       (reporter.tone ? '<div class="rp-stat"><span class="rp-stat-label">Tone</span><span class="rp-stat-val" style="font-size:13px">' + reporter.tone + '</span></div>' : '')
     +     '</div>'
     +     '<div class="rp-divider"></div>'
-    +     '<div class="rp-intro">' + (reporter.intro || '소개가 아직 없습니다.') + '</div>'
+    +     '<div class="rp-intro">' + (reporter.intro || 'No intro yet.') + '</div>'
     +     (tagsHtml ? '<div class="rp-tags">' + tagsHtml + '</div>' : '')
     +   '</div>'
     + '</div>'
@@ -620,7 +620,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // ── Compact favorability/nyang strip under the profile ──
     + '<div class="rp-stat-strip">'
     +   '<div class="rp-stat-strip-fav">'
-    +     '<div class="rp-stat-strip-row"><span>❤️ 호감도 · <b id="rp-fav-level">' + favLevel + '</b></span><span id="rp-fav-xp"><b>' + favXP + '</b> / ' + FAV_HIRE_THRESHOLD + '</span></div>'
+    +     '<div class="rp-stat-strip-row"><span>❤️ Affinity · <b id="rp-fav-level">' + favLevel + '</b></span><span id="rp-fav-xp"><b>' + favXP + '</b> / ' + FAV_HIRE_THRESHOLD + '</span></div>'
     +     '<div class="rp-stat-strip-bar"><div class="rp-stat-strip-bar-fill" id="rp-fav-bar-fill" style="width:' + favPct + '%;background:linear-gradient(90deg,' + color + ',' + color + 'aa)"></div></div>'
     +   '</div>'
     +   '<span class="rp-nyang-chip" id="rp-nyang-balance">🐾 냥 -</span>'
@@ -637,15 +637,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     // ── Tab panels ──
     + '<div class="rp-panel on" id="rp-panel-posts" role="tabpanel">'
     +   '<div id="rp-post-compose"></div>'
-    +   '<div id="rp-post-feed" class="rp-post-feed"><div class="rp-post-empty">Posts 로딩 중…</div></div>'
+    +   '<div id="rp-post-feed" class="rp-post-feed"><div class="rp-post-empty">Loading posts…</div></div>'
     + '</div>'
 
     + '<div class="rp-panel" id="rp-panel-album" role="tabpanel">'
-    +   '<div id="rp-album-root"><div class="rp-album-empty">Album 로딩 중…</div></div>'
+    +   '<div id="rp-album-root"><div class="rp-album-empty">Loading album…</div></div>'
     + '</div>'
 
     + '<div class="rp-panel" id="rp-panel-photocards" role="tabpanel">'
-    +   '<div id="rp-pc-root"><div class="rp-pc-empty">Photocards 로딩 중…</div></div>'
+    +   '<div id="rp-pc-root"><div class="rp-pc-empty">Loading photocards…</div></div>'
     + '</div>'
 
     + '<div class="rp-panel" id="rp-panel-articles" role="tabpanel">'
@@ -655,12 +655,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     // ── Gift panel (kept as a card below the tabs since it spans every tab's idol-stan flow) ──
     + '<div class="rp-fav-card" style="margin-top:24px">'
     +   '<div class="rp-fav-header">'
-    +     '<div class="rp-fav-title">🎁 선물 보내기</div>'
+    +     '<div class="rp-fav-title">🎁 Send a gift</div>'
     +   '</div>'
-    +   '<div class="rp-gifts" id="rp-gifts">선물 불러오는 중…</div>'
+    +   '<div class="rp-gifts" id="rp-gifts">Loading gifts…</div>'
     +   '<div id="rp-gift-msg" style="font-size:12px;color:#64748b;margin:2px 0 10px"></div>'
-    +   '<button class="rp-hire-btn" disabled>🎓 한국어 매니저로 고용하기</button>'
-    +   '<div class="rp-hire-progress" id="rp-fav-progress">호감도 ' + FAV_HIRE_THRESHOLD + ' 달성 시 고용 가능 · 현재 ' + favPct + '%</div>'
+    +   '<button class="rp-hire-btn" disabled>🎓 Hire as Korean manager</button>'
+    +   '<div class="rp-hire-progress" id="rp-fav-progress">Hireable at affinity ' + FAV_HIRE_THRESHOLD + ' · currently ' + favPct + '%</div>'
     + '</div>'
 
     + '</div>';
@@ -700,7 +700,7 @@ function rpRenderAlbum() {
   });
   if (countEl) countEl.textContent = imgs.length ? imgs.length : '';
   if (!imgs.length) {
-    root.innerHTML = '<div class="rp-album-empty">아직 사진이 없습니다. Posts 탭에서 사진을 올려보세요.</div>';
+    root.innerHTML = '<div class="rp-album-empty">No photos yet. Upload from the Posts tab.</div>';
     return;
   }
   root.innerHTML = '<div class="rp-album-grid">'
@@ -737,7 +737,7 @@ function rpRenderPhotocards() {
 
   if (countEl) countEl.textContent = cards.length ? cards.length : '';
   if (!cards.length) {
-    root.innerHTML = '<div class="rp-pc-empty">아직 포카가 없습니다. 기자가 사진을 올리면 포카가 생성됩니다.</div>';
+    root.innerHTML = '<div class="rp-pc-empty">No photocards yet. They are created when the reporter posts photos.</div>';
     return;
   }
 
@@ -829,18 +829,18 @@ function renderPostComposer(reporterId, reporter) {
   var el = document.getElementById('rp-post-compose');
   if (!el) return;
   if (!_canManagePosts) {
-    el.innerHTML = '<div class="rp-post-empty">게시물 작성 권한이 없습니다. 기자 계정 또는 관리자만 작성할 수 있어요.</div>';
+    el.innerHTML = '<div class="rp-post-empty">You do not have posting permission. Only reporter/admin accounts can post.</div>';
     return;
   }
   el.innerHTML =
     '<div class="rp-post-compose">'
-    + '<textarea id="rp-post-content" placeholder="' + escHtml((reporter && reporter.name ? reporter.name : '기자') + '의 새 포스트를 작성해보세요…') + '"></textarea>'
+    + '<textarea id="rp-post-content" placeholder="' + escHtml('Write a new post for ' + (reporter && reporter.name ? reporter.name : 'this reporter')) + '"></textarea>'
     + '<div class="rp-post-compose-row">'
     +   '<input id="rp-post-files" class="rp-post-file" type="file" accept="image/*" multiple onchange="onPostFilesPicked(this)">'
-    +   '<select id="rp-post-status" class="rp-post-select"><option value="published">게시</option><option value="draft">임시저장</option></select>'
-    +   '<label style="font-size:12px;color:#475569"><input type="checkbox" id="rp-post-pinned"> 상단 고정</label>'
-    +   '<button class="rp-post-btn" onclick="submitReporterPost(\'' + reporterId + '\')">업로드</button>'
-    +   '<button class="rp-post-btn ghost" id="rp-post-cancel" style="display:none" onclick="cancelPostEdit()">취소</button>'
+    +   '<select id="rp-post-status" class="rp-post-select"><option value="published">Publish</option><option value="draft">Draft</option></select>'
+    +   '<label style="font-size:12px;color:#475569"><input type="checkbox" id="rp-post-pinned"> Pin to top</label>'
+    +   '<button class="rp-post-btn" onclick="submitReporterPost(\'' + reporterId + '\')">Upload</button>'
+    +   '<button class="rp-post-btn ghost" id="rp-post-cancel" style="display:none" onclick="cancelPostEdit()">Cancel</button>'
     + '</div>'
     + '<div id="rp-post-file-hint" style="margin-top:8px;font-size:11px;color:#94a3b8"></div>'
     + '</div>';
@@ -849,7 +849,7 @@ function renderPostComposer(reporterId, reporter) {
 function onPostFilesPicked(input) {
   _postDraftFiles = Array.from(input.files || []);
   var hint = document.getElementById('rp-post-file-hint');
-  if (hint) hint.textContent = _postDraftFiles.length ? ('선택된 이미지 ' + _postDraftFiles.length + '개') : '';
+  if (hint) hint.textContent = _postDraftFiles.length ? (_postDraftFiles.length + ' images selected') : '';
 }
 
 function isMissingReporterPostsTableError(err) {
@@ -901,7 +901,7 @@ async function loadReporterPosts(reporterId) {
   var feed = document.getElementById('rp-post-feed');
   if (!feed) return;
   var sb = getSupa();
-  if (!sb) { feed.innerHTML = '<div class="rp-post-empty">Posts를 불러올 수 없습니다.</div>'; return; }
+  if (!sb) { feed.innerHTML = '<div class="rp-post-empty">Couldn\'t load posts.</div>'; return; }
   try {
     if (_postMode === 'fallback') {
       var fp = await loadFallbackReporterPosts(sb, reporterId);
@@ -949,7 +949,7 @@ async function loadReporterPosts(reporterId) {
       renderReporterPosts(fposts);
       return;
     }
-    feed.innerHTML = '<div class="rp-post-empty">Posts를 불러오지 못했습니다.</div>';
+    feed.innerHTML = '<div class="rp-post-empty">Failed to load posts.</div>';
   }
 }
 
@@ -964,23 +964,23 @@ function renderReporterPosts(posts) {
   if (openPanel && openPanel.id === 'rp-panel-album')      rpRenderAlbum();
   if (openPanel && openPanel.id === 'rp-panel-photocards') rpRenderPhotocards();
   if (!posts.length) {
-    feed.innerHTML = '<div class="rp-post-empty">아직 올라온 포스트가 없습니다.</div>';
+    feed.innerHTML = '<div class="rp-post-empty">No posts yet.</div>';
     return;
   }
   feed.innerHTML = posts.map(function(p){
     var imgs = p.images || [];
     var imgsClass = 'rp-post-images' + (imgs.length === 1 ? ' one' : '');
     var actions = _canManagePosts
-      ? '<div class="rp-post-actions"><button class="rp-post-act" onclick="editReporterPost(&quot;' + p.id + '&quot;)">수정</button><button class="rp-post-act" onclick="deleteReporterPost(&quot;' + p.id + '&quot;)">삭제</button></div>'
+      ? '<div class="rp-post-actions"><button class="rp-post-act" onclick="editReporterPost(&quot;' + p.id + '&quot;)">Edit</button><button class="rp-post-act" onclick="deleteReporterPost(&quot;' + p.id + '&quot;)">Delete</button></div>'
       : '';
     return '<article class="rp-post-card">'
       + '<div class="rp-post-head">'
-      +   '<div><div style="font-weight:800;color:#0f172a">기자 포스트</div><div class="rp-post-meta">' + escHtml(formatPostTime(p.created_at)) + (p.updated_at && p.updated_at !== p.created_at ? ' · 수정됨' : '') + '</div></div>'
+      +   '<div><div style="font-weight:800;color:#0f172a">Reporter post</div><div class="rp-post-meta">' + escHtml(formatPostTime(p.created_at)) + (p.updated_at && p.updated_at !== p.created_at ? ' · edited' : '') + '</div></div>'
       +   (p.pinned ? '<div class="rp-post-pin">📌 PINNED</div>' : '')
       + '</div>'
       + '<div class="rp-post-content">' + escHtml(p.content || '') + '</div>'
       + (imgs.length ? ('<div class="' + imgsClass + '">' + imgs.map(function(url){ return '<img src="' + escHtml(url) + '" onclick="rpOpenPostImage(&quot;' + escHtml(url) + '&quot;)">'; }).join('') + '</div>') : '')
-      + '<div class="rp-post-foot"><span class="rp-post-status">' + (p.status === 'draft' ? '임시저장' : '게시됨') + '</span>' + actions + '</div>'
+      + '<div class="rp-post-foot"><span class="rp-post-status">' + (p.status === 'draft' ? 'Draft' : 'Published') + '</span>' + actions + '</div>'
       + '</article>';
   }).join('');
 }
@@ -1017,7 +1017,7 @@ async function submitReporterPost(reporterId) {
   var statusEl = document.getElementById('rp-post-status');
   var pinEl = document.getElementById('rp-post-pinned');
   var content = (contentEl && contentEl.value || '').trim();
-  if (!content && !_postDraftFiles.length) { alert('텍스트나 이미지 중 하나는 필요해요.'); return; }
+  if (!content && !_postDraftFiles.length) { alert('You need text or an image.'); return; }
 
   var status = statusEl ? statusEl.value : 'published';
   var pinned = !!(pinEl && pinEl.checked);
@@ -1046,7 +1046,7 @@ async function submitReporterPost(reporterId) {
       });
     }
     var ok = await saveFallbackReporterPosts(sb, reporterId, local);
-    if (!ok) { alert('포스트 저장 실패'); return; }
+    if (!ok) { alert('Failed to save post'); return; }
     cancelPostEdit();
     await loadReporterPosts(reporterId);
     return;
@@ -1061,7 +1061,7 @@ async function submitReporterPost(reporterId) {
       setPostModePref('fallback');
       return submitReporterPost(reporterId);
     }
-    alert('포스트 저장 실패');
+    alert('Failed to save post');
     return;
   }
 
@@ -1095,7 +1095,7 @@ function editReporterPost(postId) {
   if (pinEl) pinEl.checked = !!p.pinned;
   if (cancelBtn) cancelBtn.style.display = '';
   var hint = document.getElementById('rp-post-file-hint');
-  if (hint) hint.textContent = '수정 모드: 새 이미지를 추가로 업로드할 수 있어요.';
+  if (hint) hint.textContent = 'Edit mode: you can upload more images.';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1125,7 +1125,7 @@ async function deleteReporterPost(postId) {
     var local = await loadFallbackReporterPosts(sb, _currentReporterId);
     local = local.filter(function(p){ return p.id !== postId; });
     var ok = await saveFallbackReporterPosts(sb, _currentReporterId, local);
-    if (!ok) { alert('삭제 실패'); return; }
+    if (!ok) { alert('Delete failed'); return; }
     await loadReporterPosts(_currentReporterId);
     return;
   }
@@ -1137,7 +1137,7 @@ async function deleteReporterPost(postId) {
       setPostModePref('fallback');
       return deleteReporterPost(postId);
     }
-    alert('삭제 실패'); return;
+    alert('Delete failed'); return;
   }
   await loadReporterPosts(_currentReporterId);
 }
@@ -1148,7 +1148,7 @@ async function loadReporterGiftPanel(reporterId) {
   if (!grid) return;
   var sb = getSupa();
   if (!sb || !supaUser) {
-    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#94a3b8">로그인 후 선물을 보낼 수 있어요.</div>';
+    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#94a3b8">Log in to send gifts.</div>';
     if (msg) msg.textContent = '';
     return;
   }
@@ -1165,7 +1165,7 @@ async function loadReporterGiftPanel(reporterId) {
     var bal = document.getElementById('rp-nyang-balance');
     if (bal) bal.textContent = '🐾 냥 ' + _giftBalance.toLocaleString();
     renderGiftGrid(reporterId);
-    if (msg) msg.textContent = '보유 아이템이 있으면 인벤토리에서 차감, 없으면 냥으로 즉시 선물됩니다.';
+    if (msg) msg.textContent = 'Uses inventory if owned, otherwise sent instantly with 냥.';
   } catch(e) {
     grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#ef4444">Cannot load gift info.</div>';
   }
@@ -1175,7 +1175,7 @@ function renderGiftGrid(reporterId) {
   var grid = document.getElementById('rp-gifts');
   if (!grid) return;
   if (!_giftCatalog.length) {
-    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#94a3b8">사용 가능한 기자 선물이 없습니다.</div>';
+    grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#94a3b8">No reporter gifts available.</div>';
     return;
   }
   grid.innerHTML = _giftCatalog.map(function(g) {
@@ -1188,7 +1188,7 @@ function renderGiftGrid(reporterId) {
       + '<span class="rp-gift-icon">' + icon + '</span>'
       + '<span class="rp-gift-name">' + g.name + '</span>'
       + '<span class="rp-gift-cost">🐾 ' + price.toLocaleString() + ' 냥</span>'
-      + (own > 0 ? '<span class="rp-gift-own">인벤토리 x' + own + '</span>' : '<span class="rp-gift-lock">즉시구매</span>')
+      + (own > 0 ? '<span class="rp-gift-own">Inventory x' + own + '</span>' : '<span class="rp-gift-lock">Buy now</span>')
       + '</button>';
   }).join('');
 }
@@ -1200,8 +1200,8 @@ async function sendGiftToReporter(reporterId, itemId) {
   if (!item) return;
   var own = Number(_giftOwnedMap[itemId] || 0);
   var prompt = own > 0
-    ? item.name + ' 선물을 인벤토리에서 1개 사용해서 보내시겠어요?'
-    : item.name + ' 선물을 ' + Number(item.coin_price || 0).toLocaleString() + '냥으로 즉시 구매/전송할까요?';
+    ? 'Send ' + item.name + ' using 1 from your inventory?'
+    : 'Buy & send ' + item.name + ' for ' + Number(item.coin_price || 0).toLocaleString() + ' 냥?';
   if (!confirm(prompt)) return;
 
   var res = null;
@@ -1221,14 +1221,14 @@ async function sendGiftToReporter(reporterId, itemId) {
   if (res.error || !res.data || !res.data.ok) {
     var code = (res.data && res.data.error) || 'GIFT_PROCESS_FAILED';
     var friendly = 'Gift sending failed. Please try again later.';
-    if (code === 'INSUFFICIENT_NYANG') friendly = '냥이 부족합니다.';
-    else if (code === 'ITEM_NOT_GIFTABLE') friendly = '현재 보낼 수 없는 아이템입니다.';
-    else if (code === 'INVALID_INPUT') friendly = '선물 정보가 올바르지 않습니다.';
-    else if (code === 'GIFT_PROCESS_FAILED') friendly = '선물 처리 중 오류가 발생했습니다.';
+    if (code === 'INSUFFICIENT_NYANG') friendly = 'Not enough 냥.';
+    else if (code === 'ITEM_NOT_GIFTABLE') friendly = 'This item cannot be sent.';
+    else if (code === 'INVALID_INPUT') friendly = 'Invalid gift info.';
+    else if (code === 'GIFT_PROCESS_FAILED') friendly = 'Error processing gift.';
     alert(friendly);
     return;
   }
-  alert('선물 전송 완료! 기자 호감도가 상승했어요.');
+  alert('Gift sent! The reporter\'s affinity went up.');
   var delta = Number(res.data && (res.data.affinity_gained || res.data.affinity_delta) || 0);
   if (!delta) {
     delta = Math.max(10, Number(item.coin_price || 0));
@@ -1454,17 +1454,17 @@ async function loadAffinityPoints(sb, reporterId) {
 
 function updateAffinityUI(favXP) {
   var pct = Math.min(100, Math.round(Number(favXP || 0) / FAV_HIRE_THRESHOLD * 100));
-  var level = favXP >= FAV_HIRE_THRESHOLD ? '매니저' : favXP >= 200 ? '친구' : favXP >= 80 ? '지인' : '모르는 사이';
+  var level = favXP >= FAV_HIRE_THRESHOLD ? 'Manager' : favXP >= 200 ? 'Friend' : favXP >= 80 ? 'Acquaintance' : 'Stranger';
   var fill = document.getElementById('rp-fav-bar-fill');
   if (fill) fill.style.width = pct + '%';
   var xp = document.getElementById('rp-fav-xp');
-  if (xp) xp.textContent = Number(favXP || 0) + ' / ' + FAV_HIRE_THRESHOLD + ' 친밀도';
+  if (xp) xp.textContent = Number(favXP || 0) + ' / ' + FAV_HIRE_THRESHOLD + ' Affinity';
   var left = document.getElementById('rp-fav-left');
-  if (left) left.textContent = '매니저 고용까지 ' + Math.max(0, FAV_HIRE_THRESHOLD - Number(favXP || 0)) + ' 남음';
+  if (left) left.textContent = Math.max(0, FAV_HIRE_THRESHOLD - Number(favXP || 0)) + ' to go until you can hire';
   var lv = document.getElementById('rp-fav-level');
   if (lv) lv.textContent = level;
   var p = document.getElementById('rp-fav-progress');
-  if (p) p.textContent = '호감도 ' + FAV_HIRE_THRESHOLD + ' 달성 시 고용 가능 · 현재 ' + pct + '%';
+  if (p) p.textContent = 'Hireable at affinity ' + FAV_HIRE_THRESHOLD + ' · currently ' + pct + '%';
 }
 
 function rpOpenLb() {
@@ -1483,11 +1483,11 @@ async function loadReporterArticles(rid, name) {
   var arts = getCachedArticles().filter(function(a){ return a.reporter_id === rid && (!a.status || a.status === 'published'); });
   if (countEl) countEl.textContent = arts.length ? arts.length : '';
   if (!arts.length) {
-    el.innerHTML = '<div class="rp-post-empty">아직 작성한 기사가 없습니다.</div>';
+    el.innerHTML = '<div class="rp-post-empty">No articles written yet.</div>';
     return;
   }
   arts.sort(function(a,b){ return (b.date||'') > (a.date||'') ? 1 : -1; });
-  el.innerHTML = '<div class="rp-sec-title">' + name + '의 기사 ' + arts.length + '편</div>'
+  el.innerHTML = '<div class="rp-sec-title">' + name + '’s articles (' + arts.length + ')</div>'
     + '<div class="rp-art-list">'
     + arts.slice(0,12).map(function(a){
         var d = a.date ? new Date(a.date).toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'}) : '';

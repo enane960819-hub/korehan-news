@@ -401,7 +401,7 @@
         if (_glUniverseLoading) return _glUniverseLoading;
         _glUniverseLoading = new Promise(function (resolve, reject) {
           var s = document.createElement('script');
-          s.src = 'js/kh-universe.js?v=20261015b';
+          s.src = 'js/kh-universe.js?v=20261016a';
           s.async = false;
           s.onload = function () { resolve(); };
           s.onerror = function () { _glUniverseLoading = null; reject(new Error('universe load failed')); };
@@ -640,14 +640,14 @@
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
         <div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.75)">Curriculum Network</div>
-          <div style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;letter-spacing:-.01em;line-height:1.1;margin-top:2px">한국어 노선도 · <span id="gl-net-line-count">6</span>호선</div>
-          <div style="font-size:11px;color:rgba(220,210,255,.6);margin-top:4px;line-height:1.5">호선마다 50개의 역(학습 단계)이 있어요. 한글·일상대화·K-Culture·시사뉴스·비즈니스·여행 — 어느 분야에서 얼마나 성장했는지 한눈에 보세요.</div>
+          <div style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:22px;font-weight:900;letter-spacing:-.01em;line-height:1.1;margin-top:2px">Korean Route Map · Line <span id="gl-net-line-count">6</span></div>
+          <div style="font-size:11px;color:rgba(220,210,255,.6);margin-top:4px;line-height:1.5">Each line has 50 stations (learning stages). Hangul, Daily Conversation, K-Culture, News, Business, Travel — see at a glance how far you have grown in each area.</div>
         </div>
-        <div id="gl-net-overall" style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,231,176,.85);padding:5px 12px;border-radius:999px;background:rgba(244,169,60,.15);border:1px solid rgba(244,169,60,.35)">— / 300역</div>
+        <div id="gl-net-overall" style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,231,176,.85);padding:5px 12px;border-radius:999px;background:rgba(244,169,60,.15);border:1px solid rgba(244,169,60,.35)">— / 300 stations</div>
       </div>
       <div id="gl-net-lines"></div>
       <div id="gl-net-empty" style="display:none;font-size:13px;color:rgba(220,210,255,.65);padding:14px;text-align:center">
-        커리큘럼 노선도가 아직 동기화되지 않았습니다. 잠시 후 다시 확인해주세요.
+        Curriculum map isn't synced yet. Please check back soon.
       </div>
     </section>
 
@@ -700,7 +700,7 @@
           var totalStations = stations.length;
           var passed = 0;
           stations.forEach(function(s) { if (progress[s.id] && progress[s.id].status === 'passed') passed++; });
-          if (overallEl) overallEl.textContent = passed + ' / ' + totalStations + '역 통과';
+          if (overallEl) overallEl.textContent = passed + ' / ' + totalStations + ' stations passed';
           if (lineCountEl) lineCountEl.textContent = lines.length;
 
           // Stash so the line modal can render without re-querying
@@ -730,10 +730,10 @@
               + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
               +   '<div style="width:34px;height:34px;border-radius:10px;background:' + line.color + '22;border:1px solid ' + line.color + '55;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">' + (line.icon || '🚇') + '</div>'
               +   '<div style="flex:1;min-width:0">'
-              +     '<div style="font-size:13px;font-weight:900;color:#fff">' + line.id + '호선 · ' + _netEsc(line.name_ko) + ' <span style="color:rgba(220,210,255,.55);font-weight:600;font-size:11px;margin-left:4px">' + _netEsc(line.name_en) + '</span></div>'
+              +     '<div style="font-size:13px;font-weight:900;color:#fff">Line ' + line.id + ' · ' + _netEsc(line.name_ko) + ' <span style="color:rgba(220,210,255,.55);font-weight:600;font-size:11px;margin-left:4px">' + _netEsc(line.name_en) + '</span></div>'
               +     '<div style="font-size:11px;color:rgba(220,210,255,.6);margin-top:1px;line-height:1.4">' + _netEsc(line.description || '') + '</div>'
               +   '</div>'
-              +   '<div style="font-size:11px;font-weight:800;color:' + line.color + ';white-space:nowrap;text-align:right">' + linePassed + '/' + sts.length + '<div style="font-size:9px;color:rgba(220,210,255,.5);font-weight:700;margin-top:1px">' + pct + '%' + (lineTransfer ? ' · ' + lineTransfer + ' 환승중' : '') + '</div></div>'
+              +   '<div style="font-size:11px;font-weight:800;color:' + line.color + ';white-space:nowrap;text-align:right">' + linePassed + '/' + sts.length + '<div style="font-size:9px;color:rgba(220,210,255,.5);font-weight:700;margin-top:1px">' + pct + '%' + (lineTransfer ? ' · ' + lineTransfer + ' transferring' : '') + '</div></div>'
               + '</div>'
               // Progress bar
               + '<div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-bottom:8px">'
@@ -775,7 +775,7 @@
         var existing = document.getElementById('net-line-modal');
         if (existing) existing.remove();
 
-        var levelLabel = { Starter:'씨앗', Beginner:'새싹', Intermediate:'나무', Advanced:'숲', Fluency:'정상' };
+        var levelLabel = { Starter:'Seed', Beginner:'Sprout', Intermediate:'Tree', Advanced:'Forest', Fluency:'Summit' };
         var levelColor = { Starter:'#a78bfa', Beginner:'#34d399', Intermediate:'#f59e0b', Advanced:'#fb7185', Fluency:'#fbbf24' };
 
         var rows = sts.map(function(s) {
@@ -783,11 +783,11 @@
           var status = p ? p.status : 'unvisited';
           var statusBg = status === 'passed' ? line.color + '22' : status === 'transferring' ? 'rgba(255,255,255,.06)' : 'transparent';
           var statusBorder = status === 'passed' ? line.color + '66' : status === 'transferring' ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.06)';
-          var statusText = status === 'passed' ? '✓ 통과' : status === 'transferring' ? '환승중 ' + Math.round((p.progress||0)*100) + '%' : '미방문';
+          var statusText = status === 'passed' ? '✓ Passed' : status === 'transferring' ? 'Transferring ' + Math.round((p.progress||0)*100) + '%' : 'Not visited';
           var statusColor = status === 'passed' ? line.color : status === 'transferring' ? 'rgba(255,255,255,.72)' : 'rgba(255,255,255,.32)';
           var lvCol = levelColor[s.level] || '#94a3b8';
           var lvLabel = levelLabel[s.level] || s.level;
-          var canDo = s.can_do ? _netEsc(s.can_do) : '<span style="color:rgba(220,210,255,.35);font-style:italic">학습 목표가 아직 등록되지 않았습니다.</span>';
+          var canDo = s.can_do ? _netEsc(s.can_do) : '<span style="color:rgba(220,210,255,.35);font-style:italic">No learning goal set yet.</span>';
           return '<div data-station-no="' + s.station_no + '" style="margin-bottom:5px;border-radius:10px;background:' + statusBg + ';border:1px solid ' + statusBorder + ';overflow:hidden">'
             + '<div onclick="_netToggleStation(' + line.id + ',' + s.station_no + ')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;transition:background .12s" onmouseover="this.style.background=\'rgba(255,255,255,.04)\'" onmouseout="this.style.background=\'transparent\'">'
             +   '<div style="width:30px;height:30px;border-radius:50%;background:' + (status === 'passed' ? line.color : 'rgba(255,255,255,.05)') + ';border:1.5px solid ' + (status === 'passed' ? line.color : 'rgba(255,255,255,.18)') + ';color:' + (status === 'passed' ? '#0b1228' : 'rgba(220,210,255,.7)') + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">' + s.station_no + '</div>'
@@ -821,7 +821,7 @@
           +     '<div style="display:flex;align-items:flex-start;gap:12px">'
           +       '<div style="width:42px;height:42px;border-radius:12px;background:' + line.color + '22;border:1px solid ' + line.color + '55;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0">' + (line.icon || '🚇') + '</div>'
           +       '<div style="flex:1;min-width:0">'
-          +         '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:' + line.color + '">' + line.id + '호선 · ' + _netEsc(line.name_en) + '</div>'
+          +         '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:' + line.color + '">Line ' + line.id + ' · ' + _netEsc(line.name_en) + '</div>'
           +         '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:20px;font-weight:900;line-height:1.15;margin-top:2px">' + _netEsc(line.name_ko) + '</div>'
           +         '<div style="font-size:11px;color:rgba(220,210,255,.6);margin-top:5px;line-height:1.45">' + _netEsc(line.description || '') + '</div>'
           +       '</div>'
@@ -829,7 +829,7 @@
           +     '</div>'
           +     '<div style="display:flex;gap:10px;align-items:center;margin-top:12px">'
           +       '<div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,' + line.color + ',' + line.color + 'cc)"></div></div>'
-          +       '<div style="font-size:11px;font-weight:800;color:' + line.color + ';white-space:nowrap">' + passed + '/' + sts.length + ' · ' + pct + '%' + (transfer ? ' · ' + transfer + '환승' : '') + '</div>'
+          +       '<div style="font-size:11px;font-weight:800;color:' + line.color + ';white-space:nowrap">' + passed + '/' + sts.length + ' · ' + pct + '%' + (transfer ? ' · ' + transfer + ' transferring' : '') + '</div>'
           +     '</div>'
           +   '</div>'
           +   '<div id="net-line-modal-body" style="overflow-y:auto;padding:14px 16px 18px">' + rows + '</div>'
@@ -921,14 +921,14 @@
           streak:   Math.round(caps.streak   * pct),
           xp:       Math.round(caps.xp       * pct)
         };
-        var labels = { words: '단어', articles: '기사', quizzes: '퀴즈', streak: '연속 일', xp: 'XP' };
+        var labels = { words: 'Words', articles: 'Articles', quizzes: 'Quizzes', streak: 'Streak days', xp: 'XP' };
         var parts = [];
         Object.keys(target).forEach(function(k) {
           var need = target[k] - (stats[k] || 0);
           if (need > 0) parts.push('<b style="color:#fde68a">' + need + '</b> ' + labels[k]);
         });
-        if (!parts.length) return '<b>' + nextMajor.name + '</b> 역 조건 모두 충족! 곧 해금됩니다.';
-        return '다음 역 <b>' + nextMajor.name + ' (' + nextMajor.en + ')</b> 까지 — ' + parts.join(', ') + ' 남음';
+        if (!parts.length) return '<b>' + nextMajor.name + '</b> — all station requirements met! Unlocking soon.';
+        return 'To next station <b>' + nextMajor.name + ' (' + nextMajor.en + ')</b> — ' + parts.join(', ') + ' to go';
       }
 
       function renderPreview(stats, overall) {
@@ -946,7 +946,7 @@
         if (stageEl) stageEl.textContent = majors[currentIdx].name + ' · ' + pctLabel + '%';
         if (taglineEl) {
           var cd = (majors[currentIdx].can_do || [])[0] || '';
-          taglineEl.textContent = '현재: ' + cd;
+          taglineEl.textContent = 'Current: ' + cd;
         }
         if (nextEl) nextEl.innerHTML = nextNeededCopy(stats, majors[nextIdx]);
 
@@ -1067,7 +1067,7 @@
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 18px;flex-wrap:wrap">'
         +   '<div>'
         +     '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.75)">K-Express</div>'
-        +     '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:26px;font-weight:900">한국어 노선도 (전체 ' + all.length + '개 역)</div>'
+        +     '<div style="font-family:\'Playfair Display\',\'Noto Serif KR\',serif;font-size:26px;font-weight:900">Korean Route Map (' + all.length + ' stations total)</div>'
         +   '</div>'
         +   '<button aria-label="Close" onclick="this.parentElement.parentElement.parentElement.style.display=\'none\';" style="width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(20,24,48,.8);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><i data-lucide="x" class="kh-ui-icon" aria-hidden="true"></i></button>'
         + '</div>'
@@ -1087,35 +1087,35 @@
     <!-- ═══ TABBED WEEKLY SECTION (비교 | 목표 | 캘린더) ═══ -->
     <section class="card" style="margin-bottom:14px;padding:16px">
       <div style="display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px">
-        <button onclick="switchHubTab('compare')" id="htab-compare" class="htab active" style="padding:6px 12px;font-size:12px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--bright);border-bottom:2px solid var(--bright)">이번주</button>
-        <button onclick="switchHubTab('goals')" id="htab-goals" class="htab" style="padding:6px 12px;font-size:12px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent">목표</button>
-        <button onclick="switchHubTab('calendar')" id="htab-calendar" class="htab" style="padding:6px 12px;font-size:12px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent">캘린더</button>
+        <button onclick="switchHubTab('compare')" id="htab-compare" class="htab active" style="padding:6px 12px;font-size:12px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--bright);border-bottom:2px solid var(--bright)">This Week</button>
+        <button onclick="switchHubTab('goals')" id="htab-goals" class="htab" style="padding:6px 12px;font-size:12px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent">Goals</button>
+        <button onclick="switchHubTab('calendar')" id="htab-calendar" class="htab" style="padding:6px 12px;font-size:12px;font-weight:700;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent">Calendar</button>
       </div>
       <!-- Tab: Compare -->
       <div id="htab-body-compare">
         <div id="weekly-compare-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:0">
           <div style="text-align:center;padding:10px 6px;border-right:1px solid #f0f0f0">
-            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">기사</div>
+            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">Articles</div>
             <div style="font-size:22px;font-weight:800;color:var(--text)" id="wc-articles">-</div>
             <div style="font-size:10px;font-weight:600;margin-top:2px" id="wc-articles-delta"></div>
           </div>
           <div style="text-align:center;padding:10px 6px;border-right:1px solid #f0f0f0">
-            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">단어</div>
+            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">Words</div>
             <div style="font-size:22px;font-weight:800;color:var(--text)" id="wc-words">-</div>
             <div style="font-size:10px;font-weight:600;margin-top:2px" id="wc-words-delta"></div>
           </div>
           <div style="text-align:center;padding:10px 6px;border-right:1px solid #f0f0f0">
-            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">퀴즈</div>
+            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">Quizzes</div>
             <div style="font-size:22px;font-weight:800;color:var(--text)" id="wc-quizzes">-</div>
             <div style="font-size:10px;font-weight:600;margin-top:2px" id="wc-quizzes-delta"></div>
           </div>
           <div style="text-align:center;padding:10px 6px;border-right:1px solid #f0f0f0">
-            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">글쓰기</div>
+            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">Writing</div>
             <div style="font-size:22px;font-weight:800;color:var(--text)" id="wc-writing">-</div>
             <div style="font-size:10px;font-weight:600;margin-top:2px" id="wc-writing-delta"></div>
           </div>
           <div style="text-align:center;padding:10px 6px">
-            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">활동일</div>
+            <div style="font-size:10px;font-weight:500;color:#8b8b8b;margin-bottom:4px">Active Days</div>
             <div style="font-size:22px;font-weight:800;color:var(--text)" id="wc-days">-<span style="font-size:13px;font-weight:500">/7</span></div>
             <div style="font-size:10px;font-weight:600;margin-top:2px" id="wc-days-delta"></div>
           </div>
@@ -1124,16 +1124,16 @@
       <!-- Tab: Goals -->
       <div id="htab-body-goals" style="display:none">
         <div id="weekly-goals-bars" style="display:grid;gap:8px"></div>
-        <div style="text-align:right;margin-top:8px"><button onclick="openGoalSettings()" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-weight:700;color:var(--muted);display:inline-flex;align-items:center;gap:4px"><i data-lucide="settings" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>목표 설정</span></button></div>
+        <div style="text-align:right;margin-top:8px"><button onclick="openGoalSettings()" style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-weight:700;color:var(--muted);display:inline-flex;align-items:center;gap:4px"><i data-lucide="settings" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Goal Settings</span></button></div>
         <div id="goal-settings-modal" style="display:none;margin-top:10px;padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0">
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px">
-            <div><label style="font-size:10px;font-weight:700;color:#64748b">기사</label><input id="goal-articles" type="number" value="5" min="1" max="50" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
-            <div><label style="font-size:10px;font-weight:700;color:#64748b">단어</label><input id="goal-words" type="number" value="20" min="1" max="100" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
-            <div><label style="font-size:10px;font-weight:700;color:#64748b">퀴즈</label><input id="goal-quizzes" type="number" value="10" min="1" max="50" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
-            <div><label style="font-size:10px;font-weight:700;color:#64748b">글쓰기</label><input id="goal-writing" type="number" value="3" min="1" max="20" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
-            <div><label style="font-size:10px;font-weight:700;color:#64748b">활동일</label><input id="goal-days" type="number" value="5" min="1" max="7" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
+            <div><label style="font-size:10px;font-weight:700;color:#64748b">Articles</label><input id="goal-articles" type="number" value="5" min="1" max="50" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
+            <div><label style="font-size:10px;font-weight:700;color:#64748b">Words</label><input id="goal-words" type="number" value="20" min="1" max="100" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
+            <div><label style="font-size:10px;font-weight:700;color:#64748b">Quizzes</label><input id="goal-quizzes" type="number" value="10" min="1" max="50" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
+            <div><label style="font-size:10px;font-weight:700;color:#64748b">Writing</label><input id="goal-writing" type="number" value="3" min="1" max="20" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
+            <div><label style="font-size:10px;font-weight:700;color:#64748b">Active Days</label><input id="goal-days" type="number" value="5" min="1" max="7" style="width:100%;padding:4px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px"></div>
           </div>
-          <button onclick="saveWeeklyGoals()" style="margin-top:8px;padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-weight:800;cursor:pointer;font-size:11px">저장</button>
+          <button onclick="saveWeeklyGoals()" style="margin-top:8px;padding:6px 14px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-weight:800;cursor:pointer;font-size:11px">Save</button>
         </div>
       </div>
       <!-- Tab: Calendar -->
@@ -1163,7 +1163,7 @@
         <div style="flex:1;min-width:0">
           <div style="font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,181,253,.8)">Monthly Report</div>
           <div style="font-family:'Playfair Display','Noto Serif KR',serif;font-size:18px;font-weight:900;letter-spacing:-.01em;line-height:1.2;margin-top:2px">Now delivered to your inbox</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:6px;line-height:1.55">매월 첫째 주에 한 달 학습 요약 + 다음 달 맞춤 계획을 이메일로 보내드려요. 받으실 주소는 <a href="korehan-mypage.html" style="color:#c4b5fd;font-weight:700;text-decoration:underline">My Page</a>에서 확인하세요.</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:6px;line-height:1.55">In the first week of each month, we email you a summary of the past month plus a tailored plan for the month ahead. Check your delivery address on <a href="korehan-mypage.html" style="color:#c4b5fd;font-weight:700;text-decoration:underline">My Page</a>.</div>
         </div>
       </div>
     </section>
@@ -1177,7 +1177,7 @@
     <section class="card" style="margin-bottom:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:17px;font-weight:800">Feedback</span>
-        <button type="button" onclick="window._glOpenFeedbackListModal && window._glOpenFeedbackListModal()" style="font-size:12px;font-weight:800;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:5px 14px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span id="fb-hist-count-top">0건</span><span style="opacity:.6">·</span><span>View all →</span></button>
+        <button type="button" onclick="window._glOpenFeedbackListModal && window._glOpenFeedbackListModal()" style="font-size:12px;font-weight:800;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:5px 14px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span id="fb-hist-count-top">0 items</span><span style="opacity:.6">·</span><span>View all →</span></button>
       </div>
       <div id="fb-history-list-top"></div>
     </section>
@@ -1203,15 +1203,15 @@
         <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#fef3c7,#fde68a);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#92400e"><i data-lucide="pen-line" class="kh-ui-icon" style="width:22px;height:22px" aria-hidden="true"></i></div>
         <div style="flex:1;min-width:160px">
           <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:3px">Weak Grammar Practice</div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.5">퀴즈에서 자주 틀린 문법을 집중 연습하세요</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5">Focus-practice the grammar you miss most</div>
         </div>
-        <a href="korehan-study-room.html?tab=grammar" style="padding:10px 20px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-size:13px;font-weight:800;white-space:nowrap">Study Room에서 연습 →</a>
+        <a href="korehan-study-room.html?tab=grammar" style="padding:10px 20px;background:#2563eb;color:#fff;border-radius:10px;text-decoration:none;font-size:13px;font-weight:800;white-space:nowrap">Practice in Study Room →</a>
       </div>
     </section>
 
     <section class="grid">
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:17px;font-weight:800">Weak grammar</span><a style="font-size:11px;font-weight:700;color:var(--bright)" href="korehan-study-room.html">연습 →</a></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:17px;font-weight:800">Weak grammar</span><a style="font-size:11px;font-weight:700;color:var(--bright)" href="korehan-study-room.html">Practice →</a></div>
         <div class="grammar-list" id="weak-grammar-list"></div>
       </div>
       <div class="card">
@@ -1220,13 +1220,13 @@
           <canvas id="radar-canvas" style="width:100%;max-width:320px;height:auto"></canvas>
         </div>
         <div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap">
-          <button class="tpill radar-cmp on" onclick="_setRadarCompare(0,this)" style="font-size:10px;padding:4px 10px">vs 1주 전</button>
-          <button class="tpill radar-cmp" onclick="_setRadarCompare(1,this)" style="font-size:10px;padding:4px 10px">vs 2주 전</button>
-          <button class="tpill radar-cmp" onclick="_setRadarCompare(3,this)" style="font-size:10px;padding:4px 10px">vs 4주 전</button>
+          <button class="tpill radar-cmp on" onclick="_setRadarCompare(0,this)" style="font-size:10px;padding:4px 10px">vs 1 week ago</button>
+          <button class="tpill radar-cmp" onclick="_setRadarCompare(1,this)" style="font-size:10px;padding:4px 10px">vs 2 weeks ago</button>
+          <button class="tpill radar-cmp" onclick="_setRadarCompare(3,this)" style="font-size:10px;padding:4px 10px">vs 4 weeks ago</button>
         </div>
         <div style="display:flex;gap:12px;justify-content:center;margin-bottom:10px;font-size:10px;font-weight:700">
-          <span style="color:var(--bright)">● 현재</span>
-          <span id="radar-cmp-label" style="color:#cbd5e1">● 1주 전</span>
+          <span style="color:var(--bright)">● Current</span>
+          <span id="radar-cmp-label" style="color:#cbd5e1">● 1 week ago</span>
         </div>
         <div class="skills" id="skills-list"></div>
       </div>
@@ -1235,8 +1235,8 @@
     <!-- ═══ ERROR PATTERN ANALYSIS ═══ -->
     <section class="card" style="margin-bottom:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:17px;font-weight:800">오답 패턴 분석</span>
-        <span style="font-size:11px;color:var(--muted)" id="error-period">최근 4주</span>
+        <span style="font-size:17px;font-weight:800">Error-pattern analysis</span>
+        <span style="font-size:11px;color:var(--muted)" id="error-period">Last 4 weeks</span>
       </div>
       <div id="error-patterns-list"></div>
     </section>
@@ -1266,8 +1266,8 @@
     <!-- ═══ RECENT BADGES ═══ -->
     <section class="card" style="margin-bottom:14px;padding:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:17px;font-weight:800">최근 뱃지</span>
-        <a href="korehan-mypage.html" style="font-size:11px;font-weight:700;color:var(--bright);text-decoration:none">전체 보기 →</a>
+        <span style="font-size:17px;font-weight:800">Recent badges</span>
+        <a href="korehan-mypage.html" style="font-size:11px;font-weight:700;color:var(--bright);text-decoration:none">View all →</a>
       </div>
       <div id="recent-badges-list"></div>
     </section>
@@ -1308,9 +1308,9 @@
 <script src="js/core/user-analytics.js?v=20261014a"></script>
   <script src="js/core/plans.js?v=20261013a"></script>
   <script src="js/core/article-cache.js?v=20261010a"></script>
-  <script src="js/core/phrases.js?v=20260525r"></script>
+  <script src="js/core/phrases.js?v=20261016a"></script>
   <script src="js/core/saved-words.js?v=20261013a"></script>
-<script src="js/core/hangul-jamo-input.js?v=20260525r"></script>
+<script src="js/core/hangul-jamo-input.js?v=20261016a"></script>
   <script src="js/features/video-player.js?v=20260525r"></script>
   <script src="js/core/articles.js?v=20261013a"></script>
   <script src="js/core/reporters.js?v=20260525r"></script>
@@ -1318,14 +1318,14 @@
   <script src="js/features/daily-mission.js?v=20261014a"></script>
   <script src="js/features/reading-tracker.js?v=20260525r"></script>
   <script src="js/features/bookmarks.js?v=20260525r"></script>
-  <script src="js/features/comments.js?v=20260527i"></script>
+  <script src="js/features/comments.js?v=20261016a"></script>
   <script src="js/features/sidebar.js?v=20260525r"></script>
   <script src="js/features/analyze-mode.js?v=20260525r"></script>
   <script src="js/features/translation.js?v=20261012a"></script>
   <script src="js/features/fill-blank.js?v=20261013c"></script>
   <script src="korehan-shared.js?v=20261015d"></script>
   <!-- kh-universe.js (~117KB) lazy-loaded by _glEnsureUniverse() above on first click. -->
-  <script src="js/kh-curriculum.js?v=20260527f"></script>
+  <script src="js/kh-curriculum.js?v=20261016a"></script>
   <script src="learning_hub_vocab_data.js"></script>
   <script>
   // ── helpers ────────────────────────────────────────────────
@@ -2350,8 +2350,8 @@
       demoOverlay.id = 'demo-overlay';
       demoOverlay.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:999;background:linear-gradient(180deg,transparent,rgba(11,22,38,.95) 30%);padding:30px 20px 24px;text-align:center';
       demoOverlay.innerHTML = '<div style="max-width:480px;margin:0 auto">'
-        + '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px">이것은 데모 데이터입니다</div>'
-        + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:14px">로그인하면 나만의 학습 데이터를 확인할 수 있어요</div>'
+        + '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px">This is demo data</div>'
+        + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:14px">Log in to see your own learning data</div>'
         + '<button onclick="openAuthModal(\'signin\')" style="padding:12px 32px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;border-radius:999px;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,.4)">Sign In →</button>'
         + '</div>';
       document.body.appendChild(demoOverlay);
@@ -2992,7 +2992,7 @@
           var pct = Math.round((cur - prev) / prev * 100);
           var arrow = pct > 0 ? '↑' : pct < 0 ? '↓' : '→';
           var color = pct > 0 ? '#16a34a' : pct < 0 ? '#ef4444' : '#64748b';
-          deltaEl.textContent = arrow + ' ' + Math.abs(pct) + '% vs 지난주';
+          deltaEl.textContent = arrow + ' ' + Math.abs(pct) + '% vs last week';
           deltaEl.style.color = color;
         }
       }
@@ -3026,11 +3026,11 @@
   function renderWeeklyGoals(stats) {
     var g = _weeklyGoals;
     var bars = [
-      { label:'기사', actual:stats.articles_read, goal:g.goal_articles, color:'var(--bright)' },
-      { label:'단어', actual:stats.words_learned, goal:g.goal_words, color:'var(--bright)' },
-      { label:'퀴즈', actual:stats.quizzes_done, goal:g.goal_quizzes, color:'var(--bright)' },
-      { label:'글쓰기', actual:stats.writing_count, goal:g.goal_writing, color:'var(--bright)' },
-      { label:'활동일', actual:stats.active_days, goal:g.goal_active_days, color:'var(--bright)' }
+      { label:'Articles', actual:stats.articles_read, goal:g.goal_articles, color:'var(--bright)' },
+      { label:'Words', actual:stats.words_learned, goal:g.goal_words, color:'var(--bright)' },
+      { label:'Quizzes', actual:stats.quizzes_done, goal:g.goal_quizzes, color:'var(--bright)' },
+      { label:'Writing', actual:stats.writing_count, goal:g.goal_writing, color:'var(--bright)' },
+      { label:'Active Days', actual:stats.active_days, goal:g.goal_active_days, color:'var(--bright)' }
     ];
     var el = document.getElementById('weekly-goals-bars');
     if (!el) return;
@@ -3202,11 +3202,11 @@
     }
     var labelEl = document.getElementById('cal-streak-label');
     if (labelEl) {
-      if (streak > 0) labelEl.innerHTML = '🔥 <b style="font-size:16px;color:#ea580c">' + streak + '일</b> 연속 학습 중';
-      else labelEl.textContent = '오늘 첫 학습을 시작해보세요!';
+      if (streak > 0) labelEl.innerHTML = '🔥 <b style="font-size:16px;color:#ea580c">' + streak + '-day</b> learning streak';
+      else labelEl.textContent = 'Start your first lesson today!';
     }
     var longestEl = document.getElementById('cal-longest-label');
-    if (longestEl && longest > 0) longestEl.innerHTML = '🏆 최장 <b>' + longest + '일</b>';
+    if (longestEl && longest > 0) longestEl.innerHTML = '🏆 Longest <b>' + longest + ' days</b>';
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3518,9 +3518,9 @@
     _radarCompareIdx = idx;
     document.querySelectorAll('.radar-cmp').forEach(function(b){ b.classList.remove('on'); });
     if (btn) btn.classList.add('on');
-    var labels = {0:'● 1주 전', 1:'● 2주 전', 3:'● 4주 전'};
+    var labels = {0:'● 1 week ago', 1:'● 2 weeks ago', 3:'● 4 weeks ago'};
     var lbl = document.getElementById('radar-cmp-label');
-    if (lbl) lbl.textContent = labels[idx] || '● 이전';
+    if (lbl) lbl.textContent = labels[idx] || '● Previous';
     _renderRadarWithCompare();
   }
 
@@ -3540,7 +3540,7 @@
         .gte('study_date', since)
         .not('wrong_patterns', 'is', null);
       var rows = r.data || [];
-      if (!rows.length) { el.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px 0">아직 데이터가 부족합니다. 퀴즈와 글쓰기를 더 해보세요!</div>'; return; }
+      if (!rows.length) { el.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px 0">Not enough data yet. Try more quizzes and writing!</div>'; return; }
 
       // Aggregate patterns
       var totals = {};
@@ -3559,9 +3559,9 @@
       });
 
       var totalErrors = Object.values(totals).reduce(function(a, b) { return a + b; }, 0);
-      if (totalErrors === 0) { el.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px 0">오답이 없습니다!</div>'; return; }
+      if (totalErrors === 0) { el.innerHTML = '<div style="font-size:12px;color:#94a3b8;padding:8px 0">No wrong answers!</div>'; return; }
 
-      var labels = { PARTICLE:'조사 (Particle)', TENSE:'시제 (Tense)', WORD_ORDER:'어순 (Word Order)', SPELLING:'맞춤법 (Spelling)', VOCAB:'어휘 (Vocab)', OTHER:'기타' };
+      var labels = { PARTICLE:'Particle', TENSE:'Tense', WORD_ORDER:'Word Order', SPELLING:'Spelling', VOCAB:'Vocab', OTHER:'Other' };
       var colors = { PARTICLE:'var(--bright)', TENSE:'var(--bright)', WORD_ORDER:'var(--bright)', SPELLING:'var(--bright)', VOCAB:'var(--bright)', OTHER:'#ccc' };
 
       var sorted = Object.keys(totals).filter(function(k) { return totals[k] > 0; }).sort(function(a, b) { return totals[b] - totals[a]; });
@@ -3576,9 +3576,9 @@
         var trend = '', trendColor = '';
         if (olderPerWeek > 0) {
           var change = Math.round((recentPerWeek - olderPerWeek) / olderPerWeek * 100);
-          if (change < -10) { trend = '↓ 개선'; trendColor = '#16a34a'; }
-          else if (change > 10) { trend = '↑ 주의'; trendColor = '#ef4444'; }
-          else { trend = '→ 유지'; trendColor = '#64748b'; }
+          if (change < -10) { trend = '↓ Improving'; trendColor = '#16a34a'; }
+          else if (change > 10) { trend = '↑ Watch'; trendColor = '#ef4444'; }
+          else { trend = '→ Steady'; trendColor = '#64748b'; }
         }
         var practiceLinks = {
           PARTICLE: 'korehan-study-room.html?focus=particle&source=growth-lab',
@@ -3593,7 +3593,7 @@
           + '<div style="width:' + pct + '%;height:100%;background:' + (colors[k]||'#ccc') + ';border-radius:2px"></div></div>'
           + '<span style="font-size:11px;font-weight:700;min-width:32px;text-align:right;color:#555">' + pct + '%</span>'
           + (trend ? '<span style="font-size:10px;font-weight:600;min-width:50px;color:' + trendColor + '">' + trend + '</span>' : '')
-          + (practiceLinks[k] ? '<a href="' + practiceLinks[k] + '" style="font-size:10px;font-weight:700;color:var(--bright);text-decoration:none;white-space:nowrap">연습→</a>' : '')
+          + (practiceLinks[k] ? '<a href="' + practiceLinks[k] + '" style="font-size:10px;font-weight:700;color:var(--bright);text-decoration:none;white-space:nowrap">Practice →</a>' : '')
           + '</div>';
       }).join('');
     } catch(e) { console.warn('[error-patterns]', e); }
@@ -3615,7 +3615,7 @@
         .order('created_at', { ascending: false })
         .limit(15);
       var rows = r.data || [];
-      if (!rows.length) { el.innerHTML = '<div style="font-size:13px;color:#8b8b8b;padding:8px 0">아직 리뷰 기록이 없습니다. Study Room에서 시작해보세요.</div>'; return; }
+      if (!rows.length) { el.innerHTML = '<div style="font-size:13px;color:#8b8b8b;padding:8px 0">No review history yet. Start in Study Room.</div>'; return; }
       var typeLabel = { daily_review:'Daily', weekly_review:'Weekly', monthly_review:'Monthly' };
       el.innerHTML = rows.map(function(row) {
         var pct = row.accuracy_pct || (row.max_score > 0 ? Math.round(row.score / row.max_score * 100) : 0);
@@ -3627,7 +3627,7 @@
           + '<span style="font-size:12px;font-weight:700;color:' + color + ';min-width:35px;text-align:right">' + pct + '%</span>'
           + '</div>';
       }).join('');
-    } catch(e) { el.innerHTML = '<div style="font-size:12px;color:#8b8b8b">데이터를 불러올 수 없습니다.</div>'; }
+    } catch(e) { el.innerHTML = '<div style="font-size:12px;color:#8b8b8b">Could not load data.</div>'; }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -3842,14 +3842,14 @@
   function _glFbStatus(item) {
     var st = item && item.status;
     if (st === 'admin_approved' || st === 'sent') {
-      return { ready: true, text: '피드백 도착', icon: 'check-circle-2', color: '#16a34a' };
+      return { ready: true, text: 'Feedback ready', icon: 'check-circle-2', color: '#16a34a' };
     }
     if (st === 'ai_reviewed') {
       return item.tutor_requested
         ? { ready: true, text: 'AI feedback ready · tutor review coming', icon: 'sparkles', color: '#2563eb' }
         : { ready: true, text: 'AI feedback ready', icon: 'sparkles', color: '#16a34a' };
     }
-    return { ready: false, text: '제출됨', icon: 'send', color: '#94a3b8' };
+    return { ready: false, text: 'Submitted', icon: 'send', color: '#94a3b8' };
   }
 
   // Cached map of feedback rows so card clicks can rebuild the modal body
@@ -3874,7 +3874,7 @@
       var date = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
       var bits = [];
       if (date) bits.push(date);
-      if (item.score != null) bits.push(item.score + '점');
+      if (item.score != null) bits.push(item.score + ' pts');
       if (item.topic_ko) bits.push(item.topic_ko);
       subEl.textContent = bits.join(' · ');
     }
@@ -3940,7 +3940,7 @@
       ? _glFbAllItems.filter(function(it){ return bucket.types.indexOf(it.content_type) >= 0; })
       : _glFbAllItems.slice();
     if (!items.length) {
-      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#94a3b8;font-size:13px">이 카테고리엔 아직 피드백이 없어요.</div>';
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#94a3b8;font-size:13px">No feedback in this category yet.</div>';
       return;
     }
     var grouped = {};
@@ -3964,7 +3964,7 @@
           +   '<div style="display:flex;align-items:center;gap:8px">'
           +     '<div style="width:28px;height:28px;border-radius:8px;background:' + t.color + '15;color:' + t.color + ';display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="' + t.icon + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>'
           +     '<span style="font-size:11px;font-weight:800;color:' + t.color + ';letter-spacing:.04em;text-transform:uppercase">' + t.label + '</span>'
-          +     (item.score != null ? '<span style="margin-left:auto;font-size:11px;font-weight:900;color:#2563eb">' + item.score + '점</span>' : '')
+          +     (item.score != null ? '<span style="margin-left:auto;font-size:11px;font-weight:900;color:#2563eb">' + item.score + ' pts</span>' : '')
           +   '</div>'
           + (item.topic_ko ? '<div style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + item.topic_ko.replace(/[<>]/g,'') + '</div>' : '')
           + (preview ? '<div style="font-size:11px;color:#64748b;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">' + preview.replace(/[<>]/g,'') + '</div>' : '')
@@ -3997,7 +3997,7 @@
     }
     overlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
-    document.getElementById('gl-fb-list-count').textContent = '· ' + _glFbAllItems.length + '건';
+    document.getElementById('gl-fb-list-count').textContent = '· ' + _glFbAllItems.length + ' items';
     // Render the tabs once per open — counts re-compute against the
     // freshest fetch result.
     var tabsEl = document.getElementById('gl-fb-list-tabs');
@@ -4112,9 +4112,9 @@
       if (res.error) throw res.error;
       var items = res.data || [];
       _glFbAllItems = items;
-      if (countEl) countEl.textContent = items.length + '건';
+      if (countEl) countEl.textContent = items.length + ' items';
       if (!items.length) {
-        el.innerHTML = '<div style="font-size:13px;color:#8b8b8b;padding:8px 0">아직 제출한 글이 없습니다. Study Room에서 글쓰기를 시작해보세요.</div>';
+        el.innerHTML = '<div style="font-size:13px;color:#8b8b8b;padding:8px 0">No submissions yet. Start writing in Study Room.</div>';
         return;
       }
 
@@ -4144,7 +4144,7 @@
         html += '<div style="margin-bottom:16px">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
         html += '<span style="font-size:13px;font-weight:900;color:#0f172a">' + date + '</span>';
-        html += '<span style="font-size:10px;color:#94a3b8">' + dayItems.length + '건' + (fbReady ? ' · ' + fbReady + ' feedback' : '') + '</span>';
+        html += '<span style="font-size:10px;color:#94a3b8">' + dayItems.length + ' items' + (fbReady ? ' · ' + fbReady + ' feedback' : '') + '</span>';
         html += '</div>';
 
         dayItems.forEach(function(item) {
@@ -4164,7 +4164,7 @@
           html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
           html += '<span style="font-size:11px;font-weight:800;color:' + t.color + '">' + t.label + '</span>';
           html += '<span style="font-size:10px;color:' + statusColor + ';font-weight:700;display:inline-flex;align-items:center;gap:3px"><i data-lucide="' + statusIcon + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>' + statusText + '</span></span>';
-          if (item.score != null) html += '<span style="font-size:10px;font-weight:800;color:#2563eb">' + item.score + '점</span>';
+          if (item.score != null) html += '<span style="font-size:10px;font-weight:800;color:#2563eb">' + item.score + ' pts</span>';
           html += '</div>';
           if (item.topic_ko) html += '<div style="font-size:10px;color:#64748b;margin-top:1px">' + item.topic_ko + '</div>';
           if (preview) html += '<div style="font-size:10px;color:#94a3b8;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + preview + '</div>';
@@ -4177,7 +4177,7 @@
 
       el.innerHTML = html;
       if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
-    } catch(e) { el.innerHTML = '<div style="color:#e53e3e;font-size:12px">오류: ' + (e.message||e) + '</div>'; }
+    } catch(e) { el.innerHTML = '<div style="color:#e53e3e;font-size:12px">Error: ' + (e.message||e) + '</div>'; }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -4194,7 +4194,7 @@
     });
     list.sort(function(a,b) { return (b.earnedAt||'').localeCompare(a.earnedAt||''); });
     var recent = list.slice(0, 6);
-    if (!recent.length) { el.innerHTML = '<div style="font-size:12px;color:#94a3b8">아직 획득한 뱃지가 없습니다. 학습하면 뱃지를 받을 수 있어요!</div>'; return; }
+    if (!recent.length) { el.innerHTML = '<div style="font-size:12px;color:#94a3b8">No badges yet. Keep learning to earn them!</div>'; return; }
     var tierBg = { bronze:'#fef3c7', silver:'#f1f5f9', gold:'#fef9c3', diamond:'#eff6ff', legendary:'#faf5ff' };
     var tierBorder = { bronze:'#fde68a', silver:'#e2e8f0', gold:'#fde047', diamond:'#bfdbfe', legendary:'#e9d5ff' };
     el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">' + recent.map(function(b) {
@@ -4240,7 +4240,7 @@
     if (!body || !title) return;
     if (!supaUser) {
       title.textContent = 'Sign in to see your monthly report';
-      body.innerHTML = '<div style="color:rgba(255,255,255,.7);font-size:13px;line-height:1.6">한 달 동안의 학습량과 약점을 한눈에, 그리고 다음 달 맞춤 계획까지. <a href="#" onclick="event.preventDefault();openAuthModal && openAuthModal(\'signin\')" style="color:#a78bfa;font-weight:800;text-decoration:underline">로그인</a> 후 확인하세요.</div>';
+      body.innerHTML = '<div style="color:rgba(255,255,255,.7);font-size:13px;line-height:1.6">See a month of your learning and weak spots at a glance, plus a tailored plan for next month. <a href="#" onclick="event.preventDefault();openAuthModal && openAuthModal(\'signin\')" style="color:#a78bfa;font-weight:800;text-decoration:underline">Log in</a> to view.</div>';
       return;
     }
     if (!sb) return;
@@ -4278,7 +4278,7 @@
         if (!upRes.error) _mrCurrentReport = upRes.data || { stats: stats, month_start: month };
         else _mrCurrentReport = { stats: stats, month_start: month };
       } catch(e) {
-        body.innerHTML = '<div style="color:#fca5a5;font-size:12px;padding:10px 0">집계 오류: ' + (e.message||e) + '</div>';
+        body.innerHTML = '<div style="color:#fca5a5;font-size:12px;padding:10px 0">Aggregation error: ' + (e.message||e) + '</div>';
         return;
       }
     }
@@ -4468,13 +4468,13 @@
     } else if (!hasPlan) {
       planHTML = '<div style="margin-top:6px;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.04);border:1px dashed rgba(167,139,250,.3);text-align:center">'
         + '<div style="font-size:13px;font-weight:800;margin-bottom:4px">🔒 AI Personalized Plan</div>'
-        + '<div style="font-size:12px;color:rgba(220,210,255,.65);line-height:1.55;margin-bottom:10px">Standard 플랜에서 다음 달 주차별 학습 계획을 자동 생성해드려요.</div>'
+        + '<div style="font-size:12px;color:rgba(220,210,255,.65);line-height:1.55;margin-bottom:10px">The Standard plan automatically creates your week-by-week study plan for next month.</div>'
         + '<button onclick="requirePlan && requirePlan(\'monthly_report\')" style="padding:8px 18px;background:linear-gradient(135deg,#a78bfa,#38bdf8);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Upgrade →</button>'
         + '</div>';
     } else {
       planHTML = '<div style="margin-top:6px;padding:14px 16px;border-radius:12px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25)">'
         + '<div style="font-size:13px;font-weight:800;margin-bottom:4px">📋 Personalized plan ready to generate</div>'
-        + '<div style="font-size:11px;color:rgba(220,210,255,.7);margin-bottom:10px;line-height:1.5">이번 달 데이터를 기반으로 다음 달 4주 계획 + 약점 보완 포커스를 AI가 제안합니다.</div>'
+        + '<div style="font-size:11px;color:rgba(220,210,255,.7);margin-bottom:10px;line-height:1.5">Based on your data this month, AI suggests a 4-week plan for next month plus a focus on your weak points.</div>'
         + '<button id="mr-gen-btn" onclick="_mrGeneratePlan()" style="padding:9px 22px;background:linear-gradient(135deg,#a78bfa,#38bdf8);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">Generate plan ✨</button>'
         + '</div>';
     }
