@@ -430,7 +430,7 @@
 <script src="js/core/user-analytics.js?v=20261014a"></script>
 <script src="js/core/plans.js?v=20261013a"></script>
 <script src="js/core/article-cache.js?v=20261010a"></script>
-<script src="js/core/phrases.js?v=20260525r"></script>
+<script src="js/core/phrases.js?v=20261016a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261013a"></script>
@@ -439,7 +439,7 @@
 <script src="js/features/daily-mission.js?v=20261014a"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
 <script src="js/features/bookmarks.js?v=20260525r"></script>
-<script src="js/features/comments.js?v=20260527i"></script>
+<script src="js/features/comments.js?v=20261016a"></script>
 <script src="js/features/sidebar.js?v=20260525r"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
@@ -1508,12 +1508,12 @@ async function generateStoryAI(id) {
   if (!s) return;
   var btn = document.getElementById('st-gen-ai-btn');
   var msg = document.getElementById('st-gen-ai-msg');
-  if (btn) { btn.disabled = true; btn.style.opacity = '.7'; btn.textContent = '🤖 AI 분석 중… (15-25초)'; }
+  if (btn) { btn.disabled = true; btn.style.opacity = '.7'; btn.textContent = '🤖 AI analyzing… (15-25s)'; }
   if (msg) msg.textContent = '';
   try {
-    if (typeof callClaude !== 'function') throw new Error('callClaude 사용 불가 (로그인 필요)');
+    if (typeof callClaude !== 'function') throw new Error('Claude unavailable (login required)');
     var body = (s.body || '').replace(/<[^>]*>/g, '').slice(0, 2500);
-    if (!body || body.length < 40) throw new Error('본문이 너무 짧습니다');
+    if (!body || body.length < 40) throw new Error('The text is too short');
     var prompt = 'Analyze the Korean story below and return ONLY valid JSON (no markdown, no "json" label).\n\n'
       + 'Title: ' + (s.title || '') + '\nBody: ' + body
       + '\n\nSchema:\n{\n'
@@ -1554,8 +1554,8 @@ async function generateStoryAI(id) {
       openStory(s.id);
     }
   } catch(e) {
-    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '🤖 다시 시도'; }
-    if (msg) msg.textContent = '실패: ' + (e.message || e);
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = '🤖 Try again'; }
+    if (msg) msg.textContent = 'Failed: ' + (e.message || e);
   }
 }
 
@@ -1633,7 +1633,7 @@ function openStory(id) {
     return '<div class="st-grammar-item">'
       + (pattern ? '<div class="st-g-pattern">' + escapeHtml(pattern) + '</div>' : '')
       + (exp ? '<div class="st-g-exp">' + escapeHtml(exp) + '</div>' : '')
-      + (ex ? '<div class="st-g-ex">예: ' + escapeHtml(ex) + '</div>' : '')
+      + (ex ? '<div class="st-g-ex">Ex: ' + escapeHtml(ex) + '</div>' : '')
       + '</div>';
   }).join('');
 
@@ -2191,7 +2191,7 @@ function stRenderParagraphCards(koBody, enBody, hasEn, sentenceAnalysis, story) 
               return '<li>'
                 + '<div class="st-g-pat-row"><b>' + pat + '</b></div>'
                 + (exp ? '<div class="st-g-exp-row">' + exp + '</div>' : '')
-                + (ex ? '<div class="st-g-ex-row">예: ' + ex + '</div>' : '')
+                + (ex ? '<div class="st-g-ex-row">Ex: ' + ex + '</div>' : '')
                 + '</li>';
             }).join('')
           + '</ul></div>';
@@ -2544,7 +2544,7 @@ function sbRender() {
   var wrap = document.getElementById('sb-art-wrap');
   var art = p.image_url
     ? '<img class="sb-art" src="' + escapeHtml(p.image_url) + '" alt="" onerror="this.style.display=\'none\'">'
-    : '<div class="sb-art-loading">🎨 삽화 준비 중…</div>';
+    : '<div class="sb-art-loading">🎨 Preparing illustration…</div>';
   var pins = (p.hotspots || []).map(function(h, hi){
     var emoji = SB_KIND_EMOJI[h.kind] || '';
     return '<button class="sb-pin kind-' + escapeHtml(h.kind) + '" style="left:' + (h.x*100).toFixed(2) + '%;top:' + (h.y*100).toFixed(2) + '%" onclick="sbPinTap(' + hi + ',event)" aria-label="' + escapeHtml(h.label_en || h.label_ko || 'detail') + '">'
@@ -2923,7 +2923,7 @@ async function loadStoriesFromDB() {
     + '<span>Loading story…</span></div>';
   try {
     var sb = typeof getSupa === 'function' ? getSupa() : null;
-    if (!sb) throw new Error('Supabase 연결 없음');
+    if (!sb) throw new Error('No Supabase connection');
     var { data, error } = await sb.from('stories_data').select('*').order('created_at', {ascending: false}).limit(60);
     if (error) throw error;
     if (data && data.length) {
@@ -3032,7 +3032,7 @@ function startStoryBlank() {
   var s = window._currentStory;
   if (!s) return;
   var vocab = (s.vocab || []).filter(function(v){ return v.ko && v.ko.length > 1; });
-  if (!vocab.length) { toast('이 스토리에 단어 데이터가 없습니다.'); return; }
+  if (!vocab.length) { toast('This story has no word data.'); return; }
 
   // 스토리 body에서 단어 찾아 빈칸
   var body = (s.body || '').replace(/<[^>]*>/g, '');
@@ -3046,7 +3046,7 @@ function startStoryBlank() {
   });
   if (!questions.length) {
     questions = vocab.slice(0,4).map(function(v){
-      return { original: '이 단어의 뜻은? → ' + v.en, word: v.ko, en: v.en, who: '' };
+      return { original: 'What does this word mean? → ' + v.en, word: v.ko, en: v.en, who: '' };
     });
   }
   showStoryQuiz('blank', questions, s.title);
@@ -3057,7 +3057,7 @@ function startStoryOrder() {
   if (!s) return;
   var body = (s.body || '').replace(/<[^>]*>/g, '');
   var sentences = body.split(/[.。\n]/).filter(function(t){ return t.trim().length > 8; }).slice(0, 6);
-  if (sentences.length < 3) { toast('이 스토리는 순서 퀴즈를 만들기에 너무 짧습니다.'); return; }
+  if (sentences.length < 3) { toast('This story is too short for an order quiz.'); return; }
   var questions = [];
   for (var i = 0; i + 2 < sentences.length; i++) {
     questions.push({ msgs: sentences.slice(i, i+3).map(function(t){ return {txt: t.trim(), who:''}; }) });
@@ -3092,7 +3092,7 @@ function showStoryQuiz(mode, questions, title) {
       html += '<div style="background:#f8fafc;border-radius:12px;padding:16px;font-size:15px;line-height:1.8;margin-bottom:14px;text-align:left;">' 
         + q.original.replace(q.word, '<b style="color:#2563eb;background:#dbeafe;border-radius:6px;padding:1px 8px;">___</b>') 
         + '</div>';
-      html += '<div style="color:#94a3b8;font-size:13px;margin-bottom:4px">힌트: ' + q.en + '</div>';
+      html += '<div style="color:#94a3b8;font-size:13px;margin-bottom:4px">Hint: ' + q.en + '</div>';
       html += '<div style="font-size:13px;font-weight:700;color:#2563eb;margin-top:8px">Answer hidden until you check the original text.</div>'; 
     });
   } else {

@@ -974,7 +974,7 @@ body.kh-neon-on .hero-dot {
     if (current >= 100 && !_isHeroPainted()) {
       renderedPct = 92; // hold visual at 92% during the post-milestone
                         // "waiting for hero paint" phase
-      if (tip) tip.textContent = '거의 다 됐어요 — 콘텐츠 가져오는 중…';
+      if (tip) tip.textContent = 'Almost there — loading content…';
     } else {
       renderedPct = current;
     }
@@ -1093,14 +1093,14 @@ body.kh-neon-on .hero-dot {
     if(day === 0 && !localStorage.getItem('kh_weekly_review_done_'+now.toISOString().slice(0,10))){
       html += '<a href="korehan-study-room.html" style="flex:1;min-width:220px;padding:10px 14px;border-radius:10px;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);border:1px solid rgba(96,165,250,.3);text-decoration:none;display:flex;align-items:center;gap:10px">'
         + '<i data-lucide="bar-chart-3" class="kh-ui-icon" style="width:16px;height:16px" aria-hidden="true"></i>'
-        + '<div><div style="font-size:12px;font-weight:800;color:#60a5fa">Weekly Review</div><div style="font-size:11px;color:rgba(255,255,255,.5)">일요일 한정 · 20문제</div></div>'
+        + '<div><div style="font-size:12px;font-weight:800;color:#60a5fa">Weekly Review</div><div style="font-size:11px;color:rgba(255,255,255,.5)">Sundays only · 20 questions</div></div>'
         + '<span style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.3)">→</span></a>';
     }
     // Monthly
     if(date>=1 && date<=3 && !localStorage.getItem('kh_monthly_review_done_'+now.toISOString().slice(0,7))){
       html += '<a href="korehan-study-room.html" style="flex:1;min-width:220px;padding:10px 14px;border-radius:10px;background:linear-gradient(135deg,#312e81,#7c3aed);border:1px solid rgba(139,92,246,.3);text-decoration:none;display:flex;align-items:center;gap:10px">'
         + '<i data-lucide="trophy" class="kh-ui-icon" style="width:16px;height:16px;color:#fbbf24" aria-hidden="true"></i>'
-        + '<div><div style="font-size:12px;font-weight:800;color:#c4b5fd">Monthly Review</div><div style="font-size:11px;color:rgba(255,255,255,.5)">'+(4-date)+'일 남음 · 30문제</div></div>'
+        + '<div><div style="font-size:12px;font-weight:800;color:#c4b5fd">Monthly Review</div><div style="font-size:11px;color:rgba(255,255,255,.5)">'+(4-date)+' days left · 30 questions</div></div>'
         + '<span style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.3)">→</span></a>';
     }
     if(html) wrap.innerHTML = html; else wrap.style.display = 'none';
@@ -1345,9 +1345,9 @@ body.kh-neon-on .hero-dot {
 <script src="js/core/user-analytics.js?v=20261014a" defer></script>
 <script src="js/core/plans.js?v=20261013a"></script>
 <script src="js/core/article-cache.js?v=20261010a"></script>
-<script src="js/core/phrases.js?v=20260525r"></script>
+<script src="js/core/phrases.js?v=20261016a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
-<script src="js/core/hangul-jamo-input.js?v=20260525r"></script>
+<script src="js/core/hangul-jamo-input.js?v=20261016a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261013a"></script>
 <script src="js/core/reporters.js?v=20260525r"></script>
@@ -1355,7 +1355,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/features/daily-mission.js?v=20261014a" defer></script>
 <script src="js/features/reading-tracker.js?v=20260525r" defer></script>
 <script src="js/features/bookmarks.js?v=20260525r" defer></script>
-<script src="js/features/comments.js?v=20260527i" defer></script>
+<script src="js/features/comments.js?v=20261016a" defer></script>
 <script src="js/features/sidebar.js?v=20260525r" defer></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
@@ -1962,16 +1962,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         // common cause: stories_data RLS blocking the current user, or
         // schema drift (a select column the DB no longer has).
         grid.innerHTML = '<div style="color:#dc2626;font-size:13px;padding:16px;line-height:1.6;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;">'
-          + '<strong>Stories 불러오기 실패.</strong><br>' + esc(res.error.message || String(res.error))
-          + '<br><br><a href="korehan-stories.html" style="color:#7c3aed;font-weight:700;text-decoration:underline">📚 Stories 페이지에서 확인</a>'
+          + '<strong>Failed to load Stories.</strong><br>' + esc(res.error.message || String(res.error))
+          + '<br><br><a href="korehan-stories.html" style="color:#7c3aed;font-weight:700;text-decoration:underline">📚 View on the Stories page</a>'
           + '</div>';
         return;
       }
       if (!rows.length) {
         grid.innerHTML = '<div style="color:#64748b;font-size:13px;padding:20px;background:#fff;border:1px dashed #cbd5e1;border-radius:12px;text-align:center;line-height:1.7">'
           + '<div style="font-size:28px;margin-bottom:8px">📖</div>'
-          + '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">아직 스토리가 없어요</div>'
-          + '<div>새 스토리는 어드민에서 추가하거나 <a href="korehan-stories.html" style="color:#7c3aed;font-weight:700;text-decoration:underline">전체 Stories 페이지</a>에서 확인하세요.</div>'
+          + '<div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px">No stories yet</div>'
+          + '<div>Add new stories in admin, or see the <a href="korehan-stories.html" style="color:#7c3aed;font-weight:700;text-decoration:underline">full Stories page</a>.</div>'
           + '</div>';
         return;
       }
@@ -1986,8 +1986,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     } catch(e) {
       console.warn('home stories load failed:', e && e.message || e);
       grid.innerHTML = '<div style="color:#dc2626;font-size:13px;padding:16px;line-height:1.6;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;">'
-        + '<strong>Stories 로드 중 오류:</strong> ' + esc(e && e.message || String(e))
-        + '<br><br><a href="korehan-stories.html" style="color:#7c3aed;font-weight:700;text-decoration:underline">📚 Stories 페이지에서 Try again</a>'
+        + '<strong>Error loading Stories:</strong> ' + esc(e && e.message || String(e))
+        + '<br><br><a href="korehan-stories.html" style="color:#7c3aed;font-weight:700;text-decoration:underline">Try again on the Stories page.</a>'
         + '</div>';
     }
   })();
