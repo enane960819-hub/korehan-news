@@ -10431,6 +10431,68 @@ function renderDetailedFeedback(fb, writingText, inPackage) {
     });
     h += '</div></div>';
 
+    // ── "How this score works" (Phase B) ──────────────────────────────
+    // Transparent breakdown: the published weights, the learner's per-axis
+    // sub-score, and the deterministic evidence behind Accuracy & Lexical.
+    // Rendered only for pieces scored by the Phase-A engine (score_breakdown).
+    if (fb.score_breakdown && typeof fb.score_breakdown === 'object') {
+      var _bd = fb.score_breakdown;
+      var _bdW = _bd.weights || {};
+      var _bdAxes = _bd.axes || {};
+      var _AX_META = [
+        { k: 'accuracy',      label: 'Accuracy',      kind: 'Computed' },
+        { k: 'lexical_range', label: 'Lexical range', kind: 'Computed' },
+        { k: 'cohesion',      label: 'Cohesion',      kind: 'Rated' },
+        { k: 'coherence',     label: 'Coherence',     kind: 'Rated' },
+        { k: 'register',      label: 'Register',      kind: 'Rated' }
+      ].filter(function(a){ return _bdAxes[a.k] != null && _bdW[a.k] != null; });
+      var _wTot = _AX_META.reduce(function(s,a){ return s + (Number(_bdW[a.k]) || 0); }, 0) || 1;
+      var _bandColor = (fb.score == null) ? '#94a3b8'
+        : fb.score >= 70 ? '#4ade80' : fb.score >= 55 ? '#fbbf24' : '#f87171';
+      var _rowFor = function(a) {
+        var sub = Math.max(0, Math.min(100, Math.round(Number(_bdAxes[a.k]) || 0)));
+        var wPct = Math.round((Number(_bdW[a.k]) || 0) / _wTot * 100);
+        var subColor = sub >= 70 ? '#4ade80' : sub >= 55 ? '#fbbf24' : '#f87171';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)">'
+          + '<div style="flex:1;min-width:0;font-size:12px;color:rgba(255,255,255,.78)">' + a.label
+            + '<span style="margin-left:6px;font-size:9px;font-weight:700;padding:1px 6px;border-radius:999px;background:' + (a.kind === 'Computed' ? 'rgba(96,165,250,.16);color:#93c5fd' : 'rgba(167,139,250,.16);color:#c4b5fd') + '">' + a.kind + '</span></div>'
+          + '<div style="flex-shrink:0;width:44px;text-align:right;font-size:11px;color:rgba(255,255,255,.5)">' + wPct + '%</div>'
+          + '<div style="flex-shrink:0;width:36px;text-align:right;font-size:13px;font-weight:900;color:' + subColor + '">' + sub + '</div>'
+          + '</div>';
+      };
+      var _accEv = _bd.accuracy_evidence || {};
+      var _lexEv = _bd.lexical_evidence || {};
+      var _evLines = [
+        'Accuracy = ' + (_accEv.corrections || 0) + (Number(_accEv.corrections) === 1 ? ' fix' : ' fixes') + ' across ' + (_accEv.chars || 0) + ' characters.',
+        'Lexical = ' + (_lexEv.unique_tokens || 0) + ' unique of ' + (_lexEv.total_tokens || 0) + ' words (variety ' + Math.round((Number(_lexEv.ttr) || 0) * 100) + '%)'
+          + (_lexEv.vocab_use != null ? ', ' + Math.round(Number(_lexEv.vocab_use) * 2) + '/2 target words used' : '') + '.'
+      ];
+      h += '<details style="margin:-6px 0 18px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.02);overflow:hidden">'
+        + '<summary style="list-style:none;cursor:pointer;padding:11px 14px;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:rgba(255,255,255,.7);user-select:none">'
+          + '<span style="font-size:13px">🧮</span><span>How this score works</span>'
+          + '<span style="margin-left:auto;display:flex;align-items:center;gap:6px">'
+            + (fb.score_band ? '<span style="font-size:10px;font-weight:800;color:' + _bandColor + ';text-transform:uppercase;letter-spacing:.05em">' + fb.score_band + '</span>' : '')
+            + '<span style="font-size:13px;font-weight:900;color:' + _bandColor + '">' + (fb.score != null ? fb.score : '–') + '</span>'
+          + '</span>'
+        + '</summary>'
+        + '<div style="padding:4px 14px 14px">'
+          + '<div style="display:flex;align-items:center;gap:8px;padding:2px 0 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.05em">'
+            + '<div style="flex:1">Axis</div><div style="width:44px;text-align:right">Weight</div><div style="width:36px;text-align:right">You</div>'
+          + '</div>'
+          + _AX_META.map(_rowFor).join('')
+          + '<div style="display:flex;align-items:center;gap:8px;padding:8px 0 2px;border-top:1px solid rgba(255,255,255,.12);margin-top:4px">'
+            + '<div style="flex:1;font-size:12px;font-weight:800;color:rgba(255,255,255,.85)">Composite (weighted)</div>'
+            + '<div style="width:36px"></div>'
+            + '<div style="width:36px;text-align:right;font-size:14px;font-weight:900;color:' + _bandColor + '">' + (fb.score != null ? fb.score : '–') + '</div>'
+          + '</div>'
+          + '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:11px;color:rgba(255,255,255,.5);line-height:1.6">'
+            + _evLines.map(function(l){ return '<div>• ' + l + '</div>'; }).join('')
+            + '<div style="margin-top:6px;color:rgba(255,255,255,.4)">Weights are tuned to your level — the same writing always scores the same.</div>'
+          + '</div>'
+        + '</div>'
+      + '</details>';
+    }
+
     // Genre-conventions card (only when Claude returned it)
     if (fb.genre_conventions && typeof fb.genre_conventions === 'object') {
       var gc = fb.genre_conventions;
