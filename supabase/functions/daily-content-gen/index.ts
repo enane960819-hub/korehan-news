@@ -527,13 +527,21 @@ Deno.serve(async (req) => {
     // Check existing content to skip only if topic matches expected rotation
     const { data: existing } = await sb
       .from('study_daily_content')
-      .select('scheduled_date,level,vocab,topic_ko')
+      .select('scheduled_date,level,vocab,topic_ko,helpers,grammar')
       .in('scheduled_date', dates)
 
-    const existingMap: Record<string, { hasVocab: boolean; topic_ko: string }> = {}
+    const existingMap: Record<string, { hasVocab: boolean; topic_ko: string; enriched: boolean }> = {}
     for (const r of existing || []) {
       const hasVocab = r.vocab && (Array.isArray(r.vocab) ? r.vocab.length > 0 : typeof r.vocab === 'string' && r.vocab.length > 2)
-      existingMap[`${r.scheduled_date}_${r.level}`] = { hasVocab: !!hasVocab, topic_ko: r.topic_ko || '' }
+      // "Enriched" = the richer no-repeat schema (helpers ≥ 7 AND each grammar
+      // item carries an examples[] array). Rows generated before that upgrade
+      // are regenerated once so existing weeks aren't stuck at 4 helpers / no
+      // extra examples.
+      const hArr = Array.isArray(r.helpers) ? r.helpers : []
+      const gArr = Array.isArray(r.grammar) ? r.grammar : []
+      const grammarHasEx = gArr.some((g: { examples?: unknown[] }) => g && Array.isArray(g.examples) && g.examples.length > 0)
+      const enriched = hArr.length >= 7 && grammarHasEx
+      existingMap[`${r.scheduled_date}_${r.level}`] = { hasVocab: !!hasVocab, topic_ko: r.topic_ko || '', enriched }
     }
 
     // Pre-fetch expected topics per level to check correctness
@@ -561,14 +569,14 @@ Deno.serve(async (req) => {
       const expected = expectedTopics[key]
       if (!ex || !ex.hasVocab) return true // no content or no vocab → generate
       if (expected && ex.topic_ko !== expected) return true // wrong topic → regenerate
-      return false // correct topic with vocab → skip
+      if (!ex.enriched) return true // old-schema row (thin helpers / no grammar examples) → regenerate once with richer pools
+      return false // correct topic, enriched, with vocab → skip
     })
 
-    if (!missing.length) {
-      return new Response(JSON.stringify({ ok: true, message: 'All content exists', dates }), {
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
+    // NOTE: we intentionally do NOT early-return when `missing` is empty.
+    // The Key Expressions pre-bake backfill below must still run for dates
+    // whose study_daily_content already exists but whose KE cache rows were
+    // never generated (e.g. weeks created before the pre-bake landed).
 
     const results: Array<{ date: string; level: string; status: string }> = []
 
