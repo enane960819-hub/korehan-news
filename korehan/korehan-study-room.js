@@ -9462,6 +9462,128 @@ async function submitAllWritingsToday() {
   }
 }
 
+// ── Writing scoring system (Phase A) ────────────────────────────────
+// Deterministic, transparent composite. Accuracy + lexical range are
+// computed on the CLIENT from the text + Claude's correction list (so
+// the same submission always yields the same number). Cohesion /
+// coherence / register come from Claude as fixed BANDS (0-3), mapped to
+// anchor scores. The composite uses LEVEL-DEPENDENT weights (beginners
+// weight accuracy higher; advanced learners weight cohesion/coherence
+// higher). Nothing here adds an AI call — it runs on the one weekly
+// daily_package_feedback response.
+var _SW_WEIGHTS = {
+  beg: { accuracy: 50, lexical_range: 20, cohesion: 10, coherence: 12, register: 8 },
+  int: { accuracy: 40, lexical_range: 20, cohesion: 15, coherence: 15, register: 10 },
+  adv: { accuracy: 32, lexical_range: 20, cohesion: 18, coherence: 18, register: 12 }
+};
+var _SW_ACCURACY_K = { beg: 10, int: 14, adv: 20 }; // penalty slope per error-rate unit
+var _SW_BAND_ANCHOR = [20, 50, 70, 90];             // band 0..3 → score
+
+function _swTier(level) {
+  var l = String(level || 'Beginner');
+  if (/Forest|Advanced/i.test(l)) return 'adv';
+  if (/Tree|Intermediate/i.test(l)) return 'int';
+  return 'beg'; // Seed / Beginner / Starter / Sprout
+}
+function _swBandLabel(score) {
+  if (score == null) return '';
+  if (score >= 85) return 'Excellent';
+  if (score >= 70) return 'Strong';
+  if (score >= 55) return 'Proficient';
+  return 'Developing';
+}
+// Required-vocab usage for a topic-style piece (0..1), or null when the
+// piece isn't a topic piece / no required vocab is available.
+function _swVocabUse(act) {
+  try {
+    var t = String((act && (act.type || act.writing_mode)) || '').split(':')[0];
+    if (!/express_practice|topic_writing|writing|diary|free_writing/.test(t)) return null;
+    var req = ((window._aiContent && _aiContent.vocab) || []).map(function(v){ return v && v.ko; }).filter(Boolean);
+    if (!req.length) return null;
+    var txt = String((act && act.student_text) || '');
+    var used = req.filter(function(w){ return txt.indexOf(w) >= 0; }).length;
+    return Math.max(0, Math.min(1, used / 2));
+  } catch (_) { return null; }
+}
+// Enrich one activity in place: sets .rubric (flat 0-100), .rubric_notes,
+// .score (composite 0-100), .score_band, .score_breakdown. Idempotent &
+// defensive — missing bands are renormalised out of the composite.
+function _scoreWriting(act, level) {
+  if (!act || typeof act !== 'object') return act;
+  var tier = _swTier(level);
+  var text = String(act.student_text || '').trim();
+  var chars = text.length;
+  var corrections = Array.isArray(act.corrections) ? act.corrections : [];
+
+  // ACCURACY — deterministic: errors per ~50 chars, penalised by level slope.
+  var units = Math.max(1, chars / 50);
+  var errorRate = corrections.length / units;
+  var accuracy = Math.max(0, Math.min(100, Math.round(100 - errorRate * (_SW_ACCURACY_K[tier] || 14))));
+
+  // LEXICAL RANGE — deterministic TTR + required-vocab use + one model signal.
+  var toks = text.split(/\s+/).filter(Boolean);
+  var totalTok = toks.length;
+  var uniqMap = {}; toks.forEach(function(t){ uniqMap[t] = 1; });
+  var uniqTok = Object.keys(uniqMap).length;
+  var ttr = totalTok ? uniqTok / totalTok : 0;
+  var scaledTTR = Math.max(0, Math.min(1, ttr / 0.6)); // TTR ≥ .6 → full marks
+  var levelFit = Number.isFinite(Number(act.lexical_level_fit))
+    ? Math.max(0, Math.min(1, Number(act.lexical_level_fit))) : 0.6;
+  var vocabUse = _swVocabUse(act);
+  var lexical = (vocabUse != null)
+    ? Math.round(100 * (0.50 * scaledTTR + 0.25 * vocabUse + 0.25 * levelFit))
+    : Math.round(100 * (0.65 * scaledTTR + 0.35 * levelFit));
+  lexical = Math.max(0, Math.min(100, lexical));
+
+  // JUDGED axes — from Claude's bands.
+  function fromBand(axis) {
+    var b = act.rubric && act.rubric[axis];
+    var n = (b && Number.isFinite(Number(b.band))) ? Number(b.band) : null;
+    if (n == null) return null;
+    return _SW_BAND_ANCHOR[Math.max(0, Math.min(3, Math.round(n)))];
+  }
+  var bandNotes = {
+    cohesion:  (act.rubric && act.rubric.cohesion  && act.rubric.cohesion.note)  || '',
+    coherence: (act.rubric && act.rubric.coherence && act.rubric.coherence.note) || '',
+    register:  (act.rubric && act.rubric.register  && act.rubric.register.note)  || ''
+  };
+  var cohesion  = fromBand('cohesion');
+  var coherence = fromBand('coherence');
+  var register  = fromBand('register');
+
+  var axes = { accuracy: accuracy, lexical_range: lexical, cohesion: cohesion, coherence: coherence, register: register };
+
+  // Composite — weighted, renormalised over whichever axes are present.
+  var w = _SW_WEIGHTS[tier];
+  var num = 0, den = 0;
+  Object.keys(w).forEach(function(k){ if (axes[k] != null) { num += axes[k] * w[k]; den += w[k]; } });
+  var composite = den ? Math.round(num / den) : null;
+
+  // Flat rubric (0-100) — what the gauges + get_recent_writing_rubric RPC read.
+  var flat = {};
+  Object.keys(axes).forEach(function(k){ if (axes[k] != null) flat[k] = axes[k]; });
+
+  // Evidence notes — transparent "why" per axis.
+  var notes = {
+    accuracy: corrections.length + (corrections.length === 1 ? ' fix' : ' fixes') + ' · ' + chars + ' chars',
+    lexical_range: uniqTok + ' unique' + (vocabUse != null ? ' · ' + Math.round(vocabUse * 2) + '/2 target words' : ''),
+    cohesion: bandNotes.cohesion,
+    coherence: bandNotes.coherence,
+    register: bandNotes.register
+  };
+
+  act.rubric = flat;
+  act.rubric_notes = notes;
+  act.score = composite;
+  act.score_band = _swBandLabel(composite);
+  act.score_breakdown = {
+    tier: tier, weights: w, axes: axes,
+    accuracy_evidence: { corrections: corrections.length, chars: chars, error_rate: Math.round(errorRate * 100) / 100 },
+    lexical_evidence: { unique_tokens: uniqTok, total_tokens: totalTok, ttr: Math.round(ttr * 100) / 100, level_fit: levelFit, vocab_use: vocabUse }
+  };
+  return act;
+}
+
 async function _triggerPackageFeedback(submissionId, items) {
   try {
     // Per-activity feedback: each draft (Topic Writing, Article Study,
@@ -9513,6 +9635,13 @@ async function _triggerPackageFeedback(submissionId, items) {
       + '  • coherence 80+   → ideas flow logically and the topic answer is on-target.\n'
       + '  • register 80+    → ' + rubric.register + '.\n'
       + 'Below-floor scores (≤60) must come with a concrete reason in "naturalness.comment" — not just a vibe.\n\n'
+      + '── RUBRIC BANDS (score cohesion / coherence / register; do NOT score accuracy or lexical) ──\n'
+      + 'For EACH activity return a "rubric" object scoring three axes by BAND against THIS level (0 worst, 3 best):\n'
+      + '  cohesion  — 3: varied, correct connectives (그래서/하지만/그런데…), sentences flow · 2: mostly connected, minor repetition or 1-2 abrupt jumps · 1: choppy, feels listed · 0: no linking.\n'
+      + '  coherence — 3: fully on-topic, clear development, every sentence advances the point · 2: on-topic with a minor digression · 1: partially on-topic, unclear structure · 0: off-topic / incoherent.\n'
+      + '  register  — 3: consistent, level-appropriate speech style throughout · 2: mostly consistent, one slip · 1: frequent style mixing · 0: no control. (Particle drop / 반말 in an informal or diary task are NOT register errors — never penalise them here.)\n'
+      + 'Each axis = {"band":0-3,"note":"ONE short English clause"}. Accuracy and lexical range are computed automatically from your corrections list + the text — do NOT assign them.\n'
+      + 'Also return "lexical_level_fit": a 0.0-1.0 estimate of the share of the student\'s word choices that are at or above their ' + lvl + ' vocabulary band.\n\n'
       + '── REGISTER AWARENESS (most important rule) ──\n'
       + 'Korean has multiple valid registers (반말 / 해요체 / 합쇼체). Subject omission and casual particle drop (조사 생략, e.g. 그림 그리기 너무 좋아) are NORMAL in 반말 and informal writing — NOT grammatical errors. A teacher would NOT mark these with a red pen.\n'
       + '- "corrections" is ONLY for ACTUAL grammatical errors: wrong verb endings, incorrect word order, misspellings (e.g. 나쁘지않아 → 나쁘지 않아), wrong vocab. Things a teacher would clearly mark wrong.\n'
@@ -9609,14 +9738,20 @@ async function _triggerPackageFeedback(submissionId, items) {
       + '      "activity_name": "Express Practice (Topic Writing) | Diary | Free Writing | Article Study | Picture Description | Dictation",\n'
       + '      "topic": "the topic / title shown to the student",\n'
       + '      "student_text": "the student\'s original Korean text, copied verbatim",\n'
-      + '      "score": 0-100,\n'
       + '      "overall": "ONE short English sentence about THIS activity",\n'
+      + '      "rubric": {\n'
+      + '        "cohesion":  {"band":0-3,"note":"ONE short English clause"},\n'
+      + '        "coherence": {"band":0-3,"note":"ONE short English clause"},\n'
+      + '        "register":  {"band":0-3,"note":"ONE short English clause"}\n'
+      + '      },\n'
+      + '      "lexical_level_fit": 0.0-1.0,\n'
       + '      "corrected_full": "Korean rewrite, OR null if no real errors",\n'
       + '      "corrections": [{"original":"Korean snippet","corrected":"Korean snippet","reason":"English explanation","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],\n'
       + '      "naturalness": {"score":0-10,"comment":"ONE English sentence — register / flow / word-choice notes (NOT a repeat of corrections)"} or null\n'
       + '    }\n'
       + '  ]\n'
       + '}\n'
+      + 'Do NOT return a numeric "score" — accuracy & lexical range are computed from your corrections list + the text, and the composite score is derived on the client. Score ONLY the three rubric bands + lexical_level_fit.\n'
       + 'Drop the legacy fields "spelling", "structure", "extra_content", "naturalness.suggestions" entirely — do not include them. They were duplicating other sections.';
 
     var prompt = head + blocks + schema;
@@ -9624,6 +9759,15 @@ async function _triggerPackageFeedback(submissionId, items) {
     var data = await callClaude({ feature:'daily_package_feedback', model:'claude-haiku-4-5-20251001', max_tokens:2200, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('').replace(/```json|```/g,'').trim();
     var parsed = JSON.parse(raw);
+
+    // Phase A: compute the deterministic composite + flat rubric for each
+    // activity (accuracy/lexical on the client, cohesion/coherence/register
+    // from Claude's bands). This replaces the old free-guess `score`.
+    var _pkgLevel = _currentLevel || 'Beginner';
+    if (parsed && Array.isArray(parsed.activities)) {
+      parsed.activities.forEach(function(a){ _scoreWriting(a, _pkgLevel); });
+    }
+
     var sb = getSupa();
     if (sb) {
       var _pkgUpd = {
@@ -9631,7 +9775,7 @@ async function _triggerPackageFeedback(submissionId, items) {
         ai_model: 'claude-haiku-4-5-20251001', status: 'ai_reviewed'
       };
       // Writing axis reads user_submissions.score — roll the per-activity
-      // scores into one 0-100 package score so it isn't stuck at 0.
+      // composites into one 0-100 package score so it isn't stuck at 0.
       if (parsed && Array.isArray(parsed.activities)) {
         var _actScores = parsed.activities.map(function(a){ return a ? Number(a.score) : NaN; })
           .filter(function(n){ return Number.isFinite(n); });
@@ -9641,6 +9785,44 @@ async function _triggerPackageFeedback(submissionId, items) {
         }
       }
       await sb.from('user_submissions').update(_pkgUpd).eq('id', submissionId);
+
+      // Phase A: explode each scored activity into its OWN per-piece row so
+      // history is per-piece and the Growth Lab Writing axis
+      // (get_recent_writing_rubric) reads real per-piece rubric samples.
+      // Rows carry a ROW-LEVEL `ai_feedback.rubric` (the RPC reads that).
+      // The daily_package row deliberately has NO row-level rubric, so the
+      // RPC (content_type IN 'writing','daily_package') counts each piece
+      // exactly once — never the package aggregate.
+      try {
+        var _weekKey = kstWeekKey();
+        var _pieceRows = (parsed.activities || []).map(function(a, i){
+          if (!a || !a.rubric || !Object.keys(a.rubric).length) return null;
+          var _pt = String((a.type || a.writing_mode) || 'writing').split(':')[0] || 'writing';
+          return {
+            user_id: supaUser.id,
+            content_type: 'writing',
+            content_id: _weekKey + ':' + _pt + ':' + i,
+            content_title: a.activity_name || _pt,
+            study_date: _weekKey,
+            writing_text: String(a.student_text || ''),
+            word_count: String(a.student_text || '').length,
+            topic_ko: String(a.topic || ''),
+            writing_mode: _pt,
+            context_data: JSON.stringify({ from_package: submissionId, piece_index: i, level: _pkgLevel }),
+            level: _pkgLevel,
+            status: 'ai_reviewed',
+            score: Number.isFinite(Number(a.score)) ? Number(a.score) : null,
+            ai_feedback: a,            // includes row-level a.rubric (flat 0-100)
+            ai_feedback_at: new Date().toISOString(),
+            ai_model: 'claude-haiku-4-5-20251001'
+          };
+        }).filter(Boolean);
+        if (_pieceRows.length) {
+          await sb.from('user_submissions')
+            .upsert(_pieceRows, { onConflict: 'user_id,content_type,study_date,content_id' })
+            .then(function(){}, function(err){ console.warn('[writing] per-piece row upsert failed:', err && err.message); });
+        }
+      } catch (_pe) { console.warn('[writing] per-piece split skipped:', _pe && _pe.message); }
     }
     // Mirror what _triggerUnifiedAIFeedback does for single writes:
     // aggregate per-activity corrections into wrong_patterns + log to
@@ -10180,18 +10362,25 @@ function renderDetailedFeedback(fb, writingText, inPackage) {
   // Compact score chip moved to the right, half the previous size, so
   // the eye lands on the praise/overall comment first.
   if (fb.score !== undefined || fb.encouragement || fb.overall) {
-    var scoreColor = fb.score === undefined ? '#94a3b8'
-      : fb.score >= 80 ? '#4ade80' : fb.score >= 60 ? '#fbbf24' : '#f87171';
+    var _hasScore = (fb.score !== undefined && fb.score !== null);
+    var scoreColor = !_hasScore ? '#94a3b8'
+      : fb.score >= 70 ? '#4ade80' : fb.score >= 55 ? '#fbbf24' : '#f87171';
+    // Band label leads (learner-friendly); the raw number rides along in the
+    // chip. Falls back to legacy 80/60 wording when no band is present.
+    var _bandLabel = fb.score_band || (!_hasScore ? '' : _swBandLabel(fb.score));
     var leadLine = fb.encouragement
       ? fb.encouragement
-      : (fb.score === undefined ? '' : (fb.score >= 80 ? 'Great job!' : fb.score >= 60 ? 'Almost there!' : 'Keep going — every submission moves you forward.'));
+      : (!_hasScore ? '' : (fb.score >= 70 ? 'Great job!' : fb.score >= 55 ? 'Almost there!' : 'Keep going — every submission moves you forward.'));
     h += '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;padding:14px;border-radius:10px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.18)">'
       + '<div style="flex:1;min-width:0">'
       +   (leadLine ? '<div style="font-size:14px;font-weight:800;color:#86efac;line-height:1.45;margin-bottom:' + (fb.overall ? '6px' : '0') + '">' + leadLine + '</div>' : '')
       +   (fb.overall ? '<div style="font-size:13px;color:rgba(255,255,255,.72);line-height:1.55">' + fb.overall + '</div>' : '')
       + '</div>'
-      + (fb.score !== undefined
-          ? '<div title="Score (this submission only)" style="flex-shrink:0;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.06);border:2px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:' + scoreColor + '">' + fb.score + '</div>'
+      + (_hasScore
+          ? '<div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px">'
+            + (_bandLabel ? '<div style="font-size:10px;font-weight:800;color:' + scoreColor + ';text-transform:uppercase;letter-spacing:.06em">' + _bandLabel + '</div>' : '')
+            + '<div title="Writing score for this piece" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.06);border:2px solid ' + scoreColor + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:' + scoreColor + '">' + fb.score + '</div>'
+            + '</div>'
           : '')
       + '</div>';
   }
