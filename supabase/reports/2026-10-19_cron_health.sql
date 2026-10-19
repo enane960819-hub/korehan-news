@@ -30,6 +30,13 @@ select json_build_object(
         from net._http_response order by created desc limit 15) x),
   'cron_secret_present', (
     select count(*) from vault.secrets where name = 'cron_secret'),
+  'article_analyze_log_recent', (
+    select coalesce(json_agg(x), '[]'::json) from (
+      select status, left(coalesce(error, ''), 120) as error, count(*) as n,
+             to_char(max(created_at) at time zone 'Asia/Seoul', 'MM-DD HH24:MI') as last_kst
+        from public.article_analyze_log
+       where created_at > now() - interval '5 days'
+       group by 1, 2 order by n desc limit 15) x),
   'content_gen_lock', (
     select json_agg(json_build_object('key', key, 'value', value))
       from public.app_settings where key ilike '%lock%'),
