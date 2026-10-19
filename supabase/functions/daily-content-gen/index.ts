@@ -1,9 +1,10 @@
 // Daily Content Generator — runs on cron schedule
 // Generates study_daily_content for all 4 levels × today + tomorrow
 // Triggered by: pg_cron → pg_net HTTP call, or manual invoke
-// (Redeploy 2026-10-15: the KE pre-bake + larger no-repeat pools shipped in
-//  PR #738 but that deploy flaked on a supabase-cli rate limit; this touch
-//  re-triggers deploy-edge-function so the function actually ships.)
+// (Redeploy 2026-10-19: the enrichment + KE-prebake fix (PR #749) never shipped
+//  because deploy-edge-function failed on an invalid SUPABASE_ACCESS_TOKEN on
+//  2026-10-17. Token refreshed; this touch re-triggers the deploy so the fix
+//  actually lands.)
 //
 // Auth accepts any of:
 //   - SUPABASE_SERVICE_ROLE_KEY env var (default Supabase admin)
