@@ -155,10 +155,30 @@ NO REPEATS — highest priority for variety: across the ENTIRE response (every v
   return { staticPrefix, dynamicSuffix }
 }
 
+// Best-effort cost telemetry so this cron's Anthropic spend shows up in the
+// cost dashboard (same claude_api_usage table claude-proxy + daily-article-draft
+// write). user_id is null for cron calls — the column was made nullable in
+// 20261021 (before that, cron inserts silently failed the NOT NULL check and
+// cron spend was invisible). Never let telemetry break generation.
+function logUsage(sb: any, feature: string, model: string, usage: Record<string, number> | undefined) {
+  try {
+    const u = usage || {}
+    sb.from('claude_api_usage').insert({
+      user_id: null,
+      feature: 'cron:' + feature,
+      model,
+      input_tokens: (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0),
+      output_tokens: u.output_tokens || 0,
+    }).then(() => {}, () => {})
+  } catch (_) { /* swallow */ }
+}
+
 async function callAnthropic(
+  sb: any,
   apiKey: string,
   prompt: { staticPrefix: string; dynamicSuffix: string },
   level: Level,
+  feature = 'daily-content-gen',
 ): Promise<Record<string, unknown>> {
   // Sonnet for the complex schemas (Intermediate / Advanced — these
   // include confusing_grammar / formality_exercise / culture_note and
@@ -227,6 +247,7 @@ async function callAnthropic(
   })
   if (!resp.ok) throw new Error(`Anthropic API ${resp.status}`)
   const data = await resp.json()
+  logUsage(sb, feature, model, data.usage)
   const raw = (data.content || []).map((c: { text?: string }) => c.text || '').join('')
   let clean = raw.replace(/```json|```/g, '').trim()
   const s = clean.indexOf('{')
@@ -259,7 +280,7 @@ async function callAnthropic(
 // Mirrors the object-parser above but for top-level arrays — used by
 // the Key Expressions + situation-quiz pre-gen that returns a JSON
 // array of items instead of a wrapping object.
-async function callAnthropicArray(apiKey: string, prompt: string, model: string, maxTokens: number): Promise<unknown[]> {
+async function callAnthropicArray(sb: any, apiKey: string, prompt: string, model: string, maxTokens: number, feature = 'daily-content-gen-ke'): Promise<unknown[]> {
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -271,6 +292,7 @@ async function callAnthropicArray(apiKey: string, prompt: string, model: string,
   })
   if (!resp.ok) throw new Error(`Anthropic API ${resp.status}`)
   const data = await resp.json()
+  logUsage(sb, feature, model, data.usage)
   const raw = (data.content || []).map((c: { text?: string }) => c.text || '').join('')
   let clean = raw.replace(/```json|```/g, '').trim()
   const s = clean.indexOf('[')
@@ -379,7 +401,7 @@ async function pregenKeyExpressions(
     `5. SPACING: 가고 싶다 ✓ / 가고싶다 ✗; tense endings attach to the stem (갔다 ✓, 가았다 ✗).`
 
   try {
-    const arr = await callAnthropicArray(apiKey, expPrompt, 'claude-haiku-4-5-20251001', 1800)
+    const arr = await callAnthropicArray(sb, apiKey, expPrompt, 'claude-haiku-4-5-20251001', 1800)
     // Same quality filter as the client so a pre-baked row is identical to
     // what the client would have cached itself.
     const expressions = (arr || []).filter((x) => {
@@ -528,10 +550,10 @@ Deno.serve(async (req) => {
     // Check existing content to skip only if topic matches expected rotation
     const { data: existing } = await sb
       .from('study_daily_content')
-      .select('scheduled_date,level,vocab,topic_ko,helpers,grammar')
+      .select('scheduled_date,level,vocab,topic_ko,helpers,grammar,enrich_attempts')
       .in('scheduled_date', dates)
 
-    const existingMap: Record<string, { hasVocab: boolean; topic_ko: string; enriched: boolean }> = {}
+    const existingMap: Record<string, { hasVocab: boolean; topic_ko: string; enriched: boolean; attempts: number }> = {}
     for (const r of existing || []) {
       const hasVocab = r.vocab && (Array.isArray(r.vocab) ? r.vocab.length > 0 : typeof r.vocab === 'string' && r.vocab.length > 2)
       // "Enriched" = the richer no-repeat schema (helpers ≥ 7 AND each grammar
@@ -542,7 +564,7 @@ Deno.serve(async (req) => {
       const gArr = Array.isArray(r.grammar) ? r.grammar : []
       const grammarHasEx = gArr.some((g: { examples?: unknown[] }) => g && Array.isArray(g.examples) && g.examples.length > 0)
       const enriched = hArr.length >= 7 && grammarHasEx
-      existingMap[`${r.scheduled_date}_${r.level}`] = { hasVocab: !!hasVocab, topic_ko: r.topic_ko || '', enriched }
+      existingMap[`${r.scheduled_date}_${r.level}`] = { hasVocab: !!hasVocab, topic_ko: r.topic_ko || '', enriched, attempts: Number(r.enrich_attempts) || 0 }
     }
 
     // Pre-fetch expected topics per level to check correctness
@@ -570,8 +592,12 @@ Deno.serve(async (req) => {
       const expected = expectedTopics[key]
       if (!ex || !ex.hasVocab) return true // no content or no vocab → generate
       if (expected && ex.topic_ko !== expected) return true // wrong topic → regenerate
-      if (!ex.enriched) return true // old-schema row (thin helpers / no grammar examples) → regenerate once with richer pools
-      return false // correct topic, enriched, with vocab → skip
+      // Old-schema row (thin helpers / no grammar examples) → regenerate with
+      // richer pools, but only up to MAX_ENRICH_ATTEMPTS times so a row that
+      // never reaches the enriched bar can't be re-generated (and re-billed)
+      // every night forever.
+      if (!ex.enriched && (ex.attempts || 0) < 2) return true
+      return false // enriched, or attempt-capped, or correct-topic-with-vocab → skip
     })
 
     // NOTE: we intentionally do NOT early-return when `missing` is empty.
@@ -612,7 +638,7 @@ Deno.serve(async (req) => {
       forceTopic = { ko: t.topic_ko, en: t.topic_en }
 
       const prompt = buildPrompt(item.level, topicHint)
-      const parsed = await callAnthropic(apiKey, prompt, item.level)
+      const parsed = await callAnthropic(sb, apiKey, prompt, item.level)
 
       const rec = {
         scheduled_date: item.date,
@@ -629,6 +655,9 @@ Deno.serve(async (req) => {
         culture_note: (parsed.culture_note as string) || '',
         status: 'approved',
         admin_edited: false,
+        // Count this generation toward the per-row enrichment cap (the missing
+        // filter stops regenerating once this reaches 2). New rows start at 1.
+        enrich_attempts: ((existingMap[`${item.date}_${item.level}`]?.attempts) || 0) + 1,
         updated_at: new Date().toISOString(),
       }
 
