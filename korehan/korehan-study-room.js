@@ -4987,7 +4987,7 @@ async function loadSlangsFromDB() {
     var { data, error } = await sb.from('korean_slangs').select('*').eq('is_active', true).order('sort_order');
     if (error || !data || data.length === 0) { _KOREAN_SLANGS = _SLANG_FALLBACK; return; }
     _KOREAN_SLANGS = data.map(function(r) {
-      return { id:r.id, ko:r.ko, en:r.en, desc:r.desc_text||'', tag:r.tag||'일상', warn:!!r.warn, warnText:r.warn_text||'', chat:r.chat||[], difficulty:r.difficulty||'Beginner' };
+      return { id:r.id, ko:r.ko, en:r.en, desc:r.desc_text||'', descEn:r.desc_en||'', tag:r.tag||'일상', warn:!!r.warn, warnText:r.warn_text||'', chat:r.chat||[], difficulty:r.difficulty||'Beginner' };
     });
     _slangsLoaded = true;
   } catch(e) {
@@ -5099,9 +5099,8 @@ function renderSlangDaily(el) {
       + tags + '</div>'
       + '<div class="slang-detail-hd" style="font-size:24px">' + s.ko + '</div>'
       + '<div class="slang-detail-en">' + s.en + '</div>'
-      + '<div class="slang-detail-desc">' + s.desc + '</div>'
+      + (s.descEn ? '<div class="slang-detail-desc">' + escapeHTML(s.descEn) + '</div>' : '')
       + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\',\'slang\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(196,181,253,.25);background:rgba(196,181,253,.08);color:#c4b5fd;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">+ Word Book</button>'
-      + buildDmChat(s.chat)
       + '</div>';
   });
   el.innerHTML = html;
@@ -5129,9 +5128,9 @@ function showSlangDetailAll(idx) {
   det.innerHTML = '<div class="slang-detail">' + tags
     + '<div class="slang-detail-hd">' + s.ko + '</div>'
     + '<div class="slang-detail-en">' + s.en + '</div>'
-    + '<div class="slang-detail-desc">' + s.desc + '</div>'
+    + (s.descEn ? '<div class="slang-detail-desc">' + escapeHTML(s.descEn) + '</div>' : '')
     + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\',\'slang\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(196,181,253,.25);background:rgba(196,181,253,.08);color:#c4b5fd;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">+ Word Book</button>'
-    + buildDmChat(s.chat) + '</div>';
+    + '</div>';
   det.style.display = 'block';
   det.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
