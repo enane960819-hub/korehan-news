@@ -59,7 +59,7 @@ function scriptPrompt(scenario: string, level: string, category: string): string
     + '"lines":[{"speaker":"A","ko":"...","en":"...","bold_words":["..."]}]}'
 }
 
-async function callClaude(apiKey: string, prompt: string): Promise<string> {
+async function callClaude(sb: any, apiKey: string, prompt: string): Promise<string> {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
@@ -67,6 +67,15 @@ async function callClaude(apiKey: string, prompt: string): Promise<string> {
   })
   if (!r.ok) throw new Error('Anthropic ' + r.status + ': ' + (await r.text()).slice(0, 200))
   const d = await r.json()
+  // Cost telemetry → claude_api_usage (same table the cost dashboard reads).
+  try {
+    const u = d.usage || {}
+    sb.from('claude_api_usage').insert({
+      user_id: null, feature: 'cron:phone-call-gen', model: MODEL_SCRIPT,
+      input_tokens: (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0),
+      output_tokens: u.output_tokens || 0,
+    }).then(() => {}, () => {})
+  } catch (_) { /* swallow */ }
   return (d.content || []).map((c: { text?: string }) => c.text || '').join('')
 }
 
@@ -136,7 +145,7 @@ Deno.serve(async (req) => {
     if (!conf.elevenlabs_key) return json({ ok: false, error: 'no_elevenlabs_key' }, 503)
 
     // 1) Script
-    const script = extractJsonObject(await callClaude(conf.anthropic_key, scriptPrompt(scenario, level, category)))
+    const script = extractJsonObject(await callClaude(sb, conf.anthropic_key, scriptPrompt(scenario, level, category)))
     const lines: any[] = (Array.isArray(script?.lines) ? script.lines : [])
       .filter((l: any) => l && (l.speaker === 'A' || l.speaker === 'B') && String(l.ko || '').trim())
       .slice(0, 20)
