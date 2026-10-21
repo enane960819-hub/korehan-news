@@ -4658,6 +4658,11 @@ function _keSitCacheKey() {
 // situation step is instant by the time the learner reaches it.
 // Skips the AI call if the DB already has a cached set.
 function _kePrefetchSituations(expressions) {
+  // Step 3 is now a deterministic meaning-match quiz built client-side from
+  // the expressions (no AI, no drift). Nothing to prefetch — early return
+  // keeps the old callers safe and drops the ke-situations-prefetch AI cost.
+  return;
+  /* eslint-disable no-unreachable */
   if (!Array.isArray(expressions) || !expressions.length) return;
   if (typeof _aiCacheGet !== 'function' || typeof callClaude !== 'function') return;
   var key = _keSitCacheKey();
@@ -4682,64 +4687,32 @@ function _kePrefetchSituations(expressions) {
   });
 }
 
+// Concrete example sentence (+ its meaning) for an expression, falling back
+// to the bare pattern when no example exists.
+function _keExpSentence(e) {
+  var ex = (e && Array.isArray(e.examples) && e.examples[0]) || null;
+  return {
+    ko: (ex && ex.ko) || (e && e.example_ko) || (e && e.ko) || '',
+    en: (ex && ex.en) || (e && e.example_en) || (e && e.en) || ''
+  };
+}
+
+// Step 3 \u2014 meaning match. The old version asked an AI to invent a "real-life
+// situation" and map it to an expression, but the scenario routinely drifted
+// from the expressions (owner saw a shellfish-allergy situation with only
+// childhood-dream answers). Replaced with a deterministic, always-correct
+// quiz: show one expression's English meaning, pick the matching Korean.
+// No AI call at all.
 function _keStartSituationQuiz() {
   window._kePhase = 'situation';
   window._keSitIdx = 0;
   window._keSitScore = 0;
-  _keSituations = null;
-
-  var list = document.getElementById('ke-expressions-list'); if (!list) return;
-  list.innerHTML = '<div style="text-align:center;padding:24px;color:rgba(255,255,255,.4)">Loading situational exercises...</div>';
-  var sitCacheKey = _keSitCacheKey();
-
   var exps = window._keExpressions || [];
-  var expList = exps.map(function(e, i) { return (i+1) + '. ' + e.ko + ' \u2014 ' + e.en; }).join('\n');
-
-  // 1) Cross-user DB cache lookup. If the situation set already
-  //    exists for this topic/level/date the quiz step is instant
-  //    and we don't burn a Claude call.
-  function _afterLoad(situations) {
-    _keSituations = situations;
-    _keRenderSituationQuiz();
-  }
-  function _generate() {
-    callClaude({
-      feature: 'ke-situations',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 800,
-      messages: [{ role: 'user', content: 'Given these Korean expressions:\n' + expList + '\n\nCreate exactly 3 real-life situational questions. For each, return JSON with: situation (1-2 sentence English description of a real-life moment), correct_index (0-based index from the list above of the best expression), why (brief English reason). Return a JSON array only, no markdown.' }]
-    }).then(function(res) {
-      try {
-        var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
-        text = text.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
-        var situations = JSON.parse(text);
-        if (!Array.isArray(situations) || !situations.length) throw new Error('empty');
-        // Save to DB so the next learner on the same topic/level
-        // hits the cache instead of regenerating.
-        if (typeof _aiCacheSet === 'function') _aiCacheSet(sitCacheKey, { situations: situations });
-        _afterLoad(situations);
-      } catch(e) {
-        _afterLoad(exps.slice(0, 3).map(function(exp, i) {
-          return { situation: 'You want to say: "' + exp.en + '"', correct_index: i, why: 'This expression means: ' + exp.en };
-        }));
-      }
-    }).catch(function() {
-      _afterLoad(exps.slice(0, 3).map(function(exp, i) {
-        return { situation: 'You want to say: "' + exp.en + '"', correct_index: i, why: 'This expression means: ' + exp.en };
-      }));
-    });
-  }
-  if (typeof _aiCacheGet === 'function') {
-    _aiCacheGet(sitCacheKey).then(function(hit) {
-      if (hit && Array.isArray(hit.situations) && hit.situations.length) {
-        _afterLoad(hit.situations);
-        return;
-      }
-      _generate();
-    }).catch(_generate);
-  } else {
-    _generate();
-  }
+  _keSituations = exps.map(function(e, i) {
+    var s = _keExpSentence(e);
+    return { meaning_en: s.en, ko: s.ko, correct_index: i };
+  }).filter(function(s) { return s.meaning_en && s.ko; });
+  _keRenderSituationQuiz();
 }
 
 function _keRenderSituationQuiz() {
@@ -4759,39 +4732,27 @@ function _keRenderSituationQuiz() {
   if (correctIdx == null || correctIdx < 0 || correctIdx >= exps.length) correctIdx = 0;
   var correctExp = exps[correctIdx];
 
-  // Build choices: correct + up to 3 wrongs
+  // Build choices: correct + up to 3 wrongs (shown as the concrete example
+  // sentence, so the learner matches meaning → real sentence, not a ~pattern).
   var wrongExps = exps.filter(function(_, i) { return i !== correctIdx; }).sort(function() { return Math.random() - .5; }).slice(0, 3);
   var choices = [correctExp].concat(wrongExps).sort(function() { return Math.random() - .5; });
 
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 3 · 상황에 적용</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 3 · 뜻 보고 표현 고르기</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + situations.length + '</div>'
     + '</div>'
-    + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:16px;margin-bottom:14px">'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Which expression would you use in this situation?</div>'
-    + '<div style="font-size:14px;color:#fff;line-height:1.6;font-weight:600">' + (sit.situation||'') + '</div>'
+    + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center">'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Which expression means this?</div>'
+    + '<div style="font-size:16px;color:#fff;line-height:1.5;font-weight:700">' + escapeHTML(sit.meaning_en || '') + '</div>'
     + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px">'
     + choices.map(function(c) {
       var cIdx = exps.indexOf(c);
-      // Show the actual concrete example sentence as the choice text,
-      // not the bare pattern with ~ and V placeholders. The user pointed
-      // out "보기가 다 원형이네" — pattern templates aren't recognizable
-      // as natural Korean sentences, so the situation quiz devolved into
-      // matching tilde-shapes instead of meaning. The pattern itself
-      // still appears as a small subtitle so the learner sees the link.
-      var ex = (Array.isArray(c.examples) && c.examples[0]) || null;
-      var sentenceKo = (ex && ex.ko) || c.example_ko || c.ko || '';
-      var sentenceEn = (ex && ex.en) || c.example_en || c.en || '';
-      var patternHint = c.ko && (sentenceKo !== c.ko)
-        ? '<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px">패턴: ' + (c.ko || '') + '</div>'
-        : '';
-      return '<button class="ke-sit-btn" onclick="_keSituationAnswer(this,' + cIdx + ',' + correctIdx + ',\'' + (sit.why||'').replace(/'/g,"\\'") + '\')"'
-        + ' style="padding:12px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:14px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif;text-align:left;transition:.15s;line-height:1.45">'
-        +   '<div>' + sentenceKo + '</div>'
-        +   '<div style="font-size:11px;color:rgba(255,255,255,.45);font-weight:500;margin-top:2px;font-family:inherit">' + sentenceEn + '</div>'
-        +   patternHint
+      var sentenceKo = _keExpSentence(c).ko;
+      return '<button class="ke-sit-btn" data-keidx="' + cIdx + '" onclick="_keSituationAnswer(this,' + cIdx + ',' + correctIdx + ',\'\')"'
+        + ' style="padding:14px 16px;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.04);color:#e0f2fe;font-size:15px;font-weight:700;cursor:pointer;font-family:\'Noto Serif KR\',serif;text-align:left;transition:.15s;line-height:1.45">'
+        +   escapeHTML(sentenceKo)
         + '</button>';
     }).join('')
     + '</div>'
@@ -4810,16 +4771,17 @@ function _keSituationAnswer(btn, chosenIdx, correctIdx, why) {
   } else {
     btn.style.borderColor = '#fca5a5'; btn.style.background = 'rgba(239,68,68,.1)'; btn.style.color = '#fca5a5';
     document.querySelectorAll('.ke-sit-btn').forEach(function(b) {
-      if (correctExp && b.textContent.trim().indexOf(correctExp.ko) === 0) {
+      if (b.getAttribute('data-keidx') === String(correctIdx)) {
         b.style.borderColor = '#86efac'; b.style.background = 'rgba(34,197,94,.15)';
       }
     });
   }
 
+  var correctKo = (typeof _keExpSentence === 'function' && correctExp) ? _keExpSentence(correctExp).ko : (correctExp && correctExp.ko) || '';
   var fb = document.getElementById('ke-sit-fb');
   if (fb) {
     fb.innerHTML = '<div style="padding:10px 12px;background:' + (isCorrect ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.08)') + ';border-radius:8px;font-size:12px">'
-      + '<div style="font-weight:800;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';margin-bottom:4px">' + (isCorrect ? '&#9989; \uc815\ub2f5!' : '&#10060; \uc624\ub2f5 \u2014 Correct: ' + (correctExp&&correctExp.ko||'')) + '</div>'
+      + '<div style="font-weight:800;color:' + (isCorrect ? '#4ade80' : '#fca5a5') + ';margin-bottom:4px">' + (isCorrect ? '&#9989; \uc815\ub2f5!' : '&#10060; \uc624\ub2f5 \u2014 Correct: ' + escapeHTML(correctKo)) + '</div>'
       + (why ? '<div style="color:rgba(255,255,255,.5)">' + why + '</div>' : '')
       + '</div>'
       + '<button onclick="_keSitNext()" style="display:block;width:100%;margin-top:10px;padding:10px;border:none;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next &#8594;</button>';
