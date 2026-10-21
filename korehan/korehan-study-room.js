@@ -15728,6 +15728,12 @@ function _loadGrammarCurriculumFromDB() {
                    unit: row.unit || '', tier: row.tier || 'core' };
         });
         _gcDbLoaded = true;
+        // Reflect the real pattern count on the Grammar Skill Tree card
+        // (was a stale hardcoded "45").
+        try {
+          var _ce = document.getElementById('gc-tree-count');
+          if (_ce) _ce.innerHTML = GRAMMAR_CURRICULUM.length + ' grammar patterns<br>across 3 levels';
+        } catch(_) {}
         if (typeof renderGrammarPathBanner === 'function') renderGrammarPathBanner();
       }
       // Article labels the nightly harvest already judged (see
@@ -16220,7 +16226,9 @@ async function _generateGrammarForCurriculumPattern(item) {
       if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
     }
   } catch(e) {
-    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
+    if (el) el.innerHTML = supaUser
+      ? '<div style="text-align:center;padding:40px;color:#ef4444">Couldn\'t load this lesson right now. Please try again in a moment.</div>'
+      : '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
   }
 }
 
@@ -16701,7 +16709,9 @@ async function generateGFPatterns() {
       if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
     }
   } catch(e) {
-    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
+    if (el) el.innerHTML = supaUser
+      ? '<div style="text-align:center;padding:40px;color:#ef4444">Couldn\'t load this lesson right now. Please try again in a moment.</div>'
+      : '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
   }
 }
 

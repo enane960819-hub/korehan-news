@@ -327,6 +327,12 @@
   margin-bottom: 16px;
   align-items: stretch;
   overscroll-behavior-x: contain;
+  /* THE fix for "기사 카드에서 세로 스크롤 안 먹힘 (크롬)": tell the browser
+     this rail only handles HORIZONTAL panning, so a vertical swipe that
+     starts on a card is routed to the page instead of being swallowed by
+     the scroll container. overflow-y:hidden alone did not reliably do this
+     on Chrome Android — touch-action does. */
+  touch-action: pan-x;
 }
 .home-news-grid::-webkit-scrollbar,
 .home-conv-grid-wrap::-webkit-scrollbar,
@@ -577,6 +583,7 @@ body.mobile-light .home-story-grid .story-card { background: #0b1626 !important;
     padding: 2px 2px 8px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    touch-action: pan-x;
   }
   .home-pills::-webkit-scrollbar { display: none; }
   .home-pills .sp {
