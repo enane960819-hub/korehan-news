@@ -924,7 +924,7 @@
 <!-- kh-universe.js (~117KB) is now lazy-loaded by _ensureKHUniverse()
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
-<script src="korehan-study-room.js?v=20261021a" defer></script>
+<script src="korehan-study-room.js?v=20261021b" defer></script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->
@@ -1247,7 +1247,7 @@ function openUniverseView() {
         <button onclick="dctGoBack()" aria-label="Back" style="background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:10px;width:34px;height:34px;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">←</button>
         <div style="min-width:0">
           <div style="font-size:13px;font-weight:800;letter-spacing:.5px;display:inline-flex;align-items:center;gap:6px"><i data-lucide="headphones" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Dictation</span></div>
-          <div style="font-size:11px;opacity:.65;margin-top:2px" id="dct-step-sub">Step 1 of 4 — Listen</div>
+          <div style="font-size:11px;opacity:.65;margin-top:2px" id="dct-step-sub">받아쓰기 · Words</div>
         </div>
       </div>
       <button onclick="closeDictationModal()" aria-label="Close" style="background:rgba(255,255,255,.06);border:none;color:#fff;border-radius:10px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><i data-lucide="x" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
@@ -1260,9 +1260,8 @@ function openUniverseView() {
     </div>
     <!-- Mode switcher (Phase 5) — Topic drill / Phoneme / Connected speech -->
     <div id="dct-mode-tabs" style="display:flex;gap:6px;padding:10px 20px 0;flex-wrap:wrap">
-      <button type="button" onclick="_dctSwitchMode('topic')"    data-mode="topic"     class="dct-mode-tab" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="target" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Topic <span style="opacity:.7">· 4 steps</span></span></button>
+      <button type="button" onclick="_dctSwitchMode('word')"     data-mode="word"      class="dct-mode-tab" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="pencil" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Words <span style="opacity:.7">· 받아쓰기</span></span></button>
       <button type="button" onclick="_dctSwitchMode('phoneme')"  data-mode="phoneme"   class="dct-mode-tab" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="volume-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Phoneme</span></button>
-      <button type="button" onclick="_dctSwitchMode('connected')" data-mode="connected" class="dct-mode-tab" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="link-2" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Connected</span></button>
     </div>
     <div class="dct-body" id="dct-body">
       <div class="as-loading"><div class="as-spinner"></div><div>Loading…</div></div>
