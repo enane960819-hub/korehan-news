@@ -17761,7 +17761,7 @@ function dctGoBack() {
   // Back arrow: within a step, stay put; between steps, rewind; on step 1, close.
   // In Phoneme / Connected modes, Back exits to the Topic drill first, then closes.
   if (_dctMode === 'phoneme' || _dctMode === 'connected') {
-    _dctSwitchMode('topic');
+    _dctSwitchMode('word');
     return;
   }
   if (_dctStep === 4) { _dctStep = 3; _dctFbState = null; _dctRender(); return; }
@@ -17775,7 +17775,7 @@ function dctGoBack() {
   closeDictationModal();
 }
 
-var _dctMode = 'topic'; // 'topic' | 'phoneme' | 'connected'
+var _dctMode = 'word'; // 'word' | 'phoneme'  (topic/connected sentence drills retired — dictation is words only)
 
 function openDictationModal() {
   if (!supaUser) { openAuthModal('signin'); return; }
@@ -17793,8 +17793,8 @@ function openDictationModal() {
   // memo means each open re-pulls from currently-loaded daily
   // content (helpers/grammar can shift across days).
   _dctMasterPool = null;
-  _dctMode = 'topic';
-  _dctSwitchMode('topic');
+  _dctMode = 'word';
+  _dctSwitchMode('word');
 }
 
 // Switch between Topic-drill (existing 4-step) / Phoneme / Connected speech.
@@ -17809,7 +17809,9 @@ function _dctSwitchMode(mode) {
   var pips = document.getElementById('dct-pips');
   if (pips) pips.style.display = (mode === 'topic') ? 'flex' : 'none';
 
-  if (mode === 'topic') {
+  if (mode === 'word') {
+    _dctWordStart();
+  } else if (mode === 'topic') {
     _dctStep = 1;
     _dctRender();
   } else if (mode === 'phoneme') {
@@ -17817,6 +17819,149 @@ function _dctSwitchMode(mode) {
   } else if (mode === 'connected') {
     _dctConnectedStart();
   }
+}
+
+// ── Word Dictation (단어 받아쓰기) ───────────────────────────────────
+// The standalone Dictation element is WORDS ONLY now (sentences were too
+// hard). Same 3-stage ramp as the Beginner flow Step 4:
+//   1 word shown + jamo keyboard · 2 jumbled-jamo hint + jamo keyboard ·
+//   3 listen-only, type it. Source = the day's vocab (_aiContent.vocab).
+// No AI call (vocab already loaded) — also removes the old dictation-gen
+// sentence generation cost.
+var _dctWord = { idx: 0, cards: [], results: {}, jamoKb: null };
+
+function _dctWordDeck() {
+  var v = (_aiContent && Array.isArray(_aiContent.vocab)) ? _aiContent.vocab : [];
+  return v.filter(function(w){ return w && w.ko && String(w.ko).trim(); })
+          .map(function(w){ return { ko: String(w.ko).trim(), en: String(w.en || '').trim() }; });
+}
+function _dctWordDestroyKb() {
+  try { if (_dctWord.jamoKb && _dctWord.jamoKb.destroy) _dctWord.jamoKb.destroy(); } catch(_) {}
+  _dctWord.jamoKb = null;
+}
+function _dctWordStart() {
+  var pips = document.getElementById('dct-pips'); if (pips) pips.style.display = 'none';
+  _dctWord = { idx: 0, cards: _dctWordDeck(), results: {}, jamoKb: null };
+  _dctWordRender();
+}
+function _dctWordNormalize(s) { return String(s || '').replace(/[\s.,!?。·~]/g, '').toLowerCase(); }
+function _dctWordRender() {
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  var sub  = document.getElementById('dct-step-sub');
+  if (!body || !foot) return;
+  _dctWordDestroyKb();
+  var cards = _dctWord.cards || [];
+  var idx = _dctWord.idx || 0;
+
+  if (!cards.length) {
+    body.innerHTML = '<div style="text-align:center;padding:36px;color:rgba(255,255,255,.45)">No vocabulary words available for dictation yet.</div>';
+    foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done</button>';
+    if (sub) sub.textContent = '';
+    return;
+  }
+  if (idx >= cards.length) { _dctWordFinish(); return; }
+
+  var card = cards[idx];
+  var word = card.ko;
+  var safeKo = word.replace(/'/g, "\\'").replace(/"/g, '\\"');
+  var total = cards.length;
+  var stage = _bmDictStageFor(idx, total);
+  var meta = {
+    1: { badge: '1단계 · 따라 만들기', desc: 'Tap the letters to spell the word you see & hear.' },
+    2: { badge: '2단계 · 자모 보고 쓰기', desc: 'Listen, then build the word from the jumbled letters.' },
+    3: { badge: '3단계 · 듣고 받아쓰기', desc: 'Listen only, then type the word.' }
+  }[stage];
+  if (sub) sub.textContent = '받아쓰기 ' + (idx + 1) + ' / ' + total + ' · ' + meta.badge;
+
+  var helpHtml = '';
+  if (stage === 1) {
+    helpHtml = '<div style="text-align:center;margin-bottom:12px">'
+      + '<div style="font-family:\'Noto Serif KR\',serif;font-size:32px;font-weight:800;color:#fff;letter-spacing:1px">' + escapeHTML(word) + '</div>'
+      + (card.en ? '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px">' + escapeHTML(card.en) + '</div>' : '')
+      + '</div>';
+  } else if (stage === 2) {
+    var scrambled = _bmShuffle(_bmWordJamos(word));
+    helpHtml = '<div style="text-align:center;margin-bottom:12px">'
+      + (card.en ? '<div style="font-size:14px;color:rgba(255,255,255,.72);margin-bottom:7px">💡 ' + escapeHTML(card.en) + '</div>' : '')
+      + '<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">'
+      +   scrambled.map(function(j){ return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:34px;padding:0 8px;background:rgba(167,139,250,.16);border:1px solid rgba(167,139,250,.35);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:17px;font-weight:700;color:#d6c7ff">' + escapeHTML(j) + '</span>'; }).join('')
+      + '</div><div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:5px">필요한 자음·모음 (순서는 섞여 있어요)</div>'
+      + '</div>';
+  }
+  var showKeyboard = (stage === 1 || stage === 2);
+
+  body.innerHTML =
+    '<div style="max-width:460px;margin:0 auto;padding:18px 16px">'
+    + '<div style="font-size:12px;font-weight:800;color:#7dd3fc;text-align:center;margin-bottom:14px">🎧 ' + meta.desc + '</div>'
+    + '<div style="display:flex;align-items:flex-start;gap:12px">'
+    +   '<button type="button" onclick="srSpeak(\'' + safeKo + '\')" aria-label="Play" style="flex-shrink:0;width:60px;height:60px;border-radius:50%;border:none;background:linear-gradient(135deg,#6366f1,#3b82f6);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center">'
+    +     '<span style="display:inline-flex;width:30px;height:30px">' + BM_ICON_VOLUME + '</span>'
+    +   '</button>'
+    +   '<div style="flex:1;min-width:0">'
+    +     helpHtml
+    +     '<input type="text" id="dct-word-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="' + (stage === 1 ? '위 단어를 자모로 입력...' : '들은 단어를 입력...') + '" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#fff;font-size:16px;font-family:\'Noto Sans KR\',sans-serif" onkeydown="if(event.key===\'Enter\')_dctWordCheck()">'
+    +     '<div id="dct-word-fb" style="min-height:22px;margin-top:8px;font-size:14px;font-weight:700"></div>'
+    +   '</div>'
+    + '</div>'
+    + '</div>';
+
+  foot.innerHTML =
+      '<button class="btn" onclick="_dctWordSkip()" style="opacity:.85">건너뛰기 →</button>'
+    + '<button class="btn btn-g" onclick="_dctWordCheck()">확인</button>';
+
+  if (showKeyboard && window.khAttachJamoKeyboard) {
+    try { _dctWord.jamoKb = khAttachJamoKeyboard(document.getElementById('dct-word-input')); } catch(_) { _dctWord.jamoKb = null; }
+  }
+  setTimeout(function(){ try { srSpeak(word); } catch(_) {} }, 250);
+  if (!showKeyboard) setTimeout(function(){ var i = document.getElementById('dct-word-input'); if (i) i.focus(); }, 100);
+}
+function _dctWordCheck() {
+  var cards = _dctWord.cards || [];
+  var idx = _dctWord.idx || 0;
+  var card = cards[idx];
+  if (!card) return;
+  var inp = document.getElementById('dct-word-input');
+  var fb = document.getElementById('dct-word-fb');
+  if (!inp || !fb) return;
+  var typed = (inp.value || '').trim();
+  if (!typed) return;
+  var ok = _dctWordNormalize(typed) === _dctWordNormalize(card.ko);
+  _dctWord.results[idx] = ok;
+  inp.disabled = true;
+  if (ok) {
+    fb.innerHTML = '<span style="color:#4ade80">✓ Correct!</span>';
+    if (typeof playCorrectSound === 'function') playCorrectSound();
+  } else {
+    fb.innerHTML = '<span style="color:#f87171">정답: <strong>' + escapeHTML(card.ko) + '</strong>'
+      + (card.en ? ' <span style="opacity:.6;font-weight:500">(' + escapeHTML(card.en) + ')</span>' : '') + '</span>';
+    if (typeof playWrongSound === 'function') playWrongSound();
+  }
+  setTimeout(function(){ _dctWord.idx = idx + 1; _dctWordRender(); }, ok ? 1050 : 1650);
+}
+function _dctWordSkip() {
+  _dctWord.results[_dctWord.idx || 0] = false;
+  _dctWord.idx = (_dctWord.idx || 0) + 1;
+  _dctWordRender();
+}
+function _dctWordFinish() {
+  _dctWordDestroyKb();
+  var body = document.getElementById('dct-body');
+  var foot = document.getElementById('dct-foot');
+  var sub = document.getElementById('dct-step-sub'); if (sub) sub.textContent = '완료!';
+  var cards = _dctWord.cards || [];
+  var total = cards.length;
+  var correct = 0; for (var k in _dctWord.results) { if (_dctWord.results[k]) correct++; }
+  var pct = total ? Math.round(correct / total * 100) : 0;
+  try { _dctSaveScore(pct, total); } catch(_) {}
+  try { if (typeof logQuizResult === 'function') logQuizResult('dictation', { content_type: 'dictation', score: correct, max_score: total, accuracy_pct: pct }); } catch(_) {}
+  if (body) body.innerHTML = '<div style="text-align:center;padding:36px 20px">'
+    + '<div style="font-size:42px;margin-bottom:8px">🎉</div>'
+    + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px">받아쓰기 완료!</div>'
+    + '<div style="font-size:15px;color:rgba(255,255,255,.7)">' + correct + ' / ' + total + ' 정답 (' + pct + '%)</div>'
+    + '</div>';
+  if (foot) foot.innerHTML = '<button class="btn" onclick="_dctWordStart()">다시 · Retry</button>'
+    + '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done</button>';
 }
 function closeDictationModal() {
   _srCancelAutoNext();
