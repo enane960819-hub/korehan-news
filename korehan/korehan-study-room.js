@@ -14697,27 +14697,96 @@ function bmStartDictation() {
   bmRenderDictation();
 }
 
+// ── Dictation difficulty ramp (words only) ──────────────────────────
+// The raw "listen & type" was too hard cold. Each word is now graded by
+// its position in the set into 3 stages so the learner is scaffolded in:
+//   Stage 1 — word is SHOWN; tap the on-screen jamo keyboard to spell it
+//             (learn where the 자음/모음 are + composition order).
+//   Stage 2 — word hidden; its jamo are shown JUMBLED as a hint (보기) +
+//             the English meaning; build it on the jamo keyboard.
+//   Stage 3 — audio only; type the word (pure recall).
+function _bmDictStageFor(idx, total) {
+  if (total <= 1) return 1;
+  var s1 = Math.max(1, Math.ceil(total * 0.4));
+  var s2 = Math.max(s1 + 1, Math.ceil(total * 0.75));
+  if (idx < s1) return 1;
+  if (idx < s2) return 2;
+  return 3;
+}
+// Ordered jamo (cho/jung/jong) for every syllable of a word.
+function _bmWordJamos(word) {
+  var js = [], s = String(word || '');
+  for (var i = 0; i < s.length; i++) {
+    var ch = s[i];
+    if (/[가-힣]/.test(ch) && window.khDecomposeHangul) {
+      var d = khDecomposeHangul(ch);
+      if (d) { js.push(d.cho); js.push(d.jung); if (d.jong) js.push(d.jong); continue; }
+    }
+    if (ch.trim()) js.push(ch);
+  }
+  return js;
+}
+function _bmShuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) { var r = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[r]; a[r] = t; }
+  return a;
+}
+function _bmDestroyJamoKb() {
+  try { if (_bm._jamoKb && _bm._jamoKb.destroy) _bm._jamoKb.destroy(); } catch(_) {}
+  _bm._jamoKb = null;
+}
+
 function bmRenderDictation() {
   var cards = _bm.snapCards || [];
   var idx = _bm.dictIdx || 0;
+  _bmDestroyJamoKb();
   if (idx >= cards.length) {
     bmStartAssociation();
     return;
   }
   var card = cards[idx];
-  var safeKo = (card.ko || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+  var word = card.ko || '';
+  var safeKo = word.replace(/'/g, "\\'").replace(/"/g, '\\"');
+  var total = cards.length;
+  var stage = _bmDictStageFor(idx, total);
+  var meta = {
+    1: { badge: '1단계 · 따라 만들기', desc: 'Tap the letters below to spell the word you see & hear.' },
+    2: { badge: '2단계 · 자모 보고 쓰기', desc: 'Listen, then build the word from the jumbled letters.' },
+    3: { badge: '3단계 · 듣고 받아쓰기', desc: 'Listen only, then type the word.' }
+  }[stage];
+
+  var helpHtml = '';
+  if (stage === 1) {
+    helpHtml = '<div style="text-align:center;margin-bottom:10px">'
+      + '<div style="font-family:\'Noto Serif KR\',serif;font-size:30px;font-weight:800;color:#fff;letter-spacing:1px">' + escapeHTML(word) + '</div>'
+      + (card.en ? '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px">' + escapeHTML(card.en) + '</div>' : '')
+      + '</div>';
+  } else if (stage === 2) {
+    var scrambled = _bmShuffle(_bmWordJamos(word));
+    helpHtml = '<div style="text-align:center;margin-bottom:10px">'
+      + (card.en ? '<div style="font-size:14px;color:rgba(255,255,255,.72);margin-bottom:7px">💡 ' + escapeHTML(card.en) + '</div>' : '')
+      + '<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">'
+      +   scrambled.map(function(j){ return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:34px;padding:0 8px;background:rgba(167,139,250,.16);border:1px solid rgba(167,139,250,.35);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:17px;font-weight:700;color:#d6c7ff">' + escapeHTML(j) + '</span>'; }).join('')
+      + '</div>'
+      + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:5px">필요한 자음·모음 (순서는 섞여 있어요)</div>'
+      + '</div>';
+  }
+
+  var showKeyboard = (stage === 1 || stage === 2);
 
   document.getElementById('bm-body').innerHTML =
-      '<div class="bm-step-label">Step 4 of 4 · 받아쓰기 ' + (idx + 1) + ' / ' + cards.length + '</div>'
+      '<div class="bm-step-label">Step 4 of 4 · 받아쓰기 ' + (idx + 1) + ' / ' + cards.length
+    +   ' <span style="margin-left:6px;padding:2px 8px;border-radius:999px;background:rgba(125,211,252,.16);color:#7dd3fc;font-size:11px;font-weight:800">' + meta.badge + '</span></div>'
     + '<div class="bm-step-title">' + BM_ICON_VOLUME + '<span>Audio Dictation</span></div>'
-    + '<div class="bm-step-desc">Listen and type the word in Korean. Skip if too hard.</div>'
+    + '<div class="bm-step-desc">' + meta.desc + '</div>'
     + '<div class="bm-dict-card">'
     +   '<button type="button" class="bm-dict-play" onclick="srSpeak(\'' + safeKo + '\')" aria-label="Play">'
     +     '<span style="display:inline-flex;width:36px;height:36px;color:#fff">' + BM_ICON_VOLUME + '</span>'
     +   '</button>'
-    +   '<div class="bm-dict-input-wrap">'
+    +   '<div class="bm-dict-input-wrap" style="flex:1">'
+    +     helpHtml
     +     '<input type="text" id="bm-dict-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
-    +     ' placeholder="들은 단어를 입력..."'
+    +     ' placeholder="' + (stage === 1 ? '위 단어를 자모로 입력...' : '들은 단어를 입력...') + '"'
     +     ' onkeydown="if(event.key===\'Enter\')bmDictCheck()">'
     +     '<div class="bm-dict-fb" id="bm-dict-fb"></div>'
     +   '</div>'
@@ -14732,15 +14801,18 @@ function bmRenderDictation() {
     + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">듣고 쓰면 단어가 기억에 잘 남아요</span>'
     + '<button class="bm-btn-next" disabled>Complete →</button>';
 
-  // Auto-play TTS shortly after the card mounts so the learner doesn't
-  // have to hunt for the play button on each new word.
-  setTimeout(function() {
-    try { srSpeak(card.ko); } catch(_) {}
-  }, 250);
-  setTimeout(function() {
-    var inp = document.getElementById('bm-dict-input');
-    if (inp) inp.focus();
-  }, 100);
+  // Stages 1-2: attach the on-screen jamo keyboard so a beginner can spell
+  // without their device IME. Stage 3 is pure recall → device keyboard only.
+  if (showKeyboard && window.khAttachJamoKeyboard) {
+    try { _bm._jamoKb = khAttachJamoKeyboard(document.getElementById('bm-dict-input')); } catch(_) { _bm._jamoKb = null; }
+  }
+
+  // Auto-play TTS shortly after mount. Only auto-focus on stage 3 so the
+  // device keyboard doesn't cover the on-screen jamo keyboard in 1-2.
+  setTimeout(function() { try { srSpeak(word); } catch(_) {} }, 250);
+  if (!showKeyboard) {
+    setTimeout(function() { var inp = document.getElementById('bm-dict-input'); if (inp) inp.focus(); }, 100);
+  }
 }
 
 function _bmDictNormalize(s) {
