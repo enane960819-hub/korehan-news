@@ -14,6 +14,7 @@
   var _index = 0;
   var _score = 0;
   var _answered = false;
+  var _advTimer = null; // auto-advance timer after an answer
   var _particleOverlay = null;
   var _waveAnimId = 'lq-wave';
   var _isPlaying = false;
@@ -189,6 +190,12 @@
 
     var nextBtn = document.getElementById('lq-next-btn');
     if (nextBtn) { nextBtn.disabled = false; nextBtn.style.opacity = '1'; }
+
+    // Auto-advance so the learner isn't forced to tap Next every time.
+    // Correct → quick; wrong → longer so they can read the explanation.
+    // The Next button still works as a manual override (it clears this).
+    clearTimeout(_advTimer);
+    _advTimer = setTimeout(function() { LQ.next(); }, correct ? 1000 : 2000);
   };
 
   // ── Score screen ──
@@ -284,12 +291,14 @@
   };
 
   LQ.next = function() {
+    clearTimeout(_advTimer);
     _index++;
     if (_index >= _questions.length) _showScore();
     else _renderQuestion();
   };
 
   LQ.close = function() {
+    clearTimeout(_advTimer);
     var overlay = document.getElementById(OVERLAY_ID);
     if (overlay) {
       overlay.classList.remove('active');
