@@ -625,7 +625,22 @@ function showCategory(cat, btn) {
   const vocabWords = keys.filter(k=>VOCAB[k] && !wbKeys.has(k))
     .map(k=>({ ko:k, rom:VOCAB[k].rom, en:VOCAB[k].en }));
 
-  currentCardList = [...wbWords, ...vocabWords];
+  // Real vocab harvested from analyzed articles (grows + rotates daily). This
+  // was loaded but never added to the deck, so the flashcards were always the
+  // same hardcoded list. Include it (deduped) — in 'All', everything; in a
+  // named category, only words that belong to it.
+  const seenKo = {};
+  wbWords.forEach(w=>{ if(w.ko) seenKo[w.ko]=1; });
+  vocabWords.forEach(w=>{ if(w.ko) seenKo[w.ko]=1; });
+  const extraCache = cacheWords.filter(w=>{
+    if(!w.ko || seenKo[w.ko]) return false;
+    if(cat!=='All' && CATEGORIES[cat] && CATEGORIES[cat].indexOf(w.ko)<0) return false;
+    seenKo[w.ko]=1; return true;
+  });
+
+  currentCardList = [...wbWords, ...vocabWords, ...extraCache];
+  // Shuffle so the learner doesn't open the exact same deck every single time.
+  currentCardList.sort(()=>Math.random()-0.5);
   currentCardPage = 0;
   renderCardPage();
 }
