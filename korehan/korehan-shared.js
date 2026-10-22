@@ -12830,6 +12830,22 @@ function _fjRenderWidget() {
     return;
   }
   if (localStorage.getItem('kh_fj_dismissed')) return;
+  // MOBILE: never float the 300px panel over the content. It is
+  // position:fixed and covered most of the viewport (x68–368, y174–640),
+  // so whatever scrolled under it — the News rail especially — had its
+  // touch swallowed and wouldn't scroll on Chrome (a sign-in-event /
+  // init race decided whether the panel or the small FAB won; Samsung
+  // Internet happened to land on the FAB, which is why it only broke in
+  // Chrome). On phones collapse to the small 🎯 FAB; the panel opens
+  // ONLY on an explicit tap (opts.userOpened) and then as a backdrop
+  // sheet that closes on an outside tap, so it can never trap the page.
+  var _fjMobile = (window.matchMedia && window.matchMedia('(max-width:640px)').matches) || window.innerWidth <= 640;
+  if (_fjMobile && !(opts && opts.userOpened)) {
+    var _fjP = document.getElementById('fj-widget'); if (_fjP) _fjP.remove();
+    var _fjBd0 = document.getElementById('fj-backdrop'); if (_fjBd0) _fjBd0.remove();
+    _fjShowResumeBtn();
+    return;
+  }
   var done = _fjDoneCount();
   var total = _FJ_STEPS.length;
   var pct = Math.round(done / total * 100);
@@ -12837,7 +12853,19 @@ function _fjRenderWidget() {
   if (!widget) {
     widget = document.createElement('div');
     widget.id = 'fj-widget';
-    widget.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:8000;width:300px;max-height:80vh;overflow-y:auto;background:#0f1a2e;border:1px solid rgba(56,189,248,.2);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.4);color:#fff;font-family:inherit;font-size:13px;transition:opacity .3s';
+    if (_fjMobile) {
+      widget.style.cssText = 'position:fixed;left:12px;right:12px;bottom:76px;z-index:8000;max-height:70vh;overflow-y:auto;background:#0f1a2e;border:1px solid rgba(56,189,248,.2);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.55);color:#fff;font-family:inherit;font-size:13px';
+      if (!document.getElementById('fj-backdrop')) {
+        var bd = document.createElement('div');
+        bd.id = 'fj-backdrop';
+        bd.style.cssText = 'position:fixed;inset:0;z-index:7998;background:rgba(2,6,14,.45)';
+        bd.onclick = function(){ _fjDismissWidget(); };
+        document.body.appendChild(bd);
+      }
+      var _oldFab = document.getElementById('fj-resume'); if (_oldFab) _oldFab.remove();
+    } else {
+      widget.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:8000;width:300px;max-height:80vh;overflow-y:auto;background:#0f1a2e;border:1px solid rgba(56,189,248,.2);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.4);color:#fff;font-family:inherit;font-size:13px;transition:opacity .3s';
+    }
     document.body.appendChild(widget);
   }
   // 다음 할 일 찾기 (첫 번째 미완료 항목)
@@ -12878,6 +12906,8 @@ function _fjRenderWidget() {
 function _fjDismissWidget() {
   var w = document.getElementById('fj-widget');
   if (w) w.remove();
+  var bd = document.getElementById('fj-backdrop');
+  if (bd) bd.remove();
   localStorage.setItem('kh_fj_dismissed', '1');
   _fjShowResumeBtn();
 }
@@ -12892,7 +12922,7 @@ function _fjShowResumeBtn() {
   btn.onclick = function() {
     localStorage.removeItem('kh_fj_dismissed');
     btn.remove();
-    _fjRenderWidget();
+    _fjRenderWidget({ userOpened: true });
   };
   btn.onmouseover = function(){ btn.style.transform='scale(1.1)'; };
   btn.onmouseout = function(){ btn.style.transform=''; };
