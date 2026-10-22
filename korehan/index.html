@@ -83,6 +83,39 @@
   window.addEventListener('load', function(){ setTimeout(function(){ log('non-passive touch listeners: ' + (nonPassive.join(', ') || 'none')); log('UA: ' + navigator.userAgent.slice(0, 110)); }, 3000); });
 })();
 </script>
+<script>
+/* Scroll bisect switches — only active with ?khx=a,b,... (inert otherwise).
+   Each removes one suspect for the Chrome-only News-rail touch freeze:
+     nohero  hide the hero carousel (will-change/translate3d layer above News)
+     noblur  drop backdrop-filter + will-change everywhere (composited neighbours)
+     noimg   remove the photo + gradient layers inside News cards
+     div     render News cards as <div onclick> like Conversations cards
+     all     every switch at once */
+(function(){
+  var m = location.search.match(/[?&]khx=([^&]+)/); if (!m) return;
+  var f = decodeURIComponent(m[1]).split(','); var on = function(k){ return f.indexOf(k) >= 0 || f.indexOf('all') >= 0; };
+  var css = '';
+  if (on('nohero')) css += '#dyn-hero{display:none!important}';
+  if (on('noblur')) css += '*,*::before,*::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;will-change:auto!important}.kh-home-hero-track{transform:none!important}';
+  if (on('noimg')) css += '.home-news-grid .nc-img,.home-news-grid .nc-overlay-grad{display:none!important}';
+  css += '#khx-badge{position:fixed;left:8px;top:8px;z-index:2147483647;background:#e11d48;color:#fff;font:700 12px/1 sans-serif;padding:6px 9px;border-radius:8px;pointer-events:none}';
+  var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.createElement('div'); b.id = 'khx-badge'; b.textContent = 'TEST: ' + f.join(','); document.body.appendChild(b);
+    if (!on('div')) return;
+    function conv(){
+      var g = document.getElementById('dyn-news-grid'); if (!g) return;
+      g.querySelectorAll('a.nc').forEach(function(a){
+        var d = document.createElement('div'); d.className = a.className;
+        var href = a.getAttribute('href'); d.onclick = function(){ location.href = href; };
+        while (a.firstChild) d.appendChild(a.firstChild);
+        a.parentNode.replaceChild(d, a);
+      });
+    }
+    conv(); setInterval(conv, 800);
+  });
+})();
+</script>
 <title>KoreHani — Learn Korean Through Real News</title>
 <meta name="description" content="Read real Korean news, conversations, and stories. Tap any sentence for instant translation, vocab, and grammar — TOPIK-level practice that works.">
 <meta name="keywords" content="한국어 학습, Korean learning, TOPIK, 한국어 공부, learn korean, korean news, korean vocabulary, korean grammar">
