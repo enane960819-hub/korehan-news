@@ -5067,6 +5067,148 @@ function closeSlangModal() {
   document.body.style.overflow = '';
 }
 
+// ════════════════════════════════════════════════════════════════════
+// 기초 (Basics) Track — a fixed 0→1 path for absolute-beginner foreign
+// learners. Replaces Stories as the beginner on-ramp. It sequences the
+// tools the study room already has (alphabet, flashcards, pronunciation,
+// grammar, dictation) over authored beginner datasets. Progress is saved
+// per-user in localStorage. Flashcard units need no AI.
+// ════════════════════════════════════════════════════════════════════
+var KH_BASICS_DECKS = {
+  numbers: [
+    {ko:'하나',rom:'hana',en:'one (native)'},{ko:'둘',rom:'dul',en:'two (native)'},{ko:'셋',rom:'set',en:'three (native)'},
+    {ko:'넷',rom:'net',en:'four (native)'},{ko:'다섯',rom:'daseot',en:'five (native)'},{ko:'여섯',rom:'yeoseot',en:'six (native)'},
+    {ko:'일곱',rom:'ilgop',en:'seven (native)'},{ko:'여덟',rom:'yeodeol',en:'eight (native)'},{ko:'아홉',rom:'ahop',en:'nine (native)'},
+    {ko:'열',rom:'yeol',en:'ten (native)'},
+    {ko:'일',rom:'il',en:'one (Sino)'},{ko:'이',rom:'i',en:'two (Sino)'},{ko:'삼',rom:'sam',en:'three (Sino)'},
+    {ko:'사',rom:'sa',en:'four (Sino)'},{ko:'오',rom:'o',en:'five (Sino)'},{ko:'육',rom:'yuk',en:'six (Sino)'},
+    {ko:'칠',rom:'chil',en:'seven (Sino)'},{ko:'팔',rom:'pal',en:'eight (Sino)'},{ko:'구',rom:'gu',en:'nine (Sino)'},{ko:'십',rom:'sip',en:'ten (Sino)'}
+  ],
+  family: [
+    {ko:'가족',rom:'gajok',en:'family'},{ko:'엄마',rom:'eomma',en:'mom'},{ko:'아빠',rom:'appa',en:'dad'},
+    {ko:'오빠',rom:'oppa',en:"older brother (woman's)"},{ko:'형',rom:'hyeong',en:"older brother (man's)"},
+    {ko:'언니',rom:'eonni',en:"older sister (woman's)"},{ko:'누나',rom:'nuna',en:"older sister (man's)"},
+    {ko:'동생',rom:'dongsaeng',en:'younger sibling'},{ko:'할머니',rom:'halmeoni',en:'grandmother'},{ko:'할아버지',rom:'harabeoji',en:'grandfather'}
+  ],
+  colors: [
+    {ko:'빨간색',rom:'ppalgansaek',en:'red'},{ko:'파란색',rom:'paransaek',en:'blue'},{ko:'노란색',rom:'noransaek',en:'yellow'},
+    {ko:'초록색',rom:'choroksaek',en:'green'},{ko:'검은색',rom:'geomeunsaek',en:'black'},{ko:'흰색',rom:'huinsaek',en:'white'},
+    {ko:'분홍색',rom:'bunhongsaek',en:'pink'},{ko:'보라색',rom:'borasaek',en:'purple'}
+  ],
+  days: [
+    {ko:'월요일',rom:'woryoil',en:'Monday'},{ko:'화요일',rom:'hwayoil',en:'Tuesday'},{ko:'수요일',rom:'suyoil',en:'Wednesday'},
+    {ko:'목요일',rom:'mogyoil',en:'Thursday'},{ko:'금요일',rom:'geumyoil',en:'Friday'},{ko:'토요일',rom:'toyoil',en:'Saturday'},
+    {ko:'일요일',rom:'iryoil',en:'Sunday'}
+  ],
+  greetings: [
+    {ko:'안녕하세요',rom:'annyeonghaseyo',en:'Hello (polite)'},{ko:'안녕',rom:'annyeong',en:'Hi / Bye (casual)'},
+    {ko:'감사합니다',rom:'gamsahamnida',en:'Thank you (polite)'},{ko:'고마워요',rom:'gomawoyo',en:'Thanks'},
+    {ko:'죄송합니다',rom:'joesonghamnida',en:"I'm sorry"},{ko:'네',rom:'ne',en:'Yes'},{ko:'아니요',rom:'aniyo',en:'No'},
+    {ko:'괜찮아요',rom:'gwaenchanayo',en:"It's okay"},{ko:'안녕히 가세요',rom:'annyeonghi gaseyo',en:'Goodbye (to someone leaving)'},
+    {ko:'처음 뵙겠습니다',rom:'cheoeum boepgesseumnida',en:'Nice to meet you'}
+  ]
+};
+
+function _bscFlash(deckKey, title) {
+  var deck = KH_BASICS_DECKS[deckKey] || [];
+  if (window.KHFlashcards && deck.length) KHFlashcards.open({ cards: deck, title: title });
+}
+function _bscFlashMany(deckKeys, title) {
+  var deck = [];
+  deckKeys.forEach(function(k){ (KH_BASICS_DECKS[k] || []).forEach(function(c){ deck.push(c); }); });
+  if (window.KHFlashcards && deck.length) KHFlashcards.open({ cards: deck, title: title });
+}
+function _bscOpenPhoneme() {
+  if (typeof openDictationModal === 'function') {
+    openDictationModal();
+    setTimeout(function(){ if (typeof _dctSwitchMode === 'function') _dctSwitchMode('phoneme'); }, 60);
+  }
+}
+
+// Ordered units. `open` runs the tool; progress is marked when a unit is opened.
+var KH_BASICS_UNITS = [
+  { id:'hangul',   mod:'한글 · Hangul',        ko:'자음·모음 익히기',  en:'Learn the alphabet',  icon:'type',        color:'#7dd3fc', run:function(){ closeBasicsTrack(); if(typeof openAlphaModal==='function') openAlphaModal(); } },
+  { id:'numbers',  mod:'기초 단어 · Words',     ko:'숫자',             en:'Numbers 1–10',        icon:'hash',        color:'#86efac', run:function(){ _bscFlash('numbers','숫자 · Numbers'); } },
+  { id:'family',   mod:'기초 단어 · Words',     ko:'가족',             en:'Family',              icon:'users',       color:'#86efac', run:function(){ _bscFlash('family','가족 · Family'); } },
+  { id:'colorday', mod:'기초 단어 · Words',     ko:'색깔 · 요일',       en:'Colors & days',       icon:'palette',     color:'#86efac', run:function(){ _bscFlashMany(['colors','days'],'색깔·요일 · Colors & Days'); } },
+  { id:'greet',    mod:'기초 표현 · Phrases',   ko:'인사 · 기초 표현',  en:'Greetings',           icon:'hand',        color:'#fbbf24', run:function(){ _bscFlash('greetings','인사 · Greetings'); } },
+  { id:'phoneme',  mod:'발음 · Pronunciation', ko:'비슷한 소리 구분',  en:'Tricky sounds',       icon:'volume-2',    color:'#f472b6', run:function(){ closeBasicsTrack(); _bscOpenPhoneme(); } },
+  { id:'gram1',    mod:'기초 문법 · Grammar',   ko:'이에요 / 예요',     en:'It is / I am',        icon:'git-branch',  color:'#c4b5fd', run:function(){ closeBasicsTrack(); if(typeof openGrammarFocusForItem==='function') openGrammarFocusForItem({ pattern:'(이)에요/예요 — It is / I am', level:'Seed', desc:'The basic "to be" sentence ending.' }); } },
+  { id:'dictation',mod:'받아쓰기 · Dictation',  ko:'단어 받아쓰기',     en:'Word dictation',      icon:'pencil',      color:'#60a5fa', run:function(){ closeBasicsTrack(); if(typeof openDictationModal==='function') openDictationModal(); } }
+];
+
+function _bscDoneKey() { return 'kh_basics_done_' + (supaUser ? supaUser.id : 'g'); }
+function _bscGetDone() { try { return JSON.parse(localStorage.getItem(_bscDoneKey()) || '{}') || {}; } catch(_) { return {}; } }
+function _bscMark(id) { try { var d = _bscGetDone(); d[id] = 1; localStorage.setItem(_bscDoneKey(), JSON.stringify(d)); } catch(_) {} }
+function _bscRun(id) {
+  var u = KH_BASICS_UNITS.filter(function(x){ return x.id === id; })[0];
+  if (!u) return;
+  _bscMark(id);
+  try { u.run(); } catch(e) { console.warn('[basics]', e); }
+}
+
+function openBasicsTrack() {
+  var ov = document.getElementById('basics-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'basics-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(6,11,22,.96);backdrop-filter:blur(4px);overflow-y:auto;display:none';
+    ov.addEventListener('click', function(e){ if (e.target === ov) closeBasicsTrack(); });
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  renderBasicsTrack();
+}
+function closeBasicsTrack() {
+  var ov = document.getElementById('basics-overlay');
+  if (ov) ov.style.display = 'none';
+  document.body.style.overflow = '';
+}
+function renderBasicsTrack() {
+  var ov = document.getElementById('basics-overlay');
+  if (!ov) return;
+  var done = _bscGetDone();
+  var total = KH_BASICS_UNITS.length;
+  var doneCount = KH_BASICS_UNITS.filter(function(u){ return done[u.id]; }).length;
+  var pct = total ? Math.round(doneCount / total * 100) : 0;
+
+  var lastMod = '';
+  var cards = KH_BASICS_UNITS.map(function(u, i) {
+    var isDone = !!done[u.id];
+    var modHdr = (u.mod !== lastMod)
+      ? '<div style="font-size:12px;font-weight:900;color:rgba(255,255,255,.5);letter-spacing:.1em;text-transform:uppercase;margin:' + (i===0?'0':'18px') + ' 0 8px">' + u.mod + '</div>'
+      : '';
+    lastMod = u.mod;
+    return modHdr
+      + '<button type="button" onclick="_bscRun(\'' + u.id + '\')" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;margin-bottom:8px;border-radius:14px;border:1px solid ' + (isDone?'rgba(134,239,172,.3)':'rgba(255,255,255,.1)') + ';background:' + (isDone?'rgba(34,197,94,.08)':'rgba(255,255,255,.04)') + ';cursor:pointer;text-align:left;font-family:inherit;transition:.15s">'
+      +   '<div style="flex-shrink:0;width:44px;height:44px;border-radius:12px;background:' + u.color + '22;border:1px solid ' + u.color + '55;display:flex;align-items:center;justify-content:center"><i data-lucide="' + u.icon + '" style="width:22px;height:22px;color:' + u.color + '" aria-hidden="true"></i></div>'
+      +   '<div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:800;color:#fff;font-family:\'Noto Sans KR\',sans-serif">' + u.ko + '</div><div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:2px">' + u.en + '</div></div>'
+      +   '<div style="flex-shrink:0">' + (isDone
+            ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#22c55e;color:#fff;font-size:15px;font-weight:900">✓</span>'
+            : '<i data-lucide="chevron-right" style="width:20px;height:20px;color:rgba(255,255,255,.3)" aria-hidden="true"></i>') + '</div>'
+      + '</button>';
+  }).join('');
+
+  ov.innerHTML =
+    '<div style="max-width:560px;margin:0 auto;padding:22px 16px 60px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+    +   '<div style="font-size:11px;font-weight:900;color:#7dd3fc;letter-spacing:.14em;text-transform:uppercase">기초 · Korean Basics</div>'
+    +   '<button type="button" onclick="closeBasicsTrack()" aria-label="Close" style="width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.08);color:#fff;font-size:18px;cursor:pointer">×</button>'
+    + '</div>'
+    + '<div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:4px">처음부터 차근차근</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:16px">Start from zero — the Korean fundamentals, step by step.</div>'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:22px">'
+    +   '<div style="flex:1;height:8px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden"><div style="width:' + pct + '%;height:100%;border-radius:999px;background:linear-gradient(90deg,#38bdf8,#22c55e);transition:width .4s"></div></div>'
+    +   '<div style="font-size:12px;font-weight:800;color:rgba(255,255,255,.7);flex-shrink:0">' + doneCount + ' / ' + total + '</div>'
+    + '</div>'
+    + cards
+    + (doneCount >= total ? '<div style="text-align:center;margin-top:18px;padding:16px;border-radius:14px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#86efac;font-weight:800">🎉 기초 완주! 이제 Study Room의 오늘의 학습으로 넘어가 보세요.</div>' : '')
+    + '</div>';
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+  else if (window.lucide && lucide.createIcons) lucide.createIcons();
+}
+
 function renderSlangModal() {
   var content = document.getElementById('slang-content');
   if (!content) return;
