@@ -312,23 +312,22 @@
   flex-direction: row;
   gap: 14px;
   overflow-x: auto;
-  /* 세로 스크롤 안 먹힘 (Chrome Android) — the rail must scroll ONLY
-     horizontally and must NOT become a vertical scroll container, or a
-     vertical swipe that starts on a card gets swallowed and the page won't
-     scroll. Two reinforcing fixes:
-       1. overflow-y: clip  — clips vertical overflow WITHOUT creating a
-          scroll container (unlike `hidden`, which does form one and can
-          trap the gesture). Falls back to hidden on old browsers.
-       2. touch-action: pan-x — tells the browser this element only pans
-          horizontally, so vertical gestures are routed to <body>. */
-  overflow-y: clip;
+  /* 세로 스크롤 (Chrome Android) — the rail scrolls horizontally but a
+     vertical swipe that starts on a card must still scroll the PAGE.
+       • overflow-y: hidden — the rail is NOT a vertical scroll container,
+         so a vertical wheel/touch chains up to <body>.
+       • touch-action: DEFAULT (auto) — do NOT set pan-x here. pan-x
+         *disables* vertical panning for touches in this region, which is
+         exactly what was swallowing the page scroll. The default lets the
+         browser pick by initial gesture direction: horizontal → pan the
+         rail, vertical → scroll the page. */
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding-bottom: 10px;
   margin-bottom: 16px;
   align-items: stretch;
   overscroll-behavior-x: contain;
-  touch-action: pan-x;
 }
 .home-news-grid::-webkit-scrollbar,
 .home-conv-grid-wrap::-webkit-scrollbar,
@@ -573,13 +572,13 @@ body.mobile-light .home-story-grid .story-card { background: #0b1626 !important;
   .home-pills {
     flex-wrap: nowrap;
     overflow-x: auto;
-    overflow-y: clip;
+    overflow-y: hidden;
     gap: 8px;
     margin: 0 -2px 14px;
     padding: 2px 2px 8px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    touch-action: pan-x;
+    /* touch-action default (auto): vertical swipes still scroll the page */
   }
   .home-pills::-webkit-scrollbar { display: none; }
   .home-pills .sp {
