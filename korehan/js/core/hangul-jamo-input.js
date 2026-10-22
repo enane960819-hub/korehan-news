@@ -163,23 +163,30 @@
       try { inputEl.dispatchEvent(new Event('input', { bubbles: true })); } catch(_) {}
     }
 
-    var rows = [
+    // Compact mode: when the caller passes `opts.keys` (e.g. just the
+    // jamo a dictation word actually needs), render ONLY those as big
+    // tappable tiles instead of the full 40-key grid. Removes the
+    // "hunt through 40 keys for every letter" friction on the
+    // trace/rebuild dictation stages.
+    var compact = Array.isArray(opts.keys) && opts.keys.length;
+    var rows = compact ? [opts.keys] : [
       // Consonants — 19 cho letters
       CHO,
       // Vowels — 21 jung letters (compound diphthongs included so the
       // user can tap ㅘ/ㅢ/etc. directly without the 2-step compose).
       JUNG,
     ];
+    if (compact) wrap.className += ' kh-jamo-kb-compact';
 
     var rowsHtml = rows.map(function(row) {
       return '<div class="kh-jamo-row">' + row.map(function(j) {
-        return '<button type="button" class="kh-jamo-key" data-j="' + j + '">' + j + '</button>';
+        return '<button type="button" class="kh-jamo-key' + (compact ? ' kh-jamo-key-lg' : '') + '" data-j="' + j + '">' + j + '</button>';
       }).join('') + '</div>';
     }).join('');
 
     wrap.innerHTML = rowsHtml
       + '<div class="kh-jamo-row kh-jamo-ctrl">'
-      +   '<button type="button" class="kh-jamo-key kh-jamo-space" data-act="space">space</button>'
+      +   (compact ? '' : '<button type="button" class="kh-jamo-key kh-jamo-space" data-act="space">space</button>')
       +   '<button type="button" class="kh-jamo-key kh-jamo-bs" data-act="bs">⌫</button>'
       +   '<button type="button" class="kh-jamo-key kh-jamo-clr" data-act="clear">Clear</button>'
       + '</div>';
@@ -233,7 +240,13 @@
         '.kh-jamo-ctrl .kh-jamo-key{flex:1 1 60px;max-width:none;font-size:13px;font-weight:700}',
         '.kh-jamo-space{flex:2 1 120px !important}',
         '.kh-jamo-bs{background:rgba(248,113,113,.18) !important;border-color:rgba(248,113,113,.35) !important}',
-        '@media(max-width:560px){.kh-jamo-key{font-size:14px;padding:7px 4px;min-width:26px}}',
+        // Compact (per-word) keyboard: fewer, bigger tiles that are easy
+        // to tap. The jamo the word needs sit on one wrapping row.
+        '.kh-jamo-kb-compact .kh-jamo-row{gap:8px}',
+        '.kh-jamo-key-lg{flex:0 0 auto;min-width:52px;max-width:none;padding:14px 18px;font-size:22px;border-radius:12px}',
+        '.kh-jamo-kb-compact .kh-jamo-ctrl .kh-jamo-key{flex:0 0 auto;min-width:72px;padding:12px 18px;font-size:14px}',
+        '@media(max-width:560px){.kh-jamo-key{font-size:14px;padding:7px 4px;min-width:26px}',
+        '.kh-jamo-key-lg{min-width:48px;padding:13px 16px;font-size:21px}}',
       ].join('\n');
       document.head.appendChild(st);
     }

@@ -32,7 +32,13 @@
 // even after the good build settled. Bumping the version makes activate
 // delete every pre-v13 cache; skipWaiting + clients.claim take over in
 // one navigation so stuck clients self-heal on next load.
-const CACHE_VERSION = 'kh-v13';
+// v14: force-purge after the home-rail vertical-scroll fix (#8). The rail
+// CSS (touch-action/overflow) is inline in the HTML, but any device still
+// running an older SW could keep serving a cached shell with the old
+// `touch-action: pan-x` that trapped vertical swipes. Bumping the version
+// makes activate delete every pre-v14 cache; skipWaiting + clients.claim
+// take over in one navigation so stuck clients self-heal on next load.
+const CACHE_VERSION = 'kh-v14';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 const PAGE_CACHE   = CACHE_VERSION + '-pages';
 
