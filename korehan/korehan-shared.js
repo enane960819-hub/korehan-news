@@ -1,5 +1,6 @@
 /* ============================================================
    KoreHani — Shared JS
+   build: 20261022e (force fresh Pages upload of this asset)
    ============================================================ */
 
 // ── Neon/dark mode + auth flash prevention: apply IMMEDIATELY ──
