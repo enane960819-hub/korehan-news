@@ -417,22 +417,28 @@
 /* Pills */
 .home-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 
-/* ── MOBILE NEWS GRID (phones) ───
-   Fresh classes on purpose — inherits nothing from .nc / .home-news-grid.
-   Normal flow, no overflow:hidden on the card, no positioned layers. */
-.khn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
-.khn-card { display: flex; flex-direction: column; min-width: 0; text-decoration: none; color: #0f172a;
-  background: #fff; border: 1px solid #e6ebf3; border-radius: 14px; box-shadow: 0 4px 14px rgba(15,23,42,.06); }
-.khn-img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 13px 13px 0 0;
-  background: linear-gradient(135deg,#dbe7ff,#b8cfff); }
-.khn-body { padding: 9px 10px 11px; display: flex; flex-direction: column; gap: 5px; }
-.khn-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-.khn-cat { font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #2255a4; }
-.khn-lvl { font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
-.khn-title { font-size: 13px; font-weight: 700; line-height: 1.38; display: -webkit-box; -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; }
-body.kh-neon-on .khn-card { background: rgba(8,16,31,.86); border-color: rgba(0,255,214,.18); color: #f4ffff; }
-body.kh-neon-on .khn-cat { color: #7dd3fc; }
+/* ── MOBILE NEWS RAIL (phones) ───
+   Same look as the original overlay cards; structure copied from
+   /scroll-test.html variant 1. Fresh classes — inherits nothing from
+   .nc / .home-news-grid. Photo + gradient are pointer-events:none so the
+   touch lands on the <a>. */
+.khn-rail { display: flex; flex-direction: row; gap: 14px; overflow-x: auto; overflow-y: hidden;
+  padding-bottom: 10px; margin-bottom: 16px; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.khn-rail::-webkit-scrollbar { display: none; }
+.khn-card { flex: 0 0 210px; min-width: 210px; height: 210px; position: relative; display: block;
+  overflow: hidden; border-radius: 18px; background: #0b1626; text-decoration: none; color: #fff;
+  box-shadow: 0 14px 28px rgba(13,27,46,.12); }
+.khn-img { position: absolute; inset: 0; background-size: cover; background-position: center;
+  background-color: #1e3a6b; pointer-events: none; }
+.khn-grad { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(5,15,35,.08) 0%, rgba(5,15,35,.35) 40%, rgba(5,15,35,.92) 100%); }
+.khn-body { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px; }
+.khn-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.khn-cat { font-size: 10px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: #fff; }
+.khn-lvl { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 4px; }
+.khn-title { font-family: 'Noto Serif KR', serif; font-size: 14px; font-weight: 700; line-height: 1.35; color: #fff;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* ── HORIZONTAL CAROUSEL BASE ─── */
 .home-news-grid,
@@ -2274,18 +2280,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Rather than keep patching that nested-scroller + overlay-card combo,
     // phones get a structure where a vertical swipe is ordinary page scroll.
     if (_khNewsIsMobile()) {
-      grid.className = 'khn-grid';
+      // MOBILE: same look as the original overlay rail, but rebuilt from
+      // scratch on the exact structure of /scroll-test.html variant 1 (real
+      // href + background photo + gradient) — the version that scrolls on the
+      // owner's Chrome. Fresh khn-* classes so none of the old .nc /
+      // .home-news-grid / neon cascade reaches it.
+      grid.className = 'khn-rail';
       var LVL_NAME = {Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'};
-      grid.innerHTML = arts.slice(0, 6).map(function(a) {
+      grid.innerHTML = arts.map(function(a) {
         var lvl = a.level || 'Beginner';
         var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
         var cat = (typeof getSectionKey === 'function') ? getSectionKey(a.section) : (a.section || '').toLowerCase();
-        var thumb = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 400, 300) : (a.image || '');
-        var img = thumb
-          ? '<img class="khn-img" src="' + thumb + '" alt="" loading="lazy" decoding="async" draggable="false" onerror="this.onerror=null;this.className=\'khn-img khn-img-fb\';this.removeAttribute(\'src\')">'
-          : '<div class="khn-img khn-img-fb"></div>';
+        var thumb = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 600, 400) : (a.image || '');
         return '<a class="khn-card" data-section="' + cat + '" data-level="' + lvl + '" href="korehan-article.html?id=' + a.id + '">'
-          + img
+          + '<div class="khn-img"' + (thumb ? ' style="background-image:url(\'' + String(thumb).replace(/'/g, '%27') + '\')"' : '') + '></div>'
+          + '<div class="khn-grad"></div>'
           + '<div class="khn-body">'
           +   '<div class="khn-meta"><span class="khn-cat">' + (a.section || '') + '</span><span class="khn-lvl ' + lvlCls + '">' + (LVL_NAME[a.level] || a.level || '') + '</span></div>'
           +   '<div class="khn-title">' + (a.title_en || a.title || '') + '</div>'
