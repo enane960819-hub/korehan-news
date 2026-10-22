@@ -1371,6 +1371,34 @@ body.kh-neon-on .hero-dot {
 <script src="js/features/fill-blank.js?v=20261013c"></script>
 <script src="korehan-shared.js?v=20261022e"></script>
 <script>
+/* TEMP WORKAROUND (remove once korehan-shared.js redeploys cleanly):
+   The First Journey onboarding panel (#fj-widget) is position:fixed over
+   the page and, on phones, covered the News rail and ate its scroll on
+   Chrome. The proper fix lives in korehan-shared.js (_fjRenderWidget mobile
+   guard) but Cloudflare is currently serving a stale shared.js, so we also
+   neutralise the panel here from the HTML (which deploys fresh). On phones:
+   keep the First Journey collapsed to its small FAB — strip the floating
+   panel whenever it (re)appears. Desktop is untouched. */
+(function(){
+  try {
+    var mob = (window.matchMedia && window.matchMedia('(max-width:640px)').matches) || window.innerWidth <= 640;
+    if (!mob) return;
+    function killFjPanel(){
+      var w = document.getElementById('fj-widget');
+      if (!w) return;
+      w.remove();
+      var bd = document.getElementById('fj-backdrop'); if (bd) bd.remove();
+      try { localStorage.setItem('kh_fj_dismissed','1'); } catch(e){}
+      if (typeof _fjShowResumeBtn === 'function') { try { _fjShowResumeBtn(); } catch(e){} }
+    }
+    function start(){
+      killFjPanel();
+      try { new MutationObserver(killFjPanel).observe(document.body, { childList:true }); } catch(e){}
+      setInterval(killFjPanel, 1200);
+    }
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+  } catch(e){}
+})();
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
   {avi:'👨\u200d💼',name:'Team Chat',ctx:'Asking for a deadline extension',cat:'work',lvl:'i',catLabel:'Workplace',lvlLabel:'Intermediate',msgs:[{s:'l',txt:'보고서 마감이 오늘인데 조금 더 시간이 필요해요.'},{s:'r',txt:'얼마나 더 필요해요?'},{s:'l',txt:'내일 오전까지 가능할까요?'}]},
