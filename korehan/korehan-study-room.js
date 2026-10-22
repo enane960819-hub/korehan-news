@@ -18002,18 +18002,22 @@ function _dctWordRender() {
   if (sub) sub.textContent = '받아쓰기 ' + (idx + 1) + ' / ' + total + ' · ' + meta.badge;
 
   var helpHtml = '';
+  var kbKeys = null;   // compact per-word keyboard: only the jamo this word needs
   if (stage === 1) {
+    // Trace stage — show the word and offer its jamo in order as big
+    // tappable tiles so the learner just taps along (no 40-key hunt).
+    kbKeys = _bmWordJamos(word);
     helpHtml = '<div style="text-align:center;margin-bottom:12px">'
       + '<div style="font-family:\'Noto Serif KR\',serif;font-size:32px;font-weight:800;color:#fff;letter-spacing:1px">' + escapeHTML(word) + '</div>'
       + (card.en ? '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px">' + escapeHTML(card.en) + '</div>' : '')
       + '</div>';
   } else if (stage === 2) {
-    var scrambled = _bmShuffle(_bmWordJamos(word));
+    // Rebuild stage — the scrambled jamo ARE the keyboard tiles, so
+    // there's nothing extra to hunt for; just a meaning hint.
+    kbKeys = _bmShuffle(_bmWordJamos(word));
     helpHtml = '<div style="text-align:center;margin-bottom:12px">'
-      + (card.en ? '<div style="font-size:14px;color:rgba(255,255,255,.72);margin-bottom:7px">💡 ' + escapeHTML(card.en) + '</div>' : '')
-      + '<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">'
-      +   scrambled.map(function(j){ return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:34px;padding:0 8px;background:rgba(167,139,250,.16);border:1px solid rgba(167,139,250,.35);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:17px;font-weight:700;color:#d6c7ff">' + escapeHTML(j) + '</span>'; }).join('')
-      + '</div><div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:5px">필요한 자음·모음 (순서는 섞여 있어요)</div>'
+      + (card.en ? '<div style="font-size:14px;color:rgba(255,255,255,.72);margin-bottom:5px">💡 ' + escapeHTML(card.en) + '</div>' : '')
+      + '<div style="font-size:11px;color:rgba(255,255,255,.4)">아래 자모를 눌러 단어를 완성하세요 (순서는 섞여 있어요)</div>'
       + '</div>';
   }
   var showKeyboard = (stage === 1 || stage === 2);
@@ -18038,7 +18042,7 @@ function _dctWordRender() {
     + '<button class="btn btn-g" onclick="_dctWordCheck()">확인</button>';
 
   if (showKeyboard && window.khAttachJamoKeyboard) {
-    try { _dctWord.jamoKb = khAttachJamoKeyboard(document.getElementById('dct-word-input')); } catch(_) { _dctWord.jamoKb = null; }
+    try { _dctWord.jamoKb = khAttachJamoKeyboard(document.getElementById('dct-word-input'), kbKeys ? { keys: kbKeys } : {}); } catch(_) { _dctWord.jamoKb = null; }
   }
   setTimeout(function(){ try { srSpeak(word); } catch(_) {} }, 250);
   if (!showKeyboard) setTimeout(function(){ var i = document.getElementById('dct-word-input'); if (i) i.focus(); }, 100);
