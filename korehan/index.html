@@ -95,7 +95,7 @@
   var m = location.search.match(/[?&]khx=([^&]+)/); if (!m) return;
   var f = decodeURIComponent(m[1]).split(','); var on = function(k){ return f.indexOf(k) >= 0 || f.indexOf('all') >= 0; };
   var css = '';
-  if (on('nohero')) css += '#dyn-hero{display:none!important}';
+  if (on('nohero')) css += '#dyn-hero#dyn-hero,body .kh-home-hero-main-shell{display:none!important}';
   if (on('noblur')) css += '*,*::before,*::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;will-change:auto!important}.kh-home-hero-track{transform:none!important}';
   if (on('noimg')) css += '.home-news-grid .nc-img,.home-news-grid .nc-overlay-grad{display:none!important}';
   css += '#khx-badge{position:fixed;left:8px;top:8px;z-index:2147483647;background:#e11d48;color:#fff;font:700 12px/1 sans-serif;padding:6px 9px;border-radius:8px;pointer-events:none}';
