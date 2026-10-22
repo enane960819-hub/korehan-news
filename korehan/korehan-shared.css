@@ -3101,15 +3101,6 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #64748b; }
   border-radius: 18px; overflow: hidden;
   box-shadow: 0 14px 28px rgba(13,27,46,.12);
   background:#0b1626;
-  /* Samsung Internet / Chrome-Android eat the vertical scroll gesture
-     when it starts on the card's fill image (native image-drag + touch
-     callout fire even though the img is pointer-events:none, because
-     those recognizers key off the painted image layer, not hit-testing).
-     News rail scrolled sideways but not down; Conversations (no image)
-     scrolled fine. Suppressing the callout / drag / selection on the
-     card lets the vertical pan chain to the page. */
-  -webkit-touch-callout: none;
-  -webkit-user-select: none; user-select: none;
 }
 /* Absolute-positioned overlay children don't need their own touch
    handlers — let touch pass to the card. pointer-events: none on
@@ -3118,13 +3109,17 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #64748b; }
    chips / study button on it remain tappable. */
 .nc.nc-overlay .nc-img,
 .nc.nc-overlay .nc-overlay-grad { pointer-events: none; }
-/* Kill the image's native drag / long-press-callout so a vertical
-   swipe starting on it scrolls the page instead of being captured. */
-.nc.nc-overlay .nc-img {
-  -webkit-user-drag: none; -khtml-user-drag: none; -moz-user-drag: none; user-drag: none;
-  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+/* The thumbnail is painted as a CSS background on a <div>, NOT an <img>
+   element. An <img> inside the card let Samsung Internet / Chrome-Android
+   fire their native image-drag + long-press callout on a swipe, which
+   swallowed the vertical scroll gesture (news rail scrolled sideways but
+   not down; Conversations, which has no image, scrolled fine). A
+   background image has no draggable element and no callout, so touches
+   pass straight to the card and the page scrolls normally. */
+.nc-overlay .nc-img, .nc.nc-overlay .nc-img {
+  position:absolute; inset:0; width:100%; height:100%; margin:0; border-radius:0;
+  background-size: cover; background-position: center center; background-repeat: no-repeat;
 }
-.nc-overlay .nc-img, .nc.nc-overlay .nc-img { position:absolute; inset:0; width:100%; height:100%; margin:0; border-radius:0; }
 .nc-img-fallback { background: linear-gradient(135deg,#dbe7ff,#b8cfff); }
 .nc-overlay-grad { position:absolute; inset:0; background: linear-gradient(180deg, rgba(5,15,35,.08) 0%, rgba(5,15,35,.35) 40%, rgba(5,15,35,.92) 100%); }
 .nc-overlay-body { position:absolute; left:0; right:0; bottom:0; padding:18px; }
