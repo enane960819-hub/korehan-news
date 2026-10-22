@@ -3,96 +3,82 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Scroll Test</title>
+<title>Scroll Test 2</title>
 <style>
   html, body { margin:0; }
-  body {
-    background:#050c19; color:#f4f7fb;
+  body { background:#050c19; color:#f4f7fb;
     font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",system-ui,sans-serif;
-    padding:16px; overflow-x:hidden;
-  }
+    padding:16px; overflow-x:hidden; }
   h1 { font-size:18px; margin:0 0 6px; }
   .intro { font-size:13px; line-height:1.6; color:#b8c5d8; background:rgba(255,255,255,.05);
-           border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:12px 14px; margin-bottom:18px; }
+    border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:12px 14px; margin-bottom:18px; }
   .intro b { color:#7dd3fc; }
   .block { margin:0 0 26px; }
   .label { font-size:14px; font-weight:800; margin:0 0 8px; display:flex; align-items:center; gap:8px; }
   .num { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px;
-         border-radius:50%; background:#2563eb; color:#fff; font-size:14px; font-weight:800; flex:0 0 26px; }
+    border-radius:50%; background:#2563eb; color:#fff; font-size:14px; font-weight:800; flex:0 0 26px; }
   .desc { font-size:11px; color:#8aa; font-weight:600; }
-
-  /* Rail base — identical to the site rails */
   .rail { display:flex; flex-direction:row; gap:12px; overflow-x:auto; overflow-y:hidden;
-          padding-bottom:8px; scrollbar-width:none; }
+    padding-bottom:8px; scrollbar-width:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
   .rail::-webkit-scrollbar { display:none; }
-
-  /* Card variants */
   .card { flex:0 0 200px; min-width:200px; height:200px; border-radius:16px; overflow:hidden;
-          position:relative; background:#0b1626; text-decoration:none; color:#fff; display:block; }
-  .flow { padding:14px; box-sizing:border-box; }
-  .flow .t { font-size:15px; font-weight:800; margin-top:90px; }
-  .absimg { position:absolute; inset:0; background-size:cover; background-position:center; }
-  .grad { position:absolute; inset:0; background:linear-gradient(180deg,rgba(5,15,35,.05),rgba(5,15,35,.9)); }
+    position:relative; background:#0b1626; text-decoration:none; color:#fff; display:block; cursor:pointer; }
+  .absimg { position:absolute; inset:0; background-size:cover; background-position:center; pointer-events:none; }
+  .grad { position:absolute; inset:0; background:linear-gradient(180deg,rgba(5,15,35,.05),rgba(5,15,35,.9)); pointer-events:none; }
   .body { position:absolute; left:0; right:0; bottom:0; padding:12px; }
   .body .t { font-size:15px; font-weight:800; }
-  .realimg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none; }
-
-  .spacer { height:40vh; display:flex; align-items:center; justify-content:center;
-            color:#44576f; font-size:13px; border:1px dashed rgba(255,255,255,.1); border-radius:12px; margin-bottom:18px; }
+  .nodrag { -webkit-user-drag:none; user-drag:none; }
+  .spacer { height:36vh; display:flex; align-items:center; justify-content:center;
+    color:#44576f; font-size:13px; border:1px dashed rgba(255,255,255,.1); border-radius:12px; margin-bottom:18px; }
 </style>
 </head>
 <body>
-<h1>세로 스크롤 테스트</h1>
+<h1>세로 스크롤 테스트 (2차)</h1>
 <div class="intro">
-  각 줄(가로 카드)에 <b>손가락을 올리고 위아래로 밀어</b> 보세요.<br>
-  · 페이지가 <b>세로로 스크롤되면</b> → 그 번호는 <b>정상 ✅</b><br>
-  · <b>안 움직이면</b> → 그 번호가 <b>고장 ❌</b><br><br>
-  <b>어떤 번호가 ❌ 인지</b>만 알려주시면 원인을 바로 특정합니다.<br>
-  (각 줄은 좌우로도 밀어서 가로 스크롤도 함께 확인해주세요.)
+  각 줄 <b>사진 위에 손가락 올리고 위아래로</b> 밀어보세요.<br>
+  세로로 <b>페이지가 움직이면 ✅</b>, <b>안 움직이면 ❌</b>.<br><br>
+  <b>몇 번이 ✅ 이고 몇 번이 ❌ 인지</b> 알려주세요 (예: "1❌ 2✅ 3✅ 4❌").
 </div>
 
-<div class="spacer">↑ 여기 위에서는 세로 스크롤 잘 되죠? (기준점)</div>
+<div class="spacer">↑ 여기는 세로 잘 되죠? (기준)</div>
 
 <div class="block">
-  <div class="label"><span class="num">1</span> 기준: div + 일반 레이아웃 <span class="desc">(대화 카드와 동일)</span></div>
+  <div class="label"><span class="num">1</span> 진짜 링크 (현재 뉴스 카드) <span class="desc">a href + 사진</span></div>
   <div class="rail" id="r1"></div>
 </div>
 
 <div class="block">
-  <div class="label"><span class="num">2</span> a링크 + 일반 레이아웃 <span class="desc">(링크인지 테스트)</span></div>
+  <div class="label"><span class="num">2</span> 진짜 링크 + 드래그 금지 <span class="desc">수정안 A</span></div>
   <div class="rail" id="r2"></div>
 </div>
 
 <div class="block">
-  <div class="label"><span class="num">3</span> a링크 + 절대배치 + 배경이미지 <span class="desc">(★ 현재 뉴스 카드)</span></div>
+  <div class="label"><span class="num">3</span> div + onclick (대화 카드 방식) <span class="desc">수정안 B</span></div>
   <div class="rail" id="r3"></div>
 </div>
 
 <div class="block">
-  <div class="label"><span class="num">4</span> div + 절대배치 + 배경이미지 <span class="desc">(링크만 뺀 버전)</span></div>
+  <div class="label"><span class="num">4</span> 가짜 링크 <span class="desc">void(0) · 지난번 통과한 거</span></div>
   <div class="rail" id="r4"></div>
 </div>
 
-<div class="block">
-  <div class="label"><span class="num">5</span> a링크 + 절대배치 + 진짜 &lt;img&gt; <span class="desc">(이미지 태그 테스트)</span></div>
-  <div class="rail" id="r5"></div>
-</div>
-
-<div class="spacer">↓ 여기 아래에서도 세로 스크롤 잘 되죠? (기준점)</div>
+<div class="spacer">↓ 여기도 세로 잘 되죠? (기준)</div>
 
 <script>
   var PIC = 'https://picsum.photos/seed/';
-  function flowCard(i){ return '<div class="card flow"><div class="t">카드 '+i+'</div></div>'; }
-  function flowLink(i){ return '<a href="javascript:void(0)" class="card flow"><div class="t">카드 '+i+'</div></a>'; }
-  function absLink(i){ return '<a href="javascript:void(0)" class="card"><div class="absimg" style="background-image:url(\''+PIC+'t3'+i+'/400/400\')"></div><div class="grad"></div><div class="body"><div class="t">카드 '+i+'</div></div></a>'; }
-  function absDiv(i){ return '<div class="card"><div class="absimg" style="background-image:url(\''+PIC+'t4'+i+'/400/400\')"></div><div class="grad"></div><div class="body"><div class="t">카드 '+i+'</div></div></div>'; }
-  function absImgLink(i){ return '<a href="javascript:void(0)" class="card"><img class="realimg" src="'+PIC+'t5'+i+'/400/400" alt=""><div class="grad"></div><div class="body"><div class="t">카드 '+i+'</div></div></a>'; }
+  function inner(i, seed){
+    return '<div class="absimg" style="background-image:url(\''+PIC+seed+i+'/400/400\')"></div>'
+      + '<div class="grad"></div><div class="body"><div class="t">카드 '+i+'</div></div>';
+  }
+  function realLink(i){ return '<a href="https://korehani.com/korehan-article.html?id=test'+i+'" class="card">'+inner(i,'a')+'</a>'; }
+  function realLinkNoDrag(i){ return '<a href="https://korehani.com/korehan-article.html?id=test'+i+'" class="card nodrag" draggable="false">'+inner(i,'b')+'</a>'; }
+  function divClick(i){ return '<div class="card" onclick="location.href=\'https://korehani.com/korehan-article.html?id=test'+i+'\'">'+inner(i,'c')+'</div>'; }
+  function fakeLink(i){ return '<a href="javascript:void(0)" class="card">'+inner(i,'d')+'</a>'; }
   function fill(id, fn){ var s=''; for(var i=1;i<=8;i++) s+=fn(i); document.getElementById(id).innerHTML=s; }
-  fill('r1', flowCard);
-  fill('r2', flowLink);
-  fill('r3', absLink);
-  fill('r4', absDiv);
-  fill('r5', absImgLink);
+  fill('r1', realLink);
+  fill('r2', realLinkNoDrag);
+  fill('r3', divClick);
+  fill('r4', fakeLink);
 </script>
 </body>
 </html>
