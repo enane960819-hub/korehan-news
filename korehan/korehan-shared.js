@@ -409,7 +409,7 @@ function khSetDiff(val) {
 }
 function applyGlobalDiffFilter() {
   // News cards
-  document.querySelectorAll('#dyn-news-grid .nc').forEach(function(card) {
+  document.querySelectorAll('#dyn-news-grid .nc, #dyn-news-grid .khn-card').forEach(function(card) {
     var sectionBtn = document.querySelector('#news-pills .sp.on');
     var sectionFilter = sectionBtn ? sectionBtn.dataset.filter : 'all';
     var sectionMatch = sectionFilter === 'all' || card.dataset.section === sectionFilter;
