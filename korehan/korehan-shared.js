@@ -12809,7 +12809,7 @@ if (typeof _origDbSaveWord === 'function') {
 }
 
 // ── 플로팅 위젯 ──
-function _fjRenderWidget() {
+function _fjRenderWidget(opts) {
   // Don't float the First Journey widget on pages that run their own
   // onboarding / fullscreen flows — it stacked on top of the Study Room
   // welcome modal and the game screens. (Mirrors the Daily Mission skip.)
