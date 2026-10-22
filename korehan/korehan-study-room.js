@@ -340,6 +340,20 @@ function _khStudyRoomInit() {
 
   // Grammar Focus from article grammar guide link or homepage weak grammar
   var _urlParams = new URLSearchParams(window.location.search);
+  // Home "Korean Basics" card deep-links here with ?start=basics → open the
+  // Exercise tab and the Basics track overlay once the page is ready.
+  if (_urlParams.get('start') === 'basics') {
+    setTimeout(function() {
+      try {
+        var _mb = null;
+        document.querySelectorAll('[onclick*="switchSrTab"]').forEach(function(b) {
+          if ((b.getAttribute('onclick') || '').indexOf("'master'") >= 0) _mb = b;
+        });
+        if (typeof switchSrTab === 'function') switchSrTab('master', _mb);
+        if (typeof openBasicsTrack === 'function') openBasicsTrack();
+      } catch (_) {}
+    }, 500);
+  }
   var _focusSource = _urlParams.get('source') || '';
   var _hasFocusGrammar = _urlParams.get('focus') && (
     _focusSource === 'grammar-guide' ||

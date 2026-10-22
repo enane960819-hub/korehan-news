@@ -1327,12 +1327,19 @@ body.kh-neon-on .hero-dot {
   </div>
   <div class="home-conv-grid-wrap" id="home-conv-grid"></div>
 
-  <!-- STORIES -->
-  <div class="home-sec" style="border-bottom-color:#7c3aed;">
-    <div class="home-sec-title"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Stories</span></div>
-    <a href="korehan-stories.html" class="home-sec-more" style="color:#7c3aed;">All stories →</a>
+  <!-- KOREAN BASICS — replaces Stories as the beginner on-ramp.
+       (#home-story-grid removed → loadHomeStories() no-ops on its null guard.) -->
+  <div class="home-sec" style="border-bottom-color:#38bdf8;">
+    <div class="home-sec-title"><i data-lucide="sprout" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Korean Basics · 기초</span></div>
   </div>
-  <div class="home-story-grid" id="home-story-grid"></div>
+  <a href="korehan-study-room.html?start=basics" style="display:flex;align-items:center;gap:16px;padding:18px 20px;margin:0 0 20px;border-radius:16px;text-decoration:none;background:linear-gradient(135deg,#0d1b2e,#1a3a6b);border:1px solid rgba(56,189,248,.3);box-shadow:0 10px 30px rgba(13,27,46,.15)">
+    <i data-lucide="sprout" style="width:40px;height:40px;color:#38bdf8;flex-shrink:0" aria-hidden="true"></i>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:3px">한국어 기초부터 차근차근</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.5">한글 · 숫자 · 가족 · 인사 · 기초 문법 — 처음 배우는 분을 위한 단계별 코스</div>
+    </div>
+    <i data-lucide="chevron-right" style="width:24px;height:24px;color:rgba(255,255,255,.4);flex-shrink:0" aria-hidden="true"></i>
+  </a>
 
 </div>
 
