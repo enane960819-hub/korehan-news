@@ -312,26 +312,22 @@
   flex-direction: row;
   gap: 14px;
   overflow-x: auto;
-  /* `overflow-y: hidden` is REQUIRED (not visible). When one axis
-     is auto/scroll/hidden and the other is visible, CSS spec
-     computes the `visible` axis as `auto` — Chrome on Android
-     honored this strictly, so vertical swipes on cards were
-     captured by the rail (which has nothing to scroll vertically)
-     and never propagated to <body>. Result: page wouldn't scroll
-     up/down when the finger started on a card. Owner-reported
-     "기사 카드 스크롤 안되는 이슈 크롬에서만 발생함". */
-  overflow-y: hidden;
+  /* 세로 스크롤 안 먹힘 (Chrome Android) — the rail must scroll ONLY
+     horizontally and must NOT become a vertical scroll container, or a
+     vertical swipe that starts on a card gets swallowed and the page won't
+     scroll. Two reinforcing fixes:
+       1. overflow-y: clip  — clips vertical overflow WITHOUT creating a
+          scroll container (unlike `hidden`, which does form one and can
+          trap the gesture). Falls back to hidden on old browsers.
+       2. touch-action: pan-x — tells the browser this element only pans
+          horizontally, so vertical gestures are routed to <body>. */
+  overflow-y: clip;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   padding-bottom: 10px;
   margin-bottom: 16px;
   align-items: stretch;
   overscroll-behavior-x: contain;
-  /* THE fix for "기사 카드에서 세로 스크롤 안 먹힘 (크롬)": tell the browser
-     this rail only handles HORIZONTAL panning, so a vertical swipe that
-     starts on a card is routed to the page instead of being swallowed by
-     the scroll container. overflow-y:hidden alone did not reliably do this
-     on Chrome Android — touch-action does. */
   touch-action: pan-x;
 }
 .home-news-grid::-webkit-scrollbar,
@@ -577,7 +573,7 @@ body.mobile-light .home-story-grid .story-card { background: #0b1626 !important;
   .home-pills {
     flex-wrap: nowrap;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: clip;
     gap: 8px;
     margin: 0 -2px 14px;
     padding: 2px 2px 8px;
