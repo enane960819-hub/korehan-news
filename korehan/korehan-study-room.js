@@ -828,7 +828,7 @@ function renderStudyChecklist() {
   var items = [
     { k:'topic',       label:'Topic Yum Yum',      sub:'This week\'s words & grammar' },
     { k:'grammar',     label:'Phrase Munch',       sub:'Phrases for the topic' },
-    { k:'picture',     label:'Speaking Practice',  sub:'발음 & 유창성' },
+    { k:'picture',     label:'Speaking Practice',  sub:'Pronunciation & fluency' },
     { k:'sentence',    label:'Dictation',          sub:'Listen & type' },
     { k:'expressions', label:'Key Expressions',    sub:'Expressions in context' }
   ];
@@ -2559,7 +2559,7 @@ function renderModalContent() {
         + (hasBlank
             ? '<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">'
               + '<button class="mhbtn" onclick="revealHelperAnswer(this)" type="button">👁 Show answer</button>'
-              + '<button class="mhbtn" data-ko="' + dataTpl + '" onclick="copyHelper(this)" type="button">+ 빈칸 템플릿 넣기</button>'
+              + '<button class="mhbtn" data-ko="' + dataTpl + '" onclick="copyHelper(this)" type="button">+ Insert blank template</button>'
               + '</div>'
             : '<button class="mhbtn" data-ko="' + dataTpl + '" onclick="copyHelper(this)">+ copy to writing</button>')
         + '</div>';
@@ -2610,7 +2610,7 @@ function _wmRenderTopicContent(el) {
   // ── 1. Sentences from Phrase Munch (Step 1) ──
   var sentences = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.sentences)) ? _bm.sentences : [];
   if (sentences.length) {
-    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">오늘 배운 문장 — 탭하면 복사</div>';
+    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">Today’s sentences — tap to copy</div>';
     html += '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">';
     sentences.forEach(function(s) {
       if (!s || !s.ko) return;
@@ -2626,7 +2626,7 @@ function _wmRenderTopicContent(el) {
   // ── 2. Vocab from Word Snap ──
   var snapVocab = (typeof _bm !== 'undefined' && _bm && Array.isArray(_bm.snapCards)) ? _bm.snapCards : [];
   if (snapVocab.length) {
-    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">오늘 배운 단어</div>';
+    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">Today’s words</div>';
     html += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">';
     snapVocab.forEach(function(v) {
       if (!v || !v.ko) return;
@@ -2642,18 +2642,18 @@ function _wmRenderTopicContent(el) {
   if (sentences.length >= 2) {
     var exampleSents = sentences.slice(0, 3).map(function(s){ return s.ko; }).join(' ');
     _wmExampleAnswer = exampleSents;
-    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">예시 답안</div>';
+    html += '<div style="font-size:10px;font-weight:800;color:rgba(167,139,250,.8);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px">Sample answer</div>';
     html += '<div onclick="wmCopySentence(this)" data-ko="' + _wmEsc(exampleSents) + '" '
       + 'style="cursor:pointer;padding:10px 12px;background:rgba(124,58,237,.1);border:1px solid rgba(139,92,246,.25);border-radius:10px;transition:background .15s">'
       + '<div style="font-family:\'Noto Sans KR\',sans-serif;font-size:13px;font-weight:700;color:#e2e8f0;line-height:1.7">' + _wmEsc(exampleSents) + '</div>'
-      + '<div style="font-size:10px;color:rgba(167,139,250,.6);margin-top:4px;font-weight:700">탭하면 전체 복사</div>'
+      + '<div style="font-size:10px;color:rgba(167,139,250,.6);margin-top:4px;font-weight:700">Tap to copy all</div>'
       + '</div>';
   } else if (_todayTopic && _todayTopic.topic_ko) {
     html += '<div style="color:rgba(255,255,255,.5);font-size:12px">Topic: ' + _wmEsc(_todayTopic.topic_ko)
       + (_todayTopic.topic_en ? ' — ' + _wmEsc(_todayTopic.topic_en) : '') + '</div>';
   }
 
-  el.innerHTML = html || '<div style="color:rgba(255,255,255,.4);font-size:12px">Phrase Munch를 먼저 완료하면 오늘 배운 내용이 여기 표시됩니다.</div>';
+  el.innerHTML = html || '<div style="color:rgba(255,255,255,.4);font-size:12px">Finish Phrase Munch first and today’s material will show up here.</div>';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2712,7 +2712,7 @@ async function khLoadCommonMistakes() {
   // Cache miss → call Claude Haiku for 4-6 short error patterns.
   if (typeof callClaude !== 'function') { details.hidden = true; return; }
   details.hidden = false;
-  body.innerHTML = '<div style="padding:6px 0;color:#92400e;font-size:11px">⏳ AI 분석 중...</div>';
+  body.innerHTML = '<div style="padding:6px 0;color:#92400e;font-size:11px">⏳ AI analyzing...</div>';
   if (countEl) countEl.textContent = '';
   try {
     var res = await callClaude({
@@ -2758,7 +2758,7 @@ async function khLoadCommonMistakes() {
       details.hidden = true;
     }
   } catch (err) {
-    body.innerHTML = '<div style="padding:6px 0;color:#92400e;font-size:11px">분석 실패 — 그냥 토픽으로 진행하세요.</div>';
+    body.innerHTML = '<div style="padding:6px 0;color:#92400e;font-size:11px">Analysis failed — just continue with the topic.</div>';
   }
 }
 
@@ -2880,12 +2880,12 @@ function _updateLSSelectorBadges() {
       wpBtn.classList.add('ls-wp-unlocked');
       wpBtn.disabled = false;
       if (wpLock) wpLock.innerHTML = LS_UNLOCK_SVG;
-      if (wpSub)  wpSub.textContent  = doneCount + '/5 완료! Express Practice 시작 →';
+      if (wpSub)  wpSub.textContent  = doneCount + '/5 done! Start Express Practice →';
     } else {
       wpBtn.classList.remove('ls-wp-unlocked');
       wpBtn.disabled = true;
       if (wpLock) wpLock.innerHTML = LS_LOCK_SVG;
-      if (wpSub)  wpSub.textContent  = '학습 1개 이상 완료 시 열립니다';
+      if (wpSub)  wpSub.textContent  = 'Unlocks after you finish at least 1 activity';
     }
   }
 }
@@ -3844,11 +3844,11 @@ function _pmRenderAssemble(body, lesson, pipsHtml) {
           + 'background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-family:\'Noto Serif KR\',serif;font-size:15px;font-weight:700;'
           + 'cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.3)">' + _esc(w) + ' ×</button>';
       }).join('')
-    : '<span style="font-size:12px;color:rgba(255,255,255,.45)">단어를 선택해서 문장을 만드세요</span>';
+    : '<span style="font-size:12px;color:rgba(255,255,255,.45)">Pick words to build the sentence</span>';
   var allPicked = st.picked.length === st.target.length;
   var resultLine = '';
   if (st.result === 'right') {
-    resultLine = '<div class="pm-feedback pm-feedback-win" style="margin-top:14px"><span>완벽! 같은 패턴으로 다음 문제를 풀어볼까요?</span></div>';
+    resultLine = '<div class="pm-feedback pm-feedback-win" style="margin-top:14px"><span>Perfect! Ready for the next one with the same pattern?</span></div>';
   } else if (st.result === 'wrong') {
     resultLine = '<div class="pm-feedback pm-feedback-lose" style="margin-top:14px"><span>So close. Answer: <strong>' + _esc(ko) + '</strong></span></div>';
   }
@@ -3864,8 +3864,8 @@ function _pmRenderAssemble(body, lesson, pipsHtml) {
     + resultLine
     + '<div class="pm-actions" style="margin-top:18px;display:flex;gap:10px;justify-content:flex-end">'
     +   (st.result === null
-          ? '<button type="button" onclick="_pmAsmClear()" style="padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.7);font-weight:700;cursor:pointer;font-family:inherit">다시</button>'
-          + '<button class="pm-btn pm-btn-primary" ' + (allPicked ? '' : 'disabled style="opacity:.4;cursor:not-allowed"') + ' onclick="_pmAsmCheck()">확인 ✓</button>'
+          ? '<button type="button" onclick="_pmAsmClear()" style="padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.7);font-weight:700;cursor:pointer;font-family:inherit">Retry</button>'
+          + '<button class="pm-btn pm-btn-primary" ' + (allPicked ? '' : 'disabled style="opacity:.4;cursor:not-allowed"') + ' onclick="_pmAsmCheck()">Check ✓</button>'
           : '<button class="pm-btn pm-btn-primary" onclick="_pmAdvanceToTranslate()">Translate a new one →</button>')
     + '</div>';
 }
@@ -4162,7 +4162,7 @@ async function keOpenSituationQuiz(idx) {
       if (!quiz || !Array.isArray(quiz.options) || quiz.options.length < 2) throw new Error('bad quiz');
       try { localStorage.setItem(cacheKey, JSON.stringify(quiz)); } catch (_) {}
     } catch (err) {
-      body.innerHTML = '<div style="text-align:center;padding:18px;color:#fca5a5;font-size:13px">퀴즈 생성 실패 — 잠시 후 다시.</div>';
+      body.innerHTML = '<div style="text-align:center;padding:18px;color:#fca5a5;font-size:13px">Couldn’t create the quiz — try again shortly.</div>';
       return;
     }
   }
@@ -4307,7 +4307,7 @@ function _keRenderStudyPhase(list) {
   }
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 1 · 표현 학습</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 1 · Learn the expressions</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
     + '</div>'
     // Headline card — pattern + parts breakdown together so the learner
@@ -4337,10 +4337,10 @@ function _keRenderStudyPhase(list) {
     // first card (no orphaned, off-centre pill) and splits 50/50 with 이전
     // once there's a previous card to go back to.
     + '<div style="display:flex;gap:8px;align-items:center">'
-    + (idx > 0 ? '<button onclick="window._keStudyIdx=Math.max(0,window._keStudyIdx-1);_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="flex:1;padding:11px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&larr; 이전</button>' : '')
+    + (idx > 0 ? '<button onclick="window._keStudyIdx=Math.max(0,window._keStudyIdx-1);_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="flex:1;padding:11px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&larr; Back</button>' : '')
     + (idx < exps.length - 1
-      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="flex:1;padding:11px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">다음 표현 &rarr;</button>'
-      : '<button onclick="_keStartFillQuiz()" style="flex:1;padding:11px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">연습 시작 &rarr;</button>')
+      ? '<button onclick="window._keStudyIdx++;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="flex:1;padding:11px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">Next expression &rarr;</button>'
+      : '<button onclick="_keStartFillQuiz()" style="flex:1;padding:11px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(124,58,237,.35)">Start practice &rarr;</button>')
     + '</div>';
   // Re-render lucide icons that were just injected (Save button).
   if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons();
@@ -4564,11 +4564,11 @@ function _keRenderFillQuiz() {
 
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 2 · 빈칸 채우기</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 2 · Fill in the blank</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + exps.length + '</div>'
     + '</div>'
     + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:16px;margin-bottom:14px">'
-    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">빈칸에 들어갈 표현을 골라보세요</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#94a3b8;margin-bottom:8px">Choose the expression that fits the blank</div>'
     + '<div style="font-size:16px;color:#e0f2fe;line-height:1.8;margin-bottom:6px;font-family:\'Noto Serif KR\',serif">' + blankedDisplay + '</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.35)">' + exampleEn + '</div>'
     + '</div>'
@@ -4779,7 +4779,7 @@ function _keRenderSituationQuiz() {
 
   list.innerHTML =
     '<div style="text-align:center;margin-bottom:14px">'
-    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 3 · 뜻 보고 표현 고르기</div>'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#a78bfa;margin-bottom:4px">Step 3 · Match the meaning to the expression</div>'
     + '<div style="font-size:12px;color:rgba(255,255,255,.4)">' + (idx + 1) + ' / ' + situations.length + '</div>'
     + '</div>'
     + '<div style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center">'
@@ -4881,7 +4881,7 @@ function _keShowFinalScore() {
     + '</div>'
     + '<div style="display:flex;gap:8px;justify-content:center">'
     + '<button onclick="window._keStudyIdx=0;_keRenderStudyPhase(document.getElementById(\'ke-expressions-list\'))" style="padding:10px 16px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.06);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Review Again</button>'
-    + '<button onclick="markStageDone(\'expressions\');returnToActivities(closeKeyExpressionsModal)" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">완료 &#10003;</button>'
+    + '<button onclick="markStageDone(\'expressions\');returnToActivities(closeKeyExpressionsModal)" style="padding:10px 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">Done &#10003;</button>'
     + '</div>';
 }
 
@@ -5231,13 +5231,13 @@ function renderSlangQuiz(el) {
     var _isGood   = _pct >= 0.5;
     var _color    = _isMaster ? '#a78bfa' : _isGood ? '#22c55e' : '#f87171';
     var _icon     = _isMaster ? BM_ICON_PARTY : _isGood ? BM_ICON_THUMBS_UP : BM_ICON_FLAME;
-    var _label    = _isMaster ? '슬랭 마스터!' : _isGood ? '잘했어요!' : '다시 도전해보세요!';
+    var _label    = _isMaster ? 'Slang master!' : _isGood ? 'Nice work!' : 'Give it another try!';
     el.innerHTML = '<div style="text-align:center;padding:20px">'
       + '<div style="display:inline-flex;width:54px;height:54px;margin-bottom:12px;color:'+_color+';filter:drop-shadow(0 0 12px '+_color+'aa)">' + _icon + '</div>'
       + '<div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:4px">' + q.score + ' / ' + q.questions.length + '</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:20px">' + _label + '</div>'
-      + '<button onclick="startSlangQuiz()" style="padding:10px 24px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:8px">다시 도전</button>'
-      + '<button onclick="switchSlangView(\'daily\')" style="padding:10px 24px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">돌아가기</button>'
+      + '<button onclick="startSlangQuiz()" style="padding:10px 24px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:8px">Try again</button>'
+      + '<button onclick="switchSlangView(\'daily\')" style="padding:10px 24px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Back</button>'
       + '</div>';
     return;
   }
@@ -5245,7 +5245,7 @@ function renderSlangQuiz(el) {
   var s = item.slang;
   var html = '<div style="text-align:center;margin-bottom:16px">'
     + '<div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:8px">' + (q.current+1) + ' / ' + q.questions.length + '</div>'
-    + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:8px">이 슬랭의 뜻은?</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:8px">What does this slang mean?</div>'
     + '<div style="font-size:36px;font-weight:900;color:#fff;margin-bottom:16px">' + s.ko + '</div>'
     + '</div>';
   html += '<div id="sq-options" style="display:flex;flex-direction:column;gap:8px">';
@@ -5289,7 +5289,7 @@ function slangQuizAnswer(optIdx) {
     fb.innerHTML = '<div style="font-size:14px;font-weight:700;color:' + (correct?'#34d399':'#ef4444') + ';margin-bottom:4px">' + (correct ? 'Correct!' : 'Wrong!') + '</div>'
       + '<div style="font-size:12px;color:rgba(255,255,255,.5)">' + item.slang.ko + ' = ' + item.slang.en + '</div>'
       + descBlock
-      + '<button onclick="_slangQuiz.current++;renderSlangQuiz(document.getElementById(\'slang-content\'))" style="margin-top:10px;padding:8px 20px;border-radius:8px;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">다음 →</button>';
+      + '<button onclick="_slangQuiz.current++;renderSlangQuiz(document.getElementById(\'slang-content\'))" style="margin-top:10px;padding:8px 20px;border-radius:8px;border:none;background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Next →</button>';
   }
 }
 
@@ -5554,7 +5554,7 @@ function _renderAwWordJamoMode(w) {
     // Single growing display of the in-progress composition. Tap to undo
     // the last jamo.
     slots.innerHTML = '<div class="aw-jamo-build" id="aw-jamo-build" onclick="awJamoUndo()" title="Tap to undo">·</div>'
-      + '<div class="aw-jamo-hint">자모를 순서대로 탭하면 단어가 만들어져요</div>';
+      + '<div class="aw-jamo-hint">Tap the jamo in order to build the word</div>';
   }
   _renderAwJamoPool();
 }
@@ -5571,8 +5571,8 @@ function awSwitchMode(mode) {
   // Hint text in the modal header
   var hint = document.getElementById('aw-mode-hint');
   if (hint) hint.textContent = mode === 'jamo'
-    ? '자음·모음을 순서대로 탭해서 단어를 완성하세요'
-    : '음절을 순서대로 탭해서 단어를 완성하세요';
+    ? 'Tap the consonants and vowels in order to complete the word'
+    : 'Tap the syllables in order to complete the word';
   // Reset state for the current word so the new mode renders cleanly.
   _awLockInput = false;
   _awPlaced = [];
@@ -5632,7 +5632,7 @@ function _awCheckAnswer() {
     _awScore++;
     var slotEls = document.querySelectorAll('#aw-slots .aw-slot');
     slotEls.forEach(function(el){ el.classList.add('correct'); });
-    if (fb) { fb.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span>완벽해요!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span><span>' + w.word + ' = ' + w.en + '</span></span>'; fb.className = 'aw-fb ok'; }
+    if (fb) { fb.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span>Perfect!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span><span>' + w.word + ' = ' + w.en + '</span></span>'; fb.className = 'aw-fb ok'; }
     if (typeof speakHangul === 'function') speakHangul(w.word);
     var scoreEl = document.getElementById('aw-score-txt');
     if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
@@ -5705,7 +5705,7 @@ function _awCheckJamoAnswer() {
     _awScore++;
     var buildEl = document.getElementById('aw-jamo-build');
     if (buildEl) buildEl.classList.add('correct');
-    if (fb) { fb.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span>완벽해요!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span><span>' + w.word + ' = ' + w.en + '</span></span>'; fb.className = 'aw-fb ok'; }
+    if (fb) { fb.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span>Perfect!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span><span>' + w.word + ' = ' + w.en + '</span></span>'; fb.className = 'aw-fb ok'; }
     if (typeof speakHangul === 'function') speakHangul(w.word);
     var scoreEl = document.getElementById('aw-score-txt');
     if (scoreEl) scoreEl.textContent = _awScore + ' / ' + _awRoundTotal;
@@ -5770,13 +5770,13 @@ function _renderAwRoundComplete() {
   var knownCount = _awGetKnown().length;
   if (pool) {
     pool.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;align-items:center">'
-      + '<button class="aw-btn aw-btn-skip" onclick="startAlphaWordRound()" type="button">새 라운드 ↺</button>'
+      + '<button class="aw-btn aw-btn-skip" onclick="startAlphaWordRound()" type="button">New round ↺</button>'
       + (knownCount > 0
-          ? '<button class="aw-btn aw-btn-reset" onclick="awResetKnown()" type="button" style="font-size:11px">아는 단어 목록 초기화 (' + knownCount + ')</button>'
+          ? '<button class="aw-btn aw-btn-reset" onclick="awResetKnown()" type="button" style="font-size:11px">Reset known words (' + knownCount + ')</button>'
           : '')
       + '</div>';
   }
-  if (fb) { fb.innerHTML = _awScore === _awRoundTotal ? '<span style="display:inline-flex;align-items:center;gap:6px"><span>완벽합니다!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span></span>' : '좋아요! 다시 도전해보세요.'; fb.className = 'aw-fb ok'; }
+  if (fb) { fb.innerHTML = _awScore === _awRoundTotal ? '<span style="display:inline-flex;align-items:center;gap:6px"><span>Perfect score!</span><span style="display:inline-flex;width:14px;height:14px;color:#a78bfa">'+BM_ICON_PARTY+'</span></span>' : 'Nice! Try another round.'; fb.className = 'aw-fb ok'; }
   var fill = document.getElementById('aw-progress-fill');
   if (fill) fill.style.width = '100%';
   var scoreEl = document.getElementById('aw-score-txt');
@@ -5949,11 +5949,11 @@ var _ftState = { scenario:null, nodeId:null, visited:[], path:[], phrases:[], pl
 // ── Scenario Data ──
 var _FT_SCENARIOS = [
 {
-  id:'cafe', title:'THE CAFE', sub:'카페에서 음료 주문하기', titleKo:'카페 주문',
+  id:'cafe', title:'THE CAFE', sub:'Ordering a drink at a cafe', titleKo:'Cafe Order',
   difficulty:'Beginner', icon:'☕', locked:false,
   nodes: {
-    start:    { type:'start', x:3, y:50, label:'입장', next:'greet' },
-    greet:    { type:'npc', x:16, y:50, label:'바리스타 인사', npc:'바리스타', scene:'카페 카운터',
+    start:    { type:'start', x:3, y:50, label:'Enter', next:'greet' },
+    greet:    { type:'npc', x:16, y:50, label:'Barista greets', npc:'Barista', scene:'Cafe counter',
                 text:'어서오세요~ 주문하시겠어요?', textEn:'Welcome~ Would you like to order?',
                 choices:[
                   { id:'g1', text:'아이스 아메리카노 주세요', textEn:'Iced americano please', next:'size_q', pts:3, phrase:'아이스 아메리카노 주세요' },
@@ -5961,25 +5961,25 @@ var _FT_SCENARIOS = [
                   { id:'g3', text:'(메뉴판을 가리키며) 이거요', textEn:'(pointing at menu) This one', next:'point', pts:1 },
                   { id:'g4', text:'(영어로) ONE COFFEE PLEASE', textEn:'(in English) ONE COFFEE PLEASE', next:'english_fail', pts:0 }
                 ]},
-    hesitate: { type:'npc', x:30, y:20, label:'잠시 망설임', npc:'바리스타', scene:'카페 카운터',
+    hesitate: { type:'npc', x:30, y:20, label:'Hesitate', npc:'Barista', scene:'Cafe counter',
                 text:'천천히 보세요~ 메뉴 추천해드릴까요?', textEn:'Take your time~ Want me to recommend something?',
                 choices:[
                   { id:'h1', text:'네, 추천해주세요!', textEn:'Yes, please recommend!', next:'recommend', pts:2, phrase:'추천해주세요' },
                   { id:'h2', text:'아메리카노 있어요?', textEn:'Do you have americano?', next:'size_q', pts:2, phrase:'아메리카노 있어요?' }
                 ]},
-    point:    { type:'npc', x:30, y:80, label:'메뉴 가리킴', npc:'바리스타', scene:'카페 카운터',
+    point:    { type:'npc', x:30, y:80, label:'Point at menu', npc:'Barista', scene:'Cafe counter',
                 text:'카페라떼요? 핫으로 드릴까요, 아이스로 드릴까요?', textEn:'Cafe latte? Hot or iced?',
                 choices:[
                   { id:'p1', text:'아이스로 주세요', textEn:'Iced please', next:'size_q', pts:2, phrase:'아이스로 주세요' },
                   { id:'p2', text:'핫으로 주세요', textEn:'Hot please', next:'size_q', pts:2, phrase:'핫으로 주세요' }
                 ]},
-    recommend:{ type:'npc', x:44, y:20, label:'추천 받기', npc:'바리스타', scene:'카페 카운터',
+    recommend:{ type:'npc', x:44, y:20, label:'Get a recommendation', npc:'Barista', scene:'Cafe counter',
                 text:'요즘 자몽 허니 블랙티 인기 많아요! 드셔보시겠어요?', textEn:'Grapefruit honey black tea is popular these days! Want to try it?',
                 choices:[
                   { id:'r1', text:'네, 그걸로 할게요!', textEn:'Yes, I\'ll have that!', next:'size_q', pts:3, phrase:'그걸로 할게요' },
                   { id:'r2', text:'그냥 아메리카노로 할게요', textEn:'I\'ll just have americano', next:'size_q', pts:2 }
                 ]},
-    size_q:   { type:'npc', x:56, y:50, label:'사이즈 선택', npc:'바리스타', scene:'카페 카운터',
+    size_q:   { type:'npc', x:56, y:50, label:'Choose size', npc:'Barista', scene:'Cafe counter',
                 text:'사이즈 어떤 걸로 하시겠어요? 톨, 그란데, 벤티 있어요.', textEn:'What size? We have Tall, Grande, Venti.',
                 choices:[
                   { id:'s1', text:'톨로 주세요', textEn:'Tall please', next:'pay_q', pts:3, phrase:'톨로 주세요' },
@@ -5987,41 +5987,41 @@ var _FT_SCENARIOS = [
                   { id:'s3', text:'벤티로 주세요', textEn:'Venti please', next:'pay_q', pts:3, phrase:'벤티로 주세요' },
                   { id:'s4', text:'사이즈가 뭐예요?', textEn:'What are the sizes?', next:'size_explain', pts:1, phrase:'사이즈가 뭐예요?' }
                 ]},
-    size_explain:{ type:'npc', x:68, y:25, label:'사이즈 설명', npc:'바리스타', scene:'카페 카운터',
+    size_explain:{ type:'npc', x:68, y:25, label:'Size explained', npc:'Barista', scene:'Cafe counter',
                 text:'톨이 제일 작고요, 그란데가 중간, 벤티가 제일 커요!', textEn:'Tall is the smallest, Grande is medium, Venti is the largest!',
                 choices:[
                   { id:'se1', text:'그란데로 할게요', textEn:'I\'ll have Grande', next:'pay_q', pts:2, phrase:'그란데로 할게요' },
                   { id:'se2', text:'벤티로 할게요', textEn:'I\'ll have Venti', next:'pay_q', pts:2, phrase:'벤티로 할게요' },
                   { id:'se3', text:'톨로 할게요', textEn:'I\'ll have Tall', next:'pay_q', pts:2, phrase:'톨로 할게요' }
                 ]},
-    pay_q:    { type:'npc', x:76, y:50, label:'결제', npc:'바리스타', scene:'카페 카운터',
+    pay_q:    { type:'npc', x:76, y:50, label:'Payment', npc:'Barista', scene:'Cafe counter',
                 text:'결제는 어떻게 하시겠어요?', textEn:'How would you like to pay?',
                 choices:[
                   { id:'pq1', text:'카드로 할게요', textEn:'By card please', next:'done_good', pts:3, phrase:'카드로 할게요' },
                   { id:'pq2', text:'현금이요', textEn:'Cash', next:'done_good', pts:2 },
                   { id:'pq3', text:'이거 얼마예요?', textEn:'How much is this?', next:'price_ask', pts:1, phrase:'이거 얼마예요?' }
                 ]},
-    price_ask:{ type:'npc', x:86, y:25, label:'가격 확인', npc:'바리스타', scene:'카페 카운터',
+    price_ask:{ type:'npc', x:86, y:25, label:'Check price', npc:'Barista', scene:'Cafe counter',
                 text:'4,500원이에요~', textEn:'It\'s 4,500 won~',
                 choices:[
                   { id:'pa1', text:'카드로 할게요', textEn:'By card please', next:'done_good', pts:2, phrase:'카드로 할게요' }
                 ]},
-    english_fail:{ type:'npc', x:30, y:50, label:'영어 시도 😅', npc:'바리스타', scene:'카페 카운터',
+    english_fail:{ type:'npc', x:30, y:50, label:'Try English 😅', npc:'Barista', scene:'Cafe counter',
                 text:'아... 저 영어 잘 못하는데... 한국어로 해주실 수 있어요?', textEn:'Ah... I\'m not good at English... Can you try in Korean?',
                 choices:[
                   { id:'ef1', text:'아... 아메리카노... 주세요?', textEn:'Ah... americano... please?', next:'size_q', pts:2, phrase:'아메리카노 주세요' },
                   { id:'ef2', text:'(구글 번역기 꺼냄)', textEn:'(pulls out Google Translate)', next:'translate', pts:1 },
                   { id:'ef3', text:'AMERICANO! BIG! COLD!', textEn:'AMERICANO! BIG! COLD!', next:'angry_barista', pts:0 }
                 ]},
-    translate:{ type:'npc', x:44, y:80, label:'번역기 사용', npc:'바리스타', scene:'카페 카운터',
+    translate:{ type:'npc', x:44, y:80, label:'Use translator', npc:'Barista', scene:'Cafe counter',
                 text:'ㅋㅋ 괜찮아요~ 여기 가리켜주세요!', textEn:'Haha it\'s okay~ Just point here!',
                 choices:[
                   { id:'tr1', text:'(메뉴 가리킴) 이거... 차가운 거...', textEn:'(points) This... cold one...', next:'size_q', pts:1 }
                 ]},
-    angry_barista:{ type:'end', x:56, y:80, label:'바리스타 짜증 😤', npc:'바리스타', scene:'카페 카운터',
+    angry_barista:{ type:'end', x:56, y:80, label:'Barista annoyed 😤', npc:'Barista', scene:'Cafe counter',
                 text:'...손님, 여기 한국이에요. "아이스 아메리카노 주세요" 이렇게 말해보세요 😤', textEn:'...Sir/Ma\'am, this is Korea. Try saying "아이스 아메리카노 주세요" 😤',
                 choices:[]},
-    done_good:{ type:'end', x:94, y:50, label:'주문 완료! ☕', npc:'바리스타', scene:'카페 카운터',
+    done_good:{ type:'end', x:94, y:50, label:'Order done! ☕', npc:'Barista', scene:'Cafe counter',
                 text:'네~ 잠시만 기다려주세요! 음료 나오면 불러드릴게요 😊', textEn:'Yes~ Please wait a moment! I\'ll call you when your drink is ready 😊',
                 choices:[]}
   },
@@ -6035,11 +6035,11 @@ var _FT_SCENARIOS = [
   ]
 },
 {
-  id:'taxi', title:'THE TAXI', sub:'택시 타고 목적지 가기', titleKo:'택시 타기',
+  id:'taxi', title:'THE TAXI', sub:'Taking a taxi to your destination', titleKo:'Taking a Taxi',
   difficulty:'Beginner', icon:'🚕', locked:false,
   nodes: {
-    start:    { type:'start', x:3, y:50, label:'택시 탑승', next:'driver_greet' },
-    driver_greet:{ type:'npc', x:15, y:50, label:'기사 인사', npc:'택시기사', scene:'택시 뒷좌석',
+    start:    { type:'start', x:3, y:50, label:'Get in taxi', next:'driver_greet' },
+    driver_greet:{ type:'npc', x:15, y:50, label:'Driver greets', npc:'Taxi driver', scene:'Taxi back seat',
                 text:'어디로 가시죠?', textEn:'Where are you headed?',
                 choices:[
                   { id:'t1', text:'강남역으로 가주세요', textEn:'Gangnam Station please', next:'confirm', pts:3, phrase:'강남역으로 가주세요' },
@@ -6047,29 +6047,29 @@ var _FT_SCENARIOS = [
                   { id:'t3', text:'음... 잠깐만요', textEn:'Um... just a moment', next:'search', pts:1 },
                   { id:'t4', text:'(한참 침묵...)', textEn:'(long silence...)', next:'driver_impatient', pts:0 }
                 ]},
-    phone_addr:{ type:'npc', x:28, y:25, label:'주소 확인', npc:'택시기사', scene:'택시',
+    phone_addr:{ type:'npc', x:28, y:25, label:'Check address', npc:'Taxi driver', scene:'Taxi',
                 text:'아~ 여기요? 한 20분 정도 걸릴 것 같은데, 괜찮으시죠?', textEn:'Ah here? It\'ll take about 20 minutes, is that okay?',
                 choices:[
                   { id:'pa1', text:'네, 괜찮아요', textEn:'Yes, that\'s fine', next:'riding', pts:2, phrase:'네, 괜찮아요' },
                   { id:'pa2', text:'얼마나 나올까요?', textEn:'How much will it be?', next:'ask_fare', pts:2, phrase:'얼마나 나올까요?' }
                 ]},
-    search:   { type:'npc', x:28, y:75, label:'검색 중', npc:'택시기사', scene:'택시',
+    search:   { type:'npc', x:28, y:75, label:'Searching', npc:'Taxi driver', scene:'Taxi',
                 text:'천천히 하세요~ 네비에 검색하시면 돼요.', textEn:'Take your time~ You can search on the navigation.',
                 choices:[
                   { id:'s1', text:'강남역이요!', textEn:'Gangnam Station!', next:'confirm', pts:2 },
                   { id:'s2', text:'이태원 가주세요', textEn:'Itaewon please', next:'confirm', pts:2, phrase:'이태원 가주세요' }
                 ]},
-    confirm:  { type:'npc', x:40, y:50, label:'목적지 확인', npc:'택시기사', scene:'택시',
+    confirm:  { type:'npc', x:40, y:50, label:'Confirm destination', npc:'Taxi driver', scene:'Taxi',
                 text:'네! 출발할게요~', textEn:'Okay! Let\'s go~',
                 choices:[
                   { id:'c1', text:'감사합니다', textEn:'Thank you', next:'riding', pts:2, phrase:'감사합니다' }
                 ]},
-    ask_fare: { type:'npc', x:40, y:25, label:'요금 문의', npc:'택시기사', scene:'택시',
+    ask_fare: { type:'npc', x:40, y:25, label:'Ask the fare', npc:'Taxi driver', scene:'Taxi',
                 text:'미터기로 가면 만 오천 원에서 이만 원 사이 나올 거예요.', textEn:'By meter, it\'ll be between 15,000-20,000 won.',
                 choices:[
                   { id:'af1', text:'네, 출발해주세요', textEn:'Okay, let\'s go', next:'riding', pts:2, phrase:'출발해주세요' }
                 ]},
-    riding:   { type:'npc', x:55, y:50, label:'이동 중', npc:'택시기사', scene:'택시 이동 중',
+    riding:   { type:'npc', x:55, y:50, label:'On the way', npc:'Taxi driver', scene:'Taxi ride',
                 text:'손님, 한국 오신 지 얼마나 되셨어요?', textEn:'So, how long have you been in Korea?',
                 choices:[
                   { id:'r1', text:'한 달 정도 됐어요', textEn:'About a month', next:'small_talk', pts:3, phrase:'한 달 정도 됐어요' },
@@ -6077,42 +6077,42 @@ var _FT_SCENARIOS = [
                   { id:'r4', text:'여기 아닌 것 같은데... 어디예요 여기?', textEn:'I don\'t think this is right... Where are we?', next:'wrong_dest', pts:0 },
                   { id:'r3', text:'일주일이요! 한국 좋아요', textEn:'One week! I like Korea', next:'small_talk', pts:3, phrase:'한국 좋아요' }
                 ]},
-    small_talk:{ type:'npc', x:68, y:35, label:'스몰톡', npc:'택시기사', scene:'택시',
+    small_talk:{ type:'npc', x:68, y:35, label:'Small talk', npc:'Taxi driver', scene:'Taxi',
                 text:'오~ 한국어 잘하시네! 어디서 배우셨어요?', textEn:'Oh~ Your Korean is good! Where did you learn?',
                 choices:[
                   { id:'st1', text:'앱으로 배우고 있어요', textEn:'I\'m learning from an app', next:'arrive', pts:2, phrase:'앱으로 배우고 있어요' },
                   { id:'st2', text:'감사합니다! 아직 많이 못해요', textEn:'Thank you! I still can\'t speak well', next:'arrive', pts:3, phrase:'아직 많이 못해요' }
                 ]},
-    arrive_quiet:{ type:'npc', x:68, y:70, label:'도착 (조용)', npc:'택시기사', scene:'목적지 앞',
+    arrive_quiet:{ type:'npc', x:68, y:70, label:'Arrival (quiet)', npc:'Taxi driver', scene:'At the destination',
                 text:'다 왔습니다~', textEn:'We\'re here~',
                 choices:[
                   { id:'aq1', text:'감사합니다. 카드로 할게요', textEn:'Thank you. Card please', next:'pay', pts:2, phrase:'카드로 할게요' }
                 ]},
-    arrive:   { type:'npc', x:80, y:50, label:'도착', npc:'택시기사', scene:'목적지 앞',
+    arrive:   { type:'npc', x:80, y:50, label:'Arrival', npc:'Taxi driver', scene:'At the destination',
                 text:'거의 다 왔어요! 저기 앞에서 내리시면 돼요.', textEn:'Almost there! You can get off right ahead.',
                 choices:[
                   { id:'a1', text:'여기서 세워주세요', textEn:'Please stop here', next:'pay', pts:3, phrase:'여기서 세워주세요' },
                   { id:'a2', text:'조금만 더 가주세요', textEn:'A bit further please', next:'pay', pts:2, phrase:'조금만 더 가주세요' }
                 ]},
-    driver_impatient:{ type:'npc', x:28, y:80, label:'기사 짜증', npc:'택시기사', scene:'택시',
+    driver_impatient:{ type:'npc', x:28, y:80, label:'Driver annoyed', npc:'Taxi driver', scene:'Taxi',
                 text:'손님... 어디 가실 건지 빨리 좀 말해주세요. 미터기 돌아가고 있어요.', textEn:'Sir/Ma\'am... please tell me quickly where you\'re going. The meter is running.',
                 choices:[
                   { id:'di1', text:'아! 죄송해요. 강남역이요!', textEn:'Ah! Sorry. Gangnam Station!', next:'confirm', pts:2, phrase:'죄송해요' },
                   { id:'di2', text:'(계속 핸드폰만 봄)', textEn:'(keeps looking at phone)', next:'kicked_out', pts:0 }
                 ]},
-    kicked_out:{ type:'end', x:44, y:80, label:'하차 당함 😱', npc:'택시기사', scene:'택시',
+    kicked_out:{ type:'end', x:44, y:80, label:'Kicked out 😱', npc:'Taxi driver', scene:'Taxi',
                 text:'손님 죄송한데 다른 택시 타세요. 뒤에 손님 많아요.', textEn:'Sorry but please take another taxi. There are other customers waiting.',
                 choices:[]},
-    wrong_dest:{ type:'npc', x:80, y:20, label:'엉뚱한 곳', npc:'택시기사', scene:'낯선 거리',
+    wrong_dest:{ type:'npc', x:80, y:20, label:'Wrong place', npc:'Taxi driver', scene:'Unfamiliar street',
                 text:'여기가 맞아요? 근데 여긴 공장 지대인데...', textEn:'Is this right? But this is an industrial area...',
                 choices:[
                   { id:'wd1', text:'아... 아닌 것 같아요. 강남역 가주세요!', textEn:'Ah... I don\'t think so. Gangnam Station please!', next:'arrive', pts:1, phrase:'아닌 것 같아요' },
                   { id:'wd2', text:'맞아요! (아닌데 자존심 때문에)', textEn:'Yes! (wrong but too proud)', next:'lost_end', pts:0 }
                 ]},
-    lost_end: { type:'end', x:94, y:20, label:'미아 엔딩 😭', npc:'나', scene:'낯선 거리',
+    lost_end: { type:'end', x:94, y:20, label:'Lost ending 😭', npc:'Me', scene:'Unfamiliar street',
                 text:'(공장 지대 한가운데서 혼자 서있음... 다시 택시 잡아야 함)', textEn:'(Standing alone in an industrial area... need to catch another taxi)',
                 choices:[]},
-    pay:      { type:'end', x:94, y:50, label:'하차 완료 🚕', npc:'택시기사', scene:'택시',
+    pay:      { type:'end', x:94, y:50, label:'Ride done 🚕', npc:'Taxi driver', scene:'Taxi',
                 text:'네~ 감사합니다! 안녕히 가세요~', textEn:'Thank you! Have a good day~',
                 choices:[]}
   },
@@ -6127,11 +6127,11 @@ var _FT_SCENARIOS = [
   ]
 },
 {
-  id:'conv-store', title:'THE CONVENIENCE STORE', sub:'편의점에서 물건 사기', titleKo:'편의점',
+  id:'conv-store', title:'THE CONVENIENCE STORE', sub:'Buying things at a convenience store', titleKo:'Convenience Store',
   difficulty:'Beginner', icon:'🏪', locked:false,
   nodes: {
-    start:    { type:'start', x:3, y:50, label:'편의점 입장', next:'browse' },
-    browse:   { type:'npc', x:14, y:50, label:'둘러보기', npc:'나', scene:'편의점 안',
+    start:    { type:'start', x:3, y:50, label:'Enter store', next:'browse' },
+    browse:   { type:'npc', x:14, y:50, label:'Browsing', npc:'Me', scene:'Inside the store',
                 text:'(뭘 살지 둘러보는 중...)', textEn:'(Looking around...)',
                 choices:[
                   { id:'b1', text:'삼각김밥이랑 음료수 사자', textEn:'Let me get a triangle kimbap and a drink', next:'counter', pts:2 },
@@ -6139,56 +6139,56 @@ var _FT_SCENARIOS = [
                   { id:'b3', text:'도시락 데워주세요', textEn:'Please heat up this lunch box', next:'microwave', pts:3, phrase:'도시락 데워주세요' },
                   { id:'b4', text:'(삼각김밥을 뜯어서 바로 먹기 시작)', textEn:'(opens triangle kimbap and starts eating)', next:'caught_eating', pts:0 }
                 ]},
-    ask_item: { type:'npc', x:28, y:25, label:'물건 위치 문의', npc:'점원', scene:'편의점',
+    ask_item: { type:'npc', x:28, y:25, label:'Ask where an item is', npc:'Clerk', scene:'Convenience store',
                 text:'충전기요? 저쪽 선반에 있어요~', textEn:'Chargers? They\'re on that shelf over there~',
                 choices:[
                   { id:'ai1', text:'감사합니다! 이것도 같이 계산해주세요', textEn:'Thanks! Ring this up too please', next:'counter', pts:2, phrase:'같이 계산해주세요' },
                   { id:'ai2', text:'C타입 있어요?', textEn:'Do you have USB-C?', next:'type_c', pts:2, phrase:'C타입 있어요?' }
                 ]},
-    type_c:   { type:'npc', x:40, y:15, label:'타입 확인', npc:'점원', scene:'편의점',
+    type_c:   { type:'npc', x:40, y:15, label:'Check type', npc:'Clerk', scene:'Convenience store',
                 text:'네, 이거요! 12,000원이에요.', textEn:'Yes, this one! It\'s 12,000 won.',
                 choices:[
                   { id:'tc1', text:'이거 주세요', textEn:'I\'ll take this', next:'counter', pts:2, phrase:'이거 주세요' }
                 ]},
-    microwave:{ type:'npc', x:28, y:75, label:'전자레인지', npc:'점원', scene:'편의점 카운터',
+    microwave:{ type:'npc', x:28, y:75, label:'Microwave', npc:'Clerk', scene:'Store counter',
                 text:'네! 2분이면 돼요. 수저 필요하세요?', textEn:'Sure! 2 minutes. Do you need utensils?',
                 choices:[
                   { id:'m1', text:'네, 주세요!', textEn:'Yes, please!', next:'counter', pts:2, phrase:'수저 주세요' },
                   { id:'m2', text:'괜찮아요, 젓가락만 주세요', textEn:'No thanks, just chopsticks please', next:'counter', pts:3, phrase:'젓가락만 주세요' }
                 ]},
-    counter:  { type:'npc', x:52, y:50, label:'계산', npc:'점원', scene:'편의점 카운터',
+    counter:  { type:'npc', x:52, y:50, label:'Checkout', npc:'Clerk', scene:'Store counter',
                 text:'봉투 필요하세요?', textEn:'Do you need a bag?',
                 choices:[
                   { id:'ct1', text:'네, 주세요', textEn:'Yes, please', next:'pay_method', pts:2, phrase:'봉투 주세요' },
                   { id:'ct2', text:'아니요, 괜찮아요', textEn:'No, I\'m fine', next:'pay_method', pts:2, phrase:'괜찮아요' }
                 ]},
-    pay_method:{ type:'npc', x:66, y:50, label:'결제 수단', npc:'점원', scene:'카운터',
+    pay_method:{ type:'npc', x:66, y:50, label:'Payment method', npc:'Clerk', scene:'Counter',
                 text:'3,800원입니다~', textEn:'That\'ll be 3,800 won~',
                 choices:[
                   { id:'pm1', text:'카카오페이로 할게요', textEn:'KakaoPay please', next:'kakao', pts:3, phrase:'카카오페이로 할게요' },
                   { id:'pm2', text:'카드요', textEn:'Card', next:'done', pts:2 },
                   { id:'pm3', text:'포인트 적립할게요', textEn:'I\'d like to earn points', next:'points', pts:2, phrase:'포인트 적립할게요' }
                 ]},
-    kakao:    { type:'npc', x:78, y:30, label:'카카오페이', npc:'점원', scene:'카운터',
+    kakao:    { type:'npc', x:78, y:30, label:'KakaoPay', npc:'Clerk', scene:'Counter',
                 text:'바코드 찍어주세요~', textEn:'Please scan the barcode~',
                 choices:[
                   { id:'k1', text:'(바코드 보여줌) 여기요', textEn:'(shows barcode) Here', next:'done', pts:2 }
                 ]},
-    points:   { type:'npc', x:78, y:70, label:'포인트 적립', npc:'점원', scene:'카운터',
+    points:   { type:'npc', x:78, y:70, label:'Earn points', npc:'Clerk', scene:'Counter',
                 text:'전화번호 알려주세요~', textEn:'Tell me your phone number~',
                 choices:[
                   { id:'pt1', text:'010-xxxx-xxxx요', textEn:'010-xxxx-xxxx', next:'done', pts:2, phrase:'전화번호 알려주세요' }
                 ]},
-    caught_eating:{ type:'npc', x:28, y:50, label:'현장 적발 😳', npc:'점원', scene:'편의점',
+    caught_eating:{ type:'npc', x:28, y:50, label:'Caught red-handed 😳', npc:'Clerk', scene:'Convenience store',
                 text:'저기... 손님? 그거 아직 계산 안 하신 건데요...', textEn:'Um... customer? You haven\'t paid for that yet...',
                 choices:[
                   { id:'ce1', text:'아! 죄송해요! 바로 계산할게요!', textEn:'Ah! Sorry! I\'ll pay right away!', next:'counter', pts:1, phrase:'바로 계산할게요' },
                   { id:'ce2', text:'(모른 척하며 계속 먹음)', textEn:'(pretends not to hear, keeps eating)', next:'police_end', pts:0 }
                 ]},
-    police_end:{ type:'end', x:44, y:50, label:'경찰 출동 🚔', npc:'점원', scene:'편의점',
+    police_end:{ type:'end', x:44, y:50, label:'Police called 🚔', npc:'Clerk', scene:'Convenience store',
                 text:'(점원이 전화를 들며) 여보세요? 경찰서요? 네, 편의점 도둑이요...', textEn:'(clerk picks up phone) Hello? Police? Yes, a shoplifter...',
                 choices:[]},
-    done:     { type:'end', x:94, y:50, label:'구매 완료! 🏪', npc:'점원', scene:'편의점',
+    done:     { type:'end', x:94, y:50, label:'Purchase done! 🏪', npc:'Clerk', scene:'Convenience store',
                 text:'감사합니다~ 안녕히 가세요!', textEn:'Thank you~ Goodbye!',
                 choices:[]}
   },
@@ -6201,17 +6201,17 @@ var _FT_SCENARIOS = [
   ]
 },
 {
-  id:'restaurant', title:'THE RESTAURANT', sub:'식당에서 주문하기', titleKo:'식당 주문',
+  id:'restaurant', title:'THE RESTAURANT', sub:'Ordering at a restaurant', titleKo:'Restaurant Order',
   difficulty:'Beginner', icon:'🍜', locked:false,
   nodes: {
-    start:    { type:'start', x:3, y:50, label:'식당 입장', next:'seat' },
-    seat:     { type:'npc', x:14, y:50, label:'자리 안내', npc:'직원', scene:'식당 입구',
+    start:    { type:'start', x:3, y:50, label:'Enter restaurant', next:'seat' },
+    seat:     { type:'npc', x:14, y:50, label:'Seating', npc:'Staff', scene:'Restaurant entrance',
                 text:'어서오세요! 몇 분이세요?', textEn:'Welcome! How many people?',
                 choices:[
                   { id:'s1', text:'한 명이요', textEn:'Just one', next:'menu', pts:2, phrase:'한 명이요' },
                   { id:'s2', text:'두 명이요', textEn:'Two people', next:'menu', pts:2, phrase:'두 명이요' }
                 ]},
-    menu:     { type:'npc', x:26, y:50, label:'메뉴 보기', npc:'직원', scene:'테이블',
+    menu:     { type:'npc', x:26, y:50, label:'Menu', npc:'Staff', scene:'Table',
                 text:'메뉴 여기 있어요~ 천천히 보시고 부르세요!', textEn:'Here\'s the menu~ Take your time and call me!',
                 choices:[
                   { id:'m1', text:'저기요~ 추천 메뉴 뭐예요?', textEn:'Excuse me~ What do you recommend?', next:'recommend', pts:3, phrase:'추천 메뉴 뭐예요?' },
@@ -6219,25 +6219,25 @@ var _FT_SCENARIOS = [
                   { id:'m3', text:'이거 매워요?', textEn:'Is this spicy?', next:'spicy_q', pts:2, phrase:'이거 매워요?' },
                   { id:'m4', text:'전부 다 주세요!', textEn:'Give me everything!', next:'too_much', pts:0 }
                 ]},
-    recommend:{ type:'npc', x:40, y:25, label:'추천 메뉴', npc:'직원', scene:'테이블',
+    recommend:{ type:'npc', x:40, y:25, label:'Recommendation', npc:'Staff', scene:'Table',
                 text:'김치찌개가 제일 인기 많아요! 된장찌개도 맛있어요~', textEn:'Kimchi jjigae is the most popular! Doenjang jjigae is also good~',
                 choices:[
                   { id:'r1', text:'김치찌개 주세요', textEn:'Kimchi jjigae please', next:'side_q', pts:3, phrase:'김치찌개 주세요' },
                   { id:'r2', text:'된장찌개로 할게요', textEn:'I\'ll have doenjang jjigae', next:'side_q', pts:2 }
                 ]},
-    spicy_q:  { type:'npc', x:40, y:75, label:'매운맛 문의', npc:'직원', scene:'테이블',
+    spicy_q:  { type:'npc', x:40, y:75, label:'Ask about spice', npc:'Staff', scene:'Table',
                 text:'좀 매워요~ 안 매운 거 원하시면 된장찌개 추천해요!', textEn:'It\'s a bit spicy~ If you want less spicy, I recommend doenjang jjigae!',
                 choices:[
                   { id:'sp1', text:'안 매운 걸로 주세요', textEn:'Less spicy one please', next:'side_q', pts:2, phrase:'안 매운 걸로 주세요' },
                   { id:'sp2', text:'괜찮아요, 매운 거 좋아해요', textEn:'It\'s fine, I like spicy', next:'order', pts:3, phrase:'매운 거 좋아해요' }
                 ]},
-    order:    { type:'npc', x:54, y:50, label:'주문', npc:'직원', scene:'테이블',
+    order:    { type:'npc', x:54, y:50, label:'Order', npc:'Staff', scene:'Table',
                 text:'네~ 뭘로 하시겠어요?', textEn:'Sure~ What would you like?',
                 choices:[
                   { id:'o1', text:'비빔밥 하나 주세요', textEn:'One bibimbap please', next:'side_q', pts:3, phrase:'비빔밥 하나 주세요' },
                   { id:'o2', text:'불고기 정식이요', textEn:'Bulgogi set meal', next:'side_q', pts:2, phrase:'불고기 정식이요' }
                 ]},
-    side_q:   { type:'npc', x:68, y:50, label:'추가 주문', npc:'직원', scene:'테이블',
+    side_q:   { type:'npc', x:68, y:50, label:'Add-on order', npc:'Staff', scene:'Table',
                 text:'음료는 필요하세요?', textEn:'Do you need any drinks?',
                 choices:[
                   { id:'sq1', text:'물 주세요', textEn:'Water please', next:'eating', pts:2, phrase:'물 주세요' },
@@ -6245,25 +6245,25 @@ var _FT_SCENARIOS = [
                   { id:'sq3', text:'소주 한 병이요!', textEn:'One bottle of soju!', next:'eating', pts:3, phrase:'소주 한 병이요' },
                   { id:'sq4', text:'제일 매운 거로 해주세요!!! 🔥', textEn:'Make it the spiciest!!! 🔥', next:'spicy_die', pts:0 }
                 ]},
-    eating:   { type:'npc', x:80, y:50, label:'식사 완료', npc:'직원', scene:'테이블',
+    eating:   { type:'npc', x:80, y:50, label:'Meal finished', npc:'Staff', scene:'Table',
                 text:'맛있게 드셨어요?', textEn:'Did you enjoy your meal?',
                 choices:[
                   { id:'e1', text:'네, 너무 맛있었어요!', textEn:'Yes, it was delicious!', next:'bill', pts:3, phrase:'너무 맛있었어요' },
                   { id:'e2', text:'계산해주세요', textEn:'Check please', next:'bill', pts:2, phrase:'계산해주세요' }
                 ]},
-    too_much: { type:'npc', x:40, y:15, label:'과다 주문', npc:'직원', scene:'테이블',
+    too_much: { type:'npc', x:40, y:15, label:'Over-ordering', npc:'Staff', scene:'Table',
                 text:'네...? 전부요? 메뉴가 30개가 넘는데... 정말이요?', textEn:'Yes...? Everything? There are over 30 items... Are you sure?',
                 choices:[
                   { id:'tm1', text:'ㅋㅋ 농담이에요. 비빔밥 하나만요', textEn:'Haha just kidding. Just one bibimbap', next:'side_q', pts:1, phrase:'농담이에요' },
                   { id:'tm2', text:'네! 전부 다요! 💪', textEn:'Yes! Everything! 💪', next:'broke_end', pts:0 }
                 ]},
-    broke_end:{ type:'end', x:56, y:15, label:'파산 엔딩 💸', npc:'직원', scene:'테이블',
+    broke_end:{ type:'end', x:56, y:15, label:'Bankrupt ending 💸', npc:'Staff', scene:'Table',
                 text:'(30분 후... 테이블 위에 음식이 가득) 계산은... 487,000원입니다 😅', textEn:'(30 min later... table covered in food) The bill is... 487,000 won 😅',
                 choices:[]},
-    spicy_die:{ type:'end', x:94, y:80, label:'매운맛 KO 🥵', npc:'나', scene:'테이블',
+    spicy_die:{ type:'end', x:94, y:80, label:'Spice KO 🥵', npc:'Me', scene:'Table',
                 text:'(김치찌개 한 입 먹고 얼굴이 빨개짐) 물... 물 주세요!!!! 🥵🔥', textEn:'(one bite of kimchi jjigae, face turns red) Water... WATER PLEASE!!!! 🥵🔥',
                 choices:[]},
-    bill:     { type:'end', x:94, y:50, label:'계산 완료! 🍜', npc:'직원', scene:'카운터',
+    bill:     { type:'end', x:94, y:50, label:'Bill paid! 🍜', npc:'Staff', scene:'Counter',
                 text:'감사합니다! 또 오세요~', textEn:'Thank you! Please come again~',
                 choices:[]}
   },
@@ -6276,65 +6276,65 @@ var _FT_SCENARIOS = [
   ]
 },
 {
-  id:'immigration', title:'THE IMMIGRATION OFFICE', sub:'출입국사무소 방문', titleKo:'출입국사무소',
+  id:'immigration', title:'THE IMMIGRATION OFFICE', sub:'Visiting the immigration office', titleKo:'Immigration Office',
   difficulty:'Intermediate', icon:'🏛️', locked:false,
   nodes:{
-    start:{type:'start',x:3,y:50,label:'사무소 도착',next:'number'},
-    number:{type:'npc',x:13,y:50,label:'번호표 뽑기',npc:'안내원',scene:'출입국사무소 로비',
+    start:{type:'start',x:3,y:50,label:'Arrive at office',next:'number'},
+    number:{type:'npc',x:13,y:50,label:'Take a number',npc:'Guide',scene:'Immigration office lobby',
       text:'번호표 뽑으시고 앉아서 기다려주세요~',textEn:'Please take a number and wait.',
       choices:[
         {id:'n1',text:'감사합니다 (번호표 뽑음)',textEn:'Thank you (takes number)',next:'wait',pts:2,phrase:'감사합니다'},
         {id:'n2',text:'(번호표 안 뽑고 바로 창구로 감)',textEn:'(goes straight to counter without number)',next:'no_number',pts:0}
       ]},
-    no_number:{type:'npc',x:24,y:20,label:'번호표 없음',npc:'직원',scene:'창구',
+    no_number:{type:'npc',x:24,y:20,label:'No number',npc:'Staff',scene:'Counter',
       text:'손님, 번호표 먼저 뽑아오세요. 저기 기계에서요.',textEn:'Please get a number first. From the machine over there.',
       choices:[
         {id:'nn1',text:'아 죄송합니다!',textEn:'Oh sorry!',next:'wait',pts:1,phrase:'죄송합니다'}
       ]},
-    wait:{type:'npc',x:24,y:50,label:'대기',npc:'스피커',scene:'대기실',
+    wait:{type:'npc',x:24,y:50,label:'Waiting',npc:'Speaker',scene:'Waiting room',
       text:'352번 손님~ 3번 창구로 오세요!',textEn:'Number 352~ Please come to counter 3!',
       choices:[
         {id:'w1',text:'(창구로 이동) 안녕하세요',textEn:'(walks to counter) Hello',next:'clerk_greet',pts:2,phrase:'안녕하세요'}
       ]},
-    clerk_greet:{type:'npc',x:36,y:50,label:'직원 인사',npc:'직원',scene:'3번 창구',
+    clerk_greet:{type:'npc',x:36,y:50,label:'Staff greets',npc:'Staff',scene:'Counter 3',
       text:'안녕하세요. 어떤 업무로 오셨어요?',textEn:'Hello. What brings you here today?',
       choices:[
         {id:'cg1',text:'외국인등록증 만들러 왔어요',textEn:'I came to make an alien registration card',next:'passport_check',pts:3,phrase:'외국인등록증 만들러 왔어요'},
         {id:'cg2',text:'비자 연장하러 왔어요',textEn:'I came to extend my visa',next:'passport_check',pts:3,phrase:'비자 연장하러 왔어요'},
         {id:'cg3',text:'음... 잘 모르겠는데요',textEn:'Um... I am not sure',next:'clerk_help',pts:1}
       ]},
-    clerk_help:{type:'npc',x:36,y:80,label:'직원 도움',npc:'직원',scene:'3번 창구',
+    clerk_help:{type:'npc',x:36,y:80,label:'Clerk helps',npc:'Staff',scene:'Counter 3',
       text:'혹시 한국에 처음 오셨어요? 여권 좀 보여주시겠어요?',textEn:'Is this your first time in Korea? Can I see your passport?',
       choices:[
         {id:'ch1',text:'네, 여기요 (여권 건넴)',textEn:'Yes, here (hands passport)',next:'passport_check',pts:2}
       ]},
-    passport_check:{type:'npc',x:50,y:50,label:'여권 확인',npc:'직원',scene:'3번 창구',
+    passport_check:{type:'npc',x:50,y:50,label:'Passport check',npc:'Staff',scene:'Counter 3',
       text:'여권 보여주세요.',textEn:'Please show me your passport.',
       choices:[
         {id:'pc1',text:'여기 있습니다 (여권 건넴)',textEn:'Here it is',next:'address_q',pts:2},
         {id:'pc2',text:'어... 여권을 호텔에 두고 왔어요',textEn:'Uh... I left my passport at the hotel',next:'forgot_passport',pts:0}
       ]},
-    forgot_passport:{type:'end',x:62,y:20,label:'여권 깜빡 😱',npc:'직원',scene:'3번 창구',
+    forgot_passport:{type:'end',x:62,y:20,label:'Forgot passport 😱',npc:'Staff',scene:'Counter 3',
       text:'여권 없이는 업무 처리가 안 돼요. 여권 가지고 다시 오세요.',textEn:'I cannot process anything without a passport. Please come back with it.',
       choices:[]},
-    address_q:{type:'npc',x:62,y:50,label:'주소 확인',npc:'직원',scene:'3번 창구',
+    address_q:{type:'npc',x:62,y:50,label:'Check address',npc:'Staff',scene:'Counter 3',
       text:'한국 주소가 어떻게 되세요?',textEn:'What is your address in Korea?',
       choices:[
         {id:'aq1',text:'서울시 강남구... (주소 말함)',textEn:'Seoul Gangnam-gu... (gives address)',next:'docs_check',pts:3,phrase:'한국 주소가 어떻게 되세요?'},
         {id:'aq2',text:'아직 주소가 없어요...',textEn:'I don\'t have an address yet...',next:'no_address',pts:1}
       ]},
-    no_address:{type:'npc',x:74,y:80,label:'주소 없음',npc:'직원',scene:'3번 창구',
+    no_address:{type:'npc',x:74,y:80,label:'No address',npc:'Staff',scene:'Counter 3',
       text:'주소가 있어야 등록이 가능해요. 숙소 주소라도 괜찮아요.',textEn:'You need an address to register. Even your accommodation address is fine.',
       choices:[
         {id:'na1',text:'아 그러면 호텔 주소요! (보여줌)',textEn:'Oh then my hotel address! (shows it)',next:'docs_check',pts:2}
       ]},
-    docs_check:{type:'npc',x:74,y:50,label:'서류 확인',npc:'직원',scene:'3번 창구',
+    docs_check:{type:'npc',x:74,y:50,label:'Check documents',npc:'Staff',scene:'Counter 3',
       text:'네 확인됐습니다. 수수료 3만원이에요. 카드 되세요?',textEn:'Confirmed. The fee is 30,000 won. Can you pay by card?',
       choices:[
         {id:'dc1',text:'네, 카드로 할게요',textEn:'Yes, by card',next:'done_imm',pts:2,phrase:'카드로 할게요'},
         {id:'dc2',text:'현금으로 할게요',textEn:'Cash please',next:'done_imm',pts:2}
       ]},
-    done_imm:{type:'end',x:90,y:50,label:'등록 완료! 🏛️',npc:'직원',scene:'3번 창구',
+    done_imm:{type:'end',x:90,y:50,label:'Registered! 🏛️',npc:'Staff',scene:'Counter 3',
       text:'2주 후에 등록증 찾으러 오시면 됩니다. 수고하셨어요~',textEn:'Come back in 2 weeks to pick up your card. Good job~',
       choices:[]}
   },
@@ -6347,65 +6347,65 @@ var _FT_SCENARIOS = [
   ]
 },
 {
-  id:'directions', title:'ASKING DIRECTIONS', sub:'길 물어보기', titleKo:'길 묻기',
+  id:'directions', title:'ASKING DIRECTIONS', sub:'Asking for directions', titleKo:'Asking Directions',
   difficulty:'Beginner', icon:'🗺️', locked:false,
   nodes:{
-    start:{type:'start',x:3,y:50,label:'길을 잃음',next:'look_around'},
-    look_around:{type:'npc',x:13,y:50,label:'주위 둘러보기',npc:'나',scene:'낯선 거리',
+    start:{type:'start',x:3,y:50,label:'Lost',next:'look_around'},
+    look_around:{type:'npc',x:13,y:50,label:'Look around',npc:'Me',scene:'Unfamiliar street',
       text:'(지도 앱이 안 돼서 길을 잃었다...)',textEn:'(Map app isn\'t working, I\'m lost...)',
       choices:[
         {id:'la1',text:'(행인에게) 저기요, 길 좀 물어볼게요',textEn:'Excuse me, can I ask for directions?',next:'ask_person',pts:3,phrase:'길 좀 물어볼게요'},
         {id:'la2',text:'(편의점에 들어감) 여기 지하철역 어디예요?',textEn:'(enters convenience store) Where is the subway?',next:'conv_help',pts:2,phrase:'지하철역 어디예요?'},
         {id:'la3',text:'(감으로 걸어봄)',textEn:'(walks by instinct)',next:'wrong_way',pts:0}
       ]},
-    ask_person:{type:'npc',x:26,y:35,label:'행인에게 묻기',npc:'행인',scene:'거리',
+    ask_person:{type:'npc',x:26,y:35,label:'Ask a passerby',npc:'Passerby',scene:'Street',
       text:'네! 어디 가세요?',textEn:'Sure! Where are you going?',
       choices:[
         {id:'ap1',text:'강남역 가려고 하는데요',textEn:'I\'m trying to go to Gangnam Station',next:'directions_given',pts:2,phrase:'강남역 가려고 하는데요'},
         {id:'ap2',text:'이 주소로 가고 싶어요 (핸드폰 보여줌)',textEn:'I want to go to this address (shows phone)',next:'directions_given',pts:2}
       ]},
-    conv_help:{type:'npc',x:26,y:70,label:'편의점에서 묻기',npc:'점원',scene:'편의점',
+    conv_help:{type:'npc',x:26,y:70,label:'Ask at the store',npc:'Clerk',scene:'Convenience store',
       text:'지하철역이요? 여기서 나가서 오른쪽으로 쭉 가면 있어요!',textEn:'Subway? Go out and keep going right!',
       choices:[
         {id:'cvh1',text:'오른쪽이요? 감사합니다!',textEn:'Right? Thank you!',next:'follow_right',pts:2,phrase:'오른쪽이요'},
         {id:'cvh2',text:'오른쪽이... 어느 쪽이에요?',textEn:'Right is... which way?',next:'point_dir',pts:1}
       ]},
-    wrong_way:{type:'npc',x:26,y:15,label:'엉뚱한 방향',npc:'나',scene:'골목길',
+    wrong_way:{type:'npc',x:26,y:15,label:'Wrong direction',npc:'Me',scene:'Back alley',
       text:'(20분째 걷고 있는데 점점 더 모르는 곳으로...)',textEn:'(Walking for 20 min, getting more lost...)',
       choices:[
         {id:'ww1',text:'(결국 사람에게 물어봄) 저기요!',textEn:'(finally asks someone) Excuse me!',next:'ask_person',pts:1},
         {id:'ww2',text:'(계속 걸음)',textEn:'(keeps walking)',next:'circle_end',pts:0}
       ]},
-    circle_end:{type:'end',x:40,y:15,label:'제자리 엔딩 🔄',npc:'나',scene:'출발점',
+    circle_end:{type:'end',x:40,y:15,label:'Back-to-start ending 🔄',npc:'Me',scene:'Starting point',
       text:'어...? 여기 아까 왔던 곳 아니야?? (원점 회귀 ㅋㅋ)',textEn:'Wait...? Isn\'t this where I started?? (back to square one lol)',
       choices:[]},
-    point_dir:{type:'npc',x:40,y:70,label:'방향 확인',npc:'점원',scene:'편의점',
+    point_dir:{type:'npc',x:40,y:70,label:'Check direction',npc:'Clerk',scene:'Convenience store',
       text:'(밖으로 나와서 가리키며) 저쪽이요! 5분이면 돼요~',textEn:'(comes outside and points) That way! 5 minutes~',
       choices:[
         {id:'pd1',text:'아! 감사합니다!',textEn:'Ah! Thank you!',next:'follow_right',pts:2,phrase:'감사합니다'}
       ]},
-    directions_given:{type:'npc',x:40,y:35,label:'길 안내',npc:'행인',scene:'거리',
+    directions_given:{type:'npc',x:40,y:35,label:'Directions',npc:'Passerby',scene:'Street',
       text:'여기서 직진하다가 사거리에서 왼쪽으로 꺾으세요. 그러면 보여요!',textEn:'Go straight and turn left at the intersection. You\'ll see it!',
       choices:[
         {id:'dg1',text:'직진하고 왼쪽이요? 감사합니다!',textEn:'Straight then left? Thanks!',next:'follow_left',pts:3,phrase:'직진하고 왼쪽이요'},
         {id:'dg2',text:'(왼쪽 오른쪽 헷갈림) 왼쪽이... 이쪽?',textEn:'(confused) Left is... this way?',next:'wrong_turn',pts:1}
       ]},
-    follow_left:{type:'npc',x:56,y:35,label:'왼쪽으로',npc:'나',scene:'사거리',
+    follow_left:{type:'npc',x:56,y:35,label:'Go left',npc:'Me',scene:'Intersection',
       text:'(사거리 도착! 왼쪽으로 꺾으니까 역이 보인다!)',textEn:'(At the intersection! Turn left and I can see the station!)',
       choices:[
         {id:'fl1',text:'찾았다! 감사합니다~',textEn:'Found it! Thank you~',next:'found',pts:2}
       ]},
-    follow_right:{type:'npc',x:56,y:70,label:'오른쪽으로',npc:'나',scene:'거리',
+    follow_right:{type:'npc',x:56,y:70,label:'Go right',npc:'Me',scene:'Street',
       text:'(오른쪽으로 걷다보니 지하철 표지가 보인다!)',textEn:'(Walking right, I can see the subway sign!)',
       choices:[
         {id:'fr1',text:'오 저기다! 감사합니다~',textEn:'Oh there it is! Thank you~',next:'found',pts:2}
       ]},
-    wrong_turn:{type:'npc',x:56,y:15,label:'잘못된 방향',npc:'또 다른 행인',scene:'골목',
+    wrong_turn:{type:'npc',x:56,y:15,label:'Wrong turn',npc:'Another passerby',scene:'Alley',
       text:'아 거기 아니에요! 반대쪽이에요 ㅋㅋ',textEn:'No not that way! It\'s the opposite direction haha',
       choices:[
         {id:'wt1',text:'아 ㅋㅋ 감사합니다!',textEn:'Oh haha thanks!',next:'follow_left',pts:1}
       ]},
-    found:{type:'end',x:75,y:50,label:'도착 성공! 🗺️',npc:'나',scene:'지하철역 앞',
+    found:{type:'end',x:75,y:50,label:'Made it! 🗺️',npc:'Me',scene:'Subway station',
       text:'드디어 찾았다! 한국어로 길 물어보기 성공! 🎉',textEn:'Finally found it! Successfully asked for directions in Korean! 🎉',
       choices:[]}
   },
@@ -6418,11 +6418,11 @@ var _FT_SCENARIOS = [
   ]
 },
 {
-  id:'hospital', title:'THE HOSPITAL', sub:'병원에서 증상 설명하기', titleKo:'병원 방문',
+  id:'hospital', title:'THE HOSPITAL', sub:'Describing symptoms at a hospital', titleKo:'Hospital Visit',
   difficulty:'Intermediate', icon:'🏥', locked:false,
   nodes:{
-    start:{type:'start',x:3,y:50,label:'병원 도착',next:'reception'},
-    reception:{type:'npc',x:13,y:50,label:'접수',npc:'간호사',scene:'접수 데스크',
+    start:{type:'start',x:3,y:50,label:'Arrive at hospital',next:'reception'},
+    reception:{type:'npc',x:13,y:50,label:'Reception',npc:'Nurse',scene:'Reception desk',
       text:'안녕하세요~ 어디가 불편하세요?',textEn:'Hello~ What seems to be the problem?',
       choices:[
         {id:'rc1',text:'머리가 아프고 열이 나요',textEn:'I have a headache and fever',next:'form',pts:3,phrase:'머리가 아프고 열이 나요'},
@@ -6430,52 +6430,52 @@ var _FT_SCENARIOS = [
         {id:'rc3',text:'(번역기로) I am... 아프다...',textEn:'(with translator) I am... sick...',next:'nurse_help',pts:1},
         {id:'rc4',text:'강아지가 아파요',textEn:'My dog is sick',next:'vet_end',pts:0}
       ]},
-    vet_end:{type:'end',x:24,y:15,label:'동물병원 아닌데 🐶',npc:'간호사',scene:'접수',
+    vet_end:{type:'end',x:24,y:15,label:'Not a vet 🐶',npc:'Nurse',scene:'Reception',
       text:'여기는 사람 병원이에요... 동물병원은 길 건너편에 있어요 ㅋㅋ',textEn:'This is a hospital for people... The vet is across the street haha',
       choices:[]},
-    nurse_help:{type:'npc',x:24,y:80,label:'간호사 도움',npc:'간호사',scene:'접수',
+    nurse_help:{type:'npc',x:24,y:80,label:'Nurse helps',npc:'Nurse',scene:'Reception',
       text:'괜찮아요~ 어디가 아프세요? (몸 가리키며) 여기? 여기?',textEn:'It\'s okay~ Where does it hurt? (pointing) Here? Here?',
       choices:[
         {id:'nh1',text:'(배를 가리키며) 여기... 아파요',textEn:'(points at stomach) Here... hurts',next:'form',pts:2,phrase:'여기 아파요'}
       ]},
-    form:{type:'npc',x:28,y:50,label:'접수서 작성',npc:'간호사',scene:'접수',
+    form:{type:'npc',x:28,y:50,label:'Fill in form',npc:'Nurse',scene:'Reception',
       text:'보험 있으세요? 여권이나 외국인등록증 주세요.',textEn:'Do you have insurance? Please give me your passport or ARC.',
       choices:[
         {id:'f1',text:'네, 보험 있어요 (카드 건넴)',textEn:'Yes I have insurance (hands card)',next:'wait_doc',pts:2,phrase:'보험 있어요'},
         {id:'f2',text:'보험 없어요...',textEn:'I don\'t have insurance...',next:'no_insurance',pts:1}
       ]},
-    no_insurance:{type:'npc',x:40,y:75,label:'보험 없음',npc:'간호사',scene:'접수',
+    no_insurance:{type:'npc',x:40,y:75,label:'No insurance',npc:'Nurse',scene:'Reception',
       text:'보험 없으시면 진료비가 좀 나올 수 있어요. 괜찮으세요?',textEn:'Without insurance it might be expensive. Is that okay?',
       choices:[
         {id:'ni1',text:'네, 괜찮아요',textEn:'Yes, that\'s fine',next:'wait_doc',pts:2,phrase:'괜찮아요'}
       ]},
-    wait_doc:{type:'npc',x:42,y:50,label:'진료 대기',npc:'간호사',scene:'대기실',
+    wait_doc:{type:'npc',x:42,y:50,label:'Wait for doctor',npc:'Nurse',scene:'Waiting room',
       text:'잠시만 기다려주세요~ 곧 불러드릴게요.',textEn:'Please wait a moment~ We\'ll call you soon.',
       choices:[
         {id:'wd1',text:'(기다림) 네~',textEn:'(waits) Okay~',next:'see_doctor',pts:1}
       ]},
-    see_doctor:{type:'npc',x:55,y:50,label:'의사 진료',npc:'의사',scene:'진료실',
+    see_doctor:{type:'npc',x:55,y:50,label:'See the doctor',npc:'Doctor',scene:'Exam room',
       text:'어서오세요. 어디가 불편하세요? 언제부터 아팠어요?',textEn:'Come in. What\'s bothering you? When did it start?',
       choices:[
         {id:'sd1',text:'어제부터 머리가 아프고 열이 나요',textEn:'Since yesterday, headache and fever',next:'examine',pts:3,phrase:'어제부터 아팠어요'},
         {id:'sd2',text:'3일 전부터 배가 아파요. 설사도 해요',textEn:'Stomach pain for 3 days. Also diarrhea',next:'examine',pts:3,phrase:'설사도 해요'},
         {id:'sd3',text:'(증상을 과장해서 설명) 온몸이 다 아파요!!!',textEn:'(exaggerates) MY WHOLE BODY HURTS!!!',next:'drama_end',pts:0}
       ]},
-    drama_end:{type:'end',x:68,y:15,label:'응급실 이송 😅',npc:'의사',scene:'진료실',
+    drama_end:{type:'end',x:68,y:15,label:'Sent to the ER 😅',npc:'Doctor',scene:'Exam room',
       text:'온몸이요?! 간호사! 응급실 준비해주세요! ...환자분 표정이 너무 괜찮아 보이는데요?',textEn:'Whole body?! Nurse! Prep the ER! ...The patient looks surprisingly fine though?',
       choices:[]},
-    examine:{type:'npc',x:68,y:50,label:'검사',npc:'의사',scene:'진료실',
+    examine:{type:'npc',x:68,y:50,label:'Exam',npc:'Doctor',scene:'Exam room',
       text:'음, 알겠습니다. 입 좀 벌려 보세요. 아~ 해보세요.',textEn:'I see. Open your mouth please. Say ah~.',
       choices:[
         {id:'ex1',text:'아~~~',textEn:'Ah~~~',next:'prescription',pts:2}
       ]},
-    prescription:{type:'npc',x:80,y:50,label:'처방',npc:'의사',scene:'진료실',
+    prescription:{type:'npc',x:80,y:50,label:'Prescription',npc:'Doctor',scene:'Exam room',
       text:'감기 같네요. 약 처방해드릴게요. 3일치 드릴 테니 하루 세 번 드세요.',textEn:'Looks like a cold. I\'ll prescribe medicine. Take it 3 times a day for 3 days.',
       choices:[
         {id:'pr1',text:'감사합니다. 약국은 어디예요?',textEn:'Thank you. Where is the pharmacy?',next:'done_hosp',pts:3,phrase:'약국은 어디예요?'},
         {id:'pr2',text:'하루에 세 번이요? 알겠습니다',textEn:'Three times a day? Got it',next:'done_hosp',pts:2,phrase:'하루에 세 번이요'}
       ]},
-    done_hosp:{type:'end',x:94,y:50,label:'진료 완료! 🏥',npc:'의사',scene:'진료실',
+    done_hosp:{type:'end',x:94,y:50,label:'Visit done! 🏥',npc:'Doctor',scene:'Exam room',
       text:'1층 약국에서 약 받으세요. 푹 쉬시고 안 나으면 다시 오세요~',textEn:'Get your medicine at the pharmacy on 1F. Rest well and come back if it doesn\'t improve~',
       choices:[]}
   },
@@ -6487,68 +6487,68 @@ var _FT_SCENARIOS = [
   ]
 },
 {
-  id:'phone-shop', title:'THE PHONE SHOP', sub:'통신사에서 폰 개통하기', titleKo:'폰 개통',
+  id:'phone-shop', title:'THE PHONE SHOP', sub:'Activating a phone at a carrier store', titleKo:'Phone Activation',
   difficulty:'Intermediate', icon:'📱', locked:false,
   nodes:{
-    start:{type:'start',x:3,y:50,label:'통신사 입장',next:'staff_greet'},
-    staff_greet:{type:'npc',x:13,y:50,label:'직원 인사',npc:'직원',scene:'통신사 매장',
+    start:{type:'start',x:3,y:50,label:'Enter phone shop',next:'staff_greet'},
+    staff_greet:{type:'npc',x:13,y:50,label:'Staff greets',npc:'Staff',scene:'Phone shop',
       text:'어서오세요! 어떤 걸로 도와드릴까요?',textEn:'Welcome! How can I help you?',
       choices:[
         {id:'sg1',text:'폰 개통하러 왔어요',textEn:'I came to activate a phone',next:'plan_type',pts:3,phrase:'폰 개통하러 왔어요'},
         {id:'sg2',text:'유심만 살 수 있어요?',textEn:'Can I just buy a SIM card?',next:'usim_only',pts:2,phrase:'유심만 살 수 있어요?'},
         {id:'sg3',text:'와이파이 비밀번호 뭐예요?',textEn:'What\'s the WiFi password?',next:'wifi_end',pts:0}
       ]},
-    wifi_end:{type:'end',x:24,y:15,label:'와이파이 도둑 😅',npc:'직원',scene:'통신사',
+    wifi_end:{type:'end',x:24,y:15,label:'WiFi thief 😅',npc:'Staff',scene:'Phone shop',
       text:'...여기 카페가 아니라 통신사인데요 ㅋㅋ 와이파이는 "store_5G"이에요...',textEn:'...This is a phone shop, not a cafe lol The WiFi is "store_5G"...',
       choices:[]},
-    usim_only:{type:'npc',x:24,y:75,label:'유심 문의',npc:'직원',scene:'통신사',
+    usim_only:{type:'npc',x:24,y:75,label:'Ask about SIM',npc:'Staff',scene:'Phone shop',
       text:'네! 선불 유심이랑 후불 유심 있어요. 여권 있으시죠?',textEn:'Sure! We have prepaid and postpaid SIMs. Do you have your passport?',
       choices:[
         {id:'uo1',text:'선불로 할게요. 여기 여권이요',textEn:'Prepaid please. Here\'s my passport',next:'plan_choose',pts:2,phrase:'선불로 할게요'},
         {id:'uo2',text:'후불이 뭐예요?',textEn:'What\'s postpaid?',next:'explain_plan',pts:1}
       ]},
-    plan_type:{type:'npc',x:24,y:50,label:'개통 유형',npc:'직원',scene:'통신사',
+    plan_type:{type:'npc',x:24,y:50,label:'Plan type',npc:'Staff',scene:'Phone shop',
       text:'새 폰도 같이 구매하실 건가요, 아니면 유심만 하실 건가요?',textEn:'Will you also buy a new phone, or just a SIM card?',
       choices:[
         {id:'pt1',text:'유심만이요',textEn:'Just SIM',next:'plan_choose',pts:2},
         {id:'pt2',text:'새 폰도 보고 싶어요',textEn:'I\'d like to see new phones too',next:'phone_browse',pts:2,phrase:'새 폰도 보고 싶어요'}
       ]},
-    phone_browse:{type:'npc',x:38,y:35,label:'폰 구경',npc:'직원',scene:'매장 진열대',
+    phone_browse:{type:'npc',x:38,y:35,label:'Browse phones',npc:'Staff',scene:'Display shelf',
       text:'요즘 이 모델이 제일 인기 있어요! 할부도 가능하고요.',textEn:'This model is the most popular! Installment plans are available too.',
       choices:[
         {id:'pb1',text:'한달에 얼마예요?',textEn:'How much per month?',next:'plan_choose',pts:2,phrase:'한달에 얼마예요?'},
         {id:'pb2',text:'제일 비싼 거 주세요!',textEn:'Give me the most expensive one!',next:'expensive_end',pts:0}
       ]},
-    expensive_end:{type:'end',x:52,y:15,label:'통장 텅 💸',npc:'직원',scene:'통신사',
+    expensive_end:{type:'end',x:52,y:15,label:'Broke 💸',npc:'Staff',scene:'Phone shop',
       text:'최신 폰 + 무제한 요금제... 월 18만원입니다! (3년 약정) 😱',textEn:'Latest phone + unlimited plan... 180,000 won/month! (3-year contract) 😱',
       choices:[]},
-    explain_plan:{type:'npc',x:38,y:75,label:'요금제 설명',npc:'직원',scene:'통신사',
+    explain_plan:{type:'npc',x:38,y:75,label:'Plans explained',npc:'Staff',scene:'Phone shop',
       text:'선불은 미리 충전해서 쓰는 거고, 후불은 매달 자동 결제돼요. 외국인은 선불을 많이 써요!',textEn:'Prepaid is pay-in-advance, postpaid is monthly auto-payment. Foreigners usually use prepaid!',
       choices:[
         {id:'ep1',text:'그러면 선불로 할게요',textEn:'Then prepaid please',next:'plan_choose',pts:2}
       ]},
-    plan_choose:{type:'npc',x:52,y:50,label:'요금제 선택',npc:'직원',scene:'통신사',
+    plan_choose:{type:'npc',x:52,y:50,label:'Choose a plan',npc:'Staff',scene:'Phone shop',
       text:'요금제는 3만원, 5만원, 7만원짜리가 있어요. 데이터 차이예요.',textEn:'Plans are 30K, 50K, 70K won. The difference is data.',
       choices:[
         {id:'plc1',text:'5만원짜리로 할게요',textEn:'50K won plan please',next:'id_check',pts:2,phrase:'5만원짜리로 할게요'},
         {id:'plc2',text:'데이터 무제한은 없어요?',textEn:'No unlimited data?',next:'unlimited_q',pts:2,phrase:'데이터 무제한은 없어요?'}
       ]},
-    unlimited_q:{type:'npc',x:64,y:75,label:'무제한 문의',npc:'직원',scene:'통신사',
+    unlimited_q:{type:'npc',x:64,y:75,label:'Ask about unlimited',npc:'Staff',scene:'Phone shop',
       text:'무제한은 후불 요금제에만 있어요. 후불은 외국인등록증이 필요한데, 있으세요?',textEn:'Unlimited is only for postpaid plans. You need an ARC. Do you have one?',
       choices:[
         {id:'uq1',text:'아직 없어요. 5만원짜리로 할게요',textEn:'Not yet. 50K plan then',next:'id_check',pts:2}
       ]},
-    id_check:{type:'npc',x:68,y:50,label:'신분증 확인',npc:'직원',scene:'통신사',
+    id_check:{type:'npc',x:68,y:50,label:'ID check',npc:'Staff',scene:'Phone shop',
       text:'여권 확인할게요. 사인도 부탁드려요.',textEn:'Let me check your passport. Please sign here too.',
       choices:[
         {id:'ic1',text:'(여권 건네고 사인) 여기요',textEn:'(hands passport and signs) Here',next:'activate',pts:2}
       ]},
-    activate:{type:'npc',x:82,y:50,label:'개통 중',npc:'직원',scene:'통신사',
+    activate:{type:'npc',x:82,y:50,label:'Activating',npc:'Staff',scene:'Phone shop',
       text:'유심 넣어드릴게요~ 잠시만요... 네, 개통됐습니다!',textEn:'I\'ll put the SIM in~ One moment... Done, it\'s activated!',
       choices:[
         {id:'ac1',text:'감사합니다! 인터넷 되는지 확인해볼게요',textEn:'Thanks! Let me check if internet works',next:'done_phone',pts:2,phrase:'인터넷 되는지 확인해볼게요'}
       ]},
-    done_phone:{type:'end',x:94,y:50,label:'개통 완료! 📱',npc:'직원',scene:'통신사',
+    done_phone:{type:'end',x:94,y:50,label:'Activated! 📱',npc:'Staff',scene:'Phone shop',
       text:'잘 되시죠? 문제 있으면 언제든 오세요~ 감사합니다!',textEn:'Working well? Come anytime if there are issues~ Thank you!',
       choices:[]}
   },
@@ -7005,11 +7005,11 @@ function showEndNode(node) {
   choicesEl.innerHTML = '<div class="ft-result">'
     + '<div class="ft-result-icon" style="display:inline-flex;width:48px;height:48px;color:#a78bfa">'+BM_ICON_PARTY+'</div>'
     + '<div style="font-size:18px;font-weight:900;color:#fff;margin-bottom:4px">Scenario Complete!</div>'
-    + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:6px">탐색률: ' + pct + '% (' + visitedCount + '/' + totalNodes + ' 노드)</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:16px">다른 선택지를 골라 더 많은 경로를 탐색해보세요!</div>'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:6px">Explored: ' + pct + '% (' + visitedCount + '/' + totalNodes + ' nodes)</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:16px">Pick different choices to explore more paths!</div>'
     + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
-    + '<button class="ft-result-btn" onclick="startScenario(\'' + _ftState.scenario.id + '\')" style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시 하기</span></button>'
-    + '<button class="ft-result-btn sec" style="background:rgba(255,255,255,.1);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px" onclick="closeFtPlayer();showFtChart()"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg></span><span>플로우차트 보기</span></button>'
+    + '<button class="ft-result-btn" onclick="startScenario(\'' + _ftState.scenario.id + '\')" style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Play again</span></button>'
+    + '<button class="ft-result-btn sec" style="background:rgba(255,255,255,.1);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px" onclick="closeFtPlayer();showFtChart()"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg></span><span>View flowchart</span></button>'
     + '</div></div>';
   // Phrases
   var phrasesEl = document.getElementById('ftp-phrases');
@@ -7527,11 +7527,11 @@ var _wbHidden = false;
 function toggleWbHide() {
   _wbHidden = !_wbHidden;
   var btn = document.getElementById('wb-hide-btn');
-  if (btn) btn.innerHTML = _wbHidden ? '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span><span>뜻 보기</span></span>' : '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg></span><span>뜻 가리기</span></span>';
+  if (btn) btn.innerHTML = _wbHidden ? '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span><span>Show meanings</span></span>' : '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg></span><span>Hide meanings</span></span>';
   document.querySelectorAll('.wb-entry-en').forEach(function(el) {
     if (_wbHidden) {
       el.dataset.original = el.textContent;
-      el.textContent = '??? (탭하면 보기)';
+      el.textContent = '??? (tap to reveal)';
       el.style.cursor = 'pointer';
       el.style.color = '#d8b4fe';
       el.onclick = function() { this.textContent = this.dataset.original; this.style.color = ''; };
@@ -7674,7 +7674,7 @@ function renderWordBankList(words) {
   var list = document.getElementById('wb-full-list');
   if (!list) return;
   if (!words.length) {
-    list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">저장한 단어가 없습니다</div>';
+    list.innerHTML = '<div style="color:rgba(255,255,255,.4);text-align:center;padding:20px 0">No saved words yet</div>';
     return;
   }
   list.innerHTML = words.map(function(w, wi) {
@@ -7714,7 +7714,7 @@ function wbPracticeExample(idx) {
     + '<div id="wb-prac-fb" style="margin-top:10px;min-height:28px;font-size:13px;font-weight:700"></div>'
     + '<div style="display:flex;gap:8px;margin-top:10px">'
     + '<button onclick="_wbCheckPractice(\'' + ko.replace(/\\/g,"\\\\").replace(/'/g,"\\'") + '\')" style="flex:1;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-weight:800;cursor:pointer;font-family:inherit">Check</button>'
-    + '<button onclick="_wbClosePractice()" style="padding:11px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.05);color:#fff;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>'
+    + '<button onclick="_wbClosePractice()" style="padding:11px 20px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.05);color:#fff;font-weight:700;cursor:pointer;font-family:inherit">Close</button>'
     + '</div></div>';
   var modal = document.getElementById('wb-practice-modal');
   if (!modal) {
@@ -7905,7 +7905,7 @@ function showReviewNotifications() {
       var mDeadline = document.getElementById('sr-notif-monthly-deadline');
       if (mDeadline) {
         var d = kstNow().getDate();
-        mDeadline.textContent = '30문제 · ' + (3 - d + 1) + '일 남음 · 임시저장 1회 가능';
+        mDeadline.textContent = '30 questions · ' + (3 - d + 1) + ' days left · 1 save allowed';
       }
       if (rvLoadSaved('monthly')) {
         monthlyEl.querySelector('div > div > div:nth-child(2) > div:first-child').textContent = 'Monthly Review Continue!';
@@ -7940,7 +7940,7 @@ function updateReviewCardStates() {
         var ms = document.getElementById('monthly-review-sub');
         if (ms) {
           var d = kstNow().getDate();
-          ms.textContent = '25 questions · ' + (3 - d + 1) + '일 남음';
+          ms.textContent = '25 questions · ' + (3 - d + 1) + ' days left';
         }
       }
     }
@@ -8486,7 +8486,7 @@ function _renderSpeakingScoreCard(s, targetEl) {
         + '<div>'
           + '<div style="font-size:12px;font-weight:800;color:#0f172a;letter-spacing:-.01em">Speaking Analysis</div>'
           + '<div style="font-size:10px;color:' + (s.model === 'azure' ? '#7c3aed' : '#94a3b8') + ';font-weight:600">'
-            + (s.model === 'azure' ? '✦ Azure AI 발음 평가' : 'AI auto-scored from your recording')
+            + (s.model === 'azure' ? '✦ Azure AI pronunciation score' : 'AI auto-scored from your recording')
           + '</div>'
         + '</div>'
       + '</div>'
@@ -8501,10 +8501,10 @@ function _renderSpeakingScoreCard(s, targetEl) {
   if (s.model === 'azure') {
     // 4-metric grid: Accuracy, Fluency, Completeness, Overall
     var metrics = [
-      { v: s.pronunciation,  label: '정확도',    sub: 'Accuracy' },
-      { v: s.fluency_score,  label: '유창성',    sub: 'Fluency' },
-      { v: s.completeness,   label: '완성도',    sub: 'Completeness' },
-      { v: s.overall,        label: '종합',      sub: 'Overall' },
+      { v: s.pronunciation,  label: 'Accuracy',  sub: '' },
+      { v: s.fluency_score,  label: 'Fluency',   sub: '' },
+      { v: s.completeness,   label: 'Completeness', sub: '' },
+      { v: s.overall,        label: 'Overall',   sub: '' },
     ];
     gaugesHtml = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;animation:kh-speak-card-in .4s ease-out">'
       + metrics.map(function(m) {
@@ -8539,7 +8539,7 @@ function _renderSpeakingScoreCard(s, targetEl) {
       }).join('');
       wordHtml = '<div style="margin-top:14px">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
-          + '<div style="font-size:10px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.06em">단어별 발음 점수</div>'
+          + '<div style="font-size:10px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.06em">Pronunciation by word</div>'
           + '<div style="display:flex;gap:6px;font-size:10px;color:#64748b"><span style="color:#16a34a">■ 80+</span><span style="color:#ca8a04">■ 60-79</span><span style="color:#dc2626">■ ~59</span></div>'
         + '</div>'
         + '<div style="line-height:1.7">' + azureWordChips + '</div>'
@@ -8660,7 +8660,7 @@ function toggleSpeakRecord() {
   if (_speakRecorder && _speakRecorder.state === 'recording') {
     _speakRecorder.stop();
     if (_speakRecognition) { try { _speakRecognition.stop(); } catch(e) {} }
-    document.getElementById('wm-speak-record').innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span><span>내 목소리 녹음</span></span>';
+    document.getElementById('wm-speak-record').innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span><span>Record my voice</span></span>';
     document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.08)';
     return;
   }
@@ -8674,7 +8674,7 @@ function toggleSpeakRecord() {
       || (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported('audio/webm'))) {
     var statusEl = document.getElementById('wm-speak-status');
     if (statusEl) {
-      statusEl.textContent = '이 브라우저는 녹음을 지원하지 않아요. Chrome 또는 Safari에서 열어주세요. / This browser does not support recording — please open in Chrome or Safari.';
+      statusEl.textContent = 'This browser does not support recording — please open in Chrome or Safari.';
     } else {
       try { showToast && showToast('This browser does not support recording. Please use Chrome or Safari.', true); } catch(_) {}
     }
@@ -8708,7 +8708,7 @@ function toggleSpeakRecord() {
         var target = written.length >= 15 ? written : (_wmExampleAnswer || written);
         if (!target) return;
         var elapsed = Date.now() - _speakStartedAt;
-        document.getElementById('wm-speak-status').textContent = '발음 분석 중...';
+        document.getElementById('wm-speak-status').textContent = 'Analyzing pronunciation...';
         var azureResult = await _speakAnalyzeAzure(_speakBlob, target, elapsed);
         if (azureResult) {
           _speakScores = azureResult;
@@ -8742,18 +8742,18 @@ function toggleSpeakRecord() {
           if (_speakRecognition) { try { _speakRecognition.stop(); } catch(e) {} }
           var rec = document.getElementById('wm-speak-record');
           if (rec) {
-            rec.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span><span>내 목소리 녹음</span></span>';
+            rec.innerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span><span>Record my voice</span></span>';
             rec.style.background = 'rgba(239,68,68,.08)';
           }
         }
       } catch(_) {}
     }, 120000);
-    document.getElementById('wm-speak-record').innerHTML = '⏹️ 녹음 중... (누르면 정지)';
+    document.getElementById('wm-speak-record').innerHTML = '⏹️ Recording... (tap to stop)';
     document.getElementById('wm-speak-record').style.background = 'rgba(239,68,68,.2)';
     var statusEl = document.getElementById('wm-speak-status');
     if (statusEl) {
       statusEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:8px">'
-        + '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>'
+        + '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>Recording...</span></span>'
         + '<canvas id="wm-speak-waveform" width="280" height="46" style="width:100%;max-width:280px;height:46px;border-radius:10px;background:linear-gradient(180deg,#fff5f5,#fff);border:1px solid #fecaca"></canvas>'
         + '</div>';
     }
@@ -8775,18 +8775,18 @@ function _showMicPermError(statusElId, err) {
   var isInApp = /kakaotalk|naver\(inapp;|line\/|fb_iab|fbav|instagram|wv\)/.test(ua);
   var msg;
   if (isInApp) {
-    msg = '내장 브라우저는 녹음을 지원하지 않아요. 우상단 ⋮ → Chrome/Safari로 열어주세요.\nThis in-app browser does not support recording — open in Chrome or Safari.';
+    msg = 'This in-app browser does not support recording — open in Chrome or Safari.';
   } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
-    msg = '마이크 장치를 찾을 수 없어요. 외부 마이크가 연결돼 있다면 시스템 설정을 확인해주세요.\nNo microphone detected. Check your system audio settings.';
+    msg = 'No microphone detected. Check your system audio settings.';
   } else if (name === 'NotReadableError' || name === 'TrackStartError') {
-    msg = '다른 앱이 마이크를 사용 중이에요. Zoom/Discord/통화 등을 닫고 다시 시도하세요.\nMicrophone is in use by another app — close Zoom/Discord/etc. and retry.';
+    msg = 'Microphone is in use by another app — close Zoom/Discord/etc. and retry.';
   } else if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
     msg = isIOS
-      ? '마이크 권한이 차단됐어요. iOS 설정 → Safari → 마이크 → 허용 후 페이지 새로고침.\nMicrophone blocked — iOS Settings → Safari → Microphone → Allow, then refresh.'
-      : '마이크 권한이 차단됐어요. 주소창의 🔒 아이콘 → 마이크 → 허용 후 새로고침.\nMicrophone blocked — click the 🔒 in the address bar → Microphone → Allow, then refresh.';
+      ? 'Microphone blocked — iOS Settings → Safari → Microphone → Allow, then refresh.'
+      : 'Microphone blocked — click the 🔒 in the address bar → Microphone → Allow, then refresh.';
   } else {
     // Unknown / dismissed prompt
-    msg = '마이크 접근 실패 (' + (name || 'unknown') + '). 다시 시도하거나 브라우저 권한을 확인하세요.\nMicrophone access failed (' + (name || 'unknown') + '). Retry or check browser permissions.';
+    msg = 'Microphone access failed (' + (name || 'unknown') + '). Retry or check browser permissions.';
   }
   if (statusElId) {
     var el = document.getElementById(statusElId);
@@ -8976,7 +8976,7 @@ function copyHelper(btn) {
   onWriteAreaInput(); // refresh counters, rings and autosave
   // Heuristic: a blank template ("___") was inserted, not a full
   // sentence — nudge the learner to fill it in themselves.
-  showToast(/_{2,}/.test(ko) ? '빈칸 템플릿을 넣었어요. 직접 채워보세요!' : 'Copied!');
+  showToast(/_{2,}/.test(ko) ? 'Blank template added — fill it in yourself!' : 'Copied!');
 }
 
 // Pick a "good" eojeol to hide for fill-in-the-blank helpers. Skips
@@ -9043,7 +9043,7 @@ function revealHelperAnswer(btn) {
         blank.outerHTML = '<span style="color:#0d6e5a;font-weight:700">' + (word || '___') + '</span>';
       }
     }
-    btn.textContent = '🙈 다시 가리기';
+    btn.textContent = '🙈 Hide again';
   } else {
     ans.style.display = 'none';
     btn.textContent = '👁 Show answer';
@@ -10254,13 +10254,13 @@ var _fbPatternLabels = {
   OTHER:      'Other'
 };
 var _fbPatternHelp = {
-  SPELLING:   '맞춤법 — typo / 받침 mismatch / spacing.',
-  PARTICLE:   '조사 — wrong subject/object/topic particle (이/가, 을/를, 은/는, etc.).',
-  TENSE:      '시제 — present / past / future or aspect (었/았, 고 있다, 게 되다).',
-  WORD_ORDER: '어순 — subject / object / modifier placement.',
-  VOCAB:      '어휘 — better word choice for this context.',
-  NUANCE:     '뉘앙스 — register / politeness / connotation polish.',
-  OTHER:      '기타 — see the reason for details.'
+  SPELLING:   'typo / 받침 mismatch / spacing.',
+  PARTICLE:   'wrong subject/object/topic particle (이/가, 을/를, 은/는, etc.).',
+  TENSE:      'present / past / future or aspect (었/았, 고 있다, 게 되다).',
+  WORD_ORDER: 'subject / object / modifier placement.',
+  VOCAB:      'better word choice for this context.',
+  NUANCE:     'register / politeness / connotation polish.',
+  OTHER:      'see the reason for details.'
 };
 // Pattern → Study Room focus query so "Practice this pattern" deep-links
 // into the right drill instead of the room landing page.
@@ -10612,7 +10612,7 @@ function renderDetailedFeedback(fb, writingText, inPackage) {
   // Nuance / Word Swaps
   if (fb.nuance && (fb.nuance.comment || (fb.nuance.word_swaps && fb.nuance.word_swaps.length))) {
     h += '<div style="margin-bottom:14px;padding:12px 14px;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.15);border-radius:10px">'
-      + '<div style="font-size:11px;font-weight:700;color:#c4b5fd;margin-bottom:6px">💬 뉘앙스</div>'
+      + '<div style="font-size:11px;font-weight:700;color:#c4b5fd;margin-bottom:6px">💬 Nuance</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:6px">' + (fb.nuance.comment||'') + '</div>';
     if (fb.nuance.word_swaps && fb.nuance.word_swaps.length) {
       fb.nuance.word_swaps.forEach(function(ws) {
@@ -10915,7 +10915,7 @@ async function renderFeedbackInboxContent() {
       });
     }
   } catch(e) {
-    content.innerHTML = '<div style="text-align:center;color:#f87171;padding:24px">오류: ' + e.message + '</div>';
+    content.innerHTML = '<div style="text-align:center;color:#f87171;padding:24px">Error: ' + e.message + '</div>';
   }
 }
 
@@ -11419,7 +11419,7 @@ function showLoginWall() {
     + '<div class="login-wall-box">'
     + '<div class="lwb-icon">📖</div>'
     + '<div class="lwb-title">Study Room</div>'
-    + '<div class="lwb-sub">로그인하면 매일 새 토픽, AI 문법·단어, 작문 피드백까지 모두 이용할 수 있어요.<br><br>Sign in to unlock daily topics, AI vocab & grammar, and personal writing feedback.</div>'
+    + '<div class="lwb-sub">Sign in to unlock daily topics, AI vocab & grammar, and personal writing feedback.</div>'
     + '<button class="lwb-btn" onclick="openAuthModal(&apos;signin&apos;)">🔑 Sign In</button>'
     + '<button class="lwb-btn2" onclick="openAuthModal(&apos;signup&apos;)">✨ Create Free Account</button>'
     + '</div>';
@@ -11686,7 +11686,7 @@ async function _loadFreeWritingHints() {
       if (savedWords.length) {
         var top6 = savedWords.slice(0, 6).map(function(w){ return (w.word_ko || '').replace(/[<&]/g, ''); }).filter(Boolean);
         if (top6.length) {
-          html += '<div style="font-size:11px;font-weight:800;color:#1d4ed8;margin-bottom:6px">💡 최근 저장한 단어 ' + top6.length + '개 활용 추천:</div>'
+          html += '<div style="font-size:11px;font-weight:800;color:#1d4ed8;margin-bottom:6px">💡 Try using your ' + top6.length + ' recently saved words:</div>'
             + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">'
             + top6.map(function(k){ return '<span style="font-size:12px;padding:3px 10px;background:rgba(255,255,255,.7);border:1px solid #bfdbfe;border-radius:20px;color:#1d4ed8;font-weight:700">' + k + '</span>'; }).join('')
             + '</div>';
@@ -11695,16 +11695,16 @@ async function _loadFreeWritingHints() {
       if (lastArticle) {
         var lt = (lastArticle.title_en || lastArticle.title || '').replace(/[<&]/g, '');
         if (lt) {
-          html += '<div style="font-size:11px;color:#1e40af;margin-top:4px">📖 마지막 읽은 기사: <b>' + lt + '</b> — 이 기사 주제로 써봐도 좋아요.</div>';
+          html += '<div style="font-size:11px;color:#1e40af;margin-top:4px">📖 Last article you read: <b>' + lt + '</b> — you could write about this topic too.</div>';
         }
       }
-      hintsHost.innerHTML = html || '<div style="font-size:11px;color:#1e40af">저장한 단어가 없어요 — 기사 읽으면서 ★ 표시해두면 여기에 모여요.</div>';
+      hintsHost.innerHTML = html || '<div style="font-size:11px;color:#1e40af">No saved words yet — tap ★ while reading articles and they’ll collect here.</div>';
     }
 
     if (grammarEl) {
       grammarEl.innerHTML = '<div style="font-size:11px;color:#475569;line-height:1.7;padding:6px 8px;background:#f8fafc;border-radius:6px">'
         + '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">🪶 Tip</div>'
-        + 'Free Writing은 채점 규칙이 같은 Topic Yum Yum과 동일해요. 본인이 공부한 단어/문법을 의도적으로 써보면 튜터가 그 부분에 코멘트를 더 깊이 달아줘요.'
+        + 'Free Writing is graded with the same rules as Topic Yum Yum. Deliberately use words and grammar you’ve studied, and the tutor will comment on them in more depth.'
         + '</div>';
     }
   } catch (e) {
@@ -11852,7 +11852,7 @@ async function rspLoadSource(tab) {
       _rspData.article = (data||[]).map(function(r){ return { id:r.id, title:r.title, body:null }; });
     } else if (tab === 'conv') {
       var { data } = await sb.from('conversations_data').select('id,name,data').order('created_at',{ascending:false}).limit(40);
-      _rspData.conv = (data||[]).map(function(r){ var d=r.data||{}; return { id:r.id, title:d.name||r.name||'대화', body:null }; });
+      _rspData.conv = (data||[]).map(function(r){ var d=r.data||{}; return { id:r.id, title:d.name||r.name||'Conversation', body:null }; });
     } else {
       // Korea Buzz = articles in the 'buzz' section
       var { data } = await sb.from('articles').select('id,title,title_en,section').eq('status','published').order('created_at',{ascending:false}).limit(120);
@@ -12017,7 +12017,7 @@ async function loadConvsForReading() {
           return (m.who || (m.s==='l'?'A':'B')) + ': ' + m.txt;
         }).join('\n');
         var vocab = (d.vocab || []).map(function(v){ return v.ko + ' (' + v.en + ')'; }).join(', ');
-        opt.dataset.body  = msgs + (vocab ? '\n\n[단어] ' + vocab : '');
+        opt.dataset.body  = msgs + (vocab ? '\n\n[Vocab] ' + vocab : '');
         opt.dataset.title = d.name || row.name || '';
         opt.dataset.type  = 'conv';
         opt.dataset.ctx   = d.ctx || row.ctx || '';
@@ -12150,7 +12150,7 @@ function switchModalMode(mode) {
     if (helpersBlock) helpersBlock.style.display = 'none';
     if (readingBlock) readingBlock.style.display = 'none';
     if (topicContent) topicContent.style.display = 'none';
-    if (placeholder)  placeholder.placeholder    = '한국어로 자유롭게 써보세요.\n\n공부했던 단어나 표현을 활용해 보세요. 무엇이든 좋아요 — 일상, 의견, 상상한 이야기, 최근 읽은 기사에 대한 생각…';
+    if (placeholder)  placeholder.placeholder    = 'Write freely in Korean.\n\nTry using words and expressions you’ve studied. Anything works — daily life, opinions, made-up stories, thoughts on an article you read…';
     // Lazy-create the free-writing prompt card and load hints from the
     // user's saved words / recent reads.
     if (!freePrompt) {
@@ -12158,8 +12158,8 @@ function switchModalMode(mode) {
       fp.id = 'wm-free-prompt';
       fp.style.cssText = 'font-size:12px;color:#1e3a8a;line-height:1.7;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #93c5fd;border-radius:10px;padding:12px 14px;margin-bottom:10px';
       fp.innerHTML = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#1d4ed8;margin-bottom:6px">🪶 Free Writing</div>'
-        + '<div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:4px">아무 주제나 한국어로 써보세요.</div>'
-        + '<div style="font-size:11px;color:#1e40af">아래 패널에 최근 저장한 단어 + 마지막으로 읽은 기사가 표시돼요 — 그걸 재료로 써보세요.</div>'
+        + '<div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:4px">Write about anything in Korean.</div>'
+        + '<div style="font-size:11px;color:#1e40af">The panel below shows your recently saved words and the last article you read — use them as material.</div>'
         + '<div id="wm-free-hints" style="margin-top:10px"></div>';
       var writeAreaElF = document.getElementById('write-area');
       if (writeAreaElF && writeAreaElF.parentNode) writeAreaElF.parentNode.insertBefore(fp, writeAreaElF);
@@ -12174,14 +12174,14 @@ function switchModalMode(mode) {
     if (sourceBar) sourceBar.style.display = 'none';
     var modalEl = document.querySelector('.wmodal');
     if (modalEl) modalEl.classList.remove('reading-mode');
-    if (modeLabel) modeLabel.textContent = '📓 오늘의 일기';
+    if (modeLabel) modeLabel.textContent = '📓 Today’s Diary';
     if (subEl) subEl.textContent = 'Write about your day in Korean';
     if (leftPanel) leftPanel.style.display = '';
     if (contextBlock) contextBlock.style.display = 'none';
     if (helpersBlock) helpersBlock.style.display = 'none';
     if (readingBlock) readingBlock.style.display = 'none';
     if (topicContent) topicContent.style.display = 'none';
-    if (placeholder) placeholder.placeholder = '오늘 하루를 한국어로 써보세요.\n\n예: 오늘 아침에 커피를 마셨어요. 날씨가 좋아서 산책했어요...\n\nTip: 어려운 부분은 영어로 써도 괜찮아요!';
+    if (placeholder) placeholder.placeholder = 'Write about your day in Korean.\n\nExample: 오늘 아침에 커피를 마셨어요. 날씨가 좋아서 산책했어요...\n\nTip: It’s okay to write the hard parts in English!';
     // Show diary-specific prompt
     if (!diaryPrompt) {
       var dp = document.createElement('div');
@@ -12192,7 +12192,7 @@ function switchModalMode(mode) {
       dp.innerHTML = '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#92400e;margin-bottom:6px">💡 Today\'s Diary Prompt</div>'
         + '<div style="font-size:14px;font-weight:700;color:#78350f;margin-bottom:4px">' + prompts[todayIdx].ko + '</div>'
         + '<div style="font-size:12px;color:#92400e">' + prompts[todayIdx].en + '</div>'
-        + '<div style="font-size:11px;color:#a16207;margin-top:8px;font-style:italic">프롬프트는 참고용이에요. 자유롭게 오늘 하루를 써보세요!</div>';
+        + '<div style="font-size:11px;color:#a16207;margin-top:8px;font-style:italic">The prompts are just for reference. Write freely about your day!</div>';
       var writeAreaEl = document.getElementById('write-area');
       if (writeAreaEl && writeAreaEl.parentNode) writeAreaEl.parentNode.insertBefore(dp, writeAreaEl);
       diaryPrompt = dp;
@@ -12215,7 +12215,7 @@ function switchModalMode(mode) {
     if (leftPanel)    leftPanel.style.display = 'none';
     if (contextBlock) contextBlock.style.display = 'none';
     if (helpersBlock) helpersBlock.style.display = 'none';
-    if (placeholder)  placeholder.placeholder = '읽은 내용을 바탕으로 한국어로 써보세요…\n\nTip: 위의 자료에서 단어와 표현을 활용해 보세요';
+    if (placeholder)  placeholder.placeholder = 'Write in Korean based on what you read…\n\nTip: Use words and expressions from the material above';
     // 소스 선택 안 됐으면 로드 시작
     if (!_selectedArticle) {
       switchModalSource('article', document.getElementById('wsrc-article'));
@@ -12286,8 +12286,8 @@ async function loadModalArticles(sel) {
       opt.textContent = (a.title||'Untitled') + ' [' + (a.level||a.section||'') + ']';
       sel.appendChild(opt);
     });
-    if (!data || !data.length) sel.innerHTML = '<option value="">기사 없음</option>';
-  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+    if (!data || !data.length) sel.innerHTML = '<option value="">No articles</option>';
+  } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
 }
 
 async function loadModalConvs(sel) {
@@ -12302,14 +12302,14 @@ async function loadModalConvs(sel) {
       var d = row.data || {};
       var msgs = (d.msgs||[]).map(function(m){ return (m.who||'')+'\n'+m.txt; }).join('\n');
       var vocab = (d.vocab||[]).map(function(v){ return v.ko+' ('+v.en+')'; }).join(', ');
-      var body = msgs + (vocab ? '\n\n[단어] '+vocab : '');
+      var body = msgs + (vocab ? '\n\n[Vocab] '+vocab : '');
       var opt = document.createElement('option');
-      opt.value = JSON.stringify({id:row.id, title:d.name||row.name||'대화', body:body, type:'conv'});
-      opt.textContent = (d.name||row.name||'대화') + ' [' + (d.lvl||row.lvl||'') + ']';
+      opt.value = JSON.stringify({id:row.id, title:d.name||row.name||'Conversation', body:body, type:'conv'});
+      opt.textContent = (d.name||row.name||'Conversation') + ' [' + (d.lvl||row.lvl||'') + ']';
       sel.appendChild(opt);
     });
     if (!data || !data.length) sel.innerHTML = '<option value="">No conversations available</option>';
-  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+  } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
 }
 
 async function loadModalStories(sel) {
@@ -12324,12 +12324,12 @@ async function loadModalStories(sel) {
       var d = row.data || {};
       var body = (d.body||d.preview||'').replace(/<[^>]*>/g,'').slice(0,800);
       var opt = document.createElement('option');
-      opt.value = JSON.stringify({id:row.id, title:d.title||row.title||'스토리', body:body, type:'story'});
-      opt.textContent = (d.title||row.title||'스토리') + ' [' + (d.lvl||row.lvl||'') + ']';
+      opt.value = JSON.stringify({id:row.id, title:d.title||row.title||'Story', body:body, type:'story'});
+      opt.textContent = (d.title||row.title||'Story') + ' [' + (d.lvl||row.lvl||'') + ']';
       sel.appendChild(opt);
     });
     if (!data || !data.length) sel.innerHTML = '<option value="">No stories available</option>';
-  } catch(e) { sel.innerHTML = '<option value="">로드 실패</option>'; }
+  } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
 }
 
 function onModalSourceSelect(sel) {
@@ -12505,12 +12505,12 @@ function _spSetRecBtn(recording) {
     btn.style.background = 'rgba(239,68,68,.2)';
     btn.style.borderColor = 'rgba(239,68,68,.35)';
     btn.style.color = '#f87171';
-    if (lbl) lbl.textContent = '녹음 중... (누르면 정지)';
+    if (lbl) lbl.textContent = 'Recording... (tap to stop)';
   } else {
     btn.style.background = 'rgba(124,58,237,.1)';
     btn.style.borderColor = 'rgba(139,92,246,.3)';
     btn.style.color = '#a78bfa';
-    if (lbl) lbl.textContent = '녹음 시작';
+    if (lbl) lbl.textContent = 'Start recording';
   }
 }
 
@@ -12551,7 +12551,7 @@ async function toggleSpRecord() {
     var elapsed = Date.now() - _spRecStartedAt;
     _spSetRecBtn(false);
     var st = document.getElementById('sp-status');
-    if (st) st.textContent = '발음 분석 중...';
+    if (st) st.textContent = 'Analyzing pronunciation...';
     var result = await _speakAnalyzeAzure(_spBlob, refText, elapsed);
     if (!result) {
       await new Promise(function(r){ setTimeout(r, 300); });
@@ -12581,7 +12581,7 @@ async function toggleSpRecord() {
   }, 120000);
   _spSetRecBtn(true);
   var st = document.getElementById('sp-status');
-  if (st) st.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>녹음 중...</span></span>';
+  if (st) st.innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:10px;height:10px;background:#ef4444;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.7);animation:rec-pulse 1s ease-in-out infinite"></span><span>Recording...</span></span>';
 }
 
 function completeSpeakingPractice() {
@@ -12637,8 +12637,8 @@ function _pdRenderStep1(item) {
   var vocab = item.vocab_items || [];
   if (!vocab.length) { _pdGoStep(2); return; }   // skip if admin left blank
   body.innerHTML =
-    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📚 이미지 관련 어휘</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:12px">단어를 탭해서 뜻을 확인하세요</div>'
+    '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📚 Vocabulary for this image</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:12px">Tap a word to see its meaning</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px">'
     + vocab.map(function(v) {
         return '<div class="pd-vocab-card" onclick="this.classList.toggle(\'flipped\')">'
@@ -12671,7 +12671,7 @@ function _pdRenderStep2(item) {
   }
   body.innerHTML =
     '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✅ Pick the correct sentence</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:14px">사진을 가장 자연스럽고 문법에 맞게 묘사한 문장을 고르세요.</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:14px">Choose the sentence that describes the photo most naturally and correctly.</div>'
     + '<div id="pd-pick-options" style="display:flex;flex-direction:column;gap:8px"></div>'
     + '<div id="pd-pick-result" style="margin-top:12px;display:none"></div>';
   var opts = document.getElementById('pd-pick-options');
@@ -12722,13 +12722,13 @@ function _pdRenderStep3(item) {
   if (!words.length) { _pdSkipToFinish(); return; }
   body.innerHTML =
     '<div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">📝 Arrange the words</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">단어를 클릭해서 올바른 순서로 배치하세요. 첫 단어는 미리 선택되어 있어요.</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px">Click the words to put them in the right order. The first word is already selected.</div>'
     + '<div id="pd-word-pool" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.07);border-radius:10px;margin-bottom:8px;align-items:center"></div>'
-    + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">내 답:</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">My answer:</div>'
     + '<div id="pd-word-answer" style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;padding:8px;background:rgba(255,255,255,.04);border:1.5px dashed rgba(255,255,255,.18);border-radius:10px;margin-bottom:10px;align-items:center"></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
     + '<button class="sr-activity-btn" onclick="checkWordOrder()">Check answer</button>'
-    + '<button class="sr-pill" onclick="resetWordOrder()">다시하기</button>'
+    + '<button class="sr-pill" onclick="resetWordOrder()">Reset</button>'
     + '</div>'
     + '<div id="pd-word-result" style="margin-top:8px;display:none"></div>';
   renderWordOrderActivity(words);
@@ -12748,7 +12748,7 @@ function checkIncorrectSentence(btn, isWrong) {
   result.style.display = '';
   if (isWrong) {
     btn.style.cssText += ';background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.5);color:#fca5a5';
-    result.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ Correct! 이 문장에 오류가 있어요.</div>';
+    result.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac">✅ Correct! This sentence has an error.</div>';
     markStageDone('picture');
     var nav = document.getElementById('pd-nav');
     if (nav) nav.innerHTML = '<button class="sr-activity-btn" onclick="returnToActivities(closePictureDescription)">Done ✓ Next Activity</button>';
@@ -12769,9 +12769,9 @@ async function checkPictureDescription() {
   var item = _picturePrompts[_pictureIndex % _picturePrompts.length];
   var corrected = text;
   var feedback = {
-    grammar:'문장 종결 표현과 조사(은/는, 이/가)를 한 번 더 확인해 보세요.',
-    vocab:'장소·행동·감정 단어를 1개씩 더 넣으면 더 풍부해져요.',
-    clarity:'누가 무엇을 하는지 순서대로 쓰면 더 명확해집니다.'
+    grammar:'Double-check your sentence endings and particles (은/는, 이/가).',
+    vocab:'Add one more place, action or feeling word to make it richer.',
+    clarity:'Say who does what, in order, to make it clearer.'
   };
   try {
     // Picture-description prompt previously had no grammar guardrails —
@@ -13050,7 +13050,7 @@ var WRITING_GENRES = {
       'Main message (1-3 sentences, one thing per paragraph)',
       'Closing + your name (맺음말, 이름)'
     ],
-    template: '안녕하세요, ○○님.\n\n(여기에 하고 싶은 말을 써보세요)\n\n감사합니다.\n○○ 드림',
+    template: '안녕하세요, ○○님.\n\n(write your message here)\n\n감사합니다.\n○○ 드림',
     registerHint: 'Email defaults to formal (-습니다 / -세요).',
     conventions: 'Has a greeting line, single main message, and a closing + name.'
   },
@@ -13203,7 +13203,7 @@ function onWriteAreaInput() {
       usedEl.textContent = '✅ ' + usedVocab.length + '/' + vocabList.length + ' vocab used';
       usedEl.style.color = '#16a34a';
     } else {
-      usedEl.textContent = '⚠️ ' + usedVocab.length + '/2 vocab (최소 2개)';
+      usedEl.textContent = '⚠️ ' + usedVocab.length + '/2 vocab (min. 2)';
       usedEl.style.color = '#dc2626';
     }
   }
@@ -14763,9 +14763,9 @@ function bmRenderDictation() {
   var total = cards.length;
   var stage = _bmDictStageFor(idx, total);
   var meta = {
-    1: { badge: '1단계 · 따라 만들기', desc: 'Tap the letters below to spell the word you see & hear.' },
-    2: { badge: '2단계 · 자모 보고 쓰기', desc: 'Listen, then build the word from the jumbled letters.' },
-    3: { badge: '3단계 · 듣고 받아쓰기', desc: 'Listen only, then type the word.' }
+    1: { badge: 'Stage 1 · Copy it', desc: 'Tap the letters below to spell the word you see & hear.' },
+    2: { badge: 'Stage 2 · Build from letters', desc: 'Listen, then build the word from the jumbled letters.' },
+    3: { badge: 'Stage 3 · Listen & type', desc: 'Listen only, then type the word.' }
   }[stage];
 
   var helpHtml = '';
@@ -14781,14 +14781,14 @@ function bmRenderDictation() {
       + '<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">'
       +   scrambled.map(function(j){ return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:34px;padding:0 8px;background:rgba(167,139,250,.16);border:1px solid rgba(167,139,250,.35);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:17px;font-weight:700;color:#d6c7ff">' + escapeHTML(j) + '</span>'; }).join('')
       + '</div>'
-      + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:5px">필요한 자음·모음 (순서는 섞여 있어요)</div>'
+      + '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:5px">Letters you need (shuffled)</div>'
       + '</div>';
   }
 
   var showKeyboard = (stage === 1 || stage === 2);
 
   document.getElementById('bm-body').innerHTML =
-      '<div class="bm-step-label">Step 4 of 4 · 받아쓰기 ' + (idx + 1) + ' / ' + cards.length
+      '<div class="bm-step-label">Step 4 of 4 · Dictation ' + (idx + 1) + ' / ' + cards.length
     +   ' <span style="margin-left:6px;padding:2px 8px;border-radius:999px;background:rgba(125,211,252,.16);color:#7dd3fc;font-size:11px;font-weight:800">' + meta.badge + '</span></div>'
     + '<div class="bm-step-title">' + BM_ICON_VOLUME + '<span>Audio Dictation</span></div>'
     + '<div class="bm-step-desc">' + meta.desc + '</div>'
@@ -14799,19 +14799,19 @@ function bmRenderDictation() {
     +   '<div class="bm-dict-input-wrap" style="flex:1">'
     +     helpHtml
     +     '<input type="text" id="bm-dict-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"'
-    +     ' placeholder="' + (stage === 1 ? '위 단어를 자모로 입력...' : '들은 단어를 입력...') + '"'
+    +     ' placeholder="' + (stage === 1 ? 'Type the word above in jamo...' : 'Type the word you heard...') + '"'
     +     ' onkeydown="if(event.key===\'Enter\')bmDictCheck()">'
     +     '<div class="bm-dict-fb" id="bm-dict-fb"></div>'
     +   '</div>'
     + '</div>'
     + '<div class="bm-dict-actions">'
-    +   '<button type="button" class="bm-btn-skip" onclick="bmDictSkip()">건너뛰기 →</button>'
-    +   '<button type="button" class="bm-btn-check" onclick="bmDictCheck()">확인</button>'
+    +   '<button type="button" class="bm-btn-skip" onclick="bmDictSkip()">Skip →</button>'
+    +   '<button type="button" class="bm-btn-check" onclick="bmDictCheck()">Check</button>'
     + '</div>';
 
   document.getElementById('bm-footer').innerHTML =
       '<button class="bm-btn-back" onclick="goToBMStep3Back()">← Fill In</button>'
-    + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">듣고 쓰면 단어가 기억에 잘 남아요</span>'
+    + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">Listening and writing helps words stick</span>'
     + '<button class="bm-btn-next" disabled>Complete →</button>';
 
   // Stages 1-2: attach the on-screen jamo keyboard so a beginner can spell
@@ -14932,19 +14932,19 @@ function bmRenderAssociation() {
   }).join('');
 
   document.getElementById('bm-body').innerHTML =
-      '<div class="bm-step-label">Step 4 of 4 · 단어 매칭</div>'
+      '<div class="bm-step-label">Step 4 of 4 · Word Match</div>'
     + '<div class="bm-step-title">' + BM_ICON_BULB + '<span>Word Association</span></div>'
-    + '<div class="bm-step-desc">한국어를 탭하고 맞는 영어를 탭하세요.</div>'
+    + '<div class="bm-step-desc">Tap a Korean word, then its English match.</div>'
     + '<div class="bm-assoc-grid">'
     +   '<div class="bm-assoc-col">' + koHtml + '</div>'
     +   '<div class="bm-assoc-col">' + enHtml + '</div>'
     + '</div>'
-    + '<div class="bm-assoc-progress">' + matched.length + ' / ' + cards.length + ' 매칭 완료</div>';
+    + '<div class="bm-assoc-progress">' + matched.length + ' / ' + cards.length + ' matched</div>';
 
   document.getElementById('bm-footer').innerHTML =
-      '<button class="bm-btn-back" onclick="bmStartDictation()">← 다시 듣기</button>'
+      '<button class="bm-btn-back" onclick="bmStartDictation()">← Listen again</button>'
     + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">'
-    + (allMatched ? '✓ 모든 단어 매칭 완료!' : '짝을 맞춰주세요')
+    + (allMatched ? '✓ All words matched!' : 'Match the pairs')
     + '</span>'
     + '<button class="bm-btn-next" ' + (allMatched ? '' : 'disabled') + ' onclick="finishBeginner()">Complete →</button>';
 }
@@ -17026,7 +17026,7 @@ function renderWGDrillResult() {
     + '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
     + '<button onclick="_wgDrillState.idx=0;_wgDrillState.score=0;renderWGDrillIntro()" style="padding:10px 18px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.65);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try Again</button>'
     + (st.grammar
-        ? '<button onclick="generateWGDrillQuestions(\'' + safeGrammarName + '\', {force:true})" title="Generate fresh AI questions instead of cached ones" style="padding:10px 18px;border:1px solid rgba(253,230,138,.35);border-radius:10px;background:rgba(180,83,9,.18);color:#fde68a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+BM_ICON_SPARKLE+'</span><span>새 문제 생성</span></button>'
+        ? '<button onclick="generateWGDrillQuestions(\'' + safeGrammarName + '\', {force:true})" title="Generate fresh AI questions instead of cached ones" style="padding:10px 18px;border:1px solid rgba(253,230,138,.35);border-radius:10px;background:rgba(180,83,9,.18);color:#fde68a;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px">'+BM_ICON_SPARKLE+'</span><span>New questions</span></button>'
         : '')
     + '<button onclick="closeWGDrill()" style="padding:10px 18px;border:none;border-radius:10px;background:linear-gradient(135deg,#b45309,#d97706);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>Done</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
     + '</div></div>';
@@ -17246,7 +17246,7 @@ function _renderSpotItSentence() {
 
   el.innerHTML = progressHtml
     + '<div style="margin-bottom:12px;font-size:13px;color:rgba(255,255,255,.65);line-height:1.6">'
-    + '문법 패턴 <strong style="color:#a78bfa">' + (st.p.name||'') + '</strong> 이 사용된 단어를 찾아 탭하세요.'
+    + 'Find and tap the words that use the grammar pattern <strong style="color:#a78bfa">' + (st.p.name||'') + '</strong>.'
     + '</div>'
     + '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:14px;padding:18px;margin-bottom:16px">'
     + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">Example ' + (st.idx+1) + ' / ' + st.total + '</div>'
@@ -17447,7 +17447,7 @@ function loadGFFill(p) {
     + '</div>'
     + qs
     + '<div id="gff-next-wrap" style="display:none;text-align:center;margin-top:8px">'
-    + '<button onclick="gfAdvanceTo(\'translate\')" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">번역 연습 →</button>'
+    + '<button onclick="gfAdvanceTo(\'translate\')" style="padding:12px 32px;background:linear-gradient(135deg,#a78bfa,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Translation practice →</button>'
     + '</div>';
 
   window._gffAnswered = {};
@@ -17515,7 +17515,7 @@ function loadGFTranslate(p) {
     }
 
     return '<div style="background:rgba(255,255,255,.06);border:1.5px solid rgba(167,139,250,.25);border-radius:12px;padding:16px 18px;margin-bottom:14px" id="gft-card-' + i + '">'
-      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">문장 ' + (i+1) + ' / ' + total + '</div>'
+      + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.45);margin-bottom:10px">Sentence ' + (i+1) + ' / ' + total + '</div>'
       + '<p style="font-size:15px;font-weight:700;color:#fff;margin:0 0 14px;line-height:1.7;background:rgba(251,191,36,.08);border-radius:8px;padding:10px 12px">' + ex.en + '</p>'
       + '<div style="display:flex;flex-direction:column;gap:8px">'
       + choices.map(function(c) {
@@ -17717,7 +17717,7 @@ function _gfJudgeFinish() {
     + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-top:4px">Grammar Detection · ' + pct + '%</div>'
     + '</div>'
     + '<div style="display:flex;gap:10px;justify-content:center;margin-top:20px">'
-    + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>완료</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
+    + '<button onclick="returnToActivities(closeGrammarFocusModal)" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>Done</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button>'
     + '</div>';
   var patternName = (window._gcCurrentPattern) || (_gfPattern && _gfPattern.name) || null;
   if (patternName) updateGrammarMastery(patternName, st.score > 0);
@@ -17891,11 +17891,11 @@ function _dctWordRender() {
   var total = cards.length;
   var stage = _bmDictStageFor(idx, total);
   var meta = {
-    1: { badge: '1단계 · 따라 만들기', desc: 'Tap the letters to spell the word you see & hear.' },
-    2: { badge: '2단계 · 자모 보고 쓰기', desc: 'Listen, then build the word from the jumbled letters.' },
-    3: { badge: '3단계 · 듣고 받아쓰기', desc: 'Listen only, then type the word.' }
+    1: { badge: 'Stage 1 · Copy it', desc: 'Tap the letters to spell the word you see & hear.' },
+    2: { badge: 'Stage 2 · Build from letters', desc: 'Listen, then build the word from the jumbled letters.' },
+    3: { badge: 'Stage 3 · Listen & type', desc: 'Listen only, then type the word.' }
   }[stage];
-  if (sub) sub.textContent = '받아쓰기 ' + (idx + 1) + ' / ' + total + ' · ' + meta.badge;
+  if (sub) sub.textContent = 'Dictation ' + (idx + 1) + ' / ' + total + ' · ' + meta.badge;
 
   var helpHtml = '';
   var kbKeys = null;   // compact per-word keyboard: only the jamo this word needs
@@ -17913,7 +17913,7 @@ function _dctWordRender() {
     kbKeys = _bmShuffle(_bmWordJamos(word));
     helpHtml = '<div style="text-align:center;margin-bottom:12px">'
       + (card.en ? '<div style="font-size:14px;color:rgba(255,255,255,.72);margin-bottom:5px">💡 ' + escapeHTML(card.en) + '</div>' : '')
-      + '<div style="font-size:11px;color:rgba(255,255,255,.4)">아래 자모를 눌러 단어를 완성하세요 (순서는 섞여 있어요)</div>'
+      + '<div style="font-size:11px;color:rgba(255,255,255,.4)">Tap the letters below to complete the word (shuffled)</div>'
       + '</div>';
   }
   var showKeyboard = (stage === 1 || stage === 2);
@@ -17927,15 +17927,15 @@ function _dctWordRender() {
     +   '</button>'
     +   '<div style="flex:1;min-width:0">'
     +     helpHtml
-    +     '<input type="text" id="dct-word-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="' + (stage === 1 ? '위 단어를 자모로 입력...' : '들은 단어를 입력...') + '" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#fff;font-size:16px;font-family:\'Noto Sans KR\',sans-serif" onkeydown="if(event.key===\'Enter\')_dctWordCheck()">'
+    +     '<input type="text" id="dct-word-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="' + (stage === 1 ? 'Type the word above in jamo...' : 'Type the word you heard...') + '" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#fff;font-size:16px;font-family:\'Noto Sans KR\',sans-serif" onkeydown="if(event.key===\'Enter\')_dctWordCheck()">'
     +     '<div id="dct-word-fb" style="min-height:22px;margin-top:8px;font-size:14px;font-weight:700"></div>'
     +   '</div>'
     + '</div>'
     + '</div>';
 
   foot.innerHTML =
-      '<button class="btn" onclick="_dctWordSkip()" style="opacity:.85">건너뛰기 →</button>'
-    + '<button class="btn btn-g" onclick="_dctWordCheck()">확인</button>';
+      '<button class="btn" onclick="_dctWordSkip()" style="opacity:.85">Skip →</button>'
+    + '<button class="btn btn-g" onclick="_dctWordCheck()">Check</button>';
 
   if (showKeyboard && window.khAttachJamoKeyboard) {
     try { _dctWord.jamoKb = khAttachJamoKeyboard(document.getElementById('dct-word-input'), kbKeys ? { keys: kbKeys } : {}); } catch(_) { _dctWord.jamoKb = null; }
@@ -17960,7 +17960,7 @@ function _dctWordCheck() {
     fb.innerHTML = '<span style="color:#4ade80">✓ Correct!</span>';
     if (typeof playCorrectSound === 'function') playCorrectSound();
   } else {
-    fb.innerHTML = '<span style="color:#f87171">정답: <strong>' + escapeHTML(card.ko) + '</strong>'
+    fb.innerHTML = '<span style="color:#f87171">Answer: <strong>' + escapeHTML(card.ko) + '</strong>'
       + (card.en ? ' <span style="opacity:.6;font-weight:500">(' + escapeHTML(card.en) + ')</span>' : '') + '</span>';
     if (typeof playWrongSound === 'function') playWrongSound();
   }
@@ -17975,7 +17975,7 @@ function _dctWordFinish() {
   _dctWordDestroyKb();
   var body = document.getElementById('dct-body');
   var foot = document.getElementById('dct-foot');
-  var sub = document.getElementById('dct-step-sub'); if (sub) sub.textContent = '완료!';
+  var sub = document.getElementById('dct-step-sub'); if (sub) sub.textContent = 'Done!';
   var cards = _dctWord.cards || [];
   var total = cards.length;
   var correct = 0; for (var k in _dctWord.results) { if (_dctWord.results[k]) correct++; }
@@ -17984,10 +17984,10 @@ function _dctWordFinish() {
   try { if (typeof logQuizResult === 'function') logQuizResult('dictation', { content_type: 'dictation', score: correct, max_score: total, accuracy_pct: pct }); } catch(_) {}
   if (body) body.innerHTML = '<div style="text-align:center;padding:36px 20px">'
     + '<div style="font-size:42px;margin-bottom:8px">🎉</div>'
-    + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px">받아쓰기 완료!</div>'
-    + '<div style="font-size:15px;color:rgba(255,255,255,.7)">' + correct + ' / ' + total + ' 정답 (' + pct + '%)</div>'
+    + '<div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px">Dictation complete!</div>'
+    + '<div style="font-size:15px;color:rgba(255,255,255,.7)">' + correct + ' / ' + total + ' correct (' + pct + '%)</div>'
     + '</div>';
-  if (foot) foot.innerHTML = '<button class="btn" onclick="_dctWordStart()">다시 · Retry</button>'
+  if (foot) foot.innerHTML = '<button class="btn" onclick="_dctWordStart()">Retry</button>'
     + '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done</button>';
 }
 function closeDictationModal() {
@@ -18085,17 +18085,17 @@ function _dctRenderListen() {
           if (Array.isArray(gen) && gen.length) { _dailyDictationSentences = gen; _dctRender(); return; }
         } catch(e) {}
         body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Could not load sentences. Try again later.</div>';
-        foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
+        foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">Close</button>';
       }).catch(function() {
         body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Could not load sentences. Try again later.</div>';
-        foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
+        foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">Close</button>';
       });
       return;
     }
     var artBtn = _dctGetArticleBtnHTML();
     body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">No listening sentences available yet.<br><span style="font-size:12px">Content will appear once today\'s topic is generated.</span></div>'
       + artBtn;
-    foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">닫기</button>';
+    foot.innerHTML = '<button class="btn" onclick="closeDictationModal()">Close</button>';
     return;
   }
   // Speed control bar
@@ -18119,8 +18119,8 @@ function _dctRenderListen() {
     ? '<div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:20px;font-size:11px;font-weight:700;color:#92400e;margin-bottom:12px"><span style="display:inline-flex;width:12px;height:12px">'+BM_ICON_NEWSPAPER+'</span><span>Article Dictation</span></div>'
     : '';
   var progress = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
-    + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px">문장 '+(curIdx+1)+' / '+sents.length+'</div>'
-    + '<div style="font-size:11px;font-weight:700;color:#a78bfa;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>탭해서 듣기</span></div>'
+    + '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px">Sentence '+(curIdx+1)+' / '+sents.length+'</div>'
+    + '<div style="font-size:11px;font-weight:700;color:#a78bfa;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Tap to listen</span></div>'
     + '</div>';
   var html = modeLabel + speedHTML + progress
     + '<div class="dct-sent-card" style="padding:26px 22px;cursor:pointer" onclick="_dctSpeakSentence(\''+safeKo+'\')">'
@@ -18137,7 +18137,7 @@ function _dctRenderListen() {
   body.innerHTML = html;
 
   var prevDisabled = curIdx === 0 ? 'disabled' : '';
-  var nextLabel = curIdx < sents.length - 1 ? '다음 →' : '어절 배열하기 →';
+  var nextLabel = curIdx < sents.length - 1 ? 'Next →' : 'Arrange the words →';
   var nextAction = curIdx < sents.length - 1 ? '_dctListenNext()' : 'dctNext()';
   foot.innerHTML = '<button class="btn" '+prevDisabled+' onclick="_dctListenPrev()" aria-label="Previous">←</button>'
     + '<button class="btn btn-g" onclick="'+nextAction+'">'+nextLabel+'</button>';
@@ -18289,22 +18289,22 @@ function _dctRenderArrange() {
   }).join('');
   var ansHTML = wo.selected.length
     ? wo.selected.map(function(w,si){return '<button onclick="dctWORemove('+si+')" style="'+selChip+'">'+escapeHTML(w)+' ×</button>';}).join('')
-    : '<span style="font-size:12px;color:rgba(255,255,255,.45)">단어를 선택해서 문장을 만드세요</span>';
+    : '<span style="font-size:12px;color:rgba(255,255,255,.45)">Pick words to build the sentence</span>';
   var allSel = wo.selected.length === wo.original.length;
-  body.innerHTML = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">문장 '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
+  body.innerHTML = '<div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Sentence '+(_dctWOIdx+1)+' / '+sents.length+'</div>'
     // English hint card — replace the cheap light-blue/dark-text panel
     // with a mint-accented dark surface so it sits inside the dark
     // dictation modal instead of fighting it.
     + '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.25);border-radius:12px;padding:11px 14px;margin-bottom:18px;font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:8px;line-height:1.5"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24;flex-shrink:0">'+BM_ICON_BULB+'</span><span>'+escapeHTML(s.en||'')+'</span></div>'
-    + '<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">내 답</div>'
+    + '<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">My answer</div>'
     // Answer zone — dark transparent so chips read clearly against it
     // (was a near-white panel that broke the dark theme).
     + '<div id="dct-answer-zone" style="min-height:54px;border:2px dashed rgba(167,139,250,.35);border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:rgba(167,139,250,.05)">'+ansHTML+'</div></div>'
-    + '<div><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">단어 목록</div>'
+    + '<div><div style="font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Word bank</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px">'+poolHTML+'</div></div>'
     + '<div id="dct-wo-msg" style="margin-top:14px;font-size:13px;font-weight:700"></div>';
-  foot.innerHTML = '<button class="btn" onclick="dctWOClear()" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시</span></button>'
-    + '<button class="btn btn-g" '+(allSel?'':'disabled')+' onclick="dctWOCheck()">확인 ✓</button>';
+  foot.innerHTML = '<button class="btn" onclick="dctWOClear()" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Retry</span></button>'
+    + '<button class="btn btn-g" '+(allSel?'':'disabled')+' onclick="dctWOCheck()">Check ✓</button>';
 }
 function dctWOPick(pi) {
   if(!_dctWOState) return;
@@ -18625,7 +18625,7 @@ function _dctPhRender() {
       + '</button>'
     + '</div>';
 
-  foot.innerHTML = '<button class="btn" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px" onclick="_dctPhRender()"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시 듣기</span></button>';
+  foot.innerHTML = '<button class="btn" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px" onclick="_dctPhRender()"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Listen again</span></button>';
 
   // Auto-play once on landing
   setTimeout(function(){ _dctSpeakSentence(currentWordKo); }, 300);
@@ -18782,13 +18782,13 @@ function _dctCsRender() {
       + '</button>'
     + '</div>'
     // Input
-    + '<input type="text" id="dct-cs-input" placeholder="여기에 받아쓰기…" autocomplete="off"'
+    + '<input type="text" id="dct-cs-input" placeholder="Type what you hear…" autocomplete="off"'
       + ' style="width:100%;padding:14px 16px;border:1.5px solid rgba(255,255,255,.15);border-radius:14px;font-family:\'Noto Sans KR\',sans-serif;font-size:16px;font-weight:600;color:#fff;box-sizing:border-box;outline:none;transition:border-color .15s"'
       + ' onfocus="this.style.borderColor=\'#a78bfa\'" onblur="this.style.borderColor=\'#e2e8f0\'"'
       + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();_dctCsCheck()}">'
     + '<div id="dct-cs-result" style="margin-top:14px"></div>';
 
-  foot.innerHTML = '<button class="btn" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px" onclick="_dctSpeakSentence(\'' + safeKo + '\')"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>다시 듣기</span></button>'
+  foot.innerHTML = '<button class="btn" style="margin-right:auto;display:inline-flex;align-items:center;gap:5px" onclick="_dctSpeakSentence(\'' + safeKo + '\')"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_REFRESH+'</span><span>Listen again</span></button>'
     + '<button class="btn btn-g" style="min-width:120px" onclick="_dctCsCheck()">Check ✓</button>';
 
   // Auto-play + focus input
@@ -18987,19 +18987,19 @@ function _dctRenderFillBlank() {
     : '';
   body.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px">'
-    +   '<div style="font-size:13px;color:rgba(255,255,255,.55)">듣고 빈칸에 알맞은 단어를 고르세요. (' + (_dctFbIdx + 1) + '/' + pool.length + ')</div>'
+    +   '<div style="font-size:13px;color:rgba(255,255,255,.55)">Listen and choose the word for the blank. (' + (_dctFbIdx + 1) + '/' + pool.length + ')</div>'
     +   hintBtn
     + '</div>'
     + '<div style="text-align:center;margin-bottom:14px">'
     + '<button onclick="_dctFbSpeak()" style="width:66px;height:66px;border-radius:50%;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:30px;height:30px;color:#a78bfa">'+BM_ICON_VOLUME+'</span></button>'
-    + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">클릭해서 듣기</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px">Click to listen</div>'
     + '</div>'
     + hintEn
     + '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px;margin-bottom:16px;font-family:\'Noto Serif KR\',serif;font-size:17px;text-align:center;line-height:2;word-break:keep-all">' + sentHTML + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">' + choicesHTML + '</div>';
   foot.innerHTML = st.answered
-    ? '<button class="btn btn-g" onclick="_dctFbNext()">다음 →</button>'
-    : '<div style="font-size:12px;color:rgba(255,255,255,.45);padding:6px 0">단어를 골라주세요</div>';
+    ? '<button class="btn btn-g" onclick="_dctFbNext()">Next →</button>'
+    : '<div style="font-size:12px;color:rgba(255,255,255,.45);padding:6px 0">Choose a word</div>';
   if (!st.answered) setTimeout(_dctFbSpeak, 300);
 }
 
@@ -19070,9 +19070,9 @@ function _dctRenderListenPick() {
     body.innerHTML = '<div style="text-align:center;padding:30px 20px">'
       + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:12px;color:'+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+'aa)">' + (pct >= 80 ? BM_ICON_TROPHY : pct >= 50 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
       + '<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:4px">' + pct + '%</div>'
-      + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:6px">빈칸 ' + _dctFbScore + '/' + pool.length + ' · 문장 ' + _dctLpScore + '/' + pool.length + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:6px">Blanks ' + _dctFbScore + '/' + pool.length + ' · Sentences ' + _dctLpScore + '/' + pool.length + '</div>'
       + modeTag
-      + '<div style="font-size:12px;color:rgba(255,255,255,.45)">받아쓰기 완료!</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.45)">Dictation complete!</div>'
       + '</div>';
     foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'sentence\');returnToActivities(closeDictationModal)">Done ✓ Next Activity</button>';
     if (!_dctArticleMode && typeof logQuizResult === 'function' && supaUser) {
@@ -19105,15 +19105,15 @@ function _dctRenderListenPick() {
     return '<button ' + disabled + ' onclick="_dctLpPick(' + ci + ')" style="width:100%;text-align:left;padding:14px 16px;margin-bottom:10px;border:2px solid ' + border + ';background:' + bg + ';color:' + color + ';border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:\'Noto Serif KR\',serif;line-height:1.5">' + escapeHTML(c.ko || '') + '</button>';
   }).join('');
   body.innerHTML =
-      '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:16px">듣고 맞는 문장을 고르세요. (' + (_dctLpIdx + 1) + '/' + pool.length + ')</div>'
+      '<div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:16px">Listen and choose the matching sentence. (' + (_dctLpIdx + 1) + '/' + pool.length + ')</div>'
     + '<div style="text-align:center;margin-bottom:18px">'
     + '<button onclick="_dctLpSpeak()" style="width:80px;height:80px;border-radius:50%;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:36px;height:36px;color:#a78bfa">'+BM_ICON_VOLUME+'</span></button>'
-    + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px">클릭해서 듣기</div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px">Click to listen</div>'
     + '</div>'
     + choicesHTML;
   foot.innerHTML = st.answered
-    ? '<button class="btn btn-g" onclick="_dctLpNext()">다음 →</button>'
-    : '<div style="font-size:12px;color:rgba(255,255,255,.45);padding:6px 0">소리를 듣고 맞는 문장을 고르세요</div>';
+    ? '<button class="btn btn-g" onclick="_dctLpNext()">Next →</button>'
+    : '<div style="font-size:12px;color:rgba(255,255,255,.45);padding:6px 0">Listen and pick the matching sentence</div>';
   if (!st.answered) setTimeout(_dctLpSpeak, 300);
 }
 
@@ -19224,8 +19224,8 @@ async function _nqLoadOrGenerate() {
     try { localStorage.setItem(_nqCacheKey(), JSON.stringify({ questions: _nqQuestions })); } catch(e) {}
     _nqRender();
   } catch(e) {
-    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">퀴즈를 불러올 수 없습니다.<br><span style="font-size:12px">' + escapeHTML(e.message || '') + '</span></div>';
-    foot.innerHTML = '<button class="btn" onclick="closeNuanceQuiz()">닫기</button>';
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:14px">Couldn’t load the quiz.<br><span style="font-size:12px">' + escapeHTML(e.message || '') + '</span></div>';
+    foot.innerHTML = '<button class="btn" onclick="closeNuanceQuiz()">Close</button>';
   }
 }
 
@@ -19241,7 +19241,7 @@ function _nqRender() {
       + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:12px;color:'+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+';filter:drop-shadow(0 0 12px '+(pct >= 80 ? '#fde68a' : pct >= 50 ? '#22c55e' : '#f87171')+'aa)">' + (pct >= 80 ? BM_ICON_TROPHY : pct >= 50 ? BM_ICON_THUMBS_UP : BM_ICON_FLAME) + '</div>'
       + '<div style="font-size:20px;font-weight:800;color:#0f172a;margin-bottom:4px">' + pct + '%</div>'
       + '<div style="font-size:13px;color:#64748b;margin-bottom:6px">' + _nqScore + ' / ' + _nqQuestions.length + ' correct</div>'
-      + '<div style="font-size:12px;color:#94a3b8">Nuance Quiz 완료!</div>'
+      + '<div style="font-size:12px;color:#94a3b8">Nuance Quiz complete!</div>'
       + '</div>';
     foot.innerHTML = '<button class="btn btn-g" onclick="markStageDone(\'picture\');returnToActivities(closeNuanceQuiz)">Done ✓ Next Activity</button>';
     if (sub) sub.textContent = 'Complete';
@@ -19280,14 +19280,14 @@ function _nqRender() {
     ? '<div style="margin-top:14px;padding:12px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;font-size:13px;color:#0c4a6e;line-height:1.6;display:flex;align-items:flex-start;gap:6px"><span style="display:inline-flex;width:14px;height:14px;flex-shrink:0;margin-top:3px">'+BM_ICON_BOOK+'</span><span>' + escapeHTML(q.explanation_ko) + '</span></div>'
     : '';
   body.innerHTML =
-      '<div style="font-size:13px;color:#64748b;margin-bottom:12px">문맥에 가장 어울리는 단어를 고르세요. (' + (_nqIdx + 1) + '/' + _nqQuestions.length + ')</div>'
+      '<div style="font-size:13px;color:#64748b;margin-bottom:12px">Choose the word that best fits the context. (' + (_nqIdx + 1) + '/' + _nqQuestions.length + ')</div>'
     + enHTML
     + '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin-bottom:18px;font-family:\'Noto Serif KR\',serif;font-size:17px;text-align:center;line-height:2;word-break:keep-all">' + sentenceHTML + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">' + choicesHTML + '</div>'
     + explHTML;
   foot.innerHTML = _nqState.answered
-    ? '<button class="btn btn-g" onclick="_nqNext()">' + (_nqIdx + 1 >= _nqQuestions.length ? '완료 →' : '다음 →') + '</button>'
-    : '<div style="font-size:12px;color:#94a3b8;padding:6px 0">단어를 골라주세요</div>';
+    ? '<button class="btn btn-g" onclick="_nqNext()">' + (_nqIdx + 1 >= _nqQuestions.length ? 'Done →' : 'Next →') + '</button>'
+    : '<div style="font-size:12px;color:#94a3b8;padding:6px 0">Choose a word</div>';
 }
 
 function _nqPick(ci) {
@@ -19957,7 +19957,7 @@ function _asStep1(art,act) {
     + '<button onclick="asToggleTranslation()" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_CLIPBOARD + '</span><span>Translation</span></button>'
     + '</div>'
     + '<div id="as-translation" style="display:none;padding:12px 16px;font-size:13px;color:#475569;line-height:1.7;border-top:1px solid #f1f5f9;font-family:\'DM Sans\',sans-serif"></div>'
-    + '<button class="su-article-toggle" onclick="asTogglePassage()" type="button"><span class="su-art-tog-arrow">▲</span><span id="as-art-tog-label">접기</span></button>'
+    + '<button class="su-article-toggle" onclick="asTogglePassage()" type="button"><span class="su-art-tog-arrow">▲</span><span id="as-art-tog-label">Collapse</span></button>'
     + '</div>';
   if (!vocab.length) {
     // No content for this article yet. Owner-side: surface a one-tap
@@ -19992,7 +19992,7 @@ function asTogglePassage() {
   if (!card) return;
   card.classList.toggle('collapsed');
   var lbl = document.getElementById('as-art-tog-label');
-  if (lbl) lbl.textContent = card.classList.contains('collapsed') ? '펼치기' : '접기';
+  if (lbl) lbl.textContent = card.classList.contains('collapsed') ? 'Expand' : 'Collapse';
 }
 function _asRenderMatch() {
   var g=document.getElementById('as-mg'); if(!g||!_asMatchState) return;
@@ -20002,7 +20002,7 @@ function _asRenderMatch() {
   // on .su-match-item this equalises the heights across the row even when
   // English meanings wrap to two lines and Korean words are short.
   var n = Math.max(m.pairs.length, m.eng.length);
-  var html = '<div class="su-match-col-head">한국어</div><div class="su-match-col-head">English</div>';
+  var html = '<div class="su-match-col-head">Korean</div><div class="su-match-col-head">English</div>';
   for (var i=0; i<n; i++) {
     if (i < m.pairs.length) {
       var v = m.pairs[i];
@@ -20135,7 +20135,7 @@ function _asStep2(art,act) {
 function _asStep3(art,act) {
   var vocab=(_asStudyContent&&_asStudyContent.vocab)||[];
   var body=_asCurrentArt&&_asCurrentArt.body?_asCurrentArt.body:'';
-  if (!vocab.length||!body) { art.innerHTML=''; act.innerHTML='<div style="color:#94a3b8;font-size:13px">콘텐츠가 없습니다.</div>'; _asSetNav('none',''); return; }
+  if (!vocab.length||!body) { art.innerHTML=''; act.innerHTML='<div style="color:#94a3b8;font-size:13px">No content available.</div>'; _asSetNav('none',''); return; }
   // Pick words to blank out (use vocab words that appear in article)
   var blankWords=[];
   vocab.forEach(function(v){
@@ -20199,7 +20199,7 @@ function _asRenderBlankUI() {
         '<span class="su-blank" data-bi="' + bi + '" onclick="asBlankClickSpan(' + bi + ')" style="cursor:pointer">____</span>'
       );
     });
-    art.innerHTML = '<div class="su-instruction">빈칸을 먼저 클릭하고, 아래에서 단어를 선택하세요</div>'
+    art.innerHTML = '<div class="su-instruction">Click a blank first, then choose a word below</div>'
       + '<div class="su-blank-article">' + formatted + '</div>';
     art.dataset.asBlankBuilt = '1';
 
@@ -20250,9 +20250,9 @@ function _asRenderBlankUI() {
   var msg = document.getElementById('as-wo-msg');
   if (msg) {
     if (sel !== null && sel !== undefined) {
-      msg.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">' + BM_ICON_CHECK + '</span><span>빈칸 #' + (sel + 1) + ' 선택됨 — 아래에서 단어를 고르세요</span>';
+      msg.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">' + BM_ICON_CHECK + '</span><span>Blank #' + (sel + 1) + ' selected — choose a word below</span>';
     } else {
-      msg.innerHTML = '<span>👆 위 문장에서 빈칸을 먼저 클릭하세요</span>';
+      msg.innerHTML = '<span>👆 Click a blank in the passage above first</span>';
     }
   }
 
@@ -20291,7 +20291,7 @@ function asBlankFillWord(text) {
   var sel=_asWOState.selectedBlank;
   if(sel===null||sel===undefined){
     var msg=document.getElementById('as-wo-msg');
-    if(msg) msg.innerHTML='<span style="color:#f59e0b;font-weight:700">먼저 위에서 빈칸을 클릭하세요!</span>';
+    if(msg) msg.innerHTML='<span style="color:#f59e0b;font-weight:700">Click a blank above first!</span>';
     setTimeout(function(){if(msg)msg.innerHTML='';},1500);
     return;
   }
@@ -20459,8 +20459,8 @@ function _asShowSentenceQuiz() {
   // counter helps the user understand the goal ("find ALL of them") instead
   // of stopping after the first ✅.
   var headline = correct.length > 1
-    ? '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_SEARCH + '</span><span>Bonus: 맞는 문장을 <b>모두</b> 골라보세요 (' + correct.length + '개)</span></span>'
-    : '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_SEARCH + '</span><span>Bonus: 맞는 문장을 골라보세요</span></span>';
+    ? '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_SEARCH + '</span><span>Bonus: pick <b>all</b> the correct sentences (' + correct.length + ')</span></span>'
+    : '<span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_SEARCH + '</span><span>Bonus: pick the correct sentence</span></span>';
   act.innerHTML = '<div class="su-instruction" style="font-size:14px;padding:16px 20px 8px">' + headline + '</div>'
     + '<div id="as-sent-progress" style="padding:0 20px 8px;font-size:12px;color:#64748b;font-weight:700">0 / ' + correct.length + ' correct</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;padding:0 20px">'
@@ -20836,7 +20836,7 @@ async function asSubmitWork() {
       '<div class="as-done-banner"><div style="display:inline-flex;width:36px;height:36px;margin-bottom:8px;color:#22c55e">' + BM_ICON_CHECK + '</div>'
       +'<div style="font-size:16px;font-weight:800;margin-bottom:6px">Submitted!</div>'
       +'<div style="font-size:13px;color:rgba(255,255,255,.75)">Today\'s study has been submitted successfully.</div>'
-      +'<button onclick="returnToActivities(closeArticleStudy)" style="margin-top:14px;padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>완료</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button></div>';
+      +'<button onclick="returnToActivities(closeArticleStudy)" style="margin-top:14px;padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px"><span>Done</span><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span></button></div>';
     _asRefreshSubmitBanner();
   } catch(err) {
     if(saveBtn){ saveBtn.disabled=false; saveBtn.style.opacity='1'; saveBtn.textContent='Save Progress'; }
@@ -20863,7 +20863,7 @@ async function asSubmitTodayAll() {
       if(!r.error){item.submitted=true;submitted++;}
     }
     localStorage.setItem(key,JSON.stringify(d));
-    if(submitted) showToast(submitted+'개 Submitted!');
+    if(submitted) showToast(submitted+' submitted!');
     _asRefreshSubmitBanner();
   } catch(e){ showToast('Submit failed'); }
 }
