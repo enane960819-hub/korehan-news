@@ -1056,6 +1056,45 @@ body.mobile-redesign .kh-page-hero-inner { padding: 0 !important; }
   .nr-rail-scroll > .nc.nc-overlay .nc-meta { margin-bottom: 4px; }
 }
 
+/* ── All News section rails (khr-*) ───
+   Same look as .nr-rail-scroll > .nc.nc-overlay (sizes copied from the
+   live computed styles), rebuilt on the structure that scrolls on
+   real-device Chrome: background-image photo + gradient, both
+   pointer-events:none, no <img>, no .nc cascade. */
+.khr-rail {
+  display: flex; gap: 14px; overflow-x: auto; overflow-y: hidden;
+  padding: 4px 4px 16px; -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain; scrollbar-width: thin;
+}
+.khr-rail::-webkit-scrollbar { height: 6px; }
+.khr-rail::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.khr-card {
+  flex: 0 0 200px; aspect-ratio: 3/4; position: relative; display: block; overflow: hidden;
+  border-radius: 14px; background: #0b1626; color: #fff; text-decoration: none;
+  box-shadow: 0 14px 28px rgba(13,27,46,.12);
+}
+.khr-img { position: absolute; inset: 0; background-size: cover; background-position: center; background-color: #1e3a6b; pointer-events: none; }
+.khr-grad { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(5,15,35,0) 0%, rgba(5,15,35,.55) 55%, rgba(5,15,35,.98) 100%); }
+.khr-body { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 14px; }
+.khr-meta { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; }
+.khr-cat { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: #fff; }
+.khr-lvl { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 2px; }
+.khr-title {
+  font-family: 'Noto Serif KR', serif; font-size: 13px; font-weight: 800; line-height: 1.3; color: #fff;
+  margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  word-break: keep-all; overflow-wrap: anywhere;
+}
+.khr-date { font-size: 10px; color: rgba(255,255,255,.72); }
+@media (max-width: 760px) {
+  .khr-rail { gap: 10px; padding: 2px 2px 12px; }
+  .khr-card { flex: 0 0 160px; border-radius: 12px; }
+  .khr-body { padding: 8px 10px; }
+  .khr-meta { margin-bottom: 4px; }
+  .khr-title { font-size: 17px; -webkit-line-clamp: 3; line-height: 1.3; margin-bottom: 4px; }
+  .khr-date { display: none; }
+}
+
 /* Ensure the two-col first child doesn't expand past its grid track —
    without this, wide horizontal-scroll rails push the sidebar off-screen
    on desktop because grid items default to min-width:auto. */
