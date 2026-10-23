@@ -3778,6 +3778,29 @@ function _buildNewsCardHTML(a) {
     + '</a>';
 }
 
+// Rail card for the All News section rails. Same look as the overlay
+// .nc card, but rebuilt on the structure that fixed the home News rail on
+// real-device Chrome (where a swipe starting on a photo froze both axes):
+// photo as a pointer-events:none background <div> (no <img> element), a
+// pointer-events:none gradient, fresh khr-* classes that inherit nothing
+// from the .nc / .nc-overlay cascade. Styles live in korehan-shared.css.
+function _buildNewsRailCardHTML(a) {
+  var lvl = a.level || '';
+  var lvlCls = lvl === 'Advanced' ? 'lvl-a' : lvl === 'Intermediate' ? 'lvl-i' : lvl === 'Starter' ? 'lvl-s' : 'lvl-b';
+  var cat = getSectionKey(a.section);
+  var thumb = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 400, 260) : (a.image || '');
+  var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+  return '<a class="khr-card" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" href="' + articleUrl(a.id) + '">'
+    + '<div class="khr-img"' + (thumb ? ' style="background-image:url(\'' + String(thumb).replace(/'/g, '%27') + '\')"' : '') + '></div>'
+    + '<div class="khr-grad"></div>'
+    + '<div class="khr-body">'
+    + '<div class="khr-meta"><span class="khr-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="khr-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
+    + '<div class="khr-title" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + escapeHtml(a.title_en || a.title || '') + '</div>'
+    + '<div class="khr-date">' + dateStr + '</div>'
+    + '</div>'
+    + '</a>';
+}
+
 function renderAllList(listEl, articles, opts) {
   if (!articles.length) {
     listEl.className = '';
@@ -3827,7 +3850,7 @@ function renderAllList(listEl, articles, opts) {
           + '</div>'
           + '<button class="nr-rail-more" onclick="location.href=\'korehan-section.html?s=' + encodeURIComponent(rail.key) + '\'">See all &rsaquo;</button>'
         + '</div>'
-        + '<div class="nr-rail-scroll">' + items.map(_buildNewsCardHTML).join('') + '</div>'
+        + '<div class="khr-rail">' + items.map(_buildNewsRailCardHTML).join('') + '</div>'
       + '</div>';
     }).join('');
     // Fetch + cache any still-missing EN titles, then swap them into the DOM.
