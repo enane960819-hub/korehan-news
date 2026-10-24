@@ -10,6 +10,19 @@ doesn't keep reminding about closed work.
 
 ---
 
+## 📋 Full fix list — 2026-10-24 audit (START HERE)
+
+Site-wide audit (home/landing/chrome, Study Room, articles/news,
+conversations/vocab/mypage/games) + live DB health report:
+**`docs/FIX-LIST-2026-10.md`**. Headline P0s: article automation dead
+since 10/15 and daily content since 10/19 (crons report "success"),
+PII-purge cron failing, microphone blocked by `_headers`, review flows
+auto-saving junk words via `save_or_update_word`, flashcards stuck on 6
+placeholder words, pricing/gating/shop claims that don't match reality.
+Work it in the order at the bottom of that file; tick items off there.
+
+---
+
 ## ℹ️ Automation now in place (2026-10-11)
 
 - **Edge Functions** deploy from GitHub Actions (`deploy-edge-function.yml`):
