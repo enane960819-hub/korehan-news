@@ -577,7 +577,7 @@
       var koMeta = {};
       needsLookup.forEach(function(w) {
         var ko = w.word_ko || w.ko;
-        if (ko) koMeta[ko] = { en: w.word_en || w.en || '' };
+        if (ko) koMeta[ko] = { en: (typeof khCleanMeaning==='function'?khCleanMeaning:String)(w.word_en || w.en || '') };
       });
       var ruleCache = missing.length ? _localCategorize(missing, koMeta) : {};
       needsLookup.forEach(function(w) {
@@ -1916,7 +1916,7 @@
     if (badge) { badge.className = 'khu-card-badge ' + badgeCls; badge.textContent = badgeLbl; }
     if (ko)  ko.textContent  = word.word_ko || word.ko || '';
     if (rom) rom.textContent = word.word_rom || word.rom || '';
-    if (en)  en.textContent  = word.word_en || word.en || '';
+    if (en)  en.textContent  = (typeof khCleanMeaning==='function'?khCleanMeaning:String)(word.word_en || word.en || '');
     if (related) related.innerHTML = '<span class="khu-related-chip-loading">Finding related words…</span>';
     card.classList.add('show');
     card.setAttribute('aria-hidden', 'false');
@@ -1939,76 +1939,94 @@
     card.setAttribute('aria-hidden', 'true');
   }
 
-  // ── Related words (cached forever in localStorage) ─────────
-  // v2: prompt was tightened to reject syllable-only matches (도시→도시락).
-  // Bumping the key prefix invalidates old localStorage caches that may hold
-  // those bad results, so they regenerate with the better prompt.
-  var RELATED_KEY = function(ko) { return 'kh_related_v2_' + ko; };
-
-  function readRelatedFromCache(ko) {
-    try {
-      var raw = localStorage.getItem(RELATED_KEY(ko));
-      if (!raw) return null;
-      var parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : null;
-    } catch(_) { return null; }
-  }
-  function writeRelatedToCache(ko, list) {
-    try { localStorage.setItem(RELATED_KEY(ko), JSON.stringify(list)); } catch(_) {}
-  }
-
-  // Enrich any related word with rom/en from the in-memory VOCAB map if
-  // we have it (populated by loadVocabFromDB on pages that include it).
-  function enrichFromVocabBank(list) {
-    if (!window.VOCAB) return list;
-    return list.map(function(w) {
-      if (w.en && w.rom) return w;
-      var v = window.VOCAB[w.ko];
-      if (v) {
-        return { ko: w.ko, rom: w.rom || v.rom || '', en: w.en || v.en || '' };
-      }
-      return w;
+  // ── Related words — computed from the vocabulary data, no AI ─
+  // Used to call Claude Haiku on EVERY star tap (localStorage-only cache);
+  // any failure — signed out, unverified email, the free 50/day AI cap it
+  // shared with writing feedback — silently became "No related words
+  // found". Now ranked locally from the words the Universe already loaded
+  // (vocabulary bank + the learner's saved words):
+  //   • shared English meaning terms   (law → 법률, 법원 …)      strongest
+  //   • same word family               (법 ↔ 법률, 문법)        medium
+  //   • same topic category            (food, travel …)          weak
+  var REL_STOP = { a:1, an:1, the:1, to:1, of:1, and:1, or:1, in:1, on:1, at:1, for:1, with:1, by:1, from:1, be:1, is:1, are:1, do:1, does:1, something:1, someone:1, one:1, it:1, its:1, as:1, up:1, out:1, off:1, into:1, about:1, not:1, no:1, very:1, etc:1, kind:1, sort:1, type:1, thing:1, things:1, way:1, get:1, make:1, have:1, s:1 };
+  function relTokens(en) {
+    var clean = (typeof khCleanMeaning === 'function' ? khCleanMeaning(en) : String(en || '')).toLowerCase();
+    var out = {};
+    // Hyphenated compounds stay whole so "mother-in-law" doesn't match "law".
+    clean.replace(/\([^)]*\)/g, ' ').split(/[^a-z-]+/).forEach(function(t) {
+      t = t.replace(/^-+|-+$/g, '');
+      if (t.length < 3 || REL_STOP[t]) return;
+      t = t.replace(/(ies)$/, 'y').replace(/(ing|ed|es|s)$/, '');
+      if (t.length >= 3) out[t] = 1;
     });
+    return out;
   }
-
-  async function fetchRelatedWords(word) {
+  function relCandidates() {
+    var seen = {}, out = [];
+    function add(w) {
+      if (!w) return;
+      var ko = w.word_ko || w.ko; if (!ko || seen[ko] || /\s/.test(ko)) return;
+      seen[ko] = 1;
+      out.push({ ko: ko, rom: w.word_rom || w.rom || '', en: (typeof khCleanMeaning === 'function' ? khCleanMeaning(w.word_en || w.en || '') : (w.word_en || w.en || '')), _cat: w._cat || '' });
+    }
+    (state.words || []).forEach(add);
+    (state.corpusWords || []).forEach(add);
+    (relBank || []).forEach(add);
+    return out;
+  }
+  // The star field only draws ~1000 corpus points (PostgREST page cap),
+  // which left most of the ~4.4k bank out of reach for related words.
+  // Fetch the whole active bank once (ko + en only, a few small pages)
+  // and keep it for the session.
+  var relBank = null, relBankLoading = null;
+  function loadRelBank() {
+    if (relBank) return Promise.resolve(relBank);
+    if (relBankLoading) return relBankLoading;
+    relBankLoading = (async function() {
+      var out = [];
+      try {
+        var sb = (typeof getSupa === 'function') ? getSupa() : null;
+        if (!sb) return out;
+        for (var from = 0; from < 20000; from += 1000) {
+          var r = await sb.from('vocabulary_bank')
+            .select('word_ko, word_rom, word_en, interest_tag')
+            .eq('is_active', true).order('id').range(from, from + 999);
+          if (r.error || !r.data) break;
+          r.data.forEach(function(row) {
+            out.push({ ko: row.word_ko, rom: row.word_rom || '', en: row.word_en || '', _cat: normCategory(row.interest_tag || 'misc') });
+          });
+          if (r.data.length < 1000) break;
+        }
+      } catch (_) {}
+      relBank = out;
+      return out;
+    })();
+    return relBankLoading;
+  }
+  function computeRelatedWords(word) {
     var ko = word.word_ko || word.ko || '';
     if (!ko) return [];
-    // 1) localStorage cache
-    var cached = readRelatedFromCache(ko);
-    if (cached && cached.length) return enrichFromVocabBank(cached);
-    // 2) Ask Claude Haiku — returns 5 semantically related items
-    if (typeof callClaude !== 'function') return [];
-    var en = word.word_en || word.en || '';
-    var prompt = 'Generate exactly 5 Korean vocabulary words that are semantically related to "' + ko + '"'
-      + (en ? ' (meaning: ' + en + ')' : '')
-      + '. Rules:\n'
-      + '- Related by MEANING ONLY: topic, category, synonyms, antonyms, same semantic domain, or common collocations.\n'
-      + '- CRITICAL: NEVER pick a word just because it shares a syllable or substring with "' + ko + '". '
-      +   'e.g. for 도시 (city) do NOT return 도시락 (lunchbox); for 사과 (apple/apology) do NOT mix the two senses by spelling. '
-      +   'If a candidate is only spelled similarly but means something unrelated, reject it.\n'
-      + '- Use the DICTIONARY FORM for verbs and adjectives (ending in -다).\n'
-      + '- Avoid trivial high-frequency words (정말, 많이, 너무, 진짜, 아주, 매우, 조금, 좀, 잘, 또, 다, 더, 그냥, 그리고, 그래서, 한국, 사람, 것, 수, 거, 때, 말).\n'
-      + '- Include at least 2 intermediate-difficulty words.\n'
-      + 'Return ONLY a JSON array of 5 items, each: {"ko":"Korean","rom":"romanization","en":"concise English gloss"}. No other text.';
-    try {
-      var res = await callClaude({
-        feature: 'related-words',
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
-        messages: [{ role: 'user', content: prompt }]
-      });
-      var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
-      var ai = text.indexOf('['), bi = text.lastIndexOf(']');
-      if (ai >= 0 && bi > ai) text = text.slice(ai, bi + 1);
-      var arr = JSON.parse(text);
-      if (!Array.isArray(arr)) return [];
-      arr = arr.filter(function(x) { return x && x.ko; }).slice(0, 5);
-      writeRelatedToCache(ko, arr);
-      return enrichFromVocabBank(arr);
-    } catch(_) {
-      return [];
-    }
+    var base = ko.replace(/다$/, '');                // 먹다 → 먹 for verb families
+    var toks = relTokens(word.word_en || word.en || '');
+    var cat = word._cat || '';
+    var scored = [];
+    relCandidates().forEach(function(c) {
+      if (c.ko === ko || !c.en) return;
+      var score = 0;
+      var ct = relTokens(c.en);
+      for (var t in toks) if (ct[t]) score += 3;
+      var cb = c.ko.replace(/다$/, '');
+      // Word family needs a 2+ syllable stem — one syllable (비, 차) matches noise like 로비, 준비.
+      if (base.length >= 2 && cb !== base && (cb.indexOf(base) >= 0 || (cb.length >= 2 && base.indexOf(cb) >= 0))) score += 2;
+      if (cat && cat !== 'misc' && c._cat === cat) score += 1;
+      if (score > 0) scored.push({ w: c, s: score + Math.random() * 0.2 });
+    });
+    scored.sort(function(a, b) { return b.s - a.s; });
+    return scored.slice(0, 6).map(function(x) { return { ko: x.w.ko, rom: x.w.rom, en: x.w.en }; });
+  }
+  async function fetchRelatedWords(word) {
+    try { await loadRelBank(); } catch (_) {}
+    try { return computeRelatedWords(word); } catch (_) { return []; }
   }
 
   // ── Save a related word into the user's word bank ──────────
@@ -2035,9 +2053,9 @@
       }
       // Fallback direct upsert
       var up = await sb.from('user_saved_words').upsert({
-        user_id: supaUser.id,
+        user_id: supaUser.id, word_key: rel.ko,
         word_ko: rel.ko, word_rom: rel.rom || '', word_en: rel.en || ''
-      }, { onConflict: 'user_id,word_ko' });
+      }, { onConflict: 'user_id,word_key' });
       return !up.error;
     } catch(e) { console.warn('[KHUniverse] saveRelatedWord', e); return false; }
   }
@@ -2047,7 +2065,7 @@
     var wrap = document.getElementById('khu-card-related');
     if (!wrap) return;
     if (!relatedList || !relatedList.length) {
-      wrap.innerHTML = '<span class="khu-related-chip-loading">No related words found.</span>';
+      wrap.innerHTML = '<span class="khu-related-chip-loading">No related words in our word list yet.</span>';
       return;
     }
     var html = '<div class="khu-related-label">Related Words</div>';

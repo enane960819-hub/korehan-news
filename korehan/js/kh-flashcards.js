@@ -307,7 +307,7 @@
     _animateSwipe('left', function() { _index++; _renderCard(); });
   };
 
-  /** Save swipe result to Supabase via save_or_update_word RPC */
+  /** Record a swipe as a review of an already-saved word (never inserts). */
   function _trackSRS(card, known) {
     if (!card || !card.ko) return;
     if (typeof supaUser === 'undefined' || !supaUser) return;
@@ -315,16 +315,9 @@
     try {
       var sb = getSupa();
       if (!sb) return;
-      sb.rpc('save_or_update_word', {
-        p_word_key: card.ko,
-        p_word_ko: card.ko,
-        p_word_en: card.en || null,
-        p_word_rom: card.rom || null,
-        p_source_kind: 'flashcard_3d',
-        p_review_delta: 1,
-        p_correct_delta: known ? 1 : 0,
-        p_wrong_delta: known ? 0 : 1
-      }).then(null, function() {});
+      // Update-only. This used to be save_or_update_word, which INSERTED
+      // every swiped card — left or right — into the learner's word book.
+      sb.rpc('log_word_review', { p_word_key: card.ko, p_correct: !!known }).then(null, function() {});
     } catch(e) {}
   }
 

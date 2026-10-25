@@ -140,7 +140,7 @@ body { font-family: 'Happy Monkey', 'Jua', 'Inter', 'Noto Sans KR', sans-serif; 
 <script src="js/features/analyze-mode.js?v=20260527j"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261025a"></script>
+<script src="korehan-shared.js?v=20261025b"></script>
 <script>
 function switchNotesTab(tab) {
   document.querySelectorAll('.notes-tab').forEach(function(b){ b.classList.toggle('on', b.dataset.tab === tab); });
@@ -247,7 +247,7 @@ async function _loadSavedWords() {
       return {
         ko:  r.word_ko || r.ko || '',
         rom: r.word_rom || r.rom || '',
-        en:  r.word_en || r.en || '',
+        en:  (typeof khCleanMeaning==='function'?khCleanMeaning:String)(r.word_en || r.en || ''),
       };
     }).filter(function(w){ return w.ko; });
 
