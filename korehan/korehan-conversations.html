@@ -2503,6 +2503,7 @@ function _convRowToObj(row) {
     _id:  row._id || row.id,
     name: row.name || '',
     ctx:  row.ctx  || '',
+    ctx_en: row.ctx_en || '',
     cat:  row.cat  || 'everyday',
     lvl:  row.lvl  || 'b',
     catLabel: row.catLabel || '',
@@ -2557,7 +2558,7 @@ function _convRowToObj(row) {
     try {
       var sb = getSupa();
       var metaRes = await sb.from('conversations_data')
-        .select('id,name,ctx,cat,lvl')
+        .select('id,name,ctx,ctx_en,cat,lvl')
         .order('created_at', {ascending: false});
 
       if (metaRes.error) throw metaRes.error;
@@ -2565,7 +2566,7 @@ function _convRowToObj(row) {
       if (metaRes.data && metaRes.data.length) {
         var basicConvs = metaRes.data.map(function(row) {
           return _convRowToObj({
-            _id: row.id, name: row.name || '', ctx: row.ctx || '',
+            _id: row.id, name: row.name || '', ctx: row.ctx || '', ctx_en: row.ctx_en || '',
             cat: row.cat, lvl: row.lvl,
             topic: '', thumb: null,
             preview: [], _msgCount: 0, _vocabCount: 0,
@@ -2636,7 +2637,7 @@ function _convRowToObj(row) {
             // Refresh cache with enriched payload for instant next-load.
             try {
               var toCache = CONVS.map(function(c){
-                return {_id:c._id, name:c.name, ctx:c.ctx, cat:c.cat, lvl:c.lvl, topic:c.topic, thumb:c.thumb, preview:c.preview, _msgCount:c._msgCount, _vocabCount:c._vocabCount, cast_left_slug:c.cast_left_slug, cast_right_slug:c.cast_right_slug};
+                return {_id:c._id, name:c.name, ctx:c.ctx, ctx_en:c.ctx_en || '', cat:c.cat, lvl:c.lvl, topic:c.topic, thumb:c.thumb, preview:c.preview, _msgCount:c._msgCount, _vocabCount:c._vocabCount, cast_left_slug:c.cast_left_slug, cast_right_slug:c.cast_right_slug};
               });
               localStorage.setItem(_CONV_CACHE_KEY, JSON.stringify(toCache));
             } catch(_) {}
