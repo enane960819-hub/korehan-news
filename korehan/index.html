@@ -1,23 +1,23 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KoreHani — Learn Korean Through Real News</title>
-<meta name="description" content="Read real Korean news, conversations, and stories. Tap any sentence for instant translation, vocab, and grammar — TOPIK-level practice that works.">
+<meta name="description" content="Read real Korean news, conversations, and Korea Buzz. Tap any sentence for instant translation, vocab, and grammar — TOPIK-level practice that works.">
 <meta name="keywords" content="한국어 학습, Korean learning, TOPIK, 한국어 공부, learn korean, korean news, korean vocabulary, korean grammar">
 <link rel="canonical" href="https://korehani.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="KoreHani">
-<meta property="og:locale" content="ko_KR">
-<meta property="og:locale:alternate" content="en_US">
-<meta property="og:title" content="KoreHani — 실제 한국 뉴스로 배우는 한국어">
-<meta property="og:description" content="실제 한국 뉴스 기사로 배우는 한국어. TOPIK 레벨별 맞춤 학습, 매일 새로운 콘텐츠.">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ko_KR">
+<meta property="og:title" content="KoreHani — Learn Korean Through Real News">
+<meta property="og:description" content="Learn Korean with real Korean news. Leveled for TOPIK learners, with new content every day.">
 <meta property="og:image" content="https://korehani.com/img/guide/step1-tap-analysis.jpg">
 <meta property="og:url" content="https://korehani.com/">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="KoreHani — 실제 한국 뉴스로 배우는 한국어">
-<meta name="twitter:description" content="실제 한국 뉴스 기사로 배우는 한국어. TOPIK 레벨별 맞춤 학습, 매일 새로운 콘텐츠.">
+<meta name="twitter:title" content="KoreHani — Learn Korean Through Real News">
+<meta name="twitter:description" content="Learn Korean with real Korean news. Leveled for TOPIK learners, with new content every day.">
 <meta name="twitter:image" content="https://korehani.com/img/guide/step1-tap-analysis.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1382,7 +1382,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/core/hangul-jamo-input.js?v=20261022c"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261025a"></script>
-<script src="js/core/reporters.js?v=20260525r"></script>
+<script src="js/core/reporters.js?v=20261025a"></script>
 <script src="js/features/streak.js?v=20260525r" defer></script>
 <script src="js/features/daily-mission.js?v=20261025a" defer></script>
 <script src="js/features/reading-tracker.js?v=20260525r" defer></script>
@@ -1392,7 +1392,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261025e"></script>
+<script src="korehan-shared.js?v=20261025f"></script>
 <script>
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
@@ -2155,7 +2155,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           + '<div class="khn-img"' + (thumb ? ' style="background-image:url(\'' + String(thumb).replace(/'/g, '%27') + '\')"' : '') + '></div>'
           + '<div class="khn-grad"></div>'
           + '<div class="khn-body">'
-          +   '<div class="khn-meta"><span class="khn-cat">' + (a.section || '') + '</span><span class="khn-lvl ' + lvlCls + '">' + (LVL_NAME[a.level] || a.level || '') + '</span></div>'
+          +   '<div class="khn-meta"><span class="khn-cat">' + (typeof khSecLabel === 'function' ? khSecLabel(a.section) : (a.section || '')) + '</span><span class="khn-lvl ' + lvlCls + '">' + (LVL_NAME[a.level] || a.level || '') + '</span></div>'
           +   '<div class="khn-title">' + (a.title_en || a.title || '') + '</div>'
           + '</div>'
           + '</a>';
@@ -2177,7 +2177,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         + img
         + '<div class="nc-overlay-grad"></div>'
         + '<div class="nc-overlay-body">'
-        + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level||'') + '</span></div>'
+        + '<div class="nc-meta"><span class="nc-cat">' + (typeof khSecLabel === 'function' ? khSecLabel(a.section) : (a.section || '')) + '</span><span class="nc-lvl ' + lvlCls + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level||'') + '</span></div>'
         + '<div class="nc-title">' + (a.title_en || a.title || '') + '</div>'
         + '<div class="nc-foot"><span class="nc-date">' + (a.published_at ? new Date(a.published_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '') + '</span>'
         + '<button class="nc-study" onclick="event.preventDefault();event.stopPropagation();location.href=\'korehan-study-room.html?mode=article&id=' + encodeURIComponent(a.id) + '\'" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Study</span></button></div>'

@@ -5031,6 +5031,23 @@ var _SLANG_FALLBACK = [
     chat:[{me:false,name:'성민',msg:'나 복권 당첨됐어'},{me:true,msg:'....<hl>실화냐</hl>???'},{me:false,name:'성민',msg:'5000원 ㅋㅋ'},{me:true,msg:'ㅋㅋㅋㅋ 그것도 실화라고'}]}
 ];
 
+// Slang tags / warnings are stored in Korean; show English chips.
+var _SLANG_TAG_EN = { '일상':'Everyday', '기본':'Basic', 'MZ세대':'Gen Z', '혼족문화':'Solo culture', '음식':'Food',
+  '메타':'Meta', '사회생활':'Social life', '투자/트렌드':'Trends', '소비문화':'Spending', '귀여움':'Cute', '리액션':'Reaction',
+  '연애':'Dating', '학교':'School', '직장':'Work', '인터넷':'Internet', '게임':'Gaming', '감정':'Feelings', '칭찬':'Praise',
+  '패션':'Fashion', '뷰티':'Beauty', '트렌드':'Trends', '줄임말':'Abbreviation', '신조어':'New word' };
+function _slangTagEn(tag) {
+  tag = String(tag || '').trim();
+  if (!tag) return 'Everyday';
+  if (!/[\uAC00-\uD7A3]/.test(tag)) return tag;
+  return _SLANG_TAG_EN[tag] || 'Slang';
+}
+function _slangWarnChip(s) {
+  var t = String(s.warnText || '');
+  var label = (t && !/[\uAC00-\uD7A3]/.test(t)) ? t : 'Use with care';
+  return '<span class="slang-tag slang-tag-warn"' + (t ? ' title="' + escapeHTML(t) + '"' : '') + '>' + escapeHTML(label) + '</span>';
+}
+
 // Load slangs from DB
 async function loadSlangsFromDB() {
   try {
@@ -5057,7 +5074,7 @@ function renderSlang() {
   var pre = document.getElementById('sr-slang-preview');
   var mean = document.getElementById('sr-slang-meaning');
   if (pre) pre.textContent = s.ko + ' = ' + s.en;
-  if (mean) mean.textContent = s.desc;
+  if (mean) mean.textContent = s.descEn || s.desc;
 }
 // Initial load — try DB first, fallback to hardcoded
 (function(){ _KOREAN_SLANGS = _SLANG_FALLBACK; _slangIdx = Math.floor(Math.random() * _SLANG_FALLBACK.length); setTimeout(renderSlang, 500); setTimeout(loadSlangsFromDB, 1000); })();
@@ -5145,8 +5162,8 @@ function renderSlangDaily(el) {
   var daily = getDailySlang3();
   var html = '<div style="font-size:13px;color:rgba(255,255,255,.35);margin-bottom:14px">3 slang expressions to learn today</div>';
   daily.forEach(function(s, i) {
-    var tags = '<span class="slang-tag slang-tag-gen">' + (s.tag||'일상') + '</span>';
-    if (s.warn) tags += '<span class="slang-tag slang-tag-warn">' + (s.warnText||'주의') + '</span>';
+    var tags = '<span class="slang-tag slang-tag-gen">' + escapeHTML(_slangTagEn(s.tag)) + '</span>';
+    if (s.warn) tags += _slangWarnChip(s);
     html += '<div style="margin-bottom:16px;padding:16px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)">'
       + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
       + '<span style="font-size:11px;color:rgba(255,255,255,.2);font-weight:800">#' + (i+1) + '</span>'
@@ -5177,8 +5194,8 @@ function showSlangDetailAll(idx) {
   var card = document.getElementById('sca-' + idx);
   if (card) card.classList.add('active');
   var det = document.getElementById('slang-detail-all');
-  var tags = '<span class="slang-tag slang-tag-gen">' + (s.tag||'일상') + '</span>';
-  if (s.warn) tags += '<span class="slang-tag slang-tag-warn">' + (s.warnText||'주의') + '</span>';
+  var tags = '<span class="slang-tag slang-tag-gen">' + escapeHTML(_slangTagEn(s.tag)) + '</span>';
+  if (s.warn) tags += _slangWarnChip(s);
   det.innerHTML = '<div class="slang-detail">' + tags
     + '<div class="slang-detail-hd">' + s.ko + '</div>'
     + '<div class="slang-detail-en">' + s.en + '</div>'
@@ -5295,8 +5312,8 @@ function slangQuizAnswer(optIdx) {
     // Surface the slang's description on wrong answers so the learner
     // walks away knowing WHY — previously we just showed the meaning
     // again, missing the teaching moment. Audit 2026-05-18 (B4).
-    var descBlock = (!correct && item.slang.desc)
-      ? '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px;line-height:1.6;font-style:italic">' + item.slang.desc + '</div>'
+    var descBlock = (!correct && (item.slang.descEn || item.slang.desc))
+      ? '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:6px;line-height:1.6;font-style:italic">' + escapeHTML(item.slang.descEn || item.slang.desc) + '</div>'
       : '';
     fb.innerHTML = '<div style="font-size:14px;font-weight:700;color:' + (correct?'#34d399':'#ef4444') + ';margin-bottom:4px">' + (correct ? 'Correct!' : 'Wrong!') + '</div>'
       + '<div style="font-size:12px;color:rgba(255,255,255,.5)">' + item.slang.ko + ' = ' + item.slang.en + '</div>'

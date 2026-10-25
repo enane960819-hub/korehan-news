@@ -253,6 +253,9 @@
   - [ ] 다음으로 미룸 (P1): 냥·XP를 클라이언트가 직접 수정 (`user_stats` update/upsert 10곳 — 기자 선물, 닉네임 변경, 방 아이템, First Journey, 배지 보상, 상점 폴백) → 전부 서버 RPC로 옮긴 뒤 `coin_balance`/`xp` 컬럼 UPDATE 권한 회수. 현금 판매를 숨겨서 지금은 꾸미기 아이템 치팅만 가능 → 결제 켜기 전 필수
   - [ ] 다음으로 미룸 (P1): 공유 AI 캐시(`article_cache` 등) 쓰기를 엣지 함수로, AI 무거운 Premium 기능 서버측 확인
 
+- [x] **4단계 (한국어 UI)** — 섹션 칩 전부 `khSecLabel()`(영어, DB 라벨이 한국어여도 영어로), 댓글·로그인 실패 배너·분석 중·발음 버튼, 기자 직함 영어(`khReporterRole`), 호버 문법 용어 영어, 화폐 표기 `Nyang`으로 통일, 상점 칭호 영어, 슬랭 태그·경고·오답 해설 영어(`desc_en` 우선), Growth Lab 오류 문구, 19개 페이지 `lang="en"` + `og:locale en_US` + 한국어 meta 설명 전부 영어
+  - [ ] 남음: DB에 한국어로 저장된 상점 아이템 설명(예: Streak Freeze), `[슬랭]` 접두어 → `category` 컬럼 분리(현재는 화면에서 `khCleanMeaning`으로 제거 중)
+
 ## 제안 진행 순서
 
 1. **멈춘 것 살리기** — 자동화(기사·일일 콘텐츠·PII 삭제 크론) 원인, 마이크 차단, Speaking 0점, 조회수, 깨진 버튼·헤더, 임시 진단 코드 삭제

@@ -86,17 +86,17 @@
     // cosmetic, currency (spendable on cosmetics), ad-free, or gift tokens.
     //
     // Nyang currency packs
-    _mk({ id:'cash_nyang_pack_sm',   name:'Nyang Pack · Small',    description:'Adds 500 냥 to your balance — spend on room items & cosmetics.',   item_type:'currency_pack', coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:90 }),
-    _mk({ id:'cash_nyang_pack_md',   name:'Nyang Pack · Medium',   description:'Adds 1,200 냥 + 10% bonus — for cosmetic & room purchases.',       item_type:'currency_pack', coin_price:0, cash_price:5.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:91 }),
-    _mk({ id:'cash_nyang_pack_lg',   name:'Nyang Pack · Large',    description:'Adds 3,000 냥 + 20% bonus — stock up on room items.',              item_type:'currency_pack', coin_price:0, cash_price:12.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:92 }),
-    _mk({ id:'cash_nyang_pack_xl',   name:'Nyang Pack · Mega',     description:'Adds 7,000 냥 + 30% bonus — best value for decorators.',           item_type:'currency_pack', coin_price:0, cash_price:24.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:93 }),
-    _mk({ id:'cash_nyang_pack_ultra',name:'Nyang Pack · Ultra',    description:'Adds 20,000 냥 + 40% bonus — deck out the whole room.',            item_type:'currency_pack', coin_price:0, cash_price:59.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:94 }),
+    _mk({ id:'cash_nyang_pack_sm',   name:'Nyang Pack · Small',    description:'Adds 500 Nyang to your balance — spend on room items & cosmetics.',   item_type:'currency_pack', coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:90 }),
+    _mk({ id:'cash_nyang_pack_md',   name:'Nyang Pack · Medium',   description:'Adds 1,200 Nyang + 10% bonus — for cosmetic & room purchases.',       item_type:'currency_pack', coin_price:0, cash_price:5.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:91 }),
+    _mk({ id:'cash_nyang_pack_lg',   name:'Nyang Pack · Large',    description:'Adds 3,000 Nyang + 20% bonus — stock up on room items.',              item_type:'currency_pack', coin_price:0, cash_price:12.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:92 }),
+    _mk({ id:'cash_nyang_pack_xl',   name:'Nyang Pack · Mega',     description:'Adds 7,000 Nyang + 30% bonus — best value for decorators.',           item_type:'currency_pack', coin_price:0, cash_price:24.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:93 }),
+    _mk({ id:'cash_nyang_pack_ultra',name:'Nyang Pack · Ultra',    description:'Adds 20,000 Nyang + 40% bonus — deck out the whole room.',            item_type:'currency_pack', coin_price:0, cash_price:59.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:94 }),
 
     // Supporter tiers — cosmetic + ad-free only (no learning perks)
-    _mk({ id:'cash_supporter_month', name:'Supporter · 1 Month',   description:'Supporter badge + 1,000 냥 + ad-free reading. No learning perks.',  item_type:'subscription',  coin_price:0, cash_price:4.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:100 }),
-    _mk({ id:'cash_supporter_3mo',   name:'Supporter · 3 Months',  description:'Supporter badge + 3,500 냥 + ad-free + monthly sticker drop.',     item_type:'subscription',  coin_price:0, cash_price:11.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:101 }),
-    _mk({ id:'cash_supporter_6mo',   name:'Supporter · 6 Months',  description:'Supporter badge + 7,500 냥 + ad-free + exclusive room effect.',    item_type:'subscription',  coin_price:0, cash_price:22.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:102 }),
-    _mk({ id:'cash_supporter_year',  name:'Supporter · 1 Year',    description:'Supporter Gold badge + 18,000 냥 + ad-free + seasonal cosmetics.',  item_type:'subscription',  coin_price:0, cash_price:39.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:103 }),
+    _mk({ id:'cash_supporter_month', name:'Supporter · 1 Month',   description:'Supporter badge + 1,000 Nyang + ad-free reading. No learning perks.',  item_type:'subscription',  coin_price:0, cash_price:4.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:100 }),
+    _mk({ id:'cash_supporter_3mo',   name:'Supporter · 3 Months',  description:'Supporter badge + 3,500 Nyang + ad-free + monthly sticker drop.',     item_type:'subscription',  coin_price:0, cash_price:11.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:101 }),
+    _mk({ id:'cash_supporter_6mo',   name:'Supporter · 6 Months',  description:'Supporter badge + 7,500 Nyang + ad-free + exclusive room effect.',    item_type:'subscription',  coin_price:0, cash_price:22.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:102 }),
+    _mk({ id:'cash_supporter_year',  name:'Supporter · 1 Year',    description:'Supporter Gold badge + 18,000 Nyang + ad-free + seasonal cosmetics.',  item_type:'subscription',  coin_price:0, cash_price:39.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:103 }),
     _mk({ id:'cash_supporter_lifetime', name:'Supporter · Lifetime', description:'Forever Supporter badge + lifetime ad-free + every future cosmetic drop.', item_type:'subscription', coin_price:0, cash_price:149.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:104 }),
     _mk({ id:'cash_ad_free_month',   name:'Ad-Free · 1 Month',     description:'Removes all ad placements for 30 days. No learning perks.',        item_type:'subscription',  coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:105 }),
 
@@ -148,13 +148,13 @@
     _mk({ id:'cash_badge_patron',       name:'Patron of Hangul',     description:'For patrons of the Korean learning community.',                  item_type:'profile_badge',    coin_price:0, cash_price:14.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:162 }),
 
     // Bundles (cosmetic only)
-    _mk({ id:'cash_bundle_starter',     name:'Cosmetic Starter Pack', description:'2,000 냥 + Sakura frame + Sakura room effect. No learning perks.', item_type:'bundle', coin_price:0, cash_price:9.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:170 }),
+    _mk({ id:'cash_bundle_starter',     name:'Cosmetic Starter Pack', description:'2,000 Nyang + Sakura frame + Sakura room effect. No learning perks.', item_type:'bundle', coin_price:0, cash_price:9.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:170 }),
     _mk({ id:'cash_bundle_kpop',        name:'K-Pop Fan Bundle',      description:'K-Pop poster + light stick + neon sign + K-Pop sticker pack.',    item_type:'bundle', coin_price:0, cash_price:7.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:171 }),
     _mk({ id:'cash_bundle_traditional', name:'Traditional Korea Bundle', description:'Hanbok doll + Joseon scholar + mini temple + calligraphy.',   item_type:'bundle', coin_price:0, cash_price:12.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:172 }),
     _mk({ id:'cash_bundle_cozy',        name:'Cozy Room Bundle',      description:'Desk + chair + piano + bonsai + tea set. Pure aesthetic.',        item_type:'bundle', coin_price:0, cash_price:14.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:173 }),
     _mk({ id:'cash_bundle_hanok_room',  name:'Hanok Room Bundle',     description:'Hanok wallpaper + tatami floor + paper lantern + tea table.',     item_type:'bundle', coin_price:0, cash_price:12.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:174 }),
     _mk({ id:'cash_bundle_neon_room',   name:'Neon Seoul Bundle',     description:'Neon Seoul wallpaper + marble floor + neon sign + light stick.',  item_type:'bundle', coin_price:0, cash_price:12.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:175 }),
-    _mk({ id:'cash_bundle_premium',     name:'Premium Everything',    description:'1-month Supporter + Galaxy frame + Night Sky wallpaper + 5,000 냥.', item_type:'bundle', coin_price:0, cash_price:19.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:176 }),
+    _mk({ id:'cash_bundle_premium',     name:'Premium Everything',    description:'1-month Supporter + Galaxy frame + Night Sky wallpaper + 5,000 Nyang.', item_type:'bundle', coin_price:0, cash_price:19.99, can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:176 }),
 
     // Exclusive pets / characters / furniture (cosmetic only)
     _mk({ id:'cash_pet_dragon',       name:'Mini Korean Dragon',    description:'Legendary room pet. Cash-exclusive, one per account.',            item_type:'room_item',  coin_price:0, cash_price:6.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:180 }),
@@ -163,7 +163,7 @@
     _mk({ id:'cash_room_throne',      name:'Royal Throne',          description:'Gilded Joseon-style throne. Cash-exclusive furniture.',           item_type:'room_item',  coin_price:0, cash_price:6.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:false, sort_order:183 }),
 
     // Gifting (nyang / supporter only — can't gift learning perks)
-    _mk({ id:'cash_gift_nyang_500',   name:'Gift · 500 냥 to Friend', description:'Send 500 냥 directly to a friend\'s account.',                  item_type:'gift_token', coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:190 }),
+    _mk({ id:'cash_gift_nyang_500',   name:'Gift · 500 Nyang to Friend', description:'Send 500 Nyang directly to a friend\'s account.',                  item_type:'gift_token', coin_price:0, cash_price:2.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:190 }),
     _mk({ id:'cash_gift_supporter',   name:'Gift · Supporter 1mo',  description:'Gift a friend one month of Supporter cosmetic perks.',            item_type:'gift_token', coin_price:0, cash_price:4.99,  can_buy_with_coin:false, can_buy_with_cash:true, is_repeatable:true, sort_order:191 }),
 
     // ── Coin badges (learning achievement themed) ─────────────
@@ -180,18 +180,18 @@
     // New item_type 'profile_title'. The display hook lives in shared.js
     // formatDisplayName() — a missing/inactive title just renders the
     // username as before.
-    _mk({ id:'title_seed',           name:'Title · 새싹',          description:'A friendly title showing you\'re just starting out.',       item_type:'profile_title', coin_price:60,  sort_order:220 }),
-    _mk({ id:'title_sprout',         name:'Title · 떡잎',          description:'Tiny sprout title for early learners.',                    item_type:'profile_title', coin_price:80,  sort_order:221 }),
-    _mk({ id:'title_tree',           name:'Title · 나무',          description:'For solid intermediate learners.',                         item_type:'profile_title', coin_price:120, sort_order:222 }),
-    _mk({ id:'title_forest',         name:'Title · 숲',            description:'Advanced learner — you ARE the forest.',                  item_type:'profile_title', coin_price:180, sort_order:223 }),
-    _mk({ id:'title_scholar',        name:'Title · 학자',          description:'For serious students of Korean.',                          item_type:'profile_title', coin_price:160, sort_order:224 }),
-    _mk({ id:'title_word_master',    name:'Title · 단어 마스터',   description:'Vocabulary champion title.',                              item_type:'profile_title', coin_price:140, sort_order:225 }),
-    _mk({ id:'title_news_addict',    name:'Title · 뉴스 중독자',   description:'Title for the daily news binger.',                        item_type:'profile_title', coin_price:120, sort_order:226 }),
-    _mk({ id:'title_night_owl',      name:'Title · 야행성',        description:'For learners who study after midnight.',                  item_type:'profile_title', coin_price:100, sort_order:227 }),
-    _mk({ id:'title_early_bird',     name:'Title · 아침형 인간',   description:'For learners who study at dawn.',                          item_type:'profile_title', coin_price:100, sort_order:228 }),
+    _mk({ id:'title_seed',           name:'Title · Seed (새싹)',          description:'A friendly title showing you\'re just starting out.',       item_type:'profile_title', coin_price:60,  sort_order:220 }),
+    _mk({ id:'title_sprout',         name:'Title · Sprout (떡잎)',          description:'Tiny sprout title for early learners.',                    item_type:'profile_title', coin_price:80,  sort_order:221 }),
+    _mk({ id:'title_tree',           name:'Title · Tree (나무)',          description:'For solid intermediate learners.',                         item_type:'profile_title', coin_price:120, sort_order:222 }),
+    _mk({ id:'title_forest',         name:'Title · Forest (숲)',            description:'Advanced learner — you ARE the forest.',                  item_type:'profile_title', coin_price:180, sort_order:223 }),
+    _mk({ id:'title_scholar',        name:'Title · Scholar (학자)',          description:'For serious students of Korean.',                          item_type:'profile_title', coin_price:160, sort_order:224 }),
+    _mk({ id:'title_word_master',    name:'Title · Word Master (단어 마스터)',   description:'Vocabulary champion title.',                              item_type:'profile_title', coin_price:140, sort_order:225 }),
+    _mk({ id:'title_news_addict',    name:'Title · News Addict (뉴스 중독자)',   description:'Title for the daily news binger.',                        item_type:'profile_title', coin_price:120, sort_order:226 }),
+    _mk({ id:'title_night_owl',      name:'Title · Night Owl (야행성)',        description:'For learners who study after midnight.',                  item_type:'profile_title', coin_price:100, sort_order:227 }),
+    _mk({ id:'title_early_bird',     name:'Title · Early Bird (아침형 인간)',   description:'For learners who study at dawn.',                          item_type:'profile_title', coin_price:100, sort_order:228 }),
     _mk({ id:'title_polyglot',       name:'Title · Polyglot',      description:'You speak more than one non-native language.',            item_type:'profile_title', coin_price:140, sort_order:229 }),
-    _mk({ id:'title_kimchi_lover',   name:'Title · 김치 러버',     description:'A fun title for Korean food fans.',                       item_type:'profile_title', coin_price:90,  sort_order:230 }),
-    _mk({ id:'title_seoulite',       name:'Title · 서울러',        description:'For lovers of Seoul.',                                    item_type:'profile_title', coin_price:90,  sort_order:231 }),
+    _mk({ id:'title_kimchi_lover',   name:'Title · Kimchi Lover (김치 러버)',     description:'A fun title for Korean food fans.',                       item_type:'profile_title', coin_price:90,  sort_order:230 }),
+    _mk({ id:'title_seoulite',       name:'Title · Seoulite (서울러)',        description:'For lovers of Seoul.',                                    item_type:'profile_title', coin_price:90,  sort_order:231 }),
 
     // ── Coin frames (more variety so coin spend has somewhere to go) ──
     _mk({ id:'cosmetic_aurora_frame',  name:'Aurora Frame',        description:'Northern-lights gradient profile frame.',                  item_type:'profile_cosmetic', coin_price:200, sort_order:240 }),

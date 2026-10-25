@@ -1920,7 +1920,7 @@ function updateAuthUI() {
         '<div class="kh-user-dropdown-head">'
         + '<div class="kh-user-dropdown-name">' + escapeHtml(name || 'User') + '</div>'
         + '<div class="kh-user-dropdown-email">' + escapeHtml(supaUser.email || '') + '</div>'
-        + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP 0 · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>냥 0</span></div>'
+        + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP 0 · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>0 Nyang</span></div>'
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
         + '<a href="korehan-friends.html" class="kh-user-dropdown-link">' + khIcon('users', 'Friends', 'kh-ui-icon-sm') + '</a>'
@@ -1945,7 +1945,7 @@ function updateAuthUI() {
             if (!statsEl) return;
             var xp = Number(r && r.data && r.data.xp || 0);
             var coin = Number(r && r.data && r.data.coin_balance || 0);
-            statsEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP ' + xp.toLocaleString() + ' · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>냥 ' + coin.toLocaleString() + '</span></span>';
+            statsEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP ' + xp.toLocaleString() + ' · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>' + coin.toLocaleString() + ' Nyang</span></span>';
           })
           .catch(function(){});
       })();
@@ -3058,7 +3058,7 @@ function cardHTML(a, extraTagClass) {
     + '<div class="card">'
     + '<img src="' + img + '" alt="" loading="lazy" decoding="async" fetchpriority="low">'
     + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
-    + '<div class="tag' + (tc ? ' ' + tc : '') + '">' + a.section + '</div>'
+    + '<div class="tag' + (tc ? ' ' + tc : '') + '">' + escapeHtml(khSecLabel(a.section)) + '</div>'
     + levelBadge
     + '</div>'
     + '<h3 class="vocab-zone" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h3>'
@@ -3085,7 +3085,7 @@ function storyItemHTML(a) {
     + '<img src="' + img + '" alt="" loading="lazy">'
     + '<div>'
     + '<h4 class="vocab-zone">' + a.title + '</h4>'
-    + '<div class="meta">' + a.section + '</div>'
+    + '<div class="meta">' + escapeHtml(khSecLabel(a.section)) + '</div>'
     + '</div></div></a>';
 }
 
@@ -3097,7 +3097,7 @@ function heroSideItemHTML(a) {
     + '<div class="hero-side-item">'
     + '<img src="' + img + '" alt="" loading="lazy" decoding="async" fetchpriority="low">'
     + '<h3 class="vocab-zone" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h3>'
-    + '<p class="meta">' + a.section + '</p>'
+    + '<p class="meta">' + escapeHtml(khSecLabel(a.section)) + '</p>'
     + '</div></a>';
 }
 
@@ -3277,9 +3277,9 @@ function _khShowAuthFailureBanner() {
   bar.id = 'kh-auth-fail-banner';
   bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 16px;background:#fef3c7;color:#92400e;border-bottom:1px solid #fcd34d;font-size:13px;line-height:1.5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;font-family:inherit;text-align:center';
   bar.innerHTML =
-      '<span style="flex-basis:100%;max-width:540px">로그인이 완료되지 않았어요. 브라우저에 저장된 옛 인증 데이터가 막고 있을 수 있어요. <b>Reset Data</b>을 누르거나 Chrome에서 열어주세요.</span>'
+      '<span style="flex-basis:100%;max-width:540px">Sign-in didn&rsquo;t finish. Old sign-in data saved in this browser may be blocking it &mdash; tap <b>Reset Data</b> or open the site in Chrome.</span>'
     + '<button onclick="window._khResetClientStorage&&window._khResetClientStorage()" style="border:0;background:#dc2626;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">🔄 Reset Data</button>'
-    + '<button onclick="this.parentNode.remove()" style="border:0;background:#92400e;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">닫기</button>';
+    + '<button onclick="this.parentNode.remove()" style="border:0;background:#92400e;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Close</button>';
   document.body.appendChild(bar);
 }
 
@@ -3403,7 +3403,7 @@ function renderHeroSlide(heroEl) {
             ? '<span class="kh-hero-chip kh-hero-chip-lvl-' + item.level + '" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="' + (LVL_ICON[item.level]||'leaf') + '" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>' + (LVL_LBL[item.level]||item.level) + '</span></span>'
             : '';
           var bodyPlain = (item.body || '').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
-          var catChip = '<span class="kh-hero-chip kh-hero-chip-cat">' + item.section + '</span>';
+          var catChip = '<span class="kh-hero-chip kh-hero-chip-cat">' + escapeHtml(khSecLabel(item.section)) + '</span>';
           // Short excerpt — first ~90 Korean chars to fill the dead space below title
           var excerpt = bodyPlain.slice(0, 110);
           if (bodyPlain.length > 110) excerpt += '…';
@@ -3491,7 +3491,7 @@ function updateHeroSlideUI(heroEl) {
       return '<a href="' + articleUrl(a.id) + '" style="display:flex;gap:12px;padding:14px 16px;text-decoration:none;color:inherit;border-bottom:1px solid #edf2f7;transition:background .15s" onmouseover="this.style.background=\'#f2f7ff\'" onmouseout="this.style.background=\'\'">'
         + '<img src="' + img + '" alt="" loading="lazy" decoding="async" fetchpriority="low" style="width:98px;height:78px;object-fit:cover;border-radius:14px;flex-shrink:0;box-shadow:0 6px 18px rgba(15,23,42,.08)">'
         + '<div style="min-width:0;flex:1">'
-        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + a.section + '</span></div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:#2255a4;letter-spacing:.06em;text-transform:uppercase">' + escapeHtml(khSecLabel(a.section)) + '</span></div>'
         + '<div data-kh-title-id="' + escapeHtml(a.id || '') + '" style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">' + (a.title_en || a.title) + '</div>'
         + '</div></a>';
     }).join('');
@@ -3530,7 +3530,7 @@ function buildArticleRowHTML(a) {
     + '<div class="article-row">'
     + '<img src="' + aImg + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.src=\'' + fallback + '\'" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
     + '<div class="article-info">'
-    + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : (a.section || '')) + '</span>'
+    + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : khSecLabel(a.section)) + '</span>'
     + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h2>'
     + '<p class="article-excerpt vocab-zone" style="font-size:14px;color:#64748b;line-height:1.6">' + aBody + '</p>'
     + '</div></div></a>';
@@ -3544,7 +3544,7 @@ function buildHeroHTML(featured, rest) {
     + '<div class="hero-main">'
     + '<img src="' + img + '" alt="" fetchpriority="high" decoding="async" onerror="this.src=\'' + fallback + '\'">'
     + '<div class="overlay">'
-    + '<span class="category-tag">' + (featured.section || '') + '</span>'
+    + '<span class="category-tag">' + escapeHtml(khSecLabel(featured.section)) + '</span>'
     + '<h1 class="vocab-zone" data-kh-title-id="' + escapeHtml(featured.id || '') + '">' + (featured.title_en || featured.title) + '</h1>'
     + '<p class="sub vocab-zone">' + body + '</p>'
     + '</div></div></a>'
@@ -3780,7 +3780,7 @@ function _buildNewsCardHTML(a) {
     + img
     + '<div class="nc-overlay-grad"></div>'
     + '<div class="nc-overlay-body">'
-    + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
+    + '<div class="nc-meta"><span class="nc-cat">' + escapeHtml(khSecLabel(a.section)) + '</span>' + (lvl ? '<span class="nc-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
     + '<div class="nc-title" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + escapeHtml(a.title_en || a.title || '') + '</div>'
     + '<div class="nc-foot"><span class="nc-date">' + dateStr + '</span></div>'
     + '</div>'
@@ -3803,7 +3803,7 @@ function _buildNewsRailCardHTML(a) {
     + '<div class="khr-img"' + (thumb ? ' style="background-image:url(\'' + String(thumb).replace(/'/g, '%27') + '\')"' : '') + '></div>'
     + '<div class="khr-grad"></div>'
     + '<div class="khr-body">'
-    + '<div class="khr-meta"><span class="khr-cat">' + escapeHtml(a.section || '') + '</span>' + (lvl ? '<span class="khr-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
+    + '<div class="khr-meta"><span class="khr-cat">' + escapeHtml(khSecLabel(a.section)) + '</span>' + (lvl ? '<span class="khr-lvl ' + lvlCls + '">' + escapeHtml({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lvl]||lvl) + '</span>' : '') + '</div>'
     + '<div class="khr-title" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + escapeHtml(a.title_en || a.title || '') + '</div>'
     + '<div class="khr-date">' + dateStr + '</div>'
     + '</div>'
@@ -3839,7 +3839,7 @@ function renderAllList(listEl, articles, opts) {
       });
     } catch(e) {}
     Object.keys(bySection).forEach(function(k) {
-      if (!seen[k]) ordered.push({ key: k, label: k, icon: '', items: bySection[k] });
+      if (!seen[k]) ordered.push({ key: k, label: khSecLabel(k), icon: '', items: bySection[k] });
     });
 
     if (!ordered.length) {
@@ -3967,7 +3967,7 @@ function _khRelatedHTML(a) {
                 + '<img src="' + khArticleThumb(r, 300, 200) + '" alt="" loading="lazy" decoding="async" fetchpriority="low">'
                 + '<div class="art-related-info">'
                 + '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
-                + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#2255a4">' + r.section + '</span>'
+                + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#2255a4">' + escapeHtml(khSecLabel(r.section)) + '</span>'
                 + (r.level ? '<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;background:' + (levelColors[r.level]||'#f0f0f0;color:#666') + '">' + ({'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}[r.level]||r.level) + '</span>' : '')
                 + '</div>'
                 + '<div class="art-related-title-text">' + r.title + '</div>'
@@ -4089,7 +4089,7 @@ function renderArticlePage() {
     + '<nav class="art-breadcrumb">'
     + '<a href="index.html">Home</a>'
     + '<span>›</span>'
-    + '<a href="korehan-section.html?s=' + encodeURIComponent(a.section) + '">' + sectionLabel(a.section) + '</a>'
+    + '<a href="korehan-section.html?s=' + encodeURIComponent(a.section) + '">' + escapeHtml(khSecLabel(a.section)) + '</a>'
     + '</nav>'
 
     // 통합 기사 카드: 이미지(+뱃지 오버레이) → 제목 → 메타 → 탭 → 본문
@@ -4198,14 +4198,14 @@ function renderArticlePage() {
 
     // 댓글 섹션
     + '<section class="art-comments" id="art-comments">'
-    + '<h3 class="art-comments-title"><span style="display:inline-flex;width:18px;height:18px">'+KH_ICON_CHAT+'</span><span>댓글</span> <span id="comment-count" style="font-size:14px;color:var(--gray);font-weight:700"></span></h3>'
+    + '<h3 class="art-comments-title"><span style="display:inline-flex;width:18px;height:18px">'+KH_ICON_CHAT+'</span><span>Comments</span> <span id="comment-count" style="font-size:14px;color:var(--gray);font-weight:700"></span></h3>'
     + '<div id="comment-form-wrap">'
     + '<div class="comment-login-notice" id="comment-login-notice" style="display:none">'
-    + '<p>댓글을 남기려면 로그인하세요 — <a href="#" onclick="event.preventDefault();openAuthModal(&apos;signin&apos;)">로그인</a></p>'
+    + '<p>Sign in to leave a comment — <a href="#" onclick="event.preventDefault();openAuthModal(&apos;signin&apos;)">Sign in</a></p>'
     + '</div>'
     + '<div class="comment-form" id="comment-form" style="display:none">'
-    + '<textarea id="comment-input" placeholder="댓글을 입력하세요…" rows="2" maxlength="500"></textarea>'
-    + '<button class="comment-submit-btn" onclick="submitComment(\'' + a.id + '\')">등록</button>'
+    + '<textarea id="comment-input" placeholder="Write a comment…" rows="2" maxlength="500"></textarea>'
+    + '<button class="comment-submit-btn" onclick="submitComment(\'' + a.id + '\')">Post</button>'
     + '</div>'
     + '</div>'
     + '<div id="comments-list"></div>'
@@ -5230,7 +5230,7 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
       var koJs = String(v.ko).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
       html += '<div class="asp-vocab-row">'
            + '<span class="asp-vocab-ko">'
-           +   '<button class="asp-vocab-speak" type="button" aria-label="발음 듣기" title="발음 듣기" '
+           +   '<button class="asp-vocab-speak" type="button" aria-label="Listen" title="Listen" '
            +     'onclick="event.stopPropagation();(window.khSpeak?khSpeak(\'' + koJs + '\',\'female\',this):window.ttsSpeak&&ttsSpeak(\'' + koJs + '\',this))">🔊</button>'
            +   '<span class="asp-vocab-ko-text">' + escapeHTML(v.ko) + '</span>'
            + '</span>'
@@ -5571,7 +5571,7 @@ async function analyzeSentence(idx, el) {
   panel.setAttribute('data-hover-skip', '1');
   panel.dataset.sentIdx = String(idx);
   panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
-    + '<div class="asp-loading">분석 중</div>';
+    + '<div class="asp-loading">Analyzing</div>';
   paragraph.parentNode.insertBefore(panel, paragraph.nextSibling);
 
   var articleId = '';
@@ -6020,7 +6020,7 @@ async function analyzeConvBubble(convId, msgIdx, el) {
   panel.dataset.contentType = 'conversation';
   panel.dataset.contentId = String(convId || '');
   panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
-    + '<div class="asp-loading">분석 중</div>';
+    + '<div class="asp-loading">Analyzing</div>';
   // Insert as sibling after .dp-bubble-row, before .dp-bubble-en / .dp-time.
   if (bubbleRow.nextSibling) group.insertBefore(panel, bubbleRow.nextSibling);
   else group.appendChild(panel);
@@ -8163,7 +8163,7 @@ function showCoinToast(coin) {
       + 'border:1px solid rgba(94,234,212,.3);z-index:9999;transition:opacity .3s;pointer-events:none;font-family:inherit';
     document.body.appendChild(el);
   }
-  el.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span>+' + _coinToastTotal + '냥</span><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+KH_ICON_PAW+'</span></span>';
+  el.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span>+' + _coinToastTotal + ' Nyang</span><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+KH_ICON_PAW+'</span></span>';
   el.style.opacity = '1';
   _coinToastTimer = setTimeout(function(){
     el.style.opacity = '0';
@@ -9135,9 +9135,29 @@ function getSections() {
   return _sectionsCache || DEFAULT_SECTIONS;
 }
 
+// English fallbacks for section keys that aren't in the catalog (or whose
+// DB label is still Korean) — learners never see a Korean section chip.
+var KH_SECTION_EN = {
+  '사회':'Society','국제':'World','문화':'Culture','연예':'Entertainment','IT과학':'Tech & Science',
+  '과학':'Science','역사':'History','오피니언':'Opinion','경제':'Economy','정치':'Politics','스포츠':'Sports',
+  '생활':'Lifestyle','건강':'Health','교육':'Education','환경':'Environment','여행':'Travel','음식':'Food',
+  '뷰티':'Beauty','자연':'Nature','한국':'Korea','케이팝':'K-pop','지역':'Local','날씨':'Weather','사건':'Incidents',
+  '라이프':'Lifestyle','라이프스타일':'Lifestyle','부동산':'Real Estate','산업':'Industry','기술':'Tech','게임':'Games',
+  '해외연예':'Global Entertainment','연예계':'Entertainment','해외':'World','북한':'North Korea','노동':'Labor'
+};
 function sectionLabel(key) {
   var s = getSections().find(function(x){ return x.key === key; });
-  return s ? s.label : key;
+  var label = s ? s.label : key;
+  if (label && /[\uAC00-\uD7A3]/.test(label)) label = KH_SECTION_EN[key] || KH_SECTION_EN[label] || label;
+  return label;
+}
+// Display label for a raw article.section value (alias-aware, English).
+function khSecLabel(raw) {
+  if (!raw) return '';
+  var key = (typeof getSectionKey === 'function') ? getSectionKey(raw) : raw;
+  var out = sectionLabel(key);
+  if (out === key && /[\uAC00-\uD7A3]/.test(String(raw))) out = KH_SECTION_EN[String(raw).trim()] || out;
+  return out;
 }
 // ══ END DYNAMIC SECTIONS ══════════════════════════════════════════════════════
 
@@ -11833,7 +11853,7 @@ function openCommentDrawer() {
       + '<div class="kh-cdr-panel" role="dialog" aria-modal="true" aria-labelledby="kh-cdr-title-text">'
       +   '<div class="kh-cdr-handle" role="button" tabindex="0" aria-label="Close comments" onclick="closeCommentDrawer()"></div>'
       +   '<div class="kh-cdr-header">'
-      +     '<span class="kh-cdr-title"><span id="kh-cdr-title-text">댓글</span><span class="kh-cdr-count" id="kh-cdr-count">0</span></span>'
+      +     '<span class="kh-cdr-title"><span id="kh-cdr-title-text">Comments</span><span class="kh-cdr-count" id="kh-cdr-count">0</span></span>'
       +     '<button class="kh-cdr-close" onclick="closeCommentDrawer()" aria-label="Close">&times;</button>'
       +   '</div>'
       +   '<div class="kh-cdr-body" id="kh-comment-drawer-body"></div>'
