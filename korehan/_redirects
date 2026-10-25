@@ -30,3 +30,16 @@ https://www.korehani.com/*     https://korehani.com/:splat      301!
 # Retired playground games (2026-10) → Playground hub.
 /korehan-fun-fortune.html   /korehan-fun.html  301
 /korehan-fun-worldcup.html  /korehan-fun.html  301
+
+# Stories retired (2026-10) → Korea Buzz.
+/korehan-stories.html  /korehan-section.html?s=buzz  301
+/korehan-stories       /korehan-section.html?s=buzz  301
+
+# Duplicate section pages + old news home retired (2026-10) → one section page.
+/korehan-society.html  /korehan-section.html?s=%EC%82%AC%ED%9A%8C  301
+/korehan-world.html  /korehan-section.html?s=%EA%B5%AD%EC%A0%9C  301
+/korehan-culture.html  /korehan-section.html?s=%EB%AC%B8%ED%99%94  301
+/korehan-korea.html  /korehan-section.html?s=Korea  301
+/korehan-opinion.html  /korehan-section.html?s=%EC%98%A4%ED%94%BC%EB%8B%88%EC%96%B8  301
+/korehan-news.html  /korehan-all.html  301
+/korehan-character.html  /korehan-reporters.html  301
