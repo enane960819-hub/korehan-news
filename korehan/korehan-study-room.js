@@ -401,7 +401,8 @@ function _khStudyRoomInit() {
         // Curriculum match first: same shared lesson (gf-curr2::) as the
         // Grammar Path, and practice counts toward that pattern's mastery.
         _loadGrammarCurriculumFromDB().then(function() {
-          var cItem = _gcFindItem(_focusName);
+          var _fx = (typeof _gfArticleCtx === 'function' && _gfArticleCtx()) || {};
+          var cItem = _gcFindItemCtx(_focusName, _fx.exp, _fx.hint);
           if (cItem) { setTimeout(function() { openGrammarFocusForItem(cItem); }, 300); return; }
           _openFocusLegacy();
         });
@@ -15931,12 +15932,44 @@ function _gcFindItem(label) {
   GRAMMAR_CURRICULUM.forEach(function(it) {
     _gcItemKeys(it).forEach(function(k) {
       var m = _gcLoose(k), d = Math.abs(m.length - ln0.length);
-      if (Math.min(m.length, ln0.length) >= 3 && d <= 1 && (m.indexOf(ln0) >= 0 || ln0.indexOf(m) >= 0) && d < bestD) {
+      // The one extra character must not change the grammar point:
+      // ㄴ/는다 ≠ ㄴ/는다면 (if), 면 ≠ 면서 (while).
+      var longer = m.length > ln0.length ? m : ln0, shorter = m.length > ln0.length ? ln0 : m;
+      var extra = longer.replace(shorter, '');
+      var harmless = d === 0 || /^(요|서|\?)$/.test(extra);
+      if (harmless && Math.min(m.length, ln0.length) >= 3 && d <= 1 && (m.indexOf(ln0) >= 0 || ln0.indexOf(m) >= 0) && d < bestD) {
         best = it; bestD = d;
       }
     });
   });
   return best;
+}
+
+// Same surface form, different grammar point — the label alone can't
+// tell ~는 (topic) from ~는 (noun modifier), ~에 (place) from ~에 (time),
+// ~는 데 (purpose) from ~는데 (background). The article's explanation
+// can, so it decides first; otherwise the plain label match applies.
+function _gcSenseOverride(label, exp, hint) {
+  var n = _gcNorm(label), e = String(exp || '').toLowerCase(), h = String(hint || '');
+  if (!e) return null;
+  var pick = null;
+  if (/^(는|은|은\/는|는\/은|ㄴ\/은|\(으\)ㄴ)$/.test(n) && /topic/.test(e) && !/modif|attributive|relative/.test(e)) pick = '은/는 vs 이/가';
+  else if (/^(은\/는|은|는)$/.test(n) && /modif|attributive|relative clause/.test(e)) pick = '(으)ㄴ/는/(으)ㄹ + noun — Noun modifiers';
+  else if (/^에$/.test(n)) {
+    var isTime = /\btime\b|o'clock|date|day|year|month|when\b|at \d/.test(e);
+    var isPlace = /locat|place|destination|direction|target|exist|static|recipient/.test(e);
+    pick = (isTime && !isPlace) ? '에 (time) — At / On' : '에 vs 에서';
+  }
+  else if (/^(는데|ㄴ\/는데|는데\(에\)|\(으\)ㄴ\/는데)$/.test(n) && /\s데/.test(h) && /purpose|for\b|in (doing|order)|content|process|cost|use|need/.test(e)) pick = '는 데 (쓰다/필요하다) — For (use)';
+  else if (/^나$/.test(n) && /\bor\b|alternative|as many as|approximat/.test(e)) pick = '(이)나 — Or / As many as';
+  else if (/^아\/어지다$/.test(n) && /passive/.test(e)) pick = '아/어지다 — Become (passive-like)';
+  else if (/^(아\/어|어|아)$/.test(n) && /connect|sequen|then|and\b|cause/.test(e) && !/casual|banmal|informal speech/.test(e)) pick = '아/어서 — So/Because';
+  else if (/^(라고하다|이라고하다|\(이\)라고하다)$/.test(n) && /name|call|label|identif|copula|known as/.test(e)) pick = '다고 하다 — Say that';
+  if (!pick) return null;
+  return GRAMMAR_CURRICULUM.find(function(it) { return it.pattern === pick; }) || null;
+}
+function _gcFindItemCtx(label, exp, hint) {
+  return _gcSenseOverride(label, exp, hint) || _gcFindItem(label);
 }
 
 // -- Curriculum localStorage key ------------------------------

@@ -118,7 +118,7 @@
     { re: /[가-힣]네요(?=[^가-힣]|$)/, label: '~네요 (discovery)', hint: 'discovery / mild surprise on noticing something new — speaker realizes for the first time. 예쁘네요 (oh, it\'s pretty), 비가 오네요 (oh, it\'s raining), 정말이네요 (it really is). Common when seeing/hearing something fresh. Banmal variant: ~네 (우리 집에 오네 = "huh, coming to our house").' },
     { re: /[가-힣]군요(?=[^가-힣]|$)|[가-힣]구나(?=[^가-힣]|$)/, label: '~군요/~구나 (realization)', hint: 'realization / acknowledgement of new info. ~군요 (polite) / ~구나 (banmal). Different from ~네요: ~네요 is fresh surprise, ~군요/~구나 is "aha, NOW I get it" — accepting info just given. 그렇군요 (oh, I see), 그랬구나 (oh, so that\'s what happened), 맛있구나 (so it\'s tasty).' },
     { re: /[가-힣]잖아요?(?=[^가-힣]|$)/, label: '~잖아(요) (you know / obviously)', hint: 'asserting shared/obvious info — speaker presents the clause as something the listener should already know or accept. Tone varies. (a) FRIENDLY reminder: 비가 오잖아요 (it\'s raining, you know!), 우리 친구잖아 (we\'re friends, right). (b) MILD accusation / "but obviously": 내가 말했잖아 (I told you!), 그렇게 하면 안 되잖아요 (you can\'t do it that way, obviously). Always relies on a shared frame; never used for brand-new info.' },
-    { re: /[가-힣]지요?(?=[^가-힣]|$)|[가-힣]죠(?=[^가-힣]|$)/, label: '~지요/~죠 (confirming/asserting)', hint: 'tone determines meaning. (a) RISING (?) = seeking agreement — 맛있죠? (tasty, right?), 그렇지요? (isn\'t it?). (b) FALLING (.) = asserting shared knowledge / "of course" — 당연하지요 (of course it is), 그렇죠 (that\'s right). Very common conversational ending; speaker assumes listener already knows or will agree.' },
+    { re: /[가-힣](?:지요|죠)(?=[^가-힣]|$)|[가-힣]지(?=\s*[?？])/, label: '~지요/~죠 (confirming/asserting)', hint: 'tone determines meaning. (a) RISING (?) = seeking agreement — 맛있죠? (tasty, right?), 그렇지요? (isn\'t it?). (b) FALLING (.) = asserting shared knowledge / "of course" — 당연하지요 (of course it is), 그렇죠 (that\'s right). Very common conversational ending; speaker assumes listener already knows or will agree.' },
     { re: /[가-힣]ㄹ까요\?|[가-힣]을까요\?/, label: '~ㄹ까요? (shall we / I wonder)', hint: 'suggestion or wondering. "shall we / do you think"' },
     { re: /[가-힣]ㄹ게요(?=[^가-힣]|$)|[가-힣]을게요(?=[^가-힣]|$)/, label: '~ㄹ게요 (I will, intent to listener)', hint: 'speaker promise / intention with listener awareness' },
     { re: /[가-힣]나요\?/, label: '~나요? (gentle question)', hint: 'soft polite question form' },
@@ -408,7 +408,7 @@
     { re: /[가-힣](은|는)\s/, label: '~은/는 (topic marker)', hint: 'topic particle. attaches to noun (contrastive or topical)' },
     { re: /[가-힣]에서(?=[^가-힣]|$)/, label: '~에서 (action-location / source / starting point)', hint: 'THREE uses. (a) LOCATION OF AN ACTION (NOT static existence — ~에 covers that): 학교에서 공부해요 (study AT school), 한국에서 일해요 (work IN Korea). The verb is dynamic, not 있다/없다. (b) SOURCE / origin: 미국에서 왔다 (came FROM America), 사장에서 회장으로 (from CEO to chairman). (c) STARTING POINT in time (less common, paired with 부터 or alone in news): 9시에서 11시까지 (from 9 to 11). Distinguish carefully from ~에 — ~에서 needs an action verb; ~에 takes 있다/가다/오다.' },
     { re: /[가-힣]에게(?=[^가-힣]|$)|[가-힣]한테(?=[^가-힣]|$)/, label: '~에게/한테 (to person)', hint: 'indirect object marker for animate' },
-    { re: /[가-힣]께(?:서)?(?=[^가-힣]|$)/, label: '~께(서) (honorific dative/subject)', hint: 'honorific marker for elders/superiors' },
+    { _check: function(t) { var m = String(t).replace(/함께/g, '  ').match(/[가-힣]+께(?:서)?(?=[^가-힣]|$)/); return m ? m[0] : ''; }, label: '~께(서) (honorific dative/subject)', hint: 'honorific marker for elders/superiors' },
     { re: /[가-힣]에\s/, label: '~에 (location / time / direction / target)', hint: 'MULTIPLE uses with one surface form — pick based on context. (a) STATIC LOCATION: 학교에 있다 (at school). (b) TIME POINT: 3시에 만나요 (at 3), 월요일에 (on Monday). (c) DIRECTION / destination: 학교에 가다 (to school), 위에 올려라 (up onto). (d) TARGET of effect: 건강에 좋다 (good for health), 사람에게 (to a person — animate uses ~에게/한테). (e) RATE / PER (rare): 100원에 (per 100 won). Pick the one that matches the verb / context.' },
     { re: /[가-힣](으로|로)\s/, label: '~(으)로 (means / direction / transformation)', hint: 'MANY uses with one form — pick based on context. (a) INSTRUMENT / TOOL: 연필로 쓰다 (write with a pencil), 칼로 자르다 (cut with a knife). (b) METHOD / MANNER: 한국어로 말하다 (speak in Korean), 큰 소리로 (loudly). (c) DIRECTION / destination: 서울로 가다 (go toward Seoul), 위로 (upward). (d) TRANSFORMATION / CATEGORY: 학생에서 의사로 (from student into doctor), 영어로 번역 (translate INTO English). (e) MATERIAL: 나무로 만든 (made OF wood), 쌀로 만든 (made FROM rice). Specialised collocations (~로 인해 / ~로 이어지다 / ~로 보이다 / ~로 알려지다) are handled by their own entries.' },
     { re: /[가-힣](과|와)\s/, label: '~과/와 (with — comitative / and — listing)', hint: 'TWO uses (formal register). Same form, different role determined by following clause. (a) WITH (comitative — accompaniment): 친구와 같이 (together with friend), 너와 결혼하다 (marry you), 부모님과 의논하다 (discuss with parents). (b) AND (listing — connects noun phrases): 사과와 배 (apple and pear), 한국과 일본 (Korea and Japan), 학생과 교사 (students and teachers). If a following verb implies togetherness (같이, 함께, 만나다, 결혼하다) it\'s (a); if it just connects nouns in a list it\'s (b). After consonant: 과; after vowel: 와.' },
@@ -431,7 +431,7 @@
       }, label: '~부터 (from)', hint: 'starting point in time or sequence. <noun> + 부터 = "from / starting from". 지금부터 (from now); 월요일부터 (from Monday); 처음부터 (from the start). Different from ~(으)로부터 — bare 부터 marks the start of a range, (으)로부터 emphasises origin/source.' },
     { re: /[가-힣](으로부터|로부터)(?=[^가-힣]|$)/, label: '~(으)로부터 (from / from origin)', hint: 'origin/source marker. <noun> + (으)로부터 = "from the source / received from". After consonant: 지금으로부터 (from now), 학생으로부터 (from the student). After vowel: 친구로부터 (from a friend). Different from bare ~부터 — (으)로부터 stresses provenance/source rather than a sequence start.' },
     { re: /[가-힣]까지(?=[^가-힣]|$)/, label: '~까지 (until / even / as much as)', hint: 'TWO uses. (a) ENDPOINT — temporal or spatial "until / up to": 5시까지 기다려요 (wait until 5), 서울까지 가요 (go all the way to Seoul). (b) EMPHATIC "even / as much as" — pushes a quantity / time / scope to its extreme: 저까지도 알아요 (even I know), 30년까지 걸렸다 (took as much as 30 years), 너까지 그러니? (even you?!). When the chunk expresses an unexpected extreme, it\'s reading (b), not (a).' },
-    { re: /[가-힣]만\s|[가-힣]만\.|[가-힣]만$/, label: '~만 (only / just)', hint: 'limiter / restriction. <noun> + 만 = "only / just". 한 명만 왔다 (only one came), 너만 있으면 돼 (I only need you), 오늘만 (today only — exclusive emphasis), 저만 모릅니다 (only I don\'t know). Distinct from ~만에 (after a duration — "after X time gap"), ~만 해도 (X alone is enough), and ~다 만 (almost but not quite). Pure ~만 is the simple "only" / "just" reading.' },
+    { _check: function(t) { var m = String(t).replace(/[가-힣]*지만/g, ' ').match(/[가-힣]+만(?=\s|\.|$)/); return m ? m[0] : ''; }, label: '~만 (only / just)', hint: 'limiter / restriction. <noun> + 만 = "only / just". 한 명만 왔다 (only one came), 너만 있으면 돼 (I only need you), 오늘만 (today only — exclusive emphasis), 저만 모릅니다 (only I don\'t know). Distinct from ~만에 (after a duration — "after X time gap"), ~만 해도 (X alone is enough), and ~다 만 (almost but not quite). Pure ~만 is the simple "only" / "just" reading.' },
     // ~도 has TWO uses — explain BOTH so the AI doesn't force-fit
     // the wrong reading onto a temporal/emphatic example:
     //   (a) inclusive "also/too": 나도 갈게요, 책도 샀어요
@@ -440,7 +440,7 @@
     // examples that clearly use the emphatic reading, producing cards
     // whose hint and example didn't match.
     { re: /[가-힣]도\s|[가-힣]도\.|[가-힣]도$/, label: '~도 (also / even)', hint: 'inclusive particle with TWO uses depending on context. (a) ADDITIVE "also/too" — A도 B도, listing or adding items: 나도 갈게요 (I\'ll go too); 친구도 왔다 (the friend also came). (b) EMPHATIC "even/as much as" — used with extremes, negation, or temporal/quantity contrasts: 한 번도 못 들었어요 (haven\'t heard even once); 천 원도 없다 (don\'t even have 1000 won); 100년도 훨씬 이전 (way more than even 100 years ago). When the example shows a quantity / time pushed to an extreme, it\'s reading (b), not (a) — explain it as "even" not "also".' },
-    { re: /[가-힣]의\s/, label: '~의 (possessive / relational)', hint: 'genitive marker — multiple uses with one form. (a) POSSESSION: 나의 책 (my book), 그의 차 (his car). (b) RELATION / origin: 한국의 수도 (the capital OF Korea), 그 문제의 원인 (the cause of that problem). (c) DESCRIPTIVE attribution: 사랑의 의미 (meaning of love), 미래의 꿈 (dream of/for the future). Note: often dropped in casual Korean (나 책 = my book). Pronunciation: usually [에] not [의].' },
+    { _check: function(t) { var m = String(t).replace(KH_UI_LEXICAL, ' ').match(/[가-힣]+의(?=\s)/); return m ? m[0] : ''; }, label: '~의 (possessive / relational)', hint: 'genitive marker — multiple uses with one form. (a) POSSESSION: 나의 책 (my book), 그의 차 (his car). (b) RELATION / origin: 한국의 수도 (the capital OF Korea), 그 문제의 원인 (the cause of that problem). (c) DESCRIPTIVE attribution: 사랑의 의미 (meaning of love), 미래의 꿈 (dream of/for the future). Note: often dropped in casual Korean (나 책 = my book). Pronunciation: usually [에] not [의].' },
     { re: /[가-힣]보다(?=[^가-힣]|$)/, label: '~보다 (comparison: than)', hint: 'comparative particle. <noun> + 보다 = "than / more than X". 친구보다 키가 크다 (taller than friend), 어제보다 추워요 (colder than yesterday), 다른 곳보다 비싸요 (more expensive than other places). ⚠️ Distinct from the verb 보다 (to see) — comparative 보다 attaches directly to a noun without conjugation and is followed by an adjective/state.' },
 
     // ── Quoted speech ───────────────────────────────────────────
@@ -511,7 +511,7 @@
         // NOUN (모기, 일기, 시기, 향기, 학기, 인기, …) instead of a
         // verb-stem + 기 nominalizer. Including 여/거/저 here covers
         // the fossil place adverbs 여기/거기/저기 (here/there).
-        var NOUN_KI_STARTERS = '모일시향학인단식자토사정장무부호용연세야분후초위공동우만환임여거저';
+        var NOUN_KI_STARTERS = '모일시향학인단식자토사정장무부호용연세야분후초위공동우만환임여거저국경전얘열';
         if (NOUN_KI_STARTERS.indexOf(prev) >= 0) return '';
         return m[0];
       }, label: '~기 (nominalizer)', hint: 'verbal noun. <stem> + 기 used as noun' },
@@ -1102,6 +1102,8 @@
 
   // Strip whitespace for relaxed regex matching — lets patterns like
   // "~지 않다" hit "보이지않았어요" too.
+  // Words that END in 의 but aren't noun + 의 (거의 = almost, 회의 = meeting …).
+  var KH_UI_LEXICAL = /(거의|회의|논의|동의|정의|합의|결의|건의|협의|의의|강의|문의|예의|성의|호의|주의|민주주의|자본주의|사회주의|공산주의|제국주의|민족주의|개인주의)(?=\s|$|[.,!?])/g;
   function _strip(s) { return String(s || '').replace(/\s+/g, ''); }
 
   // Hangul jongseong (final consonant) extractor. Returns -1 for non-Hangul,
