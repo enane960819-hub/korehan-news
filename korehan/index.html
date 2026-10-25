@@ -1036,13 +1036,13 @@ window._khLoaderClearAuto = function() {};
   <!-- KOREAN BASICS — replaces Stories as the beginner on-ramp.
        (#home-story-grid removed → loadHomeStories() no-ops on its null guard.) -->
   <div class="home-sec" style="border-bottom-color:#38bdf8;">
-    <div class="home-sec-title"><i data-lucide="sprout" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Korean Basics · 기초</span></div>
+    <div class="home-sec-title"><i data-lucide="sprout" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Korean Basics</span></div>
   </div>
   <a href="korehan-study-room.html?start=basics" style="display:flex;align-items:center;gap:16px;padding:18px 20px;margin:0 0 20px;border-radius:16px;text-decoration:none;background:linear-gradient(135deg,#0d1b2e,#1a3a6b);border:1px solid rgba(56,189,248,.3);box-shadow:0 10px 30px rgba(13,27,46,.15)">
     <i data-lucide="sprout" style="width:40px;height:40px;color:#38bdf8;flex-shrink:0" aria-hidden="true"></i>
     <div style="flex:1;min-width:0">
-      <div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:3px">한국어 기초부터 차근차근</div>
-      <div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.5">한글 · 숫자 · 가족 · 인사 · 기초 문법 — 처음 배우는 분을 위한 단계별 코스</div>
+      <div style="font-size:17px;font-weight:900;color:#fff;margin-bottom:3px">Start Korean from zero, step by step</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.5">Hangul · numbers · family · greetings · first grammar — 29 short lessons for complete beginners</div>
     </div>
     <i data-lucide="chevron-right" style="width:24px;height:24px;color:rgba(255,255,255,.4);flex-shrink:0" aria-hidden="true"></i>
   </a>
@@ -1503,6 +1503,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       _id:  row._id || row.id,
       name: row.name || (row.data && row.data.name) || '',
       ctx:  row.ctx  || (row.data && row.data.ctx)  || '',
+      ctx_en: row.ctx_en || (row.data && row.data.ctx_en) || '',
       cat:  row.cat  || (row.data && row.data.cat)  || 'everyday',
       lvl:  row.lvl  || (row.data && row.data.lvl)  || 'b',
       msgs: msgs,
@@ -1528,16 +1529,18 @@ document.addEventListener('DOMContentLoaded', async function() {
       var sb = getSupa();
       if (!sb) return;
       var res = await sb.from('conversations_data')
-        .select('id, cat, lvl, name, ctx, data')
+        .select('id, cat, lvl, name, ctx, ctx_en, data')
         .order('created_at', {ascending: false})
         .limit(12);
       if (res.data && res.data.length) {
         var freshConvs = res.data.map(function(row) {
-          return _mapConvRow({_id: row.id, name: row.name, ctx: row.ctx, cat: row.cat, lvl: row.lvl, data: row.data});
+          var mc = _mapConvRow({_id: row.id, name: row.name, ctx: row.ctx, cat: row.cat, lvl: row.lvl, data: row.data});
+          if (row.ctx_en) mc.ctx_en = row.ctx_en;
+          return mc;
         });
         try {
           var toCache = freshConvs.map(function(c){
-            return { _id:c._id, name:c.name, ctx:c.ctx, cat:c.cat, lvl:c.lvl, msgs:c.msgs };
+            return { _id:c._id, name:c.name, ctx:c.ctx, ctx_en:c.ctx_en || '', cat:c.cat, lvl:c.lvl, msgs:c.msgs };
           });
           localStorage.setItem(_HOME_CONV_CACHE_KEY, JSON.stringify(toCache));
         } catch(e) {}
