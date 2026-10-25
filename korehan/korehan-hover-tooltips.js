@@ -163,44 +163,44 @@
   var INFLECTION_PATTERNS = [
     // Passive (~어지다) compounds — listed before plain past so 어진/어졌어요
     // get the richer label.
-    {re: /^[어아여]진$/,        ending: '~어지다 + ~ㄴ',     label: '피동 · 관형형 과거 (was ___ed)'},
-    {re: /^[어아여]지는$/,      ending: '~어지다 + ~는',     label: '피동 · 관형형 현재 (becoming ___ed)'},
-    {re: /^[어아여]질$/,        ending: '~어지다 + ~ㄹ',     label: '피동 · 관형형 미래 (to be ___ed)'},
-    {re: /^[어아여]졌어요$/,    ending: '~어지다 + ~었어요', label: '피동 과거 정중체 (was ___ed)'},
-    {re: /^[어아여]졌습니다$/,  ending: '~어지다 + ~었습니다', label: '피동 과거 격식체 (was ___ed)'},
-    {re: /^[어아여]지고$/,      ending: '~어지다 + ~고',     label: '피동 + 연결 (becoming ___ed and)'},
-    {re: /^[어아여]지다$/,      ending: '~어지다',           label: '피동/상태변화 (become ___ed)'},
-    {re: /^[어아여]져$/,        ending: '~어지다 (반말/어간)', label: '피동 어간 (becoming ___ed)'},
+    {re: /^[어아여]진$/,        ending: '~어지다 + ~ㄴ',     label: 'Passive · past modifier (was ___ed)'},
+    {re: /^[어아여]지는$/,      ending: '~어지다 + ~는',     label: 'Passive · present modifier (becoming ___ed)'},
+    {re: /^[어아여]질$/,        ending: '~어지다 + ~ㄹ',     label: 'Passive · future modifier (to be ___ed)'},
+    {re: /^[어아여]졌어요$/,    ending: '~어지다 + ~었어요', label: 'Passive · past polite (was ___ed)'},
+    {re: /^[어아여]졌습니다$/,  ending: '~어지다 + ~었습니다', label: 'Passive · past formal (was ___ed)'},
+    {re: /^[어아여]지고$/,      ending: '~어지다 + ~고',     label: 'Passive + connector (becoming ___ed and)'},
+    {re: /^[어아여]지다$/,      ending: '~어지다',           label: 'Passive / change of state (become ___ed)'},
+    {re: /^[어아여]져$/,        ending: '~어지다 (stem)', label: 'Passive stem (becoming ___ed)'},
     // Past tense
-    {re: /^았어요$|^었어요$|^였어요$/,         ending: '~었어요',   label: '과거 정중체 (___ed)'},
-    {re: /^았습니다$|^었습니다$|^였습니다$/,    ending: '~었습니다', label: '과거 격식체 (___ed)'},
-    {re: /^았다$|^었다$|^였다$/,               ending: '~었다',     label: '과거 평서 (___ed)'},
-    {re: /^았던$|^었던$|^였던$/,               ending: '~었던',     label: '과거 회상 관형형 (that had ___ed)'},
+    {re: /^았어요$|^었어요$|^였어요$/,         ending: '~었어요',   label: 'Past · polite (___ed)'},
+    {re: /^았습니다$|^었습니다$|^였습니다$/,    ending: '~었습니다', label: 'Past · formal (___ed)'},
+    {re: /^았다$|^었다$|^였다$/,               ending: '~었다',     label: 'Past · plain (___ed)'},
+    {re: /^았던$|^었던$|^였던$/,               ending: '~었던',     label: 'Past recollection modifier (that had ___ed)'},
     // Polite / formal present
-    {re: /^[어아여]요$/,                       ending: '~어요',     label: '정중체 현재 (___s/___ing)'},
-    {re: /^[ㅂ습]니다$/,                       ending: '~ㅂ니다',   label: '격식체 현재 (___s/___ing)'},
-    {re: /^[ㅂ습]니까$/,                       ending: '~ㅂ니까',   label: '격식체 의문 (___?)'},
+    {re: /^[어아여]요$/,                       ending: '~어요',     label: 'Present · polite (___s/___ing)'},
+    {re: /^[ㅂ습]니다$/,                       ending: '~ㅂ니다',   label: 'Present · formal (___s/___ing)'},
+    {re: /^[ㅂ습]니까$/,                       ending: '~ㅂ니까',   label: 'Question · formal (___?)'},
     // Plain present
-    {re: /^ㄴ다$|^는다$/,                      ending: '~ㄴ다/~는다', label: '평서체 현재 (___s)'},
+    {re: /^ㄴ다$|^는다$/,                      ending: '~ㄴ다/~는다', label: 'Present · plain (___s)'},
     // Attributive
-    {re: /^[ㄴ은]$/,                           ending: '~ㄴ',       label: '관형형 과거 ([noun] that was ___ed)'},
-    {re: /^는$/,                               ending: '~는',       label: '관형형 현재 ([noun] that ___s)'},
-    {re: /^[ㄹ을]$/,                           ending: '~ㄹ',       label: '관형형 미래 ([noun] that will ___)'},
+    {re: /^[ㄴ은]$/,                           ending: '~ㄴ',       label: 'Past modifier ([noun] that was ___ed)'},
+    {re: /^는$/,                               ending: '~는',       label: 'Present modifier ([noun] that ___s)'},
+    {re: /^[ㄹ을]$/,                           ending: '~ㄹ',       label: 'Future modifier ([noun] that will ___)'},
     // Connectives
-    {re: /^고$/,                               ending: '~고',       label: '연결 (and / then)'},
-    {re: /^[어아여]서$/,                       ending: '~어서',     label: '연결 (because / and then)'},
-    {re: /^지만$/,                             ending: '~지만',     label: '연결 (but)'},
-    {re: /^[으]?면$/,                          ending: '~(으)면',   label: '조건 (if)'},
-    {re: /^[으]?니까$/,                        ending: '~(으)니까', label: '연결 (because)'},
-    {re: /^[으]?려고$/,                        ending: '~(으)려고', label: '의도 (in order to)'},
-    {re: /^도록$/,                             ending: '~도록',     label: '연결 (so that ___)'},
+    {re: /^고$/,                               ending: '~고',       label: 'Connector (and / then)'},
+    {re: /^[어아여]서$/,                       ending: '~어서',     label: 'Connector (because / and then)'},
+    {re: /^지만$/,                             ending: '~지만',     label: 'Connector (but)'},
+    {re: /^[으]?면$/,                          ending: '~(으)면',   label: 'Condition (if)'},
+    {re: /^[으]?니까$/,                        ending: '~(으)니까', label: 'Connector (because)'},
+    {re: /^[으]?려고$/,                        ending: '~(으)려고', label: 'Intention (in order to)'},
+    {re: /^도록$/,                             ending: '~도록',     label: 'Connector (so that ___)'},
     // Nominal / adverbial
-    {re: /^기$/,                               ending: '~기',       label: '명사형 (___ing as noun)'},
-    {re: /^게$/,                               ending: '~게',       label: '부사형 (___ly / so that)'},
+    {re: /^기$/,                               ending: '~기',       label: 'Noun form (___ing as noun)'},
+    {re: /^게$/,                               ending: '~게',       label: 'Adverb form (___ly / so that)'},
     // Honorific
-    {re: /^시$|^으시$/,                        ending: '~(으)시',   label: '존댓말 어간 (honorific)'},
-    {re: /^세요$|^으세요$/,                    ending: '~(으)세요', label: '존댓 정중체 (please ___)'},
-    {re: /^셨어요$|^으셨어요$/,                ending: '~(으)셨어요', label: '존댓 과거 정중체 (___ed, honorific)'},
+    {re: /^시$|^으시$/,                        ending: '~(으)시',   label: 'Honorific stem'},
+    {re: /^세요$|^으세요$/,                    ending: '~(으)세요', label: 'Honorific polite (please ___)'},
+    {re: /^셨어요$|^으셨어요$/,                ending: '~(으)셨어요', label: 'Honorific past polite (___ed)'},
   ];
   function analyzeInflection(dict, surface) {
     if (!dict || !surface || dict === surface) return null;
@@ -214,7 +214,7 @@
         return { trailer: trailer, ending: p.ending, label: p.label };
       }
     }
-    return { trailer: trailer, ending: '~' + trailer, label: '활용형 (conjugated form)' };
+    return { trailer: trailer, ending: '~' + trailer, label: 'Conjugated form' };
   }
 
   async function loadHoverVocab() {
@@ -537,7 +537,7 @@
       + inflBlock
       + (note ? '<div class="note">' + note + '</div>' : '')
       + '<div class="tip-footer">'
-      + '<button class="kh-tip-speak" aria-label="Play pronunciation" title="발음 듣기" '
+      + '<button class="kh-tip-speak" aria-label="Play pronunciation" title="Play pronunciation" '
       + 'data-word="' + word + '" onclick="window._khTipSpeak && window._khTipSpeak(this, event)">🔊</button>'
       + '<button class="kh-tip-save' + (saved ? ' saved' : '') + '" '
       + 'data-word="' + word + '" data-reading="' + reading + '" data-meaning="' + meaning + '" '

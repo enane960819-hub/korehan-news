@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
@@ -1280,7 +1280,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261025a"></script>
-<script src="js/core/reporters.js?v=20260525r"></script>
+<script src="js/core/reporters.js?v=20261025a"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20261025a"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
@@ -1290,7 +1290,7 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261025e"></script>
+<script src="korehan-shared.js?v=20261025f"></script>
 <script src="js/kh-badges.js?v=20261013c"></script>
 <script>
 
@@ -1495,7 +1495,7 @@ function _setNyangBalance(newCoin) {
   var coin = Number(newCoin || 0);
   _userCoin = coin;
   var balEl = document.getElementById('mp-nyang-balance');
-  if (balEl) balEl.textContent = '냥: ' + coin.toLocaleString();
+  if (balEl) balEl.textContent = 'Nyang: ' + coin.toLocaleString();
   // Re-render the mini stats coin row only — full re-render would clobber
   // streak/articles/etc. counters that aren't updated here.
   var statsHost = document.getElementById('mp-mini-stats');
@@ -1957,7 +1957,7 @@ function renderProfileFields(xp, coin) {
     + '<div class="pf-label">Nickname</div>'
     + '<div class="pf-value" id="pf-name-val">' + name + '</div>'
     + '<button class="pf-btn" onclick="openNicknameModal()" style="' + (canAfford ? '' : 'opacity:.55') + '" title="' + (canAfford ? 'Change nickname (100 nyang)' : 'Need ' + NICKNAME_COST + ' nyang to change nickname') + '">'
-    + NICKNAME_COST + ' 냥</button>'
+    + NICKNAME_COST + ' Nyang</button>'
     + '</div>'
     + '<div class="pf-row"><div class="pf-label">Email</div><div class="pf-value">' + email + '</div></div>'
     + '<div class="pf-row"><div class="pf-label">Sign-in</div><div class="pf-value">' + provLabel + '</div></div>'
@@ -2710,7 +2710,7 @@ async function dbGetOwnedAndGifts() {
 
 function renderOwnedAndGiftSections(coin, data) {
   var balEl = document.getElementById('mp-nyang-balance');
-  if (balEl) balEl.textContent = '냥: ' + Number(coin || 0).toLocaleString();
+  if (balEl) balEl.textContent = 'Nyang: ' + Number(coin || 0).toLocaleString();
 
   var ownedEl = document.getElementById('mp-owned-items');
   var owned = (data && data.owned) || [];
@@ -3260,7 +3260,7 @@ function _updateRoomEmptyState(isEmpty) {
         '<div style="display:inline-flex;width:48px;height:48px;color:#94a3b8"><i data-lucide="armchair" class="kh-ui-icon" style="width:48px;height:48px" aria-hidden="true"></i></div>'
         + '<div style="font-size:14px;font-weight:800">Your room is empty</div>'
         + '<div style="font-size:12px;opacity:.7;max-width:260px;line-height:1.55">'
-        + 'Tap <b>My Items</b> below to place things you already own, or earn 냥 and visit the Shop.'
+        + 'Tap <b>My Items</b> below to place things you already own, or earn Nyang and visit the Shop.'
         + '</div>';
       host.appendChild(overlay);
     }

@@ -21,14 +21,31 @@ var _KH_REPORTERS_LS_KEY  = 'kh_reporters_cache';
 
 // Default reporter data (matches DEF_CHAR_REPORTERS in admin).
 // Always available — no Supabase needed for basic display.
+// Reporter titles are stored in Korean (admin enters 기자, 특파원 …);
+// learners see English.
+var KH_REPORTER_ROLE_EN = {
+  '기자':'Reporter', '특파원':'Correspondent', '에디터':'Editor', '편집장':'Editor-in-Chief',
+  '전문기자':'Senior Reporter', '앵커':'Anchor', '칼럼니스트':'Columnist', '논설위원':'Editorial Writer',
+  '뷰티·트래블 에디터':'Beauty & Travel Editor', '사회·환경 전문기자':'Society & Environment Reporter',
+  '국제·외교 기자':'World & Diplomacy Reporter', '문화·라이프 기자':'Culture & Lifestyle Reporter'
+};
+function khReporterRole(role) {
+  role = String(role || '').trim();
+  if (!role || !/[\uAC00-\uD7A3]/.test(role)) return role;
+  if (KH_REPORTER_ROLE_EN[role]) return KH_REPORTER_ROLE_EN[role];
+  var m = role.match(/(특파원|에디터|전문기자|기자|앵커|칼럼니스트)$/);
+  return m ? KH_REPORTER_ROLE_EN[m[1]] : 'Reporter';
+}
+window.khReporterRole = khReporterRole;
+
 var _KH_DEFAULT_REPORTERS_LIST = [
-  { id:'cr1',  name:'박서진', role:'기자',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#2563eb' },
-  { id:'cr2',  name:'김지원', role:'특파원',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#7c3aed' },
-  { id:'cr4',  name:'최유나', role:'기자',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#db2777' },
-  { id:'cr6',  name:'한소희', role:'뷰티·트래블 에디터', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#0891b2' },
-  { id:'cr8',  name:'신지은', role:'사회·환경 전문기자', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#16a34a' },
-  { id:'cr9',  name:'강태양', role:'국제·외교 기자',      image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#4338ca' },
-  { id:'cr10', name:'류하늘', role:'문화·라이프 기자',    image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#c026d3' },
+  { id:'cr1',  name:'박서진', role:'Reporter',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#2563eb' },
+  { id:'cr2',  name:'김지원', role:'Correspondent',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#7c3aed' },
+  { id:'cr4',  name:'최유나', role:'Reporter',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#db2777' },
+  { id:'cr6',  name:'한소희', role:'Beauty & Travel Editor', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#0891b2' },
+  { id:'cr8',  name:'신지은', role:'Society & Environment Reporter', image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#16a34a' },
+  { id:'cr9',  name:'강태양', role:'World & Diplomacy Reporter',      image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#4338ca' },
+  { id:'cr10', name:'류하늘', role:'Culture & Lifestyle Reporter',    image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==', profilePage:'', color:'#c026d3' },
 ];
 
 // Seed KH_REPORTERS from defaults immediately (synchronous, always works)
@@ -64,7 +81,7 @@ function _loadReportersIntoKHMap() {
             name : d.name  || '',
             img  : d.image || '',
             href : d.profilePage || 'korehan-reporters.html',
-            role : d.role  || '',
+            role : khReporterRole(d.role || ''),
             color: d.color || '#2563eb'
           };
         });

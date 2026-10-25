@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
@@ -7,16 +7,16 @@
 <meta name="color-scheme" content="light">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Reporters — KoreHani</title>
-<meta name="description" content="KoreHani 기자단 — 한국어 학습 콘텐츠를 만드는 캐릭터 기자들을 소개합니다. 각 기자별 전문 분야와 학습용 기사를 만나보세요.">
+<meta name="description" content="Meet the character reporters who create KoreHani's Korean learning content.">
 <link rel="canonical" href="https://korehani.com/korehan-reporters.html">
 <meta name="theme-color" content="#0a1423">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="KoreHani">
 <meta property="og:url" content="https://korehani.com/korehan-reporters.html">
-<meta property="og:title" content="기자 소개 — KoreHani">
-<meta property="og:description" content="KoreHani 기자단 — 한국어 학습 콘텐츠를 만드는 캐릭터 기자들을 소개합니다.">
+<meta property="og:title" content="Meet the Reporters — KoreHani">
+<meta property="og:description" content="Meet the character reporters who create KoreHani's Korean learning content.">
 <meta property="og:image" content="https://korehani.com/img/guide/hero-express.png">
-<meta property="og:locale" content="ko_KR">
+<meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
@@ -62,7 +62,7 @@
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261025a"></script>
-<script src="js/core/reporters.js?v=20260525r"></script>
+<script src="js/core/reporters.js?v=20261025a"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20261025a"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
@@ -72,7 +72,7 @@
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261025e"></script>
+<script src="korehan-shared.js?v=20261025f"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
   // Remember the page the user came from BEFORE entering the reporters
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       + '<div class="rpl-img-wrap" style="background:' + color + '22">' + imgHtml + '</div>'
       + '<div class="rpl-bottom" style="border-top:3px solid ' + color + '">'
       + '<div class="rpl-name">' + r.name + '</div>'
-      + '<div class="rpl-role">' + (r.role||'') + '</div>'
+      + '<div class="rpl-role">' + (typeof khReporterRole==='function'?khReporterRole:String)(r.role||'') + '</div>'
       + '</div></a>';
   }).join('');
 });

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
@@ -7,16 +7,16 @@
 <meta name="color-scheme" content="light">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Reporter Profile — KoreHani</title>
-<meta name="description" content="KoreHani 기자 프로필 — 기자가 쓴 기사 모음, 팬 후기, 매니저로 고용해서 한국어를 1:1로 배워보세요.">
+<meta name="description" content="A KoreHani reporter's articles, fan reviews and one-on-one Korean study.">
 <link rel="canonical" href="https://korehani.com/korehan-reporter.html">
 <meta name="theme-color" content="#0a1423">
 <meta property="og:type" content="profile">
 <meta property="og:site_name" content="KoreHani">
 <meta property="og:url" content="https://korehani.com/korehan-reporter.html">
-<meta property="og:title" content="기자 프로필 — KoreHani">
-<meta property="og:description" content="KoreHani 기자 프로필 — 기사 모음, 팬 후기, 1:1 매니저 한국어 학습.">
+<meta property="og:title" content="Reporter Profile — KoreHani">
+<meta property="og:description" content="A KoreHani reporter's articles, fan reviews and one-on-one Korean study.">
 <meta property="og:image" content="https://korehani.com/img/guide/hero-express.png">
-<meta property="og:locale" content="ko_KR">
+<meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
@@ -472,7 +472,7 @@ body {
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261025a"></script>
-<script src="js/core/reporters.js?v=20260525r"></script>
+<script src="js/core/reporters.js?v=20261025a"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20261025a"></script>
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
@@ -482,7 +482,7 @@ body {
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261025e"></script>
+<script src="korehan-shared.js?v=20261025f"></script>
 <script>
 var FAV_HIRE_THRESHOLD = 3000;
 var REPORTER_BG_DEFAULT = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=2200&q=80';
@@ -606,7 +606,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     +   '</div>'
     +   '<div class="rp-info-col">'
     +     '<div class="rp-name">' + reporter.name + '</div>'
-    +     '<span class="rp-role-badge" style="background:' + color + '">' + (reporter.role||'') + '</span>'
+    +     '<span class="rp-role-badge" style="background:' + color + '">' + (typeof khReporterRole==='function'?khReporterRole:String)(reporter.role||'') + '</span>'
     +     '<div class="rp-stats">'
     +       (reporter.age ? '<div class="rp-stat"><span class="rp-stat-label">Age</span><span class="rp-stat-val">' + reporter.age + '</span></div>' : '')
     +       (reporter.tone ? '<div class="rp-stat"><span class="rp-stat-label">Tone</span><span class="rp-stat-val" style="font-size:13px">' + reporter.tone + '</span></div>' : '')
@@ -756,7 +756,7 @@ function rpRenderPhotocards() {
           + '<div class="rp-pc-body">'
           +   '<span class="rp-pc-tag">' + escHtml(c.tag) + '</span>'
           +   '<h3 class="rp-pc-name">' + escHtml(r.name) + '</h3>'
-          +   '<div class="rp-pc-role">' + escHtml(r.role || '') + '</div>'
+          +   '<div class="rp-pc-role">' + escHtml((typeof khReporterRole==='function'?khReporterRole:String)(r.role || '')) + '</div>'
           + '</div>'
           + '</div>';
       }).join('')
@@ -1493,7 +1493,7 @@ async function loadReporterArticles(rid, name) {
         var d = a.date ? new Date(a.date).toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'}) : '';
         return '<a class="rp-art-item" href="korehan-article.html?id=' + a.id + '">'
           + '<div class="rp-art-title">' + (a.title||'') + '</div>'
-          + '<div class="rp-art-meta">' + (a.section||'') + (d?' · '+d:'') + '</div></a>';
+          + '<div class="rp-art-meta">' + (typeof khSecLabel === 'function' ? khSecLabel(a.section) : (a.section||'')) + (d?' · '+d:'') + '</div></a>';
       }).join('')
     + '</div>';
 }
