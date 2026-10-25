@@ -248,7 +248,10 @@
 - [x] **2단계** — `log_word_review` RPC(업데이트만, insert 안 함 + SM-2 스케줄) → 3D 플래시카드·회화 플래시카드·단어장 퀴즈·SRS 복습이 단어를 더 이상 저장 안 함 / 듣기 퀴즈 문장 저장 삭제 / Memory 게임 가짜 복습 기록 삭제 / 플래시카드: 로딩 후 렌더 + 기본값 6개 제거 + 레벨별 랜덤 200개 창 / 토픽 단어 프롬프트 "단일 명사" + 띄어쓰기 항목 차단 / 뜻 칸 `||EX|`·`[슬랭]` 정리(`khCleanMeaning`) / 3D 우주 연관 단어: AI 호출 → 단어 데이터(전체 4.4k 단어) 기반 계산 (탭당 AI 0원)
   - [x] 자동 저장된 쓰레기 단어 34개 삭제 (PR #785, 백업 테이블 `user_saved_words_purged_20261025`)
 - [x] **3단계 (1차)** — 가챠 삭제(상점 탭·코드·약관) / 결제 연동 전까지 현금 전용 아이템·Buy with Cash 숨김 (`SHOP_CASH_ENABLED`) / 요금표(Courses·랜딩)를 실제 잠금과 일치 + 수료증·Stories·Diary 문구 삭제 / 랜딩 ₩0→$0 / 관리자·튜터 이메일을 공개 JS에서 제거 → `kh_my_roles` RPC / 프로필 개발자 문구 삭제
-  - [ ] 남음: `user_stats` email 노출 (리포트 `2026-10-25_user_stats_privacy.sql` 확인 후), 냥 직접 수정 → RPC
+  - [x] `user_stats` email 타 사용자 조회 차단 (컬럼 권한, PR #788 — 라이브 확인: 타인 email 403, 본인 조회·저장 정상)
+  - [x] `?authdebug` 삭제, 내부 문서(md/ts)·PDF 4개(24MB 포함) 웹 루트 밖으로 이동, robots.txt에서 관리자 URL 삭제 + 관리자 페이지 noindex
+  - [ ] 다음으로 미룸 (P1): 냥·XP를 클라이언트가 직접 수정 (`user_stats` update/upsert 10곳 — 기자 선물, 닉네임 변경, 방 아이템, First Journey, 배지 보상, 상점 폴백) → 전부 서버 RPC로 옮긴 뒤 `coin_balance`/`xp` 컬럼 UPDATE 권한 회수. 현금 판매를 숨겨서 지금은 꾸미기 아이템 치팅만 가능 → 결제 켜기 전 필수
+  - [ ] 다음으로 미룸 (P1): 공유 AI 캐시(`article_cache` 등) 쓰기를 엣지 함수로, AI 무거운 Premium 기능 서버측 확인
 
 ## 제안 진행 순서
 
