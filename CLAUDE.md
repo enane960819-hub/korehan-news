@@ -31,9 +31,8 @@ korehan-news/
 │   ├── korehan-shared.js           # CORE: Supabase client, auth, Claude proxy, utilities
 │   ├── korehan-shared.css          # CORE: Global theme, CSS variables, components
 │   ├── korehan-hover-tooltips.js   # Hover vocabulary tooltip system
-│   ├── claude-proxy-index.ts       # TypeScript reference for Edge Function
-│   ├── _headers                    # HTTP header configuration (Cloudflare Pages)
-│   └── learning_hub_integration_guide.md  # Learning hub feature documentation
+│   └── _headers                    # HTTP header configuration (Cloudflare Pages)
+├── docs/reference/                 # Internal docs moved out of the web root (never deploy docs from korehan/)
 └── supabase/
     └── functions/
         └── claude-proxy/
