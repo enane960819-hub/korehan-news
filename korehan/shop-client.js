@@ -282,6 +282,8 @@
     }
   }
 
+  var SHOP_CASH_ENABLED = false;
+
   async function initShop() {
     if (!window.supaUser) return;
     var sb = getSupa(); if (!sb) return;
@@ -301,6 +303,10 @@
     }
     usingFallback = usingFallback || liveItems.length === 0;
     var catalog = usingFallback ? DEFAULT_SHOP_ITEMS : liveItems;
+    // No card gateway yet: "Buy with Cash" only recorded a pending order and
+    // never charged or delivered. Hide cash-only items and cash buttons until
+    // real checkout exists (flip SHOP_CASH_ENABLED then).
+    if (!SHOP_CASH_ENABLED) catalog = catalog.filter(function(it) { return !!it.can_buy_with_coin; });
 
     document.getElementById('shop-xp').textContent = ((stats && stats.xp) || 0).toLocaleString();
     document.getElementById('shop-coin').textContent = ((stats && stats.coin_balance) || 0).toLocaleString();
@@ -309,28 +315,28 @@
     (owned || []).forEach(function(o){ ownedMap[o.item_id] = o.quantity || 0; });
 
     var grid = document.getElementById('shop-grid');
-    grid.innerHTML = (usingFallback ? '<div style="grid-column:1/-1;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;font-size:13px">기본 아이템 프리뷰를 표시 중입니다. 관리자 페이지에서 <b>Seed Default Items</b>를 눌러 DB에 실제 아이템을 생성하세요.</div>' : '')
+    grid.innerHTML = (usingFallback ? '<div style="grid-column:1/-1;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;font-size:13px">The shop is being restocked — items below are a preview and can\'t be bought yet.</div>' : '')
       + catalog.map(function(it){
       var ownedQty = ownedMap[it.id] || 0;
       var notEnough = !!it.can_buy_with_coin && Number((stats && stats.coin_balance) || 0) < Number(it.coin_price || 0);
       var oneTimeOwned = !!ownedQty && !it.is_repeatable;
-      var disabledByFallback = usingFallback ? 'disabled title="DB에 저장된 아이템이 없어 구매할 수 없습니다"' : '';
+      var disabledByFallback = usingFallback ? 'disabled title="Preview only — not available yet"' : '';
       var tabType = (it.item_type === 'reporter_item' || it.item_type === 'gift_token') ? 'gift'
         : (it.item_type === 'profile_badge' || it.item_type === 'profile_cosmetic') ? 'profile'
-        : it.can_buy_with_cash ? 'cash' : 'all';
+        : (SHOP_CASH_ENABLED && it.can_buy_with_cash) ? 'cash' : 'all';
       return '<article class="card" data-tab-type="' + tabType + '">'
         + '<div class="thumb">' + renderShopThumb(it) + '</div>'
         + '<div class="body">'
         + '<div class="title">' + (it.name || 'Item') + '</div>'
         + '<div class="desc">' + (it.description || '') + '</div>'
         + '<div class="price">'
-        + (it.can_buy_with_coin ? '<span class="pill coin">🐾 ' + Number(it.coin_price||0) + ' 냥</span>' : '')
-        + (it.can_buy_with_cash ? '<span class="pill cash">💳 $' + Number(it.cash_price||0).toFixed(2) + '</span>' : '')
+        + (it.can_buy_with_coin ? '<span class="pill coin">🐾 ' + Number(it.coin_price||0) + ' Nyang</span>' : '')
+        + (SHOP_CASH_ENABLED && it.can_buy_with_cash ? '<span class="pill cash">💳 $' + Number(it.cash_price||0).toFixed(2) + '</span>' : '')
         + '</div>'
         + (ownedQty ? '<div class="owned">Owned x' + ownedQty + '</div>' : '')
         + '<div class="btns">'
-        + (it.can_buy_with_coin ? '<button class="btn coin" ' + ((notEnough || oneTimeOwned)?'disabled':'') + ' ' + disabledByFallback + ' onclick="window.buyWithCoin(\'' + it.id + '\')">냥으로 구매</button>' : '')
-        + (it.can_buy_with_cash ? '<button class="btn cash" ' + (oneTimeOwned?'disabled':'') + ' ' + disabledByFallback + ' onclick="window.buyWithCash(\'' + it.id + '\')">Buy with Cash</button>' : '')
+        + (it.can_buy_with_coin ? '<button class="btn coin" ' + ((notEnough || oneTimeOwned)?'disabled':'') + ' ' + disabledByFallback + ' onclick="window.buyWithCoin(\'' + it.id + '\')">Buy with Nyang</button>' : '')
+        + (SHOP_CASH_ENABLED && it.can_buy_with_cash ? '<button class="btn cash" ' + (oneTimeOwned?'disabled':'') + ' ' + disabledByFallback + ' onclick="window.buyWithCash(\'' + it.id + '\')">Buy with Cash</button>' : '')
         + '</div></div></article>';
     }).join('');
 
@@ -341,7 +347,7 @@
           var it = itemMap[o.item_id] || {};
           return '<div class="inv-item"><b>' + (it.name || o.item_id) + '</b> · qty ' + (o.quantity||0) + (it.description ? '<div style="color:#64748b;margin-top:3px">' + it.description + '</div>' : '') + '</div>';
         }).join('')
-      : '<div style="color:#94a3b8;font-size:13px">보유한 아이템이 아직 없습니다.</div>';
+      : '<div style="color:#94a3b8;font-size:13px">You don\'t own any items yet.</div>';
     // Apply current tab filter
     applyTab(_currentTab);
   }
@@ -359,6 +365,7 @@
   };
 
   window.buyWithCash = async function(itemId) {
+    if (!SHOP_CASH_ENABLED) { toast('Card payments aren\'t available yet.', 'warn'); return; }
     var sb = getSupa(); if (!sb || !supaUser) return;
     var itemRes = await sb.from('shop_items').select('cash_price').eq('id', itemId).maybeSingle();
     var amount = Number(itemRes.data && itemRes.data.cash_price || 0);
@@ -520,7 +527,7 @@
     if (tab === 'all') return true;
     if (tab === 'gift') return item.item_type === 'reporter_item' || item.item_type === 'gift_token';
     if (tab === 'profile') return item.item_type === 'profile_badge' || item.item_type === 'profile_cosmetic';
-    if (tab === 'cash') return !!item.can_buy_with_cash;
+    if (tab === 'cash') return SHOP_CASH_ENABLED && !!item.can_buy_with_cash;
     return false; // room handled separately
   }
   function applyTab(tab) {
@@ -530,17 +537,6 @@
     var shopGrid = document.getElementById('shop-grid');
     var roomGrid = document.getElementById('room-shop-grid');
     var invSection = document.getElementById('shop-inventory-section');
-    var gachaPane = document.getElementById('gacha-pane');
-    if (tab === 'gacha') {
-      // Gacha owns the pane; hide everything else so the page doesn't
-      // double-scroll past the regular grids.
-      if (shopGrid)   shopGrid.style.display = 'none';
-      if (roomGrid)   roomGrid.style.display = 'none';
-      if (invSection) invSection.style.display = 'none';
-      if (gachaPane)  gachaPane.style.display = '';
-      return;
-    }
-    if (gachaPane) gachaPane.style.display = 'none';
     if (tab === 'room') {
       shopGrid.style.display = 'none';
       roomGrid.style.display = '';

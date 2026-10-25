@@ -450,9 +450,16 @@ function khTopicWeeksSince(dateStr) {
 // 1차: localStorage 토큰 빠른 체크 (페이지 깜빡임 방지)
 // 2차: Supabase SDK 실시간 세션 검증 (조작 방지)
 (function() {
-  var ADMIN_EMAIL = 'enane960819@gmail.com';
+  // Admin status is checked server-side (kh_my_roles RPC) — no admin
+  // email ships in this page. Body stays hidden until the check passes.
+  var _hide = document.createElement('style');
+  _hide.id = 'kh-admin-gate-hide';
+  _hide.textContent = 'body{visibility:hidden!important}';
+  (document.head || document.documentElement).appendChild(_hide);
+  function reveal() { var h = document.getElementById('kh-admin-gate-hide'); if (h) h.remove(); }
 
   function blockAccess(reason) {
+    reveal();
     var expired = /expired/i.test(reason || '');
     var ctaLabel = expired ? 'Sign in again' : '← Back to Home';
     var ctaHref  = expired ? 'index.html#auth=signin' : 'index.html';
@@ -492,7 +499,7 @@ function khTopicWeeksSince(dateStr) {
   }
 
   var stored = getStoredAdmin();
-  if (!stored || stored.email !== ADMIN_EMAIL) {
+  if (!stored) {
     document.addEventListener('DOMContentLoaded', function(){ blockAccess('You are not signed in as admin.'); });
     if (document.readyState !== 'loading') blockAccess('You are not signed in as admin.');
     return;
@@ -545,19 +552,20 @@ function khTopicWeeksSince(dateStr) {
       'https://samghztrdvtxmrmawneu.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs'
 );
-    if (!sb) return;
+    if (!sb) { blockAccess('Could not verify admin access.'); return; }
     window._adminAuthClient = sb; // callClaude에서 세션 조회용으로 재사용
     sb.auth.getSession().then(function(r) {
-      var email = r.data && r.data.session && r.data.session.user && r.data.session.user.email;
-      if (!email || email !== ADMIN_EMAIL) {
-        blockAccess('Session invalid or not admin.');
-      }
-    });
+      var user = r.data && r.data.session && r.data.session.user;
+      if (!user) { blockAccess('Session invalid or not admin.'); return; }
+      return sb.rpc('kh_my_roles').then(function(res) {
+        if (res && res.data && res.data.admin) reveal();
+        else blockAccess('Session invalid or not admin.');
+      });
+    }).catch(function() { blockAccess('Could not verify admin access.'); });
 
     // 세션 변경 감지 (로그아웃 시 즉시 차단)
     sb.auth.onAuthStateChange(function(event, session) {
-      var email = session && session.user && session.user.email;
-      if (event === 'SIGNED_OUT' || !email || email !== ADMIN_EMAIL) {
+      if (event === 'SIGNED_OUT' || !(session && session.user)) {
         blockAccess('Signed out.');
       }
     });

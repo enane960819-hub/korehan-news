@@ -13450,12 +13450,7 @@ function showSpeakingRadar(scores, sentences) {
 
   // Admin edit panel — show only for admins
   var adminPanel = document.getElementById('wm-speak-admin-edit');
-  var isAdmin = window.supaUser && window.supaUser.app_metadata && window.supaUser.app_metadata.role === 'admin';
-  if (!isAdmin) {
-    // Also check email-based admin (existing pattern in codebase)
-    var adminEmails = ['enane960819@gmail.com'];
-    isAdmin = window.supaUser && adminEmails.indexOf(window.supaUser.email) >= 0;
-  }
+  var isAdmin = !!(window.supaUser && window._isAdmin); // server role (kh_my_roles)
   if (adminPanel && isAdmin) {
     adminPanel.style.display = '';
     var inputsWrap = document.getElementById('wm-speak-admin-inputs');
@@ -13514,10 +13509,7 @@ function renderSentenceHighlighting(sentences) {
   var wrap = document.getElementById('wm-speak-sentences');
   if (!wrap) return;
 
-  var isAdmin = window.supaUser && (
-    (window.supaUser.app_metadata && window.supaUser.app_metadata.role === 'admin') ||
-    window.supaUser.email === 'enane960819@gmail.com'
-  );
+  var isAdmin = !!(window.supaUser && window._isAdmin); // server role (kh_my_roles)
 
   wrap.innerHTML = '<div style="font-size:10px;font-weight:800;color:rgba(124,58,237,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Sentence Analysis' + (isAdmin ? ' <span style="font-size:9px;color:rgba(255,255,255,.3)">(click to edit)</span>' : '') + '</div>'
     + sentences.map(function(s, i) {
