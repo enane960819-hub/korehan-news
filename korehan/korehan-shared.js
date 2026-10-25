@@ -5412,7 +5412,7 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
              + '</div>'
              + _khSentExpHtml(item.exp)
              + (item.example_in_sentence ? '<div class="asp-grammar-ex">→ "' + escapeHTML(item.example_in_sentence) + '"</div>' : '')
-             + (typ === 'grammar' ? _khStudyGrammarLink(item.label) : '')
+             + (typ === 'grammar' ? _khStudyGrammarLink(item.label, { ko: _sent, en: data && data.translation, hint: item.example_in_sentence, exp: item.exp }) : '')
              + '</div>';
       });
     }
@@ -5527,11 +5527,23 @@ function _khSentExpHtml(exp) {
 // "Practice in Study Room" → opens Grammar Focus (Learn / Spot It / Practice /
 // Translate / Judge It) for this pattern. study_room_grammar is DB-first, so
 // most patterns open without an AI call.
-function _khStudyGrammarLink(label) {
+// ctx (optional): { ko: sentence, en: translation, hint: example_in_sentence,
+// exp: meaning here } — carried to Grammar Focus so the lesson shows the
+// meaning used in THIS sentence (e.g. 호박으로 = by means of, not "toward")
+// and still has a real example when the AI lesson can't be generated.
+function _khStudyGrammarLink(label, ctx) {
   var name = String(label || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
   if (!name) return '';
+  var q = '';
+  if (ctx) {
+    var cut = function(v, n) { v = String(v || '').replace(/\s+/g, ' ').trim(); return v.length > n ? v.slice(0, n) : v; };
+    if (ctx.ko)   q += '&ex_ko='   + encodeURIComponent(cut(ctx.ko, 160));
+    if (ctx.en)   q += '&ex_en='   + encodeURIComponent(cut(ctx.en, 200));
+    if (ctx.hint) q += '&ex_hint=' + encodeURIComponent(cut(ctx.hint, 40));
+    if (ctx.exp)  q += '&ex_exp='  + encodeURIComponent(cut(ctx.exp, 160));
+  }
   return '<a class="asp-study-link" href="korehan-study-room.html?focus=' + encodeURIComponent(name)
-    + '&source=grammar-guide" target="_blank" rel="noopener">📚 Practice in Study Room →</a>';
+    + '&source=grammar-guide' + q + '" target="_blank" rel="noopener">📚 Practice in Study Room →</a>';
 }
 
 async function analyzeSentence(idx, el) {
