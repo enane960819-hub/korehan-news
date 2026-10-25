@@ -21,7 +21,7 @@ var _KH_PREMIUM_FEATURES = {
   content_read: true, korean_alphabet: true, daily_slang_3: true,
   daily_review: true, express_writing: true, word_book_basic: true,
   xp_streak_badges: true, hover_vocab: true, writing_ai_feedback: true,
-  article_study: true, conversation_study: true, story_study: true,
+  article_study: true, conversation_study: true,
   slang_full: true, weekly_monthly_review: true, listening_quiz: true,
   growth_lab: true, word_book_srs: true, monthly_report: true,
   fast_track: true, phone_call: true, tutor_review: true, live_class: true,
@@ -40,7 +40,9 @@ var KH_PLANS = {
       writing_ai_feedback: true,
       word_book_basic: true,    // Word book — unlimited
       xp_streak_badges: true,   // Gamification
-      hover_vocab: true         // Hover tooltips
+      hover_vocab: true,        // Hover tooltips
+      growth_lab: true,         // Progress dashboard — never gated in the UI
+      word_book_srs: true       // SRS review of saved words — never gated in the UI
       // everything else → Premium
     }
   },

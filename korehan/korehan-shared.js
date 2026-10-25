@@ -1601,7 +1601,7 @@ async function signOut(options) {
   if (isGated) {
     supaUser = null;
     try { window._savedWordsSet = null; } catch(_) {}
-    try { window._isAdmin = false; window._isTutor = false; } catch(_) {}
+    try { window._isAdmin = false; window._isTutor = false; _khRoles = null; _khRolesUid = null; _khRolesLoading = null; sessionStorage.removeItem('kh_roles'); } catch(_) {}
     // Fire the network signOut without awaiting — index.html will pick up
     // the cleared session on its own load.
     var sb = getSupa();
@@ -1865,6 +1865,38 @@ async function checkSession() {
 }
 
 // UI 업데이트
+// Admin / tutor roles come from the server (kh_my_roles RPC) — the email
+// allow-lists no longer ship in public JS. Cached per user for the tab;
+// 'kh:roles' fires on window once they're known. UI-only: RLS enforces.
+var _khRoles = null, _khRolesUid = null, _khRolesLoading = null;
+function khRolesCached(uid) {
+  if (!uid) return null;
+  if (_khRolesUid === uid && _khRoles) return _khRoles;
+  try {
+    var c = JSON.parse(sessionStorage.getItem('kh_roles') || 'null');
+    if (c && c.uid === uid && c.r) { _khRoles = c.r; _khRolesUid = uid; return c.r; }
+  } catch (_) {}
+  return null;
+}
+function khLoadRoles(uid) {
+  var none = { admin: false, tutor: false };
+  if (!uid) return Promise.resolve(none);
+  if (_khRolesLoading && _khRolesUid === uid) return _khRolesLoading;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return Promise.resolve(none);
+  _khRolesUid = uid; _khRoles = null;
+  _khRolesLoading = sb.rpc('kh_my_roles').then(function(res) {
+    if (res.error || !res.data) { _khRolesLoading = null; return none; }
+    var r = { admin: !!res.data.admin, tutor: !!res.data.tutor };
+    _khRoles = r;
+    try { sessionStorage.setItem('kh_roles', JSON.stringify({ uid: uid, r: r })); } catch (_) {}
+    try { window.dispatchEvent(new CustomEvent('kh:roles', { detail: r })); } catch (_) {}
+    return r;
+  }, function() { _khRolesLoading = null; return none; });
+  return _khRolesLoading;
+}
+window.khLoadRoles = khLoadRoles;
+
 function updateAuthUI() {
   // Anti-flash: if we have a stored session but haven't confirmed it yet,
   // do NOT paint the signed-out header/nav — that's what made the profile
@@ -1885,16 +1917,18 @@ function updateAuthUI() {
   var userAvatar = document.getElementById('topbar-user-avatar');
   var userDrop   = document.getElementById('topbar-user-dropdown');
 
-  // 관리자 이메일 목록 (본인 Gmail 추가)
-  var ADMIN_EMAILS = ['enane960819@gmail.com'];
-  var isAdmin = supaUser && ADMIN_EMAILS.includes(supaUser.email);
-  window._isAdmin = isAdmin; // 다른 파일에서 참조용
-
-  // Tutor dashboard allowlist — single source of truth is
-  // window.KH_TUTOR_EMAILS, defined at top level (see top of file).
-  var TUTOR_EMAILS = window.KH_TUTOR_EMAILS || ['enane960819@gmail.com'];
-  var isTutor = supaUser && TUTOR_EMAILS.includes((supaUser.email || '').toLowerCase());
+  var _roles = supaUser ? khRolesCached(supaUser.id) : null;
+  var isAdmin = !!(_roles && _roles.admin);
+  var isTutor = !!(_roles && _roles.tutor);
+  window._isAdmin = isAdmin; // read by other files
   window._isTutor = isTutor;
+  if (supaUser && !_roles) {
+    var _uidForRoles = supaUser.id;
+    khLoadRoles(_uidForRoles).then(function(r) {
+      // Re-render once so the Admin / Tutor links appear.
+      if ((r.admin || r.tutor) && supaUser && supaUser.id === _uidForRoles) updateAuthUI();
+    });
+  }
 
   // Notification bell: only shown when signed in. khStartNotifications
   // handles polling + initial fetch so we don't block the header render.
@@ -2406,18 +2440,7 @@ document.addEventListener('click', function(evt){
   closeTopbarUserMenu();
 });
 
-// Tutor dashboard allowlist — exposed at TOP LEVEL so the tutor page
-// can read it synchronously at script-load time. (Previously this
-// lived inside updateAuthUI() which only runs after the session check
-// resolves; the tutor page's gate IIFE then fell through to the
-// owner-only fallback and locked Alicia out. Real-world incident
-// 2026-05-26.)
-//
-// Keep this in sync with:
-//   - the same const inside updateAuthUI() below (it builds isTutor)
-//   - supabase/migrations/20260428_tutor_dashboard.sql is_tutor_user()
-//   - korehan-tutor-7v3ca.html's fallback
-window.KH_TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com'];
+// Tutor / admin allow-lists live server-side now (kh_my_roles RPC).
 
 const DB_KEY          = 'korehan_db';
 const K_PHRASES       = 'korehan_phrases';
@@ -7393,14 +7416,15 @@ function initTooltips() {
   function _mountVocabAdminBarIfEligible() {
     // Guard: bar already in DOM, skip.
     if (document.getElementById('vocab-admin-bar')) return;
-    // Hard gate: must have an active session AND an admin email.
-    // Relying purely on window._isAdmin left a gap — if another script
-    // set it optimistically, or if it hadn't been cleared after a
-    // previous admin session, the bar could appear for non-admins.
-    var ADMIN_EMAILS = ['enane960819@gmail.com'];
+    // Hard gate: active session AND the server says admin (kh_my_roles,
+    // cached per user). A stale window._isAdmin can't slip through.
     var u = typeof supaUser !== 'undefined' ? supaUser : null;
-    var ok = !!(u && u.email && ADMIN_EMAILS.indexOf(u.email) !== -1);
-    if (!ok) return;
+    var roles = u ? khRolesCached(u.id) : null;
+    if (!roles) {
+      if (u) khLoadRoles(u.id).then(function(r) { if (r.admin) _mountVocabAdminBarIfEligible(); });
+      return;
+    }
+    if (!roles.admin) return;
     // Keep window._isAdmin in sync so other call sites see the same
     // truth — covers the timing race where initTooltips wins against
     // updateAuthUI.

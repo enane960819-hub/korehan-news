@@ -11,9 +11,16 @@
 // the localStorage check, so DOMContentLoaded handlers that try to
 // query DB tables still fire but their target elements are gone.
 (function () {
-  var ADMIN_EMAIL = 'enane960819@gmail.com';
   var SUPA_URL = 'https://samghztrdvtxmrmawneu.supabase.co';
   var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhbWdoenRyZHZ0eG1ybWF3bmV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0MzQ3NTIsImV4cCI6MjA4ODAxMDc1Mn0.UCt6Z76XTmJGbhHdX744tM8BKDdVhqRiCLuQi6w-rNs';
+
+  // Admin status comes from the server (kh_my_roles RPC) — no admin email
+  // ships in this file. The page stays hidden until the check passes.
+  var hide = document.createElement('style');
+  hide.id = 'kh-admin-gate-hide';
+  hide.textContent = 'body{visibility:hidden!important}';
+  (document.head || document.documentElement).appendChild(hide);
+  function reveal() { var h = document.getElementById('kh-admin-gate-hide'); if (h) h.remove(); }
 
   function blockAccess(reason) {
     if (!document.body) {
@@ -30,44 +37,42 @@
       + '<a href="index.html" style="padding:10px 24px;background:#2255a4;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">← Back to Home</a>'
       + '</div></div>';
     window._adminGateBlocked = true;
+    reveal();
   }
 
-  // 1차: localStorage 토큰으로 빠른 체크 (페이지 깜빡임 방지)
-  function getStoredEmail() {
+  // 1st: no stored session at all → block immediately (no flash).
+  function hasStoredSession() {
     try {
       var keys = Object.keys(localStorage);
       for (var i = 0; i < keys.length; i++) {
         if (keys[i].indexOf('sb-') === 0 && keys[i].indexOf('-auth-token') !== -1) {
           var val = JSON.parse(localStorage.getItem(keys[i]));
-          if (val && val.user && val.user.email) return val.user.email;
+          if (val && val.user && val.access_token) return true;
         }
       }
     } catch (_) {}
-    return null;
+    return false;
   }
-
-  var storedEmail = getStoredEmail();
-  if (!storedEmail || storedEmail !== ADMIN_EMAIL) {
+  if (!hasStoredSession()) {
     blockAccess('You are not signed in as admin.');
     return;
   }
 
-  // 2차: Supabase SDK로 세션 실시간 검증 — localStorage 가 조작된 경우 잡아냄.
-  // Supabase JS가 로드된 후에 실행되어야 하므로 DOMContentLoaded 에 위임.
+  // 2nd: verify the live session with the server.
   document.addEventListener('DOMContentLoaded', function () {
-    if (!window.supabase) return;
+    if (!window.supabase) { blockAccess('Could not verify admin access.'); return; }
     var sb;
-    try { sb = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch (_) { return; }
-    if (!sb) return;
+    try { sb = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch (_) { blockAccess('Could not verify admin access.'); return; }
     sb.auth.getSession().then(function (r) {
-      var email = r && r.data && r.data.session && r.data.session.user && r.data.session.user.email;
-      if (!email || email !== ADMIN_EMAIL) blockAccess('Session invalid or not admin.');
-    });
+      var user = r && r.data && r.data.session && r.data.session.user;
+      if (!user) { blockAccess('Session invalid or not admin.'); return; }
+      return sb.rpc('kh_my_roles').then(function (res) {
+        if (res && res.data && res.data.admin) reveal();
+        else blockAccess('Session invalid or not admin.');
+      });
+    }).catch(function () { blockAccess('Could not verify admin access.'); });
     sb.auth.onAuthStateChange(function (event, session) {
-      var email = session && session.user && session.user.email;
-      if (event === 'SIGNED_OUT' || !email || email !== ADMIN_EMAIL) {
-        blockAccess('Signed out.');
-      }
+      if (event === 'SIGNED_OUT' || !(session && session.user)) blockAccess('Signed out.');
     });
   });
 })();
