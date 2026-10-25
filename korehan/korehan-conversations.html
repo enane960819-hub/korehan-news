@@ -481,7 +481,7 @@
 <script src="js/core/phrases.js?v=20261016a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
-<script src="js/core/articles.js?v=20261013a"></script>
+<script src="js/core/articles.js?v=20261025a"></script>
 <script src="js/core/reporters.js?v=20260525r"></script>
 <script src="js/features/streak.js?v=20260525r"></script>
 <script src="js/features/daily-mission.js?v=20261014a"></script>
@@ -492,7 +492,7 @@
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261023a"></script>
+<script src="korehan-shared.js?v=20261025a"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════
 // KoreHani Character System
@@ -1431,9 +1431,9 @@ async function openDetail(idx) {
   var vocab = _convVocab.map(function(v) {
     var _sk=(v.ko||'').split('"').join('&quot;'),_sr=(v.rom||'').split('"').join('&quot;'),_se=(v.en||'').split('"').join('&quot;');
     return '<div class="dp-vocab-item" data-ko="'+_sk+'" data-rom="'+_sr+'" data-en="'+_se+'">'
-      +'<span class="dp-vi-ko">'+v.ko+'</span>'
-      +'<span class="dp-vi-rom">'+v.rom+'</span>'
-      +'<span class="dp-vi-en">'+v.en+'</span>'
+      +'<span class="dp-vi-ko">'+escapeHtml(v.ko||'')+'</span>'
+      +'<span class="dp-vi-rom">'+escapeHtml(v.rom||'')+'</span>'
+      +'<span class="dp-vi-en">'+escapeHtml(v.en||'')+'</span>'
       +'<button class="dp-vi-save" onclick="toggleSave(this)">+ Save</button>'
       +'</div>';
   }).join('');
@@ -1556,9 +1556,9 @@ function renderStudyNotes(c) {
   var vocab = _convVocab.map(function(v, vi) {
     var _sk=(v.ko||'').split('"').join('&quot;'),_sr=(v.rom||'').split('"').join('&quot;'),_se=(v.en||'').split('"').join('&quot;');
     return '<div class="dp-vocab-item" data-ko="'+_sk+'" data-rom="'+_sr+'" data-en="'+_se+'">'
-      +'<span class="dp-vi-ko">'+v.ko+'</span>'
-      +'<span class="dp-vi-rom">'+v.rom+'</span>'
-      +'<span class="dp-vi-en">'+v.en+'</span>'
+      +'<span class="dp-vi-ko">'+escapeHtml(v.ko||'')+'</span>'
+      +'<span class="dp-vi-rom">'+escapeHtml(v.rom||'')+'</span>'
+      +'<span class="dp-vi-en">'+escapeHtml(v.en||'')+'</span>'
       +'<button class="dp-vi-save" onclick="toggleSave(this)">+ Save</button>'
       +(isAdm ? '<button class="dp-vi-del" onclick="convDelVocab('+vi+')" title="Delete">✕</button>' : '')
       +'</div>';
@@ -3190,37 +3190,8 @@ function closeInlineEdit() { var e = document.getElementById('conv-inline-edit')
 
 <script>
 (function(){
-  window.toggleSave = async function(btn) {
-    var item = btn.closest('.dp-vocab-item');
-    if (!item) return;
-    var ko = (item.querySelector('.dp-vi-ko')||{}).textContent || '';
-    var rom = (item.querySelector('.dp-vi-rom')||{}).textContent || '';
-    var en = (item.querySelector('.dp-vi-en')||{}).textContent || '';
-    btn.classList.toggle('saved');
-    btn.textContent = btn.classList.contains('saved') ? '✓ Saved' : '+ Save';
-    try {
-      if (!window.getSupa) return;
-      var sb = getSupa(); if (!sb) return;
-      var sessionRes = await sb.auth.getSession();
-      var user = sessionRes && sessionRes.data && sessionRes.data.session && sessionRes.data.session.user;
-      if (!user) {
-        var key = 'kh_saved_words_guest';
-        var arr = JSON.parse(localStorage.getItem(key) || '[]');
-        if (btn.classList.contains('saved')) {
-          if (!arr.find(function(x){ return x.word_ko === ko; })) arr.push({ word_ko: ko, word_rom: rom, word_en: en });
-        } else {
-          arr = arr.filter(function(x){ return x.word_ko !== ko; });
-        }
-        localStorage.setItem(key, JSON.stringify(arr));
-        return;
-      }
-      if (btn.classList.contains('saved')) {
-        await sb.from('user_saved_words').upsert({ user_id: user.id, word_key: ko, word_ko: ko, word_rom: rom, word_en: en }, { onConflict: 'user_id,word_key' });
-      } else {
-        await sb.from('user_saved_words').delete().eq('user_id', user.id).eq('word_ko', ko);
-      }
-    } catch (e) { console.warn('save vocab failed', e); }
-  };
+  // (A second toggleSave used to be defined here and overrode the real one
+  // above — it bypassed dbSaveWord, lost guest saves and could save "undefined".)
 
   window.startOrderQuiz = function() {
     var c = window._currentConv;

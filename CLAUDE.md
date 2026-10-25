@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 2. **Never expose the Supabase service role key** to the browser. Use only the anon key (already in `korehan-shared.js`)
 3. The anon key + RLS (Row Level Security) on Supabase tables is the auth model
 4. Admin pages use `x-admin-bypass` header with the service role key — this header is only sent server-side or in the admin panel which requires login
-5. The `_headers` file sets security headers: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` restricting camera/mic/geolocation
+5. The `_headers` file sets security headers: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` blocking camera/geolocation and allowing the microphone for same-origin only (`microphone=(self)` — Speaking/pronunciation recording needs it; `microphone=()` silently broke recording site-wide)
 
 ---
 
