@@ -1286,11 +1286,11 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/features/reading-tracker.js?v=20260525r"></script>
 <script src="js/features/bookmarks.js?v=20260525r"></script>
 <script src="js/features/comments.js?v=20261016a"></script>
-<script src="js/features/sidebar.js?v=20260525r"></script>
+<script src="js/features/sidebar.js?v=20261025a"></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261025f"></script>
+<script src="korehan-shared.js?v=20261025g"></script>
 <script src="js/kh-badges.js?v=20261013c"></script>
 <script>
 
@@ -3408,18 +3408,18 @@ var ROOM_HUB_ACTIONS = {
   // Screens / posters → conversations
   'tv_unit':      { url: 'korehan-conversations.html', emoji: '💬', label: 'Conversations' },
   'poster_kpop':  { url: 'korehan-conversations.html', emoji: '💬', label: 'Conversations' },
-  // Calligraphy / Korean culture → stories
-  'calligraphy':  { url: 'korehan-stories.html', emoji: '📖', label: 'Stories' },
-  'poster_hangul':{ url: 'korehan-stories.html', emoji: '📖', label: 'Stories' },
+  // Calligraphy / Korean culture → Korea Buzz (Stories retired)
+  'calligraphy':  { url: 'korehan-section.html?s=buzz', emoji: '🔥', label: 'Korea Buzz' },
+  'poster_hangul':{ url: 'korehan-section.html?s=buzz', emoji: '🔥', label: 'Korea Buzz' },
   // Music / fun
   'piano':        { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
   'guitar':       { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
   'radio':        { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
   'light_stick':  { url: 'korehan-fun.html',     emoji: '🎮', label: 'Playground' },
   // Globe → news (world section)
-  'globe':        { url: 'korehan-news.html',    emoji: '🌐', label: 'Latest News' },
+  'globe':        { url: 'korehan-all.html',    emoji: '🌐', label: 'Latest News' },
   // Camera → news again (kind of like 'fresh stories')
-  'camera':       { url: 'korehan-news.html',    emoji: '🌐', label: 'Latest News' }
+  'camera':       { url: 'korehan-all.html',    emoji: '🌐', label: 'Latest News' }
 };
 function _decorateHub(div, itemId) {
   var action = ROOM_HUB_ACTIONS[itemId];
@@ -4973,7 +4973,7 @@ async function openSavedWordsModal() {
       + '<div style="font-size:12px;color:#64748b;line-height:1.6;max-width:240px;margin:0 auto">Tap or hover any Korean word while reading an article — it saves to your Word Book and shows up here for review.</div>'
       + '</div>'
       + '<div style="display:flex;gap:8px;margin-top:12px">'
-      +   '<a href="korehan-news.html" style="flex:1;padding:11px;border-radius:10px;background:#2255a4;color:#fff;font-size:13px;font-weight:800;text-align:center;text-decoration:none">Browse articles →</a>'
+      +   '<a href="korehan-all.html" style="flex:1;padding:11px;border-radius:10px;background:#2255a4;color:#fff;font-size:13px;font-weight:800;text-align:center;text-decoration:none">Browse articles →</a>'
       +   '<button class="nn-btn-cancel" style="flex:1" onclick="this.closest(\'.nn-overlay\').remove()">Close</button>'
       + '</div>';
     return;

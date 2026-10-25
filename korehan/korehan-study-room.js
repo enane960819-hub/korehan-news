@@ -3269,10 +3269,8 @@ function _lsStartCanvasRendering() {
 var _LS_MODE_KEY = 'kh_ls_mobile_mode_v1';
 var _LS_MODES = ['solar', 'tarot', 'orb'];
 function _lsGetMobileMode() {
-  try {
-    var m = localStorage.getItem(_LS_MODE_KEY);
-    if (m && _LS_MODES.indexOf(m) >= 0) return m;
-  } catch(_) {}
+  // Experiment over (2026-10): the Solar / Tarot picker is gone, every
+  // phone gets the Orb layout.
   return 'orb';
 }
 function _lsSetMobileMode(mode) {
@@ -21004,7 +21002,7 @@ if (typeof openConvStudy === 'undefined') {
   };
 }
 if (typeof openStoryStudy === 'undefined') {
-  window.openStoryStudy = function() { window.location.assign('korehan-stories.html'); };
+  window.openStoryStudy = function() { window.location.assign('korehan-section.html?s=buzz'); };
 }
 
 // ═══ Completed Studies Tracker ═══════════════════════════════
