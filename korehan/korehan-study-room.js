@@ -334,9 +334,16 @@ function _khStudyRoomInit() {
       asAutoSubmitOldWork();
       _asRefreshSubmitBanner();
       setTimeout(function() {
-        loadVocabPool();
         renderFlashcardFilters();
-        loadFlashcards('all', document.querySelector('#fc-filters-left .tpill'));
+        // Draw the deck only once the pool has loaded. It used to render
+        // immediately, when the pool held nothing but the 6 placeholder
+        // words (뉴스/사회/국제/문화/한국/학교) — so every visit showed those.
+        var _fcGrid0 = document.getElementById('fc-grid-left');
+        if (_fcGrid0) _fcGrid0.innerHTML = '<div style="font-size:12px;color:#94a3b8;text-align:center;padding:20px">Loading words…</div>';
+        loadVocabPool().then(function(){
+          var on = document.querySelector('#fc-filters-left .tpill.on') || document.querySelector('#fc-filters-left .tpill');
+          if (!on || /loadFlashcards\('all'/.test(on.getAttribute('onclick') || '')) loadFlashcards('all', on);
+        });
         loadWordBankPreview();
         loadWeakGrammarBanner();
         _khLoadGrammarProgressFromAccount().catch(function(){});
@@ -1908,7 +1915,7 @@ async function generateAIContent(topic) {
     Starter:      'STARTER: Ultra-basic level — student just learned Hangul. Use ONLY 1-syllable or extremely common 2-syllable words (엄마, 아빠, 밥, 물, 집, 학교, 나, 너). Grammar ONLY: ~이에요/예요, ~있어요/없어요. NO particles except 은/는. Sentences max 4 words. Helper sentences must be 3-5 words only. Vocab: body parts, food, family, colors, numbers. Example: 저는 학생이에요.',
     Beginner:     'BEGINNER: Use only present tense (~아요/어요), simple vocabulary (1-2 syllable words), basic particles (은/는/이/가/을/를). Vocab should be common everyday words. Grammar patterns: ~이에요/예요, ~아요/어요, ~있어요/없어요. Helper sentences should be very short (5-8 words). Example: 저는 음식을 좋아해요.',
     Intermediate: 'INTERMEDIATE: Use past tense (~었어요/았어요), conjunctions (~고, ~지만, ~서, ~때문에), modal expressions (~고 싶어요, ~아/어 보다). Vocab should include 2-3 syllable words and topic-specific terms. Grammar patterns: ~았/었어요, ~(으)ㄹ 것 같아요, ~다고 생각해요. Helper sentences 8-12 words. Example: 어릴 때부터 이 음식을 좋아했는데, 지금도 자주 먹어요.',
-    Advanced:     'ADVANCED: Use complex sentence structures, formal/written style (~습니다/ㅂ니다), relative clauses (~는/은/을), nominalizations (~는 것, ~기), advanced connectors (~에도 불구하고, ~(으)ㄹ수록). Vocab should include abstract nouns, advanced topic-specific terminology. Grammar patterns: ~(으)ㄹ수록, ~에 비해, ~는 반면에. Helper sentences 12+ words with complex grammar. Example: 현대 사회에서 스마트폰이 일상생활에 미치는 영향은 매우 크다고 할 수 있다.'
+    Advanced:     'ADVANCED: Use complex sentence structures, formal/written style (~습니다/ㅂ니다), relative clauses (~는/은/을), nominalizations (~는 것, ~기), advanced connectors (~에도 불구하고, ~(으)ㄹ수록). Vocab should include abstract nouns (single words, no multi-word terminology). Grammar patterns: ~(으)ㄹ수록, ~에 비해, ~는 반면에. Helper sentences 12+ words with complex grammar. Example: 현대 사회에서 스마트폰이 일상생활에 미치는 영향은 매우 크다고 할 수 있다.'
   };
 
   var prompt = 'You are a Korean language teacher creating study material strictly calibrated to the student level.\n\n'
@@ -1917,14 +1924,14 @@ async function generateAIContent(topic) {
     + 'Writing topic: ' + topic.topic_ko + ' (' + topic.topic_en + ')\n\n'
     + 'CRITICAL: ALL vocab, grammar patterns, example sentences, and helper sentences MUST match the ' + _currentLevel + ' level exactly. Do NOT mix in easier or harder content.\n\n'
     + 'VOCAB RULES (strict):\n'
-    + '- Every entry MUST be a concrete noun or noun phrase that appears naturally in a sentence about this exact topic.\n'
+    + '- Every entry MUST be ONE dictionary word (a single noun, no spaces) that appears naturally in a sentence about this exact topic. NO multi-word phrases or compound terms written with spaces (e.g. NOT 공기 정화 시스템).\n'
     + '- NO verbs or adjectives (no dictionary-form words ending in ~다, ~하다, ~되다). NO particle-only items. NO standalone verb stems (e.g. 배우, 좋아, 마시).\n'
     + '- If the topic has an established Korean loanword (블랙커피, 아메리카노, 카페라떼, 에스프레소, 디카페인 for coffee; 피자, 햄버거 for food; 스마트폰 for phone, etc.) use the loanword exactly — do NOT literal-translate English compounds (e.g. "black coffee" → 블랙커피, NEVER 검은 커피).\n'
     + '- Skip generic filler (사람, 것, 시간) unless it is the direct subject of the topic.\n\n'
     + 'Return ONLY this JSON (no markdown, no extra text):\n'
     + '{\n'
     + '  "vocab": [\n'
-    + '    {"ko":"noun or noun phrase","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}\n'
+    + '    {"ko":"single noun","rom":"romanization","en":"meaning","level":"' + _currentLevel + '"}\n'
     + '    // exactly ' + (_currentLevel === 'Starter' ? '7' : '5') + ' topic-specific NOUNS (no verbs/adjectives), all at ' + _currentLevel + ' level' + (_currentLevel === 'Starter' ? '. Ultra-basic 1-2 syllable nouns with romanization.' : '') + '\n'
     + '  ],\n'
     + '  "grammar": [\n'
@@ -1957,6 +1964,11 @@ async function generateAIContent(topic) {
     var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
     if (s >= 0 && e > s) clean = clean.slice(s, e + 1);
     _aiContent = JSON.parse(clean);
+    // Drop multi-word "vocab" (e.g. 공기 정화 시스템) even if the model
+    // ignores the single-word rule.
+    if (_aiContent && Array.isArray(_aiContent.vocab)) {
+      _aiContent.vocab = _aiContent.vocab.filter(function(v){ return v && v.ko && !/\s/.test(String(v.ko).trim()); });
+    }
     sessionStorage.setItem(cacheKey, JSON.stringify(_aiContent));
 
     renderAIContent();
@@ -7622,12 +7634,8 @@ function _wbSrsRate(ko, rating) {
     try {
       var sb = getSupa();
       var isCorrect = rating >= 3;
-      sb.rpc('save_or_update_word', {
-        p_word_key: ko, p_word_ko: ko, p_word_en: null, p_word_rom: null,
-        p_source_kind: 'review', p_source_content_type: null, p_source_content_id: null,
-        p_interest_tag: null, p_review_delta: 1,
-        p_correct_delta: isCorrect ? 1 : 0, p_wrong_delta: isCorrect ? 0 : 1
-      }).then(null, function(){});
+      // Update-only: reviewing must never add a word to the word book.
+      sb.rpc('log_word_review', { p_word_key: ko, p_correct: isCorrect }).then(null, function(){});
     } catch(e) {}
   }
   // Update local _wbData so next quiz reflects the change immediately
@@ -10950,6 +10958,28 @@ async function renderFeedbackInboxContent() {
 // ═══════════════════════════════════════════════════════════════
 var _vocabBankWords = [];
 
+// A random 200-word window of the TOPIK vocabulary bank at the learner's
+// level. The old query (.limit(200), no order / level / is_active filter)
+// returned the same first 200 rows — mostly Starter ㄱ-words — every time.
+function _fcBankLevel() {
+  var m = { Seed: 'Starter', Sprout: 'Beginner', Tree: 'Intermediate', Forest: 'Advanced' };
+  var l = (typeof _currentLevel === 'string' && _currentLevel) || 'Beginner';
+  return m[l] || l;
+}
+async function _fetchVocabBankWindow(sb) {
+  var lvl = _fcBankLevel();
+  var levels = lvl === 'Starter' ? ['Starter', 'Beginner'] : lvl === 'Beginner' ? ['Starter', 'Beginner'] : [lvl, 'Beginner'];
+  try {
+    var head = await sb.from('vocabulary_bank').select('id', { count: 'exact', head: true }).eq('is_active', true).in('level', levels);
+    var total = (head && head.count) || 0;
+    var start = total > 200 ? Math.floor(Math.random() * (total - 200)) : 0;
+    var r = await sb.from('vocabulary_bank').select('word_ko,word_en,word_rom').eq('is_active', true).in('level', levels)
+      .order('id', { ascending: true }).range(start, start + 199);
+    if (r && r.data && r.data.length) return r;
+  } catch (_) {}
+  return sb.from('vocabulary_bank').select('word_ko,word_en,word_rom').eq('is_active', true).limit(200);
+}
+
 async function loadVocabPool() {
   if (_vocabPoolLoaded) return;
   try {
@@ -10957,7 +10987,7 @@ async function loadVocabPool() {
     var [convRes, storyRes, bankRes] = await Promise.all([
       sb.from('conversations_data').select('data').limit(50),
       Promise.resolve({ data: null }),   // stories_data no longer used (Stories removed)
-      sb.from('vocabulary_bank').select('word_ko,word_en,word_rom').limit(200)
+      _fetchVocabBankWindow(sb)
     ]);
     if (convRes.data) {
       _convVocab = [];
@@ -10986,13 +11016,20 @@ async function loadVocabPool() {
   } catch(e) { console.warn('loadVocabPool failed:', e); }
 }
 
+// Flashcards are single words: drop multi-word phrases / sentences that
+// AI-written conversation and article vocab sometimes contains.
+function _fcIsWord(w) { return !!(w && w.ko && w.en && !/\s/.test(String(w.ko).trim()) && String(w.ko).length <= 8); }
+
 function getAllVocabPool() {
-  var wb = typeof getWordBank === 'function' ? getWordBank() : [];
+  // The local word bank falls back to 6 placeholder words when the learner
+  // has none — never show those as flashcards.
+  var _ph = { '뉴스':1, '사회':1, '국제':1, '문화':1, '한국':1, '학교':1 };
+  var wb = (typeof getWordBank === 'function' ? getWordBank() : []).filter(function(w){ return w && !_ph[w.ko]; });
   // Deduplicate by ko
   var seen = new Set();
   var all = [];
-  [].concat(_vocabBankWords, wb, _convVocab, _storyVocab).forEach(function(w) {
-    if (w && w.ko && !seen.has(w.ko)) { seen.add(w.ko); all.push(w); }
+  [].concat(_vocabBankWords, wb, _convVocab).forEach(function(w) {
+    if (_fcIsWord(w) && !seen.has(w.ko)) { seen.add(w.ko); all.push(w); }
   });
   return all;
 }
@@ -11021,9 +11058,9 @@ function loadFlashcards(cat, btn) {
   var wb = typeof getWordBank === 'function' ? getWordBank() : [];
   var pool;
   if (cat === 'news') {
-    pool = _vocabBankWords.length ? _vocabBankWords : wb;
+    pool = _vocabBankWords;
   } else if (cat === 'conv') {
-    pool = _convVocab;
+    pool = _convVocab.filter(_fcIsWord);
   } else if (cat === 'buzz') {
     // Korea Buzz vocab — reuses the already-generated article_cache vocab
     // of recent Buzz articles (no AI call). Loads lazily on first tap.
@@ -11031,7 +11068,7 @@ function loadFlashcards(cat, btn) {
       _loadBuzzVocab().then(function(){ if (document.querySelector('#fc-filters-left .tpill.on') === btn) loadFlashcards('buzz', btn); });
       pool = [];
     } else {
-      pool = _buzzVocab;
+      pool = _buzzVocab.filter(_fcIsWord);
     }
   } else {
     pool = getAllVocabPool();
@@ -11046,8 +11083,8 @@ function loadFlashcards(cat, btn) {
     return;
   }
   if (!pool.length) {
-    var vkeys = typeof VOCAB !== 'undefined' ? Object.keys(VOCAB).slice(0, 6) : [];
-    pool = vkeys.map(function(k){ return { ko:k, rom:(VOCAB[k]||{}).rom||'', en:(VOCAB[k]||{}).en||'' }; });
+    fcGridEl.innerHTML = '<div style="font-size:12px;color:#94a3b8;text-align:center;padding:20px">Loading words…</div>';
+    return;
   }
 
   var cards = pool.slice().sort(function(){ return Math.random() - .5; }).slice(0, 6);
@@ -11089,7 +11126,7 @@ async function _loadSRSReviewCards() {
     _srsReviewQueue = (data || []).map(function(w) {
       var total = (w.correct_count || 0) + (w.wrong_count || 0);
       return {
-        ko: w.word_ko, rom: w.word_rom || '', en: w.word_en || '',
+        ko: w.word_ko, rom: w.word_rom || '', en: (typeof khCleanMeaning==='function'?khCleanMeaning:String)(w.word_en || ''),
         interval: w.srs_interval || 1, ease: w.srs_ease_factor || 2.5,
         accuracy: total > 0 ? Math.round((w.correct_count || 0) / total * 100) : -1,
         reviewCount: w.review_count || 0
@@ -11169,12 +11206,8 @@ async function _srsRate(grade) {
       srs_last_reviewed: new Date().toISOString()
     }).eq('user_id', supaUser.id).eq('word_ko', w.ko);
 
-    // Track review via RPC
-    sb.rpc('save_or_update_word', {
-      p_word_key: w.ko, p_word_ko: w.ko, p_word_en: w.en, p_word_rom: w.rom,
-      p_source_kind: 'srs_review', p_review_delta: 1,
-      p_correct_delta: grade >= 3 ? 1 : 0, p_wrong_delta: grade < 3 ? 1 : 0
-    }).then(null, function(){});
+    // Track review counts (schedule already written above → p_schedule false).
+    sb.rpc('log_word_review', { p_word_key: w.ko, p_correct: grade >= 3, p_schedule: false }).then(null, function(){});
   } catch(e) { console.warn('SRS update failed:', e); }
 
   // If "Again", re-queue at end
@@ -11320,16 +11353,8 @@ function lqAns(btn) {
     if (b.dataset.ans === q.correct) b.style.borderColor = '#16a34a';
   });
   if (!ok) btn.style.borderColor = '#dc2626';
-  // Track wrong words for SRS
-  if (!ok && supaUser && q.sentence) {
-    try {
-      var sb = getSupa();
-      if (sb) sb.rpc('save_or_update_word', {
-        p_word_key: q.sentence, p_word_ko: q.sentence, p_word_en: q.correct,
-        p_source_kind: 'listening_quiz', p_review_delta: 1, p_correct_delta: 0, p_wrong_delta: 1
-      }).then(null, function(){});
-    } catch(e) {}
-  }
+  // (A wrong answer used to save the whole Korean sentence into the word
+  // book as a "word" — with a Korean "meaning". Removed: reviews never save.)
   document.getElementById('lq-fb').innerHTML =
     '<div style="margin-top:8px;padding:9px 11px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;font-size:11px;color:#445566;line-height:1.5">'
     + '<strong style="color:#d97706;display:inline-flex;align-items:center;gap:5px">' + (ok?'<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span>':'<span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_X+'</span><span>Not quite</span>') + '</strong><br>' + q.explanation + '</div>'
@@ -11682,7 +11707,7 @@ async function _loadFreeWritingHints() {
       } else {
         chipsEl.innerHTML = savedWords.map(function(w) {
           var ko = (w.word_ko || '').replace(/[<&]/g, '');
-          var en = (w.word_en || '').replace(/[<&]/g, '');
+          var en = (typeof khCleanMeaning==='function'?khCleanMeaning:String)(w.word_en || '').replace(/[<&]/g, '');
           return '<span class="chip" title="' + en + '">' + ko + (en ? ' <span style="font-size:10px;color:#94a3b8">(' + en + ')</span>' : '') + '</span>';
         }).join('');
       }

@@ -2546,6 +2546,23 @@ function _khSrAnnounce(msg, polite) {
 // Room's own implementation still overrides this when that page loads.
 try { if (typeof window.showToast !== 'function') window.showToast = function (msg, isErr) { toast(msg, isErr); }; } catch (_) {}
 
+// Saved-word meanings carry a Korean category tag ("[슬랭] ", "[표현] ",
+// "[교정] ") and sometimes an example suffix ("  ||EX|ko|en"), written by
+// the Study Room Word Book. Only the Word Book stripped them, so learners
+// saw raw "[슬랭] … ||EX|…" text in reviews, flashcards, notes, My Page
+// and the Universe. khCleanMeaning() returns the plain English meaning;
+// khMeaningTag() the category as an English label ('' for plain words).
+function khCleanMeaning(en) {
+  var s = String(en == null ? '' : en);
+  var cut = s.indexOf('||EX|'); if (cut >= 0) s = s.slice(0, cut);
+  cut = s.indexOf('\u00a6'); if (cut >= 0) s = s.slice(0, cut);
+  return s.replace(/^\s*\[(슬랭|표현|교정)\]\s*/, '').trim();
+}
+function khMeaningTag(en) {
+  var m = /^\s*\[(슬랭|표현|교정)\]/.exec(String(en || ''));
+  return m ? ({ '슬랭': 'Slang', '표현': 'Expression', '교정': 'Correction' })[m[1]] : '';
+}
+
 function toast(msg, typeOrBool) {
   var bg = '#1a3a6b';
   var isError = (typeOrBool === true || typeOrBool === 'error');
