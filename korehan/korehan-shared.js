@@ -495,7 +495,7 @@ function ensureKhGrammar() {
       return;
     }
     var script = document.createElement('script');
-    script.src = 'js/core/kh-grammar-patterns.js?v=20261012a';
+    script.src = 'js/core/kh-grammar-patterns.js?v=20261026a';
     script.defer = true;
     script.setAttribute('data-kh-grammar', '1');
     script.onload = function() { resolve(window.KH_GRAMMAR); };
@@ -5124,6 +5124,41 @@ function _widenChunkOnRender(chunk, sentence, label) {
   return sentence.slice(i, j);
 }
 
+// Cached analyses written before the detector was tightened (2026-10)
+// contain particles "found" inside ordinary words: ~만 in 하지만, ~의 in
+// 거의, ~기 in 국기, ~지요 in 적합하지 (않다), ~께 in 함께, ~(으)면 on
+// 하면서, a topic-marker card on 사진이. Each would also open the wrong
+// Study Room lesson. Hide them at render time.
+var _KH_UI_WORDS = /^(거의|회의|논의|동의|정의|합의|결의|건의|협의|의의|강의|문의|예의|성의|호의|주의|[가-힣]*주의)$/;
+var _KH_KI_NOUNS = /^(국기|경기|전기|공기|인기|일기|시기|위기|무기|용기|동기|초기|후기|단기|장기|분위기|이야기|얘기|여기|거기|저기|모기|향기|학기|열기|기기)/;
+function _khAnalysisFalsePositive(item, sent) {
+  if (!item || (item.type && item.type !== 'grammar')) return false;
+  var label = String(item.label || '');
+  var ex = String(item.example_in_sentence || '').trim();
+  if (!ex) return /regex (hit|false)|false[- ]positive|not (overtly )?present|not in this sentence/i.test(String(item.exp || ''));
+  // The model sometimes admits the pattern isn't there ("regex hit on 지만",
+  // "not in this sentence") or leaves a dash as the example.
+  if (/regex (hit|false)|false[- ]positive|not (overtly )?present|not in this sentence|not used here|not (actually )?used in this/i.test(String(item.exp || ''))) return true;
+  if (!/[가-힣]/.test(ex)) return true;
+  var word = ex.split(/\s+/).pop().replace(/[^가-힣]+$/g, '');
+  var first = ex.split(/\s+/)[0].replace(/[^가-힣]/g, '');
+  if (/^~?만\b|~만 \(/.test(label) && /지만$/.test(word)) return true;
+  if (/^~?의(\s|$|\s*\()/.test(label) && (_KH_UI_WORDS.test(word) || _KH_UI_WORDS.test(first))) return true;
+  if (/^~?기 \(nominal/.test(label) && (_KH_KI_NOUNS.test(word) || _KH_KI_NOUNS.test(first))) return true;
+  if (/지요|죠/.test(label) && !/(지요|죠)/.test(ex) && !/지\s*[?？]/.test(String(sent || ''))) return true;
+  if (/께\(?서/.test(label) && !/께서|께\s/.test(ex.replace(/함께/g, ''))) return true;
+  if (/^~?\(?으?\)?면 \(|^~?\(으\)면$/.test(label) && /면서/.test(ex)) return true;
+  // Patterns whose written form never changes must appear in the example.
+  var INVARIANT = [[/^~?게( \(|$)/, /게/], [/때문/, /때문/], [/^~?(\(으\)|ㄹ\/을 |을\/ㄹ |ㄹ |을 )?때( \(|$)/, /때/],
+                   [/^~?지 않다/, /않/], [/더라도/, /더라도/], [/^~?\(?으?\)?로( \(|$)/, /로/], [/^~?도( \(|$)/, /도/], [/^~?하고( \(|$)/, /하고/]];
+  for (var vi = 0; vi < INVARIANT.length; vi++) {
+    if (INVARIANT[vi][0].test(label) && !INVARIANT[vi][1].test(ex)) return true;
+  }
+  if (/^~?은\/는 \(topic/.test(label) && !/(은|는)$/.test(word)) return true;
+  if (/^~?이\/가 \(subject/.test(label) && !/(이|가)$/.test(word)) return true;
+  if (/^~?을\/를 \(object/.test(label) && !/(을|를)$/.test(word)) return true;
+  return false;
+}
 function _khRenderSentPanel(panel, data, closer, sentenceText) {
   var closeFn = closer || 'closeSentPanel()';
   var html = '<button class="asp-close" onclick="' + closeFn + '" aria-label="Close">×</button>';
@@ -5384,6 +5419,7 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
       if (!item || !item.label) return;
       var typ = item.type || 'grammar';
       if (!_itemMatchesSentence(item)) return;
+      if (_khAnalysisFalsePositive(item, _sent)) return;
       var ex = (item.example_in_sentence || '').trim();
       var dupe = false;
       for (var i = 0; i < seenExamples.length && ex; i++) {
