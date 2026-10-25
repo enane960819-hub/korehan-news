@@ -287,7 +287,8 @@
   async function initShop() {
     if (!window.supaUser) return;
     var sb = getSupa(); if (!sb) return;
-    await ensureDefaultShopItems(sb);
+    // Seeding writes shop_items (admin-write under RLS) — only admins try it.
+    if (window._isAdmin) await ensureDefaultShopItems(sb);
 
     var [{ data:stats }, itemsRes, { data:owned }] = await Promise.all([
       sb.from('user_stats').select('xp, coin_balance').eq('user_id', supaUser.id).maybeSingle(),
