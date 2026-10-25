@@ -16253,6 +16253,66 @@ function openGrammarFocusForItem(next) {
   _generateGrammarForCurriculumPattern(next);
 }
 
+// Sentence the learner came from (article "Practice in Study Room" link:
+// ?ex_ko=&ex_en=&ex_hint=&ex_exp=). One pattern can have several uses —
+// (으)로 is means AND direction — so the lesson shows which one THIS
+// sentence used, and the sentence doubles as a real example.
+function _gfArticleCtx() {
+  if (window._gfArticleCtxCache !== undefined) return window._gfArticleCtxCache;
+  var q = new URLSearchParams(window.location.search);
+  var ctx = { ko: q.get('ex_ko') || '', en: q.get('ex_en') || '', hint: q.get('ex_hint') || '', exp: q.get('ex_exp') || '' };
+  window._gfArticleCtxCache = (ctx.ko || ctx.exp) ? ctx : null;
+  return window._gfArticleCtxCache;
+}
+function _gfArticleCtxHtml(p) {
+  var c = p && p.article_ctx;
+  if (!c) return '';
+  var e = (typeof escapeHTML === 'function') ? escapeHTML : function(x){ return String(x || ''); };
+  return '<div style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.25);border-radius:12px;padding:12px 14px;margin-bottom:14px">'
+    + '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#7dd3fc;margin-bottom:6px">In your article</div>'
+    + (c.hint ? '<div style="font-size:15px;font-weight:800;color:#fff;font-family:Noto Serif KR,serif;margin-bottom:4px">' + e(c.hint) + '</div>' : '')
+    + (c.exp ? '<div style="font-size:13px;color:#cbd5e1;line-height:1.6;margin-bottom:6px">' + e(c.exp) + '</div>' : '')
+    + (c.ko ? '<div style="font-size:13px;color:#e5edf9;font-family:Noto Serif KR,serif;line-height:1.6">' + e(c.ko) + '</div>' : '')
+    + (c.en ? '<div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-top:2px">' + e(c.en) + '</div>' : '')
+    + '<div style="font-size:11px;color:#64748b;margin-top:6px">This lesson covers every use of the pattern — the one above is how your article used it.</div>'
+    + '</div>';
+}
+// Copy (never mutate cached lesson objects) with the article sentence as
+// the first example and the context attached for the Learn tab.
+function _gfWithArticleCtx(patterns) {
+  var ctx = _gfArticleCtx();
+  if (!ctx || !patterns || !patterns.length) return patterns;
+  var first = Object.assign({}, patterns[0]);
+  first.article_ctx = ctx;
+  var ex = (first.examples || []).slice();
+  if (ctx.ko && ctx.en && !ex.some(function(x){ return x && x.ko === ctx.ko; })) ex.unshift({ ko: ctx.ko, en: ctx.en });
+  first.examples = ex;
+  return [first].concat(patterns.slice(1));
+}
+// No-AI lesson for when the shared lesson isn't saved yet and the AI call
+// fails (e.g. API credits exhausted): curriculum description + any saved
+// study_room_grammar example + the article sentence. Better than an error.
+async function _gfFallbackLesson(item) {
+  var examples = [];
+  try {
+    var sb = getSupa();
+    var core = String(item.pattern || '').split(/\s+[—-]\s+/)[0].trim();
+    if (sb && core) {
+      var r = await sb.from('study_room_grammar').select('pattern,explanation,example_ko,example_en')
+        .ilike('pattern', '%' + core.replace(/[%_]/g, '') + '%').limit(4);
+      ((r && r.data) || []).forEach(function(g) {
+        if (g.example_ko && g.example_en) examples.push({ ko: g.example_ko, en: g.example_en });
+      });
+    }
+  } catch (_) {}
+  return [{
+    name: item.pattern, level: item.level,
+    structure: String(item.pattern || '').split(/\s+[—-]\s+/)[0].trim(),
+    exp: (item.desc || 'Practice this grammar pattern.') + ' A full lesson with more examples is on its way.',
+    examples: examples, incorrect_examples: [], _fallback: true
+  }];
+}
+
 async function _generateGrammarForCurriculumPattern(item) {
   var el = document.getElementById('gf-examples-content');
   // Cache by pattern name — every user studying "은/는 vs 이/가" gets
@@ -16263,7 +16323,7 @@ async function _generateGrammarForCurriculumPattern(item) {
     try {
       var dbHit = await _aiCacheGet(cacheKey);
       if (dbHit && dbHit.patterns && dbHit.patterns.length) {
-        loadGFPatterns(dbHit.patterns);
+        loadGFPatterns(_gfWithArticleCtx(dbHit.patterns));
         return;
       }
     } catch(_) {}
@@ -16296,15 +16356,17 @@ async function _generateGrammarForCurriculumPattern(item) {
     var oi = raw.indexOf('{'), ei = raw.lastIndexOf('}');
     var parsed = JSON.parse(raw.slice(oi, ei + 1));
     if (parsed.patterns && parsed.patterns.length) {
-      loadGFPatterns(parsed.patterns);
       if (cacheKey !== 'gf-curr2::') _aiCacheSet(cacheKey, { patterns: parsed.patterns });
+      loadGFPatterns(_gfWithArticleCtx(parsed.patterns));
     } else {
-      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
+      loadGFPatterns(_gfWithArticleCtx(await _gfFallbackLesson(item)));
     }
   } catch(e) {
-    if (el) el.innerHTML = supaUser
-      ? '<div style="text-align:center;padding:40px;color:#ef4444">Couldn\'t load this lesson right now. Please try again in a moment.</div>'
-      : '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
+    if (!supaUser) {
+      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Please sign in to use Grammar Focus.</div>';
+      return;
+    }
+    loadGFPatterns(_gfWithArticleCtx(await _gfFallbackLesson(item)));
   }
 }
 
@@ -16709,7 +16771,7 @@ function renderGFLearn(p) {
 
   return '<div style="margin-bottom:14px">'
     + '<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:' + lb + ';color:' + lc + ';margin-bottom:14px">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[lv]||lv) + '</span>'
-    + structureHtml + expHtml + tipsHtml
+    + _gfArticleCtxHtml(p) + structureHtml + expHtml + tipsHtml
     + '</div>'
     + exHtml
     + advBtn;
@@ -17651,7 +17713,14 @@ function loadGFBuild(p) {
   var correct = (p.examples || []).filter(function(e){ return e.ko; }).slice(0, 3);
   var incorrect = _gfFilterBadJudgeItems(p.incorrect_examples || []).slice(0, 2);
 
+  if (!incorrect.length && p._judgeTried) {
+    // Already tried cache + AI once for this pattern. Retrying here used to
+    // loop forever (every failed call re-entered loadGFBuild → new call).
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">Judge It isn\'t ready for this pattern yet — try the other steps for now.</div>';
+    return;
+  }
   if (!incorrect.length) {
+    p._judgeTried = true;
     // Same grammar pattern → same incorrect-example list every time.
     // Look up cache first; only call Claude on a miss.
     el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45);font-size:14px">Generating judge exercises…</div>';
