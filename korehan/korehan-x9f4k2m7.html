@@ -2206,13 +2206,20 @@ async function goUserStats() {
       // ORDER BY xp DESC uses user_stats_xp_desc_idx from audit-13
       // migration. The .limit() prevents a 10k-row sort + transfer
       // on every admin page-open.
-      sb.from('user_stats').select('*').order('xp', { ascending: false }).limit(500),
+      sb.from('user_stats').select('user_id, display_name, xp, streak, articles_read, words_saved, quizzes_done, fill_done, mission_streak, last_mission_date, writing_tickets, updated_at, total_xp, level, level_name, xp_spent, onboarded, onboarded_at, goal_type, daily_goal_minutes, detected_level, level_test_score, coin_balance, preferences, equipped_cosmetics').order('xp', { ascending: false }).limit(500),
       sb.from('daily_missions').select('user_id, date, articles, words, quizzes, fill').order('date', { ascending: false }).limit(500),
       sb.from('daily_missions').select('user_id, completed').eq('date', today),
       sb.from('article_views').select('*').order('view_count', { ascending: false }).limit(10)
     ]);
 
     var users    = usersRes.data  || [];
+    // Emails aren't client-readable on user_stats any more — admin-only RPC.
+    try {
+      var em = await sb.rpc('kh_admin_user_emails');
+      var emailById = {};
+      ((em && em.data) || []).forEach(function(r) { emailById[r.user_id] = r.email; });
+      users.forEach(function(u) { u.email = emailById[u.user_id] || ''; });
+    } catch (_) {}
     var allDMs   = allDMsRes.data || [];
     var missions = missionsRes.data || [];
     var views    = viewsRes.data  || [];

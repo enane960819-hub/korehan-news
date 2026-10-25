@@ -190,7 +190,7 @@ async function _rehydrateUserState() {
   } catch(e) { console.warn('rehydrate daily mission:', e); }
   try {
     // 3) User preferences (difficulty, neon theme) from user_stats
-    var prefRes = await sb.from('user_stats').select('*').eq('user_id', supaUser.id).maybeSingle();
+    var prefRes = await sb.from('user_stats').select('preferences').eq('user_id', supaUser.id).maybeSingle();
     if (prefRes.data && prefRes.data.preferences) {
       var prefs = prefRes.data.preferences;
       if (typeof prefs === 'string') try { prefs = JSON.parse(prefs); } catch(e) { prefs = {}; }

@@ -1897,6 +1897,10 @@ function khLoadRoles(uid) {
 }
 window.khLoadRoles = khLoadRoles;
 
+// user_stats minus email — email is not readable by clients (column
+// privilege, 20261025_user_stats_hide_email.sql), so select('*') fails.
+var KH_USER_STATS_COLS = 'user_id, display_name, xp, streak, articles_read, words_saved, quizzes_done, fill_done, mission_streak, last_mission_date, writing_tickets, updated_at, total_xp, level, level_name, xp_spent, onboarded, onboarded_at, goal_type, daily_goal_minutes, detected_level, level_test_score, coin_balance, preferences, equipped_cosmetics';
+
 function updateAuthUI() {
   // Anti-flash: if we have a stored session but haven't confirmed it yet,
   // do NOT paint the signed-out header/nav — that's what made the profile
@@ -11007,7 +11011,7 @@ async function syncUserStats(patch) {
   if (!supaUser) return;
   var sb = getSupa(); if (!sb) return;
   try {
-    var res = await sb.from('user_stats').select('*').eq('user_id', supaUser.id).maybeSingle();
+    var res = await sb.from('user_stats').select(KH_USER_STATS_COLS).eq('user_id', supaUser.id).maybeSingle();
     var cur = res.data || {
       user_id: supaUser.id, email: supaUser.email,
       display_name: localStorage.getItem('kh_display_name') || supaUser.email.split('@')[0],
@@ -11078,7 +11082,7 @@ async function onDailyMissionComplete() {
   if (!supaUser) return;
   var sb = getSupa(); if (!sb) return;
   try {
-    var res = await sb.from('user_stats').select('*').eq('user_id', supaUser.id).maybeSingle();
+    var res = await sb.from('user_stats').select(KH_USER_STATS_COLS).eq('user_id', supaUser.id).maybeSingle();
     var cur = res.data || { mission_streak:0, last_mission_date:'', writing_tickets:0 };
     var today = dmToday();
     var yesterday = new Date(Date.now() + 9*60*60*1000 - 86400000).toISOString().slice(0,10); // KST
@@ -11519,7 +11523,7 @@ async function fetchUserStatsRow() {
   try {
     var sb = getSupa();
     if (!sb) return null;
-    var res = await sb.from('user_stats').select('*').eq('user_id', supaUser.id).maybeSingle();
+    var res = await sb.from('user_stats').select(KH_USER_STATS_COLS).eq('user_id', supaUser.id).maybeSingle();
     return res.data || null;
   } catch(e) {
     return null;
