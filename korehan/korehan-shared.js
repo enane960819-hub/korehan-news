@@ -2540,6 +2540,12 @@ function _khSrAnnounce(msg, polite) {
   setTimeout(function () { el.textContent = String(msg || ''); }, 30);
 }
 
+// showToast() used to exist only in korehan-study-room.js, so shared
+// features calling it (Daily Mission bonus, onboarding, …) threw a
+// ReferenceError on every other page. Provide it everywhere; the Study
+// Room's own implementation still overrides this when that page loads.
+try { if (typeof window.showToast !== 'function') window.showToast = function (msg, isErr) { toast(msg, isErr); }; } catch (_) {}
+
 function toast(msg, typeOrBool) {
   var bg = '#1a3a6b';
   var isError = (typeOrBool === true || typeOrBool === 'error');
@@ -3764,7 +3770,7 @@ function _buildNewsCardHTML(a) {
   var cat = getSectionKey(a.section);
   var thumbSrc = (typeof khArticleThumb === 'function') ? khArticleThumb(a, 400, 260) : (a.image || '');
   var img = thumbSrc
-    ? '<img class="nc-img" src="' + thumbSrc + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.onerror=null;this.src=\'https://picsum.photos/seed/\'+encodeURIComponent(this.dataset.fb||\'kh\')+\'/400/260\'" data-fb="' + escapeHtml(a.id || 'kh') + '">'
+    ? '<img class="nc-img" src="' + thumbSrc + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.onerror=null;this.src=(window.KH_IMG_PLACEHOLDER||\'\')">'
     : '<div class="nc-img nc-img-fallback"></div>';
   var dateStr = a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
   return '<a class="nc nc-overlay" data-section="' + escapeHtml(cat) + '" data-level="' + escapeHtml(lvl) + '" href="' + articleUrl(a.id) + '">'
@@ -4275,7 +4281,7 @@ function renderArticlePage() {
   loadComments(a.id);
 
   // 기사 조회수 기록
-  if (supaUser) syncArticleView(a.id, a.title, a.section);
+  syncArticleView(a.id, a.title, a.section);   // anon views count too (RPC is granted to anon)
 
 
   // 세션 로드 후 북마크/댓글폼/읽음처리 업데이트
@@ -8931,14 +8937,23 @@ async function fetchMostReadItems() {
 
   try {
     var viewsRes = await sb.from('article_views')
-      .select('article_id,title,view_count')
+      .select('article_id,view_count')
       .order('view_count', { ascending: false })
       .limit(30);
-    var ranked = (viewsRes.data || []).slice(0, 5).map(function(row) {
-      return {
-        title: row.title || 'Untitled',
-        href: articleUrl(row.article_id)
-      };
+    // article_views has no reliable title (the RPC doesn't store one) and
+    // can point at deleted / unpublished rows — resolve against published
+    // articles and show the English title.
+    var ids = (viewsRes.data || []).map(function(r){ return String(r.article_id); });
+    var byId = {};
+    (typeof getCachedArticles === 'function' ? getCachedArticles() : []).forEach(function(a){ if (a && a.status === 'published') byId[String(a.id)] = a; });
+    var missing = ids.filter(function(id){ return !byId[id]; });
+    if (missing.length) {
+      var ar = await sb.from('articles').select('id,title,title_en,status').in('id', missing).eq('status', 'published');
+      (ar.data || []).forEach(function(a){ byId[String(a.id)] = a; });
+    }
+    var ranked = ids.filter(function(id){ return byId[id]; }).slice(0, 5).map(function(id) {
+      var a = byId[id];
+      return { title: a.title_en || a.title || 'Untitled', href: articleUrl(id) };
     });
     _mostReadSidebarCache = ranked.length ? ranked : fallback;
     return _mostReadSidebarCache;
@@ -11058,16 +11073,15 @@ async function onDailyMissionComplete() {
 }
 
 async function syncArticleView(articleId, title, section) {
-  if (!supaUser) return;
+  // Atomic server-side +1 via the increment_article_view RPC (open to
+  // anon too). The old read-then-upsert path wrote a table whose
+  // INSERT/UPDATE grants were revoked, so every view silently failed and
+  // "Most Read" never moved. Counted once per article per browser session.
+  if (!articleId) return;
+  var key = 'kh_viewed_' + String(articleId);
+  try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch (_) {}
   var sb = getSupa(); if (!sb) return;
-  try {
-    var res = await sb.from('article_views').select('view_count').eq('article_id', String(articleId)).maybeSingle();
-    var count = res.data ? (res.data.view_count || 0) + 1 : 1;
-    await sb.from('article_views').upsert({
-      article_id: String(articleId), title: title, section: section,
-      view_count: count, updated_at: new Date().toISOString()
-    }, { onConflict: 'article_id' });
-  } catch(e) {}
+  try { await sb.rpc('increment_article_view', { p_article_id: String(articleId) }); } catch (e) {}
 }
 
 // ══ END USER STATS SYNC ════════════════════════════════════════════════════════

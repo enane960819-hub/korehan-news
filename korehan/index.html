@@ -3,119 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script>
-/* Touch diagnostics — only active with ?khdebug=1 (no effect otherwise).
-   Reports, for each touch, what element received it, what covers it,
-   any non-auto touch-action in its ancestor chain, who called
-   preventDefault() on the touch, and whether the page / rail moved. */
-(function(){
-  if (!/[?&]khdebug=1/.test(location.search)) return;
-  var LOG = [], pdStacks = [];
-  var origPD = Event.prototype.preventDefault;
-  Event.prototype.preventDefault = function(){
-    if (/^(touch|pointer|wheel)/.test(this.type)) {
-      var st = (new Error().stack || '').split('\n').slice(2, 5).map(function(s){ return s.trim().slice(0, 90); }).join(' | ');
-      pdStacks.push(this.type + ': ' + st);
-    }
-    return origPD.apply(this, arguments);
-  };
-  var origAEL = EventTarget.prototype.addEventListener, nonPassive = [];
-  EventTarget.prototype.addEventListener = function(type, fn, opts){
-    if (/^(touchstart|touchmove|wheel)$/.test(type)) {
-      var passive = opts && typeof opts === 'object' && opts.passive;
-      if (!passive) {
-        var who = this === window ? 'window' : this === document ? 'document' : (this.id ? '#' + this.id : (this.className && typeof this.className === 'string' ? '.' + this.className.split(' ')[0] : (this.tagName || '?')));
-        nonPassive.push(type + '@' + who);
-      }
-    }
-    return origAEL.apply(this, arguments);
-  };
-  function d(el){ if (!el || !el.tagName) return String(el); return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : ''); }
-  function show(){
-    var box = document.getElementById('khdbg');
-    if (!box) {
-      box = document.createElement('div'); box.id = 'khdbg';
-      box.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;max-height:45vh;overflow:hidden;background:rgba(0,0,0,.86);color:#7CFC00;font:11px/1.35 monospace;padding:6px 8px;pointer-events:none;white-space:pre-wrap;word-break:break-all';
-      document.documentElement.appendChild(box);
-    }
-    box.textContent = LOG.slice(-14).join('\n');
-  }
-  function log(s){ LOG.push(s); show(); }
-  var start = null, moves = 0, prevented = 0, uncancelable = 0;
-  origAEL.call(window, 'touchstart', function(e){
-    var t = e.touches[0]; if (!t) return;
-    var x = t.clientX, y = t.clientY, top = document.elementFromPoint(x, y);
-    var chain = [], n = top, i = 0;
-    while (n && n.nodeType === 1 && i++ < 12) {
-      var cs = getComputedStyle(n);
-      if (cs.touchAction !== 'auto') chain.push(d(n) + ' ta=' + cs.touchAction);
-      if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') { if (i < 6) chain.push(d(n) + ' ov=' + cs.overflowX + '/' + cs.overflowY); }
-      n = n.parentElement;
-    }
-    var cover = [];
-    var all = document.querySelectorAll('body *');
-    for (var k = 0; k < all.length; k++) {
-      var el = all[k]; if (el.id === 'khdbg') continue;
-      var cs2 = getComputedStyle(el);
-      if ((cs2.position === 'fixed' || cs2.position === 'absolute' || cs2.position === 'sticky') && cs2.pointerEvents !== 'none' && cs2.display !== 'none' && cs2.visibility !== 'hidden') {
-        var r = el.getBoundingClientRect();
-        if (r.width > 30 && r.height > 30 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom && !el.contains(top) && !top.contains(el)) cover.push(d(el) + ' z=' + cs2.zIndex + ' op=' + cs2.opacity);
-      }
-    }
-    var rail = top && top.closest && top.closest('.home-news-grid,.home-conv-grid-wrap');
-    start = { y: window.scrollY, rail: rail, rl: rail ? rail.scrollLeft : 0 };
-    moves = 0; prevented = 0; uncancelable = 0; pdStacks.length = 0;
-    log('▶ START (' + Math.round(x) + ',' + Math.round(y) + ') top=' + d(top) + (rail ? ' [in ' + d(rail) + ']' : ''));
-    if (chain.length) log('  chain: ' + chain.join(' > '));
-    if (cover.length) log('  COVER: ' + cover.slice(0, 4).join(' ; '));
-  }, { capture: true, passive: true });
-  origAEL.call(window, 'touchmove', function(e){
-    moves++; if (e.defaultPrevented) prevented++; if (!e.cancelable) uncancelable++;
-  }, { passive: true });
-  origAEL.call(window, 'touchend', function(){
-    if (!start) return;
-    setTimeout(function(){
-      log('  END moves=' + moves + ' prevented=' + prevented + ' scrolling(uncancelable)=' + uncancelable + ' pageΔy=' + Math.round(window.scrollY - start.y) + (start.rail ? ' railΔx=' + Math.round(start.rail.scrollLeft - start.rl) : ''));
-      if (pdStacks.length) log('  preventDefault BY: ' + pdStacks.slice(0, 2).join(' || '));
-      start = null;
-    }, 350);
-  }, { passive: true });
-  window.addEventListener('load', function(){ setTimeout(function(){ log('non-passive touch listeners: ' + (nonPassive.join(', ') || 'none')); log('UA: ' + navigator.userAgent.slice(0, 110)); }, 3000); });
-})();
-</script>
-<script>
-/* Scroll bisect switches — only active with ?khx=a,b,... (inert otherwise).
-   Each removes one suspect for the Chrome-only News-rail touch freeze:
-     nohero  hide the hero carousel (will-change/translate3d layer above News)
-     noblur  drop backdrop-filter + will-change everywhere (composited neighbours)
-     noimg   remove the photo + gradient layers inside News cards
-     div     render News cards as <div onclick> like Conversations cards
-     all     every switch at once */
-(function(){
-  var m = location.search.match(/[?&]khx=([^&]+)/); if (!m) return;
-  var f = decodeURIComponent(m[1]).split(','); var on = function(k){ return f.indexOf(k) >= 0 || f.indexOf('all') >= 0; };
-  var css = '';
-  if (on('nohero')) css += '#dyn-hero#dyn-hero,body .kh-home-hero-main-shell{display:none!important}';
-  if (on('noblur')) css += '*,*::before,*::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;will-change:auto!important}.kh-home-hero-track{transform:none!important}';
-  if (on('noimg')) css += '.home-news-grid .nc-img,.home-news-grid .nc-overlay-grad{display:none!important}';
-  css += '#khx-badge{position:fixed;left:8px;top:8px;z-index:2147483647;background:#e11d48;color:#fff;font:700 12px/1 sans-serif;padding:6px 9px;border-radius:8px;pointer-events:none}';
-  var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
-  document.addEventListener('DOMContentLoaded', function(){
-    var b = document.createElement('div'); b.id = 'khx-badge'; b.textContent = 'TEST: ' + f.join(','); document.body.appendChild(b);
-    if (!on('div')) return;
-    function conv(){
-      var g = document.getElementById('dyn-news-grid'); if (!g) return;
-      g.querySelectorAll('a.nc').forEach(function(a){
-        var d = document.createElement('div'); d.className = a.className;
-        var href = a.getAttribute('href'); d.onclick = function(){ location.href = href; };
-        while (a.firstChild) d.appendChild(a.firstChild);
-        a.parentNode.replaceChild(d, a);
-      });
-    }
-    conv(); setInterval(conv, 800);
-  });
-})();
-</script>
 <title>KoreHani — Learn Korean Through Real News</title>
 <meta name="description" content="Read real Korean news, conversations, and stories. Tap any sentence for instant translation, vocab, and grammar — TOPIK-level practice that works.">
 <meta name="keywords" content="한국어 학습, Korean learning, TOPIK, 한국어 공부, learn korean, korean news, korean vocabulary, korean grammar">
@@ -419,7 +306,7 @@
 
 /* ── MOBILE NEWS RAIL (phones) ───
    Same look as the original overlay cards; structure copied from
-   /scroll-test.html variant 1. Fresh classes — inherits nothing from
+   the original overlay-card scroll test. Fresh classes — inherits nothing from
    .nc / .home-news-grid. Photo + gradient are pointer-events:none so the
    touch lands on the <a>. */
 .khn-rail { display: flex; flex-direction: row; gap: 14px; overflow-x: auto; overflow-y: hidden;
@@ -1494,7 +1381,7 @@ body.kh-neon-on .hero-dot {
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/core/hangul-jamo-input.js?v=20261022c"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
-<script src="js/core/articles.js?v=20261013a"></script>
+<script src="js/core/articles.js?v=20261025a"></script>
 <script src="js/core/reporters.js?v=20260525r"></script>
 <script src="js/features/streak.js?v=20260525r" defer></script>
 <script src="js/features/daily-mission.js?v=20261014a" defer></script>
@@ -1505,36 +1392,8 @@ body.kh-neon-on .hero-dot {
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261023a"></script>
+<script src="korehan-shared.js?v=20261025a"></script>
 <script>
-/* TEMP WORKAROUND (remove once korehan-shared.js redeploys cleanly):
-   The First Journey onboarding panel (#fj-widget) is position:fixed over
-   the page and, on phones, covered the News rail and ate its scroll on
-   Chrome. The proper fix lives in korehan-shared.js (_fjRenderWidget mobile
-   guard) but Cloudflare is currently serving a stale shared.js, so we also
-   neutralise the panel here from the HTML (which deploys fresh). On phones:
-   keep the First Journey collapsed to its small FAB — strip the floating
-   panel whenever it (re)appears. Desktop is untouched. */
-(function(){
-  try {
-    var mob = (window.matchMedia && window.matchMedia('(max-width:640px)').matches) || window.innerWidth <= 640;
-    if (!mob) return;
-    function killFjPanel(){
-      var w = document.getElementById('fj-widget');
-      if (!w) return;
-      w.remove();
-      var bd = document.getElementById('fj-backdrop'); if (bd) bd.remove();
-      try { localStorage.setItem('kh_fj_dismissed','1'); } catch(e){}
-      if (typeof _fjShowResumeBtn === 'function') { try { _fjShowResumeBtn(); } catch(e){} }
-    }
-    function start(){
-      killFjPanel();
-      try { new MutationObserver(killFjPanel).observe(document.body, { childList:true }); } catch(e){}
-      setInterval(killFjPanel, 1200);
-    }
-    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
-  } catch(e){}
-})();
 var HOME_CONVS = [
   {avi:'👩',name:'Ji-yeon & Soo-jin',ctx:'Planning dinner together',cat:'everyday',lvl:'b',catLabel:'Everyday',lvlLabel:'Beginner',msgs:[{s:'l',txt:'오늘 저녁에 시간 돼?'},{s:'r',txt:'응! 왜? 무슨 일 있어?'},{s:'l',txt:'그냥 같이 밥 먹을 사람 찾는 중 ㅋㅋ'}]},
   {avi:'👨\u200d💼',name:'Team Chat',ctx:'Asking for a deadline extension',cat:'work',lvl:'i',catLabel:'Workplace',lvlLabel:'Intermediate',msgs:[{s:'l',txt:'보고서 마감이 오늘인데 조금 더 시간이 필요해요.'},{s:'r',txt:'얼마나 더 필요해요?'},{s:'l',txt:'내일 오전까지 가능할까요?'}]},
@@ -2281,7 +2140,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // phones get a structure where a vertical swipe is ordinary page scroll.
     if (_khNewsIsMobile()) {
       // MOBILE: same look as the original overlay rail, but rebuilt from
-      // scratch on the exact structure of /scroll-test.html variant 1 (real
+      // scratch on the structure that tested scroll-safe on the owner's Chrome (real
       // href + background photo + gradient) — the version that scrolls on the
       // owner's Chrome. Fresh khn-* classes so none of the old .nc /
       // .home-news-grid / neon cascade reaches it.
@@ -2321,7 +2180,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         + '<div class="nc-meta"><span class="nc-cat">' + (a.section || '') + '</span><span class="nc-lvl ' + lvlCls + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level||'') + '</span></div>'
         + '<div class="nc-title">' + (a.title_en || a.title || '') + '</div>'
         + '<div class="nc-foot"><span class="nc-date">' + (a.published_at ? new Date(a.published_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '') + '</span>'
-        + '<button class="nc-study" onclick="event.preventDefault();event.stopPropagation();openStudyModal && openStudyModal(\'' + a.id + '\')" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Study</span></button></div>'
+        + '<button class="nc-study" onclick="event.preventDefault();event.stopPropagation();location.href=\'korehan-study-room.html?mode=article&id=' + encodeURIComponent(a.id) + '\'" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="library" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Study</span></button></div>'
         + '</div>'
         + '</a>';
     }).join('');

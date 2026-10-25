@@ -171,5 +171,4 @@ Disallow: /korehan-onboarding.html
 Disallow: /confirm-subscription.html
 Disallow: /unsubscribe.html
 # Dev / preview routes — not user-facing.
-Disallow: /onboarding-preview-compact.html
 Allow: /

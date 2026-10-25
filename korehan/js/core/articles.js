@@ -102,18 +102,21 @@ function _khImgHostAllowed(url) {
 
 // Article thumbnail URL. Treat empty, the legacy 1x1 transparent-GIF data URI,
 // AND any URL whose host the site CSP blocks (preview.redd.it, ctfassets.net,
-// etc.) as "no image" and fall back to a deterministic picsum.photos image
-// seeded by the article id — so cards always show a real picture.
+// etc.) as "no image" and fall back to the branded KoreHani placeholder.
+// (It used to return a random picsum.photos stock photo, which put
+// unrelated pictures on news cards.)
 function khArticleThumb(article, w, h) {
   w = w || 600; h = h || 400;
   var url = article && article.image;
   var bad = !url || typeof url !== 'string'
     || url === ''
     || url.indexOf('data:image/gif;base64,R0lGODlhAQABA') === 0
-    || !_khImgHostAllowed(url);
+    || !_khImgHostAllowed(url)
+    // 42 articles have a random picsum stock photo saved as their image
+    // (old seed/admin fallback) — unrelated to the story, treat as none.
+    || /picsum\.photos/.test(url);
   if (!bad) return url;
-  var seed = (article && article.id) ? String(article.id) : 'kh-' + Math.random().toString(36).slice(2, 8);
-  return 'https://picsum.photos/seed/' + encodeURIComponent(seed) + '/' + w + '/' + h;
+  return KH_IMG_PLACEHOLDER;
 }
 
 // Hero media HTML for the article detail page. Prefers the article's upstream

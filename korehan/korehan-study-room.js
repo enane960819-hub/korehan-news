@@ -8169,6 +8169,29 @@ function _SpeechRecognitionCtor() {
 // Start STT in parallel with MediaRecorder. Returns the recognition
 // instance (or null if the browser doesn't support it — we still
 // happily record audio in that case).
+// Pick a recording format this browser can actually produce. iPhone Safari
+// records audio/mp4 only — requiring audio/webm locked every iPhone out of
+// Speaking. Azure gets whatever we recorded; if it rejects the format we
+// fall back to the on-device transcript score.
+function _khRecMime() {
+  if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') return '';
+  var c = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac'];
+  for (var i = 0; i < c.length; i++) { try { if (MediaRecorder.isTypeSupported(c[i])) return c[i]; } catch (_) {} }
+  return '';
+}
+function _khNewRecorder(stream) {
+  var m = _khRecMime();
+  try { return m ? new MediaRecorder(stream, { mimeType: m }) : new MediaRecorder(stream); } catch (_) { return new MediaRecorder(stream); }
+}
+// Shown instead of an all-zero score card when neither Azure nor the
+// browser's speech recognition produced anything to grade.
+function _khSpeakUnscored(el) {
+  if (!el) return;
+  el.style.display = '';
+  el.innerHTML = '<div style="padding:14px 16px;border-radius:12px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);color:#fde68a;font-size:13px;line-height:1.55">'
+    + 'We couldn\u2019t score this recording automatically. Play it back and compare with the model audio, or try again in a quieter spot.</div>';
+}
+
 function _startSpeakingSTT() {
   var Ctor = _SpeechRecognitionCtor();
   if (!Ctor) return null;
@@ -8336,7 +8359,7 @@ async function _speakAnalyzeAzure(blob, referenceText, durationMs) {
 
     var funcUrl = (typeof SUPA_URL !== 'undefined' ? SUPA_URL : '') + '/functions/v1/speech-proxy';
     var fd = new FormData();
-    fd.append('audio', blob, 'audio.webm');
+    fd.append('audio', blob, /mp4|aac/.test(blob.type || '') ? 'audio.m4a' : 'audio.webm');
     fd.append('referenceText', referenceText);
     fd.append('contentType', blob.type || 'audio/webm');
     fd.append('language', 'ko-KR');
@@ -8670,8 +8693,7 @@ function toggleSpeakRecord() {
   // generic "마이크 접근 실패" toast which blames mic permissions.
   // Catch the unsupported case here and give a clear "open in
   // Safari/Chrome" message instead.
-  if (typeof MediaRecorder === 'undefined'
-      || (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported('audio/webm'))) {
+  if (typeof MediaRecorder === 'undefined') {
     var statusEl = document.getElementById('wm-speak-status');
     if (statusEl) {
       statusEl.textContent = 'This browser does not support recording — please open in Chrome or Safari.';
@@ -8685,13 +8707,14 @@ function toggleSpeakRecord() {
     _speakScores = null;
     _speakStartedAt = Date.now();
     _speakRecognition = _startSpeakingSTT();   // null if browser unsupported — we still record
-    _speakRecorder = new MediaRecorder(stream);
+    _speakRecorder = _khNewRecorder(stream);
+    var _recRef = _speakRecorder;
     _speakRecorder.ondataavailable = function(e) { if (e.data.size > 0) _speakChunks.push(e.data); };
     var _stopWaveform = null;
     _speakRecorder.onstop = function() {
       if (_stopWaveform) { try { _stopWaveform(); } catch(_) {} _stopWaveform = null; }
       stream.getTracks().forEach(function(t){ t.stop(); });
-      _speakBlob = new Blob(_speakChunks, { type:'audio/webm' });
+      _speakBlob = new Blob(_speakChunks, { type: (_recRef && _recRef.mimeType) || _khRecMime() || 'audio/webm' });
       var url = URL.createObjectURL(_speakBlob);
       var audio = document.getElementById('wm-speak-playback');
       audio.src = url;
@@ -8716,9 +8739,10 @@ function toggleSpeakRecord() {
           // Azure unavailable — wait briefly for Web Speech API to finish
           await new Promise(function(r){ setTimeout(r, 300); });
           var transcript = (_speakSttTranscript || '').trim();
-          _speakScores = _scoreSpeaking(target, transcript, elapsed);
+          _speakScores = transcript ? _scoreSpeaking(target, transcript, elapsed) : null;
         }
-        _renderSpeakingScoreCard(_speakScores);
+        if (_speakScores) _renderSpeakingScoreCard(_speakScores);
+        else _khSpeakUnscored(document.getElementById('wm-speak-score-card'));
         document.getElementById('wm-speak-status').textContent = 'Recording done! Listen and submit.';
       })();
       // Drop the recorder reference now that the blob is captured —
@@ -8915,7 +8939,7 @@ async function submitSpeaking() {
     // 'speaking-recordings' bucket — see migrations/20260518_speaking_recordings_bucket.sql
     // for the RLS policies. Old recordings still live under avatars but
     // aren't readable here; they age out.
-    var { error: upErr } = await sb.storage.from('speaking-recordings').upload(fileName, _speakBlob, { contentType:'audio/webm', upsert:true });
+    var { error: upErr } = await sb.storage.from('speaking-recordings').upload(fileName, _speakBlob, { contentType: _speakBlob.type || 'audio/webm', upsert:true });
     if (upErr) { showToast('Upload failed: ' + upErr.message); return; }
     // Save record to user_submissions — .select('id') so we get the
     // new row back and can fire the AI-feedback path inline.
@@ -12527,8 +12551,7 @@ async function toggleSpRecord() {
   // Same feature-check as toggleSpeakRecord — in-app browsers expose
   // getUserMedia but not MediaRecorder, and would otherwise dead-end
   // on a misleading "mic access failed" toast.
-  if (typeof MediaRecorder === 'undefined'
-      || (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported('audio/webm'))) {
+  if (typeof MediaRecorder === 'undefined') {
     _showMicPermError('sp-status', { name: 'UnsupportedBrowser' });
     return;
   }
@@ -12540,11 +12563,17 @@ async function toggleSpRecord() {
     return;
   }
   _spChunks = []; _spBlob = null;
-  _spMediaRec = new MediaRecorder(stream);
+  _spMediaRec = _khNewRecorder(stream);
+  // Run on-device recognition alongside the recording so there is a real
+  // transcript to grade when Azure is unavailable (it used to grade an
+  // empty string, so every fallback score was 0).
+  try { if (_speakRecognition) _speakRecognition.abort(); } catch (_) {}
+  _speakRecognition = _startSpeakingSTT();
   _spMediaRec.ondataavailable = function(e) { if (e.data.size > 0) _spChunks.push(e.data); };
   _spMediaRec.onstop = async function() {
     stream.getTracks().forEach(function(t){ t.stop(); });
-    _spBlob = new Blob(_spChunks, { type: 'audio/webm' });
+    try { if (_speakRecognition) _speakRecognition.stop(); } catch (_) {}
+    _spBlob = new Blob(_spChunks, { type: (_spMediaRec && _spMediaRec.mimeType) || _khRecMime() || 'audio/webm' });
     var pb = document.getElementById('sp-playback');
     if (pb) { pb.src = URL.createObjectURL(_spBlob); pb.style.display = ''; }
     var refText = (_spSentences[_spIdx] || {}).ko || '';
@@ -12554,14 +12583,16 @@ async function toggleSpRecord() {
     if (st) st.textContent = 'Analyzing pronunciation...';
     var result = await _speakAnalyzeAzure(_spBlob, refText, elapsed);
     if (!result) {
-      await new Promise(function(r){ setTimeout(r, 300); });
-      result = _scoreSpeaking(refText, '', elapsed);
+      await new Promise(function(r){ setTimeout(r, 600); });
+      var spTx = (_speakSttTranscript || '').trim();
+      result = spTx ? _scoreSpeaking(refText, spTx, elapsed) : null;
     }
     if (st) st.textContent = '';
     var sc = document.getElementById('sp-score-card');
     if (sc) {
       sc.style.display = '';
-      _renderSpeakingScoreCard(result, sc);
+      if (result) _renderSpeakingScoreCard(result, sc);
+      else _khSpeakUnscored(sc);
     }
     var dr = document.getElementById('sp-done-row');
     if (dr) dr.style.display = '';
