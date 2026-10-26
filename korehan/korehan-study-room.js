@@ -7478,16 +7478,13 @@ setTimeout(loadPhoneCalls, 1500);
 // Quick Help. clearAIContentUI() and renderAIContent() now also call
 // this so the Help tab stays in sync with whatever the source boxes
 // currently show.
+// Exercise tab mirrors the sidebar flashcards / phrase box (the Help tab
+// that also mirrored vocab, quick help and grammar was removed 2026-10 —
+// the writing room shows those itself).
 function _mirrorHelpTabContent() {
-  ['phrase-box-left','vocab-box-left','fc-grid-left','helper-box','grammar-box'].forEach(function(srcId) {
-    var src = document.getElementById(srcId);
-    var dstId;
-    if (srcId === 'fc-grid-left')         dstId = 'fc-grid-help';
-    else if (srcId === 'phrase-box-left') dstId = 'phrase-box-help';
-    else if (srcId === 'vocab-box-left')  dstId = 'vocab-box-help';
-    else if (srcId === 'helper-box')      dstId = 'helper-box-help';
-    else if (srcId === 'grammar-box')     dstId = 'grammar-box-help';
-    var dst = document.getElementById(dstId);
+  [['phrase-box-left','phrase-box-help'], ['fc-grid-left','fc-grid-help']].forEach(function(pair) {
+    var src = document.getElementById(pair[0]);
+    var dst = document.getElementById(pair[1]);
     if (src && dst) dst.innerHTML = src.innerHTML;
   });
 }
@@ -7515,7 +7512,7 @@ function switchSrTab(tab, btn) {
   // Exercise (master) uses the same fc-grid-help / phrase-box-help
   // IDs as Help, so without this the Flashcards categories grid
   // shows up empty when the user lands on Exercise first.
-  if (tab === 'help' || tab === 'master') _mirrorHelpTabContent();
+  if (tab === 'master') _mirrorHelpTabContent();
 }
 
 // ── Word Book (단어장) ──
@@ -13253,8 +13250,8 @@ function _renderGenrePills() {
     var meta = WRITING_GENRES[g];
     var on = _wmGenre === g;
     return '<button onclick="_setWritingGenre(\'' + g + '\')" data-genre="' + g + '"'
-      + ' style="padding:7px 13px;border-radius:999px;border:1.5px solid ' + (on ? meta.accent : '#e2e8f0') + ';'
-      + 'background:' + (on ? meta.accent : '#fff') + ';color:' + (on ? '#fff' : '#475569') + ';'
+      + ' style="padding:7px 13px;border-radius:999px;border:1.5px solid ' + (on ? meta.accent : 'rgba(255,255,255,.16)') + ';'
+      + 'background:' + (on ? meta.accent : 'rgba(255,255,255,.06)') + ';color:' + (on ? '#fff' : 'rgba(255,255,255,.75)') + ';'
       + 'font-size:12px;font-weight:' + (on ? '800' : '700') + ';cursor:pointer;font-family:inherit;'
       + 'display:inline-flex;align-items:center;gap:5px;transition:all .15s;'
       + (on ? 'box-shadow:0 6px 16px -6px ' + meta.accent + '80;' : '')
@@ -13274,7 +13271,7 @@ function _renderGenreScaffold() {
   var stepsHTML = meta.steps.map(function(s, i) {
     return '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">'
       + '<div style="width:18px;height:18px;border-radius:50%;background:' + meta.accent + ';color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">' + (i+1) + '</div>'
-      + '<div style="font-size:12px;line-height:1.55;color:#334155">' + s + '</div>'
+      + '<div style="font-size:12px;line-height:1.55;color:rgba(255,255,255,.78)">' + s + '</div>'
     + '</div>';
   }).join('');
   var safeTpl = meta.template.replace(/'/g,'&#39;').replace(/\n/g,'\\n');
@@ -13285,10 +13282,10 @@ function _renderGenreScaffold() {
           + '<div style="width:26px;height:26px;border-radius:8px;background:' + meta.accent + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px">' + meta.emoji + '</div>'
           + '<div>'
             + '<div style="font-size:12px;font-weight:800;color:' + meta.accent + '">' + meta.label + ' structure</div>'
-            + '<div style="font-size:10px;color:#64748b;margin-top:1px">' + meta.registerHint + '</div>'
+            + '<div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:1px">' + meta.registerHint + '</div>'
           + '</div>'
         + '</div>'
-        + '<button onclick="_insertGenreTemplate()" style="padding:6px 12px;border-radius:999px;background:#fff;border:1.5px solid ' + meta.accent + ';color:' + meta.accent + ';font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px" title="Paste a starter template into your writing">'
+        + '<button onclick="_insertGenreTemplate()" style="padding:6px 12px;border-radius:999px;background:transparent;border:1.5px solid ' + meta.accent + ';color:' + meta.accent + ';font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px" title="Paste a starter template into your writing">'
           + '<span>⚡</span>Insert template'
         + '</button>'
       + '</div>'
@@ -13398,8 +13395,9 @@ function _initWritingTrackerRings() {
     radius: 20, lineWidth: 5,
     colors: ['#a78bfa', '#7c3aed'],
     completeColors: ['#34d399', '#22c55e'],
-    showText: false
+    showText: true, textFont: 'sans-serif'
   });
+  _wmRingChars.setText('0');
 
   _wmRingVocab.setText('0');
   if (_wmRingGrammar) _wmRingGrammar.setText('0');
@@ -13441,6 +13439,7 @@ function _updateWritingTrackerRings(text, vocabUsed, vocabTotal) {
 
   // Chars ring: progress toward minimum
   _wmRingChars.setProgress(charPct, charPct >= 1 ? 'complete' : 'normal');
+  _wmRingChars.setText(String((text || '').length));
 
   // Update labels
   var vl = document.getElementById('wm-ring-vocab-label');
@@ -13448,7 +13447,7 @@ function _updateWritingTrackerRings(text, vocabUsed, vocabTotal) {
   var cl = document.getElementById('wm-ring-chars-label');
   if (vl) vl.textContent = 'Vocab ' + vocabUsed + '/' + vocabTarget;
   if (gl) gl.textContent = 'Grammar ' + grammarUsed + '/' + grammarTarget + (grammarTotal > grammarTarget ? ' (' + grammarTotal + ' avail)' : '');
-  if (cl) cl.textContent = (text || '').length + '/' + limit.min + ' min';
+  if (cl) cl.textContent = 'Chars ' + (text || '').length + '/' + limit.min;
 
   // Fire particle on reaching vocab goal for the first time
   if (vocabUsed >= 2 && !_wmRingVocab._celebrated) {
@@ -13464,7 +13463,7 @@ function _updateWritingTrackerRings(text, vocabUsed, vocabTotal) {
 function _resetWritingTrackerRings() {
   if (_wmRingVocab) { _wmRingVocab.setProgress(0); _wmRingVocab.setText('0'); _wmRingVocab._celebrated = false; }
   if (_wmRingGrammar) { _wmRingGrammar.setProgress(0); _wmRingGrammar.setText('0'); }
-  if (_wmRingChars) { _wmRingChars.setProgress(0); }
+  if (_wmRingChars) { _wmRingChars.setProgress(0); _wmRingChars.setText('0'); }
 }
 
 // ── 3D Envelope Submit Animation ──────────────────────────────
@@ -14255,6 +14254,7 @@ function renderBMStep1Loading() {
 }
 
 function renderBMStep1() {
+  updateBMHeader(); // topic label — the topic may have loaded after the modal opened
   var sents = _bm.sentences;
   if (!_bm.listened || _bm.listened.length !== sents.length) {
     _bm.listened = sents.map(function() { return false; });

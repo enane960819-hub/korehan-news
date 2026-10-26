@@ -10530,8 +10530,61 @@ function trackSectionRead(section) {
   lsSet(K_READ_SECTIONS, sc);
 }
 
+// ── Earned badges: user_badges is the source of truth ──────────────
+// kh_earned_badges (localStorage) is only a cache. Sign-out wipes it and a
+// new device starts empty, and the counters behind each badge come back
+// from the DB — so without loading user_badges first, every badge already
+// earned was "unlocked" (and toasted) again after each sign-in.
+var _khBadgesHydratedUid = null;
+var _khBadgesHydrating = null;
+function khBadgesReady() {
+  if (typeof supaUser === 'undefined' || !supaUser) return Promise.resolve();
+  var uid = supaUser.id;
+  if (_khBadgesHydratedUid === uid) return Promise.resolve();
+  if (_khBadgesHydrating && _khBadgesHydrating.uid === uid) return _khBadgesHydrating.p;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return Promise.resolve();
+  var p = sb.from('user_badges').select('badge_id, earned_at').eq('user_id', uid).then(function(r) {
+    if (r && r.error) return; // leave un-hydrated; checkBadges stays quiet and retries next time
+    var earned = getEarnedBadges();
+    var server = {};
+    (r && r.data || []).forEach(function(row) {
+      server[row.badge_id] = 1;
+      if (!earned[row.badge_id]) earned[row.badge_id] = { earnedAt: row.earned_at || new Date().toISOString() };
+    });
+    lsSet(K_BADGES, earned);
+    _khBadgesHydratedUid = uid;
+    // Badges this browser earned before they reached the server.
+    var missing = Object.keys(earned).filter(function(id) { return !server[id]; });
+    if (missing.length) {
+      sb.from('user_badges').upsert(missing.map(function(id) {
+        return { user_id: uid, badge_id: id, earned_at: earned[id].earnedAt || new Date().toISOString() };
+      }), { onConflict: 'user_id,badge_id' }).then(function(){}, function(){});
+    }
+  }, function() {});
+  _khBadgesHydrating = { uid: uid, p: p };
+  return p;
+}
+window.khBadgesReady = khBadgesReady;
+function _khBadgesSave(badges) {
+  if (typeof supaUser === 'undefined' || !supaUser || !badges.length) return;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return;
+  var uid = supaUser.id, now = new Date().toISOString();
+  sb.from('user_badges').upsert(badges.map(function(b) {
+    return { user_id: uid, badge_id: b.id, earned_at: now };
+  }), { onConflict: 'user_id,badge_id' }).then(function(){}, function(){});
+}
+
 // ── 뱃지 체크 메인 함수 ─────────────────────────────────────────────────────
 function checkBadges(event, payload) {
+  // Signed in but user_badges not loaded yet → load, then check.
+  if (typeof supaUser !== 'undefined' && supaUser && _khBadgesHydratedUid !== supaUser.id) {
+    khBadgesReady().then(function() {
+      if (supaUser && _khBadgesHydratedUid === supaUser.id) checkBadges(event, payload);
+    });
+    return [];
+  }
   var earned = getEarnedBadges();
   var newBadges = [];
 
@@ -10547,9 +10600,18 @@ function checkBadges(event, payload) {
 
   if (newBadges.length) {
     lsSet(K_BADGES, earned);
-    newBadges.forEach(function(b){ showBadgeToast(b); });
+    _khBadgesSave(newBadges);
+    khBadgeToasts(newBadges);
   }
   return newBadges;
+}
+
+// More than 2 at once (e.g. catching up on badges earned before they were
+// recorded) → one summary toast instead of a long queue.
+function khBadgeToasts(badges) {
+  if (badges.length <= 2) { badges.forEach(function(b){ showBadgeToast(b); }); return; }
+  showBadgeToast({ icon: (typeof khSvg === 'function') ? khSvg('trophy', { size: 24 }) : '', tier: 'gold', name: badges.length + ' badges unlocked',
+    desc: badges.slice(0, 3).map(function(b){ return b.name; }).join(', ') + (badges.length > 3 ? '…' : '') + ' — see them on My Page' });
 }
 
 // ── 뱃지 획득 토스트 알림 ───────────────────────────────────────────────────
