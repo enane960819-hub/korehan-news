@@ -1923,6 +1923,9 @@ function updateAuthUI() {
         + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP 0 · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>0 Nyang</span></div>'
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
+        + '<a href="korehan-mypage.html#mp-miniroom-section" class="kh-user-dropdown-link">' + khIcon('house', 'My Room', 'kh-ui-icon-sm') + '</a>'
+        + '<a href="korehan-shop.html" class="kh-user-dropdown-link">' + khIcon('shopping-bag', 'Shop', 'kh-ui-icon-sm') + '</a>'
+        + '<a href="korehan-study-room.html?tab=wordbook" class="kh-user-dropdown-link">' + khIcon('book-open', 'Word Book', 'kh-ui-icon-sm') + '</a>'
         + '<a href="korehan-friends.html" class="kh-user-dropdown-link">' + khIcon('users', 'Friends', 'kh-ui-icon-sm') + '</a>'
         // Owner: the old "My Notes" duplicated the Word Universe vocab
         // surface inside the profile dropdown — same saved_words data,
@@ -1935,12 +1938,16 @@ function updateAuthUI() {
         + '<a href="korehan-learning-overview.html#gl-universe-hero" class="kh-user-dropdown-link">' + khIcon('sparkles', 'Word Universe', 'kh-ui-icon-sm') + '</a>'
         + (isAdmin ? '<a href="korehan-x9f4k2m7.html" class="kh-user-dropdown-link">' + khIcon('settings', 'Admin CMS', 'kh-ui-icon-sm') + '</a>' : '')
         + (isTutor ? '<a href="korehan-tutor-7v3ca.html" class="kh-user-dropdown-link">' + khIcon('graduation-cap', 'Tutor Dashboard', 'kh-ui-icon-sm') + '</a>' : '')
+        + '<button type="button" id="kh-ud-neon-toggle" class="kh-user-dropdown-link kh-user-dropdown-btn" aria-pressed="false" onclick="toggleKhNeon(event)">' + khIcon('zap', 'Neon theme: OFF', 'kh-ui-icon-sm') + '</button>'
         + '<button type="button" class="kh-user-dropdown-link kh-user-dropdown-btn" onclick="signOut();closeTopbarUserMenu()">' + khIcon('log-out', 'Sign Out', 'kh-ui-icon-sm') + '</button>';
+      syncNeonToggleButtons();
       (function loadDropdownStats(){
         var sb = getSupa && getSupa();
         if (!sb || !supaUser || !supaUser.id) return;
-        sb.from('user_stats').select('xp, coin_balance').eq('user_id', supaUser.id).maybeSingle()
+        sb.from('user_stats').select('xp, coin_balance, display_name').eq('user_id', supaUser.id).maybeSingle()
           .then(function(r){
+            var nameEl = document.querySelector('#topbar-user-dropdown .kh-user-dropdown-name');
+            if (nameEl && r && r.data && r.data.display_name) nameEl.textContent = String(r.data.display_name).trim();
             var statsEl = document.getElementById('kh-user-dropdown-stats');
             if (!statsEl) return;
             var xp = Number(r && r.data && r.data.xp || 0);
@@ -2430,7 +2437,8 @@ function syncNeonToggleButtons() {
   [
     ['topbar-neon-toggle', 'zap', 'Neon '],
     ['home-neon-toggle', 'zap', 'Neon '],
-    ['kh-sb-neon-toggle', 'zap', 'Neon theme: ']
+    ['kh-sb-neon-toggle', 'zap', 'Neon theme: '],
+    ['kh-ud-neon-toggle', 'zap', 'Neon theme: ']
   ].forEach(function(pair) {
     var btn = document.getElementById(pair[0]);
     if (!btn) return;
@@ -8515,9 +8523,7 @@ function renderHeader() {
     + '<span class="kh-logo-text">KoreHan<span class="kh-logo-i">ı</span></span>'
     + '</a>'
     + '<div class="kh-hright">'
-    + '<span class="kh-hdate" id="date-str"></span>'
     + '<div class="kh-hsearch">' + khIcon('search', '', 'kh-ui-icon-muted kh-ui-icon-sm') + '<input type="text" placeholder="Search articles\u2026" onkeydown="if(event.key===\'Enter\')doSearch(this.value)" style="border:none;background:none;outline:none;font-size:13px;color:inherit;font-family:inherit;width:100%;"></div>'
-    + '<button id="topbar-neon-toggle" class="kh-neon-toggle" type="button" aria-pressed="false" onclick="toggleKhNeon(event)">' + khIcon('zap', 'Neon OFF', 'kh-ui-icon-sm') + '</button>'
     + (isHome ? '<div class="kh-diff-ctrl" id="kh-diff-ctrl"><span class="kh-diff-dot" id="kh-diff-dot"></span><select class="kh-diff-sel" id="kh-diff-select" onchange="khSetDiff(this.value)"><option value="all">All Levels</option><option value="Starter">Seed</option><option value="Beginner">Sprout</option><option value="Intermediate">Tree</option><option value="Advanced">Forest</option></select><span class="kh-diff-arr">&#9662;</span></div>' : '')
     + '<div id="topbar-notif-wrap" class="kh-notif-wrap" style="display:none">'
     + '<button id="topbar-notif-btn" class="kh-notif-btn" type="button" aria-label="Notifications" aria-haspopup="menu" aria-expanded="false" onclick="khToggleNotifDropdown(event)">'
@@ -8539,39 +8545,42 @@ function renderHeader() {
 
   // ── Top nav (navy, dropdowns) ─────────────────────────────────
   var sections = getSections();
-  var newsDrop = sections.map(function(s) {
+
+  // 5 primary items (2026-10 layout review): Read ▾ / Study / Progress /
+  // Play / Premium. The logo is Home; Shop, My Room, Word Book and the
+  // Neon theme live in the profile menu.
+  var isBuzz = isOn('korehan-section') && /[?&]s=buzz/.test(location.search);
+  // Korea Buzz sits in the "More to read" column, so skip it here.
+  var newsDrop = sections.filter(function(s) { return s.key !== 'buzz'; }).map(function(s) {
     return '<a href="korehan-section.html?s=' + encodeURIComponent(s.key) + '" class="tn-drop-item">' + s.label + '</a>';
   }).join('');
-
+  var readOn = isOn('korehan-all') || isOn('korehan-section') || isOn('korehan-conversations') || isOn('korehan-article');
   var topnav = '<div class="kh-topnav">'
     + '<div class="kh-topnav-inner">'
-    + '<a href="index.html" class="tn-item' + (isOn('index.html') ? ' on' : '') + '">' + khIcon('home', 'Home', 'kh-ui-icon-sm') + '</a>'
-    + '<div class="tn-item has-drop' + (page.indexOf('korehan-section') >= 0 ? ' on' : '') + '">'
-    + khIcon('newspaper', 'News', 'kh-ui-icon-sm') + ' <span class="tn-arr">&#9660;</span>'
-    + '<div class="tn-drop">'
-    + '<div class="tn-drop-label">Category</div>'
+    + '<div class="tn-item has-drop' + (readOn ? ' on' : '') + '">'
+    + khIcon('newspaper', 'Read', 'kh-ui-icon-sm') + ' <span class="tn-arr">&#9660;</span>'
+    + '<div class="tn-drop tn-drop-read">'
+    + '<div class="tn-drop-col">'
+    + '<div class="tn-drop-label">News</div>'
     + '<a href="korehan-all.html" class="tn-drop-item">All News</a>'
     + newsDrop
     + '</div>'
-    + '</div>'
-    + '<div class="tn-item has-drop' + (isOn('korehan-conversations') ? ' on' : '') + '">'
-    + khIcon('messages-square', 'Conversations', 'kh-ui-icon-sm') + ' <span class="tn-arr" style="margin-left:3px">&#9660;</span>'
-    + '<div class="tn-drop">'
-    + '<div class="tn-drop-label">Category</div>'
-    + '<a href="korehan-conversations.html" class="tn-drop-item">All</a>'
-    + '<a href="korehan-conversations.html?cat=everyday" class="tn-drop-item">Everyday</a>'
-    + '<a href="korehan-conversations.html?cat=work" class="tn-drop-item">Workplace</a>'
-    + '<a href="korehan-conversations.html?cat=friends" class="tn-drop-item">Friends</a>'
-    + '<a href="korehan-conversations.html?cat=family" class="tn-drop-item">Family</a>'
-    + '<a href="korehan-conversations.html?cat=dating" class="tn-drop-item">Dating</a>'
+    + '<div class="tn-drop-col">'
+    + '<div class="tn-drop-label">More to read</div>'
+    + '<a href="korehan-section.html?s=buzz" class="tn-drop-item' + (isBuzz ? ' on' : '') + '">Korea Buzz</a>'
+    + '<a href="korehan-conversations.html" class="tn-drop-item">Conversations</a>'
+    + '<a href="korehan-conversations.html?cat=everyday" class="tn-drop-item tn-drop-sub">Everyday</a>'
+    + '<a href="korehan-conversations.html?cat=work" class="tn-drop-item tn-drop-sub">Workplace</a>'
+    + '<a href="korehan-conversations.html?cat=friends" class="tn-drop-item tn-drop-sub">Friends</a>'
+    + '<a href="korehan-conversations.html?cat=family" class="tn-drop-item tn-drop-sub">Family</a>'
+    + '<a href="korehan-conversations.html?cat=dating" class="tn-drop-item tn-drop-sub">Dating</a>'
     + '</div>'
     + '</div>'
-    + '<a href="korehan-section.html?s=buzz" class="tn-item' + (isOn('korehan-section') && /[?&]s=buzz/.test(location.search) ? ' on' : '') + '">' + khIcon('flame', 'Korea Buzz', 'kh-ui-icon-sm') + '</a>'
-    + '<a href="korehan-study-room.html" class="tn-item' + (isOn('korehan-study-room') ? ' on' : '') + '">' + khIcon('notebook-pen', 'Study Room', 'kh-ui-icon-sm') + '</a>'
-    + '<a href="korehan-shop.html" class="tn-item' + (isOn('korehan-shop') ? ' on' : '') + '">' + khIcon('shopping-bag', 'Shop', 'kh-ui-icon-sm') + '</a>'
-    + '<a href="korehan-fun.html" class="tn-item' + (isOn('korehan-fun') ? ' on' : '') + '">' + khIcon('gamepad-2', 'Playground', 'kh-ui-icon-sm') + '</a>'
-    + '<a href="korehan-learning-overview.html" class="tn-item' + (isOn('korehan-learning-overview') ? ' on' : '') + '">' + khIcon('chart-column', 'Growth Lab', 'kh-ui-icon-sm') + '</a>'
-    + '<a href="korehan-courses.html" class="tn-item' + (isOn('korehan-courses') ? ' on' : '') + '">' + khIcon('graduation-cap', 'Courses', 'kh-ui-icon-sm') + '</a>'
+    + '</div>'
+    + '<a href="korehan-study-room.html" class="tn-item' + (isOn('korehan-study-room') ? ' on' : '') + '">' + khIcon('notebook-pen', 'Study', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-learning-overview.html" class="tn-item' + (isOn('korehan-learning-overview') ? ' on' : '') + '">' + khIcon('chart-column', 'Progress', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-fun.html" class="tn-item' + (isOn('korehan-fun') ? ' on' : '') + '">' + khIcon('gamepad-2', 'Play', 'kh-ui-icon-sm') + '</a>'
+    + '<a href="korehan-courses.html" class="tn-item' + (isOn('korehan-courses') ? ' on' : '') + '">' + khIcon('graduation-cap', 'Premium', 'kh-ui-icon-sm') + '</a>'
     + '</div>'
     + '</div>';
 
@@ -11619,8 +11628,19 @@ function setupReadingSidebar() {
     + '<button class="kh-rs-btn" id="kh-rs-study" aria-label="Study">'
     +   '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'
     +   '<span class="kh-rs-label">Study</span>'
+    + '</button>'
+    + '<button class="kh-rs-btn" id="kh-rs-listen" aria-label="Listen to the article">'
+    +   '<svg class="kh-rs-ico off" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>'
+    +   '<svg class="kh-rs-ico on" viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>'
+    +   '<span class="kh-rs-label">Listen</span>'
+    + '</button>'
+    + '<button class="kh-rs-btn" id="kh-rs-next" aria-label="Next article">'
+    +   '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
+    +   '<span class="kh-rs-label">Next article</span>'
     + '</button>';
   document.body.appendChild(bar);
+  document.getElementById('kh-rs-listen').onclick = function() { khListenArticle(this); };
+  document.getElementById('kh-rs-next').onclick = function() { goToNextArticle(); };
 
   document.getElementById('kh-rs-bookmark').onclick = function() {
     var side = this;
@@ -11659,6 +11679,43 @@ function setupReadingSidebar() {
     setTimeout(initSync, 300);
   })();
 }
+
+// Read the article body aloud with the browser's Korean voice (free —
+// no TTS proxy call), one sentence at a time so Chrome's ~15s utterance
+// cut-off never hits. Tapping again stops.
+var _khListenOn = false;
+function khStopListenArticle() {
+  _khListenOn = false;
+  try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (_) {}
+  var b = document.getElementById('kh-rs-listen');
+  if (b) b.classList.remove('active');
+}
+function khListenArticle(btn) {
+  if (_khListenOn) { khStopListenArticle(); return; }
+  var synth = window.speechSynthesis;
+  if (!synth) { if (typeof toast === 'function') toast('Your browser does not support audio playback.', true); return; }
+  var root = document.querySelector('#art-tab-article .art-lead') || document.querySelector('#art-tab-article');
+  var text = root ? (root.innerText || '') : '';
+  var parts = text.replace(/\s+/g, ' ').match(/[^.!?。]+[.!?。]?/g) || [];
+  parts = parts.map(function(t){ return t.trim(); }).filter(function(t){ return /[가-힣]/.test(t); });
+  if (!parts.length) return;
+  try { synth.cancel(); synth.resume(); } catch (_) {}
+  var voices = (synth.getVoices() || []).filter(function(v){ return /^ko/i.test(v.lang || ''); });
+  _khListenOn = true;
+  if (btn) btn.classList.add('active');
+  var i = 0;
+  (function next() {
+    if (!_khListenOn) return;
+    if (i >= parts.length) { khStopListenArticle(); return; }
+    var u = new SpeechSynthesisUtterance(parts[i++]);
+    u.lang = 'ko-KR'; u.rate = 0.9;
+    if (voices.length) u.voice = voices[0];
+    u.onend = next;
+    u.onerror = function() { khStopListenArticle(); };
+    synth.speak(u);
+  })();
+}
+window.addEventListener('pagehide', khStopListenArticle);
 
 function openCommentDrawer() {
   var drawer = document.getElementById('kh-comment-drawer');
@@ -11910,6 +11967,7 @@ function pickNextFeedArticle(currentId) {
 
 function goToNextArticle(direction) {
   if (_khFeedAnimating()) return;
+  khStopListenArticle();
   var currentId = _khCurrentArtId();
   if (!currentId) return;
   _khFeedSyncCurrent(currentId);
@@ -11939,6 +11997,7 @@ function goToNextArticle(direction) {
 // same article the user was just on, which is the whole point of #1.
 function goToPrevArticle() {
   if (_khFeedAnimating()) return;
+  khStopListenArticle();
   var currentId = _khCurrentArtId();
   _khFeedSyncCurrent(currentId);
   var s = _khFeedStack();
@@ -12714,6 +12773,13 @@ function _fjRenderWidget(opts) {
     return;
   }
   if (localStorage.getItem('kh_fj_dismissed')) return;
+  // The panel only opens on an explicit tap (🎯 chip / Today card); later
+  // calls just refresh one that is already open. A step completing used
+  // to pop the 300px panel over the home hero on desktop.
+  if (!(opts && opts.userOpened) && !document.getElementById('fj-widget')) {
+    _fjShowResumeBtn();
+    return;
+  }
   // MOBILE: never float the 300px panel over the content. It is
   // position:fixed and covered most of the viewport (x68–368, y174–640),
   // so whatever scrolled under it — the News rail especially — had its
@@ -12795,9 +12861,20 @@ function _fjDismissWidget() {
   localStorage.setItem('kh_fj_dismissed', '1');
   _fjShowResumeBtn();
 }
+// Home shows First Journey progress inside its Today card, so the 🎯 FAB
+// is not floated there (it sat on top of Today's Phrase).
+function khFjProgress() {
+  return { done: _fjDoneCount(), total: _FJ_STEPS.length, allDone: _fjAllDone() };
+}
+function khFjOpen() {
+  localStorage.removeItem('kh_fj_dismissed');
+  var fab = document.getElementById('fj-resume'); if (fab) fab.remove();
+  _fjRenderWidget({ userOpened: true });
+}
 function _fjShowResumeBtn() {
   if (_fjAllDone()) return;
   if (document.getElementById('fj-resume')) return;
+  if (pageName() === 'index' || pageName() === 'korehan-article') return;
   var btn = document.createElement('button');
   btn.id = 'fj-resume';
   btn.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:7999;width:44px;height:44px;border-radius:50%;background:#0f1a2e;border:1px solid rgba(56,189,248,.25);color:#38bdf8;font-size:18px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;transition:transform .15s';

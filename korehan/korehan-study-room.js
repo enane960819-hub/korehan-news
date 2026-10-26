@@ -441,6 +441,11 @@ function _khStudyRoomInit() {
     setTimeout(waitAndOpenGFModal, 400);
   }
 
+  // ?tab=wordbook (profile menu "Word Book") opens that tab directly.
+  if (_urlParams.get('tab') === 'wordbook' && typeof switchSrTab === 'function') {
+    setTimeout(function(){ switchSrTab('wordbook'); }, 300);
+  }
+
   // Daily/Weekly/Monthly Review auto-open from home (?review=daily|weekly|monthly)
   var _reviewParam = _urlParams.get('review');
   if (_reviewParam === 'daily' || _reviewParam === 'weekly' || _reviewParam === 'monthly') {
@@ -865,7 +870,77 @@ function renderStudyChecklist() {
   // Keep learning selector badges in sync if modal is open
   var lsModal = document.getElementById('ls-modal');
   if (lsModal && !lsModal.classList.contains('hidden')) _updateLSSelectorBadges();
+  renderTodayPlan();
 }
+
+// ── Today's plan: 3 steps under the weekly topic card ──
+// ① daily review (due SRS words) ② this week's lesson (the 5 steps behind
+// START) ③ writing, which opens at 4/5 — same gate as canEnterWritingRoom.
+var _srPlanDue = null;
+function renderTodayPlan() {
+  var box = document.getElementById('sr-today-plan');
+  if (!box) return;
+  var stages = [
+    { k:'topic', label:'Topic Yum Yum' }, { k:'grammar', label:'Phrase Munch' },
+    { k:'picture', label:'Speaking Practice' }, { k:'sentence', label:'Dictation' },
+    { k:'expressions', label:'Key Expressions' }
+  ];
+  var lessonDone = stages.filter(function(x){ return !!_studyDone[x.k]; }).length;
+  var nextStage = stages.filter(function(x){ return !_studyDone[x.k]; })[0];
+  var reviewDone = false;
+  try { reviewDone = !!localStorage.getItem('kh_daily_review_done_' + kstNow().toISOString().slice(0, 10)); } catch (_) {}
+  var due = _srPlanDue;
+  var steps = [
+    { done: reviewDone, label: 'Daily review',
+      sub: reviewDone ? 'Done today' : (due ? Math.min(due, 20) + ' words due · ~' + Math.max(1, Math.ceil(Math.min(due, 20) / 4)) + ' min' : '10 quick questions'),
+      fn: 'openDailyReview()' },
+    { done: lessonDone >= 5, label: 'This week’s lesson',
+      sub: lessonDone >= 5 ? 'All 5 steps done' : (lessonDone + '/5 · ' + (nextStage ? nextStage.label : '')),
+      fn: 'openLearningSelector()' },
+    { done: (typeof _wmWeekSubmitted === 'function') && !!_wmWeekSubmitted(), label: 'Write & get feedback',
+      sub: ((typeof _wmWeekSubmitted === 'function') && _wmWeekSubmitted()) ? 'Submitted this week' : (lessonDone >= 4 ? 'Ready — write about the topic' : 'After 4 lesson steps'),
+      fn: 'openWritingModal()' }
+  ];
+  var doneN = steps.filter(function(x){ return x.done; }).length;
+  var nextIdx = -1;
+  for (var i = 0; i < steps.length; i++) { if (!steps[i].done) { nextIdx = i; break; } }
+  box.innerHTML = '<div class="sr-plan-h"><span class="sr-plan-t">Today’s plan</span><span class="sr-plan-n">' + doneN + ' / 3 done</span></div>'
+    + '<div class="sr-plan-steps">' + steps.map(function(x, k){
+        return '<button type="button" class="sr-plan-step' + (x.done ? ' done' : '') + (k === nextIdx ? ' next' : '') + '" onclick="' + x.fn + '">'
+          + '<span class="sr-plan-num">' + (x.done ? '✓' : (k + 1)) + '</span>'
+          + '<span class="sr-plan-txt"><span class="sr-plan-l">' + x.label + '</span><span class="sr-plan-s">' + x.sub + '</span></span></button>';
+      }).join('') + '</div>';
+  if (_srPlanDue === null && supaUser) {
+    _srPlanDue = 0;
+    var sb = getSupa();
+    if (sb) sb.from('user_saved_words').select('word_ko', { count: 'exact', head: true })
+      .eq('user_id', supaUser.id).lte('srs_next_review', new Date().toISOString().slice(0, 10))
+      .then(function(r){ if (r && !r.error) { _srPlanDue = r.count || 0; renderTodayPlan(); } }, function(){});
+  }
+}
+
+// ── Library tabs (phones/tablets): one group of the Study panel at a time ──
+function setSrLibTab(key) {
+  var keys = ['read', 'practice', 'review'];
+  if (keys.indexOf(key) < 0) key = 'read';
+  try { localStorage.setItem('kh_sr_lib_tab', key); } catch (_) {}
+  document.querySelectorAll('#sr-lib-tabs .sr-lib-tab').forEach(function(b){
+    var on = b.getAttribute('data-lib') === key;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('#sr-mob-main > [data-lib]').forEach(function(el){
+    el.classList.toggle('sr-lib-hide', el.getAttribute('data-lib') !== key);
+  });
+}
+// Re-count once auth is settled (an early count can run before the JWT is
+// attached and come back 0 under RLS).
+window.addEventListener('kh-auth-signed-in', function(){ _srPlanDue = null; renderTodayPlan(); });
+document.addEventListener('DOMContentLoaded', function(){
+  var k = 'read';
+  try { k = localStorage.getItem('kh_sr_lib_tab') || 'read'; } catch (_) {}
+  setSrLibTab(k);
+});
 
 var _questRingFill = 0;
 function _drawQuestRing(done, total) {
