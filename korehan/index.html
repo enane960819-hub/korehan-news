@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="korehan-shared.css?v=20261023a">
+<link rel="stylesheet" href="korehan-shared.css?v=20261026a">
 <style>
 /* ── HOME REDESIGN ─────────────────────────────────────── */
 
@@ -1106,7 +1106,7 @@ var QUICK_WIN_TIPS = [
   'Finished an article? Open Study Room with that article loaded and review the key grammar patterns right away.',
   'Check Growth Lab once a day to see your streak, XP, and which grammar points need more practice.',
   'Conversations are perfect for short sessions. Pick one scenario and read it twice — once for meaning, once for natural phrasing.',
-  'Try a Story for a change of pace. The narrative format locks in grammar naturally without you noticing.',
+  'Try Korea Buzz for a change of pace — short, trending stories with the same tap-to-analyze tools.',
   'Your daily mission: 3 articles + 20 saved words + any quiz attempt. Hit all three and your streak stays alive.',
   'Struggling with a grammar point? Paste it into Study Room and ask for a focused drill. It generates fresh examples instantly.'
 ];
@@ -1411,7 +1411,9 @@ document.addEventListener('DOMContentLoaded', async function() {
       var u = window.supaUser;
       var first = '';
       try {
-        var fn = (u.user_metadata && u.user_metadata.full_name) || (u.email && u.email.split('@')[0]) || '';
+        // Never fall back to the email address (it put "enane960819+khqa"
+        // on screen) — display name, then Google name, else no name.
+        var fn = (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '';
         first = String(fn).split(/[\s.]/)[0] || '';
       } catch(_) {}
       // Read streak + xp + primary goal from user_stats. The full goal
@@ -1420,8 +1422,9 @@ document.addEventListener('DOMContentLoaded', async function() {
       // 400 the whole query and silently drop streak/xp too.
       var streak = 0, xp = 0, goalTypes = null, goalType = null;
       try {
-        var r = await sb.from('user_stats').select('streak, xp, goal_type').eq('user_id', u.id).maybeSingle();
+        var r = await sb.from('user_stats').select('streak, xp, goal_type, display_name').eq('user_id', u.id).maybeSingle();
         if (r && r.data) {
+          if (r.data.display_name) first = String(r.data.display_name).trim();
           streak    = Number(r.data.streak) || 0;
           xp        = Number(r.data.xp) || 0;
           goalType  = r.data.goal_type || null;
@@ -1442,7 +1445,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       var greeting = first ? ('Welcome back, ' + first + '.') : 'Welcome back.';
       pill.style.cssText = 'display:block;max-width:1280px;margin:14px auto 0;padding:0 20px';
       pill.innerHTML =
-          '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:14px;background:linear-gradient(135deg,rgba(56,189,248,.14),rgba(15,35,66,.5));border:1px solid rgba(125,211,252,.32);color:#bfdbfe;font-size:13px;font-weight:700;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);flex-wrap:wrap">'
+          '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:14px;background:linear-gradient(135deg,#0f2342,#1a3a6b);border:1px solid rgba(125,211,252,.32);color:#bfdbfe;font-size:13px;font-weight:700;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);flex-wrap:wrap">'
         +   '<span style="font-size:18px">👋</span>'
         +   '<span style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">'
         +     '<span>' + greeting + '</span>'

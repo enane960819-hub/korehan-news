@@ -3311,6 +3311,18 @@ function renderHomePage() {
     var extra = all.filter(function(a){ return !featIds.has(a.id); });
     featured = featured.concat(extra).slice(0, 7);
   }
+  // A slide without a usable photo showed the dark "KoreHani" placeholder
+  // as the very first thing on the page. Photo slides go first; text-only
+  // ones only fill in when there aren't enough photos.
+  try {
+    var _ph = window.KH_IMG_PLACEHOLDER;
+    var _hasPhoto = function(x) { var t = khArticleThumb(x, 960, 540); return t && t !== _ph; };
+    var _withPic = featured.filter(_hasPhoto), _noPic = featured.filter(function(x){ return !_hasPhoto(x); });
+    if (_withPic.length < 3) {
+      all.forEach(function(x) { if (_withPic.length < 7 && featured.indexOf(x) < 0 && _hasPhoto(x)) _withPic.push(x); });
+    }
+    featured = _withPic.concat(_noPic).slice(0, 7);
+  } catch (_) {}
   _heroSlides = featured;
   _heroIdx = 0;
 
@@ -8618,7 +8630,9 @@ function renderFooter() {
 
     + '</div>'
 
-    + '<div>'
+    // Newsletter sits outside .kh-foot-inner, so it needs the same gutter
+    // (it rendered flush against the left edge on phones).
+    + '<div style="max-width:1280px;margin:0 auto;padding:0 22px 28px">'
     + '<div style="font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:14px">Newsletter</div>'
     + '<p style="font-size:13px;line-height:1.6;color:rgba(255,255,255,.5);margin:0 0 12px;max-width:26ch">Get weekly Korean learning tips and new content updates.</p>'
     + '<form id="kh-nl-form" onsubmit="return khSubscribeNewsletter(event)" style="display:flex;gap:6px;flex-wrap:wrap">'
