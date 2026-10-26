@@ -7946,6 +7946,8 @@ var _XP_ACTION_AMOUNTS = {
   weekly_review_complete: 30,
   monthly_review_complete: 50
 };
+// Reference only: the amounts actually granted live in coin_reward_config
+// (server, applied inside award_xp).
 var _COIN_ACTION_AMOUNTS = {
   article_read: 3,
   word_save: 2,
@@ -8110,7 +8112,6 @@ async function awardXP(actionKey, meta) {
   var sb = getSupa(); if (!sb) return null;
 
   var amount    = _XP_ACTION_AMOUNTS[actionKey] || 10;
-  var coinAmt   = _COIN_ACTION_AMOUNTS[actionKey] || 0;
   var reason    = _XP_ACTION_LABELS[actionKey] || actionKey;
   var contentId = (meta && (meta.content_id || meta.article_id)) || null;
 
@@ -8126,69 +8127,34 @@ async function awardXP(actionKey, meta) {
       p_action:  actionKey,
       p_meta:    meta || {}
     });
+    if (res.data && res.data.ok && (res.data.duplicate || res.data.capped)) {
+      _recordXPGrant(actionKey, contentId);
+      return res.data;
+    }
     if (res.data && res.data.ok) {
       if (res.data.leveled_up) {
         showToast('Level Up! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
-      var gained = res.data.xp_gained || amount;
-      showXPToast(gained);
-      var coinGained = (typeof res.data.coin_gained === 'number') ? res.data.coin_gained : coinAmt;
-      if (coinGained > 0) {
-        var coinBalanceAfter = res.data.coin_balance || null;
-        if (coinBalanceAfter === null) {
-          try {
-            var cr = await sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle();
-            var curCoin = (cr.data && cr.data.coin_balance) || 0;
-            coinBalanceAfter = curCoin + coinGained;
-            await sb.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: coinBalanceAfter }, { onConflict:'user_id' });
-          } catch(e) {}
-        }
-        showCoinToast(coinGained);
-        try {
-          await sb.from('coin_transactions').insert({
-            user_id: supaUser.id,
-            tx_type: 'earn',
-            amount: coinGained,
-            balance_after: coinBalanceAfter,
-            source: actionKey,
-            memo: reason
-          });
-        } catch(e) {}
-      }
+      var gained = Number(res.data.xp_gained || 0);
+      if (gained > 0) showXPToast(gained);
+      // Coins are granted (and logged) by award_xp itself — the client
+      // no longer writes coin_balance or coin_transactions.
+      var coinGained = Number(res.data.coin_gained || 0);
+      if (coinGained > 0) showCoinToast(coinGained);
       await _insertXPLog(sb, supaUser.id, actionKey, gained, reason, contentId);
       _recordXPGrant(actionKey, contentId);
       return res.data;
     }
   } catch(e) {}
 
-  // Fallback: direct DB write
+  // Fallback (RPC unreachable): local XP only. coin_balance is server-only
+  // (20261026_coin_server_only.sql), so no nyang is granted here.
   try {
     await _insertXPLog(sb, supaUser.id, actionKey, amount, reason, contentId);
-
-    // Increment xp in user_stats
-    var { data: statsRow } = await sb.from('user_stats').select('xp, coin_balance').eq('user_id', supaUser.id).maybeSingle();
+    var { data: statsRow } = await sb.from('user_stats').select('xp').eq('user_id', supaUser.id).maybeSingle();
     var currentXP = (statsRow && statsRow.xp) || 0;
-    var currentCoin = (statsRow && statsRow.coin_balance) || 0;
-    await sb.from('user_stats').upsert({
-      user_id: supaUser.id,
-      xp: currentXP + amount,
-      coin_balance: currentCoin + coinAmt
-    }, { onConflict: 'user_id' });
-
+    await sb.from('user_stats').upsert({ user_id: supaUser.id, xp: currentXP + amount }, { onConflict: 'user_id' });
     showXPToast(amount);
-    if (coinAmt > 0) {
-      showCoinToast(coinAmt);
-      try {
-        await sb.from('coin_transactions').insert({
-          user_id: supaUser.id,
-          tx_type: 'earn',
-          amount: coinAmt,
-          balance_after: currentCoin + coinAmt,
-          source: actionKey,
-          memo: reason
-        });
-      } catch(e) {}
-    }
     _recordXPGrant(actionKey, contentId);
     return { ok: true, xp_gained: amount };
   } catch(e) {}
@@ -11114,6 +11080,9 @@ async function syncUserStats(patch) {
     if (patch.quizzes_done)  updated.quizzes_done  = (cur.quizzes_done||0) + 1;
     if (patch.fill_done)     updated.fill_done     = (cur.fill_done||0) + 1;
     if (patch.xp)            updated.xp            = (cur.xp||0) + patch.xp;
+    // coin_balance is server-only; writing back the value read above could
+    // also undo a purchase/reward that landed in between.
+    delete updated.coin_balance;
     // Explicit error check + retry-stripping-the-bad-column. Silent
     // fire-and-forget was hiding column-missing failures (fill_done /
     // last_mission_date / writing_tickets / preferences were
@@ -12719,37 +12688,21 @@ function _fjMarkDone(stepId) {
   var d = _fjGet();
   d[stepId] = Date.now();
   _fjSet(d);
-  // 단계별 냥 보상
+  // Step + completion nyang are granted server-side (once each).
   var step = _FJ_STEPS.find(function(s){ return s.id === stepId; });
-  if (step && step.nyang > 0 && supaUser) {
-    awardXP('first_journey_step', { content_id: stepId }).catch(function(){});
-    // 냥 직접 지급 (XP 시스템과 별도)
-    var sb = getSupa();
-    if (sb) {
-      sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle()
-        .then(function(r) {
-          var cur = (r.data && r.data.coin_balance) || 0;
-          sb.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: cur + step.nyang }, { onConflict:'user_id' }).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){});
-          if (typeof showCoinToast === 'function') showCoinToast(step.nyang);
-        }).catch(function(){});
-    }
-  }
+  if (step && step.nyang > 0 && supaUser) _fjClaim(stepId);
   _fjRenderWidget();
-  // 전체 완료 체크
-  if (_fjAllDone()) {
-    if (supaUser) {
-      var sb2 = getSupa();
-      if (sb2) {
-        sb2.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle()
-          .then(function(r) {
-            var cur2 = (r.data && r.data.coin_balance) || 0;
-            sb2.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: cur2 + _FJ_BONUS }, { onConflict:'user_id' }).then(function(r){ if (r && r.error) console.warn('[kh] save failed:', r.error.message); }, function(){});
-            if (typeof showCoinToast === 'function') showCoinToast(_FJ_BONUS);
-            if (typeof toast === 'function') toast('🎉 First Journey Complete! +' + _FJ_BONUS + ' nyang!', 'success');
-          }).catch(function(){});
-      }
-    }
-  }
+  if (_fjAllDone() && supaUser) _fjClaim('complete');
+}
+function _fjClaim(key) {
+  var sb = getSupa();
+  if (!sb) return;
+  sb.rpc('kh_claim_first_journey', { p_step: key }).then(function(r) {
+    var d = r && r.data;
+    if (!d || !d.ok || !d.coin_gained) return;
+    if (typeof showCoinToast === 'function') showCoinToast(d.coin_gained);
+    if (key === 'complete' && typeof toast === 'function') toast('First Journey complete! +' + d.coin_gained + ' nyang', 'success');
+  }, function() {});
 }
 
 // 자동 감지 hooks

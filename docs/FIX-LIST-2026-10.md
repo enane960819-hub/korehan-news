@@ -250,7 +250,7 @@
 - [x] **3단계 (1차)** — 가챠 삭제(상점 탭·코드·약관) / 결제 연동 전까지 현금 전용 아이템·Buy with Cash 숨김 (`SHOP_CASH_ENABLED`) / 요금표(Courses·랜딩)를 실제 잠금과 일치 + 수료증·Stories·Diary 문구 삭제 / 랜딩 ₩0→$0 / 관리자·튜터 이메일을 공개 JS에서 제거 → `kh_my_roles` RPC / 프로필 개발자 문구 삭제
   - [x] `user_stats` email 타 사용자 조회 차단 (컬럼 권한, PR #788 — 라이브 확인: 타인 email 403, 본인 조회·저장 정상)
   - [x] `?authdebug` 삭제, 내부 문서(md/ts)·PDF 4개(24MB 포함) 웹 루트 밖으로 이동, robots.txt에서 관리자 URL 삭제 + 관리자 페이지 noindex
-  - [ ] 다음으로 미룸 (P1): 냥·XP를 클라이언트가 직접 수정 (`user_stats` update/upsert 10곳 — 기자 선물, 닉네임 변경, 방 아이템, First Journey, 배지 보상, 상점 폴백) → 전부 서버 RPC로 옮긴 뒤 `coin_balance`/`xp` 컬럼 UPDATE 권한 회수. 현금 판매를 숨겨서 지금은 꾸미기 아이템 치팅만 가능 → 결제 켜기 전 필수
+  - [x] (2026-10-26 완료 — `20261026_coin_server_only.sql`: 냥은 서버 함수로만 변경, `coin_balance` 클라이언트 쓰기 권한 회수, `admin_adjust_coin` 관리자 확인 추가, p_user_id 위조 차단. XP는 진척 지표라 클라이언트 동기화 유지) 냥·XP를 클라이언트가 직접 수정 (`user_stats` update/upsert 10곳 — 기자 선물, 닉네임 변경, 방 아이템, First Journey, 배지 보상, 상점 폴백) → 전부 서버 RPC로 옮긴 뒤 `coin_balance`/`xp` 컬럼 UPDATE 권한 회수. 현금 판매를 숨겨서 지금은 꾸미기 아이템 치팅만 가능 → 결제 켜기 전 필수
   - [ ] 다음으로 미룸 (P1): 공유 AI 캐시(`article_cache` 등) 쓰기를 엣지 함수로, AI 무거운 Premium 기능 서버측 확인
 
 - [x] **4단계 (한국어 UI)** — 섹션 칩 전부 `khSecLabel()`(영어, DB 라벨이 한국어여도 영어로), 댓글·로그인 실패 배너·분석 중·발음 버튼, 기자 직함 영어(`khReporterRole`), 호버 문법 용어 영어, 화폐 표기 `Nyang`으로 통일, 상점 칭호 영어, 슬랭 태그·경고·오답 해설 영어(`desc_en` 우선), Growth Lab 오류 문구, 19개 페이지 `lang="en"` + `og:locale en_US` + 한국어 meta 설명 전부 영어

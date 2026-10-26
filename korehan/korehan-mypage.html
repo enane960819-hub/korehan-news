@@ -1282,9 +1282,9 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261026g"></script>
+<script src="korehan-shared.js?v=20261026h"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
-<script src="js/kh-badges.js?v=20261026a"></script>
+<script src="js/kh-badges.js?v=20261026b"></script>
 <script>
 
 // ── Tier SVG mark helper ────────────────────────────────────────
@@ -2022,23 +2022,18 @@ async function confirmNicknameChange() {
 
   var sb = getSupa();
   try {
-    // Deduct Coin only (XP is non-spendable progression stat). Guarded
-    // update so a stale client balance can't underpay.
-    var newCoin = _userCoin - NICKNAME_COST;
-    var upd = await sb.from('user_stats')
-      .update({ coin_balance: newCoin, display_name: newName })
-      .eq('user_id', supaUser.id)
-      .gte('coin_balance', NICKNAME_COST)
-      .select('coin_balance');
-    if (upd.error) throw upd.error;
-    if (!upd.data || upd.data.length === 0) {
+    // Server-side: kh_change_nickname deducts the cost and sets the name
+    // in one transaction (coin_balance isn't client-writable).
+    var rpc = await sb.rpc('kh_change_nickname', { p_name: newName });
+    var body = (rpc && rpc.data) || {};
+    if (rpc.error) throw rpc.error;
+    if (!body.ok) {
       if (btn) { btn.disabled = false; btn.textContent = 'Change — ' + NICKNAME_COST + ' nyang'; }
-      if (typeof toast === 'function') toast('Balance out of sync — please retry.');
+      if (typeof toast === 'function') toast(body.error === 'INSUFFICIENT_NYANG' ? 'Not enough nyang.' : body.error === 'INVALID_NAME' ? 'Please use 1–30 characters.' : 'Could not change the nickname.');
       if (typeof _reloadUserStats === 'function') _reloadUserStats();
       return;
     }
-    newCoin = Number(upd.data[0].coin_balance);
-    try { await sb.from('coin_transactions').insert({ user_id: supaUser.id, tx_type:'spend', amount:-NICKNAME_COST, balance_after:newCoin, source:'nickname_change', memo:'Nickname change' }); } catch(e) {}
+    var newCoin = Number(body.coin_balance);
     // Update auth metadata
     await sb.auth.updateUser({ data: { full_name: newName } });
     // Persist locally
@@ -4750,7 +4745,6 @@ function _armRoomShopEsc() {
 }
 
 // ── Buy item ─────────────────────────────────────────────────
-var _roomUseBuyRpc = true; // flips to false on first "not found" from Supabase RPC
 
 async function buyRoomItem(itemId) {
   var def = getRoomItemDef(itemId);
@@ -4761,72 +4755,20 @@ async function buyRoomItem(itemId) {
   var newCoin = _userCoin - def.price;
   var sb = getSupa();
   if (sb && supaUser) {
-    // Preferred path: atomic RPC. Server validates price from room_items,
-    // locks the balance row, records ownership + transaction in one txn.
-    if (_roomUseBuyRpc) {
-      try {
-        var rpc = await sb.rpc('buy_room_item', { p_item_id: itemId });
-        if (rpc.error && _isMissingRelation(rpc.error)) {
-          _roomUseBuyRpc = false; // fall through to guarded update below
-        } else if (rpc.error) {
-          if (typeof toast === 'function') toast('Purchase failed!');
-          return;
-        } else {
-          var body = rpc.data || {};
-          if (!body.ok) {
-            if (body.error === 'INSUFFICIENT_NYANG') {
-              if (typeof toast === 'function') toast('Not enough nyang!');
-              if (typeof body.current === 'number') _setNyangBalance(body.current);
-            } else {
-              if (typeof toast === 'function') toast('Purchase failed!');
-            }
-            return;
-          }
-          newCoin = Number(body.nyang_balance);
-          // Keep local owned list in sync with the server write (RPC already
-          // inserted into user_room_state.owned, so this is just a mirror).
-          var ownedRpc = getRoomOwned();
-          if (ownedRpc.indexOf(itemId) === -1) {
-            ownedRpc.push(itemId);
-            try { localStorage.setItem(K_ROOM_OWNED, JSON.stringify(ownedRpc)); } catch(e) {}
-          }
-          _setNyangBalance(newCoin);
-          if (typeof toast === 'function') toast('Purchased ' + def.name + '!');
-          if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
-          closeRoomShop();
-          openRoomShop();
-          return;
-        }
-      } catch(e) {
-        if (_isMissingRelation(e)) { _roomUseBuyRpc = false; }
-        else {
-          if (typeof toast === 'function') toast('Purchase failed!');
-          return;
-        }
-      }
-    }
-
-    // Fallback path (before the migration runs): guarded .update() so two
-    // concurrent purchases can't both succeed against the same balance.
+    // Server-only purchase: buy_room_item validates the price from
+    // room_items, locks the balance row and records ownership + the
+    // transaction. coin_balance can't be written from the browser.
     try {
-      var upd = await sb.from('user_stats')
-        .update({coin_balance: newCoin})
-        .eq('user_id', supaUser.id)
-        .gte('coin_balance', def.price)
-        .select('coin_balance');
-      if (upd.error) throw upd.error;
-      if (!upd.data || upd.data.length === 0) {
-        if (typeof toast === 'function') toast('Balance out of sync — reloading.');
-        if (typeof _reloadUserStats === 'function') _reloadUserStats();
+      var rpc = await sb.rpc('buy_room_item', { p_item_id: itemId });
+      var body = (rpc && rpc.data) || {};
+      if (rpc.error || !body.ok) {
+        if (body.error === 'INSUFFICIENT_NYANG') {
+          if (typeof toast === 'function') toast('Not enough nyang!');
+          if (typeof body.current === 'number') _setNyangBalance(body.current);
+        } else if (typeof toast === 'function') toast('Purchase failed!');
         return;
       }
-      newCoin = Number(upd.data[0].coin_balance);
-      try {
-        await sb.from('coin_transactions').insert({
-          user_id: supaUser.id, tx_type:'spend', amount: -def.price,
-          balance_after: newCoin, source:'room_item', memo:'Room item: ' + def.name
-        });
-      } catch(e) {}
+      newCoin = Number(body.nyang_balance);
     } catch(e) {
       if (typeof toast === 'function') toast('Purchase failed!');
       return;

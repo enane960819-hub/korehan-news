@@ -146,7 +146,6 @@ async function awardXP(actionKey, meta) {
   var sb = getSupa(); if (!sb) return null;
 
   var amount    = _XP_ACTION_AMOUNTS[actionKey] || 10;
-  var coinAmt   = _COIN_ACTION_AMOUNTS[actionKey] || 0;
   var reason    = _XP_ACTION_LABELS[actionKey] || actionKey;
   var contentId = (meta && (meta.content_id || meta.article_id)) || null;
 
@@ -157,68 +156,34 @@ async function awardXP(actionKey, meta) {
       p_action:  actionKey,
       p_meta:    meta || {}
     });
+    if (res.data && res.data.ok && (res.data.duplicate || res.data.capped)) {
+      _recordXPGrant(actionKey, contentId);
+      return res.data;
+    }
     if (res.data && res.data.ok) {
       if (res.data.leveled_up) {
         showToast('🎉 Level Up! Lv.' + res.data.level + ' ' + res.data.level_name);
       }
-      var gained = res.data.xp_gained || amount;
-      showXPToast(gained);
-      var coinGained = (typeof res.data.coin_gained === 'number') ? res.data.coin_gained : coinAmt;
-      if (coinGained > 0) {
-        var coinBalanceAfter = res.data.coin_balance || null;
-        if (coinBalanceAfter === null) {
-          try {
-            var cr = await sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle();
-            var curCoin = (cr.data && cr.data.coin_balance) || 0;
-            coinBalanceAfter = curCoin + coinGained;
-            await sb.from('user_stats').upsert({ user_id: supaUser.id, coin_balance: coinBalanceAfter }, { onConflict:'user_id' });
-          } catch(e) {}
-        }
-        showCoinToast(coinGained);
-        try {
-          await sb.from('coin_transactions').insert({
-            user_id: supaUser.id,
-            tx_type: 'earn',
-            amount: coinGained,
-            balance_after: coinBalanceAfter,
-            source: actionKey,
-            memo: reason
-          });
-        } catch(e) {}
-      }
+      var gained = Number(res.data.xp_gained || 0);
+      if (gained > 0) showXPToast(gained);
+      // Coins are granted (and logged) by award_xp itself — the client
+      // no longer writes coin_balance or coin_transactions.
+      var coinGained = Number(res.data.coin_gained || 0);
+      if (coinGained > 0) showCoinToast(coinGained);
       await _insertXPLog(sb, supaUser.id, actionKey, gained, reason, contentId);
       return res.data;
     }
   } catch(e) {}
 
-  // Fallback: direct DB write
+  // Fallback (RPC unreachable): local XP only. coin_balance is server-only
+  // (20261026_coin_server_only.sql), so no nyang is granted here.
   try {
     await _insertXPLog(sb, supaUser.id, actionKey, amount, reason, contentId);
-
-    // Increment xp in user_stats
-    var { data: statsRow } = await sb.from('user_stats').select('xp, coin_balance').eq('user_id', supaUser.id).maybeSingle();
+    var { data: statsRow } = await sb.from('user_stats').select('xp').eq('user_id', supaUser.id).maybeSingle();
     var currentXP = (statsRow && statsRow.xp) || 0;
-    var currentCoin = (statsRow && statsRow.coin_balance) || 0;
-    await sb.from('user_stats').upsert({
-      user_id: supaUser.id,
-      xp: currentXP + amount,
-      coin_balance: currentCoin + coinAmt
-    }, { onConflict: 'user_id' });
-
+    await sb.from('user_stats').upsert({ user_id: supaUser.id, xp: currentXP + amount }, { onConflict: 'user_id' });
     showXPToast(amount);
-    if (coinAmt > 0) {
-      showCoinToast(coinAmt);
-      try {
-        await sb.from('coin_transactions').insert({
-          user_id: supaUser.id,
-          tx_type: 'earn',
-          amount: coinAmt,
-          balance_after: currentCoin + coinAmt,
-          source: actionKey,
-          memo: reason
-        });
-      } catch(e) {}
-    }
+    _recordXPGrant(actionKey, contentId);
     return { ok: true, xp_gained: amount };
   } catch(e) {}
 
