@@ -21,7 +21,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20261027a">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260527f">
-<link rel="stylesheet" href="korehan-study-room.css?v=20261026c">
+<link rel="stylesheet" href="korehan-study-room.css?v=20261027a">
 </head>
 <body>
 <div id="kh-header"></div>
@@ -30,15 +30,7 @@
 <div class="sr-page">
 <div class="sr-wrap2">
 
-<!-- Level bar (always visible, top of page) -->
-<div class="sr-level-bar" id="sr-level-bar">
-  <button class="lv-pill lv-s"    onclick="setLevel('Starter',this)"><i data-lucide="sprout" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Seed</span></button>
-  <button class="lv-pill lv-b on" onclick="setLevel('Beginner',this)"><i data-lucide="leaf" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Sprout</span></button>
-  <button class="lv-pill lv-i"    onclick="setLevel('Intermediate',this)"><i data-lucide="tree-deciduous" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Tree</span></button>
-  <button class="lv-pill lv-a lv-locked" onclick="khForestLockedToast()" title="Forest level coming soon" aria-disabled="true"><i data-lucide="lock" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Forest</span></button>
-</div>
-
-<!-- TAB BAR (mobile/tablet only — outside all panels so it persists) -->
+<!-- TAB BAR: Study / My Words (all widths) -->
 <div class="sr-top-tabs-wrap">
 <!-- A11Y-F1: study-room top tabs now carry full ARIA tab semantics.
      role="tablist" on the wrapper; role="tab" + aria-selected +
@@ -47,10 +39,17 @@
      role="tabpanel" + aria-labelledby — switchSrTab() syncs
      aria-selected on click. -->
 <div class="sr-top-tabs" role="tablist" aria-label="Study room sections">
-  <button id="sr-tab-btn-study" class="sr-top-tab on" role="tab" aria-selected="true"  aria-controls="sr-tab-study"    onclick="switchSrTab('study',this)"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Study</button>
-  <button id="sr-tab-btn-master" class="sr-top-tab"    role="tab" aria-selected="false" aria-controls="sr-tab-master"   onclick="switchSrTab('master',this)"><i data-lucide="target" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Exercise</button>
-  <button id="sr-tab-btn-wordbook" class="sr-top-tab"  role="tab" aria-selected="false" aria-controls="sr-tab-wordbook" onclick="switchSrTab('wordbook',this)"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Word Book</button>
+  <button id="sr-tab-btn-study" class="sr-top-tab on" role="tab" aria-selected="true"  aria-controls="sr-panel-study"    onclick="switchSrTab('study',this)"><i data-lucide="notebook-pen" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> Study</button>
+  <button id="sr-tab-btn-wordbook" class="sr-top-tab"  role="tab" aria-selected="false" aria-controls="sr-panel-wordbook" onclick="switchSrTab('wordbook',this)"><i data-lucide="book-open" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> My Words <span class="sr-tab-due" id="sr-words-due-badge" hidden></span></button>
 </div>
+</div>
+
+<!-- Level bar (Study tab only) -->
+<div class="sr-level-bar" id="sr-level-bar">
+  <button class="lv-pill lv-s"    onclick="setLevel('Starter',this)"><i data-lucide="sprout" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Seed</span></button>
+  <button class="lv-pill lv-b on" onclick="setLevel('Beginner',this)"><i data-lucide="leaf" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Sprout</span></button>
+  <button class="lv-pill lv-i"    onclick="setLevel('Intermediate',this)"><i data-lucide="tree-deciduous" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Tree</span></button>
+  <button class="lv-pill lv-a lv-locked" onclick="khForestLockedToast()" title="Forest level coming soon" aria-disabled="true"><i data-lucide="lock" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Forest</span></button>
 </div>
 
 <!-- ═══ TAB: Study (main learning content) ═══ -->
@@ -207,6 +206,10 @@
       </a>
     </div>
   </div>
+
+  <!-- MORE PRACTICE — 4 tiles (+ Seed-only basics card); filled by srRenderPractice()
+       in js/features/sr-home.js. On desktop this is the right-hand column. -->
+  <div id="sr-practice" class="sr-practice"></div>
 
   <!-- hidden done-state spans kept for JS renderStudyChecklist compatibility -->
   <span id="sr-done-picture" style="display:none"></span>
@@ -543,46 +546,40 @@
   </div>
 </div>
 
-<!-- ═══ TAB: Word Book ═══ -->
+<!-- ═══ TAB: My Words (saved words + spaced review) — js/features/sr-home.js ═══ -->
 <div class="sr-tab-panel" id="sr-panel-wordbook">
-  <div style="max-width:1160px;margin:0 auto;padding:24px">
-    <div class="wb-notebook">
-      <div class="wb-header">
-        <button type="button" class="wb-back-btn" onclick="switchSrTab('study', document.querySelectorAll('.sr-top-tab')[0])" aria-label="Back to Study">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-          <span>Back to Study</span>
-        </button>
-        <div class="wb-header-title">My Word Book</div>
-        <div class="wb-header-sub">Saved words, expressions & slang</div>
-        <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
-          <button onclick="openUniverseView()" type="button" id="wb-universe-trigger"
-            style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px 7px 12px;border-radius:10px;border:1px solid rgba(167,139,250,.5);background:linear-gradient(135deg,rgba(124,58,237,.32),rgba(56,189,248,.2));color:#fff;font-size:12px;font-weight:900;letter-spacing:.02em;cursor:pointer;font-family:inherit;box-shadow:0 6px 16px rgba(124,58,237,.28),inset 0 1px 0 rgba(255,255,255,.1);transition:transform .12s,box-shadow .12s">
-            <i data-lucide="telescope" class="kh-ui-icon" style="width:14px;height:14px;filter:drop-shadow(0 0 5px rgba(196,181,253,.7))" aria-hidden="true"></i>Universe View
-          </button>
-          <button onclick="toggleWbHide()" id="wb-hide-btn" style="padding:7px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">Hide Meanings</button>
-          <button onclick="startWbQuiz()" style="padding:7px 16px;border-radius:10px;border:1px solid rgba(139,92,246,.3);background:rgba(139,92,246,.15);color:#c4b5fd;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">Quiz Mode</button>
+  <div class="mw-wrap">
+    <div class="mw-side">
+      <div class="mw-due" id="mw-due">
+        <div class="mw-due-k">TODAY'S REVIEW</div>
+        <div class="mw-due-n"><b id="mw-due-n">–</b><span id="mw-due-sub">words due</span></div>
+        <button type="button" class="mw-due-go" id="mw-due-go" onclick="mwStartReview()">Start review</button>
+        <div class="mw-modes">
+          <button type="button" onclick="mwFlashcards()">Flashcards</button>
+          <button type="button" onclick="mwQuiz()">Quiz</button>
+          <button type="button" onclick="mwListening()">Listening</button>
         </div>
       </div>
-      <!-- Stats row -->
-      <div class="wb-stats-row">
-        <div class="wb-stat"><div class="wb-stat-num" id="wb-cnt-all">0</div><div class="wb-stat-label">Total</div></div>
-        <div class="wb-stat"><div class="wb-stat-num" id="wb-cnt-word">0</div><div class="wb-stat-label">Words</div></div>
-        <div class="wb-stat"><div class="wb-stat-num" id="wb-cnt-slang">0</div><div class="wb-stat-label">Slang</div></div>
-        <div class="wb-stat"><div class="wb-stat-num" id="wb-cnt-expression">0</div><div class="wb-stat-label">Expressions</div></div>
-        <div class="wb-stat"><div class="wb-stat-num" id="wb-cnt-correction">0</div><div class="wb-stat-label">Corrections</div></div>
+      <div class="mw-stats">
+        <div><b id="mw-cnt-all">0</b><span>Saved</span></div>
+        <div><b id="mw-cnt-learning">0</b><span>Learning</span></div>
+        <div><b id="mw-cnt-mastered">0</b><span>Mastered</span></div>
       </div>
-      <!-- Category tabs -->
-      <div style="display:flex;gap:0;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.06)">
-        <button class="wb-cat-btn on" onclick="setWbCategory('all',this)">All</button>
-        <button class="wb-cat-btn" onclick="setWbCategory('word',this)">Words</button>
-        <button class="wb-cat-btn" onclick="setWbCategory('slang',this)">Slang</button>
-        <button class="wb-cat-btn" onclick="setWbCategory('expression',this)">Expressions</button>
-        <button class="wb-cat-btn" onclick="setWbCategory('correction',this)">🔖 Corrections</button>
+      <button type="button" class="mw-uni" onclick="openUniverseView()"><i data-lucide="telescope" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i> See your words as a Universe</button>
+    </div>
+    <div class="mw-main">
+      <div class="mw-tools">
+        <div class="mw-filters" id="mw-filters">
+          <button type="button" class="on" data-f="all" onclick="mwSetFilter('all')">All</button>
+          <button type="button" data-f="due" onclick="mwSetFilter('due')">Due</button>
+          <button type="button" data-f="learning" onclick="mwSetFilter('learning')">Learning</button>
+          <button type="button" data-f="mastered" onclick="mwSetFilter('mastered')">Mastered</button>
+          <button type="button" data-f="phrase" onclick="mwSetFilter('phrase')">Phrases</button>
+          <button type="button" data-f="correction" onclick="mwSetFilter('correction')" hidden>Corrections</button>
+        </div>
+        <label class="mw-search"><i data-lucide="search" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><input type="text" id="mw-search" placeholder="Search your words" oninput="mwRender()" lang="ko" autocomplete="off" spellcheck="false"></label>
       </div>
-      <input class="wb-search" type="text" placeholder="Search words..." oninput="filterWordBook(this.value)" lang="ko" autocomplete="off" spellcheck="false">
-      <div id="wb-list" style="max-height:60vh;overflow-y:auto;padding-right:4px">
-        <div class="wb-empty">Loading your saved words…</div>
-      </div>
+      <div id="wb-list" class="mw-list"><div class="wb-empty">Loading your saved words…</div></div>
     </div>
   </div>
 </div>
@@ -930,7 +927,7 @@
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261027b"></script>
+<script src="korehan-shared.js?v=20261027c"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script src="js/kh-canvas-engine.js?v=20260527f"></script>
 <script src="js/kh-quiz-arena.js?v=20261016a"></script>
@@ -941,8 +938,9 @@
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
 <script src="js/kh-basics.js?v=20261023a" defer></script>
-<script src="korehan-study-room.js?v=20261027a" defer></script>
+<script src="korehan-study-room.js?v=20261027b" defer></script>
 <script src="js/features/writing-flow.js?v=20261026b" defer></script>
+<script src="js/features/sr-home.js?v=20261027a" defer></script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->

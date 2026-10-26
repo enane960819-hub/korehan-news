@@ -97,7 +97,8 @@ body { font-family: 'Happy Monkey', 'Jua', 'Inter', 'Noto Sans KR', sans-serif; 
 <main class="notes-body">
   <div class="notes-tabs" role="tablist">
     <button class="notes-tab on" data-tab="bookmarks" onclick="switchNotesTab('bookmarks')">Bookmarked</button>
-    <button class="notes-tab" data-tab="words" onclick="switchNotesTab('words')">Saved words</button>
+    <!-- Saved words now live in the Study Room's My Words tab (one list + review). -->
+    <a class="notes-tab" href="korehan-study-room.html?tab=words" style="text-decoration:none">Saved words →</a>
   </div>
 
   <section id="nt-panel-bookmarks" class="notes-panel on">
@@ -140,7 +141,7 @@ body { font-family: 'Happy Monkey', 'Jua', 'Inter', 'Noto Sans KR', sans-serif; 
 <script src="js/features/analyze-mode.js?v=20260527j"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261027b"></script>
+<script src="korehan-shared.js?v=20261027c"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script>
 function switchNotesTab(tab) {
