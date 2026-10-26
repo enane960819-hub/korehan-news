@@ -1344,7 +1344,7 @@ var SVG_ICONS = {
   words:    '<img src="assets/bookmark.png" alt="words">',
   quizzes:  '<img src="assets/check.png" alt="quizzes" style="width:64px;height:64px">',
   xp:       '<img src="assets/streak.png" alt="xp">',
-  nyang:    '<img src="assets/currency.png" alt="kimchi">',
+  nyang:    '<img src="assets/currency.png" alt="Nyang">',
 };
 
 // ── Tier helper ────────────────────────────────────────────────
@@ -1523,7 +1523,7 @@ function renderMiniStats(stats) {
     + row(SVG_ICONS.articles, us.articles_read  || 0,              'articles')
     + row(SVG_ICONS.words,    '<span id="mp-real-word-count">' + (us.words_saved || 0) + '</span>', 'saved words', ' clickable" onclick="openSavedWordsModal()')
     + row(SVG_ICONS.quizzes,  us.quizzes_done   || 0,              'quizzes')
-    + row(SVG_ICONS.nyang,    coinVal.toLocaleString(),            'kimchi', '', 'coin')
+    + row(SVG_ICONS.nyang,    coinVal.toLocaleString(),            'Nyang', '', 'coin')
     + '</div></div>';
 }
 
