@@ -19,9 +19,9 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20261026a">
+<link rel="stylesheet" href="korehan-shared.css?v=20261026b">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260527f">
-<link rel="stylesheet" href="korehan-study-room.css?v=20260527g">
+<link rel="stylesheet" href="korehan-study-room.css?v=20261026a">
 </head>
 <body>
 <div id="kh-header"></div>
@@ -190,6 +190,9 @@
       </div>
     </div>
 
+    <!-- TODAY'S PLAN — 3 steps under the (big) weekly topic; filled by renderTodayPlan() -->
+    <div id="sr-today-plan" class="sr-plan"></div>
+
     <!-- hidden compat elements — JS sets these but they don't need to be visible -->
     <div id="wcard-topic-ko" style="display:none"></div>
     <div id="wcf-mode-text"  style="display:none">Open Express Practice</div>
@@ -220,8 +223,16 @@
     <button id="kh-submit-all-btn" class="btn btn-g" onclick="submitAllWritingsToday()" style="font-size:12px;padding:8px 16px;font-weight:800;display:inline-flex;align-items:center;gap:6px;min-height:36px"><i data-lucide="send" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span class="kh-submit-label">Submit All</span></button>
   </div>
 
+  <!-- LIBRARY TABS (phones) — show one group at a time instead of one long scroll -->
+  <div class="sr-lib-tabs" id="sr-lib-tabs" role="tablist" aria-label="Library">
+    <span class="sr-lib-lbl">Library</span>
+    <button type="button" class="sr-lib-tab" data-lib="read" onclick="setSrLibTab('read')">Read</button>
+    <button type="button" class="sr-lib-tab" data-lib="practice" onclick="setSrLibTab('practice')">Practice</button>
+    <button type="button" class="sr-lib-tab" data-lib="review" onclick="setSrLibTab('review')">Review</button>
+  </div>
+
   <!-- ACTIVITY CARDS -->
-  <div class="sr-activity-cards">
+  <div class="sr-activity-cards" data-lib="read">
     <button class="sr-act-card" data-gate="article_study" onclick="_canvasRipple(this,event);openArticleStudy()">
       <span class="srac-icon"><i data-lucide="newspaper" class="kh-ui-icon" style="width:26px;height:26px" aria-hidden="true"></i></span>
       <div class="srac-title">Article Study</div>
@@ -257,7 +268,7 @@
        onerror that swaps the broken-image icon for a branded gradient
        caption. That way a missing asset degrades cleanly instead of
        showing a broken-image glyph on the hero. -->
-  <div class="sr-desktop-master">
+  <div class="sr-desktop-master" data-lib="practice">
     <div role="button" tabindex="0" class="master-card" style="padding:0" data-gate="fast_track" onclick="openFastTrack()">
       <div class="mc-banner"><img src="assets/ChatGPT Image Apr 11, 2026, 11_08_30 PM.webp" loading="lazy" alt="Fast Track" onerror="this.parentNode.innerHTML='<div style=\'width:100%;height:100%;min-height:160px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0b1626,#1e40af);color:#fff;font-weight:900;font-size:22px;border-radius:14px;letter-spacing:.02em\'>Fast Track</div>'"></div>
     </div>
@@ -281,7 +292,7 @@
   <!-- Word bank moved to left sidebar -->
 
   <!-- ═══ COMPLETED STUDIES ═══ -->
-  <div id="sr-completed-section" style="margin-top:14px;display:none">
+  <div id="sr-completed-section" data-lib="review" style="margin-top:14px;display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px">Completed Studies</div>
       <button onclick="toggleCompletedPanel()" style="font-size:11px;color:#7ab8f5;background:none;border:none;cursor:pointer;font-family:inherit;font-weight:700">Show all →</button>
@@ -290,7 +301,7 @@
   </div>
 
   <!-- ═══ REVIEW SECTION ═══ -->
-  <div style="margin-top:14px">
+  <div style="margin-top:14px" data-lib="review">
     <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Review</div>
     <div style="display:flex;flex-direction:column;gap:8px" id="rv-grid">
       <button class="rv-card" onclick="openDailyReview()" id="rv-daily">
@@ -940,7 +951,7 @@
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261026c"></script>
+<script src="korehan-shared.js?v=20261026d"></script>
 <script src="js/kh-canvas-engine.js?v=20260527f"></script>
 <script src="js/kh-quiz-arena.js?v=20261016a"></script>
 <script src="js/kh-flashcards.js?v=20261025a"></script>
@@ -950,7 +961,7 @@
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
 <script src="js/kh-basics.js?v=20261023a" defer></script>
-<script src="korehan-study-room.js?v=20261026b" defer></script>
+<script src="korehan-study-room.js?v=20261026c" defer></script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->

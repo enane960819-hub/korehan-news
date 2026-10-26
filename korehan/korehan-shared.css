@@ -330,6 +330,17 @@ body.kh-neon-on .kh-diff-sel option { color:var(--dark); background:#fff; }
   text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.55);
 }
 
+/* Read ▾ — two columns: News sections | Korea Buzz + Conversations */
+.has-drop:hover .tn-drop-read,
+.has-drop:focus-within .tn-drop-read { display: flex; }
+.tn-drop-read { min-width: 400px; padding: 6px 0 8px; gap: 4px; }
+.tn-drop-col { flex: 1; min-width: 0; }
+.tn-drop-col + .tn-drop-col { border-left: 1px solid rgba(255,255,255,0.08); }
+.tn-drop-sub { padding-left: 28px; font-size: 13px; color: rgba(255,255,255,0.5); }
+.tn-drop-item.on { color: #fff; }
+.kh-topnav .tn-item { padding-left: 20px; padding-right: 20px; }
+body:has(#topbar-user-dropdown.on) #kh-daily-mission { visibility: hidden; }
+
 /* ── GLOBAL NEON THEME ───────────────────────────────────── */
 /* html.kh-neon-on: prevents white flash before body is parsed */
 html.kh-neon-on { background:#050b15 !important; }
@@ -4807,13 +4818,61 @@ body.kh-reading-page #kh-rs-study svg { width: 22px; height: 22px; }
    drawer picks it up on demand. Desktop keeps the normal inline form
    below the article. Override takes effect after setupImmersiveReading
    adds the body class. */
-@media (max-width: 900px) {
-  body.kh-reading-page #art-comments { display: none; }
-  body.kh-reading-page #kh-comment-drawer #art-comments { display: block; }
-}
 @media (min-width: 901px) {
   body.kh-reading-page #kh-comment-drawer { display: none !important; }
+  body.kh-reading-page #kh-rs-comment,
+  body.kh-reading-page #kh-rs-next { display: none !important; }
+}
+body.kh-reading-page #kh-rs-bookmark { order: 0; }
+body.kh-reading-page #kh-rs-listen { order: 1; }
+body.kh-reading-page #kh-rs-comment { order: 2; }
+body.kh-reading-page #kh-rs-study { order: 3; }
+body.kh-reading-page #kh-rs-next { order: 4; }
+@media (min-width: 901px) { body.kh-reading-page #coin-toast { right: 80px !important; } }
+body.kh-reading-page #kh-rs-listen .kh-rs-ico.on { display: none; }
+body.kh-reading-page #kh-rs-listen.active .kh-rs-ico.off { display: none; }
+body.kh-reading-page #kh-rs-listen.active .kh-rs-ico.on { display: block; }
+body.kh-reading-page #kh-rs-listen svg,
+body.kh-reading-page #kh-rs-next svg { width: 22px; height: 22px; }
+
+/* Phones: one bottom action bar (Save · Listen · Study · Next article)
+   replaces the floating round buttons + Prev/Next pills, so nothing
+   floats over the text. Comments stay inline at the end of the article. */
+@media (max-width: 900px) {
+  body.kh-reading-page #kh-reading-sidebar {
+    left: 0; right: 0; bottom: 0;
+    flex-direction: row; gap: 6px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -6px 20px rgba(15,23,42,.06);
+    pointer-events: auto;
+  }
+  body.kh-reading-page #kh-reading-sidebar .kh-rs-btn {
+    flex: 1 1 0; width: auto; height: 50px;
+    border-radius: 12px;
+    background: #f1f5f9; color: #0f172a;
+    border: none; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  body.kh-reading-page #kh-reading-sidebar .kh-rs-btn:hover { background: #e2e8f0; transform: none; }
+  body.kh-reading-page #kh-reading-sidebar .kh-rs-label { color: #334155; font-size: 10px; text-transform: none; letter-spacing: 0; }
   body.kh-reading-page #kh-rs-comment { display: none !important; }
+  body.kh-reading-page #kh-rs-next { flex: 1.5 1 0 !important; background: #2563eb !important; color: #fff !important; }
+  body.kh-reading-page #kh-rs-next .kh-rs-label { color: #fff; }
+  body.kh-reading-page #kh-rs-bookmark.active .kh-rs-label { color: #b45309; }
+  body.kh-reading-page #kh-rs-bookmark .kh-rs-ico.on { color: #f59e0b; }
+  body.kh-reading-page #kh-rs-listen.active { background: #dbeafe; color: #1d4ed8; }
+  body.kh-reading-page #kh-feed-next-pill,
+  body.kh-reading-page #kh-feed-prev-pill { display: none !important; }
+  body.kh-reading-page { padding-bottom: 76px; }
+  /* Reward toasts sit at the top, clear of the text and the bar. */
+  body.kh-reading-page #coin-toast { top: 14px; bottom: auto !important; right: 50% !important; transform: translateX(50%); }
+  body.kh-reading-page #badge-toast { top: 56px !important; bottom: auto !important; }
+  body.kh-cdr-open #kh-reading-sidebar { display: none; }
+  body.kh-neon-on.kh-reading-page #kh-reading-sidebar { background: #0b1626; border-top-color: rgba(255,255,255,.1); }
+  body.kh-neon-on.kh-reading-page #kh-reading-sidebar .kh-rs-btn:not(#kh-rs-next) { background: rgba(255,255,255,.06); color: #e2e8f0; }
+  body.kh-neon-on.kh-reading-page #kh-reading-sidebar .kh-rs-label { color: #cbd5e1; }
 }
 
 /* ── Bottom-sheet comment drawer ─────────────────────────────────── */

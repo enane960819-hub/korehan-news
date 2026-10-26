@@ -3355,3 +3355,46 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
   50%      { transform: scale(1.03); box-shadow: 0 0 0 8px rgba(74, 222, 128, .22); }
 }
+
+/* ─── TODAY'S PLAN (under the weekly topic card) ─── */
+.sr-plan { margin-top:12px; }
+.sr-plan:empty { display:none; }
+.sr-plan-h { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.sr-plan-t { font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#93c5fd; }
+.sr-plan-n { font-size:12px; font-weight:700; color:rgba(255,255,255,.55); }
+.sr-plan-steps { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.sr-plan-step { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#fff; font-family:inherit; text-align:left; cursor:pointer; min-width:0; transition:background .15s, border-color .15s; }
+.sr-plan-step:hover { background:rgba(255,255,255,.1); border-color:rgba(147,197,253,.4); }
+.sr-plan-num { width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.16); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; }
+.sr-plan-step.next .sr-plan-num { background:#3b82f6; }
+.sr-plan-step.done { border-color:rgba(74,222,128,.35); background:rgba(74,222,128,.08); }
+.sr-plan-step.done .sr-plan-num { background:#16a34a; }
+.sr-plan-txt { min-width:0; flex:1; }
+.sr-plan-l { display:block; font-size:13px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sr-plan-s { display:block; font-size:11px; color:rgba(255,255,255,.55); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sr-plan-step.done .sr-plan-l { color:#86efac; }
+@media(max-width:640px) {
+  .sr-plan-steps { grid-template-columns:1fr; gap:6px; }
+  .sr-plan-step { padding:9px 12px; }
+}
+/* Desktop: weekly topic + plan first in the main column (the old
+   .sr-topic-card2 order rule never applied — it isn't a flex child). */
+@media(min-width:861px) {
+  .sr-hero-block { order:-10; display:flex; flex-direction:column; }
+  .sr-hero-block .sr-topic-card2 { order:-2; }
+  .sr-hero-block #sr-today-plan { order:-1; margin-bottom:12px; }
+  .sr-hero-block #sr-review-notifications { order:0; margin-bottom:0 !important; }
+}
+/* The plan's step 1 is the daily review, so its separate banner goes. */
+#sr-notif-daily { display:none !important; }
+
+/* ─── LIBRARY TABS (phones/tablets) ─── */
+.sr-lib-tabs { display:none; }
+@media(max-width:860px) {
+  .sr-lib-tabs { display:flex; align-items:center; gap:6px; margin:4px 0 12px; overflow-x:auto; scrollbar-width:none; }
+  .sr-lib-tabs::-webkit-scrollbar { display:none; }
+  .sr-lib-lbl { font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:rgba(255,255,255,.4); margin-right:2px; }
+  .sr-lib-tab { flex-shrink:0; padding:7px 16px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:#cbd5e1; font-size:13px; font-weight:800; font-family:inherit; cursor:pointer; }
+  .sr-lib-tab.on { background:#2563eb; border-color:#2563eb; color:#fff; }
+  #sr-mob-main [data-lib].sr-lib-hide { display:none !important; }
+}
