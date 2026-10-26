@@ -19,7 +19,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="korehan-shared.css?v=20261023a">
+<link rel="stylesheet" href="korehan-shared.css?v=20261026a">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260527f">
 <link rel="stylesheet" href="korehan-study-room.css?v=20260527g">
 </head>
@@ -3836,7 +3836,12 @@ function closeReviewModal() {
   // Show onboarding after a brief delay
   setTimeout(function(){
     var el = document.getElementById('sr-onboarding');
-    if (el) el.style.display = 'flex';
+    if (!el) return;
+    el.style.display = 'flex';
+    // Show once per device even if the learner leaves without pressing
+    // the button; a tap outside the card also closes it.
+    try { localStorage.setItem(key, '1'); } catch (_) {}
+    el.addEventListener('click', function(e) { if (e.target === el) dismissSrOnboarding(); });
   }, 2000);
 })();
 function dismissSrOnboarding() {

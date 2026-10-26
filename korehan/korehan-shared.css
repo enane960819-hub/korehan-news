@@ -3752,8 +3752,10 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #64748b; }
      nowrap keeps it on one line even on narrow phones; reporter name
      truncates with ellipsis if it overflows; action icons shrink to 28px
      with a tight 2px gap so all four fit. */
-  body.mobile-redesign .art-meta-row{display:flex;flex-wrap:nowrap !important;gap:6px !important;align-items:center;overflow:hidden;}
-  body.mobile-redesign .art-reporter-link{min-width:0;flex-shrink:1;}
+  /* nowrap squeezed the reporter chip to "K I" next to four 40px icons;
+     let the icons drop to a second line instead of crushing the name. */
+  body.mobile-redesign .art-meta-row{display:flex;flex-wrap:wrap !important;gap:6px !important;align-items:center;overflow:hidden;}
+  body.mobile-redesign .art-reporter-link{min-width:0;flex-shrink:0;max-width:60%;}
   body.mobile-redesign .art-reporter-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;}
   body.mobile-redesign .art-date{white-space:nowrap;font-size:11px;flex-shrink:0;}
   body.mobile-redesign .art-readtime,
