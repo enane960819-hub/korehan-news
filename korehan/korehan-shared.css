@@ -5830,3 +5830,7 @@ body[style*="overflow:hidden"]  #fj-widget {
   display: none !important;
 }
 
+
+/* Article translation — English shown under each Korean paragraph/title */
+.kh-tr-line { margin: -6px 0 18px; padding: 8px 12px; border-left: 3px solid #93c5fd; background: rgba(147,197,253,.10); border-radius: 0 10px 10px 0; color: #475569; font-size: .92em; line-height: 1.6; font-family: 'DM Sans', 'Source Sans 3', sans-serif; }
+.kh-tr-title { margin: 4px 0 10px; color: #64748b; font-size: 15px; font-weight: 600; line-height: 1.45; font-family: 'DM Sans', 'Source Sans 3', sans-serif; }
