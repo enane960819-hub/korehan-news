@@ -2294,28 +2294,16 @@ function _matchTopicPack(topicKo, topicEn) {
 
 // Level-appropriate grammar fallback. Example sentences try to reference the
 // matched pack's first vocab word so the grammar at least reads on-topic.
-// Pick the particle form by batchim: _khJosa('사과','을','를') → '사과를'.
-function _khJosa(word, withBatchim, noBatchim) {
-  var c = String(word || '').charCodeAt(String(word || '').length - 1);
-  if (!(c >= 0xAC00 && c <= 0xD7A3)) return word + noBatchim;
-  return word + (((c - 0xAC00) % 28) ? withBatchim : noBatchim);
-}
-
-// Shown only when AI generation fails. Topic words are slotted in ONLY
-// where any noun reads naturally ("저는 N을/를 좋아해요"); everything else
-// uses fixed, natural example sentences. The old templates printed the
-// slash literally ("야식이/가 있어요") and slotted verbs into noun slots
-// ("주문하다을/를 좋아해요").
-function _fallbackGrammarFor(level, topicKo, topicEn, vocab) {
-  var nouns = (vocab || []).map(function(v){ return v && v.ko; }).filter(function(w) {
-    return w && /^[가-힣]{1,6}$/.test(w) && !/(다|요)$/.test(w);
-  });
-  var n1 = nouns[0] || '', n2 = nouns[1] || n1;
+// Shown only when AI generation fails. Fixed, natural example sentences
+// only — topic words are NOT slotted into templates any more. Slotting
+// produced sentences no Korean would say ("제가 좋아하는 아침이 있어요",
+// "이건 아침이에요") and even dropped adverbs into noun slots ("가장을").
+function _fallbackGrammarFor(level) {
   if (level === 'Starter') {
     return [
-      { level:'Starter', pattern:'~이에요/예요', explanation:'Use this to say what something is.', example_ko: n1 ? '이건 ' + _khJosa(n1, '이에요', '예요') + '.' : '저는 학생이에요.', example_en: n1 ? 'This is ' + n1 + '.' : 'I am a student.' },
-      { level:'Starter', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko: n1 ? '저는 ' + _khJosa(n1, '을', '를') + ' 좋아해요.' : '저는 음악을 좋아해요.', example_en: 'I like ' + (n1 || 'music') + '.' },
-      { level:'Starter', pattern:'~이/가 있어요', explanation:'Use this to say something exists or that you have it.', example_ko: n2 ? _khJosa(n2, '이', '가') + ' 있어요.' : '시간이 있어요.', example_en: n2 ? 'There is ' + n2 + '.' : 'I have time.' }
+      { level:'Starter', pattern:'~이에요/예요', explanation:'Use this to say what something is.', example_ko:'저는 학생이에요.', example_en:'I am a student.' },
+      { level:'Starter', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko:'저는 음악을 좋아해요.', example_en:'I like music.' },
+      { level:'Starter', pattern:'~이/가 있어요', explanation:'Use this to say something exists or that you have it.', example_ko:'오늘은 시간이 있어요.', example_en:'I have time today.' }
     ];
   }
   if (level === 'Intermediate') {
@@ -2334,8 +2322,8 @@ function _fallbackGrammarFor(level, topicKo, topicEn, vocab) {
   }
   // Beginner default
   return [
-    { level:'Beginner', pattern:'~이/가 있어요', explanation:'Use this to say someone or something exists.', example_ko: n1 ? '제가 좋아하는 ' + _khJosa(n1, '이', '가') + ' 있어요.' : '오늘은 약속이 있어요.', example_en: n1 ? 'There is a ' + n1 + ' I like.' : 'I have plans today.' },
-    { level:'Beginner', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko: n2 ? '저는 ' + _khJosa(n2, '을', '를') + ' 좋아해요.' : '저는 커피를 좋아해요.', example_en: 'I like ' + (n2 || 'coffee') + '.' },
+    { level:'Beginner', pattern:'~이/가 있어요', explanation:'Use this to say someone or something exists.', example_ko:'오늘은 약속이 있어요.', example_en:'I have plans today.' },
+    { level:'Beginner', pattern:'~을/를 좋아해요', explanation:'Use this to say what you like.', example_ko:'저는 커피를 좋아해요.', example_en:'I like coffee.' },
     { level:'Beginner', pattern:'~고 싶어요', explanation:'Use this to say what you want to do.', example_ko:'주말에 친구를 만나고 싶어요.', example_en:'I want to meet a friend this weekend.' }
   ];
 }
@@ -2351,7 +2339,7 @@ function buildStudyRoomFallbackContent(topic, level) {
     var packLevel = pack.vocab[level] || pack.vocab.Beginner || pack.vocab.Starter;
     var vocab = (packLevel || []).map(function(v){ return Object.assign({ level: level }, v); });
     var helpers = (pack.helpers || []).slice(0, 4);
-    return { vocab: vocab, grammar: _fallbackGrammarFor(level, topicKo, topicEn, vocab), helpers: helpers };
+    return { vocab: vocab, grammar: _fallbackGrammarFor(level), helpers: helpers };
   }
 
   var levelSets = {
