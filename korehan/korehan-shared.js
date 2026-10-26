@@ -11063,15 +11063,19 @@ async function syncUserStats(patch) {
   var sb = getSupa(); if (!sb) return;
   try {
     var res = await sb.from('user_stats').select(KH_USER_STATS_COLS).eq('user_id', supaUser.id).maybeSingle();
+    // No email here: user_stats.email isn't readable by clients (privacy
+    // migration), and an upsert that names an unreadable column is rejected
+    // — this sync failed with "permission denied" until it was dropped.
+    // New rows also never default display_name to the email's local part.
     var cur = res.data || {
-      user_id: supaUser.id, email: supaUser.email,
-      display_name: localStorage.getItem('kh_display_name') || supaUser.email.split('@')[0],
+      user_id: supaUser.id,
+      display_name: localStorage.getItem('kh_display_name') || (supaUser.user_metadata && (supaUser.user_metadata.full_name || supaUser.user_metadata.name)) || null,
       xp:0, streak:0, articles_read:0, words_saved:0,
       quizzes_done:0, fill_done:0, mission_streak:0,
       last_mission_date:'', writing_tickets:0
     };
     var updated = Object.assign({}, cur, {
-      user_id: supaUser.id, email: supaUser.email,
+      user_id: supaUser.id,
       display_name: localStorage.getItem('kh_display_name') || cur.display_name,
       updated_at: new Date().toISOString()
     });
