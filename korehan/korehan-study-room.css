@@ -344,7 +344,7 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .chip.gc:hover { background:#f5e89a; }
 
 /* writing area */
-.write-area { flex:1; min-height:260px; width:100%; border:2px solid var(--border); border-radius:10px; padding:16px; font-size:15px; font-family:'Pretendard Variable','Pretendard','Noto Sans KR',inherit; color:var(--dark); resize:none; outline:none; transition:border-color .15s; line-height:1.75; background:#fff; }
+.write-area { flex:1; min-height:260px; width:100%; border:2px solid var(--border); border-radius:10px; padding:16px; font-size:15px; font-family:'Pretendard Variable','Pretendard','Noto Sans KR',sans-serif; color:var(--dark); resize:none; outline:none; transition:border-color .15s; line-height:1.75; background:#fff; }
 .write-area:focus { border-color:var(--bright); }
 .submit-btn { padding:13px 0; width:100%; font-size:14px; font-weight:800; background:linear-gradient(135deg,#0d1b2e,#2255a4); color:#fff; border:none; border-radius:10px; cursor:pointer; font-family:inherit; transition:opacity .2s; }
 .submit-btn:hover { opacity:.88; }
@@ -3162,8 +3162,6 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   .sr-top-tabs-wrap { display:none; }
   .sr-level-bar { padding:10px 0 14px; }
   .lv-pill { padding:10px 20px;font-size:13px; }
-  /* Help panel handled by sidebar (always hidden on desktop) */
-  .sr-tab-panel#sr-panel-help { display:none !important; }
   /* Hide hero text on desktop */
   .sr-headline { display:none !important; }
   .sr-headline-sub { display:none !important; }
@@ -3397,4 +3395,23 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   .sr-lib-tab { flex-shrink:0; padding:7px 16px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:#cbd5e1; font-size:13px; font-weight:800; font-family:inherit; cursor:pointer; }
   .sr-lib-tab.on { background:#2563eb; border-color:#2563eb; color:#fff; }
   #sr-mob-main [data-lib].sr-lib-hide { display:none !important; }
+}
+
+/* ─── Writing room fixes (2026-10) ─── */
+/* `inherit` inside the font list above made the whole declaration invalid,
+   so the textarea fell back to the browser's monospace font. */
+.wmodal .write-area::placeholder { font-family:'Pretendard Variable','Pretendard','Noto Sans KR',sans-serif; }
+/* Desktop: panels sit in the 1fr row. With no source bar they used to land
+   in the auto row, leaving an empty band at the bottom of the modal. */
+@media(min-width:901px) {
+  .wmodal > .wm-left, .wmodal > .wm-center, .wmodal > .wm-right { grid-row:3; min-height:0; }
+}
+/* Header: long topic text no longer runs under the close button. */
+.wmodal .wm-header { gap:12px; }
+.wmodal .wmh-topic { flex:1; min-width:0; }
+/* Dictation (phones): play button above the input + keyboard instead of
+   eating a column beside them. */
+@media(max-width:640px) {
+  .bm-dict-card { flex-direction:column; align-items:stretch; padding:14px; }
+  .bm-dict-play { align-self:center; width:56px; height:56px; }
 }

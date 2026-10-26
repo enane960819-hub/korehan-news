@@ -729,6 +729,14 @@ function trackSectionRead(section) {
 
 // ── 뱃지 체크 메인 함수 ─────────────────────────────────────────────────────
 function checkBadges(event, payload) {
+  // Same guard as korehan-shared.js: load user_badges before deciding
+  // anything is new, or every earned badge re-toasts after sign-in.
+  if (typeof supaUser !== 'undefined' && supaUser && typeof khBadgesReady === 'function' && _khBadgesHydratedUid !== supaUser.id) {
+    khBadgesReady().then(function() {
+      if (supaUser && _khBadgesHydratedUid === supaUser.id) checkBadges(event, payload);
+    });
+    return [];
+  }
   var earned = getEarnedBadges();
   var newBadges = [];
 
@@ -744,7 +752,7 @@ function checkBadges(event, payload) {
 
   if (newBadges.length) {
     lsSet(K_BADGES, earned);
-    newBadges.forEach(function(b){ showBadgeToast(b); });
+    (typeof khBadgeToasts === 'function') ? khBadgeToasts(newBadges) : newBadges.forEach(function(b){ showBadgeToast(b); });
     // Server sync: save to user_badges table
     _syncBadgesToServer(newBadges);
     // Auto-unlock room items for badges with roomItemId

@@ -240,6 +240,10 @@
         '.kh-jamo-ctrl .kh-jamo-key{flex:1 1 60px;max-width:none;font-size:13px;font-weight:700}',
         '.kh-jamo-space{flex:2 1 120px !important}',
         '.kh-jamo-bs{background:rgba(248,113,113,.18) !important;border-color:rgba(248,113,113,.35) !important}',
+        // Full keyboard: even 7-column grid (19 consonants / 21 vowels used to
+        // wrap into ragged rows with a lone ㅎ on its own line on phones).
+        '.kh-jamo-kb:not(.kh-jamo-kb-compact) .kh-jamo-row:not(.kh-jamo-ctrl){display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}',
+        '.kh-jamo-kb:not(.kh-jamo-kb-compact) .kh-jamo-row:not(.kh-jamo-ctrl) .kh-jamo-key{min-width:0;max-width:none;padding:9px 0}',
         // Compact (per-word) keyboard: fewer, bigger tiles that are easy
         // to tap. The jamo the word needs sit on one wrapping row.
         '.kh-jamo-kb-compact .kh-jamo-row{gap:8px}',
