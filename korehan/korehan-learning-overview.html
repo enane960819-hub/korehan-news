@@ -1629,14 +1629,6 @@
       + '</div>';
   }
 
-  function syncWordStat(levelWords, interestWords) {
-    var raw = (document.getElementById('stat-words') || {}).textContent || 0;
-    var current = Number(raw);
-    if (!isFinite(current)) current = 0;
-    var shown = (levelWords || []).length + (interestWords || []).length;
-    if (shown > current) setText('stat-words', shown);
-  }
-
   function renderWords(payload) {
     payload = payload || { levelWords: [], interestWords: [] };
     var levelWords = payload.levelWords || [];
@@ -1649,7 +1641,6 @@
     if (intEl) intEl.innerHTML = interestWords.length
       ? interestWords.map(function(w){ return wordRowHTML(w, interestLabelFor(w.interest_tag), 'interest'); }).join('')
       : '<div style="color:#94a3b8;font-size:13px;padding:12px 0">Select your interest tags and save to get 10 topic words each day.</div>';
-    syncWordStat(levelWords, interestWords);
   }
 
   function vocabDateKey() {
@@ -2930,46 +2921,40 @@
   // ═══════════════════════════════════════════════════════════════
   // WEEKLY COMPARISON CARD
   // ═══════════════════════════════════════════════════════════════
+  // This week vs last week, counted live. user_weekly_snapshot only holds
+  // skill_* scores (generateWeeklySnapshot), so reading articles_read etc.
+  // from it showed 0 next to "Read today 8". Counts come from
+  // daily_missions — the same rows behind the today stats and the home
+  // Today card — plus writing from user_activity_log. Weeks are KST Mon–Sun.
   async function loadWeeklyComparison() {
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb || !supaUser) return;
     try {
-      var thisWeekStart = getMonday(new Date()).toISOString().slice(0,10);
-      var lastWeekStart = getMonday(new Date(Date.now() - 7*86400000)).toISOString().slice(0,10);
-      var r = await sb.from('user_weekly_snapshot')
-        .select('*')
-        .eq('user_id', supaUser.id)
-        .in('week_start', [thisWeekStart, lastWeekStart]);
-      var thisW = null, lastW = null;
-      (r.data||[]).forEach(function(s) {
-        if (s.week_start === thisWeekStart) thisW = s;
-        else if (s.week_start === lastWeekStart) lastW = s;
-      });
-      // If no snapshot for this week yet, compute from activity_log
-      if (!thisW) {
-        thisW = await computeCurrentWeekStats(sb, thisWeekStart);
-      }
-      renderWeeklyComparison(thisW, lastW);
+      var kst = new Date(Date.now() + 9 * 3600000);
+      var mon = new Date(kst.getTime() - ((kst.getUTCDay() + 6) % 7) * 86400000);
+      var thisWeekStart = mon.toISOString().slice(0, 10);
+      var lastWeekStart = new Date(mon.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+      var both = await Promise.all([computeWeekStats(sb, thisWeekStart), computeWeekStats(sb, lastWeekStart)]);
+      renderWeeklyComparison(both[0], both[1]);
     } catch(e) { console.warn('[weekly-compare]', e); }
   }
 
-  async function computeCurrentWeekStats(sb, weekStart) {
-    var weekEnd = new Date(new Date(weekStart).getTime() + 6*86400000).toISOString().slice(0,10);
-    var r = await sb.from('user_activity_log')
-      .select('activity_type, study_date')
-      .eq('user_id', supaUser.id)
-      .gte('study_date', weekStart)
-      .lte('study_date', weekEnd);
-    var rows = r.data || [];
+  async function computeWeekStats(sb, weekStart) {
+    var weekEnd = new Date(new Date(weekStart + 'T00:00:00Z').getTime() + 6 * 86400000).toISOString().slice(0, 10);
+    var res = await Promise.all([
+      sb.from('daily_missions').select('date, articles, words, quizzes, fill')
+        .eq('user_id', supaUser.id).gte('date', weekStart).lte('date', weekEnd),
+      sb.from('user_activity_log').select('activity_type, study_date')
+        .eq('user_id', supaUser.id).gte('study_date', weekStart).lte('study_date', weekEnd)
+        .in('activity_type', ['writing_submit', 'grammar_practice'])
+    ]);
     var days = new Set();
     var articles = 0, words = 0, quizzes = 0, writing = 0;
-    rows.forEach(function(a) {
-      days.add(a.study_date);
-      if (a.activity_type === 'read') articles++;
-      if (a.activity_type === 'word_save') words++;
-      if (a.activity_type === 'quiz') quizzes++;
-      if (a.activity_type === 'writing_submit' || a.activity_type === 'grammar_practice') writing++;
+    ((res[0] && res[0].data) || []).forEach(function(d) {
+      articles += d.articles || 0; words += d.words || 0; quizzes += d.quizzes || 0;
+      if ((d.articles || 0) + (d.words || 0) + (d.quizzes || 0) + (d.fill || 0) > 0) days.add(d.date);
     });
+    ((res[1] && res[1].data) || []).forEach(function(a) { writing++; days.add(a.study_date); });
     return { articles_read:articles, words_learned:words, quizzes_done:quizzes, writing_count:writing, active_days:days.size };
   }
 
@@ -3021,7 +3006,7 @@
       var r = await sb.from('user_weekly_goals').select('*').eq('user_id', supaUser.id).eq('week_start', weekStart).maybeSingle();
       _weeklyGoals = r.data || { goal_articles:5, goal_words:20, goal_quizzes:10, goal_writing:3, goal_active_days:5 };
       // Get current week progress
-      var stats = await computeCurrentWeekStats(sb, weekStart);
+      var stats = await computeWeekStats(sb, weekStart);
       renderWeeklyGoals(stats);
     } catch(e) { console.warn('[weekly-goals]', e); }
   }
@@ -3077,6 +3062,7 @@
     _weeklyGoals = goals;
     document.getElementById('goal-settings-modal').style.display = 'none';
     loadWeeklyGoals();
+    if (typeof window._glRenderWeek === 'function') window._glRenderWeek();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -4694,7 +4680,6 @@
   // Mon–Sun), weak spots (weakest grammar point + due words) and one next
   // action. Three small reads; no AI.
   (function(){
-    var GOAL = 5;
     var _glWeekBusy = false;
     async function renderGlWeek() {
       var box = document.getElementById('gl-week');
@@ -4712,7 +4697,11 @@
         var res = await Promise.all([
           sb.from('daily_missions').select('date, articles, words, quizzes, fill').eq('user_id', u.id).gte('date', days[0]).lte('date', days[6]),
           sb.from('user_saved_words').select('word_ko', { count: 'exact', head: true }).eq('user_id', u.id).lte('srs_next_review', new Date().toISOString().slice(0, 10)),
-          (typeof getUnifiedWeakGrammarItems === 'function') ? getUnifiedWeakGrammarItems(1) : Promise.resolve([])
+          (typeof getUnifiedWeakGrammarItems === 'function') ? getUnifiedWeakGrammarItems(1) : Promise.resolve([]),
+          // Same row the Goals tab edits (keyed by that tab's getMonday()).
+          (typeof getMonday === 'function')
+            ? sb.from('user_weekly_goals').select('goal_active_days').eq('user_id', u.id).eq('week_start', getMonday(new Date()).toISOString().slice(0, 10)).maybeSingle()
+            : Promise.resolve(null)
         ].map(function(q){ return Promise.resolve(q).then(function(r){ return r; }, function(){ return null; }); }));
         var active = {};
         ((res[0] && res[0].data) || []).forEach(function(d){
@@ -4721,6 +4710,7 @@
         var activeN = days.filter(function(d){ return active[d]; }).length;
         var due = (res[1] && !res[1].error) ? (res[1].count || 0) : 0;
         var weak = (res[2] && res[2][0]) || null;
+        var GOAL = Math.max(1, Math.min(7, Number(res[3] && res[3].data && res[3].data.goal_active_days) || 5));
         // On track = at least the goal's pro-rata share of the week so far.
         var pace = Math.floor(GOAL * (dow + 1) / 7);
         var status = activeN >= GOAL ? ['goal reached', '#16a34a']
@@ -4752,6 +4742,7 @@
       } catch (e) { console.warn('[gl-week]', e); }
       _glWeekBusy = false;
     }
+    window._glRenderWeek = renderGlWeek;
     document.addEventListener('DOMContentLoaded', function(){ setTimeout(renderGlWeek, 300); });
     window.addEventListener('kh-auth-signed-in', function(){ setTimeout(renderGlWeek, 400); });
   })();
