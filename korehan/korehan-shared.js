@@ -1927,7 +1927,7 @@ function updateAuthUI() {
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
         + '<a href="korehan-mypage.html#mp-miniroom-section" class="kh-user-dropdown-link">' + khIcon('house', 'My Room', 'kh-ui-icon-sm') + '</a>'
         + '<a href="korehan-shop.html" class="kh-user-dropdown-link">' + khIcon('shopping-bag', 'Shop', 'kh-ui-icon-sm') + '</a>'
-        + '<a href="korehan-study-room.html?tab=wordbook" class="kh-user-dropdown-link">' + khIcon('book-open', 'Word Book', 'kh-ui-icon-sm') + '</a>'
+        + '<a href="korehan-study-room.html?tab=words" class="kh-user-dropdown-link">' + khIcon('book-open', 'My Words', 'kh-ui-icon-sm') + '</a>'
         + '<a href="korehan-friends.html" class="kh-user-dropdown-link">' + khIcon('users', 'Friends', 'kh-ui-icon-sm') + '</a>'
         // Owner: the old "My Notes" duplicated the Word Universe vocab
         // surface inside the profile dropdown — same saved_words data,

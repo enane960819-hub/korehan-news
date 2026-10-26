@@ -1,0 +1,326 @@
+// ═══════════════════════════════════════════════════════════════
+// Study Room home (2026-10 restructure) + My Words
+//
+// Study tab:  this week's lesson (hero) + Today's plan stay as they are;
+//             everything else is 4 tiles — Review / Grammar / Read & Talk /
+//             Real-life — each opening a bottom sheet of the existing
+//             activities, plus a Seed-only "New to Korean?" card.
+// My Words:   one place for saved words (user_saved_words + SRS columns):
+//             today's due count → review, flashcards / quiz / listening
+//             over the learner's own words, filters, search, list.
+// Every entry point calls the activity's existing opener, so plan gating
+// (requirePlan inside each opener) and progress tracking are unchanged.
+// ═══════════════════════════════════════════════════════════════
+
+function _srhE(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function _srhIcon(name) { return '<i data-lucide="' + name + '" class="kh-ui-icon" aria-hidden="true"></i>'; }
+
+// ── Practice tiles ──────────────────────────────────────────────
+function _srhDue() { return (typeof _srPlanDue === 'number' && _srPlanDue > 0) ? _srPlanDue : (_mw.dueCount || 0); }
+
+function srRenderPractice() {
+  var box = document.getElementById('sr-practice');
+  if (!box) return;
+  var due = _srhDue();
+  var next = null;
+  try { next = (typeof getNextCurriculumPattern === 'function') ? getNextCurriculumPattern() : null; } catch (_) {}
+  var tiles = [
+    { k: 'review', icon: 'rotate-ccw', tone: 'red', title: 'Review', sub: 'Daily · Flashcards · Listening', badge: due ? Math.min(due, 99) + ' due' : '' },
+    { k: 'grammar', icon: 'route', tone: 'amber', title: 'Grammar', sub: next ? 'Next: ' + next.pattern : 'Path · Skill Tree · Builder' },
+    { k: 'read', icon: 'book-open-text', tone: 'blue', title: 'Read & Talk', sub: 'Article Study · Conversations · Buzz' },
+    { k: 'real', icon: 'phone', tone: 'green', title: 'Real-life', sub: 'Fast Track · Phone Call · Slang' }
+  ];
+  var html = '<div class="srh-h">More practice</div><div class="srh-grid">'
+    + tiles.map(function (t) {
+        return '<button type="button" class="srh-tile" onclick="srOpenSheet(\'' + t.k + '\')">'
+          + (t.badge ? '<span class="srh-badge">' + _srhE(t.badge) + '</span>' : '')
+          + '<span class="srh-ic srh-' + t.tone + '">' + _srhIcon(t.icon) + '</span>'
+          + '<b>' + _srhE(t.title) + '</b><small>' + _srhE(t.sub) + '</small></button>';
+      }).join('')
+    + '</div>';
+  if ((typeof _currentLevel !== 'undefined') && _currentLevel === 'Starter') {
+    html += '<button type="button" class="srh-newbie" onclick="srOpenSheet(\'basics\')">'
+      + '<span class="srh-ic srh-yellow">' + _srhIcon('type') + '</span>'
+      + '<span><b>New to Korean?</b><small>Hangul, basics &amp; word builder</small></span></button>';
+  }
+  // Desktop only (CSS): My Words summary under the tiles.
+  html += '<div class="srh-words">'
+    + '<div class="srh-h">My Words <span id="srh-saved">' + (_mw.loaded ? _mw.rows.length + ' saved' : '') + '</span></div>'
+    + '<button type="button" class="srh-words-row" onclick="srGoWords()">'
+    + '<span class="srh-num">' + (due ? Math.min(due, 99) : '✓') + '</span>'
+    + '<span><b>' + (due ? due + ' words due today' : 'Nothing due right now') + '</b><small>Flashcards, quiz or listening</small></span>'
+    + '<span class="srh-cta">' + (due ? 'Review' : 'Open') + '</span></button></div>';
+  box.innerHTML = html;
+  _srhSyncBadge();
+}
+
+function _srhSyncBadge() {
+  var b = document.getElementById('sr-words-due-badge');
+  if (!b) return;
+  var due = _srhDue();
+  b.hidden = !due;
+  b.textContent = due ? String(Math.min(due, 99)) : '';
+}
+
+function srGoWords() {
+  switchSrTab('wordbook', document.getElementById('sr-tab-btn-wordbook'));
+  try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0, 0); }
+}
+
+// ── Bottom sheets ───────────────────────────────────────────────
+function _srhSheetItems(kind) {
+  var due = _srhDue();
+  var weeklySub = ((document.getElementById('weekly-review-sub') || {}).textContent || 'Opens on Sunday').trim();
+  var monthlySub = ((document.getElementById('monthly-review-sub') || {}).textContent || 'Opens on the 1st–3rd of each month').trim();
+  var next = null;
+  try { next = (typeof getNextCurriculumPattern === 'function') ? getNextCurriculumPattern() : null; } catch (_) {}
+  var S = {
+    review: { title: 'Review', sub: 'Words you saved come back right before you forget them.', items: [
+      { icon: 'clipboard-list', t: 'Daily Review', s: due ? due + ' words due · 10 quick questions' : '10 quick questions', fn: function () { openDailyReview(); }, cta: 'Start' },
+      { icon: 'calendar-days', t: 'Weekly Review', s: weeklySub, fn: function () { openWeeklyReview(); } },
+      { icon: 'calendar-check', t: 'Monthly Review', s: monthlySub, fn: function () { openMonthlyReview(); } },
+      { icon: 'layers', t: 'Flashcards', s: 'Read the Korean, then flip', fn: function () { mwFlashcards(); } },
+      { icon: 'headphones', t: 'Listening Quiz', s: 'Hear it, pick the meaning', fn: function () { startLQ(); }, gate: 'listening_quiz' }
+    ] },
+    grammar: { title: 'Grammar', sub: 'One pattern at a time, in order.', items: [
+      { icon: 'route', t: 'Grammar Path', s: next ? 'Next: ' + next.pattern : 'Continue your next lesson', fn: function () { openGrammarFocusForCurriculum(); }, cta: 'Go' },
+      { icon: 'git-branch', t: 'Grammar Skill Tree', s: 'See every pattern by level', fn: function () { KHGrammarTree&&KHGrammarTree.open(); } },
+      { icon: 'puzzle', t: 'Sentence Builder', s: 'Build Korean sentences from blocks', fn: function () { KHSentenceBuilder&&KHSentenceBuilder.open(); } }
+    ] },
+    read: { title: 'Read & Talk', sub: 'Real Korean, step by step.', items: [
+      { icon: 'newspaper', t: 'Article Study', s: 'Real news in 5 learning steps', fn: function () { openArticleStudy(); }, gate: 'article_study' },
+      { icon: 'messages-square', t: 'Conversations', s: 'Real dialogue patterns', fn: function () { openConvStudy(); }, gate: 'conversation_study' },
+      { icon: 'flame', t: 'Korea Buzz', s: 'What Korea is talking about today', fn: function () { location.href = 'korehan-section.html?s=buzz'; } }
+    ] },
+    real: { title: 'Real-life', sub: 'Practice for real situations.', items: [
+      { icon: 'zap', t: 'Fast Track', s: 'Cafe, taxi, hospital & more', fn: function () { openFastTrack(); }, gate: 'fast_track' },
+      { icon: 'phone', t: 'Phone Call', s: 'Talk through a real call', fn: function () { openPhoneModal(); }, gate: 'phone_call' },
+      { icon: 'message-circle', t: 'Korean Slang', s: 'What people actually say', fn: function () { openSlangModal(); } },
+      { icon: 'image', t: 'Describe the image', s: 'Say what you see in Korean', fn: function () { openPictureDescription(); } }
+    ] },
+    basics: { title: 'New to Korean?', sub: 'Start with the letters and the most basic words.', items: [
+      { icon: 'type', t: 'Korean Basics', s: 'Hangul and first words', fn: function () { openBasicsTrack(); }, cta: 'Start' },
+      { icon: 'blocks', t: 'Word Builder', s: 'Put syllables together', fn: function () { openAlphaModal(); } }
+    ] }
+  };
+  return S[kind];
+}
+
+function srOpenSheet(kind) {
+  var d = _srhSheetItems(kind);
+  if (!d) return;
+  srCloseSheet();
+  var ov = document.createElement('div');
+  ov.id = 'srh-sheet';
+  ov.className = 'srh-sheet-ov';
+  ov.innerHTML = '<div class="srh-sheet" role="dialog" aria-modal="true" aria-label="' + _srhE(d.title) + '">'
+    + '<div class="srh-grab"></div>'
+    + '<div class="srh-sheet-t">' + _srhE(d.title) + '</div>'
+    + '<div class="srh-sheet-s">' + _srhE(d.sub) + '</div>'
+    + d.items.map(function (it, i) {
+        var locked = it.gate && typeof canAccess === 'function' && !canAccess(it.gate);
+        return '<button type="button" class="srh-item" data-i="' + i + '">'
+          + '<span class="srh-item-ic">' + _srhIcon(it.icon) + '</span>'
+          + '<span class="srh-item-tx"><b>' + _srhE(it.t) + '</b><small>' + _srhE(it.s) + '</small></span>'
+          + (locked ? '<span class="srh-item-r srh-lock">' + _srhIcon('lock') + '</span>'
+                    : (it.cta ? '<span class="srh-item-r">' + _srhE(it.cta) + '</span>' : '<span class="srh-item-arr">' + _srhIcon('chevron-right') + '</span>'))
+          + '</button>';
+      }).join('')
+    + '</div>';
+  ov.addEventListener('click', function (e) {
+    if (e.target === ov) { srCloseSheet(); return; }
+    var btn = e.target.closest && e.target.closest('.srh-item');
+    if (!btn) return;
+    var it = d.items[Number(btn.dataset.i)];
+    srCloseSheet();
+    try { it.fn(); } catch (err) { console.warn('[sr-home] open failed', it.t, err); }
+  });
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(function () { ov.classList.add('open'); });
+}
+
+function srCloseSheet() {
+  var ov = document.getElementById('srh-sheet');
+  if (!ov) return;
+  ov.remove();
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') srCloseSheet(); });
+
+// ── My Words ────────────────────────────────────────────────────
+var _mw = { rows: [], loaded: false, filter: 'all', dueCount: 0 };
+
+function _mwToday() {
+  try { return kstNow().toISOString().slice(0, 10); } catch (_) { return new Date().toISOString().slice(0, 10); }
+}
+function _mwCat(en) {
+  if (en.indexOf('[슬랭]') === 0) return 'slang';
+  if (en.indexOf('[표현]') === 0) return 'expression';
+  if (en.indexOf('[교정]') === 0) return 'correction';
+  return 'word';
+}
+function _mwStage(r) {
+  if (r.mastered || (r.srs_interval || 0) >= 21) return 3;
+  if ((r.srs_review_count || r.review_count || 0) > 0 && (r.srs_interval || 0) >= 3) return 2;
+  return 1;
+}
+function _mwSource(r) {
+  var t = r.source_content_type || '';
+  if (t === 'article' || r.source_kind === 'article') return 'News';
+  if (t === 'conversation' || r.source_kind === 'conversation') return 'Conversation';
+  if (r.source_kind === 'phrase') return 'Phrase';
+  return '';
+}
+
+async function mwLoad() {
+  var list = document.getElementById('wb-list');
+  if (!supaUser) { if (list) list.innerHTML = '<div class="wb-empty">Sign in to see your saved words</div>'; return; }
+  var sb = getSupa(); if (!sb) return;
+  if (list && !_mw.loaded) list.innerHTML = '<div class="wb-empty">Loading your saved words…</div>';
+  try {
+    var r = await sb.from('user_saved_words')
+      .select('word_ko, word_rom, word_en, source_kind, source_content_type, review_count, correct_count, wrong_count, mastered, created_at, srs_interval, srs_next_review, srs_review_count')
+      .eq('user_id', supaUser.id).order('created_at', { ascending: false }).limit(1000);
+    if (r.error) throw r.error;
+    var today = _mwToday(), seen = {};
+    _mw.rows = (r.data || []).filter(function (w) {
+      if (!w.word_ko || seen[w.word_ko]) return false;
+      seen[w.word_ko] = 1; return true;
+    }).map(function (w) {
+      var en = String(w.word_en || '');
+      var cat = _mwCat(en);
+      var clean = (typeof khCleanMeaning === 'function') ? khCleanMeaning(en) : en.replace(/^\[[^\]]+\]\s*/, '');
+      return {
+        ko: w.word_ko, rom: w.word_rom || '', en: clean, rawEn: en, cat: cat,
+        stage: _mwStage(w), due: !!(w.srs_next_review && w.srs_next_review <= today && !w.mastered),
+        reviews: w.srs_review_count || w.review_count || 0, src: _mwSource(w), date: w.created_at,
+        // legacy Word Book quiz fields
+        reviewCount: w.review_count || 0, correctCount: w.correct_count || 0, wrongCount: w.wrong_count || 0,
+        accuracy: ((w.correct_count || 0) + (w.wrong_count || 0)) ? Math.round((w.correct_count || 0) / ((w.correct_count || 0) + (w.wrong_count || 0)) * 100) : -1
+      };
+    });
+    _mw.loaded = true;
+    _mw.dueCount = _mw.rows.filter(function (w) { return w.due; }).length;
+    window._wbData = _mw.rows;   // the legacy quiz (startWbQuiz) reads this
+    mwRenderSummary();
+    mwRender();
+    srRenderPractice();
+  } catch (e) {
+    console.warn('[My Words]', e);
+    if (list) list.innerHTML = '<div class="wb-empty">Couldn\'t load your words. <button type="button" class="mw-retry" onclick="mwLoad()">Retry</button></div>';
+  }
+}
+
+function mwRenderSummary() {
+  var due = Math.max(_mw.dueCount, (typeof _srPlanDue === 'number' ? _srPlanDue : 0));
+  var n = document.getElementById('mw-due-n'); if (n) n.textContent = String(due);
+  var sub = document.getElementById('mw-due-sub');
+  if (sub) sub.textContent = due ? 'words due · ~' + Math.max(1, Math.ceil(Math.min(due, 20) / 4)) + ' min' : 'nothing due — nice';
+  var go = document.getElementById('mw-due-go'); if (go) go.textContent = due ? 'Start review' : 'Practice anyway';
+  var all = _mw.rows.length, mastered = _mw.rows.filter(function (w) { return w.stage === 3; }).length;
+  var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = String(v); };
+  set('mw-cnt-all', all); set('mw-cnt-learning', all - mastered); set('mw-cnt-mastered', mastered);
+  var dueBtn = document.querySelector('#mw-filters [data-f="due"]'); if (dueBtn) dueBtn.textContent = 'Due' + (_mw.dueCount ? ' (' + _mw.dueCount + ')' : '');
+  var corr = document.querySelector('#mw-filters [data-f="correction"]');
+  if (corr) corr.hidden = !_mw.rows.some(function (w) { return w.cat === 'correction'; });
+}
+
+function mwSetFilter(f) {
+  _mw.filter = f;
+  document.querySelectorAll('#mw-filters button').forEach(function (b) { b.classList.toggle('on', b.dataset.f === f); });
+  mwRender();
+}
+
+function _mwFiltered() {
+  var q = ((document.getElementById('mw-search') || {}).value || '').trim().toLowerCase();
+  return _mw.rows.filter(function (w) {
+    var f = _mw.filter;
+    if (f === 'due' && !w.due) return false;
+    if (f === 'learning' && w.stage === 3) return false;
+    if (f === 'mastered' && w.stage !== 3) return false;
+    if (f === 'phrase' && w.cat !== 'expression' && w.cat !== 'slang') return false;
+    if (f === 'correction' && w.cat !== 'correction') return false;
+    if (q && w.ko.toLowerCase().indexOf(q) < 0 && w.en.toLowerCase().indexOf(q) < 0 && w.rom.toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+}
+
+function mwRender() {
+  var list = document.getElementById('wb-list');
+  if (!list || !_mw.loaded) return;
+  var rows = _mwFiltered();
+  if (!rows.length) {
+    list.innerHTML = '<div class="wb-empty">' + (_mw.rows.length
+      ? 'No words here yet.'
+      : 'No saved words yet<br><small>Tap a word while reading and choose Save — it shows up here for review.</small>') + '</div>';
+    return;
+  }
+  var tag = { slang: '<span class="mw-tag mw-tag-p">SLANG</span>', expression: '<span class="mw-tag mw-tag-p">PHRASE</span>', correction: '<span class="mw-tag mw-tag-c">FIX</span>' };
+  list.innerHTML = rows.slice(0, 400).map(function (w) {
+    var meta = [w.src, w.reviews ? w.reviews + (w.reviews === 1 ? ' review' : ' reviews') : 'New'].filter(Boolean).join(' · ');
+    var bars = [1, 2, 3].map(function (i) { return '<i class="' + (i <= w.stage ? (w.stage === 1 ? 'm' : 'f') : '') + '"></i>'; }).join('');
+    return '<div class="mw-row">'
+      + '<div class="mw-ko" lang="ko">' + _srhE(w.ko) + '</div>'
+      + '<div class="mw-en">' + _srhE(w.en) + '<small>' + _srhE(meta) + (w.due ? ' <span class="mw-tag mw-tag-d">DUE</span>' : '') + (tag[w.cat] || '') + '</small></div>'
+      + '<div class="mw-bar" title="' + ['', 'New', 'Learning', 'Mastered'][w.stage] + '">' + bars + '</div>'
+      + '<button type="button" class="mw-play" aria-label="Listen" data-t="' + _srhE(w.ko) + '" onclick="srSpeak(this.dataset.t,this)">' + _srhIcon('volume-2') + '</button>'
+      + '</div>';
+  }).join('');
+}
+// Legacy Word Book renderer → My Words (the quiz's "Back to Words" calls it).
+function renderWordBook() { mwRender(); }
+function renderWbCounts() { mwRenderSummary(); }
+// switchSrTab('wordbook') calls loadWordBook() — route it here.
+function loadWordBook() { return mwLoad(); }
+
+// Review entry points over the learner's own words
+function _mwPool(n) {
+  var due = _mw.rows.filter(function (w) { return w.due; });
+  var pool = due.length ? due : _mw.rows.filter(function (w) { return w.stage < 3; });
+  if (!pool.length) pool = _mw.rows.slice();
+  return pool.slice().sort(function () { return Math.random() - 0.5; }).slice(0, n);
+}
+function mwStartReview() {
+  if (typeof openDailyReview === 'function') openDailyReview();
+}
+function mwFlashcards() {
+  if (!_mw.loaded) { mwLoad().then(mwFlashcards); return; }
+  var cards = _mwPool(20).map(function (w) { return { ko: w.ko, en: w.en, rom: w.rom, src: w.src === 'Conversation' ? 'conv' : 'news' }; });
+  if (!cards.length) { showToast('Save a few words first — tap a word while reading.'); return; }
+  KHFlashcards.open({ title: 'My Words · ' + cards.length + ' cards', cards: cards });
+}
+function mwQuiz() {
+  if (!_mw.loaded) { mwLoad().then(mwQuiz); return; }
+  if (_mw.rows.length < 4) { showToast('Save at least 4 words to start the quiz'); return; }
+  if (typeof startWbQuiz === 'function') startWbQuiz();
+  var list = document.getElementById('wb-list');
+  if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function mwListening() {
+  if (typeof requirePlan === 'function' && !requirePlan('listening_quiz')) return;
+  if (!_mw.loaded) { mwLoad().then(mwListening); return; }
+  var all = _mw.rows.filter(function (w) { return w.en; });
+  if (all.length < 4) { showToast('Save at least 4 words for the listening quiz'); return; }
+  var qs = _mwPool(10).filter(function (w) { return w.en; }).map(function (w) {
+    var wrong = all.filter(function (x) { return x.en !== w.en; }).sort(function () { return Math.random() - 0.5; }).slice(0, 2).map(function (x) { return x.en; });
+    return { sentence: w.ko, correct: w.en, choices: [w.en].concat(wrong).sort(function () { return Math.random() - 0.5; }) };
+  });
+  KHListening.open({ questions: qs });
+}
+
+// ── Boot ────────────────────────────────────────────────────────
+(function () {
+  function boot() {
+    srRenderPractice();
+    var tab = new URLSearchParams(location.search).get('tab');
+    if (tab === 'words' || tab === 'wordbook') setTimeout(srGoWords, 300);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  // Due count + level arrive after auth; refresh the tiles (and the tab badge).
+  window.addEventListener('kh-auth-signed-in', function () { setTimeout(function () { mwLoad(); }, 1200); });
+  setTimeout(function () { if (typeof supaUser !== 'undefined' && supaUser && !_mw.loaded) mwLoad(); }, 4000);
+})();

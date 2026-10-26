@@ -267,18 +267,8 @@ function _khStudyRoomInit() {
   // surfaces them immediately.
   _safe('renderKhLucideIcons', function(){ if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons(); });
 
-  // ── Mobile layout restructure ──
-  // Move hero block outside tab panel so it stays visible across all tabs
-  // Move tab bar between hero block and activity cards
-  _safe('mobile-layout-restructure', function(){
-    if (window.innerWidth > 860) return;
-    var heroBlock = document.querySelector('.sr-hero-block');
-    var tabsWrap = document.querySelector('.sr-top-tabs-wrap');
-    var levelBar = document.getElementById('sr-level-bar');
-    if (!heroBlock || !tabsWrap || !levelBar) return;
-    levelBar.after(heroBlock);
-    heroBlock.after(tabsWrap);
-  });
+  // (2026-10) The mobile "hero outside the tabs" restructure is gone: with
+  // the Study / My Words tabs the lesson hero belongs to the Study tab.
 
   _safe('loadStudyDoneState', loadStudyDoneState);
   _safe('renderStudyChecklist', renderStudyChecklist);
@@ -454,10 +444,8 @@ function _khStudyRoomInit() {
     setTimeout(waitAndOpenGFModal, 400);
   }
 
-  // ?tab=wordbook (profile menu "Word Book") opens that tab directly.
-  if (_urlParams.get('tab') === 'wordbook' && typeof switchSrTab === 'function') {
-    setTimeout(function(){ switchSrTab('wordbook'); }, 300);
-  }
+  // ?tab=wordbook / ?tab=words (profile menu, notes page) → My Words —
+  // handled by js/features/sr-home.js (it also highlights the tab).
 
   // Daily/Weekly/Monthly Review auto-open from home (?review=daily|weekly|monthly)
   var _reviewParam = _urlParams.get('review');
@@ -905,7 +893,7 @@ function renderTodayPlan() {
   var due = _srPlanDue;
   var steps = [
     { done: reviewDone, label: 'Daily review',
-      sub: reviewDone ? 'Done today' : (due ? Math.min(due, 20) + ' words due · ~' + Math.max(1, Math.ceil(Math.min(due, 20) / 4)) + ' min' : '10 quick questions'),
+      sub: reviewDone ? 'Done today' : (due ? due + ' words due · ~' + Math.max(1, Math.ceil(Math.min(due, 20) / 4)) + ' min' : '10 quick questions'),
       fn: 'openDailyReview()' },
     { done: lessonDone >= 5, label: 'This week’s lesson',
       sub: lessonDone >= 5 ? 'All 5 steps done' : (lessonDone + '/5 · ' + (nextStage ? nextStage.label : '')),
@@ -930,6 +918,7 @@ function renderTodayPlan() {
       .eq('user_id', supaUser.id).lte('srs_next_review', new Date().toISOString().slice(0, 10))
       .then(function(r){ if (r && !r.error) { _srPlanDue = r.count || 0; renderTodayPlan(); } }, function(){});
   }
+  if (typeof srRenderPractice === 'function') srRenderPractice();   // due badge on the Review tile
 }
 
 // ── Library tabs (phones/tablets): one group of the Study panel at a time ──
@@ -1310,6 +1299,7 @@ function setLevel(level, btn) {
   loadStudyDoneState();
   renderStudyChecklist();
   loadStudyDoneFromDB();
+  if (typeof srRenderPractice === 'function') srRenderPractice();   // Seed-only basics card
 
   // Members only
   if (!supaUser) {
@@ -7531,7 +7521,7 @@ function switchSrTab(tab, btn) {
   if (tab === 'wordbook') loadWordBook();
   // Show level bar only on Study tab (desktop only — on mobile it stays visible with hero)
   var lvBar = document.getElementById('sr-level-bar');
-  if (lvBar && window.innerWidth > 860) lvBar.style.display = (tab === 'study') ? '' : 'none';
+  if (lvBar) lvBar.style.display = (tab === 'study') ? '' : 'none';
   // Mirror sidebar source boxes into the Help/Exercise tab twins.
   // Exercise (master) uses the same fc-grid-help / phrase-box-help
   // IDs as Help, so without this the Flashcards categories grid
