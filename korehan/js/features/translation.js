@@ -40,8 +40,7 @@ async function toggleTranslate() {
   if (!btn || (!paras.length && !titleEl)) return;
 
   if (translateActive) {
-    paras.forEach(function(p) { if (p.dataset.original != null) p.innerHTML = p.dataset.original; });
-    if (titleEl && titleEl.dataset.original) titleEl.innerHTML = titleEl.dataset.original;
+    _trClear();
     translateActive = false;
     _translateMarkIdle(btn);
     return;
@@ -50,16 +49,20 @@ async function toggleTranslate() {
   btn.classList.add('loading');
   btn.disabled = true;
   btn.title = 'Translating…';
-  if (titleEl && !titleEl.dataset.original) titleEl.dataset.original = titleEl.innerHTML;
-  paras.forEach(function(p) { if (p.dataset.original == null) p.dataset.original = p.innerHTML; });
 
   // Title: curated title_en when it is real English.
   var titleEnAttr = titleEl ? titleEl.getAttribute('data-kh-title-en') : '';
   var titleEn = (titleEnAttr && !/[ㄱ-힝]/.test(titleEnAttr)) ? titleEnAttr : '';
+  // English goes UNDER the Korean title (the Korean stays readable).
   function setTitle(t) {
     if (!titleEl || !t) return;
-    var ttsSafe = String(t).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    titleEl.innerHTML = _trEsc(t) + ' <button class="tts-btn" title="Listen to pronunciation" onclick="event.stopPropagation();ttsSpeak(\'' + ttsSafe + '\',this)" style="display:inline-flex;align-items:center;justify-content:center"><span style="display:inline-flex;width:14px;height:14px">'+KH_ICON_VOLUME+'</span></button>';
+    var old = titleEl.parentNode && titleEl.parentNode.querySelector('.kh-tr-title');
+    if (old) old.remove();
+    var d = document.createElement('div');
+    d.className = 'kh-tr-title';
+    d.lang = 'en';
+    d.textContent = t;
+    titleEl.insertAdjacentElement('afterend', d);
   }
   if (titleEn) setTitle(titleEn);
 
@@ -217,8 +220,7 @@ async function toggleTranslate() {
     try { _trWriteBack(id, have, paras.length); } catch(e) {}
   } catch(e) {
     _translateMarkIdle(btn);
-    // Restore the Korean title if we had optimistically swapped it in.
-    if (titleEl && titleEl.dataset.original) titleEl.innerHTML = titleEl.dataset.original;
+    _trClear();
     translateActive = false;
     if (e && (e.message === 'unauthorized' || e.message === 'Not signed in')) {
       if (!supaUser) {
@@ -237,11 +239,23 @@ async function toggleTranslate() {
 function _trEsc(t) {
   return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; });
 }
+// Each translation is shown as a line UNDER its Korean paragraph — replacing
+// the Korean made learners lose the text they were reading.
 // Cached translations come from a table signed-in users can write — always escape.
 function applyTranslation(paras, translations) {
   paras.forEach(function(p, i) {
-    if (translations[i]) p.innerHTML = _trEsc(translations[i]).replace(/\n\n+/g, '<br><br>');
+    var next = p.nextElementSibling;
+    if (next && next.classList.contains('kh-tr-line')) next.remove();
+    if (!translations[i]) return;
+    var d = document.createElement('div');
+    d.className = 'kh-tr-line';
+    d.lang = 'en';
+    d.innerHTML = _trEsc(translations[i]).replace(/\n\n+/g, '<br><br>');
+    p.insertAdjacentElement('afterend', d);
   });
+}
+function _trClear() {
+  document.querySelectorAll('.kh-tr-line, .kh-tr-title').forEach(function(el){ el.remove(); });
 }
 
 async function _trWriteBack(articleId, texts, n) {

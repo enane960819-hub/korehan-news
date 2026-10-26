@@ -149,15 +149,16 @@
       card.style.transform = '';
     }
 
-    // Front: Korean + mastery ring
+    // Front: Korean only (no romanization — the front is a reading test) +
+    // a listen button that doesn't flip the card.
     if (front) {
-      var srcBadge = c.src === 'conv' ? '💬' : c.src === 'story' ? '📖' : '📰';
+      var srcLabel = c.src === 'conv' ? 'CONVERSATION' : 'NEWS';
       var masteryLevel = _getMasteryLevel(c);
       front.innerHTML =
         '<div style="position:absolute;top:12px;right:12px"><canvas id="fc-mastery-ring"></canvas></div>'
-        + '<div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:12px">' + srcBadge + ' TAP TO FLIP</div>'
+        + '<div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:12px;letter-spacing:.06em">' + srcLabel + ' · TAP TO FLIP</div>'
         + '<div style="font-family:\'Noto Serif KR\',serif;font-size:32px;font-weight:900;color:#fff;line-height:1.3">' + _esc(c.ko) + '</div>'
-        + (c.rom ? '<div style="font-size:14px;color:rgba(255,255,255,.4);margin-top:8px">' + _esc(c.rom) + '</div>' : '');
+        + _speakBtn(c.ko);
       // Draw mastery ring
       _drawMasteryRing(masteryLevel);
     }
@@ -168,10 +169,19 @@
         '<div style="font-size:10px;color:rgba(96,165,250,.5);margin-bottom:8px">ENGLISH</div>'
         + '<div style="font-family:\'Noto Serif KR\',serif;font-size:24px;font-weight:900;color:#fff;margin-bottom:6px;line-height:1.3">' + _esc(c.ko) + '</div>'
         + (c.rom ? '<div style="font-size:13px;color:rgba(255,255,255,.4);margin-bottom:10px;font-style:italic">' + _esc(c.rom) + '</div>' : '')
-        + '<div style="font-size:18px;font-weight:700;color:#60a5fa;line-height:1.5">' + _esc(c.en) + '</div>';
+        + '<div style="font-size:18px;font-weight:700;color:#60a5fa;line-height:1.5">' + _esc(c.en) + '</div>'
+        + _speakBtn(c.ko);
     }
 
     _updateScore();
+  }
+
+  function _speakBtn(ko) {
+    return '<button type="button" aria-label="Listen" data-t="' + _esc(ko).replace(/"/g, '&quot;') + '" '
+      + 'onclick="event.stopPropagation();(window.srSpeak||window.khSpeak||window.ttsSpeak)(this.dataset.t, this)" '
+      + 'onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()" '
+      + 'style="margin-top:14px;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer">'
+      + '<i data-lucide="volume-2" style="width:20px;height:20px"></i></button>';
   }
 
   function _updateScore() {

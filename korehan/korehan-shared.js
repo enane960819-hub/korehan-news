@@ -4329,7 +4329,9 @@ function renderArticlePage() {
     updateCommentForm();
     checkBookmarkState(articleId);
     if (supaUser) {
-      markArticleRead(articleId, articleTitle, articleSection, articleLevel);
+      _khArmReadCredit(articleId, function() {
+        markArticleRead(articleId, articleTitle, articleSection, articleLevel);
+      });
       // Start the reading-time timer — stops on close/navigate/visibility.
       _startArticleReadTimer(articleId, a.body || '');
       // Admin pre-bakes the article cache via runAutoGenerate before
@@ -7324,6 +7326,46 @@ function renderSearchResults(q, articles) {
 }
 
 // ── 읽은 기사 저장 ─────────────────────────────────────────────
+// Read credit (XP, daily mission, read history) only after real reading:
+// 30s of visible time, or reaching the end of the body after at least 8s.
+// It used to fire 0.3s after the page opened, so a bounce counted as a read.
+var _khReadCreditArmed = null;
+function _khArmReadCredit(articleId, fire) {
+  var id = String(articleId);
+  if (_khReadCreditArmed && _khReadCreditArmed.id === id) return;   // re-render of the same article
+  if (_khReadCreditArmed) _khReadCreditArmed.stop();
+  var visibleMs = 0, last = Date.now(), done = false;
+  function current() { return String((new URLSearchParams(window.location.search)).get('id') || '') === id; }
+  function tick() {
+    var now = Date.now();
+    if (document.visibilityState === 'visible') visibleMs += now - last;
+    last = now;
+  }
+  function endReached() {
+    var body = document.querySelector('#art-tab-article .art-full') || document.querySelector('#art-tab-article');
+    if (!body) return false;
+    var r = body.getBoundingClientRect();
+    return r.bottom <= (window.innerHeight || 800) + 40;
+  }
+  function check() {
+    if (done) return;
+    if (!current()) { stop(); return; }
+    tick();
+    if (visibleMs >= 30000 || (visibleMs >= 8000 && endReached())) {
+      done = true; stop();
+      try { fire(); } catch (_) {}
+    }
+  }
+  var timer = setInterval(check, 2000);
+  window.addEventListener('scroll', check, { passive: true });
+  function stop() {
+    clearInterval(timer);
+    window.removeEventListener('scroll', check);
+    if (_khReadCreditArmed && _khReadCreditArmed.id === id && !done) _khReadCreditArmed = null;
+  }
+  _khReadCreditArmed = { id: id, stop: stop };
+}
+
 async function markArticleRead(articleId, title, section, level) {
   // localStorage에 오늘 읽은 기사 ID 기록 (데일리 테스트용)
   try {
@@ -12103,7 +12145,17 @@ function pickNextFeedArticle(currentId) {
   var candidates = unstudied.length ? unstudied : pool;
   var fresh = candidates.filter(function(a){ return !recent.has(String(a.id)); });
   var from = fresh.length ? fresh : candidates;
-  return from[Math.floor(Math.random() * from.length)];
+  // Stay at the reader's level (the level of the article they're on, else
+  // their saved level) and serve the newest one — it's a news feed. It used
+  // to pick at random across every level.
+  var cur = pool.concat(getCachedArticles() || []).filter(function(a){ return a && String(a.id) === String(currentId); })[0];
+  var lvl = (cur && cur.level) || '';
+  if (!lvl) { try { lvl = localStorage.getItem('kh_level') || ''; } catch (_) {} }
+  if (lvl) {
+    var same = from.filter(function(a){ return a.level === lvl; });
+    if (same.length) from = same;
+  }
+  return sortArticlesNewest(from.slice())[0];
 }
 
 function goToNextArticle(direction) {
