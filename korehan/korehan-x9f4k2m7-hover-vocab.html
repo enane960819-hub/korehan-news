@@ -210,7 +210,7 @@ async function hvAutoFill(word) {
   const needMeaning = !meaningEl.value.trim();
   if (!needReading && !needMeaning) return;
 
-  status('🔍 사전 조회 중...');
+  status('사전 조회 중...');
 
   // 1) Existing hover_vocab_master row
   try {
@@ -241,7 +241,7 @@ async function hvAutoFill(word) {
   } catch(_) { /* fall through */ }
 
   // 3) Claude AI fallback
-  status('✨ AI 제안 생성 중...');
+  status('AI 제안 생성 중...');
   try {
     const sess = await sb.auth.getSession();
     const token = sess && sess.data && sess.data.session && sess.data.session.access_token;
@@ -277,7 +277,7 @@ async function hvAutoFill(word) {
     if (needReading && parsed.reading) { readingEl.value = parsed.reading; filled = true; }
     if (needMeaning && parsed.meaning) { meaningEl.value = parsed.meaning; filled = true; }
     previewHover();
-    status(filled ? '✨ AI 제안으로 채움 (확인 후 Save)' : 'AI 응답이 비어 있음');
+    status(filled ? 'AI 제안으로 채움 (확인 후 Save)' : 'AI 응답이 비어 있음');
   } catch(err) {
     status('AI 자동완성 실패: ' + (err.message || err), true);
   }
@@ -409,5 +409,6 @@ async function deleteHoverWord() {
 previewHover();
 loadHoverWords();
 </script>
+<script src="js/core/emoji-icons.js?v=20261026a"></script>
 </body>
 </html>

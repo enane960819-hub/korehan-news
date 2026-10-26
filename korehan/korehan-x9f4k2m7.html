@@ -10209,7 +10209,7 @@ function _sbProgress() {
 async function generateStorybook(storyId, opts) {
   opts = opts || {};
   var maxPages = opts.maxPages || 10;
-  if (!confirm('📖 이 스토리를 그림책(페이지별 삽화+핀)으로 생성할까요?\n페이지당 삽화 생성 + 비전 분석이라 1~3분 걸리고 OpenAI 비용이 발생합니다.')) return;
+  if (!confirm('이 스토리를 그림책(페이지별 삽화+핀)으로 생성할까요?\n페이지당 삽화 생성 + 비전 분석이라 1~3분 걸리고 OpenAI 비용이 발생합니다.')) return;
   var prog = _sbProgress();
   try {
     var sb = getSb();
@@ -11313,7 +11313,7 @@ async function _saveAllStoriesBody() {
     return;
   }
 
-  alert('✅ ' + rows.length + ' stories saved/published!');
+  alert(rows.length + ' stories saved/published!');
   window._generatedStories = [];
   goStoriesManager();
 }
@@ -22109,5 +22109,6 @@ async function currGenExtra(level) {
 })();
 
 </script>
+<script src="js/core/emoji-icons.js?v=20261026a"></script>
 </body>
 </html>

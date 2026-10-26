@@ -16,26 +16,27 @@
     var t = img.parentNode;
     if (!t) { img.style.display = 'none'; return; }
     t.innerHTML = '<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;'
-      + 'background:linear-gradient(135deg,#eef2ff,#e0e7ff);font-size:44px;line-height:1">🛋️</div>';
+      + 'background:linear-gradient(135deg,#eef2ff,#e0e7ff);color:#6366f1;width:100%;height:100%;border-radius:8px"><i data-lucide="sofa" style="width:44px;height:44px" aria-hidden="true"></i></div>';
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
   };
 
-  // Category → emoji + gradient. Picked to feel intentional: badges look
+  // Category → icon + gradient. Picked to feel intentional: badges look
   // like a medal, titles look like a star, room items look like a plant, etc.
   var SHOP_TYPE_VISUAL = {
-    profile_badge:    { emoji: '🏅', bg: 'linear-gradient(135deg,#fbbf24,#f59e0b)' },
-    profile_title:    { emoji: '⭐', bg: 'linear-gradient(135deg,#a78bfa,#7c3aed)' },
-    profile_cosmetic: { emoji: '✨', bg: 'linear-gradient(135deg,#f0abfc,#c026d3)' },
-    reporter_item:    { emoji: '📸', bg: 'linear-gradient(135deg,#fbcfe8,#ec4899)' },
-    room_item:        { emoji: '🪴', bg: 'linear-gradient(135deg,#86efac,#22c55e)' },
-    sticker_pack:     { emoji: '🎨', bg: 'linear-gradient(135deg,#fda4af,#ef4444)' },
-    consumable:       { emoji: '💊', bg: 'linear-gradient(135deg,#93c5fd,#3b82f6)' },
+    profile_badge:    { icon: 'medal', bg: 'linear-gradient(135deg,#fbbf24,#f59e0b)' },
+    profile_title:    { icon: 'star', bg: 'linear-gradient(135deg,#a78bfa,#7c3aed)' },
+    profile_cosmetic: { icon: 'sparkles', bg: 'linear-gradient(135deg,#f0abfc,#c026d3)' },
+    reporter_item:    { icon: 'camera', bg: 'linear-gradient(135deg,#fbcfe8,#ec4899)' },
+    room_item:        { icon: 'sprout', bg: 'linear-gradient(135deg,#86efac,#22c55e)' },
+    sticker_pack:     { icon: 'palette', bg: 'linear-gradient(135deg,#fda4af,#ef4444)' },
+    consumable:       { icon: 'pill', bg: 'linear-gradient(135deg,#93c5fd,#3b82f6)' },
   };
   function renderShopThumb(it) {
     if (it && it.image_url) {
       return '<img src="' + it.image_url + '" alt="' + ((it.name||'').replace(/"/g,'&quot;')) + '">';
     }
-    var v = SHOP_TYPE_VISUAL[it && it.item_type] || { emoji: '🎁', bg: 'linear-gradient(135deg,#cbd5e1,#94a3b8)' };
-    return '<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:' + v.bg + ';font-size:48px;line-height:1" aria-label="' + ((it && it.name) || 'Item') + '">' + v.emoji + '</div>';
+    var v = SHOP_TYPE_VISUAL[it && it.item_type] || { icon: 'gift', bg: 'linear-gradient(135deg,#cbd5e1,#94a3b8)' };
+    return '<div style="width:100%;height:100%;border-radius:8px;display:flex;align-items:center;justify-content:center;background:' + v.bg + ';color:#fff" aria-label="' + ((it && it.name) || 'Item') + '"><i data-lucide="' + v.icon + '" style="width:44px;height:44px" aria-hidden="true"></i></div>';
   }
   function _mk(o) {
     return Object.assign({

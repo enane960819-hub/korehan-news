@@ -467,6 +467,8 @@ function renderKhLucideIcons() {
   });
 }
 
+// Emoji → icon conversion lives in js/core/emoji-icons.js (loaded by every page).
+
 function khIcon(name, label, extraClass) {
   var cls = 'kh-ui-icon' + (extraClass ? ' ' + extraClass : '');
   var html = '<i data-lucide="' + name + '" class="' + cls + '" aria-hidden="true"></i>';
@@ -2572,7 +2574,7 @@ function toast(msg, typeOrBool) {
   d.setAttribute('role', 'status');
   d.setAttribute('aria-live', isError ? 'assertive' : 'polite');
   d.style.cssText = 'position:fixed;bottom:22px;right:22px;z-index:9999;background:'+bg+';color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.28);max-width:340px;line-height:1.4;transition:opacity .2s;';
-  d.textContent = msg;
+  d.textContent = (typeof khStripEmoji === 'function') ? khStripEmoji(msg) : msg;
   document.body.appendChild(d);
   // Mirror to SR live region — errors as assertive, info as polite.
   try { _khSrAnnounce(msg, !isError); } catch (_) {}

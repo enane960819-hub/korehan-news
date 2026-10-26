@@ -179,6 +179,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 ```
 
+- **No emojis in the UI** (owner rule, 2026-10). Use Lucide icons: `khIcon('name')` / `<i data-lucide="name">` in markup (any injected `<i data-lucide>` is drawn automatically), `khSvg()` for inline SVG. `js/core/emoji-icons.js` (loaded on every page) converts any emoji that still reaches the DOM — including DB text — into the mapped icon and strips emojis from title/placeholder/option text, but don't add new emoji literals; native `alert()`/`confirm()` text is not converted.
+
 ### CSS
 - CSS custom properties (variables) defined in `:root` in `korehan-shared.css`
 - Color palette: `--navy`, `--accent`, `--bright`, `--sky`, and related vars
