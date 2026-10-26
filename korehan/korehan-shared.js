@@ -409,7 +409,8 @@ function khSetDiff(val) {
 }
 function applyGlobalDiffFilter() {
   // News cards
-  document.querySelectorAll('#dyn-news-grid .nc, #dyn-news-grid .khn-card').forEach(function(card) {
+  document.querySelectorAll('#dyn-news-grid .nc, #dyn-news-grid .khn-card, #dyn-buzz-grid .nc, #dyn-buzz-grid .khn-card').forEach(function(card) {
+    if (card.closest('#dyn-buzz-grid')) { card.style.display = (_activeDiff === 'all' || card.dataset.level === _activeDiff) ? '' : 'none'; return; }
     var sectionBtn = document.querySelector('#news-pills .sp.on');
     var sectionFilter = sectionBtn ? sectionBtn.dataset.filter : 'all';
     var sectionMatch = sectionFilter === 'all' || card.dataset.section === sectionFilter;

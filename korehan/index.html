@@ -1082,6 +1082,15 @@ window._khLoaderClearAuto = function() {};
   </div>
   <div class="home-conv-grid-wrap" id="home-conv-grid"></div>
 
+  <!-- KOREA BUZZ — its own rail (was mixed into News) -->
+  <div id="home-buzz-sec" style="display:none">
+    <div class="home-sec" style="border-bottom-color:#f97316;">
+      <div class="home-sec-title"><i data-lucide="flame" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Korea Buzz</span></div>
+      <a href="korehan-section.html?s=buzz" class="home-sec-more" style="color:#ea580c;">All Buzz →</a>
+    </div>
+    <div class="home-news-grid" id="dyn-buzz-grid"></div>
+  </div>
+
   <!-- KOREAN BASICS — replaces Stories as the beginner on-ramp.
        (#home-story-grid removed → loadHomeStories() no-ops on its null guard.) -->
   <div class="home-sec" style="border-bottom-color:#38bdf8;">
@@ -1125,11 +1134,11 @@ window._khLoaderClearAuto = function() {};
 <script src="js/features/reading-tracker.js?v=20260525r" defer></script>
 <script src="js/features/bookmarks.js?v=20260525r" defer></script>
 <script src="js/features/comments.js?v=20261016a" defer></script>
-<script src="js/features/sidebar.js?v=20261025a" defer></script>
+<script src="js/features/sidebar.js?v=20261027c" defer></script>
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261027c"></script>
+<script src="korehan-shared.js?v=20261027d"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script>
 var HOME_CONVS = [
@@ -1736,9 +1745,18 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (window.matchMedia) {
     try { window.matchMedia('(max-width:640px)').addEventListener('change', function(){ renderNewsGrid(); applyGlobalDiffFilter(); }); } catch (_) {}
   }
+  function _khIsBuzz(a) { return ((typeof getSectionKey === 'function') ? getSectionKey(a.section) : String(a.section || '').toLowerCase()) === 'buzz'; }
+  // News and Korea Buzz each get their own rail (Buzz used to be mixed into News).
   function renderNewsGrid() {
-    var arts = _khPersonalize(getCachedArticles().filter(function(a){ return a.status === 'published'; }).slice(0, 40)).slice(0, 12);
-    var grid = document.getElementById('dyn-news-grid');
+    var pub = getCachedArticles().filter(function(a){ return a.status === 'published'; });
+    _renderArtRail(document.getElementById('dyn-news-grid'),
+      _khPersonalize(pub.filter(function(a){ return !_khIsBuzz(a); }).slice(0, 40)).slice(0, 12));
+    var buzz = pub.filter(_khIsBuzz).slice(0, 12);
+    var buzzSec = document.getElementById('home-buzz-sec');
+    if (buzzSec) buzzSec.style.display = buzz.length ? '' : 'none';
+    if (buzz.length) _renderArtRail(document.getElementById('dyn-buzz-grid'), buzz);
+  }
+  function _renderArtRail(grid, arts) {
     if (!grid) return;
     if (!arts.length) {
       grid.innerHTML = _homeNewsReady
@@ -1812,6 +1830,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (newsPills && typeof getSections === 'function') {
     var secs = getSections();
     secs.forEach(function(s) {
+      if (s.key === 'buzz') return;   // Korea Buzz has its own rail
       var btn = document.createElement('button');
       btn.className = 'sp';
       btn.dataset.filter = s.key;

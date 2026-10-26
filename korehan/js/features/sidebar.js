@@ -23,7 +23,7 @@ function khInjectSidebar() {
     '.kh-ham{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text,#0d1b2e);padding:4px 8px;flex-shrink:0;line-height:1;position:relative;z-index:50;-webkit-tap-highlight-color:transparent;}',
     '.kh-sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;}',
     '.kh-sb-overlay.on{display:block;}',
-    '.kh-sidebar{position:fixed;top:0;left:0;bottom:0;width:268px;background:#0b1626;z-index:1600;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column;}',
+    '.kh-sidebar{position:fixed;top:0;left:0;bottom:0;width:268px;background:#0b1626;z-index:1600;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column;padding-bottom:calc(104px + env(safe-area-inset-bottom));}',
     '.kh-sidebar.on{transform:translateX(0);}',
     '.kh-sb-top{padding:16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}',
     '.kh-sb-brand{display:flex;align-items:baseline;gap:4px;}',
@@ -31,10 +31,14 @@ function khInjectSidebar() {
     ".kh-sb-brand .sb-han{font-family:\'Playfair Display\',serif;font-size:20px;font-weight:900;color:#fff;}",
     ".kh-sb-brand .sb-news{font-size:13px;font-weight:600;color:rgba(255,255,255,.5);margin-left:3px;}",
     '.kh-sb-x{background:none;border:none;color:rgba(255,255,255,.5);font-size:22px;cursor:pointer;line-height:1;padding:0;}',
-    '.kh-sb-sec{padding:14px 12px 6px;}',
+    '.kh-sb-sec{padding:14px 12px 6px;flex-shrink:0;}','.kh-sb-top{flex-shrink:0;}',
     '.kh-sb-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;color:rgba(255,255,255,.25);padding:0 6px;margin-bottom:4px;}',
     '.kh-sb-a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:6px;font-size:13px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:all .13s;text-decoration:none;}',
     '.kh-sb-a:hover,.kh-sb-a.on{background:rgba(255,255,255,.08);color:#fff;}',
+    '.kh-sb-me{padding:6px 10px 10px;}',
+    '.kh-sb-me-name{font-size:14px;font-weight:800;color:#fff;margin-bottom:2px;}',
+    '.kh-sb-me-mail{font-size:11px;color:rgba(255,255,255,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    '.kh-sb-join{color:#93c5fd !important;font-weight:800 !important;}',
     '.kh-sb-ico{font-size:15px;width:20px;text-align:center;flex-shrink:0;display:flex;align-items:center;justify-content:center;}',
     '.kh-sb-ico .kh-ui-icon{width:16px;height:16px;stroke:currentColor;stroke-width:2;}',
     '.kh-sb-sub-a .kh-ui-icon{width:14px;height:14px;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:2px;}',
@@ -93,19 +97,24 @@ function khInjectSidebar() {
         + '<a href="korehan-conversations.html?cat=everyday" class="kh-sb-sub-a">Everyday</a>'
         + '<a href="korehan-conversations.html?cat=work" class="kh-sb-sub-a">Workplace</a>'
         + '<a href="korehan-conversations.html?cat=friends" class="kh-sb-sub-a">Friends</a>'
+        + '<a href="korehan-conversations.html?cat=family" class="kh-sb-sub-a">Family</a>'
         + '<a href="korehan-conversations.html?cat=dating" class="kh-sb-sub-a">Dating</a>'
       + '</div>'
       + '<a href="korehan-section.html?s=buzz" class="kh-sb-a"><span class="kh-sb-ico">' + khIcon('flame') + '</span>Korea Buzz</a>'
     + '</div>'
+    // Same structure as the desktop top nav: Read / Study / Progress / Play / Premium.
     + '<div class="kh-sb-sec">'
-      + '<div class="kh-sb-lbl">Learn</div>'
-      + '<a href="korehan-study-room.html" class="kh-sb-a' + (page==='korehan-study-room.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('notebook-pen') + '</span>Study Room</a>'
-      + '<a href="korehan-courses.html" class="kh-sb-a' + (page==='korehan-courses.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('graduation-cap') + '</span>Courses</a>'
-      + '<a href="korehan-shop.html" class="kh-sb-a' + (page==='korehan-shop.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('shopping-cart') + '</span>Shop</a>'
-      + '<a href="korehan-fun.html" class="kh-sb-a' + (page==='korehan-fun.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('gamepad-2') + '</span>Playground</a>'
-      + '<a href="korehan-learning-overview.html" class="kh-sb-a' + (page==='korehan-learning-overview.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('bar-chart-3') + '</span>Growth Lab</a>'
+      + '<div class="kh-sb-lbl">Study</div>'
+      + '<a href="korehan-study-room.html" class="kh-sb-a' + (page==='korehan-study-room.html' && !/tab=words/.test(location.search)?' on':'') + '"><span class="kh-sb-ico">' + khIcon('notebook-pen') + '</span>Study Room</a>'
+      + '<a href="korehan-study-room.html?tab=words" class="kh-sb-a' + (/tab=words/.test(location.search)?' on':'') + '"><span class="kh-sb-ico">' + khIcon('book-open') + '</span>My Words</a>'
     + '</div>'
-    + '<div class="kh-sb-sec" id="kh-sb-auth-sec" style="margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);position:sticky;bottom:0;background:#0b1626;box-shadow:0 -10px 24px rgba(0,0,0,.18)">'
+    + '<div class="kh-sb-sec">'
+      + '<div class="kh-sb-lbl">More</div>'
+      + '<a href="korehan-learning-overview.html" class="kh-sb-a' + (page==='korehan-learning-overview.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('chart-column') + '</span>Progress</a>'
+      + '<a href="korehan-fun.html" class="kh-sb-a' + (page==='korehan-fun.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('gamepad-2') + '</span>Play</a>'
+      + '<a href="korehan-courses.html" class="kh-sb-a' + (page==='korehan-courses.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('graduation-cap') + '</span>Premium</a>'
+    + '</div>'
+    + '<div class="kh-sb-sec" id="kh-sb-auth-sec" style="margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">'
       + '<div id="kh-sb-auth-row"></div>'
     + '</div>';
   document.body.appendChild(sb);
@@ -116,29 +125,36 @@ function khInjectSidebar() {
 function updateSidebarAuth() {
   var row = document.getElementById('kh-sb-auth-row');
   if (!row) return;
+  var neon = '<button id="kh-sb-neon-toggle" class="kh-sb-a" onclick="toggleKhNeon(event)"><span class="kh-sb-ico">' + khIcon('zap') + '</span>Neon theme: OFF</button>';
+  var esc = (typeof escapeHtml === 'function') ? escapeHtml : function(x){ return String(x == null ? '' : x); };
   if (supaUser) {
-    var name = (supaUser.user_metadata && supaUser.user_metadata.full_name) || supaUser.email.split('@')[0];
+    var md = supaUser.user_metadata || {};
+    var name = md.full_name || md.name || (supaUser.email || '').split('@')[0];
+    // Same account links as the desktop profile menu.
     row.innerHTML =
-      '<button id="kh-sb-neon-toggle" class="kh-sb-a" onclick="toggleKhNeon(event)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
-      + '<span class="kh-sb-ico">&#9889;</span>Neon theme: OFF</button>'
-      + '<div style="padding:10px 16px;font-size:13px;color:var(--gray,#445566)">'
-      + '<div style="font-weight:800;color:var(--dark,#0d1b2e);margin-bottom:2px">' + name + '</div>'
-      + '<div style="font-size:11px;opacity:.6">' + supaUser.email + '</div>'
-      + '</div>'
-      + '<a href="korehan-mypage.html" class="kh-sb-a" onclick="khSbClose()">'
-      + '<span class="kh-sb-ico">&#x1F464;</span>My Page</a>'
-      + '<a href="korehan-notes.html" class="kh-sb-a" onclick="khSbClose()">'
-      + '<span class="kh-sb-ico">&#x1F4D1;</span>My Notes</a>'
-      + '<button class="kh-sb-a" onclick="signOut();khSbClose()" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
-      + '<span class="kh-sb-ico">&#x1F6AA;</span>Sign Out</button>';
+      '<div class="kh-sb-lbl">Account</div>'
+      + '<div class="kh-sb-me"><div class="kh-sb-me-name" id="kh-sb-me-name">' + esc(name) + '</div>'
+      + '<div class="kh-sb-me-mail">' + esc(supaUser.email || '') + '</div></div>'
+      + '<a href="korehan-mypage.html" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('circle-user-round') + '</span>My Page</a>'
+      + '<a href="korehan-mypage.html#mp-miniroom-section" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('house') + '</span>My Room</a>'
+      + '<a href="korehan-shop.html" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('shopping-bag') + '</span>Shop</a>'
+      + '<a href="korehan-friends.html" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('users') + '</span>Friends</a>'
+      + '<a href="korehan-learning-overview.html#gl-universe-hero" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('sparkles') + '</span>Word Universe</a>'
+      + '<a href="korehan-notes.html" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('bookmark') + '</span>Bookmarks</a>'
+      + neon
+      + '<button class="kh-sb-a" onclick="signOut();khSbClose()"><span class="kh-sb-ico">' + khIcon('log-out') + '</span>Sign Out</button>';
+    // Nickname from user_stats (shared with the desktop menu's request).
+    try {
+      var ds = window._khDropStats;
+      if (ds && ds.p && ds.uid === supaUser.id) ds.p.then(function(r){
+        var el = document.getElementById('kh-sb-me-name');
+        if (el && r && r.data && r.data.display_name) el.textContent = String(r.data.display_name).trim();
+      }, function(){});
+    } catch(_) {}
   } else {
-    row.innerHTML =
-      '<button id="kh-sb-neon-toggle" class="kh-sb-a" onclick="toggleKhNeon(event)" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
-      + '<span class="kh-sb-ico">&#9889;</span>Neon theme: OFF</button>'
-      + '<button class="kh-sb-a" onclick="openAuthModal(\'signin\');khSbClose()" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit">'
-      + '<span class="kh-sb-ico">&#x1F511;</span>Sign In</button>'
-      + '<button class="kh-sb-a" onclick="openAuthModal(\'signup\');khSbClose()" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;color:var(--bright,#2255a4);font-weight:800">'
-      + '<span class="kh-sb-ico">&#x2728;</span>Join Free</button>';
+    row.innerHTML = neon
+      + '<button class="kh-sb-a" onclick="openAuthModal(\'signin\');khSbClose()"><span class="kh-sb-ico">' + khIcon('log-in') + '</span>Sign In</button>'
+      + '<button class="kh-sb-a kh-sb-join" onclick="openAuthModal(\'signup\');khSbClose()"><span class="kh-sb-ico">' + khIcon('sparkles') + '</span>Join Free</button>';
   }
   syncNeonToggleButtons();
 }
