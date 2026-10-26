@@ -2452,10 +2452,10 @@ function buildStudyRoomFallbackContent(topic, level) {
   var helpers;
   if (level === 'Starter') {
     helpers = [
-      { ko: '저는 좋아해요.', en: 'I like it.' },
+      { ko: '저는 한국 노래를 좋아해요.', en: 'I like Korean songs.' },
       { ko: '이것은 뭐예요?', en: 'What is this?' },
-      { ko: '한국 노래 좋아요.', en: 'Korean songs are good.' },
-      { ko: '나는 학생이에요.', en: 'I am a student.' },
+      { ko: '한국 노래가 좋아요.', en: 'Korean songs are nice.' },
+      { ko: '저는 학생이에요.', en: 'I am a student.' },
       { ko: '사람이 있어요.', en: 'There is a person.' },
       { ko: '저것은 학교예요.', en: 'That is a school.' }
     ];
@@ -13689,7 +13689,9 @@ var _bm = {
 
 // ── Topic Writing progress save / restore (item 3) ──────────────
 function _bmProgressKey() {
-  return 'kh_bm_w_' + (supaUser ? supaUser.id : 'g') + '_' + kstWeekKey();
+  // Per level: each level has its own topic + sentences, so one level's
+  // saved step must never be restored on another.
+  return 'kh_bm_w_' + (supaUser ? supaUser.id : 'g') + '_' + kstWeekKey() + '_' + (_currentLevel || 'Beginner');
 }
 function _bmSaveProgress() {
   try {
@@ -13717,6 +13719,10 @@ function openBeginnerModal() {
 
   // Check for saved mid-flow progress from today
   var saved = _bmLoadProgress();
+  // In-memory sentences belong to the topic they were built for — after a
+  // level switch they are the other level's, so start fresh.
+  var _bmTopicId = (_todayTopic && (_todayTopic.id || _todayTopic.topic_ko)) || '';
+  if (_bm.topicId !== _bmTopicId) _bm.sentences = [];
   if (saved && saved.step > 1 && _bm.sentences && _bm.sentences.length) {
     // Restore: sentences already loaded in memory, just go to saved step
     _bm.step = saved.step;
@@ -13731,7 +13737,7 @@ function openBeginnerModal() {
     if (_bm.step === 4) { goToBMStep4(); return; }
   }
 
-  _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false, listened:[], snapIdx:0, snapSeen:[], snapSaved:[], snapCards:[] };
+  _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false, listened:[], snapIdx:0, snapSeen:[], snapSaved:[], snapCards:[], topicId:_bmTopicId };
   updateBMHeader();
   renderBMStep1Loading();
   generateBeginnerSentences();
@@ -14134,6 +14140,19 @@ async function generateBeginnerSentences() {
     renderBMStep1();
     return;
   }
+
+  // ── Priority 1.5: reviewed topic pack (writing_topic_content.sentences) ──
+  // Hand-checked story sentences for this topic + level; wins over AI
+  // caches and the code fallback (which read unnaturally for Starter).
+  try {
+    var pk = (typeof khTopicPack === 'function') ? await khTopicPack() : null;
+    if (pk && Array.isArray(pk.sentences) && pk.sentences.length >= 3) {
+      _bm.sentences = pk.sentences;
+      _bm.generating = false;
+      renderBMStep1();
+      return;
+    }
+  } catch (_) {}
 
   // ── Priority 2: sessionStorage cache (current session) ──
   var cacheKey = 'bm_sents2_' + (topic.id || topic.topic_en || '').replace(/\s/g,'_');
@@ -15375,7 +15394,8 @@ function finishBeginner() {
 }
 
 function retryBeginner() {
-  _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false, listened:[], snapIdx:0, snapSeen:[], snapSaved:[], snapCards:[] };
+  var _bmTopicId = (_todayTopic && (_todayTopic.id || _todayTopic.topic_ko)) || '';
+  _bm = { step:1, sentences:[], shuffled:[], blanks:[], score:{order:0,blank:0}, writing:'', generating:false, listened:[], snapIdx:0, snapSeen:[], snapSaved:[], snapCards:[], topicId:_bmTopicId };
   updateBMHeader();
   renderBMStep1Loading();
   generateBeginnerSentences();

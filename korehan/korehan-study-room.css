@@ -640,6 +640,9 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
   transition: transform .15s, box-shadow .15s, opacity .15s;
   box-shadow: 0 6px 20px rgba(14,168,143,.38); letter-spacing: -.01em;
 }
+/* Primary action always sits at the right edge — with the Listen/Reset
+   buttons gone (after Check) it used to jump to the left. */
+.bm-footer .bm-btn-next { margin-left: auto; }
 .bm-btn-next:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(14,168,143,.48); }
 .bm-btn-next:disabled { opacity: .3; cursor: not-allowed; transform: none; box-shadow: none; }
 .bm-btn-back { padding: 12px 18px; border-radius: 14px;
