@@ -7326,41 +7326,45 @@ function renderSearchResults(q, articles) {
 }
 
 // ── 읽은 기사 저장 ─────────────────────────────────────────────
-// Read credit (XP, daily mission, read history) only after real reading:
-// 30s of visible time, or reaching the end of the body after at least 8s.
+// Read credit (XP, daily mission, read history) only after the learner
+// actually engages — no timers. It counts when they:
+//   • scroll down and reach the end of the article body, or
+//   • interact with the article (tap a sentence/word, switch tab, listen,
+//     translate, bookmark…), or
+//   • tap "Next article" with the end of the article on screen (short
+//     articles that fit without scrolling).
 // It used to fire 0.3s after the page opened, so a bounce counted as a read.
 var _khReadCreditArmed = null;
 function _khArmReadCredit(articleId, fire) {
   var id = String(articleId);
   if (_khReadCreditArmed && _khReadCreditArmed.id === id) return;   // re-render of the same article
   if (_khReadCreditArmed) _khReadCreditArmed.stop();
-  var visibleMs = 0, last = Date.now(), done = false;
+  var startY = window.scrollY || 0, done = false;
   function current() { return String((new URLSearchParams(window.location.search)).get('id') || '') === id; }
-  function tick() {
-    var now = Date.now();
-    if (document.visibilityState === 'visible') visibleMs += now - last;
-    last = now;
-  }
   function endReached() {
     var body = document.querySelector('#art-tab-article .art-full') || document.querySelector('#art-tab-article');
     if (!body) return false;
-    var r = body.getBoundingClientRect();
-    return r.bottom <= (window.innerHeight || 800) + 40;
+    return body.getBoundingClientRect().bottom <= (window.innerHeight || 800) + 40;
   }
-  function check() {
-    if (done) return;
-    if (!current()) { stop(); return; }
-    tick();
-    if (visibleMs >= 30000 || (visibleMs >= 8000 && endReached())) {
-      done = true; stop();
-      try { fire(); } catch (_) {}
-    }
+  function credit() {
+    if (done || !current()) return;
+    done = true; stop();
+    try { fire(); } catch (_) {}
   }
-  var timer = setInterval(check, 2000);
-  window.addEventListener('scroll', check, { passive: true });
+  function onScroll() {
+    if (Math.abs((window.scrollY || 0) - startY) > 150 && endReached()) credit();
+  }
+  function onClick(e) {
+    var t = e.target && e.target.closest ? e.target : null;
+    if (!t) return;
+    if (t.closest('#kh-rs-next')) { if (endReached()) credit(); return; }
+    if (t.closest('#art-tab-article, .art-tabs, .art-action-icon, #kh-reading-sidebar')) credit();
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  document.addEventListener('click', onClick, true);   // capture: runs before Next navigates
   function stop() {
-    clearInterval(timer);
-    window.removeEventListener('scroll', check);
+    window.removeEventListener('scroll', onScroll);
+    document.removeEventListener('click', onClick, true);
     if (_khReadCreditArmed && _khReadCreditArmed.id === id && !done) _khReadCreditArmed = null;
   }
   _khReadCreditArmed = { id: id, stop: stop };
