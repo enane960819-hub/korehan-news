@@ -394,7 +394,20 @@ function _khStudyRoomInit() {
   );
   if (_hasFocusGrammar) {
     var _focusName = decodeURIComponent(_urlParams.get('focus') || '');
-    // Wait for content to load then auto-open grammar focus modal
+    // Open the lesson shell right away — the session check + curriculum
+    // load can take several seconds on a busy page, and without this the
+    // learner just saw the Study Room home and thought the link was broken.
+    (function() {
+      var m = document.getElementById('gf-modal');
+      if (!m) return;
+      m.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      var tEl = document.getElementById('gf-title'); if (tEl) tEl.textContent = _focusName;
+      var el = document.getElementById('gf-examples-content');
+      if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(255,255,255,.45)">Loading lesson…</div>';
+    })();
+    // Public table — start fetching now instead of after the session check.
+    _loadGrammarCurriculumFromDB();
     var _focusWaited = 0;
     function waitAndOpenGFModal() {
       if (window._sessionChecked || _focusWaited >= 30) {
@@ -403,7 +416,7 @@ function _khStudyRoomInit() {
         _loadGrammarCurriculumFromDB().then(function() {
           var _fx = (typeof _gfArticleCtx === 'function' && _gfArticleCtx()) || {};
           var cItem = _gcFindItemCtx(_focusName, _fx.exp, _fx.hint);
-          if (cItem) { setTimeout(function() { openGrammarFocusForItem(cItem); }, 300); return; }
+          if (cItem) { openGrammarFocusForItem(cItem); return; }
           _openFocusLegacy();
         });
       } else { _focusWaited++; setTimeout(waitAndOpenGFModal, 150); }
@@ -1447,12 +1460,25 @@ async function loadDailyContent() {
   }
 
   // Step 1: Try loading from study_daily_content (admin-generated or auto-generated, any status)
+  // A slow answer is not a missing row: on a busy page load this query can
+  // queue for >8s. Retry with a longer wait, and only fall through to AI
+  // generation when the DB actually answered "nothing for this week".
+  var _dbAnswered = false;
   try {
     khLog('[loadDailyContent] querying study_daily_content');
-    var r = await Promise.race([
-      sb.from('study_daily_content').select('*').eq('scheduled_date', today).eq('level', _currentLevel).maybeSingle(),
-      new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('db_timeout')); }, 8000); })
-    ]);
+    var r = null;
+    var _waits = [9000, 20000];
+    for (var _a = 0; _a < _waits.length && !r; _a++) {
+      try {
+        r = await Promise.race([
+          sb.from('study_daily_content').select('*').eq('scheduled_date', today).eq('level', _currentLevel).maybeSingle(),
+          new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('db_timeout')); }, _waits[_a]); })
+        ]);
+      } catch (te) { console.warn('[loadDailyContent] attempt', _a + 1, te.message); }
+    }
+    if (!r) { _setTopicLoadError('Connection is slow — tap to retry', true); return; }
+    _dbAnswered = !r.error;
+    if (!_dbAnswered) { _setTopicLoadError('Couldn\'t load the topic — tap to retry', true); return; }
     if (!r.error && r.data) {
       // Check if learning elements actually exist — if only topic is set but vocab/grammar are empty, trigger AI generation
       var hasLearning = r.data.vocab && (Array.isArray(r.data.vocab) ? r.data.vocab.length > 0 : (typeof r.data.vocab === 'string' && r.data.vocab.length > 2));
@@ -1524,14 +1550,24 @@ function _applyFallbackTopic(date) {
   _setTopicLoadError('Please refresh the page');
 }
 
-function _setTopicLoadError(msg) {
+function _setTopicLoadError(msg, retry) {
   hideAILoading();
   var subEl = document.getElementById('wm-topic-sub');
   if (subEl) subEl.textContent = msg || 'Topic unavailable — please refresh';
   var heroKo = document.getElementById('hero-topic-ko');
-  if (heroKo) heroKo.textContent = 'Loading Error';
+  if (heroKo) heroKo.textContent = retry ? 'Couldn’t load this week’s topic' : 'Loading Error';
   var heroEn = document.getElementById('hero-topic-en');
-  if (heroEn) heroEn.textContent = msg || 'Loading failed — please refresh the page';
+  if (heroEn) {
+    heroEn.textContent = msg || 'Loading failed — please refresh the page';
+    heroEn.style.cursor = retry ? 'pointer' : '';
+    heroEn.style.textDecoration = retry ? 'underline' : '';
+    heroEn.onclick = retry ? function() {
+      heroEn.onclick = null; heroEn.style.textDecoration = '';
+      if (heroKo) heroKo.textContent = 'Loading…';
+      heroEn.textContent = '';
+      loadDailyContent();
+    } : null;
+  }
 }
 
 function _applyDailyContent(rec) {
@@ -15857,6 +15893,27 @@ function _loadGrammarCurriculumFromDB() {
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb) return Promise.resolve();
   _gcDbPromise = (async function() {
+    // 12h local copy: curriculum (~77KB) + label map (~69KB) were two
+    // sequential multi-second queries on every grammar deep link.
+    var GC_LS = 'kh_gc_cache_v1';
+    try {
+      var c = JSON.parse(localStorage.getItem(GC_LS) || 'null');
+      if (c && Array.isArray(c.cur) && c.cur.length >= 10 && Date.now() - c.at < 12 * 3600 * 1000) {
+        GRAMMAR_CURRICULUM = c.cur;
+        Object.keys(c.lm || {}).forEach(function(k) { _GC_LABEL_MAP[k] = c.lm[k]; });
+        _gcDbLoaded = true;
+        try {
+          var _ce0 = document.getElementById('gc-tree-count');
+          if (_ce0) _ce0.innerHTML = GRAMMAR_CURRICULUM.length + ' grammar patterns<br>across 3 levels';
+        } catch(_) {}
+        if (typeof renderGrammarPathBanner === 'function') renderGrammarPathBanner();
+        return;
+      }
+    } catch(_) {}
+    var _lmFresh = {};
+    // .then() so the request starts now (a bare builder only sends when awaited).
+    var lmP = sb.from('grammar_label_map').select('label_norm, pattern').neq('verdict', 'skip').limit(5000)
+      .then(function(x) { return x; }, function(e) { return { data: null, error: e }; });
     try {
       var r = await sb.from('grammar_curriculum')
         .select('pattern, level, sort_order, description, active, unit, tier')
@@ -15884,8 +15941,11 @@ function _loadGrammarCurriculumFromDB() {
       }
       // Article labels the nightly harvest already judged (see
       // grammar-harvest.ts) → their curriculum pattern.
-      var lm = await sb.from('grammar_label_map').select('label_norm, pattern').neq('verdict', 'skip').limit(5000);
-      (lm.data || []).forEach(function(row) { if (row.pattern) _GC_LABEL_MAP[row.label_norm] = row.pattern; });
+      var lm = await lmP;
+      (lm.data || []).forEach(function(row) { if (row.pattern) { _GC_LABEL_MAP[row.label_norm] = row.pattern; _lmFresh[row.label_norm] = row.pattern; } });
+      if (_gcDbLoaded && !lm.error) {
+        try { localStorage.setItem(GC_LS, JSON.stringify({ at: Date.now(), cur: GRAMMAR_CURRICULUM, lm: _lmFresh })); } catch(_) {}
+      }
     } catch(e) { console.warn('[Grammar Curriculum] DB load failed, using fallback:', e.message); }
   })();
   return _gcDbPromise;

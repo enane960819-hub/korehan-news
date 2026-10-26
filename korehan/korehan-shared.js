@@ -1946,7 +1946,16 @@ function updateAuthUI() {
       (function loadDropdownStats(){
         var sb = getSupa && getSupa();
         if (!sb || !supaUser || !supaUser.id) return;
-        sb.from('user_stats').select('xp, coin_balance, display_name').eq('user_id', supaUser.id).maybeSingle()
+        // updateAuthUI runs several times per page load; share one request
+        // (20s) instead of queueing a duplicate user_stats read each time.
+        var _ds = window._khDropStats;
+        if (!_ds || _ds.uid !== supaUser.id || Date.now() - _ds.at > 20000) {
+          _ds = window._khDropStats = { uid: supaUser.id, at: Date.now(),
+            // .then() → a real Promise; re-resolving the bare builder would re-send.
+            p: sb.from('user_stats').select('xp, coin_balance, display_name').eq('user_id', supaUser.id).maybeSingle()
+                 .then(function(x) { return x; }) };
+        }
+        _ds.p
           .then(function(r){
             var nameEl = document.querySelector('#topbar-user-dropdown .kh-user-dropdown-name');
             if (nameEl && r && r.data && r.data.display_name) nameEl.textContent = String(r.data.display_name).trim();
@@ -7822,6 +7831,7 @@ function openVocabEditModal(word) {
         _snap.dict[finalWord] = { rom: rom || '', en: en || '' };
         _snap.savedAt = Date.now();
         localStorage.setItem(_vKey, JSON.stringify(_snap));
+        localStorage.removeItem('kh_vbank_rows_v1');   // refetch the shared bank copy
       } catch (_) {}
       // Sidecar so renderArticleVocab's fromAdminAdds() can surface
       // this word in the Vocab tab on every article whose body matches
@@ -9778,6 +9788,9 @@ document.addEventListener('DOMContentLoaded', async function() {
       if (_haveAllCache) {
         if (window._khLoaderClearAuto) window._khLoaderClearAuto();
         _ldr(100);
+        // Paint the cached list now — sections/settings below can sit in
+        // the request queue for seconds and the cards don't need them.
+        try { renderAllPage(); } catch (_) {}
         // Background refresh — All News will re-render itself once
         // the fresh 500-row fetch lands. Sections/settings still
         // resolve in parallel for headers etc.
@@ -9974,6 +9987,46 @@ var KH_VOCAB_LS_MAX_AGE_MS = 24 * 3600 * 1000;
   } catch (_) {}
 })();
 
+// vocabulary_bank (~4.4k rows, 5 pages) was fetched twice on every page
+// view — once here and once by korehan-hover-tooltips.js — ~10 requests
+// competing with the page's own content on a small DB pool. Now one
+// promise per page, backed by a 6h localStorage copy. Inactive rows are
+// skipped client-side (see the is_active note in loadVocabFromDB).
+var KH_VBANK_LS_KEY = 'kh_vbank_rows_v1';
+var KH_VBANK_MAX_AGE_MS = 6 * 3600 * 1000;
+var _khVbankPromise = null;
+function khVocabBankRows() {
+  if (_khVbankPromise) return _khVbankPromise;
+  _khVbankPromise = (async function() {
+    try {
+      var c = JSON.parse(localStorage.getItem(KH_VBANK_LS_KEY) || 'null');
+      if (c && Array.isArray(c.rows) && c.rows.length && Date.now() - c.savedAt < KH_VBANK_MAX_AGE_MS) return c.rows;
+    } catch (_) {}
+    var sb = getSupa(); if (!sb) return [];
+    var out = [], PAGE = 1000, ok = true;
+    for (var page = 0; page < 30; page++) {
+      var res = await sb.from('vocabulary_bank')
+        .select('word_ko,word_rom,word_en,is_active')
+        .order('word_ko', { ascending: true })
+        .range(page * PAGE, page * PAGE + PAGE - 1);
+      if (res.error) { ok = false; console.warn('[khVocabBankRows] page', page, res.error); break; }
+      var rows = res.data || [];
+      rows.forEach(function(r) {
+        if (r.is_active !== false && r.word_ko && r.word_en) out.push({ word_ko: r.word_ko, word_en: r.word_en, word_rom: r.word_rom || '' });
+      });
+      if (rows.length < PAGE) break;
+    }
+    if (ok && out.length) {
+      try { localStorage.setItem(KH_VBANK_LS_KEY, JSON.stringify({ savedAt: Date.now(), rows: out })); } catch (_) {}
+    } else {
+      _khVbankPromise = null;   // let a later call retry
+    }
+    return out;
+  })();
+  return _khVbankPromise;
+}
+window.khVocabBankRows = khVocabBankRows;
+
 async function loadVocabFromDB() {
   try {
     var sb = getSupa(); if (!sb) { initTooltips(); return; }
@@ -10003,7 +10056,17 @@ async function loadVocabFromDB() {
     var page = 0;
     var anyRowsLoaded = false;
     var useAdminPath = !!window._isAdmin && typeof khAdminApi === 'function';
-    while (true) {
+    // Learners: one shared, locally cached copy (see khVocabBankRows) —
+    // the same rows the hover tooltips use, fetched at most every 6h.
+    if (!useAdminPath) {
+      (await khVocabBankRows()).forEach(function(row) {
+        if (row.word_ko && row.word_en) {
+          VOCAB[row.word_ko] = { rom: row.word_rom || '', en: row.word_en };
+          anyRowsLoaded = true;
+        }
+      });
+    }
+    while (useAdminPath) {
       var from = page * PAGE;
       var to   = from + PAGE - 1;
       var res;
@@ -10917,8 +10980,7 @@ function ttsSpeak(text, btnEl) {
 
   if (btnEl) {
     _ttsCurrent = btnEl;
-    btnEl.classList.add('tts-playing');
-    btnEl.textContent = '■';
+    btnEl.classList.add('tts-playing');   // keep the icon — _ttsReset can't restore replaced markup
   }
 
   utter.onend = _ttsReset;
@@ -10999,17 +11061,57 @@ function _khSpeakPlay(url, originalText, btnEl) {
     if (originalText) { try { ttsSpeak(originalText, btnEl); } catch(_) {} }
   });
 }
+// Shared clip cache: tts-proxy stores each clip in the public `tts-cache`
+// bucket at <voice>/<sha256(voice|text)>.mp3 — a CDN read for everyone
+// after the first synthesis.
+async function _khTtsCachePath(text, voice) {
+  if (!window.crypto || !crypto.subtle || typeof TextEncoder === 'undefined') return null;
+  var d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(voice + '|' + text));
+  return voice + '/' + Array.from(new Uint8Array(d)).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('') + '.mp3';
+}
+async function _khFetchTimeout(url, opts, ms) {
+  var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var t = ctrl ? setTimeout(function(){ ctrl.abort(); }, ms) : null;
+  try { return await fetch(url, Object.assign({}, opts || {}, ctrl ? { signal: ctrl.signal } : {})); }
+  finally { if (t) clearTimeout(t); }
+}
+// When the neural engine is down/unconfigured, remember it for 30 min so
+// every tap plays the device voice instantly instead of waiting on a
+// request that is going to fail.
+var _KH_TTS_OFF_KEY = 'kh_tts_neural_off_until';
+function _khTtsNeuralOff() { try { return Number(localStorage.getItem(_KH_TTS_OFF_KEY) || 0) > Date.now(); } catch(_) { return false; } }
+function _khTtsMarkOff() { try { localStorage.setItem(_KH_TTS_OFF_KEY, String(Date.now() + 30 * 60 * 1000)); } catch(_) {} }
+
 // khSpeak(text, [voice], [btnEl]) — voice: 'female' (default) | 'male'
 async function khSpeak(text, voice, btnEl) {
   text = String(text || '').trim();
   if (!text) return;
-  voice = voice || 'female';
+  voice = voice === 'male' ? 'male' : 'female';
+  var proxyStage = false;
   try {
     var cacheKey = text + '_' + voice;
     var hit = _khSpeakCacheGet(cacheKey);
     if (hit) { _khSpeakPlay(hit, text, btnEl); return; }
     var supaUrl = (typeof SUPA_URL !== 'undefined') ? SUPA_URL : '';
-    if (!supaUrl) { ttsSpeak(text, btnEl); return; }
+    if (!supaUrl || _khTtsNeuralOff()) { ttsSpeak(text, btnEl); return; }
+    var clip = text.slice(0, 200);
+    // 1) Shared clip from the public bucket (fast CDN read).
+    try {
+      var path = await _khTtsCachePath(clip, voice);
+      if (path) {
+        var pub = await _khFetchTimeout(supaUrl + '/storage/v1/object/public/tts-cache/' + path, {}, 2500);
+        if (pub.ok) {
+          var pb = await pub.blob();
+          if (pb.size > 100) {
+            var purl = URL.createObjectURL(pb);
+            _khSpeakCacheSet(cacheKey, purl);
+            _khSpeakPlay(purl, text, btnEl);
+            return;
+          }
+        }
+      }
+    } catch(_) {}
+    // 2) Synthesize (signed-in only; tts-proxy rejects anon JWTs).
     var headers = { 'Content-Type': 'application/json' };
     try {
       var sb = getSupa();
@@ -11020,19 +11122,21 @@ async function khSpeak(text, voice, btnEl) {
         }
       }
     } catch(_) {}
-    // Anon fallback uses the browser voice (tts-proxy rejects anon JWTs).
     if (!headers['Authorization']) { ttsSpeak(text, btnEl); return; }
-    var res = await fetch(supaUrl + '/functions/v1/tts-proxy', {
+    proxyStage = true;
+    var res = await _khFetchTimeout(supaUrl + '/functions/v1/tts-proxy', {
       method: 'POST', headers: headers,
-      body: JSON.stringify({ text: text.slice(0, 200), voice: voice })
-    });
-    if (!res.ok) throw new Error('TTS ' + res.status);
+      body: JSON.stringify({ text: clip, voice: voice })
+    }, 6000);
+    if (!res.ok) { if (res.status < 500) proxyStage = false; throw new Error('TTS ' + res.status); }
     var blob = await res.blob();
     if (blob.size < 100) throw new Error('empty audio');
     var url = URL.createObjectURL(blob);
     _khSpeakCacheSet(cacheKey, url);
     _khSpeakPlay(url, text, btnEl);
   } catch(e) {
+    // Engine down / unconfigured / unreachable / timed out → skip it for 30 min.
+    if (proxyStage) _khTtsMarkOff();
     try { console.warn('[khSpeak] neural TTS failed, fallback:', e && e.message); } catch(_) {}
     try { ttsSpeak(text, btnEl); } catch(_) {}
   }

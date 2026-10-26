@@ -254,12 +254,16 @@
         });
       } catch(_) {}
       try {
-        var bankRaw = await _allRows(function() {
-          return client.from('vocabulary_bank')
-            .select('word_ko, word_en, word_rom, is_active')
-            .eq('is_active', true)
-            .order('word_ko', { ascending: true });
-        });
+        // Shared cached copy from korehan-shared.js (one fetch per 6h
+        // instead of 5 more requests on every page).
+        var bankRaw = (typeof window.khVocabBankRows === 'function')
+          ? await window.khVocabBankRows()
+          : await _allRows(function() {
+              return client.from('vocabulary_bank')
+                .select('word_ko, word_en, word_rom, is_active')
+                .eq('is_active', true)
+                .order('word_ko', { ascending: true });
+            });
         bankRows = bankRaw.map(function(b) {
           return {
             word_ko: b.word_ko,
