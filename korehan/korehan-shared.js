@@ -3970,7 +3970,7 @@ function _khRelatedHTML(a) {
                 + '<span style="font-size:10px;font-weight:800;text-transform:uppercase;color:#2255a4">' + escapeHtml(khSecLabel(r.section)) + '</span>'
                 + (r.level ? '<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;background:' + (levelColors[r.level]||'#f0f0f0;color:#666') + '">' + ({'Starter':'Seed','Beginner':'Sprout','Intermediate':'Tree','Advanced':'Forest'}[r.level]||r.level) + '</span>' : '')
                 + '</div>'
-                + '<div class="art-related-title-text">' + r.title + '</div>'
+                + '<div class="art-related-title-text">' + escapeHtml(r.title_en || r.title || '') + '</div>'
                 + '</div>'
                 + '</a>';
             }).join('')

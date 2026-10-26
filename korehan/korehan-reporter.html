@@ -482,7 +482,7 @@ body {
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261026b"></script>
+<script src="korehan-shared.js?v=20261026c"></script>
 <script>
 var FAV_HIRE_THRESHOLD = 3000;
 var REPORTER_BG_DEFAULT = 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=2200&q=80';
@@ -589,7 +589,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       + '<div class="rp-photo-ph" style="background:' + color + ';display:none;min-height:320px">' + reporter.name.charAt(0) + '</div>'
     : '<div class="rp-photo-ph" style="background:' + color + '">' + reporter.name.charAt(0) + '</div>';
 
-  var tagsHtml = (reporter.tags||[]).map(function(t){ return '<span class="rp-tag">' + t + '</span>'; }).join('');
+  var tagsHtml = (reporter.tags||[]).map(function(t){ return '<span class="rp-tag">' + (typeof khSecLabel==='function' ? khSecLabel(t) : t) + '</span>'; }).join('');
 
   root.innerHTML =
     '<div class="rp-wrap">'
@@ -606,13 +606,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     +   '</div>'
     +   '<div class="rp-info-col">'
     +     '<div class="rp-name">' + reporter.name + '</div>'
-    +     '<span class="rp-role-badge" style="background:' + color + '">' + (typeof khReporterRole==='function'?khReporterRole:String)(reporter.role||'') + '</span>'
+    +     '<span class="rp-role-badge" style="background:' + color + '">' + (reporter.role_en || (typeof khReporterRole==='function'?khReporterRole:String)(reporter.role||'')) + '</span>'
     +     '<div class="rp-stats">'
     +       (reporter.age ? '<div class="rp-stat"><span class="rp-stat-label">Age</span><span class="rp-stat-val">' + reporter.age + '</span></div>' : '')
     +       (reporter.tone ? '<div class="rp-stat"><span class="rp-stat-label">Tone</span><span class="rp-stat-val" style="font-size:13px">' + reporter.tone + '</span></div>' : '')
     +     '</div>'
     +     '<div class="rp-divider"></div>'
-    +     '<div class="rp-intro">' + (reporter.intro || 'No intro yet.') + '</div>'
+    +     '<div class="rp-intro">' + (reporter.intro_en || reporter.intro || 'No intro yet.') + '</div>'
+    +     (reporter.intro_en && reporter.intro ? '<div class="rp-intro" lang="ko" style="font-size:12px;opacity:.7;margin-top:4px">' + reporter.intro + '</div>' : '')
     +     (tagsHtml ? '<div class="rp-tags">' + tagsHtml + '</div>' : '')
     +   '</div>'
     + '</div>'
@@ -623,7 +624,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     +     '<div class="rp-stat-strip-row"><span>❤️ Affinity · <b id="rp-fav-level">' + favLevel + '</b></span><span id="rp-fav-xp"><b>' + favXP + '</b> / ' + FAV_HIRE_THRESHOLD + '</span></div>'
     +     '<div class="rp-stat-strip-bar"><div class="rp-stat-strip-bar-fill" id="rp-fav-bar-fill" style="width:' + favPct + '%;background:linear-gradient(90deg,' + color + ',' + color + 'aa)"></div></div>'
     +   '</div>'
-    +   '<span class="rp-nyang-chip" id="rp-nyang-balance">🐾 냥 -</span>'
+    +   '<span class="rp-nyang-chip" id="rp-nyang-balance">🐾 - Nyang</span>'
     + '</div>'
 
     // ── Idol-style tab bar ──
@@ -1163,9 +1164,9 @@ async function loadReporterGiftPanel(reporterId) {
     (res[1].data || []).forEach(function(o){ _giftOwnedMap[o.item_id] = Number(o.quantity || 0); });
     _giftBalance = Number(res[2].data && res[2].data.coin_balance || 0);
     var bal = document.getElementById('rp-nyang-balance');
-    if (bal) bal.textContent = '🐾 냥 ' + _giftBalance.toLocaleString();
+    if (bal) bal.textContent = '🐾 ' + _giftBalance.toLocaleString() + ' Nyang';
     renderGiftGrid(reporterId);
-    if (msg) msg.textContent = 'Uses inventory if owned, otherwise sent instantly with 냥.';
+    if (msg) msg.textContent = 'Uses inventory if owned, otherwise sent instantly with Nyang.';
   } catch(e) {
     grid.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:#ef4444">Cannot load gift info.</div>';
   }
@@ -1187,7 +1188,7 @@ function renderGiftGrid(reporterId) {
     return '<button class="rp-gift' + (disabled ? ' disabled' : '') + '" ' + (disabled ? 'disabled' : '') + ' onclick="sendGiftToReporter(\'' + reporterId + '\',\'' + g.id + '\')">'
       + '<span class="rp-gift-icon">' + icon + '</span>'
       + '<span class="rp-gift-name">' + g.name + '</span>'
-      + '<span class="rp-gift-cost">🐾 ' + price.toLocaleString() + ' 냥</span>'
+      + '<span class="rp-gift-cost">🐾 ' + price.toLocaleString() + ' Nyang</span>'
       + (own > 0 ? '<span class="rp-gift-own">Inventory x' + own + '</span>' : '<span class="rp-gift-lock">Buy now</span>')
       + '</button>';
   }).join('');
