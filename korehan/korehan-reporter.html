@@ -482,7 +482,7 @@ body {
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261012a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261026g"></script>
+<script src="korehan-shared.js?v=20261026h"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script>
 var FAV_HIRE_THRESHOLD = 3000;
@@ -1206,20 +1206,13 @@ async function sendGiftToReporter(reporterId, itemId) {
     : 'Buy & send ' + item.name + ' for ' + Number(item.coin_price || 0).toLocaleString() + ' 냥?';
   if (!confirm(prompt)) return;
 
-  var res = null;
-  if (shouldUseGiftRpc()) {
-    res = await sb.rpc('send_reporter_gift', {
-      p_item_id: itemId,
-      p_reporter_id: reporterId,
-      p_user_id: supaUser.id
-    });
-    if (res.error && isMissingGiftRpcError(res.error)) {
-      try { localStorage.setItem('kh_use_gift_rpc', '0'); } catch(e) {}
-      res = await sendGiftFallbackNoRpc(sb, reporterId, itemId);
-    }
-  } else {
-    res = await sendGiftFallbackNoRpc(sb, reporterId, itemId);
-  }
+  // Server-only: send_reporter_gift spends the item or the nyang in one
+  // transaction (the old client fallback wrote coin_balance directly).
+  var res = await sb.rpc('send_reporter_gift', {
+    p_item_id: itemId,
+    p_reporter_id: reporterId,
+    p_user_id: supaUser.id
+  });
   if (res.error || !res.data || !res.data.ok) {
     var code = (res.data && res.data.error) || 'GIFT_PROCESS_FAILED';
     var friendly = 'Gift sending failed. Please try again later.';
@@ -1241,78 +1234,6 @@ async function sendGiftToReporter(reporterId, itemId) {
   await loadReporterGiftPanel(reporterId);
 }
 
-function isMissingGiftRpcError(err) {
-  var msg = String(err && (err.message || err.details || err.hint || err.code) || '').toLowerCase();
-  return msg.indexOf('send_reporter_gift') >= 0 && (msg.indexOf('schema cache') >= 0 || msg.indexOf('404') >= 0 || msg.indexOf('pgrst') >= 0);
-}
-
-async function sendGiftFallbackNoRpc(sb, reporterId, itemId) {
-  try {
-    var item = _giftCatalog.find(function(it){ return it.id === itemId; });
-    if (!item) return { data:{ ok:false, error:'ITEM_NOT_GIFTABLE' } };
-    var cost = Number(item.coin_price || 0);
-
-    var ownQty = Number(_giftOwnedMap[itemId] || 0);
-    if (ownQty > 0) {
-      if (ownQty <= 1) {
-        await sb.from('owned_items').delete().eq('user_id', supaUser.id).eq('item_id', itemId);
-      } else {
-        await sb.from('owned_items').update({ quantity: ownQty - 1 }).eq('user_id', supaUser.id).eq('item_id', itemId);
-      }
-    } else {
-      var statsRes = await sb.from('user_stats').select('coin_balance').eq('user_id', supaUser.id).maybeSingle();
-      var bal = Number(statsRes.data && statsRes.data.coin_balance || 0);
-      if (bal < cost) return { data:{ ok:false, error:'INSUFFICIENT_NYANG' } };
-      var nextBal = bal - cost;
-      var balRes = await sb.from('user_stats').update({ coin_balance: nextBal }).eq('user_id', supaUser.id);
-      if (balRes && balRes.error) {
-        if (typeof kh_log_error === 'function') {
-          kh_log_error('reporter gift: coin deduct failed', { cost: cost, error: balRes.error.message }, 'critical');
-        }
-        return { data:{ ok:false, error:'BALANCE_UPDATE_FAILED' } };
-      }
-      try {
-        await sb.from('coin_transactions').insert({
-          user_id:supaUser.id, tx_type:'spend', amount:-cost, balance_after:nextBal,
-          source:'reporter_gift_direct', reference_id:itemId, memo:item.name || 'Reporter gift'
-        });
-      } catch(e) {}
-    }
-
-    if (shouldUseGiftHistory()) {
-      var gh = await sb.from('reporter_gift_history').insert({
-        user_id:supaUser.id, reporter_id:reporterId, item_id:itemId, quantity:1, nyang_spent:(ownQty > 0 ? 0 : cost)
-      });
-      if (gh && gh.error && isMissingGiftHistoryTableError(gh.error)) {
-        disableGiftHistoryWrites();
-      }
-    }
-
-    var affinityGain = Math.max(10, cost);
-    var newAffinity = getLocalAffinity(reporterId) + affinityGain;
-    if (shouldUseRemoteAffinity()) {
-      try {
-        var affRes = await sb.from('reporter_user_affinity').select('gift_count,affinity_points').eq('user_id', supaUser.id).eq('reporter_id', reporterId).maybeSingle();
-        var giftCount = Number(affRes.data && affRes.data.gift_count || 0) + 1;
-        newAffinity = Number(affRes.data && affRes.data.affinity_points || 0) + affinityGain;
-        await sb.from('reporter_user_affinity').upsert({
-          user_id:supaUser.id, reporter_id:reporterId, gift_count:giftCount, affinity_points:newAffinity, updated_at:new Date().toISOString()
-        }, { onConflict:'user_id,reporter_id' });
-      } catch(e) {
-        if (isMissingAffinityTableError(e)) {
-          try { localStorage.setItem('kh_remote_affinity', '0'); } catch(ex) {}
-        }
-      }
-    }
-    // Always save to localStorage + app_settings fallback
-    setLocalAffinity(reporterId, newAffinity);
-    saveAffinityToAppSettings(sb, reporterId, newAffinity);
-
-    return { data:{ ok:true, success:true, affinity_gained: affinityGain } };
-  } catch(e) {
-    return { data:{ ok:false, error:'GIFT_PROCESS_FAILED' } };
-  }
-}
 
 function getAffinityStorageKey(reporterId) {
   if (!supaUser || !reporterId) return '';
@@ -1365,14 +1286,6 @@ window.addEventListener('kh-auth-signed-in', async function() {
 function shouldUseRemoteAffinity() {
   try {
     return localStorage.getItem('kh_remote_affinity') !== '0';
-  } catch(e) {
-    return true;
-  }
-}
-
-function shouldUseGiftRpc() {
-  try {
-    return localStorage.getItem('kh_use_gift_rpc') !== '0';
   } catch(e) {
     return true;
   }

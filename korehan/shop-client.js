@@ -497,13 +497,14 @@
     if (item.price > 0) {
       var sb = getSupa();
       if (!sb || !supaUser) { toast('Please sign in first', 'warn'); return; }
-      var statsRes = await sb.from('user_stats').select('coin_balance').eq('user_id',supaUser.id).maybeSingle();
-      var bal = (statsRes.data && statsRes.data.coin_balance) || 0;
-      if (bal < item.price) {
-        toast('Not enough nyang — need ' + item.price + ', you have ' + bal, 'warn');
+      // Server-side purchase (price from room_items, balance locked there).
+      var rpc = await sb.rpc('buy_room_item', { p_item_id: itemId });
+      var body = (rpc && rpc.data) || {};
+      if (rpc.error || !body.ok) {
+        if (body.error === 'INSUFFICIENT_NYANG') toast('Not enough nyang — need ' + body.required + ', you have ' + body.current, 'warn');
+        else toast('Purchase failed', 'error');
         return;
       }
-      await sb.from('user_stats').update({coin_balance: bal - item.price}).eq('user_id',supaUser.id);
     }
 
     owned.push(itemId);
