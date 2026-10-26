@@ -899,7 +899,7 @@ function renderTodayPlan() {
       fn: 'openLearningSelector()' },
     { done: (typeof _wmWeekSubmitted === 'function') && !!_wmWeekSubmitted(), label: 'Write & get feedback',
       sub: ((typeof _wmWeekSubmitted === 'function') && _wmWeekSubmitted()) ? 'Submitted this week' : (lessonDone >= 4 ? 'Ready — write about the topic' : 'After 4 lesson steps'),
-      fn: 'openWritingModal()' }
+      fn: 'lsStartWriting()' }
   ];
   var doneN = steps.filter(function(x){ return x.done; }).length;
   var nextIdx = -1;
@@ -8066,8 +8066,14 @@ function openWritingModalForLearning() {
   _wmAfterOpen();
 }
 
-// Opens Writing Practice — always opens #wmodal (the writing room), not the Beginner activity flow
+// Express Practice → the 4-step writing flow (js/features/writing-flow.js).
 function lsStartWriting() {
+  if (typeof khOpenWritingFlow === 'function') { khOpenWritingFlow(); return; }
+  openWritingRoom();
+}
+
+// The free writing room (#wmodal) without the guided steps.
+function openWritingRoom() {
   closeLearningSelector();
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
