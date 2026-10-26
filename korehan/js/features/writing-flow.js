@@ -124,6 +124,14 @@ async function _wfLoadContent() {
   return pack || _wfFallbackContent();
 }
 
+// Reviewed pack for this week's topic + level, or null (shared cache with
+// the writing flow). Used by Topic Yum Yum for its practice sentences.
+async function khTopicPack() {
+  var c = await _wfLoadContent();
+  return (c && !c.fallback) ? c : null;
+}
+try { window.khTopicPack = khTopicPack; } catch (_) {}
+
 // This week's words: pack words + lesson vocab (deduped, short list).
 function _wfWords() {
   var out = [], seen = {};
@@ -173,7 +181,7 @@ function _wfMount() {
   document.body.style.overflow = 'hidden';
 }
 
-function _wfTextKey() { return 'kh_wf_text_' + (supaUser ? supaUser.id : 'g') + '_' + kstWeekKey(); }
+function _wfTextKey() { return 'kh_wf_text_' + (supaUser ? supaUser.id : 'g') + '_' + kstWeekKey() + '_' + (_currentLevel || 'Beginner'); }
 function _wfLoadText() {
   try {
     var t = localStorage.getItem(_wfTextKey());
