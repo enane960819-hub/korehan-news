@@ -14,6 +14,6 @@ select json_build_object(
       select table_name, json_agg(column_name order by ordinal_position) cols from information_schema.columns
        where table_schema = 'public' and table_name in ('study_room_grammar','study_room_helpers','writing_topics','study_daily_content','grammar_examples_cache','grammar_curriculum','vocabulary_bank')
        group by table_name) c),
-  'srg', (select json_agg(json_build_array(id, level, pattern, example_ko, example_en, active) order by level, display_order) from public.study_room_grammar),
+  'srg', (select json_agg(row_to_json(g)) from (select * from public.study_room_grammar order by level, display_order limit 300) g),
   'srh', (select json_agg(row_to_json(h)) from (select * from public.study_room_helpers limit 200) h)
 );
