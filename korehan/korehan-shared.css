@@ -2580,6 +2580,7 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #64748b; }
 }
 .tts-btn:hover  { background: #2255a4; color: #fff; transform: scale(1.1); }
 .tts-btn.tts-playing { background: #2255a4; color: #fff; animation: tts-pulse .8s ease-in-out infinite; }
+.tts-playing:not(.tts-btn) { animation: tts-pulse .8s ease-in-out infinite; }
 .tts-btn svg { display: block; }
 @keyframes tts-pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.12);} }
 

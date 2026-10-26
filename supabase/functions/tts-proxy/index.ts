@@ -1,7 +1,16 @@
 /**
- * TTS Proxy — Free Microsoft Edge Neural TTS
- * Voices: ko-KR-SunHiNeural (여), ko-KR-InJoonNeural (남)
- * Uses Edge browser's speech synthesis REST endpoint
+ * TTS Proxy — Korean neural pronunciation
+ * Voices: ko-KR-SunHiNeural (female), ko-KR-InJoonNeural (male)
+ *
+ * Engine: the official Azure Speech REST API. Set the function secrets
+ * AZURE_SPEECH_KEY and AZURE_SPEECH_REGION (the free F0 tier covers 0.5M
+ * neural characters a month). Without them the function answers 503
+ * right away so clients fall back to the device voice instead of waiting.
+ * (The old unofficial Edge read-aloud socket stopped accepting requests.)
+ *
+ * Every clip is stored once in the public `tts-cache` bucket at
+ * <voice>/<sha256(voice|text)>.mp3 — clients read that URL first, so a
+ * word is synthesized once for everyone, not on every tap.
  */
 
 const VOICE_MAP: Record<string, string> = {
@@ -34,90 +43,32 @@ function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-async function synthesize(text: string, voiceName: string): Promise<Uint8Array> {
-  const TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4'
-  const WSS_URL = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=${TOKEN}`
+async function sha256Hex(s: string): Promise<string> {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
+  return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
 
-  const requestId = crypto.randomUUID().replace(/-/g, '')
-  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="ko-KR"><voice name="${voiceName}"><prosody rate="+0%" pitch="+0Hz">${escapeXml(text)}</prosody></voice></speak>`
-
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('timeout')), 12000)
-    const chunks: Uint8Array[] = []
-
-    const ws = new WebSocket(WSS_URL)
-
-    ws.addEventListener('open', () => {
-      // Config message
-      ws.send(
-        `Content-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
-        JSON.stringify({
-          context: {
-            synthesis: {
-              audio: {
-                metadataoptions: { sentenceBoundaryEnabled: false, wordBoundaryEnabled: false },
-                outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
-              },
-            },
-          },
-        })
-      )
-      // SSML request
-      ws.send(
-        `X-RequestId:${requestId}\r\nContent-Type:application/ssml+xml\r\nPath:ssml\r\n\r\n${ssml}`
-      )
+async function synthesize(text: string, voiceName: string, key: string, region: string): Promise<Uint8Array> {
+  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="ko-KR"><voice name="${voiceName}">${escapeXml(text)}</voice></speak>`
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 10000)
+  try {
+    const r = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+      method: 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': key,
+        'Content-Type': 'application/ssml+xml',
+        'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+        'User-Agent': 'korehani-tts-proxy',
+      },
+      body: ssml,
+      signal: ctrl.signal,
     })
-
-    ws.addEventListener('message', (evt) => {
-      if (typeof evt.data === 'string') {
-        if (evt.data.includes('Path:turn.end')) {
-          clearTimeout(timer)
-          ws.close()
-          // Merge chunks
-          const total = chunks.reduce((a, c) => a + c.length, 0)
-          const out = new Uint8Array(total)
-          let off = 0
-          for (const c of chunks) { out.set(c, off); off += c.length }
-          resolve(out)
-        }
-      } else if (evt.data instanceof Blob) {
-        // Deno WebSocket returns Blob for binary frames
-        evt.data.arrayBuffer().then((ab: ArrayBuffer) => {
-          const view = new Uint8Array(ab)
-          // Find end of text header (after "Path:audio\r\n")
-          let i = 0
-          for (; i < Math.min(view.length, 300); i++) {
-            // Look for \r\n after "Path:audio"
-            if (view[i] === 0x0D && view[i + 1] === 0x0A && i > 10) {
-              chunks.push(view.slice(i + 2))
-              return
-            }
-          }
-          chunks.push(view)
-        })
-      } else if (evt.data instanceof ArrayBuffer) {
-        const view = new Uint8Array(evt.data)
-        let i = 0
-        for (; i < Math.min(view.length, 300); i++) {
-          if (view[i] === 0x0D && view[i + 1] === 0x0A && i > 10) {
-            chunks.push(view.slice(i + 2))
-            return
-          }
-        }
-        chunks.push(view)
-      }
-    })
-
-    ws.addEventListener('error', () => {
-      clearTimeout(timer)
-      reject(new Error('ws_error'))
-    })
-
-    ws.addEventListener('close', () => {
-      clearTimeout(timer)
-      if (chunks.length === 0) reject(new Error('no_audio'))
-    })
-  })
+    if (!r.ok) throw new Error('azure_' + r.status)
+    return new Uint8Array(await r.arrayBuffer())
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 Deno.serve(async (req) => {
@@ -125,10 +76,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
   try {
-    // Without JWT verification any caller could drive unlimited WSS
-    // synthesis through this function — each call holds an outbound
-    // socket for ~12s and burns the project's Edge Function CPU
-    // budget. The 500-char cap below is only useful AFTER we've
+    // Without JWT verification any caller could drive unlimited
+    // synthesis through this function (billed characters + Edge
+    // Function CPU). The 500-char cap below is only useful AFTER we've
     // already established that the caller is a logged-in user.
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
@@ -167,8 +117,32 @@ Deno.serve(async (req) => {
       })
     }
 
-    const voice = VOICE_MAP[body.voice || 'female'] || VOICE_MAP.female
-    const audio = await synthesize(text, voice)
+    const azureKey = Deno.env.get('AZURE_SPEECH_KEY')
+    const azureRegion = Deno.env.get('AZURE_SPEECH_REGION')
+    if (!azureKey || !azureRegion) {
+      return new Response(JSON.stringify({ error: 'tts_not_configured' }), {
+        status: 503, headers: { ...cors, 'Content-Type': 'application/json' }
+      })
+    }
+
+    const voiceKey = VOICE_MAP[body.voice] ? body.voice : 'female'
+    const audio = await synthesize(text, VOICE_MAP[voiceKey], azureKey, azureRegion)
+
+    // Best effort — a failed cache upload never blocks playback.
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (serviceKey && audio.length > 100) {
+      try {
+        const path = `${voiceKey}/${await sha256Hex(voiceKey + '|' + text)}.mp3`
+        await fetch(`${supabaseUrl}/storage/v1/object/tts-cache/${path}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${serviceKey}`, 'apikey': serviceKey,
+            'Content-Type': 'audio/mpeg', 'x-upsert': 'true', 'cache-control': 'max-age=31536000',
+          },
+          body: audio,
+        })
+      } catch (e) { console.warn('[tts-proxy] cache upload failed', e) }
+    }
 
     return new Response(audio, {
       status: 200,
