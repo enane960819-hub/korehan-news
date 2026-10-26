@@ -7,7 +7,7 @@ select json_build_object(
   'activity_types_30d', (select json_object_agg(activity_type, n) from (
       select activity_type, count(*) n from public.user_activity_log
        where study_date >= current_date - 30 group by 1) x),
-  'read_history_30d', (select count(*) from public.user_read_history where read_at >= now() - interval '30 days'),
+  'read_history_30d', (select count(*) from public.user_read_history where created_at >= now() - interval '30 days'),
   'log_read_event_def', (select left(pg_get_functiondef(p.oid), 2500) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'public' and p.proname = 'log_read_event' limit 1)
 );
