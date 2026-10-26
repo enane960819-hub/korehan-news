@@ -11,6 +11,20 @@
 <meta name="robots" content="noindex">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+<script>
+// This page doesn't load korehan-shared.js, so draw Lucide icons here:
+// once on load and again whenever a step re-renders.
+(function(){
+  var t = null;
+  function draw(){ t = null; try { if (window.lucide) lucide.createIcons({ attrs: { 'stroke-width': 1.9 } }); } catch (e) {} }
+  document.addEventListener('DOMContentLoaded', function(){
+    draw();
+    new MutationObserver(function(){ if (!t) t = setTimeout(draw, 30); }).observe(document.body, { childList: true, subtree: true });
+  });
+  window.addEventListener('load', draw);
+})();
+</script>
 <style>
 :root{--navy:#081222;--navy-2:#0f2342;--bright:#2563eb;--sky:#7dd3fc;--mint:#67e8f9;--violet:#a78bfa;--gold:#fbbf24;--rose:#fb7185;--white:#fff;--text-soft:rgba(255,255,255,.78);--text-dim:rgba(255,255,255,.56);--border:rgba(255,255,255,.12);--glass:rgba(255,255,255,.08);--glass-strong:rgba(255,255,255,.12);--shadow:0 30px 80px rgba(3,10,22,.45)}
 *,:before,:after{box-sizing:border-box}
@@ -323,11 +337,11 @@ function getSb() {
 }
 
 var GOALS = [
-  { id:'travel', icon:'✈️', label:'Travel', sub:'Handle airports, food, transport, and simple local conversations.', tag:'Real-life Korean' },
-  { id:'kpop', icon:'🎤', label:'K-pop & K-drama', sub:'Understand lyrics, variety clips, interviews, and fan content faster.', tag:'Culture first' },
-  { id:'business', icon:'💼', label:'Work & business', sub:'Build polite reading and useful vocabulary for meetings and news.', tag:'Professional focus' },
-  { id:'immigration', icon:'🏠', label:'Living in Korea', sub:'Prepare for daily life, forms, signs, services, and practical routines.', tag:'Daily survival' },
-  { id:'fun', icon:'✨', label:'Just for fun', sub:'Stay curious and make Korean a hobby you can actually keep doing.', tag:'Low pressure' }
+  { id:'travel', icon:'<i data-lucide="plane" class="kh-ui-icon" aria-hidden="true"></i>', label:'Travel', sub:'Handle airports, food, transport, and simple local conversations.', tag:'Real-life Korean' },
+  { id:'kpop', icon:'<i data-lucide="mic" class="kh-ui-icon" aria-hidden="true"></i>', label:'K-pop & K-drama', sub:'Understand lyrics, variety clips, interviews, and fan content faster.', tag:'Culture first' },
+  { id:'business', icon:'<i data-lucide="briefcase" class="kh-ui-icon" aria-hidden="true"></i>', label:'Work & business', sub:'Build polite reading and useful vocabulary for meetings and news.', tag:'Professional focus' },
+  { id:'immigration', icon:'<i data-lucide="house" class="kh-ui-icon" aria-hidden="true"></i>', label:'Living in Korea', sub:'Prepare for daily life, forms, signs, services, and practical routines.', tag:'Daily survival' },
+  { id:'fun', icon:'<i data-lucide="sparkles" class="kh-ui-icon" aria-hidden="true"></i>', label:'Just for fun', sub:'Stay curious and make Korean a hobby you can actually keep doing.', tag:'Low pressure' }
 ];
 
 var TIME_OPTIONS = [
@@ -338,10 +352,10 @@ var TIME_OPTIONS = [
 ];
 
 var LEVEL_META = {
-  Starter:{ ko:'Seed', emoji:'🌱', desc:'You know a little Hangul or are just beginning to connect words and meaning.', color:'#c4b5fd' },
-  Beginner:{ ko:'Sprout', emoji:'🌿', desc:'You can follow very simple sentences and common particles.', color:'#86efac' },
-  Intermediate:{ ko:'Tree', emoji:'🌳', desc:'You can read connected ideas and common news-style patterns.', color:'#fde68a' },
-  Advanced:{ ko:'Forest', emoji:'🌲', desc:'You can handle complex grammar and nuanced article language.', color:'#fda4af' }
+  Starter:{ ko:'Seed', emoji:'<i data-lucide="sprout" class="kh-ui-icon" aria-hidden="true"></i>', desc:'You know a little Hangul or are just beginning to connect words and meaning.', color:'#c4b5fd' },
+  Beginner:{ ko:'Sprout', emoji:'<i data-lucide="leaf" class="kh-ui-icon" aria-hidden="true"></i>', desc:'You can follow very simple sentences and common particles.', color:'#86efac' },
+  Intermediate:{ ko:'Tree', emoji:'<i data-lucide="tree-deciduous" class="kh-ui-icon" aria-hidden="true"></i>', desc:'You can read connected ideas and common news-style patterns.', color:'#fde68a' },
+  Advanced:{ ko:'Forest', emoji:'<i data-lucide="tree-pine" class="kh-ui-icon" aria-hidden="true"></i>', desc:'You can handle complex grammar and nuanced article language.', color:'#fda4af' }
 };
 
 var TEST_BANK = {
@@ -705,7 +719,7 @@ function renderStep3Choice() {
 
 function renderSelfSelectHTML() {
   return '<div style="margin-top:18px">'
-    + '<div class="ob-helper"><span>🎯</span><div><b>Skip the quiz if you already know your level.</b> You can still change it later on your profile or by retaking the test.</div></div>'
+    + '<div class="ob-helper"><span><i data-lucide="target" class="kh-ui-icon" aria-hidden="true"></i></span><div><b>Skip the quiz if you already know your level.</b> You can still change it later on your profile or by retaking the test.</div></div>'
     + '<div class="ob-level-list">'
     + Object.keys(LEVEL_META).map(function(key) {
         var meta = LEVEL_META[key];
@@ -721,7 +735,7 @@ function renderSelfSelectHTML() {
 
 function renderTestIntroHTML() {
   return '<div style="margin-top:18px">'
-    + '<div class="ob-helper"><span>🧪</span><div><b>No pressure.</b> It starts easy, adapts to your answers, and you can tap <i>I\'m not sure</i> instead of guessing.</div></div>'
+    + '<div class="ob-helper"><span><i data-lucide="flask-conical" class="kh-ui-icon" aria-hidden="true"></i></span><div><b>No pressure.</b> It starts easy, adapts to your answers, and you can tap <i>I\'m not sure</i> instead of guessing.</div></div>'
     + '</div>';
 }
 
@@ -925,7 +939,7 @@ function renderTestQuestion() {
   var total = AD_TOTAL;
   var pct = Math.round((_testIdx / total) * 100);
   var badgeClass = { Starter:'badge-starter', Beginner:'badge-beg', Intermediate:'badge-int', Advanced:'badge-adv' }[q.level] || 'badge-beg';
-  var areaLabels = { reading:'📖 Reading', grammar:'🧩 Grammar', vocab:'📚 Vocab', listening:'🎧 Listening' };
+  var areaLabels = { reading:'Reading', grammar:'Grammar', vocab:'Vocab', listening:'Listening' };
   var isListening = q.area === 'listening';
   var sentenceHTML;
   if (isListening) {
