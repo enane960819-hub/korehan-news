@@ -172,7 +172,7 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261028b"></script>
+<script src="korehan-shared.js?v=20261028c"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script src="playground-scores-client.js?v=20261012a"></script>
 <script>
@@ -181,13 +181,13 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
 // the spacing matches natural reading (particles attach to nouns).
 var POOLS = {
   easy: [
-    ['저는 학생 입니다',                       'I am a student.'],
+    ['저는 학생입니다',                       'I am a student.'],
     ['오늘 날씨가 좋아요',                     'The weather is nice today.'],
     ['커피 한 잔 주세요',                      'One cup of coffee, please.'],
     ['저는 한국어를 배워요',                    'I am learning Korean.'],
-    ['주말에 친구를 만나요',                    'I meet my friend on the weekend.'],
-    ['지금 책을 읽고 있어요',                   'I am reading a book now.'],
-    ['저는 매일 운동을 해요',                   'I exercise every day.'],
+    ['주말에 친구를 만나요',                    'I meet my friend on the weekend.', ["친구를 주말에 만나요"]],
+    ['지금 책을 읽고 있어요',                   'I am reading a book now.', ["책을 지금 읽고 있어요"]],
+    ['저는 매일 운동을 해요',                   'I exercise every day.', ["저는 운동을 매일 해요"]],
     ['이 음식이 정말 맛있어요',                  'This food is really delicious.'],
     ['내일 학교에 안 가요',                     'I am not going to school tomorrow.'],
     ['언니가 노래를 잘 불러요',                  'My older sister sings well.'],
@@ -195,29 +195,29 @@ var POOLS = {
     ['우리 집은 학교에서 멀어요',                'My house is far from the school.']
   ],
   medium: [
-    ['비가 와서 집에 일찍 들어 갔어요',                  'I went home early because it rained.'],
-    ['친구가 한국에 살고 있어서 자주 연락 해요',          'My friend lives in Korea so we contact often.'],
+    ['비가 와서 집에 일찍 들어갔어요',                  'I went home early because it rained.', ["비가 와서 일찍 집에 들어갔어요"]],
+    ['친구가 한국에 살고 있어서 자주 연락해요',          'My friend lives in Korea so we contact often.'],
     ['저는 매일 아침 6시에 일어나서 운동을 해요',         'I wake up at 6 AM every morning and exercise.'],
     ['이번 주말에는 부모님을 뵈러 갈 거예요',             'This weekend I am going to visit my parents.'],
-    ['한국 드라마를 보면서 한국어를 공부 하고 있어요',    'I am studying Korean while watching K-dramas.'],
-    ['저녁에 무엇을 먹을지 아직 결정 하지 못했어요',      'I still haven\'t decided what to eat for dinner.'],
-    ['오랜만에 친구를 만나서 정말 반가웠어요',            'It was really nice to meet my friend after a long time.'],
+    ['한국 드라마를 보면서 한국어를 공부하고 있어요',    'I am studying Korean while watching K-dramas.'],
+    ['저녁에 무엇을 먹을지 아직 결정하지 못했어요',      'I still haven\'t decided what to eat for dinner.', ["아직 저녁에 무엇을 먹을지 결정하지 못했어요"]],
+    ['오랜만에 친구를 만나서 정말 반가웠어요',            'It was really nice to meet my friend after a long time.', ["친구를 오랜만에 만나서 정말 반가웠어요"]],
     ['선생님께서 학생들에게 숙제를 많이 주셨어요',         'The teacher gave the students a lot of homework.'],
     ['이 영화는 제가 본 영화 중에서 가장 슬퍼요',         'This movie is the saddest of the movies I have seen.'],
-    ['바쁘지 않으면 같이 점심을 먹으러 갈래요',           'If you\'re not busy, want to go grab lunch together?'],
-    ['새로 산 신발이 너무 작아서 환불 받고 싶어요',       'The shoes I just bought are too small so I want a refund.'],
-    ['한국에 처음 왔을 때는 모든 것이 신기 했어요',        'When I first came to Korea, everything was fascinating.']
+    ['바쁘지 않으면 같이 점심을 먹으러 갈래요',           'If you\'re not busy, want to go grab lunch together?', ["바쁘지 않으면 점심을 같이 먹으러 갈래요"]],
+    ['새로 산 신발이 너무 작아서 환불받고 싶어요',       'The shoes I just bought are too small so I want a refund.'],
+    ['한국에 처음 왔을 때는 모든 것이 신기했어요',        'When I first came to Korea, everything was fascinating.']
   ],
   hard: [
-    ['아무리 노력해도 결과가 좋지 않으면 너무 속상 합니다',                       'No matter how much you try, it\'s really upsetting when the result isn\'t good.'],
-    ['그 사람이 그렇게 말 했을 줄은 정말 상상도 못 했어요',                       'I really couldn\'t even imagine that person would say something like that.'],
-    ['회의가 길어 지는 바람에 약속에 늦을 뻔 했어요',                            'The meeting dragged on so I almost was late for my appointment.'],
-    ['한국어 실력이 늘면 늘수록 한국 문화에 대한 관심도 커지 더라고요',            'The better my Korean gets, the more my interest in Korean culture grows.'],
+    ['아무리 노력해도 결과가 좋지 않으면 너무 속상합니다',                       'No matter how much you try, it\'s really upsetting when the result isn\'t good.'],
+    ['그 사람이 그렇게 말했을 줄은 정말 상상도 못 했어요',                       'I really couldn\'t even imagine that person would say something like that.'],
+    ['회의가 길어지는 바람에 약속에 늦을 뻔했어요',                            'The meeting dragged on so I almost was late for my appointment.'],
+    ['한국어 실력이 늘면 늘수록 한국 문화에 대한 관심도 커지더라고요',            'The better my Korean gets, the more my interest in Korean culture grows.'],
     ['오랫동안 연락을 못 했는데 이번 기회에 꼭 만나 뵙고 싶습니다',               'We haven\'t been in touch for a long time, but I really hope to meet you this time.'],
-    ['그렇게 어려운 문제를 혼자서 해결 하다니 정말 대단 하네요',                  'To solve such a difficult problem all by yourself — that\'s really impressive.'],
-    ['시간이 없어서 제대로 인사도 못 드리고 떠나서 죄송 합니다',                  'I\'m sorry I had to leave without even saying a proper goodbye because of time.'],
-    ['새로운 기술이 도입 되면서 업무 방식이 완전히 바뀌었어요',                  'With the introduction of new technology, the way we work has completely changed.'],
-    ['그 식당은 예약을 하지 않으면 들어 가기가 거의 불가능 합니다',               'It\'s almost impossible to get into that restaurant without a reservation.'],
+    ['그렇게 어려운 문제를 혼자서 해결하다니 정말 대단하네요',                  'To solve such a difficult problem all by yourself — that\'s really impressive.'],
+    ['시간이 없어서 제대로 인사도 못 드리고 떠나서 죄송합니다',                  'I\'m sorry I had to leave without even saying a proper goodbye because of time.'],
+    ['새로운 기술이 도입되면서 업무 방식이 완전히 바뀌었어요',                  'With the introduction of new technology, the way we work has completely changed.'],
+    ['그 식당은 예약을 하지 않으면 들어가기가 거의 불가능합니다',               'It\'s almost impossible to get into that restaurant without a reservation.'],
     ['친구가 추천해 준 책을 읽다 보니 어느새 새벽이 되었어요',                    'Reading the book my friend recommended, I noticed dawn had come.']
   ]
 };
@@ -317,7 +317,9 @@ window.checkAnswer = function() {
   var s = _state; if (!s) return;
   var origWords = s.items[s.idx][0].split(' ');
   var got = s.answer.map(function(o){ return o.w; });
-  var ok = got.join(' ') === origWords.join(' ') || (typeof khOrderEquivalent === 'function' && khOrderEquivalent(origWords, got));
+  // Every item is hand-written: the answer is the sentence itself plus its
+  // listed natural alternatives (3rd field). Nothing is guessed.
+  var ok = khOrderIsCorrect(origWords, got, s.items[s.idx][2] || []);
   var elapsed = (Date.now() - s.qStarted) / 1000;
   var fbHost = document.getElementById('gs-fb-host');
   if (ok) {

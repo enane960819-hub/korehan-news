@@ -297,9 +297,10 @@ supabase functions deploy claude-proxy
   option in every frame must work with every option in every OTHER frame (no "아침" + "일이 끝나서",
   no "칼국수집" + "파스타"). Enumerate all combinations before shipping a pack. AI corrections are
   filtered through `khRealCorrections()` — NUANCE / "is natural" items are never shown as mistakes.
-- **Sentence-order answers** go through `khOrderEquivalent()` (korehan-shared.js): only the opening
-  topic/time/place words may swap (저는 주말에 ↔ 주말에 저는); adverbs never move and the rest must
-  match exactly. Never loosen it to "same words + same last word" — that accepted unnatural Korean.
+- **Sentence-order answers** go through `khOrderIsCorrect(orig, sel, acceptable_orders)`
+  (korehan-shared.js): the sentence as written + its hand-written `acceptable_orders` list. No list =
+  only the original. Never add a "natural reordering" heuristic back — it accepted
+  "음악을 보통 들으면서 쉬어요". To accept another order, add it to the content's list.
 - **Quiz distractors must be wrong in the slot**, not just different words (`khWordClass`,
   `khSameMeaning` in korehan-study-room.js).
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge

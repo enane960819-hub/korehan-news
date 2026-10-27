@@ -10976,32 +10976,18 @@ function ttsInit() {
 }
 
 // ── Sentence-order checking ────────────────────────────────────────
-// Korean word order is only partly free, and "free" is narrower than it
-// looks: "음악을 보통 들으면서 쉬어요" is grammatical but unnatural. So we
-// accept a reordering ONLY at the front of the sentence — the opening
-// topic / time / place words may swap among themselves
-// (저는 주말에 ↔ 주말에 저는) — and everything after them must match the
-// original exactly. Adverbs (보통, 자주 …) never move — "7시에 저는 보통
-// 일어나요" reads wrong. When in doubt, the original order is the answer.
-function _khOrderMovable(w) {
-  w = String(w || '').replace(/[.,!?]$/, '');
-  if (/^(저|나|우리|저희)는$/.test(w)) return true;                                    // topic
-  if (/^(오늘|어제|내일|요즘|주말|평일|아침|점심|저녁|밤|새벽|지금|올해|작년|내년)(은|는|에|에는)$/.test(w)) return true; // time
-  if (/^[0-9]+(시|월|일)(에|에는)$/.test(w)) return true;                               // 7시에
-  if (/^[가-힣]{2,}(에서|에서는)$/.test(w)) return true;                               // place
-  return false;
+// Korean word order is only partly free, and guessing which reorderings
+// are natural went wrong twice ("음악을 보통 들으면서 쉬어요" was accepted).
+// So nothing is guessed: the answer is the sentence as written plus the
+// content's hand-written list of other natural orders (`acceptable_orders`,
+// strings or word arrays). No list = only the original is correct.
+function khOrderIsCorrect(orig, sel, accepted) {
+  var norm = function(x) { return (Array.isArray(x) ? x.join(' ') : String(x || '')).replace(/[.,!?]/g, '').replace(/\s+/g, ' ').trim(); };
+  var got = norm(sel);
+  if (got === norm(orig)) return true;
+  return (Array.isArray(accepted) ? accepted : []).some(function(a) { return norm(a) === got; });
 }
-function khOrderEquivalent(orig, sel) {
-  orig = (orig || []).map(String); sel = (sel || []).map(String);
-  if (orig.length !== sel.length) return false;
-  if (orig.join(' ') === sel.join(' ')) return true;
-  var lead = function(arr) { var n = 0; while (n < arr.length - 1 && _khOrderMovable(arr[n])) n++; return n; };
-  var no = lead(orig), ns = lead(sel);
-  if (no !== ns || no < 2) return false;                               // nothing to swap
-  if (orig.slice(no).join(' ') !== sel.slice(ns).join(' ')) return false; // rest must be identical
-  return orig.slice(0, no).sort().join('|') === sel.slice(0, ns).sort().join('|');
-}
-window.khOrderEquivalent = khOrderEquivalent;
+window.khOrderIsCorrect = khOrderIsCorrect;
 
 // Android (Samsung) device voices drop the first ~0.3 s while the audio
 // output wakes up, so "조용하다" came out as "용하다". If nothing has been
