@@ -551,7 +551,9 @@ function _wfStep4() {
   // Frame sentences built only from our reviewed options are correct by
   // construction — don't let the AI "fix" them (it flagged 일이 끝나서).
   var safe = _wfPresetSentences().map(_wfNorm);
-  var corr = (Array.isArray(a.corrections) ? a.corrections : []).filter(function (x) {
+  var raw = Array.isArray(a.corrections) ? a.corrections : [];
+  if (typeof khRealCorrections === 'function') raw = khRealCorrections(raw);
+  var corr = raw.filter(function (x) {
     if (!x || !x.original || !x.corrected) return false;
     var o = _wfNorm(x.original);
     return !(o && safe.some(function (t) { return t.indexOf(o) >= 0; }));

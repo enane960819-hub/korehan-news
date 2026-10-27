@@ -9733,6 +9733,20 @@ function _scoreWriting(act, level) {
   return act;
 }
 
+// Keep only real errors from an AI corrections list: no NUANCE/style
+// items, no "it's natural / also correct" items, no no-op rewrites.
+function khRealCorrections(list) {
+  var norm = function(x) { return String(x || '').replace(/[.,!?~]/g, '').replace(/\s+/g, ' ').trim(); };
+  return (list || []).filter(function(c) {
+    if (!c || !c.original || !c.corrected) return false;
+    if (norm(c.original) === norm(c.corrected)) return false;
+    if (/^nuance$/i.test(String(c.pattern || ''))) return false;
+    if (/\b(is|are|also|already|perfectly|fully)\s+(natural|correct|fine|acceptable|grammatical)\b|\bboth (are|work)\b|\bnot wrong\b/i.test(String(c.reason || ''))) return false;
+    return true;
+  });
+}
+window.khRealCorrections = khRealCorrections;
+
 async function _triggerPackageFeedback(submissionId, items) {
   try {
     // Per-activity feedback: each draft (Topic Writing, Article Study,
@@ -9895,7 +9909,7 @@ async function _triggerPackageFeedback(submissionId, items) {
       + '      },\n'
       + '      "lexical_level_fit": 0.0-1.0,\n'
       + '      "corrected_full": "Korean rewrite, OR null if no real errors",\n'
-      + '      "corrections": [{"original":"Korean snippet","corrected":"Korean snippet","reason":"English explanation","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB|NUANCE"}],\n'
+      + '      "corrections": [{"original":"Korean snippet","corrected":"Korean snippet","reason":"English explanation","pattern":"PARTICLE|TENSE|WORD_ORDER|SPELLING|VOCAB"}],\n'
       + '      "naturalness": {"score":0-10,"comment":"ONE English sentence — register / flow / word-choice notes (NOT a repeat of corrections)"} or null\n'
       + '    }\n'
       + '  ]\n'
@@ -9908,6 +9922,15 @@ async function _triggerPackageFeedback(submissionId, items) {
     var data = await callClaude({ feature:'daily_package_feedback', model:'claude-haiku-4-5-20251001', max_tokens:2200, messages:[{role:'user',content:prompt}] });
     var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('').replace(/```json|```/g,'').trim();
     var parsed = JSON.parse(raw);
+    // The model still slips style polish into corrections ("NUANCE … is
+    // natural, but 끝나고 matches better"). Those aren't mistakes — strip
+    // them before saving / logging so a correct answer never reads as wrong.
+    if (parsed && Array.isArray(parsed.activities)) {
+      parsed.activities.forEach(function(a) {
+        if (a && Array.isArray(a.corrections)) a.corrections = khRealCorrections(a.corrections);
+        if (a && Array.isArray(a.corrections) && !a.corrections.length) a.corrected_full = null;
+      });
+    }
 
     // Phase A: compute the deterministic composite + flat rubric for each
     // activity (accuracy/lexical on the client, cohesion/coherence/register
