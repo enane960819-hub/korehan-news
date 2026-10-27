@@ -10979,6 +10979,46 @@ function ttsInit() {
 // output wakes up, so "조용하다" came out as "용하다". If nothing has been
 // spoken for a few seconds, queue a silent warm-up utterance first so the
 // real one starts on an already-open audio route.
+// ── Sentence-order checking ────────────────────────────────────────
+// Korean word order is partly free. Accept a reordering only when the
+// pieces that moved are genuinely movable (adverbs, the topic 저는/오늘은,
+// time/place phrases ~에/~에서), a determiner stays before its noun, and
+// the predicate stays last. Used by every sentence-order activity.
+var KH_ORDER_MOVABLE = ['특히','정말','진짜','자주','가장','제일','보통','매일','항상','늘','가끔','그리고','그래서','하지만','그런데','같이','함께','먼저','그다음에','요즘','오늘','어제','내일','지금','아주','너무','많이','조금','다시','또','빨리','천천히','일찍','늦게'];
+var KH_ORDER_DETERMINERS = ['그','이','저','이런','그런','저런','어떤','무슨','모든','새','첫','몇'];
+function _khOrderMovable(w) {
+  w = String(w || '').replace(/[.,!?]$/, '');
+  return KH_ORDER_MOVABLE.indexOf(w) >= 0 || /(은|는|에|에는|에서|에서는)$/.test(w);
+}
+function khOrderEquivalent(orig, sel) {
+  if (orig.length !== sel.length) return false;
+  var a = orig.slice().sort().join('|'), b = sel.slice().sort().join('|');
+  if (a !== b) return false;                                   // same words
+  if (orig[orig.length - 1] !== sel[sel.length - 1]) return false; // predicate last
+  // Determiners keep their noun: 그 시간에 must stay together.
+  for (var i = 0; i < orig.length - 1; i++) {
+    if (KH_ORDER_DETERMINERS.indexOf(orig[i]) < 0) continue;
+    var j = sel.indexOf(orig[i]);
+    if (j < 0 || sel[j + 1] !== orig[i + 1]) return false;
+  }
+  // Determiner + noun travel as one unit when deciding what is movable.
+  var core = function (arr) {
+    var out = [];
+    for (var k = 0; k < arr.length; k++) {
+      if (KH_ORDER_DETERMINERS.indexOf(arr[k]) >= 0 && k + 1 < arr.length) {
+        var unit = arr[k] + ' ' + arr[k + 1]; k++;
+        if (!_khOrderMovable(arr[k])) out.push(unit);
+        continue;
+      }
+      if (!_khOrderMovable(arr[k])) out.push(arr[k]);
+    }
+    return out.join('|');
+  };
+  return core(orig) === core(sel);
+}
+
+window.khOrderEquivalent = khOrderEquivalent;
+
 var _khTtsLastAt = 0;
 function khTtsWarm(synth) {
   try {

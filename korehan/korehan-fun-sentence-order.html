@@ -172,7 +172,7 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261027m"></script>
+<script src="korehan-shared.js?v=20261028a"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script src="playground-scores-client.js?v=20261012a"></script>
 <script>
@@ -317,7 +317,7 @@ window.checkAnswer = function() {
   var s = _state; if (!s) return;
   var origWords = s.items[s.idx][0].split(' ');
   var got = s.answer.map(function(o){ return o.w; });
-  var ok = got.join(' ') === origWords.join(' ');
+  var ok = got.join(' ') === origWords.join(' ') || (typeof khOrderEquivalent === 'function' && khOrderEquivalent(origWords, got));
   var elapsed = (Date.now() - s.qStarted) / 1000;
   var fbHost = document.getElementById('gs-fb-host');
   if (ok) {
