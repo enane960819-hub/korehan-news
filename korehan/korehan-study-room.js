@@ -14651,9 +14651,39 @@ function goToBMStep3() {
   renderBMStep3();
 }
 
+// ── Blank / MCQ distractors that can't also be right ──────────────
+// A distractor must be WRONG in the slot, not just a different word:
+// "요즘은 ___ 읽어요" with 책을 as a "wrong" choice for 만화책을 is a
+// perfectly good sentence, so the learner was marked wrong for a right
+// answer. We pick distractors from the other word class instead — a
+// verb form can't fill a noun+particle slot, a noun+particle can't end
+// a sentence — and never blank adverbs (자주 / 정말 fit almost anywhere).
+function khWordClass(w) {
+  w = String(w || '').replace(/[.,!?~"'“”]/g, '');
+  if (w.length < 2) return 'other';
+  if (/(요|니다|죠)$/.test(w)) return 'pred';
+  if (/(을|를|이|가|은|는|에서|에게|께|에|도|와|과|하고|으로|로|의|부터|까지|만|처럼|보다)$/.test(w)) return 'noun';
+  return 'other';
+}
+function khWordStem(w) {
+  return String(w || '').replace(/[.,!?~]/g, '')
+    .replace(/(에서|에게|으로|부터|까지|처럼|보다|하고|을|를|이|가|은|는|께|에|도|와|과|로|의|만)$/, '');
+}
+// Two English glosses that share a sense ("lecture" / "lecture, talk").
+function khSameMeaning(a, b) {
+  var sp = function(x) {
+    return String(x || '').toLowerCase().replace(/\([^)]*\)/g, '').split(/[,;\/]/)
+      .map(function(t) { return t.replace(/^\s*(to|a|an|the)\s+/, '').trim(); }).filter(Boolean);
+  };
+  var A = sp(a), B = sp(b);
+  return A.some(function(t) { return B.indexOf(t) >= 0; });
+}
+window.khWordClass = khWordClass;
+window.khSameMeaning = khSameMeaning;
+
 function buildBMBlanks() {
-  // Common Korean particles / short fillers that make terrible distractors
-  var BAD_DISTRACTORS = {'은':1,'는':1,'이':1,'가':1,'을':1,'를':1,'의':1,'에':1,'도':1,'만':1,'과':1,'와':1,'나':1};
+  var FALLBACK_NOUN = ['학교에서', '친구를', '주말에', '커피를'];
+  var FALLBACK_PRED = ['있어요', '먹어요', '좋아요', '가요'];
 
   _bm.blanks = _bm.sentences.map(function(s, sentIdx) {
     var words = s.ko.replace(/[.!?]/g, '').split(/\s+/);
@@ -14664,34 +14694,42 @@ function buildBMBlanks() {
     if (s.blank_answer && s.ko.indexOf(s.blank_answer) !== -1) {
       pickWord = s.blank_answer;
     } else {
-      var candidates = words.map(function(w, i){ return {w:w, i:i}; })
-        .filter(function(x){ return x.i > 0 && x.w.length >= 2; });
-      if (!candidates.length) candidates = [{ w: words[1], i: 1 }];
-      pickWord = candidates[Math.floor(Math.random() * candidates.length)].w;
+      // Blank a noun+particle, or the sentence-final verb. Never an adverb.
+      var candidates = words.filter(function(w, i) {
+        var c = khWordClass(w);
+        return i > 0 && (c === 'noun' || (c === 'pred' && i === words.length - 1));
+      });
+      if (!candidates.length) return { sent: s.ko, en: s.en, answer: null, choices: [], filled: null, correct: null };
+      pickWord = candidates[Math.floor(Math.random() * candidates.length)];
     }
 
     var wrongs;
     if (Array.isArray(s.distractors) && s.distractors.length >= 2) {
       wrongs = s.distractors.slice(0, 2);
     } else {
+      // Opposite class only: noun slot ← verb forms, final verb slot ← noun+particle.
+      var want = khWordClass(pickWord) === 'pred' ? 'noun' : 'pred';
+      var ansStem = khWordStem(pickWord);
+      var seen = {};
       var wrongPool = [];
       _bm.sentences.forEach(function(os, oi) {
         if (oi === sentIdx) return;
-        (os.ko || '').replace(/[.!?]/g, '').split(/\s+/).forEach(function(w){
-          if (w.length >= 2 && w !== pickWord && !BAD_DISTRACTORS[w]) wrongPool.push(w);
+        (os.ko || '').replace(/[.!?]/g, '').split(/\s+/).forEach(function(w) {
+          if (seen[w] || w === pickWord || khWordClass(w) !== want || khWordStem(w) === ansStem) return;
+          seen[w] = 1; wrongPool.push(w);
         });
       });
-      wrongPool = wrongPool.filter(function(w, i, a){ return a.indexOf(w) === i; });
       wrongs = wrongPool.sort(function(){ return Math.random()-.5; }).slice(0, 2);
-      var fallback = ['있어요', '없어요', '해요', '가요'];
-      var fi = 0;
-      while (wrongs.length < 2 && fi < fallback.length) {
-        if (fallback[fi] !== pickWord && wrongs.indexOf(fallback[fi]) < 0) wrongs.push(fallback[fi]);
-        fi++;
+      var fallback = want === 'noun' ? FALLBACK_NOUN : FALLBACK_PRED;
+      for (var fi = 0; wrongs.length < 2 && fi < fallback.length; fi++) {
+        if (fallback[fi] !== pickWord && wrongs.indexOf(fallback[fi]) < 0 && s.ko.indexOf(fallback[fi]) < 0) wrongs.push(fallback[fi]);
       }
     }
     var choices = [pickWord].concat(wrongs).sort(function(){ return Math.random()-.5; });
-    var displaySent = s.ko.replace(pickWord, '___');
+    // Blank the whole word, not the first substring match (책을 inside 만화책을).
+    var esc = pickWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var displaySent = s.ko.replace(new RegExp('(^|\\s)' + esc + '(?=[\\s.,!?]|$)'), '$1___');
+    if (displaySent === s.ko) displaySent = s.ko.replace(pickWord, '___');
 
     return {
       sent: s.ko, display: displaySent, en: s.en,
@@ -14729,6 +14767,12 @@ function renderBMStep3() {
   document.getElementById('bm-footer').innerHTML =
     '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1" id="bm-blank-progress">0 / ' + _bm.blanks.filter(function(b){return b.answer;}).length + ' done</span>'
     + '<button class="bm-btn-next" id="bm-blank-next-btn" disabled onclick="goToBMStep4()">Word Snap →</button>';
+  // No sentence had a safe blank — don't leave the learner stuck on a disabled button.
+  if (!_bm.blanks.some(function(b){ return b.answer; })) {
+    _bm.score.blank = 100;
+    var nb = document.getElementById('bm-blank-next-btn');
+    if (nb) nb.disabled = false;
+  }
 }
 
 function selectBMChoice(sentIdx, word) {
@@ -17764,20 +17808,21 @@ function loadGFFill(p) {
     allBlanks.push(blank);
   });
 
-  // Common Korean distractors by type
-  var commonDistractors = ['입니다','이에요','해요','합니다','있어요','없어요','가요','와요','했어요','하고','에서','부터','까지','지만','그래서','그런데','때문에','같이','처럼','보다'];
-
   var qs = examples.map(function(ex, i) {
     var koText = ex.ko;
     var blank = allBlanks[i];
     var blanked = koText.replace(blank, '<span style="display:inline-block;min-width:70px;border-bottom:2.5px solid #a78bfa;color:rgba(255,255,255,.45);text-align:center">______</span>');
 
-    // Build 4 choices: correct + 3 distractors
+    // Build 4 choices: correct + 3 distractors. Other examples' blanks of
+    // the SAME pattern often fit too (끝나서 / 조용해서), so they're out.
+    // Mid-sentence slot ← sentence-final forms; final slot ← particles/
+    // connectors that can't end a sentence. Both are wrong by construction.
+    var isFinal = koText.replace(/[.!?\s]+$/, '').slice(-blank.length) === blank;
+    var safePool = isFinal
+      ? ['에서', '부터', '까지', '처럼', '보다', '하고', '때문에', '같이']
+      : ['입니다', '해요', '합니다', '있어요', '없어요', '했어요', '가요', '와요'];
     var distractors = [];
-    // First try other blanks from the same pattern
-    allBlanks.forEach(function(b, j) { if (j !== i && distractors.indexOf(b) < 0 && b !== blank) distractors.push(b); });
-    // Add common distractors
-    commonDistractors.forEach(function(d) { if (distractors.indexOf(d) < 0 && d !== blank) distractors.push(d); });
+    safePool.forEach(function(d) { if (distractors.indexOf(d) < 0 && d !== blank && koText.indexOf(d) < 0) distractors.push(d); });
     // Shuffle and pick 3
     distractors.sort(function() { return Math.random() - 0.5; });
     distractors = distractors.slice(0, 3);
