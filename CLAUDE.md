@@ -293,6 +293,10 @@ supabase functions deploy claude-proxy
   (`20261012_rls_lockdown.sql`). New tables need RLS + owner policies from day one.
 - **Explicit column lists must match the live schema** (`LIST_ARTICLE_SELECT`); verify against
   production before adding a column name.
+- **Writing-flow frame packs** (`20261026_writing_topic_content.sql`, built from a script): every
+  option in every frame must work with every option in every OTHER frame (no "아침" + "일이 끝나서",
+  no "칼국수집" + "파스타"). Enumerate all combinations before shipping a pack. AI corrections are
+  filtered through `khRealCorrections()` — NUANCE / "is natural" items are never shown as mistakes.
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
   (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 
