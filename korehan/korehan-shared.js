@@ -10975,10 +10975,6 @@ function ttsInit() {
   setTimeout(load, 2000);
 }
 
-// Android (Samsung) device voices drop the first ~0.3 s while the audio
-// output wakes up, so "조용하다" came out as "용하다". If nothing has been
-// spoken for a few seconds, queue a silent warm-up utterance first so the
-// real one starts on an already-open audio route.
 // ── Sentence-order checking ────────────────────────────────────────
 // Korean word order is only partly free, and "free" is narrower than it
 // looks: "음악을 보통 들으면서 쉬어요" is grammatical but unnatural. So we
@@ -11007,6 +11003,10 @@ function khOrderEquivalent(orig, sel) {
 }
 window.khOrderEquivalent = khOrderEquivalent;
 
+// Android (Samsung) device voices drop the first ~0.3 s while the audio
+// output wakes up, so "조용하다" came out as "용하다". If nothing has been
+// spoken for a few seconds, queue a silent warm-up utterance first so the
+// real one starts on an already-open audio route.
 var _khTtsLastAt = 0;
 function khTtsWarm(synth) {
   try {
