@@ -938,7 +938,7 @@
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
 <script src="js/kh-basics.js?v=20261023a" defer></script>
-<script src="korehan-study-room.js?v=20261027n" defer></script>
+<script src="korehan-study-room.js?v=20261027p" defer></script>
 <script src="js/features/writing-flow.js?v=20261027n" defer></script>
 <script src="js/features/sr-home.js?v=20261027m" defer></script>
 <!-- ══════════════════════════════════════════════════════
@@ -2969,7 +2969,7 @@ function _mrSlotVocab(n, savedWords, alreadyUsedAnswers) {
   var qs = [];
   for (var i = 0; i < pool.length && qs.length < n; i++) {
     var w = pool[i];
-    var distractors = _mrShuffle(pool.filter(function(o){ return o.ko !== w.ko; })).slice(0, 3);
+    var distractors = _mrShuffle(pool.filter(function(o){ return o.ko !== w.ko && !khSameMeaning(o.en, w.en); })).slice(0, 3);
     if (distractors.length < 3) continue;
     var rand = Math.random();
     if (rand < 0.6) {
@@ -3055,7 +3055,7 @@ function _mrSlotKeyExpressions(n, articleCacheMap, convExpressions) {
   var qs = [];
   _mrShuffle(pool).forEach(function(e) {
     if (qs.length >= n) return;
-    var distractors = _mrShuffle(pool.filter(function(o){ return o.ko !== e.ko; })).slice(0, 3);
+    var distractors = _mrShuffle(pool.filter(function(o){ return o.ko !== e.ko && !khSameMeaning(o.en, e.en); })).slice(0, 3);
     if (distractors.length < 3) return;
     var ch = _mrShuffle([e.en].concat(distractors.map(function(d){ return d.en; })));
     qs.push({ type:'mcq', prompt:e.ko, answer:e.en, choices:ch, slot:'expression', label:'What does this expression mean?' });
@@ -3100,7 +3100,7 @@ function _mrSlotListening(n, convExpressions, articleCacheMap) {
   var qs = [];
   _mrShuffle(pool).forEach(function(item) {
     if (qs.length >= n) return;
-    var distractors = _mrShuffle(pool.filter(function(o){ return o.ko !== item.ko; })).slice(0, 3);
+    var distractors = _mrShuffle(pool.filter(function(o){ return o.ko !== item.ko && !khSameMeaning(o.en, item.en); })).slice(0, 3);
     if (distractors.length < 3) return;
     var seenEn = {}; var ch = [];
     _mrShuffle([item.en].concat(distractors.map(function(d){ return d.en; }))).forEach(function(e){ if (!seenEn[e]) { seenEn[e] = 1; ch.push(e); } });
