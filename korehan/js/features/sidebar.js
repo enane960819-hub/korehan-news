@@ -130,18 +130,14 @@ function updateSidebarAuth() {
   if (supaUser) {
     var md = supaUser.user_metadata || {};
     var name = md.full_name || md.name || (supaUser.email || '').split('@')[0];
-    // Same account links as the desktop profile menu.
+    // Same account links as the desktop profile menu (My Room, Friends,
+    // Universe, Bookmarks and the Neon toggle live on My Page).
     row.innerHTML =
       '<div class="kh-sb-lbl">Account</div>'
       + '<div class="kh-sb-me"><div class="kh-sb-me-name" id="kh-sb-me-name">' + esc(name) + '</div>'
       + '<div class="kh-sb-me-mail">' + esc(supaUser.email || '') + '</div></div>'
       + '<a href="korehan-mypage.html" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('circle-user-round') + '</span>My Page</a>'
-      + '<a href="korehan-mypage.html#mp-miniroom-section" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('house') + '</span>My Room</a>'
       + '<a href="korehan-shop.html" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('shopping-bag') + '</span>Shop</a>'
-      + '<a href="korehan-friends.html" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('users') + '</span>Friends</a>'
-      + '<a href="korehan-learning-overview.html#gl-universe-hero" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('sparkles') + '</span>Word Universe</a>'
-      + '<a href="korehan-notes.html" class="kh-sb-a" onclick="khSbClose()"><span class="kh-sb-ico">' + khIcon('bookmark') + '</span>Bookmarks</a>'
-      + neon
       + '<button class="kh-sb-a" onclick="signOut();khSbClose()"><span class="kh-sb-ico">' + khIcon('log-out') + '</span>Sign Out</button>';
     // Nickname from user_stats (shared with the desktop menu's request).
     try {
