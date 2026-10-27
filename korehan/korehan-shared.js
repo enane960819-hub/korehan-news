@@ -7869,7 +7869,7 @@ function openVocabEditModal(word) {
         _snap.dict[finalWord] = { rom: rom || '', en: en || '' };
         _snap.savedAt = Date.now();
         localStorage.setItem(_vKey, JSON.stringify(_snap));
-        localStorage.removeItem('kh_vbank_rows_v1');   // refetch the shared bank copy
+        localStorage.removeItem('kh_vbank_rows_v2');   // refetch the shared bank copy
       } catch (_) {}
       // Sidecar so renderArticleVocab's fromAdminAdds() can surface
       // this word in the Vocab tab on every article whose body matches
@@ -10030,7 +10030,7 @@ var KH_VOCAB_LS_MAX_AGE_MS = 24 * 3600 * 1000;
 // competing with the page's own content on a small DB pool. Now one
 // promise per page, backed by a 6h localStorage copy. Inactive rows are
 // skipped client-side (see the is_active note in loadVocabFromDB).
-var KH_VBANK_LS_KEY = 'kh_vbank_rows_v1';
+var KH_VBANK_LS_KEY = 'kh_vbank_rows_v2';
 var KH_VBANK_MAX_AGE_MS = 6 * 3600 * 1000;
 var _khVbankPromise = null;
 function khVocabBankRows() {
@@ -10975,6 +10975,23 @@ function ttsInit() {
   setTimeout(load, 2000);
 }
 
+// Android (Samsung) device voices drop the first ~0.3 s while the audio
+// output wakes up, so "조용하다" came out as "용하다". If nothing has been
+// spoken for a few seconds, queue a silent warm-up utterance first so the
+// real one starts on an already-open audio route.
+var _khTtsLastAt = 0;
+function khTtsWarm(synth) {
+  try {
+    if (Date.now() - _khTtsLastAt > 4000) {
+      var w = new SpeechSynthesisUtterance('아');
+      w.lang = 'ko-KR'; w.volume = 0; w.rate = 2;
+      synth.speak(w);
+    }
+  } catch (_) {}
+  _khTtsLastAt = Date.now();
+}
+window.khTtsWarm = khTtsWarm;
+
 function ttsSpeak(text, btnEl) {
   if (!window.speechSynthesis) {
     if (typeof toast === 'function') toast('Your browser does not support audio playback.', true);
@@ -11039,7 +11056,8 @@ function ttsSpeak(text, btnEl) {
   }, 1500);
   utter.onstart = function() { clearTimeout(startGuard); };
 
-  synth.speak(utter);
+  // A speak() right after cancel() is also clipped on some engines.
+  setTimeout(function() { khTtsWarm(synth); synth.speak(utter); }, 80);
 }
 
 function _ttsReset() {

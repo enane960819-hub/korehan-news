@@ -178,6 +178,9 @@ function _mwSource(r) {
 
 async function mwLoad() {
   var list = document.getElementById('wb-list');
+  // ?tab=words can open before the session is read — wait for it instead
+  // of showing "Sign in" to a signed-in learner.
+  if (!supaUser && !window._sessionChecked) { setTimeout(mwLoad, 400); return; }
   if (!supaUser) { if (list) list.innerHTML = '<div class="wb-empty">Sign in to see your saved words</div>'; return; }
   var sb = getSupa(); if (!sb) return;
   if (list && !_mw.loaded) list.innerHTML = '<div class="wb-empty">Loading your saved words…</div>';
@@ -311,6 +314,15 @@ function mwListening() {
   });
   KHListening.open({ questions: qs });
 }
+
+// Tap a word row (anywhere but its buttons) to hear it.
+document.addEventListener('click', function (e) {
+  var row = e.target.closest && e.target.closest('.mw-row, .wb-entry');
+  if (!row || e.target.closest('button, a, input')) return;
+  var el = row.querySelector('.mw-ko, .wb-entry-ko');
+  var ko = el && el.firstChild ? String(el.firstChild.textContent || '').trim() : '';
+  if (ko && typeof srSpeak === 'function') srSpeak(ko, row.querySelector('.mw-play'));
+});
 
 // ── Boot ────────────────────────────────────────────────────────
 (function () {

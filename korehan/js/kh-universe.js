@@ -2018,11 +2018,14 @@
       var cb = c.ko.replace(/다$/, '');
       // Word family needs a 2+ syllable stem — one syllable (비, 차) matches noise like 로비, 준비.
       if (base.length >= 2 && cb !== base && (cb.indexOf(base) >= 0 || (cb.length >= 2 && base.indexOf(cb) >= 0))) score += 2;
+      // Category alone is too weak (any food word "relates" to any other) —
+      // it only breaks ties between real meaning / family matches.
+      if (score < 2) return;
       if (cat && cat !== 'misc' && c._cat === cat) score += 1;
-      if (score > 0) scored.push({ w: c, s: score + Math.random() * 0.2 });
+      scored.push({ w: c, s: score + Math.random() * 0.2 });
     });
     scored.sort(function(a, b) { return b.s - a.s; });
-    return scored.slice(0, 6).map(function(x) { return { ko: x.w.ko, rom: x.w.rom, en: x.w.en }; });
+    return scored.slice(0, 3).map(function(x) { return { ko: x.w.ko, rom: x.w.rom, en: x.w.en }; });
   }
   async function fetchRelatedWords(word) {
     try { await loadRelBank(); } catch (_) {}

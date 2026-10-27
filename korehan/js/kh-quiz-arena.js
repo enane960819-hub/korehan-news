@@ -229,6 +229,7 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
       var u = new SpeechSynthesisUtterance(text);
       u.lang = 'ko-KR'; u.rate = 0.9;
       window.speechSynthesis.cancel();
+      if (typeof window.khTtsWarm === 'function') window.khTtsWarm(window.speechSynthesis);
       window.speechSynthesis.speak(u);
     }
   };

@@ -305,6 +305,20 @@ function _wfFrameText(fi, allowEmpty) {
   }
   return out;
 }
+// Frame sentences whose every slot is one of the pack's own options.
+function _wfPresetSentences() {
+  if (!_wfHasFrames()) return [];
+  var out = [];
+  _wf.c.frames.forEach(function (f, fi) {
+    var picks = _wf.picks[fi] || [];
+    var ok = f.parts.every(function (p, pi) {
+      return typeof p === 'string' || (p.options || []).indexOf((picks[pi] || '').trim()) >= 0;
+    });
+    var t = ok ? _wfFrameText(fi) : null;
+    if (t) out.push(t);
+  });
+  return out;
+}
 function _wfFrameSentences() {
   if (!_wfHasFrames()) return [];
   return _wf.c.frames.map(function (_, i) { return _wfFrameText(i); }).filter(Boolean);
@@ -325,8 +339,10 @@ function _wfStep2() {
       if (typeof p === 'string') return;
       var cur = (_wf.picks[fi][pi] || '').trim();
       html += '<div class="wf-chips">';
-      (p.options || []).forEach(function (o) {
-        html += '<button type="button" class="wf-chip' + (cur === o ? ' used' : '') + '" onclick="_wfPick(' + fi + ',' + pi + ',this.dataset.v)" data-v="' + _wfE(o) + '">' + _wfE(o) + '</button>';
+      (p.options || []).forEach(function (o, oi) {
+        var oen = p.options_en && p.options_en[oi];
+        html += '<button type="button" class="wf-chip' + (cur === o ? ' used' : '') + '" onclick="_wfPick(' + fi + ',' + pi + ',this.dataset.v)" data-v="' + _wfE(o) + '">' + _wfE(o)
+          + (oen ? '<small class="wf-chip-en">' + _wfE(oen) + '</small>' : '') + '</button>';
       });
       var custom = cur && (p.options || []).indexOf(cur) < 0 ? cur : '';
       html += '<input class="wf-own" type="text" placeholder="Your own…" value="' + _wfE(custom) + '" oninput="_wfOwn(' + fi + ',' + pi + ',this.value)" lang="ko"></div>';
@@ -470,7 +486,7 @@ async function _wfSubmit() {
   }
   try { markStageDone('topic'); } catch (_) {}
   try { playCorrectSound(); } catch (_) {}
-  try { localStorage.removeItem(_wfTextKey()); } catch (_) {}
+  try { localStorage.removeItem(_wfTextKey()); localStorage.setItem(_wfTextKey() + '_picks', JSON.stringify(_wf.picks)); } catch (_) {}
   if (typeof _wmClearAutosave === 'function') _wmClearAutosave();
   _wf.sub = true; _wf.step = 4; _wf.fb = 'loading';
   _wfRender();
@@ -483,6 +499,10 @@ async function _wfSubmit() {
 }
 
 async function _wfLoadSubmitted() {
+  try {
+    var pk = JSON.parse(localStorage.getItem(_wfTextKey() + '_picks') || 'null');
+    if (Array.isArray(pk) && pk.length === _wf.picks.length) _wf.picks = pk;
+  } catch (_) {}
   _wf.fb = 'loading';
   _wfRender();
   var sb = getSupa();
@@ -528,7 +548,14 @@ function _wfStep4() {
     return;
   }
   var a = _wfActivity(fb) || {};
-  var corr = (Array.isArray(a.corrections) ? a.corrections : []).filter(function (x) { return x && x.original && x.corrected; });
+  // Frame sentences built only from our reviewed options are correct by
+  // construction — don't let the AI "fix" them (it flagged 일이 끝나서).
+  var safe = _wfPresetSentences().map(_wfNorm);
+  var corr = (Array.isArray(a.corrections) ? a.corrections : []).filter(function (x) {
+    if (!x || !x.original || !x.corrected) return false;
+    var o = _wfNorm(x.original);
+    return !(o && safe.some(function (t) { return t.indexOf(o) >= 0; }));
+  });
   var title = corr.length ? (corr.length === 1 ? 'Nice work — 1 thing to fix' : 'Nice work — ' + corr.length + ' things to fix') : 'Great job — no mistakes found';
   var html = _wfHeader(title, corr.length ? 'Fix them yourself to lock them in.' : _wfE(a.overall || fb.overall_assessment || ''))
     + '<div class="wf-bd">';
@@ -609,6 +636,8 @@ function _wfInjectCss() {
     + '.wf-blank.done{border-bottom-style:solid;color:#86efac;border-color:#4ade80}'
     + '.wf-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}'
     + '.wf-chip{font-family:"Noto Sans KR",sans-serif;font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#e2e8f0;cursor:pointer}'
+    + '.wf-chip-en{display:block;font-family:"DM Sans",sans-serif;font-size:10.5px;font-weight:600;color:rgba(226,232,240,.6);margin-top:1px}'
+    + '.wf-chip.used .wf-chip-en{color:rgba(134,239,172,.8)}'
     + 'span.wf-chip{cursor:default}'
     + '.wf-chip.used{background:rgba(74,222,128,.14);border-color:rgba(74,222,128,.45);color:#86efac}'
     + '.wf-own{flex:1;min-width:110px;max-width:180px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.25);border-radius:999px;padding:6px 12px;color:#fff;font:600 13px "Noto Sans KR",sans-serif;outline:none}'

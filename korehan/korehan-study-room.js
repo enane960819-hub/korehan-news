@@ -4947,6 +4947,10 @@ function _keShowFinalScore() {
   var fillTotal = exps.length;
   var sitTotal = situations.length;
 
+  // The Recognition MCQ step was cut (see _keRenderStudyPhase) — it no
+  // longer runs, so it must not show as 0/N or drag the overall % down.
+  var recogRan = recogScore > 0;
+  if (!recogRan) recogTotal = 0;
   var totalScore = recogScore + fillScore + sitScore;
   var totalMax = recogTotal + fillTotal + sitTotal;
   var totalPct = totalMax > 0 ? Math.round(totalScore / totalMax * 100) : 0;
@@ -4962,10 +4966,10 @@ function _keShowFinalScore() {
     + '<div style="font-size:13px;color:#94a3b8;margin-bottom:18px">Here\'s how you did:</div>'
     + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">'
-    + '<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
+    + (recogRan ? '<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
     + '<div><div style="font-size:11px;font-weight:800;color:#fbbf24;text-transform:uppercase;letter-spacing:.5px">Recognition (MCQ)</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Pick the right expression</div></div>'
     + '<div style="font-size:18px;font-weight:900;color:#fbbf24">' + recogScore + '/' + recogTotal + '</div>'
-    + '</div>'
+    + '</div>' : '')
     + '<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'
     + '<div><div style="font-size:11px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.5px">Production Score</div><div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px">Fill in the blank</div></div>'
     + '<div style="font-size:18px;font-weight:900;color:#a78bfa">' + fillScore + '/' + fillTotal + '</div>'
@@ -6054,6 +6058,7 @@ function speakFallback(text) {
   var voices = window.speechSynthesis.getVoices();
   var kr = voices.find(function(v){ return v.lang && v.lang.indexOf('ko') === 0; });
   if (kr) u.voice = kr;
+  if (typeof window.khTtsWarm === 'function') window.khTtsWarm(window.speechSynthesis);
   window.speechSynthesis.speak(u);
 }
 
@@ -8267,6 +8272,7 @@ function speakKorean(text) {
   var voices = window.speechSynthesis.getVoices();
   var koVoice = voices.find(function(v){ return v.lang === 'ko-KR' || v.lang.startsWith('ko'); });
   if (koVoice) utt.voice = koVoice;
+  if (typeof window.khTtsWarm === 'function') window.khTtsWarm(window.speechSynthesis);
   window.speechSynthesis.speak(utt);
 }
 
@@ -11446,6 +11452,7 @@ function lqSpk() {
   window.speechSynthesis.cancel();
   var u = new SpeechSynthesisUtterance(q.sentence);
   u.lang='ko-KR'; u.rate=0.82;
+  if (typeof window.khTtsWarm === 'function') window.khTtsWarm(window.speechSynthesis);
   window.speechSynthesis.speak(u);
 }
 
@@ -14490,6 +14497,39 @@ function bmClearAnswer(sentIdx) {
   renderBMStep2();
 }
 
+var _BM_MOVABLE_ADV = ['특히','정말','진짜','자주','가장','제일','보통','매일','항상','늘','가끔','그리고','그래서','하지만','그런데','같이','함께','먼저','그다음에','요즘','오늘','어제','내일','지금','아주','너무','많이','조금','다시','또','빨리','천천히','일찍','늦게'];
+var _BM_DETERMINERS = ['그','이','저','이런','그런','저런','어떤','무슨','모든','새','첫','몇'];
+function _bmMovable(w) {
+  w = String(w || '').replace(/[.,!?]$/, '');
+  return _BM_MOVABLE_ADV.indexOf(w) >= 0 || /(은|는|에|에는|에서|에서는)$/.test(w);
+}
+function _bmOrderEquivalent(orig, sel) {
+  if (orig.length !== sel.length) return false;
+  var a = orig.slice().sort().join('|'), b = sel.slice().sort().join('|');
+  if (a !== b) return false;                                   // same words
+  if (orig[orig.length - 1] !== sel[sel.length - 1]) return false; // predicate last
+  // Determiners keep their noun: 그 시간에 must stay together.
+  for (var i = 0; i < orig.length - 1; i++) {
+    if (_BM_DETERMINERS.indexOf(orig[i]) < 0) continue;
+    var j = sel.indexOf(orig[i]);
+    if (j < 0 || sel[j + 1] !== orig[i + 1]) return false;
+  }
+  // Determiner + noun travel as one unit when deciding what is movable.
+  var core = function (arr) {
+    var out = [];
+    for (var k = 0; k < arr.length; k++) {
+      if (_BM_DETERMINERS.indexOf(arr[k]) >= 0 && k + 1 < arr.length) {
+        var unit = arr[k] + ' ' + arr[k + 1]; k++;
+        if (!_bmMovable(arr[k])) out.push(unit);
+        continue;
+      }
+      if (!_bmMovable(arr[k])) out.push(arr[k]);
+    }
+    return out.join('|');
+  };
+  return core(orig) === core(sel);
+}
+
 function checkBMWordOrder() {
   var idx = _bm.wordOrderIdx;
   var wo  = _bm.wordOrders[idx];
@@ -14505,15 +14545,13 @@ function checkBMWordOrder() {
   // at the start OR before the verb without changing meaning. If the user
   // used every required word AND ended with the same verb/predicate, treat
   // it as correct rather than failing on a strict join() match.
-  if (!isCorrect && wo.original.length >= 3) {
-    var lastOrigWord = wo.original[wo.original.length - 1];
-    var lastSelWord  = wo.selected[wo.selected.length - 1];
-    var sortedOrig = wo.original.slice().sort();
-    var sortedSel  = wo.selected.slice().sort();
-    var sameWords  = sortedOrig.length === sortedSel.length
-      && sortedOrig.every(function(w, i){ return w === sortedSel[i]; });
-    if (lastOrigWord === lastSelWord && sameWords) isCorrect = true;
-  }
+  // Only genuinely movable pieces may change place: adverbs, the topic
+  // (저는 / 오늘은 …) and time/place phrases (~에, ~에서). Everything else
+  // must keep the original order, a determiner (그/이/저 …) must stay
+  // right before its noun, and the predicate stays last. The old rule
+  // accepted ANY order with the same words + same last word, so
+  // "그 커피를 신문을 마시면서 시간에 읽어요" counted as correct.
+  if (!isCorrect && wo.original.length >= 3) isCorrect = _bmOrderEquivalent(wo.original, wo.selected);
   var isPartial = !isCorrect && acceptable.indexOf(answer) >= 0;
   wo.result = isCorrect ? 'correct' : isPartial ? 'partial' : 'wrong';
   _bmSaveProgress();
@@ -14787,6 +14825,7 @@ function renderBMWordSnap() {
         // typically 2+ Hangul syllables.
         if (base.length < 2) return;
         if (/[ㄱ-힝]/.test(base) === false) return;
+        if (/(요|니다)$/.test(base)) return;   // conjugated verb (좋아요) — not a dictionary word
         if (existing[base]) return;
         existing[base] = true;
         // Scraped words have no en translation; mark with a deferred
@@ -14835,6 +14874,12 @@ function renderBMWordSnap() {
   // Any card missing EN meaning? Batch-translate via Claude so the back of
   // the card never matches the front (the original bug: front & back both
   // showed just the Korean word because en was an empty string).
+  // Fill from the loaded dictionary first (free) — only leftovers go to the AI.
+  vocab.forEach(function(v) {
+    if (v.en || typeof VOCAB !== 'object' || !VOCAB) return;
+    var d = VOCAB[v.ko] || VOCAB[v.ko + '다'];
+    if (d && d.en) { v.en = (typeof khCleanMeaning === 'function' ? khCleanMeaning(d.en) : d.en); v.rom = v.rom || d.rom || ''; }
+  });
   var needsTranslation = vocab.some(function(v){ return !v.en; });
   if (needsTranslation) {
     document.getElementById('bm-body').innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.6);font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px"><span style="display:inline-flex;width:18px;height:18px;color:#a78bfa;animation:spin 1.4s linear infinite">' + BM_ICON_SPARKLE + '</span><span>Preparing word cards…</span></div>';
@@ -14869,7 +14914,7 @@ function renderBMWordSnap() {
           _bmAttachExamples(_bm.snapCards);
         }
       } catch(e){}
-      bmRenderSnapCard();
+      bmStartDictation();
     }).catch(function(){ bmStartDictation(); });
     return;
   }
@@ -14955,7 +15000,7 @@ function bmRenderDictation() {
   } else if (stage === 2) {
     var scrambled = _bmShuffle(_bmWordJamos(word));
     helpHtml = '<div style="text-align:center;margin-bottom:10px">'
-      + (card.en ? '<div style="font-size:14px;color:rgba(255,255,255,.72);margin-bottom:7px">💡 ' + escapeHTML(card.en) + '</div>' : '')
+      + (card.en ? '<div style="font-size:14px;color:rgba(255,255,255,.72);margin-bottom:7px">' + escapeHTML(card.en) + '</div>' : '')
       + '<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center">'
       +   scrambled.map(function(j){ return '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:34px;padding:0 8px;background:rgba(167,139,250,.16);border:1px solid rgba(167,139,250,.35);border-radius:8px;font-family:\'Noto Sans KR\',sans-serif;font-size:17px;font-weight:700;color:#d6c7ff">' + escapeHTML(j) + '</span>'; }).join('')
       + '</div>'
@@ -14967,7 +15012,7 @@ function bmRenderDictation() {
 
   document.getElementById('bm-body').innerHTML =
       '<div class="bm-step-label">Step 4 of 4 · Dictation ' + (idx + 1) + ' / ' + cards.length
-    +   ' <span style="margin-left:6px;padding:2px 8px;border-radius:999px;background:rgba(125,211,252,.16);color:#7dd3fc;font-size:11px;font-weight:800">' + meta.badge + '</span></div>'
+    +   ' <span style="display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:rgba(125,211,252,.16);color:#7dd3fc;font-size:11px;font-weight:800;white-space:nowrap">' + meta.badge + '</span></div>'
     + '<div class="bm-step-title">' + BM_ICON_VOLUME + '<span>Audio Dictation</span></div>'
     + '<div class="bm-step-desc">' + meta.desc + '</div>'
     + '<div class="bm-dict-card">'
@@ -14989,7 +15034,7 @@ function bmRenderDictation() {
 
   document.getElementById('bm-footer').innerHTML =
       '<button class="bm-btn-back" onclick="goToBMStep3Back()">← Fill In</button>'
-    + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">Listening and writing helps words stick</span>'
+    + '<span class="bm-foot-hint">Listening and writing helps words stick</span>'
     + '<button class="bm-btn-next" disabled>Complete →</button>';
 
   // Stages 1-2: attach the on-screen jamo keyboard so a beginner can spell
@@ -15121,8 +15166,8 @@ function bmRenderAssociation() {
 
   document.getElementById('bm-footer').innerHTML =
       '<button class="bm-btn-back" onclick="bmStartDictation()">← Listen again</button>'
-    + '<span style="font-size:13px;color:rgba(255,255,255,.4);flex:1;text-align:center">'
-    + (allMatched ? '✓ All words matched!' : 'Match the pairs')
+    + '<span class="bm-foot-hint">'
+    + (allMatched ? 'All words matched!' : 'Match the pairs')
     + '</span>'
     + '<button class="bm-btn-next" ' + (allMatched ? '' : 'disabled') + ' onclick="finishBeginner()">Complete →</button>';
 }
@@ -18481,6 +18526,7 @@ function _dctSpeakSentence(text) {
   var voices = window.speechSynthesis.getVoices();
   var kr = voices.find(function(v){ return v.lang && v.lang.indexOf('ko') === 0; });
   if (kr) u.voice = kr;
+  if (typeof window.khTtsWarm === 'function') window.khTtsWarm(window.speechSynthesis);
   window.speechSynthesis.speak(u);
 }
 

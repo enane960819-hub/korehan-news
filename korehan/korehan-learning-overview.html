@@ -1093,7 +1093,7 @@
         if (_glUniverseLoading) return _glUniverseLoading;
         _glUniverseLoading = new Promise(function (resolve, reject) {
           var s = document.createElement('script');
-          s.src = 'js/kh-universe.js?v=20261025a';
+          s.src = 'js/kh-universe.js?v=20261027m';
           s.async = false;
           s.onload = function () { resolve(); };
           s.onerror = function () { _glUniverseLoading = null; reject(new Error('universe load failed')); };
@@ -1326,7 +1326,7 @@
   <script src="js/features/analyze-mode.js?v=20260525r"></script>
   <script src="js/features/translation.js?v=20261027a"></script>
   <script src="js/features/fill-blank.js?v=20261013c"></script>
-  <script src="korehan-shared.js?v=20261027e"></script>
+  <script src="korehan-shared.js?v=20261027m"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
   <!-- kh-universe.js (~117KB) lazy-loaded by _glEnsureUniverse() above on first click. -->
   <script src="js/kh-curriculum.js?v=20261016a"></script>
@@ -2807,6 +2807,7 @@
     var voices = window.speechSynthesis.getVoices();
     var koVoice = voices.find(function(v){ return v.lang==='ko-KR' || v.lang.startsWith('ko'); });
     if (koVoice) utt.voice = koVoice;
+    if (typeof window.khTtsWarm === 'function') window.khTtsWarm(window.speechSynthesis);
     window.speechSynthesis.speak(utt);
   }
 
