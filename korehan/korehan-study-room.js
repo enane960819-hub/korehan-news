@@ -791,7 +791,7 @@ function checkWordOrder() {
     res.innerHTML = '<div style="padding:10px;background:rgba(251,191,36,.1);border-radius:8px;color:#fbbf24">Place all the words first!</div>';
     return;
   }
-  var isCorrect = ans.join(' ') === correct.join(' ');
+  var isCorrect = ans.join(' ') === correct.join(' ') || khOrderEquivalent(correct, ans);
   if (isCorrect) {
     res.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac;display:flex;align-items:center;flex-wrap:wrap;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span><br><span style="font-size:12px;opacity:.8;width:100%">' + correct.join(' ') + '</span></div>';
     // Word arrangement is the final step in the redesigned PD flow.
@@ -14520,38 +14520,9 @@ function bmClearAnswer(sentIdx) {
   renderBMStep2();
 }
 
-var _BM_MOVABLE_ADV = ['특히','정말','진짜','자주','가장','제일','보통','매일','항상','늘','가끔','그리고','그래서','하지만','그런데','같이','함께','먼저','그다음에','요즘','오늘','어제','내일','지금','아주','너무','많이','조금','다시','또','빨리','천천히','일찍','늦게'];
-var _BM_DETERMINERS = ['그','이','저','이런','그런','저런','어떤','무슨','모든','새','첫','몇'];
-function _bmMovable(w) {
-  w = String(w || '').replace(/[.,!?]$/, '');
-  return _BM_MOVABLE_ADV.indexOf(w) >= 0 || /(은|는|에|에는|에서|에서는)$/.test(w);
-}
-function _bmOrderEquivalent(orig, sel) {
-  if (orig.length !== sel.length) return false;
-  var a = orig.slice().sort().join('|'), b = sel.slice().sort().join('|');
-  if (a !== b) return false;                                   // same words
-  if (orig[orig.length - 1] !== sel[sel.length - 1]) return false; // predicate last
-  // Determiners keep their noun: 그 시간에 must stay together.
-  for (var i = 0; i < orig.length - 1; i++) {
-    if (_BM_DETERMINERS.indexOf(orig[i]) < 0) continue;
-    var j = sel.indexOf(orig[i]);
-    if (j < 0 || sel[j + 1] !== orig[i + 1]) return false;
-  }
-  // Determiner + noun travel as one unit when deciding what is movable.
-  var core = function (arr) {
-    var out = [];
-    for (var k = 0; k < arr.length; k++) {
-      if (_BM_DETERMINERS.indexOf(arr[k]) >= 0 && k + 1 < arr.length) {
-        var unit = arr[k] + ' ' + arr[k + 1]; k++;
-        if (!_bmMovable(arr[k])) out.push(unit);
-        continue;
-      }
-      if (!_bmMovable(arr[k])) out.push(arr[k]);
-    }
-    return out.join('|');
-  };
-  return core(orig) === core(sel);
-}
+// Word-order equivalence lives in korehan-shared.js (khOrderEquivalent) so
+// every sentence-order activity accepts the same valid reorderings.
+function _bmOrderEquivalent(orig, sel) { return khOrderEquivalent(orig, sel); }
 
 function checkBMWordOrder() {
   var idx = _bm.wordOrderIdx;
@@ -18755,7 +18726,7 @@ function dctWOClear() {
 }
 function dctWOCheck() {
   if(!_dctWOState) return;
-  var ok=_dctWOState.selected.join(' ')===_dctWOState.original.join(' ');
+  var ok=_dctWOState.selected.join(' ')===_dctWOState.original.join(' ')||khOrderEquivalent(_dctWOState.original,_dctWOState.selected);
   var msg=document.getElementById('dct-wo-msg');
   var zone=document.getElementById('dct-answer-zone');
   if(ok){
