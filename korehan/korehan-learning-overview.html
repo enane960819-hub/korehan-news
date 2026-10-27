@@ -1322,11 +1322,11 @@
   <script src="js/features/reading-tracker.js?v=20260525r"></script>
   <script src="js/features/bookmarks.js?v=20260525r"></script>
   <script src="js/features/comments.js?v=20261016a"></script>
-  <script src="js/features/sidebar.js?v=20261027c"></script>
+  <script src="js/features/sidebar.js?v=20261027d"></script>
   <script src="js/features/analyze-mode.js?v=20260525r"></script>
   <script src="js/features/translation.js?v=20261027a"></script>
   <script src="js/features/fill-blank.js?v=20261013c"></script>
-  <script src="korehan-shared.js?v=20261027d"></script>
+  <script src="korehan-shared.js?v=20261027e"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
   <!-- kh-universe.js (~117KB) lazy-loaded by _glEnsureUniverse() above on first click. -->
   <script src="js/kh-curriculum.js?v=20261016a"></script>
@@ -4750,5 +4750,83 @@
   </script>
 
   <div id="kh-footer"></div>
+
+  <!-- Progress redesign (2026-10) — js/features/progress-home.js -->
+  <style>
+  html:has(body.pg-on), body.pg-on { background:#08122a !important; }
+  body.pg-on { background:linear-gradient(180deg,#0d1b3d 0,#0a1631 900px,#08122a 1600px) !important; color:#e2e8f0; min-height:100vh; }
+  body.pg-on .wrap > *:not(#pg-root):not(script):not(style):not([id$="-overlay"]) { display:none !important; }
+  #pg-root { max-width:1240px; margin:0 auto; font-family:'Happy Monkey','Noto Sans KR',sans-serif; }
+  .pg-hd { display:flex; align-items:center; flex-wrap:wrap; gap:10px 14px; margin:4px 0 14px; }
+  .pg-hd h1 { font-family:'DM Sans',sans-serif; font-size:26px; font-weight:800; color:#fff; margin:0; }
+  .pg-chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .pg-chip { font-size:12px; padding:6px 11px; border-radius:999px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1); color:#fff; }
+  .pg-chip b { font-family:'DM Sans',sans-serif; margin-right:3px; }
+  .pg-fire { color:#fb923c; }
+  .pg-grid { display:flex; flex-direction:column; gap:12px; }
+  .pg-col { display:contents; }
+  .pg-o1{order:1}.pg-o2{order:2}.pg-o3{order:3}.pg-o4{order:4}.pg-o5{order:5}.pg-o6{order:6}.pg-o7{order:7}
+  @media (min-width:861px) {
+    .pg-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; align-items:start; }
+    .pg-col { display:flex; flex-direction:column; gap:16px; }
+  }
+  .pg-card, #pg-root .pg-reuse, #pg-root #gl-week { border-radius:18px !important; padding:16px !important; margin:0 !important; background:rgba(255,255,255,.05) !important; border:1px solid rgba(255,255,255,.1) !important; box-shadow:none !important; color:#e2e8f0; }
+  #pg-root #gl-universe-hero { margin:0 !important; }
+  .pg-h { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:10px; }
+  .pg-h b { font-size:15px; color:#fff; }
+  .pg-h span { font-size:11.5px; color:rgba(255,255,255,.5); }
+  .pg-tick { display:inline-block; width:2px; height:10px; background:rgba(255,255,255,.6); vertical-align:-1px; margin:0 2px; }
+  .pg-skel { height:90px; border-radius:12px; background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.09),rgba(255,255,255,.04)); background-size:200% 100%; animation:pgSkel 1.4s infinite; }
+  @keyframes pgSkel { to { background-position:-200% 0; } }
+  .pg-sk { display:grid; grid-template-columns:92px 1fr 64px; gap:4px 10px; align-items:center; margin:10px 0; }
+  .pg-sk-n { font-size:13px; color:#fff; }
+  .pg-sk-bar { height:9px; border-radius:9px; background:rgba(255,255,255,.08); position:relative; }
+  .pg-sk-bar i { position:absolute; inset:0 auto 0 0; border-radius:9px; }
+  .pg-sk-bar s { position:absolute; top:-3px; bottom:-3px; width:2px; background:rgba(255,255,255,.6); }
+  .pg-sk-v { font-family:'DM Sans',sans-serif; font-size:12px; font-weight:800; text-align:right; color:#fff; }
+  .pg-sk small { grid-column:2 / 4; font-size:11px; color:rgba(255,255,255,.45); }
+  .pg-sk-v.up { color:#4ade80; } .pg-sk-v.down { color:#f87171; } .pg-sk-v.mut { color:rgba(255,255,255,.4); }
+  .pg-fix { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid rgba(255,255,255,.07); text-decoration:none; }
+  .pg-fix:first-child { border-top:0; }
+  .pg-tag { font-family:'DM Sans',sans-serif; font-size:10px; font-weight:800; padding:3px 7px; border-radius:6px; background:rgba(56,189,248,.16); color:#7dd3fc; flex-shrink:0; }
+  .pg-fix-t { flex:1; min-width:0; font-size:13px; color:#fff; }
+  .pg-fix-t small { display:block; font-size:11px; color:rgba(255,255,255,.45); }
+  .pg-go { font-family:'DM Sans',sans-serif; font-size:12px; font-weight:800; padding:6px 12px; border-radius:999px; background:#3b82f6; color:#fff; flex-shrink:0; }
+  .pg-empty { font-size:12.5px; color:rgba(255,255,255,.5); padding:4px 0; }
+  .pg-bars { display:flex; align-items:flex-end; gap:8px; height:150px; position:relative; }
+  .pg-goal { position:absolute; left:0; right:0; border-top:1.5px dashed rgba(253,230,138,.55); pointer-events:none; }
+  .pg-goal span { position:absolute; right:0; top:-16px; font-size:10px; color:#fde68a; }
+  .pg-bar { flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; justify-content:flex-end; height:100%; }
+  .pg-bar i { width:100%; max-width:38px; border-radius:8px 8px 4px 4px; background:rgba(96,165,250,.45); }
+  .pg-bar i.hit { background:linear-gradient(180deg,#60a5fa,#7c3aed); }
+  .pg-bar i.now { background:linear-gradient(180deg,#93c5fd,#60a5fa); box-shadow:0 0 0 2px rgba(147,197,253,.5); }
+  .pg-bar b { font-family:'DM Sans',sans-serif; font-size:11px; color:#fff; }
+  .pg-bar small { font-size:10px; color:rgba(255,255,255,.45); font-family:'DM Sans',sans-serif; }
+  .pg-sum { display:flex; gap:8px; margin-top:14px; }
+  .pg-sum div { flex:1; text-align:center; border-radius:12px; padding:8px; background:rgba(255,255,255,.05); }
+  .pg-sum b { display:block; font-family:'DM Sans',sans-serif; font-size:17px; color:#fff; }
+  .pg-sum small { font-size:10.5px; color:rgba(255,255,255,.5); }
+  .pg-signin { text-align:center; padding:28px 18px !important; }
+  .pg-signin b { display:block; font-size:18px; color:#fff; margin-bottom:6px; }
+  .pg-signin p { font-size:13px; color:rgba(255,255,255,.6); margin:0 0 14px; }
+  .pg-signin button { padding:11px 26px; border:0; border-radius:999px; background:linear-gradient(120deg,#3b82f6,#7c3aed); color:#fff; font-weight:800; font-size:14px; cursor:pointer; font-family:inherit; }
+  /* Reused cards: This week, Feedback, Badges → dark */
+  #pg-root .gl-week-lbl { color:#7dd3fc; }
+  #pg-root .gl-week-big { color:#fff; }
+  #pg-root .gl-week-h { color:rgba(255,255,255,.85); }
+  #pg-root .gl-week-chip { background:rgba(251,146,60,.15); color:#fdba74; }
+  #pg-root .gl-week-chip.ok { background:rgba(74,222,128,.12); color:#86efac; }
+  #pg-root .gl-week-go { background:linear-gradient(120deg,#3b82f6,#7c3aed); }
+  #pg-root .gl-week-day span { color:rgba(255,255,255,.45); }
+  #pg-root .gl-week-day:not(.on) i { background:rgba(255,255,255,.08) !important; border-color:transparent !important; }
+  #pg-root .gl-week-day.on i { background:linear-gradient(135deg,#3b82f6,#7c3aed) !important; }
+  #pg-root .pg-reuse span[style*="font-size:17px"] { font-size:15px !important; color:#fff !important; }
+  #pg-root .pg-reuse a, #pg-root .pg-reuse button { color:#93c5fd !important; background:transparent !important; border-color:rgba(147,197,253,.3) !important; }
+  #pg-root .pg-reuse [style*="color:#0f172a"], #pg-root .pg-reuse [style*="color:#334155"], #pg-root .pg-reuse [style*="color: rgb(15, 23, 42)"] { color:#fff !important; }
+  #pg-root .pg-reuse [style*="background:#fff"], #pg-root .pg-reuse [style*="background:#fafbfc"], #pg-root .pg-reuse [style*="background:#f8fafc"] { background:rgba(255,255,255,.04) !important; }
+  #pg-root .pg-reuse [style*="border:1px solid #"] { border-color:rgba(255,255,255,.1) !important; }
+  #pg-root .pg-reuse [style*="color:#64748b"], #pg-root .pg-reuse [style*="color:#94a3b8"], #pg-root .pg-reuse [style*="color:#8b8b8b"] { color:rgba(255,255,255,.55) !important; }
+  </style>
+<script src="js/features/progress-home.js?v=20261027c"></script>
 </body>
 </html>

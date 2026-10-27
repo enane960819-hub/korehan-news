@@ -1926,22 +1926,12 @@ function updateAuthUI() {
         + '<div id="kh-user-dropdown-stats" style="margin-top:8px;font-size:12px;color:#64748b;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:13px;height:13px;color:#a78bfa">'+KH_ICON_SPARKLE+'</span><span>XP 0 · </span><span style="display:inline-flex;width:13px;height:13px;color:#fbbf24">'+KH_ICON_PAW+'</span><span>0 Nyang</span></div>'
         + '</div>'
         + '<a href="korehan-mypage.html" class="kh-user-dropdown-link">' + khIcon('circle-user-round', 'My Page', 'kh-ui-icon-sm') + '</a>'
-        + '<a href="korehan-mypage.html#mp-miniroom-section" class="kh-user-dropdown-link">' + khIcon('house', 'My Room', 'kh-ui-icon-sm') + '</a>'
-        + '<a href="korehan-shop.html" class="kh-user-dropdown-link">' + khIcon('shopping-bag', 'Shop', 'kh-ui-icon-sm') + '</a>'
+        // 4 items (owner, 2026-10): My Room / Friends / Word Universe / Neon
+        // moved into My Page's shortcuts card.
         + '<a href="korehan-study-room.html?tab=words" class="kh-user-dropdown-link">' + khIcon('book-open', 'My Words', 'kh-ui-icon-sm') + '</a>'
-        + '<a href="korehan-friends.html" class="kh-user-dropdown-link">' + khIcon('users', 'Friends', 'kh-ui-icon-sm') + '</a>'
-        // Owner: the old "My Notes" duplicated the Word Universe vocab
-        // surface inside the profile dropdown — same saved_words data,
-        // but a flat list instead of the constellation. Pointing the
-        // dropdown at the Growth Lab Universe consolidates them. The
-        // #gl-universe-hero anchor scrolls users straight to the
-        // constellation card on click. Bookmarked-articles surface
-        // (the other tab on the old My Notes page) remains reachable
-        // via the per-article bookmark icon.
-        + '<a href="korehan-learning-overview.html#gl-universe-hero" class="kh-user-dropdown-link">' + khIcon('sparkles', 'Word Universe', 'kh-ui-icon-sm') + '</a>'
+        + '<a href="korehan-shop.html" class="kh-user-dropdown-link">' + khIcon('shopping-bag', 'Shop', 'kh-ui-icon-sm') + '</a>'
         + (isAdmin ? '<a href="korehan-x9f4k2m7.html" class="kh-user-dropdown-link">' + khIcon('settings', 'Admin CMS', 'kh-ui-icon-sm') + '</a>' : '')
         + (isTutor ? '<a href="korehan-tutor-7v3ca.html" class="kh-user-dropdown-link">' + khIcon('graduation-cap', 'Tutor Dashboard', 'kh-ui-icon-sm') + '</a>' : '')
-        + '<button type="button" id="kh-ud-neon-toggle" class="kh-user-dropdown-link kh-user-dropdown-btn" aria-pressed="false" onclick="toggleKhNeon(event)">' + khIcon('zap', 'Neon theme: OFF', 'kh-ui-icon-sm') + '</button>'
         + '<button type="button" class="kh-user-dropdown-link kh-user-dropdown-btn" onclick="signOut();closeTopbarUserMenu()">' + khIcon('log-out', 'Sign Out', 'kh-ui-icon-sm') + '</button>';
       syncNeonToggleButtons();
       (function loadDropdownStats(){
@@ -2450,7 +2440,8 @@ function syncNeonToggleButtons() {
     ['topbar-neon-toggle', 'zap', 'Neon '],
     ['home-neon-toggle', 'zap', 'Neon '],
     ['kh-sb-neon-toggle', 'zap', 'Neon theme: '],
-    ['kh-ud-neon-toggle', 'zap', 'Neon theme: ']
+    ['kh-ud-neon-toggle', 'zap', 'Neon theme: '],
+    ['kh-mp-neon-toggle', 'zap', 'Neon theme: ']
   ].forEach(function(pair) {
     var btn = document.getElementById(pair[0]);
     if (!btn) return;
