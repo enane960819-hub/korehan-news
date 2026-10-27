@@ -10980,43 +10980,31 @@ function ttsInit() {
 // spoken for a few seconds, queue a silent warm-up utterance first so the
 // real one starts on an already-open audio route.
 // ── Sentence-order checking ────────────────────────────────────────
-// Korean word order is partly free. Accept a reordering only when the
-// pieces that moved are genuinely movable (adverbs, the topic 저는/오늘은,
-// time/place phrases ~에/~에서), a determiner stays before its noun, and
-// the predicate stays last. Used by every sentence-order activity.
-var KH_ORDER_MOVABLE = ['특히','정말','진짜','자주','가장','제일','보통','매일','항상','늘','가끔','그리고','그래서','하지만','그런데','같이','함께','먼저','그다음에','요즘','오늘','어제','내일','지금','아주','너무','많이','조금','다시','또','빨리','천천히','일찍','늦게'];
-var KH_ORDER_DETERMINERS = ['그','이','저','이런','그런','저런','어떤','무슨','모든','새','첫','몇'];
+// Korean word order is only partly free, and "free" is narrower than it
+// looks: "음악을 보통 들으면서 쉬어요" is grammatical but unnatural. So we
+// accept a reordering ONLY at the front of the sentence — the opening
+// topic / time / place words may swap among themselves
+// (저는 주말에 ↔ 주말에 저는) — and everything after them must match the
+// original exactly. Adverbs (보통, 자주 …) never move — "7시에 저는 보통
+// 일어나요" reads wrong. When in doubt, the original order is the answer.
 function _khOrderMovable(w) {
   w = String(w || '').replace(/[.,!?]$/, '');
-  return KH_ORDER_MOVABLE.indexOf(w) >= 0 || /(은|는|에|에는|에서|에서는)$/.test(w);
+  if (/^(저|나|우리|저희)는$/.test(w)) return true;                                    // topic
+  if (/^(오늘|어제|내일|요즘|주말|평일|아침|점심|저녁|밤|새벽|지금|올해|작년|내년)(은|는|에|에는)$/.test(w)) return true; // time
+  if (/^[0-9]+(시|월|일)(에|에는)$/.test(w)) return true;                               // 7시에
+  if (/^[가-힣]{2,}(에서|에서는)$/.test(w)) return true;                               // place
+  return false;
 }
 function khOrderEquivalent(orig, sel) {
+  orig = (orig || []).map(String); sel = (sel || []).map(String);
   if (orig.length !== sel.length) return false;
-  var a = orig.slice().sort().join('|'), b = sel.slice().sort().join('|');
-  if (a !== b) return false;                                   // same words
-  if (orig[orig.length - 1] !== sel[sel.length - 1]) return false; // predicate last
-  // Determiners keep their noun: 그 시간에 must stay together.
-  for (var i = 0; i < orig.length - 1; i++) {
-    if (KH_ORDER_DETERMINERS.indexOf(orig[i]) < 0) continue;
-    var j = sel.indexOf(orig[i]);
-    if (j < 0 || sel[j + 1] !== orig[i + 1]) return false;
-  }
-  // Determiner + noun travel as one unit when deciding what is movable.
-  var core = function (arr) {
-    var out = [];
-    for (var k = 0; k < arr.length; k++) {
-      if (KH_ORDER_DETERMINERS.indexOf(arr[k]) >= 0 && k + 1 < arr.length) {
-        var unit = arr[k] + ' ' + arr[k + 1]; k++;
-        if (!_khOrderMovable(arr[k])) out.push(unit);
-        continue;
-      }
-      if (!_khOrderMovable(arr[k])) out.push(arr[k]);
-    }
-    return out.join('|');
-  };
-  return core(orig) === core(sel);
+  if (orig.join(' ') === sel.join(' ')) return true;
+  var lead = function(arr) { var n = 0; while (n < arr.length - 1 && _khOrderMovable(arr[n])) n++; return n; };
+  var no = lead(orig), ns = lead(sel);
+  if (no !== ns || no < 2) return false;                               // nothing to swap
+  if (orig.slice(no).join(' ') !== sel.slice(ns).join(' ')) return false; // rest must be identical
+  return orig.slice(0, no).sort().join('|') === sel.slice(0, ns).sort().join('|');
 }
-
 window.khOrderEquivalent = khOrderEquivalent;
 
 var _khTtsLastAt = 0;
