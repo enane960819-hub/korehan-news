@@ -717,11 +717,12 @@ async function loadDBGrammar(level) {
 }
 
 // ─── Word-order activity (어절 순서맞추기) ─────────────────────
-function renderWordOrderActivity(words) {
+function renderWordOrderActivity(words, accepted) {
   // Drop empty/blank chunks — a few AI-generated word_order rows carry a
   // trailing "" which would otherwise render as an empty draggable tile.
   words = (words || []).filter(function(w){ return w != null && String(w).trim() !== ''; });
   _wordOrderState.correct = words.slice();
+  _wordOrderState.accepted = accepted;  // hand-listed natural orders, if the item has them
   var shuffled = words.map(function(w, i){ return { word:w, origIdx:i }; });
   for (var i = shuffled.length - 1; i > 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
@@ -791,7 +792,7 @@ function checkWordOrder() {
     res.innerHTML = '<div style="padding:10px;background:rgba(251,191,36,.1);border-radius:8px;color:#fbbf24">Place all the words first!</div>';
     return;
   }
-  var isCorrect = ans.join(' ') === correct.join(' ') || khOrderEquivalent(correct, ans);
+  var isCorrect = khOrderIsCorrect(correct, ans, _wordOrderState.accepted);
   if (isCorrect) {
     res.innerHTML = '<div style="padding:10px;background:rgba(34,197,94,.12);border-radius:8px;color:#86efac;display:flex;align-items:center;flex-wrap:wrap;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Correct!</span><br><span style="font-size:12px;opacity:.8;width:100%">' + correct.join(' ') + '</span></div>';
     // Word arrangement is the final step in the redesigned PD flow.
@@ -824,7 +825,7 @@ function checkWordOrder() {
 function resetWordOrder() {
   var item = _picturePrompts.length ? _picturePrompts[_pictureIndex % _picturePrompts.length] : null;
   if (item && item.word_order_words && item.word_order_words.length) {
-    renderWordOrderActivity(item.word_order_words);
+    renderWordOrderActivity(item.word_order_words, item.word_order_accepted);
   }
 }
 
@@ -12925,7 +12926,7 @@ function _pdRenderStep3(item) {
     + '<button class="sr-pill" onclick="resetWordOrder()">Reset</button>'
     + '</div>'
     + '<div id="pd-word-result" style="margin-top:8px;display:none"></div>';
-  renderWordOrderActivity(words);
+  renderWordOrderActivity(words, item.word_order_accepted);
 }
 
 function _pdSkipToFinish() {
@@ -14520,33 +14521,16 @@ function bmClearAnswer(sentIdx) {
   renderBMStep2();
 }
 
-// Word-order equivalence lives in korehan-shared.js (khOrderEquivalent) so
-// every sentence-order activity accepts the same valid reorderings.
-function _bmOrderEquivalent(orig, sel) { return khOrderEquivalent(orig, sel); }
-
 function checkBMWordOrder() {
   var idx = _bm.wordOrderIdx;
   var wo  = _bm.wordOrders[idx];
   var answer = wo.selected.join(' ');
   var correct = wo.original.join(' ');
-  // Check acceptable alternative orders from admin-edited data
   var s = _bm.sentences && _bm.sentences[idx];
-  var acceptable = (s && Array.isArray(s.acceptable_orders))
-    ? s.acceptable_orders.map(function(a){ return Array.isArray(a) ? a.join(' ') : String(a); })
-    : [];
-  var isCorrect = answer === correct;
-  // Korean has flexible word order — adverbs (특히, 정말, 자주, 가장 …) can sit
-  // at the start OR before the verb without changing meaning. If the user
-  // used every required word AND ended with the same verb/predicate, treat
-  // it as correct rather than failing on a strict join() match.
-  // Only genuinely movable pieces may change place: adverbs, the topic
-  // (저는 / 오늘은 …) and time/place phrases (~에, ~에서). Everything else
-  // must keep the original order, a determiner (그/이/저 …) must stay
-  // right before its noun, and the predicate stays last. The old rule
-  // accepted ANY order with the same words + same last word, so
-  // "그 커피를 신문을 마시면서 시간에 읽어요" counted as correct.
-  if (!isCorrect && wo.original.length >= 3) isCorrect = _bmOrderEquivalent(wo.original, wo.selected);
-  var isPartial = !isCorrect && acceptable.indexOf(answer) >= 0;
+  // Original order, or one of the sentence's hand-listed natural orders.
+  // Listed orders are fully correct (they used to score as "partial").
+  var isCorrect = khOrderIsCorrect(wo.original, wo.selected, s && s.acceptable_orders);
+  var isPartial = false;
   wo.result = isCorrect ? 'correct' : isPartial ? 'partial' : 'wrong';
   _bmSaveProgress();
 
@@ -18660,7 +18644,7 @@ function _dctRenderArrange() {
       var firstIdx = shuffled.indexOf(words[0]);
       if (firstIdx >= 0) preselected.push(shuffled.splice(firstIdx, 1)[0]);
     }
-    _dctWOState = { sentIdx:_dctWOIdx, original:words, pool:shuffled, selected:preselected, result:null };
+    _dctWOState = { sentIdx:_dctWOIdx, original:words, pool:shuffled, selected:preselected, result:null, accepted:s.acceptable_orders };
   }
   var wo = _dctWOState;
   // Dictation modal uses a LIGHT theme; the shared .bm-word-chip class is
@@ -18726,7 +18710,7 @@ function dctWOClear() {
 }
 function dctWOCheck() {
   if(!_dctWOState) return;
-  var ok=_dctWOState.selected.join(' ')===_dctWOState.original.join(' ')||khOrderEquivalent(_dctWOState.original,_dctWOState.selected);
+  var ok=khOrderIsCorrect(_dctWOState.original,_dctWOState.selected,_dctWOState.accepted);
   var msg=document.getElementById('dct-wo-msg');
   var zone=document.getElementById('dct-answer-zone');
   if(ok){
