@@ -885,6 +885,11 @@ body.kh-neon-on .wmh-close { background:rgba(0,255,213,.1); color:#00ffd5; }
 .bm-choice-btn:hover:not(:disabled) { border-color: rgba(167,139,250,.5); background: rgba(167,139,250,.12); color: #a78bfa; }
 .bm-choice-btn:disabled { cursor: not-allowed; }
 
+/* Footer hint between Back / Next — one line, dropped when there's no room */
+.bm-foot-hint { flex: 1; min-width: 0; text-align: center; font-size: 13px; color: rgba(255,255,255,.4);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; }
+@media (max-width: 420px) { .bm-foot-hint { display: none; } }
+
 /* Step 4 — Word Snap */
 .bm-snap-card { perspective: 1000px; cursor: pointer; height: 168px; margin-bottom: 14px; }
 .bm-snap-inner {
@@ -3518,7 +3523,8 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
 @media (min-width:861px) { .mw-search { flex:0 0 220px; } }
 .mw-search input { flex:1; min-width:0; border:0; outline:none; background:transparent; color:#fff; font-size:13px; font-family:inherit; }
 .mw-list { max-height:none; }
-.mw-row { display:flex; align-items:center; gap:12px; padding:11px 14px; border-top:1px solid rgba(255,255,255,.06); }
+.mw-row { display:flex; align-items:center; gap:12px; padding:11px 14px; border-top:1px solid rgba(255,255,255,.06); cursor:pointer; }
+.mw-row:active { background:rgba(255,255,255,.05); }
 .mw-ko { font-family:'Noto Sans KR',sans-serif; font-weight:700; font-size:17px; color:#fff; min-width:74px; max-width:44%; }
 .mw-en { flex:1; min-width:0; font-size:12.5px; line-height:1.35; color:rgba(255,255,255,.65); }
 .mw-en small { display:block; margin-top:2px; font-size:10.5px; color:rgba(255,255,255,.38); }

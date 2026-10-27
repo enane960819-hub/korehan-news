@@ -927,6 +927,7 @@ function _obPlayListening(text) {
       var voices = window.speechSynthesis.getVoices();
       var ko = voices.find(function(v){ return v.lang && v.lang.indexOf('ko') === 0; });
       if (ko) u.voice = ko;
+      if (typeof window.khTtsWarm === 'function') window.khTtsWarm(window.speechSynthesis);
       window.speechSynthesis.speak(u);
     }
   } catch(e) { /* noop */ }

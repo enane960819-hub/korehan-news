@@ -243,6 +243,7 @@
       _isPlaying = true;
       utt.onend = function() { _isPlaying = false; };
       utt.onerror = function() { _isPlaying = false; };
+      if (typeof window.khTtsWarm === 'function') window.khTtsWarm(window.speechSynthesis);
       window.speechSynthesis.speak(utt);
     }
   };
