@@ -97,6 +97,9 @@
         root.querySelectorAll('[data-cat]').forEach(function (x) { x.classList.toggle('on', x.dataset.cat === S.cat); });
         try { history.replaceState(null, '', S.cat ? '?c=' + S.cat : location.pathname); } catch (_) {}
         renderResults();
+        // The list is below the 8 category cards — bring it into view.
+        var res = $('lk-results');
+        if (S.cat && res) { var y = res.getBoundingClientRect().top + window.scrollY - 80; window.scrollTo({ top: y, behavior: 'smooth' }); }
       });
     });
     renderResults();
