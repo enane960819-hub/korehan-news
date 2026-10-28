@@ -171,6 +171,10 @@ function copyStaticPlugin() {
       // Copy _headers for Cloudflare
       if (existsSync(resolve(src, '_headers')))
         copyFileSync(resolve(src, '_headers'), resolve(dist, '_headers'));
+      // Copy _redirects (old URLs → new pages). Without it Pages answers
+      // retired URLs with the index fallback instead of a 301.
+      if (existsSync(resolve(src, '_redirects')))
+        copyFileSync(resolve(src, '_redirects'), resolve(dist, '_redirects'));
       // Copy robots.txt (bot blocking policy)
       if (existsSync(resolve(src, 'robots.txt')))
         copyFileSync(resolve(src, 'robots.txt'), resolve(dist, 'robots.txt'));
