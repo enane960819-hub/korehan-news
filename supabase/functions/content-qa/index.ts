@@ -206,6 +206,8 @@ Deno.serve(async (req) => {
     const apiKey = setting?.value
     if (!apiKey) throw new Error('No Anthropic API key')
 
+    const report: Array<Record<string, unknown>> = []
+
     // 0) English titles for conversations — first, so the pack/tag steps
     // can't use up the time budget before this one-call step runs. The browser used to translate
     // these itself and keep them per device, so every new visitor paid
@@ -239,7 +241,6 @@ Deno.serve(async (req) => {
     const { data: rows } = await sb.from('study_daily_content')
       .select('scheduled_date,level,topic_ko,topic_en,vocab,grammar,helpers,dictation_sentences,dictation_questions,confusing_grammar,updated_at,qa_at')
       .in('scheduled_date', dates).in('level', GEN_LEVELS as unknown as string[])
-    const report: Array<Record<string, unknown>> = []
     let didReview = false   // content / KE reviewed this run → packs wait for the next run
 
     await Promise.all((rows || []).map(async (row: any) => {
