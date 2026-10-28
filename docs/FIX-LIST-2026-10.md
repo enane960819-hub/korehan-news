@@ -252,6 +252,7 @@
   - [x] `?authdebug` 삭제, 내부 문서(md/ts)·PDF 4개(24MB 포함) 웹 루트 밖으로 이동, robots.txt에서 관리자 URL 삭제 + 관리자 페이지 noindex
   - [x] (2026-10-26 완료 — `20261026_coin_server_only.sql`: 냥은 서버 함수로만 변경, `coin_balance` 클라이언트 쓰기 권한 회수, `admin_adjust_coin` 관리자 확인 추가, p_user_id 위조 차단. XP는 진척 지표라 클라이언트 동기화 유지) 냥·XP를 클라이언트가 직접 수정 (`user_stats` update/upsert 10곳 — 기자 선물, 닉네임 변경, 방 아이템, First Journey, 배지 보상, 상점 폴백) → 전부 서버 RPC로 옮긴 뒤 `coin_balance`/`xp` 컬럼 UPDATE 권한 회수. 현금 판매를 숨겨서 지금은 꾸미기 아이템 치팅만 가능 → 결제 켜기 전 필수
   - [ ] 다음으로 미룸 (P1): 공유 AI 캐시(`article_cache` 등) 쓰기를 엣지 함수로, AI 무거운 Premium 기능 서버측 확인
+    - [x] 2026-10-28 1차 (`20261028_shared_cache_guard.sql`): `article_study_content` 유저 삭제·관리자 수정본 덮어쓰기 차단, 공유 캐시 3개에 작성자(`written_by`) 기록 + 1MB 제한. 생성 자체를 서버로 옮기는 건 남음
 
 - [x] **4단계 (한국어 UI)** — 섹션 칩 전부 `khSecLabel()`(영어, DB 라벨이 한국어여도 영어로), 댓글·로그인 실패 배너·분석 중·발음 버튼, 기자 직함 영어(`khReporterRole`), 호버 문법 용어 영어, 화폐 표기 `Nyang`으로 통일, 상점 칭호 영어, 슬랭 태그·경고·오답 해설 영어(`desc_en` 우선), Growth Lab 오류 문구, 19개 페이지 `lang="en"` + `og:locale en_US` + 한국어 meta 설명 전부 영어
   - [ ] 남음: DB에 한국어로 저장된 상점 아이템 설명(예: Streak Freeze), `[슬랭]` 접두어 → `category` 컬럼 분리(현재는 화면에서 `khCleanMeaning`으로 제거 중)
