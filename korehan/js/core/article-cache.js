@@ -166,6 +166,7 @@ async function getFromCache(contentType, contentId, cacheKey) {
       if (cacheKey === 'grammar_guide') return safeParseJSON(row.grammar, null);
       if (cacheKey.indexOf('fill_') === 0) return safeParseJSON(row.quiz, null);
       if (cacheKey === 'expressions') return safeParseJSON(row.expressions, []);
+      if (cacheKey === 'tf_v1') return safeParseJSON(row.tf_v1, null);
       return null;
     }
   } catch(e) {
@@ -188,11 +189,16 @@ function _artCacheAdminWrite(method, data, extraParams) {
 
 async function upsertArticleCacheRow(articleId, patch) {
   if (_remoteCacheDisabled || !patch) return;
+  var viaAdmin = !!window._isAdmin && typeof khAdminApi === 'function';
+  // Readers can't write article_cache; the server fills empty slots only.
+  if (!viaAdmin) {
+    if (typeof khCacheWrite === 'function') await khCacheWrite({ table: 'article_cache', article_id: String(articleId), patch: patch });
+    return;
+  }
   var sb = getSupa();
   if (!sb) return;
   var schema = await _detectArtCacheSchema();
   if (schema === 'none') return;
-  var viaAdmin = !!window._isAdmin && typeof khAdminApi === 'function';
 
   if (schema === 'kv') {
     var keys = Object.keys(patch);

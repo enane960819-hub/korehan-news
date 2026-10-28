@@ -16980,15 +16980,9 @@ async function _aiCacheGet(key) {
 function _aiCacheSet(key, payload) {
   var sb = (typeof getSupa === 'function') ? getSupa() : null;
   if (!sb || !key) return;
-  // Don't await — UI shouldn't block on cache writes, and a save
-  // failure (RLS misconfig, etc.) shouldn't break the user flow.
-  sb.from('grammar_examples_cache').upsert({
-    pattern_name:  key,
-    patterns_json: JSON.stringify(payload),
-    updated_at:    new Date().toISOString()
-  }, { onConflict: 'pattern_name' }).then(function(r) {
-    if (r && r.error) console.warn('[aiCache] set failed', key, r.error.message);
-  });
+  // Don't await — UI shouldn't block on cache writes. Saved by the
+  // cache-write Edge Function (readers can't write this table).
+  if (typeof khCacheWrite === 'function') khCacheWrite({ table: 'grammar_examples_cache', pattern_name: key, patterns_json: JSON.stringify(payload) });
 }
 
 // ─── Weak Grammar Drill (separate from Grammar Focus) ───────
@@ -17122,15 +17116,7 @@ async function generateWGDrillQuestions(grammarName, opts) {
       // Fire-and-forget upsert. Don't await — UI shouldn't block on the
       // cache write, and a save failure (e.g. RLS misconfig) shouldn't
       // break the user's drill session.
-      if (sb) {
-        sb.from('grammar_examples_cache').upsert({
-          pattern_name: cacheKey,
-          patterns_json: JSON.stringify({ explanation: parsed.explanation || '', examples: validExamples, questions: validQuestions }),
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'pattern_name' }).then(function(r) {
-          if (r && r.error) console.warn('[WGDrill] cache save failed:', r.error.message);
-        });
-      }
+      _aiCacheSet(cacheKey, { explanation: parsed.explanation || '', examples: validExamples, questions: validQuestions });
       renderWGDrillIntro();
     } else {
       console.warn('[WGDrill] Got payload but no valid questions:', parsed);
@@ -17391,15 +17377,7 @@ async function generateGFPatternsForFocus(focusName) {
     if (parsed.patterns && parsed.patterns.length) {
       loadGFPatterns(parsed.patterns);
       // 3) Save to DB cache
-      if (sb) {
-        try {
-          await sb.from('grammar_examples_cache').upsert({
-            pattern_name: focusName,
-            patterns_json: JSON.stringify(parsed.patterns),
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'pattern_name' });
-        } catch(e) { console.warn('[GF cache] Save failed:', e.message); }
-      }
+      _aiCacheSet(focusName, parsed.patterns);
     } else {
       if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Generation failed. Please try again.</div>';
     }
