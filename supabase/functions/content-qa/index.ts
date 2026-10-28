@@ -315,6 +315,34 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 3b) English titles for conversations (runs before the tag fill so the
+    // tag loop can't use up the time budget first). The browser used to translate
+    // these itself and keep them per device, so every new visitor paid
+    // again; now each title is written once here and everyone reads it.
+    if ((!body.only || body.only === 'conv-titles') && timeLeft() > 20_000) {
+      const { data: convs, error } = await sb.from('conversations_data').select('id,ctx')
+        .or('ctx_en.is.null,ctx_en.eq.').not('ctx', 'is', null).limit(40)
+      if (error) report.push({ step: 'conv-titles', error: error.message })
+      const todo = (convs || []).filter((c: any) => /[ㄱ-힝]/.test(String(c.ctx || '')))
+      if (todo.length) {
+        try {
+          const prompt = 'Translate each Korean conversation situation into a short, descriptive English title (max 45 characters, Title Case, no quotes, no period). Say what the conversation is ABOUT, e.g. "택배 박스 손상 신고" -> "Damaged Package Complaint", never "Daily Conversation".\n' +
+            'Return ONLY JSON: {"titles":[{"id":"...","en":"..."}]}\n\n' +
+            todo.map((c: any) => `${c.id} | ${String(c.ctx).trim()}`).join('\n')
+          const out = await claudeJson(sb, apiKey, prompt, 2000, 'conv-titles')
+          const ids = new Set(todo.map((c: any) => String(c.id)))
+          let saved = 0
+          for (const t of (out?.titles || [])) {
+            const en = String(t?.en || '').trim().slice(0, 80)
+            if (!en || !ids.has(String(t?.id))) continue
+            const { error: upErr } = await sb.from('conversations_data').update({ ctx_en: en }).eq('id', t.id)
+            if (!upErr) saved += 1
+          }
+          report.push({ step: 'conv-titles', saved, of: todo.length })
+        } catch (e) { report.push({ step: 'conv-titles', error: (e as Error).message }) }
+      }
+    }
+
     // 4) Word Universe categories — tag words that have none yet, with
     // whatever time is left (≈250 words per call, ~20 s each).
     if (!body.only || body.only === 'tags') {
@@ -341,33 +369,6 @@ Deno.serve(async (req) => {
         } catch (e) { report.push({ step: 'tags', error: (e as Error).message }); break }
       }
       if (calls) report.push({ step: 'tags', tagged })
-    }
-
-    // 5) English titles for conversations. The browser used to translate
-    // these itself and keep them per device, so every new visitor paid
-    // again; now each title is written once here and everyone reads it.
-    if ((!body.only || body.only === 'conv-titles') && timeLeft() > 20_000) {
-      const { data: convs, error } = await sb.from('conversations_data').select('id,ctx')
-        .or('ctx_en.is.null,ctx_en.eq.').not('ctx', 'is', null).limit(40)
-      if (error) report.push({ step: 'conv-titles', error: error.message })
-      const todo = (convs || []).filter((c: any) => /[ㄱ-힝]/.test(String(c.ctx || '')))
-      if (todo.length) {
-        try {
-          const prompt = 'Translate each Korean conversation situation into a short, descriptive English title (max 45 characters, Title Case, no quotes, no period). Say what the conversation is ABOUT, e.g. "택배 박스 손상 신고" -> "Damaged Package Complaint", never "Daily Conversation".\n' +
-            'Return ONLY JSON: {"titles":[{"id":"...","en":"..."}]}\n\n' +
-            todo.map((c: any) => `${c.id} | ${String(c.ctx).trim()}`).join('\n')
-          const out = await claudeJson(sb, apiKey, prompt, 2000, 'conv-titles')
-          const ids = new Set(todo.map((c: any) => String(c.id)))
-          let saved = 0
-          for (const t of (out?.titles || [])) {
-            const en = String(t?.en || '').trim().slice(0, 80)
-            if (!en || !ids.has(String(t?.id))) continue
-            const { error: upErr } = await sb.from('conversations_data').update({ ctx_en: en }).eq('id', t.id)
-            if (!upErr) saved += 1
-          }
-          report.push({ step: 'conv-titles', saved, of: todo.length })
-        } catch (e) { report.push({ step: 'conv-titles', error: (e as Error).message }) }
-      }
     }
 
     // 6) Review queue — shared AI content nobody reviewed yet: article
