@@ -25,7 +25,8 @@ const GEN_LEVELS = ['Starter', 'Beginner', 'Intermediate'] as const
 const ADMIN_EMAIL = 'enane960819@gmail.com'
 const MODEL = 'claude-sonnet-4-6'
 const MAX_PACK_ATTEMPTS = 3          // per topic+level, ever — never re-bill forever
-const BUDGET_MS = 115_000            // stop starting new AI steps after this
+const BUDGET_MS = 100_000            // stop starting new review steps after this
+const PACK_WEEKS_AHEAD = 3           // build packs up to 3 weeks before they are used
 
 const LEVEL_GUIDE: Record<string, string> = {
   Starter: 'STARTER (TOPIK 0): very short 해요체 sentences (2-5 words), only the most basic words, ~이에요/예요, ~아요/어요, ~을/를 좋아해요.',
@@ -38,6 +39,12 @@ const EXAMPLE_PACK = {"format": {"label": "Short answer · 3–5 sentences", "hi
 
 function kstToday(): string { return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) }
 function addDays(d: string, n: number): string { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10) }
+// Same rotation as daily-content-gen / khTopicWeekIndex (keep in sync).
+const WRITING_TOPICS_EPOCH_ISO = '2026-10-12T00:00:00+09:00'
+function topicWeekIndex(weekStart: string, count: number): number {
+  const weeks = Math.floor((new Date(weekStart + 'T00:00:00+09:00').getTime() - new Date(WRITING_TOPICS_EPOCH_ISO).getTime()) / (7 * 86400_000))
+  return Math.max(0, weeks) % count
+}
 function weekKey(d: string): string { const x = new Date(d + 'T00:00:00Z'); return addDays(d, -((x.getUTCDay() + 6) % 7)) }
 
 function logUsage(sb: any, feature: string, usage: Record<string, number> | undefined) {
@@ -165,6 +172,7 @@ Deno.serve(async (req) => {
       .select('scheduled_date,level,topic_ko,topic_en,vocab,grammar,helpers,dictation_sentences,dictation_questions,confusing_grammar,updated_at,qa_at')
       .in('scheduled_date', dates).in('level', GEN_LEVELS as unknown as string[])
     const report: Array<Record<string, unknown>> = []
+    let didReview = false   // content / KE reviewed this run → packs wait for the next run
 
     await Promise.all((rows || []).map(async (row: any) => {
       const tag = `${row.scheduled_date} ${row.level}`
@@ -175,6 +183,7 @@ Deno.serve(async (req) => {
       const stale = !row.qa_at || new Date(row.updated_at).getTime() > new Date(row.qa_at).getTime() + 60_000
       if (stale && body.only !== 'packs' && timeLeft() > 30_000) {
         try {
+          didReview = true
           const flags = await review(sb, apiKey, row.level, topicKo, contentLines(row as ContentRow), 'a week of study content (vocabulary meanings, grammar examples, example and dictation sentences)')
           const { patch, dropped } = applyContentFlags(row as ContentRow, flags)
           const now = new Date(Date.now() + 120_000).toISOString()  // ahead of any updated_at trigger
@@ -191,6 +200,7 @@ Deno.serve(async (req) => {
           const { data: ke } = await sb.from('grammar_examples_cache').select('patterns_json').eq('pattern_name', key).maybeSingle()
           const parsed = ke?.patterns_json ? JSON.parse(ke.patterns_json) : null
           if (parsed && Array.isArray(parsed.expressions) && parsed.expressions.length && !parsed.qa) {
+            didReview = true
             const flags = await review(sb, apiKey, row.level, topicKo, keLines(parsed.expressions), 'Key Expressions (reusable patterns and their example sentences)')
             const { list, dropped } = applyKeFlags(parsed.expressions, flags)
             if (list.length) {
@@ -203,32 +213,62 @@ Deno.serve(async (req) => {
         } catch (e) { report.push({ tag, step: 'ke', error: (e as Error).message }) }
       }
 
-      // 3) Writing-flow topic pack, if this topic has none.
-      if (body.only !== 'content' && timeLeft() > 70_000) {
-        const { data: existing } = await sb.from('writing_topic_content').select('topic_ko').eq('topic_ko', topicKo).eq('level', row.level).maybeSingle()
-        if (existing) return
-        const runKey = `pack::${topicKo}|${row.level}`
-        const log = await runLog(sb, runKey)
-        if (log.attempts >= MAX_PACK_ATTEMPTS) { report.push({ tag, step: 'pack', skipped: 'max attempts', last_error: log.last_error }); return }
-        try {
-          const res = await buildPack(sb, apiKey, row.level, topicKo, String(row.topic_en || ''), log.last_error)
-          if (res.pack) {
-            // ignoreDuplicates: never overwrite a hand-written / already-saved pack.
-            const { error } = await sb.from('writing_topic_content').upsert(
-              { topic_ko: topicKo, level: row.level, content: res.pack, reviewed: true, updated_at: new Date().toISOString() },
-              { onConflict: 'topic_ko,level', ignoreDuplicates: true })
-            await setRunLog(sb, runKey, log.attempts + 1, error ? error.message : '')
-            report.push({ tag, step: 'pack', saved: !error, error: error?.message })
-          } else {
-            await setRunLog(sb, runKey, log.attempts + 1, res.why || 'unknown')
-            report.push({ tag, step: 'pack', rejected: res.why })
-          }
-        } catch (e) {
-          await setRunLog(sb, runKey, log.attempts + 1, (e as Error).message)
-          report.push({ tag, step: 'pack', error: (e as Error).message })
+    }))
+
+    // 3) Writing-flow topic packs — this week through PACK_WEEKS_AHEAD, from
+    // the writing_topics rotation, so a pack is ready well before its week.
+    if (body.only !== 'content') {
+      const want: Array<{ week: string; level: string; ko: string; en: string }> = []
+      for (const level of GEN_LEVELS) {
+        const { data: topics } = await sb.from('writing_topics').select('topic_ko,topic_en')
+          .eq('level', level).eq('active', true).order('sort_order').order('created_at')
+        const list = topics || []
+        if (!list.length) continue
+        for (let w = 0; w <= PACK_WEEKS_AHEAD; w++) {
+          const week = addDays(thisWeek, 7 * w)
+          const t = list[topicWeekIndex(week, list.length)]
+          if (!want.find((x) => x.ko === t.topic_ko && x.level === level)) want.push({ week, level, ko: t.topic_ko, en: t.topic_en || '' })
         }
       }
-    }))
+      // One pack per run, soonest week first, and only on a run that did no
+      // other review: a pack (generate + two reviews) takes ~1.5 min and the
+      // function is killed at 150 s. The hourly cron works through the rest.
+      const { data: have } = await sb.from('writing_topic_content').select('topic_ko,level').in('topic_ko', want.map((x) => x.ko))
+      const missing = want.filter((x) => !(have || []).some((h: any) => h.topic_ko === x.ko && h.level === x.level))
+      const next = (didReview || Date.now() - started > 20_000) ? [] : missing.slice(0, 1)
+      if (missing.length > next.length) report.push({ step: 'pack', waiting: missing.slice(next.length).map((x) => `${x.week} ${x.level}`) })
+      for (let i = 0; i < next.length; i += 1) {
+        await Promise.all(next.slice(i, i + 1).map(async (t) => {
+          const tag = `${t.week} ${t.level}`
+          const topicKo = t.ko
+          const row = { level: t.level, topic_en: t.en }
+          {
+            const { data: existing } = await sb.from('writing_topic_content').select('topic_ko').eq('topic_ko', topicKo).eq('level', row.level).maybeSingle()
+            if (existing) return
+            const runKey = `pack::${topicKo}|${row.level}`
+            const log = await runLog(sb, runKey)
+            if (log.attempts >= MAX_PACK_ATTEMPTS) { report.push({ tag, step: 'pack', skipped: 'max attempts', last_error: log.last_error }); return }
+            try {
+              const res = await buildPack(sb, apiKey, row.level, topicKo, String(row.topic_en || ''), log.last_error)
+              if (res.pack) {
+                // ignoreDuplicates: never overwrite a hand-written / already-saved pack.
+                const { error } = await sb.from('writing_topic_content').upsert(
+                  { topic_ko: topicKo, level: row.level, content: res.pack, reviewed: true, updated_at: new Date().toISOString() },
+                  { onConflict: 'topic_ko,level', ignoreDuplicates: true })
+                await setRunLog(sb, runKey, log.attempts + 1, error ? error.message : '')
+                report.push({ tag, step: 'pack', saved: !error, error: error?.message })
+              } else {
+                await setRunLog(sb, runKey, log.attempts + 1, res.why || 'unknown')
+                report.push({ tag, step: 'pack', rejected: res.why })
+              }
+            } catch (e) {
+              await setRunLog(sb, runKey, log.attempts + 1, (e as Error).message)
+              report.push({ tag, step: 'pack', error: (e as Error).message })
+            }
+          }
+        }))
+      }
+    }
 
     await sb.from('content_qa_runs').delete().eq('key', 'lock')
     return new Response(JSON.stringify({ ok: true, dates, ms: Date.now() - started, report }), { headers: { 'Content-Type': 'application/json' } })
