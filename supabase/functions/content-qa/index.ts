@@ -374,7 +374,9 @@ Deno.serve(async (req) => {
     // analysis, the shared AI caches and the word bank (see queue.ts). A
     // trigger clears qa_at whenever the content changes, so new and
     // regenerated rows always come back here.
-    if ((!body.only || body.only === 'queue') && timeLeft() > 35_000) {
+    // Paused on the hourly run (owner, 2026-10-28: paid review later) —
+    // only an explicit {"only":"queue"} call drains the queue for now.
+    if (body.only === 'queue' && timeLeft() > 35_000) {
       const maxCalls = body.only === 'queue' ? 6 : 2
       let calls = 0
       const qa = new Date(Date.now() + 120_000).toISOString()   // ahead of the updated_at trigger
