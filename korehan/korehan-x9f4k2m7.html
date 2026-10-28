@@ -4935,13 +4935,12 @@ const AUTO_SECTIONS = CATEGORIES.filter(c => c.key !== 'buzz');
 // this list. If you add them back, add a matching section first.
 const NEWS_SOURCES = [
   // International news
-  { id:'yonhap',         label:'연합뉴스',                icon:'🇰🇷' },
   { id:'bbc-world',      label:'BBC World',              icon:'🌍' },
   { id:'bbc-tech',       label:'BBC Tech',               icon:'💻' },
   { id:'bbc-sport',      label:'BBC Sport',              icon:'⚽' },
   { id:'npr-news',       label:'NPR News',               icon:'📻' },
-  { id:'reuters-world',  label:'Reuters World',          icon:'📰' },
-  { id:'ap-top',         label:'AP Top News',            icon:'📡' },
+  { id:'reuters-world',  label:'DW News',          icon:'📰' },
+  { id:'ap-top',         label:'France 24',            icon:'📡' },
   { id:'guardian-world', label:'Guardian World',         icon:'🛡️' },
   { id:'aljazeera',      label:'Al Jazeera',             icon:'🌐' },
   { id:'cnn-top',        label:'CNN Top',                icon:'📺' },
@@ -4949,24 +4948,24 @@ const NEWS_SOURCES = [
   { id:'techcrunch',     label:'TechCrunch',             icon:'🚀' },
   { id:'theverge',       label:'The Verge',              icon:'⚡' },
   { id:'arstechnica',    label:'Ars Technica',           icon:'🔬' },
-  { id:'wired',          label:'WIRED',                  icon:'🔌' },
+  { id:'wired',          label:'Interesting Engineering',                  icon:'🔌' },
   { id:'gtrends-us',     label:'Google Trends US',       icon:'📈' },
   { id:'gtrends-kr',     label:'Google Trends KR',       icon:'📊' },
   { id:'hn',             label:'Hacker News',            icon:'🟧' },
   // Lifestyle
-  { id:'gn-viral',       label:'Google News Viral',      icon:'🔥' },
-  { id:'gn-beauty',      label:'Beauty Trends',          icon:'💄' },
-  { id:'gn-travel',      label:'Travel Trends',          icon:'✈️' },
-  { id:'gn-food',        label:'Food Trends',            icon:'🍜' },
-  { id:'gn-health',      label:'Health Trends',          icon:'🏃' },
-  { id:'gn-fashion',     label:'Fashion Trends',         icon:'👗' },
-  { id:'allure',         label:'Allure Beauty',          icon:'🪞' },
-  { id:'cnet-travel',    label:'CNET Travel',            icon:'🧳' },
+  { id:'gn-viral',       label:'Digg Top',      icon:'🔥' },
+  { id:'gn-beauty',      label:'Allure',          icon:'💄' },
+  { id:'gn-travel',      label:'Guardian Travel',          icon:'✈️' },
+  { id:'gn-food',        label:'Guardian Food',            icon:'🍜' },
+  { id:'gn-health',      label:'ScienceDaily Health',          icon:'🏃' },
+  { id:'gn-fashion',     label:'Vogue',         icon:'👗' },
+  { id:'allure',         label:'Good News Network',          icon:'🪞' },
+  { id:'cnet-travel',    label:'Atlas Obscura',            icon:'🧳' },
   // K-content
-  { id:'gn-kdrama',      label:'K-drama News',           icon:'📺' },
-  { id:'gn-movies',      label:'Movies & TV',            icon:'🎬' },
+  { id:'gn-kdrama',      label:'Koreaboo',           icon:'📺' },
+  { id:'gn-movies',      label:'Variety',            icon:'🎬' },
   { id:'soompi',         label:'Soompi (K-content)',     icon:'⭐' },
-  { id:'gn-gaming',      label:'Gaming News',            icon:'🎮' },
+  { id:'gn-gaming',      label:'Polygon',            icon:'🎮' },
   // Reddit
   { id:'reddit-world',     label:'r/worldnews',           icon:'🌐' },
   { id:'reddit-korea',     label:'r/korea',                icon:'🇰🇷' },
@@ -4987,9 +4986,14 @@ const NEWS_SOURCES = [
   { id:'reddit-oddly',       label:'r/oddlysatisfying',     icon:'😌' },
   { id:'reddit-noway',       label:'r/Damnthatsinteresting',icon:'😱' },
   { id:'reddit-mildly',      label:'r/mildlyinteresting',   icon:'🧐' },
-  { id:'gn-clickbait',       label:'Viral Clickbait',       icon:'🎣' },
-  { id:'gn-listicle',        label:'Listicles',             icon:'📋' },
+  { id:'gn-clickbait',       label:'Oddity Central',       icon:'🎣' },
+  { id:'gn-listicle',        label:'Mental Floss',             icon:'📋' },
   { id:'boredpanda',         label:'BoredPanda',            icon:'🐼' },
+  { id:'upworthy',           label:'Upworthy',              icon:'heart' },
+  { id:'dodo',               label:'The Dodo',              icon:'paw-print' },
+  { id:'nypost-weird',       label:'NY Post Weird',         icon:'sparkles' },
+  { id:'livescience',        label:'Live Science',          icon:'flask-conical' },
+  { id:'bbc-ent',            label:'BBC Entertainment',     icon:'clapperboard' },
   // Wikinews — CC-BY 2.5, full content + image free to adapt
   { id:'wikinews-en',        label:'Wikinews EN',           icon:'📰' },
   { id:'wikinews-ko',        label:'Wikinews KO',           icon:'📰' },
@@ -5007,6 +5011,15 @@ function _isRecentDate(iso, days){
 function _headlineKey(item){
   var k = (item.title || '').toLowerCase().replace(/[^\w가-힣]+/g, '');
   return k.slice(0, 140);
+}
+// Why a source returned nothing (by_source[].error from admin-source-fetch).
+function _srcFailText(err) {
+  err = String(err || '');
+  if (err === 'reddit_needs_key') return ' (Reddit API 키 필요)';
+  if (err === 'subrequest_limit') return ' (한 번에 선택이 너무 많음 — 나눠서 가져오세요)';
+  if (/timeout|aborted/i.test(err)) return ' (응답 시간 초과)';
+  if (/^upstream_/.test(err)) return ' (소스 서버가 거부: ' + err.replace('upstream_', '') + ')';
+  return err ? ' (실패)' : '';
 }
 async function _fetchHeadlinesFromBackend(sourceIds) {
   const endpoint = '/api/admin-source-fetch';
@@ -5056,9 +5069,10 @@ function goAutoArticle(){
    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px">'
    + NEWS_SOURCES.map(function(s){
        return '<label style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f8faff;border:1.5px solid var(--bo);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">'
-         +'<input type="checkbox" class="ns-chk" value="'+s.id+'" style="width:15px;height:15px"> '+s.icon+' '+s.label+'</label>';
+         +'<input type="checkbox" class="ns-chk" value="'+s.id+'" style="width:15px;height:15px"> '+(/^[a-z-]+$/.test(s.icon) ? '<i data-lucide="'+s.icon+'" style="width:16px;height:16px"></i>' : s.icon)+' '+s.label+'</label>';
      }).join('')
    +'</div>'
+   +'<div style="font-size:12px;color:#64748b;margin:-4px 0 12px">Reddit(r/…) 소스는 Reddit API 키(Cloudflare 환경변수 REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET)가 있어야 가져와집니다.</div>'
    +'<button class="btn btn-g" onclick="fetchHeadlines()" id="btn-fetch">📥 Headline 가져오기</button>'
    +'<div id="fetch-status" style="margin-top:10px;font-size:13px;color:var(--gr)"></div>'
    +'</div>'
@@ -5137,7 +5151,7 @@ async function fetchHeadlines() {
     if (!_fetchedHeadlines.length) {
       statusEl.innerHTML = '❌ 가져온 결과가 없습니다. 소스를 바꾸거나 잠시 후 다시 시도하세요.'
         + '<div style="margin-top:6px;color:#94a3b8;font-size:12px">'
-        + perSource.map(function(p){ return p.label + ': ' + p.count + '개' + (p.error ? ' (일부 실패)' : ''); }).join(' · ')
+        + perSource.map(function(p){ return p.label + ': ' + p.count + '개' + _srcFailText(p.error); }).join(' · ')
         + '</div>';
       return;
     }
@@ -5152,9 +5166,9 @@ async function fetchHeadlines() {
     var _bdLabels = [];
     perSource.forEach(function(p){ if (_bdLabels.indexOf(p.label) < 0) _bdLabels.push(p.label); });
     Object.keys(finalBySource).forEach(function(k){ if (_bdLabels.indexOf(k) < 0) _bdLabels.push(k); });
-    var _bdErr = {}; perSource.forEach(function(p){ if (p.error) _bdErr[p.label] = true; });
+    var _bdErr = {}; perSource.forEach(function(p){ if (p.error) _bdErr[p.label] = p.error; });
     var _breakdown = _bdLabels
-      .map(function(l){ return l + ': ' + (finalBySource[l] || 0) + '개' + (_bdErr[l] ? ' (일부 실패)' : ''); })
+      .map(function(l){ return l + ': ' + (finalBySource[l] || 0) + '개' + _srcFailText(_bdErr[l]); })
       .join(' · ');
 
     statusEl.innerHTML = '✅ ' + _fetchedHeadlines.length + '개 Headline 수집 완료'
