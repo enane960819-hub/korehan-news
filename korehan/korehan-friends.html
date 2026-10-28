@@ -5,6 +5,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d1b3d">
 <title>Friends — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20261027a">
@@ -103,21 +104,40 @@
   .kh-fr-avatar { width: 40px; height: 40px; font-size: 16px; }
   .kh-fr-name { font-size: 13px; }
 }
+/* Dark theme (theme map 2026-10-28: personal/social pages are dark) */
+html, body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+.kh-fr-head { padding:0 20px; }
+.kh-fr-head h1 { font-family:'DM Sans',sans-serif; font-weight:800; font-size:24px; color:#fff; margin:0 0 4px; }
+.kh-fr-head p { margin:0; font-size:13px; color:rgba(255,255,255,.55); }
+.kh-fr-page { max-width:720px; margin:0 auto; padding-top:18px; }
+.kh-fr-tab { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.12); color:#cbd5e1; box-shadow:none; }
+.kh-fr-tab:hover { border-color:rgba(255,255,255,.25); box-shadow:none; }
+.kh-fr-tab.on { background:rgba(124,58,237,.35); border-color:rgba(167,139,250,.6); color:#fff; box-shadow:none; }
+.kh-fr-tab:not(.on) .kh-fr-tab-count { background:rgba(255,255,255,.1); color:#cbd5e1; }
+.kh-fr-search-input { background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.14); color:#fff; }
+.kh-fr-search-input::placeholder { color:rgba(255,255,255,.4); }
+.kh-fr-search-input:focus { background:rgba(255,255,255,.09); border-color:rgba(167,139,250,.6); box-shadow:0 0 0 4px rgba(124,58,237,.18); }
+.kh-fr-row, .kh-fr-empty, .kh-fr-signin { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); box-shadow:none; }
+.kh-fr-row:hover { border-color:rgba(255,255,255,.18); box-shadow:none; background:rgba(255,255,255,.08); }
+.kh-fr-name, .kh-fr-empty-title, .kh-fr-signin h2 { color:#fff; }
+.kh-fr-meta, .kh-fr-empty, .kh-fr-loading, .kh-fr-signin p { color:rgba(255,255,255,.55); }
+.kh-fr-empty b, .kh-fr-empty strong { color:#fff; }
+.kh-fr-btn-ghost { background:rgba(255,255,255,.1); color:#e2e8f0; }
+.kh-fr-btn-ghost:hover { background:rgba(255,255,255,.16); }
+.kh-fr-btn-success { background:rgba(16,185,129,.2); color:#6ee7b7; }
+@media (max-width: 600px) { .kh-fr-head { padding:0 12px; } }
+.kh-fr-empty-title, .kh-fr-signin h2 { font-family:'DM Sans',sans-serif; }
 </style>
 </head>
 <body class="kh-page-news">
 <div id="kh-header"></div>
 
-<div class="kh-page-hero">
-  <div class="kh-page-hero-inner">
-    <div class="kh-page-hero-eyebrow">Community</div>
-    <h1><i data-lucide="users" class="kh-ui-icon" aria-hidden="true"></i><span>Friends</span></h1>
-    <p>See who you're connected with, manage incoming requests, and find new learning partners by name.</p>
-  </div>
-</div>
-
 <div class="container">
   <div class="kh-fr-page">
+    <div class="kh-fr-head">
+      <h1>Friends</h1>
+      <p>Your learning partners, requests and people you've blocked.</p>
+    </div>
     <div id="kh-fr-tabs" class="kh-fr-tabs" hidden>
       <button class="kh-fr-tab on" data-tab="friends" onclick="khFrSwitchTab('friends',this)">
         <i data-lucide="user-check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i>

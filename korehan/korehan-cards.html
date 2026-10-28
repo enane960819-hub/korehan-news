@@ -9,7 +9,7 @@
 <title>Reporter Card Collection — KoreHani</title>
 <meta name="description" content="All the reporter cards you've collected while learning Korean, in one place.">
 <link rel="canonical" href="https://korehani.com/korehan-cards.html">
-<meta name="theme-color" content="#0a1423">
+<meta name="theme-color" content="#0d1b3d">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="KoreHani">
 <meta property="og:url" content="https://korehani.com/korehan-cards.html">
@@ -223,13 +223,35 @@
   .cc-role { font-size: 11px; }
   .cc-body { padding: 12px 12px 14px; }
 }
+/* Dark theme (theme map 2026-10-28) */
+html, body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+.cc-hero { background:none; padding:28px 20px 6px; }
+.cc-hero h1 { font-family:'DM Sans',sans-serif; font-weight:800; font-size:26px; display:inline-flex; align-items:center; gap:8px; }
+.cc-card { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.1); }
+.cc-card.tier-platinum { background:linear-gradient(135deg,rgba(236,72,153,.12),rgba(167,139,250,.12)); }
+.cc-card.tier-locked { opacity:.7; }
+.cc-card.tier-locked .cc-ph { color:transparent; }
+.cc-name { color:#fff; }
+.cc-role, .cc-aff-num { color:rgba(255,255,255,.55); }
+.cc-aff-bar { background:rgba(255,255,255,.1); }
+.cc-tier-label { background:rgba(255,255,255,.1); color:#cbd5e1; }
+.tier-bronze .cc-tier-label, .tier-gold .cc-tier-label { background:rgba(251,191,36,.16); color:#fcd34d; }
+.tier-silver .cc-tier-label { background:rgba(148,163,184,.2); color:#e2e8f0; }
+.tier-platinum .cc-tier-label { background:rgba(167,139,250,.22); color:#ddd6fe; }
+.cc-cta { background:rgba(255,255,255,.1); color:#e2e8f0; }
+.cc-card:hover .cc-cta { background:rgba(255,255,255,.16); }
+.tier-locked .cc-cta { background:rgba(124,58,237,.4); color:#fff; }
+.tier-locked:hover .cc-cta { background:rgba(124,58,237,.55); }
+.cc-signin { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.1); }
+.cc-signin h2 { color:#fff; }
+.cc-signin p, .cc-loading { color:rgba(255,255,255,.55); }
 </style>
 </head>
 <body>
 <div id="kh-header"></div>
 
 <div class="cc-hero">
-  <h1>📇 Reporter Card Collection</h1>
+  <h1><i data-lucide="contact" class="kh-ui-icon" aria-hidden="true"></i> Reporter Cards</h1>
   <p class="cc-sub">Build affinity to unlock cards</p>
   <div class="cc-stats" id="cc-stats">
     <span><span class="cc-stat-num" id="cc-unlocked">0</span> / 10 unlocked</span>
@@ -239,7 +261,7 @@
 </div>
 
 <div class="cc-grid" id="cc-grid">
-  <div class="cc-loading" style="grid-column:1/-1">⏳ Loading cards…</div>
+  <div class="cc-loading" style="grid-column:1/-1">Loading cards…</div>
 </div>
 
 <div id="kh-footer"></div>

@@ -4,110 +4,140 @@
 <meta charset="UTF-8">
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d1b3d">
 <title>Shop — KoreHani</title>
 <link rel="stylesheet" href="korehan-shared.css?v=20261027a">
 <style>
-body{margin:0;background:#f8fafc;font-family:'Happy Monkey','Jua','DM Sans',Inter,'Noto Sans KR',sans-serif;color:#0f172a}
-.wrap{max-width:1160px;margin:0 auto;padding:0 16px 56px}
-/* ── Shop Hero — matches the news/convo/stories hero family ── */
-.shop-hero{background:linear-gradient(160deg,#0b1f3f 0%,#1e3a8a 55%,#0f766e 100%);padding:36px 0 80px;margin-bottom:-56px;position:relative;overflow:hidden;color:#fff}
-.shop-hero-inner{max-width:1280px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
-.shop-hero-top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
-.shop-hero-left{flex:1;min-width:240px}
-.shop-hero-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.75);margin-bottom:10px}
-.shop-hero-left h1{font-family:'Playfair Display',Georgia,serif;font-size:38px;font-weight:900;margin:0 0 10px;line-height:1.15;color:#fff;letter-spacing:-.01em}
-.shop-hero-left p{font-size:15px;color:rgba(255,255,255,.85);line-height:1.7;max-width:560px;margin:0}
-.shop-balances{display:flex;gap:10px}
-.shop-bal{background:rgba(255,255,255,.08);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 18px;min-width:100px;text-align:center}
-.shop-bal-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:4px}
-.shop-bal-value{font-size:22px;font-weight:900;color:#fff}
-.shop-bal-value.xp{color:#7dd3fc}
-.shop-bal-value.nyang{color:#5eead4}
-.wrap{position:relative;z-index:2}
-/* ── Tabs ── */
-.shop-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:4px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;margin-bottom:4px}
-.shop-tab{padding:8px 16px;border-radius:10px;border:none;cursor:pointer;font-size:12px;font-weight:800;font-family:inherit;background:transparent;color:#64748b;transition:.15s}
-.shop-tab:hover{background:#f1f5f9;color:#334155}
-.shop-tab.active{background:#0b1626;color:#fff;box-shadow:0 2px 8px rgba(11,22,38,.2)}
-/* ── Grid & Cards ── */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:14px}
-.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;padding:12px;transition:box-shadow .15s,transform .15s}
-.card:hover{box-shadow:0 8px 24px rgba(15,23,42,.08);transform:translateY(-2px)}
-.thumb{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#f8fafc,#f0f4fa);border-radius:10px;margin-bottom:10px;padding:10px}
-.thumb img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
-.body{display:flex;flex-direction:column;gap:5px;flex:1}
-@media(max-width:980px){
-  /* Tablet 768-980: the previous breakpoints only handled <600px so a
-     768-980px iPad showed a 1-column .grid (160px card + huge whitespace)
-     Tighten to keep cards dense. */
-  .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+/* Shop — dark, by category (mockup E, 2026-10-28) */
+html, body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+body{margin:0;font-family:'Happy Monkey','Jua','DM Sans',Inter,'Noto Sans KR',sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:16px 16px 110px}
+.sh-h1{font-family:'DM Sans',sans-serif;font-weight:800;font-size:24px;color:#fff;margin:0 0 12px}
+.sh-bal{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);margin-bottom:12px}
+.sh-coin{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;color:#78350f;font-family:'DM Sans',sans-serif;font-weight:800}
+.sh-bal b{font-family:'DM Sans',sans-serif;font-size:22px;color:#fff;display:block;line-height:1.1}
+.sh-bal small{font-size:11px;color:rgba(255,255,255,.5)}
+.sh-earn{margin-left:auto;font:inherit;font-size:12px;color:#93c5fd;padding:7px 12px;border-radius:999px;border:1px solid rgba(147,197,253,.35);background:none;cursor:pointer}
+.shop-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px}
+.shop-tabs::-webkit-scrollbar{display:none}
+.shop-tab{flex-shrink:0;padding:9px 15px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#cbd5e1;font:inherit;font-size:12.5px;cursor:pointer}
+.shop-tab.active{background:rgba(124,58,237,.35);border-color:rgba(167,139,250,.6);color:#fff}
+.sh-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media(min-width:640px){.sh-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.sh-tile{position:relative;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#fff;font:inherit;cursor:pointer;transition:background .15s}
+.sh-tile:hover{background:rgba(255,255,255,.1)}
+.sh-art{width:100%;height:78px;border-radius:10px;background:radial-gradient(circle at 50% 60%,rgba(255,255,255,.1),transparent 70%);display:flex;align-items:center;justify-content:center}
+.sh-art img{max-width:88%;max-height:72px;object-fit:contain}
+.sh-tile b{font-size:11.5px;font-family:'DM Sans',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.sh-tile small{font-size:11px;color:#fcd34d;font-weight:700;font-family:'DM Sans',sans-serif}
+.sh-own{font-size:10px;padding:2px 7px;border-radius:7px;background:rgba(16,185,129,.22);color:#6ee7b7;font-family:'DM Sans',sans-serif;font-weight:700}
+.sh-own-abs{position:absolute;top:6px;right:6px}
+.sh-k{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#7dd3fc;margin:12px 2px 8px}
+.sh-li{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#fff;font:inherit;text-align:left;cursor:pointer;margin-bottom:8px;transition:background .15s}
+.sh-li:hover{background:rgba(255,255,255,.1)}
+.sh-pv{width:52px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.sh-tx{flex:1;min-width:0}.sh-tx b{display:block;font-size:13.5px;font-family:'DM Sans',sans-serif}.sh-tx small{display:block;font-size:11px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-pr{font-family:'DM Sans',sans-serif;font-weight:800;font-size:12px;color:#fcd34d;padding:6px 10px;border-radius:10px;background:rgba(250,204,21,.12)}
+.sh-qty{font-size:11px;color:#6ee7b7}
+.sh-ic{width:42px;height:42px;border-radius:12px;background:rgba(236,72,153,.18);color:#f9a8d4;display:flex;align-items:center;justify-content:center}
+.sh-ic-b{background:rgba(56,189,248,.18);color:#7dd3fc}
+.sh-ic svg,.sh-ic i{width:22px;height:22px}
+.sh-av-wrap{position:relative;display:inline-block;width:40px;height:40px;line-height:0}
+.sh-av-wrap .sh-av{position:absolute;inset:0}
+.sh-av-wrap .sh-av-frame{left:-6px;top:-6px;right:auto;bottom:auto;width:calc(100% + 12px);height:calc(100% + 12px);max-width:none;max-height:none}
+.sh-big .sh-av-wrap{width:64px;height:64px}
+.sh-av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#1e3a8a,#2563eb);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;position:relative;z-index:1}
+.sh-hint{font-size:11.5px;color:rgba(255,255,255,.45);margin:8px 2px;line-height:1.5}
+.sh-note{padding:10px 12px;border-radius:12px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.3);color:#fde68a;font-size:12.5px;margin-bottom:10px}
+.sh-ov{position:fixed;inset:0;z-index:5000;background:rgba(2,6,23,.6);display:flex;align-items:flex-end;justify-content:center}
+.sh-sheet{width:100%;max-width:520px;background:#111c38;border:1px solid rgba(255,255,255,.12);border-bottom:0;border-radius:20px 20px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));transform:translateY(20px);opacity:0;transition:transform .18s,opacity .18s}
+.sh-ov.open .sh-sheet{transform:none;opacity:1}
+.sh-st{font-family:'DM Sans',sans-serif;font-weight:800;font-size:19px;color:#fff;margin-top:2px}
+.sh-sd{font-size:12.5px;color:rgba(255,255,255,.55);margin-top:3px}
+.sh-room{height:170px;border-radius:14px;margin:12px 0;background:url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover;display:flex;align-items:flex-end;justify-content:center;padding-bottom:22px}
+.sh-room img{max-height:96px;max-width:46%;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.35))}
+.sh-big{display:flex;align-items:center;justify-content:center;gap:12px;height:120px;border-radius:14px;margin:12px 0;background:rgba(255,255,255,.04)}
+.sh-big .sh-av{width:64px;height:64px;font-size:24px}
+.sh-big .sh-av-wrap .sh-av-frame{left:-8px;top:-8px;width:calc(100% + 16px);height:calc(100% + 16px)}
+.sh-bal-row{display:flex;justify-content:space-between;font-size:12.5px;color:rgba(255,255,255,.6);margin-bottom:12px}
+.sh-bal-row b{color:#fcd34d;font-family:'DM Sans',sans-serif}
+.sh-buy,.sh-cancel{display:block;width:100%;padding:13px;border-radius:14px;font:inherit;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:8px}
+.sh-buy{border:0;background:linear-gradient(120deg,#3b82f6,#7c3aed);color:#fff}
+.sh-buy:disabled{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);cursor:default}
+.sh-cancel{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#e2e8f0}
+.sh-earn-list{font-size:13px;line-height:1.8;color:#cbd5e1;margin:10px 0 14px;padding-left:18px}
+/* Frame + title previews (same art as My Page) */
+.mp-title-pill{display:inline-flex;align-items:center;padding:3px 11px;border-radius:999px;font-family:'Noto Sans KR',sans-serif;font-size:11px;font-weight:800;line-height:1.4;border:1px solid transparent;white-space:nowrap}
+.kh-title-mint{background:rgba(52,211,153,.18);color:#a7f3d0;border-color:rgba(52,211,153,.32)}
+.kh-title-forest{background:rgba(34,197,94,.18);color:#bbf7d0;border-color:rgba(34,197,94,.32)}
+.kh-title-navy{background:rgba(96,165,250,.16);color:#bfdbfe;border-color:rgba(96,165,250,.32)}
+.kh-title-warm{background:rgba(251,146,60,.18);color:#fed7aa;border-color:rgba(251,146,60,.34)}
+.kh-title-regal{background:rgba(167,139,250,.2);color:#ddd6fe;border-color:rgba(167,139,250,.38)}
+.sh-av-frame{position:absolute;inset:-6px;border-radius:50%;pointer-events:none;z-index:0;display:none}
+.sh-av-frame.is-on{display:block}
+@keyframes khFrameSpin { to { transform: rotate(360deg); } }
+@keyframes khFramePulse {
+  0%,100% { box-shadow: var(--frame-shadow-a); }
+  50%     { box-shadow: var(--frame-shadow-b); }
 }
-@media(max-width:600px){
-  /* Tab gap bumped from 6→8 px on phone — at 6 px adjacent tabs sit
-     well inside the 44 px touch-target separation rule. */
-  .shop-tabs{gap:8px}
-}
-.title{font-size:13px;font-weight:800}.desc{font-size:11px;color:#64748b;line-height:1.4}
-.price{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:11px;font-weight:800;border-radius:999px;padding:3px 8px}
-.coin{background:#ecfeff;color:#0f766e}.cash{background:#f5f3ff;color:#6d28d9}
-.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.btn{border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer;transition:opacity .15s}
-.btn.coin{background:#0f766e;color:#fff}.btn.cash{background:#6d28d9;color:#fff}.btn:hover{opacity:.85}.btn:disabled{opacity:.4;cursor:not-allowed}
-.owned{font-size:11px;color:#16a34a;font-weight:800}
 
-/* Mobile tap targets — audit flagged these as sub-44 px. Bump shop tabs
-   and purchase buttons to comply with iOS HIG / Material guidelines.
-   The .btn flex:1 lets the two CTAs share the row at full width rather
-   than each shrinking to fit its label. */
-@media (max-width: 768px) {
-  .shop-tab { padding:13px 18px; font-size:13px; min-height:48px; }
-  .btn      { padding:11px 14px; font-size:13px; min-height:44px; flex:1 1 calc(50% - 6px); }
-  .btns     { gap:8px; }
+/* Solid / gradient rings (static) */
+.kh-frame-neon.is-on     { box-shadow:0 0 0 2px #00ff95, 0 0 16px 3px rgba(0,255,149,.55); }
+.kh-frame-sakura.is-on   { box-shadow:0 0 0 3px #ff9bc6, 0 0 14px 4px rgba(255,155,198,.5); }
+.kh-frame-hanbok.is-on   { box-shadow:0 0 0 3px #b91c1c, inset 0 0 0 1px #fff7e6, 0 0 10px 2px rgba(185,28,28,.4); }
+.kh-frame-gold.is-on     { box-shadow:0 0 0 2px #fbbf24, 0 0 14px 3px rgba(251,191,36,.6); }
+.kh-frame-mint.is-on     { box-shadow:0 0 0 2px #34d399, 0 0 10px 2px rgba(52,211,153,.45); }
+.kh-frame-coral.is-on    { box-shadow:0 0 0 2px #fb7185, 0 0 10px 2px rgba(251,113,133,.45); }
+.kh-frame-royal.is-on    { box-shadow:0 0 0 2px #7c3aed, 0 0 12px 3px rgba(124,58,237,.5); }
+.kh-frame-chuseok.is-on  { box-shadow:0 0 0 3px #c2410c, 0 0 14px 3px rgba(255,196,77,.55); }
+.kh-frame-seollal.is-on  { box-shadow:0 0 0 3px #1d4ed8, inset 0 0 0 1px #fff, 0 0 10px 2px rgba(29,78,216,.4); }
+.kh-frame-pastel.is-on   { box-shadow:0 0 0 3px #fcd5ce, 0 0 0 5px #cdb4db; }
+.kh-frame-inkwash.is-on  { box-shadow:0 0 0 3px #1f2937, 0 0 0 5px rgba(31,41,55,.25); }
+
+/* Animated gradient rings — render a rotating conic gradient on the
+   frame element, mask to a ring so the avatar shows through. */
+.kh-frame-aurora.is-on, .kh-frame-rainbow.is-on, .kh-frame-rainbow-lite.is-on,
+.kh-frame-galaxy.is-on, .kh-frame-holo.is-on {
+  background-origin:border-box;
+  -webkit-mask:radial-gradient(circle at 50% 50%, transparent 0 calc(50% - 5px), #000 calc(50% - 4px));
+          mask:radial-gradient(circle at 50% 50%, transparent 0 calc(50% - 5px), #000 calc(50% - 4px));
+  animation: khFrameSpin 8s linear infinite;
 }
-/* ── Sections ── */
-.sec-header{display:flex;align-items:center;gap:10px;margin:28px 0 8px}
-.sec-header h2{font-size:18px;font-weight:900;margin:0}
-.sec-header p{font-size:12px;color:#64748b;margin:0}
-/* ── Inventory ── */
-.inv{margin-top:24px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px;box-shadow:0 1px 4px rgba(15,23,42,.04)}
-.inv h3{margin:0 0 10px;font-size:16px;font-weight:900}.inv-item{padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:12px;display:flex;justify-content:space-between;align-items:center}
-.inv-item:last-child{border-bottom:none}
-@media(max-width:600px){.shop-hero{padding:22px 0 50px;margin-bottom:-34px}.shop-hero-inner{padding:0 16px}.shop-hero-left h1{font-size:24px;margin-bottom:6px}.shop-hero-left p{font-size:12px;line-height:1.5}.shop-balances{gap:8px}.shop-bal{padding:10px 14px;min-width:80px}.shop-bal-value{font-size:18px}.grid{grid-template-columns:repeat(2,1fr);gap:8px}}
+.kh-frame-aurora.is-on        { background: conic-gradient(from 0deg, #93c5fd, #c4b5fd, #a7f3d0, #fde68a, #93c5fd); }
+.kh-frame-rainbow-lite.is-on  { background: conic-gradient(from 0deg, #f87171, #fbbf24, #34d399, #60a5fa, #a78bfa, #f87171); animation-duration:12s; }
+.kh-frame-rainbow.is-on       { background: conic-gradient(from 0deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #6366f1, #d946ef, #ef4444); animation-duration:6s; }
+.kh-frame-galaxy.is-on        { background: conic-gradient(from 0deg, #1e1b4b, #7c3aed, #d946ef, #1e1b4b); animation-duration:10s; }
+.kh-frame-holo.is-on          { background: conic-gradient(from 0deg, #c4b5fd, #f5d0fe, #bae6fd, #d9f99d, #fde68a, #c4b5fd); animation-duration:4s; filter:saturate(1.4); }
+
+/* Equipped title pill — small chip below the username on the hero, also
+   reused as a preview tile inside the Cosmetics modal. Tone classes set
+   the palette per cosmetic family. */
+.mp-title-pill{display:inline-flex;align-items:center;padding:3px 11px;border-radius:999px;font-family:'Noto Sans KR',sans-serif;font-size:11px;font-weight:800;letter-spacing:.01em;line-height:1.4;margin-top:6px;border:1px solid transparent;white-space:nowrap}
+.kh-title-mint     { background:rgba(52,211,153,.18);  color:#a7f3d0; border-color:rgba(52,211,153,.32); }
+.kh-title-forest   { background:rgba(34,197,94,.18);   color:#bbf7d0; border-color:rgba(34,197,94,.32); }
+.kh-title-navy     { background:rgba(96,165,250,.16);  color:#bfdbfe; border-color:rgba(96,165,250,.32); }
+.kh-title-warm     { background:rgba(251,146,60,.18);  color:#fed7aa; border-color:rgba(251,146,60,.34); }
+.kh-title-regal    { background:rgba(167,139,250,.20); color:#ddd6fe; border-color:rgba(167,139,250,.38); }
+.kh-title-legendary{ background:linear-gradient(135deg,#fde68a,#f59e0b 70%); color:#1c1917; border-color:#f59e0b; font-weight:900; box-shadow:0 0 0 1px rgba(251,191,36,.5); }
+
 </style>
 </head>
 <body>
 <div id="kh-header"></div>
-<section class="shop-hero">
-  <div class="shop-hero-inner">
-    <div class="shop-hero-top">
-      <div class="shop-hero-left">
-        <div class="shop-hero-eyebrow">KoreHani</div>
-        <h1>Shop</h1>
-        <p>Spend nyang on items, gifts, and room decorations.</p>
-      </div>
-      <div class="shop-balances">
-        <div class="shop-bal">
-          <div class="shop-bal-label">XP</div>
-          <div class="shop-bal-value xp" id="shop-xp">—</div>
-        </div>
-        <div class="shop-bal">
-          <div class="shop-bal-label">Nyang</div>
-          <div class="shop-bal-value nyang" id="shop-coin">—</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 <main class="wrap">
+  <h1 class="sh-h1">Shop</h1>
+  <div class="sh-bal">
+    <span class="sh-coin">N</span>
+    <span><b id="shop-coin">—</b><small>nyang · <span id="shop-xp">—</span></small></span>
+    <button type="button" class="sh-earn" onclick="shopHowToEarn()">How to earn</button>
+  </div>
   <nav class="shop-tabs" id="shop-tabs">
-    <button class="shop-tab active" data-tab="all">ALL</button>
-    <button class="shop-tab" data-tab="gift" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="gift" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Gift</span></button>
-    <button class="shop-tab" data-tab="room" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="home" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Room</span></button>
-    <button class="shop-tab" data-tab="profile" style="display:inline-flex;align-items:center;gap:5px"><i data-lucide="user" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Profile</span></button>
+    <button class="shop-tab active" data-tab="room">Room</button>
+    <button class="shop-tab" data-tab="profile">Profile</button>
+    <button class="shop-tab" data-tab="gifts">Reporter gifts</button>
+    <button class="shop-tab" data-tab="boosts">Boosts</button>
   </nav>
-  <section class="grid" id="shop-grid"></section>
-  <section class="grid" id="room-shop-grid"></section>
-  <section class="inv" id="shop-inventory-section"><h3>Your Inventory</h3><div id="shop-inventory">Loading…</div></section>
-
+  <section id="shop-grid"></section>
 </main>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -136,6 +166,14 @@ body{margin:0;background:#f8fafc;font-family:'Happy Monkey','Jua','DM Sans',Inte
 <script src="js/features/fill-blank.js?v=20261013c"></script>
 <script src="korehan-shared.js?v=20261028d"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
-<script src="shop-client.js?v=20261026b"></script>
+<script src="shop-client.js?v=20261028a"></script>
+<script>
+function shopHowToEarn() {
+  var ov = document.createElement('div'); ov.className = 'sh-ov'; ov.id = 'sh-ov';
+  ov.innerHTML = '<div class="sh-sheet"><div class="sh-st">How to earn nyang</div><ul class="sh-earn-list"><li>Study Room lessons and writing</li><li>Articles, conversations and quizzes</li><li>Streak milestones</li><li>New badges</li></ul><button type="button" class="sh-buy" onclick="location.href=\'korehan-study-room.html\'">Go to Study Room</button><button type="button" class="sh-cancel" onclick="shopClose()">Close</button></div>';
+  ov.addEventListener('click', function(e){ if (e.target === ov) shopClose(); });
+  document.body.appendChild(ov); requestAnimationFrame(function(){ ov.classList.add('open'); });
+}
+</script>
 </body>
 </html>
