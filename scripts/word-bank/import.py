@@ -37,4 +37,16 @@ commit;""")
     ins += int(r.get("ins", 0) or 0); upd += int(r.get("upd", 0) or 0)
     print(f"batch {i // B + 1}: {res}")
 print("inserted:", ins, "| filled pos/example on existing:", upd)
+
+# Topics from the dictionary's 의미 범주 — only for words with no tag yet, so
+# content-qa's AI tagger is left with the few words the dictionary can't place.
+tagged = 0
+tag_rows = [{"ko": r["ko"], "tag": r["tag"]} for r in rows if r.get("tag")]
+for i in range(0, len(tag_rows), 1000):
+    payload = json.dumps(tag_rows[i:i + 1000], ensure_ascii=False)
+    res = q(f"""with j as (select distinct on (ko) * from jsonb_to_recordset($wt${payload}$wt$::jsonb) as x(ko text, tag text))
+insert into public.word_tags (word_ko, tag) select ko, tag from j
+on conflict (word_ko) do nothing returning 1""")
+    tagged += len(res or [])
+print("topic tags added:", tagged)
 print("after:", q("select level, count(*) from public.vocabulary_bank where is_active group by 1 order by 1"))
