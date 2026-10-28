@@ -577,16 +577,8 @@
     }
 
     owned.push(itemId);
+    // buy_room_item already appended the item to user_room_state.owned.
     localStorage.setItem('kh_room_owned', JSON.stringify(owned));
-    // Sync to server so My Room page doesn't overwrite
-    try {
-      var sb2 = getSupa();
-      if (sb2 && supaUser) {
-        var layout = []; try { layout = JSON.parse(localStorage.getItem('kh_room_layout')||'[]'); } catch(e){}
-        var syncData = JSON.stringify({ room_layout: layout, room_owned: owned });
-        sb2.from('app_settings').upsert({ key: 'room_data_' + supaUser.id, value: syncData, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      }
-    } catch(e){}
     if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
     toast('Purchased ' + item.name + ' — place it in My Room', 'success');
     initShop();
