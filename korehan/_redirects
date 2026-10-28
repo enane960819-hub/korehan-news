@@ -14,9 +14,10 @@
 # lines are a belt-and-suspenders fallback and require korehannews.com +
 # www.korehannews.com to remain attached as custom domains on this Pages
 # project. www.korehani.com → apex normalisation is safe to keep here.
-https://korehannews.com/*      https://korehani.com/:splat      301!
-https://www.korehannews.com/*  https://korehani.com/:splat      301!
-https://www.korehani.com/*     https://korehani.com/:splat      301!
+# (2026-10-29) The host-level lines that used to sit here were removed:
+# Pages' _redirects only accepts relative paths (domain rules belong in a
+# Cloudflare Redirect Rule) and does not support Netlify's "301!" form.
+# This file was also never deployed until vite.config.js started copying it.
 
 # Legacy paths from the korehannews.com era — not strictly redirects,
 # but explicit so any old bookmarks or shared links that include
