@@ -44,3 +44,7 @@ verify_jwt = false
 # email); gateway check off so the admin CMS preflight passes.
 [functions.phone-call-gen]
 verify_jwt = false
+
+# Cron-invoked with CRON_SECRET (not a user JWT) — auth is checked in the function.
+[functions.content-qa]
+verify_jwt = false
