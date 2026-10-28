@@ -434,6 +434,10 @@
   window.addEventListener('kh-auth-signed-in', function () { loadProgress().then(function () { if (!S.conv) renderList(); }); });
   document.addEventListener('DOMContentLoaded', init);
 
+  // Shared with the admin editor (korehan-x9f4k2m7-conversations.html) so
+  // the preview uses exactly the learner rules.
+  window.khConvRules = { norm: norm, speechLevels: speechLevels, isPolite: isPolite, toBanmal: toBanmal, buildRoleplay: buildRoleplay, markKx: markKx, LV: LV, CAT: CAT };
+
   window.khConv = {
     open: open, back: back, step: step, playAll: playAll, tapLine: tapLine,
     level: function (k) { S.lvl = k; renderList(); },

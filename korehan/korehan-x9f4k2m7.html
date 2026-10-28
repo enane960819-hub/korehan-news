@@ -10851,6 +10851,7 @@ async function _saveAllConvsBody() {
       lvl: c.lvl,
       name: c.name,
       ctx: c.ctx,
+      status: 'draft',   // review + publish in Conversation Admin (x9f4k2m7-conversations)
       created_at: new Date().toISOString()
     };
   });
@@ -12144,6 +12145,7 @@ async function bulkSeedConvos(count) {
           lvl:     conv.lvl,
           name:    conv.name,
           ctx:     conv.ctx,
+          status:  'draft',   // review + publish in Conversation Admin
           created_at: new Date().toISOString()
         };
         // Catch-and-drop loop — tolerate schema drift in conversations_data
@@ -12557,6 +12559,10 @@ function setSidebarActive(id) {
 // CONVERSATION MANAGER (수동 편집/생성/삭제)
 // ═══════════════════════════════════════════════════════════
 async function goConvManager() {
+  // Managing conversations (drafts, review, line editor, publish) moved to
+  // its own admin page (2026-10-28).
+  location.href = 'korehan-x9f4k2m7-conversations.html';
+  return;
   setSidebarActive('conv-mgr');
   var main = document.getElementById('main');
   main.innerHTML = '<div style="max-width:960px">'
