@@ -15,7 +15,7 @@ export type ContentRow = {
   dictation_questions?: Array<{ question_ko?: string; answer_ko?: string; hint_en?: string }>
   confusing_grammar?: Array<{ pair?: string[]; explanation?: string; wrong?: string; correct?: string }>
 }
-export type Flag = { id: string; reason?: string; fix_en?: string }
+export type Flag = { id: string; reason?: string; fix_en?: string; fix_rom?: string }
 
 const arr = <T>(x: T[] | undefined): T[] => (Array.isArray(x) ? x : [])
 

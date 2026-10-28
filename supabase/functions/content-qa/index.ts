@@ -23,6 +23,7 @@ import { NATURAL_KOREAN_RULES } from '../_shared/korean-rules.ts'
 import { type Line, type Pack, validatePack, comboLines, dropBadOptions, sentenceLines, applySentenceFlags } from './pack.ts'
 import { type ContentRow, type Flag, contentLines, applyContentFlags, keLines, applyKeFlags } from './content.ts'
 import { tagPrompt, parseTags } from './tags.ts'
+import { jsonItems, applyJsonFlags, vocabLines } from './queue.ts'
 
 const GEN_LEVELS = ['Starter', 'Beginner', 'Intermediate'] as const
 const ADMIN_EMAIL = 'enane960819@gmail.com'
@@ -113,8 +114,8 @@ async function review(sb: any, apiKey: string, level: string, topic: string, lin
   const results = await Promise.all(chunks.map((chunk) => claudeJson(sb, apiKey,
     `You are a strict native Korean teacher checking ${what} for ${level} learners (topic: "${topic}").\n` +
     `Flag EVERY line a native Korean teacher would mark: unnatural, awkward or translated-sounding Korean; redundancy (the same noun repeated, e.g. 번호는 새 번호예요); anything a native speaker would phrase differently; a word order that is grammatical but not how people actually say it; wrong particle, spacing or conjugation; two sentences that don't make sense together; a wrong or mismatched English translation or meaning. When in doubt, flag it — a flagged line is simply removed, so false alarms are cheap and misses are expensive. Do not flag lines that are fully natural and correct.\n` +
-    `For a MEANING CHECK or GLOSS CHECK line that is wrong, include "fix_en" with the correct short English meaning. Only list lines that have a real problem — never list a line just to say it is fine.\n\n` +
-    `Return ONLY JSON: {"bad":[{"id":"...","reason":"short English reason","fix_en":"only for MEANING CHECK"}]}\n\nLines (id | text):\n` +
+    `For a MEANING CHECK or GLOSS CHECK line that is wrong, include "fix_en" with the correct short English meaning. For a ROM CHECK line, flag only if the stored romanization is wrong and include "fix_rom". For a QUIZ line, flag if the sentence is unnatural, the answer doesn't fit, or another choice would also be correct. Only list lines that have a real problem — never list a line just to say it is fine.\n\n` +
+    `Return ONLY JSON: {"bad":[{"id":"...","reason":"short English reason","fix_en":"only for MEANING CHECK","fix_rom":"only for ROM CHECK"}]}\n\nLines (id | text):\n` +
     chunk.map((l) => `${l.id} | ${l.text}`).join('\n'),
     1500, 'content-qa-review')))
   const ids = new Set(lines.map((l) => l.id))
@@ -220,7 +221,7 @@ Deno.serve(async (req) => {
 
       // 1) Weekly content — new or regenerated since the last check.
       const stale = !row.qa_at || new Date(row.updated_at).getTime() > new Date(row.qa_at).getTime() + 60_000
-      if (stale && !body.only?.match(/^(packs|tags|conv-titles)$/) && timeLeft() > 30_000) {
+      if (stale && !body.only?.match(/^(packs|tags|conv-titles|queue)$/) && timeLeft() > 30_000) {
         try {
           didReview = true
           const flags = await review(sb, apiKey, row.level, topicKo, contentLines(row as ContentRow), 'a week of study content (vocabulary meanings, grammar examples, example and dictation sentences)')
@@ -233,7 +234,7 @@ Deno.serve(async (req) => {
       }
 
       // 2) Pre-baked Key Expressions for this topic.
-      if (!body.only?.match(/^(packs|tags|conv-titles)$/) && timeLeft() > 30_000) {
+      if (!body.only?.match(/^(packs|tags|conv-titles|queue)$/) && timeLeft() > 30_000) {
         const key = `kex5::${topicKo}_${row.level}`
         try {
           const { data: ke } = await sb.from('grammar_examples_cache').select('patterns_json').eq('pattern_name', key).maybeSingle()
@@ -256,7 +257,7 @@ Deno.serve(async (req) => {
 
     // 3) Writing-flow topic packs — this week through PACK_WEEKS_AHEAD, from
     // the writing_topics rotation, so a pack is ready well before its week.
-    if (body.only !== 'content' && body.only !== 'tags' && body.only !== 'conv-titles') {
+    if (body.only !== 'content' && body.only !== 'tags' && body.only !== 'conv-titles' && body.only !== 'queue') {
       const want: Array<{ week: string; level: string; ko: string; en: string }> = []
       for (const level of GEN_LEVELS) {
         const { data: topics } = await sb.from('writing_topics').select('topic_ko,topic_en')
@@ -366,6 +367,104 @@ Deno.serve(async (req) => {
           }
           report.push({ step: 'conv-titles', saved, of: todo.length })
         } catch (e) { report.push({ step: 'conv-titles', error: (e as Error).message }) }
+      }
+    }
+
+    // 6) Review queue — shared AI content nobody reviewed yet: article
+    // analysis, the shared AI caches and the word bank (see queue.ts). A
+    // trigger clears qa_at whenever the content changes, so new and
+    // regenerated rows always come back here.
+    if ((!body.only || body.only === 'queue') && timeLeft() > 35_000) {
+      const maxCalls = body.only === 'queue' ? 6 : 2
+      let calls = 0
+      const qa = new Date(Date.now() + 120_000).toISOString()   // ahead of the updated_at trigger
+      const parse = (v: unknown) => { if (typeof v !== 'string') return v; try { return JSON.parse(v) } catch (_) { return null } }
+      const jobs: Array<() => Promise<void>> = []
+
+      // a) Word bank — 80 words a call.
+      jobs.push(async () => {
+        const { data: words } = await sb.from('vocabulary_bank').select('word_key,word_ko,word_en,word_rom').is('qa_at', null).limit(80)
+        if (!words || !words.length) return
+        const flags = await review(sb, apiKey, 'all', 'the core word bank', vocabLines(words as any), 'dictionary meanings and romanizations of a word bank')
+        const byId: Record<string, any> = {}; flags.forEach((f) => { byId[f.id] = f })
+        let fixed = 0
+        await Promise.all((words as any[]).map(async (w, i) => {
+          const m = byId[`W${i + 1}`], r = byId[`R${i + 1}`]
+          const patch: Record<string, unknown> = { qa_at: qa }
+          if (m && m.fix_en && String(m.fix_en).trim()) patch.word_en = String(m.fix_en).trim().slice(0, 120)
+          if (r && r.fix_rom && /^[a-z' -]+$/i.test(String(r.fix_rom).trim())) patch.word_rom = String(r.fix_rom).trim().toLowerCase()
+          if (patch.word_en || patch.word_rom) fixed++
+          await sb.from('vocabulary_bank').update(patch).eq('word_key', w.word_key)
+        }))
+        report.push({ step: 'queue', table: 'vocabulary_bank', checked: words.length, fixed })
+      })
+
+      // b) Article analysis — a few articles a call, newest first.
+      jobs.push(async () => {
+        const { data: rows } = await sb.from('article_cache').select('article_id,vocab,grammar,quiz,expressions')
+          .is('qa_at', null).order('updated_at', { ascending: false }).limit(3)
+        if (!rows || !rows.length) return
+        const all: any[] = [], lines: any[] = []
+        const parts = (rows as any[]).map((row, ri) => {
+          const fields: Record<string, any> = {}
+          for (const f of ['vocab', 'grammar', 'quiz', 'expressions']) {
+            const val = parse(row[f])
+            if (!val) continue
+            const got = jsonItems(val, `A${ri + 1}${f[0]}`)
+            fields[f] = { val, items: got.items }
+            all.push(...got.items); lines.push(...got.lines)
+          }
+          return { row, fields }
+        })
+        const flags = lines.length ? await review(sb, apiKey, 'all', 'news articles', lines, 'study material made from news articles (word meanings, grammar examples, fill-in-the-blank quizzes, expressions)') : []
+        const dropped: string[] = []
+        await Promise.all(parts.map(async ({ row, fields }) => {
+          const patch: Record<string, unknown> = { qa_at: qa }
+          for (const f of Object.keys(fields)) {
+            const mine = flags.filter((x) => fields[f].items.some((it: any) => it.id === x.id))
+            if (!mine.length) continue
+            const res = applyJsonFlags(fields[f].items, mine)
+            dropped.push(...res.dropped)
+            patch[f] = res.ok ? JSON.stringify(fields[f].val) : null     // null → regenerated on next view
+          }
+          await sb.from('article_cache').update(patch).eq('article_id', row.article_id)
+        }))
+        report.push({ step: 'queue', table: 'article_cache', checked: rows.length, dropped: dropped.length })
+      })
+
+      // c) Shared AI caches (lessons, drills, judge items, sentences…).
+      jobs.push(async () => {
+        const { data: rows } = await sb.from('grammar_examples_cache').select('pattern_name,patterns_json')
+          .is('qa_at', null).order('updated_at', { ascending: false }).limit(4)
+        if (!rows || !rows.length) return
+        const lines: any[] = []
+        const parts = (rows as any[]).map((row, ri) => {
+          const val = parse(row.patterns_json)
+          const got = val ? jsonItems(val, `C${ri + 1}.`) : { items: [], lines: [] }
+          lines.push(...got.lines)
+          return { row, val, items: got.items }
+        })
+        const flags = lines.length ? await review(sb, apiKey, 'all', 'Korean grammar and expressions', lines, 'shared lesson content (grammar examples, practice sentences, word meanings)') : []
+        let deleted = 0, fixed = 0
+        await Promise.all(parts.map(async ({ row, val, items }) => {
+          const mine = flags.filter((x) => items.some((it: any) => it.id === x.id))
+          if (!mine.length || !val) { await sb.from('grammar_examples_cache').update({ qa_at: qa }).eq('pattern_name', row.pattern_name); return }
+          const res = applyJsonFlags(items, mine)
+          if (res.ok) { fixed++; await sb.from('grammar_examples_cache').update({ patterns_json: JSON.stringify(val), qa_at: qa }).eq('pattern_name', row.pattern_name) }
+          else { deleted++; await sb.from('grammar_examples_cache').delete().eq('pattern_name', row.pattern_name) }   // regenerated on next use
+        }))
+        report.push({ step: 'queue', table: 'grammar_examples_cache', checked: rows.length, fixed, deleted })
+      })
+
+      // Round-robin the three sources until the call budget or time runs out.
+      // Rotate the starting source each run so the hourly budget (2 calls)
+      // still reaches all three over time.
+      const start = Math.floor(Date.now() / 3_600_000) % jobs.length
+      const order = jobs.slice(start).concat(jobs.slice(0, start))
+      for (let round = 0; calls < maxCalls && timeLeft() > 35_000 && round < maxCalls; round++) {
+        const batch = order.slice(0, Math.min(order.length, maxCalls - calls))
+        calls += batch.length
+        try { await Promise.all(batch.map((j) => j())) } catch (e) { report.push({ step: 'queue', error: (e as Error).message }); break }
       }
     }
 
