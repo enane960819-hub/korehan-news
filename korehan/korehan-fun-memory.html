@@ -341,7 +341,7 @@ html body{margin:0;background:#050b15!important;background-color:#050b15!importa
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261028e"></script>
+<script src="korehan-shared.js?v=20261028f"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script src="playground-scores-client.js?v=20261012a"></script>
 <script>
@@ -589,9 +589,11 @@ var MEM = (function(){
   function buildCards(diff) {
     var cfg = DIFFICULTY[diff];
     var shuffled = shuffle(WORDS.slice());
-    var pool = [];
+    // The round's words were already picked (and shown on "Study first")
+    // when the difficulty was chosen — play with exactly those.
+    var pool = (currentWords && currentWords.length === cfg.pairs) ? currentWords.slice() : [];
     var seenKo = {}, seenEn = {};
-    for (var i = 0; i < shuffled.length && pool.length < cfg.pairs; i++) {
+    for (var i = 0; pool.length < cfg.pairs && i < shuffled.length; i++) {
       var w = shuffled[i];
       if (!w || !w.ko || !w.en) continue;
       var k = String(w.ko).trim();

@@ -143,6 +143,26 @@ function _wfWords() {
   return out.slice(0, 8);
 }
 
+// Is a dictionary-form word used in the text, in any conjugation?
+// 쉬다 → 쉬어요, 좋아하다 → 좋아해요, 마시다 → 마셔요, 오다 → 와요.
+// The stem's last syllable may change its vowel (and final), so for a
+// multi-syllable stem accept any syllable with the same first consonant.
+var WF_SHORT_STEM = { '오': '와', '보': '봐', '주': '줘', '두': '둬', '하': '해', '되': '돼', '쓰': '써', '크': '커', '가': '가', '서': '서', '자': '자' };
+function _wfUsesWord(text, w) {
+  text = String(text || ''); w = String(w || '').trim();
+  if (!w) return false;
+  if (!/.다$/.test(w)) return text.indexOf(w) >= 0;
+  var stem = w.slice(0, -1);
+  if (text.indexOf(stem) >= 0) return true;
+  var last = stem.charCodeAt(stem.length - 1) - 0xAC00;
+  if (last < 0 || last > 11171) return false;
+  if (stem.length === 1) return !!WF_SHORT_STEM[stem] && text.indexOf(WF_SHORT_STEM[stem]) >= 0;
+  var cho = Math.floor(last / 588);
+  var from = String.fromCharCode(0xAC00 + cho * 588), to = String.fromCharCode(0xAC00 + cho * 588 + 587);
+  var prefix = stem.slice(0, -1).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(prefix + '[' + from + '-' + to + ']').test(text);
+}
+
 // ── Open / close ────────────────────────────────────────────────
 async function khOpenWritingFlow() {
   if (typeof closeLearningSelector === 'function') { try { closeLearningSelector(); } catch (_) {} }
@@ -435,10 +455,7 @@ function _wfOnInput(v) {
   });
   items.unshift({ label: 'At least ' + (c.min_sentences || 2) + ' sentences', ok: nS >= (c.min_sentences || 2) });
   var words = (c.words && c.words.length ? c.words : _wfWords());
-  var used = words.filter(function (w) {
-    var stem = /.다$/.test(w) ? w.slice(0, -1) : w;   // 쉬다 → 쉬 (matches 쉬어요)
-    return _wf.text.indexOf(stem) >= 0;
-  });
+  var used = words.filter(function (w) { return _wfUsesWord(_wf.text, w); });
   var ck = document.getElementById('wf-check');
   if (ck) ck.innerHTML = items.map(function (it) {
     return '<div class="wf-ck' + (it.ok ? ' ok' : '') + (it.opt ? ' opt' : '') + '"><i>' + (it.ok ? '<i data-lucide="check"></i>' : '') + '</i>' + _wfE(it.label) + '</div>';

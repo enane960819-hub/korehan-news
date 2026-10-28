@@ -86,6 +86,7 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
 @keyframes gsScoreBump { 0%{transform:scale(1)} 50%{transform:scale(1.22);color:#fbbf24} 100%{transform:scale(1)} }
 .gs-tray.gs-shake { animation: gsTrayShake .45s ease; border-color:rgba(239,68,68,.55)!important; box-shadow:0 0 20px rgba(239,68,68,.25); border-radius:10px; }
 @keyframes gsTrayShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 50%{transform:translateX(6px)} 75%{transform:translateX(-4px)} }
+.gs-next{display:block;margin:10px auto 0;padding:9px 26px;border:0;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font:inherit;font-weight:800;font-size:14px;cursor:pointer}
 </style>
 </head>
 <body style="background:#0a0e1a !important;color:#e0f2fe !important">
@@ -172,7 +173,7 @@ h1 { font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; mar
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261028e"></script>
+<script src="korehan-shared.js?v=20261028f"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script src="playground-scores-client.js?v=20261012a"></script>
 <script>
@@ -341,7 +342,7 @@ window.checkAnswer = function() {
   } else {
     s.score = Math.max(0, s.score - 10);
     s.streak = 0;
-    fbHost.innerHTML = '<div class="gs-fb is-wrong"><b>' + khSvg('x', {size:14, color:'#ef4444', marginRight:6}) + 'Not quite</b><div class="gs-fb-correct">Answer: ' + escapeHtml(origWords.join(' ')) + '</div></div>';
+    fbHost.innerHTML = '<div class="gs-fb is-wrong"><b>' + khSvg('x', {size:14, color:'#ef4444', marginRight:6}) + 'Not quite</b><div class="gs-fb-correct">Answer: ' + escapeHtml(origWords.join(' ')) + '</div>' + _gsNextBtn() + '</div>';
     _gsPopup('-10', 'is-wrong');
     _gsShakeTray();
   }
@@ -353,11 +354,14 @@ window.checkAnswer = function() {
   _gsUpdateStreakUI();
   // Lock chips until the user advances.
   document.getElementById('gs-check').disabled = true;
-  setTimeout(function() {
-    s.idx++;
-    renderQ();
-  }, ok ? 900 : 2000);
+  // A miss waits for "Next" so the correct order can actually be read.
+  if (ok) setTimeout(function() { s.idx++; renderQ(); }, 900);
 };
+
+function _gsNextBtn() {
+  return '<button type="button" class="gs-next" onclick="gsNext()">Next</button>';
+}
+window.gsNext = function() { var s = _state; if (!s) return; s.idx++; renderQ(); };
 
 window.skipQ = function() {
   var s = _state; if (!s) return;
@@ -365,9 +369,8 @@ window.skipQ = function() {
   _gsUpdateStreakUI();
   var origWords = s.items[s.idx][0].split(' ');
   document.getElementById('gs-fb-host').innerHTML =
-    '<div class="gs-fb is-wrong"><b>Skipped</b><div class="gs-fb-correct">Answer: ' + escapeHtml(origWords.join(' ')) + '</div></div>';
+    '<div class="gs-fb is-wrong"><b>Skipped</b><div class="gs-fb-correct">Answer: ' + escapeHtml(origWords.join(' ')) + '</div>' + _gsNextBtn() + '</div>';
   document.getElementById('gs-check').disabled = true;
-  setTimeout(function() { s.idx++; renderQ(); }, 1500);
 };
 
 // Game-feel helpers — same pattern as PR #7W in Dictation.
