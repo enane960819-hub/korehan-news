@@ -5,9 +5,8 @@ select json_build_object(
              count(*) filter (where patterns_json like '%"qa":true%') qa_true,
              max(updated_at)::date last
       from grammar_examples_cache group by 1 order by 2 desc limit 40) t),
-  'article_cache_keys', (select json_agg(t) from (
-      select content_type, cache_key, count(*) n, max(updated_at)::date last
-      from article_cache group by 1,2 order by 3 desc limit 40) t),
+  'article_cache_rows', (select count(*) from article_cache),
+  'article_cache_sample', (select json_agg(t) from (select left(to_jsonb(a)::text, 300) as row from article_cache a limit 2) t),
   'vocab_bank', (select json_build_object('rows', count(*), 'no_rom', count(*) filter (where coalesce(word_rom,'')=''),
       'multi_meaning', count(*) filter (where word_en ~ '[,;/]'), 'long_meaning', count(*) filter (where length(word_en) > 40)) from vocabulary_bank),
   'hover_vocab', (select count(*) from hover_vocab_master),
