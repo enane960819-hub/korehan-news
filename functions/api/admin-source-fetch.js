@@ -96,6 +96,16 @@ const SOURCE_CATALOG = [
   { id:'soompi', label:'Soompi (K-content)', kind:'rss', category:'K-pop', url:'https://www.soompi.com/feed' },
   { id:'gn-gaming', label:'Polygon', kind:'rss', category:'문화', url:'https://www.polygon.com/rss/index.xml' },
 
+  // ── Reddit-like / trend sources with open official APIs (no key) ──
+  { id:'lemmy-hot', label:'Lemmy Hot', kind:'lemmy', category:'문화' },
+  { id:'lemmy-pics', label:'Lemmy pics', kind:'lemmy', category:'문화', community:'pics@lemmy.world' },
+  { id:'lemmy-mildly', label:'Lemmy mildlyinteresting', kind:'lemmy', category:'문화', community:'mildlyinteresting@lemmy.world' },
+  { id:'lemmy-interesting', label:'Lemmy interestingshare', kind:'lemmy', category:'문화', community:'interestingshare@lemmy.world' },
+  { id:'lemmy-til', label:'Lemmy todayilearned', kind:'lemmy', category:'문화', community:'todayilearned@lemmy.world' },
+  { id:'mastodon-trends', label:'Mastodon Trending', kind:'mastodon', category:'국제' },
+  { id:'wiki-mostread-en', label:'Wikipedia Most Read (EN)', kind:'wikitrend', category:'국제', lang:'en' },
+  { id:'wiki-mostread-ko', label:'위키백과 많이 본 문서 (KO)', kind:'wikitrend', category:'문화', lang:'ko' },
+
   // ── Wikinews (CC-BY 2.5 — full content + image free to adapt) ───
   // Pulls the latest articles in Category:Published via the MediaWiki
   // API, then extracts intro paragraph + main image in a single
@@ -356,6 +366,89 @@ async function fetchReddit(source, redditToken) {
   })
 }
 
+// Wikimedia asks API clients to identify themselves.
+const WIKI_UA = 'KoreHaniBot/1.0 (https://korehani.com)'
+
+// Lemmy — a Reddit-style link aggregator with an open public API.
+// community: 'name@instance' for one community, or none for the whole
+// instance's Hot list.
+async function fetchLemmy(source) {
+  const q = new URLSearchParams({ sort: 'Hot', limit: '20', type_: 'All' })
+  if (source.community) q.set('community_name', source.community)
+  const res = await budgetFetch('https://lemmy.world/api/v3/post/list?' + q.toString(), {
+    headers: { 'accept': 'application/json', 'user-agent': 'KoreHaniBot/1.0 (https://korehani.com)' },
+    signal: AbortSignal.timeout(8000),
+  })
+  if (!res.ok) throw new Error('upstream_' + res.status)
+  const json = await res.json().catch(() => null)
+  const posts = Array.isArray(json?.posts) ? json.posts : null
+  if (!posts) throw new Error('lemmy_bad_json')
+  return posts.filter((p) => p?.post && !p.post.nsfw).map((p) => {
+    const post = p.post
+    const img = post.thumbnail_url || (/\.(jpe?g|png|gif|webp)(\?|$)/i.test(post.url || '') ? post.url : '')
+    return {
+      title: stripHtml(post.name || ''),
+      source: source.label,
+      url: post.url || post.ap_id || '',
+      published_at: toIso(post.published || ''),
+      summary: stripHtml(post.body || '').slice(0, 280),
+      category: source.category,
+      image: img || null,
+    }
+  })
+}
+
+// Mastodon — links people are sharing most right now (public trends API).
+async function fetchMastodonTrends(source) {
+  const res = await budgetFetch('https://mastodon.social/api/v1/trends/links?limit=20', {
+    headers: { 'accept': 'application/json', 'user-agent': 'KoreHaniBot/1.0 (https://korehani.com)' },
+    signal: AbortSignal.timeout(8000),
+  })
+  if (!res.ok) throw new Error('upstream_' + res.status)
+  const list = await res.json().catch(() => null)
+  if (!Array.isArray(list)) throw new Error('mastodon_bad_json')
+  const now = new Date().toISOString()
+  return list.filter((l) => l?.title && l?.url).map((l) => ({
+    title: stripHtml(l.title),
+    source: source.label + (l.provider_name ? ' · ' + l.provider_name : ''),
+    url: l.url,
+    published_at: toIso(l.published_at || '') || now,
+    summary: stripHtml(l.description || '').slice(0, 280),
+    category: source.category,
+    image: l.image || null,
+  }))
+}
+
+// Wikipedia "most read" — what the world (or Korea, for ko) looked up
+// yesterday. Free official REST feed; skips the main page / special pages.
+async function fetchWikiMostRead(source) {
+  const lang = source.lang === 'ko' ? 'ko' : 'en'
+  const d = new Date(Date.now() - 24 * 3600 * 1000)
+  const ymd = d.getUTCFullYear() + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + '/' + String(d.getUTCDate()).padStart(2, '0')
+  const res = await budgetFetch(`https://${lang}.wikipedia.org/api/rest_v1/feed/featured/${ymd}`, {
+    headers: { 'accept': 'application/json', 'user-agent': WIKI_UA },
+    signal: AbortSignal.timeout(8000),
+  })
+  if (!res.ok) throw new Error('upstream_' + res.status)
+  const json = await res.json().catch(() => null)
+  const arts = json?.mostread?.articles
+  if (!Array.isArray(arts)) throw new Error('wiki_no_mostread')
+  const day = d.toISOString()
+  return arts
+    .filter((a) => a?.titles?.normalized && !/^(Main Page|대문)$/.test(a.titles.normalized) && (a.namespace?.id ?? 0) === 0)
+    .slice(0, 20)
+    .map((a) => ({
+      // Bare titles are often short (손흥민) and the list drops titles < 8 chars.
+      title: a.titles.normalized + (a.description ? ' — ' + a.description : ''),
+      source: source.label,
+      url: a.content_urls?.desktop?.page || `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(a.titles.canonical || a.titles.normalized)}`,
+      published_at: day,
+      summary: String(a.extract || '').slice(0, 280),
+      category: source.category,
+      image: a.thumbnail?.source || a.originalimage?.source || null,
+    }))
+}
+
 // Wikinews (en + ko) — uses the MediaWiki API to fetch the most
 // recently published articles plus their lead paragraph and main
 // image in two HTTP calls.
@@ -592,6 +685,9 @@ export async function onRequest({ request, env }) {
         else if (source.kind === 'hn') rows = await fetchHn(source)
         else if (source.kind === 'reddit') rows = await fetchReddit(source, redditToken)
         else if (source.kind === 'wikinews') rows = await fetchWikinews(source)
+        else if (source.kind === 'lemmy') rows = await fetchLemmy(source)
+        else if (source.kind === 'mastodon') rows = await fetchMastodonTrends(source)
+        else if (source.kind === 'wikitrend') rows = await fetchWikiMostRead(source)
         bySource.push({ id: source.id, label: source.label, count: rows.length })
         merged = merged.concat(rows)
       } catch (err) {
