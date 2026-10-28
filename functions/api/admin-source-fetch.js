@@ -100,8 +100,6 @@ const SOURCE_CATALOG = [
   { id:'lemmy-hot', label:'Lemmy Hot', kind:'lemmy', category:'문화' },
   { id:'lemmy-pics', label:'Lemmy pics', kind:'lemmy', category:'문화', community:'pics@lemmy.world' },
   { id:'lemmy-mildly', label:'Lemmy mildlyinteresting', kind:'lemmy', category:'문화', community:'mildlyinteresting@lemmy.world' },
-  { id:'lemmy-interesting', label:'Lemmy interestingshare', kind:'lemmy', category:'문화', community:'interestingshare@lemmy.world' },
-  { id:'lemmy-til', label:'Lemmy todayilearned', kind:'lemmy', category:'문화', community:'todayilearned@lemmy.world' },
   { id:'mastodon-trends', label:'Mastodon Trending', kind:'mastodon', category:'국제' },
   { id:'wiki-mostread-en', label:'Wikipedia Most Read (EN)', kind:'wikitrend', category:'국제', lang:'en' },
   { id:'wiki-mostread-ko', label:'위키백과 많이 본 문서 (KO)', kind:'wikitrend', category:'문화', lang:'ko' },
