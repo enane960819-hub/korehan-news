@@ -57,7 +57,7 @@ h2{font-size:30px;color:#fff;font-weight:800;letter-spacing:-.01em;margin:10px 0
 .lc .n{width:30px;height:30px;border-radius:50%;background:#2563eb;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
 .lc h3{font-size:19px;color:#fff;margin:12px 0 6px}.lc p{font-size:14px;color:rgba(255,255,255,.62);line-height:1.55}
 .lc .shot{margin:16px auto 0;width:220px;height:300px;overflow:hidden;border-radius:22px 22px 0 0;border:7px solid #1e293b;border-bottom:none}
-.lc .shot img{width:100%;display:block}
+.lc .shot img{width:100%;height:auto;display:block}
 .row{display:grid;gap:26px;align-items:center;padding:26px 0}
 .row h3{font-size:26px;color:#fff;line-height:1.2;margin:8px 0 12px}
 .row p{font-size:15.5px;color:rgba(255,255,255,.66);line-height:1.6}
@@ -85,7 +85,44 @@ h2{font-size:30px;color:#fff;font-weight:800;letter-spacing:-.01em;margin:10px 0
 .final p{color:rgba(255,255,255,.65);margin:8px 0 22px}
 footer{padding:24px 0 40px;border-top:1px solid rgba(255,255,255,.08);font-size:13px;color:rgba(255,255,255,.45);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 footer nav{padding:0;gap:14px;justify-content:flex-start}
+/* Tap-a-sentence demo (pre-written analysis, no API) */
+.demo{max-width:720px;margin:0 auto}
+.dtabs{display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
+.dtabs button{font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#cbd5e1;cursor:pointer}
+.dtabs button.on{background:#fff;color:#0d1b3d;border-color:#fff}
+.dcard{background:#fff;border-radius:20px;padding:22px 20px;color:#0f172a}
+.dhint{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:#7c3aed;font-weight:800;margin-bottom:10px}
+.dsent{font-family:'Noto Sans KR',sans-serif;font-size:21px;line-height:1.7;font-weight:500;cursor:pointer;border-radius:8px;padding:2px 4px;background:linear-gradient(transparent 62%,rgba(167,139,250,.35) 62%)}
+.dsent.on{background:rgba(167,139,250,.28)}
+.dpanel{margin-top:14px;border-radius:18px;background:#221a3d;color:#e9e5ff;padding:18px;display:none}
+.dpanel.on{display:block}
+.dlbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#c4b5fd;font-weight:800;margin:14px 0 8px}
+.dlbl:first-child{margin-top:0}
+.den{font-size:17px;font-weight:700;color:#fff;line-height:1.45}
+.dv{display:flex;gap:12px;align-items:baseline;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.dv b{font-family:'Noto Sans KR',sans-serif;font-size:16px;color:#ddd6fe;min-width:84px}
+.dv span{font-size:14px;color:#e2e8f0}.dv small{display:block;font-size:11.5px;color:rgba(255,255,255,.5)}
+.dg{border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);padding:12px;margin-bottom:8px}
+.dg .pill{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.06em;padding:3px 8px;border-radius:7px;background:rgba(52,211,153,.18);color:#6ee7b7;margin-right:6px}
+.dg .pill.x{background:rgba(167,139,250,.22);color:#ddd6fe}
+.dg b{font-family:'Noto Sans KR',sans-serif;font-size:15.5px;color:#fff}
+.dg p{font-size:13.5px;color:rgba(255,255,255,.75);margin-top:6px;line-height:1.5}
+.dg code{font-family:'Noto Sans KR',sans-serif;font-size:12.5px;color:#fde68a;background:rgba(250,204,21,.1);padding:2px 7px;border-radius:7px;display:inline-block;margin-top:6px}
+/* Study Room features */
+.feat{display:grid;gap:16px}
+.fc{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:22px;overflow:hidden;display:flex;flex-direction:column}
+.fc .fshot{height:250px;overflow:hidden;background:#0d1b3d;border-bottom:1px solid rgba(255,255,255,.06)}
+.fc .fshot img{width:100%;height:auto;display:block}
+.fc .ft{padding:16px 18px 18px}
+.fc h3{font-size:17px;color:#fff;margin:6px 0 5px}
+.fc p{font-size:13.5px;color:rgba(255,255,255,.62);line-height:1.5}
+.badge{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.06em;padding:3px 8px;border-radius:7px}
+.badge.free{background:rgba(52,211,153,.16);color:#6ee7b7}
+.badge.pm{background:rgba(167,139,250,.2);color:#ddd6fe}
 @media (min-width:860px){
+  .feat{grid-template-columns:repeat(3,1fr);gap:20px}
+  .fc .fshot{height:300px}
+  .dsent{font-size:24px}
   .wrap{padding:0 40px}
   .nl .hide-m{display:inline}
   h1{font-size:54px}
@@ -124,7 +161,7 @@ footer nav{padding:0;gap:14px;justify-content:flex-start}
       <div class="eb">Korean through today's news</div>
       <h1>Read real Korean news — <em>at your level.</em></h1>
       <p class="lead">New articles every day in four levels. Tap any sentence for the English, the words and the grammar. Save what you learn — we bring it back at the right time.</p>
-      <div class="ctas"><a href="korehan-onboarding.html" class="btn bp" onclick="khVisited()">Start free</a><a href="#how" class="btn bg">See how it works</a></div>
+      <div class="ctas"><a href="korehan-onboarding.html" class="btn bp" onclick="khVisited()">Start free</a><a href="#try" class="btn bg">Try a sentence</a></div>
       <div class="fine">Free plan forever · no card needed</div>
     </div>
     <div class="phones" aria-hidden="true">
@@ -140,12 +177,32 @@ footer nav{padding:0;gap:14px;justify-content:flex-start}
   </div>
 </div>
 
+<section id="try"><div class="wrap">
+  <div class="sh"><div class="eb">Try it — no sign-up</div><h2>Tap the sentence.</h2><p>This is what every sentence on KoreHani does: the English, the words and the grammar, right where you're reading.</p></div>
+  <div class="demo">
+    <div class="dtabs" id="dtabs"></div>
+    <div class="dcard"><div class="dhint">Tap the sentence</div><div class="dsent" id="dsent" role="button" tabindex="0"></div><div class="dpanel" id="dpanel"></div></div>
+  </div>
+</div></section>
+
 <section id="how"><div class="wrap">
   <div class="sh"><div class="eb">Your daily loop</div><h2>Ten minutes a day, three steps.</h2><p>The same loop every day — that's what makes the words stick.</p></div>
   <div class="loop">
     <div class="lc"><span class="n">1</span><h3>Read &amp; tap</h3><p>Open today's article at your level. Tap a sentence: translation, vocabulary and grammar in one place.</p><div class="shot"><img src="img/landing/article-tap.webp" alt="Sentence analysis in an article" loading="lazy" width="600" height="1298"></div></div>
     <div class="lc"><span class="n">2</span><h3>Save &amp; review</h3><p>Save words you meet. Today's Review brings each one back right before you'd forget it.</p><div class="shot"><img src="img/landing/review.webp" alt="Today's Review question" loading="lazy" width="600" height="1298"></div></div>
     <div class="lc"><span class="n">3</span><h3>Say it</h3><p>Hear real conversations line by line, learn the key expressions, then play one side yourself.</p><div class="shot"><img src="img/landing/conv-read.webp" alt="A conversation lesson" loading="lazy" width="600" height="1298"></div></div>
+  </div>
+</div></section>
+
+<section id="study" style="padding-top:10px"><div class="wrap">
+  <div class="sh"><div class="eb">Study Room</div><h2>Everything you practise, in one place.</h2><p>A weekly lesson, guided study on real news, writing with feedback and quick drills — all at your level.</p></div>
+  <div class="feat">
+    <div class="fc"><div class="fshot"><img src="img/landing/lesson.webp" alt="Weekly lesson steps" loading="lazy" width="600" height="1298" style="height:100%;object-fit:cover;object-position:50% 52%"></div><div class="ft"><span class="badge free">FREE</span><h3>Weekly lesson in 5 steps</h3><p>One topic a week: key words, phrases, speaking, dictation and key expressions.</p></div></div>
+    <div class="fc"><div class="fshot"><img src="img/landing/article-study.webp" alt="Article Study" loading="lazy" width="600" height="1298"></div><div class="ft"><span class="badge pm">PREMIUM</span><h3>Article Study</h3><p>Turn today's news into a lesson: words, phrases, reading and a quiz.</p></div></div>
+    <div class="fc"><div class="fshot"><img src="img/landing/writing.webp" alt="Writing practice" loading="lazy" width="600" height="1298"></div><div class="ft"><span class="badge pm">PREMIUM</span><h3>Write &amp; get feedback</h3><p>A short paragraph on the weekly topic, with instant AI feedback and a tutor review.</p></div></div>
+    <div class="fc"><div class="fshot"><img src="img/landing/fast-track.webp" alt="Fast Track scenarios" loading="lazy" width="600" height="1298"></div><div class="ft"><span class="badge pm">PREMIUM</span><h3>Fast Track</h3><p>Real-life scenes — ordering at a café, taking a taxi, at the hospital — line by line.</p></div></div>
+    <div class="fc"><div class="fshot"><img src="img/landing/slang.webp" alt="Korean Slang" loading="lazy" width="600" height="1298"></div><div class="ft"><span class="badge free">FREE</span><h3>Korean Slang</h3><p>Three new slang words a day, each in a real chat you can listen to.</p></div></div>
+    <div class="fc"><div class="fshot"><img src="img/landing/word-bank.webp" alt="Word Bank" loading="lazy" width="600" height="1298"></div><div class="ft"><span class="badge free">FREE</span><h3>Word Bank</h3><p>10,000+ words by level and topic, with audio, quizzes and Hangul basics.</p></div></div>
   </div>
 </div></section>
 
@@ -201,6 +258,47 @@ footer nav{padding:0;gap:14px;justify-content:flex-start}
 <div class="wrap"><footer><span>© 2026 KoreHani</span><nav><a href="terms-of-service.html">Terms</a><a href="privacy-policy.html">Privacy</a><a href="refund-policy.html">Refunds</a></nav></footer></div>
 <script>
 function khVisited(){ try { localStorage.setItem('kh_visited','1'); } catch(_) {} }
+/* Tap-a-sentence demo: pre-written analysis in the same shape as the reader's
+   panel (English / Vocab / Analysis). No API call. */
+(function(){
+  var D = [
+    { tab: 'Sprout', ko: '주말에 친구랑 한강에서 치킨을 먹었어요.',
+      en: 'I had fried chicken with a friend by the Han River on the weekend.',
+      vocab: [['주말','jumal','weekend'],['친구','chingu','friend'],['한강','hangang','the Han River'],['치킨','chikin','fried chicken'],['먹다','meokda','to eat']],
+      an: [['g','~(이)랑','“With” — the casual form of ~와/과, used in everyday speech.','친구랑'],
+           ['g','~에서','Marks the place where an action happens.','한강에서'],
+           ['g','~았/었어요','Polite past tense.','먹었어요']] },
+    { tab: 'Tree', ko: '날씨가 갑자기 추워지면서 감기에 걸리는 사람이 늘고 있습니다.',
+      en: 'As the weather suddenly turns cold, more and more people are catching colds.',
+      vocab: [['날씨','nalssi','weather'],['갑자기','gapjagi','suddenly'],['춥다','chupda','to be cold'],['감기','gamgi','a cold'],['늘다','neulda','to increase']],
+      an: [['g','~아/어지다','“Become ~” — a change of state (춥다 → 추워지다, to get cold).','추워지면서'],
+           ['g','~(으)면서','“As / while” — two things happening at the same time.','추워지면서'],
+           ['x','감기에 걸리다','Set phrase: “to catch a cold.” Koreans say 걸리다, not 잡다.','감기에 걸리는'],
+           ['g','~고 있다','An action in progress — “is increasing.”','늘고 있습니다']] },
+    { tab: 'Forest', ko: '정부는 청년 일자리 문제를 해결하기 위해 새로운 지원 정책을 발표했다.',
+      en: 'The government announced a new support policy to solve the youth jobs problem.',
+      vocab: [['정부','jeongbu','government'],['청년','cheongnyeon','young people'],['일자리','iljari','job'],['해결하다','haegyeolhada','to solve'],['지원','jiwon','support'],['정책','jeongchaek','policy'],['발표하다','balpyohada','to announce']],
+      an: [['g','~기 위해','“In order to ~” — states the purpose.','해결하기 위해'],
+           ['x','문제를 해결하다','Collocation: “to solve a problem.” Very common in news.','문제를 해결하기'],
+           ['g','~았/었다','Plain past tense — the written style of news articles.','발표했다']] }
+  ];
+  var tabs = document.getElementById('dtabs'), sent = document.getElementById('dsent'), panel = document.getElementById('dpanel'), cur = 0;
+  if (!tabs || !sent) return;
+  function esc(t){ return String(t).replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+  function show(i){
+    cur = i; var d = D[i];
+    tabs.innerHTML = D.map(function(x, k){ return '<button type="button" class="' + (k === i ? 'on' : '') + '" data-k="' + k + '">' + x.tab + '</button>'; }).join('');
+    tabs.querySelectorAll('button').forEach(function(b){ b.onclick = function(){ show(+b.getAttribute('data-k')); }; });
+    sent.textContent = d.ko; sent.classList.remove('on'); panel.classList.remove('on');
+    panel.innerHTML = '<div class="dlbl">English</div><div class="den">' + esc(d.en) + '</div>'
+      + '<div class="dlbl">Vocab</div>' + d.vocab.map(function(v){ return '<div class="dv"><b>' + v[0] + '</b><span>' + esc(v[2]) + '<small>' + v[1] + '</small></span></div>'; }).join('')
+      + '<div class="dlbl">Analysis</div>' + d.an.map(function(a){ return '<div class="dg"><span class="pill' + (a[0] === 'x' ? ' x' : '') + '">' + (a[0] === 'x' ? 'EXPRESSION' : 'GRAMMAR') + '</span><b>' + a[1] + '</b><p>' + esc(a[2]) + '</p><code>→ “' + a[3] + '”</code></div>'; }).join('');
+  }
+  function toggle(){ var on = !panel.classList.contains('on'); panel.classList.toggle('on', on); sent.classList.toggle('on', on); }
+  sent.onclick = toggle;
+  sent.onkeydown = function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+  show(0);
+})();
 </script>
 </body>
 </html>
