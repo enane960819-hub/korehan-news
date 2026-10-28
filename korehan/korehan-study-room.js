@@ -263,17 +263,22 @@ function _khStudyRoomInit() {
   // stuck on "Loading…" forever with no visible error path. This guard
   // is the absolute last-ditch: at 12s, if hero is still the bare
   // placeholder, paint local fallback content so the page is usable.
-  setTimeout(function() {
+  // A request that is merely slow (mobile data) is still in flight at 12s —
+  // keep waiting for it (up to 45s) instead of calling it an error.
+  var _safetyStart = Date.now();
+  function _heroSafety() {
     try {
       var heroKo = document.getElementById('hero-topic-ko');
       if (!heroKo) return;
       var t = (heroKo.textContent || '').trim();
       if (t === 'Loading…' || t === 'Loading...' || t === 'Loading') {
-        console.warn('[STUDY-ROOM SAFETY] hero still placeholder after 12s — init must have thrown. Forcing fallback.');
+        if (window._srDailyLoading && Date.now() - _safetyStart < 45000) { setTimeout(_heroSafety, 4000); return; }
+        console.warn('[STUDY-ROOM SAFETY] hero still placeholder — init must have thrown or timed out. Forcing fallback.');
         if (typeof _applyFallbackTopic === 'function') _applyFallbackTopic(kstWeekKey());
       }
     } catch(e) { console.error('[STUDY-ROOM SAFETY] fallback paint failed:', e); }
-  }, 12000);
+  }
+  setTimeout(_heroSafety, 12000);
 
   // Non-essential pre-init renders. Wrapped so a single broken renderer
   // (missing DOM, undefined helper after a refactor, throw in third-party
@@ -327,10 +332,11 @@ function _khStudyRoomInit() {
       _dailyContentStarted = true;
       loadStudyDoneState();
       loadStudyDoneFromDB();
+      window._srDailyLoading = true;
       loadDailyContent().catch(function(e){
         console.error('[loadDailyContent] uncaught:', e);
         _applyFallbackTopic(kstWeekKey());
-      });
+      }).then(function(){ window._srDailyLoading = false; });
       loadFeedbackInbox().then(function(){
         // ?openInbox=1 deep-link from external surfaces (My Page chip,
         // future global nav). Opens the inbox automatically once it
@@ -896,7 +902,7 @@ function renderTodayPlan() {
   var due = _srPlanDue;
   var steps = [
     { done: reviewDone, label: 'Daily review',
-      sub: reviewDone ? 'Done today' : (due ? due + ' to review · ~' + Math.max(1, Math.ceil(due / 4)) + ' min' : 'Nothing due yet'),
+      sub: reviewDone ? 'Done today' : due === -1 ? 'Checking your words…' : (due ? due + ' to review · ~' + Math.max(1, Math.ceil(due / 4)) + ' min' : 'Nothing due yet'),
       fn: 'openDailyReview()' },
     { done: lessonDone >= 5, label: 'This week’s lesson',
       sub: lessonDone >= 5 ? 'All 5 steps done' : (lessonDone + '/5 · ' + (nextStage ? nextStage.label : '')),
@@ -918,8 +924,8 @@ function renderTodayPlan() {
       }).join('') + '</div>';
   // Same queue the review session uses, so the number matches the questions.
   if (_srPlanDue === null && supaUser && window.khReviewQueue) {
-    _srPlanDue = 0;
-    khReviewQueue.summary().then(function(q){ _srPlanDue = q.items.length; renderTodayPlan(); }, function(){});
+    _srPlanDue = -1;   // loading → "Checking your words…", not "Nothing due yet"
+    khReviewQueue.summary().then(function(q){ _srPlanDue = q.items.length; renderTodayPlan(); }, function(){ _srPlanDue = 0; renderTodayPlan(); });
   }
   if (typeof srRenderPractice === 'function') srRenderPractice();   // due badge on the Review tile
 }
