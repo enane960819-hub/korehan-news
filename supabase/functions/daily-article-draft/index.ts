@@ -33,7 +33,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { harvestGrammar } from './grammar-harvest.ts'
-import { buzzPrompt, collectBuzz, pexelsImage } from './buzz.ts'
+import { buzzMentionsSource, buzzPrompt, collectBuzz, pexelsImage } from './buzz.ts'
 import { backfillAnalysis } from './backfill.ts'
 import { analysisPrompt, deriveTabs, extractJsonObject, SENT_CACHE_VERSION, stitchSentences } from '../_shared/article-analysis.ts'
 
@@ -504,6 +504,16 @@ async function buildDraft(sb: any, apiKey: string, pick: DraftPick): Promise<{ i
   }
   if (isBuzz && art?.safe === false) throw new Error('unsafe topic: ' + String(art.reason || '').slice(0, 120))
   if (!art?.title || !art?.body) throw new Error('invalid body JSON')
+  // The body must open on the issue, not on "an online community post".
+  if (isBuzz && buzzMentionsSource(art.body)) {
+    try {
+      const fixRaw = await callClaude(sb, apiKey, 'buzz-body-nosource', MODEL_BODY, 5000,
+        buzzPrompt(h.title, h.source || '', h.body_text || '', todayKo)
+        + '\n\nIMPORTANT: 이전 답변이 출처(온라인 커뮤니티·게시글·네티즌)를 언급했습니다. 출처 언급을 모두 빼고 첫 문장부터 이슈 자체만 말하세요. JSON 하나만 출력.')
+      const fixed = extractJsonObject(fixRaw)
+      if (fixed?.title && fixed?.body && fixed.safe !== false && !buzzMentionsSource(fixed.body)) art = fixed
+    } catch (_) { /* keep the first version; it is a draft the admin reviews */ }
+  }
 
   const id = uid()
   const image = await persistImage(sb, isBuzz ? await pexelsImage(sb, art.image_query) : (h.image || ''), id)

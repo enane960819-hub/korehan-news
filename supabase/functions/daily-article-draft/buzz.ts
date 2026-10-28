@@ -154,7 +154,7 @@ export async function collectBuzz(
 
 export function buzzPrompt(title: string, source: string, pageText: string, todayKo: string): string {
   return '당신은 외국인 한국어 학습자를 위한 사이트 KoreHani의 "Korea Buzz" 코너 기자입니다. '
-    + '한국 온라인 커뮤니티에서 화제가 된 주제를 소개하는 짧은 오리지널 기사를 씁니다.\n\n'
+    + '요즘 한국에서 화제인 이슈를 다루는 짧은 오리지널 기사를 씁니다. 이슈 내용만 전하고, 어디서 화제가 됐는지는 쓰지 않습니다.\n\n'
     + '[참고 자료 — 커뮤니티 게시글 페이지 텍스트 (메뉴·광고·댓글이 섞여 있을 수 있음)]\n'
     + '게시글 제목: ' + title + '\n커뮤니티: ' + source + '\n페이지 텍스트:\n' + pageText + '\n\n'
     + '[안전 판단] 먼저 판단하세요. 정치, 혐오·성별/지역 갈등, 실존 인물에 대한 비난·루머, 범죄 피해자, 미성년자, 선정적 내용, 개인정보, '
@@ -162,7 +162,8 @@ export function buzzPrompt(title: string, source: string, pageText: string, toda
     + '{"safe":false,"reason":"..."} 만 출력하고 끝내세요.\n\n'
     + '[기사 작성 규칙]\n'
     + '- 게시글 문장을 그대로 옮기지 마세요. 주제와 상황만 가져와 완전히 새로운 문장으로 씁니다. 따옴표 인용 금지.\n'
-    + '- 닉네임, 작성자 신상, 구체적 개인 정보, 커뮤니티 고유 은어로 된 사람 지칭 금지. "한 온라인 커뮤니티에 올라온 글"처럼 소개.\n'
+    + '- 닉네임, 작성자 신상, 구체적 개인 정보, 커뮤니티 고유 은어로 된 사람 지칭 금지.\n'
+    + '- 출처 언급 금지: "온라인 커뮤니티", "게시글", "~에 올라온 글", "네티즌/누리꾼 사이에서", "화제가 됐다/주목을 받았다" 같은 말로 시작하거나 출처를 소개하지 마세요. 첫 문장부터 이슈 자체(누가·무엇을·어떻게)를 바로 말합니다. 예: "모델 주우재 씨가 아메리카노를 끊은 뒤 삶의 질이 높아졌다고 말했습니다."\n'
     + '- 학습자가 한국 사회·문화를 이해할 수 있게 배경을 1~2문장 덧붙여도 됩니다(상식 수준, 지어낸 통계·숫자 금지).\n'
     + '- 글에 없는 사실을 만들지 마세요. 사진/영상 묘사 금지.\n'
     + '- 난이도: 중급 (TOPIK 3~4). 합쇼체(~ㅂ니다/~습니다) 위주. 평어체 금지. 한 기사에 자연스럽게 4개 이상: ~다고 합니다, ~(으)면서, ~는 것 같습니다, ~기 때문입니다, ~게 되었습니다, ~(으)ㄴ/는데.\n'
@@ -199,4 +200,11 @@ export async function pexelsImage(sb: any, query: string): Promise<string> {
     const photo = (j?.photos || [])[0]
     return photo?.src?.large || photo?.src?.medium || ''
   } catch (_) { return '' }
+}
+
+// Buzz bodies must open on the issue itself, never on where it was posted
+// ("한국 온라인 커뮤니티에 … 올라와 주목을 받았습니다"). True = the body still
+// talks about its source and should be rewritten.
+export function buzzMentionsSource(body: string): boolean {
+  return /(온라인\s*커뮤니티|커뮤니티에|게시글|게시물|올라온\s*글|글이\s*올라|네티즌|누리꾼|온라인에서\s*(화제|주목))/.test(String(body || ''))
 }
