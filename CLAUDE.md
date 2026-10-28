@@ -319,6 +319,16 @@ supabase functions deploy claude-proxy
   (vocabulary_bank + word_tags). ~6k words, meanings and examples come from 한국어기초사전
   (NIKL, CC BY-SA 2.0 KR, `source='krdict'`, imported by `.github/workflows/word-bank-data.yml`).
   Keep the attribution line on the page; drills are built from the bank — no AI calls.
+- **Life in Korea** (`korehan-life.html`, `js/features/life-guides.js`): guides live in `life_guides`, written in
+  `scripts/life-guides/guides.mjs` → `build.ts` → seed migration. Every guide shows a last-checked date and
+  official sources; re-check facts (fees, hours, wages) before changing `CHECKED`.
+- **TOPIK Practice** (`korehan-topik.html`, `js/features/topik.js`): ORIGINAL questions only (never copy past
+  papers — NIIED copyright). Written in `scripts/topik/items.mjs` (`a` = the one right answer, `w` = three
+  wrong-in-slot distractors) → `build.ts` shuffles and writes the seed. Free tests are open; other tests' items
+  are Premium-only via RLS. Branded "TOPIK-style … not affiliated with NIIED".
+- **Live class** is a paid add-on: Premium members only, $5 a seat, 8 seats, refund ≥24 h before, no recording.
+  Seats are written only by `billing` (`live_checkout` / `live_cancel`, atomic `kh_live_hold_seat`) and
+  `billing-webhook` — never from the client.
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
   (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 

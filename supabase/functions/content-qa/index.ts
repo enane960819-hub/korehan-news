@@ -483,6 +483,23 @@ Deno.serve(async (req) => {
         report.push({ step: 'queue', table: 'life_guides', checked: rows.length, fixed })
       })
 
+      // e) TOPIK practice items — flagged items get qa_flag for the admin to
+      // fix (a test can't silently lose a question), never auto-edited.
+      jobs.push(async () => {
+        const { data: rows } = await sb.from('topik_items').select('id,type,passage,question,choices,answer')
+          .is('qa_at', null).order('id').limit(15)
+        if (!rows || !rows.length) return
+        const lines = (rows as any[]).map((r, i) => ({ id: `T${i + 1}`, text:
+          `QUIZ — ${String(r.passage || '').replace(/\n+/g, ' / ')} ${r.question ? '| Q: ' + r.question : ''} | choices: ${(r.choices || []).map((c: string, k: number) => (k + 1) + ') ' + c).join('  ')} | answer: ${r.answer}  (flag if the answer is wrong, if ANY other choice would also be correct, or if the Korean is unnatural)` }))
+        const flags = await review(sb, apiKey, 'beginner', 'TOPIK I practice test', lines, 'TOPIK-style multiple-choice reading questions')
+        const byId: Record<string, any> = {}; flags.forEach((f) => { byId[f.id] = f })
+        await Promise.all((rows as any[]).map((r, i) => {
+          const f = byId[`T${i + 1}`]
+          return sb.from('topik_items').update({ qa_at: qa, qa_flag: f ? String(f.reason || 'flagged').slice(0, 300) : null }).eq('id', r.id)
+        }))
+        report.push({ step: 'queue', table: 'topik_items', checked: rows.length, flagged: flags.length })
+      })
+
       // Round-robin the sources until the call budget or time runs out.
       // Rotate the starting source each run so the hourly budget (2 calls)
       // still reaches all three over time.
