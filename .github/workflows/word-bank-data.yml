@@ -21,6 +21,6 @@ jobs:
         with: { python-version: '3.12' }
       - run: pip install -q huggingface_hub pandas pyarrow
       - name: Build word list (dry)
-        run: python scripts/word-bank/debug.py && python scripts/word-bank/build.py
+        run: python scripts/word-bank/build.py
       - uses: actions/upload-artifact@v4
         with: { name: words, path: build/words.json }
