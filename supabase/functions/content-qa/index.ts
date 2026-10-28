@@ -81,12 +81,16 @@ async function review(sb: any, apiKey: string, level: string, topic: string, lin
   const results = await Promise.all(chunks.map((chunk) => claudeJson(sb, apiKey,
     `You are a strict native Korean teacher checking ${what} for ${level} learners (topic: "${topic}").\n` +
     `Flag EVERY line a native Korean teacher would mark: unnatural, awkward or translated-sounding Korean; a word order that is grammatical but not how people actually say it; wrong particle, spacing or conjugation; two sentences that don't make sense together; a wrong or mismatched English translation or meaning. When in doubt, flag it — a flagged line is simply removed, so false alarms are cheap and misses are expensive. Do not flag lines that are fully natural and correct.\n` +
-    `For a MEANING CHECK line that is wrong, include "fix_en" with the correct short English meaning.\n\n` +
+    `For a MEANING CHECK or GLOSS CHECK line that is wrong, include "fix_en" with the correct short English meaning. Only list lines that have a real problem — never list a line just to say it is fine.\n\n` +
     `Return ONLY JSON: {"bad":[{"id":"...","reason":"short English reason","fix_en":"only for MEANING CHECK"}]}\n\nLines (id | text):\n` +
     chunk.map((l) => `${l.id} | ${l.text}`).join('\n'),
     1500, 'content-qa-review')))
   const ids = new Set(lines.map((l) => l.id))
-  return results.flatMap((r) => (Array.isArray(r?.bad) ? r.bad : [])).filter((f: Flag) => f && ids.has(f.id))
+  // The reviewer sometimes flags a line while saying it is fine ("both orders
+  // are fully natural … should not be flagged") — those are not problems.
+  const notReally = /(should not be flagged|not (a |an )?(problem|issue|error)|no (real )?(issue|problem)|(is|are|sounds?) (fully|completely|perfectly) (natural|fine|correct|acceptable)|both [^.]{0,40}(natural|correct|fine)|acceptable as is)/i
+  return results.flatMap((r) => (Array.isArray(r?.bad) ? r.bad : []))
+    .filter((f: Flag) => f && ids.has(f.id) && !notReally.test(String(f.reason || '')))
 }
 
 function packPrompt(level: string, topicKo: string, topicEn: string, feedback: string): string {
@@ -122,7 +126,9 @@ async function buildPack(sb: any, apiKey: string, level: string, topicKo: string
   if (!dropBadOptions(pack, comboFlags.map((f) => f.id), picksById)) {
     return { why: 'frame options clash: ' + comboFlags.slice(0, 4).map((f) => f.reason).join('; ') }
   }
-  const r = applySentenceFlags(pack, sentFlags.map((f) => f.id), level)
+  const fixes: Record<string, string> = {}
+  sentFlags.forEach((f) => { if (f.fix_en && /^E\d/.test(f.id)) fixes[f.id] = String(f.fix_en).slice(0, 60) })
+  const r = applySentenceFlags(pack, sentFlags.map((f) => f.id), level, fixes)
   if (!r.ok) return { why: r.why + ': ' + sentFlags.slice(0, 4).map((f) => f.reason).join('; ') }
   pack.auto = { generated_at: new Date().toISOString(), model: MODEL }
   return { pack }
