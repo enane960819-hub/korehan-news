@@ -143,6 +143,10 @@ export function validatePack(raw: unknown, level: string): { pack: Pack | null; 
         s.josa = null
       }
       if (ALLOWED_JOSA.indexOf(s.josa ?? null) < 0) errors.push(`frame ${fi + 1}: josa ${s.josa}`)
+      // A consonant-dependent particle needs a Hangul last syllable, or the
+      // frame shows "010-1234-5678(이에요/예요)". Options must be Korean words.
+      if ((s.options || []).some((o) => !HANGUL.test(String(o)))) errors.push(`frame ${fi + 1}: option without Korean`)
+      if (s.josa && s.josa.indexOf('/') > 0 && (s.options || []).some((o) => batchim(String(o)) === null)) errors.push(`frame ${fi + 1}: option must end in a Korean syllable for ${s.josa}`)
       s.josa = s.josa ?? null
       s.ph = '…'
       if (!Array.isArray(s.options) || s.options.length < 3 || s.options.length > 5 || !s.options.every(str)) errors.push(`frame ${fi + 1}: options`)
@@ -172,6 +176,7 @@ export function validatePack(raw: unknown, level: string): { pack: Pack | null; 
       s.acceptable_orders = alts.filter((a) => str(a) && sameWords(a, s.ko) && words(a).join(' ') !== words(s.ko).join(' '))
     })
   }
+  if (!errors.length && c.frames.some((f) => frameSentences(f).some((x) => /\([^)]*\/[^)]*\)/.test(x.text)))) errors.push('unresolved particle in a frame sentence')
   const all = JSON.stringify(c)
   if (EMOJI.test(all)) errors.push('emoji')
   return { pack: errors.length ? null : c, errors }
