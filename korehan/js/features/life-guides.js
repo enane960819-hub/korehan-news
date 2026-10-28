@@ -40,14 +40,24 @@
     return isNaN(x) ? d : x.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
+  // Rows: the head prefetch (started before the page scripts), else a cached
+  // copy for an instant repeat visit, else a normal query.
+  var CACHE = 'kh_life_guides_v1';
+  function cached() { try { var c = JSON.parse(localStorage.getItem(CACHE) || 'null'); return c && Array.isArray(c.rows) ? c.rows : null; } catch (_) { return null; } }
   async function load() {
     if (S.rows) return S.rows;
-    var c = sb();
-    if (!c) return [];
-    var r = await c.from('life_guides').select('slug,category,featured,sort,title,summary,steps,terms,phrases,sources,checked_at')
-      .eq('status', 'published').order('sort');
-    if (r.error) { console.warn('[life-guides]', r.error.message); return []; }
-    S.rows = r.data || [];
+    var rows = null;
+    try { rows = window._lkPrefetch ? await window._lkPrefetch : null; } catch (_) {}
+    if (!Array.isArray(rows)) {
+      var c = sb();
+      if (c) {
+        var r = await c.from('life_guides').select('slug,category,featured,sort,title,summary,steps,terms,phrases,sources,checked_at')
+          .eq('status', 'published').order('sort');
+        if (r.error) console.warn('[life-guides]', r.error.message); else rows = r.data || [];
+      }
+    }
+    if (Array.isArray(rows)) { S.rows = rows; try { localStorage.setItem(CACHE, JSON.stringify({ at: Date.now(), rows: rows })); } catch (_) {} }
+    else S.rows = cached() || [];
     return S.rows;
   }
 
@@ -219,17 +229,39 @@
     icons();
   }
 
-  async function start() {
-    await load();
+  function route() {
     var slug = param('g');
     S.cat = CAT_OF[param('c')] ? param('c') : '';
     if (slug) renderGuide(slug);
     else renderHub();
+  }
+  async function start() {
+    // Paint from the cache right away; repaint when fresh rows arrive.
+    var c = cached();
+    if (c && c.length && !S.rows) { S.rows = c; route(); S.rows = null; }
+    var before = JSON.stringify(c || []);
+    await load();
+    if (JSON.stringify(S.rows) !== before || !(c && c.length)) route();
+    // Background refresh from the DB (reviewed meanings, new guides).
+    whenReady(async function () {
+      var cl = sb(); if (!cl) return;
+      var r = await cl.from('life_guides').select('slug,category,featured,sort,title,summary,steps,terms,phrases,sources,checked_at').eq('status', 'published').order('sort');
+      if (!r || r.error || !Array.isArray(r.data) || !r.data.length) return;
+      if (JSON.stringify(r.data) === JSON.stringify(S.rows)) return;
+      S.rows = r.data;
+      try { localStorage.setItem(CACHE, JSON.stringify({ at: Date.now(), rows: r.data })); } catch (_) {}
+      // Don't repaint an open guide (it would jump to the top) or a search in progress.
+      if (!param('g') && !(document.getElementById('lk-q') && document.getElementById('lk-q').value)) route();
+    });
   }
   function whenReady(fn, n) {
     n = n || 0;
     if (sb() || n > 40) return fn();
     setTimeout(function () { whenReady(fn, n + 1); }, 100);
   }
-  document.addEventListener('DOMContentLoaded', function () { whenReady(start); });
+    // Loaded before the shared scripts: with the head prefetch, paint now.
+  if (window._lkPrefetch && document.getElementById('lk-root')) start();
+  else document.addEventListener('DOMContentLoaded', function () { whenReady(start); });
+  // Icons are drawn once the shared scripts are in.
+  document.addEventListener('DOMContentLoaded', icons);
 })();
