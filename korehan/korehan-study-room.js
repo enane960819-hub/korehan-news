@@ -2925,6 +2925,8 @@ function canEnterWritingRoom() {
   // steps. The old gate (any 1 of 5 done) made it feel like just one more
   // activity instead of a wrap-up — owner decision 2026-05-18 set the
   // threshold to 4/5. Audit item #9.
+  // Writing (and its AI feedback) is Premium; the learning steps stay free.
+  if (!requirePlan('express_writing')) return false;
   var stages = ['topic','grammar','picture','sentence','expressions'];
   var doneCount = stages.reduce(function(n, k){ return n + (_studyDone[k] ? 1 : 0); }, 0);
   if (doneCount >= 4 || khPracticeWeek()) return true;   // practice can't submit, so no gate
@@ -8105,6 +8107,7 @@ function updateReviewCardStates() {
 function openWritingModalForLearning() {
   if (!supaUser) { openAuthModal('signin'); return; }
   if (!ensureStudyUnlocked()) return;
+  if (!requirePlan('express_writing')) return;
   _writingMode = 'topic';
   _wmEntrySource = 'topic_yum_yum';
   // markStageDone('topic') moved to actual submit/finish functions

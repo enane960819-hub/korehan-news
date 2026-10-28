@@ -14,8 +14,9 @@
    - KH_ICON_LOCK        — from js/core/icons.js
    ============================================================ */
 
-// Free / Premium (2026-10). Free keeps all reading + AI feedback so the
-// content stays open; Premium is the study system. Legacy 'standard' and
+// Free / Premium (2026-10). Free keeps all reading open; Premium is the
+// study system, including Weekly Topic writing + its AI feedback (owner
+// decision 2026-10-28 — free users can do the learning steps, not write). Legacy 'standard' and
 // 'pro' rows (manual grants) are treated as Premium.
 var _KH_PREMIUM_FEATURES = {
   content_read: true, korean_alphabet: true, daily_slang_3: true,
@@ -36,8 +37,6 @@ var KH_PLANS = {
       korean_alphabet: true,    // Alphabet quiz
       daily_slang_3: true,      // Today's 3 slangs
       daily_review: true,       // Daily review (10 questions)
-      express_writing: true,    // Weekly writing + instant AI feedback
-      writing_ai_feedback: true,
       word_book_basic: true,    // Word book — unlimited
       xp_streak_badges: true,   // Gamification
       hover_vocab: true,        // Hover tooltips
@@ -158,7 +157,8 @@ function showUpgradeModal(feature, minPlan) {
   if (existing) existing.remove();
 
   var featureNames = {
-    article_study: 'Article Study (5 Steps)',
+    express_writing: 'Weekly Topic Writing',
+    article_study: 'Article Study (4 Steps)',
     conversation_study: 'Conversation Study',
     story_study: 'Story Study',
     slang_full: 'Full Slang Library + Quiz',
