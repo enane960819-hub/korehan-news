@@ -53,3 +53,8 @@ verify_jwt = false
 # Cron-invoked with CRON_SECRET (not a user JWT) — auth is checked in the function.
 [functions.content-qa]
 verify_jwt = false
+
+# topik-gen is called by pg_cron with CRON_SECRET and by the admin from the
+# TOPIK page; it does its own auth (service role / CRON_SECRET / admin email).
+[functions.topik-gen]
+verify_jwt = false
