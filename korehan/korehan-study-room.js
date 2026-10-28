@@ -18011,7 +18011,9 @@ function loadGFBuild(p) {
     // swaps where both forms are valid). Bump key to drop stale data.
     var judgeKey = 'judge::v3::' + (p.name || '');
     _aiCacheGet(judgeKey).then(function(cached) {
-      if (cached && Array.isArray(cached) && cached.length) {
+      // An empty list is cached too: the model had nothing for this
+      // pattern, and asking again for every learner just re-bills that.
+      if (cached && Array.isArray(cached)) {
         p.incorrect_examples = _gfFilterBadJudgeItems(cached);
         loadGFBuild(p);
         return;
@@ -18040,7 +18042,7 @@ function loadGFBuild(p) {
           if (si >= 0 && ei > si) txt = txt.slice(si, ei+1);
           var parsed = JSON.parse(txt);
           p.incorrect_examples = _gfFilterBadJudgeItems(Array.isArray(parsed) ? parsed : []);
-          if (p.incorrect_examples.length) _aiCacheSet(judgeKey, p.incorrect_examples);
+          if (Array.isArray(parsed)) _aiCacheSet(judgeKey, p.incorrect_examples);
         } catch(e) { p.incorrect_examples = []; }
         loadGFBuild(p);
       }).catch(function() { loadGFBuild(p); });

@@ -1138,7 +1138,7 @@ window._khLoaderClearAuto = function() {};
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261028d"></script>
+<script src="korehan-shared.js?v=20261028e"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script>
 var HOME_CONVS = [
@@ -1224,75 +1224,8 @@ function renderHomeConvs() {
       + '</div>';
   }).join('');
   if (window.renderKhLucideIcons) renderKhLucideIcons();
-  // After first paint, translate any Korean ctx values to concise
-  // English topic titles so the cards say what the conversation is
-  // actually about ("Damaged Package Complaint") instead of the
-  // category fallback ("Everyday Conversation"). Cached to
-  // localStorage so the second visit is instant and free.
-  try { _khBackfillConvCtxEn(list); } catch(_) {}
-}
-
-// Translate Korean conversation ctx values to short English topic
-// titles. Batches in one Claude haiku call. Caches into the same
-// kh_conv_ctx_en_v1 store renderHomeConvs reads so the next render
-// (and the conversations page) gets the English titles for free.
-async function _khBackfillConvCtxEn(rows) {
-  if (!Array.isArray(rows) || !rows.length) return;
-  if (typeof callClaude !== 'function') return;
-  // Gate behind signed-in users — anonymous traffic was firing this
-  // Haiku batch on every fresh visit (localStorage cache is per-browser
-  // so each new device paid). Anonymous visitors fall through to the
-  // Korean ctx as visible text, which the renderHomeConvs path
-  // already handles. Signed-in users still warm the cache for
-  // themselves; the localStorage cache persists for return visits.
-  if (typeof supaUser === 'undefined' || !supaUser) return;
-  var cache = {};
-  try { cache = JSON.parse(localStorage.getItem('kh_conv_ctx_en_v1') || '{}') || {}; } catch(_) {}
-  var needed = rows.filter(function(c) {
-    var ctx = (c.ctx || '').trim();
-    if (!ctx) return false;
-    if (cache[ctx]) return false;
-    if (c.ctx_en || c.name_en || c.title_en) return false;
-    return /[ㄱ-힝]/.test(ctx);
-  });
-  if (!needed.length) return;
-  // De-dupe by ctx so identical conversations don't burn extra tokens.
-  var unique = [];
-  var seen = {};
-  needed.forEach(function(c) {
-    var ctx = (c.ctx || '').trim();
-    if (!seen[ctx]) { seen[ctx] = true; unique.push(ctx); }
-  });
-  var prompt = 'Translate each Korean conversation topic into a short, descriptive English title (≤45 chars, Title Case, no surrounding quotes, no period). Capture what the conversation is ABOUT — e.g. "택배 박스 손상 신고" → "Damaged Package Complaint", not "Daily Conversation". Return ONLY a JSON array of strings in input order.\n\nTopics:\n'
-    + unique.map(function(t, i){ return (i+1) + '. ' + t; }).join('\n');
-  try {
-    var res = await callClaude({
-      feature: 'conv-ctx-en',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 700,
-      messages: [{ role: 'user', content: prompt }]
-    });
-    var text = (res && res.content && res.content[0] && res.content[0].text) || '[]';
-    var ai = text.indexOf('['), bi = text.lastIndexOf(']');
-    if (ai >= 0 && bi > ai) text = text.slice(ai, bi + 1);
-    var arr = JSON.parse(text);
-    if (!Array.isArray(arr)) return;
-    unique.forEach(function(ctx, i) {
-      var t = (typeof arr[i] === 'string' ? arr[i] : '').trim();
-      if (t) cache[ctx] = t;
-    });
-    try { localStorage.setItem('kh_conv_ctx_en_v1', JSON.stringify(cache)); } catch(_) {}
-    // Replace visible titles in-place. Matches by data-kh-conv-id, then
-    // looks up the row's ctx → cached translation. Skips cards whose
-    // ctx didn't get translated this round.
-    rows.forEach(function(c) {
-      var ctx = (c.ctx || '').trim();
-      var t = cache[ctx];
-      if (!t || !c._id) return;
-      var card = document.querySelector('[data-kh-conv-id="' + c._id + '"] .cc2-ctx');
-      if (card) card.textContent = t;
-    });
-  } catch(_) {}
+  // English titles come from conversations_data.ctx_en, written once on
+  // the server by content-qa — no per-visitor AI call here.
 }
 
 // Welcome banner for first-time users coming from onboarding

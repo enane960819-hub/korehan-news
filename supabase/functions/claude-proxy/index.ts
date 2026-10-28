@@ -55,12 +55,14 @@ const TUTOR_MAX_INPUT_BYTES = 15 * 1024 * 1024
 // Both checks must pass — daily count protects against burst /
 // dictionary-attack patterns, monthly USD protects against the
 // long-tail "drip" attack where a bot stays just under the daily
-// cap for weeks. A normal power user (every feature daily, every
-// day) burns ~$5/month, so the $10 free cap leaves 2x headroom.
-const FREE_DAILY_CALLS    = 50
-const FREE_MONTHLY_USD    = 10
+// cap for weeks. Most learner AI output is cached in the DB and shared,
+// so measured learner spend is cents per month (2026-10 report); the caps
+// only stop runaway use. Premium stays below its $8.99 price so one
+// account can never cost more than it pays.
+const FREE_DAILY_CALLS    = 30
+const FREE_MONTHLY_USD    = 1
 const STANDARD_DAILY_CALLS  = 200
-const STANDARD_MONTHLY_USD  = 30
+const STANDARD_MONTHLY_USD  = 6
 // Pro: bypass cost ceiling, keep a generous burst limit so a single
 // runaway script can't drain the account.
 const PRO_DAILY_CALLS     = 1000
