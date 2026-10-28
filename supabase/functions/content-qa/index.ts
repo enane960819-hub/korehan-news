@@ -270,6 +270,8 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Last run's outcome, readable by the admin page (no secrets in it).
+    await sb.from('content_qa_status').upsert({ id: 1, ran_at: new Date().toISOString(), ms: Date.now() - started, report }, { onConflict: 'id' }).then(() => {}, () => {})
     await sb.from('content_qa_runs').delete().eq('key', 'lock')
     return new Response(JSON.stringify({ ok: true, dates, ms: Date.now() - started, report }), { headers: { 'Content-Type': 'application/json' } })
   } catch (e) {
@@ -277,6 +279,7 @@ Deno.serve(async (req) => {
     try {
       const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
       await sb.from('content_qa_runs').delete().eq('key', 'lock')
+      await sb.from('content_qa_status').upsert({ id: 1, ran_at: new Date().toISOString(), report: [{ error: msg }] }, { onConflict: 'id' })
       await sb.from('client_errors').insert({ message: msg.slice(0, 500), context: { source: 'content-qa' }, severity: 'critical' })
     } catch (_) { /* nothing else to do */ }
     return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { 'Content-Type': 'application/json' } })
