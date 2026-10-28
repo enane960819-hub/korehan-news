@@ -252,7 +252,8 @@
   - [x] `?authdebug` 삭제, 내부 문서(md/ts)·PDF 4개(24MB 포함) 웹 루트 밖으로 이동, robots.txt에서 관리자 URL 삭제 + 관리자 페이지 noindex
   - [x] (2026-10-26 완료 — `20261026_coin_server_only.sql`: 냥은 서버 함수로만 변경, `coin_balance` 클라이언트 쓰기 권한 회수, `admin_adjust_coin` 관리자 확인 추가, p_user_id 위조 차단. XP는 진척 지표라 클라이언트 동기화 유지) 냥·XP를 클라이언트가 직접 수정 (`user_stats` update/upsert 10곳 — 기자 선물, 닉네임 변경, 방 아이템, First Journey, 배지 보상, 상점 폴백) → 전부 서버 RPC로 옮긴 뒤 `coin_balance`/`xp` 컬럼 UPDATE 권한 회수. 현금 판매를 숨겨서 지금은 꾸미기 아이템 치팅만 가능 → 결제 켜기 전 필수
   - [ ] 다음으로 미룸 (P1): 공유 AI 캐시(`article_cache` 등) 쓰기를 엣지 함수로, AI 무거운 Premium 기능 서버측 확인
-    - [x] 2026-10-28 1차 (`20261028_shared_cache_guard.sql`): `article_study_content` 유저 삭제·관리자 수정본 덮어쓰기 차단, 공유 캐시 3개에 작성자(`written_by`) 기록 + 1MB 제한. 생성 자체를 서버로 옮기는 건 남음
+    - [x] 2026-10-28 1차 (`20261028_shared_cache_guard.sql`): `article_study_content` 유저 삭제·관리자 수정본 덮어쓰기 차단, 공유 캐시 3개에 작성자(`written_by`) 기록 + 1MB 제한
+    - [x] 2026-10-28 2차 (`cache-write` 엣지 함수 + `20261028_cache_write_server_only.sql`): 학습자 브라우저의 공유 캐시 직접 쓰기 권한 회수 → 서버가 빈 칸만 채움(검증·시간당 120회 제한). 기사 학습 콘텐츠는 관리자만. True/False 퀴즈 캐시가 없는 칸에 저장돼 매번 AI를 부르던 것 수정(`tf_v1` 컬럼). 죽은 AI 생성 함수(기사 전체 분석·백그라운드 생성·회화 버블 분석) 삭제
 
 - [x] **4단계 (한국어 UI)** — 섹션 칩 전부 `khSecLabel()`(영어, DB 라벨이 한국어여도 영어로), 댓글·로그인 실패 배너·분석 중·발음 버튼, 기자 직함 영어(`khReporterRole`), 호버 문법 용어 영어, 화폐 표기 `Nyang`으로 통일, 상점 칭호 영어, 슬랭 태그·경고·오답 해설 영어(`desc_en` 우선), Growth Lab 오류 문구, 19개 페이지 `lang="en"` + `og:locale en_US` + 한국어 meta 설명 전부 영어
   - [ ] 남음: DB에 한국어로 저장된 상점 아이템 설명(예: Streak Freeze), `[슬랭]` 접두어 → `category` 컬럼 분리(현재는 화면에서 `khCleanMeaning`으로 제거 중)
@@ -261,7 +262,7 @@
   - 유지(사장님 결정): 냥·상점·마이룸·3D 우주·게임·고급 레벨(보류)
   - [ ] 확인 필요: 스터디룸 Help 탭(작문 패널 복제) 삭제, Neon 테마, 기자 선물·호감도·포토카드, 친구·방명록 — 화면이 바뀌는 항목이라 사장님 확인 후
   - [x] 2026-10-28: stories_data 조회 잔재(스터디룸·article-cache), 스터디룸 읽기 소스 선택기(HTML 없는 죽은 함수 9개), 옛 Daily Review 2벌(스터디룸 593줄 + Growth Lab 337줄 → Today's Review 하나로), notes/my-phrases 스텁 → `_redirects`
-  - [ ] 남음: 기사 죽은 AI 함수 ~450줄, 회화 도달 불가 퀴즈 ~400줄, DB 스토리 테이블 백업 후 삭제(삭제 전 확인 필요)
+  - [ ] 남음 (기사 죽은 AI 함수·회화 퀴즈는 2026-10-28 삭제): DB 스토리 테이블 백업 후 삭제(삭제 전 확인 필요)
 
 ## 제안 진행 순서
 

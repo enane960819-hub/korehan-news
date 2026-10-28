@@ -4336,113 +4336,13 @@ function renderArticlePage() {
       // Start the reading-time timer — stops on close/navigate/visibility.
       _startArticleReadTimer(articleId, a.body || '');
       // Admin pre-bakes the article cache via runAutoGenerate before
-      // publishing; user-side _bgPregenArticleCache is intentionally
-      // NOT called here. Owner directive: "fallback할 상황을 안만들면
-      // 되는거 아닌가" — eliminate fallback need entirely, don't make
-      // it cheaper. The function is left in the file (kept as an
-      // admin-debug utility) but no normal user flow triggers it.
+      // publishing; readers never generate it (sentence analysis that is
+      // still missing is baked server-side by article-analyze).
     } else if (attempts < 20) {
       setTimeout(waitAndUpdate, 300);
     }
   }
   setTimeout(waitAndUpdate, 300);
-}
-
-// Per-article in-flight lock for _bgPregenArticleCache. Without it,
-// the admin's own workflow burned tokens: runAutoGenerate writes
-// article_cache async; admin clicks the new article seconds later;
-// the cache check below sees stale "not yet" state and fires 4
-// Haiku calls in parallel with the still-completing Sonnet write.
-// The lock survives the function's await tree so a second concurrent
-// open of the same article short-circuits even before the cache
-// read returns.
-window._khBgPregenLock = window._khBgPregenLock || {};
-
-// 로그인 유저가 기사 열 때, 캐시 없으면 백그라운드 자동 생성 → 모든 유저가 공유
-async function _bgPregenArticleCache(a) {
-  if (!supaUser || _remoteCacheDisabled) return;
-  if (!a || !a.id) return;
-  // Race guard: skip if another _bgPregenArticleCache is already
-  // running for this article in the same tab. Same-tab is the only
-  // realistic dup-fire path (separate tabs hit separate JS contexts).
-  if (window._khBgPregenLock[a.id]) return;
-  window._khBgPregenLock[a.id] = true;
-  try {
-    return await _bgPregenArticleCacheInner(a);
-  } finally {
-    // Hold the lock for a short tail after completion so a rapid
-    // open-close-open of the same article doesn't re-fire before
-    // the cache write has time to land in Supabase. 8s is enough
-    // for the upsert at line 3398 to commit + replicate.
-    setTimeout(function() { delete window._khBgPregenLock[a.id]; }, 8000);
-  }
-}
-
-async function _bgPregenArticleCacheInner(a) {
-  if (!supaUser || _remoteCacheDisabled) return;
-  try {
-    var cached = await getFromCache('article', a.id, 'ai_analysis');
-    // translation/vocab/grammar/quiz 중 하나라도 있으면 이미 캐시 있음
-    if (cached && (cached.translation || (cached.vocab && cached.vocab.length) || (cached.grammar && cached.grammar.length) || cached.quiz)) return;
-    // quiz만 따로 확인
-    var quizCached = await getFromCache('article', a.id, 'fill_intermediate');
-    if (quizCached && quizCached.questions && quizCached.questions.length) return;
-  } catch(e) { return; }
-
-  // 캐시 완전 비어있음 → 백그라운드 생성 시작
-  var _body  = a.body  || '';
-  var _title = a.title || '';
-  var _level = a.level || 'Intermediate';
-  var _patch = {};
-
-  async function _call(instr, maxTok) {
-    try {
-      var r = await callClaude({
-        feature: 'bg-cache', model: 'claude-haiku-4-5-20251001', max_tokens: maxTok,
-        messages: [{ role: 'user', content: 'Korean article (level: ' + _level + ')\nTitle: ' + _title + '\n\nBODY START\n' + _body.slice(0, 3000) + '\nBODY END\n\n---\n' + instr }]
-      });
-      return (r && r.content && r.content[0] && r.content[0].text) || '';
-    } catch(e) { return ''; }
-  }
-
-  function _json(text) {
-    try {
-      var ai = text.indexOf('['), bi = text.lastIndexOf(']');
-      var oi = text.indexOf('{'), ei = text.lastIndexOf('}');
-      if (ai >= 0 && bi > ai && (oi < 0 || ai < oi)) return JSON.parse(text.slice(ai, bi+1));
-      if (oi >= 0 && ei > oi) return JSON.parse(text.slice(oi, ei+1));
-    } catch(e) {}
-    return null;
-  }
-
-  try {
-    var t = await _call('Translate each paragraph into English. Return ONLY a JSON array of strings, one per paragraph. No other text.', 800);
-    var ta = _json(t);
-    if (ta) _patch.translation = JSON.stringify({ texts: Array.isArray(ta) ? ta : [ta] });
-  } catch(e) {}
-
-  try {
-    var v = await _call(window.KH_VOCAB.promptText(_level, _body), 1600);
-    var va = _json(v);
-    var cleaned = window.KH_VOCAB.validateBest(va, _body || '');
-    if (cleaned && cleaned.length) _patch.vocab = JSON.stringify(cleaned);
-  } catch(e) {}
-
-  try {
-    var g = await _call('Find 3 grammar patterns. Return ONLY: {"patterns":[{"name":"KO+romanization","level":"Starter|Beginner|Intermediate|Advanced","exp":"explanation","ex_ko":"sentence","ex_en":"translation"}]}. No other text.', 900);
-    var ga = _json(g);
-    if (ga && ga.patterns) _patch.grammar = JSON.stringify(ga);
-  } catch(e) {}
-
-  try {
-    var q = await _call('Create 10 fill-in-the-blank questions. Return ONLY: {"questions":[{"sentence":"Korean with _____","sentence_en":"English with _____","blank":"answer","blank_en":"meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.', 2000);
-    var qa = _json(q);
-    if (qa && qa.questions) _patch.quiz = JSON.stringify(qa);
-  } catch(e) {}
-
-  if (Object.keys(_patch).length > 0) {
-    await upsertArticleCacheRow(a.id, _patch);
-  }
 }
 
 // Counter that resets per body-render so each article reader has its
@@ -4603,291 +4503,12 @@ window._khArtSentSharedCache = window._khArtSentSharedCache || {};
 // sentence tap on a wide-schema deployment falls through to a live
 // Claude call (defeating the whole pre-gen). Tries the wide-table
 // shape first, falls back to the kv shape.
-// Background "warm the cache" trigger. When a learner taps any sentence
-// in an article whose article_cache.translation is empty, we fire ONE
-// Claude pass over EVERY sentence in the body and persist the result so
-// the next reader gets instant per-sentence translations without burning
-// a Claude call. Per-article in-memory + sessionStorage lock prevents
-// multiple simultaneous taps from re-triggering. Failure is silent —
-// the live single-sentence call already painted the panel.
-window._khArtFullAnalyzeRunning = window._khArtFullAnalyzeRunning || {};
-async function _khTriggerFullArticleAnalyze(articleId, articleLevel) {
-  if (!articleId) return;
-  if (window._khArtFullAnalyzeRunning[articleId]) return;
-  // Per-tab lock survives reload of the article reader within the same
-  // session; the canonical "is it cached?" check still hits Supabase
-  // every page load via _khLoadArticleSentenceCache, so we don't need
-  // a long-lived flag.
-  var lockKey = 'kh_artfull_running_' + articleId;
-  // Stamp the lock with a timestamp so a previous tab that crashed
-  // mid-call doesn't pin all future bulk runs forever. Reuse if
-  // less than 60 s old (real bulk should finish within that), else
-  // overwrite. The user-reported "분석 중…" stuck on every
-  // sentence after a single hung call traces back to this lock
-  // staying set indefinitely.
-  try {
-    var stamped = sessionStorage.getItem(lockKey);
-    if (stamped) {
-      var n = parseInt(stamped, 10);
-      if (Number.isFinite(n) && (Date.now() - n) < 60000) return; // recent → respect
-      sessionStorage.removeItem(lockKey); // stale → clear and continue
-    }
-  } catch(_) {}
-  window._khArtFullAnalyzeRunning[articleId] = true;
-  try { sessionStorage.setItem(lockKey, String(Date.now())); } catch(_) {}
-
-  try {
-    // Sentences are already split + numbered by _khWrapSentences when
-    // the body rendered — pull them straight out of the DOM rather
-    // than re-splitting (avoids drift between display and analysis
-    // indexing). Use the article reader's body element to avoid the
-    // related-articles strip / drawer comments.
-    // Article body lives inside #dyn-article (renderArticlePage). All
-    // .art-sent spans flow there. Falling back to document covers the
-    // story / convo readers if they ever start emitting .art-sent
-    // spans through the same wrapper.
-    var bodyEl = document.getElementById('dyn-article') || document;
-    var nodes = bodyEl.querySelectorAll('.art-sent');
-    var sentences = [];
-    nodes.forEach(function(n) {
-      var idx = parseInt(n.dataset.sentIdx, 10);
-      var text = (n.textContent || '').trim();
-      if (text && !isNaN(idx)) sentences.push({ idx: idx, text: text });
-    });
-    // Dedupe by idx so duplicate spans (e.g. lead + full body) don't
-    // make us pay twice for the same sentence.
-    var seen = {};
-    sentences = sentences.filter(function(s){ if (seen[s.idx]) return false; seen[s.idx] = true; return true; });
-    if (!sentences.length) return;
-
-    if (typeof callClaude !== 'function') return;
-    // Single Claude call with ALL sentences batched. Haiku handles ~30
-    // sentences with a 2200-token budget comfortably; the bulk-gen flow
-    // already runs similar batched prompts. Batching halves the wall-
-    // clock vs serial calls and keeps cost predictable.
-    var payload = sentences.map(function(s, i) {
-      return (i + 1) + '. ' + s.text;
-    }).join('\n');
-    // Level-aware prompt — same calibration as the single-sentence path.
-    // Pre-2026-05-09 this was hardcoded to TOPIK 3-4 regardless of article
-    // level, which is why Seed/Sprout articles were caching with empty
-    // grammar arrays (the prompt skipped beginner patterns the learner
-    // actually needed to see).
-    var _lvl = articleLevel || (window._currentArticle && window._currentArticle.level) || 'Beginner';
-    var _lvlLabel = ({
-      Starter:      'Seed (TOPIK 1, complete beginner)',
-      Beginner:     'Sprout (TOPIK 2, beginner)',
-      Intermediate: 'Tree (TOPIK 3-4, intermediate)',
-      Advanced:     'Forest (TOPIK 5-6, advanced)',
-    })[_lvl] || 'Sprout (TOPIK 2, beginner)';
-    var _isLow = (_lvl === 'Starter' || _lvl === 'Beginner');
-    var _vocabRule = _isLow
-      ? '- VOCAB: max 4 per sentence. Include any content word the learner might not know. Only skip particles and 이다/있다 alone. 흔하다 / 보다 / 키우다 / 살다 / 먹다 are FAIR GAME — explain them.\n'
-      : '- VOCAB: max 4 per sentence. Skip beginner words (는/이/가/이다/있다/하다/되다…).\n';
-    // Analysis = grammar + key expressions + idioms. Maximum coverage:
-    // every interesting morpheme, fixed expression, idiom, or
-    // collocation that appears in the sentence. The user explicitly
-    // asked us to drop the 0-or-1 cap and surface as much as is
-    // genuinely there. Article-level skipping rule (Tree+/Forest skip
-    // beginner patterns) was also dropped — judge each sentence on
-    // its own contents, not on metadata.
-    var _analysisRule =
-        '- ANALYSIS: be EXHAUSTIVE. Surface every grammar pattern, fixed expression, idiom, 사자성어, 관용구, and notable collocation in the sentence — even ones you think are "obvious". Korean grammar has 200+ learner-relevant patterns; don\'t hold back. 8 worthy items → return 8. Only return [] when the sentence is a pure proper-noun list or single greeting.\n'
-      + '    MUST include when present (this is a partial floor — surface anything else from a comprehensive TOPIK 2-6 grammar inventory too):\n'
-      + '    · CONNECTIVES & SUBORDINATORS: ~에도 불구하고 (despite), ~기 때문에 (because), ~기 위해(서) / ~을·를 위해 (in order to / for), ~려고 / ~려면 (intend / if want), ~(으)면서 (simultaneous action — "while / as"; same subject doing two things at once), ~다가 (mid-action shift), ~자마자 (as soon as), ~ㄴ/는데 (background), ~지만 / ~으나 (but), ~거나 (or), ~면 (if), ~아/어도 / ~더라도 / ~ㄹ지라도 (even if), ~았/었더라면 (counterfactual), ~았/었더니 (after I did), ~다 보면 (if you keep), ~다 보니(까) (as a result of doing), ~ㄴ/는 반면(에) (whereas), ~ㄴ/는 만큼 (as much as), ~ㄴ/는 데다(가) (on top of), ~ㄴ/는 김에 (while you\'re at it), ~ㄴ/는 결과 / ~ㄴ 끝에 (as a result / after all the), ~ㄴ/는커녕 (let alone), ~을 뿐(만) 아니라 (not only), ~ㄹ/을수록 (the more), ~ㄴ/는 한 (as long as), ~ㄴ/는다면 (if), ~을 텐데 / ~을 테니까 (probably / since I\'ll), ~ㄴ/는다고 해도 (even if), ~기에 (formal because), ~며 / ~으며 (and / while — formal).\n'
-      + '    · AUXILIARY ENDINGS / MODALS: ~ㄹ/을 수 있다·없다, ~지 못하다, ~지 않다 / ~지 말다, ~게 되다, ~기 시작하다, ~기로 하다, ~ㄴ/은 적이 있다·없다, ~아/어 보다, ~아/어 주다, ~아/어 있다, ~고 있다, ~았/었어요 (incl. contracted 봤·했·됐·갔), ~아/어 놓다·두다, ~아/어 버리다, ~아/어 가다·오다 (continue / have been), ~아/어 내다 (manage), ~아/어 대다 (do repeatedly), ~게 하다·만들다 (make / let), ~ㄹ/을 줄 알다·모르다 (know how / not), ~을 수밖에 없다, ~ㄹ 리가 없다, ~ㄹ 모양이다 / ~ㄹ 것 같다, ~ㄹ까 하다, ~ㄹ까 봐, ~ㄹ 만하다, ~기 마련이다 / ~기 십상이다, ~을 뻔하다, ~ㄴ/는 척하다, ~기는 하다 (do indeed but), ~ㄹ 정도이다 / ~ㄹ 정도로.\n'
-      + '    · MODIFIERS / CLAUSAL: ~ㄴ/은/는 + 명사, ~ㄹ/을 + 명사, ~던 / ~았/었던 (recalled past), ~ㄴ/은 채(로) (in the state of), ~ㄴ/은 후에 / ~ㄴ 뒤에 / ~기 전에, ~을 때(에), ~ㄴ/는 셈이다 (counts as), ~ㄴ/는 편이다 (tends to be), ~ㄴ/는 듯하다, ~ㄴ/는 모양이다, ~다는 + 명사, ~ㄴ/는 점에서 (in the sense that).\n'
-      + '    · REPORTED / QUOTATION: ~다고 하다 / ~다고 해요 / ~ㄴ다고 해요 / ~다고 했어요 (polite reported speech — "X says/said that …"; surface this whenever the sentence ends in any 하다 conjugation of a quote, including 해요·했어요·한대(요)·한답니다), ~냐고 하다, ~자고 하다, ~라고 하다, ~다고 알려져 있어요, ~ㄴ다는 / ~는다는 / ~라는 + 명사, ~다네 / ~다더라 / ~다잖아 (informal), ~다고요? / ~라고요? (you say?), ~ㄹ 거라고 하다.\n'
-      + '    · PARTICLES WORTH FLAGGING: ~만, ~까지, ~부터, ~조차, ~밖에, ~마다, ~씩, ~이나 (or / approx.), ~마저, ~처럼 / ~같이, ~보다, ~에 비해, ~로서 (role), ~로써 (means), ~에 대해(서), ~에 의해(서) / ~으로 인해(서), ~에 관한·관해(서), ~을 통해(서), ~을 따라, ~에 따라, ~을 비롯해(서).\n'
-      + '    · SPEECH-LEVEL / ENDER: ~지(요) (right? / softening), ~네(요) (discovery), ~군요 / ~구나 (realisation), ~잖아(요) (you know), ~다니까(요) (I\'m telling you), ~ㄹ게(요) (will / promise), ~ㄹ까(요) (shall we / I wonder), ~을걸(요) (probably), ~ㄴ걸 (mild surprise), ~던가(요) (recall Q).\n'
-      + '    · FIXED EXPRESSIONS / COLLOCATIONS: 마음에 들다, 마음이 무겁다 / 가볍다, 마음에 걸리다, 마음이 놓이다, 시간이 없다, 시간 가는 줄 모르다, 정신을 차리다 / 정신없다, 도움이 되다 / 도움을 주다·받다, 관심을 가지다 / 받다, 눈에 띄다, 눈을 감다·뜨다, 눈치가 빠르다, 손이 크다 / 손이 가다, 발이 넓다, 발등에 불이 떨어지다, 입이 가볍다·무겁다, 귀가 얇다, 머리를 맞대다 / 식히다, 한 술 더 뜨다, 발 벗고 나서다, 등을 돌리다, 어깨가 무겁다, 콧대가 높다, 기가 차다, 가슴이 뭉클하다, 가슴에 새기다·와닿다, ~에 참여 / 참가하다, ~의 도움으로, ~을 둘러싸다, ~을 차지하다, ~을 비롯하다, ~에 영향을 미치다, ~에 한해(서), ~을 거치다, ~을 무릅쓰다, …\n'
-      + '    · IDIOMS / 사자성어 / 관용구: surface whenever actually used (예: 일거양득, 우물 안 개구리, 가는 말이 고와야 오는 말이 곱다, 백문이 불여일견, 호랑이 굴, 발 없는 말이 천 리 간다, 호박씨를 까다, 작심삼일, 일석이조, 십시일반, …).\n'
-      + '    Each item: {"type":"grammar|expression|idiom","label":"<canonical form>","exp":"<short English>","example_in_sentence":"<chunk from sentence>"}.\n'
-      + '    Skipping a pattern because it "feels too basic" or "too obvious" is the WRONG call — include it. The list above is illustrative; surface anything else from TOPIK 2-6 grammar that genuinely appears.\n';
-    var _analysisVerify =
-        '- ANALYSIS VERIFY (HARD RULE):\n'
-      + '    1. example_in_sentence MUST be a literal substring of that source sentence. Whitespace can differ; characters cannot.\n'
-      + '    2. For type="grammar", the pattern marker should be present somewhere in the sentence. Korean past-tense contractions (봤어요 = 보+았어요, 했어요, 됐어요, 갔어요) count as containing ~았/었어요 even though the literal "었어요" doesn\'t appear; the client validator already understands this.\n'
-      + '    3. For type="expression" / "idiom", the label should be the canonical form; example_in_sentence is the actual chunk as it appears.\n'
-      + '    4. If a candidate doesn\'t survive these checks, OMIT it. Empty is better than wrong. The previous "fill at least 1 slot" rule was dropped — empty arrays are honest output.\n'
-      + '    Common hallucinations to avoid:\n'
-      + '    · Citing a noun phrase like "새로운 웰니스 트렌드" as the example for ~(으)로서 — the chunk has no 로서.\n'
-      + '    · Calling "X예요 / X이에요" plain ~ㄴ다 — that\'s polite copula.\n'
-      + '    · Naming an idiom that isn\'t actually used in the sentence.\n'
-      + '- VOCAB ↔ ANALYSIS CROSS-REFERENCE: every content word that appears inside an analysis chunk MUST also appear as a vocab[] entry (in dictionary form). If your analysis surfaces "비교해 보면" as the chunk for ~아/어 보다, then 비교하다 must be in vocab[] for that sentence. Particles (을/를/이/가/은/는/의), the pattern morphemes themselves (~게, ~로, 중 하나), and the most basic verbs (있다 / 하다 / 되다 / 이다) are exempt — only nouns, adjectives, and content verbs need the vocab row. Skip the cross-ref only if the word is already in a prior sentence\'s vocab[] for this article.\n';
-    var prompt =
-        'You are a Korean tutor analysing each sentence of an article for a ' + _lvlLabel + ' learner.\n\n'
-      + 'Sentences (numbered, in order):\n' + payload + '\n\n'
-      + 'Return ONLY a JSON object — no preamble, no code fences:\n'
-      + '{ "sentences": [\n'
-      + '  { "translation": "natural English of sentence 1",\n'
-      + '    "vocab":    [{"ko":"<dictionary form>","en":"<short meaning>","note":"<optional 1-line>"}],\n'
-      + '    "analysis": [{"type":"grammar|expression|idiom","label":"<pattern / phrase / idiom>","exp":"<1-sentence English>","example_in_sentence":"<chunk from sentence>"}]\n'
-      + '  }, ... one entry per input sentence, same order ...\n'
-      + ']}\n\n'
-      + 'Rules:\n'
-      + '- TRANSLATION: preserve the original subject. Do NOT inject "I/we" if Korean omitted it.\n'
-      + _vocabRule
-      + _analysisRule
-      + _analysisVerify
-      + '- Return EXACTLY ' + sentences.length + ' entries in sentences[].';
-    // Per-sentence MUST-INCLUDE injection: run KH_GRAMMAR.detectForLevel
-    // on each sentence and embed ONLY the matched canonical labels as a
-    // floor list. Drops input tokens from ~9K (full catalog dump) to
-    // ~0.5-2K, eliminates the "AI gets distracted by 230 irrelevant
-    // patterns" failure mode (~$0.03/call savings + faster TTFT). The
-    // full catalog stays in admin runAutoGenerate because the body
-    // doesn't exist there yet.
-    if (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.detectForLevel === 'function' && typeof window.KH_GRAMMAR.formatPromptList === 'function') {
-      var perSentBlocks = [];
-      for (var pi = 0; pi < sentences.length; pi++) {
-        var pHits = window.KH_GRAMMAR.detectForLevel(sentences[pi].text, articleLevel || 'Intermediate');
-        if (pHits && pHits.length) {
-          perSentBlocks.push('Sentence ' + (pi + 1) + ' detected patterns:\n' + window.KH_GRAMMAR.formatPromptList(pHits));
-        }
-      }
-      if (perSentBlocks.length) {
-        prompt += '\n\n[REGEX-DETECTED PATTERNS PER SENTENCE — floor, not ceiling]\n'
-               + 'For each sentence, the patterns below were already verified by the regex layer. Surface EVERY one as an analysis entry with the EXACT canonical label shown. You may add more (idioms, collocations, semantic patterns the regex missed) but never less.\n\n'
-               + 'CONTEXT GUARDRAILS for type="expression" / "idiom" (the part AI judges):\n'
-               + '  - Only surface a phrase if it is CENTRAL to this specific sentence\'s meaning — the learner couldn\'t paraphrase the sentence without grasping that phrase. Examples of GOOD: 마음에 들다 when the sentence is literally "I like it", ~을 둘러싸고 when controversy is the topic.\n'
-               + '  - SKIP tangential / generic phrases that just happen to appear (정말, 그런, 새로운, 이런 식으로 etc). Skip phrases the learner already knows at this level. Skip phrases that don\'t add a distinct learning point beyond what the grammar entries already cover.\n'
-               + '  - Don\'t surface two entries that mean the same thing (e.g. ~다고 하다 AND ~다고 해요 — pick the canonical one).\n'
-               + '  - COMPOUND CONSTRUCTIONS: when the sentence demonstrates a multi-token rhetorical structure ("X도 중요하지만 Y(이/가) 더 ~" comparative, "~기도 하고 ~기도 하다" both-and, "~ㄴ/는 데다 ~기까지 하다" on-top-of), surface the WHOLE compound as ONE expression entry with the multi-token chunk — not the individual particles split apart. Atomic particles stay as separate grammar entries; the compound is additional.\n\n'
-               + perSentBlocks.join('\n\n');
-      }
-    }
-
-    // User-side fallback: Haiku, not Sonnet. Earlier in this session
-    // I swapped Haiku → Sonnet here to match admin's quality, but the
-    // owner's AI Usage page showed cost-per-call jumped 5-15x and
-    // burned ~$10 on ~20 articles of testing. Reverting because:
-    //   - Admin's runAutoGenerate already writes Sonnet-quality cache
-    //     before users see the article in normal flow.
-    //   - User-side fallback only fires on genuine cache-miss / stale
-    //     edges, which are rare in production.
-    //   - When it DOES fire, Haiku quality is adequate for a first-
-    //     viewer; the next visitor reads the same cache anyway, so
-    //     paying Sonnet for the rare first-viewer is poor ROI.
-    //   - The render-side enforce + label-normalizer + chunk-widening
-    //     pipeline patches Haiku's coarser output to canonical labels
-    //     on display, so the visible quality gap is small.
-    var res = await callClaude({
-      feature: 'sentence-analyze-bulk',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: Math.min(8000, 300 * sentences.length + 600),
-      messages: [{ role: 'user', content: prompt }]
-    });
-    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
-    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
-    if (oi < 0 || ei <= oi) throw new Error('JSON not found');
-    // Tolerate truncation: when JSON.parse blows on a cut-off
-    // response, walk back from the last `}` looking for the deepest
-    // bracket that still produces valid JSON. Better to render
-    // partial sentence analysis than to throw the whole article's
-    // worth of tokens away with a "분석 실패" error toast.
-    var parsed;
-    try {
-      parsed = JSON.parse(clean.slice(oi, ei + 1));
-    } catch (e1) {
-      var slice = clean.slice(oi, ei + 1);
-      var fixed = null;
-      var lastObjEnd = slice.lastIndexOf('},');
-      while (lastObjEnd > 0) {
-        try {
-          fixed = JSON.parse(slice.slice(0, lastObjEnd + 1) + ']}');
-          break;
-        } catch (_) {
-          lastObjEnd = slice.lastIndexOf('},', lastObjEnd - 1);
-        }
-      }
-      if (fixed) parsed = fixed;
-      else throw e1;
-    }
-    var arr = parsed && Array.isArray(parsed.sentences) ? parsed.sentences : null;
-    if (!arr || !arr.length) throw new Error('empty sentences[]');
-    // Codex P2: when the response was truncated mid-array, the salvage
-    // path above recovers a SHORTER `arr` than `sentences.length`. If
-    // we proceed, stitched fills the missing tail with empty
-    // {translation:'', vocab:[], analysis:[]} entries and writes that
-    // to article_cache as if it were a complete result. Future visits
-    // then skip background re-analysis because the cache "exists",
-    // even though those sentences will never have content.
-    // Require >= 80% coverage; otherwise treat as a parse failure and
-    // skip the cache write.
-    if (arr.length < Math.floor(sentences.length * 0.8)) {
-      throw new Error('truncated sentences[] — got ' + arr.length + ' of ' + sentences.length);
-    }
-
-    // Stitch back: each entry = {text, translation, vocab, grammar},
-    // indexed by source sentence idx so analyzeSentence can look up by
-    // either numeric index or text equality.
-    var stitched = sentences.map(function(s, i) {
-      var a = arr[i] || {};
-      // Accept both the new "analysis" field (grammar + expression +
-      // idiom) and legacy "grammar" payloads from older Claude calls.
-      // Legacy items are promoted to type:'grammar' so the renderer
-      // sees a single shape.
-      var analysis = [];
-      if (Array.isArray(a.analysis)) analysis = a.analysis.slice();
-      else if (Array.isArray(a.grammar)) {
-        analysis = a.grammar.map(function(g) {
-          return {
-            type: 'grammar',
-            label: g.pattern || g.label || '',
-            exp: g.exp || '',
-            example_in_sentence: g.example_in_sentence || '',
-          };
-        });
-      }
-      return {
-        text: s.text,
-        idx: s.idx,
-        translation: a.translation || '',
-        vocab: Array.isArray(a.vocab) ? a.vocab : [],
-        analysis: analysis,
-      };
-    });
-
-    // Code-level enforcement of must-include grammar patterns. Mirrors
-    // the admin runAutoGenerate path — Haiku regularly skips ~(으)면서,
-    // ~다고 해요, ~게 만들다 even when the prompt says be exhaustive,
-    // so the regex detector fills the gaps deterministically before
-    // we persist. INTERMEDIATE_SKIP_LABELS inside enforce already
-    // strips trivial particles for non-basic levels, so Tree+ readers
-    // don't see ~을/를 noise on every sentence.
-    try {
-      await ensureKhGrammar();
-      if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns) {
-        window.KH_GRAMMAR.enforceDetectedPatterns(stitched, articleLevel);
-      }
-    } catch(_) {}
-
-    // Persist to article_cache.translation as { sentences: [...] }.
-    // upsertArticleCacheRow handles the kv vs wide schema split.
-    if (typeof upsertArticleCacheRow === 'function') {
-      try {
-        await upsertArticleCacheRow(articleId, { translation: { sentences: stitched, version: KH_SENT_CACHE_VERSION } });
-      } catch(e) { console.warn('[sent-bg] persist failed:', e); }
-    }
-    // Update the in-memory shared cache so other taps in this session
-    // hit it instead of going live.
-    window._khArtSentSharedCache[articleId] = { sentences: stitched, version: KH_SENT_CACHE_VERSION };
-  } catch(err) {
-    console.warn('[sent-bg] failed:', err && err.message || err);
-  } finally {
-    window._khArtFullAnalyzeRunning[articleId] = false;
-    try { sessionStorage.removeItem(lockKey); } catch(_) {}
-  }
-}
-
 // Bumped to 'p3' on 2026-05-09 night when PR #383 added the
 // hallucination filter — pattern markers must literally appear in
 // the sentence. Any p2 cache may still hold the wrong-pattern
 // items (e.g. ~(으)로서 on a sentence with no 로서/으로서) so we
 // treat p2 as stale here. Reading a p2 cache marks the article
-// stale, _khTriggerFullArticleAnalyze re-runs bulk over every
+// stale and the next bake regenerates every
 // sentence in the body, and the new payload lands with version
 // 'p3'. Old cache stays in DB (won't break anything) until
 // upserted on next bulk run.
@@ -5856,6 +5477,32 @@ function _khRenderBakePanel(panel, state, idx) {
 // Resolves {ok:true} once window._khArtSentSharedCache[articleId] holds the
 // sentences, else {ok:false, error}.
 window._khArtBakePending = window._khArtBakePending || {};
+// Save one shared AI cache entry (article_cache slots or a
+// grammar_examples_cache key) through the cache-write Edge Function —
+// readers have no direct write access to those tables. The server only
+// fills empty/thin slots, so this is safe to call after any cache miss.
+// Resolves { ok, written, skipped } or { ok:false, error }; never throws.
+async function khCacheWrite(body) {
+  try {
+    var sb = (typeof getSupa === 'function') ? getSupa() : null;
+    var sess = sb ? await sb.auth.getSession() : null;
+    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    if (!token) return { ok: false, error: 'not_signed_in' };
+    var r = await fetch(SUPA_URL + '/functions/v1/cache-write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPA_KEY },
+      body: JSON.stringify(body)
+    });
+    var res = await r.json().catch(function() { return { ok: false, error: 'bad_response' }; });
+    if (!res.ok) console.warn('[cache-write]', body && body.table, res.error || r.status);
+    return res;
+  } catch (e) {
+    console.warn('[cache-write]', e && e.message || e);
+    return { ok: false, error: 'network' };
+  }
+}
+window.khCacheWrite = khCacheWrite;
+
 function _khServerBakeArticle(articleId) {
   if (!articleId) return Promise.resolve({ ok: false, error: 'generation_failed' });
   if (window._khArtBakePending[articleId]) return window._khArtBakePending[articleId];
@@ -5927,7 +5574,6 @@ async function _khNotifyAdminCacheMiss(contentType, contentId, sentence) {
 // kv schema with content_type='conversation') so the same admin tools
 // can pre-warm both. Reuses _khRenderSentPanel + .art-sent-panel CSS.
 window._khConvSentSharedCache = window._khConvSentSharedCache || {};
-window._khConvFullAnalyzeRunning = window._khConvFullAnalyzeRunning || {};
 
 async function _khLoadConvSentenceCache(convId) {
   if (!convId) return null;
@@ -5962,229 +5608,6 @@ async function _khLoadConvSentenceCache(convId) {
   } catch(_) {}
   window._khConvSentSharedCache[convId] = null;
   return null;
-}
-
-function _khConvLevelLabel(lvl) {
-  return ({
-    s: 'Seed (TOPIK 1, complete beginner)',
-    b: 'Sprout (TOPIK 2, beginner)',
-    i: 'Tree (TOPIK 3-4, intermediate)',
-    a: 'Forest (TOPIK 5-6, advanced)'
-  })[lvl] || 'Sprout (TOPIK 2, beginner)';
-}
-
-async function _khTriggerFullConvAnalyze(convId) {
-  if (!convId) return;
-  if (window._khConvFullAnalyzeRunning[convId]) return;
-  var lockKey = 'kh_convfull_running_' + convId;
-  try { if (sessionStorage.getItem(lockKey)) return; } catch(_) {}
-  window._khConvFullAnalyzeRunning[convId] = true;
-  try { sessionStorage.setItem(lockKey, '1'); } catch(_) {}
-
-  try {
-    var c = window._currentConv;
-    if (!c || !c.msgs || String(c._id || '') !== String(convId)) return;
-    var sentences = [];
-    c.msgs.forEach(function(m, i) {
-      if (!m || m.s === 'n') return; // skip narration
-      var t = (m.txt || '').trim();
-      if (t) sentences.push({ idx: i, text: t });
-    });
-    if (!sentences.length) return;
-    if (typeof callClaude !== 'function') return;
-
-    var _levelLabel = _khConvLevelLabel(c.lvl);
-    var payload = sentences.map(function(s, i){ return (i + 1) + '. ' + s.text; }).join('\n');
-    var prompt =
-        'You are a Korean tutor analysing each line of a casual conversation for a ' + _levelLabel + ' learner.\n\n'
-      + 'Lines (numbered, in order):\n' + payload + '\n\n'
-      + 'Return ONLY a JSON object — no preamble, no code fences:\n'
-      + '{ "lines": [\n'
-      + '  { "translation": "natural English of line 1",\n'
-      + '    "vocab":   [{"ko":"<dictionary form>","en":"<short meaning>","note":"<optional 1-line>"}],\n'
-      + '    "grammar": [{"pattern":"~ㄴ다 / ~어지다 / etc","exp":"<1-sentence English>","example_in_sentence":"<chunk from line>"}]\n'
-      + '  }, ... one entry per input line, same order ...\n'
-      + ']}\n\n'
-      + 'Rules:\n'
-      + '- TRANSLATION: natural conversational English. Preserve original speakers/subjects — do NOT inject "I/we" if Korean omitted them.\n'
-      + '- VOCAB: max 3 per line. Skip particles (이/가/을/를/의/에/도/는) and the highest-frequency copula/auxiliaries (이다/있다 alone).\n'
-      + '- VOCAB DICTIONARY-FORM 강제: 동사/형용사는 ~다 형태만 (✓잡다 ✗잡았어요; ✓작다 ✗작은; ✓듣다 ✗들었어요). 명사는 bare. 본문에 활용형이 나와도 vocab은 사전형으로 emit.\n'
-      + '- VOCAB fossil 제외: 모든, 다른, 어떤, 여러, 무슨, 어느, 그런, 이런, 저런, 같은, 감히, 그렇게, 이렇게, 저렇게, 어떻게는 vocab에 X.\n'
-      + '- VOCAB vs GRAMMAR 중복 금지: vocab[].ko 단어를 grammar[].example_in_sentence에 다시 등록 X.\n'
-      + '- GRAMMAR: max 2 per line. Skip if just a noun phrase. Don\'t pick patterns that are just a vocab word\'s conjugation.\n'
-      + '- GRAMMAR[].pattern canonical morpheme 형태만 (예: "~았/었/였어요"). 활용 surface (예: "했어요 (하다 past polite)") emit 절대 X — 같은 canonical 패턴은 entry 1개로 통합.\n'
-      + '- Return EXACTLY ' + sentences.length + ' entries in lines[].';
-    var res = await callClaude({
-      feature: 'conv-sentence-analyze-bulk',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: Math.min(8000, 250 * sentences.length + 600),
-      messages: [{ role: 'user', content: prompt }]
-    });
-    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
-    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
-    if (oi < 0 || ei <= oi) throw new Error('JSON not found');
-    var parsed = JSON.parse(clean.slice(oi, ei + 1));
-    var arr = parsed && Array.isArray(parsed.lines) ? parsed.lines : null;
-    if (!arr || !arr.length) throw new Error('empty lines[]');
-
-    var stitched = sentences.map(function(s, i) {
-      var a = arr[i] || {};
-      return {
-        idx: s.idx,
-        text: s.text,
-        translation: a.translation || '',
-        vocab: Array.isArray(a.vocab) ? a.vocab : [],
-        grammar: Array.isArray(a.grammar) ? a.grammar : []
-      };
-    });
-
-    var sb = (typeof getSupa === 'function') ? getSupa() : null;
-    if (sb) {
-      try {
-        await sb.from('article_cache').upsert(
-          { content_type: 'conversation', content_id: String(convId), cache_key: 'sentence_analysis', cache_value: JSON.stringify({ messages: stitched }) },
-          { onConflict: 'content_type,content_id,cache_key' }
-        );
-      } catch(e) { console.warn('[conv-sent-bg] persist failed:', e); }
-    }
-    window._khConvSentSharedCache[convId] = { messages: stitched };
-  } catch(err) {
-    console.warn('[conv-sent-bg] failed:', err && err.message || err);
-  } finally {
-    window._khConvFullAnalyzeRunning[convId] = false;
-    try { sessionStorage.removeItem(lockKey); } catch(_) {}
-  }
-}
-
-function closeConvSentPanel() {
-  document.querySelectorAll('.conv-sent-panel').forEach(function(p){ p.remove(); });
-  document.querySelectorAll('.dp-bubble.conv-sent-active').forEach(function(b){ b.classList.remove('conv-sent-active'); });
-}
-
-async function analyzeConvBubble(convId, msgIdx, el) {
-  if (!el) return;
-  var bubbleRow = el.parentElement;            // .dp-bubble-row
-  var group = bubbleRow && bubbleRow.parentElement; // .dp-bubble-group
-  if (!group) return;
-
-  // Tapping the same active bubble closes the panel.
-  var existingPanel = group.querySelector(':scope > .conv-sent-panel');
-  if (existingPanel) {
-    existingPanel.remove();
-    el.classList.remove('conv-sent-active');
-    return;
-  }
-  closeConvSentPanel();
-  el.classList.add('conv-sent-active');
-
-  // Hide the legacy quick-translation div (it's a strict subset of the
-  // analysis panel's translation, so keeping both visible is noise).
-  var legacyEn = group.querySelector(':scope > .dp-bubble-en');
-  if (legacyEn) legacyEn.classList.remove('show');
-
-  var sentenceText = (el.textContent || '').trim();
-  if (!sentenceText) { el.classList.remove('conv-sent-active'); return; }
-
-  if (typeof khTrackUser === 'function') {
-    try {
-      khTrackUser('conv_sentence_analyze', {
-        conv_id: convId || null,
-        idx: msgIdx,
-        sentence_len: sentenceText.length,
-      });
-    } catch(_) {}
-  }
-
-  var panel = document.createElement('div');
-  panel.className = 'art-sent-panel conv-sent-panel';
-  panel.dataset.msgIdx = String(msgIdx);
-  panel.dataset.contentType = 'conversation';
-  panel.dataset.contentId = String(convId || '');
-  panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
-    + '<div class="asp-loading">Analyzing</div>';
-  // Insert as sibling after .dp-bubble-row, before .dp-bubble-en / .dp-time.
-  if (bubbleRow.nextSibling) group.insertBefore(panel, bubbleRow.nextSibling);
-  else group.appendChild(panel);
-
-  var cacheKey = 'csa_' + (convId || 'noid') + '_' + msgIdx;
-
-  if (window._khSentAnalyzeCache[cacheKey]) {
-    _khRenderSentPanel(panel, window._khSentAnalyzeCache[cacheKey], 'closeConvSentPanel()', sentenceText);
-    return;
-  }
-  try {
-    var stored = sessionStorage.getItem(cacheKey);
-    if (stored) {
-      var parsedStored = JSON.parse(stored);
-      window._khSentAnalyzeCache[cacheKey] = parsedStored;
-      _khRenderSentPanel(panel, parsedStored, 'closeConvSentPanel()', sentenceText);
-      return;
-    }
-  } catch(_) {}
-
-  // Pre-generated shared cache (article_cache row).
-  var sharedCache = null;
-  try {
-    sharedCache = await _khLoadConvSentenceCache(convId);
-    if (sharedCache && sharedCache.messages) {
-      var hit = sharedCache.messages.find(function(m){ return m && m.idx === msgIdx; });
-      if (!hit || (hit.text || '').trim() !== sentenceText) {
-        hit = sharedCache.messages.find(function(m){ return m && (m.text || '').trim() === sentenceText; });
-      }
-      if (hit && (hit.translation || (hit.vocab && hit.vocab.length) || (hit.analysis && hit.analysis.length) || (hit.grammar && hit.grammar.length))) {
-        window._khSentAnalyzeCache[cacheKey] = hit;
-        try { sessionStorage.setItem(cacheKey, JSON.stringify(hit)); } catch(_) {}
-        _khRenderSentPanel(panel, hit, 'closeConvSentPanel()', sentenceText);
-        return;
-      }
-    }
-  } catch(_) {}
-
-  // Anonymous gate — same as articles. Pre-cached lines are free, live
-  // calls require sign-in to keep the Claude budget under control.
-  if (typeof supaUser === 'undefined' || !supaUser) {
-    // Codex P2: don't punish anon when the bubble HAS a pre-rendered
-    // .dp-bubble-en sibling (the conversation publish step bakes that
-    // English line in). Surface it instead of a sign-in wall — those
-    // legacy translations are already in the DOM and free to show.
-    var legacyEnText = legacyEn ? (legacyEn.textContent || '').trim() : '';
-    if (legacyEnText) {
-      panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
-        + '<div style="padding:14px 16px">'
-        +   '<div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px">Translation</div>'
-        +   '<div style="font-size:14px;line-height:1.55;color:#0f172a">' + escapeHtml(legacyEnText) + '</div>'
-        +   '<div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#64748b">'
-        +     '<a href="#" onclick="closeConvSentPanel();if(typeof openAuthModal===\'function\')openAuthModal(\'signin\');return false" style="color:#1d4ed8;font-weight:700;text-decoration:none">Sign in</a>'
-        +     ' for full vocab + grammar breakdown.'
-        +   '</div>'
-        + '</div>';
-      return;
-    }
-    panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
-      + '<div class="asp-signin" style="padding:18px 16px;text-align:center">'
-      +   '<div style="font-size:14px;font-weight:800;color:#0f172a;margin-bottom:6px">Sign in to analyze new lines</div>'
-      +   '<div style="font-size:12px;color:#475569;line-height:1.55;margin-bottom:14px">Pre-analyzed lines are open to everyone. Live AI breakdowns of fresh lines need an account.</div>'
-      +   '<button onclick="closeConvSentPanel();if(typeof openAuthModal===\'function\')openAuthModal(\'signin\')" style="padding:9px 18px;border-radius:999px;border:0;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 16px rgba(30,58,138,.32)">Sign in — Free</button>'
-      + '</div>';
-    return;
-  }
-
-  // No cached analysis for this line. User-side AI fallback was removed
-  // by owner directive — admin pre-bakes conversation analysis before
-  // publish (same as articles). Show a friendly "preparing" panel
-  // instead of charging tokens on every reader tap.
-  panel.innerHTML = '<button class="asp-close" onclick="closeConvSentPanel()" aria-label="Close">×</button>'
-    + '<div class="asp-prep" style="padding:14px 16px;text-align:center;font-size:13px;line-height:1.55;opacity:.85">'
-    +   '<div style="font-size:14px;font-weight:700;margin-bottom:4px">Analysis in progress</div>'
-    +   'Sentence analysis is being prepared. Please try again in a moment.'
-    + '</div>';
-  // Defer the admin notification RPC to the next macrotask so its
-  // Supabase round-trip can't extend the tap-handler turn (and so
-  // any RPC error never bubbles into the click handler chain).
-  setTimeout(function () {
-    try { _khNotifyAdminCacheMiss('conversation', convId, sentenceText); } catch (_) {}
-  }, 0);
 }
 
 function switchArtTab(tab, btn) {

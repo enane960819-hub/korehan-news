@@ -310,6 +310,11 @@ supabase functions deploy claude-proxy
   reviews rows with `qa_at is null` (`content-qa/queue.ts`). A new table/cache of AI content must get
   the column, the trigger and a job in step 6 — never ship one that bypasses review. Romanization is
   cross-checked against `_shared/romanize.ts` (rule-based RR); don't trust AI/PDF romanizations.
+- **Shared AI caches are server-write only** (`20261028_cache_write_server_only.sql`). Readers save
+  `article_cache` slots / `grammar_examples_cache` keys through `khCacheWrite()` → the `cache-write`
+  Edge Function (fill-only, shape-checked, 120 saves/hour/user, stamps `written_by`).
+  `article_study_content` is admin-generated only. Never give readers direct write access to a
+  shared table again — add a slot to `cache-write` instead.
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
   (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 

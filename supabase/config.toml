@@ -31,6 +31,11 @@ verify_jwt = false
 [functions.article-analyze]
 verify_jwt = false
 
+# cache-write: readers' browsers save shared AI cache rows through it; it
+# verifies the user's JWT itself (gateway check off for CORS preflight).
+[functions.cache-write]
+verify_jwt = false
+
 # billing: called from the plans page with the user's JWT; verified in the
 # function (gateway check off so CORS preflight passes).
 [functions.billing]
