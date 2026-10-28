@@ -3547,3 +3547,32 @@ body.kh-dark .dct-header div:first-child div:first-child { color:#fff !important
   .sr-wrap2 > .sr-top-tabs-wrap { grid-column:1; width:340px; margin-bottom:16px !important; }
   .sr-wrap2 > .sr-level-bar { grid-column:2; justify-self:end; padding:0 0 16px !important; }
 }
+
+/* ── Past topics (2026-10) ───────────────────────────────────── */
+.srp-row { display:flex; align-items:center; gap:12px; width:100%; margin:10px 0 2px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.04); border:1px dashed rgba(148,163,184,.35); color:#e2e8f0; font-family:inherit; text-align:left; cursor:pointer; }
+.srp-row:hover { background:rgba(255,255,255,.07); }
+.srp-ic { width:36px; height:36px; border-radius:11px; background:rgba(125,211,252,.12); color:#7dd3fc; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.srp-ic svg, .srp-banner svg { width:18px; height:18px; }
+.srp-tx { flex:1; min-width:0; }
+.srp-tx b { display:block; font-size:14px; color:#fff; }
+.srp-tx small { font-size:11.5px; color:rgba(255,255,255,.5); }
+.srp-lv { display:flex; gap:6px; margin-bottom:12px; }
+.srp-chip { font-family:inherit; font-size:12px; padding:6px 12px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#cbd5e1; cursor:pointer; }
+.srp-chip.on { background:#16a34a; border-color:#22c55e; color:#fff; }
+.srp-wk { display:flex; align-items:center; gap:12px; padding:12px; border-radius:16px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); margin-bottom:9px; text-decoration:none; color:inherit; }
+.srp-wk:hover { background:rgba(255,255,255,.08); }
+.srp-d { width:44px; text-align:center; font-size:10.5px; color:rgba(255,255,255,.55); line-height:1.2; flex-shrink:0; }
+.srp-d b { display:block; font-size:17px; color:#fff; }
+.srp-m { flex:1; min-width:0; }
+.srp-m b { display:block; font-family:'Noto Sans KR',sans-serif; font-size:14px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.srp-m small { font-size:11px; color:rgba(255,255,255,.5); }
+.srp-bar { display:block; height:6px; border-radius:6px; background:rgba(255,255,255,.08); margin-top:6px; overflow:hidden; }
+.srp-bar i { display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,#3b82f6,#7c3aed); }
+.srp-go { font-size:12px; font-weight:800; color:#93c5fd; padding:7px 10px; border-radius:10px; background:rgba(59,130,246,.14); flex-shrink:0; }
+.srp-wk.done .srp-go { color:#86efac; background:rgba(34,197,94,.12); }
+.srp-empty, .srp-note { text-align:center; font-size:12px; color:rgba(255,255,255,.45); padding:10px 0; }
+.srp-banner { display:flex; order:-3; align-items:center; gap:10px; padding:10px 12px; margin-bottom:12px; border-radius:14px; background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.3); color:#fde68a; }
+.srp-banner b { display:block; font-size:13px; }
+.srp-banner small { font-size:11.5px; color:rgba(253,230,138,.8); line-height:1.4; }
+.srp-banner span:nth-child(2) { flex:1; min-width:0; }
+.srp-banner a { font-size:12px; font-weight:800; color:#fff; text-decoration:none; padding:7px 10px; border-radius:10px; background:rgba(255,255,255,.1); flex-shrink:0; }

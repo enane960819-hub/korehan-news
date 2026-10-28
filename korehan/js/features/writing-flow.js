@@ -397,8 +397,11 @@ function _wfStep3() {
     + (c.model_answer || (c.models && c.models.length) ? '<button type="button" class="wf-btn ghost sm" onclick="_wfPeekModels()"><i data-lucide="eye"></i> Peek at the model sentences</button><div id="wf-peek"></div>' : '')
     + '</div>'
     + '<div class="wf-foot"><button type="button" class="wf-btn ghost" onclick="_wfGo(' + (_wfHasFrames() ? 2 : 1) + ')"><i data-lucide="arrow-left"></i> Back</button>'
-    + '<button type="button" class="wf-btn" id="wf-submit" onclick="_wfSubmit()">Submit for feedback <i data-lucide="send"></i></button></div>'
-    + '<div class="wf-note">One submission per week · feedback appears on the next screen</div>'
+    + (_wfPractice()
+        ? '<button type="button" class="wf-btn" disabled>Submission is off in practice mode</button></div>'
+          + '<div class="wf-note">Past week — use the checklist and the model sentences to practice. Your writing is saved on this device.</div>'
+        : '<button type="button" class="wf-btn" id="wf-submit" onclick="_wfSubmit()">Submit for feedback <i data-lucide="send"></i></button></div>'
+          + '<div class="wf-note">One submission per week · feedback appears on the next screen</div>')
     + '</div>';
   _wfSet(html);
   _wfOnInput(_wf.text);
@@ -459,8 +462,12 @@ function _wfOnInput(v) {
 }
 
 // ── Submit + feedback ───────────────────────────────────────────
+// Past-week practice (Study Room ?week=): no new submissions.
+function _wfPractice() { return typeof khPracticeWeek === 'function' && !!khPracticeWeek(); }
+
 async function _wfSubmit() {
   if (!_wf || window._wmSubmitting) return;
+  if (_wfPractice()) { showToast('Practice mode — past weeks can\'t be submitted.'); return; }
   var text = _wf.text.trim(), lim = getWriteCharLimit();
   if (text.length < lim.min) { showToast('A little more! At least ' + lim.min + ' characters.'); return; }
   if (_wmWeekSubmitted()) { _wf.sub = true; _wf.step = 4; _wfLoadSubmitted(); return; }
