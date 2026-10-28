@@ -207,6 +207,11 @@ function copyStaticPlugin() {
           cpSync(resolve(imgDir, f), resolve(distImg, f), { recursive: true })
         );
       }
+      // data/ directory (static JSON the pages fetch at runtime, e.g.
+      // data/life-guides.json). Without it Pages answers those URLs with
+      // an HTML page and the fetch fails.
+      const dataDir = resolve(src, 'data');
+      if (existsSync(dataDir)) cpSync(dataDir, resolve(dist, 'data'), { recursive: true });
       // lottie/ directory (animated illustration JSON files
       // probed at runtime by _phraseHydrateLottie).
       const lottieDir = resolve(src, 'lottie');

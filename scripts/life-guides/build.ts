@@ -9,6 +9,7 @@ import { romanize } from '../../supabase/functions/_shared/romanize.ts'
 import { GUIDES, CHECKED } from './guides.mjs'
 import { EXTRA, MORE, OFFICES, CHECKED2 } from './guides-more.mjs'
 import { TRANSPORT } from './guides-transport.mjs'
+import { MORE2 } from './guides-more2.mjs'
 
 const q = (s: string) => "'" + String(s).replace(/'/g, "''") + "'"
 const j = (v: unknown) => q(JSON.stringify(v)) + '::jsonb'
@@ -18,6 +19,7 @@ const all = [
   ...GUIDES.map((g: any) => ({ ...g, ...(EXTRA[g.slug] || {}), checked: EXTRA[g.slug] ? CHECKED2 : CHECKED })),
   ...MORE.map((g: any) => ({ ...g, checked: CHECKED2 })),
   ...TRANSPORT.map((g: any) => ({ ...g, checked: CHECKED2 })),
+  ...MORE2.map((g: any) => ({ ...g, checked: CHECKED2 })),
 ]
 const slugs = new Set<string>()
 const fixture: any[] = []

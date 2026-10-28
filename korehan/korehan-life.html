@@ -22,7 +22,7 @@
 <script>
 // Guides are a static file on the CDN (built with the DB seed) — fetched while
 // the page scripts load; the DB copy refreshes them in the background.
-window._lkPrefetch = fetch('data/life-guides.json?v=20261029c').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+window._lkPrefetch = fetch('data/life-guides.json?v=20261029d').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
 </script>
 <style>
 /* Life in Korea (mockup I C/D, 2026-10-28) — dark surface like Word Bank. */
@@ -133,7 +133,7 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 <main id="lk-root" class="lk-wrap"><div class="lk-empty">Loading guides…</div></main>
 <div id="kh-footer"></div>
 <!-- Page script first: it paints from the head prefetch while the shared scripts load. -->
-<script src="js/features/life-guides.js?v=20261029e"></script>
+<script src="js/features/life-guides.js?v=20261029f"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/security.js?v=20260525r"></script>
 <script src="js/core/storage.js?v=20260525r"></script>
