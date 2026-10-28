@@ -8034,8 +8034,8 @@ async function _srRenderLiveClassCard() {
     var when = live ? 'Live now' : (mins < 60 ? 'Starts in ' + mins + ' min' : (mins < 1440 ? 'In ' + Math.round(mins / 60) + ' h' : new Date(start).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })));
     var premium = typeof getUserPlan === 'function' && getUserPlan() === 'premium';
     document.getElementById('sr-notif-live-title').textContent = (live ? '🔴 ' : '') + (s.title || 'Weekend Live Class');
-    document.getElementById('sr-notif-live-sub').textContent = when + ' · Zoom · 60 min' + (premium ? '' : ' · Premium');
-    document.getElementById('sr-notif-live-cta').textContent = premium ? (live ? 'Join →' : 'Register →') : 'Try Premium →';
+    document.getElementById('sr-notif-live-sub').textContent = when + ' · Zoom · 60 min · $5' + (premium ? '' : ' · Premium members');
+    document.getElementById('sr-notif-live-cta').textContent = premium ? (live ? 'Join →' : 'Book a seat →') : 'Try Premium →';
     card.style.display = '';
   } catch (_) {}
 }

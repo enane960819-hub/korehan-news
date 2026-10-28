@@ -72,7 +72,7 @@ h2{font-size:30px;color:#fff;font-weight:800;letter-spacing:-.01em;margin:10px 0
 .lvc b{font-size:17px;color:#0d1b2e}.lvc small{display:block;font-size:12px;color:#64748b;margin:2px 0 12px}
 .lvc .s{font-family:'Noto Sans KR',sans-serif;font-size:15px;color:#0d1b2e;line-height:1.6}.lvc .e{font-size:12.5px;color:#64748b;margin-top:6px}
 .tag{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;margin-bottom:10px}
-.price{display:grid;gap:18px;max-width:860px;margin:0 auto}
+.price{display:grid;gap:18px;max-width:1080px;margin:0 auto}
 .pc{border-radius:24px;padding:26px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)}
 .pc.pr{background:linear-gradient(160deg,rgba(124,58,237,.25),rgba(37,99,235,.15));border-color:rgba(167,139,250,.5)}
 .pc .k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#93c5fd}.pc.pr .k{color:#c4b5fd}
@@ -140,8 +140,24 @@ footer nav{padding:0;gap:14px;justify-content:flex-start}
   .row h3{font-size:30px}
   .vis .ph{width:270px;height:470px}
   .lv{grid-template-columns:repeat(4,1fr)}
-  .price{grid-template-columns:1fr 1fr;gap:22px}
+  .price{grid-template-columns:1fr 1.15fr 1fr;gap:22px}
+  .lcx{grid-template-columns:1.1fr 1fr}
 }
+/* Live class (mockup I-A) */
+.lcx{display:grid;gap:26px;align-items:center}
+.lsteps{list-style:none;margin:16px 0 22px;display:grid;gap:10px}
+.lsteps li{display:flex;gap:12px;align-items:flex-start;font-size:14.5px;color:#e2e8f0;line-height:1.5}
+.lsteps svg{width:18px;height:18px;color:#7dd3fc;flex:none;margin-top:2px}
+.ticket{background:linear-gradient(160deg,rgba(37,99,235,.22),rgba(124,58,237,.18));border:1px solid rgba(147,197,253,.35);border-radius:24px;padding:22px}
+.lpill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:#fca5a5;background:rgba(239,68,68,.14);padding:5px 11px;border-radius:999px}
+.lpill i{width:8px;height:8px;border-radius:50%;background:#ef4444}
+.ticket h3{font-size:21px;color:#fff;margin:14px 0 4px}
+.ticket .tw{font-size:13.5px;color:rgba(255,255,255,.6)}
+.agenda{margin:16px 0;display:grid;gap:8px}
+.agenda div{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.06);color:#fff}
+.agenda span{color:rgba(255,255,255,.55);text-align:right}
+.tpr{display:flex;align-items:baseline;gap:8px;margin:6px 0 14px}.tpr b{font-size:36px;color:#fff}.tpr small{color:rgba(255,255,255,.55);font-size:14px}
+.pc.add{border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.06)}.pc.add .k{color:#fcd34d}
 </style>
 </head>
 <body>
@@ -234,15 +250,46 @@ footer nav{padding:0;gap:14px;justify-content:flex-start}
   </div>
 </div></section>
 
+<section id="live" style="padding-top:10px"><div class="wrap"><div class="lcx">
+  <div>
+    <div class="eb">Live class · for Premium members</div>
+    <h2>Talk through this week's news with a real teacher.</h2>
+    <p style="font-size:15.5px;color:rgba(255,255,255,.7);line-height:1.6">Every Sunday, Han takes the week's topic and the articles you already read and goes through them live on Zoom — the tricky grammar, the words people actually use, and your questions.</p>
+    <ul class="lsteps">
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/></svg><span>Read the week's articles in the app first — the class builds on them</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/></svg><span>Book a seat for <b>$5</b>. Only 8 people per class</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span>The Zoom button appears 30 minutes before class</span></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>Can't make it? Cancel up to 24 hours before for a full refund</span></li>
+    </ul>
+    <a class="btn bp" href="korehan-courses.html#live" onclick="khVisited()">See this week's class</a>
+  </div>
+  <div class="ticket">
+    <span class="lpill"><i></i>Sunday 21:00 KST · 60 min</span>
+    <h3>This week's topic, live</h3>
+    <div class="tw">Built from the articles you can read in the app now</div>
+    <div class="agenda">
+      <div><b>Warm-up</b><span>10 min · key words of the week</span></div>
+      <div><b>Article walk-through</b><span>25 min · sentence by sentence</span></div>
+      <div><b>Grammar spot</b><span>10 min · one pattern, many examples</span></div>
+      <div><b>Your questions</b><span>15 min · live Q&amp;A</span></div>
+    </div>
+    <div class="tpr"><b>$5</b><small>per class · 8 seats</small></div>
+    <a class="btn bp" href="korehan-courses.html#live" style="display:block" onclick="khVisited()">Book a seat</a>
+  </div>
+</div></div></section>
+
 <section id="pricing"><div class="wrap">
-  <div class="sh"><div class="eb">Pricing</div><h2>Free is really free.</h2><p>Reading, tap-to-analyze and your word reviews stay free. Premium adds guided study, writing feedback and a live class.</p></div>
+  <div class="sh"><div class="eb">Pricing</div><h2>Free is really free.</h2><p>Reading, tap-to-analyze and your word reviews stay free. Premium adds guided study and writing feedback. Live class seats are $5 for Premium members.</p></div>
   <div class="price">
     <div class="pc"><div class="k">Free</div><div class="amt">$0 <small>forever</small></div><div class="per">No card needed</div>
       <ul class="ck"><li>All articles &amp; Korea Buzz, 4 levels</li><li>Tap any sentence: translation, words, grammar</li><li>Conversations: listen &amp; read</li><li>Word Bank + Today's Review</li><li>Weekly topic lessons, Today's Phrase, games</li></ul>
       <a href="korehan-onboarding.html" class="btn bg" onclick="khVisited()">Start free</a></div>
     <div class="pc pr"><div class="k">Premium</div><div class="amt">$8.99 <small>/ month</small></div><div class="per">or $69 / year · cancel anytime</div>
-      <ul class="ck"><li>Article &amp; Conversation Study every day (incl. role-play)</li><li>Weekly writing with AI feedback + tutor review</li><li>Fast Track, listening quiz, weekly review</li><li>Weekend live class on Zoom</li></ul>
+      <ul class="ck"><li>Article &amp; Conversation Study every day (incl. role-play)</li><li>Weekly writing with AI feedback + tutor review</li><li>Fast Track, listening quiz, weekly review</li><li>Can book live class seats</li></ul>
       <a href="korehan-courses.html" class="btn bp" onclick="khVisited()">See Premium</a></div>
+    <div class="pc add"><div class="k">Live class</div><div class="amt">$5 <small>/ class</small></div><div class="per">For Premium members · 8 seats</div>
+      <ul class="ck"><li>Sunday 21:00 KST on Zoom, 60 min</li><li>This week's topic and articles</li><li>Pay per class</li><li>Cancel 24 h before = full refund</li></ul>
+      <a href="korehan-courses.html#live" class="btn bg" onclick="khVisited()">See this week's class</a></div>
   </div>
 </div></section>
 
