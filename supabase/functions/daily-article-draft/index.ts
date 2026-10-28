@@ -633,6 +633,8 @@ async function genJobs(sb: any, opts: any): Promise<Record<string, unknown>> {
           section: String(it.section || '사회').slice(0, 40),
           level: (LEVELS as readonly string[]).includes(it.level) ? it.level : 'Intermediate',
           save_status: it.save_status === 'published' ? 'published' : 'draft',
+          // Bulk Seed has no review pause: queue the analysis as soon as the body is saved.
+          auto_analysis: !!it.auto_analysis,
           video: h.video_url && h.video_kind ? {
             url: String(h.video_url).slice(0, 1000), kind: String(h.video_kind).slice(0, 30),
             fallback: String(h.video_fallback_url || '').slice(0, 1000), use: !!it.use_video,
@@ -709,6 +711,12 @@ async function genJobs(sb: any, opts: any): Promise<Record<string, unknown>> {
     await sb.from('article_gen_jobs').update({
       status: 'done', article_id: articleId, result, error: null, updated_at: new Date().toISOString(),
     }).eq('id', claimed.id)
+    if (claimed.kind === 'body' && p.auto_analysis) {
+      await sb.from('article_gen_jobs').insert({
+        kind: 'analysis', article_id: articleId,
+        payload: { paragraph_translations: result.paragraph_translations, key_expressions: result.key_expressions, headline: { title: p.headline?.title || '' } },
+      })
+    }
     return { ok: true, done: claimed.id, kind: claimed.kind, article_id: articleId }
   } catch (e) {
     const msg = String((e as Error)?.message || e).slice(0, 300)
