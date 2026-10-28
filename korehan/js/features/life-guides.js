@@ -168,7 +168,7 @@
   function checksOf(slug) { try { return JSON.parse(localStorage.getItem('kh_life_ck_' + slug) || '{}') || {}; } catch (_) { return {}; } }
   function checklistHtml(slug, list) {
     var on = checksOf(slug), n = list.filter(function (_, i) { return on[i]; }).length;
-    return '<h2 class="lk-h2" id="lk-ck-h">Bring these · ' + n + ' of ' + list.length + ' ready</h2><div class="lk-ck">'
+    return '<h2 class="lk-h2" id="lk-ck-h">Checklist · ' + n + ' of ' + list.length + ' done</h2><div class="lk-ck">'
       + list.map(function (t, i) { return '<label><input type="checkbox" data-ck="' + i + '"' + (on[i] ? ' checked' : '') + '><span>' + esc(t) + '</span></label>'; }).join('') + '</div>';
   }
   function saveChecks(slug) {
