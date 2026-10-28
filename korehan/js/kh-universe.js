@@ -51,62 +51,72 @@
     autoRotate: true,
   };
 
-  // Category palette: each interest_tag in vocabulary_bank maps to a tint.
+  // Category palette: one tint per word_tags group.
   // Unknowns land in 'misc' (a desaturated lavender/gray).
+  // Nine broad groups (word_tags.tag) so the map stays readable; 'misc' is
+  // only for words not tagged yet.
   var CAT_COLORS = {
-    everyday:    { r: 0.31, g: 0.80, b: 0.77 }, // mint
-    food:        { r: 1.00, g: 0.45, b: 0.45 }, // coral
-    travel:      { r: 0.96, g: 0.66, b: 0.24 }, // gold
-    business:    { r: 0.55, g: 0.72, b: 0.96 }, // soft blue
-    work:        { r: 0.55, g: 0.72, b: 0.96 },
-    kpop:        { r: 1.00, g: 0.40, b: 0.70 }, // pink
-    music:       { r: 1.00, g: 0.40, b: 0.70 },
-    news:        { r: 0.36, g: 0.56, b: 0.95 }, // blue
-    politics:    { r: 0.36, g: 0.56, b: 0.95 },
-    economy:     { r: 0.36, g: 0.56, b: 0.95 },
-    culture:     { r: 0.66, g: 0.55, b: 0.98 }, // lavender
-    society:     { r: 0.66, g: 0.55, b: 0.98 },
-    tech:        { r: 0.20, g: 0.80, b: 0.93 }, // cyan
-    sports:      { r: 0.22, g: 0.85, b: 0.45 }, // green
-    health:      { r: 0.22, g: 0.85, b: 0.45 },
-    nature:      { r: 0.45, g: 0.88, b: 0.55 },
-    drama:       { r: 0.90, g: 0.50, b: 0.90 }, // magenta
-    movie:       { r: 0.90, g: 0.50, b: 0.90 },
-    entertainment:{r: 0.90, g: 0.50, b: 0.90 },
-    family:      { r: 0.98, g: 0.72, b: 0.55 }, // peach
-    friends:     { r: 0.98, g: 0.72, b: 0.55 },
-    dating:      { r: 1.00, g: 0.55, b: 0.75 }, // rose
-    study:       { r: 0.60, g: 0.75, b: 0.95 },
-    education:   { r: 0.60, g: 0.75, b: 0.95 },
-    misc:        { r: 0.60, g: 0.60, b: 0.75 }  // neutral lavender-grey
+    daily:   { r: 0.31, g: 0.80, b: 0.77 }, // mint
+    food:    { r: 1.00, g: 0.45, b: 0.45 }, // coral
+    places:  { r: 0.96, g: 0.66, b: 0.24 }, // gold
+    people:  { r: 0.98, g: 0.62, b: 0.75 }, // rose
+    work:    { r: 0.55, g: 0.72, b: 0.96 }, // soft blue
+    society: { r: 0.40, g: 0.55, b: 0.98 }, // blue
+    culture: { r: 0.80, g: 0.55, b: 0.98 }, // violet
+    nature:  { r: 0.40, g: 0.86, b: 0.50 }, // green
+    study:   { r: 0.25, g: 0.80, b: 0.95 }, // cyan
+    misc:    { r: 0.60, g: 0.60, b: 0.75 }  // neutral lavender-grey
+  };
+  var CAT_LABELS = {
+    daily: 'DAILY LIFE', food: 'FOOD', places: 'PLACES', people: 'PEOPLE', work: 'WORK & MONEY',
+    society: 'SOCIETY', culture: 'CULTURE', nature: 'NATURE & HEALTH', study: 'STUDY & TECH', misc: 'OTHER'
   };
 
   function catColor(cat) {
     return CAT_COLORS[cat] || CAT_COLORS.misc;
   }
 
+  var CAT_ALIASES = {
+    everyday: 'daily', '일상': 'daily',
+    '음식': 'food', cooking: 'food',
+    travel: 'places', trip: 'places', '여행': 'places',
+    family: 'people', friends: 'people', dating: 'people',
+    business: 'work', economy: 'work', '회사': 'work', '업무': 'work',
+    news: 'society', politics: 'society', '뉴스': 'society', '사회': 'society',
+    kpop: 'culture', music: 'culture', drama: 'culture', movie: 'culture', entertainment: 'culture', sports: 'culture', '문화': 'culture',
+    health: 'nature', '건강': 'nature',
+    education: 'study', tech: 'study', technology: 'study', '공부': 'study', '기술': 'study'
+  };
   function normCategory(tag) {
     if (!tag) return 'misc';
     tag = String(tag).toLowerCase().trim();
-    // Map common aliases so we don't end up with look-alike clusters
-    var aliases = {
-      '일상': 'everyday', 'daily': 'everyday',
-      '음식': 'food', 'cooking': 'food',
-      '여행': 'travel', 'trip': 'travel',
-      '비즈니스': 'business', '업무': 'business', '회사': 'work',
-      '뉴스': 'news',
-      '문화': 'culture',
-      '사회': 'society',
-      '기술': 'tech', 'technology': 'tech', 'it': 'tech',
-      '스포츠': 'sports',
-      '음악': 'music', 'song': 'music',
-      '드라마': 'drama', '영화': 'movie',
-      '건강': 'health', '의료': 'health',
-      '공부': 'study', '학습': 'study', '교육': 'education'
-    };
-    if (aliases[tag]) return aliases[tag];
     if (CAT_COLORS[tag]) return tag;
-    return 'misc';
+    return CAT_ALIASES[tag] || 'misc';
+  }
+
+  // word_ko → tag from word_tags (filled server-side by content-qa). Loaded
+  // once per page; a few small pages of (word_ko, tag).
+  var _wordTags = null, _wordTagsLoading = null;
+  function loadWordTags() {
+    if (_wordTags) return Promise.resolve(_wordTags);
+    if (_wordTagsLoading) return _wordTagsLoading;
+    _wordTagsLoading = (async function() {
+      var map = {};
+      try {
+        var sb = (typeof getSupa === 'function') ? getSupa() : null;
+        if (sb) {
+          for (var from = 0; from < 30000; from += 1000) {
+            var r = await sb.from('word_tags').select('word_ko, tag').range(from, from + 999);
+            if (r.error || !r.data) break;
+            r.data.forEach(function(row) { if (row.word_ko) map[row.word_ko] = row.tag; });
+            if (r.data.length < 1000) break;
+          }
+        }
+      } catch (_) {}
+      _wordTags = map;
+      return map;
+    })();
+    return _wordTagsLoading;
   }
 
   // ── Three.js lazy load — jsdelivr (whitelisted by site CSP) ─
@@ -380,10 +390,11 @@
     var sb; try { sb = getSupa(); } catch(_) { return []; }
     if (!sb) return [];
     try {
-      var r = await sb.from('vocabulary_bank')
-        .select('word_ko, word_rom, word_en, interest_tag')
-        .eq('is_active', true)
-        .limit(3000);
+      var res = await Promise.all([
+        sb.from('vocabulary_bank').select('word_ko, word_rom, word_en').eq('is_active', true).limit(3000),
+        loadWordTags()
+      ]);
+      var r = res[0], tags = res[1] || {};
       if (r.error || !r.data) return [];
       // Dedup against user's saved set so we never double-render
       var savedSet = {};
@@ -400,18 +411,17 @@
           ko:   row.word_ko,
           rom:  row.word_rom || '',
           en:   row.word_en  || '',
-          _cat: normCategory(row.interest_tag || 'misc')
+          _cat: normCategory(tags[row.word_ko] || _ruleTagOne(row.word_ko, row.word_en))
         });
       }
       return out;
     } catch (e) { return []; }
   }
 
-  // Rule-based categorizer — no AI calls. Owner directive: eliminate
-  // user-side AI fallback (cost). When vocabulary_bank.interest_tag is
-  // empty we now categorise client-side via a Korean keyword bank +
-  // English-meaning regex. Hits a known category → use it. Otherwise
-  // 'misc' (and we'll continue improving the bank over time).
+  // Rule-based categorizer — no AI calls (owner directive: no user-side AI
+  // cost). Only a stop-gap for words content-qa hasn't tagged yet (it tags
+  // new words hourly into word_tags): a Korean keyword bank + English-
+  // meaning regex; no hit → 'misc'.
   //
   // The bank is intentionally permissive: each pattern can be a full
   // word, a stem, a suffix (^…), or an English-meaning regex (en:/…/).
@@ -420,7 +430,7 @@
   var RULE_CAT_BANK = [
     // ── Food ──────────────────────────────────────────────
     { cat: 'food',  rx: /^(밥|국|찌개|반찬|김치|떡|국수|면|라면|불고기|삼겹살|치킨|피자|햄버거|샐러드|빵|과자|사탕|초콜릿|커피|차|주스|우유|맥주|소주|와인|물|음식|식사|요리|레시피|간식|디저트|아이스크림|케이크|쿠키|과일|사과|바나나|딸기|포도|수박|오렌지|복숭아|채소|야채|당근|양파|마늘|고추|배추|상추|시금치|버섯|두부|계란|소고기|돼지고기|닭고기|생선|새우|게|조개|회|초밥|짜장면|짬뽕|탕수육|볶음밥|비빔밥|냉면|순두부|된장|간장|고추장|식초|소금|설탕|기름|땅콩|호두|아몬드|치즈|버터|요거트|시리얼|샌드위치|토스트|샐러드|스파게티|파스타|스테이크|캔디|쿠키)/ },
-    { cat: 'food',  rx: /^(먹|마시|삼키|씹|굽|튀기|볶|끓이|구이|튀김)/ },
+    { cat: 'food',  rx: /^(먹|마시|삼키|씹|굽|튀기|볶|끓이|구이|튀김)/, stem: true },
     { cat: 'food',  en: /(food|meal|eat|drink|cook|bake|fry|grill|dish|recipe|cuisine|snack|dessert|candy|cookie|bread|cake|coffee|tea|juice|milk|beer|wine|fruit|vegetable|meat|fish|noodle|soup|sauce)/i },
 
     // ── Travel ────────────────────────────────────────────
@@ -486,16 +496,32 @@
   // meanings, when provided via the optional ko→meta map). Returns a
   // { [ko]: tag } mapping covering only the words that matched a rule;
   // callers fall back to 'misc' for the rest.
+  // Korean rules match the WHOLE word (plus 하다/되다/적 endings): the old
+  // prefix match filed 회사 under drama (회) and 이유 under health (이).
+  // Rules marked stem:true are verb stems and still match as a prefix.
+  var _anchoredRx = [];
+  function _ruleRx(i) {
+    var rule = RULE_CAT_BANK[i];
+    if (!rule.rx || rule.stem) return rule.rx;
+    if (!_anchoredRx[i]) _anchoredRx[i] = new RegExp(rule.rx.source + '(하다|되다|하기|적|적인|스럽다)?$', rule.rx.flags);
+    return _anchoredRx[i];
+  }
+  function _ruleTagOne(ko, en) {
+    en = en ? (typeof khCleanMeaning === 'function' ? khCleanMeaning(en) : String(en)) : '';
+    for (var i = 0; i < RULE_CAT_BANK.length; i++) {
+      var rule = RULE_CAT_BANK[i], rx = _ruleRx(i);
+      if (rx && rx.test(ko)) return rule.cat;
+      // English rules match whole words only (ai ≠ "said").
+      if (rule.en && en && new RegExp('\\b' + rule.en.source + '\\b', 'i').test(en)) return rule.cat;
+    }
+    return '';
+  }
   function _ruleCategorize(words, koMetaMap) {
     var out = {};
     (words || []).forEach(function(ko) {
       var meta = koMetaMap && koMetaMap[ko];
-      var en = (meta && meta.en) || '';
-      for (var i = 0; i < RULE_CAT_BANK.length; i++) {
-        var rule = RULE_CAT_BANK[i];
-        if (rule.rx && rule.rx.test(ko)) { out[ko] = rule.cat; break; }
-        if (rule.en && en && rule.en.test(en)) { out[ko] = rule.cat; break; }
-      }
+      var tag = _ruleTagOne(ko, (meta && meta.en) || '');
+      if (tag) out[ko] = tag;
     });
     return out;
   }
@@ -504,7 +530,7 @@
   // word on each Universe open. Sized small (rule bank is cheap) but
   // mirrors the previous AI-cache contract so the rest of the file
   // keeps working unchanged.
-  var _CAT_CACHE_KEY = 'kh_universe_cat_cache_v2';
+  var _CAT_CACHE_KEY = 'kh_universe_cat_cache_v3';   // v2 held prefix-rule mistakes
   function _readCatCache() {
     try { return JSON.parse(localStorage.getItem(_CAT_CACHE_KEY) || '{}'); }
     catch(_) { return {}; }
@@ -528,66 +554,25 @@
     return cache;
   }
 
-  // For each input word, look up its interest_tag in vocabulary_bank.
-  // Missing words fall through to a Claude-powered categorizer (cached
-  // in localStorage). Final fallback: 'misc'. Results are merged back
-  // onto the word objects so subsequent rebuilds stay category-aware.
+  // Category per saved word: the server tag (word_tags) when there is one,
+  // else the local rule bank (new words get a server tag within the hour),
+  // else 'misc'. No AI calls from the browser.
   async function enrichWithCategories(words) {
     if (!Array.isArray(words) || !words.length) return;
-    // Skip if already enriched
-    var needsLookup = words.filter(function(w) {
-      return w && (w.word_ko || w.ko) && !w._cat;
-    });
+    var needsLookup = words.filter(function(w) { return w && (w.word_ko || w.ko) && !w._cat; });
     if (!needsLookup.length) return;
-    if (typeof getSupa !== 'function') {
-      needsLookup.forEach(function(w){ w._cat = 'misc'; });
-      return;
-    }
-    var sb; try { sb = getSupa(); } catch(_) {}
-    if (!sb) {
-      needsLookup.forEach(function(w){ w._cat = 'misc'; });
-      return;
-    }
-    var kos = needsLookup.map(function(w){ return w.word_ko || w.ko; });
-    try {
-      // Chunk to avoid huge `in` queries
-      var chunkSize = 200;
-      var found = {};
-      for (var i = 0; i < kos.length; i += chunkSize) {
-        var chunk = kos.slice(i, i + chunkSize);
-        var r = await sb.from('vocabulary_bank')
-          .select('word_ko, interest_tag')
-          .in('word_ko', chunk);
-        if (r && r.data) {
-          r.data.forEach(function(row) {
-            if (row && row.word_ko && row.interest_tag) found[row.word_ko] = row.interest_tag;
-          });
-        }
-      }
-      // Anything still missing → rule-based local categorizer (no AI
-      // call). Owner directive: eliminate user-side AI fallback. The
-      // rule bank above covers ~300 common Korean stems + English-
-      // meaning regexes; remaining unknowns honestly fall to 'misc'
-      // instead of paying tokens to guess.
-      var missing = needsLookup.map(function(w){ return w.word_ko || w.ko; })
-        .filter(function(ko){ return ko && !found[ko]; });
-      // Build a {ko → {en}} map so the English-meaning regex rules
-      // can match too (covers user-saved words with thin Korean
-      // morphology, e.g. proper nouns whose en gloss is clearer).
-      var koMeta = {};
-      needsLookup.forEach(function(w) {
-        var ko = w.word_ko || w.ko;
-        if (ko) koMeta[ko] = { en: (typeof khCleanMeaning==='function'?khCleanMeaning:String)(w.word_en || w.en || '') };
-      });
-      var ruleCache = missing.length ? _localCategorize(missing, koMeta) : {};
-      needsLookup.forEach(function(w) {
-        var ko = w.word_ko || w.ko;
-        var tag = found[ko] || ruleCache[ko] || 'misc';
-        w._cat = normCategory(tag);
-      });
-    } catch(_) {
-      needsLookup.forEach(function(w){ w._cat = 'misc'; });
-    }
+    var tags = {};
+    try { tags = await loadWordTags(); } catch (_) {}
+    var missing = [], koMeta = {};
+    needsLookup.forEach(function(w) {
+      var ko = w.word_ko || w.ko;
+      if (!tags[ko]) { missing.push(ko); koMeta[ko] = { en: w.word_en || w.en || '' }; }
+    });
+    var ruleCache = missing.length ? _localCategorize(missing, koMeta) : {};
+    needsLookup.forEach(function(w) {
+      var ko = w.word_ko || w.ko;
+      w._cat = normCategory(tags[ko] || ruleCache[ko] || 'misc');
+    });
   }
 
   function wordMastery(w) {
@@ -1035,8 +1020,9 @@
           delete c.userData._origOpacity;
         }
         if (c.userData._origScale !== undefined) {
-          var s = c.userData._origScale;
-          c.scale.set(s, s, 1);
+          var o = c.userData._origScale;
+          if (typeof o === 'object') c.scale.set(o.x, o.y, 1);
+          else c.scale.set(o, o, 1);
           delete c.userData._origScale;
         }
       });
@@ -1084,10 +1070,11 @@
       if (!c.userData || !c.material) return;
       if (c.userData.isStar && c.userData.category === cat) {
         c.userData._origOpacity = c.material.opacity;
-        c.userData._origScale = c.scale.x;
+        // Word labels are flagged isStar as well — scale x and y separately
+        // so a pill keeps its shape (scaling both to x stretched the text).
+        c.userData._origScale = { x: c.scale.x, y: c.scale.y };
         c.material.opacity = 1;
-        var s = c.scale.x * 1.45;
-        c.scale.set(s, s, 1);
+        c.scale.set(c.scale.x * 1.45, c.scale.y * 1.45, 1);
       } else if (c.userData.isStar) {
         c.userData._origOpacity = c.material.opacity;
         c.material.opacity = DIM_OPACITY;
@@ -1336,7 +1323,7 @@
       catOrder.forEach(function(cat) {
         var c = state.clusterCenters[cat];
         if (!c) return;
-        var catLabelText = cat.toUpperCase();
+        var catLabelText = CAT_LABELS[cat] || cat.toUpperCase();
         // Weakness hint suffix — count + tiny indicator
         var hintSuffix = '  ·  ' + c.count;
         var labelColor = catColor(cat);
@@ -1987,13 +1974,14 @@
       try {
         var sb = (typeof getSupa === 'function') ? getSupa() : null;
         if (!sb) return out;
+        var tags = await loadWordTags();
         for (var from = 0; from < 20000; from += 1000) {
           var r = await sb.from('vocabulary_bank')
-            .select('word_ko, word_rom, word_en, interest_tag')
+            .select('word_ko, word_rom, word_en')
             .eq('is_active', true).order('id').range(from, from + 999);
           if (r.error || !r.data) break;
           r.data.forEach(function(row) {
-            out.push({ ko: row.word_ko, rom: row.word_rom || '', en: row.word_en || '', _cat: normCategory(row.interest_tag || 'misc') });
+            out.push({ ko: row.word_ko, rom: row.word_rom || '', en: row.word_en || '', _cat: normCategory(tags[row.word_ko]) });
           });
           if (r.data.length < 1000) break;
         }
@@ -2021,7 +2009,11 @@
       // Category alone is too weak (any food word "relates" to any other) —
       // it only breaks ties between real meaning / family matches.
       if (score < 2) return;
-      if (cat && cat !== 'misc' && c._cat === cat) score += 1;
+      // One shared English word across two different topics is usually a
+      // coincidence (후보 "candidate" vs 신랑감 "groom candidate").
+      var known = cat && cat !== 'misc' && c._cat && c._cat !== 'misc';
+      if (known && c._cat !== cat && score <= 3) return;
+      if (known && c._cat === cat) score += 1;
       scored.push({ w: c, s: score + Math.random() * 0.2 });
     });
     scored.sort(function(a, b) { return b.s - a.s; });

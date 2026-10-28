@@ -11,6 +11,8 @@
 //      topic has none: generate → structural checks → every frame
 //      combination + every sentence / word order / gloss reviewed →
 //      flagged options removed. Only a pack that survives is saved.
+//   4. Tags vocabulary for the Word Universe map (word_tags) — bank words
+//      and words learners saved, once each, a few hundred per run.
 // Nothing here needs the owner to review content by hand; anything the
 // reviewer is unsure about is removed, never shown.
 //
@@ -20,6 +22,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { NATURAL_KOREAN_RULES } from '../_shared/korean-rules.ts'
 import { type Line, type Pack, validatePack, comboLines, dropBadOptions, sentenceLines, applySentenceFlags } from './pack.ts'
 import { type ContentRow, type Flag, contentLines, applyContentFlags, keLines, applyKeFlags } from './content.ts'
+import { tagPrompt, parseTags } from './tags.ts'
 
 const GEN_LEVELS = ['Starter', 'Beginner', 'Intermediate'] as const
 const ADMIN_EMAIL = 'enane960819@gmail.com'
@@ -217,7 +220,7 @@ Deno.serve(async (req) => {
 
       // 1) Weekly content — new or regenerated since the last check.
       const stale = !row.qa_at || new Date(row.updated_at).getTime() > new Date(row.qa_at).getTime() + 60_000
-      if (stale && body.only !== 'packs' && timeLeft() > 30_000) {
+      if (stale && !body.only?.match(/^(packs|tags)$/) && timeLeft() > 30_000) {
         try {
           didReview = true
           const flags = await review(sb, apiKey, row.level, topicKo, contentLines(row as ContentRow), 'a week of study content (vocabulary meanings, grammar examples, example and dictation sentences)')
@@ -230,7 +233,7 @@ Deno.serve(async (req) => {
       }
 
       // 2) Pre-baked Key Expressions for this topic.
-      if (body.only !== 'packs' && timeLeft() > 30_000) {
+      if (!body.only?.match(/^(packs|tags)$/) && timeLeft() > 30_000) {
         const key = `kex5::${topicKo}_${row.level}`
         try {
           const { data: ke } = await sb.from('grammar_examples_cache').select('patterns_json').eq('pattern_name', key).maybeSingle()
@@ -253,7 +256,7 @@ Deno.serve(async (req) => {
 
     // 3) Writing-flow topic packs — this week through PACK_WEEKS_AHEAD, from
     // the writing_topics rotation, so a pack is ready well before its week.
-    if (body.only !== 'content') {
+    if (body.only !== 'content' && body.only !== 'tags') {
       const want: Array<{ week: string; level: string; ko: string; en: string }> = []
       for (const level of GEN_LEVELS) {
         const { data: topics } = await sb.from('writing_topics').select('topic_ko,topic_en')
@@ -309,6 +312,34 @@ Deno.serve(async (req) => {
           }
         }))
       }
+    }
+
+    // 4) Word Universe categories — tag words that have none yet, with
+    // whatever time is left (≈250 words per call, ~20 s each).
+    if (!body.only || body.only === 'tags') {
+      let tagged = 0, calls = 0
+      while (timeLeft() > 45_000 && calls < (body.only === 'tags' ? 4 : 2)) {
+        const { data: words, error } = await sb.rpc('untagged_words', { p_limit: 250 })
+        if (error) { report.push({ step: 'tags', error: error.message }); break }
+        const list = (words || []).map((w: any) => ({ ko: String(w.word_ko), en: String(w.word_en || '') }))
+        if (!list.length) break
+        calls += 1
+        try {
+          const tags = parseTags(await claudeJson(sb, apiKey, tagPrompt(list), 6000, 'word-tags'), list)
+          const got = Object.keys(tags)
+          // A word the model skipped twice in a row would block the queue;
+          // once most of a batch came back, file the rest under daily.
+          const rows = list.map((w) => ({ word_ko: w.ko, tag: tags[w.ko] || (got.length >= list.length * 0.8 ? 'daily' : null) }))
+            .filter((r) => r.tag)
+          if (rows.length) {
+            const { error: upErr } = await sb.from('word_tags').upsert(rows.map((r) => ({ ...r, updated_at: new Date().toISOString() })), { onConflict: 'word_ko' })
+            if (upErr) { report.push({ step: 'tags', error: upErr.message }); break }
+          }
+          tagged += rows.length
+          if (list.length < 250) break
+        } catch (e) { report.push({ step: 'tags', error: (e as Error).message }); break }
+      }
+      if (calls) report.push({ step: 'tags', tagged })
     }
 
     // Last run's outcome, readable by the admin page (no secrets in it).
