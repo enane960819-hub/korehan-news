@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Life in Korea — KoreHani</title>
-<meta name="description" content="Practical guides for living in Korea — residence card, visa extension, renting, part-time work, health insurance — in plain English, with the Korean you will see.">
+<meta name="description" content="Practical guides for living in and exploring Korea — visas, housing, health, food markets and day trips — in plain English, with the Korean you will see.">
 <link rel="canonical" href="https://korehani.com/korehan-life.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="KoreHani">
@@ -22,7 +22,7 @@
 <script>
 // Guides are a static file on the CDN (built with the DB seed) — fetched while
 // the page scripts load; the DB copy refreshes them in the background.
-window._lkPrefetch = fetch('data/life-guides.json?v=20261029a').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+window._lkPrefetch = fetch('data/life-guides.json?v=20261029b').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
 </script>
 <style>
 /* Life in Korea (mockup I C/D, 2026-10-28) — dark surface like Word Bank. */
@@ -91,6 +91,39 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 .lk-sheet small { display:block; font-size:12px; color:rgba(255,255,255,.5); }
 .lk-sheet span { font-size:14px; color:#e2e8f0; }
 @media (min-width:900px) { .lk-sheet { bottom:28px; } }
+/* Guide v2 (mockup L) */
+.lk-h2 { font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:#7dd3fc; font-weight:800; margin:18px 0 8px; }
+.lk-facts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0 0 12px; }
+.lk-facts div { background:rgba(255,255,255,.05); border-radius:12px; padding:10px 6px; text-align:center; }
+.lk-facts b { display:block; color:#fff; font-size:15px; } .lk-facts small { font-size:11.5px; color:rgba(255,255,255,.55); }
+.lk-ck label { display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-top:1px solid rgba(255,255,255,.07); font-size:14px; cursor:pointer; }
+.lk-ck input { width:18px; height:18px; margin-top:1px; accent-color:#34d399; flex-shrink:0; }
+.lk-items { display:grid; gap:6px; }
+.lk-items div { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr); gap:10px; padding:9px 12px; border-radius:11px; background:rgba(255,255,255,.04); font-size:13.5px; }
+.lk-items b { color:#fff; } .lk-items span { color:rgba(255,255,255,.75); }
+.lk-real { margin-top:16px; background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.35); border-radius:14px; padding:12px 14px; }
+.lk-real h2 { display:flex; gap:7px; align-items:center; font-size:14px; color:#fcd34d; margin:0 0 6px; }
+.lk-real li { font-size:13.5px; line-height:1.55; margin:0 0 6px 18px; color:rgba(255,255,255,.88); }
+.lk-real small { display:block; font-size:11.5px; color:rgba(255,255,255,.45); }
+.lk-warn { display:flex; gap:10px; margin-top:12px; background:rgba(239,68,68,.1); border:1px solid rgba(248,113,113,.35); border-radius:14px; padding:12px 14px; font-size:13.5px; line-height:1.55; }
+.lk-warn .kh-ui-icon { color:#fca5a5; flex-shrink:0; margin-top:2px; }
+.lk-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.lk-chips button { font:inherit; font-size:12.5px; padding:7px 12px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#cbd5e1; cursor:pointer; }
+.lk-chips button.on { background:rgba(37,99,235,.3); border-color:rgba(147,197,253,.6); color:#fff; }
+.lk-office { background:rgba(255,255,255,.05); border-radius:14px; padding:12px 14px; margin-bottom:8px; }
+.lk-office b { display:block; color:#fff; font-size:14.5px; }
+.lk-office small { display:block; font-size:12.5px; color:rgba(255,255,255,.62); line-height:1.55; margin-top:3px; }
+.lk-maps { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.lk-maps a { display:inline-flex; align-items:center; gap:4px; font-size:12px; padding:6px 10px; border-radius:9px; background:rgba(255,255,255,.08); color:#93c5fd; text-decoration:none; }
+.lk-tip { font-size:12.5px; color:#fcd34d; margin-top:7px; }
+.lk-photo { margin:0 0 12px; }
+.lk-photo img { display:block; width:100%; max-height:360px; object-fit:cover; border-radius:14px; background:rgba(255,255,255,.05); }
+.lk-photo figcaption { font-size:12px; color:rgba(255,255,255,.55); margin-top:6px; line-height:1.45; }
+.lk-photo figcaption b { color:rgba(255,255,255,.85); }
+.lk-ph-del { font:inherit; font-size:11px; color:#fca5a5; background:none; border:0; text-decoration:underline; cursor:pointer; }
+.lk-admin { margin-top:18px; padding:12px; border:1px dashed rgba(251,191,36,.5); border-radius:12px; font-size:13px; color:#fcd34d; }
+@media (min-width:760px) { .lk-cats { grid-template-columns:repeat(5,minmax(0,1fr)); } }
+.c-food .lk-ic { background:rgba(249,115,22,.2); color:#fdba74; } .c-travel .lk-ic { background:rgba(14,165,233,.2); color:#7dd3fc; }
 </style>
 </head>
 <body class="kh-page-life">
@@ -98,7 +131,7 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 <main id="lk-root" class="lk-wrap"><div class="lk-empty">Loading guides…</div></main>
 <div id="kh-footer"></div>
 <!-- Page script first: it paints from the head prefetch while the shared scripts load. -->
-<script src="js/features/life-guides.js?v=20261029c"></script>
+<script src="js/features/life-guides.js?v=20261029d"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/security.js?v=20260525r"></script>
 <script src="js/core/storage.js?v=20260525r"></script>
