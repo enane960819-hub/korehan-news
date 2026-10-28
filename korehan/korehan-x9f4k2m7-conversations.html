@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conversation Admin — KoreHani</title>
+<link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* Conversation admin (mockup F ⑤, 2026-10-28): draft → review → publish,
+   line-by-line editor, role-play options, live learner preview. */
+*{box-sizing:border-box}
+body{margin:0;background:#f8fafc;color:#0f172a;font-family:'DM Sans','Noto Sans KR',sans-serif;font-size:13px}
+.top{height:54px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 18px}
+.top a{color:#cbd5e1;text-decoration:none;font-size:12.5px;margin-left:14px}
+.app{display:flex;height:calc(100vh - 54px)}
+.list{width:400px;flex-shrink:0;border-right:1px solid #e5e9f0;background:#fff;display:flex;flex-direction:column}
+.lh{padding:14px 16px;border-bottom:1px solid #eef1f5}
+.lh-t{display:flex;justify-content:space-between;align-items:center}.lh-t b{font-size:16px}
+.tabs{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.tabs button{font:inherit;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:8px;border:0;background:#f1f5f9;color:#475569;cursor:pointer}
+.tabs button.on{background:#0f172a;color:#fff}
+.tabs i{font-style:normal;margin-left:4px;opacity:.7}
+.search{width:100%;margin-top:10px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:9px;font:inherit}
+.rows{overflow-y:auto;flex:1}
+.lr{display:flex;gap:10px;align-items:center;padding:10px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer}
+.lr:hover{background:#f8fafc}.lr.on{background:#eff6ff}
+.av2{position:relative;width:40px;height:34px;flex-shrink:0}
+.av2 i{position:absolute;width:26px;height:26px;border-radius:50%;border:2px solid #fff;font-style:normal;font-size:11px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Noto Sans KR',sans-serif}
+.av2 i:first-child{left:0;top:0}.av2 i:last-child{right:0;bottom:0}
+.ct{flex:1;min-width:0}.ct b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ct span{display:block;font-size:11px;color:#64748b}
+.qa{font-size:10px;font-weight:800;padding:3px 7px;border-radius:7px;flex-shrink:0}
+.qa.ok{background:#dcfce7;color:#15803d}.qa.flag{background:#fee2e2;color:#b91c1c}.qa.wait{background:#f1f5f9;color:#64748b}.qa.draft{background:#fef3c7;color:#92400e}
+.btn{font:inherit;font-size:12px;font-weight:800;padding:7px 12px;border-radius:9px;border:0;background:#2563eb;color:#fff;cursor:pointer}
+.btn.g{background:#f1f5f9;color:#334155}.btn.r{background:#fee2e2;color:#b91c1c}.btn:disabled{opacity:.6;cursor:default}
+.ed{flex:1;display:flex;flex-direction:column;min-width:0}
+.eh{padding:12px 18px;border-bottom:1px solid #eef1f5;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.eh b{font-size:15px}.eh small{display:block;font-size:11px;color:#64748b}
+.eb{display:flex;flex:1;min-height:0}
+.form{flex:1;padding:14px 18px;overflow-y:auto}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.f label{display:block;font-size:10.5px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.f input,.f select{width:100%;padding:7px 9px;border:1px solid #e2e8f0;border-radius:9px;background:#fff;font:inherit;font-size:12.5px}
+.sec{font-size:10.5px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px;display:flex;justify-content:space-between;align-items:center}
+.sec button{font:inherit;font-size:11.5px;font-weight:700;color:#2563eb;background:none;border:0;cursor:pointer;text-transform:none;letter-spacing:0}
+.ln{display:grid;grid-template-columns:110px 1fr 1fr 74px 64px;gap:6px;align-items:center;margin-bottom:5px}
+.ln select,.ln input{width:100%;padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;font:inherit;font-size:12px}
+.ln input.ko{font-family:'Noto Sans KR',sans-serif}
+.ln.flag input.ko{border-color:#fca5a5;background:#fff1f2}
+.ln .opt{font-size:10.5px;font-weight:800;color:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:6px 4px;text-align:center;cursor:pointer}
+.ln .opt.none{color:#94a3b8;background:#f8fafc;border-color:#e2e8f0;cursor:default}
+.ln .mv{display:flex;gap:2px}.ln .mv button{flex:1;font:inherit;font-size:11px;border:1px solid #e2e8f0;background:#fff;border-radius:6px;cursor:pointer;padding:5px 0}
+.flagbox{margin:2px 0 8px;padding:7px 10px;border-radius:9px;background:#fff1f2;border:1px solid #fecdd3;color:#9f1239;font-size:11.5px}
+.flagbox button{font:inherit;font-size:11px;font-weight:700;color:#be123c;background:#fff;border:1px solid #fecdd3;border-radius:7px;padding:2px 7px;margin-left:6px;cursor:pointer}
+.kx{display:grid;grid-template-columns:1fr 1fr 28px;gap:6px;margin-bottom:5px}
+.kx input{padding:6px 8px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px;font:inherit;font-size:12px}
+.kx button,.ow button{border:1px solid #e2e8f0;background:#fff;border-radius:7px;cursor:pointer}
+.opts{margin:4px 0 10px;padding:10px;border-radius:10px;background:#faf5ff;border:1px solid #ede9fe}
+.opts h5{margin:0 0 6px;font-size:11.5px}
+.ow{display:grid;grid-template-columns:1fr 1fr 28px;gap:6px;margin-bottom:5px}
+.ow input{padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;font-size:12px}
+.ow .ko{font-family:'Noto Sans KR',sans-serif}
+.hint{font-size:11px;color:#64748b;margin:4px 0}
+.prev{width:320px;flex-shrink:0;border-left:1px solid #e5e9f0;background:#eef2f7;padding:14px;overflow-y:auto}
+.prev > small{display:block;font-size:10.5px;font-weight:800;color:#64748b;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;text-align:center}
+.mini{background:#f6f8fc;border-radius:20px;overflow:hidden;box-shadow:0 8px 20px rgba(15,23,42,.12)}
+.mh{background:#fff;padding:10px 12px;border-bottom:1px solid #e8edf4}.mh b{display:block;font-size:13px}.mh span{font-family:'Noto Sans KR',sans-serif;font-size:10.5px;color:#64748b}
+.mh em{display:inline-block;margin-top:5px;font-style:normal;font-size:10px;font-weight:800;padding:2px 7px;border-radius:7px;background:#fce7f3;color:#9d174d}
+.chat{padding:10px}
+.cl{display:flex;gap:6px;margin-bottom:8px;align-items:flex-end}.cl.r{flex-direction:row-reverse}
+.cl i{width:22px;height:22px;border-radius:50%;font-style:normal;font-size:9px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Noto Sans KR',sans-serif}
+.bb{max-width:80%;padding:7px 10px;border-radius:13px;background:#fff;border:1px solid #e8edf4;font-family:'Noto Sans KR',sans-serif;font-size:12px;line-height:1.5}
+.cl.r .bb{background:#2563eb;color:#fff;border-color:#2563eb}
+.bb u{text-decoration:none;background:#fef3c7;color:#92400e;border-radius:3px}.cl.r .bb u{background:rgba(250,204,21,.32);color:#fff}
+.rpq{margin:10px 0 0;padding:10px;border-radius:12px;background:#0f1d3f;color:#e2e8f0}
+.rpq b{display:block;font-size:11.5px;margin-bottom:6px;color:#7dd3fc}
+.rpq div{font-family:'Noto Sans KR',sans-serif;font-size:11.5px;padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.06);margin-bottom:4px}
+.rpq div.ok{background:rgba(16,185,129,.2);color:#a7f3d0}
+.rpq small{display:block;font-family:'DM Sans',sans-serif;font-size:10.5px;color:#fde68a;margin-top:2px}
+.foot{padding:10px 18px;border-top:1px solid #eef1f5;background:#fff;display:flex;gap:8px;justify-content:space-between;align-items:center}
+.empty{padding:60px 20px;text-align:center;color:#64748b}
+.gate{max-width:420px;margin:80px auto;text-align:center;color:#334155}
+#kh-daily-mission,.mobile-bottom-nav,.mobile-sticky-study,#kh-header,#kh-footer{display:none!important}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:9px 14px;border-radius:10px;font-size:12.5px;z-index:99;display:none}
+</style>
+</head>
+<body>
+<div class="top"><b>Conversation Admin</b><span><a href="korehan-x9f4k2m7.html">← Main admin (generator)</a><a href="korehan-conversations.html" target="_blank">Open learner page ↗</a></span></div>
+<div id="app" class="app"><div class="gate">Checking admin access…</div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/security.js?v=20260525r"></script>
+<script src="js/core/storage.js?v=20260525r"></script>
+<script src="js/core/icons.js?v=20260525r"></script>
+<script src="js/core/modals.js?v=20260525r"></script>
+<script src="js/core/plans.js?v=20261028b"></script>
+<script src="js/features/comments.js?v=20261016a"></script>
+<script src="js/features/sidebar.js?v=20261027d"></script>
+<script src="korehan-shared.js?v=20261028f"></script>
+<script src="js/features/conv-page.js?v=20261028b"></script>
+<script>
+// ─────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────
+var CA = { rows: [], tab: 'draft', lvl: '', q: '', cur: null, cast: [], openOpt: -1, dirty: false };
+var LVN = { s: 'Seed', b: 'Sprout', i: 'Tree', a: 'Forest' };
+var CATS = ['everyday','friends','family','work','dating','food','travel','shopping','school','health','service','culture','drama'];
+var COL = ['#2563eb','#db2777','#ea580c','#16a34a','#7c3aed','#0891b2','#ca8a04','#0f172a'];
+function e(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+function hsh(s){ var h=0; s=String(s||''); for (var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return Math.abs(h); }
+function colorOf(n){ return COL[hsh(n)%COL.length]; }
+function pairCol(a,b){ var ca=colorOf(a), cb=colorOf(b); if (cb===ca) cb=COL[(COL.indexOf(ca)+3)%COL.length]; var m={}; m[a]=ca; m[b]=cb; return m; }
+function toast(t){ var el=document.getElementById('toast'); el.textContent=t; el.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){ el.style.display='none'; }, 2600); }
+function parseData(r){ var d=r.data; if (typeof d==='string'){ try{ d=JSON.parse(d); }catch(_){ d={}; } } return d||{}; }
+function flagsOf(r){ return (r.qa_report && Array.isArray(r.qa_report.flags)) ? r.qa_report.flags : []; }
+function qaBadge(r){
+  if (r.status === 'draft' && !r.qa_report) return '<span class="qa wait">Not reviewed</span>';
+  var f = flagsOf(r).length;
+  if (f) return '<span class="qa flag">' + f + ' flag' + (f>1?'s':'') + '</span>';
+  if (r.qa_report) return '<span class="qa ok">Reviewed</span>';
+  return r.status === 'draft' ? '<span class="qa draft">Draft</span>' : '';
+}
+
+// ─────────────────────────────────────────────────────────────
+// Load
+// ─────────────────────────────────────────────────────────────
+async function caInit(){
+  for (var i=0;i<40 && (typeof supaUser==='undefined' || !supaUser);i++) await new Promise(function(r){ setTimeout(r,150); });
+  var roles = (typeof khLoadRoles==='function') ? await khLoadRoles() : { admin:false };
+  if (!roles || !roles.admin) { document.getElementById('app').innerHTML = '<div class="gate"><b>Admins only.</b><p>Sign in with the admin account on the main admin page first.</p><a class="btn" href="korehan-x9f4k2m7.html">Main admin</a></div>'; return; }
+  var sb = getSupa();
+  var cast = await Promise.all([
+    sb.from('cast_characters').select('name').eq('active', true),
+    sb.from('role_characters').select('name, role').eq('active', true)
+  ]);
+  CA.cast = (cast[0].data||[]).map(function(c){ return c.name; }).concat((cast[1].data||[]).map(function(c){ return c.name; }));
+  await caLoad();
+  var q = new URLSearchParams(location.search).get('id');
+  if (q) caOpen(q);
+}
+async function caLoad(){
+  var r = await getSupa().from('conversations_data').select('*').order('created_at', { ascending:false }).limit(1000);
+  if (r.error) { toast('Load failed: ' + r.error.message); return; }
+  CA.rows = (r.data||[]).map(function(x){ if (!x.status) x.status = 'published'; return x; });
+  caRender();
+}
+function caVisible(){
+  return CA.rows.filter(function(r){
+    if (CA.tab === 'published' && r.status !== 'published') return false;
+    if (CA.tab === 'draft' && r.status !== 'draft') return false;
+    if (CA.tab === 'flagged' && !flagsOf(r).length) return false;
+    if (CA.lvl && r.lvl !== CA.lvl) return false;
+    if (CA.q) { var s = (r.ctx_en||'') + ' ' + (r.ctx||'') + ' ' + (r.name||''); if (s.toLowerCase().indexOf(CA.q.toLowerCase()) < 0) return false; }
+    return true;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Render
+// ─────────────────────────────────────────────────────────────
+function caRender(){
+  var n = { published: CA.rows.filter(function(r){ return r.status==='published'; }).length, draft: CA.rows.filter(function(r){ return r.status==='draft'; }).length, flagged: CA.rows.filter(function(r){ return flagsOf(r).length; }).length };
+  var list = caVisible();
+  var app = document.getElementById('app');
+  app.innerHTML = '<div class="list"><div class="lh"><div class="lh-t"><b>Conversations</b><span><button class="btn g" onclick="caReviewAll()" title="AI review of drafts not reviewed yet">Review drafts</button> <button class="btn" onclick="caNew()">+ New</button></span></div>'
+    + '<div class="tabs">' + [['draft','Drafts'],['flagged','Flagged'],['published','Published']].map(function(t){ return '<button class="' + (CA.tab===t[0]?'on':'') + '" onclick="CA.tab=\'' + t[0] + '\';caRender()">' + t[1] + '<i>' + n[t[0]] + '</i></button>'; }).join('') + '</div>'
+    + '<div class="tabs">' + [['','All levels'],['s','Seed'],['b','Sprout'],['i','Tree'],['a','Forest']].map(function(t){ return '<button class="' + (CA.lvl===t[0]?'on':'') + '" onclick="CA.lvl=\'' + t[0] + '\';caRender()">' + t[1] + '</button>'; }).join('') + '</div>'
+    + '<input class="search" placeholder="Search title / situation / speakers" value="' + e(CA.q) + '" oninput="CA.q=this.value;caRenderRows()"></div>'
+    + '<div class="rows" id="ca-rows"></div></div>'
+    + '<div class="ed" id="ca-ed">' + (CA.cur ? '' : '<div class="empty">' + (CA.tab==='draft' && !n.draft ? 'No drafts. Generated conversations land here — use the generator on the main admin, or + New.' : 'Pick a conversation to edit.') + '</div>') + '</div>';
+  caRenderRows();
+  if (CA.cur) caRenderEditor();
+}
+function caRenderRows(){
+  var box = document.getElementById('ca-rows'); if (!box) return;
+  var list = caVisible();
+  box.innerHTML = list.length ? list.map(function(r){
+    var d = parseData(r), msgs = d.msgs || [];
+    var sp = []; msgs.forEach(function(m){ var w=m.who||m.name; if (w && sp.indexOf(w)<0) sp.push(w); });
+    var pc = pairCol(sp[0]||'?', sp[1]||'?');
+    return '<div class="lr' + (CA.cur && String(CA.cur.id)===String(r.id) ? ' on' : '') + '" onclick="caOpen(' + r.id + ')">'
+      + '<span class="av2"><i style="background:' + pc[sp[0]||'?'] + '">' + e((sp[0]||'?').charAt(0)) + '</i><i style="background:' + pc[sp[1]||'?'] + '">' + e((sp[1]||'?').charAt(0)) + '</i></span>'
+      + '<span class="ct"><b>' + e(r.ctx_en || d.topic || r.ctx || 'Untitled') + '</b><span>' + e(LVN[r.lvl]||r.lvl||'') + ' · ' + e(r.cat||'') + ' · ' + msgs.length + ' lines' + (r.status==='draft' ? ' · draft' : '') + '</span></span>'
+      + qaBadge(r) + '</div>';
+  }).join('') : '<div class="empty">Nothing here.</div>';
+}
+
+// The working copy edited in the form.
+function caOpen(id){
+  if (CA.dirty && !confirm('Discard unsaved changes?')) return;
+  var r = CA.rows.filter(function(x){ return String(x.id)===String(id); })[0];
+  if (!r) return;
+  var d = parseData(r);
+  var msgs = (d.msgs||[]).filter(function(m){ return m && m.s !== 'n'; }).map(function(m){ return { s:m.s, who:String(m.who||m.name||''), txt:String(m.txt||m.text||''), en:String(m.en||''), options: Array.isArray(m.options) ? m.options.slice() : null }; });
+  var sp = []; msgs.forEach(function(m){ if (m.who && sp.indexOf(m.who)<0) sp.push(m.who); });
+  CA.cur = { id:r.id, row:r, d:d, status:r.status, lvl:r.lvl||d.lvl||'b', cat:r.cat||d.cat||'everyday', title:r.ctx_en||d.topic||'', ctx:r.ctx||d.ctx||'',
+             a:sp[0]||'', b:sp[1]||'', speech: Object.assign({}, d.speech||{}), msgs:msgs,
+             kx:(d.key_expressions||[]).map(function(k){ return { ko:k.ko||'', en:k.en||'' }; }), flags: flagsOf(r) };
+  CA.openOpt = -1; CA.dirty = false;
+  try { history.replaceState(null, '', '?id=' + id); } catch(_) {}
+  caRender();
+}
+function caNew(){
+  if (CA.dirty && !confirm('Discard unsaved changes?')) return;
+  CA.cur = { id:null, row:null, d:{}, status:'draft', lvl:'b', cat:'everyday', title:'', ctx:'', a:'', b:'', speech:{}, msgs:[{ s:'l', who:'', txt:'', en:'' },{ s:'r', who:'', txt:'', en:'' }], kx:[], flags:[] };
+  CA.openOpt = -1; CA.dirty = true;
+  caRender();
+}
+
+// Conversation object in the learner shape (for rules + preview).
+function caAsConv(){
+  var c = CA.cur;
+  var row = { id:c.id||0, status:c.status, lvl:c.lvl, cat:c.cat, ctx:c.ctx, ctx_en:c.title,
+    data: Object.assign({}, c.d, { speech: Object.keys(c.speech).length ? c.speech : undefined, key_expressions:c.kx.filter(function(k){ return k.ko; }),
+      msgs: c.msgs.map(function(m){ return { s:m.s, who:m.who, txt:m.txt, en:m.en, options:m.options || undefined }; }) }) };
+  return window.khConvRules ? khConvRules.norm(row) : null;
+}
+
+function caRenderEditor(){
+  var c = CA.cur, ed = document.getElementById('ca-ed'); if (!ed) return;
+  var conv = caAsConv();
+  var lv = conv ? conv.level : {};
+  var flagByLine = {}; (c.flags||[]).forEach(function(f){ (flagByLine[f.line] = flagByLine[f.line] || []).push(f); });
+  var speakers = [c.a, c.b].filter(Boolean);
+  var castOpts = CA.cast.map(function(n){ return '<option value="' + e(n) + '">'; }).join('');
+  ed.innerHTML = '<div class="eh"><div><b>' + e(c.title || 'New conversation') + '</b><small>' + (c.id ? (c.status==='draft' ? 'Draft' : 'Published') + ' · #' + c.id : 'Not saved yet') + (c.flags.length ? ' · reviewer flagged ' + c.flags.length : (c.row && c.row.qa_report ? ' · reviewed' : '')) + '</small></div>'
+    + '<span><button class="btn g" onclick="caReview()" id="ca-rv">Review with AI</button> ' + (c.id ? '<button class="btn r" onclick="caDelete()">Delete</button>' : '') + '</span></div>'
+    + '<div class="eb"><div class="form">'
+    + '<div class="grid">'
+    +   '<div class="f"><label>Level</label><select onchange="caSet(\'lvl\',this.value)">' + Object.keys(LVN).map(function(k){ return '<option value="' + k + '"' + (c.lvl===k?' selected':'') + '>' + LVN[k] + '</option>'; }).join('') + '</select></div>'
+    +   '<div class="f"><label>Category</label><select onchange="caSet(\'cat\',this.value)">' + CATS.map(function(k){ return '<option' + (c.cat===k?' selected':'') + '>' + k + '</option>'; }).join('') + '</select></div>'
+    +   '<div class="f"><label>Speaker A</label><input list="ca-cast" value="' + e(c.a) + '" onchange="caRenameSpeaker(\'a\',this.value)"></div>'
+    +   '<div class="f"><label>Speaker B (learner plays)</label><input list="ca-cast" value="' + e(c.b) + '" onchange="caRenameSpeaker(\'b\',this.value)"></div>'
+    + '</div><datalist id="ca-cast">' + castOpts + '</datalist>'
+    + '<div class="grid" style="grid-template-columns:2fr 2fr 1fr 1fr">'
+    +   '<div class="f"><label>Title (English)</label><input value="' + e(c.title) + '" oninput="caSet(\'title\',this.value,true)"></div>'
+    +   '<div class="f"><label>Situation (Korean)</label><input value="' + e(c.ctx) + '" oninput="caSet(\'ctx\',this.value,true)"></div>'
+    +   speakers.map(function(sp, i){ var cur = c.speech[sp] || ''; return '<div class="f"><label>' + (i?'B':'A') + ' speech level</label><select onchange="caSpeech(\'' + e(sp) + '\',this.value)"><option value="">Auto (' + e(lv[sp]||'—') + ')</option><option' + (cur==='반말'?' selected':'') + '>반말</option><option' + (cur==='존댓말'?' selected':'') + '>존댓말</option></select></div>'; }).join('')
+    + '</div>'
+    + '<div class="sec">Lines <button onclick="caAddLine()">+ Add line</button></div>'
+    + c.msgs.map(function(m, i){
+        var fl = flagByLine[i] || [];
+        var isB = m.who === c.b && i > 0;
+        var own = m.options && m.options.length;
+        return '<div class="ln' + (fl.length ? ' flag' : '') + '">'
+          + '<select onchange="caLine(' + i + ',\'who\',this.value)">' + speakers.concat(m.who && speakers.indexOf(m.who)<0 ? [m.who] : []).map(function(sp){ return '<option' + (m.who===sp?' selected':'') + '>' + e(sp) + '</option>'; }).join('') + (speakers.length ? '' : '<option>' + e(m.who) + '</option>') + '</select>'
+          + '<input class="ko" value="' + e(m.txt) + '" oninput="caLine(' + i + ',\'txt\',this.value,true)" placeholder="Korean">'
+          + '<input value="' + e(m.en) + '" oninput="caLine(' + i + ',\'en\',this.value,true)" placeholder="English">'
+          + (isB ? '<span class="opt" onclick="caToggleOpt(' + i + ')">' + (own ? 'Custom ×' + m.options.length : 'Auto') + '</span>' : '<span class="opt none">—</span>')
+          + '<span class="mv"><button title="Up" onclick="caMove(' + i + ',-1)">↑</button><button title="Down" onclick="caMove(' + i + ',1)">↓</button><button title="Delete" onclick="caDelLine(' + i + ')">✕</button></span>'
+          + '</div>'
+          + fl.map(function(f){ return '<div class="flagbox">Reviewer: ' + e(f.reason||'') + (f.fix ? ' — suggests “' + e(f.fix) + '” <button onclick="caApplyFix(' + i + ',\'' + e(String(f.fix).replace(/'/g,'’')) + '\')">Use</button>' : '') + ' <button onclick="caDismiss(' + i + ')">Dismiss</button></div>'; }).join('')
+          + (CA.openOpt === i ? caOptsEditor(conv, i) : '');
+      }).join('')
+    + '<div class="sec">Key expressions <button onclick="caSuggestKx()">Suggest from essential expressions</button></div>'
+    + c.kx.map(function(k, i){ return '<div class="kx"><input value="' + e(k.ko) + '" oninput="caKx(' + i + ',\'ko\',this.value)" placeholder="Korean"><input value="' + e(k.en) + '" oninput="caKx(' + i + ',\'en\',this.value)" placeholder="English"><button onclick="caKxDel(' + i + ')">✕</button></div>'; }).join('')
+    + '<button class="btn g" style="margin-top:4px" onclick="caKxAdd()">+ Expression</button>'
+    + '<p class="hint">Key expressions are highlighted in the conversation, explained in step 2 and saved to My Words from the done screen.</p>'
+    + '</div>'
+    + '<div class="prev"><small>Learner view</small><div id="ca-prev"></div></div></div>'
+    + '<div class="foot"><span class="hint">' + (c.status==='published' ? 'Live for learners. Saving keeps it published.' : 'Drafts are invisible to learners until you publish.') + '</span>'
+    + '<span>' + (c.status==='published' ? '<button class="btn g" onclick="caSave(\'draft\')">Unpublish</button> <button class="btn" onclick="caSave(\'published\')">Save</button>' : '<button class="btn g" onclick="caSave(\'draft\')">Save draft</button> <button class="btn" onclick="caSave(\'published\')">Publish</button>') + '</span></div>';
+  caRenderPreview();
+}
+function caOptsEditor(conv, i){
+  var m = CA.cur.msgs[i];
+  var auto = [];
+  if (conv) {
+    var qs = khConvRules.buildRoleplay(Object.assign({}, conv, { msgs: conv.msgs.map(function(x, j){ return j === i ? Object.assign({}, x, { options: null }) : x; }) }));
+    var q = qs.filter(function(x){ return x.line.txt === m.txt; })[0];
+    if (q) auto = q.opts.filter(function(o){ return !o.ok; });
+  }
+  var own = m.options || [];
+  return '<div class="opts"><h5>Role-play wrong options for this line</h5>'
+    + (own.length ? own.map(function(o, k){ return '<div class="ow"><input class="ko" value="' + e(o.ko) + '" oninput="caOpt(' + i + ',' + k + ',\'ko\',this.value)" placeholder="Wrong reply (Korean)"><input value="' + e(o.why||'') + '" oninput="caOpt(' + i + ',' + k + ',\'why\',this.value)" placeholder="Why it is wrong (shown to learner)"><button onclick="caOptDel(' + i + ',' + k + ')">✕</button></div>'; }).join('')
+      : '<p class="hint">Using automatic options: ' + (auto.length ? auto.map(function(o){ return '“' + e(o.ko) + '”'; }).join(', ') : 'none could be built — add your own') + '</p>')
+    + '<button class="btn g" onclick="caOptAdd(' + i + ')">+ Wrong option</button>'
+    + (own.length ? ' <button class="btn g" onclick="CA.cur.msgs[' + i + '].options=null;caChanged();caRenderEditor()">Use automatic</button>' : (auto.length ? ' <button class="btn g" onclick="caOptCopyAuto(' + i + ')">Edit the automatic ones</button>' : ''))
+    + '</div>';
+}
+function caRenderPreview(){
+  var box = document.getElementById('ca-prev'); if (!box) return;
+  var conv = caAsConv(); if (!conv) return;
+  var pc = pairCol(conv.speakers[0]||'', conv.speakers[1]||'');
+  var la = conv.level[conv.speakers[0]], lb = conv.level[conv.speakers[1]];
+  var qs = khConvRules.buildRoleplay(conv);
+  box.innerHTML = '<div class="mini"><div class="mh"><b>' + e(conv.title) + '</b><span>' + e(conv.ctx) + '</span><br>' + (la ? '<em>' + e(la===lb ? la : '반말 ↔ 존댓말') + '</em>' : '') + '</div>'
+    + '<div class="chat">' + conv.msgs.map(function(m){ var r = m.who === conv.speakers[1]; return '<div class="cl' + (r?' r':'') + '"><i style="background:' + (pc[m.who]||'#64748b') + '">' + e(m.who.charAt(0)) + '</i><div class="bb">' + khConvRules.markKx(conv, m.txt) + '</div></div>'; }).join('') + '</div></div>'
+    + (qs[0] ? '<div class="rpq"><b>Role-play preview · ' + qs.length + ' question' + (qs.length>1?'s':'') + '</b>' + qs[0].opts.map(function(o){ return '<div class="' + (o.ok?'ok':'') + '">' + e(o.ko) + (o.why ? '<small>' + e(o.why) + '</small>' : '') + '</div>'; }).join('') + '</div>' : '<div class="rpq"><b>No role-play</b><div>Speaker B needs at least one line after the first that can get options.</div></div>');
+}
+
+// ─────────────────────────────────────────────────────────────
+// Edit actions
+// ─────────────────────────────────────────────────────────────
+function caChanged(){ CA.dirty = true; }
+function caSet(k, v, quiet){ CA.cur[k] = v; caChanged(); if (quiet) caRenderPreview(); else caRenderEditor(); }
+function caSpeech(sp, v){ if (v) CA.cur.speech[sp] = v; else delete CA.cur.speech[sp]; caChanged(); caRenderEditor(); }
+function caRenameSpeaker(which, v){
+  var c = CA.cur, old = c[which]; v = String(v||'').trim(); if (!v) return;
+  c.msgs.forEach(function(m){ if (m.who === old) m.who = v; });
+  if (c.speech[old]) { c.speech[v] = c.speech[old]; delete c.speech[old]; }
+  c[which] = v;
+  if (!old) c.msgs.forEach(function(m, i){ if (!m.who) m.who = (i % 2 === 0) ? (c.a||v) : (c.b||v); });
+  caChanged(); caRenderEditor();
+}
+function caLine(i, k, v, quiet){ CA.cur.msgs[i][k] = v; caChanged(); if (quiet) caRenderPreview(); else caRenderEditor(); }
+function caAddLine(){ var c = CA.cur, last = c.msgs[c.msgs.length-1]; var who = last && last.who === c.a ? c.b : c.a; c.msgs.push({ s: who === c.a ? 'l' : 'r', who: who, txt:'', en:'' }); caChanged(); caRenderEditor(); }
+function caMove(i, d){ var m = CA.cur.msgs, j = i + d; if (j < 0 || j >= m.length) return; var t = m[i]; m[i] = m[j]; m[j] = t; CA.cur.flags = []; caChanged(); caRenderEditor(); }
+function caDelLine(i){ if (CA.cur.msgs.length <= 2) { toast('A conversation needs at least 2 lines'); return; } CA.cur.msgs.splice(i, 1); CA.cur.flags = []; caChanged(); caRenderEditor(); }
+function caToggleOpt(i){ CA.openOpt = CA.openOpt === i ? -1 : i; caRenderEditor(); }
+function caOpt(i, k, f, v){ CA.cur.msgs[i].options[k][f] = v; caChanged(); caRenderPreview(); }
+function caOptAdd(i){ var m = CA.cur.msgs[i]; m.options = (m.options||[]).concat([{ ko:'', why:'' }]); caChanged(); caRenderEditor(); }
+function caOptDel(i, k){ var m = CA.cur.msgs[i]; m.options.splice(k, 1); if (!m.options.length) m.options = null; caChanged(); caRenderEditor(); }
+function caOptCopyAuto(i){
+  var conv = caAsConv(), m = CA.cur.msgs[i];
+  var q = khConvRules.buildRoleplay(conv).filter(function(x){ return x.line.txt === m.txt; })[0];
+  m.options = q ? q.opts.filter(function(o){ return !o.ok; }).map(function(o){ return { ko:o.ko, why:o.why||'' }; }) : [{ ko:'', why:'' }];
+  caChanged(); caRenderEditor();
+}
+function caKx(i, k, v){ CA.cur.kx[i][k] = v; caChanged(); caRenderPreview(); }
+function caKxAdd(){ CA.cur.kx.push({ ko:'', en:'' }); caChanged(); caRenderEditor(); }
+function caKxDel(i){ CA.cur.kx.splice(i, 1); caChanged(); caRenderEditor(); }
+function caApplyFix(i, fix){ CA.cur.msgs[i].txt = fix; caDismiss(i); }
+function caDismiss(i){ CA.cur.flags = CA.cur.flags.filter(function(f){ return f.line !== i; }); caChanged(); caRenderEditor(); }
+async function caSuggestKx(){
+  var c = CA.cur, chain = { s:['s'], b:['s','b'], i:['b','i'], a:['i','a'] }[c.lvl] || ['b'];
+  var names = { s:'Starter', b:'Beginner', i:'Intermediate', a:'Advanced' };
+  var r = await getSupa().from('essential_expressions').select('ko, en, level').eq('active', true).limit(1000);
+  var text = c.msgs.map(function(m){ return m.txt; }).join(' ');
+  var have = {}; c.kx.forEach(function(k){ have[k.ko] = 1; });
+  var found = (r.data||[]).filter(function(x){
+    var piece = String(x.ko||'').split(/[~…]/).map(function(p){ return p.replace(/[?.!]/g,'').trim(); }).filter(function(p){ return p.length >= 2; }).sort(function(a,b){ return b.length - a.length; })[0];
+    return piece && text.indexOf(piece) >= 0 && !have[x.ko];
+  });
+  if (!found.length) { toast('No essential expressions found in these lines'); return; }
+  found.slice(0, 6).forEach(function(x){ c.kx.push({ ko:x.ko, en:x.en||'' }); });
+  caChanged(); caRenderEditor(); toast('Added ' + Math.min(6, found.length) + ' expression(s)');
+}
+
+// ─────────────────────────────────────────────────────────────
+// Save / publish / delete
+// ─────────────────────────────────────────────────────────────
+async function caSave(status){
+  var c = CA.cur;
+  var msgs = c.msgs.filter(function(m){ return m.txt.trim(); });
+  if (msgs.length < 2 || !c.a || !c.b) { toast('Needs two speakers and at least 2 lines'); return; }
+  if (status === 'published' && c.flags.length && !confirm('The reviewer flagged ' + c.flags.length + ' line(s). Publish anyway?')) return;
+  var data = Object.assign({}, c.d, {
+    name: c.a + ' & ' + c.b, ctx: c.ctx, lvl: c.lvl, cat: c.cat, topic: c.title,
+    msgs: msgs.map(function(m){ var o = { s: m.s || (m.who === c.a ? 'l' : 'r'), who: m.who, txt: m.txt.trim(), en: m.en.trim() }; if (m.options && m.options.length) o.options = m.options.filter(function(x){ return x.ko && x.ko.trim(); }); return o; }),
+    key_expressions: c.kx.filter(function(k){ return k.ko.trim(); })
+  });
+  if (Object.keys(c.speech).length) data.speech = c.speech; else delete data.speech;
+  var row = { name: data.name, ctx: c.ctx, ctx_en: c.title || null, lvl: c.lvl, cat: c.cat, data: data, status: status,
+              qa_report: c.row && c.row.qa_report ? Object.assign({}, c.row.qa_report, { flags: c.flags }) : (c.flags.length ? { flags: c.flags } : null) };
+  var sb = getSupa(), res;
+  if (c.id) res = await sb.from('conversations_data').update(row).eq('id', c.id).select('*').single();
+  else res = await sb.from('conversations_data').insert(row).select('*').single();
+  if (res.error) { toast('Save failed: ' + res.error.message); return; }
+  CA.dirty = false;
+  toast(status === 'published' ? 'Published' : 'Saved as draft');
+  await caLoad();
+  caOpen(res.data.id);
+}
+async function caDelete(){
+  if (!CA.cur.id || !confirm('Delete this conversation for good?')) return;
+  var r = await getSupa().from('conversations_data').delete().eq('id', CA.cur.id);
+  if (r.error) { toast('Delete failed: ' + r.error.message); return; }
+  CA.cur = null; CA.dirty = false; toast('Deleted'); await caLoad();
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI review (one call per conversation — only when an admin asks)
+// ─────────────────────────────────────────────────────────────
+function caReviewPrompt(c){
+  return 'You are a strict native Korean teacher checking a dialogue for ' + (LVN[c.lvl]||'') + '-level foreign learners.\n'
+    + 'Situation: ' + c.ctx + '\nSpeakers: ' + c.a + ', ' + c.b + '\n'
+    + 'Flag EVERY line a native teacher would mark: unnatural or translated-sounding Korean; wrong particle, spacing or conjugation; a speech level that does not fit the relationship or switches without reason; honorific -시- on oneself; a reply that does not follow from the previous line; a wrong English translation. A flagged line is fixed by an editor, so when in doubt, flag it.\n'
+    + 'For each flagged line give "fix" = the corrected Korean line. Do not flag lines that are natural.\n'
+    + 'Return ONLY JSON: {"flags":[{"line":<index>,"reason":"short English reason","fix":"corrected Korean"}]}\n\nLines (index | speaker | Korean | English):\n'
+    + c.msgs.map(function(m, i){ return i + ' | ' + m.who + ' | ' + m.txt + ' | ' + m.en; }).join('\n');
+}
+async function caReviewOne(c){
+  var res = await callClaude({ feature: 'conv-admin-review', model: 'claude-sonnet-4-6', max_tokens: 1200, messages: [{ role: 'user', content: caReviewPrompt(c) }] });
+  var txt = ((res && res.content) || []).map(function(b){ return b.text || ''; }).join('');
+  var s = txt.indexOf('{'), en = txt.lastIndexOf('}');
+  var out = s >= 0 ? JSON.parse(txt.slice(s, en + 1)) : { flags: [] };
+  return (out.flags || []).filter(function(f){ return f && Number.isInteger(f.line) && f.line >= 0 && f.line < c.msgs.length; });
+}
+async function caReview(){
+  var c = CA.cur, btn = document.getElementById('ca-rv');
+  if (!c || !c.msgs.length) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Reviewing…'; }
+  try {
+    c.flags = await caReviewOne(c);
+    c.row = c.row || {}; c.row.qa_report = { flags: c.flags, at: new Date().toISOString() };
+    if (c.id) await getSupa().from('conversations_data').update({ qa_report: c.row.qa_report, qa_at: new Date().toISOString() }).eq('id', c.id);
+    toast(c.flags.length ? c.flags.length + ' line(s) flagged' : 'No problems found');
+  } catch (err) { toast('Review failed: ' + (err && err.message || err)); }
+  caRenderEditor();
+}
+async function caReviewAll(){
+  var todo = CA.rows.filter(function(r){ return r.status === 'draft' && !r.qa_report; });
+  if (!todo.length) { toast('Every draft is reviewed'); return; }
+  if (!confirm('Run the AI review on ' + todo.length + ' draft(s)? One AI call each.')) return;
+  for (var i = 0; i < todo.length; i++) {
+    var r = todo[i], d = parseData(r);
+    var msgs = (d.msgs||[]).filter(function(m){ return m && m.s !== 'n'; }).map(function(m){ return { who:m.who||m.name||'', txt:m.txt||m.text||'', en:m.en||'' }; });
+    var sp = []; msgs.forEach(function(m){ if (m.who && sp.indexOf(m.who)<0) sp.push(m.who); });
+    try {
+      toast('Reviewing ' + (i + 1) + ' / ' + todo.length + '…');
+      var flags = await caReviewOne({ lvl:r.lvl, ctx:r.ctx||d.ctx||'', a:sp[0]||'', b:sp[1]||'', msgs:msgs });
+      await getSupa().from('conversations_data').update({ qa_report: { flags: flags, at: new Date().toISOString() }, qa_at: new Date().toISOString() }).eq('id', r.id);
+    } catch (_) {}
+  }
+  await caLoad(); toast('Review finished');
+}
+
+window.addEventListener('beforeunload', function(ev){ if (CA.dirty) { ev.preventDefault(); ev.returnValue = ''; } });
+document.addEventListener('DOMContentLoaded', caInit);
+</script>
+</body>
+</html>
