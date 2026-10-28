@@ -1,1 +1,1 @@
-2026-10-28: first import of 한국어기초사전 graded words (owner approved)
+2026-10-28: topic tags from 의미 범주 (owner-approved import, re-run is idempotent)
