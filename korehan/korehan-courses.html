@@ -7,13 +7,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0d1b3d">
 <title>Courses — KoreHani</title>
-<meta name="description" content="KoreHani plans — Free and Premium (7-day free trial): tutor writing review, weekend live class, Article & Conversation Study.">
+<meta name="description" content="KoreHani plans — Free and Premium: tutor writing review, weekend live class, Article & Conversation Study.">
 <link rel="canonical" href="https://korehani.com/korehan-courses.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="KoreHani">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Courses — KoreHani">
-<meta property="og:description" content="KoreHani plans — Free and Premium (7-day free trial): tutor writing review, weekend live class, Article & Conversation Study.">
+<meta property="og:description" content="KoreHani plans — Free and Premium: tutor writing review, weekend live class, Article & Conversation Study.">
 <meta property="og:image" content="https://korehani.com/img/guide/step1-tap-analysis.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://korehani.com/img/guide/step1-tap-analysis.jpg">
@@ -376,7 +376,7 @@ html body.mobile-light .plan-card.featured, html body.mobile-redesign .plan-card
         </div>
         <!-- PREMIUM -->
         <div class="plan-card featured">
-          <div class="plan-badge">7-day free trial</div>
+          <div class="plan-badge">Cancel anytime</div>
           <div class="plan-name">Premium</div>
           <div class="plan-price-row">
             <div class="plan-price" id="prem-price">$8.99</div>
@@ -395,7 +395,7 @@ html body.mobile-light .plan-card.featured, html body.mobile-redesign .plan-card
             <li>Monthly progress report</li>
             <li>Higher daily AI limits &mdash; more AI feedback</li>
           </ul>
-          <button class="plan-cta primary" id="prem-cta" onclick="enroll()">Start 7-day free trial &rarr;</button>
+          <button class="plan-cta primary" id="prem-cta" onclick="enroll()">Get Premium &rarr;</button>
         </div>
       </div>
       <div class="pricing-note" id="pricing-note">Cancel anytime from your account &middot; Secure checkout by Stripe &middot; Questions? han@korehani.com</div>
@@ -615,7 +615,7 @@ html body.mobile-light .plan-card.featured, html body.mobile-redesign .plan-card
     </details>
     <details class="faq-item">
       <summary>Is there a free trial?</summary>
-      <p>Yes &mdash; your first Premium subscription starts with a 7-day free trial. You won&rsquo;t be charged if you cancel before it ends. The Free plan stays free forever.</p>
+      <p>No. Every free feature stays free for as long as you like, so you can see how KoreHani works before paying. Premium is month to month and you can cancel anytime from your account.</p>
     </details>
     <details class="faq-item">
       <summary>What happens to my data if I cancel?</summary>
@@ -643,8 +643,8 @@ html body.mobile-light .plan-card.featured, html body.mobile-redesign .plan-card
 <!-- CTA -->
 <div class="cta-section">
   <h2>Ready to actually write Korean?</h2>
-  <p>Start free, or try Premium free for 7 days. Cancel anytime.</p>
-  <button class="cta-btn" onclick="enroll()">Start 7-day free trial &rarr;</button>
+  <p>Start free, upgrade when you're ready. Month to month, cancel anytime.</p>
+  <button class="cta-btn" onclick="enroll()">Get Premium &rarr;</button>
   <div class="cta-note">Secure checkout by Stripe &middot; Questions? han@korehani.com</div>
 </div>
 
@@ -701,7 +701,7 @@ html body.mobile-light .plan-card.featured, html body.mobile-redesign .plan-card
 <script src="js/core/ui-states.js?v=20260525r"></script>
 <script src="js/core/analytics.js?v=20261014a"></script>
 <script src="js/core/user-analytics.js?v=20261014a"></script>
-<script src="js/core/plans.js?v=20261028a"></script>
+<script src="js/core/plans.js?v=20261028b"></script>
 <script src="js/core/article-cache.js?v=20261028a"></script>
 <script src="js/core/phrases.js?v=20261016a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
@@ -776,7 +776,7 @@ async function enroll() {
   } catch (e) {
     khAlert('Checkout', 'Checkout could not be started. Please try again in a moment.', { okLabel: 'OK' });
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.lbl || 'Start 7-day free trial &rarr;'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.lbl || 'Get Premium &rarr;'; }
   }
 }
 
@@ -789,26 +789,8 @@ async function manageSubscription() {
 }
 
 // Return from Stripe + current-plan state on the Premium card.
-// Learners who already used their trial (or had a subscription) are charged
-// immediately — don't advertise a free trial to them.
-var _cpTrialChecked = false;
-async function _cpUpdateTrialCopy() {
-  if (_cpTrialChecked || typeof supaUser === 'undefined' || !supaUser || typeof getSupa !== 'function') return;
-  _cpTrialChecked = true;
-  try {
-    var r = await getSupa().from('user_subscriptions').select('trial_used,payment_provider').eq('user_id', supaUser.id).maybeSingle();
-    var used = r && r.data && (r.data.trial_used || r.data.payment_provider === 'stripe');
-    if (!used || (typeof getUserPlan === 'function' && getUserPlan() === 'premium')) return;
-    document.querySelectorAll('.plan-badge').forEach(function(b){ if (/free trial/i.test(b.textContent)) b.style.display = 'none'; });
-    document.querySelectorAll('#prem-cta, .cta-btn').forEach(function(b){
-      if (/free trial/i.test(b.textContent)) { b.innerHTML = 'Get Premium &rarr;'; b.dataset.lbl = 'Get Premium &rarr;'; }
-    });
-  } catch(_) {}
-}
-window.addEventListener('kh-auth-signed-in', function(){ _cpTrialChecked = false; _cpUpdateTrialCopy(); });
 
 function renderPlanCta() {
-  _cpUpdateTrialCopy();
   var isPremium = typeof getUserPlan === 'function' && getUserPlan() === 'premium';
   if (!isPremium) return false;
   var btn = document.getElementById('prem-cta');
@@ -835,14 +817,11 @@ function pollPlanAfterCheckout() {
 document.addEventListener('DOMContentLoaded', function() {
   var q = new URLSearchParams(location.search);
   var b = q.get('billing');
-  var trial = q.get('trial') === '1';
   if (b) {
     q.delete('billing');
-    q.delete('trial');
     try { history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); } catch (e) {}
     if (b === 'ok') {
-      if (trial) khAlert('Welcome to Premium 🎉', 'Your 7-day free trial has started (it can take a few seconds to show up). Head to the Study Room to begin!', { okLabel: 'Let\'s go' });
-      else khAlert('Welcome to Premium! 🎉', 'Your Premium subscription is active (it can take a few seconds to show up). Head to the Study Room to begin!', { okLabel: 'Let\'s go' });
+      khAlert('Welcome to Premium! 🎉', 'Your Premium subscription is active (it can take a few seconds to show up). Head to the Study Room to begin!', { okLabel: 'Let\'s go' });
       pollPlanAfterCheckout();
     }
   }

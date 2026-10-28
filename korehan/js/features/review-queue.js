@@ -178,7 +178,11 @@
       + '#rq .rq-nx div{flex:1;padding:12px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);text-align:center}'
       + '#rq .rq-nx b{display:block;font-size:18px;color:#fff}#rq .rq-nx small{font-size:10.5px;color:rgba(255,255,255,.5)}'
       + '#rq .rq-empty{text-align:center;padding:70px 10px}#rq .rq-empty h2{color:#fff;font-size:19px;margin:12px 0 6px}#rq .rq-empty p{color:rgba(255,255,255,.6);font-size:13.5px;line-height:1.6;margin:0 0 18px}'
-      + '#rq .rq-empty .rq-ic{display:inline-flex;width:44px;height:44px;color:#a78bfa}#rq .rq-empty .rq-ic svg{width:44px;height:44px}';
+      + '#rq .rq-empty .rq-ic{display:inline-flex;width:44px;height:44px;color:#a78bfa}#rq .rq-empty .rq-ic svg{width:44px;height:44px}'
+      + '#rq .rq-nud{margin-top:14px;padding:14px;border-radius:16px;background:linear-gradient(160deg,rgba(124,58,237,.22),rgba(37,99,235,.12));border:1px solid rgba(167,139,250,.45)}'
+      + '#rq .rq-nud b{display:block;font-size:13.5px;color:#fff;margin-bottom:4px}#rq .rq-nud p{font-size:12px;color:rgba(255,255,255,.7);line-height:1.5;margin:0}'
+      + '#rq .rq-nud-row{display:flex;gap:8px;margin-top:10px}#rq .rq-nud-row button{flex:1;padding:9px;border-radius:11px;border:0;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer}'
+      + '#rq .rq-nud-row .a1{background:#7c3aed;color:#fff}#rq .rq-nud-row .a2{background:rgba(255,255,255,.08);color:#cbd5e1}';
     document.head.appendChild(st);
   }
 
@@ -316,6 +320,7 @@
       + (missed.length ? '<div class="rq-box"><h4>Missed today</h4>' + missed.map(function (it) {
           return '<div class="rq-w"><b>' + esc(it.ko) + '</b><span>' + esc(it.en) + '</span><em>' + (it.kind === 'saved' ? 'back tomorrow' : 'not saved') + '</em></div>';
         }).join('') + (toSave.length ? '<button class="rq-save" id="rq-save" onclick="khReviewQueue._saveMissed()">Save ' + toSave.length + ' missed word' + (toSave.length === 1 ? '' : 's') + ' to My Words</button>' : '') + '</div>' : '')
+      + (pct >= 60 ? nudge() : '')
       + '<div class="rq-nx"><div><b id="rq-tmr">–</b><small>due tomorrow</small></div><div><b id="rq-all">–</b><small>words in your queue</small></div></div>'
       + '<button class="rq-next" style="margin-top:14px" onclick="khReviewQueue.close()">Done</button></div>';
     if (window.renderKhLucideIcons) { try { renderKhLucideIcons(); } catch (_) {} }
@@ -333,6 +338,24 @@
       if (a && r[0] && !r[0].error) a.textContent = r[0].count || 0;
       if (b && r[1] && !r[1].error) b.textContent = r[1].count || 0;
     } catch (_) {}
+  }
+
+  // One soft Premium card after a review went well (60%+) — free learners only, at
+  // most once every 3 days (mockup E).
+  function nudge() {
+    try {
+      if (typeof canAccess !== 'function' || canAccess('article_study')) return '';
+      if (typeof _userPlanLoaded !== 'undefined' && !_userPlanLoaded) return '';
+      var last = Number(localStorage.getItem('kh_premium_nudge_at') || 0);
+      if (Date.now() - last < 3 * 86400000) return '';
+      localStorage.setItem('kh_premium_nudge_at', String(Date.now()));
+    } catch (_) { return ''; }
+    var streak = 0;
+    try { streak = (typeof getCurrentStreak === 'function') ? (getCurrentStreak() || 0) : 0; } catch (_) {}
+    return '<div class="rq-nud"><b>' + (streak >= 2 ? 'You’re on a ' + streak + '-day streak' : 'Nice review') + '</b>'
+      + '<p>Keep the momentum: Premium turns today’s news into a 10-minute lesson and gives your weekly writing a tutor review.</p>'
+      + '<div class="rq-nud-row"><button type="button" class="a1" onclick="khReviewQueue.close();showUpgradeModal(\'article_study\',\'premium\')">See Premium</button>'
+      + '<button type="button" class="a2" onclick="this.closest(\'.rq-nud\').remove()">Not now</button></div></div>';
   }
 
   async function saveMissed() {
