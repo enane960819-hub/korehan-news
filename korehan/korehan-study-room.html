@@ -21,7 +21,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20261027a">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260527f">
-<link rel="stylesheet" href="korehan-study-room.css?v=20261028g">
+<link rel="stylesheet" href="korehan-study-room.css?v=20261028h">
 </head>
 <body>
 <div id="kh-header"></div>
@@ -939,7 +939,7 @@
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
 <script src="js/kh-basics.js?v=20261023a" defer></script>
-<script src="korehan-study-room.js?v=20261028f" defer></script>
+<script src="korehan-study-room.js?v=20261028h" defer></script>
 <script src="js/features/writing-flow.js?v=20261028f" defer></script>
 <script src="js/features/sr-home.js?v=20261028f" defer></script>
 <!-- ══════════════════════════════════════════════════════
@@ -3663,7 +3663,7 @@ function closeReviewModal() {
     </div>
     <div style="text-align:right">
       <div class="ft-pct" id="ft-pct">0%</div>
-      <div class="ft-sub">COMPLETED</div>
+      <div class="ft-sub" id="ft-pct-lbl">COMPLETED</div>
     </div>
   </div>
   <div class="ft-chart-wrap">
@@ -3697,7 +3697,6 @@ function closeReviewModal() {
     <div style="font-size:24px;font-weight:900;color:#fff;display:inline-flex;align-items:center;gap:8px"><i data-lucide="flame" class="kh-ui-icon" style="width:24px;height:24px;color:#fb923c" aria-hidden="true"></i><span>Korean Slang</span></div>
     <div style="display:flex;gap:6px;margin-top:10px">
       <button id="slang-tab-daily" onclick="switchSlangView('daily')" style="padding:6px 14px;border-radius:8px;border:1px solid rgba(124,58,237,.4);background:rgba(124,58,237,.25);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Today's 3</button>
-      <button id="slang-tab-all" onclick="switchSlangView('all')" style="padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.4);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All Slangs</button>
       <button id="slang-tab-quiz" onclick="startSlangQuiz()" style="padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.4);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Quiz</button>
     </div>
   </div>

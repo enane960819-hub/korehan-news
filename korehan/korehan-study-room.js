@@ -5191,13 +5191,15 @@ function renderSlang() {
 // Initial load — try DB first, fallback to hardcoded
 (function(){ _KOREAN_SLANGS = _SLANG_FALLBACK; _slangIdx = Math.floor(Math.random() * _SLANG_FALLBACK.length); setTimeout(renderSlang, 500); setTimeout(loadSlangsFromDB, 1000); })();
 
-// ── Daily 3 Slangs (seeded by date) ──
-function getDailySlang3() {
-  var today = new Date().toISOString().slice(0,10);
+// ── Daily 3 Slangs (KST day) ──
+// Only slangs with an example conversation, so every card shows real use.
+function _slangDayPicks(dayOffset) {
+  var day = new Date(Date.now() + 9 * 3600000 - (dayOffset || 0) * 86400000).toISOString().slice(0,10);
   var seed = 0;
-  for (var i = 0; i < today.length; i++) seed = ((seed << 5) - seed) + today.charCodeAt(i);
+  for (var i = 0; i < day.length; i++) seed = ((seed << 5) - seed) + day.charCodeAt(i);
   seed = Math.abs(seed);
-  var pool = _KOREAN_SLANGS.slice();
+  var pool = _KOREAN_SLANGS.filter(function(x){ return Array.isArray(x.chat) && x.chat.length; });
+  if (pool.length < 3) pool = _KOREAN_SLANGS.slice();
   var picks = [];
   for (var j = 0; j < 3 && pool.length > 0; j++) {
     var idx = (seed + j * 7919) % pool.length;
@@ -5205,6 +5207,7 @@ function getDailySlang3() {
   }
   return picks;
 }
+function getDailySlang3() { return _slangDayPicks(0); }
 
 // Avatar colors for dark messenger
 var _dmAvatarColors = ['#7c3aed','#059669','#dc2626','#0284c7','#d97706','#be185d','#4f46e5','#0d9488'];
@@ -5214,9 +5217,10 @@ function buildDmChat(chatArr) {
   // Word-only slang entries have no chat — don't render an empty
   // "Real Conversation" box for them.
   if (!Array.isArray(chatArr) || !chatArr.length) return '';
-  var html = '<div class="dm-chat"><div class="dm-header">Real Conversation</div>';
+  var html = '<div class="dm-chat"><div class="dm-header">Example chat <small>Tap a message to hear it</small></div>';
   (chatArr || []).forEach(function(m) {
-    var bubble = m.msg.replace(/<hl>/g, '<span class="dm-hl">').replace(/<\/hl>/g, '</span>');
+    var plain = String(m.msg || '').replace(/<\/?hl>/g, '').replace(/'/g, "\\'");
+    var bubble = '<span onclick="speakHangul(\'' + plain + '\')" style="cursor:pointer">' + m.msg.replace(/<hl>/g, '<span class="dm-hl">').replace(/<\/hl>/g, '</span>') + '</span>';
     if (m.me) {
       html += '<div class="dm-row me"><div class="dm-bubble">' + bubble + '</div></div>';
     } else {
@@ -5232,7 +5236,7 @@ function buildDmChat(chatArr) {
 }
 
 // ── Slang Modal ──
-var _slangView = 'daily'; // 'daily' | 'all' | 'quiz'
+var _slangView = 'daily'; // 'daily' | 'quiz'
 var _slangQuiz = { questions:[], current:0, score:0 };
 
 function openSlangModal() {
@@ -5254,17 +5258,16 @@ function renderSlangModal() {
   var content = document.getElementById('slang-content');
   if (!content) return;
   if (_slangView === 'daily') renderSlangDaily(content);
-  else if (_slangView === 'all') renderSlangAll(content);
   else if (_slangView === 'quiz') renderSlangQuiz(content);
   // Update tab buttons
-  ['daily','all','quiz'].forEach(function(t) {
+  ['daily','quiz'].forEach(function(t) {
     var b = document.getElementById('slang-tab-' + t);
     if (b) { b.style.background = (t === _slangView) ? 'rgba(124,58,237,.25)' : 'transparent'; b.style.color = (t === _slangView) ? '#c4b5fd' : 'rgba(255,255,255,.4)'; b.style.borderColor = (t === _slangView) ? 'rgba(124,58,237,.4)' : 'rgba(255,255,255,.1)'; }
   });
 }
 
 function switchSlangView(view) {
-  if ((view === 'all' || view === 'quiz') && !canAccess('slang_full')) {
+  if (view === 'quiz' && !canAccess('slang_full')) {
     closeSlangModal(); requirePlan('slang_full'); return;
   }
   _slangView = view; renderSlangModal();
@@ -5272,50 +5275,26 @@ function switchSlangView(view) {
 
 function renderSlangDaily(el) {
   var daily = getDailySlang3();
-  var html = '<div style="font-size:13px;color:rgba(255,255,255,.35);margin-bottom:14px">3 slang expressions to learn today</div>';
+  var html = '<div style="font-size:13px;color:rgba(255,255,255,.45);margin-bottom:14px">3 new slang words a day — with a real chat for each</div>';
   daily.forEach(function(s, i) {
+    var ko = String(s.ko).replace(/'/g, "\\'");
     var tags = '<span class="slang-tag slang-tag-gen">' + escapeHTML(_slangTagEn(s.tag)) + '</span>';
     if (s.warn) tags += _slangWarnChip(s);
     html += '<div style="margin-bottom:16px;padding:16px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)">'
       + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
-      + '<span style="font-size:11px;color:rgba(255,255,255,.2);font-weight:800">#' + (i+1) + '</span>'
+      + '<span style="font-size:11px;color:rgba(255,255,255,.3);font-weight:800">#' + (i+1) + '</span>'
       + tags + '</div>'
-      + '<div class="slang-detail-hd" style="font-size:24px">' + s.ko + '</div>'
+      + '<div style="display:flex;align-items:center;gap:10px"><div class="slang-detail-hd" style="font-size:24px;margin:0">' + s.ko + '</div>'
+      + '<button onclick="speakHangul(\'' + ko + '\')" aria-label="Listen" style="width:34px;height:34px;border-radius:50%;border:1px solid rgba(196,181,253,.3);background:rgba(196,181,253,.1);color:#c4b5fd;display:inline-flex;align-items:center;justify-content:center;cursor:pointer">' + khIcon('volume-2') + '</button></div>'
       + '<div class="slang-detail-en">' + s.en + '</div>'
-      + (s.descEn ? '<div class="slang-detail-desc">' + escapeHTML(s.descEn) + '</div>' : '')
-      + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\',\'slang\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(196,181,253,.25);background:rgba(196,181,253,.08);color:#c4b5fd;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">+ Word Book</button>'
+      + (s.descEn ? '<div class="slang-detail-desc">' + escapeHTML(s.descEn) + '</div>'
+         : (s.desc ? '<div class="slang-detail-desc" lang="ko">' + escapeHTML(s.desc) + '</div>' : ''))
+      + buildDmChat(s.chat)
+      + '<button onclick="saveToWordBook(\'' + ko + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\',\'slang\')" style="padding:6px 14px;border-radius:8px;border:1px solid rgba(196,181,253,.25);background:rgba(196,181,253,.08);color:#c4b5fd;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px">+ Word Book</button>'
       + '</div>';
   });
+  html += '<button onclick="startSlangQuiz()" style="width:100%;padding:12px;border-radius:12px;border:0;background:#7c3aed;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Quiz me on this week\'s slang</button>';
   el.innerHTML = html;
-}
-
-function renderSlangAll(el) {
-  el.innerHTML = '<div class="slang-grid" id="slang-grid-all"></div><div id="slang-detail-all" style="display:none"></div>';
-  var grid = document.getElementById('slang-grid-all');
-  grid.innerHTML = _KOREAN_SLANGS.map(function(s, i) {
-    return '<div class="slang-card" onclick="showSlangDetailAll(' + i + ')" id="sca-' + i + '">'
-      + '<div class="slang-card-ko">' + s.ko + '</div>'
-      + '<div class="slang-card-en">' + s.en + '</div>'
-      + '</div>';
-  }).join('');
-}
-
-function showSlangDetailAll(idx) {
-  var s = _KOREAN_SLANGS[idx];
-  document.querySelectorAll('#slang-grid-all .slang-card').forEach(function(c){ c.classList.remove('active'); });
-  var card = document.getElementById('sca-' + idx);
-  if (card) card.classList.add('active');
-  var det = document.getElementById('slang-detail-all');
-  var tags = '<span class="slang-tag slang-tag-gen">' + escapeHTML(_slangTagEn(s.tag)) + '</span>';
-  if (s.warn) tags += _slangWarnChip(s);
-  det.innerHTML = '<div class="slang-detail">' + tags
-    + '<div class="slang-detail-hd">' + s.ko + '</div>'
-    + '<div class="slang-detail-en">' + s.en + '</div>'
-    + (s.descEn ? '<div class="slang-detail-desc">' + escapeHTML(s.descEn) + '</div>' : '')
-    + '<button onclick="saveToWordBook(\'' + s.ko.replace(/'/g,"\\'") + '\',\'' + s.en.replace(/'/g,"\\'") + '\',\'\',\'slang\')" style="padding:5px 14px;border-radius:8px;border:1px solid rgba(196,181,253,.25);background:rgba(196,181,253,.08);color:#c4b5fd;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">+ Word Book</button>'
-    + '</div>';
-  det.style.display = 'block';
-  det.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
 // ── Slang Quiz ──
@@ -5330,7 +5309,11 @@ function startSlangQuiz() {
     setTimeout(loadSlangsFromDB, 600);
     return;
   }
-  var pool = _KOREAN_SLANGS.slice().sort(function() { return Math.random() - 0.5; }).slice(0, 5);
+  // Review what the learner has met: today's 3 plus the last 6 days' picks.
+  var seenKo = {}, week = [];
+  for (var d = 0; d < 7; d++) _slangDayPicks(d).forEach(function(x){ if (!seenKo[x.ko]) { seenKo[x.ko] = 1; week.push(x); } });
+  var pool = week.slice(0, 3).concat(week.slice(3).sort(function() { return Math.random() - 0.5; })).slice(0, 5)
+    .sort(function() { return Math.random() - 0.5; });
   _slangQuiz = { questions: pool.map(function(s) {
     // Distractors must differ from the answer in BOTH ko AND en. Without
     // the en check, two slangs that share the same English meaning would
@@ -6836,8 +6819,8 @@ function renderFlowchart(scenario, animateEdge) {
     div.style.left = n.x + '%';
     div.style.top = n.y + '%';
     div.setAttribute('id', 'ftn-' + id);
-    div.innerHTML = '<div class="ft-node-box"><div class="ft-node-label">' + (n.label || '') + '</div>'
-      + (n.npc ? '<div class="ft-node-sub">' + n.npc + '</div>' : '') + '</div>';
+    div.innerHTML = '<div class="ft-node-box"><div class="ft-node-label">' + _ftNoEmoji(n.label) + '</div>'
+      + (n.npc ? '<div class="ft-node-sub">' + _ftNoEmoji(n.npc) + '</div>' : '') + '</div>';
     div.onclick = function() {
       if (isVisited && n.type !== 'start') showNodeReplay(id);
     };
@@ -6869,6 +6852,7 @@ async function openFastTrack() {
   document.getElementById('ft-title').textContent = 'FAST TRACK';
   document.getElementById('ft-sub').textContent = 'Korean Master Fast Track';
   document.getElementById('ft-pct').textContent = '';
+  var pctLbl = document.getElementById('ft-pct-lbl'); if (pctLbl) pctLbl.style.display = 'none';
   ov.classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -6880,28 +6864,53 @@ function closeFastTrack() {
   _ftState.playing = false;
 }
 
+// Scenario groups + icons. fast_track_scenarios.category is inconsistent
+// (ids for the first eight, free text after), so group by id first.
+var _FT_GROUPS = [
+  { key: 'food',   label: 'Food & drink',   color: '#f97316', ids: ['cafe', 'restaurant', 'the_bar'] },
+  { key: 'move',   label: 'Getting around', color: '#0ea5e9', ids: ['taxi', 'directions', 'subway_station'] },
+  { key: 'shop',   label: 'Shopping',       color: '#a855f7', ids: ['conv-store', 'korean_bookstore', 'clothing_store', 'phone-shop'] },
+  { key: 'life',   label: 'Daily life',     color: '#10b981', ids: ['laundromat_scenario', 'hospital', 'immigration'] },
+  { key: 'social', label: 'Social',         color: '#ec4899', ids: ['sogaeting_blind_date'] }
+];
+var _FT_CAT_ALIAS = { shopping: 'shop', social: 'social', transportation: 'move', 'daily life': 'life', food: 'food' };
+var _FT_ICONS = {
+  cafe: 'coffee', restaurant: 'utensils', the_bar: 'beer', taxi: 'car-taxi-front', directions: 'map',
+  subway_station: 'train-front', 'conv-store': 'store', korean_bookstore: 'book-open', clothing_store: 'shirt',
+  'phone-shop': 'smartphone', laundromat_scenario: 'washing-machine', hospital: 'stethoscope',
+  immigration: 'landmark', sogaeting_blind_date: 'heart'
+};
+function _ftGroupOf(s) {
+  for (var i = 0; i < _FT_GROUPS.length; i++) if (_FT_GROUPS[i].ids.indexOf(s.id) >= 0) return _FT_GROUPS[i].key;
+  return _FT_CAT_ALIAS[String(s.category || '').toLowerCase()] || 'life';
+}
+// Emoji in node labels ("매운맛 KO 🥵") get swapped for big icons that cover
+// the text — map labels are text only.
+function _ftNoEmoji(t) {
+  return String(t || '').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
+}
+
 async function renderScenarioList() {
   var el = document.getElementById('ft-scenarios');
   var progress = await loadAllFtProgress();
-  el.innerHTML = _FT_SCENARIOS.map(function(s) {
-    var lockStyle = s.locked ? 'opacity:.4;pointer-events:none;' : 'cursor:pointer;';
-    var prog = progress[s.id];
-    var pctBar = '';
-    if (prog && prog.completion_pct > 0) {
-      pctBar = '<div style="margin-top:8px;height:4px;border-radius:2px;background:#e5e7eb;overflow:hidden">'
-        + '<div style="height:100%;width:' + prog.completion_pct + '%;background:#2196F3;border-radius:2px"></div></div>'
-        + '<div style="font-size:9px;color:#5a6a7a;margin-top:3px">' + prog.completion_pct + '% explored · ' + (prog.play_count||1) + ' plays · ' + (prog.phrases||[]).length + ' phrases</div>';
-    }
-    return '<div onclick="_canvasRipple(this,event);startScenario(\'' + s.id + '\')" style="padding:20px;border-radius:14px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.08);border:2px solid transparent;transition:all .15s;position:relative;overflow:hidden;' + lockStyle + '"'
-      + ' onmouseover="if(!' + s.locked + ')this.style.borderColor=\'#2196F3\'" onmouseout="this.style.borderColor=\'transparent\'">'
-      + '<div style="font-size:28px;margin-bottom:8px">' + (s.icon || '📘') + '</div>'
-      + '<div style="font-size:14px;font-weight:900;color:#1a2a3a">' + (s.titleKo || s.title || 'Scenario') + '</div>'
-      + '<div style="font-size:11px;color:#5a6a7a;margin-top:2px">' + (s.sub || '') + '</div>'
-      + '<div style="margin-top:8px;display:flex;align-items:center;gap:6px">'
-      + '<span style="padding:2px 8px;border-radius:10px;background:' + (s.locked ? '#e5e7eb' : '#dbeafe') + ';color:' + (s.locked ? '#9ca3af' : '#2563eb') + ';font-size:10px;font-weight:700">' + (s.difficulty || 'Beginner') + '</span>'
-      + (s.locked ? '<span style="font-size:10px;color:#9ca3af">🔒 Locked</span>' : '')
-      + '</div>' + pctBar + '</div>';
+  el.style.display = 'block';
+  el.innerHTML = _FT_GROUPS.map(function(g) {
+    var list = _FT_SCENARIOS.filter(function(s){ return _ftGroupOf(s) === g.key; });
+    if (!list.length) return '';
+    return '<div class="ft-group"><div class="ft-group-h"><span style="background:' + g.color + '"></span>' + g.label + '<em>' + list.length + '</em></div>'
+      + '<div class="ft-group-grid">' + list.map(function(s) {
+        var prog = progress[s.id];
+        var pct = prog && prog.completion_pct > 0 ? prog.completion_pct : 0;
+        return '<div class="ft-sc' + (s.locked ? ' locked' : '') + '"' + (s.locked ? '' : ' onclick="_canvasRipple(this,event);startScenario(\'' + s.id + '\')"') + '>'
+          + '<span class="ft-sc-ic" style="color:' + g.color + ';background:' + g.color + '1f">' + khIcon(_FT_ICONS[s.id] || 'message-circle') + '</span>'
+          + '<span class="ft-sc-tx"><b>' + _ftNoEmoji(s.titleKo || s.title || 'Scenario') + '</b>'
+          + '<small>' + _ftNoEmoji(s.sub || '') + '</small>'
+          + '<span class="ft-sc-meta"><i>' + (s.difficulty || 'Beginner') + '</i>' + (s.locked ? '<i>Locked</i>' : '')
+          + (pct ? '<span class="ft-sc-bar"><span style="width:' + pct + '%;background:' + g.color + '"></span></span><small>' + pct + '%</small>' : '')
+          + '</span></span></div>';
+      }).join('') + '</div></div>';
   }).join('');
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
 }
 
 function startScenario(id) {
@@ -6911,6 +6920,7 @@ function startScenario(id) {
   // Update header
   document.getElementById('ft-title').textContent = scenario.title;
   document.getElementById('ft-sub').textContent = scenario.sub;
+  var pctLbl = document.getElementById('ft-pct-lbl'); if (pctLbl) pctLbl.style.display = '';
   updateFtPct();
   // Show chart, hide list
   document.getElementById('ft-scenario-list').style.display = 'none';
@@ -6946,25 +6956,23 @@ function showDialogue(node) {
   var player = document.getElementById('ft-player');
   document.getElementById('ftp-scene').textContent = node.scene || '';
   document.getElementById('ftp-npc').textContent = node.npc || '';
-  // NPC line + a 🔊 replay button so the learner can re-hear the line at
+  // NPC line + a replay button so the learner can re-hear the line at
   // their own pace instead of just the one-shot auto-play.
   var npcKoEscaped = String(node.text || '').replace(/'/g, "\\'");
   document.getElementById('ftp-text').innerHTML =
     '<span class="ft-ko">' + node.text + '</span>'
-    + '<button onclick="speakHangul(\'' + npcKoEscaped + '\')" aria-label="Replay" style="margin-left:6px;padding:3px 8px;border:1px solid rgba(15,23,42,.15);background:#fff;border-radius:999px;font-size:11px;cursor:pointer;font-family:inherit;color:#475569;vertical-align:2px">🔊</button>'
+    + '<button class="ft-say" onclick="speakHangul(\'' + npcKoEscaped + '\')" aria-label="Replay">' + khIcon('volume-2') + '</button>'
     + '<span class="ft-en">' + (node.textEn || '') + '</span>';
   var choicesEl = document.getElementById('ftp-choices');
+  // Tap a reply to hear it; the button on the right picks it (picking and
+  // listening used to share one tap target).
   choicesEl.innerHTML = (node.choices || []).map(function(c, i) {
     var cKo = String(c.text || '').replace(/'/g, "\\'");
-    // 🔊 on the learner's OWN reply options (audit: "내 선택지는 발음도 안나오고").
-    // stopPropagation so tapping the speaker hears the line without selecting it.
-    return '<button class="ft-choice" onclick="pickChoice(\'' + _ftState.nodeId + '\',' + i + ')">'
-      + '<span style="display:inline-flex;align-items:center;gap:6px">'
-      +   '<span>' + c.text + '</span>'
-      +   '<span role="button" tabindex="0" aria-label="Listen" onclick="event.stopPropagation();speakHangul(\'' + cKo + '\')" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;border:1px solid rgba(15,23,42,.15);background:#fff;color:#475569;font-size:12px;cursor:pointer">🔊</span>'
-      + '</span>'
-      + (c.textEn ? '<div class="ft-choice-en">' + c.textEn + '</div>' : '')
-      + '</button>';
+    return '<div class="ft-choice" role="button" tabindex="0" onclick="speakHangul(\'' + cKo + '\')">'
+      + '<span class="ft-choice-tx"><span>' + c.text + '</span>'
+      + (c.textEn ? '<span class="ft-choice-en">' + c.textEn + '</span>' : '') + '</span>'
+      + '<button type="button" class="ft-pick" aria-label="Choose this reply" onclick="event.stopPropagation();pickChoice(\'' + _ftState.nodeId + '\',' + i + ')">Choose' + khIcon('chevron-right') + '</button>'
+      + '</div>';
   }).join('');
   // Speaking-practice row — only if there are response choices to match
   // against. Speech recognition is gated to Chrome/Edge/Safari via
@@ -6974,7 +6982,7 @@ function showDialogue(node) {
     choicesEl.insertAdjacentHTML('beforeend',
       '<div id="ftp-speak-row" style="margin-top:10px;display:flex;flex-direction:column;align-items:stretch;gap:6px">'
       + '<button id="ftp-speak-btn" onclick="_ftSpeakReply()" style="padding:9px 14px;border:1.5px dashed rgba(99,102,241,.4);background:rgba(238,242,255,.6);border-radius:10px;font-size:12px;font-weight:700;color:#4338ca;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px">'
-      +   '<span aria-hidden="true">🎤</span><span>Speak your reply</span>'
+      +   khIcon('mic') + '<span>Speak your reply</span>'
       + '</button>'
       + '<div id="ftp-speak-status" style="font-size:11px;color:#64748b;min-height:16px;text-align:center"></div>'
       + '</div>'
@@ -7035,12 +7043,12 @@ function _ftSpeakReply() {
   };
   r.onerror = function(err) {
     if (status) status.textContent = 'Mic error: ' + ((err && err.error) || 'unknown');
-    if (btn) { btn.innerHTML = '<span aria-hidden="true">🎤</span><span>Speak your reply</span>'; btn.style.background = 'rgba(238,242,255,.6)'; }
+    if (btn) { btn.innerHTML = khIcon('mic') + '<span>Speak your reply</span>'; btn.style.background = 'rgba(238,242,255,.6)'; }
     window._ftRec = null;
   };
   r.onend = function() {
     window._ftRec = null;
-    if (btn) { btn.innerHTML = '<span aria-hidden="true">🎤</span><span>Speak your reply</span>'; btn.style.background = 'rgba(238,242,255,.6)'; }
+    if (btn) { btn.innerHTML = khIcon('mic') + '<span>Speak your reply</span>'; btn.style.background = 'rgba(238,242,255,.6)'; }
     if (!transcript) {
       if (status) status.textContent = 'Didn\'t catch that — try again.';
       return;
@@ -7708,7 +7716,7 @@ function renderWbQuizQ() {
     list.innerHTML = '<div style="text-align:center;padding:40px 20px">'
       + '<div style="display:inline-flex;width:42px;height:42px;margin-bottom:12px;color:#a78bfa">'+BM_ICON_PARTY+'</div>'
       + '<div style="font-size:18px;font-weight:900;color:#7c3aed">Quiz Complete!</div>'
-      + '<div style="font-size:14px;color:rgba(255,255,255,.5);margin-top:8px">' + _wbQuizScore + ' / ' + _wbQuizPool.length + ' correct</div>'
+      + '<div style="font-size:14px;color:rgba(255,255,255,.5);margin-top:8px">' + _wbQuizScore + ' / ' + _wbQuizPool.length + ' correct' + (_wbQuizPool.some(function(x){ return x._retry; }) ? ' (missed words came back)' : '') + '</div>'
       + '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">'
       + '<button onclick="startWbQuiz()" style="padding:10px 24px;border-radius:10px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Try Again</button>'
       + '<button onclick="renderWordBook(_wbData);renderWbCounts()" style="padding:10px 24px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Back to Words</button>'
@@ -7745,36 +7753,40 @@ function checkWbQuiz(btn, picked, correct) {
     playWrongSound();
     btn.style.background = '#fee2e2'; btn.style.borderColor = '#ef4444'; btn.style.color = '#991b1b';
   }
-  // Show SRS difficulty rating
+  // Graded from the answer itself — no Again/Hard/Good/Easy. The server
+  // (log_word_review) moves the next-review date; a miss also comes back
+  // later in this quiz, up to twice.
   var q = _wbQuizPool[_wbQuizIdx];
-  var srsHtml = '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px">'
-    + '<button onclick="_wbSrsRate(\''+q.ko.replace(/'/g,"\\'")+'\',1)" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.1);color:#f87171;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Again</button>'
-    + '<button onclick="_wbSrsRate(\''+q.ko.replace(/'/g,"\\'")+'\',2)" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(251,191,36,.3);background:rgba(251,191,36,.1);color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Hard</button>'
-    + '<button onclick="_wbSrsRate(\''+q.ko.replace(/'/g,"\\'")+'\',3)" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.1);color:#4ade80;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Good</button>'
-    + '<button onclick="_wbSrsRate(\''+q.ko.replace(/'/g,"\\'")+'\',4)" style="padding:8px 16px;border-radius:10px;border:1px solid rgba(96,165,250,.3);background:rgba(96,165,250,.1);color:#60a5fa;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Easy</button>'
-    + '</div>';
-  btn.parentElement.insertAdjacentHTML('afterend', srsHtml);
+  _wbLogReview(q, isCorrect);
+  if (!isCorrect && (q._retry || 0) < 2) {
+    _wbQuizPool.push(Object.assign({}, q, { _retry: (q._retry || 0) + 1 }));
+  }
+  btn.parentElement.insertAdjacentHTML('afterend',
+    '<button onclick="_wbQuizNext()" style="margin-top:14px;padding:9px 22px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#e2e8f0;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Next →</button>');
+  clearTimeout(_wbQuizTimer);
+  _wbQuizTimer = setTimeout(_wbQuizNext, isCorrect ? 900 : 2200);
 }
-function _wbSrsRate(ko, rating) {
-  // Save review result to DB (server-side, persists across devices)
+var _wbQuizTimer = null;
+function _wbQuizNext() {
+  clearTimeout(_wbQuizTimer);
+  _wbQuizIdx++; renderWbQuizQ();
+}
+function _wbLogReview(q, isCorrect) {
   if (supaUser && typeof getSupa === 'function') {
     try {
-      var sb = getSupa();
-      var isCorrect = rating >= 3;
       // Update-only: reviewing must never add a word to the word book.
-      sb.rpc('log_word_review', { p_word_key: ko, p_correct: isCorrect }).then(null, function(){});
+      getSupa().rpc('log_word_review', { p_word_key: q.ko, p_correct: isCorrect }).then(null, function(){});
     } catch(e) {}
   }
-  // Update local _wbData so next quiz reflects the change immediately
-  var w = _wbData.find(function(x){ return x.ko === ko; });
+  // Keep local _wbData in step so the next quiz reflects it immediately.
+  var w = _wbData.find(function(x){ return x.ko === q.ko; });
   if (w) {
     w.reviewCount = (w.reviewCount||0) + 1;
-    if (rating >= 3) w.correctCount = (w.correctCount||0) + 1;
+    if (isCorrect) w.correctCount = (w.correctCount||0) + 1;
     else w.wrongCount = (w.wrongCount||0) + 1;
     var total = (w.correctCount||0) + (w.wrongCount||0);
     w.accuracy = total > 0 ? Math.round((w.correctCount||0) / total * 100) : -1;
   }
-  _wbQuizIdx++; renderWbQuizQ();
 }
 
 // ── My Word Bank ──
@@ -11323,58 +11335,46 @@ function _renderSRSCard() {
   var accColor = w.accuracy >= 70 ? '#4ade80' : w.accuracy >= 40 ? '#fbbf24' : '#f87171';
   var accText = w.accuracy >= 0 ? w.accuracy + '%' : 'New';
 
+  // Pick-the-meaning card, graded from the answer (no self-rating).
+  var pool = _srsReviewQueue.concat(typeof getAllVocabPool === 'function' ? getAllVocabPool() : [])
+    .map(function(x){ return x && (x.en || ''); })
+    .filter(function(en, i, arr){ return en && en !== w.en && arr.indexOf(en) === i; })
+    .sort(function(){ return Math.random() - .5; }).slice(0, 3);
+  var choices = pool.concat([w.en]).sort(function(){ return Math.random() - .5; });
   fcGridEl.innerHTML =
     '<div style="font-size:11px;color:#94a3b8;text-align:center;margin-bottom:8px">'
     + (_srsReviewIdx + 1) + ' / ' + _srsReviewQueue.length + ' · '
     + '<span style="color:' + accColor + '">' + accText + '</span>'
     + '</div>'
-    + '<div class="mcard" id="srs-active-card" onclick="this.classList.toggle(\'flipped\')" style="margin:0 auto;max-width:260px">'
-    + '<div class="mcko" style="font-size:22px">' + w.ko + '</div>'
-    + '<div class="mcen">' + (w.rom ? '<em style="font-size:11px;color:#7ab8f5;display:block">' + w.rom + '</em>' : '') + w.en + '</div>'
-    + '</div>'
-    + '<div style="display:flex;gap:8px;justify-content:center;margin-top:10px">'
-    + '<button onclick="_srsRate(0)" style="flex:1;max-width:80px;padding:8px;border:1px solid #fca5a5;border-radius:8px;background:rgba(239,68,68,.08);color:#f87171;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Again</button>'
-    + '<button onclick="_srsRate(3)" style="flex:1;max-width:80px;padding:8px;border:1px solid #fde68a;border-radius:8px;background:rgba(251,191,36,.08);color:#f59e0b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Hard</button>'
-    + '<button onclick="_srsRate(4)" style="flex:1;max-width:80px;padding:8px;border:1px solid #86efac;border-radius:8px;background:rgba(34,197,94,.08);color:#22c55e;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Good</button>'
-    + '<button onclick="_srsRate(5)" style="flex:1;max-width:80px;padding:8px;border:1px solid #93c5fd;border-radius:8px;background:rgba(59,130,246,.08);color:#3b82f6;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Easy</button>'
+    + '<div style="text-align:center;font-size:24px;font-weight:900;color:#e2e8f0">' + escapeHtml(w.ko) + '</div>'
+    + (w.rom ? '<div style="text-align:center;font-size:11px;color:#7ab8f5;margin-bottom:10px">' + escapeHtml(w.rom) + '</div>' : '<div style="margin-bottom:10px"></div>')
+    + '<div id="srs-choices" style="display:flex;flex-direction:column;gap:6px;max-width:320px;margin:0 auto">'
+    + choices.map(function(c, i) {
+        return '<button data-i="' + i + '" onclick="_srsAnswer(this)" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#e2e8f0;font-size:12.5px;font-weight:600;text-align:left;cursor:pointer;font-family:inherit">' + escapeHtml(c) + '</button>';
+      }).join('')
     + '</div>';
+  _srsChoices = choices;
 }
+var _srsChoices = [];
 
-async function _srsRate(grade) {
+function _srsAnswer(btn) {
   var w = _srsReviewQueue[_srsReviewIdx];
   if (!w) return;
-
-  // SM-2 algorithm
-  var interval = w.interval || 1;
-  var ease = w.ease || 2.5;
-  var newInterval, newEase;
-  if (grade === 0) { newInterval = 1; newEase = Math.max(1.3, ease - 0.2); }
-  else if (grade === 3) { newInterval = Math.max(1, Math.round(interval * 1.2)); newEase = Math.max(1.3, ease - 0.15); }
-  else if (grade === 4) { newInterval = Math.round(interval * ease); newEase = ease; }
-  else { newInterval = Math.round(interval * ease * 1.3); newEase = Math.min(4.0, ease + 0.15); }
-
-  // Update DB
-  try {
-    var sb = getSupa();
-    var nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + newInterval);
-    await sb.from('user_saved_words').update({
-      srs_interval: newInterval,
-      srs_ease_factor: newEase,
-      srs_next_review: nextDate.toISOString().slice(0, 10),
-      srs_last_reviewed: new Date().toISOString()
-    }).eq('user_id', supaUser.id).eq('word_ko', w.ko);
-
-    // Track review counts (schedule already written above → p_schedule false).
-    sb.rpc('log_word_review', { p_word_key: w.ko, p_correct: grade >= 3, p_schedule: false }).then(null, function(){});
-  } catch(e) { console.warn('SRS update failed:', e); }
-
-  // If "Again", re-queue at end
-  if (grade === 0) {
-    _srsReviewQueue.push(w);
-  }
-  _srsReviewIdx++;
-  _renderSRSCard();
+  var picked = _srsChoices[Number(btn.getAttribute('data-i'))];
+  var ok = picked === w.en;
+  var box = document.getElementById('srs-choices');
+  if (box) box.querySelectorAll('button').forEach(function(b) {
+    b.style.pointerEvents = 'none';
+    if (_srsChoices[Number(b.getAttribute('data-i'))] === w.en) { b.style.background = '#dcfce7'; b.style.borderColor = '#22c55e'; b.style.color = '#166534'; }
+  });
+  if (!ok) { btn.style.background = '#fee2e2'; btn.style.borderColor = '#ef4444'; btn.style.color = '#991b1b'; }
+  if (ok) { if (typeof playCorrectSound === 'function') playCorrectSound(); }
+  else if (typeof playWrongSound === 'function') playWrongSound();
+  // The server schedules the next review from right / wrong.
+  try { getSupa().rpc('log_word_review', { p_word_key: w.ko, p_correct: ok }).then(null, function(){}); } catch(e) {}
+  // A miss comes back at the end of this session (up to twice).
+  if (!ok && (w._retry || 0) < 2) _srsReviewQueue.push(Object.assign({}, w, { _retry: (w._retry || 0) + 1 }));
+  setTimeout(function() { _srsReviewIdx++; _renderSRSCard(); }, ok ? 800 : 1800);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -14195,6 +14195,17 @@ async function generateBeginnerSentences() {
       return;
     }
   } catch (_) {}
+
+  // ── Priority 1.7: the week's own reviewed sentences (helpers, grammar
+  // examples, dictation — all checked by content-qa). Wins over the AI
+  // caches below, which were never reviewed ("병원에서 사람들을 도와주는
+  // 일이 좋았어요" for a childhood-dream topic) and cost a call.
+  if (!_fallbackIsGeneric()) {
+    _bm.sentences = getFallbackSentences();
+    _bm.generating = false;
+    renderBMStep1();
+    return;
+  }
 
   // ── Priority 2: sessionStorage cache (current session) ──
   var cacheKey = 'bm_sents2_' + (topic.id || topic.topic_en || '').replace(/\s/g,'_');
@@ -20327,13 +20338,63 @@ function _asRenderStep() {
 }
 
 // ── Step 1: Vocab matching ──
+// The study row has only ~6 words (often loanwords like 아메리카노). The
+// reader's analysis (article_cache.vocab, ~15 words) is already in the DB —
+// merge it in, no AI call. Words must appear in the article (dictionary
+// verbs by their stem); up to 12, played in rounds of 6.
+var _AS_VOCAB_MAX = 12, _AS_ROUND = 6;
+function _asWordInBody(ko, body) {
+  ko = String(ko || '').trim();
+  if (!ko || !body) return '';
+  if (body.indexOf(ko) >= 0) return ko;
+  var stem = ko.replace(/(하다|다)$/, function(m){ return m === '하다' ? '하' : ''; });
+  if (stem !== ko && stem.length >= 2 && body.indexOf(stem) >= 0) return stem;
+  return '';
+}
+function _asVocabList() {
+  var body = (_asCurrentArt && _asCurrentArt.body) || '';
+  var out = [], seen = {};
+  function add(v) {
+    if (!v || !v.ko || !v.en || out.length >= _AS_VOCAB_MAX) return;
+    var ko = String(v.ko).trim();
+    if (seen[ko] || /\s/.test(ko) && ko.split(/\s+/).length > 2) return;
+    var hit = _asWordInBody(ko, body);
+    if (!hit) return;
+    seen[ko] = 1;
+    out.push({ ko: ko, en: (typeof khCleanMeaning === 'function' ? khCleanMeaning(v.en) : v.en), rom: v.rom || '', _hl: hit });
+  }
+  ((_asStudyContent && _asStudyContent.extra_vocab) || []).forEach(add);
+  ((_asStudyContent && _asStudyContent.vocab) || []).forEach(add);
+  return out;
+}
+async function _asLoadExtraVocab() {
+  var list = [];
+  try {
+    var r = await getSupa().from('article_cache').select('vocab').eq('article_id', String(_asCurrentArt.id)).maybeSingle();
+    var v = r && r.data && r.data.vocab;
+    if (typeof v === 'string') { try { v = JSON.parse(v); } catch (_) { v = null; } }
+    if (Array.isArray(v)) list = v;
+  } catch (_) {}
+  if (_asStudyContent) _asStudyContent.extra_vocab = list;
+}
+
 function _asStep1(art,act) {
-  var vocab=(_asStudyContent&&_asStudyContent.vocab)||[];
+  if (_asStudyContent && _asStudyContent.extra_vocab === undefined) {
+    _asStudyContent.extra_vocab = null;
+    act.innerHTML = '<div style="padding:30px;text-align:center;color:#94a3b8;font-size:13px">Loading words…</div>';
+    var started = _asStep;
+    Promise.race([_asLoadExtraVocab(), new Promise(function(res){ setTimeout(res, 3000); })])
+      .then(function(){ if (_asStep === started) _asStep1(art, act); });
+    return;
+  }
+  var vocab=_asVocabList();
+  if (!vocab.length) vocab = (_asStudyContent&&_asStudyContent.vocab)||[];
   var body=_asCurrentArt&&_asCurrentArt.body?_asFormatBody(_asCurrentArt.body):'';
   var hlWords = (_asStudyContent&&_asStudyContent.custom_highlights&&_asStudyContent.custom_highlights.vocab)
     ? _asStudyContent.custom_highlights.vocab
-    : vocab.map(function(v){return v.ko;});
-  hlWords.forEach(function(w){ if(w) body=body.replace(new RegExp(_asEsc(w),'g'),'<mark>'+w+'</mark>'); });
+    : vocab.map(function(v){return v._hl || v.ko;});
+  // First occurrence only — marking every repeat crowded the passage.
+  hlWords.forEach(function(w){ if(w) body=body.replace(new RegExp(_asEsc(w)),'<mark>'+w+'</mark>'); });
   // Article card (reference style)
   var imgHtml = _asCurrentArt.image
     ? '<img class="su-article-img" src="' + _asCurrentArt.image + '" alt="" onerror="this.className=\'su-article-img-ph\';this.innerHTML=window.BM_ICON_NEWSPAPER||\'\';this.removeAttribute(\'src\')">'
@@ -20371,15 +20432,25 @@ function _asStep1(art,act) {
     _asSetNav('none','none','none');
     return;
   }
-  var eng=_asShuffle(vocab.map(function(v,i){return{t:v.en,i:i};}));
-  _asMatchState={pairs:vocab,eng:eng,matched:[],sel:{l:null,r:null}};
+  var rounds = [];
+  for (var ri = 0; ri < vocab.length; ri += _AS_ROUND) rounds.push(vocab.slice(ri, ri + _AS_ROUND));
   act.innerHTML='<div class="su-substep"><div class="su-substep-fill" id="as-substep-fill" style="width:0%"></div></div>'
+    + '<div id="as-round" style="text-align:center;font-size:11px;color:#94a3b8;margin:6px 0 2px"></div>'
     + '<div class="su-match-grid" id="as-mg"></div>'
     + '<div id="as-mm" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8;text-align:center"></div>';
-  _asRenderMatch(); _asSetNav('none','none','none');
-  // Update nav counter
-  var cnt = document.getElementById('as-nav-counter');
-  if (cnt) cnt.textContent = _asMatchState.matched.length + ' / ' + vocab.length;
+  _asStartMatchRound(rounds, 0, 0);
+  _asSetNav('none','none','none');
+}
+function _asStartMatchRound(rounds, r, doneBefore) {
+  var pairs = rounds[r];
+  var eng = _asShuffle(pairs.map(function(v,i){return{t:v.en,i:i};}));
+  _asMatchState = { pairs: pairs, eng: eng, matched: [], sel: { l: null, r: null },
+                    rounds: rounds, round: r, doneBefore: doneBefore,
+                    total: rounds.reduce(function(n, x){ return n + x.length; }, 0) };
+  var lbl = document.getElementById('as-round');
+  if (lbl) lbl.textContent = rounds.length > 1 ? 'Round ' + (r + 1) + ' of ' + rounds.length : '';
+  var msg = document.getElementById('as-mm'); if (msg) msg.innerHTML = '';
+  _asRenderMatch();
 }
 function asTogglePassage() {
   var card = document.getElementById('as-article-passage');
@@ -20413,10 +20484,11 @@ function _asRenderMatch() {
   }
   g.innerHTML = html;
   // Update counter + sub-step progress bar
+  var done = (m.doneBefore || 0) + m.matched.length, total = m.total || m.pairs.length;
   var cnt=document.getElementById('as-nav-counter');
-  if(cnt) cnt.textContent=m.matched.length+' / '+m.pairs.length;
+  if(cnt) cnt.textContent=done+' / '+total;
   var bar=document.getElementById('as-substep-fill');
-  if(bar) bar.style.width = (m.pairs.length ? (m.matched.length/m.pairs.length*100) : 0) + '%';
+  if(bar) bar.style.width = (total ? (done/total*100) : 0) + '%';
 }
 function asML(i) {
   if(!_asMatchState||_asMatchState.matched.indexOf(i)>=0) return;
@@ -20442,10 +20514,16 @@ function _asCheckMatchPair() {
     var msg=document.getElementById('as-mm');
     if(msg){
       msg.innerHTML='<span style="color:#16a34a;font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_CHECK+'</span><span>Matched! '+m.matched.length+'/'+m.pairs.length+'</span></span>'
-        +(m.matched.length===m.pairs.length?' <span style="color:#7c3aed;font-weight:800">All done!</span>':'');
+        +(m.matched.length===m.pairs.length?' <span style="color:#7c3aed;font-weight:800">'+(m.rounds && m.round + 1 < m.rounds.length ? 'Next round…' : 'All done!')+'</span>':'');
     }
     setTimeout(_asRenderMatch, 80);
-    if (m.matched.length===m.pairs.length) setTimeout(function(){ _asSetNav('none',''); },500);
+    if (m.matched.length===m.pairs.length) {
+      if (m.rounds && m.round + 1 < m.rounds.length) {
+        setTimeout(function(){ _asStartMatchRound(m.rounds, m.round + 1, (m.doneBefore || 0) + m.pairs.length); }, 700);
+      } else {
+        setTimeout(function(){ _asSetNav('none',''); },500);
+      }
+    }
   } else {
     playWrongSound();
     var g=document.getElementById('as-mg');
