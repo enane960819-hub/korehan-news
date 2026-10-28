@@ -56,6 +56,14 @@
   function _isCho(ch)  { return _idx(CHO,  ch) >= 0; }
   function _isJung(ch) { return _idx(JUNG, ch) >= 0; }
   function _isJong(ch) { return _idx(JONG, ch) >  0; } // 0 = empty, treat as not-a-jong
+  // Double finals (읽, 앉, 없 …) and double vowels (ㅗ+ㅏ → ㅘ …) typed
+  // one jamo at a time, like a real Korean IME.
+  var JONG_PAIR = { 'ㄱㅅ':'ㄳ','ㄴㅈ':'ㄵ','ㄴㅎ':'ㄶ','ㄹㄱ':'ㄺ','ㄹㅁ':'ㄻ','ㄹㅂ':'ㄼ','ㄹㅅ':'ㄽ','ㄹㅌ':'ㄾ','ㄹㅍ':'ㄿ','ㄹㅎ':'ㅀ','ㅂㅅ':'ㅄ' };
+  var JONG_SPLIT = {};
+  Object.keys(JONG_PAIR).forEach(function (k) { JONG_SPLIT[JONG_PAIR[k]] = [k.charAt(0), k.charAt(1)]; });
+  var JUNG_PAIR = { 'ㅗㅏ':'ㅘ','ㅗㅐ':'ㅙ','ㅗㅣ':'ㅚ','ㅜㅓ':'ㅝ','ㅜㅔ':'ㅞ','ㅜㅣ':'ㅟ','ㅡㅣ':'ㅢ' };
+  var JUNG_SPLIT = {};
+  Object.keys(JUNG_PAIR).forEach(function (k) { JUNG_SPLIT[JUNG_PAIR[k]] = k.charAt(0); });
 
   // Korean IME state machine driven by tap events.
   // Holds the in-progress syllable as { cho, jung, jong } and a
@@ -95,6 +103,7 @@
       // cho + jung — could add jong, OR roll into next syllable
       if (cur.cho && cur.jung && !cur.jong) {
         if (_isJong(j)) { cur.jong = j; return; }
+        if (_isJung(j) && JUNG_PAIR[cur.jung + j]) { cur.jung = JUNG_PAIR[cur.jung + j]; return; }
         if (_isJung(j)) {
           // Vowel after a complete CV — finalize and start a new
           // syllable with floating vowel (rare; learners usually
@@ -110,15 +119,16 @@
         if (_isJung(j)) {
           // The conventional Korean IME rule: when a vowel
           // arrives after CVC, the C2 splits off and pairs with
-          // the new vowel. Compound jong (ㄺ etc.) splits into
-          // its second component for the new syllable; v1 keeps
-          // it simple and only handles single-jamo jong.
+          // the new vowel. A double final (ㄺ) keeps its first
+          // part and gives the second to the new syllable (읽어).
           var carry = cur.jong;
-          cur.jong = '';
+          if (JONG_SPLIT[carry]) { cur.jong = JONG_SPLIT[carry][0]; carry = JONG_SPLIT[carry][1]; }
+          else cur.jong = '';
           flush();
           cur = { cho: carry, jung: j, jong: '' };
           return;
         }
+        if (JONG_PAIR[cur.jong + j]) { cur.jong = JONG_PAIR[cur.jong + j]; return; }
         if (_isCho(j))  { flush(); cur = { cho: j, jung: '', jong: '' }; return; }
         if (_isJong(j)) {
           // Already have a jong — no compound logic in v1, just
@@ -136,8 +146,8 @@
 
     function backspace() {
       if (cur) {
-        if (cur.jong) { cur.jong = ''; return; }
-        if (cur.jung) { cur.jung = ''; return; }
+        if (cur.jong) { cur.jong = JONG_SPLIT[cur.jong] ? JONG_SPLIT[cur.jong][0] : ''; return; }
+        if (cur.jung) { cur.jung = JUNG_SPLIT[cur.jung] || ''; return; }
         if (cur.cho)  { cur = null; return; }
       }
       if (prefix.length) prefix = prefix.slice(0, -1);

@@ -338,19 +338,21 @@ function getCurrentStreak() {
   });
   var streak = 0;
   var freezesUsed = 0;
-  var d = new Date();
+  // Walk KST days, like korehan-shared.js — activity is keyed in KST.
+  var d = new Date(Date.now() + 9 * 3600000);
+  function back() { d = new Date(d.getTime() - 86400000); }
   for (var i = 0; i < 400; i++) {
     var key = d.toISOString().slice(0,10);
-    if (allDays[key]) { streak++; d.setDate(d.getDate()-1); }
-    else if (i === 0) { d.setDate(d.getDate()-1); } // 오늘 아직 안 했어도 어제부터
-    else if (usedFreezes[key]) { streak++; d.setDate(d.getDate()-1); } // 프리즈 사용된 날
+    if (allDays[key]) { streak++; back(); }
+    else if (i === 0) { back(); } // 오늘 아직 안 했어도 어제부터
+    else if (usedFreezes[key]) { streak++; back(); } // 프리즈 사용된 날
     else {
       // Try auto-use freeze for yesterday gap
       var avail = getStreakFreezes();
       if (avail > 0 && i <= 2 && streak > 0) {
         useStreakFreeze();
         var uf = getUsedFreezes(); uf[key] = true; lsSet('kh_used_freezes', uf);
-        streak++; d.setDate(d.getDate()-1);
+        streak++; back();
       } else { break; }
     }
   }

@@ -151,7 +151,11 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
       var typedChoices = q.choices || [q.correct];
       // Build distractors if not provided
       if (typedChoices.length < 4) {
-        var pool = _questions.filter(function(qq) { return qq.word_ko && qq.word_ko !== q.correct; }).map(function(qq) { return qq.word_ko; });
+        // Korean words only — a grammar question's word_ko holds its English
+        // meaning, which showed up as an answer choice.
+        var pool = _questions.filter(function(qq) {
+          return qq.word_ko && qq.word_ko !== q.correct && qq.slot !== 'grammar' && /[가-힣]/.test(qq.word_ko) && !/[A-Za-z]/.test(qq.word_ko);
+        }).map(function(qq) { return qq.word_ko; });
         var fallback = ['학생','친구','음식','날씨','학교','여행','가족','행복','경제','시간'];
         pool = pool.concat(fallback).filter(function(w) { return w !== q.correct; });
         pool.sort(function() { return Math.random() - 0.5; });
@@ -416,11 +420,10 @@ var KH_QA_ICON_FLAME = '<svg xmlns="http://www.w3.org/2000/svg" width="14" heigh
     }
     _renderProgressPath();
 
-    // Auto-advance so the learner never has to tap "Next" after answering —
-    // the button stays as an optional skip. A short beat to register the
-    // result (longer when wrong so the correct answer lands).
+    // Auto-advance after a correct answer; the button stays as a skip.
+    // A wrong answer waits for "Next" so the correct answer can be read.
     clearTimeout(_advTimer);
-    _advTimer = setTimeout(function() { _advTimer = null; QA.next(); }, correct ? 950 : 1750);
+    if (correct) _advTimer = setTimeout(function() { _advTimer = null; QA.next(); }, 950);
   }
 
   function _showComboBadge() {

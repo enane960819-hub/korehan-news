@@ -11062,9 +11062,14 @@ function ttsSpeak(text, btnEl) {
   }
 
   utter.onend = _ttsReset;
+  var started = false;
   utter.onerror = function(ev) {
-    console.warn('[TTS] error', ev && ev.error);
+    var why = ev && ev.error;
+    console.warn('[TTS] error', why);
     _ttsReset();
+    // "interrupted"/"canceled" just mean another playback replaced this
+    // one, and an error after audio started isn't worth alarming anyone.
+    if (started || why === 'interrupted' || why === 'canceled') return;
     if (typeof toast === 'function') toast('Audio playback failed — check that Korean TTS is enabled in your device settings.', true);
   };
   // Fallback — Chrome/Edge bug where speak() silently fails after
@@ -11077,7 +11082,7 @@ function ttsSpeak(text, btnEl) {
       if (typeof toast === 'function') toast('Audio engine not responding. Try again in a moment.', true);
     }
   }, 1500);
-  utter.onstart = function() { clearTimeout(startGuard); };
+  utter.onstart = function() { started = true; clearTimeout(startGuard); };
 
   // A speak() right after cancel() is also clipped on some engines.
   setTimeout(function() { khTtsWarm(synth); synth.speak(utter); }, 80);

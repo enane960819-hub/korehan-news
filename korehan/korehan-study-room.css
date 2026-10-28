@@ -2592,6 +2592,15 @@ body.kh-dark .su-complete-title { color:#e2e8f0; }
 body.kh-dark .su-complete-sub { color:#94a3b8; }
 /* ── Neon mode overrides ── */
 body.kh-neon-on .su-panel { background:linear-gradient(180deg,#060e1a,#0a1628); }
+/* Content inside the panels colours itself with var(--dark)/var(--gray)
+   inline, which stayed dark-on-dark here (Read & Talk "Build" step). */
+body.kh-neon-on .su-panel, body.kh-dark .su-panel { --dark:#f1f5f9; --gray:#94a3b8; --border:rgba(255,255,255,.14); }
+body.kh-neon-on .su-panel .mcard.flipped, body.kh-neon-on .su-panel .tp-head,
+body.kh-dark .su-panel .mcard.flipped, body.kh-dark .su-panel .tp-head { background:#0d1b2e; }
+body.kh-neon-on .su-nav { background:transparent; border-top-color:rgba(255,255,255,.08); }
+body.kh-neon-on .su-nav-prev { background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.14); color:#cbd5e1; }
+.cs-sent-btn { background:#fff; color:var(--dark); }
+body.kh-neon-on .cs-sent-btn:not([disabled]), body.kh-dark .cs-sent-btn:not([disabled]) { background:rgba(255,255,255,.06); }
 body.kh-neon-on .su-step.active .su-step-num { background:#00ffd5;color:#000;box-shadow:0 0 12px rgba(0,255,213,.3); }
 body.kh-neon-on .su-step.active .su-step-label { color:#00ffd5; }
 body.kh-neon-on .su-step.active { border-bottom-color:#00ffd5; }

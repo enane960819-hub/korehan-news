@@ -75,7 +75,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 
 /* Canvas — deep gradient backdrop + neon edge glow so the play
    field reads as a game arena rather than a flat rectangle. */
-#game-canvas{flex:1;width:100%;border-radius:14px;background:linear-gradient(180deg,#08081a 0%,#0d0a26 40%,#0a081e 100%);border:1px solid rgba(125,211,252,.22);box-shadow:0 0 32px rgba(125,211,252,.18),inset 0 0 60px rgba(124,58,237,.08)}
+#game-canvas{flex:1 1 0;min-height:0;width:100%;border-radius:14px;background:linear-gradient(180deg,#08081a 0%,#0d0a26 40%,#0a081e 100%);border:1px solid rgba(125,211,252,.22);box-shadow:0 0 32px rgba(125,211,252,.18),inset 0 0 60px rgba(124,58,237,.08)}
 
 /* Touch controls — gradient + glow, distinct from header chips so the
    tap targets feel pressable. */
@@ -200,7 +200,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 <script src="js/features/analyze-mode.js?v=20260525r"></script>
 <script src="js/features/translation.js?v=20261027a"></script>
 <script src="js/features/fill-blank.js?v=20261013c"></script>
-<script src="korehan-shared.js?v=20261028e"></script>
+<script src="korehan-shared.js?v=20261028f"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script src="playground-scores-client.js?v=20261012a"></script>
 <script>

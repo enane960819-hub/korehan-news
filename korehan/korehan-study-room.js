@@ -448,7 +448,9 @@ function _khStudyRoomInit() {
             // Fuzzy match: check if focus name is contained in pattern name or vice versa
             var match = found.find(function(p){ return p.name === _focusName; })
               || found.find(function(p){ return p.name.indexOf(_focusName) !== -1 || _focusName.indexOf(p.name) !== -1; });
-            if (match) found = [match].concat(found.filter(function(p){ return p !== match; }));
+            // No match → generate for the focus pattern below instead of
+            // opening this week's (unrelated) patterns.
+            found = match ? [match].concat(found.filter(function(p){ return p !== match; })) : [];
           }
           // If no AI content patterns matched, generate focused patterns via AI
           if (!found.length || (found.length === 1 && found[0] === pattern)) {
@@ -3828,6 +3830,20 @@ function _pmRenderPractice(body, lesson, pipsHtml) {
   // and we trust pr.en, NONE of the choices match and every pick is
   // judged wrong. Prefer choices[0] as the source of truth.
   var correct = rawChoices[0] || pr.en || '';
+  // A "wrong" choice that only drops an object particle or uses the spoken
+  // form (거를 = 것을) is also correct — never offer it as a distractor.
+  function _pmSameKo(a) {
+    return String(a || '').replace(/[.!?,]/g, '').trim().split(/\s+/).map(function(t) {
+      t = t.replace(/거를$/, '것을').replace(/걸$/, '것을').replace(/건$/, '것은').replace(/거$/, '것');
+      return t.length > 1 ? t.replace(/[을를]$/, '') : t;
+    }).join('');
+  }
+  var correctKey = _pmSameKo(correct);
+  rawChoices = rawChoices.filter(function(c, i) {
+    if (i === 0) return true;
+    if (!c || c === correct) return false;
+    return _pmSameKo(c) !== correctKey;
+  });
   // Shuffle once and remember the result for this lesson so we don't
   // reshuffle when the user re-enters the practice screen.
   var shuffleKey = '_pm_shuffle_' + _pm.idx;
@@ -4454,7 +4470,7 @@ function _keRenderStudyPhase(list) {
     // Actions row — Listen expression / Save
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
     +   '<button onclick="srSpeak(\'' + safeKo + '\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(125,211,252,.3);border-radius:10px;background:rgba(125,211,252,.1);color:#7dd3fc;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">'+BM_ICON_VOLUME+'</span><span>Listen</span></button>'
-    +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\')" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
+    +   '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + (exp.en||'').replace(/'/g,"\\'") + '\',\'' + (exp.rom||'').replace(/'/g,"\\'") + '\',\'key_expression\',this)" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>'
     + '</div>'
     // Navigation row — straight prev/next through the Study cards. The
     // final card jumps directly to the Fill quiz; the old Recognition
@@ -8740,7 +8756,7 @@ function _renderSpeakingScoreCard(s, targetEl) {
         + _khRadialGauge({ value: pron, accent: _scoreColor(pron), label: 'Pronunciation', sub: 'vs target', size: 88, stroke: 8 })
       + '</div>'
       + '<div style="padding:14px 12px;background:rgba(255,255,255,.7);border:1px solid rgba(124,58,237,.08);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:6px">'
-        + _khRadialGauge({ value: fluS, accent: _scoreColor(fluS), label: 'Fluency', sub: s.fluency_wpm + ' WPM', size: 88, stroke: 8 })
+        + _khRadialGauge({ value: fluS, accent: _scoreColor(fluS), label: 'Fluency', sub: 'You: ' + s.fluency_wpm + ' WPM', size: 88, stroke: 8 })
       + '</div>'
       + '</div>';
 
@@ -11569,17 +11585,34 @@ function lqNext() {
 // AI LOADING OVERLAY
 // ═══════════════════════════════════════════════════════════════
 // ── Save word to personal wordbank from any study activity ──
-function quickSaveWord(ko, en, rom, source) {
+// btn (optional): the Save button — it turns into a disabled "Saved" so a
+// word can't be saved over and over.
+function _qsMarkSaved(btn) {
+  if (!btn) return;
+  btn.disabled = true;
+  btn.style.opacity = '.6';
+  btn.style.cursor = 'default';
+  var lbl = btn.querySelector('span');
+  if (lbl) lbl.textContent = 'Saved'; else btn.textContent = 'Saved';
+}
+function quickSaveWord(ko, en, rom, source, btn) {
   if (!supaUser) { showToast('Sign in to save words'); return; }
   var sb = getSupa(); if (!sb) return;
+  if (typeof _savedWordsSet !== 'undefined' && _savedWordsSet && _savedWordsSet.has(ko)) {
+    _qsMarkSaved(btn); showToast('"' + ko + '" is already in My Words'); return;
+  }
+  _qsMarkSaved(btn);
   sb.rpc('save_or_update_word', {
     p_word_key: ko, p_word_ko: ko, p_word_en: en || null, p_word_rom: rom || null,
     p_source_kind: source || 'study_activity',
     p_review_delta: 0, p_correct_delta: 0, p_wrong_delta: 0
-  }).then(function() {
-    showToast('📚 "' + ko + '" saved!');
-  }).catch(function(e) {
-    showToast('Already saved or error');
+  }).then(function(r) {
+    if (r && r.error) { showToast('Could not save — please try again'); if (btn) { btn.disabled = false; btn.style.opacity = ''; } return; }
+    if (typeof _savedWordsSet !== 'undefined' && _savedWordsSet) _savedWordsSet.add(ko);
+    showToast('"' + ko + '" saved to My Words');
+  }, function() {
+    showToast('Could not save — please try again');
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   });
 }
 
@@ -11590,7 +11623,7 @@ function renderSaveWordBtn(ko, en, rom, source) {
   // No emoji per design feedback — use a lucide bookmark-plus icon
   // and a label so the button reads as a real control instead of a
   // throwaway chip.
-  return '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + safeEn + '\',\'' + safeRom + '\',\'' + (source||'study') + '\')" '
+  return '<button onclick="event.stopPropagation();quickSaveWord(\'' + safeKo + '\',\'' + safeEn + '\',\'' + safeRom + '\',\'' + (source||'study') + '\',this)" '
     + 'style="padding:6px 12px;border:1px solid #dbeafe;border-radius:8px;background:#eff6ff;color:#2563eb;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px" '
     + 'title="Save to wordbank"><i data-lucide="bookmark-plus" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Save</span></button>';
 }
@@ -15449,7 +15482,12 @@ function goToBMStep3Back() { _bm.step = 3; updateBMHeader(); renderBMStep3(); }
 function finishBeginner() {
   markStageDone('topic');
 
-  var totalScore = Math.round((_bm.score.order + _bm.score.blank) / 2);
+  // Listen-and-write (dictation) counts too — it used to be left out, so a
+  // missed word still ended on 100%.
+  var dKeys = Object.keys(_bm.dictResults || {});
+  var dictPct = dKeys.length ? Math.round(dKeys.filter(function(k){ return _bm.dictResults[k] && _bm.dictResults[k].correct; }).length / dKeys.length * 100) : null;
+  var parts = [_bm.score.order, _bm.score.blank].concat(dictPct == null ? [] : [dictPct]);
+  var totalScore = Math.round(parts.reduce(function(a, b){ return a + b; }, 0) / parts.length);
   var savedCount = (_bm.snapSaved || []).length;
   var icon, tier, headline, sub;
   if (totalScore >= 90) {
@@ -15475,6 +15513,7 @@ function finishBeginner() {
     + '<div style="display:flex;gap:10px;justify-content:center;margin:20px 0">'
     + '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#a78bfa">' + _bm.score.order + '%</div><div class="bm-result-stat-lbl">Word Order</div></div>'
     + '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#a78bfa">' + _bm.score.blank + '%</div><div class="bm-result-stat-lbl">Fill In</div></div>'
+    + (dictPct == null ? '' : '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#a78bfa">' + dictPct + '%</div><div class="bm-result-stat-lbl">Listen &amp; Write</div></div>')
     + (savedCount > 0
         ? '<div class="bm-result-stat"><div class="bm-result-stat-val" style="color:#fbbf24">' + savedCount + '</div><div class="bm-result-stat-lbl">Words Saved</div></div>'
         : '')
@@ -16149,6 +16188,9 @@ function _gcFindItem(label) {
   String(label).replace(/\([^)]*[A-Za-z][^)]*\)/g, '').split(/\s+\/\s+|,\s*/).forEach(function(seg) {
     var k = _gcNorm(seg); if (k && alts.indexOf(k) < 0) alts.push(k);
   });
+  // Growth Lab labels carry an English gloss ("에서 location particle").
+  var koOnly = _gcNorm(String(label).replace(/[A-Za-z][A-Za-z\s'’\-]*/g, ' '));
+  if (koOnly && alts.indexOf(koOnly) < 0) alts.push(koOnly);
   var i, hit;
   for (i = 0; i < alts.length; i++) {
     if (_GC_ALIASES[alts[i]]) {
