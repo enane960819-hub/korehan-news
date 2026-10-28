@@ -3,794 +3,204 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KoreHani — Learn Korean, Naturally</title>
-<meta name="description" content="Read real Korean. Tap any sentence for instant translation, vocab, and grammar. Build a Vocabulary Universe of every word you save.">
+<title>KoreHani — Read real Korean news at your level</title>
+<meta name="description" content="Daily Korean news in four levels. Tap any sentence for the English, the words and the grammar, review what you save, and practise real conversations.">
 <link rel="canonical" href="https://korehani.com/landing.html">
-<meta name="theme-color" content="#0a1423">
-<meta name="author" content="KoreHani">
-<!-- Open Graph / social-share preview -->
+<meta name="theme-color" content="#0a1631">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="KoreHani">
 <meta property="og:url" content="https://korehani.com/landing.html">
-<meta property="og:title" content="KoreHani — Learn Korean, Naturally">
-<meta property="og:description" content="Read real Korean. Tap any sentence for instant translation, vocab, and grammar. Build a Vocabulary Universe of every word you save.">
+<meta property="og:title" content="KoreHani — Read real Korean news at your level">
+<meta property="og:description" content="Daily Korean news in four levels. Tap any sentence for the English, the words and the grammar.">
 <meta property="og:image" content="https://korehani.com/img/guide/hero-express.png?v=20261013c">
 <meta property="og:locale" content="en_US">
-<meta property="og:locale:alternate" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="KoreHani — Learn Korean, Naturally">
-<meta name="twitter:description" content="Read real Korean. Tap any sentence for instant translation, vocab, and grammar.">
 <meta name="twitter:image" content="https://korehani.com/img/guide/hero-express.png?v=20261013c">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700;800;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Noto+Serif+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
-:root{
-  --navy:#0a1423; --ink:#0f172a; --bright:#2563eb; --sky:#38bdf8; --mint:#5eead4;
-  --gold:#f59e0b; --rose:#ec4899; --plum:#8b5cf6;
-  --text:#0f172a; --muted:#475569; --soft:#94a3b8;
-  --bg:#f8fafc; --bg-warm:#fdfcfa; --card:#fff; --border:#e2e8f0;
-  --radius-lg:24px; --radius-xl:32px;
-  --shadow-soft:0 8px 32px rgba(15,23,42,.08);
-  --shadow-deep:0 30px 80px rgba(10,20,35,.45);
-}
+/* Landing (mockup H, 2026-10-28). Standalone page — no app scripts.
+   Screenshots in img/landing/ are real captures of the live site. */
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{font-family:'DM Sans','Noto Sans KR',-apple-system,sans-serif;color:var(--text);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
-a{text-decoration:none;color:inherit}
-img{display:block;max-width:100%}
-button{font:inherit;cursor:pointer}
-
-.serif{font-family:'Playfair Display',serif}
-.korean{font-family:'Noto Serif KR','Noto Sans KR',serif}
-
-/* ─────────────────────────────────────────────────────────
-   GLOBAL TYPE SCALE
-───────────────────────────────────────────────────────── */
-.h-eyebrow{font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--bright);margin-bottom:14px}
-.h-eyebrow.on-dark{color:var(--sky)}
-.h-display{font-family:'Playfair Display',serif;font-size:clamp(34px,5.5vw,64px);font-weight:900;line-height:1.05;letter-spacing:-.025em}
-.h-h2{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,48px);font-weight:900;line-height:1.1;letter-spacing:-.02em}
-.h-h3{font-size:clamp(20px,2.4vw,28px);font-weight:900;line-height:1.2;letter-spacing:-.01em}
-.h-lead{font-size:clamp(15px,1.8vw,18px);color:var(--muted);line-height:1.65;max-width:560px}
-
-/* Reusable button */
-.btn{display:inline-flex;align-items:center;gap:8px;padding:15px 32px;border-radius:999px;font-size:15px;font-weight:800;border:0;transition:transform .15s,box-shadow .2s;white-space:nowrap}
-.btn:hover{transform:translateY(-2px)}
-.btn-primary{background:var(--ink);color:#fff;box-shadow:0 12px 28px rgba(15,23,42,.18)}
-.btn-primary:hover{box-shadow:0 18px 36px rgba(15,23,42,.25)}
-.btn-light{background:#fff;color:var(--ink);box-shadow:0 12px 32px rgba(0,0,0,.18)}
-.btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);color:#fff}
-.btn-ghost:hover{background:rgba(255,255,255,.12)}
-.btn-arrow{font-weight:900}
-
-/* Section base */
-.sect{padding:clamp(72px,11vw,160px) clamp(20px,5vw,60px)}
-.wrap{max-width:1240px;margin:0 auto}
-
-/* Reveal */
-[data-reveal]{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s cubic-bezier(.22,1,.36,1)}
-[data-reveal].is-in{opacity:1;transform:translateY(0)}
-
-/* ─────────────────────────────────────────────────────────
-   HERO
-───────────────────────────────────────────────────────── */
-.hero{position:relative;min-height:100vh;min-height:100dvh;background:var(--navy);overflow:hidden;display:flex;align-items:center;padding:clamp(80px,12vh,140px) clamp(20px,5vw,60px) clamp(40px,6vh,80px)}
-.hero-stars{position:absolute;inset:0;background: image-set(url('img/guide/hero-universe.webp') type('image/webp'), url('img/guide/hero-universe.png') type('image/png')) center/cover no-repeat;opacity:.32;filter:saturate(1.2)}
-.hero-veil{position:absolute;inset:0;background:radial-gradient(ellipse at 60% 40%,rgba(56,189,248,.12) 0%,transparent 50%),linear-gradient(180deg,rgba(10,20,35,.55) 0%,rgba(10,20,35,.7) 50%,var(--navy) 100%)}
-.hero-grid{position:relative;z-index:2;max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1.1fr 1fr;gap:80px;align-items:center;width:100%}
-.hero-copy{color:#fff}
-.hero-logo{font-family:'DM Sans',sans-serif;font-size:clamp(28px,3vw,36px);font-weight:900;letter-spacing:-.04em;color:#fff;margin-bottom:32px;display:inline-flex;align-items:baseline;gap:0}
-.hero-logo .dot{color:var(--sky)}
-.hero-display{font-family:'Playfair Display',serif;font-size:clamp(40px,6.5vw,82px);font-weight:900;line-height:1.02;letter-spacing:-.03em;color:#fff;margin-bottom:24px}
-.hero-display em{font-style:italic;color:var(--sky);font-weight:400}
-.hero-sub{font-size:clamp(15px,1.7vw,18px);color:rgba(255,255,255,.72);line-height:1.6;max-width:520px;margin-bottom:40px}
-.hero-cta{display:flex;gap:14px;flex-wrap:wrap}
-.hero-cta .btn-light{padding:17px 36px;font-size:16px}
-.hero-trust{display:flex;gap:28px;margin-top:48px;flex-wrap:wrap}
-.hero-trust div{font-size:13px;color:rgba(255,255,255,.5);font-weight:600}
-.hero-trust strong{color:#fff;font-weight:900;font-size:15px;display:block;margin-bottom:2px}
-
-/* Hero device mockup */
-.hero-logo .kh-logo-text{font-family:'DM Sans','Noto Sans KR',sans-serif;font-weight:900;color:#fff;letter-spacing:-.04em;line-height:1;display:inline-block}
-.hero-logo .kh-logo-i{position:relative;display:inline-block}
-.hero-logo .kh-logo-i::after{content:'';position:absolute;top:.05em;left:57%;transform:translateX(-50%);width:.22em;height:.22em;border-radius:50%;background:#E8635A}
-.hero-device{position:relative;justify-self:center;width:min(360px,100%);aspect-ratio:9/19;border-radius:42px;background:linear-gradient(180deg,#1f2937,#0f172a);padding:14px;box-shadow:0 50px 100px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06),inset 0 1px 0 rgba(255,255,255,.08)}
-.hero-device::before{content:'';position:absolute;top:18px;left:50%;transform:translateX(-50%);width:96px;height:24px;background:#0a0d12;border-radius:0 0 16px 16px;z-index:3}
-.hero-device-screen{position:relative;height:100%;border-radius:30px;overflow:hidden;background:#fff}
-.hero-device-screen img{width:100%;height:100%;object-fit:cover;object-position:top}
-.hero-device-glow{position:absolute;inset:-30px;background:radial-gradient(circle,rgba(56,189,248,.25),transparent 70%);z-index:-1;filter:blur(40px)}
-
-@media(max-width:920px){
-  .hero-grid{grid-template-columns:1fr;gap:48px;text-align:center}
-  .hero-cta,.hero-trust{justify-content:center}
-  .hero-device{max-width:280px}
-  .hero-sub{margin-left:auto;margin-right:auto}
+body{font-family:'DM Sans','Noto Sans KR',sans-serif;background:#0a1631;color:#e2e8f0;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+nav{display:flex;align-items:center;justify-content:space-between;padding:18px 0;gap:12px}
+.logo{font-weight:800;font-size:22px;color:#93c5fd}
+.nl{display:flex;gap:22px;align-items:center;font-size:14px;color:rgba(255,255,255,.72)}
+.nl .hide-m{display:none}
+.btn{display:inline-block;padding:12px 22px;border-radius:12px;font-weight:800;font-size:15px;text-align:center;cursor:pointer}
+.bp{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff}
+.bg{border:1px solid rgba(255,255,255,.25);color:#fff}
+.bs{padding:9px 15px;font-size:13.5px}
+.eb{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#7dd3fc;font-weight:800}
+h1{font-size:38px;line-height:1.1;color:#fff;font-weight:800;margin:12px 0 14px;letter-spacing:-.02em}
+h1 em{font-style:normal;background:linear-gradient(90deg,#93c5fd,#c4b5fd);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:16px;line-height:1.6;color:rgba(255,255,255,.72);max-width:520px}
+.ctas{display:flex;gap:10px;margin:22px 0 10px;flex-wrap:wrap}
+.fine{font-size:13px;color:rgba(255,255,255,.5)}
+.hero{display:grid;gap:30px;padding:24px 0 50px}
+.phones{position:relative;height:440px;overflow:hidden}
+.ph{position:absolute;width:200px;border-radius:26px;overflow:hidden;border:7px solid #1e293b;box-shadow:0 30px 60px rgba(0,0,0,.45);background:#0d1b3d}
+.ph img{display:block;width:100%;height:auto}
+.p1{left:calc(50% - 180px);top:24px;transform:rotate(-4deg)}
+.p2{left:calc(50% - 20px);top:6px;transform:rotate(3deg)}
+.strip{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px 0;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08)}
+.strip b{display:block;font-size:20px;color:#fff}.strip span{font-size:13px;color:rgba(255,255,255,.55)}
+section{padding:64px 0}
+h2{font-size:30px;color:#fff;font-weight:800;letter-spacing:-.01em;margin:10px 0 12px;line-height:1.15}
+.sh{text-align:center;max-width:640px;margin:0 auto 34px}.sh p{font-size:15.5px;color:rgba(255,255,255,.65);line-height:1.6}
+.loop{display:grid;gap:18px}
+.lc{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:20px 20px 0;overflow:hidden}
+.lc .n{width:30px;height:30px;border-radius:50%;background:#2563eb;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
+.lc h3{font-size:19px;color:#fff;margin:12px 0 6px}.lc p{font-size:14px;color:rgba(255,255,255,.62);line-height:1.55}
+.lc .shot{margin:16px auto 0;width:220px;height:300px;overflow:hidden;border-radius:22px 22px 0 0;border:7px solid #1e293b;border-bottom:none}
+.lc .shot img{width:100%;display:block}
+.row{display:grid;gap:26px;align-items:center;padding:26px 0}
+.row h3{font-size:26px;color:#fff;line-height:1.2;margin:8px 0 12px}
+.row p{font-size:15.5px;color:rgba(255,255,255,.66);line-height:1.6}
+.ck{list-style:none;margin-top:14px}.ck li{font-size:14.5px;color:#e2e8f0;padding:6px 0 6px 26px;position:relative}
+.ck li:before{content:'';position:absolute;left:0;top:11px;width:14px;height:8px;border-left:2.5px solid #34d399;border-bottom:2.5px solid #34d399;transform:rotate(-45deg)}
+.vis{display:flex;justify-content:center}
+.vis .ph{position:static;width:250px;height:440px;transform:none}
+.light{background:#f5f7fb;color:#0d1b2e}
+.light h2{color:#0d1b2e}.light .sh p{color:#475569}.light .eb{color:#2563eb}
+.lv{display:grid;gap:12px}
+.lvc{border-radius:18px;padding:18px;background:#fff;border:1px solid #e2e8f0}
+.lvc b{font-size:17px;color:#0d1b2e}.lvc small{display:block;font-size:12px;color:#64748b;margin:2px 0 12px}
+.lvc .s{font-family:'Noto Sans KR',sans-serif;font-size:15px;color:#0d1b2e;line-height:1.6}.lvc .e{font-size:12.5px;color:#64748b;margin-top:6px}
+.tag{display:inline-block;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;margin-bottom:10px}
+.price{display:grid;gap:18px;max-width:860px;margin:0 auto}
+.pc{border-radius:24px;padding:26px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)}
+.pc.pr{background:linear-gradient(160deg,rgba(124,58,237,.25),rgba(37,99,235,.15));border-color:rgba(167,139,250,.5)}
+.pc .k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#93c5fd}.pc.pr .k{color:#c4b5fd}
+.pc .amt{font-size:42px;color:#fff;font-weight:800;margin:8px 0 2px}.pc .amt small{font-size:15px;color:rgba(255,255,255,.55);font-weight:500}
+.pc .per{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:12px}
+.pc .btn{display:block;margin-top:18px}
+.faq{max-width:760px;margin:0 auto}
+.q{border-bottom:1px solid rgba(255,255,255,.1);padding:18px 0}.q b{font-size:16px;color:#fff;display:block}.q p{font-size:14.5px;color:rgba(255,255,255,.62);margin-top:6px;line-height:1.55}
+.final{text-align:center;padding:80px 0;background:radial-gradient(ellipse at center,rgba(99,102,241,.25),transparent 70%)}
+.final p{color:rgba(255,255,255,.65);margin:8px 0 22px}
+footer{padding:24px 0 40px;border-top:1px solid rgba(255,255,255,.08);font-size:13px;color:rgba(255,255,255,.45);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+footer nav{padding:0;gap:14px;justify-content:flex-start}
+@media (min-width:860px){
+  .wrap{padding:0 40px}
+  .nl .hide-m{display:inline}
+  h1{font-size:54px}
+  .hero{grid-template-columns:1.05fr 1fr;align-items:center;padding:40px 0 70px}
+  .phones{height:560px;overflow:visible}
+  .ph{width:250px}
+  .p1{left:10px;top:30px}.p2{left:auto;right:10px}
+  .strip{grid-template-columns:repeat(4,1fr)}
+  .strip b{font-size:22px}
+  section{padding:80px 0}
+  h2{font-size:38px}
+  .loop{grid-template-columns:repeat(3,1fr);gap:22px}
+  .row{grid-template-columns:1fr 1fr;gap:60px}
+  .row.rev .txt{order:2}
+  .row h3{font-size:30px}
+  .vis .ph{width:270px;height:470px}
+  .lv{grid-template-columns:repeat(4,1fr)}
+  .price{grid-template-columns:1fr 1fr;gap:22px}
 }
-
-/* ─────────────────────────────────────────────────────────
-   INTERACTIVE DEMO  (the killer feature on this page)
-───────────────────────────────────────────────────────── */
-.demo{background:linear-gradient(180deg,var(--navy) 0%,#0f1d33 100%);padding:clamp(60px,8vw,120px) clamp(20px,5vw,60px);color:#fff}
-.demo-wrap{max-width:1100px;margin:0 auto;text-align:center}
-.demo-hd .h-eyebrow{color:var(--mint)}
-.demo-hd h2{color:#fff;margin-bottom:16px}
-.demo-hd p{color:rgba(255,255,255,.6);margin:0 auto 56px;max-width:580px}
-.demo-card{background:#fff;border-radius:28px;padding:clamp(24px,4vw,48px);box-shadow:var(--shadow-deep);text-align:left;color:var(--text);max-width:780px;margin:0 auto;position:relative}
-.demo-tabs{display:flex;gap:6px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0}
-.demo-tab{padding:10px 18px;border:0;background:none;color:var(--muted);font-size:13px;font-weight:800;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.15s;border-radius:8px 8px 0 0}
-.demo-tab.is-active{color:var(--bright);border-bottom-color:var(--bright)}
-.demo-tab:hover:not(.is-active){background:#f1f5f9;color:var(--ink)}
-.demo-stage{padding:24px 4px 8px}
-.demo-instr{font-size:13px;color:var(--soft);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px}
-.demo-instr::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bright);box-shadow:0 0 0 4px rgba(37,99,235,.18);animation:demoPulse 1.6s ease-in-out infinite}
-@keyframes demoPulse{0%,100%{box-shadow:0 0 0 4px rgba(37,99,235,.18)}50%{box-shadow:0 0 0 9px rgba(37,99,235,.05)}}
-.demo-sentence{font-family:'Noto Serif KR',serif;font-size:clamp(20px,2.6vw,30px);font-weight:600;line-height:1.6;color:var(--ink);cursor:pointer;padding:18px 0;border-radius:8px;transition:.2s;letter-spacing:-.01em}
-.demo-sentence:hover{color:var(--bright)}
-.demo-sentence.is-active{color:var(--bright)}
-/* ── Demo analysis panel — matches in-app sentence-analyze card ──
-   The previous panel used a navy gradient with cyan/blue accents,
-   which didn't match the article reader's actual purple/violet
-   analysis card the owner wanted to advertise. Repalette to deep
-   indigo background, lavender pill accents, mint section dots — the
-   same vocabulary the production .art-sent-panel uses.            */
-.demo-panel{margin-top:18px;background:linear-gradient(180deg,#1f1442 0%,#160a33 100%);border-radius:20px;padding:24px;color:#fff;display:none;animation:demoSlide .35s cubic-bezier(.22,1,.36,1);box-shadow:0 24px 60px rgba(31,20,66,.45),inset 0 0 0 1px rgba(167,139,250,.12)}
-.demo-panel.is-open{display:block}
-@keyframes demoSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.demo-section-label{font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#7fffd4;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.demo-section-label::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:#7fffd4;box-shadow:0 0 8px rgba(127,255,212,.6)}
-.demo-translation{font-size:17px;font-weight:700;color:#fff;line-height:1.55;margin-bottom:22px}
-.demo-row{display:grid;grid-template-columns:auto 1fr;gap:14px 18px;font-size:14px;align-items:baseline;padding:10px 0;border-top:1px solid rgba(167,139,250,.12)}
-.demo-row:first-of-type{border-top:0;padding-top:4px}
-.demo-row .ko{font-family:'Noto Serif KR',serif;font-size:17px;font-weight:800;color:#c7b5ff}
-.demo-row .en{color:rgba(255,255,255,.85);line-height:1.55}
-.demo-grammar-card{margin-top:14px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.22);border-radius:12px;padding:14px 16px}
-.demo-grammar-card .demo-pill{display:inline-block;font-size:9px;font-weight:900;letter-spacing:.14em;padding:3px 10px;border-radius:999px;background:rgba(167,139,250,.22);color:#d8c9ff;margin-bottom:8px;text-transform:uppercase}
-.demo-grammar-card.is-exp .demo-pill{background:rgba(127,255,212,.18);color:#a7ffe5}
-.demo-grammar-card .pat{font-family:'Noto Serif KR',serif;font-size:16px;font-weight:800;color:#fff;margin-bottom:4px}
-.demo-grammar-card .exp{font-size:13px;color:rgba(255,255,255,.78);line-height:1.6}
-.demo-grammar-card .chunk{display:inline-block;margin-top:8px;font-family:'Noto Serif KR',serif;font-size:12px;color:#c7b5ff;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.22);padding:4px 10px;border-radius:8px}
-.demo-foot{margin-top:24px;text-align:center;color:var(--muted);font-size:13px}
-.demo-foot strong{color:var(--ink)}
-.demo-empty{padding:40px 20px;text-align:center;color:var(--soft);font-size:14px;font-weight:600}
-
-/* ─────────────────────────────────────────────────────────
-   ASPIRATION (Vocabulary Universe)
-───────────────────────────────────────────────────────── */
-.universe{position:relative;background:#070d1a;color:#fff;padding:clamp(80px,12vw,160px) clamp(20px,5vw,60px) clamp(60px,8vw,120px);overflow:hidden}
-.universe-bg{position:absolute;inset:0;background: image-set(url('img/guide/hero-universe.webp') type('image/webp'), url('img/guide/hero-universe.png') type('image/png')) center/cover no-repeat;opacity:.85;filter:saturate(1.15)}
-.universe-veil{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 0%,rgba(7,13,26,.65) 60%,#070d1a 100%)}
-.universe-content{position:relative;z-index:2;max-width:780px;margin:0 auto;text-align:center}
-.universe-content h2{color:#fff;margin-bottom:18px;text-shadow:0 4px 30px rgba(0,0,0,.6)}
-.universe-content p{color:rgba(255,255,255,.78);font-size:clamp(15px,1.8vw,18px);line-height:1.7;margin:0 auto 32px;max-width:580px;text-shadow:0 2px 20px rgba(0,0,0,.5)}
-.universe-stat{display:inline-flex;align-items:baseline;gap:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:12px 24px;border-radius:999px;font-size:14px;color:rgba(255,255,255,.8);font-weight:700;backdrop-filter:blur(10px)}
-.universe-stat strong{color:#fff;font-size:28px;font-family:'Playfair Display',serif;font-weight:900}
-
-/* ─────────────────────────────────────────────────────────
-   STEPS (How it works — keep concise)
-───────────────────────────────────────────────────────── */
-.steps{background:var(--bg-warm);padding:clamp(72px,10vw,120px) clamp(20px,5vw,60px)}
-.steps-hd{text-align:center;margin-bottom:clamp(48px,6vw,72px)}
-.steps-hd h2{margin-bottom:14px}
-.steps-hd p{margin:0 auto;color:var(--muted)}
-.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1100px;margin:0 auto}
-.step{position:relative;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px 28px;transition:transform .25s,box-shadow .25s}
-.step:hover{transform:translateY(-6px);box-shadow:var(--shadow-soft)}
-.step-num{font-family:'Playfair Display',serif;font-size:64px;font-weight:900;line-height:1;color:var(--bright);opacity:.16;position:absolute;top:18px;right:22px}
-.step h3{font-size:20px;font-weight:900;margin-bottom:10px;letter-spacing:-.01em}
-.step p{font-size:14px;color:var(--muted);line-height:1.65}
-@media(max-width:768px){.steps-grid{grid-template-columns:1fr;max-width:480px}}
-
-/* ─────────────────────────────────────────────────────────
-   FEATURE BLOCK (split layout, repeated)
-───────────────────────────────────────────────────────── */
-.fblock{padding:clamp(80px,11vw,140px) clamp(20px,5vw,60px);position:relative;overflow:hidden}
-.fblock-wrap{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1fr 1.05fr;gap:clamp(32px,6vw,80px);align-items:center}
-.fblock-wrap.reverse{grid-template-columns:1.05fr 1fr}
-.fblock-wrap.reverse .fblock-text{order:2}
-.fblock-wrap.reverse .fblock-visual{order:1}
-.fblock-text h2{margin-bottom:18px}
-.fblock-text .h-lead{margin-bottom:24px}
-.fblock-list{margin:8px 0 28px;padding:0;list-style:none}
-.fblock-list li{font-size:14px;color:var(--ink);padding:8px 0 8px 28px;position:relative;line-height:1.55}
-.fblock-list li::before{content:'';position:absolute;left:0;top:14px;width:14px;height:2px;background:var(--bright);border-radius:2px}
-.fblock-list li strong{font-weight:800}
-.fblock-cta{display:inline-flex;align-items:center;gap:6px;color:var(--bright);font-weight:800;font-size:14px;border-bottom:2px solid transparent;padding-bottom:2px;transition:.15s}
-.fblock-cta:hover{border-bottom-color:var(--bright)}
-
-/* Visual side — phone mockup OR raw card */
-.visual-phone{position:relative;justify-self:center;width:min(320px,100%);aspect-ratio:9/19;border-radius:38px;background:linear-gradient(180deg,#0f172a,#020617);padding:12px;box-shadow:0 40px 80px rgba(15,23,42,.32),0 0 0 1px rgba(255,255,255,.04)}
-.visual-phone::before{content:'';position:absolute;top:14px;left:50%;transform:translateX(-50%);width:80px;height:20px;background:#000;border-radius:0 0 14px 14px;z-index:3}
-.visual-phone-screen{height:100%;border-radius:26px;overflow:hidden;background:#fff;position:relative}
-.visual-phone-screen img{width:100%;height:100%;object-fit:cover;object-position:top}
-
-.visual-card{position:relative;border-radius:var(--radius-xl);overflow:hidden;box-shadow:var(--shadow-deep);background:#0f172a}
-.visual-card img{width:100%;height:auto;display:block}
-.visual-card.tall img{max-height:640px;object-fit:cover;object-position:top}
-
-.visual-bleed{position:relative;border-radius:var(--radius-xl);overflow:hidden;box-shadow:var(--shadow-deep)}
-.visual-bleed img{width:100%;height:auto;display:block}
-
-@media(max-width:900px){
-  .fblock-wrap,.fblock-wrap.reverse{grid-template-columns:1fr;gap:48px}
-  .fblock-wrap.reverse .fblock-text{order:1}
-  .fblock-wrap.reverse .fblock-visual{order:2}
-}
-
-/* Section themes */
-.fblock.dark{background:#0f172a;color:#fff}
-.fblock.dark h2{color:#fff}
-.fblock.dark .h-lead{color:rgba(255,255,255,.7)}
-.fblock.dark .fblock-list li{color:rgba(255,255,255,.85)}
-.fblock.dark .fblock-list li::before{background:var(--sky)}
-.fblock.dark .fblock-cta{color:var(--sky)}
-.fblock.dark .h-eyebrow{color:var(--sky)}
-
-.fblock.warm{background:var(--bg-warm)}
-.fblock.cream{background:#fef9ec}
-.fblock.mint{background:#ecfdf5}
-.fblock.lilac{background:#f5f3ff}
-
-/* ─────────────────────────────────────────────────────────
-   ARTICLE STUDY — 5-step horizontal carousel
-───────────────────────────────────────────────────────── */
-.fivestep{background:#0f172a;color:#fff;padding:clamp(80px,11vw,140px) 0}
-.fivestep-hd{text-align:center;padding:0 24px;max-width:780px;margin:0 auto clamp(48px,6vw,72px)}
-.fivestep-hd h2{color:#fff;margin-bottom:14px}
-.fivestep-hd p{color:rgba(255,255,255,.65);font-size:clamp(15px,1.8vw,18px);line-height:1.65}
-.fivestep-rail{display:flex;gap:24px;overflow-x:auto;overflow-y:hidden;padding:0 clamp(20px,5vw,60px) 32px;overscroll-behavior-x:contain;scrollbar-width:none}
-.fivestep-rail::-webkit-scrollbar{display:none}
-.fivestep-card{flex:0 0 clamp(240px,30vw,300px);scroll-snap-align:start;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:24px;overflow:hidden;transition:.25s}
-.fivestep-card:hover{background:rgba(255,255,255,.07);transform:translateY(-4px)}
-.fivestep-card-num{position:absolute;top:12px;left:12px;background:var(--sky);color:var(--navy);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;z-index:2}
-.fivestep-img{position:relative;height:280px;overflow:hidden;background:#1e293b}
-.fivestep-img img{width:100%;height:100%;object-fit:cover;object-position:top}
-.fivestep-body{padding:18px 20px 22px}
-.fivestep-body h4{font-size:16px;font-weight:900;color:#fff;margin-bottom:6px;letter-spacing:-.01em}
-.fivestep-body p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.55}
-
-/* ─────────────────────────────────────────────────────────
-   PRICING TRANSPARENCY
-───────────────────────────────────────────────────────── */
-.pricing{background:var(--bg-warm);padding:clamp(72px,10vw,120px) 24px;text-align:center}
-.pricing h2{margin-bottom:14px}
-.pricing-lead{margin:0 auto 48px;max-width:560px;color:var(--muted)}
-.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:780px;margin:0 auto}
-.pricing-card{background:#fff;border:1px solid var(--border);border-radius:24px;padding:32px;text-align:left;position:relative}
-.pricing-card.featured{border-color:var(--ink);background:var(--ink);color:#fff}
-.pricing-card.featured .ptag{background:var(--gold);color:var(--navy)}
-.ptag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:#e2e8f0;color:var(--ink);padding:4px 10px;border-radius:999px;margin-bottom:14px}
-.pricing-card h3{font-size:22px;font-weight:900;margin-bottom:6px;letter-spacing:-.01em}
-.pricing-card .price{font-family:'Playfair Display',serif;font-size:38px;font-weight:900;line-height:1;margin:14px 0 4px}
-.pricing-card .price span{font-size:14px;font-weight:600;color:var(--muted)}
-.pricing-card.featured .price span{color:rgba(255,255,255,.6)}
-.pricing-card ul{list-style:none;margin:18px 0 0;padding:0}
-.pricing-card li{font-size:14px;padding:7px 0 7px 22px;position:relative;line-height:1.5}
-.pricing-card li::before{content:'';position:absolute;left:0;top:13px;width:12px;height:12px;border-radius:50%;background:rgba(15,23,42,.08)}
-.pricing-card.featured li::before{background:rgba(255,255,255,.18)}
-@media(max-width:680px){.pricing-grid{grid-template-columns:1fr}}
-
-/* ─────────────────────────────────────────────────────────
-   FAQ
-───────────────────────────────────────────────────────── */
-.faq{background:#fff;padding:clamp(72px,10vw,120px) 24px}
-.faq-wrap{max-width:780px;margin:0 auto}
-.faq h2{text-align:center;margin-bottom:48px}
-.faq details{border-bottom:1px solid var(--border);padding:18px 0}
-.faq summary{list-style:none;cursor:pointer;font-size:16px;font-weight:800;color:var(--ink);display:flex;justify-content:space-between;align-items:center;padding:6px 0}
-.faq summary::-webkit-details-marker{display:none}
-.faq summary::after{content:'+';font-size:24px;color:var(--bright);font-weight:300;transition:.2s}
-.faq details[open] summary::after{transform:rotate(45deg)}
-.faq details p{margin-top:12px;font-size:15px;color:var(--muted);line-height:1.7}
-
-/* ─────────────────────────────────────────────────────────
-   FINAL CTA
-───────────────────────────────────────────────────────── */
-.fcta{position:relative;background:var(--navy);color:#fff;padding:clamp(80px,12vw,160px) 24px;text-align:center;overflow:hidden}
-.fcta-bg{position:absolute;inset:0;background: image-set(url('img/guide/hero-universe.webp') type('image/webp'), url('img/guide/hero-universe.png') type('image/png')) center/cover no-repeat;opacity:.4}
-.fcta-veil{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 0%,rgba(10,20,35,.85) 100%)}
-.fcta-content{position:relative;z-index:2;max-width:680px;margin:0 auto}
-.fcta h2{color:#fff;margin-bottom:18px;text-shadow:0 4px 30px rgba(0,0,0,.6)}
-.fcta p{color:rgba(255,255,255,.75);font-size:17px;margin:0 auto 36px;max-width:520px;line-height:1.65}
-.fcta .btn-light{padding:18px 44px;font-size:17px}
-.fcta-note{margin-top:18px;font-size:13px;color:rgba(255,255,255,.5)}
-.fcta-note a{color:var(--sky);font-weight:700}
-
-/* Footer */
-.lfoot{background:#070d1a;padding:36px 24px;text-align:center;font-size:13px;color:rgba(255,255,255,.4)}
-.lfoot a{color:rgba(255,255,255,.55);font-weight:600;margin:0 6px}
-.lfoot a:hover{color:#fff}
 </style>
 </head>
 <body>
+<div class="wrap">
+  <nav>
+    <a href="landing.html" class="logo">KoreHani</a>
+    <div class="nl">
+      <a href="#how" class="hide-m">How it works</a>
+      <a href="#levels" class="hide-m">Levels</a>
+      <a href="#pricing" class="hide-m">Pricing</a>
+      <a href="index.html" onclick="khVisited()">Sign in</a>
+      <a href="korehan-onboarding.html" class="btn bp bs" onclick="khVisited()">Start free</a>
+    </div>
+  </nav>
+  <div class="hero">
+    <div>
+      <div class="eb">Korean through today's news</div>
+      <h1>Read real Korean news — <em>at your level.</em></h1>
+      <p class="lead">New articles every day in four levels. Tap any sentence for the English, the words and the grammar. Save what you learn — we bring it back at the right time.</p>
+      <div class="ctas"><a href="korehan-onboarding.html" class="btn bp" onclick="khVisited()">Start free</a><a href="#how" class="btn bg">See how it works</a></div>
+      <div class="fine">Free plan forever · no card needed</div>
+    </div>
+    <div class="phones" aria-hidden="true">
+      <div class="ph p1"><img src="img/landing/home.webp" alt="" width="600" height="1298"></div>
+      <div class="ph p2"><img src="img/landing/article-tap.webp" alt="" width="600" height="1298"></div>
+    </div>
+  </div>
+  <div class="strip">
+    <div><b>Daily</b><span>new articles + Korea Buzz</span></div>
+    <div><b>4 levels</b><span>Seed → Sprout → Tree → Forest</span></div>
+    <div><b>10,000+</b><span>words in the Word Bank</span></div>
+    <div><b>Role-play</b><span>real conversations, your line</span></div>
+  </div>
+</div>
 
-<!-- ═══════════════════════════════════════════════════════
-     HERO
-═══════════════════════════════════════════════════════ -->
-<section class="hero">
-  <div class="hero-stars"></div>
-  <div class="hero-veil"></div>
-  <div class="hero-grid">
-    <div class="hero-copy" data-reveal>
-      <div class="hero-logo"><span class="kh-logo-text">KoreHan<span class="kh-logo-i">ı</span></span></div>
-      <h1 class="hero-display">Build your<br><em>Korean universe.</em></h1>
-      <p class="hero-sub">Tap any sentence in a real Korean article. Translation, vocabulary, grammar — instantly. Every word you save becomes a star.</p>
-      <div class="hero-cta">
-        <a href="#try" class="btn btn-light">Try a sentence — no signup</a>
-        <a href="index.html" class="btn btn-ghost" onclick="localStorage.setItem('kh_visited','1')">I already have an account</a>
-      </div>
-      <div class="hero-trust">
-        <div><strong>400+</strong>articles &amp; conversations</div>
-        <div><strong>4 levels</strong>Seed → Forest (TOPIK 1–6)</div>
-        <div><strong>Free</strong>forever for daily learning</div>
-      </div>
-    </div>
-    <div class="hero-visual" data-reveal>
-      <div class="hero-device">
-        <div class="hero-device-glow"></div>
-        <div class="hero-device-screen">
-          <picture><source srcset="img/guide/step1-tap-analysis.webp?v=20261013c" type="image/webp"><img src="img/guide/step1-tap-analysis.jpg?v=20261013c" alt="Article reader on mobile with the tap-to-analyze panel open" width="540" height="1040" fetchpriority="high" decoding="async"></picture>
-        </div>
-      </div>
-    </div>
+<section id="how"><div class="wrap">
+  <div class="sh"><div class="eb">Your daily loop</div><h2>Ten minutes a day, three steps.</h2><p>The same loop every day — that's what makes the words stick.</p></div>
+  <div class="loop">
+    <div class="lc"><span class="n">1</span><h3>Read &amp; tap</h3><p>Open today's article at your level. Tap a sentence: translation, vocabulary and grammar in one place.</p><div class="shot"><img src="img/landing/article-tap.webp" alt="Sentence analysis in an article" loading="lazy" width="600" height="1298"></div></div>
+    <div class="lc"><span class="n">2</span><h3>Save &amp; review</h3><p>Save words you meet. Today's Review brings each one back right before you'd forget it.</p><div class="shot"><img src="img/landing/review.webp" alt="Today's Review question" loading="lazy" width="600" height="1298"></div></div>
+    <div class="lc"><span class="n">3</span><h3>Say it</h3><p>Hear real conversations line by line, learn the key expressions, then play one side yourself.</p><div class="shot"><img src="img/landing/conv-read.webp" alt="A conversation lesson" loading="lazy" width="600" height="1298"></div></div>
   </div>
-</section>
+</div></section>
 
-<!-- ═══════════════════════════════════════════════════════
-     INTERACTIVE DEMO  —  try without signup
-═══════════════════════════════════════════════════════ -->
-<section class="demo" id="try">
-  <div class="demo-wrap">
-    <div class="demo-hd" data-reveal>
-      <div class="h-eyebrow">Try It Now · No Signup</div>
-      <h2 class="h-h2">This is what every sentence on KoreHani feels like.</h2>
-      <p>Tap a sentence below. You'll see exactly what learners see when they tap inside an article — translation, vocabulary, grammar.</p>
-    </div>
-    <div class="demo-card" data-reveal>
-      <div class="demo-tabs" id="demo-tabs">
-        <button class="demo-tab is-active" data-demo="1">Beginner</button>
-        <button class="demo-tab" data-demo="2">K-pop</button>
-        <button class="demo-tab" data-demo="3">Culture</button>
-      </div>
-      <div class="demo-stage">
-        <div class="demo-instr">Tap the sentence</div>
-        <div class="demo-sentence" id="demo-sentence">안녕하세요, 만나서 반갑습니다.</div>
-        <div class="demo-panel" id="demo-panel">
-          <!-- Filled in by JS -->
-        </div>
-      </div>
-    </div>
-    <div class="demo-foot" data-reveal>
-      <strong>Like that?</strong> Now imagine that on every article and conversation.<br>
-      <a href="korehan-onboarding.html" class="btn btn-light" style="margin-top:18px" onclick="localStorage.setItem('kh_visited','1')">Get Started — Free</a>
-    </div>
+<section style="padding-top:10px"><div class="wrap">
+  <div class="row">
+    <div class="txt"><div class="eb">Conversations</div><h3>Real dialogue, not textbook lines.</h3><p>Everyday scenes — family calls, cafés, work — with 반말 and 존댓말 marked so you know who talks how.</p>
+      <ul class="ck"><li>Play all at 0.8× or 1×, English on tap</li><li>Key expressions go to your word list</li><li>Role-play: pick your line, hear the answer</li></ul></div>
+    <div class="vis"><div class="ph"><img src="img/landing/conv-read.webp" alt="Conversation reader" loading="lazy" width="600" height="1298"></div></div>
   </div>
-</section>
+  <div class="row rev">
+    <div class="txt"><div class="eb">Today's Phrase</div><h3>One idiom a day, used the way Koreans use it.</h3><p>Meaning, when to use it and natural example sentences you can listen to.</p>
+      <ul class="ck"><li>Romanization + audio for every example</li><li>Save it — it comes back in review</li></ul></div>
+    <div class="vis"><div class="ph"><img src="img/landing/phrase.webp" alt="Today's Phrase" loading="lazy" width="600" height="1298"></div></div>
+  </div>
+  <div class="row">
+    <div class="txt"><div class="eb">Progress</div><h3>See your Korean grow.</h3><p>Weekly goal, streak, and your reading, vocabulary, grammar and writing — plus the exact words to fix next.</p>
+      <ul class="ck"><li>Weak spots turned into a review button</li><li>A weekly goal you set yourself</li></ul></div>
+    <div class="vis"><div class="ph"><img src="img/landing/progress.webp" alt="Progress page" loading="lazy" width="600" height="1298"></div></div>
+  </div>
+</div></section>
 
-<!-- ═══════════════════════════════════════════════════════
-     ASPIRATION  —  Vocabulary Universe
-═══════════════════════════════════════════════════════ -->
-<section class="universe">
-  <div class="universe-bg"></div>
-  <div class="universe-veil"></div>
-  <div class="universe-content" data-reveal>
-    <div class="h-eyebrow on-dark" style="color:var(--mint)">The Long-Term Hook</div>
-    <h2 class="h-h2">Every saved word becomes a star.</h2>
-    <p>Your Vocabulary Universe is a constellation of every word you've taken from a real article. Cluster by topic, browse by date, and watch your sky get denser week after week. <strong style="color:#fff">It's the chart of your Korean — and it only ever grows.</strong></p>
-    <div class="universe-stat">After 30 days · <strong>~150 stars</strong></div>
+<section class="light" id="levels"><div class="wrap">
+  <div class="sh"><div class="eb">Levels</div><h2>The same news, four ways.</h2><p>Pick your level once — every article, word list and lesson follows it. Move up whenever you're ready.</p></div>
+  <div class="lv">
+    <div class="lvc"><span class="tag" style="background:#dcfce7;color:#166534">Seed</span><br><b>Just starting</b><small>Hangul + first words</small><div class="s">그는 커피를 안 마셔요.</div><div class="e">He doesn't drink coffee.</div></div>
+    <div class="lvc"><span class="tag" style="background:#d1fae5;color:#065f46">Sprout</span><br><b>TOPIK 1–2</b><small>Everyday sentences</small><div class="s">그는 커피를 끊고 건강해졌어요.</div><div class="e">He quit coffee and got healthier.</div></div>
+    <div class="lvc"><span class="tag" style="background:#dbeafe;color:#1e40af">Tree</span><br><b>TOPIK 3–4</b><small>Real news style</small><div class="s">커피를 끊으면서 일상에 긍정적인 변화가 생겼다고 합니다.</div><div class="e">He says quitting coffee changed his daily life.</div></div>
+    <div class="lvc"><span class="tag" style="background:#ede9fe;color:#5b21b6">Forest</span><br><b>TOPIK 5–6</b><small>Full native articles</small><div class="s">카페인을 끊은 뒤 삶의 질이 눈에 띄게 높아졌다는 사연이 화제를 모았습니다.</div><div class="e">His story of a better life after caffeine drew attention.</div></div>
   </div>
-</section>
+</div></section>
 
-<!-- ═══════════════════════════════════════════════════════
-     HOW IT WORKS  (3 steps)
-═══════════════════════════════════════════════════════ -->
-<section class="steps" id="how">
-  <div class="steps-hd" data-reveal>
-    <div class="h-eyebrow">How It Works</div>
-    <h2 class="h-h2">Three steps. Every day.</h2>
-    <p class="h-lead" style="margin:0 auto">Read with comprehension. Practice actively. Track your growth. The same loop, day after day.</p>
+<section id="pricing"><div class="wrap">
+  <div class="sh"><div class="eb">Pricing</div><h2>Free is really free.</h2><p>Reading, tap-to-analyze and your word reviews stay free. Premium adds guided study, writing feedback and a live class.</p></div>
+  <div class="price">
+    <div class="pc"><div class="k">Free</div><div class="amt">$0 <small>forever</small></div><div class="per">No card needed</div>
+      <ul class="ck"><li>All articles &amp; Korea Buzz, 4 levels</li><li>Tap any sentence: translation, words, grammar</li><li>Conversations: listen &amp; read</li><li>Word Bank + Today's Review</li><li>Weekly topic lessons, Today's Phrase, games</li></ul>
+      <a href="korehan-onboarding.html" class="btn bg" onclick="khVisited()">Start free</a></div>
+    <div class="pc pr"><div class="k">Premium</div><div class="amt">$8.99 <small>/ month</small></div><div class="per">or $69 / year · cancel anytime</div>
+      <ul class="ck"><li>Article &amp; Conversation Study every day (incl. role-play)</li><li>Weekly writing with AI feedback + tutor review</li><li>Fast Track, listening quiz, weekly review</li><li>Weekend live class on Zoom</li></ul>
+      <a href="korehan-courses.html" class="btn bp" onclick="khVisited()">See Premium</a></div>
   </div>
-  <div class="steps-grid">
-    <div class="step" data-reveal>
-      <div class="step-num">1</div>
-      <h3>Read &amp; Tap</h3>
-      <p>Pick an article, conversation, or Korea Buzz story at your level. Tap any sentence for instant translation, vocab, and grammar.</p>
-    </div>
-    <div class="step" data-reveal>
-      <div class="step-num">2</div>
-      <h3>Active Practice</h3>
-      <p>Each article runs through a 4-step study flow — Vocab → Phrases → Reading → Quiz. On Premium, writing lives in Express Practice (Topic / Free Writing / Diary) with instant AI feedback and a real tutor review.</p>
-    </div>
-    <div class="step" data-reveal>
-      <div class="step-num">3</div>
-      <h3>Watch It Grow</h3>
-      <p>Saved words become stars in your Vocabulary Universe. Track XP, streaks, and weekly improvement in Growth Lab.</p>
-    </div>
-  </div>
-</section>
+</div></section>
 
-<!-- ═══════════════════════════════════════════════════════
-     ARTICLE STUDY — 5-step horizontal carousel
-═══════════════════════════════════════════════════════ -->
-<section class="fivestep">
-  <div class="fivestep-hd" data-reveal>
-    <div class="h-eyebrow on-dark">Article Study</div>
-    <h2 class="h-h2">Four steps from passive reading to real Korean.</h2>
-    <p>Every article opens into a structured 4-step flow. You don't just read — you build the words, recognize the phrases, fill the gaps, and prove it on a quiz. Writing has its own home in Express Practice — Topic, Free Writing, or Diary — with instant AI feedback, and on Premium a real KoreHan tutor reviews your weekly writing. Article Study is part of Premium.</p>
-  </div>
-  <div class="fivestep-rail">
-    <div class="fivestep-card" data-reveal>
-      <div class="fivestep-img"><span class="fivestep-card-num">1</span><picture><source srcset="img/guide/step2-vocab.webp?v=20261013c" type="image/webp"><img src="img/guide/step2-vocab.png?v=20261013c" alt="Vocab step" loading="lazy" decoding="async" width="480" height="900"></picture></div>
-      <div class="fivestep-body"><h4>Vocab</h4><p>Match each new word to its meaning, with audio.</p></div>
-    </div>
-    <div class="fivestep-card" data-reveal>
-      <div class="fivestep-img"><span class="fivestep-card-num">2</span><picture><source srcset="img/guide/step2-grammar.webp?v=20261013c" type="image/webp"><img src="img/guide/step2-grammar.png?v=20261013c" alt="Phrases step" loading="lazy" decoding="async" width="480" height="900"></picture></div>
-      <div class="fivestep-body"><h4>Phrases</h4><p>Recognize the natural chunks Koreans actually use.</p></div>
-    </div>
-    <div class="fivestep-card" data-reveal>
-      <div class="fivestep-img"><span class="fivestep-card-num">3</span><picture><source srcset="img/guide/step2-reading.webp?v=20261013c" type="image/webp"><img src="img/guide/step2-reading.png?v=20261013c" alt="Reading step" loading="lazy" decoding="async" width="480" height="900"></picture></div>
-      <div class="fivestep-body"><h4>Reading</h4><p>Fill blanks back into the article from the word bank.</p></div>
-    </div>
-    <div class="fivestep-card" data-reveal>
-      <div class="fivestep-img"><span class="fivestep-card-num">4</span><picture><source srcset="img/guide/step2-quiz.webp?v=20261013c" type="image/webp"><img src="img/guide/step2-quiz.png?v=20261013c" alt="Quiz step" loading="lazy" decoding="async" width="480" height="900"></picture></div>
-      <div class="fivestep-body"><h4>Quiz</h4><p>Multiple-choice or type-the-answer — both modes available.</p></div>
-    </div>
-  </div>
-</section>
+<section style="padding-top:10px"><div class="wrap faq">
+  <div class="sh" style="margin-bottom:16px"><h2>Questions</h2></div>
+  <div class="q"><b>Do I need to read Hangul first?</b><p>No. The Word Bank has Hangul basics — every letter with its sound — and Seed level starts with the first words.</p></div>
+  <div class="q"><b>What level should I pick?</b><p>Take the short placement check when you sign up, or pick a level and switch any time.</p></div>
+  <div class="q"><b>Is the free plan limited in time?</b><p>No trial clock — the free plan stays free.</p></div>
+  <div class="q"><b>How do I cancel Premium?</b><p>From My Page → Manage subscription, any time. You keep Premium until the end of the period you paid for.</p></div>
+</div></section>
 
-<!-- ═══════════════════════════════════════════════════════
-     CONVERSATIONS
-═══════════════════════════════════════════════════════ -->
-<section class="fblock warm">
-  <div class="fblock-wrap">
-    <div class="fblock-text" data-reveal>
-      <div class="h-eyebrow">Conversations</div>
-      <h2 class="h-h2">Step into a scene, choose your line.</h2>
-      <p class="h-lead">Conversations don't render as walls of text. Each one plays out like a real chat — taxi, café, workplace, family — so you see who is speaking, follow the dialogue, and tap any line for an instant breakdown.</p>
-      <ul class="fblock-list">
-        <li><strong>Five contexts</strong> — everyday, workplace, friends, family, dating</li>
-        <li><strong>Tap-to-analyze on every bubble</strong> — same as articles</li>
-        <li><strong>Save lines to your Vocab Universe</strong> as natural phrases</li>
-      </ul>
-      <a href="korehan-conversations.html" class="fblock-cta">Browse conversations →</a>
-    </div>
-    <div class="fblock-visual" data-reveal>
-      <div class="visual-phone">
-        <div class="visual-phone-screen">
-          <picture><source srcset="img/guide/shot-conversation.webp?v=20261013b" type="image/webp"><img src="img/guide/shot-conversation.png?v=20261013b" alt="A conversation shown as a chat thread on mobile" loading="lazy" decoding="async" width="540" height="1040"></picture>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════
-     SPROUT DAILY WRITING
-═══════════════════════════════════════════════════════ -->
-<section class="fblock cream">
-  <div class="fblock-wrap">
-    <div class="fblock-text" data-reveal>
-      <div class="h-eyebrow" style="color:var(--gold)">Sprout Daily Writing</div>
-      <h2 class="h-h2">One topic. One paragraph. Every day.</h2>
-      <p class="h-lead">A new prompt drops every morning. Write a few sentences in Korean, and get instant AI feedback plus a real KoreHan tutor review (Premium) before it lands in your Growth Lab. Watch your stage progress: Seed → Sprout → Tree → Forest.</p>
-      <ul class="fblock-list">
-        <li><strong>Daily prompt</strong> — never blank-page paralysis</li>
-        <li><strong>AI + tutor feedback</strong> — instant AI scoring on grammar, naturalness, and vocab, then a human tutor review (Premium)</li>
-        <li><strong>Stage-up animation</strong> when you cross thresholds</li>
-      </ul>
-      <a href="korehan-study-room.html" class="fblock-cta">Try Sprout writing →</a>
-    </div>
-    <div class="fblock-visual" data-reveal>
-      <div class="visual-card">
-        <picture><source srcset="img/guide/step2-writing.webp?v=20261013" type="image/webp"><img src="img/guide/step2-writing.png?v=20261013" alt="Writing box with auto-save" loading="lazy" decoding="async" width="1195" height="362"></picture>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════
-     EXPRESS PRACTICE  —  full-bleed dark
-═══════════════════════════════════════════════════════ -->
-<section class="fblock dark">
-  <div class="fblock-wrap reverse">
-    <div class="fblock-text" data-reveal>
-      <div class="h-eyebrow on-dark">Express Practice</div>
-      <h2 class="h-h2">A node graph of micro-drills.</h2>
-      <p class="h-lead">Dictation, phrase-matching, key-expression recall — each as a node you can complete in 60 seconds. Earn Nyang per node, watch your map fill in.</p>
-      <ul class="fblock-list">
-        <li><strong>Multiple drill types</strong> per topic</li>
-        <li><strong>Mistake review</strong> auto-feeds your weekly Growth Lab</li>
-      </ul>
-      <a href="korehan-study-room.html" class="fblock-cta">Open Express Practice →</a>
-    </div>
-    <div class="fblock-visual" data-reveal>
-      <div class="visual-card">
-        <picture><source srcset="img/guide/hero-express.webp?v=20261013c" type="image/webp"><img src="img/guide/hero-express.png?v=20261013c" alt="Express Practice node graph" loading="lazy" decoding="async" width="540" height="540"></picture>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════
-     SLANG & FAST TRACK
-═══════════════════════════════════════════════════════ -->
-<section class="fblock mint">
-  <div class="fblock-wrap">
-    <div class="fblock-text" data-reveal>
-      <div class="h-eyebrow" style="color:#10b981">Slang &amp; FAST TRACK</div>
-      <h2 class="h-h2">The Korean Koreans actually use online.</h2>
-      <p class="h-lead">ㅇㅈ. ㄱㅇㄷ. 갠소. 빨리빨리. The slang and abbreviations textbooks won't touch. You get 3 fresh ones a day for free; Premium unlocks the full searchable library and quiz drills.</p>
-      <ul class="fblock-list">
-        <li><strong>Daily 3</strong> — fresh slang every morning</li>
-        <li><strong>Full library</strong> with examples in context (Premium)</li>
-        <li><strong>Recognition quizzes</strong> until it feels natural (Premium)</li>
-      </ul>
-      <a href="korehan-fun.html" class="fblock-cta">Browse FAST TRACK →</a>
-    </div>
-    <div class="fblock-visual" data-reveal>
-      <div class="visual-card">
-        <picture><source srcset="img/guide/feat-slang.webp?v=20261013c" type="image/webp"><img src="img/guide/feat-slang.png?v=20261013c" alt="FAST TRACK slang card" loading="lazy" decoding="async" width="540" height="540"></picture>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════
-     GROWTH LAB
-═══════════════════════════════════════════════════════ -->
-<section class="fblock dark">
-  <div class="fblock-wrap">
-    <div class="fblock-text" data-reveal>
-      <div class="h-eyebrow on-dark">Growth Lab</div>
-      <h2 class="h-h2">The chart of your Korean.</h2>
-      <p class="h-lead">XP trends, streak counts, weekly improvement, AI Writing Feedback inbox, and a Monthly Report email. Growth Lab tells you whether the last seven days actually moved you forward.</p>
-      <ul class="fblock-list">
-        <li><strong>This week vs. last week</strong> — XP delta, words saved delta</li>
-        <li><strong>Skill balance radar</strong> — reading, vocab, grammar, writing, listening and speaking at a glance</li>
-        <li><strong>Writing Feedback inbox</strong> — AI feedback and tutor review on every piece you write (Premium)</li>
-        <li><strong>Monthly Report</strong> delivered to your email</li>
-      </ul>
-      <a href="korehan-learning-overview.html" class="fblock-cta">Open Growth Lab →</a>
-    </div>
-    <div class="fblock-visual" data-reveal>
-      <div class="visual-card tall">
-        <picture><source srcset="img/guide/shot-skill-radar-chart.webp?v=20261013b" type="image/webp"><img src="img/guide/shot-skill-radar-chart.png?v=20261013b" alt="Growth Lab skill radar" loading="lazy" decoding="async" width="1134" height="1340"></picture>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════
-     SHOP & MY ROOM
-═══════════════════════════════════════════════════════ -->
-<section class="fblock warm">
-  <div class="fblock-wrap reverse">
-    <div class="fblock-text" data-reveal>
-      <div class="h-eyebrow" style="color:#0ea5e9">Shop &amp; My Room</div>
-      <h2 class="h-h2">Spend the Nyang you earned.</h2>
-      <p class="h-lead">Studying earns Nyang (냥) — Korean for "meow." Spend it in the Shop on characters, lamps, plants, pets, and decorations. Then deck out My Room however you want.</p>
-      <ul class="fblock-list">
-        <li><strong>Earn it by studying</strong> — nothing to buy</li>
-        <li><strong>Full inventory</strong> — characters, furniture, pets</li>
-        <li><strong>Public room</strong> visible from your profile</li>
-      </ul>
-      <a href="korehan-shop.html" class="fblock-cta">Visit the Shop →</a>
-    </div>
-    <div class="fblock-visual" data-reveal>
-      <div class="visual-card">
-        <picture><source srcset="img/guide/feat-shop.webp?v=20261013" type="image/webp"><img src="img/guide/feat-shop.png?v=20261013" alt="Shop catalog" loading="lazy" decoding="async" width="540" height="540"></picture>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════
-     PRICING TRANSPARENCY
-═══════════════════════════════════════════════════════ -->
-<section class="pricing">
-  <div data-reveal>
-    <div class="h-eyebrow">Pricing</div>
-    <h2 class="h-h2">Free is genuinely free.</h2>
-    <p class="pricing-lead h-lead" style="margin-left:auto;margin-right:auto">No credit card to start. Premium adds tutor review, a weekend live class &amp; higher AI limits on top — reading, analysis and your word book stay free, forever.</p>
-  </div>
-  <div class="pricing-grid">
-    <div class="pricing-card" data-reveal>
-      <span class="ptag">Free</span>
-      <h3>Daily Learner</h3>
-      <div class="price">$0<span> · forever</span></div>
-      <ul>
-        <li>All articles, conversations &amp; Korea Buzz</li>
-        <li>Tap-to-analyze on every sentence</li>
-        <li>Unlimited word book + Daily Review</li>
-        <li>Weekly Topic learning steps</li>
-      </ul>
-    </div>
-    <div class="pricing-card featured" data-reveal>
-      <span class="ptag">Premium</span>
-      <h3>Power Learner</h3>
-      <div class="price">$8.99<span> · / month</span></div>
-      <ul>
-        <li>Everything in Free, plus —</li>
-        <li>Weekly writing with instant AI feedback + tutor review</li>
-        <li>Weekend live class on Zoom</li>
-        <li>Article &amp; Conversation Study, listening quiz, weekly review</li>
-        <li>Fast Track + phone-call practice</li>
-        <li>Higher AI limits — more AI feedback</li>
-        <li>$69/year option · cancel anytime</li>
-      </ul>
-      <a href="korehan-courses.html" style="display:inline-block;margin-top:14px;color:var(--bright);font-weight:700;font-size:13px;text-decoration:underline">Compare Free vs. Premium →</a>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════
-     FAQ
-═══════════════════════════════════════════════════════ -->
-<section class="faq">
-  <div class="faq-wrap" data-reveal>
-    <h2 class="h-h2">Questions, answered.</h2>
-    <details>
-      <summary>I'm at zero Korean — can I really start here?</summary>
-      <p>Yes. The free Korean Basics course teaches you to read Hangul from scratch, then Seed-level articles use only the most common patterns. The tap-to-analyze panel means you never have to guess what a word means.</p>
-    </details>
-    <details>
-      <summary>Do I need to pay to use it?</summary>
-      <p>No. Reading articles, conversations and Korea Buzz, sentence analysis, an unlimited word book, Daily Review and the Weekly Topic learning steps — all free, forever. Premium adds weekly writing with AI feedback and tutor review, a weekend live class on Zoom, Article &amp; Conversation Study, the listening quiz, weekly/monthly review, Fast Track and higher AI limits.</p>
-    </details>
-    <details>
-      <summary>Will this help me pass TOPIK?</summary>
-      <p>Indirectly — every article and conversation is tagged by TOPIK level, so you can stay in your zone or push up. KoreHani isn't TOPIK prep specifically; it's daily comprehension practice that makes the test easier when you sit it.</p>
-    </details>
-    <details>
-      <summary>Where does my data live?</summary>
-      <p>Your reading history, saved words, and progress are stored in Supabase (servers in Seoul). We never sell or share user data with third parties. Full privacy policy below.</p>
-    </details>
-    <details>
-      <summary>Can I cancel premium anytime?</summary>
-      <p>Yes — one click in your profile. Free features keep working forever after cancellation. You don't lose your Universe.</p>
-    </details>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════
-     FINAL CTA
-═══════════════════════════════════════════════════════ -->
-<section class="fcta">
-  <div class="fcta-bg"></div>
-  <div class="fcta-veil"></div>
-  <div class="fcta-content" data-reveal>
-    <div class="h-eyebrow on-dark">Ready?</div>
-    <h2 class="h-h2">Start your Vocabulary Universe.</h2>
-    <p>Sign up takes 30 seconds. Your first star is one tap away.</p>
-    <a href="korehan-onboarding.html" class="btn btn-light" onclick="localStorage.setItem('kh_visited','1')">Get Started — Free</a>
-    <div class="fcta-note">No credit card · <a href="index.html" onclick="localStorage.setItem('kh_visited','1')">Already a member? Open dashboard →</a></div>
-  </div>
-</section>
-
-<div class="lfoot">© 2026 KoreHani · <a href="terms-of-service.html">Terms</a> · <a href="privacy-policy.html">Privacy</a> · <a href="refund-policy.html">Refund</a></div>
-
+<div class="final"><div class="wrap"><h2>Read your first Korean article today.</h2><p>Free, at your level.</p><a href="korehan-onboarding.html" class="btn bp" onclick="khVisited()">Start free</a></div></div>
+<div class="wrap"><footer><span>© 2026 KoreHani</span><nav><a href="terms-of-service.html">Terms</a><a href="privacy-policy.html">Privacy</a><a href="refund-policy.html">Refunds</a></nav></footer></div>
 <script>
-/* ───── Scroll reveal ───── */
-(function(){
-  var items=document.querySelectorAll('[data-reveal]');
-  if(!items.length)return;
-  if(!('IntersectionObserver' in window)){items.forEach(function(e){e.classList.add('is-in')});return;}
-  var io=new IntersectionObserver(function(entries){
-    entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('is-in');io.unobserve(e.target);}});
-  },{threshold:.12});
-  items.forEach(function(e){io.observe(e);});
-})();
-
-/* ───── Interactive sentence demo ─────
-   Three pre-baked sentences with full analysis. No API call.
-   Tap the sentence to slide the analysis panel open.            */
-(function(){
-  var DEMOS = {
-    '1': {
-      ko: '안녕하세요, 만나서 반갑습니다.',
-      en: 'Hello, nice to meet you.',
-      vocab: [
-        { ko:'안녕하세요', en:'hello (polite greeting)' },
-        { ko:'만나다',     en:'to meet' },
-        { ko:'반갑다',     en:'(to be) glad' }
-      ],
-      analysis: [
-        { type:'grammar', pat:'~아/어서', exp:'Connects two clauses with cause/sequence — "having met you, I am glad."', chunk:'"만나서 반갑습니다"' }
-      ]
-    },
-    '2': {
-      ko: '새 앨범이 발매되자마자 음원 차트 1위를 차지했어요.',
-      en: 'As soon as the new album was released, it took the #1 spot on the music charts.',
-      vocab: [
-        { ko:'앨범',     en:'album' },
-        { ko:'발매되다', en:'to be released (album/single)' },
-        { ko:'차트',     en:'chart (music ranking)' },
-        { ko:'차지하다', en:'to take, to occupy (a rank)' }
-      ],
-      analysis: [
-        { type:'grammar',    pat:'~자마자', exp:'"As soon as ~." The second action happens immediately after the first. Common in K-pop news headlines for album-release reactions.', chunk:'"발매되자마자"' },
-        { type:'expression', pat:'1위를 차지하다', exp:'Set phrase Koreans use for "claim the #1 spot." Standard for chart rankings on Melon, Genie, etc.', chunk:'"1위를 차지했어요"' }
-      ]
-    },
-    '3': {
-      ko: '한복을 입어 보면 한국 전통 문화의 매력을 느낄 수 있어요.',
-      en: 'If you try wearing hanbok, you can feel the charm of traditional Korean culture.',
-      vocab: [
-        { ko:'한복',   en:'hanbok (traditional dress)' },
-        { ko:'전통',   en:'tradition; traditional' },
-        { ko:'매력',   en:'charm, appeal' },
-        { ko:'느끼다', en:'to feel, to sense' }
-      ],
-      analysis: [
-        { type:'grammar',    pat:'~아/어 보다',   exp:'"Try V-ing." Used for experiential attempts — eat-and-see, wear-and-see, etc.', chunk:'"입어 보면"' },
-        { type:'grammar',    pat:'~을 수 있다',   exp:'Capability/possibility marker — "can V."', chunk:'"느낄 수 있어요"' },
-        { type:'expression', pat:'매력을 느끼다', exp:'Fixed collocation: "to feel the charm of ~." Common in culture/travel writing.', chunk:'"매력을 느낄"' }
-      ]
-    }
-  };
-
-  var tabsEl    = document.getElementById('demo-tabs');
-  var sentEl    = document.getElementById('demo-sentence');
-  var panelEl   = document.getElementById('demo-panel');
-  var current   = '1';
-
-  function renderPanel(id){
-    var d = DEMOS[id];
-    if(!d) return;
-    var html = '';
-    html += '<div class="demo-section-label">Translation</div>';
-    html += '<div class="demo-translation">' + d.en + '</div>';
-    html += '<div class="demo-section-label">Vocabulary</div>';
-    d.vocab.forEach(function(v){
-      html += '<div class="demo-row"><span class="ko">' + v.ko + '</span><span class="en">' + v.en + '</span></div>';
-    });
-    // Analysis section mirrors the production article reader: each
-    // entry is tagged grammar / expression / idiom and the panel pill
-    // colours flip mint vs lavender so the user can see at a glance
-    // which kind of pattern they're looking at.
-    var entries = d.analysis || d.grammar || [];
-    if(entries.length){
-      html += '<div class="demo-section-label" style="margin-top:20px">Analysis</div>';
-      entries.forEach(function(g){
-        var typ = (g.type || 'grammar').toLowerCase();
-        var cls = 'demo-grammar-card' + (typ === 'expression' || typ === 'idiom' ? ' is-exp' : '');
-        var pillLabel = typ === 'expression' ? 'Expression'
-                      : typ === 'idiom'      ? 'Idiom'
-                                              : 'Grammar';
-        html += '<div class="' + cls + '">'
-              +   '<span class="demo-pill">' + pillLabel + '</span>'
-              +   '<div class="pat">' + g.pat + '</div>'
-              +   '<div class="exp">' + g.exp + '</div>'
-              +   (g.chunk ? '<div class="chunk">→ ' + g.chunk + '</div>' : '')
-              + '</div>';
-      });
-    }
-    panelEl.innerHTML = html;
-  }
-
-  function showSentence(id){
-    current = id;
-    sentEl.textContent = DEMOS[id].ko;
-    sentEl.classList.remove('is-active');
-    panelEl.classList.remove('is-open');
-  }
-
-  tabsEl.addEventListener('click', function(e){
-    var btn = e.target.closest('.demo-tab');
-    if(!btn) return;
-    tabsEl.querySelectorAll('.demo-tab').forEach(function(b){ b.classList.remove('is-active'); });
-    btn.classList.add('is-active');
-    showSentence(btn.dataset.demo);
-  });
-
-  sentEl.addEventListener('click', function(){
-    sentEl.classList.add('is-active');
-    renderPanel(current);
-    panelEl.classList.add('is-open');
-  });
-})();
+function khVisited(){ try { localStorage.setItem('kh_visited','1'); } catch(_) {} }
 </script>
 </body>
 </html>
