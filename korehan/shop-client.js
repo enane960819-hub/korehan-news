@@ -310,49 +310,134 @@
     // real checkout exists (flip SHOP_CASH_ENABLED then).
     if (!SHOP_CASH_ENABLED) catalog = catalog.filter(function(it) { return !!it.can_buy_with_coin; });
 
-    document.getElementById('shop-xp').textContent = ((stats && stats.xp) || 0).toLocaleString();
-    document.getElementById('shop-coin').textContent = ((stats && stats.coin_balance) || 0).toLocaleString();
-
     var ownedMap = {};
     (owned || []).forEach(function(o){ ownedMap[o.item_id] = o.quantity || 0; });
-
-    var grid = document.getElementById('shop-grid');
-    grid.innerHTML = (usingFallback ? '<div style="grid-column:1/-1;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:10px;font-size:13px">The shop is being restocked — items below are a preview and can\'t be bought yet.</div>' : '')
-      + catalog.map(function(it){
-      var ownedQty = ownedMap[it.id] || 0;
-      var notEnough = !!it.can_buy_with_coin && Number((stats && stats.coin_balance) || 0) < Number(it.coin_price || 0);
-      var oneTimeOwned = !!ownedQty && !it.is_repeatable;
-      var disabledByFallback = usingFallback ? 'disabled title="Preview only — not available yet"' : '';
-      var tabType = (it.item_type === 'reporter_item' || it.item_type === 'gift_token') ? 'gift'
-        : (it.item_type === 'profile_badge' || it.item_type === 'profile_cosmetic') ? 'profile'
-        : (SHOP_CASH_ENABLED && it.can_buy_with_cash) ? 'cash' : 'all';
-      return '<article class="card" data-tab-type="' + tabType + '">'
-        + '<div class="thumb">' + renderShopThumb(it) + '</div>'
-        + '<div class="body">'
-        + '<div class="title">' + (it.name || 'Item') + '</div>'
-        + '<div class="desc">' + (it.description || '') + '</div>'
-        + '<div class="price">'
-        + (it.can_buy_with_coin ? '<span class="pill coin">🐾 ' + Number(it.coin_price||0) + ' Nyang</span>' : '')
-        + (SHOP_CASH_ENABLED && it.can_buy_with_cash ? '<span class="pill cash">💳 $' + Number(it.cash_price||0).toFixed(2) + '</span>' : '')
-        + '</div>'
-        + (ownedQty ? '<div class="owned">Owned x' + ownedQty + '</div>' : '')
-        + '<div class="btns">'
-        + (it.can_buy_with_coin ? '<button class="btn coin" ' + ((notEnough || oneTimeOwned)?'disabled':'') + ' ' + disabledByFallback + ' onclick="window.buyWithCoin(\'' + it.id + '\')">Buy with Nyang</button>' : '')
-        + (SHOP_CASH_ENABLED && it.can_buy_with_cash ? '<button class="btn cash" ' + (oneTimeOwned?'disabled':'') + ' ' + disabledByFallback + ' onclick="window.buyWithCash(\'' + it.id + '\')">Buy with Cash</button>' : '')
-        + '</div></div></article>';
-    }).join('');
-
-    var itemMap = {};
-    (catalog || []).forEach(function(it){ itemMap[it.id] = it; });
-    document.getElementById('shop-inventory').innerHTML = (owned||[]).length
-      ? (owned||[]).map(function(o){
-          var it = itemMap[o.item_id] || {};
-          return '<div class="inv-item"><b>' + (it.name || o.item_id) + '</b> · qty ' + (o.quantity||0) + (it.description ? '<div style="color:#64748b;margin-top:3px">' + it.description + '</div>' : '') + '</div>';
-        }).join('')
-      : '<div style="color:#94a3b8;font-size:13px">You don\'t own any items yet.</div>';
-    // Apply current tab filter
-    applyTab(_currentTab);
+    _shop.catalog = catalog;
+    _shop.owned = ownedMap;
+    _shop.coin = Number((stats && stats.coin_balance) || 0);
+    _shop.xp = Number((stats && stats.xp) || 0);
+    _shop.preview = usingFallback;
+    renderBalance();
+    renderTab();
   }
+
+  // ── New shop UI (mockup E, 2026-10-28) ──────────────────────────
+  // Only items that do something once bought are listed: room items with
+  // art (room_items), frames, titles, reporter gifts and Streak Freeze.
+  // Badges / themes / sticker packs / art-less room items had no effect
+  // anywhere in the app, so they're not sold.
+  var _shop = { catalog: [], owned: {}, coin: 0, xp: 0, preview: false, tab: 'room' };
+  var SHOP_FRAME_CLASS = {
+    cosmetic_neon_frame: 'kh-frame-neon', cosmetic_sakura_frame: 'kh-frame-sakura', cosmetic_hanbok_frame: 'kh-frame-hanbok',
+    cosmetic_gold_frame: 'kh-frame-gold', cosmetic_aurora_frame: 'kh-frame-aurora', cosmetic_mint_frame: 'kh-frame-mint',
+    cosmetic_coral_frame: 'kh-frame-coral', cosmetic_royal_frame: 'kh-frame-royal', cosmetic_chuseok_frame: 'kh-frame-chuseok',
+    cosmetic_seollal_frame: 'kh-frame-seollal'
+  };
+  var SHOP_TITLE_TONE = {
+    title_seed: 'mint', title_sprout: 'mint', title_tree: 'forest', title_forest: 'forest', title_scholar: 'navy',
+    title_word_master: 'navy', title_news_addict: 'warm', title_night_owl: 'navy', title_early_bird: 'warm',
+    title_polyglot: 'regal', title_kimchi_lover: 'warm', title_seoulite: 'navy'
+  };
+  function _esc(t) { return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function _initial() {
+    var n = (window.supaUser && (supaUser.user_metadata && (supaUser.user_metadata.name || supaUser.user_metadata.full_name) || supaUser.email)) || 'K';
+    return _esc(String(n).trim().charAt(0).toUpperCase() || 'K');
+  }
+  function _titleLabel(it) {
+    var m = String(it.name || '').match(/Title\s*·\s*([^(]+)/);
+    return (m ? m[1] : (it.name || '')).trim();
+  }
+  function renderBalance() {
+    var c = document.getElementById('shop-coin'); if (c) c.textContent = _shop.coin.toLocaleString();
+    var x = document.getElementById('shop-xp'); if (x) x.textContent = _shop.xp.toLocaleString() + ' XP';
+  }
+  function _items(type) {
+    return (_shop.catalog || []).filter(function(it) {
+      if (type === 'frame') return it.item_type === 'profile_cosmetic' && SHOP_FRAME_CLASS[it.id];
+      if (type === 'title') return it.item_type === 'profile_title' && SHOP_TITLE_TONE[it.id];
+      if (type === 'gift') return it.item_type === 'reporter_item';
+      if (type === 'boost') return it.item_type === 'consumable';
+      return false;
+    });
+  }
+  function _row(it, preview) {
+    var own = _shop.owned[it.id];
+    var tag = own && !it.is_repeatable ? '<span class="sh-own">Owned</span>'
+      : '<span class="sh-pr">' + Number(it.coin_price || 0) + '</span>';
+    return '<button type="button" class="sh-li" onclick="shopOpen(\'item\',\'' + it.id + '\')">'
+      + '<span class="sh-pv">' + preview + '</span>'
+      + '<span class="sh-tx"><b>' + _esc(it.kind === 'title' ? _titleLabel(it) : it.name) + '</b><small>' + _esc(it.description || '') + '</small></span>'
+      + tag + (own && it.is_repeatable ? '<span class="sh-qty">x' + own + '</span>' : '') + '</button>';
+  }
+  function _framePv(it) { return '<span class="sh-av-wrap"><span class="sh-av-frame is-on ' + SHOP_FRAME_CLASS[it.id] + '"></span><span class="sh-av">' + _initial() + '</span></span>'; }
+  function _titlePv(it) { return '<span class="mp-title-pill kh-title-' + SHOP_TITLE_TONE[it.id] + '">' + _esc(_titleLabel(it)) + '</span>'; }
+  function renderTab() {
+    var tab = _shop.tab;
+    document.querySelectorAll('.shop-tab').forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab') === tab); });
+    var el = document.getElementById('shop-grid'); if (!el) return;
+    var html = _shop.preview ? '<div class="sh-note">The shop is being restocked — items are a preview and can\'t be bought yet.</div>' : '';
+    if (tab === 'room') {
+      var owned = []; try { owned = JSON.parse(localStorage.getItem('kh_room_owned') || '[]'); } catch(e){}
+      html += '<div class="sh-grid">' + ROOM_ITEMS_SHOP.filter(function(it){ return it.img && it.price > 0; }).map(function(it) {
+        var isOwned = owned.indexOf(it.id) >= 0;
+        return '<button type="button" class="sh-tile" onclick="shopOpen(\'room\',\'' + it.id + '\')">'
+          + (isOwned ? '<span class="sh-own sh-own-abs">Owned</span>' : '')
+          + '<span class="sh-art"><img src="' + _esc(it.img) + '" alt="" loading="lazy" onerror="this.closest(\'.sh-tile\').remove()"></span>'
+          + '<b>' + _esc(it.name) + '</b><small>' + it.price + '</small></button>';
+      }).join('') + '</div>';
+    } else if (tab === 'profile') {
+      var fr = _items('frame').map(function(it){ return _row(it, _framePv(it)); }).join('');
+      var ti = _items('title').map(function(it){ it.kind = 'title'; return _row(it, _titlePv(it)); }).join('');
+      html += (fr ? '<div class="sh-k">Frames</div>' + fr : '') + (ti ? '<div class="sh-k">Titles</div>' + ti : '')
+        + '<div class="sh-hint">Equip what you own in My Page → Frames &amp; titles.</div>';
+    } else if (tab === 'gifts') {
+      html += '<div class="sh-hint" style="margin:0 0 10px">Give these to reporters on their page to raise your affinity and unlock their cards.</div>'
+        + _items('gift').map(function(it){ return _row(it, '<span class="sh-ic">' + khIcon('gift') + '</span>'); }).join('');
+    } else {
+      html += _items('boost').map(function(it){ return _row(it, '<span class="sh-ic sh-ic-b">' + khIcon('snowflake') + '</span>'); }).join('');
+    }
+    el.innerHTML = html;
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+  }
+  window.shopSetTab = function(tab) { _shop.tab = tab; renderTab(); };
+
+  // Bottom sheet: preview + balance after + one Buy button.
+  window.shopOpen = function(kind, id) {
+    var item, title, preview, price, owned, buy;
+    if (kind === 'room') {
+      item = ROOM_ITEMS_SHOP.find(function(x){ return x.id === id; }); if (!item) return;
+      var ownedList = []; try { ownedList = JSON.parse(localStorage.getItem('kh_room_owned') || '[]'); } catch(e){}
+      title = item.name; price = item.price; owned = ownedList.indexOf(id) >= 0;
+      preview = '<div class="sh-room"><img src="' + _esc(item.img) + '" alt=""></div>';
+      buy = 'window.buyRoomItem(\'' + id + '\')';
+    } else {
+      item = (_shop.catalog || []).find(function(x){ return x.id === id; }); if (!item) return;
+      title = item.item_type === 'profile_title' ? _titleLabel(item) : item.name; price = Number(item.coin_price || 0);
+      owned = !!_shop.owned[id] && !item.is_repeatable;
+      preview = SHOP_FRAME_CLASS[id] ? '<div class="sh-big">' + _framePv(item) + '</div>'
+        : SHOP_TITLE_TONE[id] ? '<div class="sh-big"><span class="sh-av">' + _initial() + '</span>' + _titlePv(item) + '</div>'
+        : '<div class="sh-big"><span class="sh-ic">' + khIcon(item.item_type === 'consumable' ? 'snowflake' : 'gift') + '</span></div>';
+      buy = 'window.buyWithCoin(\'' + id + '\')';
+    }
+    var after = _shop.coin - price, short = after < 0;
+    var ov = document.createElement('div');
+    ov.className = 'sh-ov'; ov.id = 'sh-ov';
+    ov.innerHTML = '<div class="sh-sheet" role="dialog" aria-modal="true">'
+      + '<div class="sh-k">' + (kind === 'room' ? 'Room item' : item.item_type === 'profile_title' ? 'Title' : item.item_type === 'profile_cosmetic' ? 'Frame' : item.item_type === 'reporter_item' ? 'Reporter gift' : 'Boost') + '</div>'
+      + '<div class="sh-st">' + _esc(title) + '</div>'
+      + (item.description ? '<div class="sh-sd">' + _esc(item.description) + '</div>' : '')
+      + preview
+      + '<div class="sh-bal-row"><span>' + _shop.coin.toLocaleString() + ' → ' + (short ? '—' : after.toLocaleString()) + ' nyang</span><b>' + price + '</b></div>'
+      + (owned ? '<button type="button" class="sh-buy" disabled>Owned</button>'
+        : short ? '<button type="button" class="sh-buy" disabled>Need ' + (price - _shop.coin) + ' more nyang</button>'
+        : '<button type="button" class="sh-buy"' + (_shop.preview ? ' disabled' : '') + ' onclick="' + buy + ';shopClose()">Buy for ' + price + ' nyang</button>')
+      + '<button type="button" class="sh-cancel" onclick="shopClose()">Not now</button></div>';
+    ov.addEventListener('click', function(e){ if (e.target === ov) shopClose(); });
+    document.body.appendChild(ov);
+    requestAnimationFrame(function(){ ov.classList.add('open'); });
+    if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+  };
+  window.shopClose = function() { var o = document.getElementById('sh-ov'); if (o) o.remove(); };
 
   window.buyWithCoin = async function(itemId) {
     var sb = getSupa(); if (!sb || !supaUser) return;
@@ -467,24 +552,8 @@
   }
 
   async function renderRoomShop() {
-    var grid = document.getElementById('room-shop-grid');
-    if (!grid) return;
     await _ensureRoomItems();
-    var owned = [];
-    try { owned = JSON.parse(localStorage.getItem('kh_room_owned')||'[]'); } catch(e){}
-    grid.innerHTML = ROOM_ITEMS_SHOP.map(function(it){
-      var isOwned = owned.indexOf(it.id) >= 0;
-      return '<article class="card">'
-        + '<div class="thumb"><img src="'+it.img+'" alt="'+it.name+'" onerror="window._shopRoomImgFallback&&window._shopRoomImgFallback(this)"></div>'
-        + '<div class="body">'
-        + '<div class="title">'+it.name+'</div>'
-        + '<div class="desc">Room decoration item</div>'
-        + (it.price > 0 ? '<div class="price"><span class="pill coin">🐾 '+it.price+' nyang</span></div>' : '<div class="price"><span class="pill coin">Free</span></div>')
-        + (isOwned ? '<div class="owned">Owned ✓</div>' : '')
-        + '<div class="btns">'
-        + (isOwned ? '<button class="btn coin" disabled>Owned</button>' : '<button class="btn coin" onclick="window.buyRoomItem(\''+it.id+'\')">Buy with nyang</button>')
-        + '</div></div></article>';
-    }).join('');
+    if (_shop.tab === 'room') renderTab();
   }
 
   window.buyRoomItem = async function(itemId) {
@@ -520,54 +589,13 @@
     } catch(e){}
     if (typeof _fjMarkDone === 'function') _fjMarkDone('shop');
     toast('Purchased ' + item.name + ' — place it in My Room', 'success');
-    renderRoomShop();
     initShop();
   };
-
-  // ── Tab filtering ──
-  var _currentTab = 'all';
-  function itemMatchesTab(item, tab) {
-    if (tab === 'all') return true;
-    if (tab === 'gift') return item.item_type === 'reporter_item' || item.item_type === 'gift_token';
-    if (tab === 'profile') return item.item_type === 'profile_badge' || item.item_type === 'profile_cosmetic';
-    if (tab === 'cash') return SHOP_CASH_ENABLED && !!item.can_buy_with_cash;
-    return false; // room handled separately
-  }
-  function applyTab(tab) {
-    _currentTab = tab;
-    var tabs = document.querySelectorAll('.shop-tab');
-    tabs.forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab') === tab); });
-    var shopGrid = document.getElementById('shop-grid');
-    var roomGrid = document.getElementById('room-shop-grid');
-    var invSection = document.getElementById('shop-inventory-section');
-    if (tab === 'room') {
-      shopGrid.style.display = 'none';
-      roomGrid.style.display = '';
-      if (invSection) invSection.style.display = 'none';
-    } else if (tab === 'all') {
-      // ALL: show both shop items AND room items
-      shopGrid.style.display = '';
-      roomGrid.style.display = '';
-      if (invSection) invSection.style.display = '';
-      var cards = shopGrid.querySelectorAll('.card');
-      cards.forEach(function(card) { card.style.display = ''; });
-    } else {
-      shopGrid.style.display = '';
-      roomGrid.style.display = 'none';
-      if (invSection) invSection.style.display = '';
-      var cards = shopGrid.querySelectorAll('.card');
-      cards.forEach(function(card) {
-        var cardTab = card.getAttribute('data-tab-type') || 'all';
-        var show = cardTab === tab;
-        card.style.display = show ? '' : 'none';
-      });
-    }
-  }
 
   document.addEventListener('DOMContentLoaded', function(){
     // Tab click handlers
     document.querySelectorAll('.shop-tab').forEach(function(btn){
-      btn.addEventListener('click', function(){ applyTab(this.getAttribute('data-tab')); });
+      btn.addEventListener('click', function(){ shopSetTab(this.getAttribute('data-tab')); });
     });
     function _startShop() { initShop(); renderRoomShop(); }
     // supaUser가 이미 있으면 즉시 실행, 없으면 이벤트 대기
