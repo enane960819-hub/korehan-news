@@ -324,10 +324,133 @@ document.addEventListener('click', function (e) {
   if (ko && typeof srSpeak === 'function') srSpeak(ko, row.querySelector('.mw-play'));
 });
 
+// ── Past topics (2026-10) ───────────────────────────────────────
+// Earlier weeks stay practicable: a row under this week's card opens a
+// list of past weeks (with this device's progress + whether writing was
+// submitted); picking one reloads the Study Room with ?week=<Monday> so
+// every activity runs on that week's content (khPracticeWeek in
+// korehan-study-room.js). Writing can't be submitted in practice mode.
+var _SRP_STAGES = ['topic', 'grammar', 'picture', 'sentence', 'expressions'];
+var _SRP_LEVELS = [['Starter', 'Seed'], ['Beginner', 'Sprout'], ['Intermediate', 'Tree']];
+
+function _srpWeekLabel(w) {
+  try { return new Date(w + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }); } catch (_) { return w; }
+}
+function _srpDone(week, level) {
+  try {
+    var d = JSON.parse(localStorage.getItem('kh_sr_done_w_' + (supaUser ? supaUser.id : 'guest') + '_' + week + '_' + level) || '{}');
+    return _SRP_STAGES.filter(function (k) { return d[k]; }).length;
+  } catch (_) { return 0; }
+}
+
+function srRenderPastRow() {
+  var box = document.getElementById('sr-past-row');
+  if (!box) return;
+  if (khPracticeWeek()) { box.innerHTML = ''; return; }
+  box.innerHTML = '<button type="button" class="srp-row" onclick="srOpenPast()">'
+    + '<span class="srp-ic">' + _srhIcon('history') + '</span>'
+    + '<span class="srp-tx"><b>Past topics</b><small>Practice earlier weeks again anytime</small></span>'
+    + '<span class="srh-item-arr">' + _srhIcon('chevron-right') + '</span></button>';
+}
+
+async function srOpenPast(level) {
+  level = level || _currentLevel || 'Beginner';
+  srCloseSheet();
+  var ov = document.createElement('div');
+  ov.id = 'srh-sheet';
+  ov.className = 'srh-sheet-ov';
+  ov.innerHTML = '<div class="srh-sheet" role="dialog" aria-modal="true" aria-label="Past topics">'
+    + '<div class="srh-grab"></div>'
+    + '<div class="srh-sheet-t">Past topics</div>'
+    + '<div class="srh-sheet-s">Practice an earlier week again. Progress is saved; writing can\'t be submitted.</div>'
+    + '<div class="srp-lv">' + _SRP_LEVELS.map(function (l) {
+        return '<button type="button" class="srp-chip' + (l[0] === level ? ' on' : '') + '" onclick="srOpenPast(\'' + l[0] + '\')">' + l[1] + '</button>';
+      }).join('') + '</div>'
+    + '<div id="srp-list"><div class="srp-empty">Loading…</div></div>'
+    + '</div>';
+  ov.addEventListener('click', function (e) { if (e.target === ov) srCloseSheet(); });
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(function () { ov.classList.add('open'); });
+
+  var list = ov.querySelector('#srp-list');
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) { list.innerHTML = '<div class="srp-empty">Offline — try again later.</div>'; return; }
+  var now = _kstWeekKeyCalc();
+  var weeks = [];
+  try {
+    var r = await sb.from('study_daily_content').select('scheduled_date,topic_ko,topic_en')
+      .eq('level', level).gte('scheduled_date', '2026-10-12').lt('scheduled_date', now).order('scheduled_date', { ascending: false }).limit(30);
+    var seen = {};
+    (r.data || []).forEach(function (x) {
+      // Weekly rows only (weekly lessons start 2026-10-12; older daily rows aren't a week's lesson).
+      if (!x.topic_ko || _kstWeekKeyCalc(x.scheduled_date) !== x.scheduled_date || seen[x.scheduled_date]) return;
+      seen[x.scheduled_date] = 1;
+      weeks.push(x);
+    });
+  } catch (_) {}
+  if (!document.body.contains(list)) return;
+  if (!weeks.length) { list.innerHTML = '<div class="srp-empty">No earlier weeks at this level yet.</div>'; return; }
+
+  var submitted = {};
+  if (supaUser) {
+    try {
+      var s = await sb.from('user_submissions').select('study_date').eq('user_id', supaUser.id)
+        .in('study_date', weeks.map(function (w) { return w.scheduled_date; }))
+        .in('content_type', ['daily_package', 'writing']);
+      (s.data || []).forEach(function (x) { submitted[x.study_date] = true; });
+    } catch (_) {}
+  }
+  list.innerHTML = weeks.map(function (w) {
+    var n = _srpDone(w.scheduled_date, level);
+    var wrote = submitted[w.scheduled_date];
+    var cta = n >= _SRP_STAGES.length ? 'Review' : (n > 0 ? 'Continue' : 'Practice');
+    var parts = w.scheduled_date.split('-');
+    var mon = _srpWeekLabel(w.scheduled_date).split(' ')[0];
+    return '<a class="srp-wk' + (n >= _SRP_STAGES.length ? ' done' : '') + '" href="korehan-study-room.html?week=' + w.scheduled_date + '&lvl=' + level + '">'
+      + '<span class="srp-d">' + _srhE(mon.toUpperCase()) + '<b>' + Number(parts[2]) + '</b></span>'
+      + '<span class="srp-m"><b lang="ko">' + _srhE(w.topic_ko) + '</b>'
+      + '<small>' + (n ? 'Lesson ' + n + '/' + _SRP_STAGES.length : 'Not started') + (wrote ? ' · Writing submitted' : '') + '</small>'
+      + '<span class="srp-bar"><i style="width:' + Math.round(n / _SRP_STAGES.length * 100) + '%"></i></span></span>'
+      + '<span class="srp-go">' + cta + '</span></a>';
+  }).join('') + '<div class="srp-note">Practice never counts against your streak.</div>';
+}
+
+// Practice mode chrome: banner + relabelled topic card, and ?lvl= applied.
+function _srpPracticeChrome() {
+  var w = khPracticeWeek();
+  if (!w) return;
+  var card = document.querySelector('.sr-topic-card2');
+  if (card && !document.getElementById('srp-banner')) {
+    var b = document.createElement('div');
+    b.id = 'srp-banner';
+    b.className = 'srp-banner';
+    b.innerHTML = '<span>' + _srhIcon('history') + '</span><span><b>Practice mode · Week of ' + _srhE(_srpWeekLabel(w)) + '</b>'
+      + '<small>Progress is saved, but writing can\'t be submitted for new feedback.</small></span>'
+      + '<a href="korehan-study-room.html">This week</a>';
+    card.parentNode.insertBefore(b, card);
+  }
+  var lbl = document.querySelector('.sr-topic-lbl');
+  if (lbl) lbl.textContent = 'WEEK OF ' + _srpWeekLabel(w).toUpperCase();
+  var sub = document.querySelector('.sr-start-btn-sub');
+  if (sub) sub.textContent = 'Practice this lesson again →';
+  var lvl = new URLSearchParams(location.search).get('lvl');
+  var cls = { Starter: 'lv-s', Beginner: 'lv-b', Intermediate: 'lv-i' }[lvl];
+  if (cls && lvl !== _currentLevel) {
+    (function apply() {
+      if (typeof supaUser === 'undefined' || (!supaUser && !window._sessionChecked)) { setTimeout(apply, 400); return; }
+      var pill = document.querySelector('.lv-pill.' + cls);
+      if (pill && lvl !== _currentLevel) pill.click();
+    })();
+  }
+}
+
 // ── Boot ────────────────────────────────────────────────────────
 (function () {
   function boot() {
     srRenderPractice();
+    srRenderPastRow();
+    _srpPracticeChrome();
     var tab = new URLSearchParams(location.search).get('tab');
     if (tab === 'words' || tab === 'wordbook') setTimeout(srGoWords, 300);
   }

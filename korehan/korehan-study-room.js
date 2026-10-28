@@ -132,7 +132,26 @@ function kstDateKey() {
 // Rotation: weeks since KH_TOPIC_EPOCH (a Monday) % active topic count —
 // keep in sync with daily-content-gen and the admin CMS.
 var KH_TOPIC_EPOCH = '2026-10-12T00:00:00+09:00';
+// Past-topic practice (2026-10): ?week=<an earlier Monday> opens that week's
+// lesson again. Every week-scoped thing (content row, topic, progress,
+// drafts, submission lookup) goes through kstWeekKey(), so overriding it
+// here is all it takes; writing submission is blocked while it is set.
+var _khPracticeWeekKey = (function () {
+  try {
+    var w = new URLSearchParams(location.search).get('week') || '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(w)) return null;
+    if (_kstWeekKeyCalc(w) !== w) return null;          // must be a Monday
+    if (w >= _kstWeekKeyCalc()) return null;            // only past weeks
+    return w;
+  } catch (_) { return null; }
+})();
+function khPracticeWeek() { return _khPracticeWeekKey; }
+window.khPracticeWeek = khPracticeWeek;
 function kstWeekKey(dateKey) {
+  if (!dateKey && _khPracticeWeekKey) return _khPracticeWeekKey;
+  return _kstWeekKeyCalc(dateKey);
+}
+function _kstWeekKeyCalc(dateKey) {
   var d = dateKey ? new Date(dateKey + 'T00:00:00Z') : kstNow();
   var back = (d.getUTCDay() + 6) % 7; // days since Monday
   var m = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - back));
@@ -2902,7 +2921,7 @@ function canEnterWritingRoom() {
   // threshold to 4/5. Audit item #9.
   var stages = ['topic','grammar','picture','sentence','expressions'];
   var doneCount = stages.reduce(function(n, k){ return n + (_studyDone[k] ? 1 : 0); }, 0);
-  if (doneCount >= 4) return true;
+  if (doneCount >= 4 || khPracticeWeek()) return true;   // practice can't submit, so no gate
   khAlert(
     'Almost there!',
     'Complete at least 4 of this week\'s 5 learning steps (Topic Yum Yum, Phrase Munch, Speaking Practice, Dictation, Key Expressions) before entering Express Practice. (' + doneCount + '/5 done)'
@@ -9514,6 +9533,7 @@ function _wmWeekSubmitted() { try { return !!localStorage.getItem(_wmSubmitKey()
 // Returns { id, items } or throws. Caller handles UI + feedback.
 async function _submitWeeklyPackage(opts) {
   opts = opts || {};
+  if (khPracticeWeek()) throw new Error('Practice mode — past weeks can\'t be submitted for feedback.');
   var sb = getSupa(); if (!sb) throw new Error('offline');
   var limit = getWriteCharLimit();
   var all = getAllDrafts();
@@ -10035,6 +10055,7 @@ async function _triggerPackageFeedback(submissionId, items) {
 async function submitWriting() {
   if (!supaUser) { openAuthModal('signin'); closeWritingModal(); return; }
   if (window._wmSubmitting) return;
+  if (khPracticeWeek()) { showToast('Practice mode — past weeks can\'t be submitted.'); return; }
   if (_wmWeekSubmitted()) { showToast('Already submitted this week — your feedback is below.'); _wmRenderSubmittedState(); return; }
 
   var text = (document.getElementById('write-area').value || '').trim();
