@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Life in Korea — KoreHani</title>
+<meta name="description" content="Practical guides for living in Korea — residence card, visa extension, renting, part-time work, health insurance — in plain English, with the Korean you will see.">
+<link rel="canonical" href="https://korehani.com/korehan-life.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="KoreHani">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Life in Korea — KoreHani">
+<meta property="og:description" content="Visa, housing, work, health: practical guides for living in Korea, with the Korean words you will meet.">
+<meta property="og:image" content="https://korehani.com/img/guide/hero-express.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css?v=20261027a">
+<style>
+/* Life in Korea (mockup I C/D, 2026-10-28) — dark surface like Word Bank. */
+html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+.lk-wrap { max-width:960px; margin:0 auto; padding:18px 16px 120px; font-family:'DM Sans','Noto Sans KR',sans-serif; }
+.lk-eb { font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:#7dd3fc; font-weight:800; }
+.lk-h1 { font-size:26px; line-height:1.2; font-weight:800; color:#fff; margin:6px 0 6px; }
+.lk-sub { font-size:14px; color:rgba(255,255,255,.6); line-height:1.55; margin:0 0 14px; max-width:620px; }
+.lk-search { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1); border-radius:13px; padding:0 14px; margin-bottom:18px; }
+.lk-search input { flex:1; background:none; border:0; outline:0; color:#fff; font:inherit; font-size:14.5px; padding:12px 0; min-width:0; }
+.lk-search .kh-ui-icon { color:rgba(255,255,255,.5); }
+.lk-cats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:24px; }
+@media (min-width:760px) { .lk-cats { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+.lk-cat { display:block; text-align:left; border-radius:16px; padding:14px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); color:#e2e8f0; font:inherit; cursor:pointer; }
+.lk-cat.on { border-color:rgba(147,197,253,.6); background:rgba(37,99,235,.18); }
+.lk-ic { width:38px; height:38px; border-radius:11px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
+.lk-cat b { display:block; color:#fff; font-size:15px; }
+.lk-cat small { font-size:12px; color:rgba(255,255,255,.55); }
+.lk-k { font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.5); font-weight:800; margin:6px 0 10px; display:flex; justify-content:space-between; align-items:center; }
+.lk-k button { font:inherit; font-size:12px; letter-spacing:0; text-transform:none; color:#93c5fd; background:none; border:0; cursor:pointer; }
+.lk-list { display:grid; gap:8px; margin-bottom:22px; }
+.lk-g { display:flex; gap:12px; align-items:center; padding:13px 14px; border-radius:14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); color:inherit; text-decoration:none; }
+.lk-g:hover { border-color:rgba(147,197,253,.4); }
+.lk-g .lk-ic { margin:0; flex-shrink:0; width:34px; height:34px; }
+.lk-g b { color:#fff; font-size:14.5px; display:block; }
+.lk-g small { font-size:12.5px; color:rgba(255,255,255,.55); display:block; line-height:1.45; margin-top:2px; }
+.lk-g .lk-chev { margin-left:auto; color:rgba(255,255,255,.35); flex-shrink:0; }
+.lk-empty { text-align:center; color:rgba(255,255,255,.55); font-size:13.5px; padding:30px 0; }
+.lk-note { font-size:11.5px; color:rgba(255,255,255,.42); line-height:1.55; margin-top:20px; }
+/* Category tints */
+.c-visa .lk-ic { background:rgba(59,130,246,.2); color:#93c5fd; } .c-housing .lk-ic { background:rgba(16,185,129,.2); color:#6ee7b7; }
+.c-work .lk-ic { background:rgba(245,158,11,.2); color:#fcd34d; } .c-school .lk-ic { background:rgba(168,85,247,.2); color:#d8b4fe; }
+.c-health .lk-ic { background:rgba(236,72,153,.2); color:#f9a8d4; } .c-money .lk-ic { background:rgba(20,184,166,.2); color:#5eead4; }
+.c-emergency .lk-ic { background:rgba(239,68,68,.2); color:#fca5a5; } .c-daily .lk-ic, .c-start .lk-ic { background:rgba(148,163,184,.2); color:#cbd5e1; }
+/* Guide */
+.lk-back { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:rgba(255,255,255,.6); text-decoration:none; margin-bottom:10px; }
+.lk-two { display:grid; gap:16px; }
+@media (min-width:860px) { .lk-two { grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); align-items:start; } }
+.lk-art { background:#0d1b3d; border:1px solid rgba(255,255,255,.07); border-radius:20px; padding:20px; }
+.lk-crumb { font-size:12px; color:rgba(255,255,255,.5); }
+.lk-art h1 { font-size:24px; line-height:1.25; color:#fff; margin:8px 0 6px; }
+.lk-meta { font-size:12px; color:rgba(255,255,255,.5); margin-bottom:14px; line-height:1.5; }
+.lk-tldr { color:#e2e8f0 !important; background:rgba(59,130,246,.12); border-left:3px solid #3b82f6; border-radius:10px; padding:12px 14px; font-size:14px; line-height:1.55; margin-bottom:16px; }
+.lk-tldr b { color:#fff !important; }
+.lk-steps { padding-left:22px; margin:0; font-size:14.5px; line-height:1.75; color:rgba(255,255,255,.85); }
+.lk-steps li { margin-bottom:10px; padding-left:4px; }
+.lk-term { display:inline; font-family:'Noto Sans KR',sans-serif; font-size:inherit; background:rgba(251,191,36,.14); color:#fcd34d; padding:1px 6px; border-radius:6px; border:0; border-bottom:1px dashed #fcd34d; cursor:pointer; line-height:inherit; }
+.lk-term + .lk-gl { color:rgba(255,255,255,.6); }
+.lk-disc { font-size:11.5px; color:rgba(255,255,255,.45); margin-top:16px; line-height:1.55; }
+.lk-side { display:grid; gap:12px; }
+.lk-sc { background:#0d1b3d; border:1px solid rgba(255,255,255,.07); border-radius:18px; padding:16px; }
+.lk-sc h2 { font-size:11.5px; letter-spacing:.12em; text-transform:uppercase; color:#7dd3fc; margin:0 0 8px; font-weight:800; }
+.lk-ph { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid rgba(255,255,255,.07); }
+.lk-ph:first-of-type { border-top:0; }
+.lk-ph .t { flex:1; min-width:0; }
+.lk-ph b { display:block; font-family:'Noto Sans KR',sans-serif; color:#fff; font-size:15px; font-weight:700; }
+.lk-ph span { font-size:12.5px; color:rgba(255,255,255,.55); }
+.lk-ib { flex-shrink:0; width:32px; height:32px; border-radius:10px; border:0; background:rgba(255,255,255,.07); color:#93c5fd; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.lk-ib.sv { color:#fde68a; background:rgba(250,204,21,.14); }
+.lk-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; margin-top:10px; padding:11px; border-radius:12px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05); color:#fff; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.lk-src a { display:block; font-size:13px; color:#93c5fd; padding:5px 0; text-decoration:none; }
+/* Term sheet */
+.lk-sheet { position:fixed; left:50%; bottom:calc(88px + env(safe-area-inset-bottom)); transform:translateX(-50%); width:min(420px, calc(100% - 24px)); z-index:9000; background:#1e293b; border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:14px 16px; box-shadow:0 20px 50px rgba(0,0,0,.45); display:flex; align-items:center; gap:12px; }
+.lk-sheet .t { flex:1; min-width:0; }
+.lk-sheet b { display:block; font-family:'Noto Sans KR',sans-serif; font-size:20px; color:#fff; }
+.lk-sheet small { display:block; font-size:12px; color:rgba(255,255,255,.5); }
+.lk-sheet span { font-size:14px; color:#e2e8f0; }
+@media (min-width:900px) { .lk-sheet { bottom:28px; } }
+</style>
+</head>
+<body class="kh-page-life">
+<div id="kh-header"></div>
+<main id="lk-root" class="lk-wrap"><div class="lk-empty">Loading guides…</div></main>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/security.js?v=20260525r"></script>
+<script src="js/core/storage.js?v=20260525r"></script>
+<script src="js/core/icons.js?v=20260525r"></script>
+<script src="js/core/modals.js?v=20260525r"></script>
+<script src="js/core/ui-states.js?v=20260525r"></script>
+<script src="js/core/analytics.js?v=20261014a"></script>
+<script src="js/core/user-analytics.js?v=20261014a"></script>
+<script src="js/core/plans.js?v=20261028b"></script>
+<script src="js/core/article-cache.js?v=20261028b"></script>
+<script src="js/core/saved-words.js?v=20261013a"></script>
+<script src="js/features/streak.js?v=20260525r"></script>
+<script src="js/features/daily-mission.js?v=20261025a"></script>
+<script src="js/features/comments.js?v=20261016a"></script>
+<script src="js/features/sidebar.js?v=20261028b"></script>
+<script src="korehan-shared.js?v=20261028i"></script>
+<script src="js/core/emoji-icons.js?v=20261026a"></script>
+<script src="js/features/life-guides.js?v=20261028a"></script>
+</body>
+</html>

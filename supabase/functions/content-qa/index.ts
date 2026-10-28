@@ -460,7 +460,30 @@ Deno.serve(async (req) => {
         report.push({ step: 'queue', table: 'grammar_examples_cache', checked: rows.length, fixed, deleted })
       })
 
-      // Round-robin the three sources until the call budget or time runs out.
+      // d) Life in Korea guides — Korean terms (meaning check) and phrases.
+      jobs.push(async () => {
+        const { data: rows } = await sb.from('life_guides').select('slug,terms,phrases')
+          .is('qa_at', null).order('sort').limit(4)
+        if (!rows || !rows.length) return
+        const lines: any[] = []
+        const parts = (rows as any[]).map((row, ri) => {
+          const val = { terms: row.terms || [], phrases: row.phrases || [] }
+          const got = jsonItems(val, `L${ri + 1}.`)
+          lines.push(...got.lines)
+          return { row, val, items: got.items }
+        })
+        const flags = lines.length ? await review(sb, apiKey, 'all', 'living in Korea (visa, housing, work, health)', lines, 'practical guides for foreigners: Korean terms with English meanings and useful phrases') : []
+        let fixed = 0
+        await Promise.all(parts.map(async ({ row, val, items }) => {
+          const mine = flags.filter((x) => items.some((it: any) => it.id === x.id))
+          const patch: Record<string, unknown> = { qa_at: qa }
+          if (mine.length) { applyJsonFlags(items, mine); patch.terms = val.terms; patch.phrases = val.phrases; fixed++ }
+          await sb.from('life_guides').update(patch).eq('slug', row.slug)
+        }))
+        report.push({ step: 'queue', table: 'life_guides', checked: rows.length, fixed })
+      })
+
+      // Round-robin the sources until the call budget or time runs out.
       // Rotate the starting source each run so the hourly budget (2 calls)
       // still reaches all three over time.
       const start = Math.floor(Date.now() / 3_600_000) % jobs.length

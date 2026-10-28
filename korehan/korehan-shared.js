@@ -8002,7 +8002,7 @@ function renderHeader() {
   var newsDrop = sections.filter(function(s) { return s.key !== 'buzz'; }).map(function(s) {
     return '<a href="korehan-section.html?s=' + encodeURIComponent(s.key) + '" class="tn-drop-item">' + s.label + '</a>';
   }).join('');
-  var readOn = isOn('korehan-all') || isOn('korehan-section') || isOn('korehan-conversations') || isOn('korehan-article');
+  var readOn = isOn('korehan-all') || isOn('korehan-life') || isOn('korehan-section') || isOn('korehan-conversations') || isOn('korehan-article');
   var topnav = '<div class="kh-topnav">'
     + '<div class="kh-topnav-inner">'
     + '<div class="tn-item has-drop' + (readOn ? ' on' : '') + '">'
@@ -8016,6 +8016,7 @@ function renderHeader() {
     + '<div class="tn-drop-col">'
     + '<div class="tn-drop-label">More to read</div>'
     + '<a href="korehan-section.html?s=buzz" class="tn-drop-item' + (isBuzz ? ' on' : '') + '">Korea Buzz</a>'
+    + '<a href="korehan-life.html" class="tn-drop-item' + (isOn('korehan-life') ? ' on' : '') + '">Life in Korea</a>'
     + '<a href="korehan-conversations.html" class="tn-drop-item">Conversations</a>'
     + '<a href="korehan-conversations.html?cat=everyday" class="tn-drop-item tn-drop-sub">Everyday</a>'
     + '<a href="korehan-conversations.html?cat=work" class="tn-drop-item tn-drop-sub">Workplace</a>'
@@ -8064,6 +8065,7 @@ function renderFooter() {
     + '<a href="korehan-study-room.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Study Room</a>'
     + '<a href="korehan-learning-overview.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Growth Lab</a>'
     + '<a href="korehan-learn.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Word Bank</a>'
+    + '<a href="korehan-life.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Life in Korea</a>'
     + '<a href="korehan-courses.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Courses</a>'
     + '<a href="beginner-guide.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Beginner Guide</a>'
     + '</div>'
