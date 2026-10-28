@@ -308,9 +308,6 @@ async function fetchHn(source) {
 }
 
 async function fetchReddit(source, redditToken) {
-  // Reddit refuses Cloudflare's egress without an API token (every
-  // unauthenticated request fails), so don't spend a subrequest trying.
-  if (!redditToken) throw new Error('reddit_needs_key')
   const url = redditToken
     ? `https://oauth.reddit.com/r/${source.subreddit}/hot?limit=20&raw_json=1`
     : `https://www.reddit.com/r/${source.subreddit}/hot.json?limit=20&raw_json=1`
@@ -318,8 +315,8 @@ async function fetchReddit(source, redditToken) {
     ? { 'Authorization': 'Bearer ' + redditToken, 'User-Agent': 'KoreHanNewsBot/2.0' }
     : { 'user-agent': BROWSER_UA, 'accept': 'application/json,text/javascript,*/*;q=0.1', 'accept-language': 'en-US,en;q=0.9' }
   const res = await budgetFetch(url, { headers, signal: AbortSignal.timeout(8000) })
-  // 403/429 → throw so the per-source line honestly shows the failure.
-  if (!res.ok) throw new Error('upstream_' + res.status)
+  // 403/429 = Reddit refusing this server; only the official API (token) gets past it.
+  if (!res.ok) throw new Error(res.status === 403 || res.status === 429 ? 'reddit_blocked' : 'upstream_' + res.status)
   const json = await res.json().catch(() => null)
   // Reddit's rate limiter frequently answers 200 with a JSON error body
   // ({"message":"Too Many Requests","error":429}) and no `data.children`.
