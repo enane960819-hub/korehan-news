@@ -152,49 +152,100 @@ function _updatePlanBadges() {
 }
 
 // ── Upgrade Modal ──
+// Upgrade sheet (mockup E, 2026-10-28): a feature-specific preview, not a
+// wall — what it is, a small sample, what Premium adds, and a button that
+// goes straight to checkout. No free trial (owner: new accounts would get
+// it again).
+var KH_FEATURE_COPY = {
+  article_study:   { t: 'Turn today’s news into a lesson', d: 'Four short steps on a real article at your level — about 10 minutes.', steps: ['Words', 'Phrases', 'Read', 'Quiz'], ko: '태양광이 원자력을 <u>제치고</u> 가장 빠르게 성장하고 있어요.', en: '제치다 = to overtake' },
+  conversation_study: { t: 'Learn real conversations', d: 'Dialogue, word cards, your response and sentence building — step by step.', steps: ['Dialogue', 'Cards', 'Response', 'Build'], ko: '혹시 이 근처에 <u>약국</u> 있어요?', en: 'Is there a pharmacy near here?' },
+  express_writing: { t: 'Write it, get it corrected', d: 'One short piece a week on the topic you studied, with instant AI feedback and a tutor review.', steps: ['Frames', 'Write', 'AI feedback', 'Tutor'], ko: '저는 아침에 커피를 <u>마시면서</u> 뉴스를 읽어요.', en: 'Line-by-line corrections on your own sentences' },
+  fast_track:      { t: 'Practice real situations', d: 'Cafe, taxi, hospital and more — choose what to say and hear how it sounds.', steps: ['Listen', 'Choose', 'Say it'], ko: '<u>아이스 아메리카노</u> 한 잔 주세요.', en: 'One iced americano, please.' },
+  phone_call:      { t: 'Get through a real phone call', d: 'Role-play calls with natural replies.', steps: ['Listen', 'Reply', 'Review'], ko: '<u>예약</u>을 바꾸고 싶은데요.', en: 'I’d like to change my reservation.' },
+  listening_quiz:  { t: 'Train your ear', d: 'Hear a sentence, pick the meaning.', steps: ['Listen', 'Choose'], ko: '오늘 <u>날씨</u>가 정말 좋네요.', en: 'The weather is really nice today.' },
+  weekly_monthly_review: { t: 'Review the whole week', d: 'A timed review of everything you studied, every week and month.', steps: ['Words', 'Grammar', 'Score'] },
+  slang_full:      { t: 'The full slang library', d: 'Every slang term with chats and a quiz — not just today’s three.' },
+  tutor_review:    { t: 'A tutor reads your writing', d: 'Personal notes from a KoreHani tutor on your weekly writing.' },
+  live_class:      { t: 'Weekend live class', d: 'Sunday 21:00 KST on Zoom.' },
+  monthly_report:  { t: 'Your monthly report', d: 'Your month in reading, words and grammar.' }
+};
+var KH_PREMIUM_PERKS = ['Article & Conversation Study every day', 'Weekly writing with AI feedback + tutor review', 'Fast Track, listening quiz, weekly review'];
+
+// Straight to Stripe Checkout (signed-in), with a clear message otherwise.
+async function khStartCheckout(interval) {
+  if (typeof supaUser === 'undefined' || !supaUser) { if (typeof openAuthModal === 'function') openAuthModal('signup'); return; }
+  var btn = document.getElementById('kh-up-cta');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening secure checkout…'; }
+  var msg = 'Checkout could not be started. Please try again in a moment.';
+  try {
+    var sb = getSupa();
+    var sess = sb ? await sb.auth.getSession() : null;
+    var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
+    var r = await fetch(SUPA_URL + '/functions/v1/billing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPA_KEY },
+      body: JSON.stringify({ action: 'checkout', interval: interval === 'year' ? 'year' : 'month' })
+    });
+    var res = await r.json().catch(function(){ return {}; });
+    if (res && res.ok && res.url) { location.href = res.url; return; }
+    if (res && res.error === 'already_subscribed') msg = 'You already have Premium — it can take a few seconds to show up. Try reloading the page.';
+    if (res && res.error === 'billing_not_configured') msg = 'Payments are being set up — please check back soon, or email han@korehani.com.';
+  } catch (_) {}
+  if (btn) { btn.disabled = false; btn.textContent = 'Get Premium · ' + KH_PLANS.premium.label; }
+  if (typeof khAlert === 'function') khAlert('Premium', msg, { okLabel: 'OK' }); else alert(msg);
+}
+
 function showUpgradeModal(feature, minPlan) {
   var existing = document.getElementById('kh-upgrade-modal');
   if (existing) existing.remove();
-
-  var featureNames = {
-    express_writing: 'Weekly Topic Writing',
-    article_study: 'Article Study (4 Steps)',
-    conversation_study: 'Conversation Study',
-    story_study: 'Story Study',
-    slang_full: 'Full Slang Library + Quiz',
-    weekly_monthly_review: 'Weekly & Monthly Review',
-    listening_quiz: 'Listening Quiz',
-    writing_feedback: 'Writing Feedback',
-    tutor_review: 'Tutor Review',
-    live_class: 'Weekend Live Class',
-    growth_lab: 'Growth Lab',
-    word_book_srs: 'SRS Review',
-    fast_track: 'Fast Track',
-    phone_call: 'Phone Call Practice',
-    speaking_feedback: 'Speaking Feedback',
-    monthly_report: 'Monthly Progress Report',
-    priority_feedback: 'Priority Feedback',
-    personal_recommendation: 'Personalized Study Plan'
+  var esc = function(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); };
+  var names = {
+    article_study: 'Article Study', conversation_study: 'Conversation Study', express_writing: 'Weekly Writing',
+    slang_full: 'Slang Library', weekly_monthly_review: 'Weekly & Monthly Review', listening_quiz: 'Listening Quiz',
+    tutor_review: 'Tutor Review', live_class: 'Live Class', fast_track: 'Fast Track', phone_call: 'Phone Call',
+    monthly_report: 'Monthly Report', speaking_feedback: 'Speaking Feedback', priority_feedback: 'Priority Feedback',
+    personal_recommendation: 'Study Plan', writing_feedback: 'Writing Feedback'
   };
-
-  var fName = featureNames[feature] || feature;
-  var planInfo = KH_PLANS[minPlan] || KH_PLANS.premium;
-
+  var c = KH_FEATURE_COPY[feature] || { t: (names[feature] || 'This feature') + ' is part of Premium', d: 'Premium is the full study system around the free reading.' };
+  var price = (KH_PLANS[minPlan] || KH_PLANS.premium).label;
+  if (!document.getElementById('kh-up-style')) {
+    var st = document.createElement('style');
+    st.id = 'kh-up-style';
+    st.textContent = '#kh-upgrade-modal{position:fixed;inset:0;z-index:10060;background:rgba(5,10,25,.6);display:flex;align-items:flex-end;justify-content:center;animation:suFadeIn .15s}'
+      + '#kh-upgrade-modal .up{width:100%;max-width:480px;background:#101d3f;color:#e2e8f0;border-radius:24px 24px 0 0;border-top:1px solid rgba(255,255,255,.12);padding:16px 18px calc(22px + env(safe-area-inset-bottom));font-family:"DM Sans","Noto Sans KR",sans-serif;max-height:92vh;overflow-y:auto}'
+      + '@media(min-width:640px){#kh-upgrade-modal{align-items:center}#kh-upgrade-modal .up{border-radius:24px;border:1px solid rgba(255,255,255,.12)}}'
+      + '#kh-upgrade-modal .grab{width:38px;height:4px;border-radius:9px;background:rgba(255,255,255,.2);margin:0 auto 14px}'
+      + '#kh-upgrade-modal .eb{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#c4b5fd;font-weight:800}'
+      + '#kh-upgrade-modal h3{font-size:20px;font-weight:800;color:#fff;margin:4px 0}'
+      + '#kh-upgrade-modal .d{font-size:13px;color:rgba(255,255,255,.62);line-height:1.5;margin:0}'
+      + '#kh-upgrade-modal .pv{margin:14px 0 6px;padding:12px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1)}'
+      + '#kh-upgrade-modal .steps{display:flex;gap:6px}#kh-upgrade-modal .steps span{flex:1;text-align:center;font-size:10.5px;font-weight:700;padding:7px 2px;border-radius:9px;background:rgba(124,58,237,.18);color:#ddd6fe}#kh-upgrade-modal .steps span:first-child{background:#7c3aed;color:#fff}'
+      + '#kh-upgrade-modal .ex{margin-top:10px;font-family:"Noto Sans KR",sans-serif;font-size:14px;color:#fff;line-height:1.6}'
+      + '#kh-upgrade-modal .ex u{text-decoration:none;background:rgba(250,204,21,.18);color:#fde68a;padding:0 3px;border-radius:4px}'
+      + '#kh-upgrade-modal .ex small{display:block;font-family:"DM Sans",sans-serif;font-size:11.5px;color:rgba(255,255,255,.45);margin-top:2px}'
+      + '#kh-upgrade-modal .li{display:flex;gap:8px;font-size:13px;color:#e2e8f0;margin:8px 0 0}#kh-upgrade-modal .li svg{width:15px;height:15px;color:#6ee7b7;flex-shrink:0;margin-top:2px}'
+      + '#kh-upgrade-modal .cta{display:block;width:100%;margin-top:16px;padding:14px;border:0;border-radius:14px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font:inherit;font-weight:800;font-size:15px;cursor:pointer}'
+      + '#kh-upgrade-modal .cta:disabled{opacity:.7;cursor:default}'
+      + '#kh-upgrade-modal .fine{text-align:center;font-size:11.5px;color:rgba(255,255,255,.45);margin-top:8px}#kh-upgrade-modal .fine a{color:#93c5fd}'
+      + '#kh-upgrade-modal .later{display:block;margin:10px auto 0;border:0;background:none;color:rgba(255,255,255,.62);font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:6px 12px}';
+    document.head.appendChild(st);
+  }
+  var check = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
   var ov = document.createElement('div');
   ov.id = 'kh-upgrade-modal';
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;animation:suFadeIn .2s';
   ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
-
-  ov.innerHTML = '<div style="background:#fff;border-radius:20px;max-width:400px;width:100%;padding:32px 28px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.2)">'
-    + '<div style="width:56px;height:56px;border-radius:16px;background:#faf5ff;display:flex;align-items:center;justify-content:center;color:#7c3aed;margin:0 auto 16px"><span style="display:inline-flex;width:30px;height:30px">' + KH_ICON_LOCK + '</span></div>'
-    + '<div style="font-size:20px;font-weight:900;color:#0f172a;margin-bottom:6px">' + planInfo.name + ' Plan Required</div>'
-    + '<div style="font-size:14px;color:#64748b;margin-bottom:20px;line-height:1.5"><b>' + fName + '</b> is part of KoreHani ' + planInfo.name + '. Try it free for 7 days.</div>'
-    + '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">'
-    + '<a href="korehan-courses.html" style="padding:14px 28px;border-radius:14px;border:none;background:#7c3aed;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;text-decoration:none;display:block;box-shadow:0 4px 14px rgba(124,58,237,.25)">View Plans — from ' + planInfo.label + '</a>'
-    + '<button onclick="this.closest(\'#kh-upgrade-modal\').remove()" style="padding:12px;border-radius:12px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Maybe Later</button>'
-    + '</div>'
-    + '<div style="font-size:11px;color:#94a3b8">7-day free trial · Cancel anytime</div>'
+  ov.innerHTML = '<div class="up" role="dialog" aria-modal="true" aria-label="Premium">'
+    + '<div class="grab"></div>'
+    + '<div class="eb">Premium · ' + esc(names[feature] || 'Feature') + '</div>'
+    + '<h3>' + esc(c.t) + '</h3><p class="d">' + esc(c.d) + '</p>'
+    + ((c.steps || c.ko) ? '<div class="pv">'
+        + (c.steps ? '<div class="steps">' + c.steps.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join('') + '</div>' : '')
+        + (c.ko ? '<div class="ex">' + c.ko + (c.en ? '<small>' + esc(c.en) + '</small>' : '') + '</div>' : '')   // c.ko is our own markup (<u>)
+        + '</div>' : '')
+    + KH_PREMIUM_PERKS.map(function(p){ return '<div class="li">' + check + '<span>' + esc(p) + '</span></div>'; }).join('')
+    + '<button type="button" class="cta" id="kh-up-cta" onclick="khStartCheckout(\'month\')">Get Premium · ' + esc(price) + '</button>'
+    + '<div class="fine">Month to month · cancel anytime · <a href="korehan-courses.html">See all features</a></div>'
+    + '<button type="button" class="later" onclick="this.closest(\'#kh-upgrade-modal\').remove()">Maybe later</button>'
     + '</div>';
-
   document.body.appendChild(ov);
 }

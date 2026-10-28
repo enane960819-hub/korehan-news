@@ -927,7 +927,9 @@ function renderTodayPlan() {
       sub: lessonDone >= 5 ? 'All 5 steps done' : (lessonDone + '/5 · ' + (nextStage ? nextStage.label : '')),
       fn: 'openLearningSelector()' },
     { done: (typeof _wmWeekSubmitted === 'function') && !!_wmWeekSubmitted(), label: 'Write & get feedback',
-      sub: ((typeof _wmWeekSubmitted === 'function') && _wmWeekSubmitted()) ? 'Submitted this week' : (lessonDone >= 4 ? 'Ready — write about the topic' : 'After 4 lesson steps'),
+      sub: ((typeof _wmWeekSubmitted === 'function') && _wmWeekSubmitted()) ? 'Submitted this week'
+        : ((typeof canAccess === 'function' && !canAccess('express_writing')) ? 'Premium · AI + tutor feedback'
+        : (lessonDone >= 4 ? 'Ready — write about the topic' : 'After 4 lesson steps')),
       fn: 'lsStartWriting()' }
   ];
   var doneN = steps.filter(function(x){ return x.done; }).length;

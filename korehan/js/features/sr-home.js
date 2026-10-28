@@ -125,7 +125,7 @@ function srOpenSheet(kind) {
         return '<button type="button" class="srh-item" data-i="' + i + '">'
           + '<span class="srh-item-ic">' + _srhIcon(it.icon) + '</span>'
           + '<span class="srh-item-tx"><b>' + _srhE(it.t) + '</b><small>' + _srhE(it.s) + '</small></span>'
-          + (locked ? '<span class="srh-item-r srh-lock">' + _srhIcon('lock') + '</span>'
+          + (locked ? '<span class="srh-item-r srh-pm">Premium</span>'
                     : (it.cta ? '<span class="srh-item-r">' + _srhE(it.cta) + '</span>' : '<span class="srh-item-arr">' + _srhIcon('chevron-right') + '</span>'))
           + '</button>';
       }).join('')

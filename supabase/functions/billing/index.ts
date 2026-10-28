@@ -2,7 +2,7 @@
 //
 // Actions (POST JSON { action, ... }):
 //   checkout { interval: 'month'|'year' }  signed-in user → Stripe Checkout URL
-//                                          (7-day trial on a user's first subscription)
+//                                          (no free trial — owner, 2026-10-28)
 //   portal                                 signed-in user → Stripe Billing Portal URL
 //                                          (cancel, change card, invoices)
 //   setup                                  admin only → ensures the Premium product,
@@ -20,7 +20,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const ADMIN_EMAIL = 'enane960819@gmail.com'
 const APP_BASE_URL = Deno.env.get('APP_BASE_URL') || 'https://korehani.com'
-const TRIAL_DAYS = 7
+// No free trial: a new account would get it again (owner, 2026-10-28).
+const TRIAL_DAYS = 0
 export const PRICES = {
   month: { lookup_key: 'kh_premium_month', unit_amount: 899, interval: 'month' as const, nickname: 'Premium monthly' },
   year:  { lookup_key: 'kh_premium_year',  unit_amount: 6900, interval: 'year' as const,  nickname: 'Premium annual' },
@@ -198,7 +199,7 @@ Deno.serve(async (req) => {
       const prices = await ensurePrices(stripe)
       let customerId = sub?.stripe_customer_id || ''
       // Trial only on the user's first-ever subscription: our flag AND Stripe's history.
-      let trialEligible = !sub?.trial_used
+      let trialEligible = TRIAL_DAYS > 0 && !sub?.trial_used
       if (customerId) {
         // Stripe is the source of truth: block a second live subscription even if
         // our row is stale (e.g. webhook lag or an admin manual plan change).
