@@ -14,6 +14,7 @@
 .topbar{height:60px;background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 20px;color:#fff}.topbar a{color:#fff;text-decoration:none;font-weight:700}
 .wrap{max-width:1300px;margin:0 auto;padding:24px}.hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}.hero h1{margin:0;font-size:34px}.hero p{margin:8px 0 0;color:var(--muted);line-height:1.7;max-width:760px}
 .grid{display:grid;grid-template-columns:420px 1fr;gap:18px}.card{background:var(--card);border:1px solid var(--border);border-radius:22px;box-shadow:0 16px 36px rgba(15,23,42,.06)}.cardhd{padding:18px 18px 0}.cardbd{padding:18px}
+.img-preview{margin-top:4px;border:1px dashed var(--border);border-radius:14px;aspect-ratio:2/1;background:#f8fbff center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}.img-pick{display:inline-flex;align-items:center;cursor:pointer;margin:0;font-size:14px;color:inherit}
 label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6px} input,textarea{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;font:inherit;color:var(--text)} textarea{resize:vertical;min-height:90px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px} button{border:none;border-radius:12px;padding:11px 16px;font:inherit;font-weight:800;cursor:pointer}.btn-primary{background:var(--bright);color:#fff}.btn-soft{background:#eef4ff;color:var(--bright)}.btn-danger{background:#fee2e2;color:var(--danger)}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}.toolbar input{flex:1}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px 10px;border-bottom:1px solid #e9eef6;text-align:left;font-size:14px;vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#64748b}.phrase-ko{font-weight:900;color:var(--blue);font-size:18px}.helper{font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px}.mini{font-size:12px;color:var(--muted)}.example-box{background:#f8fbff;border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:10px}.pill{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;background:#eef4ff;color:var(--bright);margin-right:6px;margin-bottom:6px}
@@ -44,6 +45,15 @@ label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6
         <div style="margin-top:10px"><label>Intro</label><textarea id="f-intro"></textarea></div>
         <div style="margin-top:10px"><label>Nuance / Usage note</label><textarea id="f-nuance"></textarea></div>
         <div style="margin-top:10px"><label>Related words (comma separated)</label><input id="f-related"></div>
+        <div style="margin-top:10px"><label>Banner image (top of the phrase page)</label>
+          <input type="hidden" id="f-image">
+          <div id="f-image-preview" class="img-preview"></div>
+          <div class="btns" style="margin-top:8px">
+            <label class="btn-soft img-pick">Upload image<input type="file" id="f-image-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+            <button type="button" class="btn-soft" id="f-image-remove" onclick="setPhraseImage('')">Remove image</button>
+          </div>
+          <div class="helper">Wide images work best (about 2:1, e.g. 1600×800). Max 5 MB. Click "Save phrase" afterwards.</div>
+        </div>
         <div style="margin-top:10px"><label>Example 1 (Korean)</label><textarea id="ex1-ko"></textarea></div>
         <div style="margin-top:10px"><label>Example 1 (English)</label><textarea id="ex1-en"></textarea></div>
         <div style="margin-top:10px"><label>Example 2 (Korean)</label><textarea id="ex2-ko"></textarea></div>
@@ -126,7 +136,7 @@ label{display:block;font-size:12px;font-weight:800;color:#475569;margin-bottom:6
 <script src="js/core/user-analytics.js?v=20261014a"></script>
 <script src="js/core/plans.js?v=20261028d"></script>
 <script src="js/core/article-cache.js?v=20261028b"></script>
-<script src="js/core/phrases.js?v=20261016a"></script>
+<script src="js/core/phrases.js?v=20261029a"></script>
 <script src="js/core/saved-words.js?v=20261013a"></script>
 <script src="js/features/video-player.js?v=20260525r"></script>
 <script src="js/core/articles.js?v=20261025a"></script>
@@ -183,6 +193,7 @@ function fillForm(idx) {
   document.getElementById('f-intro').value = p.intro || '';
   document.getElementById('f-nuance').value = p.nuance || '';
   document.getElementById('f-related').value = (p.related || []).join(', ');
+  setPhraseImage(p.image || '');
   for (var i=0;i<3;i++) {
     var ex = (p.examples || [])[i] || {};
     document.getElementById('ex'+(i+1)+'-ko').value = ex.ko || '';
@@ -193,24 +204,58 @@ function collectForm() {
   var examples = [1,2,3].map(function(i){
     return { ko: document.getElementById('ex'+i+'-ko').value.trim(), en: document.getElementById('ex'+i+'-en').value.trim() };
   }).filter(function(ex){ return ex.ko; });
-  return normalizePhrase({
+  // Start from the stored row so fields this form doesn't show
+  // (intro_ko, level, related_v) survive a save.
+  return normalizePhrase(Object.assign({}, phrases[currentIndex] || {}, {
     ko: document.getElementById('f-ko').value.trim(),
     rom: document.getElementById('f-rom').value.trim(),
     en: document.getElementById('f-en').value.trim(),
     intro: document.getElementById('f-intro').value.trim(),
     nuance: document.getElementById('f-nuance').value.trim(),
     related: document.getElementById('f-related').value.split(',').map(function(x){ return x.trim(); }).filter(Boolean),
-    examples: examples
-  });
+    examples: examples,
+    image: document.getElementById('f-image').value.trim()
+  }));
 }
-function savePhrase() {
+// Save to app_settings (shared with every visitor), not just this
+// browser. Same list length = an in-place edit, so today's slot stays.
+async function persistPhrases(msg) {
+  var oldLen = (typeof _appSettings !== 'undefined' && _appSettings && Array.isArray(_appSettings.phrases)) ? _appSettings.phrases.length : -1;
+  await saveSharedPhrases(phrases, oldLen === phrases.length ? { preserveOffset: true } : undefined);
+  toast(supaUser ? msg : msg + ' (this browser only — sign in to publish)');
+}
+async function savePhrase() {
   var row = collectForm();
   if (!row.ko) { alert('Korean phrase is required.'); return; }
   phrases[currentIndex] = row;
-  lsSet(K_PHRASES, phrases);
-  toast('Phrase saved');
   renderPhraseTable();
+  await persistPhrases('Phrase saved');
 }
+function setPhraseImage(url) {
+  document.getElementById('f-image').value = url || '';
+  var box = document.getElementById('f-image-preview');
+  box.style.backgroundImage = url ? "url('" + url.replace(/'/g, '%27') + "')" : '';
+  box.textContent = url ? '' : 'No image — the default night-sky banner is shown';
+  document.getElementById('f-image-remove').style.display = url ? '' : 'none';
+}
+async function uploadPhraseImage(file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type)) { alert('Please choose an image file.'); return; }
+  if (file.size > 5 * 1024 * 1024) { alert('Image is larger than 5 MB.'); return; }
+  var sb = getSupa();
+  if (!sb || !supaUser) { alert('Sign in as admin to upload.'); return; }
+  var ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  var path = Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+  toast('Uploading…');
+  var up = await sb.storage.from('phrase-images').upload(path, file, { contentType: file.type, upsert: false });
+  if (up.error) { alert('Upload failed: ' + up.error.message); return; }
+  setPhraseImage(sb.storage.from('phrase-images').getPublicUrl(path).data.publicUrl);
+  toast('Image uploaded — click "Save phrase" to publish');
+}
+document.addEventListener('DOMContentLoaded', function () {
+  var f = document.getElementById('f-image-file');
+  if (f) f.addEventListener('change', function () { uploadPhraseImage(f.files && f.files[0]); f.value = ''; });
+});
 function newPhrase() {
   phrases.unshift(normalizePhrase({ko:'새 표현'}));
   currentIndex = 0;
@@ -223,10 +268,9 @@ function deletePhrase() {
   phrases.splice(currentIndex, 1);
   if (!phrases.length) phrases = [normalizePhrase({})];
   currentIndex = Math.max(0, Math.min(currentIndex, phrases.length - 1));
-  lsSet(K_PHRASES, phrases);
   fillForm(currentIndex);
   renderPhraseTable();
-  toast('Phrase deleted');
+  persistPhrases('Phrase deleted');
 }
 function renderPhraseTable() {
   var q = (document.getElementById('phrase-search').value || '').toLowerCase();

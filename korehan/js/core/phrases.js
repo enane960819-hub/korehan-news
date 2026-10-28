@@ -90,7 +90,10 @@ function normalizePhrase(row) {
     level: lvl,
     examples: examples.slice(0, 6).map(function(ex){ return { ko: ex.ko || '', en: ex.en || '' }; }).filter(function(ex){ return ex.ko; }),
     related: Array.isArray(row.related) ? row.related.filter(Boolean).slice(0, 8) : [],
-    related_v: relatedV
+    related_v: relatedV,
+    // Banner image uploaded by the admin (Supabase Storage URL or a
+    // bundled img/ path). Wins over the regex illustration map.
+    image: /^(https:\/\/|img\/)/.test(row.image || '') ? row.image : ''
   };
 }
 function getPhraseSourceRows() {
@@ -183,6 +186,7 @@ var PHRASE_ILLUS_MAP = [
 var PHRASE_DEFAULT_ILLUS = { lottie: 'lottie/book.json', icon: 'fluent-emoji-flat:open-book', fallback: '📖' };
 
 function getPhraseIllusEntry(phrase) {
+  if (phrase && phrase.image) return { image: phrase.image };
   var hay = ((phrase && phrase.ko) || '') + ' ' + ((phrase && phrase.en) || '');
   for (var i = 0; i < PHRASE_ILLUS_MAP.length; i++) {
     if (PHRASE_ILLUS_MAP[i].rx.test(hay)) return PHRASE_ILLUS_MAP[i];
