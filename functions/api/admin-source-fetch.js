@@ -110,31 +110,13 @@ const SOURCE_CATALOG = [
   // batched query. Output shape matches the RSS handlers so the
   // admin picker UI doesn't need any source-specific handling.
   { id:'wikinews-en', label:'Wikinews EN', kind:'wikinews', category:'국제', lang:'en' },
-  { id:'wikinews-ko', label:'Wikinews KO', kind:'wikinews', category:'국제', lang:'ko' },
 
   // ── Hacker News (link aggregator, no hotlinked imagery) ─────────
   { id:'hn', label:'Hacker News', kind:'hn', category:'문화' },
 
   // ── Reddit (public hot.json — OP-supplied media) ────────────────
-  { id:'reddit-world', label:'r/worldnews', kind:'reddit', category:'국제', subreddit:'worldnews' },
-  { id:'reddit-korea', label:'r/korea', kind:'reddit', category:'K-pop', subreddit:'korea' },
-  { id:'reddit-kpop', label:'r/kpop', kind:'reddit', category:'K-pop', subreddit:'kpop' },
-  { id:'reddit-kdrama', label:'r/KDRAMA', kind:'reddit', category:'K-pop', subreddit:'KDRAMA' },
-  { id:'reddit-koreanfood', label:'r/KoreanFood', kind:'reddit', category:'문화', subreddit:'KoreanFood' },
-  { id:'reddit-til', label:'r/todayilearned', kind:'reddit', category:'문화', subreddit:'todayilearned' },
-  { id:'reddit-interesting', label:'r/interestingasfuck', kind:'reddit', category:'문화', subreddit:'interestingasfuck' },
-  { id:'reddit-oddly', label:'r/oddlysatisfying', kind:'reddit', category:'문화', subreddit:'oddlysatisfying' },
-  { id:'reddit-noway', label:'r/Damnthatsinteresting', kind:'reddit', category:'문화', subreddit:'Damnthatsinteresting' },
-  { id:'reddit-mildly', label:'r/mildlyinteresting', kind:'reddit', category:'문화', subreddit:'mildlyinteresting' },
   // GIF-rich subs — silent looping clips make great learning-article
   // hero media; the picker bumps these to the top.
-  { id:'reddit-edugif', label:'r/educationalgifs', kind:'reddit', category:'문화', subreddit:'educationalgifs' },
-  { id:'reddit-aww', label:'r/aww', kind:'reddit', category:'문화', subreddit:'aww' },
-  { id:'reddit-awwduc', label:'r/Awwducational', kind:'reddit', category:'문화', subreddit:'Awwducational' },
-  { id:'reddit-mademesmile', label:'r/MadeMeSmile', kind:'reddit', category:'문화', subreddit:'MadeMeSmile' },
-  { id:'reddit-bros', label:'r/HumansBeingBros', kind:'reddit', category:'문화', subreddit:'HumansBeingBros' },
-  { id:'reddit-magic', label:'r/blackmagicfuckery', kind:'reddit', category:'문화', subreddit:'blackmagicfuckery' },
-  { id:'reddit-sports', label:'r/sports', kind:'reddit', category:'스포츠', subreddit:'sports' },
   // Clickbait / Viral RSS aggregators
   { id:'gn-clickbait', label:'Oddity Central', kind:'rss', category:'문화', url:'https://www.odditycentral.com/feed' },
   { id:'gn-listicle', label:'Mental Floss', kind:'rss', category:'문화', url:'https://www.mentalfloss.com/rss.xml' },

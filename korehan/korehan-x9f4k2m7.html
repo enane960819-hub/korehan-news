@@ -4967,25 +4967,8 @@ const NEWS_SOURCES = [
   { id:'soompi',         label:'Soompi (K-content)',     icon:'⭐' },
   { id:'gn-gaming',      label:'Polygon',            icon:'🎮' },
   // Reddit
-  { id:'reddit-world',     label:'r/worldnews',           icon:'🌐' },
-  { id:'reddit-korea',     label:'r/korea',                icon:'🇰🇷' },
-  { id:'reddit-kpop',      label:'r/kpop',                 icon:'🎵' },
-  { id:'reddit-kdrama',    label:'r/KDRAMA',               icon:'📺' },
-  { id:'reddit-koreanfood',label:'r/KoreanFood',           icon:'🍲' },
   // Reddit GIF-rich (auto-pulls preview image; Use Video opt-in for the loop)
-  { id:'reddit-edugif',    label:'r/educationalgifs',      icon:'🎬' },
-  { id:'reddit-aww',       label:'r/aww',                  icon:'🥺' },
-  { id:'reddit-awwduc',    label:'r/Awwducational',        icon:'🦊' },
-  { id:'reddit-mademesmile',label:'r/MadeMeSmile',         icon:'😊' },
-  { id:'reddit-bros',      label:'r/HumansBeingBros',      icon:'🤝' },
-  { id:'reddit-magic',     label:'r/blackmagicfuckery',    icon:'✨' },
-  { id:'reddit-sports',    label:'r/sports',               icon:'🏆' },
   // Clickbait / Viral
-  { id:'reddit-til',         label:'r/todayilearned',       icon:'💡' },
-  { id:'reddit-interesting', label:'r/interestingasfuck',   icon:'🤯' },
-  { id:'reddit-oddly',       label:'r/oddlysatisfying',     icon:'😌' },
-  { id:'reddit-noway',       label:'r/Damnthatsinteresting',icon:'😱' },
-  { id:'reddit-mildly',      label:'r/mildlyinteresting',   icon:'🧐' },
   { id:'gn-clickbait',       label:'Oddity Central',       icon:'🎣' },
   { id:'gn-listicle',        label:'Mental Floss',             icon:'📋' },
   { id:'boredpanda',         label:'BoredPanda',            icon:'🐼' },
@@ -5000,7 +4983,6 @@ const NEWS_SOURCES = [
   { id:'wiki-mostread-en',   label:'Wikipedia Most Read (EN)', icon:'book-open' },
   { id:'wiki-mostread-ko',   label:'위키백과 많이 본 문서 (KO)', icon:'book-open' },
   { id:'wikinews-en',        label:'Wikinews EN',           icon:'📰' },
-  { id:'wikinews-ko',        label:'Wikinews KO',           icon:'📰' },
 ];
 
 var _fetchedHeadlines = []; // 수집된 Headline 전역 저장
@@ -5077,7 +5059,6 @@ function goAutoArticle(){
          +'<input type="checkbox" class="ns-chk" value="'+s.id+'" style="width:15px;height:15px"> '+(/^[a-z-]+$/.test(s.icon) ? '<i data-lucide="'+s.icon+'" style="width:16px;height:16px"></i>' : s.icon)+' '+s.label+'</label>';
      }).join('')
    +'</div>'
-   +'<div style="font-size:12px;color:#64748b;margin:-4px 0 12px">Reddit(r/…) 소스가 차단될 때는 Reddit API 키(Cloudflare 환경변수 REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET)를 넣으면 공식 API로 가져옵니다.</div>'
    +'<button class="btn btn-g" onclick="fetchHeadlines()" id="btn-fetch">📥 Headline 가져오기</button>'
    +'<div id="fetch-status" style="margin-top:10px;font-size:13px;color:var(--gr)"></div>'
    +'</div>'
@@ -11487,13 +11468,13 @@ function bulkResetCounters() {
 // Sources bucketed per target section so we can enforce section variety
 // within a single press. The canonical catalog lives in admin-source-fetch.js.
 var BULK_ART_SOURCES_BY_SECTION = {
-  '사회':      ['yonhap'],
-  '국제':      ['bbc-world','reddit-world','gtrends-us'],
-  '문화':      ['gn-viral','reddit-til','reddit-interesting','reddit-oddly','reddit-noway','reddit-mildly','gn-clickbait','gn-listicle','boredpanda'],
-  'K-pop':     ['reddit-kpop'],
-  'Korea':     ['reddit-korea'],
-  'beauty':    ['gn-beauty','allure'],
-  'travel':    ['gn-travel'],
+  '사회':      ['npr-news','allure'],
+  '국제':      ['bbc-world','guardian-world','gtrends-us','mastodon-trends','wiki-mostread-en'],
+  '문화':      ['gn-viral','gn-clickbait','gn-listicle','boredpanda','upworthy','lemmy-hot','lemmy-pics','lemmy-mildly'],
+  'K-pop':     ['soompi','gn-kdrama'],
+  'Korea':     ['gtrends-kr','wiki-mostread-ko'],
+  'beauty':    ['gn-beauty','gn-fashion'],
+  'travel':    ['gn-travel','cnet-travel'],
   '오피니언':  []  // Opinion pieces are adapted from viral / op-ed-ish feeds on demand
 };
 var BULK_ART_ALL_SOURCES = Object.keys(BULK_ART_SOURCES_BY_SECTION).reduce(function(a,k){ return a.concat(BULK_ART_SOURCES_BY_SECTION[k]); }, []);
