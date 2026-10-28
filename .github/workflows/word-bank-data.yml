@@ -3,7 +3,8 @@ name: Word bank data
 # Builds the Word Bank expansion from 한국어기초사전 (NIKL, CC BY-SA 2.0 KR) on
 # GitHub's runners (Claude Code's sandbox can't reach the dataset host).
 #   push touching scripts/word-bank/** → dry build: stats + samples in the log
-#   manual run with import=true        → also romanize + write vocabulary_bank
+#   manual run with import=true, or a push whose commit message contains
+#   [import-words]                     → also write vocabulary_bank
 on:
   workflow_dispatch:
     inputs:
@@ -37,7 +38,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: words, path: build/words_rom.json }
       - name: Import into vocabulary_bank
-        if: ${{ github.event.inputs.import == 'true' }}
+        if: ${{ github.event.inputs.import == 'true' || contains(github.event.head_commit.message, '[import-words]') }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: python scripts/word-bank/import.py
