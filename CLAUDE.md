@@ -303,6 +303,13 @@ supabase functions deploy claude-proxy
   "음악을 보통 들으면서 쉬어요". To accept another order, add it to the content's list.
 - **Quiz distractors must be wrong in the slot**, not just different words (`khWordClass`,
   `khSameMeaning` in korehan-study-room.js).
+- **Every AI-made thing learners see must pass the content-qa reviewer.** Awkward examples and odd
+  meanings came from content that skipped it (article analysis, shared AI caches, word bank — written
+  by the browser, admin tools and crons). Tables in the review queue carry `qa_at` + the
+  `kh_requeue_on_content_change` trigger (`20261028_content_review_queue.sql`); content-qa step 6
+  reviews rows with `qa_at is null` (`content-qa/queue.ts`). A new table/cache of AI content must get
+  the column, the trigger and a job in step 6 — never ship one that bypasses review. Romanization is
+  cross-checked against `_shared/romanize.ts` (rule-based RR); don't trust AI/PDF romanizations.
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
   (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 
