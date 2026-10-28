@@ -11599,13 +11599,17 @@ async function renderHomeLearningPreview() {
     showWelcomeTip = window.location.search.indexOf('welcome=1') > -1 || localStorage.getItem(welcomeTipKey) === '1';
   } catch(e) {}
 
+  // Session not resolved yet — wait instead of painting the guest card for
+  // a signed-in learner (it then never re-rendered).
+  if (!supaUser && !window._sessionChecked) {
+    setTimeout(function() { renderHomeLearningPreview().catch(function() {}); }, 400);
+    return;
+  }
+
   // Not signed in
   if (!supaUser) {
     box.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">'
-      + '<div style="font-size:15px;font-weight:900;color:#fff;line-height:1.25">New to Korean? <span style="color:#7dd3fc">Start here.</span></div>'
-      + '<div style="font-size:10px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(125,211,252,.14);border:1px solid rgba(125,211,252,.22);color:#bfdbfe;white-space:nowrap">Free to start</div>'
-      + '</div>'
+      '<div style="font-size:15px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:12px">New to Korean? Start here — it\'s free.</div>'
       + '<div style="font-size:14px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:14px;">Pick an article, hover words to save them, then open Study Room for a focused review. Your progress tracks automatically once you sign up.</div>'
       + '<a href="beginner-guide.html" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;background:linear-gradient(135deg,#38bdf8,#2563eb);color:#fff;border-radius:10px;font-size:13px;font-weight:900;text-decoration:none;box-shadow:0 10px 22px rgba(37,99,235,.28);">Open Beginner Guide →</a>';
     return;
@@ -11718,6 +11722,8 @@ async function renderHomeLearningPreview() {
 }
 
 window.renderHomeLearningPreview = renderHomeLearningPreview;
+// Signing in (or out) after the first paint swaps the guest / learner card.
+window.addEventListener('kh-auth-signed-in', function() { if (document.getElementById('home-learning-preview')) renderHomeLearningPreview().catch(function() {}); });
 
 function isMobileRedesign() {
   // Use smallest screen dimension to distinguish phones from tablets.
