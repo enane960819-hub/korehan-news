@@ -251,7 +251,21 @@ async function syncStudyProgress(stage) {
 // DOMContentLoaded has typically already fired. Use the
 // readyState gate: if we're past 'loading', run the init body
 // immediately; otherwise register a listener.
+// The weekly-topic row is public and needs no session, so its request starts
+// the moment the page script runs instead of queueing behind the auth and
+// plan checks; loadDailyContent picks the promise up when it gets there.
+var _srDailyPrefetch = null;
+function _srPrefetchDaily() {
+  try {
+    var sb = getSupa(); if (!sb) return;
+    var wk = kstWeekKey();
+    _srDailyPrefetch = { key: wk + '|' + _currentLevel,
+      p: sb.from('study_daily_content').select('*').eq('scheduled_date', wk).eq('level', _currentLevel).maybeSingle() };
+  } catch (_) { _srDailyPrefetch = null; }
+}
+
 function _khStudyRoomInit() {
+  _srPrefetchDaily();
   return (async function() {
   // ROOT-CAUSE SAFETY NET — register the topic fallback IMMEDIATELY, before
   // anything else can throw. Previously this was registered ~90 lines down,
@@ -1468,10 +1482,12 @@ async function loadDailyContent() {
     khLog('[loadDailyContent] querying study_daily_content');
     var r = null;
     var _waits = [9000, 20000];
+    var _pre = (_srDailyPrefetch && _srDailyPrefetch.key === today + '|' + _currentLevel) ? _srDailyPrefetch.p : null;
+    _srDailyPrefetch = null;
     for (var _a = 0; _a < _waits.length && !r; _a++) {
       try {
         r = await Promise.race([
-          sb.from('study_daily_content').select('*').eq('scheduled_date', today).eq('level', _currentLevel).maybeSingle(),
+          (_a === 0 && _pre) ? _pre : sb.from('study_daily_content').select('*').eq('scheduled_date', today).eq('level', _currentLevel).maybeSingle(),
           new Promise(function(_, rej){ setTimeout(function(){ rej(new Error('db_timeout')); }, _waits[_a]); })
         ]);
       } catch (te) { console.warn('[loadDailyContent] attempt', _a + 1, te.message); }
