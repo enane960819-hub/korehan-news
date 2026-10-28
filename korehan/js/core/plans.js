@@ -166,7 +166,7 @@ var KH_FEATURE_COPY = {
   weekly_monthly_review: { t: 'Review the whole week', d: 'A timed review of everything you studied, every week and month.', steps: ['Words', 'Grammar', 'Score'] },
   slang_full:      { t: 'The full slang library', d: 'Every slang term with chats and a quiz — not just today’s three.' },
   tutor_review:    { t: 'A tutor reads your writing', d: 'Personal notes from a KoreHani tutor on your weekly writing.' },
-  live_class:      { t: 'Weekend live class', d: 'Sunday 21:00 KST on Zoom.' },
+  live_class:      { t: 'Live class seats', d: 'Premium members can book a seat: $5 a class, Sunday 21:00 KST on Zoom.' },
   monthly_report:  { t: 'Your monthly report', d: 'Your month in reading, words and grammar.' }
 };
 var KH_PREMIUM_PERKS = ['Article & Conversation Study every day', 'Weekly writing with AI feedback + tutor review', 'Fast Track, listening quiz, weekly review'];

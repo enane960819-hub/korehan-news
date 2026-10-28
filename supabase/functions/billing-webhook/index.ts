@@ -15,6 +15,11 @@
 // The subscription is always re-fetched from Stripe (payload not trusted).
 // A non-live event for a subscription other than the stored payment_id never
 // downgrades a currently live row. Deleted users (FK 23503) are acked with 200.
+//
+// Weekend Live Class seats (one-time payments, metadata.product 'kh-live-class'):
+//   checkout.session.completed (paid) → weekly_live_registrations status 'paid'
+//   checkout.session.expired          → the pending seat hold is freed
+//   charge.refunded                   → status 'refunded' (refunds made in Stripe too)
 
 import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -114,11 +119,45 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Live class seat paid — re-read the session from Stripe (payload not trusted).
+  async function liveSeatPaid(id: string) {
+    const s = await stripe.checkout.sessions.retrieve(id)
+    if (s.payment_status !== 'paid') return
+    const userId = s.metadata?.user_id || s.client_reference_id
+    const liveId = s.metadata?.live_session_id
+    if (!userId || !liveId) { await logErr('live seat without user/session', { checkout: s.id }); return }
+    const { error } = await sb.from('weekly_live_registrations').upsert({
+      session_id: liveId, user_id: userId, status: 'paid', paid_at: new Date().toISOString(), hold_until: null,
+      amount_cents: s.amount_total, stripe_session_id: s.id,
+      stripe_payment_intent: typeof s.payment_intent === 'string' ? s.payment_intent : s.payment_intent?.id,
+      email: s.customer_details?.email || null,
+    }, { onConflict: 'session_id,user_id' })
+    if (error && error.code !== '23503') throw new Error('live upsert: ' + error.message)
+  }
+
   try {
     switch (event.type) {
+      case 'checkout.session.expired': {
+        const s = event.data.object as Stripe.Checkout.Session
+        if (s.metadata?.product === 'kh-live-class') {
+          await sb.from('weekly_live_registrations').delete().eq('stripe_session_id', s.id).eq('status', 'pending')
+        }
+        break
+      }
+      case 'charge.refunded': {
+        const ch = event.data.object as Stripe.Charge
+        const pi = typeof ch.payment_intent === 'string' ? ch.payment_intent : ch.payment_intent?.id
+        if (pi && ch.refunded) {
+          await sb.from('weekly_live_registrations').update({ status: 'refunded', refunded_at: new Date().toISOString() })
+            .eq('stripe_payment_intent', pi).eq('status', 'paid')
+        }
+        break
+      }
       case 'checkout.session.completed': {
         const s = event.data.object as Stripe.Checkout.Session
-        if (s.mode === 'subscription' && s.subscription) {
+        if (s.mode === 'payment' && s.metadata?.product === 'kh-live-class') {
+          await liveSeatPaid(s.id)
+        } else if (s.mode === 'subscription' && s.subscription) {
           await syncSubscription(String(s.subscription), s.client_reference_id || null)
         }
         break
