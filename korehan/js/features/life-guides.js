@@ -47,12 +47,20 @@
   // copy for an instant repeat visit, else a normal query.
   var CACHE = 'kh_life_guides_v2';
   function cached() { try { var c = JSON.parse(localStorage.getItem(CACHE) || 'null'); return c && Array.isArray(c.rows) ? c.rows : null; } catch (_) { return null; } }
+  function waitClient(ms) {
+    return new Promise(function (res) {
+      var t0 = Date.now();
+      (function poll() { var c = sb(); if (c || Date.now() - t0 > ms) return res(c); setTimeout(poll, 100); })();
+    });
+  }
   async function load() {
     if (S.rows) return S.rows;
     var rows = null;
     try { rows = window._lkPrefetch ? await window._lkPrefetch : null; } catch (_) {}
     if (!Array.isArray(rows)) {
-      var c = sb();
+      // This script runs before the shared scripts, so the client may not
+      // exist yet — wait for it instead of painting an empty list.
+      var c = sb() || await waitClient(15000);
       if (c) {
         var r = await c.from('life_guides').select('slug,category,featured,sort,title,summary,steps,terms,phrases,sources,checked_at,extra,photos')
           .eq('status', 'published').order('sort');
@@ -112,7 +120,7 @@
     var box = $('lk-results');
     if (!box) return;
     var rows = S.rows || [];
-    if (!rows.length) { box.innerHTML = '<div class="lk-empty">Guides are on their way. Check back soon.</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="lk-empty">Could not load the guides. Check your connection and refresh the page.</div>'; return; }
     var h = '';
     if (S.q) {
       var hit = rows.filter(function (g) { return matches(g, S.q); });
@@ -167,7 +175,7 @@
     var on = {}, boxes = document.querySelectorAll('[data-ck]'), n = 0;
     boxes.forEach(function (b) { if (b.checked) { on[b.dataset.ck] = 1; n++; } });
     try { localStorage.setItem('kh_life_ck_' + slug, JSON.stringify(on)); } catch (_) {}
-    var h = $('lk-ck-h'); if (h) h.textContent = 'Bring these · ' + n + ' of ' + boxes.length + ' ready';
+    var h = $('lk-ck-h'); if (h) h.textContent = 'Checklist · ' + n + ' of ' + boxes.length + ' done';
   }
   function renderPhotos(g) {
     var box = $('lk-photos'); if (!box) return;
