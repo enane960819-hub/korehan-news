@@ -15,10 +15,10 @@ REPO = "hac541309/basic_korean_dict"
 p = hf_hub_download(REPO, "data/train-00000-of-00001-5af3bc601874131d.parquet", repo_type="dataset")
 df = pd.read_parquet(p)
 
-KEYS = ["표제어", "구분", "품사", "고유어 여부", "어휘 등급", "관련어", "의미 참고", "뜻풀이", "용례",
-        "영어 대역어", "영어 대역어 뜻풀이"]
+# Fields look like "라벨: 값, 라벨: 값, …"; a value runs until the next
+# ", <label>: " (labels are short and contain no comma or colon).
 def field(text, key):
-    m = re.search(r"(?:^|, )" + re.escape(key) + r": (.*?)(?=, (?:[가-힣 ]+? )?(?:대역어|대역어 뜻풀이|" + "|".join(map(re.escape, KEYS)) + r"): |$)", text, re.S)
+    m = re.search(r"(?:^|, )" + re.escape(key) + r": (.*?)(?=, [^,:<>]{1,24}: |$)", text, re.S)
     return m.group(1).strip() if m else ""
 
 LEVEL = {"초급": "Beginner", "중급": "Intermediate", "고급": "Advanced"}
@@ -34,6 +34,8 @@ for t in df["text"]:
     if not re.fullmatch(r"[가-힣]+", head or ""): continue
     en = field(t, "영어 대역어")
     en = "" if NO_EQ.match(en) else en.strip(" .")
+    if pos == "명사" and head.endswith("적"):          # 치명적 → "fatal", not "being fatal"
+        en = re.sub(r"(^|; )being ", r"\1", en)
     ex = ""
     for part in re.split(r"\\n|\n", field(t, "용례") or ""):
         if part.startswith("<문장> "):
@@ -41,7 +43,9 @@ for t in df["text"]:
     w = words.get(head)
     if not w:
         words[head] = w = {"ko": head, "pos": pos, "level": LEVEL[grade], "en": [], "example_ko": ex}
-    if en and en.lower() not in [e.lower() for e in w["en"]] and len(w["en"]) < 2: w["en"].append(en)
+    if en and len(w["en"]) < 3:
+        for part in [x.strip() for x in en.split(";") if x.strip()]:
+            if part.lower() not in [e.lower() for e in w["en"]] and len(w["en"]) < 3: w["en"].append(part)
     if not w["example_ko"] and ex: w["example_ko"] = ex
 
 rows = [dict(w, en="; ".join(w["en"])) for w in words.values() if w["en"]]
