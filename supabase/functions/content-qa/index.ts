@@ -206,6 +206,34 @@ Deno.serve(async (req) => {
     const apiKey = setting?.value
     if (!apiKey) throw new Error('No Anthropic API key')
 
+    // 0) English titles for conversations — first, so the pack/tag steps
+    // can't use up the time budget before this one-call step runs. The browser used to translate
+    // these itself and keep them per device, so every new visitor paid
+    // again; now each title is written once here and everyone reads it.
+    if ((!body.only || body.only === 'conv-titles') && timeLeft() > 20_000) {
+      const { data: convs, error } = await sb.from('conversations_data').select('id,ctx')
+        .or('ctx_en.is.null,ctx_en.eq.').not('ctx', 'is', null).limit(40)
+      if (error) report.push({ step: 'conv-titles', error: error.message })
+      const todo = (convs || []).filter((c: any) => /[ㄱ-힝]/.test(String(c.ctx || '')))
+      if (todo.length) {
+        try {
+          const prompt = 'Translate each Korean conversation situation into a short, descriptive English title (max 45 characters, Title Case, no quotes, no period). Say what the conversation is ABOUT, e.g. "택배 박스 손상 신고" -> "Damaged Package Complaint", never "Daily Conversation".\n' +
+            'Return ONLY JSON: {"titles":[{"id":"...","en":"..."}]}\n\n' +
+            todo.map((c: any) => `${c.id} | ${String(c.ctx).trim()}`).join('\n')
+          const out = await claudeJson(sb, apiKey, prompt, 2000, 'conv-titles')
+          const ids = new Set(todo.map((c: any) => String(c.id)))
+          let saved = 0
+          for (const t of (out?.titles || [])) {
+            const en = String(t?.en || '').trim().slice(0, 80)
+            if (!en || !ids.has(String(t?.id))) continue
+            const { error: upErr } = await sb.from('conversations_data').update({ ctx_en: en }).eq('id', t.id)
+            if (!upErr) saved += 1
+          }
+          report.push({ step: 'conv-titles', saved, of: todo.length })
+        } catch (e) { report.push({ step: 'conv-titles', error: (e as Error).message }) }
+      }
+    }
+
     const thisWeek = weekKey(kstToday())
     const dates = [thisWeek, addDays(thisWeek, 7)]
     const { data: rows } = await sb.from('study_daily_content')
@@ -312,34 +340,6 @@ Deno.serve(async (req) => {
             }
           }
         }))
-      }
-    }
-
-    // 3b) English titles for conversations (runs before the tag fill so the
-    // tag loop can't use up the time budget first). The browser used to translate
-    // these itself and keep them per device, so every new visitor paid
-    // again; now each title is written once here and everyone reads it.
-    if ((!body.only || body.only === 'conv-titles') && timeLeft() > 20_000) {
-      const { data: convs, error } = await sb.from('conversations_data').select('id,ctx')
-        .or('ctx_en.is.null,ctx_en.eq.').not('ctx', 'is', null).limit(40)
-      if (error) report.push({ step: 'conv-titles', error: error.message })
-      const todo = (convs || []).filter((c: any) => /[ㄱ-힝]/.test(String(c.ctx || '')))
-      if (todo.length) {
-        try {
-          const prompt = 'Translate each Korean conversation situation into a short, descriptive English title (max 45 characters, Title Case, no quotes, no period). Say what the conversation is ABOUT, e.g. "택배 박스 손상 신고" -> "Damaged Package Complaint", never "Daily Conversation".\n' +
-            'Return ONLY JSON: {"titles":[{"id":"...","en":"..."}]}\n\n' +
-            todo.map((c: any) => `${c.id} | ${String(c.ctx).trim()}`).join('\n')
-          const out = await claudeJson(sb, apiKey, prompt, 2000, 'conv-titles')
-          const ids = new Set(todo.map((c: any) => String(c.id)))
-          let saved = 0
-          for (const t of (out?.titles || [])) {
-            const en = String(t?.en || '').trim().slice(0, 80)
-            if (!en || !ids.has(String(t?.id))) continue
-            const { error: upErr } = await sb.from('conversations_data').update({ ctx_en: en }).eq('id', t.id)
-            if (!upErr) saved += 1
-          }
-          report.push({ step: 'conv-titles', saved, of: todo.length })
-        } catch (e) { report.push({ step: 'conv-titles', error: (e as Error).message }) }
       }
     }
 
