@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d1b3d">
+<title>Saved — KoreHani</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css?v=20261027a">
+<style>
+/* Saved hub — words, articles and phrases in one place (mockup ⑥). */
+html, body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+.sv-wrap { max-width:640px; margin:0 auto; padding:18px 16px 110px; }
+.sv-h1 { font-size:24px; font-weight:800; color:#fff; margin:0 0 12px; }
+.sv-tabs { display:flex; gap:6px; margin-bottom:12px; }
+.sv-tab { flex:1; padding:10px 6px; border-radius:12px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); color:#cbd5e1; font:inherit; font-size:13px; cursor:pointer; transition:background .15s; }
+.sv-tab em { font-style:normal; font-size:11px; opacity:.65; margin-left:4px; }
+.sv-tab.on { background:rgba(59,130,246,.18); border-color:rgba(96,165,250,.5); color:#fff; }
+.sv-bar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.sv-chip { padding:6px 12px; border-radius:999px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); color:#cbd5e1; font:inherit; font-size:12px; cursor:pointer; }
+.sv-chip.on { background:rgba(124,58,237,.3); border-color:rgba(167,139,250,.6); color:#fff; }
+.sv-act { margin-left:auto; padding:6px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:none; color:#93c5fd; font:inherit; font-size:12px; cursor:pointer; text-decoration:none; }
+.sv-list { display:flex; flex-direction:column; gap:6px; }
+.sv-row { position:relative; border-radius:12px; overflow:hidden; }
+.sv-del-bg { position:absolute; right:1px; top:1px; bottom:1px; width:84px; border-radius:0 12px 12px 0; background:#dc2626 !important; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:700; border:0; cursor:pointer; font-family:inherit; }
+.sv-item { position:relative; display:flex; align-items:center; gap:10px; padding:10px 12px; background:#14234a; border:1px solid rgba(255,255,255,.08); border-radius:12px; color:#fff; text-decoration:none; transition:transform .18s; touch-action:pan-y; }
+.sv-item:hover { background:#18295a; }
+.sv-th { width:40px; height:40px; border-radius:9px; flex-shrink:0; background:#1e293b center/cover no-repeat; }
+.sv-tx { flex:1; min-width:0; }
+.sv-tx b { display:block; font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sv-tx b[lang="ko"] { font-family:'Noto Sans KR',sans-serif; font-weight:700; font-size:14.5px; }
+.sv-tx small { display:block; font-size:11px; color:rgba(255,255,255,.5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.sv-read { color:#6ee7b7; }
+.sv-x { flex-shrink:0; width:28px; height:28px; border-radius:50%; border:0; background:none; color:rgba(255,255,255,.35); cursor:pointer; display:none; align-items:center; justify-content:center; }
+.sv-x:hover { background:rgba(255,255,255,.08); color:#fca5a5; }
+.sv-x svg, .sv-x i { width:15px; height:15px; }
+@media (hover:hover) { .sv-x { display:inline-flex; } .sv-del-bg { display:none; } }
+.sv-more[hidden] { display:none; }
+.sv-more { display:block; width:100%; margin-top:10px; padding:11px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.04); color:#cbd5e1; font:inherit; font-size:13px; cursor:pointer; }
+.sv-empty { text-align:center; padding:36px 12px; color:rgba(255,255,255,.55); font-size:13.5px; line-height:1.6; }
+.sv-empty a { color:#93c5fd; }
+.sv-hint { text-align:center; font-size:11px; color:rgba(255,255,255,.35); margin-top:10px; }
+@media (hover:hover) { .sv-hint { display:none; } }
+</style>
+</head>
+<body>
+<div id="kh-header"></div>
+<div class="sv-wrap">
+  <h1 class="sv-h1">Saved</h1>
+  <div class="sv-tabs" role="tablist">
+    <button type="button" class="sv-tab" data-tab="words" role="tab">Words<em id="sv-n-words"></em></button>
+    <button type="button" class="sv-tab" data-tab="articles" role="tab">Articles<em id="sv-n-articles"></em></button>
+    <button type="button" class="sv-tab" data-tab="phrases" role="tab">Phrases<em id="sv-n-phrases"></em></button>
+  </div>
+  <div id="sv-bar" class="sv-bar"></div>
+  <div id="sv-list" class="sv-list"><div class="sv-empty">Loading…</div></div>
+  <button type="button" id="sv-more" class="sv-more" hidden>Show more</button>
+  <div class="sv-hint">Swipe left on an item to remove it</div>
+</div>
+<div id="kh-footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/security.js?v=20260525r"></script>
+<script src="js/core/storage.js?v=20260525r"></script>
+<script src="js/core/icons.js?v=20260525r"></script>
+<script src="js/core/modals.js?v=20260525r"></script>
+<script src="js/core/ui-states.js?v=20260525r"></script>
+<script src="js/core/analytics.js?v=20261014a"></script>
+<script src="js/core/user-analytics.js?v=20261014a"></script>
+<script src="js/core/plans.js?v=20261025a"></script>
+<script src="js/core/article-cache.js?v=20261010a"></script>
+<script src="js/core/phrases.js?v=20261016a"></script>
+<script src="js/core/saved-words.js?v=20261013a"></script>
+<script src="js/features/video-player.js?v=20260525r"></script>
+<script src="js/core/articles.js?v=20261025a"></script>
+<script src="js/core/reporters.js?v=20261025a"></script>
+<script src="js/features/streak.js?v=20260525r"></script>
+<script src="js/features/daily-mission.js?v=20261025a"></script>
+<script src="js/features/reading-tracker.js?v=20260525r"></script>
+<script src="js/features/bookmarks.js?v=20260525r"></script>
+<script src="js/features/comments.js?v=20261016a"></script>
+<script src="js/features/sidebar.js?v=20261027d"></script>
+<script src="js/features/analyze-mode.js?v=20260525r"></script>
+<script src="js/features/translation.js?v=20261027a"></script>
+<script src="js/features/fill-blank.js?v=20261013c"></script>
+<script src="korehan-shared.js?v=20261028d"></script>
+<script src="js/core/emoji-icons.js?v=20261026a"></script>
+<script src="js/features/saved-hub.js?v=20261028a"></script>
+</body>
+</html>
