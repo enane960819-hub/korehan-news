@@ -5,12 +5,57 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#f0f2f7">
+<meta name="theme-color" content="#0d1b3d">
 <title>Today's Phrase — KoreHani</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Source+Sans+3:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20261027a">
-<script src="https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie_light.min.js" defer></script>
+<style>
+/* Today's Phrase — dark single card (mockup ④, 2026-10-28) */
+html, body, html body.mobile-light { background: linear-gradient(180deg,#0d1b3d,#0a1631 60%,#08122a) fixed !important; }
+body .two-col { display:block; }
+#kh-sidebar { display:none; }
+.kp-wrap { max-width:640px; margin:0 auto; padding:16px 2px 24px; color:#e2e8f0; }
+.kp-banner { height:150px; border-radius:18px; margin-bottom:14px; position:relative; background:radial-gradient(circle at 72% 30%,#facc15 0 6px,transparent 7px),radial-gradient(circle at 20% 40%,#fff 0 1.5px,transparent 2px),radial-gradient(circle at 40% 20%,#fff 0 1.5px,transparent 2px),radial-gradient(circle at 86% 62%,#fff 0 1.5px,transparent 2px),radial-gradient(circle at 58% 70%,#fff 0 1px,transparent 1.5px),linear-gradient(180deg,#1e1b4b,#312e81); background-size:cover; background-position:center; image-rendering:pixelated; }
+.kp-banner span { position:absolute; left:12px; bottom:10px; font-size:11.5px; color:rgba(255,255,255,.8); background:rgba(0,0,0,.3); padding:3px 9px; border-radius:8px; }
+.kp-admin { float:right; font-size:12px; color:#93c5fd; }
+.kp-phr { display:flex; align-items:center; gap:10px; }
+.kp-phr h1 { font-family:'Noto Sans KR',sans-serif; font-weight:900; font-size:30px; line-height:1.3; color:#fff; margin:0; }
+.kp-spk { flex-shrink:0; width:34px; height:34px; border-radius:50%; border:0; background:rgba(255,255,255,.1); color:#c4b5fd; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition:background .15s; }
+.kp-spk:hover { background:rgba(255,255,255,.18); }
+.kp-spk svg, .kp-spk i { width:16px; height:16px; }
+.kp-rom { font-size:12.5px; color:rgba(255,255,255,.45); margin-top:3px; }
+.kp-lit { font-size:13px; color:rgba(255,255,255,.6); margin-top:10px; font-style:italic; }
+.kp-mean { font-size:17px; color:#fff; margin-top:6px; line-height:1.45; }
+.kp-mean-ko { font-family:'Noto Sans KR',sans-serif; font-size:13px; color:rgba(255,255,255,.55); margin-top:4px; }
+.kp-sec { font-size:13px; font-weight:800; color:#fff; margin:18px 0 6px; }
+.kp-use { font-size:13.5px; color:rgba(255,255,255,.75); line-height:1.6; }
+.kp-ex { border-radius:14px; padding:12px 14px; background:rgba(124,58,237,.1); border:1px solid rgba(139,92,246,.25); margin-top:8px; }
+.kp-ex-row { display:flex; gap:10px; align-items:flex-start; justify-content:space-between; }
+.kp-ex p { font-family:'Noto Sans KR',sans-serif; font-size:15px; color:#fff; line-height:1.55; margin:0; }
+.kp-ex mark { background:rgba(124,58,237,.35); color:#e9d5ff; border-radius:4px; padding:0 3px; }
+.kp-ex small { display:block; font-size:12px; color:rgba(255,255,255,.5); margin-top:4px; line-height:1.45; }
+.kp-ex .kp-spk { width:30px; height:30px; }
+.kp-week { display:flex; gap:6px; }
+.kp-day { flex:1; min-width:0; height:46px; border-radius:10px; background:rgba(255,255,255,.06); color:rgba(255,255,255,.5); display:flex; flex-direction:column; align-items:center; justify-content:center; text-decoration:none; transition:background .15s; }
+.kp-day b { font-size:10.5px; font-weight:700; }
+.kp-day small { font-size:12px; }
+.kp-day:hover { background:rgba(255,255,255,.12); }
+.kp-day.on { background:rgba(59,130,246,.25); color:#fff; }
+.kp-day.today { box-shadow:inset 0 0 0 2px #93c5fd; color:#fff; }
+.kp-day.cur { background:rgba(124,58,237,.4); color:#fff; }
+.kp-bar { position:sticky; bottom:16px; display:flex; gap:8px; margin-top:22px; z-index:5; }
+.kp-btn { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px; border:0; border-radius:14px; padding:13px; font-weight:800; font-size:14px; color:#fff; cursor:pointer; background:linear-gradient(120deg,#3b82f6,#7c3aed); box-shadow:0 8px 20px rgba(0,0,0,.3); transition:filter .15s; }
+.kp-btn:hover { filter:brightness(1.08); }
+.kp-btn.ghost { background:rgba(22,34,66,.92); border:1px solid rgba(255,255,255,.16); }
+.kp-btn.on { background:rgba(16,185,129,.25); border:1px solid rgba(52,211,153,.5); }
+.kp-btn svg, .kp-btn i { width:16px; height:16px; }
+.kp-more { display:block; text-align:center; margin-top:12px; font-size:12.5px; color:#93c5fd; text-decoration:none; }
+@media (max-width:768px) {
+  .kp-wrap { padding-top:10px; padding-bottom:84px; }
+  .kp-bar { position:fixed; left:16px; right:70px; bottom:92px; margin:0; }   /* above the tab bar, clear of the mission button */
+  .kp-btn { padding:12px 8px; font-size:13.5px; }
+}
+</style>
 </head>
 <body>
 <div id="kh-header"></div>
@@ -48,23 +93,13 @@
 <script src="korehan-shared.js?v=20261028d"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script>
-// Today's Phrase — dark, mobile-first reader.
+// Today's Phrase — one dark card: phrase → translation → meaning (EN + KO)
+// → when to use → 2 examples → this week's phrases, Save / I know this one
+// at the bottom.
 //
-// Layout matches the iOS-mockup the user shared: level pill, big white
-// phrase headline, blue translation, two dark cards (Meaning, Example)
-// with optional decorative illustration in the corner of the meaning
-// card, fixed bottom gradient CTA pill ("+ Add to My Phrases" / saved).
-//
-// AI fill flow from the previous version still applies: when a phrase
-// is admin-saved with thin metadata we lazy-fill via Claude and cache
-// the result locally + back to app_settings.phrases for signed-in
-// users.
+// Phrases with thin metadata are lazy-filled via Claude once and cached
+// locally + back to app_settings.phrases for signed-in users.
 
-// Cache key bumped to v2 — v1 stored loose AI-generated related
-// expressions (e.g. 하늘의 별 따기 paired with 등잔 밑이 어둡다 which
-// is about a completely different concept). The new prompt enforces
-// strict semantic match; bumping the key invalidates stale entries
-// so users see clean data on next load.
 var PHRASE_FILL_CACHE_KEY = 'kh_phrase_fill_v2';
 var SAVED_PHRASES_KEY = 'kh_saved_phrases_v1';
 var MASTERED_PHRASES_KEY = 'kh_mastered_phrases_v1';
@@ -91,15 +126,14 @@ function _togglePhraseMastered(ko) {
   return idx < 0;
 }
 
-// Lightweight phrase-view log so we can show a "Day N" streak in the
-// motivation strip. One entry per UTC date when the user opens any
-// phrase. Stored locally only.
+// Lightweight phrase-view log for the "This week" strip. One entry per
+// KST date when the user opens any phrase. Stored locally only.
 function _logPhraseViewToday() {
   try {
     var raw = localStorage.getItem(PHRASE_VIEW_LOG_KEY);
     var log = raw ? JSON.parse(raw) : { dates: [] };
     if (!log || typeof log !== 'object') log = { dates: [] };
-    var today = new Date().toISOString().slice(0, 10);
+    var today = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);  // KST day
     if (log.dates.indexOf(today) < 0) {
       log.dates.unshift(today);
       log.dates = log.dates.slice(0, 60); // keep two months
@@ -108,18 +142,6 @@ function _logPhraseViewToday() {
     return log;
   } catch(_) { return { dates: [] }; }
 }
-function _phraseStreakFromLog(log) {
-  if (!log || !Array.isArray(log.dates) || !log.dates.length) return 0;
-  var streak = 0;
-  var d = new Date();
-  for (var i = 0; i < 60; i++) {
-    var key = d.toISOString().slice(0, 10);
-    if (log.dates.indexOf(key) >= 0) { streak++; d.setUTCDate(d.getUTCDate() - 1); }
-    else break;
-  }
-  return streak;
-}
-
 function escapeText(s) { return String(s == null ? '' : s)
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
   .replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -265,90 +287,6 @@ async function _fillPhraseViaClaude(phrase) {
   };
 }
 
-// Per-session memo so we don't re-call Claude for the same phrase
-// twice within a tab while the DB write is propagating.
-window._khRelatedRefreshedSession = window._khRelatedRefreshedSession || {};
-
-// Tighten-up pass for ALREADY-complete phrases whose `related` was
-// generated under the old loose-match prompt. Triggers when the
-// phrase has related entries but no `related_v: 3` marker. One
-// short Claude call per phrase per session, then persisted to DB
-// for everyone else.
-async function _ensureRelatedFresh(phrase) {
-  if (!phrase || !phrase.ko) return phrase;
-  if (phrase.related_v === 3) return phrase;
-  // Only applies when there ARE existing related entries that could
-  // be stale. If admin left it empty there's nothing to clean up.
-  if (!Array.isArray(phrase.related) || !phrase.related.length) return phrase;
-  if (typeof callClaude !== 'function') return phrase;
-  if (window._khRelatedRefreshedSession[phrase.ko]) return phrase;
-  window._khRelatedRefreshedSession[phrase.ko] = true;
-
-  var prompt =
-      'Korean phrase: ' + phrase.ko + '\n'
-    + (phrase.en ? 'Meaning: ' + phrase.en + '\n' : '')
-    + '\n'
-    + 'Return ONLY a JSON object — no preamble, no code fences:\n'
-    + '{ "related": ["idiom 1", "idiom 2"] }\n\n'
-    + 'Rules:\n'
-    + '- EXACTLY 0-2 entries (NEVER more than 2).\n'
-    + '- Each entry MUST be a real Korean 관용구 (idiom) or 속담 (proverb) — a fixed multi-word expression you would find in a Korean idiom dictionary. NOT literal noun phrases like "불가능한 일" or "어려운 목표".\n'
-    + '- Each idiom must convey the SAME core meaning as "' + phrase.ko + '" and be substitutable in conversation. RIGHT for 하늘의 별 따기: 낙타가 바늘구멍 들어가기. WRONG: 불가능한 일 (literal noun phrase, not an idiom).\n'
-    + '- If you cannot find 2 real idioms/proverbs with strong semantic match, return FEWER or [] — DO NOT pad with loose / literal phrases.\n'
-    + '- No commentary, no romanization, just the Korean expressions.';
-
-  try {
-    var res = await callClaude({
-      feature: 'phrase-related-refresh',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }]
-    });
-    var raw = (res && res.content && res.content[0] && res.content[0].text) || '';
-    var clean = raw.replace(/^```json?/, '').replace(/^```/, '').replace(/```$/, '').trim();
-    var oi = clean.indexOf('{'), ei = clean.lastIndexOf('}');
-    if (oi < 0 || ei <= oi) throw new Error('no JSON');
-    var data = JSON.parse(clean.slice(oi, ei + 1));
-
-    var phraseStripped = String(phrase.ko || '').replace(/\s+/g,'').trim();
-    var seen = {};
-    var related = Array.isArray(data.related) ? data.related
-      .map(function(s){ return String(s || '').trim(); })
-      .filter(function(s){
-        if (!s || s.length < 3) return false;
-        var stripped = s.replace(/\s+/g,'');
-        if (stripped === phraseStripped) return false;
-        if (seen[stripped]) return false;
-        seen[stripped] = true;
-        return true;
-      })
-      .slice(0, 2) : [];
-
-    var merged = Object.assign({}, phrase, { related: related, related_v: 3 });
-
-    // Persist back to the shared queue so other users (and our next
-    // page load) see the cleaned data.
-    try {
-      if (typeof supaUser !== 'undefined' && supaUser
-          && typeof saveSharedPhrases === 'function'
-          && typeof getPhraseSourceRows === 'function') {
-        var rows = getPhraseSourceRows().slice();
-        var koTrim = String(phrase.ko || '').trim();
-        var i = rows.findIndex(function(r){ return (r && (r.ko || '').trim()) === koTrim; });
-        if (i >= 0) {
-          rows[i] = Object.assign({}, rows[i], { related: related, related_v: 3 });
-          await saveSharedPhrases(rows);
-        }
-      }
-    } catch(_) {}
-
-    return merged;
-  } catch(e) {
-    console.warn('[phrase] related refresh failed', e);
-    return phrase;
-  }
-}
-
 async function _ensurePhraseFilled(phrase) {
   if (!isPhraseIncomplete(phrase)) return phrase;
   var cacheKey = (phrase.ko || '').trim();
@@ -423,76 +361,6 @@ function _phraseIllusEntry(phrase) {
   return PHRASE_DEFAULT_ILLUS;
 }
 
-// Track which lottie paths we've confirmed exist (or 404'd) so we
-// don't HEAD-fetch on every render.
-var _phraseLottieKnown = {};
-
-function _phraseRenderIllus(entry) {
-  if (!entry) return '';
-  // When the entry has a hand-drawn image, render it as a CSS
-  // background-image on the banner — no <img> element means no
-  // broken-image icon if the file is missing or still propagating
-  // through the CDN. The banner's gradient acts as the natural
-  // fallback layer underneath. image-rendering: pixelated on the
-  // container keeps pixel art crisp at any container size.
-  if (entry.image) {
-    var imgUrl = entry.image + '?v=20260505l';
-    return '<div class="kh-phrase-hero-img-wrap" style="background-image:url(\'' + escapeText(imgUrl) + '\')" role="img" aria-label="phrase illustration">'
-      +    '<div class="kh-phrase-hero-fade" aria-hidden="true"></div>'
-      +  '</div>';
-  }
-  // Three-tier illustration: Lottie JSON → Iconify SVG → (no emoji).
-  // Owner: "이모지 필요없어" — drop the unicode emoji fallback. If
-  // both Iconify and Lottie fail to load (CDN blocked / 404), the
-  // banner falls back to the gradient alone. Hand-drawn `image:`
-  // entries in PHRASE_ILLUS_MAP are the right way to ensure a
-  // visible illustration; emoji was distracting.
-  return '<div class="kh-phrase-hero-illus" data-lottie="' + escapeText(entry.lottie || '') + '" data-fallback-icon="' + escapeText(entry.icon || '') + '">'
-    + (entry.icon
-        ? '<iconify-icon class="kh-phrase-hero-iconify" icon="' + escapeText(entry.icon) + '" width="100%" height="100%" aria-hidden="true"></iconify-icon>'
-        : '')
-    + '</div>';
-}
-
-// Try to load Lottie JSON for an illustration slot. Probe only once
-// per path per page-load. If Lottie + JSON both exist, replace the
-// Iconify fallback with the animated player.
-async function _phraseHydrateLottie() {
-  var slots = document.querySelectorAll('.kh-phrase-hero-illus[data-lottie]');
-  if (!slots.length || typeof window.lottie === 'undefined') return;
-  for (var i = 0; i < slots.length; i++) {
-    var slot = slots[i];
-    var path = slot.getAttribute('data-lottie') || '';
-    if (!path) continue;
-    if (_phraseLottieKnown[path] === false) continue; // already 404'd
-    try {
-      if (_phraseLottieKnown[path] !== true) {
-        var head = await fetch(path, { method: 'HEAD' });
-        if (!head.ok) { _phraseLottieKnown[path] = false; continue; }
-        _phraseLottieKnown[path] = true;
-      }
-      slot.innerHTML = '';
-      window.lottie.loadAnimation({
-        container: slot,
-        path: path,
-        renderer: 'svg',
-        loop: true,
-        autoplay: true,
-      });
-    } catch(_) {
-      _phraseLottieKnown[path] = false;
-    }
-  }
-}
-
-// Map level → CSS modifier.
-var LEVEL_CLASS = {
-  Seed:'lvl-seed', Sprout:'lvl-sprout', Tree:'lvl-tree', Forest:'lvl-forest',
-};
-var LEVEL_LABEL = {
-  Seed:'Seed Level', Sprout:'Sprout Level', Tree:'Tree Level', Forest:'Forest Level',
-};
-
 function speakKorean(text, btn) {
   if (!text) return;
   if (typeof speakHangul === 'function') {
@@ -513,25 +381,6 @@ function speakKorean(text, btn) {
 }
 window.speakKorean = speakKorean;
 
-// Cycle through the available examples, one per page-load (random
-// but stable for the rest of the session).
-var _exampleIdx = 0;
-function pickExampleIdx(arr) {
-  if (!arr || !arr.length) return -1;
-  if (_exampleIdx >= arr.length) _exampleIdx = 0;
-  return _exampleIdx;
-}
-
-window.cyclePhraseExample = function() {
-  var btn = document.getElementById('ph-cycle-btn');
-  if (btn) { btn.style.transform = 'rotate(180deg)'; setTimeout(function(){ btn.style.transform=''; }, 240); }
-  _exampleIdx++;
-  // Re-render the example card region only.
-  var phrase = window._currentPhrase;
-  if (!phrase) return;
-  renderPhraseLayout(phrase, window._currentPhraseOpts || {});
-};
-
 window.toggleSavePhrase = function() {
   var phrase = window._currentPhrase;
   if (!phrase) return;
@@ -539,7 +388,7 @@ window.toggleSavePhrase = function() {
   // Re-render so both the bookmark icon AND the bottom CTA reflect state.
   renderPhraseLayout(phrase, window._currentPhraseOpts || {});
   if (typeof toast === 'function') {
-    toast(nowSaved ? 'Saved to My Expressions ❤️' : 'Unsaved', false);
+    toast(nowSaved ? 'Saved to My Phrases' : 'Removed from My Phrases', false);
   }
 };
 
@@ -549,17 +398,32 @@ window.toggleMasteredPhrase = function() {
   var nowMastered = _togglePhraseMastered(phrase.ko);
   renderPhraseLayout(phrase, window._currentPhraseOpts || {});
   if (typeof toast === 'function') {
-    toast(nowMastered ? '🎉 Mastered!' : 'Back in your study list', false);
+    toast(nowMastered ? 'Marked as known' : 'Back in your study list', false);
   }
 };
 
-window.startPhraseStudy = function() {
-  if (typeof khTrackUser === 'function') {
-    var phrase = window._currentPhrase || {};
-    try { khTrackUser('phrase_study_start', { ko: phrase.ko }); } catch(_) {}
-  }
-  location.href = 'korehan-study-room.html';
-};
+// KST day number / date key — the phrase rotation and the view log both
+// run on Korean days so "today" matches the home card.
+function _kpDayNum(offsetDays) { return Math.floor((Date.now() + 9 * 3600000) / 86400000) - (offsetDays || 0); }
+function _kpDayKey(dayNum) { return new Date(dayNum * 86400000).toISOString().slice(0, 10); }
+function _kpIdxForDay(dayNum, len) {
+  var off = (typeof getPhraseRotationOffset === 'function') ? getPhraseRotationOffset() : 0;
+  return ((dayNum + off) % len + len) % len;
+}
+var _KP_WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var _KP_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Wrap the phrase inside an example sentence (exact match only).
+function _kpMark(sentence, ko) {
+  var s = escapeText(sentence), k = escapeText(ko || '');
+  var at = k ? s.indexOf(k) : -1;
+  return at < 0 ? s : s.slice(0, at) + '<mark>' + k + '</mark>' + s.slice(at + k.length);
+}
+function _kpSpeakBtn(text, label) {
+  return '<button type="button" class="kp-spk" aria-label="' + label + '" onclick="speakKorean(\''
+    + String(text || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') + '\', this)">'
+    + khIcon('volume-2') + '</button>';
+}
 
 function renderPhraseLayout(phrase, opts) {
   opts = opts || {};
@@ -567,265 +431,134 @@ function renderPhraseLayout(phrase, opts) {
   window._currentPhraseOpts = opts;
   var root = document.getElementById('phrase-root');
   if (!root) return;
-  var examples = (phrase.examples || []).filter(function(e){ return e && e.ko; });
-  var exIdx = pickExampleIdx(examples);
-  var ex = exIdx >= 0 ? examples[exIdx] : null;
-
-  var levelKey = phrase.level || '';
-  // Level pill removed from the user-facing eyebrow — the user found
-  // it noisy and not useful for casual reading. The level value is
-  // still tracked in analytics + admin queue.
   var saved = _isPhraseSaved(phrase.ko);
   var mastered = _isPhraseMastered(phrase.ko);
-  var streak = opts.streak | 0;
-  var dayCounter = (typeof opts.dayLabel === 'string') ? opts.dayLabel : '';
+  var examples = (phrase.examples || []).filter(function (e) { return e && e.ko; }).slice(0, 2);
+  var lvl = phrase.level ? ' · ' + escapeText(phrase.level) : '';
 
-  var illusEntry = _phraseIllusEntry(phrase);
+  // Banner: hand-drawn image when one exists, otherwise a quiet night-sky
+  // strip (CSS only) carrying the date label.
+  var entry = _phraseIllusEntry(phrase);
+  var bg = entry && entry.image ? ' style="background-image:url(\'' + escapeText(entry.image + '?v=20260505l') + '\')"' : '';
+  var banner = '<div class="kp-banner' + (bg ? ' has-img' : '') + '"' + bg + '><span>' + escapeText(opts.label || "Today's phrase") + '</span></div>';
 
-  // ── Editorial layout — mirrors the article reader card style:
-  // white card on cream container, navy serif headline, italic Playfair
-  // English subtitle, byline-style meta strip, sectioned body. No more
-  // dark-mode takeover, no more iOS-style fixed CTA bar.
-  var heroBanner = ''
-    + '<div class="kh-phrase-hero-banner">'
-    +   _phraseRenderIllus(illusEntry)
-    + '</div>';
+  var adminEdit = (window._isAdmin && opts.idx != null)
+    ? '<a class="kp-admin" href="korehan-x9f4k2m7-phrases.html?edit=' + opts.idx + '">Edit</a>' : '';
 
-  var statusPill = opts.generating
-    ? '<span class="kh-phrase-loading-pill" aria-live="polite">Analyzing…</span>'
-    : '';
-
-  var eyebrow = ''
-    + '<div class="kh-phrase-eyebrow">'
-    +   '<span class="kh-phrase-eyebrow-cat">Phrase of the Day</span>'
-    +   statusPill
-    + '</div>';
-
-  var headline = '<h1 class="kh-phrase-headline">' + escapeText(phrase.ko) + '</h1>';
-  var subtitle = phrase.en
-    ? '<p class="kh-phrase-subtitle">' + escapeText(phrase.en) + '</p>'
-    : '';
-  var rom = phrase.rom
-    ? '<p class="kh-phrase-rom">' + escapeText(phrase.rom) + '</p>'
-    : '';
-
-  // Byline-style meta — replaces the flashy chip strip. Treats
-  // streak/day counter/master toggle like newspaper byline metadata.
-  var bylineParts = [];
-  if (dayCounter) bylineParts.push('<span>' + escapeText(dayCounter) + '</span>');
-  if (streak > 0) bylineParts.push('<span><svg class="kh-phrase-streak-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5.5C13.5 4 11 5.5 9.5 7.5c-1.7 2.4-2 5.5-.5 8 1.6 2.7 5 4 8 3 3.2-1 5-3.7 5-7 0-3.4-2-6-4-8 0 2-1 4-2.5 5C13.8 9 14 6.5 13.5.5z"/></svg> ' + streak + 'd streak</span>');
-  bylineParts.push('<button type="button" class="kh-phrase-master-btn ' + (mastered ? 'on' : '') + '" onclick="toggleMasteredPhrase()" aria-pressed="' + (mastered ? 'true' : 'false') + '">'
-    + (mastered
-        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><polyline points="20 6 9 17 4 12"/></svg> Mastered'
-        : 'Mark as mastered')
-    + '</button>');
-  var byline = '<div class="kh-phrase-byline">' + bylineParts.join('<span class="kh-phrase-byline-dot">·</span>') + '</div>';
-
-  // ── Body sections.
-  var hasIntroKo  = !!(phrase.intro_ko && phrase.intro_ko.trim());
-  var hasIntroEn  = !!(phrase.intro    && phrase.intro.trim());
-  var hasNuance   = !!(phrase.nuance   && phrase.nuance.trim() && phrase.nuance !== phrase.intro);
-
-  var meaningSection = '';
-  if (hasIntroKo || hasIntroEn || opts.generating) {
-    meaningSection = ''
-      + '<section class="kh-phrase-section">'
-      +   '<h2 class="kh-phrase-section-label">Meaning</h2>'
-      +   (hasIntroKo ? '<p class="kh-phrase-section-ko">' + escapeText(phrase.intro_ko) + '</p>' : '')
-      +   (hasIntroEn ? '<p class="kh-phrase-section-en">' + escapeText(phrase.intro)    + '</p>'
-                      : (opts.generating ? '<p class="kh-phrase-section-en kh-phrase-section-pending">Summarizing the meaning…</p>' : ''))
-      + '</section>';
+  var meaning = '';
+  if (phrase.intro || phrase.intro_ko || opts.generating) {
+    meaning = '<div class="kp-mean">' + (phrase.intro ? escapeText(phrase.intro) : (opts.generating ? 'Summarizing the meaning…' : '')) + '</div>'
+      + (phrase.intro_ko ? '<div class="kp-mean-ko" lang="ko">' + escapeText(phrase.intro_ko) + '</div>' : '');
   }
+  var use = phrase.nuance && phrase.nuance !== phrase.intro
+    ? '<div class="kp-sec">When to use it</div><div class="kp-use">' + escapeText(phrase.nuance) + '</div>' : '';
+  var ex = examples.length
+    ? '<div class="kp-sec">Examples</div>' + examples.map(function (e) {
+        return '<div class="kp-ex"><div class="kp-ex-row"><p lang="ko">' + _kpMark(e.ko, phrase.ko) + '</p>' + _kpSpeakBtn(e.ko, 'Listen to example') + '</div>'
+          + (e.en ? '<small>' + escapeText(e.en) + '</small>' : '') + '</div>';
+      }).join('')
+    : (opts.generating ? '<div class="kp-sec">Examples</div><div class="kp-use">Generating examples…</div>' : '');
 
-  var nuanceSection = hasNuance
-    ? '<section class="kh-phrase-section">'
-        + '<h2 class="kh-phrase-section-label">When to use it</h2>'
-        + '<p class="kh-phrase-section-en">' + escapeText(phrase.nuance) + '</p>'
-      + '</section>'
-    : '';
-
-  // In Action — uses the existing site `art-example-box` look (cream
-  // gradient panel) so it visually matches the article reader's
-  // example boxes. TTS + cycle controls inline.
-  var inActionSection = '';
-  if (ex || opts.generating) {
-    var ttsBtn = ex
-      ? '<button class="kh-phrase-icon-btn" onclick="speakKorean(\'' + (ex.ko || '').replace(/\\/g,'\\\\').replace(/\'/g,"\\'") + '\', this)" aria-label="Listen">'
-        + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>'
-      + '</button>'
-      : '';
-    var cycleBtn = examples.length > 1
-      ? '<button class="kh-phrase-icon-btn" id="ph-cycle-btn" onclick="cyclePhraseExample()" aria-label="Next example">'
-        + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>'
-      + '</button>'
-      : '';
-    var exBody = ex
-      ? '<div class="art-example-ko">' + escapeText(ex.ko) + '</div>'
-        + (ex.en ? '<div class="art-example-en">' + escapeText(ex.en) + '</div>' : '')
-      : '<div class="art-example-en kh-phrase-section-pending">Generating examples…</div>';
-    inActionSection = ''
-      + '<section class="kh-phrase-section">'
-      +   '<div class="art-example-box kh-phrase-example-box">'
-      +     '<div class="art-example-head kh-phrase-example-head">'
-      +       '<span>In Action' + (examples.length > 1 ? ' · ' + (exIdx + 1) + '/' + examples.length : '') + '</span>'
-      +       '<span class="kh-phrase-example-actions">' + cycleBtn + ttsBtn + '</span>'
-      +     '</div>'
-      +     exBody
-      +   '</div>'
-      + '</section>';
+  // This week: the last 7 KST days of the rotation, tap to revisit.
+  var week = '';
+  var len = opts.total | 0;
+  if (len > 1) {
+    var seen = (_logPhraseViewToday().dates || []);
+    var cells = [];
+    for (var k = 6; k >= 0; k--) {
+      var dn = _kpDayNum(k), di = _kpIdxForDay(dn, len), key = _kpDayKey(dn);
+      var d = new Date(dn * 86400000);
+      var cls = (seen.indexOf(key) >= 0 ? ' on' : '') + (k === 0 ? ' today' : '') + (di === opts.idx ? ' cur' : '');
+      cells.push('<a class="kp-day' + cls + '" href="korehan-phrase.html' + (k === 0 ? '' : '?i=' + di) + '">'
+        + '<b>' + (k === 0 ? 'Today' : _KP_WD[d.getUTCDay()]) + '</b><small>' + d.getUTCDate() + '</small></a>');
+    }
+    week = '<div class="kp-sec">This week</div><div class="kp-week">' + cells.join('') + '</div>';
   }
-
-  // Related expressions — list of bordered links, same gradient cream
-  // background as art-example-box for visual consistency.
-  var related = (phrase.related || []).slice(0, 2).filter(function(x){ return x && String(x).trim(); });
-  var relatedSection = '';
-  if (related.length) {
-    var rows = related.map(function(x){
-      var t = String(x).trim();
-      return '<li><a href="korehan-phrase.html?q=' + encodeURIComponent(t) + '">'
-        +   '<span class="kp-rel-ko">' + escapeText(t) + '</span>'
-        +   '<span class="kp-rel-arrow" aria-hidden="true">→</span>'
-        + '</a></li>';
-    }).join('');
-    relatedSection = ''
-      + '<section class="kh-phrase-section">'
-      +   '<h2 class="kh-phrase-section-label">Related Expressions</h2>'
-      +   '<ul class="kh-phrase-related-list">' + rows + '</ul>'
-      + '</section>';
-  }
-
-  // CTA row — solid accent button to save, secondary outline to open
-  // the study room. No more fixed bottom pill.
-  // When already saved, swap the secondary button to a "View My
-  // Phrases" link so the user can find the saved collection (the
-  // most common follow-up after saving a phrase).
-  var secondary = saved
-    ? '<a class="kh-phrase-secondary-btn" href="korehan-my-phrases.html">View My Phrases <span aria-hidden="true">→</span></a>'
-    : '<a class="kh-phrase-secondary-btn" href="korehan-my-phrases.html">My Phrases <span aria-hidden="true">→</span></a>';
-  var ctaRow = ''
-    + '<div class="kh-phrase-cta-row">'
-    +   '<button class="kh-phrase-save-btn ' + (saved ? 'saved' : '') + '" onclick="toggleSavePhrase()">'
-    +     (saved
-            ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'
-            : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>')
-    +     '<span>' + (saved ? 'Saved to My Phrases' : 'Add to My Phrases') + '</span>'
-    +   '</button>'
-    +   secondary
-    + '</div>';
-
-  // Admin-only edit shortcut, tucked discreetly above the headline.
-  var adminEdit = (typeof window._isAdmin !== 'undefined' && window._isAdmin && opts.idx != null)
-    ? '<a class="kh-phrase-admin-edit" href="korehan-x9f4k2m7-phrases.html?edit=' + opts.idx + '" title="Edit this phrase">'
-      + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>'
-      + '<span>Edit</span></a>'
-    : '';
-
-  var backLink = ''
-    + '<a class="kh-phrase-back" href="javascript:history.length>1?history.back():(location.href=\'index.html\')">'
-    +   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
-    +   '<span>All news</span>'
-    + '</a>';
 
   root.innerHTML = ''
-    + backLink
-    + '<article class="kh-phrase-card">'
-    +   heroBanner
-    +   '<div class="kh-phrase-card-body">'
-    +     adminEdit
-    +     eyebrow
-    +     headline
-    +     subtitle
-    +     rom
-    +     byline
-    +     '<div class="kh-phrase-divider"></div>'
-    +     meaningSection
-    +     nuanceSection
-    +     inActionSection
-    +     relatedSection
-    +     ctaRow
+    + '<div class="kp-wrap">'
+    +   banner
+    +   adminEdit
+    +   '<div class="kp-phr"><h1 lang="ko">' + escapeText(phrase.ko) + '</h1>' + _kpSpeakBtn(phrase.ko, 'Listen') + '</div>'
+    +   (phrase.rom || lvl ? '<div class="kp-rom">' + escapeText(phrase.rom) + lvl + '</div>' : '')
+    +   (phrase.en ? '<div class="kp-lit">' + escapeText(phrase.en) + '</div>' : '')
+    +   meaning + use + ex + week
+    +   '<div class="kp-bar">'
+    +     '<button type="button" class="kp-btn ghost' + (saved ? ' on' : '') + '" onclick="toggleSavePhrase()">' + khIcon(saved ? 'bookmark-check' : 'bookmark') + '<span>' + (saved ? 'Saved' : 'Save') + '</span></button>'
+    +     '<button type="button" class="kp-btn' + (mastered ? ' on' : '') + '" onclick="toggleMasteredPhrase()">' + (mastered ? khIcon('check') + '<span>Known</span>' : '<span>I know this one</span>') + '</button>'
     +   '</div>'
-    + '</article>';
+    +   (saved ? '<a class="kp-more" href="korehan-my-phrases.html">See all saved phrases →</a>' : '')
+    + '</div>';
 
   document.title = phrase.ko + ' — KoreHani Phrase';
-
-  // Lottie hydration runs after the DOM is in place — replaces the
-  // Iconify fallback with the animated SVG when the JSON exists.
-  var _hydrateTries = 0;
-  function _tryHydrate() {
-    if (typeof window.lottie !== 'undefined') { _phraseHydrateLottie(); return; }
-    if (++_hydrateTries < 20) setTimeout(_tryHydrate, 150);
-  }
-  _tryHydrate();
-
   if (typeof khTrackUser === 'function') {
-    try { khTrackUser('phrase_view', { ko: phrase.ko, idx: opts.idx, level: levelKey || null }); } catch(_) {}
+    try { khTrackUser('phrase_view', { ko: phrase.ko, idx: opts.idx, level: phrase.level || null }); } catch (_) {}
   }
 }
 
+function _kpPick(phrases) {
+  var params = new URLSearchParams(location.search);
+  var today = _kpIdxForDay(_kpDayNum(0), phrases.length);
+  var idx = today;
+  if (params.has('q')) {
+    var q = params.get('q');
+    var f = phrases.findIndex(function (p) { return (p.ko || '') === q; });
+    if (f >= 0) idx = f;
+  } else if (params.has('i')) {
+    var n = Number(params.get('i'));
+    if (Number.isFinite(n) && n >= 0 && n < phrases.length) idx = n;
+  }
+  var label = "Today's phrase";
+  var now = new Date(_kpDayNum(0) * 86400000);
+  if (idx === today) label += ' · ' + _KP_MON[now.getUTCMonth()] + ' ' + now.getUTCDate();
+  else {
+    for (var k = 1; k <= 6; k++) {
+      if (_kpIdxForDay(_kpDayNum(k), phrases.length) === idx) {
+        var d = new Date(_kpDayNum(k) * 86400000);
+        label = 'Phrase · ' + _KP_WD[d.getUTCDay()] + ', ' + _KP_MON[d.getUTCMonth()] + ' ' + d.getUTCDate();
+        break;
+      }
+    }
+    if (label === "Today's phrase") label = 'Phrase';
+  }
+  return { idx: idx, label: label };
+}
+
+var _kpRenderSeq = 0;
 async function renderPhrasePage() {
   var root = document.getElementById('phrase-root');
   if (!root) return;
+  var seq = ++_kpRenderSeq;
+  // Paint from the local copy right away, then again once the DB list
+  // (app_settings.phrases) arrives — the local copy can be an old, short list.
   var phrases = (typeof getPhrases === 'function') ? getPhrases() : [];
-  if (!phrases.length) {
-    root.innerHTML = '<div class="phrase-empty">No phrase found.</div>';
-    return;
+  if (typeof getPhrasesAsync === 'function') {
+    var fresh = getPhrasesAsync().then(null, function () { return null; });
+    if (!phrases.length || phrases.length < 8) {
+      root.innerHTML = '<div class="kp-wrap"><div class="kp-use">Loading…</div></div>';
+      var r = await fresh;
+      if (r && r.length) phrases = r;
+    } else {
+      fresh.then(function (rows) {
+        if (seq !== _kpRenderSeq || !rows || !rows.length) return;
+        if (rows.length !== phrases.length || rows[_kpPick(rows).idx].ko !== (window._currentPhrase || {}).ko) renderPhrasePage();
+      });
+    }
   }
+  if (seq !== _kpRenderSeq) return;
+  if (!phrases.length) { root.innerHTML = '<div class="kp-wrap"><div class="kp-use">No phrase found.</div></div>'; return; }
 
-  var params = new URLSearchParams(location.search);
-  var idx;
-  if (params.has('q')) {
-    var q = params.get('q');
-    idx = phrases.findIndex(function(p){ return (p.ko || '') === q; });
-    if (idx < 0) idx = (typeof getTodaysPhraseIndex === 'function') ? getTodaysPhraseIndex() : 0;
-  } else if (params.has('i')) {
-    idx = Number(params.get('i'));
-  } else {
-    idx = (typeof getTodaysPhraseIndex === 'function') ? getTodaysPhraseIndex() : 0;
-  }
-  if (!Number.isFinite(idx) || idx < 0 || idx >= phrases.length) {
-    idx = (typeof getTodaysPhraseIndex === 'function') ? getTodaysPhraseIndex() : 0;
-  }
-  var phrase = phrases[idx] || phrases[0];
-
-  var viewLog = _logPhraseViewToday();
-  var streak = _phraseStreakFromLog(viewLog);
-  var dayLabel = phrases.length > 1
-    ? 'Day ' + (idx + 1) + ' / ' + phrases.length
-    : '';
-
-  var renderOpts = { idx: idx, generating: false, streak: streak, dayLabel: dayLabel };
-
+  _logPhraseViewToday();
+  var pick = _kpPick(phrases);
+  var phrase = phrases[pick.idx] || phrases[0];
+  var renderOpts = { idx: pick.idx, label: pick.label, total: phrases.length };
   var needsFill = isPhraseIncomplete(phrase);
   renderPhraseLayout(phrase, Object.assign({}, renderOpts, { generating: needsFill }));
-
   if (needsFill) {
     try {
       var filled = await _ensurePhraseFilled(phrase);
-      // _fillPhraseViaClaude returns related under the v2 prompt, so
-      // stamp the marker in-memory too — _mergePhraseFill doesn't
-      // currently set it.
-      filled.related_v = 3;
-      phrase = filled;
-      renderPhraseLayout(filled, renderOpts);
-    } catch(e) {
-      console.warn('[phrase] fill failed', e);
-    }
-  }
-
-  // Pass 2 — for phrases that ARE complete (intro/nuance/examples
-  // already good) but whose `related` was generated under the old
-  // loose-match prompt. Detected via missing related_v: 3 marker.
-  // Cheap related-only Claude call, then persisted to DB so the
-  // next visitor doesn't re-pay.
-  if (!phrase.related_v || phrase.related_v < 3) {
-    try {
-      var freshened = await _ensureRelatedFresh(phrase);
-      if (freshened && freshened !== phrase) {
-        renderPhraseLayout(freshened, renderOpts);
-      }
-    } catch(e) {
-      console.warn('[phrase] related refresh failed', e);
-    }
+      if (seq === _kpRenderSeq) renderPhraseLayout(filled, renderOpts);
+    } catch (e) { console.warn('[phrase] fill failed', e); }
   }
 }
 
