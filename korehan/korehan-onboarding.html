@@ -277,6 +277,57 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
   .ob-footer-note{font-size:12px}
   .skip-link{font-size:12px;margin-top:12px}
 }
+
+/* Onboarding v2 (mockup J) */
+.ob-progress-wrap{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.ob-bar{display:flex;gap:5px;flex:1;width:100%;min-width:120px}
+.ob-bar i{flex:1;height:5px;border-radius:5px;background:rgba(255,255,255,.12);transition:background .2s}
+.ob-bar i.on{background:linear-gradient(90deg,#38bdf8,#2563eb)}
+.ob-progress-wrap .ob-stage{white-space:nowrap;font-size:12px}
+.ob-namepun{padding:10px 14px;margin-bottom:16px;display:block}
+.ob-namepun-ko{font-size:16px;margin-right:6px;display:inline}
+.ob-namepun-en{display:inline}
+.ob-gets{display:block;font-size:12.5px;color:#6ee7b7;line-height:1.45;margin-top:2px}
+.ob-hw{display:flex;gap:10px;justify-content:center;margin:4px 0 18px}
+.ob-hw-word{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 16px;border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:'Noto Sans KR',sans-serif;font-size:28px;font-weight:900;cursor:pointer}
+.ob-hw-word small{color:var(--sky);line-height:0}.ob-hw-word small svg{width:14px;height:14px}
+.ob-tap-hint{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--gold);font-weight:800;margin-bottom:6px}
+.ob-tap-hint svg{width:15px;height:15px}
+.ob-tap{display:block;width:100%;text-align:left;font-family:'Noto Sans KR',sans-serif;font-size:20px;line-height:1.7;color:#fff;background:rgba(251,191,36,.1);border:1.5px solid rgba(251,191,36,.5);border-radius:16px;padding:14px 16px;cursor:pointer;margin-bottom:10px}
+.ob-tap.on{background:rgba(251,191,36,.18)}
+.ob-tap-panel{border-radius:16px;background:rgba(8,18,34,.6);border:1px solid rgba(255,255,255,.1);padding:12px 14px}
+.ob-tap-en{font-size:14px;color:var(--text-soft);line-height:1.55;margin-bottom:8px}
+.ob-tap-w{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,.07);font-size:13px}
+.ob-tap-w b{font-family:'Noto Sans KR',sans-serif;font-size:15px}.ob-tap-w span{color:var(--text-dim)}
+.ob-save{margin-left:auto;border:none;border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:900;background:var(--gold);color:#0a1631;cursor:pointer}
+.ob-save.done{background:#34d399}
+.ob-tap-gr{font-size:12.5px;color:#c4b5fd;line-height:1.55;margin-top:6px}
+.ob-tap-toast{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:13px;color:#6ee7b7}
+.ob-tap-toast svg{width:16px;height:16px}
+[hidden]{display:none !important}
+.ob-min-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.ob-min-grid .ob-time-btn{min-height:auto;padding:16px 8px;text-align:center}
+.ob-min-grid .ob-time-num{margin-bottom:2px}
+.ob-plan,.ob-sum{border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:12px 14px}
+.ob-plan-h{font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--sky);margin-bottom:6px}
+.ob-plan-row{display:flex;align-items:center;gap:10px;font-size:14px;padding:7px 0}
+.ob-plan-row svg{width:17px;height:17px;color:var(--sky);flex-shrink:0}
+.ob-sum{background:linear-gradient(160deg,rgba(37,99,235,.2),rgba(124,58,237,.15));margin-bottom:14px}
+.ob-sum div{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:5px 0}
+.ob-sum span{color:var(--text-dim)}.ob-sum b{text-align:right}
+.ob-result{text-align:center;padding:20px 16px;border-radius:22px;background:linear-gradient(160deg,rgba(37,99,235,.25),rgba(124,58,237,.18));margin-bottom:16px}
+.ob-result-ic{width:52px;height:52px;border-radius:50%;background:rgba(134,239,172,.16);color:#86efac;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.ob-result-ic svg{width:24px;height:24px}
+.ob-result b{display:block;font-size:24px}.ob-result small{display:block;font-size:13px;color:var(--text-soft);margin-top:4px;line-height:1.5}
+.ob-sample{font-family:'Noto Sans KR',sans-serif;font-size:16px;line-height:1.6;background:rgba(255,255,255,.05);border-radius:14px;padding:12px 14px;margin-bottom:14px}
+.ob-lvl-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ob-lvl{padding:10px 4px;border-radius:12px;border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.ob-lvl.selected{border-color:rgba(103,232,249,.75);background:rgba(37,99,235,.26)}
+.ob-age{display:flex;align-items:flex-start;gap:8px;margin-top:12px;font-size:12px;line-height:1.5;color:var(--text-dim);cursor:pointer}
+.ob-age input{margin-top:2px;flex-shrink:0}.ob-age a{color:var(--sky)}.ob-age b{color:#fff}
+.ob-google-btn{margin-bottom:0}
+@media (max-width: 980px){ .ob-side{display:none} .ob-main{border-radius:28px} }
+@media (max-width: 640px){ .ob-progress-wrap{flex-direction:row} .ob-main{border-radius:0} .ob-tap{font-size:18px} .ob-hw-word{font-size:24px;padding:10px 12px} }
 </style>
 </head>
 <body>
@@ -285,7 +336,7 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
     <div class="ob-logo">Start smart <strong>KoreHani</strong></div>
     <div class="ob-side-hero">
       <h1 class="ob-side-title">Learn Korean from real news — at your level.</h1>
-      <p class="ob-side-desc">Two quick questions, then your first articles. Tap any sentence for its translation, words and grammar.</p>
+      <p class="ob-side-desc">About 90 seconds: your goal, your level, and a first try of the tap-a-sentence reader.</p>
     </div>
     <div class="ob-side-card">
       <small>How it works</small>
@@ -301,17 +352,8 @@ body:after{width:320px;height:320px;right:-100px;bottom:-80px;background:rgba(16
 
   <main class="ob-main">
     <div class="ob-progress-wrap">
-      <div>
-        <div class="ob-progress-label">Personal setup</div>
-        <div class="ob-stage" id="ob-stage-copy">Step 1 of 3</div>
-      </div>
-      <div class="ob-progress-track" id="ob-progress">
-        <div class="ob-step-dot active" id="dot-1">1</div>
-        <div class="ob-step-line" id="line-1"></div>
-        <div class="ob-step-dot" id="dot-2">2</div>
-        <div class="ob-step-line" id="line-2"></div>
-        <div class="ob-step-dot" id="dot-3">3</div>
-      </div>
+      <div class="ob-bar" id="ob-progress"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="ob-stage" id="ob-stage-copy">1 of 6</div>
     </div>
 
     <div id="ob-content">
@@ -337,19 +379,15 @@ function getSb() {
 }
 
 var GOALS = [
-  { id:'travel', icon:'<i data-lucide="plane" class="kh-ui-icon" aria-hidden="true"></i>', label:'Travel', sub:'Handle airports, food, transport, and simple local conversations.', tag:'Real-life Korean' },
-  { id:'kpop', icon:'<i data-lucide="mic" class="kh-ui-icon" aria-hidden="true"></i>', label:'K-pop & K-drama', sub:'Understand lyrics, variety clips, interviews, and fan content faster.', tag:'Culture first' },
-  { id:'business', icon:'<i data-lucide="briefcase" class="kh-ui-icon" aria-hidden="true"></i>', label:'Work & business', sub:'Build polite reading and useful vocabulary for meetings and news.', tag:'Professional focus' },
-  { id:'immigration', icon:'<i data-lucide="house" class="kh-ui-icon" aria-hidden="true"></i>', label:'Living in Korea', sub:'Prepare for daily life, forms, signs, services, and practical routines.', tag:'Daily survival' },
-  { id:'fun', icon:'<i data-lucide="sparkles" class="kh-ui-icon" aria-hidden="true"></i>', label:'Just for fun', sub:'Stay curious and make Korean a hobby you can actually keep doing.', tag:'Low pressure' }
+  { id:'immigration', icon:'<i data-lucide="house" class="kh-ui-icon" aria-hidden="true"></i>', label:'Living in Korea', gets:'Life in Korea guides, daily-life conversations' },
+  { id:'kpop', icon:'<i data-lucide="mic" class="kh-ui-icon" aria-hidden="true"></i>', label:'K-pop & K-drama', gets:'Korea Buzz, slang, drama phrases' },
+  { id:'travel', icon:'<i data-lucide="plane" class="kh-ui-icon" aria-hidden="true"></i>', label:'Travel', gets:'Fast Track travel scenes' },
+  { id:'business', icon:'<i data-lucide="briefcase" class="kh-ui-icon" aria-hidden="true"></i>', label:'Work & career', gets:'Economy news, polite speech' },
+  { id:'topik', icon:'<i data-lucide="graduation-cap" class="kh-ui-icon" aria-hidden="true"></i>', label:'TOPIK / study', gets:'Word Bank by level, grammar path' },
+  { id:'fun', icon:'<i data-lucide="sparkles" class="kh-ui-icon" aria-hidden="true"></i>', label:'Just for fun', gets:'Games, Korea Buzz' }
 ];
 
-var TIME_OPTIONS = [
-  { min:5, label:'5 minutes', sub:'One headline + hover vocab + quick phrase review.', route:'Best if you want the lightest habit: Latest News + Today\'s Phrase.' },
-  { min:15, label:'15 minutes', sub:'One article + saved words + a short review loop.', route:'Good default: Latest News → Beginner Guide tips → Study Room starter review.' },
-  { min:30, label:'30 minutes', sub:'A full focused session with reading and active recall.', route:'Recommended flow: Article → Study Room → save vocab → one Conversation or Korea Buzz story.' },
-  { min:60, label:'1 hour', sub:'A full immersion block with progress tracking.', route:'Deep practice: multiple articles + Study Room + Conversations/Korea Buzz + Growth Lab check-in.' }
-];
+var TIME_OPTIONS = [ { min:5 }, { min:10 }, { min:20 } ];
 
 var LEVEL_META = {
   Starter:{ ko:'Seed', emoji:'<i data-lucide="sprout" class="kh-ui-icon" aria-hidden="true"></i>', desc:'You know a little Hangul or are just beginning to connect words and meaning.', color:'#c4b5fd' },
@@ -368,8 +406,8 @@ var TEST_BANK = {
   ],
   Beginner:[
     { q:'Choose the best ending for this sentence.', sentence:'저는 학생___.', choices:['에서요','이에요','부터요','한테요'], answer:'이에요', exp:'이에요 / 예요 is the copula ending meaning “am / is / are.”' },
-    { q:'How do you say “I go to school” in natural Korean?', sentence:'', choices:['학교를 가요','학교에서 가요','학교에 가요','학교가 가요'], answer:'학교에 가요', exp:'에 marks the destination when you go somewhere.' },
-    { q:'What does the highlighted word mean?', sentence:'오늘 날씨가 좋아요.', choices:['today','good','날씨 → weather','very'], answer:'날씨 → weather', exp:'날씨 means weather. 오늘 means today, 좋아요 means good/nice.' },
+    { q:'How do you say “I go to school” in natural Korean?', sentence:'', choices:['학교한테 가요','학교에서 가요','학교에 가요','학교가 가요'], answer:'학교에 가요', exp:'에 marks the destination when you go somewhere.' },
+    { q:'What does 날씨 mean in this sentence?', sentence:'오늘 날씨가 좋아요.', choices:['today','good','weather','very'], answer:'weather', exp:'날씨 means weather. 오늘 means today, 좋아요 means good/nice.' },
     { q:'Which one is in the past tense?', sentence:'', choices:['먹어요','먹고 있어요','먹을 거예요','먹었어요'], answer:'먹었어요', exp:'-었/았어요 marks a completed past action.' },
     { q:'What does 를 do in this sentence?', sentence:'저는 커피를 좋아해요.', choices:['Marks the subject','Marks the place','Marks the time','Marks the object'], answer:'Marks the object', exp:'을/를 marks the object affected by the action.' },
     { q:'Which sentence sounds natural?', sentence:'', choices:['오늘은 집에 쉬어요','오늘은 집으로 쉬어요','오늘은 집에서 쉬어요','오늘은 집을 쉬어요'], answer:'오늘은 집에서 쉬어요', exp:'에서 marks the place where an action happens.' },
@@ -378,18 +416,18 @@ var TEST_BANK = {
     { q:'What does 안 do in this sentence?', sentence:'저는 고기를 안 먹어요.', choices:['Makes it very','Adds past tense','Makes it a question','Makes it negative'], answer:'Makes it negative', exp:'안 placed before a verb creates a short-form negation.' },
     { q:'Which word means “expensive”?', sentence:'', choices:['싸요','작아요','비싸요','많아요'], answer:'비싸요', exp:'비싸다 means expensive; 싸다 means cheap.' },
     { q:'How do you ask “Do you have time?” politely?', sentence:'', choices:['시간이 없어요?','시간이 와요?','시간이 있어요?','시간이 가요?'], answer:'시간이 있어요?', exp:'있어요 means “there is / have.” Adding ? makes it a question.' },
-    { q:'Which particle marks the starting point of an action?', sentence:'서울에서 부산까지 가요.', choices:['부터','까지','에서','에'], answer:'에서', exp:'에서 can mark the starting location as well as the place of action.' }
+    { q:'Choose the particle that fits.', sentence:'서울___ 부산까지 기차로 가요.', choices:['을','이','에서','한테'], answer:'에서', exp:'에서 marks where a trip starts: 서울에서 부산까지 = from Seoul to Busan.' }
   ],
   Intermediate:[
     { q:'Choose the best connector.', sentence:'비가 ___ 우산을 가져왔어요.', choices:['오지만','오면서','오거나','와서'], answer:'와서', exp:'와서 means “because it rained / since it was raining.”' },
     { q:'What does -(으)ㄹ 것 같아요 express?', sentence:'내일 비가 올 것 같아요.', choices:['An obligation','A strong command','A guess or expectation','A past fact'], answer:'A guess or expectation', exp:'-(으)ㄹ 것 같아요 is used for prediction or impression.' },
     { q:'Which sentence is natural when giving a gift to a friend?', sentence:'', choices:['친구에게서 선물을 줬어요','친구한테서 선물을 줬어요','친구에 선물을 줬어요','친구한테 선물을 줬어요'], answer:'친구한테 선물을 줬어요', exp:'주다 pairs naturally with 한테/에게 for the receiver.' },
     { q:'What does 는데 do here?', sentence:'열심히 공부했는데 시험을 못 봤어요.', choices:['Shows reason','Lists events in order','Creates a condition','Adds contrast/background'], answer:'Adds contrast/background', exp:'는데 often introduces background or contrast before the next point.' },
-    { q:'Which sentence uses -(으)면서 correctly?', sentence:'', choices:['음악이 들으면서 공부해요','음악을 들으면 공부해요','음악을 들으면서 공부했을 것이다','음악을 들으면서 공부해요'], answer:'음악을 들으면서 공부해요', exp:'-(으)면서 means “while doing,” usually with the same subject.' },
+    { q:'Which sentence uses -(으)면서 correctly?', sentence:'', choices:['음악이 들으면서 공부해요','음악을 듣으면서 공부해요','음악을 들으면서를 공부해요','음악을 들으면서 공부해요'], answer:'음악을 들으면서 공부해요', exp:'-(으)면서 means “while doing,” usually with the same subject.' },
     { q:'What does -기 때문에 mean?', sentence:'교통이 복잡했기 때문에 늦었어요.', choices:['Although','If','In order to','Because'], answer:'Because', exp:'-기 때문에 clearly explains a reason.' },
     { q:'Which sentence best shows a change of state?', sentence:'', choices:['날씨가 따뜻하고 있어요','날씨가 따뜻할 거예요','날씨가 따뜻해졌어요','날씨가 따뜻하도록'], answer:'날씨가 따뜻해졌어요', exp:'-아/어지다 often describes becoming or changing into a state.' },
     { q:'What does 위해 mean here?', sentence:'건강을 위해 매일 걸어요.', choices:['Instead of','Even though','Compared with','For / in order to'], answer:'For / in order to', exp:'위해 introduces purpose or benefit.' },
-    { q:'Which ending expresses an intention or plan?', sentence:'', choices:['-(으)ㄴ 것 같다','-(으)ㄹ 것이다','-(으)ㄴ 적이 있다','-았/었다'], answer:'-(으)ㄹ 것이다', exp:'-(으)ㄹ 것이다 expresses a firm future plan or prediction.' },
+    { q:'Which ending talks about the future (a plan or a prediction)?', sentence:'', choices:['-(으)ㄴ 적이 있다','-(으)ㄹ 것이다','-았/었다','-고 있었다'], answer:'-(으)ㄹ 것이다', exp:'-(으)ㄹ 것이다 expresses a firm future plan or prediction.' },
     { q:'What does -아/어도 mean in context?', sentence:'아무리 피곤해도 운동해요.', choices:['Because I am tired','After getting tired','Even though / even if tired','While being tired'], answer:'Even though / even if tired', exp:'-아/어도 introduces a concessive meaning: “even if / even though.”' },
     { q:'Which is the correct past-tense form of 쓰다 (to write)?', sentence:'', choices:['쓰었어요','씌어요','쓰고 있어요','썼어요'], answer:'썼어요', exp:'쓰다 contracts to 썼어요 in the past tense (irregular ㅡ stem).' },
     { q:'What does 만 add to meaning here?', sentence:'하루에 한 번만 먹어요.', choices:['Also, too','Even, as well','Only, just','About, approximately'], answer:'Only, just', exp:'만 is a limiting particle meaning “only” or “just.”' }
@@ -413,7 +451,9 @@ var TEST_BANK = {
 var state = {
   step:1,
   goals:[],
-  minutes:15,
+  minutes:10,
+  hangul:null,
+  savedWords:[],
   levelChoice:'test',
   level:null,
   testScore:0,
@@ -494,36 +534,20 @@ function saveOnboardingLocal(done) {
   } catch(e) {}
 }
 
-// Three visible steps (Goals → Level → Start). Internal step numbers stay
-// 1 / 3 / 4 so saved drafts from the old 4-step flow still resume.
+// Six steps (onboarding v2). The level check counts as step 3.
 function updateProgress(step) {
   state.step = step;
-  var shown = ({ 1: 1, 2: 1, 3: 2, 4: 3 })[step] || 1;
-  // On phones the Continue button sits at the bottom of a long card; the next
-  // step used to render scrolled half-way down. Bring the card top into view.
   try {
     var _main = document.querySelector('.ob-main') || document.getElementById('ob-content');
     if (_main && _main.getBoundingClientRect().top < 0) window.scrollTo(0, Math.max(0, window.scrollY + _main.getBoundingClientRect().top - 8));
   } catch (_) {}
   var stageCopy = document.getElementById('ob-stage-copy');
-  if (stageCopy) stageCopy.textContent = 'Step ' + shown + ' of 3';
-  for (var i = 1; i <= 3; i++) {
-    var dot = document.getElementById('dot-' + i);
-    if (!dot) continue;
-    if (i < shown) {
-      dot.className = 'ob-step-dot done';
-      dot.innerHTML = '✓';
-    } else if (i === shown) {
-      dot.className = 'ob-step-dot active';
-      dot.textContent = i;
-    } else {
-      dot.className = 'ob-step-dot';
-      dot.textContent = i;
-    }
-    if (i < 3) {
-      var line = document.getElementById('line-' + i);
-      if (line) line.className = 'ob-step-line' + (i < shown ? ' done' : '');
-    }
+  if (stageCopy) stageCopy.textContent = step + ' of ' + OB_STEPS;
+  var bar = document.getElementById('ob-progress');
+  if (bar) {
+    var h = '';
+    for (var i = 1; i <= OB_STEPS; i++) h += '<i class="' + (i <= step ? 'on' : '') + '"></i>';
+    bar.innerHTML = h;
   }
 }
 
@@ -559,20 +583,33 @@ function wireStepInteractions() {
   root.querySelectorAll('.ob-opt[data-level]').forEach(function(btn){
     bindTap(btn, function(e){ e.preventDefault(); selectLevel(btn.dataset.level); });
   });
-  root.querySelectorAll('.ob-opt[data-recommended-level]').forEach(function(btn){
+  root.querySelectorAll('[data-recommended-level]').forEach(function(btn){
     bindTap(btn, function(e){ e.preventDefault(); selectRecommendedLevel(btn.dataset.recommendedLevel); });
+  });
+  root.querySelectorAll('.ob-opt[data-hangul]').forEach(function(btn){
+    bindTap(btn, function(e){ e.preventDefault(); selectHangul(btn.dataset.hangul); });
+  });
+  root.querySelectorAll('[data-say]').forEach(function(btn){
+    bindTap(btn, function(e){ e.preventDefault(); _obPlayListening(btn.dataset.say); });
+  });
+  root.querySelectorAll('[data-save-ko]').forEach(function(btn){
+    bindTap(btn, function(e){ e.preventDefault(); e.stopPropagation(); obSaveWord(btn); });
   });
   root.querySelectorAll('.test-opt[data-test-idx]').forEach(function(btn){
     bindTap(btn, function(e){ e.preventDefault(); answerTest(Number(btn.dataset.testIdx)); });
   });
 
   var actionMap = {
-    'go-step2': goStep2,
-    'go-step3': goStep3,
-    'go-step4': goStep4,
+    'go-hangul': renderHangul,
+    'after-hangul': afterHangul,
+    'go-tap': goTapDemo,
+    'go-daily': renderDaily,
+    'go-save': goSave,
     'back-step1': renderStep1,
-    'back-step2': renderStep1,
-    'back-step3': renderStep3Choice,
+    'back-hangul': renderHangul,
+    'back-level': function() { if (state.hangul === 'yes') renderStep3Choice(); else renderHangul(); },
+    'back-tap': goTapDemo,
+    'back-daily': renderDaily,
     'start-test': startPlacementTest,
     'retake-test': startPlacementTest,
     'back-level-choice': backToLevelChoice,
@@ -591,39 +628,61 @@ function wireStepInteractions() {
   });
 }
 
+// ── Onboarding v2 (mockup J, 2026-10-28) ────────────────────────────
+// 1 Goal → 2 Hangul → 3 Level → 4 Tap a sentence → 5 Daily goal → 6 Save.
+// Every screen is local (no AI calls); the tap demo uses pre-written
+// sentences per level.
+var OB_STEPS = 6;
+var OB_LEVEL_NAME = { Starter:'Seed', Beginner:'Sprout', Intermediate:'Tree', Advanced:'Forest' };
+var OB_SECTION_LABEL = { '사회':'Society', '국제':'World', '문화':'Culture', '연예':'Entertainment', 'K-pop':'K-pop', 'IT과학':'Tech & Science', 'nature':'Nature', '역사':'History', 'Korea':'Korea', 'beauty':'Beauty', 'travel':'Travel', '오피니언':'Opinion', 'buzz':'Korea Buzz', '해외연예':'Entertainment' };
+var OB_BACK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>';
+function obBack(action) { return '<button class="ob-back-chip" data-action="' + action + '" type="button">' + OB_BACK_SVG + '<span>Back</span></button>'; }
+function obEsc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+var OB_HANGUL = [
+  { id:'yes',  icon:'zap',    label:'Yes, easily',              sub:'Next: a quick level check.' },
+  { id:'slow', icon:'turtle', label:'Slowly, letter by letter', sub:'Start at Seed. Romanization stays on.' },
+  { id:'no',   icon:'sprout', label:'Not yet',                  sub:'Learn Hangul first: 24 letters, a few minutes a day.' }
+];
+
+var OB_DEMO = {
+  Starter: { ko:'저는 커피를 좋아해요.', en:'I like coffee.',
+    vocab:[['커피','keopi','coffee'],['좋아하다','joahada','to like'],['저','jeo','I (polite)']],
+    gram:'~는 marks the topic (저는 = as for me) · ~를 marks the object · ~아/어요 = polite present' },
+  Beginner: { ko:'주말에 친구랑 한강에서 치킨을 먹었어요.', en:'I had fried chicken with a friend by the Han River on the weekend.',
+    vocab:[['주말','jumal','weekend'],['친구','chingu','friend'],['먹다','meokda','to eat']],
+    gram:'~랑 = "with" (casual) · ~에서 = place of an action · ~았/었어요 = polite past' },
+  Intermediate: { ko:'날씨가 갑자기 추워지면서 감기에 걸리는 사람이 늘고 있습니다.', en:'As the weather suddenly turns cold, more and more people are catching colds.',
+    vocab:[['갑자기','gapjagi','suddenly'],['감기','gamgi','a cold'],['늘다','neulda','to increase']],
+    gram:'~아/어지다 = become · ~(으)면서 = as / while · 감기에 걸리다 = to catch a cold' },
+  Advanced: { ko:'정부는 청년 일자리 문제를 해결하기 위해 새로운 지원 정책을 발표했다.', en:'The government announced a new support policy to solve the youth jobs problem.',
+    vocab:[['일자리','iljari','job'],['정책','jeongchaek','policy'],['발표하다','balpyohada','to announce']],
+    gram:'~기 위해 = in order to · 문제를 해결하다 = to solve a problem · ~았/었다 = written past' }
+};
+
 function renderStep1() {
-  state.step = 1;
-  saveOnboardingDraft();
   updateProgress(1);
+  saveOnboardingDraft();
   saveOnboardingLocal(false);
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
-      + '<div class="ob-namepun">'
-      +   '<div class="ob-namepun-ko">Korean 하니?</div>'
-      +   '<div class="ob-namepun-en"><span>"Are you doing Korean?"</span><br>'
-      +   '<b>KoreHani</b> = <b>Kore</b>an + <b>하니 (hani)</b>, casual Korean for <i>"are you doing it?"</i> So the name asks the question; this app helps you say yes.</div>'
-      + '</div>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Step 1 · Goals</div><div class="ob-stage">Pick one or more</div></div>'
-      + '<h2 class="ob-title">Why are you learning Korean?</h2>'
-      + '<p class="ob-desc">We will pick your first articles from these topics.</p>'
+      + '<div class="ob-namepun"><span class="ob-namepun-ko">Korean 하니?</span><span class="ob-namepun-en"><span>"Are you doing Korean?"</span> <b>KoreHani</b> = <b>Kore</b>an + <b>하니</b> (hani, "are you doing it?").</span></div>'
+      + '<h2 class="ob-title">What is Korean for, for you?</h2>'
+      + '<p class="ob-desc">Pick one or more. We set up your first week around it.</p>'
       + '<div class="ob-options">'
       + GOALS.map(function(g) {
           var selected = state.goals.indexOf(g.id) > -1;
           return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-id="' + g.id + '">'
             + '<span class="ob-check">✓</span>'
-            + '<span class="ob-opt-head">'
-            + '<span class="ob-opt-icon">' + g.icon + '</span>'
-            + '<span><span class="ob-opt-label">' + g.label + '</span><span class="ob-tag">' + g.tag + '</span><span class="ob-opt-sub">' + g.sub + '</span></span>'
-            + '</span>'
+            + '<span class="ob-opt-head"><span class="ob-opt-icon">' + g.icon + '</span>'
+            + '<span><span class="ob-opt-label">' + g.label + '</span><span class="ob-gets">+ ' + g.gets + '</span></span></span>'
             + '</button>';
         }).join('')
       + '</div>'
     + '</div>'
     + '<div>'
-      + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-primary ob-btn-full" id="step1-next" data-action="go-step2"' + (state.goals.length ? '' : ' disabled') + '>Continue →</button>'
-      + '</div>'
-      + '<button type="button" class="skip-link" data-action="skip" style="background:none;border:none;font:inherit;color:inherit;padding:inherit;cursor:pointer">Skip setup for now</button>'
+      + '<div class="ob-btn-row"><button class="ob-btn ob-btn-primary ob-btn-full" id="step1-next" data-action="go-hangul"' + (state.goals.length ? '' : ' disabled') + '>Continue</button></div>'
+      + '<button type="button" class="skip-link" data-action="skip" style="background:none;border:none;font:inherit;color:inherit;padding:inherit;cursor:pointer;display:block;margin:14px auto 0">Skip setup for now</button>'
     + '</div>'
   );
   wireStepInteractions();
@@ -633,62 +692,161 @@ function toggleGoal(id) {
   var idx = state.goals.indexOf(id);
   if (idx > -1) state.goals.splice(idx, 1);
   else state.goals.push(id);
-  // Surgical update — flipping classes is cheap and stops the
-  // entire card from re-mounting on every tap (the user-reported
-  // "blink/refresh" loop). Full re-render is reserved for actions
-  // that change the card's structure.
   var btn = document.querySelector('.ob-opt[data-id="' + id + '"]');
   if (btn) btn.classList.toggle('selected', state.goals.indexOf(id) > -1);
   var nextBtn = document.getElementById('step1-next');
   if (nextBtn) nextBtn.disabled = state.goals.length === 0;
 }
 
-// Daily-time question removed (it was never used); default stays 15 min.
-function goStep2() { renderStep3Choice(); }
-
-function renderStep2() {
-  state.step = 2;
-  saveOnboardingDraft();
+function renderHangul() {
   updateProgress(2);
+  saveOnboardingDraft();
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
-      + '<button class="ob-back-chip" data-action="back-step1" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Back</span></button>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Step 2 · Time</div><div class="ob-stage">Choose a realistic daily rhythm</div></div>'
-      + '<h2 class="ob-title">How much time can you study each day?</h2>'
-      + '<p class="ob-desc">Pick the pace you can repeat. The descriptions below match the actual flow of your site: news reading, Beginner Guide, Study Room, Conversations, Stories, and Growth Lab.</p>'
-      + '<div class="ob-time-grid">'
-      + TIME_OPTIONS.map(function(t) {
-          var selected = state.minutes === t.min;
-          return '<button class="ob-time-btn' + (selected ? ' selected' : '') + '" data-min="' + t.min + '">'
+      + obBack('back-step1')
+      + '<h2 class="ob-title">Can you read these?</h2>'
+      + '<p class="ob-desc">Tap a word to hear it.</p>'
+      + '<div class="ob-hw">' + [['서울','Seoul'],['김치','kimchi'],['친구','friend']].map(function(w){
+          return '<button type="button" class="ob-hw-word" data-say="' + w[0] + '">' + w[0] + '<small><i data-lucide="volume-2" class="kh-ui-icon" aria-hidden="true"></i></small></button>';
+        }).join('') + '</div>'
+      + '<div class="ob-level-list">'
+      + OB_HANGUL.map(function(h){
+          return '<button class="ob-opt' + (state.hangul === h.id ? ' selected' : '') + '" data-hangul="' + h.id + '">'
             + '<span class="ob-check">✓</span>'
-            + '<span class="ob-time-num">' + t.min + '</span>'
-            + '<span class="ob-time-label">' + t.label + '</span>'
-            + '<span class="ob-time-sub">' + t.sub + '</span>'
-            + '<span class="ob-time-route">' + t.route + '</span>'
-            + '</button>';
+            + '<span class="ob-opt-head"><span class="ob-opt-icon"><i data-lucide="' + h.icon + '" class="kh-ui-icon" aria-hidden="true"></i></span>'
+            + '<span><span class="ob-opt-label">' + h.label + '</span><span class="ob-opt-sub">' + h.sub + '</span></span></span></button>';
         }).join('')
       + '</div>'
     + '</div>'
-    + '<div>'
-      + '<div class="ob-footer-note">The best plan is the one you will actually repeat. <b>Even 5 minutes counts</b> if you keep the loop going.</div>'
-      + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-primary ob-btn-full" data-action="go-step3">Continue →</button>'
-      + '</div>'
-    + '</div>'
+    + '<div><div class="ob-btn-row"><button class="ob-btn ob-btn-primary ob-btn-full" id="hangul-next" data-action="after-hangul"' + (state.hangul ? '' : ' disabled') + '>Continue</button></div></div>'
   );
   wireStepInteractions();
 }
 
-function selectTime(min) {
-  state.minutes = min;
-  // Surgical: flip classes on the time buttons. Avoids the
-  // re-mount flash and keeps focus where it was.
-  document.querySelectorAll('.ob-time-btn[data-min]').forEach(function(b) {
-    b.classList.toggle('selected', Number(b.dataset.min) === min);
+function selectHangul(id) {
+  state.hangul = id;
+  document.querySelectorAll('.ob-opt[data-hangul]').forEach(function(b){ b.classList.toggle('selected', b.dataset.hangul === id); });
+  var n = document.getElementById('hangul-next'); if (n) n.disabled = false;
+}
+
+function afterHangul() {
+  if (state.hangul === 'no' || state.hangul === 'slow') {
+    // Can't read Hangul fluently yet → no test full of Hangul; start at Seed.
+    state.level = 'Starter';
+    state.levelChoice = 'self';
+    state.testScore = 0;
+    state.placementResult = null;
+    goTapDemo();
+    return;
+  }
+  renderStep3Choice();
+}
+
+function goTapDemo() {
+  updateProgress(4);
+  saveOnboardingDraft();
+  var lv = state.level || 'Beginner';
+  var d = OB_DEMO[lv] || OB_DEMO.Beginner;
+  var saved = state.savedWords || [];
+  document.getElementById('ob-content').innerHTML = cardWrap(
+    '<div>'
+      + obBack('back-level')
+      + '<h2 class="ob-title">Try it: tap the sentence.</h2>'
+      + '<p class="ob-desc">This is how every article works. A ' + OB_LEVEL_NAME[lv] + ' sentence:</p>'
+      + '<div class="ob-tap-hint"><i data-lucide="pointer" class="kh-ui-icon" aria-hidden="true"></i>Tap</div>'
+      + '<button type="button" class="ob-tap" id="ob-tap">' + d.ko + '</button>'
+      + '<div class="ob-tap-panel" id="ob-tap-panel"' + (saved.length ? '' : ' hidden') + '>'
+        + '<div class="ob-tap-en">' + obEsc(d.en) + '</div>'
+        + d.vocab.map(function(v){
+            var on = saved.some(function(w){ return w.ko === v[0]; });
+            return '<div class="ob-tap-w"><b>' + v[0] + '</b><span>' + v[1] + ' · ' + obEsc(v[2]) + '</span>'
+              + '<button type="button" class="ob-save' + (on ? ' done' : '') + '" data-save-ko="' + v[0] + '" data-save-rom="' + v[1] + '" data-save-en="' + obEsc(v[2]) + '">' + (on ? 'Saved' : 'Save') + '</button></div>';
+          }).join('')
+        + '<div class="ob-tap-gr">' + obEsc(d.gram) + '</div>'
+      + '</div>'
+      + '<div class="ob-tap-toast" id="ob-tap-toast"' + (saved.length ? '' : ' hidden') + '><i data-lucide="calendar-check" class="kh-ui-icon" aria-hidden="true"></i><span>' + (saved.length ? obEsc(saved[0].ko) + ' will come back in tomorrow\'s review.' : '') + '</span></div>'
+    + '</div>'
+    + '<div><div class="ob-btn-row"><button class="ob-btn ob-btn-primary ob-btn-full" data-action="go-daily">Continue</button></div>'
+    + '<div class="ob-footer-note" style="text-align:center">Save a word to start your review list.</div></div>'
+  );
+  wireStepInteractions();
+  var tap = document.getElementById('ob-tap');
+  if (tap) bindTap(tap, function(){
+    var p = document.getElementById('ob-tap-panel');
+    if (p) p.hidden = !p.hidden;
+    tap.classList.toggle('on', p && !p.hidden);
   });
 }
 
-function goStep3() { renderStep3Choice(); }
+// Save goes where the rest of the site looks: user_saved_words for a
+// signed-in learner, korehan_saved_words (moved to the account on sign-up
+// by migrateAnonSavedWords) for a guest.
+async function obSaveWord(btn) {
+  var ko = btn.dataset.saveKo, rom = btn.dataset.saveRom, en = btn.dataset.saveEn;
+  state.savedWords = state.savedWords || [];
+  if (state.savedWords.some(function(w){ return w.ko === ko; })) return;
+  state.savedWords.push({ ko:ko, rom:rom, en:en });
+  btn.classList.add('done'); btn.textContent = 'Saved';
+  var t = document.getElementById('ob-tap-toast');
+  if (t) { t.hidden = false; t.querySelector('span').textContent = state.savedWords[0].ko + ' will come back in tomorrow\'s review.'; }
+  saveOnboardingDraft();
+  try {
+    var list = JSON.parse(localStorage.getItem('korehan_saved_words') || '[]') || [];
+    if (!list.some(function(w){ return w && w.ko === ko; })) { list.push({ ko:ko, rom:rom, en:en }); localStorage.setItem('korehan_saved_words', JSON.stringify(list)); }
+  } catch (_) {}
+  var sb = getSb();
+  if (_user && sb) {
+    try {
+      await sb.from('user_saved_words').upsert({ user_id:_user.id, word_key:ko, word_ko:ko, word_rom:rom || '', word_en:en || '' }, { onConflict:'user_id,word_key' });
+    } catch (_) {}
+  }
+}
+
+function obDailyPlan(min) {
+  var lv = OB_LEVEL_NAME[state.level] || 'Sprout';
+  var plan = [];
+  if (state.hangul === 'no') plan.push(['type', 'Hangul lesson (Word Bank → Hangul)']);
+  else plan.push(['newspaper', '1 article at ' + lv + ' level']);
+  plan.push(['repeat', "Today's Review (your saved words)"]);
+  if (min >= 10) plan.push(['message-circle', "Today's Phrase"]);
+  if (min >= 20) plan.push(['graduation-cap', state.hangul === 'no' ? 'Word Bank: Seed words' : 'Article Study or a Conversation']);
+  if (min < 10 && state.hangul !== 'no') plan.shift();
+  return plan;
+}
+
+function renderDaily() {
+  updateProgress(5);
+  saveOnboardingDraft();
+  document.getElementById('ob-content').innerHTML = cardWrap(
+    '<div>'
+      + obBack('back-tap')
+      + '<h2 class="ob-title">How much a day?</h2>'
+      + '<p class="ob-desc">Small and steady beats big and rare.</p>'
+      + '<div class="ob-min-grid">' + TIME_OPTIONS.map(function(t){
+          return '<button type="button" class="ob-time-btn' + (state.minutes === t.min ? ' selected' : '') + '" data-min="' + t.min + '"><span class="ob-time-num">' + t.min + '</span><span class="ob-time-label">min</span></button>';
+        }).join('') + '</div>'
+      + '<div class="ob-plan" id="ob-plan"></div>'
+    + '</div>'
+    + '<div><div class="ob-btn-row"><button class="ob-btn ob-btn-primary ob-btn-full" data-action="go-save">Continue</button></div></div>'
+  );
+  renderDailyPlan();
+  wireStepInteractions();
+}
+function renderDailyPlan() {
+  var box = document.getElementById('ob-plan'); if (!box) return;
+  box.innerHTML = '<div class="ob-plan-h">Your day</div>' + obDailyPlan(state.minutes).map(function(p){
+    return '<div class="ob-plan-row"><i data-lucide="' + p[0] + '" class="kh-ui-icon" aria-hidden="true"></i><span>' + p[1] + '</span></div>';
+  }).join('');
+}
+
+function selectTime(min) {
+  state.minutes = min;
+  document.querySelectorAll('.ob-time-btn[data-min]').forEach(function(b) {
+    b.classList.toggle('selected', Number(b.dataset.min) === min);
+  });
+  renderDailyPlan();
+  saveOnboardingDraft();
+}
 
 function renderStep3Choice() {
   state.step = 3;
@@ -696,8 +854,7 @@ function renderStep3Choice() {
   updateProgress(3);
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
-      + '<button class="ob-back-chip" data-action="back-step2" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Back</span></button>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Step 2 · Level</div><div class="ob-stage">Pick it or take a 1-minute check</div></div>'
+      + obBack('back-hangul')
       + '<h2 class="ob-title">How much Korean do you know?</h2>'
       + '<p class="ob-desc">Articles come in four levels. You can change yours any time.</p>'
       + '<div class="ob-choice-grid">'
@@ -709,8 +866,8 @@ function renderStep3Choice() {
     + '<div>'
       + '<div class="ob-btn-row">'
       + (state.levelChoice === 'self'
-          ? '<button class="ob-btn ob-btn-primary ob-btn-full" data-action="go-step4"' + (state.level ? '' : ' disabled') + '>Use this level →</button>'
-          : '<button class="ob-btn ob-btn-primary ob-btn-full" data-action="start-test">Start test →</button>')
+          ? '<button class="ob-btn ob-btn-primary ob-btn-full" data-action="go-tap"' + (state.level ? '' : ' disabled') + '>Use this level</button>'
+          : '<button class="ob-btn ob-btn-primary ob-btn-full" data-action="start-test">Start the check</button>')
       + '</div>'
     + '</div>'
   );
@@ -768,7 +925,7 @@ function selectLevel(level) {
   document.querySelectorAll('.ob-opt[data-level]').forEach(function(b) {
     b.classList.toggle('selected', b.dataset.level === level);
   });
-  var continueBtn = document.querySelector('[data-action="go-step4"]');
+  var continueBtn = document.querySelector('[data-action="go-tap"]');
   if (continueBtn) continueBtn.disabled = false;
 }
 
@@ -958,8 +1115,8 @@ function renderTestQuestion() {
 
   var _qHtml = cardWrap(
     '<div>'
-      + '<button class="ob-back-chip" data-action="back-level-choice" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Leave test</span></button>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Placement test</div><div class="ob-stage">Question ' + (_testIdx + 1) + ' of ' + total + '</div></div>'
+      + '<button class="ob-back-chip" data-action="back-level-choice" type="button">' + OB_BACK_SVG + '<span>Leave the check</span></button>'
+      + '<div class="ob-topline"><div class="ob-eyebrow">Level check</div><div class="ob-stage">Question ' + (_testIdx + 1) + ' of ' + total + '</div></div>'
       + '<div class="test-progress"><div class="test-prog-bar"><div class="test-prog-fill" style="width:' + pct + '%"></div></div><div class="test-prog-label"><span>' + pct + '% complete</span><span>' + (areaLabels[q.area] || 'Mixed') + '</span></div></div>'
       + '<div class="test-level-badge ' + badgeClass + '">' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[q.level]||q.level) + '</div>'
       + '<div class="test-q">' + q.q + sentenceHTML + '</div>'
@@ -973,7 +1130,7 @@ function renderTestQuestion() {
     + '</div>'
     + '<div>'
       + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-primary ob-btn-full" id="test-next-btn" data-action="next-test" style="display:none">' + (_testIdx === total - 1 ? 'See result →' : 'Next question →') + '</button>'
+      + '<button class="ob-btn ob-btn-primary ob-btn-full" id="test-next-btn" data-action="next-test" style="display:none">' + (_testIdx === total - 1 ? 'See result' : 'Next question') + '</button>'
       + '</div>'
     + '</div>'
   );
@@ -1056,7 +1213,7 @@ function nextTestQ() {
 
 async function backToLevelChoice() {
   if (_testIdx > 0 || state.testAnswers.length) {
-    var ok = await khConfirm('Leave the test?', 'Your progress won\'t be saved.', { okLabel: 'Leave' });
+    var ok = (typeof khConfirm === 'function') ? await khConfirm('Leave the check?', 'Your answers so far won\'t be kept.', { okLabel: 'Leave' }) : window.confirm('Leave the check? Your answers so far won\'t be kept.');
     if (!ok) return;
   }
   state.testQuestions = [];
@@ -1071,32 +1228,31 @@ function showTestResult() {
   var recommended = _adRecommended();
   try { var pr = _computePlacementScores(); pr.recommended = recommended; state.placementResult = pr; } catch (_) {}
   state.level = recommended;
-  var reached = state.testAnswers.reduce(function(m, a){ return a.correct ? Math.max(m, AD_ORDER.indexOf(a.level)) : m; }, -1);
-
+  var meta = LEVEL_META[recommended];
+  var area = state.placementResult && state.placementResult.scores;
+  var areaNote = '';
+  if (area) {
+    var names = { reading:'reading', grammar:'grammar', vocab:'vocabulary', listening:'listening' };
+    var tried = Object.keys(names).filter(function(k){ return state.placementResult.counts && state.placementResult.counts[k]; });
+    tried.sort(function(a, b){ return area[b] - area[a]; });
+    if (tried.length >= 2) areaNote = 'Strongest: ' + names[tried[0]] + ' · next to work on: ' + names[tried[tried.length - 1]];
+  }
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Placement result</div><div class="ob-stage">You can change it below</div></div>'
-      + '<div class="result-hero">'
-      + '<div class="result-num">' + correct + '<span style="font-size:24px;color:rgba(255,255,255,.45)">/' + state.testAnswers.length + '</span></div>'
-      + '<div class="result-copy"><h3>' + LEVEL_META[recommended].emoji + ' Recommended: ' + LEVEL_META[recommended].ko + '</h3><p>' + LEVEL_META[recommended].desc + ' Pick this level or choose a different one below.</p></div>'
+      + '<div class="ob-result">'
+        + '<div class="ob-result-ic">' + meta.emoji + '</div>'
+        + '<b>You\'re ' + (/^[AEIOU]/.test(meta.ko) ? 'an ' : 'a ') + meta.ko + '</b>'
+        + '<small>' + correct + ' of ' + state.testAnswers.length + ' correct' + (areaNote ? ' · ' + areaNote : '') + '</small>'
       + '</div>'
-      + (reached >= 0 ? '<p class="ob-desc" style="margin-top:4px">Hardest level you answered correctly: <b>' + LEVEL_META[AD_ORDER[reached]].emoji + ' ' + LEVEL_META[AD_ORDER[reached]].ko + '</b></p>' : '')
-      + '<div class="ob-level-list">'
-      + Object.keys(LEVEL_META).map(function(key) {
-          var meta = LEVEL_META[key];
-          var selected = state.level === key;
-          return '<button class="ob-opt' + (selected ? ' selected' : '') + '" data-recommended-level="' + key + '">'
-            + '<span class="ob-check">✓</span>'
-            + '<span class="ob-opt-head"><span class="ob-opt-icon">' + meta.emoji + '</span><span><span class="ob-opt-label">' + meta.ko + (key === recommended ? ' <span class="ob-tag" style="margin-left:8px">Recommended</span>' : '') + '</span><span class="ob-opt-sub">' + meta.desc + '</span></span></span>'
-            + '</button>';
-        }).join('')
-      + '</div>'
+      + '<p class="ob-desc" style="margin-bottom:8px">What ' + meta.ko + ' articles look like:</p>'
+      + '<div class="ob-sample">' + (OB_DEMO[recommended] || OB_DEMO.Beginner).ko + '</div>'
+      + '<div class="ob-lvl-row">' + AD_ORDER.map(function(key){
+          return '<button type="button" class="ob-lvl' + (state.level === key ? ' selected' : '') + '" data-recommended-level="' + key + '">' + LEVEL_META[key].ko + '</button>';
+        }).join('') + '</div>'
     + '</div>'
     + '<div>'
-      + '<div class="ob-btn-row">'
-      + '<button class="ob-btn ob-btn-secondary" data-action="retake-test">Retake test</button>'
-      + '<button class="ob-btn ob-btn-primary" data-action="go-step4">Continue with this level →</button>'
-      + '</div>'
+      + '<div class="ob-btn-row"><button class="ob-btn ob-btn-primary ob-btn-full" data-action="go-tap">This is my level</button></div>'
+      + '<button type="button" class="skip-link" data-action="retake-test" style="background:none;border:none;font:inherit;color:inherit;padding:inherit;cursor:pointer;display:block;margin:14px auto 0">Retake the check</button>'
     + '</div>'
   );
   wireStepInteractions();
@@ -1110,15 +1266,14 @@ function selectRecommendedLevel(level) {
   // result card (with all the per-area bars, the kh-area-in
   // animations, and the recompute pass) was the heaviest flash
   // in the flow.
-  document.querySelectorAll('.ob-opt[data-recommended-level]').forEach(function(b) {
+  document.querySelectorAll('[data-recommended-level]').forEach(function(b) {
     b.classList.toggle('selected', b.dataset.recommendedLevel === level);
   });
 }
 
-function goStep4() {
-  state.step = 4;
+function goSave() {
+  updateProgress(6);
   saveOnboardingDraft();
-  updateProgress(4);
   // Stash the in-progress state so it survives the Google OAuth
   // round-trip. When the user comes back signed in, the page's
   // bootstrapper picks it up and finishes the upsert into
@@ -1130,71 +1285,57 @@ function goStep4() {
       minutes: state.minutes,
       level: state.level,
       levelChoice: state.levelChoice,
+      hangul: state.hangul || null,
       testScore: state.testScore,
       placementResult: state.placementResult || null,
       testAnswers: state.testAnswers || null
     }));
   } catch(_) {}
-  var goalsText = state.goals.map(function(id) {
-    var found = GOALS.find(function(g) { return g.id === id; });
-    return found ? found.label : id;
-  }).join(', ');
   // Goals + level drive the home feed and first picks (localStorage works
   // for guests; signed-in users also get them saved to user_stats).
   try {
     localStorage.setItem('kh_goals', JSON.stringify(state.goals || []));
     if (state.level) localStorage.setItem('kh_level', state.level);
   } catch (_) {}
-  var timeData = TIME_OPTIONS.find(function(item) { return item.min === state.minutes; }) || TIME_OPTIONS[1];
   // Branch on auth: signed-out users get a one-tap Google sign-up
   // as the primary CTA (the marketing CTA promised "sign up takes
   // 30 seconds"). Signed-in users see the existing finish flow.
   var isSignedIn = !!_user;
   var primaryCTA = isSignedIn
-    ? '<button class="ob-btn ob-btn-primary ob-btn-full" id="finish-btn" data-action="finish">Start reading →</button>'
-    : '<button class="ob-btn ob-btn-primary ob-btn-full" id="start-reading-btn" data-action="start-reading" type="button" style="margin-bottom:10px">Start reading →</button>'
-      + '<div style="font-size:12px;color:rgba(255,255,255,.6);text-align:center;margin:4px 0 10px">Save your words and progress — free account</div>'
-      + '<button class="ob-google-btn" id="signup-btn" data-action="signup-google" type="button">'
+    ? '<button class="ob-btn ob-btn-primary ob-btn-full" id="finish-btn" data-action="finish">Start my plan</button>'
+    : '<button class="ob-google-btn" id="signup-btn" data-action="signup-google" type="button">'
         + '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
         + '<path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>'
         + '<path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3 0 5.7 1.1 7.8 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>'
         + '<path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35 26.8 36 24 36c-5.3 0-9.7-3.4-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/>'
         + '<path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2c-.4.4 6.6-4.8 6.6-14.8 0-1.3-.1-2.4-.4-3.5z"/>'
         + '</svg>'
-        + '<span>Continue with Google</span>'
+        + '<span>Save with Google</span>'
       + '</button>';
-  var introCopy = isSignedIn
-    ? 'We will save your setup, send you to the main page, and highlight the Beginner Guide so first-time users can get oriented right away.'
-    : 'Sign up with Google to save your setup. Your goals, level, and daily pace stay attached to your account so the main page lands ready.';
+  var savedN = (state.savedWords || []).length;
+  var focus = (state.goals || []).map(function(id){ var g = GOALS.find(function(x){ return x.id === id; }); return g ? g.label : id; }).join(', ') || '—';
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'
-      + '<button class="ob-back-chip" data-action="back-step3" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg><span>Back</span></button>'
-      + '<div class="ob-topline"><div class="ob-eyebrow">Step 3 · Start</div><div class="ob-stage">Picked for ' + ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[state.level]||'Sprout') + '</div></div>'
-      + '<h2 class="ob-title">Your first articles are ready.</h2>'
-      + '<p class="ob-desc">Open one and tap any sentence — you will see its translation, words and grammar.</p>'
-      + '<div id="ob-picks" class="ob-link-grid" style="margin-bottom:16px"><div class="ob-link-card" style="opacity:.6">Finding articles for you…</div></div>'
+      + obBack('back-daily')
+      + '<h2 class="ob-title">Your plan is ready.</h2>'
+      + '<p class="ob-desc">' + (isSignedIn ? 'Here is your setup.' : 'Save it so your words and streak follow you.') + '</p>'
+      + '<div class="ob-sum">'
+        + '<div><span>Level</span><b>' + (OB_LEVEL_NAME[state.level] || 'Sprout') + '</b></div>'
+        + '<div><span>Focus</span><b>' + obEsc(focus) + '</b></div>'
+        + '<div><span>Daily</span><b>' + state.minutes + ' min</b></div>'
+        + (savedN ? '<div><span>Saved words</span><b>' + savedN + ' · review tomorrow</b></div>' : '')
+      + '</div>'
+      + '<div class="ob-plan-h" style="margin:4px 0 8px">' + (state.hangul === 'no' ? 'Start here' : 'Your first reads') + '</div>'
+      + '<div id="ob-picks" class="ob-link-grid" style="margin:0 0 16px"><div class="ob-link-card" style="opacity:.6">Finding articles for you…</div></div>'
     + '</div>'
     + '<div>'
-      // PRIV-F9: age gate. PIPA Art 22-2 prohibits collecting
-      // personal info from under-14 without legal guardian consent;
-      // GDPR Art 8 sets the equivalent bar at ≥16 in most EU
-      // jurisdictions. Single checkbox is the lightweight version
-      // recommended by KISA. Persisted to user_stats.age_confirmed_at
-      // by persistOnboardingState() when the checkbox is checked.
-      + '<label style="display:flex;align-items:flex-start;gap:8px;padding:12px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:12px;margin-bottom:14px;cursor:pointer;font-size:13px;line-height:1.5;color:rgba(255,255,255,.78)">'
-        + '<input type="checkbox" id="ob-age-confirm" style="margin-top:2px;flex-shrink:0">'
-        + '<span>I confirm I am <strong>14 or older</strong>, and if I am located in the EU/EEA, I am <strong>16 or older</strong>. (PIPA Art 22-2 / GDPR Art 8.) <a href="privacy-policy.html" target="_blank" style="color:#7dd3fc">Privacy Policy</a></span>'
-      + '</label>'
-      + '<div class="ob-btn-row">'
-      + primaryCTA
-      // Secondary email-signup path for users without Google or who
-      // prefer email auth. Without this, signed-out users only had a
-      // single Google CTA and no path forward.
-      + (isSignedIn ? '' : '<button class="ob-btn ob-btn-full" id="signup-email-btn" data-action="signup-email" type="button" style="margin-top:10px;background:transparent;border:1.5px solid rgba(255,255,255,.18);color:inherit;font-weight:700">Sign up with email</button>')
+      + '<div class="ob-btn-row" style="margin-top:6px">' + primaryCTA
+      + (isSignedIn ? '' : '<button class="ob-btn ob-btn-full ob-btn-secondary" id="signup-email-btn" data-action="signup-email" type="button" style="margin-top:10px">Use email instead</button>')
       + '</div>'
-      // No dead end: browsing first is fine — answers stay saved on this
-      // device and are applied when they sign up later.
-      + (isSignedIn ? '' : '<button type="button" class="skip-link" data-action="explore" style="background:none;border:none;font:inherit;color:inherit;padding:inherit;cursor:pointer;display:block;margin:14px auto 0">Just look around</button>')
+      // PRIV-F9 age gate (PIPA Art 22-2 / GDPR Art 8) — required before an
+      // account is created or the setup is saved.
+      + '<label class="ob-age"><input type="checkbox" id="ob-age-confirm"><span>I\'m <b>14 or older</b> (<b>16+</b> in the EU/EEA). <a href="privacy-policy.html" target="_blank">Privacy Policy</a></span></label>'
+      + (isSignedIn ? '' : '<button type="button" class="skip-link" data-action="start-reading" style="background:none;border:none;font:inherit;color:inherit;padding:inherit;cursor:pointer;display:block;margin:12px auto 0">Start without an account</button>')
     + '</div>'
   );
   wireStepInteractions();
@@ -1206,17 +1347,24 @@ var OB_GOAL_SECTIONS = {
   travel: ['travel', 'Korea', '문화'],
   kpop: ['K-pop', '연예', '해외연예'],
   business: ['국제', 'IT과학', '사회'],
-  immigration: ['사회', 'Korea', '문화'],
+  immigration: ['Korea', '문화', '사회'],
+  topik: ['문화', 'Korea', '사회'],
   fun: ['buzz', '문화', 'nature']
 };
 var _obPicks = [];
 function _obFirstArticleUrl() {
+  if (state.hangul === 'no') return 'korehan-learn.html?tab=hangul';
   return _obPicks.length ? 'korehan-article.html?id=' + encodeURIComponent(_obPicks[0].id) + '&from=onboarding' : 'index.html?welcome=1';
 }
 async function _obLoadPicks() {
   var box = document.getElementById('ob-picks');
   var sb = getSb();
-  if (!box || !sb) return;
+  if (!box) return;
+  if (state.hangul === 'no') {
+    box.innerHTML = '<a class="ob-link-card" href="korehan-learn.html?tab=hangul" onclick="saveOnboardingLocal(true)"><span>Hangul</span><h3>Read Korean letters in a few days</h3><p>24 letters with sound, then a short quiz.</p></a>';
+    return;
+  }
+  if (!sb) return;
   var secs = [];
   (state.goals || []).forEach(function(g){ (OB_GOAL_SECTIONS[g] || []).forEach(function(x){ if (secs.indexOf(x) < 0) secs.push(x); }); });
   var level = state.level || 'Beginner';
@@ -1235,7 +1383,7 @@ async function _obLoadPicks() {
     if (!rows.length) { box.innerHTML = ''; return; }
     box.innerHTML = rows.map(function(a){
       return '<a class="ob-link-card" href="korehan-article.html?id=' + encodeURIComponent(a.id) + '&from=onboarding" onclick="saveOnboardingLocal(true)">'
-        + '<span>' + esc(a.section || '') + '</span><h3>' + esc(a.title_en || a.title) + '</h3>'
+        + '<span>' + esc(OB_SECTION_LABEL[a.section] || a.section || '') + '</span><h3>' + esc(a.title_en || a.title) + '</h3>'
         + (a.title_en ? '<p>' + esc(a.title) + '</p>' : '') + '</a>';
     }).join('');
   } catch (_) { box.innerHTML = ''; }
@@ -1296,7 +1444,7 @@ async function persistOnboardingState() {
 // Step 4 "Sign up with Google" — triggers Supabase OAuth and
 // hands control to Google. Supabase appends ?code=… on return,
 // at which point _bootstrap() picks the user up, finds the
-// kh_onboarding_pending_state we stashed in goStep4(), pushes
+// kh_onboarding_pending_state we stashed in goSave(), pushes
 // it into user_stats, and redirects to study-room. The redirect
 // target is the same page so the OAuth round-trip lands here.
 // Email signup path — opens the global auth modal in signup mode.
@@ -1429,8 +1577,11 @@ var ONBOARDING_DRAFT_KEY = 'kh_onboarding_draft';
 function saveOnboardingDraft() {
   try {
     localStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify({
+      v:            2,
       step:         state.step,
       goals:        state.goals,
+      hangul:       state.hangul,
+      savedWords:   state.savedWords,
       minutes:      state.minutes,
       levelChoice:  state.levelChoice,
       level:        state.level,
@@ -1462,7 +1613,10 @@ function restoreOnboardingDraft() {
     if (saved.level)       state.level       = saved.level;
     if (saved.testScore)   state.testScore   = saved.testScore;
     if (saved.testAnswers) state.testAnswers = saved.testAnswers;
-    if (saved.step)        state.step        = saved.step;
+    if (saved.hangul)      state.hangul      = saved.hangul;
+    if (saved.savedWords)  state.savedWords  = saved.savedWords;
+    // v1 drafts used steps 1 / 3 / 4 (goal / level / sign-up).
+    if (saved.step)        state.step        = saved.v === 2 ? saved.step : ({ 1:1, 2:3, 3:3, 4:6 })[saved.step] || 1;
     return true;
   } catch (_) { clearOnboardingDraft(); return false; }
 }
@@ -1471,10 +1625,10 @@ function startOnboarding() {
   if (!state.level) state.level = 'Beginner';
   restoreOnboardingDraft();
   // Resume from the step the user was on, defaulting to step 1. Note:
-  // step 4 is the signup CTA — goStep4 is idempotent + safe to re-run.
-  if (state.step === 2 || state.step === 3) renderStep3Choice();
-  else if (state.step === 4)   goStep4();
-  else                         renderStep1();
+  // step 6 is the save/sign-up screen — goSave is idempotent + safe to re-run.
+  var resume = { 2: renderHangul, 3: function(){ if (state.hangul === 'yes') renderStep3Choice(); else renderHangul(); }, 4: goTapDemo, 5: renderDaily, 6: goSave }[state.step];
+  if (state.step === 3 && !state.hangul) state.hangul = 'yes';
+  (resume || renderStep1)();
 }
 
 // Two-phase init so the page paints + becomes interactive immediately:
@@ -1521,7 +1675,7 @@ async function initUserBackground() {
   if (!_user) return;
   // Step 4 may have painted the sign-up buttons before we knew the visitor
   // is signed in — repaint it with the finish flow.
-  if (state.step === 4 && window.location.search.indexOf('finish=1') < 0) { try { goStep4(); } catch(_) {} }
+  if (state.step === 6 && window.location.search.indexOf('finish=1') < 0) { try { goSave(); } catch(_) {} }
 
   // Returning from "Sign up with Google" on step 4 — the user
   // filled out goals/level/minutes anonymously, then OAuth round-
@@ -1538,6 +1692,7 @@ async function initUserBackground() {
           state.minutes         = pending.minutes         || state.minutes;
           state.level           = pending.level           || state.level;
           state.levelChoice     = pending.levelChoice     || state.levelChoice;
+          state.hangul          = pending.hangul          || state.hangul;
           state.testScore       = pending.testScore       != null ? pending.testScore : state.testScore;
           state.placementResult = pending.placementResult || state.placementResult;
           state.testAnswers     = pending.testAnswers     || state.testAnswers;
