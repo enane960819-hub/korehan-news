@@ -58,7 +58,15 @@ function logUsage(sb: any, feature: string, usage: Record<string, number> | unde
   } catch (_) { /* telemetry never breaks QA */ }
 }
 
+// One retry when the model returns malformed JSON (an unescaped quote in
+// Korean text happens now and then) — cheaper than losing the whole step.
 async function claudeJson(sb: any, apiKey: string, prompt: string, maxTokens: number, feature: string): Promise<any> {
+  try { return await claudeJsonOnce(sb, apiKey, prompt, maxTokens, feature) } catch (e) {
+    if (!/JSON|Unexpected|Expected/.test(String((e as Error).message))) throw e
+    return await claudeJsonOnce(sb, apiKey, prompt + '\n\nReturn strictly valid JSON: escape every double quote inside strings.', maxTokens, feature + '-retry')
+  }
+}
+async function claudeJsonOnce(sb: any, apiKey: string, prompt: string, maxTokens: number, feature: string): Promise<any> {
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
