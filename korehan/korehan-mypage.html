@@ -1130,10 +1130,77 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
 .xp-log-reason, .inv-name, .room-shop-name { color:#0b1626; }
 #room-edit-btn { color:#334155; }
 </style>
+<style>
+/* My Page — compact dark layout (mockup ⑤, 2026-10-28). Loaded last so it
+   wins over the older light / hero rules above. */
+html, body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+.mypage-body { max-width:640px; padding:16px 16px 60px; }
+.mypage-hero { background:rgba(255,255,255,.05) !important; border:1px solid rgba(255,255,255,.1); border-radius:18px; padding:16px !important; margin-bottom:12px; }
+.mypage-hero::before, .mypage-hero::after { display:none !important; }
+.mypage-hero-inner { gap:14px; flex-wrap:nowrap; }
+.mp-initials, .mp-avatar-img { width:60px !important; height:60px !important; font-size:22px !important; }
+html body .mypage-name { font-size:18px !important; color:#fff !important; }
+.mypage-email { display:none; }
+.mp-member-since { color:rgba(255,255,255,.5) !important; font-size:11.5px; }
+.hero-actions { margin-top:6px; gap:6px; }
+.hero-actions .xp-tier-badge { padding:3px 10px; border-radius:999px; font-size:11px; }
+.mp-lvl { height:8px; border-radius:8px; background:rgba(255,255,255,.08); margin-top:14px; overflow:hidden; }
+.mp-lvl i { display:block; height:100%; border-radius:8px; background:linear-gradient(90deg,#f59e0b,#fbbf24); transition:width .6s ease; }
+.mp-lvt { display:flex; justify-content:space-between; font-size:11px; color:rgba(255,255,255,.5); margin-top:5px; }
+.mp-first { margin-top:10px; font-size:12.5px; color:rgba(255,255,255,.7); line-height:1.5; }
+.mp-first a { color:#93c5fd; }
+.mp-stats { display:flex; gap:8px; margin-bottom:12px; }
+.mp-stat { flex:1; display:flex; flex-direction:column; align-items:center; padding:12px 4px; border-radius:14px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); }
+.mp-stat.clickable { cursor:pointer; transition:background .15s; }
+.mp-stat.clickable:hover { background:rgba(255,255,255,.1); }
+.mp-stat .stat-n { font-size:20px; font-weight:800; color:#fff; }
+.mp-stat .stat-lbl { font-size:11px; color:rgba(255,255,255,.5); }
+.mp-section { background:rgba(255,255,255,.05) !important; border:1px solid rgba(255,255,255,.1) !important; box-shadow:none !important; border-radius:18px; padding:14px !important; margin-bottom:12px; }
+.mp-section h3 { color:#7dd3fc !important; font-size:11px !important; letter-spacing:.12em; margin-bottom:10px !important; border:0 !important; padding:0 !important; }
+#mp-miniroom-section button[onclick="toggleRoomEdit()"], #mp-miniroom-section a[href="korehan-shop.html"] { background:rgba(255,255,255,.08) !important; border-color:rgba(255,255,255,.14) !important; color:#e2e8f0 !important; }
+#room-size-controls div[style*="color:#64748b"], #room-size-value { color:rgba(255,255,255,.7) !important; }
+.mp-tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+.mp-tile { display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 6px; border-radius:14px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); color:#fff; text-decoration:none; font:inherit; cursor:pointer; transition:background .15s; }
+.mp-tile:hover { background:rgba(255,255,255,.1); }
+.mp-tile svg, .mp-tile i { width:22px; height:22px; color:#c4b5fd; }
+.mp-tile b { font-size:12.5px; font-weight:700; }
+.mp-tile small { font-size:10.5px; color:rgba(255,255,255,.45); min-height:13px; }
+.mp-list { border-radius:18px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); padding:4px 14px; }
+.mp-li { display:flex; align-items:center; gap:10px; width:100%; padding:13px 0; border:0; border-top:1px solid rgba(255,255,255,.07); background:none; color:#fff; font:inherit; font-size:14px; text-align:left; cursor:pointer; }
+.mp-list > .mp-li:first-child, .mp-list > .mp-li[style*="none"] + .mp-li { border-top:0; }
+.mp-li svg, .mp-li i { width:18px; height:18px; color:#93c5fd; flex-shrink:0; }
+.mp-li .mp-li-chev { margin-left:auto; color:rgba(255,255,255,.4); transition:transform .15s; }
+.mp-li[aria-expanded="true"] .mp-li-chev { transform:rotate(180deg); }
+.mp-li-plan { cursor:default; }
+#mp-plan-body { display:flex; align-items:center; gap:10px; width:100%; }
+.mp-li-t { flex:1; display:flex; flex-direction:column; }
+.mp-li-t small { font-size:11.5px; color:rgba(255,255,255,.5); }
+.mp-li-act { flex-shrink:0; font-size:12px; font-weight:700; padding:6px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#e2e8f0; text-decoration:none; cursor:pointer; font-family:inherit; }
+.mp-li-act.muted { border:0; background:none; color:rgba(255,255,255,.5); cursor:default; }
+.mp-account { padding:2px 0 10px; }
+.mp-acct-sec { padding:12px 0; border-top:1px solid rgba(255,255,255,.07); }
+.mp-acct-sec h3 { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#7dd3fc; margin:0 0 8px; }
+.mp-acct-note { font-size:12.5px; color:rgba(255,255,255,.55); line-height:1.55; margin:0 0 10px; }
+.mp-acct-btn { padding:8px 16px; border-radius:999px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#e2e8f0; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+.mp-acct-btn.danger { border-color:rgba(248,113,113,.5); color:#fca5a5; }
+.pf-row { border-bottom-color:rgba(255,255,255,.07) !important; }
+.pf-label { color:rgba(255,255,255,.45) !important; }
+.pf-value { color:#fff !important; }
+.pf-btn { background:rgba(255,255,255,.06) !important; border-color:rgba(255,255,255,.18) !important; color:#93c5fd !important; }
+@media (max-width:420px) { .mp-tile b { font-size:12px; } }
+/* beat the shared mobile-redesign light-hero rules */
+html body.mobile-redesign .mypage-body { padding:14px 16px 110px !important; max-width:640px !important; }
+html body.mobile-redesign .mypage-hero { background:rgba(255,255,255,.05) !important; border:1px solid rgba(255,255,255,.1) !important; margin:0 0 12px !important; padding:16px !important; }
+html body.mobile-redesign .mypage-name { color:#fff !important; }
+html body.mobile-redesign .mp-member-since { color:rgba(255,255,255,.5) !important; }
+html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !important; border-color:rgba(255,255,255,.18) !important; color:rgba(255,255,255,.85) !important; }
+</style>
 </head>
 <body>
 <h1 class="kh-sr-only">My Page — KoreHani profile and learning progress</h1>
 <div id="kh-header"></div>
+
+<div class="mypage-body">
 
 <div class="mypage-hero">
   <div class="mypage-hero-inner">
@@ -1156,39 +1223,12 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
       <div class="hero-actions">
         <div id="mp-tier-hero"></div>
         <a id="mp-feedback-chip" class="mp-action-btn" style="display:none;text-decoration:none" href="korehan-study-room.html?openInbox=1" title="View your latest writing & speaking feedback"></a>
-        <button class="mp-action-btn" onclick="openCosmeticsModal()" title="Equip frames from your collection">✨ Cosmetics</button>
-        <button class="mp-action-btn" onclick="signOut()">Sign Out</button>
       </div>
     </div>
   </div>
+  <div id="mp-xp-card"></div>
 </div>
 
-<div class="mypage-body">
-
-  <!-- XP Card -->
-  <div id="mp-xp-card"></div>
-
-  <!-- Plan / subscription (manage or cancel in one click) -->
-  <div class="mp-section" id="mp-plan-section" style="display:none">
-    <h3>Your plan</h3>
-    <div id="mp-plan-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"></div>
-  </div>
-
-  <!-- Shortcuts — moved here from the profile menu (2026-10) -->
-  <div class="mp-section mp-shortcuts">
-    <a href="#mp-miniroom-section" class="mp-sc"><i data-lucide="house" aria-hidden="true"></i><span>My Room</span></a>
-    <a href="korehan-friends.html" class="mp-sc"><i data-lucide="users" aria-hidden="true"></i><span>Friends</span></a>
-    <a href="korehan-learning-overview.html#gl-universe-hero" class="mp-sc"><i data-lucide="sparkles" aria-hidden="true"></i><span>Word Universe</span></a>
-    <a href="korehan-notes.html" class="mp-sc"><i data-lucide="bookmark" aria-hidden="true"></i><span>Bookmarks</span></a>
-    <button type="button" id="kh-mp-neon-toggle" class="mp-sc" onclick="toggleKhNeon(event)"><i data-lucide="zap" aria-hidden="true"></i><span>Neon theme: OFF</span></button>
-  </div>
-  <style>
-    .mp-shortcuts { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; }
-    .mp-sc { display:flex; align-items:center; gap:8px; padding:12px 14px; border-radius:12px; border:1px solid #e2e8f0; background:#fff; color:#0f172a; font-size:14px; font-weight:700; text-decoration:none; cursor:pointer; font-family:inherit; text-align:left; }
-    .mp-sc:hover { border-color:#93c5fd; background:#f8fbff; }
-    .mp-sc svg, .mp-sc i { width:18px; height:18px; color:#2563eb; flex-shrink:0; }
-    body.kh-neon-on .mp-sc { background:rgba(9,18,33,.92); border-color:rgba(0,255,214,.16); color:#e4f9ff; }
-  </style>
 
   <!-- Stats -->
   <div id="mp-mini-stats"></div>
@@ -1234,6 +1274,46 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
     </div>
   </div>
 
+  <!-- Shortcuts (My Room stays inline above) -->
+  <div class="mp-tiles">
+    <a href="korehan-friends.html" class="mp-tile"><i data-lucide="users" aria-hidden="true"></i><b>Friends</b></a>
+    <button type="button" class="mp-tile" onclick="openAllBadgesModal()"><i data-lucide="award" aria-hidden="true"></i><b>Badges</b><small id="mp-sc-badges"></small></button>
+    <a href="korehan-my-phrases.html" class="mp-tile"><i data-lucide="bookmark" aria-hidden="true"></i><b>Saved</b><small>phrases</small></a>
+    <a href="korehan-notes.html" class="mp-tile"><i data-lucide="newspaper" aria-hidden="true"></i><b>Bookmarks</b><small>articles</small></a>
+    <a href="korehan-shop.html" class="mp-tile"><i data-lucide="shopping-bag" aria-hidden="true"></i><b>Shop</b></a>
+    <a href="korehan-learning-overview.html#gl-universe-hero" class="mp-tile"><i data-lucide="sparkles" aria-hidden="true"></i><b>Word Universe</b></a>
+  </div>
+
+  <!-- Settings -->
+  <div class="mp-list">
+    <div id="mp-plan-section" class="mp-li mp-li-plan" style="display:none"><div id="mp-plan-body"></div></div>
+    <button type="button" id="kh-mp-neon-toggle" class="mp-li" onclick="toggleKhNeon(event)"><i data-lucide="zap" aria-hidden="true"></i><span>Neon theme: OFF</span></button>
+    <button type="button" class="mp-li" onclick="openCosmeticsModal()"><i data-lucide="palette" aria-hidden="true"></i><span>Frames &amp; titles</span></button>
+    <button type="button" class="mp-li" id="mp-acct-toggle" onclick="mpToggleAccount()" aria-expanded="false"><i data-lucide="user-cog" aria-hidden="true"></i><span>Account &amp; privacy</span><i data-lucide="chevron-down" class="mp-li-chev" aria-hidden="true"></i></button>
+    <div id="mp-account" class="mp-account" hidden>
+  <!-- Profile & Account -->
+  <div class="mp-acct-sec">
+    <h3>Profile</h3>
+    <div id="mp-profile-fields"></div>
+  </div>
+
+  <!-- PRIV-F3: data-export UI (GDPR Art 15 / 20, PIPA Art 35 열람권) -->
+  <div class="mp-acct-sec">
+    <h3>Your data</h3>
+    <p class="mp-acct-note">Download a JSON file with all your KoreHani data — saved words, reading history, quiz results, submissions, comments and file manifests.</p>
+    <button onclick="exportMyData()" id="export-my-data-btn" class="mp-acct-btn">Download my data</button>
+  </div>
+  <div class="mp-acct-sec">
+    <h3>Delete account</h3>
+    <p class="mp-acct-note">Your account and all learning data will be permanently deleted and cannot be recovered.</p>
+    <button onclick="confirmDeleteAccount()" class="mp-acct-btn danger">Delete account</button>
+  </div>
+    </div>
+    <button type="button" class="mp-li" onclick="signOut()"><i data-lucide="log-out" aria-hidden="true"></i><span>Sign out</span></button>
+  </div>
+
+  <!-- Rendered by the existing loaders; surfaced via the tiles above -->
+  <div hidden>
   <!-- Badges -->
   <div class="mp-section" id="mp-badges-section">
     <h3>Badges</h3>
@@ -1252,23 +1332,6 @@ body.kh-neon-on #mp-badges-section .badge-progress-bar { background:rgba(255,255
     <div id="mp-owned-items"><div style="text-align:center;padding:20px;color:#94a3b8">Loading…</div></div>
   </div>
 
-  <!-- Profile & Account -->
-  <div class="mp-section">
-    <h3>Profile</h3>
-    <div id="mp-profile-fields"></div>
-  </div>
-
-  <!-- PRIV-F3: data-export UI (GDPR Art 15 / 20, PIPA Art 35 열람권) -->
-  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;margin-bottom:14px">
-    <h3 style="font-size:14px;font-weight:900;margin:0 0 10px">Export My Data</h3>
-    <p style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.6">Download a JSON file containing all your KoreHani data — saved words, reading history, quiz results, submissions, comments, and file manifests.</p>
-    <button onclick="exportMyData()" id="export-my-data-btn" style="padding:9px 20px;background:#2563eb;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Download my data</button>
-  </div>
-
-  <div class="danger-zone">
-    <h3 style="font-size:14px;font-weight:900;margin:0 0 10px">Danger Zone</h3>
-    <p style="font-size:13px;color:#64748b;margin:0 0 14px;line-height:1.6">Your account and all learning data will be permanently deleted and cannot be recovered.</p>
-    <button onclick="confirmDeleteAccount()" style="padding:9px 20px;background:#dc2626;color:#fff;border:none;border-radius:999px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">Delete Account</button>
   </div>
 
 </div>
@@ -1455,35 +1518,13 @@ function renderXPCard(xp) {
   if (heroEl) heroEl.innerHTML = '<span class="xp-tier-badge ' + tier.cls + '">' + dotHtml + tier.label + ' · ' + xp.toLocaleString() + ' XP</span>';
 
   area.innerHTML =
-    '<div class="xp-card">'
-    + '<div class="xp-top">'
-    + '<div><div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#94a3b8;margin-bottom:6px">Accumulated XP</div>'
-    + '<div class="xp-total">' + xp.toLocaleString() + '</div>'
-    + '<div class="xp-total-label">total experience points</div></div>'
-    + '<div style="text-align:right"><span class="xp-tier-badge ' + tier.cls + '">' + dotHtml + tier.label + '</span>'
-    + (tier.next
-      ? '<div style="font-size:12px;color:#94a3b8;margin-top:8px;font-weight:600">' + (tier.to - xp).toLocaleString() + ' XP to ' + tier.next + '</div>'
-      : '<div style="font-size:12px;color:#16a34a;margin-top:8px;font-weight:700;display:inline-flex;align-items:center;gap:5px"><span>Maximum tier</span><i data-lucide="check" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></div>')
-    + '</div></div>'
-    + '<div class="xp-track"><div class="xp-fill" style="width:' + pct + '%"></div></div>'
-    + '<div class="xp-meta"><span>' + tier.label + ' (' + tier.from.toLocaleString() + ')</span>'
-    + (tier.next ? '<span>' + tier.next + ' (' + tier.to.toLocaleString() + ')</span>' : '<span>Max tier</span>')
-    + '</div>'
-    // EMPTY STATE — show guidance when the user hasn't earned any XP yet.
-    // Without this, day-1 users land on My Page, see "0 XP / no progress",
-    // and bounce. Card surfaces 3 concrete first-action CTAs.
+    '<div class="mp-lvl"><i style="width:' + pct + '%"></i></div>'
+    + '<div class="mp-lvt"><span>' + xp.toLocaleString() + ' XP</span>'
+    + (tier.next ? '<span>' + (tier.to - xp).toLocaleString() + ' XP to ' + tier.next + '</span>' : '<span>Max tier</span>') + '</div>'
+    // Day-1 users: one clear next step instead of an empty bar.
     + (xp === 0
-      ? '<div style="margin-top:18px;padding-top:18px;border-top:1px dashed #e2e8f0">'
-      +   '<div style="font-size:13px;font-weight:700;color:#0b1626;margin-bottom:8px">🚀 First time? Start here:</div>'
-      +   '<div style="display:flex;flex-wrap:wrap;gap:8px">'
-      +     '<a href="index.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#2255a4;color:#fff;text-decoration:none;border-radius:8px;font-size:13px;font-weight:700">📰 Read first article</a>'
-      +     '<a href="korehan-conversations.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f0f9ff;color:#0369a1;text-decoration:none;border-radius:8px;font-size:13px;font-weight:600;border:1px solid #bae6fd">💬 Try a conversation</a>'
-      +     '<a href="beginner-guide.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#fefce8;color:#a16207;text-decoration:none;border-radius:8px;font-size:13px;font-weight:600;border:1px solid #fde68a">📚 Beginner guide</a>'
-      +   '</div>'
-      +   '<div style="font-size:11px;color:#94a3b8;margin-top:8px">XP grows when you read articles, save words, complete lessons, or finish quizzes.</div>'
-      + '</div>'
-      : '')
-    + '</div>';
+      ? '<div class="mp-first">New here? <a href="korehan-study-room.html">Start this week\'s lesson</a> or <a href="index.html">read an article</a> to earn XP.</div>'
+      : '');
 }
 
 // Lightweight HTML escaper for any user-controlled string we splice into
@@ -1520,20 +1561,15 @@ function renderMiniStats(stats) {
   if (!el) return;
   var us = stats || {};
   var coinVal = Number(us.coin_balance || 0);
-  function row(icon, value, label, extra, stat) {
-    return '<div class="stat-row' + (extra || '') + '"' + (stat ? ' data-stat="' + stat + '"' : '') + '>'
-      + '<div class="stat-icon">' + icon + '</div>'
-      + '<div class="stat-text"><span class="stat-n">' + value + '</span><span class="stat-lbl">' + label + '</span></div>'
-      + '</div>';
+  function tile(value, label, extra, stat) {
+    return '<div class="mp-stat' + (extra || '') + '"' + (stat ? ' data-stat="' + stat + '"' : '') + '>'
+      + '<span class="stat-n">' + value + '</span><span class="stat-lbl">' + label + '</span></div>';
   }
-  el.innerHTML =
-    '<div class="mp-section stats-overview"><h3>Current Status</h3><div class="stats-grid">'
-    + row(SVG_ICONS.streak,   us.mission_streak || us.streak || 0, 'day streak')
-    + row(SVG_ICONS.articles, us.articles_read  || 0,              'articles')
-    + row(SVG_ICONS.words,    '<span id="mp-real-word-count">' + (us.words_saved || 0) + '</span>', 'saved words', ' clickable" onclick="openSavedWordsModal()')
-    + row(SVG_ICONS.quizzes,  us.quizzes_done   || 0,              'quizzes')
-    + row(SVG_ICONS.nyang,    coinVal.toLocaleString(),            'Nyang', '', 'coin')
-    + '</div></div>';
+  el.innerHTML = '<div class="mp-stats">'
+    + tile(us.mission_streak || us.streak || 0, 'day streak')
+    + tile('<span id="mp-real-word-count">' + (us.words_saved || 0) + '</span>', 'saved words', ' clickable" role="button" tabindex="0" onclick="openSavedWordsModal()')
+    + tile(coinVal.toLocaleString(), 'nyang', '', 'coin')
+    + '</div>';
 }
 
 // ── Sync real word count from DB ──────────────────────────────
@@ -2626,15 +2662,23 @@ async function _mpRenderPlanCard() {
   var esc = function(x){ return String(x).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
   var until = live && row.expires_at ? new Date(row.expires_at).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }) : '';
   var left = live
-    ? '<div><div style="font-size:18px;font-weight:900;color:#0b1626">⭐ Premium</div><div style="font-size:12px;color:#64748b;margin-top:2px">'
-      + (row.cancel_at_period_end ? 'Cancelled — access until ' + esc(until) : (until ? 'Renews ' + esc(until) : 'Active')) + '</div></div>'
-    : '<div><div style="font-size:18px;font-weight:900;color:#0b1626">Free</div><div style="font-size:12px;color:#64748b;margin-top:2px">Reading, sentence analysis, word book, weekly writing with AI feedback</div></div>';
+    ? '<i data-lucide="crown" aria-hidden="true"></i><span class="mp-li-t">Premium<small>'
+      + (row.cancel_at_period_end ? 'Cancelled — access until ' + esc(until) : (until ? 'Renews ' + esc(until) : 'Active')) + '</small></span>'
+    : '<i data-lucide="crown" aria-hidden="true"></i><span class="mp-li-t">Free plan<small>Upgrade for unlimited lessons &amp; feedback</small></span>';
   var right = live && row.payment_provider === 'stripe'
-    ? '<button type="button" class="mp-action-btn" onclick="_mpManageSubscription(this)">Manage / cancel subscription</button>'
-    : (live ? '<span style="font-size:12px;color:#64748b">Granted by KoreHani</span>'
-            : '<a class="mp-action-btn" href="korehan-courses.html" style="text-decoration:none">Try Premium free for 7 days →</a>');
+    ? '<button type="button" class="mp-li-act" onclick="_mpManageSubscription(this)">Manage</button>'
+    : (live ? '<span class="mp-li-act muted">Granted by KoreHani</span>'
+            : '<a class="mp-li-act" href="korehan-courses.html">7-day free trial</a>');
   body.innerHTML = left + right;
   sec.style.display = '';
+  if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons();
+}
+function mpToggleAccount() {
+  var box = document.getElementById('mp-account');
+  var btn = document.getElementById('mp-acct-toggle');
+  if (!box) return;
+  box.hidden = !box.hidden;
+  if (btn) btn.setAttribute('aria-expanded', box.hidden ? 'false' : 'true');
 }
 async function _mpManageSubscription(btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
@@ -2653,7 +2697,7 @@ async function _mpManageSubscription(btn) {
   } catch(e) {
     if (typeof toast === 'function') toast('Could not open subscription settings.', true);
   }
-  if (btn) { btn.disabled = false; btn.textContent = 'Manage / cancel subscription'; }
+  if (btn) { btn.disabled = false; btn.textContent = 'Manage'; }
 }
 
 async function initMyPage() {
@@ -5116,6 +5160,8 @@ function renderMyPageBadges() {
   var earnedCount = Object.keys(earned).length;
   var total = BADGE_DEFS.length;
   var pct = total > 0 ? Math.round(earnedCount / total * 100) : 0;
+  var scB = document.getElementById('mp-sc-badges');
+  if (scB) scB.textContent = earnedCount + ' / ' + total;
 
   var tierColor = { bronze:'#cd7c3a', silver:'#9aa5b4', gold:'#f5a623', diamond:'#60a5fa', legendary:'#a855f7' };
   var tierBg    = { bronze:'#fff3e0', silver:'#f1f5f9', gold:'#fffbeb', diamond:'#eff6ff', legendary:'#fdf4ff' };
