@@ -8066,6 +8066,7 @@ function renderFooter() {
     + '<a href="korehan-learning-overview.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Growth Lab</a>'
     + '<a href="korehan-learn.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Word Bank</a>'
     + '<a href="korehan-life.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Life in Korea</a>'
+    + '<a href="korehan-topik.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">TOPIK Practice</a>'
     + '<a href="korehan-courses.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Courses</a>'
     + '<a href="beginner-guide.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Beginner Guide</a>'
     + '</div>'

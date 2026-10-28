@@ -26,7 +26,7 @@ var _KH_PREMIUM_FEATURES = {
   slang_full: true, weekly_monthly_review: true, listening_quiz: true,
   growth_lab: true, word_book_srs: true, monthly_report: true,
   fast_track: true, phone_call: true, tutor_review: true, live_class: true,
-  personal_recommendation: true,
+  personal_recommendation: true, topik_full: true,
   writing_feedback: true, speaking_feedback: true, priority_feedback: true
 };
 var KH_PLANS = {
@@ -167,7 +167,8 @@ var KH_FEATURE_COPY = {
   slang_full:      { t: 'The full slang library', d: 'Every slang term with chats and a quiz — not just today’s three.' },
   tutor_review:    { t: 'A tutor reads your writing', d: 'Personal notes from a KoreHani tutor on your weekly writing.' },
   live_class:      { t: 'Live class seats', d: 'Premium members can book a seat: $5 a class, Sunday 21:00 KST on Zoom.' },
-  monthly_report:  { t: 'Your monthly report', d: 'Your month in reading, words and grammar.' }
+  monthly_report:  { t: 'Your monthly report', d: 'Your month in reading, words and grammar.' },
+  topik_full:      { t: 'Every TOPIK practice test', d: 'Full timed tests in the TOPIK format with an estimated level and your weak question types. Test 1 and the weekly mini test stay free.', steps: ['Timed test', 'Level', 'Weak types'] }
 };
 var KH_PREMIUM_PERKS = ['Article & Conversation Study every day', 'Weekly writing with AI feedback + tutor review', 'Fast Track, listening quiz, weekly review'];
 
@@ -204,7 +205,7 @@ function showUpgradeModal(feature, minPlan) {
     slang_full: 'Slang Library', weekly_monthly_review: 'Weekly & Monthly Review', listening_quiz: 'Listening Quiz',
     tutor_review: 'Tutor Review', live_class: 'Live Class', fast_track: 'Fast Track', phone_call: 'Phone Call',
     monthly_report: 'Monthly Report', speaking_feedback: 'Speaking Feedback', priority_feedback: 'Priority Feedback',
-    personal_recommendation: 'Study Plan', writing_feedback: 'Writing Feedback'
+    personal_recommendation: 'Study Plan', writing_feedback: 'Writing Feedback', topik_full: 'TOPIK Practice'
   };
   var c = KH_FEATURE_COPY[feature] || { t: (names[feature] || 'This feature') + ' is part of Premium', d: 'Premium is the full study system around the free reading.' };
   var price = (KH_PLANS[minPlan] || KH_PLANS.premium).label;
