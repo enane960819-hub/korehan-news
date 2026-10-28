@@ -12188,175 +12188,12 @@ var _modalReadingTitle = '';
 // 현재 읽기 소스 ('article' | 'conv' | 'story')
 var _readingSource = 'article';
 
-function switchReadingSource(src, btn) {
-  _readingSource = src;
-  _selectedArticle = null;
-  document.querySelectorAll('.wc-src-btn').forEach(function(b) {
-    b.style.background = 'none';
-    b.style.borderColor = 'rgba(255,255,255,.15)';
-    b.style.color = 'rgba(255,255,255,.6)';
-  });
-  if (btn) {
-    btn.style.background = 'rgba(255,255,255,.15)';
-    btn.style.borderColor = 'rgba(255,255,255,.25)';
-    btn.style.color = '#fff';
-  }
-  document.getElementById('wc-article-select').style.display = src === 'article' ? 'block' : 'none';
-  document.getElementById('wc-conv-select').style.display    = src === 'conv'    ? 'block' : 'none';
-  document.getElementById('wc-story-select').style.display   = src === 'story'   ? 'block' : 'none';
-  document.getElementById('wc-article-preview').style.display = 'none';
 
-  if (src === 'article') loadArticlesForReading();
-  if (src === 'conv')    loadConvsForReading();
-  if (src === 'story')   loadStoriesForReading();
-}
 
-async function loadArticlesForReading() {
-  var sel = document.getElementById('wc-article-select');
-  if (sel.options.length > 1) return;
 
-  try {
-    var sb = getSupa();
-    // Use 'articles' table — this is where admin saves articles and shared.js reads from.
-    var { data } = await sb.from('articles')
-      .select('id, title, body, section, level')
-      .eq('status', 'published')
-      .order('created_at', {ascending: false})
-      .limit(40);
 
-    if (data && data.length) {
-      data.forEach(function(a) {
-        var opt = document.createElement('option');
-        opt.value = a.id;
-        opt.textContent = (a.title || 'Untitled') + ' [' + (a.level || a.section || '') + ']';
-        opt.dataset.body  = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 800);
-        opt.dataset.title = a.title || '';
-        opt.dataset.type  = 'article';
-        sel.appendChild(opt);
-      });
-    } else {
-      var opt = document.createElement('option');
-      opt.textContent = 'No articles available';
-      opt.disabled = true;
-      sel.appendChild(opt);
-    }
-  } catch(e) { console.error('article load error:', e); }
 
-  sel.addEventListener('change', function() { onReadingSelectChange(sel); });
-}
 
-async function loadConvsForReading() {
-  var sel = document.getElementById('wc-conv-select');
-  if (sel.options.length > 1) return;
-
-  try {
-    var sb = getSupa();
-    var { data } = await sb.from('conversations_data')
-      .select('id, name, ctx, data, lvl')
-      .order('created_at', {ascending: false})
-      .limit(30);
-
-    if (data && data.length) {
-      data.forEach(function(row) {
-        var d = row.data || {};
-        var opt = document.createElement('option');
-        opt.value = row.id;
-        opt.textContent = (d.name || row.name || 'Untitled') + ' [' + (d.lvl || row.lvl || '') + ']';
-        // 대화를 읽기 자료로 — msgs를 텍스트로 변환
-        var msgs = (d.msgs || []).map(function(m) {
-          return (m.who || (m.s==='l'?'A':'B')) + ': ' + m.txt;
-        }).join('\n');
-        var vocab = (d.vocab || []).map(function(v){ return v.ko + ' (' + v.en + ')'; }).join(', ');
-        opt.dataset.body  = msgs + (vocab ? '\n\n[Vocab] ' + vocab : '');
-        opt.dataset.title = d.name || row.name || '';
-        opt.dataset.type  = 'conv';
-        opt.dataset.ctx   = d.ctx || row.ctx || '';
-        sel.appendChild(opt);
-      });
-    } else {
-      var opt = document.createElement('option');
-      opt.textContent = 'No conversations available';
-      opt.disabled = true;
-      sel.appendChild(opt);
-    }
-  } catch(e) { console.error('conv load error:', e); }
-
-  sel.addEventListener('change', function() { onReadingSelectChange(sel); });
-}
-
-async function loadStoriesForReading() {
-  var sel = document.getElementById('wc-story-select');
-  if (sel.options.length > 1) return;
-
-  try {
-    var sb = getSupa();
-    var { data } = await sb.from('stories_data')
-      .select('id, title, title_en, data, lvl, mood')
-      .order('created_at', {ascending: false})
-      .limit(30);
-
-    if (data && data.length) {
-      data.forEach(function(row) {
-        var d = row.data || {};
-        var opt = document.createElement('option');
-        opt.value = row.id;
-        opt.textContent = (d.title || row.title || 'Untitled') + ' [' + (d.lvl || row.lvl || '') + ']';
-        opt.dataset.body  = (d.body || d.preview || '').replace(/<[^>]*>/g, '').slice(0, 800);
-        opt.dataset.title = d.title || row.title || '';
-        opt.dataset.type  = 'story';
-        sel.appendChild(opt);
-      });
-    } else {
-      var opt = document.createElement('option');
-      opt.textContent = 'No stories available';
-      opt.disabled = true;
-      sel.appendChild(opt);
-    }
-  } catch(e) { console.error('story load error:', e); }
-
-  sel.addEventListener('change', function() { onReadingSelectChange(sel); });
-}
-
-function onReadingSelectChange(sel) {
-  var opt = sel.options[sel.selectedIndex];
-  var preview = document.getElementById('wc-article-preview');
-  if (opt && opt.dataset.body) {
-    preview.textContent = opt.dataset.body.slice(0, 150) + '…';
-    preview.style.display = 'block';
-    _selectedArticle = {
-      id:    opt.value,
-      title: opt.dataset.title,
-      body:  opt.dataset.body,
-      type:  opt.dataset.type || 'article',
-      ctx:   opt.dataset.ctx || ''
-    };
-  }
-}
-
-function openWritingModalWithMode() {
-  if (!supaUser) { openAuthModal('signin'); return; }
-  if (!ensureStudyUnlocked()) return;
-  if (!canEnterWritingRoom()) return;
-  if (_writingMode === 'reading' && !_selectedArticle) {
-    khAlert('Pick something to write about', 'Choose an article, conversation, or story first.');
-    return;
-  }
-  // markStageDone moved to actual submit/finish functions
-  document.getElementById('wmodal').classList.remove('hidden');
-  if (_writingMode === 'reading') {
-    switchModalMode('reading');
-  } else {
-    switchModalMode('topic');
-    if (!_aiContent && _todayTopic) generateAIContent(_todayTopic);
-    renderModalContent();
-  }
-}
-
-function openDiaryDirect() {
-  if (!supaUser) { openAuthModal('signin'); return; }
-  openWritingModal();
-  setTimeout(function(){ switchModalMode('diary'); }, 300);
-}
 
 function switchModalMode(mode) {
   _writingMode = mode;
@@ -12517,7 +12354,6 @@ async function switchModalSource(src, btn) {
 
   if (src === 'article') await loadModalArticles(sel);
   if (src === 'conv')    await loadModalConvs(sel);
-  if (src === 'story')   await loadModalStories(sel);
 }
 
 async function loadModalArticles(sel) {
@@ -12562,36 +12398,7 @@ async function loadModalConvs(sel) {
   } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
 }
 
-async function loadModalStories(sel) {
-  try {
-    var sb = getSupa();
-    var { data } = await sb.from('stories_data')
-      .select('id, title, data, lvl')
-      .order('created_at', {ascending: false})
-      .limit(30);
-    sel.innerHTML = '<option value="">Select story...</option>';
-    (data || []).forEach(function(row) {
-      var d = row.data || {};
-      var body = (d.body||d.preview||'').replace(/<[^>]*>/g,'').slice(0,800);
-      var opt = document.createElement('option');
-      opt.value = JSON.stringify({id:row.id, title:d.title||row.title||'Story', body:body, type:'story'});
-      opt.textContent = (d.title||row.title||'Story') + ' [' + (d.lvl||row.lvl||'') + ']';
-      sel.appendChild(opt);
-    });
-    if (!data || !data.length) sel.innerHTML = '<option value="">No stories available</option>';
-  } catch(e) { sel.innerHTML = '<option value="">Failed to load</option>'; }
-}
 
-function onModalSourceSelect(sel) {
-  var val = sel.value;
-  if (!val) return;
-  try {
-    _selectedArticle = JSON.parse(val);
-    showSelectedMaterial();
-    var subEl = document.getElementById('wm-topic-sub');
-    if (subEl) subEl.textContent = _selectedArticle.title;
-  } catch(e) {}
-}
 
 function showSelectedMaterial() {
   if (!_selectedArticle) return;

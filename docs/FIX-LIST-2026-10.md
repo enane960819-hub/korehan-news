@@ -259,7 +259,8 @@
 - [x] **5단계 (덜어내기, 1차)** — Stories 잔재 전부(상단 메뉴·모바일 사이드바·푸터·온보딩·랜딩·가이드·Growth Lab·마이룸 링크 → Korea Buzz, 홈 스토리 로더 삭제, `korehan-stories.html` 삭제 + 301), 가짜 BREAKING 티커, 강제 스플래시 로더, 홈 별빛 캔버스, 사이드바 날씨·KST 시계, 붓 터치 저장 애니메이션, 카드 3D 틸트, 스터디룸 Solar/Tarot 선택기(Orb 고정), 중복 섹션 페이지 5개 + `korehan-news.html` + `korehan-character.html` 삭제 → 301(`korehan-section.html?s=`, `korehan-all.html`)
   - 유지(사장님 결정): 냥·상점·마이룸·3D 우주·게임·고급 레벨(보류)
   - [ ] 확인 필요: 스터디룸 Help 탭(작문 패널 복제) 삭제, Neon 테마, 기자 선물·호감도·포토카드, 친구·방명록 — 화면이 바뀌는 항목이라 사장님 확인 후
-  - [ ] 남음: 죽은 코드 정리(스터디룸 미사용 모달, 기사 죽은 AI 함수 ~450줄, 회화 도달 불가 퀴즈 ~400줄, stories_data 조회 잔재, DB 스토리 테이블 백업 후 삭제)
+  - [x] 2026-10-28: stories_data 조회 잔재(스터디룸·article-cache), 스터디룸 읽기 소스 선택기(HTML 없는 죽은 함수 9개), 옛 Daily Review 2벌(스터디룸 593줄 + Growth Lab 337줄 → Today's Review 하나로), notes/my-phrases 스텁 → `_redirects`
+  - [ ] 남음: 기사 죽은 AI 함수 ~450줄, 회화 도달 불가 퀴즈 ~400줄, DB 스토리 테이블 백업 후 삭제(삭제 전 확인 필요)
 
 ## 제안 진행 순서
 

@@ -43,3 +43,9 @@ https://www.korehani.com/*     https://korehani.com/:splat      301!
 /korehan-opinion.html  /korehan-section.html?s=%EC%98%A4%ED%94%BC%EB%8B%88%EC%96%B8  301
 /korehan-news.html  /korehan-all.html  301
 /korehan-character.html  /korehan-reporters.html  301
+
+# Bookmarks + saved phrases moved into the Saved hub (2026-10-28).
+/korehan-notes.html       /korehan-saved.html?tab=articles  301
+/korehan-notes            /korehan-saved.html?tab=articles  301
+/korehan-my-phrases.html  /korehan-saved.html?tab=phrases   301
+/korehan-my-phrases       /korehan-saved.html?tab=phrases   301
