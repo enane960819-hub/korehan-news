@@ -901,7 +901,7 @@ function renderStudyChecklist() {
 }
 
 // ── Today's plan: 3 steps under the weekly topic card ──
-// ① daily review (due SRS words) ② this week's lesson (the 5 steps behind
+// ① today's review (js/features/review-queue.js) ② this week's lesson (the 5 steps behind
 // START) ③ writing, which opens at 4/5 — same gate as canEnterWritingRoom.
 var _srPlanDue = null;
 function renderTodayPlan() {
@@ -919,7 +919,7 @@ function renderTodayPlan() {
   var due = _srPlanDue;
   var steps = [
     { done: reviewDone, label: 'Daily review',
-      sub: reviewDone ? 'Done today' : (due ? due + ' words due · ~' + Math.max(1, Math.ceil(Math.min(due, 20) / 4)) + ' min' : '10 quick questions'),
+      sub: reviewDone ? 'Done today' : (due ? due + ' to review · ~' + Math.max(1, Math.ceil(due / 4)) + ' min' : 'Nothing due yet'),
       fn: 'openDailyReview()' },
     { done: lessonDone >= 5, label: 'This week’s lesson',
       sub: lessonDone >= 5 ? 'All 5 steps done' : (lessonDone + '/5 · ' + (nextStage ? nextStage.label : '')),
@@ -937,12 +937,10 @@ function renderTodayPlan() {
           + '<span class="sr-plan-num">' + (x.done ? '✓' : (k + 1)) + '</span>'
           + '<span class="sr-plan-txt"><span class="sr-plan-l">' + x.label + '</span><span class="sr-plan-s">' + x.sub + '</span></span></button>';
       }).join('') + '</div>';
-  if (_srPlanDue === null && supaUser) {
+  // Same queue the review session uses, so the number matches the questions.
+  if (_srPlanDue === null && supaUser && window.khReviewQueue) {
     _srPlanDue = 0;
-    var sb = getSupa();
-    if (sb) sb.from('user_saved_words').select('word_ko', { count: 'exact', head: true })
-      .eq('user_id', supaUser.id).lte('srs_next_review', new Date().toISOString().slice(0, 10))
-      .then(function(r){ if (r && !r.error) { _srPlanDue = r.count || 0; renderTodayPlan(); } }, function(){});
+    khReviewQueue.summary().then(function(q){ _srPlanDue = q.items.length; renderTodayPlan(); }, function(){});
   }
   if (typeof srRenderPractice === 'function') srRenderPractice();   // due badge on the Review tile
 }
@@ -964,6 +962,7 @@ function setSrLibTab(key) {
 // Re-count once auth is settled (an early count can run before the JWT is
 // attached and come back 0 under RLS).
 window.addEventListener('kh-auth-signed-in', function(){ _srPlanDue = null; renderTodayPlan(); });
+window.addEventListener('kh-review-changed', function(){ _srPlanDue = null; renderTodayPlan(); });
 document.addEventListener('DOMContentLoaded', function(){
   var k = 'read';
   try { k = localStorage.getItem('kh_sr_lib_tab') || 'read'; } catch (_) {}
