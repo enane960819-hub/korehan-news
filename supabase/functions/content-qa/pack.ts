@@ -133,6 +133,15 @@ export function validatePack(raw: unknown, level: string): { pack: Pack | null; 
     if (slots.length !== 1) errors.push(`frame ${fi + 1}: needs exactly one slot`)
     if (!f.parts.every((p) => isSlot(p) || typeof p === 'string')) errors.push(`frame ${fi + 1}: parts`)
     slots.forEach((s) => {
+      // An invariant ending the generator put in "josa" (도, 도 있어요, 처럼 …)
+      // reads the same after any word, so move it into the frame text.
+      if (s.josa && ALLOWED_JOSA.indexOf(s.josa) < 0 && s.josa.indexOf('/') < 0) {
+        const si = f.parts.indexOf(s)
+        const next = f.parts[si + 1]
+        if (typeof next === 'string') f.parts[si + 1] = s.josa + next
+        else f.parts.splice(si + 1, 0, s.josa)
+        s.josa = null
+      }
       if (ALLOWED_JOSA.indexOf(s.josa ?? null) < 0) errors.push(`frame ${fi + 1}: josa ${s.josa}`)
       s.josa = s.josa ?? null
       s.ph = '…'
