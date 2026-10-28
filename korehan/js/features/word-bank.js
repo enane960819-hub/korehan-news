@@ -91,7 +91,7 @@
       + '<div class="wb-tabs" role="tablist"><button type="button" data-tab="words">Words</button><button type="button" data-tab="hangul">Hangul</button></div></div>'
       + '<div id="wb-due"></div>'
       + '<div id="wb-body"></div>'
-      + '<p class="wb-src">Word list, meanings and example sentences: <a href="https://krdict.korean.go.kr" target="_blank" rel="noopener">한국어기초사전</a> (National Institute of Korean Language), <a href="https://creativecommons.org/licenses/by-sa/2.0/kr/" target="_blank" rel="noopener">CC BY-SA 2.0 KR</a>.</p>'
+      + '<p class="wb-src">Word list, meanings and example sentences adapted from <a href="https://krdict.korean.go.kr" target="_blank" rel="noopener">한국어기초사전</a> (National Institute of Korean Language), licensed <a href="https://creativecommons.org/licenses/by-sa/2.0/kr/" target="_blank" rel="noopener">CC BY-SA 2.0 KR</a>; meanings shortened and romanization added by KoreHani.</p>'
       + '</div>'
       + '<div class="wb-dock" id="wb-dock"></div>';
     root.querySelectorAll('[data-tab]').forEach(function (b) {
