@@ -43,17 +43,17 @@ body .two-col { display:block; }
 .kp-day.on { background:rgba(59,130,246,.25); color:#fff; }
 .kp-day.today { box-shadow:inset 0 0 0 2px #93c5fd; color:#fff; }
 .kp-day.cur { background:rgba(124,58,237,.4); color:#fff; }
-.kp-bar { position:sticky; bottom:16px; display:flex; gap:8px; margin-top:22px; z-index:5; }
-.kp-btn { flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px; border:0; border-radius:14px; padding:13px; font-weight:800; font-size:14px; color:#fff; cursor:pointer; background:linear-gradient(120deg,#3b82f6,#7c3aed); box-shadow:0 8px 20px rgba(0,0,0,.3); transition:filter .15s; }
-.kp-btn:hover { filter:brightness(1.08); }
-.kp-btn.ghost { background:rgba(22,34,66,.92); border:1px solid rgba(255,255,255,.16); }
-.kp-btn.on { background:rgba(16,185,129,.25); border:1px solid rgba(52,211,153,.5); }
-.kp-btn svg, .kp-btn i { width:16px; height:16px; }
-.kp-more { display:block; text-align:center; margin-top:12px; font-size:12.5px; color:#93c5fd; text-decoration:none; }
+.kp-save { margin-left:auto; flex-shrink:0; display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px; border-radius:999px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#e2e8f0; font-size:13px; font-weight:700; cursor:pointer; transition:background .15s; }
+.kp-save:hover { background:rgba(255,255,255,.12); }
+.kp-save.on { background:rgba(250,204,21,.16); border-color:rgba(250,204,21,.5); color:#fde68a; }
+.kp-save svg, .kp-save i { width:15px; height:15px; }
+.kp-save.on svg { fill:currentColor; }
+.kp-know { display:flex; width:100%; align-items:center; justify-content:center; gap:6px; margin-top:16px; border:0; border-radius:14px; padding:13px; font-weight:800; font-size:14px; color:#fff; cursor:pointer; background:linear-gradient(120deg,#3b82f6,#7c3aed); transition:filter .15s; }
+.kp-know:hover { filter:brightness(1.08); }
+.kp-know.on { background:rgba(16,185,129,.18); border:1px solid rgba(52,211,153,.45); color:#a7f3d0; }
+.kp-know svg, .kp-know i { width:16px; height:16px; }
 @media (max-width:768px) {
-  .kp-wrap { padding-top:10px; padding-bottom:84px; }
-  .kp-bar { position:fixed; left:16px; right:70px; bottom:92px; margin:0; }   /* above the tab bar, clear of the mission button */
-  .kp-btn { padding:12px 8px; font-size:13.5px; }
+  .kp-wrap { padding-top:10px; padding-bottom:40px; }
 }
 </style>
 </head>
@@ -478,15 +478,15 @@ function renderPhraseLayout(phrase, opts) {
     + '<div class="kp-wrap">'
     +   banner
     +   adminEdit
-    +   '<div class="kp-phr"><h1 lang="ko">' + escapeText(phrase.ko) + '</h1>' + _kpSpeakBtn(phrase.ko, 'Listen') + '</div>'
+    +   '<div class="kp-phr"><h1 lang="ko">' + escapeText(phrase.ko) + '</h1>' + _kpSpeakBtn(phrase.ko, 'Listen')
+    +     '<button type="button" class="kp-save' + (saved ? ' on' : '') + '" onclick="toggleSavePhrase()" aria-pressed="' + saved + '">' + khIcon('bookmark') + '<span>' + (saved ? 'Saved' : 'Save') + '</span></button>'
+    +   '</div>'
     +   (phrase.rom || lvl ? '<div class="kp-rom">' + escapeText(phrase.rom) + lvl + '</div>' : '')
     +   (phrase.en ? '<div class="kp-lit">' + escapeText(phrase.en) + '</div>' : '')
-    +   meaning + use + ex + week
-    +   '<div class="kp-bar">'
-    +     '<button type="button" class="kp-btn ghost' + (saved ? ' on' : '') + '" onclick="toggleSavePhrase()">' + khIcon(saved ? 'bookmark-check' : 'bookmark') + '<span>' + (saved ? 'Saved' : 'Save') + '</span></button>'
-    +     '<button type="button" class="kp-btn' + (mastered ? ' on' : '') + '" onclick="toggleMasteredPhrase()">' + (mastered ? khIcon('check') + '<span>Known</span>' : '<span>I know this one</span>') + '</button>'
-    +   '</div>'
-    +   (saved ? '<a class="kp-more" href="korehan-my-phrases.html">See all saved phrases →</a>' : '')
+    +   meaning + use + ex
+    +   '<button type="button" class="kp-know' + (mastered ? ' on' : '') + '" onclick="toggleMasteredPhrase()">'
+    +     (mastered ? khIcon('check') + '<span>You know this one</span>' : '<span>I know this one</span>') + '</button>'
+    +   week
     + '</div>';
 
   document.title = phrase.ko + ' — KoreHani Phrase';
