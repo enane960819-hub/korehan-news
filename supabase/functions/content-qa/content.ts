@@ -50,7 +50,7 @@ export function applyContentFlags(row: ContentRow, flags: Flag[]): { patch: Cont
   const grammar = arr(row.grammar).flatMap((g, i) => {
     const pool: Ex[] = []
     if (!bad(`G${i + 1}.0`) && g.example_ko) pool.push({ ko: g.example_ko, en: g.example_en })
-    arr(g.examples).forEach((e, k) => { if (!bad(`G${i + 1}.${k + 1}`)) pool.push(e) })
+    arr(g.examples).forEach((e, k) => { if (!bad(`G${i + 1}.${k + 1}`)) pool.push(e); else dropped.push(`G${i + 1}.${k + 1}`) })
     if (!pool.length) { dropped.push(`G${i + 1}`); return [] }
     const out: Grammar = { ...g }
     if (bad(`G${i + 1}.0`)) {
