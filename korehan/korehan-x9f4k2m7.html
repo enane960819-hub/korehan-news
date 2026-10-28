@@ -5014,6 +5014,7 @@ function _headlineKey(item){
 function _srcFailText(err) {
   err = String(err || '');
   if (err === 'reddit_needs_key') return ' (Reddit API 키 필요)';
+  if (/^reddit_blocked|^reddit_\d+/.test(err)) return ' (Reddit이 이 서버를 차단 — Reddit API 키로 해결)';
   if (err === 'subrequest_limit') return ' (한 번에 선택이 너무 많음 — 나눠서 가져오세요)';
   if (/timeout|aborted/i.test(err)) return ' (응답 시간 초과)';
   if (/^upstream_/.test(err)) return ' (소스 서버가 거부: ' + err.replace('upstream_', '') + ')';
@@ -5070,7 +5071,7 @@ function goAutoArticle(){
          +'<input type="checkbox" class="ns-chk" value="'+s.id+'" style="width:15px;height:15px"> '+(/^[a-z-]+$/.test(s.icon) ? '<i data-lucide="'+s.icon+'" style="width:16px;height:16px"></i>' : s.icon)+' '+s.label+'</label>';
      }).join('')
    +'</div>'
-   +'<div style="font-size:12px;color:#64748b;margin:-4px 0 12px">Reddit(r/…) 소스는 Reddit API 키(Cloudflare 환경변수 REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET)가 있어야 가져와집니다.</div>'
+   +'<div style="font-size:12px;color:#64748b;margin:-4px 0 12px">Reddit(r/…) 소스가 차단될 때는 Reddit API 키(Cloudflare 환경변수 REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET)를 넣으면 공식 API로 가져옵니다.</div>'
    +'<button class="btn btn-g" onclick="fetchHeadlines()" id="btn-fetch">📥 Headline 가져오기</button>'
    +'<div id="fetch-status" style="margin-top:10px;font-size:13px;color:var(--gr)"></div>'
    +'</div>'
