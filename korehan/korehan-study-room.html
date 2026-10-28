@@ -932,6 +932,7 @@
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script src="js/kh-canvas-engine.js?v=20260527f"></script>
 <script src="js/kh-quiz-arena.js?v=20261027m"></script>
+<script src="js/features/review-queue.js?v=20261028a"></script>
 <script src="js/kh-flashcards.js?v=20261027a"></script>
 <script src="js/kh-listening.js?v=20261027m"></script>
 <script src="js/kh-grammar-tree.js?v=20260527f"></script>
@@ -939,9 +940,9 @@
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
 <script src="js/kh-basics.js?v=20261023a" defer></script>
-<script src="korehan-study-room.js?v=20261028l" defer></script>
+<script src="korehan-study-room.js?v=20261028m" defer></script>
 <script src="js/features/writing-flow.js?v=20261028f" defer></script>
-<script src="js/features/sr-home.js?v=20261028f" defer></script>
+<script src="js/features/sr-home.js?v=20261028g" defer></script>
 <!-- ══════════════════════════════════════════════════════
      BEGINNER 4-STEP MODAL
 ══════════════════════════════════════════════════════════ -->
@@ -2002,6 +2003,9 @@ var _drDetails = [];
 
 function openDailyReview() {
   if (!supaUser) { openAuthModal('signin'); return; }
+  // One review queue (due + missed saved words, today's new words) —
+  // js/features/review-queue.js. The quiz below is the old fallback.
+  if (window.khReviewQueue) { khReviewQueue.open(); return; }
   document.body.classList.add('kh-dr-active'); // hides Daily Quest / mission panel via CSS
   var overlay = document.getElementById('dr-overlay');
   if (overlay) overlay.classList.remove('hidden');

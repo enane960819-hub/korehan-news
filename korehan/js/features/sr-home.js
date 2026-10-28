@@ -79,7 +79,7 @@ function _srhSheetItems(kind) {
   try { next = (typeof getNextCurriculumPattern === 'function') ? getNextCurriculumPattern() : null; } catch (_) {}
   var S = {
     review: { title: 'Review', sub: 'Words you saved come back right before you forget them.', items: [
-      { icon: 'clipboard-list', t: 'Daily Review', s: due ? due + ' words due · 10 quick questions' : '10 quick questions', fn: function () { openDailyReview(); }, cta: 'Start' },
+      { icon: 'clipboard-list', t: 'Today’s Review', s: due ? due + ' to review · due, missed and new words' : 'Due, missed and new words', fn: function () { openDailyReview(); }, cta: 'Start' },
       { icon: 'calendar-days', t: 'Weekly Review', s: weeklySub, fn: function () { openWeeklyReview(); } },
       { icon: 'calendar-check', t: 'Monthly Review', s: monthlySub, fn: function () { openMonthlyReview(); } },
       { icon: 'layers', t: 'Flashcards', s: 'Read the Korean, then flip', fn: function () { mwFlashcards(); } },
