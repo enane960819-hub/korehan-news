@@ -240,7 +240,12 @@ Deno.serve(async (req) => {
       // other review: a pack (generate + two reviews) takes ~1.5 min and the
       // function is killed at 150 s. The hourly cron works through the rest.
       const { data: have } = await sb.from('writing_topic_content').select('topic_ko,level').in('topic_ko', want.map((x) => x.ko))
+      const { data: runs } = await sb.from('content_qa_runs').select('key,attempts').like('key', 'pack::%')
+      const maxed = new Set((runs || []).filter((r: any) => (r.attempts || 0) >= MAX_PACK_ATTEMPTS).map((r: any) => r.key))
+      // A topic that used up its attempts must not block the topics behind it.
       const missing = want.filter((x) => !(have || []).some((h: any) => h.topic_ko === x.ko && h.level === x.level))
+        .filter((x) => !maxed.has(`pack::${x.ko}|${x.level}`))
+      if (maxed.size) report.push({ step: 'pack', gave_up: [...maxed].map((k) => String(k).slice(6)) })
       const next = (didReview || Date.now() - started > 20_000) ? [] : missing.slice(0, 1)
       if (missing.length > next.length) report.push({ step: 'pack', waiting: missing.slice(next.length).map((x) => `${x.week} ${x.level}`) })
       for (let i = 0; i < next.length; i += 1) {
