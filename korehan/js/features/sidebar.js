@@ -107,6 +107,7 @@ function khInjectSidebar() {
       + '<div class="kh-sb-lbl">Study</div>'
       + '<a href="korehan-study-room.html" class="kh-sb-a' + (page==='korehan-study-room.html' && !/tab=words/.test(location.search)?' on':'') + '"><span class="kh-sb-ico">' + khIcon('notebook-pen') + '</span>Study Room</a>'
       + '<a href="korehan-study-room.html?tab=words" class="kh-sb-a' + (/tab=words/.test(location.search)?' on':'') + '"><span class="kh-sb-ico">' + khIcon('book-open') + '</span>My Words</a>'
+      + '<a href="korehan-learn.html" class="kh-sb-a' + (page==='korehan-learn.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('library') + '</span>Word Bank</a>'
     + '</div>'
     + '<div class="kh-sb-sec">'
       + '<div class="kh-sb-lbl">More</div>'
