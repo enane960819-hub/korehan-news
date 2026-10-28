@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
 
       // 1) Weekly content — new or regenerated since the last check.
       const stale = !row.qa_at || new Date(row.updated_at).getTime() > new Date(row.qa_at).getTime() + 60_000
-      if (stale && !body.only?.match(/^(packs|tags)$/) && timeLeft() > 30_000) {
+      if (stale && !body.only?.match(/^(packs|tags|conv-titles)$/) && timeLeft() > 30_000) {
         try {
           didReview = true
           const flags = await review(sb, apiKey, row.level, topicKo, contentLines(row as ContentRow), 'a week of study content (vocabulary meanings, grammar examples, example and dictation sentences)')
@@ -233,7 +233,7 @@ Deno.serve(async (req) => {
       }
 
       // 2) Pre-baked Key Expressions for this topic.
-      if (!body.only?.match(/^(packs|tags)$/) && timeLeft() > 30_000) {
+      if (!body.only?.match(/^(packs|tags|conv-titles)$/) && timeLeft() > 30_000) {
         const key = `kex5::${topicKo}_${row.level}`
         try {
           const { data: ke } = await sb.from('grammar_examples_cache').select('patterns_json').eq('pattern_name', key).maybeSingle()
@@ -256,7 +256,7 @@ Deno.serve(async (req) => {
 
     // 3) Writing-flow topic packs — this week through PACK_WEEKS_AHEAD, from
     // the writing_topics rotation, so a pack is ready well before its week.
-    if (body.only !== 'content' && body.only !== 'tags') {
+    if (body.only !== 'content' && body.only !== 'tags' && body.only !== 'conv-titles') {
       const want: Array<{ week: string; level: string; ko: string; en: string }> = []
       for (const level of GEN_LEVELS) {
         const { data: topics } = await sb.from('writing_topics').select('topic_ko,topic_en')
@@ -340,6 +340,33 @@ Deno.serve(async (req) => {
         } catch (e) { report.push({ step: 'tags', error: (e as Error).message }); break }
       }
       if (calls) report.push({ step: 'tags', tagged })
+    }
+
+    // 5) English titles for conversations. The browser used to translate
+    // these itself and keep them per device, so every new visitor paid
+    // again; now each title is written once here and everyone reads it.
+    if ((!body.only || body.only === 'conv-titles') && timeLeft() > 20_000) {
+      const { data: convs, error } = await sb.from('conversations_data').select('id,ctx')
+        .or('ctx_en.is.null,ctx_en.eq.').not('ctx', 'is', null).limit(40)
+      if (error) report.push({ step: 'conv-titles', error: error.message })
+      const todo = (convs || []).filter((c: any) => /[ㄱ-힝]/.test(String(c.ctx || '')))
+      if (todo.length) {
+        try {
+          const prompt = 'Translate each Korean conversation situation into a short, descriptive English title (max 45 characters, Title Case, no quotes, no period). Say what the conversation is ABOUT, e.g. "택배 박스 손상 신고" -> "Damaged Package Complaint", never "Daily Conversation".\n' +
+            'Return ONLY JSON: {"titles":[{"id":"...","en":"..."}]}\n\n' +
+            todo.map((c: any) => `${c.id} | ${String(c.ctx).trim()}`).join('\n')
+          const out = await claudeJson(sb, apiKey, prompt, 2000, 'conv-titles')
+          const ids = new Set(todo.map((c: any) => String(c.id)))
+          let saved = 0
+          for (const t of (out?.titles || [])) {
+            const en = String(t?.en || '').trim().slice(0, 80)
+            if (!en || !ids.has(String(t?.id))) continue
+            const { error: upErr } = await sb.from('conversations_data').update({ ctx_en: en }).eq('id', t.id)
+            if (!upErr) saved += 1
+          }
+          report.push({ step: 'conv-titles', saved, of: todo.length })
+        } catch (e) { report.push({ step: 'conv-titles', error: (e as Error).message }) }
+      }
     }
 
     // Last run's outcome, readable by the admin page (no secrets in it).

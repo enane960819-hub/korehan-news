@@ -658,6 +658,15 @@ async function callClaude({ feature, model, max_tokens, messages }) {
     var qerr = new Error(qmsg);
     qerr.code  = qjson.code  || 'rate_limited';
     qerr.quota = qjson.quota || null;
+    // Tell the learner once per page why AI features stopped working.
+    if (!window._khAiLimitShown) {
+      window._khAiLimitShown = true;
+      try {
+        toast(qerr.code === 'monthly_cost_limit'
+          ? 'You\'ve reached this month\'s AI limit. Premium has a higher one.'
+          : 'You\'ve reached today\'s AI limit. It resets at midnight (KST).', true);
+      } catch (_) {}
+    }
     throw qerr;
   }
   if (resp.status === 401) {
