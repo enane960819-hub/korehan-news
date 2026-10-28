@@ -68,6 +68,21 @@ for t in df["text"]:
     if not w["example_ko"] and ex: w["example_ko"] = ex
 
 rows = [dict(w, en="; ".join(w["en"])) for w in words.values() if w["en"]]
+
+# Stats on everything the dictionary has (graded or not) — informs whether the
+# ungraded rest is worth importing. Not written anywhere.
+all_heads, ungraded = Counter(), {}
+for t in df["text"]:
+    head = field(t, "표제어"); kind = field(t, "구분"); pos = field(t, "품사"); grade = field(t, "어휘 등급")
+    if kind != "단어": continue
+    all_heads[pos] += 0
+    if pos in POS_OK and re.fullmatch(r"[가-힣]+", head or "") and grade not in LEVEL and head not in words:
+        en = field(t, "영어 대역어")
+        if en and not NO_EQ.match(en): ungraded.setdefault(head, (pos, en))
+print("ungraded content words with English (not already graded):", len(ungraded))
+print("  by pos:", Counter(v[0] for v in ungraded.values()).most_common())
+random.seed(3)
+print("  samples:", [k + "=" + v[1][:30] for k, v in random.sample(list(ungraded.items()), 40)])
 print("senses:", stats["senses"], "| graded headwords:", len(words), "| with English:", len(rows))
 print("by level:", Counter(r["level"] for r in rows))
 print("by pos:", Counter(r["pos"] for r in rows).most_common())
