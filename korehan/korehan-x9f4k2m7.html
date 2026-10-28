@@ -5080,19 +5080,12 @@ function goAutoArticle(){
    +'<option value="draft" selected>📝 Draft</option><option value="published">✅ Published</option>'
    +'</select></div>'
    +'</div>'
-   +'<button class="btn btn-g" onclick="runAutoGenerate()" style="font-size:15px;padding:12px 32px">✨ Generate Adapted Articles</button>'
+   +'<button class="btn btn-g" id="btn-autogen" onclick="runAutoGenerate()" style="font-size:15px;padding:12px 32px">✨ Generate Adapted Articles</button>'
    +'<div id="auto-progress" style="margin-top:20px"></div>'
    +'</div>';
 
-  // If a generation job is running (or just finished) in the background,
-  // rebuild the per-row progress UI from window._autoGenJob so the admin
-  // sees the same progress they had before navigating away.
-  if (window._autoGenJob) {
-    var _genPanel = document.getElementById('gen-panel');
-    if (_genPanel) _genPanel.style.display = '';
-    _autoGenRenderProgressPanel();
-    _autoGenPillRender();
-  }
+  // Server-side generation jobs (article_gen_jobs) — show their progress.
+  _agStartPolling();
 
   loadAutoApiKey();
 }
@@ -5296,9 +5289,6 @@ function _renderHeadlinePanel() {
     document.querySelectorAll('.hl-lvl').forEach(function(s){ s.value = lvl; });
   })();
   _updateHLCount();
-  // PR #7AZ: rehydrate any persisted Phase B queue and re-render the
-  // review banner if the admin navigated away after a Phase A run.
-  try { _maybeRestorePendingAnalysisBanner(); } catch(_) {}
 }
 
 // When the global difficulty changes, propagate to any row whose
@@ -5327,13 +5317,9 @@ function _updateHLCount() {
 
 // ── STEP 3: Generate adapted articles ────────────────────────
 //
-// Generation runs in the background — the admin uses single-page
-// innerHTML swapping for navigation, so the async loop survives going
-// to another admin section. Job state lives on window._autoGenJob and
-// a floating pill (#auto-gen-pill, attached to document.body) shows
-// progress regardless of which admin page is open. Returning to
-// "AI Auto-Generate" while a job is running re-attaches the per-row UI
-// from the job state instead of starting over.
+// Generation runs on the server (article_gen_jobs, see runAutoGenerate).
+// A floating pill (#auto-gen-pill, attached to document.body) shows
+// progress on any admin page.
 function _autoGenEnsurePill(){
   var pill = document.getElementById('auto-gen-pill');
   if (pill) return pill;
@@ -5349,23 +5335,6 @@ function _autoGenEnsurePill(){
   document.body.appendChild(pill);
   return pill;
 }
-function _autoGenPillRender(){
-  var job = window._autoGenJob;
-  var pill = _autoGenEnsurePill();
-  if (!job) { pill.style.display='none'; return; }
-  if (job.running) {
-    pill.style.display='block';
-    pill.style.background='linear-gradient(135deg,#7c3aed,#a78bfa)';
-    pill.innerHTML = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#fff;margin-right:8px;animation:autoGenBlink 1s infinite ease-in-out"></span>'
-      + 'Generating ' + job.processed + '/' + job.total + '…';
-  } else {
-    pill.style.display='block';
-    pill.style.background='linear-gradient(135deg,#16a34a,#22c55e)';
-    pill.innerHTML = '✓ Done — ' + job.processed + '/' + job.total
-      + ' <span style="opacity:.85;font-weight:600;margin-left:6px">tap to dismiss</span>';
-    pill.onclick = function(){ window._autoGenJob = null; pill.remove(); };
-  }
-}
 (function _autoGenInjectPillKeyframes(){
   if (document.getElementById('auto-gen-pill-kf')) return;
   var st = document.createElement('style');
@@ -5373,28 +5342,6 @@ function _autoGenPillRender(){
   st.textContent = '@keyframes autoGenBlink{0%,100%{opacity:.4}50%{opacity:1}}';
   document.head.appendChild(st);
 })();
-function _autoGenSetItemStatus(idx, html){
-  var job = window._autoGenJob; if (!job) return;
-  if (!job.items[idx]) return;
-  job.items[idx].statusHtml = html;
-  var rowId = job.items[idx].rowId;
-  var el = document.getElementById(rowId+'-status');
-  if (el) el.innerHTML = html;
-}
-function _autoGenRenderProgressPanel(){
-  var job = window._autoGenJob;
-  var progress = document.getElementById('auto-progress');
-  if (!progress || !job) return;
-  progress.innerHTML = job.items.map(function(it){
-    return '<div id="'+it.rowId+'" style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
-      + '<span style="font-size:18px">'+it.icon+'</span>'
-      + '<div style="flex:1"><div style="font-weight:700;font-size:13px">'+it.titleShort+'</div>'
-      + '<div style="font-size:11px;color:#94a3b8">'+it.sourceLabel+' → '+it.secKey+' · '+it.levelLabel+'</div>'
-      + '<div id="'+it.rowId+'-status" style="color:var(--gr);font-size:13px;margin-top:4px">'+(it.statusHtml||'⏳ 대기 중…')+'</div></div>'
-      + '</div>';
-  }).join('');
-}
-
 // Cache version stamp — must mirror KH_SENT_CACHE_VERSION in
 // korehan-shared.js. Bump together whenever the prompt / response
 // shape changes so old caches show as stale in AI Cache Management.
@@ -5415,841 +5362,182 @@ function _autoGenRenderProgressPanel(){
 //           점, ~기를 바라다, etc.). Mirrored as 's4'.
 const SENT_CACHE_CURRENT = 's6';
 
+// Selected headlines are queued in article_gen_jobs and built by the
+// daily-article-draft Edge Function (pg_cron worker, one job at a time), so
+// closing or reloading this tab doesn't stop a batch. Same two phases as
+// before: body → admin review → "Start analysis" (re-reads the edited body).
+async function _agCall(body) {
+  var token = await _getAdminToken();
+  var r = await fetch(SUPA_URL_ADMIN + '/functions/v1/daily-article-draft', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': SUPA_KEY_ADMIN },
+    body: JSON.stringify(body),
+  });
+  var out = await r.json().catch(function(){ return {}; });
+  if (!r.ok || out.ok === false) throw new Error(out.error || ('HTTP ' + r.status));
+  return out;
+}
+
 async function runAutoGenerate(){
-  if (window._autoGenJob && window._autoGenJob.running) {
-    toast('이미 생성 중입니다.', true);
-    return;
-  }
   const saveStatus = document.getElementById('auto-status')?.value || 'draft';
   const globalDifficulty = document.getElementById('auto-difficulty')?.value || 'Intermediate';
-
-  // Collect selected headlines with their assigned section AND their
-  // per-row level. Each headline can now carry its own difficulty so
-  // one generation run can produce a mix (e.g. r/korea at Tree,
-  // BBC Tech at Forest).
   const checkedBoxes = [...document.querySelectorAll('.hl-chk:checked')];
   if (!checkedBoxes.length) { toast('기사를 하나 이상 선택하세요', true); return; }
 
-  const selected = checkedBoxes.map(function(cb) {
+  const items = checkedBoxes.map(function(cb) {
     var idx = parseInt(cb.dataset.idx);
     var secEl = document.querySelector('.hl-sec[data-idx="'+idx+'"]');
     var lvlEl = document.querySelector('.hl-lvl[data-idx="'+idx+'"]');
     var vidEl = document.querySelector('.hl-vid[data-idx="'+idx+'"]');
     var h = _fetchedHeadlines[idx] || {};
-    var useVideo = !!(vidEl && vidEl.checked && h.video_url && h.video_kind);
-    var norm = Object.assign({}, h, {
-      link: h.link || h.url || '',
-      desc: h.desc || h.summary || '',
-      _useVideo: useVideo,
-    });
     return {
-      headline: norm,
+      headline: {
+        title: h.title || '', url: h.link || h.url || '', source: h.source || '',
+        desc: h.desc || h.summary || '', image: h.image || '',
+        video_url: h.video_url || '', video_kind: h.video_kind || '', video_fallback_url: h.video_fallback_url || '',
+      },
       section: secEl ? secEl.value : AUTO_SECTIONS[0].key,
       level: lvlEl ? lvlEl.value : globalDifficulty,
+      save_status: saveStatus,
+      use_video: !!(vidEl && vidEl.checked && h.video_url && h.video_kind),
     };
   });
 
-  const diffMap = {
-    'Starter':      { ko:'입문 (초등 1~2학년 수준)', vocab:'기초 낱말, 아주 짧은 문장', level:'Starter' },
-    'Beginner':     { ko:'초급 (TOPIK 1~2급)', vocab:'쉬운 일상 어휘, ~해요/~이에요 체', level:'Beginner' },
-    'Intermediate': { ko:'중급 (TOPIK 3~4급)', vocab:'일반 뉴스 어휘, 중간 난이도 문장', level:'Intermediate' },
-    'Advanced':     { ko:'고급 (TOPIK 5~6급)', vocab:'고급 한자어, 복잡한 문장 구조', level:'Advanced' },
-  };
-
-  const progress = document.getElementById('auto-progress');
-  if (progress) progress.innerHTML = '';
-
-  // Build job state once up-front so all items are visible immediately
-  // (and so a navigation-away/return cycle can rebuild the panel from
-  // window._autoGenJob without losing work).
-  const _diffLevelLabels = {Starter:'🌱 Seed', Beginner:'🌿 Sprout', Intermediate:'🌳 Tree', Advanced:'🌲 Forest'};
-  window._autoGenJob = {
-    running: true,
-    processed: 0,
-    total: selected.length,
-    saveStatus: saveStatus,
-    // PR #7AX: two-phase batch flow. Phase A populates this list with
-    // each successfully-bodied article's context; Phase B (triggered
-    // by the admin clicking "🧠 분석 시작" after reviewing all bodies)
-    // iterates and runs the Haiku analysis + cache build + quiz per
-    // entry. Phase B re-fetches the article body from DB so admin
-    // edits applied in the review pause are picked up.
-    pendingAnalysis: [],
-    items: selected.map(function(it, i){
-      var _h = it.headline;
-      var _sec = AUTO_SECTIONS.find(function(s){ return s.key === it.section; }) || AUTO_SECTIONS[0];
-      var _diff = diffMap[it.level] || diffMap[globalDifficulty] || diffMap['Intermediate'];
-      return {
-        rowId: 'prog-' + i,
-        icon: _sec.icon,
-        titleShort: esc((_h.title||'').slice(0,60)) + '…',
-        sourceLabel: esc(_h.source||''),
-        secKey: it.section,
-        levelLabel: _diffLevelLabels[_diff.level] || _diff.level,
-        statusHtml: '⏳ 대기 중…',
-      };
-    }),
-  };
-  _autoGenRenderProgressPanel();
-  _autoGenPillRender();
-
-  for (var si = 0; si < selected.length; si++) {
-    var item = selected[si];
-    var h = item.headline;
-    var secKey = item.section;
-    var sec = AUTO_SECTIONS.find(function(s){ return s.key === secKey; }) || AUTO_SECTIONS[0];
-    // Per-headline difficulty — falls back to global selector's value
-    // when the row selector somehow isn't present.
-    var diffInfo = diffMap[item.level] || diffMap[globalDifficulty] || diffMap['Intermediate'];
-    var rowId = 'prog-' + si;
-    var levelLabels = _diffLevelLabels;
-    var levelLabel = levelLabels[diffInfo.level] || diffInfo.level;
-    _autoGenSetItemStatus(si, '⏳ 각색 중…');
-
-    try {
-      const today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
-
-      // ── TWO-CALL PIPELINE (PR #7AW) ─────────────────────────────
-      // Owner: "본문이랑 AI 분석이랑 따로할까? 그럼 비용 ㅈㄴ 나오겠지?"
-      // Replaces the single 16K-token Sonnet call with two focused
-      // calls:
-      //
-      //   1. BODY (Sonnet 4.6): article title + body + key_expressions
-      //      + paragraph_translations. ~5K input + ~2K output.
-      //   2. ANALYSIS (Haiku 4.5): per-sentence vocab + analysis array,
-      //      taking the body from step 1 as input. ~5K input + ~4K
-      //      output. Haiku is the right fit — schema-following on a
-      //      pre-existing body, no creative writing.
-      //
-      // Cost: ~$0.07/article (down from ~$0.10 single-call Sonnet).
-      // Quality: body prompt no longer competes with the per-sentence
-      // analysis schema for Sonnet's attention — natural news copy
-      // wins. Analysis grounded in a fixed body has no body-vs-
-      // analysis drift, because the body is FINAL when the analysis
-      // runs.
-      //
-      // The previous combined Sonnet call lives below as the
-      // FALLBACK BLOCK kept for clarity but currently unused —
-      // replaced wholesale by the two `await callClaude(...)` calls
-      // below.
-      const bodyPrompt =
-        '당신은 외국인 한국어 학습자를 위한 뉴스 기사 편집자 + 한국어 튜터입니다.\n'
-        + '한 번의 응답으로 (1) 학습자용 기사를 각색하고 (2) 단락별 영어 번역을 만들고 (3) 모든 문장에 대해 번역/단어/분석까지 해주세요.\n\n'
-        + '[원본 뉴스]\n'
-        + '제목: ' + h.title + '\n'
-        + '내용: ' + (h.desc || '(요약 없음)') + '\n'
-        + '출처: ' + h.source + '\n\n'
-        + '[지시사항 — 각색]\n'
-        + '- 원본의 핵심 사실과 주제 유지. 영어 출처면 한국어로 번역·각색.\n'
-        + '- **독자는 한국어를 배우는 외국인 학습자입니다 (TOPIK 레벨별 학습용 사이트)**. 한국 native speaker 대상이 아님 — 어휘/문법 난이도 조절은 학습자 레벨에 맞추되, 본문은 일반 한국어 뉴스처럼 자연스럽게.\n'
-        + '- **★ 환각 금지 (가장 중요) ★**: 원본 텍스트(제목 + 내용)에 명시적으로 적힌 것만 사용. 다음을 절대 추가 금지:\n'
-        + '    a. 원본에 없는 사실/숫자/통계/인물 발언/날짜/장소\n'
-        + '    b. 사진/영상의 시각적 묘사 (당신은 사진을 못 봅니다). 원본 텍스트에 "안고 있다", "웃고 있다", "손을 잡았다" 같은 동작이 명시 안 되어 있으면 절대 쓰지 마세요. WRONG: 원본이 "아빠와 아들 29년 후 같은 사진"이라고만 하는데 "아버지가 아들을 안고 있는 모습이에요"라고 쓰기.\n'
-        + '    c. 편집자 감상/감정/해석 — "사랑이 변하지 않았어요", "정말 특별해요", "마음이 따뜻해져요" 같은 주관적 표현 금지. 원본이 사실만 전달하면 본문도 사실만.\n'
-        + '    d. 인과관계 추측 — 원본이 "X가 일어났다"라고만 하면 "Y 때문에 X가 일어났다"로 확장 금지.\n'
-        // PR #7AU: textbook-explanation ban.
-        // Owner: "1921년은 100년전이에요같은 당연한 소리를 기사에 왜
-        // 처넣냐고." The "외국인 학습자가 독자" line above made the model
-        // think it should EXPLAIN basic world-knowledge facts in the
-        // body — turning news into a textbook entry. Add an explicit
-        // ban with examples of the dumb-explanation pattern.
-        + '    e. **상식 설명 금지 (textbook 톤 X)**: 독자가 당연히 아는 사실을 본문에 풀어 쓰지 마세요. 학습자라고 해서 한국어 학습자이지 세상의 상식을 모르는 사람이 아닙니다.\n'
-        + '       금지 예시:\n'
-        + '         ✗ "1921년은 약 100년 전이다" / "1921년은 옛날이다"\n'
-        + '         ✗ "바르샤바는 폴란드의 도시이다" (지명이 본문에 처음 등장해도 이 정도 설명은 사족)\n'
-        + '         ✗ "사진은 역사적인 기록이다" / "이 사진은 옛날 모습을 보여준다"\n'
-        + '         ✗ "한국은 동아시아의 국가이다" / "BTS는 한국의 아이돌 그룹이다"\n'
-        + '         ✗ "축구는 인기 있는 스포츠이다" — 본문에 축구 언급되더라도 이런 정의 X\n'
-        + '       원본에 명시되지 않은 "쉬운 풀이" / "당연한 배경" / "일반 상식 정의"는 전부 제거.\n'
-        + '       꼭 보충 정보가 필요하면 → 본문에 풀어 쓰지 말고 vocab/grammar 패널이 담당 (그게 패널의 존재 이유).\n'
-        + '       원본 사실 + 그 사실의 자연스러운 한국어 표현 = 본문. 그 외 사족 = 0개.\n'
-        + '- **분량 — 원본 길이에 맞춰 4~8단락 사이, 단락당 2~4문장. 절대 중간에 끊고 마무리하지 마세요.**\n'
-        + '    원본이 짧으면 4단락. 원본이 풍부하면 최대 8단락까지 채우되, 그 안에서 모든 핵심 정보가 담기도록 압축. 핵심을 빠뜨리느니 문장당 정보 밀도를 높여서 8단락 안에 다 담을 것.\n'
-        + '    원본이 너무 길어서 8단락에 안 들어갈 것 같으면 → 디테일을 압축/요약 (예: 비슷한 사례 3개 → "여러 사례" 한 문장으로). 핵심 사실/숫자/인물 발언은 절대 누락 X.\n'
-        // PR #7AV: REVERTED the #7AT Seed/Sprout length floor.
-        // Owner: "아니 쓸게 부족하면 쓸거없다고 소스에 표시하랬자너."
-        // The 24-36 sentence floor I added in #7AT contradicted the
-        // existing 환각 금지 rules and the textbook-explanation ban
-        // from #7AU — it pushed the model to PAD thin sources with
-        // fluff to hit the quota, which is exactly what gives us
-        // "1921년은 약 100년 전이다" type sentences. The right answer
-        // is what the owner originally asked for: when source is thin,
-        // surface that in the admin headline list (the #7AS "⚠ 요약
-        // 없음" badge) and let the article come out naturally short.
-        // No artificial floor. Length follows source substance.
-        + '    환각 없이 분량 채우는 방법:\n'
-        + '      1. 원본 사실을 자연스러운 한국어 문장으로 풀어 다시 쓰기\n'
-        + '      2. 원본의 시간 순서/인과 구조를 명확히 풀어 쓰기 (단, 원본에 없는 인과 추가 X)\n'
-        + '    금지: 괄호로 영어 원어나 일반 지식 보충하기, 원본에 없는 디테일/감상/장면 묘사 추가, **중간에 본문 끊고 끝내기 (학습자 이탈 직격타) — 마지막 단락은 반드시 자연스러운 마무리 문장으로 끝낼 것**.\n'
-        + '- 클리셰 마무리 금지 — "전문가들은 ~", "사회적 관심을 모으고 있어요", "앞으로의 귀추가 주목됩니다", "많은 이들의 ~" 등 정형화된 표현으로 단락을 끝내지 마세요.\n\n'
-        + '[섹션: ' + secKey + ']\n'
-        + '[난이도: ' + diffInfo.ko + ']\n'
-        + '[어휘 수준: ' + diffInfo.vocab + ']\n'
-        + '[오늘 날짜: ' + today + ']\n\n'
-        + '[문체]\n'
-        + '- 짧고 명확한 문장 (20~35자)\n'
-        + '- 본문 톤 (레벨별 필수 — 가장 중요):\n'
-        // PR #7AR: switched the level guidance from 해요체 / 격식체 평어체
-        // (~한다 / ~했다) to 합쇼체 (~ㅂ니다 / ~습니다 / ~입니다) across the
-        // board, per owner: "습니다 이런거 왜 없앰? 평어를 왜써."
-        // 합쇼체 is the Korean broadcast-news standard and what learners
-        // hear in real TV / radio news — the right baseline for articles
-        // on a learning platform. 평어체 (~다) is print-newspaper style
-        // and reads cold; 해요체 (~어요) is too casual for news. 합쇼체
-        // also progresses naturally across levels (Seed: ~입니다, Sprout:
-        // ~았습니다, Tree: 합쇼체 + 중급 패턴, Forest: 합쇼체 + 한자어).
-        + (
-            diffInfo.level === 'Starter'
-              ? '    Seed (Pre-TOPIK 입문): **해요체만 (~예요/~이에요/~어요/~았어요/~었어요)**. 합쇼체(~ㅂ니다/~습니다) X — Seed 학습자는 아직 못 배운 등급. 평어체(~다/~한다) 절대 X. 단순 SVO. 패턴 stack 금지. 과거형은 ~았/었어요만 사용 (~았/었습니다 X). 어휘는 TOPIK 1 입문 수준만.\n'
-            : diffInfo.level === 'Beginner'
-              ? '    Sprout (TOPIK 1~2): **해요체 (~았/었어요, ~지 않아요, ~ㄹ/을 수 있어요) 또는 합쇼체 (~았/었습니다, ~지 않습니다, ~ㄹ/을 수 있습니다) — 둘 다 OK**. 한 기사 안에서는 일관되게. ~고, ~지만, ~기 전에/후에, ~려고 하다. ~기 위해 / ~게 되다 / 사역 / 피동 금지. 평어체(~다/~한다) 절대 X.\n'
-            : diffInfo.level === 'Intermediate'
-              ? '    Tree (TOPIK 3~4): **합쇼체 (~ㅂ니다/~습니다) 우선**. 본문 전체를 ~았/었습니다만으로 채우지 마세요. 8단락 중 최소 절반에 다음 중급 패턴을 자연스럽게 사용:\n'
-                + '      필수 노출 (한 기사에 최소 4개 이상 등장): ~기 위해, ~게 되었습니다, ~다고 합니다 (전언), ~(으)면서, ~ㄴ/은/는 것 같습니다, ~ㄹ/을 텐데, 불규칙 활용 (ㄷ/ㅂ/르/ㅎ), ~기 때문입니다, ~려고 합니다, ~ㄴ/은 후에.\n'
-                + '      이런 패턴 노출 자체가 TOPIK 3~4 학습자의 핵심 학습 가치임. ~했습니다만 반복하면 Tree 레벨이 아니라 Sprout임. 평어체(~다/~했다) 절대 X.\n'
-            : '    Forest (TOPIK 5~6): **합쇼체 (~ㅂ니다/~습니다) 정중체 위주**. 통사적 복잡성 필수:\n'
-                + '      필수 노출: ~기에 이르렀습니다, ~는 데 그쳤습니다, ~을 비롯한, ~로 인하여, ~기 마련입니다, 사역 (~게 합니다, ~시킵니다), 피동 (~아/어집니다, ~게 됩니다), ~(으)ㄴ/는 만큼, ~기는커녕, ~에 대하여, ~ㄴ/는다고 합니다.\n'
-                + '      TOPIK 5~6 수준의 한자어 활용. 본문 전체가 ~했습니다 일변도면 Forest가 아니라 Sprout임. 평어체(~다/~한다) 절대 X.\n'
-          )
-        + '- **괄호 보충 설명 금지**: "기준금리(돈을 빌릴 때 ...)", "인공지능(AI)" 같이 원어/일반-지식 괄호 추가하지 마세요. 본문은 일반 한국어 뉴스처럼 깔끔하게. 단어 의미 설명은 vocab 패널이 담당함.\n'
-        + '- **한자 절대 금지**. 完全變態 X — 그냥 "완전변태"만.\n'
-        + '- **분량: 4~8단락, 단락당 2~4문장**. 원본이 짧으면 짧게, 풍부하면 채워서. 채우려고 사족/상식 풀이 절대 X (위 환각 금지 e 룰). **마지막 단락은 자연스러운 마무리 문장으로 끝낼 것 (중간 cut 절대 금지)**.\n'
-        + '- 제목: 15~25자\n\n'
-        + '[중요표현]\n'
-        + '- 본문에 등장한 **고정 표현** 0~3개. 적합 없으면 [] (가장 흔한 결과).\n'
-        + '- 적합: 관용 표현, 사자성어/속담, 굳어진 표현, 호칭/인사 표현, 문화 특화 표현.\n'
-        + '- 부적합: 일반 평서문, 단순 SVO, 명사+조사+동사 결합 (vocab으로 충분).\n\n'
-        + '[단락별 번역]\n'
-        + '- body의 각 단락(\\n\\n로 구분)마다 polished English translation 1줄.\n'
-        + '- 한국어 단락 개수와 동일해야 함.\n\n'
-        + '[출력 — JSON ONLY, no preamble, no code fences]\n'
-        + '{\n'
-        + '  "title": "<Korean title — 15~25자>",\n'
-        + '  "title_en": "<polished English headline matching the Korean title — journalistic, ≤70 chars, no quotes>",\n'
-        + '  "body": "본문 (단락 \\\\n\\\\n)",\n'
-        + '  "key_expressions": [{"ko":"...","en":"..."}],\n'
-        + '  "paragraph_translations": ["para 1 EN", "para 2 EN", ...]\n'
-        + '}';
-
-      // Prime Sonnet with the FULL KH_GRAMMAR catalog so it knows
-      // every regex-detectable pattern that exists, not just the
-      // hand-curated subset in the floor lists above. The body
-      // doesn't exist yet (Sonnet is generating it in this same
-      // call), so we can't pre-detect — we instead show the entire
-      // pattern dictionary up front. enforceDetectedPatterns still
-      // runs after as a safety net for anything Sonnet skips.
-      // Cost: ~9K input tokens per article ≈ $0.027 in Sonnet input
-      // pricing. Negligible vs the 8K-token output cost.
-      // NOTE: `prompt` above is declared `const` so we cannot mutate
-      // it. Build a separate fullPrompt string for the API call and
-      // leave the original prompt template untouched.
-      // Compact label-only catalog (~2K tokens) instead of the old
-      // 9K full catalog with hints. Sonnet knows what each pattern
-      // means from its built-in Korean grammar knowledge — the
-      // value-add is canonical naming so enforce/normalizer label
-      // matching works cleanly. ~78% smaller, ~70% of speed-up, no
-      // measurable quality drop.
-      var _khLabels = (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.formatLabelCatalog === 'function')
-        ? '\n\n[CANONICAL PATTERN LABELS — use these EXACT label strings]\n'
-          + 'Use the EXACT label strings below for any matching grammar entry — the post-process enforce + label normalizer layer matches on these canonical forms. You don\'t need to use every pattern; only the ones that genuinely appear in your sentences.\n\n'
-          + window.KH_GRAMMAR.formatLabelCatalog()
-        : '';
-      // PR #7AW: split into bodyCatalog (used by Sonnet body call) and
-      // analysisCatalog (used by Haiku analysis call). The body-grammar
-      // rules (psych-verb, particle, tense, spacing) belong with body
-      // generation; the ANALYSIS guardrails (don't invent patterns,
-      // compound constructions etc.) belong with the analysis call.
-      var _khBodyCatalog = '\n\n'
-        + 'CRITICAL guardrails for the BODY (article text):\n'
-        + '  - Write the body to read like real, natural Korean news copy. Do NOT force any specific grammar pattern into the body just to enable coverage. Awkward or out-of-place grammar is worse than missing coverage.\n'
-        // KOREAN GRAMMAR RULES — added 2026-05-20 as part of the systematic
-        // AI-grammar audit (PR #7Z). Article-body gen is the highest-volume
-        // Korean-output path in the codebase, and pre-7Z it had no grammar
-        // enforcement (only "natural" guidance + the post-process
-        // enforceDetectedPatterns pattern-coverage layer, which doesn't
-        // validate correctness, only presence).
-        //
-        // PR #7AQ trimmed the rule block down from the original 6-rule
-        // version after the owner reported article generation flattening
-        // into textbook prose ("1921년은 약 100년 전이다" / "그 사진은
-        // 역사적인 기록이다"). Two rules removed because they conflicted
-        // with the existing per-level [본문 톤] guidance in the prompt
-        // body ABOVE: the forced-평어체 formality rule, and the public-
-        // figures honorifics rule. All remaining rules show examples
-        // in BOTH 해요체 and 평어체 so the rule itself doesn't bias the
-        // model toward one register — register choice stays with the
-        // level guidance.
-        + 'KOREAN GRAMMAR RULES — apply to EVERY Korean sentence in the body AND every example_in_sentence / fuller_example in the analysis:\n'
-        + '  1. PSYCH-VERB 1st/3rd PERSON ASYMMETRY (do not violate):\n'
-        + '     • 1st-person subject (저/나/우리) — use the "feeling" form directly:\n'
-        + '       ✓ 저는 가고 싶어요 / 저는 슬퍼요 / 저는 무서워요\n'
-        + '     • 3rd-person subject (이름/그/그녀/사람들/아이들/우리 가족/일반 사람/대중):\n'
-        + '       MUST use the "-아/어 하다" form, NOT the bare adjective form.\n'
-        + '       Register-neutral examples — same psych-verb rule, all 3 endings shown:\n'
-        + '       ✓ 아이들은 만들고 싶어 합니다 / 만들고 싶어 해요 / 만들고 싶어 한다\n'
-        + '       ✗ 아이들은 만들고 싶습니다 / 만들고 싶어요 / 만들고 싶다\n'
-        + '       ✓ 동생은 슬퍼합니다 / 동생은 슬퍼해요 / 동생은 슬퍼한다\n'
-        + '       ✗ 동생은 슬픕니다 / 동생은 슬퍼요 / 동생은 슬프다\n'
-        + '       Same rule for: 싶다→싶어 하다, 슬프다→슬퍼하다, 기쁘다→기뻐하다,\n'
-        + '       무섭다→무서워하다, 싫다→싫어하다, 부끄럽다→부끄러워하다, 좋다→좋아하다.\n'
-        + '       (Pick the register — Korean news article body should default to\n'
-        + '       합쇼체 ~ㅂ니다/~습니다 per the [본문 톤] guidance in the prompt\n'
-        + '       body above. Use 해요체 / 평어체 only when the level guidance\n'
-        + '       explicitly calls for them.)\n'
-        + '  2. SUBJECT-PARTICLE CONSISTENCY: a single clause must not flip 은/는\n'
-        + '     ↔ 이/가 mid-clause for the same referent. Pick one per referent and\n'
-        + '     stick with it across the clause.\n'
-        // PR #7AQ — REMOVED rule 3 (FORMALITY forced 평어체) and rule 6
-        // (HONORIFICS for public figures). The forced 평어체 rule from #7Z
-        // collided with the existing per-level [본문 톤] guidance ABOVE in
-        // the prompt body (Seed/Sprout/Tree use 해요체, only Forest mixes
-        // 격식체). Result: every level got flattened to "~다 / ~했다 / ~이다"
-        // textbook sentences ("1921년은 약 100년 전이다", "그 사진은 역사적인
-        // 기록이다") instead of natural news copy at the learner's level.
-        // The honorific rule was also pulling weight without payoff for
-        // foreign-figure articles. Drop both — let the in-prompt [문체]
-        // level guidance be authoritative for register. Keep psych-verb,
-        // particle, tense, and spacing rules — those don't conflict with
-        // the level guidance.
-        + '  3. TENSE AGREEMENT: every verb in the same clause must agree with\n'
-        + '     the sentence\'s temporal anchor (어제/지난주/내년/지금/…). Past-tense\n'
-        + '     narration is the default for completed events; future and\n'
-        + '     habitual present each get their own consistent forms.\n'
-        + '  4. SPACING (띄어쓰기): keep a single space between an auxiliary verb\n'
-        + '     and its lexical verb — do not concatenate.\n'
-        + '     ✓ 가고 싶다 / 먹어 보다 / 읽고 있다 / 만들어 주다\n'
-        + '     ✗ 가고싶다 / 먹어보다 / 읽고있다 / 만들어주다\n'
-        + '     Tense/aspect endings (~았/었/는/ㄴ) attach DIRECTLY to the stem\n'
-        + '     with NO space: ✓ 갔다, 읽었다, 했다 (✗ 가았다, 읽 었다, 하 았다).\n';
-      // Analysis guardrails moved into the analysis call below (PR #7AW).
-      var _khAnalysisCatalog = '\n\n'
-        + 'CRITICAL guardrails for ANALYSIS:\n'
-        + '  - Only include a pattern if its marker actually appears in the sentence (the post-process enforce layer verifies this and drops items whose example_in_sentence is not a literal substring). When in doubt, omit.\n'
-        + '  - For type="expression" / "idiom" (where regex doesn\'t apply and you are the judge): only surface a phrase if it is CENTRAL to that specific sentence\'s meaning — the learner could not paraphrase the sentence without grasping it. SKIP tangential / generic fillers (정말, 그런, 새로운, 이런 식으로 …), phrases the learner already knows at this level, and semantic duplicates of a grammar entry already in the same analysis array (e.g. don\'t list both ~다고 하다 AND ~다고 해요 — pick the canonical one).\n'
-        + '  - COMPOUND / COHESIVE CONSTRUCTIONS: when a sentence demonstrates a multi-token rhetorical structure (e.g. "X도 중요하지만 Y(이/가) 더 ~" comparative-contrast, "~기도 하고 ~기도 하다" both-and, "~ㄴ/는 데다(가) ~기까지 하다" on-top-of, "~지 않을 뿐(만) 아니라 ~까지 하다" not-only-but-also), surface the WHOLE construction as ONE expression entry with the multi-token chunk as example_in_sentence — not the individual particles split apart. Learners need to see the rhetorical unit, not three ~의 / ~도 / ~이 atoms when the sentence is really one comparison. Atomic particles (~의, ~이/가, ~을/를, ~도) are STILL surfaced separately as type="grammar" entries by the regex enforce layer; the compound is an ADDITIONAL type="expression" entry on top.\n'
-        + '  - RELATION-NOUN CHUNKS: "N 사이에서 / N 가운데 / N 중에서 / N 동안 / N 끝에" — surface the chunk as ONE type="expression" entry (e.g. "젊은층 사이에서" → "~ 사이에서 (among)") rather than only the bare particle.\n'
-        + '  - COLLOCATIONS (인기를 얻다, 관심을 끌다, 영향을 미치다 …) are type="expression", never type="grammar". type="grammar" is only for endings, particles, auxiliaries and grammatical constructions.\n';
-
-      // ── STEP 1: BODY (Sonnet 4.6) ─────────────────────────────
-      // Body + title + key_expressions + paragraph_translations only.
-      // No per-sentence analysis here — that's the Haiku follow-up
-      // call below, which is cheaper for schema-following and runs
-      // against a frozen body.
-      //
-      // SOFT-suggest a sample of KH_GRAMMAR labels so newly generated
-      // articles naturally CONTAIN the patterns we want to teach.
-      // Patterns are passed as suggestions (NOT must-include) — the
-      // prompt above explicitly says "awkward forced grammar is worse
-      // than missing coverage", so the model is free to skip any that
-      // don't fit. Smaller sample (15) keeps the prompt under timeout
-      // budget; randomisation across runs means different articles
-      // surface different patterns over the long run.
-      var _khSoftSuggest = '';
-      try {
-        if (window.KH_GRAMMAR && Array.isArray(window.KH_GRAMMAR._PATTERNS)) {
-          var allP = window.KH_GRAMMAR._PATTERNS.slice();
-          for (var i = allP.length - 1; i > 0; i--) {
-            var j = Math.floor(Math.random() * (i + 1));
-            var tmp = allP[i]; allP[i] = allP[j]; allP[j] = tmp;
-          }
-          var sample = allP.slice(0, 15).map(function(p, k){ return '  ' + (k+1) + '. ' + p.label; }).join('\n');
-          if (sample) {
-            _khSoftSuggest = '\n\nSUGGESTED grammar patterns to weave naturally into the body if they fit the topic (NOT a requirement — never force; awkward usage is worse than skipping):\n' + sample;
-          }
-        }
-      } catch(_) { _khSoftSuggest = ''; }
-
-      // Prompt-caching split (PR #7AY): the label catalog +
-      // _khBodyCatalog combine to ~12K input tokens of fully static
-      // content that's identical across every article in a batch.
-      // Anthropic's cache_control: 'ephemeral' breakpoint caches the
-      // prefix block for 5 minutes; back-to-back article generation
-      // hits the cache and pays ~10% of normal input cost on those
-      // tokens. _khSoftSuggest is shuffled per call (so NOT cacheable)
-      // and bodyPrompt embeds the per-article headline / section /
-      // difficulty so it's also dynamic. Order: static FIRST so the
-      // cached prefix matches; dynamic SECOND. Saves roughly
-      // $0.024/article on Sonnet ($0.027 → $0.003 on the cached
-      // portion) — ~$70/month at 100 articles/day.
-      var _khStaticPrefix = _khLabels + _khBodyCatalog;
-      var _khDynamicSuffix = bodyPrompt + _khSoftSuggest;
-      _autoGenSetItemStatus(si, '⏳ 본문 생성 중… (Sonnet)');
-      const bodyRes = await callClaude({
-        feature: 'generate-article-body',
-        // Expected output is ~2K tokens (title + body + key_expressions +
-        // paragraph_translations). max_tokens was 6000 — when Sonnet
-        // occasionally over-generated toward that cap (~55 tok/s) the call
-        // ran past the proxy's Anthropic timeout → "AI timeout" even on a
-        // single low-difficulty article. Capping at 4000 bounds the worst
-        // case to ~70s (under the limit) while leaving 2x headroom over the
-        // normal output. THIS is the root fix; the proxy timeout is just a
-        // safety net for the separate (longer) Phase-B analysis step.
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: _khStaticPrefix, cache_control: { type: 'ephemeral' } },
-            { type: 'text', text: _khDynamicSuffix }
-          ]
-        }]
-      });
-      const bodyText = bodyRes.content && bodyRes.content[0] && bodyRes.content[0].text || '';
-      if (!bodyText) throw new Error('빈 응답 (body)');
-      // Robust JSON extraction. Previous versions sliced from the first
-      // `{` to the LAST `}` in the whole response — which broke when
-      // Sonnet appended explanatory prose that itself contained a `}`
-      // (an emoji, a `${...}`, or a normal sentence). lastIndexOf then
-      // grabbed that stray brace and pulled the prose into the slice,
-      // giving "Unexpected non-whitespace character after JSON at
-      // position N". Instead, scan from the first `{` and stop at its
-      // MATCHING close brace via a string-aware brace counter (so braces
-      // inside JSON string values, and any trailing prose, are ignored).
-      // Then try parse → repair → parse before giving up. Catches:
-      //   - trailing prose / markdown fence remnants (even with braces)
-      //   - leading "Here is the JSON:" or similar preamble
-      //   - trailing commas (`,}` / `,]`)
-      let bodyClean = bodyText.replace(/```json?/g, '').replace(/```/g, '').trim();
-      const _s = bodyClean.indexOf('{');
-      if (_s < 0) throw new Error('No JSON object in body response');
-      let _depth = 0, _inStr = false, _escaped = false, _e = -1;
-      for (let _i = _s; _i < bodyClean.length; _i++) {
-        const _ch = bodyClean[_i];
-        if (_inStr) {
-          if (_escaped) { _escaped = false; }
-          else if (_ch === '\\') { _escaped = true; }
-          else if (_ch === '"') { _inStr = false; }
-        } else if (_ch === '"') { _inStr = true; }
-        else if (_ch === '{') { _depth++; }
-        else if (_ch === '}') { _depth--; if (_depth === 0) { _e = _i; break; } }
-      }
-      // Fall back to lastIndexOf if the braces never balanced (truncated
-      // response) so the repair pass below still gets a shot at it.
-      if (_e < 0) _e = bodyClean.lastIndexOf('}');
-      if (_e <= _s) throw new Error('No JSON object in body response');
-      bodyClean = bodyClean.slice(_s, _e + 1);
-      let bodyJson;
-      try {
-        bodyJson = JSON.parse(bodyClean);
-      } catch (_parseErr) {
-        // Repair trailing commas + control chars before retry.
-        const repaired = bodyClean
-          .replace(/,(\s*[}\]])/g, '$1')
-          .replace(/[\x00-\x1f]+/g, ' ');
-        try {
-          bodyJson = JSON.parse(repaired);
-        } catch (_repairErr) {
-          throw new Error('JSON parse failed even after repair: ' + (_repairErr && _repairErr.message || _repairErr));
-        }
-      }
-      if (!bodyJson.title || !bodyJson.body) throw new Error('Invalid body format');
-
-      // PR #7AX: Phase A only — body call is done above. The Haiku
-      // analysis call is DEFERRED until the admin clicks "🧠 분석 시작"
-      // after reviewing all bodies. The article gets saved now with an
-      // empty sentences[] placeholder; Phase B will re-fetch the body
-      // (so admin edits are honoured) and update both the article and
-      // its cache row with the analysis output.
-      const article = Object.assign({}, bodyJson, { sentences: [] });
-      if (!article.title || !article.body) throw new Error('Invalid body format');
-
-      const articleId = uid();
-      const hasSrcVideo = !!(h.video_url && h.video_kind);
-      // Persist the source image into our bucket so the thumbnail
-      // survives when the upstream CDN expires or blocks hotlinks.
-      // Runs per-article at creation time — one network round-trip +
-      // one Supabase upload. No-op when there's no source image or
-      // we're using a video hero.
-      var _srcImgRaw = hasSrcVideo ? '' : (h.image || '');
-      var _srcImgFinal = _srcImgRaw ? (await _khPersistImage(_srcImgRaw, articleId)) : '';
-      // Prefer Sonnet's polished English headline; fall back to the
-      // raw source headline if the model didn't return one (or returned
-      // empty). This way Korean-source articles still get an English
-      // hero title on the frontend without depending on the async
-      // _khEnsureTitlesEn translation pass.
-      const _titleEnFromAI = (typeof article.title_en === 'string' && article.title_en.trim()) ? article.title_en.trim() : '';
-      const _titleEnFinal = _titleEnFromAI || (h.title && !/[ㄱ-힝]/.test(h.title) ? h.title : '');
-      const newArticle = {
-        id: articleId, section: secKey,
-        title: article.title, body: article.body,
-        title_en: _titleEnFinal,
-        date: today_date(), status: saveStatus,
-        featured: false, level: diffInfo.level,
-        source_url: h.link || '',
-        image: _srcImgFinal,
-        // Always persist the source video URL when we have one, even if the
-        // admin unchecked 'Use video' at creation time — that way an article
-        // can be flipped to video later by setting use_video=true, without
-        // losing the upstream link. use_video is what the renderer actually
-        // reads; video_url alone is not enough to swap the hero.
-        video_url: hasSrcVideo ? h.video_url : '',
-        video_kind: hasSrcVideo ? h.video_kind : '',
-        // Silent MP4 fallback — paired with HLS so the frontend can keep
-        // video playing when HLS loading is blocked (CORS / expired URL).
-        video_fallback_url: hasSrcVideo ? (h.video_fallback_url || '') : '',
-        use_video: hasSrcVideo ? !!h._useVideo : false,
-      };
-      await dbSaveArticle(newArticle);
-      DB.unshift(newArticle); refreshCounts();
-
-      // PR #7AX Phase A: body is saved (sentences:[] placeholder). Push
-      // context to pendingAnalysis so the admin can review/edit each
-      // body in the queue before triggering the Haiku analysis batch.
-      // Skip the cache+quiz block here — that's all Phase B work.
-      window._autoGenJob.pendingAnalysis.push({
-        articleId: articleId,
-        si: si,
-        level: diffInfo.level,
-        saveStatus: saveStatus,
-        // PR #7AY: carry the body Sonnet's secondary outputs forward so
-        // Phase B can write them into the cache row without re-asking
-        // Sonnet. Both are tied to the body the admin reviewed; passing
-        // them by value (not by re-fetch) keeps Phase B authoritative.
-        paragraph_translations: Array.isArray(bodyJson.paragraph_translations)
-          ? bodyJson.paragraph_translations.filter(function(t){ return typeof t === 'string'; })
-          : [],
-        key_expressions: Array.isArray(bodyJson.key_expressions)
-          ? bodyJson.key_expressions
-          : [],
-      });
-      // PR #7AZ: snapshot to localStorage after every push so a page
-      // refresh / nav-away mid-Phase-A doesn't lose what's already queued.
-      _persistPendingAnalysis();
-
-      _autoGenSetItemStatus(si,
-        '<span style="color:#0d6efd;font-weight:700">📝 본문 완료 — 분석 대기 중 · </span>'
-        + '<a href="#" onclick="openModal(\'' + articleId + '\')" style="color:var(--a);font-weight:700">검수/수정 →</a>');
-
-    } catch(err) {
-      _autoGenSetItemStatus(si, '<span style="color:#dc3545">❌ Failed: '+err.message+'</span>');
-    }
-    if (window._autoGenJob) {
-      window._autoGenJob.processed = si + 1;
-      _autoGenPillRender();
-    }
-  }
-
-  if (window._autoGenJob) {
-    window._autoGenJob.running = false;
-    _autoGenPillRender();
-  }
-  var pendingN = (window._autoGenJob && window._autoGenJob.pendingAnalysis || []).length;
-  if (pendingN > 0) {
-    _autoGenShowReviewBanner(pendingN);
-    toast('📝 본문 ' + pendingN + '개 생성 완료. 검수 후 [🧠 분석 시작] 버튼을 누르세요.');
-  } else {
-    toast('⚠ 본문 생성 실패. pending 큐가 비어있어 분석 진행 불가.', true);
-  }
-}
-
-// PR #7AZ: localStorage persistence for the Phase B analysis queue.
-// Owner-reported gap — if the admin navigates away from the auto-gen
-// page after Phase A (or refreshes), the pendingAnalysis array stored
-// in `window._autoGenJob` disappears, and the only way to run analysis
-// for those articles becomes the per-article "재분석" button on AI
-// Cache Management (one-by-one). With persistence, returning to the
-// auto-gen page re-renders the review banner and the queue resumes.
-var _PENDING_ANALYSIS_LS_KEY = 'kh_admin_pending_analysis_v1';
-function _persistPendingAnalysis() {
+  var btn = document.getElementById('btn-autogen');
+  if (btn) btn.disabled = true;
   try {
-    var pending = (window._autoGenJob && window._autoGenJob.pendingAnalysis) || [];
-    if (pending.length) {
-      localStorage.setItem(_PENDING_ANALYSIS_LS_KEY, JSON.stringify(pending));
-    } else {
-      localStorage.removeItem(_PENDING_ANALYSIS_LS_KEY);
-    }
-  } catch(_) {}
-}
-function _restorePendingAnalysis() {
-  try {
-    var raw = localStorage.getItem(_PENDING_ANALYSIS_LS_KEY);
-    if (!raw) return [];
-    var arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
-  } catch(_) { return []; }
-}
-// Call once on admin page load (right before / right after auto-gen
-// panel renders). If there's a non-empty restored queue, hydrate
-// window._autoGenJob.pendingAnalysis and re-render the review banner
-// so the admin sees the "🧠 분석 시작" CTA again.
-function _maybeRestorePendingAnalysisBanner() {
-  var restored = _restorePendingAnalysis();
-  if (!restored.length) return;
-  if (!window._autoGenJob) window._autoGenJob = { pendingAnalysis: [] };
-  window._autoGenJob.pendingAnalysis = restored;
-  // Try to render the banner if the headline list anchor exists yet.
-  // If not (page hasn't rendered the headline-fetch panel), skip silently —
-  // a subsequent fetch / render will hit this path again when the anchor
-  // appears, or the admin will navigate to auto-gen and see it via the
-  // explicit restore-on-anchor handler below.
-  if (document.getElementById('hl-list')) {
-    _autoGenShowReviewBanner(restored.length);
+    var out = await _agCall({ enqueue: items });
+    toast((out.queued || []).length + ' queued — runs on the server, you can close this tab');
+    _agStartPolling();
+  } catch (e) {
+    toast('Queue failed: ' + (e.message || e), true);
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
-// PR #7AX: review-pause banner rendered after Phase A (body batch)
-// completes. Owner-requested pause point — admin reviews & edits each
-// article's body via the existing per-item "검수/수정 →" link, then
-// clicks the "🧠 분석 시작" button here to fan out the deferred Haiku
-// analysis calls. The banner injects itself above the headline list
-// so it's hard to miss.
-function _autoGenShowReviewBanner(pendingN) {
-  var anchor = document.getElementById('hl-list');
-  if (!anchor) return;
-  var existing = document.getElementById('autogen-review-banner');
-  if (existing) existing.remove();
-  var banner = document.createElement('div');
-  banner.id = 'autogen-review-banner';
-  banner.style.cssText = 'background:linear-gradient(135deg,#dbeafe,#bfdbfe);border:2px solid #2563eb;border-radius:14px;padding:14px 18px;margin:14px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap';
-  banner.innerHTML =
-      '<div style="flex:1;min-width:200px">'
-    +   '<div style="font-weight:900;font-size:15px;color:#1e40af;margin-bottom:4px">📝 본문 ' + pendingN + '개 생성 완료 — 검수 대기 중</div>'
-    +   '<div style="font-size:12px;color:#1e3a8a;line-height:1.5">각 항목의 <b>검수/수정 →</b> 링크를 눌러 본문을 확인하고 필요하면 수정하세요. 검수가 끝나면 <b>[🧠 분석 시작]</b> 버튼을 누르면 됩니다.</div>'
+var _agPollTimer = null;
+var _agJobs = [];
+var _agDoneSeen = {};
+var _AG_LEVEL = { Starter: 'Seed', Beginner: 'Sprout', Intermediate: 'Tree', Advanced: 'Forest' };
+
+async function _agLoadJobs() {
+  var since = new Date(Date.now() - 3 * 86400000).toISOString();
+  var r = await getSb().from('article_gen_jobs')
+    .select('id,kind,status,attempts,payload,article_id,result,error,created_at')
+    .gte('created_at', since).order('created_at', { ascending: true });
+  if (r.error) throw r.error;
+  return r.data || [];
+}
+function _agAnalysisFor(articleId) {
+  var hit = null;
+  _agJobs.forEach(function(j){ if (j.kind === 'analysis' && j.article_id === articleId) hit = j; });
+  return hit;
+}
+function _agBodyJobs() { return _agJobs.filter(function(j){ return j.kind === 'body'; }); }
+function _agReadyForAnalysis() {
+  return _agBodyJobs().filter(function(j){ return j.status === 'done' && j.article_id && !_agAnalysisFor(j.article_id); });
+}
+function _agActive() { return _agJobs.some(function(j){ return j.status === 'pending' || j.status === 'running'; }); }
+
+function _agRowStatus(j) {
+  var openLink = j.article_id
+    ? ' · <a href="#" onclick="openModal(\'' + j.article_id + '\');return false" style="color:var(--a);font-weight:700">Review / edit</a>' : '';
+  if (j.status === 'pending') return '<span style="color:#64748b">Waiting…</span>';
+  if (j.status === 'running') return '<span style="color:#7c3aed;font-weight:700">Writing body…</span>';
+  if (j.status === 'failed') return '<span style="color:#dc3545">Body failed: ' + esc(j.error || '') + '</span>';
+  var a = _agAnalysisFor(j.article_id);
+  if (!a) return '<span style="color:#0d6efd;font-weight:700">Body ready — review, then start analysis</span>' + openLink;
+  if (a.status === 'pending') return '<span style="color:#64748b">Analysis waiting…</span>' + openLink;
+  if (a.status === 'running') return '<span style="color:#7c3aed;font-weight:700">Analyzing…</span>' + openLink;
+  if (a.status === 'failed') return '<span style="color:#dc3545">Analysis failed: ' + esc(a.error || '') + '</span>' + openLink;
+  return '<span style="color:#16a34a;font-weight:700">Done</span>' + openLink;
+}
+
+function _agRender() {
+  var box = document.getElementById('auto-progress');
+  if (!box) return;
+  var bodies = _agBodyJobs();
+  if (!bodies.length) { box.innerHTML = ''; return; }
+  var genPanel = document.getElementById('gen-panel');
+  if (genPanel) genPanel.style.display = '';
+  var ready = _agReadyForAnalysis().length;
+  var head = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">'
+    + '<div style="flex:1;min-width:200px;font-size:12px;color:#475569">'
+    + (_agActive() ? '<b>Running on the server</b> — safe to close this tab; drafts appear in the article list.' : 'Recent generation jobs (last 3 days)')
     + '</div>'
-    + '<button onclick="runPendingAnalysisAll()" style="background:linear-gradient(135deg,#2563eb,#1e40af);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(37,99,235,.3);white-space:nowrap">🧠 분석 시작 (' + pendingN + '개)</button>';
-  anchor.parentNode.insertBefore(banner, anchor);
+    + (ready ? '<button class="btn btn-g" onclick="runPendingAnalysisAll()">Start analysis (' + ready + ')</button>' : '')
+    + '<button class="btn btn-gh" style="font-size:12px" onclick="_agClearFinished()">Clear finished</button>'
+    + '</div>';
+  box.innerHTML = head + bodies.map(function(j){
+    var p = j.payload || {}, h = p.headline || {};
+    var title = (j.result && j.result.title) || h.title || '';
+    return '<div style="padding:12px 16px;background:#fff;border:1px solid var(--bo);border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-weight:700;font-size:13px">' + esc(title.slice(0, 80)) + '</div>'
+      + '<div style="font-size:11px;color:#94a3b8">' + esc(h.source || '') + ' → ' + esc(p.section || '') + ' · ' + (_AG_LEVEL[p.level] || esc(p.level || ''))
+      + (p.save_status === 'published' ? ' · publishes' : '') + '</div>'
+      + '<div style="font-size:13px;margin-top:4px">' + _agRowStatus(j) + '</div>'
+      + '</div>';
+  }).join('');
 }
 
-// PR #7AX Phase B: runs deferred Haiku analysis + cache + quiz for
-// every pending article. Re-fetches the body from DB so admin edits
-// applied in the review pause are honoured. Sequential to keep the
-// edge-function rate-limit happy.
+function _autoGenPillRender(){
+  var pill = _autoGenEnsurePill();
+  var active = _agJobs.filter(function(j){ return j.status === 'pending' || j.status === 'running'; }).length;
+  var ready = _agReadyForAnalysis().length;
+  if (!active && !ready) { pill.style.display = 'none'; return; }
+  pill.style.display = 'block';
+  pill.onclick = function(){ try { goAutoArticle(); } catch(_){} };
+  if (active) {
+    pill.style.background = 'linear-gradient(135deg,#7c3aed,#a78bfa)';
+    pill.innerHTML = '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#fff;margin-right:8px;animation:autoGenBlink 1s infinite ease-in-out"></span>'
+      + 'Generating · ' + active + ' left';
+  } else {
+    pill.style.background = 'linear-gradient(135deg,#2563eb,#1e40af)';
+    pill.textContent = ready + ' ready for review';
+  }
+}
+
+async function _agRefresh() {
+  try { _agJobs = await _agLoadJobs(); } catch (e) { console.warn('[auto-gen jobs]', e && e.message || e); return; }
+  var newlyDone = false;
+  _agJobs.forEach(function(j){
+    if (j.status === 'done' && !_agDoneSeen[j.id]) { _agDoneSeen[j.id] = true; newlyDone = true; }
+  });
+  if (newlyDone && typeof dbLoadFromSupabase === 'function') { try { await dbLoadFromSupabase(); } catch(_) {} }
+  _agRender();
+  _autoGenPillRender();
+  if (!_agActive() && _agPollTimer) { clearInterval(_agPollTimer); _agPollTimer = null; }
+}
+function _agStartPolling() {
+  _agRefresh();
+  if (!_agPollTimer) _agPollTimer = setInterval(_agRefresh, 6000);
+}
+
 window.runPendingAnalysisAll = async function() {
-  if (!window._autoGenJob || !Array.isArray(window._autoGenJob.pendingAnalysis) || !window._autoGenJob.pendingAnalysis.length) {
-    toast('처리 대기 중인 본문이 없습니다.', true);
-    return;
-  }
-  var banner = document.getElementById('autogen-review-banner');
-  if (banner) banner.querySelector('button').disabled = true;
-
-  var pending = window._autoGenJob.pendingAnalysis.slice();
-  var done = 0;
-
-  // JSON-safe extractor matching the old single-call flow.
-  function _json(text) { return khExtractJson(text); }
-
-  // Rebuild the same KH_GRAMMAR labels + analysis catalog used by the
-  // analysis prompt in Phase A. Capture once outside the loop.
-  var _khLabels = (window.KH_GRAMMAR && typeof window.KH_GRAMMAR.formatLabelCatalog === 'function')
-    ? '\n\n[CANONICAL PATTERN LABELS — use these EXACT label strings]\n'
-      + 'Use the EXACT label strings below for any matching grammar entry — the post-process enforce + label normalizer layer matches on these canonical forms. You don\'t need to use every pattern; only the ones that genuinely appear in your sentences.\n\n'
-      + window.KH_GRAMMAR.formatLabelCatalog()
-    : '';
-  var _khAnalysisCatalog = '\n\n'
-    + 'CRITICAL guardrails for ANALYSIS:\n'
-    + '  - Only include a pattern if its marker actually appears in the sentence (the post-process enforce layer verifies this and drops items whose example_in_sentence is not a literal substring). When in doubt, omit.\n'
-    + '  - For type="expression" / "idiom": only surface a phrase if it is CENTRAL to that specific sentence\'s meaning. SKIP tangential fillers and semantic duplicates of a grammar entry already in the same analysis array.\n'
-    + '  - COMPOUND / COHESIVE CONSTRUCTIONS: surface multi-token rhetorical structures as ONE expression entry rather than splitting into atomic particles.\n'
-    + '  - RELATION-NOUN CHUNKS: "N 사이에서 / N 가운데 / N 중에서 / N 동안 / N 끝에" — surface the chunk as ONE type="expression" entry (e.g. "젊은층 사이에서" → "~ 사이에서 (among)") rather than only the bare particle.\n'
-    + '  - COLLOCATIONS (인기를 얻다, 관심을 끌다, 영향을 미치다 …) are type="expression", never type="grammar". type="grammar" is only for endings, particles, auxiliaries and grammatical constructions.\n';
-
-  for (var i = 0; i < pending.length; i++) {
-    var ctx = pending[i];
-    var articleId = ctx.articleId;
-    var si = ctx.si;
-    var level = ctx.level;
-    var saveStatus = ctx.saveStatus;
-
-    // Find the article in the in-memory DB array (Phase A pushed it
-    // there). Falls back to a Supabase fetch if it's been pruned.
-    var article = null;
-    for (var k = 0; k < DB.length; k++) {
-      if (String(DB[k].id) === String(articleId)) { article = DB[k]; break; }
-    }
-    if (!article) {
-      try {
-        var res = await getSb().from('articles').select('*').eq('id', articleId).maybeSingle();
-        article = res.data || null;
-      } catch(_) {}
-    }
-    if (!article || !article.body) {
-      _autoGenSetItemStatus(si, '<span style="color:#dc3545">❌ Phase B 실패: article ' + articleId + ' 조회 안 됨</span>');
-      done++;
-      continue;
-    }
-
-    var diffKoMap = { Starter:'씨앗', Beginner:'새싹', Intermediate:'나무', Advanced:'숲' };
-    var ko = diffKoMap[level] || level;
-
-    try {
-      _autoGenSetItemStatus(si, '🧠 분석 생성 중… (Haiku)');
-
-      var analysisPrompt =
-          '당신은 한국어 학습자를 위한 문장 단위 분석가입니다. 아래 한국어 기사 본문에 대해 문장별로 vocab + 문법/표현 분석을 생성해 주세요.\n\n'
-        + '[기사 제목]\n' + (article.title || '') + '\n\n'
-        + '[기사 본문 (단락 \\n\\n 구분)]\n' + article.body + '\n\n'
-        + '[학습자 레벨]\n' + ko + ' (' + level + ')\n\n'
-        + '[문장별 분석 — 가장 중요]\n'
-        + '- 본문에 등장하는 모든 한국어 문장을 등장 순서대로 추출.\n'
-        + '- text: 본문에 EXACTLY 등장한 형태 그대로 (마침표/물음표 포함).\n'
-        + '- translation: 폴리시된 영어 번역 (같은 주어, 같은 시제, 같은 격식).\n'
-        + '- vocab: max 4. 사전형으로. ' + (
-            (level === 'Starter' || level === 'Beginner')
-              ? '입문/초급 단어도 포함 OK.'
-              : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵. 학습자가 찾아볼 만한 단어만.'
-) + ' 빈 배열 OK.\n'
-        + '- analysis: ' + ((level === 'Starter' || level === 'Beginner') ? 'max 6 items.' : 'max 4 items.') + ' 각 항목:\n'
-        + '    type: "grammar" | "expression" | "idiom"\n'
-        + '    label: 패턴/표현 자체. grammar는 형태소/연결어미/활용 종류만. 명사 X.\n'
-        + '    exp: 1-2줄 영어 설명. morpheme이 무엇을 하는지 + 사전형 → 활용형 chain 필수.\n'
-        + '    example_in_sentence: 이 문장에서 발췌한 chunk.\n'
-        + '- 관계명사 + 조사 덩어리(N 사이에서 / 가운데 / 중에서 / 동안)는 덩어리를 type "expression"으로 함께 제시. 동사 연어(인기를 얻다, 관심을 끌다)도 type "expression". grammar는 어미·조사·보조용언·문법 구문만.\n'
-        + '- 만들지 말 것: 본문에 없는 패턴 절대 금지.\n\n'
-        + '[출력 — JSON ONLY, no preamble, no code fences]\n'
-        + '{\n'
-        + '  "sentences": [\n'
-        + '    {"text":"<exact KO sentence>","translation":"<EN>","vocab":[{"ko":"...","en":"..."}],"analysis":[{"type":"grammar","label":"...","exp":"...","example_in_sentence":"..."}]}\n'
-        + '  ]\n'
-        + '}';
-
-      var analysisRes = await callClaude({
-        feature: 'generate-article-analysis',
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 8000,
-        messages: [{ role:'user', content: analysisPrompt + _khAnalysisCatalog + _khLabels }]
-      });
-      var analysisText = analysisRes.content && analysisRes.content[0] && analysisRes.content[0].text || '';
-      var analysisJson = { sentences: [] };
-      if (analysisText) {
-        try {
-          analysisJson = JSON.parse(analysisText.replace(/^```json?/,'').replace(/^```/,'').replace(/```$/,'').trim());
-        } catch(e) { console.warn('[Phase B] analysis JSON parse failed:', e); }
-      }
-
-      // Build cache row — same logic as the original combined-call code.
-      _autoGenSetItemStatus(si, '🧠 캐시 정리 중…');
-      var _body = article.body;
-      var _title = article.title || '';
-      var _row = { article_id: String(articleId) };
-      var _ok = 0;
-
-      try {
-        // PR #7AY: paragraph_translations now flows through the
-        // pending-analysis context from Phase A → Phase B. The
-        // body-Sonnet call returned them; pendingAnalysis stashed
-        // them per-article. Phase B writes them into the cache row's
-        // `texts` field alongside the Haiku-generated `sentences[]`.
-        var _paraTrans = Array.isArray(ctx.paragraph_translations) ? ctx.paragraph_translations : [];
-        var _sentRaw = Array.isArray(analysisJson.sentences) ? analysisJson.sentences : [];
-        var _sentList = _khSplitSentencesForCache(_body);
-        var _sentFinal = _sentList.map(function(text, idx) {
-          var match = null;
-          for (var k = 0; k < _sentRaw.length; k++) {
-            var t = (_sentRaw[k] && _sentRaw[k].text || '').trim();
-            if (t && (t === text || text.indexOf(t) >= 0 || t.indexOf(text) >= 0)) { match = _sentRaw[k]; break; }
-          }
-          if (!match) match = _sentRaw[idx] || {};
-          var analysis = [];
-          if (Array.isArray(match.analysis)) {
-            analysis = match.analysis.slice(0, 8).filter(function(a){ return a && (a.label || a.pattern); }).map(function(a){
-              return { type: a.type || 'grammar', label: a.label || a.pattern || '', exp: a.exp || '', example_in_sentence: a.example_in_sentence || '' };
-            });
-          }
-          return {
-            text: text,
-            translation: typeof match.translation === 'string' ? match.translation : '',
-            vocab: Array.isArray(match.vocab) ? match.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
-            analysis: analysis,
-          };
-        });
-
-        if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns) {
-          window.KH_GRAMMAR.enforceDetectedPatterns(_sentFinal, level);
-        }
-
-        if (_sentFinal.length) {
-          _row.translation = JSON.stringify({ texts: _paraTrans, sentences: _sentFinal, version: SENT_CACHE_CURRENT });
-          _ok++;
-          var _derived = _khDeriveVocabGrammarFromSentences(_sentFinal, level);
-          if (_derived.vocab.length)            { _row.vocab   = JSON.stringify(_derived.vocab);   _ok++; }
-          if (_derived.grammar.patterns.length) { _row.grammar = JSON.stringify(_derived.grammar); _ok++; }
-        }
-      } catch(e) { console.warn('Phase B cache shape', e.message); }
-
-      // Quiz (Haiku)
-      try {
-        _autoGenSetItemStatus(si, '🧠 퀴즈 생성 중…');
-        var r = await callClaude({
-          feature: 'generate-quiz',
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1200,
-          messages: [{ role:'user', content: 'Korean article (level: ' + level + ')\nTitle: ' + _title + '\n\nBODY START\n' + _body.slice(0, 3000) + '\nBODY END\n\n---\nCreate 5 fill-in-the-blank questions from this article. Return ONLY a JSON object: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English translation with _____","blank":"correct word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.' }]
-        });
-        var _qText = (r.content && r.content[0] && r.content[0].text) || '';
-        _row.quiz = JSON.stringify(_json(_qText));
-        _ok++;
-      } catch(e) { console.warn('Phase B quiz failed', e.message); }
-
-      // PR #7AY: key_expressions written into article_cache.expressions.
-      // Flows through pendingAnalysis context from Phase A's body call.
-      // Filtered to entries whose ko literally appears in the (possibly
-      // admin-edited) body, capped at 3, and reshaped into the
-      // {phrase, note, color} shape the frontend phrases admin
-      // consumes.
-      var _exprPayload = null;
-      try {
-        var rawKE = Array.isArray(ctx.key_expressions) ? ctx.key_expressions : [];
-        var keyExprs = rawKE
-          .filter(function(e){ return e && e.ko && _body.indexOf(e.ko) !== -1; })
-          .slice(0, 3)
-          .map(function(e){ return { phrase: String(e.ko).trim(), note: String(e.en || '').trim(), color: 'amber' }; });
-        if (keyExprs.length) _exprPayload = JSON.stringify(keyExprs);
-      } catch(e) { console.warn('Phase B key_expressions parse failed', e); }
-
-      // Save cache row (core fields: translation/vocab/grammar/quiz)
-      if (_ok > 0) {
-        try {
-          var _saveErr = null;
-          try {
-            var _wideRes = await getSb().from('article_cache').upsert(_row, { onConflict: 'article_id' });
-            if (_wideRes.error) _saveErr = _wideRes.error;
-          } catch(e) { _saveErr = e; }
-          if (_saveErr && /article_id|column.*does not exist|relation/i.test(String(_saveErr.message || _saveErr))) {
-            _saveErr = null;
-            for (const kk of ['translation', 'vocab', 'grammar', 'quiz']) {
-              if (!_row[kk]) continue;
-              try {
-                await supaAdminPost('article_cache?on_conflict=content_type,content_id,cache_key', {
-                  content_type: 'article', content_id: String(articleId), cache_key: kk, cache_value: _row[kk],
-                });
-              } catch (e) { _saveErr = e; console.warn('[cache] kv save ' + kk + ' failed:', e); }
-            }
-          }
-          if (_saveErr) console.warn('Phase B cache upsert failed:', _saveErr.message || _saveErr);
-        } catch(e) { console.warn('Phase B upsert failed', e); }
-      }
-      // Expressions write happens in a separate try so a missing
-      // `expressions` column can fail without taking the core save down.
-      if (_exprPayload) {
-        try {
-          await getSb().from('article_cache').upsert(
-            { article_id: String(articleId), expressions: _exprPayload },
-            { onConflict: 'article_id' }
-          );
-        } catch (e) {
-          console.warn('Phase B expressions write skipped:', e && e.message || e);
-        }
-      }
-
-      var statusLabel = saveStatus === 'published' ? 'Published' : 'Saved as draft';
-      _autoGenSetItemStatus(si,
-        '<span style="color:#28a745;font-weight:700">✅ ' + statusLabel + ' (cache '+_ok+'/4) — </span>'
-        +"<a href=\"#\" onclick=\"openModal('"+articleId+"')\" style=\"color:var(--a);font-weight:700\">Review &amp; edit →</a>");
-    } catch(err) {
-      _autoGenSetItemStatus(si, '<span style="color:#dc3545">❌ Phase B failed: '+(err.message||err)+'</span>');
-    }
-    done++;
-    if (banner) {
-      banner.querySelector('button').textContent = '🧠 분석 중… (' + done + '/' + pending.length + ')';
-    }
-  }
-
-  // Done — clear pending + remove banner + clear the localStorage snapshot.
-  window._autoGenJob.pendingAnalysis = [];
-  _persistPendingAnalysis();
-  if (banner) banner.remove();
-  toast('✨ 분석 완료! ' + done + '개 기사 캐시 + 퀴즈 생성됨.');
+  var ids = _agReadyForAnalysis().map(function(j){ return j.article_id; });
+  if (!ids.length) { toast('No bodies waiting for analysis', true); return; }
+  try {
+    await _agCall({ enqueue_analysis: ids });
+    toast('Analysis queued for ' + ids.length + ' — runs on the server');
+    _agStartPolling();
+  } catch (e) { toast('Queue failed: ' + (e.message || e), true); }
 };
+
+async function _agClearFinished() {
+  var ids = [];
+  _agBodyJobs().forEach(function(j){
+    var a = j.article_id ? _agAnalysisFor(j.article_id) : null;
+    var finished = j.status === 'failed' || (a && (a.status === 'done' || a.status === 'failed'));
+    if (finished) { ids.push(j.id); if (a) ids.push(a.id); }
+  });
+  if (!ids.length) { toast('Nothing finished to clear'); return; }
+  var r = await getSb().from('article_gen_jobs').delete().in('id', ids);
+  if (r.error) { toast('Clear failed: ' + r.error.message, true); return; }
+  _agRefresh();
+}
+// Admin opened on another page: still show the pill if a batch is running.
+setTimeout(function(){ try { if (typeof getSb === 'function' && getSb()) _agStartPolling(); } catch(_) {} }, 5000);
 
 function today_date(){
   return new Date().toISOString().split('T')[0];

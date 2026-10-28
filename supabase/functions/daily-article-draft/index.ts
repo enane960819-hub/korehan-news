@@ -483,9 +483,28 @@ async function saveCache(sb: any, articleId: string, row: Record<string, string>
   }
 }
 
+// Admin "AI Auto-Generate" jobs (article_gen_jobs) pass the save status and
+// the source video chosen in the CMS.
+type BodyOpts = { status?: string; video?: { url: string; kind: string; fallback?: string; use?: boolean } }
+
 async function buildDraft(sb: any, apiKey: string, pick: DraftPick): Promise<{ id: string; title: string; cacheParts: number }> {
+  const b = await buildBody(sb, apiKey, pick)
+  const cacheParts = await analyzeAndCache(sb, apiKey, b.id, b.title, b.body, pick.level, b.paragraphTranslations, b.keyExpressions)
+  return { id: b.id, title: b.title, cacheParts }
+}
+
+// Step 1: Sonnet body → article row (status draft unless the admin chose published).
+async function buildBody(sb: any, apiKey: string, pick: DraftPick, opts: BodyOpts = {}): Promise<{
+  id: string; title: string; body: string; paragraphTranslations: string[]; keyExpressions: any[]
+}> {
   const h = pick.headline
   const isBuzz = pick.kind === 'buzz'
+  // CMS picks carry only the RSS summary — read the full source page when we can.
+  if (!isBuzz && !h.body_text && h.url) {
+    const full = await fetchArticle(h.url)
+    if (full) { h.body_text = full.text; if (!h.image && full.image) h.image = full.image }
+  }
+  const video = opts.video && opts.video.url && opts.video.kind ? opts.video : null
   const today = new Date(Date.now() + 9 * 3600_000)
   const todayKo = `${today.getUTCFullYear()}년 ${today.getUTCMonth() + 1}월 ${today.getUTCDate()}일`
   const bodyRaw = isBuzz
@@ -516,12 +535,16 @@ async function buildDraft(sb: any, apiKey: string, pick: DraftPick): Promise<{ i
   }
 
   const id = uid()
-  const image = await persistImage(sb, isBuzz ? await pexelsImage(sb, art.image_query) : (h.image || ''), id)
+  const image = video && video.use ? '' : await persistImage(sb, isBuzz ? await pexelsImage(sb, art.image_query) : (h.image || ''), id)
   const titleEn = (typeof art.title_en === 'string' && art.title_en.trim()) || (/[ㄱ-힝]/.test(h.title) ? '' : h.title)
   const row0: Record<string, unknown> = {
     id, section: pick.section, title: art.title, body: art.body, title_en: titleEn,
-    date: new Date().toISOString().slice(0, 10), status: 'draft', featured: false,
+    date: new Date().toISOString().slice(0, 10), status: opts.status === 'published' ? 'published' : 'draft', featured: false,
     level: pick.level, source_url: h.url || '', image,
+  }
+  if (video) {
+    row0.video_url = video.url; row0.video_kind = video.kind
+    row0.video_fallback_url = video.fallback || ''; row0.use_video = !!video.use
   }
   if (isBuzz && art.netizen_talk && typeof art.netizen_talk === 'object') {
     const nt = art.netizen_talk
@@ -535,21 +558,33 @@ async function buildDraft(sb: any, apiKey: string, pick: DraftPick): Promise<{ i
     }
   }
   await saveArticle(sb, row0)
+  return {
+    id, title: art.title, body: art.body,
+    paragraphTranslations: (Array.isArray(art.paragraph_translations) ? art.paragraph_translations : []).filter((t: unknown) => typeof t === 'string'),
+    keyExpressions: Array.isArray(art.key_expressions) ? art.key_expressions : [],
+  }
+}
 
+// Step 2: Haiku sentence analysis + quiz → article_cache. Reads the body it
+// is given (for CMS jobs: re-read from the DB, so the admin's edits count).
+async function analyzeAndCache(
+  sb: any, apiKey: string, id: string, title: string, body: string, level: Level,
+  paraTrans: string[], keyExprs: any[],
+): Promise<number> {
+  const art = { title, body }
   // Analysis + quiz. A failure here leaves a valid draft; the admin can
   // re-bake from AI Cache Management or the reader's ⚡ button.
   const row: Record<string, string> = {}
   let cacheParts = 0
   try {
-    const aRaw = await callClaude(sb, apiKey, 'daily-draft-analysis', MODEL_FAST, 8000, analysisPrompt(art.title, art.body, pick.level))
+    const aRaw = await callClaude(sb, apiKey, 'daily-draft-analysis', MODEL_FAST, 8000, analysisPrompt(art.title, art.body, level))
     const aJson = extractJsonObject(aRaw)
     const rawSents: any[] = Array.isArray(aJson?.sentences) ? aJson.sentences : []
     const sentences = stitchSentences(art.body, rawSents)
     if (sentences.some((s) => s.translation || s.vocab.length || s.analysis.length)) {
-      const paraTrans = (Array.isArray(art.paragraph_translations) ? art.paragraph_translations : []).filter((t: unknown) => typeof t === 'string')
       row.translation = JSON.stringify({ texts: paraTrans, sentences, version: SENT_CACHE_VERSION })
       cacheParts++
-      const tabs = deriveTabs(sentences, pick.level)
+      const tabs = deriveTabs(sentences, level)
       if (tabs.vocab.length) { row.vocab = JSON.stringify(tabs.vocab); cacheParts++ }
       if (tabs.grammar.patterns.length) { row.grammar = JSON.stringify(tabs.grammar); cacheParts++ }
     }
@@ -557,20 +592,131 @@ async function buildDraft(sb: any, apiKey: string, pick: DraftPick): Promise<{ i
 
   try {
     const qRaw = await callClaude(sb, apiKey, 'daily-draft-quiz', MODEL_FAST, 1200,
-      'Korean article (level: ' + pick.level + ')\nTitle: ' + art.title + '\n\nBODY START\n' + String(art.body).slice(0, 3000) + '\nBODY END\n\n---\n'
+      'Korean article (level: ' + level + ')\nTitle: ' + art.title + '\n\nBODY START\n' + String(art.body).slice(0, 3000) + '\nBODY END\n\n---\n'
       + 'Create 5 fill-in-the-blank questions from this article. Return ONLY a JSON object: {"questions":[{"sentence":"Korean sentence with _____","sentence_en":"English translation with _____","blank":"correct word","blank_en":"English meaning","choices":["correct","wrong1","wrong2","wrong3"]}]}. No other text.',
       60_000)
     const q = extractJsonObject(qRaw)
     if (Array.isArray(q?.questions) && q.questions.length) { row.quiz = JSON.stringify(q); cacheParts++ }
   } catch (e) { console.warn('[daily-article-draft] quiz failed:', (e as Error).message) }
 
-  const exprs = (Array.isArray(art.key_expressions) ? art.key_expressions : [])
+  const exprs = keyExprs
     .filter((e: any) => e && e.ko && String(art.body).includes(e.ko)).slice(0, 3)
     .map((e: any) => ({ phrase: String(e.ko).trim(), note: String(e.en || '').trim(), color: 'amber' }))
   if (exprs.length) row.expressions = JSON.stringify(exprs)
 
   if (Object.keys(row).length) await saveCache(sb, id, row)
-  return { id, title: art.title, cacheParts }
+  return cacheParts
+}
+
+// ── admin generation jobs (article_gen_jobs) ──────────────────
+// The CMS "AI Auto-Generate" page used to run body + analysis in the
+// admin's browser, so closing the tab lost the batch. Now it only enqueues:
+//   {enqueue:[{headline, section, level, save_status, video}]} → body jobs
+//   {enqueue_analysis:[article_id…]} → analysis jobs (after the admin's review)
+//   {jobs:true} → worker: runs ONE pending job (pg_cron calls it every minute
+//                 while jobs are waiting; 20261028_article_gen_jobs.sql).
+const JOB_MAX_ATTEMPTS = 2
+const JOB_STALE_MS = 6 * 60 * 1000
+
+async function genJobs(sb: any, opts: any): Promise<Record<string, unknown>> {
+  if (Array.isArray(opts.enqueue)) {
+    const rows = opts.enqueue.slice(0, 40).map((it: any) => {
+      const h = it?.headline || {}
+      return {
+        kind: 'body',
+        payload: {
+          headline: {
+            title: String(h.title || '').slice(0, 300), url: String(h.url || h.link || '').slice(0, 1000),
+            source: String(h.source || '').slice(0, 100), desc: String(h.desc || h.summary || '').slice(0, 4000),
+            image: String(h.image || '').slice(0, 1000),
+          },
+          section: String(it.section || '사회').slice(0, 40),
+          level: (LEVELS as readonly string[]).includes(it.level) ? it.level : 'Intermediate',
+          save_status: it.save_status === 'published' ? 'published' : 'draft',
+          video: h.video_url && h.video_kind ? {
+            url: String(h.video_url).slice(0, 1000), kind: String(h.video_kind).slice(0, 30),
+            fallback: String(h.video_fallback_url || '').slice(0, 1000), use: !!it.use_video,
+          } : null,
+        },
+      }
+    }).filter((r: any) => r.payload.headline.title)
+    if (!rows.length) return { ok: false, error: 'no_headlines' }
+    const { data, error } = await sb.from('article_gen_jobs').insert(rows).select('id')
+    if (error) throw new Error('enqueue: ' + error.message)
+    return { ok: true, queued: (data || []).map((r: any) => r.id) }
+  }
+
+  if (Array.isArray(opts.enqueue_analysis)) {
+    const ids = opts.enqueue_analysis.map((x: unknown) => String(x)).slice(0, 40)
+    const { data: existing } = await sb.from('article_gen_jobs').select('article_id, kind, status, result, payload').in('article_id', ids)
+    const rows: any[] = []
+    for (const id of ids) {
+      const mine = (existing || []).filter((j: any) => j.article_id === id)
+      if (mine.some((j: any) => j.kind === 'analysis' && j.status !== 'failed')) continue
+      const bodyJob = mine.find((j: any) => j.kind === 'body' && j.status === 'done')
+      rows.push({
+        kind: 'analysis', article_id: id,
+        payload: {
+          paragraph_translations: bodyJob?.result?.paragraph_translations || [],
+          key_expressions: bodyJob?.result?.key_expressions || [],
+          headline: { title: bodyJob?.payload?.headline?.title || '' },
+        },
+      })
+    }
+    if (rows.length) {
+      const { error } = await sb.from('article_gen_jobs').insert(rows)
+      if (error) throw new Error('enqueue_analysis: ' + error.message)
+    }
+    return { ok: true, queued: rows.length }
+  }
+
+  // Worker. Release crashed runs first.
+  const staleBefore = new Date(Date.now() - JOB_STALE_MS).toISOString()
+  const { data: stale } = await sb.from('article_gen_jobs').select('id, attempts').eq('status', 'running').lt('started_at', staleBefore)
+  for (const j of stale || []) {
+    await sb.from('article_gen_jobs').update({
+      status: j.attempts >= JOB_MAX_ATTEMPTS ? 'failed' : 'pending', error: 'timed out', updated_at: new Date().toISOString(),
+    }).eq('id', j.id).eq('status', 'running')
+  }
+  const { data: next } = await sb.from('article_gen_jobs').select('id, attempts').eq('status', 'pending')
+    .order('created_at', { ascending: true }).limit(1).maybeSingle()
+  if (!next) return { ok: true, idle: true }
+  const { data: claimed } = await sb.from('article_gen_jobs')
+    .update({ status: 'running', attempts: next.attempts + 1, started_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq('id', next.id).eq('status', 'pending').select('*').maybeSingle()
+  if (!claimed) return { ok: true, raced: true }
+
+  const { data: setting } = await sb.from('app_settings').select('value').eq('key', 'anthropic_key').single()
+  const apiKey = setting?.value
+  const p = claimed.payload || {}
+  try {
+    if (!apiKey) throw new Error('No Anthropic API key in app_settings')
+    let result: Record<string, unknown>
+    let articleId = claimed.article_id
+    if (claimed.kind === 'body') {
+      const pick: DraftPick = { headline: { ...p.headline }, level: p.level, section: p.section, status: 'pending', attempts: 0, kind: 'news' }
+      const b = await buildBody(sb, apiKey, pick, { status: p.save_status, video: p.video || undefined })
+      articleId = b.id
+      result = { title: b.title, paragraph_translations: b.paragraphTranslations, key_expressions: b.keyExpressions }
+    } else {
+      const { data: art } = await sb.from('articles').select('id, title, body, level').eq('id', claimed.article_id).maybeSingle()
+      if (!art?.body) throw new Error('article not found')
+      const level: Level = (LEVELS as readonly string[]).includes(art.level) ? art.level : 'Intermediate'
+      const parts = await analyzeAndCache(sb, apiKey, art.id, art.title || '', art.body, level,
+        Array.isArray(p.paragraph_translations) ? p.paragraph_translations : [], Array.isArray(p.key_expressions) ? p.key_expressions : [])
+      result = { title: art.title, cache_parts: parts }
+    }
+    await sb.from('article_gen_jobs').update({
+      status: 'done', article_id: articleId, result, error: null, updated_at: new Date().toISOString(),
+    }).eq('id', claimed.id)
+    return { ok: true, done: claimed.id, kind: claimed.kind, article_id: articleId }
+  } catch (e) {
+    const msg = String((e as Error)?.message || e).slice(0, 300)
+    await sb.from('article_gen_jobs').update({
+      status: claimed.attempts >= JOB_MAX_ATTEMPTS ? 'failed' : 'pending', error: msg, updated_at: new Date().toISOString(),
+    }).eq('id', claimed.id)
+    return { ok: false, job: claimed.id, error: msg }
+  }
 }
 
 // ── handler ───────────────────────────────────────────────────
@@ -594,6 +740,9 @@ Deno.serve(async (req) => {
       if (!user?.email || user.email !== ADMIN_EMAIL) return json({ error: 'Unauthorized' }, 401)
     }
     const opts = await req.json().catch(() => ({}))
+
+    // Admin "AI Auto-Generate" jobs run outside the daily lock (see genJobs).
+    if (opts.enqueue || opts.enqueue_analysis || opts.jobs) return json(await genJobs(sb, opts))
 
     // Lock so overlapping ticks / a manual click don't double-build.
     const { data: lockRow } = await sb.from('app_settings').select('value').eq('key', LOCK_KEY).maybeSingle()
