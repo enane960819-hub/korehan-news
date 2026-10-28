@@ -239,7 +239,7 @@ export const GUIDES = [
     sources: [VK]
   },
   {
-    slug: 'transit-card', category: 'daily', featured: false, sort: 13,
+    slug: 'transit-card', category: 'transport', featured: false, sort: 13,
     title: 'Getting around: transit cards',
     summary: 'Buy a T-money card at a convenience store, top it up with cash, and tap on and off for discounted transfers.',
     steps: [
@@ -247,7 +247,7 @@ export const GUIDES = [
       'Top it up ({{충전|recharge}}) with cash at the store counter or a station machine.',
       'Tap when you get on and when you get off the bus — tapping off gives you the {{환승|transfer}} discount on your next ride.',
       'Many Korean debit cards can work as transit cards too.',
-      'Seoul also sells a monthly unlimited pass; check prices at a station.'
+      'Riding every day? See "Saving on transport" for K-Pass refunds and short tourist passes.'
     ],
     phrases: [
       { ko: '교통카드 충전해 주세요.', en: 'Please top up my transit card.' },

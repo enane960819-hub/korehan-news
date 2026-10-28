@@ -15,7 +15,8 @@
     { k: 'health', l: 'Health', d: 'Insurance, clinics', i: 'heart-pulse' },
     { k: 'money', l: 'Money & phone', d: 'Bank, SIM, plans', i: 'landmark' },
     { k: 'emergency', l: 'Emergencies', d: '112, 119, 1345', i: 'siren' },
-    { k: 'daily', l: 'Daily life', d: 'Transport, trash', i: 'bus' },
+    { k: 'transport', l: 'Getting around', d: 'Subway, bus, taxi, KTX', i: 'train-front' },
+    { k: 'daily', l: 'Daily life', d: 'Trash, bills, apps', i: 'recycle' },
     { k: 'food', l: 'Food', d: 'Markets, BBQ, local eats', i: 'utensils' },
     { k: 'travel', l: 'Travel', d: 'Day trips, Busan', i: 'map' }
   ];
@@ -251,7 +252,7 @@
         + (x.checklist && x.checklist.length ? checklistHtml(g.slug, x.checklist) : '')
         + '<h2 class="lk-h2">Step by step</h2>'
         + '<ol class="lk-steps">' + (g.steps || []).map(function (t) { return '<li>' + stepHtml(t, terms) + '</li>'; }).join('') + '</ol>'
-        + (x.items && x.items.length ? '<h2 class="lk-h2">Where does it go?</h2><div class="lk-items">' + x.items.map(function (it) { return '<div><b>' + esc(it[0]) + '</b><span>' + esc(it[1]) + '</span></div>'; }).join('') + '</div>' : '')
+        + (x.items && x.items.length ? '<h2 class="lk-h2">' + esc(x.itemsTitle || 'Where does it go?') + '</h2><div class="lk-items">' + x.items.map(function (it) { return '<div><b>' + esc(it[0]) + '</b><span>' + esc(it[1]) + '</span></div>'; }).join('') + '</div>' : '')
         + (x.tips && x.tips.length ? '<div class="lk-real"><h2>' + ico('message-circle-warning') + 'What people say</h2><ul>' + x.tips.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' + (x.tipsNote ? '<small>' + esc(x.tipsNote) + '</small>' : '') + '</div>' : '')
         + (x.warn ? '<div class="lk-warn">' + ico('triangle-alert') + '<span>' + esc(x.warn) + '</span></div>' : '')
         + (x.offices ? '<h2 class="lk-h2">Find your immigration office</h2><div id="lk-offices"><div class="lk-empty" style="padding:10px 0">Loading offices…</div></div>' : '')
