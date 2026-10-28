@@ -12,26 +12,32 @@ document.addEventListener('click', function _initAudio() {
   _getAudioCtx();
   document.removeEventListener('click', _initAudio);
 }, { once: true });
+// Soft, short cues (owner: the old stepped sine beeps sounded cheap).
+// Each note: fast attack, exponential decay, lowpassed so it never buzzes.
+function _sfxNote(ctx, freq, t0, dur, type, vol, attack) {
+  var o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+  var t = ctx.currentTime + t0;
+  lp.type = 'lowpass'; lp.frequency.value = freq * 4;
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + (attack || 0.008));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(lp); lp.connect(g); g.connect(ctx.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
 function playCorrectSound() {
   var ctx = _getAudioCtx(); if (!ctx) return;
-  var osc = ctx.createOscillator(), gain = ctx.createGain();
-  osc.connect(gain); gain.connect(ctx.destination);
-  osc.type = 'sine'; gain.gain.value = 0.15;
-  osc.frequency.setValueAtTime(523, ctx.currentTime);      // C5
-  osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1); // E5
-  osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2); // G5
-  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+  // Two-note marimba-like chime (A5 → E6) with a faint shimmer.
+  _sfxNote(ctx, 880, 0, 0.35, 'triangle', 0.08);
+  _sfxNote(ctx, 1318.5, 0.07, 0.45, 'triangle', 0.06);
+  _sfxNote(ctx, 2637, 0.07, 0.25, 'sine', 0.012);
 }
 function playWrongSound() {
   var ctx = _getAudioCtx(); if (!ctx) return;
-  var osc = ctx.createOscillator(), gain = ctx.createGain();
-  osc.connect(gain); gain.connect(ctx.destination);
-  osc.type = 'sine'; gain.gain.value = 0.12;
-  osc.frequency.setValueAtTime(330, ctx.currentTime);       // E4
-  osc.frequency.setValueAtTime(277, ctx.currentTime + 0.15); // C#4
-  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+  // Soft low tap instead of a buzzer.
+  _sfxNote(ctx, 196, 0, 0.18, 'triangle', 0.07, 0.004);
+  _sfxNote(ctx, 185, 0.05, 0.16, 'sine', 0.035, 0.004);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -19710,14 +19716,11 @@ function _nqNext() {
   _nqRender();
 }
 
-var _asFilter = 'latest'; // 'latest' | 'saved'
+var _asFilter = 'latest'; // 'latest' | 'saved' | 'studied'
 function _asSetFilter(mode) {
   _asFilter = mode;
   document.querySelectorAll('.as-filter-pill').forEach(function(b) {
-    var on = b.getAttribute('data-as-filter') === mode;
-    b.classList.toggle('active', on);
-    b.style.background = on ? '#0b1626' : '#fff';
-    b.style.color      = on ? '#fff' : '#475569';
+    b.classList.toggle('active', b.getAttribute('data-as-filter') === mode);
   });
   _asLoadArticles();
 }
@@ -19880,7 +19883,7 @@ async function _asFetchArticles(opts) {
 var _asStudiedSet = null;
 async function _asLoadStudiedSet() {
   // Mark articles the learner has already finished studying so unstudied
-  // ones stand out. We treat any article_study row whose progress_data
+  // ones stand out. We treat any article_study row whose row
   // has completed:true as "studied". Rows with progress but no completion
   // flag are treated as "in-progress" so the user still sees them at
   // full opacity.
@@ -19888,18 +19891,16 @@ async function _asLoadStudiedSet() {
   if (!supaUser) return;
   try {
     var sb = getSupa(); if (!sb) return;
-    var res = await sb.from('user_read_history')
-      .select('content_id,progress_data')
+    var res = await sb.from('user_study_progress')
+      .select('content_id,completed')
       .eq('user_id', supaUser.id)
       .eq('content_type', 'article_study')
-      .limit(500);
+      .limit(1000);
     if (res.error) return;
     (res.data || []).forEach(function(r) {
-      var pd = r.progress_data;
-      if (typeof pd === 'string') { try { pd = JSON.parse(pd); } catch(_) { pd = null; } }
       var id = String(r.content_id || '');
       if (!id) return;
-      if (pd && pd.completed) _asStudiedSet.done[id] = true;
+      if (r.completed) _asStudiedSet.done[id] = true;
       else _asStudiedSet.started[id] = true;
     });
   } catch(_){}
@@ -19940,20 +19941,24 @@ function _asCardHtml(a) {
 // Append the next _asPageSize cards onto the grid. Called once at
 // initial render and again every time the IntersectionObserver
 // sentinel scrolls into view.
+var _asVisible = [], _asFirstDoneIdx = -1;
 function _asAppendBatch() {
   var g = document.getElementById('as-article-grid'); if (!g) return;
   var sent = document.getElementById('as-grid-sentinel');
   if (sent && sent.parentNode === g) g.removeChild(sent);
 
-  var end = Math.min(_asArticlesShown + _asPageSize, _asArticles.length);
+  var end = Math.min(_asArticlesShown + _asPageSize, _asVisible.length);
   var html = '';
-  for (var i = _asArticlesShown; i < end; i++) html += _asCardHtml(_asArticles[i]);
+  for (var i = _asArticlesShown; i < end; i++) {
+    if (i === _asFirstDoneIdx) html += '<div class="as-grid-sep">Studied</div>';
+    html += _asCardHtml(_asVisible[i]);
+  }
   g.insertAdjacentHTML('beforeend', html);
   _asArticlesShown = end;
 
   // Re-attach the sentinel so the observer can fire again. When we run
   // out of articles, drop it so the observer doesn't keep callback-ing.
-  if (_asArticlesShown < _asArticles.length) {
+  if (_asArticlesShown < _asVisible.length) {
     if (!sent) {
       sent = document.createElement('div');
       sent.id = 'as-grid-sentinel';
@@ -19970,8 +19975,16 @@ function _asRenderGrid() {
   // pile up listeners. The .observe() call below recreates one.
   if (_asGridObserver) { try { _asGridObserver.disconnect(); } catch(_) {} _asGridObserver = null; }
   _asArticlesShown = 0;
-  if (!_asArticles.length) {
-    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">No articles available.</div>';
+  // Unstudied first; finished ones under a "Studied" header (or alone on
+  // the Studied tab).
+  var done = (_asStudiedSet && _asStudiedSet.done) || {};
+  var fresh = _asArticles.filter(function(a){ return !done[String(a.id)]; });
+  var finished = _asArticles.filter(function(a){ return !!done[String(a.id)]; });
+  _asVisible = _asFilter === 'studied' ? finished : fresh.concat(finished);
+  _asFirstDoneIdx = _asFilter === 'studied' ? -1 : (finished.length ? fresh.length : -1);
+  if (!_asVisible.length) {
+    g.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px">'
+      + (_asFilter === 'studied' ? 'Articles you finish will show up here.' : 'No articles available.') + '</div>';
     return;
   }
   // Reset the grid container then append the first batch. Splitting
@@ -20302,7 +20315,7 @@ async function _asSaveContentToDB(articleId, content) {
   }
 }
 
-var _asStepLabels = ['Step 1 / 4 — Vocabulary','Step 2 / 4 — Phrases','Step 3 / 4 — Reading','Step 4 / 4 — Quiz'];
+var _asStepLabels = ['Step 1 of 4 · Words','Step 2 of 4 · Phrases','Step 3 of 4 · Read','Step 4 of 4 · Quiz'];
 var _asStepTabLabels = ['Vocab','Phrases','Reading','Quiz'];
 function _asRenderPips() {
   // Update step tabs
@@ -20378,6 +20391,51 @@ async function _asLoadExtraVocab() {
   if (_asStudyContent) _asStudyContent.extra_vocab = list;
 }
 
+// Article body for Step 1: paragraphs → sentences, each followed by a
+// breakdown button (the article reader's analyzeSentence panel), target
+// words marked once each.
+function _asSentenceBody(raw, hlWords) {
+  var seen = {}, idx = 0;
+  var esc = function(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  return String(raw || '').split(/\n\s*\n+/).map(function(para) {
+    para = para.replace(/\n/g, ' ').trim();
+    if (!para) return '';
+    var sents = para.match(/[^.!?]+(?:[.!?]+["'”’)]*|$)\s*/g) || [para];
+    return '<p class="as-p">' + sents.map(function(sent) {
+      var html = esc(sent.trim());
+      if (!html) return '';
+      (hlWords || []).forEach(function(w) {
+        if (!w || seen[w]) return;
+        var e = esc(w), at = html.indexOf(e);
+        if (at < 0) return;
+        seen[w] = 1;
+        html = html.slice(0, at) + '<mark>' + e + '</mark>' + html.slice(at + e.length);
+      });
+      var i = idx++;
+      return '<span class="art-sent" data-si="' + i + '">' + html + '</span>'
+        + '<button type="button" class="as-an" aria-label="Break down this sentence" onclick="_asAnalyze(' + i + ',this)">' + khIcon('scan-text') + '</button> ';
+    }).join('') + '</p>';
+  }).join('');
+}
+function _asAnalyze(i, btn) {
+  var span = btn && btn.previousElementSibling;
+  if (!span || typeof analyzeSentence !== 'function') return;
+  // analyzeSentence reads the article id / level from _currentArticle.
+  window._currentArticle = { id: _asCurrentArt.id, level: _asCurrentArt.level, body: _asCurrentArt.body, title: _asCurrentArt.title };
+  analyzeSentence(i, span);
+}
+// Every word with a known meaning gets a tooltip: the article's own word
+// lists join the site dictionary the hover engine already has.
+function _asRegisterHoverWords() {
+  if (typeof window.korehanHoverRegisterExtras !== 'function' || !_asStudyContent) return;
+  var list = [];
+  ((_asStudyContent.extra_vocab || []).concat(_asStudyContent.vocab || [])).forEach(function(v) {
+    if (v && v.ko && v.en) list.push({ ko: String(v.ko).trim(), en: (typeof khCleanMeaning === 'function' ? khCleanMeaning(v.en) : v.en) });
+  });
+  try { if (list.length) window.korehanHoverRegisterExtras(list); } catch (_) {}
+  setTimeout(function(){ try { if (typeof window.korehanHoverRefresh === 'function') window.korehanHoverRefresh(); } catch (_) {} }, 60);
+}
+
 function _asStep1(art,act) {
   if (_asStudyContent && _asStudyContent.extra_vocab === undefined) {
     _asStudyContent.extra_vocab = null;
@@ -20389,12 +20447,11 @@ function _asStep1(art,act) {
   }
   var vocab=_asVocabList();
   if (!vocab.length) vocab = (_asStudyContent&&_asStudyContent.vocab)||[];
-  var body=_asCurrentArt&&_asCurrentArt.body?_asFormatBody(_asCurrentArt.body):'';
   var hlWords = (_asStudyContent&&_asStudyContent.custom_highlights&&_asStudyContent.custom_highlights.vocab)
     ? _asStudyContent.custom_highlights.vocab
     : vocab.map(function(v){return v._hl || v.ko;});
-  // First occurrence only — marking every repeat crowded the passage.
-  hlWords.forEach(function(w){ if(w) body=body.replace(new RegExp(_asEsc(w)),'<mark>'+w+'</mark>'); });
+  var body = _asCurrentArt && _asCurrentArt.body ? _asSentenceBody(_asCurrentArt.body, hlWords) : '';
+  _asRegisterHoverWords();
   // Article card (reference style)
   var imgHtml = _asCurrentArt.image
     ? '<img class="su-article-img" src="' + _asCurrentArt.image + '" alt="" onerror="this.className=\'su-article-img-ph\';this.innerHTML=window.BM_ICON_NEWSPAPER||\'\';this.removeAttribute(\'src\')">'
@@ -20405,7 +20462,8 @@ function _asStep1(art,act) {
     + '<div class="su-article-body">'
     + '<div class="su-article-title">' + (_asCurrentArt.title || '') + '</div>'
     + '<div class="su-article-meta"><span class="su-article-cat">' + (_asCurrentArt.section || 'News') + '</span></div>'
-    + '<div class="su-article-text">' + body + '</div>'
+    + '<div class="su-article-text as-sents">' + body + '</div>'
+    + '<div class="as-read-hint">Tap any underlined word for its meaning · tap ' + khIcon('scan-text') + ' after a sentence to break it down</div>'
     + '</div></div>'
     + '<div class="su-article-footer">'
     + '<button onclick="speakHangul(_asCurrentArt.body.slice(0,200),\'female\')" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px">' + BM_ICON_VOLUME + '</span><span>Listen</span></button>'
@@ -20436,7 +20494,7 @@ function _asStep1(art,act) {
   for (var ri = 0; ri < vocab.length; ri += _AS_ROUND) rounds.push(vocab.slice(ri, ri + _AS_ROUND));
   act.innerHTML='<div class="su-substep"><div class="su-substep-fill" id="as-substep-fill" style="width:0%"></div></div>'
     + '<div id="as-round" style="text-align:center;font-size:11px;color:#94a3b8;margin:6px 0 2px"></div>'
-    + '<div class="su-match-grid" id="as-mg"></div>'
+    + '<div class="su-match-grid" id="as-mg" data-hover-skip="1"></div>'
     + '<div id="as-mm" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8;text-align:center"></div>';
   _asStartMatchRound(rounds, 0, 0);
   _asSetNav('none','none','none');
@@ -20655,6 +20713,10 @@ function _asRenderBlankUI() {
   var bw=_asWOState.blankWords;
   var fb=_asWOState.filledBlanks;
   var sel=_asWOState.selectedBlank;
+  if (sel === null || sel === undefined || (fb[sel] !== undefined && fb[sel] !== null)) {
+    sel = _asNextEmptyBlank();
+    _asWOState.selectedBlank = sel;
+  }
 
   // Owner-reported "step 3 렉 존나 심해". Previous version did
   // art.innerHTML = ... on EVERY blank click, forcing the browser
@@ -20671,7 +20733,7 @@ function _asRenderBlankUI() {
         '<span class="su-blank" data-bi="' + bi + '" onclick="asBlankClickSpan(' + bi + ')" style="cursor:pointer">____</span>'
       );
     });
-    art.innerHTML = '<div class="su-instruction">Click a blank first, then choose a word below</div>'
+    art.innerHTML = '<div class="as-hint">' + khIcon('mouse-pointer-click') + '<span>Tap a word below — it goes into the highlighted blank. Tap a filled blank to undo.</span></div>'
       + '<div class="su-blank-article">' + formatted + '</div>';
     art.dataset.asBlankBuilt = '1';
 
@@ -20679,7 +20741,7 @@ function _asRenderBlankUI() {
     var poolHTML = pool.map(function(item, idx) {
       return '<div class="su-pool-word" data-pi="' + idx + '" data-text="' + item.text.replace(/"/g,'&quot;') + '" onclick="asBlankFillWord(\'' + item.text.replace(/'/g, "\\'") + '\')">' + item.text + '</div>';
     }).join('');
-    act.innerHTML = '<div class="su-pool">' + poolHTML + '</div>'
+    act.innerHTML = '<div class="su-pool" data-hover-skip="1">' + poolHTML + '</div>'
       + '<div id="as-wo-msg" style="padding:0 20px;margin-top:8px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px"></div>';
   }
 
@@ -20701,8 +20763,8 @@ function _asRenderBlankUI() {
       span.setAttribute('onclick', 'asBlankClickSpan(' + bi + ')');
       span.style.cursor = 'pointer';
       if (sel === bi) {
-        span.style.borderColor = '#2563eb';
-        span.style.background = '#eff6ff';
+        span.style.borderColor = '';
+        span.style.background = '';
       } else {
         span.style.borderColor = '';
         span.style.background = '';
@@ -20719,16 +20781,11 @@ function _asRenderBlankUI() {
     p.classList.toggle('used', !!usedSet[p.getAttribute('data-text')]);
   }
 
-  var msg = document.getElementById('as-wo-msg');
-  if (msg) {
-    if (sel !== null && sel !== undefined) {
-      msg.innerHTML = '<span style="display:inline-flex;width:14px;height:14px;color:#22c55e">' + BM_ICON_CHECK + '</span><span>Blank #' + (sel + 1) + ' selected — choose a word below</span>';
-    } else {
-      msg.innerHTML = '<span>👆 Click a blank in the passage above first</span>';
-    }
-  }
 
-  var allFilled = bw.every(function (w, bi) { return fb[bi] !== undefined && fb[bi] !== null; });
+  var nFilled = bw.filter(function (w, bi) { return fb[bi] !== undefined && fb[bi] !== null; }).length;
+  var cntEl = document.getElementById('as-nav-counter');
+  if (cntEl) cntEl.textContent = nFilled + ' / ' + bw.length;
+  var allFilled = nFilled === bw.length;
   if (allFilled) {
     var allCorrect = bw.every(function (w, i) { return fb[i] === w; });
     if (allCorrect) _asStepDone[2] = true;
@@ -20761,12 +20818,8 @@ function asBlankFillWord(text) {
   for (var _k in fb) { if (fb[_k] === text) { alreadyUsed = true; break; } }
   if (alreadyUsed) return;
   var sel=_asWOState.selectedBlank;
-  if(sel===null||sel===undefined){
-    var msg=document.getElementById('as-wo-msg');
-    if(msg) msg.innerHTML='<span style="color:#f59e0b;font-weight:700">Click a blank above first!</span>';
-    setTimeout(function(){if(msg)msg.innerHTML='';},1500);
-    return;
-  }
+  if(sel===null||sel===undefined||(fb[sel]!==undefined&&fb[sel]!==null)) sel=_asNextEmptyBlank();
+  if(sel===null) return;
   // Check if distractor
   if(_asWOState.blankWords.indexOf(text)<0){
     var msg=document.getElementById('as-wo-msg');
@@ -20790,9 +20843,16 @@ function asBlankFillWord(text) {
     _asSetNav('none','');
   }
 }
+function _asNextEmptyBlank() {
+  if (!_asWOState) return null;
+  var fb = _asWOState.filledBlanks || {};
+  for (var i = 0; i < _asWOState.blankWords.length; i++) if (fb[i] === undefined || fb[i] === null) return i;
+  return null;
+}
 function asBlankClear(bi) {
   if(!_asWOState) return;
   _asWOState.filledBlanks[bi]=null;
+  _asWOState.selectedBlank=bi;
   var msg=document.getElementById('as-wo-msg'); if(msg) msg.innerHTML='';
   _asRenderBlankUI();
 }
@@ -20816,7 +20876,7 @@ function _asRenderQuiz() {
   var qi=_asQState.current; var q=_asQState.qs[qi]; if(!q) return;
   var cnt=document.getElementById('as-nav-counter');
   if(cnt) cnt.textContent=(qi+1)+' / '+_asQState.qs.length;
-  var html='<div class="su-instruction" style="font-size:16px;padding:16px 20px 8px">'+(q.q||'')+'</div><div class="su-mcq">';
+  var html='<div class="su-instruction" style="font-size:16px;padding:16px 20px 8px">'+(q.q||'')+'</div><div class="su-mcq" data-hover-skip="1">';
   (q.options||[]).forEach(function(opt,oi){
     var state='';
     if(_asQState.ans[qi]!==null){
@@ -21052,33 +21112,77 @@ async function asToggleTranslation() {
 }
 function asMarkDone() {
   try {
-  _asStepDone[_asStep-1]=true; _asSaveProgress(); _asTmpCompletion();
+  _asStepDone[_asStep-1]=true; _asTmpCompletion();
+  _asSaveProgressToDB({ step: 4, stepDone: [true, true, true, true], completed: true }, true);
   // Step 5 (writing textarea) was removed — no per-article writing to
   // persist here anymore; free writing now lives in Express Practice.
   if (typeof _khMarkArticleStudied === 'function' && _asCurrentArt) _khMarkArticleStudied(_asCurrentArt.id);
   if (_asCurrentArt && _asStudiedSet) _asStudiedSet.done[String(_asCurrentArt.id)] = true;
   } catch(e) { console.warn('asMarkDone save error:', e); }
+  _asAutoSubmit();
+  var words = (typeof _asVocabList === 'function' ? _asVocabList() : []);
+  if (!words.length) words = (_asStudyContent && _asStudyContent.vocab) || [];
+  _asDoneWords = words;
+  var qs = _asQState && _asQState.qs ? _asQState : null;
+  var qRight = qs ? qs.qs.filter(function(q, i){ return qs.ans[i] === q.correct; }).length : 0;
+  var bw = _asWOState && _asWOState.blankWords ? _asWOState.blankWords : [];
+  var bRight = bw.filter(function(w, i){ return _asWOState.filledBlanks && _asWOState.filledBlanks[i] === w; }).length;
   document.getElementById('as-article-content').innerHTML='';
   document.getElementById('as-activity-area').innerHTML=
-    '<div class="su-complete">'
-    +'<div class="su-complete-icon" style="display:inline-flex;width:48px;height:48px;color:#a78bfa">'+BM_ICON_PARTY+'</div>'
-    +'<div class="su-complete-title">Article Study Complete!</div>'
-    +'<div class="su-complete-sub">You\'ve completed all learning steps for this article.</div>'
-    +'<div class="su-complete-stars"><div class="su-complete-stars-label" style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;width:14px;height:14px;color:#fbbf24">'+BM_ICON_SPARKLE+'</span><span>Words you just reviewed</span></div><canvas id="as-complete-canvas" class="su-complete-canvas"></canvas></div>'
-    +'<button class="su-nav-next" onclick="asSubmitWork()" style="margin:0 auto 10px;display:flex">Save Progress</button>'
-    +'<button class="su-nav-next" onclick="asStudyNextArticle()" style="margin:0 auto 10px;display:flex;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3)">Study Next Article →</button>'
-    +'<button class="su-nav-prev" onclick="returnToActivities(closeArticleStudy)" style="margin:0 auto;display:flex">Next Activity</button>'
-    +'</div>';
+    '<div class="as-done">'
+    + '<div class="as-done-saved">' + khIcon('check') + '<span>Progress saved</span></div>'
+    + '<div class="as-done-t">Article done</div>'
+    + '<div class="as-done-stats"><div><b>' + words.length + '</b><small>words</small></div>'
+    + (bw.length ? '<div><b>' + bRight + '/' + bw.length + '</b><small>blanks</small></div>' : '')
+    + (qs ? '<div><b>' + qRight + '/' + qs.qs.length + '</b><small>quiz</small></div>' : '') + '</div>'
+    + (words.length ? '<div class="as-done-words" data-hover-skip="1"><div class="as-done-k">New words</div>'
+      + words.map(function(w, i) {
+          return '<div class="as-done-w"><b lang="ko">' + w.ko + '</b><span>' + (w.en || '') + '</span>'
+            + '<button type="button" id="as-dw-' + i + '" onclick="_asSaveDoneWord(' + i + ')">+ Save</button></div>';
+        }).join('')
+      + '<button type="button" class="as-done-all" onclick="_asSaveDoneWord(-1)">Save all ' + words.length + '</button></div>' : '')
+    + '<button type="button" class="as-done-next" onclick="asStudyNextArticle()">Next article</button>'
+    + '<button type="button" class="as-done-back" onclick="returnToActivities(closeArticleStudy)">Back to Study Room</button>'
+    + '</div>';
   _asSetNav('none','none','none');
-  _asRefreshSubmitBanner();
-  setTimeout(_asDrawCompleteConstellation, 50);
+  var cnt = document.getElementById('as-nav-counter'); if (cnt) cnt.textContent = '';
+  _asStepDone = [true, true, true, true];
+  document.querySelectorAll('#as-step-tabs .su-step').forEach(function(t){ t.className = 'su-step done'; });
+  var lbl = document.getElementById('as-step-label'); if (lbl) lbl.textContent = 'Finished';
+  var prev = document.getElementById('as-prev-btn'); if (prev) prev.style.display = 'none';
+}
+var _asDoneWords = [];
+function _asSaveDoneWord(i) {
+  var list = i < 0 ? _asDoneWords.map(function(_, k){ return k; }) : [i];
+  list.forEach(function(k) {
+    var w = _asDoneWords[k]; if (!w) return;
+    var b = document.getElementById('as-dw-' + k);
+    if (b && b.disabled) return;
+    try { saveToWordBook(w.ko, w.en || '', w.rom || '', 'article'); } catch (_) {}
+    if (b) { b.textContent = 'Saved'; b.disabled = true; }
+  });
+}
+// Record the finish quietly (activity log / streak) — no Submit step.
+function _asAutoSubmit() {
+  if (!supaUser || !_asCurrentArt) return;
+  var sb = getSupa(); if (!sb) return;
+  var saved = _asGetTmp() || {};
+  sb.from('user_submissions').upsert({
+    user_id: supaUser.id, content_type: 'article_study',
+    content_id: String(_asCurrentArt.id), content_title: _asCurrentArt.title || '',
+    study_date: kstDateKey(), writing_text: '', word_count: 0,
+    context_data: JSON.stringify({ step4_answers: saved.step4_answers || [] }),
+    level: _currentLevel || '', status: 'submitted'
+  }, { onConflict: 'user_id,content_type,study_date,content_id' }).then(function(r) {
+    if (!r.error) _asUpdateTmp({ submitted: true });
+  }, function(){});
 }
 
 function asStudyNextArticle() {
-  var curIdx = _asArticles.findIndex(function(a){ return _asCurrentArt && String(a.id) === String(_asCurrentArt.id); });
-  var nextIdx = (curIdx >= 0 && curIdx + 1 < _asArticles.length) ? curIdx + 1 : -1;
-  if (nextIdx >= 0) {
-    asSelectArticle(String(_asArticles[nextIdx].id));
+  var done = (_asStudiedSet && _asStudiedSet.done) || {};
+  var next = _asArticles.find(function(a){ return !done[String(a.id)] && !(_asCurrentArt && String(a.id) === String(_asCurrentArt.id)); });
+  if (next) {
+    asSelectArticle(String(next.id));
   } else {
     // Reached the end — go back to list so user can pick another article
     asBackToList();
@@ -21238,35 +21342,37 @@ function _asRestoreProgress() {
 }
 // ── Cross-device sync: save/load progress from DB ──
 var _asDbSaveTimer = null;
-function _asSaveProgressToDB(patch) {
+function _asSaveProgressToDB(patch, now) {
   if (!supaUser || !_asCurrentArt) return;
-  // Debounce: save at most once per 3 seconds
+  // Debounce: save at most once per 3 seconds (a finish writes at once).
   clearTimeout(_asDbSaveTimer);
   _asDbSaveTimer = setTimeout(function() {
     var sb = getSupa(); if (!sb) return;
-    sb.from('user_read_history').upsert({
+    sb.from('user_study_progress').upsert({
       user_id: supaUser.id,
       content_type: 'article_study',
       content_id: String(_asCurrentArt.id),
-      progress_data: JSON.stringify(patch),
+      progress: patch || {},
+      // Once finished, an article stays finished even if it's re-studied.
+      completed: !!(patch && patch.completed) || !!(_asStudiedSet && _asStudiedSet.done[String(_asCurrentArt.id)]),
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id,content_type,content_id' }).then(function(r) {
       if (r.error) console.warn('[AS] DB progress save failed:', r.error.message);
     });
-  }, 3000);
+  }, now ? 0 : 3000);
 }
 async function _asLoadProgressFromDB() {
   if (!supaUser || !_asCurrentArt) return false;
   try {
     var sb = getSupa(); if (!sb) return false;
-    var { data } = await sb.from('user_read_history')
-      .select('progress_data')
+    var { data } = await sb.from('user_study_progress')
+      .select('progress')
       .eq('user_id', supaUser.id)
       .eq('content_type', 'article_study')
       .eq('content_id', String(_asCurrentArt.id))
       .maybeSingle();
-    if (data && data.progress_data) {
-      var saved = typeof data.progress_data === 'string' ? JSON.parse(data.progress_data) : data.progress_data;
+    if (data && data.progress) {
+      var saved = data.progress;
       if (saved && saved.step && !saved.completed) {
         _asStep = saved.step;
         _asStepDone = saved.stepDone || [false,false,false,false];

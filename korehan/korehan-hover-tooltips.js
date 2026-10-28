@@ -327,7 +327,11 @@
     // showed up as "click area doesn't match the button". Mobile
     // tap-to-reveal happened to dodge it because mobile doesn't
     // hover, but the button's onclick still misfired.
-    if (parent.closest('button, [role="button"], a[onclick], a[href], label')) return true;
+    // Modal overlays carry role="button" (tap the backdrop to close) and
+    // wrap the whole modal — they must not count, or nothing inside a
+    // modal (e.g. the Article Study reader) ever gets a tooltip.
+    var btnLike = parent.closest('button, [role="button"], a[onclick], a[href], label');
+    if (btnLike && !/(^|\s)(su-overlay|feat-overlay)(\s|$)|overlay/.test(btnLike.className || '')) return true;
     return false;
   }
 

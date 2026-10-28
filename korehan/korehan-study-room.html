@@ -21,7 +21,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20261027a">
 <link rel="stylesheet" href="css/kh-study-enhancements.css?v=20260527f">
-<link rel="stylesheet" href="korehan-study-room.css?v=20261028h">
+<link rel="stylesheet" href="korehan-study-room.css?v=20261028j">
 </head>
 <body>
 <div id="kh-header"></div>
@@ -939,7 +939,7 @@
      on first click — see openUniverseView() below. -->
 <script src="js/kh-sentence-builder.js?v=20260527f"></script>
 <script src="js/kh-basics.js?v=20261023a" defer></script>
-<script src="korehan-study-room.js?v=20261028h" defer></script>
+<script src="korehan-study-room.js?v=20261028j" defer></script>
 <script src="js/features/writing-flow.js?v=20261028f" defer></script>
 <script src="js/features/sr-home.js?v=20261028f" defer></script>
 <!-- ══════════════════════════════════════════════════════
@@ -1392,14 +1392,14 @@ async function _csLoadProgressFromDB() {
   if (!supaUser || !_csCurrentConv) return;
   try {
     var sb = getSupa(); if (!sb) return;
-    var { data } = await sb.from('user_read_history')
-      .select('progress_data')
+    var { data } = await sb.from('user_study_progress')
+      .select('progress')
       .eq('user_id', supaUser.id)
       .eq('content_type', 'conversation_study')
       .eq('content_id', String(_csCurrentConv.id))
       .maybeSingle();
-    if (data && data.progress_data) {
-      var saved = typeof data.progress_data === 'string' ? JSON.parse(data.progress_data) : data.progress_data;
+    if (data && data.progress) {
+      var saved = data.progress;
       if (saved && saved.step) {
         _csStep = saved.step;
         _csStepDone = saved.stepDone || [false,false,false,false];
@@ -1430,12 +1430,13 @@ function _csSetNav(next) {
 function _csSaveProgressToDB() {
   if (!supaUser || !_csCurrentConv) return;
   var sb = getSupa(); if (!sb) return;
-  sb.from('user_read_history').upsert({
+  sb.from('user_study_progress').upsert({
     user_id: supaUser.id, content_type: 'conversation_study',
     content_id: String(_csCurrentConv.id),
-    progress_data: JSON.stringify({step:_csStep, stepDone:_csStepDone}),
+    progress: { step: _csStep, stepDone: _csStepDone },
+    completed: _csStepDone.every(Boolean),
     updated_at: new Date().toISOString()
-  }, { onConflict: 'user_id,content_type,content_id' }).then(function(){});
+  }, { onConflict: 'user_id,content_type,content_id' }).then(function(){}, function(){});
 }
 function _csRenderStep() {
   var c = _csCurrentConv; if (!c) return;
@@ -1863,7 +1864,7 @@ function _csBuildCheck() {
       <div class="su-header">
         <div class="su-header-info">
           <div class="su-header-eyebrow">Article Study</div>
-          <div class="su-header-title">Select an Article</div>
+          <div class="su-header-title">Pick an article</div>
         </div>
         <button aria-label="Close" class="su-close" onclick="closeArticleStudy()">&#10005;</button>
       </div>
@@ -1872,9 +1873,10 @@ function _csBuildCheck() {
              only articles the learner bookmarked (from the bookmarks
              table). Default stays on 'Latest' so existing behavior is
              preserved when the user hasn't picked anything. -->
-        <div id="as-filter-row" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
-          <button class="as-filter-pill active" data-as-filter="latest" onclick="_asSetFilter('latest')" style="padding:6px 14px;border-radius:999px;border:1px solid #cbd5e1;background:#0b1626;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em;display:inline-flex;align-items:center;gap:5px"><i data-lucide="newspaper" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Latest</span></button>
-          <button class="as-filter-pill" data-as-filter="saved" onclick="_asSetFilter('saved')" style="padding:6px 14px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em;display:inline-flex;align-items:center;gap:5px"><i data-lucide="bookmark" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i><span>Saved</span></button>
+        <div id="as-filter-row" class="as-tabs">
+          <button class="as-filter-pill active" data-as-filter="latest" onclick="_asSetFilter('latest')"><span>Latest</span></button>
+          <button class="as-filter-pill" data-as-filter="saved" onclick="_asSetFilter('saved')"><span>Saved</span></button>
+          <button class="as-filter-pill" data-as-filter="studied" onclick="_asSetFilter('studied')"><span>Studied</span></button>
         </div>
         <div id="as-article-grid" class="as-article-grid">
           <div class="as-loading"><div class="as-spinner"></div><div>Loading article…</div></div>
@@ -1885,7 +1887,7 @@ function _csBuildCheck() {
     <!-- ── STUDY VIEW (v2 UI) ── -->
     <div id="as-study-view" class="as-hidden" style="display:flex;flex-direction:column;flex:1;min-height:0">
       <!-- Header -->
-      <div class="su-header">
+      <div class="su-header" data-hover-skip="1">
         <button aria-label="Back" class="su-back" onclick="asBackToList()">&#8592;</button>
         <div class="su-header-info">
           <div class="su-header-eyebrow" id="as-step-label">Step 1 / 4 — Vocabulary</div>
@@ -1895,9 +1897,9 @@ function _csBuildCheck() {
       </div>
       <!-- Step tabs (Writing step removed — Free Writing lives in Express Practice now) -->
       <div class="su-steps" id="as-step-tabs">
-        <div role="button" tabindex="0" class="su-step active" onclick="asGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Vocab</span></div>
+        <div role="button" tabindex="0" class="su-step active" onclick="asGoToStep(1)"><span class="su-step-num">1</span><span class="su-step-label">Words</span></div>
         <div role="button" tabindex="0" class="su-step" onclick="asGoToStep(2)"><span class="su-step-num">2</span><span class="su-step-label">Phrases</span></div>
-        <div role="button" tabindex="0" class="su-step" onclick="asGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Reading</span></div>
+        <div role="button" tabindex="0" class="su-step" onclick="asGoToStep(3)"><span class="su-step-num">3</span><span class="su-step-label">Read</span></div>
         <div role="button" tabindex="0" class="su-step" onclick="asGoToStep(4)"><span class="su-step-num">4</span><span class="su-step-label">Quiz</span></div>
       </div>
       <!-- Progress bar -->
@@ -3840,6 +3842,6 @@ function dismissSrOnboarding() {
   if (el) el.style.display = 'none';
 }
 </script>
-<script src="korehan-hover-tooltips.js?v=20261026a"></script>
+<script src="korehan-hover-tooltips.js?v=20261028a"></script>
 </body>
 </html>
