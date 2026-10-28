@@ -286,6 +286,10 @@ Deno.serve(async (req) => {
     return json({ ok: true, queued: count })
   }
 
+  // Owner (2026-10-29): no AI spend on generation — the worker is switched
+  // off; enqueue and tick refuse until the owner turns it back on.
+  if (body.action === 'enqueue' || body.action === 'tick') return json({ ok: false, error: 'generation_disabled' }, 403)
+
   if (body.action === 'tick') {
     // Re-queue a crashed step, then claim the oldest waiting job.
     await sb.from('topik_gen_jobs').update({ status: 'pending' }).eq('status', 'running').lt('started_at', new Date(Date.now() - 4 * 60_000).toISOString())
