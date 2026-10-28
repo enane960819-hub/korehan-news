@@ -1,0 +1,28 @@
+name: Word bank data
+
+# Builds the word-bank expansion from an open learner dictionary on GitHub's
+# runners (Claude Code's sandbox can't reach the dataset hosts).
+#   step=explore → print dataset structure (read-only)
+on:
+  workflow_dispatch:
+    inputs:
+      step:
+        description: 'explore'
+        required: true
+        default: 'explore'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/word-bank/**'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -q huggingface_hub pandas pyarrow
+      - name: Explore
+        run: python scripts/word-bank/explore.py
