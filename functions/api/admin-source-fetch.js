@@ -16,6 +16,18 @@
 // REDDIT_CLIENT_SECRET as Cloudflare Pages environment variables).
 const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
+// Cloudflare Pages Functions allow ~50 outbound requests per invocation.
+// Past that, fetches fail — selecting every source used to time out half
+// of them. Source feeds spend the budget first; image look-ups only use
+// what is left.
+const SUBREQUEST_BUDGET = 46
+let _budgetLeft = SUBREQUEST_BUDGET
+function budgetFetch(url, opts) {
+  if (_budgetLeft <= 0) return Promise.reject(new Error('subrequest_limit'))
+  _budgetLeft--
+  return fetch(url, opts)
+}
+
 // ── Reddit OAuth (app-only) ────────────────────────────────────────
 // When REDDIT_CLIENT_ID + REDDIT_CLIENT_SECRET are set as Cloudflare
 // Pages environment variables, we exchange them for a bearer token and
@@ -29,7 +41,7 @@ let _redditTokenExpiry = 0
 
 async function getRedditToken(clientId, clientSecret) {
   if (_redditToken && Date.now() < _redditTokenExpiry) return _redditToken
-  const res = await fetch('https://www.reddit.com/api/v1/access_token', {
+  const res = await budgetFetch('https://www.reddit.com/api/v1/access_token', {
     method: 'POST',
     headers: {
       'Authorization': 'Basic ' + btoa(clientId + ':' + clientSecret),
@@ -53,36 +65,36 @@ const SOURCE_CATALOG = [
   { id:'bbc-world', label:'BBC World', kind:'rss', category:'국제', url:'https://feeds.bbci.co.uk/news/world/rss.xml' },
   { id:'bbc-tech', label:'BBC Tech', kind:'rss', category:'문화', url:'https://feeds.bbci.co.uk/news/technology/rss.xml' },
   { id:'bbc-sport', label:'BBC Sport', kind:'rss', category:'스포츠', url:'https://feeds.bbci.co.uk/sport/rss.xml' },
-  { id:'npr-news', label:'NPR News', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:npr.org&hl=en-US&gl=US&ceid=US:en' },
-  { id:'reuters-world', label:'Reuters World', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:reuters.com+world&hl=en-US&gl=US&ceid=US:en' },
-  { id:'ap-top', label:'AP Top News', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:apnews.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'guardian-world', label:'Guardian World', kind:'rss', category:'국제', url:'https://news.google.com/rss/search?q=site:theguardian.com+world&hl=en-US&gl=US&ceid=US:en' },
+  { id:'npr-news', label:'NPR News', kind:'rss', category:'국제', url:'https://feeds.npr.org/1001/rss.xml' },
+  { id:'reuters-world', label:'DW News', kind:'rss', category:'국제', url:'https://rss.dw.com/rdf/rss-en-all' },
+  { id:'ap-top', label:'France 24', kind:'rss', category:'국제', url:'https://www.france24.com/en/rss' },
+  { id:'guardian-world', label:'Guardian World', kind:'rss', category:'국제', url:'https://www.theguardian.com/world/rss' },
   { id:'aljazeera', label:'Al Jazeera English', kind:'rss', category:'국제', url:'https://www.aljazeera.com/xml/rss/all.xml' },
   { id:'cnn-top', label:'CNN Top Stories', kind:'rss', category:'국제', url:'http://rss.cnn.com/rss/edition.rss' },
 
   // ── Tech / Trends (RSS) ─────────────────────────────────────────
   { id:'techcrunch', label:'TechCrunch', kind:'rss', category:'문화', url:'https://techcrunch.com/feed/' },
-  { id:'theverge', label:'The Verge', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:theverge.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'arstechnica', label:'Ars Technica', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:arstechnica.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'wired', label:'WIRED', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=site:wired.com&hl=en-US&gl=US&ceid=US:en' },
+  { id:'theverge', label:'The Verge', kind:'rss', category:'문화', url:'https://www.theverge.com/rss/index.xml' },
+  { id:'arstechnica', label:'Ars Technica', kind:'rss', category:'문화', url:'https://feeds.arstechnica.com/arstechnica/index' },
+  { id:'wired', label:'Interesting Engineering', kind:'rss', category:'문화', url:'https://interestingengineering.com/feed' },
   { id:'gtrends-us', label:'Google Trends US', kind:'rss', category:'국제', url:'https://trends.google.com/trending/rss?geo=US' },
   { id:'gtrends-kr', label:'Google Trends KR', kind:'rss', category:'문화', url:'https://trends.google.com/trending/rss?geo=KR' },
 
   // ── Lifestyle / Travel / Beauty / Food ──────────────────────────
-  { id:'gn-viral', label:'Google News Viral', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=viral+trend+OR+"most+watched"&hl=en-US&gl=US&ceid=US:en' },
-  { id:'gn-beauty', label:'Beauty Trends', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=beauty+trend+OR+skincare+OR+makeup&hl=en-US&gl=US&ceid=US:en' },
-  { id:'gn-travel', label:'Travel Trends', kind:'rss', category:'travel', url:'https://news.google.com/rss/search?q=travel+trend+OR+destination+viral+OR+tourism&hl=en-US&gl=US&ceid=US:en' },
-  { id:'gn-food', label:'Food Trends', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=food+trend+OR+recipe+OR+restaurant+viral&hl=en-US&gl=US&ceid=US:en' },
-  { id:'allure', label:'Allure Beauty', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=site:allure.com&hl=en-US&gl=US&ceid=US:en' },
-  { id:'cnet-travel', label:'CNET Travel', kind:'rss', category:'travel', url:'https://news.google.com/rss/search?q=site:cnet.com+travel+OR+lifestyle&hl=en-US&gl=US&ceid=US:en' },
-  { id:'gn-health', label:'Health Trends', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=health+OR+wellness+OR+nutrition+trend&hl=en-US&gl=US&ceid=US:en' },
-  { id:'gn-fashion', label:'Fashion Trends', kind:'rss', category:'beauty', url:'https://news.google.com/rss/search?q=fashion+trend+OR+streetwear+OR+runway&hl=en-US&gl=US&ceid=US:en' },
+  { id:'gn-viral', label:'Digg Top', kind:'rss', category:'문화', url:'https://digg.com/rss/top.rss' },
+  { id:'gn-beauty', label:'Allure', kind:'rss', category:'beauty', url:'https://www.allure.com/feed/rss' },
+  { id:'gn-travel', label:'Guardian Travel', kind:'rss', category:'travel', url:'https://www.theguardian.com/travel/rss' },
+  { id:'gn-food', label:'Guardian Food', kind:'rss', category:'문화', url:'https://www.theguardian.com/food/rss' },
+  { id:'allure', label:'Good News Network', kind:'rss', category:'beauty', url:'https://www.goodnewsnetwork.org/feed/' },
+  { id:'cnet-travel', label:'Atlas Obscura', kind:'rss', category:'travel', url:'https://www.atlasobscura.com/feeds/latest' },
+  { id:'gn-health', label:'ScienceDaily Health', kind:'rss', category:'beauty', url:'https://www.sciencedaily.com/rss/health_medicine.xml' },
+  { id:'gn-fashion', label:'Vogue', kind:'rss', category:'beauty', url:'https://www.vogue.com/feed/rss' },
 
   // ── Entertainment / K-content (English-language only) ──────────
-  { id:'gn-kdrama', label:'K-drama News', kind:'rss', category:'K-pop', url:'https://news.google.com/rss/search?q=kdrama+OR+"korean+drama"+OR+"k-pop"&hl=en-US&gl=US&ceid=US:en' },
-  { id:'gn-movies', label:'Movies & TV', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=movie+OR+film+OR+"netflix+series"+trending&hl=en-US&gl=US&ceid=US:en' },
+  { id:'gn-kdrama', label:'Koreaboo', kind:'rss', category:'K-pop', url:'https://www.koreaboo.com/feed/' },
+  { id:'gn-movies', label:'Variety', kind:'rss', category:'문화', url:'https://variety.com/feed/' },
   { id:'soompi', label:'Soompi (K-content)', kind:'rss', category:'K-pop', url:'https://www.soompi.com/feed' },
-  { id:'gn-gaming', label:'Gaming News', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q=video+game+OR+gaming+launch+OR+"new+release"+game&hl=en-US&gl=US&ceid=US:en' },
+  { id:'gn-gaming', label:'Polygon', kind:'rss', category:'문화', url:'https://www.polygon.com/rss/index.xml' },
 
   // ── Wikinews (CC-BY 2.5 — full content + image free to adapt) ───
   // Pulls the latest articles in Category:Published via the MediaWiki
@@ -116,9 +128,14 @@ const SOURCE_CATALOG = [
   { id:'reddit-magic', label:'r/blackmagicfuckery', kind:'reddit', category:'문화', subreddit:'blackmagicfuckery' },
   { id:'reddit-sports', label:'r/sports', kind:'reddit', category:'스포츠', subreddit:'sports' },
   // Clickbait / Viral RSS aggregators
-  { id:'gn-clickbait', label:'Viral Clickbait', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q="you+won\'t+believe"+OR+"shocking"+OR+"mind-blowing"+OR+"goes+viral"&hl=en-US&gl=US&ceid=US:en' },
-  { id:'gn-listicle', label:'Listicles', kind:'rss', category:'문화', url:'https://news.google.com/rss/search?q="top+10"+OR+"best+of"+OR+"things+you+didn\'t+know"+OR+"reasons+why"&hl=en-US&gl=US&ceid=US:en' },
+  { id:'gn-clickbait', label:'Oddity Central', kind:'rss', category:'문화', url:'https://www.odditycentral.com/feed' },
+  { id:'gn-listicle', label:'Mental Floss', kind:'rss', category:'문화', url:'https://www.mentalfloss.com/rss.xml' },
   { id:'boredpanda', label:'BoredPanda', kind:'rss', category:'문화', url:'https://www.boredpanda.com/feed/' },
+  { id:'upworthy', label:'Upworthy', kind:'rss', category:'문화', url:'https://www.upworthy.com/feeds/feed.rss' },
+  { id:'dodo', label:'The Dodo', kind:'rss', category:'문화', url:'https://www.thedodo.com/rss' },
+  { id:'nypost-weird', label:'NY Post Weird', kind:'rss', category:'문화', url:'https://nypost.com/tag/weird-but-true/feed/' },
+  { id:'livescience', label:'Live Science', kind:'rss', category:'문화', url:'https://www.livescience.com/feeds/all' },
+  { id:'bbc-ent', label:'BBC Entertainment', kind:'rss', category:'문화', url:'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml' },
 ]
 
 function cors(extra={}) {
@@ -170,7 +187,7 @@ async function fetchRss(source) {
   // 실패했습니다." even though most sources had returned fine.
   // 8 s × Promise.allSettled in the caller means the slowest 5% drops
   // out cleanly instead of poisoning the whole batch.
-  const res = await fetch(source.url, {
+  const res = await budgetFetch(source.url, {
     headers: {
       'user-agent': BROWSER_UA,
       'accept': 'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5',
@@ -178,7 +195,7 @@ async function fetchRss(source) {
     },
     signal: AbortSignal.timeout(8000),
   })
-  if (!res.ok) throw new Error('upstream_not_ok')
+  if (!res.ok) throw new Error('upstream_' + res.status)
   const xml = await res.text()
   const itemMatches = xml.match(/<item[\s\S]*?<\/item>/gi) || xml.match(/<entry[\s\S]*?<\/entry>/gi) || []
   return itemMatches.slice(0, 20).map((block) => {
@@ -227,40 +244,6 @@ function extractRssImage(block) {
   return first || ''
 }
 
-// Last-ditch image fallback when both RSS and og:image came up empty
-// (Reddit self posts, HN stories with dead target pages, Google Trends
-// headlines that link to a search result, etc.). Searches Google News
-// for the headline's title, grabs the top matching article's URL,
-// follows Google's redirect, and extracts og:image from the real page.
-// Not perfect (image may be thematically adjacent rather than exact)
-// but consistently beats picsum for a learning-platform thumbnail.
-async function fetchTopicImage(title, timeoutMs = 4000) {
-  if (!title || title.length < 4) return ''
-  const q = encodeURIComponent(title)
-  const rssUrl = 'https://news.google.com/rss/search?q=' + q + '&hl=en-US&gl=US&ceid=US:en'
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    const res = await fetch(rssUrl, {
-      signal: controller.signal,
-      headers: { 'user-agent': BROWSER_UA, 'accept': 'application/rss+xml,application/xml,text/xml', 'accept-language': 'en-US,en;q=0.9' },
-    })
-    if (!res.ok) return ''
-    const xml = await res.text()
-    const first = xml.match(/<item[^>]*>([\s\S]*?)<\/item>/i)
-    if (!first) return ''
-    // Google News RSS now ships a redirector link; fetchOgImage with
-    // redirect:'follow' resolves it to the real article URL.
-    const link = pickTag(first[1], 'link')
-    if (!link || !/^https?:\/\//i.test(link)) return ''
-    return await fetchOgImage(link, timeoutMs)
-  } catch {
-    return ''
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
 // Fetch og:image (or twitter:image) from a target article URL. Used as
 // a fallback when a source's RSS feed didn't ship an image — Google
 // News search feeds, Hacker News, and TechCrunch RSS are the usual
@@ -270,7 +253,7 @@ async function fetchOgImage(url, timeoutMs = 3000) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const res = await fetch(url, {
+    const res = await budgetFetch(url, {
       signal: controller.signal,
       redirect: 'follow',
       headers: {
@@ -310,7 +293,7 @@ async function fetchOgImage(url, timeoutMs = 3000) {
 }
 
 async function fetchHn(source) {
-  const res = await fetch('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=20', {
+  const res = await budgetFetch('https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=20', {
     signal: AbortSignal.timeout(8000),
   })
   if (!res.ok) throw new Error('upstream_not_ok')
@@ -327,15 +310,18 @@ async function fetchHn(source) {
 }
 
 async function fetchReddit(source, redditToken) {
+  // Reddit refuses Cloudflare's egress without an API token (every
+  // unauthenticated request fails), so don't spend a subrequest trying.
+  if (!redditToken) throw new Error('reddit_needs_key')
   const url = redditToken
     ? `https://oauth.reddit.com/r/${source.subreddit}/hot?limit=20&raw_json=1`
     : `https://www.reddit.com/r/${source.subreddit}/hot.json?limit=20&raw_json=1`
   const headers = redditToken
     ? { 'Authorization': 'Bearer ' + redditToken, 'User-Agent': 'KoreHanNewsBot/2.0' }
     : { 'user-agent': BROWSER_UA, 'accept': 'application/json,text/javascript,*/*;q=0.1', 'accept-language': 'en-US,en;q=0.9' }
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) })
-  // 403/429 → throw so the per-source line honestly shows "(일부 실패)".
-  if (!res.ok) throw new Error('upstream_not_ok')
+  const res = await budgetFetch(url, { headers, signal: AbortSignal.timeout(8000) })
+  // 403/429 → throw so the per-source line honestly shows the failure.
+  if (!res.ok) throw new Error('upstream_' + res.status)
   const json = await res.json().catch(() => null)
   // Reddit's rate limiter frequently answers 200 with a JSON error body
   // ({"message":"Too Many Requests","error":429}) and no `data.children`.
@@ -392,7 +378,7 @@ async function fetchWikinews(source) {
   //    분류:정식기사 (ko). cmsort=timestamp + cmdir=desc puts the newest first.
   const cmTitle = lang === 'ko' ? '분류:정식기사' : 'Category:Published'
   const listUrl = `${apiBase}?action=query&list=categorymembers&cmtitle=${encodeURIComponent(cmTitle)}&cmsort=timestamp&cmdir=desc&cmlimit=20&cmprop=ids|title|timestamp&format=json&origin=*`
-  const listRes = await fetch(listUrl, {
+  const listRes = await budgetFetch(listUrl, {
     headers: { 'user-agent': 'KoreHanNewsBot/1.0' },
     signal: AbortSignal.timeout(8000),
   })
@@ -405,7 +391,7 @@ async function fetchWikinews(source) {
   //    pageids is comma-separated; piprop=original gives the full-size image.
   const pageIds = pages.map((p) => p.pageid).join('|')
   const detailUrl = `${apiBase}?action=query&pageids=${pageIds}&prop=extracts|pageimages|info&exintro=1&explaintext=1&piprop=original&inprop=url&format=json&origin=*`
-  const detailRes = await fetch(detailUrl, {
+  const detailRes = await budgetFetch(detailUrl, {
     headers: { 'user-agent': 'KoreHanNewsBot/1.0' },
     signal: AbortSignal.timeout(8000),
   })
@@ -527,7 +513,7 @@ async function loadExistingDedupSet(supaUrl, headers) {
   if (!supaUrl || !headers?.authorization || !headers?.apikey) return new Set()
   try {
     const u = `${supaUrl}/rest/v1/articles?select=title,source_url,date&order=date.desc&limit=1000`
-    const r = await fetch(u, { headers: { authorization: headers.authorization, apikey: headers.apikey } })
+    const r = await budgetFetch(u, { headers: { authorization: headers.authorization, apikey: headers.apikey } })
     if (!r.ok) return new Set()
     const rows = await r.json()
     const set = new Set()
@@ -581,6 +567,7 @@ export async function onRequest({ request, env }) {
     const sourceIds = Array.isArray(body?.source_ids) ? body.source_ids : []
     const limit = Math.min(Math.max(Number(body?.limit || 50), 1), 100)
 
+    _budgetLeft = SUBREQUEST_BUDGET
     const selected = SOURCE_CATALOG.filter((s) => sourceIds.length ? sourceIds.includes(s.id) : true)
     const supaUrl = request.headers.get('x-supabase-url') || ''
     const auth = request.headers.get('authorization') || ''
@@ -627,7 +614,7 @@ export async function onRequest({ request, env }) {
     // <head> and extract og:image. 8 concurrent fetches with a 3s
     // per-request timeout keeps the whole pass under ~6s even with
     // 40 targets.
-    const needImage = items.filter((it) => !it.image && it.url && !it.video_url)
+    const needImage = items.filter((it) => !it.image && it.url && !it.video_url).slice(0, Math.max(0, _budgetLeft))
     if (needImage.length) {
       const concurrency = 8
       for (let i = 0; i < needImage.length; i += concurrency) {
@@ -635,24 +622,6 @@ export async function onRequest({ request, env }) {
         await Promise.all(slice.map(async (it) => {
           const og = await fetchOgImage(it.url)
           if (og) it.image = og
-        }))
-      }
-    }
-
-    // Third-pass: Google News search by title for items that STILL have
-    // no image (Reddit self-posts, dead target pages, etc.). Finds an
-    // adjacent-topic news article and steals its og:image. Capped at
-    // 12 items and 4-concurrent so a bad batch doesn't stall the whole
-    // response — anything still image-less after this falls through to
-    // the picsum fallback on the frontend.
-    const stillNeedImage = items.filter((it) => !it.image && it.title && !it.video_url).slice(0, 12)
-    if (stillNeedImage.length) {
-      const concurrency = 4
-      for (let i = 0; i < stillNeedImage.length; i += concurrency) {
-        const slice = stillNeedImage.slice(i, i + concurrency)
-        await Promise.all(slice.map(async (it) => {
-          const img = await fetchTopicImage(it.title)
-          if (img) it.image = img
         }))
       }
     }
