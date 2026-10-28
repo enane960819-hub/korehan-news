@@ -5,6 +5,7 @@
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d1b3d">
 <title>Courses — KoreHani</title>
 <meta name="description" content="KoreHani plans — Free and Premium (7-day free trial): tutor writing review, weekend live class, Article & Conversation Study.">
 <link rel="canonical" href="https://korehani.com/korehan-courses.html">
@@ -253,6 +254,66 @@
   .live-card-cta{align-items:stretch;}
   .live-btn{width:100%;}
 }
+/* Dark theme (theme map 2026-10-28: Courses/Pricing join Shop, My Page, Friends) */
+.cp-pane{--white:rgba(255,255,255,.05);--bg:rgba(255,255,255,.04);--border:rgba(255,255,255,.1);--gray:rgba(255,255,255,.55);--dark:#fff;--bright:#60a5fa;}
+html, body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+.cp-tabs{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);}
+.cp-tab{color:#cbd5e1;}
+.cp-tab:hover{color:#fff;}
+.cp-tab.active{background:rgba(124,58,237,.35);color:#fff;box-shadow:none;}
+.course-hero,.live-hero{background:none;border-bottom:0;}
+.course-hero::before{display:none;}
+.hero-pill{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);color:#cbd5e1;}
+.course-hero h1,.live-hero h2{color:#fff;}
+.course-hero h1 em,.live-hero h2 em{color:#93c5fd;}
+.course-hero>div>p,.live-hero p{color:rgba(255,255,255,.65);}
+.billing-toggle{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);}
+.bt-btn{color:#cbd5e1;}
+.bt-btn.active{background:rgba(255,255,255,.14);color:#fff;box-shadow:none;}
+.plan-card,.plan-card.featured{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);box-shadow:none;}
+.plan-card.featured{border-color:rgba(167,139,250,.7);background:linear-gradient(160deg,rgba(124,58,237,.18),rgba(255,255,255,.04));}
+.plan-card:hover{border-color:rgba(255,255,255,.25);box-shadow:none;}
+.plan-badge{background:#7c3aed;}
+.plan-name,.plan-per,.plan-original{color:rgba(255,255,255,.5);}
+.plan-price{color:#fff;}
+.plan-desc,.plan-features li{color:rgba(255,255,255,.75);}
+.plan-cta.primary{background:#7c3aed;box-shadow:0 6px 20px rgba(124,58,237,.35);}
+.plan-cta.primary:hover{background:#6d28d9;}
+.plan-cta.secondary{background:rgba(255,255,255,.06);color:#fff;border-color:rgba(255,255,255,.18);}
+.plan-cta.secondary:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3);}
+.compare-table{box-shadow:none;}
+.ct-h.std{background:rgba(96,165,250,.14);color:#93c5fd;}
+.ct-h.essay{background:rgba(124,58,237,.3);color:#ddd6fe;}
+.ct-cell{color:#e2e8f0;}
+.ct-cell.std-col{background:rgba(96,165,250,.05);}
+.ct-cell.essay-col{background:rgba(124,58,237,.08);}
+.ct-no{color:rgba(255,255,255,.25);}
+.feat-card:hover,.faq-item:hover{border-color:rgba(255,255,255,.25);box-shadow:none;}
+.how-section{background:rgba(255,255,255,.03);}
+.pv-head{background:rgba(255,255,255,.06);}
+.prog-bg{background:rgba(255,255,255,.1);}
+.prog-tip{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);}
+.prog-tip-txt{color:#fcd34d;}
+.ai-chip.rev{background:rgba(16,185,129,.2);color:#6ee7b7;}
+.ai-chip.fb{background:rgba(96,165,250,.18);color:#93c5fd;}
+.cert-band{background:none;}
+.faq-item[open]{box-shadow:none;}
+.cta-section{background:none;}
+.cta-btn{background:#7c3aed;box-shadow:0 8px 24px rgba(124,58,237,.35);}
+.cta-btn:hover{background:#6d28d9;}
+.live-pill{background:rgba(255,255,255,.06);border-color:rgba(96,165,250,.6);color:#93c5fd;}
+.live-card{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);}
+.live-card:hover{border-color:rgba(255,255,255,.25);box-shadow:none;}
+.live-card-title{color:#fff;}
+.live-card-head,.live-card-meta,.live-card-desc,.live-card-meta-item svg,.live-empty{color:rgba(255,255,255,.6);}
+.live-card-status.closed{background:rgba(255,255,255,.1);color:#cbd5e1;}
+.live-btn.disabled,.live-btn:disabled{background:rgba(255,255,255,.08);color:rgba(255,255,255,.35);}
+.live-info{background:rgba(56,189,248,.08);border-color:rgba(56,189,248,.3);}
+.live-info-title{color:#e0f2fe;}
+html body.mobile-light .course-hero, html body.mobile-redesign .course-hero{background:none !important;border:0 !important;box-shadow:none !important;color:#fff !important;border-radius:0 !important;}
+html body.mobile-light .plan-card, html body.mobile-redesign .plan-card{background:rgba(255,255,255,.05) !important;border:1.5px solid rgba(255,255,255,.12) !important;color:#e2e8f0 !important;box-shadow:none !important;border-radius:20px !important;}
+html body.mobile-light .plan-card.featured, html body.mobile-redesign .plan-card.featured{background:linear-gradient(160deg,rgba(124,58,237,.18),rgba(255,255,255,.04)) !important;border-color:rgba(167,139,250,.7) !important;}
+.live-info-text{color:rgba(224,242,254,.75);}
 </style>
 </head>
 <body>
