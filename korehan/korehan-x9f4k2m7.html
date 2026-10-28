@@ -10719,8 +10719,7 @@ function goBulkSeed() {
     +   '<div style="display:flex;gap:10px;flex-wrap:wrap">'
     +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedArticles(3)" style="padding:10px 18px;font-size:13px;font-weight:800">📰 +3 Articles</button>'
     +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedConvos(3)" style="padding:10px 18px;font-size:13px;font-weight:800">💬 +3 Convos</button>'
-    +     '<button data-bulk-btn class="btn btn-g" onclick="bulkSeedStories(3)" style="padding:10px 18px;font-size:13px;font-weight:800">📖 +3 Stories</button>'
-    +     '<button data-bulk-btn class="btn btn-b" onclick="bulkSeedAll(3)" style="padding:10px 18px;font-size:13px;font-weight:800;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none">✨ +3×3 All</button>'
+    +     '<button data-bulk-btn class="btn btn-b" onclick="bulkSeedAll(3)" style="padding:10px 18px;font-size:13px;font-weight:800;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none">✨ +3×2 All</button>'
     +   '</div>'
     + '</div>'
 
@@ -10768,12 +10767,6 @@ var BULK_ART_SOURCES_BY_SECTION = {
 };
 var BULK_ART_ALL_SOURCES = Object.keys(BULK_ART_SOURCES_BY_SECTION).reduce(function(a,k){ return a.concat(BULK_ART_SOURCES_BY_SECTION[k]); }, []);
 
-var BULK_ART_DIFF_MAP = {
-  'Starter':      { ko:'입문 (초등 1~2학년 수준)', vocab:'기초 낱말, 아주 짧은 문장', level:'Starter' },
-  'Beginner':     { ko:'초급 (TOPIK 1~2급)',      vocab:'쉬운 일상 어휘, ~해요/~이에요 체', level:'Beginner' },
-  'Intermediate': { ko:'중급 (TOPIK 3~4급)',      vocab:'일반 뉴스 어휘, 중간 난이도 문장', level:'Intermediate' },
-  'Advanced':     { ko:'고급 (TOPIK 5~6급)',      vocab:'고급 한자어, 복잡한 문장 구조', level:'Advanced' }
-};
 
 function _bulkShuffle(arr) {
   var a = arr.slice();
@@ -10851,287 +10844,6 @@ function _bulkPickSectionVariedItems(items, count) {
   return picked;
 }
 
-// Generate + save one article from a fetched headline. Returns the id +
-// the parsed combined-Sonnet response on success, throws on failure.
-// Mirrors runAutoGenerate (combined Sonnet path): one Sonnet call
-// produces title + body + key_expressions + paragraph_translations +
-// per-sentence analysis. _bulkGenerateArticleCache then takes the
-// combined object and writes the cache row + does the Haiku quiz call.
-async function _bulkGenerateOneArticle(headline, section, levelKey) {
-  var diff = BULK_ART_DIFF_MAP[levelKey] || BULK_ART_DIFF_MAP.Intermediate;
-  var today = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
-  var srcSummary = (headline.summary || headline.desc || '').trim();
-  var hasSource = srcSummary.length > 0;
-  var levelKeyLocal = diff.level;
-  var prompt =
-      '당신은 외국인 한국어 학습자를 위한 뉴스 기사 편집자 + 한국어 튜터입니다.\n'
-    + '한 번의 응답으로 (1) 학습자용 기사를 각색하고 (2) 단락별 영어 번역을 만들고 (3) 모든 문장에 대해 번역/단어/분석까지 해주세요.\n\n'
-    + '[원본 뉴스]\n'
-    + '제목: ' + headline.title + '\n'
-    + '내용: ' + (hasSource ? srcSummary : '(요약 없음)') + '\n'
-    + '출처: ' + (headline.source || '') + '\n\n'
-    + '[지시사항 — 각색]\n'
-    + '- 원본의 핵심 사실과 주제 유지. 영어 출처면 한국어로 번역·각색.\n'
-    + '- **독자는 한국어를 배우는 외국인 학습자입니다 (TOPIK 레벨별 학습용)**. 한국 native speaker 대상이 아님 — 어휘/문법은 학습자 레벨에 맞추되, 본문은 일반 한국어 뉴스처럼 자연스럽게.\n'
-    + '- 원본에 없는 사실/통계/인물 발언 절대 추가 금지.\n'
-    + '- 클리셰 마무리 금지 — "전문가들은 ~", "사회적 관심을 모으고 있어요", "앞으로의 귀추가 주목됩니다" 등.\n\n'
-    + '[섹션: ' + section + ']\n'
-    + '[난이도: ' + diff.ko + ']\n'
-    + '[어휘 수준: ' + diff.vocab + ']\n'
-    + '[오늘 날짜: ' + today + ']\n\n'
-    + '[문체]\n'
-    + '- 짧고 명확한 문장 (20~35자), 정중체 (~했어요, ~입니다, ~예요).\n'
-    + '- **괄호 보충 설명 금지**: "기준금리(...)", "인공지능(AI)" 같은 원어/일반-지식 괄호 추가 X. 단어 의미는 vocab 패널이 담당.\n'
-    + '- **한자 절대 금지**. 한글만 사용.\n'
-    + (hasSource
-        ? '- 길이는 원본 정보량에 비례, 4~8단락 사이. 원본이 풍부하면 8단락까지 채우되 디테일을 압축해서 핵심 사실은 모두 담기. **절대 중간에 끊고 마무리하지 말 것 — 마지막 단락은 자연스러운 마무리 문장으로 끝낼 것 (학습자 이탈 직격타)**. 채우기용으로 늘리지는 말되, 원본 사실 안에서 충실히.\n'
-        : '- 원본 요약 없음 — 제목만으로 1~2 단락 짧게. 모르는 사실 만들지 말 것. "현재 자세한 내용은 알려지지 않았어요" 같은 솔직한 마무리 OK.\n')
-    + '- 제목: 15~25자.\n\n'
-    + '[중요표현]\n'
-    + '- 본문에 등장한 **고정 표현** 0~3개. 적합 없으면 [].\n'
-    + '- 적합: 관용 표현, 사자성어/속담, 굳어진 표현, 호칭/인사 표현, 문화 특화 표현.\n\n'
-    + '[단락별 번역]\n'
-    + '- body의 각 단락(\\n\\n 구분)마다 polished English translation 1줄. 한국어 단락 개수와 동일.\n\n'
-    + '[문장별 분석]\n'
-    + '- body에 등장하는 모든 한국어 문장을 등장 순서대로.\n'
-    + '- text: 본문에 EXACTLY 등장한 형태 그대로.\n'
-    + '- translation: 단락 번역과 일관되게.\n'
-    + '- vocab: max 4. 사전형으로 (단음절 어간 X). ' + (
-        (levelKeyLocal === 'Starter' || levelKeyLocal === 'Beginner')
-          ? '입문/초급 단어도 포함 OK. 조사와 단독 이다/있다만 제외.'
-          : '입문 단어(는/이/가/이다/있다/하다/되다)는 스킵.'
-) + ' 빈 배열 OK.\n'
-    + '- analysis: ' + (
-        (levelKeyLocal === 'Starter' || levelKeyLocal === 'Beginner')
-          ? 'max 6. EVERY conjugation step explained step-by-step.'
-          : 'max 4. 빈 배열 OK.'
-) + ' type: "grammar" | "expression" | "idiom".\n'
-    + '    label: 패턴/표현 자체. grammar는 형태소/연결어미만. 명사 X.\n'
-    + '    exp: 1-2줄. **사전형 → 활용형 변형을 보여주기**. 예: "negation. 보이다 → 보이지 않다 → 보이지 않았어요".\n'
-    + '    example_in_sentence: 이 문장에서 발췌한 chunk.\n'
-    + '- 본문에 없는 패턴 절대 만들지 말 것.\n'
-    + '- ' + (
-        (levelKeyLocal === 'Starter' || levelKeyLocal === 'Beginner')
-          ? '**기초 grammar 무조건 포함** (~지 않다, ~았/었어요, ~고 있다, ~기 시작하다, ~ㄴ/은/는 + noun, ~을/를). 한 동사에 두 패턴 스택되면 둘 다 별도 항목으로 분리해서 설명.'
-          : '기초 grammar 스킵.'
-) + '\n\n'
-    + '[출력 — JSON ONLY]\n'
-    + '{\n'
-    + '  "title": "...",\n'
-    + '  "title_en": "<polished English headline matching the Korean title — ≤70 chars>",\n'
-    + '  "body": "본문 (단락 \\\\n\\\\n)",\n'
-    + '  "key_expressions": [{"ko":"...","en":"..."}],\n'
-    + '  "paragraph_translations": ["para 1 EN", ...],\n'
-    + '  "sentences": [{"text":"...","translation":"...","vocab":[{"ko","en","note"}],"analysis":[{"type","label","exp","example_in_sentence"}]}]\n'
-    + '}';
-
-  // max_tokens raised 8000 → 16000 to match runAutoGenerate. Long source
-  // articles otherwise hit the cap mid-JSON, truncating the body or the
-  // per-sentence analysis tail. User-facing rule: never mid-cut.
-  var res = await callClaude({
-    feature: 'bulk-seed-article-combined',
-    model: 'claude-sonnet-4-6',
-    max_tokens: 16000,
-    messages: [{ role:'user', content: prompt }]
-  });
-  var text = (res && res.content && res.content[0] && res.content[0].text) || '';
-  if (!text) throw new Error('empty adaptation response');
-  var clean = text.replace(/^```json?/,'').replace(/^```/,'').replace(/```$/,'').trim();
-  var article;
-  try { article = JSON.parse(clean); } catch(e) { throw new Error('invalid adaptation JSON'); }
-  if (!article.title || !article.body) throw new Error('adaptation missing title/body');
-
-  // Semantic dedup — catches paraphrases normalised-hash would miss
-  if (typeof bulkCheckSemanticDup === 'function') {
-    var dupCheck = await bulkCheckSemanticDup('article', article.title + ' ' + String(article.body||'').slice(0, 600));
-    if (dupCheck.dup) {
-      var semErr = new Error('semantic-dup (Jaccard ' + dupCheck.overlap.toFixed(2) + ')');
-      semErr.isSemanticDup = true;
-      throw semErr;
-    }
-    article._tags = dupCheck.tags;
-  }
-
-  var articleId = uid();
-  // Always persist the source video URL when one exists, regardless of
-  // whether the admin opted in to showing it. use_video is the knob that
-  // actually flips the hero — keeping video_url around means an image
-  // article can be converted to video later (flip use_video=true) without
-  // needing to re-fetch the original source.
-  var hasSrcVideo = !!(headline.video_url && headline.video_kind);
-  var useVideoNow = hasSrcVideo && headline._useVideo !== false;
-  // Persist source image into our Supabase bucket so thumbnails survive
-  // upstream CDN expiry / hotlink blocks. No-op when video is the hero
-  // or there's no source image to begin with.
-  var _bulkSrcImg = '';
-  if (!hasSrcVideo && headline.image) {
-    _bulkSrcImg = await _khPersistImage(headline.image, articleId);
-  }
-  // Prefer Sonnet's title_en (added in the combined-Sonnet prompt)
-  // so Korean-source articles get a polished English headline up
-  // front. Fall back to the raw source headline when it's already in
-  // English; treat Korean-script source headlines as missing so the
-  // _khEnsureTitlesEn async translation can still kick in later.
-  var _bulkTitleEnFromAI = (typeof article.title_en === 'string' && article.title_en.trim()) ? article.title_en.trim() : '';
-  var _bulkTitleEnFinal = _bulkTitleEnFromAI || (headline.title && !/[ㄱ-힝]/.test(headline.title) ? headline.title : '');
-  var newArticle = {
-    id: articleId, section: section,
-    title: article.title, body: article.body,
-    title_en: _bulkTitleEnFinal,
-    // Default to draft. The live site skews toward CNET-ish clickbait
-    // (puzzle answers, "best fiber internet 2026", etc.) that don't
-    // serve Korean learners, so auto-ingest is quality-gated by hand in
-    // the admin list rather than being an LLM relevance score.
-    date: today_date(), status: 'draft',
-    featured: false, level: diff.level,
-    source_url: headline.url || '',
-    image: _bulkSrcImg,
-    video_url: hasSrcVideo ? headline.video_url : '',
-    video_kind: hasSrcVideo ? headline.video_kind : '',
-    video_fallback_url: hasSrcVideo ? (headline.video_fallback_url || '') : '',
-    use_video: useVideoNow,
-  };
-  // Inline upsert that tolerates schema drift. admin-api now throws on 4xx,
-  // so we catch the throw, extract the missing column name from the error
-  // text, drop it from the payload, and retry. Up to 4 drops before giving up.
-  var sbSave = getSb();
-  if (!sbSave) throw new Error('supabase unavailable');
-  var payload = Object.assign({}, newArticle);
-  Object.keys(payload).forEach(function(k){ if (payload[k] === undefined) delete payload[k]; });
-
-  async function _tryArticleUpsert() {
-    try { await sbSave.from('articles').upsert(payload, { onConflict: 'id' }); return { ok:true }; }
-    catch(e) { return { ok:false, message: _bulkErrStr(e) }; }
-  }
-
-  var r = await _tryArticleUpsert();
-  var drops = 0;
-  while (!r.ok && drops < 4) {
-    var em = r.message || '';
-    var m = em.match(/Could not find the '([^']+)' column/i)
-         || em.match(/column\s+(?:[a-z0-9_]+\.)?"?([a-zA-Z_]+)"?\s+does not exist/i);
-    if (!m || !m[1] || payload[m[1]] === undefined) break;
-    delete payload[m[1]];
-    bulkLog('  ↳ dropping unknown column "' + m[1] + '", retrying', 'warn');
-    r = await _tryArticleUpsert();
-    drops++;
-  }
-  if (!r.ok) throw new Error('db insert failed: ' + r.message);
-
-  if (typeof DB !== 'undefined' && DB.unshift) { DB.unshift(newArticle); if (typeof refreshCounts === 'function') refreshCounts(); }
-  return {
-    articleId: articleId,
-    title: article.title,
-    body: article.body,
-    level: diff.level,
-    tags: article._tags || [],
-    // Hand the full combined-Sonnet response back to the caller so
-    // _bulkGenerateArticleCache can shape it into the cache row
-    // without re-calling the model.
-    combined: article,
-  };
-}
-
-// Fill article_cache (translation/vocab/grammar from combined-Sonnet
-// response, quiz from a separate Haiku call). The combined object
-// arrives via _bulkGenerateOneArticle's return value so we don't pay
-// for sentence analysis twice. Quiz stays on Haiku — separate by
-// design, see runAutoGenerate for the matching reasoning.
-async function _bulkGenerateArticleCache(articleId, title, body, levelKey, combined) {
-  var sb = getSb();
-  if (!sb) return 0;
-  var row = { article_id: String(articleId) };
-  var ok = 0;
-
-  // Shape Vocab/Grammar/translation from the combined response.
-  if (combined && (Array.isArray(combined.sentences) || Array.isArray(combined.paragraph_translations))) {
-    try {
-      var paraTrans = Array.isArray(combined.paragraph_translations)
-        ? combined.paragraph_translations.filter(function(t){ return typeof t === 'string'; })
-        : [];
-      var sentRaw = Array.isArray(combined.sentences) ? combined.sentences : [];
-      var sentList = _khSplitSentencesForCache(body);
-      var sentFinal = sentList.map(function(text, i) {
-        var match = null;
-        for (var k = 0; k < sentRaw.length; k++) {
-          var t = (sentRaw[k] && sentRaw[k].text || '').trim();
-          if (t && (t === text || text.indexOf(t) >= 0 || t.indexOf(text) >= 0)) { match = sentRaw[k]; break; }
-        }
-        if (!match) match = sentRaw[i] || {};
-        var analysis = [];
-        if (Array.isArray(match.analysis)) {
-          analysis = match.analysis.slice(0, 8).filter(function(x){ return x && (x.label || x.pattern); }).map(function(x){
-            return { type: x.type || 'grammar', label: x.label || x.pattern || '', exp: x.exp || '', example_in_sentence: x.example_in_sentence || '' };
-          });
-        } else if (Array.isArray(match.grammar)) {
-          analysis = match.grammar.slice(0, 8).filter(function(g){ return g && (g.pattern || g.label); }).map(function(g){
-            return { type: 'grammar', label: g.pattern || g.label || '', exp: g.exp || '', example_in_sentence: g.example_in_sentence || '' };
-          });
-        }
-        return {
-          text: text,
-          translation: typeof match.translation === 'string' ? match.translation : '',
-          vocab: Array.isArray(match.vocab) ? match.vocab.slice(0, 4).filter(function(v){ return v && v.ko; }) : [],
-          analysis: analysis,
-        };
-      });
-      // Code-level enforcement of must-include grammar patterns. Combined
-      // Sonnet emits richer entries when it does include a pattern, but it
-      // routinely omits common ones (~고 있다, ~ㄹ 수 없다, ~ 때문에) on
-      // judgment — this gate fills any KH_GRAMMAR-detected pattern the AI
-      // skipped using the canonical hint as the explanation.
-      if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns) {
-        window.KH_GRAMMAR.enforceDetectedPatterns(sentFinal, levelKey);
-      }
-      if (paraTrans.length || sentFinal.length) {
-        row.translation = JSON.stringify({ texts: paraTrans, sentences: sentFinal, version: SENT_CACHE_CURRENT });
-        ok++;
-      }
-      if (sentFinal.length) {
-        var derived = _khDeriveVocabGrammarFromSentences(sentFinal, levelKey);
-        if (derived.vocab.length)            { row.vocab   = JSON.stringify(derived.vocab);   ok++; }
-        if (derived.grammar.patterns.length) { row.grammar = JSON.stringify(derived.grammar); ok++; }
-      }
-      // key_expressions → expressions cache row
-      if (Array.isArray(combined.key_expressions) && combined.key_expressions.length) {
-        var keyExprs = combined.key_expressions
-          .filter(function(e){ return e && e.ko && body.indexOf(e.ko) !== -1; })
-          .slice(0, 3)
-          .map(function(e){ return { phrase: String(e.ko).trim(), note: String(e.en || '').trim(), color: 'amber' }; });
-        if (keyExprs.length) row.expressions = JSON.stringify(keyExprs);
-      }
-    } catch(e) { bulkLog('combined-shape error: ' + e.message, 'warn'); }
-  }
-
-  async function _call(instruction, maxTok) {
-    var r = await callClaude({
-      feature: 'bulk-seed-quiz',
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTok,
-      messages: [{ role:'user', content:
-        'Korean article (level: ' + levelKey + ')\nTitle: ' + title + '\n\nBODY START\n' + body.slice(0, 3000) + '\nBODY END\n\n---\n' + instruction
-      }]
-    });
-    return (r && r.content && r.content[0] && r.content[0].text) || '';
-  }
-  function _json(text) { return khExtractJson(text); }
-
-  // Quiz — separate Haiku call (translation/vocab/grammar already
-  // shaped above from the combined Sonnet response).
-  try {
-    var q = await _call('Create 5 fill-in-the-blank questions. Return ONLY {"questions":[{"sentence":"Korean with _____","sentence_en":"English with _____","blank":"","blank_en":"","choices":["","","",""]}]}. No other text.', 1200);
-    row.quiz = JSON.stringify(_json(q));
-    ok++;
-  } catch(e) {}
-
-  if (ok > 0) {
-    try { await sb.from('article_cache').upsert(row, { onConflict:'article_id' }); }
-    catch(e) { bulkLog('cache upsert failed: ' + e.message, 'warn'); }
-  }
-  return ok;
-}
-
-
 // Public entry point — seed N articles. Ignores its own output on failure
 // so a partial batch still counts.
 async function bulkSeedArticles(count) {
@@ -11175,29 +10887,24 @@ async function bulkSeedArticles(count) {
     // 3) Pick `count` with section variety
     var picks = _bulkPickSectionVariedItems(_bulkShuffle(usable), count);
 
-    // 4) Generate + save each
-    var success = 0;
-    for (var i = 0; i < picks.length; i++) {
-      var p = picks[i];
+    // 4) Queue them on the server (article_gen_jobs): body + analysis run
+    // there, so closing this tab doesn't stop the batch. Saved as drafts.
+    var jobs = picks.map(function(p, i) {
       var lvl = bulkPickNextLevel('article');
       bulkLog('(' + (i+1) + '/' + picks.length + ') [' + p._section + '] [' + lvl + '] ' + p.title.slice(0, 70));
-      try {
-        var out = await _bulkGenerateOneArticle(p, p._section, lvl);
-        bulkRememberHash('article', p.title);
-        bulkRememberHash('article', out.title);
-        if (out.tags && out.tags.length) _bulkPushTagHistory('article', out.tags);
-        _bulkBumpCounter('article', lvl);
-        bulkLog('  ✔ saved "' + out.title + '" — now generating cache…', 'ok');
-        var cok = await _bulkGenerateArticleCache(out.articleId, out.title, out.body, lvl, out.combined);
-        bulkLog('  ✔ cache ' + cok + '/4 done', 'ok');
-        success++;
-      } catch(err) {
-        if (err && err.isSemanticDup) bulkLog('  ↳ ' + err.message + ' — skipped', 'warn');
-        else bulkLog('  ✘ ' + err.message, 'err');
-      }
+      return {
+        headline: { title: p.title, url: p.link || p.url || '', source: p.source || '', desc: p.desc || p.summary || '', image: p.image || '' },
+        section: p._section, level: lvl, save_status: 'draft', auto_analysis: true,
+      };
+    });
+    try {
+      var out = await _agCall({ enqueue: jobs });
+      picks.forEach(function(p, i) { bulkRememberHash('article', p.title); _bulkBumpCounter('article', jobs[i].level); });
+      bulkLog('📰 ' + (out.queued || []).length + ' queued on the server — drafts appear in a few minutes (progress: bottom-right pill). Safe to close this tab.', 'ok');
+      _agStartPolling();
+    } catch (err) {
+      bulkLog('  ✘ queue failed: ' + (err.message || err), 'err');
     }
-
-    bulkLog('📰 Articles done: ' + success + '/' + picks.length + ' saved.', success ? 'ok' : 'warn');
     // Refresh distribution readout in-place
     var artC = _bulkGetCounter('article');
     var el = document.querySelector('#bulk-distribution-articles');
@@ -11477,269 +11184,7 @@ async function bulkSeedConvos(count) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// Bulk Seed · 1d — Story seeder
-// ═══════════════════════════════════════════════════════════
-
-// Curated story seed pool — one-line premises with strong hooks, split
-// across the four supported moods so Claude has a specific angle to adapt
-// instead of inventing generic "my day" prose. Session 2 will append real
-// Reddit-sourced seeds on top of this.
-var BULK_STORY_SEED_POOL = [
-  // ── fun ─────────────────────────────────────────────────
-  { mood:'fun', premise:'엄마가 김치 냉장고에 현금을 숨겼는데, 김치와 함께 통째로 버려졌다.' },
-  { mood:'fun', premise:'직장 상사가 실수로 본인 뒷담화 단톡에 본인 메시지를 남김.' },
-  { mood:'fun', premise:'소개팅 상대가 알고 보니 사촌언니 친구의 남동생.' },
-  { mood:'fun', premise:'우리 집 고양이가 매일 새벽 3시 문을 열고 집을 나간다.' },
-  { mood:'fun', premise:'지하철 옆자리 할아버지 주머니에서 햄스터가 튀어나왔다.' },
-  { mood:'fun', premise:'회사 엘리베이터에서 CEO와 단둘이 10층까지 올라가게 됐다.' },
-  { mood:'fun', premise:'편의점 알바 중 새벽에 경찰이 숨 헐떡이며 "커피 한 잔만"이라고 했다.' },
-  { mood:'fun', premise:'배달 기사가 음식을 바꿔 갔는데, 먹어보니 원래 내 것보다 훨씬 맛있었다.' },
-  { mood:'fun', premise:'택시에서 졸다가 깼는데 기사님이 본인 집 앞에 세워놓고 라면을 끓이고 있었다.' },
-  { mood:'fun', premise:'학원에서 졸다가 침을 흘렸는데, 옆자리가 크러쉬였다.' },
-  { mood:'fun', premise:'친구 결혼식 축가가 너무 잘돼서 신부가 감정에 북받쳐 울어버렸다.' },
-  { mood:'fun', premise:'어릴 때 묻어둔 타임캡슐을 10년 뒤 파보니 엄마가 다른 걸 넣어둠.' },
-  { mood:'fun', premise:'반려견이 산책 중 옆집 강아지와 몰래 사귀고 있었다.' },
-  { mood:'fun', premise:'회식 자리에서 무서운 부장님이 알고 보니 BTS 광팬이었다.' },
-  { mood:'fun', premise:'중고거래 하러 나갔는데 구매자가 초등학교 1학년 때 짝꿍이었다.' },
-  { mood:'fun', premise:'노래방에서 고음 도전하다가 천장 등이 실제로 떨어졌다.' },
-  { mood:'fun', premise:'카페 바리스타가 내 이름을 10번째 잘못 쓰는데 나도 모른 척했다.' },
-  { mood:'fun', premise:'지하철에서 신발 한쪽이 벗겨져 끝까지 모른 척하고 내렸다.' },
-
-  // ── touching ────────────────────────────────────────────
-  { mood:'touching', premise:'할머니가 돌아가시기 전 몰래 남긴 편지를 1년 만에 발견했다.' },
-  { mood:'touching', premise:'10년간 연락 끊긴 친구에게서 결혼식 초대장이 왔다.' },
-  { mood:'touching', premise:'아빠가 몰래 내 월세를 매달 보내주고 계셨던 걸 알게 됐다.' },
-  { mood:'touching', premise:'어릴 적 우리집 도우미 아주머니가 TV에 성공한 기업인으로 나왔다.' },
-  { mood:'touching', premise:'엄마가 돈 없어 못 사줬던 장난감을, 내가 내 아이에게 선물했다.' },
-  { mood:'touching', premise:'첫 월급으로 예약한 부모님 건강검진에서 아빠의 심근경색이 조기 발견됐다.' },
-  { mood:'touching', premise:'군대 간 동생이 편지에 처음으로 "형 미안해"라고 적어 보냈다.' },
-  { mood:'touching', premise:'지하철에서 울던 낯선 사람에게 건넨 초콜릿 하나, 1년 뒤 감사 편지가 왔다.' },
-  { mood:'touching', premise:'반려견이 병으로 떠나기 전날, 처음으로 내 베개 위에 올라와 잠들었다.' },
-  { mood:'touching', premise:'길 잃은 할아버지를 모셔다드렸는데 아빠의 어린 시절 담임 선생님이었다.' },
-  { mood:'touching', premise:'친구가 내 몰래 내 글을 모아 출판사에 보내 책이 되었다.' },
-  { mood:'touching', premise:'엄마의 오래된 일기장이 전부 나에 대한 이야기로 가득했다.' },
-  { mood:'touching', premise:'치매 걸린 할머니가 유일하게 나를 이름으로 불러주셨다.' },
-  { mood:'touching', premise:'이민 가는 친구가 공항에서 차마 인사 못하고 돌아서는 걸 봤다.' },
-  { mood:'touching', premise:'버스 기사 아저씨가 매일 같은 시간 나를 위해 30초를 기다려주셨다.' },
-  { mood:'touching', premise:'초등학교 선생님이 20년 만에 나를 기억하고 직접 연락을 주셨다.' },
-  { mood:'touching', premise:'아이가 유치원에서 "우리 엄마는 슈퍼 히어로예요"라고 발표했다.' },
-  { mood:'touching', premise:'헤어진 전 애인이 내 결혼식 전날 "행복해야 해" 한마디만 보냈다.' },
-
-  // ── scary ───────────────────────────────────────────────
-  { mood:'scary', premise:'새벽 3시, 혼자 사는 집에 누군가 초인종을 반복해서 눌렀다.' },
-  { mood:'scary', premise:'주차장에서 내 차 뒷좌석에 모르는 신발이 놓여 있었다.' },
-  { mood:'scary', premise:'블랙박스에 찍힌 영상, 주차된 내 차 옆을 오래도록 서성이는 사람.' },
-  { mood:'scary', premise:'새 집 이사 첫날 밤, 벽 안에서 규칙적인 소리가 들렸다.' },
-  { mood:'scary', premise:'분명 잠그고 나간 문이 CCTV 확인 결과 저절로 열렸다.' },
-  { mood:'scary', premise:'친구 결혼식 사진에 낯선 여자가 찍혀 있는데 친구는 모른다고 한다.' },
-  { mood:'scary', premise:'한밤중 스마트폰 갤러리에 내가 찍은 적 없는 사진이 나타났다.' },
-  { mood:'scary', premise:'회사 엘리베이터가 없는 13층에서 멈췄다.' },
-  { mood:'scary', premise:'길에서 우연히 만난 낯선 사람이 내 이름을 정확히 알고 있었다.' },
-  { mood:'scary', premise:'엄마에게서 온 전화 — "나 집인데 너는 어디니?" 나는 집 거실에 있었다.' },
-  { mood:'scary', premise:'반복해서 꾸던 꿈 속 낡은 골목을 현실에서 발견했다.' },
-  { mood:'scary', premise:'어릴 적 가족 사진 속 인물 중 한 명이, 내가 전혀 모르는 사람이었다.' },
-  { mood:'scary', premise:'새벽에 택시를 탔는데 기사님의 대답이 녹음처럼 똑같이 반복됐다.' },
-  { mood:'scary', premise:'오래된 일기장에 내가 쓰지 않은 글씨가 추가되어 있었다.' },
-  { mood:'scary', premise:'휴대폰 녹음기에 내가 기억 못 하는 대화가 녹음돼 있었다.' },
-  { mood:'scary', premise:'나 혼자 있는 건물 계단에서 누군가의 발소리가 들려왔다.' },
-  { mood:'scary', premise:'꿈에서 본 낯선 사람과 다음 날 지하철에서 정말로 마주쳤다.' },
-  { mood:'scary', premise:'새로 산 중고 스마트폰 사진첩에 내가 사는 동네 골목 사진이 있었다.' },
-
-  // ── shocking ───────────────────────────────────────────
-  { mood:'shocking', premise:'10년간 친했던 친구가 알고 보니 가짜 신분으로 살고 있었다.' },
-  { mood:'shocking', premise:'남편이 매일 출근한다고 했는데 사실 3년째 실직 상태였다.' },
-  { mood:'shocking', premise:'돌아가신 줄 알았던 삼촌이 다른 도시에서 살아계신 걸 알게 됐다.' },
-  { mood:'shocking', premise:'회사 동료가 알고 보니 내 초등학교 동창, 성형 때문에 몰라봤다.' },
-  { mood:'shocking', premise:'유산 분배 자리에서 처음 알게 된, 친형의 또 다른 가족.' },
-  { mood:'shocking', premise:'중고차 구매 한 달 뒤, 전 차주의 끔찍한 사고 이력을 알게 됐다.' },
-  { mood:'shocking', premise:'엄마의 오래된 편지함에서 발견한, 또 다른 자식의 이름.' },
-  { mood:'shocking', premise:'내 SNS를 10년간 몰래 지켜본 사람이 남긴 첫 댓글.' },
-  { mood:'shocking', premise:'유치원 담임 선생님이 사실 엄마가 임신 중이던 시절의 절친이었다.' },
-  { mood:'shocking', premise:'회사 공금을 임원이 빼돌리던 사건을 내가 처음 발견했다.' },
-  { mood:'shocking', premise:'친오빠 결혼식 신부가 사실 내 초등학교 괴롭힘 가해자였다.' },
-  { mood:'shocking', premise:'보이스피싱 용의자로 구속된 사람이 작년 우리 회사 동료였다.' },
-  { mood:'shocking', premise:'내 고양이가 사실은 옆집 할머니가 5년째 찾던 실종묘였다.' },
-  { mood:'shocking', premise:'유튜브에서 우연히 본 옛날 영상에 돌아가신 할머니 모습이 찍혀 있었다.' },
-  { mood:'shocking', premise:'중고거래에서 산 책 속에 낯선 사람이 10년 전 쓴 러브레터가 끼어 있었다.' },
-  { mood:'shocking', premise:'어릴 적 친구 집 마당 타임캡슐에서, 내가 쓴 적 없는 내 이름의 편지가 나왔다.' },
-  { mood:'shocking', premise:'택배 기사로 온 사람이 20년 전 헤어진 친아빠였다.' },
-  { mood:'shocking', premise:'유산 정리하다 엄마의 오래된 가명 계좌를 발견했다.' }
-];
-
-var BULK_STORY_LEVEL_GUIDE = {
-  Starter:      'STARTER: very short simple sentences. Basic vocab. ~이에요/예요 style only.',
-  Beginner:     'BEGINNER: short easy sentences. Basic particles. Present tense mostly.',
-  Intermediate: 'INTERMEDIATE: connectors, past tense, natural flow.',
-  Advanced:     'ADVANCED: complex sentences, literary phrasing, nuanced vocab.'
-};
-var BULK_STORY_LEVEL_TO_KEY = { Starter:'s', Beginner:'b', Intermediate:'i', Advanced:'a' };
-
-async function _bulkFetchRecentStoryHashes() {
-  var sb = getSb();
-  if (!sb) return {};
-  try {
-    var r = await sb.from('stories_data').select('title,preview').order('created_at', { ascending:false }).limit(500);
-    if (r.error) throw r.error;
-    var set = {};
-    (r.data||[]).forEach(function(row) {
-      if (row.title)   set[bulkTitleHash(row.title)]   = 1;
-      if (row.preview) set[bulkTitleHash(row.preview)] = 1;
-    });
-    return set;
-  } catch(e) { bulkLog('Recent-story hash fetch failed: ' + _bulkErrStr(e), 'warn'); return {}; }
-}
-
-function _bulkPickStorySeeds(count, seenSet) {
-  var pool = _bulkShuffle(BULK_STORY_SEED_POOL).filter(function(s) {
-    if (seenSet[bulkTitleHash(s.premise)]) return false;
-    if (bulkIsHashSeenLocally('story', s.premise)) return false;
-    return true;
-  });
-  // Mood variety within a single press
-  var picked = [];
-  var byMood = {};
-  pool.forEach(function(s) { (byMood[s.mood] = byMood[s.mood] || []).push(s); });
-  var moods = _bulkShuffle(Object.keys(byMood));
-  var round = 0;
-  while (picked.length < count) {
-    var added = false;
-    for (var i = 0; i < moods.length && picked.length < count; i++) {
-      var bucket = byMood[moods[i]];
-      if (bucket && bucket[round]) { picked.push(bucket[round]); added = true; }
-    }
-    round++;
-    if (!added) break;
-  }
-  return picked;
-}
-
-async function _bulkGenerateOneStory(seed, levelKey) {
-  var lvlCode = BULK_STORY_LEVEL_TO_KEY[levelKey] || 'b';
-  var prompt =
-      'You are writing a short Korean community-style story for a Korean learner.\n\n'
-    + 'MOOD: ' + seed.mood + '\n'
-    + 'LEVEL: ' + levelKey + '\n'
-    + 'LEVEL GUIDANCE: ' + (BULK_STORY_LEVEL_GUIDE[levelKey] || '') + '\n'
-    + 'PREMISE (must be the story\'s core, do not soften it): ' + seed.premise + '\n\n'
-    + 'QUALITY RULES:\n'
-    + '- First sentence = strong hook (concrete detail / surprise / strong emotion).\n'
-    + '- 8–12 Korean paragraphs, each 2–4 sentences. Tight pacing.\n'
-    + '- Must read like a real community post (Nate Pann / 네이버 카페 style), not a textbook.\n'
-    + '- Keep the mood consistent throughout.\n'
-    + '- 6–8 vocab, 2–3 grammar patterns, 3 comprehension questions.\n'
-    + '- Entire Korean text must follow the LEVEL GUIDANCE above.\n\n'
-    + 'Return ONLY a single valid JSON object (no markdown, no array wrapper):\n'
-    + '{"title":"Korean title","title_en":"English","mood":"' + seed.mood + '","lvl":"' + lvlCode + '","readTime":"X min",'
-    + '"preview":"first 1-2 sentences","body":"full story in Korean with \\n\\n paragraph breaks",'
-    + '"vocab":[{"ko":"","rom":"","en":""}],"grammar":[{"point":"","ex":""}],"comprehension":[{"q":"","a":""}]}';
-
-  var resp = await callClaude({
-    feature: 'bulk-seed-story',
-    model: 'claude-sonnet-4-6',
-    max_tokens: 4500,
-    messages: [{ role:'user', content: prompt }]
-  });
-  var raw = (resp && resp.content || []).map(function(b){ return b.text||''; }).join('');
-  raw = raw.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-  var story = khExtractJson(raw);
-  if (!story.title || !story.body) throw new Error('story missing title/body');
-  story.mood = story.mood || seed.mood;
-  story.lvl  = story.lvl  || lvlCode;
-  if (!story.preview) story.preview = String(story.body).split('\n\n')[0].slice(0, 180);
-  if (!story.readTime) {
-    var wc = String(story.body).split(/\s+/).length;
-    story.readTime = Math.max(1, Math.round(wc / 250)) + ' min';
-  }
-  return story;
-}
-
-async function bulkSeedStories(count) {
-  count = Math.max(1, Math.min(10, Number(count) || 3));
-  bulkLog('📖 Starting story seed (' + count + ')…');
-  var btns = document.querySelectorAll('[data-bulk-btn]');
-  btns.forEach(function(b) { b.disabled = true; });
-
-  try {
-    var seenDb = await _bulkFetchRecentStoryHashes();
-    var seeds  = _bulkPickStorySeeds(count, seenDb);
-    if (!seeds.length) { bulkLog('No fresh story seeds — pool exhausted, expand BULK_STORY_SEED_POOL.', 'warn'); return; }
-    bulkLog(seeds.length + ' story seeds selected, generating…');
-
-    var success = 0;
-    var sb = getSb();
-    if (!sb) { bulkLog('Supabase unavailable, abort.', 'err'); return; }
-
-    for (var i = 0; i < seeds.length; i++) {
-      var seed = seeds[i];
-      var lvl  = bulkPickNextLevel('story');
-      bulkLog('(' + (i+1) + '/' + seeds.length + ') [' + seed.mood + '] [' + lvl + '] ' + seed.premise.slice(0, 70));
-      try {
-        var story = await _bulkGenerateOneStory(seed, lvl);
-        var titleHash   = bulkTitleHash(story.title);
-        var previewHash = bulkTitleHash(story.preview || '');
-        if ((titleHash && seenDb[titleHash]) || (previewHash && seenDb[previewHash])) {
-          bulkLog('  ↳ duplicate title/preview — skip', 'warn');
-          continue;
-        }
-        // Semantic dedup — title + preview + first body paragraph
-        var storySig = (story.title || '') + ' ' + (story.preview || '') + ' ' + String(story.body||'').split('\n\n')[0].slice(0, 400);
-        var storyDup = await bulkCheckSemanticDup('story', storySig);
-        if (storyDup.dup) {
-          bulkLog('  ↳ semantic-dup (Jaccard ' + storyDup.overlap.toFixed(2) + ') — skip', 'warn');
-          continue;
-        }
-        var row = {
-          data:      story,
-          mood:      story.mood,
-          lvl:       story.lvl,
-          title:     story.title,
-          title_en:  story.title_en || '',
-          preview:   story.preview,
-          read_time: story.readTime,
-          created_at: new Date().toISOString()
-        };
-        // Catch-and-drop loop — tolerate schema drift in stories_data
-        async function _tryStoryInsert() {
-          try { await sb.from('stories_data').insert(row); return { ok:true }; }
-          catch(e) { return { ok:false, message: _bulkErrStr(e) }; }
-        }
-        var rs = await _tryStoryInsert();
-        var dropS = 0;
-        while (!rs.ok && dropS < 4) {
-          var ms = (rs.message||'').match(/Could not find the '([^']+)' column/i)
-                || (rs.message||'').match(/column\s+(?:[a-z0-9_]+\.)?"?([a-zA-Z_]+)"?\s+does not exist/i);
-          if (!ms || !ms[1] || row[ms[1]] === undefined) break;
-          delete row[ms[1]];
-          bulkLog('  ↳ dropping unknown column "' + ms[1] + '", retrying', 'warn');
-          rs = await _tryStoryInsert();
-          dropS++;
-        }
-        if (!rs.ok) throw new Error('story insert failed: ' + rs.message);
-        bulkRememberHash('story', seed.premise);
-        bulkRememberHash('story', story.title);
-        bulkRememberHash('story', story.preview || '');
-        if (storyDup.tags && storyDup.tags.length) _bulkPushTagHistory('story', storyDup.tags);
-        if (titleHash)   seenDb[titleHash]   = 1;
-        if (previewHash) seenDb[previewHash] = 1;
-        _bulkBumpCounter('story', lvl);
-        bulkLog('  ✔ saved "' + story.title + '"', 'ok');
-        success++;
-      } catch(err) {
-        bulkLog('  ✘ ' + err.message, 'err');
-      }
-    }
-
-    bulkLog('📖 Stories done: ' + success + '/' + seeds.length + ' saved.', success ? 'ok' : 'warn');
-    var storC = _bulkGetCounter('story');
-    var el = document.querySelector('#bulk-distribution-stories');
-    if (el) el.textContent = _bulkRenderProgressLine('stories', storC);
-  } finally {
-    btns.forEach(function(b) { b.disabled = false; });
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// Bulk Seed · 1e — Unified +3×3 runner
+// Bulk Seed · 1e — Unified +3×2 runner (articles + conversations)
 // ═══════════════════════════════════════════════════════════
 
 function _bulkSection(emoji, title) {
@@ -11751,16 +11196,13 @@ function _bulkSection(emoji, title) {
 async function bulkSeedAll(count) {
   count = Math.max(1, Math.min(10, Number(count) || 3));
   var startTs = Date.now();
-  bulkLog('✨ Bulk +' + count + '×3 run starting at ' + new Date().toLocaleTimeString('en-GB', { hour12:false }));
+  bulkLog('✨ Bulk +' + count + '×2 run starting at ' + new Date().toLocaleTimeString('en-GB', { hour12:false }));
 
   _bulkSection('📰', 'Articles (' + count + ')');
   try { await bulkSeedArticles(count); } catch(e) { bulkLog('Articles step blew up: ' + e.message, 'err'); }
 
   _bulkSection('💬', 'Conversations (' + count + ')');
   try { await bulkSeedConvos(count); }   catch(e) { bulkLog('Convos step blew up: ' + e.message, 'err'); }
-
-  _bulkSection('📖', 'Stories (' + count + ')');
-  try { await bulkSeedStories(count); }  catch(e) { bulkLog('Stories step blew up: ' + e.message, 'err'); }
 
   var elapsed = Math.round((Date.now() - startTs) / 1000);
   bulkLog('✨ Run complete in ' + elapsed + 's.', 'ok');
