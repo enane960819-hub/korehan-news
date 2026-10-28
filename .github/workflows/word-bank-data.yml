@@ -2,25 +2,42 @@ name: Word bank data
 
 # Builds the Word Bank expansion from 한국어기초사전 (NIKL, CC BY-SA 2.0 KR) on
 # GitHub's runners (Claude Code's sandbox can't reach the dataset host).
-# A push touching scripts/word-bank/** runs the dry build: stats + samples in
-# the log and build/words.json as an artifact. Nothing is written to the DB.
+#   push touching scripts/word-bank/** → dry build: stats + samples in the log
+#   manual run with import=true        → also romanize + write vocabulary_bank
 on:
   workflow_dispatch:
+    inputs:
+      import:
+        description: 'Write to vocabulary_bank'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
       - 'scripts/word-bank/**'
 
+env:
+  PROJECT_REF: samghztrdvtxmrmawneu
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: pip install -q huggingface_hub pandas pyarrow
-      - name: Build word list (dry)
+      - name: Build word list
         run: python scripts/word-bank/build.py
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - name: Romanize (site rules)
+        run: deno run --allow-read --allow-write scripts/word-bank/romanize-list.ts build/words.json build/words_rom.json
       - uses: actions/upload-artifact@v4
-        with: { name: words, path: build/words.json }
+        with: { name: words, path: build/words_rom.json }
+      - name: Import into vocabulary_bank
+        if: ${{ github.event.inputs.import == 'true' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: python scripts/word-bank/import.py
