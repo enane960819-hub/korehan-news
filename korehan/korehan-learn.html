@@ -1192,7 +1192,7 @@ function srsRenderCard() {
     + '<div class="srs-card" id="srs-card">'
     + '<div class="srs-card-front">'
     + '<div class="srs-card-ko">' + w.word_ko + '</div>'
-    + '<div class="srs-card-hint">Think of the meaning, then tap a button below</div>'
+    + '<div class="srs-card-hint">Pick the meaning below</div>'
     + '</div>'
     + '<div class="srs-card-back">'
     + '<div class="srs-card-ko">' + w.word_ko + '</div>'
@@ -1201,28 +1201,41 @@ function srsRenderCard() {
     + '</div>'
     + '</div>'
 
-    + '<button class="srs-reveal-btn" id="srs-reveal-btn" onclick="srsReveal()">'
-    + 'Show Meaning 👆'
-    + '</button>'
-
-    + '<div class="srs-ratings" id="srs-ratings" style="display:none">'
-    + '<button class="srs-rate-btn srs-rate-again" onclick="srsRate(0)">'
-    + '<span class="srs-rate-icon">😵</span><span>Again</span><span class="srs-rate-interval">' + srsIntervalLabel(interval, easeFactor, 0) + '</span>'
-    + '</button>'
-    + '<button class="srs-rate-btn srs-rate-hard" onclick="srsRate(3)">'
-    + '<span class="srs-rate-icon">😓</span><span>Hard</span><span class="srs-rate-interval">' + srsIntervalLabel(interval, easeFactor, 3) + '</span>'
-    + '</button>'
-    + '<button class="srs-rate-btn srs-rate-good" onclick="srsRate(4)">'
-    + '<span class="srs-rate-icon">😊</span><span>Easy</span><span class="srs-rate-interval">' + srsIntervalLabel(interval, easeFactor, 4) + '</span>'
-    + '</button>'
-    + '<button class="srs-rate-btn srs-rate-easy" onclick="srsRate(5)">'
-    + '<span class="srs-rate-icon">🚀</span><span>Perfect</span><span class="srs-rate-interval">' + srsIntervalLabel(interval, easeFactor, 5) + '</span>'
-    + '</button>'
+    + '<div id="srs-choices" style="display:flex;flex-direction:column;gap:8px;margin-top:14px">'
+    + _srsChoiceList(w).map(function(c, i) {
+        return '<button type="button" data-i="' + i + '" onclick="srsPick(this)" style="padding:12px 14px;border-radius:12px;border:1.5px solid var(--border,#e2e8f0);background:#fff;color:#0b1626;font-size:14px;font-weight:600;text-align:left;cursor:pointer;font-family:inherit">' + c + '</button>';
+      }).join('')
     + '</div>';
+  _srsShownAt = Date.now();
+}
 
-  // card click to reveal
+// Pick-the-meaning, graded from the answer (no Again/Hard/Good/Easy):
+// wrong → again (comes back this session), right → good, right within
+// 4 s → easy. srsCalcNext / srsUpdateWord schedule it as before.
+var _srsChoiceCur = [], _srsShownAt = 0;
+function _srsChoiceList(w) {
+  var clean = (typeof khCleanMeaning === 'function' ? khCleanMeaning : String);
+  var right = clean(w.word_en || '');
+  var others = _srsQueue.map(function(x){ return clean(x.word_en || ''); })
+    .filter(function(en, i, arr){ return en && en !== right && arr.indexOf(en) === i; })
+    .sort(function(){ return Math.random() - .5; }).slice(0, 3);
+  _srsChoiceCur = others.concat([right]).sort(function(){ return Math.random() - .5; });
+  _srsChoiceCur.right = right;
+  return _srsChoiceCur;
+}
+function srsPick(btn) {
+  var picked = _srsChoiceCur[Number(btn.getAttribute('data-i'))];
+  var ok = picked === _srsChoiceCur.right;
+  var box = document.getElementById('srs-choices');
+  if (box) box.querySelectorAll('button').forEach(function(b) {
+    b.style.pointerEvents = 'none';
+    if (_srsChoiceCur[Number(b.getAttribute('data-i'))] === _srsChoiceCur.right) { b.style.background = '#dcfce7'; b.style.borderColor = '#22c55e'; }
+  });
+  if (!ok) { btn.style.background = '#fee2e2'; btn.style.borderColor = '#ef4444'; }
   var card = document.getElementById('srs-card');
-  if (card) card.addEventListener('click', srsReveal);
+  if (card) card.classList.add('revealed');
+  var grade = !ok ? 0 : (Date.now() - _srsShownAt < 4000 ? 5 : 4);
+  setTimeout(function(){ srsRate(grade); }, ok ? 900 : 2000);
 }
 
 function srsReveal() {
