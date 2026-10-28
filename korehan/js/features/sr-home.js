@@ -91,8 +91,8 @@ function _srhSheetItems(kind) {
       { icon: 'puzzle', t: 'Sentence Builder', s: 'Build Korean sentences from blocks', fn: function () { KHSentenceBuilder&&KHSentenceBuilder.open(); } }
     ] },
     read: { title: 'Read & Talk', sub: 'Real Korean, step by step.', items: [
-      { icon: 'newspaper', t: 'Article Study', s: 'Real news in 5 learning steps', fn: function () { openArticleStudy(); }, gate: 'article_study' },
-      { icon: 'messages-square', t: 'Conversations', s: 'Real dialogue patterns', fn: function () { openConvStudy(); }, gate: 'conversation_study' },
+      { icon: 'newspaper', t: 'Article Study', s: 'Real news in 4 learning steps', fn: function () { openArticleStudy(); }, gate: 'article_study' },
+      { icon: 'messages-square', t: 'Conversations', s: 'Listen, read, then role-play', fn: function () { openConvStudy(); } },
       { icon: 'flame', t: 'Korea Buzz', s: 'What Korea is talking about today', fn: function () { location.href = 'korehan-section.html?s=buzz'; } }
     ] },
     real: { title: 'Real-life', sub: 'Practice for real situations.', items: [
