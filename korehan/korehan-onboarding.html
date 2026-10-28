@@ -1379,9 +1379,13 @@ async function _obLoadPicks() {
         .order('created_at', { ascending: false }).limit(6);
       (r2.data || []).forEach(function(a){ if (rows.length < 3 && !rows.some(function(x){ return x.id === a.id; })) rows.push(a); });
     }
+    var lifeCard = (state.goals || []).indexOf('immigration') > -1
+      ? '<a class="ob-link-card" href="korehan-life.html?g=first-30-days" onclick="saveOnboardingLocal(true)"><span>Life in Korea</span><h3>Your first 30 days in Korea: checklist</h3><p>Residence card, phone, bank, insurance — in order.</p></a>'
+      : '';
+    if (lifeCard) rows = rows.slice(0, 2);
     _obPicks = rows;
-    if (!rows.length) { box.innerHTML = ''; return; }
-    box.innerHTML = rows.map(function(a){
+    if (!rows.length && !lifeCard) { box.innerHTML = ''; return; }
+    box.innerHTML = lifeCard + rows.map(function(a){
       return '<a class="ob-link-card" href="korehan-article.html?id=' + encodeURIComponent(a.id) + '&from=onboarding" onclick="saveOnboardingLocal(true)">'
         + '<span>' + esc(OB_SECTION_LABEL[a.section] || a.section || '') + '</span><h3>' + esc(a.title_en || a.title) + '</h3>'
         + (a.title_en ? '<p>' + esc(a.title) + '</p>' : '') + '</a>';

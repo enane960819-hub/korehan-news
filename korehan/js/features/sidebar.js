@@ -101,6 +101,7 @@ function khInjectSidebar() {
         + '<a href="korehan-conversations.html?cat=dating" class="kh-sb-sub-a">Dating</a>'
       + '</div>'
       + '<a href="korehan-section.html?s=buzz" class="kh-sb-a"><span class="kh-sb-ico">' + khIcon('flame') + '</span>Korea Buzz</a>'
+      + '<a href="korehan-life.html" class="kh-sb-a' + (page==='korehan-life.html'?' on':'') + '"><span class="kh-sb-ico">' + khIcon('house') + '</span>Life in Korea</a>'
     + '</div>'
     // Same structure as the desktop top nav: Read / Study / Progress / Play / Premium.
     + '<div class="kh-sb-sec">'
