@@ -315,6 +315,10 @@ supabase functions deploy claude-proxy
   Edge Function (fill-only, shape-checked, 120 saves/hour/user, stamps `written_by`).
   `article_study_content` is admin-generated only. Never give readers direct write access to a
   shared table again — add a slot to `cache-write` instead.
+- **Word Bank** (`korehan-learn.html` + `js/features/word-bank.js`) reads the `word_bank` view
+  (vocabulary_bank + word_tags). ~6k words, meanings and examples come from 한국어기초사전
+  (NIKL, CC BY-SA 2.0 KR, `source='krdict'`, imported by `.github/workflows/word-bank-data.yml`).
+  Keep the attribution line on the page; drills are built from the bank — no AI calls.
 - `renderArticlePage()` skips a rebuild when the article signature is unchanged; cache rows merge
   (`Object.assign`) instead of replacing, so trimmed list rows never wipe full rows.
 

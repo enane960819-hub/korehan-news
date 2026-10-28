@@ -8063,7 +8063,7 @@ function renderFooter() {
     + '<div style="display:flex;flex-direction:column;gap:9px">'
     + '<a href="korehan-study-room.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Study Room</a>'
     + '<a href="korehan-learning-overview.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Growth Lab</a>'
-    + '<a href="korehan-learn.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Vocab Drill</a>'
+    + '<a href="korehan-learn.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Word Bank</a>'
     + '<a href="korehan-courses.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Courses</a>'
     + '<a href="beginner-guide.html" style="font-size:13px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600">Beginner Guide</a>'
     + '</div>'
@@ -8226,8 +8226,8 @@ function renderSharedSidebar() {
     + '<div class="sidebar-box">'
     + '<a href="korehan-learn.html" style="text-decoration:none;display:block;background:linear-gradient(135deg,#0b1626,#1a3a6b);border-radius:8px;padding:16px;color:#fff;text-align:center">'
     + '<div style="display:flex;justify-content:center;margin-bottom:8px">' + khIcon('languages', '', 'kh-ui-icon-lg') + '</div>'
-    + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Learn Korean</div>'
-    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">Flashcards · Quiz · Sentences</div>'
+    + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">Word Bank</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,0.6)">10,000+ words · Quiz · Listening</div>'
     + '</a></div>'
     + '</div>';
 }
