@@ -334,15 +334,10 @@ async function getArticleCacheVocab() {
     }
     var sb = getSupa();
     if (sb) {
-      var pair = await Promise.all([
-        sb.from('conversations_data').select('data').limit(100),
-        sb.from('stories_data').select('data').limit(100)
-      ]);
-      (pair[0].data || []).forEach(function(row) {
+      // Stories were retired (2026-10) — conversations only.
+      var convRes = await sb.from('conversations_data').select('data').limit(100);
+      (convRes.data || []).forEach(function(row) {
         ((row.data || {}).vocab || []).forEach(function(v){ pushWord(Object.assign({ source: 'conv' }, v)); });
-      });
-      (pair[1].data || []).forEach(function(row) {
-        ((row.data || {}).vocab || []).forEach(function(v){ pushWord(Object.assign({ source: 'story' }, v)); });
       });
     }
   } catch(e) {}
