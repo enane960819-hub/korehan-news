@@ -176,17 +176,18 @@ export function sentenceLines(pack: Pack): Line[] {
   out.push({ id: 'A', text: pack.model_answer })
   pack.sentences.forEach((s, i) => {
     out.push({ id: `S${i + 1}`, text: `${s.ko}  —  "${s.en}"` })
-    s.acceptable_orders.forEach((a, k) => out.push({ id: `S${i + 1}.alt${k + 1}`, text: `WORD-ORDER CHECK — original: ${s.ko} | alternative: ${a}  (flag unless the alternative is completely natural with the same meaning)` }))
+    s.acceptable_orders.forEach((a, k) => out.push({ id: `S${i + 1}.alt${k + 1}`, text: `WORD-ORDER CHECK — original: ${s.ko} | alternative: ${a}  (flag ONLY if the alternative order sounds unnatural or changes the meaning)` }))
   })
   pack.frames.forEach((f, i) => {
     const slot = f.parts.find(isSlot) as Slot
-    slot.options.forEach((o, k) => out.push({ id: `E${i + 1}.${k + 1}`, text: `GLOSS CHECK — "${o}" = "${slot.options_en[k]}"` }))
+    slot.options.forEach((o, k) => out.push({ id: `E${i + 1}.${k + 1}`, text: `GLOSS CHECK (short hint shown under a choice in the frame "${f.en}") — "${o}" = "${slot.options_en[k]}"  (flag only if the meaning is wrong, not for dropping a connective ending the frame already expresses; give fix_en)` }))
   })
   return out
 }
 
 // Apply the reviewer's flags to the non-frame parts. false = unusable.
-export function applySentenceFlags(pack: Pack, bad: string[], level: string): { ok: boolean; why?: string } {
+// fixes: corrected glosses for GLOSS CHECK lines (kept instead of dropping the option).
+export function applySentenceFlags(pack: Pack, bad: string[], level: string, fixes: Record<string, string> = {}): { ok: boolean; why?: string } {
   const has = (id: string) => bad.indexOf(id) >= 0
   if (has('A')) return { ok: false, why: 'model answer flagged' }
   pack.sentences.forEach((s, i) => { s.acceptable_orders = s.acceptable_orders.filter((_, k) => !has(`S${i + 1}.alt${k + 1}`)) })
@@ -196,7 +197,10 @@ export function applySentenceFlags(pack: Pack, bad: string[], level: string): { 
   for (let i = 0; i < pack.frames.length; i++) {
     const slot = pack.frames[i].parts.find(isSlot) as Slot
     for (let k = slot.options.length - 1; k >= 0; k--) {
-      if (has(`E${i + 1}.${k + 1}`)) { slot.options.splice(k, 1); slot.options_en.splice(k, 1) }
+      const id = `E${i + 1}.${k + 1}`
+      if (!has(id)) continue
+      if (fixes[id]) slot.options_en[k] = fixes[id]
+      else { slot.options.splice(k, 1); slot.options_en.splice(k, 1) }
     }
     if (slot.options.length < 2) return { ok: false, why: `frame ${i + 1} lost its options` }
   }
