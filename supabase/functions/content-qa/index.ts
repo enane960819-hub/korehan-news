@@ -58,6 +58,28 @@ function logUsage(sb: any, feature: string, usage: Record<string, number> | unde
   } catch (_) { /* telemetry never breaks QA */ }
 }
 
+// The first complete {...} in a model reply — models sometimes add a note
+// after the JSON (which may itself contain braces), so lastIndexOf('}')
+// isn't safe. String-aware brace matching.
+function firstJsonObject(raw: string): string {
+  const start = raw.indexOf('{')
+  if (start < 0) return ''
+  let depth = 0, inStr = false, esc = false
+  for (let i = start; i < raw.length; i++) {
+    const ch = raw[i]
+    if (inStr) {
+      if (esc) esc = false
+      else if (ch === '\\') esc = true
+      else if (ch === '"') inStr = false
+      continue
+    }
+    if (ch === '"') inStr = true
+    else if (ch === '{') depth++
+    else if (ch === '}') { depth--; if (depth === 0) return raw.slice(start, i + 1) }
+  }
+  return raw.slice(start)   // truncated — let JSON.parse report it
+}
+
 // One retry when the model returns malformed JSON (an unescaped quote in
 // Korean text happens now and then) — cheaper than losing the whole step.
 async function claudeJson(sb: any, apiKey: string, prompt: string, maxTokens: number, feature: string): Promise<any> {
@@ -76,9 +98,8 @@ async function claudeJsonOnce(sb: any, apiKey: string, prompt: string, maxTokens
   const data = await resp.json()
   logUsage(sb, feature, data.usage)
   const raw = (data.content || []).map((c: { text?: string }) => c.text || '').join('').replace(/```json|```/g, '').trim()
-  const s = raw.indexOf('{'), e = raw.lastIndexOf('}')
-  if (s < 0 || e <= s) throw new Error('No JSON in response')
-  const clean = raw.slice(s, e + 1)
+  const clean = firstJsonObject(raw)
+  if (!clean) throw new Error('No JSON in response')
   try { return JSON.parse(clean) } catch (_) { return JSON.parse(clean.replace(/,(\s*[}\]])/g, '$1')) }
 }
 
