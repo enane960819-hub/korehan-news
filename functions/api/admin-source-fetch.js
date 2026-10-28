@@ -81,7 +81,7 @@ const SOURCE_CATALOG = [
   { id:'gtrends-kr', label:'Google Trends KR', kind:'rss', category:'문화', url:'https://trends.google.com/trending/rss?geo=KR' },
 
   // ── Lifestyle / Travel / Beauty / Food ──────────────────────────
-  { id:'gn-viral', label:'Digg Top', kind:'rss', category:'문화', url:'https://digg.com/rss/top.rss' },
+  { id:'gn-viral', label:'Smithsonian', kind:'rss', category:'문화', url:'https://www.smithsonianmag.com/rss/latest_articles/' },
   { id:'gn-beauty', label:'Allure', kind:'rss', category:'beauty', url:'https://www.allure.com/feed/rss' },
   { id:'gn-travel', label:'Guardian Travel', kind:'rss', category:'travel', url:'https://www.theguardian.com/travel/rss' },
   { id:'gn-food', label:'Guardian Food', kind:'rss', category:'문화', url:'https://www.theguardian.com/food/rss' },
@@ -132,8 +132,6 @@ const SOURCE_CATALOG = [
   { id:'gn-listicle', label:'Mental Floss', kind:'rss', category:'문화', url:'https://www.mentalfloss.com/rss.xml' },
   { id:'boredpanda', label:'BoredPanda', kind:'rss', category:'문화', url:'https://www.boredpanda.com/feed/' },
   { id:'upworthy', label:'Upworthy', kind:'rss', category:'문화', url:'https://www.upworthy.com/feeds/feed.rss' },
-  { id:'dodo', label:'The Dodo', kind:'rss', category:'문화', url:'https://www.thedodo.com/rss' },
-  { id:'nypost-weird', label:'NY Post Weird', kind:'rss', category:'문화', url:'https://nypost.com/tag/weird-but-true/feed/' },
   { id:'livescience', label:'Live Science', kind:'rss', category:'문화', url:'https://www.livescience.com/feeds/all' },
   { id:'bbc-ent', label:'BBC Entertainment', kind:'rss', category:'문화', url:'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml' },
 ]
