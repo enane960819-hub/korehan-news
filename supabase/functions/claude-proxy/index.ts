@@ -40,6 +40,9 @@ const ADMIN_EMAILS = ['enane960819@gmail.com']
 // `supabase/migrations/20260428_tutor_dashboard.sql#is_tutor_user`.
 const TUTOR_EMAILS = ['enane960819@gmail.com', 'aliciarburgess@gmail.com']
 
+// AI features only Premium (and legacy standard / pro) accounts may call.
+const PREMIUM_ONLY_FEATURES = new Set(['daily_package_feedback'])
+
 // Tutor-only feature prefix that's allowed to bypass MAX_INPUT_BYTES.
 // Image-OCR features legitimately need multi-MB payloads. Any feature
 // not on this prefix list (even from a tutor) still hits the 80 KB
@@ -163,6 +166,7 @@ Deno.serve(async (req) => {
     if (!apiKey) return jsonResponse({ error: 'No API key configured' }, 500, cors)
 
     // ── 4. Quota: daily call count + monthly USD spend ───────────
+    let userPlan = 'free'
     if (!isAdmin) {
       // Plan resolution. Source of truth is user_subscriptions (written by
       // billing-webhook): an active, unexpired premium row gets the Premium
@@ -178,6 +182,7 @@ Deno.serve(async (req) => {
           .maybeSingle()
         const live = sub && sub.status === 'active' && (!sub.expires_at || new Date(sub.expires_at) > new Date())
         const plan = live ? String(sub.plan || 'free') : 'free'
+        userPlan = plan
         if (plan === 'premium' || plan === 'standard') {
           dailyCallLimit  = STANDARD_DAILY_CALLS
           monthlyUsdLimit = STANDARD_MONTHLY_USD
@@ -256,6 +261,12 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Invalid JSON body' }, 400, cors)
     }
     const { feature, ...claudeBody } = body
+    // Premium-only AI features (owner decision 2026-10-28: writing and its
+    // feedback are Premium). The client gates these too; this stops a free
+    // account from calling them directly.
+    if (!isAdmin && userPlan === 'free' && typeof feature === 'string' && PREMIUM_ONLY_FEATURES.has(feature)) {
+      return jsonResponse({ error: 'Premium feature', code: 'premium_required' }, 403, cors)
+    }
     if (typeof claudeBody.max_tokens === 'number' && claudeBody.max_tokens > MAX_TOKENS_PER_CALL) {
       claudeBody.max_tokens = MAX_TOKENS_PER_CALL
     }
