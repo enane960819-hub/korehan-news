@@ -117,16 +117,28 @@
   function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }
   function weekIndex() { return Math.floor((Date.now() / 86400000 + 3) / 7); }   // changes every Monday (UTC)
 
+  // Tests: the head prefetch (public list, started before the page scripts),
+  // a cached copy for instant repeat visits, or a normal query. Attempts and
+  // the admin's drafts need the session and load after it is restored.
+  var CACHE = 'kh_topik_tests_v1';
   async function loadTests() {
-    var c = sb(); if (!c) return;
-    var q = c.from('topik_tests').select('id,level,section,kind,title,minutes,free,sort,number,status,flagged').order('sort');
-    if (!isAdmin()) q = q.eq('status', 'published');
-    var r = await q;
-    S.tests = (r && r.data) || [];
-    if (user()) {
-      var a = await c.from('topik_attempts').select('test_id,score,correct,total,est_level,finished_at').order('finished_at', { ascending: false }).limit(40);
-      S.attempts = (a && a.data) || [];
+    var rows = null;
+    if (window._tpPrefetch && !S._prefetchUsed) { S._prefetchUsed = true; try { rows = await window._tpPrefetch; } catch (_) {} }
+    var c = sb();
+    if ((!Array.isArray(rows) || isAdmin()) && c) {
+      var q = c.from('topik_tests').select('id,level,section,kind,title,minutes,free,sort,number,status,flagged').order('sort');
+      if (!isAdmin()) q = q.eq('status', 'published');
+      var r = await q;
+      if (r && !r.error) rows = r.data || [];
     }
+    if (Array.isArray(rows)) { S.tests = rows; if (!isAdmin()) { try { localStorage.setItem(CACHE, JSON.stringify(rows)); } catch (_) {} } }
+    else if (!S.tests.length) { try { S.tests = JSON.parse(localStorage.getItem(CACHE) || '[]') || []; } catch (_) {} }
+  }
+  async function loadAttempts() {
+    var c = sb();
+    if (!c || !user()) return;
+    var a = await c.from('topik_attempts').select('id,test_id,score,correct,total,est_level,finished_at,answers,seconds').order('finished_at', { ascending: false }).limit(40);
+    S.attempts = (a && a.data) || [];
   }
   function lastAttempt(id) { return S.attempts.filter(function (a) { return a.test_id === id; })[0]; }
 
@@ -173,12 +185,13 @@
         }).join('') : '<div class="tp-empty">New ' + SECTIONS[S.section].l.toLowerCase() + ' tests are being written — check back soon.</div>')
       + (S.attempts.length ? '<div class="tp-k">Your results</div>' + S.attempts.slice(0, 5).map(function (a) {
           var t = S.tests.filter(function (x) { return x.id === a.test_id; })[0];
-          return '<div class="tp-t" style="cursor:default"><span class="ic">' + ico('chart-column') + '</span><span><b>' + esc(t ? t.title : a.test_id) + '</b><small>'
-            + new Date(a.finished_at).toLocaleDateString() + ' · ' + a.correct + '/' + a.total + ' correct</small></span><span class="tp-badge tp-soon">' + a.score + '/100' + (a.est_level ? ' · ' + esc(a.est_level) : '') + '</span></div>';
+          return '<button type="button" class="tp-t" data-attempt="' + esc(a.id || '') + '"><span class="ic">' + ico('chart-column') + '</span><span><b>' + esc(t ? t.title : a.test_id) + '</b><small>'
+            + new Date(a.finished_at).toLocaleDateString() + ' · ' + a.correct + '/' + a.total + ' correct · tap for details</small></span><span class="tp-badge tp-soon">' + a.score + '/100' + (a.est_level ? ' · ' + esc(a.est_level) : '') + '</span></button>';
         }).join('') : '')
       + (isAdmin() ? adminHtml() : '')
       + '<p class="tp-disc">TOPIK-style practice written by KoreHani — not affiliated with NIIED, the TOPIK organizer. Levels are estimates. Official past papers: <a href="https://www.topik.go.kr" target="_blank" rel="noopener">topik.go.kr</a>.</p>';
     root.querySelectorAll('[data-test]').forEach(function (b) { b.addEventListener('click', function () { startTest(b.dataset.test); }); });
+    root.querySelectorAll('[data-attempt]').forEach(function (b) { b.addEventListener('click', function () { openAttempt(b.dataset.attempt); }); });
     root.querySelectorAll('[data-lv]').forEach(function (b) { b.addEventListener('click', function () { S.level = b.dataset.lv; renderHub(); }); });
     root.querySelectorAll('[data-sec]').forEach(function (b) { b.addEventListener('click', function () { S.section = b.dataset.sec; renderHub(); }); });
     var ex = $('tp-exam');
@@ -285,7 +298,21 @@
 
   function save() { var R = S.run; if (R && R.mode === 'test') lsSet('kh_topik_prog_' + R.test.id, { idx: R.idx, ans: R.ans, flags: R.flags, endAt: R.endAt, started: R.started }); }
 
-  function openOverlay() {
+  // Reopen a saved attempt: same result screen, built from the stored answers.
+  async function openAttempt(id) {
+    var a = S.attempts.filter(function (x) { return x.id === id; })[0];
+    var t = a && S.tests.filter(function (x) { return x.id === a.test_id; })[0];
+    var c = sb();
+    if (!a || !t || !c) return;
+    var r = await c.from('topik_items').select(ITEM_COLS).eq('test_id', t.id).order('n');
+    var items = (r && r.data) || [];
+    if (!items.length) { if (!t.free && typeof requirePlan === 'function') requirePlan('topik_full'); return; }
+    S.run = { mode: 'test', test: t, items: items, idx: 0, ans: a.answers || {}, flags: {}, endAt: 0, started: 0, done: true, saved: true };
+    S.run.result = score(S.run, false);
+    openOverlay(true);
+    renderResult();
+  }
+  function openOverlay(resultOnly) {
     closeOverlay();
     var ov = document.createElement('div');
     ov.className = 'tp-ov'; ov.id = 'tp-ov';
@@ -304,6 +331,7 @@
       }
       closeOverlay(); renderHub();
     });
+    if (resultOnly) return;
     if (S.run.mode === 'test') { tick(); S.run.timer = setInterval(tick, 1000); }
     else $('tp-timer').innerHTML = '';
     renderQ();
@@ -399,27 +427,31 @@
     return b >= 230 ? 'Level 6' : b >= 190 ? 'Level 5' : b >= 150 ? 'Level 4' : b >= 120 ? 'Level 3' : 'Below level 3';
   }
 
-  async function submit(timeUp) {
-    var R = S.run; if (!R || R.done) return;
-    R.done = true;
-    if (R.timer) clearInterval(R.timer);
+  function score(R, timeUp) {
     var byType = {}, correct = 0;
     R.items.forEach(function (it) {
-      var ok = R.ans[it.id] === it.answer;
+      var ok = Number(R.ans[it.id]) === it.answer;
       if (ok) correct++;
       var b = byType[it.type] || (byType[it.type] = [0, 0]);
       b[1]++; if (ok) b[0]++;
     });
-    var total = R.items.length, score = Math.round(correct / total * 100);
-    R.result = { correct: correct, total: total, score: score, byType: byType, level: R.mode === 'test' ? estLevel(score, R.test) : null, timeUp: timeUp };
+    var total = R.items.length, sc = Math.round(correct / total * 100);
+    return { correct: correct, total: total, score: sc, byType: byType, level: R.mode === 'test' ? estLevel(sc, R.test) : null, timeUp: timeUp };
+  }
+  async function submit(timeUp) {
+    var R = S.run; if (!R || R.done) return;
+    R.done = true;
+    if (R.timer) clearInterval(R.timer);
+    R.result = score(R, timeUp);
+    var correct = R.result.correct, total = R.result.total, byType = R.result.byType, score_ = R.result.score;
     if (R.mode === 'test') {
       lsSet('kh_topik_prog_' + R.test.id, null);
       var c = sb();
       if (c && user()) {
-        var row = { test_id: R.test.id, answers: R.ans, correct: correct, total: total, score: score, by_type: byType, est_level: R.result.level, seconds: Math.round((Date.now() - R.started) / 1000) };
-        try { await c.from('topik_attempts').insert(row); S.attempts.unshift(Object.assign({ finished_at: new Date().toISOString() }, row)); } catch (_) {}
+        var row = { test_id: R.test.id, answers: R.ans, correct: correct, total: total, score: score_, by_type: byType, est_level: R.result.level, seconds: Math.round((Date.now() - R.started) / 1000) };
+        try { var ins = await c.from('topik_attempts').insert(row).select('id').maybeSingle(); S.attempts.unshift(Object.assign({ id: ins && ins.data ? ins.data.id : null, finished_at: new Date().toISOString() }, row)); } catch (_) {}
       }
-      try { if (typeof khTrackUser === 'function') khTrackUser('topik_test', { test: R.test.id, score: score }); } catch (_) {}
+      try { if (typeof khTrackUser === 'function') khTrackUser('topik_test', { test: R.test.id, score: score_ }); } catch (_) {}
     }
     renderResult();
   }
@@ -475,13 +507,25 @@
     await loadTests();
     renderHub();
     var t = /[?&]test=([\w-]+)/.exec(location.search);
-    if (t) startTest(t[1]);
+    if (t) whenReady(function () { startTest(t[1]); });
+  }
+  // Session-dependent data (attempts, admin drafts) once the shared scripts
+  // and the session are in; repaint the hub if it is showing.
+  function afterAuth() {
+    whenReady(async function () {
+      try { if (isAdmin()) await loadTests(); await loadAttempts(); } catch (_) {}
+      if (!document.getElementById('tp-ov')) renderHub();
+    });
   }
   function whenReady(fn, n) {
     n = n || 0;
     if (sb() || n > 40) return fn();
     setTimeout(function () { whenReady(fn, n + 1); }, 100);
   }
-  document.addEventListener('DOMContentLoaded', function () { whenReady(start); });
-  window.addEventListener('kh-auth-signed-in', function () { loadTests().then(function () { if (!S.run || !document.getElementById('tp-ov')) renderHub(); }); });
+  // Loaded before the shared scripts: with the head prefetch, paint now.
+  if (window._tpPrefetch && document.getElementById('tp-root')) start();
+  else document.addEventListener('DOMContentLoaded', function () { whenReady(start); });
+  document.addEventListener('DOMContentLoaded', function () { icons(); setTimeout(afterAuth, 0); });
+  window.addEventListener('kh-auth-signed-in', afterAuth);
+  window.addEventListener('kh-plan-loaded', function () { if (!document.getElementById('tp-ov')) renderHub(); });
 })();

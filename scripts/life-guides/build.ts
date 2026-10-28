@@ -7,6 +7,7 @@ import { GUIDES, CHECKED } from './guides.mjs'
 const q = (s: string) => "'" + String(s).replace(/'/g, "''") + "'"
 const j = (v: unknown) => q(JSON.stringify(v)) + '::jsonb'
 
+const fixture: any[] = []
 const rows = GUIDES.map((g: any) => {
   const seen = new Set<string>()
   const terms: any[] = []
@@ -16,6 +17,7 @@ const rows = GUIDES.map((g: any) => {
     seen.add(ko)
     terms.push({ ko, rom: romanize(ko), en })
   }
+  fixture.push({ slug: g.slug, category: g.category, featured: g.featured, sort: g.sort, title: g.title, summary: g.summary, steps: g.steps, terms, phrases: g.phrases, sources: g.sources, checked_at: CHECKED })
   return `  (${q(g.slug)}, ${q(g.category)}, ${g.featured}, ${g.sort}, ${q(g.title)}, ${q(g.summary)}, ${j(g.steps)}, ${j(terms)}, ${j(g.phrases)}, ${j(g.sources)}, ${q(CHECKED)}::date, 'published')`
 })
 
@@ -33,4 +35,7 @@ on conflict (slug) do update set
   checked_at = excluded.checked_at;
 `
 writeFileSync(new URL('../../supabase/migrations/20261028_life_guides_b_seed.sql', import.meta.url), sql)
+// Static copy served from the CDN — the page paints from it instantly and
+// refreshes from the DB (content-qa fixes) in the background.
+writeFileSync(new URL('../../korehan/data/life-guides.json', import.meta.url), JSON.stringify(fixture))
 console.log('guides:', GUIDES.length)
