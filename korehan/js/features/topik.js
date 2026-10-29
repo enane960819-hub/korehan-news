@@ -27,11 +27,11 @@
     infer:  { ko: '이 글을 읽고 알 수 있는 것을 고르십시오.', en: 'What you can tell' },
     // Generated tests carry their own printed instruction; these are labels.
     l_answer: { en: 'Answer the question' }, l_next: { en: 'What comes next' }, l_place: { en: 'Where are they?' },
-    l_topic: { en: 'What it is about' }, l_picture: { en: 'Choose the picture' }, l_graph: { en: 'Choose the graph' },
+    l_topic: { en: 'What is it about?' }, l_picture: { en: 'Choose the picture' }, l_graph: { en: 'Choose the graph' },
     l_match: { en: 'Matches what you heard' }, l_main: { en: 'Main idea' }, l_action: { en: 'What she does next' }, l_set: { en: 'Long listening' },
     answer: { en: 'Answer the question' }, next: { en: 'What comes next' }, place: { en: 'Where are they?' }, picture: { en: 'Choose the picture' },
     reason: { en: 'Reason' }, action: { en: 'Next action' }, grammar: { en: 'Grammar blank' }, similar: { en: 'Similar meaning' },
-    about: { en: 'What it is about (ads, signs)' }, graph: { en: 'Graph' }, feeling: { en: 'Feelings' }, headline: { en: 'Newspaper headline' },
+    about: { en: 'What is it about? (ads, signs)' }, graph: { en: 'Graph' }, feeling: { en: 'Feelings' }, headline: { en: 'Newspaper headline' },
     theme: { en: 'Main theme' }, attitude: { en: 'Attitude' }, manner: { en: 'Way of speaking' }, intent: { en: 'Intention' },
     who: { en: 'Who is the speaker?' }, before: { en: 'What came before' }, doing: { en: 'What he is doing' }, set: { en: 'Passage' }
   };
@@ -47,8 +47,33 @@
     topic: 'Find the category word that covers both sentences.',
     ptopic: 'Ask what the whole passage explains.',
     purpose: 'The subject line and the first sentence usually say why it was written.',
-    infer: 'Pick only what the text supports — not what might also be true.'
+    infer: 'Pick only what the text supports — not what might also be true.',
+    answer: 'Match the question word: 네/아니요 questions need 네 or 아니요 first; 뭐/어디/언제 need a thing, place or time.',
+    place: 'Listen for the things people ask for or handle (표, 약, 책) — they tell you the place.',
+    next: 'Reply to the last line only: an offer, a question or a request each needs a matching response.',
+    picture: 'Note who is speaking and what they are holding or doing in the last line.',
+    attitude: 'Find the writer\'s opinion (-아야 한다, 문제이다, 바람직하다), then check the verb that ends each choice — 지지하다, 반대하다, 우려하다, 비판하다 must match it.',
+    grammar: 'Read the whole sentence first: how the two halves connect (reason, contrast, condition, interruption) decides the ending.',
+    similar: 'Name what the underlined pattern does (reason, ability, intention…), then pick the choice that does the same job in this sentence.',
+    reason: 'Listen for 때문에, -아서/어서 and 왜냐하면 — the reason usually follows them.',
+    action: 'The next action is usually what the speaker agrees to at the end (-ㄹ게요, -을까요?).',
+    about: 'Ads and signs name a product or place with a few key words — pick the category that covers them all.',
+    graph: 'Compare the numbers in each choice with the graph one by one — order, highest and lowest.',
+    feeling: 'Look at the situation and the words around the underline — they show the feeling.',
+    headline: 'Headlines drop endings and particles; restore them before matching the meaning.',
+    theme: 'The theme is the writer\'s main claim — often in the last sentence.',
+    manner: 'Listen to how the speaker sounds: asking, explaining, refusing or complaining.',
+    intent: 'Ask what the speaker wants to happen — the request or suggestion behind the words.',
+    who: 'Listen for job words and what the speaker does or knows — they tell you who it is.',
+    before: 'The first line often reacts to something just said — guess what that was.',
+    doing: 'Listen for the verbs in the present: what the man is doing right now.',
+    set: 'Read the questions first, then find the part of the passage each one is about.'
   };
+  // Listening types share the reading tip of the same kind.
+  ['answer', 'next', 'place', 'topic', 'picture', 'graph', 'match', 'main', 'action', 'set'].forEach(function (k) { if (!TIPS['l_' + k]) TIPS['l_' + k] = TIPS[k]; });
+  TIPS.l_topic = 'Listen for the words both speakers repeat — the topic covers them.';
+  TIPS.l_set = 'Read the questions before the audio starts so you know what to listen for.';
+  TIPS.l_action = TIPS.action;
   var NUMS = ['①', '②', '③', '④'];
   var S = { level: 'I', section: 'reading', tests: [], attempts: [], run: null };
   try { var _sv = JSON.parse(localStorage.getItem('kh_topik_view') || 'null'); if (_sv) { S.level = _sv.level === 'II' ? 'II' : 'I'; S.section = _sv.section === 'listening' ? 'listening' : 'reading'; } } catch (_) {}
@@ -177,7 +202,7 @@
         + (days != null && days >= 0 ? 'Your exam: ' + new Date(exam + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + '<br>Plan: one full test a week + a mini test + Word Bank words every day' : 'Taking the TOPIK? Add your exam date for a countdown.')
         + '</small><input type="date" id="tp-exam" value="' + esc(exam || '') + '" aria-label="Exam date"></div></div>'
       + (nextUp ? '<div class="tp-k">Up next</div>' + row(nextUp, (COUNTS[S.level + '-' + S.section] || '') + ' · ' + nextUp.minutes + ' min', nextUp.free ? '<span class="tp-badge tp-free">FREE</span>' : '') : '')
-      + (mini ? '<div class="tp-k">This week\'s mini test</div>' + row(mini, '10 questions · about 10 min · new set every Monday', '<span class="tp-badge tp-free">FREE</span>') : '')
+      + (mini ? '<div class="tp-k">This week\'s mini test</div>' + row(mini, '10 questions · ' + (mini.minutes || 12) + ' min · new set every Monday', '<span class="tp-badge tp-free">FREE</span>') : '')
       + '<div class="tp-k">All ' + SECTIONS[S.section].l.toLowerCase() + ' tests (' + full.filter(function (t) { return t.status !== 'draft'; }).length + ')</div>'
       + (full.length ? full.map(function (t) {
           var badge = t.status === 'draft' ? '<span class="tp-badge tp-soon">DRAFT · ' + (t.flagged || 0) + ' flagged</span>'
@@ -558,11 +583,26 @@
       }).join('');
     }
     if (wrong.length) {
+      // Grouped questions share one passage: show it with the first wrong
+      // question of the group and point back to it for the rest.
+      var shownGroup = {};
+      var passageOf = function (it) {
+        if (it.passage || !it.group_key) return it.passage || '';
+        var src = R.items.filter(function (x) { return x.group_key === it.group_key && x.passage; })[0];
+        return src ? src.passage : '';
+      };
       html += '<div class="tp-k">Review mistakes (' + wrong.length + ')</div>' + wrong.map(function (it) {
         var mine = R.ans[it.id];
+        var pass = passageOf(it), passHtml = '';
+        if (pass) {
+          if (it.group_key && shownGroup[it.group_key]) passHtml = '<div style="font-size:12.5px;color:rgba(255,255,255,.6);margin:6px 0">Same passage as Q' + shownGroup[it.group_key] + ' above.</div>';
+          else passHtml = '<div class="tp-pass" style="margin:6px 0 8px;font-size:14.5px">' + rich(pass) + '</div>';
+          if (it.group_key && !shownGroup[it.group_key]) shownGroup[it.group_key] = it.n;
+        }
         return '<div class="tp-wrong"><div class="h">' + (R.mode === 'test' ? 'Q' + it.n + ' · ' : '') + esc(typeLabel(it.type)) + '</div>'
           + (it.script && it.script.length ? '<div class="tp-pass tp-script" style="margin:6px 0 8px;font-size:14px">' + it.script.map(function (l) { return '<b>' + esc(l.s || '') + '</b> ' + esc(l.t || ''); }).join('\n') + '</div>' : '')
-          + (it.passage && !it.group_key ? '<div class="tp-pass" style="margin:6px 0 8px;font-size:14.5px">' + rich(it.passage) + '</div>' : '')
+          + passHtml
+          + (it.media && it.media.graph ? '<div class="tp-pass">' + graphSvg(it.media.graph, false) + '</div>' : '')
           + (it.question ? '<div style="font-size:13px;color:#fff;margin-bottom:4px">' + esc(it.question) + '</div>' : '')
           + '<div style="font-size:14px;line-height:1.6;font-family:\'Noto Sans KR\',sans-serif">'
           + (mine ? '<span style="color:#fca5a5">Your answer: ' + NUMS[mine - 1] + ' ' + (typeof it.choices[mine - 1] === 'string' ? esc(it.choices[mine - 1]) : '') + '</span><br>' : '<span style="color:#fca5a5">No answer</span><br>')
@@ -590,7 +630,23 @@
     await loadTests();
     renderHub();
     var t = /[?&]test=([\w-]+)/.exec(location.search);
-    if (t) whenReady(function () { startTest(t[1]); });
+    if (t) whenReady(function () { whenPlanKnown(function () { startTest(t[1]); }); });
+  }
+  // Deep link (?test=…): a Premium test can only open once we know who is
+  // signed in and their plan — otherwise requirePlan() just says "tap again".
+  function whenPlanKnown(fn) {
+    var started = Date.now(), fired = false;
+    var go = function () { if (fired) return; fired = true; window.removeEventListener('kh-plan-loaded', onPlan); fn(); };
+    var onPlan = function () { go(); };
+    window.addEventListener('kh-plan-loaded', onPlan);
+    (function check() {
+      if (fired) return;
+      var sessionKnown = !!window._sessionChecked || !!user();
+      var planKnown = typeof _userPlanLoaded === 'undefined' || _userPlanLoaded;
+      if (sessionKnown && (!user() || planKnown)) return go();
+      if (Date.now() - started > 10000) return go();   // never hang: fall back to the normal path
+      setTimeout(check, 100);
+    })();
   }
   // Session-dependent data (attempts, admin drafts) once the shared scripts
   // and the session are in; repaint the hub if it is showing.

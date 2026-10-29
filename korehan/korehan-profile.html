@@ -194,7 +194,13 @@
     sb = (typeof getSupa === 'function') ? getSupa() : null;
     if (!sb) { showError(); return; }
     hostId = getTargetUserId();
-    if (!hostId) { showError(); return; }
+    if (!hostId) {
+      // No ?u= — show the signed-in learner's own profile.
+      var me = await waitForSession();
+      if (!me) { showError('Sign in to see your profile', 'Your profile shows your level, streak and guestbook. <a href="#" onclick="if(typeof openAuthModal===\'function\'){openAuthModal(\'login\');}return false;" style="color:var(--bright);font-weight:700">Sign in</a>, or open a friend\'s profile from <a href="korehan-friends.html" style="color:var(--bright);font-weight:700">Friends</a>.'); return; }
+      hostId = me.id;
+      try { history.replaceState(null, '', location.pathname + '?u=' + encodeURIComponent(hostId)); } catch (_) {}
+    }
     try {
       currentUser = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null;
     } catch (_) { currentUser = null; }
@@ -390,11 +396,33 @@
            '</form>';
   }
 
-  function showError() {
+  function showError(title, bodyHtml) {
     $('kh-pf-loading').style.display = 'none';
     $('kh-pf-root').style.display = 'none';
-    $('kh-pf-error').style.display = 'block';
+    var box = $('kh-pf-error');
+    if (title) {
+      box.children[0].textContent = title;
+      box.children[1].innerHTML = bodyHtml || '';
+    }
+    box.style.display = 'block';
   }
+  // Resolves with the signed-in user once the shared auth check has run
+  // (window._sessionChecked), or null when signed out / after ~6 s.
+  function waitForSession() {
+    return new Promise(function(resolve) {
+      var t0 = Date.now();
+      (function check() {
+        var u = (typeof supaUser !== 'undefined' && supaUser) ? supaUser : null;
+        if (u) return resolve(u);
+        if (window._sessionChecked || Date.now() - t0 > 6000) return resolve(null);
+        setTimeout(check, 100);
+      })();
+    });
+  }
+  window.addEventListener('kh-auth-signed-in', function() {
+    // Signed in from the prompt above: load the learner's own profile.
+    if (!getTargetUserId() && $('kh-pf-error').style.display === 'block') { $('kh-pf-error').style.display = 'none'; $('kh-pf-loading').style.display = 'block'; loadProfile(); }
+  });
 
   // ── Action handlers ────────────────────────────────────────────
   window.khPfAddFriend = async function (btn) {

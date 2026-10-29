@@ -12,6 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700;900&family=Playfair+Display:wght@700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+<script src="js/core/modals.js?v=20260525r"></script>
 <script>
 // This page doesn't load korehan-shared.js, so draw Lucide icons here:
 // once on load and again whenever a step re-renders.
@@ -1054,12 +1055,26 @@ function _adPick(tierIdx) {
   return null;
 }
 function _adRecommended() {
-  // Average the levels of the last 5 answers, nudged by right/wrong.
-  var last = state.testAnswers.slice(-5);
-  if (!last.length) return 'Beginner';
-  var sum = last.reduce(function(acc, a){ return acc + AD_ORDER.indexOf(a.level) + (a.correct ? 0.5 : -0.5); }, 0);
-  var idx = Math.round(sum / last.length);
-  return AD_ORDER[Math.max(0, Math.min(3, idx))];
+  // Placement follows correctness, not how hard the questions got: the
+  // highest level where at least half the answers were right, capped at the
+  // lowest level the learner failed (missing the basic Seed items = Seed).
+  var ans = state.testAnswers;
+  if (!ans.length) return 'Beginner';
+  var right = [0, 0, 0, 0], asked = [0, 0, 0, 0];
+  ans.forEach(function(a){
+    var i = AD_ORDER.indexOf(a.level);
+    if (i < 0) return;
+    asked[i] += 1;
+    if (a.correct) right[i] += 1;
+  });
+  var best = 0, firstFail = -1;
+  for (var i = 0; i < AD_ORDER.length; i++) {
+    if (!asked[i]) continue;
+    if (right[i] * 2 >= asked[i]) best = i;
+    else if (firstFail < 0) firstFail = i;
+  }
+  if (firstFail >= 0 && firstFail < best) best = firstFail;
+  return AD_ORDER[best];
 }
 
 function startPlacementTest() {
@@ -1213,7 +1228,7 @@ function nextTestQ() {
 
 async function backToLevelChoice() {
   if (_testIdx > 0 || state.testAnswers.length) {
-    var ok = (typeof khConfirm === 'function') ? await khConfirm('Leave the check?', 'Your answers so far won\'t be kept.', { okLabel: 'Leave' }) : window.confirm('Leave the check? Your answers so far won\'t be kept.');
+    var ok = (typeof khConfirm === 'function') ? await khConfirm('Leave the check?', 'Your answers so far won\'t be kept.', { okLabel: 'Leave', cancelLabel: 'Stay' }) : window.confirm('Leave the check? Your answers so far won\'t be kept.');
     if (!ok) return;
   }
   state.testQuestions = [];
@@ -1234,8 +1249,22 @@ function showTestResult() {
   if (area) {
     var names = { reading:'reading', grammar:'grammar', vocab:'vocabulary', listening:'listening' };
     var tried = Object.keys(names).filter(function(k){ return state.placementResult.counts && state.placementResult.counts[k]; });
+    var rightBy = {}, askedBy = {};
+    state.testAnswers.forEach(function(a){ var k = a.area || 'grammar'; askedBy[k] = (askedBy[k] || 0) + 1; if (a.correct) rightBy[k] = (rightBy[k] || 0) + 1; });
     tried.sort(function(a, b){ return area[b] - area[a]; });
-    if (tried.length >= 2) areaNote = 'Strongest: ' + names[tried[0]] + ' · next to work on: ' + names[tried[tried.length - 1]];
+    if (tried.length >= 2) {
+      var top = tried[0], low = tried[tried.length - 1];
+      // Only call a skill "strongest" when it really leads and most answers in it were right.
+      // (ties at the top are named together, up to two).
+      var tops = tried.filter(function(k){ return area[k] === area[top]; });
+      var strongOk = tops.length < tried.length && tops.length <= 2
+        && tops.every(function(k){ return (rightBy[k] || 0) * 2 > askedBy[k]; });
+      var weakOk = area[low] < area[top] || (rightBy[low] || 0) < askedBy[low];
+      var parts = [];
+      if (strongOk) parts.push('Strongest: ' + tops.map(function(k){ return names[k]; }).join(' & '));
+      if (weakOk) parts.push((strongOk ? 'next' : 'Next') + ' to work on: ' + names[low]);
+      areaNote = parts.join(' · ');
+    }
   }
   document.getElementById('ob-content').innerHTML = cardWrap(
     '<div>'

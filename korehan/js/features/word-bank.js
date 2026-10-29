@@ -114,7 +114,7 @@
     if (typeof supaUser === 'undefined' || !supaUser || !window.khReviewQueue) { box.innerHTML = ''; return; }
     khReviewQueue.summary().then(function (q) {
       var n = (q && q.items && q.items.length) || 0;
-      box.innerHTML = n ? '<button type="button" class="wb-due" onclick="khReviewQueue.open()"><span><b>' + n + ' word' + (n === 1 ? '' : 's') + ' due today</b><small>From your saved words</small></span><span class="wb-go">Review</span></button>' : '';
+      box.innerHTML = n ? '<button type="button" class="wb-due" onclick="khReviewQueue.open()"><span><b>Today’s review · ' + n + ' question' + (n === 1 ? '' : 's') + '</b><small>From your saved words and today’s reading</small></span><span class="wb-go">Review</span></button>' : '';
     }, function () {});
   }
   function render() {
@@ -200,9 +200,52 @@
       rows = rows.filter(function (r) { return r.word_ko && r.word_en; });
       if (rows.length < 6) { openOverlay('<p class="wb-empty">Not enough words in this filter yet — try “All”.</p>' + closeBtn()); return; }
       var qs = shuffle(rows).slice(0, 10);
-      D = { kind: kind, pool: rows, qs: qs, i: 0, right: 0, missed: [], answered: false, flipped: false };
-      step();
+      D = { kind: kind, pool: rows, extra: [], qs: qs, i: 0, right: 0, missed: [], answered: false, flipped: false };
+      var d = D;
+      (kind === 'meaning' ? morePool(qs, rows) : Promise.resolve([])).then(function (extra) {
+        if (D !== d) return;   // closed or restarted while loading
+        d.extra = extra || [];
+        step();
+      });
     }, function () { openOverlay('<p class="wb-empty">Couldn’t load words. Please try again.</p>' + closeBtn()); });
+  }
+  // Meaning quiz: a 60-word slice can hold only one or two adverbs / numerals /
+  // pronouns, so fetch more words of each short class from the whole bank.
+  var POS_OF = { pred: ['동사', '형용사'] };
+  function sameClassCount(q, list) {
+    var m = firstMeaning(q.word_en).toLowerCase();
+    return list.filter(function (r) { return r.word_ko !== q.word_ko && cls(r) === cls(q) && firstMeaning(r.word_en).toLowerCase() !== m; }).length;
+  }
+  function morePool(qs, rows) {
+    var need = {};
+    qs.forEach(function (q) { if (sameClassCount(q, rows) < 6) need[cls(q)] = 1; });
+    var jobs = Object.keys(need).map(function (c) {
+      var p = POS_OF[c] || [c];
+      var run = function (sameLevel) {
+        var x = sb().from('word_bank').select('word_ko,word_rom,word_en,level,pos,example_ko,tag').in('pos', p);
+        if (sameLevel) x = x.eq('level', S.level);
+        return x.limit(200).then(function (r) { return (r && r.data) || []; }, function () { return []; });
+      };
+      return run(true).then(function (list) {
+        return list.length >= 12 ? list : run(false).then(function (all) { return list.concat(all); });
+      });
+    });
+    return Promise.all(jobs).then(function (lists) {
+      return [].concat.apply([], lists).filter(function (r) { return r.word_ko && r.word_en; });
+    }, function () { return []; });
+  }
+  // Content words of a meaning, for "clearly different" checks (hot / hot water).
+  var STOP = { a: 1, an: 1, the: 1, to: 1, be: 1, of: 1, or: 1, and: 1, 'in': 1, on: 1, at: 1, for: 1, not: 1, one: 1, s: 1, is: 1 };
+  function meaningWords(en) {
+    var out = {};
+    String(en || '').toLowerCase().split(/[^a-z]+/).forEach(function (w) { if (w.length > 1 && !STOP[w]) out[w.replace(/(ies|es|s)$/, '')] = 1; });
+    return out;
+  }
+  function clearlyDifferent(a, b) {
+    if (a.word_ko === b.word_ko) return false;
+    var wa = meaningWords(a.word_en), wb = meaningWords(b.word_en);
+    for (var k in wa) if (wb[k]) return false;
+    return firstMeaning(a.word_en).toLowerCase() !== firstMeaning(b.word_en).toLowerCase();
   }
   function options(q) {
     if (D.kind === 'listen') {
@@ -211,11 +254,22 @@
         .sort(function (a, b) { return a.d - b.d; }).slice(0, 3).map(function (x) { return x.r; });
       return shuffle([q].concat(near));
     }
-    var same = shuffle(D.pool.filter(function (r) {
-      return r.word_ko !== q.word_ko && cls(r) === cls(q) && firstMeaning(r.word_en).toLowerCase() !== firstMeaning(q.word_en).toLowerCase();
-    }));
-    var picks = [], seen = {}; seen[firstMeaning(q.word_en).toLowerCase()] = 1;
-    same.forEach(function (r) { var m = firstMeaning(r.word_en).toLowerCase(); if (picks.length < 3 && !seen[m]) { seen[m] = 1; picks.push(r); } });
+    // Distractors must be plainly wrong: same word class first (from the
+    // slice, then the wider bank), then any word whose meaning shares nothing
+    // with the answer — always four options.
+    var all = D.pool.concat(D.extra || []);
+    var picks = [], seen = {}, seenKo = {}; seen[firstMeaning(q.word_en).toLowerCase()] = 1; seenKo[q.word_ko] = 1;
+    function take(list) {
+      list.forEach(function (r) {
+        var m = firstMeaning(r.word_en).toLowerCase();
+        if (picks.length >= 3 || seen[m] || seenKo[r.word_ko] || !clearlyDifferent(q, r)) return;
+        if (picks.some(function (p) { return !clearlyDifferent(p, r); })) return;   // no two options alike
+        seen[m] = 1; seenKo[r.word_ko] = 1; picks.push(r);
+      });
+    }
+    take(shuffle(D.pool.filter(function (r) { return cls(r) === cls(q); })));
+    take(shuffle((D.extra || []).filter(function (r) { return cls(r) === cls(q); })));
+    take(shuffle(all));
     return shuffle([q].concat(picks));
   }
   function step() {
@@ -295,7 +349,7 @@
   // ── Hangul ───────────────────────────────────────────────────
   var CONS = [['ㄱ', 'g/k', '가방', 'gabang', 'bag'], ['ㄴ', 'n', '나무', 'namu', 'tree'], ['ㄷ', 'd/t', '다리', 'dari', 'leg; bridge'],
     ['ㄹ', 'r/l', '라면', 'ramyeon', 'ramen'], ['ㅁ', 'm', '물', 'mul', 'water'], ['ㅂ', 'b/p', '바다', 'bada', 'sea'],
-    ['ㅅ', 's', '사과', 'sagwa', 'apple'], ['ㅇ', 'ng', '아이', 'ai', 'child'], ['ㅈ', 'j', '자동차', 'jadongcha', 'car'],
+    ['ㅅ', 's', '사과', 'sagwa', 'apple'], ['ㅇ', '–/ng', '아이', 'ai', 'child', 'Silent at the start of a syllable (아이 = a-i), “ng” at the end of one (강 = gang).', ['강', 'gang', 'river']], ['ㅈ', 'j', '자동차', 'jadongcha', 'car'],
     ['ㅊ', 'ch', '친구', 'chingu', 'friend'], ['ㅋ', 'k', '커피', 'keopi', 'coffee'], ['ㅌ', 't', '토마토', 'tomato', 'tomato'],
     ['ㅍ', 'p', '포도', 'podo', 'grapes'], ['ㅎ', 'h', '하늘', 'haneul', 'sky'], ['ㄲ', 'kk', '꽃', 'kkot', 'flower'],
     ['ㄸ', 'tt', '딸기', 'ttalgi', 'strawberry'], ['ㅃ', 'pp', '빵', 'ppang', 'bread'], ['ㅆ', 'ss', '쌀', 'ssal', 'rice'], ['ㅉ', 'jj', '짜다', 'jjada', 'to be salty']];
@@ -312,12 +366,15 @@
     $('wb-body').innerHTML =
       '<div class="wb-chips"><button type="button" data-hs="cons" class="' + (H.set === 'cons' ? 'on' : '') + '">Consonants</button><button type="button" data-hs="vows" class="' + (H.set === 'vows' ? 'on' : '') + '">Vowels</button></div>'
       + '<div class="wb-hg">' + list.map(function (c, i) { return '<button type="button" data-h="' + i + '" class="' + (i === H.sel ? 'on' : '') + '">' + c[0] + '<small>' + c[1] + '</small></button>'; }).join('') + '</div>'
-      + '<div class="wb-k">' + cur[0] + ' · ' + cur[1] + '</div>'
+      + '<div class="wb-k">' + cur[0] + ' · ' + (cur[5] ? 'silent / ng' : cur[1]) + '</div>'
+      + (cur[5] ? '<p class="wb-hint" style="margin:0 0 8px">' + esc(cur[5]) + '</p>' : '')
       + '<button type="button" class="wb-ex" id="wb-hex"><b>' + cur[2] + '</b> ' + esc(cur[3]) + ' — ' + esc(cur[4]) + ' ' + ico('volume-2') + '</button>'
+      + (cur[6] ? '<button type="button" class="wb-ex" id="wb-hex2" style="margin-top:6px"><b>' + cur[6][0] + '</b> ' + esc(cur[6][1]) + ' — ' + esc(cur[6][2]) + ' ' + ico('volume-2') + '</button>' : '')
       + '<p class="wb-hint">Know them all? Switch to <a href="#" id="wb-toseed">Seed words</a>.</p>';
     document.querySelectorAll('[data-hs]').forEach(function (b) { b.onclick = function () { H.set = b.getAttribute('data-hs'); H.sel = 0; renderHangul(); }; });
     document.querySelectorAll('[data-h]').forEach(function (b) { b.onclick = function () { H.sel = +b.getAttribute('data-h'); renderHangul(); say((H.set === 'cons' ? CONS : VOWS)[H.sel][2]); }; });
     $('wb-hex').onclick = function () { say(cur[2], this); };
+    if ($('wb-hex2')) $('wb-hex2').onclick = function () { say(cur[6][0], this); };
     $('wb-toseed').onclick = function (e) { e.preventDefault(); S.tab = 'words'; S.level = 'Starter'; render(); reset(); };
     $('wb-dock').innerHTML = '<button type="button" class="p" onclick="khWordBank.hangulQuiz()">' + ico('circle-check') + 'Hangul quiz</button>';
     icons();

@@ -232,6 +232,8 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 .cc-card.tier-locked { opacity:.7; }
 .cc-card.tier-locked .cc-ph { color:transparent; }
 .cc-name { color:#fff; }
+/* korehan-shared.css has a light-theme .cc-name (conversation cards) — beat it here. */
+.cc-grid .cc-card .cc-name { color:#fff; }
 .cc-role, .cc-aff-num { color:rgba(255,255,255,.55); }
 .cc-aff-bar { background:rgba(255,255,255,.1); }
 .cc-tier-label { background:rgba(255,255,255,.1); color:#cbd5e1; }
@@ -254,7 +256,7 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
   <h1><i data-lucide="contact" class="kh-ui-icon" aria-hidden="true"></i> Reporter Cards</h1>
   <p class="cc-sub">Build affinity to unlock cards</p>
   <div class="cc-stats" id="cc-stats">
-    <span><span class="cc-stat-num" id="cc-unlocked">0</span> / 10 unlocked</span>
+    <span><span class="cc-stat-num" id="cc-unlocked">0</span> / <span id="cc-total">–</span> unlocked</span>
     <span style="color:rgba(255,255,255,.3)">·</span>
     <span><span class="cc-stat-num" id="cc-managers">0</span> managers</span>
   </div>
@@ -293,7 +295,7 @@ html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180
 <script src="korehan-shared.js?v=20261029s"></script>
 <script src="js/core/emoji-icons.js?v=20261026a"></script>
 <script>
-// Card collection page — shows all 10 reporters with the current user's
+// Card collection page — shows every reporter with the current user's
 // affinity status. Tier mirrors the level thresholds from the reporter
 // detail page (모르는 사이 → 지인 → 친구 → 매니저). Tier 0 (locked)
 // hides the portrait behind a silhouette + lock overlay so progressing
@@ -323,8 +325,9 @@ function ccCardHTML(reporter, points) {
 
   var portrait;
   var imgSrc = reporter.image || reporter.img || '';
-  // The default 1px gif placeholders shouldn't show — fall back to initial.
-  var hasRealImage = imgSrc && imgSrc.length > 200 && imgSrc.indexOf('data:image/gif;base64,R0lGODlhAQAB') !== 0;
+  // The default 1px gif placeholders and random stock photos (picsum.photos)
+  // aren't the reporter — fall back to the initial.
+  var hasRealImage = !!imgSrc && imgSrc.indexOf('data:image/gif;base64,R0lGODlhAQAB') !== 0 && !/picsum\.photos/i.test(imgSrc);
   if (hasRealImage) {
     portrait = '<img class="cc-img" src="' + imgSrc + '" alt="' + escapeHtml(reporter.name || '') + '" onerror="this.outerHTML=\'<div class=cc-ph style=&quot;background:' + (reporter.color || '#475569') + '&quot;>' + escapeHtml((reporter.name || '?').slice(0, 1)) + '</div>\'">';
   } else {
@@ -402,6 +405,8 @@ function ccRender(reporters, affinityMap) {
   });
   var unlockedEl = document.getElementById('cc-unlocked');
   var managersEl = document.getElementById('cc-managers');
+  var totalEl = document.getElementById('cc-total');
+  if (totalEl) totalEl.textContent = reporters.length;
   if (unlockedEl) unlockedEl.textContent = unlocked;
   if (managersEl) managersEl.textContent = managers;
 }
@@ -421,12 +426,23 @@ function ccBuildReporterList() {
         image: k.img || d.image,
       };
     });
+    // Reporters that exist only in the live table (not in the seed list).
+    var have = {};
+    list.forEach(function(r) { have[r.id] = 1; });
+    Object.keys(KH_REPORTERS).forEach(function(id) {
+      var k = KH_REPORTERS[id] || {};
+      if (have[id] || !k.name) return;
+      list.push({ id: id, name: k.name, role: k.role || '', color: k.color || '#475569', image: k.img || '' });
+    });
   }
   return list;
 }
 
 async function ccLoad() {
-  var reporters = ccBuildReporterList();
+  // Live reporter list (character_reporters) — capped so a slow query can't stall the page.
+  var mapReady = (typeof _loadReportersIntoKHMap === 'function')
+    ? Promise.race([_loadReportersIntoKHMap(), new Promise(function(r){ setTimeout(r, 5000); })])
+    : Promise.resolve();
 
   // Wait for auth to land — without this the affinity batch query runs
   // with auth.uid() = null and RLS hides every row, so the page
@@ -434,12 +450,15 @@ async function ccLoad() {
   // Bumped timeout to 8s (matches shared.js's getSession timeout); on
   // some cold tabs / slow networks 4s wasn't enough and signed-in users
   // got bounced to the sign-in screen.
+  // Stop waiting as soon as the shared auth check has finished
+  // (window._sessionChecked) — signed-out visitors used to sit on
+  // "Loading cards…" for the full 8 s.
   if (!supaUser) {
     await new Promise(function(resolve) {
       var done = false;
       function finish() { if (done) return; done = true; resolve(); }
       window.addEventListener('kh-auth-signed-in', finish);
-      var poll = setInterval(function(){ if (supaUser) { clearInterval(poll); finish(); } }, 100);
+      var poll = setInterval(function(){ if (supaUser || window._sessionChecked) { clearInterval(poll); finish(); } }, 100);
       setTimeout(function(){ clearInterval(poll); finish(); }, 8000);
     });
   }
@@ -462,6 +481,8 @@ async function ccLoad() {
 
   if (!userId) {
     var grid = document.getElementById('cc-grid');
+    var totalEl0 = document.getElementById('cc-total');
+    if (totalEl0) mapReady.then(function(){ totalEl0.textContent = ccBuildReporterList().length; });
     grid.innerHTML = '<div class="cc-signin" style="grid-column:1/-1">'
       + '<h2>🔒 Login required</h2>'
       + '<p>Log in to view your card collection.</p>'
@@ -469,6 +490,9 @@ async function ccLoad() {
       + '</div>';
     return;
   }
+
+  await mapReady;
+  var reporters = ccBuildReporterList();
 
   // Single batch query for all reporters at once.
   var affinityMap = {};
