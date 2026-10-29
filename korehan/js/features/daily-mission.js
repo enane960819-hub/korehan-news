@@ -281,7 +281,7 @@ async function checkDailyMissionComplete() {
   if ((d.articles||0) >= 3 && (d.words||0) >= 20 && (d.quizzes||0) >= 3 && (d.fill||0) >= 1) {
     _dailyMissionBonusGiven = true;
     var res = await awardXP('daily_mission_complete', {});
-    if (res && res.ok) showToast('🎯 Daily mission complete! +50 XP bonus');
+    if (res && res.ok) showToast('Daily mission complete! +50 XP bonus');
   }
 }
 
@@ -298,10 +298,10 @@ function renderDailyMission() {
 
   var d = dmGet();
   var missions = [
-    { id:'articles', icon:'📰', label:'Read Articles', cur:d.articles||0, goal:3,  color:'#3d7fd4' },
-    { id:'words',    icon:'🔖', label:'Save Words',    cur:d.words||0,    goal:20, color:'#8b5cf6' },
-    { id:'quizzes',  icon:'📝', label:'Take Quiz',     cur:d.quizzes||0,  goal:3,  color:'#f59e0b' },
-    { id:'fill',     icon:'✏️', label:'Fill-in-Blank', cur:d.fill||0,     goal:1,  color:'#10b981' },
+    { id:'articles', icon:'newspaper', label:'Read Articles', cur:d.articles||0, goal:3,  color:'#3d7fd4' },
+    { id:'words',    icon:'bookmark', label:'Save Words',    cur:d.words||0,    goal:20, color:'#8b5cf6' },
+    { id:'quizzes',  icon:'clipboard-check', label:'Take Quiz',     cur:d.quizzes||0,  goal:3,  color:'#f59e0b' },
+    { id:'fill',     icon:'pencil', label:'Fill-in-Blank', cur:d.fill||0,     goal:1,  color:'#10b981' },
   ];
 
   var totalXP = 0;
@@ -321,7 +321,7 @@ function renderDailyMission() {
     var done = cur >= m.goal;
     return '<div class="dm-item">'
       + '<div class="dm-item-hd">'
-      + '<div class="dm-item-left"><span class="dm-item-icon">' + m.icon + '</span>'
+      + '<div class="dm-item-left"><span class="dm-item-icon"><i data-lucide="' + m.icon + '" style="width:12px;height:12px" aria-hidden="true"></i></span>'
       + '<span class="dm-item-label">' + m.label + '</span></div>'
       + '<span class="dm-item-count' + (done?' dm-done':'') + '">' + (done?'✓':cur+'/'+m.goal) + '</span>'
       + '</div>'
@@ -330,12 +330,12 @@ function renderDailyMission() {
   }).join('');
 
   widget.innerHTML = _dmCollapsed
-    ? '<button class="dm-pill" onclick="dmToggle()">🎯 Daily Mission</button>'
+    ? '<button class="dm-pill" onclick="dmToggle()"><i data-lucide="target" style="width:14px;height:14px" aria-hidden="true"></i><span>Daily Mission</span></button>'
     : '<div class="dm-inner">'
       + '<div class="dm-hd">'
-      + '<span style="font-size:16px">🎯</span>'
+      + '<i data-lucide="target" style="width:16px;height:16px;color:#fbbf24" aria-hidden="true"></i>'
       + '<span class="dm-title">Daily Mission</span>'
-      + '<button class="dm-close" onclick="dmToggle()">✕</button>'
+      + '<button class="dm-close" onclick="dmToggle()" aria-label="Close"><i data-lucide="x" style="width:14px;height:14px" aria-hidden="true"></i></button>'
       + '</div>'
       + '<div class="dm-date">' + today + '</div>'
       + itemsHTML

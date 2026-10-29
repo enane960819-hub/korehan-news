@@ -30,13 +30,22 @@ async function toggleBookmark(articleId, btn) {
     btn.classList.remove('active');
     btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
     toast('Bookmark removed');
+    _khSyncBookmarkRail(false);
   } else {
     var ins = await sb.from('bookmarks').insert({ user_id: supaUser.id, article_id: articleId });
     if (ins.error) { toast('Could not save bookmark'); return; }
     btn.classList.add('active');
     btn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 0-2-2h10a2 2 0 0 0 2 2z"/></svg>';
     toast('Bookmarked');
+    _khSyncBookmarkRail(true);
   }
+}
+
+// The header button and the desktop right-rail SAVE are two buttons for
+// one state; the rail used to stay lit after removing from the header.
+function _khSyncBookmarkRail(on) {
+  var side = document.getElementById('kh-rs-bookmark');
+  if (side) side.classList.toggle('active', !!on);
 }
 
 async function checkBookmarkState(articleId) {
@@ -49,5 +58,6 @@ async function checkBookmarkState(articleId) {
     btn.classList.add('active');
     btn.innerHTML = '<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 0-2-2h10a2 2 0 0 0 2 2z"/></svg>';
   }
+  _khSyncBookmarkRail(!!data);
 }
 

@@ -42,8 +42,8 @@ function initFillTeaser(article) {
 
   teaser.innerHTML =
       '<div class="rv-fill-teaser">'
-    +   '<div class="rv-fill-teaser-copy">6 AI-generated questions mixing vocabulary and grammar from this article.</div>'
-    +   '<div class="rv-fill-teaser-meta"><span class="rv-fill-level">' + _khEsc(levelLabel) + '</span><span>· 6 questions · vocab + grammar</span></div>'
+    +   '<div class="rv-fill-teaser-copy">Fill the gaps with vocabulary and grammar from this article.</div>'
+    +   '<div class="rv-fill-teaser-meta"><span class="rv-fill-level">' + _khEsc(levelLabel) + '</span><span>· vocab + grammar</span></div>'
     +   '<button id="fill-start-btn" class="rv-start-btn" onclick="startFillExercise()">Start Fill-in-the-Blank</button>'
     + '</div>';
 }
@@ -406,12 +406,12 @@ function renderFillQuestions(container, questions, article) {
       + '</div>'
 
       // 힌트
-      + '<div style="font-size:11px;color:#60a5fa;margin-bottom:16px;font-weight:600;display:flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+KH_ICON_BULB+'</span><span>' + q.hint + '</span></div>'
+      + (q.hint ? '<div style="font-size:11px;color:#60a5fa;margin-bottom:16px;font-weight:600;display:flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+KH_ICON_BULB+'</span><span>' + _khEsc(q.hint) + '</span></div>' : '<div style="margin-bottom:12px"></div>')
 
       // 모드 토글 버튼
       + '<div style="display:flex;gap:6px;margin-bottom:12px">'
       + '<button onclick="setFillMode(' + i + ',\'choice\')" id="fill-mode-choice-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #2255a4;background:#2255a4;color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><span style="display:inline-flex;width:12px;height:12px">'+KH_ICON_TARGET+'</span><span>Multiple Choice</span></button>'
-      + '<button onclick="setFillMode(' + i + ',\'type\')" id="fill-mode-type-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer">⌨️ Type Answer</button>'
+      + '<button onclick="setFillMode(' + i + ',\'type\')" id="fill-mode-type-' + i + '" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;border:2px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;display:inline-flex;align-items:center;gap:5px"><i data-lucide="keyboard" style="width:12px;height:12px" aria-hidden="true"></i><span>Type Answer</span></button>'
       + '</div>'
 
       // Multiple Choice 영역

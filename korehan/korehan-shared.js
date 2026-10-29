@@ -498,7 +498,7 @@ function ensureKhGrammar() {
       return;
     }
     var script = document.createElement('script');
-    script.src = 'js/core/kh-grammar-patterns.js?v=20261026a';
+    script.src = 'js/core/kh-grammar-patterns.js?v=20261029a';
     script.defer = true;
     script.setAttribute('data-kh-grammar', '1');
     script.onload = function() { resolve(window.KH_GRAMMAR); };
@@ -513,6 +513,40 @@ function ensureKhGrammar() {
 // Kick off the load early so enforce calls aren't blocked on the
 // network round-trip when the user taps a sentence.
 try { ensureKhGrammar(); } catch(_) {}
+
+// Pattern hints are written for the model ("<stem> + 기 used as noun").
+// A cached analysis card whose exp IS one of them was injected by the
+// regex gate, not written by the AI — _khRenderSentPanel drops those.
+// Known wrong-label classes in cached cards, checked against the quoted
+// chunk. Each rule only rejects; anything it doesn't recognise passes.
+function _khGrammarCardIsWrong(label, ex) {
+  // "present polite" on a past form (났어요, 들었어요, 개발되었어요).
+  if (/present polite/.test(label) && /(았|었|였)어요|[갔났봤왔됐했였졌셨렸켰쳤]어요/.test(ex)) return true;
+  // ㄷ-irregular needs 듣/걷/묻/싣/깨닫/일컫 — not 만들어, 들어가다, 들어오다.
+  if (/^ㄷ 불규칙/.test(label)) {
+    if (/만들|들어\s*(가|오|서|있|주|간|온)|불어나/.test(ex)) return true;
+    if (!/(들|걸|물|실|깨달|일컬)(어|었|으)/.test(ex)) return true;
+  }
+  // ㄹ-deletion: 아니다 (아니라고/아니에요) has no ㄹ stem.
+  if (/^ㄹ 탈락/.test(label) && /아니(라|에|었|야|고|지|다|면|요)/.test(ex)) return true;
+  // Topic marker quoted on a verb modifier (판매되는, 하는) or on 이/가.
+  if (/topic marker/.test(label) && (/(되|하|있|없|가|오|보|주|받)는$/.test(ex) || /[이가]$/.test(ex))) return true;
+  // Subject / object markers must actually end the quoted word.
+  if (/subject marker/.test(label) && !/[이가께]\S*$|[이가](\s|$)/.test(ex)) return true;
+  if (/object marker/.test(label) && !/[을를](\s|$)/.test(ex)) return true;
+  return false;
+}
+
+var _khHintSetCache = null;
+function _khGrammarHintSet() {
+  if (_khHintSetCache) return _khHintSetCache;
+  var G = window.KH_GRAMMAR;
+  if (!G || !Array.isArray(G._PATTERNS)) return null;
+  var set = {};
+  G._PATTERNS.forEach(function(p) { if (p && p.hint) set[String(p.hint).trim()] = true; });
+  _khHintSetCache = set;
+  return set;
+}
 
 // ── Claude API 프록시 (키를 서버에서만 관리) ─────────────────
 // Anthropic API를 직접 호출하지 않고 Supabase Edge Function을 통해 호출
@@ -754,19 +788,122 @@ function _khShowResendVerificationToast() {
 // lookup), Universe related-words (intentionally dictionary-form for
 // recognition learning), Study-Room external practice chips (writing
 // drills need the conjugable form).
+// Revised Romanization with the main sound rules (liaison, nasalization,
+// ㄹ assimilation, ㅎ aspiration, palatalization) — browser copy of
+// supabase/functions/_shared/romanize.ts. AI-written romanizations drift
+// (엔화 "enyeonhwa", 환율 "hwanryul"); vocab lists show this instead.
+var khRomanize = (function() {
+const CHO = ['g','kk','n','d','tt','r','m','b','pp','s','ss','','j','jj','ch','k','t','p','h']
+  const JUNG = ['a','ae','ya','yae','eo','e','yeo','ye','o','wa','wae','oe','yo','u','wo','we','wi','yu','eu','ui','i']
+  // Final consonants as jamo index into CHO-like letters (jong table order).
+  const JONG = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ']
+  const CHO_JAMO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ']
+  // Compound finals: [stays, moves to the next syllable before a vowel]
+  var SPLIT = {
+    'ㄳ': ['ㄱ', 'ㅅ'], 'ㄵ': ['ㄴ', 'ㅈ'], 'ㄶ': ['ㄴ', 'ㅎ'], 'ㄺ': ['ㄹ', 'ㄱ'], 'ㄻ': ['ㄹ', 'ㅁ'], 'ㄼ': ['ㄹ', 'ㅂ'],
+    'ㄽ': ['ㄹ', 'ㅅ'], 'ㄾ': ['ㄹ', 'ㅌ'], 'ㄿ': ['ㄹ', 'ㅍ'], 'ㅀ': ['ㄹ', 'ㅎ'], 'ㅄ': ['ㅂ', 'ㅅ'],
+  }
+  // Sound class of a final before a consonant.
+  function finalClass(j) {
+    if (!j) return ''
+    if ('ㄱㄲㅋㄳㄺ'.includes(j)) return 'k'
+    if ('ㄴㄵㄶ'.includes(j)) return 'n'
+    if ('ㄷㅅㅆㅈㅊㅌㅎ'.includes(j)) return 't'
+    if ('ㄹㄼㄽㄾㅀ'.includes(j)) return 'l'
+    if ('ㅁㄻ'.includes(j)) return 'm'
+    if ('ㅂㅍㅄㄿ'.includes(j)) return 'p'
+    if (j === 'ㅇ') return 'ng'
+    return ''
+  }
+  
+  
+  function romanize(text) {
+    const syls = []
+    for (const ch of String(text || '')) {
+      const c = ch.charCodeAt(0) - 0xAC00
+      if (c < 0 || c > 11171) { syls.push({ raw: ch }); continue }
+      syls.push({ cho: CHO_JAMO[Math.floor(c / 588)], jung: Math.floor((c % 588) / 28), jong: JONG[c % 28] })
+    }
+    // Pass 1: sound changes between syllables (within a word).
+    for (let i = 0; i < syls.length - 1; i++) {
+      const a = syls[i], b = syls[i + 1]
+      if (a.raw !== undefined || b.raw !== undefined || !a.jong) continue
+      // ㅎ final: aspirates the next ㄱㄷㅈ, drops before a vowel/ㄴ
+      if (a.jong === 'ㅎ' || a.jong === 'ㄶ' || a.jong === 'ㅀ') {
+        const keep = a.jong === 'ㅎ' ? '' : (a.jong === 'ㄶ' ? 'ㄴ' : 'ㄹ')
+        if (b.cho === 'ㄱ') { b.cho = 'ㅋ'; a.jong = keep; continue }
+        if (b.cho === 'ㄷ') { b.cho = 'ㅌ'; a.jong = keep; continue }
+        if (b.cho === 'ㅈ') { b.cho = 'ㅊ'; a.jong = keep; continue }
+        if (b.cho === 'ㅇ') { a.jong = keep; if (keep) { b.cho = keep; a.jong = '' } continue }
+        if (b.cho === 'ㄴ' && a.jong === 'ㅎ') { a.jong = 'ㄴ'; continue }
+      }
+      // ㄱㄷㅂㅈ final + ㅎ → aspirated
+      if (b.cho === 'ㅎ') {
+        const cls = finalClass(a.jong)
+        if (cls === 'k') { a.jong = SPLIT[a.jong] ? SPLIT[a.jong][0] : ''; b.cho = 'ㅋ'; continue }
+        if (cls === 't' && a.jong !== 'ㅎ') { a.jong = ''; b.cho = (b.jung === 20 ? 'ㅊ' : 'ㅌ'); continue }
+        if (cls === 'p') { a.jong = SPLIT[a.jong] ? SPLIT[a.jong][0] : ''; b.cho = 'ㅍ'; continue }
+      }
+      // Liaison: final moves onto a following ㅇ
+      if (b.cho === 'ㅇ') {
+        if (a.jong === 'ㅇ') continue
+        let move = a.jong
+        if (SPLIT[a.jong]) { a.jong = SPLIT[a.jong][0]; move = SPLIT[move][1] } else a.jong = ''
+        // Palatalization: ㄷ/ㅌ + 이 → 지/치
+        if (b.jung === 20 && move === 'ㄷ') move = 'ㅈ'
+        if (b.jung === 20 && move === 'ㅌ') move = 'ㅊ'
+        b.cho = move
+        continue
+      }
+      const cls = finalClass(a.jong)
+      // Nasalization before ㄴ/ㅁ
+      if (b.cho === 'ㄴ' || b.cho === 'ㅁ') {
+        if (cls === 'k') a.jong = 'ㅇ'
+        else if (cls === 't') a.jong = 'ㄴ'
+        else if (cls === 'p') a.jong = 'ㅁ'
+        else if (cls === 'l' && b.cho === 'ㄴ') { a.jong = 'ㄹ'; b.cho = 'ㄹ' }
+        continue
+      }
+      if (b.cho === 'ㄹ') {
+        if (cls === 'n' || cls === 'l') { a.jong = 'ㄹ'; continue }         // 신라 → silla
+        if (cls === 'm' || cls === 'ng') { b.cho = 'ㄴ'; continue }         // 종로 → jongno
+        if (cls === 'k') { a.jong = 'ㅇ'; b.cho = 'ㄴ'; continue }          // 국립 → gungnip
+        if (cls === 'p') { a.jong = 'ㅁ'; b.cho = 'ㄴ'; continue }
+        if (cls === 't') { a.jong = 'ㄴ'; b.cho = 'ㄴ'; continue }
+      }
+    }
+    // Pass 2: letters.
+    let out = ''
+    for (let i = 0; i < syls.length; i++) {
+      const s = syls[i]
+      if (s.raw !== undefined) { out += s.raw; continue }
+      const prev = syls[i - 1]
+      let c = CHO[CHO_JAMO.indexOf(s.cho)]
+      // ㄹ initial after ㄹ final is "l" (ll); elsewhere "r"
+      if (s.cho === 'ㄹ' && prev && prev.raw === undefined && prev.jong === 'ㄹ') c = 'l'
+      out += c + JUNG[s.jung]
+      const cls = finalClass(s.jong)
+      out += cls === 'ng' ? 'ng' : cls
+    }
+    return out
+  }
+  return function(text) {
+    var s = String(text || '').trim();
+    if (!s || !/[가-힣]/.test(s)) return '';
+    return s.split(/\s+/).map(romanize).join(' ');
+  };
+})();
+
+// Vocab lists show words in dictionary form. This used to strip 하다 from
+// every ~하다 word and drop all other verbs/adjectives, which turned
+// 취하다 ("to get drunk") into "취 — drunk" and hid 꺼내다, 늘어나다 etc.
 function khNormalizeVocabNoun(ko, rom, en) {
-  ko = ko || '';
+  ko = String(ko || '').trim();
   rom = rom || '';
   en = en || '';
   if (!ko || ko.length < 2) return null;
-  if (/하다$/.test(ko) && ko.length >= 3) {
-    return {
-      ko: ko.replace(/하다$/, ''),
-      rom: rom.replace(/[-\s]*hada$/i, ''),
-      en: en.replace(/^to\s+/i, '')
-    };
-  }
-  if (/다$/.test(ko)) return null;
+  // Grammar entries ("~기 때문이다") are not vocabulary.
+  if (/^~/.test(ko)) return null;
   return { ko: ko, rom: rom, en: en };
 }
 
@@ -3556,11 +3693,10 @@ function buildArticleRowHTML(a) {
   var lvlStyle = levelColors[a.level] || 'background:#f0f4ff;color:#1a3a6b';
   // Row renders at 220x140 → 440x280 is the matching retina-safe size.
   var aImg = khArticleThumb(a, 440, 280);
-  var fallback = KH_IMG_PLACEHOLDER;
   var aBody = (a.body || '').replace(/<[^>]*>/g, '').slice(0, 90);
   return '<a href="' + articleUrl(a.id) + '" style="color:inherit;text-decoration:none;display:block;margin-bottom:20px;">'
     + '<div class="article-row">'
-    + '<img src="' + aImg + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.src=\'' + fallback + '\'" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
+    + '<img src="' + aImg + '" alt="" loading="lazy" decoding="async" fetchpriority="low" onerror="this.onerror=null;this.src=(window.KH_IMG_PLACEHOLDER||\'\')" style="width:220px;height:140px;object-fit:cover;border-radius:10px;flex-shrink:0;">'
     + '<div class="article-info">'
     + '<span class="category-tag" style="font-size:11px;padding:2px 8px;' + lvlStyle + '">' + (a.level ? ({Starter:'Seed',Beginner:'Sprout',Intermediate:'Tree',Advanced:'Forest'}[a.level]||a.level) : khSecLabel(a.section)) + '</span>'
     + '<h2 class="article-title vocab-zone" style="margin:8px 0 6px;font-size:18px;" data-kh-title-id="' + escapeHtml(a.id || '') + '">' + (a.title_en || a.title) + '</h2>'
@@ -3584,10 +3720,10 @@ function buildHeroHTML(featured, rest) {
 }
 
 var SECTION_ALIASES = {
-  '사회':    ['사회','Society','society','Social','social'],
+  '사회':    ['사회','Society','society','Social','social','crime'],
   '국제':    ['국제','World','world','International','international','Global','global'],
   '문화':    ['문화','Culture','culture'],
-  '연예':    ['연예','Entertainment','entertainment','Celeb','celeb','Celebrity','celebrity','show-biz','연예계'],
+  '연예':    ['연예','해외연예','Entertainment','entertainment','Celeb','celeb','Celebrity','celebrity','show-biz','연예계'],
   'Korea':   ['Korea','korea','한국','Korean','korean'],
   '오피니언':['오피니언','Opinion','opinion'],
   'K-pop':   ['K-pop','Kpop','케이팝','kpop','k-pop'],
@@ -3701,7 +3837,8 @@ async function renderSectionPage(section) {
   // ARTICLE LIST
   if (listEl) {
     if (!rest.length) {
-      listEl.innerHTML = '<p style="color:#94a3b8;padding:20px 0">No articles found.</p>';
+      // One article = it's already the hero above; don't say "none".
+      listEl.innerHTML = featured ? '' : '<p style="color:#94a3b8;padding:20px 0">No articles found.</p>';
     } else {
       var levelColors = {Starter:'#f3e8ff;color:#6b21a8',Beginner:'#e8f5e9;color:#2e7d32',Intermediate:'#fff8e1;color:#f57f17',Advanced:'#fce4ec;color:#c62828'};
       listEl.innerHTML = rest.map(buildArticleRowHTML).join('');
@@ -4187,7 +4324,7 @@ function renderArticlePage() {
     + '<div class="rv-wrap">'
     +   '<div class="rv-intro">'
     +     '<div class="rv-intro-title">Review</div>'
-    +     '<div class="rv-intro-sub">Light practice before moving on — four quick checks.</div>'
+    +     '<div class="rv-intro-sub">Light practice before moving on — five quick checks.</div>'
     +   '</div>'
 
     +   '<div class="rv-check" data-step="0">'
@@ -4842,73 +4979,46 @@ function _khRenderSentPanel(panel, data, closer, sentenceText) {
   var _sent = (sentenceText || (panel && panel.dataset && panel.dataset.sentence) || '').trim();
   if (panel && _sent && panel.dataset) panel.dataset.sentence = _sent;
 
-  // Enrich `data.analysis` with regex-detected patterns the AI missed.
-  // Runs on EVERY render path (cache hit, sessionStorage hit, fresh
-  // analyze) so even articles whose cache was baked before enforce
-  // existed get the gap-fill treatment instantly — no admin re-bake
-  // required. Idempotent: enforceDetectedPatterns dedupes by label, so
-  // calling it twice on the same data is a no-op.
-  if (window.KH_GRAMMAR && window.KH_GRAMMAR.enforceDetectedPatterns && _sent && data) {
-    try {
-      var _lvl = (window._currentArticle && window._currentArticle.level) || 'Intermediate';
-      var _wrap = [{ text: _sent, analysis: Array.isArray(data.analysis) ? data.analysis : [] }];
-      window.KH_GRAMMAR.enforceDetectedPatterns(_wrap, _lvl);
-      // Canonical-label normalization: cached entries baked before the
-      // prompt forbade noun-stuffed labels still carry strings like
-      // "~ㄴ/은 도시 중 하나" or "새로운 웰니스 트렌드로서" — the AI mixed
-      // a specific noun into what should be a pure morpheme label. Run
-      // KH_GRAMMAR.detect on each entry's example_in_sentence; if the
-      // canonical morpheme appears as a substring of the buggy label,
-      // swap the label (and hint) for the canonical form so learners
-      // see "~중 하나 (one of)" instead of "~ㄴ/은 도시 중 하나".
-      if (window.KH_GRAMMAR.detect) {
-        _wrap[0].analysis = _wrap[0].analysis.map(function(item) {
-          if (!item || !item.label || !item.example_in_sentence) return item;
-          var detected = window.KH_GRAMMAR.detect(item.example_in_sentence);
-          if (!detected || !detected.length) return item;
-          for (var i = 0; i < detected.length; i++) {
-            var canon = detected[i];
-            if (item.label === canon.label) return item; // already canonical
-            // Strip ~, parens, slashes, whitespace from canonical label to
-            // get its core Hangul morpheme. If that morpheme appears in the
-            // AI's noisy label, normalize. e.g. canon "~중 하나 (one of)"
-            // → core "중하나"; AI label "~ㄴ/은 도시 중 하나" stripped to
-            // "ㄴ은도시중하나" — contains "중하나" → swap.
-            // Strip ~, parens (both inline like "(이)" and trailing
-            // gloss "(one of)"), slashes, and whitespace to get the
-            // pure Hangul morpheme. e.g. "~(이)나 (or)" → "이나",
-            // "~ 중 하나 (one of)" → "중하나".
-            var core = canon.label.replace(/[~\s()/]/g, '')
-                                  .replace(/[a-zA-Z,]+/g, '');
-            if (core && core.length >= 2) {
-              var labelStripped = item.label.replace(/[~\s]/g, '');
-              if (labelStripped.indexOf(core) >= 0 && labelStripped !== core) {
-                return { type: item.type || 'grammar', label: canon.label,
-                  exp: canon.hint || item.exp || '',
-                  example_in_sentence: item.example_in_sentence };
-              }
-            }
-          }
-          return item;
-        });
-      }
-      data.analysis = _wrap[0].analysis;
-      // Re-widen every chunk to its natural word boundary, including
-      // entries that were ALREADY in the cache (not just enforce-
-      // added ones). The cache's example_in_sentence chunks were
-      // baked with the old _extractExample that returned the literal
-      // regex match — e.g. ~에서 against "미국에서" stored "국에서",
-      // ~게 stored "렇게", etc. Widening on render means existing
-      // articles get readable chunks without admin re-bake.
-      data.analysis = (data.analysis || []).map(function(item) {
-        if (!item || !item.example_in_sentence || !_sent) return item;
+  // Regex-detected grammar is NOT added on render any more (2026-10-29).
+  // KH_GRAMMAR.enforceDetectedPatterns used to append every regex hit to
+  // the AI analysis — ~4.8k extra cards across the site, full of false
+  // positives (아기를 → "~기 nominalizer", 판매되는 → "topic marker") and
+  // explained with model-facing hints ("<stem> + 기 used as noun"). Older
+  // caches still carry cards that the admin bake injected the same way;
+  // they are recognisable because their exp is a pattern hint verbatim,
+  // so drop them. Wrong is worse than missing.
+  if (data && Array.isArray(data.analysis) && data.analysis.length) {
+    var _hintSet = _khGrammarHintSet();
+    var _lvlNow = (window._currentArticle && window._currentArticle.level) || 'Intermediate';
+    var _skipBasic = (_lvlNow === 'Intermediate' || _lvlNow === 'Advanced')
+      && window.KH_GRAMMAR && window.KH_GRAMMAR.intermediateSkipLabels;
+    data.analysis = data.analysis.filter(function(item) {
+      if (!item || !item.label) return false;
+      var label = String(item.label).trim();
+      var exp = String(item.exp || '').trim();
+      var ex = String(item.example_in_sentence || '').trim();
+      if (_hintSet && _hintSet[exp]) return false;
+      // Cards the model wrote only because the old MUST-INCLUDE list
+      // forced a regex hit on it ("Regex hit on 거나; … not in this
+      // sentence", "(implicit)") — nothing to show.
+      if (!ex || /regex|not in this sentence|\(implicit/i.test(exp + ' ' + ex)) return false;
+      // Particles / basic endings are noise for TOPIK 3+ readers.
+      if (_skipBasic && _skipBasic[label]) return false;
+      return !_khGrammarCardIsWrong(label, ex);
+    });
+    if (_sent) {
+      // Re-widen every chunk to its natural word boundary — caches baked
+      // with the old _extractExample stored literal regex matches
+      // (~에서 against "미국에서" stored "국에서").
+      data.analysis = data.analysis.map(function(item) {
+        if (!item || !item.example_in_sentence) return item;
         var widened = _widenChunkOnRender(item.example_in_sentence, _sent, item.label || '');
         if (widened && widened !== item.example_in_sentence) {
           return Object.assign({}, item, { example_in_sentence: widened });
         }
         return item;
       });
-    } catch(_) {}
+    }
   }
   if (data && Array.isArray(data.vocab) && data.vocab.length) {
     html += '<div class="asp-section-title">Vocab</div>';
@@ -5276,6 +5386,9 @@ async function analyzeSentence(idx, el) {
   panel.innerHTML = '<button class="asp-close" onclick="closeSentPanel()" aria-label="Close">×</button>'
     + '<div class="asp-loading">Analyzing</div>';
   paragraph.parentNode.insertBefore(panel, paragraph.nextSibling);
+  // The render filter needs KH_GRAMMAR's hint list; it's cached after the
+  // first load, so only the very first tap waits on the script.
+  try { await ensureKhGrammar(); } catch(_) {}
 
   var articleId = '';
   try {
@@ -5867,6 +5980,15 @@ function _reviewVocabFromGlobal(a) {
 // and 1 grammatical-but-incorrect FALSE item, cached per article in
 // article_cache under key tf_v1 so repeat visitors don't pay the
 // API cost. Same level-aware style as the Fill-in-the-Blank engine.
+// Don't let the comprehension check (AI / sign-in) lock the rest of the
+// Review flow — Fill, Listening and Build need neither. Offer a skip next
+// to Try again / Sign in.
+function _rvUnlockAfterTF(el) {
+  if (el && !el.querySelector('.rv-tf-skip')) {
+    el.insertAdjacentHTML('beforeend', '<div style="text-align:center;margin-top:8px"><button type="button" class="rv-tf-skip" onclick="_reviewFlowAdvance(1)" style="border:0;background:none;color:#64748b;font:inherit;font-size:12.5px;font-weight:700;text-decoration:underline;cursor:pointer">Skip to the next check</button></div>');
+  }
+}
+
 async function renderReviewTF(a) {
   var el = document.getElementById('rv-tf-check');
   if (!el || !a) return;
@@ -5895,6 +6017,7 @@ async function renderReviewTF(a) {
         sub: 'AI-generated True/False questions need a signed-in session.',
         action: { label: 'Sign in', onClick: "openAuthModal('signin')" },
       });
+      _rvUnlockAfterTF(el);
       return;
     }
     el.innerHTML = khLoadingHTML(
@@ -5943,6 +6066,7 @@ async function renderReviewTF(a) {
         sub: 'Something went wrong while writing the questions.',
         action: { label: 'Try again', onClick: 'renderReviewTF(window._currentArticle)' },
       });
+      _rvUnlockAfterTF(el);
       return;
     }
   }
@@ -6203,7 +6327,7 @@ var _avPage = 0;
 var _avAll = [];
 function _avRenderItem(it) {
   var k = it.ko;
-  var rom = it.rom || '';
+  var rom = khRomanize(k) || it.rom || '';
   var en = it.en || '';
   var saved = isWordSaved(k);
   var safeK  = k.replace(/'/g, "\\'");
@@ -6847,13 +6971,9 @@ async function markArticleRead(articleId, title, section, level) {
 
 
 function shareArticle() {
-  if (navigator.share) {
-    navigator.share({ title: document.title, url: window.location.href });
-  } else {
-    navigator.clipboard.writeText(window.location.href).then(function() {
-      toast('Link copied');
-    });
-  }
+  // khShare handles a cancelled share sheet quietly and falls back to
+  // the clipboard (with its own fallback when writeText is blocked).
+  return khShare({ title: document.title, url: window.location.href });
 }
 
 
@@ -6980,13 +7100,15 @@ function initTooltips() {
     }
     if (!d) return;
     tip.innerHTML = '<span style="font-size:16px;font-weight:700;color:#7ab8f5">' + word + '</span><br>'
-      + '<span style="color:#aabbd0;font-size:11px;font-style:italic">' + d.rom + '</span><br>'
+      + '<span style="color:#aabbd0;font-size:11px;font-style:italic">' + (khRomanize(word) || d.rom || '') + '</span><br>'
       + '<strong>' + d.en + '</strong>';
     tip.style.opacity = '1';
   });
   document.addEventListener('mousemove', function(e) {
-    tip.style.left = (e.clientX + 14) + 'px';
-    tip.style.top  = (e.clientY - 10) + 'px';
+    // Below-right of the cursor so the tip never covers the hovered word;
+    // clamp so it stays on screen near the right/bottom edges.
+    tip.style.left = Math.max(8, Math.min(e.clientX + 14, window.innerWidth - 300)) + 'px';
+    tip.style.top  = Math.max(8, Math.min(e.clientY + 18, window.innerHeight - 110)) + 'px';
   });
   document.addEventListener('mouseout', function(e) {
     if (e.target.closest && e.target.closest('.kh-word')) tip.style.opacity = '0';
@@ -9664,7 +9786,9 @@ function getCurrentStreak() {
     else if (i === 0) { d = new Date(d.getTime() - 86400000); } // 오늘 아직 안 했어도 어제부터
     else break;
   }
-  return Math.max(streak, lsGet('kh_synced_activity_streak', 0));
+  // Server-side streaks (synced at sign-in) win on a fresh device whose
+  // localStorage log is empty.
+  return Math.max(streak, lsGet('kh_synced_activity_streak', 0) || 0, lsGet('kh_synced_mission_streak', 0) || 0);
 }
 
 // ── Streak freeze: shop inventory + auto-apply ──────────────────
@@ -11743,6 +11867,9 @@ function _khSpaLoadArticle(nextId, direction) {
     // Rebuild article content from the cached article object.
     window.scrollTo(0, 0);
     if (typeof renderArticlePage === 'function') renderArticlePage();
+    // Back at the top with no scroll event coming — show the Next/Prev
+    // pills again (the auto-hide only re-reveals them on scroll).
+    document.body.classList.add('kh-feed-pill-on');
 
     // Re-prime the hover-tooltip system for the new article. The
     // MutationObserver in korehan-hover-tooltips.js eventually catches

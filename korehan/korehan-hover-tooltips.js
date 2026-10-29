@@ -516,7 +516,8 @@
     var el = e.currentTarget;
     var t = ensureTooltip();
     var word     = el.dataset.word     || '';
-    var reading  = el.dataset.reading  || '';
+    // Rule-based romanization (korehan-shared.js) beats stored AI readings.
+    var reading  = (typeof window.khRomanize === 'function' && window.khRomanize(word)) || el.dataset.reading || '';
     var meaning  = el.dataset.meaning  || '';
     var note     = el.dataset.note     || '';
     var surface  = el.dataset.surface  || '';

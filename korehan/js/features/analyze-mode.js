@@ -85,6 +85,16 @@ async function toggleAnalyze() {
     if (btn) btn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>';
   }
 
+  // Nothing cached and the AI call failed — say so instead of a lit
+  // button that does nothing.
+  if (!_analyzeData.vocab.length && !_analyzeData.grammar.length && !_analyzeData.phrases.length) {
+    _analyzeOn = false;
+    _analyzeData = null;
+    if (btn) btn.classList.remove('on');
+    if (typeof toast === 'function') toast('Highlights aren\'t ready for this article yet. Tap a sentence for its breakdown.', true);
+    return;
+  }
+
   // 하이라이트 적용
   _applyAnalyzeHighlights(articleEl);
 }

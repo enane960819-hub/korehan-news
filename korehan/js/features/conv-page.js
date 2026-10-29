@@ -57,7 +57,7 @@
       id: row.id, status: row.status || d.status || 'published',
       lvl: row.lvl || d.lvl || 'b', cat: row.cat || d.cat || 'everyday',
       title: row.ctx_en || d.topic || d.ctx_en || row.ctx || d.ctx || 'Conversation',
-      ctx: row.ctx || d.ctx || '', msgs: msgs, speakers: order.slice(0, 2),
+      ctx: row.ctx || d.ctx || '', msgs: msgs, speakers: order.slice(0, 2), cast: order,
       vocab: Array.isArray(d.vocab) ? d.vocab : [], grammar: Array.isArray(d.grammar) ? d.grammar : [],
       kx: (Array.isArray(d.key_expressions) ? d.key_expressions : []).filter(function (k) { return k && k.ko; }),
       speech: d.speech || null
@@ -74,7 +74,7 @@
   }
   function speechLevels(c) {
     var out = {};
-    c.speakers.forEach(function (sp) {
+    (c.cast || c.speakers).forEach(function (sp) {
       if (c.speech && c.speech[sp]) { out[sp] = c.speech[sp]; return; }
       var lines = c.msgs.filter(function (m) { return m.who === sp; });
       var pol = lines.filter(function (m) { return isPolite(m.txt); }).length;
@@ -189,14 +189,19 @@
   function stepDots(n) { return '<div class="cv-steps">' + [1, 2, 3].map(function (i) { return '<span class="' + (i <= n ? 'on' : '') + '"></span>'; }).join('') + '</div>'; }
   function head(c) {
     var a = c.speakers[0] || '', b = c.speakers[1] || '';
-    var la = c.level[a], lb = c.level[b];
-    var note = la && lb ? (la === lb ? 'Both speak ' + la : esc(a) + ' uses ' + la + ', ' + esc(b) + ' uses ' + lb) : '';
+    // Third speakers (아빠 in a family scene) used to be left out of the
+    // cast and the register note.
+    var cast = (c.cast && c.cast.length > 2) ? c.cast : [a, b].filter(Boolean);
+    var lvls = cast.map(function (n) { return c.level[n]; });
+    var same = lvls.every(function (l) { return l && l === lvls[0]; });
+    var note = lvls.every(Boolean) ? (same ? (cast.length > 2 ? 'Everyone speaks ' : 'Both speak ') + lvls[0]
+      : cast.map(function (n) { return esc(n) + ' uses ' + c.level[n]; }).join(', ')) : '';
     return '<div class="cv-head"><button type="button" class="cv-back" onclick="khConv.back()">' + icon('arrow-left') + 'Conversations</button>'
       + '<h1 class="cv-title">' + esc(c.title) + '</h1><p class="cv-ko">' + esc(c.ctx) + '</p>'
-      + '<div class="cv-spk">' + [a, b].filter(Boolean).map(function (n, i) {
-          return '<div class="cv-sp"><i style="background:' + col(c, n) + '">' + esc(initial(n)) + '</i><span><b>' + esc(n) + '</b><small>' + esc(c.level[n] || '') + (i === 1 ? ' · you play this part' : '') + '</small></span></div>';
+      + '<div class="cv-spk">' + cast.map(function (n) {
+          return '<div class="cv-sp"><i style="background:' + col(c, n) + '">' + esc(initial(n)) + '</i><span><b>' + esc(n) + '</b><small>' + esc(c.level[n] || '') + (n === b ? ' · you play this part' : '') + '</small></span></div>';
         }).join('') + '</div>'
-      + (note ? '<div class="cv-lv"><span class="' + (la === lb ? (la === '반말' ? 'ban' : 'jon') : 'mix') + '">' + esc(levelTag(c)) + '</span>' + note + '</div>' : '')
+      + (note ? '<div class="cv-lv"><span class="' + (same ? (lvls[0] === '반말' ? 'ban' : 'jon') : 'mix') + '">' + esc(same ? lvls[0] : '반말 ↔ 존댓말') + '</span>' + note + '</div>' : '')
       + '</div>';
   }
   function renderRead() {

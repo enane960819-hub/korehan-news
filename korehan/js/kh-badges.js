@@ -356,7 +356,9 @@ function getCurrentStreak() {
       } else { break; }
     }
   }
-  return Math.max(streak, lsGet('kh_synced_activity_streak', 0));
+  // Server-side streaks (synced at sign-in) win on a fresh device whose
+  // localStorage log is empty.
+  return Math.max(streak, lsGet('kh_synced_activity_streak', 0) || 0, lsGet('kh_synced_mission_streak', 0) || 0);
 }
 
 function getSectionReadCounts() {
