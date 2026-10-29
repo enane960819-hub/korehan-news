@@ -41,7 +41,7 @@ My Room fixed (#952) and neglected-page bugs fixed (#953). Approved mockups
 shipped (#954): My Room learning version (today's word, 9 study unlocks via
 kh_claim_room_unlocks, unlock items not sold), dark public profile with the
 read-only room + room likes, dark Reporters / Playground / newsletter pages.
-Room item art: 91 items have pictures (2026-10-29); 91 still to draw, listed as
+Room item art: 96 items have pictures (2026-10-29); 86 still to draw, listed as
 copy-paste sheet messages in docs/reference/room-art-prompts.md (regenerate with
 `python3 scripts/room-art/catalog.py`; cut any layout with `process.py --auto <pic> a,b,c`).
 After adding art, bump KH_ROOM_ART_V + shared.js ?v.

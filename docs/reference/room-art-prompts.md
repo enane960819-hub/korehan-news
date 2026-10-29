@@ -1,6 +1,6 @@
 # My Room item art: prompts
 
-91 items still need a picture. Nine at a time: each sheet below is ONE message that
+86 items still need a picture. Nine at a time: each sheet below is ONE message that
 makes a 3x3 picture of nine items. Send the sheet pictures back with their sheet number;
 they are cut with `python3 scripts/room-art/process.py --grid <picture> <sheet number>`
 (background removal, trim, 400x400) into `korehan/assets/room/`. An item shows up in the shop
@@ -60,20 +60,6 @@ Row 3: a steaming cup of instant noodles with chopsticks resting on the lid, no 
 ```
 Files, row by row: `tteokbokki-pan.png`, `bibimbap-bowl.png`, `hotteok-plate.png`, `yuja-tea.png`, `gotgam-string.png`, `strawberry-cake.png`, `cup-noodle.png`, `bread-basket.png`, `watermelon.png`
 
-### Sheet 13: Hobbies (only these are still missing, one picture each)
-
-| file | description |
-|------|-------------|
-| `ukulele.png` | a small wooden ukulele leaning upright |
-
-### Sheet 15: Small furniture (only these are still missing, one picture each)
-
-| file | description |
-|------|-------------|
-| `side-table.png` | a small round wooden side table with a little lamp and a book |
-| `plant-stand.png` | a three-tier wooden plant stand with small potted plants |
-| `storage-baskets.png` | three stacked woven storage baskets with fabric liners |
-
 ## B. Catalogue items still without a picture: sheets 1-7
 
 ### Sheet 1: Study corner
@@ -85,12 +71,6 @@ Row 2: a ceramic cup full of pencils and pens; a wall calendar with a few days c
 Row 3: a cute round twin-bell alarm clock; a pastel school backpack with keychains; a comfy rolling study chair.
 ```
 Files, row by row: `desk-lamp.png`, `globe.png`, `book-stack.png`, `pencil-cup.png`, `wall-calendar.png`, `hangul-poster.png`, `alarm-clock.png`, `school-bag.png`, `study-chair.png`
-
-### Sheet 2: Korean tradition (only these are still missing, one picture each)
-
-| file | description |
-|------|-------------|
-| `gayageum.png` | a traditional Korean gayageum zither lying on a stand |
 
 ### Sheet 3: Cafe & kitchen
 
