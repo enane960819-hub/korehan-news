@@ -336,9 +336,13 @@ supabase functions deploy claude-proxy
   uses `khIsPremiumPlan()` / `khHasLive()` — never compare `getUserPlan() === 'premium'`. Seats are written only
   by `billing` (`live_reserve` → atomic `kh_live_reserve_seat`, status 'comp'; `live_cancel`) — never from the
   client. Legacy $5 'paid' seats still refund through `live_cancel`.
-- **My Room**: `user_room_state.owned` is server-only — only `buy_room_item` (security definer) or service_role
-  write it (column grants + `kh_room_state_guard_owned` trigger, `20261029_my_room_ownership_prices.sql`); the
-  client saves only `layout` / `prefs`. Prices are tuned to the nyang earn rate (~50/day regular study) — see that
+- **My Room**: `user_room_state.owned` is server-only — only `buy_room_item`, `kh_claim_room_unlocks` (both security
+  definer) or service_role write it (column grants + `kh_room_state_guard_owned` trigger,
+  `20261029_my_room_ownership_prices.sql`); the client saves only `layout` / `prefs`. Study unlocks
+  (`room_unlocks`, `20261029_room_learning.sql`): the claim RPC computes progress on the server (streak + games from
+  the server-written `coin_transactions` ledger, saved words, real articles read, TOPIK tests) and only ever adds
+  items; unlock items can't be bought (`UNLOCK_ONLY`). Other people's rooms are read only through
+  `get_public_room` (room fields only); likes are `room_likes` (own-row RLS) + `get_room_likes` / `toggle_room_like`. Prices are tuned to the nyang earn rate (~50/day regular study) — see that
   migration's comment before changing them. No particle effects, pets don't wander.
 - **Fake News** (ON HOLD since 2026-10-29: `KH_FAKE_NEWS_ON = false`, articles are drafts) (section key `fake`, `khIsFakeNews()` / `khFakeTag()` / `khFakeBanner()` in korehan-shared.js):
   openly made-up joke stories about real famous people, owner rule. Only harmless, flattering absurdity —

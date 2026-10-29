@@ -1092,6 +1092,55 @@ html body.mobile-redesign .mypage-hero { background:rgba(255,255,255,.05) !impor
 html body.mobile-redesign .mypage-name { color:#fff !important; }
 html body.mobile-redesign .mp-member-since { color:rgba(255,255,255,.5) !important; }
 html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !important; border-color:rgba(255,255,255,.18) !important; color:rgba(255,255,255,.85) !important; }
+/* My Room learning version (mockup 2026-10-29): today's word + study unlocks */
+.rw { position:absolute; z-index:5; width:216px; max-width:calc(100% - 12px); box-sizing:border-box; background:#fff; color:#0b1626; border-radius:14px; padding:10px 12px 11px; box-shadow:0 8px 20px rgba(0,0,0,.28); font-family:'DM Sans','Noto Sans KR',sans-serif; text-align:left; }
+.rw[hidden] { display:none; }
+.rw-tail { position:absolute; left:40px; bottom:-8px; width:0; height:0; border:9px solid transparent; border-top-color:#fff; border-bottom:0; }
+.rw.rw-side-r .rw-tail, .rw.rw-side-l .rw-tail { bottom:auto; top:16px; border:8px solid transparent; }
+.rw.rw-side-r .rw-tail { left:-8px !important; border-right-color:#fff; border-left:0; }
+.rw.rw-side-l .rw-tail { left:auto !important; right:-8px; border-left-color:#fff; border-right:0; }
+.rw-tag { font-size:9.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#2563eb; margin:0 18px 3px 0; line-height:1.35; }
+.rw-k { display:flex; align-items:center; gap:6px; font-family:'Noto Sans KR',sans-serif; font-weight:800; font-size:20px; line-height:1.25; }
+.rw-say, .rw-x { border:0; background:none; padding:2px; cursor:pointer; color:#2563eb; display:inline-flex; border-radius:6px; }
+.rw-say svg, .rw-say i { width:18px; height:18px; }
+.rw-x { position:absolute; top:6px; right:6px; color:#94a3b8; }
+.rw-x svg, .rw-x i { width:14px; height:14px; }
+.rw-say:focus-visible, .rw-x:focus-visible, .rw-btn:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+.rw-e { font-size:12px; color:#475569; margin:2px 0 6px; line-height:1.4; }
+.rw-ex { font-family:'Noto Sans KR',sans-serif; font-weight:500; font-size:12.5px; color:#334155; margin-bottom:8px; line-height:1.45; }
+.rw-btn { display:inline-block; background:#2563eb; color:#fff !important; font-size:12px; font-weight:800; border-radius:999px; padding:6px 12px; text-decoration:none; }
+.rw-btn:hover { background:#1d4ed8; }
+.rw.rw-min { width:auto; padding:0; background:none; box-shadow:none; }
+.rw-pill { display:inline-flex; align-items:center; gap:5px; border:0; cursor:pointer; background:#fff; color:#0b1626; border-radius:999px; padding:5px 10px; font:800 13px 'Noto Sans KR',sans-serif; box-shadow:0 4px 12px rgba(0,0,0,.25); }
+.rw-pill svg, .rw-pill i { width:14px; height:14px; color:#2563eb; }
+@media (max-width:480px) {
+  .rw { width:188px; padding:8px 10px 9px; }
+  .rw-k { font-size:18px; }
+  .rw-e { font-size:11.5px; margin-bottom:4px; }
+  .rw-ex { font-size:11.5px; margin-bottom:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .rw-btn { padding:5px 11px; font-size:11.5px; }
+}
+.ru { margin-top:12px; background:#0f1a31; border:1px solid #243457; border-radius:12px; padding:12px 14px; text-align:left; }
+.ru[hidden] { display:none; }
+.ru-h { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:12px; color:#cbd5e1; margin-bottom:4px; font-family:'DM Sans',sans-serif; }
+.ru-h b { text-transform:uppercase; letter-spacing:.06em; color:#e2e8f0; }
+.ru-all { border:0; background:none; color:#7dd3fc; font:800 12px 'DM Sans',sans-serif; cursor:pointer; padding:4px 0; white-space:nowrap; }
+.ru-row { display:flex; gap:12px; align-items:center; padding:8px 0; }
+.ru-ic { width:42px; height:42px; border-radius:10px; background:#1e2b4a; display:flex; align-items:center; justify-content:center; flex:none; overflow:hidden; }
+.ru-ic img { max-width:86%; max-height:86%; object-fit:contain; }
+.ru-ic svg, .ru-ic i { width:20px; height:20px; color:#fbbf24; }
+.ru-t { flex:1; min-width:0; }
+.ru-top { display:flex; align-items:center; gap:8px; justify-content:space-between; }
+.ru-top b { font-size:13px; color:#fff; font-family:'DM Sans',sans-serif; }
+.ru-t small { display:block; font-size:11.5px; color:#94a3b8; margin-top:1px; }
+.ru-bar { height:6px; border-radius:99px; background:#243457; margin-top:6px; overflow:hidden; }
+.ru-bar i { display:block; height:100%; background:linear-gradient(90deg,#38bdf8,#22d3ee); border-radius:99px; }
+.ru-got .ru-bar i { background:linear-gradient(90deg,#34d399,#10b981); }
+.ru-done { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:#6ee7b7; font-weight:700; white-space:nowrap; }
+.ru-done svg, .ru-done i { width:13px; height:13px; }
+.ru-place { border:0; border-radius:999px; background:#16a34a; color:#fff; font:800 11px 'DM Sans',sans-serif; padding:4px 10px; cursor:pointer; }
+.ru-fin { display:flex; align-items:center; gap:8px; font-size:12.5px; color:#cbd5e1; padding:6px 0; }
+.ru-fin svg, .ru-fin i { width:16px; height:16px; color:#fbbf24; }
 </style>
 </head>
 <body>
@@ -1146,6 +1195,8 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
       <button type="button" id="room-theme-btn" class="room-theme-btn" onclick="toggleRoomThemeDrawer(event)" aria-label="Wallpaper and floor" title="Wallpaper &amp; floor"><i data-lucide="image" class="kh-ui-icon kh-ui-icon-sm" aria-hidden="true"></i></button>
       <div id="room-theme-drawer" class="room-theme-drawer" role="menu" aria-label="Wallpaper and floor"></div>
     </div>
+    <!-- Study unlocks (js/features/room-learn.js, room_unlocks) -->
+    <div id="room-unlocks" class="ru" hidden></div>
     <!-- Controls -->
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
       <button onclick="openRoomShop(true)" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">My Items</button>
@@ -1261,6 +1312,8 @@ html body.mobile-redesign .mp-action-btn { background:rgba(255,255,255,.09) !imp
 <script src="korehan-shared.js?v=20261029ng"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script src="js/kh-badges.js?v=20261029ng"></script>
+<script src="js/features/room-view.js?v=20261029rl"></script>
+<script src="js/features/room-learn.js?v=20261029rl"></script>
 <script>
 
 // ── Tier SVG mark helper ────────────────────────────────────────
@@ -3264,6 +3317,7 @@ function renderRoomItems() {
   _updateRoomTimeOfDay();
   _ensureTimeOfDayTicker();
   _applyRoomTheme();
+  if (window.khRoomLearn) khRoomLearn.onRoomRender();
 }
 
 // ── Phase-2: Hub actions ──────────────────────────────────────
@@ -3316,25 +3370,10 @@ function _petLevelIcon(count) {
 // All swatches are CSS gradients today so we ship variety without
 // waiting on illustrations. Swap any entry's `bg` to `url(...)` later
 // to use real artwork — the apply path is identical.
-var WALLPAPERS = [
-  { id: 'default', name: 'Default', bg: 'url(assets/file_00000000969472069e4cadf53dffb54b.png) center/cover no-repeat' },
-  { id: 'hanji',   name: 'Hanji',   bg: 'linear-gradient(180deg,#f5e8d0 0%,#e6d2a4 70%,#d8be8a 100%)' },
-  { id: 'modern',  name: 'Modern',  bg: 'linear-gradient(180deg,#f8fafc 0%,#dbe2eb 100%)' },
-  { id: 'brick',   name: 'Brick',   bg: 'repeating-linear-gradient(0deg,#9b6a4a 0 30px,#7a5236 30px 33px),repeating-linear-gradient(90deg,transparent 0 60px,#7a5236 60px 63px)' },
-  { id: 'starry',  name: 'Starry',  bg: 'radial-gradient(circle at 18% 24%,#fff 0 1.4px,transparent 1.8px),radial-gradient(circle at 72% 18%,#fff 0 1.2px,transparent 1.6px),radial-gradient(circle at 38% 78%,#fff 0 1.1px,transparent 1.4px),radial-gradient(circle at 88% 62%,#fff 0 1.4px,transparent 1.8px),linear-gradient(180deg,#0c1633,#1a2654)' },
-  { id: 'sunset',  name: 'Sunset',  bg: 'linear-gradient(180deg,#fb923c 0%,#ec4899 55%,#7c3aed 100%)' },
-  { id: 'forest',  name: 'Forest',  bg: 'linear-gradient(180deg,#16a34a 0%,#065f46 100%)' },
-  { id: 'pastel',  name: 'Pastel',  bg: 'linear-gradient(135deg,#fbcfe8 0%,#e0e7ff 50%,#bae6fd 100%)' },
-  { id: 'neon',    name: 'Neon',    bg: 'radial-gradient(ellipse at 28% 20%,rgba(125,211,252,.45) 0%,transparent 55%),radial-gradient(ellipse at 70% 80%,rgba(244,114,182,.45) 0%,transparent 55%),#0c1633' }
-];
-var FLOORS = [
-  { id: 'none',   name: 'None',   bg: 'transparent' },
-  { id: 'wood',   name: 'Wood',   bg: 'repeating-linear-gradient(90deg,#a16842 0 60px,#8b5a36 60px 62px,#a16842 62px 122px,#8b5a36 122px 124px),linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.18) 100%)' },
-  { id: 'carpet', name: 'Carpet', bg: 'radial-gradient(circle at 50% 70%,#dc2626 0%,#991b1b 55%,#7f1d1d 100%)' },
-  { id: 'hanji',  name: 'Hanji',  bg: 'linear-gradient(180deg,#e6cfa3,#c9a874)' },
-  { id: 'marble', name: 'Marble', bg: 'linear-gradient(135deg,#f1f5f9 0%,#cbd5e1 60%,#94a3b8 100%)' },
-  { id: 'tile',   name: 'Tile',   bg: 'repeating-linear-gradient(0deg,#e2e8f0 0 30px,#cbd5e1 30px 32px),repeating-linear-gradient(90deg,#e2e8f0 0 30px,#cbd5e1 30px 32px)' }
-];
+// Lists live in js/features/room-view.js (shared with the public profile's
+// read-only room).
+var WALLPAPERS = khRoomView.WALLPAPERS;
+var FLOORS = khRoomView.FLOORS;
 function _getRoomTheme() { return _roomLsJson(_ROOM_THEME_KEY); }
 function _saveRoomTheme(t) {
   _roomLsSet(_ROOM_THEME_KEY, t);
@@ -3858,6 +3897,8 @@ async function loadRoomLayout() {
     _showRoomLoading(false);
   }
   _handlePlaceParam();
+  // Today's word + study unlocks (claims reached items on the server).
+  if (window.khRoomLearn) khRoomLearn.init();
 }
 
 // korehan-shop.html → "Place it now" links here with ?place=<item id>:
@@ -3992,6 +4033,7 @@ function toggleRoomEdit() {
     var rmBtn = document.getElementById('room-remove-btn');
     if (rmBtn) rmBtn.style.display = 'none';
   }
+  if (window.khRoomLearn) khRoomLearn.onRoomRender();
 }
 
 // ── Drag & Drop ──────────────────────────────────────────────
@@ -4341,9 +4383,12 @@ async function openRoomShop(ownedOnly) {
   // Items whose art isn't uploaded yet are left out (and any card whose image
   // still fails to load removes itself), so they appear once art exists.
   // My Items = what the learner owns; Item Shop = owned + buyable (price > 0).
+  // Study unlocks (room_unlocks) are earned, not bought: only shown once owned.
+  var unlockIds = window._roomUnlockIds || [];
   var items = ROOM_ITEMS.filter(function(it) {
     if (roomImgMissing(it)) return false;
     var isOwned = owned.indexOf(it.id) !== -1;
+    if (!isOwned && unlockIds.indexOf(it.id) !== -1) return false;
     return ownedOnly ? isOwned : (isOwned || Number(it.price) > 0);
   });
 
@@ -4462,6 +4507,8 @@ async function buyRoomItem(itemId) {
       if (body.error === 'INSUFFICIENT_NYANG') {
         if (typeof toast === 'function') toast('Not enough nyang!');
         if (typeof body.current === 'number') _setNyangBalance(body.current);
+      } else if (body.error === 'UNLOCK_ONLY') {
+        if (typeof toast === 'function') toast('This one is earned by studying — see Next unlocks.');
       } else if (typeof toast === 'function') toast('Purchase failed!');
       return;
     }
@@ -4497,8 +4544,10 @@ function _roomActionToast(text, btnLabel, onClick) {
   el.id = 'room-undo-toast';
   el.setAttribute('role', 'status');
   el.setAttribute('style',
-    'position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);'
-    + 'background:#0b1626;color:#fff;padding:10px 14px;border-radius:12px;max-width:calc(100vw - 32px);'
+    // left/right + fit-content (not left:50%) so the text isn't squeezed into
+    // half the screen on phones; sits above the mobile bottom nav.
+    'position:fixed;bottom:calc(' + (window.innerWidth < 760 ? 96 : 24) + 'px + env(safe-area-inset-bottom,0px));left:16px;right:16px;margin:0 auto;width:fit-content;'
+    + 'background:#0b1626;color:#fff;padding:10px 14px;border-radius:12px;max-width:560px;box-sizing:border-box;'
     + 'display:flex;align-items:center;gap:12px;font-family:inherit;font-size:13px;'
     + 'font-weight:700;box-shadow:0 12px 32px rgba(0,0,0,.35);z-index:9999;'
   );

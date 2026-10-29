@@ -9,7 +9,7 @@
 <title>Reporters — KoreHani</title>
 <meta name="description" content="Meet the character reporters who create KoreHani's Korean learning content.">
 <link rel="canonical" href="https://korehani.com/korehan-reporters.html">
-<meta name="theme-color" content="#0a1423">
+<meta name="theme-color" content="#0d1b3d">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="KoreHani">
 <meta property="og:url" content="https://korehani.com/korehan-reporters.html">
@@ -22,32 +22,45 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="korehan-shared.css?v=20261029ng">
 <style>
-.rpl-hero { background:linear-gradient(135deg,#0b1626 0%,#1a3a6b 100%); padding:40px 24px 48px; text-align:center; }
-.rpl-hero h1 { font-family:'Playfair Display',serif; font-size:32px; font-weight:900; color:#fff; margin-bottom:8px; }
-.rpl-hero p { font-size:14px; color:rgba(255,255,255,.6); }
-.rpl-grid { max-width:960px; margin:0 auto; padding:40px 20px 60px; display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
-.rpl-card { text-decoration:none; display:block; border-radius:20px; overflow:hidden; background:#fff; border:1px solid #e8eef7; box-shadow:0 4px 16px rgba(15,23,42,.06); transition:transform .18s,box-shadow .18s; cursor:pointer; }
-.rpl-card:hover { transform:translateY(-6px); box-shadow:0 16px 40px rgba(15,23,42,.13); }
-.rpl-card:hover .rpl-img { transform:scale(1.06); }
-.rpl-img-wrap { height:200px; overflow:hidden; position:relative; }
-.rpl-img { width:100%; height:100%; object-fit:cover; transition:transform .3s; display:block; }
-.rpl-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:56px; font-weight:900; color:#fff; }
-.rpl-bottom { padding:14px 16px 16px; }
-.rpl-name { font-family:'Noto Serif KR',serif; font-size:16px; font-weight:900; color:#0f172a; margin-bottom:3px; }
-.rpl-rom { font-size:12px; font-weight:700; color:#475569; margin:-1px 0 3px; }
-.rpl-role { font-size:12px; color:#64748b; font-weight:600; }
-.rpl-loading { text-align:center; padding:80px 20px; color:#94a3b8; }
-@media(max-width:640px){ .rpl-grid{ grid-template-columns:repeat(2,1fr); gap:14px; } .rpl-img-wrap{ height:160px; } }
+/* Reporters (mockup 2026-10-29 ②) — dark, like Shop / Word Bank / Reporter Cards. */
+html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+.rpl-wrap { max-width:1080px; margin:0 auto; padding:28px 20px 70px; font-family:'DM Sans','Noto Sans KR',sans-serif; }
+.rpl-head { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:20px; }
+.rpl-head h1 { font-family:'DM Sans',sans-serif; font-size:26px; font-weight:800; color:#fff; margin:0; display:inline-flex; align-items:center; gap:8px; }
+.rpl-head p { font-size:13.5px; color:rgba(255,255,255,.6); margin:4px 0 0; }
+.rpl-cards-btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:999px; background:linear-gradient(135deg,#ec4899,#a78bfa); color:#fff; font-size:13px; font-weight:800; text-decoration:none; }
+.rpl-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.rpl-card { display:flex; flex-direction:column; text-decoration:none; color:inherit; border-radius:16px; overflow:hidden; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); transition:transform .18s, border-color .18s; }
+.rpl-card:hover { transform:translateY(-4px); border-color:rgba(255,255,255,.25); }
+.rpl-img-wrap { height:190px; overflow:hidden; position:relative; background:#0f1b33; }
+.rpl-img { width:100%; height:100%; object-fit:cover; object-position:center top; display:block; transition:transform .3s; }
+.rpl-card:hover .rpl-img { transform:scale(1.04); }
+/* No real portrait yet: a quiet initial on a dark gradient tinted with the reporter colour. */
+.rpl-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-family:'Noto Serif KR',serif; font-size:60px; font-weight:900; color:rgba(255,255,255,.82); text-shadow:0 2px 18px rgba(0,0,0,.35); }
+.rpl-bottom { padding:11px 13px 13px; display:flex; flex-direction:column; flex:1; }
+.rpl-name { font-family:'Noto Sans KR',sans-serif; font-size:16px; font-weight:800; color:#fff; line-height:1.3; }
+.rpl-rom { font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; color:#94a3b8; margin-left:5px; }
+.rpl-role { font-size:12px; color:#7dd3fc; font-weight:600; margin-top:2px; }
+.rpl-meta { display:flex; justify-content:space-between; gap:8px; margin-top:auto; padding-top:10px; font-size:11.5px; color:#94a3b8; font-weight:600; }
+.rpl-meta .kh-ui-icon { width:12px; height:12px; vertical-align:-2px; }
+.rpl-aff b { color:#f9a8d4; font-weight:800; }
+.rpl-loading { grid-column:1/-1; text-align:center; padding:80px 20px; color:rgba(255,255,255,.55); }
+@media(max-width:900px){ .rpl-grid{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:640px){ .rpl-wrap{ padding:20px 16px 56px; } .rpl-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; } .rpl-img-wrap{ height:150px; } .rpl-name{ font-size:15px; } .rpl-rom{ display:block; margin:1px 0 0; } .rpl-head h1{ font-size:22px; } }
 </style>
 </head>
 <body>
 <div id="kh-header"></div>
-<div class="rpl-hero">
-  <h1>KoreHani Reporters</h1>
-  <p>Meet the character reporters who write the articles</p>
-  <a href="korehan-cards.html" style="display:inline-flex;align-items:center;gap:6px;margin-top:16px;padding:10px 22px;border-radius:999px;background:linear-gradient(135deg,#ec4899,#a78bfa);color:#fff;font-size:13px;font-weight:800;text-decoration:none;box-shadow:0 4px 14px rgba(167,139,250,.3)"><i data-lucide="contact" class="kh-ui-icon kh-emo-ico" aria-hidden="true"></i> My cards</a>
-</div>
-<div class="rpl-grid" id="rpl-grid"><div class="rpl-loading">Loading…</div></div>
+<main class="rpl-wrap">
+  <div class="rpl-head">
+    <div>
+      <h1><i data-lucide="newspaper" class="kh-ui-icon" aria-hidden="true"></i> Reporters</h1>
+      <p>Meet the character reporters who write the articles you study.</p>
+    </div>
+    <a class="rpl-cards-btn" href="korehan-cards.html"><i data-lucide="contact" class="kh-ui-icon" aria-hidden="true"></i> My cards</a>
+  </div>
+  <div class="rpl-grid" id="rpl-grid"><div class="rpl-loading">Loading…</div></div>
+</main>
 <div id="kh-footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/core/security.js?v=20260525r"></script>
@@ -76,66 +89,132 @@
 <script src="korehan-shared.js?v=20261029ng"></script>
 <script src="js/core/emoji-icons.js?v=20261029t"></script>
 <script>
-document.addEventListener('DOMContentLoaded', async function() {
-  // Remember the page the user came from BEFORE entering the reporters
-  // flow, so a per-reporter "← 뒤로가기" can skip back over this list
-  // when they bounce off a reporter detail page (rather than dropping
-  // them on this same all-reporters page). Skip recording when they're
-  // already inside the reporters flow.
+// Reporters list (mockup 2026-10-29 ②): portrait, Hangul name + romanization,
+// role, published-article count (one kh_reporter_article_counts() call) and
+// the signed-in learner's affinity (reporter_user_affinity, one query).
+function rplEsc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); }
+// Random stock photos (picsum.photos) and the 1x1 seed placeholder are not the reporter.
+function rplRealImg(u) { u = String(u || ''); return (/picsum\.photos/i.test(u) || /^data:image\/gif;base64,R0lGODlhAQAB/.test(u)) ? '' : u; }
+function rplPh(r) {
+  var c = /^#[0-9a-f]{6}$/i.test(r.color || '') ? r.color : '#2563eb';
+  return '<div class="rpl-ph" style="background:radial-gradient(120% 90% at 30% 15%,' + c + '73 0%,' + c + '26 45%,#0f1b33 100%)">' + rplEsc(String(r.name || '?').charAt(0)) + '</div>';
+}
+window.rplImgFail = function(img) {
+  var wrap = img.parentNode; if (!wrap) return;
+  wrap.innerHTML = rplPh({ name: wrap.getAttribute('data-n') || '?', color: wrap.getAttribute('data-c') || '' });
+};
+
+// Published articles per reporter. One RPC; until that migration is live,
+// one narrow select counted here (still a single query).
+async function rplArticleCounts(sb) {
+  var map = {};
+  if (!sb) return map;
   try {
-    var ref = document.referrer || '';
-    if (ref && !/korehan-reporter(s)?\.html/.test(ref)) {
-      sessionStorage.setItem('kh_rp_pre_list', ref);
-    } else {
-      // Codex P2: when ref is empty (bookmark / new-tab) OR
-      // already inside the reporter flow, CLEAR the stored entry
-      // so rpGoBack() doesn't fall back to a stale value from an
-      // earlier session.
-      sessionStorage.removeItem('kh_rp_pre_list');
+    var res = await sb.rpc('kh_reporter_article_counts');
+    if (!res.error && Array.isArray(res.data)) {
+      res.data.forEach(function(r){ map[r.reporter_id] = Number(r.n || 0); });
+      return map;
     }
   } catch (_) {}
+  try {
+    var q = await sb.from('articles').select('reporter_id,section')
+      .not('reporter_id', 'is', null).or('status.is.null,status.eq.published').limit(5000);
+    if (!q.error && Array.isArray(q.data)) {
+      q.data.forEach(function(r){ if (r.section !== 'fake') map[r.reporter_id] = (map[r.reporter_id] || 0) + 1; });
+    }
+  } catch (_) {}
+  return map;
+}
 
+async function rplWaitForAuth() {
+  if (typeof supaUser !== 'undefined' && supaUser) return supaUser;
+  await new Promise(function(resolve) {
+    var done = false;
+    function finish() { if (done) return; done = true; resolve(); }
+    window.addEventListener('kh-auth-signed-in', finish);
+    var poll = setInterval(function(){ if (supaUser || window._sessionChecked) { clearInterval(poll); finish(); } }, 100);
+    setTimeout(function(){ clearInterval(poll); finish(); }, 8000);
+  });
+  return (typeof supaUser !== 'undefined') ? supaUser : null;
+}
+
+async function rplAffinity(sb) {
+  var user = await rplWaitForAuth();
+  if (!sb || !user) return null;
+  var map = {};
+  try {
+    var res = await sb.from('reporter_user_affinity').select('reporter_id, affinity_points').eq('user_id', user.id);
+    if (!res.error && Array.isArray(res.data)) {
+      res.data.forEach(function(r){ map[r.reporter_id] = Number(r.affinity_points || 0); });
+    }
+  } catch (_) {}
+  return map;
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+  // Remember the page the user came from BEFORE entering the reporters
+  // flow, so a per-reporter "Back" can skip back over this list
+  // (rpGoBack in korehan-reporter.html). Clear it when the referrer is
+  // empty or already inside the reporters flow so a stale value isn't used.
+  try {
+    var ref = document.referrer || '';
+    if (ref && !/korehan-reporter(s)?\.html/.test(ref)) sessionStorage.setItem('kh_rp_pre_list', ref);
+    else sessionStorage.removeItem('kh_rp_pre_list');
+  } catch (_) {}
+
+  var sb = getSupa();
+  var countsP = rplArticleCounts(sb);
+  var affP = rplAffinity(sb);
   await _loadReportersIntoKHMap();
   var grid = document.getElementById('rpl-grid');
 
-  // Try Supabase for full list first
   var list = [];
-  var sb = getSupa();
   if (sb) {
     try {
       var res = await sb.from('character_reporters').select('id,data').order('updated_at');
       if (!res.error && res.data && res.data.length) {
-        list = res.data.map(function(r){ return r.data || r; });
+        list = res.data.map(function(r){ var d = r.data || r; if (!d.id) d.id = r.id; return d; });
       }
     } catch(e) {}
   }
-  // Fallback: build from KH_REPORTERS map
   if (!list.length) {
     list = Object.keys(KH_REPORTERS).map(function(rid){
       var r = KH_REPORTERS[rid];
-      return { id:rid, name:r.name, role:r.role, image:r.img, color:r.color };
+      return { id:rid, name:r.name, name_en:r.name_en, role:r.role, image:r.img, color:r.color };
     });
   }
+  if (!list.length) { grid.innerHTML = '<div class="rpl-loading">No reporters yet.</div>'; return; }
 
-  if (!list.length) { grid.innerHTML = '<div class="rpl-loading">No reporter info.</div>'; return; }
+  var counts = await countsP;
+  // Reporters with the most articles first, so the faces learners meet in the news lead.
+  list.sort(function(a, b){ return (counts[b.id] || 0) - (counts[a.id] || 0); });
 
-  // Random stock photos (picsum.photos) and the 1x1 seed placeholder are not
-  // the reporter — use the initials tile instead.
-  function realImg(u) { u = String(u || ''); return (/picsum\.photos/i.test(u) || /^data:image\/gif;base64,R0lGODlhAQABA/.test(u)) ? '' : u; }
   grid.innerHTML = list.map(function(r) {
-    var color = r.color || '#2563eb';
-    r.image = realImg(r.image);
-    var imgHtml = r.image
-      ? '<img class="rpl-img" src="' + r.image + '" alt="' + r.name + '" onerror="this.parentNode.innerHTML=\'<div class=rpl-ph style=background:' + color + '>' + r.name.charAt(0) + '</div>\'">'
-      : '<div class="rpl-ph" style="background:' + color + '">' + r.name.charAt(0) + '</div>';
-    return '<a class="rpl-card" href="korehan-reporter.html?id=' + r.id + '">'
-      + '<div class="rpl-img-wrap" style="background:' + color + '22">' + imgHtml + '</div>'
-      + '<div class="rpl-bottom" style="border-top:3px solid ' + color + '">'
-      + '<div class="rpl-name">' + r.name + '</div>'
-      + (typeof khReporterNameEn === 'function' && khReporterNameEn(r) ? '<div class="rpl-rom">' + khReporterNameEn(r) + '</div>' : '')
-      + '<div class="rpl-role">' + (typeof khReporterRole==='function'?khReporterRole:String)(r.role||'') + '</div>'
+    var img = rplRealImg(r.image);
+    var portrait = img
+      ? '<img class="rpl-img" src="' + rplEsc(img) + '" alt="' + rplEsc(r.name) + '" loading="lazy" onerror="rplImgFail(this)">'
+      : rplPh(r);
+    var rom = (typeof khReporterNameEn === 'function') ? khReporterNameEn(r) : '';
+    var role = r.role_en || (typeof khReporterRole === 'function' ? khReporterRole(r.role || '') : (r.role || ''));
+    var n = counts[r.id] || 0;
+    return '<a class="rpl-card" href="korehan-reporter.html?id=' + encodeURIComponent(r.id) + '">'
+      + '<div class="rpl-img-wrap" data-n="' + rplEsc(r.name) + '" data-c="' + rplEsc(r.color || '') + '">' + portrait + '</div>'
+      + '<div class="rpl-bottom">'
+      +   '<div class="rpl-name">' + rplEsc(r.name) + (rom ? '<span class="rpl-rom">' + rplEsc(rom) + '</span>' : '') + '</div>'
+      +   '<div class="rpl-role">' + rplEsc(role) + '</div>'
+      +   '<div class="rpl-meta"><span>' + n + (n === 1 ? ' article' : ' articles') + '</span>'
+      +     '<span class="rpl-aff" data-rid="' + rplEsc(r.id) + '"></span></div>'
       + '</div></a>';
   }).join('');
+
+  // Affinity only means something when signed in; signed-out cards just show the count.
+  var aff = await affP;
+  if (aff) {
+    document.querySelectorAll('.rpl-aff').forEach(function(el){
+      var p = aff[el.getAttribute('data-rid')] || 0;
+      el.innerHTML = '<i data-lucide="heart" class="kh-ui-icon" aria-hidden="true"></i> Affinity <b>' + p.toLocaleString() + '</b>';
+    });
+  }
 });
 </script>
 </body>

@@ -394,10 +394,13 @@
       // art isn't uploaded yet remove their own tile (onerror) until it lands.
       html += '<div class="sh-grid">' + ROOM_ITEMS_SHOP.filter(function(it){ return it.img && it.price > 0; }).map(function(it) {
         var isOwned = owned.indexOf(it.id) >= 0;
+        var study = !!ROOM_UNLOCKS[it.id];
         return '<button type="button" class="sh-tile" onclick="shopOpen(\'room\',\'' + it.id + '\')">'
           + (isOwned ? '<span class="sh-own sh-own-abs">Owned</span>' : '')
           + '<span class="sh-art"><img src="' + _esc(it.img) + '" alt="" loading="lazy" onerror="this.closest(\'.sh-tile\').remove()"></span>'
-          + '<b>' + _esc(it.name) + '</b><small>' + Number(it.price).toLocaleString() + '</small></button>';
+          + '<b>' + _esc(it.name) + '</b>'
+          + (study ? '<small class="sh-study">' + khIcon('graduation-cap') + 'Study unlock</small>' : '<small>' + Number(it.price).toLocaleString() + '</small>')
+          + '</button>';
       }).join('') + '</div>';
     } else if (tab === 'profile') {
       var fr = _items('frame').map(function(it){ return _row(it, _framePv(it)); }).join('');
@@ -423,6 +426,21 @@
       title = item.name; price = Number(item.price) || 0; owned = _roomOwnedIds().indexOf(id) >= 0;
       preview = '<div class="sh-room"><img src="' + _esc(item.img) + '" alt=""></div>';
       buy = 'window.buyRoomItem(\'' + id + '\')';
+      if (ROOM_UNLOCKS[id] && !owned) {
+        // Earned by studying, not bought: show the goal instead of a price.
+        var ov0 = document.createElement('div');
+        ov0.className = 'sh-ov'; ov0.id = 'sh-ov';
+        ov0.innerHTML = '<div class="sh-sheet" role="dialog" aria-modal="true">'
+          + '<div class="sh-k">Study unlock</div><div class="sh-st">' + _esc(title) + '</div>'
+          + '<div class="sh-sd">Not sold for nyang. ' + _esc(ROOM_UNLOCKS[id]) + ' and it appears in My Room.</div>'
+          + preview
+          + '<button type="button" class="sh-buy" onclick="location.href=\'korehan-mypage.html#room-unlocks\'">See my progress</button>'
+          + '<button type="button" class="sh-cancel" onclick="shopClose()">Close</button></div>';
+        ov0.addEventListener('click', function(e){ if (e.target === ov0) shopClose(); });
+        document.body.appendChild(ov0);
+        requestAnimationFrame(function(){ ov0.classList.add('open'); });
+        return;
+      }
     } else {
       item = (_shop.catalog || []).find(function(x){ return x.id === id; }); if (!item) return;
       title = item.item_type === 'profile_title' ? _titleLabel(item) : item.name; price = Number(item.coin_price || 0);
@@ -550,6 +568,8 @@
   ];
   var ROOM_ITEMS_SHOP = ROOM_ITEMS_FALLBACK.slice();
   var _shopRoomItemsLoaded = false;
+  // Study unlocks (room_unlocks): earned in My Room by studying, never sold.
+  var ROOM_UNLOCKS = {};
 
   async function _ensureRoomItems() {
     if (_shopRoomItemsLoaded) return;
@@ -563,6 +583,10 @@
         });
         _shopRoomItemsLoaded = true;
       }
+    } catch(e) {}
+    try {
+      var ul = await sb.from('room_unlocks').select('item_id, label').eq('active', true);
+      if (ul && !ul.error) (ul.data || []).forEach(function(u){ ROOM_UNLOCKS[u.item_id] = u.label; });
     } catch(e) {}
   }
 
@@ -583,6 +607,7 @@
     var body = (rpc && rpc.data) || {};
     if (rpc.error || !body.ok) {
       if (body.error === 'INSUFFICIENT_NYANG') toast('Not enough nyang — need ' + body.required + ', you have ' + body.current, 'warn');
+      else if (body.error === 'UNLOCK_ONLY') toast('This one is earned by studying — see My Room', 'warn');
       else toast('Purchase failed', 'error');
       return;
     }
