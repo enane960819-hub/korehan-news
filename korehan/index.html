@@ -954,6 +954,8 @@ body.kh-neon-on .hero-dot {
 // localStorage kh_visited는 "한 번이라도 Start Free 눌렀음"을 의미
 // Supabase 세션 있으면 (기존 유저) 항상 메인 직행
 (function(){
+  // Owner preview link — korehan-shared.js signs in, then reloads.
+  if (/[?&]kh_preview=/.test(location.search)) return;
   // Supabase 세션 토큰이 있으면 기존 유저 → 메인
   for (var i = 0; i < localStorage.length; i++) {
     var k = localStorage.key(i);
