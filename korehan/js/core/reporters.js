@@ -45,6 +45,39 @@ function khReporterRole(role) {
 }
 window.khReporterRole = khReporterRole;
 
+// Romanized reporter name for learners ("박서진" → "Park Seo-jin"). Display
+// only: the customary spelling for the family name, rule-based RR
+// (khRomanize, korehan-shared.js) per syllable of the given name, hyphenated
+// the way Korean names are usually written. '' for non-Hangul names
+// or a first syllable that isn't a Korean family name.
+var KH_SURNAME_EN = {
+  '김':'Kim','이':'Lee','박':'Park','최':'Choi','정':'Jung','강':'Kang','조':'Cho','윤':'Yoon','장':'Jang','임':'Lim',
+  '한':'Han','오':'Oh','서':'Seo','신':'Shin','권':'Kwon','황':'Hwang','안':'Ahn','송':'Song','류':'Ryu','유':'Yoo',
+  '전':'Jeon','홍':'Hong','고':'Ko','문':'Moon','양':'Yang','손':'Son','배':'Bae','백':'Baek','허':'Heo','남':'Nam',
+  '심':'Shim','노':'Noh','하':'Ha','곽':'Kwak','성':'Sung','차':'Cha','주':'Joo','우':'Woo','구':'Koo','민':'Min',
+  '나':'Na','진':'Jin','지':'Ji','엄':'Eom','채':'Chae','원':'Won','천':'Cheon','방':'Bang','공':'Kong','현':'Hyun',
+  '함':'Ham','변':'Byun','염':'Yeom','여':'Yeo','추':'Choo','도':'Do','소':'So','석':'Seok','선':'Sun','설':'Seol',
+  '마':'Ma','길':'Gil','연':'Yeon','표':'Pyo','명':'Myung','기':'Ki','반':'Ban','왕':'Wang','금':'Keum','옥':'Ok',
+  '인':'In','제':'Je','모':'Mo','탁':'Tak','국':'Kook','은':'Eun','용':'Yong','예':'Ye','경':'Kyung','봉':'Bong',
+  '남궁':'Namgung','황보':'Hwangbo','제갈':'Jegal','선우':'Sunwoo','독고':'Dokgo'
+};
+function khNameRoman(name) {
+  name = String(name || '').replace(/\s+/g, '');
+  if (!/^[\uAC00-\uD7A3]{2,5}$/.test(name) || typeof khRomanize !== 'function') return '';
+  var sur = (name.length >= 4 && KH_SURNAME_EN[name.slice(0, 2)]) ? name.slice(0, 2) : name.charAt(0);
+  var given = name.slice(sur.length);
+  function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+  var surEn = KH_SURNAME_EN[sur];
+  if (!surEn) return ''; // not a Korean family name (e.g. 앨리샤) — use data.name_en
+
+  var givenEn = given.split('').map(function(ch) { return khRomanize(ch); }).join('-');
+  return surEn + (givenEn ? ' ' + cap(givenEn) : '');
+}
+window.khNameRoman = khNameRoman;
+// Reporter row → English name: hand-set data.name_en wins, else the romanization.
+function khReporterNameEn(r) { return (r && (r.name_en || khNameRoman(r.name))) || ''; }
+window.khReporterNameEn = khReporterNameEn;
+
 var _KH_DEFAULT_REPORTERS_LIST = [
   { id:'cr1',  name:'박서진', role:'Reporter',         image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#2563eb' },
   { id:'cr2',  name:'김지원', role:'Correspondent',       image:'data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==',  profilePage:'', color:'#7c3aed' },
@@ -86,6 +119,7 @@ function _loadReportersIntoKHMap() {
           if (!rid) return;
           snap[rid] = KH_REPORTERS[rid] = {
             name : d.name  || '',
+            name_en: d.name_en || '',
             img  : _khReporterImg(d.image),
             href : d.profilePage || 'korehan-reporters.html',
             role : khReporterRole(d.role || ''),

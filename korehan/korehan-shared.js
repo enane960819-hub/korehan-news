@@ -1849,6 +1849,7 @@ async function checkSession() {
         } catch(_) {}
         _syncSavedWordsFromDB();
         _rehydrateUserState();
+        try { khBadgesReady(); } catch(_) {}
         loadUserPlan();
         if (!window.location.pathname.includes('onboarding')) {
           checkOnboardingStatus();
@@ -1951,6 +1952,7 @@ async function checkSession() {
       _deferAuth(function() {
         _syncSavedWordsFromDB();
         _rehydrateUserState();
+        try { khBadgesReady(); } catch(_) {}
         if (!window.location.pathname.includes('onboarding')) {
           checkOnboardingStatus();
         }
@@ -7777,7 +7779,8 @@ async function awardXP(actionKey, meta) {
       // no longer writes coin_balance or coin_transactions.
       var coinGained = Number(res.data.coin_gained || 0);
       if (coinGained > 0) showCoinToast(coinGained);
-      await _insertXPLog(sb, supaUser.id, actionKey, gained, reason, contentId);
+      // award_xp already wrote the xp_log row; a second client row made
+      // daily caps hit at half the intended count.
       _recordXPGrant(actionKey, contentId);
       return res.data;
     }
@@ -7797,6 +7800,48 @@ async function awardXP(actionKey, meta) {
 
   return null;
 }
+
+// ── Playground games: completion reward ────────────────────────────────
+// One modest reward per game per KST day, decided on the server: award_xp
+// 'game_complete' (xp_config + coin_reward_config, daily cap across all games,
+// same-day dedupe on content_id — 20261029_playground_game_rewards.sql). The
+// browser never writes XP or nyang here (no awardXP() client fallback). A
+// granted reward also counts as practice for the streak and, for quiz-style
+// games, the Daily Mission "Take Quiz" slot.
+var _khGameAsked = {};
+async function khGameComplete(gameId, opts) {
+  opts = opts || {};
+  if (!gameId || typeof supaUser === 'undefined' || !supaUser) return null;
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return null;
+  var day = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+  var key = supaUser.id + ':' + gameId + ':' + day;
+  if (_khGameAsked[key]) return null;
+  _khGameAsked[key] = 1;
+  try {
+    var res = await sb.rpc('award_xp', {
+      p_user_id: supaUser.id,
+      p_action: 'game_complete',
+      p_meta: { content_id: 'game:' + gameId, source: 'playground' }
+    });
+    var d = res && res.data;
+    if (!d || !d.ok || d.duplicate || d.capped) return d || null;
+    var xp = Number(d.xp_gained || 0), coin = Number(d.coin_gained || 0);
+    if (xp > 0) showXPToast(xp);
+    if (coin > 0) showCoinToast(coin);
+    if (d.leveled_up) showToast('Level Up! Lv.' + d.level + ' ' + d.level_name);
+    if (opts.mission !== false && typeof dmGet === 'function') {
+      var dm = dmGet(); dm.quizzes = (dm.quizzes || 0) + 1; dmSet(dm);
+      if (typeof markStudyActivityToday === 'function') markStudyActivityToday('quiz');
+      await syncDailyMission('quizzes');
+      if (typeof checkDailyMissionComplete === 'function') checkDailyMissionComplete();
+    } else if (typeof markStudyActivityToday === 'function') {
+      markStudyActivityToday('quiz');
+    }
+    return d;
+  } catch (e) { return null; }
+}
+window.khGameComplete = khGameComplete;
 
 var _xpToastTimer = null;
 var _xpToastTotal = 0;
@@ -9776,6 +9821,16 @@ var XP_TABLE = {
 };
 
 function getXP()      { return lsGet(K_XP, 0); }
+// XP tier ladder — the one My Page shows ("Bronze · 240 XP"). Mirrors
+// getXPTier() in korehan-mypage.html; change both together.
+function khXPTier(xp) {
+  xp = Number(xp) || 0;
+  if (xp >= 75000) return { label:'Diamond',  cls:'diamond', next:null,       from:75000, to:75000 };
+  if (xp >= 30000) return { label:'Platinum', cls:'plat',    next:'Diamond',  from:30000, to:75000 };
+  if (xp >= 12000) return { label:'Gold',     cls:'gold',    next:'Platinum', from:12000, to:30000 };
+  if (xp >= 4500)  return { label:'Silver',   cls:'silver',  next:'Gold',     from:4500,  to:12000 };
+  return                  { label:'Bronze',   cls:'bronze',  next:'Silver',   from:0,     to:4500  };
+}
 function addXP(amt)   {
   var cur = getXP();
   lsSet(K_XP, cur + amt);
@@ -9789,7 +9844,89 @@ function getTotalArticlesRead() {
   var log = lsGet('kh_read_log', {});
   var ids = new Set();
   Object.values(log).forEach(function(arr){ arr.forEach(function(id){ ids.add(id); }); });
-  return ids.size;
+  // kh_read_log only knows this browser — the server count wins on a new device.
+  return Math.max(ids.size, _khBadgeSrv().articles || 0);
+}
+
+// ── Server-backed badge counters ─────────────────────────────────────────
+// Badge checks used to read only this browser's localStorage, so a learner
+// with 26 articles read saw 0 / N on a new device. The learner's own server
+// rows (read_articles, user_read_history, user_saved_words, user_quiz_results,
+// user_stats) are counted once per
+// page (at most every 10 min) and cached in localStorage under their uid; the
+// badge helpers take the larger of the local and server numbers. Unlocks still
+// go through checkBadges() → user_badges. Nothing here writes XP or coins.
+var K_BADGE_SRV = 'kh_badge_srv_stats';
+var _khBadgeSrvP = null;
+function _khBadgeSrv() {
+  var uid = (typeof supaUser !== 'undefined' && supaUser) ? supaUser.id : null;
+  var s = uid ? lsGet(K_BADGE_SRV, null) : null;
+  return (s && s.uid === uid) ? s : {};
+}
+function khBadgeSavedCount() {
+  var local = (typeof K_SAVED !== 'undefined') ? (lsGet(K_SAVED, []) || []).length : 0;
+  return Math.max(local, _khBadgeSrv().words || 0);
+}
+function khBadgeQuizCount() { return Math.max(lsGet('kh_quiz_done_count', 0) || 0, _khBadgeSrv().quizzes || 0); }
+function khBadgeXP() { return Math.max(getXP() || 0, _khBadgeSrv().xp || 0); }
+function khBadgeServerSync(force) {
+  if (typeof supaUser === 'undefined' || !supaUser) return Promise.resolve(null);
+  var sb = (typeof getSupa === 'function') ? getSupa() : null;
+  if (!sb) return Promise.resolve(null);
+  var uid = supaUser.id;
+  var cur = _khBadgeSrv();
+  if (!force && cur.at && (Date.now() - cur.at) < 10 * 60 * 1000) return Promise.resolve(cur);
+  if (_khBadgeSrvP && _khBadgeSrvP.uid === uid) return _khBadgeSrvP.p;
+  var p = Promise.all([
+    sb.from('user_read_history').select('content_id').eq('user_id', uid).eq('content_type', 'article').limit(5000),
+    sb.from('read_articles').select('article_id, section').eq('user_id', uid).limit(5000),
+    sb.from('user_saved_words').select('*', { count: 'exact', head: true }).eq('user_id', uid),
+    sb.from('user_quiz_results').select('*', { count: 'exact', head: true }).eq('user_id', uid),
+    sb.from('user_stats').select('xp, articles_read, quizzes_done').eq('user_id', uid).maybeSingle()
+  ]).then(function(res) {
+    if (!supaUser || supaUser.id !== uid) return null;
+    var hist = res[0], reads = res[1], words = res[2], quiz = res[3], stats = res[4];
+    var st = (stats && stats.data) || {};
+    var ids = {}, secIds = {};
+    ((hist && hist.data) || []).forEach(function(r) { if (r.content_id != null) ids[String(r.content_id)] = 1; });
+    ((reads && reads.data) || []).forEach(function(r) {
+      if (r.article_id == null) return;
+      ids[String(r.article_id)] = 1;
+      if (r.section) (secIds[r.section] = secIds[r.section] || {})[String(r.article_id)] = 1;
+    });
+    var sections = {};
+    Object.keys(secIds).forEach(function(k) { sections[k] = Object.keys(secIds[k]).length; });
+    var s = {
+      uid: uid,
+      at: Date.now(),
+      // Distinct reads from the read logs; user_stats.articles_read is the
+      // running counter the rest of the app shows — take whichever is larger.
+      articles: Math.max(Object.keys(ids).length, st.articles_read || 0, (hist.error && reads.error) ? (cur.articles || 0) : 0),
+      words: (words && !words.error && typeof words.count === 'number') ? words.count : (cur.words || 0),
+      quizzes: Math.max(st.quizzes_done || 0, (quiz && !quiz.error && quiz.count) || 0, cur.quizzes || 0),
+      xp: st.xp || cur.xp || 0,
+      sections: (reads && !reads.error) ? sections : (cur.sections || {})
+    };
+    lsSet(K_BADGE_SRV, s);
+    _khBadgeSrvP = null;
+    // Catch up: unlock (and record in user_badges) whatever the server
+    // numbers already earned, then refresh any badge view on the page.
+    try { checkBadges('server_sync'); } catch (_) {}
+    _khBadgeViewsRefresh();
+    return s;
+  }, function() { _khBadgeSrvP = null; return null; });
+  _khBadgeSrvP = { uid: uid, p: p };
+  return p;
+}
+window.khBadgeServerSync = khBadgeServerSync;
+var _khBadgeLastContainer = null;
+function _khBadgeViewsRefresh() {
+  setTimeout(function() {
+    try { if (_khBadgeLastContainer && document.body.contains(_khBadgeLastContainer)) renderBadgePage(_khBadgeLastContainer); } catch (_) {}
+    try { if (typeof renderMyPageBadges === 'function') renderMyPageBadges(); } catch (_) {}
+    try { if (typeof renderMyPageProgress === 'function') renderMyPageProgress(); } catch (_) {}
+    try { window.dispatchEvent(new Event('kh-badges-changed')); } catch (_) {}
+  }, 0);
 }
 
 function getCurrentStreak() {
@@ -9935,7 +10072,12 @@ async function khFreezeSync() {
 
 function getSectionReadCounts() {
   // Supabase 없으면 localStorage 기반으로 섹션별 카운트
-  return lsGet(K_READ_SECTIONS, {});
+  var local = lsGet(K_READ_SECTIONS, {}) || {};
+  // Server per-section counts (read_articles, khBadgeServerSync) on a new device.
+  var srv = (typeof _khBadgeSrv === 'function' ? _khBadgeSrv().sections : null) || {};
+  var out = Object.assign({}, local);
+  Object.keys(srv).forEach(function(k) { out[k] = Math.max(out[k] || 0, srv[k] || 0); });
+  return out;
 }
 
 function getLastQuizPct() { return lsGet('kh_last_quiz_pct', 0); }
@@ -10052,21 +10194,21 @@ var BADGE_DEFS = [
 
   // 🔖 VOCAB
   { id:'word_10',    cat:'vocab',     tier:'bronze',   icon:pxBadge('pen'), name:'Seed Vocab',      desc:'Save 10 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 10; } },
+    check: function(){ return khBadgeSavedCount() >= 10; } },
   { id:'word_50',    cat:'vocab',     tier:'silver',   icon:pxBadge('book'), name:'Word Sprout',     desc:'Save 50 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 50; } },
+    check: function(){ return khBadgeSavedCount() >= 50; } },
   { id:'word_100',   cat:'vocab',     tier:'silver',   icon:pxBadge('pen'), name:'Word Collector',  desc:'Save 100 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 100; } },
+    check: function(){ return khBadgeSavedCount() >= 100; } },
   { id:'word_300',   cat:'vocab',     tier:'gold',     icon:pxBadge('shield'), name:'Vocab Tree',      desc:'Save 300 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 300; } },
+    check: function(){ return khBadgeSavedCount() >= 300; } },
   { id:'word_1000',  cat:'vocab',     tier:'diamond',  icon:pxBadge('diamond'), name:'TOPIK Vocab',     desc:'Save 1000 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 1000; } },
+    check: function(){ return khBadgeSavedCount() >= 1000; } },
   { id:'word_2000',  cat:'vocab',     tier:'legendary',icon:pxBadge('crown'), name:'Vocab Master',    desc:'Save 2000 words',
-    check: function(){ return lsGet(K_SAVED,[]).length >= 2000; } },
+    check: function(){ return khBadgeSavedCount() >= 2000; } },
 
   // 📝 QUIZ
   { id:'quiz_first', cat:'quiz',      tier:'bronze',   icon:pxBadge('star'), name:'First Quiz',      desc:'Complete your first quiz',
-    check: function(){ return lsGet('kh_quiz_done_count',0) >= 1; } },
+    check: function(){ return khBadgeQuizCount() >= 1; } },
   { id:'quiz_perfect1',cat:'quiz',    tier:'silver',   icon:pxBadge('target'), name:'Daily Perfect',   desc:'Score 100% on a daily test',
     check: function(){ return getQuizPerfectCount() >= 1; } },
   { id:'quiz_perfect3',cat:'quiz',    tier:'gold',     icon:pxBadge('target'), name:'3x Perfect',      desc:'Score 100% on 3 daily tests in a row',
@@ -10092,13 +10234,13 @@ var BADGE_DEFS = [
 
   // 🔢 MILESTONE / XP
   { id:'xp_7500',    cat:'milestone', tier:'bronze',   icon:pxBadge('star'), name:'XP 7,500',    desc:'Earn 7,500 XP total',
-    check: function(){ return getXP() >= 7500; } },
+    check: function(){ return khBadgeXP() >= 7500; } },
   { id:'xp_30000',   cat:'milestone', tier:'silver',   icon:pxBadge('medal'), name:'XP 30,000',   desc:'Earn 30,000 XP total',
-    check: function(){ return getXP() >= 30000; } },
+    check: function(){ return khBadgeXP() >= 30000; } },
   { id:'xp_75000',   cat:'milestone', tier:'gold',     icon:pxBadge('trophy'), name:'XP 75,000',   desc:'Earn 75,000 XP total',
-    check: function(){ return getXP() >= 75000; } },
+    check: function(){ return khBadgeXP() >= 75000; } },
   { id:'xp_300000',  cat:'milestone', tier:'diamond',  icon:pxBadge('diamond'), name:'XP 300,000',  desc:'Earn 300,000 XP total',
-    check: function(){ return getXP() >= 300000; } },
+    check: function(){ return khBadgeXP() >= 300000; } },
   { id:'days_90',    cat:'milestone', tier:'gold',     icon:pxBadge('gift'), name:'3-Month Runner', desc:'Study for 90 days after signup',
     check: function(){
       var log = lsGet('kh_study_log',{});
@@ -10187,7 +10329,7 @@ function checkCulturalDateBadges() {
 // ── 섹션별 읽기 카운트 업데이트 ─────────────────────────────────────────────
 function trackSectionRead(section) {
   if (!section) return;
-  var sc = getSectionReadCounts();
+  var sc = lsGet(K_READ_SECTIONS, {}) || {}; // local log only; server counts merge on read
   sc[section] = (sc[section]||0) + 1;
   lsSet(K_READ_SECTIONS, sc);
 }
@@ -10216,6 +10358,8 @@ function khBadgesReady() {
     });
     lsSet(K_BADGES, earned);
     _khBadgesHydratedUid = uid;
+    // Then count the learner's server rows so badges catch up on any device.
+    setTimeout(function() { try { khBadgeServerSync(); } catch (_) {} }, 0);
     // Badges this browser earned before they reached the server.
     var missing = Object.keys(earned).filter(function(id) { return !server[id]; });
     if (missing.length) {
@@ -10341,13 +10485,14 @@ function getBadgeStats() {
     earnedCount: earnedCount,
     total: total,
     pct: Math.round(earnedCount / total * 100),
-    xp: getXP(),
+    xp: khBadgeXP(),
     streak: getCurrentStreak()
   };
 }
 
 // ── 뱃지 페이지 렌더링 (마이페이지 탭) ──────────────────────────────────────
 function renderBadgePage(container) {
+  _khBadgeLastContainer = container;
   var stats = getBadgeStats();
   var earned = stats.earned;
 
@@ -10449,18 +10594,18 @@ function getBadgeProgress(b) {
       'read_50':     { cur: getTotalArticlesRead,       max: 50 },
       'read_100':    { cur: getTotalArticlesRead,       max: 100 },
       'read_500':    { cur: getTotalArticlesRead,       max: 500 },
-      'word_10':     { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 10 },
-      'word_50':     { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 50 },
-      'word_100':    { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 100 },
-      'word_300':    { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 300 },
-      'word_1000':   { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 1000 },
-      'word_2000':   { cur: function(){ return lsGet(K_SAVED,[]).length; }, max: 2000 },
+      'word_10':     { cur: function(){ return khBadgeSavedCount(); }, max: 10 },
+      'word_50':     { cur: function(){ return khBadgeSavedCount(); }, max: 50 },
+      'word_100':    { cur: function(){ return khBadgeSavedCount(); }, max: 100 },
+      'word_300':    { cur: function(){ return khBadgeSavedCount(); }, max: 300 },
+      'word_1000':   { cur: function(){ return khBadgeSavedCount(); }, max: 1000 },
+      'word_2000':   { cur: function(){ return khBadgeSavedCount(); }, max: 2000 },
       'quiz_perfect3':{ cur: function(){ return lsGet('kh_quiz_perfect_streak',0); }, max: 3 },
       'quiz_14days': { cur: getQuizStreakDays, max: 14 },
-      'xp_500':      { cur: getXP, max: 500 },
-      'xp_2000':     { cur: getXP, max: 2000 },
-      'xp_5000':     { cur: getXP, max: 5000 },
-      'xp_20000':    { cur: getXP, max: 20000 },
+      'xp_500':      { cur: khBadgeXP, max: 500 },
+      'xp_2000':     { cur: khBadgeXP, max: 2000 },
+      'xp_5000':     { cur: khBadgeXP, max: 5000 },
+      'xp_20000':    { cur: khBadgeXP, max: 20000 },
       'time_morning7':{ cur: function(){ return lsGet('kh_morning_count',0); }, max: 7 },
       'time_monday':  { cur: function(){ return lsGet('kh_monday_streak',0); }, max: 4 },
       'time_friday':  { cur: function(){ return lsGet('kh_friday_night_count',0); }, max: 4 },
@@ -10474,7 +10619,14 @@ function getBadgeProgress(b) {
       var max = section_badge_max[b.id];
       return { pct: cur/max*100, label: cur + ' / ' + max };
     }
-    if (!map[b.id]) return null;
+    if (!map[b.id]) {
+      // Derive the rest from the id (read_1, xp_7500, …) — same counters as the checks.
+      var mm = /^(read|word|xp|streak)_(\d+)$/.exec(b.id);
+      if (!mm) return null;
+      var fn = { read: getTotalArticlesRead, word: khBadgeSavedCount, xp: khBadgeXP, streak: getCurrentStreak }[mm[1]];
+      var c = fn(), mx = +mm[2];
+      return { pct: c/mx*100, label: Math.min(c, mx) + ' / ' + mx };
+    }
     var cur = map[b.id].cur();
     var max = map[b.id].max;
     return { pct: cur/max*100, label: cur + ' / ' + max };
@@ -12691,9 +12843,10 @@ function _fjShowResumeBtn() {
   if (pageName() === 'index' || pageName() === 'korehan-article') return;
   var btn = document.createElement('button');
   btn.id = 'fj-resume';
-  btn.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:7999;width:44px;height:44px;border-radius:50%;background:#0f1a2e;border:1px solid rgba(56,189,248,.25);color:#38bdf8;font-size:18px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;transition:transform .15s';
-  btn.innerHTML = '🎯';
+  btn.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:1000;width:44px;height:44px;border-radius:50%;background:#0f1a2e;border:1px solid rgba(56,189,248,.25);color:#38bdf8;font-size:18px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;transition:transform .15s';
+  btn.innerHTML = '<i data-lucide="target" class="kh-ui-icon" aria-hidden="true"></i>';
   btn.title = 'Resume First Journey';
+  btn.setAttribute('aria-label', 'Resume First Journey');
   btn.onclick = function() {
     localStorage.removeItem('kh_fj_dismissed');
     btn.remove();

@@ -2684,10 +2684,10 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #64748b; }
 
 /* 모바일: 하단 고정 */
 @media (max-width: 768px) {
-  /* Sit above the mobile bottom nav (it used to hide under it). */
+  /* Sit above the mobile bottom nav (bar: bottom 12px + ~75px tall + safe area). */
   #kh-daily-mission {
     left: 12px; right: auto; width: auto;
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   }
   #kh-daily-mission .dm-inner { width: min(320px, calc(100vw - 24px)); }
   .dm-item { margin-bottom: 8px; }
@@ -3527,11 +3527,8 @@ body.mobile-redesign .art-vocab-pager .avp-total { color: #64748b; }
   /* flash cards */
   .fc-grid { grid-template-columns: repeat(2,1fr) !important; }
 
-  /* daily mission 바 */
-  #kh-daily-mission {
-    bottom: 0 !important; left: 0 !important; right: 0 !important;
-    width: 100% !important; border-radius: 20px 20px 0 0 !important;
-  }
+  /* (Daily Mission used to become a full-width bar glued to bottom:0 here —
+     right under the bottom tab bar. It keeps the pill spot above the bar.) */
 }
 
 /* 모바일 로고 사이드바 */
@@ -5806,6 +5803,13 @@ body.kh-reading-page .kh-next-pill svg { opacity: .9; }
    the :has() overlay-class minefield entirely. Both spacing variants
    covered because some browsers serialize the inline style with no
    space after the colon. */
+/* First Journey chip (#fj-resume): above the mobile tab bar, and under any
+   open modal (z-index 1000 like the Daily Mission pill — modals are 1640+). */
+#fj-resume { z-index: 1000 !important; }
+@media (max-width: 900px) {
+  body.mobile-redesign #fj-resume { bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+
 body[style*="overflow: hidden"] #kh-daily-mission,
 body[style*="overflow:hidden"]  #kh-daily-mission,
 body[style*="overflow: hidden"] #fj-resume,
