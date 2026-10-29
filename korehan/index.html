@@ -609,7 +609,14 @@ body.kh-has-today .daily-strip, body.kh-has-today #kh-daily-mission { display: n
 .kt-side { display: none; }
 .kt-panel { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 16px; padding: 16px; }
 .kt-pko { font-family: 'Noto Sans KR', sans-serif; font-weight: 900; font-size: 24px; color: #fff; margin: 8px 0 4px; line-height: 1.35; }
+.kt-prom { color: #94a3b8; font-size: 12.5px; font-style: italic; margin-bottom: 4px; }
 .kt-pen { color: #93c5fd; font-size: 14px; line-height: 1.5; }
+.kt-grow { flex: 1; display: flex; flex-direction: column; }
+.kt-wk { margin-top: auto; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.07); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; text-decoration: none; color: inherit; }
+.kt-grow .kt-mini, .kt-grow .kt-weak { margin-bottom: 14px; }
+.kt-wkg { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: #94a3b8; }
+.kt-wkg b { color: #fff; font-size: 15px; font-weight: 800; }
+.kt-wkl { margin-left: auto; font-size: 12.5px; font-weight: 800; color: #93c5fd; }
 .kt-pbtns { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .kt-pbtns .kt-go { background: rgba(255,255,255,.08); border: 0; cursor: pointer; font-family: inherit; text-decoration: none; }
 .kt-pbtns a.kt-go { background: transparent; color: #93c5fd; }
@@ -1448,7 +1455,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     var u = window.supaUser;
     if (!u) { box.innerHTML = ''; document.body.classList.remove('kh-has-today'); return; }
     var sb = (typeof getSupa === 'function') ? getSupa() : null;
-    var name = '', streak = 0, due = 0, dbDm = null, weekDb = {}, weak = null, gotRq = false;
+    var name = '', streak = 0, due = 0, dbDm = null, weekDb = {}, weekSum = null, weak = null, gotRq = false;
     try {
       var fn = (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || '';
       name = String(fn).split(/[\s.]/)[0] || '';
@@ -1470,6 +1477,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       if (!reviewDone && gotRq && due === 0) reviewDone = true;
       var phraseKo = ((document.getElementById('pb-ko') || {}).textContent || '').trim();
       var phraseEn = ((document.getElementById('pb-en') || {}).textContent || '').trim();
+      var phraseRom = ((document.getElementById('pb-rom') || {}).textContent || '').trim();
       var pb = document.getElementById('pb-phrase-block');
       var phraseHref = (pb && pb.getAttribute('href')) || 'korehan-phrase.html';
       var steps = [
@@ -1533,9 +1541,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         +     body + bonus
         +   '</div>'
         +   '<div class="kt-side">'
-        +     (phraseKo ? '<div class="kt-panel"><div class="kt-k">Today’s phrase</div><div class="kt-pko">' + esc(phraseKo) + '</div><div class="kt-pen">' + esc(phraseEn) + '</div>'
+        +     (phraseKo ? '<div class="kt-panel"><div class="kt-k">Today’s phrase</div><div class="kt-pko">' + esc(phraseKo) + '</div>' + (phraseRom ? '<div class="kt-prom">' + esc(phraseRom) + '</div>' : '') + '<div class="kt-pen">' + esc(phraseEn) + '</div>'
         +       '<div class="kt-pbtns"><button type="button" class="kt-go" data-kt-play>' + ic('volume-2') + 'Listen</button><a class="kt-go" href="' + esc(phraseHref) + '">Details →</a></div></div>' : '')
-        +     '<div class="kt-panel">' + bonus + '</div>'
+        // Desktop: the bonus panel also carries the week at a glance, so both columns end level.
+        +     '<div class="kt-panel kt-grow">' + bonus
+        +       (weekSum ? '<a class="kt-wk" href="korehan-learning-overview.html"><span class="kt-k">This week</span><span class="kt-wkg">'
+        +         [[weekSum.articles, 'articles'], [weekSum.words, 'words'], [weekSum.quizzes, 'quizzes'], [weekSum.xp, 'XP']].map(function(x){ return '<span><b>' + x[0] + '</b> ' + x[1] + '</span>'; }).join('')
+        +         '</span><span class="kt-wkl">Growth Lab →</span></a>' : '')
+        +     '</div>'
         +   '</div>'
         + '</div>';
       document.body.classList.add('kh-has-today');
@@ -1565,10 +1578,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     var st = res[0] && res[0].data, rows = (res[1] && res[1].data) || [], rq = res[2], wk = res[4];
     if (st && st.display_name) name = String(st.display_name).trim();
     var todayKey = kstKey(Date.now());
+    weekSum = { articles: 0, words: 0, quizzes: 0, fill: 0 };
     rows.forEach(function(r){
+      ['articles', 'words', 'quizzes', 'fill'].forEach(function(k){ weekSum[k] += Number(r[k]) || 0; });
       if (((r.articles || 0) + (r.words || 0) + (r.quizzes || 0) + (r.fill || 0)) > 0) weekDb[r.date] = true;
       if (r.date === todayKey) dbDm = r;
     });
+    weekSum.xp = typeof dmXPFromData === 'function' ? dmXPFromData(weekSum) : 0;
     if (rq) { gotRq = true; if (rq.items) due = rq.items.length; }
     if (typeof res[3] === 'number') streak = Math.max(streak, res[3]);
     // Only a real weak spot (missed at least once) — never a placeholder.
