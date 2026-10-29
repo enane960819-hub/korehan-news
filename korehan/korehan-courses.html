@@ -412,7 +412,7 @@ html body.mobile-light .plan-card.featured, html body.mobile-redesign .plan-card
   <div class="compare-table">
     <div class="ct-h">Feature</div>
     <div class="ct-h std">Free</div>
-    <div class="ct-h essay">Premium &middot; $8.99</div>
+    <div class="ct-h essay" id="ct-prem-h">Premium &middot; $8.99/mo</div>
 
     <div class="ct-cell feat">Read all content<small>Articles, conversations, Korea Buzz + sentence analysis</small></div>
     <div class="ct-cell std-col"><span class="ct-yes">&#10003;</span></div>
@@ -441,6 +441,10 @@ html body.mobile-light .plan-card.featured, html body.mobile-redesign .plan-card
     <div class="ct-cell feat">Article &amp; Conversation Study<small>Interactive step-by-step study</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
     <div class="ct-cell essay-col"><span class="ct-hi">&#10003;</span></div>
+
+    <div class="ct-cell feat">TOPIK Practice<small>Timed TOPIK-style tests with an estimated level</small></div>
+    <div class="ct-cell std-col"><span class="ct-yes">Test 1 + weekly mini test</span></div>
+    <div class="ct-cell essay-col"><span class="ct-hi">Every test</span></div>
 
     <div class="ct-cell feat">Listening quiz<small>Hear it, pick the meaning</small></div>
     <div class="ct-cell std-col"><span class="ct-no">&mdash;</span></div>
@@ -616,7 +620,7 @@ html body.mobile-light .plan-card.featured, html body.mobile-redesign .plan-card
     </details>
     <details class="faq-item">
       <summary>Is there a free trial?</summary>
-      <p>No. Every free feature stays free for as long as you like, so you can see how KoreHani works before paying. Premium is month to month and you can cancel anytime from your account.</p>
+      <p>No. Every free feature stays free for as long as you like, so you can see how KoreHani works before paying. Premium is billed monthly or yearly, and you can cancel anytime from your account.</p>
     </details>
     <details class="faq-item">
       <summary>What happens to my data if I cancel?</summary>
@@ -644,7 +648,7 @@ html body.mobile-light .plan-card.featured, html body.mobile-redesign .plan-card
 <!-- CTA -->
 <div class="cta-section">
   <h2>Ready to actually write Korean?</h2>
-  <p>Start free, upgrade when you're ready. Month to month, cancel anytime.</p>
+  <p>Start free, upgrade when you're ready. Monthly or annual billing, cancel anytime.</p>
   <button class="cta-btn" onclick="enroll()">Get Premium &rarr;</button>
   <div class="cta-note">Secure checkout by Stripe &middot; Questions? han@korehani.com</div>
 </div>
@@ -731,6 +735,8 @@ function setBilling(mode, btn) {
   if (btn) btn.classList.add('active');
   var priceEl = document.getElementById('prem-price'), perEl = document.getElementById('prem-per');
   var origEl = document.getElementById('prem-original'), saveEl = document.getElementById('prem-saving');
+  var ctH = document.getElementById('ct-prem-h');
+  if (ctH) ctH.textContent = 'Premium · ' + (_billingInterval === 'year' ? '$' + PREMIUM_PRICES.year + '/year' : '$' + PREMIUM_PRICES.month.toFixed(2) + '/mo');
   if (_billingInterval === 'year') {
     if (priceEl) priceEl.textContent = '$' + (PREMIUM_PRICES.year / 12).toFixed(2);
     if (perEl) perEl.textContent = '/month';
