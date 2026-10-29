@@ -4,3 +4,4 @@ dist/
 # supabase CLI local cache (cli-latest version check + linked-project ref).
 # Created by `supabase functions deploy` etc.; not source.
 supabase/.temp/
+__pycache__/
