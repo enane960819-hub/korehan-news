@@ -1,357 +1,438 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Beginner Guide — KoreHani</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beginner's Guide — KoreHani</title>
+<meta name="description" content="Your first week on KoreHani: pick where you are, follow one small step a day, and learn how Hangul blocks work.">
+<link rel="canonical" href="https://korehani.com/beginner-guide.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="KoreHani">
+<meta property="og:title" content="Beginner's Guide — KoreHani">
+<meta property="og:description" content="Your first week on KoreHani, one small step a day — starting from Hangul if you need it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://samghztrdvtxmrmawneu.supabase.co" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Happy+Monkey&family=Jua&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700;800&family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <style>
-    :root{--navy:#0a1423;--bright:#2563eb;--sky:#38bdf8;--mint:#5eead4;--text:#0f172a;--muted:#64748b;--bg:#f8fafc;--card:#fff;--border:#e2e8f0}
-    *{box-sizing:border-box;margin:0}
-    html{scroll-behavior:smooth}
-    body{font-family:'Happy Monkey','Jua','DM Sans','Noto Sans KR',sans-serif;color:var(--text);background:var(--bg)}
-    a{text-decoration:none;color:inherit}
-    /* ── Hero: fullscreen background ── */
-    .bg-hero{position:relative;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:#0a1423}
-    .bg-hero-img{position:absolute;inset:0;background: image-set(url('img/guide/hero-universe.webp') type('image/webp'), url('img/guide/hero-universe.png') type('image/png')) center/cover no-repeat;opacity:.3;filter:blur(2px)}
-    .bg-hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,20,35,.7) 0%,rgba(10,20,35,.85) 50%,rgba(10,20,35,.95) 100%)}
-    .bg-hero-content{position:relative;z-index:2;text-align:center;padding:60px 24px 40px;max-width:720px}
-    .bg-hero-eyebrow{font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--sky);margin-bottom:16px}
-    .bg-hero-content h1{font-family:'Playfair Display',serif;font-size:clamp(36px,6vw,64px);font-weight:900;color:#fff;line-height:1.08;letter-spacing:-.03em;margin-bottom:16px}
-    .bg-hero-content p{font-size:17px;color:rgba(255,255,255,.65);line-height:1.7;max-width:520px;margin:0 auto}
-    .bg-hero-scroll{position:relative;z-index:2;margin-top:32px;display:flex;flex-direction:column;align-items:center;gap:8px;color:rgba(255,255,255,.35);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;animation:bounce 2s ease-in-out infinite}
-    @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
-    .bg-hero-scroll svg{opacity:.5}
-    /* ── 3 Step Cards ── */
-    .steps-section{position:relative;z-index:3;margin-top:-80px;padding:0 24px 60px}
-    .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1100px;margin:0 auto}
-    .step-card{background:var(--card);border:1px solid var(--border);border-radius:24px;overflow:hidden;cursor:pointer;transition:transform .2s,box-shadow .2s;box-shadow:0 8px 30px rgba(15,23,42,.08)}
-    .step-card:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(15,23,42,.12)}
-    .step-img{height:200px;overflow:hidden;position:relative;background:linear-gradient(135deg,#1e293b,#0f172a)}
-    .step-img img{width:100%;height:100%;object-fit:cover;object-position:top;opacity:.7;transition:opacity .3s,transform .3s}
-    .step-card:hover .step-img img{opacity:.9;transform:scale(1.03)}
-    .step-num{position:absolute;top:14px;left:14px;width:36px;height:36px;border-radius:50%;background:var(--bright);color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(37,99,235,.4)}
-    .step-body{padding:20px}
-    .step-body h3{font-size:18px;font-weight:900;margin-bottom:6px}
-    .step-body p{font-size:13px;color:var(--muted);line-height:1.6}
-    .step-body .arrow{display:inline-flex;align-items:center;gap:4px;margin-top:12px;font-size:12px;font-weight:800;color:var(--bright)}
-    /* ── Detail Sections ── */
-    .detail-wrap{max-width:1100px;margin:0 auto;padding:0 24px 80px}
-    .detail-section{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;padding:60px 0;border-top:1px solid var(--border)}
-    .detail-section:first-child{border-top:none}
-    .detail-section.reverse{direction:rtl}
-    .detail-section.reverse>*{direction:ltr}
-    .detail-text{max-width:480px}
-    .detail-num{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;background:#eff6ff;color:var(--bright);font-size:16px;font-weight:900;margin-bottom:16px}
-    .detail-text h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:900;line-height:1.15;letter-spacing:-.02em;margin-bottom:12px}
-    .detail-text p{font-size:15px;color:var(--muted);line-height:1.75;margin-bottom:16px}
-    .detail-text ul{padding-left:20px;color:var(--muted);font-size:14px;line-height:1.7}
-    .detail-text li{margin-bottom:8px}
-    .detail-text .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;font-size:13px;font-weight:800;transition:transform .15s}
-    .detail-text .btn:hover{transform:translateY(-1px)}
-    .btn-primary{background:var(--bright);color:#fff}
-    .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
-    /* ── Screenshot showcase ── */
-    .detail-showcase{position:relative;min-height:340px}
-    .detail-showcase img{border-radius:16px;box-shadow:0 16px 48px rgba(15,23,42,.12);border:1px solid rgba(0,0,0,.06)}
-    .detail-showcase .ss-main{width:100%;border-radius:16px}
-    .detail-showcase .ss-float{position:absolute;border-radius:12px;box-shadow:0 12px 36px rgba(15,23,42,.18)}
-    .detail-showcase .ss-float.top-right{top:-20px;right:-10px;width:45%;transform:rotate(2deg)}
-    .detail-showcase .ss-float.bottom-left{bottom:-20px;left:-10px;width:40%;transform:rotate(-3deg)}
-    .detail-showcase .ss-float.blurred{filter:blur(1.5px);opacity:.5}
-    .detail-showcase.stack{display:flex;flex-direction:column;gap:16px;min-height:0}
-    .detail-showcase.stack .ss-sub{width:88%;align-self:flex-end}
-    .detail-showcase .ss-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
-    /* ── Hangul starter banner ── */
-    .hangul-start{max-width:1100px;margin:0 auto 8px;padding:0 24px}
-    .hangul-start a{display:flex;align-items:center;gap:16px;padding:18px 22px;border-radius:20px;background:#ecfdf5;border:1px solid #a7f3d0;transition:transform .15s}
-    .hangul-start a:hover{transform:translateY(-2px)}
-    .hangul-start .hs-ko{font-family:'Jua','Noto Sans KR',sans-serif;font-size:30px;color:#047857;flex-shrink:0}
-    .hangul-start strong{display:block;font-size:15px;font-weight:900;margin-bottom:2px}
-    .hangul-start span.hs-sub{font-size:13px;color:var(--muted);line-height:1.5}
-    .hangul-start .hs-go{margin-left:auto;font-size:13px;font-weight:800;color:#047857;white-space:nowrap}
-    /* ── CTA ── */
-    .cta-section{background:linear-gradient(135deg,#0a1423,#1e3a5f);padding:60px 24px;text-align:center}
-    .cta-section h2{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);color:#fff;font-weight:900;margin-bottom:12px}
-    .cta-section p{font-size:15px;color:rgba(255,255,255,.6);max-width:500px;margin:0 auto 24px;line-height:1.7}
-    .cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-    .cta-btns .btn-primary{background:#fff;color:var(--navy)}
-    .cta-btns .btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:#fff}
-    /* ── Scroll reveal ── */
-    [data-reveal]{opacity:0;transform:translateY(28px);transition:opacity .6s ease,transform .6s cubic-bezier(.22,1,.36,1)}
-    [data-reveal].is-in{opacity:1;transform:translateY(0)}
-    /* ── Placeholder for missing images ── */
-    .img-placeholder{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e293b,#334155);color:rgba(255,255,255,.3);font-size:14px;font-weight:700;border-radius:16px;min-height:240px;border:2px dashed rgba(255,255,255,.1)}
-    /* ── Responsive ── */
-    .feat-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(15,23,42,.1)}
-    @media(max-width:900px){
-      .feat-grid{grid-template-columns:repeat(2,1fr)!important}
-      .steps-grid{grid-template-columns:1fr;max-width:480px}
-      .steps-section{margin-top:-40px}
-      .detail-section,.detail-section.reverse{grid-template-columns:1fr;gap:24px;padding:40px 0}
-      .detail-section.reverse{direction:ltr}
-      .detail-showcase{min-height:auto}
-      .bg-hero{min-height:80vh}
-    }
-    @media(max-width:600px){
-      .feat-grid{grid-template-columns:1fr!important}
-      .bg-hero-content{padding:40px 16px 30px}
-      .hangul-start{padding:0 16px}
-      .hangul-start .hs-go{display:none}
-      .hangul-start a{flex-direction:column;align-items:flex-start;gap:8px}
-      .hangul-start .hs-ko{font-size:24px}
-      .step-img{height:160px}
-      .detail-text h2{font-size:26px}
-    }
-  </style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=DM+Sans:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="korehan-shared.css?v=20261029s">
+<style>
+/* Beginner's Guide (2026-10-29, mockup A + Hangul builder from B) — dark
+   surface like the landing page. */
+html, html body, html body.mobile-light { background:#0a1631 linear-gradient(180deg,#0d1b3d,#0a1631 900px) no-repeat !important; color:#e2e8f0; }
+.bg-wrap { max-width:1080px; margin:0 auto; padding:10px 16px 120px; font-family:'DM Sans','Noto Sans KR',sans-serif; }
+.bg-eb { font-size:12px; font-weight:800; letter-spacing:.14em; color:#7dd3fc; text-transform:uppercase; }
+.bg-h1 { font-size:clamp(30px,5vw,48px); line-height:1.08; font-weight:900; margin:10px 0 12px; color:#fff; }
+.bg-h1 em { font-style:normal; background:linear-gradient(90deg,#93c5fd,#c4b5fd); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.bg-lead { color:#94a3b8; font-size:16px; line-height:1.6; max-width:640px; margin:0; }
+.bg-hero { padding:22px 0 8px; }
+.bg-pick { margin-top:22px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:18px; padding:16px; }
+.bg-pick-q { font-weight:800; font-size:15px; margin-bottom:12px; color:#fff; }
+.bg-chips { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+.bg-chip { border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:12px 10px; background:rgba(255,255,255,.03); text-align:left; color:#e2e8f0; font:inherit; cursor:pointer; transition:background .15s, border-color .15s; }
+.bg-chip b { display:block; font-size:14px; color:#fff; }
+.bg-chip small { display:block; font-size:11.5px; color:#94a3b8; margin-top:2px; line-height:1.35; }
+.bg-chip .kh-ui-icon { width:18px; height:18px; color:#7dd3fc; margin-bottom:6px; display:block; }
+.bg-chip.on { background:linear-gradient(135deg,rgba(37,99,235,.35),rgba(124,58,237,.3)); border-color:#818cf8; box-shadow:0 0 0 1px #818cf8 inset; }
+.bg-sec { padding:36px 0 4px; }
+.bg-h2 { font-size:clamp(22px,3vw,30px); font-weight:900; color:#fff; margin:6px 0 6px; }
+.bg-sub { color:#94a3b8; font-size:14.5px; margin:0 0 18px; line-height:1.55; }
+.bg-plan { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:10px; }
+.bg-day { position:relative; background:#101f3f; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:6px; min-height:178px; }
+.bg-day .d { font-size:11px; font-weight:800; letter-spacing:.1em; color:#7dd3fc; }
+.bg-day .mid { flex:1; }
+.bg-day b { display:block; font-size:14.5px; color:#fff; line-height:1.3; margin-bottom:4px; }
+.bg-day .mid span { display:block; font-size:12.5px; color:#94a3b8; line-height:1.45; }
+.bg-day a { font-size:12.5px; font-weight:800; color:#93c5fd; text-decoration:none; display:inline-flex; align-items:center; gap:4px; }
+.bg-day a .kh-ui-icon { width:14px; height:14px; }
+.bg-day .tk { position:absolute; top:10px; right:10px; width:22px; height:22px; border-radius:50%; border:1.5px solid rgba(255,255,255,.25); background:none; color:transparent; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+.bg-day .tk .kh-ui-icon { width:13px; height:13px; }
+.bg-day.done { border-color:rgba(52,211,153,.45); }
+.bg-day.done .d { color:#34d399; }
+.bg-day.done .tk { background:#34d399; border-color:#34d399; color:#06281c; }
+.bg-day.next { border-color:rgba(129,140,248,.7); box-shadow:0 0 0 1px rgba(129,140,248,.4) inset; }
+.bg-prog { display:flex; align-items:center; gap:10px; margin:-6px 0 16px; font-size:13px; color:#94a3b8; }
+.bg-prog i { flex:1; max-width:260px; height:6px; border-radius:99px; background:rgba(255,255,255,.1); overflow:hidden; display:block; }
+.bg-prog i span { display:block; height:100%; background:linear-gradient(90deg,#34d399,#60a5fa); width:0; transition:width .2s; }
+/* Hangul builder */
+.hb { display:grid; grid-template-columns:1fr 1.1fr; gap:26px; align-items:center; }
+.hb-card { background:#fff; color:#0f172a; border-radius:20px; padding:18px; box-shadow:0 14px 34px rgba(0,0,0,.25); }
+.hb-row { display:flex; align-items:center; justify-content:center; gap:10px; margin:4px 0 14px; }
+.hb-j { width:62px; height:64px; border-radius:16px; background:#eff6ff; border:1px solid #bfdbfe; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'Noto Sans KR',sans-serif; font-size:28px; font-weight:900; color:#1d4ed8; }
+.hb-j small { font-family:'DM Sans',sans-serif; font-size:11px; font-weight:700; color:#64748b; }
+.hb-j.v { background:#f5f3ff; border-color:#ddd6fe; color:#6d28d9; }
+.hb-j.f { background:#ecfdf5; border-color:#a7f3d0; color:#047857; }
+.hb-j.f.none { opacity:.45; }
+.hb-op { font-size:20px; color:#94a3b8; font-weight:800; }
+.hb-out { width:96px; height:96px; border-radius:20px; background:#0f172a; color:#fff; border:0; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'Noto Sans KR',sans-serif; font-size:46px; font-weight:900; cursor:pointer; line-height:1.1; }
+.hb-out small { font-family:'DM Sans',sans-serif; font-size:12px; color:#93c5fd; font-weight:800; display:inline-flex; align-items:center; gap:4px; }
+.hb-out small .kh-ui-icon { width:12px; height:12px; }
+.hb-lbl { font-size:11px; font-weight:800; letter-spacing:.1em; color:#64748b; text-transform:uppercase; margin-top:12px; }
+.hb-pick { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; margin-top:6px; }
+.hb-pick button { border:1px solid #e2e8f0; background:#f8fafc; border-radius:10px; padding:7px 0; font-family:'Noto Sans KR',sans-serif; font-size:17px; font-weight:700; color:#0f172a; cursor:pointer; }
+.hb-pick button.on { background:#2563eb; border-color:#2563eb; color:#fff; }
+.hb-steps { list-style:none; margin:14px 0 18px; padding:0; display:grid; gap:9px; }
+.hb-steps li { display:flex; gap:10px; font-size:14px; color:#cbd5e1; line-height:1.5; }
+.hb-steps li .kh-ui-icon { width:18px; height:18px; color:#7dd3fc; flex-shrink:0; margin-top:2px; }
+.bg-btn { display:inline-flex; align-items:center; gap:8px; border:0; border-radius:12px; padding:12px 18px; font:inherit; font-weight:800; font-size:14px; cursor:pointer; text-decoration:none; background:linear-gradient(135deg,#2563eb,#7c3aed); color:#fff; }
+.bg-btn .kh-ui-icon { width:16px; height:16px; }
+/* daily */
+.bg-daily { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.bg-dc { background:#101f3f; border:1px solid rgba(255,255,255,.08); border-radius:18px; overflow:hidden; color:inherit; text-decoration:none; display:block; }
+.bg-dc .tx { padding:16px; }
+.bg-dc .n { width:26px; height:26px; border-radius:50%; background:#2563eb; color:#fff; font-weight:900; font-size:13px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
+.bg-dc b { font-size:16px; color:#fff; }
+.bg-dc p { font-size:13px; color:#94a3b8; line-height:1.5; margin:4px 0 0; }
+.bg-dc .shot { height:170px; background:#0d1b3d; display:flex; justify-content:center; align-items:flex-start; padding-top:14px; overflow:hidden; }
+.bg-dc .shot img { width:62%; border-radius:14px 14px 0 0; border:5px solid #1e293b; border-bottom:0; }
+/* tabs map */
+.bg-map { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
+.bg-tab { background:#101f3f; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:14px; }
+.bg-tab .h { display:flex; align-items:center; gap:8px; font-weight:900; color:#fff; font-size:15px; margin-bottom:8px; }
+.bg-tab .h .kh-ui-icon { width:18px; height:18px; color:#a5b4fc; }
+.bg-tab ul { list-style:none; margin:0; padding:0; display:grid; gap:6px; }
+.bg-tab li { font-size:12.5px; color:#cbd5e1; line-height:1.35; }
+.bg-tab li small { display:block; color:#64748b; font-size:11.5px; }
+.bg-tab a { color:#cbd5e1; text-decoration:none; border-bottom:1px dotted rgba(203,213,225,.4); }
+.bg-pp { display:inline-block; font-size:10px; font-weight:800; color:#fbbf24; border:1px solid rgba(251,191,36,.4); border-radius:6px; padding:0 5px; margin-left:4px; vertical-align:1px; }
+/* free vs premium */
+.bg-fp { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.bg-fpc { border-radius:18px; padding:18px; border:1px solid rgba(255,255,255,.1); background:#101f3f; }
+.bg-fpc.pr { background:linear-gradient(160deg,rgba(124,58,237,.25),rgba(37,99,235,.18)); border-color:rgba(167,139,250,.45); }
+.bg-fpc h3 { font-size:17px; color:#fff; margin:0 0 2px; }
+.bg-fpc .pz { font-size:13px; color:#94a3b8; margin-bottom:12px; }
+.bg-fpc ul { list-style:none; margin:0; padding:0; }
+.bg-fpc li { display:flex; gap:8px; font-size:13.5px; color:#cbd5e1; padding:5px 0; line-height:1.45; }
+.bg-fpc li .kh-ui-icon { width:16px; height:16px; color:#34d399; flex-shrink:0; margin-top:2px; }
+.bg-fpc a { color:#c4b5fd; font-weight:800; font-size:13px; text-decoration:none; display:inline-block; margin-top:8px; }
+.bg-faq details { background:#101f3f; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:14px 16px; margin-bottom:8px; }
+.bg-faq summary { font-weight:800; color:#fff; font-size:14.5px; cursor:pointer; }
+.bg-faq p { font-size:13.5px; color:#94a3b8; margin:8px 0 0; line-height:1.55; }
+.bg-cta { margin:36px 0 10px; text-align:center; background:linear-gradient(135deg,rgba(37,99,235,.3),rgba(124,58,237,.25)); border:1px solid rgba(165,180,252,.35); border-radius:22px; padding:28px 18px; }
+.bg-cta h2 { font-size:26px; color:#fff; font-weight:900; margin:0 0 8px; }
+.bg-cta p { color:#94a3b8; margin:0 auto 16px; }
+@media (max-width:860px) {
+  .bg-chips { grid-template-columns:1fr 1fr; }
+  .bg-chips .bg-chip:first-child { grid-column:1/-1; }
+  .bg-plan { grid-template-columns:1fr; gap:8px; }
+  .bg-day { min-height:0; flex-direction:row; align-items:center; gap:12px; padding:12px 44px 12px 12px; }
+  .bg-day .d { min-width:44px; }
+  .bg-day .tk { top:50%; transform:translateY(-50%); }
+  .hb, .bg-daily, .bg-map, .bg-fp { grid-template-columns:1fr; }
+  .hb-card { order:2; }
+  .bg-dc { display:grid; grid-template-columns:1fr 118px; }
+  .bg-dc .shot { height:auto; padding-top:10px; }
+  .bg-dc .shot img { width:92%; }
+}
+@media (max-width:420px) {
+  .hb-row { gap:5px; }
+  .hb-j { width:48px; height:54px; font-size:22px; }
+  .hb-op { font-size:15px; }
+  .hb-out { width:78px; height:80px; font-size:38px; }
+  .hb-card { padding:14px; }
+}
+</style>
 </head>
-<body>
+<body class="kh-page-guide">
+<div id="kh-header"></div>
+<main class="bg-wrap">
 
-<!-- ═══ HERO: Fullscreen background ═══ -->
-<section class="bg-hero">
-  <div class="bg-hero-img"></div>
-  <div class="bg-hero-overlay"></div>
-  <div class="bg-hero-content" data-reveal>
-    <a href="index.html" style="display:inline-block;margin-bottom:24px;text-decoration:none">
-      <div style="font-family:'Happy Monkey',sans-serif;font-size:clamp(42px,8vw,72px);font-weight:400;color:#fff;letter-spacing:-.03em;line-height:1"><span class="kh-logo-text" style="color:#fff">KoreHan<span class="kh-logo-i">i</span></span></div>
-    </a>
-    <div class="bg-hero-eyebrow">Beginner Guide</div>
-    <h1>Learn Korean<br>The Way You'd Live It.</h1>
-    <p>News, Korea Buzz, conversations, daily writing, and slang — all graded by level, with a 4-step Article Study flow and Express Practice to put new words to use. Here's how it fits together.</p>
-  </div>
-  <a href="#steps" class="bg-hero-scroll">
-    <span>Get Started</span>
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
-  </a>
-</section>
-
-<!-- ═══ 3 STEP CARDS ═══ -->
-<div class="steps-section" id="steps">
-  <div class="steps-grid">
-    <a href="#step1" class="step-card" data-reveal>
-      <div class="step-img">
-        <picture><source srcset="img/guide/shot-article.webp?v=20261013b" type="image/webp"><img src="img/guide/shot-article.png?v=20261013b" alt="A Seed-level news article in the reader" loading="lazy" decoding="async"></picture>
-        <div class="step-num">1</div>
+  <section class="bg-hero">
+    <div class="bg-eb">Beginner's guide</div>
+    <h1 class="bg-h1">Your first week<br>on <em>KoreHani</em></h1>
+    <p class="bg-lead">Tell us where you are. We'll show you what to open on each of your first seven days — and the 10-minute routine that keeps it going.</p>
+    <div class="bg-pick">
+      <div class="bg-pick-q">Where are you right now?</div>
+      <div class="bg-chips" role="radiogroup" aria-label="Your level">
+        <button type="button" class="bg-chip" data-lv="hangul" role="radio"><i data-lucide="type" class="kh-ui-icon" aria-hidden="true"></i><b>I can't read Hangul yet</b><small>Start from the alphabet</small></button>
+        <button type="button" class="bg-chip" data-lv="seed" role="radio"><i data-lucide="sprout" class="kh-ui-icon" aria-hidden="true"></i><b>Seed</b><small>I know Hangul and a few words</small></button>
+        <button type="button" class="bg-chip" data-lv="sprout" role="radio"><i data-lucide="leaf" class="kh-ui-icon" aria-hidden="true"></i><b>Sprout</b><small>TOPIK 1–2 · simple sentences</small></button>
+        <button type="button" class="bg-chip" data-lv="tree" role="radio"><i data-lucide="trees" class="kh-ui-icon" aria-hidden="true"></i><b>Tree</b><small>TOPIK 3–4 · everyday topics</small></button>
+        <button type="button" class="bg-chip" data-lv="forest" role="radio"><i data-lucide="mountain" class="kh-ui-icon" aria-hidden="true"></i><b>Forest</b><small>TOPIK 5–6 · real news</small></button>
       </div>
-      <div class="step-body">
-        <h3>Read & Tap</h3>
-        <p>Pick an article, story, or conversation at your level. Tap any sentence for instant analysis.</p>
-        <span class="arrow">Learn more ↓</span>
-      </div>
-    </a>
-    <a href="#step2" class="step-card" data-reveal>
-      <div class="step-img">
-        <picture><source srcset="img/guide/step2-vocab.webp?v=20261013c" type="image/webp"><img src="img/guide/step2-vocab.png?v=20261013c" alt="4-step Article Study flow" loading="lazy" decoding="async"></picture>
-        <div class="step-num">2</div>
-      </div>
-      <div class="step-body">
-        <h3>4-Step Active Practice</h3>
-        <p>Vocab → Phrases → Reading → Quiz. Then use what you learned in Express Practice — and on Premium, write with instant AI feedback.</p>
-        <span class="arrow">Learn more ↓</span>
-      </div>
-    </a>
-    <a href="#step3" class="step-card" data-reveal>
-      <div class="step-img">
-        <picture><source srcset="img/guide/shot-skill-radar-chart.webp?v=20261013b" type="image/webp"><img src="img/guide/shot-skill-radar-chart.png?v=20261013b" alt="Skill balance radar in Growth Lab" style="object-position:center 40%" loading="lazy" decoding="async"></picture>
-        <div class="step-num">3</div>
-      </div>
-      <div class="step-body">
-        <h3>Watch It Grow</h3>
-        <p>Saved words become stars. XP, streaks, a skill radar, and Monthly Reports show your progress.</p>
-        <span class="arrow">Learn more ↓</span>
-      </div>
-    </a>
-  </div>
-</div>
-
-<!-- ═══ HANGUL STARTER ═══ -->
-<div class="hangul-start" data-reveal>
-  <a href="korehan-learn.html?tab=hangul">
-    <div class="hs-ko">가나다</div>
-    <div><strong>Can't read Hangul yet? Start here.</strong><span class="hs-sub">Learn the 14 basic consonants and 10 vowels with flip cards, audio, and a quick quiz. A few short sessions is enough to start sounding out words — and everything below gets easier once you can.</span></div>
-    <span class="hs-go">Learn Hangul →</span>
-  </a>
-</div>
-
-<!-- ═══ DETAIL SECTIONS ═══ -->
-<div class="detail-wrap">
-
-  <!-- STEP 1 -->
-  <section class="detail-section" id="step1" data-reveal>
-    <div class="detail-text">
-      <div class="detail-num">1</div>
-      <h2>Pick something to read — and tap to dig in</h2>
-      <p>Browse articles by section, or conversations by scene. Every piece is tagged with one of four levels — Seed, Sprout, Tree, Forest (from TOPIK 0 — brand new — up to TOPIK 5–6) — so you always know what fits.</p>
-      <ul>
-        <li><strong>Tap any sentence</strong> to see translation, vocab list, and grammar breakdown</li>
-        <li><strong>Read · Grammar · Vocab · Review</strong> tabs let you switch modes without leaving the page</li>
-        <li><strong>Save words</strong> with one tap — they'll show up in your Vocabulary Universe</li>
-        <li><strong>Conversations</strong> play out like a real chat — see who's speaking and tap any line</li>
-      </ul>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-        <a href="korehan-all.html" class="btn btn-primary">Browse Articles →</a>
-        <a href="korehan-conversations.html" class="btn btn-outline">Try Conversations →</a>
-      </div>
-    </div>
-    <div class="detail-showcase">
-      <picture><source srcset="img/guide/step1-tap-analysis.webp?v=20261013c" type="image/webp"><img class="ss-main" src="img/guide/step1-tap-analysis.jpg?v=20261013c" alt="Tap a sentence — translation, vocab, and grammar appear inline" loading="lazy" decoding="async"></picture>
-      <picture><source srcset="img/guide/shot-conversation.webp?v=20261013b" type="image/webp"><img class="ss-float top-right" src="img/guide/shot-conversation.png?v=20261013b" alt="Conversation as a chat thread" loading="lazy" decoding="async"></picture>
     </div>
   </section>
 
-  <!-- STEP 2 -->
-  <section class="detail-section reverse" id="step2" data-reveal>
-    <div class="detail-text">
-      <div class="detail-num">2</div>
-      <h2>Four steps from passive reading to active Korean</h2>
-      <p>Every article opens into a structured 4-step flow (part of Premium). You don't just read — you learn the words, recognize the phrases, fill in the gaps, and prove it on a quiz. Then Express Practice gives you somewhere to use it: short warm-ups, followed by a daily topic, free writing, or a diary entry.</p>
-      <ul>
-        <li><strong>1. Vocab</strong> — match each new word to its meaning, with audio</li>
-        <li><strong>2. Phrases</strong> — recognize the natural chunks Koreans actually use</li>
-        <li><strong>3. Reading</strong> — fill blanks back into the article from the word bank</li>
-        <li><strong>4. Quiz</strong> — multiple-choice or type-the-answer, both modes</li>
-        <li><strong>Express Practice</strong> — warm-ups (key expressions, phrase matching, dictation, speaking) that lead into Topic / Free Writing / Diary on Premium, with instant AI feedback and a review from a real KoreHan tutor</li>
-      </ul>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-        <a href="korehan-study-room.html" class="btn btn-primary">Open Study Room →</a>
-        <a href="korehan-courses.html" class="btn btn-outline">Browse Courses →</a>
+  <section class="bg-sec" id="bg-week">
+    <div class="bg-eb" id="bg-week-eb">Your first 7 days</div>
+    <h2 class="bg-h2">One small thing a day</h2>
+    <p class="bg-sub">Each step takes 10–15 minutes. Opening a step ticks it off — tap the circle to undo.</p>
+    <div class="bg-prog"><span id="bg-prog-txt">0 of 7 done</span><i><span id="bg-prog-bar"></span></i></div>
+    <div class="bg-plan" id="bg-plan"></div>
+  </section>
+
+  <section class="bg-sec" id="bg-hangul">
+    <div class="hb">
+      <div>
+        <div class="bg-eb">How Hangul works</div>
+        <h2 class="bg-h2">Every syllable is a little block</h2>
+        <p class="bg-sub">Korean letters stack into blocks: a consonant, a vowel, and sometimes a final consonant underneath. Learn 24 basic letters and you can sound out any word.</p>
+        <ul class="hb-steps">
+          <li><i data-lucide="mouse-pointer-click" class="kh-ui-icon" aria-hidden="true"></i><span>Pick letters and tap the block to hear it.</span></li>
+          <li><i data-lucide="volume-2" class="kh-ui-icon" aria-hidden="true"></i><span>ㅇ is silent at the start of a block (아) and "ng" at the end (강).</span></li>
+          <li><i data-lucide="circle-check" class="kh-ui-icon" aria-hidden="true"></i><span>Then check yourself with the 10-letter Hangul quiz in the Word Bank.</span></li>
+        </ul>
+        <a class="bg-btn" href="korehan-learn.html?tab=hangul">Open Hangul in the Word Bank <i data-lucide="arrow-right" class="kh-ui-icon" aria-hidden="true"></i></a>
       </div>
-    </div>
-    <div class="detail-showcase">
-      <picture><source srcset="img/guide/step2-reading.webp?v=20261013c" type="image/webp"><img class="ss-main" src="img/guide/step2-reading.png?v=20261013c" alt="Reading: fill blanks back into the article" loading="lazy" decoding="async"></picture>
-      <picture><source srcset="img/guide/hero-express.webp?v=20261013c" type="image/webp"><img class="ss-float bottom-left" src="img/guide/hero-express.png?v=20261013c" alt="Express Practice: warm-up nodes that lead into writing" onerror="this.style.display='none'" loading="lazy" decoding="async"></picture>
+      <div class="hb-card">
+        <div class="hb-row">
+          <div class="hb-j" id="hb-c"></div><span class="hb-op">+</span>
+          <div class="hb-j v" id="hb-v"></div><span class="hb-op">+</span>
+          <div class="hb-j f" id="hb-f"></div><span class="hb-op">=</span>
+          <button type="button" class="hb-out" id="hb-out" aria-label="Listen to this syllable"></button>
+        </div>
+        <div class="hb-lbl">Consonant</div>
+        <div class="hb-pick" id="hb-pc"></div>
+        <div class="hb-lbl">Vowel</div>
+        <div class="hb-pick" id="hb-pv"></div>
+        <div class="hb-lbl">Final (optional)</div>
+        <div class="hb-pick" id="hb-pf"></div>
+      </div>
     </div>
   </section>
 
-  <!-- STEP 3 -->
-  <section class="detail-section" id="step3" data-reveal>
-    <div class="detail-text">
-      <div class="detail-num">3</div>
-      <h2>Watch every saved word become a star</h2>
-      <p>Growth Lab is more than a stats page. Your Vocabulary Universe turns saved words into a constellation you can explore, while XP trends, streak counts, and a Monthly Report email keep you honest about consistency.</p>
-      <ul>
-        <li><strong>Vocabulary Universe</strong> — every saved word is a star, clustered by topic</li>
-        <li><strong>XP Trend</strong> — daily and weekly chart with this-week-vs-last-week deltas</li>
-        <li><strong>Skill balance</strong> — a radar of reading, vocab, grammar, writing, listening and speaking, compared with past weeks</li>
-        <li><strong>Writing Feedback</strong> — every piece of writing you submit gets instant AI feedback and a tutor review, collected in one place (Premium)</li>
-        <li><strong>Monthly Report</strong> — a summary of your month, delivered to your inbox</li>
-        <li><strong>Seed → Sprout → Tree → Forest</strong> — your overall growth stage, visible at a glance</li>
-      </ul>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-        <a href="korehan-learning-overview.html" class="btn btn-primary">Open Growth Lab →</a>
-        <a href="korehan-shop.html" class="btn btn-outline">Spend Nyang in Shop →</a>
-      </div>
-    </div>
-    <div class="detail-showcase stack">
-      <picture><source srcset="img/guide/shot-growth-top.webp?v=20261013b" type="image/webp"><img class="ss-main" src="img/guide/shot-growth-top.png?v=20261013b" alt="Growth Lab: Vocabulary Universe and today's stats" loading="lazy" decoding="async"></picture>
-      <div class="ss-pair"><picture><source srcset="img/guide/shot-xp-trend.webp?v=20261013b" type="image/webp"><img class="ss-main" src="img/guide/shot-xp-trend.png?v=20261013b" alt="XP Trend chart" loading="lazy" decoding="async"></picture><picture><source srcset="img/guide/shot-skill-radar-chart.webp?v=20261013b" type="image/webp"><img class="ss-main" src="img/guide/shot-skill-radar-chart.png?v=20261013b" alt="Skill balance radar" loading="lazy" decoding="async"></picture></div>
+  <section class="bg-sec">
+    <div class="bg-eb">After week one</div>
+    <h2 class="bg-h2">Your daily 10 minutes</h2>
+    <p class="bg-sub">The Study Room's Today's plan lines these up for you every day.</p>
+    <div class="bg-daily">
+      <a class="bg-dc" href="korehan-study-room.html?review=daily"><div class="tx"><div class="n">1</div><b>Daily review</b><p>Words you saved come back right before you'd forget them. About 5 minutes.</p></div><div class="shot"><img src="img/landing/review.webp" alt="" loading="lazy"></div></a>
+      <a class="bg-dc" href="korehan-all.html" id="bg-dc-read"><div class="tx"><div class="n">2</div><b>Read one article</b><p>At your level. Tap a sentence for the English, the words and the grammar.</p></div><div class="shot"><img src="img/landing/article-tap.webp" alt="" loading="lazy"></div></a>
+      <a class="bg-dc" href="korehan-study-room.html"><div class="tx"><div class="n">3</div><b>One lesson step</b><p>This week's topic: words, grammar, listening, speaking — one step a day.</p></div><div class="shot"><img src="img/landing/lesson.webp" alt="" loading="lazy"></div></a>
     </div>
   </section>
 
-</div>
-
-<!-- ═══ EXPLORE FEATURES ═══ -->
-<section style="background:linear-gradient(180deg,var(--bg),#eef4fb);padding:60px 24px 70px">
-  <div style="max-width:1100px;margin:0 auto">
-    <div style="text-align:center;margin-bottom:40px" data-reveal>
-      <div style="font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--bright);margin-bottom:10px">Explore</div>
-      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-.02em;margin:0 0 10px">Everything KoreHani Offers</h2>
-      <p style="font-size:15px;color:var(--muted);max-width:520px;margin:0 auto;line-height:1.7">More than just news — a full Korean learning ecosystem</p>
+  <section class="bg-sec">
+    <div class="bg-eb">Where everything is</div>
+    <h2 class="bg-h2">The five tabs</h2>
+    <p class="bg-sub">The bar at the bottom of your phone (the top menu on a computer).</p>
+    <div class="bg-map">
+      <div class="bg-tab"><div class="h"><i data-lucide="home" class="kh-ui-icon" aria-hidden="true"></i>Home</div><ul><li>Today's plan &amp; streak</li><li><a href="korehan-phrase.html">Today's phrase</a><small>one expression a day</small></li><li>New articles for your level</li></ul></div>
+      <div class="bg-tab"><div class="h"><i data-lucide="newspaper" class="kh-ui-icon" aria-hidden="true"></i>News</div><ul><li><a href="korehan-all.html">Articles in 4 levels</a></li><li>Korea Buzz<small>short, fun stories</small></li><li>Article Study<span class="bg-pp">PREMIUM</span></li></ul></div>
+      <div class="bg-tab"><div class="h"><i data-lucide="book-open" class="kh-ui-icon" aria-hidden="true"></i>Study</div><ul><li><a href="korehan-study-room.html">This week's lesson</a></li><li>My Words &amp; Daily review</li><li>Writing feedback<span class="bg-pp">PREMIUM</span></li></ul></div>
+      <div class="bg-tab"><div class="h"><i data-lucide="messages-square" class="kh-ui-icon" aria-hidden="true"></i>Convo</div><ul><li><a href="korehan-conversations.html">Real conversations</a></li><li>Listen &amp; read along</li><li>Role-play your part<span class="bg-pp">PREMIUM</span></li></ul></div>
+      <div class="bg-tab"><div class="h"><i data-lucide="user-round" class="kh-ui-icon" aria-hidden="true"></i>Account</div><ul><li><a href="korehan-learning-overview.html">Growth Lab</a><small>your progress</small></li><li><a href="korehan-learn.html">Word Bank</a> · <a href="korehan-topik.html">TOPIK practice</a></li><li><a href="korehan-life.html">Life in Korea</a> · <a href="korehan-fun.html">Playground</a></li></ul></div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px" class="feat-grid">
+  </section>
 
-      <a href="korehan-all.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px;color:#1e3a8a"><i data-lucide="newspaper" style="width:24px;height:24px" aria-hidden="true"></i></div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Article Study</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Daily Korean news with a 4-step learning flow — Vocab, Phrases, Reading, Quiz. Part of Premium.</p>
-      </a>
-
-      <a href="korehan-conversations.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#ecfeff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px;color:#1e3a8a"><i data-lucide="message-circle" style="width:24px;height:24px" aria-hidden="true"></i></div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Conversations</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Real-life dialogues as chat threads — taxi, café, workplace, family. Tap any line for a breakdown.</p>
-      </a>
-
-      <a href="korehan-section.html?s=buzz" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px;color:#1e3a8a"><i data-lucide="flame" style="width:24px;height:24px" aria-hidden="true"></i></div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Korea Buzz</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">What Koreans are talking about right now — trending stories with the same tap-to-analyze tools.</p>
-      </a>
-
-      <a href="korehan-study-room.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#fff7ed;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px;color:#1e3a8a"><i data-lucide="sprout" style="width:24px;height:24px" aria-hidden="true"></i></div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Weekly Topic Writing</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">One topic a week: five short learning steps (free), then one writing task with instant AI feedback plus a tutor review (Premium). Seed → Sprout → Tree → Forest.</p>
-      </a>
-
-      <a href="korehan-study-room.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#faf5ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px;color:#1e3a8a"><i data-lucide="orbit" style="width:24px;height:24px" aria-hidden="true"></i></div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Express Practice</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Warm-up nodes — key expressions, phrase matching, dictation, speaking — that lead into your writing. Earn Nyang per node.</p>
-      </a>
-
-      <a href="korehan-fun.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px;color:#1e3a8a"><i data-lucide="flame" style="width:24px;height:24px" aria-hidden="true"></i></div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Slang &amp; FAST TRACK</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Native-speaker slang, abbreviations, internet Korean. Daily 3, full library, and quizzes.</p>
-      </a>
-
-      <a href="korehan-fun-hangul-tetris.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px;color:#1e3a8a"><i data-lucide="type" style="width:24px;height:24px" aria-hidden="true"></i></div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Hangul Tetris</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">A falling-block game for practising Hangul once you know the letters. More mini-games wait in the Playground.</p>
-      </a>
-
-      <a href="korehan-learning-overview.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#fefce8;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px;color:#1e3a8a"><i data-lucide="chart-column" style="width:24px;height:24px" aria-hidden="true"></i></div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Growth Lab</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">XP trends, streaks, weekly improvement, AI Writing Feedback, and a Monthly Report email.</p>
-      </a>
-
-      <a href="korehan-shop.html" class="feat-card" data-reveal style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;transition:transform .2s,box-shadow .2s;display:block">
-        <div style="width:48px;height:48px;border-radius:14px;background:#fdf4ff;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:14px;color:#1e3a8a"><i data-lucide="shopping-bag" style="width:24px;height:24px" aria-hidden="true"></i></div>
-        <h3 style="font-size:17px;font-weight:900;margin:0 0 6px">Shop &amp; My Room</h3>
-        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin:0">Spend Nyang you earned by studying — characters, lamps, plants, pets, and room decorations.</p>
-      </a>
-
+  <section class="bg-sec">
+    <div class="bg-eb">Free and Premium</div>
+    <h2 class="bg-h2">What's free</h2>
+    <div class="bg-fp">
+      <div class="bg-fpc"><h3>Free — forever</h3><div class="pz">No card needed</div><ul>
+        <li><i data-lucide="check" class="kh-ui-icon" aria-hidden="true"></i>Every article and conversation, with sentence breakdowns</li>
+        <li><i data-lucide="check" class="kh-ui-icon" aria-hidden="true"></i>Word Bank, My Words and Daily review</li>
+        <li><i data-lucide="check" class="kh-ui-icon" aria-hidden="true"></i>Weekly lesson steps, the Hangul quiz and games</li>
+        <li><i data-lucide="check" class="kh-ui-icon" aria-hidden="true"></i>Free TOPIK-style tests and Life in Korea guides</li></ul></div>
+      <div class="bg-fpc pr"><h3>Premium</h3><div class="pz">$8.99 a month or $69 a year</div><ul>
+        <li><i data-lucide="check" class="kh-ui-icon" aria-hidden="true"></i>Writing and speaking feedback</li>
+        <li><i data-lucide="check" class="kh-ui-icon" aria-hidden="true"></i>Article Study, conversation role-play and Phone Call</li>
+        <li><i data-lucide="check" class="kh-ui-icon" aria-hidden="true"></i>Every TOPIK-style test</li>
+        <li><i data-lucide="check" class="kh-ui-icon" aria-hidden="true"></i>Weekend live classes ($5 a seat)</li></ul>
+        <a href="korehan-courses.html">Compare plans →</a></div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- ═══ CTA ═══ -->
-<section class="cta-section" data-reveal>
-  <h2>Ready to start?</h2>
-  <p>One article, one review, one small practice. That's all it takes to build a real Korean study habit.</p>
-  <div class="cta-btns">
-    <a href="korehan-all.html" class="btn btn-primary">Read Your First Article</a>
-    <a href="index.html" class="btn btn-ghost">Back to Home</a>
+  <section class="bg-sec bg-faq">
+    <div class="bg-eb">Questions</div>
+    <h2 class="bg-h2">Before you start</h2>
+    <details open><summary>Which level should I pick?</summary><p>If a Sprout article feels slow but you understand most sentences, move up. You can switch levels any time — in the Study Room and on the article list.</p></details>
+    <details><summary>How much time do I need?</summary><p>Ten minutes a day is enough. Coming back every day matters more than long sessions — your streak counts any day you review, read or do a lesson step.</p></details>
+    <details><summary>Do I need an account?</summary><p>You can read without one. A free account saves your words, your streak and your progress across devices.</p></details>
+    <details><summary>Is there audio?</summary><p>Yes — every article, word and conversation line has a listen button.</p></details>
+  </section>
+
+  <div class="bg-cta">
+    <h2 id="bg-cta-h">Start Day 1 now</h2>
+    <p id="bg-cta-p">About ten minutes.</p>
+    <a class="bg-btn" id="bg-cta-a" href="korehan-learn.html?tab=hangul">Start <i data-lucide="arrow-right" class="kh-ui-icon" aria-hidden="true"></i></a>
   </div>
-</section>
+</main>
+<div id="kh-footer"></div>
 
 <script>
-(function(){
-  var items = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
-  if (!items.length) return;
-  if (!('IntersectionObserver' in window)) {
-    items.forEach(function(el){ el.classList.add('is-in'); });
-    return;
+(function () {
+  // ── First-week plans per starting point. Links go to the real feature;
+  //    opening a step ticks it (per browser — it's a guide, not a record).
+  var LEVEL_KEY = { seed: 'Starter', sprout: 'Beginner', tree: 'Intermediate', forest: 'Advanced' };
+  var PLANS = {
+    hangul: { eb: 'Hangul start', cta: ['Start Day 1 now', 'The basic vowels, in about ten minutes.', 'Learn the vowels'], days: [
+      ['Vowels', 'The basic vowels — ㅏ ㅓ ㅗ ㅜ ㅡ ㅣ and friends. Tap each to hear it.', 'Hangul', 'korehan-learn.html?tab=hangul'],
+      ['Consonants', '14 basic consonants. Build blocks with them in the builder below.', 'Hangul', 'korehan-learn.html?tab=hangul'],
+      ['Hangul quiz', '10 letters, 4 choices each. Aim for 8 or more.', 'Take the quiz', 'korehan-learn.html?tab=hangul'],
+      ['Your first words', 'Sound out Seed words in the Word Bank — every one has audio.', 'Word Bank', 'korehan-learn.html?tab=words&level=Starter'],
+      ['Save 5 words', 'Tap Save on five words. They come back in Daily review.', 'Word Bank', 'korehan-learn.html?tab=words&level=Starter'],
+      ['Your first article', 'A Seed article. Tap any sentence for the English.', 'Seed articles', 'korehan-all.html?level=Starter'],
+      ['This week\'s lesson', 'Five short steps in the Study Room — start with the first.', 'Study Room', 'korehan-study-room.html']
+    ] },
+    seed: { eb: 'Seed', cta: ['Start Day 1 now', 'A quick Hangul check — about five minutes.', 'Hangul quiz'], days: [
+      ['Hangul check', 'Make sure every letter is solid with the 10-letter quiz.', 'Take the quiz', 'korehan-learn.html?tab=hangul'],
+      ['Seed words', 'Browse Seed words by topic and save ten you want.', 'Word Bank', 'korehan-learn.html?tab=words&level=Starter'],
+      ['Your first article', 'A Seed article. Tap sentences you don\'t understand.', 'Seed articles', 'korehan-all.html?level=Starter'],
+      ['Daily review', 'The words you saved come back. About five minutes.', 'Review', 'korehan-study-room.html?review=daily'],
+      ['Today\'s phrase', 'One everyday expression with examples and audio.', 'Today\'s phrase', 'korehan-phrase.html'],
+      ['A real conversation', 'Listen to a short dialogue, then read along.', 'Conversations', 'korehan-conversations.html'],
+      ['This week\'s lesson', 'Five short steps in the Study Room — start with the first.', 'Study Room', 'korehan-study-room.html']
+    ] },
+    sprout: { eb: 'Sprout', cta: ['Start Day 1 now', 'One Sprout article, about ten minutes.', 'Sprout articles'], days: [
+      ['A Sprout article', 'Read one through. Tap a sentence when you get stuck.', 'Sprout articles', 'korehan-all.html?level=Beginner'],
+      ['Save 10 words', 'From that article\'s Vocab tab — tap Save.', 'Articles', 'korehan-all.html?level=Beginner'],
+      ['Daily review', 'Your saved words come back. About five minutes.', 'Review', 'korehan-study-room.html?review=daily'],
+      ['This week\'s lesson', 'The weekly topic: words and grammar first.', 'Study Room', 'korehan-study-room.html'],
+      ['A real conversation', 'Listen, read along, note one expression.', 'Conversations', 'korehan-conversations.html'],
+      ['TOPIK-style mini test', 'A short free test with explanations.', 'TOPIK practice', 'korehan-topik.html'],
+      ['Play a round', 'Word Drop or Sentence Order — review that feels like a break.', 'Playground', 'korehan-fun.html']
+    ] },
+    tree: { eb: 'Tree', cta: ['Start Day 1 now', 'One Tree article plus its grammar, about fifteen minutes.', 'Tree articles'], days: [
+      ['A Tree article', 'Read it, then open the Grammar tab for its patterns.', 'Tree articles', 'korehan-all.html?level=Intermediate'],
+      ['Daily review', 'Save the new words first, then review. About five minutes.', 'Review', 'korehan-study-room.html?review=daily'],
+      ['This week\'s lesson', 'The weekly topic at Tree level — one step a day.', 'Study Room', 'korehan-study-room.html'],
+      ['A real conversation', 'Notice who uses 반말 and who uses 존댓말.', 'Conversations', 'korehan-conversations.html'],
+      ['TOPIK-style test', 'Try a free test and read every explanation.', 'TOPIK practice', 'korehan-topik.html'],
+      ['Life in Korea', 'Pick a practical guide and learn its key phrases.', 'Guides', 'korehan-life.html'],
+      ['Another article', 'Same level, new topic — tap fewer sentences than on Day 1.', 'Tree articles', 'korehan-all.html?level=Intermediate']
+    ] },
+    forest: { eb: 'Forest', cta: ['Start Day 1 now', 'One Forest article, about fifteen minutes.', 'Forest articles'], days: [
+      ['A Forest article', 'Real news register. Read once without tapping, then check.', 'Forest articles', 'korehan-all.html?level=Advanced'],
+      ['Grammar tab', 'News patterns like ~에 따르면 and ~ㄹ 전망이다.', 'Forest articles', 'korehan-all.html?level=Advanced'],
+      ['Daily review', 'Save the words you\'d use yourself, then review.', 'Review', 'korehan-study-room.html?review=daily'],
+      ['This week\'s lesson', 'The weekly topic at Forest level.', 'Study Room', 'korehan-study-room.html'],
+      ['TOPIK-style test', 'A free TOPIK II test with explanations.', 'TOPIK practice', 'korehan-topik.html'],
+      ['Life in Korea', 'Official-language guides: visas, contracts, taxes.', 'Guides', 'korehan-life.html'],
+      ['Another article', 'A different section — culture, world or tech.', 'Forest articles', 'korehan-all.html?level=Advanced']
+    ] }
+  };
+
+  function ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (_) { return null; } }
+  function icons() { try { if (typeof renderKhLucideIcons === 'function') renderKhLucideIcons(); else if (window.lucide) lucide.createIcons(); } catch (_) {} }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  var lv = ls('kh_guide_level');
+  if (!PLANS[lv]) {
+    var saved = ls('kh_level') || ls('kh_wb_level') || '';
+    lv = { Starter: 'seed', Beginner: 'sprout', Intermediate: 'tree', Advanced: 'forest' }[saved] || 'hangul';
   }
-  var io = new IntersectionObserver(function(entries){
-    entries.forEach(function(entry){
-      if (entry.isIntersecting) {
-        entry.target.classList.add('is-in');
-        io.unobserve(entry.target);
-      }
+
+  function doneSet() { try { return JSON.parse(ls('kh_guide_done_' + lv) || '[]') || []; } catch (_) { return []; } }
+  function saveDone(a) { ls('kh_guide_done_' + lv, JSON.stringify(a)); }
+
+  function render() {
+    var plan = PLANS[lv], done = doneSet();
+    document.querySelectorAll('.bg-chip').forEach(function (b) {
+      var on = b.getAttribute('data-lv') === lv;
+      b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false');
     });
-  }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
-  items.forEach(function(el){ io.observe(el); });
+    document.getElementById('bg-week-eb').textContent = 'Your first 7 days · ' + plan.eb;
+    var next = -1;
+    for (var i = 0; i < 7; i++) if (done.indexOf(i) < 0) { next = i; break; }
+    document.getElementById('bg-plan').innerHTML = plan.days.map(function (d, i) {
+      var isDone = done.indexOf(i) >= 0;
+      return '<div class="bg-day' + (isDone ? ' done' : '') + (i === next ? ' next' : '') + '">'
+        + '<button type="button" class="tk" data-tk="' + i + '" aria-label="' + (isDone ? 'Mark not done' : 'Mark done') + '"><i data-lucide="check" class="kh-ui-icon" aria-hidden="true"></i></button>'
+        + '<div class="d">DAY ' + (i + 1) + '</div>'
+        + '<div class="mid"><b>' + esc(d[0]) + '</b><span>' + esc(d[1]) + '</span></div>'
+        + '<a href="' + d[3] + '" data-go="' + i + '">' + esc(d[2]) + ' <i data-lucide="arrow-right" class="kh-ui-icon" aria-hidden="true"></i></a>'
+        + '</div>';
+    }).join('');
+    document.getElementById('bg-prog-txt').textContent = done.length + ' of 7 done';
+    document.getElementById('bg-prog-bar').style.width = Math.round(done.length / 7 * 100) + '%';
+    // Hangul builder matters before you can read; above Seed it's optional.
+    document.getElementById('bg-hangul').style.display = (lv === 'hangul' || lv === 'seed') ? '' : 'none';
+    var lvlKey = LEVEL_KEY[lv];
+    document.getElementById('bg-dc-read').href = lvlKey ? 'korehan-all.html?level=' + lvlKey : 'korehan-all.html?level=Starter';
+    var step = next >= 0 ? plan.days[next] : null;
+    document.getElementById('bg-cta-h').textContent = step ? (next === 0 ? plan.cta[0] : 'Next up: Day ' + (next + 1)) : 'Week one done';
+    document.getElementById('bg-cta-p').textContent = step ? (next === 0 ? plan.cta[1] : step[0] + ' — ' + step[1]) : 'Keep the daily 10 minutes going in the Study Room.';
+    var a = document.getElementById('bg-cta-a');
+    a.href = step ? step[3] : 'korehan-study-room.html';
+    a.setAttribute('data-go', step ? String(next) : '');
+    a.firstChild.textContent = (step ? (next === 0 ? plan.cta[2] : step[2]) : 'Go to the Study Room') + ' ';
+    icons();
+  }
+
+  document.querySelector('.bg-chips').addEventListener('click', function (e) {
+    var b = e.target.closest('.bg-chip'); if (!b) return;
+    lv = b.getAttribute('data-lv'); ls('kh_guide_level', lv);
+    if (LEVEL_KEY[lv]) ls('kh_wb_level', LEVEL_KEY[lv]);
+    render();
+  });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-tk]');
+    if (t) {
+      var i = +t.getAttribute('data-tk'), d = doneSet(), k = d.indexOf(i);
+      if (k >= 0) d.splice(k, 1); else d.push(i);
+      saveDone(d); render(); return;
+    }
+    var g = e.target.closest('[data-go]');
+    if (g && g.getAttribute('data-go') !== '') {
+      var j = +g.getAttribute('data-go'), dd = doneSet();
+      if (dd.indexOf(j) < 0) { dd.push(j); saveDone(dd); }
+    }
+  });
+
+  // ── Hangul block builder ─────────────────────────────────────
+  var CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+  var JUNG = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ';
+  var JONG = ['', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+  var PC = [['ㄱ', 'g'], ['ㄴ', 'n'], ['ㄷ', 'd'], ['ㄹ', 'r'], ['ㅁ', 'm'], ['ㅂ', 'b'], ['ㅅ', 's'], ['ㅇ', 'silent'], ['ㅈ', 'j'], ['ㅊ', 'ch'], ['ㅋ', 'k'], ['ㅌ', 't'], ['ㅍ', 'p'], ['ㅎ', 'h']];
+  var PV = [['ㅏ', 'a'], ['ㅓ', 'eo'], ['ㅗ', 'o'], ['ㅜ', 'u'], ['ㅡ', 'eu'], ['ㅣ', 'i'], ['ㅐ', 'ae'], ['ㅔ', 'e'], ['ㅑ', 'ya'], ['ㅕ', 'yeo'], ['ㅛ', 'yo'], ['ㅠ', 'yu'], ['ㅘ', 'wa'], ['ㅝ', 'wo']];
+  var PF = [['', 'none'], ['ㄱ', 'k'], ['ㄴ', 'n'], ['ㄹ', 'l'], ['ㅁ', 'm'], ['ㅂ', 'p'], ['ㅇ', 'ng']];
+  var H = { c: 13, v: 0, f: 2 }; // 한
+  function syl() {
+    var c = CHO.indexOf(PC[H.c][0]), v = JUNG.indexOf(PV[H.v][0]), f = JONG.indexOf(PF[H.f][0]);
+    return String.fromCharCode(0xAC00 + (c * 21 + v) * 28 + f);
+  }
+  function pick(id, list, key) {
+    document.getElementById(id).innerHTML = list.map(function (x, i) {
+      return '<button type="button" data-hb="' + key + '" data-i="' + i + '" class="' + (H[key] === i ? 'on' : '') + '" aria-label="' + (x[0] || 'no final') + ' ' + x[1] + '">' + (x[0] || '—') + '</button>';
+    }).join('');
+  }
+  function paint() {
+    var s = syl();
+    var rom = (typeof khRomanize === 'function' && khRomanize(s)) || '';
+    document.getElementById('hb-c').innerHTML = PC[H.c][0] + '<small>' + PC[H.c][1] + '</small>';
+    document.getElementById('hb-v').innerHTML = PV[H.v][0] + '<small>' + PV[H.v][1] + '</small>';
+    var f = document.getElementById('hb-f');
+    f.innerHTML = (PF[H.f][0] || '—') + '<small>' + PF[H.f][1] + '</small>';
+    f.classList.toggle('none', !PF[H.f][0]);
+    document.getElementById('hb-out').innerHTML = s + '<small>' + esc(rom) + ' <i data-lucide="volume-2" class="kh-ui-icon" aria-hidden="true"></i></small>';
+    pick('hb-pc', PC, 'c'); pick('hb-pv', PV, 'v'); pick('hb-pf', PF, 'f');
+    icons();
+  }
+  function say(s) {
+    try {
+      if (typeof khSpeak === 'function') { khSpeak(s, 'female'); return; }
+      var u = new SpeechSynthesisUtterance(s); u.lang = 'ko-KR'; speechSynthesis.cancel(); speechSynthesis.speak(u);
+    } catch (_) {}
+  }
+  document.querySelector('.hb-card').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-hb]');
+    if (b) { H[b.getAttribute('data-hb')] = +b.getAttribute('data-i'); paint(); say(syl()); return; }
+    if (e.target.closest('#hb-out')) say(syl());
+  });
+
+  render();
+  paint();
+  // Shared scripts (icons, romanizer) load after this block.
+  window.addEventListener('load', function () { paint(); icons(); });
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-<script>try { lucide.createIcons(); } catch (e) {}</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/core/security.js?v=20260525r"></script>
+<script src="js/core/storage.js?v=20260525r"></script>
+<script src="js/core/icons.js?v=20260525r"></script>
+<script src="js/core/modals.js?v=20260525r"></script>
+<script src="js/core/ui-states.js?v=20260525r"></script>
+<script src="js/core/analytics.js?v=20261014a"></script>
+<script src="js/core/user-analytics.js?v=20261014a"></script>
+<script src="js/core/plans.js?v=20261029s"></script>
+<script src="js/core/article-cache.js?v=20261028b"></script>
+<script src="js/core/saved-words.js?v=20261013a"></script>
+<script src="js/features/streak.js?v=20260525r"></script>
+<script src="js/features/daily-mission.js?v=20261029s"></script>
+<script src="js/features/comments.js?v=20261016a"></script>
+<script src="js/features/sidebar.js?v=20261029s"></script>
+<script src="korehan-shared.js?v=20261029t"></script>
+<script src="js/core/emoji-icons.js?v=20261029t"></script>
 </body>
 </html>

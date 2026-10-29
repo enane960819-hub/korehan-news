@@ -21,6 +21,9 @@
     var lv = localStorage.getItem('kh_wb_level');
     if (lv && LEVELS.some(function (x) { return x.k === lv; })) S.level = lv;
   } catch (_) {}
+  // ?level= (Beginner's Guide links) picks the level for this visit.
+  var qlv = (location.search.match(/[?&]level=(Starter|Beginner|Intermediate|Advanced)\b/) || [])[1];
+  if (qlv && LEVELS.some(function (x) { return x.k === qlv; })) S.level = qlv;
   // Seed learners start on Hangul; ?tab= overrides.
   if (/[?&]tab=hangul/.test(location.search)) S.tab = 'hangul';
   else if (!/[?&]tab=words/.test(location.search) && S.level === 'Starter') S.tab = 'hangul';
