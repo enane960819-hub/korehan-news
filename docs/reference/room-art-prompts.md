@@ -1,6 +1,6 @@
 # My Room item art: prompts
 
-104 items still need a picture. One picture per message works best (cleanest cut-outs).
+158 items still need a picture. One picture per message works best (cleanest cut-outs).
 Name each file exactly as shown and send them over; they are cleaned with
 `scripts/room-art/process.py <folder>` (background removal, trim, 400x400) and go to
 `korehan/assets/room/`. An item shows up in the shop as soon as its picture exists.
@@ -17,7 +17,7 @@ Paste `Draw ONE item, centred, nothing else in the picture: <description>` with 
 description from the lists below. If it comes back angled or with a floor or shadow, reply:
 `Same item, straight front view, plain white background, no shadow.`
 
-## A. New props (36)
+## A. New props (90)
 
 ### Study desk props
 
@@ -74,6 +74,90 @@ description from the lists below. If it comes back angled or with a floor or sha
 | `tteok-plush.png` | a squishy white rice cake (tteok) plush with a happy face |
 | `penguin-plush.png` | a chubby penguin plush wearing a little knitted scarf |
 | `cat-cushion.png` | a round cat-shaped floor cushion, sleeping cat face |
+
+### Food & treats
+
+| file | description |
+|------|-------------|
+| `tteokbokki-pan.png` | a shallow pan of spicy red tteokbokki rice cakes with a fish cake skewer |
+| `bibimbap-bowl.png` | a hot stone bowl of bibimbap with colourful vegetables and a fried egg on top |
+| `hotteok-plate.png` | a small plate with a stack of golden hotteok sweet pancakes |
+| `yuja-tea.png` | a glass jar of yuja citron tea marmalade with a wooden spoon and a steaming cup |
+| `gotgam-string.png` | a string of orange dried persimmons (gotgam) hanging from a wooden peg |
+| `strawberry-cake.png` | a round strawberry cream cake on a cake stand |
+| `cup-noodle.png` | a steaming cup of instant noodles with chopsticks resting on the lid, no logo or text |
+| `bread-basket.png` | a woven basket of fresh bakery bread: a baguette, a croissant and a soft milk bun |
+| `watermelon.png` | a whole striped watermelon with one juicy slice cut out next to it |
+
+### Hobbies
+
+| file | description |
+|------|-------------|
+| `ukulele.png` | a small wooden ukulele leaning upright |
+| `cassette-player.png` | a retro portable cassette player with orange-cushion headphones and a cassette |
+| `easel-painting.png` | a wooden easel holding a small painting of mountains, with a palette and brushes |
+| `knitting-basket.png` | a basket of colourful yarn balls with knitting needles and a half-knitted scarf |
+| `jigsaw-puzzle.png` | a half-finished jigsaw puzzle of a flower field on a board with loose pieces |
+| `baduk-board.png` | a wooden baduk (Go) board with black and white stones and two stone bowls |
+| `telescope.png` | a brass telescope on a wooden tripod pointing up |
+| `yoga-mat.png` | a rolled lavender yoga mat with two small dumbbells and a water bottle |
+| `badminton-set.png` | two crossed badminton rackets with a white shuttlecock |
+
+### Wall decor
+
+| file | description |
+|------|-------------|
+| `minhwa-tiger.png` | a framed Korean folk painting (minhwa) of a funny tiger and a magpie in a pine tree |
+| `sunflower-painting.png` | a framed oil painting of yellow sunflowers in a vase |
+| `bunting-flags.png` | a string of colourful triangle bunting flags hanging in a gentle curve |
+| `dreamcatcher.png` | a dreamcatcher with soft feathers and beads |
+| `pressed-flowers.png` | a wooden frame with pressed wildflowers behind glass |
+| `moon-phases.png` | a wall hanging of golden moon phases on a string, from crescent to full |
+| `ivy-garland.png` | a long green ivy garland draped in a loose curve with a few tiny white flowers |
+| `dancheong-panel.png` | a wooden panel painted with colourful Korean dancheong temple patterns |
+| `framed-certificate.png` | a framed certificate with a gold seal and a ribbon, lines instead of readable text |
+
+### Small furniture
+
+| file | description |
+|------|-------------|
+| `side-table.png` | a small round wooden side table with a little lamp and a book |
+| `plant-stand.png` | a three-tier wooden plant stand with small potted plants |
+| `storage-baskets.png` | three stacked woven storage baskets with fabric liners |
+| `umbrella-stand.png` | a ceramic umbrella stand with a clear umbrella and a yellow umbrella |
+| `sneaker-rack.png` | a small wooden shoe rack with three pairs of colourful sneakers |
+| `folded-ibul.png` | a neat stack of folded Korean floor bedding (yo and ibul) with a pillow on top |
+| `mini-heater.png` | a small retro electric heater glowing warm orange |
+| `ladder-shelf.png` | a leaning wooden ladder shelf with books, a plant and a candle |
+| `rocking-chair.png` | a wooden rocking chair with a knitted blanket over the back |
+
+### Seasons & events 2
+
+| file | description |
+|------|-------------|
+| `xmas-stocking.png` | a red and white Christmas stocking with a small gift peeking out |
+| `gift-pile.png` | a pile of three wrapped gift boxes with bows in different colours |
+| `choco-sticks.png` | an open box of chocolate-dipped biscuit sticks with a red ribbon, no logo or text |
+| `ghost-lantern.png` | a cute smiling ghost-shaped paper lantern glowing softly |
+| `pinwheel.png` | a colourful paper pinwheel on a stick in a small pot |
+| `lotus-lantern.png` | a pink Korean lotus lantern (yeondeung) glowing from inside |
+| `birthday-cake.png` | a two-layer birthday cake with lit candles and sprinkles |
+| `beach-ball.png` | a striped colourful beach ball |
+| `graduation-bouquet.png` | a big wrapped bouquet of roses and baby's breath with a satin ribbon |
+
+### Animal friends
+
+| file | description |
+|------|-------------|
+| `jindo-dog.png` | a cute white Korean Jindo dog sitting with curled tail |
+| `capybara.png` | a calm capybara sitting with a small orange on its head |
+| `hedgehog-pet.png` | a tiny round hedgehog curled on a small cushion |
+| `red-panda.png` | a fluffy red panda sitting and holding its striped tail |
+| `duckling.png` | a fluffy yellow duckling standing |
+| `otter.png` | a cute otter floating on its back holding a pebble |
+| `sparrow-perch.png` | a round little sparrow sitting on a wooden perch |
+| `axolotl-tank.png` | a small glass tank with a pink smiling axolotl and green plants |
+| `alpaca.png` | a fluffy cream alpaca with a small scarf |
 
 ## B. Catalogue items still without a picture
 

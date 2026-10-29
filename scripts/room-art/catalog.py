@@ -138,6 +138,72 @@ PROPS = [
     ("penguin_plush", "Penguin Plush", "deco", 190, 90, "none", "a chubby penguin plush wearing a little knitted scarf"),
     ("cat_cushion", "Cat Cushion", "deco", 170, 100, "none", "a round cat-shaped floor cushion, sleeping cat face"),
   ]),
+  ("Food & treats", [
+    ("tteokbokki_pan", "Tteokbokki Pan", "deco", 140, 90, "none", "a shallow pan of spicy red tteokbokki rice cakes with a fish cake skewer"),
+    ("bibimbap_bowl", "Bibimbap Bowl", "deco", 120, 80, "none", "a hot stone bowl of bibimbap with colourful vegetables and a fried egg on top"),
+    ("hotteok_plate", "Hotteok Plate", "deco", 100, 70, "none", "a small plate with a stack of golden hotteok sweet pancakes"),
+    ("yuja_tea", "Citron Tea Jar", "deco", 100, 80, "none", "a glass jar of yuja citron tea marmalade with a wooden spoon and a steaming cup"),
+    ("gotgam_string", "Dried Persimmons", "deco", 170, 120, "none", "a string of orange dried persimmons (gotgam) hanging from a wooden peg"),
+    ("strawberry_cake", "Strawberry Cake", "deco", 140, 80, "none", "a round strawberry cream cake on a cake stand"),
+    ("cup_noodle", "Cup Noodles", "deco", 60, 60, "none", "a steaming cup of instant noodles with chopsticks resting on the lid, no logo or text"),
+    ("bread_basket", "Bakery Basket", "deco", 120, 90, "none", "a woven basket of fresh bakery bread: a baguette, a croissant and a soft milk bun"),
+    ("watermelon", "Watermelon", "deco", 100, 90, "none", "a whole striped watermelon with one juicy slice cut out next to it"),
+  ]),
+  ("Hobbies", [
+    ("ukulele", "Ukulele", "deco", 240, 110, "none", "a small wooden ukulele leaning upright"),
+    ("cassette_player", "Cassette Player", "deco", 220, 80, "none", "a retro portable cassette player with orange-cushion headphones and a cassette"),
+    ("easel_painting", "Painting Easel", "deco", 340, 150, "none", "a wooden easel holding a small painting of mountains, with a palette and brushes"),
+    ("knitting_basket", "Knitting Basket", "deco", 140, 90, "none", "a basket of colourful yarn balls with knitting needles and a half-knitted scarf"),
+    ("jigsaw_puzzle", "Jigsaw Puzzle", "deco", 120, 90, "none", "a half-finished jigsaw puzzle of a flower field on a board with loose pieces"),
+    ("baduk_board", "Baduk Board", "deco", 290, 110, "none", "a wooden baduk (Go) board with black and white stones and two stone bowls"),
+    ("telescope", "Telescope", "deco", 380, 140, "none", "a brass telescope on a wooden tripod pointing up"),
+    ("yoga_mat", "Yoga Corner", "deco", 170, 100, "none", "a rolled lavender yoga mat with two small dumbbells and a water bottle"),
+    ("badminton_set", "Badminton Set", "deco", 140, 100, "none", "two crossed badminton rackets with a white shuttlecock"),
+  ]),
+  ("Wall decor", [
+    ("minhwa_tiger", "Minhwa Tiger", "deco", 420, 130, "none", "a framed Korean folk painting (minhwa) of a funny tiger and a magpie in a pine tree"),
+    ("sunflower_painting", "Sunflower Painting", "deco", 260, 120, "none", "a framed oil painting of yellow sunflowers in a vase"),
+    ("bunting_flags", "Bunting Flags", "deco", 120, 130, "none", "a string of colourful triangle bunting flags hanging in a gentle curve"),
+    ("dreamcatcher", "Dreamcatcher", "deco", 170, 110, "none", "a dreamcatcher with soft feathers and beads"),
+    ("pressed_flowers", "Pressed Flowers", "deco", 190, 100, "none", "a wooden frame with pressed wildflowers behind glass"),
+    ("moon_phases", "Moon Phases", "deco", 170, 130, "none", "a wall hanging of golden moon phases on a string, from crescent to full"),
+    ("ivy_garland", "Ivy Garland", "deco", 140, 140, "none", "a long green ivy garland draped in a loose curve with a few tiny white flowers"),
+    ("dancheong_panel", "Dancheong Panel", "deco", 340, 130, "none", "a wooden panel painted with colourful Korean dancheong temple patterns"),
+    ("framed_certificate", "Certificate Frame", "deco", 240, 100, "none", "a framed certificate with a gold seal and a ribbon, lines instead of readable text"),
+  ]),
+  ("Small furniture", [
+    ("side_table", "Side Table", "furniture", 260, 110, "none", "a small round wooden side table with a little lamp and a book"),
+    ("plant_stand", "Plant Stand", "furniture", 340, 140, "none", "a three-tier wooden plant stand with small potted plants"),
+    ("storage_baskets", "Storage Baskets", "furniture", 190, 100, "none", "three stacked woven storage baskets with fabric liners"),
+    ("umbrella_stand", "Umbrella Stand", "deco", 140, 120, "none", "a ceramic umbrella stand with a clear umbrella and a yellow umbrella"),
+    ("sneaker_rack", "Sneaker Rack", "furniture", 290, 120, "none", "a small wooden shoe rack with three pairs of colourful sneakers"),
+    ("folded_ibul", "Folded Bedding", "furniture", 260, 120, "none", "a neat stack of folded Korean floor bedding (yo and ibul) with a pillow on top"),
+    ("mini_heater", "Mini Heater", "deco", 190, 90, "glow_warm", "a small retro electric heater glowing warm orange"),
+    ("ladder_shelf", "Ladder Shelf", "furniture", 380, 170, "none", "a leaning wooden ladder shelf with books, a plant and a candle"),
+    ("rocking_chair", "Rocking Chair", "furniture", 460, 150, "none", "a wooden rocking chair with a knitted blanket over the back"),
+  ]),
+  ("Seasons & events 2", [
+    ("xmas_stocking", "Christmas Stocking", "deco", 120, 90, "none", "a red and white Christmas stocking with a small gift peeking out"),
+    ("gift_pile", "Gift Pile", "deco", 190, 100, "none", "a pile of three wrapped gift boxes with bows in different colours"),
+    ("choco_sticks", "Choco Stick Box", "deco", 100, 80, "none", "an open box of chocolate-dipped biscuit sticks with a red ribbon, no logo or text"),
+    ("ghost_lantern", "Ghost Lantern", "deco", 140, 90, "glow_warm", "a cute smiling ghost-shaped paper lantern glowing softly"),
+    ("pinwheel", "Pinwheel", "deco", 80, 90, "none", "a colourful paper pinwheel on a stick in a small pot"),
+    ("lotus_lantern", "Lotus Lantern", "deco", 220, 100, "glow_warm", "a pink Korean lotus lantern (yeondeung) glowing from inside"),
+    ("birthday_cake", "Birthday Cake", "deco", 170, 90, "glow_warm", "a two-layer birthday cake with lit candles and sprinkles"),
+    ("beach_ball", "Beach Ball", "deco", 80, 80, "none", "a striped colourful beach ball"),
+    ("graduation_bouquet", "Graduation Bouquet", "deco", 220, 110, "none", "a big wrapped bouquet of roses and baby's breath with a satin ribbon"),
+  ]),
+  ("Animal friends", [
+    ("jindo_dog", "Jindo Dog", "pet", 460, 120, "none", "a cute white Korean Jindo dog sitting with curled tail"),
+    ("capybara", "Capybara", "pet", 420, 110, "none", "a calm capybara sitting with a small orange on its head"),
+    ("hedgehog_pet", "Hedgehog", "pet", 290, 80, "none", "a tiny round hedgehog curled on a small cushion"),
+    ("red_panda", "Red Panda", "pet", 420, 100, "none", "a fluffy red panda sitting and holding its striped tail"),
+    ("duckling", "Duckling", "pet", 190, 70, "none", "a fluffy yellow duckling standing"),
+    ("otter", "Otter", "pet", 380, 100, "none", "a cute otter floating on its back holding a pebble"),
+    ("sparrow_perch", "Sparrow", "pet", 170, 80, "none", "a round little sparrow sitting on a wooden perch"),
+    ("axolotl_tank", "Axolotl Tank", "pet", 380, 110, "none", "a small glass tank with a pink smiling axolotl and green plants"),
+    ("alpaca", "Alpaca", "pet", 420, 130, "none", "a fluffy cream alpaca with a small scarf"),
+  ]),
 ]
 
 # The 5 older catalogue items that still have no picture (one image each).
@@ -187,7 +253,7 @@ def main():
         lines.append("| file | description |"); lines.append("|------|-------------|")
         for f, d in rows: lines.append(f"| `{f}` | {d} |")
         lines.append("")
-    lines.append("## A. New props (36)"); lines.append("")
+    lines.append(f"## A. New props ({sum(len(i) for _, i in PROPS)})"); lines.append("")
     for title, items in PROPS:
         block(title, [(fname(i[0]), i[6]) for i in items])
     lines.append("## B. Catalogue items still without a picture"); lines.append("")
@@ -203,7 +269,7 @@ def main():
       "-- Prices follow the tiers in 20261029_my_room_ownership_prices.sql. Insert-only: an item that\n"
       "-- already exists (e.g. edited in the admin) is left alone.\n", 2000)
     migration(PROPS, os.path.join(root, 'supabase', 'migrations', '20261029_room_props.sql'),
-      "-- auto-apply\n-- 36 more My Room props (owner, 2026-10-29: \"more kinds of props\"), generated by\n"
+      "-- auto-apply\n-- " + str(sum(len(i) for _, i in PROPS)) + " more My Room props (owner, 2026-10-29: \"more kinds of props\"), generated by\n"
       "-- scripts/room-art/catalog.py (PROPS). Hidden in every shop until korehan/assets/room/<file> exists.\n"
       "-- Prices follow the tiers in 20261029_my_room_ownership_prices.sql. Insert-only.\n", 3000)
     print(total, 'items without art')
