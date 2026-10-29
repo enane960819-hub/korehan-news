@@ -1,7 +1,8 @@
 /* TOPIK Practice (mockup K, 2026-10-28). ORIGINAL questions in the real TOPIK
    layout: TOPIK I/II reading + listening. Hand-written tests come from
-   scripts/topik/items.mjs; most tests are written by the topik-gen Edge
-   Function from _shared/topik-spec.ts (blind-checked before publishing).
+   scripts/topik/ (items.mjs, tests/*.mjs) and go through the review in
+   scripts/topik/REVIEW.md: automatic checks, an independent second review,
+   then the admin approves each draft here before learners see it.
    Listening plays the stored MP3, or reads the script with the device voice.
    Test 1 and the weekly mini test are free; other tests are Premium (RLS
    hides their items too). Timed test → score, estimated level from the TOPIK
@@ -126,7 +127,7 @@
     if (window._tpPrefetch && !S._prefetchUsed) { S._prefetchUsed = true; try { rows = await window._tpPrefetch; } catch (_) {} }
     var c = sb();
     if ((!Array.isArray(rows) || isAdmin()) && c) {
-      var q = c.from('topik_tests').select('id,level,section,kind,title,minutes,free,sort,number,status,flagged').order('sort');
+      var q = c.from('topik_tests').select('id,level,section,kind,title,minutes,free,sort,number,status,flagged' + (isAdmin() ? ',approved_at' : '')).order('sort');
       if (!isAdmin()) q = q.eq('status', 'published');
       var r = await q;
       if (r && !r.error) rows = r.data || [];
@@ -200,58 +201,138 @@
     icons();
   }
 
-  // ── Admin: queue generated tests, watch jobs, publish drafts ──
+  // ── Admin: review queue (stage 3 of scripts/topik/REVIEW.md) ──
+  // New tests arrive as drafts. The admin reads every question with its
+  // answer and explanation, flags anything wrong, and publishes only when
+  // nothing is flagged. Learner reports land here too.
   function adminHtml() {
-    return '<div class="tp-k">Admin · generate tests</div>'
-      + '<div class="tp-t" style="cursor:default;flex-wrap:wrap;gap:8px">'
-      + '<select id="tp-a-lv" class="tp-sel"><option value="I"' + (S.level === 'I' ? ' selected' : '') + '>TOPIK I</option><option value="II"' + (S.level === 'II' ? ' selected' : '') + '>TOPIK II</option></select>'
-      + '<select id="tp-a-sec" class="tp-sel"><option value="reading"' + (S.section === 'reading' ? ' selected' : '') + '>Reading</option><option value="listening"' + (S.section === 'listening' ? ' selected' : '') + '>Listening</option></select>'
-      + '<input id="tp-a-n" class="tp-sel" type="number" min="1" max="20" value="5" style="width:64px">'
-      + '<button type="button" class="tp-btn p" id="tp-a-go" style="width:auto;margin:0;padding:9px 14px">Queue tests</button>'
-      + '<small style="flex-basis:100%">Each test: about 15–25 min on the server, roughly $0.5–1 in AI. Tests publish automatically when every question passes the blind check; otherwise they stay as drafts here.</small></div>'
-      + '<div id="tp-a-jobs" class="tp-empty" style="padding:8px 0;text-align:left">Loading jobs…</div>';
+    return '<div class="tp-k">Admin · review</div><div id="tp-a-rev" class="tp-empty" style="padding:8px 0;text-align:left">Loading…</div>';
   }
-  async function wireAdmin() {
-    var go = $('tp-a-go');
-    if (go) go.addEventListener('click', async function () {
-      go.disabled = true; go.textContent = 'Queuing…';
-      var c = sb(), sess = c ? await c.auth.getSession() : null;
-      var token = sess && sess.data && sess.data.session && sess.data.session.access_token;
-      try {
-        var r = await fetch(SUPA_URL + '/functions/v1/topik-gen', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token, apikey: SUPA_KEY },
-          body: JSON.stringify({ action: 'enqueue', level: $('tp-a-lv').value, section: $('tp-a-sec').value, count: Number($('tp-a-n').value) || 1 }) });
-        var res = await r.json().catch(function () { return {}; });
-        if (typeof toast === 'function') toast(res.ok ? 'Queued ' + res.queued + ' test(s) — they run on the server, you can close this page.' : 'Could not queue: ' + (res.error || r.status), res.ok ? 'success' : 'error');
-      } catch (e) { if (typeof toast === 'function') toast('Could not queue: ' + e.message, 'error'); }
-      go.disabled = false; go.textContent = 'Queue tests';
-      loadJobs();
+  function wireAdmin() { loadReviewPanel(); }
+  async function loadReviewPanel() {
+    var box = $('tp-a-rev'); var c = sb(); if (!box || !c) return;
+    var list = S.tests.filter(function (t) { return t.level === S.level && t.section === S.section; })
+      .sort(function (a, b) { return (a.status === 'draft' ? 0 : 1) - (b.status === 'draft' ? 0 : 1) || a.sort - b.sort; });
+    var rr = await c.from('topik_reports').select('id,item_id,test_id,note,created_at').is('resolved_at', null).order('created_at', { ascending: false }).limit(50);
+    var reps = (rr && rr.data) || [];
+    var btn = function (attr, label) { return '<button type="button" class="tp-sel" ' + attr + '>' + label + '</button>'; };
+    box.innerHTML = '<div style="font-size:12.5px;margin-bottom:6px">Read every question with its answer before publishing. A test cannot be published while any question is flagged.</div>'
+      + list.map(function (t) {
+          var live = t.status !== 'draft';
+          return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)">'
+            + '<span style="flex:1;min-width:160px"><b>' + esc(t.title) + '</b> · ' + (live ? 'live' : 'draft') + ' · ' + (t.flagged || 0) + ' flagged'
+            + (t.approved_at ? ' · approved ' + new Date(t.approved_at).toLocaleDateString() : '') + '</span>'
+            + btn('data-rev="' + t.id + '"', 'Review')
+            + (live ? btn('data-unpub="' + t.id + '"', 'Move to draft') : btn('data-pub="' + t.id + '"' + ((t.flagged || 0) ? ' disabled' : ''), 'Publish'))
+            + '</div>';
+        }).join('')
+      + '<div class="tp-k" style="margin-top:14px">Learner reports (' + reps.length + ' open)</div>'
+      + (reps.length ? reps.map(function (r) {
+          return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)">'
+            + '<span style="flex:1;min-width:160px"><b>' + esc(r.item_id) + '</b> · ' + esc(r.note) + '</span>'
+            + btn('data-rev="' + esc(r.test_id) + '" data-focus="' + esc(r.item_id) + '"', 'Open')
+            + btn('data-res="' + r.id + '"', 'Resolved') + '</div>';
+        }).join('') : '<div style="font-size:12.5px">None.</div>');
+    box.querySelectorAll('[data-rev]').forEach(function (b) { b.addEventListener('click', function () { openReview(b.dataset.rev, b.dataset.focus); }); });
+    box.querySelectorAll('[data-pub],[data-unpub]').forEach(function (b) {
+      b.addEventListener('click', function () { setTestStatus(b.dataset.pub || b.dataset.unpub, b.dataset.pub ? 'published' : 'draft'); });
     });
-    loadJobs();
-  }
-  async function loadJobs() {
-    var box = $('tp-a-jobs'); var c = sb(); if (!box || !c) return;
-    var r = await c.from('topik_gen_jobs').select('id,level,section,status,progress,test_id,error,ticks,created_at').order('created_at', { ascending: false }).limit(20);
-    var jobs = (r && r.data) || [];
-    var drafts = S.tests.filter(function (t) { return t.status === 'draft' && t.kind === 'full'; });
-    box.innerHTML = (jobs.length ? jobs.map(function (j) {
-        var p = j.progress || {};
-        var stepTxt = j.status === 'done' ? (j.test_id || 'done') : (j.test_id ? 'saving audio' : 'chunk ' + ((p.chunk || 0) + 1) + (p.pending ? ' · checking' : ' · writing') + (p.tries ? ' · rewrite ' + p.tries : ''));
-        return '<div style="font-size:12.5px;padding:4px 0">TOPIK ' + j.level + ' ' + j.section + ' — <b>' + j.status + '</b> · ' + esc(stepTxt) + (j.error ? ' · <span style="color:#fca5a5">' + esc(j.error) + '</span>' : '') + '</div>';
-      }).join('') : '<div style="font-size:12.5px">No jobs yet.</div>')
-      + (drafts.length ? '<div style="margin-top:8px;font-size:12.5px">Drafts (open to review, then publish):</div>' + drafts.map(function (t) {
-          return '<div style="display:flex;gap:8px;align-items:center;font-size:12.5px;padding:4px 0"><span>' + esc(t.title) + ' · ' + (t.flagged || 0) + ' flagged</span><button type="button" class="tp-sel" data-pub="' + t.id + '">Publish</button></div>';
-        }).join('') : '');
-    box.querySelectorAll('[data-pub]').forEach(function (b) {
+    box.querySelectorAll('[data-res]').forEach(function (b) {
       b.addEventListener('click', async function () {
-        var rr = await c.from('topik_tests').update({ status: 'published' }).eq('id', b.dataset.pub);
-        if (rr.error) { if (typeof toast === 'function') toast(rr.error.message, 'error'); return; }
-        await loadTests(); renderHub();
+        var x = await c.from('topik_reports').update({ resolved_at: new Date().toISOString() }).eq('id', b.dataset.res);
+        if (x.error) { if (typeof toast === 'function') toast(x.error.message, 'error'); return; }
+        loadReviewPanel();
       });
     });
-    if (jobs.some(function (j) { return j.status === 'pending' || j.status === 'running'; })) {
-      clearTimeout(S.jobTimer);
-      S.jobTimer = setTimeout(function () { if ($('tp-a-jobs')) loadJobs(); }, 30000);
+  }
+  async function setTestStatus(id, status) {
+    var c = sb(); if (!c) return;
+    var patch = { status: status };
+    if (status === 'published') {
+      var f = await c.from('topik_items').select('id', { count: 'exact', head: true }).eq('test_id', id).not('qa_flag', 'is', null);
+      if (f.count) { if (typeof toast === 'function') toast(f.count + ' question(s) still flagged — fix them first.', 'error'); return; }
+      patch.approved_at = new Date().toISOString(); patch.flagged = 0;
     }
+    var r = await c.from('topik_tests').update(patch).eq('id', id);
+    if (r.error) { if (typeof toast === 'function') toast(r.error.message, 'error'); return; }
+    if (typeof toast === 'function') toast(status === 'published' ? 'Published.' : 'Moved back to draft — learners no longer see it.', 'success');
+    await loadTests();
+    if (S.run && S.run.mode === 'review') { S.run.test = S.tests.filter(function (t) { return t.id === id; })[0] || S.run.test; renderReview(); }
+    else renderHub();
+  }
+  async function openReview(id, focus) {
+    var t = S.tests.filter(function (x) { return x.id === id; })[0];
+    var c = sb(); if (!t || !c) return;
+    var r = await c.from('topik_items').select(ITEM_COLS).eq('test_id', id).order('n');
+    S.run = { mode: 'review', test: t, items: (r && r.data) || [], ans: {}, flags: {}, done: true };
+    openOverlay(true);
+    renderReview(focus);
+  }
+  function renderReview(focus) {
+    var R = S.run, t = R.test;
+    var flagged = R.items.filter(function (it) { return it.qa_flag; }).length;
+    var live = t.status !== 'draft';
+    $('tp-lbl').textContent = t.title + ' · review';
+    $('tp-timer').innerHTML = '';
+    $('tp-prog').style.width = '100%';
+    var seenGroup = {};
+    var html = '<div class="tp-exp" style="margin:0 0 6px">' + R.items.length + ' questions · <b>' + flagged + ' flagged</b> · ' + (live ? 'live' : 'draft')
+      + '<br>For each question check: one right answer only, every other choice clearly wrong, natural Korean, the explanation is right.</div>'
+      + R.items.map(function (it) {
+          var showPassage = it.passage && (!it.group_key || !seenGroup[it.group_key]);
+          if (it.group_key) seenGroup[it.group_key] = 1;
+          var q = it.question || (TYPES[it.type] && TYPES[it.type].ko) || '';
+          return '<div class="tp-wrong" id="rv-' + esc(it.id) + '"' + (it.qa_flag ? ' style="background:rgba(239,68,68,.08)"' : '') + '><div class="h">Q' + it.n + ' · ' + esc(typeLabel(it.type)) + (it.qa_flag ? ' · <span style="color:#fca5a5">FLAGGED: ' + esc(it.qa_flag) + '</span>' : '') + '</div>'
+            + (it.instruction ? '<div style="font-size:12.5px;color:rgba(255,255,255,.6);margin-bottom:4px">' + esc(it.instruction) + '</div>' : '')
+            + (it.script && it.script.length ? '<div class="tp-pass tp-script" style="margin:6px 0 8px;font-size:14px">' + it.script.map(function (l) { return '<b>' + esc(l.s || '') + '</b> ' + esc(l.t || ''); }).join('\n') + '</div>' : '')
+            + (showPassage ? '<div class="tp-pass" style="margin:6px 0 8px;font-size:14.5px">' + rich(it.passage) + '</div>' : '')
+            + (it.media && it.media.graph ? '<div class="tp-pass">' + graphSvg(it.media.graph, false) + '</div>' : '')
+            + (q ? '<div style="font-size:13px;color:#fff;margin-bottom:4px">' + esc(q) + '</div>' : '')
+            + '<div style="font-size:14px;line-height:1.7;font-family:\'Noto Sans KR\',sans-serif">' + it.choices.map(function (ch, i) {
+                var ok = i + 1 === it.answer;
+                return '<div style="' + (ok ? 'color:#6ee7b7;font-weight:700' : 'color:rgba(255,255,255,.85)') + '">' + NUMS[i] + ' ' + (typeof ch === 'string' ? esc(ch) : '[graph]') + (ok ? ' — answer' : '') + '</div>';
+              }).join('') + '</div>'
+            + (it.explanation ? '<div class="tp-exp">' + esc(it.explanation) + '</div>' : '')
+            + '<div style="display:flex;gap:6px;margin-top:8px"><button type="button" class="tp-sel" data-flag="' + esc(it.id) + '">' + (it.qa_flag ? 'Edit flag' : 'Flag a problem') + '</button>'
+            + (it.qa_flag ? '<button type="button" class="tp-sel" data-unflag="' + esc(it.id) + '">Clear flag</button>' : '') + '</div></div>';
+        }).join('');
+    var keep = $('tp-scroll').scrollTop;
+    $('tp-q').innerHTML = html;
+    $('tp-nav').innerHTML = '<button type="button" id="tp-rv-close">Close</button>'
+      + (live ? '<button type="button" id="tp-rv-state">Move to draft</button>'
+              : '<button type="button" class="p" id="tp-rv-state"' + (flagged ? ' disabled title="Clear every flag first"' : '') + '>Approve &amp; publish</button>');
+    if (focus && $('rv-' + focus)) $('rv-' + focus).scrollIntoView({ block: 'start' }); else $('tp-scroll').scrollTop = keep;
+    $('tp-rv-close').addEventListener('click', function () { closeOverlay(); renderHub(); });
+    $('tp-rv-state').addEventListener('click', function () { setTestStatus(t.id, live ? 'draft' : 'published'); });
+    $('tp-q').querySelectorAll('[data-flag],[data-unflag]').forEach(function (b) {
+      b.addEventListener('click', async function () {
+        var id = b.dataset.flag || b.dataset.unflag;
+        var it = R.items.filter(function (x) { return x.id === id; })[0];
+        var note = null;
+        if (b.dataset.flag) {
+          note = typeof khPrompt === 'function' ? await khPrompt('Flag Q' + it.n, 'What is wrong? (e.g. "② also fits", "unnatural: …")', { defaultValue: it.qa_flag || '', okLabel: 'Flag' }) : prompt('What is wrong?', it.qa_flag || '');
+          if (!note || !String(note).trim()) return;
+          note = String(note).trim().slice(0, 300);
+        }
+        var c = sb();
+        var x = await c.from('topik_items').update({ qa_flag: note }).eq('id', id);
+        if (x.error) { if (typeof toast === 'function') toast(x.error.message, 'error'); return; }
+        it.qa_flag = note;
+        var n = R.items.filter(function (y) { return y.qa_flag; }).length;
+        await c.from('topik_tests').update({ flagged: n }).eq('id', t.id).then(function () {}, function () {});
+        t.flagged = n;
+        renderReview();
+      });
+    });
+    icons();
+  }
+  // Learners: report a question from the mistakes list.
+  async function reportItem(it) {
+    var c = sb(); if (!c || !user()) { if (typeof openAuthModal === 'function') openAuthModal('signup'); return; }
+    var note = typeof khPrompt === 'function' ? await khPrompt('Report a problem', 'What is wrong with Q' + it.n + '? (e.g. two answers fit, a typo, the explanation is wrong)', { okLabel: 'Send' }) : prompt('What is wrong with this question?');
+    if (!note || String(note).trim().length < 3) return;
+    var r = await c.from('topik_reports').insert({ item_id: it.id, test_id: it.test_id, note: String(note).trim().slice(0, 500) });
+    if (typeof toast === 'function') toast(r.error ? (/duplicate|unique/i.test(r.error.message) ? 'You already reported this question — thanks.' : 'Could not send: ' + r.error.message) : 'Thanks — we will check this question.', r.error ? 'error' : 'success');
   }
 
   // ── Test runner ──
@@ -486,7 +567,8 @@
           + '<div style="font-size:14px;line-height:1.6;font-family:\'Noto Sans KR\',sans-serif">'
           + (mine ? '<span style="color:#fca5a5">Your answer: ' + NUMS[mine - 1] + ' ' + (typeof it.choices[mine - 1] === 'string' ? esc(it.choices[mine - 1]) : '') + '</span><br>' : '<span style="color:#fca5a5">No answer</span><br>')
           + '<span style="color:#6ee7b7">Answer: ' + NUMS[it.answer - 1] + ' ' + (typeof it.choices[it.answer - 1] === 'string' ? esc(it.choices[it.answer - 1]) : '') + '</span></div>'
-          + (it.explanation ? '<div class="tp-exp">' + esc(it.explanation) + '</div>' : '') + '</div>';
+          + (it.explanation ? '<div class="tp-exp">' + esc(it.explanation) + '</div>' : '')
+          + '<button type="button" class="tp-rep" data-rep="' + esc(it.id) + '">Report a problem with this question</button></div>';
       }).join('');
     }
     if (!user() && R.mode === 'test') html += '<button type="button" class="tp-btn" id="tp-signup">' + ico('user-plus') + 'Sign up free to keep your results</button>';
@@ -494,6 +576,7 @@
     $('tp-scroll').scrollTop = 0;
     $('tp-nav').innerHTML = '<button type="button" id="tp-again">' + (R.mode === 'drill' ? 'Another drill' : 'Try again') + '</button><button type="button" class="p" id="tp-done">Done</button>';
     $('tp-q').querySelectorAll('[data-drill]').forEach(function (b) { b.addEventListener('click', function () { startDrill(b.dataset.drill); }); });
+    $('tp-q').querySelectorAll('[data-rep]').forEach(function (b) { b.addEventListener('click', function () { reportItem(R.items.filter(function (x) { return x.id === b.dataset.rep; })[0]); }); });
     var su = $('tp-signup'); if (su) su.addEventListener('click', function () { if (typeof openAuthModal === 'function') openAuthModal('signup'); });
     $('tp-again').addEventListener('click', function () {
       if (R.mode === 'drill') { var t = R.items[0] && R.items[0].type; if (t) startDrill(t); }

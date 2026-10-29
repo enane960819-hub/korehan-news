@@ -326,6 +326,9 @@ supabase functions deploy claude-proxy
   papers — NIIED copyright). Written in `scripts/topik/items.mjs` (`a` = the one right answer, `w` = three
   wrong-in-slot distractors) → `build.ts` shuffles and writes the seed. Free tests are open; other tests' items
   are Premium-only via RLS. Branded "TOPIK-style … not affiliated with NIIED".
+  Every question is reviewed before learners see it (`scripts/topik/REVIEW.md`): `lint.ts` blocks the build,
+  an independent reviewer reads every item, and new tests seed as drafts that the admin approves in the app.
+  New tests set `balance: true`; never reshuffle an existing test (saved attempts store choice positions).
 - **Live class** is a paid add-on: Premium members only, $5 a seat, 8 seats, refund ≥24 h before, no recording.
   Seats are written only by `billing` (`live_checkout` / `live_cancel`, atomic `kh_live_hold_seat`) and
   `billing-webhook` — never from the client.
