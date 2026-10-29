@@ -106,6 +106,10 @@ export function lint(onlyIds: string[] = []): Finding[] {
       }
     }
 
+    // Sentence-order items: the right order must not always open with the same label.
+    const firsts = shaped.filter((x: any) => x.it.t === 'order').map((x: any) => (x.choices[x.answer - 1] || '').match(/\((가|나|다|라)\)/)?.[1]).filter(Boolean)
+    if (firsts.length >= 2 && new Set(firsts).size === 1) warn(t.id, `every sentence-order answer starts with (${firsts[0]}) — learners can guess the pattern`)
+
     // Answer pattern across the test
     const n = answers.length
     if (n >= 12) {
